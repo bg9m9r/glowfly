@@ -2,7 +2,7 @@
 //! branch that the checkout being undone created), and keeping each tab's history in step with
 //! the git jobs that finish in it, offering to stash local changes when they block an undo.
 
-use crate::effect::{Effect, UndoOpts, UndoResult};
+use crate::effect::{Effect, StashKept, UndoOpts, UndoResult};
 use crate::msg::{JobMsg, Msg};
 use crate::state::toasts::ToastAction;
 use crate::state::undo::{UndoCreatedForm, UndoHistory};
@@ -71,6 +71,19 @@ fn start(st: &mut AppState, redo: bool, action: Action, opts: UndoOpts, fx: &mut
     super::ops::begin_job(st, &label, true, move |cwd| Effect::UndoRedo { cwd, action, redo, opts }, fx);
 }
 
+/// The toast of a "Stash changes and undo" whose undo ran but whose stashed changes stay in the
+/// stash list: by design, or because git couldn't put them back.
+pub(super) fn kept_headline(st: &AppState, undo: &Option<UndoResult>) -> Option<String> {
+    let Some(UndoResult::Done { before, kept: Some(kept), .. }) = undo else { return None };
+    let t = st.settings.lang();
+    let args: [(&str, &dyn std::fmt::Display); 2] = [("action", &before.describe()), ("stash", &glowfly_core::undo::UNDO_STASH_MESSAGE)];
+    Some(match kept {
+        StashKept::Conflicts(n) => t.trn("undo.stash_kept.conflicts", *n, &args),
+        StashKept::Left => t.trf("undo.stash_kept.left", &args),
+        StashKept::Failed => t.trf("undo.stash_kept.failed", &args),
+    })
+}
+
 /// Jobs that never move a local branch, HEAD, index or working tree, so the history stays
 /// valid: fetch, push, tag, clone, init, config, adding a remote or changing its URLs, setting
 /// or unsetting a branch's upstream,
@@ -130,6 +143,13 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
     match result {
         Some(UndoResult::Recorded(Some(a))) if ok => history.record(a),
         Some(UndoResult::Recorded(_)) => {}
+        Some(UndoResult::Stopped(start)) => history.stopped_at(start),
+        // A failed abort changes the history no more than another failed job.
+        Some(UndoResult::Aborted(back)) => {
+            if ok && !job.quiet {
+                history.aborted(&job.label, back.as_ref());
+            }
+        }
         None => {
             if ok && !job.quiet && !job.keeps_undo {
                 history.invalidate(&job.label);
@@ -145,7 +165,7 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
             }
             history.undone(before);
         }
-        Some(UndoResult::Done { redo: true, before, after }) => {
+        Some(UndoResult::Done { redo: true, before, after, .. }) => {
             // The commit exists again, so the message the undo put back is no longer a draft.
             // A draft the user has since edited is kept.
             if let Action::Commit { message, amend: false, .. } = &before {

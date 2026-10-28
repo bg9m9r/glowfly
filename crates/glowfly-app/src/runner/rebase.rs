@@ -27,9 +27,14 @@ pub(super) fn run(e: RebaseEffect) -> Msg {
         }
         RebaseEffect::Start { cwd, request, detail } => {
             let before = undo::rebase_start(&cwd);
+            let start = undo::op_start(&cwd);
             let op = Some(glowfly_core::journal::Op::Rewrite);
             let result = super::journal::around(&cwd, op, || rebase::start(&cwd, &request, &sequence_editor()));
-            let undo = recorded(&cwd, before, &detail, &result);
+            let undo = match (&result, start) {
+                // Where it started, so an abort that goes back exactly there keeps the history.
+                (Ok(Outcome::Stopped { .. }), Some(s)) => Some(UndoResult::Stopped(s)),
+                _ => recorded(&cwd, before, &detail, &result),
+            };
             RebaseMsg::RebaseFinished { result: result.map_err(err), undo }
         }
         RebaseEffect::PrepareEdit { workdir, edit } => {

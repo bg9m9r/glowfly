@@ -293,9 +293,22 @@ impl Action {
         matches!(self, Action::Discard { .. } | Action::DeleteFile { .. } | Action::StashDrop { .. } | Action::AbortKept { .. })
     }
 
-    /// Whether a refusal for local changes can offer to stash them and undo anyway: only for
-    /// undoing a hard reset or Discard all, whose redo stashes again by itself.
+    /// Whether a refusal for local changes can offer to stash them and undo anyway: for undoing
+    /// a hard reset or Discard all (whose redo stashes again by itself), a merge, pull,
+    /// cherry-pick, revert or rebase, or a stash. Never for a redo.
     pub fn offers_stash(&self, redo: bool) -> bool {
-        !redo && matches!(self, Action::Reset { mode: ResetMode::Hard, .. } | Action::DiscardAll { .. })
+        !redo
+            && matches!(
+                self,
+                Action::Reset { mode: ResetMode::Hard, .. } | Action::DiscardAll { .. } | Action::Moved { .. } | Action::StashPush { .. }
+            )
+    }
+
+    /// Whether "Stash changes and undo" puts the stashed changes back once the undo is done
+    /// (with `stash pop --index`): for a merge, pull, cherry-pick, revert or rebase. Undoing a
+    /// hard reset, Discard all or a stash brings back other changes at the same paths, so the
+    /// newer ones stay in the stash.
+    pub fn restores_stash(&self) -> bool {
+        matches!(self, Action::Moved { .. })
     }
 }

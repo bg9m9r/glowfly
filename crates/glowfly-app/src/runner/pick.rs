@@ -31,6 +31,7 @@ pub(super) fn run(j: PickJob) -> Msg {
             return (false, output, undo, PickResult { picking, total, ..PickResult::default() });
         }
         let start = head(&cwd);
+        let op_start = glowfly_core::undo::op_start(&cwd);
         let first = run_git(&cwd, &[last], None, prompts);
         let mut git = |c: &[String]| run_git(&cwd, &[c.to_vec()], None, prompts);
         let (ok, picked, result) = pick_ops::skip_empty(&cwd, picking, &oids, start, first, can_skip, &mut git);
@@ -42,6 +43,7 @@ pub(super) fn run(j: PickJob) -> Msg {
         let moved = head(&cwd) != start;
         let recorded = |k| if ok && moved { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
         let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
+        let undo = super::op_stops::stopped(&cwd, ok, op_start).or(undo);
         (ok, output, undo, result)
     });
     Msg::Job(JobMsg::PickDone { ok, output, undo, result })

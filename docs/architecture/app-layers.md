@@ -119,6 +119,8 @@ source file, update its line here. Features that span every layer are in
 - `load.rs`: a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.
 - `pick.rs`: runs a cherry-pick or revert, skipping the commits that change nothing, and reports `JobMsg::PickDone`.
+- `undo_stash.rs`: Stash changes and undo: stashes the local changes (untracked too), runs the undo, and after a merge, pull, cherry-pick, revert or rebase undo puts them back with `stash pop --index` only; otherwise, or when that fails, the stash stays and the result says why (`StashKept`).
+- `op_stops.rs`: notes where a merge, pull, cherry-pick, revert or rebase job's operation starts (after any auto-stash in front of it) and reports `UndoResult::Stopped` when it stops in progress; a plain abort reports where it ended (`UndoResult::Aborted`), and `UndoHistory::aborted` keeps the older entries only when that is the same place.
 - `logs.rs`: the one ordered worker for the log files.
 - `guard.rs`: panic recovery: a panicking effect still sends the result that ends its job or loading state (`Recovery::of`); tests in `guard_tests.rs`.
 - `trust.rs`: reading the repositories made from a trusted one, and the re-check just before a sealed effect starts (`verify`, on its worker; a shell's in its session thread): a scan with libgit2 compared with the decision it was sent under, and an incoming commit's hooks that follow the working tree; a read whose check fails reads without git where it can (a status read); a read's scan is reused while its stamp is unchanged (`trust::stamp`); tests in `trust_tests.rs`.

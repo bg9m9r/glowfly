@@ -256,6 +256,19 @@ pub fn pop_put_back(workdir: &Path, index: usize, oid: Oid) -> (PutBack, String)
     (classify_with(ok, listed, paths), output)
 }
 
+/// Puts stash `oid` back with `git stash pop --index` only, never falling back to a plain pop:
+/// when git can't restore the staged state too, or anything else goes wrong, the entry stays
+/// in the list (`Failed` or `Conflicted`). Refused, changing nothing, while an operation is in
+/// progress or files are conflicted (`NotReady`), or when the stash is gone (`Gone`).
+pub fn pop_index(workdir: &Path, oid: Oid) -> (PutBack, String) {
+    let index = match prepare_put_back(workdir, oid) {
+        Ok(i) => i,
+        Err(refused) => return refused,
+    };
+    let (ok, output, listed) = pop(workdir, &args(&["stash", "pop", "--index", &format!("stash@{{{index}}}")]), oid);
+    (classify_with(ok, listed, conflicted_paths(workdir)), output)
+}
+
 /// Runs one pop command: whether git said it worked, the command with its output, and whether
 /// stash `oid` is still listed afterwards.
 fn pop(workdir: &Path, cmd: &[String], oid: Oid) -> (bool, String, bool) {

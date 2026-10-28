@@ -269,6 +269,7 @@ pub(super) mod trust_print_tests;
 pub(super) mod trust_recheck_tests;
 pub(super) mod trust_terminal_tests;
 pub(super) mod trust_tests;
+pub(super) mod undo_abort_tests;
 pub(super) mod undo_continue_tests;
 pub(super) mod undo_discard_tests;
 pub(super) mod undo_ops_tests;

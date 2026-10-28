@@ -117,14 +117,31 @@ pub enum UndoResult {
     /// An undoable job ran; `None` when it changed nothing that can be undone.
     Recorded(Option<Action>),
     /// An undo or redo ran. `before` is the history entry and `after` the entry as it stands now
-    /// (they differ for a redo that makes a new stash or leaves a new working tree).
-    Done { redo: bool, before: Action, after: Box<Action> },
+    /// (they differ for a redo that makes a new stash or leaves a new working tree). `kept`:
+    /// the changes "Stash changes and undo" stashed stay stashed, and why.
+    Done { redo: bool, before: Action, after: Box<Action>, kept: Option<StashKept> },
+    /// A merge, pull, cherry-pick, revert or rebase stopped in progress; it started at `0`.
+    Stopped(glowfly_core::undo::OpStart),
+    /// A plain abort (`undo::is_abort`) ran; the repository is now at `0` (`None`: something is
+    /// still in progress, or it can't be read).
+    Aborted(Option<glowfly_core::undo::OpStart>),
     /// The reversing git commands failed; the entry stays.
     Failed { redo: bool },
     /// The undo or redo was refused before running anything; a stale history is cleared.
     /// `offer_stash`: the refusal was for local changes that "Stash changes and undo" can move
     /// out of the way.
     Refused { redo: bool, stale: bool, offer_stash: bool },
+}
+
+/// Why the changes "Stash changes and undo" stashed stay in the stash list after the undo ran.
+#[derive(Clone, Debug, PartialEq)]
+pub enum StashKept {
+    /// They stay by design (`Action::restores_stash` is false).
+    Left,
+    /// git put them back with conflicts in this many files, and kept the entry.
+    Conflicts(usize),
+    /// git couldn't put them back (also not with their staged state), or the stash was gone.
+    Failed,
 }
 
 /// Choices for one undo or redo.

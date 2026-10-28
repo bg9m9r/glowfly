@@ -37,6 +37,7 @@ mod marked;
 mod marked_plan;
 mod marked_put;
 mod moved;
+mod op_start;
 mod planning;
 mod rebased;
 mod record;
@@ -61,6 +62,7 @@ pub use kinds::{MoveOp, ResetMode, UndoKind};
 pub(crate) use kinds::{commits_label, move_targets};
 pub use marked::{ConflictChange, ConflictFile, ConflictsFailed, EntryFlags, IndexAt, PathState, WorkAt, conflicts_saving};
 pub use marked_put::put_conflicts;
+pub use op_start::{OpStart, in_progress, is_abort, op_start};
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
 pub use rebased::{RebaseStart, rebase_start, rebased, unmoved};
@@ -164,6 +166,20 @@ pub struct Options {
 /// The command that stashes local changes (untracked files too) before "Stash changes and undo".
 pub fn stash_first_command() -> Vec<String> {
     args(&["stash", "push", "-u", "-m", UNDO_STASH_MESSAGE])
+}
+
+/// The newest stash in `workdir`'s list, if any: what `undo_stash_made` compares with.
+pub fn stash_top_at(workdir: &std::path::Path) -> Option<Oid> {
+    stash_top(&git2::Repository::open(workdir).ok()?)
+}
+
+/// The stash `stash_first_command` just made: the newest one, when it isn't `before` (the
+/// newest before it ran) and carries `UNDO_STASH_MESSAGE`. `None` when git had nothing to stash.
+pub fn undo_stash_made(workdir: &std::path::Path, before: Option<Oid>) -> Option<Oid> {
+    let repo = git2::Repository::open(workdir).ok()?;
+    let top = stash_top(&repo).filter(|t| Some(*t) != before)?;
+    let ours = repo.find_commit(top).ok()?.message().is_some_and(|m| m.contains(UNDO_STASH_MESSAGE));
+    ours.then_some(top)
 }
 
 /// The command Glowfly runs for "Discard all".

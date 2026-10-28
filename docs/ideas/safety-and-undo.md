@@ -118,6 +118,10 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Undo of discarding an untracked file or a symbolic link (only regular files are saved for undo)
 - Undo of a stash drop across restarts, by finding the dropped commit in the stash reflog or with
   fsck
+- Offer Stash changes and undo for a restack's undo refused for local changes
+- Keep the undo history across an abort of an operation Glowfly didn't start, or one put back in
+  progress by undoing a kept abort (where it started isn't recorded, so the history is cleared)
+- Keep the undo history across a patch series abort (`am --abort`)
 
 ### In-progress operations stay visible and safe
 

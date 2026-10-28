@@ -1,5 +1,6 @@
 //! Headless tests for undoing stashes and pops, and for the "Stash changes and undo" offer when
-//! local changes block undoing a hard reset or Discard all.
+//! local changes block undoing a hard reset, Discard all, a stash, or a merge, pull,
+//! cherry-pick, revert or rebase (whose undo puts the changes back with their staged state).
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
@@ -119,7 +120,12 @@ fn stash_changes_and_undo_a_hard_reset() {
     assert_eq!(head_summary(&st), "Second line");
     assert_eq!(read(&dir, "a.txt"), "before the reset\n");
     assert!(has_undo_stash(&st));
-    assert!(st.toasts.last().is_some_and(|t| t.ok && t.text.starts_with("Stash changes and undo hard reset")));
+    let t = st.toasts.last().unwrap();
+    assert!(
+        t.ok && t.text.starts_with("Undid hard reset") && t.text.ends_with("in the stash \"Glowfly: changes before undo\"."),
+        "{}",
+        t.text
+    );
     assert!(st.log.iter().any(|l| l.text.contains("Your changes were stashed as \"Glowfly: changes before undo\".")));
     cleanup(&[&dir]);
 }
@@ -233,5 +239,118 @@ fn a_dropped_stash_survives_a_job_that_cant_be_undone() {
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let back = st.snap.as_ref().unwrap().stashes.iter().find(|s| s.oid == first).cloned().expect("the stash is back");
     assert_eq!(back.message, "On main: first");
+    cleanup(&[&dir]);
+}
+
+/// Undoes the newest entry, refused for local changes, then presses the toast's Stash changes
+/// and undo.
+fn stash_and_undo(st: &mut AppState) {
+    drive(st, Msg::Job(JobMsg::Undo));
+    let t = st.toasts.last().unwrap();
+    assert!(!t.ok && t.text.contains("Commit or stash"), "{}", t.text);
+    assert_eq!(t.action.as_ref().map(|a| a.label.as_str()), Some("Stash changes and undo"));
+    click_toast_action(st);
+}
+
+#[test]
+fn stash_changes_and_undo_a_stash_leaves_the_newer_changes_stashed() {
+    let (mut st, dir) = opened("undo-stash-offer-stash");
+    drive(&mut st, Msg::git("Stash", &["stash", "push", "-u"]));
+    std::fs::write(dir.join("a.txt"), "newer\n").unwrap();
+    stash_and_undo(&mut st);
+    assert_eq!(read(&dir, "a.txt"), "one\ntwo\n", "the stash is back");
+    assert!(has_undo_stash(&st), "the newer changes are in their own stash");
+    let t = st.toasts.last().unwrap();
+    assert!(t.ok && t.text.starts_with("Undid stash 'WIP on main"), "{}", t.text);
+    cleanup(&[&dir]);
+}
+
+/// l.txt committed on main ("base"), then feature adds f.txt ("on feature") and main m.txt
+/// ("on main"); opened on main, clean.
+fn forked(name: &str) -> (AppState, PathBuf) {
+    let dir = super::tests::scratch_repo(name);
+    git(&dir, &["checkout", "--", "a.txt"]);
+    let commit = |file: &str, msg: &str| {
+        std::fs::write(dir.join(file), format!("{file}\n")).unwrap();
+        git(&dir, &["add", file]);
+        git(&dir, &["commit", "-q", "-m", msg]);
+    };
+    commit("l.txt", "base");
+    git(&dir, &["checkout", "-q", "-b", "feature"]);
+    commit("f.txt", "on feature");
+    git(&dir, &["checkout", "-q", "main"]);
+    commit("m.txt", "on main");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    (st, dir)
+}
+
+/// Runs `op` on main, makes changes of every kind to files it doesn't touch (l.txt staged with
+/// an unstaged edit on top, the untracked new.txt), then stashes them and undoes it: HEAD is back
+/// on "on main" and the changes are back exactly, staged part too, with no stash left.
+fn stash_and_undo_a_move(name: &str, op: Msg, label: &str) {
+    let (mut st, dir) = forked(name);
+    drive(&mut st, op);
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::Moved { .. })), "{:?}", st.session.undo.undo);
+    std::fs::write(dir.join("l.txt"), "staged\n").unwrap();
+    git(&dir, &["add", "l.txt"]);
+    std::fs::write(dir.join("l.txt"), "staged\nunstaged\n").unwrap();
+    std::fs::write(dir.join("new.txt"), "new\n").unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    stash_and_undo(&mut st);
+
+    assert_eq!(head_summary(&st), "on main");
+    assert_eq!(read(&dir, "l.txt"), "staged\nunstaged\n");
+    let repo = git2::Repository::open(&dir).unwrap();
+    let entry = repo.index().unwrap().get_path(Path::new("l.txt"), 0).unwrap();
+    assert_eq!(repo.find_blob(entry.id).unwrap().content(), b"staged\n", "the staged part is staged again");
+    assert_eq!(read(&dir, "new.txt"), "new\n");
+    assert!(!has_undo_stash(&st), "popped");
+    let t = st.toasts.last().unwrap();
+    assert!(t.ok && t.text == format!("Stash changes and undo {label} succeeded"), "{}", t.text);
+    assert!(matches!(st.session.undo.redo.last(), Some(Action::Moved { .. })), "{:?}", st.session.undo);
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn stash_changes_and_undo_a_merge() {
+    stash_and_undo_a_move("undo-stash-offer-merge", Msg::git("Merge", &["merge", "--no-edit", "feature"]), "merge of feature");
+}
+
+#[test]
+fn stash_changes_and_undo_a_pull() {
+    let pull = Msg::git("Pull", &["pull", "--no-rebase", "--no-edit", ".", "feature"]);
+    stash_and_undo_a_move("undo-stash-offer-pull", pull, "pull");
+}
+
+#[test]
+fn stash_changes_and_undo_a_cherry_pick() {
+    stash_and_undo_a_move("undo-stash-offer-pick", Msg::git("Cherry-pick", &["cherry-pick", "feature"]), "cherry-pick of feature");
+}
+
+#[test]
+fn stash_changes_and_undo_a_revert() {
+    stash_and_undo_a_move("undo-stash-offer-revert", Msg::git("Revert", &["revert", "--no-edit", "main"]), "revert of main");
+}
+
+#[test]
+fn stash_changes_and_undo_a_rebase() {
+    stash_and_undo_a_move("undo-stash-offer-rebase", Msg::git("Rebase", &["rebase", "feature"]), "rebase onto feature");
+}
+
+#[test]
+fn changes_that_cant_go_back_cleanly_stay_in_the_stash() {
+    let (mut st, dir) = forked("undo-stash-offer-kept");
+    drive(&mut st, Msg::git("Merge", &["merge", "--no-edit", "feature"]));
+    // f.txt came with the merge, so undoing it deletes the file this edit is in.
+    std::fs::write(dir.join("f.txt"), "edited\n").unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    stash_and_undo(&mut st);
+    assert_eq!(head_summary(&st), "on main", "the undo ran");
+    assert!(has_undo_stash(&st), "the stash is kept");
+    let t = st.toasts.last().unwrap();
+    assert!(!t.ok && t.text.contains("came back with conflicts in 1 file") && t.text.contains(UNDO_STASH_MESSAGE), "{}", t.text);
+    assert!(st.log.iter().any(|l| l.text.contains("nothing was dropped")));
+    assert!(matches!(st.session.undo.redo.last(), Some(Action::Moved { .. })), "{:?}", st.session.undo);
     cleanup(&[&dir]);
 }

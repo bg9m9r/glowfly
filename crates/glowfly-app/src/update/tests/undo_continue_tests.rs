@@ -46,7 +46,7 @@ fn commit(st: &mut AppState, summary: &str) {
 
 /// main ("ours") and other ("theirs") edit a.txt's second line; opened, with b.txt committed
 /// through the app ("add b") so the history holds one entry.
-fn merge_repo(name: &str) -> (AppState, PathBuf) {
+pub(super) fn merge_repo(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     git(&dir, &["config", "core.autocrlf", "false"]);
     git(&dir, &["checkout", "-q", "-b", "other"]);

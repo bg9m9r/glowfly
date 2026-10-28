@@ -4,7 +4,7 @@
 //! whether undoing a checkout should delete the branch it created (`Modal::UndoCreated`).
 
 use glowfly_core::i18n::Lang;
-use glowfly_core::undo::Action;
+use glowfly_core::undo::{Action, OpStart};
 
 /// Undo steps kept per tab; older ones are dropped.
 pub const MAX_UNDO: usize = 20;
@@ -35,11 +35,37 @@ pub struct UndoHistory {
     pub redo: Vec<Action>,
     /// Label of the most recent operation when it can't be undone (and cleared the history).
     pub blocked: Option<String>,
+    /// The operation in progress that a Glowfly job started and that stopped for conflicts.
+    pub stopped: Option<Stopped>,
+}
+
+/// Where a stopped operation started (`undo::op_start`), and how many undo entries were older.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Stopped {
+    pub start: OpStart,
+    pub depth: usize,
+}
+
+/// What a stopped operation's own steps record (resolving its conflicts, discards), which leave
+/// it in progress; anything else recorded means it has ended.
+fn during_operation(a: &Action) -> bool {
+    matches!(
+        a,
+        Action::Resolve { .. }
+            | Action::Conflicts { .. }
+            | Action::Discard { .. }
+            | Action::Restore { .. }
+            | Action::DeleteFile { .. }
+            | Action::UnstageGone { .. }
+    )
 }
 
 impl UndoHistory {
     /// A new undoable action succeeded.
     pub fn record(&mut self, a: Action) {
+        if !during_operation(&a) {
+            self.stopped = None;
+        }
         self.push_undo(a);
         self.redo.clear();
         self.blocked = None;
@@ -52,6 +78,28 @@ impl UndoHistory {
         self.undo.retain(Action::is_content);
         self.redo.clear();
         self.blocked = Some(label.to_owned());
+        self.stopped = None;
+    }
+
+    /// A merge, pull, cherry-pick, revert or rebase that started at `start` stopped in progress.
+    pub fn stopped_at(&mut self, start: OpStart) {
+        self.stopped = Some(Stopped { start, depth: self.undo.len() });
+    }
+
+    /// A plain abort (labelled `label`) succeeded, leaving the repository at `back`. When that
+    /// is exactly where the stopped operation started (HEAD, its branch and the index), the
+    /// entries older than the operation stay, with any discarded work since; what the
+    /// operation's own steps recorded goes. Otherwise it is an operation that can't be undone.
+    pub fn aborted(&mut self, label: &str, back: Option<&OpStart>) {
+        match self.stopped.take() {
+            Some(s) if back == Some(&s.start) => {
+                let since = self.undo.split_off(s.depth.min(self.undo.len()));
+                self.undo.extend(since.into_iter().filter(Action::is_content));
+                self.redo.clear();
+                self.blocked = None;
+            }
+            _ => self.invalidate(label),
+        }
     }
 
     /// The repository no longer matches the history.
@@ -63,6 +111,9 @@ impl UndoHistory {
     pub fn undone(&mut self, a: Action) {
         if self.undo.last() == Some(&a) {
             self.undo.pop();
+        }
+        if let Some(s) = &mut self.stopped {
+            s.depth = s.depth.min(self.undo.len());
         }
         self.redo.push(a);
     }
@@ -80,6 +131,9 @@ impl UndoHistory {
         if self.undo.len() > MAX_UNDO {
             let extra = self.undo.len() - MAX_UNDO;
             self.undo.drain(..extra);
+            if let Some(s) = &mut self.stopped {
+                s.depth = s.depth.saturating_sub(extra);
+            }
         }
     }
 
@@ -178,6 +232,67 @@ mod tests {
         assert!(h.redo.is_empty());
         assert_eq!(h.blocked.as_deref(), Some("Rename branch"));
         assert_eq!(h.undo_entry(Lang::En, true), ("Undo drop of stash 'On main: x'".to_owned(), None));
+    }
+
+    fn start(n: u8) -> OpStart {
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-undo-start-{n}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        glowfly_core::testkit::git(&dir, &["init", "-q", "-b", "main"]);
+        glowfly_core::testkit::set_identity(&dir);
+        std::fs::write(dir.join("a.txt"), [b'a' + n]).unwrap();
+        glowfly_core::testkit::git(&dir, &["add", "."]);
+        glowfly_core::testkit::git(&dir, &["commit", "-q", "-m", "c"]);
+        let s = glowfly_core::undo::op_start(&dir).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        s
+    }
+
+    #[test]
+    fn an_abort_back_at_the_start_keeps_what_came_before_the_operation() {
+        let (s, other) = (start(0), start(1));
+        assert_ne!(s, other);
+        let mut h = UndoHistory::default();
+        h.record(checkout());
+        h.stopped_at(s.clone());
+        let resolve = Action::Conflicts {
+            change: glowfly_core::undo::ConflictChange::MarkResolved,
+            head: None,
+            state: git2::RepositoryState::Merge,
+            heads: Vec::new(),
+            files: Vec::new(),
+        };
+        for a in [resolve.clone(), discard()] {
+            h.record(a);
+        }
+        assert!(h.stopped.is_some(), "the operation's own steps leave it stopped");
+        h.aborted("Abort merge", Some(&s));
+        assert_eq!(h.undo, vec![checkout(), discard()], "the operation's own step goes; discarded work stays");
+        assert!(h.blocked.is_none() && h.stopped.is_none());
+
+        // Undone below where it started, then a step of its own: that step isn't counted as older.
+        h.stopped_at(s.clone());
+        h.undone(discard());
+        h.undone(checkout());
+        h.record(resolve.clone());
+        h.aborted("Abort merge", Some(&s));
+        assert!(h.undo.is_empty(), "{:?}", h.undo);
+
+        // Anywhere else, or nothing known: an operation that can't be undone.
+        for back in [Some(&other), None] {
+            h.record(checkout());
+            h.stopped_at(s.clone());
+            h.aborted("Abort merge", back);
+            assert!(h.undo.is_empty() && h.blocked.as_deref() == Some("Abort merge"));
+        }
+        // Without a stopped operation, and once anything else ended it.
+        h.record(checkout());
+        h.aborted("Abort rebase", Some(&s));
+        assert_eq!(h.blocked.as_deref(), Some("Abort rebase"));
+        h.record(checkout());
+        h.stopped_at(s.clone());
+        h.record(checkout());
+        assert!(h.stopped.is_none(), "a new action ends it");
     }
 
     #[test]

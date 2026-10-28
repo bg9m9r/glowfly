@@ -78,7 +78,7 @@ pub use os::OsEffect;
 pub use pick::PickJob;
 pub use prefs::{ConfigWrite, PrefsEffect};
 pub use rebase::{RebaseEffect, RestackJob};
-pub use repo::{ConflictRead, IndexRequest, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
+pub use repo::{ConflictRead, IndexRequest, KnownRepo, LoadKind, LocalOp, StashKept, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
 pub use selection::{SelectionEffect, StackRequest};
 pub use sparse::SparseEffect;

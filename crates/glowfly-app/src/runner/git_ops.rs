@@ -91,66 +91,86 @@ fn conflict_change(workdir: &Path, op: LocalOp) -> Result<Option<Action>, Confli
 }
 
 /// Checks that `action` still applies, then runs the git commands that undo or redo it. With
-/// `opts.stash_first`, local changes are stashed before anything is checked; the stash's output
-/// leads every result. Where hooks follow the working tree, every command (the stash first
-/// too) goes through `gate`, and a command it holds fails the undo.
+/// `opts.stash_first`, local changes are stashed first (`undo_stash::stash_and_undo`). Where
+/// hooks follow the working tree, every git command (the stash's too) goes through `gate`, and
+/// a command it holds fails the undo.
 pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, gate: Option<&super::trust_gate::Gate>) -> Msg {
-    // The trust gate (#273): the one place undo's git commands run.
-    let run_git = |cwd: &Path, cmds: &[Vec<String>], file: Option<(std::path::PathBuf, String)>, prompts: bool| match gate {
-        Some(g) => match run_git_gated(cwd, cmds, file, prompts, g) {
-            Gated::Done(ok, output) => (ok, output),
-            Gated::Halted { halt, output, .. } => (false, format!("{output}\n{}", halt.describe(g.lang)).trim().to_owned()),
-        },
-        None => run_git(cwd, cmds, file, prompts),
+    let git = UndoGit { gate };
+    let (ok, output, undo) = if opts.stash_first {
+        super::undo_stash::stash_and_undo(cwd, action, redo, opts, git)
+    } else {
+        undo_run(cwd, action, redo, opts, git)
     };
-    let mut stashed = String::new();
-    if opts.stash_first {
-        let (ok, output) = run_git(cwd, &[undo::stash_first_command()], None, true);
-        if !ok {
-            return Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Failed { redo }) });
+    Msg::Job(JobMsg::JobDone { ok, output, undo: Some(undo) })
+}
+
+/// How undo runs its git commands: through the trust gate (#273) when there is one.
+#[derive(Clone, Copy)]
+pub(super) struct UndoGit<'a> {
+    pub gate: Option<&'a super::trust_gate::Gate>,
+}
+
+impl UndoGit<'_> {
+    /// Runs `cmds` in order, stopping at the first failure: whether all worked and the output;
+    /// `held` when the gate stopped one, with whether a command before it could have changed
+    /// anything.
+    pub fn run(&self, cwd: &Path, cmds: &[Vec<String>]) -> GitRun {
+        match self.gate {
+            Some(g) => match run_git_gated(cwd, cmds, None, true, g) {
+                Gated::Done(ok, output) => GitRun { ok, output, held: None },
+                Gated::Halted { halt, output, moved, .. } => {
+                    let output = format!("{output}\n{}", halt.describe(g.lang)).trim().to_owned();
+                    GitRun { ok: false, output, held: Some(moved) }
+                }
+            },
+            None => {
+                let (ok, output) = run_git(cwd, cmds, None, true);
+                GitRun { ok, output, held: None }
+            }
         }
-        stashed = format!(
-            "{output}
-Your changes were stashed as \"{}\".
-",
-            undo::UNDO_STASH_MESSAGE
-        );
     }
-    let done = |ok: bool, output: String, undo: UndoResult| {
-        Msg::Job(JobMsg::JobDone { ok, output: format!("{stashed}{output}"), undo: Some(undo) })
+}
+
+/// What `UndoGit::run` did.
+pub(super) struct GitRun {
+    pub ok: bool,
+    pub output: String,
+    /// The gate held a command: `Some(true)` when one before it could have changed anything.
+    pub held: Option<bool>,
+}
+
+/// Plans the undo (or redo) of `action` as the repository is now and carries it out: whether it
+/// worked, what it printed and what it means for the history.
+pub(super) fn undo_run(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, git: UndoGit) -> (bool, String, UndoResult) {
+    let done = |output: String, before: Action, after: Action| {
+        (true, output, UndoResult::Done { redo, before, after: Box::new(after), kept: None })
     };
-    let failed = |output: String| done(false, output, UndoResult::Failed { redo });
+    let failed = |output: String| (false, output, UndoResult::Failed { redo });
     match undo::plan_with(cwd, &action, redo, undo::Options { delete_created: opts.delete_created }) {
         Err(e) => failed(e.to_string()),
         Ok(Plan::Refuse(r)) => {
             let offer_stash = matches!(r, Refusal::Dirty(_)) && action.offers_stash(redo) && !opts.stash_first;
-            done(false, r.message().into(), UndoResult::Refused { redo, stale: r.is_stale(), offer_stash })
+            (false, r.message().into(), UndoResult::Refused { redo, stale: r.is_stale(), offer_stash })
         }
         Ok(Plan::Write { path, content }) => match undo::write_saved(cwd, &path, content) {
-            Ok(()) => {
-                let output = action.wrote(redo);
-                done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) })
-            }
+            Ok(()) => done(action.wrote(redo), action.clone(), action),
             Err(e) => failed(format!("Could not write {path}: {e}")),
         },
         Ok(Plan::Run(cmds)) => {
-            let (ok, output) = run_git(cwd, &cmds, None, true);
+            let GitRun { ok, output, .. } = git.run(cwd, &cmds);
             if !ok {
                 return failed(output);
             }
             let after = if redo { undo::redone(cwd, action.clone()).unwrap_or_else(|_| action.clone()) } else { action.clone() };
-            done(ok, output, UndoResult::Done { redo, before: action, after: Box::new(after) })
+            done(output, action, after)
         }
         Ok(Plan::RunThenWrite { cmds, path, content }) => {
-            let (ok, output) = run_git(cwd, &cmds, None, true);
+            let GitRun { ok, output, .. } = git.run(cwd, &cmds);
             if !ok {
                 return failed(output);
             }
             match undo::write_saved(cwd, &path, content) {
-                Ok(()) => {
-                    let output = format!("{output}\n{}", action.wrote(redo));
-                    done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) })
-                }
+                Ok(()) => done(format!("{output}\n{}", action.wrote(redo)), action.clone(), action),
                 Err(e) => {
                     let kept = content.map(|s| format!(". Its contents are kept as blob {} (git cat-file -p {})", s.blob, s.blob));
                     failed(format!("{output}\nCould not write {path}: {e}{}", kept.unwrap_or_default()))
@@ -159,36 +179,33 @@ Your changes were stashed as \"{}\".
         }
         Ok(Plan::PutBack { path, content, staged, via }) => {
             match undo::put_back(cwd, &path, content, staged.as_ref(), via, super::files::TRASHERS) {
-                Ok(how) => {
-                    let output = how.wrote(&path, staged.is_some(), via);
-                    done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) })
-                }
+                Ok(how) => done(how.wrote(&path, staged.is_some(), via), action.clone(), action),
                 Err(e) => failed(format!("Could not put back {path}: {e}")),
             }
         }
         Ok(Plan::Restage { path, staged }) => match undo::restage(cwd, &path, &staged) {
-            Ok(()) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Ok(()) => done(action.wrote(redo), action.clone(), action),
             Err(e) => failed(format!("Could not stage {path} again: {e}")),
         },
         Ok(Plan::UnstageAgain { path }) => match undo::unstage_again(cwd, &path) {
-            Ok(()) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Ok(()) => done(action.wrote(redo), action.clone(), action),
             Err(e) => failed(format!("Could not unstage {path}: {e}")),
         },
         Ok(Plan::DeleteAgain { path, via, staged }) => match undo::delete_again(cwd, &path, via, staged, super::files::TRASHERS) {
-            Ok(_) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Ok(_) => done(action.wrote(redo), action.clone(), action),
             Err(Error::TrashRefused(r)) => failed(format!("The {TRASH} couldn't take {path}: {}", r.detail)),
             Err(e) => failed(format!("Could not delete {path}: {e}")),
         },
         Ok(Plan::RestoreAbort) => match undo::restore_abort(cwd, &action) {
-            Ok(output) => done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Ok(output) => done(output, action.clone(), action),
             Err(e) => failed(format!("Could not put the {} back: {e}", action.describe())),
         },
         Ok(Plan::PutConflicts) => match undo::put_conflicts(cwd, &action, redo) {
-            Ok(output) => done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Ok(output) => done(output, action.clone(), action),
             Err(e) => failed(format!("Could not put back the files of the {}: {e}", action.describe())),
         },
         Ok(Plan::AbortAgain) => match super::stashes::abort_keeping(cwd, None) {
-            (true, output, Some(again)) => done(true, output, UndoResult::Done { redo, before: action, after: Box::new(again) }),
+            (true, output, Some(again)) => done(output, action, again),
             (_, output, _) => failed(output),
         },
     }
@@ -243,6 +260,36 @@ pub(super) fn run_git_gated(
     prompts: bool,
     gate: &super::trust_gate::Gate,
 ) -> Gated {
+    run_git_gated_noting(cwd, cmds, write_file, prompts, gate, false).0
+}
+
+/// `run_git_gated`, noting where an operation starts (`undo::op_start`) just before the last
+/// command when `note` is set (`op_stops.rs`).
+pub(super) fn run_git_gated_noting(
+    cwd: &Path,
+    cmds: &[Vec<String>],
+    write_file: Option<(std::path::PathBuf, String)>,
+    prompts: bool,
+    gate: &super::trust_gate::Gate,
+    note: bool,
+) -> (Gated, Option<undo::OpStart>) {
+    let mut start = None;
+    let gated = gated_steps(cwd, cmds, write_file, prompts, gate, &mut |at| {
+        if note && at + 1 == cmds.len() {
+            start = undo::op_start(cwd);
+        }
+    });
+    (gated, start)
+}
+
+fn gated_steps(
+    cwd: &Path,
+    cmds: &[Vec<String>],
+    write_file: Option<(std::path::PathBuf, String)>,
+    prompts: bool,
+    gate: &super::trust_gate::Gate,
+    before: &mut dyn FnMut(usize),
+) -> Gated {
     use super::trust_gate::Step;
     if let Some((path, contents)) = write_file
         && let Err(e) = glowfly_core::persist::atomic_write(&path, contents.as_bytes())
@@ -256,6 +303,7 @@ pub(super) fn run_git_gated(
         gitcli::run_with_input(cwd, c, input, &env)
     };
     for (at, c) in cmds.iter().enumerate() {
+        before(at);
         let (success, text) = match gate.before(at, c, &mut git) {
             Step::Halt(halt, ran) => {
                 output.push_str(&ran);

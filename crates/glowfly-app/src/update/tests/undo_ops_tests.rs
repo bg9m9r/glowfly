@@ -1,5 +1,5 @@
 //! Headless tests for undoing merges, pulls and cherry-picks: recorded from the jobs that run
-//! them, undone and redone end to end, and refused for local changes without a stash offer.
+//! them, undone and redone end to end, and refused for local changes (offering to stash them).
 
 use super::cherry_pick_tests::feature_repo;
 use super::selection_tests::git as git_out;
@@ -53,12 +53,13 @@ fn merge_undo_and_redo_end_to_end() {
     drive(&mut st, Msg::Job(JobMsg::Redo));
     assert_eq!(head_summary(&st), "on feature");
 
-    // Local changes to a tracked file: refused, the entry kept, and no stash offered.
+    // Local changes to a tracked file: refused, the entry kept, offering to stash them
+    // (undo_stash_tests.rs presses it).
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let t = st.toasts.last().expect("a toast");
     assert!(!t.ok && t.text.contains("Commit or stash your changes first"), "{}", t.text);
-    assert!(t.action.as_ref().is_none_or(|a| a.label == "Details"), "only hard resets and Discard all offer to stash");
+    assert_eq!(t.action.as_ref().map(|a| a.label.as_str()), Some("Stash changes and undo"));
     assert_eq!(st.session.undo.undo.len(), 1);
     cleanup(&[&dir]);
 }

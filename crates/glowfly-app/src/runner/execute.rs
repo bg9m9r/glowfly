@@ -2,7 +2,8 @@
 //! `<area>.rs`) and the arms of the flat variants, with the result message each sends back.
 
 use super::{
-    diff_gaps, expect, files, forge_calls, git_ops, highlight, history, journal, load, path_search, revert, saves, signatures, status,
+    diff_gaps, expect, files, forge_calls, git_ops, highlight, history, journal, load, op_stops, path_search, revert, saves, signatures,
+    status,
 };
 use crate::effect::areas::{effect_areas, effect_match};
 use crate::effect::{Effect, UndoResult};
@@ -97,6 +98,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             // A pop onto local changes mixes them with the stash's, so it can't be undone.
             let irreversible = before.as_ref().is_some_and(undo::irreversible);
+            let (stops, aborts) = (op_stops::can_stop(&cmds, record.as_ref()), undo::is_abort(&cmds));
             // Held again before anything but a fetch ran: the job as it was asked for.
             let again = cx.gate.map(|(_, check)| {
                 let job = Effect::RunGit {
@@ -115,14 +117,14 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
             // The journal note sees the refs before git runs and after the undo record is read.
             Some(journal::around(&cwd, journal, || {
                 // Only a job that just fetches has a stop, and it writes no file.
-                let (ok, output) = match (cx.stop.filter(|_| write_file.is_none()), cx.gate) {
+                let (ok, output, start) = match (cx.stop.filter(|_| write_file.is_none()), cx.gate) {
                     (Some(stop), _) => match git_ops::run_git_until(&cwd, &cmds, prompts, stop) {
                         (_, output, true) => return Msg::Job(JobMsg::Stopped { output }),
-                        (ok, output, false) => (ok, output),
+                        (ok, output, false) => (ok, output, None),
                     },
-                    (None, Some((gate, _))) => match git_ops::run_git_gated(&cwd, &cmds, write_file, prompts, gate) {
-                        git_ops::Gated::Done(ok, output) => (ok, output),
-                        git_ops::Gated::Halted { halt, moved: false, at, .. } => {
+                    (None, Some((gate, _))) => match git_ops::run_git_gated_noting(&cwd, &cmds, write_file, prompts, gate, stops) {
+                        (git_ops::Gated::Done(ok, output), start) => (ok, output, start),
+                        (git_ops::Gated::Halted { halt, moved: false, at, .. }, _) => {
                             let (job, check) = again.expect("a gate");
                             let now = git2::Repository::open(&cwd).map(|r| glowfly_core::trust::scan_now(&r)).unwrap_or_default();
                             return match super::trust::halted(now, halt) {
@@ -134,13 +136,18 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
                                 _ => unreachable!("halted is held or unchecked"),
                             };
                         }
-                        git_ops::Gated::Halted { output, halt, .. } => (false, format!("{output}
-    {}", halt.describe(gate.lang))),
+                        (git_ops::Gated::Halted { output, halt, .. }, _) => (false, format!("{output}\n{}", halt.describe(gate.lang)), None),
                     },
-                    (None, None) => git_ops::run_git(&cwd, &cmds, write_file, prompts),
+                    (None, None) if stops => op_stops::run_noting_start(&cwd, &cmds, write_file, prompts),
+                    (None, None) => {
+                        let (ok, output) = git_ops::run_git(&cwd, &cmds, write_file, prompts);
+                        (ok, output, None)
+                    }
                 };
                 let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
                 let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
+                let undo = op_stops::stopped(&cwd, ok, start).or(undo);
+                let undo = if ok && aborts { Some(UndoResult::Aborted(undo::op_start(&cwd))) } else { undo };
                 let mut output = output;
                 match on_fail_check.filter(|_| !ok) {
                     Some(check) if git_ops::check_passes(&cwd, &check, prompts, &mut output) => {

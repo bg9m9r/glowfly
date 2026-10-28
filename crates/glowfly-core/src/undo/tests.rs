@@ -103,7 +103,7 @@ fn a_resolution_is_named_and_reports_what_it_wrote() {
 }
 
 #[test]
-fn only_hard_reset_and_discard_all_offer_to_stash() {
+fn which_undos_offer_to_stash() {
     let o = Oid::zero();
     let reset = |mode| Action::Reset { mode, branch: None, from: o, to: o, stash: None };
     assert!(reset(ResetMode::Hard).offers_stash(false));
@@ -111,7 +111,18 @@ fn only_hard_reset_and_discard_all_offer_to_stash() {
     assert!(!reset(ResetMode::Mixed).offers_stash(false));
     assert!(Action::DiscardAll { stash: o, head: o }.offers_stash(false));
     assert!(!Action::DiscardAll { stash: o, head: o }.offers_stash(true));
-    assert!(!Action::Moved { op: MoveOp::Merge, detail: None, branch: None, from: o, to: o }.offers_stash(false));
+    for op in [MoveOp::Merge, MoveOp::Pull, MoveOp::CherryPick, MoveOp::Revert, MoveOp::Rebase, MoveOp::Rewrite] {
+        let moved = Action::Moved { op, detail: None, branch: None, from: o, to: o };
+        assert!(moved.offers_stash(false) && moved.restores_stash(), "{op:?}");
+        assert!(!moved.offers_stash(true), "{op:?}: never a redo");
+    }
+    let push = Action::StashPush { stash: o, head: o, message: "wip".into(), replay: None };
+    assert!(push.offers_stash(false) && !push.offers_stash(true));
+    let drop = Action::StashDrop { stash: o, message: "wip".into() };
+    assert!(!drop.offers_stash(false), "a drop's undo never meets local changes");
+    // Their undo brings back other changes at the same paths, so the newer ones stay stashed.
+    assert!(!reset(ResetMode::Hard).restores_stash() && !Action::DiscardAll { stash: o, head: o }.restores_stash());
+    assert!(!push.restores_stash());
     assert_eq!(stash_first_command(), args(&["stash", "push", "-u", "-m", UNDO_STASH_MESSAGE]));
     assert_eq!(UNDO_STASH_MESSAGE, "Glowfly: changes before undo");
 }
