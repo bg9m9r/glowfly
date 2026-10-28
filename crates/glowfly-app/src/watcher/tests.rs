@@ -195,6 +195,15 @@ pub(super) fn init_repo(dir: &Path) {
     git(dir, &["commit", "-q", "-m", "first"]);
 }
 
+/// Lets a just-started watcher settle and drops what it reported meanwhile. FSEvents (macOS)
+/// can still deliver writes made just before its stream started, such as `init_repo`'s commit
+/// touching `HEAD`, `refs` and `config`: without the drain they arrive as a full refresh, or
+/// turn the test's first edit into one.
+pub(super) fn settle(rx: &Receiver<Msg>, workdir: &Path) {
+    std::thread::sleep(Duration::from_millis(300));
+    while next_change(rx, workdir, Duration::from_millis(500)).is_some() {}
+}
+
 #[test]
 fn watcher_reports_an_outside_edit() {
     let dir: PathBuf = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-watch-{}", std::process::id()));
@@ -203,7 +212,7 @@ fn watcher_reports_an_outside_edit() {
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
     let watcher = start(&target, tx, NoWake).expect("watcher starts");
-    std::thread::sleep(Duration::from_millis(300));
+    settle(&rx, &dir);
 
     std::fs::write(dir.join("a.txt"), "one\ntwo\n").unwrap();
     assert_eq!(next_report(&rx, &dir, Duration::from_secs(10)), Some((false, Some(owned(&["a.txt"])))), "an edit re-reads its path");
@@ -248,8 +257,7 @@ fn edits_to_a_force_added_ignored_file_are_reported() {
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
     let watcher = start(&target, tx, NoWake).expect("watcher starts");
-    std::thread::sleep(Duration::from_millis(300));
-    while next_change(&rx, &dir, Duration::from_millis(500)).is_some() {}
+    settle(&rx, &dir);
 
     std::fs::write(dir.join("target/out.o"), "obj").unwrap();
     assert_eq!(next_change(&rx, &dir, Duration::from_secs(1)), None, "untracked ignored files stay quiet");
@@ -280,8 +288,7 @@ fn a_terminal_add_reports_an_index_change() {
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
     let watcher = start(&target, tx, NoWake).expect("watcher starts");
-    std::thread::sleep(Duration::from_millis(300));
-    while next_change(&rx, &dir, Duration::from_millis(500)).is_some() {}
+    settle(&rx, &dir);
 
     git(&dir, &["add", "a.txt"]);
     let mut seen = Vec::new();
@@ -306,8 +313,7 @@ fn index_writes_in_a_linked_worktree_stay_quiet() {
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
     let watcher = start(&target, tx, NoWake).expect("watcher starts");
-    std::thread::sleep(Duration::from_millis(300));
-    while next_change(&rx, &dir, Duration::from_millis(500)).is_some() {}
+    settle(&rx, &dir);
 
     // Staging and status in the linked worktree rewrite `.git/worktrees/<name>/index`.
     for i in 0..3 {
@@ -337,8 +343,7 @@ fn a_linked_worktree_sees_branches_change_in_the_common_git_dir() {
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: linked.clone(), git_dir };
     let watcher = start(&target, tx, NoWake).expect("watcher starts");
-    std::thread::sleep(Duration::from_millis(300));
-    while next_change(&rx, &linked, Duration::from_millis(500)).is_some() {}
+    settle(&rx, &linked);
 
     // A branch made in the main worktree lands in the shared refs.
     git(&dir, &["branch", "from-main"]);
@@ -377,8 +382,7 @@ fn links_out_of_the_repository_are_not_followed() {
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
     let watcher = start(&target, tx, NoWake).expect("watcher starts");
-    std::thread::sleep(Duration::from_millis(300));
-    while next_change(&rx, &dir, Duration::from_millis(500)).is_some() {}
+    settle(&rx, &dir);
 
     std::fs::write(outside.join("x.txt"), "outside").unwrap();
     assert_eq!(next_change(&rx, &dir, Duration::from_secs(1)), None, "the link's target isn't watched");
