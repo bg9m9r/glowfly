@@ -113,8 +113,8 @@ impl RebasePanel {
     /// reason (`start_blocker` gives it in English).
     pub fn held_text(&self, t: Lang, blocker: &str) -> Option<String> {
         let h = self.plan.as_ref()?.held.first().filter(|h| h.text() == blocker)?;
-        let key = if h.elsewhere { "rebase.update_ref.alias_busy" } else { "rebase.update_ref.alias_not_branch" };
-        Some(t.trf(key, &[("alias", &h.alias), ("target", &h.target)]))
+        let args: [(&str, &dyn std::fmt::Display); 2] = [("alias", &h.alias), ("target", &h.target)];
+        Some(if h.elsewhere { t.trf("rebase.update_ref.alias_busy", &args) } else { t.trf("rebase.update_ref.alias_not_branch", &args) })
     }
 
     /// Where a step added at `at` goes instead: below the update-ref rows there, so it doesn't
