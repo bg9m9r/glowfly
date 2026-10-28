@@ -11,6 +11,11 @@
 //! same commits). Rewording is done by `exec git commit --amend -F <file>` lines, so no
 //! interactive editor ever opens. The list can also hold `exec` and `break` steps, and a
 //! typed message for the commit a squash group combines into.
+//!
+//! With `rebase.updateRefs` on, git's list holds an `update-ref` line after each commit another
+//! local branch points at, so stacked branches move with the rebase (`update_refs`). The plan
+//! predicts those lines the way git writes them; they are fixed rows that travel with their
+//! commit, and both the new list and an edited one must keep exactly git's set of them.
 
 use git2::{Oid, RepositoryState};
 use std::path::PathBuf;
@@ -22,6 +27,7 @@ mod quick;
 mod remaining;
 mod run;
 mod todo;
+mod update_refs;
 
 pub use plan::plan;
 pub(crate) use progress::progress_of;
@@ -34,6 +40,7 @@ pub use todo::{
     build, default_combined, editor_command, group_end, install_todo, is_unchanged, listed_oids, problem, problem_with, shell_quote,
     shell_quote_for,
 };
+pub use update_refs::listed_refs;
 
 /// Why Start refuses a list made before HEAD moved.
 pub const STALE: &str = "The branch changed since this list was made. Reset to reload it.";
@@ -67,7 +74,12 @@ pub const EMPTY_EXEC: &str = "Exec steps need a command.";
 pub const EXEC_ONE_LINE: &str = "An exec command must be one line.";
 pub const COMBINE_AFTER_STEP: &str = "Move the exec or break step below the squash or fixup: it must follow the commit it combines with.";
 pub const NOT_INTERACTIVE: &str = "Only an interactive rebase's remaining steps can be edited.";
-pub const UNSUPPORTED_STEPS: &str = "The remaining steps include merge, label, reset or update-ref commands, which this panel can't edit yet. Use git rebase --edit-todo in a terminal.";
+pub const UNSUPPORTED_STEPS: &str = "The remaining steps include merge, label or reset commands, which this panel can't edit yet. Use git rebase --edit-todo in a terminal.";
+/// An `update-ref` line between a commit and a squash or fixup into it: the panel keeps a
+/// branch's update after the whole group, so it can't write this order back.
+pub const UPDATE_REF_IN_GROUP: &str = "The remaining steps move a branch between a commit and a squash or fixup into it, which this panel can't keep as it is. Use git rebase --edit-todo in a terminal.";
+/// Why a todo is refused when git would move other branches than the list does.
+pub const REFS_CHANGED: &str = "The branches this rebase moves (rebase.updateRefs) changed; reload the list and try again.";
 pub const TODO_MOVED: &str = "The rebase moved on since this list was read. Reset to reload it.";
 
 /// Why a rebase onto `oid` would do nothing: `branch` already contains it.
@@ -177,6 +189,10 @@ pub enum TodoStep {
     },
     Reset(ResetTo),
     Merge(MergeStep),
+    /// Moves a branch (the full ref name, `refs/heads/…`) to HEAD once the rebase ends
+    /// (`update-ref`, written by git with `rebase.updateRefs`): fixed, travelling with the
+    /// commit row before it.
+    UpdateRef(String),
 }
 
 impl TodoStep {
@@ -222,6 +238,14 @@ impl TodoStep {
         self.item().map(|i| i.oid)
     }
 
+    /// The branch an update-ref step moves, without `refs/heads/`.
+    pub fn update_ref(&self) -> Option<&str> {
+        match self {
+            Self::UpdateRef(r) => Some(r.strip_prefix("refs/heads/").unwrap_or(r)),
+            _ => None,
+        }
+    }
+
     /// A label, reset or merge step: part of the shape of a merge-preserving list, fixed in
     /// place.
     pub fn is_structure(&self) -> bool {
@@ -255,7 +279,8 @@ pub struct RebasePlan {
     pub upstream: Upstream,
     /// "main", "1a2b3c4 Initial commit", or empty for `Root`.
     pub onto_label: String,
-    /// All picks; label, reset and merge steps too when the range holds merges.
+    /// All picks; label, reset and merge steps too when the range holds merges, and the
+    /// update-ref steps git adds with `rebase.updateRefs`.
     pub steps: Vec<TodoStep>,
 }
 
@@ -357,3 +382,5 @@ mod remaining_tests;
 mod run_tests;
 #[cfg(test)]
 mod todo_tests;
+#[cfg(test)]
+mod update_refs_tests;

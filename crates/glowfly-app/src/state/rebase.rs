@@ -2,12 +2,14 @@
 //! rebase, or the remaining steps of one in progress), and the rules that decide whether it can
 //! start. Step and group helpers are in `rebase_steps`, the remaining-steps texts in
 //! `rebase_remaining`, the subtitle and the rules of merge, label and reset rows in
-//! `rebase_merges`.
+//! `rebase_merges`, the update-ref rows that travel with their commit in `rebase_update_refs`.
 
-use super::tabs::index_after_move;
 use git2::RepositoryState;
 use glowfly_core::rebase::{self, MergeStep, RebaseAction, RebaseBase, RebasePlan, Remaining, TodoStep};
 use glowfly_core::repo::Snapshot;
+
+#[path = "rebase_update_refs.rs"]
+mod update_refs;
 
 pub const LOADING: &str = "The commit list is still loading.";
 pub const STARTING: &str = "The interactive rebase is already running.";
@@ -152,18 +154,20 @@ impl RebasePanel {
         self.remaining.as_ref().is_some_and(|r| r.first_may_combine)
     }
 
-    /// Moves row `from` so it ends up at `to` (removed, then inserted). The selection and the
-    /// open editor follow their row.
+    /// Moves row `from` so it ends up at `to` (removed, then inserted), together with the
+    /// update-ref rows that belong to it (`update_refs::moved_order`). The selection and
+    /// the open editor follow their row.
     pub fn move_item(&mut self, from: usize, to: usize) {
-        let n = self.items.len();
-        if from >= n || to >= n || from == to || !self.movable(from) {
+        if !self.movable(from) {
             return;
         }
+        let Some(order) = update_refs::moved_order(&self.items, from, to) else { return };
         let before = super::rebase_steps::groups(&self.items);
-        let item = self.items.remove(from);
-        self.items.insert(to, item);
-        self.selected = self.selected.map(|s| index_after_move(s, from, to));
-        self.editing = self.editing.map(|e| e.with_row(index_after_move(e.row(), from, to)));
+        let old = std::mem::take(&mut self.items);
+        self.items = order.iter().map(|&k| old[k].clone()).collect();
+        let place = |i: usize| order.iter().position(|&k| k == i).unwrap_or(i);
+        self.selected = self.selected.map(place);
+        self.editing = self.editing.map(|e| e.with_row(place(e.row())));
         self.prune_combined(&before);
     }
 
@@ -198,7 +202,7 @@ impl RebasePanel {
                 (Editing::Message(i), item.new_message.clone().unwrap_or_else(|| item.message.trim_end().to_owned()))
             }
             Some(TodoStep::Exec(cmd)) => (Editing::Command(i), cmd.clone()),
-            Some(TodoStep::Break | TodoStep::Label { .. } | TodoStep::Reset(_)) | None => return,
+            Some(TodoStep::Break | TodoStep::Label { .. } | TodoStep::Reset(_) | TodoStep::UpdateRef(_)) | None => return,
         };
         self.draft = draft;
         self.editing = Some(editing);

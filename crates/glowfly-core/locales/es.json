@@ -1958,6 +1958,8 @@
   "range_diff.too_many": "Demasiados commits para comparar: como mucho {max} por lado (la versión antigua tiene {old}, la nueva {new}).",
   "rebase.editor.command_empty.why": "Escribe primero un comando.",
   "rebase.editor.save.button": "Guardar",
+  "rebase.update_ref.text": "Mueve {branch} aquí",
+  "rebase.update_ref.tip": "Git mueve esta rama aquí cuando termina el rebase (rebase.updateRefs). La fila se queda con el commit de encima.",
   "refs.copy.link": "Enlace",
   "refs.copy.link_item": "Copiar el enlace",
   "refs.copy.name_item": "Copiar el nombre",

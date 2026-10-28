@@ -1,13 +1,14 @@
 //! The commits an interactive rebase would replay, read with libgit2.
 
-use super::{DETACHED, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream, in_progress_text, merges, short};
+use super::{DETACHED, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream, in_progress_text, merges, short, update_refs};
 use crate::commit_text::{self, Decoder};
 use crate::error::{Error, Result};
 use git2::{Oid, Repository, Sort};
 use std::path::Path;
 
 /// The list for rebasing the current branch from `base`, oldest first, all picks; a range that
-/// holds merges gets the label, reset and merge steps that recreate them. Refused
+/// holds merges gets the label, reset and merge steps that recreate them, and with
+/// `rebase.updateRefs` the update-ref steps git adds for the branches inside it. Refused
 /// (`Error::Unsupported`, with a message for the user) while an operation is in progress, on a
 /// detached HEAD, for a commit that isn't on the current branch, and when there is nothing to
 /// rebase. A missing branch or commit is `Error::NotFound`.
@@ -55,6 +56,7 @@ pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
     } else {
         oids.into_iter().map(|o| item(&repo, o).map(TodoStep::Commit)).collect::<Result<Vec<_>>>()?
     };
+    let steps = update_refs::add(&repo, workdir, &format!("refs/heads/{branch}"), steps)?;
     Ok(RebasePlan { head, branch, upstream, onto_label, steps })
 }
 

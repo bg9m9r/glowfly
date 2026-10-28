@@ -91,8 +91,9 @@ impl RebasePanel {
         }
     }
 
-    /// Whether row `i` can be dragged or moved: label, reset and merge rows are fixed.
+    /// Whether row `i` can be dragged or moved: label, reset and merge rows are fixed, and an
+    /// update-ref row only moves with its commit.
     pub fn movable(&self, i: usize) -> bool {
-        self.items.get(i).is_some_and(|s| !s.is_structure())
+        self.items.get(i).is_some_and(|s| !s.is_structure() && !matches!(s, TodoStep::UpdateRef(_)))
     }
 }

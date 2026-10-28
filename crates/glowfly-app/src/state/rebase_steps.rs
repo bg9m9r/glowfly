@@ -30,11 +30,12 @@ impl RebasePanel {
     }
 
     /// Where a step added after row `after` goes: after it, or after its group's last row when
-    /// it is in a squash group (a step can't split one); at the end without a row.
+    /// it is in a squash group (a step can't split one), and below the update-ref rows there;
+    /// at the end without a row.
     pub fn insert_at(&self, after: Option<usize>) -> usize {
         let Some(i) = after.filter(|&i| i < self.items.len()) else { return self.items.len() };
         let group = (0..=i).rev().find_map(|h| rebase::group_end(&self.items, h).filter(|&end| end >= i));
-        group.unwrap_or(i) + 1
+        self.past_refs(group.unwrap_or(i) + 1)
     }
 
     /// Adds an exec or break step after row `after` and selects it; an exec step opens its

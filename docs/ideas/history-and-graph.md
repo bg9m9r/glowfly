@@ -79,6 +79,14 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Turn a merge row into an edit stop (a break after the merge) and squash or fix up into a merge
 - A "Use the joined messages" reset and spellcheck in the squash dialog
 - Rebase onto a commit by dragging a branch label onto it in the graph
+- Carry a commit's update-ref rows along while it is dragged (they join it on the drop now)
+- Say in the panel's subtitle how many other branches the rebase moves (`rebase.updateRefs`)
+- Squash or fix up across a stacked branch's tip from the graph with `rebase.updateRefs` (refused
+  now, like a branch point; the panel does it)
+- Edit remaining steps whose update-ref sits between a commit and a squash or fixup into it
+  (refused now)
+- Show a branch checked out in another worktree, which git leaves out of `rebase.updateRefs`, as
+  a note row in the panel
 
 ### Hide / show only branches in the graph
 

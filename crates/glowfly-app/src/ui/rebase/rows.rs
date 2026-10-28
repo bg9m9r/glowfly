@@ -1,6 +1,6 @@
 //! The list of the rebase panel: the locked rows of a running rebase above it, one row per step
 //! (commit rows in `commit_row`, exec and break rows and the row menu in `step_row`, label,
-//! reset and merge marks in `merge_row`), the inline
+//! reset and merge marks and update-ref rows in `merge_row`), the inline
 //! editor under its row (`editor`), dragging rows (`drag`), and the panel's keys (`keys`).
 
 use super::UiCache;
@@ -80,6 +80,7 @@ fn row_label(step: &TodoStep) -> String {
         TodoStep::Merge(m) => m.item.summary.clone(),
         TodoStep::Exec(cmd) => format!("exec {cmd}"),
         TodoStep::Break => "break".into(),
+        TodoStep::UpdateRef(r) => format!("update-ref {r}"),
         TodoStep::Label { name, .. } => format!("label {name}"),
         TodoStep::Reset(to) => match to {
             ResetTo::Onto => "reset onto".into(),
@@ -106,6 +107,11 @@ fn paint(ui: &Ui, rect: Rect, step: &TodoStep, text: &str, look: &Look, shade: S
         }
         TodoStep::Label { .. } => merge_row::paint_label(ui, rect, text, shade),
         TodoStep::Reset(_) => merge_row::paint_reset(ui, rect, text, shade),
+        TodoStep::UpdateRef(_) => {
+            let branch = step.update_ref().unwrap_or_default();
+            let text = look.settings.lang().trf("rebase.update_ref.text", &[("branch", &branch)]);
+            merge_row::paint_update_ref(ui, rect, &text, shade);
+        }
         step => paint_step(ui, rect, step, shade),
     }
 }
@@ -140,6 +146,7 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
             let r = ui.interact(rect, id, sense);
             let label = row_label(step);
             r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, enabled, &label));
+            let r = if matches!(step, TodoStep::UpdateRef(_)) { r.on_hover_text(t.tr("rebase.update_ref.tip")) } else { r };
             slots.push(Slot { rect, r, movable: panel.movable(i) });
             if editor_row == Some(i) {
                 editor::show(ui, t, panel, cache, spell, msgs);
@@ -175,7 +182,7 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                             let kind = RowKind { head: false, actions: panel.actions(i), fixed: true };
                             commit_row::controls(ui, *rect, at, &m.item, kind, msgs)
                         }
-                        TodoStep::Label { .. } | TodoStep::Reset(_) => {}
+                        TodoStep::Label { .. } | TodoStep::Reset(_) | TodoStep::UpdateRef(_) => {}
                         _ => step_row::step_controls(ui, *rect, at, step, msgs),
                     }
                     if can_drag && *movable && drag::grip_rect(*rect).contains(ui.input(|inp| inp.pointer.hover_pos()).unwrap_or_default())
@@ -186,7 +193,7 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                         msgs.push(Msg::Rebase(RebaseMsg::RebaseSelect(i)));
                     }
                     let on_text = r.interact_pointer_pos().is_some_and(|p| p.x >= rect.left() + SHA_X);
-                    let editable = !matches!(step, TodoStep::Break | TodoStep::Label { .. } | TodoStep::Reset(_));
+                    let editable = !matches!(step, TodoStep::Break | TodoStep::Label { .. } | TodoStep::Reset(_) | TodoStep::UpdateRef(_));
                     if enabled && r.double_clicked() && on_text && editable {
                         msgs.push(Msg::Rebase(RebaseMsg::RebaseEditMessage(i)));
                     }

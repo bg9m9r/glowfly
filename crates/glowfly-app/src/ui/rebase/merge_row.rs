@@ -1,6 +1,7 @@
 //! The fixed rows of a list that recreates merges: a label row (a "label" chip and the commit
 //! it marks), a reset row (a "reset" chip and where the next line starts), and the merge dot a
-//! merge row shows in place of the grip.
+//! merge row shows in place of the grip. Also the update-ref row (`rebase.updateRefs`): an
+//! "update-ref" chip and the branch it moves, fixed under its commit.
 
 use super::commit_row::{paint_back, paint_chip};
 use super::rows::{BUTTONS_W, GRIP_X, SHA_X, Shade};
@@ -25,6 +26,11 @@ pub(super) fn paint_label(ui: &Ui, rect: Rect, text: &str, shade: Shade) {
 /// A reset row: "Continue from …".
 pub(super) fn paint_reset(ui: &Ui, rect: Rect, text: &str, shade: Shade) {
     paint_fixed(ui, rect, "reset", color::primary(), text, shade);
+}
+
+/// An update-ref row: "Moves lower here".
+pub(super) fn paint_update_ref(ui: &Ui, rect: Rect, text: &str, shade: Shade) {
+    paint_fixed(ui, rect, "update-ref", color::info(), text, shade);
 }
 
 /// A merge row's dot where other rows have their grip, like the graph's merge nodes.

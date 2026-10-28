@@ -4,7 +4,7 @@
 
 use super::{
     CHANGED, COMBINE_AFTER_MERGE, COMBINE_AFTER_STEP, EMPTY_COMBINED, EMPTY_EXEC, EMPTY_REWORD, EXEC_ONE_LINE, FIRST_COMBINES,
-    LOST_TO_RESET, RebaseAction, SequenceEditor, TodoItem, TodoStep, merges,
+    LOST_TO_RESET, REFS_CHANGED, RebaseAction, SequenceEditor, TodoItem, TodoStep, merges,
 };
 use crate::error::{Error, Result};
 use git2::Oid;
@@ -20,18 +20,32 @@ fn heads(step: &TodoStep) -> Option<&TodoItem> {
 
 /// For the kept commit at `head`, the index of the last squash or fixup of its group: the
 /// commit rows right after it that are dropped or meld into it, up to any other step (exec,
-/// break, label, reset or merge). `None` when nothing melds into it.
+/// break, label, reset or merge). Update-ref steps are passed over: [`build`] writes them after
+/// the group. `None` when nothing melds into it.
 pub fn group_end(steps: &[TodoStep], head: usize) -> Option<usize> {
     heads(steps.get(head)?)?;
     let mut end = None;
     for (i, step) in steps.iter().enumerate().skip(head + 1) {
-        match step.commit() {
-            Some(c) if c.action.combines() => end = Some(i),
-            Some(c) if c.action == RebaseAction::Drop => {}
+        match step {
+            TodoStep::UpdateRef(_) => {}
+            TodoStep::Commit(c) if c.action.combines() => end = Some(i),
+            TodoStep::Commit(c) if c.action == RebaseAction::Drop => {}
             _ => break,
         }
     }
     end
+}
+
+/// Whether the update-ref step at `i` sits inside a squash group: the next step that is
+/// neither an update-ref nor a dropped commit is a squash or fixup. [`build`] then writes it
+/// after the group, so the branch gets the combined commit.
+pub(crate) fn in_group(steps: &[TodoStep], i: usize) -> bool {
+    let next = steps[i + 1..].iter().find(|s| match s {
+        TodoStep::UpdateRef(_) => false,
+        TodoStep::Commit(c) => c.action != RebaseAction::Drop,
+        _ => true,
+    });
+    next.and_then(TodoStep::commit).is_some_and(|c| c.action.combines())
 }
 
 /// The message git gives the commit the group at `head` combines into: the head's (its typed
@@ -76,7 +90,7 @@ pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<Strin
             Some(b) if combines && b.is_structure() => return Some(COMBINE_AFTER_MERGE.into()),
             _ => {}
         }
-        if !dropped(step) {
+        if !dropped(step) && !matches!(step, TodoStep::UpdateRef(_)) {
             before = Some(step);
         }
     }
@@ -109,7 +123,7 @@ pub fn is_unchanged(steps: &[TodoStep], original: &[TodoStep]) -> bool {
         && steps.iter().zip(original).all(|pair| match pair {
             (TodoStep::Commit(a), TodoStep::Commit(b)) => a.oid == b.oid && picked(a) && a.combined_message.is_none(),
             (TodoStep::Merge(a), TodoStep::Merge(b)) => a.item.oid == b.item.oid && picked(&a.item),
-            (a @ (TodoStep::Label { .. } | TodoStep::Reset(_)), b) => a == b,
+            (a @ (TodoStep::Label { .. } | TodoStep::Reset(_) | TodoStep::UpdateRef(_)), b) => a == b,
             _ => false,
         })
 }
@@ -125,11 +139,13 @@ pub fn is_unchanged(steps: &[TodoStep], original: &[TodoStep]) -> bool {
 /// amend must not rewrite the commit before it. Exec and break steps are written as they are.
 /// With `keep_rewords`, a reword without a typed message stays a `reword` (as in a running
 /// rebase's own list); otherwise it is a plain pick. A list with label, reset or merge steps
-/// starts with `label onto`, which names the new base (see `merges`).
+/// starts with `label onto`, which names the new base (see `merges`). An update-ref step is
+/// written where it is, or, inside a squash group ([`in_group`]), after the group's amend.
 pub fn build(steps: &[TodoStep], msg_dir: &Path, keep_rewords: bool) -> (String, Vec<(PathBuf, String)>) {
     let mut text = String::new();
     let mut files = Vec::new();
     let mut pending: Option<String> = None;
+    let mut refs: Vec<&str> = Vec::new();
     if merges::has_structure(steps) {
         text.push_str("label onto\n");
     }
@@ -145,6 +161,14 @@ pub fn build(steps: &[TodoStep], msg_dir: &Path, keep_rewords: bool) -> (String,
             }
             TodoStep::Break => {
                 text.push_str("break\n");
+                continue;
+            }
+            TodoStep::UpdateRef(r) if in_group(steps, i) => {
+                refs.push(r);
+                continue;
+            }
+            TodoStep::UpdateRef(r) => {
+                text.push_str(&format!("update-ref {r}\n"));
                 continue;
             }
             _ => continue,
@@ -178,11 +202,17 @@ pub fn build(steps: &[TodoStep], msg_dir: &Path, keep_rewords: bool) -> (String,
         // break step.
         let continues = steps[i + 1..]
             .iter()
+            .filter(|s| !matches!(s, TodoStep::UpdateRef(_)))
             .map_while(TodoStep::commit)
             .take_while(|n| n.action == RebaseAction::Drop || n.action.combines())
             .any(|n| n.action.combines());
-        if !continues && let Some(exec) = pending.take() {
-            text.push_str(&exec);
+        if !continues {
+            if let Some(exec) = pending.take() {
+                text.push_str(&exec);
+            }
+            for r in refs.drain(..) {
+                text.push_str(&format!("update-ref {r}\n"));
+            }
         }
     }
     (text, files)
@@ -290,7 +320,7 @@ pub fn editor_command(editor: &SequenceEditor, prepared: &Path) -> String {
 /// The commit ids a todo text lists, in order: the second word of every pick, reword, edit,
 /// squash, fixup or drop line (or their one-letter forms), skipping options such as
 /// `fixup -C`. Comments and other commands (exec, label, reset, merge, update-ref, break) are
-/// ignored.
+/// ignored; [`super::listed_refs`] reads the update-ref lines.
 pub fn listed_oids(text: &str) -> Vec<String> {
     const COMMANDS: [&str; 12] = ["pick", "p", "reword", "r", "edit", "e", "squash", "s", "fixup", "f", "drop", "d"];
     let mut out = Vec::new();
@@ -311,13 +341,18 @@ pub fn listed_oids(text: &str) -> Vec<String> {
 
 /// Replaces git's todo (`git_todo`) with `prepared`, after checking that both list the same
 /// commits: each id git lists (abbreviated) must be the prefix of exactly one id in `prepared`,
-/// and the counts must match. On a mismatch git's todo is left as it is.
+/// and the counts must match. Both must also move the same branches (`update-ref` lines, which
+/// git writes with `rebase.updateRefs`; never one git left out, such as a branch checked out in
+/// another worktree). On a mismatch git's todo is left as it is.
 pub fn install_todo(prepared: &Path, git_todo: &Path) -> Result<()> {
     let theirs = listed_oids(&std::fs::read_to_string(git_todo)?);
     let text = std::fs::read_to_string(prepared)?;
     let ours = listed_oids(&text);
     if theirs.len() != ours.len() {
         return Err(Error::Unsupported(CHANGED.into()));
+    }
+    if !super::update_refs::same_refs(&std::fs::read_to_string(git_todo)?, &text) {
+        return Err(Error::Unsupported(REFS_CHANGED.into()));
     }
     let mut used = vec![false; ours.len()];
     for t in &theirs {

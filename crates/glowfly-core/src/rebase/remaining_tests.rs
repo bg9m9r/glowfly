@@ -171,15 +171,12 @@ fn an_unfinished_reword_is_locked() {
 #[test]
 fn commands_the_list_cannot_show_are_refused() {
     let (dir, [c1, c2, c3, c4]) = linear("rebase-remaining-unsupported");
-    for todo in [
-        format!("edit {c2} c2\nlabel here\npick {c3} c3\npick {c4} c4\n"),
-        format!("edit {c2} c2\nupdate-ref refs/heads/topic\npick {c3} c3\npick {c4} c4\n"),
-        format!("edit {c2} c2\npick {c3} c3\nfixup -C {c4} c4\n"),
-    ] {
+    for todo in
+        [format!("edit {c2} c2\nlabel here\npick {c3} c3\npick {c4} c4\n"), format!("edit {c2} c2\npick {c3} c3\nfixup -C {c4} c4\n")]
+    {
         assert!(rebase_i(&dir, &c1.to_string(), &todo), "{todo}");
         assert_eq!(refused(remaining(&dir)), UNSUPPORTED_STEPS, "{todo}");
         git(&dir, &["rebase", "--abort"]);
-        let _ = run(&dir, &args(&["update-ref", "-d", "refs/heads/topic"]));
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

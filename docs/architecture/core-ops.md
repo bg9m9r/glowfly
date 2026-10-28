@@ -51,6 +51,7 @@ source file, update its line here.
 - Run (with `--autostash`, and Continue / Skip); quick edits chosen in the graph (reword, squash, drop).
 - Progress: the step and the stopped commit of a rebase in progress, and a failed exec's command.
 - The remaining steps of a rebase in progress and `--edit-todo`: `remaining.rs`.
+- `update_refs.rs`: the `update-ref` steps git adds with `rebase.updateRefs` (predicted for the plan, compared when a list replaces git's); tests in `update_refs_tests.rs`.
 
 ## Stacked branches (`stack/`)
 

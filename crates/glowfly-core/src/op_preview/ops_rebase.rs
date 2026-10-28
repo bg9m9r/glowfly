@@ -143,6 +143,7 @@ pub(in super::super) fn drop(cx: &Cx, oids: &[Oid]) -> Result<OpPreview> {
                 r.reset(to)?;
                 continue;
             }
+            TodoStep::UpdateRef(_) => continue,
             TodoStep::Exec(_) | TodoStep::Break => return Err(Error::Unsupported(STEPS.into())),
         };
         let why = match result {

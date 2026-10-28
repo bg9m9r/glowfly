@@ -73,7 +73,9 @@ fn action(key: Key, m: Modifiers, panel: &RebasePanel) -> Option<RebaseMsg> {
         Key::Delete | Key::Backspace => {
             sel.filter(|&s| matches!(panel.items[s], TodoStep::Exec(_) | TodoStep::Break)).map(RebaseMsg::RebaseRemoveStep)
         }
-        Key::Enter => sel.filter(|&s| !matches!(panel.items[s], TodoStep::Break)).map(RebaseMsg::RebaseEditMessage),
+        Key::Enter => {
+            sel.filter(|&s| !matches!(panel.items[s], TodoStep::Break | TodoStep::UpdateRef(_))).map(RebaseMsg::RebaseEditMessage)
+        }
         _ => None,
     }
 }

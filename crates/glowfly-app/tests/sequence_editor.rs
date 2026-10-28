@@ -79,6 +79,34 @@ fn the_helper_installs_a_merge_todo() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// With `rebase.updateRefs`, the panel's list carries git's update-ref lines, so the helper
+/// installs it and the branch stacked inside the range moves with the rebase; a list that
+/// leaves one out is refused.
+#[test]
+fn the_helper_keeps_update_refs() {
+    let dir = repo("update-refs");
+    git(&dir, &["config", "rebase.updateRefs", "true"]);
+    git(&dir, &["branch", "lower", "HEAD~1"]);
+    let base = git(&dir, &["rev-parse", "HEAD~1"]);
+    let plan = rebase::plan(&dir, &RebaseBase::FromCommit(Oid::from_str(base.trim()).unwrap())).unwrap();
+    assert_eq!(plan.steps[1], TodoStep::UpdateRef("refs/heads/lower".into()));
+    let without: Vec<TodoStep> = plan.steps.iter().filter(|s| s.update_ref().is_none()).cloned().collect();
+    let req = StartRequest { head: plan.head, upstream: plan.upstream, items: without, autostash: false };
+    assert!(rebase::start(&dir, &req, &helper()).is_err(), "a list without git's update-ref is refused");
+    assert_eq!(head(&dir), plan.head);
+
+    let mut items = plan.steps.clone();
+    let two = items[0].commit_mut().unwrap();
+    two.action = RebaseAction::Reword;
+    two.new_message = Some("two, reworded".into());
+    let req = StartRequest { head: plan.head, upstream: plan.upstream, items, autostash: false };
+    let outcome = rebase::start(&dir, &req, &helper()).unwrap();
+    assert!(matches!(outcome, Outcome::Finished { .. }), "{outcome:?}");
+    assert_eq!(git(&dir, &["rev-parse", "lower"]), git(&dir, &["rev-parse", "main~1"]));
+    assert_eq!(git(&dir, &["log", "-1", "--format=%s", "lower"]).trim(), "two, reworded");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn the_helper_refuses_a_foreign_commit() {
     let dir = repo("foreign");

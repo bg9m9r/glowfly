@@ -44,6 +44,7 @@ fn shape(steps: &[TodoStep]) -> Vec<String> {
         .map(|s| match s {
             TodoStep::Commit(i) => format!("{} {}", i.action.keyword(), i.summary),
             TodoStep::Label { name, .. } => format!("label {name}"),
+            TodoStep::UpdateRef(r) => format!("update-ref {r}"),
             TodoStep::Reset(ResetTo::Onto) => "reset onto".into(),
             TodoStep::Reset(ResetTo::Label(name)) => format!("reset {name}"),
             TodoStep::Reset(ResetTo::Commit(o)) => format!("reset {o}"),

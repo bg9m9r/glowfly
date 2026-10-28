@@ -1958,6 +1958,8 @@
   "range_diff.too_many": "Zu viele Commits zum Vergleichen: höchstens {max} pro Seite (die alte Version hat {old}, die neue {new}).",
   "rebase.editor.command_empty.why": "Gib zuerst einen Befehl ein.",
   "rebase.editor.save.button": "Speichern",
+  "rebase.update_ref.text": "Verschiebt {branch} hierher",
+  "rebase.update_ref.tip": "Git verschiebt diesen Branch hierher, wenn der Rebase endet (rebase.updateRefs). Die Zeile bleibt beim Commit darüber.",
   "refs.copy.link": "Link",
   "refs.copy.link_item": "Link kopieren",
   "refs.copy.name_item": "Namen kopieren",

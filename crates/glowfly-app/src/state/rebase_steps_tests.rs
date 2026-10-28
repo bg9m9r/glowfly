@@ -191,3 +191,26 @@ fn remaining_drops_count_only_new_ones() {
     assert_eq!(p.subtitle(), "3 steps left in the rebase of main onto 1a2b3c4 Base · 2 done");
     assert!(p.first_may_combine());
 }
+
+fn ur(branch: &str) -> TodoStep {
+    TodoStep::UpdateRef(format!("refs/heads/{branch}"))
+}
+
+#[test]
+fn update_ref_rows_travel_with_their_commit() {
+    let mut p = panel(vec![c(1, Pick), ur("lower"), c(2, Pick), c(3, Pick), ur("mid")]);
+    assert!(!p.movable(1), "an update-ref row moves only with its commit");
+    p.move_item(1, 0);
+    assert_eq!(p.items[1], ur("lower"));
+    p.selected = Some(0);
+    p.move_item(0, 1);
+    assert_eq!(kinds(&p)[..3], ["pick c2", "pick c1", "UpdateRef(\"refs/heads/lower\")"]);
+    assert_eq!(p.selected, Some(1), "the selection follows its row");
+    // Down onto mid's row: past c3 and mid.
+    p.move_item(1, 4);
+    assert_eq!(p.items[1..], [c(3, Pick), ur("mid"), c(1, Pick), ur("lower")]);
+    // A step added after a commit goes below its update-ref rows.
+    p.add_step(Some(1), NewStep::Break);
+    assert_eq!(p.items[1..4], [c(3, Pick), ur("mid"), TodoStep::Break]);
+    assert!(!p.items.iter().any(|s| matches!(s, TodoStep::Exec(_))));
+}

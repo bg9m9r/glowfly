@@ -102,3 +102,23 @@ fn rebase_panel_remaining() {
     drop(h);
     remove_fixture(&dir);
 }
+
+/// With `rebase.updateRefs`: fixed update-ref rows under the commits other branches point at,
+/// without a grip or buttons.
+#[test]
+fn rebase_panel_update_refs() {
+    let (mut st, dir) = with_panel(ThemeChoice::Dark, "rebase-update-refs", &[Pick, Pick, Pick, Reword, Pick]);
+    let p = panel(&mut st);
+    p.items.insert(2, TodoStep::UpdateRef("refs/heads/login-form".into()));
+    p.items.insert(5, TodoStep::UpdateRef("refs/heads/login-checks".into()));
+    p.items.insert(6, TodoStep::UpdateRef("refs/heads/review/login".into()));
+    p.selected = Some(2);
+    assert!(!p.movable(2));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("rebase_panel_update_refs");
+    assert!(h.query_by_label("update-ref refs/heads/login-form").is_some());
+    assert!(h.query_by_label("update-ref refs/heads/review/login").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}

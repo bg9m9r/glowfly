@@ -2,9 +2,14 @@
 //! for a rebase started outside Glowfly), and replacing them with `git rebase --edit-todo`. The
 //! exec lines Glowfly adds for a reword or a combined message are folded back into the row they
 //! belong to; the lines finishing a reword whose pick is already done are kept as they are.
+//! `update-ref` lines (`rebase.updateRefs`) become fixed steps and are written back as they are.
 
-use super::todo::{MSG_DIR, MessageFile, OwnLine, build, editor_command, listed_oids, own_line, problem_with};
-use super::{CHANGED, NOT_INTERACTIVE, RebaseAction, SequenceEditor, TODO_MOVED, TodoItem, TodoStep, UNSUPPORTED_STEPS, short};
+use super::todo::{MSG_DIR, MessageFile, OwnLine, build, editor_command, in_group, listed_oids, own_line, problem_with};
+use super::update_refs::same_refs;
+use super::{
+    CHANGED, NOT_INTERACTIVE, REFS_CHANGED, RebaseAction, SequenceEditor, TODO_MOVED, TodoItem, TodoStep, UNSUPPORTED_STEPS,
+    UPDATE_REF_IN_GROUP, short,
+};
 use crate::commit_text::{self, Decoder};
 use crate::error::{Error, Result};
 use crate::gitcli;
@@ -59,7 +64,8 @@ fn interactive(workdir: &Path) -> Result<Repository> {
 
 /// The remaining steps of the interactive rebase in progress. Refused (`Unsupported`) when none
 /// is in progress, or when the todo holds commands the list can't show (label, reset, merge,
-/// update-ref, `fixup -C`); a commit that can't be found is `NotFound`.
+/// `fixup -C`, an update-ref between a commit and a squash or fixup into it); a commit that
+/// can't be found is `NotFound`.
 pub fn remaining(workdir: &Path) -> Result<Remaining> {
     let repo = interactive(workdir)?;
     let dir = repo.path().join("rebase-merge");
@@ -103,6 +109,11 @@ pub fn remaining(workdir: &Path) -> Result<Remaining> {
 
     let msg_dir = repo.path().join(MSG_DIR);
     let steps = fold(rest, &msg_dir);
+    // The list writes an update-ref inside a squash group after the group: refuse one the todo
+    // has there, rather than move it.
+    if (0..steps.len()).any(|i| matches!(steps[i], TodoStep::UpdateRef(_)) && in_group(&steps, i)) {
+        return Err(Error::Unsupported(UPDATE_REF_IN_GROUP.into()));
+    }
     Ok(Remaining { branch, onto_label, done: done_commits, locked, locked_text, steps, first_may_combine: done_commits > 0, todo })
 }
 
@@ -118,6 +129,13 @@ fn parse(repo: &Repository, line: &str) -> Result<Option<Parsed>> {
         "drop" | "d" => RebaseAction::Drop,
         "exec" | "x" => return Ok(Some(own_line(line).map_or_else(|| Parsed::Step(TodoStep::Exec(rest.to_owned())), Parsed::Own))),
         "break" | "b" => return Ok(Some(Parsed::Step(TodoStep::Break))),
+        "update-ref" | "u" => {
+            let mut words = rest.split_whitespace();
+            return match (words.next(), words.next()) {
+                (Some(r), None) if r.starts_with("refs/") => Ok(Some(Parsed::Step(TodoStep::UpdateRef(r.to_owned())))),
+                _ => Err(Error::Unsupported(UNSUPPORTED_STEPS.into())),
+            };
+        }
         "noop" => return Ok(None),
         _ => return Err(Error::Unsupported(UNSUPPORTED_STEPS.into())),
     };
@@ -192,7 +210,8 @@ fn fold(lines: Vec<(&str, Parsed)>, msg_dir: &Path) -> Vec<TodoStep> {
 /// `git rebase --edit-todo`, with `editor` installing the prepared list. The rebase stays
 /// stopped where it was. Refused when no interactive rebase is in progress, when its todo
 /// changed since it was read (`TODO_MOVED`), when the commits differ from the ones git has
-/// left (`CHANGED`), when the list has a problem, or when git or the editor refuses it.
+/// left (`CHANGED`) or the branches its update-ref lines move do (`REFS_CHANGED`), when the
+/// list has a problem, or when git or the editor refuses it.
 pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor) -> Result<()> {
     let repo = interactive(workdir)?;
     let git_dir = repo.path().to_path_buf();
@@ -217,13 +236,19 @@ pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor)
     }
     // Not wiped: a locked amend still reads its files from here.
     let msg_dir = git_dir.join(MSG_DIR);
-    std::fs::create_dir_all(&msg_dir)?;
     let (text, files) = build(&req.steps, &msg_dir, true);
+    let text = format!("{}{text}", req.locked_text);
+    // The panel never adds or removes an update-ref line: one it added could move a branch
+    // checked out in another worktree, which git doesn't refuse.
+    if !same_refs(&current, &text) {
+        return Err(Error::Unsupported(REFS_CHANGED.into()));
+    }
+    std::fs::create_dir_all(&msg_dir)?;
     for (path, body) in files {
         crate::persist::atomic_write(&path, body.as_bytes())?;
     }
     let prepared = msg_dir.join("todo-edit");
-    crate::persist::atomic_write(&prepared, format!("{}{text}", req.locked_text).as_bytes())?;
+    crate::persist::atomic_write(&prepared, text.as_bytes())?;
     let refused = msg_dir.join("todo-edit.error");
     if refused.exists() {
         std::fs::remove_file(&refused)?;
