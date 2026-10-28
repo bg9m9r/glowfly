@@ -195,7 +195,7 @@ fn an_external_terminal_waits_for_trust_in_a_held_repository() {
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
     let w = workdir(&st);
     assert!(fx.iter().any(|e| matches!(e, Effect::Os(OsEffect::OpenTerminal(p)) if *p == w)), "Trust and run opens it: {fx:?}");
-    assert!(st.trust.terminal.is_none());
+    assert!(st.trust.waiting.is_none());
     assert!(opens_external(&external_terminal(&mut st)), "a trusted repository opens it at once");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -206,7 +206,7 @@ fn cancel_drops_the_waiting_external_terminal() {
     external_terminal(&mut st);
     let fx = run(&mut st, Msg::CloseModal);
     assert!(!opens_external(&fx), "{fx:?}");
-    assert!(st.trust.terminal.is_none());
+    assert!(st.trust.waiting.is_none());
     // Trusting it later another way doesn't open a terminal nobody is waiting for.
     let real = real(&st);
     assert!(!opens_external(&run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }))));

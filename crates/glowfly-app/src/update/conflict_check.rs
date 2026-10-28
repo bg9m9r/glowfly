@@ -5,6 +5,7 @@
 use crate::conflict_check::{CheckJob, CheckRequest, ConflictCheckMsg};
 use crate::effect::Effect;
 use crate::state::conflict_check::{ConflictReport, current_request, headline};
+use crate::state::trust::WaitingFor;
 use crate::state::{AppState, Modal};
 use glowfly_core::conflict_check::{MergeTarget, TargetKind};
 use std::time::Instant;
@@ -30,9 +31,10 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 pub(super) fn handle(st: &mut AppState, msg: ConflictCheckMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        // Asked for by the user: no trust or preference gate, like a Pull they start.
+        // Asked for by the user: no preference gate, but held for trust like a Pull they start
+        // (merge-tree runs the merge drivers the repository's config names).
         ConflictCheckMsg::CheckNow => match st.snap.as_ref().map(|s| (s.workdir.clone(), current_request(s))) {
-            Some((workdir, Some(request))) => manual(workdir, request, fx),
+            Some((workdir, Some(request))) => manual(st, workdir, request, fx),
             Some((_, None)) => st.log(false, no_request_reason(st)),
             None => {}
         },
@@ -97,9 +99,16 @@ fn check_branch(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
     };
     let workdir = snap.workdir.clone();
     let target = MergeTarget { name: name.to_owned(), oid, kind: TargetKind::Chosen };
-    manual(workdir, CheckRequest { branch: head, ours, target }, fx);
+    manual(st, workdir, CheckRequest { branch: head, ours, target }, fx);
 }
 
-fn manual(workdir: std::path::PathBuf, request: CheckRequest, fx: &mut Vec<Effect>) {
-    fx.push(Effect::CheckConflicts(CheckJob { workdir, request, manual: true, generation: 0 }));
+/// Runs a check the user asked for, or, while git is held in the repository, holds it for the
+/// trust prompt (it runs on Trust and run).
+fn manual(st: &mut AppState, workdir: std::path::PathBuf, request: CheckRequest, fx: &mut Vec<Effect>) {
+    let effect = Effect::CheckConflicts(CheckJob { workdir, request, manual: true, generation: 0 });
+    if !st.runs_git_unasked() {
+        let label = st.settings.lang().tr("branch.menu.check_conflicts").to_owned();
+        return super::trust::hold_waiting(st, WaitingFor::Read(effect), Some(label));
+    }
+    fx.push(effect);
 }

@@ -49,9 +49,9 @@ pub struct TrustSession {
     pub created: Vec<PathBuf>,
     /// The job waiting for the open trust prompt.
     pub held: Option<HeldJob>,
-    /// Open in external terminal, waiting for the open trust prompt: the repository's real
-    /// path and the launch, run once git runs there unasked (update/trust.rs::hold_terminal).
-    pub terminal: Option<(PathBuf, crate::effect::Effect)>,
+    /// What the user asked for outside the job gate that waits for the open trust prompt, run
+    /// once git runs in its repository unasked (update/trust.rs::hold_waiting).
+    pub waiting: Option<Waiting>,
     /// What the running job makes from a trusted repository, to be trusted once it succeeds.
     pub inherit: Option<Inherit>,
     /// The running `git lfs install` job's label and its repository's real path: once it
@@ -71,6 +71,24 @@ pub struct Inherit {
     pub from: PathBuf,
     /// The folders that become repositories.
     pub paths: Vec<PathBuf>,
+}
+
+/// Something the user asked for that waits for the trust prompt (`TrustSession::waiting`).
+pub struct Waiting {
+    /// `Snapshot::real_workdir` of the repository it waits for.
+    pub real: PathBuf,
+    pub what: WaitingFor,
+}
+
+/// What waits.
+pub enum WaitingFor {
+    /// Open in external terminal: the launch.
+    Terminal(crate::effect::Effect),
+    /// A read whose git runs the repository's own programs (a conflict check: merge-tree runs
+    /// its merge drivers).
+    Read(crate::effect::Effect),
+    /// A merge preview: its dialog opens and the preview runs.
+    Preview(crate::effect::OpPreviewJob),
 }
 
 /// What kind of repository is made from a trusted one.

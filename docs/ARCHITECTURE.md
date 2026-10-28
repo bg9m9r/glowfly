@@ -137,7 +137,7 @@ source file, update its line in the matching file.
    makes repositories from a trusted one (a worktree, submodules) says so after it starts
    (`update/trust_inherit.rs`), and they are trusted when it succeeds. Work that waits outside
    the job gate for the active repository to be trusted, held built-in terminal shells
-   (`SessionStatus::Held`), Open in external terminal (`TrustSession::terminal`) and the LFS
+   (`SessionStatus::Held`), Open in external terminal, a conflict check or merge preview the user asked for (`TrustSession::waiting`) and the LFS
    and Sparse Checkout pages' git reads (`LfsPage::held`, `SparseStatus::held`), starts in
    `trust::released`.
 4. **Runner.** Execute it in the area's `Execute` impl in `runner/<area>.rs`. The real work

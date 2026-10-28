@@ -1,12 +1,14 @@
 //! Previewing an operation before it runs: a Preview… item opens the dialog and asks the runner
 //! for the result (`Effect::OpPreview`), Preview again asks once more against the branch as it
-//! is now, and Apply closes the dialog and sends exactly what the direct menu item sends. No
-//! trust gate: the preview is asked for by the user and only reads, like a conflict check from
-//! the branch menu.
+//! is now, and Apply closes the dialog and sends exactly what the direct menu item sends. A
+//! merge preview runs `git merge-tree`, which runs the merge drivers the repository's config
+//! names: while git is held there it waits for the trust prompt first, like a conflict check
+//! from the branch menu. The other previews read with libgit2 only.
 
 use crate::effect::{Effect, OpPreviewJob};
 use crate::msg::OpPreviewMsg;
 use crate::state::op_preview::{PreviewDialog, apply_blocker, apply_msg, resolve};
+use crate::state::trust::WaitingFor;
 use crate::state::{AppState, Modal};
 use glowfly_core::git_version::Feature;
 use glowfly_core::op_preview::{PreviewOp, Request};
@@ -57,9 +59,18 @@ fn open(st: &mut AppState, op: PreviewOp, fx: &mut Vec<Effect>) {
 
 /// Shows `job` in the dialog: at once with git's version as its error for a merge on a git
 /// without merge-tree, otherwise loading while the runner works it out.
-fn start(st: &mut AppState, job: OpPreviewJob, fx: &mut Vec<Effect>) {
-    let too_old = matches!(job.request.op, PreviewOp::Merge { .. }).then(|| st.git.blocked(Feature::MergeTree)).flatten();
+pub(super) fn start(st: &mut AppState, job: OpPreviewJob, fx: &mut Vec<Effect>) {
+    let merge = matches!(job.request.op, PreviewOp::Merge { .. });
+    let too_old = merge.then(|| st.git.blocked(Feature::MergeTree)).flatten();
     let result = too_old.map(Err);
+    if result.is_none() && merge && !st.runs_git_unasked() {
+        // Preview again over its own dialog: the prompt takes its place.
+        if matches!(st.modal, Some(Modal::OpPreview(_))) {
+            st.modal = None;
+        }
+        let label = st.settings.lang().tr("op_preview.menu.merge").to_owned();
+        return super::trust::hold_waiting(st, WaitingFor::Preview(job), Some(label));
+    }
     if result.is_none() {
         fx.push(Effect::OpPreview(job.clone()));
     }

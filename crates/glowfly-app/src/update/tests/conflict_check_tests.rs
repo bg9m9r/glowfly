@@ -260,18 +260,39 @@ fn checking_another_branch_opens_a_report() {
 }
 
 #[test]
-fn manual_checks_skip_trust_and_the_preference() {
+fn manual_checks_skip_the_preference_but_wait_for_trust() {
+    // merge-tree runs a merge driver the repository's own config names.
     let dir = diverged("cc-manual-untrusted");
-    git(&dir, &["config", "core.sshCommand", "x"]);
+    let marker = dir.with_file_name(format!("{}-ran", dir.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_file(&marker);
+    git(&dir, &["config", "merge.evil.driver", &format!("touch '{}'", marker.display())]);
+    std::fs::write(
+        dir.join(".gitattributes"),
+        "* merge=evil
+",
+    )
+    .unwrap();
     let mut st = state();
     st.settings.conflict_check = false;
     open(&mut st, &dir);
-    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckNow), Instant::now());
-    assert!(matches!(fx.as_slice(), [Effect::CheckConflicts(j)] if j.manual && j.request.target.name == "main"), "{fx:?}");
-    super::tests::finish(&mut st, fx);
-    assert_eq!(shown(&st), conflicts_in_a(), "Check again also updates the automatic result");
+    st.modal = None;
+    for m in [ConflictCheckMsg::CheckNow, ConflictCheckMsg::CheckBranch("main".into())] {
+        let fx = update(&mut st, Msg::ConflictCheck(m), Instant::now());
+        assert!(fx.is_empty(), "nothing runs in an untrusted repository: {fx:?}");
+        let Some(Modal::Trust(p)) = &st.modal else { panic!("the trust prompt") };
+        assert_eq!(p.held.as_deref(), Some("Check for conflicts"));
+        update(&mut st, Msg::CloseModal, Instant::now());
+        assert!(st.trust.waiting.is_none(), "Cancel drops it");
+    }
+    assert!(!marker.exists(), "the driver never ran");
+
+    update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckNow), Instant::now());
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    let jobs = drive_holding(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
+    assert!(jobs.iter().any(|j| j.manual && j.request.target.name == "main"), "Trust and run checks: {jobs:?}");
     let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch("main".into())), Instant::now());
     assert!(matches!(fx.as_slice(), [Effect::CheckConflicts(j)] if j.manual && j.request.target.kind == TargetKind::Chosen), "{fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

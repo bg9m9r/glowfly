@@ -35,6 +35,8 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Re-check checked-out submodules' settings and hooks at every refresh, not only at a full load
   (a refresh rescans only the repository's own, since opening every submodule each time costs
   too much where there are many)
+- Stamp a submodule's included config files and a hooks folder its core.hooksPath points
+  outside its git dir in the refresh key (only its own config files and hooks folder are now)
 
 ### Submodules
 

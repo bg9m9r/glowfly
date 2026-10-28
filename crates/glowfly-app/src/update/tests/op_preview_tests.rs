@@ -186,3 +186,32 @@ fn opening_needs_a_commit() {
     assert!(open(&mut st, PreviewOp::Drop(Vec::new())).is_empty());
     assert!(st.modal.is_none());
 }
+
+#[test]
+fn a_merge_preview_waits_for_trust_where_a_merge_driver_would_run() {
+    let (mut st, dir, c, f) = with_feature("preview-untrusted");
+    let marker = dir.with_file_name(format!("{}-ran", dir.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_file(&marker);
+    git(&dir, &["config", "merge.evil.driver", &format!("touch '{}'", marker.display())]);
+    std::fs::write(dir.join(".gitattributes"), "* merge=evil\n").unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(st.held());
+    st.modal = None;
+    let fx = open(&mut st, merge(f));
+    assert!(fx.is_empty(), "no merge-tree: {fx:?}");
+    let Some(Modal::Trust(p)) = &st.modal else { panic!("the trust prompt") };
+    assert_eq!(p.held.as_deref(), Some("Preview merge"));
+    up(&mut st, Msg::CloseModal);
+    assert!(st.modal.is_none() && st.trust.waiting.is_none());
+    assert!(!marker.exists());
+    // A preview that reads with libgit2 only still opens.
+    assert!(matches!(job(&open(&mut st, PreviewOp::Reset { to: c[0] })).request.op, PreviewOp::Reset { .. }));
+    st.modal = None;
+
+    open(&mut st, merge(f));
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    let fx = up(&mut st, Msg::Trust(crate::msg::TrustMsg::Decide { real, trusted: true }));
+    assert!(fx.iter().any(|e| matches!(e, Effect::OpPreview(j) if matches!(j.request.op, PreviewOp::Merge { .. }))), "{fx:?}");
+    assert!(matches!(st.modal, Some(Modal::OpPreview(_))), "Trust and run opens the preview");
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -11,7 +11,7 @@ use super::jobs::Started;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::TrustMsg;
 use crate::state::tabs::is_repo_at;
-use crate::state::trust::{Created, HeldJob, Standing, TrustPrompt, prompt_for, record, record_trusted, standing};
+use crate::state::trust::{Created, HeldJob, Standing, TrustPrompt, Waiting, WaitingFor, prompt_for, record, record_trusted, standing};
 use crate::state::{AppState, Modal, RunningJob};
 use glowfly_core::paths::same_spelling;
 use glowfly_core::settings::RepoTrust;
@@ -191,21 +191,25 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect, mut promp
     Started::Held
 }
 
-/// Open in external terminal while git is held in the active repository: `effect` (the launch)
-/// waits for the trust prompt, which asks on the terminal's behalf; trusting starts it
-/// (`released`) and Cancel drops it. No prompt can open over another dialog: then nothing waits.
-pub(super) fn hold_terminal(st: &mut AppState, effect: Effect) {
+/// Something the user asked for while git is held in the active repository (Open in external
+/// terminal, a conflict check, a merge preview): it waits for the trust prompt, which asks on
+/// the terminal's behalf or names `label`; trusting starts it (`released`) and Cancel drops it.
+/// No prompt can open over another dialog: then nothing waits.
+pub(super) fn hold_waiting(st: &mut AppState, what: WaitingFor, label: Option<String>) {
     let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
-    ask(st, &real, true);
-    if matches!(&st.modal, Some(Modal::Trust(p)) if p.terminal) {
-        tracing::debug!("holding the external terminal until {} is trusted", real.display());
-        st.trust.terminal = Some((real, effect));
+    let terminal = matches!(what, WaitingFor::Terminal(_));
+    ask(st, &real, terminal);
+    let Some(Modal::Trust(p)) = &mut st.modal else { return };
+    if label.is_some() {
+        p.held = label;
     }
+    tracing::debug!("holding {} until {} is trusted", p.held.as_deref().unwrap_or("the external terminal"), real.display());
+    st.trust.waiting = Some(Waiting { real, what });
 }
 
 /// The trust prompt was closed without a decision: the held job, if any, is dropped.
 pub(super) fn dismissed(st: &mut AppState) {
-    st.trust.terminal = None;
+    st.trust.waiting = None;
     if let Some(h) = st.trust.held.take() {
         forget(st, h, false);
     }
@@ -294,17 +298,20 @@ pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
 }
 
 /// What waits outside the job gate for the active repository to run git unasked: held terminal
-/// shells, the external terminal (only the active repository's: another's is dropped) and the
-/// LFS and Sparse Checkout pages' reads.
+/// shells, what waits in `TrustSession::waiting` (only the active repository's: another's is
+/// dropped) and the LFS and Sparse Checkout pages' reads.
 pub(super) fn released(st: &mut AppState, fx: &mut Vec<Effect>) {
     if !st.runs_git_unasked() {
         return;
     }
     super::terminal::release_held(st, fx);
-    if let Some((real, effect)) = st.trust.terminal.take()
-        && st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &real))
+    if let Some(w) = st.trust.waiting.take()
+        && st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &w.real))
     {
-        fx.push(effect);
+        match w.what {
+            WaitingFor::Terminal(effect) | WaitingFor::Read(effect) => fx.push(effect),
+            WaitingFor::Preview(job) => super::op_preview::start(st, job, fx),
+        }
     }
     super::lfs::trust_released(st, fx);
     super::sparse::trust_released(st, fx);

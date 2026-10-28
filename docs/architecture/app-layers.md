@@ -97,7 +97,7 @@ source file, update its line here. Features that span every layer are in
 - `op_progress.rs`: the strip's Show work in progress and the banner's confirmed Abort (a kept one runs as `StashEffect::AbortKeeping`).
 - `branch_colour.rs`: pinned branch colours and the preset's hue count brought into the snapshot at load, on Preferences edits and on a tab's return.
 - `repo_colour.rs`: repository colours from the Color submenus.
-- `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once.
+- `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once and a merge preview in a held repository waiting for the trust prompt (`trust::hold_waiting`), since merge-tree runs the repository's merge drivers.
 - `load_more.rs`: a load for more history going on from the walk (the page taken in below the rows on screen), and a failed one kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, and asking again for a file still opening (`renew_open`).

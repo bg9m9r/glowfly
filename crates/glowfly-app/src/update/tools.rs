@@ -95,7 +95,7 @@ pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
     // A shell's prompt often runs git, which runs what the repository's settings and hooks
     // name: in a held repository it waits for trust, as the panel's shells do.
     if st.held() {
-        return super::trust::hold_terminal(st, effect);
+        return super::trust::hold_waiting(st, crate::state::trust::WaitingFor::Terminal(effect), None);
     }
     fx.push(effect);
 }

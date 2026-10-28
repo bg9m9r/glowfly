@@ -127,7 +127,8 @@ second one next to it.
    trailing dot or space, `:` streams and `git~1` (`names::is_git_dir_name`). Hook names use the
    same fold (`trust::is_hook_name`) and are also looked up on disk. Each hook found (any file
    on Windows, an executable one on Unix, through links) is read for the trust print, up to
-   1 MiB (`trust/digest.rs`); one that can't be read gets a fixed digest that no contents have.
+   1 MiB at a refresh and whole at a full load (`trust/digest.rs`); only a plain file is opened
+   (a FIFO's open would block), and one that can't be read gets a fixed digest no contents have.
 6. **Compare ref names and ref folders by NFC plus lowercase on every OS** (`names::ref_clash`):
    loose ref files collide on Windows and macOS, so `Feature/bar` must not slip into
    `feature/`.

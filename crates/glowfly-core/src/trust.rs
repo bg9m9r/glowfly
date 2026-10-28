@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 mod digest;
+use digest::Reading;
 mod print;
 pub use digest::of_bytes as content_digest;
 pub use print::{TrustPrint, allows};
@@ -107,6 +108,8 @@ const COMMAND_KEYS: &[(&str, &str)] = &[
     ("gpg.x509.program", "gpg.x509.program"),
     ("gpg.ssh.program", "gpg.ssh.program"),
     ("gpg.ssh.defaultkeycommand", "gpg.ssh.defaultKeyCommand"),
+    // Run to list an alternate's refs during fetch negotiation.
+    ("core.alternaterefscommand", "core.alternateRefsCommand"),
 ];
 
 /// The git commands Glowfly runs that aren't built into git, so a repository's alias of the
@@ -121,29 +124,36 @@ const MAX_SUBMODULE_DEPTH: usize = 8;
 /// make git run programs. Settings from the user's own config (global, XDG, system) are left
 /// out: the user put them there.
 pub fn scan(repo: &Repository) -> TrustScan {
-    let mut out = scan_top(repo);
+    let mut out = scan_top_reading(repo, Reading::Whole);
     scan_submodules(repo, "", 0, &mut out.submodules);
     out
 }
 
 /// What a refresh re-checks: `repo`'s own settings, hooks (with their contents) and commands
-/// file, without its submodules (a full load scans those). Cheap: the config files, a listing
-/// of the hooks folder and a read of each hook git would run.
+/// file, without its submodules (a full load scans those; `repo::refs_key` stamps their config
+/// and hooks). Cheap: the config files, a listing of the hooks folder and a read of each hook git
+/// would run, up to `digest::MAX_BYTES` each: only for noticing a change, never for a decision.
 pub fn scan_top(repo: &Repository) -> TrustScan {
-    let mut out = scan_own(repo);
+    scan_top_reading(repo, Reading::Capped)
+}
+
+fn scan_top_reading(repo: &Repository, reading: Reading) -> TrustScan {
+    let mut out = scan_own(repo, reading);
     out.commands = repo.workdir().and_then(commands_digest);
     out
 }
 
-/// The digest of the commands file of the working folder `workdir`, if there is one.
+/// The digest of the commands file of the working folder `workdir`, if there is one. Never
+/// follows a link or opens anything but a plain file, like the commands reader: anything else
+/// in its place (which the reader refuses) gets the unreadable digest.
 fn commands_digest(workdir: &Path) -> Option<String> {
     let path = crate::custom_commands::repo_file(workdir);
-    // `symlink_metadata`: a link counts as there (the commands reader refuses it).
-    std::fs::symlink_metadata(&path).is_ok().then(|| digest::of_file(&path))
+    let meta = std::fs::symlink_metadata(&path).ok()?;
+    Some(if meta.is_file() { digest::of_file(&path, Reading::Whole) } else { digest::UNREADABLE.to_owned() })
 }
 
-/// `scan` of `repo` alone, without its submodules.
-fn scan_own(repo: &Repository) -> TrustScan {
+/// `scan` of `repo` alone, without its submodules, reading hooks as `reading` says.
+fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
     let mut out = TrustScan::default();
     let config = repo.config().ok();
     let mut local_hooks_path = None;
@@ -164,7 +174,7 @@ fn scan_own(repo: &Repository) -> TrustScan {
     out.hooks_dir = hooks_dir(repo, config.as_ref(), local_hooks_path);
     if let Some(dir) = &out.hooks_dir {
         for (name, path) in active_hooks(dir) {
-            out.hook_digests.insert(name.clone(), digest::of_file(&path));
+            out.hook_digests.insert(name.clone(), digest::of_file(&path, reading));
             out.hooks.push(name);
         }
     }
@@ -190,7 +200,7 @@ fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<
         // Doesn't search upward, so a folder that isn't checked out finds nothing.
         let Ok(sub) = Repository::open(workdir.join(rel)) else { continue };
         let path = if prefix.is_empty() { rel.to_owned() } else { format!("{prefix}/{rel}") };
-        let own = scan_own(&sub);
+        let own = scan_own(&sub, Reading::Whole);
         if !own.is_empty() {
             out.push(SubmoduleScan { path: path.clone(), scan: own });
         }
@@ -239,6 +249,8 @@ fn command_key(name: &str, value: &str) -> Option<String> {
         "credential" => key == "helper",
         "diff" => matches!(key, "command" | "textconv"),
         "merge" => key == "driver",
+        // `git submodule update` runs `!command` (only from the repository's own config).
+        "submodule" => key == "update" && value.starts_with('!'),
         "filter" => matches!(key, "clean" | "smudge" | "process"),
         // git difftool / mergetool start a tool's own command, or a built-in tool from `.path`.
         "difftool" | "mergetool" => matches!(key, "cmd" | "path"),
