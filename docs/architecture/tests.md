@@ -41,14 +41,6 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `crates/glowfly-app/tests/snapshots/`: approved view snapshots: a `<name>.txt` text snapshot for every view test, and a `<name>.png` for the pixel goldens (`src/ui/snapshot_check/goldens.rs`).
 - `scripts/rerender-conflicted.ps1`: after a merge or rebase stops on snapshot conflicts, re-renders only the conflicted snapshots (the tests that name them) and stages them; `-DryRun` lists them.
 
-## Real-input smoke tests
-
-- `scripts/smoke-linux.sh` (+ `scripts/smoke/`), CI job `smoke`: real X11 input on the release build under its own Xvfb and openbox, at scale 1 and 1.5.
-- The Linux smoke test checks the first click after a focus change, typing in the commit box and committing, a context menu, a shortcut, a drag and a resize, read back through the probe file and the disk; `src/journey/probe.rs` dry-runs its labels on every OS.
-- `scripts/smoke-windows.ps1` (+ `scripts/smoke/win-*.ps1`, `WinInput.cs`), CI job `smoke-windows`: real input on the Windows runner's desktop through SendInput, at zoom 100 and 150 (the runner's DPI is fixed, so the scale is the app's zoom), with Mesa llvmpipe staged beside a copy of the exe for OpenGL.
-- The Windows smoke test makes the same checks, with the resize done by dragging the drawn bottom-right corner.
-- `smoke-windows.ps1` refuses to run outside CI without `-OnThisDesktop`; `-DryRun` checks the scripts, the Win32 helpers and the fixture without a window; `src/journey/probe.rs` dry-runs its labels with the drawn Windows frame.
-
 ## Installers
 
 - `.github/workflows/installers.yml`: `scripts/installer-check-windows.ps1`, `scripts/installer-check-linux.sh`, `scripts/update-feed-check.ps1`: the packaged builds on clean runners.

@@ -138,14 +138,14 @@ source file, update its line here. Features that span every layer are in
 
 ## Test-only modules
 
-- `smoke_probe.rs`, `ui/probe.rs`: the opt-in state file for the real-input smoke tests (`GLOWFLY_SMOKE_PROBE`, an absolute path; off otherwise, with no thread and AccessKit left alone).
+- `smoke_probe.rs`, `ui/probe.rs`: the opt-in state file the installer checks read to see the app start and draw (`GLOWFLY_SMOKE_PROBE`, an absolute path; off otherwise, with no thread and AccessKit left alone).
 - `ui/probe.rs` builds it as JSON from egui's current pass (AccessKit names and widget rects with their regions, the drawn panels including the drawn title bar, the window frame being drawn as `chrome`, the keyboard focus) and a few `AppState` fields; the shell offers it after each frame.
 - `smoke_probe.rs` writes only changed ones, with a rising `seq`, atomically from its own thread, retrying a failed write (a reader holding the file on Windows) until it lands or a newer one replaces it.
 - `journey/` (tests only): whole-app journeys: the real app (`GlowflyApp::for_test`) in an egui_kittest harness on fixture repositories.
 - `journey/find.rs`: driving it by clicking and typing on widgets found by accessible name: a region of the window, the open command palette among them, and a pick among equal names.
 - `journey/harness.rs`: waiting until the app is idle after each step.
 - `journey/fixture.rs`: checking the screen and the repository on disk.
-- `journey/` is in the crate because the package has no library target `tests/` could reach; `src/journey/probe.rs` dry-runs the smoke tests' labels.
+- `journey/` is in the crate because the package has no library target `tests/` could reach.
 - `glyph_check/` (tests only): every non-ASCII character in the app's and core's string literals and in the translation files has a glyph in the fonts egui draws with.
 - `glyph_check/scan.rs` finds the characters, skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.
 - `glyph_check/` installs the app's bundled fonts through `ui::theme::fonts::install`, as the app does.

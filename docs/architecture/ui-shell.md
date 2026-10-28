@@ -13,7 +13,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `frame_overlay.rs`: the frame-time overlay Preferences > General can show.
 - `ui/access.rs` gives painted buttons and hint-only text fields their accessible names (a toolbar button's name describes it and differs from the palette's rows).
 - `central.rs` holds the central-area routing (which view fills it: the pull request panel and the issue panel (`issue/`) share one place) and the Esc chain.
-- `ui/probe.rs`: the smoke tests' state file (see Test-only modules in [app-layers.md](app-layers.md)).
+- `ui/probe.rs`: the smoke probe's state file (see Test-only modules in [app-layers.md](app-layers.md)).
 
 ## Window layout
 

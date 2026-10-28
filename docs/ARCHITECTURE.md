@@ -37,7 +37,7 @@ source file, update its line in the matching file.
 - [ui-views.md](architecture/ui-views.md): dialogs with their own files, blame and the File view, Markdown, the graph, commit details and the WIP panel, the diff, object menus, snapshot tests.
 - [ui-widgets.md](architecture/ui-widgets.md): `widgets/`, rows and lists, disabled reasons, tooltips, empty and banner states, the dialog frame.
 - [ui-theme.md](architecture/ui-theme.md): `theme/`: controls and modals, colours, fonts and the type scale, spacing and tokens.
-- [tests.md](architecture/tests.md): tests outside `src/` and the smoke and installer checks.
+- [tests.md](architecture/tests.md): tests outside `src/` and the installer checks.
 - [flow-repo.md](architecture/flow-repo.md): how repository flows work: diffs, tabs, job follow-ups, pull requests, the journal, range-diff, the dashboard, several repositories, incremental status, worktrees, submodules, auto-stash, custom commands.
 - [flow-shell.md](architecture/flow-shell.md): how the shell's flows work: dialogs, toasts, zoom and panels, window chrome, menus and menu keys, quitting, notifications, credential and signing prompts, LFS notices, logs, deep links, releases and updates.
 

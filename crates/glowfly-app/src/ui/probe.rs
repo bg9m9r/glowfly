@@ -1,7 +1,7 @@
 //! What the smoke probe (`smoke_probe.rs`) reports: the widgets of the pass being drawn with
 //! their accessible names and rectangles, the panels, the window frame drawn, the keyboard focus
-//! and a few `AppState` fields, as JSON for `scripts/smoke-linux.sh` and
-//! `scripts/smoke-windows.ps1`. No I/O: it reads egui's current pass and the state only, and is
+//! and a few `AppState` fields, as JSON for the Linux installer checks
+//! (`scripts/installer-lib-linux.sh`). No I/O: it reads egui's current pass and the state only, and is
 //! called by the shell at the end of a frame (AccessKit nodes exist only inside a pass).
 //!
 //! The probe forces AccessKit on (`enable`), so the names exist from the first frame;

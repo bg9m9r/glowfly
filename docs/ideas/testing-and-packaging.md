@@ -1,6 +1,6 @@
 # Ideas: Testing and packaging
 
-Journey and real-input smoke tests, packaging, installers and updates. Untriaged; see [README.md](README.md).
+Journey tests, packaging, installers and updates. Untriaged; see [README.md](README.md).
 
 ### Packaging and updates
 
@@ -38,7 +38,7 @@ Journey and real-input smoke tests, packaging, installers and updates. Untriaged
 
 ### Installer and update checks in CI
 
-- Start the installed MSI copy's window with the smoke probe on the Windows runner once it has OpenGL 2 (Mesa llvmpipe or the Windows smoke job's setup)
+- Start the installed MSI copy's window with the smoke probe on the Windows runner once it has OpenGL 2 (Mesa llvmpipe)
 - Run the installer checks from the Release workflow (workflow_call) against the files it uploads, before SHA256SUMS is published
 - A macOS DMG check: mount the image, copy Glowfly.app to a temporary Applications folder, start it, and check that the update check picks the .dmg
 - Attach to the parent console on Windows so `glowfly --version` and `--check-update` print in a terminal without redirection
@@ -60,44 +60,6 @@ Journey and real-input smoke tests, packaging, installers and updates. Untriaged
 - Hosting-service journeys against a local fake API (pull requests, issues, build status)
 - On a journey failure, save a rendered screenshot where wgpu is available, to make CI failures easier to read
 - Accessible names for the remaining painted widgets (section headers, graph ref chips, sidebar ahead/behind counts), plus a test that every clickable widget has one
-
-### Real-input smoke tests (Linux)
-
-- A Wayland pass (weston --backend=headless with wtype or ydotool) beside the X11 one
-- More scale factors: 1.25 (fractional rounding) and 2.0
-- More real-input gestures: a double-click on a branch chip, mouse-wheel scrolling of the graph,
-  hover tooltips, dragging a repository tab and a graph column's resize handle
-- Typing non-ASCII text and dead keys (a remapped keycode, a German layout through setxkbmap)
-  and an IME pass
-- A clipboard round trip with real Ctrl+C / Ctrl+V between Glowfly and another X client
-- Keep each step's screenshots as an artifact on success too, for visual review of release
-  builds
-- Share the probe's region_of with journey/find.rs so the journeys and the smoke test name
-  regions the same way
-- Run the smoke job against the packaged .deb (installed binary and desktop entry) instead of
-  target/release
-
-### Real-input smoke tests (Windows)
-
-- A real per-monitor DPI pass at 150% (the runner's one virtual monitor is fixed at 96 DPI; it
-  needs a second virtual display or a sign-out), including dragging the window across monitors
-  with different DPI (WM_DPICHANGED)
-- A UI Automation pass over the AccessKit tree beside SendInput (Invoke and Value patterns, and
-  checking the names a screen reader gets)
-- Alt+Tab back into Glowfly with real keys (releasing Alt must not open the title bar menu), and
-  Alt+Space opening the system menu
-- The drawn title bar with real input: dragging the window by it, a double-click to maximize,
-  Snap Layouts over Maximize, and the Minimize, Maximize and Close buttons
-- Typing through another keyboard layout (German via LoadKeyboardLayout), dead keys,
-  KEYEVENTF_UNICODE text and an IME pass
-- A clipboard round trip with real Ctrl+C and Ctrl+V between Glowfly and another window
-- Run the Windows smoke job against the installed MSI instead of target/release
-- Keep each step's screenshots as an artifact on success too
-- One shared list of the labels and checks both smoke scripts read, so Linux and Windows can't
-  drift apart
-- A Windows ARM64 runner pass
-- A fallback in the app when a transparent (Mica) OpenGL window can't be created, if the
-  software renderer ever refuses it
 
 ### Faster tests (the shared test kit)
 

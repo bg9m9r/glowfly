@@ -98,7 +98,7 @@ fn main() -> eframe::Result {
     }
     // Before any repository opens: lets libgit2 open partial clones older git made.
     glowfly_core::partial::allow_extension();
-    // The real-input smoke tests' state file, only when GLOWFLY_SMOKE_PROBE asks for it.
+    // The installer checks' state file, only when GLOWFLY_SMOKE_PROBE asks for it.
     let probe = smoke_probe::from_env();
     // The OS language, read once: "system" in the Language setting follows it.
     glowfly_core::i18n::detect_system_language();

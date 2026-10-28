@@ -1,7 +1,6 @@
-//! The opt-in state file for the real-input smoke tests (`scripts/smoke-linux.sh`,
-//! `scripts/smoke-windows.ps1`): a small JSON description of what is on screen and in state,
-//! which the scripts read to find widgets by their accessible names and to check what isn't on
-//! disk. Off unless `GLOWFLY_SMOKE_PROBE` names an absolute path; then the shell offers a
+//! The opt-in state file the Linux installer checks (`scripts/installer-lib-linux.sh`) read to
+//! see the installed app start and draw: a small JSON description of what is on screen and in
+//! state. Off unless `GLOWFLY_SMOKE_PROBE` names an absolute path; then the shell offers a
 //! snapshot (`ui/probe.rs`) after every frame, and only a changed one is written, atomically,
 //! by this module's own thread. A write that fails (a reader holding the file on Windows, say)
 //! is retried until it lands or a newer snapshot replaces it, since an unchanged state is never

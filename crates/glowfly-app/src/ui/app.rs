@@ -45,7 +45,7 @@ pub struct GlowflyApp {
     native: Option<NativeWindow>,
     /// The macOS system menu bar showing Glowfly's menus; None elsewhere and in tests.
     menu: Option<NativeMenu>,
-    /// The real-input smoke tests' state file (`smoke_probe.rs`); None unless asked for, and in
+    /// The installer checks' state file (`smoke_probe.rs`); None unless asked for, and in
     /// tests.
     probe: Option<crate::smoke_probe::ProbeWriter>,
     /// How long recent frames took, and where this one's time goes (`state/frame_times.rs`).

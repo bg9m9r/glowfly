@@ -30,6 +30,6 @@ on the [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and its
 - [Navigation, menus and shortcuts](navigation-and-shortcuts.md): the command palette, keyboard shortcuts, tabs and the menu bar.
 - [App, preferences and performance](app-and-platform.md): preferences, notifications, zoom, logs, onboarding, the welcome screen, performance and new directions.
 - [Language and wording](language-and-wording.md): translations and Glowfly's own wording.
-- [Testing and packaging](testing-and-packaging.md): journey and real-input smoke tests, packaging, installers and updates.
+- [Testing and packaging](testing-and-packaging.md): journey tests, packaging, installers and updates.
 - [Colour, themes and type](visual-design.md): themes, brand and branch colour, contrast, type scale and control styling.
 - [Layout and components](ui-components.md): the design system, dialogs, toolbar, window chrome, lists, panels, truncation and review polish.
