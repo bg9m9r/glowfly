@@ -34,16 +34,16 @@ fn index_entry(dir: &Path, path: &str) -> Option<(git2::Oid, u32)> {
 fn discarding_an_untracked_file_is_undone_like_a_delete() {
     let dir = base("ufa-discard");
     write(&dir, "u.txt", "untracked work\n");
-    let before = in_bin("u.txt");
+    let before = in_bin(&dir, "u.txt");
     let d = discard_untracked_saving(&dir, "u.txt", DeleteVia::Trash, false, T).unwrap();
     assert_eq!(d.how, Deleted::Trashed);
     let a = d.undo.expect("undoable");
     assert!(matches!(&a, Action::DeleteFile { path, staged: None, .. } if path == "u.txt"), "{a:?}");
-    assert_eq!(in_bin("u.txt"), before + 1);
+    assert_eq!(in_bin(&dir, "u.txt"), before + 1);
 
     assert_eq!(undo_delete(&dir, &a, T), PutBackHow::FromTrash);
     assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), "untracked work\n");
-    assert_eq!(in_bin("u.txt"), before, "out of the trash again");
+    assert_eq!(in_bin(&dir, "u.txt"), before, "out of the trash again");
 
     // Redo discards it again; a permanent discard comes back from Glowfly's copy.
     assert!(matches!(plan(&dir, &a, true).unwrap(), Plan::DeleteAgain { .. }));
@@ -180,13 +180,13 @@ fn a_revert_that_fails_after_changing_the_file_keeps_its_undo() {
 fn a_trash_that_cant_give_the_file_back_gets_glowflys_copy_and_keeps_its_own() {
     let dir = base("ufa-untrash-fallback");
     write(&dir, "u.txt", "kept\n");
-    let before = in_bin("u.txt");
+    let before = in_bin(&dir, "u.txt");
     let a = delete_saving(&dir, "u.txt", DeleteVia::Trash, false, T).unwrap().undo.unwrap();
     let mac_like = Trashers { restore: unreadable, ..T };
     let how = undo_delete(&dir, &a, mac_like);
     assert_eq!(how, PutBackHow::Written { trash: Some(Untrashed::Unsupported) });
     assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), "kept\n");
-    assert_eq!(in_bin("u.txt"), before + 1, "the trash's copy stays");
+    assert_eq!(in_bin(&dir, "u.txt"), before + 1, "the trash's copy stays");
     assert_eq!(
         how.wrote("u.txt", false, DeleteVia::Trash),
         format!("Put back u.txt from Glowfly's copy (its copy in the {} stays there)", repo::TRASH_NAME)
@@ -194,9 +194,12 @@ fn a_trash_that_cant_give_the_file_back_gets_glowflys_copy_and_keeps_its_own() {
 
     // Emptied from the trash (or changed there): Glowfly's copy, never other bytes.
     std::fs::remove_file(dir.join("u.txt")).unwrap();
+    // Only this test's own item: the bin is shared, and other tests' u.txt stays as it is.
+    let ours = Path::new(dir.file_name().unwrap()).join("u.txt");
     for e in std::fs::read_dir(bin()).unwrap().flatten() {
-        if e.file_name().to_string_lossy().ends_with("-u.txt") {
-            std::fs::write(e.path(), "changed in the trash\n").unwrap();
+        let from = std::fs::read_to_string(e.path()).unwrap_or_default();
+        if e.file_name().to_string_lossy().ends_with("-u.txt.from") && Path::new(&from).ends_with(&ours) {
+            std::fs::write(e.path().with_extension(""), "changed in the trash\n").unwrap();
         }
     }
     assert_eq!(undo_delete(&dir, &a, T), PutBackHow::Written { trash: Some(Untrashed::NotFound) });

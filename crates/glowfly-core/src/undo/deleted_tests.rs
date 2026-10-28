@@ -45,22 +45,22 @@ fn a_deleted_file_comes_back_byte_for_byte_and_goes_again() {
     let dir = base("udel-bytes");
     let edited: &[u8] = b"one\r\ntwo changed\r\n\xff not utf-8";
     std::fs::write(dir.join("f.txt"), edited).unwrap();
-    let before = in_bin("f.txt");
+    let before = in_bin(&dir, "f.txt");
     let d = delete_saving(&dir, "f.txt", DeleteVia::Trash, false, T).unwrap();
     assert_eq!((d.how, d.too_large), (Deleted::Trashed, false));
     let a = d.undo.expect("undoable");
     assert!(matches!(&a, Action::DeleteFile { path, via: DeleteVia::Trash, staged: None, .. } if path == "f.txt"), "{a:?}");
     assert_eq!(a.describe(), "delete of f.txt");
     assert!(!dir.join("f.txt").exists());
-    assert_eq!(in_bin("f.txt"), before + 1);
+    assert_eq!(in_bin(&dir, "f.txt"), before + 1);
 
     undo(&dir, &a);
     assert_eq!(std::fs::read(dir.join("f.txt")).unwrap(), edited);
-    assert_eq!(in_bin("f.txt"), before, "taken back out of the trash");
+    assert_eq!(in_bin(&dir, "f.txt"), before, "taken back out of the trash");
 
     assert_eq!(redo(&dir, &a), Deleted::Trashed);
     assert!(!dir.join("f.txt").exists());
-    assert_eq!(in_bin("f.txt"), before + 1, "redo used the trash again");
+    assert_eq!(in_bin(&dir, "f.txt"), before + 1, "redo used the trash again");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

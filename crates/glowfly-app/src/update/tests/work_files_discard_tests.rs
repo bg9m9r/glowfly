@@ -266,7 +266,7 @@ fn end_to_end_discard_trash() {
     // Undo takes it back out of the bin.
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), contents);
-    assert!(!in_test_bin(&contents), "out of the stand-in bin again");
+    assert!(!in_test_bin(&contents), "out of the stand-in bin again, not from Glowfly's copy: {:?}", st.toasts.last().map(|t| &t.text));
     assert!(st.snap.as_ref().unwrap().unstaged.contains(&entry("u.txt", '?')));
     let _ = std::fs::remove_dir_all(&dir);
 }

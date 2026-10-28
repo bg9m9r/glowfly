@@ -28,7 +28,7 @@ pub(super) fn never(_: &Path) -> Result<(), TrashRefusal> {
 
 pub(super) const T: Trashers = Trashers { system: to_bin, home: never, restore: from_bin };
 
-/// How many files in the stand-in bin were named `name`.
-pub(super) fn in_bin(name: &str) -> usize {
-    crate::testkit::bin::count(&bin(), name)
+/// How many files in the stand-in bin came from `name` in the test's own repository `dir`.
+pub(super) fn in_bin(dir: &Path, name: &str) -> usize {
+    crate::testkit::bin::count(&bin(), dir, name)
 }
