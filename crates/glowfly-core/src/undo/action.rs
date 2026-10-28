@@ -171,12 +171,14 @@ pub enum Action {
         moves: Vec<BranchMove>,
     },
     /// An abort of a merge, single cherry-pick or single revert (`op`) that kept its work in
-    /// the commit `saved` (`aborted.rs`), with HEAD at `head` on `branch` (`None`: detached).
+    /// the commit `saved` (`aborted.rs`), with HEAD at `head` on `branch` (`None`: detached),
+    /// leaving `left` on disk at the operation's paths.
     AbortKept {
         op: MoveOp,
         saved: Oid,
         head: Oid,
         branch: Option<String>,
+        left: Changes,
     },
 }
 

@@ -1,17 +1,18 @@
 //! Undoing an abort that kept its work (`aborted.rs`): the operation's paths get their index
-//! entries (conflicts too) and working copies back, then the files that say the merge,
-//! cherry-pick or revert is in progress, and the kept ref goes. Only while HEAD is where the
-//! abort left it and every one of those paths is still as the abort left it (as HEAD has it);
-//! other files may have changed since, and stay as they are. Redoing aborts again, keeping the
-//! work anew.
+//! entries (conflicts and flags too) and exact bytes on disk back, then the files that say the
+//! merge, cherry-pick or revert is in progress, and the kept ref goes. Only while HEAD is where
+//! the abort left it and every one of those paths is still as the abort left it: the same index
+//! entry as HEAD, and the same bytes on disk as right after the abort (`left`, read byte for
+//! byte, so an edit a clean filter hides from status counts). Other files may have changed
+//! since, and stay as they are. Redoing aborts again, keeping the work anew. `put_back` is also
+//! how a failed abort is rolled back.
 
-use super::aborted::{ABORT_REF_PREFIX, Entry, GITLINK, STATE_FILES, entry, op_of, path_commands, tree_entries};
+use super::aborted::{ABORT_REF_PREFIX, Entry, GITLINK, KEPT_FLAGS, OnDisk, STATE_FILES, entry, on_disk, op_of, tree_entries};
 use super::planning::{at, busy_name, dirty, stale};
 use super::record::head;
-use super::{Action, Plan, Refusal, Saved, saved};
+use super::stash::hash;
+use super::{Action, Changes, Plan, Refusal, Saved, saved};
 use crate::error::{Error, Result};
-use crate::gitcli;
-use crate::repo::status_at;
 use git2::{Commit, Oid, Repository};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -21,15 +22,22 @@ struct Kept {
     paths: Vec<String>,
     absent: BTreeSet<String>,
     index: BTreeMap<String, Entry>,
+    /// Each stage-0 entry's kept flags (`KEPT_FLAGS`, extended flags), where any is set.
+    flags: BTreeMap<String, (u16, u16)>,
     /// `[base, ours, theirs]` of each conflicted path.
     conflicts: BTreeMap<String, [Option<Entry>; 3]>,
     work: BTreeMap<String, Entry>,
     state: Vec<(String, Oid)>,
 }
 
-fn names(repo: &Repository, blob: Oid) -> Result<Vec<String>> {
+fn damaged() -> Error {
+    Error::Other("The kept work is damaged".into())
+}
+
+/// The NUL-separated fields of blob `blob`.
+fn fields(repo: &Repository, blob: Oid) -> Result<Vec<String>> {
     let b = repo.find_blob(blob)?;
-    let text = std::str::from_utf8(b.content()).map_err(|_| Error::Other("The kept work's path list is damaged".into()))?;
+    let text = std::str::from_utf8(b.content()).map_err(|_| damaged())?;
     Ok(text.split('\0').filter(|s| !s.is_empty()).map(str::to_owned).collect())
 }
 
@@ -45,12 +53,18 @@ fn read_kept(repo: &Repository, commit: &Commit) -> Result<Kept> {
             conflicts.entry(p).or_default()[i] = Some(e);
         }
     }
+    let mut flags = BTreeMap::new();
+    for f in fields(repo, part("flags")?)?.chunks(3) {
+        let [p, f, x] = f else { return Err(damaged()) };
+        flags.insert(p.clone(), (f.parse().map_err(|_| damaged())?, x.parse().map_err(|_| damaged())?));
+    }
     let state = repo.find_tree(part("state")?)?;
     let state = state.iter().filter_map(|e| Some((e.name()?.to_owned(), e.id()))).filter(|(n, _)| STATE_FILES.contains(&n.as_str()));
     Ok(Kept {
-        paths: names(repo, part("paths")?)?,
-        absent: names(repo, part("absent")?)?.into_iter().collect(),
+        paths: fields(repo, part("paths")?)?,
+        absent: fields(repo, part("absent")?)?.into_iter().collect(),
         index: sub("index")?,
+        flags,
         conflicts,
         work: sub("work")?,
         state: state.collect(),
@@ -63,9 +77,21 @@ fn is_gitlink(kept: &Kept, head: &BTreeMap<String, Entry>, path: &str) -> bool {
     conflict.chain(kept.index.get(path)).chain(head.get(path)).any(|e| e.1 == GITLINK)
 }
 
+/// The bytes on disk at each of the kept abort `saved`'s paths, read right after the abort.
+pub(super) fn left(workdir: &Path, saved: Oid) -> Result<Changes> {
+    let repo = Repository::open(workdir)?;
+    let kept = read_kept(&repo, &repo.find_commit(saved)?)?;
+    let mut out = Vec::with_capacity(kept.paths.len());
+    for p in kept.paths {
+        let h = hash(workdir, &p)?;
+        out.push((p, h));
+    }
+    Ok(Changes(out))
+}
+
 /// Undoes (or, with `redo`, does again) the kept abort `action`.
 pub(super) fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
-    let Action::AbortKept { op, saved, head: at_head, branch } = action else { unreachable!("a kept abort") };
+    let Action::AbortKept { op, saved, head: at_head, branch, left } = action else { unreachable!("a kept abort") };
     let repo = Repository::open(workdir)?;
     let (pos, head_oid) = head(&repo);
     let what = action.describe();
@@ -86,80 +112,87 @@ pub(super) fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> 
     let kept = read_kept(&repo, &commit)?;
     let in_head = tree_entries(&repo.find_commit(*at_head)?.tree()?)?;
     let index = repo.index()?;
-    let (unstaged, staged, _) = status_at(workdir, true)?;
-    let changed: BTreeSet<String> = unstaged.into_iter().chain(staged).flat_map(|f| [Some(f.path), f.renamed_from]).flatten().collect();
+    let after: BTreeMap<&str, Option<Oid>> = left.0.iter().map(|(p, h)| (p.as_str(), *h)).collect();
     for p in &kept.paths {
         let now = index.get_path(Path::new(p), 0).map(|e| (e.id, e.mode));
         let conflicted = (1..=3).any(|s| index.get_path(Path::new(p), s).is_some());
-        let moved = now.as_ref() != in_head.get(p) || conflicted;
         // A submodule's own checkout is never touched, so only its entry counts.
-        let edited = !is_gitlink(&kept, &in_head, p)
-            && (changed.contains(p) || (!in_head.contains_key(p) && workdir.join(p).symlink_metadata().is_ok()));
-        if moved || edited {
+        let edited = !is_gitlink(&kept, &in_head, p) && after.get(p.as_str()) != Some(&hash(workdir, p)?);
+        if now.as_ref() != in_head.get(p) || conflicted || edited {
             return Ok(dirty(action, redo));
         }
     }
     Ok(Plan::RestoreAbort)
 }
 
-/// Puts the kept abort `action` back (planned by `plan` as `Plan::RestoreAbort`): the index
-/// entries, the working copies, then the operation's own files; then drops the kept ref.
-/// Returns the job's output.
+/// Puts the kept abort `action` back (planned by `plan` as `Plan::RestoreAbort`) and returns
+/// the job's output.
 pub fn restore_abort(workdir: &Path, action: &Action) -> Result<String> {
-    let Action::AbortKept { op, saved, head: at_head, .. } = action else { unreachable!("a kept abort") };
-    let repo = Repository::open(workdir)?;
-    let kept = read_kept(&repo, &repo.find_commit(*saved)?)?;
-    let in_head = tree_entries(&repo.find_commit(*at_head)?.tree()?)?;
-    let failed = |e: Error| Error::Other(format!("{e}. The kept work stays in {ABORT_REF_PREFIX}{saved}"));
+    let Action::AbortKept { op, saved, head, .. } = action else { unreachable!("a kept abort") };
+    put_back(workdir, *saved, *head)?;
+    Ok(format!("The {} is in progress again, with the work it had", op.noun()))
+}
 
-    let mut index = repo.index()?;
-    index.read(true)?;
-    for p in &kept.paths {
-        let _ = index.remove_path(Path::new(p));
+/// Removes the file or link at `path`, if there is one (a folder stays: its files are paths of
+/// their own).
+fn remove(workdir: &Path, path: &str) -> Result<()> {
+    match on_disk(workdir, path)? {
+        OnDisk::Item => saved::write(workdir, path, None),
+        OnDisk::Nothing | OnDisk::Folder => Ok(()),
     }
-    for (p, e) in &kept.index {
-        index.add(&entry(p, *e))?;
-    }
-    for (p, sides) in &kept.conflicts {
-        for (stage, e) in (1u16..).zip(sides) {
-            if let Some(e) = e {
-                let mut e = entry(p, *e);
-                e.flags |= stage << 12;
-                index.add(&e)?;
+}
+
+/// Puts the work kept in `saved` (HEAD at `at_head`) back: the index entries, then what was on
+/// disk (removals first, so a file can become a folder and back), then the operation's own
+/// files; then drops the kept ref. Doesn't check the repository first: `plan` does for Undo, and
+/// a failed abort is rolled back with it. A failure partway says how far it got; the ref stays.
+pub(super) fn put_back(workdir: &Path, saved: Oid, at_head: Oid) -> Result<()> {
+    let name = format!("{ABORT_REF_PREFIX}{saved}");
+    let mut done = "nothing was changed";
+    let mut step = || -> Result<()> {
+        let repo = Repository::open(workdir)?;
+        let kept = read_kept(&repo, &repo.find_commit(saved)?)?;
+        let in_head = tree_entries(&repo.find_commit(at_head)?.tree()?)?;
+        let mut index = repo.index()?;
+        index.read(true)?;
+        for p in &kept.paths {
+            let _ = index.remove_path(Path::new(p));
+        }
+        for (p, e) in &kept.index {
+            let mut e = entry(p, *e);
+            if let Some((f, x)) = kept.flags.get(p) {
+                e.flags |= f & KEPT_FLAGS;
+                e.flags_extended = *x;
+            }
+            index.add(&e)?;
+        }
+        for (p, sides) in &kept.conflicts {
+            for (stage, e) in (1u16..).zip(sides) {
+                if let Some(e) = e {
+                    let mut e = entry(p, *e);
+                    e.flags |= stage << 12;
+                    index.add(&e)?;
+                }
             }
         }
-    }
-    index.write().map_err(|e| failed(e.into()))?;
-
-    let mut from_index = Vec::new();
-    for p in &kept.paths {
-        if is_gitlink(&kept, &in_head, p) {
-            continue;
+        index.write()?;
+        done = "the index was put back, but not every file";
+        let files: Vec<&String> = kept.paths.iter().filter(|p| !is_gitlink(&kept, &in_head, p)).collect();
+        for p in files.iter().filter(|p| !kept.work.contains_key(**p)) {
+            remove(workdir, p)?;
         }
-        let write = |content: Option<Saved>| saved::write(workdir, p, content).map_err(failed);
-        if let Some((blob, mode)) = kept.work.get(p) {
-            write(Some(Saved { blob: *blob, executable: *mode == 0o100755 }))?;
-        } else if kept.absent.contains(p) || !kept.index.contains_key(p) {
-            write(None)?;
-        } else {
-            from_index.push(p.clone());
+        for (p, (blob, mode)) in kept.work.iter().filter(|(p, _)| !kept.absent.contains(*p)) {
+            saved::write(workdir, p, Some(Saved { blob: *blob, executable: *mode == 0o100755 }))?;
         }
-    }
-    let mut output = Vec::new();
-    for cmd in path_commands(&["--literal-pathspecs", "checkout-index", "-f", "-u", "--"], &from_index) {
-        let (ok, out) = gitcli::run(workdir, &cmd);
-        if !ok {
-            return Err(failed(Error::Other(out.trim().to_owned())));
+        done = "the index and the files were put back, but the operation isn't in progress yet";
+        for (file, blob) in &kept.state {
+            crate::persist::atomic_write(&repo.path().join(file), repo.find_blob(*blob)?.content())?;
         }
-        output.push(out);
-    }
-    for (name, blob) in &kept.state {
-        let bytes = repo.find_blob(*blob)?;
-        crate::persist::atomic_write(&repo.path().join(name), bytes.content()).map_err(|e| failed(e.into()))?;
-    }
-    if let Ok(mut r) = repo.find_reference(&format!("{ABORT_REF_PREFIX}{saved}")) {
-        let _ = r.delete();
-    }
-    output.push(format!("The {} is in progress again, with the work it had", op.noun()));
-    Ok(output.iter().map(|s| s.trim()).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n"))
+        if let Ok(mut r) = repo.find_reference(&name) {
+            let _ = r.delete();
+        }
+        Ok(())
+    };
+    let result = step();
+    result.map_err(|e| Error::Other(format!("{e}. Putting the work back stopped: {done}. All of it is still kept in {name}")))
 }

@@ -9,21 +9,21 @@ use crate::testutil::*;
 use git2::{Repository, RepositoryState};
 use std::path::Path;
 
-fn read(dir: &Path, file: &str) -> String {
+pub(super) fn read(dir: &Path, file: &str) -> String {
     std::fs::read_to_string(dir.join(file)).unwrap()
 }
 
-fn state(dir: &Path) -> RepositoryState {
+pub(super) fn state(dir: &Path) -> RepositoryState {
     Repository::open(dir).unwrap().state()
 }
 
 /// The git folder's `name` file, if any.
-fn git_file(dir: &Path, name: &str) -> Option<String> {
+pub(super) fn git_file(dir: &Path, name: &str) -> Option<String> {
     std::fs::read_to_string(dir.join(".git").join(name)).ok()
 }
 
 /// Paths with conflict stages in the index, sorted.
-fn conflicted(dir: &Path) -> Vec<String> {
+pub(super) fn conflicted(dir: &Path) -> Vec<String> {
     let index = Repository::open(dir).unwrap().index().unwrap();
     let mut out: Vec<String> =
         index.conflicts().unwrap().flatten().filter_map(|c| c.our.or(c.their)).map(|e| String::from_utf8(e.path).unwrap()).collect();
@@ -32,33 +32,44 @@ fn conflicted(dir: &Path) -> Vec<String> {
 }
 
 /// The staged rows as (path, status, renamed from).
-fn staged(dir: &Path) -> Vec<(String, char, Option<String>)> {
+pub(super) fn staged(dir: &Path) -> Vec<(String, char, Option<String>)> {
     let (_, staged, _) = status_at(dir, true).unwrap();
     staged.into_iter().map(|f| (f.path, f.status, f.renamed_from)).collect()
 }
 
-fn kept_refs(dir: &Path) -> usize {
+pub(super) fn kept_refs(dir: &Path) -> usize {
     let repo = Repository::open(dir).unwrap();
     repo.references_glob(&format!("{ABORT_REF_PREFIX}*")).unwrap().count()
 }
 
-/// Aborts keeping the work, running the commands as the job does.
-fn abort(dir: &Path) -> Action {
-    let s = abort_saving(dir).expect("the work is kept");
-    for c in &s.cmds {
-        let (ok, out) = run(dir, c);
-        assert!(ok, "git {c:?} failed: {out}");
+/// Runs `cmds` in order through gitcli, stopping at the first that fails, as the job does.
+pub(super) fn run_all(dir: &Path, cmds: &[Vec<String>]) -> (bool, String) {
+    let mut out = String::new();
+    for c in cmds {
+        let (ok, text) = run(dir, c);
+        out.push_str(&text);
+        if !ok {
+            return (false, out);
+        }
     }
-    s.action
+    (true, out)
 }
 
-fn undo(dir: &Path, action: &Action) {
+/// Aborts keeping the work, running the commands as the job does.
+pub(super) fn abort(dir: &Path) -> Action {
+    let r = abort_keeping(dir, Some(&[]), |cmds| run_all(dir, cmds));
+    assert!(r.ok, "{}", r.output);
+    assert!(r.output.contains(ABORT_REF_PREFIX), "names the ref: {}", r.output);
+    r.action.expect("recorded for undo")
+}
+
+pub(super) fn undo(dir: &Path, action: &Action) {
     assert_eq!(plan(dir, action, false).unwrap(), Plan::RestoreAbort);
     restore_abort(dir, action).unwrap();
 }
 
 /// main and other both change a.txt and b.txt; other also adds n.txt. Stopped merging other.
-fn two_conflicts(name: &str) -> std::path::PathBuf {
+pub(super) fn two_conflicts(name: &str) -> std::path::PathBuf {
     let dir = scratch_repo(name);
     write(&dir, "b.txt", "b base\n");
     write(&dir, "u.txt", "unrelated\n");
@@ -212,8 +223,9 @@ fn nothing_aborts_when_the_work_cant_be_kept() {
     std::fs::remove_file(dir.join("b.txt")).unwrap();
     std::fs::create_dir(dir.join("b.txt")).unwrap();
     write(&dir, "b.txt/inside.txt", "a folder where the conflicted file was\n");
-    let err = abort_saving(&dir).unwrap_err();
-    assert!(err.to_string().contains("b.txt isn't a regular file"), "{err}");
+    let r = abort_keeping(&dir, Some(&[]), |_| panic!("nothing runs"));
+    assert!(!r.ok && r.action.is_none());
+    assert!(r.output.starts_with("Nothing was aborted") && r.output.contains("b.txt is a folder holding b.txt/inside.txt"), "{}", r.output);
     assert_eq!(state(&dir), RepositoryState::Merge, "nothing was aborted");
     assert_eq!(kept_refs(&dir), 0);
     let _ = std::fs::remove_dir_all(&dir);

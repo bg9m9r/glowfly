@@ -117,6 +117,7 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Undo for aborting a rebase, a patch series or a multi-commit cherry-pick or revert
 - Undo of a kept abort after a restart, from its `refs/glowfly/aborted/` ref (listed in the journal)
 - Keep a changed symbolic link among an aborted operation's files (today the kept abort is refused)
+- Undo of a kept abort also brings back MERGE_AUTOSTASH (the abort's reset files it in the stash list), MERGE_RR and AUTO_MERGE
 - Undo for Skip commit and Skip patch (the resolved files of the skipped step)
 - Bisect in the strip: the good and bad counts, and Mark good / Mark bad
 - Keyboard shortcuts for Continue and Commit merge

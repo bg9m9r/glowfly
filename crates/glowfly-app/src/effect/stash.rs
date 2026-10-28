@@ -27,9 +27,10 @@ pub enum StashEffect {
     /// before applying it; reports `StashMsg::PathsRead`, scoped to the tab that asked.
     ReadPaths { cwd: PathBuf, ask: StashAsk },
     /// Aborts the merge, single cherry-pick or single revert in progress in `cwd`, keeping its
-    /// work first (`undo::abort_saving`) and recording the abort for Undo; nothing is aborted
-    /// when it can't all be kept. Unscoped like RunGit: it ends the active job.
-    AbortKeeping { cwd: PathBuf },
+    /// work first (`undo::abort_keeping`) and recording the abort for Undo; nothing is aborted
+    /// when it can't all be kept. Old kept aborts' refs are dropped, except those of the commits
+    /// in `keep` (named by undo entries). Unscoped like RunGit: it ends the active job.
+    AbortKeeping { cwd: PathBuf, keep: Vec<Oid> },
 }
 
 /// The auto-stash to put back: the stash with commit `oid` in `cwd`'s list.
@@ -48,7 +49,7 @@ impl StashEffect {
             | StashEffect::ReadAutoStashes { cwd }
             | StashEffect::SaveAutoStashes { cwd, .. }
             | StashEffect::ReadPaths { cwd, .. }
-            | StashEffect::AbortKeeping { cwd } => cwd,
+            | StashEffect::AbortKeeping { cwd, .. } => cwd,
         }
     }
 }

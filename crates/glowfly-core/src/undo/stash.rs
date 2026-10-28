@@ -51,7 +51,7 @@ fn status_entries(workdir: &Path) -> Result<Vec<FileEntry>> {
 
 /// The hash of the working file `path` as it is: `None` when absent, the link text's hash for a
 /// symbolic link, and zero for a folder (a submodule).
-fn hash(workdir: &Path, path: &str) -> Result<Option<Oid>> {
+pub(super) fn hash(workdir: &Path, path: &str) -> Result<Option<Oid>> {
     let f = workdir.join(crate::repo::contained(path)?);
     let meta = match f.symlink_metadata() {
         Ok(m) => m,

@@ -24,6 +24,7 @@ use git2::Oid;
 
 mod aborted;
 mod aborted_restore;
+mod aborted_run;
 mod action;
 mod deleted;
 mod kinds;
@@ -39,8 +40,9 @@ mod resumed;
 mod reverted;
 mod saved;
 mod stash;
-pub use aborted::{ABORT_REF_PREFIX, AbortSaving, abort_saving};
+pub use aborted::ABORT_REF_PREFIX;
 pub use aborted_restore::restore_abort;
+pub use aborted_run::{AbortRun, abort_keeping};
 pub use action::{Action, BranchMove, Changes, Created, Discarded, HeadPos, Staged};
 pub use deleted::{DeleteVia, DeletedSaving, MAX_KEPT_BYTES, Trashers, delete_again, delete_saving, delete_staged_saving, put_back};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
@@ -120,7 +122,7 @@ pub enum Plan {
     },
     /// Put a kept abort back (`restore_abort`): the operation is in progress again.
     RestoreAbort,
-    /// Abort the operation in progress again, keeping its work (`abort_saving`).
+    /// Abort the operation in progress again, keeping its work (`abort_keeping`).
     AbortAgain,
 }
 
@@ -145,6 +147,8 @@ fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
+#[cfg(test)]
+mod aborted_safety_tests;
 #[cfg(test)]
 mod aborted_tests;
 #[cfg(test)]

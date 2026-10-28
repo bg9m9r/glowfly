@@ -127,7 +127,7 @@ Your changes were stashed as \"{}\".
             Ok(output) => done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
             Err(e) => failed(format!("Could not put the {} back: {e}", action.describe())),
         },
-        Ok(Plan::AbortAgain) => match super::stashes::abort_keeping(cwd) {
+        Ok(Plan::AbortAgain) => match super::stashes::abort_keeping(cwd, None) {
             (true, output, Some(again)) => done(true, output, UndoResult::Done { redo, before: action, after: Box::new(again) }),
             (_, output, _) => failed(output),
         },

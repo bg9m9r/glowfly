@@ -84,7 +84,7 @@ fn every_action_has_a_preview() {
         Action::StashDrop { stash: oid(1), message: "m".into() },
         Action::Resolve { path: "a.txt".into(), ids, head: None, staged: None, before: None, after: None },
         Action::DeleteFile { path: "a.txt".into(), before: saved, via: DeleteVia::Permanent, staged: None },
-        Action::AbortKept { op: MoveOp::CherryPick, saved: oid(1), head: oid(2), branch: branch.clone() },
+        Action::AbortKept { op: MoveOp::CherryPick, saved: oid(1), head: oid(2), branch: branch.clone(), left: Changes(Vec::new()) },
     ];
     for a in &all {
         for redo in [false, true] {

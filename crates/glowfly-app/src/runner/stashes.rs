@@ -27,26 +27,20 @@ pub(super) fn run(e: StashEffect) -> Option<Msg> {
             let paths = stash_ops::changed_paths(&cwd, ask.oid).map_err(|e| e.to_string());
             Some(Msg::Stash(StashMsg::PathsRead { ask, paths }))
         }
-        StashEffect::AbortKeeping { cwd } => {
-            let (ok, output, action) = abort_keeping(&cwd);
+        StashEffect::AbortKeeping { cwd, keep } => {
+            let (ok, output, action) = abort_keeping(&cwd, Some(&keep));
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo: Some(UndoResult::Recorded(action)) }))
         }
     }
 }
 
-/// Keeps the work of the operation in progress in `cwd`, then aborts it: whether that worked,
-/// the output, and the abort to record for Undo. When the work can't all be kept, nothing is
-/// aborted; when an abort command fails, the output says where the work is kept.
-pub(super) fn abort_keeping(cwd: &Path) -> (bool, String, Option<undo::Action>) {
-    let saving = match undo::abort_saving(cwd) {
-        Ok(s) => s,
-        Err(e) => return (false, format!("Nothing was aborted: {e}."), None),
-    };
-    let (ok, output) = super::git_ops::run_git(cwd, &saving.cmds, None, true);
-    if !ok {
-        return (false, format!("{output}\nThe operation's work is kept in {}.", saving.kept), None);
-    }
-    (true, output, Some(saving.action))
+/// Keeps the work of the operation in progress in `cwd`, then aborts it (`undo::abort_keeping`,
+/// which puts everything back when an abort command fails): whether that worked, the output, and
+/// the abort to record for Undo. Old kept aborts' refs are dropped unless `prune` lists them
+/// (`None`: none are).
+pub(super) fn abort_keeping(cwd: &Path, prune: Option<&[git2::Oid]>) -> (bool, String, Option<undo::Action>) {
+    let r = undo::abort_keeping(cwd, prune, |cmds| super::git_ops::run_git(cwd, cmds, None, true));
+    (r.ok, r.output, r.action)
 }
 
 impl Execute for StashEffect {

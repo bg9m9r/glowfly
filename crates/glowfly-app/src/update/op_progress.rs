@@ -6,6 +6,7 @@ use crate::effect::{Effect, StashEffect};
 use crate::msg::JobMsg;
 use crate::state::op_confirm::can_keep;
 use crate::state::{AppState, Selection};
+use glowfly_core::undo::Action;
 use std::time::Instant;
 
 /// Selects the WIP row, shows the details panel and scrolls the graph to its top (where the WIP
@@ -35,5 +36,14 @@ pub(super) fn abort(st: &mut AppState, label: String, args: Vec<String>, keep: b
         st.toast(false, t.tr("op.abort.changed.toast"), now);
         return;
     }
-    super::ops::begin_job(st, &label, true, |cwd| Effect::Stash(StashEffect::AbortKeeping { cwd }), fx);
+    let keep = kept_aborts(st);
+    super::ops::begin_job(st, &label, true, |cwd| Effect::Stash(StashEffect::AbortKeeping { cwd, keep }), fx);
+}
+
+/// The kept aborts every tab's undo history still names, whose refs must stay.
+fn kept_aborts(st: &AppState) -> Vec<git2::Oid> {
+    let parked = st.tabs.iter().filter_map(|t| t.parked.as_ref()).map(|p| &p.session.undo);
+    let histories = std::iter::once(&st.session.undo).chain(parked);
+    let actions = histories.flat_map(|h| h.undo.iter().chain(&h.redo));
+    actions.filter_map(|a| if let Action::AbortKept { saved, .. } = a { Some(*saved) } else { None }).collect()
 }

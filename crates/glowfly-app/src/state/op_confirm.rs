@@ -1,7 +1,7 @@
 //! Asking before the in-progress banner's Abort, Skip and Reset bisect, which lose work: what
 //! each does, what is lost (the resolved files, edits in conflicted ones) and whether Undo
 //! brings it back. A merge, single cherry-pick or single revert with work to keep (resolved or
-//! staged files, conflicted ones) aborts keeping it first (`glowfly_core::undo::abort_saving`):
+//! staged files, conflicted ones) aborts keeping it first (`glowfly_core::undo::abort_keeping`):
 //! Undo puts the operation back in progress with that work, and edits to other files stay.
 
 use super::AppState;
