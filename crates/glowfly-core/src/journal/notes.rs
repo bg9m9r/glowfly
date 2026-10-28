@@ -91,6 +91,7 @@ impl Op {
     /// The note for a job recognised as `kind` with command line `cmd`, or `None` for the kinds
     /// that don't rewrite anything (checkouts, commits, creating refs, stashes, discards).
     pub fn of_kind(kind: &UndoKind, cmd: &[String]) -> Option<Op> {
+        let cmd = if cmd.first().is_some_and(|a| a == "--literal-pathspecs") { &cmd[1..] } else { cmd };
         Some(match kind {
             UndoKind::Move { op, detail } => match op {
                 MoveOp::Rebase => Op::Rebase { onto: detail.clone() },

@@ -4,8 +4,10 @@
 //!
 //! git templates are split into arguments first (the External Tools rules: whitespace
 //! separates, double quotes group, no escapes), then filled in, so a value never splits or
-//! joins arguments; `{files}` is an argument of its own and becomes one per file. Shell
-//! templates get every value single-quoted for sh. Pure: the OS is the `windows` parameter.
+//! joins arguments; `{files}` is an argument of its own and becomes one per file, and a git
+//! command with `{files}` starts with `--literal-pathspecs` so a `[` or `*` in a name matches
+//! only that file. Shell templates get every value single-quoted for sh. Pure: the OS is the
+//! `windows` parameter.
 
 use super::{Command, Confirm, Kind, Needs, ProblemKind};
 use crate::external_tools::split;
@@ -107,6 +109,10 @@ fn strip_git_word(t: &str) -> &str {
     }
 }
 
+/// git's options for how every pathspec is read. A git template naming one of them chose for
+/// itself, and git refuses `--literal-pathspecs` alongside the others.
+const PATHSPEC_OPTIONS: [&str; 4] = ["--literal-pathspecs", "--glob-pathspecs", "--noglob-pathspecs", "--icase-pathspecs"];
+
 /// What the placeholders hold where a command runs.
 #[derive(Clone, Copy, Debug)]
 pub struct Vars<'a> {
@@ -187,8 +193,12 @@ impl Command {
             Kind::Git => {
                 let repo = native(v.repo);
                 let repo = repo.to_str().unwrap_or_default();
+                let words = split(strip_git_word(&self.template)).unwrap_or_default();
                 let mut out = Vec::new();
-                for arg in split(strip_git_word(&self.template)).unwrap_or_default() {
+                if self.needs.files && !words.iter().any(|w| PATHSPEC_OPTIONS.contains(&w.as_str())) {
+                    out.push("--literal-pathspecs".to_owned());
+                }
+                for arg in words {
                     if arg == "{files}" {
                         out.extend(v.files.iter().map(|f| safe_path(f, true)));
                         continue;

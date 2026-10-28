@@ -162,6 +162,8 @@ fn of_kind_covers_the_rewriting_operations_only() {
     assert_eq!(Op::of_kind(&UndoKind::Reset(ResetMode::Hard), &cmd), Some(Op::Reset { mode: "hard".into(), to: "1a2b3c4".into() }));
     let soft = args(&["reset", "--soft", "HEAD~1"]);
     assert_eq!(Op::of_kind(&UndoKind::Reset(ResetMode::Soft), &soft), Some(Op::Reset { mode: "soft".into(), to: "HEAD~1".into() }));
+    let literal = args(&["--literal-pathspecs", "reset", "--soft", "HEAD~1"]);
+    assert_eq!(Op::of_kind(&UndoKind::Reset(ResetMode::Soft), &literal), Some(Op::Reset { mode: "soft".into(), to: "HEAD~1".into() }));
     assert_eq!(Op::of_kind(&UndoKind::Commit { amend: true }, &[]), Some(Op::Amend));
     assert_eq!(Op::of_kind(&UndoKind::DeleteBranch("old".into()), &[]), Some(Op::DeleteBranch { name: "old".into() }));
     for none in [

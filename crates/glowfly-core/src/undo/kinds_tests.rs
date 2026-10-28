@@ -99,6 +99,10 @@ fn classify_recognises_glowfly_commands() {
         (&["stash", "drop", "stash@{1}"], Some(UndoKind::StashDrop { rev: Some("stash@{1}".into()) })),
         (&["stash", "drop", "-q", "stash@{1}"], None),
         (&["fetch", "--all"], None),
+        // A custom command with {files} starts with --literal-pathspecs; it reads as without.
+        (&["--literal-pathspecs", "commit", "-m", "m", "--", "a[1].txt"], Some(UndoKind::Commit { amend: false })),
+        (&["--literal-pathspecs", "reset", "--hard", "HEAD~1"], Some(UndoKind::Reset(ResetMode::Hard))),
+        (&["--literal-pathspecs", "add", "--", "a.txt"], None),
     ];
     for (argv, want) in table {
         assert_eq!(&UndoKind::classify(&args(argv)), want, "{argv:?}");

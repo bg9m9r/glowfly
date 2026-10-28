@@ -100,10 +100,13 @@ fn plain(s: &str) -> bool {
 }
 
 impl UndoKind {
-    /// Recognises the command lines Glowfly builds for undoable operations.
+    /// Recognises the command lines Glowfly builds for undoable operations. A leading
+    /// `--literal-pathspecs` (a custom command with `{files}`) changes only how paths match.
     pub fn classify(argv: &[String]) -> Option<UndoKind> {
         let a: Vec<&str> = argv.iter().map(String::as_str).collect();
         match a.as_slice() {
+            ["--literal-pathspecs", "stash", ..] => stash_kind(&a, argv),
+            ["--literal-pathspecs", ..] => Self::classify(&argv[1..]),
             ["checkout", rest @ ..] => checkout_kind(rest),
             ["commit", ..] => Some(UndoKind::Commit { amend: a.contains(&"--amend") }),
             ["reset", mode, rev] if plain(rev) => match *mode {

@@ -79,6 +79,12 @@ Values are passed safely:
   placeholder; Glowfly reports that as a problem.
 - A file name starting with `-` (or `:` for git) gets `./` in front, so it is never read as an
   option.
+- A git command with `{files}` runs as `git --literal-pathspecs ...`, so a file named `a[1].txt`
+  is only that file, never also `a1.txt`. This covers every path in that command, including ones
+  you type: `log -- *.rs {files}` looks for a file named `*.rs`. To match patterns, put
+  `--glob-pathspecs` (or `--noglob-pathspecs`, `--icase-pathspecs`) first in the template;
+  Glowfly then leaves the choice to you. Commands without `{files}` read paths as git usually
+  does. In a shell command, `{files}` stays plain paths.
 
 A `{word}` right after `@` or `$` is left alone, so git's `@{upstream}` and the shell's `${HOME}`
 work as usual. Any other `{word}` that isn't a placeholder is reported.
