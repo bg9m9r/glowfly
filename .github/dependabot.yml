@@ -1,5 +1,7 @@
-# Keeps the SHA-pinned actions and the Cargo dependencies current. Updates are grouped into one
-# pull request per ecosystem, and their commit messages follow Conventional Commits.
+# Keeps the SHA-pinned actions and the Cargo dependencies current, one grouped pull request per
+# ecosystem, with Conventional Commit messages. Incompatible versions are left out (they need code
+# or config changes, so they are planned as issues): Cargo updates stay inside Cargo.toml's
+# version requirements, like `cargo update`, and action updates skip major versions.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -9,16 +11,19 @@ updates:
     groups:
       actions:
         patterns: ['*']
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
     commit-message:
       prefix: ci
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: monthly
-    open-pull-requests-limit: 5
+    versioning-strategy: lockfile-only
     groups:
-      cargo-minor:
-        update-types: [minor, patch]
+      cargo:
+        patterns: ['*']
     commit-message:
       prefix: chore
       include: scope

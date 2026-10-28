@@ -49,4 +49,4 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 
 ## Workflows
 
-- Every action in `.github/workflows/` is pinned to a commit SHA with its version in a comment; `.github/dependabot.yml` proposes the updates (weekly for actions, monthly and grouped for Cargo). Each workflow sets its token permissions: read-only except `release.yml`.
+- Every action in `.github/workflows/` is pinned to a commit SHA with its version in a comment; `.github/dependabot.yml` proposes the updates (weekly for actions, skipping major versions; monthly for Cargo, inside the Cargo.toml requirements). Each workflow sets its token permissions: read-only except `release.yml`.
