@@ -81,7 +81,8 @@ pub struct ConflictFile {
 #[derive(Debug)]
 pub struct ConflictsFailed {
     pub error: Error,
-    pub undo: Option<Action>,
+    /// Boxed: an `Action` is large, and this travels in every `Err`.
+    pub undo: Option<Box<Action>>,
 }
 
 impl From<Error> for ConflictsFailed {
@@ -230,7 +231,7 @@ pub(super) fn conflicts_saving_with(
     let undo = (!files.is_empty()).then_some(Action::Conflicts { change, head: at, state, heads, files });
     match out {
         Ok(()) => Ok(undo),
-        Err(error) => Err(ConflictsFailed { error, undo }),
+        Err(error) => Err(ConflictsFailed { error, undo: undo.map(Box::new) }),
     }
 }
 

@@ -66,7 +66,7 @@ pub(super) fn local_done(workdir: &Path, op: LocalOp) -> Msg {
         Err(ConflictsFailed { error, undo: None }) => StageMsg::LocalOpDone(Err(error.to_string())),
         Err(ConflictsFailed { error, undo: Some(undo) }) => {
             let error = format!("{error}. Undo puts back the files it changed before it stopped.");
-            StageMsg::LocalOpFailed { error, undo }
+            StageMsg::LocalOpFailed { error, undo: *undo }
         }
     })
 }

@@ -62,7 +62,7 @@ fn a_change_that_fails_partway_records_what_it_changed() {
         Err(crate::error::Error::Other("the second batch failed".into()))
     }));
     assert_eq!(f.error.to_string(), "the second batch failed");
-    let undo = f.undo.expect("the first file's change is undoable");
+    let undo = *f.undo.expect("the first file's change is undoable");
     let Action::Conflicts { files, .. } = &undo else { panic!("{undo:?}") };
     assert_eq!(files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["a.txt"]);
     apply(&dir, &undo, false);
