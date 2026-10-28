@@ -51,7 +51,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let git_dir = repo.path().to_path_buf();
     let common = common_dir::CommonDir::of(&repo);
     let name = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| workdir.display().to_string());
-    let state = repo.state();
+    let state = op_state::state(&repo);
     let rebase = crate::rebase::progress_of(&repo);
     let am = crate::patch_ops::progress_of(&repo);
 
@@ -78,7 +78,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
 
     let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).map(|c| commit_text::message(&c).trim_end().to_owned());
     let commit_template = template::commit_template(&repo, &workdir);
-    let merge_message = (state == git2::RepositoryState::Merge).then(|| merge_msg::merge_message(&repo)).flatten();
+    let merge_message = op_state::has_merge_msg(state).then(|| merge_msg::merge_message(&repo)).flatten();
     let gitflow = crate::gitflow::read_config(&repo);
     let lfs_patterns = crate::lfs::root_patterns(&workdir);
     let mut refs: HashMap<Oid, Vec<RefLabel>> = HashMap::new();

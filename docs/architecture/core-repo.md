@@ -54,7 +54,8 @@ source file, update its line here.
 - Conflicts and their resolution, keeping git's resolve-undo record: the resolved files, the stage ids of one record, Mark resolved and Mark conflicted: `resolve_undo.rs`.
 - Conflict markers left in working files: `markers.rs`.
 - The picks a file saved with markers holds: `conflict_saved.rs`.
-- A merge's MERGE_MSG without its comment lines, read with libgit2 from the worktree's own git dir to prefill the commit draft: `merge_msg.rs`.
+- The MERGE_MSG of a stopped merge, cherry-pick or revert without its comment lines, read with libgit2 from the worktree's own git dir to prefill the commit draft: `merge_msg.rs`.
+- The operation in progress as loads report it: libgit2's state, or the pick or revert sequence `sequencer/todo` still holds after its stopped commit was committed: `op_state.rs`. Tests: `op_state_tests.rs`.
 
 ## Submodules, worktrees, remotes
 

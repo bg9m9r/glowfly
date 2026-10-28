@@ -243,6 +243,20 @@ fn apply_and_store_run_on_the_stash() {
 }
 
 #[test]
+fn apply_stash_is_refused_while_a_job_runs_or_an_operation_is_in_progress() {
+    let (mut st, dir, _, stash) = fixture("journal-lost-apply-refused");
+    show_found(&mut st, &dir);
+    st.job = Some(running());
+    assert!(lost(&mut st, LostMsg::Apply(stash)).is_empty() && st.modal.is_none(), "refused while a job runs");
+    assert!(st.log.last().is_some_and(|l| l.text == "Another operation is still running."));
+    st.job = None;
+    st.snap.as_mut().unwrap().state = git2::RepositoryState::Merge;
+    assert!(lost(&mut st, LostMsg::Apply(stash)).is_empty() && st.modal.is_none(), "refused mid-merge");
+    assert!(st.log.last().is_some_and(|l| l.text == "Finish or abort the operation in progress first."));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn parking_the_tab_asks_again() {
     let (mut st, dir) = opened("journal-lost-park");
     open_loaded(&mut st, &dir);

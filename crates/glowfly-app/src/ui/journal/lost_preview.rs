@@ -8,7 +8,7 @@ use crate::journal::{JournalMsg, LostMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::journal::short;
-use crate::state::journal_lost::{LostView, label, restore_plan};
+use crate::state::journal_lost::{LostView, apply_blocked, label, restore_plan};
 use crate::ui::pane_status;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::{buttons, reason};
@@ -57,14 +57,16 @@ fn pane(ui: &mut Ui, st: &AppState, view: &LostView, c: &LostCommit, msgs: &mut 
     ui.add_space(12.0);
     let lost = |m: LostMsg| Msg::Journal(JournalMsg::Lost(m));
     if stash {
+        let why = st.snap.as_ref().and_then(|snap| apply_blocked(snap, st.job.is_some(), t));
         ui.horizontal(|ui| {
-            if ui.add(buttons::primary(t.tr("journal.lost.apply"))).clicked() {
+            if ui.add(buttons::primary(t.tr("journal.lost.apply")).enabled(why.is_none()).why(why)).clicked() {
                 msgs.push(lost(LostMsg::Apply(c.oid)));
             }
             if ui.add(buttons::secondary(t.tr("journal.lost.store"))).clicked() {
                 msgs.push(lost(LostMsg::Store(c.oid)));
             }
         });
+        reason::line(ui, why, Align::Min);
         return;
     }
     let why = st.snap.as_ref().and_then(|snap| restore_plan(snap, c, st.job.is_some(), t).err());

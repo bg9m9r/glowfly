@@ -10,7 +10,7 @@ use crate::journal::{JournalMsg, LostMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::journal::short;
-use crate::state::journal_lost::{LostView, footer_lines, label, restore_plan};
+use crate::state::journal_lost::{LostView, apply_blocked, footer_lines, label, restore_plan};
 use crate::ui::common::{menu_header, menu_item, menu_item_if};
 use crate::ui::empty_state::{EmptyIcon, empty_state};
 use crate::ui::pane_status::{self, Failure};
@@ -116,7 +116,8 @@ fn menu(ui: &mut Ui, st: &AppState, snap: &Snapshot, c: &LostCommit, name: &str,
             menu_item_if(msgs, ui, t.tr("journal.restore.button"), why.as_deref(), lost(LostMsg::Restore(c.oid)));
         }
         LostKind::Stash { .. } => {
-            menu_item(msgs, ui, t.tr("journal.lost.apply"), lost(LostMsg::Apply(c.oid)));
+            let why = apply_blocked(snap, st.job.is_some(), t);
+            menu_item_if(msgs, ui, t.tr("journal.lost.apply"), why, lost(LostMsg::Apply(c.oid)));
             menu_item(msgs, ui, t.tr("journal.lost.store"), lost(LostMsg::Store(c.oid)));
         }
     }

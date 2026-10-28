@@ -19,8 +19,8 @@ pub struct CommitDraft {
     /// The template the draft was prefilled with. Some => leave its comment lines out of the
     /// message and don't prefill again.
     pub template: Option<CommitTemplate>,
-    /// The MERGE_MSG text the draft was filled with; Some => a merge's own message, cleared
-    /// again when the merge ends while it is untouched.
+    /// The MERGE_MSG text the draft was filled with; Some => a merge's, cherry-pick's or
+    /// revert's own message, cleared again when the operation ends while it is untouched.
     pub merge_msg: Option<String>,
 }
 
@@ -137,9 +137,21 @@ fn without_template_comments(description: &str, t: &CommitTemplate) -> String {
     description.lines().filter(|l| !(comment(l) && template.contains(&l.trim_end()))).collect::<Vec<_>>().join("\n")
 }
 
+/// Why Amend can't be used in `state`: a merge, cherry-pick or revert is stopped, and amending
+/// would rewrite HEAD under it. None otherwise (a rebase stopped to edit a commit amends it).
+pub fn amend_blocked(t: Lang, state: RepositoryState) -> Option<&'static str> {
+    use RepositoryState::*;
+    match state {
+        Merge => Some(t.tr("commit.blocked.amend_merge")),
+        CherryPick | CherryPickSequence => Some(t.tr("commit.blocked.amend_cherry_pick")),
+        Revert | RevertSequence => Some(t.tr("commit.blocked.amend_revert")),
+        _ => None,
+    }
+}
+
 /// Why committing (or staging everything and committing) can't start now; None when it can.
-/// While merging, every conflict must be resolved, an amend can't run, and an empty Staged list
-/// still commits (a merge whose result equals HEAD).
+/// While merging, every conflict must be resolved and an empty Staged list still commits (a
+/// merge whose result equals HEAD); during a merge, cherry-pick or revert an amend can't run.
 pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     let t = st.settings.lang();
     let Some(snap) = &st.snap else { return Some(t.tr("commit.blocked.no_repo")) };
@@ -148,8 +160,8 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     let conflicted = snap.unstaged.iter().any(|f| f.status == '!');
     if st.job.is_some() {
         Some(t.tr("commit.blocked.job_running"))
-    } else if merging && d.amend {
-        Some(t.tr("commit.blocked.amend_merge"))
+    } else if let Some(why) = amend_blocked(t, snap.state).filter(|_| d.amend) {
+        Some(why)
     } else if merging && conflicted {
         Some(t.tr("commit.blocked.merge_conflicts"))
     } else if d.is_untouched_template() {

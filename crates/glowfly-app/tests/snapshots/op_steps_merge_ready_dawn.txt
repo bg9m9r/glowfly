@@ -55,7 +55,7 @@ Label "Check what goes in"
 Label "Staged: 3 · Left out: 1"
 Button "Hide: Commit the merge"
 Label "Commit the merge"
-CheckBox "Amend" [off]
+CheckBox "Amend" [disabled, off]
 TextInput "Commit summary" = "Merge branch 'list-side'"
 Label "24/72"
 MultilineTextInput "Description"

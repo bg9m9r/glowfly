@@ -34,13 +34,15 @@ pub struct Snapshot {
     pub head_message: Option<String>,
     /// The commit.template text to prefill an empty draft with.
     pub commit_template: Option<CommitTemplate>,
-    /// MERGE_MSG cleaned of comment lines while a merge is in progress (prefills the commit
+    /// MERGE_MSG cleaned of comment lines while a merge, cherry-pick or revert is stopped (prefills the commit
     /// draft); full loads only.
     pub merge_message: Option<String>,
     /// The gitflow.* settings (Preferences > Git Flow, palette Start entries).
     pub gitflow: crate::gitflow::GitFlowConfig,
     /// The root .gitattributes' LFS patterns (empty without one); refreshed by full loads and whole status reads (`LoadMsg`).
     pub lfs_patterns: Vec<crate::lfs::LfsPattern>,
+    /// The operation in progress (`repo::state`: a pick or revert sequence with picks left
+    /// counts, even once libgit2 says clean).
     pub state: RepositoryState,
     /// Where an in-progress rebase is (step, stopped commit); None otherwise. Read by every full
     /// load.

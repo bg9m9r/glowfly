@@ -48,7 +48,7 @@ impl ChangeCounts {
 pub fn status_at(workdir: &Path, git_status: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState)> {
     let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     let (unstaged, staged) = load_status(&repo, git_status)?;
-    Ok((unstaged, staged, repo.state()))
+    Ok((unstaged, staged, super::op_state::state(&repo)))
 }
 
 /// `status_at`, plus the memo of the index the read started from (`IndexMemo`), read just
@@ -62,7 +62,7 @@ pub fn status_and_index(
     let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     let memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i));
     let (unstaged, staged) = load_status(&repo, git_status)?;
-    Ok((unstaged, staged, repo.state(), memo))
+    Ok((unstaged, staged, super::op_state::state(&repo), memo))
 }
 
 /// (unstaged, staged), each sorted by path. Read by git itself when the repository is set up for

@@ -1,6 +1,7 @@
 //! The commit box pinned under the WIP file lists, or inside step 3 of an operation's steps
 //! (`BoxStyle`: titled "Commit" in the plain panel; a secondary button beside Continue): the
-//! Amend option with the author identity git gives (state/repo_identity.rs), the summary with its length to its right (weak up to 50
+//! Amend option (off, with its reason on hover, while a merge, cherry-pick or revert is
+//! stopped) with the author identity git gives (state/repo_identity.rs), the summary with its length to its right (weak up to 50
 //! characters, amber to 72, red past it: `state::commit::summary_length`), the description, the
 //! Amend and "Push after committing" options, the commit button with why it is disabled centred
 //! under it (that line's height is always kept, so the box doesn't change height), the button's
@@ -19,7 +20,7 @@ use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::CommitDraft;
-use crate::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, pushes_after, summary_length};
+use crate::state::commit::{SUMMARY_HARD, SummaryLength, amend_blocked, commit_blocked, pushes_after, summary_length};
 use crate::state::repo_identity::commit_identity_line;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
@@ -62,12 +63,21 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
         ui.add_space(4.0);
     }
     let identity = st.identities.get(&snap.git_dir).map(|id| commit_identity_line(t, id, &st.settings));
+    // Off while a merge, cherry-pick or revert is stopped; still on (so it can be turned off)
+    // when it was checked before the operation stopped.
+    let amend_why = amend_blocked(t, snap.state);
     ui.horizontal(|ui| {
         if style.titled {
             ui.label(type_scale::section_text(ui, t.tr("commit.title")));
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if controls::checkbox(ui, &mut st.session.draft.amend, t.tr("commit.amend")).changed() && st.session.draft.amend {
+            let enabled = amend_why.is_none() || st.session.draft.amend;
+            let amend = ui.add_enabled(enabled, controls::Check::new(&mut st.session.draft.amend, t.tr("commit.amend")));
+            let amend = match amend_why {
+                Some(why) => amend.on_disabled_hover_text(why),
+                None => amend,
+            };
+            if amend.changed() && st.session.draft.amend {
                 msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
             }
             // Between the title and Amend, cut to the room left, smaller than both so the row

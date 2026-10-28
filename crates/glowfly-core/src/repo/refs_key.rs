@@ -20,7 +20,7 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     let now = SystemTime::now();
     let file_stamp = |p: &Path| file_stamp(p, now);
     let mut h = DefaultHasher::new();
-    (repo.state() as u32).hash(&mut h);
+    (super::op_state::state(repo) as u32).hash(&mut h);
     match repo.find_reference("HEAD") {
         Ok(head) => {
             head.symbolic_target_bytes().hash(&mut h);

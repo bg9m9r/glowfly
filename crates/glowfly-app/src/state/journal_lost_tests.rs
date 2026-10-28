@@ -67,6 +67,19 @@ fn stash_actions_and_create_branch() {
 }
 
 #[test]
+fn apply_stash_waits_for_jobs_and_operations() {
+    let en = Lang::En;
+    let clean = snap("journal-lost-apply-blocked");
+    assert_eq!(apply_blocked(&clean, false, en), None);
+    assert_eq!(apply_blocked(&clean, true, en), Some("Another operation is still running."));
+    for state in [RepositoryState::Merge, RepositoryState::CherryPickSequence, RepositoryState::RebaseInteractive] {
+        let mut busy = snap("journal-lost-apply-busy");
+        busy.state = state;
+        assert_eq!(apply_blocked(&busy, false, en), Some("Finish or abort the operation in progress first."), "{state:?}");
+    }
+}
+
+#[test]
 fn footer_lines_name_the_cut_then_the_problems() {
     let en = Lang::En;
     let mut v = LostView { result: Some(Ok(LostCommits { commits: vec![], capped: true, incomplete: true })), ..Default::default() };

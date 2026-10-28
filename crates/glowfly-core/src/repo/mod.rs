@@ -65,6 +65,7 @@ mod load_more;
 mod markers;
 mod merge_msg;
 mod noclobber;
+mod op_state;
 mod pr_compare;
 mod refs_key;
 mod remotes;
@@ -143,6 +144,7 @@ pub use load::{load, load_cached, load_reusing, messages_between};
 pub use load_more::{HistoryPage, MoreLoaded, load_more};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use merge_msg::merge_message;
+pub use op_state::state;
 pub use pr_compare::{PR_COMMITS_MAX, PrCompare, RangeCommit, RangeCommits, SourceFrom, SourceTip, is_commit_prefix, pr_compare};
 pub use refs_key::{RACY_WINDOW, open_file_stamp, refs_key, stamp_trustworthy};
 pub use remotes::RemoteInfo;
@@ -303,6 +305,8 @@ mod load_more_tests;
 mod markers_tests;
 #[cfg(test)]
 mod merge_msg_tests;
+#[cfg(test)]
+mod op_state_tests;
 #[cfg(test)]
 mod pr_compare_tests;
 #[cfg(test)]

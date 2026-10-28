@@ -16,7 +16,7 @@ source file, update its line here. Each section lists one feature's files in eve
 - Shown in place of the graph.
 - `state/journal.rs`: the loaded timeline, the selection and its preview, and the row labels.
 - `state/journal_restore.rs`: what Restore does for a state and why it can't.
-- `state/journal_lost.rs`: the States / Lost commits tab, the lost list and what each lost commit or dropped stash offers.
+- `state/journal_lost.rs`: the States / Lost commits tab, the lost list and what each lost commit or dropped stash offers (Apply stash waits for a running job or an operation in progress).
 - `update/journal.rs`: opening, reloading and restoring.
 - `update/journal_lost.rs`: the Lost commits tab's loads and actions.
 - `update/git_job.rs`: which git jobs carry a note.

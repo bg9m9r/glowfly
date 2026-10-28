@@ -69,7 +69,7 @@ Label "Check what goes in"
 Label "Staged: 0 · Left out: 1"
 Button "Hide: Commit the merge"
 Label "Commit the merge"
-CheckBox "Amend" [off]
+CheckBox "Amend" [disabled, off]
 TextInput "Commit summary"
 Label "0/72"
 MultilineTextInput "Description"

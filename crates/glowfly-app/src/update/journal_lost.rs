@@ -40,7 +40,11 @@ pub(super) fn handle(st: &mut AppState, msg: LostMsg, now: Instant, fx: &mut Vec
         }
         LostMsg::Apply(oid) => {
             let (Some(c), Some(snap)) = (stash(st, oid), st.snap.as_ref()) else { return };
-            let msg = rules::apply(snap, &c, st.settings.lang());
+            let t = st.settings.lang();
+            if let Some(why) = rules::apply_blocked(snap, st.job.is_some(), t) {
+                return super::rebase::refuse(st, why.into(), now);
+            }
+            let msg = rules::apply(snap, &c, t);
             dispatch(st, msg, now, fx);
         }
         LostMsg::Store(oid) => {

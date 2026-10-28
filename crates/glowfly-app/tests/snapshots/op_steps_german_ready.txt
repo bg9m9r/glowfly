@@ -55,7 +55,7 @@ Label "Prüfen, was hineinkommt"
 Label "Bereitgestellt: 3 · Draußen: 1"
 Button "Ausblenden: Merge committen"
 Label "Merge committen"
-CheckBox "Nachbessern" [off]
+CheckBox "Nachbessern" [disabled, off]
 TextInput "Commit-Zusammenfassung" = "Merge branch 'list-side'"
 Label "24/72"
 MultilineTextInput "Beschreibung"

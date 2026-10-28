@@ -1,4 +1,4 @@
-//! The message git prepared for a merge in progress (`<git dir>/MERGE_MSG`), cleaned the way
+//! The message git prepared for a stopped merge, cherry-pick or revert (`<git dir>/MERGE_MSG`), cleaned the way
 //! `git commit` cleans it, to prefill the commit draft. Read with libgit2 (`Repository::message`),
 //! whose git dir is a linked worktree's own, so each worktree reads its own file.
 

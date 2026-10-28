@@ -2,7 +2,8 @@
 //! commit's preview as loaded (`JournalView::lost`, parked with the view), and what each of its
 //! actions does. A plain lost commit is restored through the journal's own Restore of a HEAD
 //! state (a detached checkout, confirmed, journaled and undoable) or kept with a new branch; a
-//! dropped stash is applied (asking first on a dirty tree) or put back in the stash list.
+//! dropped stash is applied (asking first on a dirty tree; not while a job runs or an operation
+//! is in progress) or put back in the stash list.
 
 use super::journal_restore::{self, RestorePlan};
 use super::palette_kinds::StashAction;
@@ -114,6 +115,18 @@ pub fn restore_confirm(t: Lang, plan: &RestorePlan, snap: &Snapshot) -> Msg {
 /// Create branch here…: the New branch dialog at the commit, unnamed.
 pub fn create_branch(c: &LostCommit) -> BranchMsg {
     BranchMsg::NewBranch { start: Some(c.oid.to_string()), name: String::new() }
+}
+
+/// Why Apply stash can't run now: another job is running, or a merge, rebase or other
+/// operation is in progress (its stopped state would be mixed with the stash's changes).
+pub fn apply_blocked(snap: &Snapshot, job_running: bool, t: Lang) -> Option<&'static str> {
+    if job_running {
+        Some(t.tr("commit.blocked.job_running"))
+    } else if snap.state != git2::RepositoryState::Clean {
+        Some(t.tr("journal.blocked.in_progress"))
+    } else {
+        None
+    }
 }
 
 /// Apply stash: `git stash apply <oid>`, asking first on a dirty tree.

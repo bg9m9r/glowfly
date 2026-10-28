@@ -48,7 +48,8 @@ pub fn status_after_index_change(
     }
     let mut want: Vec<String> = delta.paths.into_iter().chain(watched.iter().cloned()).collect();
     if want.is_empty() {
-        let paths = PathsStatus { covered: Vec::new(), unstaged: Vec::new(), state: repo.state(), submodule_touched: false };
+        let paths =
+            PathsStatus { covered: Vec::new(), unstaged: Vec::new(), state: super::op_state::state(&repo), submodule_touched: false };
         return Ok(Some(IndexStatus { memo, paths, staged: Vec::new() }));
     }
     // Any path read may be one half of a staged rename.

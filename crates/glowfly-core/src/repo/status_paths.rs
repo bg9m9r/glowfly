@@ -94,7 +94,7 @@ pub(super) fn read_paths(
     super::lfs_marks::mark_staged(&repo, &index, &mut staged_rows);
     rows.sort_by(|a, b| a.path.cmp(&b.path));
     staged_rows.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok(Some((PathsStatus { covered, unstaged: rows, state: repo.state(), submodule_touched }, staged_rows)))
+    Ok(Some((PathsStatus { covered, unstaged: rows, state: super::op_state::state(&repo), submodule_touched }, staged_rows)))
 }
 
 /// Whether `p` is a plain relative, '/'-separated work-tree path that can be read on its own.

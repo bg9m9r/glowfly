@@ -1,4 +1,5 @@
-//! The commit box: its options row and button suffixes, the more-actions menu with Skip hooks,
+//! The commit box: its options row and button suffixes, Amend off mid-merge with its reason on
+//! hover, the more-actions menu with Skip hooks,
 //! the commit template note, and the
 //! Ctrl+Enter / Ctrl+Shift+Enter shortcuts. Shares the fixture repository and renderer with
 //! `snapshot_tests`.
@@ -198,4 +199,26 @@ fn commit_box_summary_long() {
 #[test]
 fn commit_box_summary_too_long_light() {
     summary_counter(ThemeChoice::Light, "commit_box_summary_too_long_light", 80, "80/72");
+}
+
+#[test]
+fn commit_box_amend_off_mid_merge() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-amend-merge");
+    git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    st.snap.as_mut().unwrap().state = git2::RepositoryState::Merge;
+    st.session.draft.summary = "Merge branch 'feature'".into();
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.get_by_label("Amend").is_disabled(), "no amending in the middle of a merge");
+    h.get_by_label("Amend").hover();
+    h.run();
+    h.run();
+    h.check_snapshot("commit_box_amend_off_mid_merge");
+    assert!(h.query_by_label("Finish the merge before amending.").is_some(), "the reason on hover");
+    h.get_by_label("Amend").click();
+    h.run();
+    assert!(!h.state().0.session.draft.amend, "a click does nothing");
+    drop(h);
+    remove_fixture(&dir);
 }

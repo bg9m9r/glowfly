@@ -83,9 +83,9 @@ pub(super) fn prefill(st: &mut AppState) {
     apply_template(st);
 }
 
-/// Fills a blank, non-amend draft from MERGE_MSG when a merge starts (or swaps in a new merge's
-/// message while the old one is untouched), and clears the untouched message once the merge
-/// ends any other way than a Glowfly commit. A draft the user wrote is never replaced.
+/// Fills a blank, non-amend draft from MERGE_MSG when a merge, cherry-pick or revert stops (or
+/// swaps in a new message while the old one is untouched), and clears the untouched message
+/// once the operation ends any other way than a Glowfly commit. A draft the user wrote is never replaced.
 fn merge_message(st: &mut AppState) {
     let m = st.snap.as_ref().and_then(|s| s.merge_message.clone());
     let d = &mut st.session.draft;

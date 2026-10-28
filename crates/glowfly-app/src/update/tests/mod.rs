@@ -225,6 +225,7 @@ pub(super) mod stash_push_options_tests;
 pub(super) mod stash_push_tests;
 pub(super) mod stash_rename_tests;
 pub(super) mod stash_tests;
+pub(super) mod stopped_op_tests;
 pub(super) mod submodule_add_tests;
 pub(super) mod submodule_batch_tests;
 pub(super) mod submodule_edit_tests;
