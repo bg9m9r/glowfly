@@ -117,8 +117,7 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 
 ### Trimmed context menus and split rows
 
-- The local branch menu is still about 19 rows: fold Force delete into the Delete dialog (an "even if not merged" box), and a Compare ▸ submenu once there are more compare items, would bring it under 15
-- Work out `merged` for every local branch (not only those with a remote upstream), so Force delete hides whenever a plain delete would do
+- The local branch menu is still about 18 rows: a Compare ▸ submenu once there are more compare items would bring it closer to 15
 - The pull request items (`pr_menu_items.rs`) and the Push to remotes cut their interpolated names too; "Create pull request from main into this branch…" could say "into this branch…" with the source in the tooltip
 - A remote branch whose plain Checkout is blocked by a local branch of the same name offers "Checkout as local branch…" instead
 - The reset submenu's preview buttons could open the preview with that row's mode chosen

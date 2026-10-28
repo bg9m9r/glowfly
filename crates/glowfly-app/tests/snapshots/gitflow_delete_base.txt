@@ -1,6 +1,7 @@
 Dialog
   Label "Delete development branch"
   Button "Close this dialog"
-  Label "Delete local branch develop?\n\ndevelop is the Git Flow development branch: features and releases start from it and every Finish merges into it. Until it exists again or Preferences > Git Flow names another branch, those steps can't run."
+  Label "Delete local branch develop?"
+  Label "develop is the Git Flow development branch: features and releases start from it and every Finish merges into it. Until it exists again or Preferences > Git Flow names another branch, those steps can't run."
   Button "Cancel" [focused]
   Button "Delete anyway"

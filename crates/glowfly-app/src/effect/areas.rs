@@ -13,6 +13,8 @@ macro_rules! effect_areas {
         $then! { { $($args)* }
             /// Reading, checking and removing submodules (submodule.rs).
             Submodule(crate::effect::SubmoduleEffect),
+            /// Counting the commits deleting a branch would lose, for the Delete dialog (branch.rs); reads only.
+            Branch(crate::effect::BranchEffect),
             /// Stash list jobs: renaming an entry, putting an auto-stash back (stash.rs).
             Stash(crate::effect::StashEffect),
             /// A cherry-pick or revert job, carried past the commits that change nothing; unscoped like RunGit.

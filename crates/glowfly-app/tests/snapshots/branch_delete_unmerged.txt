@@ -1,0 +1,7 @@
+Dialog
+  Label "Delete branch"
+  Button "Close this dialog"
+  Label "Delete local branch search?"
+  Label "3 commits aren't on any other branch, so deleting search leaves them on none. Undo can bring the branch back."
+  Button "Cancel" [focused]
+  Button "Delete anyway"

@@ -14,6 +14,7 @@ mod avatars;
 pub(crate) mod backdrop;
 mod blame;
 mod branch_colour_menu;
+mod branch_delete_dialog;
 mod branch_dialogs;
 mod branch_dot;
 mod branch_menu;

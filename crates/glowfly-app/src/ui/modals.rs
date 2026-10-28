@@ -133,6 +133,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::NewTag(form) => close = super::tag_dialog::new_tag(ui, cx, form, snap, push_tags, msgs),
             Modal::AnnotateTag(form) => close = super::tag_dialog::annotate_tag(ui, cx, form, snap, msgs),
             Modal::NewWorktree(form) => close = super::worktree_dialog::new_worktree(ui, cx, form, snap, msgs),
+            Modal::DeleteBranch(form) => close = super::branch_delete_dialog::show(ui, cx, form, msgs),
             Modal::RemoveWorktree(form) => close = super::worktree_manage_dialog::remove(ui, cx, form, idle, msgs),
             Modal::LockWorktree(form) => close = super::worktree_manage_dialog::lock(ui, cx, form, idle, msgs),
             Modal::MoveWorktree(form) => close = super::worktree_move_dialog::move_worktree(ui, cx, form, snap, idle, msgs),

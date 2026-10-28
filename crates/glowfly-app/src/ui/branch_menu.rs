@@ -6,8 +6,8 @@
 //! rename and upstream; the stack items for a branch in a stack (`stack_menu.rs`); pull requests
 //! (pushing the branch first when the code host lacks it, into the branch selected before;
 //! without a code host, a disabled item saying why); hide or solo in the graph, and its colour;
-//! copying its name or a link; the custom commands (`custom_menu.rs`); and delete (force delete
-//! only when a plain delete may refuse, and one blocked row when all of them are blocked alike).
+//! copying its name or a link; the custom commands (`custom_menu.rs`); and delete (one item,
+//! whose dialog offers Delete anyway for a branch with commits on no other branch).
 //! The branch's name heads the menu once; other names in labels are cut to fit, in full on hover.
 //! Disabled items say why on hover, with the same text `update` logs when it refuses a late
 //! message.
@@ -227,61 +227,17 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
     });
 }
 
-/// Delete, force delete (unless the branch is known to be merged, when a plain delete takes
-/// it) and, with an upstream on a remote, delete together with it (only when the checked-out
-/// branch contains it). All are disabled for a branch another worktree has (one row says so
-/// when there would be three), and ask more firmly for the Git Flow production or development
-/// branch (`gitflow_base::guard`).
+/// Delete (its dialog says what the branch would lose and offers Delete anyway when that is
+/// anything) and, with an upstream on a remote, delete together with it (only when the
+/// checked-out branch contains it). Both are disabled for a branch another worktree has; the
+/// Git Flow production or development branch is asked about more firmly (`gitflow_base`).
 fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let head = snap.head_branch.as_deref();
     let in_worktree = delete_blocked(snap, name);
     let in_worktree = in_worktree.as_deref();
-    let force = menu_trim::force_delete_applies(b);
     let with_remote = branches::can_delete_with_remote(b);
-    let rows = 1 + force as usize + with_remote.is_some() as usize;
-    if menu_trim::deletes_fold(rows, in_worktree.is_some()) {
-        item(t.tr("branch.menu.delete")).blocked(in_worktree).show(ui);
-        return;
-    }
-    menu_danger(
-        msgs,
-        ui,
-        t.tr("branch.menu.delete"),
-        in_worktree,
-        guard(
-            t,
-            snap,
-            name,
-            Deleting::Local,
-            Msg::confirm_danger(
-                t.tr("branch.delete.title"),
-                t.trf("branch.delete.body", &[("branch", &name)]),
-                t.tr("common.delete.button"),
-                Msg::git("Delete branch", &["branch", "-d", name]),
-            ),
-        ),
-    );
-    if force {
-        menu_danger(
-            msgs,
-            ui,
-            t.tr("branch.menu.force_delete"),
-            in_worktree,
-            guard(
-                t,
-                snap,
-                name,
-                Deleting::Local,
-                Msg::confirm_danger(
-                    t.tr("branch.force_delete.title"),
-                    t.trf("branch.force_delete.body", &[("branch", &name)]),
-                    t.tr("common.delete.button"),
-                    Msg::git("Delete branch", &["branch", "-D", name]),
-                ),
-            ),
-        );
-    }
+    menu_danger(msgs, ui, t.tr("branch.menu.delete"), in_worktree, Msg::Branch(BranchMsg::DeleteDialog(name.to_owned())));
     if let Some(tr) = with_remote {
         let blocked = in_worktree.map(str::to_owned).or_else(|| branches::delete_with_remote_blocked(b, tr, head));
         let label = named(t.tr("branch.menu.delete_with_remote"), &[("remote_branch", &tr.display())]);

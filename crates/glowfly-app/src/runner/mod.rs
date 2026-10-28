@@ -22,6 +22,7 @@ use std::sync::mpsc::Sender;
 mod askpass;
 mod background;
 mod blame;
+mod branches;
 mod clone;
 mod config;
 mod conflict_check;

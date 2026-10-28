@@ -56,6 +56,7 @@ impl Modal {
             | Modal::ConfirmChoice { .. }
             | Modal::Trust(_)
             | Modal::RemoveWorktree(_)
+            | Modal::DeleteBranch(_)
             | Modal::RemoveSubmodule(_)
             | Modal::UndoCreated(_)
             | Modal::Mainline(_)
@@ -139,6 +140,7 @@ impl Modal {
             | Modal::ConfirmChoice { .. }
             | Modal::Trust(_)
             | Modal::RemoveWorktree(_)
+            | Modal::DeleteBranch(_)
             | Modal::RemoveSubmodule(_)
             | Modal::UndoCreated(_)
             | Modal::Mainline(_)

@@ -7,6 +7,7 @@ pub const DIALOG_FILES: &[&str] = &[
     "ui/askpass.rs",
     "ui/askpass_host_key.rs",
     "ui/auto_stash_dialog.rs",
+    "ui/branch_delete_dialog.rs",
     "ui/branch_dialogs.rs",
     "ui/clone_dialog.rs",
     "ui/clone_service.rs",

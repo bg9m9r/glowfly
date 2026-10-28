@@ -34,6 +34,23 @@ pub enum BranchMsg {
     UnsetUpstream(String),
     /// Fast-forward local branch `.0` to its upstream, without checking it out.
     FastForwardBranch(String),
+    /// Open the Delete dialog for local branch `.0` and count the commits only it has
+    /// (update/branch_delete.rs).
+    DeleteDialog(String),
+    /// How many commits only local branch `name` has at `tip`, or why they couldn't be counted
+    /// (`BranchEffect::CountUnmerged`).
+    UnmergedCounted {
+        name: String,
+        tip: git2::Oid,
+        count: Result<usize, String>,
+    },
+    /// The Delete dialog's danger button: delete local branch `name` (`git branch -d`, or `-D`
+    /// when `force`), unless it has moved off `tip`.
+    Delete {
+        name: String,
+        tip: git2::Oid,
+        force: bool,
+    },
     /// Delete local branch `.0` and then its upstream branch on the remote.
     DeleteBranchAndRemote(String),
     /// Push local `branch` to `remote`; None means its upstream, or the default remote with -u.
@@ -61,6 +78,9 @@ impl BranchMsg {
             | Self::SetUpstream { .. }
             | Self::UnsetUpstream(..)
             | Self::FastForwardBranch(..)
+            | Self::DeleteDialog(..)
+            | Self::UnmergedCounted { .. }
+            | Self::Delete { .. }
             | Self::DeleteBranchAndRemote(..)
             | Self::PushBranch { .. }
             | Self::NewBranch { .. } => None,

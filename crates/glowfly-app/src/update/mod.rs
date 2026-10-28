@@ -11,6 +11,7 @@ mod auto_stash_saved;
 mod avatars;
 mod blame;
 mod branch_colour;
+mod branch_delete;
 mod branches;
 mod build_status;
 mod clone;

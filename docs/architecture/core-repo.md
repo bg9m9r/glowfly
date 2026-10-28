@@ -12,6 +12,7 @@ source file, update its line here.
 - Git's built-in file system monitor (which OS and git have it, starting and confirming `git fsmonitor--daemon`, reading its refusals): `fsmonitor.rs`.
 - Rows whose stored content is a Git LFS pointer get `FileEntry::lfs`, and a viewer diff with a pointer side carries its `LfsChange` (`lfs_marks.rs`).
 - The commits one branch has and another lacks, walked in the loaded graph and marked incomplete when it runs off its end: `divergence.rs`.
+- The commits deleting a local branch would leave on no branch (reached from its tip, from no other local or remote-tracking branch): `unmerged.rs`.
 - When the repository last fetched, from FETCH_HEAD's time: `fetch_time.rs`.
 - `repo/snapshot.rs`: the `Snapshot` a load makes, the `LoadOptions` it was loaded with and a commit's `CommitDetail` (their queries are in `snapshot_impl.rs`).
 - `repo/walk_order.rs`: the history walk's order (newest committer time first, ties in the order found, each commit once, parents as git2's `parents()` yields them), shared by the graph's walk (`repo/walk.rs`) and the search index, so an index position says how many commits the graph must load to show it. A walk cut short keeps its queue (`Frontier`) and resumes popping exactly as a longer walk would.

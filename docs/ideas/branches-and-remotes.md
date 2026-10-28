@@ -16,6 +16,15 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   remote row
 - Compare with the current branch from the local branch and tag menus too
 
+### One Delete for a local branch, with Delete anyway
+
+- List the commits Delete anyway would leave on no branch (subjects, as the operation preview's
+  lost commits), not only their count
+- Fold Delete together with the remote branch into the same dialog (a box for the remote copy),
+  so the menu has one delete row
+- A palette entry for deleting a local branch that opens the same dialog
+- Say in the dialog when a tag or stash still reaches the commits only the branch has
+
 ### Double-click a branch to check it out
 
 - Double-click a tag (graph chip and TAGS row) to check it out detached, through the existing

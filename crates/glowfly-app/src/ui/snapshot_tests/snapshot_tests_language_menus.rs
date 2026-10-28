@@ -148,9 +148,8 @@ fn menu_confirmations_german() {
     right_click_row(&mut h, "search", 0);
     h.get_by_label(de.tr("branch.menu.delete")).click();
     h.run();
-    let body = de.trf("branch.delete.body", &[("branch", &"search")]);
-    let want = (de.tr("branch.delete.title").to_owned(), body, de.tr("common.delete.button").to_owned());
-    assert_eq!(confirm_danger(&h), Some(want), "the branch's Delete asks in German");
+    let dialog = |m: &Msg| matches!(m, Msg::Branch(crate::msg::BranchMsg::DeleteDialog(b)) if b == "search");
+    assert!(h.state().1.iter().any(dialog), "the branch's Delete opens its dialog");
 
     right_click_row(&mut h, "v0.1.0", 0);
     h.get_by_label(de.tr("tag.menu.delete_locally")).click();

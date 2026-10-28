@@ -23,7 +23,7 @@
 //! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
 //! `shallow`; `pr_compare` (a pull request's source tip, files and commits), `line_map` (a file's lines mapped across commits, following renames, for pull request threads), `divergence` (the commits on each side of a branch and its upstream, from the
-//! loaded graph) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
+//! loaded graph), `unmerged` (the commits deleting a branch would leave on no branch) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
 //! one path exactly) and `collide` (paths a file system can't keep apart).
 
@@ -95,6 +95,7 @@ mod tool_sides;
 mod touching;
 mod tracked;
 mod trash;
+mod unmerged;
 pub(crate) mod walk;
 pub(crate) mod walk_order;
 mod walk_reuse;
@@ -171,6 +172,7 @@ pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_
 pub use touching::{Touching, commits_touching};
 pub use tracked::tracked_paths;
 pub use trash::{TrashProblem, TrashRefusal, Untrashed, Untrasher, home_trash, os_trash, os_untrash};
+pub use unmerged::unmerged_count;
 pub(crate) use workfile::contained;
 pub use workfile::{
     PathProblem, Written, check_new_path, check_new_path_for, create_file, delete_file, new_path_warning, new_path_warning_for,
@@ -351,6 +353,8 @@ mod tests;
 mod touching_tests;
 #[cfg(test)]
 mod tracked_tests;
+#[cfg(test)]
+mod unmerged_tests;
 #[cfg(test)]
 mod walk_reuse_tests;
 #[cfg(test)]

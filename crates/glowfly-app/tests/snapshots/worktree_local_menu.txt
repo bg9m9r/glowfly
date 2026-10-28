@@ -47,7 +47,6 @@ Button "Color"
 Button "Copy name"
 Button "Copy link"
 Button "Delete…" [disabled]
-Button "Force delete…" [disabled]
 Button "Add remote"
 Button "Remote actions"
 Button "New tag"

@@ -63,7 +63,6 @@ RadioButton "Indigo" [off]
 Button "Copy name"
 Button "Copy link"
 Button "Delete…"
-Button "Force delete…"
 Button "Add remote"
 Button "Remote actions"
 Button "origin"

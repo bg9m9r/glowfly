@@ -1,16 +1,12 @@
 //! What the long context menus leave out or fold together (the menu review's spec §10: hide
 //! what can't apply, collapse three or more rows blocked for the same reason): history edits
 //! blocked alike, cherry-picks and rebases onto a commit the branch already has, a Push to
-//! submenu that offers nothing Push doesn't, a fast-forward without an upstream, a force delete
-//! of a branch known to be merged, and branch deletes all blocked by one reason.
+//! submenu that offers nothing Push doesn't and a fast-forward without an upstream.
 
 use crate::state::rebase_quick::EditBlockers;
 use git2::Oid;
 use glowfly_core::branch_ops::{FastForward, fast_forward_state};
 use glowfly_core::repo::{BranchInfo, Snapshot};
-
-/// How many rows blocked for one reason fold into one row.
-pub const COLLAPSE_AT: usize = 3;
 
 /// The reason when reword, squash and drop are all blocked by the same one: the commit menu
 /// then shows one blocked row for the three.
@@ -41,17 +37,6 @@ pub fn push_to_adds_a_choice(b: &BranchInfo, snap: &Snapshot) -> bool {
 /// Whether fast-forward can apply to `b` at all: it has an upstream (its own row sets one).
 pub fn fast_forward_applies(b: &BranchInfo) -> bool {
     fast_forward_state(b) != FastForward::NoUpstream
-}
-
-/// Whether Force delete adds anything: unless `b` is known to be in HEAD, a plain delete
-/// refuses it.
-pub fn force_delete_applies(b: &BranchInfo) -> bool {
-    !b.merged
-}
-
-/// Whether `rows` delete rows, all blocked by one reason, fold into one blocked row.
-pub fn deletes_fold(rows: usize, blocked_alike: bool) -> bool {
-    blocked_alike && rows >= COLLAPSE_AT
 }
 
 #[cfg(test)]
@@ -107,12 +92,8 @@ mod tests {
     }
 
     #[test]
-    fn deletes_fold_from_three() {
-        assert!(deletes_fold(3, true));
-        assert!(!deletes_fold(2, true));
-        assert!(!deletes_fold(3, false));
+    fn fast_forward_needs_an_upstream() {
         assert!(!fast_forward_applies(&branch("x", None)));
         assert!(fast_forward_applies(&branch("x", Some(("origin", "x")))));
-        assert!(force_delete_applies(&branch("x", None)));
     }
 }

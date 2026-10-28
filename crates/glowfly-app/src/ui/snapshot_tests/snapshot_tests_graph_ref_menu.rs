@@ -33,8 +33,8 @@ fn graph_label_menu_branch() {
     h.state_mut().1.clear();
     h.get_by_label("Delete…").click();
     h.run();
-    let confirm = h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { title, .. } if title == "Delete branch"));
-    assert!(confirm, "the confirmation is asked for");
+    let dialog = h.state().1.iter().any(|m| matches!(m, Msg::Branch(crate::msg::BranchMsg::DeleteDialog(b)) if b == "search"));
+    assert!(dialog, "the Delete dialog opens");
 
     // Elsewhere on the row, the commit menu.
     click(&mut h, pos2(700.0, row_y(SEARCH_ROW)), PointerButton::Secondary);

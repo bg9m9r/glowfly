@@ -38,6 +38,7 @@ source file, update its line here. Features that span every layer are in
 - `op_preview.rs`: `OpPreviewJob`, the operation preview's job: the work folder and the request.
 - `selection.rs`: `SelectionEffect`: comparing two commits or a commit and the working tree, and a multi-selection's stacked list (`StackRequest`).
 - `lfs.rs`: `LfsEffect`: whether git-lfs is installed and the LFS page's status.
+- `branch.rs`: `BranchEffect`: counting the commits a branch delete would lose, for the Delete dialog.
 - `sparse.rs`: `SparseEffect`: the Sparse Checkout page's state and `git sparse-checkout`.
 - `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
 - `worktree.rs`: `WorktreeEffect`: the worktree folder check, removing, moving and counting other worktrees' changes.
@@ -55,6 +56,7 @@ source file, update its line here. Features that span every layer are in
 
 - `AppState`: plain data, one file per area; pure rules (why an action is blocked, form checks, labels) live next to their data.
 - `stack_rows.rs`: the LOCAL section's stack tree.
+- `branch_delete.rs`: the branch Delete dialog's data (the tip, what would be lost, the Git Flow role), its words and the message its danger button sends.
 - `stack.rs`: why a restack is refused.
 - `stack_push.rs`: a stack's push targets and why Push stack is off.
 - `stack_prs.rs`: a stack's pull request layers, the bottom layer's base, why Create pull requests for the stack is off and the run of create dialogs.
@@ -101,6 +103,7 @@ source file, update its line here. Features that span every layer are in
 - `load_more.rs`: a load for more history going on from the walk (the page taken in below the rows on screen), and a failed one kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, and asking again for a file still opening (`renew_open`).
+- `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
 - `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it).
 
 ## `runner/`: background work
@@ -108,6 +111,7 @@ source file, update its line here. Features that span every layer are in
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
 - `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner, with the flat variants' arms.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
+- `branches.rs`: the `Execute` impl of `BranchEffect`.
 - `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.
 - `load.rs`: a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.

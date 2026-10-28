@@ -1,10 +1,11 @@
-//! Headless tests for deleting the Git Flow production or development branch: the shared danger
-//! confirmation made firmer for it (and left alone otherwise), running or cancelling it, the
-//! remote and pull request variants, and the Remove worktree dialog's role.
+//! Headless tests for deleting the Git Flow production or development branch: the branch Delete
+//! dialog's and the shared danger confirmation's firmer words for it (and the plain ones
+//! otherwise), running or cancelling the delete, the remote and pull request variants, and the
+//! Remove worktree dialog's role.
 
 use super::gitflow_tests::{cleanup, git_job, initialized, job_label, open, run};
 use super::tests::{drive, finish, git};
-use crate::msg::{JobMsg, Msg, RepoMsg};
+use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
 use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::worktree_manage::RemoveForm;
 use crate::state::{AppState, Modal};
@@ -22,40 +23,20 @@ const MAIN: &str = "main is the Git Flow production branch: releases and hotfixe
 const REMOTE: &str = "origin holds the copy everyone else uses.";
 const T: Lang = Lang::En;
 
-/// The branch menu's three plain delete confirmations for `branch`, as main's
-/// `branch_menu::delete_items` builds them before `guard`.
-fn plain(branch: &str) -> [Msg; 3] {
-    [
-        Msg::confirm_danger(
-            T.tr("branch.delete.title"),
-            T.trf("branch.delete.body", &[("branch", &branch)]),
-            T.tr("common.delete.button"),
-            Msg::git("Delete branch", &["branch", "-d", branch]),
-        ),
-        Msg::confirm_danger(
-            T.tr("branch.force_delete.title"),
-            T.trf("branch.force_delete.body", &[("branch", &branch)]),
-            T.tr("common.delete.button"),
-            Msg::git("Delete branch", &["branch", "-D", branch]),
-        ),
-        Msg::confirm_danger(
-            T.tr("branch.delete_both.title"),
-            format!("Delete {branch} and origin/{branch}?"),
-            T.tr("branch.delete_both.button"),
-            Msg::git("Delete branch", &["branch", "-d", branch]),
-        ),
-    ]
+/// The branch menu's plain Delete together with the remote branch confirmation for `branch`,
+/// as `branch_menu::delete_items` builds it before `guard`.
+fn plain(branch: &str) -> Msg {
+    Msg::confirm_danger(
+        T.tr("branch.delete_both.title"),
+        format!("Delete {branch} and origin/{branch}?"),
+        T.tr("branch.delete_both.button"),
+        Msg::git("Delete branch", &["branch", "-d", branch]),
+    )
 }
 
 /// `plain`, through `guard` as the menu does it.
-fn menu(st: &AppState, branch: &str) -> [Msg; 3] {
-    let snap = st.snap.as_ref().unwrap();
-    let [delete, force, both] = plain(branch);
-    [
-        guard(T, snap, branch, Deleting::Local, delete),
-        guard(T, snap, branch, Deleting::Local, force),
-        guard(T, snap, branch, Deleting::LocalAndRemote("origin"), both),
-    ]
+fn menu(st: &AppState, branch: &str) -> Msg {
+    guard(T, st.snap.as_ref().unwrap(), branch, Deleting::LocalAndRemote("origin"), plain(branch))
 }
 
 /// Title, body, button, the acknowledgement and the command the confirmation runs.
@@ -67,66 +48,74 @@ fn parts(m: &Msg) -> Parts {
     (title.clone(), body.clone(), button.clone(), ack.clone(), cmds.clone())
 }
 
-fn all(ms: &[Msg; 3]) -> Vec<Parts> {
-    ms.iter().map(parts).collect()
+/// The local Delete dialog `branch`'s menu item opens: its title, button and warning.
+fn dialog(st: &mut AppState, branch: &str) -> (String, String, Option<FlowBase>) {
+    drive(st, Msg::Branch(BranchMsg::DeleteDialog(branch.into())));
+    let Some(Modal::DeleteBranch(form)) = st.modal.take() else { panic!("the Delete dialog for {branch}") };
+    (form.title(T).into(), form.button(T).into(), form.role)
 }
 
 #[test]
 fn confirm_delete_for_bases() {
     let (mut st, dir) = initialized("base-confirm");
-    let [delete, force, both]: [Parts; 3] = all(&menu(&st, "develop")).try_into().unwrap();
-    let question = T.trf("branch.delete.body", &[("branch", &"develop")]);
+    let both = parts(&menu(&st, "develop"));
+    assert_eq!(both.0, "Delete development branch");
     assert_eq!(
-        delete,
-        (
-            "Delete development branch".into(),
-            format!("{question}\n\n{DEVELOP}"),
-            "Delete anyway".into(),
-            None,
-            vec![args(&["branch", "-d", "develop"])]
+        both.1,
+        format!(
+            "Delete develop and origin/develop?
+
+{DEVELOP} {REMOTE}"
         )
     );
-    let force_q = T.trf("branch.force_delete.body", &[("branch", &"develop")]);
-    assert_eq!((force.1.as_str(), force.2.as_str()), (format!("{force_q}\n\n{DEVELOP}").as_str(), "Delete anyway"));
-    assert_eq!(force.4, vec![args(&["branch", "-D", "develop"])]);
-    assert_eq!(both.0, "Delete development branch");
-    assert_eq!(both.1, format!("Delete develop and origin/develop?\n\n{DEVELOP} {REMOTE}"));
     assert_eq!((both.2.as_str(), both.3.as_ref()), ("Delete both anyway", None));
-
-    let [delete, ..]: [Parts; 3] = all(&menu(&st, "main")).try_into().unwrap();
-    assert_eq!(delete.0, "Delete production branch");
-    assert!(delete.1.ends_with(&format!("\n\n{MAIN}")), "{}", delete.1);
-
+    let warn = crate::state::gitflow_base::warning(T, FlowBase::Development, "develop");
+    assert_eq!(warn, DEVELOP, "the Delete dialog's warning");
+    let development = ("Delete development branch".into(), "Delete anyway".into(), Some(FlowBase::Development));
+    assert_eq!(dialog(&mut st, "develop"), development);
     git(&dir, &["branch", "feature/x"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert_eq!(all(&menu(&st, "feature/x")), all(&plain("feature/x")));
-    assert_eq!(all(&menu(&st, "Develop")), all(&plain("Develop")), "exact names only");
+    assert_eq!(dialog(&mut st, "feature/x"), ("Delete branch".into(), "Delete".into(), None));
+    assert_eq!(parts(&menu(&st, "feature/x")), parts(&plain("feature/x")));
+    assert_eq!(parts(&menu(&st, "Develop")), parts(&plain("Develop")), "exact names only");
     cleanup(&dir);
 
-    let (st, dir) = open("base-off");
-    assert_eq!(all(&menu(&st, "develop")), all(&plain("develop")), "Git Flow isn't set up");
+    let (mut st, dir) = initialized("base-confirm-main");
+    git(&dir, &["checkout", "-q", "develop"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert_eq!(dialog(&mut st, "main").0, "Delete production branch");
+    assert!(parts(&menu(&st, "main")).1.ends_with(&format!(
+        "
+
+{MAIN} {REMOTE}"
+    )));
+    cleanup(&dir);
+
+    let (mut st, dir) = open("base-off");
+    git(&dir, &["branch", "develop"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert_eq!(dialog(&mut st, "develop"), ("Delete branch".into(), "Delete".into(), None), "Git Flow isn't set up");
+    assert_eq!(parts(&menu(&st, "develop")), parts(&plain("develop")));
     cleanup(&dir);
 }
 
 #[test]
 fn delete_base_runs_or_cancels() {
     let (mut st, dir) = initialized("base-run");
-    let [delete, ..] = menu(&st, "develop");
-    run(&mut st, delete);
-    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { title, .. }) if title == "Delete development branch"));
+    drive(&mut st, Msg::Branch(BranchMsg::DeleteDialog("develop".into())));
+    assert!(matches!(&st.modal, Some(Modal::DeleteBranch(f)) if f.title(T) == "Delete development branch"));
     run(&mut st, Msg::CloseModal);
     assert!(st.modal.is_none() && st.job.is_none());
 
-    let [delete, ..] = menu(&st, "develop");
-    run(&mut st, delete);
-    let fx = run(&mut st, Msg::ConfirmAccepted);
+    drive(&mut st, Msg::Branch(BranchMsg::DeleteDialog("develop".into())));
+    let Some(Modal::DeleteBranch(form)) = &st.modal else { panic!("the Delete dialog") };
+    let delete = form.delete_msg().expect("nothing to count: main contains develop");
+    let fx = run(&mut st, delete);
     assert!(st.modal.is_none());
     assert_eq!(git_job(&fx), Some(vec![args(&["branch", "-d", "develop"])]));
     assert_eq!(job_label(&st).as_deref(), Some("Delete branch"));
     finish(&mut st, fx);
     assert!(!git_run(&dir, &args(&["rev-parse", "--verify", "--quiet", "refs/heads/develop"])).0);
-    // Without the dialog open, accepting does nothing.
-    assert!(git_job(&run(&mut st, Msg::ConfirmAccepted)).is_none());
     cleanup(&dir);
 }
 

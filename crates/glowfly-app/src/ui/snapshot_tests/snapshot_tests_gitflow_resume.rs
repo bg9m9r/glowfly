@@ -7,8 +7,8 @@ use super::snapshot_tests::{harness, remove_fixture, render};
 use super::snapshot_tests_gitflow::{pushed, with_flow_branches};
 use super::snapshot_tests_worktrees::with_worktrees;
 use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::state::gitflow_base::{Deleting, guard};
+use crate::msg::{BranchMsg, Msg};
+use crate::state::branch_delete::{DeleteForm, Lost};
 use crate::state::gitflow_resume::StoppedFinish;
 use crate::state::worktree_manage::RemoveForm;
 use crate::state::{AppState, Modal, Selection};
@@ -88,25 +88,19 @@ fn gitflow_resume_waiting() {
 #[test]
 fn gitflow_delete_base() {
     let (mut st, dir) = with_flow_branches(ThemeChoice::Dark, "gitflow-delete-base");
-    let t = Lang::En;
-    let plain = Msg::confirm_danger(
-        t.tr("branch.delete.title"),
-        t.trf("branch.delete.body", &[("branch", &"develop")]),
-        t.tr("common.delete.button"),
-        Msg::git("Delete branch", &["branch", "-d", "develop"]),
-    );
-    let Msg::ConfirmDanger { title, body, button, then, .. } = guard(t, st.snap.as_ref().unwrap(), "develop", Deleting::Local, plain)
-    else {
-        panic!("a danger confirmation")
-    };
-    assert_eq!(title, "Delete development branch");
-    st.modal = Some(Modal::danger(title, body, button, *then));
+    let snap = st.snap.as_ref().unwrap();
+    let tip = snap.locals.iter().find(|b| b.name == "develop").and_then(|b| b.oid).unwrap();
+    let role = snap.gitflow.base_role("develop");
+    assert_eq!(role, Some(FlowBase::Development));
+    let form = DeleteForm { name: "develop".into(), tip, lost: Lost::Known(0), in_head: true, role };
+    assert_eq!(form.title(Lang::En), "Delete development branch");
+    st.modal = Some(Modal::DeleteBranch(form));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("gitflow_delete_base");
     h.get_by_label("Delete anyway").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmAccepted)));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Branch(BranchMsg::Delete { name, force: false, .. }) if name == "develop")));
     drop(h);
     remove_fixture(&dir);
 }

@@ -10,6 +10,7 @@ pub mod auto_stash;
 pub mod blame;
 pub mod blame_find;
 pub mod blocked;
+pub mod branch_delete;
 pub mod branches;
 pub mod build_status;
 pub mod clone;
@@ -273,6 +274,8 @@ pub enum Modal {
     AnnotateTag(tags::AnnotateForm),
     NewWorktree(worktrees::WorktreeForm),
     RemoveWorktree(worktree_manage::RemoveForm),
+    /// Delete a local branch: what it would lose, then Delete or Delete anyway (`ui/branch_delete_dialog.rs`).
+    DeleteBranch(branch_delete::DeleteForm),
     LockWorktree(worktree_manage::LockForm),
     MoveWorktree(worktree_move::MoveForm),
     AddSubmodule(submodules::add::AddForm),
@@ -385,14 +388,11 @@ pub enum Modal {
     RenameTab(tabs::RenameTabForm),
     /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
     Mainline(pick::MainlineForm),
-    /// Uncommitted changes in the way of an operation: stash them and carry on
-    /// (`ui/auto_stash_dialog.rs`).
+    /// Uncommitted changes in the way of an operation: stash them and carry on (`ui/auto_stash_dialog.rs`).
     AutoStash(auto_stash::AutoStashAsk),
-    /// The trash on a file's drive can't be used: move it to the home Trash or delete it
-    /// permanently (`ui/trash_offer_dialog.rs`).
+    /// The trash on a file's drive can't be used: move it to the home Trash or delete it permanently (`ui/trash_offer_dialog.rs`).
     TrashOffer(files::TrashOffer),
-    /// The Generate SSH key dialog (`ui/ssh_keygen_dialog.rs`). Its fields live in
-    /// `PrefsState.ssh`, so closing it keeps them.
+    /// The Generate SSH key dialog (`ui/ssh_keygen_dialog.rs`). Its fields live in `PrefsState.ssh`, so closing it keeps them.
     SshKeygen,
 }
 

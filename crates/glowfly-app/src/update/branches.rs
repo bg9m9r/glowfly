@@ -1,7 +1,8 @@
 //! Branch operations from the branch menus: checkout (refused for a branch another worktree
 //! has), checkout from a remote branch (its tracking local branch, or a new one), rename, set
 //! and unset the upstream, fast-forward without checkout, push to the upstream or a chosen
-//! remote, and delete together with the remote branch. Each re-checks the branch against the
+//! remote, and delete together with the remote branch (deleting the local branch alone is in
+//! `branch_delete.rs`). Each re-checks the branch against the
 //! current snapshot (a menu or confirm can be stale), then runs `branch_ops` commands as the
 //! single active git job.
 
@@ -51,13 +52,16 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
                 start_job(st, JobSpec::new("Fast-forward".into(), vec![cmd]), fx);
             }
         }
+        BranchMsg::DeleteDialog(name) => super::branch_delete::open(st, &name, fx),
+        BranchMsg::UnmergedCounted { name, tip, count } => super::branch_delete::counted(st, &name, tip, count),
+        BranchMsg::Delete { name, tip, force } => super::branch_delete::delete(st, &name, tip, force, fx),
         BranchMsg::DeleteBranchAndRemote(name) => delete_with_remote(st, &name, fx),
         BranchMsg::PushBranch { branch, remote } => push(st, &branch, remote.as_deref(), fx),
     }
 }
 
 /// The local branch `name` in the current snapshot; logs when it is gone.
-fn find(st: &mut AppState, name: &str) -> Option<BranchInfo> {
+pub(super) fn find(st: &mut AppState, name: &str) -> Option<BranchInfo> {
     let snap = st.snap.as_ref()?;
     let b = snap.locals.iter().find(|b| b.name == name).cloned();
     if b.is_none() {

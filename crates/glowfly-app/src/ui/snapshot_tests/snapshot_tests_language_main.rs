@@ -116,7 +116,6 @@ const ENGLISH: &[&str] = &[
     "Link",
     "Copy",
     "Delete…",
-    "Force delete…",
     "Delete together with *",
     "Delete from remote…",
     "Show in graph",
