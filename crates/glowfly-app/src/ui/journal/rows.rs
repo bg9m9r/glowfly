@@ -12,6 +12,7 @@ use crate::state::journal::{row_label, short, subject_name};
 use crate::state::journal_restore;
 use crate::ui::common::{menu_header, menu_item, menu_item_if};
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::menu::{separator, submenu};
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::{paint_cut_text, row_fill};
 use eframe::egui::{self, Align2, CursorIcon, Rect, Sense, Ui, pos2, vec2};
@@ -106,8 +107,8 @@ fn menu(ui: &mut Ui, st: &AppState, snap: &Snapshot, row: &Row, label: &str, msg
     let why = journal_restore::plan(snap, row, st.job.is_some(), t).err();
     menu_item_if(msgs, ui, t.tr("journal.restore.button"), why.as_deref(), Msg::Journal(JournalMsg::Restore(row.key())));
     menu_item(msgs, ui, t.tr("journal.create_branch"), Msg::Journal(JournalMsg::CreateBranch(row.key())));
-    ui.separator();
-    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+    separator(ui);
+    submenu(ui, t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("commits.menu.copy_sha"), Msg::Copy(row.oid.to_string()));
     });
 }

@@ -9,6 +9,7 @@ use crate::msg::{Msg, TabsMsg};
 use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::{self, popup_below, separator};
 use eframe::egui::{self, Align, Button, Layout, PopupCloseBehavior, RichText, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
@@ -35,7 +36,7 @@ pub(super) fn button(ui: &mut egui::Ui, t: Lang, st: &AppState, slot: f32, msgs:
     if r.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
-    egui::popup::popup_below_widget(ui, popup, &r, PopupCloseBehavior::CloseOnClick, |ui| {
+    popup_below(ui, popup, &r, PopupCloseBehavior::CloseOnClick, |ui| {
         ui.set_min_width(260.0);
         // Rows like a menu's: frameless, full width, text on the left.
         ui.style_mut().visuals.button_frame = false;
@@ -55,7 +56,7 @@ fn list(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
         }
     }
-    ui.separator();
+    separator(ui);
     heading(ui, t.tr("tabs.list.closed"));
     if st.closed_tabs.is_empty() {
         ui.label(RichText::new(t.tr("menu.file.no_closed")).color(color::weak()));
@@ -68,5 +69,5 @@ fn list(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
 }
 
 fn heading(ui: &mut egui::Ui, text: &str) {
-    ui.label(type_scale::section_text(ui, text));
+    menu::inset(ui, |ui| ui.label(type_scale::section_text(ui, text)));
 }

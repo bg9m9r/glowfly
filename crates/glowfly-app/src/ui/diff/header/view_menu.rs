@@ -8,8 +8,9 @@ use crate::msg::{DiffMsg, Msg};
 use crate::state::diff_header::ViewGroup;
 use crate::ui::theme::type_scale;
 use crate::ui::theme::{color, controls as theme_controls};
+use crate::ui::widgets::menu::popover_below;
 use crate::ui::widgets::{self, buttons, segmented::segmented};
-use eframe::egui::{self, PopupCloseBehavior, RichText, Ui, pos2};
+use eframe::egui::{PopupCloseBehavior, RichText, Ui, pos2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{DiffLayout, DiffMode};
 
@@ -37,7 +38,7 @@ pub(super) fn show(ui: &mut Ui, t: Lang, v: &ViewGroup, short: bool, msgs: &mut 
     if resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }
-    egui::popup::popup_below_widget(ui, id, &resp, PopupCloseBehavior::CloseOnClickOutside, |ui| {
+    popover_below(ui, id, &resp, PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_min_width(MENU_W);
         ui.set_max_width(MENU_W);
         ui.spacing_mut().item_spacing.y = 6.0;

@@ -8,6 +8,7 @@ use super::widgets::quiet_chip;
 use crate::msg::{Msg, RepoMsg};
 use crate::state::AppState;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::context_menu;
 use eframe::egui::{Response, RichText, Ui, vec2};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
@@ -82,7 +83,7 @@ fn parents(ui: &mut Ui, st: &AppState, t: Lang, parents: &[Oid], msgs: &mut Vec<
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(p)));
         }
-        r.context_menu(|ui| menu_item(msgs, ui, t.tr("common.copy_sha.button"), Msg::Copy(p.to_string())));
+        context_menu(&r, |ui| menu_item(msgs, ui, t.tr("common.copy_sha.button"), Msg::Copy(p.to_string())));
     }
 }
 

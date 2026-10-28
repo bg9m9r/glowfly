@@ -13,6 +13,7 @@ use crate::ui::prefs::terminal::choice_label;
 use crate::ui::theme::color;
 use crate::ui::theme::tokens::radius;
 use crate::ui::widgets::chevron;
+use crate::ui::widgets::menu::popup_below;
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
 use eframe::egui::{self, Align, CornerRadius, CursorIcon, Id, Layout, PopupCloseBehavior, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
@@ -78,7 +79,7 @@ fn shell_picker(ui: &mut Ui, prefs: &TerminalPrefs, t: Lang, cy: f32, msgs: &mut
     if resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
-    egui::popup::popup_below_widget(ui, popup, &resp, PopupCloseBehavior::CloseOnClick, |ui| {
+    popup_below(ui, popup, &resp, PopupCloseBehavior::CloseOnClick, |ui| {
         ui.set_min_width(220.0);
         let before = msgs.len();
         shell_menu(ui, &shell_items(t, prefs, cfg!(windows)), msgs);

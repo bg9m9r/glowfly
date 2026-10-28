@@ -5,6 +5,7 @@ use crate::msg::{CloneMsg, Msg, RecentMsg, RepoMsg};
 use crate::state::AppState;
 use crate::terminal::TerminalMsg;
 use crate::ui::common::menu_item;
+use crate::ui::widgets::menu::{context_menu, popup_below, separator};
 use crate::ui::widgets::{self, Icon, tooltip::attach};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
@@ -20,7 +21,7 @@ pub(super) fn terminal_button(ui: &mut egui::Ui, st: &AppState, labels: bool, it
     if resp.clicked() {
         msgs.push(Msg::Terminal(TerminalMsg::Toggle));
     }
-    resp.context_menu(|ui| menu_item(msgs, ui, item, Msg::OpenTerminal));
+    context_menu(&resp, |ui| menu_item(msgs, ui, item, Msg::OpenTerminal));
 }
 
 /// A tool button with its dropdown caret (`widgets::split_button`): `tool` is its icon, caption
@@ -43,7 +44,7 @@ pub(super) fn split(
     if caret.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
-    egui::popup::popup_below_widget(ui, popup, &caret, egui::PopupCloseBehavior::CloseOnClick, |ui| {
+    popup_below(ui, popup, &caret, egui::PopupCloseBehavior::CloseOnClick, |ui| {
         ui.set_min_width(width);
         contents(ui);
     });
@@ -55,7 +56,7 @@ pub(super) fn repo_menu(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Ve
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.open"), Msg::Repo(RepoMsg::PickRepo));
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.clone"), Msg::Clone(CloneMsg::Dialog));
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.init"), Msg::Repo(RepoMsg::InitRepo));
-    ui.separator();
+    separator(ui);
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.dashboard"), Msg::Dashboard(crate::msg::DashboardMsg::Open));
     crate::ui::repo_menu::actions(ui, t, st, msgs);
     if let Some(snap) = &st.snap {

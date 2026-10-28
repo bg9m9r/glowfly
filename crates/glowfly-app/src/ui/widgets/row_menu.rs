@@ -1,5 +1,5 @@
 //! Right-click menus that open below the row they belong to, so the row (and the status at its
-//! right end) stays in view while the menu is open.
+//! right end) stays in view while the menu is open, in the shared menu style (`menu.rs`).
 
 use eframe::egui::{self, Id, InnerResponse, Rect, Response, Ui, Vec2, pos2};
 
@@ -34,7 +34,7 @@ impl RowMenuExt for Response {
             let mut ms = root.menu_state.write();
             ms.rect = placed(ms.rect, row, screen, !was_ours || self.secondary_clicked());
         }
-        let inner = bar.show(self, add_contents);
+        let inner = bar.show(self, |ui| super::menu::styled(ui, add_contents));
         bar.store(ctx, id);
         inner
     }

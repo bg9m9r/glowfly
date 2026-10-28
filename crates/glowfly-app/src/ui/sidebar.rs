@@ -24,6 +24,7 @@ use crate::state::forge_filters::{self, IssueView, PrView};
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use crate::ui::theme::controls;
+use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::forge::{self, FilterKind};
@@ -178,7 +179,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
         let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
             super::pr_menu_items::pr_menu(ui, t, snap, f, idle, msgs);
-            ui.separator();
+            separator(ui);
             menu_item(msgs, ui, t.tr("sidebar.new_filter"), Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Prs)));
         };
         let add = actions.pr.as_ref().map(HeaderAdd::send);
@@ -196,7 +197,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             if let Some(a) = &actions.issue {
                 action_item(ui, msgs, a);
             }
-            ui.separator();
+            separator(ui);
             menu_item(msgs, ui, t.tr("sidebar.new_filter"), Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Issues)));
         };
         let add = actions.issue.as_ref().map(HeaderAdd::send);

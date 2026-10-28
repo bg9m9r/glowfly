@@ -183,7 +183,7 @@ fn more_button(ui: &mut Ui, moved: &[HeaderAction], ctx: RowContext, msgs: &mut 
 /// A header's more-actions button (a painted icon) opening a menu of `items`.
 pub(in crate::ui) fn more_menu(ui: &mut Ui, t: Lang, items: impl FnOnce(&mut Ui)) {
     let button = egui::Button::new("").small().frame(false).min_size(vec2(MORE_W, 0.0));
-    let menu = egui::menu::menu_custom_button(ui, button, items);
+    let menu = crate::ui::widgets::menu::custom_button(ui, button, items);
     let tip = t.tr("details.wip.more.tip");
     let r = menu.response.on_hover_text(tip);
     widgets::paint_icon(ui.painter(), r.rect.center(), Icon::More, color::text());

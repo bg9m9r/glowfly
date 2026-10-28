@@ -14,6 +14,7 @@ use crate::ui::common::short;
 use crate::ui::diff::wrap::{MIN_COLS, RowMetrics, Wrap};
 use crate::ui::diff::{DiffStyle, paint_line};
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::menu::context_menu;
 use eframe::egui::{self, Align2, CursorIcon, FontId, Rect, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
 /// What the body saw this frame: the first line in view and a code line clicked.
@@ -141,7 +142,7 @@ pub(super) fn body(
             if resp.clicked() {
                 msgs.push(Msg::Blame(BlameMsg::SelectCommit(c.oid)));
             }
-            resp.context_menu(|ui| {
+            context_menu(&resp, |ui| {
                 let line = ui.ctx().data(|d| d.get_temp::<usize>(menu_id)).unwrap_or(from).clamp(run.start, run.start + run.len - 1);
                 if let Some(l) = target(st, view, data, line) {
                     menu::line_menu(ui, st.settings.lang(), msgs, &l);
@@ -158,7 +159,7 @@ pub(super) fn body(
             if resp.clicked() || resp.secondary_clicked() {
                 out.clicked = Some(i);
             }
-            resp.context_menu(|ui| {
+            context_menu(&resp, |ui| {
                 if let Some(l) = target(st, view, data, i) {
                     menu::line_menu(ui, st.settings.lang(), msgs, &l);
                 }

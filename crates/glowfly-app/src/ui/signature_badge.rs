@@ -7,6 +7,7 @@ use crate::msg::{Msg, PrefsMsg, RepoMsg};
 use crate::state::signatures::{BadgeState, badge};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::context_menu;
 use eframe::egui::{self, Color32, CornerRadius, Painter, Pos2, Sense, Stroke, StrokeKind, pos2, vec2};
 use glowfly_core::repo::CommitDetail;
 use glowfly_core::signature_check::Verdict;
@@ -61,7 +62,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
     let resp = resp.on_hover_text(b.tooltip);
     let key = b.checked.map(|c| c.key).unwrap_or_default();
     let oid = d.oid;
-    resp.context_menu(|ui| {
+    context_menu(&resp, |ui| {
         if !held {
             menu_item(msgs, ui, t.tr("signature.menu.check_again"), Msg::Repo(RepoMsg::CheckSignatureAgain(oid)));
         }

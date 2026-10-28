@@ -169,7 +169,7 @@ fn steps_width(ui: &Ui, t: Lang, n: usize, progress: &str, counter: &str) -> f32
 /// markers and Reset picks… are for text files (`text`) only.
 fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeTool, in_tool: bool, msgs: &mut Vec<Msg>) {
     let path = &view.path;
-    let menu = egui::menu::menu_custom_button(ui, egui::Button::new("").min_size(vec2(28.0, 24.0)), |ui| {
+    let menu = crate::ui::widgets::menu::custom_button(ui, egui::Button::new("").min_size(vec2(28.0, 24.0)), |ui| {
         if text {
             menu_item_if(
                 msgs,

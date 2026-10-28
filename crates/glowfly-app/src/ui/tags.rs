@@ -16,6 +16,7 @@ use crate::state::rebase::JOB_RUNNING;
 use crate::state::section_actions::SectionAction;
 use crate::state::tags::delete_remote_confirm;
 use crate::tag::TagMsg;
+use crate::ui::widgets::menu::{separator, submenu};
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
@@ -82,18 +83,18 @@ pub(in crate::ui) fn tag_menu(
         ui.close_menu();
     }
     if !remotes.is_empty() {
-        ui.separator();
+        separator(ui);
         push_menu(ui, t, name, &remotes, blocked, msgs);
     }
     // Never disabled: a tag is never the checked-out branch, and these only change settings.
-    ui.separator();
+    separator(ui);
     ref_visibility::menu_items(ui, t, &format!("refs/tags/{name}"), graph, false, msgs);
-    ui.separator();
-    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+    separator(ui);
+    submenu(ui, t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(tag()));
         menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Tag(tag()))));
     });
-    ui.separator();
+    separator(ui);
     let delete = Msg::git("Delete tag", &["tag", "-d", name]);
     let body = t.trf("tag.delete.body", &[("tag", &name)]);
     let confirm = Msg::confirm_danger(t.tr("tag.delete.title"), body, t.tr("common.delete.button"), delete);
@@ -105,12 +106,12 @@ pub(in crate::ui) fn tag_menu(
 
 /// "Push to": one entry per remote and, with more than one, all of them.
 fn push_menu(ui: &mut egui::Ui, t: Lang, name: &str, remotes: &[String], blocked: Option<&str>, msgs: &mut Vec<Msg>) {
-    ui.menu_button(t.tr("branch.menu.push_to"), |ui| {
+    submenu(ui, t.tr("branch.menu.push_to"), |ui| {
         for r in remotes {
             menu_item_if(msgs, ui, r, blocked, Msg::Tag(TagMsg::Push { tag: name.to_owned(), remotes: vec![r.clone()] }));
         }
         if remotes.len() > 1 {
-            ui.separator();
+            separator(ui);
             menu_item_if(
                 msgs,
                 ui,
@@ -125,12 +126,12 @@ fn push_menu(ui: &mut egui::Ui, t: Lang, name: &str, remotes: &[String], blocked
 /// "Delete from remote": one entry per remote and, with more than one, all of them. Each asks
 /// first.
 fn delete_remote_menu(ui: &mut egui::Ui, t: Lang, name: &str, remotes: &[String], blocked: Option<&str>, msgs: &mut Vec<Msg>) {
-    ui.menu_button(t.tr("tag.menu.delete_from_remote"), |ui| {
+    submenu(ui, t.tr("tag.menu.delete_from_remote"), |ui| {
         for r in remotes {
             menu_item_if(msgs, ui, format!("{r}…"), blocked, delete_remote_confirm(t, name, vec![r.clone()]));
         }
         if remotes.len() > 1 {
-            ui.separator();
+            separator(ui);
             menu_item_if(msgs, ui, t.tr("tag.menu.all_remotes_ask"), blocked, delete_remote_confirm(t, name, remotes.to_vec()));
         }
     });

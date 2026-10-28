@@ -17,6 +17,7 @@ use crate::state::repo_lists::{
     remove_missing_msg, unopened_favorites,
 };
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::{self, separator};
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align, Color32, Layout, Response, RichText, Sense, Stroke};
 use glowfly_core::i18n::Lang;
@@ -124,7 +125,7 @@ fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separato
     let favs = favorites(&st.settings);
     if !favs.is_empty() {
         if lead_separator {
-            ui.separator();
+            separator(ui);
         }
         header(ui, t.tr("repos.favorites.header"));
         for (index, p) in favs.iter().enumerate() {
@@ -134,7 +135,7 @@ fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separato
     let recent = recent_rows(st);
     if !recent.is_empty() {
         if lead_separator || !favs.is_empty() {
-            ui.separator();
+            separator(ui);
         }
         header(ui, t.tr("repos.recent.header"));
         for p in recent {
@@ -145,7 +146,7 @@ fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separato
 }
 
 fn header(ui: &mut egui::Ui, title: &str) {
-    ui.label(RichText::new(title).color(color::weak()));
+    menu::inset(ui, |ui| ui.label(RichText::new(title).color(color::weak())));
 }
 
 fn small_link(ui: &mut egui::Ui, text: &str) -> bool {
@@ -243,7 +244,7 @@ fn row(
                 }
                 r.row_menu(|ui| {
                     row_menu(ui, t, &text, section, fav, [open(), favorite(), remove()], msgs);
-                    ui.separator();
+                    separator(ui);
                     super::repo_colour_menu::items(ui, t, Some(path), swatch, msgs);
                 });
             });

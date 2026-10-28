@@ -15,6 +15,7 @@ use crate::ui::common::{menu_header, menu_item, menu_item_if};
 use crate::ui::empty_state::{EmptyIcon, empty_state};
 use crate::ui::pane_status::{self, Failure};
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::menu::{separator, submenu};
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::{paint_cut_text, row_fill};
 use eframe::egui::{self, Align2, CursorIcon, Rect, Sense, Ui, pos2, vec2};
@@ -119,8 +120,8 @@ fn menu(ui: &mut Ui, st: &AppState, snap: &Snapshot, c: &LostCommit, name: &str,
             menu_item(msgs, ui, t.tr("journal.lost.store"), lost(LostMsg::Store(c.oid)));
         }
     }
-    ui.separator();
-    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+    separator(ui);
+    submenu(ui, t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("commits.menu.copy_sha"), Msg::Copy(c.oid.to_string()));
     });
 }

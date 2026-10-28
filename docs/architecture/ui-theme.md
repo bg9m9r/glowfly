@@ -39,5 +39,5 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 ## Spacing and tokens
 
-- `theme/spacing.rs`: the spacing grid and panel padding.
+- `theme/spacing.rs`: the spacing grid and panel padding, and the menu row metrics (comfortable and compact) and frame margin.
 - `theme/tokens.rs`: the design tokens every theme reads: the radius scale with nested container radii, the Float and Dialog elevations, the focus ring, the inset ring for packed controls and a text field's halo, and the motion timings and easing, instant with Reduce motion.

@@ -7,6 +7,7 @@ use crate::msg::{Msg, RecentMsg, ReposMsg};
 use crate::state::AppState;
 use crate::state::repo_lists::{favorites, missing_counts, remove_missing_msg, unopened_favorites};
 use crate::state::repo_sync::{SyncKind, SyncScope};
+use crate::ui::widgets::menu::{separator, submenu};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 
@@ -16,7 +17,7 @@ pub fn actions(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
         menu_item(msgs, ui, t.tr("toolbar.repo_menu.open_favorites"), Msg::Recent(RecentMsg::OpenAll(favorites(&st.settings))));
     }
     if !st.settings.favorite_repos.is_empty() || !st.recent.is_empty() {
-        ui.menu_button(t.tr("toolbar.repo_menu.sync_menu"), |ui| sync_items(ui, t, st, msgs));
+        submenu(ui, t.tr("toolbar.repo_menu.sync_menu"), |ui| sync_items(ui, t, st, msgs));
     }
     let (recent, favs) = missing_counts(st);
     if let Some(ask) = remove_missing_msg(st) {
@@ -30,7 +31,7 @@ fn sync_items(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     if !st.settings.favorite_repos.is_empty() {
         menu_item(msgs, ui, t.tr("toolbar.repo_menu.sync_fetch_favorites"), sync(SyncKind::Fetch, SyncScope::Favorites));
         menu_item(msgs, ui, t.tr("toolbar.repo_menu.sync_pull_favorites"), sync(SyncKind::Pull, SyncScope::Favorites));
-        ui.separator();
+        separator(ui);
     }
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.sync_fetch_listed"), sync(SyncKind::Fetch, SyncScope::Listed));
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.sync_pull_listed"), sync(SyncKind::Pull, SyncScope::Listed));

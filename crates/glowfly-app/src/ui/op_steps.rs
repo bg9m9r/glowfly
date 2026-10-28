@@ -21,6 +21,7 @@ use crate::state::op_actions::action_text;
 use crate::state::op_confirm::{Risky, banner_msg};
 use crate::state::op_steps::{self, OpKind, OpStep, StepState, step_state};
 use crate::state::rebase_banner::action_msg;
+use crate::ui::widgets::menu::popup_above_or_below;
 use eframe::egui::{self, Align, Layout, Rect, RichText, Sense, Stroke, Ui, vec2};
 use git2::RepositoryState;
 use glowfly_core::git_version::Feature;
@@ -177,7 +178,7 @@ fn finish_buttons(ui: &mut Ui, st: &AppState, state: RepositoryState, conflicted
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
     let close = egui::PopupCloseBehavior::CloseOnClickOutside;
-    egui::popup::popup_above_or_below_widget(ui, popup, &caret, egui::AboveOrBelow::Above, close, |ui| {
+    popup_above_or_below(ui, popup, &caret, egui::AboveOrBelow::Above, close, |ui| {
         ui.set_min_width(MORE_MENU_W);
         let before = msgs.len();
         for (label, a, old_git) in others {

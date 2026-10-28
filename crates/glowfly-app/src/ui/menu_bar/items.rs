@@ -4,6 +4,7 @@
 
 use crate::keymap::Chord;
 use crate::ui::theme::controls::paint_check_box;
+use crate::ui::widgets::menu::submenu;
 use crate::ui::widgets::reason::{self, ItemState};
 use eframe::egui::{self, Color32, Rect, TextStyle, WidgetInfo, WidgetText, WidgetType, pos2, vec2};
 
@@ -47,7 +48,7 @@ pub(super) fn submenu_if(ui: &mut egui::Ui, label: &str, blocked: Option<&str>, 
             reason::menu_button(ui, label, "", ItemState::Blocked(why));
         }
         None => {
-            ui.menu_button(label, add_contents);
+            submenu(ui, label, add_contents);
         }
     }
 }

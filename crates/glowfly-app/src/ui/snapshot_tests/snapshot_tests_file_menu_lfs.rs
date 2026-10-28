@@ -9,6 +9,7 @@ use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::state::lfs::{LfsInstall, TrackContext, TrackItem, track_items};
 use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::widgets::menu::context_menu;
 use eframe::egui::{self, Event, Modifiers, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -59,11 +60,12 @@ fn body(items: Vec<TrackItem>, dark: bool) -> Harness<'static, Vec<Msg>> {
 fn file_menu_wip_lfs() {
     let lfs = items(PATH, installed());
     let f = FileEntry::new(PATH, 'M');
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(260.0, 250.0)).build_ui_state(
+    // Tall enough for the whole menu at its 30 px row pitch.
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(260.0, 400.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
             let r = ui.add(egui::Label::new(PATH).sense(egui::Sense::click()));
-            r.context_menu(|ui| {
+            context_menu(&r, |ui| {
                 let _ = ui.button("Stage");
                 let _ = ui.button("Copy path");
                 let tool = super::file_menu::diff_item(Lang::En, glowfly_core::repo::DiffTarget::Unstaged(PATH.into()), None);

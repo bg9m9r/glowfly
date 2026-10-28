@@ -23,6 +23,7 @@ use crate::state::remotes::{fetch_blocked, find, tooltip};
 use crate::state::section_actions::SectionAction;
 use crate::state::{ForgeState, Selection};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::{separator, submenu};
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, Response, Sense, pos2, vec2};
 use git2::Oid;
@@ -146,17 +147,17 @@ fn group_menu(ui: &mut egui::Ui, info: &RemoteInfo, idle: bool, connections: &[C
     menu_item_if(msgs, ui, "Fetch", fetch_blocked(info, idle), msg(RemoteMsg::Fetch(name.clone())));
     let (view, why) = view_item(info, connections);
     menu_item_if(msgs, ui, view, why.as_deref(), msg(RemoteMsg::View(name.clone())));
-    ui.separator();
+    separator(ui);
     let why = fork_target(info, connections, ForkAction::List).err();
     menu_item_if(msgs, ui, ADD_FORK_ITEM, why.as_deref(), msg(RemoteMsg::ForkDialog(name.clone())));
     let why = fork_target(info, connections, ForkAction::Create).err();
     menu_item_if(msgs, ui, fork_menu_label(info, connections), why.as_deref(), msg(RemoteMsg::ForkOnService(name.clone())));
-    ui.separator();
+    separator(ui);
     menu_item(msgs, ui, "Edit…", msg(RemoteMsg::EditDialog(name.clone())));
     let (fetch, push) = (info.fetch_url(), info.separate_push_url());
     if !fetch.is_empty() || push.is_some() {
-        ui.separator();
-        ui.menu_button("Copy", |ui| {
+        separator(ui);
+        submenu(ui, "Copy", |ui| {
             if !fetch.is_empty() {
                 menu_item(msgs, ui, "Fetch URL", Msg::Copy(fetch.to_owned()));
             }
@@ -169,6 +170,6 @@ fn group_menu(ui: &mut egui::Ui, info: &RemoteInfo, idle: bool, connections: &[C
             }
         });
     }
-    ui.separator();
+    separator(ui);
     menu_item(msgs, ui, "Remove…", Msg::Remote(RemoteMsg::RemoveDialog(name.clone())));
 }

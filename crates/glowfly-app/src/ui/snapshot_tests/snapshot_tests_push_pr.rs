@@ -200,6 +200,22 @@ fn open_push_menu(h: &mut Harness<'_, (AppState, Vec<Msg>)>) {
     h.run();
 }
 
+/// The Push dropdown in the shared menu style: transparent rows like every other menu's, not
+/// filled buttons (a pixel golden).
+#[test]
+fn toolbar_push_menu() {
+    let (mut st, dir) = with_host(ThemeChoice::Dark, "toolbar-push-menu", &["main"]);
+    check_out_search(&mut st);
+    let mut h = harness(st, true);
+    h.run();
+    open_push_menu(&mut h);
+    h.get_by_label("Push search and create a pull request…").hover();
+    h.run();
+    h.check_snapshot("toolbar_push_menu");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn toolbar_push_menu_pr_item() {
     let label = "Push search and create a pull request…";

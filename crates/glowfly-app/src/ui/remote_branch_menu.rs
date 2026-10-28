@@ -16,6 +16,7 @@ use crate::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg
 use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::rebase_onto::onto_commit_blocker;
 use crate::state::{ForgeState, Selection, branches, pr_repos, remote_branch, worktree_branches};
+use crate::ui::widgets::menu::{separator, submenu};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
@@ -42,7 +43,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     menu_header(ui, &full);
     let tracking = remote_branch::tracking_local(snap, remote, name);
     checkout_items(ui, t, (remote, name), oid, tracking, snap, msgs);
-    ui.separator();
+    separator(ui);
     if let Some(b) = tracking {
         let blocked = branches::fast_forward_blocked(b, snap.state);
         let ff = Msg::Branch(BranchMsg::FastForwardBranch(b.name.clone()));
@@ -56,7 +57,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     menu_item(msgs, ui, t.tr("remote_branch.menu.range_diff"), compare);
     match fs.filter(|f| f.host.is_some()) {
         Some(fs) if fs.remote == remote => {
-            ui.separator();
+            separator(ui);
             match fs.pr_for_branch(name) {
                 Some(pr) => {
                     let label = t.trf("pr.menu.open", &[("noun", &fs.pr_word(t)), ("pr", &fs.pr_label(pr.id))]);
@@ -67,27 +68,27 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
         }
         // A fork on the code host's account: a pull request from it into the base repository.
         Some(fs) if pr_repos::is_pr_remote(fs, remote) => {
-            ui.separator();
+            separator(ui);
             let create = Msg::Forge(ForgeMsg::CreatePrFrom { remote: remote.to_owned(), source: name.to_owned() });
             menu_item(msgs, ui, t.trf("pr.menu.create", &[("noun", &fs.pr_word(t))]), create);
         }
         // Another remote of a repository on a code host: pull requests go through the host's.
         Some(_) => {}
         None => {
-            ui.separator();
+            separator(ui);
             super::pr_menu_items::remote_no_host(ui, t, remote, name, snap, msgs);
         }
     }
-    ui.separator();
+    separator(ui);
     ref_visibility::menu_items(ui, t, &format!("refs/remotes/{full}"), filter, false, msgs);
     super::branch_colour_menu::items(ui, t, name, snap, msgs);
-    ui.separator();
-    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+    separator(ui);
+    submenu(ui, t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(full.clone()));
         let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
         menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
     });
-    ui.separator();
+    separator(ui);
     menu_item(
         msgs,
         ui,

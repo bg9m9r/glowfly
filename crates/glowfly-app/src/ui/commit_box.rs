@@ -23,6 +23,7 @@ use crate::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, pushes_a
 use crate::state::repo_identity::commit_identity_line;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::popup_below;
 use crate::ui::widgets::{buttons, reason, truncate_label};
 use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText, vec2};
 use glowfly_core::i18n::Lang;
@@ -203,7 +204,7 @@ fn commit_split(
     if caret.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
-    egui::popup::popup_below_widget(ui, popup, &caret, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
+    popup_below(ui, popup, &caret, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         // The popup starts as wide as its anchor, the narrow caret: give the menu its own width
         // and keep the label on one line.
         ui.set_min_width(MENU_W);

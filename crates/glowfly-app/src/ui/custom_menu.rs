@@ -8,6 +8,7 @@ use super::widgets::tooltip;
 use crate::custom_commands::Target;
 use crate::msg::Msg;
 use crate::state::custom_commands::MenuCommands;
+use crate::ui::widgets::menu::{separator, submenu};
 use eframe::egui;
 use glowfly_core::custom_commands::Place;
 use glowfly_core::i18n::Lang;
@@ -17,8 +18,8 @@ pub fn group(ui: &mut egui::Ui, t: Lang, cmds: &MenuCommands, place: Place, at: 
     if items.is_empty() {
         return;
     }
-    ui.separator();
-    ui.menu_button(t.tr("commands.menu.title"), |ui| {
+    separator(ui);
+    submenu(ui, t.tr("commands.menu.title"), |ui| {
         for it in items {
             let mut r = reason::menu_button(ui, it.label.as_str(), "", ItemState::blocked_by(it.blocked));
             if let (None, Some(tip)) = (it.blocked, it.tip.as_deref()) {

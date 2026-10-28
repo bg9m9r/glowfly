@@ -9,6 +9,7 @@ use crate::msg::{Msg, StageMsg, StashMsg};
 use crate::patch::PatchMsg;
 use crate::state::lfs::TrackItem;
 use crate::state::stashes::push_blocked;
+use crate::ui::widgets::menu::{separator, submenu};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::patch_ops::WipScope;
@@ -33,8 +34,8 @@ pub(in crate::ui) fn lfs_track_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, ite
 /// Separator and the Track in Git LFS submenu, unless there is nothing to offer.
 pub(super) fn lfs_submenu(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
     if !items.is_empty() {
-        ui.separator();
-        ui.menu_button(t.tr("lfs.menu.track"), |ui| lfs_track_items(ui, msgs, items));
+        separator(ui);
+        submenu(ui, t.tr("lfs.menu.track"), |ui| lfs_track_items(ui, msgs, items));
     }
 }
 

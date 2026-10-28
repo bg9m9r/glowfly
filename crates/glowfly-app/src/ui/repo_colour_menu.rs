@@ -8,6 +8,7 @@ use super::theme::color;
 use super::widgets::reason::{self, ItemState};
 use crate::msg::{Msg, RecentMsg};
 use crate::state::repo_colours::hue_name;
+use crate::ui::widgets::menu::{separator, submenu};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoColour;
@@ -25,14 +26,14 @@ pub fn items(ui: &mut egui::Ui, t: Lang, path: Option<&Path>, current: Option<Re
         return;
     };
     let set = |colour| Msg::Recent(RecentMsg::SetColour { path: path.to_path_buf(), colour });
-    ui.menu_button(t.tr("repo_colour.menu"), |ui| {
+    submenu(ui, t.tr("repo_colour.menu"), |ui| {
         let none = repo_swatch::menu_row(ui, &checked(t.tr("repo_colour.none"), current.is_none()), None)
             .on_hover_text(t.tr("repo_colour.none.tip"));
         if none.clicked() {
             msgs.push(set(None));
             ui.close_menu();
         }
-        ui.separator();
+        separator(ui);
         for c in RepoColour::ALL {
             let label = checked(hue_name(t, c), current == Some(c));
             if repo_swatch::menu_row(ui, &label, Some(color::repo_hue(c))).clicked() {

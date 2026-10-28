@@ -16,6 +16,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::menu_keys::TopMenu;
 use crate::state::menu_model;
+use crate::ui::widgets::menu::{separator, submenu};
 use eframe::egui::{self, Button, Frame, Id, Key, Margin, Modifiers};
 
 mod about;
@@ -48,7 +49,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
     egui::TopBottomPanel::top("menu-bar").frame(Frame::new().fill(color::toolbar()).inner_margin(Margin::symmetric(6, 2))).show(
         ctx,
         |ui| {
-            egui::menu::bar(ui, |ui| bar::draw(ui, st, msgs));
+            crate::ui::widgets::menu::bar(ui, |ui| bar::draw(ui, st, msgs));
         },
     );
 }
@@ -89,7 +90,7 @@ fn menus(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let mut picked = None;
         let mut list_focused = false;
         for m in TopMenu::ALL {
-            let r = ui.menu_button(keys::title(ui, t, m, &marks, show), |ui| contents(m, ui, st, msgs)).response;
+            let r = submenu(ui, keys::title(ui, t, m, &marks, show), |ui| contents(m, ui, st, msgs)).response;
             if st.view.menu_keys.back_to == Some(m) {
                 r.request_focus();
                 st.view.menu_keys.back_to = None;
@@ -126,7 +127,7 @@ fn single(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>, m: TopMenu)
             }
         }
     });
-    ui.separator();
+    separator(ui);
     nav::contents(ui, st, |ui, st| contents(m, ui, st, msgs));
 }
 

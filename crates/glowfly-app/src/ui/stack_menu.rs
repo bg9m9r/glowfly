@@ -10,6 +10,7 @@ use crate::state::ForgeState;
 use crate::state::stack::blocker;
 use crate::state::stack_prs::prs_blocker;
 use crate::state::stack_push::push_blocker;
+use crate::ui::widgets::menu::separator;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
@@ -37,7 +38,7 @@ pub fn items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, fs: Op
     if !has_above && below.is_none() {
         return;
     }
-    ui.separator();
+    separator(ui);
     let mut item = |ui: &mut egui::Ui, label: String, scope: RestackScope| {
         let why = blocker(t, snap, &scope);
         menu_item_if(msgs, ui, label, why.as_deref(), Msg::Rebase(RebaseMsg::Restack { scope, autostash: false }));

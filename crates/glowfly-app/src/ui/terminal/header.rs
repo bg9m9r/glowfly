@@ -14,6 +14,7 @@ use crate::ui::common::menu_item_if;
 use crate::ui::theme::color;
 use crate::ui::widgets::Icon;
 use crate::ui::widgets::ghost::{self, divider, ghost, icon_tip};
+use crate::ui::widgets::menu::popup_below;
 use eframe::egui::{self, Align, Layout, PopupCloseBehavior, Rect, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
@@ -101,7 +102,7 @@ fn more(ui: &mut Ui, st: &AppState, session: Option<&TermSession>, t: Lang, msgs
         ui.memory_mut(|m| m.toggle_popup(id));
     }
     let alive = st.snap.as_ref().map_or(0, |s| st.terminal.sessions_for(&s.workdir).filter(|t| t.alive()).count());
-    egui::popup::popup_below_widget(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
+    popup_below(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_min_width(200.0);
         let before = msgs.len();
         let few = (alive < 2).then(|| t.tr("terminal.header.fewer_running"));

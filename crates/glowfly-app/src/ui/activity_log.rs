@@ -16,6 +16,7 @@ use crate::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
 use crate::state::tip::Tip;
 use crate::ui::widgets::Icon;
 use crate::ui::widgets::ghost::{self, divider, ghost, icon_tip};
+use crate::ui::widgets::menu::popup_below;
 use crate::ui::widgets::segmented::segmented;
 use eframe::egui::{self, Align, Layout, PopupCloseBehavior, Rect, RichText, Sense, Stroke, TextStyle, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::settings::SizedPanel;
@@ -110,7 +111,7 @@ fn more(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     if r.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }
-    egui::popup::popup_below_widget(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
+    popup_below(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_min_width(200.0);
         let before = msgs.len();
         menu_item_if(msgs, ui, t.tr("logs.header.copy_log"), copy_log_blocked(st), Msg::Logs(LogsMsg::CopyLog));

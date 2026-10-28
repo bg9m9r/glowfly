@@ -18,6 +18,7 @@ use crate::state::submodules::{
 };
 use crate::submodule::{Batch, SubmoduleMsg};
 use crate::ui::theme::controls;
+use crate::ui::widgets::menu::{separator, submenu};
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Painter, Pos2, Rect, Stroke, pos2, vec2};
 use glowfly_core::i18n::Lang;
@@ -83,8 +84,8 @@ fn header_menu(ui: &mut egui::Ui, snap: &Snapshot, cx: &SectionCx, add: &Section
         menu_item_if(msgs, ui, "Initialize all submodules", init_all_blocked(&snap.submodules), batch(Batch::InitAll));
         menu_item_if(msgs, ui, "Update all submodules", update_all_blocked(&snap.submodules), batch(Batch::UpdateAll));
     }
-    ui.separator();
-    ui.menu_button("Update after checkout and pull", |ui| {
+    separator(ui);
+    submenu(ui, "Update after checkout and pull", |ui| {
         let follow = if cx.global { "Follow preferences (on)" } else { "Follow preferences (off)" };
         for (choice, label) in [
             (SubmoduleUpdates::FollowGlobal, follow),
@@ -107,7 +108,7 @@ fn menu(ui: &mut egui::Ui, sm: &SubmoduleInfo, snap: &Snapshot, cx: &SectionCx, 
     menu_item_if(msgs, ui, "Copy URL", copy_url_blocked(sm), Msg::Copy(copy_url_text(sm)));
     let edit = edit_blocked(sm, cx.edit_git.as_deref());
     menu_item_if(msgs, ui, "Edit submodule…", edit.as_deref(), Msg::Submodule(SubmoduleMsg::EditDialog(path)));
-    ui.separator();
+    separator(ui);
     let remove = Msg::Submodule(SubmoduleMsg::RemoveDialog(sm.path.clone()));
     menu_item_if(msgs, ui, "Remove submodule…", remove_blocked(sm, snap), remove);
 }

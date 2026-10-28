@@ -101,6 +101,8 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             }
             style.spacing.item_spacing = spacing::ITEM_SPACING;
             style.spacing.button_padding = spacing::BUTTON_PADDING;
+            // Menus and popups: their rows sit `FRAME_PAD` from the frame's edge.
+            style.spacing.menu_margin = egui::Margin::same(spacing::menu::FRAME_PAD);
             type_scale::install(style);
             super::widgets::tooltip::style(style);
         });
@@ -120,7 +122,12 @@ pub fn modal(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
 }
 
 fn modal_frame(ctx: &egui::Context, p: &Palette) -> egui::Frame {
-    egui::Frame::popup(&ctx.style()).fill(p.panel).stroke(Stroke::new(1.0_f32, p.dialog_border)).shadow(shadow(Elevation::Dialog, p))
+    // egui's own popup margin: menus' tighter `menu_margin` is not a modal's.
+    egui::Frame::popup(&ctx.style())
+        .inner_margin(egui::Margin::same(6))
+        .fill(p.panel)
+        .stroke(Stroke::new(1.0_f32, p.dialog_border))
+        .shadow(shadow(Elevation::Dialog, p))
 }
 
 /// A dialog's padding on all sides (`dialog`); `dialog_frame` works out its caps from it.

@@ -1,4 +1,4 @@
-window 260x250
+window 260x400
 Label "assets/a.psd"
 Button "Stage"
 Button "Copy path"

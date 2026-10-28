@@ -9,6 +9,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::terminal::TerminalMsg;
 use crate::ui::theme::color;
+use crate::ui::widgets::menu::context_menu;
 use eframe::egui::{self, Align2, EventFilter, FontId, Id, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::terminal::TermSpan;
 
@@ -68,7 +69,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
         }
     }
     let session = &st.terminal.sessions[index];
-    resp.context_menu(|ui| super::context_menu(ui, session, selected.is_some(), msgs));
+    context_menu(&resp, |ui| super::context_menu(ui, session, selected.is_some(), msgs));
 
     let rows = (((rect.height() - 2.0 * PAD) / rh).floor().max(0.0) as u16).max(MIN_ROWS);
     let cols = (((rect.width() - 2.0 * PAD) / cw).floor().max(0.0) as u16).max(MIN_COLS);

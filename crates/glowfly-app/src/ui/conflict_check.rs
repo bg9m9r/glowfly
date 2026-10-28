@@ -12,6 +12,7 @@ use crate::state::AppState;
 use crate::state::conflict_check::{self as cc, ConflictReport};
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::popover_below;
 use eframe::egui::{self, Id, RichText, Sense, pos2, vec2};
 use glowfly_core::conflict_check::Prediction;
 use glowfly_core::i18n::Lang;
@@ -59,7 +60,7 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         ui.memory_mut(|m| m.toggle_popup(id));
     }
     let idle = st.job.is_none();
-    egui::popup::popup_below_widget(ui, id, &resp, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
+    popover_below(ui, id, &resp, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_width(380.0);
         popover(ui, t, report, paths, remote, idle, msgs);
     });

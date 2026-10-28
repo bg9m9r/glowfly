@@ -17,6 +17,7 @@ use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::color;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale::{self, BODY, CAPTION};
+use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::truncate::{cut_galley, cut_job, cut_middle_in};
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, Color32, CornerRadius, Galley, Id, Response, Sense, WidgetInfo, WidgetType, pos2, vec2};
@@ -117,7 +118,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                         ui.close_menu();
                     }
                 }
-                ui.separator();
+                separator(ui);
                 let new_branch = Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() });
                 menu_item(msgs, ui, t.tr("toolbar.new_branch"), new_branch);
             });

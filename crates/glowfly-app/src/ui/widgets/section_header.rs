@@ -11,11 +11,9 @@ use crate::msg::Msg;
 use crate::state::section_actions::SectionAction;
 use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::menu;
 use crate::ui::widgets::row_menu::RowMenuExt;
-use eframe::egui::menu::BarState;
-use eframe::egui::{
-    self, Align2, CornerRadius, FontId, Id, Rect, Response, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2,
-};
+use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, Response, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
 /// The + and ⋯ buttons' size.
@@ -151,11 +149,11 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
                     msgs.push(action.msg());
                 }
             }
-            AddAction::Menu(items) => bar_menu(ui, r, |ui| items(ui, msgs)),
+            AddAction::Menu(items) => menu::below(ui, r, |ui| items(ui, msgs)),
         }
     }
     if let (Some(items), Some(r)) = (h.menu, &more) {
-        bar_menu(ui, r, |ui| items(ui, msgs));
+        menu::below(ui, r, |ui| items(ui, msgs));
     }
     if let Some(items) = h.menu {
         for r in [Some(&header), add.as_ref(), more.as_ref()].into_iter().flatten() {
@@ -166,8 +164,8 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
     let responses = [Some(&header), add.as_ref(), more.as_ref()];
     let revealed = ui.rect_contains_pointer(rect)
         || responses.iter().flatten().any(|r| r.has_focus() || r.context_menu_opened())
-        || menu_open(ui, add_id)
-        || menu_open(ui, more_id);
+        || menu::below_open(ui.ctx(), add_id)
+        || menu::below_open(ui.ctx(), more_id);
     if revealed {
         if let Some(r) = &add {
             paint_button(ui, r, Icon::Plus, enabled);
@@ -177,20 +175,6 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
         }
     }
     HeaderResponse { header, free_right: right - 2.0 * BUTTON - 2.0 * GAP }
-}
-
-/// A stationary menu below `button`, kept under the button's own id.
-fn bar_menu(ui: &Ui, button: &Response, add_contents: impl FnOnce(&mut Ui)) {
-    let key = button.id.with("menu");
-    let mut bar = BarState::load(ui.ctx(), key);
-    bar.bar_menu(button, add_contents);
-    bar.store(ui.ctx(), key);
-}
-
-/// Whether the button `id`'s stationary menu is open.
-fn menu_open(ui: &Ui, id: Id) -> bool {
-    let bar = BarState::load(ui.ctx(), id.with("menu"));
-    bar.as_ref().is_some_and(|root| root.id == id)
 }
 
 /// The + or ⋯: a rounded fill on hover, the accent ring while focused, and the icon.

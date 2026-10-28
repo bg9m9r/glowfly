@@ -92,6 +92,12 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - The Hard reset confirmation says how many files will be stashed
 - The remote group menu's header shows the repository path (owner/repo) weak next to the name
 
+### One menu style
+
+- A "Compact menus" preference picking `spacing::menu::COMPACT` (22 px rows) in `widgets::menu::metrics`
+- Tooltips share egui's popup margin, now the menus' 4 px: give them their own roomier frame
+- Dropdowns opened by `menu_anchor` line their first item's text up with the button's text again
+
 ### Restyled toolbar and rich tooltips
 
 - The other hover texts (sidebar rows, graph ref chips, file rows, status bar chips) move onto

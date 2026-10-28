@@ -25,6 +25,7 @@ use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
 use crate::state::worktrees::open_blocked;
 use crate::state::{ForgeState, Selection};
+use crate::ui::widgets::menu::{separator, submenu};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use glowfly_core::custom_commands::Place;
@@ -50,12 +51,12 @@ pub fn local_branch_menu(
     let name = b.name.as_str();
     super::stack_menu::header(ui, t, name, snap);
     branch_items(ui, t, b, snap, msgs);
-    ui.separator();
+    separator(ui);
     integrate_items(ui, t, b, snap, msgs);
     push_items(ui, t, b, snap, msgs);
     super::stack_menu::items(ui, t, b, snap, fs, msgs);
     // Always drawn: without a code host, a disabled item says why there are no pull requests.
-    ui.separator();
+    separator(ui);
     match fs.filter(|fs| fs.host.is_some()) {
         Some(fs) => super::pr_menu_items::local(ui, t, b, snap, fs, sel, msgs),
         None => super::pr_menu_items::local_no_host(ui, t, b, snap, msgs),
@@ -66,17 +67,17 @@ pub fn local_branch_menu(
         let label = t.trf("branch.menu.open_issue", &[("noun", &fs.issue_word(t)), ("issue", &fs.mention(&key))]);
         menu_item(msgs, ui, label, Msg::OpenUrl(fs.issue_url(&key)));
     }
-    ui.separator();
+    separator(ui);
     ref_visibility::menu_items(ui, t, &format!("refs/heads/{name}"), filter, b.is_head, msgs);
     super::branch_colour_menu::items(ui, t, name, snap, msgs);
     super::custom_menu::group(ui, t, cmds, Place::Branch, Target::Branch(name.to_owned()), msgs);
-    ui.separator();
-    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+    separator(ui);
+    submenu(ui, t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(name.to_owned()));
         menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::LocalBranch(name.to_owned()))));
     });
     if !b.is_head {
-        ui.separator();
+        separator(ui);
         delete_items(ui, t, b, snap, msgs);
     }
 }
@@ -163,7 +164,7 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
         return;
     }
     // egui draws the submenu arrow; the label has none of its own.
-    ui.menu_button(t.tr("branch.menu.push_to"), |ui| {
+    submenu(ui, t.tr("branch.menu.push_to"), |ui| {
         let tracked = branches::remote_tracking(b).map(|tr| tr.remote.as_str());
         for (remote, _) in &snap.remotes {
             let is_upstream = tracked == Some(remote.as_str());

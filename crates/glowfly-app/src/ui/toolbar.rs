@@ -15,6 +15,7 @@ use super::widgets::{self, Icon, tooltip::attach};
 use crate::msg::{BranchMsg, ForgeMsg, JobMsg, Msg, PaletteMsg, PrefsMsg, PublishMsg, RepoMsg};
 use crate::state::toolbar_tips as rules;
 use crate::state::{AppState, PrefPage};
+use crate::ui::widgets::menu::separator;
 use eframe::egui::{self, Align, Layout};
 use menus::{split, terminal_button};
 
@@ -131,7 +132,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                             msgs.push(Msg::Publish(PublishMsg::PublishDialog));
                         }
                         if let Some(fs) = host {
-                            ui.separator();
+                            separator(ui);
                             super::pr_menu_items::push_pr_item(ui, t, snap, fs, idle, msgs);
                         }
                     });

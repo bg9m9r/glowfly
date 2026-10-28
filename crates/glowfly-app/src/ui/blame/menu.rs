@@ -3,6 +3,7 @@
 
 use crate::msg::{BlameMsg, Msg};
 use crate::ui::common::menu_item_if;
+use crate::ui::widgets::menu::separator;
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::BlameCommit;
@@ -42,11 +43,11 @@ pub(in crate::ui) fn line_menu(ui: &mut Ui, t: Lang, msgs: &mut Vec<Msg>, line: 
         None
     };
     menu_item_if(msgs, ui, t.tr("blame.menu.skip"), skip, Msg::Blame(BlameMsg::SkipCommit(oid)));
-    ui.separator();
+    separator(ui);
     menu_item_if(msgs, ui, t.tr("blame.menu.show_in_history"), None, Msg::Blame(BlameMsg::OpenHistory { select: Some(oid) }));
     let graph = (!line.on_graph).then(|| t.tr("blame.menu.not_on_graph"));
     menu_item_if(msgs, ui, t.tr("blame.menu.select_on_graph"), graph, Msg::Blame(BlameMsg::SelectCommit(oid)));
-    ui.separator();
+    separator(ui);
     menu_item_if(msgs, ui, t.tr("blame.menu.copy_line"), None, Msg::Copy(line.text.to_owned()));
     menu_item_if(msgs, ui, t.tr("blame.menu.copy_sha"), None, Msg::Copy(oid.to_string()));
 }

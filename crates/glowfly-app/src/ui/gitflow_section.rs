@@ -20,6 +20,7 @@ use crate::msg::RepoMsg;
 use crate::state::gitflow::{group_title, row_tooltip, start_blocked};
 use crate::state::{ForgeState, PrefPage, Selection};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, Rect, Response, Sense, Stroke, pos2, vec2};
 use git2::Oid;
@@ -130,7 +131,7 @@ pub(super) fn section(
             r.row_menu(|ui| {
                 let finish = format!("Finish {} {}…", g.kind.noun(), b.short);
                 menu_item(msgs, ui, finish, Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
-                ui.separator();
+                separator(ui);
                 local_branch_menu(ui, t, info, snap, rows.fs, rows.graph, rows.sel, rows.commands, msgs);
             });
         }
@@ -140,11 +141,11 @@ pub(super) fn section(
 /// Open the panel, Start per kind, Configure.
 fn header_menu(ui: &mut egui::Ui, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     menu_item(msgs, ui, "Open Git Flow panel", Msg::GitFlow(GitFlowMsg::OpenPanel));
-    ui.separator();
+    separator(ui);
     for k in FlowKind::ALL {
         start_item(ui, snap, k, msgs);
     }
-    ui.separator();
+    separator(ui);
     menu_item(msgs, ui, "Configure Git Flow…", Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
 }
 

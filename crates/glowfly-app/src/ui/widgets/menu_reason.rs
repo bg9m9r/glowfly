@@ -132,10 +132,11 @@ pub fn paint_info(p: &Painter, row: Rect, right_inset: f32, lit: bool) {
     paint_icon_sized(p, c, Icon::Info, if lit { color::text() } else { color::weak() }, INFO_W);
 }
 
-/// The accent ring inside `resp`'s rect while it has the keyboard focus.
+/// The accent ring inside `resp`'s rect while it has the keyboard focus, with a menu row's
+/// corners.
 pub fn paint_focus(ui: &Ui, resp: &Response) {
     if resp.has_focus() {
-        tokens::focus_ring_inset(ui.painter(), resp.rect, radius::MD);
+        tokens::focus_ring_inset(ui.painter(), resp.rect, radius::SM);
     }
 }
 

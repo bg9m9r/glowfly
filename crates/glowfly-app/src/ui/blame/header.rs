@@ -14,6 +14,7 @@ use crate::ui::file_view_switch::{self, FileShow};
 use crate::ui::find_bar::FindIntent;
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::submenu;
 use crate::ui::widgets::{self, buttons};
 use eframe::egui::{Align, Layout, RichText, Ui};
 use glowfly_core::i18n::Lang;
@@ -148,7 +149,7 @@ fn toggles(ui: &mut Ui, t: Lang, settings: &Settings, msgs: &mut Vec<Msg>) {
         msgs.push(Msg::Blame(BlameMsg::SetIgnoreWhitespace(!ws)));
     }
     let moves = settings.blame.moves;
-    let r = ui.menu_button(moves_text(t, moves), |ui| {
+    let r = submenu(ui, moves_text(t, moves), |ui| {
         for (m, label) in self::moves(t) {
             if ui.selectable_label(moves == m, label).clicked() {
                 if m != moves {

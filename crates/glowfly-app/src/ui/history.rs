@@ -152,7 +152,7 @@ pub(super) fn entry_menu(ui: &mut Ui, t: Lang, msgs: &mut Vec<Msg>, e: &HistoryE
     commit_items(ui, msgs, e);
     let deleted = (e.status == 'D').then_some("This commit deletes the file");
     menu_item_if(msgs, ui, BLAME_AT, deleted, Msg::Blame(BlameMsg::Open { path: e.path.clone(), at: Some(e.oid) }));
-    ui.separator();
+    crate::ui::widgets::menu::separator(ui);
     file_menu::restore_item(ui, t, msgs, e.oid, &e.path, e.status);
     // update/revert.rs maps an older name to `open_path`, which `in_workdir` is about.
     let revert_blocked = (!in_workdir && e.status != 'D').then_some(file_menu::NOT_IN_WORKDIR);

@@ -36,6 +36,7 @@ use crate::state::lfs::TrackItem;
 use crate::state::tool_compare::ToolSetup;
 use crate::state::tools::open_in_editor;
 use crate::tools::ToolsMsg;
+use crate::ui::widgets::menu::separator;
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::custom_commands::Place;
@@ -216,7 +217,7 @@ pub(super) fn commit_file_items(
     patch_blocked: Option<&str>,
     cmds: &MenuCommands,
 ) {
-    ui.separator();
+    separator(ui);
     let missing = (!in_workdir).then(|| not_in_workdir(t));
     let revert_blocked = missing.filter(|_| f.status != 'D');
     let target = match src {
@@ -243,7 +244,7 @@ pub(super) fn commit_file_items(
         }
     };
     open_items(ui, t, msgs, &f.path, missing, tools.editor, Some(diff_item(t, target, tools.diff)));
-    ui.separator();
+    separator(ui);
     new_file_here(ui, t, msgs, &f.path);
     if in_workdir {
         extra::lfs_submenu(ui, t, msgs, lfs);
@@ -275,10 +276,10 @@ pub(super) fn wip_file_items(
     tool: ToolItem,
     cmds: &MenuCommands,
 ) {
-    ui.separator();
+    separator(ui);
     let gone = missing.then(|| t.tr("files.menu.deleted_in_workdir"));
     open_items(ui, t, msgs, &f.path, gone, editor_setup, Some(tool));
-    ui.separator();
+    separator(ui);
     new_file_here(ui, t, msgs, &f.path);
     let conflicted = (f.status == '!').then(|| t.tr("files.menu.conflicted"));
     let blocked = gone.or(conflicted);

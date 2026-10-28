@@ -12,8 +12,9 @@ use crate::state::tip::Tip;
 use crate::tools::ToolsMsg;
 use crate::ui::common::menu_item_if;
 use crate::ui::file_menu::restore_msg;
+use crate::ui::widgets::menu::popup_below;
 use crate::ui::widgets::{Icon, buttons};
-use eframe::egui::{self, PopupCloseBehavior, Ui};
+use eframe::egui::{PopupCloseBehavior, Ui};
 use glowfly_core::i18n::Lang;
 
 /// One labelled action: icon, label, tooltip, why it is off, and its message.
@@ -124,7 +125,7 @@ fn more(ui: &mut Ui, items: Vec<Item>, keys: &Keymap, t: Lang, msgs: &mut Vec<Ms
     if r.clicked() {
         ui.memory_mut(|mem| mem.toggle_popup(id));
     }
-    egui::popup::popup_below_widget(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
+    popup_below(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_min_width(200.0);
         let before = msgs.len();
         for item in items {

@@ -9,6 +9,7 @@ use crate::ui::branch_menu::local_branch_menu;
 use crate::ui::menus::{commit_menu, multi_commit_menu};
 use crate::ui::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use crate::ui::tags::tag_menu;
+use crate::ui::widgets::menu::submenu;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Rect, Response};
 use glowfly_core::repo::{CommitInfo, RefKind, RefLabel, Snapshot};
@@ -63,7 +64,7 @@ fn labels_menu(ui: &mut egui::Ui, labels: &[RefLabel], m: &RowMenu, msgs: &mut V
             RefKind::Tag => t.trf("refs.menu.tag", &[("name", &l.name)]),
             RefKind::Head => "HEAD".to_owned(),
         };
-        ui.menu_button(title, |ui| label_menu(ui, l, m, msgs));
+        submenu(ui, title, |ui| label_menu(ui, l, m, msgs));
     }
 }
 

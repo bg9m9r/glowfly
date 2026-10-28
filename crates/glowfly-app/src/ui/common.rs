@@ -10,6 +10,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::{self, separator};
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
 use git2::Oid;
 use glowfly_core::forge::{self, RefStyle};
@@ -133,17 +134,19 @@ pub fn commit_menu_header(ui: &mut egui::Ui, summary: &str, oid: Oid) {
 fn header(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) {
     ui.scope(|ui| {
         ui.set_max_width(MENU_HEADER_W);
-        ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
-            ui.set_min_width(ui.available_width());
-            ui.add(egui::Label::new(text).wrap().selectable(false));
+        menu::inset(ui, |ui| {
+            ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                ui.set_min_width(ui.available_width());
+                ui.add(egui::Label::new(text).wrap().selectable(false));
+            });
         });
     });
-    ui.separator();
+    separator(ui);
 }
 
 /// A weak, small, not clickable line in a menu that explains the item above it.
 pub fn menu_note(ui: &mut egui::Ui, text: &str) {
-    ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).selectable(false));
+    menu::inset(ui, |ui| ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).selectable(false)));
 }
 
 /// A menu item. Its text never wraps: a submenu opens narrow and grows to fit its widest item,

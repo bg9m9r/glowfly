@@ -12,6 +12,7 @@ use crate::msg::{FilterMsg, Msg};
 use crate::state::forge_filters::Hint;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::popup_below;
 use eframe::egui::{self, Align, CornerRadius, Layout, Rect, Response, Sense, Stroke, UiBuilder, pos2, vec2};
 use glowfly_core::forge::filters::matching;
 use glowfly_core::forge::{Builtin, FilterChoice, FilterKind, Provider, SavedFilter};
@@ -27,8 +28,6 @@ pub(super) struct Picker<'a> {
     /// The service the filters apply to.
     pub provider: Option<Provider>,
 }
-
-const ROW: f32 = 26.0;
 
 /// The section header (with its + and ⋯) and the filter chip just left of them. A click on
 /// the chip, the + or the ⋯ leaves the section as it is.
@@ -73,7 +72,7 @@ pub(super) fn header(
     if chip_resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
-    egui::popup::popup_below_widget(ui, popup, &chip_resp, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
+    popup_below(ui, popup, &chip_resp, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_width(270.0);
         popover(ui, t, &p, msgs);
     });
@@ -81,7 +80,6 @@ pub(super) fn header(
 }
 
 fn popover(ui: &mut egui::Ui, t: Lang, p: &Picker, msgs: &mut Vec<Msg>) {
-    ui.spacing_mut().item_spacing.y = 0.0;
     let shown = p.filters.choice(p.kind);
     let builtins: &[Builtin] = if p.kind == FilterKind::Prs { &Builtin::PRS } else { &Builtin::ISSUES };
     for &b in builtins {
@@ -97,8 +95,7 @@ fn popover(ui: &mut egui::Ui, t: Lang, p: &Picker, msgs: &mut Vec<Msg>) {
             choose(ui, msgs, FilterMsg::Choose { kind: p.kind, choice: FilterChoice::Builtin(b) });
         }
     }
-    ui.add_space(4.0);
-    ui.separator();
+    crate::ui::widgets::menu::separator(ui);
     let saved: Vec<&SavedFilter> = p.filters.saved_of(p.kind).collect();
     ui.label(egui::RichText::new("Saved filters").size(type_scale::CAPTION).color(color::faint()));
     ui.add_space(2.0);
@@ -109,8 +106,7 @@ fn popover(ui: &mut egui::Ui, t: Lang, p: &Picker, msgs: &mut Vec<Msg>) {
     for (i, s) in saved.iter().enumerate() {
         saved_row(ui, s, shown == FilterChoice::Saved(s.id), (i > 0, i + 1 < saved.len()), msgs);
     }
-    ui.add_space(4.0);
-    ui.separator();
+    crate::ui::widgets::menu::separator(ui);
     if row(ui, t.tr("sidebar.new_filter"), false, None).clicked() {
         choose(ui, msgs, FilterMsg::NewDialog(p.kind));
     }
@@ -126,7 +122,7 @@ fn choose(ui: &egui::Ui, msgs: &mut Vec<Msg>, m: FilterMsg) {
 /// and the reason shows on hover or focus.
 fn row(ui: &mut egui::Ui, text: &str, checked: bool, why: Option<&str>) -> Response {
     let sense = if why.is_none() { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE };
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW), sense);
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), row_h(ui)), sense);
     let enabled = why.is_none();
     paint_row(ui, rect, text, checked, enabled, enabled && resp.hovered());
     resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, enabled, checked, text));
@@ -134,6 +130,11 @@ fn row(ui: &mut egui::Ui, text: &str, checked: bool, why: Option<&str>) -> Respo
     menu_reason::paint_info(ui.painter(), rect, 6.0, resp.hovered() || resp.has_focus());
     menu_reason::paint_focus(ui, &resp);
     menu_reason::explain(resp, why)
+}
+
+/// A row's height: the shared menu row's.
+fn row_h(ui: &egui::Ui) -> f32 {
+    crate::ui::widgets::menu::metrics(ui).row_h
 }
 
 fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool, hovered: bool) {
@@ -155,7 +156,7 @@ fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool
 /// A saved filter's row; while hovered or on show it also has Edit, Move up, Move down and
 /// Remove buttons on the right.
 fn saved_row(ui: &mut egui::Ui, s: &SavedFilter, checked: bool, (up, down): (bool, bool), msgs: &mut Vec<Msg>) {
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), row_h(ui)), Sense::click());
     let active = ui.rect_contains_pointer(rect) || checked;
     let buttons = if active { 4.0 * 27.0 } else { 0.0 };
     let text_rect = Rect::from_min_max(rect.min, pos2(rect.right() - buttons, rect.bottom()));

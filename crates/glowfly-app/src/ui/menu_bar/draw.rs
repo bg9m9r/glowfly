@@ -10,6 +10,7 @@ use crate::state::menu_keys::TopMenu;
 use crate::state::menu_model::{Entry, Item, Mark, Submenu, SubmenuKind};
 use crate::ui::repo_list;
 use crate::ui::theme::{color, controls, type_scale};
+use crate::ui::widgets::menu;
 use eframe::egui::{self, Button, RichText};
 
 /// The width a menu opens at, at least.
@@ -35,14 +36,14 @@ fn rows(ui: &mut egui::Ui, st: &mut AppState, entries: Vec<Entry>, buttons: bool
         match e {
             Entry::Item(it) => item(ui, st, it, buttons, msgs),
             Entry::Separator => {
-                ui.separator();
+                menu::separator(ui);
             }
             Entry::Heading(text) => {
                 // A gap before a group that doesn't follow a separator.
                 if !after_separator {
                     ui.add_space(4.0);
                 }
-                ui.label(RichText::new(text).size(type_scale::SMALL).color(color::weak()));
+                menu::inset(ui, |ui| ui.label(RichText::new(text).size(type_scale::SMALL).color(color::weak())));
             }
             Entry::Submenu(Submenu { kind, label, blocked, entries }) => {
                 submenu_if(ui, &label, blocked.as_deref(), |ui| match kind {
@@ -70,8 +71,9 @@ fn item(ui: &mut egui::Ui, st: &mut AppState, it: Item, buttons: bool, msgs: &mu
         Mark::None if buttons => ui.button(label).clicked(),
         Mark::None => clicked(ui, label, hint(it.chord), blocked),
         Mark::Check(on) => check_item(ui, label, on, hint(it.chord), blocked),
-        Mark::Toggle(on) => controls::checkbox(ui, &mut { on }, label).clicked(),
-        Mark::Radio(on) => controls::radio(ui, on, label).clicked(),
+        // Boxes and dots line up with the labels.
+        Mark::Toggle(on) => menu::inset(ui, |ui| controls::checkbox(ui, &mut { on }, label).clicked()),
+        Mark::Radio(on) => menu::inset(ui, |ui| controls::radio(ui, on, label).clicked()),
         Mark::Selected(on) => ui.add(Button::new(label).selected(on).shortcut_text(hint(it.chord))).clicked(),
     };
     if hit {

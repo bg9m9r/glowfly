@@ -3,6 +3,7 @@
 use super::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::{context_menu, separator, submenu};
 use eframe::egui::{self, Stroke, TextFormat, text::LayoutJob};
 use glowfly_core::spell::{Miss, Speller};
 
@@ -29,7 +30,7 @@ pub fn spell_text_edit(
     if enabled {
         let misses = speller.check(text);
         if !misses.is_empty() {
-            resp.context_menu(|ui| corrections(ui, text, &misses, speller));
+            context_menu(&resp, |ui| corrections(ui, text, &misses, speller));
         }
     }
     resp
@@ -64,7 +65,7 @@ fn corrections(ui: &mut egui::Ui, text: &mut String, misses: &[Miss], speller: &
             continue;
         }
         seen.push(word.clone());
-        ui.menu_button(&word, |ui| {
+        submenu(ui, &word, |ui| {
             let suggestions = speller.suggest(&word);
             if suggestions.is_empty() {
                 ui.label(egui::RichText::new("No suggestions").color(color::weak()));
@@ -75,7 +76,7 @@ fn corrections(ui: &mut egui::Ui, text: &mut String, misses: &[Miss], speller: &
                     ui.close_menu();
                 }
             }
-            ui.separator();
+            separator(ui);
             if ui.button("Add to dictionary").clicked() {
                 speller.add_to_dictionary(&word);
                 ui.close_menu();

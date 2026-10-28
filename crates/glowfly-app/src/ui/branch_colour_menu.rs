@@ -9,6 +9,7 @@ use super::theme::branch_colours::line;
 use super::theme::{branch_names, color};
 use crate::msg::{GraphMsg, Msg};
 use crate::state::branches::MAIN_USES_ACCENT;
+use crate::ui::widgets::menu::{separator, submenu};
 use eframe::egui;
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::i18n::Lang;
@@ -32,14 +33,14 @@ pub fn items(ui: &mut egui::Ui, t: Lang, key: &str, snap: &Snapshot, msgs: &mut 
     let branch = color::current().branch;
     let n = branch.preset.slots();
     let current = snap.graph.colouring.pins.get(key).map(|p| p % n);
-    ui.menu_button(t.tr("branch.menu.color"), |ui| {
+    submenu(ui, t.tr("branch.menu.color"), |ui| {
         let auto = branch_dot::menu_row(ui, &checked(t.tr("branch.color.automatic"), current.is_none()), None, true)
             .on_hover_text(t.tr("branch.color.automatic.tip"));
         if auto.clicked() {
             msgs.push(pin(key, None));
             ui.close_menu();
         }
-        ui.separator();
+        separator(ui);
         for i in 0..n {
             let label = checked(branch_names::hue(t, &branch, i), current == Some(i));
             if branch_dot::menu_row(ui, &label, Some(line(Swatch::Slot(i))), true).clicked() {

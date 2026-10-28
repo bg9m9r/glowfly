@@ -13,6 +13,7 @@ use crate::state::ssh_use::add_blocked;
 use crate::ui::common::menu_item;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::menu::submenu;
 use crate::ui::widgets::{self, Icon, buttons};
 use eframe::egui::{self, Align, Color32, CornerRadius, Layout, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, vec2};
 use glowfly_core::i18n::Lang;
@@ -117,7 +118,7 @@ fn actions(ui: &mut Ui, t: Lang, key: &SshKeyPair, page: &SshPage, cx: &SshConte
         if page.agent_adding.as_ref().is_some_and(|p| same_spelling(p, &key.private)) {
             ui.add(egui::Spinner::new().size(12.0));
         }
-        ui.menu_button(t.tr("prefs.ssh.card.add_service.button"), |ui| {
+        submenu(ui, t.tr("prefs.ssh.card.add_service.button"), |ui| {
             if cx.services.is_empty() {
                 ui.label(RichText::new(t.tr("prefs.ssh.card.no_services.help")).color(color::weak()));
             }

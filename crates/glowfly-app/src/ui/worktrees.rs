@@ -17,6 +17,7 @@ use crate::state::section_actions::SectionAction;
 use crate::state::worktree_manage::{manage_blocked, open_elsewhere, prune_blocked, remove_blocked, row_prune_blocked};
 use crate::state::worktree_move::move_refused;
 use crate::state::worktrees::{listed, open_blocked, right_text, tooltip};
+use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
@@ -40,7 +41,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
     let list = listed(snap);
     let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
         action_item(ui, msgs, add);
-        ui.separator();
+        separator(ui);
         menu_item_if(msgs, ui, t.tr("sidebar.worktrees.prune"), prune_blocked(snap), Msg::Worktree(WorktreeMsg::Prune));
     };
     let title = t.tr("sidebar.worktrees.header");
@@ -103,7 +104,7 @@ pub(super) fn row_menu(ui: &mut egui::Ui, wt: &WorktreeInfo, msgs: &mut Vec<Msg>
     if wt.is_main() {
         return;
     }
-    ui.separator();
+    separator(ui);
     let path = wt.path.clone();
     if wt.locked.is_some() {
         menu_item_if(msgs, ui, "Unlock", manage_blocked(wt), Msg::Worktree(WorktreeMsg::Unlock(path.clone())));

@@ -29,6 +29,7 @@ pub mod field_group;
 pub mod form_message;
 pub mod ghost;
 pub mod icon;
+pub mod menu;
 pub mod menu_reason;
 pub mod quiet_chip;
 pub mod reason;

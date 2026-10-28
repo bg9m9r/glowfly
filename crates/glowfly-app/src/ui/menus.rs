@@ -19,6 +19,7 @@ use crate::state::op_preview::pick_blocker;
 use crate::state::rebase_onto::{onto_commit_blocker, onto_menu_labels};
 use crate::state::selection::{CommitBlock, MultiSelection, cherry_pick_blocker, in_graph_order};
 use crate::tag::TagMsg;
+use crate::ui::widgets::menu::{separator, submenu};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use glowfly_core::custom_commands::Place;
@@ -39,7 +40,7 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
     menu_item(msgs, ui, t.tr("commits.menu.create_tag"), Msg::Tag(TagMsg::NewTag { at: sha.clone(), annotated: false }));
     let worktree = Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Commit(oid)));
     menu_item(msgs, ui, t.tr("commits.menu.create_worktree"), worktree);
-    ui.separator();
+    separator(ui);
     let pick = if merge { t.tr("commits.menu.cherry_pick_merge") } else { t.tr("commits.menu.cherry_pick") };
     menu_item_if(msgs, ui, pick, cherry_pick_blocker(snap, &[oid]).map(|b| b.text(t)), Msg::Selection(SelectionMsg::CherryPick(vec![oid])));
     let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::CherryPick(vec![oid])));
@@ -55,14 +56,14 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
         menu_item_if(msgs, ui, interactive, blocked.as_deref(), onto);
     }
-    ui.separator();
+    separator(ui);
     reset_menu(ui, t, c, snap, msgs);
     let from_here = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid)));
     menu_item(msgs, ui, t.tr("commits.menu.interactive_from"), from_here);
     super::rebase::edit_menu::single(ui, t, oid, snap, msgs);
-    ui.separator();
+    separator(ui);
     menu_item(msgs, ui, t.tr("commits.menu.compare_workdir"), Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)));
-    ui.separator();
+    separator(ui);
     let patch_state = ItemState::blocked_by(merge.then(|| CommitBlock::PatchMerge.text(t)));
     let patch = reason::menu_button(ui, t.tr("commits.menu.create_patch"), "", patch_state);
     if patch.clicked() {
@@ -70,7 +71,7 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
         ui.close_menu();
     }
     super::custom_menu::group(ui, t, cmds, Place::Commit, Target::Commit(oid), msgs);
-    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+    submenu(ui, t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("commits.menu.copy_sha"), Msg::Copy(sha.clone()));
         menu_item(msgs, ui, t.tr("commits.menu.copy_message"), Msg::Copy(c.summary.to_string()));
         menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Commit(oid))));
@@ -83,10 +84,10 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
 fn reset_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let sha = c.oid.to_string();
     let current = snap.head_branch.as_deref();
-    ui.menu_button(reset_title(t, current), |ui| {
+    submenu(ui, reset_title(t, current), |ui| {
         let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Reset { to: c.oid }));
         menu_item(msgs, ui, t.tr("op_preview.menu.reset"), preview);
-        ui.separator();
+        separator(ui);
         menu_item(msgs, ui, t.tr("commits.menu.reset.soft"), Msg::git("Reset (soft)", &["reset", "--soft", &sha]));
         menu_item(msgs, ui, t.tr("commits.menu.reset.mixed"), Msg::git("Reset (mixed)", &["reset", "--mixed", &sha]));
         let ask = hard_reset_msg(t, snap, c);
@@ -104,16 +105,16 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &
     let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::CherryPick(oldest_first)));
     menu_item_if(msgs, ui, t.tr("op_preview.menu.cherry_pick"), m.pick_blocked.map(|b| b.text(t)), preview);
     let reverted = revert_button(ui, t, t.tr("commits.menu.revert"), m, true, msgs);
-    ui.separator();
+    separator(ui);
     super::rebase::edit_menu::multi(ui, t, m, snap, msgs);
-    ui.separator();
+    separator(ui);
     range_diff_item(ui, t, m, msgs);
-    ui.separator();
+    separator(ui);
     let patched = patch_button(ui, t, t.tr("commits.menu.create_patch"), m, true, msgs);
     if picked || reverted || patched {
         ui.close_menu();
     }
-    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+    submenu(ui, t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("commits.menu.copy_shas"), copy_shas(m));
         let copy = Msg::Patch(PatchMsg::Copy(m.oids.clone()));
         menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), m.export_blocked.map(|b| b.text(t)), copy);
