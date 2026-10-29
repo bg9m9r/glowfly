@@ -33,6 +33,9 @@ pub struct TerminalPanel {
     pub clip_pending: Option<(Clip, u32)>,
     /// Wheel movement short of a whole row, carried to the next frame; view state.
     pub wheel_rem: f32,
+    /// Rows short of a whole one that dragging a selection past the grid's edge has scrolled,
+    /// carried to the next frame; view state.
+    pub edge_rem: f32,
     /// Whether the panel's edge was being dragged last frame; view state.
     pub resizing: bool,
     /// Whether the panel takes the main area instead of sitting under it. Not saved.

@@ -16,10 +16,10 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{CursorStyle, ThemeChoice};
 use glowfly_core::terminal::{TermPoint, TermScreen};
 
-type H = Harness<'static, (AppState, Vec<Msg>)>;
+pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// A running session that has printed "line 1" to "line 84": 60 rows of history.
-fn with_history(theme: ThemeChoice, name: &str) -> (AppState, std::path::PathBuf) {
+pub(super) fn with_history(theme: ThemeChoice, name: &str) -> (AppState, std::path::PathBuf) {
     let (mut st, dir) = with_session(theme, name, SessionStatus::Running);
     let mut screen = TermScreen::new(24, 80);
     let lines: Vec<String> = (1..=84).map(|i| format!("line {i}")).collect();
@@ -29,7 +29,7 @@ fn with_history(theme: ThemeChoice, name: &str) -> (AppState, std::path::PathBuf
 }
 
 /// The middle of the grid's cell (row, col), from the grid's bounds.
-fn cell(h: &H, row: u16, col: u16) -> Pos2 {
+pub(super) fn cell(h: &H, row: u16, col: u16) -> Pos2 {
     let b = h.get_by_label("Terminal screen").bounding_box().expect("the grid");
     let st = &h.state().0;
     let font = eframe::egui::FontId::monospace(st.settings.terminal.font_px());
