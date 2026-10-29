@@ -121,6 +121,7 @@ pub(super) mod lines_whole_tests;
 pub(super) mod load_more_resume_tests;
 pub(super) mod load_more_retry_tests;
 pub(super) mod load_more_tests;
+pub(super) mod lock_retry_tests;
 pub(super) mod logs_runs_tests;
 pub(super) mod merge_commit_tests;
 pub(super) mod notify_tests;

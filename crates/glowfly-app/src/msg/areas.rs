@@ -50,6 +50,8 @@ macro_rules! msg_areas {
             Commit(crate::msg::CommitMsg) "commit" => commit::handle(now, fx);
             /// Git jobs: commands, push, stash, undo and redo, and their end (update/ops.rs).
             Job(crate::msg::JobMsg) "job" => ops::job(now, fx);
+            /// Delete lock file after a job failed on a lock git left behind (update/lock_file.rs).
+            Lock(crate::msg::LockMsg) "lock" => lock_file::handle(now, fx);
             /// Renaming a stash and the Stash dialog (update/stash.rs).
             Stash(crate::msg::StashMsg) "stash" => stash::handle(fx);
             /// Stash and carry on: the auto-stash prompt, putting it back and Show stash (update/auto_stash.rs).
@@ -203,7 +205,7 @@ mod tests {
     #[test]
     fn area_names_are_unique_and_kebab_case() {
         let names = Msg::AREAS;
-        assert_eq!(names.len(), 65, "one per area row");
+        assert_eq!(names.len(), 66, "one per area row");
         for (i, name) in names.iter().enumerate() {
             assert!(!name.is_empty() && name.bytes().all(|b| b.is_ascii_lowercase() || b == b'-'), "{name:?}");
             assert!(!name.starts_with('-') && !name.ends_with('-'), "{name:?}");

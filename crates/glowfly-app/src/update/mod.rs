@@ -54,6 +54,7 @@ mod issue;
 mod issue_comment;
 mod issue_create;
 mod job_errors;
+mod job_retry;
 mod job_stop;
 mod jobs;
 mod journal;
@@ -64,6 +65,7 @@ mod layout;
 mod lfs;
 mod line_counts;
 mod load_more;
+mod lock_file;
 mod logs;
 mod logs_copy;
 mod logs_export;
@@ -319,8 +321,9 @@ crate::msg::msg_areas! { area_router! {
                 fx.extend(update_sealed(st, *alt_then, now));
             }
         }
-        Msg::ToastAction(id) => notify::toast_action(st, id, false, now, fx),
-        Msg::ToastDetails(id) => notify::toast_action(st, id, true, now, fx),
+        Msg::ToastAction(id) => notify::toast_action(st, id, notify::ToastButton::Action, now, fx),
+        Msg::ToastAlt(id) => notify::toast_action(st, id, notify::ToastButton::Alt, now, fx),
+        Msg::ToastDetails(id) => notify::toast_action(st, id, notify::ToastButton::Details, now, fx),
         Msg::CloseModal => dialog::close(st),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::Os(OsEffect::OpenUrl(url))),

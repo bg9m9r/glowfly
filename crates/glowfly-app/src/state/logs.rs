@@ -131,9 +131,15 @@ pub struct LogsState {
     /// The fixes failed runs offer, newest last, at most `FIX_LIMIT`. Each runs once, from the
     /// panel or from the failure toast's button (a `LogsMsg::Fix` proxy).
     pub fixes: Vec<(EntryId, ToastAction)>,
+    /// A second fix beside a run's fix (Try again beside Delete lock file), from the panel or
+    /// the toast's second button (a `LogsMsg::AltFix` proxy). Running either drops both.
+    pub alt_fixes: Vec<(EntryId, ToastAction)>,
     /// When the active job started running (stamped at the end of `update`,
     /// update/logs_runs.rs).
     pub job_started: Option<Instant>,
+    /// The active job's spec with the tab it started in, for Try again if it fails
+    /// (update/job_retry.rs); set by `start_job`, cleared by any other job.
+    pub job_retry: Option<super::job_spec::Retry>,
 }
 
 impl LogsState {
@@ -149,11 +155,31 @@ impl LogsState {
         let msg = Box::new(Msg::Logs(LogsMsg::Fix(id)));
         let proxy = ToastAction { label: action.label.clone(), msg, workdir: action.workdir.clone() };
         self.fixes.retain(|(i, _)| *i != id);
+        self.alt_fixes.retain(|(i, _)| *i != id);
         self.fixes.push((id, action));
         if self.fixes.len() > FIX_LIMIT {
-            self.fixes.remove(0);
+            let (gone, _) = self.fixes.remove(0);
+            self.alt_fixes.retain(|(i, _)| *i != gone);
         }
         proxy
+    }
+
+    /// Puts `action` first as run `id`'s fix, its fix so far becoming the second one. Returns
+    /// the toast's buttons for both (`LogsMsg::Fix`, `LogsMsg::AltFix`); None, changing nothing,
+    /// once the run's fix has run or gone.
+    pub fn offer_first(&mut self, id: EntryId, action: ToastAction) -> Option<(ToastAction, ToastAction)> {
+        let at = self.fixes.iter().position(|(i, _)| *i == id)?;
+        let proxy = |a: &ToastAction, msg: LogsMsg| ToastAction {
+            label: a.label.clone(),
+            msg: Box::new(Msg::Logs(msg)),
+            workdir: a.workdir.clone(),
+        };
+        let main = proxy(&action, LogsMsg::Fix(id));
+        let before = std::mem::replace(&mut self.fixes[at].1, action);
+        let alt = proxy(&before, LogsMsg::AltFix(id));
+        self.alt_fixes.retain(|(i, _)| *i != id);
+        self.alt_fixes.push((id, before));
+        Some((main, alt))
     }
 
     /// Run `id`'s fix, while it hasn't run.
@@ -166,10 +192,16 @@ impl LogsState {
         self.fix(id).map(|a| a.label.as_str())
     }
 
-    /// Removes and returns run `id`'s fix.
-    pub fn take_fix(&mut self, id: EntryId) -> Option<ToastAction> {
-        let i = self.fixes.iter().position(|(i, _)| *i == id)?;
-        Some(self.fixes.remove(i).1)
+    /// Run `id`'s second fix, while neither has run.
+    pub fn alt_fix(&self, id: EntryId) -> Option<&ToastAction> {
+        self.alt_fixes.iter().find(|(i, _)| *i == id).map(|(_, a)| a)
+    }
+
+    /// Removes run `id`'s fixes and returns the first (or with `alt`, the second).
+    pub fn take_fix(&mut self, id: EntryId, alt: bool) -> Option<ToastAction> {
+        let main = self.fixes.iter().position(|(i, _)| *i == id).map(|i| self.fixes.remove(i).1);
+        let second = self.alt_fixes.iter().position(|(i, _)| *i == id).map(|i| self.alt_fixes.remove(i).1);
+        if alt { second } else { main }
     }
 }
 

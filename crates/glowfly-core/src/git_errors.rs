@@ -236,6 +236,17 @@ fn locked(line: &str) -> Option<String> {
     path.rsplit(['/', '\\']).next().filter(|f| !f.is_empty()).map(str::to_owned)
 }
 
+/// The lock file's path exactly as git printed it in "Unable to create '<path>': File exists."
+/// (the first such line of `output`), for Delete lock file. Read up to the last `': File exists`,
+/// so a path holding a `'` stays whole.
+pub fn lock_path(output: &str) -> Option<String> {
+    meaningful(output).find_map(|l| {
+        let (_, rest) = l.split_once("Unable to create '")?;
+        let (path, _) = rest.rsplit_once("': File exists")?;
+        path.ends_with(".lock").then(|| path.to_owned())
+    })
+}
+
 /// The `(dst, reason, remote)` of each "! [rejected]" or "! [remote rejected]" line (`remote`:
 /// the remote's own refusal).
 fn rejections<'a>(lines: &[&'a str]) -> Vec<(&'a str, &'a str, bool)> {

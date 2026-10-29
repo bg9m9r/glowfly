@@ -7,7 +7,7 @@
 use super::job_errors;
 use crate::effect::{Effect, NoteKind};
 use crate::logs::LogsMsg;
-use crate::msg::Msg;
+use crate::msg::{JobMsg, Msg};
 use crate::state::activity_rows::is_routine_label;
 use crate::state::auto_stash::StashRetry;
 use crate::state::logs::EntryId;
@@ -40,20 +40,21 @@ pub(super) fn job_ended(
     let text = format!("{} {status}\n{output}", job.label);
     let run = |summary| RunInfo { title: job.label.clone(), summary, took_ms, routine: is_routine_label(&job.label) };
     let repo = job.workdir.as_deref();
+    let again = super::job_retry::take(st, job);
     if job.quiet {
-        let explained = (!ok).then(|| job_errors::explain(st, job, stash_retry, output)).flatten();
+        let explained = (!ok).then(|| job_errors::explain(st, job, stash_retry, None, output)).flatten();
         let summary = explained.map_or_else(|| last_message(output), |e| e.text);
         st.log_run_in(repo, ok, text, run(summary), false);
         return;
     }
-    let explained = (!ok && headline.is_none()).then(|| job_errors::explain(st, job, stash_retry, output)).flatten();
+    let explained = (!ok && headline.is_none()).then(|| job_errors::explain(st, job, stash_retry, again.as_ref(), output)).flatten();
     let summary = match (&headline, &explained) {
         (Some(h), _) => h.clone(),
         (None, Some(e)) => e.text.clone(),
         (None, None) => last_message(output),
     };
     let (headline, fix) = match (headline, explained) {
-        (Some(h), _) => (h, None),
+        (Some(h), _) => (h, (!ok).then(|| super::job_retry::after_headline(st.settings.lang(), again.as_ref(), output)).flatten()),
         (None, Some(e)) => (e.text, e.fix),
         (None, None) => (job_errors::default_headline(&job.label, ok, output), None),
     };
@@ -65,8 +66,13 @@ pub(super) fn job_ended(
         st.logs.open.insert(id);
     }
     if let Some(f) = fix {
+        let retrying = matches!(*f.msg, Msg::Job(JobMsg::Retry(_)));
         let proxy = st.logs.keep_fix(id, f);
         st.set_last_toast_action(proxy);
+        // A lock file in the way may be offered for deleting, once the runner has looked.
+        if retrying {
+            super::lock_file::check_after(job, id, output, fx);
+        }
     }
 }
 
@@ -82,22 +88,23 @@ pub(super) fn job_cancelled(st: &mut AppState, job: &RunningJob, output: &str, h
     st.log_run_in(job.workdir.as_deref(), true, text, run, false);
 }
 
-/// Whether `action` is the toast button that runs run `id`'s fix.
-fn is_proxy(action: Option<&ToastAction>, id: EntryId) -> bool {
-    action.is_some_and(|a| matches!(*a.msg, Msg::Logs(LogsMsg::Fix(i)) if i == id))
+/// Whether `action` is a toast button that runs one of run `id`'s fixes.
+pub(super) fn is_proxy(action: Option<&ToastAction>, id: EntryId) -> bool {
+    action.is_some_and(|a| matches!(*a.msg, Msg::Logs(LogsMsg::Fix(i) | LogsMsg::AltFix(i)) if i == id))
 }
 
-/// Runs run `id`'s fix once, while its repository is the active tab (else a toast says to
-/// switch back and the fix is kept). The failure toast offering it goes too.
-pub(super) fn fix(st: &mut AppState, id: EntryId, now: Instant, fx: &mut Vec<Effect>) {
-    let Some(f) = st.logs.fix(id) else { return };
+/// Runs run `id`'s fix (with `alt`, its second fix) once, while its repository is the active
+/// tab (else a toast says to switch back and the fix is kept). The other fix and the failure
+/// toast offering them go too.
+pub(super) fn fix(st: &mut AppState, id: EntryId, alt: bool, now: Instant, fx: &mut Vec<Effect>) {
+    let Some(f) = (if alt { st.logs.alt_fix(id) } else { st.logs.fix(id) }) else { return };
     // Checked on a stand-in, so a refusal leaves the fix where it is.
     let probe = ToastAction { label: f.label.clone(), msg: Box::new(Msg::Logs(LogsMsg::Fix(id))), workdir: f.workdir.clone() };
     if !super::notify::may_run(st, &probe, now) {
         return;
     }
-    let Some(action) = st.logs.take_fix(id) else { return };
-    st.toasts.retain(|t| !is_proxy(t.action.as_ref(), id) && !is_proxy(t.details.as_ref(), id));
+    let Some(action) = st.logs.take_fix(id, alt) else { return };
+    st.toasts.retain(|t| ![&t.action, &t.alt, &t.details].iter().any(|a| is_proxy(a.as_ref(), id)));
     super::notify::run_action(st, action, now, fx);
 }
 

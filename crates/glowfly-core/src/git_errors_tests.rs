@@ -1,6 +1,6 @@
 //! `classify` on git's untranslated failure texts and `with_quiet_apply` on command lines.
 
-use super::{Cause, classify, with_quiet_apply};
+use super::{Cause, classify, lock_path, with_quiet_apply};
 use crate::auth_failure::AuthNeed;
 use crate::gitcli::args;
 use std::borrow::Cow;
@@ -239,4 +239,17 @@ fn quiet_apply_on_merge_pull_and_stash() {
         let line = args(a);
         assert!(matches!(with_quiet_apply(&line), Cow::Borrowed(_)), "{a:?} is unchanged");
     }
+}
+
+#[test]
+fn lock_path_is_the_whole_path_git_named() {
+    let index = "fatal: Unable to create 'C:/Users/o'neil/r/.git/index.lock': File exists.
+
+Another git process seems to be running";
+    assert_eq!(lock_path(index).as_deref(), Some("C:/Users/o'neil/r/.git/index.lock"));
+    let reflock = "error: cannot lock ref 'refs/heads/main': Unable to create '/tmp/r/.git/refs/heads/main.lock': File exists.";
+    assert_eq!(lock_path(reflock).as_deref(), Some("/tmp/r/.git/refs/heads/main.lock"));
+    assert_eq!(lock_path("$ git add Unable to create '/x.lock': File exists."), None, "an echoed command line isn't git's error");
+    assert_eq!(lock_path("fatal: Unable to create '/tmp/r/.git/config': File exists."), None, "only lock files");
+    assert_eq!(lock_path("fatal: something else"), None);
 }

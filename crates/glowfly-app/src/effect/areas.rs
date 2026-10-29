@@ -19,6 +19,8 @@ macro_rules! effect_areas {
             Stash(crate::effect::StashEffect),
             /// A cherry-pick or revert job, carried past the commits that change nothing; unscoped like RunGit.
             Pick(crate::effect::PickJob),
+            /// Checking and deleting a lock file a failed job named (lock.rs); the delete waits on the repository's queue.
+            Lock(crate::effect::LockEffect),
             /// Interactive rebase: the panel's list, graph edits, running and resuming.
             Rebase(crate::effect::RebaseEffect),
             /// Pushing a stack's layers (stack.rs).

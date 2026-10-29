@@ -131,6 +131,32 @@ fn toast_failure_fix() {
     remove_fixture(&dir);
 }
 
+/// A stale lock file: Delete lock file, Try again and Details in one row inside the toast, in
+/// that order; the second fix sends `Msg::ToastAlt`.
+#[test]
+fn toast_failure_two_fixes() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "toast-two-fixes");
+    st.settings.notification_location = Corner::TopRight;
+    let now = Instant::now();
+    st.toast(false, "Another git program is using this repository (index.lock exists). Wait for it to finish, then try again.", now);
+    let button = |label: &str| ToastAction { label: label.into(), msg: Box::new(Msg::ClearLog), workdir: Some(dir.clone()) };
+    let t = st.toasts.last_mut().unwrap();
+    (t.action, t.alt, t.details) = (Some(button("Delete lock file")), Some(button("Try again")), Some(button("Details")));
+    let id = t.id;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("toast_failure_two_fixes");
+    let boxes: Vec<_> = ["Delete lock file", "Try again", "Details"].map(|l| h.get_by_label(l).bounding_box().expect(l)).into();
+    assert!(boxes.windows(2).all(|w| w[0].x1 <= w[1].x0 && (w[0].y0 - w[1].y0).abs() < 1.0), "one row, in order");
+    let frame = h.get_by_label("Another git program is using this repository (index.lock exists). Wait for it to finish, then try again.");
+    let text = frame.bounding_box().expect("the text");
+    assert!(boxes[2].x1 <= text.x0 + f64::from(crate::ui::toasts::TOAST_W), "inside the toast");
+    h.get_by_label("Try again").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ToastAlt(i) if *i == id)), "the second fix sends ToastAlt");
+    remove_fixture(&dir);
+}
+
 /// The second toast's x, hovered: lit with its tooltip, beside the wrapped text's first line;
 /// a click sends `NotifyMsg::CloseToast`.
 #[test]
