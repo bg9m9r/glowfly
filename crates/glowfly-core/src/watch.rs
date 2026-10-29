@@ -2,9 +2,10 @@
 //! watcher, plus a cache of ignored folders read through libgit2 (paths the index holds are
 //! never ignored). No watching happens here.
 //! Submodules' repositories (in `<git dir>/modules` or a nested `.git` folder) count only when
-//! their HEAD or refs move, which changes the parent's status. The config (`config`, and a
-//! worktree's own `config.worktree`) reloads everything: remotes, upstreams and the settings
-//! that decide whether git may run there all come from it.
+//! their HEAD or refs move, which changes the parent's status. The config (`config`, a
+//! worktree's own `config.worktree`, and the files they include, wherever they are) reloads
+//! everything: remotes, upstreams and the settings that decide whether git may run there all
+//! come from it.
 
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
@@ -49,6 +50,9 @@ pub struct WatchPaths {
     /// A linked worktree's common git dir (the main repository's `.git`), whose refs, packed
     /// refs, HEAD and config it shares; empty when it is the git dir itself.
     common_dirs: Vec<PathBuf>,
+    /// The files the repository's config includes (`config_includes`), in each spelling a
+    /// watcher may report.
+    config_files: Vec<PathBuf>,
 }
 
 /// The common git dir of a linked worktree's git dir (`<repo>/.git/worktrees/<name>`): the
@@ -79,7 +83,24 @@ fn with_canonical(path: &Path) -> Vec<PathBuf> {
 
 impl WatchPaths {
     pub fn new(workdir: &Path, git_dir: &Path) -> Self {
-        Self { workdirs: with_canonical(workdir), git_dirs: with_canonical(git_dir), common_dirs: Vec::new() }
+        Self { workdirs: with_canonical(workdir), git_dirs: with_canonical(git_dir), common_dirs: Vec::new(), config_files: Vec::new() }
+    }
+
+    /// Classifies a change to any of `files`, the files the config includes, as a change to the
+    /// config itself, replacing the files given before.
+    pub fn set_config_files(&mut self, files: &[PathBuf]) {
+        self.config_files.clear();
+        for f in files {
+            self.config_files.extend(with_canonical(f));
+            // A file that doesn't exist yet has no canonical form, but its folder may.
+            if let (Some(dir), Some(name)) = (f.parent(), f.file_name())
+                && let Ok(real) = std::fs::canonicalize(dir)
+            {
+                self.config_files.push(crate::paths::plain(&real).join(name));
+            }
+        }
+        self.config_files.sort();
+        self.config_files.dedup();
     }
 
     /// Also classifies paths in the common git dir `common` (unless it is the git dir).
@@ -104,6 +125,10 @@ impl WatchPaths {
     /// as does HEAD or a ref moving in a nested `.git` folder (a submodule that keeps its own
     /// repository); the rest of such a folder is ignored.
     pub fn classify_path(&self, path: &Path, touch: Touch, ignored: &mut impl FnMut(&str) -> bool) -> (Change, Option<String>) {
+        // An included config file may sit anywhere, the work tree and the git dir too.
+        if self.config_files.iter().any(|f| f == path) {
+            return (Change::Full, None);
+        }
         // The git dir usually sits inside the workdir, so it is checked first.
         if let Some(rel) = self.git_dirs.iter().find_map(|g| path.strip_prefix(g).ok()) {
             return (git_change(rel, touch), None);
