@@ -20,7 +20,9 @@ pub enum UpdateEffect {
     CheckSaved { file: PathBuf, sha256: [u8; 32] },
     /// Install and restart (or open the installer); reported as `UpdateMsg::RestartReady`.
     Restart(Box<RestartJob>),
-    /// Remove staging folders earlier updates left in the temp folder.
+    /// At the start: remove the staging folders and old programs (`.bak`) earlier updates left,
+    /// and read the update log; a failed or cancelled installer is reported as
+    /// `UpdateMsg::LastInstall`.
     Tidy,
 }
 

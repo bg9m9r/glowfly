@@ -2,15 +2,16 @@
 //! the tabs' unsaved work and terminals running a program (asked about first,
 //! update/terminal_busy.rs) have been dealt with, the downloaded update is prepared on a worker
 //! (runner/update_restart.rs). Once it is ready the window closes, the same way as Quit;
-//! a failure changes nothing and says why.
+//! a failure changes nothing and says why. At the next start, an installer that failed or was
+//! cancelled is said too (`last_install`).
 
 use crate::effect::{Effect, RestartJob, UiEffect, UpdateEffect};
 use crate::msg::{Msg, UpdateMsg};
 use crate::state::terminal::busy::{BusyTerminal, running_ids};
-use crate::state::updates::{UpdateStatus, opened_text, restart_failed_text, restarting_text};
+use crate::state::updates::{UpdateStatus, last_install_text, opened_text, restart_failed_text, restarting_text};
 use crate::state::{AppState, ToastAction, tab_losses};
 use crate::terminal::BusyCheck;
-use glowfly_core::app_update::InstallMethod;
+use glowfly_core::app_update::{InstallMethod, InstallProblem, LastInstall};
 use std::time::Instant;
 
 /// `InstallAndRestart` (`confirmed`: from the confirmation, which already named the losses and
@@ -89,5 +90,23 @@ pub(super) fn ready(st: &mut AppState, result: Result<(), String>, now: Instant,
             // A file gone or changed since is offered for download again.
             super::updates_download::check_saved(st, fx);
         }
+    }
+}
+
+/// The update log says the last installer run failed or was cancelled: a toast says so, with
+/// Show log when the log says more.
+pub(super) fn last_install(st: &mut AppState, last: LastInstall, now: Instant) {
+    let t = st.settings.lang();
+    let text = last_install_text(t, &last);
+    st.log_quiet(false, text.clone());
+    if matches!(last.problem, InstallProblem::Failed(_) | InstallProblem::NotRun(_)) {
+        let action = ToastAction {
+            label: t.tr("updates.show_log.button").into(),
+            msg: Box::new(Msg::Updates(UpdateMsg::ShowUpdateLog(last.log))),
+            workdir: None,
+        };
+        st.toast_action(false, text, action, now);
+    } else {
+        st.toast(false, text, now);
     }
 }

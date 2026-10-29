@@ -25,6 +25,20 @@ pub const EXIT_TIMEOUT: Duration = Duration::from_secs(120);
 pub const LOG_FILE: &str = "update.log";
 const LOG_BYTES: u64 = 256 << 10;
 
+// What the helper logs about the installer, read back at the next start (report.rs). Released
+// helpers wrote these same words, so they never change.
+/// Starts the line once Glowfly has quit, followed by the version.
+pub const INSTALLING: &str = "Glowfly has quit; installing ";
+pub const INSTALLED: &str = "the installer finished";
+pub const CANCELLED: &str = "the installer was cancelled";
+pub const BUSY: &str = "another installation is running; try the update again later";
+/// Starts the line, followed by msiexec's exit code as `Some(1603)` or `None`.
+pub const FAILED: &str = "the installer failed (";
+/// Starts the line, followed by why.
+pub const NOT_RUN: &str = "couldn't run the installer: ";
+/// Starts a line of a run that changed nothing.
+pub const NOT_UPDATING: &str = "not updating: ";
+
 /// How the wait for Glowfly ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Wait {
@@ -119,8 +133,14 @@ pub fn msi_outcome(code: Option<i32>) -> MsiOutcome {
 
 /// Appends `line` to the update log (nothing without a logs folder).
 fn log(line: &str) {
+    if let Some(dir) = crate::settings::log_dir() {
+        append(&dir, line);
+    }
+}
+
+/// Appends `line`, after the time, to the update log in `dir`.
+pub(super) fn append(dir: &Path, line: &str) {
     use std::io::Write;
-    let Some(dir) = crate::settings::log_dir() else { return };
     let mut file = crate::logs::RotatingFile::new(dir.join(LOG_FILE), LOG_BYTES, 1);
     let stamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
     let _ = file.write_all(format!("{stamp} {line}\n").as_bytes());
@@ -135,22 +155,22 @@ fn run_with(plan_path: &Path, stdin: impl Read + Send + 'static, (go, exit): (Du
     let plan = match Plan::read(plan_path) {
         Ok(p) => p,
         Err(e) => {
-            log(&format!("not updating: {e}"));
+            log(&format!("{NOT_UPDATING}{e}"));
             return 1;
         }
     };
     if plan.msi.is_some() && !cfg!(windows) {
-        log("not updating: an MSI only installs on Windows");
+        log(&format!("{NOT_UPDATING}an MSI only installs on Windows"));
         return 1;
     }
     match wait_for_exit(stdin, go, exit) {
-        Wait::Exited => log(&format!("Glowfly has quit; installing {}", plan.version)),
+        Wait::Exited => log(&format!("{INSTALLING}{}", plan.version)),
         Wait::NoGo => {
-            log("not updating: Glowfly didn't hand over the update");
+            log(&format!("{NOT_UPDATING}Glowfly didn't hand over the update"));
             return 1;
         }
         Wait::TimedOut => {
-            log(&format!("not updating: Glowfly didn't quit within {} s", exit.as_secs()));
+            log(&format!("{NOT_UPDATING}Glowfly didn't quit within {} s", exit.as_secs()));
             return 1;
         }
     }
@@ -176,7 +196,7 @@ fn run_with(plan_path: &Path, stdin: impl Read + Send + 'static, (go, exit): (Du
 
 fn run_msi(step: &MsiStep, log: &mut dyn FnMut(&str)) {
     let Some(root) = std::env::var_os("SystemRoot").filter(|r| !r.is_empty()).map(PathBuf::from) else {
-        log("couldn't run the installer: SystemRoot isn't set");
+        log(&format!("{NOT_RUN}SystemRoot isn't set"));
         return;
     };
     let (program, args) = msiexec_command(&root, step);
@@ -184,15 +204,15 @@ fn run_msi(step: &MsiStep, log: &mut dyn FnMut(&str)) {
     let outcome = match std::process::Command::new(&program).args(&args).status() {
         Ok(s) => msi_outcome(s.code()),
         Err(e) => {
-            log(&format!("couldn't run the installer: {e}"));
+            log(&format!("{NOT_RUN}{e}"));
             return;
         }
     };
     log(&match outcome {
-        MsiOutcome::Installed => "the installer finished".to_owned(),
-        MsiOutcome::Cancelled => "the installer was cancelled".to_owned(),
-        MsiOutcome::Busy => "another installation is running; try the update again later".to_owned(),
-        MsiOutcome::Failed(code) => format!("the installer failed ({code:?}); its log is {}", shown(&step.log)),
+        MsiOutcome::Installed => INSTALLED.to_owned(),
+        MsiOutcome::Cancelled => CANCELLED.to_owned(),
+        MsiOutcome::Busy => BUSY.to_owned(),
+        MsiOutcome::Failed(code) => format!("{FAILED}{code:?}); its log is {}", shown(&step.log)),
     });
 }
 

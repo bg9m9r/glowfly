@@ -253,13 +253,20 @@ second one next to it.
      same path; the helper is still a copy of the running program.
    - The helper is a copy of the running program in a private staging folder under
      `paths::temp_dir()` (`glowfly-update-<16 hex>`, created fresh with mode 0700; stale ones are
-     removed at the next start). It is started detached (Windows: a new process group, out of
+     removed at the next start). The copy is tried first (`app_update::launch::try_run`, `--version`);
+     where it can't run (a temp folder mounted noexec on Linux or macOS) the folder goes beside
+     the program, then in the cache folder (`staging::create_runnable`). It is started detached (Windows: a new process group, out of
      the job when allowed; Unix: `setsid`) and waits for Glowfly to exit through its stdin: "go"
      once everything is prepared, then the end of input.
    - The MSI runs only after Glowfly has exited, as
      `%SystemRoot%\System32\msiexec.exe /i <msi> /passive /norestart /l*v <log>` (never searched
      for on PATH), and Glowfly is started again from the same path afterwards.
    - A .dmg, .deb, .rpm, or an MSI for a portable copy is only opened, and Glowfly quits.
+   - The next start removes a `.bak` program the helper couldn't delete (a second window still
+     ran it on Windows): only `<program>.bak` and `<program>.bak-<n>` beside the running program
+     (or its AppImage), only regular files, never through a link, and only when the process list
+     (`terminal::program_paths`) was read and no process runs it (`app_update::backups`). It also
+     reads `update.log` and says when the installer failed or was cancelled, once.
    - The file offered is for the machine's real processor (`app_update::current_platform`):
      Windows asks `IsWow64Process2`, so an x64 build emulated on Arm counts as Arm, and macOS reads
      `sysctl.proc_translated`, 1 under Rosetta. Other systems, and a failed query, use the build's

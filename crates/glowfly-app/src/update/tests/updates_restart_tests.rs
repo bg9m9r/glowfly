@@ -1,20 +1,22 @@
 //! Headless tests of Install and restart: which method a downloaded file gets, what the chip,
 //! toast and palette offer for it, the checks before anything starts (Preferences' unsaved
-//! edits, a running operation, the tabs' unsaved work), and the worker's answer.
+//! edits, a running operation, the tabs' unsaved work), the worker's answer, and the next
+//! start's toast for a failed or cancelled installer.
 
 use super::askpass_gpg_tests::start_job;
 use super::tabs_close_tests::fake;
 use super::updates_tests::{app, offered, saved, send};
 use super::{prefs_save_tests, update};
-use crate::effect::{Effect, RestartJob, UiEffect, UpdateEffect};
+use crate::effect::{Effect, OsEffect, RestartJob, UiEffect, UpdateEffect};
 use crate::msg::{CheckedRelease, Msg, PrefsMsg, UpdateMsg as U};
 use crate::state::palette::entries;
 use crate::state::prefs::GitConfigValues;
 use crate::state::tabs::Tab;
 use crate::state::updates::UpdateStatus;
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Platform, Release, TargetOs};
+use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, InstallProblem, LastInstall, Platform, Release, TargetOs};
 use glowfly_core::i18n::Lang;
+use std::path::PathBuf;
 use std::time::Instant;
 
 const MSI: &str = "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi";
@@ -271,4 +273,38 @@ fn an_answer_without_a_restart_is_ignored() {
     assert!(send(&mut st, U::RestartReady(Ok(())), t).is_empty());
     assert!(send(&mut st, U::RestartReady(Err("late".into())), t).is_empty());
     assert!(st.toasts.last().is_some_and(|t| !t.text.contains("late")));
+}
+
+/// The update log's last run, as the start's tidying reads it.
+fn last(problem: InstallProblem) -> U {
+    U::LastInstall(LastInstall { version: "0.3.0".into(), problem, log: PathBuf::from("/logs/update.log") })
+}
+
+#[test]
+fn a_failed_or_cancelled_installer_is_said_at_the_next_start() {
+    let mut st = app();
+    let t = Instant::now();
+    assert!(send(&mut st, last(InstallProblem::Cancelled), t).is_empty());
+    let toast = st.toasts.last().expect("a toast");
+    assert_eq!((toast.ok, toast.text.as_str()), (false, "The installer for Glowfly 0.3.0 was cancelled, so Glowfly wasn't updated."));
+    assert!(toast.action.is_none());
+    send(&mut st, last(InstallProblem::Busy), t);
+    assert!(st.toasts.last().unwrap().text.contains("another installation was running"));
+    send(&mut st, last(InstallProblem::Failed(Some(1603))), t);
+    let toast = st.toasts.last().unwrap();
+    assert_eq!(toast.text, "The installer for Glowfly 0.3.0 failed (error 1603), so Glowfly wasn't updated.");
+    let action = toast.action.as_ref().expect("Show log");
+    assert_eq!(action.label, "Show log");
+    assert!(matches!(&*action.msg, Msg::Updates(U::ShowUpdateLog(p)) if p == &PathBuf::from("/logs/update.log")));
+    // Show log shows the update log.
+    let fx = send(&mut st, U::ShowUpdateLog(PathBuf::from("/logs/update.log")), t);
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::RevealPath(p))] if p == &PathBuf::from("/logs/update.log")), "{fx:?}");
+    send(&mut st, last(InstallProblem::Failed(None)), t);
+    assert_eq!(st.toasts.last().unwrap().text, "The installer for Glowfly 0.3.0 failed, so Glowfly wasn't updated.");
+    send(&mut st, last(InstallProblem::NotRun("SystemRoot isn't set".into())), t);
+    assert_eq!(st.toasts.last().unwrap().text, "The installer for Glowfly 0.3.0 couldn't start: SystemRoot isn't set");
+    // In German too.
+    st.settings.language = "de".into();
+    send(&mut st, last(InstallProblem::Cancelled), t);
+    assert!(st.toasts.last().unwrap().text.starts_with("Das Installationsprogramm für Glowfly 0.3.0 wurde abgebrochen"));
 }

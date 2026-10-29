@@ -19,11 +19,13 @@
 //!   the AppImage, open the installer and quit, or only show it).
 //! - `archive.rs`: the program and doc files of a portable copy's zip or tar.gz.
 //! - `swap.rs`: replacing a portable copy's program in place, with rollback.
+//! - `backups.rs`: removing the old program a swap left, once no process runs it.
 //! - `staging.rs`: the private temporary folder an update is prepared in, and tidying it.
 //! - `plan.rs`: the update helper's instructions.
 //! - `restart.rs`: preparing Install and restart and handing it to the helper.
 //! - `launch.rs`: starting the helper, and Glowfly again, detached.
 //! - `finish.rs`: the helper itself (`glowfly --finish-update <plan>`).
+//! - `report.rs`: how the last installer run went, read from the helper's log at the next start.
 //!
 //! The release itself is read through `Feed` (by default `forge::latest_release`). A
 //! downloaded installer runs, or a portable copy's program or an AppImage is swapped, only when
@@ -32,6 +34,7 @@
 mod appimage;
 mod archive;
 mod assets;
+mod backups;
 mod check;
 mod download;
 mod feed;
@@ -41,6 +44,7 @@ mod launch;
 mod method;
 mod plan;
 mod release;
+mod report;
 mod restart;
 mod staging;
 mod sums;
@@ -61,6 +65,7 @@ pub use assets::{
     Arch, CURRENT_PLATFORM, InstallHints, InstallKind, PACKAGE_FORMAT_FILE, Platform, SumsSource, TargetOs, install_kind, install_kind_for,
     install_kind_with, pick, sums_source,
 };
+pub use backups::{Cleared, remove_unused as remove_unused_backups};
 pub use check::{Checked, check_and_download};
 pub use download::{
     MAX_DOWNLOAD, Progress, Saved, SavedProblem, check_saved, download, download_saved, download_streamed, free_name, read_verified,
@@ -71,6 +76,7 @@ pub use finish::run as finish_update;
 pub use host::current_platform;
 pub use method::{InstallMethod, install_method_for};
 pub use release::{Asset, Release, asset_name_ok, parse_release};
+pub use report::{InstallProblem, LastInstall, take as take_last_install};
 pub use restart::{RestartRequest, start as start_restart};
 pub use staging::tidy as tidy_staging;
 pub use sums::{expected as expected_sum, parse as parse_sums, sha256};
@@ -78,6 +84,8 @@ pub use version::{PreId, Version};
 
 /// The command-line flag that runs the update helper on a plan.
 pub const FINISH_FLAG: &str = "--finish-update";
+/// The command-line flag that prints the version and exits (also how a copied helper is tried).
+pub const VERSION_FLAG: &str = "--version";
 /// This build's version.
 pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// The repository whose releases are checked (a fork built with its own `repository` field
