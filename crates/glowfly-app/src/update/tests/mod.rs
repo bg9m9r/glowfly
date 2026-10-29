@@ -40,6 +40,7 @@ pub(super) mod current_hunk_tests;
 pub(super) mod custom_commands_palette_tests;
 pub(super) mod custom_commands_run_tests;
 pub(super) mod custom_commands_tests;
+pub(super) mod deep_link_folder_tests;
 pub(super) mod deep_link_open_tests;
 pub(super) mod deep_link_tests;
 pub(super) mod desktop_click_tests;

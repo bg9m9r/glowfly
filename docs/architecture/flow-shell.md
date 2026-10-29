@@ -175,7 +175,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 ## Deep links
 
 - Files: `deep_link.rs`, `state/deep_link.rs`, `update/deep_link.rs`, `update/deep_link_open.rs`.
-- `main.rs` first hands a `glowfly://` argument to a running window (`glowfly_core::instance`; `Runner::start_instance` listens, next to the askpass listener) and exits; otherwise the new window opens it after restoring its tabs.
+- `main.rs` takes the claim on links and folders when no other window holds it, else hands its `glowfly://` or folder argument to the window that does (`glowfly_core::instance`; `Runner::start_instance` listens, next to the askpass listener, and reports `DeepLinkMsg::Open` or `OpenFolder`) and exits; otherwise the new window opens it after restoring its tabs.
 - On macOS, LaunchServices sends links and folders to Glowfly.app as Apple events instead of argv; they arrive as the same `DeepLinkMsg::Open` / `RepoMsg::Open`, via `Runner::start_open_events`.
 - Either way a link arrives as `DeepLinkMsg::Open`, which brings the window forward and, unless another dialog or Preferences is open (a toast offers to open it later), parses it and sends `DeepLinkEffect::Find` over the active tab, the other tabs, favorites and recent repositories.
 - The runner checks each with `link::find::check` (root commit, remote URL).

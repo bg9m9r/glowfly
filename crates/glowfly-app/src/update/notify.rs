@@ -30,15 +30,21 @@ pub(super) fn handle(st: &mut AppState, msg: NotifyMsg, now: Instant, fx: &mut V
 }
 
 /// A desktop notification was clicked: brings the window forward and shows the repository it
-/// was about, switching to its tab or opening it again (`tabs::open`). Under a dialog or
-/// Preferences the tab doesn't change; a toast offers to show it once that is closed.
+/// was about (`show_repo`).
 fn desktop_clicked(st: &mut AppState, workdir: Option<PathBuf>, now: Instant, fx: &mut Vec<Effect>) {
     fx.push(Effect::Ui(UiEffect::FocusWindow));
     let Some(dir) = workdir else { return };
+    let again = Msg::Notify(NotifyMsg::DesktopClicked { workdir: Some(dir.clone()) });
+    show_repo(st, dir, again, now, fx);
+}
+
+/// Shows repository `dir`, switching to its tab or opening it in a new one (`tabs::open`).
+/// Under a dialog or Preferences the tab doesn't change; a toast offers `again` once that is
+/// closed.
+pub(super) fn show_repo(st: &mut AppState, dir: PathBuf, again: Msg, now: Instant, fx: &mut Vec<Effect>) {
     if super::deep_link::busy(st) {
         let text = format!("Close the open dialog to show {}.", repo_label(st, Some(&dir)));
-        let msg = Box::new(Msg::Notify(NotifyMsg::DesktopClicked { workdir: Some(dir) }));
-        st.toast_action(true, text, ToastAction { label: "Show".into(), msg, workdir: None }, now);
+        st.toast_action(true, text, ToastAction { label: "Show".into(), msg: Box::new(again), workdir: None }, now);
         return;
     }
     // Already showing: no reload, only out of the dashboard.
