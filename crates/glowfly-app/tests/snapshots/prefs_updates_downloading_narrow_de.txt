@@ -12,7 +12,7 @@ Button "Jetzt prüfen" [disabled]
 Label "Wird heruntergeladen… 40 % (4.0 MB von 10.0 MB)"
 ProgressIndicator = 40
 Button "Abbrechen"
-Label "Glowfly fragt einmal täglich die Releases-API von GitHub nach dem neuesten Release seines Repositorys. GitHub sieht dabei deine IP-Adresse und die Version von Glowfly, aber nichts über deine Repositorys. Downloads werden mit den veröffentlichten SHA-256-Prüfsummen des Releases abgeglichen."
+Label "Glowfly fragt einmal täglich die Releases-API von GitHub nach dem neuesten Release seines Repositorys. GitHub sieht dabei deine IP-Adresse und die Version von Glowfly, aber nichts über deine Repositorys. Downloads werden mit den veröffentlichten SHA-256-Prüfsummen des Releases abgeglichen. Die Builds von Glowfly sind noch nicht codesigniert. Das bestätigt also, dass ein Download dem entspricht, was das Release veröffentlicht hat, aber nicht, wer es veröffentlicht hat."
 Label "Git"
 Label "Wird geprüft…"
 Button "Auswählen…"
@@ -75,4 +75,3 @@ painted:
   "SSH"
   "Git-Programm"
   "Name des Standard-Branches"
-  "Intervall für Auto-Abruf"
