@@ -50,6 +50,9 @@ fn body(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) {
                     return;
                 }
                 let (label, msg) = if offer.asset.is_some() {
+                    // What the checksum check does and doesn't prove, while builds are unsigned.
+                    ui.add(egui::Label::new(RichText::new(t.tr("updates.checksum.help")).color(color::weak())).wrap());
+                    ui.add_space(6.0);
                     (t.tr("updates.download.button"), UpdateMsg::Download)
                 } else {
                     (t.tr("updates.open_release_page.button"), UpdateMsg::OpenReleasePage)

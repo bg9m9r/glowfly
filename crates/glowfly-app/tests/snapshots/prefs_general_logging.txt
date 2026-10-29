@@ -7,7 +7,7 @@ Label "Updates"
 CheckBox "Check for updates once a day" [on]
 Label "Glowfly 0.1.0 · Never checked"
 Button "Check now"
-Label "Glowfly asks GitHub's releases API for the newest release of its repository once a day. GitHub sees your IP address and Glowfly's version, nothing about your repositories. Downloads are checked against the release's published SHA-256 checksums."
+Label "Glowfly asks GitHub's releases API for the newest release of its repository once a day. GitHub sees your IP address and Glowfly's version, nothing about your repositories. Downloads are checked against the release's published SHA-256 checksums. Glowfly's builds aren't code-signed yet, so this confirms a download matches what the release published, not who published it."
 Label "Git"
 Label "Checking…"
 Button "Choose…"
@@ -77,4 +77,3 @@ painted:
   "Load more while scrolling"
   "Search the whole history"
   "Reopen last repository"
-  "Watch for file changes"
