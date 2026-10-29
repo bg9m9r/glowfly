@@ -209,14 +209,14 @@ effect_areas! { effect_enum! {
         generation: u64,
     },
     /// Runs git commands in order, stopping at the first failure. `write_file` is written first
-    /// (used for commit messages). With `record`, the state before and after is compared and
+    /// (commit messages, already in the repository's commit encoding). With `record`, the state before and after is compared and
     /// the resulting undoable action reported back; with `journal`, a journal note is written
     /// when the run moved HEAD or the op's branch (runner/journal.rs). Without `prompts`
     /// (background jobs) git fails rather than open a credential prompt.
     RunGit {
         cwd: PathBuf,
         cmds: Vec<Vec<String>>,
-        write_file: Option<(PathBuf, String)>,
+        write_file: Option<(PathBuf, Vec<u8>)>,
         record: Option<UndoKind>,
         journal: Option<glowfly_core::journal::Op>,
         prompts: bool,

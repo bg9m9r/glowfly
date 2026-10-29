@@ -217,6 +217,7 @@
   "commit.blocked.no_repo": "Open a repository first.",
   "commit.blocked.no_summary": "Write a summary for the commit.",
   "commit.blocked.nothing_staged": "Nothing is staged yet. Stage a file or a hunk first.",
+  "commit.blocked.unencodable": "This repository writes commit messages in {encoding} (i18n.commitEncoding), which can't hold {chars}. Remove them from the message.",
   "commit.blocked.untouched_template": "Edit the commit template before committing.",
   "commit.button.amend": "Amend previous commit{push}{skip}",
   "commit.button.and_push": " and push",

@@ -61,7 +61,7 @@ pub(super) fn argv(a: &[&str]) -> Vec<Vec<String>> {
 /// The commands and file of the one RunGit effect in `fx`.
 pub(super) fn git_run(fx: &[Effect]) -> (Vec<Vec<String>>, Option<(PathBuf, String)>) {
     match fx {
-        [Effect::RunGit { cmds, write_file, .. }] => (cmds.clone(), write_file.clone()),
+        [Effect::RunGit { cmds, write_file, .. }] => (cmds.clone(), write_file.clone().map(|(p, b)| (p, String::from_utf8(b).unwrap()))),
         other => panic!("expected one RunGit, got {} effects", other.len()),
     }
 }

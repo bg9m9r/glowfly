@@ -3,6 +3,7 @@
 
 use super::AppState;
 use git2::RepositoryState;
+use glowfly_core::commit_encoding::Unencodable;
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::CommitTemplate;
@@ -180,6 +181,11 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+/// Why a message can't be written: the repository's commit encoding can't hold some characters.
+pub fn unencodable_text(t: Lang, e: &Unencodable) -> String {
+    t.trf("commit.blocked.unencodable", &[("encoding", &e.encoding), ("chars", &e.listed())])
 }
 
 /// Why the merge banner's Commit merge can't run now: conflicts left, another job, an amend.
