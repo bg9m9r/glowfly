@@ -159,6 +159,8 @@ pub enum StashHow {
     Failed,
     /// The stash was no longer in the list when they were to go back.
     Gone,
+    /// Nothing was stashed or undone: git can't stash these intent-to-add files (`git add -N`).
+    IntentToAdd(Vec<String>),
 }
 
 /// Choices for one undo or redo.

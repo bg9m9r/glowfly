@@ -36,18 +36,27 @@ pub fn stash_top_at(workdir: &Path) -> Result<Option<Oid>> {
     }
 }
 
-/// The stash `stash_first_command` just made with `message`: the newest one, when it isn't
-/// `before` (the newest before it ran) and its message ends with `message`. `None` when git
-/// stashed nothing.
-pub fn undo_stash_made(workdir: &Path, before: Option<Oid>, message: &str) -> Option<Oid> {
-    let repo = Repository::open(workdir).ok()?;
-    let top = stash_top_at(workdir).ok()??;
-    if Some(top) == before {
-        return None;
-    }
-    let commit = repo.find_commit(top).ok()?;
-    let ours = commit.message().is_some_and(|m| m.lines().next().unwrap_or_default().trim_end().ends_with(message));
-    ours.then_some(top)
+/// The stash `stash_first_command` just made with `message`, wherever it is in the list (another
+/// tab may have stashed on top of it since): the one whose message ends with `message`, whose
+/// nonce no other run has. `None` when git stashed nothing; an error when the list can't be read.
+pub fn undo_stash_made(workdir: &Path, message: &str) -> Result<Option<Oid>> {
+    let mut repo = Repository::open(workdir)?;
+    let mut found = None;
+    repo.stash_foreach(|_, m, id| {
+        if m.lines().next().unwrap_or_default().trim_end().ends_with(message) {
+            found = Some(*id);
+        }
+        found.is_none()
+    })?;
+    Ok(found)
+}
+
+/// The files the index marks intent-to-add (`git add -N`), which `git stash push` can't stash.
+pub fn intent_to_add(workdir: &Path) -> Result<Vec<String>> {
+    /// `GIT_INDEX_ENTRY_INTENT_TO_ADD`, in an entry's extended flags.
+    const INTENT_TO_ADD: u16 = 1 << 13;
+    let index = Repository::open(workdir)?.index()?;
+    Ok(index.iter().filter(|e| e.flags_extended & INTENT_TO_ADD != 0).map(|e| String::from_utf8_lossy(&e.path).into_owned()).collect())
 }
 
 #[cfg(test)]
@@ -71,13 +80,22 @@ mod tests {
         git(&dir, &["stash", "push", "-q", "-m", &a]);
         let top = stash_top_at(&dir).unwrap();
         assert!(top.is_some());
-        assert_eq!(undo_stash_made(&dir, None, &b), None, "another run's stash isn't ours");
-        assert_eq!(undo_stash_made(&dir, top, &a), None, "nothing new");
-        assert_eq!(undo_stash_made(&dir, None, &a), top);
+        assert_eq!(undo_stash_made(&dir, &b).unwrap(), None, "another run's stash isn't ours");
+        assert_eq!(undo_stash_made(&dir, &a).unwrap(), top);
+        // Found under a newer stash too.
+        write(&dir, "a.txt", "three\n");
+        git(&dir, &["stash", "push", "-q", "-m", "another tab"]);
+        assert_ne!(stash_top_at(&dir).unwrap(), top);
+        assert_eq!(undo_stash_made(&dir, &a).unwrap(), top);
+
+        write(&dir, "n.txt", "new\n");
+        git(&dir, &["add", "-N", "n.txt"]);
+        assert_eq!(intent_to_add(&dir).unwrap(), ["n.txt"]);
 
         // A list that can't be read is an error, not "empty".
         std::fs::write(dir.join(".git/refs/stash"), "not an id\n").unwrap();
         assert!(stash_top_at(&dir).is_err());
+        assert!(undo_stash_made(&dir, &a).is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

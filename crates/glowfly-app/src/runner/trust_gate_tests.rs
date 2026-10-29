@@ -267,11 +267,29 @@ fn undo_s_stash_first_goes_through_the_gate() {
         stash: None,
     };
     let opts = crate::effect::UndoOpts { stash_first: true, ..Default::default() };
-    let Msg::Job(JobMsg::JobDone { ok, .. }) = crate::runner::git_ops::undo_redo(&work, action, false, opts, Some(&gate)) else {
+    let Msg::Job(JobMsg::JobDone { ok, .. }) = crate::runner::undo_run::undo_redo(&work, action, false, opts, Some(&gate)) else {
         panic!("done")
     };
     assert!(!ok, "held");
     assert!(work.join("dirty.txt").exists(), "nothing was stashed");
     assert!(!work.join(".githooks/reference-transaction").exists());
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}
+
+#[test]
+fn undo_s_stash_pop_goes_through_the_gate() {
+    let (work, check, _, _) = head_on_an_unchecked_hook("undo-pop");
+    git(&work, &["-c", "core.hooksPath=", "stash", "push", "-q", "-u", "-m", "Glowfly: changes before undo #1"]);
+    let stash = git2::Repository::open(&work).unwrap().refname_to_id("refs/stash").unwrap();
+    let follows = glowfly_core::trust::scan_at(&work).unwrap().follows;
+    let gate = Gate::new(work.clone(), follows, check.saved.clone(), None, check.lang);
+    let mut text = String::new();
+    let git_ = crate::runner::undo_run::UndoGit { gate: Some(&gate) };
+    let how = crate::runner::undo_stash::put_back(&work, git_, stash, "Glowfly: changes before undo #1", &mut text);
+    assert_eq!(how, Some(crate::effect::StashHow::Failed), "{text}");
+    assert!(text.contains("held git stash pop") && text.contains("nothing was dropped"), "{text}");
+    assert!(!work.join("dirty.txt").exists(), "nothing was put back");
+    assert_eq!(git2::Repository::open(&work).unwrap().refname_to_id("refs/stash").ok(), Some(stash), "the stash stays");
+    assert!(!work.parent().unwrap().join("evil.txt").exists(), "the hook never ran");
     let _ = std::fs::remove_dir_all(work.parent().unwrap());
 }

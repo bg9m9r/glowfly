@@ -84,13 +84,15 @@ pub(super) fn stash_headline(st: &AppState, undo: &Option<UndoResult>) -> Option
     };
     let reason = s.reason.as_deref().unwrap_or_default().trim();
     let files = match &s.how {
-        StashHow::Partial(f) => f.join(", "),
+        StashHow::Partial(f) | StashHow::IntentToAdd(f) => f.join(", "),
         _ => String::new(),
     };
     let args: [(&str, &dyn std::fmt::Display); 4] =
         [("action", &action.as_deref().unwrap_or_default()), ("stash", &s.message), ("reason", &reason), ("files", &files)];
     let refused = s.reason.is_some();
     Some(match (&action, &s.how) {
+        (_, StashHow::IntentToAdd(_)) => t.trf("undo.stash_intent_to_add", &args),
+        (None, StashHow::Gone) => t.trf("undo.stash_gone", &args).trim_start().to_owned(),
         (_, StashHow::Back) if refused => t.trf("undo.stash_back.refused", &args),
         (_, StashHow::Back) => t.tr("undo.stash_back.failed").to_owned(),
         (None, _) if refused => t.trf("undo.stash_held.refused", &args),

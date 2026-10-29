@@ -261,25 +261,38 @@ pub fn pop_put_back(workdir: &Path, index: usize, oid: Oid) -> (PutBack, String)
 /// in the list (`Failed` or `Conflicted`). Refused, changing nothing, while an operation is in
 /// progress or files are conflicted (`NotReady`), or when the stash is gone (`Gone`).
 pub fn pop_index(workdir: &Path, oid: Oid) -> (PutBack, String) {
+    pop_index_with(workdir, oid, &mut |cmd| logged(workdir, cmd))
+}
+
+/// `pop_index`, with the pop command run by `run` (whether it worked, and the command with its
+/// output), as the app's trust gate does: a command it holds counts as one that failed.
+pub fn pop_index_with(workdir: &Path, oid: Oid, run: &mut dyn FnMut(&[String]) -> (bool, String)) -> (PutBack, String) {
     let index = match prepare_put_back(workdir, oid) {
         Ok(i) => i,
         Err(refused) => return refused,
     };
-    let (ok, output, listed) = pop(workdir, &args(&["stash", "pop", "--index", &format!("stash@{{{index}}}")]), oid);
+    let (ok, output) = run(&args(&["stash", "pop", "--index", &format!("stash@{{{index}}}")]));
+    let listed = list(workdir).map(|l| l.iter().any(|s| s.oid == oid)).unwrap_or(true);
     (classify_with(ok, listed, conflicted_paths(workdir)), output)
 }
 
 /// Runs one pop command: whether git said it worked, the command with its output, and whether
 /// stash `oid` is still listed afterwards.
 fn pop(workdir: &Path, cmd: &[String], oid: Oid) -> (bool, String, bool) {
+    let (ok, output) = logged(workdir, cmd);
+    let listed = list(workdir).map(|l| l.iter().any(|s| s.oid == oid)).unwrap_or(true);
+    (ok, output, listed)
+}
+
+/// Runs `cmd`: whether it worked, and the command with its output.
+fn logged(workdir: &Path, cmd: &[String]) -> (bool, String) {
     let (ok, text) = gitcli::run(workdir, cmd);
     let mut output = format!("$ git {}", cmd.join(" "));
     if !text.is_empty() {
         output.push('\n');
         output.push_str(text.trim_end());
     }
-    let listed = list(workdir).map(|l| l.iter().any(|s| s.oid == oid)).unwrap_or(true);
-    (ok, output, listed)
+    (ok, output)
 }
 
 fn classify(workdir: &Path, ok: bool, listed: bool) -> PutBack {

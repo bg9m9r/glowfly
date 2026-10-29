@@ -76,7 +76,7 @@ pub use resolved::resolve_saving;
 pub use restacked::{RestackBefore, restack_before, restack_unmoved, restacked};
 pub use reverted::{RevertFailed, revert_saving};
 pub use saved::{RestoreFailed, Saved, discard_saving, restore_saving, write as write_saved};
-pub use stash_first::{stash_first_command, stash_top_at, undo_stash_made, undo_stash_message};
+pub use stash_first::{intent_to_add, stash_first_command, stash_top_at, undo_stash_made, undo_stash_message};
 pub use unstaged::{restage, unstage_again, unstage_gone_saving};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.

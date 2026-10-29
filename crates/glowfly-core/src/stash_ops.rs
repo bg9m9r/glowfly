@@ -28,7 +28,9 @@ mod paths;
 mod push;
 mod renames;
 mod saved;
-pub use auto::{AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, pop_index, pop_put_back, prepare_put_back};
+pub use auto::{
+    AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, pop_index, pop_index_with, pop_put_back, prepare_put_back,
+};
 pub use paths::changed_paths;
 pub use push::{PATHS_ON_COMMAND_LINE, PushCommand, STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 pub use renames::{RESTORE_BLOCKED, rename_sources, restore_blocked, restore_blocked_output, restore_commands};

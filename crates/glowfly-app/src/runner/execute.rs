@@ -3,7 +3,7 @@
 
 use super::{
     diff_gaps, expect, files, forge_calls, git_ops, highlight, history, journal, load, op_stops, path_search, revert, saves, signatures,
-    status,
+    status, undo_run,
 };
 use crate::effect::areas::{effect_areas, effect_match};
 use crate::effect::{Effect, UndoResult};
@@ -161,7 +161,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
             let what = action.describe();
             let op = if redo { glowfly_core::journal::Op::Redo { what } } else { glowfly_core::journal::Op::Undo { what } };
             let gate = cx.gate.map(|(g, _)| g);
-            Some(journal::around(&cwd, Some(op), || git_ops::undo_redo(&cwd, action, redo, opts, gate)))
+            Some(journal::around(&cwd, Some(op), || undo_run::undo_redo(&cwd, action, redo, opts, gate)))
         }
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
             Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))

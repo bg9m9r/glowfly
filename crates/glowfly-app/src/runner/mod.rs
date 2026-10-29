@@ -92,6 +92,7 @@ mod tools;
 mod trust;
 mod trust_gate;
 mod ui;
+mod undo_run;
 mod undo_stash;
 mod update_restart;
 mod updates;
