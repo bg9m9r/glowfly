@@ -79,3 +79,87 @@ fn a_file_where_a_tracked_folder_goes_is_in_the_way() {
     assert_names(plan(&dir, &checkout, true).unwrap(), "d/x.txt");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn redoing_a_new_branch_checkout_wont_write_over_an_ignored_file() {
+    let dir = untracked_by_feature("undo-in-the-way-recreate");
+    git(&dir, &["checkout", "-q", "feature"]);
+    let checkout = record(&dir, &["checkout", "-b", "again", "main"]).expect("recorded");
+    run_plan(&dir, plan_with(&dir, &checkout, false, Options { delete_created: true }).unwrap());
+    assert!(!dir.join("cfg.local").exists());
+    write(&dir, "cfg.local", "mine\n");
+    assert_names(plan(&dir, &checkout, true).unwrap(), "cfg.local");
+    assert_eq!(read(&dir, "cfg.local"), "mine\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Ignores cfg.local from now on and writes the user's own there.
+fn ignored_mine(dir: &Path) {
+    std::fs::write(dir.join(".git/info/exclude"), "cfg.local\n").unwrap();
+    write(dir, "cfg.local", "mine\n");
+}
+
+#[test]
+fn putting_a_stash_back_wont_write_over_an_ignored_file() {
+    // A hard reset stashed a new staged cfg.local; undoing it pops that back.
+    let dir = scratch_repo("undo-in-the-way-pop");
+    commit(&dir, "a.txt", "one\n", "c1");
+    write(&dir, "cfg.local", "staged\n");
+    git(&dir, &["add", "cfg.local"]);
+    let reset = super::reset_tests::hard_reset(&dir, "HEAD").expect("recorded");
+    assert!(!dir.join("cfg.local").exists());
+    ignored_mine(&dir);
+    assert_names(plan(&dir, &reset, false).unwrap(), "cfg.local");
+    assert_eq!(read(&dir, "cfg.local"), "mine\n");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    // Undoing a stash pops it back the same way.
+    let dir = scratch_repo("undo-in-the-way-stash");
+    commit(&dir, "a.txt", "one\n", "c1");
+    write(&dir, "cfg.local", "staged\n");
+    git(&dir, &["add", "cfg.local"]);
+    let push = record(&dir, &["stash", "push"]).expect("recorded");
+    ignored_mine(&dir);
+    assert_names(plan(&dir, &push, false).unwrap(), "cfg.local");
+    assert_eq!(read(&dir, "cfg.local"), "mine\n");
+    std::fs::remove_file(dir.join("cfg.local")).unwrap();
+    assert!(matches!(plan(&dir, &push, false).unwrap(), Plan::Run(_)), "with nothing in the way it goes back");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn what_git_handles_itself_isnt_in_the_way() {
+    let dir = scratch_repo("undo-in-the-way-handled");
+    let c1 = commit(&dir, "Readme.md", "r\n", "c1");
+    let repo = || git2::Repository::open(&dir).unwrap();
+
+    // A submodule's folder: checking out a gitlink writes nothing into it.
+    std::fs::create_dir_all(dir.join("sub")).unwrap();
+    write(&dir, "sub/inside.txt", "the submodule's own\n");
+    git(&dir, &["update-index", "--add", "--cacheinfo", &format!("160000,{c1},sub")]);
+    git(&dir, &["commit", "-q", "-m", "add sub"]);
+    let with_sub = repo().head().unwrap().target().unwrap();
+    git(&dir, &["reset", "-q", "--mixed", &c1.to_string()]);
+    assert!(in_the_way::in_the_way(&dir, &repo(), with_sub).unwrap().is_empty());
+    std::fs::remove_dir_all(dir.join("sub")).unwrap();
+    git(&dir, &["reset", "-q", "--hard", &c1.to_string()]);
+
+    // A case-only rename, either way.
+    git(&dir, &["mv", "Readme.md", "README.md"]);
+    git(&dir, &["commit", "-q", "-m", "rename"]);
+    let renamed = repo().head().unwrap().target().unwrap();
+    assert!(in_the_way::in_the_way(&dir, &repo(), c1).unwrap().is_empty());
+    git(&dir, &["reset", "-q", "--hard", &c1.to_string()]);
+    assert!(in_the_way::in_the_way(&dir, &repo(), renamed).unwrap().is_empty());
+
+    // A folder of tracked files where the target has a file; one untracked file in it blocks.
+    std::fs::create_dir_all(dir.join("d")).unwrap();
+    let with_folder = commit(&dir, "d/a.txt", "a\n", "folder");
+    git(&dir, &["rm", "-q", "-r", "d"]);
+    let with_file = commit(&dir, "d", "a file now\n", "file");
+    git(&dir, &["reset", "-q", "--hard", &with_folder.to_string()]);
+    assert!(in_the_way::in_the_way(&dir, &repo(), with_file).unwrap().is_empty());
+    write(&dir, "d/mine.txt", "mine\n");
+    assert_eq!(in_the_way::in_the_way(&dir, &repo(), with_file).unwrap(), ["d"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -137,6 +137,9 @@ pub(super) fn plan_push(workdir: &Path, repo: &Repository, action: &Action, head
     if status_entries(workdir)?.iter().any(|e| paths.contains(&e.path) && changed(e)) {
         return Ok(dirty(action, redo));
     }
+    if let Some(refused) = super::in_the_way::check_stash(workdir, repo, *stash, *head, action, redo)? {
+        return Ok(refused);
+    }
     Ok(Plan::Run(vec![args(&["stash", "pop", "--index", &stash_ref(n)])]))
 }
 
@@ -151,6 +154,9 @@ pub(super) fn plan_apply(workdir: &Path, repo: &Repository, action: &Action, hea
             return Ok(stale(format!("HEAD has moved since the {}", action.describe())));
         }
         let Some(n) = stash_index(workdir, *stash)? else { return Ok(stale("The stash was dropped since")) };
+        if let Some(refused) = super::in_the_way::check_stash(workdir, repo, *stash, *head, action, redo)? {
+            return Ok(refused);
+        }
         return Ok(Plan::Run(vec![args(&["stash", if *pop { "pop" } else { "apply" }, &stash_ref(n)])]));
     }
     if head_oid != Some(*head) {

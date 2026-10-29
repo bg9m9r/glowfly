@@ -115,7 +115,12 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
             let mut cmds = match target {
                 HeadPos::Branch(b) if !ref_exists(&repo, &format!("refs/heads/{b}")) => {
                     return Ok(match created {
-                        Some(c) if redo && c.name == *b => refs::recreate(&repo, c),
+                        Some(c) if redo && c.name == *b && !exists(c.oid) => gone(),
+                        // `checkout -b` writes over an ignored file just as a checkout does.
+                        Some(c) if redo && c.name == *b => match super::in_the_way::check(workdir, &repo, c.oid, action, redo)? {
+                            Some(refused) => refused,
+                            None => refs::recreate(&repo, c),
+                        },
                         _ => stale(format!("Branch {b} no longer exists")),
                     });
                 }
@@ -195,7 +200,10 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
                 return Ok(dirty(action, redo));
             }
             match reset::stash_index(workdir, *stash)? {
-                Some(n) => Plan::Run(vec![args(&["stash", "pop", "--index", &format!("stash@{{{n}}}")])]),
+                Some(n) => match super::in_the_way::check_stash(workdir, &repo, *stash, *head, action, redo)? {
+                    Some(refused) => refused,
+                    None => Plan::Run(vec![args(&["stash", "pop", "--index", &format!("stash@{{{n}}}")])]),
+                },
                 None => stale("The discarded-changes stash was dropped"),
             }
         }

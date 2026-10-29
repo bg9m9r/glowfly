@@ -44,6 +44,7 @@ pub(super) fn plan(workdir: &Path, action: &Action, mode: ResetMode, stash: Opti
     // `reset --hard` writes over untracked and ignored files at the paths the target adds; checked
     // after local changes, which Stash changes and undo can move (untracked ones too).
     let in_the_way = || super::in_the_way::check(workdir, &Repository::open(workdir)?, target, action, redo);
+    let onto = target;
     let target = target.to_string();
     Ok(match mode {
         // Stashes again whatever is uncommitted now, as the original reset did.
@@ -63,6 +64,10 @@ pub(super) fn plan(workdir: &Path, action: &Action, mode: ResetMode, stash: Opti
             }
             let mut cmds = vec![args(&["reset", "--hard", &target])];
             if let Some(s) = stash {
+                // The pop writes the stash's new files too, over an ignored one made since.
+                if let Some(refused) = super::in_the_way::check_stash(workdir, &Repository::open(workdir)?, s, onto, action, redo)? {
+                    return Ok(refused);
+                }
                 match stash_index(workdir, s)? {
                     Some(n) => cmds.push(args(&["stash", "pop", "--index", &format!("stash@{{{n}}}")])),
                     None => return Ok(stale("The stash holding the changes from before the hard reset was dropped")),
