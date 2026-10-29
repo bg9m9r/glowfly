@@ -42,7 +42,7 @@ pub(in crate::ui) fn entry(author: &str, day: i64, kind: EntryKind, body: &str) 
 /// The panel's page loaded by hand with `d` and `entries`, the forms fitted to it.
 pub(in crate::ui) fn load(st: &mut AppState, d: PrDetail, entries: Vec<Entry>) {
     let v = st.session.pull_request.view.as_mut().unwrap();
-    crate::state::pull_request_actions::prefill(&mut v.forms, &d);
+    crate::state::pull_request_actions::prefill(&mut v.forms, &d, None);
     v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads: Vec::new(), threads_note: None }));
 }
 

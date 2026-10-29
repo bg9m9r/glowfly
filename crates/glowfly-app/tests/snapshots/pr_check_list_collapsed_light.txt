@@ -115,6 +115,7 @@ TextInput
 Label "Commit message"
 MultilineTextInput
 CheckBox "Delete search on origin after merging" [off]
+CheckBox "Delete local branch search too" [off]
 Button "Merge pull request"
 MultilineTextInput "Write a comment"
 Button "Comment" [disabled]

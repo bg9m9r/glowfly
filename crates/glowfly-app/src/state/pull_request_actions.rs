@@ -1,10 +1,12 @@
 //! The pull request panel's action forms (comment, review, merge) and their rules: why each
 //! action or choice is unavailable, the labels and explanations, the merge methods each service
 //! lists, the merge confirmation and the post-merge branch deletion; the review form's own rules
-//! are in `review.rs`. Pure; the calls are made by update/pull_request/calls.rs.
+//! are in `review.rs`, the local branch's deletion in `pull_request_cleanup.rs`. Pure; the calls
+//! are made by update/pull_request/calls.rs.
 
 use super::gitflow_base::Deleting;
 use super::pull_request::{PrAction, PrView, Tone};
+use super::pull_request_cleanup::{LocalDelete, Merging, local_delete};
 use crate::msg::Msg;
 use glowfly_core::forge::{EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, ReviewEvent, ReviewStyle, Verdict};
 use glowfly_core::i18n::Lang;
@@ -33,6 +35,8 @@ pub struct PrForms {
     pub merge_title: String,
     pub merge_message: String,
     pub delete_branch: bool,
+    /// Delete the local branch too once merged (`pull_request_cleanup`).
+    pub delete_local: bool,
     /// Reply drafts by code comment thread id, kept across reloads of the page.
     pub replies: std::collections::HashMap<String, String>,
 }
@@ -47,6 +51,7 @@ impl Default for PrForms {
             merge_title: String::new(),
             merge_message: String::new(),
             delete_branch: false,
+            delete_local: false,
             replies: Default::default(),
         }
     }
@@ -214,8 +219,21 @@ pub fn deletes_after_merge(v: &PrView, default_branch: Option<&str>) -> bool {
     v.forms.delete_branch && delete_after_merge_blocked(v, default_branch).is_none()
 }
 
+/// The merge `v`'s form would make, for its local branch's rules; None until the page loads.
+pub fn merging<'a>(v: &'a PrView, default_branch: Option<&'a str>) -> Option<Merging<'a>> {
+    let d = &v.loaded()?.detail;
+    let (remote, source, target) = (v.remote.as_str(), v.pr.source.as_str(), v.pr.target.as_str());
+    Some(Merging { remote, source, target, method: v.forms.merge_method, same_repo: d.same_repo, default_branch })
+}
+
+/// How the merge will delete the local branch: asked for, and allowed.
+pub fn deletes_local(t: Lang, v: &PrView, snap: Option<&Snapshot>, default_branch: Option<&str>) -> Option<LocalDelete> {
+    let m = merging(v, default_branch).filter(|_| v.forms.delete_local)?;
+    local_delete(t, snap?, &m)?.1.ok()
+}
+
 /// The confirmation the Merge button opens; accepting it sends `PullRequestMsg::Merge`.
-pub fn merge_confirm(v: &PrView, default_branch: Option<&str>) -> Msg {
+pub fn merge_confirm(t: Lang, v: &PrView, snap: Option<&Snapshot>, default_branch: Option<&str>) -> Msg {
     let how = match v.forms.merge_method {
         Some(MergeMethod::Squash) => "squashing its commits",
         Some(MergeMethod::Rebase) => "rebasing its commits",
@@ -226,6 +244,14 @@ pub fn merge_confirm(v: &PrView, default_branch: Option<&str>) -> Msg {
     let mut body = format!("Merge {} \u{201c}{title}\u{201d} into {} by {how}?", v.label, v.pr.target);
     if deletes_after_merge(v, default_branch) {
         body.push_str(&format!(" Then delete {} on {}.", v.pr.source, v.remote));
+    }
+    if let Some(d) = deletes_local(t, v, snap, default_branch) {
+        let (branch, target) = (d.branch.as_str(), v.pr.target.as_str());
+        body.push(' ');
+        body.push_str(&match d.checkout {
+            Some(_) => t.trf("pr.merge.confirm.delete_local_head", &[("branch", &branch), ("target", &target)]),
+            None => t.trf("pr.merge.confirm.delete_local", &[("branch", &branch)]),
+        });
     }
     Msg::confirm(&merge_button(v), body, "Merge", Msg::PullRequest(crate::pull_request::PullRequestMsg::Merge))
 }
@@ -261,11 +287,13 @@ pub fn verdict_text(kind: &EntryKind) -> (&'static str, Tone) {
     }
 }
 
-/// Fits the forms to a freshly loaded page: a merge method the repository allows, and a review
-/// choice the service lists (on GitHub and Bitbucket, no verdict the author can't give).
-pub fn prefill(forms: &mut PrForms, d: &PrDetail) {
+/// Fits the forms to a freshly loaded page: a merge method the repository allows (the one last
+/// used in this repository, `remembered`, when the form has none allowed and it is, else the
+/// first), and a review choice the service lists (on GitHub and Bitbucket, no verdict the author
+/// can't give).
+pub fn prefill(forms: &mut PrForms, d: &PrDetail, remembered: Option<MergeMethod>) {
     if forms.merge_method.is_none_or(|m| !d.methods.contains(&m)) {
-        forms.merge_method = d.methods.first().copied();
+        forms.merge_method = remembered.filter(|m| d.methods.contains(m)).or_else(|| d.methods.first().copied());
     }
     let own = matches!(d.style, ReviewStyle::Verdicts | ReviewStyle::Votes { .. }) && d.is_author();
     if own || !review_choices(d).contains(&forms.review_event) {

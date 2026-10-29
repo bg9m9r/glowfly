@@ -206,16 +206,13 @@ pub struct Settings {
     /// Repository colours (Vivid colour) by `repo_keys`, as `RepoColour::id` names; unknown names read as none.
     #[serde(default)]
     pub repo_colours: HashMap<String, String>,
-    /// Saved pull request and issue filters and the ones shown, per repository, keyed by its
-    /// resolved working directory (`repo_keys`).
+    /// Saved pull request and issue filters and the ones shown, per repository, keyed by `repo_keys`.
     #[serde(default)]
     pub repo_forge_filters: HashMap<String, RepoForgeFilters>,
-    /// Trust decisions per repository, keyed by its resolved working directory
-    /// (`Snapshot::real_workdir`, through `repo_keys`); a repository with no entry is undecided.
+    /// Trust decisions per repository, keyed by `repo_keys`; a repository with no entry is undecided.
     #[serde(default)]
     pub repo_trust: HashMap<String, RepoTrust>,
-    /// What each Trusted decision was made on (`trust::TrustPrint`), keyed like `repo_trust`;
-    /// none for decisions saved before prints were kept.
+    /// What each Trusted decision was made on (`trust::TrustPrint`), keyed like `repo_trust`; none for older decisions.
     #[serde(default)]
     pub repo_trust_prints: HashMap<String, crate::trust::TrustPrint>,
     /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
@@ -227,8 +224,10 @@ pub struct Settings {
     /// Repositories (by `repo_keys`) whose branch names like `2024-cleanup` name issue 2024 (This repository > Issue tracker).
     #[serde(default)]
     pub repo_year_branches: HashMap<String, bool>,
-    /// Favorite repositories (welcome screen and repository menu), as working-directory paths in
-    /// the order they were added.
+    /// The merge method last used in each repository's pull request panel (`MergeMethod::api_name`), by `repo_keys`.
+    #[serde(default)]
+    pub repo_merge_methods: HashMap<String, String>,
+    /// Favorite repositories (welcome screen and repository menu), as working-directory paths in the order added.
     #[serde(default)]
     pub favorite_repos: Vec<String>,
     /// Folders the Find repositories dialog looks for repositories in (`paths::encode`d), in
@@ -362,6 +361,7 @@ impl Default for Settings {
             status_tip_shown: HashMap::new(),
             repo_submodule_updates: HashMap::new(),
             repo_year_branches: HashMap::new(),
+            repo_merge_methods: HashMap::new(),
             favorite_repos: Vec::new(),
             project_folders: Vec::new(),
             external_tools: ExternalTools::default(),

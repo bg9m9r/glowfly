@@ -82,18 +82,18 @@ fn prefill_moves_the_author_to_comment() {
     let mut d = detail();
     d.style = votes(Vote::Neither);
     d.methods = vec![MergeMethod::FastForward, MergeMethod::Merge];
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!((forms.review_event, forms.merge_method), (ReviewEvent::Approve, Some(MergeMethod::FastForward)));
     d.me = "ada".into();
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.review_event, ReviewEvent::Comment, "the author can't approve");
     d.me = "grace".into();
     d.style = votes(Vote::ChangesRequested);
     forms.review_event = ReviewEvent::UnrequestChanges;
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.review_event, ReviewEvent::UnrequestChanges, "changes are still requested");
     d.style = votes(Vote::Neither);
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.review_event, ReviewEvent::Comment, "nothing to take back any more");
 }
 

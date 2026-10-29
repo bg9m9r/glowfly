@@ -65,6 +65,12 @@ impl MergeMethod {
             MergeMethod::FastForward => "fast-forward",
         }
     }
+
+    /// The method whose `api_name` is `name` (settings.json keeps it), or None for a name this
+    /// version doesn't know.
+    pub fn from_api_name(name: &str) -> Option<MergeMethod> {
+        [MergeMethod::Merge, MergeMethod::Squash, MergeMethod::Rebase, MergeMethod::FastForward].into_iter().find(|m| m.api_name() == name)
+    }
 }
 
 /// Whether the service would merge the pull request now, and if not, why.

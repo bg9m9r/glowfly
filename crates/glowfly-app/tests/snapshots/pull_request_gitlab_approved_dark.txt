@@ -109,6 +109,7 @@ Label "main moves forward to the source branch's last commit, with no merge comm
 RadioButton "Squash and merge" [off]
 Label "The commits are combined into one commit on main."
 CheckBox "Delete search on origin after merging" [off]
+CheckBox "Delete local branch search too" [off]
 Button "Merge"
 MultilineTextInput "Write a comment"
 Button "Comment" [disabled]

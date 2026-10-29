@@ -60,9 +60,9 @@ fn call(job: CallJob) -> Msg {
             let req = ReviewRequest { event, body, pending, head_sha };
             PrReply::Reviewed(event, auth.and_then(|a| forge::submit_review(t, &a, id, &req).map_err(ForgeError::from)))
         }
-        PrCall::Merge { req: merge, remote, source, delete } => {
+        PrCall::Merge { req: merge, remote, source, delete, delete_local } => {
             let result = auth.and_then(|a| forge::merge(t, &a, id, &merge).map_err(ForgeError::from));
-            PrReply::Merged { method: merge.method, remote, source, delete, result }
+            PrReply::Merged { method: merge.method, remote, source, delete, delete_local, result }
         }
         PrCall::Reply { thread, comment, body } => PrReply::RepliedToThread {
             thread,

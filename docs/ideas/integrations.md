@@ -215,6 +215,11 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Say in the Squash help whether GitLab also adds a merge commit (the project's merge method)
 - Log a GitLab Comment-choice review as "Commented on !N" rather than "Reviewed !N"
 - GitLab code comment threads (discussions) and new code comments on diff lines in the panel
+- Delete the local branch after a squash or rebase merge when its tip is the head that was
+  merged (git can't tell those are merged, so the form disables it now)
+- Delete the local branch of a fork's pull request (a branch checked out from the fork)
+- Fast-forward the local target branch after a merge, in the same job
+- Remember the "Delete … after merging" and "Delete local branch" choices per repository
 
 ### Deep links
 

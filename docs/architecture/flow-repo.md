@@ -60,6 +60,9 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - The source notes and their buttons are in `state/pull_request_source.rs`.
 - A Commits tab row selects its commit into the commit panel without closing the pull request panel (`update/pull_request/commits.rs`), and that commit's file diffs open inside the tab.
 - The review and merge forms' rules are in `state/pull_request_actions.rs` (review choices in `pull_request_actions/review.rs`).
+- The merge method last used is remembered per repository (`Settings::merge_method_for`) and preselected when the repository still allows it.
+- After a merge, `update/pull_request/cleanup.rs` runs one job: the remote branch's delete when asked, the fetch, then the local branch's delete when asked.
+- The local branch's rules and commands are in `state/pull_request_cleanup.rs`: kept on a fork, after a squash or rebase merge, when checked out in another worktree, or when checked out here with changes. It goes only once the fetched target contains it, after checking out the target if it is checked out here, and through `git branch -d`.
 
 ## New code comments on diff lines
 
