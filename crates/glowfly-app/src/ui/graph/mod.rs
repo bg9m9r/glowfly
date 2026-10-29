@@ -1,11 +1,12 @@
 //! The commit graph: a table with configurable, resizable columns (branch / tag, graph, message,
-//! changes, commit, date), rows banded in their branch's colour (`lane_colours`), author nodes, ref chips
+//! changes, commit, date) that give way in a narrow graph (`fit`), rows banded in their branch's colour (`lane_colours`), author nodes, ref chips
 //! (double-click a branch chip to check it out), ghost refs, branch highlighting, this tab's WIP
 //! row (`wip_row`: its label, change chips and line total), other worktrees' WIP rows, the New
 //! branch… ghost button on the checked-out commit, and the end row below the last commit
 //! (`more`).
 
 mod cells;
+mod fit;
 mod header;
 mod labels;
 mod lane_colours;
@@ -85,11 +86,12 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let lanes = if filtered { 1 } else { snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES) };
         let t = st.settings.lang();
         let graph_w = header::graph_width(ui, t, lanes);
-        let cols_cfg = st.settings.columns;
 
         select::keyboard_nav(ui, &st.session.selection, snap, &rows, st.session.tab_view.graph_scroll, &mut st.view, msgs);
 
-        let widths = header::column_header(ui, t, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
+        // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
+        let fitted = header::column_header(ui, t, graph_w, &st.settings.columns, st.settings.column_widths, &mut st.view.column_drag, msgs);
+        let (cols_cfg, widths, graph_w) = (fitted.cfg, fitted.widths, fitted.graph_w);
         // How many matches fill the graph, for a filtering search loading further back.
         st.view.graph_fit_rows = (ui.available_height() / ROW_H).floor() as usize;
         if filtered && total == 0 {
