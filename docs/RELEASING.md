@@ -19,7 +19,14 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
    git source archive it was built from (see [Licences and notices](#licences-and-notices)).
 4. The **checksums** job downloads every `glowfly-*` file of the release and the git source
    archive, fails when a `.flatpak` is there without its git source
-   (`scripts/release-check-git-source.sh`), and publishes `SHA256SUMS` over them.
+   (`scripts/release-check-git-source.sh`), and publishes `SHA256SUMS` over them. It then
+   attests their build provenance with `actions/attest-build-provenance`: one signed SLSA
+   provenance statement covering every file in `SHA256SUMS` and `SHA256SUMS` itself, which says
+   they were built by this workflow from this repository at the tag's commit. The attestation is
+   signed through Sigstore with the job's OIDC identity (no key to keep), stored by GitHub, and
+   attached as `glowfly-vX.Y.Z.intoto.jsonl` (see [Verifying a download](#verifying-a-download)).
+   That bundle isn't in `SHA256SUMS`: it is made after it, from the digests it lists, and is
+   signed itself. The job is the only one with `id-token: write` and `attestations: write`.
 5. The **manifests** job fills in the Homebrew cask and the winget manifests from `SHA256SUMS`
    and attaches them to the release (see [Homebrew and winget](#homebrew-and-winget)).
 
@@ -69,6 +76,7 @@ a new version starts.
 | `glowfly-vX.Y.Z-<linux target>.tar.gz` | The Linux program on its own |
 | `<file>.sha256` | The SHA-256 of each file above |
 | `SHA256SUMS` | Every file's SHA-256, in `sha256sum` format |
+| `glowfly-vX.Y.Z.intoto.jsonl` | The Sigstore bundle of the build provenance attestation over every file in `SHA256SUMS` and `SHA256SUMS` itself |
 | `glowfly.rb`, `Glowfly.Glowfly.yaml`, `Glowfly.Glowfly.installer.yaml`, `Glowfly.Glowfly.locale.en-US.yaml` | The Homebrew cask and the winget manifests for this release (not for a pre-release) |
 
 Install and restart reads the zip and tar.gz layout (`glowfly-<tag>-<target>/` holding the
@@ -127,7 +135,8 @@ When git is updated, change its url and sha256 in the manifest and the version, 
 
 The **prepare** job runs `scripts/release-notes-header.sh <tag>`, which puts
 `packaging/release-notes-header.md` above the release's notes: the builds aren't code-signed
-yet, how to check a download against `SHA256SUMS` (a command for each system), and that Glowfly
+yet, how to check a download against `SHA256SUMS` (a command for each system) and its build
+provenance (`gh attestation verify`), and that Glowfly
 is provided as is, without warranty, under MIT OR Apache-2.0, and a link to `PRIVACY.md`. The header sits between two HTML
 comment markers, so a re-run replaces it instead of adding a second. The header has no `## `
 heading and no list items, so the app's release notes dialog, which reads the release body,
@@ -179,6 +188,17 @@ command in the release notes header, which prints OK or FAILED for each file lis
 the folder.) Signed builds can also be checked with
 `signtool verify /pa glowfly.exe` and `codesign --verify --deep --strict Glowfly.app` or
 `spctl -a -vv Glowfly.app`.
+
+Every file in `SHA256SUMS`, and `SHA256SUMS` itself, also has a build provenance attestation,
+which shows it was built by the Release workflow from this repository. With the GitHub CLI:
+
+```
+gh attestation verify <file> --repo bg9m9r/glowfly
+```
+
+It looks the attestation up on GitHub by the file's digest; `--bundle glowfly-vX.Y.Z.intoto.jsonl`
+checks it against the release's bundle instead. The app's update check doesn't read the
+provenance yet: it checks a download against `SHA256SUMS` only.
 
 ## The update check
 

@@ -28,6 +28,11 @@ repository's supply-chain practices weekly and on pushes to `main`
 Every action is pinned to a commit SHA, checkouts don't keep the token, each job asks only for
 the token permissions it needs, release binaries are built without a cache, and publishing a
 release waits for the owner's approval in the `release` environment (`docs/RELEASING.md`).
+Every file listed in a release's `SHA256SUMS`, and `SHA256SUMS` itself, gets a SLSA build
+provenance attestation signed through Sigstore by the Release workflow
+(`actions/attest-build-provenance`), attached as `glowfly-<tag>.intoto.jsonl`;
+`gh attestation verify <file> --repo bg9m9r/glowfly` checks that a download was built from this
+repository by that workflow.
 
 ## Known advisories
 

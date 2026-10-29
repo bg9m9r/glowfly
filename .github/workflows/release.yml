@@ -215,13 +215,20 @@ jobs:
   # SHA256SUMS over every file of the release (the git source archive too), for
   # `sha256sum -c SHA256SUMS --ignore-missing` and the app's update check. A release with a
   # .flatpak must have the git source it was built from (scripts/release-check-git-source.sh).
+  # Then a SLSA build provenance attestation over those files and SHA256SUMS itself, signed
+  # through Sigstore with this workflow's identity and kept by GitHub, for
+  # `gh attestation verify <file> --repo <owner>/glowfly`; its bundle goes up as
+  # glowfly-<tag>.intoto.jsonl. The bundle stays out of SHA256SUMS: it is made after it, from
+  # the digests of the files it lists, and carries its own signature.
   checksums:
-    name: Publish SHA256SUMS
+    name: Publish SHA256SUMS and the build provenance
     needs: [prepare, build, flatpak]
     if: ${{ !cancelled() && needs.prepare.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write # uploads SHA256SUMS to the release
+      contents: write # uploads SHA256SUMS and the provenance bundle to the release
+      id-token: write # gets the OIDC token Sigstore signs the provenance with
+      attestations: write # stores the provenance attestation in the repository
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -231,15 +238,26 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ needs.prepare.outputs.tag }}
-      - name: Publish SHA256SUMS
+      # A re-run finds this job's earlier bundle among the 'glowfly-*' files: it isn't hashed.
+      - name: Write SHA256SUMS
         run: |
           mkdir dist
           gh release download "$TAG" --dir dist --pattern 'glowfly-*' --pattern 'git-*.tar.xz'
           bash scripts/release-check-git-source.sh dist
-          rm -f dist/*.sha256
+          rm -f dist/*.sha256 dist/*.intoto.jsonl
           (cd dist && sha256sum -- * | sort -k2 > SHA256SUMS)
           cat dist/SHA256SUMS
-          gh release upload "$TAG" dist/SHA256SUMS --clobber
+      - name: Attest the build provenance
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Publish SHA256SUMS and the provenance bundle
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          cp "$BUNDLE" "$RUNNER_TEMP/glowfly-$TAG.intoto.jsonl"
+          gh release upload "$TAG" dist/SHA256SUMS "$RUNNER_TEMP/glowfly-$TAG.intoto.jsonl" --clobber
 
   # The Homebrew cask and the winget manifests for this release, filled in from SHA256SUMS
   # (scripts/fill-manifests.sh) and attached to the release for submitting (docs/RELEASING.md).

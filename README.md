@@ -38,8 +38,11 @@ Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
   unpack it wherever you like.
 
 Each download has a `.sha256` file, and `SHA256SUMS` lists them all: check a download with
-`sha256sum -c SHA256SUMS --ignore-missing`. Builds are code-signed once the project's signing
-certificates are set up (see [docs/RELEASING.md](docs/RELEASING.md)); until then Windows
+`sha256sum -c SHA256SUMS --ignore-missing`. Each file in `SHA256SUMS` (and `SHA256SUMS` itself)
+also has a build provenance attestation, which shows the Release workflow built it from this
+repository: check it with `gh attestation verify <file> --repo bg9m9r/glowfly`. Builds are
+code-signed once the project's signing certificates are set up (see
+[docs/RELEASING.md](docs/RELEASING.md)); until then Windows
 SmartScreen and macOS Gatekeeper warn the first time you open them.
 
 Glowfly checks GitHub for a newer release once a day (Preferences > General > Updates, where you

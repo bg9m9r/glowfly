@@ -24,6 +24,14 @@ Windows (PowerShell):
 Get-Content SHA256SUMS | ForEach-Object { $h, $f = $_ -split '\s+\*?', 2; if (Test-Path -LiteralPath $f) { "${f}: $(if ((Get-FileHash -LiteralPath $f).Hash -eq $h) { 'OK' } else { 'FAILED' })" } }
 ```
 
+**Check where it was built.** Every file listed in `SHA256SUMS`, and `SHA256SUMS` itself, also has
+a build provenance attestation, which shows that this repository's Release workflow built it from
+the release's source. With the GitHub CLI installed, run this in the folder with the file:
+
+```sh
+gh attestation verify <file> --repo bg9m9r/glowfly
+```
+
 **No warranty.** Glowfly is licensed under the MIT License or the Apache License, Version 2.0,
 at your option (`LICENSE-MIT` and `LICENSE-APACHE`, in every package). It is provided "as is",
 without warranty of any kind, express or implied. `THIRD-PARTY-NOTICES.md` lists the licences
