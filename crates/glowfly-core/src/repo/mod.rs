@@ -116,6 +116,9 @@ pub use common_dir::{CommonDir, repo_name_of};
 pub use conflict::{
     Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, Unmergeable, load_conflict, marker_size,
 };
+// The merged-text parser, for the fuzz targets (src/fuzzing/).
+#[cfg(any(test, feature = "fuzzing"))]
+pub(crate) use conflict::parse_merged;
 pub use conflict_saved::{RESTORE_MAX, saved_picks};
 pub use diff::{
     BranchChanges, Comparison, ViewDiff, branch_changes, commit_stats, commit_stats_until, compare, compare_files, compare_from_workdir,

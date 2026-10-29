@@ -47,60 +47,77 @@ pub(crate) fn read(repo: &Repository) -> Result<Todo, Unchecked> {
     for file in ["rebase-merge/git-rebase-todo", "sequencer/todo"] {
         let Ok(bytes) = std::fs::read(git.join(file)) else { continue };
         let text = String::from_utf8(bytes).map_err(|_| Unchecked::Unreadable(format!("{file} isn't UTF-8")))?;
-        let mut labels: HashSet<String> = HashSet::new();
-        for line in text.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')) {
-            let mut words = line.split_whitespace();
-            let verb = words.next().unwrap_or_default();
-            let mut args = words.clone().filter(|w| !w.starts_with('-'));
-            let (named, label) = match verb {
-                "pick" | "p" | "reword" | "r" | "edit" | "e" | "squash" | "s" | "fixup" | "f" | "revert" => (args.next(), None),
-                // `merge [-C <commit>] <label>...`: its commit, and the parents it merges.
-                "merge" | "m" => {
-                    todo.picks = None;
-                    let c = words.clone().skip_while(|w| !matches!(*w, "-C" | "-c")).nth(1);
-                    let parents: Vec<&str> =
-                        words.skip_while(|w| w.starts_with('-')).filter(|w| Some(*w) != c).take_while(|w| *w != "#").collect();
-                    for p in parents {
-                        todo.commits.extend(labelled(repo, p, &labels)?);
-                    }
-                    (c, None)
-                }
-                "reset" | "t" => {
-                    todo.picks = None;
-                    (None, args.next())
-                }
-                "label" | "l" => {
-                    labels.extend(args.next().map(str::to_owned));
-                    (None, None)
-                }
-                "drop" | "d" | "exec" | "x" | "break" | "b" | "update-ref" | "u" | "noop" => (None, None),
-                _ => return Err(Unchecked::Unresolved(line.to_owned())),
-            };
-            if let Some(l) = label {
-                todo.commits.extend(labelled(repo, l, &labels)?);
-            }
-            let Some(word) = named else { continue };
-            let oid = commit(repo, word)?;
-            let revert = verb == "revert";
-            if let Some(p) = todo.picks.as_mut() {
-                p.push(Pick { commit: oid, revert });
-            }
-            if revert { reverts.push(oid) } else { todo.commits.push(oid) }
-        }
+        add_steps(&text, &mut todo, &mut reverts, &mut |spec| commit(repo, spec))?;
     }
     todo.commits.extend(parents(repo, &reverts)?);
     Ok(todo)
 }
 
+/// Adds the steps in one todo file's `text` to `todo`. Each word that names a commit is
+/// resolved by `commit` (as git resolves it now); the commits a revert names go to `reverts`
+/// instead, since what it brings in is their parents.
+pub(crate) fn add_steps(
+    text: &str,
+    todo: &mut Todo,
+    reverts: &mut Vec<Oid>,
+    commit: &mut dyn FnMut(&str) -> Result<Oid, Unchecked>,
+) -> Result<(), Unchecked> {
+    let mut labels: HashSet<String> = HashSet::new();
+    for line in text.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')) {
+        let mut words = line.split_whitespace();
+        let verb = words.next().unwrap_or_default();
+        let mut args = words.clone().filter(|w| !w.starts_with('-'));
+        let (named, label) = match verb {
+            "pick" | "p" | "reword" | "r" | "edit" | "e" | "squash" | "s" | "fixup" | "f" | "revert" => (args.next(), None),
+            // `merge [-C <commit>] <label>...`: its commit, and the parents it merges.
+            "merge" | "m" => {
+                todo.picks = None;
+                let c = words.clone().skip_while(|w| !matches!(*w, "-C" | "-c")).nth(1);
+                let parents: Vec<&str> =
+                    words.skip_while(|w| w.starts_with('-')).filter(|w| Some(*w) != c).take_while(|w| *w != "#").collect();
+                for p in parents {
+                    todo.commits.extend(labelled(commit, p, &labels)?);
+                }
+                (c, None)
+            }
+            "reset" | "t" => {
+                todo.picks = None;
+                (None, args.next())
+            }
+            "label" | "l" => {
+                labels.extend(args.next().map(str::to_owned));
+                (None, None)
+            }
+            "drop" | "d" | "exec" | "x" | "break" | "b" | "update-ref" | "u" | "noop" => (None, None),
+            _ => return Err(Unchecked::Unresolved(line.to_owned())),
+        };
+        if let Some(l) = label {
+            todo.commits.extend(labelled(commit, l, &labels)?);
+        }
+        let Some(word) = named else { continue };
+        let oid = commit(word)?;
+        let revert = verb == "revert";
+        if let Some(p) = todo.picks.as_mut() {
+            p.push(Pick { commit: oid, revert });
+        }
+        if revert { reverts.push(oid) } else { todo.commits.push(oid) }
+    }
+    Ok(())
+}
+
 /// The commit a `reset` or `merge` step names by `word`: a label set earlier in this todo is
 /// what the steps before it leave (none known yet); else `refs/rewritten/<word>` as the rebase
 /// left it, else the revision `word`.
-fn labelled(repo: &Repository, word: &str, labels: &HashSet<String>) -> Result<Option<Oid>, Unchecked> {
+fn labelled(
+    commit: &mut dyn FnMut(&str) -> Result<Oid, Unchecked>,
+    word: &str,
+    labels: &HashSet<String>,
+) -> Result<Option<Oid>, Unchecked> {
     if labels.contains(word) || word == "[new" {
         return Ok(None);
     }
-    match commit(repo, &format!("refs/rewritten/{word}")) {
+    match commit(&format!("refs/rewritten/{word}")) {
         Ok(oid) => Ok(Some(oid)),
-        Err(_) => commit(repo, word).map(Some),
+        Err(_) => commit(word).map(Some),
     }
 }

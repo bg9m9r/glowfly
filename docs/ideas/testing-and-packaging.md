@@ -91,3 +91,10 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Find text snapshots no test writes any more (a `.txt` with no `.new.txt` after a full run) and delete them
 - Give icon-only widgets and painted rows accessible names, so more of a view shows in its accessibility tree than in the painted-text list
 - Run the text snapshots on the macOS and Linux CI runners too, with per-platform files where labels differ (shortcut names, title bar)
+
+### Fuzzing the parsers of untrusted text
+
+- Fuzz the other parsers the issue lists: git config and include chains (`profile_includes`, `external_tools/git_config.rs`), forge API JSON, `.gitattributes`, `.gitignore` and `.mailmap`, commit messages and trailers
+- Fuzz the trust plumbing end to end: a todo resolved against a real fixture repository, and mailboxes through `git mailsplit` and `git mailinfo` (needs git in the fuzz job and a scratch repository per run)
+- Minimize the cached corpus now and then (`cargo fuzz cmin`) so the scheduled run doesn't spend its minutes reloading near-duplicates
+- Turn the fuzz checks' seeds into a dictionary per target (`-dict=`) for the marker and URL tokens the stable mutation test already splices in

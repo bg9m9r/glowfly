@@ -1,0 +1,9 @@
+a
+<<<<<<< ours
+mine
+||||||| base
+old
+=======
+theirs
+>>>>>>> theirs
+b

@@ -1,0 +1,89 @@
+name: Fuzz
+
+# Runs every fuzz target in fuzz/ (cargo-fuzz and libFuzzer, on nightly) for a while: four
+# minutes each on the nightly schedule, one minute each on pull requests that change
+# glowfly-core or the targets. The corpus the scheduled runs grow is kept in the Actions cache
+# for the next run. A crash, a hang or a broken invariant fails the job and uploads the input
+# that caused it (`fuzz-artifacts`); it becomes a regression test in glowfly-core. Not a
+# required check.
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  pull_request:
+    paths:
+      - "crates/glowfly-core/**"
+      - "fuzz/**"
+      - "Cargo.lock"
+      - ".github/workflows/fuzz.yml"
+  workflow_dispatch:
+
+# A read-only token: this workflow only builds and runs the targets.
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz the parsers
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      # Seconds each target runs.
+      FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && '60' || '240' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          # libFuzzer's instrumentation and the address sanitizer need nightly.
+          toolchain: nightly
+      # The fuzz crate is a workspace of its own; starting from the app's lock file builds it
+      # with the same dependency versions (only libfuzzer-sys and arbitrary are added).
+      - name: Use the app's dependency versions
+        run: cp Cargo.lock fuzz/Cargo.lock
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: fuzz -> target
+      - name: Install Linux build dependencies
+        run: ./scripts/linux-deps.sh
+      - name: Install cargo-fuzz
+        run: cargo fuzz --version || cargo install cargo-fuzz --version 0.13.2 --locked
+      - name: Restore the corpus
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+      - name: Build the targets
+        run: cargo fuzz build
+      - name: Run each target
+        run: |
+          failed=""
+          for target in $(cargo fuzz list); do
+            mkdir -p "fuzz/corpus/$target"
+            echo "::group::$target"
+            # New inputs go to the first folder (the corpus); the seeds are only read.
+            if ! cargo fuzz run "$target" "fuzz/corpus/$target" "fuzz/seeds/$target" -- \
+              -max_total_time="$FUZZ_SECONDS" -timeout=10 -rss_limit_mb=2048; then
+              failed="$failed $target"
+            fi
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then
+            echo "::error::Fuzz targets failed:$failed"
+            exit 1
+          fi
+      - name: Save the corpus
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+      - name: Upload what made a target fail
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fuzz-artifacts
+          path: fuzz/artifacts
+          if-no-files-found: ignore

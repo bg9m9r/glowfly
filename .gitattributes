@@ -14,3 +14,5 @@ packaging/linux/*.desktop text eol=lf
 packaging/flatpak/*.desktop text eol=lf
 # The package-format markers are read as text; keep them LF everywhere.
 packaging/linux/package-format.* text eol=lf
+# Fuzz seeds are byte-exact inputs (mixed line endings, NUL bytes): never converted.
+fuzz/seeds/** binary

@@ -1,0 +1,6 @@
+From 1a2b3c4 Mon Sep 17 00:00:00 2001
+From: A U Thor <a@example.com>
+Subject: [PATCH] Add hook
+
+---
+diff --git a/.GITHOOKS/pre-commit b/.GITHOOKS/pre-commit

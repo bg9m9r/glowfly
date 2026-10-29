@@ -31,7 +31,9 @@ comment, keep `persist-credentials: false` on checkouts, pass `${{ }}` values to
 through `env:` and give each job only the permissions it needs. A deliberate exception is
 suppressed on its line with `# zizmor: ignore[<rule>]` and the reason. To run it locally:
 `pip install zizmor`, then `zizmor .github/workflows`. OpenSSF Scorecard
-(`.github/workflows/scorecard.yml`) scores the repository weekly.
+(`.github/workflows/scorecard.yml`) scores the repository weekly. The parsers of untrusted text
+are fuzzed nightly (`.github/workflows/fuzz.yml`); how to run a target yourself is under
+Fuzzing in `docs/architecture/tests.md`.
 
 UI changes are covered by snapshot tests. Every view test keeps a text snapshot (`<name>.txt`:
 the accessibility tree and the painted text) in `crates/glowfly-app/tests/snapshots/`, and about a

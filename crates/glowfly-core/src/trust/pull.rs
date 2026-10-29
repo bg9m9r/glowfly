@@ -282,11 +282,17 @@ fn rebase_kind(how: &str, key: &str) -> Result<Option<&'static str>, String> {
 pub fn fetched(repo: &Repository) -> Result<Vec<Fetched>, String> {
     let path = repo.path().join("FETCH_HEAD");
     let text = std::fs::read_to_string(&path).map_err(|e| format!("Couldn't read {}: {e}", path.display()))?;
+    fetched_in(&text).map_err(|line| format!("Couldn't read {}: {line}", path.display()))
+}
+
+/// The commits FETCH_HEAD's `text` marks for merging; `Err` with the first line that doesn't
+/// parse.
+pub(crate) fn fetched_in(text: &str) -> Result<Vec<Fetched>, &str> {
     let mut out = Vec::new();
     for line in text.lines().filter(|l| !l.trim().is_empty()) {
         let mut parts = line.splitn(3, '\t');
         let (oid, mark) = (parts.next().unwrap_or_default(), parts.next().unwrap_or_default());
-        let oid = Oid::from_str(oid).map_err(|_| format!("Couldn't read {}: {line}", path.display()))?;
+        let oid = Oid::from_str(oid).map_err(|_| line)?;
         if mark.is_empty() {
             out.push(Fetched { oid, line: line.to_owned() });
         }

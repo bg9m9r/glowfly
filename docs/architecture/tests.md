@@ -37,6 +37,27 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `crates/glowfly-app/tests/askpass.rs`: the built executable as the askpass helper.
 - `crates/glowfly-app/tests/gpg_prompt.rs`: the built executable as gpg.program: the loop guard, (Unix) `git commit -S` through a fake gpg, and (Unix) `git commit -S` with a protected SSH key.
 
+## Fuzzing
+
+The parsers in `glowfly-core` that read text from other people are fuzzed with cargo-fuzz (libFuzzer). Run a target for a while from the repository root, on Linux or macOS with nightly and `cargo install cargo-fuzz`:
+
+```
+cp Cargo.lock fuzz/Cargo.lock            # the app's dependency versions
+cargo +nightly fuzz run trust_todo fuzz/corpus/trust_todo fuzz/seeds/trust_todo -- -max_total_time=60
+cargo +nightly fuzz list                 # every target
+```
+
+A failing input lands in `fuzz/artifacts/<target>/`; `cargo +nightly fuzz run <target> <file>` replays it. Each one becomes a regression test beside the parser, with the fix. On Windows, or without nightly, `GLOWFLY_FUZZ_ROUNDS=100000 cargo test -p glowfly-core fuzzing` runs the same checks over mutated seeds instead (not coverage-guided).
+
+- `fuzz/Cargo.toml`: the fuzz crate, a workspace of its own (the main one `exclude`s it, so the build, clippy and tests never need nightly); one `[[bin]]` per target.
+- `fuzz/fuzz_targets/<target>.rs`: each target hands its bytes to the check of the same name in `glowfly-core`'s `fuzzing` module.
+- `fuzz/seeds/<target>/`: the inputs each target starts from (byte-exact: `.gitattributes` marks them binary).
+- `crates/glowfly-core/src/fuzzing.rs`: the checks, built only for tests and with core's `fuzzing` feature (which also reaches the crate-private parsers they need); `CHECKS` lists them by target.
+- `fuzzing/trust.rs`: the trust plumbing's readers: a rebase or sequencer todo (every pick resolved and listed), FETCH_HEAD (every line for merging listed with its commit), and a patch's paths (`git apply --numstat`, am's mailbox detection, any spelling of a path under the hooks folder caught).
+- `fuzzing/urls.rs`: remote URLs (a recognized remote's host is a whole authority and its names hold no line break) and `redact_credentials` (a URL's password never shows in what is logged).
+- `fuzzing/diffs.rs`: a patch file's summary (files listed once), conflict marker regions and the marker size, and merged text with markers (parsed, written back and parsed again to the same chunks).
+- `fuzzing/tests.rs`: every check over its seeds and their mutations in an ordinary `cargo test`, and every target in `fuzz/fuzz_targets/` having a check.
+
 ## Images
 
 - `crates/glowfly-app/tests/app_icon.rs`: the app icon: draws it (`app_icon/draw.rs`) and checks every PNG in `assets/icon/` and inside `glowfly.ico` and `glowfly.icns` (`app_icon/containers.rs`); `UPDATE_ICONS=1` rewrites them.
@@ -58,6 +79,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - Every action in `.github/workflows/` is pinned to a commit SHA with its version in a comment; `.github/dependabot.yml` proposes the updates (weekly for actions, skipping major versions; monthly for Cargo, inside the Cargo.toml requirements). Each workflow sets read-only token permissions at the top and each job adds only what it needs (`release.yml`'s publishing jobs `contents: write`, its checksums job also `id-token: write` and `attestations: write` for the build provenance, `codeql.yml` and `scorecard.yml` `security-events: write`); every checkout sets `persist-credentials: false`.
 - `.github/workflows/release.yml`: release-please, then the prepare job in the `release` environment (the one owner approval) and the build, flatpak, checksums (SHA256SUMS and the build provenance attestation, attached as `glowfly-<tag>.intoto.jsonl`) and manifests jobs after it; release builds use no Rust cache.
 - `.github/workflows/zizmor.yml`: zizmor lints the workflows on every push and pull request, failing on findings of medium severity or higher.
+- `.github/workflows/fuzz.yml`: runs every fuzz target (see Fuzzing) nightly for four minutes each, and for a minute each on pull requests that change `glowfly-core`, `fuzz/` or `Cargo.lock`; keeps the corpus in the Actions cache and uploads a failing input as `fuzz-artifacts`. Not a required check.
 - `.github/workflows/scorecard.yml`: OpenSSF Scorecard, weekly, on branch protection changes and pushes to `main`; results go to the Security tab and are published for the README badge.
 - `deny.toml` and `osv-scanner.toml`: the advisory exceptions, once for cargo-deny (CI's deny job) and once for osv-scanner (Scorecard's Vulnerabilities check), kept identical (and named in SECURITY.md's Known advisories) by `glowfly-core`'s `advisory_ignores_tests.rs`.
 - `.github/workflows/codeql.yml`: CodeQL code scanning of the Rust code and the workflows (`build-mode: none`), on pushes and pull requests to `main` and weekly; results go to the Security tab.
