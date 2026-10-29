@@ -5,7 +5,8 @@
 //! links macOS hands Glowfly.app as Apple events (`macos_events`), which wait in `open_events`
 //! until the runner attaches, the macOS system menu bar showing Glowfly's menus
 //! (`native_menu`, built in AppKit by `macos_menu`), and the Linux PRIMARY selection the
-//! terminal sets and pastes (`primary_selection`).
+//! terminal sets and pastes (`primary_selection`), plus the system's fonts for Chinese, Japanese
+//! and Korean (`system_fonts`).
 
 use std::path::{Path, PathBuf};
 
@@ -19,6 +20,7 @@ pub mod native_menu;
 pub mod native_window;
 pub mod open_events;
 pub mod primary_selection;
+pub mod system_fonts;
 mod terminal;
 pub use app_id::claim as claim_app_id;
 pub use icon::app_icon;

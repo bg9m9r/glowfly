@@ -1659,6 +1659,7 @@ dependencies = [
 name = "glowfly"
 version = "0.2.0-rc.1"
 dependencies = [
+ "ab_glyph",
  "arboard",
  "chrono",
  "eframe",
@@ -1667,6 +1668,7 @@ dependencies = [
  "git2",
  "glowfly-core",
  "image",
+ "memmap2",
  "notify",
  "notify-rust",
  "objc2 0.6.5",

@@ -90,6 +90,8 @@ fn main() -> eframe::Result {
     }
     // Only the window logs: the helper modes above exit before this.
     let logs = logging::init();
+    // The system's CJK fonts, searched while the window is made; the first frame waits for them.
+    platform::system_fonts::start();
     // Before any repository opens: lets libgit2 open partial clones older git made.
     glowfly_core::partial::allow_extension();
     // The installer checks' state file, only when GLOWFLY_SMOKE_PROBE asks for it.
