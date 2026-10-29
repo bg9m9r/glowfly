@@ -55,6 +55,9 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 
 ## Workflows
 
-- Every action in `.github/workflows/` is pinned to a commit SHA with its version in a comment; `.github/dependabot.yml` proposes the updates (weekly for actions, skipping major versions; monthly for Cargo, inside the Cargo.toml requirements). Each workflow sets its token permissions: read-only except `release.yml`, and `codeql.yml`, which may write code-scanning results (`security-events: write`).
+- Every action in `.github/workflows/` is pinned to a commit SHA with its version in a comment; `.github/dependabot.yml` proposes the updates (weekly for actions, skipping major versions; monthly for Cargo, inside the Cargo.toml requirements). Each workflow sets read-only token permissions at the top and each job adds only what it needs (`release.yml`'s publishing jobs `contents: write`, `codeql.yml` and `scorecard.yml` `security-events: write`); every checkout sets `persist-credentials: false`.
+- `.github/workflows/release.yml`: release-please, then the prepare job in the `release` environment (the one owner approval) and the build, flatpak, checksums and manifests jobs after it; release builds use no Rust cache.
+- `.github/workflows/zizmor.yml`: zizmor lints the workflows on every push and pull request, failing on findings of medium severity or higher.
+- `.github/workflows/scorecard.yml`: OpenSSF Scorecard, weekly, on branch protection changes and pushes to `main`; results go to the Security tab and are published for the README badge.
 - `.github/workflows/codeql.yml`: CodeQL code scanning of the Rust code and the workflows (`build-mode: none`), on pushes and pull requests to `main` and weekly; results go to the Security tab.
 - `.github/codeql/codeql-config.yml`: its config: every default query on, test code (`*_tests.rs`, `tests/`, `tests.rs`, `snapshot_tests`, `testkit/`) left out.

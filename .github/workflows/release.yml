@@ -14,9 +14,11 @@ on:
         description: Existing tag to build and publish, e.g. v0.1.0
         required: true
 
-# Every job uploads to the release; only release-please also needs to open its pull request.
+# Read-only by default; each job asks for what it writes. Publishing waits for the owner: the
+# prepare job runs in the `release` environment (required reviewer, main and v* tags only), and
+# every job that uploads to or edits the release needs it (docs/RELEASING.md).
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -29,11 +31,12 @@ env:
 
 jobs:
   release-please:
+    name: Release pull request and tag
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # pushes the release tag and creates its GitHub release
+      pull-requests: write # opens and updates the release pull request
     outputs:
       created: ${{ steps.rp.outputs.release_created }}
       tag: ${{ steps.rp.outputs.tag_name }}
@@ -45,11 +48,19 @@ jobs:
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
 
-  # Works out which tag to build, and creates its GitHub release when run by hand.
+  # Works out which tag to build, and creates its GitHub release when run by hand. The one
+  # approval of a release: this job waits for the owner in the `release` environment, and every
+  # job below needs it, so nothing is built or uploaded before then.
   prepare:
+    name: Prepare (approval)
     needs: release-please
     if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.created == 'true') }}
     runs-on: ubuntu-latest
+    environment:
+      name: release
+      url: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }}
+    permissions:
+      contents: write # creates the release when run by hand and puts the header on its notes
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     env:
@@ -66,6 +77,8 @@ jobs:
       # The workflow's own commit, for the header: it belongs to the release, not to the tag's
       # build, so a re-run for an older tag gets today's text.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       # Unsigned builds, how to check a download, no warranty and the licences, above the notes
       # (packaging/release-notes-header.md); a re-run replaces it.
       - name: Put the fixed header on the release notes
@@ -89,8 +102,12 @@ jobs:
           - { os: macos-14, target: aarch64-apple-darwin }
           - { os: macos-14, target: x86_64-apple-darwin }
     runs-on: ${{ matrix.os }}
+    # No Rust cache: a cache entry written by another run must never reach a release binary.
+    permissions:
+      contents: write # uploads the packages to the release
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
+      TARGET_TRIPLE: ${{ matrix.target }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       # Signing secrets (docs/RELEASING.md). Empty when unset: the packaging scripts then skip
@@ -106,14 +123,12 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           ref: ${{ needs.prepare.outputs.tag }}
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          key: ${{ matrix.target }}
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: ./scripts/linux-deps.sh
@@ -123,22 +138,23 @@ jobs:
         shell: pwsh
         run: Add-Content -Path $env:GITHUB_PATH -Value 'C:/Program Files/LLVM/bin'
       - name: Build
-        run: cargo build --release --locked -p glowfly --target ${{ matrix.target }}
+        shell: bash
+        run: cargo build --release --locked -p glowfly --target "$TARGET_TRIPLE"
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           dotnet tool install --global wix --version 5.0.2
-          pwsh scripts/package-windows.ps1 -Target ${{ matrix.target }} -Tag "$env:TAG"
+          pwsh scripts/package-windows.ps1 -Target "$env:TARGET_TRIPLE" -Tag "$env:TAG"
       - name: Package (macOS)
         if: runner.os == 'macOS'
-        run: bash scripts/package-macos.sh ${{ matrix.target }} "$TAG"
+        run: bash scripts/package-macos.sh "$TARGET_TRIPLE" "$TAG"
       - name: Package (Linux)
         if: runner.os == 'Linux'
         run: |
           cargo install cargo-deb --locked --version 2.12.1
           cargo install cargo-generate-rpm --locked --version 0.21.0
-          bash scripts/package-linux.sh ${{ matrix.target }} "$TAG"
+          bash scripts/package-linux.sh "$TARGET_TRIPLE" "$TAG"
       # Every archive and installer holds LICENSE-MIT, LICENSE-APACHE and THIRD-PARTY-NOTICES.md.
       - name: Check the licence files (Windows)
         if: runner.os == 'Windows'
@@ -175,6 +191,8 @@ jobs:
     # Ubuntu 24.04 runners restrict the unprivileged user namespaces bubblewrap needs.
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    permissions:
+      contents: write # uploads the bundle and the git source to the release
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -182,6 +200,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           ref: ${{ needs.prepare.outputs.tag }}
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
@@ -197,9 +216,12 @@ jobs:
   # `sha256sum -c SHA256SUMS --ignore-missing` and the app's update check. A release with a
   # .flatpak must have the git source it was built from (scripts/release-check-git-source.sh).
   checksums:
+    name: Publish SHA256SUMS
     needs: [prepare, build, flatpak]
     if: ${{ !cancelled() && needs.prepare.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # uploads SHA256SUMS to the release
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -207,6 +229,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           ref: ${{ needs.prepare.outputs.tag }}
       - name: Publish SHA256SUMS
         run: |
@@ -223,9 +246,12 @@ jobs:
   # A pre-release gets none. Its files (glowfly.rb, Glowfly.Glowfly.*.yaml) stay out of the
   # checksums job's 'glowfly-*' pattern.
   manifests:
+    name: Attach the Homebrew and winget manifests
     needs: [prepare, checksums]
     if: ${{ !cancelled() && needs.checksums.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # uploads the manifests to the release
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -233,6 +259,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           ref: ${{ needs.prepare.outputs.tag }}
       - name: Fill in and attach the manifests
         run: |

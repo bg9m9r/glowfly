@@ -8,7 +8,8 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 1. Every push to `main` updates a "chore(main): release x.y.z" pull request. Its version and its
    `CHANGELOG.md` entry come from the Conventional Commit messages since the last release.
 2. Merging that pull request tags `vX.Y.Z` and creates the GitHub release. The **prepare** job
-   then puts the fixed header above its notes (see [The release notes header](#the-release-notes-header)).
+   then waits for the owner's approval (see [Approving a release](#approving-a-release)) and puts
+   the fixed header above its notes (see [The release notes header](#the-release-notes-header)).
 3. The **build** job runs once per target. It builds `glowfly` in release mode, then the
    packaging script for its OS (`scripts/package-windows.ps1`, `scripts/package-macos.sh`,
    `scripts/package-linux.sh`) writes the files below into `dist/`, checks that each archive and
@@ -29,7 +30,23 @@ Apple silicon and Intel (`macos-14`).
 
 To rebuild an existing release's files, run the workflow by hand with its tag. The build jobs
 use the scripts at that tag, so a tag from before the licence checks existed fails them: its
-packages lack those files and shouldn't be published again.
+packages lack those files and shouldn't be published again. A run by hand waits for the same
+approval, and only a run started from `main` (or a `v*` tag) can get it.
+
+The build jobs don't use a Rust cache: every release binary is built from a clean target
+folder, so a cache entry written by another run can never end up in a download.
+
+### Approving a release
+
+Publishing runs in the `release` deployment environment (Settings > Environments), which has the
+owner as its required reviewer and accepts only the `main` branch and `v*` tags. The **prepare**
+job is the only job in that environment, and every job that uploads to or edits the release
+(build, flatpak, checksums, manifests) needs it, so a release takes one approval: open the
+Release run in the Actions tab, choose **Review deployments**, tick `release` and approve. Until
+then nothing is built or uploaded; rejecting it skips every publishing job. The release that
+release-please created stays without downloads until the run is approved, or until the workflow
+is run by hand for its tag. The **release-please** job itself isn't gated, so pushes to `main`
+don't wait.
 
 `CHANGELOG.md` is also bundled into the program at build time (`crates/glowfly-app/build.rs`):
 it is what the "View release notes" dialog shows, and the dialog opens by itself the first time

@@ -1,5 +1,7 @@
 # Glowfly
 
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/bg9m9r/glowfly/badge)](https://scorecard.dev/viewer/?uri=github.com/bg9m9r/glowfly)
+
 A fast, native Git GUI written in Rust (egui + libgit2): a central commit graph, a
 branch/remote/tag/stash sidebar, and a right-hand panel for commit details or staging and
 committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps, Jira and Trello for pull

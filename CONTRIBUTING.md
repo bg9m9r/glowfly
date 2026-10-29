@@ -24,7 +24,14 @@ pwsh scripts/check.ps1                 # fmt, clippy (-D warnings) and all tests
 
 `scripts/check.ps1` must pass before a pull request is merged; CI runs the same script.
 CodeQL (`.github/workflows/codeql.yml`) also scans each pull request's Rust code and workflows;
-its config (`.github/codeql/codeql-config.yml`) leaves test code out.
+its config (`.github/codeql/codeql-config.yml`) leaves test code out. zizmor
+(`.github/workflows/zizmor.yml`) lints the workflows and fails on findings of medium severity or
+higher: when you change a workflow, pin every action to a full commit SHA with a `# vX.Y.Z`
+comment, keep `persist-credentials: false` on checkouts, pass `${{ }}` values to `run` steps
+through `env:` and give each job only the permissions it needs. A deliberate exception is
+suppressed on its line with `# zizmor: ignore[<rule>]` and the reason. To run it locally:
+`pip install zizmor`, then `zizmor .github/workflows`. OpenSSF Scorecard
+(`.github/workflows/scorecard.yml`) scores the repository weekly.
 
 UI changes are covered by snapshot tests. Every view test keeps a text snapshot (`<name>.txt`:
 the accessibility tree and the painted text) in `crates/glowfly-app/tests/snapshots/`, and about a

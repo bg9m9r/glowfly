@@ -1,0 +1,34 @@
+name: zizmor
+
+# Lints the workflows themselves with zizmor (https://docs.zizmor.sh): template injection,
+# credentials left in checkouts, overly broad token permissions, unpinned or impostor actions,
+# cache poisoning of release builds and the like. Fails on any finding of medium severity or
+# higher; a deliberate exception is suppressed where it is, with `# zizmor: ignore[<rule>]` and
+# the reason.
+
+on:
+  push:
+  pull_request:
+
+# A read-only token: zizmor only reads the workflows (and, for its online audits, the public
+# refs of the actions they use).
+permissions:
+  contents: read
+
+jobs:
+  zizmor:
+    name: Lint the workflows (zizmor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        with:
+          inputs: .github/workflows
+          min-severity: medium
+          # Findings fail the job and show as annotations, instead of a SARIF upload to the
+          # Security tab (which would need security-events: write and wouldn't fail the job).
+          advanced-security: false
+          annotations: true
+          version: 1.31.1

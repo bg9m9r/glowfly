@@ -18,6 +18,7 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Install a .deb in place through pkexec and apt instead of opening the software installer
 - A CI check of Install and restart: swap a portable copy from a local feed and run --finish-update on the runners
 - Allow Install and restart when Windows Smart App Control or AppLocker blocks programs in the temp folder
+- Move the signing secrets and RELEASE_PLEASE_TOKEN into the `release` environment (zizmor's auditor persona flags them as secrets outside an environment); the build jobs would then join the environment, adding one approval
 - Installer checks for the ARM64 MSI and the aarch64 .deb and .rpm on Arm runners (windows-11-arm, ubuntu-22.04-arm)
 - AppStream metainfo (usr/share/metainfo) for the AppImage and the Linux packages
 - AppImage desktop integration: offer to add a menu entry and icon for an AppImage copy
