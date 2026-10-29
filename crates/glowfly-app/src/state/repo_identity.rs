@@ -81,9 +81,18 @@ fn override_names(id: &RepoIdentity) -> String {
     id.overrides.iter().map(|o| o.var).collect::<Vec<_>>().join(", ")
 }
 
+/// The first name variable set but empty: git refuses to commit with an empty name
+/// (`empty ident name not allowed`). An empty email is allowed.
+fn empty_name(id: &RepoIdentity) -> Option<&'static str> {
+    id.overrides.iter().find(|o| o.var.ends_with("_NAME") && o.value.is_empty()).map(|o| o.var)
+}
+
 /// The commit box's identity line and whether it is a warning (no identity, or variables in the
-/// environment take the place of the config).
+/// environment take the place of the config; an empty name variable, which stops commits).
 pub fn commit_identity_line(t: Lang, id: &RepoIdentity, settings: &Settings) -> (String, bool) {
+    if let Some(var) = empty_name(id) {
+        return (t.trf("commit.identity.env.empty_name", &[("var", &var)]), true);
+    }
     if !id.overrides.is_empty() {
         let line = match author_who(id) {
             Some(who) => t.trf("commit.identity.env.line", &[("who", &who), ("vars", &override_names(id))]),
@@ -111,15 +120,21 @@ pub fn env_tip(t: Lang, id: &RepoIdentity) -> Option<String> {
     (!set.is_empty()).then(|| t.trf("commit.identity.env.tip", &[("vars", &set.join(", "))]))
 }
 
-/// A variable's value for a line: an empty one as `""`, which git takes too.
-fn shown_value(value: &str) -> &str {
-    if value.is_empty() { "\"\"" } else { value }
+/// A variable's value for a line, without control or bidi characters (`text::printable`), so it
+/// can't break or reorder the line; an empty one as `""`, which git takes too.
+fn shown_value(value: &str) -> String {
+    let shown = glowfly_core::text::printable(value);
+    if shown.is_empty() { "\"\"".to_owned() } else { shown }
 }
 
 /// The Profile page's Open repository warnings: one per identity variable set in the
-/// environment, naming it and the value commits take from it.
+/// environment, naming it and the value commits take from it (or, for an empty name, that git
+/// won't commit).
 pub fn env_warnings(t: Lang, id: &RepoIdentity) -> Vec<String> {
     let line = |var: &str, value: &str| {
+        if var.ends_with("_NAME") && value.is_empty() {
+            return t.trf("prefs.profile.env.empty_name.warn", &[("var", &var)]);
+        }
         let value = shown_value(value);
         let args: [(&str, &dyn std::fmt::Display); 2] = [("var", &var), ("value", &value)];
         match var {

@@ -54,7 +54,7 @@ Unknown "Staged files (0)"
 Label "None"
 Label "Commit"
 CheckBox "Amend" [off]
-Label "as Ada Lovelace <ci@build.example> · environment: GIT_AUTHOR_EMAIL, GIT_COMMITTER_NAME"
+Label "GIT_COMMITTER_NAME is empty: git won't commit"
 TextInput "Commit summary"
 Label "0/72"
 MultilineTextInput "Description"

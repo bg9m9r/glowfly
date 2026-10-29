@@ -194,7 +194,7 @@ fn prefs_profile_rules_env() {
     h.run();
     h.check_snapshot("prefs_profile_rules_env");
     assert!(h.query_by_label_contains("GIT_AUTHOR_EMAIL is set in Glowfly's environment").is_some(), "names the variable");
-    assert!(h.query_by_label_contains("the committer name \"\" from it").is_some(), "an empty value shows as empty");
+    assert!(h.query_by_label_contains("GIT_COMMITTER_NAME is set but empty").is_some(), "an empty name stops commits");
     drop(h);
     remove_fixture(&dir);
 }
@@ -208,8 +208,7 @@ fn commit_box_identity_env() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("commit_box_identity_env");
-    // The line may be cut to the room beside Amend; the author git gives comes first.
-    assert!(h.query_by_label_contains("as Ada Lovelace <ci@build.example>").is_some(), "the author from the environment");
+    assert!(h.query_by_label("GIT_COMMITTER_NAME is empty: git won't commit").is_some(), "an empty name stops commits");
     drop(h);
     remove_fixture(&dir);
 }

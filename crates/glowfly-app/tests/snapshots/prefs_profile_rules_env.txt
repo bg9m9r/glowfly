@@ -7,7 +7,7 @@ Label "Repo: acme"
 Label "Profile"
 Label "acme commits as Ada Lovelace <ada@analytical.example>, from the profile Work (folder rule C:\\work\\acme)."
 Label "GIT_AUTHOR_EMAIL is set in Glowfly's environment, so commits take the author email ci@build.example from it instead of your Git config."
-Label "GIT_COMMITTER_NAME is set in Glowfly's environment, so commits take the committer name \"\" from it instead of your Git config."
+Label "GIT_COMMITTER_NAME is set but empty in Glowfly's environment, and git won't commit with an empty name. Unset it or give it a name, then start Glowfly again."
 Button "Work"
 Button "Delete" [disabled]
 Button "Rename"

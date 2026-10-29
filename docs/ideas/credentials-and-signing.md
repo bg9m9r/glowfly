@@ -108,6 +108,7 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 - Warn about GIT_AUTHOR_DATE and GIT_COMMITTER_DATE in the environment as well
 - Offer to keep GIT_AUTHOR_* and GIT_COMMITTER_* from Glowfly's git children (env_remove), so the config's identity applies
 - Warn about the identity variables in the Repo > Identity page and the welcome identity step too
+- Read author.name/author.email and committer.* (between the environment and user.*) and git's EMAIL fallback when reading the effective identity
 
 ### GPG passphrase prompts
 
