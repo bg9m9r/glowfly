@@ -4,9 +4,9 @@ use super::checks::per_pr;
 use super::details::{self, PrDetails};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, CHECKED_PRS, Checks, Conditions, CreateOptions, Entry, FilterKind, FilterOptions, Issue, IssueDetails, IssueFacets, Me,
-    NewIssue, NewPullRequest, PrFacets, PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks, gitlab_issues, page,
-    post,
+    Account, Auth, CHECKED_PRS, Checks, Conditions, CreateOptions, Entry, FilterKind, FilterOptions, HeadRepo, Issue, IssueDetails,
+    IssueFacets, Me, NewIssue, NewPullRequest, PrFacets, PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks,
+    gitlab_issues, page, post,
 };
 use crate::error::Result;
 use serde::Deserialize;
@@ -58,6 +58,11 @@ struct ApiMr {
     description: Option<String>,
     source_branch: String,
     target_branch: String,
+    /// Null once the fork the source branch was on is deleted.
+    #[serde(default)]
+    source_project_id: Option<u64>,
+    #[serde(default)]
+    target_project_id: Option<u64>,
     #[serde(default)]
     sha: Option<String>,
     author: User,
@@ -115,6 +120,7 @@ fn convert(m: ApiMr, approved: Approved, checks: Option<Checks>) -> PullRequest 
         title: m.title,
         description: m.description.unwrap_or_default(),
         source: m.source_branch,
+        head_repo: HeadRepo::of_ids(m.source_project_id, m.target_project_id),
         target: m.target_branch,
         author: m.author.name,
         draft: m.draft || m.work_in_progress,

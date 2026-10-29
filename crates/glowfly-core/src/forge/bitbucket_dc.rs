@@ -6,8 +6,8 @@ use super::details::{PrDetails, checks_of};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Me, NewPullRequest, PrFacets, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get, get_text,
-    post,
+    Account, Auth, Checks, HeadRepo, Me, NewPullRequest, PrFacets, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get,
+    get_text, post,
 };
 use crate::error::{Error, Result};
 use serde::Deserialize;
@@ -56,6 +56,27 @@ struct DcRef {
     display_id: String,
     #[serde(default)]
     latest_commit: Option<String>,
+    /// Missing on the source once its fork is deleted.
+    #[serde(default)]
+    repository: Option<DcRepo>,
+}
+
+#[derive(Deserialize)]
+struct DcRepo {
+    slug: String,
+    project: DcProject,
+}
+
+#[derive(Deserialize)]
+struct DcProject {
+    key: String,
+}
+
+impl DcRef {
+    /// The repository's `PROJECT/slug` (a personal one's key is `~USER`).
+    fn repo_name(&self) -> Option<String> {
+        self.repository.as_ref().map(|r| format!("{}/{}", r.project.key, r.slug))
+    }
 }
 
 #[derive(Deserialize, Default)]
@@ -105,10 +126,12 @@ fn convert_dc(p: DcPr, checks: Option<Checks>) -> PullRequest {
         awaiting_ids: p.reviewers.iter().filter(|r| r.status == "UNAPPROVED").map(|r| r.user.name.clone()).collect(),
         ..PrFacets::default()
     };
+    let head_repo = HeadRepo::of_names(p.from_ref.repo_name().as_deref(), p.to_ref.repo_name().as_deref());
     PullRequest {
         id: p.id,
         title: p.title,
         description: p.description,
+        head_repo,
         source: p.from_ref.display_id,
         target: p.to_ref.display_id,
         author: p.author.user.display_name,

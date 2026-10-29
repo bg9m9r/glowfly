@@ -50,10 +50,10 @@ fn host_tip(host: &[(String, Oid)], name: &str) -> Option<Oid> {
     host.iter().find(|(n, _)| n == name).map(|(_, o)| *o)
 }
 
-/// Where `b` stands on the remote its pull request is pushed to (`pr_repos::push_remote`); None
-/// without a code host or when that remote isn't loaded.
+/// Where `b` stands on the remote its pull request is pushed to (`pr_repos::pr_push_remote`);
+/// None without a code host or when that remote isn't loaded.
 pub fn host_branch(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Option<HostBranch> {
-    host_branch_on(b, snap, fs, &pr_repos::push_remote(b, fs))
+    host_branch_on(b, snap, fs, &pr_repos::pr_push_remote(b, snap, fs))
 }
 
 /// Where `b` stands on `remote`; None without a code host or when `remote` isn't loaded.
@@ -125,7 +125,7 @@ pub fn push_item(snap: &Snapshot, fs: &ForgeState) -> Result<String, String> {
     match host_branch(b, snap, fs) {
         Some(HostBranch::Missing | HostBranch::Ahead(_)) => Ok(b.name.clone()),
         Some(HostBranch::Blocked(why)) => Err(why),
-        Some(HostBranch::Pushed) | None => Err(format!("{} is up to date on {}.", b.name, pr_repos::push_remote(b, fs))),
+        Some(HostBranch::Pushed) | None => Err(format!("{} is up to date on {}.", b.name, pr_repos::pr_push_remote(b, snap, fs))),
     }
 }
 
@@ -167,21 +167,28 @@ pub fn pr_source_on(snap: &Snapshot, fs: &ForgeState, remote: &str, name: &str) 
 /// The push of local branch `b` to `remote` for a pull request: (remote, branch there, -u). A
 /// branch tracking its own branch on `remote` (`pr_repos::own_tracking`) pushes there; otherwise
 /// to its own name, with -u when it tracks nothing or `remote` is a fork, so later pushes
-/// follow. None when `remote` isn't configured.
+/// follow, but not onto a remote push config names (git already pushes there, and the branch
+/// keeps the upstream it pulls from). None when `remote` isn't configured.
 pub fn pr_push(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -> Option<(String, String, bool)> {
     if !snap.remotes.iter().any(|(n, _)| n == remote) {
         return None;
     }
     match pr_repos::own_tracking(b, fs, remote) {
         Some(t) => Some((remote.to_owned(), t.merge.clone(), false)),
-        None => Some((remote.to_owned(), b.name.clone(), b.tracking.is_none() || pr_repos::is_fork(fs, remote))),
+        None => {
+            let follow = pr_repos::is_fork(fs, remote) && !pr_repos::pushed_by_config(b, snap, fs, remote);
+            Some((remote.to_owned(), b.name.clone(), b.tracking.is_none() || follow))
+        }
     }
 }
 
-/// The open pull request from branch `name`, found by the name the code host knows it by (a
-/// local branch's upstream there may be named differently).
+/// The open pull request from branch `name`, found by the repository it is pushed to
+/// (`pr_repos::pr_push_remote` for a local branch, else the code host's) and the name it has
+/// there (a local branch's upstream there may be named differently).
 pub fn open_pr<'a>(snap: &Snapshot, fs: &'a ForgeState, name: &str) -> Option<&'a PullRequest> {
-    fs.pr_for_branch(&pr_source(snap, fs, name))
+    let local = snap.locals.iter().find(|b| b.name == name);
+    let remote = local.map(|b| pr_repos::pr_push_remote(b, snap, fs)).unwrap_or_else(|| fs.remote.clone());
+    fs.pr_from(&remote, &pr_source_on(snap, fs, &remote, name))
 }
 
 /// Why the pull request items are off when no remote is on a code host, and there are no remotes.

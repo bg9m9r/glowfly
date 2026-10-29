@@ -68,3 +68,4 @@ source file, update its line here.
 - Whether a new submodule can go in a folder: the index, the disk, .gitignore, a leftover stored module.
 - Worktrees, and other worktrees' changes, counted within the load's limits or in the background: `worktree_counts.rs`.
 - Remotes and shallow-clone boundaries.
+- Where git pushes a branch when no remote is named (`branch.<name>.pushRemote`, then `remote.pushDefault`, through config includes): `push_config.rs`.

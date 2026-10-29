@@ -1,6 +1,7 @@
 //! Checking out a pull request's source branch from the PULL REQUESTS rows
-//! (`BranchMsg::CheckoutPullRequest`): its local branch, or a new one tracking the code host's
-//! remote, through the auto-stash guard as its own operation (`AutoStashFor::PullRequestCheckout`).
+//! (`BranchMsg::CheckoutPullRequest`): its local branch, or a new one tracking the remote of the
+//! repository it is on (the code host's, or a fork's remote; `ForgeState::source_remote`), through
+//! the auto-stash guard as its own operation (`AutoStashFor::PullRequestCheckout`).
 
 use super::jobs::JobSpec;
 use crate::effect::Effect;
@@ -17,8 +18,18 @@ pub(super) fn checkout(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
         st.log(false, t.tr("pr_checkout.gone"));
         return;
     };
-    let (remote, label, source) = (f.remote.clone(), f.pr_label(id), pr.source.clone());
+    let (label, source) = (f.pr_label(id), pr.source.clone());
+    // The source is on the remote of its repository, never a same-named branch of another.
+    let Some(remote) = f.source_remote(pr) else {
+        st.log(false, t.trf("pr_checkout.fork_not_here", &[("pr", &label)]));
+        return;
+    };
     if let Some(b) = snap.locals.iter().find(|b| b.name == source) {
+        let tracks = b.tracking.as_ref().is_some_and(|t| t.remote == remote && t.merge == source);
+        if remote != f.remote && !tracks {
+            st.log(false, t.trf("pr_checkout.name_taken", &[("branch", &source), ("remote", &remote), ("pr", &label)]));
+            return;
+        }
         let why = if b.is_head {
             Some(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &source)]))
         } else {

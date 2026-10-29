@@ -136,6 +136,7 @@ fn tips_are_seeded_from_pull_requests() {
         draft: false,
         reviewers: Vec::new(),
         head: Some(main.to_string()),
+        head_repo: Default::default(),
         merge_status: None,
         checks: Some(Checks { url: "https://ci.example.com/3".into(), ..checks(CheckState::Failed) }),
         url: String::new(),

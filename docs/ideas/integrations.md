@@ -121,6 +121,8 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - A remote that fetches the upstream repository but pushes to a fork (remote.<name>.pushurl) as the source repository
 - An Allow edits by maintainers choice for fork pull requests on GitHub
 - Remember the last target repository per repository and preselect it
+- Say in the push item's tooltip when push config (pushRemote, pushDefault) chose the remote
+- Read push.default and remote.<name>.push refspecs when naming the branch a pull request is pushed to
 
 ### In-app pull request view
 
@@ -176,6 +178,10 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
   when the panel closes)
 - Fork pull requests on Azure DevOps and Bitbucket Cloud: fetch the source branch from the fork's
   URL (they publish no head ref)
+- GitLab fork merge requests: read the source project's path by its id, so a fork remote here is
+  matched as the source (the list names it only by id)
+- Checking out a fork pull request whose fork isn't a remote here: offer to add the fork as a remote
+- Keep fork pull requests' branches visible under Relevant branches by repository, not only by name
 - Commits tab rows: avatars, signature badges, each commit's checks, and cherry-pick, create
   branch and compare in the row menu
 - Command+Enter in the merge form to open its confirmation

@@ -1,7 +1,8 @@
 //! Pull requests across forks: the repositories a pull request can come from or go to (the
 //! remotes on the code host's account, "PR repositories"), which of them is the base (a remote
 //! named exactly `upstream`, else the code host's), the remote a branch's pull request is pushed
-//! to, and the create dialog's From / Into defaults and target branches. Pure.
+//! to (`branch.<name>.pushRemote`, then `remote.pushDefault`, then the fork it tracks), and the
+//! create dialog's From / Into defaults and target branches. Pure.
 
 use super::ForgeState;
 use super::branches;
@@ -86,11 +87,49 @@ pub fn is_fork(fs: &ForgeState, remote: &str) -> bool {
     remote != fs.remote && remote != base_remote(fs) && is_pr_remote(fs, remote)
 }
 
-/// The remote a pull request from `b` is pushed to: the fork it tracks, else the code host's. A
-/// branch started from the base repository (tracking `upstream/main`) still goes to the code
-/// host's remote, never onto the branch it was started from.
+/// The remote a pull request from `b` is pushed to without push config: the fork it tracks,
+/// else the code host's. A branch started from the base repository (tracking `upstream/main`)
+/// still goes to the code host's remote, never onto the branch it was started from.
 pub fn push_remote(b: &BranchInfo, fs: &ForgeState) -> String {
     branches::remote_tracking(b).filter(|t| is_fork(fs, &t.remote)).map(|t| t.remote.clone()).unwrap_or_else(|| fs.remote.clone())
+}
+
+/// A push remote named in config that a pull request's push can't use: no remote of that name,
+/// or one that isn't a repository on the code host's account.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnusablePush {
+    /// `branch.<name>.pushRemote` or `remote.pushDefault`.
+    pub key: String,
+    pub remote: String,
+}
+
+/// The remote a pull request from `b` is pushed to, as git would push it: the remote of
+/// `branch.<name>.pushRemote`, else of `remote.pushDefault`, when it is a PR repository's; else
+/// `push_remote`. The first configured remote that can't be used comes with it, for the log.
+pub fn pr_push_target(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> (String, Option<UnusablePush>) {
+    let config = &snap.push_remotes;
+    let by_branch = config.of_branch(&b.name).map(|r| (format!("branch.{}.pushRemote", b.name), r));
+    let by_default = config.default.as_deref().map(|r| ("remote.pushDefault".to_owned(), r));
+    let mut unusable = None;
+    for (key, remote) in by_branch.into_iter().chain(by_default) {
+        let known = snap.remotes.iter().any(|(n, _)| n == remote);
+        if known && (remote == fs.remote || is_pr_remote(fs, remote)) {
+            return (remote.to_owned(), unusable);
+        }
+        unusable.get_or_insert(UnusablePush { key, remote: remote.to_owned() });
+    }
+    (push_remote(b, fs), unusable)
+}
+
+/// `pr_push_target`'s remote.
+pub fn pr_push_remote(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> String {
+    pr_push_target(b, snap, fs).0
+}
+
+/// Whether `b`'s pull request is pushed to `remote` because push config names it rather than
+/// what the branch tracks.
+pub fn pushed_by_config(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -> bool {
+    pr_push_remote(b, snap, fs) == remote && push_remote(b, fs) != remote
 }
 
 /// The branch on `remote` that `b` tracks as its own: any on the code host's remote or a fork,

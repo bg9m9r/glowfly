@@ -76,6 +76,8 @@ pub struct ForgeState {
     pub filters: super::forge_filters::FilterState,
     /// Branch names like `2024-cleanup` name an issue (`Settings::year_branches_for`; set by detect).
     pub year_branches: bool,
+    /// The push config entries (`key=remote`) already logged as unusable for a pull request's push.
+    pub push_warned: HashSet<String>,
 }
 
 impl ForgeState {
@@ -103,6 +105,7 @@ impl ForgeState {
             jira_projects: ProjectKeys::Unknown,
             filters: Default::default(),
             year_branches: false,
+            push_warned: HashSet::new(),
         }
     }
 
@@ -125,8 +128,29 @@ impl ForgeState {
         }
     }
 
+    /// The listed pull request from the code host's remote's branch `branch`.
     pub fn pr_for_branch(&self, branch: &str) -> Option<&PullRequest> {
-        self.prs.iter().find(|p| p.source == branch)
+        self.pr_from(&self.remote, branch)
+    }
+
+    /// The listed pull request from branch `branch` of `remote`'s repository: matched by
+    /// repository and branch (`HeadRepo::is`), so a fork's pull request from a branch of the
+    /// same name is not this one.
+    pub fn pr_from(&self, remote: &str, branch: &str) -> Option<&PullRequest> {
+        self.prs.iter().find(|p| p.source == branch && self.is_source_remote(p, remote))
+    }
+
+    /// The remote whose repository `pr`'s source branch is on: the code host's, a PR
+    /// repository's, or None (a fork that isn't a remote here, or was deleted).
+    pub fn source_remote(&self, pr: &PullRequest) -> Option<String> {
+        let mut remotes = std::iter::once(self.remote.as_str()).chain(self.pr_repos.iter().map(|r| r.remote.as_str()));
+        remotes.find(|r| self.is_source_remote(pr, r)).map(str::to_owned)
+    }
+
+    fn is_source_remote(&self, pr: &PullRequest, remote: &str) -> bool {
+        let Some(host) = self.host.as_ref() else { return remote == self.remote && pr.head_repo.is_same() };
+        let repo = if remote == self.remote { Some(host) } else { super::pr_repos::repo(self, remote).map(|r| &r.target) };
+        repo.is_some_and(|r| pr.head_repo.is(r, host))
     }
 
     /// Whether the code host and the tracker are on `account`.

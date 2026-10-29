@@ -112,6 +112,7 @@ fn pr_for(source: &str) -> PullRequest {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: String::new(),

@@ -51,6 +51,7 @@ fn pr() -> glowfly_core::forge::PullRequest {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: String::new(),
