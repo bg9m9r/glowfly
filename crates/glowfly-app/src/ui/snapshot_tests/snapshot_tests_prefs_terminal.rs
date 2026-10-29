@@ -1,7 +1,8 @@
 //! Preferences > Terminal snapshots: the page with its defaults (the built-in and external
 //! terminal sections), and with a custom shell
 //! whose arguments have an unmatched quote; its navigation entry and the shell choices this
-//! system offers; the page as Linux draws it, with Middle-click paste; and the Colors row with
+//! system offers; the page as Linux draws it, with Middle-click paste, and as macOS draws it,
+//! with Option as Meta; and the Colors row with
 //! an imported scheme whose yellows are hard to read.
 
 use super::prefs::terminal::{choice_label, page_for};
@@ -12,6 +13,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, accesskit::Role};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
+use glowfly_core::opens::Os;
 use glowfly_core::settings::{ShellChoice, ShellSetting, TerminalPrefs, ThemeChoice};
 use std::time::Instant;
 
@@ -34,6 +36,7 @@ fn prefs_terminal_dark() {
     assert!(h.query_by_label_contains("Separated by spaces").is_none(), "arguments only for a custom program");
     assert!(h.query_by_label_contains("Selecting text with the mouse").is_some());
     assert_eq!(h.query_by_label_contains("A middle click on the terminal").is_some(), cfg!(target_os = "linux"), "only where it acts");
+    assert_eq!(h.query_by_label("Use Option as the Meta key").is_some(), cfg!(target_os = "macos"), "only where it acts");
     // The menu lists exactly this system's choices.
     h.query_all_by_role(Role::ComboBox).next().expect("the shell menu").click();
     h.run();
@@ -56,23 +59,41 @@ fn prefs_terminal_custom_dark() {
     assert!(h.query_by_label_contains("unmatched quote").is_some());
 }
 
-#[test]
-fn prefs_terminal_linux() {
+/// The page as `os` draws it, on its own.
+fn page_on(os: Os) -> egui_kittest::Harness<'static, glowfly_core::settings::Settings> {
     let mut s = settings(ThemeChoice::Dark);
     s.terminal = TerminalPrefs::default();
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
-        |ctx, s: &mut glowfly_core::settings::Settings| {
+    crate::ui::snapshot_check::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
+        move |ctx, s: &mut glowfly_core::settings::Settings| {
             color::set_palette(&theme::GARDEN_DARK);
             theme::apply_style(ctx, &theme::GARDEN_DARK);
             ctx.set_theme(theme::egui_theme(&theme::GARDEN_DARK));
-            egui::CentralPanel::default().show(ctx, |ui| page_for(ui, s, &crate::themes::ThemeState::default(), true, &mut Vec::new()));
+            egui::CentralPanel::default().show(ctx, |ui| page_for(ui, s, &crate::themes::ThemeState::default(), os, &mut Vec::new()));
         },
         s,
-    );
+    )
+}
+
+#[test]
+fn prefs_terminal_linux() {
+    let mut h = page_on(Os::Linux);
     h.run();
     h.check_snapshot("prefs_terminal_linux");
     assert!(h.query_by_label_contains("Selecting text with the mouse").is_some());
     assert!(h.query_by_label_contains("A middle click on the terminal").is_some());
+    assert!(h.query_by_label("Use Option as the Meta key").is_none(), "macOS only");
+}
+
+#[test]
+fn prefs_terminal_macos() {
+    let mut h = page_on(Os::MacOs);
+    h.run();
+    h.check_snapshot("prefs_terminal_macos");
+    assert!(h.query_by_label_contains("A middle click on the terminal").is_none(), "Linux only");
+    assert!(!h.state().terminal.option_as_meta, "off by default: Option composes");
+    h.get_by_label("Use Option as the Meta key").click();
+    h.run();
+    assert!(h.state().terminal.option_as_meta);
 }
 
 /// A light scheme whose yellows are too pale for its background.

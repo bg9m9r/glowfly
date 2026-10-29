@@ -40,6 +40,8 @@ pub(super) fn handle(st: &mut AppState, msg: UpdateMsg, now: Instant, fx: &mut V
         UpdateMsg::InstallAndRestart => super::updates_restart::ask(st, false, now, fx),
         UpdateMsg::InstallAndRestartConfirmed => super::updates_restart::ask(st, true, now, fx),
         UpdateMsg::RestartReady(result) => super::updates_restart::ready(st, result, now, fx),
+        UpdateMsg::LastInstall(last) => super::updates_restart::last_install(st, last, now),
+        UpdateMsg::ShowUpdateLog(path) => fx.push(Effect::Os(OsEffect::RevealPath(path))),
         UpdateMsg::ShowFile => {
             if let UpdateStatus::Downloaded { file, .. } = st.updates.settled() {
                 fx.push(Effect::Os(OsEffect::RevealPath(file.clone())));

@@ -61,7 +61,10 @@ pub fn encode(input: &TermInput, modes: Modes) -> Vec<u8> {
         TermInput::Paste(t) => {
             let text = t.replace("\r\n", "\r").replace('\n', "\r");
             if modes.bracketed_paste {
-                format!("{PASTE_START}{}{PASTE_END}", text.replace(PASTE_END, "")).into_bytes()
+                // ESC is dropped inside the brackets, as Alacritty and VTE do, so pasted text
+                // can't end the paste early, however it splits or nests the end marker.
+                let inner: String = text.chars().filter(|&c| c != '\x1b').collect();
+                format!("{PASTE_START}{inner}{PASTE_END}").into_bytes()
             } else {
                 text.into_bytes()
             }
@@ -181,6 +184,16 @@ mod tests {
         let bracketed = Modes { bracketed_paste: true, ..NORMAL };
         assert_eq!(encode(&paste, bracketed), b"\x1b[200~a\rb\rc\x1b[201~");
         let sneaky = TermInput::Paste("x\x1b[201~y".into());
-        assert_eq!(encode(&sneaky, bracketed), b"\x1b[200~xy\x1b[201~");
+        assert_eq!(encode(&sneaky, bracketed), b"\x1b[200~x[201~y\x1b[201~");
+        // An end marker split around another, and one nested twice, stay inside the brackets.
+        let split = TermInput::Paste("\x1b[20\x1b[201~1~rm".into());
+        assert_eq!(encode(&split, bracketed), b"\x1b[200~[20[201~1~rm\x1b[201~");
+        let nested = TermInput::Paste("a\x1b[2\x1b[20\x1b[201~1~01~b".into());
+        let bytes = encode(&nested, bracketed);
+        let inner = &bytes[PASTE_START.len()..bytes.len() - PASTE_END.len()];
+        assert!(bytes.starts_with(PASTE_START.as_bytes()) && bytes.ends_with(PASTE_END.as_bytes()));
+        assert!(!inner.contains(&0x1b), "{bytes:?}");
+        // Unbracketed pastes go through as they are.
+        assert_eq!(encode(&sneaky, NORMAL), b"x\x1b[201~y");
     }
 }

@@ -1,5 +1,7 @@
 //! Headless tests for what the terminal grid asks of its active tab (scrolling by rows and by
-//! keyboard steps, copying, selecting all, clearing, pasting) and for the panel's remembered state and shell choice.
+//! keyboard steps, copying, a finished selection and selecting all as the PRIMARY selection,
+//! clearing, pasting the clipboard or PRIMARY) and for the panel's remembered state and shell
+//! choice.
 
 use super::terminal_tests::{open_with_panel, run, terminal};
 use super::tests::scratch_repo;
@@ -25,6 +27,13 @@ fn with_history(name: &str) -> (AppState, std::path::PathBuf, u64) {
 fn copied(fx: &[Effect]) -> Option<&str> {
     fx.iter().find_map(|e| match e {
         Effect::Ui(UiEffect::CopyText(t)) => Some(t.as_str()),
+        _ => None,
+    })
+}
+
+fn primary(fx: &[Effect]) -> Option<&str> {
+    fx.iter().find_map(|e| match e {
+        Effect::Ui(UiEffect::SetPrimary(t)) => Some(t.as_str()),
         _ => None,
     })
 }
@@ -154,6 +163,41 @@ fn paste_asks_the_window_for_the_clipboard() {
     assert!(st.terminal.focus_requested);
     run(&mut st, T::Exited { id, code: Some(0) });
     assert!(run(&mut st, T::Paste).is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_finished_selection_becomes_primary_and_is_copied_with_copy_on_select() {
+    let (mut st, dir, _) = with_history("term-view-selected");
+    select(&mut st, 1, 3);
+    st.terminal.focus_requested = false;
+    let fx = run(&mut st, T::Selected);
+    assert_eq!((primary(&fx), copied(&fx)), (Some("2\n3\n4"), None), "{fx:?}");
+    assert!(st.terminal.sessions[0].selection.is_some() && st.terminal.focus_requested, "it stays selected");
+    st.settings.terminal.copy_on_select = true;
+    let fx = run(&mut st, T::Selected);
+    assert_eq!((primary(&fx), copied(&fx)), (Some("2\n3\n4"), Some("2\n3\n4")));
+    // Select all is a selection too.
+    st.settings.terminal.copy_on_select = false;
+    let all: Vec<String> = (1..=60).map(|i| i.to_string()).collect();
+    assert_eq!(primary(&run(&mut st, T::SelectAll)), Some(all.join("\n").as_str()));
+    // A stale selection (from before a resize renumbered the lines) offers nothing.
+    run(&mut st, T::Resize { rows: 20, cols: 70 });
+    select(&mut st, 0, 2);
+    st.terminal.sessions[0].selection.as_mut().unwrap().epoch -= 1;
+    assert!(run(&mut st, T::Selected).is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn middle_click_asks_the_shell_for_primary() {
+    let (mut st, dir, id) = with_history("term-view-paste-primary");
+    st.terminal.focus_requested = false;
+    let fx = run(&mut st, T::PastePrimary);
+    assert!(matches!(&fx[..], [Effect::Ui(UiEffect::PastePrimary)]), "{fx:?}");
+    assert!(st.terminal.focus_requested);
+    run(&mut st, T::Exited { id, code: Some(0) });
+    assert!(run(&mut st, T::PastePrimary).is_empty(), "the shell has ended");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

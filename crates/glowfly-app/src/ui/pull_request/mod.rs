@@ -27,7 +27,6 @@ use crate::state::pull_request::{Files, PrTab, PrView, Tone};
 use crate::state::pull_request_commits::tab_label;
 use crate::state::pull_request_line_map::on_local_file;
 use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::DiffTarget;
@@ -166,7 +165,8 @@ pub(in crate::ui) fn heading(ui: &mut Ui, text: &str) {
     ui.label(type_scale::section_text(ui, text));
 }
 
-/// The icon, label, title and Draft chip, the links and Close; below, the author and branches.
+/// The icon, label, title and Draft chip, the links (in a ⋯ menu when they would squeeze the
+/// title, `panel_header`) and Close; below, the author and branches.
 fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &PrView, msgs: &mut Vec<Msg>) {
     let pr = &v.pr;
     ui.horizontal(|ui| {
@@ -175,26 +175,22 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &PrView, msgs: &mut Vec<Msg>) 
             if widgets::ghost::close_view(ui, keys, t, t.tr("common.close_panel.name")).clicked() {
                 msgs.push(Msg::PullRequest(PullRequestMsg::Close));
             }
+            const DRAFT: &str = "Draft";
+            let chip_w = if pr.draft {
+                ui.painter().layout_no_wrap(DRAFT.to_owned(), type_scale::font(type_scale::CAPTION), color::weak()).size().x + 12.0
+            } else {
+                0.0
+            };
             let no_link = format!("The service sent no link for this {}.", v.noun);
-            let has_link = !pr.url.is_empty();
-            let why = (!has_link).then_some(no_link.as_str());
-            if ui.add(buttons::secondary("Copy link").enabled(has_link).why(why)).clicked() {
-                msgs.push(Msg::Copy(pr.url.clone()));
-            }
-            if ui.add(buttons::secondary("Open in browser").enabled(has_link).why(why)).clicked() {
-                msgs.push(Msg::OpenUrl(pr.url.clone()));
-            }
+            let lead_w = crate::ui::panel_header::text_w(ui, &v.label) + chip_w;
+            let open_label = t.tr("panel.header.open_in_browser");
+            let links = crate::ui::panel_header::Links { url: &pr.url, open_label, no_link: &no_link, lead_w };
+            crate::ui::panel_header::show(ui, t, keys, links, msgs);
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 ui.add_space(8.0);
                 let (rect, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
                 widgets::paint_icon(ui.painter(), rect.center(), Icon::PullRequest, color::progress());
                 ui.label(RichText::new(&v.label).color(color::weak()));
-                const DRAFT: &str = "Draft";
-                let chip_w = if pr.draft {
-                    ui.painter().layout_no_wrap(DRAFT.to_owned(), type_scale::font(type_scale::CAPTION), color::weak()).size().x + 12.0
-                } else {
-                    0.0
-                };
                 ui.scope(|ui| {
                     ui.set_max_width((ui.available_width() - chip_w - 8.0).max(40.0));
                     let title = RichText::new(printable(&pr.title)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());

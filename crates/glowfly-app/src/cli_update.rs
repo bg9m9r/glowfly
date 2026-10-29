@@ -9,7 +9,7 @@ use std::ffi::OsString;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-pub const VERSION_FLAG: &str = "--version";
+pub const VERSION_FLAG: &str = app_update::VERSION_FLAG;
 pub const CHECK_FLAG: &str = "--check-update";
 pub const FINISH_FLAG: &str = app_update::FINISH_FLAG;
 /// `--check-update`'s exit status when there is no newer release.

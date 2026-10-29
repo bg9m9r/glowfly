@@ -3,8 +3,8 @@
 //! switching tabs or branches never resizes the group or moves the groups after it; only a
 //! window too narrow for everything shrinks the slots (`name_widths`). A longer branch name keeps
 //! its start and end around a "…" (`truncate::cut_middle_in`), a longer repository name is cut
-//! at its end. A cut name shows whole on hover, and the accessible name is always the whole name.
-//! The branch name follows a dot in the checked-out branch's colour (a ring while HEAD is
+//! at its end; groups after them fold away before the names go below `COMFORT`. A cut name
+//! shows whole on hover, and the accessible name is always the whole name. The branch name follows a dot in the checked-out branch's colour (a ring while HEAD is
 //! detached), and each branch in its menu has its colour dot, the checked-out one checked.
 
 use super::menus::repo_menu;
@@ -29,6 +29,10 @@ pub const BRANCH_SLOT: f32 = 168.0;
 /// The narrowest the repository and branch names are cut to in a small window.
 pub const REPO_MIN: f32 = 32.0;
 pub const BRANCH_MIN: f32 = 40.0;
+/// The names' room the pickers keep before toolbar groups start to fold
+/// (`toolbar_fold.rs`): about a repository of 64 px and a branch of 96, so a 1400 px window
+/// with a hosting service still shows every group in English.
+const COMFORT_NAMES: f32 = 64.0 + 96.0;
 /// A part's side padding, height and corners.
 const PAD_X: f32 = 10.0;
 const PART_H: f32 = 40.0;
@@ -66,6 +70,9 @@ pub fn name_widths(slots: (f32, f32), room: f32) -> (f32, f32) {
     };
     (r.max(REPO_MIN.min(repo)), b.max(BRANCH_MIN.min(branch)))
 }
+
+/// The pickers' group with its names in their comfortable room (`COMFORT_NAMES`).
+pub(super) const COMFORT: f32 = FRAMES + COMFORT_NAMES;
 
 /// Notes the width of everything after the pickers (the gaps and the button groups), drawing
 /// once more when it changed so the names follow.

@@ -1,6 +1,6 @@
 //! Headless tests for live working-tree updates: what a watcher report refreshes, when it is
 //! ignored, which repository the watcher follows, and config edited outside Glowfly (new
-//! remotes, settings that make git run programs).
+//! remotes, settings that make git run programs, the identity commits get).
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
@@ -298,5 +298,27 @@ fn outside_config_that_runs_programs_asks_for_trust() {
         Some(Modal::Trust(p)) => assert!(p.gained.as_ref().is_some_and(|g| g.config.iter().any(|c| c.key == "core.sshCommand"))),
         _ => panic!("the trust prompt is open again"),
     }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_config_edit_outside_reads_the_identity_again() {
+    let (mut st, dir, workdir) = opened("watch-identity");
+    let config_changed = || Msg::Scoped { workdir: workdir.clone(), msg: Box::new(Msg::Watch(WatchMsg::ConfigChanged)) };
+    let git_dir = st.snap.as_ref().unwrap().git_dir.clone();
+    git(&dir, &["config", "user.name", "Grace Hopper"]);
+    let mut fx = update(&mut st, config_changed(), Instant::now());
+    let [Effect::Profile(crate::profile::ProfileEffect::ReadIdentity { git_dir: g, .. })] = &fx[..] else {
+        panic!("one identity read: {fx:?}")
+    };
+    assert_eq!(g, &git_dir);
+    // The read only reads git config; the repository's own name comes before any global one.
+    let msg = runner::execute(fx.remove(0)).expect("a result");
+    let fx = update(&mut st, msg, Instant::now());
+    finish(&mut st, fx);
+    assert_eq!(st.identities[&git_dir].name, "Grace Hopper", "the edited config");
+
+    st.settings.watch_files = false;
+    assert!(update(&mut st, config_changed(), Instant::now()).is_empty(), "not while watching is off");
     let _ = std::fs::remove_dir_all(&dir);
 }

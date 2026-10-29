@@ -46,6 +46,8 @@ const PROPER: &[&str] = &[
     "Shift",
     "Alt",
     "Option",
+    // The terminal key Option or Alt acts as.
+    "Meta",
     // The trailer git writes, spelled as git spells it.
     "Signed-off-by",
 ];

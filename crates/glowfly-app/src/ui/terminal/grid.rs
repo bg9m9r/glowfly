@@ -55,7 +55,8 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
             // goes to the shell.
             has_selection: selected.is_some() && !st.settings.terminal.copy_on_select,
             history_keys: !session.screen.alternate(),
-            alt_is_meta: !cfg!(target_os = "macos"),
+            alt_is_meta: st.settings.terminal.alt_is_meta(),
+            alt_codes: cfg!(windows),
         };
         let got = input::collect(&ui.input(|i| i.events.clone()), &mut st.terminal.clip_pending, opts);
         if got.copy {

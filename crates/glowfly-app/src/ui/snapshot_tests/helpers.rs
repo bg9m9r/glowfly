@@ -277,8 +277,8 @@ fn ghost_branch_on_the_current_commit() {
     let (mut st, _dir) = with_repo(ThemeChoice::Dark, "ghost");
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("HEAD");
     st.session.selection = Selection::Commit(head);
-    // Room for it after main's two chips.
-    st.settings.column_widths = glowfly_core::settings::ColumnWidths { refs: 280.0, ..Default::default() };
+    // Room for it after main's two chips, with DATE narrower so MESSAGE keeps its room (`graph/fit.rs`).
+    st.settings.column_widths = glowfly_core::settings::ColumnWidths { refs: 280.0, date: 110.0, ..Default::default() };
     // The commit's details are still loading (a spinner): a fixed number of frames.
     let mut h = harness(st, true);
     h.run_steps(4);

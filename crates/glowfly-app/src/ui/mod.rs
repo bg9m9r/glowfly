@@ -104,6 +104,7 @@ mod op_steps;
 mod op_strip;
 mod palette;
 mod pane_status;
+mod panel_header;
 mod panel_rails;
 mod panel_size;
 mod patch_apply_dialog;

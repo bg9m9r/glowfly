@@ -32,6 +32,7 @@ second one next to it.
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
 | Window frame | Drawn by Glowfly: no system decorations; its own title bar, window buttons, resize edges and border, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
 | Menus | The drawn title bar's menu button | The system menu bar (the app menu, then File, Edit, View, Window and Help) and the title bar's menu button | The in-window menu bar, which can be hidden |
+| Terminal keys and selection | Alt with a letter, digit or punctuation key sends ESC and the character; no PRIMARY selection | Option composes characters unless Option as Meta is on (Preferences > Terminal); no PRIMARY selection | Alt as on Windows; a mouse selection sets PRIMARY and a middle click pastes it (X11 and Wayland) |
 
 ## Rules
 
@@ -266,13 +267,23 @@ second one next to it.
      same path; the helper is still a copy of the running program.
    - The helper is a copy of the running program in a private staging folder under
      `paths::temp_dir()` (`glowfly-update-<16 hex>`, created fresh with mode 0700; stale ones are
-     removed at the next start). It is started detached (Windows: a new process group, out of
+     removed at the next start). The copy is tried first (`app_update::launch::try_run`: `--version`
+     must print this build's version and exit successfully within 5 s, else it is killed);
+     where it can't run (a temp folder mounted noexec on Linux or macOS) the folder goes beside
+     the program, then in the cache folder (`staging::create_runnable`). It is started detached (Windows: a new process group, out of
      the job when allowed; Unix: `setsid`) and waits for Glowfly to exit through its stdin: "go"
      once everything is prepared, then the end of input.
    - The MSI runs only after Glowfly has exited, as
      `%SystemRoot%\System32\msiexec.exe /i <msi> /passive /norestart /l*v <log>` (never searched
      for on PATH), and Glowfly is started again from the same path afterwards.
    - A .dmg, .deb, .rpm, or an MSI for a portable copy is only opened, and Glowfly quits.
+   - The next start removes a `.bak` program the helper couldn't delete (a second window still
+     ran it on Windows): only `<program>.bak` and `<program>.bak-<n>` beside the running program
+     (or its AppImage) that the swap recorded (`<backup>.record`, written when it moved the
+     program aside) and that still have the recorded size and SHA-256, so a `.bak` the user made
+     is never removed; only regular files, never through a link, and only when the process list
+     (`terminal::program_paths`) was read and no process runs it (`app_update::backups`). It also
+     reads `update.log` and says when the installer failed or was cancelled, once.
    - The file offered is for the machine's real processor (`app_update::current_platform`):
      Windows asks `IsWow64Process2`, so an x64 build emulated on Arm counts as Arm, and macOS reads
      `sysctl.proc_translated`, 1 under Rosetta. Other systems, and a failed query, use the build's
@@ -423,6 +434,26 @@ second one next to it.
    "Option" for Alt ("Cmd+Option+1"); the real Ctrl key reads "Ctrl" everywhere. The choice is
    the pure `KeyLabels::native()`, and `text_in`/`parts_in` take a style, so a test checks both
    styles on every OS. Never paint the ⌘ ⌥ ⇧ glyphs: the bundled fonts lack them.
+
+### The built-in terminal's keys and selection
+
+1. **Alt is Meta through `TerminalPrefs::alt_is_meta`:** on Windows and Linux always, on macOS
+   only with Option as Meta (`alt_is_meta_for` takes the system, so each case is tested
+   everywhere). Alt with a letter, digit or punctuation key then sends ESC and a character
+   (`ui/terminal/input.rs`): the one the press typed when its text comes in the same frame, so
+   the keyboard layout decides Alt+_ or Alt+/, else the key's own with Shift as on a US keyboard
+   (macOS, where Option types a composed character instead). Ctrl+Alt (AltGr on Windows) types
+   its character, and Cmd chords stay the app's. On Windows a digit, +, - or / sends ESC only
+   when its text comes (`Opts::alt_codes`): egui reports the numpad's keys as the main row's,
+   and a numpad press while Alt is held is part of an Alt code (Alt+0233), which types no text
+   until Alt is released.
+2. **PRIMARY only through `platform::primary_selection`, from the shell:** a finished mouse
+   selection, and Select all, become PRIMARY (`UiEffect::SetPrimary`, nothing where there is
+   none), and a middle click (Linux, with Middle-click paste) asks for it
+   (`UiEffect::PastePrimary`). A Wayland window uses the compositor's primary-selection protocol
+   (smithay-clipboard on the window's own `wl_display`, let go in `on_exit` before the window
+   closes), an X11 window the PRIMARY atom (arboard): the crates egui-winit already uses for the
+   clipboard. When neither opens, a middle click pastes the clipboard (`middle_click_reads`).
 
 ### Links and the running window
 
@@ -746,6 +777,17 @@ Gaps that are accepted for now:
   4.5:1 over the lightest dark Mica stand-ins at any tint step (the title bar does sit on Mica).
 - **macOS's traffic lights aren't centred on the title bar,** which is taller than the system's.
 - **An Alt press and release within one frame isn't seen as a tap,** so it doesn't open the menu.
+- **Option as Meta keeps Option's dead keys:** Option+E, U, I, N and ` still start a composition in
+  macOS's input system, so the next letter can come out accented; and Option+Shift with
+  punctuation follows a US keyboard's positions, since egui reports the key, not the layout's
+  character without Option.
+- **PRIMARY is read on the UI thread,** as egui-winit reads the clipboard. On X11 a selection
+  owner that doesn't answer holds the frame until arboard's timeout (about 4 s); on Wayland
+  smithay-clipboard's `load_primary` has no timeout, so an owner that never closes its pipe
+  hangs the window until it does.
+- **A Wayland compositor without the primary-selection protocol pastes nothing on a middle
+  click,** instead of the clipboard: smithay-clipboard opens either way, so the fallback isn't
+  taken.
 - **Inside Flatpak, host programs are out of reach:** editors, diff and merge tools, terminal
   shells and hook interpreters that only the host has aren't found in the sandbox.
 - **Inside Flatpak, a folder handed over by file forwarding may arrive as a

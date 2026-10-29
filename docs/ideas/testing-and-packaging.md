@@ -18,6 +18,10 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Install a .deb in place through pkexec and apt instead of opening the software installer
 - A CI check of Install and restart: swap a portable copy from a local feed and run --finish-update on the runners
 - Allow Install and restart when Windows Smart App Control or AppLocker blocks programs in the temp folder
+- At the next start, also say when the update helper gave up waiting for Glowfly to quit or couldn't start it again (both are in update.log)
+- Keep msiexec's verbose log in the logs folder when the installer fails (the staging folder it is written to is removed), and offer it beside Show log
+- Remove a leftover .bak program as soon as the last window running it closes, not only at the next start
+- Offer to remove a glowfly.bak that an older release left without a record (it is kept, since nothing tells it from one the user made)
 - Move the signing secrets and RELEASE_PLEASE_TOKEN into the `release` environment (zizmor's auditor persona flags them as secrets outside an environment); the build jobs would then join the environment, adding one approval
 - Have the update check also skip a release whose JSON says draft or prerelease, in case /releases/latest or a feed folder ever returns one
 - Verify the release attestation GitHub makes for an immutable release (gh release verify) in the publish job, once immutability is on

@@ -8,11 +8,13 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 ## The shell
 
 - `ui/app.rs` is the shell: it owns the runner and dispatches messages.
+- `ui/app_effects.rs` carries out the effects that need the window (`Effect::Ui`): the clipboard and the Linux PRIMARY selection, the title, attention, closing and window commands.
 - `ui/app_testing.rs` builds the shell for the journeys, without eframe and with a sandboxed runner.
 - `ui/app_frame.rs` times each frame's phases and each message's handling, kept by `state/frame_times.rs`: frames of 50 ms or more go to the performance log.
 - `frame_overlay.rs`: the frame-time overlay Preferences > General can show.
 - `ui/access.rs` gives painted buttons and hint-only text fields their accessible names (a toolbar button's name describes it and differs from the palette's rows).
 - `central.rs` holds the central-area routing (which view fills it: the pull request panel and the issue panel (`issue/`) share one place) and the Esc chain.
+- `panel_header.rs`: the pull request and issue panels' header links (Copy link, Open in browser), folded into a ⋯ menu when they would squeeze the title.
 - `ui/probe.rs`: the smoke probe's state file (see Test-only modules in [app-layers.md](app-layers.md)).
 
 ## Window layout
@@ -28,6 +30,9 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 
 - `toolbar.rs` draws its buttons in groups, each on a recessed surface (`widgets::tool_group`; the buttons, toggles and split buttons in `widgets/tool.rs`).
 - `toolbar_menus.rs`: the toolbar's menus.
+- `toolbar_groups.rs`: the middle groups' buttons, the split buttons' menus and the groups' widths.
+- `toolbar_fold.rs`: which parts fold into the More menu in a narrow window, and in what order.
+- `toolbar_more.rs`: the More button and its menu of the folded buttons.
 - `toolbar_pickers.rs`: the repository and branch pickers in fixed slots so the bar never moves when the names change.
 - Each toolbar button's tooltip comes from `toolbar_tips.rs`.
 
@@ -45,5 +50,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `icons_panel.rs`: the header's quiet icon buttons, painted.
 - `icons_lists.rs`: the changed-file lists' List / Tree toggle icons, painted.
 - The panel is drawn under the central area or, maximised, in its place (`terminal::show_in_main`); renaming and maximising are handled in `update/terminal_header.rs`.
+- `terminal/input.rs`: the grid's keys as shell input; Alt with a letter, digit or punctuation key sends ESC and the character (on macOS only with Option as Meta).
+- `terminal/mouse.rs`: the wheel, selecting (a finished selection is reported for PRIMARY and Copy on select) and, on Linux, middle-click paste of PRIMARY.
 - `terminal/metrics.rs`: the terminal grid's cell size, the monospace advance rounded to whole device pixels where epaint places each glyph, so text, cursor and mouse share one grid.
 - The header's ghost buttons and dividers are shared with the diff header (`widgets/ghost.rs`, see [ui-views.md](ui-views.md)).

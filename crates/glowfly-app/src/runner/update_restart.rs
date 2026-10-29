@@ -1,14 +1,15 @@
 //! Install and restart on the worker: an installer that can't run in place is checked again
 //! and opened with the system; an MSI, a portable program or an AppImage is prepared and handed
 //! to the update helper (`app_update::start_restart`). Either way the answer is
-//! `UpdateMsg::RestartReady`, and on success the window closes.
+//! `UpdateMsg::RestartReady`, and on success the window closes. The places a staging folder may
+//! go and this copy's own files are shared with the start's tidying (runner/updates.rs).
 
 use crate::effect::RestartJob;
 use crate::msg::{Msg, UpdateMsg};
 use glowfly_core::app_update::{self, InstallMethod, RestartRequest};
 use glowfly_core::native_path::shown;
 use glowfly_core::paths;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub(super) fn run(job: RestartJob) -> Msg {
     Msg::Updates(UpdateMsg::RestartReady(restart(job)))
@@ -21,16 +22,12 @@ fn restart(job: RestartJob) -> Result<(), String> {
             open_installer(&job.file)
         }
         InstallMethod::RunMsi | InstallMethod::SwapPortable | InstallMethod::SwapAppImage => {
-            let exe = std::env::current_exe().map_err(|e| format!("Couldn't find Glowfly's own program: {e}"))?;
+            let (exe, image) = own_files()?;
             let Some(platform) = app_update::CURRENT_PLATFORM else {
                 return Err("This update can't be installed in place.".to_owned());
             };
-            let exe = paths::resolve(&exe);
             let target = if job.method == InstallMethod::SwapAppImage {
-                let Some(image) = app_update::appimage_file(&exe) else {
-                    return Err("This copy isn't running from an AppImage.".to_owned());
-                };
-                paths::resolve(&image)
+                image.ok_or_else(|| "This copy isn't running from an AppImage.".to_owned())?
             } else {
                 exe.clone()
             };
@@ -40,13 +37,35 @@ fn restart(job: RestartJob) -> Result<(), String> {
                 method: job.method,
                 version: job.version.to_string(),
                 exe,
+                places: staging_places(&target),
                 target,
-                temp: paths::temp_dir(),
                 os: platform.os,
             })
         }
         InstallMethod::ShowOnly => Err("This update can't be installed in place.".to_owned()),
     }
+}
+
+/// The running program, resolved, and the AppImage it runs from, if any.
+pub(super) fn own_files() -> Result<(PathBuf, Option<PathBuf>), String> {
+    let exe = std::env::current_exe().map_err(|e| format!("Couldn't find Glowfly's own program: {e}"))?;
+    let exe = paths::resolve(&exe);
+    let image = app_update::appimage_file(&exe).map(|i| paths::resolve(&i));
+    Ok((exe, image))
+}
+
+/// Where a staging folder for replacing `target` may go, in order: the temp folder, then, for a
+/// temp folder mounted noexec, beside `target` (a folder programs already run from) and the
+/// cache folder.
+pub(super) fn staging_places(target: &Path) -> Vec<PathBuf> {
+    let mut places = vec![paths::temp_dir()];
+    places.extend(target.parent().map(Path::to_path_buf));
+    if let Some(cache) = glowfly_core::settings::cache_dir() {
+        // Glowfly's own folder; create_runnable passes over it if it can't be made.
+        let _ = std::fs::create_dir_all(&cache);
+        places.push(paths::resolve(&cache));
+    }
+    places
 }
 
 /// Opens a downloaded (and verified) installer with the system: the MSI's installer, the disk

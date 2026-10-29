@@ -1,8 +1,10 @@
 //! The commit box pinned under the WIP file lists, or inside step 3 of an operation's steps
 //! (`BoxStyle`: titled "Commit" in the plain panel; a secondary button beside Continue): the
 //! Amend option (off, with its reason on hover, while a merge, cherry-pick or revert is
-//! stopped) with the author identity git gives (state/repo_identity.rs), the summary with its length to its right (weak up to 50
-//! characters, amber to 72, red past it: `state::commit::summary_length`), the description, the
+//! stopped) with the author identity git gives (state/repo_identity.rs; in the warning tone,
+//! with the variables on hover, when `GIT_AUTHOR_*` or `GIT_COMMITTER_*` is set), the summary
+//! with its length to its right (weak up to 50 characters, amber to 72, red past it:
+//! `state::commit::summary_length`), the description, the
 //! Amend and "Push after committing" options, the commit button with why it is disabled centred
 //! under it (that line's height is always kept, so the box doesn't change height), the button's
 //! menu caret (one split button) opening a menu with "Skip hooks" (the caret tinted with the
@@ -21,7 +23,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::CommitDraft;
 use crate::state::commit::{SUMMARY_HARD, SummaryLength, amend_blocked, commit_blocked, pushes_after, summary_length};
-use crate::state::repo_identity::commit_identity_line;
+use crate::state::repo_identity::{commit_identity_line, env_tip};
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::popup_below;
@@ -62,7 +64,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
         ui.separator();
         ui.add_space(4.0);
     }
-    let identity = st.identities.get(&snap.git_dir).map(|id| commit_identity_line(t, id, &st.settings));
+    let identity = st.identities.get(&snap.git_dir).map(|id| (commit_identity_line(t, id, &st.settings), env_tip(t, id)));
     // Off while a merge, cherry-pick or revert is stopped; still on (so it can be turned off)
     // when it was checked before the operation stopped.
     let amend_why = amend_blocked(t, snap.state);
@@ -82,11 +84,14 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
             }
             // Between the title and Amend, cut to the room left, smaller than both so the row
             // keeps its height.
-            if let Some((line, warn)) = identity {
+            if let Some(((line, warn), tip)) = identity {
                 ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                     let tone = if warn { color::warn() } else { color::faint() };
                     let max_w = ui.available_width();
-                    truncate_label(ui, RichText::new(line).size(type_scale::SMALL).color(tone), max_w);
+                    let label = truncate_label(ui, RichText::new(line).size(type_scale::SMALL).color(tone), max_w);
+                    if let Some(tip) = tip {
+                        label.on_hover_text(tip);
+                    }
                 });
             }
         });

@@ -252,6 +252,17 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - The system frame's tab bar lifts the active tab within its own 30 px (the tabs start 2 px
   lower); give it the drawn title bar's 34 px tabs
 
+### Narrow windows
+
+- MESSAGE keeps only about 72 px before the graph's columns give way, so a 1400 px window looks as it did; the design asked for 240 (BRANCH / TAG and COMMIT narrowing sooner)
+- A soft fade where the GRAPH column clips lanes past its 30% share
+- The graph header's hidden-columns ⋯ opens the column toggles on a click
+- Dragging a divider of a column narrowed to fit saves the narrowed width
+- The untrusted and conflict chips drop to their icon, the text in the tooltip, when even a fully folded toolbar doesn't fit
+- The More menu's items with the toolbar's icons in the icon column
+- German captions fold Terminal and Folder at 1400 px with a hosting service
+- The issue panel's Open in browser (named by the service state) and the headers' "no link" reason are English only
+
 ### Activity panel design
 
 - Attach extended logging's git command lines under the job that ran them instead of as notes

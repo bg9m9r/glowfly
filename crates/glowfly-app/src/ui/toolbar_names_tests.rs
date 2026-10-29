@@ -4,7 +4,7 @@
 //! the working tree) and the commit box's fields by their hint. No image comparison.
 
 use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::ui::snapshot_tests::{harness, harness_sized, remove_fixture, with_repo};
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
@@ -123,7 +123,8 @@ fn tool_button_names_hold_their_captions() {
             Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
         st.session.forge = Some(ForgeState::new(Some(github), "origin".into(), None));
         let pr = lang.trf("toolbar.pr.name_pull_request", &[("service", &"GitHub")]);
-        let mut h = harness(st, true);
+        // Wide enough that nothing folds into the More menu, in every language.
+        let mut h = harness_sized(st, true, eframe::egui::vec2(1700.0, 820.0));
         h.run();
         for (caption, name) in [
             ("toolbar.undo.button", lang.tr("toolbar.undo.name")),

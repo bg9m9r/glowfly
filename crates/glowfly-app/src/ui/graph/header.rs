@@ -1,17 +1,20 @@
-//! The graph's column header: the column titles with their draggable dividers (resize.rs), and
-//! the least width each column gets so its title fits (for the rows as well). The history's
-//! notes (Load more, a shallow clone's Fetch full history) are in the end row (`more.rs`).
+//! The graph's column header: the column titles with their draggable dividers (resize.rs), the
+//! least width each column gets so its title fits (for the rows as well), the columns fitted to
+//! the graph's width (`fit.rs`) and, when that hid some, a ⋯ mark at the message column's end
+//! naming them. The history's notes (Load more, a shallow clone's Fetch full history) are in the
+//! end row (`more.rs`).
 
 use super::LANE_W;
+use super::fit::{self, Fitted};
 use super::layout::{CELL_PAD, Columns, EDGE_INSET};
 use super::resize;
 use crate::msg::Msg;
 use crate::state::ColumnDrag;
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
-use crate::ui::widgets::paint_cut_text;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use eframe::egui::{self, Align2, FontId, Rect, Sense, Stroke, pos2, vec2};
+use crate::ui::widgets::{Icon, paint_cut_text, paint_icon};
+use eframe::egui::{self, Align2, FontId, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
 
@@ -118,9 +121,9 @@ fn floored(w: ColumnWidths, floors: &[(ResizableColumn, f32)]) -> ColumnWidths {
     floors.iter().fold(w, |w, &(col, f)| if w.get(col) < f { w.with(col, f) } else { w })
 }
 
-/// Draws the header row (the titles and dividers only) and returns the column widths to lay the
-/// rows out with this frame (the saved widths, or the preview of a divider being dragged), so
-/// header and rows line up.
+/// Draws the header row (the titles and dividers only) and returns the columns to lay the rows
+/// out with this frame: the saved widths, or the preview of a divider being dragged, fitted to
+/// the header's width, so header and rows line up.
 pub(super) fn column_header(
     ui: &mut egui::Ui,
     t: Lang,
@@ -129,20 +132,41 @@ pub(super) fn column_header(
     saved: ColumnWidths,
     drag: &mut Option<ColumnDrag>,
     msgs: &mut Vec<Msg>,
-) -> ColumnWidths {
+) -> Fitted {
     let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
     let font = FontId::proportional(TITLE_FONT);
     let floors = floors(ui, t, &font);
-    let effective = |d: &Option<ColumnDrag>| floored(d.as_ref().map_or(saved, |d| saved.with(d.col, d.width)), &floors);
-    let cols = Columns::new(hdr, graph_w, cols_cfg, &effective(drag));
-    // A drag starts from the width shown, which may be a column's floor.
-    let active = resize::grips(ui, hdr, &cols, cols_cfg, &floored(saved, &floors), drag, msgs);
+    let graph = (graph_w, text_w(ui, Title::Graph.text(t), &font));
+    let fitted = |d: &Option<ColumnDrag>| {
+        let w = floored(d.as_ref().map_or(saved, |d| saved.with(d.col, d.width)), &floors);
+        fit::fit(hdr.width(), graph, cols_cfg, w, &floors)
+    };
+    let f = fitted(drag);
+    let cols = Columns::new(hdr, f.graph_w, &f.cfg, &f.widths);
+    // A drag starts from the width shown, which may be a column's floor or narrowed to fit.
+    let active = resize::grips(ui, hdr, &cols, &f.cfg, &f.widths, drag, msgs);
     // Lay out again with this frame's drag, so the titles don't lag a frame behind the rows.
-    let widths = effective(drag);
-    let cols = Columns::new(hdr, graph_w, cols_cfg, &widths);
-    titles(ui, hdr, &cols, cols_cfg, &font, t);
-    resize::paint_active(ui, hdr, &cols, cols_cfg, active);
-    widths
+    let f = fitted(drag);
+    let cols = Columns::new(hdr, f.graph_w, &f.cfg, &f.widths);
+    titles(ui, hdr, &cols, &f.cfg, &font, t);
+    hidden_mark(ui, hdr, &cols, &f, t);
+    resize::paint_active(ui, hdr, &cols, &f.cfg, active);
+    f
+}
+
+/// The ⋯ at the message column's end while columns are hidden to fit, naming them on hover.
+fn hidden_mark(ui: &egui::Ui, hdr: Rect, cols: &Columns, f: &Fitted, t: Lang) {
+    if f.hidden.is_empty() {
+        return;
+    }
+    let names: Vec<&str> = ORDER.into_iter().filter(|c| c.resizable().is_some_and(|r| f.hidden.contains(&r))).map(|c| c.text(t)).collect();
+    let text = t.trf("graph.header.hidden", &[("columns", &names.join(", "))]);
+    let c = pos2(cols.cell.msg.1 - CELL_PAD - 8.0, hdr.center().y);
+    let rect = Rect::from_center_size(c, vec2(20.0, ROW_H));
+    paint_icon(ui.painter(), c, Icon::More, color::weak());
+    let r = ui.interact(rect, ui.id().with("columns-hidden"), Sense::hover());
+    r.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &text));
+    r.on_hover_text(text);
 }
 
 /// The column titles, each cut to its column (whole on hover when cut; DATE right-aligned like

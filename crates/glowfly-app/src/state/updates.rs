@@ -167,6 +167,19 @@ pub fn opened_text(t: Lang, v: &Version) -> String {
     t.trf("updates.opened_installer", &[("version", v)])
 }
 
+/// What the update log says went wrong with the last installer run, for its toast.
+pub fn last_install_text(t: Lang, last: &glowfly_core::app_update::LastInstall) -> String {
+    use glowfly_core::app_update::InstallProblem;
+    let v = &last.version;
+    match &last.problem {
+        InstallProblem::Cancelled => t.trf("updates.last_install.cancelled", &[("version", v)]),
+        InstallProblem::Busy => t.trf("updates.last_install.busy", &[("version", v)]),
+        InstallProblem::Failed(Some(code)) => t.trf("updates.last_install.failed_code", &[("version", v), ("code", code)]),
+        InstallProblem::Failed(None) => t.trf("updates.last_install.failed", &[("version", v)]),
+        InstallProblem::NotRun(why) => t.trf("updates.last_install.not_run", &[("version", v), ("error", why)]),
+    }
+}
+
 /// The button that installs a file downloaded for `method`: Install and restart, Open
 /// installer and quit, or Show file.
 pub fn install_label(t: Lang, method: InstallMethod) -> &'static str {

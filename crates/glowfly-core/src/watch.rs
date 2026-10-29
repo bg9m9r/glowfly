@@ -114,6 +114,19 @@ impl WatchPaths {
         self
     }
 
+    /// Whether `path` is one of the files git reads the repository's config from: the git dir's
+    /// `config` or `config.worktree`, a linked worktree's common dir's `config`, or a file they
+    /// include. A change to one may change the identity commits get.
+    pub fn is_config(&self, path: &Path) -> bool {
+        let named = |rel: &Path, names: &[&str]| {
+            let mut parts = rel.components();
+            matches!((parts.next(), parts.next()), (Some(Component::Normal(n)), None) if n.to_str().is_some_and(|n| names.contains(&n)))
+        };
+        self.config_files.iter().any(|f| f == path)
+            || self.git_dirs.iter().filter_map(|g| path.strip_prefix(g).ok()).any(|rel| named(rel, &["config", "config.worktree"]))
+            || self.common_dirs.iter().filter_map(|c| path.strip_prefix(c).ok()).any(|rel| named(rel, &["config"]))
+    }
+
     /// What `touch` on `path` calls for. `ignored` answers whether a work-tree path (relative,
     /// '/'-separated) is ignored by `.gitignore` or `info/exclude` and not tracked
     /// (`Ignores::is_ignored`).

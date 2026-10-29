@@ -2,8 +2,8 @@
 //! (history), the cursor at the right edge (edge), key and paste encoding (keys), PTY sessions
 //! (pty), which shell to start (shell), the queries the terminal answers (queries), redrawing a
 //! screen and its history on a fresh parser (replay) and whether the shell is running a program
-//! (activity, reading the process lists in procs), the window title a program sets (title), and
-//! word and line selection (words).
+//! (activity, reading the process lists in procs, which also give every process's program
+//! file), the window title a program sets (title), and word and line selection (words).
 
 mod activity;
 mod edge;
@@ -20,6 +20,7 @@ mod words;
 
 pub use activity::{ShellActivity, ShellProbe};
 pub use keys::{KeyMods, Modes, TermInput, TermKey, encode};
+pub use procs::program_paths;
 pub use screen::{HISTORY_ROWS, TermScreen};
 pub use title::command_from_title;
 pub use words::WORD_PUNCT;

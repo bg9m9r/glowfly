@@ -1,7 +1,8 @@
 //! The systems' process lists for activity.rs: Windows' ToolHelp snapshot and the image path of
 //! a process; on Linux `/proc`, on macOS libproc, for a process's name and a shell's children.
-//! Everything here only reads, and anything that can't be read is left out. `git_procs.rs` reads
-//! the same lists for Delete lock file.
+//! Also the program file of every process ([`program_paths`]), which tells Glowfly's update
+//! cleanup whether an old program still runs. Everything here only reads, and anything that
+//! can't be read is left out. `git_procs.rs` reads the same lists for Delete lock file.
 
 /// Every process on the system, from a ToolHelp snapshot.
 #[cfg(windows)]
@@ -114,4 +115,49 @@ pub(crate) fn process_name(_pid: i32) -> Option<String> {
 #[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]
 pub(super) fn children(_shell: u32) -> Vec<i32> {
     Vec::new()
+}
+
+/// The program file of every process whose file this user may ask about: on Windows each
+/// snapshot entry's image path, on Linux every readable `/proc/<pid>/exe`, on macOS libproc's
+/// path of every process. None when the list itself can't be read, or on another system.
+#[cfg(windows)]
+pub fn program_paths() -> Option<Vec<std::path::PathBuf>> {
+    let table = process_table()?;
+    Some(table.iter().filter_map(|p| image_path(p.pid)).map(std::path::PathBuf::from).collect())
+}
+
+#[cfg(target_os = "linux")]
+pub fn program_paths() -> Option<Vec<std::path::PathBuf>> {
+    let dir = std::fs::read_dir("/proc").ok()?;
+    let exe = |pid: &str| std::fs::read_link(format!("/proc/{pid}/exe")).ok();
+    Some(dir.flatten().filter_map(|e| e.file_name().to_str().filter(|n| n.bytes().all(|b| b.is_ascii_digit())).and_then(exe)).collect())
+}
+
+#[cfg(target_os = "macos")]
+pub fn program_paths() -> Option<Vec<std::path::PathBuf>> {
+    use std::os::unix::ffi::OsStrExt;
+    /// libproc.h's `PROC_PIDPATHINFO_MAXSIZE`.
+    const PATH_MAX: usize = 4096;
+    let mut pids = vec![0i32; 8192];
+    let bytes = libc::c_int::try_from(std::mem::size_of_val(pids.as_slice())).ok()?;
+    // SAFETY: `pids` is writable for `bytes` bytes; proc_listallpids fills at most that many and
+    // returns how many pids it filled (negative on failure).
+    let filled = unsafe { libc::proc_listallpids(pids.as_mut_ptr().cast(), bytes) };
+    let n = usize::try_from(filled).ok()?.min(pids.len());
+    let mut out = Vec::new();
+    for &pid in pids[..n].iter().filter(|&&p| p > 0) {
+        let mut buf = vec![0u8; PATH_MAX];
+        // SAFETY: `buf` is writable for the length given; proc_pidpath writes at most that many
+        // bytes and returns how many it wrote (0 or less on failure).
+        let len = unsafe { libc::proc_pidpath(pid, buf.as_mut_ptr().cast(), PATH_MAX as u32) };
+        if let Some(len) = usize::try_from(len).ok().filter(|&l| l > 0) {
+            out.push(std::path::PathBuf::from(std::ffi::OsStr::from_bytes(&buf[..len.min(PATH_MAX)])));
+        }
+    }
+    Some(out)
+}
+
+#[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+pub fn program_paths() -> Option<Vec<std::path::PathBuf>> {
+    None
 }

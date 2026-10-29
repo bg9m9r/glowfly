@@ -1,5 +1,6 @@
 //! Reading where an identity comes from (pure parsing of git's output, then real reads on a
-//! scratch repository) and clearing a repository's own identity.
+//! scratch repository), the identity variables found in the environment, and clearing a
+//! repository's own identity.
 
 use super::*;
 use crate::profile_includes::{self, IncludePlan};
@@ -107,4 +108,20 @@ fn reading_and_clearing_a_real_repository() {
     assert_eq!(read(&repo, &git_dir, Some(&includes), &[], &env).unwrap(), RepoIdentity::default(), "nothing set");
     let _ = std::fs::remove_dir_all(&repo);
     let _ = std::fs::remove_dir_all(&includes);
+}
+
+#[test]
+fn identity_variables_in_the_environment_are_named() {
+    let env = |k: &str| match k {
+        "GIT_COMMITTER_EMAIL" => Some("ci@example.com".into()),
+        "GIT_AUTHOR_NAME" => Some("".into()),
+        "GIT_AUTHOR_DATE" => Some("not an identity".into()),
+        _ => None,
+    };
+    let found = env_overrides_with(env);
+    let named: Vec<(&str, &str)> = found.iter().map(|o| (o.var, o.value.as_str())).collect();
+    assert_eq!(named, [("GIT_AUTHOR_NAME", ""), ("GIT_COMMITTER_EMAIL", "ci@example.com")], "in order, an empty value counts");
+    let id = RepoIdentity { overrides: found, ..RepoIdentity::default() };
+    assert_eq!((id.override_of("GIT_COMMITTER_EMAIL"), id.override_of("GIT_AUTHOR_EMAIL")), (Some("ci@example.com"), None));
+    assert!(env_overrides_with(|_| None).is_empty());
 }
