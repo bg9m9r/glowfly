@@ -36,10 +36,14 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
    - Have the `pr-reviewer` agent review it. It posts its findings on the PR and passes or fails
      the required `AI review` status. Fix a failure with new commits on the branch; each new head
      commit needs a new review.
-   - Once CI and `AI review` pass: `gh pr merge <n> --rebase --delete-branch` (never `--admin`),
-     then `git -C C:/projects/glowfly pull --ff-only`.
-   - `git worktree remove ../glowfly-worktrees/<slug>` and `git branch -d <branch>`.
-   Dependabot and release PRs get the same review before merging.
+   - Merging needs every review conversation resolved: answer or fix each one, then resolve it.
+   - Once CI and `AI review` pass: `gh pr merge <n> --rebase` (never `--admin`; GitHub deletes the
+     remote branch), then `git -C C:/projects/glowfly pull --ff-only`.
+   - `git worktree remove ../glowfly-worktrees/<slug>`, `git fetch --prune`, and once the PR shows
+     MERGED, `git branch -D <branch>` (a rebase merge rewrites the commits, so `-d` refuses).
+   Dependabot and release PRs get the same review before merging. A release-please PR is opened
+   with the workflow token, which starts no CI: run `gh pr close <n>` and `gh pr reopen <n>` to
+   start it.
    Unfinished work: commit it as WIP on its branch, remove the worktree, keep the branch.
 
 `git worktree list` should show only the main checkout when nothing is in progress.
