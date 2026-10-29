@@ -77,6 +77,11 @@ fn trying_a_copy_on_unix() {
     try_run(&script("runs", &own, 0o755)).unwrap();
     assert!(try_run(&script("old", "echo glowfly 0.0.1", 0o755)).is_err());
     assert!(try_run(&script("fails", &format!("{own}; exit 127"), 0o755)).is_err());
-    assert_eq!(try_run(&script("noexec", &own, 0o644)).unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
+    // SAFETY: geteuid takes no arguments and can't fail.
+    let root = unsafe { libc::geteuid() } == 0;
+    // Root may be allowed to run it anyway, so the check is skipped there.
+    if !root {
+        assert_eq!(try_run(&script("noexec", &own, 0o644)).unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
+    }
     let _ = crate::persist::remove_tree(&dir);
 }

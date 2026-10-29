@@ -148,5 +148,5 @@ source file, update its line here.
 - `plan.rs`: the helper's plan.
 - `restart.rs`: preparing and handing over; tests in `restart_tests.rs`.
 - `launch.rs`: starting processes detached, and trying whether a copied helper runs (`try_run`: `--version` must print this build's version and exit successfully within 5 s); tests in `launch_tests.rs`.
-- `finish.rs`: the helper itself, behind `glowfly --finish-update`, and the fixed words it logs.
+- `finish.rs`: the helper itself, behind `glowfly --finish-update` (a backup's record is deleted only after the backup), and the fixed words it logs; tests in `finish_tests.rs`.
 - `report.rs`: the last installer run's failure or cancel, read from `update.log` at the next start and marked shown; tests in `report_tests.rs`.

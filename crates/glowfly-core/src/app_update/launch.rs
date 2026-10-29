@@ -67,6 +67,9 @@ pub fn start_detached(program: &Path, args: &[OsString], cwd: Option<&Path>) -> 
 /// How long a tried helper may take to print its version.
 #[cfg_attr(not(unix), allow(dead_code))]
 pub const TRY_TIMEOUT: Duration = Duration::from_secs(5);
+/// How long the output of a tried helper that has exited is waited for, at least.
+#[cfg_attr(not(unix), allow(dead_code))]
+const EXIT_GRACE: Duration = Duration::from_secs(1);
 /// The most of a tried helper's output that is read.
 #[cfg_attr(not(unix), allow(dead_code))]
 const TRY_OUTPUT: u64 = 4096;
@@ -121,7 +124,9 @@ pub fn probe(mut cmd: Command, expected: &str, timeout: Duration) -> std::io::Re
     if !status.success() {
         return Err(Error::other(format!("it exited with {status}")));
     }
-    let text = rx.recv_timeout(deadline.saturating_duration_since(Instant::now())).unwrap_or_default();
+    // It has exited: its output ends when the pipe closes, so an answer given right at the
+    // deadline still counts.
+    let text = rx.recv_timeout(deadline.saturating_duration_since(Instant::now()).max(EXIT_GRACE)).unwrap_or_default();
     let text = String::from_utf8_lossy(&text);
     if text.trim() != expected {
         return Err(Error::other(format!("it printed {:?}, not {expected:?}", text.trim())));

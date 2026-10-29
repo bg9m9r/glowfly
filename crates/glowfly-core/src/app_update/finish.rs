@@ -179,7 +179,15 @@ fn run_with(plan_path: &Path, stdin: impl Read + Send + 'static, (go, exit): (Du
     }
     for file in &plan.remove {
         match crate::persist::remove_file(file) {
-            Ok(()) => log(&format!("removed {}", shown(file))),
+            Ok(()) => {
+                log(&format!("removed {}", shown(file)));
+                // Its record goes only once it is gone: a backup still running keeps it, so the
+                // next start can remove the backup (backups.rs).
+                let record = super::backups::record_path(file);
+                if let Err(e) = crate::persist::remove_file(&record) {
+                    log(&format!("couldn't remove {}: {e}", shown(&record)));
+                }
+            }
             Err(e) => log(&format!("couldn't remove {}: {e}", shown(file))),
         }
     }

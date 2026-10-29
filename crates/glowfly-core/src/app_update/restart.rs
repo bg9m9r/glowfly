@@ -129,19 +129,16 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
     plan.write(&prepared.plan_path)
 }
 
-/// The files the helper deletes: each backup and, when it could be written, its record, which
-/// lets the next start remove a backup the helper couldn't (backups.rs). A backup without a
-/// record is only left for the user.
+/// Records each backup (backups.rs), which lets the next start remove one the helper couldn't
+/// delete, and returns the files the helper deletes: the backups, each with its record once it
+/// is gone. A backup whose record couldn't be written is only left for the user.
 fn recorded(backups: &[PathBuf], records: &mut Vec<PathBuf>) -> Vec<PathBuf> {
-    let mut remove = Vec::new();
     for b in backups {
-        remove.push(b.clone());
         if let Ok(r) = super::backups::record(b) {
-            records.push(r.clone());
-            remove.push(r);
+            records.push(r);
         }
     }
-    remove
+    backups.to_vec()
 }
 
 /// Prepares the update, starts the helper and tells it to go. On success Glowfly should quit:

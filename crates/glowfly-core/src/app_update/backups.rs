@@ -1,8 +1,9 @@
 //! Old programs a portable or AppImage swap left beside this copy. The swap moves the running
 //! program to `<name>.bak` (`persist::move_aside`, `<name>.bak-<n>` when that is taken),
 //! records it beside it ([`record`]: `<backup>.record`, its size and SHA-256), and the helper
-//! deletes both once Glowfly has quit; on Windows that fails while a second window still runs
-//! the old program, so the next start tries again ([`remove_unused`]).
+//! deletes the backup once Glowfly has quit, and its record only once the backup is gone. On
+//! Windows the delete fails while a second window still runs the old program, so the record
+//! stays and the next start tries again ([`remove_unused`]).
 //!
 //! Only a backup Glowfly recorded is touched, and only while it still has the recorded size and
 //! SHA-256, so a `glowfly.bak` the user made (or one an older release left without a record)
@@ -47,9 +48,12 @@ fn fingerprint(path: &Path) -> Option<(u64, String)> {
     if !meta.file_type().is_file() {
         return None;
     }
-    let bytes = std::fs::read(path).ok()?;
-    let size = u64::try_from(bytes.len()).ok()?;
-    (size == meta.len()).then(|| (size, hex(&super::sha256(&bytes))))
+    let file = std::fs::File::open(path).ok()?;
+    if file.metadata().ok()?.len() != meta.len() {
+        return None;
+    }
+    // Streamed: a program is tens of megabytes.
+    Some((meta.len(), hex(&super::sums::sha256_reader(file).ok()?)))
 }
 
 /// Records `backup`, a file the swap just moved aside, so the next start may remove it. Returns
@@ -58,7 +62,9 @@ pub fn record(backup: &Path) -> Result<PathBuf, String> {
     let (size, sha256) = fingerprint(backup).ok_or_else(|| format!("Couldn't read {}", shown(backup)))?;
     let json = serde_json::to_vec(&Record { format: RECORD_FORMAT, size, sha256 }).map_err(|e| e.to_string())?;
     let path = record_path(backup);
-    persist::write_file(&path, &json, WriteOptions::default()).map_err(|e| format!("Couldn't write {}: {e}", shown(&path)))?;
+    // Never through a link planted at the record's name.
+    persist::write_file(&path, &json, WriteOptions { refuse_links: true, ..WriteOptions::default() })
+        .map_err(|e| format!("Couldn't write {}: {e}", shown(&path)))?;
     Ok(path)
 }
 
