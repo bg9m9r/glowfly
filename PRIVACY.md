@@ -56,8 +56,8 @@ and how to turn it off.
 - A username and password or token typed into Glowfly's git sign-in prompt is saved with git's
   own credential helper when "Remember HTTPS sign-ins typed in Glowfly" is on (Preferences >
   General).
-- "Remove saved tokens" in Preferences > General disconnects every integration and deletes their saved
-  tokens.
+- "Remove saved tokens" in Preferences > General disconnects every integration and deletes their
+  saved tokens.
 
 ## Git
 

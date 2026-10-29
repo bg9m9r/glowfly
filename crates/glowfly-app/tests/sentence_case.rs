@@ -181,7 +181,7 @@ fn the_rule_knows_proper_nouns_breaks_and_placeholders() {
     assert_eq!(problems("Use Hunk's lines"), ["Hunk's"]);
     for ok in [
         "Stage hunk",
-        "Remove tokens and Git Credential Manager sign-ins",
+        "Also sign out of Git Credential Manager",
         "Preferences > Commit signing",
         "Open {name}",
         "Connect to GitHub",

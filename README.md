@@ -136,8 +136,8 @@ sub-list, and forms with right-aligned labels.
 
 - **General**: auto-fetch interval (0–60 min) and auto-prune, default branch name for new repos,
   initial commits in the graph (minimum 500), reopen last repository, `core.longpaths`,
-  `core.autocrlf`, and "Remove saved tokens" for connections. A second button, "Remove tokens and
-  Git Credential Manager sign-ins", also signs Git Credential Manager out of those hosts, after a
+  `core.autocrlf`, and "Remove saved tokens" for connections. A second button, "Also sign out of
+  Git Credential Manager", does that and signs Git Credential Manager out of those hosts, after a
   confirmation.
 - **Profile**: global `user.name` / `user.email`.
 - **Integrations**: one page per service (GitHub, GitHub Enterprise Server, GitLab, GitLab

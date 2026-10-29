@@ -1432,7 +1432,7 @@
   "prefs.general.forget.connections.other": "Trennt {count} Integrationen und löscht ihre gespeicherten Tokens. Die zweite Schaltfläche meldet Git Credential Manager außerdem von diesen Hosts ab.",
   "prefs.general.forget.gcm_body.one": "Das trennt jede Integration und entfernt außerdem die Anmeldung, die Git Credential Manager für {count} Host gespeichert hat. git push und pull zu diesem Host fragen dann erneut nach einer Anmeldung.",
   "prefs.general.forget.gcm_body.other": "Das trennt jede Integration und entfernt außerdem die Anmeldungen, die Git Credential Manager für {count} Hosts gespeichert hat. git push und pull zu diesen Hosts fragen dann erneut nach einer Anmeldung.",
-  "prefs.general.forget.gcm_button": "Tokens und Anmeldungen in Git Credential Manager löschen",
+  "prefs.general.forget.gcm_button": "Auch von Git Credential Manager abmelden",
   "prefs.general.forget.label": "Gespeicherte Verbindungen",
   "prefs.general.forget.none": "Glowfly hat keine gespeicherten Verbindungen, die sich entfernen ließen.",
   "prefs.general.frame_times.check": "In einer Ecke des Fensters anzeigen, wie lange jedes Bild dauert",
