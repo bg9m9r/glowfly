@@ -1,7 +1,8 @@
 //! Preferences > Git LFS (repository-specific): whether LFS is set up, the tracked patterns,
 //! a field to track a new one, and the LFS commands. While git is held in the repository
-//! (trust) only the root .gitattributes' patterns show, with Review trust…. Every action is a
-//! `Msg`.
+//! (trust) the patterns read without git show, with Review trust…. A pattern from a nested
+//! .gitattributes or info/attributes names its file and has no Untrack (git-lfs edits only the
+//! root file). Every action is a `Msg`.
 
 use super::{help, primary_button, row, text_field, warn};
 use crate::lfs::LfsMsg;
@@ -14,7 +15,8 @@ use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Key, RichText, Ui};
-use glowfly_core::lfs::{LfsCommand, LfsPattern, LfsStatus};
+use glowfly_core::i18n::Lang;
+use glowfly_core::lfs::{LfsCommand, LfsPattern, LfsStatus, PatternSource};
 use std::path::{Path, PathBuf};
 
 /// What the page needs from outside Preferences, cloned before the page borrows its state.
@@ -26,8 +28,9 @@ pub struct LfsContext {
     pub job: Option<String>,
     /// The active repository's real path while git is held there, for Review trust….
     pub held: Option<PathBuf>,
-    /// The root .gitattributes' patterns, read without git.
+    /// Every attributes file's patterns, read without git.
     pub patterns: Vec<LfsPattern>,
+    pub lang: Lang,
 }
 
 pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec<Msg>) {
@@ -36,7 +39,7 @@ pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec
         return;
     };
     if let Some(real) = &cx.held {
-        return held(ui, real, &cx.patterns, msgs);
+        return held(ui, cx.lang, real, &cx.patterns, msgs);
     }
     if let Some(error) = &page.error {
         warn(ui, error);
@@ -55,15 +58,15 @@ pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec
     };
     let busy = cx.job.is_some();
     match &status.version {
-        None => missing(ui, &status, msgs),
-        Some(_) if !status.initialized => not_set_up(ui, &status, repo, busy, msgs),
+        None => missing(ui, cx.lang, &status, msgs),
+        Some(_) if !status.initialized => not_set_up(ui, cx.lang, &status, repo, busy, msgs),
         Some(version) => set_up(ui, page, &status, version, cx, msgs),
     }
 }
 
 /// Git is held in the repository: nothing was read with it, and no command runs until it is
 /// trusted. The patterns come from .gitattributes.
-fn held(ui: &mut Ui, real: &Path, patterns: &[LfsPattern], msgs: &mut Vec<Msg>) {
+fn held(ui: &mut Ui, t: Lang, real: &Path, patterns: &[LfsPattern], msgs: &mut Vec<Msg>) {
     row(ui, "Status", |ui| {
         ui.label(RichText::new("Paused until you trust this repository.").color(color::text()));
         help(
@@ -80,14 +83,14 @@ fn held(ui: &mut Ui, real: &Path, patterns: &[LfsPattern], msgs: &mut Vec<Msg>) 
         if patterns.is_empty() {
             help(ui, "No patterns in .gitattributes.");
         } else {
-            pattern_list(ui, patterns, false, true, msgs);
-            help(ui, "Read from .gitattributes.");
+            pattern_list(ui, t, patterns, false, true, msgs);
+            help(ui, if all_root(patterns) { "Read from .gitattributes." } else { t.tr("lfs.page.read_from_files") });
         }
     });
 }
 
 /// git-lfs isn't installed: say so, and warn when the repository already uses LFS.
-fn missing(ui: &mut Ui, status: &LfsStatus, msgs: &mut Vec<Msg>) {
+fn missing(ui: &mut Ui, t: Lang, status: &LfsStatus, msgs: &mut Vec<Msg>) {
     row(ui, "Status", |ui| {
         warn(ui, "Git LFS isn't installed, so Glowfly can't run LFS commands here.");
         help(ui, "Install it from git-lfs.com, then choose Check again.");
@@ -113,13 +116,13 @@ fn missing(ui: &mut Ui, status: &LfsStatus, msgs: &mut Vec<Msg>) {
                 ),
             );
             ui.add_space(4.0);
-            pattern_list(ui, &status.patterns, false, true, msgs);
+            pattern_list(ui, t, &status.patterns, false, true, msgs);
         });
     }
 }
 
 /// git-lfs is installed but this repository isn't set up.
-fn not_set_up(ui: &mut Ui, status: &LfsStatus, repo: &str, busy: bool, msgs: &mut Vec<Msg>) {
+fn not_set_up(ui: &mut Ui, t: Lang, status: &LfsStatus, repo: &str, busy: bool, msgs: &mut Vec<Msg>) {
     row(ui, "Status", |ui| {
         ui.label(RichText::new(format!("Git LFS isn't set up in {repo}.")).color(color::text()));
         help(
@@ -144,7 +147,7 @@ fn not_set_up(ui: &mut Ui, status: &LfsStatus, repo: &str, busy: bool, msgs: &mu
     });
     if !status.patterns.is_empty() {
         row(ui, "Tracked patterns", |ui| {
-            pattern_list(ui, &status.patterns, false, true, msgs);
+            pattern_list(ui, t, &status.patterns, false, true, msgs);
             help(ui, "Initialize LFS to work with these files.");
         });
     }
@@ -160,7 +163,7 @@ fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx
         if status.patterns.is_empty() {
             help(ui, "No patterns yet.");
         } else {
-            pattern_list(ui, &status.patterns, true, busy, msgs);
+            pattern_list(ui, cx.lang, &status.patterns, true, busy, msgs);
         }
         help(
             ui,
@@ -197,8 +200,22 @@ fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx
     row(ui, "Commands", |ui| commands_row(ui, cx, msgs));
 }
 
-/// One line per pattern; `editable` adds an Untrack button (disabled while `busy`).
-fn pattern_list(ui: &mut Ui, patterns: &[LfsPattern], editable: bool, busy: bool, msgs: &mut Vec<Msg>) {
+fn all_root(patterns: &[LfsPattern]) -> bool {
+    patterns.iter().all(|p| p.source.is_root())
+}
+
+/// Where a pattern from another file than the root .gitattributes applies.
+fn source_tip(t: Lang, source: &PatternSource) -> String {
+    match source {
+        PatternSource::Nested(folder) => t.trf("lfs.page.source.nested.tip", &[("file", &source.file()), ("folder", folder)]),
+        _ => t.tr("lfs.page.source.info.tip").to_owned(),
+    }
+}
+
+/// One line per pattern; `editable` adds an Untrack button (disabled while `busy`) to the root
+/// file's. When any pattern comes from another file, each line names its file.
+fn pattern_list(ui: &mut Ui, t: Lang, patterns: &[LfsPattern], editable: bool, busy: bool, msgs: &mut Vec<Msg>) {
+    let name_files = !all_root(patterns);
     for p in patterns {
         ui.horizontal(|ui| {
             ui.set_min_height(22.0);
@@ -206,7 +223,13 @@ fn pattern_list(ui: &mut Ui, patterns: &[LfsPattern], editable: bool, busy: bool
             if p.lockable {
                 ui.label(RichText::new("lockable").size(type_scale::CAPTION).color(color::faint()));
             }
-            if editable {
+            if name_files {
+                let file = ui.label(RichText::new(p.source.file()).size(type_scale::CAPTION).color(color::weak()));
+                if !p.source.is_root() {
+                    file.on_hover_text(source_tip(t, &p.source));
+                }
+            }
+            if editable && p.source.is_root() {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.add(buttons::secondary("Untrack").small().enabled(!busy)).clicked() {
                         msgs.push(Msg::Lfs(LfsMsg::Untrack(p.raw.clone())));

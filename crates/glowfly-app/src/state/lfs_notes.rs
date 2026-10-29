@@ -23,8 +23,8 @@ pub const SHOW_SUMMARY: &str = "Show summary";
 
 const STORED: &str = "Stored in Git LFS";
 
-/// The active workdir when its banner shows: git-lfs is known to be missing, the root
-/// .gitattributes stores patterns in LFS, and the banner wasn't dismissed for it this session.
+/// The active workdir when its banner shows: git-lfs is known to be missing, an attributes file
+/// (the root's, a nested one or info/attributes) stores patterns in LFS, and the banner wasn't dismissed for it this session.
 pub fn banner_workdir(st: &AppState) -> Option<&Path> {
     let snap = st.snap.as_ref()?;
     let shows = st.lfs.install == LfsInstall::Missing

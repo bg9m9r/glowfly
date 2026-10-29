@@ -21,7 +21,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 
 - Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`.
 - A click sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only while the toast's repository is the active tab.
-- A failed job's toast says git's cause in plain words and can carry a fix (`update/job_errors.rs`, from `git_errors::classify`), with Details beside it in `Toast::details` (`Msg::ToastDetails`, which works from any tab).
+- A failed job's toast says git's cause in plain words and can carry a fix (`update/job_errors.rs`, from `git_errors::classify`), with Details beside it in `Toast::details` (`Msg::ToastDetails`, which works from any tab), and a second fix between them in `Toast::alt` (`Msg::ToastAlt`): Delete lock file comes first with Try again beside it (`update/lock_file.rs`, `update/job_retry.rs`).
 - Failures reaching or reading a remote get their sentences from `state/error_words.rs`, which the Fetch/Pull repositories rows share; a missing or unreadable remote's toast offers Edit remote…. Hosting-service failures (fork, pull request, issue, comment, dashboard, status bar) go through its `hosting`, from `error::advice`.
 - `toast_replacing` updates a toast still on screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
 - Every toast has an x (`NotifyMsg::CloseToast`) that removes it without running its action.
@@ -133,7 +133,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 ## Git LFS notices
 
 - Files: `state/lfs.rs`'s `LfsSession`, `state/lfs_notes.rs`, `state/session.rs` (the open diff's note), `ui/lfs_banner.rs`, `ui/lfs_badge.rs`, `ui/diff/lfs_note.rs`.
-- The root .gitattributes' LFS patterns ride on every whole status read (`LoadMsg::StatusLoaded` and `RepoUnchanged` carry them; `update::lfs::patterns_read` applies them), so hand edits reach the Track in Git LFS entries, the banner and the auto-fetch LFS download without a full reload.
+- The LFS patterns of every attributes file (`lfs::repo_patterns`: root, nested, info/attributes) ride on every whole status read (`LoadMsg::StatusLoaded` and `RepoUnchanged` carry them; `update::lfs::patterns_read` applies them), so hand edits reach the Track in Git LFS entries, the banner and the auto-fetch LFS download without a full reload.
 - The banner shows while git-lfs is known missing (the startup `LfsEffect::Detect`) in a repository with patterns, until dismissed for that workdir this session.
 - File rows marked `lfs` get a badge.
 - A diff whose `RepoMsg::DiffLoaded` brings an `LfsChange` shows a summary instead of the pointer text (`LfsDiffNote`, keyed by target, in `RepoSession::diff.lfs`, parked with its tab) until "Show pointer text".

@@ -41,6 +41,7 @@ source file, update its line here.
 ## Git LFS and Git Flow
 
 - `lfs.rs`, `lfs/`: Git LFS: install and setup state, tracked patterns, LFS command lines.
+- `lfs/sources.rs`: where the LFS patterns come from: the root `.gitattributes` (working tree), tracked nested ones (index blobs) and the common dir's `info/attributes`, each pattern tagged with its file; capped at `MAX_NESTED_FILES` files and `MAX_BYTES` bytes.
 - `lfs/pointer.rs`: pointer files: parsed from bytes, read from a blob without inflating large ones or from a working file, sizes for the screen with `size_text`, and a diff's two sides as `LfsChange`.
 - `gitflow.rs`, `gitflow/`: Git Flow with plain git: config, checks, start and finish plans, continuing a finish stopped at a conflict, the production/development roles, versions, branch groups by kind.
 

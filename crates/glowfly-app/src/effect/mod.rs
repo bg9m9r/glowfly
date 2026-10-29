@@ -27,6 +27,7 @@ mod init;
 mod issue;
 mod lfs;
 mod line_counts;
+mod lock;
 mod meta;
 mod monitor;
 mod names;
@@ -68,6 +69,7 @@ pub use init::InitEffect;
 pub use issue::*;
 pub use lfs::LfsEffect;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
+pub use lock::LockEffect;
 pub use meta::EffectMeta;
 #[cfg(test)]
 pub use meta::SandboxRule;

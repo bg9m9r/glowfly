@@ -204,6 +204,19 @@ second one next to it.
    parts (`same_place`, `newest_ours`, `info_path`, `take_out`) are tested on every runner; the
    real round trip is an ignored test (`GLOWFLY_REAL_TRASH=1 cargo test -p glowfly-core
    real_trash_round_trip -- --ignored`).
+8. **A lock file git left behind is deleted only through `lock_file::delete`**, which checks
+   again just before it removes anything: the exact path git named (absolute, ending `.lock`, no
+   `..`), inside the git dir or common dir once its folder is resolved, still a plain file (not a
+   link, a folder or a Windows reparse point), and only while `git_procs::scan` finds no git
+   process anywhere on the machine. Which repository a git works in can't be read reliably
+   (`git -C`, `GIT_DIR`, a hook's child), so any git counts except `credential-cache--daemon`
+   and `fsmonitor--daemon` when their command line can be read and names that subcommand
+   (Windows: `NtQueryInformationProcess`; Linux: `/proc/<pid>/cmdline`; macOS:
+   `KERN_PROCARGS2`), and every Unknown refuses with its
+   reason: an unreadable process list or name (Windows: ToolHelp; Linux: `/proc/<pid>/comm`, a
+   process that ended meanwhile is skipped; macOS: `proc_listallpids` and `proc_name`), `/proc`
+   mounted with `hidepid`, the Flatpak sandbox (it sees only its own processes) and, on Windows,
+   an open WSL session (`wsl.exe`, `wslhost.exe`), whose git isn't a Windows process.
 
 ### Opening files and starting programs
 

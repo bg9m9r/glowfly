@@ -26,7 +26,7 @@ const PATH: &str = "assets/a.psd";
 
 /// The entries for `path` with `install`, and `*.psd` already tracked.
 fn items(path: &str, install: LfsInstall) -> Vec<TrackItem> {
-    let patterns = [LfsPattern { raw: "*.psd".into(), display: "*.psd".into(), lockable: false }];
+    let patterns = [LfsPattern::root("*.psd", false)];
     track_items(Lang::En, path, TrackContext { install: &install, patterns: &patterns, submodules: &[] })
 }
 

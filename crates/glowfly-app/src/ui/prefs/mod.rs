@@ -76,6 +76,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         job: st.job.as_ref().map(|j| j.label.clone()),
         held: held.clone(),
         patterns: st.snap.as_ref().map(|s| s.lfs_patterns.clone()).unwrap_or_default(),
+        lang: t,
     };
     let save_first = t.tr("prefs.save_bar.first");
     let job = st.job.as_ref().map(|j| j.label.clone());

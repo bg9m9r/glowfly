@@ -1,6 +1,6 @@
 //! Hand edits to .gitattributes reaching the LFS patterns without a full reload: whole status
-//! reads (the watcher's, a Checked refresh that finds the refs unchanged) bring the root file's
-//! patterns again, reads of some paths and stale results leave them alone, and an open Git LFS
+//! reads (the watcher's, a Checked refresh that finds the refs unchanged) bring the attributes
+//! files' patterns again, reads of some paths and stale results leave them alone, and an open Git LFS
 //! page reads its status again in place.
 
 use super::tests::{drive, finish, scratch_repo, state};
@@ -37,7 +37,7 @@ fn raws(st: &AppState) -> Vec<String> {
 }
 
 fn pattern(raw: &str) -> LfsPattern {
-    LfsPattern { raw: raw.into(), display: raw.into(), lockable: false }
+    LfsPattern::root(raw, false)
 }
 
 /// Whether the file menu's "Every .bin file" entry is disabled because the pattern is tracked.

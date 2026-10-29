@@ -55,7 +55,8 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, now: Instant, fx: &mut Vec<E
         }
         LogsMsg::Details { tab, entry } => super::logs_tabs::details(st, tab, entry, fx),
         LogsMsg::Fold(id) => super::logs_runs::fold(st, id),
-        LogsMsg::Fix(id) => super::logs_runs::fix(st, id, now, fx),
+        LogsMsg::Fix(id) => super::logs_runs::fix(st, id, false, now, fx),
+        LogsMsg::AltFix(id) => super::logs_runs::fix(st, id, true, now, fx),
         LogsMsg::CopyEntry(id) => super::logs_copy::copy_entry(st, id, fx),
         LogsMsg::CopyLog => super::logs_copy::copy_log(st, now, fx),
         LogsMsg::Export => super::logs_export::export(st, fx),
@@ -104,6 +105,7 @@ pub(super) fn clear(st: &mut AppState, fx: &mut Vec<Effect>) {
     let cleared: std::collections::HashSet<_> = st.log.drain(..).map(|e| e.id).collect();
     st.logs.open.retain(|id| !cleared.contains(id));
     st.logs.fixes.retain(|(id, _)| !cleared.contains(id));
+    st.logs.alt_fixes.retain(|(id, _)| !cleared.contains(id));
     st.logs.pending.retain(|l| !same_repo(l.repo.as_deref(), tag.as_deref()));
     st.logs.unclaimed.retain(|e| !same_repo(e.repo.as_deref(), tag.as_deref()));
     match st.logs.persist {

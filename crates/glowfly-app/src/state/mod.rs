@@ -50,6 +50,7 @@ pub mod issue;
 pub mod issue_comment;
 pub mod issue_form;
 pub mod issue_words;
+pub mod job_spec;
 pub mod job_stop;
 pub mod journal;
 pub mod journal_lost;
@@ -252,8 +253,7 @@ pub struct RunningJob {
     pub then_push: bool,
     /// Open the create pull request dialog for this branch once this (push) job succeeds.
     pub then_pr: Option<push_pr::PrStart>,
-    /// Check the repository again for a pending link's target once this (fetch) job succeeds
-    /// (update/deep_link_open.rs).
+    /// Check the repository again for a pending link's target once this (fetch) job succeeds (update/deep_link_open.rs).
     pub then_link: bool,
     /// The job can't make the undo history wrong (fetch, push, or an undo/redo itself).
     pub keeps_undo: bool,

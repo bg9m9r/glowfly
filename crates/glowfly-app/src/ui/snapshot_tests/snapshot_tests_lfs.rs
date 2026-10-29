@@ -1,15 +1,16 @@
-//! Preferences > Git LFS snapshots: set up with patterns, not set up yet (with a hook in the
-//! way), git-lfs missing in a repository that uses LFS, and a job running.
+//! Preferences > Git LFS snapshots: set up with patterns, patterns from several attributes files,
+//! not set up yet (with a hook in the way), git-lfs missing in a repository that uses LFS, and a
+//! job running.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::state::{AppState, PrefPage, PrefsState, RunningJob};
 use crate::ui::snapshot_check::CheckSnapshot;
-use glowfly_core::lfs::{LfsPattern, LfsStatus};
+use glowfly_core::lfs::{LfsPattern, LfsStatus, PatternSource};
 use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
 
 fn pattern(raw: &str, lockable: bool) -> LfsPattern {
-    LfsPattern { raw: raw.into(), display: glowfly_core::lfs::unescape_pattern(raw), lockable }
+    LfsPattern::root(raw, lockable)
 }
 
 fn patterns() -> Vec<LfsPattern> {
@@ -35,6 +36,16 @@ fn enabled() -> LfsStatus {
 fn prefs_lfs() {
     let (st, dir) = lfs_page(ThemeChoice::Dark, "lfs-enabled", enabled());
     render("prefs_lfs", st, true);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn prefs_lfs_sources() {
+    let from = |raw, source| LfsPattern { source, ..pattern(raw, false) };
+    let patterns =
+        vec![pattern("*.psd", false), from("*.wav", PatternSource::Nested("art/raw".into())), from("*.iso", PatternSource::Info)];
+    let (st, dir) = lfs_page(ThemeChoice::Dark, "lfs-sources", LfsStatus { patterns, ..enabled() });
+    render("prefs_lfs_sources", st, true);
     remove_fixture(&dir);
 }
 

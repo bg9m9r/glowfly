@@ -7,7 +7,7 @@ fn displays(s: &LfsStatus) -> Vec<&str> {
 }
 
 pub(super) fn pat(raw: &str) -> LfsPattern {
-    LfsPattern { raw: raw.into(), display: unescape_pattern(raw), lockable: false }
+    LfsPattern::root(raw, false)
 }
 
 pub(super) use crate::testutil::lfs_or_skip;
@@ -43,7 +43,7 @@ fn attributes_parsing() {
 
     let later = "*.psd filter=lfs -text\n*.zip filter=lfs\n*.psd -filter\n*.zip filter=lfs lockable\n*.a filter=lfs\n*.a filter=other\n*.b filter=lfs\n*.b !filter\n";
     let p = parse_attributes(later);
-    assert_eq!(p, vec![LfsPattern { raw: "*.zip".into(), display: "*.zip".into(), lockable: true }]);
+    assert_eq!(p, vec![LfsPattern::root("*.zip", true)]);
 
     let replaced = parse_attributes("*.a filter=lfs\n*.b filter=lfs\n*.a filter=lfs lockable\n");
     assert_eq!(replaced.iter().map(|p| (p.raw.as_str(), p.lockable)).collect::<Vec<_>>(), [("*.a", true), ("*.b", false)]);

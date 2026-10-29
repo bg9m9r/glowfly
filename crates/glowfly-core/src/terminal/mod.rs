@@ -9,7 +9,7 @@ mod activity;
 mod edge;
 mod history;
 mod keys;
-mod procs;
+pub(crate) mod procs;
 pub mod pty;
 mod queries;
 mod replay;
