@@ -13,8 +13,11 @@ fn https_username_prompts_keep_the_url() {
 
 #[test]
 fn https_password_prompts_decode_the_user() {
-    let kind = classify("Password for 'https://ada%40corp.com@dev.azure.com': ", None);
-    assert_eq!(kind, PromptKind::Password { target: "https://ada%40corp.com@dev.azure.com".into(), user: Some("ada@corp.com".into()) });
+    let kind = classify("Password for 'https://ada%40example.com@dev.azure.com': ", None);
+    assert_eq!(
+        kind,
+        PromptKind::Password { target: "https://ada%40example.com@dev.azure.com".into(), user: Some("ada@example.com".into()) }
+    );
     assert_eq!(host(&kind).as_deref(), Some("dev.azure.com"));
     assert_eq!(user_and_host("https://ada@github.com/o/r.git"), (Some("ada".into()), Some("github.com".into())));
     assert_eq!(user_and_host("https://github.com"), (None, Some("github.com".into())));

@@ -3,7 +3,7 @@
 //!
 //! - Standard, dark: Jade (in the green the gold accent leaves free) takes the Gold slot, at the
 //!   tier Gold had.
-//! - Colour-blind safe, dark: Yellow and Lime fall within 0.08 OKLab of the gold under protan or
+//! - Colour-blind friendly, dark: Yellow and Lime fall within 0.08 OKLab of the gold under protan or
 //!   deutan vision, so Orange and a paler Lime take their slots.
 //! - Dawn: a gold line dark enough for paper reads brown, so Dawn's accent is an iris violet
 //!   (hue 283) beside its gold buttons. Its standard light tones take Jade in the slot Navy
@@ -57,7 +57,7 @@ pub const DAWN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, JADE_SLOT, Hue:
 
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
 
-/// The colour-blind safe dark tones beside the gold: Orange and a paler Lime.
+/// The colour-blind friendly dark tones beside the gold: Orange and a paler Lime.
 pub const GOLD_CB_DARK_TONES: [Color32; CB] = with(with(CB_DARK_TONES, CB_YELLOW_SLOT, hex(0xeb8f13)), CB_LIME_SLOT, hex(0xc8feac));
 pub const GOLD_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, CB_YELLOW_SLOT, Hue::Orange);
 
@@ -67,14 +67,14 @@ pub const BRANCH_DUSK: Branch =
 /// Dawn.
 pub const BRANCH_DAWN: Branch =
     Branch { lanes: DAWN_LIGHT_LINES, chips: DAWN_LIGHT_TEXT, preset: BranchPalette::Standard, names: DAWN_NAMES };
-/// Colour-blind safe, on Dusk.
+/// Colour-blind friendly, on Dusk.
 pub const BRANCH_CB_DUSK: Branch = Branch {
     lanes: pad(GOLD_CB_DARK_TONES),
     chips: pad(GOLD_CB_DARK_TONES),
     preset: BranchPalette::ColourBlind,
     names: pad(GOLD_CB_DARK_NAMES),
 };
-/// Colour-blind safe, on Dawn.
+/// Colour-blind friendly, on Dawn.
 pub const BRANCH_CB_DAWN: Branch = Branch {
     lanes: pad(COBALT_CB_LIGHT_LINES),
     chips: pad(COBALT_CB_LIGHT_TEXT),

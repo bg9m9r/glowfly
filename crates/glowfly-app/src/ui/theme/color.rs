@@ -81,7 +81,7 @@ pub struct Palette {
     /// strips). Not theme-file keys yet: always the base palette's.
     pub repository: Repository,
     pub branch: Branch,
-    /// The branch family the colour-blind safe preset puts in `branch` (`branch_palette::applied`).
+    /// The branch family the colour-blind friendly preset puts in `branch` (`branch_palette::applied`).
     pub colour_blind: Branch,
     /// The theme's own terminal colours (the `terminal_*` keys). The terminal draws in
     /// [`term`], which Preferences > Terminal > Colours can point elsewhere.

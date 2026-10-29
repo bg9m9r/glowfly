@@ -62,7 +62,7 @@ winresource = "0.1"
 [package.metadata.deb]
 name = "glowfly"
 maintainer = "Glowfly contributors <https://github.com/bg9m9r/glowfly/issues>"
-copyright = "Glowfly contributors"
+copyright = "Copyright 2026 Brett Gamerson and the Glowfly contributors"
 section = "vcs"
 priority = "optional"
 # `$auto` lists only the libraries the program links. winit, glutin and the Wayland client load

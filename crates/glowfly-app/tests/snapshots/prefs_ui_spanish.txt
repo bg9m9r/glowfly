@@ -69,7 +69,7 @@ CheckBox "SHA corto bajo el autor" [on]
 CheckBox "Fecha y hora" [on]
 ComboBox
 ComboBox
-Label "Apto para daltonismo usa 8 tonos elegidos para distinguirse con daltonismo rojo-verde o azul-amarillo. Los nombres de las ramas siempre aparecen junto a su color, y la rama principal mantiene el color de acento."
+Label "Pensado para daltonismo usa 8 tonos elegidos para distinguirse con daltonismo rojo-verde o azul-amarillo. Los nombres de las ramas siempre aparecen junto a su color, y la rama principal mantiene el color de acento."
 Button "Restablecer la disposición estándar"
 Button "Restablecer la disposición compacta"
 Label "Ambos restablecen también el ancho estándar de cada columna. Para cambiar el tamaño de una columna, arrastra el separador junto a su título en la cabecera del grafo; haz doble clic en un separador para restablecer solo esa columna."

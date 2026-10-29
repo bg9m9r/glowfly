@@ -7,8 +7,9 @@ branch/remote/tag/stash sidebar, and a right-hand panel for commit details or st
 committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps, Jira and Trello for pull
 requests and issues.
 
-Glowfly is an independent project. It is not affiliated with or endorsed by any other Git client
-or hosting service; product names are used only to describe compatibility.
+Glowfly is an independent project. It is not affiliated with or endorsed by any other Git client,
+hosting service, issue tracker or operating system vendor; product names are used only to
+describe compatibility. All trademarks are the property of their owners.
 
 ## Install
 
@@ -192,6 +193,8 @@ Licensed under either of
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
 
 at your option.
+
+Provided as is, without warranty of any kind; see the license files.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in
 the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without

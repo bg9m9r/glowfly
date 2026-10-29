@@ -140,7 +140,7 @@ pub struct Settings {
     /// Keep tabs of one repository's worktrees side by side (Preferences > Appearance).
     pub group_worktree_tabs: bool,
     pub branch_visibility: BranchVisibility,
-    /// The branch hues: standard or colour-blind safe (Preferences > Appearance).
+    /// The branch hues: standard or colour-blind friendly (Preferences > Appearance).
     pub branch_palette: BranchPalette,
     pub columns: GraphColumns,
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.

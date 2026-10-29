@@ -18,6 +18,7 @@ pub(crate) fn about(ui: &mut egui::Ui, cx: Cx, git: &GitState, version: &str, ms
     d.body(ui, |ui| {
         ui.label(t.tr("about.tagline"));
         ui.label(t.trf("about.license", &[("license", &LICENSE)]));
+        ui.label(t.tr("about.no_warranty"));
         if let Some(line) = git_line(git) {
             ui.label(line);
         }
