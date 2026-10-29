@@ -18,6 +18,12 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 
 ### No missing glyphs
 
+- Give the semibold family the system's bold CJK face (Microsoft YaHei Bold, Yu Gothic Bold) instead of the regular one
+- A monospaced CJK face (MS Gothic, Noto Sans Mono CJK) for monospace text, so CJK lines up in diffs and the terminal
+- On Linux, ask fontconfig (`fc-match :lang=ja`) when none of the known CJK files is found
+- On macOS releases that keep PingFang under `/System/Library/AssetsV2`, find it there
+- System fallbacks for other scripts the bundled fonts lack (Thai, Devanagari, Arabic, Hebrew), which the debug warning now names
+- Name the CJK locales in their own script in Preferences (日本語, 中文, 한국어) when the system has the fonts
 - Put the ahead/behind counts into the LOCAL row's tooltip and accessible description ("2 ahead,
   3 behind origin/search"), so the painted arrows have words for screen readers
 - Use the painted ahead/behind arrows wherever else counts appear (remote and Git Flow rows, tab

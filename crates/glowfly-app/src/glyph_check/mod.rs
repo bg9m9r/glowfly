@@ -5,7 +5,10 @@
 //!
 //! This lives in the crate rather than `tests/` so that `fonts()` installs the app's bundled
 //! fonts the way the app does (`ui::theme::fonts::install`, which only in-crate code can call).
+//! In tests the CJK fallback is a bundled subset, so the result doesn't depend on the machine;
+//! `cjk_dates` also asks the machine's own CJK fonts, where it has them.
 
+mod cjk_dates;
 mod scan;
 
 use eframe::egui;
@@ -106,9 +109,10 @@ fn fonts_have_what_the_ui_uses_and_lack_what_it_paints() {
         assert!(drawable(&ctx, c), "U+{:04X} should be drawable", c as u32);
         assert!(drawable_in(&ctx, &mono, c), "U+{:04X} should be drawable in monospace", c as u32);
     }
-    // Noto Sans has no arrows, midline ellipsis, caret or pencil, and no CJK, so the UI paints
-    // them (the ahead/behind arrows too, though JetBrains Mono has arrows).
-    for c in ['\u{2191}', '\u{2193}', '\u{2192}', '\u{22ef}', '\u{25be}', '\u{270e}', '\u{65e5}'] {
+    // Noto Sans has no arrows, midline ellipsis, caret or pencil, so the UI paints them (the
+    // ahead/behind arrows too, though JetBrains Mono has arrows). The CJK fallback adds none:
+    // in tests it is a subset with only CJK and Hangul characters.
+    for c in ['\u{2191}', '\u{2193}', '\u{2192}', '\u{22ef}', '\u{25be}', '\u{270e}'] {
         assert!(!drawable(&ctx, c), "U+{:04X} is expected to be missing", c as u32);
     }
 }

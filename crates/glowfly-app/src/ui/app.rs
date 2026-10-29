@@ -260,6 +260,8 @@ impl GlowflyApp {
             super::draw(ctx, &mut app.st, &mut app.cache, &mut msgs);
             app.draw_overlay(ctx);
         });
+        // Debug builds: warn once about each character drawn as a box.
+        let _ = theme::missing_glyphs::check(ctx);
         if let Some(native) = &self.native {
             app_native::after_draw(native, ctx, &self.st);
         }

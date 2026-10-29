@@ -118,7 +118,7 @@ pub const LOCALES: [(&str, &str); 14] = [
     ("nl_NL", "Nederlands"),
     ("sv_SE", "Svenska"),
     ("pl_PL", "Polski"),
-    // Named in English: the bundled fonts have no CJK or Hangul glyphs.
+    // Named in English: CJK and Hangul glyphs come from the system's fonts, which may be missing.
     ("ja_JP", "Japanese"),
     ("zh_CN", "Chinese (Simplified)"),
     ("ko_KR", "Korean"),
