@@ -115,7 +115,7 @@ fn parking_drops_a_conflict_save_in_flight() {
 
 #[test]
 fn park_takes_the_open_diff_and_leaves_its_counters() {
-    let diff = DiffSlot { view: a_diff(), generation: 5, shown_gen: 5, lfs: Some(a_note()) };
+    let diff = DiffSlot { view: a_diff(), generation: 5, shown_gen: 5, lfs: Some(a_note()), raw: None };
     let mut active = RepoSession { diff, ..Default::default() };
     active.draft.summary = "wip".into();
 
@@ -131,7 +131,8 @@ fn park_takes_the_open_diff_and_leaves_its_counters() {
 
 #[test]
 fn resume_moves_the_diff_counter_and_keeps_the_shown_request_current() {
-    let mut parked = RepoSession { diff: DiffSlot { view: a_diff(), generation: 3, shown_gen: 3, lfs: None }, ..Default::default() };
+    let mut parked =
+        RepoSession { diff: DiffSlot { view: a_diff(), generation: 3, shown_gen: 3, lfs: None, raw: None }, ..Default::default() };
     assert_eq!(parked.diff.hunk_ops_gen(), Some(3));
     let mut current = RepoSession { diff: DiffSlot { generation: 9, shown_gen: 8, ..Default::default() }, ..Default::default() };
 

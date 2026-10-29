@@ -95,6 +95,8 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
 /// with a hazard keeps the line discard, which core checks for twins.
 pub(super) fn every_line_untracked(st: &AppState, path: &str, hunk: &Hunk, lines: &BTreeSet<usize>) -> bool {
     let untracked = st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.path == path && f.status == '?'));
+    // Without the hunk's bytes the runner couldn't tell a change to line ends; a line discard then.
+    let untracked = untracked && st.session.diff.raw.is_some();
     let mut added = hunk.lines.iter().enumerate().filter(|(_, l)| l.origin == '+').map(|(i, _)| i).peekable();
     let only_added = hunk.lines.iter().all(|l| matches!(l.origin, '+' | '=' | '<' | '>'));
     untracked && only_added && added.peek().is_some() && added.all(|i| lines.contains(&i)) && hazard_of(st, path).is_none()

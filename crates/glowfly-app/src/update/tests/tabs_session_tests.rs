@@ -248,7 +248,10 @@ fn a_diff_result_from_before_the_switch_is_dropped() {
     assert!(st.session.diff.generation > g, "the diff's counter moved past the parked request");
 
     let (lines, shown) = (st.log.len(), st.session.diff.view.is_some());
-    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { generation: g, reload: false, result: Err("stale".into()), lfs: None, target }));
+    run(
+        &mut st,
+        Msg::Repo(RepoMsg::DiffLoaded { generation: g, reload: false, result: Err("stale".into()), lfs: None, raw: None, target }),
+    );
     assert_eq!(st.log.len(), lines, "the old result is dropped: nothing is logged for it");
     assert_eq!(st.session.diff.view.is_some(), shown, "and the diff view is untouched");
     cleanup(&[&a, &b]);

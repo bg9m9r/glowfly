@@ -93,7 +93,7 @@ fn work_file_with(workdir: &Path, op: FileOp, trashers: undo::Trashers) -> Msg {
             match seen.as_deref() {
                 None => discard(),
                 // Discarding every line: only while git still shows the diff the user saw.
-                Some(s) => match repo::whole_discard(workdir, path, &s.expected, s.ignore_whitespace) {
+                Some(s) => match repo::whole_discard(workdir, path, &s.expected, s.raw, s.ignore_whitespace) {
                     Ok(repo::WholeDiscard::Delete) => discard(),
                     // Git has an intent-to-add file: its lines are discarded like any others.
                     Ok(repo::WholeDiscard::Lines) => return lines_instead(workdir, path, s),

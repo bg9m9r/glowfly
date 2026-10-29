@@ -43,6 +43,8 @@ pub enum RepoMsg {
         result: Result<FileDiff, String>,
         /// The two sides when either is a Git LFS pointer (`repo::ViewDiff::lfs`); None on an error.
         lfs: Option<glowfly_core::lfs::pointer::LfsChange>,
+        /// The hunk's exact bytes, hashed (`repo::ViewDiff::raw`); None on an error.
+        raw: Option<Oid>,
     },
     StatsLoaded(Vec<(Oid, usize, usize, usize)>),
     /// Stats asked for but not worked out: a newer request came first (the graph scrolled on).

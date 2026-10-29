@@ -46,7 +46,7 @@ source file, update its line here.
 ## Changing files
 
 - Staging, line staging and restore; working-tree files.
-- Discarding every line of an untracked file deletes it through Discard's trash and undo, once `repo::whole_discard` (`index.rs`) finds the diff unchanged; an intent-to-add file has its lines discarded instead. Unstaging every line of an added file untracks it (`lines.rs`).
+- Discarding every line of an untracked file deletes it through Discard's trash and undo, once `repo::whole_discard` (`index.rs`) finds the diff unchanged to the byte (`ViewDiff::raw`) and the path a regular file, with the line discard's twin and converted-content refusals; an intent-to-add file has its lines discarded instead. Unstaging every line of an added file untracks it (`lines.rs`).
 - Revert of a hunk, lines or a whole file of a commit diff, merged three ways with later edits: `revert_file.rs`, `revert_merge.rs`.
 - Revert of a hunk or lines of a commit-to-working-tree diff: never merged.
 - A hunk or lines shown with whitespace hidden are staged, discarded or reverted as shown, with the unchanged lines' exact bytes from the unfiltered diff: `shown_ws.rs`.

@@ -158,7 +158,8 @@ fn reloads_keep_the_gap_and_other_files_reset_it() {
     // meanwhile.
     let d = repo::load_diff(&dir, &f_txt()).unwrap();
     let generation = st.session.diff.generation;
-    let fx = run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target: f_txt(), reload: true, generation, result: Ok(d), lfs: None }));
+    let fx =
+        run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target: f_txt(), reload: true, generation, result: Ok(d), lfs: None, raw: None }));
     assert_eq!(loads(&fx), 1, "{fx:?}");
     assert!(st.session.tab_view.diff_expanded.contains(key));
     assert_eq!(st.session.tab_view.diff_expanded.gap_text().cloned(), text);

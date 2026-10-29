@@ -52,7 +52,7 @@ fn target(path: &str) -> DiffTarget {
 
 fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, lfs: Option<LfsChange>) {
     let generation = st.session.diff.generation;
-    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result: Ok(three_hunks()), lfs }));
+    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result: Ok(three_hunks()), lfs, raw: None }));
 }
 
 #[test]
@@ -117,7 +117,8 @@ fn a_diff_with_an_lfs_side_keeps_its_note_and_pointer_choice() {
 
     // A superseded result changes nothing.
     let generation = st.session.diff.generation.wrapping_sub(1);
-    let msg = RepoMsg::DiffLoaded { target: target("other.psd"), reload: false, generation, result: Ok(three_hunks()), lfs: None };
+    let msg =
+        RepoMsg::DiffLoaded { target: target("other.psd"), reload: false, generation, result: Ok(three_hunks()), lfs: None, raw: None };
     run(&mut st, Msg::Repo(msg));
     assert!(pointer_shown(&st));
 
