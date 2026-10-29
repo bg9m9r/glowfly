@@ -86,7 +86,7 @@ pub use stack::{StackEffect, StackPushJob};
 pub use stash::{PutBackRequest, StashEffect};
 pub use submodule::SubmoduleEffect;
 pub use trust::TrustEffect;
-pub use trust_check::{Checked, Seal, Sealed, TrustCheck, WaitingKind};
+pub use trust_check::{Accepted, Checked, Seal, Sealed, TrustCheck, WaitingKind};
 pub use ui::UiEffect;
 pub use updates::{RestartJob, UpdateEffect};
 pub use worktree::WorktreeEffect;

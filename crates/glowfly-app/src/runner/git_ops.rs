@@ -220,7 +220,8 @@ pub(super) enum Gated {
     Done(bool, String),
     /// The gate stopped one: why, the output so far, and whether a command before it could have
     /// changed the repository (anything but a fetch ran).
-    Halted { halt: super::trust_gate::Halt, output: String, moved: bool },
+    /// `at`: the index of the command it stopped before.
+    Halted { halt: super::trust_gate::Halt, output: String, moved: bool, at: usize },
 }
 
 /// `run_git` with each command compared by `gate` first (runner/trust_gate.rs): a pull runs
@@ -242,11 +243,11 @@ pub(super) fn run_git_gated(
     let mut output = String::new();
     let mut moved = false;
     let mut git = |c: &[String], input: &str| gitcli::run_with_input(cwd, c, input, job_env(prompts));
-    for c in cmds {
-        let (success, text) = match gate.before(c, &mut git) {
+    for (at, c) in cmds.iter().enumerate() {
+        let (success, text) = match gate.before(at, c, &mut git) {
             Step::Halt(halt, ran) => {
                 output.push_str(&ran);
-                return Gated::Halted { halt, output: output.trim_end().to_owned(), moved };
+                return Gated::Halted { halt, output: output.trim_end().to_owned(), moved, at };
             }
             Step::Ran(ok, text) => {
                 output.push_str(&text);

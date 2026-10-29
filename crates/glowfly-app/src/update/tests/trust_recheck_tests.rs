@@ -10,7 +10,7 @@ use crate::effect::{Effect, Seal, Sealed, TrustCheck};
 use crate::msg::{Msg, TrustMsg};
 use crate::state::trust::TrustPrompt;
 use crate::state::{AppState, Modal};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn prompt(st: &AppState) -> &TrustPrompt {
     let Some(Modal::Trust(p)) = &st.modal else { panic!("expected the trust prompt") };
@@ -130,7 +130,8 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
         real: dir.clone(),
         saved: None,
         sealed: Sealed::Job { label: label.into() },
-        accept_unchecked: false,
+        accepted: None,
+        lang: Default::default(),
     };
     let save = || Effect::SaveRecent(Vec::new());
     let shell = || Effect::Os(crate::effect::OsEffect::OpenTerminal(dir.clone()));
@@ -147,6 +148,23 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
         .collect();
     assert_eq!(labels, [Some("b".to_owned()), Some("a".to_owned()), None]);
     assert!(st.trust.seals.is_empty(), "each update's seals are used once");
+    // Moved, it checks the one in its own repository, not another repository's.
+    let job = |cwd: &str| Effect::RunGit {
+        cwd: cwd.into(),
+        cmds: Vec::new(),
+        write_file: None,
+        record: None,
+        journal: None,
+        prompts: false,
+        expect: None,
+        stoppable: false,
+        on_fail_check: None,
+    };
+    st.trust.seals.push(Seal { at: 0, name: job("w").name(), check: check("w") });
+    let mut fx = vec![job("other"), job("w")];
+    crate::update::trust_seal_wrap(&mut st, &mut fx, 0);
+    let workdirs: Vec<Option<PathBuf>> = fx.iter().map(|e| e.trust_check().map(|c| c.workdir.clone())).collect();
+    assert_eq!(workdirs, [None, Some(dir.clone())]);
 }
 
 #[test]
@@ -175,13 +193,14 @@ fn trust_and_run_on_a_prompt_that_couldnt_compare_runs_without_comparing() {
     use glowfly_core::trust::incoming::Unchecked;
     let (mut st, work, bare) = trusted_tracked_hooks("recheck-unchecked");
     let Effect::Checked(c) = checked_job(sealed(&mut st, pull())) else { unreachable!() };
-    assert!(!c.check.accept_unchecked);
+    assert!(c.check.accepted.is_none());
     let now = st.snap.as_ref().unwrap().trust_scan.clone();
-    let unchecked = Some(Unchecked::TooMany(900));
+    let unchecked = Some(crate::effect::Accepted { at: Some(1), reason: Unchecked::Unresolved("@{push}".into()) });
     let stale = crate::msg::Stale { check: c.check, effect: c.effect, now, incoming: None, unchecked: unchecked.clone() };
     drive(&mut st, Msg::Trust(TrustMsg::Stale(Box::new(stale))));
     assert_eq!(prompt(&st).unchecked.as_deref(), unchecked.as_ref(), "the prompt says why");
     let job = checked_job(trust_and_run(&mut st));
-    assert!(job.trust_check().is_some_and(|c| c.accept_unchecked), "Trust and run takes what couldn't be compared");
+    let accepted = job.trust_check().and_then(|c| c.accepted.clone());
+    assert_eq!(accepted, unchecked, "Trust and run takes that reason, at that command only");
     cleanup(&[&work, &bare]);
 }

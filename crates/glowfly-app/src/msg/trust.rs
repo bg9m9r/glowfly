@@ -34,7 +34,7 @@ pub struct Stale {
     /// isn't covered (`trust::follow::incoming`).
     pub incoming: Option<TrustScan>,
     /// Why what it brings in couldn't be compared, when that is why it didn't start.
-    pub unchecked: Option<glowfly_core::trust::incoming::Unchecked>,
+    pub unchecked: Option<crate::effect::Accepted>,
 }
 
 /// One repository `TrustMsg::Inherited` reports.

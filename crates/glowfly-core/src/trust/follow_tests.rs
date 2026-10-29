@@ -256,3 +256,25 @@ fn a_hook_linked_into_the_working_tree_follows_it() {
     assert_eq!((f[0].path.as_str(), f[0].hooks), ("scripts/check.sh", false));
     cleanup(&[&dir]);
 }
+
+#[test]
+fn a_hooks_path_only_the_file_system_can_resolve_follows_the_whole_tree() {
+    for (n, spelled) in [".GITHO~1", ".githooks::$INDEX_ALLOCATION"].into_iter().enumerate() {
+        let (work, bare) = tracked_hooks(&format!("follow-unclear-{n}"));
+        git(&work, &["config", "core.hooksPath", spelled]);
+        let s = scan(&work);
+        assert!(s.follows.iter().any(|f| f.path.is_empty()), "{spelled}: {:?}", s.follows);
+        // Any commit that changes anything is another version.
+        let head = Repository::open(&work).unwrap().head().unwrap().target().unwrap();
+        let saved = trusted(&work);
+        write(&work, "b.txt", "b\n");
+        git(&work, &["-c", "core.hooksPath=", "add", "."]);
+        git(&work, &["-c", "core.hooksPath=", "commit", "-q", "-m", "b"]);
+        let repo = Repository::open(&work).unwrap();
+        let next = repo.head().unwrap().target().unwrap();
+        assert_ne!(head, next);
+        let got = super::super::compare::check(&repo, &s.follows, Some(&saved), &[next]);
+        assert!(got.is_err(), "{spelled}: {got:?}");
+        cleanup(&[&work, &bare]);
+    }
+}

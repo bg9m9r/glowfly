@@ -3,7 +3,7 @@
 //! pick gets before git runs (incoming.rs names the commits, pull.rs pins a pull's). Objects
 //! only: no checkout, hook, filter or fsmonitor runs.
 
-use super::incoming::{Unchecked, allows};
+use super::incoming::{Target, Unchecked, allows};
 use super::{Follow, TrustScan, follow};
 use crate::settings::SavedTrust;
 use git2::{Oid, Repository};
@@ -37,6 +37,24 @@ pub fn check(repo: &Repository, follows: &[Follow], saved: Option<&SavedTrust>, 
                 follow::incoming(repo, follows, *oid).map_err(|e| Refused::Unchecked(Unchecked::Unreadable(e.message().to_owned())))?;
             return Err(Refused::Held(Box::new(found)));
         }
+    }
+    Ok(())
+}
+
+/// `check` for what each of `targets` brings in (incoming.rs), and for the merges a merge,
+/// cherry-pick or revert makes, what they leave (merged.rs).
+pub fn check_targets(repo: &Repository, follows: &[Follow], saved: Option<&SavedTrust>, targets: &[Target]) -> Result<(), Refused> {
+    if follows.is_empty() {
+        return Ok(());
+    }
+    let mut oids = Vec::new();
+    for t in targets {
+        oids.extend(super::incoming::commits(repo, follows, t).map_err(Refused::Unchecked)?);
+    }
+    check(repo, follows, saved, &oids)?;
+    for t in targets {
+        let steps = super::merged::steps(repo, t).map_err(Refused::Unchecked)?;
+        super::merged::check(repo, follows, saved, &steps)?;
     }
     Ok(())
 }

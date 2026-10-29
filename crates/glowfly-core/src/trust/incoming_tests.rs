@@ -4,6 +4,7 @@
 use super::*;
 use crate::gitcli::args;
 use crate::testutil::*;
+use crate::trust::TrustScan;
 
 fn of(a: &[&str]) -> Vec<Target> {
     targets(&args(a))
@@ -49,8 +50,14 @@ fn the_commands_that_move_the_working_tree_name_what_they_bring() {
     assert_eq!(of(&["switch", "-c", "new", "v1"]), [rev("v1")]);
     assert_eq!(of(&["switch", "topic"]), [switch("topic", false)]);
     assert_eq!(of(&["checkout", "-"]), [switch("@{-1}", true)]);
-    assert_eq!(of(&["merge", "--no-ff", "-m", "msg", "topic", "other"]), [rev("topic"), rev("other")]);
-    assert_eq!(of(&["merge"]), [rev("@{upstream}")]);
+    assert_eq!(of(&["merge", "--no-ff", "-m", "msg", "topic", "other"]), [Target::Merged(args(&["topic", "other"]))]);
+    assert_eq!(of(&["merge"]), [Target::Merged(args(&["@{upstream}"]))]);
+    assert_eq!(of(&["merge", "FETCH_HEAD"]), [Target::Merged(args(&["FETCH_HEAD"]))]);
+    assert_eq!(of(&["am", "--3way", "/p/x.patch"]), [Target::Mailbox(args(&["/p/x.patch"]))]);
+    assert_eq!(of(&["am", "--continue"]), [Target::Sequencer]);
+    assert_eq!(of(&["am", "--skip"]), [Target::Sequencer]);
+    assert_eq!(of(&["am", "-p2", "x.patch"]), [Target::Mailbox(Vec::new())], "other paths: not read");
+    assert_eq!(of(&["am", "--directory=.githooks", "x.patch"]), [Target::Mailbox(Vec::new())]);
     assert_eq!(of(&["merge", "--abort"]), []);
     assert_eq!(of(&["rebase", "main"]), [replayed(None, Some("main"), None)]);
     assert_eq!(of(&["rebase", "main", "topic"]), [replayed(None, Some("main"), Some("topic"))], "topic is checked out first");
@@ -136,20 +143,113 @@ fn a_replay_lists_every_commit_it_replays_and_where_it_starts() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+fn hooks_follow() -> [Follow; 1] {
+    [Follow { path: ".githooks".into(), tracked: None, hooks: true }]
+}
+
 #[test]
-fn a_replay_longer_than_the_cap_is_held() {
-    let dir = committed("incoming-cap");
+fn a_long_replay_is_compared_commit_by_commit_where_hooks_run_from() {
+    let dir = committed("incoming-long");
     let repo = Repository::open(&dir).unwrap();
     let sig = git2::Signature::now("t", "t@example.com").unwrap();
     let mut parent = repo.head().unwrap().peel_to_commit().unwrap();
-    let tree = parent.tree().unwrap();
-    for _ in 0..=MAX_COMPARED {
-        let id = repo.commit(None, &sig, &sig, "x", &tree, &[&parent]).unwrap();
+    let plain = parent.tree().unwrap();
+    // A hook deep inside a replay of 1500 commits.
+    let mut hooked = repo.treebuilder(Some(&plain)).unwrap();
+    let mut dir_tree = repo.treebuilder(None).unwrap();
+    dir_tree.insert("post-merge", repo.blob(b"echo evil\n").unwrap(), 0o100755).unwrap();
+    hooked.insert(".githooks", dir_tree.write().unwrap(), 0o040000).unwrap();
+    let hooked = repo.find_tree(hooked.write().unwrap()).unwrap();
+    for n in 0..1500 {
+        let tree = if n == 700 { &hooked } else { &plain };
+        let id = repo.commit(None, &sig, &sig, "x", tree, &[&parent]).unwrap();
         parent = repo.find_commit(id).unwrap();
     }
     repo.branch("long", &parent, false).unwrap();
-    let got = commits(&repo, &[], &replayed(None, Some("main"), Some("long")));
-    assert!(matches!(got, Err(Unchecked::TooMany(_))), "{got:?}");
+    let target = replayed(None, Some("main"), Some("long"));
+    assert_eq!(commits(&repo, &[], &target).map(|c| c.len()), Ok(1502), "every commit, however many");
+    // Trusted as main has it: no hooks there.
+    let follows = hooks_follow();
+    let main = repo.head().unwrap().target().unwrap();
+    let now = TrustScan { follows: follow::versions(&repo, &follows, main).unwrap(), ..TrustScan::default() };
+    let saved = SavedTrust::trusted(Some(now.print()));
+    let first = repo.revparse_single("long~1400").unwrap().id();
+    assert_eq!(super::super::compare::check(&repo, &follows, Some(&saved), &[first]), Ok(()), "a plain one is covered");
+    let got = super::super::compare::check_targets(&repo, &follows, Some(&saved), &[target]);
+    assert!(matches!(got, Err(super::super::compare::Refused::Held(_))), "{got:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_mailbox_that_writes_where_hooks_run_from_is_held() {
+    let dir = committed("incoming-am");
+    let repo = Repository::open(&dir).unwrap();
+    let mail = "From 0 Mon Sep 17 00:00:00 2001\nSubject: [PATCH] x\n\n---\n\
+        diff --git a/.GitHooks/post-applypatch b/.GitHooks/post-applypatch\nnew file mode 100755\n\
+        --- /dev/null\n+++ b/.GitHooks/post-applypatch\n@@ -0,0 +1 @@\n+echo hi\n";
+    write(&dir, "hooks.patch", mail);
+    write(&dir, "plain.patch", &mail.replace(".GitHooks/post-applypatch", "src/x.txt"));
+    let follows = hooks_follow();
+    let held = commits(&repo, &follows, &Target::Mailbox(args(&["hooks.patch"])));
+    assert_eq!(held, Err(Unchecked::Patched(".GitHooks/post-applypatch".into())), "any spelling the volume folds");
+    assert_eq!(commits(&repo, &follows, &Target::Mailbox(args(&["plain.patch"]))), Ok(vec![]));
+    assert!(matches!(commits(&repo, &follows, &Target::Mailbox(args(&["missing.patch"]))), Err(Unchecked::Unreadable(_))));
+    assert_eq!(commits(&repo, &follows, &Target::Mailbox(Vec::new())), Err(Unchecked::Unknown));
+    // `am --continue`: the patches left in rebase-apply.
+    let apply = repo.path().join("rebase-apply");
+    std::fs::create_dir_all(&apply).unwrap();
+    std::fs::write(apply.join("next"), "2\n").unwrap();
+    std::fs::write(apply.join("last"), "2\n").unwrap();
+    std::fs::write(apply.join("0001"), mail).unwrap();
+    std::fs::write(apply.join("0002"), mail.replace(".GitHooks/post-applypatch", "src/x.txt")).unwrap();
+    assert_eq!(commits(&repo, &follows, &Target::Sequencer), Ok(vec![]), "the one applied already doesn't count");
+    std::fs::write(apply.join("next"), "1\n").unwrap();
+    assert!(matches!(commits(&repo, &follows, &Target::Sequencer), Err(Unchecked::Patched(_))));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_todo_step_that_doesn_t_resolve_is_unresolved() {
+    let dir = committed("incoming-todo");
+    let repo = Repository::open(&dir).unwrap();
+    let head = repo.head().unwrap().target().unwrap();
+    let todo = repo.path().join("rebase-merge");
+    std::fs::create_dir_all(&todo).unwrap();
+    std::fs::write(todo.join("onto"), format!("{head}\n")).unwrap();
+    let write_todo = |text: &str| std::fs::write(todo.join("git-rebase-todo"), text).unwrap();
+    write_todo(&format!("pick {head} x\nlabel l\nreset l\nexec make\nmerge -C {head} l # m\n"));
+    assert_eq!(commits(&repo, &[], &Target::Sequencer), Ok(vec![head, head, head]));
+    write_todo("pick deadbeefdeadbeef x\n");
+    assert_eq!(commits(&repo, &[], &Target::Sequencer), Err(Unchecked::Unresolved("deadbeefdeadbeef".into())));
+    write_todo("frobnicate x\n");
+    assert!(matches!(commits(&repo, &[], &Target::Sequencer), Err(Unchecked::Unresolved(_))), "a step Glowfly doesn't know");
+    // A search by message: libgit2 and git can find different commits.
+    assert_eq!(commits(&repo, &[], &rev(":/first")), Err(Unchecked::Unresolved(":/first".into())));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_merge_of_fetch_head_takes_every_commit_marked_for_merging() {
+    let dir = committed("incoming-fetch-head");
+    let repo = Repository::open(&dir).unwrap();
+    let head = repo.head().unwrap().target().unwrap();
+    let other = repo.blob(b"x").unwrap();
+    let a = repo
+        .commit(
+            None,
+            &repo.signature().unwrap(),
+            &repo.signature().unwrap(),
+            "a",
+            &repo.head().unwrap().peel_to_tree().unwrap(),
+            &[&repo.find_commit(head).unwrap()],
+        )
+        .unwrap();
+    std::fs::write(
+        repo.path().join("FETCH_HEAD"),
+        format!("{head}\t\tbranch 'main' of x\n{a}\t\tbranch 'b' of x\n{other}\tnot-for-merge\tbranch 'c' of x\n"),
+    )
+    .unwrap();
+    assert_eq!(commits(&repo, &[], &Target::Merged(args(&["FETCH_HEAD"]))), Ok(vec![head, a]));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

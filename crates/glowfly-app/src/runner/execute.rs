@@ -122,17 +122,20 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
                     },
                     (None, Some((gate, _))) => match git_ops::run_git_gated(&cwd, &cmds, write_file, prompts, gate) {
                         git_ops::Gated::Done(ok, output) => (ok, output),
-                        git_ops::Gated::Halted { halt, moved: false, .. } => {
+                        git_ops::Gated::Halted { halt, moved: false, at, .. } => {
                             let (job, check) = again.expect("a gate");
                             let now = git2::Repository::open(&cwd).map(|r| glowfly_core::trust::scan_now(&r)).unwrap_or_default();
                             return match super::trust::halted(now, halt) {
                                 super::trust::Verdict::Stale(f) => super::trust::stale(check, job, f.0, f.1, None),
-                                super::trust::Verdict::Unchecked(f) => super::trust::stale(check, job, f.0, None, Some(f.1)),
+                                super::trust::Verdict::Unchecked(f) => {
+                                    let accepted = crate::effect::Accepted { at: Some(at), reason: f.1 };
+                                    super::trust::stale(check, job, f.0, None, Some(accepted))
+                                }
                                 _ => unreachable!("halted is held or unchecked"),
                             };
                         }
                         git_ops::Gated::Halted { output, halt, .. } => (false, format!("{output}
-    {}", halt.describe())),
+    {}", halt.describe(gate.lang))),
                     },
                     (None, None) => git_ops::run_git(&cwd, &cmds, write_file, prompts),
                 };

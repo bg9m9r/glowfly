@@ -23,9 +23,19 @@ pub struct TrustCheck {
     /// What it is, for holding it again when the check fails.
     pub sealed: Sealed,
     /// The user chose Trust and run on a prompt that said what it brings in couldn't be
-    /// compared (`Unchecked`): the repository's own scan is still checked, the incoming commits
-    /// aren't.
-    pub accept_unchecked: bool,
+    /// compared: that reason, at that place, passes; anything else is still compared.
+    pub accepted: Option<Accepted>,
+    /// The language of the texts the runner writes for it (a job stopped part way).
+    pub lang: glowfly_core::i18n::Lang,
+}
+
+/// What couldn't be compared that the user chose to run anyway: the reason, and where. `at`
+/// is the index of the job's git command it was found before (`None`: the effect itself, a
+/// pick or a rebase step).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Accepted {
+    pub at: Option<usize>,
+    pub reason: glowfly_core::trust::incoming::Unchecked,
 }
 
 /// What a checked effect is.

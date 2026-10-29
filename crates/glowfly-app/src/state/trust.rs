@@ -138,7 +138,7 @@ pub struct TrustPrompt {
     pub incoming: Option<TrustScan>,
     /// Why what the held job brings in couldn't be compared (a partial clone, a long replay, a
     /// revision Glowfly can't resolve as git does): Trust and run runs it without comparing.
-    pub unchecked: Option<Box<glowfly_core::trust::incoming::Unchecked>>,
+    pub unchecked: Option<Box<crate::effect::Accepted>>,
 }
 
 /// The prompt for the loaded repository `snap`.
@@ -311,6 +311,19 @@ pub fn shown_value(value: &str) -> String {
     let mut cut: String = text.chars().take(VALUE_CHARS).collect();
     cut.push('…');
     cut
+}
+
+/// Why what a held job brings in couldn't be compared, for the prompt and the job's output.
+pub fn unchecked_text(t: glowfly_core::i18n::Lang, u: &glowfly_core::trust::incoming::Unchecked) -> String {
+    use glowfly_core::text::printable;
+    use glowfly_core::trust::incoming::Unchecked;
+    match u {
+        Unchecked::Unresolved(rev) => t.trf("trust.unchecked.unresolved", &[("rev", &printable(rev))]),
+        Unchecked::Unreadable(e) => t.trf("trust.unchecked.unreadable", &[("error", &printable(e))]),
+        Unchecked::Patched(p) => t.trf("trust.unchecked.patched", &[("path", &printable(p))]),
+        Unchecked::Conflicted(p) => t.trf("trust.unchecked.conflicted", &[("path", &printable(p))]),
+        Unchecked::Unknown => t.tr("trust.unchecked.unknown").to_owned(),
+    }
 }
 
 #[cfg(test)]

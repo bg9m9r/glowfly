@@ -41,16 +41,20 @@ pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf
             out.push(Follow { path, tracked: None, hooks });
         }
     };
+    // A place spelled so that Glowfly can't tell which folder the file system takes it for
+    // (an NTFS stream, an 8.3 short name) follows the whole working tree: every commit that
+    // changes anything is another version.
+    let mut add_place = |rel: String, hooks: bool| if unclear(&rel) { add(String::new(), false) } else { add(rel, hooks) };
     if let Some(dir) = hooks_dir {
         for rel in inside(repo, workdir, dir) {
-            add(rel, true);
+            add_place(rel, true);
         }
     }
     for hook in hooks {
         let is_link = std::fs::symlink_metadata(hook).is_ok_and(|m| m.file_type().is_symlink());
         if is_link {
             for rel in inside(repo, workdir, &crate::paths::resolve(hook)) {
-                add(rel, false);
+                add_place(rel, false);
             }
         }
     }
@@ -62,6 +66,24 @@ pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf
         }
     }
     out
+}
+
+/// Whether a part of the `/`-separated `rel` names a place only the file system can resolve:
+/// a `:` (an NTFS alternate stream such as `::$INDEX_ALLOCATION`, which opens the folder
+/// itself) or an 8.3 short name (`GITHOO~1`).
+fn unclear(rel: &str) -> bool {
+    rel.split('/').any(|part| part.contains(':') || part.split('~').skip(1).any(|after| after.starts_with(|c: char| c.is_ascii_digit())))
+}
+
+/// Whether the `/`-separated path `p` (from a patch, a pathspec) is at or around one of the
+/// places `follows` names, as a folding file system matches names (`fold`).
+pub(super) fn touches(p: &str, follows: &[Follow]) -> bool {
+    let folded = |s: &str| s.split('/').filter(|x| !x.is_empty() && *x != ".").map(fold).collect::<Vec<_>>().join("/");
+    let p = folded(p);
+    follows.iter().any(|f| {
+        let f = folded(&f.path);
+        within(&p, &f) || within(&f, &p)
+    })
 }
 
 /// Whether the `/`-separated `path` is `root` or inside it.

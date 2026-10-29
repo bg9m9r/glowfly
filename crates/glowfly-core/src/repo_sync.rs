@@ -79,7 +79,7 @@ pub fn sync(path: &Path, op: SyncOp, trust: Option<&crate::settings::SavedTrust>
             timed_out |= out.timed_out;
             (out.ok, out.combined())
         };
-        return match crate::trust::pull::run_pinned(path, &pull, &follows, trust, &mut git) {
+        return match crate::trust::pull::run_pinned(path, &pull, &follows, trust, None, &mut git) {
             crate::trust::pull::PullRun::Refused { .. } => Outcome::Untrusted,
             crate::trust::pull::PullRun::Ran { ok: false, output } if timed_out => {
                 Outcome::Failed { reason: format!("git stopped after {} minutes.", TIMEOUT.as_secs() / 60), detail: error_detail(&output) }

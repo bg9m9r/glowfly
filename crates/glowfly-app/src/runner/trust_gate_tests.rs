@@ -62,7 +62,8 @@ fn trusted(dir: &Path) -> TrustCheck {
         real: dir.into(),
         saved: Some(glowfly_core::settings::SavedTrust::trusted(Some(print))),
         sealed: Sealed::Job { label: "Update".into() },
-        accept_unchecked: false,
+        accepted: None,
+        lang: Default::default(),
     }
 }
 
@@ -129,4 +130,51 @@ fn an_undo_compares_every_commit_its_action_names() {
     let text = format!("Checkout {{ from: Detached({a}), to: Branch(\"main\"), x: {b}, zero: {} }}", "0".repeat(40));
     let found = commits_in(&text);
     assert_eq!(found, [git2::Oid::from_str(&a).unwrap(), git2::Oid::from_str(&b).unwrap()], "the zero id names nothing");
+}
+
+fn done(msg: Option<Msg>) -> Option<(bool, String)> {
+    match msg? {
+        Msg::Scoped { msg, .. } => done(Some(*msg)),
+        Msg::Job(JobMsg::JobDone { ok, output, .. }) => Some((ok, output)),
+        _ => None,
+    }
+}
+
+#[test]
+fn a_command_after_one_that_changed_the_settings_is_held() {
+    let (work, _bare, _other) = following("rescan");
+    let fx = job(&work, &[&["config", "core.fsmonitor", "evil"], &["status"]]);
+    let (ok, output) = done(crate::runner::execute_checked(trusted(&work), fx)).expect("the job ends");
+    assert!(!ok && output.contains("changed the repository's settings or hooks"), "{output}");
+    assert!(!output.contains("$ git status"), "status never ran: {output}");
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}
+
+#[test]
+fn git_am_of_a_patch_that_writes_a_hook_is_held_and_trust_and_run_takes_only_that() {
+    let (work, _bare, other) = following("am");
+    std::fs::write(other.join(".githooks/post-applypatch"), "#!/bin/sh\necho ran > applied.txt\n").unwrap();
+    git(&other, &["add", "."]);
+    git(&other, &["commit", "-q", "-m", "hook"]);
+    let out = work.parent().unwrap().join("patches");
+    git(&other, &["format-patch", "-q", "-1", "-o", &out.to_string_lossy()]);
+    let patch = std::fs::read_dir(&out).unwrap().flatten().next().unwrap().path();
+    let cmds: &[&[&str]] = &[&["am", "--3way", &patch.to_string_lossy()]];
+    let reason = glowfly_core::trust::incoming::Unchecked::Patched(".githooks/post-applypatch".into());
+    match crate::runner::execute_checked(trusted(&work), job(&work, cmds)) {
+        Some(Msg::Trust(TrustMsg::Stale(s))) => {
+            assert_eq!(s.unchecked, Some(crate::effect::Accepted { at: Some(0), reason: reason.clone() }));
+        }
+        other => panic!("held: {}", other.is_some()),
+    }
+    assert!(!work.join(".githooks/post-applypatch").exists(), "nothing applied");
+    // Accepted for another command of the job, it is still held.
+    let elsewhere = TrustCheck { accepted: Some(crate::effect::Accepted { at: Some(1), reason: reason.clone() }), ..trusted(&work) };
+    assert!(matches!(crate::runner::execute_checked(elsewhere, job(&work, cmds)), Some(Msg::Trust(TrustMsg::Stale(_)))));
+    // Accepted for this one, it runs.
+    let accepted = TrustCheck { accepted: Some(crate::effect::Accepted { at: Some(0), reason }), ..trusted(&work) };
+    let (ok, output) = done(crate::runner::execute_checked(accepted, job(&work, cmds))).expect("it runs");
+    assert!(ok, "{output}");
+    assert!(work.join(".githooks/post-applypatch").exists());
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
 }

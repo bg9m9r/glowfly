@@ -117,7 +117,10 @@ fn trust_prompt_unchecked() {
     let scan = TrustScan { config: vec![setting("core.hooksPath", ".githooks")], follows: vec![githooks()], ..TrustScan::default() };
     let mut st = prompt_state(ThemeChoice::Dark, scan, false, Some("Pull"));
     if let Some(Modal::Trust(p)) = &mut st.modal {
-        p.unchecked = Some(Box::new(glowfly_core::trust::incoming::Unchecked::Unreadable("object 1a2b3c4 is missing".into())));
+        p.unchecked = Some(Box::new(crate::effect::Accepted {
+            at: Some(1),
+            reason: glowfly_core::trust::incoming::Unchecked::Unreadable("object 1a2b3c4 is missing".into()),
+        }));
     }
     let mut h = harness(st, true);
     h.run();

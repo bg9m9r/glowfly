@@ -11,7 +11,7 @@
 
 use super::execute::{Cx, Execute, execute_with};
 use super::trust_gate::{self, Gate, Halt};
-use crate::effect::{Checked, Effect, Sealed, TrustCheck, TrustEffect};
+use crate::effect::{Accepted, Checked, Effect, Sealed, TrustCheck, TrustEffect};
 use crate::msg::{InheritedRepo, Msg, Stale, TrustMsg};
 use glowfly_core::trust::incoming::Unchecked;
 use glowfly_core::trust::{self, TrustScan};
@@ -101,13 +101,12 @@ pub(super) fn verify(c: &TrustCheck, effect: &Effect) -> Verdict {
     if now.follows.is_empty() {
         return Verdict::Pass(None);
     }
-    let found = trust_gate::compare(&c.workdir, &now.follows, c.saved.as_ref(), &trust_gate::targets(effect), c.accept_unchecked);
-    match found {
+    let accept = c.accepted.as_ref().filter(|a| a.at.is_none()).map(|a| &a.reason);
+    match trust_gate::compare(&c.workdir, &now.follows, c.saved.as_ref(), &trust_gate::targets(effect), accept) {
         Ok(()) => {
             let commands = matches!(effect, Effect::RunGit { .. });
-            let gate =
-                Gate { workdir: c.workdir.clone(), follows: now.follows, saved: c.saved.clone(), accept_unchecked: c.accept_unchecked };
-            Verdict::Pass(commands.then_some(gate))
+            let gate = || Gate::new(c.workdir.clone(), now.follows.clone(), c.saved.clone(), c.accepted.clone(), c.lang);
+            Verdict::Pass(commands.then(gate))
         }
         Err(h) => halted(now, h),
     }
@@ -117,11 +116,12 @@ pub(super) fn halted(now: TrustScan, h: Halt) -> Verdict {
     match h {
         Halt::Held(found) => Verdict::Stale(Box::new((now, Some(*found)))),
         Halt::Unchecked(u) => Verdict::Unchecked(Box::new((now, u))),
+        Halt::Changed(changed) => Verdict::Stale(Box::new((*changed, None))),
     }
 }
 
 /// The work held again (`TrustMsg::Stale`), with what the check found.
-pub(super) fn stale(check: TrustCheck, effect: Effect, now: TrustScan, incoming: Option<TrustScan>, unchecked: Option<Unchecked>) -> Msg {
+pub(super) fn stale(check: TrustCheck, effect: Effect, now: TrustScan, incoming: Option<TrustScan>, unchecked: Option<Accepted>) -> Msg {
     Msg::Trust(TrustMsg::Stale(Box::new(Stale { check, effect, now, incoming, unchecked })))
 }
 
@@ -149,7 +149,7 @@ pub(super) fn checked(c: TrustCheck, effect: Effect, fail: impl FnOnce(String) -
         }
         Verdict::Unchecked(found) => {
             let (now, u) = *found;
-            Some(stale(c, effect, now, None, Some(u)))
+            Some(stale(c, effect, now, None, Some(Accepted { at: None, reason: u })))
         }
     }
 }
@@ -175,7 +175,7 @@ pub(super) fn before_shell(check: Option<TrustCheck>, spawn: impl FnOnce() -> Ef
     match verify(&c, &effect) {
         Verdict::Pass(_) => None,
         Verdict::Stale(found) => Some(Ok(stale(c, effect, found.0, found.1, None))),
-        Verdict::Unchecked(found) => Some(Ok(stale(c, effect, found.0, None, Some(found.1)))),
+        Verdict::Unchecked(found) => Some(Ok(stale(c, effect, found.0, None, Some(Accepted { at: None, reason: found.1 })))),
         Verdict::Failed(text) => Some(Err(text)),
     }
 }

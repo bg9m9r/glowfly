@@ -17,7 +17,7 @@ fn repo(name: &str) -> PathBuf {
 
 fn check(dir: &Path, saved: Option<SavedTrust>) -> TrustCheck {
     let sealed = Sealed::Job { label: "Fetch".into() };
-    TrustCheck { workdir: dir.to_path_buf(), real: dir.to_path_buf(), saved, sealed, accept_unchecked: false }
+    TrustCheck { workdir: dir.to_path_buf(), real: dir.to_path_buf(), saved, sealed, accepted: None, lang: Default::default() }
 }
 
 fn hook(dir: &Path, text: &str) {
