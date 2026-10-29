@@ -18,7 +18,8 @@ pub struct Plan {
     pub version: String,
     /// The MSI to run, if any.
     pub msi: Option<MsiStep>,
-    /// Files to delete (a swapped program's `.bak`).
+    /// Files to delete (a swapped program's `.bak`); each one's record (`backups::record_path`)
+    /// goes once the file is gone.
     pub remove: Vec<PathBuf>,
     /// The program to start afterwards.
     pub relaunch: PathBuf,

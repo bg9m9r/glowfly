@@ -1,3 +1,6 @@
+//! The update helper: the go signal, msiexec's command and exit codes, and what it does with
+//! a plan, including a backup it can't delete keeping its record for the next start.
+
 use super::*;
 use std::io::Cursor;
 
@@ -119,5 +122,96 @@ fn after_go_and_exit_the_helper_finishes() {
     assert_eq!(code, 0);
     assert!(!backup.exists() && !staging.exists(), "{lines:?}");
     assert!(lines.iter().any(|l| l.starts_with("couldn't start ")), "{lines:?}");
+    let _ = crate::persist::remove_tree(&dir);
+}
+
+/// Keeps `file` from being deleted until the guard is dropped: on Windows a handle that doesn't
+/// share deletion (as a running program's image does), on Unix a folder without write access.
+/// None where that can't be done (root on Unix may delete anyway).
+fn hold(file: &Path) -> Option<Box<dyn std::any::Any>> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        // FILE_SHARE_READ only: no one may delete it while this is open.
+        let f = std::fs::OpenOptions::new().read(true).share_mode(1).open(file).ok()?;
+        Some(Box::new(f))
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // SAFETY: geteuid takes no arguments and can't fail.
+        if unsafe { libc::geteuid() } == 0 {
+            return None;
+        }
+        struct Held(PathBuf);
+        impl Drop for Held {
+            fn drop(&mut self) {
+                let _ = std::fs::set_permissions(&self.0, std::fs::Permissions::from_mode(0o755));
+            }
+        }
+        let dir = file.parent()?.to_owned();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o555)).ok()?;
+        Some(Box::new(Held(dir)))
+    }
+}
+
+#[test]
+fn a_backup_the_helper_cant_delete_keeps_its_record_for_the_next_start() {
+    let dir = crate::paths::temp_dir().join(format!("glowfly-finish-held-{}", std::process::id()));
+    let _ = crate::persist::remove_tree(&dir);
+    let (app, staging) = (dir.join("app"), dir.join("glowfly-update-0123456789abcdef"));
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::create_dir_all(&staging).unwrap();
+    let exe = app.join("glowfly.exe");
+    std::fs::write(&exe, "new").unwrap();
+    let backup = app.join("glowfly.exe.bak");
+    std::fs::write(&backup, "old").unwrap();
+    let record = super::super::backups::record(&backup).unwrap();
+    let plan = Plan {
+        format: super::super::plan::FORMAT,
+        version: "0.3.0".into(),
+        msi: None,
+        remove: vec![backup.clone()],
+        relaunch: dir.join("missing").join("glowfly.exe"),
+        staging: staging.clone(),
+    };
+    let file = staging.join("plan.json");
+    plan.write(&file).unwrap();
+    let Some(guard) = hold(&backup) else {
+        let _ = crate::persist::remove_tree(&dir);
+        return;
+    };
+    let mut lines = Vec::new();
+    assert_eq!(run_with(&file, Cursor::new(b"go\n".to_vec()), (SHORT, SHORT), &mut |l| lines.push(l.to_owned())), 0);
+    assert!(backup.is_file() && record.is_file(), "both stay: {lines:?}");
+    drop(guard);
+    // The next start finds it recorded and removes both.
+    let cleared = super::super::backups::remove_unused(std::slice::from_ref(&exe), || Some(Vec::new()));
+    assert_eq!(cleared.removed, vec![backup.clone()]);
+    assert!(!backup.exists() && !record.exists());
+    let _ = crate::persist::remove_tree(&dir);
+}
+
+#[test]
+fn a_deleted_backup_takes_its_record_along() {
+    let dir = crate::paths::temp_dir().join(format!("glowfly-finish-record-{}", std::process::id()));
+    let _ = crate::persist::remove_tree(&dir);
+    let staging = dir.join("glowfly-update-0123456789abcdef");
+    std::fs::create_dir_all(&staging).unwrap();
+    let backup = dir.join("glowfly.exe.bak");
+    std::fs::write(&backup, "old").unwrap();
+    let record = super::super::backups::record(&backup).unwrap();
+    let plan = Plan {
+        format: super::super::plan::FORMAT,
+        version: "0.3.0".into(),
+        msi: None,
+        remove: vec![backup.clone()],
+        relaunch: dir.join("missing").join("glowfly.exe"),
+        staging: staging.clone(),
+    };
+    let file = staging.join("plan.json");
+    plan.write(&file).unwrap();
+    assert_eq!(run_with(&file, Cursor::new(b"go\n".to_vec()), (SHORT, SHORT), &mut |_| {}), 0);
+    assert!(!backup.exists() && !record.exists());
     let _ = crate::persist::remove_tree(&dir);
 }

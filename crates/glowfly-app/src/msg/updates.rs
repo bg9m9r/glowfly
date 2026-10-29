@@ -1,7 +1,7 @@
 //! Messages of Glowfly's own updates and release notes (update/updates.rs).
 
 use super::Inactive;
-use glowfly_core::app_update::{InstallKind, Progress, Release, Saved, SavedProblem};
+use glowfly_core::app_update::{InstallKind, LastInstall, Progress, Release, Saved, SavedProblem};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -27,6 +27,8 @@ pub enum UpdateMsg {
     OpenReleasePage,
     /// Open the release notes dialog.
     ShowNotes,
+    /// Show the update helper's log in the file manager.
+    ShowUpdateLog(PathBuf),
     // ---- from the runner
     /// A check finished: the newest release (None when there is none yet).
     Checked { manual: bool, result: Result<Option<CheckedRelease>, String> },
@@ -40,6 +42,8 @@ pub enum UpdateMsg {
     SavedChecked { file: PathBuf, problem: Option<SavedProblem> },
     /// Install and restart was prepared (the window closes now) or failed (nothing changed).
     RestartReady(Result<(), String>),
+    /// At the start: the last installer run failed or was cancelled (read from the update log).
+    LastInstall(LastInstall),
 }
 
 /// The newest release, and how this copy was installed (which decides the file it is offered).
@@ -68,7 +72,9 @@ impl UpdateMsg {
             | Self::Downloaded(_)
             | Self::DownloadCancelled
             | Self::SavedChecked { .. }
-            | Self::RestartReady(_) => None,
+            | Self::ShowUpdateLog(_)
+            | Self::RestartReady(_)
+            | Self::LastInstall(_) => None,
         }
     }
 }
