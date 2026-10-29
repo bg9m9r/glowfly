@@ -7370,7 +7370,7 @@ DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>CC0-1.0: notify 8.2.0</summary>
+<summary>CC0-1.0: notify 8.2.1</summary>
 
 ````text
 Creative Commons CC0 1.0 Universal
@@ -8221,7 +8221,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: adler2 2.0.1, anyhow 1.0.104, async-channel 2.5.0, async-executor 1.14.0, async-fs 2.2.0, async-io 2.6.0, async-lock 3.4.2, async-net 2.0.0, async-process 2.5.0, async-recursion 1.2.0, async-signal 0.2.14, async-task 4.7.1, async-trait 0.1.92, atomic-waker 1.1.2, blocking 1.7.0, concurrent-queue 2.5.0, displaydoc 0.2.7, endi 1.1.1, event-listener 5.4.2, event-listener-strategy 0.5.4, fastrand 2.5.0, futures-lite 2.6.1, glow 0.16.0, itoa 1.0.18, lazy_static 1.5.1, linux-raw-sys 0.12.1, linux-raw-sys 0.4.15, once_cell 1.21.4, ordered-stream 0.2.0, parking 2.2.1, paste 1.0.15, pin-project-lite 0.2.17, piper 0.2.5, polling 3.11.0, proc-macro-crate 3.5.0, proc-macro2 1.0.107, quote 1.0.47, rustix 0.38.44, rustix 1.1.5, serde 1.0.229, serde_core 1.0.229, serde_derive 1.0.229, serde_json 1.0.154, serde_repr 0.1.21, smol_str 0.2.2, syn 2.0.119, syn 3.0.9, thiserror 1.0.69, thiserror 2.0.21, thiserror-impl 1.0.69, thiserror-impl 2.0.21, typed-path 0.12.4, unicode-ident 1.0.27, x11-dl 2.21.0, xdg-home 1.3.0, zbus-lockstep 0.4.4, zbus-lockstep-macros 0.4.4, zbus_names 3.0.0, zmij 1.0.23, zvariant_utils 2.1.0, zvariant_utils 4.2.0</summary>
+<summary>MIT: adler2 2.0.1, anyhow 1.0.104, async-channel 2.5.0, async-executor 1.14.0, async-fs 2.2.0, async-io 2.6.0, async-lock 3.4.2, async-net 2.0.0, async-process 2.5.0, async-recursion 1.2.0, async-signal 0.2.14, async-task 4.7.1, async-trait 0.1.92, atomic-waker 1.1.2, blocking 1.7.0, concurrent-queue 2.5.0, displaydoc 0.2.7, endi 1.1.1, event-listener 5.4.2, event-listener-strategy 0.5.4, fastrand 2.5.0, futures-lite 2.6.1, glow 0.16.0, itoa 1.0.18, lazy_static 1.5.1, linux-raw-sys 0.12.1, linux-raw-sys 0.4.15, once_cell 1.21.4, ordered-stream 0.2.0, parking 2.2.1, paste 1.0.15, pin-project-lite 0.2.17, piper 0.2.5, polling 3.11.0, proc-macro-crate 3.5.0, proc-macro2 1.0.107, quote 1.0.47, rustix 0.38.44, rustix 1.1.5, serde 1.0.229, serde_core 1.0.229, serde_derive 1.0.229, serde_json 1.0.154, serde_repr 0.1.21, smol_str 0.2.2, syn 2.0.119, syn 3.0.9, thiserror 1.0.69, thiserror 2.0.21, thiserror-impl 1.0.69, thiserror-impl 2.0.21, typed-path 0.13.0, unicode-ident 1.0.27, x11-dl 2.21.0, xdg-home 1.3.0, zbus-lockstep 0.4.4, zbus-lockstep-macros 0.4.4, zbus_names 3.0.0, zmij 1.0.23, zvariant_utils 2.1.0, zvariant_utils 4.2.0</summary>
 
 ````text
 Permission is hereby granted, free of charge, to any
@@ -10111,34 +10111,6 @@ DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: fsevent-sys 4.1.0</summary>
-
-````text
-The MIT License (MIT)
-
-Copyright (c) 2015 Pierre Baillet
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-````
-</details>
-
-<details>
 <summary>MIT: futures-channel 0.3.34, futures-core 0.3.34, futures-io 0.3.34, futures-macro 0.3.34, futures-sink 0.3.34, futures-task 0.3.34, futures-util 0.3.34</summary>
 
 ````text
@@ -10738,7 +10710,7 @@ DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: libc 0.2.190</summary>
+<summary>MIT: libc 0.2.191</summary>
 
 ````text
 Copyright (c) The Rust Project Developers
@@ -11313,6 +11285,32 @@ SOFTWARE.
 </details>
 
 <details>
+<summary>MIT: objc2-core-services 0.3.2</summary>
+
+````text
+Copyright (c) the objc2-core-services authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+````
+</details>
+
+<details>
 <summary>MIT: objc2-foundation 0.2.2, objc2-foundation 0.3.2</summary>
 
 ````text
@@ -11339,7 +11337,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: open 5.4.4</summary>
+<summary>MIT: open 5.4.5</summary>
 
 ````text
 The MIT License (MIT)
@@ -12178,7 +12176,7 @@ DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: smallvec 1.16.3</summary>
+<summary>MIT: smallvec 1.16.4</summary>
 
 ````text
 Copyright (c) 2018 The Servo Project Developers
@@ -13370,7 +13368,7 @@ DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: zip 9.0.5</summary>
+<summary>MIT: zip 9.1.0</summary>
 
 ````text
 The MIT License (MIT)
@@ -13426,7 +13424,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>Unicode-3.0: icu_collections 2.3.0, icu_locale_core 2.3.0, icu_normalizer 2.3.0, icu_normalizer_data 2.3.0, icu_properties 2.3.0, icu_properties_data 2.3.0, icu_provider 2.3.1, litemap 0.8.3, potential_utf 0.1.6, tinystr 0.8.4, writeable 0.6.4, yoke 0.8.3, yoke-derive 0.8.4, zerofrom 0.1.8, zerofrom-derive 0.1.8, zerotrie 0.2.5, zerovec 0.11.8, zerovec-derive 0.11.6</summary>
+<summary>Unicode-3.0: icu_collections 2.4.0, icu_locale_core 2.4.0, icu_normalizer 2.4.0, icu_normalizer_data 2.4.0, icu_properties 2.4.0, icu_properties_data 2.4.0, icu_provider 2.4.0, litemap 0.8.3, potential_utf 0.1.6, tinystr 0.8.5, writeable 0.6.4, yoke 0.8.4, yoke-derive 0.8.4, zerofrom 0.1.8, zerofrom-derive 0.1.8, zerotrie 0.2.5, zerovec 0.11.9, zerovec-derive 0.11.7</summary>
 
 ````text
 UNICODE LICENSE V3
