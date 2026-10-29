@@ -59,8 +59,10 @@ pub struct WatchPaths {
 /// folder its `commondir` file names (relative to `git_dir` unless absolute). None for any other
 /// git dir, which is its own common dir.
 pub fn common_dir(git_dir: &Path) -> Option<PathBuf> {
-    match std::fs::read_to_string(git_dir.join("commondir")) {
-        Ok(text) if !text.trim().is_empty() => {
+    // A regular file of a few bytes: a nested repository's content names this one.
+    let text = crate::config_includes::read_file_bounded(&git_dir.join("commondir"), 4096).and_then(|b| String::from_utf8(b).ok());
+    match text {
+        Some(text) if !text.trim().is_empty() => {
             let named = Path::new(text.trim_end_matches(['\n', '\r']));
             let joined = if named.is_absolute() { named.to_path_buf() } else { git_dir.join(named) };
             Some(crate::paths::resolve(&joined))
