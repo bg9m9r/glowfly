@@ -96,7 +96,7 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   origin to upstream
 - View a remote branch or commit on its hosting service from the branch and commit menus
 - Search a service's forks on the server, beyond the newest 1000
-- Accept Unicode IDN hosts with combining marks (virama, ZWJ/ZWNJ), which the percent-encoding check now refuses
+- Accept Unicode IDN hosts with combining marks (virama, ZWJ/ZWNJ), which the host-character allowlist (`host_char`) now refuses
 - Accept IPv6 literal hosts with a zone (`[fe80::1%25eth0]`), which are refused now
 
 ### Tag management
