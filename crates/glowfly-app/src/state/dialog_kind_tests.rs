@@ -66,7 +66,7 @@ fn forms_info_and_confirms_are_told_apart() {
     let forms = [
         Modal::NewBranch { start: None, name: String::new(), checkout: true, touched: Default::default() },
         Modal::Clone(CloneForm::new(String::new())),
-        Modal::RenameBranch { old: "feature".into(), name: "feature".into(), touched: Default::default() },
+        Modal::RenameBranch(crate::state::branch_sync::RenameForm::new("feature".into())),
         Modal::CreatePr {
             source: "feature".into(),
             target: "main".into(),

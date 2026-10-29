@@ -5,7 +5,8 @@
 //! with its version before the last force-push (Range-diff), merge and rebase as split rows
 //! whose eye button previews them; pull requests (also from a fork remote into the base
 //! repository); hide or solo, and its colour; copying its name or a link; and delete on the
-//! remote. The branch's name heads the menu once; the items leave it out, and other names in
+//! remote (its dialog, `remote_branch_delete_dialog.rs`, warns of local branches tracking it).
+//! The branch's name heads the menu once; the items leave it out, and other names in
 //! labels are cut to fit, in full on hover. Disabled items say why on hover, with the same text
 //! `update` logs when it refuses a late message.
 
@@ -14,7 +15,6 @@ use super::ref_visibility;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg};
-use crate::state::gitflow_base::{Deleting, guard};
 use crate::state::rebase_onto::onto_commit_blocker;
 use crate::state::{ForgeState, Selection, branches, pr_repos, remote_branch, worktree_branches};
 use crate::ui::widgets::menu::{item_named, named, separator};
@@ -88,24 +88,8 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
     menu_item(msgs, ui, t.tr("refs.copy.link_item"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
     separator(ui);
-    menu_danger(
-        msgs,
-        ui,
-        t.tr("remote_branch.menu.delete"),
-        None,
-        guard(
-            t,
-            snap,
-            name,
-            Deleting::Remote(remote),
-            Msg::confirm_danger(
-                t.tr("remote_branch.delete.title"),
-                t.trf("remote_branch.delete.body", &[("branch", &name), ("remote", &remote)]),
-                t.tr("common.delete.button"),
-                Msg::git("Delete remote branch", &["push", remote, "--delete", name]),
-            ),
-        ),
-    );
+    let delete = Msg::Branch(BranchMsg::DeleteRemoteDialog { remote: remote.to_owned(), name: name.to_owned() });
+    menu_danger(msgs, ui, t.tr("remote_branch.menu.delete"), None, delete);
 }
 
 /// Check out the tracking branch (or create one), create a branch here, and create a worktree.

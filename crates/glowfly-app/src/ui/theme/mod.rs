@@ -255,6 +255,8 @@ mod more_themes_tests;
 #[cfg(test)]
 mod no_brown_tests;
 #[cfg(test)]
+mod no_brown_text_tests;
+#[cfg(test)]
 mod snapshot_tests_controls;
 #[cfg(test)]
 mod snapshot_tests_fonts;

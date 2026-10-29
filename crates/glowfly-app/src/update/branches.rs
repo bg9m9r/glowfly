@@ -1,5 +1,6 @@
 //! Branch operations from the branch menus: checkout (refused for a branch another worktree
-//! has), checkout from a remote branch (its tracking local branch, or a new one), rename, set
+//! has), checkout from a remote branch (its tracking local branch, or a new one), rename (also
+//! on the remote, and deleting a remote branch, in `branch_sync.rs`), set
 //! and unset the upstream, fast-forward without checkout, push to the upstream or a chosen
 //! remote, and delete together with the remote branch (deleting the local branch alone is in
 //! `branch_delete.rs`). Each re-checks the branch against the
@@ -27,10 +28,10 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
         }
         BranchMsg::RenameBranchDialog(name) => {
             if let Some(b) = find(st, &name) {
-                st.modal = Some(Modal::RenameBranch { old: b.name.clone(), name: b.name, touched: Default::default() });
+                st.modal = Some(Modal::RenameBranch(crate::state::branch_sync::RenameForm::new(b.name)));
             }
         }
-        BranchMsg::RenameBranch { old, new } => rename(st, &old, new.trim(), fx),
+        BranchMsg::RenameBranch { old, new, remote } => rename(st, &old, new.trim(), remote, fx),
         BranchMsg::SetUpstreamDialog(name) => upstream_dialog(st, &name),
         BranchMsg::SetUpstream { branch, remote, name } => set_upstream(st, &branch, &remote, name.trim(), fx),
         BranchMsg::UnsetUpstream(name) => {
@@ -55,6 +56,8 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
         BranchMsg::DeleteDialog(name) => super::branch_delete::open(st, &name, fx),
         BranchMsg::UnmergedCounted { name, tip, count } => super::branch_delete::counted(st, &name, tip, count),
         BranchMsg::Delete { name, tip, force } => super::branch_delete::delete(st, &name, tip, force, fx),
+        BranchMsg::DeleteRemoteDialog { remote, name } => super::branch_sync::delete_remote_dialog(st, &remote, &name),
+        BranchMsg::DeleteRemote { remote, name, unset } => super::branch_sync::delete_remote(st, &remote, &name, &unset, fx),
         BranchMsg::DeleteBranchAndRemote(name) => delete_with_remote(st, &name, fx),
         BranchMsg::PushBranch { branch, remote } => push(st, &branch, remote.as_deref(), fx),
     }
@@ -114,10 +117,9 @@ fn checkout_remote(st: &mut AppState, remote: &str, name: &str, fx: &mut Vec<Eff
     super::auto_stash::start_guarded(st, spec, retry, fx);
 }
 
-fn rename(st: &mut AppState, old: &str, new: &str, fx: &mut Vec<Effect>) {
-    if find(st, old).is_none() {
-        return;
-    }
+/// Renames `old` to `new`, and with `remote` its upstream too (update/branch_sync.rs).
+fn rename(st: &mut AppState, old: &str, new: &str, remote: bool, fx: &mut Vec<Effect>) {
+    let Some(b) = find(st, old) else { return };
     if new == old {
         st.log(false, format!("{old} already has that name."));
         return;
@@ -128,7 +130,11 @@ fn rename(st: &mut AppState, old: &str, new: &str, fx: &mut Vec<Effect>) {
         st.log(false, p.message(new));
         return;
     }
-    if matches!(st.modal, Some(Modal::RenameBranch { .. })) {
+    if remote {
+        super::branch_sync::rename_with_remote(st, &b, new, fx);
+        return;
+    }
+    if matches!(st.modal, Some(Modal::RenameBranch(_))) {
         st.modal = None;
     }
     start_job(st, JobSpec::new("Rename branch".into(), vec![branch_ops::rename_cmd(old, new)]), fx);

@@ -74,7 +74,7 @@ source file, update its line here.
 - `graph_columns.rs`: which graph columns show (mapping an old file's separate author and SHA toggles onto the COMMIT column) and their widths.
 - Per-repository graph filters.
 - `branch_colours.rs`: the branch colour preset and per-repository pinned branch colours.
-- `repo_colours.rs`: repository colours per working folder, saved as stable names.
+- `repo_colours.rs`: repository colours per working folder, saved as stable names (a retired name loads as its replacement).
 - `forge_filters.rs`: per-repository PR and issue filters.
 - Repository trust decisions.
 - Named profiles with their identity (seeding, syncing with git, name checks).

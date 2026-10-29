@@ -31,7 +31,7 @@ impl Modal {
             | Modal::Init(_)
             | Modal::CreatePr { .. }
             | Modal::Publish(_)
-            | Modal::RenameBranch { .. }
+            | Modal::RenameBranch(_)
             | Modal::RenameStash(_)
             | Modal::StashPush(_)
             | Modal::SetUpstream { .. }
@@ -57,6 +57,7 @@ impl Modal {
             | Modal::Trust(_)
             | Modal::RemoveWorktree(_)
             | Modal::DeleteBranch(_)
+            | Modal::DeleteRemoteBranch(_)
             | Modal::RemoveSubmodule(_)
             | Modal::UndoCreated(_)
             | Modal::Mainline(_)
@@ -112,7 +113,7 @@ impl Modal {
                 let owner = (!f.owner.is_empty() && f.owners.first() != Some(&f.owner)).then_some(&f.owner);
                 format!("{:?}", (f.account, owner, &f.name, &f.description, f.private))
             }
-            Modal::RenameBranch { name, .. } => format!("{name:?}"),
+            Modal::RenameBranch(f) => format!("{:?}", (&f.name, f.remote)),
             Modal::RenameStash(f) => format!("{:?}", f.message),
             Modal::StashPush(f) => format!("{:?}", (&f.scope, &f.message, &f.chosen)),
             Modal::SetUpstream { remote, name, .. } => format!("{:?}", (remote, name)),
@@ -141,6 +142,7 @@ impl Modal {
             | Modal::Trust(_)
             | Modal::RemoveWorktree(_)
             | Modal::DeleteBranch(_)
+            | Modal::DeleteRemoteBranch(_)
             | Modal::RemoveSubmodule(_)
             | Modal::UndoCreated(_)
             | Modal::Mainline(_)

@@ -39,8 +39,8 @@ pub fn listed_colour(st: &AppState, path: &Path) -> Option<RepoColour> {
 pub fn hue_name(t: Lang, c: RepoColour) -> &'static str {
     match c {
         RepoColour::Rose => t.tr("repo_colour.hue.rose"),
-        RepoColour::Ochre => t.tr("repo_colour.hue.ochre"),
         RepoColour::Fern => t.tr("repo_colour.hue.fern"),
+        RepoColour::Mint => t.tr("repo_colour.hue.mint"),
         RepoColour::Teal => t.tr("repo_colour.hue.teal"),
         RepoColour::Sky => t.tr("repo_colour.hue.sky"),
         RepoColour::Slate => t.tr("repo_colour.hue.slate"),

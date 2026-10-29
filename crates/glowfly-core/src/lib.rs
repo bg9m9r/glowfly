@@ -12,6 +12,7 @@ pub mod branch_colour;
 pub mod branch_ops;
 pub mod changelog;
 pub mod clone_ops;
+pub mod commit_encoding;
 pub mod commit_index;
 pub mod commit_query;
 pub mod commit_text;

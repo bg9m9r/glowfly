@@ -47,15 +47,22 @@ pub fn oklch(c: Color32) -> (f64, f64, f64) {
     (lightness, a.hypot(bb), bb.atan2(a).to_degrees().rem_euclid(360.0))
 }
 
-/// The opaque sRGB colour of OKLCH (`l`, `c`, `h` in degrees), each channel clipped to the gamut.
-pub fn from_oklch(l: f64, c: f64, h: f64) -> Color32 {
+/// The linear-light sRGB channels of OKLCH (`l`, `c`, `h` in degrees), unclipped.
+fn oklch_linear(l: f64, c: f64, h: f64) -> [f64; 3] {
     let (a, b) = (c * h.to_radians().cos(), c * h.to_radians().sin());
     let l_ = (l + 0.396_337_777_4 * a + 0.215_803_757_3 * b).powi(3);
     let m_ = (l - 0.105_561_345_8 * a - 0.063_854_172_8 * b).powi(3);
     let s_ = (l - 0.089_484_177_5 * a - 1.291_485_548_0 * b).powi(3);
-    let r = 4.076_741_662_1 * l_ - 3.307_711_591_3 * m_ + 0.230_969_929_2 * s_;
-    let g = -1.268_438_004_6 * l_ + 2.609_757_401_1 * m_ - 0.341_319_396_5 * s_;
-    let bl = -0.004_196_086_3 * l_ - 0.703_418_614_7 * m_ + 1.707_614_701_0 * s_;
+    [
+        4.076_741_662_1 * l_ - 3.307_711_591_3 * m_ + 0.230_969_929_2 * s_,
+        -1.268_438_004_6 * l_ + 2.609_757_401_1 * m_ - 0.341_319_396_5 * s_,
+        -0.004_196_086_3 * l_ - 0.703_418_614_7 * m_ + 1.707_614_701_0 * s_,
+    ]
+}
+
+/// The opaque sRGB colour of OKLCH (`l`, `c`, `h` in degrees), each channel clipped to the gamut.
+pub fn from_oklch(l: f64, c: f64, h: f64) -> Color32 {
+    let [r, g, bl] = oklch_linear(l, c, h);
     let enc = |v: f64| {
         let v = v.clamp(0.0, 1.0);
         let s = if v <= 0.003_130_8 { 12.92 * v } else { 1.055 * v.powf(1.0 / 2.4) - 0.055 };
@@ -86,6 +93,33 @@ pub fn brownish(c: Color32) -> bool {
         return !clear;
     }
     (20.0..40.0).contains(&h) && ch < 0.08 && l < 0.62
+}
+
+/// The most OKLCH chroma sRGB holds at lightness `l` and hue `h`.
+#[cfg(test)]
+pub fn max_chroma(l: f64, h: f64) -> f64 {
+    let fits = |c: f64| oklch_linear(l, c, h).iter().all(|v| (-1e-4..=1.0 + 1e-4).contains(v));
+    let (mut lo, mut hi) = (0.0, 0.4);
+    for _ in 0..40 {
+        let mid = (lo + hi) / 2.0;
+        if fits(mid) { lo = mid } else { hi = mid }
+    }
+    lo
+}
+
+/// Whether coloured text `c` (a status, syntax or terminal colour, not a neutral ink) reads
+/// brown (docs/COLOUR.md, "No brown"). Text dark enough to read on paper can't take the
+/// chroma [`brownish`] asks of a warm fill, so a warm text colour is clean only as an orange at
+/// the edge of the sRGB gamut: hue 40 to 66 deg (past that, amber turns ochre at text
+/// darkness), lightness 0.50 and up (below it, russet) and chroma at least 95% of the most its
+/// lightness and hue hold.
+#[cfg(test)]
+pub fn brownish_text(c: Color32) -> bool {
+    if !brownish(c) {
+        return false;
+    }
+    let (l, ch, h) = oklch(c);
+    !((40.0..=66.0).contains(&h) && l >= 0.50 && ch >= 0.95 * max_chroma(l, h))
 }
 
 /// `a` moved `t` (0 to 1) of the way to `b`, byte by byte in gamma space as egui blends. Opaque.

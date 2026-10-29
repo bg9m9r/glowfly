@@ -91,7 +91,7 @@ fn rename_branch_entry() {
     open_palette(&mut st);
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::RenameBranch("main".into()))));
     assert!(st.palette.is_none());
-    assert!(matches!(&st.modal, Some(Modal::RenameBranch { old, name, .. }) if old == "main" && name == "main"));
+    assert!(matches!(&st.modal, Some(Modal::RenameBranch(f)) if f.old == "main" && f.name == "main"));
 
     st.modal = None;
     git(&dir, &["checkout", "-q", "--detach"]);

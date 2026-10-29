@@ -121,6 +121,7 @@ mod range_diff;
 mod rebase;
 mod ref_visibility;
 mod release_notes;
+mod remote_branch_delete_dialog;
 mod remote_branch_menu;
 mod remotes;
 mod repo_colour_menu;

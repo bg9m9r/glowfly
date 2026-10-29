@@ -265,8 +265,8 @@ pub fn ansi(i: u8) -> Color32 {
 }
 
 /// The order worktree tab groups take the repository hues in: each hue is far from the next
-/// (Rose, Teal, Iris, Ochre, Sky, Plum, Fern, Slate), so neighbouring groups differ strongly.
-const GROUP_ORDER: [usize; REPO_HUES] = [0, 3, 6, 1, 4, 7, 2, 5];
+/// (Rose, Teal, Plum, Sky, Fern, Iris, Mint, Slate), so neighbouring groups differ strongly.
+const GROUP_ORDER: [usize; REPO_HUES] = [0, 3, 7, 4, 1, 6, 2, 5];
 
 /// The strip colour of the `n`th worktree tab group in the active palette.
 pub fn repo_group(n: usize) -> Color32 {

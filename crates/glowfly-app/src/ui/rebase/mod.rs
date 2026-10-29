@@ -39,6 +39,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let remaining = panel.source == PanelSource::Remaining;
     let blocker = st.snap.as_ref().and_then(|s| panel.start_blocker(s, st.job.is_some()));
     let blocker = blocker.map(|b| panel.held_text(st.settings.lang(), &b).unwrap_or(b));
+    let blocker = blocker.or_else(|| st.snap.as_ref().and_then(|s| panel.message_blocker(s, st.settings.lang())));
     ui.add_space(8.0);
     header(ui, st.settings.lang(), panel, blocker.as_deref(), msgs);
     ui.add_space(4.0);

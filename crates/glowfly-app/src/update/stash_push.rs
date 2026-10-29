@@ -72,7 +72,7 @@ pub(super) fn push(st: &mut AppState, scope: StashScope, body: &str, paths: Vec<
         (_, Some(UndoKind::StashPush { replay })) => Some(UndoKind::StashPush { replay: replay.map(|_| cmds.clone()) }),
         (_, other) => other,
     };
-    let spec = JobSpec { write_file: c.pathspec_file.map(|s| (file, s)), record, ..JobSpec::new(label(scope).into(), cmds) };
+    let spec = JobSpec { write_file: c.pathspec_file.map(|s| (file, s.into_bytes())), record, ..JobSpec::new(label(scope).into(), cmds) };
     if start_job(st, spec, fx) == Started::Now {
         close_dialog(st);
     }

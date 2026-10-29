@@ -148,17 +148,21 @@ theme-file keys yet: theme files take their base theme's.
 
 ### Repository
 
-`repository.hues`: 8 quiet hues at OKLCH chroma 0.08, in slot order Rose, Ochre, Fern, Teal,
-Sky, Slate, Iris, Plum (hues 10, 95, 128, 200, 235, 265, 298 and 335 deg, one lightness per
-theme). They mark repositories, only on the window chrome:
+`repository.hues`: 8 quiet hues at OKLCH chroma 0.08, in slot order round the wheel Rose, Fern,
+Mint, Teal, Sky, Slate, Iris, Plum (hues 10, 128, 176.5, 207, 237.5, 267.5, 298 and 335 deg, one
+lightness per theme). No quiet hue between Rose and Fern is clean (40 to 125 deg reads khaki
+or olive at chroma 0.08, and 35 to 60 is the coral's), so Mint, which replaced Ochre, sits just
+above the green accent band and Teal, Sky and Slate make room, each about 30 deg from the next.
+They mark repositories, only on the window chrome:
 
 - a colour you give a repository (tab menu or welcome row > Color; none by default), saved
-  per working folder (`Settings.repo_colours`, by `repo_keys`, as the names `rose` … `plum`):
+  per working folder (`Settings.repo_colours`, by `repo_keys`, as the names `rose` … `plum`;
+  an older file's `ochre` loads as Mint):
   an 8 px square swatch on its tab, a 2 px line along the window's top edge for the active tab
   (`ui/repo_line.rs`), and a 10 px swatch before its path in the repository lists, which keep a
   swatch slot on every row once any repository has a colour;
 - the worktree tab-group strips, which stay automatic and walk the hues in `GROUP_ORDER` (Rose,
-  Teal, Iris, Ochre, Sky, Plum, Fern, Slate), each at least 98 deg from the next.
+  Teal, Plum, Sky, Fern, Iris, Mint, Slate), each at least 90 deg from the next.
 
 Swatches are squares, so they never read as a branch's round dot. Not theme-file keys yet:
 theme files take their base theme's hues.
@@ -327,9 +331,18 @@ outside the families and unchanged by the brand colour.
     zone, in both branch presets. Dusk's bronze selected row (#573b11) is the one allowed
     exception (the owner's call on #25). It also checks every line, edge and letter drawn in a
     colour of its own: the accent, `primary_border`, the field and dialog edges, each branch
-    lane, chip text and initials ink. Body and status text are not checked: a gold or amber dark
-    enough to read on paper is ochre, which the light themes keep for `warn` and `modified`
-    (their washes go through `contrast::clear` first, so they wash peach, not tan).
+    lane, chip text and initials ink.
+  - `theme/no_brown_text_tests.rs` checks every coloured text (status, `warn`, tag and hunk
+    text, syntax but `syn_comment`, the terminal's red to cyan, normal and bright) against
+    `contrast::brownish_text`. Text dark enough for 4.5:1 on paper can't take the chroma a warm
+    fill needs (sRGB holds about 0.13 at that darkness), so a warm text colour is clean only
+    as an orange at the gamut's edge: hue 40 to 66 deg (past that, amber turns ochre),
+    lightness 0.50 and up and at least 95% of the chroma its lightness and hue hold. So the
+    light themes' `warn`, `modified`, `syn_type` and terminal yellows are an orange-leaning
+    amber (Dawn's #985700) that reaches 4.5:1 on the surfaces it sits on, and `syn_number` a
+    vermilion (hue 34, Dawn's #c92d00) to stay apart from it. High contrast light's amber text
+    is the one exception: at 7:1 on white any amber is chocolate. Neutral inks (body text,
+    comments, the terminal's black, white and foreground) are judged as greys, not hues.
   - `snapshot_tests/snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
     (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly colour_sheet -- --ignored`).
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
@@ -504,8 +517,8 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | primary / on_primary | #efb146 / #1b1933 | The lantern gold with indigo ink, 9.0:1 |
 | primary_border | #d19006 | A clear gold edge |
 | tag_bg / tag_fg | #f5d8ea / #763463 | Plum, 6.5:1 |
-| added / removed / modified / info / progress | #357518 / #b63132 / #a96000 / #1f68bc / #6d47b8 | |
-| warn / banner | #ae6704 / #fee3c5 | |
+| added / removed / modified / info / progress | #357518 / #b63132 / #985700 / #1f68bc / #6d47b8 | modified and warn: one orange-leaning amber at the gamut's edge, 4.5:1 on every row surface |
+| warn / banner | #985700 / #fee3c5 | |
 | danger / danger_off | #c0332a / #fedadc | |
 | syn_comment | #5f5d78 | The other syntax colours are Garden light's |
 
@@ -552,8 +565,8 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | on_primary | #ffffff | |
 | primary_border | #0f5c3a | |
 | tag_bg / tag_fg | #f5d8ea / #763463 | 6.5:1 |
-| added / removed / modified / info / progress | #357518 / #b63132 / #a06604 / #1f68bc / #6d47b8 | modified is 3.9 to 4.1:1 on chrome and hover (status letters need 3:1) |
-| warn / banner | #a86b00 / #fbecc8 | |
+| added / removed / modified / info / progress | #357518 / #b63132 / #975700 / #1f68bc / #6d47b8 | modified and warn 4.56:1 at least, on selected |
+| warn / banner | #975700 / #fbecc8 | |
 
 ### The six newer themes
 
@@ -579,7 +592,7 @@ light's with `syn_comment` in their own grey, and `danger` Dusk's or Dawn's.
 | primary_border | #4eb891 | #005641 | #5695e0 | #d97f01 | #d5a13c | #003a7f |
 | tag_bg / tag_fg | #3d2d4e / #e0cef8 | #e7dbf7 / #5e3d80 | #3e314d / #e0cff5 | #4f2a3c / #f7c8dd | #4a283f / #f4c9e4 | #f8dae2 / #813450 |
 | added / removed | Garden dark's | Garden light's | Garden dark's | Garden dark's | Dusk's | Garden light's |
-| modified / warn | #edb345 / #e8b339 | #a06604 / #a86b00 | #edb345 / #e8b339 | #e3b842 / #e9c447 | Dusk's | #a06604 / #a86b00 |
+| modified / warn | #edb345 / #e8b339 | #975600 / #975600 | #edb345 / #e8b339 | #e3b842 / #e9c447 | Dusk's | #985700 / #985700 |
 | info / progress | #60aaf3 / #a689f1 | #1f68bc / #6d47b8 | #4fc0e7 / #a689f1 | #60aaf3 / #a689f1 | Dusk's | #006e91 / #6d47b8 |
 | banner | #1c2939 | #fbecc8 | #292b2e | #312829 | #212d30 | #fbecc8 |
 
@@ -650,19 +663,19 @@ a hovered or pressed button.
 
 ### Repository hues and the coral
 
-In slot order Rose, Ochre, Fern, Teal, Sky, Slate, Iris, Plum, as `#rrggbb` without the `#`
+In slot order Rose, Fern, Mint, Teal, Sky, Slate, Iris, Plum, as `#rrggbb` without the `#`
 (OKLCH lightness 0.70, 0.57, 0.78, 0.47 and 0.56):
 
-| Theme | Hues | Lowest on chrome |
+| Theme | Hues | Lowest on toolbar, bg, panel, raised and hover |
 |---|---|---|
-| Dusk | cb8a93 ae9e64 90a872 5caeb2 6ba7c9 869ed1 a494ca be8cb2 | 6.68 |
-| Dawn | a0636d 86773d 6a814c 31868a 447fa0 6077a7 7d6da1 95658a | 3.43 |
-| Garden dark | cb8a93 ae9e64 90a872 5caeb2 6ba7c9 869ed1 a494ca be8cb2 | 4.83 |
-| Garden light | a0636d 86773d 6a814c 31868a 447fa0 6077a7 7d6da1 95658a | 3.49 |
-| High contrast dark | e5a2ac c7b77c a9c28a 76c7cc 84c0e4 9eb7eb bdade5 d8a4cc | 7.09 |
-| High contrast light | 814750 695a1f 4e6330 00686c 256281 455a88 605182 76496d | 5.15 |
-| Sand | 9d606a 83743a 677e49 2d8387 417c9d 5d74a4 7a6a9e 926287 | 3.36 |
-| Midnight, Ember, Pine, Graphite | Dusk's | 4.58 |
+| Dusk | cb8a93 90a872 65af9d 5dadb8 6ea6ca 899ed2 a494ca be8cb2 | 4.74 |
+| Dawn | a0636d 6a814c 3a8776 2e8590 477ea0 6376a7 7d6da1 95658a | 3.43 |
+| Garden dark | cb8a93 90a872 65af9d 5dadb8 6ea6ca 899ed2 a494ca be8cb2 | 4.83 |
+| Garden light | a0636d 6a814c 3a8776 2e8590 477ea0 6376a7 7d6da1 95658a | 3.50 |
+| High contrast dark | e5a2ac a9c28a 7cc8b5 76c6d1 86bfe4 a1b6ea bdade5 d8a4cc | 7.09 |
+| High contrast light | 814750 4e6330 156a5a 0a6771 286182 475988 605182 76496d | 5.08 |
+| Sand | 9d606a 677e49 368473 2a828d 447b9d 6073a4 7a6a9e 926287 | 3.36 |
+| Midnight, Ember, Pine, Graphite | Dusk's | 4.60 |
 | Mist, Linen | Dawn's | 3.47 |
 
 The coral (OKLCH hue about 40 deg) and its ink, with the ink's contrast at rest and on hover:
@@ -672,7 +685,7 @@ The coral (OKLCH hue about 40 deg) and its ink, with the ink's contrast at rest 
 | Dusk, Garden dark | #fb794a / #22110b | 6.88, 7.52 |
 | Dawn, Garden light, Sand | #bf4306 / #ffffff | 5.22, 6.17 |
 | High contrast dark | #ff8a5c / #22110b | 7.84, 8.53 |
-| High contrast light | #9c3604 / #ffffff | 7.14, 8.22 |
+| High contrast light | #9e3301 / #ffffff | 7.17, 8.26 |
 | Midnight, Ember, Pine, Graphite | #fb794a / #22110b | 6.88, 7.52 |
 | Mist, Linen | #bf4306 / #ffffff | 5.22, 6.17 |
 
@@ -689,18 +702,18 @@ and selection are its `input`, `text`, `accent` and `accent`:
 | Theme | 0-7 | 8-15 |
 |---|---|---|
 | Dusk | 2b2939 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 ceccda | 8c899d ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f5f4fa |
-| Dawn | 1d1c31 c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 d8d6e1 | 686679 a3241e 226614 6e5000 1d4ba3 70299b 006468 e3e2ec |
+| Dawn | 1d1c31 c0362f 2f7d1c ab6500 2a5fc4 8a3fb8 087c80 d8d6e1 | 686679 a3241e 226614 9d5900 1d4ba3 70299b 006468 e3e2ec |
 | Garden dark | 2a322d f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c9d1cc | 86918a ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f4f7f5 |
-| Garden light | 1c2420 c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 d3d9d5 | 6b746f a3241e 226614 6e5000 1d4ba3 70299b 006468 e2e7e4 |
+| Garden light | 1c2420 c0362f 2f7d1c ab6500 2a5fc4 8a3fb8 087c80 d3d9d5 | 6b746f a3241e 226614 9d5900 1d4ba3 70299b 006468 e2e7e4 |
 | High contrast dark | 303030 ff6b6b 5fe36a ffd84a 7ab4ff e08aff 4fe0e0 e6e6e6 | a6a6a6 ff9c9c 9cf0a2 ffec96 a8ccff eeb5ff 96f0f0 ffffff |
-| High contrast light | 000000 a31515 08621a 6b4c00 0646a8 6a1fa0 005f63 d0d0d0 | 55595f 7f0d0d 084f15 523900 043682 52157d 004a4d e5e5e5 |
-| Sand | 2e2519 b23a2b 4a7a1a 8a6200 2d65a8 84429e 1b7570 e3d9c6 | 76695a 93291c 3a6312 6d4c00 1f4f8a 6a2f82 0f5d59 eae2d2 |
+| High contrast light | 000000 a31515 08621a 824c00 0646a8 6a1fa0 005f63 d0d0d0 | 55595f 7f0d0d 084f15 744000 043682 52157d 004a4d e5e5e5 |
+| Sand | 2e2519 b23a2b 4a7a1a a96400 2d65a8 84429e 1b7570 e3d9c6 | 76695a 93291c 3a6312 9b5800 1f4f8a 6a2f82 0f5d59 eae2d2 |
 | Midnight | 253141 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c7cfd9 | 8793a3 ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f1f5fb |
-| Mist | 10212f c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 d0dbe2 | 606e79 a3241e 226614 6e5000 1d4ba3 70299b 006468 dae4ea |
+| Mist | 10212f c0362f 2f7d1c ab6500 2a5fc4 8a3fb8 087c80 d0dbe2 | 606e79 a3241e 226614 9d5900 1d4ba3 70299b 006468 dae4ea |
 | Ember | 3d2b2c f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 d7cacb | 9f8d8e ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede faf3f4 |
 | Pine | 203435 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c5d0d1 | 849697 ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f0f6f7 |
 | Graphite | 2f3033 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 cdced0 | 919295 ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f4f5f6 |
-| Linen | 251e19 c0362f 2f7d1c 8a6400 2a5fc4 8a3fb8 087c80 ddd8d1 | 716a66 a3241e 226614 6e5000 1d4ba3 70299b 006468 e5e1db |
+| Linen | 251e19 c0362f 2f7d1c ab6500 2a5fc4 8a3fb8 087c80 ddd8d1 | 716a66 a3241e 226614 9d5900 1d4ba3 70299b 006468 e5e1db |
 
 The lowest ratios of a chromatic colour on `input` are 4.99 (Dawn and Garden light 6) and 5.01 (Sand 2), and
 7.36 in High contrast light.

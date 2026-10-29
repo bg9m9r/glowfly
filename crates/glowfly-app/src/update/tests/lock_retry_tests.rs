@@ -253,7 +253,7 @@ fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
     st.session.draft.summary = "Better words".into();
     let fx = up(&mut st, Msg::ToastAction(id));
     let message = fx.iter().find_map(|e| match e {
-        Effect::RunGit { write_file: Some((_, m)), .. } => Some(m.clone()),
+        Effect::RunGit { write_file: Some((_, m)), .. } => Some(String::from_utf8(m.clone()).unwrap()),
         _ => None,
     });
     assert_eq!(

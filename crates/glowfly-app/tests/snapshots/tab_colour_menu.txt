@@ -4,8 +4,8 @@ Button "Rename tab…"
 Button "Color"
 RadioButton "None" [off]
 RadioButton "Rose" [off]
-RadioButton "Ochre" [off]
 RadioButton "Fern" [off]
+RadioButton "Mint" [off]
 RadioButton "Teal" [on]
 RadioButton "Sky" [off]
 RadioButton "Slate" [off]

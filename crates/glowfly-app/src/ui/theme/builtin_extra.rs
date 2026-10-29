@@ -20,13 +20,13 @@ const fn hues(c: [u32; REPO_HUES]) -> Repository {
     Repository { hues }
 }
 
-// The repository hues (OKLCH chroma 0.08) in `RepoColour` order: Rose, Ochre, Fern, Teal, Sky,
-// Slate, Iris, Plum, at one lightness per theme (docs/COLOUR.md).
-pub(super) const REPO_DARK: Repository = hues([0xcb8a93, 0xae9e64, 0x90a872, 0x5caeb2, 0x6ba7c9, 0x869ed1, 0xa494ca, 0xbe8cb2]);
-pub(super) const REPO_LIGHT: Repository = hues([0xa0636d, 0x86773d, 0x6a814c, 0x31868a, 0x447fa0, 0x6077a7, 0x7d6da1, 0x95658a]);
-const REPO_HC_DARK: Repository = hues([0xe5a2ac, 0xc7b77c, 0xa9c28a, 0x76c7cc, 0x84c0e4, 0x9eb7eb, 0xbdade5, 0xd8a4cc]);
-const REPO_HC_LIGHT: Repository = hues([0x814750, 0x695a1f, 0x4e6330, 0x00686c, 0x256281, 0x455a88, 0x605182, 0x76496d]);
-const REPO_SAND: Repository = hues([0x9d606a, 0x83743a, 0x677e49, 0x2d8387, 0x417c9d, 0x5d74a4, 0x7a6a9e, 0x926287]);
+// The repository hues (OKLCH chroma 0.08) in `RepoColour` order, round the wheel: Rose, Fern,
+// Mint, Teal, Sky, Slate, Iris, Plum, at one lightness per theme (docs/COLOUR.md).
+pub(super) const REPO_DARK: Repository = hues([0xcb8a93, 0x90a872, 0x65af9d, 0x5dadb8, 0x6ea6ca, 0x899ed2, 0xa494ca, 0xbe8cb2]);
+pub(super) const REPO_LIGHT: Repository = hues([0xa0636d, 0x6a814c, 0x3a8776, 0x2e8590, 0x477ea0, 0x6376a7, 0x7d6da1, 0x95658a]);
+const REPO_HC_DARK: Repository = hues([0xe5a2ac, 0xa9c28a, 0x7cc8b5, 0x76c6d1, 0x86bfe4, 0xa1b6ea, 0xbdade5, 0xd8a4cc]);
+const REPO_HC_LIGHT: Repository = hues([0x814750, 0x4e6330, 0x156a5a, 0x0a6771, 0x286182, 0x475988, 0x605182, 0x76496d]);
+const REPO_SAND: Repository = hues([0x9d606a, 0x677e49, 0x368473, 0x2a828d, 0x447b9d, 0x6073a4, 0x7a6a9e, 0x926287]);
 
 /// White text on black, with brighter hues and syntax colors.
 pub const HIGH_CONTRAST_DARK: Palette = Palette {
@@ -105,8 +105,8 @@ pub const HIGH_CONTRAST_LIGHT: Palette = Palette {
     danger_off: hex(0xf3d2d2),
     tag_bg: hex(0xf5d8ea),
     tag_fg: hex(0x5a1a48),
-    status: Status { added: hex(0x226b10), removed: hex(0xa3150c), modified: hex(0x7a4b00), info: hex(0x0646a8), progress: hex(0x5a1fa8) },
-    attention: Attention { warn: hex(0x7a4b00), banner: hex(0xfbe8b8), needs_you: hex(0x9c3604), on_needs_you: hex(0xffffff) },
+    status: Status { added: hex(0x226b10), removed: hex(0xa3150c), modified: hex(0x6a3b00), info: hex(0x0646a8), progress: hex(0x5a1fa8) },
+    attention: Attention { warn: hex(0x6a3b00), banner: hex(0xfbe8b8), needs_you: hex(0x9e3301), on_needs_you: hex(0xffffff) },
     diff_add: hex(0xe3f7e6),
     diff_del: hex(0xfde4e4),
     diff_add_sel: hex(0xbfe9c7),
@@ -117,10 +117,10 @@ pub const HIGH_CONTRAST_LIGHT: Palette = Palette {
     hunk_fg: hex(0x0b3a80),
     syn_comment: hex(0x404650),
     syn_string: hex(0x0b5220),
-    syn_number: hex(0x7a3000),
+    syn_number: hex(0x921e00),
     syn_constant: hex(0x00515c),
     syn_keyword: hex(0x6a1a8c),
-    syn_type: hex(0x5f3e00),
+    syn_type: hex(0x704000),
     syn_function: hex(0x0b3f99),
     syn_attr: hex(0x004d55),
     repository: REPO_HC_LIGHT,
@@ -155,8 +155,8 @@ pub const SAND: Palette = Palette {
     danger_off: hex(0xf0d4c8),
     tag_bg: hex(0xf5d8ea),
     tag_fg: hex(0x763463),
-    status: Status { added: hex(0x4f7f1e), removed: hex(0xb23a2a), modified: hex(0x9a6200), info: hex(0x2d65a8), progress: hex(0x7d4a9e) },
-    attention: Attention { warn: hex(0x9a6200), banner: hex(0xf3dfa8), needs_you: hex(0xbf4306), on_needs_you: hex(0xffffff) },
+    status: Status { added: hex(0x4f7f1e), removed: hex(0xb23a2a), modified: hex(0x925300), info: hex(0x2d65a8), progress: hex(0x7d4a9e) },
+    attention: Attention { warn: hex(0x925300), banner: hex(0xf3dfa8), needs_you: hex(0xbf4306), on_needs_you: hex(0xffffff) },
     diff_add: hex(0xe2ecd0),
     diff_del: hex(0xf5dccf),
     diff_add_sel: hex(0xc3e2b9),
@@ -167,10 +167,10 @@ pub const SAND: Palette = Palette {
     hunk_fg: hex(0x4a5a7a),
     syn_comment: hex(0x7a6f5c),
     syn_string: hex(0x4d6e14),
-    syn_number: hex(0xa8501a),
+    syn_number: hex(0xbe2a00),
     syn_constant: hex(0x1f7068),
     syn_keyword: hex(0x8a3f7a),
-    syn_type: hex(0x8a5a00),
+    syn_type: hex(0x915500),
     syn_function: hex(0x2a5f9e),
     syn_attr: hex(0x2f6f6a),
     repository: REPO_SAND,
