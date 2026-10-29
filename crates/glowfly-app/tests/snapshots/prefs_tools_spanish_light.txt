@@ -34,7 +34,7 @@ painted:
   "Git"
   "Perfil"
   "Integraciones"
-  "Interfaz"
+  "Apariencia"
   "Idioma y región"
   "Visor de diferencias"
   "Teclado"

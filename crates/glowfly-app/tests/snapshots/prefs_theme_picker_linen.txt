@@ -2,7 +2,7 @@ window 1400x1040
 Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
-Label "UI customization"
+Label "Appearance"
 CheckBox "Match the system (Graphite in dark mode, Dawn in light mode)" [off]
 Label "Dark"
 RadioButton "Graphite" [off]

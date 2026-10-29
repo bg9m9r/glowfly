@@ -301,7 +301,7 @@ fn drawn_chrome_drops_the_menu_bar_toggle() {
         let (mut st, dir) = fixture(chrome, ThemeChoice::Dark, &format!("title-bar-toggle-prefs-{chrome:?}"));
         st.prefs = Some(PrefsState::new(PrefPage::Ui));
         let h = open(st, true);
-        assert_eq!(h.query_by_label("Show the menu bar").is_some(), offered, "{chrome:?}: UI Customization");
+        assert_eq!(h.query_by_label("Show the menu bar").is_some(), offered, "{chrome:?}: Appearance");
         drop(h);
         remove_fixture(&dir);
     }

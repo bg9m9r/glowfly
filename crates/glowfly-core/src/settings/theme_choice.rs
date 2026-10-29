@@ -1,8 +1,8 @@
-//! The theme chosen in Preferences > UI Customization > Theme, as settings.json saves it.
+//! The theme chosen in Preferences > Appearance > Theme, as settings.json saves it.
 
 use serde::{Deserialize, Serialize};
 
-/// The theme in use (Preferences > UI Customization > Theme). A theme file is saved as
+/// The theme in use (Preferences > Appearance > Theme). A theme file is saved as
 /// `{"Custom": "ocean"}`. `"Dark"` in older files was "the default dark theme", so it loads as
 /// the default dark theme today (Graphite); Dusk saves as `"Dusk"`. `"Light"` and `"System"`
 /// load unchanged.

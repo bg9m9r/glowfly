@@ -134,7 +134,7 @@ fn diagnostics(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// Forget All Connections: forgetting the saved tokens, or those and Git Credential Manager's
+/// Saved connections: removing the saved tokens, or those and Git Credential Manager's
 /// sign-ins (after asking).
 fn forget_row(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
     row(ui, t.tr("prefs.general.forget.label"), |ui| {
@@ -148,7 +148,7 @@ fn forget_row(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
                 msgs.push(Msg::confirm_danger(
                     t.tr("prefs.general.forget.confirm_title"),
                     t.trn("prefs.general.forget.gcm_body", gcm_hosts, &[]),
-                    t.tr("prefs.general.forget.button"),
+                    t.tr("prefs.general.forget.confirm_button"),
                     Msg::Forge(ForgeMsg::ForgetTokens { gcm: true }),
                 ));
             }

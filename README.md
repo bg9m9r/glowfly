@@ -109,7 +109,7 @@ recognized once connected in Preferences, or by common URL shapes (`gitlab.*`, `
 connect it. The `*_TOKEN` environment variables are used only for github.com, gitlab.com and
 Azure DevOps, never for self-hosted servers. The issue tracker defaults to the host's own issues, and can be switched
 to a connected Jira site (optionally one project) or a connected Trello account (optionally one
-board) under Repo-Specific Preferences > Issue Tracker.
+board) under Preferences > This repository > Issue tracker.
 
 - **Pull requests**: a PULL REQUESTS (or MERGE REQUESTS) sidebar section with drafts, approval
   counts and a reviewer tooltip, plus badges on the head commit in the graph. You can open,
@@ -136,23 +136,24 @@ sub-list, and forms with right-aligned labels.
 
 - **General**: auto-fetch interval (0–60 min) and auto-prune, default branch name for new repos,
   initial commits in the graph (minimum 500), reopen last repository, `core.longpaths`,
-  `core.autocrlf`, and "Forget All" for connections. A second button also signs Git Credential
-  Manager out of those hosts, after a confirmation.
+  `core.autocrlf`, and "Remove saved tokens" for connections. A second button, "Remove tokens and
+  Git Credential Manager sign-ins", also signs Git Credential Manager out of those hosts, after a
+  confirmation.
 - **Profile**: global `user.name` / `user.email`.
 - **Integrations**: one page per service (GitHub, GitHub Enterprise Server, GitLab, GitLab
   Self-Managed, Bitbucket, Bitbucket Data Center, Azure DevOps, Jira Cloud, Jira Data Center,
   Trello).
   Each has a connection card with "Connect to …" (signs in through Git Credential Manager), or a
   host domain plus token. Credentials are verified before being saved.
-- **UI Customization**: graph columns, author pictures (off unless turned on), the quick-branch
+- **Appearance**: graph columns, author pictures (off unless turned on), the quick-branch
   button, trace a branch on hover, and branch visibility (All branches / Relevant branches).
 - **Language & region**: interface language, date/time locale and four patterns (Date, Long
   date, Date and time and Full date and time) that follow the locale until you type your own,
   and relative dates.
-- **Editor**: how the diff viewer draws text: font size, tab size (tab stops), line numbers,
+- **Diff viewer**: how the diff viewer draws text: font size, tab size (tab stops), line numbers,
   syntax highlighting and word-level highlights. Changes apply at once, without reloading.
-- **Commit Signing**: `commit.gpgsign`, `gpg.format`, `user.signingkey`.
-- **Repo-specific**: identity override (local `user.name` / `user.email`), `core.hooksPath`, and
+- **Commit signing**: `commit.gpgsign`, `gpg.format`, `user.signingkey`.
+- **This repository**: identity override (local `user.name` / `user.email`), `core.hooksPath`, and
   the issue tracker.
 
 App settings live in `settings.json` in `%APPDATA%\Glowfly` on Windows,

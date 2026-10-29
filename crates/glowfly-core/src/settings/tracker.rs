@@ -3,7 +3,7 @@
 use crate::forge::Account;
 use serde::{Deserialize, Serialize};
 
-/// Where a repository's issues come from (Repo-specific preferences > Issue tracker).
+/// Where a repository's issues come from (This repository > Issue tracker).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub enum TrackerChoice {
     /// The code host's own issues (GitHub/GitLab/Bitbucket issues, Azure Boards).

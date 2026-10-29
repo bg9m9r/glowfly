@@ -243,7 +243,8 @@ pub fn create_blocked(st: &AppState) -> Option<String> {
     let Some(t) = fs.tracker.as_ref() else {
         if fs.host.as_ref().is_some_and(|h| h.provider == Provider::BitbucketDataCenter) {
             return Some(
-                "Bitbucket Data Center has no issue tracker of its own; choose Jira under Repo-specific preferences > Issue tracker".into(),
+                "Bitbucket Data Center has no issue tracker of its own; choose Jira under Preferences > This repository > Issue tracker"
+                    .into(),
             );
         }
         return none();

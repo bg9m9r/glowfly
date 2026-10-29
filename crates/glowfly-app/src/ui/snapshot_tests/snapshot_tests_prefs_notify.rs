@@ -1,4 +1,4 @@
-//! Preferences > UI Customization rows: Desktop notifications, whose checkbox only asks update
+//! Preferences > Appearance rows: Desktop notifications, whose checkbox only asks update
 //! to change the setting (which saves it and sends the confirming notification), and Group
 //! worktree tabs, bound to the setting directly.
 

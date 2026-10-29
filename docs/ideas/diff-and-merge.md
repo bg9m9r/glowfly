@@ -1,6 +1,6 @@
 # Ideas: Diffs, blame and conflicts
 
-The diff viewer, blame and file history, range-diff, conflict prediction and the merge tool. Untriaged; see [README.md](README.md).
+The diff viewer, blame and file history, range-diff, the conflict check and the merge tool. Untriaged; see [README.md](README.md).
 
 ### Range-diff
 
@@ -155,7 +155,7 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - Let a narrow window shrink the blame gutter, or fold the summary into a hover, when wrapping
   leaves few columns
 
-### Conflict prediction
+### Conflict check
 
 - A per-repository page to turn the check on or off for one repository, overriding the General
   setting (with a note when it is off there)

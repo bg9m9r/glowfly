@@ -19,7 +19,7 @@ on the [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and its
 ## Files
 
 - [Working changes, staging and stashes](working-changes.md): the working-changes panel, staging, commit box, file actions, stashes and local patches.
-- [Diffs, blame and conflicts](diff-and-merge.md): the diff viewer, blame and file history, range-diff, conflict prediction and the merge tool.
+- [Diffs, blame and conflicts](diff-and-merge.md): the diff viewer, blame and file history, range-diff, the conflict check and the merge tool.
 - [History and the commit graph](history-and-graph.md): the graph and history table, search, multi-select, interactive rebase and stacked branches.
 - [Branches, tags and remotes](branches-and-remotes.md): branch and tag operations, remotes and Git Flow.
 - [Repositories](repository.md): clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git engine.

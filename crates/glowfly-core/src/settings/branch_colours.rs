@@ -1,4 +1,4 @@
-//! Branch colours in the settings: the palette preset (Preferences > UI Customization > Commit
+//! Branch colours in the settings: the palette preset (Preferences > Appearance > Commit
 //! graph > Branch colors, switched with the profile) and the hues pinned to branches, saved per
 //! repository under `repo_keys` like the graph filters. A pin is keyed by the branch's colour key
 //! (`branch_colour::branch_key`), so a local branch and its remote copies share it.

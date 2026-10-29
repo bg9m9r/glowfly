@@ -1,4 +1,4 @@
-//! Preferences > UI customization.
+//! Preferences > Appearance.
 
 use super::{check_row, combo, help, row, section};
 use crate::msg::{Msg, PrefsMsg};

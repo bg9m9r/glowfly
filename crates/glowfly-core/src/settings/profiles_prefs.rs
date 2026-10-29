@@ -1,5 +1,5 @@
 //! What switches with a profile besides its identity: the app preferences (General except the
-//! language, UI Customization and Editor except word wrap) and the connected hosting-service accounts.
+//! language, Appearance and Editor except word wrap) and the connected hosting-service accounts.
 //! Everything else in `Settings` (repository-specific settings, trust, favorites, tools, diff
 //! header toggles, window and dialog state) stays global; a test makes every new setting pick
 //! a side.
@@ -51,7 +51,7 @@ profile_prefs! {
     submodules: SubmodulePrefs,
     delete_to_trash: bool,
     auto_stash: bool,
-    // UI Customization
+    // Appearance
     theme: ThemeChoice,
     notification_location: Corner,
     behind_alerts: bool,

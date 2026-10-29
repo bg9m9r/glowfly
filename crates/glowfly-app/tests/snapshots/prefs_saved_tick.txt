@@ -27,7 +27,7 @@ painted:
   "Git"
   "Profile"
   "Integrations"
-  "UI customization"
+  "Appearance"
   "Language & region"
   "Keyboard"
   "External tools"

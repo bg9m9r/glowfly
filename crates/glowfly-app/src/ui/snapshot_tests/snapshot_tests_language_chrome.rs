@@ -1,5 +1,5 @@
 //! Language snapshots of the window's chrome: the German menu bar, tab bar and labelled toolbar
-//! (long labels must not collide), the View and Help menus open in German, and UI Customization
+//! (long labels must not collide), the View and Help menus open in German, and Appearance
 //! in Spanish (its labels must fit their column); and the tab menu, release notes and About
 //! follow the language.
 

@@ -68,7 +68,7 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 
 - Other setup-gated entries stay enabled and open their setting: pull request and issue items
   that need a connected account open Preferences > Integrations, and an issue tracker that isn't
-  chosen opens Repo-Specific Preferences > Issue Tracker
+  chosen opens Preferences > This repository > Issue tracker
 - When Preferences opens from a setup-gated entry, focus and highlight the matching field (diff
   tool, merge tool or editor)
 - Footer reasons for the form dialogs whose primary is disabled only by a field problem with no

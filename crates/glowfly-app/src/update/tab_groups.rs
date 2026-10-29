@@ -1,4 +1,4 @@
-//! Worktree tab groups (Preferences > UI Customization > Group worktree tabs): where a new tab
+//! Worktree tab groups (Preferences > Appearance > Group worktree tabs): where a new tab
 //! opens, how a dropped tab moves, and pulling a repository's tabs together once their common
 //! dirs are known (from a load, or the startup read of restored tabs). The rules themselves are
 //! in `state/tab_groups.rs`.

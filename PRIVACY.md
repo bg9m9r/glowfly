@@ -22,7 +22,7 @@ and how to turn it off.
 
 ## Author pictures (avatars)
 
-- **Off unless you turn it on:** Preferences > UI Customization > Author pictures, "Look up
+- **Off unless you turn it on:** Preferences > Appearance > Author pictures, "Look up
   avatars online" (or the checkbox on the welcome's last step).
 - **What is sent:** for each commit author, a SHA-256 hash of their email address goes to
   Gravatar (`gravatar.com`). For GitHub's noreply addresses (`…@users.noreply.github.com`),
@@ -56,7 +56,7 @@ and how to turn it off.
 - A username and password or token typed into Glowfly's git sign-in prompt is saved with git's
   own credential helper when "Remember HTTPS sign-ins typed in Glowfly" is on (Preferences >
   General).
-- "Forget all" in Preferences > General disconnects every integration and deletes their saved
+- "Remove saved tokens" in Preferences > General disconnects every integration and deletes their saved
   tokens.
 
 ## Git

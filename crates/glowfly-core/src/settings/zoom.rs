@@ -1,4 +1,4 @@
-//! Window zoom levels (keys, palette and Preferences > UI Customization).
+//! Window zoom levels (keys, palette and Preferences > Appearance).
 
 use super::Settings;
 

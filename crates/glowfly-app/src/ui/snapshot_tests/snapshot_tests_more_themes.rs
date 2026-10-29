@@ -57,7 +57,7 @@ fn theme_linen() {
     main_in(BuiltinTheme::Linen);
 }
 
-/// Preferences > UI customization with `choice` picked, drawn in its own palette.
+/// Preferences > Appearance with `choice` picked, drawn in its own palette.
 fn picker(name: &str, choice: ThemeChoice) {
     let mut st = AppState::new(settings(choice.clone()), Vec::new(), Instant::now());
     st.prefs = Some(PrefsState::new(PrefPage::Ui));

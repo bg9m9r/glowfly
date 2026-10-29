@@ -34,7 +34,7 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 
 ### Commit panel extras
 
-- Repo-specific Commit preferences page: edit and save the template, skip hooks by default,
+- A Commit page under This repository: edit and save the template, skip hooks by default,
   push after commit by default
 
 ### File actions

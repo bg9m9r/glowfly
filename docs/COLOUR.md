@@ -27,7 +27,7 @@ and the branch tests, with the shared hue bands in `theme/bands.rs`.
 | Linen (`linen`) | light | Clean warm-white paper, soft charcoal ink and deep cobalt | #f9f7f3 / #fcfbf9 / #004da8 / #28211c |
 
 Graphite is the default dark theme and Dawn the default light one: new settings start in
-Graphite, and Match the system shows Graphite or Dawn. Preferences > UI customization shows the
+Graphite, and Match the system shows Graphite or Dawn. Preferences > Appearance shows the
 built-ins as cards in two groups, Dark and Light (the default one first in each, then Dusk and
 the menu order), each a small picture of the main window in
 that theme with its name under it and its description on hover; Match the system sits above
@@ -222,7 +222,7 @@ tone, and the ink their chip tone pushed to 4.5:1 on that fill
 (`theme/branch_colours.rs::initials_tones`). The ring around the initials, or around an avatar
 image, stays the branch's colour.
 
-Colour-blind safe preset (Preferences > UI Customization > Commit graph > Branch colors): 8
+Colour-blind safe preset (Preferences > Appearance > Commit graph > Branch colors): 8
 hues that stay apart under protan, deutan and tritan vision as well as normal vision, and keep
 out of the accent and attention bands. Dark themes use its dark tones for lines and chips;
 light ones use its line tones for lines and its text tones for chips. Under protan or deutan
@@ -707,7 +707,7 @@ The lowest ratios of a chromatic colour on `input` are 4.99 (Dawn and Garden lig
 
 ## 7. Theme-file keys
 
-A theme file (Preferences > UI Customization > Theme files) sets any of these keys, in this
+A theme file (Preferences > Appearance > Theme files) sets any of these keys, in this
 order, to `#rrggbb` or to another key's name; `glowfly-core`'s `COLOR_KEYS` and
 `Palette::KEYS` hold the same list:
 

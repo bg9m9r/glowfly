@@ -38,7 +38,7 @@ pub enum Status {
     Error(String),
 }
 
-/// The code host comes from the remote URL, the issue tracker from Repo-Specific Preferences
+/// The code host comes from the remote URL, the issue tracker from Preferences > This repository
 /// (the host's own issues by default).
 pub struct ForgeState {
     pub host: Option<Target>,
