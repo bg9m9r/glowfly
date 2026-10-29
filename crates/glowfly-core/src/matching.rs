@@ -1,19 +1,28 @@
 //! Case-insensitive matching for filters and searches that run over many names or commits per
-//! frame: no allocation for ASCII text, which is nearly all of it.
+//! frame: no allocation for an ASCII needle, which is nearly every query, even in text that
+//! isn't all ASCII (a whole commit message often has a dash, a quote or a name that isn't).
+
+/// The only characters outside ASCII whose lowercase holds ASCII: İ (to "i" and a combining dot)
+/// and the Kelvin sign (to "k"). A test checks every character.
+const LOWER_TO_ASCII: [char; 2] = ['\u{130}', '\u{212A}'];
 
 /// Whether `hay`, lowercased, contains `needle`, which the caller has already lowercased (once
-/// per query, not per item). ASCII text is compared in place; other text is lowercased first,
-/// so the result always equals `hay.to_lowercase().contains(needle)`.
+/// per query, not per item). An ASCII needle is looked for in place, ignoring ASCII case: other
+/// characters lowercase to other characters (but for `LOWER_TO_ASCII`, which send the haystack
+/// the slow way) and their bytes are never ASCII, so no match can start or end inside one. A
+/// needle that isn't ASCII lowercases the haystack first. The result always equals
+/// `hay.to_lowercase().contains(needle)`.
 pub fn contains_lower(hay: &str, needle: &str) -> bool {
     if needle.is_empty() {
         return true;
     }
-    if !hay.is_ascii() {
-        return hay.to_lowercase().contains(needle);
-    }
-    // Lowercased ASCII stays ASCII, so it can't contain anything else.
+    let ascii = hay.is_ascii();
     if !needle.is_ascii() {
-        return false;
+        // Lowercased ASCII stays ASCII, so it can't contain anything else.
+        return !ascii && hay.to_lowercase().contains(needle);
+    }
+    if !ascii && hay.contains(LOWER_TO_ASCII) {
+        return hay.to_lowercase().contains(needle);
     }
     let (h, n) = (hay.as_bytes(), needle.as_bytes());
     let Some(last) = h.len().checked_sub(n.len()) else { return false };
@@ -68,6 +77,16 @@ mod tests {
             ("ab", "b"),
             ("ab", "abc"),
             ("12 [x]", "[x]"),
+            ("Café — the RÉSUMÉ fix", "the r"),
+            ("Café — the RÉSUMÉ fix", "fix"),
+            ("Café — the RÉSUMÉ fix", "caf"),
+            ("Café — the RÉSUMÉ fix", "é — t"),
+            ("50 \u{212A} hot", "50 k hot"),
+            ("\u{130}STANBUL", "istanbul"),
+            ("\u{130}STANBUL", "i"),
+            ("\u{130}STANBUL", "stanbul"),
+            ("naïve", "na"),
+            ("naïve", "nave"),
         ];
         for (hay, needle) in cases {
             assert_eq!(contains_lower(hay, needle), hay.to_lowercase().contains(needle), "{hay:?} / {needle:?}");
@@ -85,6 +104,30 @@ mod tests {
                 for j in i..=low.len() {
                     for needle in [low[i..j].to_owned(), format!("{}a", &low[i..j]), format!("b{}", &low[i..j])] {
                         assert_eq!(contains_lower(hay, &needle), low.contains(&needle), "{hay:?} / {needle:?}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn only_the_listed_characters_lowercase_to_ascii() {
+        let found: Vec<char> = (0x80..=0x10FFFF).filter_map(char::from_u32).filter(|c| c.to_lowercase().any(|l| l.is_ascii())).collect();
+        assert_eq!(found, LOWER_TO_ASCII);
+    }
+
+    #[test]
+    fn an_ascii_needle_agrees_with_lowercasing_in_mixed_text() {
+        // Every ASCII run of each lowercased haystack, cut every way, and near misses.
+        let hays = ["Ünïcode ünd ASCII", "aé-AÉ_aé", "— x —", "Zoë ZOË zoe", "\u{212A}elvin", "ǅ ǆ Ǆ ab"];
+        for hay in hays {
+            let low = hay.to_lowercase();
+            for run in low.split(|c: char| !c.is_ascii()) {
+                for i in 0..run.len() {
+                    for j in i + 1..=run.len() {
+                        for needle in [run[i..j].to_owned(), format!("{}q", &run[i..j]), format!("q{}", &run[i..j])] {
+                            assert_eq!(contains_lower(hay, &needle), low.contains(&needle), "{hay:?} / {needle:?}");
+                        }
                     }
                 }
             }
