@@ -138,6 +138,7 @@ source file, update its line here. Features that span every layer are in
 - `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `platform/open_events.rs` until the runner attaches.
 - `platform/native_menu.rs`: the macOS system menu bar showing Glowfly's menus: the facade, the queue of clicked items' tags and the hook that turns winit's default app menu off.
 - `platform/macos_menu.rs`: the AppKit menus, built and updated from the plan, with the delegate that leaves every key to the window but Cmd+H and Option+Cmd+H.
+- `platform/primary_selection.rs`: the Linux PRIMARY selection the terminal sets and middle-click pastes (smithay-clipboard on Wayland, arboard on X11).
 - `platform/native_window/`: the Windows window procedure (see Window chrome in [flow-shell.md](flow-shell.md)).
 
 ## `keymap/`: key bindings

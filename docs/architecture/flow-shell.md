@@ -57,13 +57,14 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `ui/title_bar.rs` draws the 44 px bar: the menu button (the menus of `ui/menu_bar::menus` as submenus), the tabs (`tabs::strip`) and empty space that moves or maximizes the window.
 - `ui/window_frame.rs` builds the viewport for each chrome (`viewport`, used by `main.rs`).
 - On Windows `ui/window_frame.rs` draws an `Order::Tooltip` overlay above every dialog: the window buttons (`ui/window_buttons.rs`), the resize edges and corners (none while maximized), a 1 px border, and a drag zone over the bar while a dialog blocks it.
-- Views push `AppMsg::Window`; `update/app.rs` returns `UiEffect::Window`, and the shell's `dispatch` sends the viewport command (`window_frame::viewport_cmd`), the only `send_viewport_cmd` outside the shell's own effects (`tests/layering.rs`).
+- Views push `AppMsg::Window`; `update/app.rs` returns `UiEffect::Window`, and the shell sends the viewport command (`ui/app_effects.rs`, `window_frame::viewport_cmd`), the only `send_viewport_cmd` outside the shell's own effects (`tests/layering.rs`).
 - On Windows the shell also installs `platform/native_window/` (`GlowflyApp::new`): a window procedure in front of winit's (`win_proc.rs`, its state in atomics).
 - `win_proc.rs` answers the hit test with `HTMAXBUTTON` over the drawn Maximize button for Snap Layouts.
 - `win_system.rs` opens the system menu on Alt+Space or on `WindowCmd::SystemMenu`, sets the Mica backdrop and reads transparency and high contrast.
 - Each frame `ui/app_native.rs` polls it into view state (`WindowInfo::max_button`, `ViewState::backdrop`, a click as `SetMaximized`, a shown menu cancelling the Alt tap) and hands back `window_frame::caption_geometry`.
 - The pure parts of the native window are in `state/window_native.rs`.
 - Only `ui/app.rs` and `ui/app_native.rs` may name `platform::native_window`, and no view, update or state code names `windows::Win32` (`tests/layering.rs`).
+- Only `ui/app.rs` (opening it) and `ui/app_effects.rs` (`UiEffect::SetPrimary`, `UiEffect::PastePrimary`) may name `platform::primary_selection` (`tests/layering.rs`).
 - `ui/backdrop.rs` picks the palette's Mica tints (`mica_tint`, cached in `ThemeCache`) and gives the title bar, toolbar and sidebar their fill (`backdrop::fill`).
 - `GlowflyApp::clear_color` clears to transparent only while Mica shows.
 

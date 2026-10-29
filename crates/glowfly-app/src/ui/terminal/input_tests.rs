@@ -4,7 +4,7 @@ use glowfly_core::terminal::{Modes, encode};
 
 /// Text is selected; nothing else.
 const SELECTED: Opts = Opts { has_selection: true, history_keys: false, alt_is_meta: false };
-/// Alt+letter sends ESC and the letter.
+/// Alt with a character key sends ESC and the character.
 const META: Opts = Opts { has_selection: false, history_keys: false, alt_is_meta: true };
 /// Shift with Page Up/Down, Home and End scrolls.
 const HISTORY: Opts = Opts { has_selection: false, history_keys: true, alt_is_meta: false };
@@ -157,4 +157,55 @@ fn shift_paging_keys_scroll_the_history() {
     assert_eq!((got.inputs, got.scroll), (vec![input(TermKey::PageUp, false, false, false)], vec![]));
     let got = collect(&[key(Key::PageUp, true, Modifiers::CTRL | shift)], &mut None, HISTORY);
     assert!(got.scroll.is_empty());
+}
+
+#[test]
+fn alt_digits_and_punctuation_send_escape_and_the_character() {
+    let (alt, shift) = (Modifiers::ALT, Modifiers::SHIFT);
+    let alt_key = |k, m: Modifiers, text: Option<&str>| {
+        let mut events = vec![key(k, true, m)];
+        events.extend(text.map(|t| Event::Text(t.into())));
+        bytes(&events, META)
+    };
+    assert_eq!(alt_key(Key::Period, alt, Some(".")), b"\x1b.", "Alt+. (yank the last argument)");
+    assert_eq!(alt_key(Key::Period, alt, None), b"\x1b.", "no text came");
+    assert_eq!(alt_key(Key::Num1, alt, Some("1")), b"\x1b1", "Alt+digit (a count)");
+    assert_eq!(alt_key(Key::Num0, alt, None), b"\x1b0");
+    assert_eq!(alt_key(Key::Minus, alt | shift, Some("_")), b"\x1b_", "Alt+_");
+    assert_eq!(alt_key(Key::Minus, alt | shift, None), b"\x1b_", "Shift as on a US keyboard");
+    // The text the layout typed wins over the key's US character (Shift+7 is / on German).
+    assert_eq!(alt_key(Key::Slash, alt | shift, Some("/")), b"\x1b/");
+    // Once: the next key's text is typed, not eaten.
+    let got = bytes(&[key(Key::Period, true, alt), key(Key::X, true, Modifiers::NONE), Event::Text("x".into())], META);
+    assert_eq!(got, b"\x1b.x");
+    // Space and named keys keep their own encoding.
+    assert!(meta_char(Key::Space, alt).is_none() && meta_char(Key::Enter, alt).is_none());
+    assert!(meta_char(Key::Period, alt | Modifiers::CTRL).is_none(), "AltGr");
+    assert!(meta_char(Key::Period, alt | Modifiers::MAC_CMD | Modifiers::COMMAND).is_none(), "the app's Cmd chords");
+}
+
+#[test]
+fn option_as_meta_sends_the_keys_character_not_the_composed_one() {
+    let (alt, shift) = (Modifiers::ALT, Modifiers::SHIFT);
+    let option = |k, m, composed: &str, opts| bytes(&[key(k, true, m), Event::Text(composed.into())], opts);
+    assert_eq!(option(Key::B, alt, "∫", META), b"\x1bb", "Option+B (word back)");
+    assert_eq!(option(Key::F, alt, "ƒ", META), b"\x1bf");
+    assert_eq!(option(Key::Period, alt, "≥", META), b"\x1b.");
+    assert_eq!(option(Key::Minus, alt | shift, "—", META), b"\x1b_");
+    // Text longer than one character is typed after the ESC and the key.
+    assert_eq!(option(Key::B, alt, "ab", META), b"\x1bbab");
+    // Without Option as Meta, Option types what it composes.
+    assert_eq!(option(Key::B, alt, "∫", Opts::default()), "∫".as_bytes());
+}
+
+#[test]
+fn each_systems_alt_follows_its_settings() {
+    use glowfly_core::settings::TerminalPrefs;
+    let alt_b = [key(Key::B, true, Modifiers::ALT), Event::Text("∫".into())];
+    let sent = |prefs: &TerminalPrefs, macos| bytes(&alt_b, Opts { alt_is_meta: prefs.alt_is_meta_for(macos), ..Opts::default() });
+    let (default, meta) = (TerminalPrefs::default(), TerminalPrefs { option_as_meta: true, ..Default::default() });
+    assert_eq!(sent(&default, true), "∫".as_bytes(), "macOS composes by default");
+    assert_eq!(sent(&meta, true), b"\x1bb", "macOS with Option as Meta");
+    assert_eq!(sent(&default, false), b"\x1bb", "Windows and Linux");
+    assert_eq!(sent(&meta, false), b"\x1bb");
 }

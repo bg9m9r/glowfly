@@ -104,6 +104,12 @@ pub enum TerminalMsg {
     Clear,
     /// Paste the clipboard into the active tab's shell.
     Paste,
+    /// A middle click (Linux): paste the PRIMARY selection into the active tab's shell (the
+    /// clipboard when the display has none).
+    PastePrimary,
+    /// A mouse selection ended (a drag's release, a double or triple click): it becomes the
+    /// PRIMARY selection (Linux), and with Copy on select is copied too. It stays selected.
+    Selected,
     /// A drag of the panel's edge ended at this height, in points.
     PanelHeight(f32),
     /// Show the inline rename field for tab `id` (a double-click, or More > Rename terminal).
@@ -179,6 +185,8 @@ impl TerminalMsg {
             | Self::SelectAll
             | Self::Clear
             | Self::Paste
+            | Self::PastePrimary
+            | Self::Selected
             | Self::PanelHeight(..)
             | Self::StartRename(..)
             | Self::Rename { .. }

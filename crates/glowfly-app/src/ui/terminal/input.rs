@@ -23,7 +23,8 @@ pub(super) struct Opts {
     pub has_selection: bool,
     /// Shift with Page Up/Down, Home and End scrolls the history (the main screen).
     pub history_keys: bool,
-    /// Alt+letter sends ESC and the letter (not on macOS, where Option composes characters).
+    /// Alt with a letter, digit or punctuation key sends ESC and the character (on macOS only
+    /// with Option as Meta, since Option composes characters there).
     pub alt_is_meta: bool,
 }
 
@@ -37,15 +38,35 @@ pub(super) struct Opts {
 /// selected (`opts.has_selection`), a copy command (Ctrl+C, Ctrl+Insert, Cmd+C) copies it
 /// instead, on every system.
 ///
-/// Alt+letter (`opts.alt_is_meta`) is sent as ESC and the letter, and the letter's own text in
-/// the same frame is dropped so it isn't typed twice.
+/// Alt with a letter, digit or punctuation key (`opts.alt_is_meta`) is sent as ESC and the
+/// character, once: the character the press types when it comes as text in the same frame (so
+/// the keyboard layout decides Alt+_ or Alt+?), else the key's own (`meta_char`), which is what
+/// macOS's Option gets, since it types a composed character instead.
 pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, opts: Opts) -> Collected {
     let mut out = Vec::new();
     let mut copy = false;
     let mut scroll = Vec::new();
-    // The letter of the last Alt+letter sent, until the next text.
-    let mut meta_sent: Option<char> = None;
+    // An Alt+key press waiting for its text: the key's own character and whether Shift was held.
+    let mut meta: Option<(char, bool)> = None;
     for e in events {
+        let text = match e {
+            Event::Text(t) | Event::Ime(ImeEvent::Commit(t)) => Some(t),
+            _ => None,
+        };
+        if let Some(t) = text
+            && let Some((c, shift)) = meta.take()
+        {
+            match single(t) {
+                Some(typed) if typed.is_ascii_graphic() => out.push(meta_input(typed, shift)),
+                // A character Option composed (macOS): the key's own goes instead.
+                Some(_) => out.push(meta_input(c, shift)),
+                None => out.extend([meta_input(c, shift), TermInput::Text(t.clone())]),
+            }
+            continue;
+        }
+        if !matches!(e, Event::Key { pressed: false, .. }) {
+            send_meta(&mut meta, &mut out);
+        }
         match e {
             Event::Copy if opts.has_selection => copy = true,
             Event::Copy | Event::Cut if !cfg!(target_os = "macos") => {
@@ -70,21 +91,21 @@ pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, opts:
                     _ => continue,
                 };
                 *pending = None;
+                send_meta(&mut meta, &mut out);
                 out.extend(sent.into_iter().flat_map(|i| std::iter::repeat_n(i, n as usize)));
             }
-            Event::Text(t) | Event::Ime(ImeEvent::Commit(t)) if meta_sent.take().is_some_and(|c| same_letter(t, c)) => {}
             Event::Key { key, pressed: true, modifiers, .. } => {
                 let step = opts.history_keys.then(|| history_step(*key, *modifiers)).flatten();
-                let meta = opts.alt_is_meta.then(|| meta_letter(*key, *modifiers)).flatten();
-                let sent = match (step, meta) {
+                let alt = opts.alt_is_meta.then(|| meta_char(*key, *modifiers)).flatten();
+                let sent = match (step, alt) {
                     (Some(step), _) => {
                         scroll.push(step);
                         None
                     }
                     (None, Some(c)) => {
-                        meta_sent = Some(c);
-                        let shown = if modifiers.shift { c.to_ascii_uppercase() } else { c };
-                        Some(TermInput::Key { key: TermKey::Char(shown), mods: KeyMods { alt: true, shift: modifiers.shift, ctrl: false } })
+                        flush(pending, &mut out);
+                        meta = Some((c, modifiers.shift));
+                        None
                     }
                     (None, None) => map(e),
                 };
@@ -101,7 +122,29 @@ pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, opts:
             }
         }
     }
+    send_meta(&mut meta, &mut out);
     Collected { inputs: out, copy, scroll }
+}
+
+/// Sends a waiting Alt+key with the key's own character: no text came for it.
+fn send_meta(meta: &mut Option<(char, bool)>, out: &mut Vec<TermInput>) {
+    if let Some((c, shift)) = meta.take() {
+        out.push(meta_input(c, shift));
+    }
+}
+
+/// ESC and `c`.
+fn meta_input(c: char, shift: bool) -> TermInput {
+    TermInput::Key { key: TermKey::Char(c), mods: KeyMods { alt: true, shift, ctrl: false } }
+}
+
+/// The one character of `text`, if it is a single character.
+fn single(text: &str) -> Option<char> {
+    let mut chars = text.chars();
+    match (chars.next(), chars.next()) {
+        (Some(c), None) => Some(c),
+        _ => None,
+    }
 }
 
 /// The history step of Shift (alone) with Page Up/Down, Home or End.
@@ -118,13 +161,56 @@ fn history_step(key: Key, m: Modifiers) -> Option<ScrollStep> {
     }
 }
 
-/// The lowercase letter of an Alt+letter press (with or without Shift). Ctrl+Alt is AltGr on
-/// Windows, which types its character instead.
-fn meta_letter(key: Key, m: Modifiers) -> Option<char> {
+/// The character an Alt press of a letter, digit or punctuation key sends after ESC, from the
+/// key alone: the letter (capital with Shift), else the key's character, with Shift as on a US
+/// keyboard. Ctrl+Alt is AltGr on Windows, which types its character instead, and Cmd chords
+/// are the app's.
+pub(super) fn meta_char(key: Key, m: Modifiers) -> Option<char> {
     if !m.alt || m.ctrl || m.mac_cmd {
         return None;
     }
-    letter(key)
+    if let Some(c) = letter(key) {
+        return Some(if m.shift { c.to_ascii_uppercase() } else { c });
+    }
+    let (plain, shifted) = key_chars(key)?;
+    Some(if m.shift { shifted } else { plain })
+}
+
+/// A digit or punctuation key's character, and the one Shift gives it on a US keyboard (keys
+/// that are themselves a shifted character give it either way).
+fn key_chars(key: Key) -> Option<(char, char)> {
+    let pair = match key {
+        Key::Num0 => ('0', ')'),
+        Key::Num1 => ('1', '!'),
+        Key::Num2 => ('2', '@'),
+        Key::Num3 => ('3', '#'),
+        Key::Num4 => ('4', '$'),
+        Key::Num5 => ('5', '%'),
+        Key::Num6 => ('6', '^'),
+        Key::Num7 => ('7', '&'),
+        Key::Num8 => ('8', '*'),
+        Key::Num9 => ('9', '('),
+        Key::Minus => ('-', '_'),
+        Key::Equals => ('=', '+'),
+        Key::OpenBracket => ('[', '{'),
+        Key::CloseBracket => (']', '}'),
+        Key::Backslash => ('\\', '|'),
+        Key::Semicolon => (';', ':'),
+        Key::Quote => ('\'', '"'),
+        Key::Comma => (',', '<'),
+        Key::Period => ('.', '>'),
+        Key::Slash => ('/', '?'),
+        Key::Backtick => ('`', '~'),
+        Key::Plus => ('+', '+'),
+        Key::Colon => (':', ':'),
+        Key::Pipe => ('|', '|'),
+        Key::Questionmark => ('?', '?'),
+        Key::Exclamationmark => ('!', '!'),
+        Key::OpenCurlyBracket => ('{', '{'),
+        Key::CloseCurlyBracket => ('}', '}'),
+        _ => return None,
+    };
+    Some(pair)
 }
 
 /// The lowercase letter of a letter key.
@@ -134,12 +220,6 @@ fn letter(key: Key) -> Option<char> {
         (Some(c @ 'A'..='Z'), None) => Some(c.to_ascii_lowercase()),
         _ => None,
     }
-}
-
-/// Whether `text` is just the letter `c`, in either case.
-fn same_letter(text: &str, c: char) -> bool {
-    let mut chars = text.chars();
-    matches!((chars.next(), chars.next()), (Some(t), None) if t.eq_ignore_ascii_case(&c))
 }
 
 /// Sends the waiting copy or cut commands as ^C or ^X.

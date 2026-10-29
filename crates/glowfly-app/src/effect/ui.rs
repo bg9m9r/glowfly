@@ -21,6 +21,11 @@ pub enum UiEffect {
     CancelClose,
     /// Read the clipboard into an Event::Paste for the focused widget on the next frame.
     RequestPaste,
+    /// Offer the text as the PRIMARY selection (Linux; nothing where there is none).
+    SetPrimary(String),
+    /// Paste the PRIMARY selection into the active terminal tab, or ask for the clipboard
+    /// (`RequestPaste`) where the display has no PRIMARY.
+    PastePrimary,
     /// Move, resize, minimise or maximise the window, or show the system menu (the drawn
     /// title bar), or enter or leave full screen.
     Window(WindowCmd),

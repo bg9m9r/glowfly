@@ -32,6 +32,7 @@ second one next to it.
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
 | Window frame | Drawn by Glowfly: no system decorations; its own title bar, window buttons, resize edges and border, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
 | Menus | The drawn title bar's menu button | The system menu bar (the app menu, then File, Edit, View, Window and Help) and the title bar's menu button | The in-window menu bar, which can be hidden |
+| Terminal keys and selection | Alt with a letter, digit or punctuation key sends ESC and the character; no PRIMARY selection | Option composes characters unless Option as Meta is on (Preferences > Terminal); no PRIMARY selection | Alt as on Windows; a mouse selection sets PRIMARY and a middle click pastes it (X11 and Wayland) |
 
 ## Rules
 
@@ -411,6 +412,23 @@ second one next to it.
    the pure `KeyLabels::native()`, and `text_in`/`parts_in` take a style, so a test checks both
    styles on every OS. Never paint the ⌘ ⌥ ⇧ glyphs: the bundled fonts lack them.
 
+### The built-in terminal's keys and selection
+
+1. **Alt is Meta through `TerminalPrefs::alt_is_meta`:** on Windows and Linux always, on macOS
+   only with Option as Meta (`alt_is_meta_for` takes the system, so each case is tested
+   everywhere). Alt with a letter, digit or punctuation key then sends ESC and a character
+   (`ui/terminal/input.rs`): the one the press typed when its text comes in the same frame, so
+   the keyboard layout decides Alt+_ or Alt+/, else the key's own with Shift as on a US keyboard
+   (macOS, where Option types a composed character instead). Ctrl+Alt (AltGr on Windows) types
+   its character, and Cmd chords stay the app's.
+2. **PRIMARY only through `platform::primary_selection`, from the shell:** a finished mouse
+   selection, and Select all, become PRIMARY (`UiEffect::SetPrimary`, nothing where there is
+   none), and a middle click (Linux, with Middle-click paste) asks for it
+   (`UiEffect::PastePrimary`). A Wayland window uses the compositor's primary-selection protocol
+   (smithay-clipboard on the window's own `wl_display`, let go in `on_exit` before the window
+   closes), an X11 window the PRIMARY atom (arboard): the crates egui-winit already uses for the
+   clipboard. When neither opens, a middle click pastes the clipboard (`middle_click_reads`).
+
 ### Links and the running window
 
 1. **Register the `glowfly` scheme for this user only:** `HKEY_CURRENT_USER\Software\Classes\glowfly`
@@ -733,6 +751,12 @@ Gaps that are accepted for now:
   4.5:1 over the lightest dark Mica stand-ins at any tint step (the title bar does sit on Mica).
 - **macOS's traffic lights aren't centred on the title bar,** which is taller than the system's.
 - **An Alt press and release within one frame isn't seen as a tap,** so it doesn't open the menu.
+- **Option as Meta keeps Option's dead keys:** Option+E, U, I, N and ` still start a composition in
+  macOS's input system, so the next letter can come out accented; and Option+Shift with
+  punctuation follows a US keyboard's positions, since egui reports the key, not the layout's
+  character without Option.
+- **PRIMARY is read on the UI thread,** as egui-winit reads the clipboard: a selection owner that
+  doesn't answer (X11) can hold a frame until arboard's timeout.
 - **Inside Flatpak, host programs are out of reach:** editors, diff and merge tools, terminal
   shells and hook interpreters that only the host has aren't found in the sandbox.
 - **Inside Flatpak, a folder handed over by file forwarding may arrive as a

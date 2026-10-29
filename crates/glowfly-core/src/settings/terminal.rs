@@ -1,6 +1,6 @@
 //! Preferences > Terminal (the shell, text size, colours, cursor and dimming, copy on select,
-//! middle-click paste, and whether Open in terminal uses the panel), and the panel's remembered
-//! state.
+//! middle-click paste, Option as Meta, and whether Open in terminal uses the panel), and the
+//! panel's remembered state.
 
 use serde::{Deserialize, Serialize};
 use std::ops::RangeInclusive;
@@ -82,9 +82,12 @@ pub struct TerminalPrefs {
     pub dim_unfocused: bool,
     /// Releasing a mouse selection copies it, and the copy key then goes to the shell.
     pub copy_on_select: bool,
-    /// A middle click on the screen pastes the clipboard; read through `middle_click_pastes()`,
-    /// since it acts only on Linux.
+    /// A middle click on the screen pastes the PRIMARY selection (the clipboard when the display
+    /// has none); read through `middle_click_pastes()`, since it acts only on Linux.
     pub middle_click_paste: bool,
+    /// Option+key sends ESC and the key, as Alt does elsewhere, instead of typing the character
+    /// Option composes; read through `alt_is_meta()`, since it acts only on macOS.
+    pub option_as_meta: bool,
     /// Open in terminal (palette, toolbar right-click) uses the panel.
     pub open_in_panel: bool,
     pub colours: TerminalColours,
@@ -102,6 +105,7 @@ impl Default for TerminalPrefs {
             dim_unfocused: false,
             copy_on_select: false,
             middle_click_paste: true,
+            option_as_meta: false,
             open_in_panel: false,
             colours: TerminalColours::MatchTheme,
             panel_open: false,
@@ -130,6 +134,17 @@ impl TerminalPrefs {
         self.middle_click_pastes_for(cfg!(target_os = "linux"))
     }
 
+    /// Whether Alt (Option) with a character key sends ESC and the character, on a system where
+    /// `macos` says whether it is macOS: always elsewhere, and on macOS only with Option as Meta.
+    pub fn alt_is_meta_for(&self, macos: bool) -> bool {
+        !macos || self.option_as_meta
+    }
+
+    /// Whether Alt with a character key sends ESC and the character on this system.
+    pub fn alt_is_meta(&self) -> bool {
+        self.alt_is_meta_for(cfg!(target_os = "macos"))
+    }
+
     /// Everything on the Preferences page back to its default; the panel's state stays.
     pub fn reset_page(&mut self) {
         *self = Self { panel_open: self.panel_open, panel_height: self.panel_height, ..Self::default() };
@@ -153,6 +168,17 @@ mod tests {
         let p: TerminalPrefs = serde_json::from_str(r#"{"font_size":14.0,"dim_unfocused":true}"#).unwrap();
         assert!(!p.copy_on_select);
         assert!(p.middle_click_paste);
+        assert!(!p.option_as_meta);
+    }
+
+    #[test]
+    fn option_is_meta_only_when_asked_on_macos() {
+        let on = TerminalPrefs { option_as_meta: true, ..Default::default() };
+        let off = TerminalPrefs::default();
+        assert!(on.alt_is_meta_for(true));
+        assert!(!off.alt_is_meta_for(true), "Option composes by default");
+        assert!(on.alt_is_meta_for(false) && off.alt_is_meta_for(false), "Alt is Meta elsewhere");
+        assert_eq!(off.alt_is_meta(), !cfg!(target_os = "macos"));
     }
 
     #[test]
@@ -175,6 +201,7 @@ mod tests {
             dim_unfocused: true,
             copy_on_select: true,
             middle_click_paste: false,
+            option_as_meta: true,
             open_in_panel: true,
             colours: TerminalColours::Scheme("campbell".into()),
             panel_open: true,
@@ -208,6 +235,7 @@ mod tests {
             dim_unfocused: true,
             copy_on_select: true,
             middle_click_paste: false,
+            option_as_meta: true,
             open_in_panel: true,
             colours: TerminalColours::Theme("sand".into()),
             panel_open: true,

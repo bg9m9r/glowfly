@@ -1659,6 +1659,7 @@ dependencies = [
 name = "glowfly"
 version = "0.2.0-rc.1"
 dependencies = [
+ "arboard",
  "chrono",
  "eframe",
  "egui-wgpu",
@@ -1675,6 +1676,7 @@ dependencies = [
  "raw-window-handle",
  "rfd",
  "serde_json",
+ "smithay-clipboard",
  "sys-locale",
  "toml",
  "tracing",
