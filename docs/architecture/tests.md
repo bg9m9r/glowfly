@@ -48,6 +48,10 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `.github/workflows/installers.yml`: `scripts/installer-check-windows.ps1`, `scripts/installer-check-linux.sh`, `scripts/update-feed-check.ps1`: the packaged builds on clean runners.
 - The MSI and the .deb are installed over a v0.0.1 package, and their files, shortcuts or desktop entries, registry and icons checked.
 - The program is started (`--version`; on Linux also the window under its own Xvfb), update-checked against local feeds (up to date, newer, wrong or missing checksum, relative feed), and uninstalled with nothing left behind.
+- `scripts/package-check-licences.sh`: every archive and installer (tar.gz, zip, .app, dmg, AppImage, .deb, .rpm) holds `LICENSE-MIT`, `LICENSE-APACHE` and `THIRD-PARTY-NOTICES.md`, the same as the repository's; run by the Release workflow after packaging and by Installers, whose macOS job packages the app only for this.
+- `scripts/installer-check-windows.ps1` checks the zip and the installed MSI's licence files the same way; `scripts/installer-check-flatpak.sh` checks the installed bundle's, `GIT-NOTICE.md` and git's licences in `/app/share/doc/git/`.
+- `scripts/release-check-git-source.sh`: a folder of release files with a `.flatpak` also has the git source archive the manifest names, with its sha256; run by the Release workflow's checksums job and by Installers.
+- `crates/glowfly-app/tests/flatpak_package.rs`: the Flatpak manifest and its jobs, read line by line, including git's licences, `GIT-NOTICE.md` naming the manifest's git archive, and the release attaching it.
 
 ## Workflows
 

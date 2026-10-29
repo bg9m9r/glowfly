@@ -63,6 +63,15 @@ jobs:
           gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /dev/null || { echo "::error::Tag $TAG doesn't exist"; exit 1; }
           gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "Glowfly $TAG" --generate-notes
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      # The workflow's own commit, for the header: it belongs to the release, not to the tag's
+      # build, so a re-run for an older tag gets today's text.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Unsigned builds, how to check a download, no warranty and the licences, above the notes
+      # (packaging/release-notes-header.md); a re-run replaces it.
+      - name: Put the fixed header on the release notes
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: bash scripts/release-notes-header.sh "$TAG"
 
   build:
     name: Build (${{ matrix.target }})
@@ -130,6 +139,17 @@ jobs:
           cargo install cargo-deb --locked --version 2.12.1
           cargo install cargo-generate-rpm --locked --version 0.21.0
           bash scripts/package-linux.sh ${{ matrix.target }} "$TAG"
+      # Every archive and installer holds LICENSE-MIT, LICENSE-APACHE and THIRD-PARTY-NOTICES.md.
+      - name: Check the licence files (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: bash scripts/package-check-licences.sh dist/*.zip
+      - name: Check the licence files (macOS)
+        if: runner.os == 'macOS'
+        run: bash scripts/package-check-licences.sh dist/Glowfly.app dist/*.dmg dist/*.tar.gz
+      - name: Check the licence files (Linux)
+        if: runner.os == 'Linux'
+        run: bash scripts/package-check-licences.sh dist/*.tar.gz dist/*.deb dist/*.AppImage
       - name: Upload to the release
         shell: bash
         # Regular files only: dist/ also holds the assembled Glowfly.app folder on macOS.
@@ -144,7 +164,8 @@ jobs:
           fi
 
   # The Flatpak bundle (scripts/package-flatpak.sh): the crates are vendored on the runner, since
-  # the Flatpak build has no network, then the bundle is built in the pinned builder image.
+  # the Flatpak build has no network, then the bundle is built in the pinned builder image. The
+  # bundle ships git (GPL-2.0), so the exact git source archive it was built from goes up with it.
   # x86_64 only: the builder image runs natively only on x86_64 runners, and an aarch64 build
   # under emulation (the whole workspace and git) would run far past the job's time.
   flatpak:
@@ -170,10 +191,11 @@ jobs:
       - name: Build the bundle
         run: docker run --rm --privileged -v "$PWD:/src" -w /src "$FLATPAK_IMAGE" bash scripts/package-flatpak.sh bundle "$TAG"
       - name: Upload to the release
-        run: gh release upload "$TAG" dist/*.flatpak dist/*.flatpak.sha256 --clobber
+        run: gh release upload "$TAG" dist/*.flatpak dist/*.flatpak.sha256 dist/git-*.tar.xz dist/git-*.tar.xz.sha256 --clobber
 
-  # SHA256SUMS over every file of the release, for `sha256sum -c SHA256SUMS --ignore-missing`
-  # and the app's update check.
+  # SHA256SUMS over every file of the release (the git source archive too), for
+  # `sha256sum -c SHA256SUMS --ignore-missing` and the app's update check. A release with a
+  # .flatpak must have the git source it was built from (scripts/release-check-git-source.sh).
   checksums:
     needs: [prepare, build, flatpak]
     if: ${{ !cancelled() && needs.prepare.result == 'success' }}
@@ -183,10 +205,14 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
       - name: Publish SHA256SUMS
         run: |
           mkdir dist
-          gh release download "$TAG" --dir dist --pattern 'glowfly-*'
+          gh release download "$TAG" --dir dist --pattern 'glowfly-*' --pattern 'git-*.tar.xz'
+          bash scripts/release-check-git-source.sh dist
           rm -f dist/*.sha256
           (cd dist && sha256sum -- * | sort -k2 > SHA256SUMS)
           cat dist/SHA256SUMS

@@ -32,7 +32,9 @@ finish-args:
 modules:
   # git itself, at /app/bin/git, first on PATH inside the sandbox. No configure step: the make
   # flags leave out gitk, git-gui, translations, Perl and Python. git builds its Rust parts
-  # (libgitcore) with cargo; they have no dependencies, so this needs no network.
+  # (libgitcore) with cargo; they have no dependencies, so this needs no network. The release
+  # attaches this exact tarball (scripts/package-flatpak.sh), and GIT-NOTICE.md names its
+  # version, address and sha256: change them together (tests/flatpak_package.rs checks).
   - name: git
     buildsystem: simple
     build-options:
@@ -43,6 +45,12 @@ modules:
     build-commands:
       - make -j${FLATPAK_BUILDER_N_JOBS} prefix=/app NO_TCLTK=YesPlease NO_GETTEXT=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease USE_LIBPCRE2=YesPlease INSTALL_SYMLINKS=YesPlease all
       - make prefix=/app NO_TCLTK=YesPlease NO_GETTEXT=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease USE_LIBPCRE2=YesPlease INSTALL_SYMLINKS=YesPlease install
+      # git's licences beside it: GPL-2.0 (COPYING), the LGPL-2.1 some of its parts are under,
+      # and the licences of the two bundled libraries it is built with (reftable, BSD-3-Clause;
+      # sha1dc, MIT), named for their folders.
+      - install -Dm644 -t /app/share/doc/git COPYING LGPL-2.1
+      - install -Dm644 reftable/LICENSE /app/share/doc/git/reftable-LICENSE
+      - install -Dm644 sha1dc/LICENSE.txt /app/share/doc/git/sha1dc-LICENSE.txt
     cleanup:
       - /share/man
       - /share/gitweb
@@ -83,4 +91,4 @@ modules:
       - install -Dm644 packaging/flatpak/io.github.bg9m9r.glowfly.links.desktop /app/share/applications/io.github.bg9m9r.glowfly.links.desktop
       - install -Dm644 packaging/flatpak/generated/io.github.bg9m9r.glowfly.metainfo.xml /app/share/metainfo/io.github.bg9m9r.glowfly.metainfo.xml
       - for size in 16 24 32 48 64 128 256 512; do install -Dm644 assets/icon/glowfly-$size.png /app/share/icons/hicolor/${size}x${size}/apps/io.github.bg9m9r.glowfly.png; done
-      - install -Dm644 -t /app/share/doc/glowfly LICENSE-MIT LICENSE-APACHE README.md THIRD-PARTY-NOTICES.md
+      - install -Dm644 -t /app/share/doc/glowfly LICENSE-MIT LICENSE-APACHE README.md THIRD-PARTY-NOTICES.md packaging/flatpak/GIT-NOTICE.md

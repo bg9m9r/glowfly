@@ -191,6 +191,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 ## Releases and updates
 
 - The Release workflow packages each build (`scripts/package-*`, `packaging/`; see `docs/RELEASING.md`) and publishes `SHA256SUMS`.
+- It puts a fixed header above each release's notes (`packaging/release-notes-header.md`, by `scripts/release-notes-header.sh`), which `changelog::parse_body` skips, and attaches the Flatpak's git source beside the bundle (`packaging/flatpak/GIT-NOTICE.md`).
 - In the app, `UpdateMsg::Startup` arms the automatic check.
 - `update/updates.rs::tick` starts the check (at most once a day, after `STARTUP_DELAY`, an hour after a failure) as `UpdateEffect::Check`, which asks the `app_update::Feed` (`forge::latest_release`, or the folder `GLOWFLY_UPDATE_FEED` names) and reports how this copy was installed.
 - `app_update::offer` picks the file for this platform; Download runs `app_update::download`, which writes nothing until the SHA-256 matches.

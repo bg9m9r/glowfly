@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Installs the Flatpak bundle for this user, checks what it exports, its version, its update
-# check, its bundled git and the runtime's ssh, then uninstalls it. Run by the Installers
-# workflow (.github/workflows/installers.yml) after scripts/package-flatpak.sh built the bundle.
+# Installs the Flatpak bundle for this user, checks what it exports, its licence and notice
+# files (Glowfly's and git's), its version, its update check, its bundled git and the runtime's
+# ssh, then uninstalls it. Run by the Installers workflow (.github/workflows/installers.yml)
+# after scripts/package-flatpak.sh built the bundle.
 #
 # Usage: scripts/installer-check-flatpak.sh <bundle.flatpak> <version>
 # Environment:
@@ -57,6 +58,23 @@ if command -v desktop-file-validate > /dev/null; then
   desktop-file-validate "$exports/applications/$APP_ID.desktop" "$exports/applications/$APP_ID.links.desktop" \
     || fail "an exported desktop file doesn't validate"
 fi
+
+# --- The licences and notices ----------------------------------------------------------------
+# Glowfly's, the same as the repository's, and the bundled git's (GPL-2.0, its source attached to
+# the release: packaging/flatpak/GIT-NOTICE.md).
+root="$(cd "$(dirname "$0")/.." && pwd)"
+files="$(flatpak info --user --show-location "$APP_ID")/files"
+for f in LICENSE-MIT LICENSE-APACHE THIRD-PARTY-NOTICES.md; do
+  cmp -s "$files/share/doc/glowfly/$f" "$root/$f" || fail "/app/share/doc/glowfly/$f is missing or differs from the repository's"
+done
+cmp -s "$files/share/doc/glowfly/GIT-NOTICE.md" "$root/packaging/flatpak/GIT-NOTICE.md" \
+  || fail "/app/share/doc/glowfly/GIT-NOTICE.md is missing or differs from packaging/flatpak/GIT-NOTICE.md"
+grep -q 'GNU GENERAL PUBLIC LICENSE' "$files/share/doc/git/COPYING" 2> /dev/null || fail "the bundle has no git COPYING (the GPL)"
+grep -q 'GNU LESSER GENERAL PUBLIC LICENSE' "$files/share/doc/git/LGPL-2.1" 2> /dev/null || fail "the bundle has no git LGPL-2.1"
+for f in reftable-LICENSE sha1dc-LICENSE.txt; do
+  [ -s "$files/share/doc/git/$f" ] || fail "the bundle has no /app/share/doc/git/$f"
+done
+log "ok licences and notices, Glowfly's and git's"
 
 # --- The program ----------------------------------------------------------------------------
 feed="$scratch/feed"

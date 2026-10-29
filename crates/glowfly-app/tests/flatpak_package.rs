@@ -1,6 +1,7 @@
 //! The Flatpak manifest (packaging/flatpak/io.github.bg9m9r.glowfly.yml) and the workflows that
 //! build and check its bundle, read line by line: the runtime, the sandbox permissions, the
-//! pinned git source, an offline build, the icons the .deb installs too, and the release and
+//! pinned git source, an offline build, the icons the .deb installs too, git's licences and
+//! notice (GIT-NOTICE.md) with its source attached to the release, and the release and
 //! installer jobs.
 
 use std::path::Path;
@@ -110,4 +111,46 @@ fn the_workflows_build_and_check_the_bundle() {
     assert!(job.contains("dist/*.flatpak"), "the job uploads the bundle");
     let installers = workspace_file(".github/workflows/installers.yml");
     assert!(installers.contains("bash scripts/installer-check-flatpak.sh "));
+}
+
+#[test]
+fn the_bundle_carries_gits_licences_and_its_notice_names_the_source() {
+    let m = manifest();
+    let lines = trimmed(&m);
+    for want in [
+        "- install -Dm644 -t /app/share/doc/git COPYING LGPL-2.1",
+        "- install -Dm644 reftable/LICENSE /app/share/doc/git/reftable-LICENSE",
+        "- install -Dm644 sha1dc/LICENSE.txt /app/share/doc/git/sha1dc-LICENSE.txt",
+    ] {
+        assert!(lines.contains(&want), "{want}");
+    }
+    let docs = lines.iter().find(|l| l.contains("/app/share/doc/glowfly ")).expect("Glowfly's doc files");
+    for f in ["LICENSE-MIT", "LICENSE-APACHE", "THIRD-PARTY-NOTICES.md", "packaging/flatpak/GIT-NOTICE.md"] {
+        assert!(docs.split_whitespace().any(|w| w == f), "{f} in {docs}");
+    }
+    // The notice names the archive the manifest builds: its version, address and sha256.
+    let url = lines.iter().find_map(|l| l.strip_prefix("url: ")).expect("the git archive's url");
+    let sha = lines.iter().find_map(|l| l.strip_prefix("sha256: ")).expect("its sha256");
+    let file = url.rsplit('/').next().unwrap();
+    let version = file.strip_prefix("git-").and_then(|f| f.strip_suffix(".tar.xz")).unwrap();
+    let notice = workspace_file("packaging/flatpak/GIT-NOTICE.md");
+    for want in [url, sha, file, &format!("git {version}")] {
+        assert!(notice.contains(want), "GIT-NOTICE.md doesn't name {want}");
+    }
+}
+
+#[test]
+fn the_release_attaches_gits_source_beside_the_bundle() {
+    let release = workspace_file(".github/workflows/release.yml");
+    let job = release.split_once("\n  flatpak:\n").map(|(_, rest)| rest).expect("a flatpak job");
+    let job = job.split_once("\n  checksums:").map_or(job, |(j, _)| j);
+    assert!(job.contains("dist/git-*.tar.xz"), "the job uploads the git source");
+    let sums = release.split_once("\n  checksums:\n").map(|(_, rest)| rest).expect("a checksums job");
+    let sums = sums.split_once("\n  manifests:").map_or(sums, |(j, _)| j);
+    assert!(sums.contains("--pattern 'git-*.tar.xz'"), "SHA256SUMS covers the git source");
+    assert!(sums.contains("bash scripts/release-check-git-source.sh dist"), "the release checks it is there");
+    let script = workspace_file("scripts/package-flatpak.sh");
+    assert!(script.contains("  export_git_source\n") && script.contains("  check_docs\n"));
+    let installers = workspace_file(".github/workflows/installers.yml");
+    assert!(installers.contains("bash scripts/release-check-git-source.sh dist"));
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Packages a macOS release build into dist/: Glowfly.app in a disk image (with a link to
-# /Applications), the tar.gz, and a .sha256 file for each. Run by the Release workflow after
+# Packages a macOS release build into dist/: Glowfly.app (with the licence and notice files in
+# Contents/Resources) in a disk image with a link to /Applications, the tar.gz, and a .sha256
+# file for each. Run by the Release workflow after
 # `cargo build --release --target <target>`.
 #
 #   bash scripts/package-macos.sh aarch64-apple-darwin v0.2.0
@@ -32,6 +33,9 @@ sed "s/@VERSION@/$version/g" packaging/macos/Info.plist > "$app/Contents/Info.pl
 plutil -lint "$app/Contents/Info.plist"
 cp "$bin" "$app/Contents/MacOS/glowfly"
 cp assets/icon/glowfly.icns "$app/Contents/Resources/glowfly.icns"
+# The licences and notices, where an app bundle keeps its files (checked by
+# scripts/package-check-licences.sh).
+cp LICENSE-MIT LICENSE-APACHE THIRD-PARTY-NOTICES.md "$app/Contents/Resources/"
 printf 'APPL????' > "$app/Contents/PkgInfo"
 
 # --- Signing -----------------------------------------------------------------------------------

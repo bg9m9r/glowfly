@@ -7,14 +7,18 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 
 1. Every push to `main` updates a "chore(main): release x.y.z" pull request. Its version and its
    `CHANGELOG.md` entry come from the Conventional Commit messages since the last release.
-2. Merging that pull request tags `vX.Y.Z` and creates the GitHub release.
+2. Merging that pull request tags `vX.Y.Z` and creates the GitHub release. The **prepare** job
+   then puts the fixed header above its notes (see [The release notes header](#the-release-notes-header)).
 3. The **build** job runs once per target. It builds `glowfly` in release mode, then the
    packaging script for its OS (`scripts/package-windows.ps1`, `scripts/package-macos.sh`,
-   `scripts/package-linux.sh`) writes the files below into `dist/` and uploads them.
-   The **flatpak** job builds the Flatpak bundle (`scripts/package-flatpak.sh`, see
-   [Building the Flatpak locally](#building-the-flatpak-locally)) and uploads it too.
-4. The **checksums** job downloads every `glowfly-*` file of the release and publishes
-   `SHA256SUMS` over them.
+   `scripts/package-linux.sh`) writes the files below into `dist/`, checks that each archive and
+   installer holds the licence and notice files (`scripts/package-check-licences.sh`) and
+   uploads them. The **flatpak** job builds the Flatpak bundle (`scripts/package-flatpak.sh`,
+   see [Building the Flatpak locally](#building-the-flatpak-locally)) and uploads it with the
+   git source archive it was built from (see [Licences and notices](#licences-and-notices)).
+4. The **checksums** job downloads every `glowfly-*` file of the release and the git source
+   archive, fails when a `.flatpak` is there without its git source
+   (`scripts/release-check-git-source.sh`), and publishes `SHA256SUMS` over them.
 5. The **manifests** job fills in the Homebrew cask and the winget manifests from `SHA256SUMS`
    and attaches them to the release (see [Homebrew and winget](#homebrew-and-winget)).
 
@@ -23,7 +27,9 @@ cross-compiled with the image's ARM64 build tools, and LLVM's clang is put on `P
 Linux x86_64 (`ubuntu-22.04`) and aarch64 (`ubuntu-22.04-arm`, built natively), and macOS on
 Apple silicon and Intel (`macos-14`).
 
-To rebuild an existing release's files, run the workflow by hand with its tag.
+To rebuild an existing release's files, run the workflow by hand with its tag. The build jobs
+use the scripts at that tag, so a tag from before the licence checks existed fails them: its
+packages lack those files and shouldn't be published again.
 
 `CHANGELOG.md` is also bundled into the program at build time (`crates/glowfly-app/build.rs`):
 it is what the "View release notes" dialog shows, and the dialog opens by itself the first time
@@ -36,12 +42,13 @@ a new version starts.
 | `glowfly-vX.Y.Z-x86_64-pc-windows-msvc.msi` | Windows installer (WiX 5, `packaging/windows/glowfly.wxs`, pages in `pages.wxs`, artwork in `assets/installer/` drawn by the app icon test): a per-user install into `%LOCALAPPDATA%\Programs\Glowfly`, no administrator rights; Welcome, License, Options, Ready and Finish pages, with "Launch Glowfly" at the end; Start menu shortcut; on the Options page, a desktop shortcut, "Open in Glowfly" on folders and folder backgrounds, and the `glowfly://` scheme in `HKEY_CURRENT_USER`, each remembered for upgrades; upgrades replace older (and same-version) builds and a downgrade is refused. `scripts/package-windows.ps1` fetches the WiX UI and Util extensions into `.wix/` |
 | `glowfly-vX.Y.Z-x86_64-pc-windows-msvc.zip` | The Windows program on its own |
 | `glowfly-vX.Y.Z-aarch64-pc-windows-msvc.msi`, `.zip` | The same for Windows on Arm (`wix build -arch arm64`). The MSI keeps the x64 one's UpgradeCode and folder, so it upgrades an x64 per-user install in place; no CI runner installs it |
-| `glowfly-vX.Y.Z-aarch64-apple-darwin.dmg`, `glowfly-vX.Y.Z-x86_64-apple-darwin.dmg` | `Glowfly.app` (`packaging/macos/Info.plist`, the icns) and a link to `/Applications` |
+| `glowfly-vX.Y.Z-aarch64-apple-darwin.dmg`, `glowfly-vX.Y.Z-x86_64-apple-darwin.dmg` | `Glowfly.app` (`packaging/macos/Info.plist`, the icns, and the licence and notice files in `Contents/Resources`) and a link to `/Applications` |
 | `glowfly-vX.Y.Z-<mac target>.tar.gz` | The macOS program on its own |
 | `glowfly-vX.Y.Z-<linux target>.deb` | For `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`: `/usr/bin/glowfly`, `glowfly.desktop` (folders open with Glowfly), the hidden `glowfly-links.desktop` for `glowfly://` links, hicolor icons from 16 to 512 px, the licences and README in `/usr/share/doc/glowfly`, and `/usr/share/glowfly/package-format` reading `deb`; depends on git and on the windowing libraries the program loads at run time, which `$auto` can't see (xkbcommon and its X11 part, Xlib and its xcb bridge, Xcursor, Xi, xcb, the Wayland client and its EGL bridge, EGL and GL) |
 | `glowfly-vX.Y.Z-<linux target>.rpm` | The same files (cargo-generate-rpm, `[package.metadata.generate-rpm]` in `crates/glowfly-app/Cargo.toml`), with `package-format` reading `rpm`; requires git, the libraries the program links, and the same run-time libraries as the .deb, named by soname (`libxkbcommon-x11.so.0()(64bit)`) so Fedora and openSUSE both resolve them. A pre-release's version uses `~` for `-` (`0.3.0~rc.1`), so it sorts before the release |
 | `glowfly-vX.Y.Z-<linux target>.AppImage` | The program, its desktop entry and icons in one file that runs from anywhere (type-2 runtime; appimagetool and the runtime are pinned by version and SHA-256 in `scripts/package-linux.sh`). It bundles no libraries: it needs glibc 2.35 or newer (it is built on Ubuntu 22.04), GTK 3, git and the .deb's run-time windowing libraries on the system, which every X11 or Wayland desktop has; without FUSE, run it with `--appimage-extract-and-run` |
-| `glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.flatpak` | A Flatpak bundle with the app id `io.github.bg9m9r.glowfly` (`packaging/flatpak/`): the program, its own git (`/app/bin/git`), the desktop entries and icons named for the app id, and AppStream metadata, on the `org.freedesktop.Platform` 25.08 runtime, which installs from Flathub. Built by the `flatpak` job in the Flathub builder image; x86_64 only |
+| `glowfly-vX.Y.Z-x86_64-unknown-linux-gnu.flatpak` | A Flatpak bundle with the app id `io.github.bg9m9r.glowfly` (`packaging/flatpak/`): the program, its own git (`/app/bin/git`), the desktop entries and icons named for the app id, and AppStream metadata, on the `org.freedesktop.Platform` 25.08 runtime, which installs from Flathub. Built by the `flatpak` job in the Flathub builder image; x86_64 only. Its licence files are in `/app/share/doc/glowfly` with `GIT-NOTICE.md`, and git's in `/app/share/doc/git` |
+| `git-<version>.tar.xz` | The git source the Flatpak's git was built from, byte for byte the archive the manifest names (its url and sha256); only in a release with a `.flatpak` |
 | `glowfly-vX.Y.Z-<linux target>.tar.gz` | The Linux program on its own |
 | `<file>.sha256` | The SHA-256 of each file above |
 | `SHA256SUMS` | Every file's SHA-256, in `sha256sum` format |
@@ -73,6 +80,43 @@ build failed), the job fails loudly; the release itself is unaffected. Submittin
   `wingetcreate submit --token <PAT> <folder>`, or as a pull request to `microsoft/winget-pkgs`
   under `manifests/g/Glowfly/Glowfly/<version>/`. The manifests list the x64 and arm64 MSIs,
   install per user, and name the MSI's UpgradeCode so winget recognises an existing install.
+
+## Licences and notices
+
+Every archive and installer carries `LICENSE-MIT`, `LICENSE-APACHE` and `THIRD-PARTY-NOTICES.md`:
+beside the program in the zip and tar.gz, in the install folder of the MSI, in
+`/usr/share/doc/glowfly` for the .deb, .rpm and AppImage, in `Glowfly.app/Contents/Resources` on
+macOS, and in `/app/share/doc/glowfly` in the Flatpak. `scripts/package-check-licences.sh`
+checks them in every package the Release workflow builds (the zip on Windows; the .app, dmg and
+tar.gz on macOS; the tar.gz, .deb and AppImage on Linux), and the Installers workflow checks
+them in the installed packages and the .rpm.
+
+The Flatpak is the only package with its own git. git is under the GPL-2.0, so the bundle also
+carries:
+
+- git's licences in `/app/share/doc/git`: `COPYING` (the GPL-2.0), `LGPL-2.1`, and the licences
+  of the two libraries it is built with, `reftable-LICENSE` (BSD-3-Clause) and
+  `sha1dc-LICENSE.txt` (MIT);
+- `packaging/flatpak/GIT-NOTICE.md`, installed as `/app/share/doc/glowfly/GIT-NOTICE.md`: which
+  git it is, its licence, and where its source is.
+
+The source itself goes out with the bundle: `package-flatpak.sh bundle` copies the archive
+flatpak-builder downloaded (or downloads it again), checks it against the manifest's sha256 and
+writes it to `dist/git-<version>.tar.xz`, and the flatpak job uploads it beside the `.flatpak`.
+When git is updated, change its url and sha256 in the manifest and the version, url and sha256 in
+`GIT-NOTICE.md` together; `tests/flatpak_package.rs` fails until they match.
+
+## The release notes header
+
+The **prepare** job runs `scripts/release-notes-header.sh <tag>`, which puts
+`packaging/release-notes-header.md` above the release's notes: the builds aren't code-signed
+yet, how to check a download against `SHA256SUMS` (a command for each system), and that Glowfly
+is provided as is, without warranty, under MIT OR Apache-2.0. The header sits between two HTML
+comment markers, so a re-run replaces it instead of adding a second. The header has no `## `
+heading and no list items, so the app's release notes dialog, which reads the release body,
+skips it (`changelog_tests.rs` checks). Edit the file to change the text, for example once the
+builds are signed; `bash scripts/release-notes-header.sh --print <notes file>` shows the result
+without touching a release.
 
 ## Code signing
 
@@ -113,8 +157,9 @@ Download `SHA256SUMS` next to the file and run:
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-(`shasum -a 256 -c SHA256SUMS --ignore-missing` on macOS; on Windows compare
-`Get-FileHash <file>` with the file's line.) Signed builds can also be checked with
+(`shasum -a 256 -c SHA256SUMS --ignore-missing` on macOS; on Windows, in PowerShell, the
+command in the release notes header, which prints OK or FAILED for each file listed that is in
+the folder.) Signed builds can also be checked with
 `signtool verify /pa glowfly.exe` and `codesign --verify --deep --strict Glowfly.app` or
 `spctl -a -vv Glowfly.app`.
 
@@ -194,7 +239,14 @@ version), and on a clean runner:
   `--version`, `--check-update` against an empty feed (exit 3, `install flatpak`) and against a
   newer release (exit 4, `update-with flatpak`, nothing downloaded), the bundled git and the
   runtime's ssh; then `flatpak uninstall` and no exported entry left. Its feed folders are under
-  `$RUNNER_TEMP`, never `/tmp`, which the sandbox has its own of.
+  `$RUNNER_TEMP`, never `/tmp`, which the sandbox has its own of. Before installing, the job
+  checks that the git source archive is in `dist/` beside the bundle
+  (`scripts/release-check-git-source.sh`), and the install check reads the licence files,
+  `GIT-NOTICE.md` and git's licences from the installed app.
+- **The licence files** (`scripts/package-check-licences.sh`): the Linux job checks the tar.gz,
+  .deb, .rpm and AppImage; the Windows check unpacks the zip and compares the installed MSI's
+  files; the **macOS** job builds and packages the app (ad-hoc signed, no install) only to check
+  the .app, the dmg and the tar.gz.
 
 The Linux checks share `scripts/installer-lib-linux.sh`. MSI logs, every run's output and the
 probe are uploaded when a job fails. The scripts refuse to run outside GitHub Actions unless

@@ -35,6 +35,9 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Post desktop notifications through the notification portal instead of talking to org.freedesktop.Notifications
 - Confirm gpg is in the Flatpak runtime for commit signing, and bundle it when it isn't
 - A narrower Flatpak file-system choice (home only) for users who want a tighter sandbox
+- Show GIT-NOTICE.md in Help > About when Glowfly runs inside the Flatpak, beside the third-party notices
+- Link the privacy notice from the release notes header once PRIVACY.md exists
+- Check the arm64 MSI's licence files in the Release workflow (an administrative install, msiexec /a), not only the installed x64 MSI in Installers
 
 ### Installer and update checks in CI
 

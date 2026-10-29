@@ -1,5 +1,6 @@
 # Installs, upgrades, starts, update-checks and uninstalls the Windows MSI, silently, and checks
-# what each step leaves behind. Run by the Installers workflow (.github/workflows/installers.yml)
+# what each step leaves behind; it also checks that the zip and the install hold the licence and
+# notice files. Run by the Installers workflow (.github/workflows/installers.yml)
 # after scripts/package-windows.ps1 built an older MSI (tag v0.0.1) and the current one from the
 # same program.
 #
@@ -90,12 +91,35 @@ function Get-DefaultValue([string]$Key) {
     (Get-Item -LiteralPath $Key).GetValue('')
 }
 
+# The licence and notice files in $Dir are the repository's, byte for byte.
+function Assert-Licence([string]$Dir, [string]$What) {
+    foreach ($f in 'LICENSE-MIT', 'LICENSE-APACHE', 'THIRD-PARTY-NOTICES.md') {
+        $path = Join-Path $Dir $f
+        Assert-That (Test-Path -LiteralPath $path -PathType Leaf) "$What has no $f"
+        $want = (Get-FileHash -LiteralPath (Join-Path $root $f)).Hash
+        Assert-That ((Get-FileHash -LiteralPath $path).Hash -eq $want) "$What's $f differs from the repository's"
+    }
+}
+
+# The zip holds glowfly-<tag>-<target>/ (its own name) with the program and the doc files.
+function Assert-ZipContent {
+    $name = [IO.Path]::GetFileNameWithoutExtension($Zip)
+    $unpacked = Join-Path $Out 'zip'
+    if (Test-Path -LiteralPath $unpacked) { Remove-Item -Recurse -Force -LiteralPath $unpacked }
+    Expand-Archive -LiteralPath $Zip -DestinationPath $unpacked
+    $dir = Join-Path $unpacked $name
+    Assert-That (Test-Path -LiteralPath (Join-Path $dir 'glowfly.exe') -PathType Leaf) "the zip has no $name/glowfly.exe"
+    Assert-Licence $dir 'the zip'
+    Remove-Item -Recurse -Force -LiteralPath $unpacked
+}
+
 function Assert-Installed {
     $files = @('glowfly.exe', 'LICENSE-MIT', 'LICENSE-APACHE', 'README.md', 'THIRD-PARTY-NOTICES.md')
     if (Test-Path -LiteralPath (Join-Path $root 'CHANGELOG.md')) { $files += 'CHANGELOG.md' }
     foreach ($f in $files) {
         Assert-That (Test-Path -LiteralPath (Join-Path $installDir $f) -PathType Leaf) "$f isn't in $installDir"
     }
+    Assert-Licence $installDir 'the install'
     foreach ($lnk in $startLnk, $desktopLnk) {
         Assert-That (Test-Path -LiteralPath $lnk -PathType Leaf) "no shortcut at $lnk"
         $target = $shell.CreateShortcut($lnk).TargetPath
@@ -135,6 +159,9 @@ $missingBefore = @($userDirs | Where-Object { -not (Test-Path -LiteralPath $_) }
 
 $installed = $false
 try {
+    Assert-ZipContent
+    Write-Host 'ok the zip holds the program, licences and notices'
+
     # --- Install the old version, then upgrade ---------------------------------------------
     Invoke-Msiexec '/i' $OldMsi 'install-old.log'
     $installed = $true

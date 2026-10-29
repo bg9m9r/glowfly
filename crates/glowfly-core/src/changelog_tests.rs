@@ -98,3 +98,21 @@ fn release_bodies_are_read() {
     assert_eq!((n.sections[0].title.as_str(), n.sections[0].items.len()), ("", 2));
     assert!(parse_body("v0.3.0", "").sections.is_empty());
 }
+
+/// The fixed header the Release workflow puts above each release's notes
+/// (`scripts/release-notes-header.sh`).
+const RELEASE_HEADER: &str = include_str!("../../../packaging/release-notes-header.md");
+
+#[test]
+fn the_release_notes_header_is_left_out_of_the_notes() {
+    let header = RELEASE_HEADER.replace("\r\n", "\n");
+    for line in header.lines() {
+        assert!(!line.starts_with("## ") && !line.starts_with("### "), "a heading in the header: {line}");
+        assert!(!line.starts_with("* ") && !line.starts_with("- "), "a list item in the header: {line}");
+    }
+    let generated = "## What's Changed\n* Fix a thing by @ada in https://github.com/o/r/pull/1\n";
+    for (tag, body) in [("v0.2.0", FIXTURE), ("v0.3.0", generated), ("v0.3.0", "* one\n")] {
+        assert_eq!(parse_body(tag, &format!("{header}\n{body}")), parse_body(tag, body), "{tag}");
+    }
+    assert!(parse_body("v0.3.0", &header).sections.is_empty());
+}
