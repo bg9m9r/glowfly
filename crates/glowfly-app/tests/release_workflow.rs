@@ -117,6 +117,12 @@ fn the_publish_script_marks_pre_releases_and_checks_the_files() {
     assert!(script.contains("-F draft=false -F prerelease=\"$prerelease\""));
     assert!(script.contains("-f make_latest=\"$latest\""));
     assert!(script.contains("check \"$tag\" \"$work/SHA256SUMS\" \"$work/assets\"\n"), "the files are checked before publishing");
+    // scripts/release-publish-check-test.sh tests the check itself; Installers runs and lints it.
+    let installers = workspace_file(".github/workflows/installers.yml");
+    assert!(installers.contains("run: bash scripts/release-publish-check-test.sh\n"));
+    for s in ["scripts/release-draft.sh", "scripts/release-publish.sh", "scripts/release-publish-check-test.sh"] {
+        assert!(installers.contains(&format!(" {s}")), "Installers shellchecks {s}");
+    }
     // The manifests use the same test for a pre-release.
     let manifests = workspace_file("scripts/fill-manifests.sh");
     assert!(manifests.contains(r#"if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then"#));
