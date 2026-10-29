@@ -54,6 +54,15 @@ echo "crates/glowfly-app/tests/snapshots/* merge=glowfly-snapshot" >> .git/info/
 
 With that driver git reports no conflict, so run the snapshot tests after the merge instead.
 
+A few other commands regenerate checked-in files or help with debugging:
+
+```
+UPDATE_ICONS=1 cargo test -p glowfly --test app_icon      # redraw assets/icon/ after changing tests/app_icon/draw.rs
+UPDATE_NOTICES=1 cargo test -p glowfly-core notice        # regenerate THIRD-PARTY-NOTICES.md after a dependency change
+RUST_LOG=glowfly=debug cargo run -- <repo path>           # log background work as it runs
+GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture   # read-only check against a real host
+```
+
 ## How the code is organized
 
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before structural changes; what each file holds
@@ -65,9 +74,26 @@ is listed per area in [docs/architecture/](docs/architecture/). The short versio
   Test it with a headless `update` test. The architecture document has a step-by-step recipe.
 - Views in `ui/` only draw and push `Msg`s. Views, `update/` and `state/` do no I/O
   (`tests/layering.rs` checks this).
-- Keep files under about 400 lines; split by responsibility.
+- Each area's messages are an enum in `msg/<area>.rs`, its effects in `effect/<area>.rs` (run by
+  `runner/<area>.rs`), and its `update` tests in `update/tests/<area>_tests.rs`.
+- Keep files under about 400 lines; split by responsibility. When you add, move or remove a
+  source file, update its line in the matching `docs/architecture/<area>.md`.
 - Operations that should honour the user's git config, hooks or credentials go through the git
   CLI (`gitcli`); everything else uses libgit2.
+- Code that touches paths, files, processes, the environment or git calls follows
+  [docs/PLATFORMS.md](docs/PLATFORMS.md): the differences between Windows, macOS and Linux file
+  systems, and the helpers that handle them.
+- A new setting is a field with a default in `settings.rs` (`#[serde(default)]` keeps older
+  settings files loading) and a control on the matching Preferences page.
+- Glowfly uses egui 0.31 (`CornerRadius`, `Modal`, `ui.close_menu()`). The bundled fonts lack some
+  symbols, such as ▾ ✎ ↻ and the arrows, so paint those as shapes with `widgets::paint_icon`.
+
+Tests come in three kinds: core logic runs against small fixture repositories (see the
+`scratch_repo` helper), behaviour is tested headlessly through `update`, and views use
+`egui_kittest` snapshots. `tests/hygiene.rs` keeps some of these rules from slipping: a new file
+over 400 lines, a source file without a `//!` doc comment, English text in a log line or toast in
+`update/` or `state/` (use the translations, `t.tr`), or a copied test fixture helper fails it.
+Its allowlists only ever shrink.
 
 ## Original work only
 
@@ -91,6 +117,9 @@ docs: explain the snapshot tests
 - `feat!:` or a `BREAKING CHANGE:` footer marks a breaking change (a minor bump while the
   version is below 1.0).
 - `docs:`, `refactor:`, `test:`, `build:`, `ci:` and `chore:` don't trigger a release.
+
+Don't change the version in `Cargo.toml`, `version.txt` or `CHANGELOG.md` by hand; release-please
+does that.
 
 After each push to `main`, [release-please](https://github.com/googleapis/release-please) keeps
 a release pull request open with the next version and its CHANGELOG entry. Merging it tags the

@@ -7,10 +7,12 @@
 crates/glowfly-app/tests/snapshots/*.new.txt
 crates/glowfly-app/tests/snapshots/*.diff.txt
 
-# Local scratch files and assistant workflows
+# Local scratch files and AI assistant notes (kept by each developer, not shared)
 /temp/
-/.claude/workflows/
-/.claude/settings.local.json
+/.claude/
+/CLAUDE.md
+/CLAUDE.local.md
+/AGENTS.md
 
 # WiX extensions scripts/package-windows.ps1 fetches
 /.wix/
