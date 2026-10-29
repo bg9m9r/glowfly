@@ -7,7 +7,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 const WIN: Platform = Platform { os: TargetOs::Windows, arch: Arch::X86_64 };
-const MSI: &str = "glowfly-v0.1.1-x86_64-pc-windows-msvc.msi";
+pub(super) const MSI: &str = "glowfly-v0.1.1-x86_64-pc-windows-msvc.msi";
 const ZIP: &str = "glowfly-v0.1.1-x86_64-pc-windows-msvc.zip";
 const MSI_BYTES: &[u8] = b"pretend msi bytes";
 const ZIP_BYTES: &[u8] = b"pretend zip archive bytes";
@@ -17,7 +17,7 @@ fn v(s: &str) -> Version {
 }
 
 /// A fresh, empty folder under the temp folder.
-fn scratch(tag: &str) -> PathBuf {
+pub(super) fn scratch(tag: &str) -> PathBuf {
     let dir = crate::paths::temp_dir().join(format!("glowfly-feed-{tag}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -28,13 +28,13 @@ fn hex(digest: [u8; 32]) -> String {
     digest.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn sum_line(name: &str, bytes: &[u8]) -> String {
+pub(super) fn sum_line(name: &str, bytes: &[u8]) -> String {
     format!("{}  {name}\n", hex(sha256(bytes)))
 }
 
 /// Writes `files` into `dir` with a release.json for `tag` listing them, plus SHA256SUMS
 /// (listed too) when `sums` is Some.
-fn write_feed(dir: &Path, tag: &str, files: &[(&str, &[u8])], sums: Option<String>) {
+pub(super) fn write_feed(dir: &Path, tag: &str, files: &[(&str, &[u8])], sums: Option<String>) {
     let mut names: Vec<&str> = Vec::new();
     for (name, bytes) in files {
         std::fs::write(dir.join(name), bytes).unwrap();
@@ -55,11 +55,11 @@ fn standard_feed(dir: &Path) {
     write_feed(dir, "v0.1.1", &[(MSI, MSI_BYTES), (ZIP, ZIP_BYTES)], Some(sums));
 }
 
-fn is_empty(dir: &Path) -> bool {
+pub(super) fn is_empty(dir: &Path) -> bool {
     std::fs::read_dir(dir).map(|mut d| d.next().is_none()).unwrap_or(true)
 }
 
-fn offer_for(feed: &Feed, kind: InstallKind) -> Offer {
+pub(super) fn offer_for(feed: &Feed, kind: InstallKind) -> Offer {
     let release = feed.latest().unwrap().expect("a release");
     offer(&release, &v("0.1.0"), Some(WIN), kind).expect("newer")
 }

@@ -23,7 +23,7 @@ source file, update its line here.
 - `askpass/ssh_sign.rs`: ssh-keygen's signing passphrase question as a structured `SshSignAsk` (see [flow-shell.md](flow-shell.md)).
 - `git_credential.rs`: saving and dropping HTTPS sign-ins typed in the prompt with git's credential helper (`git credential approve` / `reject`, setting up the platform's store when git has none, or git's in-memory `cache` on Linux without a keyring helper).
 - `auth_failure.rs`: reading git's output for fetches that need a sign-in, rejected credentials and the remote they belong to (pure).
-- `ssh_version.rs`: OpenSSH's version, and the legacy askpass set-up (a `DISPLAY` placeholder and a new session per git child) before 8.4 on Unix.
+- `ssh_version.rs`: the ssh git runs in a repository (the environment, then `core.sshCommand`, read from config) and its OpenSSH version (a `DISPLAY` placeholder before 8.4; only an environment program is run with `-V`, a command line gets the placeholder unrun), and the new session every git child starts in on Unix.
 - `gpg_prompt/`: signing passphrases: Glowfly as git's gpg.program, running the user's gpg with loopback pinentry and asking through the askpass listener; for SSH-format keys, the env that marks ssh-keygen's prompt as a signing prompt (`gpg_prompt/ssh_env.rs`).
 - `signing.rs`: signing keys.
 
@@ -42,7 +42,7 @@ source file, update its line here.
 
 ## One window, links and the URL scheme
 
-- `instance/`: one window for links: the running app's loopback listener and its private instance file (address, token, process id in the runtime folder), and a second process handing its `glowfly://` link over (letting the window take the foreground on Windows).
+- `instance/`: one window for links and folders: the lock that picks it (`claim.rs`: one holder, a later window waits and takes over), its loopback listener and private instance file (address, token, process id in the runtime folder), and a second process handing its `glowfly://` link or folder over (letting the window take the foreground on Windows); the protocol's tests and the claim's (`tests.rs`, `tests_claim.rs`).
 - `link.rs`: `glowfly://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit.
 - `link/find.rs`: checking a folder for the linked repository and its target (libgit2 reads only).
 - `url_scheme/`: registering the `glowfly` scheme for this user, and the pure decisions both platforms read (the Linux package's own `glowfly-links.desktop` in `XDG_DATA_DIRS` counts too).
@@ -53,6 +53,7 @@ source file, update its line here.
 ## Built-in terminal (`terminal/`)
 
 - The screen model and its history: scrolling, line numbers that selections follow, reading the text between two points, clearing (`history.rs`).
+- `words.rs`: the word or the wrapped line around a cell, for the terminal's double- and triple-click.
 - `edge.rs`: the cursor at the right edge: BS, CUB, EL, ECH and the other controls that start from the cursor act on the last cell right after a write into the last column, as in xterm.
 - `replay.rs`: redrawing the screen and its history on a fresh parser (Clear history, recovery from a parser panic), keeping which rows wrapped.
 - Key encoding and PTY sessions.
@@ -121,10 +122,10 @@ source file, update its line here.
 ## External tools (`external_tools.rs`, `external_tools/`)
 
 - External programs (Preferences > External Tools): argument templates and each tool's placeholders (`template.rs`).
-- Finding the program on PATH, starting it detached or waiting for it to exit (`run_to_exit`).
-- `temp.rs`: the private folder for the copies diff and merge tools open: one session folder per opening, swept after 24 hours.
+- Finding the program on PATH, starting it detached or waiting for it to exit (`run_to_exit`), or watching it to its end to report a late failure (`watch_to_end`).
+- `temp.rs`: the private folder for the copies diff and merge tools open: one session folder per opening, removed when Glowfly quits and swept after 24 hours.
 - `compare.rs`: writing those copies for a diff or a conflict, from `repo/tool_sides.rs`.
-- `git_config.rs`: when Preferences sets no diff or merge tool: git config's diff and merge tools, read through gitcli with git's fallbacks, and which values are the repository's own.
+- `git_config.rs`: when Preferences sets no diff or merge tool: git config's diff and merge tools, read through gitcli with git's fallbacks (the `guitool` keys first, as `--gui`, unless `guiDefault` is false), and which values are the repository's own.
 - `shell_tool.rs`: running a configured tool command in sh with LOCAL/REMOTE/MERGED/BASE.
 
 ## Glowfly's own updates (`app_update.rs`, `app_update/`)
@@ -135,7 +136,8 @@ source file, update its line here.
 - `host.rs`: the machine's real processor under emulation.
 - `appimage.rs`: whether this copy runs from an AppImage and which file that is.
 - `sums.rs`: `SHA256SUMS` files.
-- `download.rs`: downloading a file into the Downloads folder only after its SHA-256 matches.
+- `download.rs`: downloading a file into the Downloads folder, streamed to a temporary file beside it and renamed into place only after its SHA-256 matches, with progress and Cancel; `check_saved` reads a saved file again.
+- `download_tests.rs`: streamed downloads from a local feed (progress, Cancel and a mismatch removing the partial file).
 - `feed.rs`: where releases are read from: the hosting service or a local folder named by `GLOWFLY_UPDATE_FEED`.
 - `check.rs`: the headless check behind `glowfly --check-update`.
 - `method.rs`: Install and restart: how a downloaded file is installed.

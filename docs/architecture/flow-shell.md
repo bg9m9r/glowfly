@@ -175,7 +175,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 ## Deep links
 
 - Files: `deep_link.rs`, `state/deep_link.rs`, `update/deep_link.rs`, `update/deep_link_open.rs`.
-- `main.rs` first hands a `glowfly://` argument to a running window (`glowfly_core::instance`; `Runner::start_instance` listens, next to the askpass listener) and exits; otherwise the new window opens it after restoring its tabs.
+- `main.rs` takes the claim on links and folders when no other window holds it, else hands its `glowfly://` or folder argument to the window that does (`glowfly_core::instance`; `Runner::start_instance` listens, next to the askpass listener, and reports `DeepLinkMsg::Open` or `OpenFolder`) and exits; otherwise the new window opens it after restoring its tabs.
 - On macOS, LaunchServices sends links and folders to Glowfly.app as Apple events instead of argv; they arrive as the same `DeepLinkMsg::Open` / `RepoMsg::Open`, via `Runner::start_open_events`.
 - Either way a link arrives as `DeepLinkMsg::Open`, which brings the window forward and, unless another dialog or Preferences is open (a toast offers to open it later), parses it and sends `DeepLinkEffect::Find` over the active tab, the other tabs, favorites and recent repositories.
 - The runner checks each with `link::find::check` (root commit, remote URL).
@@ -194,5 +194,5 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - It puts a fixed header above each release's notes (`packaging/release-notes-header.md`, by `scripts/release-notes-header.sh`), which `changelog::parse_body` skips, and attaches the Flatpak's git source beside the bundle (`packaging/flatpak/GIT-NOTICE.md`).
 - In the app, `UpdateMsg::Startup` arms the automatic check.
 - `update/updates.rs::tick` starts the check (at most once a day, after `STARTUP_DELAY`, an hour after a failure) as `UpdateEffect::Check`, which asks the `app_update::Feed` (`forge::latest_release`, or the folder `GLOWFLY_UPDATE_FEED` names) and reports how this copy was installed.
-- `app_update::offer` picks the file for this platform; Download runs `app_update::download`, which writes nothing until the SHA-256 matches.
+- `app_update::offer` picks the file for this platform; Download runs `app_update::download_streamed`, which streams to a temporary file and renames it into place only once the SHA-256 matches, reporting `DownloadProgress` a few times a second; Cancel stops it between chunks and removes the partial file.
 - The release notes dialog reads the `CHANGELOG.md` that `build.rs` bundled, and `startup_notes` opens it once per new version (waiting in `notes_pending` while another dialog is open).

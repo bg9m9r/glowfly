@@ -1,4 +1,4 @@
-//! The colour-blind safe branch hues: out of the reserved bands, one hue per slot across the three
+//! The colour-blind friendly branch hues: out of the reserved bands, one hue per slot across the three
 //! tone sets, contrast on each built-in's surfaces once applied, and distance between every pair
 //! (and from the accent) under normal, protan, deutan and tritan vision.
 //!

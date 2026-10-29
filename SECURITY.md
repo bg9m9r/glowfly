@@ -62,4 +62,11 @@ is reviewed again.
 
 ## Supported versions
 
-Glowfly has no stable release yet; fixes go into the `main` branch.
+| Version | Supported |
+| --- | --- |
+| The latest release | Yes |
+| Older releases | No |
+
+Fixes go into the `main` branch and ship in the next release. The latest release is the newest
+one on the [Releases](https://github.com/bg9m9r/glowfly/releases) page, a pre-release included
+while there is no stable one; update to it to get security fixes.

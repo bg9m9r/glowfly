@@ -4,9 +4,13 @@
 //! whose stamp changed (a file created, removed or renamed in a folder changes its time on NTFS,
 //! ext4 and APFS), the ones that were too recent to trust last time (`RACY_WINDOW`) and a
 //! rotating `1 / SWEEP_ROUNDS` of the rest (an edit to an existing file changes only the file),
-//! and compares the git dir's refs and the index and exclude and attributes files. It only
-//! names paths that may have changed: the caller classifies them as watcher events, and the
-//! status read decides what really did.
+//! and compares the git dir's refs, the index, exclude and attributes files, and the config files
+//! with those they include (`config_includes`). It only names paths that may have changed: the
+//! caller classifies them as watcher events, and the status read decides what really did.
+//!
+//! Submodules' and nested repositories' work trees are walked too, within the same budget, each
+//! with its own ignore rules, and their HEAD and refs compared (`nested.rs`): a change there is
+//! named as `<folder>/.git/HEAD`, which classification takes as the nested repository moving.
 //!
 //! Never walked: a `.git` entry (the repository's or a nested one's), the git dir, symbolic
 //! links and junctions (kept as entries, never followed), and ignored folders that hold no
@@ -19,6 +23,9 @@ use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+
+mod nested;
+use nested::Nested;
 
 /// A content-only edit is found within this many sweeps: each lists a share of the folders.
 pub const SWEEP_ROUNDS: usize = 10;
@@ -42,6 +49,8 @@ struct Seen {
     git_files: Vec<(PathBuf, Stamp)>,
     /// Every walked folder by its path relative to the work tree ("" for the root).
     folders: BTreeMap<PathBuf, Folder>,
+    /// The repositories nested in the tree, by their folder relative to the work tree.
+    nested: BTreeMap<PathBuf, Nested>,
     /// Where the next rotating share starts, as a position in `folders`.
     cursor: usize,
 }
@@ -50,6 +59,8 @@ struct Folder {
     stamp: Stamp,
     /// Its own time or an entry's was too recent to trust: listed again next time.
     racy: bool,
+    /// It holds a `.git` entry: a submodule or nested repository (never the root).
+    repo: bool,
     /// Sorted by name.
     entries: Vec<Entry>,
 }
@@ -119,6 +130,11 @@ impl Sweep {
                 found.push(p.clone());
             }
         }
+        if !found.is_empty() {
+            // The config or the branch changed: it may include other files now.
+            seen.git_files = self.git_files_after(&seen.git_files);
+        }
+        nested::compare(&self.workdir, &mut seen.nested, &mut found);
         let fits = self.sweep_tree(&mut seen, ignores, now, &mut found);
         if !fits || entries(&seen.folders) > self.max_entries {
             self.gave_up = true;
@@ -128,40 +144,72 @@ impl Sweep {
         Some(found)
     }
 
-    fn git_files(&self) -> Vec<(PathBuf, Stamp)> {
+    /// The git dir's files a sweep compares: the index, exclude and attributes files, and the
+    /// config files with the files they include.
+    fn git_file_paths(&self) -> Vec<PathBuf> {
         let mut files = vec![self.git_dir.join("index"), self.git_dir.join("info/exclude"), self.git_dir.join("info/attributes")];
         files.extend(self.common.iter().map(|c| c.join("info/attributes")));
-        files.into_iter().map(|p| (p.clone(), Stamp::of(&p))).collect()
+        files.extend(crate::config_includes::repo_roots(&self.git_dir, self.common.as_deref()));
+        for f in crate::config_includes::of_repo(&self.git_dir, self.common.as_deref()).files {
+            // A linked file is stamped as the link and as what it points to.
+            let real = crate::paths::resolve(&f);
+            if real != f {
+                files.push(real);
+            }
+            files.push(f);
+        }
+        files
+    }
+
+    fn git_files(&self) -> Vec<(PathBuf, Stamp)> {
+        self.git_file_paths().into_iter().map(|p| (p.clone(), Stamp::of(&p))).collect()
+    }
+
+    /// The files to compare from now on, keeping the stamps of those compared before.
+    fn git_files_after(&self, before: &[(PathBuf, Stamp)]) -> Vec<(PathBuf, Stamp)> {
+        let stamp = |p: &PathBuf| before.iter().find(|(q, _)| q == p).map_or_else(|| Stamp::of(p), |(_, s)| *s);
+        self.git_file_paths().into_iter().map(|p| (p.clone(), stamp(&p))).collect()
     }
 
     fn baseline(&self, ignores: &mut Ignores, now: SystemTime) -> Option<Seen> {
-        let mut folders = BTreeMap::new();
-        self.walk(PathBuf::new(), &mut folders, ignores, now)?;
-        Some(Seen { refs: refs_key(&self.workdir).ok(), git_files: self.git_files(), folders, cursor: 0 })
+        let refs = refs_key(&self.workdir).ok();
+        let mut seen = Seen { refs, git_files: self.git_files(), folders: BTreeMap::new(), nested: BTreeMap::new(), cursor: 0 };
+        self.walk(PathBuf::new(), &mut seen, ignores, now)?;
+        Some(seen)
     }
 
-    /// Lists `rel` and every folder below it that is walked into `folders`; None past the limit.
-    fn walk(&self, rel: PathBuf, folders: &mut BTreeMap<PathBuf, Folder>, ignores: &mut Ignores, now: SystemTime) -> Option<()> {
+    /// Lists `rel` and every folder below it that is walked into `seen`, with the repositories
+    /// nested there; None past the limit.
+    fn walk(&self, rel: PathBuf, seen: &mut Seen, ignores: &mut Ignores, now: SystemTime) -> Option<()> {
         let mut todo = vec![rel];
-        let mut count = entries(folders);
+        let mut count = entries(&seen.folders);
         while let Some(rel) = todo.pop() {
             let Some(folder) = self.list(&rel, now) else { continue };
             count += folder.entries.len();
             if count > self.max_entries {
                 return None;
             }
-            todo.extend(folder.entries.iter().filter(|e| e.dir).map(|e| rel.join(&e.name)).filter(|c| self.walked(c, ignores)));
-            folders.insert(rel, folder);
+            if folder.repo {
+                nested::add(&self.workdir, &mut seen.nested, &rel);
+            }
+            let dirs: Vec<PathBuf> = folder.entries.iter().filter(|e| e.dir).map(|e| rel.join(&e.name)).collect();
+            todo.extend(dirs.into_iter().filter(|c| self.walked(c, ignores, &mut seen.nested)));
+            seen.folders.insert(rel, folder);
         }
         Some(())
     }
 
-    /// Whether the folder `rel` is walked: not the git dir, and not ignored unless the index
-    /// holds something below it.
-    fn walked(&self, rel: &Path, ignores: &mut Ignores) -> bool {
+    /// Whether the folder `rel` is walked: not the git dir, and not ignored (by the rules of the
+    /// innermost repository it is in, a nested one's too) unless that repository's index holds
+    /// something below it.
+    fn walked(&self, rel: &Path, ignores: &mut Ignores, nested: &mut BTreeMap<PathBuf, Nested>) -> bool {
         if self.workdir.join(rel) == self.git_dir {
             return false;
         }
+        let (ignores, rel) = match nested::owner(nested, rel) {
+            Some((n, inner)) => (&mut n.ignores, inner),
+            None => (ignores, rel),
+        };
         let parts: Option<Vec<&str>> = rel.components().map(|c| c.as_os_str().to_str()).collect();
         // A name that isn't UTF-8 can't be matched against the patterns: walked.
         parts.is_none_or(|p| !ignores.is_ignored(&p.join("/"), Touch::Other))
@@ -172,9 +220,11 @@ impl Sweep {
         let abs = self.workdir.join(rel);
         let stamp = Stamp::of(&abs);
         let mut entries = Vec::new();
+        let mut repo = false;
         for e in std::fs::read_dir(&abs).ok()?.flatten() {
             let name = e.file_name();
             if name == ".git" || e.path() == self.git_dir {
+                repo |= name == ".git" && e.path() != self.git_dir && !rel.as_os_str().is_empty();
                 continue;
             }
             let Ok(kind) = e.file_type() else { continue };
@@ -187,7 +237,7 @@ impl Sweep {
         }
         entries.sort_by(|a, b| a.name.cmp(&b.name));
         let racy = recent(stamp.mtime, now) || entries.iter().any(|e| recent(e.mtime, now));
-        Some(Folder { stamp, racy, entries })
+        Some(Folder { stamp, racy, repo, entries })
     }
 
     /// Lists the folders due this time and walks the new ones; false once a new folder would take
@@ -205,6 +255,7 @@ impl Sweep {
             if !stamp.exists || !stamp.dir {
                 found.push(abs);
                 drop_subtree(&mut seen.folders, rel);
+                nested::drop_under(&mut seen.nested, rel);
                 // Its parent wasn't listed this time (that would have dropped it first): its
                 // own time can be unchanged (Linux stamps a folder from a coarse clock tick), so
                 // record the change there too, or the parent's next listing reports it again.
@@ -215,7 +266,16 @@ impl Sweep {
                 continue;
             }
             let Some(fresh) = self.list(rel, now) else { continue };
-            let old = seen.folders.remove(rel).map(|f| f.entries).unwrap_or_default();
+            let (old, was_repo) = seen.folders.remove(rel).map(|f| (f.entries, f.repo)).unwrap_or_default();
+            if fresh.repo != was_repo {
+                // A repository made or removed here: the parent's status shows the folder anew.
+                found.push(abs.clone());
+                if fresh.repo {
+                    nested::add(&self.workdir, &mut seen.nested, rel);
+                } else {
+                    seen.nested.remove(rel);
+                }
+            }
             let mut walk = Vec::new();
             diff(&old, &fresh.entries, |name, before, after| {
                 let child = rel.join(name);
@@ -231,6 +291,7 @@ impl Sweep {
                         found.push(self.workdir.join(&child));
                         if b.is_some_and(|b| b.dir) {
                             drop_subtree(&mut seen.folders, &child);
+                            nested::drop_under(&mut seen.nested, &child);
                         }
                         if a.is_some_and(|a| a.dir) {
                             walk.push(child); // its own path covers what is below it
@@ -240,7 +301,7 @@ impl Sweep {
             });
             seen.folders.insert(rel.clone(), fresh);
             for child in walk {
-                if self.walked(&child, ignores) && self.walk(child, &mut seen.folders, ignores, now).is_none() {
+                if self.walked(&child, ignores, &mut seen.nested) && self.walk(child, seen, ignores, now).is_none() {
                     return false;
                 }
             }

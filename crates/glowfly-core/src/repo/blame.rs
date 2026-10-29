@@ -7,6 +7,7 @@
 //! also records where its lines came from (the commit's path and the parent to blame for what
 //! came before), so the view can step back past a commit.
 
+use super::attr_source::{AttrSource, attr_repo};
 use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::gitcli;
@@ -67,7 +68,8 @@ pub struct Blame {
     pub origins: Vec<BlameOrigin>,
     /// The 0-based number of each line in its origin's version of the file.
     pub orig_lines: Vec<usize>,
-    /// The file's `linguist-language` attribute, for highlighting.
+    /// The file's `linguist-language` attribute (from the blamed commit's own `.gitattributes`
+    /// files), for highlighting.
     pub language: Option<String>,
 }
 
@@ -162,14 +164,16 @@ pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>, opts: &BlameOptio
     }
     crate::partial::require(&repo, workdir, path, ids)?;
     let blob = repo.find_blob(entry.id())?;
-    if blob.is_binary() {
+    // The commit's own gitattributes, as the version blamed has them.
+    let attrs = attr_repo(&repo, AttrSource::Commit(commit.id()), &[path]);
+    if super::attrs::is_binary(&attrs, path, &blob) {
         return Err(Error::Unsupported(format!("{path} is a binary file; blame shows text files only")));
     }
     if blob.size() > BLAME_MAX_BYTES {
         let mb = blob.size().div_ceil(1024 * 1024);
         return Err(Error::Unsupported(format!("{path} is too large to blame ({mb} MB)")));
     }
-    let language = super::attrs::linguist_language(&repo, path);
+    let language = super::attrs::linguist_language(&attrs, path);
 
     let mut args: Vec<String> = ["--literal-pathspecs", "blame", "--porcelain", "--no-textconv"].map(String::from).to_vec();
     args.extend(ignore_revs_args(&repo, workdir));

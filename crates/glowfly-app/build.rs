@@ -31,7 +31,7 @@ fn windows_resource() {
     res.set_icon("../../assets/icon/glowfly.ico")
         .set("FileDescription", "Glowfly")
         .set("ProductName", "Glowfly")
-        .set("LegalCopyright", "Glowfly contributors. MIT or Apache-2.0.");
+        .set("LegalCopyright", "Copyright 2026 Brett Gamerson and the Glowfly contributors. MIT or Apache-2.0.");
     if let Err(e) = res.compile() {
         println!("cargo::warning=glowfly.exe gets no icon: the resource compiler failed ({e})");
     }

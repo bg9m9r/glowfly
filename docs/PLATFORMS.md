@@ -215,7 +215,9 @@ second one next to it.
 3. **Quote raw command lines for cmd and PowerShell yourself,** and use `CREATE_NEW_CONSOLE` for
    terminals and `CREATE_NO_WINDOW` for helpers, so nothing flashes a console.
 4. **Watch started programs for `external_tools::EARLY_EXIT` (1.5 s)** and report an early
-   non-zero exit with the first stderr line. Starting a program is not proof it ran.
+   non-zero exit with the first stderr line. Starting a program is not proof it ran. `git
+   difftool` gets 10 s (its scripts start slowly on Windows) and is then waited for
+   (`watch_to_end`), so a failure that comes later is still reported.
 5. **macOS `open -a` takes options only after `--args`, with `-n`;** a running app never sees
    `--args`.
 6. **Search PATH like the OS does** (`external_tools.rs`): on Unix the file needs an exec bit;
@@ -227,11 +229,16 @@ second one next to it.
    read-only, and keep the file's name (`names::portable`) so tools can highlight it. They hold
    the stored bytes unless the repository is trusted, when `git cat-file --filters` gives the
    checkout form. A macOS application bundle that Glowfly waits for runs through `open -W`.
+   The sessions a Glowfly process made (`<pid>-<hex>`) are removed when its window closes
+   (`temp::remove_own_sessions`); a copy a tool still holds open on Windows stays for the
+   24-hour sweep.
 8. **A downloaded update is opened only after its SHA-256 matches the release's published
    checksum, and only on the user's click** (`app_update::download`, `runner/updates.rs`). The
    file's name comes from the server, so it is checked first (`app_update::asset_name_ok`: 1 to
    128 characters of `A-Za-z0-9._-`, no leading dot) and can't leave the downloads folder; the
-   bytes are held in memory, checked, and only then written with `persist::write_file`. An
+   bytes are streamed into a temporary sibling (`persist::write_streamed`) and hashed on the way,
+   and renamed to the final name only once the size and checksum match. Cancel, a mismatch or a
+   failure removes the temporary file, so no half-written file has the final name. An
    existing file with other content is never replaced (`free_name`: `name (1).msi`). Install and
    restart (`app_update::restart`, `runner/update_restart.rs`) follows these rules:
    - The file is verified again (`read_verified`) before it is run, copied or unpacked.
@@ -317,9 +324,17 @@ second one next to it.
    read is never rewritten.
 5. **For untranslated git messages set `LANGUAGE=C` and `LC_MESSAGES=C`, never `LC_ALL=C`**
    (`gitcli.rs`), which would also give hooks, gpg and pinentry an ASCII-only character set.
-6. **With OpenSSH before 8.4 on Unix (`ssh_version::legacy_askpass`), set `DISPLAY` when unset
-   and start git children in a new session (`ssh_version::prepare`)** so ssh has no terminal and
-   asks the helper; 8.4+ needs only `SSH_ASKPASS_REQUIRE=force`.
+6. **On Unix, start every git (and ssh-add) child in a new session (`ssh_version::prepare`)**,
+   so ssh has no terminal and asks the helper (`SSH_ASKPASS` with `SSH_ASKPASS_REQUIRE=force`).
+   It also leads its own process group, which `process_tree.rs` stops as a whole. With OpenSSH
+   before 8.4, which ignores `SSH_ASKPASS_REQUIRE`, also set `DISPLAY` when unset
+   (`gitcli::askpass_vars_in`). Which ssh git runs follows git (`ssh_version::ssh_command_for`:
+   `GIT_SSH_COMMAND`, then the repository's `core.sshCommand`, read from its config files, then
+   `GIT_SSH`, then `ssh`). Run only a program the user's environment names (`GIT_SSH`, or `ssh`
+   from PATH) with `-V` to read its version. **Never run a command line (`GIT_SSH_COMMAND`,
+   `core.sshCommand`) to probe it**: a repository's config can name any program, and Glowfly
+   reads untrusted repositories with git before the trust prompt. A command line gets the safe
+   set-up, as an unknown version does. Never log the command.
 7. **A path written into a git config value that a shell runs (`core.sshCommand`) goes through
    `native_path::native` and `rebase::shell_quote_for`** (`ssh_keys/command.rs`): no `\\?\`
    prefix, sh-quoted, and forward slashes on Windows. Git for Windows' bundled ssh doesn't read
@@ -409,15 +424,26 @@ second one next to it.
    (mode 0600, and 0700 for a folder the write creates, on Unix) under `settings::runtime_dir`
    (`$XDG_RUNTIME_DIR/glowfly` on Linux, `$XDG_RUNTIME_DIR/app/<FLATPAK_ID>/glowfly` inside
    Flatpak, else the cache folder). A file left by a window that
-   crashed names a closed port, which the second process treats as no window.
-3. **Windows refuses the foreground to a window its user didn't just use:** the process handing a
-   link over calls `AllowSetForegroundWindow` with the running window's process id first
+   crashed names a closed port, which the second process treats as no window. Only a process
+   that can read the file has the token the listener asks for, so only this user is heard.
+   Every request is one line of at most 16 KiB holding a `glowfly:` link or an absolute folder,
+   which opens like a folder picked in the app; nothing in it is run.
+3. **One window takes links and folders: the one holding the OS file lock on `instance.lock`**
+   next to the instance file (`File::try_lock`: `LockFileEx` on Windows, `flock` on Unix), taken
+   at start-up (`instance::claim`). The OS drops the lock with its process, so a crash never
+   leaves a stale one; a later window waits for it on a thread and takes over. The lock file
+   is never removed or replaced (a lock belongs to the inode on Unix, so a new file would let a
+   second window lock too). A process that finds the lock held keeps trying the window for
+   `START_WAIT` (it may still be starting), then opens its own window; so does one on a file
+   system without locks after a single try.
+4. **Windows refuses the foreground to a window its user didn't just use:** the process handing a
+   link or folder over calls `AllowSetForegroundWindow` with the running window's process id first
    (`instance/foreground.rs`); the window then un-minimizes, focuses and, if that still fails,
    flashes its taskbar entry.
-4. **A link names its repository by root commit and remote URL, never by the folder it is in
+5. **A link names its repository by root commit and remote URL, never by the folder it is in
    here,** and opening one runs no git command until the user clicks Fetch or Clone; the
    repository is found with libgit2 reads only.
-5. **macOS hands links and folders to Glowfly.app as Apple events,** never on the command line.
+6. **macOS hands links and folders to Glowfly.app as Apple events,** never on the command line.
    packaging/macos/Info.plist declares both schemes in `CFBundleURLTypes` (Get URL events) and
    `public.folder` in `CFBundleDocumentTypes` as an Alternate-rank Viewer (Open Documents events:
    Finder's Open With, a Dock drop, `open -a Glowfly <folder>`), never with an Editor role or an
@@ -523,14 +549,18 @@ second one next to it.
 1. **Don't follow links** (`notify::Config::with_follow_symlinks(false)` in `watcher.rs`): a link
    to `$HOME` exhausts inotify's watch limit.
 2. **For a linked worktree, also watch the common dir** (`watch::common_dir`): its `refs/`
-   recursively, `HEAD` and `packed-refs`.
+   recursively, `HEAD` and `packed-refs`. Watch the folder (not recursively) of each file the
+   config includes outside the watched folders (`config_includes`, `watcher/includes.rs`), and
+   follow the includes again after every full reload.
 3. **Assume the watcher can be silent.** Detect remote and virtual file systems with
    `volume::remote_kind` (statfs magic on Linux, `MNT_LOCAL` on macOS, `DRIVE_REMOTE` on
    Windows), tell the user once, and read the whole status every `REMOTE_POLL` (10 s) while
    focused. On Windows poll every `WINDOWS_POLL` (30 s) while focused (`state/watch.rs`,
    `poll_every`): a local repository's watcher sweeps its tree (`watch_sweep`: every folder
-   stat'd, the changed and racy ones and a rotating tenth listed again, the git dir's refs, index
-   and exclude and attributes files compared) and feeds what changed through the usual
+   stat'd, the changed and racy ones and a rotating tenth listed again, the git dir's refs, index,
+   exclude and attributes files and the config files with those they include compared, and
+   submodules' and nested repositories' work trees walked by their own ignore rules with their
+   HEAD and refs compared) and feeds what changed through the usual
    classification; a failed watcher, a tree past `SWEEP_MAX_ENTRIES` and the first sweep read the
    whole status. Keep the refresh on focus and F5.
 4. **Never trust size plus mtime alone.** Hash files up to 64 KiB, and treat a stamp taken
@@ -715,7 +745,7 @@ Unverified, needs a real machine:
 - `safe.directory` on a real share (the `%(prefix)///server/share` spelling);
 - the PATH of an app started from the macOS Dock, and `open -n -a ... --args`;
 - remote-volume detection on real NFS, SMB and 9P mounts;
-- `DISPLAY` and setsid with OpenSSH before 8.4;
+- `DISPLAY` with OpenSSH before 8.4, and setsid with every OpenSSH;
 - whether `\\wsl$\X` and `\\wsl.localhost\X` give one `FolderId`;
 - trash for paths over 260 characters on Windows (expected: `NoTrash` and a permanent-delete
   offer);

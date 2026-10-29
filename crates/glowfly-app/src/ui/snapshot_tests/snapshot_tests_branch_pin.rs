@@ -1,5 +1,5 @@
 //! Pinned branch colours and person colours: the Color submenu of the local and remote branch
-//! menus (main's disabled), a pinned branch in the graph, the colour-blind safe preset on dark
+//! menus (main's disabled), a pinned branch in the graph, the colour-blind friendly preset on dark
 //! and light palettes, and the initials of two people in the graph and the commit details.
 
 use super::menu_testing::{open_submenu, submenu_item};

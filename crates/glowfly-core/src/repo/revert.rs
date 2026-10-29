@@ -85,7 +85,9 @@ pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
     super::attrs::refuse_converted(&repo, work, "reverting")?;
     // The same diff, renames detected, that the viewer shows, so the hunks match.
     let ws = req.ignore_whitespace && !matches!(req.part, RevertPart::File);
-    let diff = target_diff(&repo, target, LoadDiffOptions { ignore_whitespace: ws, ..Default::default() }, None)?;
+    // On a handle reading the shown version's gitattributes, so binary files are the viewer's.
+    let attrs = super::attr_source::for_target(&repo, target);
+    let diff = target_diff(&attrs, target, LoadDiffOptions { ignore_whitespace: ws, ..Default::default() }, None)?;
     let no_changes = || Error::NotFound(format!("no changes in {path}"));
     let position = |d: &git2::Diff| d.deltas().position(|d| super::rpath::touches(&d, path)).ok_or_else(no_changes);
     let idx = position(&diff)?;
@@ -110,7 +112,7 @@ pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
     let patch = Patch::from_diff(&diff, idx)?;
     // With whitespace hidden, the exact bytes of the commit's side, for the unchanged lines.
     let side = if ws {
-        let full = target_diff(&repo, target, LoadDiffOptions::default(), None)?;
+        let full = target_diff(&attrs, target, LoadDiffOptions::default(), None)?;
         Patch::from_diff(&full, position(&full)?)?.map(|p| side_lines(&p, true)).transpose()?
     } else {
         None

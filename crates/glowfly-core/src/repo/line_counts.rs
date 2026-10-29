@@ -4,6 +4,7 @@
 //! libgit2 only (no git process, filter or hook runs), so repositories that aren't trusted get
 //! counts too. Each file is keyed by the path its row in `commit_detail` or `status_at` shows.
 
+use super::attr_source::{AttrSource, attr_repo};
 use super::rpath;
 use crate::error::Result;
 use git2::{Delta, Diff, DiffOptions, FileMode, Oid, Patch, Repository};
@@ -90,23 +91,28 @@ fn opts() -> DiffOptions {
 /// commit), from the same diff `commit_detail` lists.
 pub fn commit_line_counts(workdir: &Path, oid: Oid) -> Result<FileLineCounts> {
     let repo = Repository::open(workdir)?;
+    // Binary files (not counted) as the commit's own gitattributes say.
+    let paths = super::diff::commit_paths(&repo, oid);
+    let attrs = attr_repo(&repo, AttrSource::Commit(oid), &paths.iter().map(String::as_str).collect::<Vec<_>>());
     let mut o = opts();
-    let diff = super::diff::commit_diff(&repo, oid, Some(&mut o))?;
-    counts_of(&repo, &diff, false, MAX_COUNTED_FILES)
+    let diff = super::diff::commit_diff(&attrs, oid, Some(&mut o))?;
+    counts_of(&attrs, &diff, false, MAX_COUNTED_FILES)
 }
 
 /// The counts of the working tree's staged and unstaged files. Ignored files are left out.
 pub fn wip_line_counts(workdir: &Path) -> Result<WipLineCounts> {
     let repo = Repository::open(workdir)?;
+    // Staged files by the index's gitattributes, unstaged ones by the working tree's.
+    let index = attr_repo(&repo, AttrSource::Index, &[]);
     let mut o = opts();
-    let mut staged = repo.diff_tree_to_index(super::diff::head_tree(&repo).as_ref(), None, Some(&mut o))?;
+    let mut staged = index.diff_tree_to_index(super::diff::head_tree(&index).as_ref(), None, Some(&mut o))?;
     staged.find_similar(None)?;
     let mut o = opts();
     o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true);
     // No rename detection: the status doesn't detect work-tree renames either.
     let unstaged = repo.diff_index_to_workdir(None, Some(&mut o))?;
     Ok(WipLineCounts {
-        staged: counts_of(&repo, &staged, false, MAX_COUNTED_FILES)?,
+        staged: counts_of(&index, &staged, false, MAX_COUNTED_FILES)?,
         unstaged: counts_of(&repo, &unstaged, true, MAX_COUNTED_FILES)?,
     })
 }

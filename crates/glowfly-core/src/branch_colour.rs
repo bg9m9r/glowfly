@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 /// How many branch hues the palette has (the accent is not one of them).
 pub const SLOTS: u8 = 14;
 
-/// How many hues the colour-blind safe palette has.
+/// How many hues the colour-blind friendly palette has.
 pub const COLOUR_BLIND_SLOTS: u8 = 8;
 
 /// The colour a branch is drawn in: the accent for the main branch, else one of the hues.

@@ -187,7 +187,8 @@ When git is updated, change its url and sha256 in the manifest and the version, 
 
 The **prepare** job runs `scripts/release-notes-header.sh <tag>`, which puts
 `packaging/release-notes-header.md` above the release's notes: the builds aren't code-signed
-yet, how to check a download against `SHA256SUMS` (a command for each system) and its build
+yet and the checksums confirm a download matches what the release published, not who published
+it, how to check a download against `SHA256SUMS` (a command for each system) and its build
 provenance (`gh attestation verify`), and that Glowfly
 is provided as is, without warranty, under MIT OR Apache-2.0, and a link to `PRIVACY.md`. The header sits between two HTML
 comment markers, so a re-run replaces it instead of adding a second. The header has no `## `
@@ -378,8 +379,8 @@ The Flatpak build has no network, so `scripts/package-flatpak.sh` works in two s
 machine with cargo, `bash scripts/package-flatpak.sh vendor` copies every crate into `vendor/`
 and writes the cargo config that points at it to `packaging/flatpak/generated/` (both ignored by
 git). Then, where `flatpak` and `flatpak-builder` are installed (or in the
-`ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08` image the workflows use, run
-with `--privileged`), `bash scripts/package-flatpak.sh bundle v0.3.0` fills in the AppStream
+`ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08` image the workflows use, pinned
+there by digest, run with `--privileged`), `bash scripts/package-flatpak.sh bundle v0.3.0` fills in the AppStream
 metadata, builds `packaging/flatpak/io.github.bg9m9r.glowfly.yml` (git from its pinned tarball,
 then Glowfly offline) and writes `dist/glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak` and its
 `.sha256`. Install it with `flatpak install --user ./dist/glowfly-…flatpak`.

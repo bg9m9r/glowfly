@@ -1,7 +1,8 @@
 //! Messages of Glowfly's own updates and release notes (update/updates.rs).
 
 use super::Inactive;
-use glowfly_core::app_update::{InstallKind, Release, Saved};
+use glowfly_core::app_update::{InstallKind, Progress, Release, Saved, SavedProblem};
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UpdateMsg {
@@ -9,8 +10,11 @@ pub enum UpdateMsg {
     Startup,
     /// Preferences' Check now and the palette's Check for updates.
     CheckNow,
-    /// Download the offered release's file (or open its page when there is none for this system).
+    /// Download the offered release's file (or open its page when there is none for this system),
+    /// again when the one downloaded before is gone or changed.
     Download,
+    /// Preferences' Cancel while the download runs: stops it and removes the partial file.
+    CancelDownload,
     /// Install the downloaded update and restart, or open its installer and quit, after the
     /// unsaved-work checks.
     InstallAndRestart,
@@ -26,8 +30,14 @@ pub enum UpdateMsg {
     // ---- from the runner
     /// A check finished: the newest release (None when there is none yet).
     Checked { manual: bool, result: Result<Option<CheckedRelease>, String> },
+    /// How far the running download is (a few times a second).
+    DownloadProgress(Progress),
     /// A download finished: where the verified file was saved, and its checksum.
     Downloaded(Result<Saved, String>),
+    /// The download stopped for Cancel; its partial file is removed.
+    DownloadCancelled,
+    /// The downloaded `file` was read again: None when it still matches, else what is wrong.
+    SavedChecked { file: PathBuf, problem: Option<SavedProblem> },
     /// Install and restart was prepared (the window closes now) or failed (nothing changed).
     RestartReady(Result<(), String>),
 }
@@ -47,13 +57,17 @@ impl UpdateMsg {
             Self::Startup
             | Self::CheckNow
             | Self::Download
+            | Self::CancelDownload
             | Self::InstallAndRestart
             | Self::InstallAndRestartConfirmed
             | Self::ShowFile
             | Self::OpenReleasePage
             | Self::ShowNotes
             | Self::Checked { .. }
+            | Self::DownloadProgress(_)
             | Self::Downloaded(_)
+            | Self::DownloadCancelled
+            | Self::SavedChecked { .. }
             | Self::RestartReady(_) => None,
         }
     }

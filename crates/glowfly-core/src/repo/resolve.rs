@@ -122,7 +122,7 @@ pub fn write_partial_resolution(workdir: &Path, path: &str, contents: &str, expe
         // runs (Windows locks files that are held open).
         repo.blob(contents.as_bytes())?
     };
-    let bytes = super::tool_sides::blob_bytes(workdir, id, path, true)?;
+    let bytes = super::tool_sides::blob_bytes(workdir, id, path, true, None)?;
     let opts = crate::persist::WriteOptions { refuse_links: true, ..Default::default() };
     Ok(crate::persist::write_file(&workdir.join(path), &bytes, opts)?)
 }

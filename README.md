@@ -7,8 +7,9 @@ branch/remote/tag/stash sidebar, and a right-hand panel for commit details or st
 committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps, Jira and Trello for pull
 requests and issues.
 
-Glowfly is an independent project. It is not affiliated with or endorsed by any other Git client
-or hosting service; product names are used only to describe compatibility.
+Glowfly is an independent project. It is not affiliated with or endorsed by any other Git client,
+hosting service, issue tracker or operating system vendor; product names are used only to
+describe compatibility. All trademarks are the property of their owners.
 
 ## Install
 
@@ -40,14 +41,16 @@ Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
 Each download has a `.sha256` file, and `SHA256SUMS` lists them all: check a download with
 `sha256sum -c SHA256SUMS --ignore-missing`. Each file in `SHA256SUMS` (and `SHA256SUMS` itself)
 also has a build provenance attestation, which shows the Release workflow built it from this
-repository: check it with `gh attestation verify <file> --repo bg9m9r/glowfly`. Builds are
-code-signed once the project's signing certificates are set up (see
-[docs/RELEASING.md](docs/RELEASING.md)); until then Windows
-SmartScreen and macOS Gatekeeper warn the first time you open them.
+repository: check it with `gh attestation verify <file> --repo bg9m9r/glowfly`. The builds are
+not code-signed yet: that comes once the project's signing certificates are set up (see
+[docs/RELEASING.md](docs/RELEASING.md)), and until then Windows SmartScreen and macOS Gatekeeper
+warn the first time you open them. The checksums show that a download matches what the release
+published, not who published it.
 
 Glowfly checks GitHub for a newer release once a day (Preferences > General > Updates, where you
 can turn it off) and downloads it only when you ask, after checking it against the published
-checksums. "View release notes" in the command palette shows what changed.
+checksums. Those confirm the download matches the release, not who published it, since the
+builds aren't code-signed yet. "View release notes" in the command palette shows what changed.
 
 ## Building from source
 
@@ -192,6 +195,8 @@ Licensed under either of
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
 
 at your option.
+
+Provided as is, without warranty of any kind; see the license files.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in
 the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without

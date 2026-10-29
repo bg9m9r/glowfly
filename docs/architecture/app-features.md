@@ -6,8 +6,9 @@ source file, update its line here. Each section lists one feature's files in eve
 
 ## Glowfly's own updates (`UpdateMsg`, `UpdateEffect`)
 
-- Files: `msg/updates.rs`, `effect/updates.rs`, `runner/updates.rs`, `runner/update_restart.rs`, `state/updates.rs`, `state/release_notes.rs`, `update/updates.rs`, `update/updates_restart.rs`, `update/release_notes.rs`.
+- Files: `msg/updates.rs`, `effect/updates.rs`, `runner/updates.rs`, `runner/update_restart.rs`, `state/updates.rs`, `state/release_notes.rs`, `update/updates.rs`, `update/updates_download.rs`, `update/updates_restart.rs`, `update/release_notes.rs`.
 - The check's and download's status, opening the release notes, and the runner's check, download, Install and restart, and tidying of old staging folders.
+- `update/updates_download.rs`: starting a download, its progress and Cancel (`StopKey::UpdateDownload`), its result, and reading the downloaded file again (`UpdateEffect::CheckSaved`), which turns a gone or changed file into Download again (`UpdateStatus::Stale`).
 - Drawn by `ui/release_notes.rs` (the dialog), `ui/update_notice.rs` (the status bar chip) and `ui/prefs/updates_row.rs` (Preferences > General > Updates).
 
 ## Operation journal (`JournalMsg`, `LostMsg`, `JournalEffect`)

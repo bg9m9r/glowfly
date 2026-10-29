@@ -1,21 +1,29 @@
 //! Preferences > General's Updates row: the daily check, this version and when it last checked,
-//! Check now, and the check's or download's status with what can be done next (Download, Install
-//! and restart, Show file). A Flatpak copy's offer says how Flatpak updates it instead of
+//! Check now, and the check's or download's status with what can be done next (Download, its
+//! progress and Cancel, Install and restart, Show file, and Download again when the downloaded
+//! file is gone or changed). A Flatpak copy's offer says how Flatpak updates it instead of
 //! offering a download.
 
-use super::{help, row};
+use super::{help, row, warn};
 use crate::msg::{Msg, UpdateMsg};
-use crate::state::updates::{UpdateStatus, UpdatesState, available_text, download_failed_text, install_label};
+use crate::state::updates::{
+    Transfer, UpdateStatus, UpdatesState, available_text, download_failed_text, install_label, progress_text, stale_text,
+};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, RichText, Ui};
-use glowfly_core::app_update::InstallMethod;
+use eframe::egui::{self, CornerRadius, Rect, RichText, Sense, Ui, WidgetInfo, WidgetType, vec2};
 use glowfly_core::app_update::Offer;
+use glowfly_core::app_update::{InstallMethod, SavedProblem};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 use std::path::Path;
+
+/// The progress bar's widest and its height.
+const BAR_W: f32 = 320.0;
+const BAR_H: f32 = 6.0;
 
 /// What the row shows, gathered before the settings are borrowed for editing.
 pub struct UpdatesView<'a> {
@@ -60,7 +68,7 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
                     }
                 });
             }
-            UpdateStatus::Downloading(_) => spinning(ui, t.tr("updates.downloading")),
+            UpdateStatus::Downloading(_) => downloading(ui, t, u.transfer, msgs),
             UpdateStatus::Downloaded { file, method, .. } => downloaded_row(ui, t, u, file, *method, msgs),
             UpdateStatus::DownloadFailed { error, .. } => {
                 ui.add(egui::Label::new(RichText::new(download_failed_text(t, error)).color(color::removed())).wrap());
@@ -68,6 +76,7 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
                     send(msgs, UpdateMsg::Download);
                 }
             }
+            UpdateStatus::Stale { offer, file, problem } => stale(ui, t, &offer.version, file, *problem, msgs),
         }
         help(ui, t.tr("prefs.general.updates.help"));
     });
@@ -115,6 +124,55 @@ fn downloaded_row(ui: &mut Ui, t: Lang, u: &UpdatesState, file: &Path, method: I
         InstallMethod::RunMsi | InstallMethod::SwapPortable | InstallMethod::SwapAppImage => return,
     };
     help(ui, note);
+}
+
+/// The running download: how far it is (a bar when its size is known) and Cancel, or
+/// "Cancelling…" once Cancel was pressed.
+fn downloading(ui: &mut Ui, t: Lang, x: Transfer, msgs: &mut Vec<Msg>) {
+    if x.cancelling {
+        spinning(ui, t.tr("updates.cancelling"));
+        return;
+    }
+    let text = progress_text(t, x.progress);
+    match x.progress.fraction() {
+        Some(f) => {
+            ui.label(RichText::new(&text).color(color::text()));
+            bar(ui, f);
+        }
+        None => spinning(ui, &text),
+    }
+    if ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked() {
+        msgs.push(Msg::Updates(UpdateMsg::CancelDownload));
+    }
+}
+
+/// A thin accent bar `fraction` full, read out as a progress indicator.
+fn bar(ui: &mut Ui, fraction: f32) {
+    let w = ui.available_width().min(BAR_W);
+    let (rect, resp) = ui.allocate_exact_size(vec2(w, BAR_H), Sense::hover());
+    let r = CornerRadius::same(radius::XS);
+    ui.painter().rect_filled(rect, r, color::border());
+    let done = Rect::from_min_size(rect.min, vec2(w * fraction.clamp(0.0, 1.0), BAR_H));
+    ui.painter().rect_filled(done, r, color::accent());
+    resp.widget_info(|| {
+        let mut info = WidgetInfo::new(WidgetType::ProgressIndicator);
+        info.value = Some(f64::from((fraction * 100.0).floor()));
+        info
+    });
+}
+
+/// The file downloaded for `version` is gone or changed: why, Download again and Release notes.
+fn stale(ui: &mut Ui, t: Lang, version: &glowfly_core::app_update::Version, file: &Path, problem: SavedProblem, msgs: &mut Vec<Msg>) {
+    ui.label(RichText::new(available_text(t, version)).font(type_scale::strong(ui, type_scale::BODY)).color(color::info()));
+    warn(ui, &stale_text(t, file, problem));
+    ui.horizontal(|ui| {
+        if ui.add(buttons::secondary(t.tr("updates.download_again.button"))).clicked() {
+            msgs.push(Msg::Updates(UpdateMsg::Download));
+        }
+        if ui.add(buttons::secondary(t.tr("updates.release_notes.button"))).clicked() {
+            msgs.push(Msg::Updates(UpdateMsg::ShowNotes));
+        }
+    });
 }
 
 fn spinning(ui: &mut Ui, text: &str) {

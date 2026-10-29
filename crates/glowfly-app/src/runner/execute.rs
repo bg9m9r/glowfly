@@ -25,6 +25,9 @@ pub(super) struct Cx<'a> {
     /// The trust gate a job's git commands go through one by one, with the check it passed
     /// (runner/trust.rs), where hooks follow the working tree.
     pub gate: Option<(&'a super::trust_gate::Gate, &'a crate::effect::TrustCheck)>,
+    /// Sends a message before the effect's result and wakes the UI (an update download's
+    /// progress); tests drop them.
+    pub send: &'a dyn Fn(Msg),
 }
 
 /// Runs one effect area's value to completion (blocking), returning the message to send back.
@@ -36,7 +39,7 @@ pub(super) trait Execute {
 /// Results that belong to one repository come back as `Msg::Scoped`.
 #[cfg(test)]
 pub fn execute(effect: Effect) -> Option<Msg> {
-    execute_with(effect, &Cx { cancelled: &|| false, graph_cache: &repo::GraphCache::default(), stop: None, gate: None })
+    execute_with(effect, &Cx { cancelled: &|| false, graph_cache: &repo::GraphCache::default(), stop: None, gate: None, send: &|_| {} })
 }
 
 /// `execute` with the runner's `Cx`.

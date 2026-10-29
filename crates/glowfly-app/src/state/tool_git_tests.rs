@@ -110,3 +110,15 @@ fn page_hints_say_what_runs() {
     );
     assert_ne!(page_hint(Lang::De, ToolMode::Diff, &unknown, true), h);
 }
+
+#[test]
+fn late_diff_tool_failures_say_how_it_ended_in_every_language() {
+    let text = failed_later_text(Lang::En, "meld", "a.txt", Some(2), "fatal: no display");
+    assert_eq!(text, "git difftool for a.txt (meld) failed after it started: it exited with code 2: fatal: no display");
+    assert_eq!(failed_later_text(Lang::En, "meld", "a.txt", None, ""), "git difftool for a.txt (meld) was stopped after it started");
+    for t in [Lang::De, Lang::Es] {
+        let text = failed_later_text(t, "meld", "a.txt", Some(2), "");
+        assert!(text.contains("meld") && text.contains("a.txt") && text.contains('2') && !text.contains('{'), "{t:?}: {text}");
+        assert_ne!(text, failed_later_text(Lang::En, "meld", "a.txt", Some(2), ""), "{t:?} is translated");
+    }
+}

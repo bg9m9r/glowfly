@@ -10,7 +10,8 @@
 //! - `host.rs`: the machine's real processor (an emulated x64 or Rosetta build is on Arm).
 //! - `appimage.rs`: whether this copy runs from an AppImage, and which file that is.
 //! - `sums.rs`: `SHA256SUMS` and `<file>.sha256` files.
-//! - `download.rs`: fetching, verifying and saving a file (I/O).
+//! - `download.rs`: fetching a file to disk as it arrives, verifying it on the way, and checking
+//!   a saved one again (I/O).
 //! - `feed.rs`: where releases are read from: the hosting service, or a local folder named by
 //!   GLOWFLY_UPDATE_FEED.
 //! - `check.rs`: the headless check behind `glowfly --check-update`.
@@ -49,6 +50,8 @@ mod version;
 #[cfg(test)]
 mod assets_tests;
 #[cfg(test)]
+mod download_tests;
+#[cfg(test)]
 mod feed_tests;
 #[cfg(test)]
 mod tests;
@@ -59,7 +62,10 @@ pub use assets::{
     install_kind_with, pick, sums_source,
 };
 pub use check::{Checked, check_and_download};
-pub use download::{MAX_DOWNLOAD, Saved, download, download_saved, free_name, read_verified, split_extension};
+pub use download::{
+    MAX_DOWNLOAD, Progress, Saved, SavedProblem, check_saved, download, download_saved, download_streamed, free_name, read_verified,
+    split_extension,
+};
 pub use feed::{FEED_ENV, FEED_RELEASE, Feed};
 pub use finish::run as finish_update;
 pub use host::current_platform;

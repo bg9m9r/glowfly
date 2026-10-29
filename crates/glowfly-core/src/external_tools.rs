@@ -231,24 +231,58 @@ pub fn watch(child: Child) -> Watched {
 /// [`watch`] for `window` instead: for a program that takes a while to fail (git's own tool
 /// scripts).
 pub fn watch_for(mut child: Child, window: Duration) -> Watched {
-    let stderr = child.stderr.take().map(drain_stderr);
-    let deadline = Instant::now() + window;
-    while Instant::now() < deadline {
-        match child.try_wait() {
-            Ok(Some(status)) if status.success() => return Watched::Exited { code: Some(0), stderr: String::new() },
-            Ok(Some(status)) => {
-                let said = stderr.and_then(|rx| rx.recv_timeout(Duration::from_millis(500)).ok()).unwrap_or_default();
-                return Watched::Exited { code: status.code(), stderr: said };
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(20)),
-            Err(_) => break,
-        }
+    let mut stderr = child.stderr.take().map(drain_stderr);
+    if let Some(exited) = exited_within(&mut child, &mut stderr, window) {
+        return exited;
     }
     // Glowfly doesn't wait for the program.
     let _ = std::thread::Builder::new().name("glowfly-tool-wait".into()).spawn(move || {
         let _ = child.wait();
     });
     Watched::Running
+}
+
+/// How a program watched to its end fared.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Ended {
+    /// It exited within the window ([`Watched::Exited`]'s fields).
+    Early { code: Option<i32>, stderr: String },
+    /// It was still running after the window and exited later, however much later; `stderr`
+    /// is what it printed there (its first few kilobytes).
+    Later { code: Option<i32>, stderr: String },
+}
+
+/// [`watch_for`], but one still running after `window` is waited for on this thread, and how
+/// it ended then is reported too: for a program whose failure can come late (git's tool
+/// scripts start slowly on Windows), on a thread that may wait as long as it runs.
+pub fn watch_to_end(mut child: Child, window: Duration) -> Result<Ended> {
+    let mut stderr = child.stderr.take().map(drain_stderr);
+    match exited_within(&mut child, &mut stderr, window) {
+        Some(Watched::Exited { code, stderr }) => Ok(Ended::Early { code, stderr }),
+        _ => {
+            let status = child.wait()?;
+            Ok(Ended::Later { code: status.code(), stderr: drained(stderr) })
+        }
+    }
+}
+
+/// Polls `child` for `window`: `Some(Watched::Exited)` once it exits (with its stderr, read
+/// only when it failed), None while it still runs or its state can't be read. `stderr` is
+/// taken only when it exited.
+fn exited_within(child: &mut Child, stderr: &mut Option<std::sync::mpsc::Receiver<String>>, window: Duration) -> Option<Watched> {
+    let deadline = Instant::now() + window;
+    while Instant::now() < deadline {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => return Some(Watched::Exited { code: Some(0), stderr: String::new() }),
+            Ok(Some(status)) => {
+                let said = stderr.take().and_then(|rx| rx.recv_timeout(Duration::from_millis(500)).ok()).unwrap_or_default();
+                return Some(Watched::Exited { code: status.code(), stderr: said });
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(20)),
+            Err(_) => break,
+        }
+    }
+    None
 }
 
 /// Starts `l` as `spawn` and `run_to_exit` describe; `wait` makes a macOS application bundle
@@ -303,10 +337,20 @@ pub fn run_to_exit(l: &Launch) -> Result<ExitReport> {
 /// piped, gives [`ExitReport::said`]).
 pub fn wait_report(mut child: Child) -> Result<ExitReport> {
     let stderr = child.stderr.take().map(drain_stderr);
-    let status = child.wait()?;
-    let text = stderr.and_then(|rx| rx.recv_timeout(Duration::from_secs(2)).ok()).unwrap_or_default();
+    Ok(report(child.wait()?, stderr))
+}
+
+/// The report of a program that ended with `status`, from what its drained `stderr` held.
+fn report(status: std::process::ExitStatus, stderr: Option<std::sync::mpsc::Receiver<String>>) -> ExitReport {
+    let text = drained(stderr);
     let said = text.lines().map(str::trim).find(|l| !l.is_empty()).map(crate::text::printable).unwrap_or_default();
-    Ok(ExitReport { code: status.code(), said })
+    ExitReport { code: status.code(), said }
+}
+
+/// What a program that has exited printed on stderr, once its pipe is drained ("" when it
+/// wasn't piped or is still held open after 2 seconds, by a program it started).
+fn drained(stderr: Option<std::sync::mpsc::Receiver<String>>) -> String {
+    stderr.and_then(|rx| rx.recv_timeout(Duration::from_secs(2)).ok()).unwrap_or_default()
 }
 
 /// Reads a child's stderr to its end on a thread of its own (so a chatty program never blocks

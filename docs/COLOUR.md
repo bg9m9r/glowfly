@@ -222,7 +222,7 @@ tone, and the ink their chip tone pushed to 4.5:1 on that fill
 (`theme/branch_colours.rs::initials_tones`). The ring around the initials, or around an avatar
 image, stays the branch's colour.
 
-Colour-blind safe preset (Preferences > Appearance > Commit graph > Branch colors): 8
+Colour-blind friendly preset (Preferences > Appearance > Commit graph > Branch colors): 8
 hues that stay apart under protan, deutan and tritan vision as well as normal vision, and keep
 out of the accent and attention bands. Dark themes use its dark tones for lines and chips;
 light ones use its line tones for lines and its text tones for chips. Under protan or deutan
@@ -614,7 +614,7 @@ from the dark ones (see Branch above).
 | 12 | Sky | #0aabea | #005475 | #0685b6 |
 | 13 | Indigo | #8794f7 | #3b4097 | #646fd1 |
 
-The colour-blind safe preset, slot by slot: dark tones (Dark and High contrast dark), light line
+The colour-blind friendly preset, slot by slot: dark tones (Dark and High contrast dark), light line
 tones (lines, dots and bands on every light theme) and light text tones (chips on every light
 theme), with the OKLCH hue the three share within 1.5 deg. Simulated with Machado et al. (2009)
 at full severity on linear sRGB, distance in OKLab: the least distance between any two dark

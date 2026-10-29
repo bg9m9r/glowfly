@@ -1,6 +1,7 @@
 //! `glowfly://` links: copying one, reading one that arrives, the search's answer, the
-//! deep-link dialogs and the scheme registration. Opening the matched repository and selecting
-//! the target is `deep_link_open.rs`.
+//! deep-link dialogs and the scheme registration, and a folder a second Glowfly process hands
+//! over (`glowfly <path>`). Opening the matched repository and selecting the target is
+//! `deep_link_open.rs`.
 
 use super::deep_link_open::{after_fetch, go};
 use super::jobs::{JobSpec, Started, start_job};
@@ -24,6 +25,11 @@ pub(super) fn handle(st: &mut AppState, msg: DeepLinkMsg, now: Instant, fx: &mut
         }
         DeepLinkMsg::Built { result: Err(e), .. } => st.toast(false, format!("Can't make a link: {e}."), now),
         DeepLinkMsg::Open(text) => open(st, text, now, fx),
+        DeepLinkMsg::OpenFolder(dir) => {
+            fx.push(Effect::Ui(UiEffect::FocusWindow));
+            let again = Msg::DeepLink(DeepLinkMsg::OpenFolder(dir.clone()));
+            super::notify::show_repo(st, dir, again, now, fx);
+        }
         DeepLinkMsg::Found { seq, origin, result } => found(st, seq, origin, result, now, fx),
         DeepLinkMsg::Locate => fx.push(Effect::Os(OsEffect::PickFolder {
             title: "Locate the linked repository".into(),

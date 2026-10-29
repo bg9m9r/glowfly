@@ -19,7 +19,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/terminal_scheme.rs`: which colours the terminal draws in (the app theme's, another built-in's or an imported scheme over the app theme's), read through `color::term()`.
 - `prefs/terminal_colours.rs`: Preferences > Terminal's Colors row.
 - `prefs/theme_picker.rs`: the built-in themes drawn as grouped preview cards with one-line descriptions on Preferences' Theme row.
-- `theme/branch_palette.rs`: the branch hues in two presets, standard and colour-blind safe (the light tones trading Olive, Gold and a yellow for Wine, Navy and a clear amber), put into a palette by `applied`.
+- `theme/branch_palette.rs`: the branch hues in two presets, standard and colour-blind friendly (the light tones trading Olive, Gold and a yellow for Wine, Navy and a clear amber), put into a palette by `applied`.
 - `theme/branch_palette_gold.rs`, `theme/branch_palette_more.rs`: the families that make room beside a gold, iris (Dawn), flame or cobalt accent.
 - `theme/branch_names.rs`: the branch hues' names in the language.
 - `theme/branch_colours.rs`: a branch swatch's line and chip tones, with a person's initials colours.

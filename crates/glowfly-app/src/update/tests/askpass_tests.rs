@@ -198,9 +198,9 @@ fn a_finished_job_cancels_what_it_left() {
 fn carry_and_submit_rules() {
     let mut st = state();
     let p = &mut st.askpass;
-    p.carry = Some(Carry { host: "dev.azure.com".into(), user: "ada@corp.com".into(), password: Secret::new("x") });
-    assert!(p.carry_answers(&Prompt::new("Password for 'https://ada%40corp.com@dev.azure.com': ", None)));
-    assert!(!p.carry_answers(&Prompt::new("Password for 'https://ada%40corp.com@github.com': ", None)));
+    p.carry = Some(Carry { host: "dev.azure.com".into(), user: "ada@example.com".into(), password: Secret::new("x") });
+    assert!(p.carry_answers(&Prompt::new("Password for 'https://ada%40example.com@dev.azure.com': ", None)));
+    assert!(!p.carry_answers(&Prompt::new("Password for 'https://ada%40example.com@github.com': ", None)));
     assert!(!p.carry_answers(&Prompt::new(PASSPHRASE, None)));
     p.carry = Some(Carry { host: "github.com".into(), user: "ada".into(), password: Secret::new("x") });
     assert!(p.carry_answers(&Prompt::new(PASSWORD, None)));

@@ -263,7 +263,13 @@ impl<W: Waker + Clone> Runner<W> {
             let _hold = hold.as_deref().map(glowfly_core::repo_pool::hold);
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
             let started = std::time::Instant::now();
-            let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop.as_ref().map(|(_, s)| s), gate: None };
+            let send = |m: Msg| {
+                if tx.send(m).is_ok() {
+                    waker.wake();
+                }
+            };
+            let stop_ref = stop.as_ref().map(|(_, s)| s);
+            let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop_ref, gate: None, send: &send };
             let msg = guard::guarded(recovery, || match check {
                 Some(c) => trust::checked(c, effect, |text| failed.failed(text), &cx),
                 None => execute_with(effect, &cx),

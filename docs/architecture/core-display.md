@@ -58,6 +58,9 @@ source file, update its line here.
 - `watch.rs`: which file changes in a repository matter, and the work-tree paths a change names (`Change::Paths`, at most `MAX_WATCH_PATHS` per burst).
 - The git dir's index is `Change::Index`, which keeps a burst's paths.
 - A submodule's HEAD or refs moving (in `<git dir>/modules/…` or a nested `.git` folder) reads the parent's whole status; their index, logs and objects don't count.
-- `config` and `config.worktree` reload in full, as do a linked worktree's shared refs, packed-refs, HEAD and config in the common git dir.
+- `config` and `config.worktree` reload in full, and so do the files they include, wherever they are (`WatchPaths::set_config_files`), as do a linked worktree's shared refs, packed-refs, HEAD and config in the common git dir.
 - `Ignores` caches ignored folders but never drops a path the index holds (a force-added file, or one committed before its pattern), nor a folder above one when it comes or goes.
-- `watch_sweep.rs`: the Windows safety poll's sweep of a watched tree: a baseline of every non-ignored folder's listing, then each sweep stats them, lists again the changed, racy and a rotating tenth, and names the paths (and the git dir's refs, index, exclude and attributes) that may have changed.
+- `watch_sweep.rs`: the Windows safety poll's sweep of a watched tree: a baseline of every non-ignored folder's listing, then each sweep stats them, lists again the changed, racy and a rotating tenth, and names the paths (and the git dir's refs, index, exclude and attributes, and the config files with those they include) that may have changed.
+- `watch_sweep/nested.rs`: the submodules and nested repositories the sweep walks into, each by its own ignore rules, with their HEAD and refs compared every sweep.
+- `config_includes.rs`: the files git's `include.path` and `includeIf` pull in, resolved as git does (relative to the including file, `~/`, `gitdir:`, `gitdir/i:`, `onbranch:`), bounded in depth and count and never following a cycle.
+- `config_includes/parse.rs`: the include entries of one config file's text; `config_includes/wildmatch.rs`: git's pattern matching for the conditions.

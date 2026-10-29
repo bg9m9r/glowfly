@@ -113,7 +113,8 @@ fn a_failed_restart_changes_nothing_and_says_why() {
     send(&mut st, U::InstallAndRestart, t);
     let e = "Couldn't replace Glowfly's program in X: denied. Use Show file to install the update by hand.";
     let fx = send(&mut st, U::RestartReady(Err(e.into())), t);
-    assert!(fx.is_empty(), "{fx:?}");
+    // The file is read again, in case it is gone or changed.
+    assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::CheckSaved { .. })]), "{fx:?}");
     assert!(!st.updates.restarting);
     assert!(matches!(st.updates.status, UpdateStatus::Downloaded { .. }));
     let toast = st.toasts.last().unwrap();

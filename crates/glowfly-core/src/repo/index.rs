@@ -32,9 +32,12 @@ pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk
         attrs::refuse_converted(&repo, path, if op == HunkOp::Stage { "staging" } else { "discarding" })?;
     }
     // The forward diff `load_diff` shows, to check the hunk; the one applied may be reversed.
+    // Staged changes read the index's gitattributes, as the viewer does (`attr_source`).
+    let source = if op == HunkOp::Unstage { attr_source::AttrSource::Index } else { attr_source::AttrSource::Workdir };
+    let staged = attr_source::attr_repo(&repo, source, &[]);
     let shown = match op {
         HunkOp::Stage | HunkOp::Discard => repo.diff_index_to_workdir(None, Some(&mut workdir_opts(path)))?,
-        HunkOp::Unstage => repo.diff_tree_to_index(head_tree(&repo).as_ref(), None, Some(&mut path_opts(path)))?,
+        HunkOp::Unstage => staged.diff_tree_to_index(head_tree(&staged).as_ref(), None, Some(&mut path_opts(path)))?,
     };
     let stale = || Error::NotFound("the diff changed; try again on the updated diff".into());
     let patch = diff::file_patch(&shown, path)?.ok_or_else(stale)?;
@@ -51,8 +54,8 @@ pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk
         HunkOp::Unstage => {
             let mut o = path_opts(path);
             o.reverse(true);
-            let tree = head_tree(&repo);
-            (repo.diff_tree_to_index(tree.as_ref(), None, Some(&mut o))?, ApplyLocation::Index)
+            let tree = head_tree(&staged);
+            (staged.diff_tree_to_index(tree.as_ref(), None, Some(&mut o))?, ApplyLocation::Index)
         }
     };
     // Only `path`'s own delta: with `core.ignorecase` the diff can also hold a path that differs
@@ -162,6 +165,11 @@ pub fn whole_discard(workdir: &Path, path: &str, expected: &Hunk, raw: git2::Oid
             "{rel} isn't a regular file, so Undo couldn't bring it back; discard it from the file list instead"
         ))),
     }
+}
+
+/// The `raw_id` a shown diff carries: only an unstaged diff of one hunk gets one.
+pub(super) fn shown_raw_id(workdir: &Path, target: &DiffTarget, path: &str, patch: &git2::Patch<'_>) -> Result<Option<git2::Oid>> {
+    if matches!(target, DiffTarget::Unstaged(_)) && patch.num_hunks() == 1 { raw_id(workdir, path, patch, 0).map(Some) } else { Ok(None) }
 }
 
 /// Hunk `h` of `patch` as exact bytes, hashed: each line's origin and raw content, end-of-file

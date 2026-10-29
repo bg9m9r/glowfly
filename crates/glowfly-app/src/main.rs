@@ -98,12 +98,13 @@ fn main() -> eframe::Result {
     glowfly_core::i18n::detect_system_language();
     // `args_os`: a path needn't be UTF-8 (`env::args` would panic on one).
     let start = argv.get(1).filter(|a| !is_process_serial(a, cfg!(target_os = "macos"))).cloned().map(start_arg);
-    // A link goes to the window already running, when there is one.
-    if let Some(StartArg::Link(text)) = &start {
-        match glowfly_core::instance::hand_off(text) {
-            Ok(()) => return Ok(()),
-            Err(e) => tracing::debug!("opening a window for the link: {e}"),
-        }
+    // Whether another window takes links and folders, taking that over when none does.
+    let claimed = glowfly_core::instance::claim();
+    // A link or a folder goes to the window already running, when there is one.
+    if let Some(item) = &start
+        && forwarded(item, &claimed)
+    {
+        return Ok(());
     }
     // Before eframe starts AppKit: the Apple event that started Glowfly.app comes before the
     // window exists.
@@ -135,15 +136,20 @@ fn main() -> eframe::Result {
         event_loop_builder: platform::native_menu::event_loop_hook(),
         ..Default::default()
     };
-    eframe::run_native("Glowfly", options, Box::new(move |cc| Ok(Box::new(ui::GlowflyApp::new(cc, start, logs, mica, probe)))))
+    let ran = eframe::run_native("Glowfly", options, Box::new(move |cc| Ok(Box::new(ui::GlowflyApp::new(cc, start, logs, mica, probe)))));
+    // The window has closed: the copies this session gave the diff tool go now, not at the
+    // 24-hour sweep.
+    glowfly_core::external_tools::temp::remove_own_sessions();
+    ran
 }
 
-/// What the command line asks the new window to open.
+/// What the command line asks the new window to open; either goes to a window already running
+/// first (`forwarded`).
 #[derive(Clone, Debug, PartialEq)]
 pub enum StartArg {
     /// A repository folder, made absolute.
     Path(PathBuf),
-    /// A `glowfly://` link (forwarded to a running window first).
+    /// A `glowfly://` link.
     Link(String),
 }
 
@@ -154,6 +160,39 @@ impl StartArg {
         match self {
             StartArg::Path(p) => msg::Msg::Repo(msg::RepoMsg::Open(p)),
             StartArg::Link(t) => msg::Msg::DeepLink(deep_link::DeepLinkMsg::Open(t)),
+        }
+    }
+
+    /// What a second process hands to the running window for it.
+    fn handed(&self) -> glowfly_core::instance::Handed {
+        match self {
+            StartArg::Path(p) => glowfly_core::instance::Handed::Folder(p.clone()),
+            StartArg::Link(t) => glowfly_core::instance::Handed::Link(t.clone()),
+        }
+    }
+}
+
+/// Hands `item` to the window that holds the claim on links and folders when another does
+/// (`glowfly_core::instance`): whether that window took it. On any failure this process opens
+/// its own window, as it would with none running.
+fn forwarded(item: &StartArg, claimed: &std::io::Result<glowfly_core::instance::Claimed>) -> bool {
+    use glowfly_core::instance::{self, Claimed};
+    let wait = match claimed {
+        // This is the only window: nothing to hand over to.
+        Ok(Claimed::Here) => return false,
+        // It may still be starting: give it a moment to listen.
+        Ok(Claimed::Elsewhere) => instance::START_WAIT,
+        // Nothing is known about other windows: one try at the address on file.
+        Err(e) => {
+            tracing::debug!("can't tell whether Glowfly is running: {e}");
+            std::time::Duration::ZERO
+        }
+    };
+    match instance::hand_off(&item.handed(), wait) {
+        Ok(()) => true,
+        Err(e) => {
+            tracing::debug!("opening a window for it: {e}");
+            false
         }
     }
 }

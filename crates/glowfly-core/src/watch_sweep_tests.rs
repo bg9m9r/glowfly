@@ -224,3 +224,162 @@ fn a_new_folder_that_crosses_the_limit_reads_everything_from_then_on() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Sweeps until a round finds nothing new, gathering what each found.
+fn rounds(s: &mut Sweep, ig: &mut Ignores) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    for _ in 0..SWEEP_ROUNDS {
+        found.extend(s.sweep(ig, later()).expect("a sweep"));
+    }
+    found
+}
+
+#[test]
+fn a_nested_repository_is_walked_by_its_own_rules_and_its_commits_are_found() {
+    let dir = repo("sweep-nested", 1);
+    let inner = dir.join("vendor/inner");
+    std::fs::create_dir_all(inner.join("build")).unwrap();
+    git(&inner, &["init", "-q", "-b", "main"]);
+    crate::testutil::set_config(&inner, &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false")]);
+    write(&inner, ".gitignore", "build/\n");
+    write(&inner, "src.txt", "s\n");
+    write(&inner, "build/x.o", "obj");
+    git(&inner, &["add", "."]);
+    git(&inner, &["commit", "-q", "-m", "inner"]);
+    let (mut s, mut ig) = start(&dir);
+
+    write(&inner, "build/y.o", "obj");
+    moved(&inner.join("build"));
+    assert_eq!(rounds(&mut s, &mut ig), Vec::<PathBuf>::new(), "ignored by the nested repository's own rules");
+
+    write(&inner, "src.txt", "edited\n");
+    assert_eq!(rounds(&mut s, &mut ig), [inner.join("src.txt")], "its work tree is walked");
+
+    git(&inner, &["commit", "-q", "-am", "edit"]);
+    assert_eq!(s.sweep(&mut ig, later()), Some(vec![inner.join(".git/HEAD")]), "a commit inside moves its HEAD");
+    assert_eq!(rounds(&mut s, &mut ig), Vec::<PathBuf>::new());
+
+    std::fs::remove_dir_all(inner.join(".git")).unwrap();
+    moved(&inner);
+    let found = s.sweep(&mut ig, later()).unwrap();
+    assert!(found.contains(&inner), "no longer a repository: {found:?}");
+    assert!(s.seen.as_ref().unwrap().nested.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_submodule_s_commits_and_edits_are_found() {
+    let (parent, sub) = crate::testutil::with_submodule("sweep-submodule");
+    let (mut s, mut ig) = start(&parent);
+    write(&sub, "lib.txt", "lib\nmore\n");
+    assert_eq!(rounds(&mut s, &mut ig), [sub.join("lib.txt")]);
+    git(&sub, &["commit", "-q", "-am", "more"]);
+    assert_eq!(s.sweep(&mut ig, later()), Some(vec![sub.join(".git/HEAD")]), "its git dir sits in the parent's modules");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn included_config_files_are_compared() {
+    let dir = repo("sweep-include", 1);
+    let outside = dir.with_file_name(format!("{}-shared", dir.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&outside);
+    std::fs::create_dir_all(&outside).unwrap();
+    write(&outside, "team.cfg", "[core]\n");
+    let named = |p: &Path| p.display().to_string().replace('\\', "/");
+    crate::testutil::set_config(&dir, &[("include.path", &named(&outside.join("team.cfg")))]);
+    let (mut s, mut ig) = start(&dir);
+    write(&outside, "team.cfg", "[core]\n\tautocrlf = false\n");
+    moved(&outside.join("team.cfg"));
+    let found = s.sweep(&mut ig, later()).unwrap();
+    assert!(found.contains(&crate::paths::resolve(&outside.join("team.cfg"))), "{found:?}");
+
+    // A new include: the config changes, and from then on the new file is compared too.
+    crate::testutil::set_config(&dir, &[("include.path", &named(&outside.join("more.cfg")))]);
+    moved(&dir.join(".git/config"));
+    let found = s.sweep(&mut ig, later()).unwrap();
+    assert!(found.contains(&dir.join(".git/config")), "{found:?}");
+    write(&outside, "more.cfg", "[core]\n");
+    let found = s.sweep(&mut ig, later()).unwrap();
+    assert!(found.contains(&crate::paths::resolve(&outside.join("more.cfg"))), "created: {found:?}");
+    let _ = std::fs::remove_dir_all(&outside);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn at_most_max_nested_repositories_are_tracked_and_the_rest_still_walked() {
+    let dir = repo("sweep-nested-cap", 0);
+    let n = nested::MAX_NESTED + 4;
+    for i in 0..n {
+        git2::Repository::init(dir.join(format!("n{i:03}"))).unwrap();
+    }
+    let (mut s, mut ig) = start(&dir);
+    let seen = s.seen.as_ref().unwrap();
+    assert_eq!(seen.nested.len(), nested::MAX_NESTED);
+    assert_eq!((0..n).filter(|i| seen.folders.contains_key(Path::new(&format!("n{i:03}")))).count(), n, "every one walked");
+    assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A nested repository made with libgit2 (`objects` and all), whose HEAD the test then rewrites.
+fn bare_nested(dir: &Path, name: &str) -> PathBuf {
+    let at = dir.join(name);
+    git2::Repository::init(&at).unwrap();
+    at
+}
+
+#[test]
+fn a_nested_head_naming_a_file_outside_its_refs_is_not_read() {
+    let dir = repo("sweep-nested-escape", 0);
+    let inner = bare_nested(&dir, "inner");
+    write(&dir, "big.txt", "one\n");
+    for target in ["../../big.txt", "refs/../../../big.txt", "/etc/passwd", "refs\\heads\\x", "refs/heads/a\0b"] {
+        assert!(!nested::ref_name_ok(target.as_bytes()), "{target}");
+    }
+    assert!(nested::ref_name_ok(b"refs/heads/feature/x"));
+    write(&inner, ".git/HEAD", "ref: ../../big.txt\n");
+    let before = nested::refs_of(&inner);
+    assert!(before.is_some());
+    write(&dir, "big.txt", "two, longer\n");
+    assert_eq!(nested::refs_of(&inner), before, "the file it names isn't read");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_oversized_or_irregular_nested_head_is_no_repository() {
+    let dir = repo("sweep-nested-head", 0);
+    let inner = bare_nested(&dir, "inner");
+    assert!(nested::refs_of(&inner).is_some());
+    write(&inner, ".git/HEAD", &format!("ref: refs/heads/{}\n", "x".repeat(8192)));
+    assert_eq!(nested::refs_of(&inner), None, "too large");
+    std::fs::remove_file(inner.join(".git/HEAD")).unwrap();
+    std::fs::create_dir(inner.join(".git/HEAD")).unwrap();
+    assert_eq!(nested::refs_of(&inner), None, "a folder");
+    #[cfg(unix)]
+    {
+        std::fs::remove_dir(inner.join(".git/HEAD")).unwrap();
+        let fifo = std::ffi::CString::new(inner.join(".git/HEAD").into_os_string().into_encoded_bytes()).unwrap();
+        // SAFETY: `fifo` is a NUL-terminated path that outlives the call.
+        assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
+        assert_eq!(nested::refs_of(&inner), None, "a FIFO, opened without waiting");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_nested_branch_switch_and_pack_refs_change_its_fingerprint() {
+    let dir = repo("sweep-nested-pack", 0);
+    let inner = dir.join("inner");
+    std::fs::create_dir_all(&inner).unwrap();
+    git(&inner, &["init", "-q", "-b", "main"]);
+    crate::testutil::set_config(&inner, &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false")]);
+    write(&inner, "a.txt", "a\n");
+    git(&inner, &["add", "."]);
+    git(&inner, &["commit", "-q", "-m", "a"]);
+    let first = nested::refs_of(&inner);
+    git(&inner, &["checkout", "-q", "-b", "side"]);
+    let switched = nested::refs_of(&inner);
+    assert_ne!(switched, first, "a branch switch");
+    crate::testkit::git_cli(&inner, &["pack-refs", "--all"]);
+    assert_ne!(nested::refs_of(&inner), switched, "the loose ref packed");
+    let _ = std::fs::remove_dir_all(&dir);
+}

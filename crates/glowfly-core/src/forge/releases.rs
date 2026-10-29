@@ -40,3 +40,10 @@ pub fn fetch_public(url: &str, limit: u64) -> Result<Vec<u8>> {
     let resp = call_get(public_request(url, true)?)?;
     read_capped(resp.into_reader(), limit)
 }
+
+/// The response at the public `https://` address `url`, read as it arrives (a release file
+/// streamed to disk); the caller limits how much it reads.
+pub fn open_public(url: &str) -> Result<Box<dyn std::io::Read + Send>> {
+    let resp = call_get(public_request(url, true)?)?;
+    Ok(Box::new(resp.into_reader()))
+}

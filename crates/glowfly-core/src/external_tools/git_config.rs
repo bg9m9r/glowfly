@@ -1,5 +1,8 @@
 //! The diff and merge tools git config names, for when Preferences > External tools sets none:
-//! `diff.tool` (falling back to `merge.tool`) or `merge.tool` picks a tool by name, whose
+//! as `git difftool --gui` / `git mergetool --gui` choose, `diff.guitool`, `merge.guitool`,
+//! `diff.tool`, `merge.tool` (merge mode: `merge.guitool`, `merge.tool`) pick a tool by name,
+//! unless `difftool.guiDefault` / `mergetool.guiDefault` is false, when the `guitool` keys are
+//! skipped as a plain `git difftool` does. The chosen tool's
 //! `difftool.<name>.cmd` / `mergetool.<name>.cmd` is a command to run in sh; without one, a
 //! name git knows built in (a file in `$(git --exec-path)/mergetools`) runs through
 //! `git difftool` / `git mergetool`. The fallbacks are git's own (git-mergetool--lib), and the
@@ -11,7 +14,7 @@ use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 
 /// The keys read, as `git config --get-regexp` matches them (section and variable lowercased).
-pub const KEYS: &str = r"^(diff|merge)\.tool$|^(diff|merge)tool\..+\.(cmd|path|trustexitcode)$";
+pub const KEYS: &str = r"^(diff|merge)\.(gui)?tool$|^(diff|merge)tool\.guidefault$|^(diff|merge)tool\..+\.(cmd|path|trustexitcode)$";
 
 /// A config entry: its key and value; None for a key written without `=`.
 pub type Entry = (String, Option<String>);
@@ -52,11 +55,21 @@ impl ToolMode {
         }
     }
 
-    /// The keys that choose the tool, in the order git tries them.
-    pub fn selectors(self) -> &'static [&'static str] {
+    /// The keys that choose the tool, in the order git tries them; `gui` as `--gui` does.
+    pub fn selectors(self, gui: bool) -> &'static [&'static str] {
+        match (self, gui) {
+            (Self::Diff, true) => &["diff.guitool", "merge.guitool", "diff.tool", "merge.tool"],
+            (Self::Diff, false) => &["diff.tool", "merge.tool"],
+            (Self::Merge, true) => &["merge.guitool", "merge.tool"],
+            (Self::Merge, false) => &["merge.tool"],
+        }
+    }
+
+    /// The key that says whether the GUI tool is the default (as read lowercased).
+    pub fn gui_default_key(self) -> &'static str {
         match self {
-            Self::Diff => &["diff.tool", "merge.tool"],
-            Self::Merge => &["merge.tool"],
+            Self::Diff => "difftool.guidefault",
+            Self::Merge => "mergetool.guidefault",
         }
     }
 
@@ -73,7 +86,7 @@ impl ToolMode {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GitTool {
     pub name: String,
-    /// The key that named it: "diff.tool" or "merge.tool".
+    /// The key that named it: "diff.guitool", "merge.guitool", "diff.tool" or "merge.tool".
     pub chosen_by: String,
     pub run: GitToolRun,
 }
@@ -127,12 +140,23 @@ fn git_bool(v: Option<Option<&str>>) -> bool {
     }
 }
 
+/// Whether Glowfly picks `mode`'s GUI tool first: Glowfly is graphical, so it does unless
+/// `<mode>tool.guiDefault` is false. `auto` picks it by a display being there, and Glowfly's own
+/// window is one; a value git can't read as a boolean is ignored.
+pub fn gui_mode(all: &[Entry], mode: ToolMode) -> bool {
+    match last(all, mode.gui_default_key()) {
+        Some(Some(v)) if v.trim().eq_ignore_ascii_case("auto") => true,
+        Some(Some(v)) => git2::Config::parse_bool(v).unwrap_or(true),
+        Some(None) | None => true,
+    }
+}
+
 /// The tool git config names for `mode`, from every scope's entries (`all`, in git's order)
 /// and the repository's own (`own`: its local and worktree config, with what they include).
 /// `builtin` says whether git knows a tool by that name.
 pub fn resolve(all: &[Entry], own: &[Entry], mode: ToolMode, builtin: &dyn Fn(&str) -> bool) -> Option<GitTool> {
     // `git config <key>` gives the last value, used when non-empty (`test -n`).
-    let (chosen_by, name) = mode.selectors().iter().find_map(|k| match last(all, k) {
+    let (chosen_by, name) = mode.selectors(gui_mode(all, mode)).iter().find_map(|k| match last(all, k) {
         Some(Some(v)) if !v.is_empty() => Some((*k, v)),
         _ => None,
     })?;

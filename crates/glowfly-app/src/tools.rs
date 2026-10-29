@@ -64,6 +64,10 @@ pub enum ToolsMsg {
     /// A launch failed (runner/tools.rs). `program` as typed, `target` the file or repository
     /// name.
     LaunchFailed { kind: ToolKind, program: String, target: String, failure: LaunchFailure },
+    /// `git difftool` (git config's built-in diff tool) on `target`, still running after its
+    /// early-exit watch, later exited with an error (`code`, None when stopped; `said`, git's
+    /// most telling line) (runner/tools/git_tool.rs).
+    DiffToolFailedLater { program: String, target: String, code: Option<i32>, said: String },
     /// Open this diff's file in the external diff tool.
     OpenDiff(DiffTarget),
     /// Resolve this conflicted file (repo-relative) in the external merge tool, as a job.
@@ -96,6 +100,7 @@ impl ToolsMsg {
             | Self::Browse(_)
             | Self::ProgramPicked { .. }
             | Self::LaunchFailed { .. }
+            | Self::DiffToolFailedLater { .. }
             | Self::OpenDiff(_)
             | Self::ResolveInMergeTool(_)
             // Checks the active tab itself (update/tool_git.rs).

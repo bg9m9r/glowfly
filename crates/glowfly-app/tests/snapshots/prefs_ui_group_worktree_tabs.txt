@@ -69,7 +69,7 @@ CheckBox "Short SHA under the author" [on]
 CheckBox "Date and time" [on]
 ComboBox
 ComboBox
-Label "Color-blind safe uses 8 hues picked to stay apart with red-green or blue-yellow color blindness. Branch names always appear beside their color, and the main branch keeps the accent color."
+Label "Color-blind friendly uses 8 hues picked to stay apart with red-green or blue-yellow color blindness. Branch names always appear beside their color, and the main branch keeps the accent color."
 Button "Reset to default layout"
 Button "Reset to compact layout"
 Label "Either reset also puts every column back to its standard width. To resize a column, drag the divider beside its title in the graph header; double-click a divider to reset just that column."
