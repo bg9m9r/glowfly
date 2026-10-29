@@ -20,7 +20,11 @@ chrono.workspace = true
 git2.workspace = true
 serde_json.workspace = true
 sys-locale.workspace = true
+# Reads the system's CJK fonts (src/platform/system_fonts.rs): ab_glyph is the parser egui
+# draws them with, memmap2 maps them instead of reading them into memory.
+ab_glyph = "0.2.32"
 eframe = "0.31"
+memmap2 = "0.9.11"
 notify = "8.2"
 notify-rust = "4"
 open = "5"

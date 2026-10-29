@@ -1,5 +1,6 @@
 //! Settings saved per repository (graph filters, pinned branch colours, repository colours, pull
-//! request and issue filters, the issue tracker, trust decisions, whether submodules are kept updated, whether year-like branch names name issues) are keyed by the repository's resolved working directory
+//! request and issue filters, the issue tracker, trust decisions, whether submodules are kept updated, whether year-like branch names name issues,
+//! the last pull request merge method) are keyed by the repository's resolved working directory
 //! (`Snapshot::real_workdir`), saved losslessly (`paths::encode`). One set of helpers reads and
 //! writes every such map, so a repository opened by another spelling (a link, a short 8.3 name,
 //! libgit2's `C:/x/` form) finds its settings, a new entry replaces one saved under another
@@ -7,6 +8,7 @@
 //! to the resolved key when the repository loads.
 
 use super::{GraphFilter, RepoTrust, SavedTrust, Settings, TrackerChoice};
+use crate::forge::MergeMethod;
 use crate::paths;
 use std::collections::HashMap;
 use std::path::Path;
@@ -109,6 +111,17 @@ impl Settings {
         set(&mut self.repo_year_branches, real, on.then_some(true));
     }
 
+    /// The merge method last used from the pull request panel in the repository at `real`; a
+    /// name this version doesn't know reads as none.
+    pub fn merge_method_for(&self, real: &Path) -> Option<MergeMethod> {
+        get(&self.repo_merge_methods, real).and_then(|name| MergeMethod::from_api_name(name))
+    }
+
+    /// Remembers `m` as the repository's merge method.
+    pub fn set_merge_method(&mut self, real: &Path, m: MergeMethod) {
+        set(&mut self.repo_merge_methods, real, Some(m.api_name().to_owned()));
+    }
+
     /// Whether submodules are updated after checkouts and pulls in the repository at `real`: its
     /// own choice, else Preferences > General.
     pub fn keeps_submodules_updated(&self, real: &Path) -> bool {
@@ -130,7 +143,7 @@ impl Settings {
     }
 
     /// Moves the graph filter, branch colour pins, repository colour, pull request and issue filters, issue tracker,
-    /// slow-status note, submodule and year-branch choices saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
+    /// slow-status note, submodule and year-branch choices and merge method saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
     /// resolved key `real`. Trust decisions and their prints were always saved under the resolved
     /// key and are left alone. Returns whether anything moved.
     pub fn adopt_repo_keys(&mut self, real: &Path, aliases: &[&Path]) -> bool {
@@ -141,7 +154,8 @@ impl Settings {
         let years = adopt(&mut self.repo_year_branches, real, aliases);
         let pins = adopt(&mut self.branch_pins, real, aliases);
         let colours = adopt(&mut self.repo_colours, real, aliases);
-        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips | subs | years | pins | colours
+        let methods = adopt(&mut self.repo_merge_methods, real, aliases);
+        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips | subs | years | pins | colours | methods
     }
 }
 
@@ -253,6 +267,26 @@ mod tests {
         assert!(s.adopt_repo_keys(&real, &[Path::new("/link/repo")]));
         assert_eq!(s.submodule_updates_for(&real), Some(false));
         assert_eq!(s.repo_submodule_updates.keys().collect::<Vec<_>>(), [&key(&real)]);
+    }
+
+    #[test]
+    fn merge_methods_per_repository() {
+        let mut s = Settings::default();
+        let (a, b) = (PathBuf::from("/w/a"), PathBuf::from("/w/b"));
+        assert_eq!(s.merge_method_for(&a), None);
+        s.set_merge_method(&a, MergeMethod::Squash);
+        s.set_merge_method(&PathBuf::from("/w/a/"), MergeMethod::FastForward);
+        assert_eq!((s.merge_method_for(&a), s.merge_method_for(&b)), (Some(MergeMethod::FastForward), None));
+        assert_eq!(get(&s.repo_merge_methods, &a).map(String::as_str), Some("fast-forward"), "saved by its stable name");
+        assert_eq!(s.repo_merge_methods.len(), 1, "one entry whatever the spelling");
+        // A name a later version saved reads as none.
+        s.repo_merge_methods.insert(key(&b), "octopus".into());
+        assert_eq!(s.merge_method_for(&b), None);
+
+        s.repo_merge_methods.insert("/link/repo".into(), "rebase".into());
+        let real = PathBuf::from("/real/repo");
+        assert!(s.adopt_repo_keys(&real, &[Path::new("/link/repo")]));
+        assert_eq!(s.merge_method_for(&real), Some(MergeMethod::Rebase));
     }
 
     #[test]

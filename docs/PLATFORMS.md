@@ -108,6 +108,13 @@ second one next to it.
     (`safe_directory::open_error`). Offer `safe_directory::add` after confirmation, in git's
     spelling (`safe_directory::config_value`: forward slashes, `%(prefix)///server/share` for a
     share).
+12. **Write commit messages in the repository's `i18n.commitEncoding`** (`commit_encoding`):
+    git labels a message file's bytes with it and never re-encodes them. Hand git a typed commit
+    message in a file, not with `-m`: Git for Windows reads its command line as UTF-8. Refuse one
+    the encoding can't hold rather than letting it turn into `?`, judged by the label git
+    records (`ISO-8859-1` has no `€`, though WHATWG reads it as windows-1252). Read commit
+    text through `commit_text` and git's message files (MERGE_MSG) as bytes, never with
+    libgit2's `Repository::message`, which panics on bytes that aren't UTF-8.
 
 ### Names Glowfly creates or accepts
 

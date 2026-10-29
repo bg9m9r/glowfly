@@ -140,6 +140,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("button_styles_light", Window),
     ("fonts_dark", Window),
     ("fonts_light", Window),
+    ("fonts_cjk", Window),
     ("type_scale_specimen_dark", Window),
     ("type_scale_specimen_light", Window),
     ("icon_branch", Window),

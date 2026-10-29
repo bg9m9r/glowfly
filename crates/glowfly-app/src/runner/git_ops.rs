@@ -96,9 +96,14 @@ pub(super) fn job_env(prompts: bool) -> &'static [(&'static str, &'static str)] 
 
 /// Runs `cmds` in order, stopping at the first failure. Without `prompts`, git fails rather than
 /// open a credential prompt.
-pub(super) fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::PathBuf, String)>, prompts: bool) -> (bool, String) {
+pub(super) fn run_git(
+    cwd: &Path,
+    cmds: &[Vec<String>],
+    write_file: Option<(std::path::PathBuf, Vec<u8>)>,
+    prompts: bool,
+) -> (bool, String) {
     if let Some((path, contents)) = write_file
-        && let Err(e) = glowfly_core::persist::atomic_write(&path, contents.as_bytes())
+        && let Err(e) = glowfly_core::persist::atomic_write(&path, &contents)
     {
         return (false, format!("Could not write {}: {e}", path.display()));
     }
@@ -133,7 +138,7 @@ pub(super) enum Gated {
 pub(super) fn run_git_gated(
     cwd: &Path,
     cmds: &[Vec<String>],
-    write_file: Option<(std::path::PathBuf, String)>,
+    write_file: Option<(std::path::PathBuf, Vec<u8>)>,
     prompts: bool,
     gate: &super::trust_gate::Gate,
 ) -> Gated {
@@ -145,7 +150,7 @@ pub(super) fn run_git_gated(
 pub(super) fn run_git_gated_noting(
     cwd: &Path,
     cmds: &[Vec<String>],
-    write_file: Option<(std::path::PathBuf, String)>,
+    write_file: Option<(std::path::PathBuf, Vec<u8>)>,
     prompts: bool,
     gate: &super::trust_gate::Gate,
     note: bool,
@@ -162,14 +167,14 @@ pub(super) fn run_git_gated_noting(
 fn gated_steps(
     cwd: &Path,
     cmds: &[Vec<String>],
-    write_file: Option<(std::path::PathBuf, String)>,
+    write_file: Option<(std::path::PathBuf, Vec<u8>)>,
     prompts: bool,
     gate: &super::trust_gate::Gate,
     before: &mut dyn FnMut(usize),
 ) -> Gated {
     use super::trust_gate::Step;
     if let Some((path, contents)) = write_file
-        && let Err(e) = glowfly_core::persist::atomic_write(&path, contents.as_bytes())
+        && let Err(e) = glowfly_core::persist::atomic_write(&path, &contents)
     {
         return Gated::Done(false, format!("Could not write {}: {e}", path.display()));
     }

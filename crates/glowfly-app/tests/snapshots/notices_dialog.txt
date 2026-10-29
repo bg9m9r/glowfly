@@ -4,6 +4,7 @@ Dialog
   Label "Glowfly includes third-party libraries, fonts and syntax definitions; their licenses follow."
   Button "Noto Sans"
   Button "JetBrains Mono"
+  Button "Noto Sans CJK"
   Button "Ubuntu Light (epaint_default_fonts 0.31.1, fonts/UFL.txt)"
   Button "Hack (epaint_default_fonts 0.31.1, fonts/Hack-Regular.txt)"
   Button "Noto Emoji (epaint_default_fonts 0.31.1, fonts/OFL.txt)"

@@ -30,9 +30,9 @@ fn merge_sends_head_sha_and_method() {
     let fx = run(&mut st, PullRequestMsg::Merge);
     let jobs = calls(&fx);
     let [job] = &jobs[..] else { panic!("one call: {jobs:?}") };
-    let PrCall::Merge { req, remote, source, delete } = &job.call else { panic!("{:?}", job.call) };
+    let PrCall::Merge { req, remote, source, delete, delete_local } = &job.call else { panic!("{:?}", job.call) };
     assert_eq!((req.method, req.head_sha.as_str(), req.title.as_str()), (MergeMethod::Rebase, "h1", "Title"));
-    assert_eq!((remote.as_str(), source.as_str(), *delete), ("origin", "feature", true));
+    assert_eq!((remote.as_str(), source.as_str(), *delete, *delete_local), ("origin", "feature", true, false));
     assert_eq!(view(&st).busy, Some(PrAction::Merge));
     done(st, dirs);
 }
@@ -87,6 +87,7 @@ fn merged_err_sets_error_and_starts_no_job() {
         remote: "origin".into(),
         source: "feature".into(),
         delete: false,
+        delete_local: false,
         result: Err(err("HTTP 405: not mergeable")),
     };
     let msg = reply_msg(&st, reply);

@@ -28,7 +28,7 @@ pub struct JobSpec {
     /// Open this repository in the active tab once the job succeeds; how it was made decides
     /// whether it is trusted (update/trust.rs).
     pub then_open: Option<(PathBuf, Created)>,
-    pub write_file: Option<(PathBuf, String)>,
+    pub write_file: Option<(PathBuf, Vec<u8>)>,
     /// Record the job for undo when it is this kind of operation. Left `None`, a single command
     /// run in the active tab's repository is recognised by `UndoKind::classify`.
     pub record: Option<UndoKind>,

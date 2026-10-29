@@ -183,6 +183,10 @@ fn start(st: &mut AppState, confirmed: bool, autostash: bool, now: Instant, fx: 
         st.log(false, why);
         return;
     }
+    if let Some(why) = p.message_blocker(snap, st.settings.lang()) {
+        st.log(false, why);
+        return;
+    }
     let drops = p.drops();
     let stash = needs_stash(snap);
     let refs = p.moved_refs_note(st.settings.lang());

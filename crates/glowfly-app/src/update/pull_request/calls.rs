@@ -1,22 +1,20 @@
 //! The pull request panel's calls to its hosting service: loading the page (detail and
 //! conversation; the checks are in checks.rs), posting a comment, submitting a review, replying to and resolving code
-//! comment threads (threads.rs), starting a code comment on diff lines (line_comment.rs) and merging, then deleting the source branch and fetching. The calls are unscoped effects whose replies name their repository,
+//! comment threads (threads.rs), starting a code comment on diff lines (line_comment.rs) and merging, remembering the merge method
+//! for the repository, then cleaning up (cleanup.rs). The calls are unscoped effects whose replies name their repository,
 //! service and pull request: a reply for another tab is only logged, a stale page is dropped,
 //! and an action's result is logged even when the panel has closed, since it happened on the
 //! service.
 
-use super::super::ops::{JobSpec, busy, start_job};
 use crate::effect::{Effect, ForgeError};
 use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PrRequest};
 use crate::state::AppState;
 use crate::state::error_words::hosting;
 use crate::state::pull_request::{Page, PrAction};
-use crate::state::pull_request_actions::{comment_blocked, deletes_after_merge, merge_blocked, prefill, review_blocked};
+use crate::state::pull_request_actions::{comment_blocked, deletes_after_merge, deletes_local, merge_blocked, prefill, review_blocked};
 use crate::state::pull_request_line_comment::adopt_new_threads;
 use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, MergeRequest, PrPage, ReviewEvent, Target};
-use glowfly_core::gitcli::args;
-use glowfly_core::remote_ops::fetch_cmd;
 use glowfly_core::text::printable;
 use std::path::Path;
 use std::time::Instant;
@@ -116,8 +114,10 @@ pub(super) fn submit_review(st: &mut AppState, fx: &mut Vec<Effect>) {
     act(st, PrAction::Review, call, fx);
 }
 
+/// Sends the merge, and remembers its method for this repository.
 pub(super) fn merge(st: &mut AppState, fx: &mut Vec<Effect>) {
     let default_branch = st.session.forge.as_ref().and_then(|f| f.default_branch.clone());
+    let t = st.settings.lang();
     let Some(v) = st.session.pull_request.view.as_ref().filter(|v| merge_blocked(v).is_none()) else { return };
     let (Some(page), Some(method)) = (v.loaded(), v.forms.merge_method) else { return };
     let req = MergeRequest {
@@ -127,8 +127,16 @@ pub(super) fn merge(st: &mut AppState, fx: &mut Vec<Effect>) {
         message: v.forms.merge_message.trim().to_owned(),
     };
     let delete = deletes_after_merge(v, default_branch.as_deref());
-    let call = PrCall::Merge { req, remote: v.remote.clone(), source: v.pr.source.clone(), delete };
+    let delete_local = deletes_local(t, v, st.snap.as_ref(), default_branch.as_deref()).is_some();
+    let call = PrCall::Merge { req, remote: v.remote.clone(), source: v.pr.source.clone(), delete, delete_local };
     act(st, PrAction::Merge, call, fx);
+    let sent = st.session.pull_request.view.as_ref().is_some_and(|v| v.busy == Some(PrAction::Merge));
+    if let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()).filter(|_| sent)
+        && st.settings.merge_method_for(&real) != Some(method)
+    {
+        st.settings.set_merge_method(&real, method);
+        fx.push(super::super::prefs::save_settings(st));
+    }
 }
 
 /// The log line for an action's reply; `into` names the target branch of a merge, if known.
@@ -258,13 +266,14 @@ pub(super) fn replied(
             }
             super::super::forge::refresh(st, true, false, now, fx);
         }
-        PrReply::Merged { remote, source, delete, result: Ok(_), .. } => {
+        PrReply::Merged { remote, source, delete, delete_local, method, result: Ok(_) } => {
             st.toast(true, text, now);
             if open {
                 load(st, fx);
             }
             super::super::forge::refresh(st, true, false, now, fx);
-            after_merge(st, &remote, &source, delete, fx);
+            let local = delete_local.then_some((into.as_str(), method));
+            super::cleanup::after_merge(st, &remote, &source, delete, local, fx);
         }
         r @ (PrReply::RepliedToThread { result: Ok(_), .. } | PrReply::Resolved { result: Ok(_), .. }) => {
             super::threads::applied(st, open, r, text, now)
@@ -289,11 +298,12 @@ fn reply_error(reply: &PrReply) -> Option<&ForgeError> {
 /// A page arrived for the open panel: show it and fit the forms to it, or say why it failed
 /// (a failed reload keeps the last page and only logs).
 fn page_loaded(st: &mut AppState, result: Result<PrPage, ForgeError>) {
+    let remembered = st.snap.as_ref().and_then(|s| st.settings.merge_method_for(&s.real_workdir));
     let Some(v) = st.session.pull_request.view.as_mut() else { return };
     v.reloading = false;
     let failed = match result {
         Ok(page) => {
-            prefill(&mut v.forms, &page.detail);
+            prefill(&mut v.forms, &page.detail, remembered);
             adopt_new_threads(v, &page);
             // Reply drafts stay; a focus on a thread that is gone doesn't.
             if v.threads.focus.as_ref().is_some_and(|f| !page.threads.iter().any(|t| &t.id == f)) {
@@ -311,26 +321,4 @@ fn page_loaded(st: &mut AppState, result: Result<PrPage, ForgeError>) {
     if let Some(text) = failed {
         st.log_quiet(false, text);
     }
-}
-
-/// After a merge: bring it into this repository with one git job (delete the source branch on
-/// its remote when asked, then fetch with pruning), or say how when another job is running.
-fn after_merge(st: &mut AppState, remote: &str, source: &str, delete: bool, fx: &mut Vec<Effect>) {
-    if busy(st, true) {
-        let mut hint = format!("Merged. Fetch {remote} to bring the merge into this repository.");
-        if delete {
-            hint.push_str(&format!(" Delete {source} from its remote branch menu."));
-        }
-        st.log(true, hint);
-        return;
-    }
-    let mut cmds = Vec::new();
-    let label = if delete {
-        cmds.push(args(&["push", remote, "--delete", source]));
-        format!("Delete {source} and fetch {remote}")
-    } else {
-        format!("Fetch {remote}")
-    };
-    cmds.push(fetch_cmd(remote));
-    start_job(st, JobSpec::new(label, cmds), fx);
 }

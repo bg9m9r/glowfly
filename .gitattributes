@@ -9,6 +9,7 @@ crates/glowfly-core/src/init_ops/** text eol=lf
 *.ico binary
 *.icns binary
 *.ttf binary
+*.otf binary
 # The packaged desktop entries are compared byte for byte with what Glowfly writes.
 packaging/linux/*.desktop text eol=lf
 packaging/flatpak/*.desktop text eol=lf

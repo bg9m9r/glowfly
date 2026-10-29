@@ -28,6 +28,7 @@ pub(super) mod cherry_pick_tests;
 pub(super) mod clone_service_tests;
 pub(super) mod clone_sparse_tests;
 pub(super) mod clone_tests;
+pub(super) mod commit_encoding_tests;
 pub(super) mod commit_tests;
 pub(super) mod compare_wip_tests;
 pub(super) mod conflict_check_tests;

@@ -148,6 +148,8 @@ source file, update its line here. Features that span every layer are in
 - `platform/native_menu.rs`: the macOS system menu bar showing Glowfly's menus: the facade, the queue of clicked items' tags and the hook that turns winit's default app menu off.
 - `platform/macos_menu.rs`: the AppKit menus, built and updated from the plan, with the delegate that leaves every key to the window but Cmd+H and Option+Cmd+H.
 - `platform/primary_selection.rs`: the Linux PRIMARY selection the terminal sets and middle-click pastes (smithay-clipboard on Wayland, arboard on X11).
+- `platform/system_fonts.rs`: the system's Chinese, Japanese and Korean fonts, searched once on a startup thread and kept while each adds a script: mapped from a system font folder, read into memory from anywhere else.
+- `platform/system_fonts/candidates.rs`: the known font files of each system, in the order the system language prefers, the Linux font folders searched for them (the system's first), and the system font folders that may be mapped: only those root or TrustedInstaller alone can write, so not macOS's `/Library/Fonts`.
 - `platform/native_window/`: the Windows window procedure (see Window chrome in [flow-shell.md](flow-shell.md)).
 
 ## `keymap/`: key bindings
@@ -172,3 +174,4 @@ source file, update its line here. Features that span every layer are in
 - `glyph_check/` (tests only): every non-ASCII character in the app's and core's string literals and in the translation files has a glyph in the fonts egui draws with.
 - `glyph_check/scan.rs` finds the characters, skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.
 - `glyph_check/` installs the app's bundled fonts through `ui::theme::fonts::install`, as the app does.
+- `glyph_check/cjk_dates.rs`: every month, weekday and half-day word of the ja_JP, zh_CN and ko_KR dates has a glyph, in the tests' CJK font and in the machine's own where it has them.
