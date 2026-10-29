@@ -40,7 +40,7 @@ pub(super) fn job_ended(
     let text = format!("{} {status}\n{output}", job.label);
     let run = |summary| RunInfo { title: job.label.clone(), summary, took_ms, routine: is_routine_label(&job.label) };
     let repo = job.workdir.as_deref();
-    let again = super::job_retry::take(st, job);
+    let again = super::job_retry::take(st, job, output);
     if job.quiet {
         let explained = (!ok).then(|| job_errors::explain(st, job, stash_retry, None, output)).flatten();
         let summary = explained.map_or_else(|| last_message(output), |e| e.text);

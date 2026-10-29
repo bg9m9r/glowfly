@@ -1,12 +1,13 @@
 //! Try again and Delete lock file: a failed job's spec runs once more from its toast, only in its
 //! own open tab; a stale lock is offered for deleting once the check says no git runs, asks
-//! first, and runs the job again after the delete; and the delete is refused while git runs.
+//! first, and runs the job again after the delete; and the delete is refused while git runs. A
+//! job that failed past its first command gets none, and a commit runs from the current draft.
 
 use super::auto_stash_tests::{git_cmds, up};
 use super::tests::{clean_tree, scratch_repo, state};
 use crate::effect::{Effect, LockEffect};
-use crate::msg::{JobMsg, LockMsg, Msg, RepoMsg};
-use crate::state::job_spec::Retry;
+use crate::msg::{CommitMsg, JobMsg, LockMsg, Msg, RepoMsg, StageMsg};
+use crate::state::job_spec::{JobSpec, Retry};
 use crate::state::tabs::TabId;
 use crate::state::toasts::Toast;
 use crate::state::{AppState, Modal};
@@ -172,5 +173,110 @@ fn delete_lock_file_is_refused_while_git_runs() {
     let fx = up(&mut st, Msg::Lock(LockMsg::Delete { workdir, lock: lock.clone(), retry: again }));
     assert!(fx.is_empty());
     assert_eq!(last_toast(&st).text, "index.lock wasn't deleted: Push is still running.");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A clean repository opened, and the "Unable to create" line for a stale `index.lock` in it.
+fn opened(name: &str) -> (AppState, PathBuf, String) {
+    let dir = scratch_repo(name);
+    clean_tree(&dir);
+    let mut st = state();
+    super::tests::drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let lock = dir.join(".git").join("index.lock");
+    std::fs::write(&lock, "").unwrap();
+    let named = lock.to_string_lossy().replace('\\', "/");
+    (st, dir, format!("fatal: Unable to create '{named}': File exists."))
+}
+
+/// Starts a job of two commands, a fetch and then a push.
+fn fetch_then_push(st: &mut AppState) {
+    let spec = JobSpec::new("Fetch and push".into(), vec![args(&["fetch"]), args(&["push"])]);
+    crate::update::jobs::start_job(st, spec, &mut Vec::new());
+    assert!(st.job.is_some());
+}
+
+#[test]
+fn a_job_that_failed_past_its_first_command_gets_no_retry() {
+    let (mut st, dir, locked) = opened("lr-steps");
+    fetch_then_push(&mut st);
+    let fx = fail(
+        &mut st,
+        &format!(
+            "$ git fetch
+$ git push
+{locked}"
+        ),
+    );
+    assert_eq!(buttons(last_toast(&st)), ["Details"], "the fetch already ran, so running it all again repeats it");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Lock(_))), "nor is the lock offered for deleting");
+    assert!(st.logs.job_retry.is_none());
+
+    fetch_then_push(&mut st);
+    fail(
+        &mut st,
+        &format!(
+            "$ git fetch
+{locked}"
+        ),
+    );
+    assert_eq!(buttons(last_toast(&st)), ["Try again", "Details"], "it stopped in its first command");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
+    let (mut st, dir, locked) = opened("lr-commit");
+    std::fs::remove_file(dir.join(".git").join("index.lock")).unwrap();
+    std::fs::write(
+        dir.join("a.txt"),
+        "changed
+",
+    )
+    .unwrap();
+    super::tests::drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    super::tests::drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
+    st.session.draft.summary = "First words".into();
+    up(&mut st, Msg::Commit(CommitMsg::Commit));
+    assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Commit"));
+    fail(
+        &mut st,
+        &format!(
+            "$ git commit -F msg
+{locked}"
+        ),
+    );
+    let t = last_toast(&st);
+    assert_eq!(buttons(t), ["Try again", "Details"]);
+    let id = t.id;
+
+    // Edited after the failure: Try again commits the new text, never the old one.
+    st.session.draft.summary = "Better words".into();
+    let fx = up(&mut st, Msg::ToastAction(id));
+    let message = fx.iter().find_map(|e| match e {
+        Effect::RunGit { write_file: Some((_, m)), .. } => Some(m.clone()),
+        _ => None,
+    });
+    assert_eq!(
+        message.as_deref(),
+        Some(
+            "Better words
+"
+        )
+    );
+    assert_eq!(st.session.draft.summary, "Better words", "the draft stays until the commit succeeds");
+
+    // A draft emptied since is refused with the commit box's own reason.
+    fail(
+        &mut st,
+        &format!(
+            "$ git commit -F msg
+{locked}"
+        ),
+    );
+    let id = last_toast(&st).id;
+    st.session.draft.summary.clear();
+    let fx = up(&mut st, Msg::ToastAction(id));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })) && st.job.is_none());
+    assert_eq!(last_toast(&st).text, "Write a summary for the commit.");
     let _ = std::fs::remove_dir_all(&dir);
 }

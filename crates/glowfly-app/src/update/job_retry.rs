@@ -3,12 +3,14 @@
 //! started in (`LogsState::job_retry`); a failure takes it (`take`) and offers it as Try again on
 //! lock-file and HTTPS sign-in failures (update/job_errors.rs, `after_headline`), and Delete lock
 //! file runs it after deleting the lock (update/lock_file.rs). It runs only in that tab, while it
-//! is the active one and still shows the job's repository: a closed tab means no retry.
+//! is the active one and still shows the job's repository: a closed tab means no retry. A job
+//! of several commands is offered only when it failed in its first one, so nothing that already
+//! ran runs twice; a commit is made again from the draft as it is now.
 
 use super::jobs::start_job;
 use crate::effect::Effect;
 use crate::msg::{JobMsg, Msg};
-use crate::state::job_spec::Retry;
+use crate::state::job_spec::{JobSpec, Retry};
 use crate::state::{AppState, RunningJob, ToastAction};
 use glowfly_core::auth_failure::AuthNeed;
 use glowfly_core::git_errors::{Cause, classify};
@@ -16,9 +18,24 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::paths::same_spelling;
 use std::time::Instant;
 
-/// The spec of `job`, which just ended, when `start_job` kept one for it.
-pub(super) fn take(st: &mut AppState, job: &RunningJob) -> Option<Retry> {
-    st.logs.job_retry.take().filter(|r| r.spec.label == job.label)
+/// The spec of `job`, which just ended with `output`, when `start_job` kept one for it and
+/// running it again repeats nothing that already ran (`failed_first`).
+pub(super) fn take(st: &mut AppState, job: &RunningJob, output: &str) -> Option<Retry> {
+    st.logs.job_retry.take().filter(|r| r.spec.label == job.label && failed_first(&r.spec, output))
+}
+
+/// Whether the job stopped in its first command: always for a single command, and for more when
+/// `output` echoes no more than one `$ git ` command (counted as `gitflow::finish::failed_step`
+/// does), leaving out the failure check run after it (`on_fail_check`). Counting too many only
+/// withholds Try again.
+fn failed_first(spec: &JobSpec, output: &str) -> bool {
+    if spec.cmds.len() <= 1 {
+        return true;
+    }
+    let echoes: Vec<&str> = output.lines().filter(|l| l.starts_with("$ git ")).collect();
+    let check = spec.on_fail_check.as_ref().map(|c| format!("$ git {}", c.join(" ")));
+    let checked = check.is_some_and(|c| echoes.last().is_some_and(|l| *l == c));
+    echoes.len() - usize::from(checked) <= 1
 }
 
 /// The Try again button that runs `retry`.
@@ -57,6 +74,13 @@ pub(super) fn refusal(st: &AppState, retry: &Retry) -> Option<String> {
 pub(super) fn run(st: &mut AppState, retry: Retry, now: Instant, fx: &mut Vec<Effect>) {
     if let Some(why) = refusal(st, &retry) {
         st.toast(false, why, now);
+        return;
+    }
+    if retry.spec.clear_commit {
+        // A commit is made from the draft as it is now (message, amend, push after): its old spec
+        // would commit the message it had and then clear what was written since.
+        let stage_all = retry.spec.cmds.first().is_some_and(|c| c.first().is_some_and(|a| a == "add"));
+        super::commit::commit(st, stage_all, now, fx);
         return;
     }
     start_job(st, retry.spec, fx);

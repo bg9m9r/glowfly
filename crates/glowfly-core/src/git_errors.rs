@@ -227,9 +227,10 @@ fn quoted_after<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
     rest.split_once('\'').map(|(q, _)| q)
 }
 
-/// The lock file's name in "Unable to create '<path>.lock': File exists."
+/// The lock file's name in "Unable to create '<path>.lock': File exists." A server's own
+/// `remote:` line names a lock on the server, never one here.
 fn locked(line: &str) -> Option<String> {
-    if !line.contains(".lock': File exists") {
+    if from_remote(line) || !line.contains(".lock': File exists") {
         return None;
     }
     let path = quoted_after(line, "Unable to create '")?;
@@ -237,14 +238,19 @@ fn locked(line: &str) -> Option<String> {
 }
 
 /// The lock file's path exactly as git printed it in "Unable to create '<path>': File exists."
-/// (the first such line of `output`), for Delete lock file. Read up to the last `': File exists`,
-/// so a path holding a `'` stays whole.
+/// (the first such line of `output`, `remote:` lines left out), for Delete lock file. Read up to
+/// the last `': File exists`, so a path holding a `'` stays whole.
 pub fn lock_path(output: &str) -> Option<String> {
-    meaningful(output).find_map(|l| {
+    meaningful(output).filter(|l| !from_remote(l)).find_map(|l| {
         let (_, rest) = l.split_once("Unable to create '")?;
         let (path, _) = rest.rsplit_once("': File exists")?;
         path.ends_with(".lock").then(|| path.to_owned())
     })
+}
+
+/// Whether `line` is the server's, relayed by git as `remote: …`.
+fn from_remote(line: &str) -> bool {
+    line.trim_start().starts_with("remote:")
 }
 
 /// The `(dst, reason, remote)` of each "! [rejected]" or "! [remote rejected]" line (`remote`:

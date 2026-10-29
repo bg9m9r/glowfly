@@ -172,3 +172,5 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Narrow "git is running" to this repository on Linux and macOS (a process's cwd, `-C`, `GIT_DIR`) instead of any git on the machine
 - Say on the failed run why Delete lock file isn't offered (git running, or which Unknown) rather than only offering Try again
 - Cancelling the Delete lock file confirmation drops both buttons; keep them until one runs
+- Try again for a job that failed past its first command, from the failed command on (`cmds[at..]`), where each step allows it
+- Lock holders Delete lock file can't see: libgit2 or JGit tools and a second Glowfly (not named git), WSL2 work with no `wsl.exe` left running, and containers on the macOS or Windows VM backends

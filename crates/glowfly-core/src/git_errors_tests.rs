@@ -252,4 +252,15 @@ Another git process seems to be running";
     assert_eq!(lock_path("$ git add Unable to create '/x.lock': File exists."), None, "an echoed command line isn't git's error");
     assert_eq!(lock_path("fatal: Unable to create '/tmp/r/.git/config': File exists."), None, "only lock files");
     assert_eq!(lock_path("fatal: something else"), None);
+    // A server's own lock is on the server: its `remote:` line is never this repository's lock,
+    // and doesn't hide git's own line after it.
+    let server = "remote: error: cannot lock ref 'refs/heads/main': Unable to create '/srv/r.git/refs/heads/main.lock': File exists.";
+    assert_eq!(lock_path(server), None);
+    assert!(!matches!(classify(server), Some(Cause::Locked { .. })));
+    let both = format!(
+        "{server}
+fatal: Unable to create '/tmp/r/.git/index.lock': File exists."
+    );
+    assert_eq!(lock_path(&both).as_deref(), Some("/tmp/r/.git/index.lock"));
+    assert_eq!(classify(&both), Some(Cause::Locked { file: "index.lock".into() }));
 }
