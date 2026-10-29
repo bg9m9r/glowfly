@@ -12,6 +12,7 @@ mod avatars;
 mod blame;
 mod branch_colour;
 mod branch_delete;
+mod branch_sync;
 mod branches;
 mod build_status;
 mod clone;

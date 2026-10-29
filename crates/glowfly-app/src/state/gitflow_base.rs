@@ -1,8 +1,8 @@
 //! Deleting the branch Git Flow names as production or development: the shared danger
 //! confirmation made firmer (its own title, a warning paragraph after the question and a
-//! "… anyway" button) for Delete together with the remote branch, the remote branch menu and the
-//! pull request's delete offer; the title and warning the branch Delete dialog
-//! (`branch_delete.rs`) and the Remove worktree dialog show. Branch names match exactly
+//! "… anyway" button) for Delete together with the remote branch and the pull request's delete
+//! offer; the title and warning the branch Delete dialog (`branch_delete.rs`), the Delete remote
+//! branch dialog (`branch_sync.rs`) and the Remove worktree dialog show. Branch names match exactly
 //! (case-sensitive), as git's do.
 
 use crate::msg::Msg;

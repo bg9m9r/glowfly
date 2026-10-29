@@ -1,0 +1,8 @@
+Dialog
+  Label "Delete remote branch"
+  Button "Close this dialog"
+  Label "Delete branch search on origin? This affects everyone using the remote."
+  Label "2 local branches track origin/search: main, search. Their upstreams would point at a branch that no longer exists."
+  CheckBox "Unset the upstreams of all 2" [on]
+  Button "Cancel" [focused]
+  Button "Delete"

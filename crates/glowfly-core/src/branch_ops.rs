@@ -1,6 +1,7 @@
-//! Command lines and checks for branch operations (rename, upstream, fast-forward, push and
-//! delete with the remote branch). Everything here is pure; the app runs the commands through
-//! `gitcli` so hooks, credentials and the user's git config apply.
+//! Command lines and checks for branch operations (rename, also on the remote, upstream,
+//! fast-forward, push, deleting a remote branch and delete with the remote branch). Everything
+//! here is pure; the app runs the commands through `gitcli` so hooks, credentials and the user's
+//! git config apply.
 
 use crate::gitcli::args;
 use crate::names::{RefClash, WinNameProblem, blocks_here, ref_clash, ref_name_problem};
@@ -173,6 +174,24 @@ pub fn delete_with_remote_cmds(branch: &str, t: &Tracking) -> Vec<Vec<String>> {
         args(&["branch", "-d", branch]),
         args(&["push", &t.remote, "--delete", &t.merge]),
     ]
+}
+
+/// Renames local branch `old` to `new` and moves it on `remote` as well: renamed here (git takes
+/// the upstream setting along), `new` pushed with -u, which makes it the upstream, and only then
+/// `remote_old` deleted on `remote`, leased on `tip` (its tip as last fetched) so commits pushed
+/// to it since are never deleted. A failed command stops the sequence, so the old remote branch
+/// is only deleted once the new one is there.
+pub fn rename_with_remote_cmds(old: &str, new: &str, remote: &str, remote_old: &str, tip: git2::Oid) -> Vec<Vec<String>> {
+    let lease = format!("--force-with-lease=refs/heads/{remote_old}:{tip}");
+    vec![rename_cmd(old, new), push_cmd(new, remote, new, true), args(&["push", &lease, remote, "--delete", remote_old])]
+}
+
+/// Deletes branch `name` on `remote`, then unsets the upstream of each of `unset` (the local
+/// branches that tracked it). The upstreams stay when the delete fails.
+pub fn delete_remote_cmds(remote: &str, name: &str, unset: &[String]) -> Vec<Vec<String>> {
+    let mut cmds = vec![args(&["push", remote, "--delete", name])];
+    cmds.extend(unset.iter().map(|b| unset_upstream_cmd(b)));
+    cmds
 }
 
 /// Pushes local `branch` to `remote_branch` on `remote` with an explicit refspec; `set_upstream`

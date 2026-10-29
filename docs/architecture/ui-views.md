@@ -9,6 +9,7 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 - `clone_dialog.rs`, `clone_service.rs`: the Clone dialog.
 - `init_dialog.rs`: the Init dialog.
 - `branch_delete_dialog.rs`: a local branch's Delete dialog (`Modal::DeleteBranch`): the question, a counting line, then the commits only the branch has and Delete anyway; Cancel stays the default.
+- `remote_branch_delete_dialog.rs`: Delete remote branch (`Modal::DeleteRemoteBranch`): the question, the local branches tracking it with Unset upstream, and the Git Flow warning.
 - `op_preview_dialog.rs`: the operation preview (`Modal::OpPreview`): the dialog with its headline, conflicted paths, lost commits and Apply buttons.
 - `op_preview_rows.rs`: the operation preview's history-afterwards lane and the lost commits' rows.
 - `welcome.rs`, `welcome_steps.rs`: the first-run welcome.

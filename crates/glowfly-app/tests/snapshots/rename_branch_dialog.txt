@@ -5,5 +5,6 @@ Dialog
   TextInput "Branch name" = "login-page" [focused]
   Label "A branch named login-page already exists."
   Label "Its upstream setting moves with it; origin/search is not renamed."
+  CheckBox "Also rename it on origin" [off]
   Button "Cancel"
   Button "Rename" [disabled]

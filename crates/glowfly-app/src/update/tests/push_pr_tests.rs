@@ -199,9 +199,12 @@ fn push_in_another_tab_only_logs() {
 fn other_modal_is_not_replaced() {
     let (mut st, work, bare) = with_host("pr-push-other-modal");
     st.session.forge.as_mut().unwrap().open_after_load = Some(PrStart { source: "topic".into(), target: None, remote: None });
-    st.modal = Some(Modal::RenameBranch { old: "feature".into(), name: "feature2".into(), touched: Default::default() });
+    st.modal = Some(Modal::RenameBranch(crate::state::branch_sync::RenameForm {
+        name: "feature2".into(),
+        ..crate::state::branch_sync::RenameForm::new("feature".into())
+    }));
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(matches!(st.modal, Some(Modal::RenameBranch { .. })));
+    assert!(matches!(st.modal, Some(Modal::RenameBranch(_))));
     assert!(logged(&st, "Use Create pull request… to continue"));
     assert_eq!(open_after_load(&st), None);
     cleanup(&work, &bare);

@@ -342,3 +342,24 @@ fn branch_names_windows_cant_store() {
         "aux can't be used: Windows reserves aux for a device."
     );
 }
+
+#[test]
+fn rename_with_remote_pushes_before_deleting() {
+    let tip = git2::Oid::from_str("1111111111111111111111111111111111111111").unwrap();
+    assert_eq!(
+        rename_with_remote_cmds("feat", "feature", "origin", "feat-old", tip),
+        vec![
+            args(&["branch", "-m", "feat", "feature"]),
+            args(&["push", "-u", "origin", "refs/heads/feature:refs/heads/feature"]),
+            args(&["push", &format!("--force-with-lease=refs/heads/feat-old:{tip}"), "origin", "--delete", "feat-old"]),
+        ]
+    );
+    assert_eq!(
+        delete_remote_cmds("origin", "x", &["a".into(), "b".into()]),
+        vec![
+            args(&["push", "origin", "--delete", "x"]),
+            args(&["branch", "--unset-upstream", "a"]),
+            args(&["branch", "--unset-upstream", "b"])
+        ]
+    );
+}

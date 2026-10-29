@@ -1,0 +1,9 @@
+Dialog
+  Label "Rename branch search"
+  Button "Close this dialog"
+  Label "Branch name"
+  TextInput "Branch name" = "login-flow" [focused]
+  CheckBox "Also rename it on origin" [on]
+  Label "Pushes the new name to origin and makes it the upstream, then deletes origin/search. Anyone else using origin/search has to switch to the new name."
+  Button "Cancel"
+  Button "Rename"

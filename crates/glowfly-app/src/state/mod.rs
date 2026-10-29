@@ -11,6 +11,7 @@ pub mod blame;
 pub mod blame_find;
 pub mod blocked;
 pub mod branch_delete;
+pub mod branch_sync;
 pub mod branches;
 pub mod build_status;
 pub mod clone;
@@ -276,6 +277,7 @@ pub enum Modal {
     RemoveWorktree(worktree_manage::RemoveForm),
     /// Delete a local branch: what it would lose, then Delete or Delete anyway (`ui/branch_delete_dialog.rs`).
     DeleteBranch(branch_delete::DeleteForm),
+    DeleteRemoteBranch(branch_sync::DeleteRemoteForm),
     LockWorktree(worktree_manage::LockForm),
     MoveWorktree(worktree_move::MoveForm),
     AddSubmodule(submodules::add::AddForm),
@@ -330,11 +332,7 @@ pub enum Modal {
         repos: pr_repos::PrRepoPick,
     },
     Publish(Box<publish::PublishForm>),
-    RenameBranch {
-        old: String,
-        name: String,
-        touched: touched::Touched,
-    },
+    RenameBranch(branch_sync::RenameForm),
     RenameStash(stashes::RenameStashForm),
     StashPush(stashes::StashPushForm),
     SetUpstream {
@@ -483,13 +481,14 @@ pub struct AppState {
     pub gitflow_finish: Option<gitflow::FinishJob>,
     /// The running remote tag push or delete (update/tags.rs), for its headline.
     pub tag_job: Option<tags::RemoteTagJob>,
+    /// The running rename that moves the branch on its remote too (update/branch_sync.rs).
+    pub rename_job: Option<branch_sync::RenameJob>,
     pub tag_checkout: Option<tags::TagCheckoutJob>,
     /// The running Apply patch job (update/patch.rs), for its headline.
     pub patch_apply: Option<patch::PendingApply>,
     /// The glowfly:// link being opened and the scheme registration (global).
     pub deep_link: deep_link::DeepLinkState,
-    /// The profile a switch is writing to the global git config (app-wide: the config is
-    /// global).
+    /// The profile a switch is writing to the global git config (app-wide, as that config is).
     pub profile_switch: Option<glowfly_core::settings::ProfileId>,
     /// The profiles (the current one or the switch's target) whose fields were edited while a
     /// switch ran: their git writes wait until it ends.
@@ -566,6 +565,7 @@ impl AppState {
             terminal,
             gitflow_finish: None,
             tag_job: None,
+            rename_job: None,
             tag_checkout: None,
             patch_apply: None,
             deep_link: Default::default(),

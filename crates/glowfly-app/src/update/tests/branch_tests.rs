@@ -90,14 +90,14 @@ fn dummy() -> Action {
 }
 
 fn rename(old: &str, new: &str) -> Msg {
-    Msg::Branch(BranchMsg::RenameBranch { old: old.into(), new: new.into() })
+    Msg::Branch(BranchMsg::RenameBranch { old: old.into(), new: new.into(), remote: false })
 }
 
 #[test]
 fn rename_dialog_and_checks() {
     let (mut st, work, bare) = with_origin("br-rename");
     update(&mut st, Msg::Branch(BranchMsg::RenameBranchDialog("feature".into())), Instant::now());
-    assert!(matches!(&st.modal, Some(Modal::RenameBranch { old, name, .. }) if old == "feature" && name == "feature"));
+    assert!(matches!(&st.modal, Some(Modal::RenameBranch(f)) if f.old == "feature" && f.name == "feature" && !f.remote));
     assert_eq!(cmds(&mut st, rename("feature", " feature-2 ")), vec![args(&["branch", "-m", "feature", "feature-2"])]);
     assert!(st.modal.is_none(), "the dialog closes");
 

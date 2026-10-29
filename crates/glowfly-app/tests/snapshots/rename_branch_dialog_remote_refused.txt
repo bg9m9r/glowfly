@@ -1,0 +1,10 @@
+Dialog
+  Label "Rename branch search"
+  Button "Close this dialog"
+  Label "Branch name"
+  TextInput "Branch name" = "find" [focused]
+  Label "Its upstream setting moves with it; origin/search is not renamed."
+  CheckBox "Also rename it on origin" [disabled, off]
+  Label "search is the default branch of origin, so it is renamed only here: others build on it."
+  Button "Cancel"
+  Button "Rename"

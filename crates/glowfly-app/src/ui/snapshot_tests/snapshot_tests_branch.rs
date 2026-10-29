@@ -7,6 +7,7 @@ use super::snapshot_tests_select::click;
 use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
 use crate::msg::Msg;
+use crate::state::branch_sync::{DeleteRemoteForm, RenameForm};
 use crate::state::touched::Touched;
 use crate::state::{AppState, Modal};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -47,7 +48,7 @@ pub(in crate::ui) fn typed() -> Touched {
 fn rename_branch_dialog() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "rename-branch");
     tracked(&mut st, 0, 0);
-    st.modal = Some(Modal::RenameBranch { old: "search".into(), name: "login-page".into(), touched: typed() });
+    st.modal = Some(Modal::RenameBranch(RenameForm { name: "login-page".into(), touched: typed(), ..RenameForm::new("search".into()) }));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rename_branch_dialog");
@@ -230,6 +231,54 @@ fn branch_menu_visibility_items() {
     h.get_by_label("Hide in graph").click();
     h.run();
     assert!(pushed(&h, &FilterOp::Hide("refs/remotes/origin/search".into())));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Renaming on the remote too, ticked: the note says what it pushes and deletes.
+#[test]
+fn rename_branch_dialog_remote() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "rename-branch-remote");
+    tracked(&mut st, 0, 0);
+    st.modal = Some(Modal::RenameBranch(RenameForm { name: "login-flow".into(), remote: true, ..RenameForm::new("search".into()) }));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("rename_branch_dialog_remote");
+    assert!(h.query_by_label_contains("then deletes origin/search").is_some());
+    assert!(!h.get_by_label("Rename").is_disabled());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The remote's default branch is renamed only here, and the dialog says why.
+#[test]
+fn rename_branch_dialog_remote_refused() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "rename-branch-remote-refused");
+    tracked(&mut st, 0, 0);
+    st.snap.as_mut().unwrap().remote_heads = vec![("origin".into(), "search".into())];
+    st.modal = Some(Modal::RenameBranch(RenameForm { name: "find".into(), ..RenameForm::new("search".into()) }));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("rename_branch_dialog_remote_refused");
+    assert!(h.query_by_label_contains("search is the default branch of origin").is_some());
+    assert!(h.get_by_label("Also rename it on origin").is_disabled());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Deleting a remote branch two local branches track: the warning names them, with Unset upstream.
+#[test]
+fn delete_remote_branch_dialog_tracked() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "delete-remote-tracked");
+    tracked(&mut st, 0, 0);
+    branch(&mut st, "main").tracking = Some(Tracking { remote: "origin".into(), merge: "search".into() });
+    let form = DeleteRemoteForm::new(st.snap.as_ref().unwrap(), "origin", "search");
+    st.modal = Some(Modal::DeleteRemoteBranch(form));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("delete_remote_branch_dialog_tracked");
+    assert!(h.query_by_label_contains("2 local branches track origin/search: main, search.").is_some());
+    assert!(h.query_by_label("Unset the upstreams of all 2").is_some());
     drop(h);
     remove_fixture(&dir);
 }
