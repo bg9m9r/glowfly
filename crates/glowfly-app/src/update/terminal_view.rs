@@ -1,6 +1,7 @@
 //! What the terminal grid asks of its active tab: scrolling the history (by rows, or a screen
-//! at a time from the keyboard), copying and selecting all (which copies too with Copy on
-//! select), clearing, pasting from the clipboard, and remembering the panel's height.
+//! at a time from the keyboard), copying, a finished mouse selection and selecting all (each
+//! offered as the PRIMARY selection, and copied too with Copy on select), clearing, pasting from
+//! the clipboard or from PRIMARY (a middle click), and remembering the panel's height.
 
 use super::terminal::active_mut;
 use crate::effect::{Effect, UiEffect};
@@ -48,16 +49,34 @@ pub(super) fn copy(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     st.terminal.focus_requested = true;
 }
 
-/// Selects the whole history and screen; with Copy on select it is copied too.
+/// A mouse selection ended: it becomes the PRIMARY selection, and with Copy on select is
+/// copied too. It stays selected.
+pub(super) fn selected(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let copy_on_select = st.settings.terminal.copy_on_select;
+    let Some(s) = active_mut(st) else { return };
+    offer(copy_text(s), copy_on_select, fx);
+    st.terminal.focus_requested = true;
+}
+
+/// Selects the whole history and screen, which becomes the PRIMARY selection; with Copy on
+/// select it is copied too.
 pub(super) fn select_all(st: &mut AppState, fx: &mut Vec<Effect>) {
     let copy_on_select = st.settings.terminal.copy_on_select;
     let Some(s) = active_mut(st) else { return };
     let (anchor, head) = s.screen.select_all();
     s.selection = Some(Selection { anchor, head, epoch: s.screen.epoch() });
-    if copy_on_select && let Some(text) = copy_text(s) {
-        fx.push(Effect::Ui(UiEffect::CopyText(text)));
-    }
+    offer(copy_text(s), copy_on_select, fx);
     st.terminal.focus_requested = true;
+}
+
+/// A new selection's `text` as the PRIMARY selection (which the shell ignores where there is
+/// none), and on the clipboard too with `copy_on_select`.
+fn offer(text: Option<String>, copy_on_select: bool, fx: &mut Vec<Effect>) {
+    let Some(text) = text else { return };
+    if copy_on_select {
+        fx.push(Effect::Ui(UiEffect::CopyText(text.clone())));
+    }
+    fx.push(Effect::Ui(UiEffect::SetPrimary(text)));
 }
 
 /// Drops the history. Shells that redraw on Ctrl+L are sent it, so they clear the screen in
@@ -83,6 +102,15 @@ pub(super) fn paste(st: &mut AppState, fx: &mut Vec<Effect>) {
     if active_mut(st).is_some_and(|s| s.alive()) {
         st.terminal.focus_requested = true;
         fx.push(Effect::Ui(UiEffect::RequestPaste));
+    }
+}
+
+/// Asks the shell for the PRIMARY selection (a middle click), which it pastes into the active
+/// tab, or for the clipboard where there is no PRIMARY.
+pub(super) fn paste_primary(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if active_mut(st).is_some_and(|s| s.alive()) {
+        st.terminal.focus_requested = true;
+        fx.push(Effect::Ui(UiEffect::PastePrimary));
     }
 }
 

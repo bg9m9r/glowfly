@@ -43,6 +43,14 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 # Turns off winit's default app menu (src/platform/native_menu.rs).
 winit = { version = "0.30", default-features = false }
 
+# The Linux PRIMARY selection the terminal sets and middle-click pastes
+# (src/platform/primary_selection.rs): the clipboard crates the window already links through
+# egui-winit (smithay-clipboard on Wayland, arboard on X11), so nothing new is built.
+[target.'cfg(target_os = "linux")'.dependencies]
+arboard = { version = "3.6", default-features = false }
+smithay-clipboard = "0.7"
+raw-window-handle = "0.6"
+
 [dev-dependencies]
 # The shared fixture helpers (glowfly-core's src/testkit/): repositories built in-process.
 glowfly-core = { workspace = true, features = ["testkit"] }

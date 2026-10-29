@@ -1,8 +1,8 @@
 //! The mouse on the terminal grid: the wheel scrolls the history (on the alternate screen it
 //! sends arrow keys to the full-screen program), dragging the left button selects text in
 //! reading order and scrolls the history past the top or bottom edge, a double-click selects a
-//! word and a triple-click a line (each copied with Copy on select), and on Linux a middle
-//! click pastes.
+//! word and a triple-click a line (each becoming the PRIMARY selection on Linux, and copied
+//! with Copy on select), and on Linux a middle click pastes the PRIMARY selection.
 
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -100,9 +100,8 @@ pub(super) fn edge_rows(y: f32, top: f32, bottom: f32, rh: f32, dt: f32, rem: &m
 /// The wheel, drag selection, word and line clicks, and middle click on the grid `resp` of
 /// session `index`.
 pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, index: usize, g: &Geometry, msgs: &mut Vec<Msg>) {
-    let copy_on_select = st.settings.terminal.copy_on_select;
     if st.settings.terminal.middle_click_pastes() && resp.clicked_by(PointerButton::Middle) {
-        msgs.push(Msg::Terminal(TerminalMsg::Paste));
+        msgs.push(Msg::Terminal(TerminalMsg::PastePrimary));
     }
     let session = &mut st.terminal.sessions[index];
     if resp.hovered() {
@@ -167,8 +166,8 @@ pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, in
         picked = range.is_some();
     }
     let ended = picked || resp.drag_stopped_by(PointerButton::Primary);
-    if copy_on_select && ended && session.selection.is_some_and(|s| s.range(&session.screen).is_some()) {
-        msgs.push(Msg::Terminal(TerminalMsg::CopySelection { keep: true }));
+    if ended && session.selection.is_some_and(|s| s.range(&session.screen).is_some()) {
+        msgs.push(Msg::Terminal(TerminalMsg::Selected));
     }
 }
 

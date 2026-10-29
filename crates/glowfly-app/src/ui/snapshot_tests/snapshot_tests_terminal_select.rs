@@ -1,6 +1,6 @@
 //! The terminal grid's history, selection and menu: scrolled back with a selection and the
-//! thumb, the wheel, dragging to select (and Copy on select), copying with the keyboard,
-//! middle-click paste, the right-click menu, and the Bar and Underline cursors with dimming.
+//! thumb, the wheel, dragging to select (reported for PRIMARY and Copy on select), copying with
+//! the keyboard, middle-click paste of PRIMARY, the right-click menu, and the Bar and Underline cursors with dimming.
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_select::click;
@@ -117,7 +117,8 @@ fn copy_on_select_copies_when_the_drag_ends() {
         h.run();
         h.state_mut().1.clear();
         drag(&mut h);
-        assert_eq!(pushed(&h, |t| matches!(t, TerminalMsg::CopySelection { keep: true })), on, "copy on select {on}");
+        // Reported either way: update makes it PRIMARY, and copies it with Copy on select.
+        assert!(pushed(&h, |t| matches!(t, TerminalMsg::Selected)), "copy on select {on}");
         assert!(h.state().0.terminal.sessions[0].selection.is_some(), "the selection stays");
         // With it on, the copy key no longer copies: the text was copied when it was selected.
         h.state_mut().1.clear();
@@ -140,7 +141,8 @@ fn middle_click_pastes_on_linux() {
         let at = cell(&h, 6, 12);
         click(&mut h, at, PointerButton::Middle);
         let want = on && cfg!(target_os = "linux");
-        assert_eq!(pushed(&h, |t| matches!(t, TerminalMsg::Paste)), want, "middle-click paste {on}");
+        assert_eq!(pushed(&h, |t| matches!(t, TerminalMsg::PastePrimary)), want, "middle-click paste {on}");
+        assert!(!pushed(&h, |t| matches!(t, TerminalMsg::Paste)), "never the clipboard directly");
         drop(h);
         remove_fixture(&dir);
     }

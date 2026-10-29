@@ -1,11 +1,11 @@
 //! The shell: owns the state, the UI-thread caches and the runner, feeds the views' messages and
 //! the runner's results through `update`, runs the resulting effects, and handles the few
-//! effects that need the window. On the drawn Windows frame it also trades state with the OS
-//! glue each frame (`app_native.rs`), and on macOS it runs the system menu bar's picks and
-//! hands it the menus (`app_menu.rs`).
+//! effects that need the window (`app_effects.rs`). On the drawn Windows frame it also trades
+//! state with the OS glue each frame (`app_native.rs`), and on macOS it runs the system menu
+//! bar's picks and hands it the menus (`app_menu.rs`).
 
 use super::{UiCache, app_menu, app_native, avatars, build_status, layout, shortcuts, theme};
-use crate::effect::{Effect, UiEffect};
+use crate::effect::Effect;
 use crate::msg::AppMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::Msg;
@@ -15,6 +15,7 @@ use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
 use crate::platform::native_menu::NativeMenu;
 use crate::platform::native_window::NativeWindow;
+use crate::platform::primary_selection::PrimarySelection;
 use crate::runner::Runner;
 use crate::state::AppState;
 use eframe::egui;
@@ -24,6 +25,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Instant;
 
+#[path = "app_effects.rs"]
+mod effects;
 #[path = "app_frame.rs"]
 mod frame_timing;
 #[cfg(test)]
@@ -44,6 +47,9 @@ pub struct GlowflyApp {
     native: Option<NativeWindow>,
     /// The macOS system menu bar showing Glowfly's menus; None elsewhere and in tests.
     menu: Option<NativeMenu>,
+    /// The Linux PRIMARY selection the terminal sets and middle-click pastes; none elsewhere
+    /// and in tests.
+    primary: PrimarySelection,
     /// The installer checks' state file (`smoke_probe.rs`); None unless asked for, and in
     /// tests.
     probe: Option<crate::smoke_probe::ProbeWriter>,
@@ -85,6 +91,7 @@ impl GlowflyApp {
         app.st.view.chrome = crate::state::window_chrome::Chrome::current();
         app.native = NativeWindow::install(cc, app.st.view.chrome, mica, ctx.clone());
         app.menu = NativeMenu::install(app.st.view.chrome, ctx.clone());
+        app.primary = PrimarySelection::install(cc);
         if probe.is_some() {
             // Before the first frame, so the probe sees named widgets from the start.
             super::probe::enable(ctx);
@@ -136,6 +143,7 @@ impl GlowflyApp {
             theme: theme::ThemeCache::default(),
             native: None,
             menu: None,
+            primary: PrimarySelection::default(),
             probe: None,
             frames: Default::default(),
             #[cfg(test)]
@@ -186,28 +194,7 @@ impl GlowflyApp {
         let effects = crate::update::update_sealed(&mut self.st, msg, started);
         for effect in effects {
             match effect {
-                Effect::Ui(UiEffect::CopyText(text)) => ctx.copy_text(text),
-                Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
-                Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
-                Effect::Ui(UiEffect::CloseWindow) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
-                // In the pass that saw the close request, so eframe keeps the window.
-                Effect::Ui(UiEffect::CancelClose) => ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose),
-                Effect::Ui(UiEffect::RequestPaste) => ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste),
-                Effect::Ui(UiEffect::Window(cmd)) => match super::window_frame::viewport_cmd(cmd) {
-                    Some(c) => ctx.send_viewport_cmd(c),
-                    // The system menu, the only window action without a viewport command.
-                    None => {
-                        if let Some(n) = &self.native {
-                            n.show_system_menu_at_cursor();
-                        }
-                    }
-                },
-                Effect::Ui(UiEffect::FocusWindow) => {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
-                    request_attention(ctx);
-                }
+                Effect::Ui(e) => self.ui_effect(ctx, e),
                 other => self.runner.run(other),
             }
         }
@@ -314,6 +301,11 @@ impl eframe::App for GlowflyApp {
         self.frame(ctx);
     }
 
+    /// The PRIMARY selection's Wayland connection is let go while the window still exists.
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.primary = PrimarySelection::default();
+    }
+
     /// Transparent where Mica shows through, else the palette's background.
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         app_native::clear_rgba(self.st.view.backdrop, theme::color::current().bg)
@@ -371,13 +363,6 @@ impl Step {
 /// The startup steps to run: all of them, or (`outside` false) only those inside the process.
 fn steps(outside: bool) -> impl Iterator<Item = Step> {
     STARTUP.into_iter().filter(move |s| outside || !s.outside())
-}
-
-/// Flashes the taskbar entry while the window isn't focused.
-fn request_attention(ctx: &egui::Context) {
-    if !ctx.input(|i| i.focused) {
-        ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational));
-    }
 }
 
 #[cfg(test)]

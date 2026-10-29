@@ -40,13 +40,13 @@ fn double_and_triple_clicks_select_a_word_and_a_line() {
     let at = cell(&h, 0, 8);
     double_click(&mut h, at, Modifiers::NONE);
     assert_eq!(selected(&mut h), "C:\\work\\demo");
-    assert!(pushed(&h, |t| matches!(t, TerminalMsg::CopySelection { keep: true })), "copied with Copy on select");
+    assert!(pushed(&h, |t| matches!(t, TerminalMsg::Selected)), "reported (PRIMARY, and copied with Copy on select)");
 
     h.state_mut().1.clear();
     let at = cell(&h, 3, 22);
     triple_click(&mut h, at);
     assert_eq!(selected(&mut h), "        modified:   README.md", "the whole line");
-    assert!(pushed(&h, |t| matches!(t, TerminalMsg::CopySelection { keep: true })));
+    assert!(pushed(&h, |t| matches!(t, TerminalMsg::Selected)));
 
     // A single click drops the selection.
     let at = cell(&h, 5, 3);
