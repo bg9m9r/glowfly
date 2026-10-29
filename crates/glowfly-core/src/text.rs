@@ -34,7 +34,11 @@ pub fn redact_credentials(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(i) = rest.find("://") {
-        let scheme_start = rest[..i].rfind(|c: char| !(c.is_ascii_alphanumeric() || "+-.".contains(c))).map_or(0, |p| p + 1);
+        // Just after the last character that can't be in a scheme (which may take several bytes).
+        let scheme_start = rest[..i]
+            .char_indices()
+            .rfind(|&(_, c)| !(c.is_ascii_alphanumeric() || "+-.".contains(c)))
+            .map_or(0, |(p, c)| p + c.len_utf8());
         let scheme = rest[scheme_start..i].to_ascii_lowercase();
         let after = &rest[i + 3..];
         let end = after.find(|c: char| "/?#".contains(c) || c.is_whitespace()).unwrap_or(after.len());
@@ -73,5 +77,13 @@ mod tests {
         for same in ["ssh://git@h/x", "git@h:o/r", "https://h/o@r", "plain text", "C:/repos/x", "https://"] {
             assert_eq!(r(same), same);
         }
+    }
+
+    #[test]
+    fn a_character_of_several_bytes_before_a_url_is_kept_whole() {
+        let r = redact_credentials;
+        assert_eq!(r("«https://user:TOKEN@host/x»"), "«https://***@host/x»");
+        assert_eq!(r("é://u:p@h/x"), "é://***@h/x");
+        assert_eq!(r("\u{fffd}to://m"), "\u{fffd}to://m", "found by the redact_credentials fuzz check");
     }
 }
