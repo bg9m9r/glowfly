@@ -31,8 +31,15 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
 1. `git worktree add ../glowfly-worktrees/<slug> -b <branch>` from the main checkout's HEAD.
 2. Work, run `scripts/check.ps1` and commit there. Set `CARGO_TARGET_DIR=C:/projects/glowfly/target`
    to reuse the main build output (one build at a time).
-3. When done: `git -C C:/projects/glowfly merge --ff-only <branch>`, then
-   `git worktree remove ../glowfly-worktrees/<slug>` and `git branch -d <branch>`.
+3. When done, land it through a pull request:
+   - `git push -u origin <branch>`, then `gh pr create --fill` (one PR per branch).
+   - Have the `pr-reviewer` agent review it. It posts its findings on the PR and passes or fails
+     the required `AI review` status. Fix a failure with new commits on the branch; each new head
+     commit needs a new review.
+   - Once CI and `AI review` pass: `gh pr merge <n> --rebase --delete-branch` (never `--admin`),
+     then `git -C C:/projects/glowfly pull --ff-only`.
+   - `git worktree remove ../glowfly-worktrees/<slug>` and `git branch -d <branch>`.
+   Dependabot and release PRs get the same review before merging.
    Unfinished work: commit it as WIP on its branch, remove the worktree, keep the branch.
 
 `git worktree list` should show only the main checkout when nothing is in progress.
