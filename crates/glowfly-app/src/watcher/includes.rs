@@ -24,7 +24,9 @@ impl IncludeWatches {
         let files = glowfly_core::config_includes::of_repo(&target.git_dir, common).files;
         paths.set_config_files(&files);
         let covered = covered_roots(target, common);
-        let wanted: BTreeSet<PathBuf> = files
+        // A linked file's own folder, and the folder of what it points to.
+        let spellings: Vec<PathBuf> = files.iter().flat_map(|f| [f.clone(), glowfly_core::paths::resolve(f)]).collect();
+        let wanted: BTreeSet<PathBuf> = spellings
             .iter()
             .filter_map(|f| f.parent())
             .filter(|d| d.is_dir() && !covered.iter().any(|(root, deep)| if *deep { d.starts_with(root) } else { d == root }))

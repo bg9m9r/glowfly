@@ -150,7 +150,14 @@ impl Sweep {
         let mut files = vec![self.git_dir.join("index"), self.git_dir.join("info/exclude"), self.git_dir.join("info/attributes")];
         files.extend(self.common.iter().map(|c| c.join("info/attributes")));
         files.extend(crate::config_includes::repo_roots(&self.git_dir, self.common.as_deref()));
-        files.extend(crate::config_includes::of_repo(&self.git_dir, self.common.as_deref()).files);
+        for f in crate::config_includes::of_repo(&self.git_dir, self.common.as_deref()).files {
+            // A linked file is stamped as the link and as what it points to.
+            let real = crate::paths::resolve(&f);
+            if real != f {
+                files.push(real);
+            }
+            files.push(f);
+        }
         files
     }
 
