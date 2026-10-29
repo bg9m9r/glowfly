@@ -161,3 +161,6 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 
 - A Fetch-then-fast-forward fix for a sidebar Fast-forward that was rejected as non-fast-forward
   on a non-HEAD branch
+- Certificate phrases also match a failing signing helper (gitsign's x509 text) and `remote:` hook lines of a rejected push; match only git's own transport errors
+- Under Schannel, `http.sslCAInfo` is used only with `http.schannelUseSSLCAInfo=true`; say so in the certificate help
+- Match git-lfs's other Go certificate wordings

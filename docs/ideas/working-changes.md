@@ -27,11 +27,18 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - Changed-word fills on a selected line are a step weaker than the stronger selected tint in
   Dark; derive a selected-word fill from it
 - Space toggles the line under the keyboard cursor (with the check box as its focus mark)
+- Refuse the delete step's `LinkRemoved` when the discard carries `seen`, so a file swapped for a link between the check and the delete isn't removed without an undo
+- Read the whole file for `raw_id` only for untracked files, not for every one-hunk unstaged diff of a tracked file
+- A read error in `raw_id` gives no hash instead of failing the whole diff load
+- Clear `DiffSlot::raw` together with `view`
 
 ### Live working-tree updates
 
 - Watch inactive tabs so their state updates in the background
 - Watch the global, XDG and system config files (and the files they include) too, so an edit there reloads the open repository
+- `ref_name_ok` accepts components that are only dots or end in a dot or space, which Windows trims; refuse components starting with `.` and any `:`, as git's ref rules do
+- A nested `.git` file or `commondir` that names a UNC path makes the sweep open a file over SMB; refuse network paths there
+- `read_file_bounded` opens a file before checking its type; check before the open, or open with `O_NOCTTY`
 
 ### Commit panel extras
 

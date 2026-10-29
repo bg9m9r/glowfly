@@ -17,6 +17,10 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 - A desktop notification when a remote needs a sign-in
 - A status-bar chip listing paused remotes once their banner lines are dismissed
 - Let the dialog's Remember choice update the default in Preferences > General
+- The `DISPLAY=:0` placeholder set for SSH passphrase prompts makes ssh print X11 warnings with `ForwardX11 yes`; leave it out or set `ForwardX11=no` for Glowfly's own ssh runs
+- Make the Linux credential cache probe's path unpredictable (it sits at a fixed name in `/tmp`)
+- A global `cache` credential helper also runs alongside URL-scoped helpers; say so, or scope it
+- Decide whether to ask before turning on the cache in the global git config, or pass `-c credential.helper=cache` to Glowfly's own git calls only
 
 ### Signing beyond config
 

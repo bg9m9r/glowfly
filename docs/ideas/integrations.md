@@ -229,6 +229,8 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Hand a path that isn't valid Unicode to the running window too (it opens its own window now; the request is JSON text)
 - Open the repository holding a file dropped on the Dock icon (declare files too, as an Alternate viewer)
 - An Open in Glowfly Finder Quick Action or Services menu entry for folders
+- Start-up can wait about 7 s instead of 3 s to hand a path over; cap the connect and reply timeouts at the time left
+- Any local process can stall the hand-over listener for 3 s per connection; serve each connection off the accept loop or drop it sooner
 
 ### Cross-repo dashboard
 
