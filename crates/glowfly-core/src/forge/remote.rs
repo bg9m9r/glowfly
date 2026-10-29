@@ -50,8 +50,23 @@ pub(crate) fn split_url(url: &str) -> Option<(String, Vec<String>, bool)> {
 }
 
 /// Recognizes the hosting service behind a remote URL. Self-hosted servers are matched against
-/// the hosts of saved connections, then by common URL shapes.
+/// the hosts of saved connections, then by common URL shapes. A remote whose target isn't
+/// `sound` is not recognized.
 pub fn parse_remote(url: &str, connections: &[Connection]) -> Option<Target> {
+    recognize(url, connections).filter(sound)
+}
+
+/// Whether every URL and credential request built from `t` goes to the server it names: its
+/// host is the whole authority of `https://<host>/` (no `/`, `?`, `#`, `@`, backslash, white
+/// space or control character ends it early or moves it), and its decoded owner, project and
+/// repository hold no control character (a line break would add a line to a `git credential`
+/// request).
+pub(crate) fn sound(t: &Target) -> bool {
+    let host = https_host(&format!("https://{}/", t.host));
+    host.is_some_and(|h| h == t.host.to_ascii_lowercase()) && [&t.owner, &t.project, &t.repo].iter().all(|s| !s.contains(char::is_control))
+}
+
+fn recognize(url: &str, connections: &[Connection]) -> Option<Target> {
     if let Some(t) = azure::parse_remote(url) {
         return Some(t);
     }

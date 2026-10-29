@@ -51,6 +51,24 @@ fn ssh_aliases_are_their_public_hosts() {
     assert_eq!(parse_remote("D:/backups/app.git", &[conn]), None);
 }
 
+#[test]
+fn a_remote_that_would_send_requests_elsewhere_is_not_recognized() {
+    for url in [
+        // `?`, `#` and `\` end the authority of a URL built from the host: another server.
+        "https://evil.example?gitlab/o/r",
+        "https://evil.example#/scm/P/r",
+        r"https://evil.example\gitlab/o/r",
+        "https://evil?.visualstudio.com/p/_git/r",
+        "org@vs-ssh.visualstudio.com:v3/evil.example%2F/p/r",
+        // A decoded line break would add a line to the `git credential fill` request.
+        "git@ssh.dev.azure.com:v3/o%0Ahost=github.com/p/r",
+        "https://dev.azure.com/o%0Ahost=github.com/p/_git/r",
+        "https://github.com/o/r%0D",
+    ] {
+        assert_eq!(parse_remote(url, &[]), None, "{url}");
+    }
+}
+
 /// Read-only check against a real service, using whatever credentials Glowfly would find.
 /// Run with: GLOWFLY_LIVE_REMOTE=<remote url> cargo test live_remote -- --ignored --nocapture
 #[test]
