@@ -1,10 +1,10 @@
 //! Which hosting services the app contacts, and with which credentials.
 
-use super::tests::state;
+use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
-use crate::msg::Msg;
+use crate::msg::{Msg, RepoMsg};
 use crate::state::{AppState, ForgeState, ProjectKeys, Status};
 use glowfly_core::forge::{Account, Connection, Provider, Target};
 use std::time::Instant;
@@ -117,4 +117,33 @@ fn a_jira_project_filter_applies_to_text_and_branch_names() {
     let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.branch_issue("feature/ABC-3-x"), None);
     assert_eq!(fs.branch_issue("feature/PROJ-4-x").as_deref(), Some("PROJ-4"));
+}
+
+/// The issue the open repository's branch `branch` names (its tracker is GitHub's issues).
+fn branch_issue(st: &AppState, branch: &str) -> Option<String> {
+    st.session.forge.as_ref().expect("a GitHub remote").branch_issue(branch)
+}
+
+#[test]
+fn the_repository_chooses_whether_year_like_branch_names_name_issues() {
+    let dir = scratch_repo("year-branches");
+    git(&dir, &["remote", "add", "origin", "https://github.com/o/r.git"]);
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    assert_eq!(branch_issue(&st, "2024-cleanup"), None);
+    assert_eq!(branch_issue(&st, "123-fix").as_deref(), Some("123"));
+
+    let fx = update(&mut st, Msg::Forge(ForgeMsg::SetYearBranches(true)), Instant::now());
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(..))), "the choice is saved");
+    assert_eq!(branch_issue(&st, "2024-cleanup").as_deref(), Some("2024"));
+
+    // Kept for the repository: opening it again reads it.
+    let mut again = state();
+    again.settings = st.settings.clone();
+    drive(&mut again, Msg::Repo(RepoMsg::Open(dir)));
+    assert_eq!(branch_issue(&again, "2024-cleanup").as_deref(), Some("2024"));
+
+    update(&mut again, Msg::Forge(ForgeMsg::SetYearBranches(false)), Instant::now());
+    assert_eq!(branch_issue(&again, "2024-cleanup"), None);
+    assert!(again.settings.repo_year_branches.is_empty(), "off leaves no entry");
 }

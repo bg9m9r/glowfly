@@ -63,6 +63,8 @@ pub enum ForgeMsg {
         gcm: bool,
     },
     SetTracker(TrackerChoice),
+    /// Whether branch names like `2024-cleanup` name an issue in this repository.
+    SetYearBranches(bool),
     /// Open the create dialog for `source` (a local or host-remote branch), preselecting `target`.
     CreatePrDialog {
         source: String,
@@ -134,6 +136,7 @@ impl ForgeMsg {
             | Self::Disconnect(..)
             | Self::ForgetTokens { .. }
             | Self::SetTracker(..)
+            | Self::SetYearBranches(..)
             | Self::CreatePrDialog { .. }
             | Self::CreatePrFrom { .. }
             | Self::PickPrRepo { .. }

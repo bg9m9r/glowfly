@@ -1,11 +1,13 @@
 //! The issue panel: a loaded GitHub issue with a linked branch, a Jira issue with its status,
 //! epic and rich text, an Azure Boards work item with its tags and parent, a failed load, the
-//! ISSUES header's + with the open issue's row, and Esc closing the panel. Shares the fixture
+//! ISSUES header's + with the open issue's row, Esc closing the panel, and the Issue tracker
+//! page's choice about year-like branch names. Shares the fixture
 //! repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
+use super::snapshot_tests_gitflow::pushed;
 use super::snapshot_tests_select::click;
-use crate::msg::{IssueMsg, Msg};
+use crate::msg::{ForgeMsg, IssueMsg, Msg};
 use crate::state::issue::{Details, IssueView};
 use crate::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -288,6 +290,21 @@ fn bitbucket_data_center_points_to_jira_in_preferences() {
     h.run();
     let help = "Bitbucket Data Center keeps no issues of its own. Connect Jira under Integrations and choose it here.";
     assert!(h.query_by_label(help).is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn prefs_tracker_year_branches() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "issue-year-branches");
+    st.session.forge = Some(ForgeState::new(Some(github()), "origin".into(), Some(github())));
+    st.prefs = Some(PrefsState::new(PrefPage::RepoTracker));
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("prefs_tracker_year_branches");
+    h.get_by_label("Read a year at the start of a branch name as an issue number").click();
+    h.run();
+    assert!(pushed(&h, &|m: &Msg| matches!(m, Msg::Forge(ForgeMsg::SetYearBranches(true)))));
     drop(h);
     remove_fixture(&dir);
 }

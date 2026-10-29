@@ -3,7 +3,7 @@
 //! and tracker changes, and closing it (its comment draft is kept for the issue). The calls
 //! are unscoped effects whose replies name their repository and tracker: a stale or misplaced
 //! reply is dropped, and a failed reload keeps the details on screen. The Create issue dialog is in issue_create.rs, the comment box
-//! in issue_comment.rs.
+//! in issue_comment.rs. Saving whether year-like branch names name issues is here too.
 
 use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply, IssueRequest};
 use crate::msg::IssueMsg;
@@ -162,6 +162,16 @@ pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn tracker_changed(st: &mut AppState) {
     close(st);
     tracker_detected(st);
+}
+
+/// Saves whether branch names like `2024-cleanup` name an issue in the open repository.
+pub(super) fn set_year_branches(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) {
+    let Some(w) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
+    st.settings.set_year_branches(&w, on);
+    if let Some(f) = st.session.forge.as_mut() {
+        f.year_branches = on;
+    }
+    fx.push(super::prefs::save_settings(st));
 }
 
 /// The tracker was worked out again (after a refresh, a new connection or a profile switch):
