@@ -420,7 +420,10 @@ second one next to it.
    (`ui/terminal/input.rs`): the one the press typed when its text comes in the same frame, so
    the keyboard layout decides Alt+_ or Alt+/, else the key's own with Shift as on a US keyboard
    (macOS, where Option types a composed character instead). Ctrl+Alt (AltGr on Windows) types
-   its character, and Cmd chords stay the app's.
+   its character, and Cmd chords stay the app's. On Windows a digit, +, - or / sends ESC only
+   when its text comes (`Opts::alt_codes`): egui reports the numpad's keys as the main row's,
+   and a numpad press while Alt is held is part of an Alt code (Alt+0233), which types no text
+   until Alt is released.
 2. **PRIMARY only through `platform::primary_selection`, from the shell:** a finished mouse
    selection, and Select all, become PRIMARY (`UiEffect::SetPrimary`, nothing where there is
    none), and a middle click (Linux, with Middle-click paste) asks for it
@@ -755,8 +758,13 @@ Gaps that are accepted for now:
   macOS's input system, so the next letter can come out accented; and Option+Shift with
   punctuation follows a US keyboard's positions, since egui reports the key, not the layout's
   character without Option.
-- **PRIMARY is read on the UI thread,** as egui-winit reads the clipboard: a selection owner that
-  doesn't answer (X11) can hold a frame until arboard's timeout.
+- **PRIMARY is read on the UI thread,** as egui-winit reads the clipboard. On X11 a selection
+  owner that doesn't answer holds the frame until arboard's timeout (about 4 s); on Wayland
+  smithay-clipboard's `load_primary` has no timeout, so an owner that never closes its pipe
+  hangs the window until it does.
+- **A Wayland compositor without the primary-selection protocol pastes nothing on a middle
+  click,** instead of the clipboard: smithay-clipboard opens either way, so the fallback isn't
+  taken.
 - **Inside Flatpak, host programs are out of reach:** editors, diff and merge tools, terminal
   shells and hook interpreters that only the host has aren't found in the sandbox.
 - **Inside Flatpak, a folder handed over by file forwarding may arrive as a

@@ -70,6 +70,9 @@ The built-in terminal, custom commands, external tools and a command-line compan
 - Option as Meta without Option's dead keys (winit's `option_as_alt`, once eframe lets the window
   set it), taking the layout's own character for Option+Shift+punctuation
 - Read PRIMARY off the UI thread, so a selection owner that doesn't answer can't hold a frame
+  (Wayland's read has no timeout at all)
+- On a Wayland compositor without the primary-selection protocol, middle-click paste the
+  clipboard instead of nothing
 - Ctrl+Alt+key as ESC and the control code on Linux and macOS (only Windows' AltGr needs the
   exclusion)
 - Draw the Preferences > Terminal page's shell help for the system the page is drawn for, so the

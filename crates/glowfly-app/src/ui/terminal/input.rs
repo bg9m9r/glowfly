@@ -26,6 +26,10 @@ pub(super) struct Opts {
     /// Alt with a letter, digit or punctuation key sends ESC and the character (on macOS only
     /// with Option as Meta, since Option composes characters there).
     pub alt_is_meta: bool,
+    /// Alt with a digit, +, - or / may be a Windows Alt code typed on the numpad, which egui
+    /// reports as the same keys as the main ones: such a press sends ESC only when its own
+    /// text comes (Windows types none for numpad keys until Alt is released).
+    pub alt_codes: bool,
 }
 
 /// The terminal input in this frame's `events`. `pending` carries copy and cut commands over
@@ -41,20 +45,28 @@ pub(super) struct Opts {
 /// Alt with a letter, digit or punctuation key (`opts.alt_is_meta`) is sent as ESC and the
 /// character, once: the character the press types when it comes as text in the same frame (so
 /// the keyboard layout decides Alt+_ or Alt+?), else the key's own (`meta_char`), which is what
-/// macOS's Option gets, since it types a composed character instead.
+/// macOS's Option gets, since it types a composed character instead. With `opts.alt_codes`
+/// (Windows), a key the numpad shares sends nothing without its text: it is part of an Alt code.
 pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, opts: Opts) -> Collected {
     let mut out = Vec::new();
     let mut copy = false;
     let mut scroll = Vec::new();
-    // An Alt+key press waiting for its text: the key's own character and whether Shift was held.
-    let mut meta: Option<(char, bool)> = None;
+    // An Alt+key press waiting for its text.
+    let mut meta: Option<Meta> = None;
     for e in events {
         let text = match e {
             Event::Text(t) | Event::Ime(ImeEvent::Commit(t)) => Some(t),
             _ => None,
         };
+        // A numpad-shared key whose text is something else (an Alt code's character) sends no
+        // ESC: the text is typed as it is.
         if let Some(t) = text
-            && let Some((c, shift)) = meta.take()
+            && meta.is_some_and(|m| m.needs_text && !single(t).is_some_and(|c| c.is_ascii_graphic()))
+        {
+            meta = None;
+        }
+        if let Some(t) = text
+            && let Some(Meta { c, shift, .. }) = meta.take()
         {
             match single(t) {
                 Some(typed) if typed.is_ascii_graphic() => out.push(meta_input(typed, shift)),
@@ -104,7 +116,8 @@ pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, opts:
                     }
                     (None, Some(c)) => {
                         flush(pending, &mut out);
-                        meta = Some((c, modifiers.shift));
+                        let needs_text = opts.alt_codes && on_numpad_too(*key);
+                        meta = Some(Meta { c, shift: modifiers.shift, needs_text });
                         None
                     }
                     (None, None) => map(e),
@@ -126,11 +139,42 @@ pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, opts:
     Collected { inputs: out, copy, scroll }
 }
 
-/// Sends a waiting Alt+key with the key's own character: no text came for it.
-fn send_meta(meta: &mut Option<(char, bool)>, out: &mut Vec<TermInput>) {
-    if let Some((c, shift)) = meta.take() {
-        out.push(meta_input(c, shift));
+/// An Alt+key press waiting for its text.
+#[derive(Clone, Copy)]
+struct Meta {
+    /// The key's own character.
+    c: char,
+    shift: bool,
+    /// Sent only with its text: without it, the press is a numpad digit of a Windows Alt code.
+    needs_text: bool,
+}
+
+/// Sends a waiting Alt+key with the key's own character: no text came for it. One that needs
+/// its text is dropped.
+fn send_meta(meta: &mut Option<Meta>, out: &mut Vec<TermInput>) {
+    if let Some(m) = meta.take().filter(|m| !m.needs_text) {
+        out.push(meta_input(m.c, m.shift));
     }
+}
+
+/// Whether egui reports the numpad's key as this one too (a digit, +, - or /).
+fn on_numpad_too(key: Key) -> bool {
+    matches!(
+        key,
+        Key::Num0
+            | Key::Num1
+            | Key::Num2
+            | Key::Num3
+            | Key::Num4
+            | Key::Num5
+            | Key::Num6
+            | Key::Num7
+            | Key::Num8
+            | Key::Num9
+            | Key::Plus
+            | Key::Minus
+            | Key::Slash
+    )
 }
 
 /// ESC and `c`.

@@ -3,11 +3,11 @@ use eframe::egui::Modifiers;
 use glowfly_core::terminal::{Modes, encode};
 
 /// Text is selected; nothing else.
-const SELECTED: Opts = Opts { has_selection: true, history_keys: false, alt_is_meta: false };
+const SELECTED: Opts = Opts { has_selection: true, history_keys: false, alt_is_meta: false, alt_codes: false };
 /// Alt with a character key sends ESC and the character.
-const META: Opts = Opts { has_selection: false, history_keys: false, alt_is_meta: true };
+const META: Opts = Opts { has_selection: false, history_keys: false, alt_is_meta: true, alt_codes: false };
 /// Shift with Page Up/Down, Home and End scrolls.
-const HISTORY: Opts = Opts { has_selection: false, history_keys: true, alt_is_meta: false };
+const HISTORY: Opts = Opts { has_selection: false, history_keys: true, alt_is_meta: false, alt_codes: false };
 
 /// The bytes the inputs of `events` send.
 fn bytes(events: &[Event], opts: Opts) -> Vec<u8> {
@@ -208,4 +208,28 @@ fn each_systems_alt_follows_its_settings() {
     assert_eq!(sent(&meta, true), b"\x1bb", "macOS with Option as Meta");
     assert_eq!(sent(&default, false), b"\x1bb", "Windows and Linux");
     assert_eq!(sent(&meta, false), b"\x1bb");
+}
+
+#[test]
+fn windows_alt_codes_on_the_numpad_send_no_escapes() {
+    let (alt, shift) = (Modifiers::ALT, Modifiers::SHIFT);
+    let windows = Opts { alt_codes: true, ..META };
+    // Alt+0233 on the numpad: egui reports Num0, Num2, Num3, Num3 without text, then Windows
+    // types the character once Alt is released.
+    let mut code: Vec<Event> = [Key::Num0, Key::Num2, Key::Num3, Key::Num3].map(|k| key(k, true, alt)).to_vec();
+    code.push(key(Key::Num3, false, alt));
+    code.push(Event::Text("é".into()));
+    assert_eq!(bytes(&code, windows), "é".as_bytes());
+    for k in [Key::Plus, Key::Minus, Key::Slash] {
+        assert!(bytes(&[key(k, true, alt)], windows).is_empty(), "{k:?} on the numpad");
+    }
+    // The main row types its text, so Alt+1, Alt+_ and Alt+/ still send ESC there.
+    assert_eq!(bytes(&[key(Key::Num1, true, alt), Event::Text("1".into())], windows), b"\x1b1");
+    assert_eq!(bytes(&[key(Key::Minus, true, alt | shift), Event::Text("_".into())], windows), b"\x1b_");
+    assert_eq!(bytes(&[key(Key::Slash, true, alt), Event::Text("/".into())], windows), b"\x1b/");
+    // Keys the numpad doesn't share keep their fallback.
+    assert_eq!(bytes(&[key(Key::Period, true, alt)], windows), b"\x1b.");
+    assert_eq!(bytes(&[key(Key::B, true, alt)], windows), b"\x1bb");
+    // Elsewhere a digit without text still sends ESC and the digit (macOS's Option).
+    assert_eq!(bytes(&[key(Key::Num1, true, alt)], META), b"\x1b1");
 }
