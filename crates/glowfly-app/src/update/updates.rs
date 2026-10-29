@@ -1,19 +1,20 @@
 //! Glowfly's own updates: the daily automatic check (armed by `Startup`, then driven by `Tick`),
-//! Check now, downloading the offered file, and showing it or installing it (Install and
-//! restart, update/updates_restart.rs). Automatic checks never toast a failure; they log it
+//! Check now, downloading the offered file (update/updates_download.rs), and showing it or
+//! installing it (Install and restart, update/updates_restart.rs). Automatic checks never toast a failure; they log it
 //! quietly and wait `RETRY_AFTER`. A Flatpak copy is only told about a release (Flatpak installs
 //! it) and never downloads one. Only `settings.updates` is saved.
 
 use super::release_notes::{open_notes, startup_notes};
+use super::updates_download as dl;
 use crate::effect::OsEffect;
 use crate::effect::{Effect, UpdateEffect};
 use crate::msg::{CheckedRelease, Msg, UpdateMsg};
 use crate::state::updates::{
-    RETRY_AFTER, STARTUP_DELAY, UpdateStatus, available_text, check_failed_text, download_failed_text, downloaded_text,
-    flatpak_available_text, install_label, latest_text,
+    RETRY_AFTER, STARTUP_DELAY, UpdateStatus, available_text, check_failed_text, downloaded_text, flatpak_available_text, install_label,
+    latest_text,
 };
 use crate::state::{AppState, ToastAction};
-use glowfly_core::app_update::{self, InstallKind, InstallMethod, Saved};
+use glowfly_core::app_update::{self, InstallMethod};
 use glowfly_core::i18n::Lang;
 use std::time::Instant;
 
@@ -30,8 +31,12 @@ pub(super) fn handle(st: &mut AppState, msg: UpdateMsg, now: Instant, fx: &mut V
             }
         }
         UpdateMsg::Checked { manual, result } => checked(st, manual, result, now, fx),
-        UpdateMsg::Download => download(st, fx),
-        UpdateMsg::Downloaded(result) => downloaded(st, result, now),
+        UpdateMsg::Download => dl::download(st, fx),
+        UpdateMsg::CancelDownload => dl::cancel(st, fx),
+        UpdateMsg::DownloadProgress(p) => dl::progress(st, p),
+        UpdateMsg::Downloaded(result) => dl::downloaded(st, result, now),
+        UpdateMsg::DownloadCancelled => dl::cancelled(st),
+        UpdateMsg::SavedChecked { file, problem } => dl::saved_checked(st, file, problem),
         UpdateMsg::InstallAndRestart => super::updates_restart::ask(st, false, now, fx),
         UpdateMsg::InstallAndRestartConfirmed => super::updates_restart::ask(st, true, now, fx),
         UpdateMsg::RestartReady(result) => super::updates_restart::ready(st, result, now, fx),
@@ -126,6 +131,8 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
             downloaded_toast(st, &version, method, now);
         }
         st.updates.status = prior;
+        // The file may have gone or changed since: read it again.
+        dl::check_saved(st, fx);
         return;
     }
     match offer {
@@ -141,21 +148,24 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
             if manual || !known {
                 st.toast_action(true, text, action, now);
             }
-            st.updates.status = UpdateStatus::Available(Box::new(o));
+            // A file found gone or changed for this release still says Download again.
+            let stale = matches!(&prior, UpdateStatus::Stale { offer: d, .. } if d.version >= o.version);
+            st.updates.status = if stale { prior } else { UpdateStatus::Available(Box::new(o)) };
         }
         None => {
             st.log_quiet(true, latest_text(t, &st.updates.current));
             if manual {
                 st.toast(true, latest_text(t, &st.updates.current), now);
             }
-            st.updates.status = if matches!(prior, UpdateStatus::Downloaded { .. }) { prior } else { UpdateStatus::UpToDate };
+            let keep = matches!(prior, UpdateStatus::Downloaded { .. } | UpdateStatus::Stale { .. });
+            st.updates.status = if keep { prior } else { UpdateStatus::UpToDate };
         }
     }
 }
 
 /// "Downloaded Glowfly x.y.z." with Install and restart or Open installer when the file can
 /// be installed, else Show file.
-fn downloaded_toast(st: &mut AppState, version: &app_update::Version, method: InstallMethod, now: Instant) {
+pub(super) fn downloaded_toast(st: &mut AppState, version: &app_update::Version, method: InstallMethod, now: Instant) {
     let t = st.settings.lang();
     let (label, msg) = match method {
         InstallMethod::OpenAndQuit => (t.tr("updates.open_installer.button"), UpdateMsg::InstallAndRestart),
@@ -164,62 +174,4 @@ fn downloaded_toast(st: &mut AppState, version: &app_update::Version, method: In
     };
     let action = ToastAction { label: label.into(), msg: Box::new(Msg::Updates(msg)), workdir: None };
     st.toast_action(true, downloaded_text(t, version), action, now);
-}
-
-fn download(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if st.updates.restarting {
-        return;
-    }
-    let offer = match &st.updates.status {
-        UpdateStatus::Available(o) | UpdateStatus::DownloadFailed { offer: o, .. } | UpdateStatus::Downloaded { offer: o, .. } => o.clone(),
-        UpdateStatus::Idle
-        | UpdateStatus::Checking { .. }
-        | UpdateStatus::UpToDate
-        | UpdateStatus::CheckFailed(_)
-        | UpdateStatus::Downloading(_) => {
-            return;
-        }
-    };
-    // Flatpak installs it; nothing is downloaded or opened (a stale toast, say).
-    if offer.through_flatpak() {
-        return;
-    }
-    if offer.asset.is_none() {
-        // No build for this system: its page lists what there is.
-        if !offer.release.html_url.is_empty() {
-            fx.push(Effect::Os(OsEffect::OpenUrl(offer.release.html_url.clone())));
-        }
-        return;
-    }
-    st.updates.status = UpdateStatus::Downloading(offer.clone());
-    fx.push(Effect::Updates(UpdateEffect::Download(offer)));
-}
-
-fn downloaded(st: &mut AppState, result: Result<Saved, String>, now: Instant) {
-    let t = st.settings.lang();
-    let UpdateStatus::Downloading(offer) = std::mem::take(&mut st.updates.status) else { return };
-    match result {
-        Ok(Saved { path: file, sha256 }) => {
-            let method = method_for(st, &file);
-            let text = downloaded_text(t, &offer.version);
-            st.log_quiet(true, format!("{text} {}", glowfly_core::native_path::shown(&file)));
-            downloaded_toast(st, &offer.version, method, now);
-            st.updates.status = UpdateStatus::Downloaded { offer, file, sha256, method };
-        }
-        Err(error) => {
-            st.log_quiet(false, download_failed_text(t, &error));
-            st.toast(false, download_failed_text(t, &error), now);
-            st.updates.status = UpdateStatus::DownloadFailed { offer, error };
-        }
-    }
-}
-
-/// How the downloaded `file` is installed on this system, for this copy (portable when no
-/// check has said); only shown when the system isn't one Glowfly knows.
-fn method_for(st: &AppState, file: &std::path::Path) -> InstallMethod {
-    let name = file.file_name().map(|n| n.to_string_lossy()).unwrap_or_default();
-    match st.updates.platform {
-        Some(p) => app_update::install_method_for(&name, st.updates.install.unwrap_or(InstallKind::Portable), p.os),
-        None => InstallMethod::ShowOnly,
-    }
 }

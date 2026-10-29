@@ -26,6 +26,8 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             }
             // Which program opens glowfly:// links (General), read again at every opening.
             super::deep_link::check_scheme(st, fx);
+            // Whether the downloaded update is still there (General's Updates row).
+            super::updates_download::check_saved(st, fx);
             if page == PrefPage::RepoTracker {
                 super::trello::want_boards(st, fx);
             }

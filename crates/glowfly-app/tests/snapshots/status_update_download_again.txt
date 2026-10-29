@@ -1,0 +1,15 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "Update available (0.3.0)"
+Label "The downloaded file Downloads\\glowfly-v0.3.0-x86_64-pc-windows-msvc.msi no longer matches its checksum.\nDownload again"
+Button "New tab"
+Button "Open…"
+Image
+Label "Glowfly"
+Label "A fast, native Git client"
+Button "Open repository…"
+Button "Clone repository…"
+Button "New repository…"
+Button "Find repositories in folders"
+painted:
+  "Repository"

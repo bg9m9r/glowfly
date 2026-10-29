@@ -3,8 +3,9 @@
 //! `settings.updates`.
 
 use super::release_notes::NotesOpen;
-use glowfly_core::app_update::{self, InstallKind, InstallMethod, Offer, Platform, Version};
+use glowfly_core::app_update::{self, InstallKind, InstallMethod, Offer, Platform, Progress, SavedProblem, Version};
 use glowfly_core::i18n::Lang;
+use glowfly_core::lfs::pointer::size_text;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -39,6 +40,20 @@ pub enum UpdateStatus {
         offer: Box<Offer>,
         error: String,
     },
+    /// The file downloaded earlier is gone or no longer matches its checksum: Download again.
+    Stale {
+        offer: Box<Offer>,
+        file: PathBuf,
+        problem: SavedProblem,
+    },
+}
+
+/// The running download: how far it is, and whether Cancel was pressed (it stops between
+/// chunks, then reports `DownloadCancelled`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Transfer {
+    pub progress: Progress,
+    pub cancelling: bool,
 }
 
 /// How the status bar draws its update chip.
@@ -70,6 +85,8 @@ pub struct UpdatesState {
     pub install: Option<InstallKind>,
     /// Install and restart is preparing (or the window is closing for it): nothing else starts.
     pub restarting: bool,
+    /// The running download's progress (reset when one starts or ends).
+    pub transfer: Transfer,
 }
 
 impl Default for UpdatesState {
@@ -85,6 +102,7 @@ impl Default for UpdatesState {
             bundled_notes: super::release_notes::BUNDLED,
             install: None,
             restarting: false,
+            transfer: Transfer::default(),
         }
     }
 }
@@ -112,6 +130,27 @@ pub fn check_failed_text(t: Lang, e: &str) -> String {
 
 pub fn download_failed_text(t: Lang, e: &str) -> String {
     t.trf("updates.download_failed", &[("error", &e)])
+}
+
+/// "The downloaded file … is no longer there." or "… no longer matches its checksum."
+pub fn stale_text(t: Lang, file: &std::path::Path, problem: SavedProblem) -> String {
+    let path = glowfly_core::native_path::shown(file);
+    match problem {
+        SavedProblem::Missing => t.trf("updates.saved.missing", &[("path", &path)]),
+        SavedProblem::Changed => t.trf("updates.saved.changed", &[("path", &path)]),
+    }
+}
+
+/// "Downloading… 40% (4.0 MB of 10.0 MB)", or "Downloading… 4.0 MB" when the size isn't known.
+pub fn progress_text(t: Lang, p: Progress) -> String {
+    let done = size_text(p.done);
+    match (p.total.filter(|&n| n > 0), p.fraction()) {
+        (Some(total), Some(f)) => {
+            let percent = (f * 100.0).floor() as u32;
+            t.trf("updates.progress.percent", &[("percent", &percent), ("done", &done), ("total", &size_text(total))])
+        }
+        _ => t.trf("updates.progress.bytes", &[("done", &done)]),
+    }
 }
 
 pub fn restart_failed_text(t: Lang, e: &str) -> String {
@@ -145,7 +184,8 @@ impl UpdateStatus {
             UpdateStatus::Available(o)
             | UpdateStatus::Downloading(o)
             | UpdateStatus::Downloaded { offer: o, .. }
-            | UpdateStatus::DownloadFailed { offer: o, .. } => Some(o),
+            | UpdateStatus::DownloadFailed { offer: o, .. }
+            | UpdateStatus::Stale { offer: o, .. } => Some(o),
             UpdateStatus::Idle | UpdateStatus::Checking { .. } | UpdateStatus::UpToDate | UpdateStatus::CheckFailed(_) => None,
         }
     }
@@ -180,7 +220,9 @@ impl UpdatesState {
     /// The status bar's chip: its text and kind, when there is an update to talk about.
     pub fn chip(&self, t: Lang) -> Option<(String, ChipKind)> {
         Some(match self.settled() {
-            UpdateStatus::Available(o) => (t.trf("updates.chip.available", &[("version", &o.version)]), ChipKind::Available),
+            UpdateStatus::Available(o) | UpdateStatus::Stale { offer: o, .. } => {
+                (t.trf("updates.chip.available", &[("version", &o.version)]), ChipKind::Available)
+            }
             UpdateStatus::Downloading(o) => (t.trf("updates.chip.downloading", &[("version", &o.version)]), ChipKind::Downloading),
             UpdateStatus::Downloaded { offer, .. } if self.restarting => {
                 (t.trf("updates.chip.installing", &[("version", &offer.version)]), ChipKind::Installing)

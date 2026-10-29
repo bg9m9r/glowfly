@@ -13,7 +13,9 @@ pub(super) fn entries(st: &AppState, out: &mut Vec<Entry>) {
     let check = entry(C::Updates(UpdateMsg::CheckNow), "Check for updates", "update upgrade new version latest release download");
     out.push(with_detail(check, st.updates.busy().then(|| "checking…".to_owned())));
     match st.updates.settled() {
-        UpdateStatus::Available(o) | UpdateStatus::DownloadFailed { offer: o, .. } if !o.through_flatpak() => {
+        UpdateStatus::Available(o) | UpdateStatus::DownloadFailed { offer: o, .. } | UpdateStatus::Stale { offer: o, .. }
+            if !o.through_flatpak() =>
+        {
             out.push(entry(C::Updates(UpdateMsg::Download), format!("Download Glowfly {}", o.version), "update upgrade new version"));
         }
         UpdateStatus::Downloaded { offer, method, .. } if method.acts() => {

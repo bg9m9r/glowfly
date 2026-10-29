@@ -231,7 +231,9 @@ second one next to it.
    checksum, and only on the user's click** (`app_update::download`, `runner/updates.rs`). The
    file's name comes from the server, so it is checked first (`app_update::asset_name_ok`: 1 to
    128 characters of `A-Za-z0-9._-`, no leading dot) and can't leave the downloads folder; the
-   bytes are held in memory, checked, and only then written with `persist::write_file`. An
+   bytes are streamed into a temporary sibling (`persist::write_streamed`) and hashed on the way,
+   and renamed to the final name only once the size and checksum match. Cancel, a mismatch or a
+   failure removes the temporary file, so no half-written file has the final name. An
    existing file with other content is never replaced (`free_name`: `name (1).msi`). Install and
    restart (`app_update::restart`, `runner/update_restart.rs`) follows these rules:
    - The file is verified again (`read_verified`) before it is run, copied or unpacked.

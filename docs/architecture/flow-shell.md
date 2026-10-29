@@ -194,5 +194,5 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - It puts a fixed header above each release's notes (`packaging/release-notes-header.md`, by `scripts/release-notes-header.sh`), which `changelog::parse_body` skips, and attaches the Flatpak's git source beside the bundle (`packaging/flatpak/GIT-NOTICE.md`).
 - In the app, `UpdateMsg::Startup` arms the automatic check.
 - `update/updates.rs::tick` starts the check (at most once a day, after `STARTUP_DELAY`, an hour after a failure) as `UpdateEffect::Check`, which asks the `app_update::Feed` (`forge::latest_release`, or the folder `GLOWFLY_UPDATE_FEED` names) and reports how this copy was installed.
-- `app_update::offer` picks the file for this platform; Download runs `app_update::download`, which writes nothing until the SHA-256 matches.
+- `app_update::offer` picks the file for this platform; Download runs `app_update::download_streamed`, which streams to a temporary file and renames it into place only once the SHA-256 matches, reporting `DownloadProgress` a few times a second; Cancel stops it between chunks and removes the partial file.
 - The release notes dialog reads the `CHANGELOG.md` that `build.rs` bundled, and `startup_notes` opens it once per new version (waiting in `notes_pending` while another dialog is open).
