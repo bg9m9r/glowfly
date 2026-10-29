@@ -3,8 +3,8 @@
 //! the working tree's for the rest. Each fixture's working tree disagrees with the version read.
 
 use crate::repo::{
-    BINARY_NOT_SHOWN, BlameOptions, DiffTarget, HunkOp, LoadDiffOptions, apply_hunk, blame_file, blob_bytes, commit_line_counts,
-    commit_stats, file_at, load_diff_for_view, wip_line_counts,
+    BINARY_NOT_SHOWN, BlameOptions, DiffTarget, HunkOp, LoadDiffOptions, RevertPart, RevertRequest, apply_hunk, apply_lines, blame_file,
+    blob_bytes, commit_line_counts, commit_stats, file_at, load_diff_for_view, revert, wip_line_counts,
 };
 use crate::testutil::{git, scratch_repo, write};
 use git2::{Oid, Repository};
@@ -92,6 +92,97 @@ fn a_staged_text_file_unstages_by_hunk_when_the_working_tree_says_binary() {
     apply_hunk(&dir, "a.dat", 0, &shown.hunks[0], HunkOp::Unstage).expect("the hunk shown unstages");
     let err = load_diff_for_view(&dir, &DiffTarget::Staged("a.dat".into()), LoadDiffOptions::default()).unwrap_err();
     assert!(err.is_not_found(), "nothing staged now: {err}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The index's content of `path`.
+fn staged_text(dir: &Path, path: &str) -> String {
+    let repo = Repository::open(dir).unwrap();
+    let id = repo.index().unwrap().get_path(Path::new(path), 0).unwrap().id;
+    String::from_utf8(repo.find_blob(id).unwrap().content().to_vec()).unwrap()
+}
+
+#[test]
+fn a_staged_text_file_unstages_by_line_when_the_working_tree_says_binary() {
+    let dir = scratch_repo("attr-source-unstage-lines");
+    write(
+        &dir, "a.dat", "one
+two
+",
+    );
+    commit(&dir, "one");
+    write(
+        &dir, "a.dat", "ONE
+TWO
+",
+    );
+    git(&dir, &["add", "a.dat"]);
+    write(
+        &dir,
+        ".gitattributes",
+        "*.dat -diff
+",
+    );
+
+    let shown = load_diff_for_view(&dir, &DiffTarget::Staged("a.dat".into()), LoadDiffOptions::default()).unwrap().diff;
+    assert!(!shown.binary && shown.hunks.len() == 1, "{shown:?}");
+    let hunk = &shown.hunks[0];
+    let pick = |text: &str| hunk.lines.iter().position(|l| l.text == text).unwrap();
+    // The first line's change only: "-one" and "+ONE".
+    let lines = [pick("one"), pick("ONE")];
+    apply_lines(&dir, "a.dat", 0, hunk, &lines, HunkOp::Unstage).expect("the lines shown unstage");
+    assert_eq!(
+        staged_text(&dir, "a.dat"),
+        "one
+TWO
+"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("a.dat")).unwrap(),
+        "ONE
+TWO
+",
+        "the working file is untouched"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_commits_text_hunk_reverts_when_the_working_tree_says_binary() {
+    let dir = scratch_repo("attr-source-revert");
+    let lines: Vec<String> = (1..=20).map(|i| format!("line {i}")).collect();
+    let text = |ls: &[String]| {
+        ls.iter()
+            .map(|l| {
+                format!(
+                    "{l}
+"
+                )
+            })
+            .collect::<String>()
+    };
+    write(&dir, "a.dat", &text(&lines));
+    commit(&dir, "one");
+    let mut changed = lines.clone();
+    changed[0] = "first".into();
+    changed[19] = "last".into();
+    write(&dir, "a.dat", &text(&changed));
+    let c2 = commit(&dir, "two");
+    write(
+        &dir,
+        ".gitattributes",
+        "*.dat -diff
+",
+    );
+
+    let target = DiffTarget::Commit(c2, "a.dat".into());
+    let shown = load_diff_for_view(&dir, &target, LoadDiffOptions::default()).unwrap().diff;
+    assert!(!shown.binary && shown.hunks.len() == 2, "{shown:?}");
+    let part = RevertPart::Hunk { index: 0, expected: shown.hunks[0].clone() };
+    revert(&dir, &RevertRequest { target, part, dest: None, ignore_whitespace: false }).expect("the hunk shown reverts");
+    let mut want = changed.clone();
+    want[0] = "line 1".into();
+    assert_eq!(std::fs::read_to_string(dir.join("a.dat")).unwrap(), text(&want), "only the first hunk reverted");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
