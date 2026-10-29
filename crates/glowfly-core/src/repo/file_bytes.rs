@@ -68,7 +68,9 @@ fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOpt
     }
     crate::partial::require(repo, workdir, path, [entry.id()])?;
     let blob = repo.find_blob(entry.id())?;
-    let attrs = attr_repo(repo, AttrSource::Commit(read_at), &[path]);
+    // The commit's own gitattributes, read only for text (binary, language): the image preview
+    // doesn't need them.
+    let attrs = text.then(|| attr_repo(repo, AttrSource::Commit(read_at), &[path]));
     let too_large = |size: u64| {
         let mb = size.div_ceil(1024 * 1024);
         Err(Error::Unsupported(format!("{path} is too large to show ({mb} MB)")))
@@ -96,7 +98,7 @@ fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOpt
             b
         }
         None => {
-            if text && super::attrs::is_binary(&attrs, path, &blob) {
+            if attrs.as_ref().is_some_and(|a| super::attrs::is_binary(a, path, &blob)) {
                 return Err(Error::Unsupported(BINARY_NOT_SHOWN.into()));
             }
             if blob.size() > FILE_VIEW_MAX_BYTES {
@@ -105,6 +107,6 @@ fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOpt
             blob.content().to_vec()
         }
     };
-    let language = if text { super::attrs::linguist_language(&attrs, path) } else { None };
+    let language = attrs.as_ref().and_then(|a| super::attrs::linguist_language(a, path));
     Ok(Read { bytes, lfs, read_at, language })
 }
