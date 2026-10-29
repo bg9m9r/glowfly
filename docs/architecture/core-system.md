@@ -143,10 +143,10 @@ source file, update its line here.
 - `method.rs`: Install and restart: how a downloaded file is installed.
 - `archive.rs`: the program and doc files of a portable copy's archive.
 - `swap.rs`: swapping them (or an AppImage file) in place with rollback.
-- `backups.rs`: removing the `.bak` program a swap left beside this copy once no process runs it (regular files only, never through a link); tests in `backups_tests.rs`.
+- `backups.rs`: recording each backup a swap makes (`<backup>.record`: size and SHA-256), and removing a recorded `.bak` program that still matches its record once no process runs it (regular files only, never through a link); tests in `backups_tests.rs`.
 - `staging.rs`: the private staging folder, put in the first place the helper runs from (the temp folder, else beside the program or in the cache folder, for a noexec temp), and tidying it; tests in `staging_tests.rs`.
 - `plan.rs`: the helper's plan.
 - `restart.rs`: preparing and handing over; tests in `restart_tests.rs`.
-- `launch.rs`: starting processes detached, and trying whether a copied helper runs (`try_run`, `--version`).
+- `launch.rs`: starting processes detached, and trying whether a copied helper runs (`try_run`: `--version` must print this build's version and exit successfully within 5 s); tests in `launch_tests.rs`.
 - `finish.rs`: the helper itself, behind `glowfly --finish-update`, and the fixed words it logs.
 - `report.rs`: the last installer run's failure or cancel, read from `update.log` at the next start and marked shown; tests in `report_tests.rs`.

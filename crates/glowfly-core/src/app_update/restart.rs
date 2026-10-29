@@ -44,11 +44,16 @@ pub struct Prepared {
     pub helper: PathBuf,
     pub staging: PathBuf,
     applied: Option<Applied>,
+    /// The backups' records (backups.rs), removed when the preparation is undone.
+    records: Vec<PathBuf>,
 }
 
 impl Prepared {
     /// Undoes the preparation: the old program is put back and the staging folder removed.
     pub fn abandon(self) -> Result<(), String> {
+        for r in &self.records {
+            let _ = persist::remove_file(r);
+        }
         let back = self.applied.map_or(Ok(()), Applied::rollback);
         let removed = persist::remove_tree(&self.staging).map_err(|e| format!("Couldn't remove {}: {e}", shown(&self.staging)));
         back.and(removed)
@@ -73,7 +78,8 @@ pub fn prepare_with(req: &RestartRequest, runs: &dyn Fn(&Path) -> std::io::Resul
     }
     let staged = staging::create_runnable(&req.places, &req.exe, helper_name(req.os), runs)?;
     let staging = staged.dir;
-    let mut prepared = Prepared { plan_path: staging.join("plan.json"), helper: staged.helper, staging, applied: None };
+    let mut prepared =
+        Prepared { plan_path: staging.join("plan.json"), helper: staged.helper, staging, applied: None, records: Vec::new() };
     match fill(req, &bytes, &mut prepared) {
         Ok(()) => Ok(prepared),
         // What couldn't be undone is said too.
@@ -103,7 +109,7 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
             let entries = archive::read(&file_name, bytes, archive::wanted(req.os))?;
             let plan = swap::plan(&entries, &req.target, req.os, Path::exists)?;
             let applied = swap::apply(&plan, &entries)?;
-            remove.clone_from(&applied.backups);
+            remove = recorded(&applied.backups, &mut prepared.records);
             prepared.applied = Some(applied);
         }
         InstallMethod::SwapAppImage => {
@@ -114,13 +120,28 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
             let entries = vec![archive::Entry { name: archive::program_name(TargetOs::Linux).to_owned(), bytes: bytes.to_vec() }];
             let plan = swap::plan(&entries, &req.target, req.os, |_| false)?;
             let applied = swap::apply(&plan, &entries)?;
-            remove.clone_from(&applied.backups);
+            remove = recorded(&applied.backups, &mut prepared.records);
             prepared.applied = Some(applied);
         }
         InstallMethod::OpenAndQuit | InstallMethod::ShowOnly => return Err("This update can't be installed in place.".to_owned()),
     }
     let plan = Plan { format: FORMAT, version: req.version.clone(), msi, remove, relaunch: req.target.clone(), staging: staging.clone() };
     plan.write(&prepared.plan_path)
+}
+
+/// The files the helper deletes: each backup and, when it could be written, its record, which
+/// lets the next start remove a backup the helper couldn't (backups.rs). A backup without a
+/// record is only left for the user.
+fn recorded(backups: &[PathBuf], records: &mut Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut remove = Vec::new();
+    for b in backups {
+        remove.push(b.clone());
+        if let Ok(r) = super::backups::record(b) {
+            records.push(r.clone());
+            remove.push(r);
+        }
+    }
+    remove
 }
 
 /// Prepares the update, starts the helper and tells it to go. On success Glowfly should quit:

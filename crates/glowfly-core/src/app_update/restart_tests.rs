@@ -61,11 +61,13 @@ fn a_portable_swap_is_prepared_and_can_be_abandoned() {
     assert_eq!(p.helper, p.staging.join("glowfly-update.exe"));
     assert_eq!(std::fs::read(&p.helper).unwrap(), b"old program", "the helper is the running program");
     let plan = Plan::read(&p.plan_path).unwrap();
-    assert_eq!((plan.remove.clone(), plan.relaunch.clone(), plan.msi.clone()), (vec![bak.clone()], f.exe.clone(), None));
+    let record = f.exe.with_file_name("glowfly.exe.bak.record");
+    assert!(super::super::backups::recorded(&bak), "the backup is recorded");
+    assert_eq!((plan.remove.clone(), plan.relaunch.clone(), plan.msi.clone()), (vec![bak.clone(), record.clone()], f.exe.clone(), None));
     assert_eq!((plan.version.as_str(), plan.staging.as_path()), ("0.3.0", p.staging.as_path()));
     p.abandon().unwrap();
     assert_eq!(std::fs::read(&f.exe).unwrap(), b"old program");
-    assert!(!bak.exists());
+    assert!(!bak.exists() && !record.exists());
     assert!(staging_folders(&f).is_empty());
     let _ = persist::remove_tree(&f.root);
 }
@@ -147,10 +149,14 @@ fn an_appimage_is_swapped_in_place() {
     assert_eq!(std::fs::read(&p.helper).unwrap(), b"old program", "the helper is the running program, not the image");
     assert_eq!(std::fs::read(&req.exe).unwrap(), b"old program");
     let plan = Plan::read(&p.plan_path).unwrap();
-    assert_eq!((plan.remove.clone(), plan.relaunch.clone(), plan.msi.clone()), (vec![bak.clone()], req.target.clone(), None));
+    let record = req.target.with_file_name("Glowfly.AppImage.bak.record");
+    assert_eq!(
+        (plan.remove.clone(), plan.relaunch.clone(), plan.msi.clone()),
+        (vec![bak.clone(), record.clone()], req.target.clone(), None)
+    );
     p.abandon().unwrap();
     assert_eq!(std::fs::read(&req.target).unwrap(), b"old appimage");
-    assert!(!bak.exists());
+    assert!(!bak.exists() && !record.exists());
     assert!(staging_folders(&f).is_empty());
     let _ = persist::remove_tree(&f.root);
 }

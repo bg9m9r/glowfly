@@ -19,7 +19,8 @@
 //!   the AppImage, open the installer and quit, or only show it).
 //! - `archive.rs`: the program and doc files of a portable copy's zip or tar.gz.
 //! - `swap.rs`: replacing a portable copy's program in place, with rollback.
-//! - `backups.rs`: removing the old program a swap left, once no process runs it.
+//! - `backups.rs`: recording the old program a swap moves aside, and removing it once no process
+//!   runs it.
 //! - `staging.rs`: the private temporary folder an update is prepared in, and tidying it.
 //! - `plan.rs`: the update helper's instructions.
 //! - `restart.rs`: preparing Install and restart and handing it to the helper.

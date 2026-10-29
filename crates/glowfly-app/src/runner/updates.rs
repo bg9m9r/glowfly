@@ -49,7 +49,13 @@ fn tidy() -> Option<Msg> {
     let n: usize = places.iter().map(|p| app_update::tidy_staging(p, SystemTime::now())).sum();
     tracing::debug!("removed {n} staging folders earlier updates left");
     let cleared = app_update::remove_unused_backups(&programs, glowfly_core::terminal::program_paths);
-    tracing::debug!("old programs: removed {:?}, still running {:?}, failed {:?}", cleared.removed, cleared.running, cleared.failed);
+    tracing::debug!(
+        "old programs: removed {:?}, still running {:?}, not recorded {:?}, failed {:?}",
+        cleared.removed,
+        cleared.running,
+        cleared.unrecorded,
+        cleared.failed
+    );
     let last = settings::log_dir().and_then(|dir| app_update::take_last_install(&dir))?;
     Some(Msg::Updates(UpdateMsg::LastInstall(last)))
 }

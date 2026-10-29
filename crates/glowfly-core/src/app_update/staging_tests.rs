@@ -122,20 +122,3 @@ fn a_noexec_temp_folder_falls_back_beside_the_program_then_to_the_cache() {
     assert_eq!(s.dir.parent(), Some(places[2].as_path()));
     let _ = crate::persist::remove_tree(&root);
 }
-
-/// The real try: a file without the executable bit can't run (as on a noexec mount), and a
-/// copied program can.
-#[cfg(unix)]
-#[test]
-fn trying_to_run_tells_a_runnable_copy() {
-    use std::os::unix::fs::PermissionsExt;
-    let (root, places, _) = places("try");
-    let program = places[0].join("runs");
-    std::fs::copy("/usr/bin/true", &program).unwrap();
-    assert!(super::super::launch::try_run(&program).is_ok());
-    let text = places[0].join("doesnt");
-    std::fs::write(&text, "not a program").unwrap();
-    std::fs::set_permissions(&text, std::fs::Permissions::from_mode(0o600)).unwrap();
-    assert_eq!(super::super::launch::try_run(&text).unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
-    let _ = crate::persist::remove_tree(&root);
-}

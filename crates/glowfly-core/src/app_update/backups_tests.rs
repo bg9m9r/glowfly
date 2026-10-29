@@ -1,8 +1,16 @@
 //! Old programs left by a swap: which names count, that only regular files beside the program
-//! are found, and that one a process runs (or when the process list can't be read) is kept.
+//! are found, that only a recorded backup that still matches its record is removed (a
+//! hand-made one is kept), and that one a process runs (or when the process list can't be
+//! read) is kept.
 
 use super::*;
 use crate::persist;
+
+/// A backup the swap made: written, then recorded.
+fn swapped(path: &Path, bytes: &str) {
+    std::fs::write(path, bytes).unwrap();
+    record(path).unwrap();
+}
 
 fn scratch(tag: &str) -> PathBuf {
     let dir = crate::paths::temp_dir().join(format!("glowfly-backups-{tag}-{}", std::process::id()));
@@ -37,8 +45,8 @@ fn only_regular_files_beside_the_program_are_backups() {
     let dir = scratch("found");
     let exe = dir.join("glowfly");
     std::fs::write(&exe, "new program").unwrap();
-    std::fs::write(dir.join("glowfly.bak"), "old").unwrap();
-    std::fs::write(dir.join("glowfly.bak-2"), "older").unwrap();
+    swapped(&dir.join("glowfly.bak"), "old");
+    swapped(&dir.join("glowfly.bak-2"), "older");
     std::fs::write(dir.join("notes.bak"), "someone else's").unwrap();
     std::fs::create_dir(dir.join("glowfly.bak-3")).unwrap();
     let elsewhere = scratch("found-target");
@@ -48,6 +56,7 @@ fn only_regular_files_beside_the_program_are_backups() {
     assert_eq!(backups_of(&exe), vec![dir.join("glowfly.bak"), dir.join("glowfly.bak-2")]);
     let cleared = remove_unused(std::slice::from_ref(&exe), || Some(Vec::new()));
     assert_eq!(cleared.removed, vec![dir.join("glowfly.bak"), dir.join("glowfly.bak-2")]);
+    assert!(!dir.join("glowfly.bak.record").exists() && !dir.join("glowfly.bak-2.record").exists(), "the records go too");
     assert!(exe.is_file() && dir.join("notes.bak").is_file() && dir.join("glowfly.bak-3").is_dir());
     assert_eq!(std::fs::read(elsewhere.join("target")).unwrap(), b"keep me");
     if linked {
@@ -75,7 +84,7 @@ fn a_backup_still_running_or_an_unreadable_list_keeps_it() {
     let exe = dir.join("glowfly.exe");
     let bak = dir.join("glowfly.exe.bak");
     std::fs::write(&exe, "new").unwrap();
-    std::fs::write(&bak, "old").unwrap();
+    swapped(&bak, "old");
     let programs = std::slice::from_ref(&exe);
     let cleared = remove_unused(programs, || None);
     assert_eq!((cleared.running, cleared.removed), (vec![bak.clone()], Vec::new()));
@@ -115,6 +124,7 @@ fn the_process_list_sees_a_renamed_running_program() {
         .spawn()
         .unwrap();
     let bak = persist::move_aside(&exe).unwrap();
+    record(&bak).unwrap();
     std::fs::write(&exe, "new program").unwrap();
     let list = crate::terminal::program_paths();
     let cleared = remove_unused(std::slice::from_ref(&exe), || list.clone());
@@ -135,4 +145,45 @@ fn the_process_list_sees_a_renamed_running_program() {
         assert_eq!(cleared.removed, vec![bak.clone()]);
     }
     let _ = persist::remove_tree(&dir);
+}
+
+#[test]
+fn a_hand_made_glowfly_bak_is_kept() {
+    let dir = scratch("handmade");
+    let exe = dir.join("glowfly.exe");
+    std::fs::write(&exe, "new").unwrap();
+    // The user's own copy: Glowfly's backup name, but no record.
+    let bak = dir.join("glowfly.exe.bak");
+    std::fs::write(&bak, "my copy").unwrap();
+    let cleared = remove_unused(std::slice::from_ref(&exe), || Some(Vec::new()));
+    assert_eq!((cleared.unrecorded, cleared.removed), (vec![bak.clone()], Vec::new()));
+    assert_eq!(std::fs::read(&bak).unwrap(), b"my copy");
+    let _ = persist::remove_tree(&dir);
+}
+
+#[test]
+fn a_backup_changed_since_it_was_recorded_is_kept() {
+    let dir = scratch("changed");
+    let exe = dir.join("glowfly");
+    std::fs::write(&exe, "new").unwrap();
+    let (same_size, other_size, bad) = (dir.join("glowfly.bak"), dir.join("glowfly.bak-2"), dir.join("glowfly.bak-3"));
+    for b in [&same_size, &other_size, &bad] {
+        swapped(b, "old program");
+    }
+    // The user put another file there since: same size, other bytes; another size.
+    std::fs::write(&same_size, "OLD PROGRAM").unwrap();
+    std::fs::write(&other_size, "a longer file of the user's").unwrap();
+    // A record that isn't one.
+    std::fs::write(record_path(&bad), "not json").unwrap();
+    let cleared = remove_unused(std::slice::from_ref(&exe), || Some(Vec::new()));
+    assert_eq!((cleared.unrecorded, cleared.removed), (vec![same_size.clone(), other_size.clone(), bad.clone()], Vec::new()));
+    assert!(same_size.is_file() && other_size.is_file() && bad.is_file());
+    let _ = persist::remove_tree(&dir);
+}
+
+#[test]
+fn a_record_names_the_backup_beside_it() {
+    let bak = crate::paths::temp_dir().join("app").join("glowfly.exe.bak-2");
+    assert_eq!(record_path(&bak), bak.with_file_name("glowfly.exe.bak-2.record"));
+    assert!(!is_backup_name("glowfly.exe", "glowfly.exe.bak.record"), "a record is no backup");
 }
