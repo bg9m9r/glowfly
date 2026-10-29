@@ -1,5 +1,6 @@
 //! `linguist-language` for the viewer: from the commit's own `.gitattributes` files for commit and
-//! comparison diffs, from the working tree and index for the others.
+//! comparison diffs, from the working tree and index for working-tree diffs (staged diffs, the
+//! File view and blame: `attr_source_tests.rs`).
 
 use super::super::{DiffTarget, LoadDiffOptions, load_diff_for_view};
 use crate::testutil::{git, scratch_repo, write};

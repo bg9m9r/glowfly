@@ -28,7 +28,8 @@ source file, update its line here.
 
 - A commit against its parent, another commit or the empty tree (`empty_tree`, for a line of commits reaching the first one), or the working tree either way round: `compare_workdir`, `compare_from_workdir`.
 - `repo/commit_detail.rs`: a commit's `CommitDetail` (message, author, committer, files against the first parent).
-- The `linguist-language` override read from the commit's own `.gitattributes` for commit and comparison diffs: `attrs.rs`.
+- Gitattributes read from the version shown (`AttrSource`: a commit's own `.gitattributes` in an in-memory index on a bare handle, the index, or the working tree), for diffs, line counts, the File view and blame: `attr_source.rs`.
+- The values read through it (the `linguist-language` override, binary by the `diff` attribute) and the working-tree conversion checks before editing by hunk or line: `attrs.rs`.
 - The unchanged lines between a diff's hunks, read for the hunk view: `diff_gaps.rs`.
 - The lines added and removed per file of a commit or of the working tree's staged and unstaged files, libgit2 only and capped at 2,000 files: `line_counts.rs`.
 - Each commit's own changes against its first parent, newest first, for a selection that isn't one line of history: `stacked.rs`.
