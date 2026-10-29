@@ -23,7 +23,7 @@ source file, update its line here.
 - `askpass/ssh_sign.rs`: ssh-keygen's signing passphrase question as a structured `SshSignAsk` (see [flow-shell.md](flow-shell.md)).
 - `git_credential.rs`: saving and dropping HTTPS sign-ins typed in the prompt with git's credential helper (`git credential approve` / `reject`, setting up the platform's store when git has none).
 - `auth_failure.rs`: reading git's output for fetches that need a sign-in, rejected credentials and the remote they belong to (pure).
-- `ssh_version.rs`: OpenSSH's version, and the legacy askpass set-up (a `DISPLAY` placeholder and a new session per git child) before 8.4 on Unix.
+- `ssh_version.rs`: the ssh git runs in a repository (the environment, then `core.sshCommand`, read from config) and its OpenSSH version (a `DISPLAY` placeholder before 8.4; only an environment program is run with `-V`, a command line gets the placeholder unrun), and the new session every git child starts in on Unix.
 - `gpg_prompt/`: signing passphrases: Glowfly as git's gpg.program, running the user's gpg with loopback pinentry and asking through the askpass listener; for SSH-format keys, the env that marks ssh-keygen's prompt as a signing prompt (`gpg_prompt/ssh_env.rs`).
 - `signing.rs`: signing keys.
 

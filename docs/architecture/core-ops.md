@@ -6,6 +6,7 @@ source file, update its line here.
 ## The git CLI
 
 - `gitcli.rs`: the git CLI, for commands that honour hooks, credentials and signing; reports every command's timing to the observer the app sets.
+- `gitcli/askpass_vars.rs`: the askpass environment a git child gets, with the `DISPLAY` placeholder for the old OpenSSH its repository's ssh may be.
 - `gitcli/wait.rs` waits for a child: pipes drained on their own threads, a timeout, and a `Stop` the caller can ask.
 - `output_until` runs a command that can be stopped, and `process_tree.rs` ends it with everything it started (a new session and its process group on Unix: SIGTERM, then SIGKILL after 3 s; a job object on Windows).
 - `stop_cleanup.rs` removes the ref locks and temporary pack and object files a stopped fetch left behind (only files made after the run started).

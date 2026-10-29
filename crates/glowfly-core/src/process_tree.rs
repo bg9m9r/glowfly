@@ -1,8 +1,8 @@
 //! Stopping a git child together with everything it started (git-remote-https, ssh, a hook's
 //! shell), for [`crate::gitcli::output_until`].
 //!
-//! - Unix: the child starts in its own session and process group (`setsid`, which also leaves
-//!   it without a controlling terminal, as the legacy askpass set-up needs). A stop sends
+//! - Unix: the child starts in its own session and process group (`setsid`, as every git child
+//!   does so ssh asks the askpass helper: [`crate::ssh_version::prepare`]). A stop sends
 //!   SIGTERM to the group, so git's own signal handlers remove its lock files, and SIGKILL to
 //!   the group after [`STOP_GRACE`] if git is still running. SIGKILL is sent only before git is
 //!   reaped, so a recycled process id is never signalled.

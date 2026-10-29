@@ -195,3 +195,20 @@ fn an_unstopped_command_runs_as_usual() {
     assert_eq!(out.stdout.trim(), "true");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[cfg(unix)]
+#[test]
+fn every_git_child_leads_its_own_session() {
+    // ssh then has no terminal to ask on, so it asks Glowfly's helper, whichever ssh it is.
+    let dir = crate::paths::temp_dir();
+    for stoppable in [false, true] {
+        let mut cmd = base_command(OsStr::new("sleep"), &dir, &args(&["5"]), &[], stoppable);
+        let mut child = cmd.stdin(Stdio::null()).spawn().expect("sleep starts");
+        let pid = child.id() as libc::pid_t;
+        // SAFETY: getsid only reads the session id of the given process.
+        let session = unsafe { libc::getsid(pid) };
+        let _ = child.kill();
+        let _ = child.wait();
+        assert_eq!(session, pid, "stoppable: {stoppable}");
+    }
+}

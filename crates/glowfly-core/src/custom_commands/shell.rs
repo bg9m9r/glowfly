@@ -59,7 +59,7 @@ pub fn run_shell(cwd: &Path, script: &str) -> (bool, String) {
         .env("GIT_EDITOR", "true")
         .env("GIT_SEQUENCE_EDITOR", "true")
         .env("GIT_TERMINAL_PROMPT", "0")
-        .envs(crate::gitcli::askpass_env())
+        .envs(crate::gitcli::askpass_env_in(cwd, &[]))
         .current_dir(native(cwd))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
