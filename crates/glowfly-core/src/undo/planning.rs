@@ -123,6 +123,16 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
                 HeadPos::Detached(o) if !exists(*o) => return Ok(gone()),
                 HeadPos::Detached(o) => vec![args(&["checkout", "--detach", &o.to_string(), "--"])],
             };
+            // git's checkout writes over an ignored file at a path the target tracks.
+            let to = match target {
+                HeadPos::Branch(b) => repo.refname_to_id(&format!("refs/heads/{b}")).ok(),
+                HeadPos::Detached(o) => Some(*o),
+            };
+            if let Some(to) = to
+                && let Some(refused) = super::in_the_way::check(workdir, &repo, to, action, redo)?
+            {
+                return Ok(refused);
+            }
             if let (false, true, Some(c)) = (redo, opts.delete_created, created) {
                 match refs::delete_created(&repo, c) {
                     Ok(cmd) => cmds.push(cmd),

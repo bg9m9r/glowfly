@@ -97,6 +97,9 @@ pub(super) fn plan(workdir: &Path, repo: &Repository, action: &Action, redo: boo
         if !tracked_clean(workdir)? {
             return Ok(dirty(action, redo));
         }
+        if let Some(refused) = super::in_the_way::check(workdir, &Repository::open(workdir)?, target, action, redo)? {
+            return Ok(refused);
+        }
         cmds.push(args(&["reset", "--keep", &target.to_string()]));
     }
     Ok(Plan::Run(cmds))

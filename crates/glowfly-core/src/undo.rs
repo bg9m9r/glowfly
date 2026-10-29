@@ -31,6 +31,7 @@ mod aborted_restore;
 mod aborted_run;
 mod action;
 mod deleted;
+mod in_the_way;
 pub mod kept;
 mod kinds;
 mod marked;
@@ -197,6 +198,8 @@ mod aborted_safety_tests;
 mod aborted_tests;
 #[cfg(test)]
 mod deleted_tests;
+#[cfg(test)]
+mod in_the_way_tests;
 #[cfg(test)]
 mod kept_tests;
 #[cfg(test)]

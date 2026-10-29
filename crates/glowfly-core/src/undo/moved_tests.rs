@@ -135,9 +135,9 @@ fn untracked_file_in_the_way_fails_and_is_kept() {
     let action = record(&dir, &["merge", "feature"]).expect("recorded");
     assert!(!dir.join("gone.txt").exists());
     write(&dir, "gone.txt", "mine\n");
-    let Plan::Run(undo) = plan(&dir, &action, false).unwrap() else { panic!("expected commands") };
-    let (ok, out) = run(&dir, &undo[0]);
-    assert!(!ok, "reset --keep refuses to overwrite an untracked file: {out}");
+    // Refused before git runs (git would refuse too, but not for an ignored file).
+    let Plan::Refuse(r) = plan(&dir, &action, false).unwrap() else { panic!("expected a refusal") };
+    assert!(r.message().starts_with("Move gone.txt away first"), "{}", r.message());
     assert_eq!(std::fs::read_to_string(dir.join("gone.txt")).unwrap(), "mine\n");
     let _ = std::fs::remove_dir_all(&dir);
 }

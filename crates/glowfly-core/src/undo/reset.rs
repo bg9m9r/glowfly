@@ -41,16 +41,25 @@ pub(super) fn new_stash(repo: &Repository, from: Oid) -> Option<Oid> {
 /// commit to reset to and `stash` holds what a hard reset stashed.
 pub(super) fn plan(workdir: &Path, action: &Action, mode: ResetMode, stash: Option<Oid>, target: Oid, redo: bool) -> Result<Plan> {
     let verb = if redo { "redoing" } else { "undoing" };
+    // `reset --hard` writes over untracked and ignored files at the paths the target adds; checked
+    // after local changes, which Stash changes and undo can move (untracked ones too).
+    let in_the_way = || super::in_the_way::check(workdir, &Repository::open(workdir)?, target, action, redo);
     let target = target.to_string();
     Ok(match mode {
         // Stashes again whatever is uncommitted now, as the original reset did.
-        ResetMode::Hard if redo => Plan::Run(hard_reset_commands(&target)),
+        ResetMode::Hard if redo => match in_the_way()? {
+            Some(refused) => refused,
+            None => Plan::Run(hard_reset_commands(&target)),
+        },
         ResetMode::Hard => {
             if !is_clean(workdir)? {
                 return Ok(Plan::Refuse(Refusal::Dirty(format!(
                     "Commit or stash your changes first: {verb} {} would overwrite them.",
                     action.describe()
                 ))));
+            }
+            if let Some(refused) = in_the_way()? {
+                return Ok(refused);
             }
             let mut cmds = vec![args(&["reset", "--hard", &target])];
             if let Some(s) = stash {

@@ -2,7 +2,8 @@
 //! was on before (redo: forward to the one it moved to). `--keep` keeps local changes to files
 //! the reset doesn't touch and refuses rather than overwrite one that it does, but Glowfly asks
 //! for tracked files to be committed or stashed first so the result is the recorded one exactly.
-//! Untracked files may stay: git refuses (and says why) if one is in the way.
+//! Untracked files may stay, unless one (or an ignored one, which git would write over without
+//! a word) is at a path the target tracks and HEAD doesn't: that is refused first (`in_the_way.rs`).
 
 use super::planning::{dirty, gone, tracked_clean};
 use super::{Action, Plan};
@@ -18,6 +19,8 @@ pub(super) fn plan(workdir: &Path, repo: &Repository, action: &Action, target: O
         gone()
     } else if !tracked_clean(workdir)? {
         dirty(action, redo)
+    } else if let Some(refused) = super::in_the_way::check(workdir, repo, target, action, redo)? {
+        refused
     } else {
         Plan::Run(vec![args(&["reset", "--keep", &target.to_string()])])
     })
