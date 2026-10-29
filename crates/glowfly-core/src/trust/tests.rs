@@ -251,3 +251,13 @@ fn a_diff_or_merge_tools_path_is_listed() {
     assert_eq!(command_key("mergetool.kdiff3.trustexitcode", "true"), None);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_home_relative_hooks_path_is_expanded_as_git_does() {
+    let home = Path::new("/home/ada");
+    assert_eq!(home_expanded("~/hooks", Some(home)), home.join("hooks"));
+    assert_eq!(home_expanded("~", Some(home)), home);
+    assert_eq!(home_expanded("~bob/h", Some(home)), Path::new("/home/bob").join("h"));
+    assert_eq!(home_expanded(".githooks", Some(home)), Path::new(".githooks"));
+    assert_eq!(home_expanded("~/hooks", None), Path::new("~/hooks"));
+}
