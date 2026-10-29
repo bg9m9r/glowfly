@@ -116,6 +116,7 @@ pub(super) mod line_counts_tests;
 pub(super) mod lines_drag_tests;
 pub(super) mod lines_gutter_tests;
 pub(super) mod lines_tests;
+pub(super) mod lines_whole_tests;
 pub(super) mod load_more_resume_tests;
 pub(super) mod load_more_retry_tests;
 pub(super) mod load_more_tests;

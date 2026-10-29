@@ -161,6 +161,7 @@ pub(super) mod snapshot_tests_tag_menu;
 pub(super) mod snapshot_tests_terminal;
 pub(super) mod snapshot_tests_terminal_colors;
 pub(super) mod snapshot_tests_terminal_header;
+pub(super) mod snapshot_tests_terminal_mouse;
 pub(super) mod snapshot_tests_terminal_select;
 pub(super) mod snapshot_tests_terminal_tabs;
 pub(super) mod snapshot_tests_themes;

@@ -120,6 +120,7 @@ fn adopt_requires_same_old_text() {
         generation: st.session.diff.generation,
         result: Ok(fresh),
         lfs: None,
+        raw: None,
     });
     let fx = update(&mut st, msg, Instant::now());
     assert!(hl(shown(&st)).is_pending(), "not adopted");

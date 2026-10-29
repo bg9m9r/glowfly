@@ -321,3 +321,27 @@ fn journal_notes_never_reload() {
         }
     }
 }
+
+#[test]
+fn included_config_files_reload_everything_wherever_they_are() {
+    let dir = scratch_repo("watch-included");
+    let gd = dir.join(".git");
+    let outside = dir.with_file_name(format!("{}-shared", dir.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&outside);
+    std::fs::create_dir_all(&outside).unwrap();
+    write(&outside, "team.cfg", "[core]\n");
+    let files = [outside.join("team.cfg"), outside.join("not-yet.cfg"), dir.join("tools/repo.cfg"), gd.join("extra.cfg")];
+    let mut paths = WatchPaths::new(&dir, &gd);
+    let never = &mut |_: &str| false;
+    assert_eq!(paths.classify_path(&dir.join("tools/repo.cfg"), Touch::Modified, never), (Change::Paths, Some("tools/repo.cfg".into())));
+    paths.set_config_files(&files);
+    for f in &files {
+        assert_eq!(paths.classify_path(f, Touch::Modified, never), (Change::Full, None), "{}", f.display());
+    }
+    assert_eq!(paths.classify(&outside.join("other.cfg"), Touch::Other, never), Change::None, "only the included files");
+    assert_eq!(paths.classify(&gd.join("extra.cfg.lock"), Touch::Other, never), Change::None);
+    paths.set_config_files(&[]);
+    assert_eq!(paths.classify(&outside.join("team.cfg"), Touch::Modified, never), Change::None, "the list is replaced");
+    let _ = std::fs::remove_dir_all(&outside);
+    let _ = std::fs::remove_dir_all(&dir);
+}

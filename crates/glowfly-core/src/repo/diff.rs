@@ -17,12 +17,21 @@ pub fn commit_stats(workdir: &Path, oids: &[Oid]) -> Vec<(Oid, usize, usize, usi
 /// many of `oids` were gone through (those that failed included).
 pub fn commit_stats_until(workdir: &Path, oids: &[Oid], stop: &dyn Fn() -> bool) -> (Vec<(Oid, usize, usize, usize)>, usize) {
     let Ok(repo) = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir) else { return (Vec::new(), oids.len()) };
+    // One handle for every commit, pointed at each one's gitattributes in turn, so binary files
+    // (which count no lines) are those the commit's own attributes say.
+    let attrs = super::attr_source::bare_handle(&repo);
     let mut out = Vec::new();
     for (i, &oid) in oids.iter().enumerate() {
         if i > 0 && stop() {
             return (out, i);
         }
-        if let Some(stats) = commit_diff(&repo, oid, None).ok().and_then(|d| d.stats().ok()) {
+        let paths = commit_paths(&repo, oid);
+        let paths: Vec<&str> = paths.iter().map(String::as_str).collect();
+        let on = match &attrs {
+            Some(h) if super::attr_source::point_at(h, oid, &paths) => h,
+            _ => &*repo,
+        };
+        if let Some(stats) = commit_diff(on, oid, None).ok().and_then(|d| d.stats().ok()) {
             out.push((oid, stats.files_changed(), stats.insertions(), stats.deletions()));
         }
     }
@@ -46,6 +55,11 @@ pub(super) fn head_tree(repo: &Repository) -> Option<Tree<'_>> {
 
 pub(super) fn commit_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
     renamed(repo, commit_plain(repo, oid, opts)?)
+}
+
+/// Both sides' paths of commit `oid`'s changes, whose gitattributes to read. Empty on error.
+pub(super) fn commit_paths(repo: &Repository, oid: Oid) -> Vec<String> {
+    commit_plain(repo, oid, None).map(|d| super::attr_source::delta_paths(&d)).unwrap_or_default()
 }
 
 /// `commit_diff` without rename detection.
@@ -256,20 +270,29 @@ pub struct ViewDiff {
     pub language: Option<String>,
     /// The two sides when either is a Git LFS pointer (`lfs_marks::diff_change`).
     pub lfs: Option<crate::lfs::pointer::LfsChange>,
+    /// For an unstaged diff of one hunk: its lines' exact bytes and the working file's own
+    /// bytes, hashed (`index::raw_id`), which the hunk's text (decoded, line ends trimmed) and git's
+    /// converted content (`core.autocrlf`) can't tell apart.
+    pub raw: Option<Oid>,
 }
 
 /// `load_diff_with` plus the old file's text, for highlighting the hunks in context
-/// (`highlight::highlight_in_context`), and the path's `linguist-language` gitattribute (for
-/// commit and comparison diffs from the commit's own `.gitattributes` files, else from the
-/// working tree, then the index; `None` for binary files). The text is `None` for added,
-/// untracked or binary files, a whole-file load (its one hunk is the whole file), an old blob
-/// over `highlight::OLD_TEXT_MAX_BYTES`, or one that doesn't match the hunks.
+/// (`highlight::highlight_in_context`), and the path's `linguist-language` gitattribute (`None`
+/// for binary files). Attributes, binary detection's included, come from the version shown
+/// (`AttrSource::of_target`): the commit's own `.gitattributes` files for commit and comparison
+/// diffs, the index's for staged changes, the working tree's then the index's for the rest. The
+/// text is `None` for added, untracked or binary files, a whole-file load (its one hunk is the
+/// whole file), an old blob over `highlight::OLD_TEXT_MAX_BYTES`, or one that doesn't match
+/// the hunks.
 pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<ViewDiff> {
     load(workdir, target, opts, true)
 }
 
 fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bool) -> Result<ViewDiff> {
-    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
+    let pooled = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
+    // The diff runs on a handle reading the shown version's gitattributes, so libgit2's binary
+    // detection follows them too.
+    let repo = super::attr_source::for_target(&pooled, target);
     let path = target.path();
     let mut diff = plain_target_diff(&repo, target, opts, None)?;
     // A partial clone may not have the blobs yet; libgit2 can't fetch them.
@@ -283,7 +306,7 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
-        return Ok(ViewDiff { diff: out, old: None, language: None, lfs });
+        return Ok(ViewDiff { diff: out, old: None, language: None, lfs, raw: None });
     };
     out.binary = patch.delta().flags().is_binary();
     for h in 0..patch.num_hunks() {
@@ -300,8 +323,8 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     }
     // `patch` is still the first load's (the whole-file block's is scoped to it).
     let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
-    let language = if with_old && !out.binary { super::attrs::linguist_language_for(&repo, target, path) } else { None };
-    Ok(ViewDiff { diff: out, old, language, lfs })
+    let language = if with_old && !out.binary { super::attrs::linguist_language(&repo, path) } else { None };
+    Ok(ViewDiff { diff: out, old, language, lfs, raw: super::index::shown_raw_id(workdir, target, path, &patch)? })
 }
 
 /// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the

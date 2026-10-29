@@ -172,7 +172,7 @@ fn a_drive_without_a_usable_trash_offers_the_home_trash() {
     for op in [
         FileOp::UnstageDelete { path: "a.txt".into(), mode: DeleteMode::Trash },
         FileOp::Delete { path: "a.txt".into(), mode: DeleteMode::Trash },
-        FileOp::Discard { path: "a.txt".into(), mode: DeleteMode::Trash },
+        FileOp::Discard { path: "a.txt".into(), mode: DeleteMode::Trash, seen: None },
     ] {
         run(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: false, op: op.clone(), refusal: refusal() }));
         let o = offer(&st);

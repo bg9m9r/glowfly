@@ -85,7 +85,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             }
         }
         RepoMsg::OpenDiff(target) => open_file_diff(st, target, fx),
-        RepoMsg::DiffLoaded { target, reload, generation, result, lfs } => {
+        RepoMsg::DiffLoaded { target, reload, generation, result, lfs, raw } => {
             if generation != st.session.diff.generation {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
@@ -144,18 +144,14 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     }
                     super::lfs::diff_loaded(st, &target, lfs);
                     st.session.diff.view = Some((target, std::sync::Arc::new(d)));
+                    st.session.diff.raw = raw;
                     st.session.diff.shown_gen = generation;
                     super::highlight::schedule(st, fx);
                     super::diff_gaps::diff_shown(st, fx);
                     super::diff_preview::diff_shown(st, fx);
                 }
-                // A reload that finds no changes left simply closes the diff.
-                Err(_) if reload => {
-                    st.session.diff.view = None;
-                    st.view.diff_lines.clear();
-                    st.session.tab_view.diff_expanded.clear();
-                    st.view.diff_open_hunk = None;
-                }
+                // A reload that finds no changes left closes the diff, or follows a new file unstaged.
+                Err(_) if reload => super::wip_list::emptied(st, target, fx),
                 Err(e) => {
                     st.view.diff_lines.clear();
                     st.view.diff_open_hunk = None;

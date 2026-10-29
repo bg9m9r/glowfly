@@ -75,6 +75,9 @@ pub struct DiffSlot {
     pub shown_gen: u64,
     /// The open diff's LFS summary and whether it shows the pointer text instead.
     pub lfs: Option<super::lfs::LfsDiffNote>,
+    /// The exact bytes of the open diff's one hunk, hashed, for an unstaged diff of one hunk
+    /// (`repo::ViewDiff::raw`): what discarding every line of an untracked file checks.
+    pub raw: Option<git2::Oid>,
 }
 
 impl DiffSlot {

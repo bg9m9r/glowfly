@@ -14,10 +14,10 @@ fn idle(path: &Path) -> usize {
     pool().idle.iter().filter(|i| i.slot.key == path).count()
 }
 
-/// Dates the repository's config and index back, as if written a while ago, so their stamps
-/// are trusted (`RACY_WINDOW`).
+/// Dates the repository's config, index and HEAD back, as if written a while ago, so their
+/// stamps are trusted (`RACY_WINDOW`).
 fn age(dir: &Path) {
-    for f in ["config", "index"] {
+    for f in ["config", "index", "HEAD"] {
         if let Ok(file) = std::fs::File::options().write(true).open(dir.join(".git").join(f)) {
             file.set_modified(SystemTime::now() - Duration::from_secs(30)).unwrap();
         }
@@ -67,6 +67,43 @@ fn a_config_change_made_by_git_opens_it_again() {
     status_at(&dir, false).unwrap();
     assert_eq!(opened(&dir, Use::Workdir), 2);
     forget(&dir);
+}
+
+/// Dates `file` back by `secs` seconds.
+fn age_file(file: &Path, secs: u64) {
+    std::fs::File::options().write(true).open(file).unwrap().set_modified(SystemTime::now() - Duration::from_secs(secs)).unwrap();
+}
+
+/// A file the config includes from outside the repository, and one included only on a branch:
+/// libgit2 read them when the handle was opened, so a change to either opens it again.
+#[test]
+fn a_change_to_an_included_config_file_opens_it_again() {
+    let dir = committed("pool-include");
+    let outside = dir.with_file_name(format!("{}-include", dir.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&outside);
+    std::fs::create_dir_all(&outside).unwrap();
+    let extra = outside.join("extra.cfg");
+    std::fs::write(&extra, "[core]\n\tautocrlf = false\n").unwrap();
+    let named = extra.display().to_string().replace('\\', "/");
+    crate::testutil::set_config(&dir, &[("include.path", &named), ("includeIf.onbranch:side.path", "side.cfg")]);
+    age(&dir);
+    age_file(&extra, 30);
+    status_at(&dir, false).unwrap();
+    status_at(&dir, false).unwrap();
+    assert_eq!(opened(&dir, Use::Workdir), 1, "nothing changed");
+
+    std::fs::write(&extra, "[core]\n\tautocrlf = true\n").unwrap();
+    age_file(&extra, 20);
+    status_at(&dir, false).unwrap();
+    assert_eq!(opened(&dir, Use::Workdir), 2, "the included file changed");
+
+    git(&dir, &["checkout", "-q", "-b", "side"]);
+    age(&dir);
+    age_file(&dir.join(".git/HEAD"), 25);
+    status_at(&dir, false).unwrap();
+    assert_eq!(opened(&dir, Use::Workdir), 3, "a branch switch can include side.cfg");
+    forget(&dir);
+    let _ = std::fs::remove_dir_all(&outside);
 }
 
 /// Staged and committed by git: the same handle sees both, with or without the index checksum

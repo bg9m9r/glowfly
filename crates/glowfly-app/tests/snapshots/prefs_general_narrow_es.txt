@@ -7,7 +7,7 @@ Label "Actualizaciones"
 CheckBox "Buscar actualizaciones una vez al día" [on]
 Label "Glowfly 0.1.0 · Nunca comprobado"
 Button "Comprobar ahora"
-Label "Glowfly consulta una vez al día la API de versiones de GitHub para conocer la versión más reciente de su repositorio. GitHub ve tu dirección IP y la versión de Glowfly, pero nada sobre tus repositorios. Las descargas se verifican con las sumas de comprobación SHA-256 publicadas en la versión."
+Label "Glowfly consulta una vez al día la API de versiones de GitHub para conocer la versión más reciente de su repositorio. GitHub ve tu dirección IP y la versión de Glowfly, pero nada sobre tus repositorios. Las descargas se verifican con las sumas de comprobación SHA-256 publicadas en la versión. Las compilaciones de Glowfly aún no tienen firma de código, así que esto confirma que una descarga coincide con lo que publicó la versión, no quién la publicó."
 Label "Git"
 Label "git 2.45.1 en C:\\Program Files\\Git\\cmd\\git.exe"
 Button "Elegir…"
@@ -90,4 +90,3 @@ painted:
   "Cambios sin confirmar"
   "Enlaces de Glowfly"
   "Recordar inicios de sesión"
-  "Conexiones guardadas"

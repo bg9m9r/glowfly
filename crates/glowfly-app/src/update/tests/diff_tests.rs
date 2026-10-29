@@ -109,13 +109,20 @@ fn opening_a_diff_scrolls_to_top_but_reload_keeps_position() {
     let generation = st.session.diff.generation;
     run(
         &mut st,
-        Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload: false, generation, result: Ok(three_hunks()), lfs: None }),
+        Msg::Repo(RepoMsg::DiffLoaded {
+            target: target.clone(),
+            reload: false,
+            generation,
+            result: Ok(three_hunks()),
+            lfs: None,
+            raw: None,
+        }),
     );
     assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row), (Some(0), 0));
 
     st.view.diff_scroll_to_row = None;
     st.session.tab_view.diff_top_row = 7;
-    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: true, generation, result: Ok(three_hunks()), lfs: None }));
+    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: true, generation, result: Ok(three_hunks()), lfs: None, raw: None }));
     assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row), (None, 7));
 }
 

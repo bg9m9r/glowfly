@@ -293,7 +293,7 @@ fn trash_refused_for_other_reasons_offers_retry_never_a_permanent_delete() {
     for op in [
         delete("a.txt", DeleteMode::Trash),
         unstage_delete("a.txt", DeleteMode::Trash),
-        FileOp::Discard { path: "a.txt".into(), mode: DeleteMode::Trash },
+        FileOp::Discard { path: "a.txt".into(), mode: DeleteMode::Trash, seen: None },
     ] {
         for (problem, detail, want_title, want_body) in &cases {
             let refusal = TrashRefusal::new(*problem, *detail);

@@ -54,7 +54,7 @@ A failing input lands in `fuzz/artifacts/<target>/`; `cargo +nightly fuzz run <t
 - `fuzz/seeds/<target>/`: the inputs each target starts from (byte-exact: `.gitattributes` marks them binary).
 - `crates/glowfly-core/src/fuzzing.rs`: the checks, built only for tests and with core's `fuzzing` feature (which also reaches the crate-private parsers they need); `CHECKS` lists them by target.
 - `fuzzing/trust.rs`: the trust plumbing's readers: a rebase or sequencer todo (every pick resolved and listed), FETCH_HEAD (every line for merging listed with its commit), and a patch's paths (`git apply --numstat`, am's mailbox detection, any spelling of a path under the hooks folder caught).
-- `fuzzing/urls.rs`: remote URLs (a recognized remote's host is a whole authority and its names hold no line break) and `redact_credentials` (a URL's password never shows in what is logged).
+- `fuzzing/urls.rs`: remote URLs (a recognized remote's host is a whole authority with no `%` or other character a host isn't written with, and its names hold no line break) and `redact_credentials` (a URL's password never shows in what is logged).
 - `fuzzing/diffs.rs`: a patch file's summary (files listed once), conflict marker regions and the marker size, and merged text with markers (parsed, written back and parsed again to the same chunks).
 - `fuzzing/tests.rs`: every check over its seeds and their mutations in an ordinary `cargo test`, and every target in `fuzz/fuzz_targets/` having a check.
 

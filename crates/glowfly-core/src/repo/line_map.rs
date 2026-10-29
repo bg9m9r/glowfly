@@ -103,7 +103,10 @@ fn maps(repo: &Repository, from: Oid, to: Oid, paths: &[String]) -> Result<HashM
     o.context_lines(0).interhunk_lines(0);
     // A whole-tree diff: a pathspec would hide a rename's other side, and identical subtrees
     // are skipped by id anyway.
-    let diff = super::diff::trees_diff(repo, from, to, Some(&mut o))?;
+    // Binary files as the comparison's diff sees them: by `to`'s gitattributes.
+    let wanted: Vec<&str> = paths.iter().map(String::as_str).collect();
+    let attrs = super::attr_source::attr_repo(repo, super::attr_source::AttrSource::Commit(to), &wanted);
+    let diff = super::diff::trees_diff(&attrs, from, to, Some(&mut o))?;
     let from_tree = repo.find_commit(from)?.tree()?;
     let mut out = HashMap::new();
     for p in paths {

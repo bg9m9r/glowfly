@@ -40,14 +40,16 @@ Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
 Each download has a `.sha256` file, and `SHA256SUMS` lists them all: check a download with
 `sha256sum -c SHA256SUMS --ignore-missing`. Each file in `SHA256SUMS` (and `SHA256SUMS` itself)
 also has a build provenance attestation, which shows the Release workflow built it from this
-repository: check it with `gh attestation verify <file> --repo bg9m9r/glowfly`. Builds are
-code-signed once the project's signing certificates are set up (see
-[docs/RELEASING.md](docs/RELEASING.md)); until then Windows
-SmartScreen and macOS Gatekeeper warn the first time you open them.
+repository: check it with `gh attestation verify <file> --repo bg9m9r/glowfly`. The builds are
+not code-signed yet: that comes once the project's signing certificates are set up (see
+[docs/RELEASING.md](docs/RELEASING.md)), and until then Windows SmartScreen and macOS Gatekeeper
+warn the first time you open them. The checksums show that a download matches what the release
+published, not who published it.
 
 Glowfly checks GitHub for a newer release once a day (Preferences > General > Updates, where you
 can turn it off) and downloads it only when you ask, after checking it against the published
-checksums. "View release notes" in the command palette shows what changed.
+checksums. Those confirm the download matches the release, not who published it, since the
+builds aren't code-signed yet. "View release notes" in the command palette shows what changed.
 
 ## Building from source
 

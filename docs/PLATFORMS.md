@@ -525,14 +525,18 @@ second one next to it.
 1. **Don't follow links** (`notify::Config::with_follow_symlinks(false)` in `watcher.rs`): a link
    to `$HOME` exhausts inotify's watch limit.
 2. **For a linked worktree, also watch the common dir** (`watch::common_dir`): its `refs/`
-   recursively, `HEAD` and `packed-refs`.
+   recursively, `HEAD` and `packed-refs`. Watch the folder (not recursively) of each file the
+   config includes outside the watched folders (`config_includes`, `watcher/includes.rs`), and
+   follow the includes again after every full reload.
 3. **Assume the watcher can be silent.** Detect remote and virtual file systems with
    `volume::remote_kind` (statfs magic on Linux, `MNT_LOCAL` on macOS, `DRIVE_REMOTE` on
    Windows), tell the user once, and read the whole status every `REMOTE_POLL` (10 s) while
    focused. On Windows poll every `WINDOWS_POLL` (30 s) while focused (`state/watch.rs`,
    `poll_every`): a local repository's watcher sweeps its tree (`watch_sweep`: every folder
-   stat'd, the changed and racy ones and a rotating tenth listed again, the git dir's refs, index
-   and exclude and attributes files compared) and feeds what changed through the usual
+   stat'd, the changed and racy ones and a rotating tenth listed again, the git dir's refs, index,
+   exclude and attributes files and the config files with those they include compared, and
+   submodules' and nested repositories' work trees walked by their own ignore rules with their
+   HEAD and refs compared) and feeds what changed through the usual
    classification; a failed watcher, a tree past `SWEEP_MAX_ENTRIES` and the first sweep read the
    whole status. Keep the refresh on focus and F5.
 4. **Never trust size plus mtime alone.** Hash files up to 64 KiB, and treat a stamp taken

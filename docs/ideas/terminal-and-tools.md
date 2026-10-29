@@ -55,6 +55,7 @@ The built-in terminal, custom commands, external tools and a command-line compan
 - Honour a program's cursor shape requests (DECSCUSR) and a blinking cursor
 - Browse… for the custom shell program, and WSL distributions as shell choices
 - Find in the terminal's history
+- Dragging after a double or triple click extends the selection by whole words or lines
 - Clear for cmd in step with Windows' pseudoconsole (today it only clears locally)
 - A palette entry for New terminal tab
 - Show the running program's name in the close confirmation on macOS

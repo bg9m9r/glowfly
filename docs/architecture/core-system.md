@@ -53,6 +53,7 @@ source file, update its line here.
 ## Built-in terminal (`terminal/`)
 
 - The screen model and its history: scrolling, line numbers that selections follow, reading the text between two points, clearing (`history.rs`).
+- `words.rs`: the word or the wrapped line around a cell, for the terminal's double- and triple-click.
 - `edge.rs`: the cursor at the right edge: BS, CUB, EL, ECH and the other controls that start from the cursor act on the last cell right after a write into the last column, as in xterm.
 - `replay.rs`: redrawing the screen and its history on a fresh parser (Clear history, recovery from a parser panic), keeping which rows wrapped.
 - Key encoding and PTY sessions.
