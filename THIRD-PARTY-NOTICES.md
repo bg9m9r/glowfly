@@ -10742,7 +10742,7 @@ DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: libz-sys 1.1.30</summary>
+<summary>MIT: libz-sys 1.1.31</summary>
 
 ````text
 Copyright (c) 2014 Alex Crichton
@@ -13549,7 +13549,7 @@ the following restrictions:
 </details>
 
 <details>
-<summary>Zlib: libz-sys 1.1.30</summary>
+<summary>Zlib: libz-sys 1.1.31</summary>
 
 ````text
 Copyright notice:
