@@ -48,7 +48,7 @@ fn the_page_follows_the_job() {
     let (mut st, dir) = opened("monitor-off-page");
     on_hooks_page(&mut st, true);
     update(&mut st, Msg::Load(LoadMsg::TurnOffMonitor), Instant::now());
-    let output = "$ git config --unset core.fsmonitor\n$ git fsmonitor--daemon stop".to_owned();
+    let output = "$ git config --unset-all core.fsmonitor\n$ git fsmonitor--daemon stop".to_owned();
     update(&mut st, Msg::Load(LoadMsg::MonitorTurnedOff { output, ok: true }), Instant::now());
     assert!(st.job.is_none(), "the job ended");
     assert_eq!(shown(&st), (false, false));

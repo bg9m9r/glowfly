@@ -47,7 +47,7 @@ impl ChangeCounts {
 /// only, so no fsmonitor hook or filter runs (repositories not trusted).
 pub fn status_at(workdir: &Path, git_status: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState)> {
     let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
-    let (unstaged, staged) = load_status(&repo, git_status)?;
+    let (unstaged, staged) = load_status(&repo, git_status, None)?;
     Ok((unstaged, staged, super::op_state::state(&repo)))
 }
 
@@ -59,9 +59,21 @@ pub fn status_and_index(
     workdir: &Path,
     git_status: bool,
 ) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState, Option<super::IndexMemo>)> {
+    status_and_index_with(workdir, git_status, None)
+}
+
+/// `status_and_index`, letting git record the untracked cache and the monitor's token again
+/// when an index write dropped them (`index_ext::should_record`), with `records` remembering
+/// which index states it already tried.
+#[allow(clippy::type_complexity)]
+pub fn status_and_index_with(
+    workdir: &Path,
+    git_status: bool,
+    records: Option<&super::RecordMemo>,
+) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState, Option<super::IndexMemo>)> {
     let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     let memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i));
-    let (unstaged, staged) = load_status(&repo, git_status)?;
+    let (unstaged, staged) = load_status(&repo, git_status, records)?;
     Ok((unstaged, staged, super::op_state::state(&repo), memo))
 }
 
@@ -69,26 +81,39 @@ pub fn status_and_index(
 /// a fast status (fsmonitor, the untracked cache) or its index is large: libgit2 uses neither.
 /// `git_status` false: libgit2 only, so no fsmonitor hook or filter runs (repositories not
 /// trusted).
-pub(super) fn load_status(repo: &Repository, git_status: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
+pub(super) fn load_status(
+    repo: &Repository,
+    git_status: bool,
+    records: Option<&super::RecordMemo>,
+) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     let found = repo.index().map(|mut i| super::collide::collisions(&mut i)).unwrap_or_default();
-    load_status_with(repo, git_status, &found)
+    load_status_with(repo, git_status, &found, records)
 }
 
 /// `load_status` with the index's collisions already found (a full load finds them once).
+/// `records`: the memo of index states a read already let git record speed-ups in (None never
+/// lets git write the index).
 pub(super) fn load_status_with(
     repo: &Repository,
     git_status: bool,
     found: &[super::Collision],
+    records: Option<&super::RecordMemo>,
 ) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     if let Some(workdir) = repo.workdir()
         && git_status
         && wants_git(repo)
-        && let Some(lists) = match super::index_ext::lost_speedups(repo) {
-            true => super::status_cli::status_recording(workdir),
-            false => super::status_cli::status(workdir),
-        }
     {
-        return Ok(mark_rows(repo, lists, found));
+        let lost = super::index_ext::should_record(repo, records);
+        let lists = match &lost {
+            Some(_) => super::status_cli::status_recording(workdir),
+            None => super::status_cli::status(workdir),
+        };
+        if let Some(l) = &lost {
+            super::index_ext::record_after(records, l);
+        }
+        if let Some(lists) = lists {
+            return Ok(mark_rows(repo, lists, found));
+        }
     }
     libgit2_status(repo).map(|lists| mark_rows(repo, lists, found))
 }

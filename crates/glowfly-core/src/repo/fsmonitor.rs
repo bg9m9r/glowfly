@@ -50,6 +50,13 @@ pub fn daemon_in_build_options(text: &str) -> bool {
     text.lines().any(|l| l.trim() == "feature: fsmonitor--daemon")
 }
 
+/// Whether git's daemon could watch the working directory `workdir` and give git a token: this
+/// OS has it, the git Glowfly runs was built with it, and the folder isn't on a network drive
+/// (which the daemon refuses). Asks git, so callers ask rarely.
+pub fn daemon_serves(workdir: &Path) -> bool {
+    crate::volume::remote_kind(workdir).is_none() && monitor_offer(None, daemon_built(workdir)) == MonitorOffer::Daemon
+}
+
 /// Whether the git Glowfly runs was built with the daemon, asked in `cwd`; None when git didn't
 /// answer. Older gits print no feature lines, so they read as built without it.
 pub fn daemon_built(cwd: &Path) -> Option<bool> {
@@ -76,9 +83,10 @@ pub fn monitor_enable_cmd() -> Vec<String> {
     line(&["config", "core.fsmonitor", "true"])
 }
 
-/// Turns the monitor off for this repository: unsets the local core.fsmonitor.
+/// Turns the monitor off for this repository: unsets the local core.fsmonitor, every value of
+/// it (plain `--unset` refuses a key set more than once, with the same exit code as an unset one).
 pub fn monitor_disable_cmd() -> Vec<String> {
-    line(&["config", "--unset", "core.fsmonitor"])
+    line(&["config", "--unset-all", "core.fsmonitor"])
 }
 
 /// Stops the daemon watching this working directory.
@@ -237,7 +245,8 @@ pub fn stop_monitor(cwd: &Path) -> String {
 
 /// Turns the monitor off in `cwd`: unsets core.fsmonitor first, so no git started meanwhile
 /// starts the daemon again, then stops the daemon. Returns whether both left it off, and the
-/// commands' log. A core.fsmonitor that wasn't set locally (git exits 5) counts as unset.
+/// commands' log. A core.fsmonitor that wasn't set locally (`--unset-all` exits 5 only then)
+/// counts as unset.
 pub fn turn_off_monitor(cwd: &Path) -> (bool, String) {
     let mut log = String::new();
     let unset = run(cwd, &monitor_disable_cmd(), gitcli::READ_TIMEOUT, &mut log);

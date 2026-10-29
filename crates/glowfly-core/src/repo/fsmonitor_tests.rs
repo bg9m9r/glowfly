@@ -32,7 +32,7 @@ fn the_commands_are_gits_own() {
     assert_eq!(monitor_status_cmd().join(" "), "fsmonitor--daemon status");
     assert_eq!(monitor_start_cmd().join(" "), "fsmonitor--daemon start");
     assert_eq!(monitor_enable_cmd().join(" "), "config core.fsmonitor true");
-    assert_eq!(monitor_disable_cmd().join(" "), "config --unset core.fsmonitor");
+    assert_eq!(monitor_disable_cmd().join(" "), "config --unset-all core.fsmonitor");
     assert_eq!(monitor_stop_cmd().join(" "), "fsmonitor--daemon stop");
     assert_eq!(monitor_record_cmd().join(" "), "status --porcelain --untracked-files=all");
     assert_eq!(untracked_cache_cmds(StatusSpeedups::default()).last(), Some(&monitor_record_cmd()));
@@ -147,7 +147,7 @@ fn the_daemon_starts_and_is_confirmed() {
     // Off again: the setting is gone and no daemon watches; a second time changes nothing.
     let (ok, log) = turn_off_monitor(&dir);
     assert!(ok, "{log}");
-    assert!(log.contains("$ git config --unset core.fsmonitor") && log.contains("$ git fsmonitor--daemon stop"), "{log}");
+    assert!(log.contains("$ git config --unset-all core.fsmonitor") && log.contains("$ git fsmonitor--daemon stop"), "{log}");
     assert!(!status_speedups(&dir).fsmonitor, "{log}");
     let status = gitcli::output(&dir, &monitor_status_cmd(), "", gitcli::NO_PROMPTS, None);
     assert_eq!(status_answer(&status), Ok(false), "{log}");
@@ -181,5 +181,26 @@ fn stopping_and_turning_off_without_a_daemon() {
     assert!(!status_speedups(&dir).fsmonitor, "{log}");
     let (ok, log) = turn_off_monitor(&dir);
     assert!(ok, "never set: {log}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn turning_off_unsets_every_local_value() {
+    let dir = scratch_repo("fsmonitor-off-twice");
+    git(&dir, &["config", "--add", "core.fsmonitor", "true"]);
+    git(&dir, &["config", "--add", "core.fsmonitor", "true"]);
+    let (ok, log) = turn_off_monitor(&dir);
+    assert!(ok, "{log}");
+    let left = gitcli::read(&dir, &args(&["config", "--local", "--get-all", "core.fsmonitor"]));
+    assert!(!left.ok && left.stdout.trim().is_empty(), "both values are gone: {}", left.stdout);
+    assert!(!status_speedups(&dir).fsmonitor, "{log}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_daemon_serves_only_where_git_offers_it() {
+    let dir = scratch_repo("fsmonitor-serves");
+    let built = daemon_built(&dir) == Some(true);
+    assert_eq!(daemon_serves(&dir), built && Os::current() != Os::Linux, "a local folder");
     let _ = std::fs::remove_dir_all(&dir);
 }

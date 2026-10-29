@@ -583,10 +583,13 @@ second one next to it.
    Offer it only to a git whose `git version --build-options` names `fsmonitor--daemon`
    (`repo::daemon_built`). On Windows the daemon holds its working directory open: stop it
    (`repo::stop_monitor`) before removing or moving a worktree. Turning it off unsets
-   core.fsmonitor before stopping the daemon, so no git started meanwhile starts it again.
+   core.fsmonitor (every local value: `--unset-all`) before stopping the daemon, so no git
+   started meanwhile starts it again.
 7. **libgit2's index writes drop the extensions it doesn't know** (the untracked cache, the
    monitor's token). Don't copy them back into a rewritten index; a trusted whole status read
-   lets git record them again (`repo::index_ext`).
+   lets git record them again (`repo::index_ext`), the token only where a daemon can give one
+   (`repo::daemon_serves`), and once per index state (`repo::RecordMemo`), so a record that
+   brings nothing back isn't repeated on every refresh.
 
 ### Persistence
 

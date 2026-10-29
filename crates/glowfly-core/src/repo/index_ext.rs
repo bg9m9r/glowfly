@@ -1,9 +1,15 @@
 //! The extensions an index file carries after its entries (`TREE`, `UNTR`, `FSMN`, …), read
 //! from the file itself: libgit2 writes only the ones it knows, so git's untracked cache
 //! (`UNTR`) and file system monitor token (`FSMN`) can be lost by an index write Glowfly makes
-//! through libgit2, and the status read after it is slow again until git records them anew.
+//! through libgit2, and the status read after it is slow again until git records them anew. A
+//! trusted whole status read then lets git write the index once (`should_record`), remembering
+//! in the runner's `RecordMemo` that it tried, so a record that brings nothing back isn't
+//! repeated until the index changes.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, MutexGuard};
+use std::time::SystemTime;
 
 /// git's untracked cache.
 pub const UNTRACKED_CACHE: &str = "UNTR";
@@ -26,7 +32,7 @@ pub fn index_extensions(file: &Path) -> Option<Vec<String>> {
 }
 
 fn be32(b: &[u8], at: usize) -> Option<u32> {
-    Some(u32::from_be_bytes(b.get(at..at + 4)?.try_into().ok()?))
+    Some(u32::from_be_bytes(b.get(at..at.checked_add(4)?)?.try_into().ok()?))
 }
 
 /// The extensions of the index `b`, whose object names are `hash` bytes long; None unless
@@ -68,38 +74,120 @@ fn extensions_in(b: &[u8], hash: usize) -> Option<Vec<String>> {
     }
     let mut found = Vec::new();
     while at < end {
-        let sig = b.get(at..at + 4)?;
-        let size = usize::try_from(be32(b, at + 4)?).ok()?;
+        let sig = b.get(at..at.checked_add(4)?)?;
+        let size = usize::try_from(be32(b, at.checked_add(4)?)?).ok()?;
         found.push(String::from_utf8_lossy(sig).into_owned());
-        at = at.checked_add(8 + size)?;
+        at = at.checked_add(8)?.checked_add(size)?;
     }
     (at == end).then_some(found)
 }
 
-/// Whether `repo`'s config turns on a speed-up its index no longer records: the untracked cache
-/// (kept for Glowfly's `--untracked-files=all` read unless `status.showUntrackedFiles` says
-/// otherwise) or the token of git's file system monitor daemon. A whole status read by git then lets git write
-/// the index, so it records them again; once they are back, reads take no index lock again.
-/// False when the index can't be read here (too large, or a split index).
-pub(super) fn lost_speedups(repo: &git2::Repository) -> bool {
-    let Ok(config) = repo.config() else { return false };
+/// An index file's size and modification time: a record already tried is not tried again
+/// until the index changes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct IndexStamp {
+    len: u64,
+    modified: Option<SystemTime>,
+}
+
+impl IndexStamp {
+    fn of(file: &Path) -> Option<IndexStamp> {
+        let m = std::fs::metadata(file).ok()?;
+        Some(IndexStamp { len: m.len(), modified: m.modified().ok() })
+    }
+}
+
+/// The most index files whose last record is remembered.
+const MAX_REMEMBERED: usize = 64;
+
+/// Which index files a status read already let git record its speed-ups in, as they were after
+/// that read, so a record that brought nothing back isn't repeated on every refresh. The
+/// runner owns one and lends it to its whole status reads (as it does the graph cache).
+#[derive(Default)]
+pub struct RecordMemo {
+    tried: Mutex<Vec<(PathBuf, IndexStamp)>>,
+    records: AtomicUsize,
+}
+
+impl RecordMemo {
+    /// How many reads let git record the speed-ups (tests, the debug log).
+    pub fn records(&self) -> usize {
+        self.records.load(Ordering::Relaxed)
+    }
+
+    fn tried(&self) -> MutexGuard<'_, Vec<(PathBuf, IndexStamp)>> {
+        self.tried.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Whether the index at `file`, as it is now (`stamp`), was already left by a record.
+    fn already(&self, file: &Path, stamp: IndexStamp) -> bool {
+        self.tried().iter().any(|(f, s)| f == file && *s == stamp)
+    }
+
+    /// Remembers the index at `file` as it is now, after a record (or a decision not to try).
+    fn remember(&self, file: &Path) {
+        let Some(stamp) = IndexStamp::of(file) else { return };
+        let mut tried = self.tried();
+        tried.retain(|(f, _)| f != file);
+        if tried.len() >= MAX_REMEMBERED {
+            tried.remove(0);
+        }
+        tried.push((file.to_path_buf(), stamp));
+    }
+}
+
+/// What a whole status read needs to know to record the speed-ups again (`record_after`).
+pub(super) struct Lost {
+    file: PathBuf,
+}
+
+/// Whether the whole status read of `repo` about to run should let git write the index, so it
+/// records again a speed-up its config turns on but the index no longer has: the untracked
+/// cache (kept for Glowfly's `--untracked-files=all` read unless `status.showUntrackedFiles`
+/// says otherwise), or the token of git's own file system monitor daemon, but only where a
+/// daemon can give one (`fsmonitor::daemon_serves`: a Watchman hook, a git without the daemon,
+/// Linux or a network drive never would). Not again for an index `memo` saw after a record,
+/// until it changes. None when there is nothing to record, the index can't be read here (too
+/// large, or a split index), or no memo was lent.
+pub(super) fn should_record(repo: &git2::Repository, memo: Option<&RecordMemo>) -> Option<Lost> {
+    let memo = memo?;
+    let config = repo.config().ok()?;
     let s = super::status_speed::speedups_of(&config);
     let wants_cache = s.untracked_cache && s.show_untracked_all != Some(false);
-    // Only git's own daemon: a hook (Watchman's) that isn't running never gives a token, and
-    // every read would then take the index lock.
     let daemon = config.get_bool("core.fsmonitor").unwrap_or(false);
     if !wants_cache && !daemon {
-        return false;
+        return None;
     }
-    let Some(found) = repo.index().ok().and_then(|i| i.path().map(Path::to_path_buf)).and_then(|f| index_extensions(&f)) else {
-        return false;
-    };
+    let file = repo.index().ok()?.path()?.to_path_buf();
+    let stamp = IndexStamp::of(&file)?;
+    if memo.already(&file, stamp) {
+        return None;
+    }
+    let found = index_extensions(&file)?;
     // A split index keeps the entries elsewhere; git records the extensions in its own way.
     if found.iter().any(|e| e == "link") {
-        return false;
+        return None;
     }
     let has = |sig: &str| found.iter().any(|e| e == sig);
-    (wants_cache && !has(UNTRACKED_CACHE)) || (daemon && !has(MONITOR_TOKEN))
+    let cache_lost = wants_cache && !has(UNTRACKED_CACHE);
+    let token_lost = daemon && !has(MONITOR_TOKEN);
+    // Asked of git once per index state at most: remembered whatever the answer.
+    let serves = || repo.workdir().is_some_and(super::fsmonitor::daemon_serves);
+    if cache_lost || (token_lost && serves()) {
+        return Some(Lost { file });
+    }
+    if token_lost {
+        memo.remember(&file);
+    }
+    None
+}
+
+/// After a read that let git record (`lost`): counts it and remembers the index as git left it.
+pub(super) fn record_after(memo: Option<&RecordMemo>, lost: &Lost) {
+    if let Some(memo) = memo {
+        memo.records.fetch_add(1, Ordering::Relaxed);
+        memo.remember(&lost.file);
+    }
 }
 
 #[cfg(test)]

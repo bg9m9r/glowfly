@@ -2,7 +2,9 @@
 //! whether HEAD contains a branch tip). Each walks history, which on a large repository with
 //! many branches adds up to seconds per refresh, while the answer for a pair of commits never
 //! changes: commits are named by their content. Shallow repositories aren't cached, as
-//! deepening one changes what the same pair can reach. The app keeps one cache for its loads.
+//! deepening one changes what the same pair can reach. The app keeps one cache for its loads,
+//! which also carries the memo of index files its status reads let git record speed-ups in
+//! (`index_ext::RecordMemo`).
 
 use git2::{Oid, Repository};
 use std::collections::HashMap;
@@ -23,11 +25,17 @@ enum Answer {
     Yes(bool),
 }
 
-/// Answers by question, shared by the loads of one app (`repo::load_cached`).
+/// Answers by question, shared by the loads of one app (`repo::load_cached`), and the index
+/// record memo its loads and status reads share.
 #[derive(Default)]
-pub struct GraphCache(Mutex<HashMap<Question, Answer>>);
+pub struct GraphCache(Mutex<HashMap<Question, Answer>>, super::RecordMemo);
 
 impl GraphCache {
+    /// Which index states a status read already let git record speed-ups in.
+    pub fn records(&self) -> &super::RecordMemo {
+        &self.1
+    }
+
     fn lock(&self) -> MutexGuard<'_, HashMap<Question, Answer>> {
         self.0.lock().unwrap_or_else(|e| e.into_inner())
     }

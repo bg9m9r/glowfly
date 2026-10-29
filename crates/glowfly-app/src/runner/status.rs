@@ -17,6 +17,7 @@ pub(super) fn load(
     open: Option<String>,
     git_status: bool,
     paths: Option<Vec<String>>,
+    records: &repo::RecordMemo,
 ) -> Msg {
     let open_stamp = open.and_then(|p| repo::open_file_stamp(workdir, &p));
     if let Some(paths) = paths {
@@ -31,7 +32,7 @@ pub(super) fn load(
             Err(e) => return loaded(generation, Err(e.to_string()), None, open_stamp, None),
         }
     }
-    whole(workdir, generation, submodules, open_stamp, git_status)
+    whole(workdir, generation, submodules, open_stamp, git_status, records)
 }
 
 /// An index read (`Effect::LoadIndexStatus`), or the whole status when it can't be read so.
@@ -42,6 +43,7 @@ pub(super) fn load_index(
     open: Option<String>,
     git_status: bool,
     read: IndexRequest,
+    records: &repo::RecordMemo,
 ) -> Msg {
     let open_stamp = open.and_then(|p| repo::open_file_stamp(workdir, &p));
     match repo::status_after_index_change(workdir, &read.old, &read.partners, &read.paths, git_status) {
@@ -50,7 +52,7 @@ pub(super) fn load_index(
             let result = Ok(StatusRead::Index { paths: r.paths, staged: r.staged });
             loaded(generation, result, submodules, open_stamp, Some(Arc::new(r.memo)))
         }
-        Ok(None) => whole(workdir, generation, submodules, open_stamp, git_status),
+        Ok(None) => whole(workdir, generation, submodules, open_stamp, git_status, records),
         Err(e) => loaded(generation, Err(e.to_string()), None, open_stamp, None),
     }
 }
@@ -66,9 +68,11 @@ fn loaded(
     Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow: None, lfs_patterns: None, index })
 }
 
-fn whole(workdir: &Path, generation: u64, submodules: bool, open_stamp: Option<u64>, git_status: bool) -> Msg {
+/// The whole status; `records` (the runner's, in its graph cache) lets git record speed-ups an
+/// index write dropped, once per index state.
+fn whole(workdir: &Path, generation: u64, submodules: bool, open_stamp: Option<u64>, git_status: bool, records: &repo::RecordMemo) -> Msg {
     let started = Instant::now();
-    let (result, index) = match repo::status_and_index(workdir, git_status) {
+    let (result, index) = match repo::status_and_index_with(workdir, git_status, Some(records)) {
         Ok((u, s, state, memo)) => (Ok(StatusRead::Whole(u, s, state)), memo.map(Arc::new)),
         Err(e) => (Err(e.to_string()), None),
     };
