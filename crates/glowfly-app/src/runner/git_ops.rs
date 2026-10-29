@@ -92,8 +92,17 @@ fn conflict_change(workdir: &Path, op: LocalOp) -> Result<Option<Action>, Confli
 
 /// Checks that `action` still applies, then runs the git commands that undo or redo it. With
 /// `opts.stash_first`, local changes are stashed before anything is checked; the stash's output
-/// leads every result.
-pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool, opts: UndoOpts) -> Msg {
+/// leads every result. Where hooks follow the working tree, every command (the stash first
+/// too) goes through `gate`, and a command it holds fails the undo.
+pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, gate: Option<&super::trust_gate::Gate>) -> Msg {
+    // The trust gate (#273): the one place undo's git commands run.
+    let run_git = |cwd: &Path, cmds: &[Vec<String>], file: Option<(std::path::PathBuf, String)>, prompts: bool| match gate {
+        Some(g) => match run_git_gated(cwd, cmds, file, prompts, g) {
+            Gated::Done(ok, output) => (ok, output),
+            Gated::Halted { halt, output, .. } => (false, format!("{output}\n{}", halt.describe(g.lang)).trim().to_owned()),
+        },
+        None => run_git(cwd, cmds, file, prompts),
+    };
     let mut stashed = String::new();
     if opts.stash_first {
         let (ok, output) = run_git(cwd, &[undo::stash_first_command()], None, true);

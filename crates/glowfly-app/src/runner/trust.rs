@@ -104,7 +104,7 @@ pub(super) fn verify(c: &TrustCheck, effect: &Effect) -> Verdict {
     let accept = c.accepted.as_ref().filter(|a| a.at.is_none()).map(|a| &a.reason);
     match trust_gate::compare(&c.workdir, &now.follows, c.saved.as_ref(), &trust_gate::targets(effect), accept) {
         Ok(()) => {
-            let commands = matches!(effect, Effect::RunGit { .. });
+            let commands = matches!(effect, Effect::RunGit { .. } | Effect::UndoRedo { .. });
             let gate = || Gate::new(c.workdir.clone(), now.follows.clone(), c.saved.clone(), c.accepted.clone(), c.lang);
             Verdict::Pass(commands.then(gate))
         }

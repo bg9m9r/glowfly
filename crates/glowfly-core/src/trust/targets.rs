@@ -94,7 +94,57 @@ fn valued(sub: &str, opt: &str) -> bool {
     of.contains(&opt)
 }
 
-/// Options of a cherry-pick or revert that aren't for its rev-list (any other is passed on).
+/// The rev-list options a cherry-pick or revert may pass on (any other is Unmodeled): those
+/// that choose commits, never one that writes a file (`--output`).
+fn walk_option(opt: &str) -> bool {
+    const BARE: &[&str] = &[
+        "--not",
+        "--all",
+        "--branches",
+        "--tags",
+        "--remotes",
+        "--no-merges",
+        "--merges",
+        "--first-parent",
+        "--ancestry-path",
+        "--topo-order",
+        "--date-order",
+        "--author-date-order",
+        "--cherry-pick",
+        "--right-only",
+        "--left-only",
+        "--cherry",
+        "--simplify-by-decoration",
+        "--no-walk",
+        "--do-walk",
+        "--regexp-ignore-case",
+        "-i",
+        "--all-match",
+        "--invert-grep",
+    ];
+    let valued = [
+        "--branches=",
+        "--tags=",
+        "--remotes=",
+        "--glob=",
+        "--exclude=",
+        "--max-count=",
+        "--skip=",
+        "--since=",
+        "--after=",
+        "--until=",
+        "--before=",
+        "--author=",
+        "--committer=",
+        "--grep=",
+        "--min-parents=",
+        "--max-parents=",
+        "--no-walk=",
+    ];
+    BARE.contains(&opt) || valued.iter().any(|p| opt.starts_with(p))
+}
+
+/// Options of a cherry-pick or revert that aren't for its rev-list.
 fn pick_own(opt: &str) -> bool {
     const OWN: &[&str] = &[
         "-e",
@@ -168,7 +218,14 @@ pub fn targets(cmd: &[String]) -> Result<Vec<Target>, Unchecked> {
         _ if INERT.contains(&sub) => return Ok(Vec::new()),
         "stash" => {
             return match first {
-                "" | "push" | "save" | "list" | "show" | "drop" | "clear" | "store" | "create" => Ok(Vec::new()),
+                "list" | "show" | "drop" | "clear" | "store" | "create" => Ok(Vec::new()),
+                // Stashing writes HEAD's version of the files (and with --keep-index, the
+                // index's), and git runs hooks from it in the same command.
+                "" | "push" | "save" => {
+                    let keep = args.iter().any(|a| a == "--keep-index" || a == "-k");
+                    let head = Target::Rev("HEAD".to_owned());
+                    Ok(if keep { vec![head, Target::Index(vec![".".to_owned()])] } else { vec![head] })
+                }
                 "apply" | "pop" => {
                     let index = args.iter().any(|a| a == "--index");
                     let spec = args[1..].iter().find(|a| !a.starts_with('-')).cloned().unwrap_or_else(|| "stash@{0}".to_owned());
@@ -194,7 +251,7 @@ pub fn targets(cmd: &[String]) -> Result<Vec<Target>, Unchecked> {
     let mut after_dashes: Option<Vec<String>> = None;
     let (mut onto, mut root, mut keep_base, mut sequencer, mut skip, mut creates) = (None, false, false, false, false, false);
     let (mut how, mut source, mut worktree, mut staged, mut cached, mut hard) = (How::default(), None, false, false, false, false);
-    let (mut apply_opts, mut format, mut strategy) = (Vec::new(), None, None);
+    let (mut apply_opts, mut format, mut strategy, mut force) = (Vec::new(), None, None, false);
     let mut it = args.iter();
     while let Some(a) = it.next() {
         let a = a.as_str();
@@ -253,6 +310,7 @@ pub fn targets(cmd: &[String]) -> Result<Vec<Target>, Unchecked> {
             "-S" | "--staged" if sub == "restore" => staged = true,
             "--cached" | "--index" if sub == "apply" => cached |= a == "--cached",
             "--hard" | "--merge" | "--keep" if sub == "reset" => hard = true,
+            "-f" | "--force" if sub == "checkout" => force = true,
             "-3" | "--3way" if sub == "am" => return unmodeled("--3way"),
             "-i" | "--interactive" | "-r" | "--rebase-merges" | "--apply" | "--autosquash" if sub == "rebase" => return unmodeled(a),
             v if sub == "rebase" && (v.starts_with("-C") || v.starts_with("--whitespace") || v.starts_with("--rebase-merges")) => {
@@ -268,7 +326,10 @@ pub fn targets(cmd: &[String]) -> Result<Vec<Target>, Unchecked> {
             v if valued(sub, v) => {
                 it.next();
             }
-            v if matches!(sub, "cherry-pick" | "revert") && v.starts_with('-') && !pick_own(v) => how.walk.push(v.to_owned()),
+            v if matches!(sub, "cherry-pick" | "revert") && v.starts_with('-') && !pick_own(v) && walk_option(v) => {
+                how.walk.push(v.to_owned())
+            }
+            v if matches!(sub, "cherry-pick" | "revert") && v.starts_with('-') && !pick_own(v) => return unmodeled(v),
             v if v.starts_with('-') => {}
             v => positional.push(v.to_owned()),
         }
@@ -286,6 +347,8 @@ pub fn targets(cmd: &[String]) -> Result<Vec<Target>, Unchecked> {
         "switch" => positional.first().map(|n| Target::Switch { name: n.clone(), paths: false }).into_iter().collect(),
         "checkout" => match (positional.as_slice(), after_dashes) {
             ([], Some(paths)) => vec![Target::Index(paths)],
+            // `checkout -f` puts back HEAD's version of every file.
+            ([], None) if force => vec![rev(&"HEAD".to_owned())],
             ([], None) => Vec::new(),
             ([tree, ..], Some(paths)) if !paths.is_empty() => vec![Target::Paths { tree: tree.clone(), paths, maybe_paths: false }],
             ([name], Some(_)) => vec![Target::Switch { name: name.clone(), paths: false }],
@@ -297,11 +360,13 @@ pub fn targets(cmd: &[String]) -> Result<Vec<Target>, Unchecked> {
             match source {
                 _ if staged && !worktree => Vec::new(),
                 Some(tree) => vec![Target::Paths { tree, paths, maybe_paths: false }],
+                // Both the index and the files: from HEAD, as git restores them.
+                None if staged => vec![Target::Paths { tree: "HEAD".to_owned(), paths, maybe_paths: false }],
                 None => vec![Target::Index(paths)],
             }
         }
         // `reset <rev>` moves the index only; `--hard`, `--merge` and `--keep` write the files.
-        "reset" if hard => positional.first().map(rev).into_iter().collect(),
+        "reset" if hard => vec![rev(positional.first().unwrap_or(&"HEAD".to_owned()))],
         "reset" => Vec::new(),
         "merge" if positional.is_empty() => vec![Target::Merged { revs: vec!["@{upstream}".to_owned()], how }],
         "merge" => vec![Target::Merged { revs: positional, how }],

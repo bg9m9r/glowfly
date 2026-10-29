@@ -5,6 +5,8 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 ### Repository trust
 
 - Rescan submodules (their own settings and hooks) between a job's commands, as `scan_now` does for the repository itself; it skips them now (#277).
+- Tell apart two items that couldn't be read for the same reason, so Trust and run on one doesn't pass the other too.
+- Send a job's `on_fail_check` command through the trust gate like its own commands.
 - Make the merges of a rebase-merges todo, an octopus merge and an `am -3` fallback in memory, so they are compared instead of held.
 - A Preferences list to review and revoke trust decisions (they are already remembered per
   repository)

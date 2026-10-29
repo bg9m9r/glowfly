@@ -226,3 +226,52 @@ fn a_command_the_gate_doesn_t_read_is_held_where_hooks_follow_the_working_tree()
     assert!(!work.join(".git/BISECT_START").exists(), "bisect never ran");
     let _ = std::fs::remove_dir_all(work.parent().unwrap());
 }
+
+/// `work` with HEAD moved (a mixed reset, which writes no file) to a commit that adds a
+/// followed hook: the files still have the trusted hooks, HEAD's tree doesn't.
+/// With the check made while HEAD was the trusted commit.
+fn head_on_an_unchecked_hook(name: &str) -> (PathBuf, TrustCheck, git2::Oid, git2::Oid) {
+    let (work, _bare, other) = following(name);
+    let check = trusted(&work);
+    push_change(&other, ".githooks/reference-transaction", "#!/bin/sh\necho ran >> ../evil.txt\n");
+    let trusted = git2::Repository::open(&work).unwrap().head().unwrap().target().unwrap();
+    git(&work, &["-c", "core.hooksPath=", "fetch", "-q"]);
+    git(&work, &["-c", "core.hooksPath=", "reset", "-q", "--mixed", "origin/main"]);
+    std::fs::write(work.join("dirty.txt"), "x\n").unwrap();
+    let evil = git2::Repository::open(&work).unwrap().head().unwrap().target().unwrap();
+    (work, check, trusted, evil)
+}
+
+#[test]
+fn writing_head_s_files_is_compared_with_head_s_hooks() {
+    let (work, check, _, _) = head_on_an_unchecked_hook("head-files");
+    for cmd in [&["stash", "push", "-u"][..], &["reset", "--hard"], &["checkout", "-f"]] {
+        let got = crate::runner::execute_checked(check.clone(), job(&work, &[cmd]));
+        assert!(matches!(got, Some(Msg::Trust(TrustMsg::Stale(_)))), "{cmd:?} is held");
+    }
+    assert!(!work.join(".githooks/reference-transaction").exists(), "the hook was never written");
+    assert!(!work.parent().unwrap().join("evil.txt").exists(), "and never ran");
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}
+
+#[test]
+fn undo_s_stash_first_goes_through_the_gate() {
+    let (work, check, trusted_head, evil) = head_on_an_unchecked_hook("undo-stash");
+    let follows = glowfly_core::trust::scan_at(&work).unwrap().follows;
+    let gate = Gate::new(work.clone(), follows, check.saved.clone(), None, check.lang);
+    let action = glowfly_core::undo::Action::Reset {
+        mode: glowfly_core::undo::ResetMode::Mixed,
+        branch: Some("main".into()),
+        from: trusted_head,
+        to: evil,
+        stash: None,
+    };
+    let opts = crate::effect::UndoOpts { stash_first: true, ..Default::default() };
+    let Msg::Job(JobMsg::JobDone { ok, .. }) = crate::runner::git_ops::undo_redo(&work, action, false, opts, Some(&gate)) else {
+        panic!("done")
+    };
+    assert!(!ok, "held");
+    assert!(work.join("dirty.txt").exists(), "nothing was stashed");
+    assert!(!work.join(".githooks/reference-transaction").exists());
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}

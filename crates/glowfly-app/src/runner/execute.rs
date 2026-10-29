@@ -153,7 +153,8 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         Effect::UndoRedo { cwd, action, redo, opts } => {
             let what = action.describe();
             let op = if redo { glowfly_core::journal::Op::Redo { what } } else { glowfly_core::journal::Op::Undo { what } };
-            Some(journal::around(&cwd, Some(op), || git_ops::undo_redo(&cwd, action, redo, opts)))
+            let gate = cx.gate.map(|(g, _)| g);
+            Some(journal::around(&cwd, Some(op), || git_ops::undo_redo(&cwd, action, redo, opts, gate)))
         }
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
             Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))

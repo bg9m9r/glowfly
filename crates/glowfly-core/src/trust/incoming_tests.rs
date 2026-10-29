@@ -102,7 +102,16 @@ fn the_commands_that_move_the_working_tree_name_what_they_bring() {
     assert!(unmodeled(&["cherry-pick", "--stdin"]));
     assert_eq!(of(&["stash", "pop", "--index", "1"]), [Target::Stash { spec: "stash@{1}".into(), index: true }]);
     assert_eq!(of(&["stash", "apply"]), [Target::Stash { spec: "stash@{0}".into(), index: false }]);
-    assert_eq!(of(&["stash", "push", "-u"]), []);
+    assert_eq!(of(&["stash", "push", "-u"]), [rev("HEAD")], "a stash writes HEAD's files");
+    assert_eq!(of(&["stash"]), [rev("HEAD")]);
+    assert_eq!(of(&["stash", "save", "--keep-index"]), [rev("HEAD"), Target::Index(args(&["."]))]);
+    assert_eq!(of(&["stash", "list"]), []);
+    assert_eq!(of(&["reset", "--hard"]), [rev("HEAD")], "a bare reset --hard writes HEAD's files");
+    assert_eq!(of(&["reset", "--keep"]), [rev("HEAD")]);
+    assert_eq!(of(&["checkout", "-f"]), [rev("HEAD")]);
+    assert_eq!(of(&["checkout"]), []);
+    assert_eq!(of(&["restore", "-S", "-W", "x"]), [Target::Paths { tree: "HEAD".into(), paths: args(&["x"]), maybe_paths: false }]);
+    assert!(unmodeled(&["cherry-pick", "--output=/tmp/x", "a"]), "only rev-list options that choose commits");
     assert_eq!(of(&["reset", "--hard", "v1"]), [rev("v1")]);
     assert_eq!(of(&["reset", "v1"]), [], "the index only");
     assert_eq!(of(&["-c", "x=y", "pull", "--rebase"]), [], "pinned by pull.rs");
