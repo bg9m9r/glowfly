@@ -27,9 +27,10 @@ fn toolbar_buttons(h: &H) -> Vec<(String, f64, f64)> {
     out
 }
 
-/// A harness for `variant`'s `case` in a window `width` wide, in `lang`.
-fn narrow(case: usize, labels: bool, lang: &str, width: f32) -> (H, std::path::PathBuf) {
-    let (mut st, dir) = variant(case, labels, &format!("toolbar-fold-{case}-{labels}-{lang}-{width}"));
+/// A harness for `variant`'s `case` in a window `width` wide, in `lang`. `test` names the
+/// fixture folder with the rest, so tests running in parallel never share one.
+fn narrow(test: &str, case: usize, labels: bool, lang: &str, width: f32) -> (H, std::path::PathBuf) {
+    let (mut st, dir) = variant(case, labels, &format!("toolbar-{test}-{case}-{labels}-{lang}-{width}"));
     st.settings.language = lang.into();
     let mut h = harness_sized(st, true, egui::vec2(width, 700.0));
     h.run();
@@ -42,7 +43,7 @@ fn narrow_windows_fold_the_toolbar_without_overlap() {
         for width in [900.0, 1000.0, 1100.0, 1200.0, 1300.0, 1400.0] {
             // Plain, the 80-character branch with the conflict chip, and a hosting service.
             for (case, labels) in [(0, true), (4, true), (5, true), (5, false)] {
-                let (h, dir) = narrow(case, labels, lang, width);
+                let (h, dir) = narrow("overlap", case, labels, lang, width);
                 let at = format!("{lang} {width} case {case} labels {labels}");
                 let buttons = toolbar_buttons(&h);
                 for pair in buttons.windows(2) {
@@ -64,7 +65,7 @@ fn narrow_windows_fold_the_toolbar_without_overlap() {
 #[test]
 fn parts_fold_in_order() {
     let folded = |width: f32| {
-        let (h, dir) = narrow(5, true, "en", width);
+        let (h, dir) = narrow("order", 5, true, "en", width);
         let shown: Vec<String> = toolbar_buttons(&h).into_iter().map(|b| b.0).collect();
         drop(h);
         remove_fixture(&dir);
@@ -92,7 +93,7 @@ fn parts_fold_in_order() {
 
 #[test]
 fn the_more_menu_runs_the_folded_buttons() {
-    let (mut h, dir) = narrow(5, true, "en", 900.0);
+    let (mut h, dir) = narrow("menu", 5, true, "en", 900.0);
     assert!(h.query_by_label("Show the terminal panel").is_none(), "Terminal folded");
     h.get_by_label("More toolbar actions").click();
     h.run();
@@ -114,7 +115,7 @@ fn the_more_menu_runs_the_folded_buttons() {
 fn a_chip_folds_a_part_instead_of_squeezing_the_pickers() {
     // The 80-character branch without the chip (case 1) and with it (case 4).
     let branch_w = |case: usize| {
-        let (h, dir) = narrow(case, true, "en", 1300.0);
+        let (h, dir) = narrow("chip", case, true, "en", 1300.0);
         let name = h.state().0.snap.as_ref().and_then(|s| s.head_branch.clone()).expect("a branch");
         let (l, r) = span(&h, &name);
         drop(h);
