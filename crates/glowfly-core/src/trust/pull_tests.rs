@@ -193,6 +193,12 @@ fn following(name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
     let (work, bare) = with_origin(name);
     std::fs::create_dir_all(work.join(".githooks")).unwrap();
     write(&work, ".githooks/post-merge", "#!/bin/sh\necho one > ran.txt\n");
+    // Executable, or git skips it on Unix (Windows doesn't check).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(work.join(".githooks/post-merge"), std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
     git(&work, &["add", "."]);
     git(&work, &["commit", "-q", "-m", "hooks"]);
     git(&work, &["push", "-q", "origin", "main"]);
