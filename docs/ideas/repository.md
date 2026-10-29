@@ -47,9 +47,14 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   into the working tree are followed)
 - Re-check the partial-clone, forge and status-tip reads in the runner, as the jobs and the
   other git reads are
-- Stamp a read's reused scan with file ids or content as well, where mtimes are coarse
-  (FAT32's two seconds)
 - Offer a fetch with hooks off from the "couldn't compare" prompt of a partial clone
+- Compare what a rebase leaves where hooks follow the working tree (each replayed commit and
+  the base are compared, not the merges the replay makes), and merge with git's own `ort`
+  options (`-X`, `merge.renames`) rather than libgit2's defaults
+- Mark a status read that fell back to libgit2 (the repository changed since it was trusted)
+  as reduced in the status bar
+- Stamp reused read scans by file id on Windows too (only creation time there; same-size
+  rewrites within the timestamp granularity reuse a stale read scan)
 - Don't ask again after a checkout when a hook's checked-out bytes differ from the trusted
   commit's only by line endings (core.autocrlf)
 
