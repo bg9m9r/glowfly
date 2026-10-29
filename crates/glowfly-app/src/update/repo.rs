@@ -149,13 +149,8 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     super::diff_gaps::diff_shown(st, fx);
                     super::diff_preview::diff_shown(st, fx);
                 }
-                // A reload that finds no changes left simply closes the diff.
-                Err(_) if reload => {
-                    st.session.diff.view = None;
-                    st.view.diff_lines.clear();
-                    st.session.tab_view.diff_expanded.clear();
-                    st.view.diff_open_hunk = None;
-                }
+                // A reload that finds no changes left closes the diff, or follows a new file unstaged.
+                Err(_) if reload => super::wip_list::emptied(st, target, fx),
                 Err(e) => {
                     st.view.diff_lines.clear();
                     st.view.diff_open_hunk = None;

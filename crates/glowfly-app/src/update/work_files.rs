@@ -132,7 +132,7 @@ fn success_text(t: Lang, op: &FileOp, ok: &WorkFileOk, hint: Option<&str>) -> St
             }
             return text;
         }
-        FileOp::Discard { path, mode } => return deleted_text(path, *mode, deleted, false, note),
+        FileOp::Discard { path, mode, .. } => return deleted_text(path, *mode, deleted, false, note),
     };
     // A staged rename's new path stays tracked, so it is never "ignored".
     if ignored && !matches!(op, FileOp::Rename { stage: true, .. }) {

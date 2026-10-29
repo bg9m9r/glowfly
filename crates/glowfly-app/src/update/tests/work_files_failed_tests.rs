@@ -57,7 +57,7 @@ fn a_failed_discard_whose_file_went_is_undone_from_the_kept_copy() {
         via: DeleteVia::Permanent,
         staged: None,
     });
-    let op = FileOp::Discard { path: "u.txt".into(), mode: DeleteMode::Permanent };
+    let op = FileOp::Discard { path: "u.txt".into(), mode: DeleteMode::Permanent, seen: None };
     drive(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileFailed { op, error: "the index is locked".into(), undo }));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("u.txt")).unwrap(), "work\n");

@@ -1,20 +1,23 @@
 //! Deleting working-tree files and discarding untracked ones: the confirmations (worded by what
 //! status says about the path and by whether the file goes to the Recycle Bin / Trash), the
+//! discard that discarding every line of an untracked file's diff sends instead, the
 //! follow-up that offers a permanent delete when the trash can't take a file, and the toasts that
 //! say how the file went.
 //!
 //! The trash-or-permanent choice is made when a confirmation opens and travels inside it, so
 //! changing the preference while it is up doesn't change what runs or what the text promised.
 
-use crate::effect::{DeleteMode, FileOp};
+use crate::effect::{DeleteMode, Effect, FileOp, SeenLines};
 use crate::keymap::BindingId;
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::TrashOffer;
 use crate::state::files::{TRASH, staged_rename, unstages_on_delete};
+use crate::state::path_hazards::hazard_of;
 use crate::state::{AppState, Modal};
 use glowfly_core::i18n::Lang;
-use glowfly_core::repo::{Deleted, TrashProblem, TrashRefusal};
+use glowfly_core::repo::{Deleted, Hunk, TrashProblem, TrashRefusal};
+use std::collections::BTreeSet;
 
 /// Opens the confirmation for deleting `path`, worded by what status says about it. Conflicted
 /// paths are refused, and so are files already gone from the working tree unless they are staged
@@ -79,8 +82,31 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
         let hint = st.keymap.paren(BindingId::Undo);
         (st.settings.lang().trf("files.discard.permanent_body", &[("path", &path), ("hint", &hint)]), "Discard".to_owned())
     };
-    st.modal =
-        Some(Modal::danger("Discard changes", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode }))));
+    st.modal = Some(Modal::danger(
+        "Discard changes",
+        body,
+        button,
+        Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode, seen: None })),
+    ));
+}
+
+/// Whether discarding `lines` of `hunk`, the only hunk of `path`'s unstaged diff, discards the
+/// whole of an untracked file: every line of the hunk is added and every one is selected. A path
+/// with a hazard keeps the line discard, which core checks for twins.
+pub(super) fn every_line_untracked(st: &AppState, path: &str, hunk: &Hunk, lines: &BTreeSet<usize>) -> bool {
+    let untracked = st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.path == path && f.status == '?'));
+    let mut added = hunk.lines.iter().enumerate().filter(|(_, l)| l.origin == '+').map(|(i, _)| i).peekable();
+    let only_added = hunk.lines.iter().all(|l| matches!(l.origin, '+' | '=' | '<' | '>'));
+    untracked && only_added && added.peek().is_some() && added.all(|i| lines.contains(&i)) && hazard_of(st, path).is_none()
+}
+
+/// Discards the untracked file `path` straight away, without the confirmation (Undo brings it
+/// back): every line of its diff was discarded (`seen`), which the runner checks it still has.
+pub(super) fn discard_seen(st: &mut AppState, path: String, seen: Option<Box<SeenLines>>, fx: &mut Vec<Effect>) {
+    let mode = DeleteMode::for_settings(&st.settings);
+    if let Some(workdir) = st.workdir() {
+        fx.push(Effect::WorkFile { workdir, op: FileOp::Discard { path, mode, seen } });
+    }
 }
 
 /// The confirmation for `path`, staged as new or (`renamed`) as a staged rename's new path:

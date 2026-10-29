@@ -1,6 +1,7 @@
 //! The WIP lists' keyboard: Up/Down between the Unstaged or Staged Files, moving on to the
-//! neighbouring file after S or U staged or unstaged the open one, and asking again for a file
-//! still opening when a refresh would reload the old one. In Tree mode the keys follow the
+//! neighbouring file after S or U staged or unstaged the open one, asking again for a file
+//! still opening when a refresh would reload the old one, and following a new file unstaged
+//! to its untracked view when its staged diff empties. In Tree mode the keys follow the
 //! tree's on-screen order and skip the files of collapsed folders.
 
 use crate::effect::Effect;
@@ -105,6 +106,22 @@ pub(super) fn op_done(st: &mut AppState, ok: bool, fx: &mut Vec<Effect>) {
     let next = st.snap.as_ref().and_then(|s| neighbour(st, s, staged, left.path()));
     if let Some(t) = next {
         open(st, t, fx);
+    }
+}
+
+/// A reload of the diff on screen found no changes left: closes it, unless it was a new file's
+/// staged diff and the file is untracked now (every line of it unstaged), which it follows to
+/// its untracked view.
+pub(super) fn emptied(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
+    st.session.diff.view = None;
+    st.view.diff_lines.clear();
+    st.session.tab_view.diff_expanded.clear();
+    st.view.diff_open_hunk = None;
+    let untracked = |p: &str| st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.path == p && f.status == '?'));
+    if let DiffTarget::Staged(p) = target
+        && untracked(&p)
+    {
+        open(st, DiffTarget::Unstaged(p), fx);
     }
 }
 
