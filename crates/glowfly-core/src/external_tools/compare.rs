@@ -40,7 +40,7 @@ pub fn diff_files(root: &Path, workdir: &Path, target: &DiffTarget, filters: boo
 
 fn side_file(session: &Session, workdir: &Path, path: &str, side: &SideSource, label: &str, filters: bool) -> Result<PathBuf> {
     Ok(match side {
-        SideSource::Blob { id, path: at } => session.write(label, at, &repo::blob_bytes(workdir, *id, at, filters)?)?,
+        SideSource::Blob { id, path: at, commit } => session.write(label, at, &repo::blob_bytes(workdir, *id, at, filters, *commit)?)?,
         SideSource::Empty => session.write("empty", path, &[])?,
         SideSource::Working(p) => workdir.join(p),
     })
@@ -66,11 +66,11 @@ pub fn merge_files(root: &Path, workdir: &Path, path: &str, filters: bool) -> Re
     let session = Session::create(root)?;
     let written = (|| -> Result<[PathBuf; 3]> {
         let base = match sides.base {
-            Some(id) => repo::blob_bytes(workdir, id, path, filters)?,
+            Some(id) => repo::blob_bytes(workdir, id, path, filters, None)?,
             None => Vec::new(),
         };
-        let ours = repo::blob_bytes(workdir, sides.ours, path, filters)?;
-        let theirs = repo::blob_bytes(workdir, sides.theirs, path, filters)?;
+        let ours = repo::blob_bytes(workdir, sides.ours, path, filters, None)?;
+        let theirs = repo::blob_bytes(workdir, sides.theirs, path, filters, None)?;
         Ok([session.write("base", path, &base)?, session.write("ours", path, &ours)?, session.write("theirs", path, &theirs)?])
     })();
     match written {

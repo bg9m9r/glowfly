@@ -3,6 +3,7 @@
 //! cap, and a Git LFS pointer's content through git's filters when asked. The text view
 //! (`file_at.rs`) and the image preview both read through `read`.
 
+use super::attr_source::{AttrSource, attr_repo};
 use super::file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAtOptions, LfsState};
 use crate::error::{Error, Result};
 use git2::{ErrorCode, ObjectType, Oid, Repository};
@@ -21,12 +22,12 @@ pub struct FileBytes {
     pub read_at: Oid,
 }
 
-/// What `read` found, with the repository opened for it.
+/// What `read` found; with `text`, also the path's `linguist-language` attribute.
 pub(super) struct Read {
-    pub repo: Repository,
     pub bytes: Vec<u8>,
     pub lfs: LfsState,
     pub read_at: Oid,
+    pub language: Option<String>,
 }
 
 /// The bytes of `path` in commit `oid` (with `o.before`, in its first parent that has it). A
@@ -39,13 +40,13 @@ pub fn file_bytes_at(workdir: &Path, oid: Oid, path: &str, o: FileAtOptions) -> 
 
 /// Reads `path` as `file_bytes_at` does. With `text`, binary content is refused before the
 /// size is checked (`BINARY_NOT_SHOWN`, with " (stored in Git LFS)" for smudged content).
+/// Gitattributes (binary, the language, a Git LFS file's filters) are the commit's own.
 pub(super) fn read(workdir: &Path, oid: Oid, path: &str, o: FileAtOptions, text: bool) -> Result<Read> {
     let repo = Repository::open(workdir)?;
-    let (bytes, lfs, read_at) = read_in(&repo, workdir, oid, path, o, text)?;
-    Ok(Read { repo, bytes, lfs, read_at })
+    read_in(&repo, workdir, oid, path, o, text)
 }
 
-fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOptions, text: bool) -> Result<(Vec<u8>, LfsState, Oid)> {
+fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOptions, text: bool) -> Result<Read> {
     let asked = repo.find_commit(oid)?;
     let short = &oid.to_string()[..7];
     let commit = if o.before {
@@ -67,6 +68,7 @@ fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOpt
     }
     crate::partial::require(repo, workdir, path, [entry.id()])?;
     let blob = repo.find_blob(entry.id())?;
+    let attrs = attr_repo(repo, AttrSource::Commit(read_at), &[path]);
     let too_large = |size: u64| {
         let mb = size.div_ceil(1024 * 1024);
         Err(Error::Unsupported(format!("{path} is too large to show ({mb} MB)")))
@@ -75,7 +77,7 @@ fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOpt
         None => (LfsState::None, None),
         Some(_) if !o.smudge => (LfsState::Pointer, None),
         Some(p) if p.size > FILE_VIEW_MAX_BYTES as u64 => return too_large(p.size),
-        Some(_) => match super::tool_sides::blob_bytes(workdir, entry.id(), path, true) {
+        Some(_) => match super::tool_sides::blob_bytes(workdir, entry.id(), path, true, Some(read_at)) {
             Ok(b) if crate::lfs::pointer::parse(&b).is_some() => {
                 (LfsState::Unavailable("Git LFS isn't set up here, so git gave back the pointer".into()), None)
             }
@@ -94,7 +96,7 @@ fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOpt
             b
         }
         None => {
-            if text && blob.is_binary() {
+            if text && super::attrs::is_binary(&attrs, path, &blob) {
                 return Err(Error::Unsupported(BINARY_NOT_SHOWN.into()));
             }
             if blob.size() > FILE_VIEW_MAX_BYTES {
@@ -103,5 +105,6 @@ fn read_in(repo: &Repository, workdir: &Path, oid: Oid, path: &str, o: FileAtOpt
             blob.content().to_vec()
         }
     };
-    Ok((bytes, lfs, read_at))
+    let language = if text { super::attrs::linguist_language(&attrs, path) } else { None };
+    Ok(Read { bytes, lfs, read_at, language })
 }

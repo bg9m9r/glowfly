@@ -48,7 +48,7 @@ pub(crate) fn binary_sides_with(workdir: &Path, target: &DiffTarget, max_bytes: 
 fn side(repo: &Repository, workdir: &Path, source: &SideSource, max_bytes: u64) -> Result<Option<BinarySide>> {
     Ok(match source {
         SideSource::Empty => None,
-        SideSource::Blob { id, path } => {
+        SideSource::Blob { id, path, .. } => {
             let (size, _) = repo.odb()?.read_header(*id)?;
             let size = size as u64;
             let image = if wants_preview(path, size, max_bytes) { preview(repo.find_blob(*id)?.content()) } else { None };

@@ -26,8 +26,9 @@ fn one_commit(name: &str) -> (PathBuf, Oid) {
     (dir, c)
 }
 
-fn blob(id: Oid, path: &str) -> SideSource {
-    SideSource::Blob { id, path: path.into() }
+/// A blob side from `commit` (`None` for the index's version).
+fn blob(id: Oid, path: &str, commit: Option<Oid>) -> SideSource {
+    SideSource::Blob { id, path: path.into(), commit }
 }
 
 #[test]
@@ -36,7 +37,7 @@ fn unstaged_changes_compare_the_index_with_the_working_file() {
     let committed = staged_id(&dir, "a.txt");
     write(&dir, "a.txt", "two\n");
     let s = diff_sides(&dir, &DiffTarget::Unstaged("a.txt".into())).unwrap();
-    assert_eq!((s.old, s.new), (blob(committed, "a.txt"), SideSource::Working("a.txt".into())));
+    assert_eq!((s.old, s.new), (blob(committed, "a.txt", None), SideSource::Working("a.txt".into())));
     assert_eq!((s.old_label.as_str(), s.new_label.as_str()), ("index", "working tree"));
 
     write(&dir, "new.txt", "new\n");
@@ -46,7 +47,7 @@ fn unstaged_changes_compare_the_index_with_the_working_file() {
 
     std::fs::remove_file(dir.join("a.txt")).unwrap();
     let s = diff_sides(&dir, &DiffTarget::Unstaged("a.txt".into())).unwrap();
-    assert_eq!((s.old, s.new), (blob(committed, "a.txt"), SideSource::Empty), "deleted");
+    assert_eq!((s.old, s.new), (blob(committed, "a.txt", None), SideSource::Empty), "deleted");
     assert_eq!(s.new_label, "empty");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -57,13 +58,13 @@ fn staged_changes_compare_head_with_the_index() {
     write(&dir, "b.txt", "bee\n");
     git(&dir, &["add", "b.txt"]);
     let s = diff_sides(&dir, &DiffTarget::Staged("b.txt".into())).unwrap();
-    assert_eq!((s.old, s.new), (SideSource::Empty, blob(staged_id(&dir, "b.txt"), "b.txt")));
+    assert_eq!((s.old, s.new), (SideSource::Empty, blob(staged_id(&dir, "b.txt"), "b.txt", None)));
     assert_eq!((s.old_label.as_str(), s.new_label.as_str()), ("empty", "index"));
     let before = staged_id(&dir, "a.txt");
     write(&dir, "a.txt", "changed\n");
     git(&dir, &["add", "a.txt"]);
     let s = diff_sides(&dir, &DiffTarget::Staged("a.txt".into())).unwrap();
-    assert_eq!((s.old, s.new), (blob(before, "a.txt"), blob(staged_id(&dir, "a.txt"), "a.txt")));
+    assert_eq!((s.old, s.new), (blob(before, "a.txt", Some(head(&dir))), blob(staged_id(&dir, "a.txt"), "a.txt", None)));
     assert_eq!((s.old_label.as_str(), s.new_label.as_str()), ("HEAD", "index"));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -72,7 +73,7 @@ fn staged_changes_compare_head_with_the_index() {
 fn commits_compare_with_their_first_parent_and_follow_renames() {
     let (dir, first) = one_commit("tool-sides-commit");
     let s = diff_sides(&dir, &DiffTarget::Commit(first, "a.txt".into())).unwrap();
-    assert_eq!((s.old, s.new), (SideSource::Empty, blob(staged_id(&dir, "a.txt"), "a.txt")), "a root commit");
+    assert_eq!((s.old, s.new), (SideSource::Empty, blob(staged_id(&dir, "a.txt"), "a.txt", Some(first))), "a root commit");
     assert_eq!((s.old_label, s.new_label), ("empty".to_owned(), crate::rebase::short(first)));
 
     let text: String = (1..=40).map(|i| format!("line {i}\n")).collect();
@@ -87,11 +88,15 @@ fn commits_compare_with_their_first_parent_and_follow_renames() {
     git(&dir, &["commit", "-q", "-m", "rename"]);
     let third = head(&dir);
     let s = diff_sides(&dir, &DiffTarget::Commit(third, "g.txt".into())).unwrap();
-    assert_eq!((s.old, s.new), (blob(old_id, "f.txt"), blob(staged_id(&dir, "g.txt"), "g.txt")), "the old side at the old path");
+    assert_eq!(
+        (s.old, s.new),
+        (blob(old_id, "f.txt", Some(second)), blob(staged_id(&dir, "g.txt"), "g.txt", Some(third))),
+        "the old side at the old path"
+    );
     assert_eq!((s.old_label, s.new_label), (crate::rebase::short(second), crate::rebase::short(third)));
 
     let s = diff_sides(&dir, &DiffTarget::Between(first, third, "g.txt".into())).unwrap();
-    assert_eq!((s.old, s.new), (SideSource::Empty, blob(staged_id(&dir, "g.txt"), "g.txt")));
+    assert_eq!((s.old, s.new), (SideSource::Empty, blob(staged_id(&dir, "g.txt"), "g.txt", Some(third))));
     assert_eq!((s.old_label, s.new_label), ("empty".to_owned(), crate::rebase::short(third)));
     let s = diff_sides(&dir, &DiffTarget::Between(third, first, "g.txt".into())).unwrap();
     assert_eq!(s.new, SideSource::Empty, "the newer commit doesn't have it");
@@ -111,7 +116,7 @@ fn a_commit_compared_with_the_working_tree_opens_the_working_file() {
 ",
     );
     let s = diff_sides(&dir, &DiffTarget::ToWorkdir(first, "a.txt".into())).unwrap();
-    assert_eq!((s.old, s.new), (blob(committed, "a.txt"), SideSource::Working("a.txt".into())));
+    assert_eq!((s.old, s.new), (blob(committed, "a.txt", Some(first)), SideSource::Working("a.txt".into())));
     assert_eq!((s.old_label, s.new_label), (crate::rebase::short(first), "working tree".to_owned()));
 
     std::fs::remove_file(dir.join("a.txt")).unwrap();
@@ -194,9 +199,9 @@ fn blob_copies_use_checkout_filters_only_when_asked() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "first"]);
     let id = staged_id(&dir, "a.txt");
-    assert_eq!(blob_bytes(&dir, id, "a.txt", false).unwrap(), b"one\ntwo\n", "the stored bytes");
-    assert_eq!(blob_bytes(&dir, id, "a.txt", true).unwrap(), b"one\r\ntwo\r\n", "as a checkout writes it");
+    assert_eq!(blob_bytes(&dir, id, "a.txt", false, None).unwrap(), b"one\ntwo\n", "the stored bytes");
+    assert_eq!(blob_bytes(&dir, id, "a.txt", true, None).unwrap(), b"one\r\ntwo\r\n", "as a checkout writes it");
     let missing = Oid::from_bytes(&[9; 20]).unwrap();
-    assert!(blob_bytes(&dir, missing, "a.txt", true).is_err());
+    assert!(blob_bytes(&dir, missing, "a.txt", true, None).is_err());
     let _ = std::fs::remove_dir_all(&dir);
 }
