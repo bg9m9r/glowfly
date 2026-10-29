@@ -30,7 +30,7 @@ usage() {
 # every file SHA256SUMS lists, each with the listed SHA-256 when its digest is known.
 check() {
   local tag="$1" sums="$2" assets="$3"
-  [ -f "$sums" ] && [ -f "$assets" ] || usage
+  if ! { [ -f "$sums" ] && [ -f "$assets" ]; }; then usage; fi
   # awk tells the two files apart by FNR == NR, which an empty first file would break.
   if ! grep -q '[^[:space:]]' "$assets"; then
     echo "::error::The release has no files attached"
@@ -126,5 +126,8 @@ if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then prerelease=false; else prerel
 published="$(gh api -X PATCH "repos/$GH_REPO/releases/$id" -F draft=false -F prerelease="$prerelease" \
   -f make_latest="$latest" --jq '"\(.draft) \(.prerelease) \(.html_url)"')"
 read -r draft is_pre url <<< "$published"
-[ "$draft" = false ] && [ "$is_pre" = "$prerelease" ] || { echo "::error::Publishing $tag returned '$published'"; exit 1; }
+if ! { [ "$draft" = false ] && [ "$is_pre" = "$prerelease" ]; }; then
+  echo "::error::Publishing $tag returned '$published'"
+  exit 1
+fi
 echo "release: published $tag (pre-release: $prerelease, latest: $latest, newest before: ${newest:-none}) at $url"
