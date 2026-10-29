@@ -1,9 +1,10 @@
 //! Headless tests for the LFS download that follows a successful auto-fetch (update/lfs.rs):
-//! when it starts, that it stays quiet, and when it doesn't start.
+//! when it starts (patterns in the root or a nested .gitattributes), that it stays quiet, and when
+//! it doesn't start.
 
 use super::branch_tests::with_origin;
 use super::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
-use super::tests::{drive, finish, scratch_repo, state};
+use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::{JobMsg, Msg, RepoMsg};
@@ -103,5 +104,19 @@ fn no_lfs_download_unless_the_repository_uses_lfs_and_git_may_run() {
     st.snap.as_mut().unwrap().lfs_patterns.clear();
     assert!(!lfs_fetch(&end(&mut st, AUTO_FETCH, true, true)), "no LFS patterns");
     assert!(st.job.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn patterns_only_in_a_nested_gitattributes_start_the_lfs_download() {
+    let dir = scratch_repo("lfs-auto-fetch-nested");
+    std::fs::create_dir_all(dir.join("data")).unwrap();
+    std::fs::write(dir.join("data/.gitattributes"), ATTRIBUTES).unwrap();
+    git(&dir, &["add", "data/.gitattributes"]);
+    git(&dir, &["commit", "-q", "-m", "data in LFS"]);
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    st.lfs.install = LfsInstall::Installed("3.7.1".into());
+    assert!(lfs_fetch(&end(&mut st, AUTO_FETCH, true, true)));
     let _ = std::fs::remove_dir_all(&dir);
 }

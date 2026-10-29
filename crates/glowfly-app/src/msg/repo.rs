@@ -127,7 +127,7 @@ pub enum LoadMsg {
         open_stamp: Option<u64>,
         /// The status read was slow (`repo::SLOW_STATUS`), and what could speed it up.
         slow: Option<SlowStatus>,
-        /// The root .gitattributes' LFS patterns, read with a whole status; None for a read of some paths.
+        /// Every attributes file's LFS patterns, read with a whole status; None for a read of some paths.
         lfs_patterns: Option<Vec<glowfly_core::lfs::LfsPattern>>,
         /// The index the whole or index read was taken from.
         index: Option<Arc<IndexMemo>>,
@@ -145,7 +145,7 @@ pub enum LoadMsg {
         open_stamp: Option<u64>,
         /// A whole read was slow (`repo::SLOW_STATUS`), and what could speed it up.
         slow: Option<SlowStatus>,
-        /// The root .gitattributes' LFS patterns, read with a whole status; None for a read of some paths.
+        /// Every attributes file's LFS patterns, read with a whole status; None for a read of some paths.
         lfs_patterns: Option<Vec<glowfly_core::lfs::LfsPattern>>,
         /// The index the whole or index read was taken from.
         index: Option<Arc<IndexMemo>>,

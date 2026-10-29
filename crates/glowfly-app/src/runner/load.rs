@@ -40,7 +40,7 @@ pub(super) fn load_repo(
         let read = repo::status_and_index(&path, k.git_status).map_err(err);
         let slow = repo::slow(started.elapsed(), &path);
         let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
-        let lfs_patterns = Some(glowfly_core::lfs::root_patterns(&path));
+        let lfs_patterns = Some(glowfly_core::lfs::repo_patterns(&path));
         let (result, index) = match read {
             Ok((u, s, state, memo)) => (Ok((u, s, state)), memo.map(std::sync::Arc::new)),
             Err(e) => (Err(e), None),

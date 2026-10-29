@@ -11,9 +11,8 @@
 //! unchanged, matches in `git check-attr`, and `git lfs untrack` removes it again. Spaces and
 //! `#` are left for git-lfs to escape, as for a typed pattern.
 
-use super::{GIT_FILES, LfsPattern, PatternProblem, escape_pattern, parse_attributes, track_args};
+use super::{GIT_FILES, LfsPattern, PatternProblem, escape_pattern, track_args};
 use crate::gitcli::args;
-use std::path::Path;
 
 /// Tracks one file by name; `--` keeps a name starting with '-' from reading as an option.
 pub fn track_filename_args(path: &str) -> Vec<String> {
@@ -111,7 +110,7 @@ pub fn track_targets(path: &str) -> Vec<TrackTarget> {
     out
 }
 
-/// Whether `t` can be tracked, given the patterns already tracked.
+/// Whether `t` can be tracked, given the patterns already tracked (only the root file's count).
 pub fn check_target(t: &TrackTarget, existing: &[LfsPattern]) -> Result<(), PatternProblem> {
     let text = t.display();
     if text.chars().any(char::is_control) {
@@ -129,13 +128,8 @@ pub fn check_target(t: &TrackTarget, existing: &[LfsPattern]) -> Result<(), Patt
         return Err(PatternProblem::Negated);
     }
     let raw = t.raw();
-    if existing.iter().any(|e| e.raw == raw) {
+    if existing.iter().any(|e| e.source.is_root() && e.raw == raw) {
         return Err(PatternProblem::AlreadyTracked(text.to_owned()));
     }
     Ok(())
-}
-
-/// The LFS patterns of the root `.gitattributes`; empty without one. Only reads the file.
-pub fn root_patterns(workdir: &Path) -> Vec<LfsPattern> {
-    std::fs::read(workdir.join(".gitattributes")).map(|b| parse_attributes(&String::from_utf8_lossy(&b))).unwrap_or_default()
 }

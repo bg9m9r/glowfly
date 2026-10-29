@@ -2,8 +2,8 @@
 //! patterns, and the LFS commands, each run as the active git job. Also whether git-lfs is
 //! installed (checked at startup and by each status read) and the file menu's Track in Git LFS.
 //! A successful auto-fetch in a repository that stores files in LFS is followed by a quiet
-//! download of the checked-out commit's LFS files. Whole status reads bring the root
-//! .gitattributes' patterns again (`patterns_read`), the main window's banner can be dismissed
+//! download of the checked-out commit's LFS files. Whole status reads bring every attributes
+//! file's patterns again (`patterns_read`), the main window's banner can be dismissed
 //! per repository, and a diff with an LFS side keeps its note (`diff_loaded`, `ShowPointer`).
 
 use super::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
@@ -78,7 +78,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
     }
 }
 
-/// A whole status read brought the root .gitattributes' LFS patterns (None: a read of some
+/// A whole status read brought every attributes file's LFS patterns (None: a read of some
 /// paths). New ones replace the snapshot's, and an open Git LFS page reads its status again in
 /// place.
 pub(super) fn patterns_read(st: &mut AppState, patterns: Option<Vec<LfsPattern>>, fx: &mut Vec<Effect>) {
