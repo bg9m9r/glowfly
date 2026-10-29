@@ -37,6 +37,10 @@ fn following(name: &str) -> (PathBuf, PathBuf, PathBuf) {
 fn push_change(other: &Path, file: &str, text: &str) {
     std::fs::write(other.join(file), text).unwrap();
     git(other, &["add", "."]);
+    // A hook is committed executable, as a real one would be; Unix git skips it otherwise.
+    if file.starts_with(".githooks/") {
+        git(other, &["update-index", "--chmod=+x", file]);
+    }
     git(other, &["commit", "-q", "-m", file]);
     git(other, &["push", "-q", "origin", "main"]);
 }
