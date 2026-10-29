@@ -60,7 +60,7 @@ pub(super) fn with_diff(name: &str, diff: FileDiff) -> (AppState, PathBuf) {
 /// Delivers `d` as the result of the diff request in flight.
 fn arrive(st: &mut AppState, target: DiffTarget, d: FileDiff) {
     let generation = st.session.diff.generation;
-    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: false, generation, result: Ok(d), lfs: None }));
+    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: false, generation, result: Ok(d), lfs: None, raw: None }));
 }
 
 #[test]

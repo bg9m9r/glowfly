@@ -86,6 +86,8 @@ pub struct SeenLines {
     pub expected: Hunk,
     /// The indexes of its added lines.
     pub lines: Vec<usize>,
+    /// Its exact bytes, hashed (`repo::ViewDiff::raw`).
+    pub raw: git2::Oid,
     /// Whether the diff hid whitespace changes.
     pub ignore_whitespace: bool,
 }

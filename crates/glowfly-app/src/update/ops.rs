@@ -213,7 +213,8 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     let ignore_whitespace = st.settings.diff_ignore_whitespace;
     if whole {
         // Every line of an untracked file: it goes the way Discard of the file goes, trash and undo.
-        let seen = Some(Box::new(SeenLines { expected, lines, ignore_whitespace }));
+        let raw = st.session.diff.raw.unwrap_or_else(git2::Oid::zero);
+        let seen = Some(Box::new(SeenLines { expected, lines, raw, ignore_whitespace }));
         return super::work_files_delete::discard_seen(st, path, seen, fx);
     }
     local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines, ignore_whitespace }, fx);

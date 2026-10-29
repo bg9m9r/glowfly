@@ -256,6 +256,10 @@ pub struct ViewDiff {
     pub language: Option<String>,
     /// The two sides when either is a Git LFS pointer (`lfs_marks::diff_change`).
     pub lfs: Option<crate::lfs::pointer::LfsChange>,
+    /// For an unstaged diff of one hunk: its lines' exact bytes and the working file's own
+    /// bytes, hashed (`index::raw_id`), which the hunk's text (decoded, line ends trimmed) and git's
+    /// converted content (`core.autocrlf`) can't tell apart.
+    pub raw: Option<Oid>,
 }
 
 /// `load_diff_with` plus the old file's text, for highlighting the hunks in context
@@ -283,7 +287,7 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
-        return Ok(ViewDiff { diff: out, old: None, language: None, lfs });
+        return Ok(ViewDiff { diff: out, old: None, language: None, lfs, raw: None });
     };
     out.binary = patch.delta().flags().is_binary();
     for h in 0..patch.num_hunks() {
@@ -301,7 +305,12 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     // `patch` is still the first load's (the whole-file block's is scoped to it).
     let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
     let language = if with_old && !out.binary { super::attrs::linguist_language_for(&repo, target, path) } else { None };
-    Ok(ViewDiff { diff: out, old, language, lfs })
+    let raw = if matches!(target, DiffTarget::Unstaged(_)) && patch.num_hunks() == 1 {
+        Some(super::index::raw_id(workdir, path, &patch, 0)?)
+    } else {
+        None
+    };
+    Ok(ViewDiff { diff: out, old, language, lfs, raw })
 }
 
 /// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the

@@ -295,6 +295,7 @@ fn two_commit_diff_end_to_end() {
         generation: st.session.diff.generation - 1,
         result: Err("old".into()),
         lfs: None,
+        raw: None,
     });
     up(&mut st, stale);
     assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&target));

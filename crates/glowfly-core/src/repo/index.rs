@@ -132,24 +132,54 @@ pub enum WholeDiscard {
 
 /// Checks that discarding every line of `path` still means discarding the whole file the user
 /// saw: git produces exactly `expected` as the unstaged diff's only hunk, every changed line of
-/// it added. Refused as stale (`NotFound`) otherwise, so a file that changed since is never
-/// deleted; and refused when the path is tracked or staged by now.
-pub fn whole_discard(workdir: &Path, path: &str, expected: &Hunk, ignore_whitespace: bool) -> Result<WholeDiscard> {
+/// it added, with the same bytes (`raw`, from `ViewDiff::raw`), so a change to line ends or to
+/// bytes that aren't UTF-8 counts too. Refused as stale (`NotFound`) otherwise, so a file that
+/// changed since is never deleted. Also refused, as the line discard it stands for is, for a
+/// path that shares its file with another index path and for one whose content git converts;
+/// and when the path is tracked or staged by now, or isn't a regular file (a link's target
+/// can't be kept for Undo).
+pub fn whole_discard(workdir: &Path, path: &str, expected: &Hunk, raw: git2::Oid, ignore_whitespace: bool) -> Result<WholeDiscard> {
     let rel = workfile::contained(path)?;
+    super::collide::refuse(workdir, path, "discard changes to")?;
     let stale = || Error::NotFound("the diff changed; select the lines again".into());
     let added = |h: &Hunk| h.lines.iter().all(|l| matches!(l.origin, '+' | '=' | '<' | '>')) && h.lines.iter().any(|l| l.origin == '+');
     let repo = Repository::open(workdir)?;
+    super::attrs::refuse_converted(&repo, path, "discarding")?;
     let opts = LoadDiffOptions { ignore_whitespace, ..Default::default() };
     let diff = super::diff::target_diff(&repo, &DiffTarget::Unstaged(path.into()), opts, None)?;
     let patch = super::diff::file_patch(&diff, path).map_err(|_| stale())?.ok_or_else(stale)?;
-    if patch.num_hunks() != 1 || super::diff::hunk_of(&patch, 0)? != *expected || !added(expected) {
+    let same = patch.num_hunks() == 1 && super::diff::hunk_of(&patch, 0)? == *expected && raw_id(workdir, path, &patch, 0)? == raw;
+    if !same || !added(expected) {
         return Err(stale());
     }
     let index = repo.index()?;
     let intent = git2::IndexEntryExtendedFlag::INTENT_TO_ADD.bits();
     match (0..=3).find_map(|s| index.get_path(Path::new(rel), s)) {
-        None => Ok(WholeDiscard::Delete),
         Some(e) if e.flags_extended & intent != 0 => Ok(WholeDiscard::Lines),
         Some(_) => Err(Error::Other(format!("{rel} is tracked now; refresh and try again"))),
+        None if std::fs::symlink_metadata(workdir.join(rel)).is_ok_and(|m| m.is_file()) => Ok(WholeDiscard::Delete),
+        None => Err(Error::Unsupported(format!(
+            "{rel} isn't a regular file, so Undo couldn't bring it back; discard it from the file list instead"
+        ))),
     }
+}
+
+/// Hunk `h` of `patch` as exact bytes, hashed: each line's origin and raw content, end-of-file
+/// markers included, then the working-tree file `path` as it is on disk (git's diff shows its
+/// content after conversion, so a change to line ends alone may leave the hunk the same). Two
+/// loads give the same id only when every byte of both is the same.
+pub(super) fn raw_id(workdir: &Path, path: &str, patch: &git2::Patch<'_>, h: usize) -> Result<git2::Oid> {
+    let full = workdir.join(super::workfile::contained(path)?);
+    let mut bytes = match std::fs::symlink_metadata(&full) {
+        Ok(m) if m.is_file() => std::fs::read(&full)?,
+        _ => Vec::new(),
+    };
+    bytes.splice(0..0, (bytes.len() as u64).to_le_bytes());
+    for l in 0..patch.num_lines_in_hunk(h)? {
+        let line = patch.line_in_hunk(h, l)?;
+        bytes.push(line.origin() as u8);
+        bytes.extend_from_slice(&(line.content().len() as u64).to_le_bytes());
+        bytes.extend_from_slice(line.content());
+    }
+    Ok(git2::Oid::hash_object(git2::ObjectType::Blob, &bytes)?)
 }

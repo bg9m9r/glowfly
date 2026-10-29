@@ -101,6 +101,15 @@ fn a_file_changed_since_the_diff_was_shown_is_never_deleted() {
     assert!(log.starts_with("Could not discard u.txt:") && log.contains("the diff changed"), "{log}");
     assert!(st.session.undo.undo.is_empty(), "nothing to undo");
     let _ = std::fs::remove_dir_all(&dir);
+
+    // Only its line ends changed: the text shown is the same, but it still isn't deleted.
+    let (mut st, dir) = untracked_open("lines-whole-stale-eol", "a\nb\n", &[]);
+    select_all(&mut st);
+    std::fs::write(dir.join("u.txt"), "a\r\nb\r\n").unwrap();
+    drive(&mut st, discard_lines());
+    assert_eq!(std::fs::read(dir.join("u.txt")).unwrap(), b"a\r\nb\r\n");
+    assert!(st.session.undo.undo.is_empty(), "nothing to undo");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -125,7 +134,8 @@ fn an_intent_to_add_file_is_emptied_not_deleted() {
 
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(unstaged_u())));
     let expected = st.session.diff.view.as_ref().unwrap().1.hunks[0].clone();
-    let seen = Some(Box::new(SeenLines { expected, lines: vec![0, 1], ignore_whitespace: false }));
+    let raw = st.session.diff.raw.expect("one unstaged hunk");
+    let seen = Some(Box::new(SeenLines { expected, lines: vec![0, 1], raw, ignore_whitespace: false }));
     let msg = crate::runner::files::work_file_for_test(&dir, FileOp::Discard { path: "u.txt".into(), mode: DeleteMode::Trash, seen });
     assert!(matches!(msg, Msg::Stage(StageMsg::LocalOpDone(Ok(Some(_))))), "a line discard, with its undo");
     assert_eq!(std::fs::read(dir.join("u.txt")).unwrap(), b"");
