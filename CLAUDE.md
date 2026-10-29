@@ -31,8 +31,11 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
 1. `git worktree add ../glowfly-worktrees/<slug> -b <branch>` from the main checkout's HEAD.
 2. Work, run `scripts/check.ps1` and commit there. Set `CARGO_TARGET_DIR=C:/projects/glowfly/target`
    to reuse the main build output (one build at a time).
-3. When done: `git -C C:/projects/glowfly merge --ff-only <branch>`, then
-   `git worktree remove ../glowfly-worktrees/<slug>` and `git branch -d <branch>`.
+3. When done, land it through a pull request: push the branch, `gh pr create --fill`, and merge
+   with `gh pr merge <n> --rebase` once the required checks pass and every review conversation is
+   resolved (never `--admin`). Then `git -C C:/projects/glowfly pull --ff-only`,
+   `git worktree remove ../glowfly-worktrees/<slug>`, `git fetch --prune` and `git branch -D <branch>`
+   (a rebase merge rewrites the commits, so `-d` refuses).
    Unfinished work: commit it as WIP on its branch, remove the worktree, keep the branch.
 
 `git worktree list` should show only the main checkout when nothing is in progress.
