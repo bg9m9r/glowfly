@@ -31,6 +31,7 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 ### Live working-tree updates
 
 - Watch inactive tabs so their state updates in the background
+- Watch the global, XDG and system config files (and the files they include) too, so an edit there reloads the open repository
 
 ### Commit panel extras
 

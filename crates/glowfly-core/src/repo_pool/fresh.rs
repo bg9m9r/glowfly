@@ -2,8 +2,9 @@
 //! and never checks again must still be as it was when the handle was opened.
 //!
 //! - The config files it read (the repository's own, the worktree's, and the global, XDG,
-//!   system and ProgramData ones): libgit2 keeps `core.*` values (line endings, file mode,
-//!   case) from them for the life of the handle.
+//!   system and ProgramData ones), and the files those include (`config_includes`, with HEAD
+//!   when an `onbranch:` condition makes the choice depend on the branch): libgit2 keeps
+//!   `core.*` values (line endings, file mode, case) from them for the life of the handle.
 //! - The git dir and the work tree still there, the work tree's `.git` link (a moved or
 //!   repaired worktree) and `objects/info/alternates`.
 //!
@@ -103,6 +104,14 @@ fn watched(repo: &Repository) -> Vec<PathBuf> {
         v.extend([work.to_owned(), work.join(".git")]);
     }
     v.extend(outside_config().iter().cloned());
+    // libgit2 reads an included file as part of the one that includes it.
+    let mut roots = crate::config_includes::repo_roots(git_dir, Some(common));
+    roots.extend(outside_config().iter().cloned());
+    let included = crate::config_includes::included(&roots, &crate::config_includes::Context::of_repo(git_dir));
+    if included.on_branch {
+        v.push(git_dir.join("HEAD"));
+    }
+    v.extend(included.files);
     v
 }
 
