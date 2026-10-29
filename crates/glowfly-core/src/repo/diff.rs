@@ -57,8 +57,7 @@ pub(super) fn commit_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut 
     renamed(repo, commit_plain(repo, oid, opts)?)
 }
 
-/// The paths on both sides of commit `oid`'s changes against its first parent, for reading
-/// their gitattributes (`attr_source::attr_repo`). Empty on error.
+/// Both sides' paths of commit `oid`'s changes, whose gitattributes to read. Empty on error.
 pub(super) fn commit_paths(repo: &Repository, oid: Oid) -> Vec<String> {
     commit_plain(repo, oid, None).map(|d| super::attr_source::delta_paths(&d)).unwrap_or_default()
 }
@@ -325,12 +324,7 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     // `patch` is still the first load's (the whole-file block's is scoped to it).
     let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
     let language = if with_old && !out.binary { super::attrs::linguist_language(&repo, path) } else { None };
-    let raw = if matches!(target, DiffTarget::Unstaged(_)) && patch.num_hunks() == 1 {
-        Some(super::index::raw_id(workdir, path, &patch, 0)?)
-    } else {
-        None
-    };
-    Ok(ViewDiff { diff: out, old, language, lfs, raw })
+    Ok(ViewDiff { diff: out, old, language, lfs, raw: super::index::shown_raw_id(workdir, target, path, &patch)? })
 }
 
 /// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the

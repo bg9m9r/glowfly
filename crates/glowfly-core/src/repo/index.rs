@@ -167,6 +167,11 @@ pub fn whole_discard(workdir: &Path, path: &str, expected: &Hunk, raw: git2::Oid
     }
 }
 
+/// The `raw_id` a shown diff carries: only an unstaged diff of one hunk gets one.
+pub(super) fn shown_raw_id(workdir: &Path, target: &DiffTarget, path: &str, patch: &git2::Patch<'_>) -> Result<Option<git2::Oid>> {
+    if matches!(target, DiffTarget::Unstaged(_)) && patch.num_hunks() == 1 { raw_id(workdir, path, patch, 0).map(Some) } else { Ok(None) }
+}
+
 /// Hunk `h` of `patch` as exact bytes, hashed: each line's origin and raw content, end-of-file
 /// markers included, then the working-tree file `path` as it is on disk (git's diff shows its
 /// content after conversion, so a change to line ends alone may leave the hunk the same). Two
