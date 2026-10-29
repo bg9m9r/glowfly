@@ -217,6 +217,7 @@
   "commit.blocked.no_repo": "Öffne zuerst ein Repository.",
   "commit.blocked.no_summary": "Schreibe eine Zusammenfassung für den Commit.",
   "commit.blocked.nothing_staged": "Noch ist nichts bereitgestellt. Stelle zuerst eine Datei oder einen Hunk bereit.",
+  "commit.blocked.unencodable": "Dieses Repository schreibt Commit-Nachrichten in {encoding} (i18n.commitEncoding), das {chars} nicht darstellen kann. Entferne diese Zeichen aus der Nachricht.",
   "commit.blocked.untouched_template": "Bearbeite die Commit-Vorlage, bevor du committest.",
   "commit.button.amend": "Letzten Commit nachbessern{push}{skip}",
   "commit.button.and_push": " und pushen",

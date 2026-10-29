@@ -1,7 +1,8 @@
 //! Commit text read from the commit's bytes: decoded with the encoding its `encoding` header
 //! names (git writes one when `i18n.commitEncoding` is set) and as UTF-8 otherwise. Text that
 //! doesn't decode gets U+FFFD in place of the bad bytes instead of coming out empty. Every reader
-//! of a commit's message, summary, body or people goes through here.
+//! of a commit's message, summary, body or people goes through here; writing goes through
+//! `commit_encoding`.
 
 use encoding_rs::{Encoding, UTF_8, UTF_16BE, UTF_16LE};
 use git2::{Commit, Signature};
@@ -34,10 +35,26 @@ impl Decoder {
         Decoder(label.and_then(known))
     }
 
+    /// For an encoding already looked up (None: UTF-8).
+    pub(crate) fn with(enc: Option<&'static Encoding>) -> Decoder {
+        Decoder(enc)
+    }
+
     /// `bytes` as text: in the named encoding, or as UTF-8 when there is none or when the bytes
-    /// are malformed in it but valid UTF-8 (a wrong header). Borrows when nothing changes.
+    /// are malformed in it but valid UTF-8 (a wrong header). Valid UTF-8 with non-ASCII under a
+    /// single-byte label reads as UTF-8 too: that is what git writes for `commit -m` and
+    /// `stash -m` there (it doesn't re-encode them) and what Glowfly wrote before #242, while real
+    /// single-byte text is almost never valid UTF-8. So an amend of such a commit doesn't stack
+    /// another layer of mojibake. Multi-byte labels keep their decoding: real text in them can
+    /// be valid UTF-8 as well. Borrows when nothing changes.
     pub fn decode(self, bytes: &[u8]) -> Cow<'_, str> {
         let Some(enc) = self.0 else { return String::from_utf8_lossy(bytes) };
+        if enc.is_single_byte()
+            && !bytes.is_ascii()
+            && let Ok(s) = std::str::from_utf8(bytes)
+        {
+            return Cow::Borrowed(s);
+        }
         let (text, had_errors) = enc.decode_without_bom_handling(bytes);
         if had_errors && let Ok(s) = std::str::from_utf8(bytes) {
             return Cow::Borrowed(s);
@@ -72,7 +89,7 @@ impl Decoder {
 }
 
 /// The encoding a label names, if Glowfly decodes it as something other than UTF-8.
-fn known(label: &str) -> Option<&'static Encoding> {
+pub(crate) fn known(label: &str) -> Option<&'static Encoding> {
     let label = label.trim();
     let label = ALIASES.iter().find(|(a, _)| a.eq_ignore_ascii_case(label)).map_or(label, |&(_, w)| w);
     Encoding::for_label_no_replacement(label.as_bytes()).filter(|&e| e != UTF_8 && e != UTF_16LE && e != UTF_16BE)

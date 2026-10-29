@@ -5,6 +5,7 @@
 //! `rebase_merges`, the update-ref rows that travel with their commit in `rebase_update_refs`.
 
 use git2::RepositoryState;
+use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{self, MergeStep, RebaseAction, RebaseBase, RebasePlan, Remaining, TodoStep};
 use glowfly_core::repo::Snapshot;
 
@@ -323,6 +324,14 @@ impl RebasePanel {
         }
         let from_commit = matches!(self.source, PanelSource::Start(RebaseBase::FromCommit(_)));
         (from_commit && rebase::is_unchanged(&self.items, &self.original)).then(|| UNCHANGED.into())
+    }
+
+    /// Why Start (or Update steps) can't write the typed messages: the repository's commit
+    /// encoding (`i18n.commitEncoding`) can't hold some of their characters.
+    pub fn message_blocker(&self, snap: &Snapshot, t: Lang) -> Option<String> {
+        let items = self.items.iter().filter_map(|s| s.commit().or_else(|| s.merge().map(|m| &m.item)));
+        let typed = items.flat_map(|i| [i.new_message.as_deref(), i.combined_message.as_deref()]).flatten();
+        snap.commit_encoding.check(typed).err().map(|e| super::commit::unencodable_text(t, &e))
     }
 }
 

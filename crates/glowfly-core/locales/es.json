@@ -217,6 +217,7 @@
   "commit.blocked.no_repo": "Abre primero un repositorio.",
   "commit.blocked.no_summary": "Escribe un resumen para el commit.",
   "commit.blocked.nothing_staged": "Todavía no hay nada preparado. Prepara antes un archivo o un bloque.",
+  "commit.blocked.unencodable": "Este repositorio escribe los mensajes de commit en {encoding} (i18n.commitEncoding), que no puede representar {chars}. Quítalos del mensaje.",
   "commit.blocked.untouched_template": "Edita la plantilla del commit antes de confirmar.",
   "commit.button.amend": "Enmendar el commit anterior{push}{skip}",
   "commit.button.and_push": " y enviar",

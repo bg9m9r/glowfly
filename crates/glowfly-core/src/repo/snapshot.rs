@@ -37,6 +37,8 @@ pub struct Snapshot {
     /// MERGE_MSG cleaned of comment lines while a merge, cherry-pick or revert is stopped (prefills the commit
     /// draft); full loads only.
     pub merge_message: Option<String>,
+    /// What commit messages are written in (`i18n.commitEncoding`); full loads only.
+    pub commit_encoding: crate::commit_encoding::MessageEncoding,
     /// The gitflow.* settings (Preferences > Git Flow, palette Start entries).
     pub gitflow: crate::gitflow::GitFlowConfig,
     /// The root .gitattributes' LFS patterns (empty without one); refreshed by full loads and whole status reads (`LoadMsg`).

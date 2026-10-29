@@ -10,6 +10,7 @@ use super::{
     CHANGED, NOT_INTERACTIVE, REFS_CHANGED, RebaseAction, SequenceEditor, TODO_MOVED, TodoItem, TodoStep, UNSUPPORTED_STEPS,
     UPDATE_REF_IN_GROUP, short,
 };
+use crate::commit_encoding::MessageEncoding;
 use crate::commit_text::{self, Decoder};
 use crate::error::{Error, Result};
 use crate::gitcli;
@@ -108,7 +109,7 @@ pub fn remaining(workdir: &Path) -> Result<Remaining> {
     let locked = lines.into_iter().filter_map(|(_, p)| if let Parsed::Step(s) = p { Some(s) } else { None }).collect();
 
     let msg_dir = repo.path().join(MSG_DIR);
-    let steps = fold(rest, &msg_dir);
+    let steps = fold(rest, &msg_dir, MessageEncoding::of(&repo));
     // The list writes an update-ref inside a squash group after the group: refuse one the todo
     // has there, rather than move it.
     if (0..steps.len()).any(|i| matches!(steps[i], TodoStep::UpdateRef(_)) && in_group(&steps, i)) {
@@ -159,7 +160,7 @@ fn parse(repo: &Repository, line: &str) -> Result<Option<Parsed>> {
 
 /// The editable steps: each base line with its later amend (and a readable message file) is
 /// folded into the commit's reword or combined message; other own lines stay exec steps.
-fn fold(lines: Vec<(&str, Parsed)>, msg_dir: &Path) -> Vec<TodoStep> {
+fn fold(lines: Vec<(&str, Parsed)>, msg_dir: &Path, encoding: MessageEncoding) -> Vec<TodoStep> {
     // (base index, amend index, message, combined)
     let mut pairs: Vec<(usize, usize, String, bool)> = Vec::new();
     for (b, (_, p)) in lines.iter().enumerate() {
@@ -171,8 +172,9 @@ fn fold(lines: Vec<(&str, Parsed)>, msg_dir: &Path) -> Vec<TodoStep> {
         let Some((a, file)) = amend else { continue };
         // A reworded group's squashed message is rebuilt from its typed one, in the reword file.
         let file = if file == MessageFile::Squashed { MessageFile::Reword } else { file };
-        if let Ok(text) = std::fs::read_to_string(msg_dir.join(file.name(*oid))) {
-            pairs.push((b, a, text.trim_end().to_owned(), file == MessageFile::Combined));
+        // Written in the repository's commit encoding (`commit_encoding`).
+        if let Ok(bytes) = std::fs::read(msg_dir.join(file.name(*oid))) {
+            pairs.push((b, a, encoding.decode(&bytes).trim_end().to_owned(), file == MessageFile::Combined));
         }
     }
     let mut steps: Vec<TodoStep> = Vec::new();
@@ -243,10 +245,9 @@ pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor)
     if !same_refs(&current, &text) {
         return Err(Error::Unsupported(REFS_CHANGED.into()));
     }
+    let encoding = MessageEncoding::of(&repo);
     std::fs::create_dir_all(&msg_dir)?;
-    for (path, body) in files {
-        crate::persist::atomic_write(&path, body.as_bytes())?;
-    }
+    encoding.write_files(&files)?;
     let prepared = msg_dir.join("todo-edit");
     crate::persist::atomic_write(&prepared, text.as_bytes())?;
     let refused = msg_dir.join("todo-edit.error");

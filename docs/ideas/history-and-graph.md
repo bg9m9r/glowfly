@@ -215,8 +215,12 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 ### Commit text in other encodings
 
 - Guess Windows-1252 for headerless commit text that isn't UTF-8 (CVS/SVN imports), perhaps behind a setting
-- Detect a header naming a single-byte encoding over bytes that are valid non-ASCII UTF-8 and show the UTF-8 (git shows mojibake)
-- Write Glowfly's commit, amend, reword and squash messages in the repo's i18n.commitEncoding when it names a legacy encoding (git now labels Glowfly's UTF-8 with that header)
+- Warn in the commit box and the rebase panel's message field while typing a character i18n.commitEncoding can't hold, not only when committing
+- A squash's default message built from older UTF-8 commits with characters the encoding lacks is refused with core's English text; offer to edit it instead
+- `stash push -m` text stays UTF-8 under a legacy commit encoding (git takes it from the command line, which Git for Windows reads as UTF-8); stash it through `git stash create` plus a message file if that matters
+- i18n.commitEncoding labels iconv knows but encoding_rs doesn't (cp437, cp850) still write UTF-8; warn that git labels it with the other encoding
+- Multi-byte labels (Shift_JIS, EUC-JP, GBK) over valid UTF-8 keep the header's reading, so commits Glowfly wrote there before #242 still show mojibake; a stricter test could catch them
+- i18n.commitEncoding given only through `git -c` or GIT_CONFIG_PARAMETERS isn't seen: libgit2 reads the config files
 - Pass `-c i18n.logOutputEncoding=UTF-8` to git CLI calls whose log or blame output Glowfly parses, for users who set a legacy output encoding
 - Show which encoding a commit declares (e.g. a small 'ISO-8859-1' note in the details panel)
 - Read stash messages that aren't UTF-8 without git2's stash_foreach, which panics on them (`to_str().unwrap()`); read the refs/stash reflog bytes lossily instead

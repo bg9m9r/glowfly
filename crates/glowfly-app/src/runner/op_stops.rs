@@ -19,7 +19,7 @@ pub(super) fn can_stop(cmds: &[Vec<String>], record: Option<&UndoKind>) -> bool 
 pub(super) fn run_noting_start(
     cwd: &Path,
     cmds: &[Vec<String>],
-    write_file: Option<(PathBuf, String)>,
+    write_file: Option<(PathBuf, Vec<u8>)>,
     prompts: bool,
 ) -> (bool, String, Option<OpStart>) {
     let Some((last, first)) = cmds.split_last() else {

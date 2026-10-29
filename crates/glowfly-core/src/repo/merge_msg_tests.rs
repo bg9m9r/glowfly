@@ -1,7 +1,8 @@
-//! Reading MERGE_MSG for the commit draft of a merge in progress.
+//! Reading MERGE_MSG for the commit draft of a merge in progress, also in a legacy encoding.
 
 use super::merge_msg::clean;
 use super::*;
+use crate::commit_encoding::MessageEncoding;
 use crate::gitcli::{args, run};
 use crate::testutil::*;
 use git2::Repository;
@@ -62,9 +63,9 @@ fn the_repository_comment_char_applies() {
     set_config(&dir, &[("core.commentChar", ";")]);
     std::fs::write(dir.join(".git/MERGE_MSG"), "Merge branch 'other'\r\n; gone\r\n# stays\r\n").unwrap();
     let repo = Repository::open(&dir).unwrap();
-    assert_eq!(merge_message(&repo).as_deref(), Some("Merge branch 'other'\n# stays"));
+    assert_eq!(merge_message(&repo, MessageEncoding::UTF8).as_deref(), Some("Merge branch 'other'\n# stays"));
     std::fs::write(dir.join(".git/MERGE_MSG"), "\n; nothing\n").unwrap();
-    assert_eq!(merge_message(&repo), None, "blank once cleaned");
+    assert_eq!(merge_message(&repo, MessageEncoding::UTF8), None, "blank once cleaned");
 }
 
 #[test]
@@ -87,4 +88,19 @@ fn a_linked_worktree_reads_its_own_merge_message() {
 
     assert_eq!(loaded(&linked).as_deref(), Some("Merge branch 'other' into side"));
     assert_eq!(loaded(&main), None, "the main worktree has no merge in progress");
+}
+
+#[test]
+fn a_cherry_pick_message_in_the_commit_encoding_reads_decoded() {
+    let dir = scratch_repo("merge-msg-1252");
+    set_config(&dir, &[("i18n.commitEncoding", "windows-1252")]);
+    write(&dir, "a.txt", "base\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    // git writes a stopped cherry-pick's MERGE_MSG in the commit encoding: not UTF-8.
+    std::fs::write(dir.join(".git/MERGE_MSG"), b"Caf\xe9 cr\xe8me\n\n# Conflicts:\n#\ta.txt\n").unwrap();
+    let repo = Repository::open(&dir).unwrap();
+    let enc = MessageEncoding::of(&repo);
+    assert_eq!(merge_message(&repo, enc).as_deref(), Some("Café crème"));
+    assert_eq!(merge_message(&repo, MessageEncoding::UTF8).as_deref(), Some("Caf\u{FFFD} cr\u{FFFD}me"), "lossy, never a panic");
 }

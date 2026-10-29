@@ -48,7 +48,7 @@ pub(super) fn loaded(st: &mut AppState, generation: u64, result: Result<Remainin
 /// Update steps: newly dropped commits ask first; then the edit runs as the active job.
 pub(super) fn update_steps(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec<Effect>) {
     let (Some(p), Some(snap)) = (&st.session.rebase.view, &st.snap) else { return };
-    if let Some(why) = p.start_blocker(snap, st.job.is_some()) {
+    if let Some(why) = p.start_blocker(snap, st.job.is_some()).or_else(|| p.message_blocker(snap, st.settings.lang())) {
         st.log(false, why);
         return;
     }

@@ -7,7 +7,7 @@ use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::msg::CommitMsg;
 use crate::state::AppState;
-use crate::state::commit::{commit_blocked, commit_merge_blocked, pushes_after};
+use crate::state::commit::{commit_blocked, commit_merge_blocked, pushes_after, unencodable_text};
 use glowfly_core::undo::UndoKind;
 use std::time::Instant;
 
@@ -49,14 +49,24 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
     }
 }
 
-/// Commits the draft, after `git add --all` when `stage_all`. Refused with a toast (not the
-/// log, so a keypress doesn't pop it open) when the draft or repository isn't ready.
+/// Commits the draft, after `git add --all` when `stage_all`, its message encoded into the
+/// repository's commit encoding. Refused with a toast (not the log, so a keypress doesn't pop
+/// it open) when the draft or repository isn't ready or the encoding can't hold the message.
 pub(super) fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut Vec<Effect>) {
     if let Some(why) = commit_blocked(st, stage_all) {
         st.toast(false, why, now);
         return;
     }
     let Some(snap) = &st.snap else { return };
+    // git writes the file's bytes as they are and labels them with i18n.commitEncoding.
+    let bytes = match snap.commit_encoding.encode(&(st.session.draft.message() + "\n")) {
+        Ok(b) => b.into_owned(),
+        Err(e) => {
+            let why = unencodable_text(st.settings.lang(), &e);
+            st.toast(false, why, now);
+            return;
+        }
+    };
     let file = snap.git_dir.join("GLOWFLY_COMMIT_EDITMSG");
     let cmds = st.session.draft.commit_cmds(&file, stage_all);
     let amend = st.session.draft.amend;
@@ -70,7 +80,7 @@ pub(super) fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut 
     let spec = JobSpec {
         clear_commit: true,
         then_push: pushes_after(st),
-        write_file: Some((file, st.session.draft.message() + "\n")),
+        write_file: Some((file, bytes)),
         record: Some(UndoKind::Commit { amend }),
         ..JobSpec::new(label.into(), cmds)
     };
