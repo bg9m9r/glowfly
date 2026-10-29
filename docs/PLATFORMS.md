@@ -317,9 +317,14 @@ second one next to it.
    read is never rewritten.
 5. **For untranslated git messages set `LANGUAGE=C` and `LC_MESSAGES=C`, never `LC_ALL=C`**
    (`gitcli.rs`), which would also give hooks, gpg and pinentry an ASCII-only character set.
-6. **With OpenSSH before 8.4 on Unix (`ssh_version::legacy_askpass`), set `DISPLAY` when unset
-   and start git children in a new session (`ssh_version::prepare`)** so ssh has no terminal and
-   asks the helper; 8.4+ needs only `SSH_ASKPASS_REQUIRE=force`.
+6. **On Unix, start every git (and ssh-add) child in a new session (`ssh_version::prepare`)**,
+   so ssh has no terminal and asks the helper (`SSH_ASKPASS` with `SSH_ASKPASS_REQUIRE=force`).
+   It also leads its own process group, which `process_tree.rs` stops as a whole. With OpenSSH
+   before 8.4, which ignores `SSH_ASKPASS_REQUIRE`, also set `DISPLAY` when unset
+   (`gitcli::askpass_vars_in`). The version is that of the ssh git runs for the command
+   (`ssh_version::ssh_command_for`: `GIT_SSH_COMMAND`, then the repository's `core.sshCommand`,
+   then `GIT_SSH`, then `ssh`), read with `-V` the way git starts it: a command through
+   `/bin/sh -c '<command> "$@"'`, so the shell does the quoting. Never log the command.
 7. **A path written into a git config value that a shell runs (`core.sshCommand`) goes through
    `native_path::native` and `rebase::shell_quote_for`** (`ssh_keys/command.rs`): no `\\?\`
    prefix, sh-quoted, and forward slashes on Windows. Git for Windows' bundled ssh doesn't read
@@ -715,7 +720,7 @@ Unverified, needs a real machine:
 - `safe.directory` on a real share (the `%(prefix)///server/share` spelling);
 - the PATH of an app started from the macOS Dock, and `open -n -a ... --args`;
 - remote-volume detection on real NFS, SMB and 9P mounts;
-- `DISPLAY` and setsid with OpenSSH before 8.4;
+- `DISPLAY` with OpenSSH before 8.4, and setsid with every OpenSSH;
 - whether `\\wsl$\X` and `\\wsl.localhost\X` give one `FolderId`;
 - trash for paths over 260 characters on Windows (expected: `NoTrash` and a permanent-delete
   offer);

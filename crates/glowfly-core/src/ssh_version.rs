@@ -1,15 +1,21 @@
-//! Which OpenSSH git's children run, for the askpass set-up in [`crate::gitcli`].
+//! Which ssh git's children run, and how they start, for the askpass set-up in [`crate::gitcli`].
+//!
+//! On Unix every git (or ssh-add) child starts in a new session ([`prepare`]): ssh then has no
+//! controlling terminal, so it can't ask on the terminal Glowfly was started from and asks the
+//! askpass helper instead, and a background job can't stop on that terminal either.
 //!
 //! OpenSSH 8.4 and newer use the askpass helper whenever `SSH_ASKPASS_REQUIRE=force` is set.
-//! Older versions ask it only when `DISPLAY` is set and ssh has no terminal to read from, so on
-//! Unix, with such a version, every git child gets a placeholder `DISPLAY` and starts in a new
-//! session ([`prepare`]), which leaves ssh without a controlling terminal. The version is read
-//! once per process (`ssh -V`), the first time a git child starts. Windows never needs this.
+//! Older versions ask it only when `DISPLAY` is set and ssh has no terminal, so with such a
+//! version an unset `DISPLAY` gets a placeholder ([`crate::gitcli::display_placeholder`]). The
+//! version is that of the ssh git runs in the command's repository ([`ssh_command_for`]: the
+//! environment, then the repository's `core.sshCommand`), read once per distinct command with
+//! `<ssh> -V`, run the way git runs it (a command through `/bin/sh`). Only the version is read
+//! from its output, and the command itself is never logged: it may hold a password. Windows
+//! never needs this.
 
 use std::ffi::{OsStr, OsString};
+use std::path::Path;
 use std::process::Command;
-#[cfg(unix)]
-use std::sync::OnceLock;
 
 /// Reads `major.minor` from `ssh -V` output such as "OpenSSH_9.6p1, LibreSSL 3.3.6" or
 /// "OpenSSH_for_Windows_9.5p1, LibreSSL 3.8.2".
@@ -27,38 +33,93 @@ pub fn needs_legacy(v: Option<(u32, u32)>) -> bool {
     v.is_none_or(|v| v < (8, 4))
 }
 
-/// The ssh git runs: the first word of `GIT_SSH_COMMAND` (unless it is empty or quoted), else
-/// `GIT_SSH`, else `ssh` from PATH.
-pub fn ssh_program(git_ssh_command: Option<&OsStr>, git_ssh: Option<&OsStr>) -> OsString {
-    let first = git_ssh_command.map(|c| c.to_string_lossy().split_whitespace().next().unwrap_or("").to_owned());
-    if let Some(word) = first.filter(|w| !w.is_empty() && !w.starts_with(['"', '\''])) {
-        return word.into();
-    }
-    match git_ssh.filter(|s| !s.is_empty()) {
-        Some(s) => s.to_owned(),
-        None => "ssh".into(),
+/// What git runs to reach an SSH remote.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SshCommand {
+    /// A command line (`GIT_SSH_COMMAND` or `core.sshCommand`) git hands to the shell as
+    /// `sh -c '<command> "$@"'`, so quoting, variables and wrappers work as in sh.
+    Shell(OsString),
+    /// A program (`GIT_SSH`, or plain `ssh` from PATH) git runs directly.
+    Program(OsString),
+}
+
+/// The ssh git runs, in git's order: `GIT_SSH_COMMAND`, then `core.sshCommand`, then
+/// `GIT_SSH`, then `ssh`. A value that is empty or only blanks counts as unset. Pure.
+pub fn ssh_command(git_ssh_command: Option<&OsStr>, core_ssh_command: Option<&OsStr>, git_ssh: Option<&OsStr>) -> SshCommand {
+    let set = |v: Option<&OsStr>| v.filter(|v| is_set(v)).map(OsStr::to_owned);
+    match set(git_ssh_command).or_else(|| set(core_ssh_command)) {
+        Some(command) => SshCommand::Shell(command),
+        None => SshCommand::Program(set(git_ssh).unwrap_or_else(|| "ssh".into())),
     }
 }
 
-/// Runs `<ssh> -V` (killed after 5 s) and reads its version.
+fn is_set(v: &OsStr) -> bool {
+    !v.to_string_lossy().trim().is_empty()
+}
+
+/// The ssh a git child started in `cwd` runs: `env` (the variables the caller gives it) and
+/// the process environment first, then `core.sshCommand` as git reads it there
+/// ([`configured_ssh_command`]). The config is read only when `GIT_SSH_COMMAND` doesn't decide.
+pub fn ssh_command_for(cwd: Option<&Path>, env: &[(&str, &str)]) -> SshCommand {
+    let var = |name: &str| match env.iter().rev().find(|(k, _)| *k == name) {
+        Some((_, v)) => Some(OsString::from(v)),
+        None => std::env::var_os(name),
+    };
+    let git_ssh_command = var("GIT_SSH_COMMAND");
+    let configured = if git_ssh_command.as_deref().is_some_and(is_set) { None } else { configured_ssh_command(cwd) };
+    ssh_command(git_ssh_command.as_deref(), configured.as_deref(), var("GIT_SSH").as_deref())
+}
+
+/// `core.sshCommand` as git sees it in `cwd`: from the repository there with its global and
+/// system config, else (outside a repository, or with no `cwd`) from those alone.
+pub fn configured_ssh_command(cwd: Option<&Path>) -> Option<OsString> {
+    let repo = cwd.and_then(|d| git2::Repository::open_ext(d, git2::RepositoryOpenFlags::empty(), std::iter::empty::<&OsStr>()).ok());
+    let config = match repo {
+        Some(r) => r.config().ok(),
+        None => git2::Config::open_default().ok(),
+    }?;
+    config.get_string("core.sshCommand").ok().map(OsString::from)
+}
+
+/// The command that prints `ssh`'s version, started as git starts it: a shell command as
+/// `/bin/sh -c '<command> "$@"' <command> -V`, a program directly with `-V`.
 #[cfg(unix)]
-fn detect() -> Option<(u32, u32)> {
+pub fn version_command(ssh: &SshCommand) -> Command {
+    match ssh {
+        SshCommand::Shell(command) => {
+            let mut script = command.clone();
+            script.push(" \"$@\"");
+            let mut cmd = Command::new("/bin/sh");
+            cmd.arg("-c").arg(script).arg(command).arg("-V");
+            cmd
+        }
+        SshCommand::Program(program) => {
+            let mut cmd = Command::new(program);
+            cmd.arg("-V");
+            cmd
+        }
+    }
+}
+
+/// Runs `ssh -V` (its whole process tree stopped after 5 s) and reads its version.
+#[cfg(unix)]
+pub fn detect(ssh: &SshCommand) -> Option<(u32, u32)> {
     use std::io::Read;
     use std::process::Stdio;
     use std::time::{Duration, Instant};
-    let program = ssh_program(std::env::var_os("GIT_SSH_COMMAND").as_deref(), std::env::var_os("GIT_SSH").as_deref());
-    let mut cmd = Command::new(program);
-    cmd.arg("-V").stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut cmd = version_command(ssh);
+    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
     crate::env_path::apply(&mut cmd);
+    crate::process_tree::prepare(&mut cmd);
     let mut child = cmd.spawn().ok()?;
+    let tree = crate::process_tree::attach(&child);
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
         match child.try_wait() {
             Ok(Some(_)) => break,
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(5)),
             _ => {
-                let _ = child.kill();
-                let _ = child.wait();
+                tree.terminate(&mut child);
                 return None;
             }
         }
@@ -75,37 +136,50 @@ fn detect() -> Option<(u32, u32)> {
     parse(&err).or_else(|| parse(&out))
 }
 
-#[cfg(unix)]
-static LEGACY: OnceLock<bool> = OnceLock::new();
-
-/// Whether git's ssh is older than OpenSSH 8.4 (checked once per process); always false on
-/// Windows, whose OpenSSH doesn't need the legacy set-up.
-pub fn legacy_askpass() -> bool {
+/// Whether `ssh` is older than OpenSSH 8.4, checked once per process for each command; always
+/// false on Windows, whose OpenSSH doesn't need the legacy set-up.
+pub fn legacy_for(ssh: &SshCommand) -> bool {
     #[cfg(unix)]
     {
-        *LEGACY.get_or_init(|| needs_legacy(detect()))
+        use std::collections::HashMap;
+        use std::sync::{Arc, LazyLock, Mutex, OnceLock, PoisonError};
+        type Known = Mutex<HashMap<SshCommand, Arc<OnceLock<bool>>>>;
+        static KNOWN: LazyLock<Known> = LazyLock::new(Known::default);
+        // The map is held only to find the entry; the check runs outside it, so a slow ssh
+        // holds up only the children that need that same ssh.
+        let entry = KNOWN.lock().unwrap_or_else(PoisonError::into_inner).entry(ssh.clone()).or_default().clone();
+        *entry.get_or_init(|| needs_legacy(detect(ssh)))
     }
     #[cfg(not(unix))]
     {
+        let _ = ssh;
         false
     }
 }
 
-/// Prepares a git (or ssh-add) child for the askpass helper: with OpenSSH before 8.4 on Unix,
-/// it starts in a new session, so ssh has no terminal and asks the helper.
-#[cfg(unix)]
-pub fn prepare(cmd: &mut Command) {
-    if legacy_askpass() {
-        detach_from_terminal(cmd);
-    }
+/// [`legacy_for`] the ssh a git child started in `cwd` with `env` runs ([`ssh_command_for`]);
+/// always false on Windows, without reading any config.
+pub fn legacy_askpass_in(cwd: Option<&Path>, env: &[(&str, &str)]) -> bool {
+    cfg!(unix) && legacy_for(&ssh_command_for(cwd, env))
 }
 
-/// Prepares a git (or ssh-add) child for the askpass helper; nothing to do on Windows.
-#[cfg(not(unix))]
-pub fn prepare(_cmd: &mut Command) {}
+/// [`legacy_askpass_in`] outside any repository, with the process environment.
+pub fn legacy_askpass() -> bool {
+    legacy_askpass_in(None, &[])
+}
+
+/// Prepares a git (or ssh-add) child for the askpass helper: on Unix it starts in a new
+/// session, so ssh has no terminal and asks the helper. Nothing to do on Windows.
+pub fn prepare(cmd: &mut Command) {
+    #[cfg(unix)]
+    detach_from_terminal(cmd);
+    #[cfg(not(unix))]
+    let _ = cmd;
+}
 
 /// Starts `cmd`'s child in a new session (`setsid`), without a controlling terminal: ssh can't
 /// open `/dev/tty`, and a background job can't block on the terminal Glowfly was started from.
+/// The child also leads its own process group, which [`crate::process_tree`] stops as a whole.
 #[cfg(unix)]
 pub fn detach_from_terminal(cmd: &mut Command) {
     use std::os::unix::process::CommandExt;
