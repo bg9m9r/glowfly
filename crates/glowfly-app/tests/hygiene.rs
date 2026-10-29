@@ -1,5 +1,6 @@
 //! Ratchets on source hygiene across both crates (`glowfly-app` and `glowfly-core`), so the
-//! rules in CLAUDE.md hold without anyone checking by hand, and today's exceptions can only shrink:
+//! rules in CONTRIBUTING.md hold without anyone checking by hand, and today's exceptions can only
+//! shrink:
 //!
 //! - A non-test `.rs` file stays under `LINE_LIMIT` lines. The files over it today are listed in
 //!   `LONG_FILES` with their current length as a ceiling: they may shrink but not grow, and an
@@ -24,7 +25,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use views::{app_src, code_lines, crate_sources};
 
-/// The line limit for a non-test file (CLAUDE.md: "Keep files under ~400 lines").
+/// The line limit for a non-test file (CONTRIBUTING.md: "Keep files under about 400 lines").
 const LINE_LIMIT: usize = 400;
 
 /// The non-test files over `LINE_LIMIT` today, with their length as a ceiling.
