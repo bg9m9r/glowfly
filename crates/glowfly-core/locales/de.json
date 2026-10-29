@@ -5,7 +5,7 @@
   "about.license": "Lizenziert unter {license}",
   "about.notices.back.button": "Zurück",
   "about.notices.button": "Hinweise zu Drittanbietern…",
-  "about.notices.intro": "Glowfly enthält Schriftarten und Syntaxdefinitionen zum Hervorheben von Diffs; ihre Lizenzen folgen.",
+  "about.notices.intro": "Glowfly enthält Bibliotheken, Schriftarten und Syntaxdefinitionen von Drittanbietern; ihre Lizenzen folgen.",
   "about.notices.title": "Hinweise zu Drittanbietern",
   "about.tagline": "Ein schneller, nativer Git-Client für Windows, macOS und Linux.",
   "about.version": "Version {version}",

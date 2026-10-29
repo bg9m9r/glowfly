@@ -110,7 +110,11 @@ source file, update its line here.
 - `avatars.rs`: avatar fetching.
 - `text.rs`: safe display of outside text.
 - `changelog.rs`: release notes in release-please's Markdown (the bundled `CHANGELOG.md`, a release's body): releases, sections and styled items.
-- `glowfly_core::notices` parses the licenses in THIRD-PARTY-NOTICES.md; `glowfly_core::app_identity` holds Glowfly's identity with the OS (`APP_ID`, `DESKTOP_ENTRY`).
+- `notices.rs`: parses the licenses in THIRD-PARTY-NOTICES.md, section by marked section (fonts, egui's fonts, syntax definitions, encoding tables, libgit2, Rust crates, AppImage runtime); a block covering many crates gets a short name.
+- `notices/fresh_tests.rs`: the notices are current: the syntax section matches two-face, and every registry crate in `Cargo.lock` is in the crate section or in `notices/not-shipped.txt` (no network); `UPDATE_NOTICES=1` regenerates both.
+- `notices/generate.rs`: tests only: the generator: the crates compiled in for the release targets (`cargo tree -e normal`), their licence files from the registry (`cargo metadata`), standard texts from `notices/spdx/` for crates without one, grouped by identical text; libgit2's COPYING; egui's font licences.
+- `notices/spdx.rs`: tests only: SPDX licence expressions, which option Glowfly takes, and which licence a file's text is.
+- `glowfly_core::app_identity` holds Glowfly's identity with the OS (`APP_ID`, `DESKTOP_ENTRY`).
 
 ## External tools (`external_tools.rs`, `external_tools/`)
 

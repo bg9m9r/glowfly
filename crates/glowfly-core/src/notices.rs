@@ -1,19 +1,52 @@
 //! The third-party notices (THIRD-PARTY-NOTICES.md), embedded at build time so Help > About can
-//! show the licenses of the bundled fonts and syntax definitions without reading any file.
+//! show the licenses of the bundled fonts, syntax definitions and libraries without reading any
+//! file. The file's licence texts sit in marked sections, in the order of `SECTIONS`.
 
 use std::sync::OnceLock;
 
 /// The whole notices file.
 pub const TEXT: &str = include_str!("../../../THIRD-PARTY-NOTICES.md");
 
-/// The hand-maintained font licenses (first in the file).
-const FONT_BEGIN: &str = "<!-- BEGIN FONT LICENSES -->";
-const FONT_END: &str = "<!-- END FONT LICENSES -->";
-/// The syntax licenses, generated from the two-face crate.
-const BEGIN: &str = "<!-- BEGIN GENERATED SYNTAX LICENSES -->";
-const END: &str = "<!-- END GENERATED SYNTAX LICENSES -->";
+#[cfg(test)]
+mod fresh_tests;
+#[cfg(test)]
+mod generate;
+#[cfg(test)]
+mod spdx;
 
-/// One bundled font's or definition's license.
+/// One marked section of the file.
+#[derive(Clone, Copy, Debug)]
+pub struct Section {
+    pub begin: &'static str,
+    pub end: &'static str,
+    /// Whether its `<summary>` lines are source paths, named with `display_name`; otherwise
+    /// the summary is the name.
+    paths: bool,
+}
+
+/// The hand-maintained licenses of the bundled fonts.
+pub const FONTS: Section = Section { begin: "<!-- BEGIN FONT LICENSES -->", end: "<!-- END FONT LICENSES -->", paths: true };
+/// egui's built-in fonts, generated from the epaint_default_fonts crate.
+pub const EGUI_FONTS: Section =
+    Section { begin: "<!-- BEGIN GENERATED EGUI FONT LICENSES -->", end: "<!-- END GENERATED EGUI FONT LICENSES -->", paths: false };
+/// The syntax licenses, generated from the two-face crate.
+pub const SYNTAX: Section =
+    Section { begin: "<!-- BEGIN GENERATED SYNTAX LICENSES -->", end: "<!-- END GENERATED SYNTAX LICENSES -->", paths: true };
+/// The WHATWG Encoding Standard's tables (hand-maintained).
+pub const ENCODING: Section = Section { begin: "<!-- BEGIN ENCODING LICENSES -->", end: "<!-- END ENCODING LICENSES -->", paths: false };
+/// libgit2's COPYING and where its source is, generated from the libgit2-sys crate.
+pub const LIBGIT2: Section =
+    Section { begin: "<!-- BEGIN GENERATED LIBGIT2 LICENSE -->", end: "<!-- END GENERATED LIBGIT2 LICENSE -->", paths: false };
+/// The Rust crates compiled in, generated from Cargo.lock.
+pub const CRATES: Section =
+    Section { begin: "<!-- BEGIN GENERATED CRATE LICENSES -->", end: "<!-- END GENERATED CRATE LICENSES -->", paths: false };
+/// The AppImage runtime and the libraries it links (hand-maintained).
+pub const APPIMAGE: Section = Section { begin: "<!-- BEGIN APPIMAGE LICENSES -->", end: "<!-- END APPIMAGE LICENSES -->", paths: false };
+
+/// The sections, in file order.
+pub const SECTIONS: [Section; 7] = [FONTS, EGUI_FONTS, SYNTAX, ENCODING, LIBGIT2, CRATES, APPIMAGE];
+
+/// One bundled font's, definition's or library's license.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Notice {
     /// A readable name, such as "Noto Sans", "Rust" or "Crontab / cron_descriptor".
@@ -24,17 +57,40 @@ pub struct Notice {
     pub text: String,
 }
 
-/// The licenses of the font section, then of the syntax section (their order in the file).
-/// Each `<details>` block gives its `<summary>` (the source) and the lines of its text fence. A
-/// section without both its markers gives nothing: it is not as written.
-pub fn parse(md: &str) -> Vec<Notice> {
-    let mut out = section(md, FONT_BEGIN, FONT_END);
-    out.extend(section(md, BEGIN, END));
-    out
+impl Notice {
+    /// The full list a shortened name stands for (the source, for a block covering many
+    /// crates); None when the name says it all.
+    pub fn detail(&self) -> Option<&str> {
+        (self.name != self.source && !self.source.contains('/')).then_some(self.source.as_str())
+    }
 }
 
-/// The `<details>` blocks between `begin` and `end`, in file order; empty without `end`.
-fn section(md: &str, begin: &str, end: &str) -> Vec<Notice> {
+/// How many crates a block's name lists before "and N more".
+const NAMED: usize = 3;
+
+/// A name for a summary that lists what it covers (`MIT: a 1.0, b 2.0, c 1.1, d 0.3`): its
+/// first few entries without versions and how many more (`MIT: a, b, c and 1 more`). Other
+/// summaries are their own name.
+pub fn short_name(summary: &str) -> String {
+    let Some((label, list)) = summary.split_once(": ") else { return summary.to_owned() };
+    let items: Vec<&str> = list.split(", ").collect();
+    if items.len() <= NAMED {
+        return summary.to_owned();
+    }
+    let first: Vec<&str> = items[..NAMED].iter().map(|c| c.split_whitespace().next().unwrap_or(c)).collect();
+    format!("{label}: {} and {} more", first.join(", "), items.len() - NAMED)
+}
+
+/// The licenses of every section, in `SECTIONS` order. Each `<details>` block gives its
+/// `<summary>` (the source) and the lines of its text fence. A section without both its markers
+/// gives nothing: it is not as written.
+pub fn parse(md: &str) -> Vec<Notice> {
+    SECTIONS.iter().flat_map(|s| section(md, s)).collect()
+}
+
+/// The `<details>` blocks of section `s`, in file order; empty without its end marker.
+pub fn section(md: &str, s: &Section) -> Vec<Notice> {
+    let (begin, end) = (s.begin, s.end);
     let mut out = Vec::new();
     let mut inside = false;
     let mut source: Option<String> = None;
@@ -51,7 +107,8 @@ fn section(md: &str, begin: &str, end: &str) -> Vec<Notice> {
             if line.trim_start().starts_with("```") {
                 let body = lines.join("\n").trim_end().to_owned();
                 if let Some(src) = source.take() {
-                    out.push(Notice { name: display_name(&src), source: src, text: body });
+                    let name = if s.paths { display_name(&src) } else { short_name(&src) };
+                    out.push(Notice { name, source: src, text: body });
                 }
                 text = None;
             } else {
@@ -132,9 +189,23 @@ mod tests {
 
     #[test]
     fn no_markers_no_notices() {
-        let bare = SAMPLE.replace(BEGIN, "").replace(END, "");
+        let bare = SAMPLE.replace(SYNTAX.begin, "").replace(SYNTAX.end, "");
         assert!(parse(&bare).is_empty());
         assert!(parse("").is_empty());
+    }
+
+    #[test]
+    fn long_lists_are_shortened() {
+        assert_eq!(short_name("MIT: a 1.0, b 2.0, c 1.1, d 0.3, e 4"), "MIT: a, b, c and 2 more");
+        assert_eq!(short_name("ISC: ring 0.17.14"), "ISC: ring 0.17.14");
+        assert_eq!(short_name("WHATWG Encoding Standard (encoding_rs)"), "WHATWG Encoding Standard (encoding_rs)");
+        let n = |name: &str, source: &str| Notice { name: name.into(), source: source.into(), text: String::new() };
+        assert_eq!(
+            n("MIT: a, b, c and 2 more", "MIT: a 1.0, b 2.0, c 1.1, d 0.3, e 4").detail(),
+            Some("MIT: a 1.0, b 2.0, c 1.1, d 0.3, e 4")
+        );
+        assert_eq!(n("Rust", "syntaxes/01_Packages/Rust/LICENSE.txt").detail(), None);
+        assert_eq!(n("ISC: ring 0.17.14", "ISC: ring 0.17.14").detail(), None);
     }
 
     #[test]
@@ -163,9 +234,9 @@ mod tests {
     /// Font blocks before the syntax sample, as in the file.
     fn with_fonts(font_end: bool, syntax_end: bool) -> String {
         let fonts = "<!-- BEGIN FONT LICENSES -->\n<details>\n<summary>fonts/Noto Sans/OFL.txt</summary>\n\n````text\nFont terms\n````\n</details>\n\n";
-        let mut md = format!("intro\n{fonts}{}\n{SAMPLE}", if font_end { FONT_END } else { "" });
+        let mut md = format!("intro\n{fonts}{}\n{SAMPLE}", if font_end { FONTS.end } else { "" });
         if !syntax_end {
-            md = md.replace(END, "");
+            md = md.replace(SYNTAX.end, "");
         }
         md
     }

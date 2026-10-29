@@ -377,6 +377,4 @@ mod linguist_tests;
 #[cfg(test)]
 mod memo_tests;
 #[cfg(test)]
-mod notice_tests;
-#[cfg(test)]
 mod tests;

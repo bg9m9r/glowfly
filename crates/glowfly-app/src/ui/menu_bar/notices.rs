@@ -1,5 +1,6 @@
-//! Help > About > Third-party notices (`Modal::Notices`): the licenses of the bundled fonts and
-//! syntax definitions, one folded header each. Back returns to About; the dialog can be resized.
+//! Help > About > Third-party notices (`Modal::Notices`): the licenses of the bundled fonts,
+//! syntax definitions and libraries, one folded header each (a block covering many crates names
+//! a few and lists them all inside). Back returns to About; the dialog can be resized.
 
 use crate::msg::{AppMsg, Msg};
 use crate::state::menu_bar::reflow;
@@ -18,6 +19,9 @@ pub(crate) fn notices(ui: &mut egui::Ui, cx: Cx, msgs: &mut Vec<Msg>) -> bool {
         ui.add(Label::new(RichText::new(t.tr("about.notices.intro")).color(color::weak())).wrap());
         for n in notices::licenses() {
             CollapsingHeader::new(&n.name).id_salt(&n.source).default_open(false).show(ui, |ui| {
+                if let Some(covers) = n.detail() {
+                    ui.add(Label::new(RichText::new(covers).size(type_scale::SMALL).color(color::weak())).wrap());
+                }
                 ui.add(Label::new(RichText::new(reflow(&n.text)).size(type_scale::SMALL)).wrap());
             });
         }

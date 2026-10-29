@@ -182,5 +182,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without
 any additional terms or conditions.
 
-The binaries also embed third-party syntax definitions for diff highlighting; see
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for their licenses.
+The binaries also include third-party libraries (libgit2 and the Rust crates Glowfly is built
+from), fonts and syntax definitions for diff highlighting; see
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for their licenses. Every package ships that
+file, and Help > About shows it.

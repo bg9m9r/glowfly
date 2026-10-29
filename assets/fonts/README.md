@@ -4,7 +4,8 @@ Glowfly draws its interface in these fonts, embedded in the binary with `include
 (`crates/glowfly-app/src/ui/theme/fonts.rs`). The files are copied unmodified from the upstream
 releases below: no subsetting, no renaming of the font data. Both families are licensed under
 the SIL Open Font License, Version 1.1; the license texts are next to them and in
-`THIRD-PARTY-NOTICES.md`, which Help > About lists.
+`THIRD-PARTY-NOTICES.md`, which Help > About lists. egui's own built-in fonts stay behind them as
+fallbacks; their licences are generated into the same file from the `epaint_default_fonts` crate.
 
 | File | Source | SHA-256 |
 | --- | --- | --- |

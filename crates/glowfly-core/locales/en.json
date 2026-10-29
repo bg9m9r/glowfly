@@ -5,7 +5,7 @@
   "about.license": "Licensed under {license}",
   "about.notices.back.button": "Back",
   "about.notices.button": "Third-party notices…",
-  "about.notices.intro": "Glowfly bundles fonts and syntax definitions for highlighting diffs; their licenses follow.",
+  "about.notices.intro": "Glowfly includes third-party libraries, fonts and syntax definitions; their licenses follow.",
   "about.notices.title": "Third-party notices",
   "about.tagline": "A fast, native Git client for Windows, macOS and Linux.",
   "about.version": "Version {version}",

@@ -4,6 +4,9 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 
 ### Packaging and updates
 
+- Drop egui's Ubuntu Light and Hack fallbacks (eframe without `default_fonts`, with Noto Emoji and emoji-icon-font added by hand) so the notices carry two fewer font licences
+- Check the AppImage notices' library versions (Alpine's musl, zstd, zlib, mimalloc) against the runtime's build log on each runtime bump; the test checks only the release number
+- Add a copyright line from the crate's authors to MIT blocks whose crate file has none
 - Skip this version: don't offer a release again until a newer one is out
 - "Open in Glowfly" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
 - "Open in Glowfly" on drives as well as folders
