@@ -50,7 +50,7 @@ pub(super) fn submit(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let Some(snap) = st.snap.as_ref() else { return };
-    let req = match move_request(snap, &form) {
+    let req = match move_request(snap, &form, st.git.stops_monitor()) {
         Ok(r) => r,
         Err(e) => return st.log(false, e),
     };

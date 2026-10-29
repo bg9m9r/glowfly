@@ -58,10 +58,10 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
             Some(load::load_repo(path, opts, generation, kind, known, prior, cx.graph_cache))
         }
         Effect::LoadStatus { workdir, generation, submodules, open, git_status, paths } => {
-            Some(status::load(&workdir, generation, submodules, open, git_status, paths))
+            Some(status::load(&workdir, generation, submodules, open, git_status, paths, cx.graph_cache.records()))
         }
         Effect::LoadIndexStatus { workdir, generation, submodules, open, git_status, read } => {
-            Some(status::load_index(&workdir, generation, submodules, open, git_status, read))
+            Some(status::load_index(&workdir, generation, submodules, open, git_status, read, cx.graph_cache.records()))
         }
         Effect::LoadDetail { workdir, oid } => {
             Some(Msg::Repo(RepoMsg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }))

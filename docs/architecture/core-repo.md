@@ -9,7 +9,8 @@ source file, update its line here.
 - Re-reading only some work-tree paths: `status_paths.rs`, merged by `status_merge.rs`.
 - After an index change, both lists' rows of the paths whose entries changed since the memo of the last read: `index_memo.rs`, `status_index.rs`.
 - What speeds git's status up and the slow-read note's commands: `status_speed.rs`.
-- Git's built-in file system monitor (which OS and git have it, starting and confirming `git fsmonitor--daemon`, reading its refusals): `fsmonitor.rs`.
+- Git's built-in file system monitor (which OS and git have it, `git version --build-options` naming the daemon, starting and confirming `git fsmonitor--daemon`, reading its refusals, turning it off and stopping it): `fsmonitor.rs`.
+- An index file's extensions (`index_ext.rs`): libgit2's index writes (unstaging, hunks and lines) drop the untracked cache and the daemon's token, so a trusted whole status read that finds them missing lets git write the index once to record them again (`status_cli::status_recording`): the token only where a daemon can give one (`fsmonitor::daemon_serves`), and once per index file size and time (`RecordMemo`, kept in the runner's `GraphCache`).
 - Rows whose stored content is a Git LFS pointer get `FileEntry::lfs`, and a viewer diff with a pointer side carries its `LfsChange` (`lfs_marks.rs`).
 - The commits one branch has and another lacks, walked in the loaded graph and marked incomplete when it runs off its end: `divergence.rs`.
 - The commits deleting a local branch would leave on no branch (reached from its tip, from no other local or remote-tracking branch): `unmerged.rs`.

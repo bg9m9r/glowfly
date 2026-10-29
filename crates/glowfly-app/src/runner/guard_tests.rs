@@ -83,7 +83,7 @@ fn a_panicking_merge_tool_ends_its_job() {
 
 #[test]
 fn a_panicking_sparse_monitor_or_worktree_job_ends_its_job() {
-    use crate::effect::MonitorJob;
+    use crate::effect::{MonitorJob, MonitorOff};
     use crate::worktree::{MoveRequest, RemoveRequest};
     let sparse = Effect::Sparse(SparseEffect::Checkout { cwd: "C:/r".into(), command: glowfly_core::sparse_ops::SparseCommand::Disable });
     let monitor = Effect::TurnOnMonitor(MonitorJob { cwd: "C:/r".into(), then: vec![] });
@@ -94,6 +94,7 @@ fn a_panicking_sparse_monitor_or_worktree_job_ends_its_job() {
         force: glowfly_core::worktree_ops::RemoveForce::None,
         delete_branch: None,
         delete_remote: None,
+        stop_monitor: false,
     }));
     let moved = Effect::Worktree(WorktreeEffect::Move(MoveRequest {
         repo: "C:/r".into(),
@@ -101,8 +102,10 @@ fn a_panicking_sparse_monitor_or_worktree_job_ends_its_job() {
         to: "C:/moved/wt".into(),
         name: "wt".into(),
         folder: None,
+        stop_monitor: false,
     }));
-    for effect in [sparse, monitor, remove, moved] {
+    let off = Effect::TurnOffMonitor(MonitorOff { cwd: "C:/r".into() });
+    for effect in [sparse, monitor, off, remove, moved] {
         assert!(effect.scope().is_none(), "unscoped: the job ends whichever tab is active");
         let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
         let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };

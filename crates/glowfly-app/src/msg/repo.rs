@@ -156,6 +156,11 @@ pub enum LoadMsg {
     /// The file system monitor job ended (runner/monitor.rs); unscoped, it ends the active job.
     /// `cache`: None when the untracked cache wasn't asked for, else whether its commands worked.
     StatusSpedUp { output: String, monitor: glowfly_core::repo::MonitorOutcome, cache: Option<bool> },
+    /// Repository > Hooks' Turn off for git's file system monitor, in the active repository.
+    TurnOffMonitor,
+    /// The Turn off job ended (runner/monitor.rs); unscoped, it ends the active job. `ok`: the
+    /// setting is unset and no daemon watches.
+    MonitorTurnedOff { output: String, ok: bool },
 }
 
 impl LoadMsg {
@@ -172,7 +177,9 @@ impl LoadMsg {
             | Self::HistoryExtended { .. }
             | Self::StatusLoaded { .. }
             | Self::SpeedUpStatus { .. }
-            | Self::StatusSpedUp { .. } => None,
+            | Self::StatusSpedUp { .. }
+            | Self::TurnOffMonitor
+            | Self::MonitorTurnedOff { .. } => None,
         }
     }
 }

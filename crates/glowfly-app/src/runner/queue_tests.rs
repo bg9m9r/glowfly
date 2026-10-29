@@ -1,7 +1,7 @@
 //! Tests for the per-repository effect queue (runner/queue.rs).
 
 use super::*;
-use crate::effect::{Effect, EffectMeta, MonitorJob, RebaseEffect, ReposEffect, SparseEffect, StashEffect, WorktreeEffect};
+use crate::effect::{Effect, EffectMeta, MonitorJob, MonitorOff, RebaseEffect, ReposEffect, SparseEffect, StashEffect, WorktreeEffect};
 use glowfly_core::repo_sync::SyncOp;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -275,6 +275,7 @@ fn every_effect_that_changes_a_repository_queues() {
             force: glowfly_core::worktree_ops::RemoveForce::None,
             delete_branch: None,
             delete_remote: None,
+            stop_monitor: false,
         })),
         Effect::Worktree(WorktreeEffect::Move(crate::worktree::MoveRequest {
             repo: w.clone(),
@@ -282,10 +283,12 @@ fn every_effect_that_changes_a_repository_queues() {
             to: "C:/moved/wt".into(),
             name: "wt".into(),
             folder: None,
+            stop_monitor: false,
         })),
         Effect::Stash(StashEffect::Rename { cwd: w.clone(), index: 0, oid: git2::Oid::zero(), message: "On main: x".into() }),
         Effect::Sparse(SparseEffect::Checkout { cwd: w.clone(), command: glowfly_core::sparse_ops::SparseCommand::Reapply }),
         Effect::TurnOnMonitor(MonitorJob { cwd: w.clone(), then: vec![] }),
+        Effect::TurnOffMonitor(MonitorOff { cwd: w.clone() }),
     ];
     for e in &changing {
         assert_eq!(Effect::queue(e), Some(w.as_path()), "{} must run on its repository's queue", e.name());

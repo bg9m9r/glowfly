@@ -125,6 +125,8 @@ pub struct GitConfigValues {
     pub repo_name: String,
     pub repo_email: String,
     pub hooks_path: String,
+    /// The repository's own core.fsmonitor is true: git's built-in file system monitor.
+    pub fsmonitor: bool,
     pub gpg_program: String,
     pub ssh_program: String,
     pub x509_program: String,

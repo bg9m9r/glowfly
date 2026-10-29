@@ -1,6 +1,6 @@
 //! Git's built-in file system monitor (`git fsmonitor--daemon`, on Windows and macOS with git
-//! 2.36 or newer): which OSes and gits have it, the commands that check, start and turn it on,
-//! and reading their answers.
+//! 2.36 or newer): which OSes and gits have it (`git version --build-options` names it), the
+//! commands that check, start, turn it on and off and stop it, and reading their answers.
 
 use crate::git_version::Version;
 use crate::gitcli::{self, GitOutput};
@@ -24,20 +24,44 @@ pub enum MonitorOffer {
     TooOld(Version),
     /// No built-in daemon on this OS: Watchman with git's fsmonitor-watchman hook, in words only.
     Watchman,
+    /// This git is new enough but was built without the daemon (`git version --build-options`
+    /// doesn't name it): nothing to offer.
+    NotBuilt,
 }
 
-/// What `os` with a git of `version` can use (an unknown version counts as new enough).
-pub fn monitor_offer_for(os: Os, version: Option<Version>) -> MonitorOffer {
+/// What `os` with a git of `version` can use (an unknown version counts as new enough), given
+/// whether its build options name the daemon (`daemon`, None while unknown: counted as built).
+pub fn monitor_offer_for(os: Os, version: Option<Version>, daemon: Option<bool>) -> MonitorOffer {
     match (os, version) {
         (Os::Linux, _) => MonitorOffer::Watchman,
         (Os::Windows | Os::MacOs, Some(v)) if (v.0, v.1) < FSMONITOR_DAEMON => MonitorOffer::TooOld(v),
+        (Os::Windows | Os::MacOs, _) if daemon == Some(false) => MonitorOffer::NotBuilt,
         (Os::Windows | Os::MacOs, _) => MonitorOffer::Daemon,
     }
 }
 
 /// [`monitor_offer_for`] on this OS.
-pub fn monitor_offer(version: Option<Version>) -> MonitorOffer {
-    monitor_offer_for(Os::current(), version)
+pub fn monitor_offer(version: Option<Version>, daemon: Option<bool>) -> MonitorOffer {
+    monitor_offer_for(Os::current(), version, daemon)
+}
+
+/// Whether `git version --build-options` printed `text` for a git built with the daemon.
+pub fn daemon_in_build_options(text: &str) -> bool {
+    text.lines().any(|l| l.trim() == "feature: fsmonitor--daemon")
+}
+
+/// Whether git's daemon could watch the working directory `workdir` and give git a token: this
+/// OS has it, the git Glowfly runs was built with it, and the folder isn't on a network drive
+/// (which the daemon refuses). Asks git, so callers ask rarely.
+pub fn daemon_serves(workdir: &Path) -> bool {
+    crate::volume::remote_kind(workdir).is_none() && monitor_offer(None, daemon_built(workdir)) == MonitorOffer::Daemon
+}
+
+/// Whether the git Glowfly runs was built with the daemon, asked in `cwd`; None when git didn't
+/// answer. Older gits print no feature lines, so they read as built without it.
+pub fn daemon_built(cwd: &Path) -> Option<bool> {
+    let out = gitcli::read(cwd, &line(&["version", "--build-options"]));
+    out.ok.then(|| daemon_in_build_options(&out.stdout))
 }
 
 fn line(a: &[&str]) -> Vec<String> {
@@ -57,6 +81,17 @@ pub fn monitor_start_cmd() -> Vec<String> {
 /// Turns the built-in monitor on: the plain boolean, never a hook's path.
 pub fn monitor_enable_cmd() -> Vec<String> {
     line(&["config", "core.fsmonitor", "true"])
+}
+
+/// Turns the monitor off for this repository: unsets the local core.fsmonitor, every value of
+/// it (plain `--unset` refuses a key set more than once, with the same exit code as an unset one).
+pub fn monitor_disable_cmd() -> Vec<String> {
+    line(&["config", "--unset-all", "core.fsmonitor"])
+}
+
+/// Stops the daemon watching this working directory.
+pub fn monitor_stop_cmd() -> Vec<String> {
+    line(&["fsmonitor--daemon", "stop"])
 }
 
 /// A status read that may write the index, so git records the monitor's token (and the
@@ -193,6 +228,33 @@ fn check_and_start(cwd: &Path, log: &mut String) -> MonitorOutcome {
     }
 }
 
+/// Whether a stop that printed `out` left no daemon watching: it stopped, none was running, or
+/// this git has none.
+fn stopped(out: &GitOutput) -> bool {
+    out.ok || out.stderr.contains("is not running") || trouble_in(&out.stderr) == Some(MonitorTrouble::Unsupported)
+}
+
+/// Stops the daemon watching `cwd`, if one is, so it lets go of the folder (on Windows it holds
+/// the working directory open, and a worktree can't be removed or moved under it). Returns the
+/// command's log, or "" when no daemon was running.
+pub fn stop_monitor(cwd: &Path) -> String {
+    let mut log = String::new();
+    let out = run(cwd, &monitor_stop_cmd(), gitcli::READ_TIMEOUT, &mut log);
+    if out.ok { log.trim_end().to_owned() } else { String::new() }
+}
+
+/// Turns the monitor off in `cwd`: unsets core.fsmonitor first, so no git started meanwhile
+/// starts the daemon again, then stops the daemon. Returns whether both left it off, and the
+/// commands' log. A core.fsmonitor that wasn't set locally (`--unset-all` exits 5 only then)
+/// counts as unset.
+pub fn turn_off_monitor(cwd: &Path) -> (bool, String) {
+    let mut log = String::new();
+    let unset = run(cwd, &monitor_disable_cmd(), gitcli::READ_TIMEOUT, &mut log);
+    let unset_ok = unset.ok || unset.code == Some(5);
+    let stop = run(cwd, &monitor_stop_cmd(), gitcli::READ_TIMEOUT, &mut log);
+    (unset_ok && stopped(&stop), log.trim_end().to_owned())
+}
+
 #[cfg(test)]
 #[path = "fsmonitor_tests.rs"]
-mod tests;
+pub(super) mod tests;

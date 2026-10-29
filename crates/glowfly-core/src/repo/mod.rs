@@ -56,6 +56,7 @@ mod graph_cache;
 mod history;
 mod history_forward;
 mod index;
+mod index_ext;
 mod index_memo;
 mod lfs_marks;
 mod line_counts;
@@ -134,13 +135,15 @@ pub use file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, 
 pub use file_bytes::{FileBytes, file_bytes_at};
 pub use folder_history::{folder_file_today, folder_history};
 pub use fsmonitor::{
-    FSMONITOR_DAEMON, MonitorOffer, MonitorOutcome, MonitorTrouble, monitor_enable_cmd, monitor_offer, monitor_offer_for,
-    monitor_record_cmd, monitor_start_cmd, monitor_status_cmd, turn_on_monitor,
+    FSMONITOR_DAEMON, MonitorOffer, MonitorOutcome, MonitorTrouble, daemon_built, daemon_in_build_options, monitor_disable_cmd,
+    monitor_enable_cmd, monitor_offer, monitor_offer_for, monitor_record_cmd, monitor_start_cmd, monitor_status_cmd, monitor_stop_cmd,
+    stop_monitor, turn_off_monitor, turn_on_monitor,
 };
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use history_forward::name_at_head;
 pub use index::{WholeDiscard, apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths, whole_discard};
+pub use index_ext::RecordMemo;
 pub use index_memo::{IndexDelta, IndexMemo, MAX_INDEX_MEMO};
 pub use line_counts::{FileLineCounts, LineCount, MAX_COUNTED_FILES, WipLineCounts, commit_line_counts, wip_line_counts};
 pub use line_map::{LineChange, LineMap, PrLineMaps, line_maps, pr_line_maps};
@@ -162,7 +165,7 @@ pub use restore::{RestoredFrom, restore_file};
 pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};
 pub(crate) use rpath::shown as shown_path;
 pub use stacked::*;
-pub use status::{ChangeCounts, status_and_index, status_at};
+pub use status::{ChangeCounts, status_and_index, status_and_index_with, status_at};
 pub use status_index::{IndexStatus, status_after_index_change};
 pub use status_merge::{covers, merge_staged, merge_unstaged};
 pub use status_paths::{CLI_PATH_BYTES, PathsStatus, status_of_paths};
