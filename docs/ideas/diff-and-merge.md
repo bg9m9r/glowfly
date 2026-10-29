@@ -204,6 +204,7 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Copy git config's tool into the External tools fields with one click
 - Run a built-in merge tool on a file whose name has *, ? or [ (refused now: git mergetool's script globs the name)
 - Remove a git difftool opening's copies as soon as git difftool exits (it waits for the tool), not only when Glowfly quits
+- A late GUI diff tool failure is logged in the tab active when it arrives; log it to the repository the request came from
 
 ### File history and blame
 

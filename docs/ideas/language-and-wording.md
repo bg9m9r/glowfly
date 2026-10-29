@@ -56,3 +56,5 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
   aliases so old settings files still load
 - The "Showing only …" banner line is cut short beside the wider "Show the rest" button in the
   default sidebar width; give the line more room or move the button under it
+- German unsigned-builds help as one sentence ("Da die Builds von Glowfly noch nicht codesigniert sind, bestätigt dieser Abgleich nur, …")
+- Spanish unsigned-builds help: end with "…, pero no quién la publicó"

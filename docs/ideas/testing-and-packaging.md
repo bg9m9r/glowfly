@@ -44,6 +44,10 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Show GIT-NOTICE.md in Help > About when Glowfly runs inside the Flatpak, beside the third-party notices
 - Link the privacy notice from the release notes header once PRIVACY.md exists
 - Check the arm64 MSI's licence files in the Release workflow (an administrative install, msiexec /a), not only the installed x64 MSI in Installers
+- The release notes header says that builds are unsigned twice in a row; say it once
+- The final rename of a streamed update download can replace a file that appeared under the chosen name meanwhile; refuse or pick a free name
+- Clear temp files a killed update download left in Downloads (on the next start or the next download)
+- `check_saved` hashes the whole downloaded file on every Preferences open, and repeated opens queue several reads; remember the result by size and modified time, and run one read at a time
 
 ### Installer and update checks in CI
 
@@ -100,3 +104,4 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Fuzz the trust plumbing end to end: a todo resolved against a real fixture repository, and mailboxes through `git mailsplit` and `git mailinfo` (needs git in the fuzz job and a scratch repository per run)
 - Minimize the cached corpus now and then (`cargo fuzz cmin`) so the scheduled run doesn't spend its minutes reloading near-duplicates
 - Turn the fuzz checks' seeds into a dictionary per target (`-dict=`) for the marker and URL tokens the stable mutation test already splices in
+- Check `remote_url`'s host against `url::Url::parse(..).host_str()` in its fuzz check, which now uses the same character set as the parser
