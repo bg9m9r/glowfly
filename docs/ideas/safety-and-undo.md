@@ -122,6 +122,10 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Keep the undo history across an abort of an operation Glowfly didn't start, or one put back in
   progress by undoing a kept abort (where it started isn't recorded, so the history is cleared)
 - Keep the undo history across a patch series abort (`am --abort`)
+- Let Trust and run re-run a kept abort the trust check held, as it does for a held git command
+  (now it fails with the reason, like a held undo)
+- Keep the stash made before a redo when the trust check holds its first command and putting the
+  operation back then fails partway (it now counts as nothing changed and pops the stash)
 
 ### In-progress operations stay visible and safe
 
