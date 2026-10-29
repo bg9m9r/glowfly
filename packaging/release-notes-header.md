@@ -1,7 +1,8 @@
 <!-- glowfly-release-header:start -->
 **These builds are not code-signed yet.** None of them is signed with a code-signing certificate,
 so Windows and macOS may warn that the publisher is unknown or that the app can't be checked.
-To confirm that a file is the one this release published, check it against `SHA256SUMS`.
+To confirm that a file is the one this release published, check it against `SHA256SUMS`. The
+checksums show that a download matches what this release published, not who published it.
 
 **Check a download.** Download `SHA256SUMS` into the same folder as the file, then run this in
 that folder. Every file you downloaded should show OK.

@@ -187,7 +187,8 @@ When git is updated, change its url and sha256 in the manifest and the version, 
 
 The **prepare** job runs `scripts/release-notes-header.sh <tag>`, which puts
 `packaging/release-notes-header.md` above the release's notes: the builds aren't code-signed
-yet, how to check a download against `SHA256SUMS` (a command for each system) and its build
+yet and the checksums confirm a download matches what the release published, not who published
+it, how to check a download against `SHA256SUMS` (a command for each system) and its build
 provenance (`gh attestation verify`), and that Glowfly
 is provided as is, without warranty, under MIT OR Apache-2.0, and a link to `PRIVACY.md`. The header sits between two HTML
 comment markers, so a re-run replaces it instead of adding a second. The header has no `## `

@@ -8,6 +8,7 @@ Dialog
   Label " check for a new version once a day ("
   Label "1a2b3c4"
   Label ")"
+  Label "The download is checked against the release's published SHA-256 checksums. Glowfly's builds aren't code-signed yet, so this confirms the file matches what the release published, not who published it."
   Button "Download"
   Label "0.2.0"
   Label "2026-01-20"
