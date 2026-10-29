@@ -51,7 +51,7 @@ fn garden_takes_the_brand_values() {
     let s = l.status;
     assert_eq!(
         [s.added, s.removed, s.modified, s.info, s.progress],
-        [rgb(0x357518), rgb(0xb63132), rgb(0xa06604), rgb(0x1f68bc), rgb(0x6d47b8)]
+        [rgb(0x357518), rgb(0xb63132), rgb(0x975700), rgb(0x1f68bc), rgb(0x6d47b8)]
     );
 }
 

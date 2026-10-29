@@ -140,7 +140,7 @@ fn tab_colour_menu() {
     right_click_tab(&mut h, 0);
     open_submenu(&mut h, "Color");
     submenu_item(&h, "Color", "None");
-    for hue in ["Rose", "Ochre", "Fern", "Sky", "Slate", "Iris", "Plum"] {
+    for hue in ["Rose", "Fern", "Mint", "Sky", "Slate", "Iris", "Plum"] {
         submenu_item(&h, "Color", hue);
     }
     assert_eq!(submenu_item(&h, "Color", "Teal").toggled(), Some(eframe::egui::accesskit::Toggled::True));
@@ -191,7 +191,7 @@ fn welcome() -> AppState {
     st.settings.favorite_repos = vec![abs("web-app"), abs("docs")];
     st.recent = [abs("api-server"), abs("old-site")].iter().map(PathBuf::from).collect();
     st.settings.set_repo_colour(&PathBuf::from(abs("web-app")), Some(RepoColour::Iris));
-    st.settings.set_repo_colour(&PathBuf::from(abs("api-server")), Some(RepoColour::Ochre));
+    st.settings.set_repo_colour(&PathBuf::from(abs("api-server")), Some(RepoColour::Mint));
     st
 }
 
