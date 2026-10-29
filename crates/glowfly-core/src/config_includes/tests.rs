@@ -1,6 +1,7 @@
 //! Include resolution on fixture repositories, checked against what git itself reads: each
 //! included file sets `mark.name` to its own name, and `git config --includes --get-all` lists
-//! the names git read. Then `~/`, conditions git can't be asked about here, cycles and bounds.
+//! the names git read. Then `~/`, conditions git can't be asked about here, cycles, bounds and
+//! files that say less than they hold.
 
 use super::*;
 use crate::testkit::git_cli;
@@ -164,4 +165,43 @@ fn cycles_end_and_depth_and_count_are_bounded() {
     mark(&dir, "wide.cfg", &format!("[include]\n{many}"));
     assert_eq!(included(&[dir.join("wide.cfg")], &Context::default()).files.len(), MAX_FILES);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_read_stops_past_the_limit_whatever_the_size_said() {
+    assert_eq!(read_bounded(&b"[include]"[..], 64).as_deref(), Some(&b"[include]"[..]));
+    assert_eq!(read_bounded(std::io::repeat(b'a'), 1024), None, "an endless file is too large");
+}
+
+/// `/proc/self/pagemap` says it is empty but streams 8 bytes per page of the address space.
+#[test]
+#[cfg(target_os = "linux")]
+fn a_proc_file_is_listed_but_not_read_whole() {
+    let dir = folder("incl-proc");
+    let root = mark(&dir, "root.cfg", "[include]\n\tpath = /proc/self/pagemap\n");
+    let found = included(std::slice::from_ref(&root), &Context::default());
+    assert_eq!(found.files, [PathBuf::from("/proc/self/pagemap")]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A linked `~/.gitconfig` (a dotfiles folder) includes a relative path from where the link
+/// is, as git reads it, not from where it points.
+#[test]
+#[cfg(unix)]
+fn a_relative_include_in_a_linked_file_starts_beside_the_link() {
+    let dir = scratch_repo("incl-linked");
+    let base = folder("incl-linked-files");
+    let (home, dotfiles) = (base.join("home"), base.join("dotfiles"));
+    std::fs::create_dir_all(&home).unwrap();
+    std::fs::create_dir_all(&dotfiles).unwrap();
+    std::fs::write(dotfiles.join("gitconfig"), "[mark]\n\tname = gitconfig\n[include]\n\tpath = local.cfg\n").unwrap();
+    std::fs::write(home.join("local.cfg"), "[mark]\n\tname = beside-the-link\n").unwrap();
+    std::fs::write(dotfiles.join("local.cfg"), "[mark]\n\tname = beside-the-target\n").unwrap();
+    std::os::unix::fs::symlink(dotfiles.join("gitconfig"), home.join(".gitconfig")).unwrap();
+    append(&dir.join(".git/config"), &format!("[include]\n\tpath = {}\n", fwd(&home.join(".gitconfig"))));
+    let found = of_repo(&dir.join(".git"), None);
+    assert_eq!(found.files, [home.join(".gitconfig"), home.join("local.cfg")]);
+    assert_eq!(git_reads(&dir), ["gitconfig", "beside-the-link"]);
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_dir_all(&base);
 }

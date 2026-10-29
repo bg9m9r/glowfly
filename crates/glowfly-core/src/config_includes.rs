@@ -1,8 +1,9 @@
 //! The config files git pulls in through `include.path` and `includeIf.<condition>.path`, so the
 //! watcher and the repository pool notice edits to them as they do to the main config files.
 //!
-//! Resolved the way git does: a relative path from the folder of the file that includes it, `~/`
-//! from the home folder; `gitdir:` and `gitdir/i:` (a pattern from `~/`, from the including
+//! Resolved the way git does: a relative path from the folder of the file that includes it as
+//! that file was named (a linked `~/.gitconfig` includes from `~`, not from where the link
+//! points), `~/` from the home folder; `gitdir:` and `gitdir/i:` (a pattern from `~/`, from the including
 //! file's folder for `./`, otherwise anywhere below `**/`, everything inside for a trailing `/`)
 //! matched against the git dir as given and resolved; `onbranch:` against the checked-out branch.
 //! `hasconfig:remote.*.url:` needs every remote of the whole config, so it counts as met: a file
@@ -10,9 +11,11 @@
 //! `%(prefix)/` paths are left out, as git leaves out what it can't evaluate.
 //!
 //! Bounded: at most `MAX_DEPTH` levels below the main files (git's own limit, past which git
-//! refuses the config), `MAX_FILES` files and `MAX_FILE_BYTES` read from each, and a file is
-//! read once however many times it is included, so a cycle ends. A file that doesn't exist is
-//! still listed (its creation is a change), and so is one too large to read.
+//! refuses the config), `MAX_FILES` files and `MAX_FILE_BYTES` read from each (never past it,
+//! whatever size the file system reports: a `/proc` file says 0), only regular files once links
+//! are followed (a FIFO or a device is never opened), and a file is read once however many times
+//! it is included (by its resolved path), so a cycle ends. A file that doesn't exist is still
+//! listed (its creation is a change), and so is one too large to read.
 
 use std::path::{Path, PathBuf};
 
@@ -50,7 +53,8 @@ impl Context {
 /// What `included` found.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Included {
-    /// The included files, resolved (`paths::resolve`), in the order git reads them, each once.
+    /// The included files as git names them (joined to the including file's folder, links not
+    /// followed), in the order git reads them, each once.
     pub files: Vec<PathBuf>,
     /// An `onbranch:` condition was read: switching branches can change `files`.
     pub on_branch: bool,
@@ -61,7 +65,7 @@ pub struct Included {
 pub fn included(roots: &[PathBuf], cx: &Context) -> Included {
     let mut walk = Walk { cx, seen: roots.iter().map(|r| crate::paths::resolve(r)).collect(), out: Included::default() };
     for root in roots {
-        walk.read(&crate::paths::resolve(root), 0);
+        walk.read(root, 0);
     }
     walk.out
 }
@@ -96,13 +100,14 @@ impl Walk<'_> {
                 continue;
             }
             let Some(path) = self.resolve(&entry.path, file) else { continue };
-            if self.seen.contains(&path) {
+            let real = crate::paths::resolve(&path);
+            if self.seen.contains(&real) {
                 continue;
             }
             if self.out.files.len() >= MAX_FILES {
                 return;
             }
-            self.seen.push(path.clone());
+            self.seen.push(real);
             self.out.files.push(path.clone());
             if depth + 1 < MAX_DEPTH {
                 self.read(&path, depth + 1);
@@ -110,11 +115,11 @@ impl Walk<'_> {
         }
     }
 
-    /// Where an include's `value`, written in `file`, points; None when it can't be told.
+    /// Where an include's `value`, written in `file`, points, as git names it: a relative value
+    /// joined to `file`'s folder as `file` was named. None when it can't be told.
     fn resolve(&self, value: &[u8], file: &Path) -> Option<PathBuf> {
         let named = path_of(&home_expanded(value, self.cx.home.as_deref())?);
-        let joined = if named.is_absolute() { named } else { file.parent()?.join(named) };
-        Some(crate::paths::resolve(&joined))
+        Some(if named.is_absolute() { named } else { file.parent()?.join(named) })
     }
 
     fn met(&mut self, condition: &[u8], file: &Path) -> bool {
@@ -135,7 +140,9 @@ impl Walk<'_> {
         let Some(git_dir) = &self.cx.git_dir else { return false };
         let Some(mut p) = home_expanded(pattern, self.cx.home.as_deref()) else { return false };
         if p.starts_with(b"./") {
-            let Some(dir) = file.parent() else { return false };
+            // Git takes this one from the including file's real folder.
+            let real = crate::paths::resolve(file);
+            let Some(dir) = real.parent() else { return false };
             let mut from = escaped(&text_of(dir));
             from.extend_from_slice(&p[1..]);
             p = from;
@@ -149,13 +156,21 @@ impl Walk<'_> {
     }
 }
 
-/// `file`'s bytes when it is a file no larger than `MAX_FILE_BYTES`.
+/// `file`'s bytes when it is a regular file (links followed) no larger than `MAX_FILE_BYTES`.
 fn read_small(file: &Path) -> Option<Vec<u8>> {
     let meta = std::fs::metadata(file).ok()?;
     if !meta.is_file() || meta.len() > MAX_FILE_BYTES {
         return None;
     }
-    std::fs::read(file).ok()
+    read_bounded(std::fs::File::open(file).ok()?, MAX_FILE_BYTES)
+}
+
+/// All of `r` when it holds at most `limit` bytes, reading never more than one past it.
+pub(crate) fn read_bounded(r: impl std::io::Read, limit: u64) -> Option<Vec<u8>> {
+    use std::io::Read as _;
+    let mut out = Vec::new();
+    r.take(limit + 1).read_to_end(&mut out).ok()?;
+    (out.len() as u64 <= limit).then_some(out)
 }
 
 /// A pattern naming a folder (a trailing `/`) also matches everything inside it.

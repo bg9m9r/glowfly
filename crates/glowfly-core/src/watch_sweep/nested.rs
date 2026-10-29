@@ -1,9 +1,10 @@
 //! The repositories nested in a swept work tree (submodules, and repositories cloned or made
-//! inside it): each folder's own ignore rules decide what below it is walked, and a fingerprint
-//! of its HEAD and refs is compared every sweep, since its git folder is never walked. A commit,
-//! checkout or ref change there is reported as `<folder>/.git/HEAD`, the path the watcher would
-//! classify for it. At most `MAX_NESTED` are tracked; past that the rest are walked as plain
-//! folders, by the outer rules.
+//! inside it): each folder's own ignore rules decide what below it is walked, and what the parent's
+//! status reads of it is compared every sweep, since its git folder is never walked: its HEAD,
+//! the loose ref of the branch HEAD names and the packed refs' stamp, a few file reads with no
+//! repository opened. A commit or checkout there is reported as `<folder>/.git/HEAD`, the path
+//! the watcher would classify for it. At most `MAX_NESTED` are tracked; past that the rest are
+//! walked as plain folders, by the outer rules.
 
 use crate::watch::Ignores;
 use std::collections::BTreeMap;
@@ -36,11 +37,14 @@ pub(super) fn drop_under(nested: &mut BTreeMap<PathBuf, Nested>, rel: &Path) {
 }
 
 /// The innermost tracked repository holding `rel` (a folder below its own), with `rel` relative
-/// to it.
+/// to it: one lookup per parent folder of `rel`, deepest first.
 pub(super) fn owner<'a, 'r>(nested: &'a mut BTreeMap<PathBuf, Nested>, rel: &'r Path) -> Option<(&'a mut Nested, &'r Path)> {
-    let key = nested.keys().filter(|k| rel != k.as_path() && rel.starts_with(k)).max_by_key(|k| k.components().count())?.clone();
-    let inner = rel.strip_prefix(&key).ok()?;
-    Some((nested.get_mut(&key)?, inner))
+    if nested.is_empty() {
+        return None;
+    }
+    let key = rel.ancestors().skip(1).take_while(|a| !a.as_os_str().is_empty()).find(|a| nested.contains_key(*a))?;
+    let inner = rel.strip_prefix(key).ok()?;
+    Some((nested.get_mut(key)?, inner))
 }
 
 /// Compares every tracked repository's HEAD and refs, naming `<folder>/.git/HEAD` in `found`
@@ -59,22 +63,34 @@ pub(super) fn compare(workdir: &Path, nested: &mut BTreeMap<PathBuf, Nested>, fo
     }
 }
 
-/// A fingerprint of the HEAD and refs of the repository whose work tree is `abs` (its `.git` a
-/// folder, or a file naming the git dir); None when it doesn't open.
+/// A fingerprint of what the repository whose work tree is `abs` has checked out: its HEAD, the
+/// loose ref of the branch HEAD names and the packed refs' size and time. None when `abs` holds
+/// no repository (no `.git` naming a git dir with objects).
 fn refs_of(abs: &Path) -> Option<u64> {
-    let repo = git2::Repository::open_ext(abs, git2::RepositoryOpenFlags::NO_SEARCH, std::iter::empty::<&std::ffi::OsStr>()).ok()?;
+    let git_dir = git_dir_of(abs)?;
+    let common = crate::watch::common_dir(&git_dir).unwrap_or_else(|| git_dir.clone());
+    if !common.join("objects").is_dir() {
+        return None;
+    }
+    let head = std::fs::read(git_dir.join("HEAD")).ok()?;
     let mut h = DefaultHasher::new();
-    match repo.find_reference("HEAD") {
-        Ok(head) => {
-            head.symbolic_target_bytes().hash(&mut h);
-            head.target().hash(&mut h);
-        }
-        Err(_) => 0u8.hash(&mut h),
+    head.hash(&mut h);
+    if let Some(target) = head.strip_prefix(b"ref:").map(<[u8]>::trim_ascii) {
+        std::fs::read(common.join(String::from_utf8_lossy(target).as_ref())).ok().hash(&mut h);
     }
-    for r in repo.references().ok()?.flatten() {
-        r.name_bytes().hash(&mut h);
-        r.target().hash(&mut h);
-        r.symbolic_target_bytes().hash(&mut h);
-    }
+    std::fs::metadata(common.join("packed-refs")).ok().map(|m| (m.len(), m.modified().ok())).hash(&mut h);
     Some(h.finish())
+}
+
+/// The git dir of the repository whose work tree is `abs`: its `.git` folder, or the folder its
+/// `.git` file names (relative to `abs` unless absolute).
+fn git_dir_of(abs: &Path) -> Option<PathBuf> {
+    let dot_git = abs.join(".git");
+    if std::fs::metadata(&dot_git).ok()?.is_dir() {
+        return Some(dot_git);
+    }
+    let text = crate::config_includes::read_bounded(std::fs::File::open(&dot_git).ok()?, 4096)?;
+    let text = String::from_utf8(text).ok()?;
+    let named = Path::new(text.lines().next()?.strip_prefix("gitdir:")?.trim());
+    Some(if named.is_absolute() { named.to_path_buf() } else { abs.join(named) })
 }

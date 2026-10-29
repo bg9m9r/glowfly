@@ -304,3 +304,18 @@ fn included_config_files_are_compared() {
     let _ = std::fs::remove_dir_all(&outside);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn at_most_max_nested_repositories_are_tracked_and_the_rest_still_walked() {
+    let dir = repo("sweep-nested-cap", 0);
+    let n = nested::MAX_NESTED + 4;
+    for i in 0..n {
+        git2::Repository::init(dir.join(format!("n{i:03}"))).unwrap();
+    }
+    let (mut s, mut ig) = start(&dir);
+    let seen = s.seen.as_ref().unwrap();
+    assert_eq!(seen.nested.len(), nested::MAX_NESTED);
+    assert_eq!((0..n).filter(|i| seen.folders.contains_key(Path::new(&format!("n{i:03}")))).count(), n, "every one walked");
+    assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
