@@ -34,8 +34,10 @@ pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
     h.finish()
 }
 
-/// The files the repository's own config includes (`include.path`, `includeIf.*.path`), as
-/// named; relative ones from the git dir.
+/// The files the repository's own config includes (`include.path`, `includeIf.*.path`, nested
+/// ones too, which libgit2 lists at the same level), as named: `~` from the home folder, and a
+/// relative one both from the git dir and from beside each file already found (git resolves it
+/// from the folder of the file that includes it).
 fn includes(repo: &Repository) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let Ok(config) = repo.config() else { return out };
@@ -46,21 +48,35 @@ fn includes(repo: &Repository) -> Vec<PathBuf> {
             let name = e.name().unwrap_or_default().to_ascii_lowercase();
             let included = name == "include.path" || (name.starts_with("includeif.") && name.ends_with(".path"));
             if let Some(v) = e.value().filter(|_| included) {
-                let p = Path::new(v);
-                out.push(if p.is_absolute() { p.to_path_buf() } else { repo.path().join(p) });
+                let p = crate::paths::expand_home(v, crate::settings::home_dir().as_deref());
+                if p.is_absolute() {
+                    out.push(p);
+                } else {
+                    let beside: Vec<PathBuf> = out.iter().filter_map(|f| f.parent().map(|d| d.join(&p))).collect();
+                    out.push(repo.path().join(&p));
+                    out.extend(beside);
+                }
             }
         }
     }
     out
 }
 
-/// The size and time of `path`, and of what it links to (a hook linked elsewhere).
+/// The size and times of `path`, and of what it links to (a hook linked elsewhere): its
+/// creation time too, and on Unix its inode and change time, so a file replaced by another
+/// (an atomic write) changes the stamp even with the same size and modification time.
 fn meta(path: &Path, h: &mut DefaultHasher) {
     for m in [std::fs::symlink_metadata(path), std::fs::metadata(path)] {
         match m {
             Ok(m) => {
                 m.len().hash(h);
                 m.modified().ok().hash(h);
+                m.created().ok().hash(h);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::MetadataExt;
+                    (m.ino(), m.ctime(), m.ctime_nsec()).hash(h);
+                }
                 m.file_type().is_symlink().hash(h);
             }
             Err(_) => 0u8.hash(h),
