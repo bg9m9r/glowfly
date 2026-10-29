@@ -187,3 +187,22 @@ fn a_stale_owner_refusal_asks_nothing() {
     let inactive = GitEnvMsg::NotOwned { generation: 1, kind: LoadKind::Open, root }.on_inactive();
     assert!(matches!(inactive, Some(crate::msg::Inactive::Log(t)) if t.contains("safe.directory")));
 }
+
+#[test]
+fn the_daemon_probe_follows_each_check() {
+    let mut st = state();
+    let info = GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 45, 0)), chosen: false };
+    let probes =
+        |fx: &[Effect]| fx.iter().filter(|e| matches!(e, Effect::GitEnv(GitEnvEffect::ProbeMonitor { generation: 0, .. }))).count();
+    let fx = run(&mut st, GitEnvMsg::Detected { generation: 0, info: info.clone() });
+    assert_eq!(probes(&fx), usize::from(!cfg!(target_os = "linux")), "Linux isn't offered the daemon: {fx:?}");
+    run(&mut st, GitEnvMsg::MonitorProbed { generation: 0, daemon: Some(false) });
+    assert_eq!(st.git.monitor_daemon, Some(false));
+    // An answer about the git used before a switch is dropped.
+    run(&mut st, GitEnvMsg::MonitorProbed { generation: 7, daemon: Some(true) });
+    assert_eq!(st.git.monitor_daemon, Some(false));
+    // A git that can't run isn't asked, and the last answer is forgotten.
+    let fx = run(&mut st, GitEnvMsg::Detected { generation: 0, info: GitInfo { version: None, ..info } });
+    assert_eq!(probes(&fx), 0, "{fx:?}");
+    assert_eq!(st.git.monitor_daemon, None);
+}

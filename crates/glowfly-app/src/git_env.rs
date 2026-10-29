@@ -42,6 +42,12 @@ pub enum GitEnvMsg {
     },
     /// The PATH git, checked because the saved git can't run (None: no git on PATH).
     PathGitChecked(Option<Candidate>),
+    /// Whether the git in effect when `generation` switches had been made has the file system
+    /// monitor daemon (None: git didn't answer).
+    MonitorProbed {
+        generation: u64,
+        daemon: Option<bool>,
+    },
     /// A load was refused because another user owns the repository at `root`.
     NotOwned {
         generation: u64,
@@ -83,6 +89,7 @@ impl GitEnvMsg {
             | Self::UsePathGit
             | Self::Detected { .. }
             | Self::PathGitChecked(_)
+            | Self::MonitorProbed { .. }
             | Self::SafeDirectoryAdded { .. }
             | Self::Discovered { .. }
             | Self::Picked(_)
@@ -124,6 +131,11 @@ pub enum GitEnvEffect {
     CheckPathGit {
         cwd: PathBuf,
     },
+    /// Ask the git in effect whether it has the file system monitor daemon.
+    ProbeMonitor {
+        generation: u64,
+        cwd: PathBuf,
+    },
 }
 
 impl EffectMeta for GitEnvEffect {
@@ -136,6 +148,7 @@ impl EffectMeta for GitEnvEffect {
             GitEnvEffect::Use { .. } => "use-git",
             GitEnvEffect::PickProgram => "pick-git",
             GitEnvEffect::CheckPathGit { .. } => "check-path-git",
+            GitEnvEffect::ProbeMonitor { .. } => "probe-monitor",
         }
     }
 
@@ -154,7 +167,10 @@ impl EffectMeta for GitEnvEffect {
     #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         match self {
-            GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. } | GitEnvEffect::CheckPathGit { .. } => SandboxRule::Run,
+            GitEnvEffect::Detect { .. }
+            | GitEnvEffect::Discover { .. }
+            | GitEnvEffect::CheckPathGit { .. }
+            | GitEnvEffect::ProbeMonitor { .. } => SandboxRule::Run,
             GitEnvEffect::AddSafeDirectory(_) | GitEnvEffect::Use { .. } | GitEnvEffect::PickProgram => SandboxRule::Drop,
         }
     }

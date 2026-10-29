@@ -133,10 +133,10 @@ fn finds_issue_references() {
     // UTF-8 has the shape of a Jira key and is still found here; `keep_jira_key` (applied by
     // ForgeState::issue_refs) drops it unless the site has such a project.
     assert_eq!(issue_refs(RefStyle::Jira, "PROJ-12: fix ABC-7 in UTF-8 (X-1 too short)"), ["PROJ-12", "ABC-7", "UTF-8"]);
-    assert_eq!(branch_issue(RefStyle::Hash, "feature/1234-login"), Some("1234".into()));
-    assert_eq!(branch_issue(RefStyle::Jira, "bugfix/PROJ-12-crash"), Some("PROJ-12".into()));
-    assert_eq!(branch_issue(RefStyle::Jira, "feature/login-PROJ-12"), None);
-    assert_eq!(branch_issue(RefStyle::Hash, "release/2024.1"), None);
+    assert_eq!(branch_issue(RefStyle::Hash, "feature/1234-login", false), Some("1234".into()));
+    assert_eq!(branch_issue(RefStyle::Jira, "bugfix/PROJ-12-crash", false), Some("PROJ-12".into()));
+    assert_eq!(branch_issue(RefStyle::Jira, "feature/login-PROJ-12", false), None);
+    assert_eq!(branch_issue(RefStyle::Hash, "release/2024.1", false), None);
     let issue = Issue {
         key: "PROJ-12".into(),
         title: "Crash on start!".into(),
@@ -213,10 +213,10 @@ fn trello_card_links_and_branches() {
     assert_eq!(issue_refs(RefStyle::Trello, "HTTPS://Trello.com/c/AbCd1234"), ["AbCd1234"]);
     assert!(issue_refs(RefStyle::Trello, "Fixes AbCd1234").is_empty(), "a bare id isn't a link");
     for b in ["feature/AbCd1234-login", "AbCd1234", "fix/AbCd1234_x"] {
-        assert_eq!(branch_issue(RefStyle::Trello, b).as_deref(), Some("AbCd1234"), "{b}");
+        assert_eq!(branch_issue(RefStyle::Trello, b, false).as_deref(), Some("AbCd1234"), "{b}");
     }
     for b in ["feature/frontend-x", "20261016-release", "AbCd12345-x", "AbCd-1234", "feature/login-AbCd1234", "short"] {
-        assert_eq!(branch_issue(RefStyle::Trello, b), None, "{b}");
+        assert_eq!(branch_issue(RefStyle::Trello, b, false), None, "{b}");
     }
     assert_eq!(mention(RefStyle::Trello, "AbCd1234"), "AbCd1234");
     let card = Issue {

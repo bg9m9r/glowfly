@@ -1,6 +1,7 @@
 //! Preferences > Terminal. Built-in terminal: the shell new terminals start, the text size, its
-//! colours (`terminal_colours.rs`), the cursor, dimming without the keyboard, copy on select, middle-click paste (shown only on
-//! Linux, where it acts), and whether Open in terminal opens a tab there. External terminal: the
+//! colours (`terminal_colours.rs`), the cursor, dimming without the keyboard, copy on select,
+//! middle-click paste (shown only on Linux) and Option as Meta (only on macOS), where they act,
+//! and whether Open in terminal opens a tab there. External terminal: the
 //! program Open in terminal starts otherwise, with its arguments. Edits apply at once (the view
 //! edits the settings in place and the shell saves them); a new shell choice applies to
 //! terminals started afterwards, and Browse… asks update to show a file dialog.
@@ -16,23 +17,24 @@ use crate::ui::widgets::buttons;
 use eframe::egui::{self, Ui};
 use glowfly_core::external_tools::{self, EDITOR_PLACEHOLDERS};
 use glowfly_core::i18n::Lang;
+use glowfly_core::opens::Os;
 use glowfly_core::settings::{CursorStyle, Settings, ShellChoice, TERMINAL_FONT_SIZES};
 
 pub fn terminal_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut Vec<Msg>) {
-    page_for(ui, s, themes, cfg!(target_os = "linux"), msgs);
+    page_for(ui, s, themes, Os::current(), msgs);
 }
 
-/// The page as drawn on Linux (`linux`, with the middle-click row) or elsewhere.
-pub(crate) fn page_for(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, linux: bool, msgs: &mut Vec<Msg>) {
+/// The page as drawn on `os`: Linux adds the middle-click row, macOS the Option as Meta row.
+pub(crate) fn page_for(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, os: Os, msgs: &mut Vec<Msg>) {
     let t = s.lang();
     section(ui, t.tr("prefs.terminal.builtin.section"));
-    built_in(ui, t, s, themes, linux, msgs);
+    built_in(ui, t, s, themes, os, msgs);
     section(ui, t.tr("prefs.terminal.external.section"));
     external(ui, t, s, msgs);
 }
 
 /// The built-in terminal's rows, ending with its Reset (which resets only these).
-fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, linux: bool, msgs: &mut Vec<Msg>) {
+fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, os: Os, msgs: &mut Vec<Msg>) {
     let windows = cfg!(windows);
     let p = &mut s.terminal;
     row(ui, t.tr("prefs.terminal.shell.label"), |ui| {
@@ -82,13 +84,18 @@ fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, linux: 
         t.tr("prefs.terminal.copy_on_select.help"),
     );
     check_row(ui, label, &mut p.copy_on_select, check, Some(text));
-    if linux {
+    if os == Os::Linux {
         let (label, check, text) = (
             t.tr("prefs.terminal.middle_click.label"),
             t.tr("prefs.terminal.middle_click.check"),
             t.tr("prefs.terminal.middle_click.help"),
         );
         check_row(ui, label, &mut p.middle_click_paste, check, Some(text));
+    }
+    if os == Os::MacOs {
+        let (label, check, text) =
+            (t.tr("prefs.terminal.option_meta.label"), t.tr("prefs.terminal.option_meta.check"), t.tr("prefs.terminal.option_meta.help"));
+        check_row(ui, label, &mut p.option_as_meta, check, Some(text));
     }
     let (label, check, text) =
         (t.tr("prefs.terminal.open_in_panel.label"), t.tr("prefs.terminal.open_in_panel.check"), t.tr("prefs.terminal.open_in_panel.help"));

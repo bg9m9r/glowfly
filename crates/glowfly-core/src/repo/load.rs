@@ -194,8 +194,8 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let started = std::time::Instant::now();
     // Read before the status, so a change made during the read shows up in the next comparison.
     let index_memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i)).map(std::sync::Arc::new);
-    let (unstaged, staged) =
-        tracing::debug_span!("load.status").in_scope(|| super::status::load_status_with(&repo, git_status, &collisions))?;
+    let (unstaged, staged) = tracing::debug_span!("load.status")
+        .in_scope(|| super::status::load_status_with(&repo, git_status, &collisions, Some(cache.records())))?;
     let slow_status = super::status_speed::slow(started.elapsed(), &workdir);
     let changes = ChangeCounts::of(&staged, &unstaged);
     let folding = super::collide::folding(repo.path());

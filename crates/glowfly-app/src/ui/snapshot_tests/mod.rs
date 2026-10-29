@@ -106,6 +106,7 @@ pub(super) mod snapshot_tests_pr_checks;
 pub(super) mod snapshot_tests_pr_fork;
 pub(super) mod snapshot_tests_pr_no_host;
 pub(super) mod snapshot_tests_prefs_git;
+pub(super) mod snapshot_tests_prefs_hooks;
 pub(super) mod snapshot_tests_prefs_keyboard;
 pub(super) mod snapshot_tests_prefs_layout;
 pub(super) mod snapshot_tests_prefs_notify;

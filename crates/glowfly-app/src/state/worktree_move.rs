@@ -79,13 +79,21 @@ pub fn target_problem(snap: &Snapshot, from: &Path, text: &str) -> Option<String
     super::worktrees::find(snap, &path).map(|w| format!("A worktree is already registered at {}.", shown(&w.path)))
 }
 
-/// The request the form describes, or the first problem with it.
-pub fn move_request(snap: &Snapshot, form: &MoveForm) -> Result<MoveRequest, String> {
+/// The request the form describes, or the first problem with it; `stop_monitor` as
+/// `GitState::stops_monitor` says.
+pub fn move_request(snap: &Snapshot, form: &MoveForm, stop_monitor: bool) -> Result<MoveRequest, String> {
     if let Some(p) = target_problem(snap, &form.path, &form.folder) {
         return Err(p);
     }
     let to = parse_folder(&form.folder).map_err(|p| p.message(form.folder.trim()))?;
-    Ok(MoveRequest { repo: snap.workdir.clone(), from: form.path.clone(), to, name: form.name.clone(), folder: form.folder_id })
+    Ok(MoveRequest {
+        repo: snap.workdir.clone(),
+        from: form.path.clone(),
+        to,
+        name: form.name.clone(),
+        folder: form.folder_id,
+        stop_monitor,
+    })
 }
 
 pub fn moved_headline(name: &str, to: &Path) -> String {

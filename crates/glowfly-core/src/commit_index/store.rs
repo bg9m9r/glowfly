@@ -25,9 +25,10 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 /// The file layout's version. Bump it when the layout changes, or when what an entry holds
-/// changes (the summary, `repo::walk::flatten_body_into`'s flattening or its cap, the author
-/// fields): files written before are then ignored and overwritten.
-pub(crate) const FORMAT: u32 = 2;
+/// changes (the summary, `repo::walk::flatten_body_into`'s flattening, the author fields): files
+/// written before are then ignored and overwritten. 3: bodies are whole, no longer cut after
+/// about 240 bytes, so a format-2 file would miss matches deep in a message.
+pub(crate) const FORMAT: u32 = 3;
 
 /// A file unused for this long is removed.
 const MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);

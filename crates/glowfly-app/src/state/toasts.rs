@@ -1,7 +1,8 @@
 //! Toast notifications: short messages in a corner of the window that expire on their own.
 //! A toast can carry one action button (`ToastAction`), which sends `Msg::ToastAction`; a
 //! failure with a fix (update/job_errors.rs) also carries Details beside it, which sends
-//! `Msg::ToastDetails`. Every toast has an x that closes it (`NotifyMsg::CloseToast`).
+//! `Msg::ToastDetails`, and may carry a second fix between them (`Msg::ToastAlt`). Every toast
+//! has an x that closes it (`NotifyMsg::CloseToast`).
 //!
 //! The pointer over a toast holds it (`hold_toast`): its clock stops, so it neither fades nor
 //! expires, and when the pointer leaves at least `HOLD_GRACE` is left.
@@ -33,6 +34,8 @@ pub struct Toast {
     /// Unique for the session, so a click names the toast it was on.
     pub id: u64,
     pub action: Option<ToastAction>,
+    /// A second fix beside `action` (Try again beside Delete lock file).
+    pub alt: Option<ToastAction>,
     /// Details, beside `action` when that holds a fix; a toast without a fix keeps Details in
     /// `action`.
     pub details: Option<ToastAction>,
@@ -100,7 +103,7 @@ impl AppState {
     fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, now: Instant) -> u64 {
         self.toast_seq += 1;
         let text = super::logs::redacted(text);
-        let t = Toast { ok, text, at: now, counted: Duration::ZERO, held: false, id: self.toast_seq, action, details: None };
+        let t = Toast { ok, text, at: now, counted: Duration::ZERO, held: false, id: self.toast_seq, action, alt: None, details: None };
         self.toasts.push(t);
         if self.toasts.len() > TOAST_LIMIT {
             // The toast being read stays.

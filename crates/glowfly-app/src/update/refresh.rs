@@ -81,6 +81,8 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
         }
         LoadMsg::SpeedUpStatus { speedups, cache, monitor } => super::status_tip::speed_up(st, speedups, cache, monitor, fx),
         LoadMsg::StatusSpedUp { output, monitor, cache } => super::status_tip::sped_up(st, output, monitor, cache, now, fx),
+        LoadMsg::TurnOffMonitor => super::status_monitor::turn_off(st, fx),
+        LoadMsg::MonitorTurnedOff { output, ok } => super::status_monitor::turned_off(st, output, ok, now, fx),
         // While a failure is held, Load more tries the same load again.
         LoadMsg::LoadMoreCommits if st.refresh.more_failed.is_some() => super::load_more::retry(st, fx),
         // Under no matches, Load more goes through the first older match the index knows of.

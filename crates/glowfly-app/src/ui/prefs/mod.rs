@@ -106,6 +106,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         healed: st.includes.healed.contains(&s.git_dir),
     });
     let menu_bar_row = !st.view.chrome.drawn();
+    let on_network = st.snap.as_ref().is_some_and(|s| st.watch.remote.contains_key(&s.workdir));
+    let monitor = git::MonitorRow {
+        offered: st.git.monitor_offer_for(glowfly_core::opens::Os::current()) == glowfly_core::repo::MonitorOffer::Daemon && !on_network,
+        busy: st.job.is_some(),
+    };
     let git_state = &st.git;
     let settings = &mut st.settings;
     let keymap = &st.keymap;
@@ -173,7 +178,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         match page {
                             PrefPage::Profile => profiles::profile_page(ui, &*settings, &mut prefs.profiles, git, switching, here, msgs),
                             PrefPage::RepoIdentity => git::identity_page(ui, git, here.and_then(|h| h.identity), settings),
-                            _ => git::hooks_page(ui, git, msgs),
+                            _ => git::hooks_page(ui, git, &monitor, t, msgs),
                         }
                     }
                 }

@@ -59,6 +59,7 @@ pub const DENIED: &[(&str, &str)] = &[
     ("send_viewport_cmd", "the window (views push AppMsg::Window; the shell sends viewport commands)"),
     ("platform::native_window", "the OS window (only the shell talks to it)"),
     ("platform::native_menu", "the OS menu bar (only the shell talks to it)"),
+    ("platform::primary_selection", "the PRIMARY selection (only the shell talks to it)"),
     ("windows::Win32", "the OS (Win32 calls belong in platform/)"),
 ];
 
@@ -188,7 +189,7 @@ pub const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/app.rs", "Instant::now", "the shell stamps each frame and message with the time"),
     ("ui/app_frame.rs", "Instant::now", "the shell times each frame and each of its phases"),
     ("ui/app.rs", "Local::now", "the shell sets `st.view.now` once per frame"),
-    ("ui/app.rs", "send_viewport_cmd", "the shell turns window effects into viewport commands"),
+    ("ui/app_effects.rs", "send_viewport_cmd", "the shell turns window effects into viewport commands"),
     ("ui/app.rs", "platform::native_window", "the shell installs the native window glue once, at startup"),
     ("ui/app_native.rs", "platform::native_window", "the shell trades caption geometry and window state with the OS each frame"),
     (
@@ -197,6 +198,8 @@ pub const ALLOWED: &[(&str, &str, &str)] = &[
         "the default update state asks the processor once (cached, no disk), so an emulated build is offered the Arm file",
     ),
     ("ui/app.rs", "platform::native_menu", "the shell installs the system menu bar once, at startup"),
+    ("ui/app.rs", "platform::primary_selection", "the shell opens the PRIMARY selection once, at startup"),
+    ("ui/app_effects.rs", "platform::primary_selection", "the shell sets and reads the PRIMARY selection for the terminal's effects"),
     ("ui/app_menu.rs", "platform::native_menu", "the shell trades picks and menus with the system menu bar each frame"),
     ("state/app_queries.rs", "std::env", "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read"),
 ];

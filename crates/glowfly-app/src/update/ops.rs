@@ -112,6 +112,7 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
         JobMsg::Push { force } => push(st, force, fx),
         JobMsg::Deepen(how) => super::shallow::deepen(st, how, fx),
         JobMsg::DeepenNow(how) => super::shallow::deepen_now(st, how, fx),
+        JobMsg::Retry(r) => super::job_retry::run(st, *r, now, fx),
         JobMsg::Cancel => super::job_stop::cancel(st, fx),
         JobMsg::Stopped { output } => super::job_stop::stopped(st, output, now, fx),
         JobMsg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),

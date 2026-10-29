@@ -144,23 +144,50 @@ pub fn keep_jira_key(key: &str, filter: &str, projects: Option<&HashSet<String>>
 }
 
 /// An issue key encoded at the start of a branch's last path segment, e.g.
-/// `feature/1234-login-page`, `1234_fix`, or `bugfix/PROJ-12-crash`.
-pub fn branch_issue(style: RefStyle, branch: &str) -> Option<String> {
+/// `feature/1234-login-page`, `1234_fix`, or `bugfix/PROJ-12-crash`. A number may also follow an
+/// explicit marker: `#1234`, `gh-1234` or `issue-1234` (also `issues-`, and `_` for `-`). A
+/// bare leading number that looks like a year (`year_like`) counts only when `years` is set
+/// (This repository > Issue tracker); the explicit forms always count.
+pub fn branch_issue(style: RefStyle, branch: &str, years: bool) -> Option<String> {
     let last = branch.rsplit('/').next()?;
     match style {
         RefStyle::Jira => issue_refs(RefStyle::Jira, last).into_iter().next().filter(|k| last.starts_with(k.as_str())),
         RefStyle::Trello => trello_branch(last),
         _ => {
-            let digits: String = last.chars().take_while(char::is_ascii_digit).collect();
-            if digits.is_empty() {
-                return None;
+            if let Some(n) = explicit_number(last) {
+                return leading_number(n);
             }
-            match last[digits.len()..].chars().next() {
-                None | Some('-') | Some('_') => Some(digits),
-                _ => None,
-            }
+            leading_number(last).filter(|n| years || !year_like(n, last))
         }
     }
+}
+
+/// The digits at the start of `s` when the end, `-` or `_` follows them.
+fn leading_number(s: &str) -> Option<String> {
+    let digits: String = s.chars().take_while(char::is_ascii_digit).collect();
+    let end_ok = matches!(s[digits.len()..].chars().next(), None | Some('-') | Some('_'));
+    (!digits.is_empty() && end_ok).then_some(digits)
+}
+
+/// What follows an explicit issue marker (`#`, `gh-`, `issue-`, `issues-`, any case, `_` for
+/// `-`) at the start of a branch segment.
+fn explicit_number(last: &str) -> Option<&str> {
+    if let Some(rest) = last.strip_prefix('#') {
+        return Some(rest);
+    }
+    let lower = last.to_ascii_lowercase(); // same byte offsets as `last`
+    ["issues", "issue", "gh"].iter().find_map(|word| {
+        let after = lower.strip_prefix(word)?;
+        after.starts_with(['-', '_']).then(|| &last[word.len() + 1..])
+    })
+}
+
+/// Whether the leading number `digits` of segment `last` reads as a year rather than an issue:
+/// exactly four digits from 1970 to 2099, followed by `-` or `_` (`2024-cleanup`,
+/// `2024_q3-report`, `2026-10-16-notes`). A segment that is only the number (`2024`) is still
+/// an issue, as are longer numbers and dates written without separators (`20241016-x`).
+fn year_like(digits: &str, last: &str) -> bool {
+    digits.len() == 4 && (1970..=2099).contains(&digits.parse::<u16>().unwrap_or(0)) && last.len() > 4
 }
 
 /// Branch name for starting work on an issue: `1234-short-title-slug` / `PROJ-12-short-title`.
@@ -188,6 +215,32 @@ mod tests {
     fn jira_numbers_never_start_with_zero() {
         assert_eq!(issue_refs(RefStyle::Jira, "ABC-007 and ABC-0 and ABC-7"), ["ABC-7"]);
         assert_eq!(issue_refs(RefStyle::Jira, "ends with ABC-"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn year_like_branch_names_are_not_issues_unless_the_repository_says_so() {
+        let hash = |b, years| branch_issue(RefStyle::Hash, b, years);
+        for b in ["2024-cleanup", "chore/2024_q3-report", "2026-10-16-notes", "1970-x", "2099-x"] {
+            assert_eq!(hash(b, false), None, "{b}");
+            assert_eq!(hash(b, true).as_deref(), Some(&b.rsplit('/').next().unwrap()[..4]), "{b}");
+        }
+        assert_eq!(branch_issue(RefStyle::AzureBoards, "2024-cleanup", false), None);
+        // Ordinary issue numbers, a bare number, numbers outside 1970-2099 and longer ones.
+        for (b, n) in [("123-fix", "123"), ("feature/1234-login", "1234"), ("2024", "2024"), ("1969-x", "1969"), ("2100-x", "2100")] {
+            assert_eq!(hash(b, false).as_deref(), Some(n), "{b}");
+        }
+        assert_eq!(hash("20241016-release", false).as_deref(), Some("20241016"));
+        assert_eq!(hash("123-fix", true).as_deref(), Some("123"));
+    }
+
+    #[test]
+    fn explicit_markers_name_issues_whatever_the_number() {
+        for b in ["issue-2024", "feature/issue-2024-login", "Issues_2024", "#2024", "#2024-cleanup", "gh-2024", "GH_2024-x"] {
+            assert_eq!(branch_issue(RefStyle::Hash, b, false).as_deref(), Some("2024"), "{b}");
+        }
+        for b in ["issue-tracker", "ghost-2024", "gh2024", "#", "issue-2024x", "my-issue-2024"] {
+            assert_eq!(branch_issue(RefStyle::Hash, b, false), None, "{b}");
+        }
     }
 
     #[test]

@@ -49,6 +49,9 @@ pub struct RemoveRequest {
     /// The upstream of `delete_branch` to delete on its remote too, once the local delete
     /// worked and HEAD contains the branch.
     pub delete_remote: Option<Tracking>,
+    /// Stop the worktree's file system monitor daemon first (`GitState::stops_monitor`): on
+    /// Windows it holds the folder open, and git couldn't delete it.
+    pub stop_monitor: bool,
 }
 
 /// How the remote branch delete after a remove went.
@@ -84,6 +87,8 @@ pub struct MoveRequest {
     pub name: String,
     /// The worktree's identity on disk, which finds the tabs showing it under another spelling.
     pub folder: Option<FolderId>,
+    /// Stop the worktree's file system monitor daemon first, as for a remove.
+    pub stop_monitor: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]

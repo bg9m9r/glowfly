@@ -118,7 +118,7 @@ fn walk_into(
     Ok(reused)
 }
 
-/// The texts search matches in commit `c`: its summary and its body flattened to one capped line
+/// The texts search matches in commit `c`: its summary and its whole body flattened to one line
 /// (`flatten_body`), decoded with the commit's encoding header (`commit_text`).
 pub(crate) fn commit_texts(c: &git2::Commit) -> (String, String) {
     let d = Decoder::of(c);
@@ -159,7 +159,8 @@ pub(super) fn children_first(commits: Vec<CommitInfo>) -> Vec<CommitInfo> {
     order.into_iter().filter_map(|i| slots[i].take()).collect()
 }
 
-/// `body` on one line: its words joined by single spaces, cut with "…" after about 240 bytes.
+/// `body` on one line: all of its words joined by single spaces. Search matches all of it; the
+/// graph shows the start (`CommitInfo::body_preview`).
 pub(crate) fn flatten_body(body: &str) -> String {
     let mut out = String::new();
     flatten_body_into(body, &mut out);
@@ -169,10 +170,6 @@ pub(crate) fn flatten_body(body: &str) -> String {
 /// `flatten_body`, appended to the empty `out`.
 pub(crate) fn flatten_body_into(body: &str, out: &mut String) {
     for word in body.split_whitespace() {
-        if out.len() > 240 {
-            out.push('…');
-            break;
-        }
         if !out.is_empty() {
             out.push(' ');
         }

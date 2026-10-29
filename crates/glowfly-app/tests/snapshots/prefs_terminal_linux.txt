@@ -15,8 +15,8 @@ CheckBox "Dim the terminal while you work elsewhere" [off]
 Label "Shade the terminal while another part of the window has the keyboard."
 CheckBox "Copy selected text to the clipboard" [off]
 Label "Selecting text with the mouse copies it to the clipboard. The copy shortcut then goes to the shell instead."
-CheckBox "Paste the clipboard with a middle click" [on]
-Label "A middle click on the terminal pastes the clipboard into the shell."
+CheckBox "Paste the selection with a middle click" [on]
+Label "A middle click on the terminal pastes the text last selected in any program (the primary selection) into the shell."
 CheckBox "Open a tab in the built-in terminal" [off]
 Label "Open in terminal (in the command palette, and when right-clicking the toolbar's Terminal button) starts a new tab in the terminal panel instead of an external terminal."
 Button "Reset to defaults"

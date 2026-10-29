@@ -8,6 +8,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 ## The shell
 
 - `ui/app.rs` is the shell: it owns the runner and dispatches messages.
+- `ui/app_effects.rs` carries out the effects that need the window (`Effect::Ui`): the clipboard and the Linux PRIMARY selection, the title, attention, closing and window commands.
 - `ui/app_testing.rs` builds the shell for the journeys, without eframe and with a sandboxed runner.
 - `ui/app_frame.rs` times each frame's phases and each message's handling, kept by `state/frame_times.rs`: frames of 50 ms or more go to the performance log.
 - `frame_overlay.rs`: the frame-time overlay Preferences > General can show.
@@ -49,5 +50,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `icons_panel.rs`: the header's quiet icon buttons, painted.
 - `icons_lists.rs`: the changed-file lists' List / Tree toggle icons, painted.
 - The panel is drawn under the central area or, maximised, in its place (`terminal::show_in_main`); renaming and maximising are handled in `update/terminal_header.rs`.
+- `terminal/input.rs`: the grid's keys as shell input; Alt with a letter, digit or punctuation key sends ESC and the character (on macOS only with Option as Meta).
+- `terminal/mouse.rs`: the wheel, selecting (a finished selection is reported for PRIMARY and Copy on select) and, on Linux, middle-click paste of PRIMARY.
 - `terminal/metrics.rs`: the terminal grid's cell size, the monospace advance rounded to whole device pixels where epaint places each glyph, so text, cursor and mouse share one grid.
 - The header's ghost buttons and dividers are shared with the diff header (`widgets/ghost.rs`, see [ui-views.md](ui-views.md)).

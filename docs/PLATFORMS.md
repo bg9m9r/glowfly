@@ -32,6 +32,7 @@ second one next to it.
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
 | Window frame | Drawn by Glowfly: no system decorations; its own title bar, window buttons, resize edges and border, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
 | Menus | The drawn title bar's menu button | The system menu bar (the app menu, then File, Edit, View, Window and Help) and the title bar's menu button | The in-window menu bar, which can be hidden |
+| Terminal keys and selection | Alt with a letter, digit or punctuation key sends ESC and the character; no PRIMARY selection | Option composes characters unless Option as Meta is on (Preferences > Terminal); no PRIMARY selection | Alt as on Windows; a mouse selection sets PRIMARY and a middle click pastes it (X11 and Wayland) |
 
 ## Rules
 
@@ -203,6 +204,19 @@ second one next to it.
    parts (`same_place`, `newest_ours`, `info_path`, `take_out`) are tested on every runner; the
    real round trip is an ignored test (`GLOWFLY_REAL_TRASH=1 cargo test -p glowfly-core
    real_trash_round_trip -- --ignored`).
+8. **A lock file git left behind is deleted only through `lock_file::delete`**, which checks
+   again just before it removes anything: the exact path git named (absolute, ending `.lock`, no
+   `..`), inside the git dir or common dir once its folder is resolved, still a plain file (not a
+   link, a folder or a Windows reparse point), and only while `git_procs::scan` finds no git
+   process anywhere on the machine. Which repository a git works in can't be read reliably
+   (`git -C`, `GIT_DIR`, a hook's child), so any git counts except `credential-cache--daemon`
+   and `fsmonitor--daemon` when their command line can be read and names that subcommand
+   (Windows: `NtQueryInformationProcess`; Linux: `/proc/<pid>/cmdline`; macOS:
+   `KERN_PROCARGS2`), and every Unknown refuses with its
+   reason: an unreadable process list or name (Windows: ToolHelp; Linux: `/proc/<pid>/comm`, a
+   process that ended meanwhile is skipped; macOS: `proc_listallpids` and `proc_name`), `/proc`
+   mounted with `hidepid`, the Flatpak sandbox (it sees only its own processes) and, on Windows,
+   an open WSL session (`wsl.exe`, `wslhost.exe`), whose git isn't a Windows process.
 
 ### Opening files and starting programs
 
@@ -421,6 +435,26 @@ second one next to it.
    the pure `KeyLabels::native()`, and `text_in`/`parts_in` take a style, so a test checks both
    styles on every OS. Never paint the ⌘ ⌥ ⇧ glyphs: the bundled fonts lack them.
 
+### The built-in terminal's keys and selection
+
+1. **Alt is Meta through `TerminalPrefs::alt_is_meta`:** on Windows and Linux always, on macOS
+   only with Option as Meta (`alt_is_meta_for` takes the system, so each case is tested
+   everywhere). Alt with a letter, digit or punctuation key then sends ESC and a character
+   (`ui/terminal/input.rs`): the one the press typed when its text comes in the same frame, so
+   the keyboard layout decides Alt+_ or Alt+/, else the key's own with Shift as on a US keyboard
+   (macOS, where Option types a composed character instead). Ctrl+Alt (AltGr on Windows) types
+   its character, and Cmd chords stay the app's. On Windows a digit, +, - or / sends ESC only
+   when its text comes (`Opts::alt_codes`): egui reports the numpad's keys as the main row's,
+   and a numpad press while Alt is held is part of an Alt code (Alt+0233), which types no text
+   until Alt is released.
+2. **PRIMARY only through `platform::primary_selection`, from the shell:** a finished mouse
+   selection, and Select all, become PRIMARY (`UiEffect::SetPrimary`, nothing where there is
+   none), and a middle click (Linux, with Middle-click paste) asks for it
+   (`UiEffect::PastePrimary`). A Wayland window uses the compositor's primary-selection protocol
+   (smithay-clipboard on the window's own `wl_display`, let go in `on_exit` before the window
+   closes), an X11 window the PRIMARY atom (arboard): the crates egui-winit already uses for the
+   clipboard. When neither opens, a middle click pastes the clipboard (`middle_click_reads`).
+
 ### Links and the running window
 
 1. **Register the `glowfly` scheme for this user only:** `HKEY_CURRENT_USER\Software\Classes\glowfly`
@@ -590,6 +624,16 @@ second one next to it.
    `git fsmonitor--daemon status` says it is watching (`repo::turn_on_monitor`). Never set
    fsmonitor.allowRemote or fsmonitor.socketDir for the user, nor a hook path (the trust check
    flags one). On Linux, suggest Watchman with git's fsmonitor-watchman hook in text only.
+   Offer it only to a git whose `git version --build-options` names `fsmonitor--daemon`
+   (`repo::daemon_built`). On Windows the daemon holds its working directory open: stop it
+   (`repo::stop_monitor`) before removing or moving a worktree. Turning it off unsets
+   core.fsmonitor (every local value: `--unset-all`) before stopping the daemon, so no git
+   started meanwhile starts it again.
+7. **libgit2's index writes drop the extensions it doesn't know** (the untracked cache, the
+   monitor's token). Don't copy them back into a rewritten index; a trusted whole status read
+   lets git record them again (`repo::index_ext`), the token only where a daemon can give one
+   (`repo::daemon_serves`), and once per index state (`repo::RecordMemo`), so a record that
+   brings nothing back isn't repeated on every refresh.
 
 ### Persistence
 
@@ -743,6 +787,17 @@ Gaps that are accepted for now:
   4.5:1 over the lightest dark Mica stand-ins at any tint step (the title bar does sit on Mica).
 - **macOS's traffic lights aren't centred on the title bar,** which is taller than the system's.
 - **An Alt press and release within one frame isn't seen as a tap,** so it doesn't open the menu.
+- **Option as Meta keeps Option's dead keys:** Option+E, U, I, N and ` still start a composition in
+  macOS's input system, so the next letter can come out accented; and Option+Shift with
+  punctuation follows a US keyboard's positions, since egui reports the key, not the layout's
+  character without Option.
+- **PRIMARY is read on the UI thread,** as egui-winit reads the clipboard. On X11 a selection
+  owner that doesn't answer holds the frame until arboard's timeout (about 4 s); on Wayland
+  smithay-clipboard's `load_primary` has no timeout, so an owner that never closes its pipe
+  hangs the window until it does.
+- **A Wayland compositor without the primary-selection protocol pastes nothing on a middle
+  click,** instead of the clipboard: smithay-clipboard opens either way, so the fallback isn't
+  taken.
 - **Inside Flatpak, host programs are out of reach:** editors, diff and merge tools, terminal
   shells and hook interpreters that only the host has aren't found in the sandbox.
 - **Inside Flatpak, a folder handed over by file forwarding may arrive as a

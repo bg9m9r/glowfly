@@ -96,6 +96,28 @@ fn a_network_drive_gets_no_monitor_button() {
     }
 }
 
+#[test]
+fn a_git_built_without_the_daemon_gets_no_monitor_button() {
+    let (mut st, dir) = opened("tip-monitor-not-built");
+    with_git(&mut st, (2, 45, 0));
+    st.git.monitor_daemon = Some(false);
+    check_on(&mut st, speedups(false, false), Os::Windows);
+    let (text, offer) = note(&st);
+    assert_eq!(offer, Some((true, false)), "the cache only");
+    assert!(!text.contains("file system monitor"), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    // With the cache already on there is nothing to offer, so nothing is said.
+    let (mut st, dir) = opened("tip-monitor-not-built-quiet");
+    with_git(&mut st, (2, 45, 0));
+    st.git.monitor_daemon = Some(false);
+    let before = st.toasts.len();
+    check_on(&mut st, speedups(true, false), Os::Windows);
+    assert_eq!(st.toasts.len(), before);
+    assert!(marked(&st), "not asked again");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Sends the note's Turn on with these offers: the effects `update` returns.
 fn turn_on(st: &mut AppState, s: StatusSpeedups, cache: bool) -> Vec<Effect> {
     update(st, Msg::Load(LoadMsg::SpeedUpStatus { speedups: s, cache, monitor: true }), Instant::now())

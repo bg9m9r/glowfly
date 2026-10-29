@@ -88,6 +88,9 @@ pub enum LogsMsg {
     Fold(EntryId),
     /// Run a failed run's fix: the panel's button, and the failure toast's.
     Fix(EntryId),
+    /// Run a failed run's second fix (`LogsState::alt_fixes`): the panel's and the toast's
+    /// second button.
+    AltFix(EntryId),
     /// Copy an activity entry: the row menu's Copy entry and the open row's Copy button. A
     /// routine group's first entry copies the whole group.
     CopyEntry(EntryId),
@@ -118,6 +121,7 @@ impl LogsMsg {
             | Self::Details { .. }
             | Self::Fold(_)
             | Self::Fix(_)
+            | Self::AltFix(_)
             | Self::CopyEntry(_)
             | Self::CopyLog
             | Self::Export

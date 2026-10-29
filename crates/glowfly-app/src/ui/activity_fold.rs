@@ -1,7 +1,7 @@
 //! The open part of an activity row, under its title: a failure's cause in a full sentence,
-//! its fix (once) and Copy (the row menu's Copy entry), then the output in a quiet monospace
-//! block coloured by kind of line (the last `OUTPUT_LINES` of it); and the sub-rows of an open
-//! routine group.
+//! its fix (once) with any second fix beside it (Try again beside Delete lock file) and Copy
+//! (the row menu's Copy entry), then the output in a quiet monospace block coloured by kind of
+//! line (the last `OUTPUT_LINES` of it); and the sub-rows of an open routine group.
 
 use super::activity_rows::{RowLook, TITLE_X, paint_row};
 use super::theme::{color, type_scale};
@@ -39,6 +39,11 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>
                     && ui.add(buttons::primary(label).small()).clicked()
                 {
                     msgs.push(Msg::Logs(LogsMsg::Fix(e.id)));
+                }
+                if let Some(alt) = st.logs.alt_fix(e.id)
+                    && ui.add(buttons::secondary(&alt.label).small()).clicked()
+                {
+                    msgs.push(Msg::Logs(LogsMsg::AltFix(e.id)));
                 }
                 if ui.add(buttons::secondary(t.tr("logs.activity.copy.button")).small()).clicked() {
                     msgs.push(Msg::Logs(LogsMsg::CopyEntry(e.id)));

@@ -2,11 +2,11 @@
 //! a process; on Linux `/proc`, on macOS libproc, for a process's name and a shell's children.
 //! Also the program file of every process ([`program_paths`]), which tells Glowfly's update
 //! cleanup whether an old program still runs. Everything here only reads, and anything that
-//! can't be read is left out.
+//! can't be read is left out. `git_procs.rs` reads the same lists for Delete lock file.
 
 /// Every process on the system, from a ToolHelp snapshot.
 #[cfg(windows)]
-pub(super) fn process_table() -> Option<Vec<super::activity::ProcEntry>> {
+pub(crate) fn process_table() -> Option<Vec<super::activity::ProcEntry>> {
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
@@ -55,7 +55,7 @@ pub(super) fn image_path(pid: u32) -> Option<String> {
 
 /// A process's command name.
 #[cfg(target_os = "linux")]
-pub(super) fn process_name(pid: i32) -> Option<String> {
+pub(crate) fn process_name(pid: i32) -> Option<String> {
     let name = std::fs::read_to_string(format!("/proc/{pid}/comm")).ok()?;
     let name = name.trim_end();
     (!name.is_empty()).then(|| name.to_string())
@@ -82,7 +82,7 @@ pub(super) fn children(shell: u32) -> Vec<i32> {
 
 /// A process's command name, from libproc.
 #[cfg(target_os = "macos")]
-pub(super) fn process_name(pid: i32) -> Option<String> {
+pub(crate) fn process_name(pid: i32) -> Option<String> {
     let mut buf = [0u8; 256];
     // SAFETY: `buf` is writable for the length given; proc_name writes at most that many bytes
     // and returns how many it wrote (0 or less on failure).
@@ -108,7 +108,7 @@ pub(super) fn children(shell: u32) -> Vec<i32> {
 
 /// The other Unix systems give neither.
 #[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]
-pub(super) fn process_name(_pid: i32) -> Option<String> {
+pub(crate) fn process_name(_pid: i32) -> Option<String> {
     None
 }
 
