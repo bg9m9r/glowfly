@@ -23,6 +23,8 @@ pwsh scripts/check.ps1                 # fmt, clippy (-D warnings) and all tests
 ```
 
 `scripts/check.ps1` must pass before a pull request is merged; CI runs the same script.
+CodeQL (`.github/workflows/codeql.yml`) also scans each pull request's Rust code and workflows;
+its config (`.github/codeql/codeql-config.yml`) leaves test code out.
 
 UI changes are covered by snapshot tests. Every view test keeps a text snapshot (`<name>.txt`:
 the accessibility tree and the painted text) in `crates/glowfly-app/tests/snapshots/`, and about a

@@ -55,4 +55,6 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 
 ## Workflows
 
-- Every action in `.github/workflows/` is pinned to a commit SHA with its version in a comment; `.github/dependabot.yml` proposes the updates (weekly for actions, skipping major versions; monthly for Cargo, inside the Cargo.toml requirements). Each workflow sets its token permissions: read-only except `release.yml`.
+- Every action in `.github/workflows/` is pinned to a commit SHA with its version in a comment; `.github/dependabot.yml` proposes the updates (weekly for actions, skipping major versions; monthly for Cargo, inside the Cargo.toml requirements). Each workflow sets its token permissions: read-only except `release.yml`, and `codeql.yml`, which may write code-scanning results (`security-events: write`).
+- `.github/workflows/codeql.yml`: CodeQL code scanning of the Rust code and the workflows (`build-mode: none`), on pushes and pull requests to `main` and weekly; results go to the Security tab.
+- `.github/codeql/codeql-config.yml`: its config: every default query on, test code (`*_tests.rs`, `tests/`, `tests.rs`, `snapshot_tests`, `testkit/`) left out.

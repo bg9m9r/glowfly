@@ -1,0 +1,14 @@
+# CodeQL configuration, read by .github/workflows/codeql.yml.
+#
+# Every query of the default suite stays on, rust/hard-coded-cryptographic-value and
+# rust/cleartext-logging included. Only test code is left out: it holds made-up tokens and keys
+# and logs them on purpose. The shipped code is scanned in full.
+name: Glowfly CodeQL config
+
+paths-ignore:
+  - '**/*_tests.rs'
+  - '**/tests/**'
+  - '**/tests.rs'
+  - '**/snapshot_tests/**'
+  - '**/snapshot_tests*.rs'
+  - '**/testkit/**'
