@@ -42,7 +42,7 @@ source file, update its line here.
 
 ## One window, links and the URL scheme
 
-- `instance/`: one window for links: the running app's loopback listener and its private instance file (address, token, process id in the runtime folder), and a second process handing its `glowfly://` link over (letting the window take the foreground on Windows).
+- `instance/`: one window for links and folders: the lock that picks it (`claim.rs`: one holder, a later window waits and takes over), its loopback listener and private instance file (address, token, process id in the runtime folder), and a second process handing its `glowfly://` link or folder over (letting the window take the foreground on Windows); the protocol's tests and the claim's (`tests.rs`, `tests_claim.rs`).
 - `link.rs`: `glowfly://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit.
 - `link/find.rs`: checking a folder for the linked repository and its target (libgit2 reads only).
 - `url_scheme/`: registering the `glowfly` scheme for this user, and the pure decisions both platforms read (the Linux package's own `glowfly-links.desktop` in `XDG_DATA_DIRS` counts too).

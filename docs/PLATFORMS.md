@@ -409,15 +409,26 @@ second one next to it.
    (mode 0600, and 0700 for a folder the write creates, on Unix) under `settings::runtime_dir`
    (`$XDG_RUNTIME_DIR/glowfly` on Linux, `$XDG_RUNTIME_DIR/app/<FLATPAK_ID>/glowfly` inside
    Flatpak, else the cache folder). A file left by a window that
-   crashed names a closed port, which the second process treats as no window.
-3. **Windows refuses the foreground to a window its user didn't just use:** the process handing a
-   link over calls `AllowSetForegroundWindow` with the running window's process id first
+   crashed names a closed port, which the second process treats as no window. Only a process
+   that can read the file has the token the listener asks for, so only this user is heard.
+   Every request is one line of at most 16 KiB holding a `glowfly:` link or an absolute folder,
+   which opens like a folder picked in the app; nothing in it is run.
+3. **One window takes links and folders: the one holding the OS file lock on `instance.lock`**
+   next to the instance file (`File::try_lock`: `LockFileEx` on Windows, `flock` on Unix), taken
+   at start-up (`instance::claim`). The OS drops the lock with its process, so a crash never
+   leaves a stale one; a later window waits for it on a thread and takes over. The lock file
+   is never removed or replaced (a lock belongs to the inode on Unix, so a new file would let a
+   second window lock too). A process that finds the lock held keeps trying the window for
+   `START_WAIT` (it may still be starting), then opens its own window; so does one on a file
+   system without locks after a single try.
+4. **Windows refuses the foreground to a window its user didn't just use:** the process handing a
+   link or folder over calls `AllowSetForegroundWindow` with the running window's process id first
    (`instance/foreground.rs`); the window then un-minimizes, focuses and, if that still fails,
    flashes its taskbar entry.
-4. **A link names its repository by root commit and remote URL, never by the folder it is in
+5. **A link names its repository by root commit and remote URL, never by the folder it is in
    here,** and opening one runs no git command until the user clicks Fetch or Clone; the
    repository is found with libgit2 reads only.
-5. **macOS hands links and folders to Glowfly.app as Apple events,** never on the command line.
+6. **macOS hands links and folders to Glowfly.app as Apple events,** never on the command line.
    packaging/macos/Info.plist declares both schemes in `CFBundleURLTypes` (Get URL events) and
    `public.folder` in `CFBundleDocumentTypes` as an Alternate-rank Viewer (Open Documents events:
    Finder's Open With, a Dock drop, `open -a Glowfly <folder>`), never with an Editor role or an

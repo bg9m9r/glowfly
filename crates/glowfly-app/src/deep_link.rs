@@ -1,5 +1,6 @@
 //! Messages and effects of `glowfly://` links: copying a link to a branch, commit, tag or the
-//! repository, opening one (from the command line, a second Glowfly process or a toast), the
+//! repository, opening one (from the command line, a second Glowfly process or a toast) and a
+//! folder a second process hands over, the
 //! dialogs a link may need, and registering the scheme with the OS (state/deep_link.rs,
 //! update/deep_link.rs, update/deep_link_open.rs, runner/deep_link.rs, ui/deep_link_dialog.rs,
 //! ui/prefs/links.rs).
@@ -53,6 +54,10 @@ pub enum DeepLinkMsg {
     },
     /// A link to open (the command line, another Glowfly process, a toast's Open link).
     Open(String),
+    /// A folder another Glowfly process was started with (`glowfly <path>`), absolute: brings
+    /// the window forward and opens it in a tab as a picked folder would be (or waits behind a
+    /// toast while a dialog is open).
+    OpenFolder(PathBuf),
     /// From the runner: the copies of the linked repository among the candidates, for search
     /// `seq`.
     Found {
@@ -83,7 +88,7 @@ impl DeepLinkMsg {
     /// drops it. Link effects are unscoped, so their results never arrive scoped.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::Copy(_) | Self::Built { .. } | Self::Open(_) | Self::Found { .. } => None,
+            Self::Copy(_) | Self::Built { .. } | Self::Open(_) | Self::OpenFolder(_) | Self::Found { .. } => None,
             Self::Locate | Self::Clone | Self::Choose(_) | Self::OpenChosen | Self::Fetch => None,
             Self::CheckScheme | Self::Register | Self::Unregister | Self::SchemeChecked(_) => None,
         }

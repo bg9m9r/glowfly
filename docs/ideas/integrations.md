@@ -226,6 +226,7 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Show which app opens glowfly:// links on macOS in Preferences (LaunchServices' default handler for the scheme)
 - Hand a link that starts Glowfly.app over to an unbundled glowfly window already running, instead of opening a second window
 - A folder macOS hands over while a dialog or Preferences is open waits behind a toast, as a link does
+- Hand a path that isn't valid Unicode to the running window too (it opens its own window now; the request is JSON text)
 - Open the repository holding a file dropped on the Dock icon (declare files too, as an Alternate viewer)
 - An Open in Glowfly Finder Quick Action or Services menu entry for folders
 
