@@ -2,7 +2,7 @@
 //! their search, and which candidates `choose` keeps.
 
 use super::candidates::{self, Variant};
-use super::{Candidate, Script, choose, scripts_in};
+use super::{Bytes, Candidate, Script, choose, load, mappable, resolved, scripts_in};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
@@ -76,17 +76,22 @@ fn unix_folders_follow_fontconfigs_defaults() {
     assert_eq!(
         candidates::unix_dirs(env(&[("HOME", "/home/me")])),
         p(&[
-            "/home/me/.local/share/fonts",
-            "/home/me/.fonts",
             "/usr/local/share/fonts",
             "/usr/share/fonts",
             "/run/host/fonts",
+            "/home/me/.local/share/fonts",
+            "/home/me/.fonts",
             "/run/host/user-fonts"
-        ])
+        ]),
+        "the system's folders before the home folders"
     );
     let dirs =
         candidates::unix_dirs(env(&[("HOME", "/home/me"), ("XDG_DATA_HOME", "/data"), ("XDG_DATA_DIRS", "/opt/share:rel:/usr/share")]));
-    assert_eq!(dirs[..4], p(&["/data/fonts", "/home/me/.fonts", "/opt/share/fonts", "/usr/share/fonts"])[..], "relative parts ignored");
+    assert_eq!(
+        dirs,
+        p(&["/opt/share/fonts", "/usr/share/fonts", "/run/host/fonts", "/data/fonts", "/home/me/.fonts", "/run/host/user-fonts"]),
+        "relative parts ignored"
+    );
     assert_eq!(dirs.iter().filter(|d| d.ends_with("usr/share/fonts")).count(), 1, "listed once: {dirs:?}");
     let none = candidates::unix_dirs(env(&[("HOME", "relative"), ("XDG_DATA_HOME", "also")]));
     assert!(none.iter().all(|d| d.to_string_lossy().starts_with('/')), "{none:?}");
@@ -131,6 +136,46 @@ fn choose_keeps_only_fonts_that_add_a_script() {
     assert_eq!(kept.len(), 1, "{:?}", kept.iter().map(|f| &f.path).collect::<Vec<_>>());
     assert_eq!(kept[0].path, cjk);
     assert_eq!(kept[0].name, "system-cjk.otf-0");
-    assert_eq!(kept[0].data, SUBSET, "the file's bytes, mapped");
+    assert_eq!(kept[0].data, SUBSET, "the file's bytes");
+    assert!(!kept[0].mapped, "read: a temporary folder isn't a system font folder");
     assert!(choose(&[at(&latin)]).is_empty(), "a font without these scripts isn't kept");
+}
+
+#[test]
+fn maps_only_files_inside_a_system_font_folder() {
+    let roots = [PathBuf::from("/usr/share/fonts"), PathBuf::from("/run/host/fonts")];
+    assert!(mappable(Path::new("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"), &roots));
+    assert!(mappable(Path::new("/run/host/fonts/a.ttc"), &roots));
+    assert!(!mappable(Path::new("/usr/share/fonts-extra/a.ttc"), &roots), "whole parts only");
+    assert!(!mappable(Path::new("/home/me/.local/share/fonts/a.ttc"), &roots));
+    assert!(!mappable(Path::new("/run/host/user-fonts/a.ttc"), &roots));
+    assert!(!mappable(Path::new("/usr/share/fonts/a.ttc"), &[]), "no system folder, nothing mapped");
+}
+
+#[test]
+fn reads_fonts_from_other_folders_and_through_links() {
+    let root = folder("load");
+    let (system, home) = (root.join("system"), root.join("home"));
+    write(&system.join("a.otf"), SUBSET);
+    write(&home.join("b.otf"), SUBSET);
+    write(&home.join("tiny.otf"), b"x");
+    let roots = resolved(&[system.clone(), root.join("missing")]);
+    assert_eq!(roots.len(), 1, "a folder that doesn't exist is no root");
+    match load(&system.join("a.otf"), &roots) {
+        Some(Bytes::Mapped(m)) => assert_eq!(&m[..], SUBSET),
+        _ => panic!("a font in a system folder is mapped"),
+    }
+    match load(&home.join("b.otf"), &roots) {
+        Some(Bytes::Read(v)) => assert_eq!(v, SUBSET),
+        _ => panic!("a font elsewhere is read"),
+    }
+    #[cfg(unix)]
+    {
+        // A link in the system folder to a file the user can write: decided by where it leads.
+        std::os::unix::fs::symlink(home.join("b.otf"), system.join("link.otf")).expect("a link");
+        assert!(matches!(load(&system.join("link.otf"), &roots), Some(Bytes::Read(_))), "followed, then read");
+    }
+    assert!(load(&home.join("tiny.otf"), &roots).is_none(), "too small for a font");
+    assert!(load(&root.join("missing.otf"), &roots).is_none());
+    let _ = std::fs::remove_dir_all(&root);
 }

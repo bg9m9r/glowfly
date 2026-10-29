@@ -18,7 +18,8 @@ pub fn check(ctx: &egui::Context) -> Vec<char> {
         return Vec::new();
     }
     let id = egui::Id::new("missing_glyphs");
-    let asked = ctx.data_mut(|d| d.get_temp::<Asked>(id)).unwrap_or_default();
+    // Taken out and put back, not cloned: the set grows with every character drawn.
+    let mut asked = ctx.data_mut(|d| d.remove_temp::<Asked>(id)).unwrap_or_default();
     let mut layers: Vec<LayerId> = ctx.memory(|m| m.layer_ids().collect());
     if !layers.contains(&LayerId::background()) {
         layers.push(LayerId::background());
@@ -31,10 +32,6 @@ pub fn check(ctx: &egui::Context) -> Vec<char> {
             }
         }
     });
-    if new.is_empty() {
-        return Vec::new();
-    }
-    let mut asked = asked;
     let mut missing = Vec::new();
     for (c, font) in new {
         if !asked.0.insert((c, font.family.clone())) {

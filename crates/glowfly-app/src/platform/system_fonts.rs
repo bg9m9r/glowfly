@@ -3,9 +3,11 @@
 //! begins early in `main`; `found` waits for it (the first frame's font setup asks). The search
 //! tries a short list of known files for this system (`candidates`), in the order the system
 //! language prefers, and keeps a file only while it adds a script still missing, so one to
-//! three fonts are kept. Each is memory-mapped, not read: its tables stay in the file and only
-//! the pages egui reads (the few glyphs drawn) take memory. A font that is missing, can't be
-//! mapped or doesn't parse is skipped without a word; none found leaves the bundled fonts.
+//! three fonts are kept. One in a system font folder is memory-mapped, not read: its tables stay
+//! in the file and only the pages egui reads (the few glyphs drawn) take memory. One in a
+//! folder the user can write (`~/.local/share/fonts`, `~/Library/Fonts`) is read into memory,
+//! since it can be rewritten in place while mapped. A font that is missing, can't be
+//! loaded or doesn't parse is skipped without a word; none found leaves the bundled fonts.
 
 mod candidates;
 
@@ -21,6 +23,8 @@ pub struct Fallback {
     pub data: &'static [u8],
     pub index: u32,
     pub path: PathBuf,
+    /// Mapped from a system font folder, rather than read into memory.
+    pub mapped: bool,
 }
 
 /// A script the bundled fonts lack, with a character that shows whether a font has it.
@@ -51,7 +55,8 @@ pub fn found() -> &'static [Fallback] {
     FOUND.get_or_init(|| {
         let began = std::time::Instant::now();
         let fonts = search();
-        let names: Vec<String> = fonts.iter().map(|f| format!("{} #{}", f.path.display(), f.index)).collect();
+        let names: Vec<String> =
+            fonts.iter().map(|f| format!("{} #{} ({})", f.path.display(), f.index, if f.mapped { "mapped" } else { "read" })).collect();
         tracing::debug!(
             "system fallback fonts in {:?}: {}",
             began.elapsed(),
@@ -82,39 +87,85 @@ pub fn scripts_in(data: &[u8], index: u32) -> Option<Vec<Script>> {
 }
 
 /// The candidates to keep, in order: each that parses and has a script no earlier one has,
-/// until every script is covered.
+/// until every script is covered. Files in a system font folder (`candidates::system_roots`)
+/// are mapped, the rest read into memory (`load`).
 pub fn choose(candidates: &[Candidate]) -> Vec<Fallback> {
+    let roots = resolved(&candidates::system_roots());
     let mut missing: Vec<Script> = SCRIPTS.iter().map(|(s, _)| *s).collect();
     let mut out = Vec::new();
     for c in candidates {
         if missing.is_empty() {
             break;
         }
-        let Some(map) = map_file(&c.path) else { continue };
-        let Some(has) = scripts_in(&map, c.index) else { continue };
+        let Some(bytes) = load(&c.path, &roots) else { continue };
+        let Some(has) = scripts_in(bytes.as_ref(), c.index) else { continue };
         if !has.iter().any(|s| missing.contains(s)) {
             continue;
         }
         missing.retain(|s| !has.contains(s));
         let file = c.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        let mapped = matches!(bytes, Bytes::Mapped(_));
         // Kept for the rest of the run: egui borrows the bytes for as long as it draws.
-        let data: &'static [u8] = Box::leak(Box::new(map));
-        out.push(Fallback { name: format!("system-{file}-{}", c.index), data, index: c.index, path: c.path.clone() });
+        let data: &'static [u8] = match bytes {
+            Bytes::Mapped(map) => Box::leak(Box::new(map)),
+            Bytes::Read(vec) => Box::leak(vec.into_boxed_slice()),
+        };
+        out.push(Fallback { name: format!("system-{file}-{}", c.index), data, index: c.index, path: c.path.clone(), mapped });
     }
     out
 }
 
-/// The file mapped read-only, when it is a regular file of a plausible size.
-fn map_file(path: &Path) -> Option<memmap2::Mmap> {
-    let file = std::fs::File::open(path).ok()?;
+/// A font file's bytes: mapped from a system font folder, or read from anywhere else.
+enum Bytes {
+    Mapped(memmap2::Mmap),
+    Read(Vec<u8>),
+}
+
+impl AsRef<[u8]> for Bytes {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            Bytes::Mapped(m) => m,
+            Bytes::Read(v) => v,
+        }
+    }
+}
+
+/// `roots` that exist, resolved (links followed, the on-disk spelling).
+fn resolved(roots: &[PathBuf]) -> Vec<PathBuf> {
+    roots.iter().filter(|r| r.is_dir()).map(|r| glowfly_core::paths::resolve(r)).collect()
+}
+
+/// Whether the file at `real` (resolved) may be mapped: only inside one of `roots` (resolved
+/// system font folders), never in a folder its user can write.
+pub(crate) fn mappable(real: &Path, roots: &[PathBuf]) -> bool {
+    roots.iter().any(|r| glowfly_core::paths::is_within(real, r))
+}
+
+/// The file's bytes, when it is a regular file of a plausible size: decided and opened by its
+/// resolved path, so a link in a system folder pointing into a home folder is read, not mapped.
+fn load(path: &Path, roots: &[PathBuf]) -> Option<Bytes> {
+    let real = glowfly_core::paths::resolve(path);
+    let file = std::fs::File::open(&real).ok()?;
     let meta = file.metadata().ok()?;
     if !meta.is_file() || meta.len() < 1024 || meta.len() > MAX_BYTES {
         return None;
     }
-    // SAFETY: the mapping is read-only, and system font files are replaced (a new file renamed
-    // over the old one, which keeps the mapped one intact) rather than rewritten in place.
-    // Windows refuses to delete or rewrite a mapped file.
-    unsafe { memmap2::Mmap::map(&file) }.ok()
+    if !mappable(&real, roots) {
+        use std::io::Read;
+        let mut bytes = Vec::with_capacity(usize::try_from(meta.len()).ok()?);
+        (&file).take(MAX_BYTES).read_to_end(&mut bytes).ok()?;
+        return Some(Bytes::Read(bytes));
+    }
+    // SAFETY: the bytes must not change while mapped (egui reads glyph outlines from them for
+    // the whole run). The file is mapped read-only and only when its resolved path is inside a
+    // system font folder that only administrators can write (`candidates::system_roots`:
+    // `%SystemRoot%\Fonts`, which only TrustedInstaller may write; `/System/Library/Fonts`,
+    // `/Library/Fonts`; `/usr/share/fonts`, `/usr/local/share/fonts`, `/run/host/fonts`). Their
+    // fonts change only through the OS or a package manager: on Unix by writing a new file and
+    // renaming it over the old one, which leaves the mapped file intact; Windows refuses to
+    // delete or truncate a mapped file. An administrator rewriting a font in place would
+    // change the bytes, as for every program that maps system fonts.
+    unsafe { memmap2::Mmap::map(&file) }.ok().map(Bytes::Mapped)
 }
 
 #[cfg(test)]

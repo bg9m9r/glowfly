@@ -1,7 +1,8 @@
 //! Where each system keeps its CJK and Hangul fonts, as a list of files to try in order:
 //! `%SystemRoot%\Fonts` on Windows, the system, local and user font folders on macOS, and on
 //! Linux and the BSDs the folders fontconfig reads by default (the XDG data folders' `fonts`,
-//! `~/.fonts`, and the host's fonts inside Flatpak), searched for known file names. The fonts
+//! `~/.fonts`, and the host's fonts inside Flatpak), searched for known file names, the system's
+//! folders first. `system_roots` names the folders whose files may be memory-mapped. The fonts
 //! made for the system language's script variant come first (Simplified or Traditional
 //! Chinese, Japanese, Korean), so Han characters take the shapes its readers expect.
 //! Everything but the folder listing is pure, so the order is tested on every system.
@@ -160,25 +161,28 @@ pub fn macos(home: Option<&Path>, variant: Option<Variant>) -> Vec<Candidate> {
     out
 }
 
-/// The folders fontconfig reads by default: `$XDG_DATA_HOME/fonts` (else `~/.local/share/fonts`),
-/// `~/.fonts`, `fonts` in each of `$XDG_DATA_DIRS` (else `/usr/local/share` and `/usr/share`),
-/// and the host's folders Flatpak shows the sandbox. Values that don't start with `/` are
-/// ignored (checked as text, so the rule is the same when tested on Windows).
+/// The folders fontconfig reads by default, the system's first so the search reaches them
+/// before a large home folder can use up its cap: `fonts` in each of `$XDG_DATA_DIRS` (else
+/// `/usr/local/share` and `/usr/share`), the host's system fonts Flatpak shows the sandbox,
+/// then `$XDG_DATA_HOME/fonts` (else `~/.local/share/fonts`), `~/.fonts` and the host user's
+/// fonts. Values that don't start with `/` are ignored (checked as text, so the rule is the same
+/// when tested on Windows).
 pub fn unix_dirs(var: impl Fn(&str) -> Option<OsString>) -> Vec<PathBuf> {
     let abs = |v: &OsString| v.to_string_lossy().starts_with('/');
     let home = var("HOME").filter(abs).map(PathBuf::from);
     let mut out = Vec::new();
-    match var("XDG_DATA_HOME").filter(abs) {
-        Some(data) => out.push(PathBuf::from(data).join("fonts")),
-        None => out.extend(home.as_ref().map(|h| h.join(".local").join("share").join("fonts"))),
-    }
-    out.extend(home.as_ref().map(|h| h.join(".fonts")));
     let shared = var("XDG_DATA_DIRS").map(|v| v.to_string_lossy().into_owned()).filter(|v| !v.is_empty());
     let shared = shared.unwrap_or_else(|| "/usr/local/share:/usr/share".into());
     // A part that isn't UTF-8 (shown with U+FFFD) is skipped rather than guessed at.
     let parts = shared.split(':').filter(|p| p.starts_with('/') && !p.contains(char::REPLACEMENT_CHARACTER));
     out.extend(parts.map(|p| PathBuf::from(p).join("fonts")));
-    out.extend(["/usr/share/fonts", "/run/host/fonts", "/run/host/user-fonts"].map(PathBuf::from));
+    out.extend(["/usr/share/fonts", "/run/host/fonts"].map(PathBuf::from));
+    match var("XDG_DATA_HOME").filter(abs) {
+        Some(data) => out.push(PathBuf::from(data).join("fonts")),
+        None => out.extend(home.as_ref().map(|h| h.join(".local").join("share").join("fonts"))),
+    }
+    out.extend(home.as_ref().map(|h| h.join(".fonts")));
+    out.push(PathBuf::from("/run/host/user-fonts"));
     let mut seen = Vec::new();
     out.retain(|p| {
         let new = !seen.contains(p);
@@ -186,6 +190,24 @@ pub fn unix_dirs(var: impl Fn(&str) -> Option<OsString>) -> Vec<PathBuf> {
         new
     });
     out
+}
+
+/// The system font folders, which only administrators can write: the only ones whose files
+/// are memory-mapped (`super::load`). Fonts anywhere else, the user's own folders among them,
+/// are read into memory.
+pub fn system_roots() -> Vec<PathBuf> {
+    if cfg!(windows) {
+        windows_fonts().into_iter().collect()
+    } else if cfg!(target_os = "macos") {
+        ["/System/Library/Fonts", "/Library/Fonts"].map(PathBuf::from).to_vec()
+    } else {
+        ["/usr/share/fonts", "/usr/local/share/fonts", "/run/host/fonts"].map(PathBuf::from).to_vec()
+    }
+}
+
+/// `%SystemRoot%\Fonts`.
+fn windows_fonts() -> Option<PathBuf> {
+    std::env::var_os("SystemRoot").filter(|r| !r.is_empty()).map(|r| PathBuf::from(r).join("Fonts"))
 }
 
 /// Linux and the BSDs: the known files found under `dirs` (`unix_dirs`), in rank order.
@@ -203,9 +225,10 @@ pub fn unix(dirs: &[PathBuf], variant: Option<Variant>) -> Vec<Candidate> {
 const MAX_DEPTH: usize = 6;
 const MAX_ENTRIES: usize = 50_000;
 
-/// Each file under `dirs` whose name is one of `names`, as (name, path), in the order found.
+/// Each file under `dirs` whose name is one of `names`, as (name, path), in the order found:
+/// each folder in turn, depth first. Stops once every name is found.
 fn walk(dirs: &[PathBuf], names: &[&str]) -> Vec<(String, PathBuf)> {
-    let mut out = Vec::new();
+    let mut out: Vec<(String, PathBuf)> = Vec::new();
     let mut seen = 0;
     let mut stack: Vec<(PathBuf, usize)> = dirs.iter().rev().map(|d| (d.clone(), 0)).collect();
     while let Some((dir, depth)) = stack.pop() {
@@ -216,16 +239,21 @@ fn walk(dirs: &[PathBuf], names: &[&str]) -> Vec<(String, PathBuf)> {
             if seen > MAX_ENTRIES {
                 return out;
             }
+            let Ok(kind) = entry.file_type() else { continue };
             let name = entry.file_name();
-            let Some(text) = name.to_str() else { continue };
-            let path = entry.path();
-            // Follows links: font folders often link files or whole folders (depth stops loops).
-            if path.is_dir() {
+            let known = name.to_str().filter(|n| names.contains(n));
+            // The listing's own type, without a stat; only a link is followed (font folders
+            // often link files or whole folders; the depth limit stops loops).
+            let is_dir = kind.is_dir() || (kind.is_symlink() && known.is_none() && entry.path().is_dir());
+            if is_dir {
                 if depth < MAX_DEPTH {
-                    subdirs.push((path, depth + 1));
+                    subdirs.push((entry.path(), depth + 1));
                 }
-            } else if names.contains(&text) {
-                out.push((text.to_owned(), path));
+            } else if let Some(text) = known {
+                out.push((text.to_owned(), entry.path()));
+                if names.iter().all(|n| out.iter().any(|(f, _)| f == n)) {
+                    return out;
+                }
             }
         }
         subdirs.sort();
@@ -238,11 +266,9 @@ fn walk(dirs: &[PathBuf], names: &[&str]) -> Vec<(String, PathBuf)> {
 pub fn for_this_system() -> Vec<Candidate> {
     let variant = sys_locale::get_locale().as_deref().and_then(variant_of);
     if cfg!(windows) {
-        let root = std::env::var_os("SystemRoot").filter(|r| !r.is_empty()).map(PathBuf::from);
-        root.map(|r| windows(&r.join("Fonts"), variant)).unwrap_or_default()
+        windows_fonts().map(|fonts| windows(&fonts, variant)).unwrap_or_default()
     } else if cfg!(target_os = "macos") {
-        let home = std::env::var_os("HOME").map(PathBuf::from).filter(|h| h.is_absolute());
-        macos(home.as_deref(), variant)
+        macos(glowfly_core::settings::home_dir().as_deref(), variant)
     } else {
         unix(&unix_dirs(|k| std::env::var_os(k)), variant)
     }
