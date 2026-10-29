@@ -10,8 +10,10 @@ const SCHEMES: [&str; 8] = ["https", "http", "HTTPS", "ftp", "ssh", "git+ssh", "
 
 /// A remote URL, read with no saved connection and with one self-hosted server. Invariants: no
 /// panic in any of the URL readers; a recognized remote's host is the whole authority of a
-/// URL built from it, lowercased the same way, and its decoded names hold no line break or NUL
-/// (either would move a request or add a line to a credential request).
+/// URL built from it, lowercased the same way, and holds only the characters a host is written
+/// with (checked here on its own, not with the parser's rules: no `%`, so it can't be decoded
+/// into another host); and its decoded names hold no line break or NUL (either would move a
+/// request or add a line to a credential request).
 pub fn remote_url(data: &[u8]) {
     let url = text(data);
     let _ = split_url(&url);
@@ -27,10 +29,18 @@ pub fn remote_url(data: &[u8]) {
     for connections in [&[][..], &[server]] {
         let Some(t) = parse_remote(&url, connections) else { continue };
         assert_eq!(https_host(&format!("https://{}/x", t.host)), Some(t.host.to_ascii_lowercase()), "{url:?} gave {t:?}");
+        assert!(t.host.chars().all(written_in_host), "{url:?} gave {t:?}");
         for name in [&t.owner, &t.project, &t.repo] {
             assert!(!name.contains(['\n', '\r', '\0']), "{url:?} gave {t:?}");
         }
     }
+}
+
+/// Whether `c` can be part of a host as written in a URL: a name's letters, digits, `-`, `.`
+/// and `_`, the `:` before a port and the brackets and colons of an IPv6 address. Never `%`.
+/// The `url` crate isn't a dependency, so this is the fuzz check's own list.
+fn written_in_host(c: char) -> bool {
+    c.is_ascii_alphanumeric() || (!c.is_ascii() && c.is_alphanumeric()) || "-._:[]".contains(c)
 }
 
 /// Text holding a URL with a password: the bytes split at U+0001 into the text before it, the

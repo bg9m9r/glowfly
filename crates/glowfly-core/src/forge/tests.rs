@@ -69,6 +69,30 @@ fn a_remote_that_would_send_requests_elsewhere_is_not_recognized() {
     }
 }
 
+#[test]
+fn a_remote_with_a_percent_encoded_host_is_not_recognized() {
+    // A host is never decoded, so `%` in it would name one server to Glowfly and, decoded by
+    // something else, another one (`%2e` a dot, `%40` an `@`, `%2F` a slash).
+    for url in [
+        "https://github.%2e/o/r",
+        "https://gitlab%2eevil.example/o/r",
+        "https://evil.example%40gitlab.com/o/r",
+        "https://evil.example%2Fgitlab/o/r",
+        "git@gitlab%2eevil.example:o/r.git",
+        "ssh://git@bitbucket%2eevil.example/scm/P/r",
+        "https://evil%2Fx.visualstudio.com/p/_git/r",
+    ] {
+        assert_eq!(parse_remote(url, &[]), None, "{url}");
+    }
+    // Not even when a saved connection names that host.
+    let conn = Connection {
+        account: Account { provider: Provider::GitHubEnterprise, host: "git%68ub.com".into(), org: String::new() },
+        user: "u".into(),
+        method: "token".into(),
+    };
+    assert_eq!(parse_remote("https://git%68ub.com/o/r", &[conn]), None);
+}
+
 /// Read-only check against a real service, using whatever credentials Glowfly would find.
 /// Run with: GLOWFLY_LIVE_REMOTE=<remote url> cargo test live_remote -- --ignored --nocapture
 #[test]
