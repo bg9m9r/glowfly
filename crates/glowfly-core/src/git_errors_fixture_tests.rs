@@ -102,6 +102,9 @@ fn remote_rejections_and_upstreams() {
     git(&work, &["fetch", "-q"]);
     let out = fails(&work, &["pull", "--ff-only"]);
     assert_eq!(classify(&out), Some(Cause::Diverged { branch: None }), "{out}");
+    // With no pull mode configured, git asks how to reconcile them.
+    let out = fails(&work, &["pull"]);
+    assert_eq!(classify(&out), Some(Cause::Diverged { branch: None }), "{out}");
 
     // (g) A new branch with no upstream.
     git(&work, &["checkout", "-q", "-b", "feat"]);

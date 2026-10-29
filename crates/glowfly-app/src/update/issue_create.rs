@@ -1,15 +1,17 @@
 //! The Create issue dialog: opening it for the active repository's tracker, loading the
 //! labels, people, types and epics it offers (per Jira project), creating the issue, and the
 //! reply: logged and toasted with a View action, cached, the ISSUES list refreshed, and the New
-//! branch dialog opened when asked. A failure keeps the dialog open with the server's words;
+//! branch dialog opened when asked. A failure keeps the dialog open, saying why in plain words when Glowfly knows the cause;
 //! a reply after the dialog closed (or for another tab) is only logged. The dialog is parked
 //! with its tab, and its calls go only to the tracker it was opened for.
 
 use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueRequest};
 use crate::msg::{IssueMsg, Msg};
+use crate::state::error_words::hosting;
 use crate::state::issue_form::{IssueForm, OptionsState, create_blocked};
 use crate::state::issue_words::noun;
 use crate::state::{AppState, Modal, ToastAction};
+use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, CreateOptions, Issue, Target};
 use std::path::Path;
 use std::time::Instant;
@@ -106,10 +108,11 @@ pub(super) fn options_replied(
     if st.workdir().as_deref() != Some(workdir) {
         return;
     }
+    let t = st.settings.lang();
     let Some(form) = form_mut(st).filter(|f| &f.target == target && f.options_for == project && f.project == project) else { return };
     match result {
         Ok(opts) => form.options_loaded(opts),
-        Err(e) => form.options = OptionsState::Failed(e.message),
+        Err(e) => form.options = OptionsState::Failed(hosting(t, target.provider, Ask::Read, &e)),
     }
 }
 
@@ -163,6 +166,7 @@ pub(super) fn created(
         }
         Err(e) => {
             st.log(false, format!("Creating the {noun} failed: {}", e.message));
+            let said = hosting(st.settings.lang(), target.provider, Ask::Change, &e);
             if e.auth
                 && let Some(fs) = st.session.forge.as_mut()
             {
@@ -171,9 +175,9 @@ pub(super) fn created(
             match form_mut(st).filter(|_| waiting) {
                 Some(form) => {
                     form.busy = false;
-                    form.error = Some(e.message);
+                    form.error = Some(said);
                 }
-                None => st.toast(false, format!("Couldn't create the {noun}: {}", e.message), now),
+                None => st.toast(false, format!("Couldn't create the {noun}: {said}"), now),
             }
         }
     }

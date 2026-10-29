@@ -9,10 +9,11 @@ use super::widgets::TextField;
 use crate::msg::{CloneMsg, Msg};
 use crate::state::clone::CloneForm;
 use crate::state::clone_service::{CloneSource, ServicePicker, account_label, visible};
-use crate::state::forks::error_text;
+use crate::state::error_words;
 use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Layout, RichText};
-use glowfly_core::forge::Connection;
+use glowfly_core::error::advice::Ask;
+use glowfly_core::forge::{Connection, Provider};
 use glowfly_core::i18n::Lang;
 
 /// The repositories the filter keeps (only the rows in view are laid out: a list can hold 1000).
@@ -83,7 +84,8 @@ pub fn show(ui: &mut egui::Ui, t: Lang, form: &mut CloneForm, connections: &[Con
     if p.loading || p.loaded.is_none() {
         pane_status::loading_line(ui, "Loading your repositories…");
     } else if let Some(e) = &p.error {
-        let error = error_text(e);
+        let provider = p.loaded.as_ref().map_or(Provider::GitHub, |a| a.provider);
+        let error = error_words::hosting(t, provider, Ask::Read, e);
         let f = Failure { title: "Couldn't list your repositories", error: &error, retry: Some(Msg::Clone(CloneMsg::RetryRepos)) };
         pane_status::failed_line(ui, t, f, msgs);
     } else if p.list.repos.is_empty() {

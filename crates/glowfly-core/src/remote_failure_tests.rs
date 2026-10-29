@@ -62,3 +62,15 @@ fn other_failures_say_nothing() {
         " ! [rejected]        main -> main (non-fast-forward)\nerror: failed to push some refs to 'https://github.com/ada/x.git'";
     assert_eq!(read(rejected), None);
 }
+
+#[test]
+fn certificates_are_not_unreachable_hosts() {
+    let corp =
+        "fatal: unable to access 'https://git.corp.example:8443/app.git/': SSL certificate problem: unable to get local issuer certificate";
+    assert_eq!(read(corp), Some(RemoteFailure::Certificate { host: Some("git.corp.example".into()) }));
+    assert_eq!(read("x509: certificate signed by unknown authority"), Some(RemoteFailure::Certificate { host: None }));
+    assert_eq!(
+        read("fatal: unable to access 'https://h/': Couldn't connect to server"),
+        Some(RemoteFailure::Unreachable { host: Some("h".into()) })
+    );
+}

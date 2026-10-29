@@ -9,11 +9,13 @@ use crate::effect::{Effect, ForgeError};
 use crate::pull_request::line_comment::{Leave, LineCommentMsg};
 use crate::pull_request::{PrCall, PrReply};
 use crate::state::AppState;
+use crate::state::error_words::hosting;
 use crate::state::pull_request::{Page, PrAction, PrTab, PrView};
 use crate::state::pull_request_line_comment::{
     ONE_HUNK, OUTSIDE, discard_confirm, draft_at, edited, post_blocked, start_blocked, suggest_blocked, with_suggestion,
 };
 use glowfly_core::diff_rows::{LineSide, line_index, row_of_file_line};
+use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{NewComment, NewThread, Target};
 use std::path::Path;
 use std::time::Instant;
@@ -259,6 +261,10 @@ pub(super) fn replied(
 ) {
     let (ok, text) = action_text(label, "", &reply);
     let PrReply::LineCommented { review, result } = reply else { return };
+    // The draft and the toast say why in plain words when Glowfly knows; the log keeps the
+    // service's words.
+    let t = st.settings.lang();
+    let result = result.map_err(|e| ForgeError { message: hosting(t, target.provider, Ask::Change, &e), ..e });
     let mine = |v: &&mut PrView| v.pr.id == id && v.line_draft.as_ref().is_some_and(|d| d.posting.is_some());
     let view = if active {
         st.session.pull_request.view.as_mut().filter(mine)

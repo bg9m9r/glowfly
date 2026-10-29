@@ -153,6 +153,49 @@ fn remote_failures_come_after_sign_in() {
 }
 
 #[test]
+fn certificates_git_cannot_verify() {
+    use crate::remote_failure::RemoteFailure;
+    let at = |host: &str| Some(Cause::Remote(RemoteFailure::Certificate { host: Some(s(host)) }));
+    // What curl's TLS backends print through git, across OpenSSL 1.1 and 3, GnuTLS (Debian and
+    // Ubuntu builds), Schannel (Git for Windows) and Secure Transport (older macOS git).
+    for text in [
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': SSL certificate problem: unable to get local issuer certificate",
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': SSL certificate problem: self signed certificate in certificate chain",
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': SSL certificate problem: self-signed certificate in certificate chain",
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': SSL certificate problem: certificate has expired",
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': server certificate verification failed. CAfile: none CRLfile: none",
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': schannel: SEC_E_UNTRUSTED_ROOT (0x80090325) - The certificate chain was issued by an authority that is not trusted.",
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': schannel: next InitializeSecurityContext failed: SEC_E_UNTRUSTED_ROOT (0x80090325) - The certificate chain was issued by an authority that is not trusted.",
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': SSL certificate problem: Invalid certificate chain",
+        "fatal: unable to access 'https://git.corp.example/team/app.git/': SSL: no alternative certificate subject name matches target host name 'git.corp.example'",
+        "fatal: unable to access 'https://git.corp.example:8443/team/app.git/': SSL peer certificate or SSH remote key was not OK",
+    ] {
+        assert_eq!(classify(text), at("git.corp.example"), "{text}");
+    }
+    // git-lfs, a Go program, says it its own way and names no URL git's way.
+    let lfs = "batch request: Post \"https://git.corp.example/team/app.git/info/lfs/objects/batch\": x509: certificate signed by unknown authority\nerror: failed to push some refs to 'https://git.corp.example/team/app.git'";
+    assert_eq!(classify(lfs), Some(Cause::Remote(RemoteFailure::Certificate { host: None })));
+    // A connection that never got as far as a certificate is still unreachable.
+    let refused =
+        "fatal: unable to access 'https://git.corp.example/a.git/': Failed to connect to git.corp.example port 443: Connection refused";
+    assert_eq!(classify(refused), Some(Cause::Remote(RemoteFailure::Unreachable { host: Some(s("git.corp.example")) })));
+}
+
+#[test]
+fn diverged_pulls_across_git_versions() {
+    for text in [
+        // pull --ff-only (or pull.ff=only), git 2.27 to 2.40ish.
+        "fatal: Not possible to fast-forward, aborting.",
+        // Later git: the same refusal, after a hint block.
+        "hint: Diverging branches can't be fast-forwarded, you need to either:\nhint:\nhint: \tgit merge --no-ff\nhint:\nhint: or:\nhint:\nhint: \tgit rebase\nhint:\nfatal: Not possible to fast-forward, aborting.",
+        // git 2.33 and later with no pull mode configured.
+        "hint: You have divergent branches and need to specify how to reconcile them.\nhint: You can do so by running one of the following commands sometime before\nhint: your next pull:\nfatal: Need to specify how to reconcile divergent branches.",
+    ] {
+        assert_eq!(classify(text), Some(Cause::Diverged { branch: None }), "{text}");
+    }
+}
+
+#[test]
 fn unrecognised_echoes_and_hints() {
     assert_eq!(classify("fatal: offline"), None);
     assert_eq!(classify(""), None);

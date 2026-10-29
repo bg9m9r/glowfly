@@ -155,8 +155,13 @@ fn fork_lists_are_matched_to_the_dialog() {
     let fx = run(&mut st, RemoteMsg::RetryForks);
     assert!(matches!(&fx[..], [Effect::Remote(RemoteEffect::ListForks(_))]) && picker(&mut st).loading);
     run(&mut st, RemoteMsg::ForksLoaded { workdir: w.clone(), target: target(), result: Box::new(Err(err)) });
-    let text = crate::state::forks::error_text(picker(&mut st).error.as_ref().unwrap());
+    let en = glowfly_core::i18n::Lang::En;
+    let text = crate::state::forks::error_text(en, &target(), picker(&mut st).error.as_ref().unwrap());
     assert!(text.contains("Bad credentials") && text.contains("Sign in again in Preferences > Integrations."), "{text}");
+    // A refusal Glowfly recognises is said in plain words.
+    let denied = ForgeError { message: "access denied: the server said \u{201c}Forking is disabled\u{201d}".into(), auth: false };
+    let text = crate::state::forks::error_text(en, &target(), &denied);
+    assert!(text.starts_with("Your GitHub account can't fork this repository."), "{text}");
     assert!(matches!(&run(&mut st, RemoteMsg::RetryForks)[..], [Effect::Remote(RemoteEffect::ListForks(_))]));
     assert!(picker(&mut st).error.is_none());
     cleanup(&[&dir]);

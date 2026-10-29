@@ -13,8 +13,8 @@ source file, update its line here.
 - `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`), and a folder's name and parent for list rows.
 - `volume.rs`: whether a folder is on a network or virtual file system.
 - `git_errors.rs`: why a failed git command failed, from its untranslated output (cause plus listed files and names), for the failure toast; `-c apply.whitespace=nowarn` on merge, pull and stash so git's internal patch warnings stay out of job logs (pure).
-- `remote_failure.rs`: why git couldn't reach or read a remote (unreachable host, missing repository, no access).
-- `error.rs`: typed errors; `error/advice.rs` rewrites a hosting service's refusal as one sentence that says what to do.
+- `remote_failure.rs`: why git couldn't reach or read a remote (unreachable host, missing repository, no access, a server certificate it couldn't verify).
+- `error.rs`: typed errors; `error/advice.rs` rewrites a hosting service's refusal as one translated sentence that says what to do.
 - `quoted.rs`: decoding git's C-quoted paths (`"caf\303\251.txt"`), for blame's porcelain and sparse checkout lists.
 
 ## Credentials and signing
