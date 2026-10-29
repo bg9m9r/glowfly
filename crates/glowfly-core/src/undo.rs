@@ -50,6 +50,7 @@ mod resumed;
 mod reverted;
 mod saved;
 mod stash;
+mod stash_first;
 mod unstaged;
 pub use aborted::ABORT_REF_PREFIX;
 pub use aborted_restore::restore_abort;
@@ -75,6 +76,7 @@ pub use resolved::resolve_saving;
 pub use restacked::{RestackBefore, restack_before, restack_unmoved, restacked};
 pub use reverted::{RevertFailed, revert_saving};
 pub use saved::{RestoreFailed, Saved, discard_saving, restore_saving, write as write_saved};
+pub use stash_first::{stash_first_command, stash_top_at, undo_stash_made, undo_stash_message};
 pub use unstaged::{restage, unstage_again, unstage_gone_saving};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.
@@ -162,25 +164,6 @@ pub enum Plan {
 pub struct Options {
     /// Undoing a checkout that created a branch also deletes the branch.
     pub delete_created: bool,
-}
-
-/// The command that stashes local changes (untracked files too) before "Stash changes and undo".
-pub fn stash_first_command() -> Vec<String> {
-    args(&["stash", "push", "-u", "-m", UNDO_STASH_MESSAGE])
-}
-
-/// The newest stash in `workdir`'s list, if any: what `undo_stash_made` compares with.
-pub fn stash_top_at(workdir: &std::path::Path) -> Option<Oid> {
-    stash_top(&git2::Repository::open(workdir).ok()?)
-}
-
-/// The stash `stash_first_command` just made: the newest one, when it isn't `before` (the
-/// newest before it ran) and carries `UNDO_STASH_MESSAGE`. `None` when git had nothing to stash.
-pub fn undo_stash_made(workdir: &std::path::Path, before: Option<Oid>) -> Option<Oid> {
-    let repo = git2::Repository::open(workdir).ok()?;
-    let top = stash_top(&repo).filter(|t| Some(*t) != before)?;
-    let ours = repo.find_commit(top).ok()?.message().is_some_and(|m| m.contains(UNDO_STASH_MESSAGE));
-    ours.then_some(top)
 }
 
 /// The command Glowfly runs for "Discard all".

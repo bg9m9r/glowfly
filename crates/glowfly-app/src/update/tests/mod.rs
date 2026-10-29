@@ -275,6 +275,7 @@ pub(super) mod undo_discard_tests;
 pub(super) mod undo_ops_tests;
 pub(super) mod undo_refs_tests;
 pub(super) mod undo_revert_tests;
+pub(super) mod undo_stash_safety_tests;
 pub(super) mod undo_stash_tests;
 pub(super) mod undo_tests;
 pub(super) mod updates_flatpak_tests;

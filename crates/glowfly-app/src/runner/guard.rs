@@ -103,7 +103,7 @@ impl Recovery {
         let kind = match effect {
             Effect::RunGit { record, .. } => Kind::Job(record.as_ref().map(|_| UndoResult::Recorded(None))),
             Effect::Pick(j) => Kind::Job(j.record.as_ref().map(|_| UndoResult::Recorded(None))),
-            Effect::UndoRedo { redo, .. } => Kind::Job(Some(UndoResult::Failed { redo: *redo })),
+            Effect::UndoRedo { redo, .. } => Kind::Job(Some(UndoResult::Failed { redo: *redo, stash: None })),
             Effect::Worktree(WorktreeEffect::Remove(_) | WorktreeEffect::Move(_))
             | Effect::Submodule(SubmoduleEffect::Remove(_))
             | Effect::Stash(StashEffect::Rename { .. })

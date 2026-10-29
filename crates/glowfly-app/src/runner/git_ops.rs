@@ -99,7 +99,8 @@ pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, 
     let (ok, output, undo) = if opts.stash_first {
         super::undo_stash::stash_and_undo(cwd, action, redo, opts, git)
     } else {
-        undo_run(cwd, action, redo, opts, git)
+        let ran = undo_run(cwd, action, redo, opts, git);
+        (ran.ok, ran.output, ran.undo)
     };
     Msg::Job(JobMsg::JobDone { ok, output, undo: Some(undo) })
 }
@@ -139,25 +140,51 @@ pub(super) struct GitRun {
     pub held: Option<bool>,
 }
 
-/// Plans the undo (or redo) of `action` as the repository is now and carries it out: whether it
-/// worked, what it printed and what it means for the history.
-pub(super) fn undo_run(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, git: UndoGit) -> (bool, String, UndoResult) {
+/// How an undo or redo went: whether it worked, what it printed, what it means for the history,
+/// and whether it may have changed anything (`false`: refused, not planned at all, or held by the
+/// gate before any command ran).
+pub(super) struct UndoRun {
+    pub ok: bool,
+    pub output: String,
+    pub undo: UndoResult,
+    pub acted: bool,
+}
+
+/// Plans the undo (or redo) of `action` as the repository is now and carries it out.
+pub(super) fn undo_run(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, git: UndoGit) -> UndoRun {
+    let plan = undo::plan_with(cwd, &action, redo, undo::Options { delete_created: opts.delete_created });
+    let planned = matches!(plan, Ok(ref p) if !matches!(p, Plan::Refuse(_)));
+    let mut held = None;
+    let (ok, output, undo) = carry_out(cwd, action, redo, opts, plan, git, &mut held);
+    UndoRun { ok, output, undo, acted: planned && held != Some(false) }
+}
+
+fn carry_out(
+    cwd: &Path,
+    action: Action,
+    redo: bool,
+    opts: UndoOpts,
+    plan: glowfly_core::error::Result<Plan>,
+    git: UndoGit,
+    held: &mut Option<bool>,
+) -> (bool, String, UndoResult) {
     let done = |output: String, before: Action, after: Action| {
-        (true, output, UndoResult::Done { redo, before, after: Box::new(after), kept: None })
+        (true, output, UndoResult::Done { redo, before, after: Box::new(after), stash: None })
     };
-    let failed = |output: String| (false, output, UndoResult::Failed { redo });
-    match undo::plan_with(cwd, &action, redo, undo::Options { delete_created: opts.delete_created }) {
+    let failed = |output: String| (false, output, UndoResult::Failed { redo, stash: None });
+    match plan {
         Err(e) => failed(e.to_string()),
         Ok(Plan::Refuse(r)) => {
             let offer_stash = matches!(r, Refusal::Dirty(_)) && action.offers_stash(redo) && !opts.stash_first;
-            (false, r.message().into(), UndoResult::Refused { redo, stale: r.is_stale(), offer_stash })
+            (false, r.message().into(), UndoResult::Refused { redo, stale: r.is_stale(), offer_stash, stash: None })
         }
         Ok(Plan::Write { path, content }) => match undo::write_saved(cwd, &path, content) {
             Ok(()) => done(action.wrote(redo), action.clone(), action),
             Err(e) => failed(format!("Could not write {path}: {e}")),
         },
         Ok(Plan::Run(cmds)) => {
-            let GitRun { ok, output, .. } = git.run(cwd, &cmds);
+            let GitRun { ok, output, held: h } = git.run(cwd, &cmds);
+            *held = h;
             if !ok {
                 return failed(output);
             }
@@ -165,7 +192,8 @@ pub(super) fn undo_run(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, g
             done(output, action, after)
         }
         Ok(Plan::RunThenWrite { cmds, path, content }) => {
-            let GitRun { ok, output, .. } = git.run(cwd, &cmds);
+            let GitRun { ok, output, held: h } = git.run(cwd, &cmds);
+            *held = h;
             if !ok {
                 return failed(output);
             }

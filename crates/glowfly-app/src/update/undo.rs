@@ -2,7 +2,7 @@
 //! branch that the checkout being undone created), and keeping each tab's history in step with
 //! the git jobs that finish in it, offering to stash local changes when they block an undo.
 
-use crate::effect::{Effect, StashKept, UndoOpts, UndoResult};
+use crate::effect::{Effect, StashHow, UndoOpts, UndoResult};
 use crate::msg::{JobMsg, Msg};
 use crate::state::toasts::ToastAction;
 use crate::state::undo::{UndoCreatedForm, UndoHistory};
@@ -71,16 +71,35 @@ fn start(st: &mut AppState, redo: bool, action: Action, opts: UndoOpts, fx: &mut
     super::ops::begin_job(st, &label, true, move |cwd| Effect::UndoRedo { cwd, action, redo, opts }, fx);
 }
 
-/// The toast of a "Stash changes and undo" whose undo ran but whose stashed changes stay in the
-/// stash list: by design, or because git couldn't put them back.
-pub(super) fn kept_headline(st: &AppState, undo: &Option<UndoResult>) -> Option<String> {
-    let Some(UndoResult::Done { before, kept: Some(kept), .. }) = undo else { return None };
+/// The toast of a "Stash changes and undo" whose stashed changes didn't simply come back after
+/// the undo: they stay in the stash (named), came back only in part, or went back because
+/// nothing was undone. It wins over every other headline, so git's own words can't hide where
+/// the changes are.
+pub(super) fn stash_headline(st: &AppState, undo: &Option<UndoResult>) -> Option<String> {
     let t = st.settings.lang();
-    let args: [(&str, &dyn std::fmt::Display); 2] = [("action", &before.describe()), ("stash", &glowfly_core::undo::UNDO_STASH_MESSAGE)];
-    Some(match kept {
-        StashKept::Conflicts(n) => t.trn("undo.stash_kept.conflicts", *n, &args),
-        StashKept::Left => t.trf("undo.stash_kept.left", &args),
-        StashKept::Failed => t.trf("undo.stash_kept.failed", &args),
+    let (action, s) = match undo {
+        Some(UndoResult::Done { before, stash: Some(s), .. }) => (Some(before.describe()), s),
+        Some(UndoResult::Failed { stash: Some(s), .. } | UndoResult::Refused { stash: Some(s), .. }) => (None, s),
+        _ => return None,
+    };
+    let reason = s.reason.as_deref().unwrap_or_default().trim();
+    let files = match &s.how {
+        StashHow::Partial(f) => f.join(", "),
+        _ => String::new(),
+    };
+    let args: [(&str, &dyn std::fmt::Display); 4] =
+        [("action", &action.as_deref().unwrap_or_default()), ("stash", &s.message), ("reason", &reason), ("files", &files)];
+    let refused = s.reason.is_some();
+    Some(match (&action, &s.how) {
+        (_, StashHow::Back) if refused => t.trf("undo.stash_back.refused", &args),
+        (_, StashHow::Back) => t.tr("undo.stash_back.failed").to_owned(),
+        (None, _) if refused => t.trf("undo.stash_held.refused", &args),
+        (None, _) => t.trf("undo.stash_held.failed", &args),
+        (Some(_), StashHow::Conflicts(n)) => t.trn("undo.stash_kept.conflicts", *n, &args),
+        (Some(_), StashHow::Partial(_)) => t.trf("undo.stash_kept.partial", &args),
+        (Some(_), StashHow::Gone) => t.trf("undo.stash_kept.gone", &args),
+        (Some(_), StashHow::Left) => t.trf("undo.stash_kept.left", &args),
+        (Some(_), StashHow::Failed) => t.trf("undo.stash_kept.failed", &args),
     })
 }
 
@@ -178,28 +197,26 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
             }
             history.redone(&before, *after)
         }
-        Some(UndoResult::Refused { redo, stale, offer_stash }) => {
+        Some(UndoResult::Refused { redo, stale, offer_stash, .. }) => {
             tracing::debug!(redo, stale, offer_stash, "undo/redo refused");
+            let top = if redo { history.redo.last() } else { history.undo.last() };
             // A conflict change that can't be carried out never can be: it goes alone, so it
             // doesn't block the older entries.
-            let stack = if redo { &mut history.redo } else { &mut history.undo };
-            if !stale && stack.last().is_some_and(|a| matches!(a, Action::Conflicts { .. })) {
-                stack.pop();
-            }
-            if stale {
+            if !stale && top.is_some_and(|a| matches!(a, Action::Conflicts { .. })) {
+                history.pop_top(redo);
+            } else if stale {
                 // A resolution or conflict change touches only its files and their index entries,
                 // and discarded work (kept in the journal too) only its own files or stash, so an
                 // expired one is dropped alone: each older entry checks the repository again when
                 // planned.
-                let stack = if redo { &mut history.redo } else { &mut history.undo };
-                if stack.last().is_some_and(|a| matches!(a, Action::Resolve { .. } | Action::Conflicts { .. }) || a.is_content()) {
-                    stack.pop();
+                if top.is_some_and(|a| matches!(a, Action::Resolve { .. } | Action::Conflicts { .. }) || a.is_content()) {
+                    history.pop_top(redo);
                 } else {
                     history.clear();
                 }
             }
         }
-        Some(UndoResult::Failed { redo }) => tracing::debug!(redo, "undo/redo failed; the entry is kept"),
+        Some(UndoResult::Failed { redo, .. }) => tracing::debug!(redo, "undo/redo failed; the entry is kept"),
     }
     // The refusal's toast (shown just before this) offers to stash the changes in the way and
     // undo anyway, for the active tab only.

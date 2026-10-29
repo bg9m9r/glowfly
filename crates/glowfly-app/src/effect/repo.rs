@@ -117,37 +117,54 @@ pub enum UndoResult {
     /// An undoable job ran; `None` when it changed nothing that can be undone.
     Recorded(Option<Action>),
     /// An undo or redo ran. `before` is the history entry and `after` the entry as it stands now
-    /// (they differ for a redo that makes a new stash or leaves a new working tree). `kept`:
-    /// the changes "Stash changes and undo" stashed stay stashed, and why.
-    Done { redo: bool, before: Action, after: Box<Action>, kept: Option<StashKept> },
+    /// (they differ for a redo that makes a new stash or leaves a new working tree). `stash`:
+    /// what became of the stash "Stash changes and undo" made, when it isn't simply back.
+    Done { redo: bool, before: Action, after: Box<Action>, stash: Option<UndoStash> },
     /// A merge, pull, cherry-pick, revert or rebase stopped in progress; it started at `0`.
     Stopped(glowfly_core::undo::OpStart),
     /// A plain abort (`undo::is_abort`) ran; the repository is now at `0` (`None`: something is
     /// still in progress, or it can't be read).
     Aborted(Option<glowfly_core::undo::OpStart>),
-    /// The reversing git commands failed; the entry stays.
-    Failed { redo: bool },
+    /// The reversing git commands failed (or "Stash changes and undo" couldn't stash); the entry
+    /// stays.
+    Failed { redo: bool, stash: Option<UndoStash> },
     /// The undo or redo was refused before running anything; a stale history is cleared.
     /// `offer_stash`: the refusal was for local changes that "Stash changes and undo" can move
     /// out of the way.
-    Refused { redo: bool, stale: bool, offer_stash: bool },
+    Refused { redo: bool, stale: bool, offer_stash: bool, stash: Option<UndoStash> },
 }
 
-/// Why the changes "Stash changes and undo" stashed stay in the stash list after the undo ran.
+/// The stash "Stash changes and undo" made (`message`, with its run's nonce), and what became of
+/// it; `reason` is the refusal, for an undo that was refused after stashing.
 #[derive(Clone, Debug, PartialEq)]
-pub enum StashKept {
-    /// They stay by design (`Action::restores_stash` is false).
+pub struct UndoStash {
+    pub message: String,
+    pub how: StashHow,
+    pub reason: Option<String>,
+}
+
+/// What became of the changes "Stash changes and undo" stashed.
+#[derive(Clone, Debug, PartialEq)]
+pub enum StashHow {
+    /// Nothing was undone, and they are back as they were (`pop --index`).
+    Back,
+    /// They stay in the list: by design (`Action::restores_stash` is false), or because the undo
+    /// failed partway.
     Left,
     /// git put them back with conflicts in this many files, and kept the entry.
     Conflicts(usize),
-    /// git couldn't put them back (also not with their staged state), or the stash was gone.
+    /// git put back the tracked changes but not these untracked files, and kept the entry.
+    Partial(Vec<String>),
+    /// git couldn't put them back (also not with their staged state); the entry stays.
     Failed,
+    /// The stash was no longer in the list when they were to go back.
+    Gone,
 }
 
 /// Choices for one undo or redo.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct UndoOpts {
-    /// Stash local changes (untracked files too) before planning the undo.
+    /// Stash local changes before planning the undo (`runner/undo_stash.rs`).
     pub stash_first: bool,
     /// Undoing a checkout that created a branch also deletes the branch.
     pub delete_created: bool,

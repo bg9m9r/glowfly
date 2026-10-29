@@ -132,7 +132,7 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             let patch = super::patch::headline(st, ok, &output);
             let stash = super::stash_push::headline(st, ok, &output);
             let (checkout, warn) = super::tag_checkout::headline(st, ok).map_or((None, None), |(t, w)| (Some(t), w));
-            let kept = super::undo::kept_headline(st, &undo);
+            let kept = super::undo::stash_headline(st, &undo);
             let headline = kept.or(flow).or(tag).or(patch).or(stash).or(checkout);
             let refused = (!ok).then(|| super::op_progress::refused(&output)).flatten();
             finish_job(st, ok, output, headline.clone(), undo, now, fx);

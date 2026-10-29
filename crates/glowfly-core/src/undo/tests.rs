@@ -123,7 +123,6 @@ fn which_undos_offer_to_stash() {
     // Their undo brings back other changes at the same paths, so the newer ones stay stashed.
     assert!(!reset(ResetMode::Hard).restores_stash() && !Action::DiscardAll { stash: o, head: o }.restores_stash());
     assert!(!push.restores_stash());
-    assert_eq!(stash_first_command(), args(&["stash", "push", "-u", "-m", UNDO_STASH_MESSAGE]));
     assert_eq!(UNDO_STASH_MESSAGE, "Glowfly: changes before undo");
 }
 

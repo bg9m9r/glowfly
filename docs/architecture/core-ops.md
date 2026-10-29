@@ -82,6 +82,7 @@ source file, update its line here.
 - `aborted_run.rs`: runs it, putting everything back at once when an abort command fails, and reads what the abort left on disk for Undo's byte check.
 - `op_start.rs`: where a merge, pull, cherry-pick, revert or rebase started (HEAD's branch or detached commit, its commit, and a hash of the index's entries), taken before Glowfly runs one and again after a plain abort, so the app keeps the undo history only when the abort went back exactly there; and which commands are plain aborts.
 - `in_the_way.rs`: before an undo or redo moves HEAD with `reset --keep`, `reset --hard` or a checkout, the paths the target tracks and HEAD doesn't that an untracked or ignored file (or a file where a folder goes) is in the way of; any there refuses it, naming them. Tests in `in_the_way_tests.rs`.
+- `stash_first.rs`: the stash "Stash changes and undo" makes: its message with a nonce per run, the push command (untracked files only for an undo that leaves the stash), the newest stash (an error when the list can't be read), and finding that run's stash by message and id.
 - `aborted_restore.rs`: undoing it puts the operation back in progress with that work (refused while any of its paths or HEAD has changed) and drops the ref; redoing aborts again; tests in `aborted_tests.rs` and `aborted_safety_tests.rs`.
 
 ## Operation journal (`journal.rs`, `journal/`)

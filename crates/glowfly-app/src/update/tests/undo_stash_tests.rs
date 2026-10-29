@@ -13,7 +13,7 @@ use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE, UNDO_STASH_MESSAGE, Undo
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-fn read(dir: &Path, f: &str) -> String {
+pub(super) fn read(dir: &Path, f: &str) -> String {
     std::fs::read_to_string(dir.join(f)).unwrap().replace("\r\n", "\n")
 }
 
@@ -21,7 +21,7 @@ fn dirty(st: &AppState) -> bool {
     st.snap.as_ref().unwrap().is_dirty()
 }
 
-fn head_summary(st: &AppState) -> String {
+pub(super) fn head_summary(st: &AppState) -> String {
     let snap = st.snap.as_ref().unwrap();
     snap.commits[snap.row_of[&snap.head_oid.unwrap()]].summary.to_string()
 }
@@ -39,7 +39,7 @@ fn click_toast_action(st: &mut AppState) {
     drive(st, Msg::ToastAction(id));
 }
 
-fn cleanup(dirs: &[&Path]) {
+pub(super) fn cleanup(dirs: &[&Path]) {
     for d in dirs {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -100,8 +100,8 @@ fn committed(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn has_undo_stash(st: &AppState) -> bool {
-    st.snap.as_ref().unwrap().stashes.iter().any(|s| s.message.ends_with(UNDO_STASH_MESSAGE))
+pub(super) fn has_undo_stash(st: &AppState) -> bool {
+    st.snap.as_ref().unwrap().stashes.iter().any(|s| s.message.contains(UNDO_STASH_MESSAGE))
 }
 
 #[test]
@@ -122,11 +122,11 @@ fn stash_changes_and_undo_a_hard_reset() {
     assert!(has_undo_stash(&st));
     let t = st.toasts.last().unwrap();
     assert!(
-        t.ok && t.text.starts_with("Undid hard reset") && t.text.ends_with("in the stash \"Glowfly: changes before undo\"."),
+        t.ok && t.text.starts_with("Undid hard reset") && t.text.contains("in the stash \"Glowfly: changes before undo #"),
         "{}",
         t.text
     );
-    assert!(st.log.iter().any(|l| l.text.contains("Your changes were stashed as \"Glowfly: changes before undo\".")));
+    assert!(st.log.iter().any(|l| l.text.contains("Your changes were stashed as \"Glowfly: changes before undo #")));
     cleanup(&[&dir]);
 }
 
@@ -244,7 +244,7 @@ fn a_dropped_stash_survives_a_job_that_cant_be_undone() {
 
 /// Undoes the newest entry, refused for local changes, then presses the toast's Stash changes
 /// and undo.
-fn stash_and_undo(st: &mut AppState) {
+pub(super) fn stash_and_undo(st: &mut AppState) {
     drive(st, Msg::Job(JobMsg::Undo));
     let t = st.toasts.last().unwrap();
     assert!(!t.ok && t.text.contains("Commit or stash"), "{}", t.text);
@@ -267,7 +267,7 @@ fn stash_changes_and_undo_a_stash_leaves_the_newer_changes_stashed() {
 
 /// l.txt committed on main ("base"), then feature adds f.txt ("on feature") and main m.txt
 /// ("on main"); opened on main, clean.
-fn forked(name: &str) -> (AppState, PathBuf) {
+pub(super) fn forked(name: &str) -> (AppState, PathBuf) {
     let dir = super::tests::scratch_repo(name);
     git(&dir, &["checkout", "--", "a.txt"]);
     let commit = |file: &str, msg: &str| {
@@ -287,7 +287,8 @@ fn forked(name: &str) -> (AppState, PathBuf) {
 
 /// Runs `op` on main, makes changes of every kind to files it doesn't touch (l.txt staged with
 /// an unstaged edit on top, the untracked new.txt), then stashes them and undoes it: HEAD is back
-/// on "on main" and the changes are back exactly, staged part too, with no stash left.
+/// on "on main" and the changes are back exactly, staged part too, with no stash left (new.txt
+/// was never stashed: an undo that puts the changes back leaves untracked files in place).
 fn stash_and_undo_a_move(name: &str, op: Msg, label: &str) {
     let (mut st, dir) = forked(name);
     drive(&mut st, op);
