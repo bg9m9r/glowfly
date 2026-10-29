@@ -1,6 +1,8 @@
 //! Glowfly's core: repository access (libgit2 + git CLI), commit-graph layout, hosting-service
 //! integrations, settings and formatting helpers. Nothing here depends on the UI.
 
+#[cfg(test)]
+mod advisory_ignores_tests;
 pub mod app_identity;
 pub mod app_update;
 pub mod askpass;

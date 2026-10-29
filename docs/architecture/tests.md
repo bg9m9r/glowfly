@@ -59,5 +59,6 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `.github/workflows/release.yml`: release-please, then the prepare job in the `release` environment (the one owner approval) and the build, flatpak, checksums and manifests jobs after it; release builds use no Rust cache.
 - `.github/workflows/zizmor.yml`: zizmor lints the workflows on every push and pull request, failing on findings of medium severity or higher.
 - `.github/workflows/scorecard.yml`: OpenSSF Scorecard, weekly, on branch protection changes and pushes to `main`; results go to the Security tab and are published for the README badge.
+- `deny.toml` and `osv-scanner.toml`: the advisory exceptions, once for cargo-deny (CI's deny job) and once for osv-scanner (Scorecard's Vulnerabilities check), kept identical (and named in SECURITY.md's Known advisories) by `glowfly-core`'s `advisory_ignores_tests.rs`.
 - `.github/workflows/codeql.yml`: CodeQL code scanning of the Rust code and the workflows (`build-mode: none`), on pushes and pull requests to `main` and weekly; results go to the Security tab.
 - `.github/codeql/codeql-config.yml`: its config: every default query on, test code (`*_tests.rs`, `tests/`, `tests.rs`, `snapshot_tests`, `testkit/`) left out.

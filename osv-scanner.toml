@@ -1,0 +1,69 @@
+# The advisories osv-scanner (OpenSSF Scorecard's Vulnerabilities check) is told to skip in
+# Cargo.lock: exactly deny.toml's [advisories] ignore list, with the same reasons, and why each
+# doesn't reach Glowfly is in the comments there. Change both files together; a test checks they
+# match, and that SECURITY.md's Known advisories table names them.
+#
+# Each entry lapses on its ignoreUntil date, so the list gets looked at again: re-check the
+# advisory, then move the date on (about six months) or drop the entry from both files.
+# `ignoreUntil` is the field osv-scanner 2.5 (Scorecard's) reads; later osv-scanner versions
+# still read it but prefer `effectiveUntil`.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0183"
+ignoreUntil = 2027-04-29
+reason = "Remote::list() is not called"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0184"
+ignoreUntil = 2027-04-29
+reason = "Blame::blame_buffer() is not called"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0194"
+ignoreUntil = 2027-04-29
+reason = "only parses bundled D-Bus XML (zbus-lockstep)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0195"
+ignoreUntil = 2027-04-29
+reason = "only parses bundled D-Bus XML (zbus-lockstep)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0141"
+ignoreUntil = 2027-04-29
+reason = "bincode 1: syntect's packed syntax and theme dumps"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0320"
+ignoreUntil = 2027-04-29
+reason = "yaml-rust: syntect's syntax loading (two-face, at build time)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+ignoreUntil = 2027-04-29
+reason = "paste: a proc-macro of accesskit_windows (eframe 0.31)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0192"
+ignoreUntil = 2027-04-29
+reason = "ttf-parser: ab_glyph, epaint's font rasterizer (egui 0.31)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0370"
+ignoreUntil = 2027-04-29
+reason = "zvariant: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0371"
+ignoreUntil = 2027-04-29
+reason = "zbus_names: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0372"
+ignoreUntil = 2027-04-29
+reason = "zvariant_derive: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)"
+
+[[IgnoredVulns]]
+id = "GHSA-qwgh-2vcv-g2f7"
+ignoreUntil = 2027-04-29
+reason = "block-buffer 0.10 keeps its cursor outside the block (digest 0.10: zbus 4, dbus-secret-service)"

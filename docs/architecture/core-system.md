@@ -115,6 +115,7 @@ source file, update its line here.
 - `notices/fresh_tests.rs`: the notices are current: the syntax section matches two-face, and every registry crate in `Cargo.lock` is in the crate section or in `notices/not-shipped.txt` (no network); `UPDATE_NOTICES=1` regenerates both.
 - `notices/generate.rs`: tests only: the generator: the crates compiled in for the release targets (`cargo tree -e normal`), their licence files from the registry (`cargo metadata`), standard texts from `notices/spdx/` for crates without one, grouped by identical text; libgit2's COPYING; egui's font licences.
 - `notices/spdx.rs`: tests only: SPDX licence expressions, which option Glowfly takes, and which licence a file's text is.
+- `advisory_ignores_tests.rs`: `deny.toml`'s advisory ignores and `osv-scanner.toml`'s `[[IgnoredVulns]]` list the same ids with the same reasons, each osv-scanner entry with an `ignoreUntil` date, and SECURITY.md's Known advisories table names the same ids.
 - `glowfly_core::app_identity` holds Glowfly's identity with the OS (`APP_ID`, `DESKTOP_ENTRY`).
 
 ## External tools (`external_tools.rs`, `external_tools/`)
