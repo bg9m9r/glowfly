@@ -2,8 +2,10 @@ name: Release
 
 # On every push to main, release-please keeps a "chore(main): release x.y.z" pull request up to
 # date, with the version worked out from Conventional Commit messages and a CHANGELOG entry.
-# Merging that pull request tags the release; this workflow then builds and attaches the
-# binaries. Run it by hand with an existing tag to (re)build that release's downloads.
+# Merging that pull request tags the release and creates it as a draft; this workflow then
+# builds and attaches the files to the draft and publishes it last, so a published release never
+# changes (release immutability, docs/RELEASING.md). Run it by hand with an existing tag to build
+# a release for it, or to rebuild the downloads of a draft or of a release that isn't immutable.
 
 on:
   push:
@@ -35,22 +37,25 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
-      contents: write # pushes the release tag and creates its GitHub release
+      contents: write # pushes the release tag and creates its draft GitHub release
       pull-requests: write # opens and updates the release pull request
     outputs:
       created: ${{ steps.rp.outputs.release_created }}
       tag: ${{ steps.rp.outputs.tag_name }}
     steps:
       # With branch protection requiring CI, the release PR needs a token other than
-      # GITHUB_TOKEN: PRs opened with GITHUB_TOKEN don't trigger the CI workflow.
+      # GITHUB_TOKEN: PRs opened with GITHUB_TOKEN don't trigger the CI workflow. The release is
+      # a draft with its tag pushed at once (release-please-config.json: draft and
+      # force-tag-creation), so the next release pull request finds this release by its tag.
       - id: rp
         uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
 
-  # Works out which tag to build, and creates its GitHub release when run by hand. The one
-  # approval of a release: this job waits for the owner in the `release` environment, and every
-  # job below needs it, so nothing is built or uploaded before then.
+  # Works out which tag to build and which release to fill: release-please's draft, a draft from
+  # an earlier run, or a new draft when run by hand (scripts/release-draft.sh). The one approval
+  # of a release: this job waits for the owner in the `release` environment, and every job below
+  # needs it, so nothing is built, uploaded or published before then.
   prepare:
     name: Prepare (approval)
     needs: release-please
@@ -58,11 +63,14 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: release
-      url: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }}
+      # A draft has no page at its tag until it is published; the list shows it to the owner.
+      url: ${{ github.server_url }}/${{ github.repository }}/releases
     permissions:
-      contents: write # creates the release when run by hand and puts the header on its notes
+      contents: write # finds or creates the draft release and puts the header on its notes
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
+      release-id: ${{ steps.release.outputs.id }}
+      draft: ${{ steps.release.outputs.draft }}
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -70,15 +78,17 @@ jobs:
       - id: tag
         env:
           TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag }}
-        run: |
-          gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /dev/null || { echo "::error::Tag $TAG doesn't exist"; exit 1; }
-          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --verify-tag --title "Glowfly $TAG" --generate-notes
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-      # The workflow's own commit, for the header: it belongs to the release, not to the tag's
-      # build, so a re-run for an older tag gets today's text.
+        run: echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      # The workflow's own commit, for the scripts and the header: they belong to the release,
+      # not to the tag's build, so a re-run for an older tag gets today's.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      - id: release
+        name: Find or create the draft release
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: bash scripts/release-draft.sh "$TAG"
       # Unsigned builds, how to check a download, no warranty and the licences, above the notes
       # (packaging/release-notes-header.md); a re-run replaces it.
       - name: Put the fixed header on the release notes
@@ -104,7 +114,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     # No Rust cache: a cache entry written by another run must never reach a release binary.
     permissions:
-      contents: write # uploads the packages to the release
+      contents: write # uploads the packages to the draft release
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
       TARGET_TRIPLE: ${{ matrix.target }}
@@ -192,7 +202,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     permissions:
-      contents: write # uploads the bundle and the git source to the release
+      contents: write # uploads the bundle and the git source to the draft release
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -226,7 +236,7 @@ jobs:
     if: ${{ !cancelled() && needs.prepare.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write # uploads SHA256SUMS and the provenance bundle to the release
+      contents: write # reads the draft's files, uploads SHA256SUMS and the provenance bundle
       id-token: write # gets the OIDC token Sigstore signs the provenance with
       attestations: write # stores the provenance attestation in the repository
     env:
@@ -269,7 +279,7 @@ jobs:
     if: ${{ !cancelled() && needs.checksums.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write # uploads the manifests to the release
+      contents: write # reads the draft's SHA256SUMS and uploads the manifests to it
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -286,3 +296,33 @@ jobs:
           if [ -d "$RUNNER_TEMP/manifests" ]; then
             find "$RUNNER_TEMP/manifests" -type f -print0 | xargs -0 -r gh release upload "$TAG" --clobber
           fi
+
+  # Publishes the draft, last and only when every job above succeeded, so a published release
+  # already has all its files: with release immutability on, they and the tag are locked from
+  # then on. scripts/release-publish.sh first checks that SHA256SUMS, the provenance bundle and
+  # every file SHA256SUMS lists are attached, then publishes a vX.Y.Z tag as the latest release
+  # and any other tag (v0.3.0-rc.1) as a pre-release that is never the latest. A failed job
+  # leaves the draft for "Re-run failed jobs". A release that was already published when the run
+  # began (a rebuild) is left as it is.
+  publish:
+    name: Publish the release
+    needs: [prepare, build, flatpak, checksums, manifests]
+    if: >-
+      ${{ !cancelled() && needs.prepare.outputs.draft == 'true'
+      && needs.build.result == 'success' && needs.flatpak.result == 'success'
+      && needs.checksums.result == 'success' && needs.manifests.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # reads the draft's files and publishes it
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_ID: ${{ needs.prepare.outputs.release-id }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # The workflow's own commit, like prepare: publishing belongs to the release, not the build.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Check the draft's files and publish it
+        run: bash scripts/release-publish.sh "$TAG" "$RELEASE_ID"

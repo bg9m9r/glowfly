@@ -7,9 +7,12 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 
 1. Every push to `main` updates a "chore(main): release x.y.z" pull request. Its version and its
    `CHANGELOG.md` entry come from the Conventional Commit messages since the last release.
-2. Merging that pull request tags `vX.Y.Z` and creates the GitHub release. The **prepare** job
-   then waits for the owner's approval (see [Approving a release](#approving-a-release)) and puts
-   the fixed header above its notes (see [The release notes header](#the-release-notes-header)).
+2. Merging that pull request pushes the tag `vX.Y.Z` and creates the GitHub release as a
+   **draft** (`release-please-config.json`: `draft` and `force-tag-creation`; see
+   [Drafts and release immutability](#drafts-and-release-immutability)). The **prepare** job then
+   waits for the owner's approval (see [Approving a release](#approving-a-release)), finds the
+   draft (`scripts/release-draft.sh`) and puts the fixed header above its notes (see
+   [The release notes header](#the-release-notes-header)). Every job below uploads to that draft.
 3. The **build** job runs once per target. It builds `glowfly` in release mode, then the
    packaging script for its OS (`scripts/package-windows.ps1`, `scripts/package-macos.sh`,
    `scripts/package-linux.sh`) writes the files below into `dist/`, checks that each archive and
@@ -29,14 +32,29 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
    signed itself. The job is the only one with `id-token: write` and `attestations: write`.
 5. The **manifests** job fills in the Homebrew cask and the winget manifests from `SHA256SUMS`
    and attaches them to the release (see [Homebrew and winget](#homebrew-and-winget)).
+6. The **publish** job runs last, and only when every job above succeeded. It
+   (`scripts/release-publish.sh`) checks that `SHA256SUMS`, the provenance bundle and every file
+   `SHA256SUMS` lists are on the draft, each with the listed SHA-256 where GitHub reports the
+   file's digest, and then publishes it: a `vX.Y.Z` tag as the latest release, any other tag
+   (`v0.3.0-rc.1`) as a pre-release that is never the latest. Until then the release is a draft
+   that only people with write access see.
 
 The build matrix has six targets: Windows x64 and ARM64 (both on `windows-latest`; ARM64 is
 cross-compiled with the image's ARM64 build tools, and LLVM's clang is put on `PATH` for ring),
 Linux x86_64 (`ubuntu-22.04`) and aarch64 (`ubuntu-22.04-arm`, built natively), and macOS on
 Apple silicon and Intel (`macos-14`).
 
-To rebuild an existing release's files, run the workflow by hand with its tag. The build jobs
-use the scripts at that tag, so a tag from before the licence checks existed fails them: its
+When a job fails, the release stays a draft: fix the cause and choose **Re-run failed jobs**.
+The re-run uploads to the same draft (`--clobber` replaces a file from the first try), the jobs
+after it run again, and publish runs once all of them succeed.
+
+To build an existing tag's files, run the workflow by hand with its tag. With no release for the
+tag, prepare creates a draft (named `Glowfly <tag>`, with GitHub's generated notes) and the run
+ends by publishing it, as above; an existing draft is reused. A release that is already published
+is rebuilt in place and left published, which works only while it isn't immutable: prepare fails
+for an immutable one, whose files can't change. Prepare also fails when the tag has more than
+one release (delete the extra drafts), since every job finds the release by its tag. The build
+jobs use the scripts at that tag, so a tag from before the licence checks existed fails them: its
 packages lack those files and shouldn't be published again. A run by hand waits for the same
 approval, and only a run started from `main` (or a `v*` tag) can get it.
 
@@ -47,17 +65,46 @@ folder, so a cache entry written by another run can never end up in a download.
 
 Publishing runs in the `release` deployment environment (Settings > Environments), which has the
 owner as its required reviewer and accepts only the `main` branch and `v*` tags. The **prepare**
-job is the only job in that environment, and every job that uploads to or edits the release
-(build, flatpak, checksums, manifests) needs it, so a release takes one approval: open the
-Release run in the Actions tab, choose **Review deployments**, tick `release` and approve. Until
-then nothing is built or uploaded; rejecting it skips every publishing job. The release that
-release-please created stays without downloads until the run is approved, or until the workflow
-is run by hand for its tag. The **release-please** job itself isn't gated, so pushes to `main`
+job is the only job in that environment, and every job that uploads to, edits or publishes the
+release (build, flatpak, checksums, manifests, publish) needs it, so a release takes one
+approval: open the Release run in the Actions tab, choose **Review deployments**, tick `release`
+and approve. Until then nothing is built, uploaded or published; rejecting it skips every
+publishing job. The draft that release-please created stays an unpublished draft without
+downloads until the run is approved, or until the workflow is run by hand for its tag; its tag
+is public from the start. The **release-please** job itself isn't gated, so pushes to `main`
 don't wait.
 
 `CHANGELOG.md` is also bundled into the program at build time (`crates/glowfly-app/build.rs`):
 it is what the "View release notes" dialog shows, and the dialog opens by itself the first time
 a new version starts.
+
+## Drafts and release immutability
+
+With release immutability on (Settings > General > Releases > **Enable release immutability**),
+a published release's files can't be added, replaced or deleted and its tag can't be moved or
+deleted; its title and notes stay editable. A stolen token or a compromised workflow then can't
+swap a download after the fact, and GitHub generates a release attestation for each release
+it publishes. GitHub's advice for this is to create the release as a draft, attach every file, then
+publish it, and that is the flow above:
+
+- release-please creates the draft with `draft: true`. GitHub creates a draft's tag only when
+  it is published, so `force-tag-creation: true` makes release-please push the tag first. The
+  next release pull request finds the last release by that tag: release-please skips releases
+  without a tagged commit, then falls back to looking up the tag the manifest's version names.
+- Every upload goes to the draft (`gh` finds a draft by its tag), and nothing touches the
+  release's files after the publish job.
+- Pre-releases aren't marked by release-please (its `prerelease` option would mark every 0.x
+  release too); the publish job marks every tag that isn't `vX.Y.Z`.
+
+**One-time step for the owner**: after the first release that goes out this way has been
+published with all its files, turn on **Enable release immutability** in Settings > General >
+Releases. Nothing in the workflow depends on it being on or off. Once it is on, a published
+release can't be rebuilt; publish a new version instead.
+
+Nothing outside the repository's writers sees a draft: the update check reads
+`/releases/latest`, which GitHub answers with the newest published release that isn't a
+pre-release, and the Homebrew and winget manifests point at download links that exist only once
+the release is published.
 
 ## What a release contains
 
@@ -94,7 +141,9 @@ After the checksums, the **manifests** job runs `scripts/fill-manifests.sh <tag>
 `packaging/winget/*.yaml.in` with the version, the tag, the repository and the SHA-256 of both
 dmgs and both MSIs, and attaches the results to the release. A pre-release tag (anything but
 `vX.Y.Z`) gets a notice and no manifests. When `SHA256SUMS` lacks a file the manifests need (a
-build failed), the job fails loudly; the release itself is unaffected. Submitting is by hand:
+build failed), the job fails loudly and the release stays a draft, since publish needs every
+job to succeed. Submit them by hand once the release is published (their download links work
+only then):
 
 - **Homebrew**: put `glowfly.rb` in a tap repository as `Casks/glowfly.rb` (for example
   `<owner>/homebrew-glowfly`; then `brew install --cask <owner>/glowfly/glowfly`). The main
