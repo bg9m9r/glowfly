@@ -12,6 +12,18 @@ fn https_username_prompts_keep_the_url() {
 }
 
 #[test]
+fn git_lfs_prompts_are_read_like_gits() {
+    // git-lfs asks the askpass program itself, with the endpoint URL in double quotes.
+    let url = "https://github.com/o/r.git/info/lfs";
+    assert_eq!(classify(&format!("Username for \"{url}\""), None), PromptKind::Username { url: url.into() });
+    let target = "https://ada%40corp.com@github.com/o/r.git/info/lfs";
+    let kind = classify(&format!("Password for \"{target}\""), None);
+    assert_eq!(kind, PromptKind::Password { target: target.into(), user: Some("ada@corp.com".into()) });
+    assert_eq!(host(&kind).as_deref(), Some("github.com"));
+    assert_eq!(classify("Username for https://host", None), PromptKind::Other { secret: false }, "no quotes: not a URL prompt");
+}
+
+#[test]
 fn https_password_prompts_decode_the_user() {
     let kind = classify("Password for 'https://ada%40example.com@dev.azure.com': ", None);
     assert_eq!(

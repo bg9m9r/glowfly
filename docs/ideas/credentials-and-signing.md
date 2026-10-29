@@ -15,6 +15,8 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
   jobs
 - Keep paused auto-fetch remotes across restarts
 - A desktop notification when a remote needs a sign-in
+- Move a Linux user from the `cache` fallback to libsecret once git-credential-libsecret is installed
+- Drop rejected git LFS sign-ins too (git-lfs's failure output names its endpoint differently)
 - A status-bar chip listing paused remotes once their banner lines are dismissed
 - Let the dialog's Remember choice update the default in Preferences > General
 - The `DISPLAY=:0` placeholder set for SSH passphrase prompts may make ssh print an X11 warning with `ForwardX11 yes` when `DISPLAY` was unset and a command-line ssh is in use; pass `-o ForwardX11=no` for Glowfly's own runs (the placeholder itself is needed for OpenSSH before 8.4)

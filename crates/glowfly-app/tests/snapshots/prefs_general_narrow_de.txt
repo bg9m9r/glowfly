@@ -50,7 +50,7 @@ Button "Registrierung aufheben" [disabled]
 Label "Damit öffnen Links aus einem Browser oder Chat ein Repository, einen Branch, einen Commit oder ein Tag in Glowfly. Betrifft nur dein Benutzerkonto."
 Label "Anmeldungen"
 CheckBox "In Glowfly eingegebene HTTPS-Anmeldungen merken" [on]
-Label "Sobald Git einen in Glowfly eingegebenen Benutzernamen und ein Passwort oder Token akzeptiert, wird die Anmeldung mit dem Credential-Helper von Git gespeichert. Ist kein Helper eingerichtet, richtet Glowfly den Anmeldedatenspeicher des Systems für Git ein."
+Label "Sobald Git einen in Glowfly eingegebenen Benutzernamen und ein Passwort oder Token akzeptiert, wird die Anmeldung mit dem Credential-Helper von Git gespeichert. Ist kein Helper eingerichtet, richtet Glowfly den Anmeldedatenspeicher des Systems für Git ein. Unter Linux ohne Schlüsselbund-Helper behält stattdessen der Cache von Git sie jeweils 15 Minuten nach der letzten Verwendung im Arbeitsspeicher."
 Button "Gespeicherte Tokens löschen" [disabled]
 Button "Auch von Git Credential Manager abmelden" [disabled]
 Label "Glowfly hat keine gespeicherten Verbindungen, die sich entfernen ließen."

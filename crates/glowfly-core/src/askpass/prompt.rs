@@ -43,11 +43,11 @@ pub fn classify(text: &str, hint: Option<&str>) -> PromptKind {
     }
     let t = text.trim_end();
     let t = t.strip_suffix(':').unwrap_or(t).trim_end();
-    if let Some(rest) = t.strip_prefix("Username for '") {
-        return PromptKind::Username { url: unquote_end(rest).to_owned() };
+    if let Some(url) = quoted_url(t, "Username for ") {
+        return PromptKind::Username { url: url.to_owned() };
     }
-    if let Some(rest) = t.strip_prefix("Password for '") {
-        let target = unquote_end(rest).to_owned();
+    if let Some(target) = quoted_url(t, "Password for ") {
+        let target = target.to_owned();
         let user = user_and_host(&target).0;
         return PromptKind::Password { target, user };
     }
@@ -69,7 +69,20 @@ pub fn classify(text: &str, hint: Option<&str>) -> PromptKind {
 
 /// `rest` up to its closing quote (or all of it, when there is none).
 fn unquote_end(rest: &str) -> &str {
-    rest.rfind('\'').map_or(rest, |i| &rest[..i])
+    unquote_end_with(rest, '\'')
+}
+
+fn unquote_end_with(rest: &str, quote: char) -> &str {
+    rest.rfind(quote).map_or(rest, |i| &rest[..i])
+}
+
+/// The URL after `lead` in git's HTTPS prompt (`Username for 'https://host'`) or in git-lfs's
+/// (`Username for "https://host/o/r.git/info/lfs"`: Go's double quotes, which a URL never needs
+/// to escape inside).
+fn quoted_url<'a>(t: &'a str, lead: &str) -> Option<&'a str> {
+    let rest = t.strip_prefix(lead)?;
+    let quote = rest.chars().next().filter(|c| *c == '\'' || *c == '"')?;
+    Some(unquote_end_with(&rest[1..], quote))
 }
 
 /// The host a Username or Password prompt is for (lowercase, with any port), if it names one.

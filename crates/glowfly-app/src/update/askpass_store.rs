@@ -37,23 +37,21 @@ pub(super) fn settle(p: &mut CredentialPrompts, ok: bool, cwd: Option<&Path>, ou
     fx.extend(rejected.into_iter().map(|credential| Effect::Credential(CredentialEffect::Forget { cwd: cwd.clone(), credential })));
 }
 
-/// Saving the sign-in for `host` ended. Handing it to the user's own helper is routine and only
-/// logged; setting up a store, or failing to save, is also toasted.
+/// Saving the sign-in for `host` ended. Handing it to the user's own helper is routine, and
+/// saving nothing because the user turned `credential.helper` off is what they asked for: both
+/// are only logged. Setting up a store (or git's in-memory cache), or failing to save, is also
+/// toasted. No text holds the password.
 pub(super) fn remembered(st: &mut AppState, host: &str, result: Result<Remembered, String>, now: Instant) {
-    match result {
-        Ok(Remembered::Helper) => st.log_quiet(true, format!("Saved the sign-in for {host} with git's credential helper.")),
-        Ok(Remembered::SetUp(name)) => {
-            let text =
-                format!("Git now saves sign-ins with {name} (credential.helper in your global git config). Saved the sign-in for {host}.");
-            st.toast(true, text.clone(), now);
-            st.log(true, text);
-        }
-        Err(e) => {
-            let text = format!("Couldn't save the sign-in for {host}: {e}");
-            st.toast(false, text.clone(), now);
-            st.log(false, text);
-        }
-    }
+    let t = st.settings.lang();
+    let (ok, text) = match result {
+        Ok(Remembered::Helper) => return st.log_quiet(true, t.trf("sign_in.saved.helper", &[("host", &host)])),
+        Ok(Remembered::TurnedOff) => return st.log_quiet(true, t.trf("sign_in.saved.turned_off", &[("host", &host)])),
+        Ok(Remembered::SetUp(name)) => (true, t.trf("sign_in.saved.set_up", &[("helper", &name), ("host", &host)])),
+        Ok(Remembered::Cached) => (true, t.trf("sign_in.saved.cached", &[("host", &host)])),
+        Err(e) => (false, t.trf("sign_in.saved.failed", &[("host", &host), ("why", &e)])),
+    };
+    st.toast(ok, text.clone(), now);
+    st.log(ok, text);
 }
 
 /// Dropping the rejected sign-in for `host` ended.

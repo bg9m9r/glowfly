@@ -299,8 +299,11 @@ pub(super) fn finish_job(
     let took_open = super::trust_inherit::job_ended(st, &job.label, ok, job.then_open.as_ref().map(|(p, _)| p.as_path()), fx);
     super::sign_in::job_finished(st, job.workdir.as_deref(), ok, &output);
     let then_pr = job.then_pr.take();
+    // A clone's sign-ins are for a remote no open repository has yet: saved with the global and
+    // system git config (outside any repository), not the active tab's.
+    let sign_in_cwd = if matches!(job.then_open, Some((_, Created::Clone))) { None } else { job.workdir.as_deref() };
     // A cancelled or timed-out credential prompt explains a failure better than git's output.
-    let headline = super::askpass::job_finished(st, ok, cancelled, &job.label, job.workdir.as_deref(), &output, fx).or(headline);
+    let headline = super::askpass::job_finished(st, ok, cancelled, &job.label, sign_in_cwd, &output, fx).or(headline);
     match headline {
         Some(h) if cancelled => super::logs_runs::job_cancelled(st, &job, &output, h, now),
         headline => super::logs_runs::job_ended(st, &job, ok, &output, headline, stash_retry, now, fx),
