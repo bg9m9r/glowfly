@@ -134,6 +134,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::AnnotateTag(form) => close = super::tag_dialog::annotate_tag(ui, cx, form, snap, msgs),
             Modal::NewWorktree(form) => close = super::worktree_dialog::new_worktree(ui, cx, form, snap, msgs),
             Modal::DeleteBranch(form) => close = super::branch_delete_dialog::show(ui, cx, form, msgs),
+            Modal::DeleteRemoteBranch(form) => close = super::remote_branch_delete_dialog::show(ui, cx, form, msgs),
             Modal::RemoveWorktree(form) => close = super::worktree_manage_dialog::remove(ui, cx, form, idle, msgs),
             Modal::LockWorktree(form) => close = super::worktree_manage_dialog::lock(ui, cx, form, idle, msgs),
             Modal::MoveWorktree(form) => close = super::worktree_move_dialog::move_worktree(ui, cx, form, snap, idle, msgs),
@@ -151,7 +152,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
                 close = super::create_pr_dialog::show(ui, cx, form, fs, snap, idle, msgs);
             }
             Modal::Publish(f) => close = super::publish::form(ui, cx, f, idle, msgs),
-            Modal::RenameBranch { old, name, touched } => close = super::branch_dialogs::rename(ui, cx, old, (name, touched), snap, msgs),
+            Modal::RenameBranch(form) => close = super::branch_dialogs::rename(ui, cx, form, snap, msgs),
             Modal::RenameStash(form) => close = super::stash_dialog::rename(ui, cx, form, idle, msgs),
             Modal::StashPush(form) => close = super::stash_push_dialog::show(ui, cx, form, snap, idle, msgs),
             Modal::SetUpstream { branch, remote, name, touched } => {

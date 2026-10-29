@@ -9,6 +9,7 @@ use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
 use crate::msg::BranchMsg;
 use crate::msg::{JobMsg, Msg};
+use crate::state::branch_sync::{RenameForm, remote_rename};
 use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use eframe::egui;
@@ -79,40 +80,58 @@ pub fn new_branch(ui: &mut egui::Ui, cx: Cx, f: NewBranchForm, snap: Option<&Sna
     out.primary || out.dismiss
 }
 
-/// The rename dialog for `old`, editing `(name, touched)`; returns true when it should close.
-/// Its field keeps the keyboard focus unless `cx.keyboard` is false (a credential prompt is open
+/// The rename dialog (`form`); returns true when it should close. For a branch with an upstream
+/// on a remote it offers to rename it there too, or says why it can't (`remote_rename`). Its
+/// field keeps the keyboard focus unless `cx.keyboard` is false (a credential prompt is open
 /// above it).
-pub fn rename(
-    ui: &mut egui::Ui,
-    cx: Cx,
-    old: &str,
-    (name, touched): (&mut String, &mut Touched),
-    snap: Option<&Snapshot>,
-    msgs: &mut Vec<Msg>,
-) -> bool {
+pub fn rename(ui: &mut egui::Ui, cx: Cx, form: &mut RenameForm, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
+    let (t, old) = (cx.t, form.old.clone());
     let d = Dialog::new(cx, format!("Rename branch {old}")).begin(ui);
     let locals = locals(snap);
-    let problem_of = |new: &str| if new == old { None } else { check_branch_name(new, &locals, Some(old)).err() };
-    let shown = Some(name.trim()).filter(|n| *n != old).and_then(|n| name_message(n, problem_of(n).as_ref()));
-    let tracking = branch(snap, old).and_then(|b| b.tracking.as_ref()).filter(|t| t.is_remote());
-    let note = tracking.map(|t| Message::info(format!("Its upstream setting moves with it; {} is not renamed.", t.display())));
-    let group = FieldGroup::new("Branch name").message(touched, NAME, shown).note(note);
-    let r = group.show(ui, |ui| ui.add(TextField::new(name).hint("branch-name")));
-    form_message::track(touched, NAME, &r);
+    let problem_of = |new: &str| if new == old { None } else { check_branch_name(new, &locals, Some(&old)).err() };
+    let shown = Some(form.name.trim()).filter(|n| *n != old).and_then(|n| name_message(n, problem_of(n).as_ref()));
+    let b = branch(snap, &old);
+    let tracking = b.and_then(|b| b.tracking.as_ref()).filter(|t| t.is_remote());
+    let offer = snap.zip(b).and_then(|(s, b)| remote_rename(t, s, b, form.name.trim()));
+    let remote = matches!(offer, Some(Ok(_))) && form.remote;
+    let note = tracking.filter(|_| !remote).map(|u| Message::info(t.trf("branch_sync.rename.local_note", &[("upstream", &u.display())])));
+    let group = FieldGroup::new("Branch name").message(&form.touched, NAME, shown).note(note);
+    let r = group.show(ui, |ui| ui.add(TextField::new(&mut form.name).hint("branch-name")));
+    form_message::track(&mut form.touched, NAME, &r);
     let submit = text_field::entered(ui, &r);
     if cx.keyboard {
         r.request_focus();
     }
-    let new = name.trim();
+    if let (Some(offer), Some(u)) = (&offer, tracking) {
+        ui.add_space(8.0);
+        let label = t.trf("branch_sync.rename.remote.check", &[("remote", &u.remote)]);
+        // A tick stays clearable after the name typed makes it impossible.
+        ui.add_enabled(offer.is_ok() || form.remote, controls::Check::new(&mut form.remote, label));
+        let text = match offer {
+            Ok(p) if form.remote => {
+                Some(Message::info(t.trf("branch_sync.rename.remote_note", &[("remote", &p.remote), ("upstream", &p.upstream())])))
+            }
+            Ok(_) => None,
+            Err(why) if form.remote => Some(Message::warning(why.clone())),
+            Err(why) => Some(Message::info(why.clone())),
+        };
+        if let Some(m) = text {
+            ui.add_space(4.0);
+            form_message::form(ui, m);
+        }
+    }
+    let new = form.name.trim();
     let unchanged = new == old;
     let problem = problem_of(new);
-    let valid = !unchanged && problem.is_none();
+    // Ticked but refused: renaming only here would not be what was asked.
+    let refused = form.remote && matches!(offer, Some(Err(_)));
+    let valid = !unchanged && problem.is_none() && !refused;
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Rename").enabled(valid)).submit(submit));
     if out.attempted && !unchanged {
-        touched.attempt();
+        form.touched.attempt();
     }
     if out.primary {
-        msgs.push(Msg::Branch(BranchMsg::RenameBranch { old: old.to_owned(), new: new.to_owned() }));
+        msgs.push(Msg::Branch(BranchMsg::RenameBranch { old: old.clone(), new: new.to_owned(), remote }));
     }
     out.primary || out.dismiss
 }

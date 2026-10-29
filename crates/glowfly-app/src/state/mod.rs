@@ -11,6 +11,7 @@ pub mod blame;
 pub mod blame_find;
 pub mod blocked;
 pub mod branch_delete;
+pub mod branch_sync;
 pub mod branches;
 pub mod build_status;
 pub mod clone;
@@ -277,6 +278,7 @@ pub enum Modal {
     RemoveWorktree(worktree_manage::RemoveForm),
     /// Delete a local branch: what it would lose, then Delete or Delete anyway (`ui/branch_delete_dialog.rs`).
     DeleteBranch(branch_delete::DeleteForm),
+    DeleteRemoteBranch(branch_sync::DeleteRemoteForm),
     LockWorktree(worktree_manage::LockForm),
     MoveWorktree(worktree_move::MoveForm),
     AddSubmodule(submodules::add::AddForm),
@@ -331,11 +333,7 @@ pub enum Modal {
         repos: pr_repos::PrRepoPick,
     },
     Publish(Box<publish::PublishForm>),
-    RenameBranch {
-        old: String,
-        name: String,
-        touched: touched::Touched,
-    },
+    RenameBranch(branch_sync::RenameForm),
     RenameStash(stashes::RenameStashForm),
     StashPush(stashes::StashPushForm),
     SetUpstream {
@@ -365,8 +363,7 @@ pub enum Modal {
     /// An invalid link, a linked repository not found, or several copies to choose from.
     DeepLink(deep_link::LinkDialog),
     CreateIssue(Box<issue_form::IssueForm>),
-    /// Reword a commit chosen in the graph, or type the message of commits it squashes
-    /// (`ui/rebase/reword_dialog.rs`).
+    /// Reword a graph commit, or type the message of commits it squashes (`ui/rebase/reword_dialog.rs`).
     RewordCommit(Box<rebase_quick::RewordForm>),
     /// Help > About Glowfly: version, licence, git and links.
     About,
@@ -483,6 +480,8 @@ pub struct AppState {
     pub gitflow_finish: Option<gitflow::FinishJob>,
     /// The running remote tag push or delete (update/tags.rs), for its headline.
     pub tag_job: Option<tags::RemoteTagJob>,
+    /// The running rename that moves the branch on its remote too (update/branch_sync.rs).
+    pub rename_job: Option<branch_sync::RenameJob>,
     pub tag_checkout: Option<tags::TagCheckoutJob>,
     /// The running clean-up after a pull request merge that deletes the local branch, for its headline.
     pub pr_cleanup: Option<pull_request_cleanup::CleanupJob>,
@@ -565,6 +564,7 @@ impl AppState {
             terminal,
             gitflow_finish: None,
             tag_job: None,
+            rename_job: None,
             tag_checkout: None,
             pr_cleanup: None,
             patch_apply: None,

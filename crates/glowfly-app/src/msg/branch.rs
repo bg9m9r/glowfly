@@ -17,10 +17,12 @@ pub enum BranchMsg {
     },
     /// Open the rename dialog for local branch `.0`.
     RenameBranchDialog(String),
-    /// `git branch -m old new`.
+    /// `git branch -m old new`; with `remote`, then the new name pushed to the upstream's remote
+    /// (and made the upstream) and the old one deleted there (update/branch_sync.rs).
     RenameBranch {
         old: String,
         new: String,
+        remote: bool,
     },
     /// Open the upstream dialog for local branch `.0`.
     SetUpstreamDialog(String),
@@ -50,6 +52,17 @@ pub enum BranchMsg {
         name: String,
         tip: git2::Oid,
         force: bool,
+    },
+    /// Open the Delete remote branch dialog for `name` on `remote` (update/branch_sync.rs).
+    DeleteRemoteDialog {
+        remote: String,
+        name: String,
+    },
+    /// Delete branch `name` on `remote`, then unset the upstream of the local branches `unset`.
+    DeleteRemote {
+        remote: String,
+        name: String,
+        unset: Vec<String>,
     },
     /// Delete local branch `.0` and then its upstream branch on the remote.
     DeleteBranchAndRemote(String),
@@ -81,6 +94,8 @@ impl BranchMsg {
             | Self::DeleteDialog(..)
             | Self::UnmergedCounted { .. }
             | Self::Delete { .. }
+            | Self::DeleteRemoteDialog { .. }
+            | Self::DeleteRemote { .. }
             | Self::DeleteBranchAndRemote(..)
             | Self::PushBranch { .. }
             | Self::NewBranch { .. } => None,

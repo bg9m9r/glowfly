@@ -134,8 +134,9 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             let stash = super::stash_push::headline(st, ok, &output);
             let cleanup = super::pull_request::cleanup::headline(st, ok, &output);
             let (checkout, warn) = super::tag_checkout::headline(st, ok).map_or((None, None), |(t, w)| (Some(t), w));
+            let rename = super::branch_sync::headline(st, ok, &output);
             let kept = super::undo::stash_headline(st, &undo);
-            let headline = kept.or(flow).or(tag).or(patch).or(stash).or(checkout).or(cleanup);
+            let headline = kept.or(flow).or(tag).or(patch).or(stash).or(checkout).or(cleanup).or(rename);
             let refused = (!ok).then(|| super::op_progress::refused(&output)).flatten();
             finish_job(st, ok, output, headline.clone(), undo, now, fx);
             if let Some(reason) = refused {

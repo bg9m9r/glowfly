@@ -16,6 +16,16 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   remote row
 - Compare with the current branch from the local branch and tag menus too
 
+### Keep the remote in step on rename and remote delete
+
+- Rename a branch whose upstream is gone: push the new name and make it the upstream, with
+  nothing to delete
+- Rename on the remote through the code host's branch rename API, so open pull requests follow
+- Use the code host's default branch, when known, beside the remote's HEAD for the refusal
+- Offer Pull, then rename, for a branch behind its upstream instead of only refusing
+- Delete local + remote: unset the upstream of other local branches tracking the same branch
+- Remember the "Also rename it on the remote" choice per repository
+
 ### One Delete for a local branch, with Delete anyway
 
 - List the commits Delete anyway would leave on no branch (subjects, as the operation preview's

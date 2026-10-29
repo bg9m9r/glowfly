@@ -368,7 +368,10 @@ fn a_dialog_that_closes_itself_leaves_the_prompt_for_its_job() {
 
     let st = submit_held(
         "trust-rename-branch",
-        Modal::RenameBranch { old: "search".into(), name: "find".into(), touched: Default::default() },
+        Modal::RenameBranch(crate::state::branch_sync::RenameForm {
+            name: "find".into(),
+            ..crate::state::branch_sync::RenameForm::new("search".into())
+        }),
         "Rename",
     );
     assert_eq!(held_prompt(&st), Some("Rename branch"));

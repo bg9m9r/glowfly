@@ -21,6 +21,7 @@ pub(super) mod avatars_tests;
 pub(super) mod blame_tests;
 pub(super) mod branch_colour_tests;
 pub(super) mod branch_delete_tests;
+pub(super) mod branch_sync_tests;
 pub(super) mod branch_tests;
 pub(super) mod build_status_tests;
 pub(super) mod cherry_pick_tests;
