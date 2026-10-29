@@ -1,6 +1,7 @@
 //! Writing commit messages in `i18n.commitEncoding`: encoding and refusals, the config read
-//! through includes, commit and amend round trips in a windows-1252 repository (#242), older
-//! UTF-8 commits under a single-byte label, and a rebase's reword files.
+//! through includes, strict labels (ISO-8859-1, US-ASCII and others WHATWG widens), commit and
+//! amend round trips in a windows-1252 repository (#242), an ISO-8859-1 one, older UTF-8
+//! commits under a single-byte label, and a rebase's reword files.
 
 use super::*;
 use crate::rebase::{self, Outcome, RebaseAction, RebaseBase, SequenceEditor, StartRequest, TodoStep};
@@ -8,38 +9,84 @@ use crate::repo::{LoadOptions, load};
 use crate::testutil::*;
 use std::path::Path;
 
-const CP1252: MessageEncoding = MessageEncoding(Some(encoding_rs::WINDOWS_1252));
+fn cp1252() -> MessageEncoding {
+    MessageEncoding::named(Some("windows-1252"))
+}
 
 #[test]
 fn labels_name_the_encoding_and_utf8_stays_utf8() {
-    assert_eq!(MessageEncoding::named(Some("windows-1252")), CP1252);
-    assert_eq!(MessageEncoding::named(Some("latin-1")), CP1252, "an iconv alias");
+    assert_eq!(MessageEncoding::named(Some(" windows-1252 ")), cp1252(), "trimmed");
+    assert!(!MessageEncoding::named(Some("latin-1")).is_utf8(), "an iconv alias");
     for label in [None, Some("UTF-8"), Some("utf8"), Some("UTF-16"), Some("x-made-up")] {
         assert!(MessageEncoding::named(label).is_utf8(), "{label:?}");
     }
-    assert_eq!(MessageEncoding::named(Some("cp932")).name(), "Shift_JIS");
+    assert_eq!(MessageEncoding::named(Some("cp932")).name(), "cp932", "the label as configured");
     assert_eq!(MessageEncoding::UTF8.name(), "UTF-8");
 }
 
 #[test]
 fn encoding_borrows_what_needs_no_change() {
     assert!(matches!(MessageEncoding::UTF8.encode("Zoë ✓"), Ok(Cow::Borrowed(b)) if b == "Zoë ✓".as_bytes()));
-    assert!(matches!(CP1252.encode("plain"), Ok(Cow::Borrowed(b"plain"))));
-    assert_eq!(CP1252.encode("Café € 5").unwrap().as_ref(), b"Caf\xe9 \x80 5");
+    assert!(matches!(cp1252().encode("plain"), Ok(Cow::Borrowed(b"plain"))));
+    assert_eq!(cp1252().encode("Café € 5").unwrap().as_ref(), b"Caf\xe9 \x80 5");
     let sjis = MessageEncoding::named(Some("Shift_JIS"));
     assert_eq!(sjis.encode("日本語").unwrap().as_ref(), b"\x93\xfa\x96\x7b\x8c\xea");
 }
 
 #[test]
 fn characters_the_encoding_lacks_are_named_never_replaced() {
-    let e = CP1252.encode("✓ done: 日本 ✓ Café").unwrap_err();
-    assert_eq!(e, Unencodable { encoding: "windows-1252", chars: vec!['✓', '日', '本'] });
+    let e = cp1252().encode("✓ done: 日本 ✓ Café").unwrap_err();
+    assert_eq!(e, Unencodable { encoding: "windows-1252".into(), chars: vec!['✓', '日', '本'] });
     assert_eq!(e.listed(), "\"✓\" \"日\" \"本\"");
     assert!(e.to_string().contains("windows-1252"), "{e}");
     let many: String = ('Ａ'..='Ｚ').collect();
-    assert_eq!(CP1252.encode(&many).unwrap_err().chars.len(), MAX_NAMED, "only the first few");
-    assert!(CP1252.check(["fine", "Café"]).is_ok());
-    assert!(CP1252.check(["fine", "ok ✓"]).is_err());
+    assert_eq!(cp1252().encode(&many).unwrap_err().chars.len(), MAX_NAMED, "only the first few");
+    assert!(cp1252().check(["fine", "Café"]).is_ok());
+    assert!(cp1252().check(["fine", "ok ✓"]).is_err());
+}
+
+#[test]
+fn labels_wider_in_whatwg_refuse_what_only_the_wider_page_has() {
+    // WHATWG reads these as windows-1252; git records the label and iconv reads it strictly.
+    for label in ["ISO-8859-1", "latin1", "l1", "cp819", "latin-1"] {
+        let e = MessageEncoding::named(Some(label));
+        assert_eq!(e.encode("Café ü ÿ").unwrap().as_ref(), b"Caf\xe9 \xfc \xff", "{label}");
+        let refused = e.encode("“Café” – 5 € ’").unwrap_err();
+        assert_eq!(refused.chars, ['“', '”', '–', '€', '’'], "{label}");
+        assert_eq!(refused.encoding, label, "the configured label is named");
+    }
+    assert!(MessageEncoding::named(Some("ISO-8859-1")).encode("5 €").unwrap_err().to_string().contains("ISO-8859-1"));
+    for label in ["US-ASCII", "ascii", "ANSI_X3.4-1968"] {
+        let e = MessageEncoding::named(Some(label));
+        assert!(matches!(e.encode("plain"), Ok(Cow::Borrowed(b"plain"))), "{label}");
+        assert_eq!(e.encode("Café").unwrap_err().chars, ['é'], "{label}");
+    }
+    // ISO-8859-9 (windows-1254 in WHATWG) and TIS-620 / ISO-8859-11 (windows-874).
+    let turkish = MessageEncoding::named(Some("ISO-8859-9"));
+    assert_eq!(turkish.encode("Ağ").unwrap().as_ref(), b"A\xf0");
+    assert_eq!(turkish.encode("5 €").unwrap_err().chars, ['€']);
+    assert_eq!(MessageEncoding::named(Some("windows-1254")).encode("5 €").unwrap().as_ref(), b"5 \x80");
+    assert_eq!(MessageEncoding::named(Some("TIS-620")).encode("ก").unwrap().as_ref(), b"\xa1");
+    assert_eq!(MessageEncoding::named(Some("TIS-620")).encode("a\u{a0}…").unwrap_err().chars, ['\u{a0}', '…']);
+    assert_eq!(MessageEncoding::named(Some("ISO-8859-11")).encode("a\u{a0}…").unwrap_err().chars, ['…']);
+    assert_eq!(MessageEncoding::named(Some("windows-874")).encode("…").unwrap().as_ref(), b"\x85");
+}
+
+/// An ISO-8859-1 repository: typographic punctuation is refused, Latin-1 letters are written
+/// as their bytes, and git's own strict reading shows them as typed.
+#[test]
+fn an_iso_8859_1_repository_commits_only_latin1() {
+    let dir = scratch_repo("enc-latin1");
+    set_config(&dir, &[("i18n.commitEncoding", "ISO-8859-1")]);
+    let snap = load(&dir, &LoadOptions::all(10)).unwrap();
+    assert!(snap.commit_encoding.encode("“Café” – 5 €").is_err());
+    commit_like_glowfly(&dir, "Café", false);
+    let repo = git2::Repository::open(&dir).unwrap();
+    let c = repo.head().unwrap().peel_to_commit().unwrap();
+    assert_eq!((c.message_encoding(), c.message_bytes()), (Some("ISO-8859-1"), &b"Caf\xe9\n"[..]));
+    let shown = crate::gitcli::run(&dir, &crate::gitcli::args(&["-c", "i18n.logOutputEncoding=UTF-8", "log", "-1", "--format=%B"])).1;
+    assert_eq!(shown.trim_end(), "Café");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -48,7 +95,7 @@ fn the_setting_is_read_through_includes() {
     assert!(MessageEncoding::of(&git2::Repository::open(&dir).unwrap()).is_utf8(), "unset");
     std::fs::write(dir.join(".git/legacy.cfg"), "[i18n]\n\tcommitEncoding = windows-1252\n").unwrap();
     set_config(&dir, &[("include.path", "legacy.cfg")]);
-    assert_eq!(MessageEncoding::of(&git2::Repository::open(&dir).unwrap()), CP1252);
+    assert_eq!(MessageEncoding::of(&git2::Repository::open(&dir).unwrap()), cp1252());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -56,12 +103,12 @@ fn the_setting_is_read_through_includes() {
 fn write_files_writes_none_when_one_does_not_fit() {
     let dir = scratch_repo("enc-files");
     let (a, b) = (dir.join("a.txt"), dir.join("b.txt"));
-    let refused = CP1252.write_files(&[(a.clone(), "Café\n".into()), (b.clone(), "✓\n".into())]);
+    let refused = cp1252().write_files(&[(a.clone(), "Café\n".into()), (b.clone(), "✓\n".into())]);
     assert!(matches!(refused, Err(Error::Unsupported(ref t)) if t.contains("\"✓\"")), "{refused:?}");
     assert!(!a.exists() && !b.exists(), "nothing written");
-    CP1252.write_files(&[(a.clone(), "Café\n".into())]).unwrap();
+    cp1252().write_files(&[(a.clone(), "Café\n".into())]).unwrap();
     assert_eq!(std::fs::read(&a).unwrap(), b"Caf\xe9\n");
-    assert_eq!(CP1252.decode(&std::fs::read(&a).unwrap()), "Café\n");
+    assert_eq!(cp1252().decode(&std::fs::read(&a).unwrap()), "Café\n");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

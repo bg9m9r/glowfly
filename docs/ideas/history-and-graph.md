@@ -221,6 +221,10 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - i18n.commitEncoding labels iconv knows but encoding_rs doesn't (cp437, cp850) still write UTF-8; warn that git labels it with the other encoding
 - Multi-byte labels (Shift_JIS, EUC-JP, GBK) over valid UTF-8 keep the header's reading, so commits Glowfly wrote there before #242 still show mojibake; a stricter test could catch them
 - i18n.commitEncoding given only through `git -c` or GIT_CONFIG_PARAMETERS isn't seen: libgit2 reads the config files
+- Real windows-1252 text that is itself mojibake (`Ã©`, `Â®`) is valid UTF-8 and reads as `é`/`®` under a single-byte label, so an amend rewrites it; offer to keep the bytes as they were when the draft is unchanged
+- `Snapshot::commit_encoding` is read on full loads only: a changed i18n.commitEncoding applies once a config edit triggers one; read it on lighter reloads too if it doesn't
+- Multi-byte labels WHATWG widens (`GB2312` to GBK, `EUC-KR` to windows-949, `Shift_JIS` to windows-31j) aren't checked strictly when writing, as `ISO-8859-1` and `US-ASCII` now are
+- C1 control characters (U+0080 to U+009F) are refused under ISO-8859-1 although it holds them; nobody types them, but the strict check could write them as their byte
 - Pass `-c i18n.logOutputEncoding=UTF-8` to git CLI calls whose log or blame output Glowfly parses, for users who set a legacy output encoding
 - Show which encoding a commit declares (e.g. a small 'ISO-8859-1' note in the details panel)
 - Read stash messages that aren't UTF-8 without git2's stash_foreach, which panics on them (`to_str().unwrap()`); read the refs/stash reflog bytes lossily instead

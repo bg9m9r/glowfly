@@ -45,8 +45,17 @@ impl Decoder {
     /// single-byte label reads as UTF-8 too: that is what git writes for `commit -m` and
     /// `stash -m` there (it doesn't re-encode them) and what Glowfly wrote before #242, while real
     /// single-byte text is almost never valid UTF-8. So an amend of such a commit doesn't stack
-    /// another layer of mojibake. Multi-byte labels keep their decoding: real text in them can
-    /// be valid UTF-8 as well. Borrows when nothing changes.
+    /// another layer of mojibake. The one real single-byte text this misreads is text that
+    /// already is mojibake, such as windows-1252 `Ã©` or `Â®` (each lead byte 0xC2 to 0xF4
+    /// followed by the right count of 0x80 to 0xBF bytes): it shows as `é`, and an amend
+    /// writes back byte 0xE9. Rare enough to accept. Multi-byte labels keep their decoding: real
+    /// text in them can be valid UTF-8 as well.
+    ///
+    /// Labels are read the WHATWG way, so `ISO-8859-1` and `US-ASCII` decode as windows-1252
+    /// (writing is strict, see `commit_encoding`). git would show bytes 0x80 to 0x9F under
+    /// ISO-8859-1 as invisible C1 controls; they are nearly always windows-1252 text that
+    /// another tool labelled Latin-1, so `€` and `’` are the better reading. Borrows when
+    /// nothing changes.
     pub fn decode(self, bytes: &[u8]) -> Cow<'_, str> {
         let Some(enc) = self.0 else { return String::from_utf8_lossy(bytes) };
         if enc.is_single_byte()

@@ -79,7 +79,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).map(|c| commit_text::message(&c).trim_end().to_owned());
     let commit_template = template::commit_template(&repo, &workdir);
     let commit_encoding = crate::commit_encoding::MessageEncoding::of(&repo);
-    let merge_message = op_state::has_merge_msg(state).then(|| merge_msg::merge_message(&repo, commit_encoding)).flatten();
+    let merge_message = op_state::has_merge_msg(state).then(|| merge_msg::merge_message(&repo, &commit_encoding)).flatten();
     let gitflow = crate::gitflow::read_config(&repo);
     let lfs_patterns = crate::lfs::root_patterns(&workdir);
     let mut refs: HashMap<Oid, Vec<RefLabel>> = HashMap::new();

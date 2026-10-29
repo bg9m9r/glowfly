@@ -2,7 +2,10 @@
 //! git writes a message file's bytes as they are and labels the commit with that encoding, so
 //! every message Glowfly hands git in a file (`commit -F`, a rebase's reword and squash files)
 //! is encoded into it first (`MessageEncoding::encode`); a character the encoding can't hold
-//! refuses the write instead of becoming `?` or a character reference. Read with libgit2 from
+//! refuses the write instead of becoming `?` or a character reference. git records the label as
+//! configured and readers take it strictly (iconv), so a label WHATWG maps to a wider code page
+//! (`ISO-8859-1` and `US-ASCII` to windows-1252, and a few more: `Strict`) also refuses the
+//! characters only the wider page has, such as `€` and `’` under ISO-8859-1. Read with libgit2 from
 //! the repository's whole config (system, global, local and the files they include): a value
 //! git itself uses for every commit, never a command, so no trust check applies to it. A label
 //! Glowfly doesn't decode (unknown ones, UTF-8, UTF-16) writes UTF-8, as before.
@@ -14,7 +17,7 @@
 
 use crate::commit_text::{Decoder, known};
 use crate::error::Error;
-use encoding_rs::Encoding;
+use encoding_rs::{Encoding, WINDOWS_874, WINDOWS_1252, WINDOWS_1254};
 use git2::Repository;
 use std::borrow::Cow;
 use std::path::PathBuf;
@@ -22,13 +25,62 @@ use std::path::PathBuf;
 /// How many distinct characters an [`Unencodable`] names at most.
 const MAX_NAMED: usize = 8;
 
-/// The encoding commit messages are written in. Copy; the default is UTF-8.
+/// The encoding commit messages are written in, with the label as configured. The default is
+/// UTF-8.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct MessageEncoding {
+    enc: Option<&'static Encoding>,
+    /// `i18n.commitEncoding` as written (trimmed): what git records in the header.
+    label: String,
+    strict: Strict,
+}
+
+/// What a label git records allows beyond its WHATWG encoding's encoder. WHATWG maps several
+/// labels to a wider Windows code page (`ISO-8859-1` and `US-ASCII` to windows-1252,
+/// `ISO-8859-9` to windows-1254, `ISO-8859-11` and `TIS-620` to windows-874), while git and
+/// every reader using iconv take the label strictly.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MessageEncoding(Option<&'static Encoding>);
+enum Strict {
+    /// The encoder is the label's own.
+    #[default]
+    No,
+    /// ISO-8859-1: U+0000 to U+00FF only (windows-1252's 0x80 to 0x9F letters are C1 controls
+    /// there).
+    Latin1,
+    /// US-ASCII: ASCII only.
+    Ascii,
+    /// The code page's bytes in this range mean something else (or nothing) under the label.
+    NoBytes(u8, u8),
+}
+
+impl Strict {
+    fn of(label: &str, enc: &'static Encoding) -> Strict {
+        let l = label.to_ascii_lowercase();
+        let l = l.as_str();
+        if enc == WINDOWS_1252 {
+            match l {
+                "windows-1252" | "cp1252" | "x-cp1252" => Strict::No,
+                "ascii" | "us-ascii" | "ansi_x3.4-1968" => Strict::Ascii,
+                _ => Strict::Latin1,
+            }
+        } else if enc == WINDOWS_1254 && !matches!(l, "windows-1254" | "cp1254" | "x-cp1254") {
+            Strict::NoBytes(0x80, 0x9f)
+        } else if enc == WINDOWS_874 {
+            match l {
+                "windows-874" | "dos-874" => Strict::No,
+                // TIS-620 has no 0xA0 either.
+                "tis-620" => Strict::NoBytes(0x80, 0xa0),
+                _ => Strict::NoBytes(0x80, 0x9f),
+            }
+        } else {
+            Strict::No
+        }
+    }
+}
 
 impl MessageEncoding {
     /// UTF-8: no `i18n.commitEncoding`, or one Glowfly writes as UTF-8.
-    pub const UTF8: MessageEncoding = MessageEncoding(None);
+    pub const UTF8: MessageEncoding = MessageEncoding { enc: None, label: String::new(), strict: Strict::No };
 
     /// The repository's `i18n.commitEncoding`, through its effective config with includes.
     pub fn of(repo: &Repository) -> MessageEncoding {
@@ -38,51 +90,69 @@ impl MessageEncoding {
 
     /// For an `i18n.commitEncoding` value (None: unset).
     pub fn named(label: Option<&str>) -> MessageEncoding {
-        MessageEncoding(label.and_then(known))
+        let Some((label, enc)) = label.map(str::trim).and_then(|l| known(l).map(|e| (l, e))) else { return MessageEncoding::UTF8 };
+        MessageEncoding { enc: Some(enc), label: label.to_owned(), strict: Strict::of(label, enc) }
     }
 
-    /// The encoding's WHATWG name ("windows-1252", "Shift_JIS"), "UTF-8" for UTF-8.
-    pub fn name(self) -> &'static str {
-        self.0.map_or("UTF-8", Encoding::name)
+    /// The label as configured ("ISO-8859-1", "cp932"), "UTF-8" for UTF-8.
+    pub fn name(&self) -> &str {
+        if self.enc.is_some() { &self.label } else { "UTF-8" }
     }
 
     /// Whether messages are written as UTF-8.
-    pub fn is_utf8(self) -> bool {
-        self.0.is_none()
+    pub fn is_utf8(&self) -> bool {
+        self.enc.is_none()
     }
 
-    /// `text` in this encoding, or which characters it can't hold. Borrows for UTF-8 and ASCII.
-    pub fn encode(self, text: &str) -> Result<Cow<'_, [u8]>, Unencodable> {
-        let Some(enc) = self.0 else { return Ok(Cow::Borrowed(text.as_bytes())) };
+    /// Whether `c` has bytes under the configured label.
+    fn fits(&self, enc: &'static Encoding, c: char) -> bool {
+        match self.strict {
+            Strict::Latin1 => (c as u32) < 0x80 || ((c as u32) >= 0xa0 && (c as u32) <= 0xff),
+            Strict::Ascii => c.is_ascii(),
+            Strict::No | Strict::NoBytes(..) => {
+                let mut buf = [0; 4];
+                let (bytes, _, had_errors) = enc.encode(c.encode_utf8(&mut buf));
+                let banned = |b: &u8| matches!(self.strict, Strict::NoBytes(lo, hi) if (lo..=hi).contains(b));
+                !had_errors && !(bytes.len() == 1 && banned(&bytes[0]))
+            }
+        }
+    }
+
+    /// `text` in this encoding, or which characters it can't hold under the configured label.
+    /// Borrows for UTF-8 and ASCII.
+    pub fn encode<'t>(&self, text: &'t str) -> Result<Cow<'t, [u8]>, Unencodable> {
+        let Some(enc) = self.enc else { return Ok(Cow::Borrowed(text.as_bytes())) };
         if text.is_ascii() && enc.is_ascii_compatible() {
             return Ok(Cow::Borrowed(text.as_bytes()));
         }
-        let (bytes, _, had_errors) = enc.encode(text);
-        if !had_errors {
-            return Ok(bytes);
+        if self.strict == Strict::No || text.chars().all(|c| self.fits(enc, c)) {
+            let (bytes, _, had_errors) = enc.encode(text);
+            if !had_errors {
+                return Ok(bytes);
+            }
         }
         let mut chars: Vec<char> = Vec::new();
         for c in text.chars() {
-            if chars.len() < MAX_NAMED && !chars.contains(&c) && enc.encode(c.encode_utf8(&mut [0; 4])).2 {
+            if chars.len() < MAX_NAMED && !chars.contains(&c) && !self.fits(enc, c) {
                 chars.push(c);
             }
         }
-        Err(Unencodable { encoding: enc.name(), chars })
+        Err(Unencodable { encoding: self.label.clone(), chars })
     }
 
     /// Text Glowfly wrote with [`encode`](Self::encode), read back (a rebase's message files).
-    pub fn decode(self, bytes: &[u8]) -> Cow<'_, str> {
-        Decoder::with(self.0).decode(bytes)
+    pub fn decode<'b>(&self, bytes: &'b [u8]) -> Cow<'b, str> {
+        Decoder::with(self.enc).decode(bytes)
     }
 
     /// Checks every message in `texts`, failing on the first that doesn't fit.
-    pub fn check<'a>(self, texts: impl IntoIterator<Item = &'a str>) -> Result<(), Unencodable> {
+    pub fn check<'a>(&self, texts: impl IntoIterator<Item = &'a str>) -> Result<(), Unencodable> {
         texts.into_iter().try_for_each(|t| self.encode(t).map(drop))
     }
 
     /// Writes each message file `(path, text)` encoded, after encoding them all, so a message
     /// that doesn't fit (`Error::Unsupported`, naming its characters) writes none of them.
-    pub fn write_files(self, files: &[(PathBuf, String)]) -> crate::error::Result<()> {
+    pub fn write_files(&self, files: &[(PathBuf, String)]) -> crate::error::Result<()> {
         let encoded: Vec<(&PathBuf, Cow<'_, [u8]>)> = files
             .iter()
             .map(|(path, text)| self.encode(text).map(|bytes| (path, bytes)))
@@ -98,8 +168,8 @@ impl MessageEncoding {
 /// A message holds characters the repository's commit encoding can't represent.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Unencodable {
-    /// The encoding's name.
-    pub encoding: &'static str,
+    /// The encoding's label, as configured.
+    pub encoding: String,
     /// The first few distinct characters it can't hold, in message order.
     pub chars: Vec<char>,
 }

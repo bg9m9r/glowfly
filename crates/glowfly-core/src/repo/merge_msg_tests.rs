@@ -63,9 +63,9 @@ fn the_repository_comment_char_applies() {
     set_config(&dir, &[("core.commentChar", ";")]);
     std::fs::write(dir.join(".git/MERGE_MSG"), "Merge branch 'other'\r\n; gone\r\n# stays\r\n").unwrap();
     let repo = Repository::open(&dir).unwrap();
-    assert_eq!(merge_message(&repo, MessageEncoding::UTF8).as_deref(), Some("Merge branch 'other'\n# stays"));
+    assert_eq!(merge_message(&repo, &MessageEncoding::UTF8).as_deref(), Some("Merge branch 'other'\n# stays"));
     std::fs::write(dir.join(".git/MERGE_MSG"), "\n; nothing\n").unwrap();
-    assert_eq!(merge_message(&repo, MessageEncoding::UTF8), None, "blank once cleaned");
+    assert_eq!(merge_message(&repo, &MessageEncoding::UTF8), None, "blank once cleaned");
 }
 
 #[test]
@@ -101,6 +101,6 @@ fn a_cherry_pick_message_in_the_commit_encoding_reads_decoded() {
     std::fs::write(dir.join(".git/MERGE_MSG"), b"Caf\xe9 cr\xe8me\n\n# Conflicts:\n#\ta.txt\n").unwrap();
     let repo = Repository::open(&dir).unwrap();
     let enc = MessageEncoding::of(&repo);
-    assert_eq!(merge_message(&repo, enc).as_deref(), Some("Café crème"));
-    assert_eq!(merge_message(&repo, MessageEncoding::UTF8).as_deref(), Some("Caf\u{FFFD} cr\u{FFFD}me"), "lossy, never a panic");
+    assert_eq!(merge_message(&repo, &enc).as_deref(), Some("Café crème"));
+    assert_eq!(merge_message(&repo, &MessageEncoding::UTF8).as_deref(), Some("Caf\u{FFFD} cr\u{FFFD}me"), "lossy, never a panic");
 }

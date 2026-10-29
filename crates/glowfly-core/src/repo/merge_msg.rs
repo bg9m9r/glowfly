@@ -12,7 +12,7 @@ use git2::Repository;
 /// MERGE_MSG without its comment lines and everything from a scissors line on, decoded from
 /// `encoding`. None when the file is missing, larger than `MAX_TEMPLATE_BYTES` or blank once
 /// cleaned.
-pub fn merge_message(repo: &Repository, encoding: MessageEncoding) -> Option<String> {
+pub fn merge_message(repo: &Repository, encoding: &MessageEncoding) -> Option<String> {
     let file = repo.path().join("MERGE_MSG");
     if std::fs::metadata(&file).ok()?.len() > MAX_TEMPLATE_BYTES {
         return None;
