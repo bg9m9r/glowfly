@@ -35,6 +35,8 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 ### Live working-tree updates
 
 - Watch inactive tabs so their state updates in the background
+- Probe a linked worktree's or separate git dir's work tree too when it sits on another volume: the probe writes only in the git dir, so it tests that watch, not the work tree's
+- Probe again after the machine wakes from sleep or the network drive reconnects, where a watcher that worked can go quiet
 - Watch the global, XDG and system config files (and the files they include) too, so an edit there reloads the open repository
 - `ref_name_ok` accepts components that are only dots or end in a dot or space, which Windows trims; refuse components starting with `.` and any `:`, as git's ref rules do
 - A nested `.git` file or `commondir` that names a UNC path makes the sweep open a file over SMB; refuse network paths there

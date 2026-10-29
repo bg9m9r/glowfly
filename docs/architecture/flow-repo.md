@@ -138,6 +138,12 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - A saved "don't trust" skips a repository without running anything.
 - Closing the dialog leaves the run going; its end is then told in a toast that opens it again.
 
+## Live updates that don't arrive
+
+- Right after it starts, the watcher places a probe file in the git dir (`glowfly_core::watch_probe`, `watcher/probe.rs`) and reports `WatchMsg::Probed`: `Live` once its event arrives, `Silent` after `PROBE_TIMEOUT` (5 s) without one, `Unknown` when the git dir can't be written.
+- `update/watch.rs` keeps the answer per repository in `WatchState::probes`; a silent watcher is warned about once per repository and session (not on a network volume, whose notice already said why) and polled like a network volume (`WatchState::poll_interval`) until any later event sends `Live`.
+- The status bar's dot (`ui/live_updates.rs`) shows `WatchState::live_updates`; tests in `update/tests/watch_poll_tests.rs` and `ui/snapshot_tests/snapshot_tests_live_updates.rs`.
+
 ## Incremental status
 
 - The watcher (`watcher.rs`) collects the work-tree paths of a burst when nothing else changed (no `info/exclude`, `.gitignore`, `.gitattributes`, HEAD or ref change, no lost events, at most `watch::MAX_WATCH_PATHS`) and sends them in `WatchMsg::RepoChanged { paths }`.

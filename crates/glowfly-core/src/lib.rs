@@ -110,6 +110,7 @@ pub mod undo;
 pub mod url_scheme;
 pub mod volume;
 pub mod watch;
+pub mod watch_probe;
 pub mod watch_sweep;
 pub mod whole_file;
 #[cfg(windows)]
