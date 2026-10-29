@@ -19,7 +19,7 @@ use glowfly_core::repo::{Deleted, DiffTarget, TrashProblem, TrashRefusal};
 use std::path::PathBuf;
 
 fn discard(path: &str, mode: DeleteMode) -> FileOp {
-    FileOp::Discard { path: path.into(), mode }
+    FileOp::Discard { path: path.into(), mode, seen: None }
 }
 
 /// A loaded state whose snapshot lists `u.txt` as untracked.

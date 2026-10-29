@@ -15,7 +15,7 @@ fn ops() -> [FileOp; 3] {
     [
         FileOp::Delete { path: "big.bin".into(), mode: DeleteMode::Trash },
         FileOp::UnstageDelete { path: "big.bin".into(), mode: DeleteMode::Trash },
-        FileOp::Discard { path: "big.bin".into(), mode: DeleteMode::Trash },
+        FileOp::Discard { path: "big.bin".into(), mode: DeleteMode::Trash, seen: None },
     ]
 }
 
@@ -99,7 +99,7 @@ fn a_file_that_grew_too_large_after_undo_was_promised_is_asked_about_again() {
     drop(big);
     for op in [
         FileOp::Delete { path: "big.bin".into(), mode: DeleteMode::Permanent },
-        FileOp::Discard { path: "big.bin".into(), mode: DeleteMode::PermanentNoTrash },
+        FileOp::Discard { path: "big.bin".into(), mode: DeleteMode::PermanentNoTrash, seen: None },
     ] {
         let msg = crate::runner::files::work_file_for_test(&dir, op.clone());
         assert!(matches!(&msg, Msg::WorkFile(WorkFileMsg::NoCopyKept { .. })), "{op:?}");

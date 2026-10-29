@@ -136,7 +136,7 @@ pub use fsmonitor::{
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use history_forward::name_at_head;
-pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
+pub use index::{WholeDiscard, apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths, whole_discard};
 pub use index_memo::{IndexDelta, IndexMemo, MAX_INDEX_MEMO};
 pub use line_counts::{FileLineCounts, LineCount, MAX_COUNTED_FILES, WipLineCounts, commit_line_counts, wip_line_counts};
 pub use line_map::{LineChange, LineMap, PrLineMaps, line_maps, pr_line_maps};

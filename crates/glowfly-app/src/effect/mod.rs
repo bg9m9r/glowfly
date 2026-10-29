@@ -1,7 +1,7 @@
 //! Side effects requested by `update`. The runner executes them off the UI thread and reports
 //! back with `Msg`s; the few that need the window (`UiEffect`) are handled by the UI shell.
 
-pub use crate::file_op::{DeleteMode, FileOp, WorkFileOk};
+pub use crate::file_op::{DeleteMode, FileOp, SeenLines, WorkFileOk};
 use git2::Oid;
 use glowfly_core::askpass::Reply;
 use glowfly_core::forge::{Auth, Target};

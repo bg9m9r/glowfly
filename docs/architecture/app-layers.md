@@ -105,7 +105,7 @@ source file, update its line here. Features that span every layer are in
 - `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once and a merge preview in a held repository waiting for the trust prompt (`trust::hold_waiting`), since merge-tree runs the repository's merge drivers.
 - `load_more.rs`: a load for more history going on from the walk (the page taken in below the rows on screen), and a failed one kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
-- `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, and asking again for a file still opening (`renew_open`).
+- `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
 - `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
 - `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it).
 

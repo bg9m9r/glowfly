@@ -118,3 +118,38 @@ pub fn discard_untracked(workdir: &Path, path: &str, removal: Removal) -> Result
     drop(repo);
     workfile::delete_file(workdir, rel, removal)
 }
+
+/// What discarding every line of `path`'s unstaged diff does, once checked against the diff the
+/// user saw (`expected`, its only hunk, loaded with whitespace changes hidden or not).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WholeDiscard {
+    /// An untracked file: it is deleted ([`discard_untracked`]), not left empty.
+    Delete,
+    /// Marked intent-to-add (`git add -N`): git has it, so its lines are discarded like any
+    /// others and it stays, empty and added.
+    Lines,
+}
+
+/// Checks that discarding every line of `path` still means discarding the whole file the user
+/// saw: git produces exactly `expected` as the unstaged diff's only hunk, every changed line of
+/// it added. Refused as stale (`NotFound`) otherwise, so a file that changed since is never
+/// deleted; and refused when the path is tracked or staged by now.
+pub fn whole_discard(workdir: &Path, path: &str, expected: &Hunk, ignore_whitespace: bool) -> Result<WholeDiscard> {
+    let rel = workfile::contained(path)?;
+    let stale = || Error::NotFound("the diff changed; select the lines again".into());
+    let added = |h: &Hunk| h.lines.iter().all(|l| matches!(l.origin, '+' | '=' | '<' | '>')) && h.lines.iter().any(|l| l.origin == '+');
+    let repo = Repository::open(workdir)?;
+    let opts = LoadDiffOptions { ignore_whitespace, ..Default::default() };
+    let diff = super::diff::target_diff(&repo, &DiffTarget::Unstaged(path.into()), opts, None)?;
+    let patch = super::diff::file_patch(&diff, path).map_err(|_| stale())?.ok_or_else(stale)?;
+    if patch.num_hunks() != 1 || super::diff::hunk_of(&patch, 0)? != *expected || !added(expected) {
+        return Err(stale());
+    }
+    let index = repo.index()?;
+    let intent = git2::IndexEntryExtendedFlag::INTENT_TO_ADD.bits();
+    match (0..=3).find_map(|s| index.get_path(Path::new(rel), s)) {
+        None => Ok(WholeDiscard::Delete),
+        Some(e) if e.flags_extended & intent != 0 => Ok(WholeDiscard::Lines),
+        Some(_) => Err(Error::Other(format!("{rel} is tracked now; refresh and try again"))),
+    }
+}

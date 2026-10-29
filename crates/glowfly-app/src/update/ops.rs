@@ -1,7 +1,7 @@
 //! Staging, committing, git commands (push, pull, branch…), and auto-fetch; reverts are in update/revert.rs. Jobs start in
 //! update/jobs.rs, re-exported here.
 
-use crate::effect::{Effect, LocalOp, UndoResult};
+use crate::effect::{Effect, LocalOp, SeenLines, UndoResult};
 use crate::msg::{JobMsg, StageMsg};
 use crate::state::trust::Created;
 use crate::state::{AppState, CommitDraft};
@@ -183,6 +183,7 @@ pub(super) fn clone_repo(st: &mut AppState, req: crate::state::clone::CloneReque
 
 /// Stages, unstages or discards the selected diff lines, when the selection belongs to the
 /// diff on screen and `op` fits it (stage or discard unstaged lines, unstage staged ones).
+/// Discarding every line of an untracked file discards the file, as its Discard does.
 fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     let Some((target, diff)) = &st.session.diff.view else { return };
     let sel = &st.view.diff_lines;
@@ -202,11 +203,19 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     }
     let Some(expected) = diff.hunks.get(st.view.diff_lines.hunk).cloned() else { return };
     let path = target.path().to_owned();
+    let whole = op == HunkOp::Discard
+        && diff.hunks.len() == 1
+        && super::work_files_delete::every_line_untracked(st, &path, &expected, &st.view.diff_lines.lines);
     let sel = std::mem::take(&mut st.view.diff_lines);
     // Its hunks are stale from now until the reload that follows the operation lands.
     st.session.diff.generation += 1;
     let lines = sel.lines.into_iter().collect();
     let ignore_whitespace = st.settings.diff_ignore_whitespace;
+    if whole {
+        // Every line of an untracked file: it goes the way Discard of the file goes, trash and undo.
+        let seen = Some(Box::new(SeenLines { expected, lines, ignore_whitespace }));
+        return super::work_files_delete::discard_seen(st, path, seen, fx);
+    }
     local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines, ignore_whitespace }, fx);
 }
 

@@ -3,7 +3,7 @@
 //! listing the tracked files (`Effect::LoadTrackedPaths`), and checking the Clone dialog's
 //! parent folder (`CloneEffect::CheckParent`).
 
-use crate::effect::{FileOp, WorkFileOk};
+use crate::effect::{FileOp, LocalOp, SeenLines, WorkFileOk};
 use crate::msg::CloneMsg;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
@@ -60,8 +60,10 @@ fn test_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> repo::Untrashed {
 /// staged rename's new path stays tracked) and any warnings about the new name; a delete reports how the working copy went. A staged
 /// rename goes through git mv; UnstageDelete also takes the file out of the index, and
 /// UnstageGone only does that. Discard deletes an untracked file, refusing one that is tracked by
-/// then. When the trash refuses a file, nothing has changed and the result
-/// is `WorkFileMsg::TrashRefused`, so the user can retry or be asked about deleting it permanently.
+/// then; one sent by discarding every line of its diff first checks that git still shows that
+/// diff, and discards the lines of an intent-to-add file instead (`StageMsg::LocalOpDone`).
+/// When the trash refuses a file, nothing has changed and the result is
+/// `WorkFileMsg::TrashRefused`, so the user can retry or be asked about deleting it permanently.
 /// Delete, UnstageDelete and Discard keep the file's bytes first, and UnstageGone its staged
 /// entry, so all of them can be undone; one that fails after the file went still reports its
 /// undo entry (`WorkFileMsg::WorkFileFailed`).
@@ -86,8 +88,18 @@ fn work_file_with(workdir: &Path, op: FileOp, trashers: undo::Trashers) -> Msg {
             deleting(undo::delete_staged_saving(workdir, path, mode.via(), mode.promises_copy(), trashers))
         }
         FileOp::UnstageGone(p) => plain(undo::unstage_gone_saving(workdir, p).map(|a| WorkFileOk::Unstaged { undo: Some(Box::new(a)) })),
-        FileOp::Discard { path, mode } => {
-            deleting(undo::discard_untracked_saving(workdir, path, mode.via(), mode.promises_copy(), trashers))
+        FileOp::Discard { path, mode, seen } => {
+            let discard = || deleting(undo::discard_untracked_saving(workdir, path, mode.via(), mode.promises_copy(), trashers));
+            match seen.as_deref() {
+                None => discard(),
+                // Discarding every line: only while git still shows the diff the user saw.
+                Some(s) => match repo::whole_discard(workdir, path, &s.expected, s.ignore_whitespace) {
+                    Ok(repo::WholeDiscard::Delete) => discard(),
+                    // Git has an intent-to-add file: its lines are discarded like any others.
+                    Ok(repo::WholeDiscard::Lines) => return lines_instead(workdir, path, s),
+                    Err(e) => Err((e, None)),
+                },
+            }
         }
     };
     match r {
@@ -100,6 +112,20 @@ fn work_file_with(workdir: &Path, op: FileOp, trashers: undo::Trashers) -> Msg {
         Err((e, Some(undo))) => Msg::WorkFile(WorkFileMsg::WorkFileFailed { op, error: e.to_string(), undo }),
         r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|(e, _)| e.to_string()) }),
     }
+}
+
+/// Discards the `seen` lines of `path` the way a partial line discard does, undo entry and all.
+fn lines_instead(workdir: &Path, path: &str, seen: &SeenLines) -> Msg {
+    let s = seen.clone();
+    let op = LocalOp::Lines {
+        op: repo::HunkOp::Discard,
+        path: path.to_owned(),
+        hunk: 0,
+        expected: s.expected,
+        lines: s.lines,
+        ignore_whitespace: s.ignore_whitespace,
+    };
+    super::git_ops::local_done(workdir, op)
 }
 
 /// `work_file` with the stand-in trashes, for tests.

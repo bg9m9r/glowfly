@@ -115,3 +115,53 @@ fn discard_untracked_link() {
     let _ = std::fs::remove_file(&target);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The unstaged diff's only hunk of `path`, as the diff viewer shows it.
+fn shown(dir: &std::path::Path, path: &str) -> Hunk {
+    load_diff(dir, &DiffTarget::Unstaged(path.into())).unwrap().hunks.remove(0)
+}
+
+#[test]
+fn whole_discard_deletes_an_untracked_file_only_as_shown() {
+    let dir = scratch_repo("dsc-whole");
+    commit(&dir, &[("keep.txt", "k\n")], "one");
+    write(&dir, "new.txt", "a\nb");
+    let hunk = shown(&dir, "new.txt");
+    assert_eq!(whole_discard(&dir, "new.txt", &hunk, false).unwrap(), WholeDiscard::Delete);
+    assert_eq!(whole_discard(&dir, "new.txt", &hunk, true).unwrap(), WholeDiscard::Delete, "whitespace hidden");
+
+    // Changed since the diff was shown: never deleted.
+    write(&dir, "new.txt", "a\nb\nc\n");
+    assert!(matches!(whole_discard(&dir, "new.txt", &hunk, false), Err(Error::NotFound(_))));
+    std::fs::remove_file(dir.join("new.txt")).unwrap();
+    assert!(matches!(whole_discard(&dir, "new.txt", &hunk, false), Err(Error::NotFound(_))), "gone");
+
+    // Staged by now: refused.
+    write(&dir, "new.txt", "a\nb");
+    git(&dir, &["add", "new.txt"]);
+    assert!(whole_discard(&dir, "new.txt", &hunk, false).is_err());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn whole_discard_refuses_a_hunk_with_unchanged_lines() {
+    let dir = scratch_repo("dsc-whole-edit");
+    commit(&dir, &[("f.txt", "a\n")], "one");
+    write(&dir, "f.txt", "a\nb\n");
+    let hunk = shown(&dir, "f.txt");
+    assert!(matches!(whole_discard(&dir, "f.txt", &hunk, false), Err(Error::NotFound(_))));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn whole_discard_of_an_intent_to_add_file_discards_lines() {
+    let dir = scratch_repo("dsc-whole-ita");
+    commit(&dir, &[("keep.txt", "k\n")], "one");
+    write(&dir, "ita.txt", "x\ny\n");
+    git(&dir, &["add", "-N", "ita.txt"]);
+    let (hunk, lines) = super::lines_tests::pick(&dir, &DiffTarget::Unstaged("ita.txt".into()), &[('+', "x"), ('+', "y")]);
+    assert_eq!(whole_discard(&dir, "ita.txt", &hunk, false).unwrap(), WholeDiscard::Lines);
+    apply_lines(&dir, "ita.txt", 0, &hunk, &lines, HunkOp::Discard).unwrap();
+    assert_eq!(std::fs::read(dir.join("ita.txt")).unwrap(), b"", "emptied, not deleted");
+    let _ = std::fs::remove_dir_all(&dir);
+}
