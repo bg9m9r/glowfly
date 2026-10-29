@@ -7,6 +7,8 @@
 //! thread to sweep the tree (`Effect::SweepWatch`, `glowfly_core::watch_sweep`) for changes the
 //! watcher may have dropped; what it finds goes through the same classification and bursts.
 //! Config files the repository's config includes are watched where they are (`includes.rs`).
+//! Right after it starts, the thread checks that events arrive at all with a probe file in the
+//! git dir (`probe.rs`), reported as `WatchMsg::Probed`.
 
 use crate::effect::WatchTarget;
 use crate::msg::Msg;
@@ -23,7 +25,9 @@ use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
 mod includes;
+mod probe;
 use includes::IncludeWatches;
+use probe::Prober;
 
 /// A burst fires this long after its last relevant event…
 pub const QUIET: Duration = Duration::from_millis(300);
@@ -166,14 +170,33 @@ fn event_loop<W: Waker>(raw: Receiver<Input>, mut looped: Looped, tx: Sender<Msg
     let mut sweep = Sweep::new(&target.workdir, &target.git_dir, common.as_deref());
     let mut burst = Burst::default();
     let mut reported = false;
+    let probed = |probe| {
+        let ok = tx.send(Msg::Watch(WatchMsg::Probed { workdir: target.workdir.clone(), probe })).is_ok();
+        if ok {
+            waker.wake();
+        }
+        ok
+    };
+    let (mut prober, unknown) = Prober::start(&target.git_dir, Instant::now());
+    if let Some(p) = unknown
+        && !probed(p)
+    {
+        return;
+    }
     loop {
-        let next = match burst.wait(Instant::now()) {
+        let now = Instant::now();
+        let next = match probe::sooner(burst.wait(now), prober.wait(now)) {
             None => raw.recv().map_err(|_| RecvTimeoutError::Disconnected),
             Some(d) => raw.recv_timeout(d),
         };
         match next {
             Ok(Input::Sweep) => swept(&mut sweep, &looped.paths, &mut ignores, &mut burst),
             Ok(Input::Event(Ok(ev))) => {
+                if let Some(p) = prober.event(&ev)
+                    && !probed(p)
+                {
+                    return;
+                }
                 let (change, changed) = classify(&ev, &looped.paths, &mut ignores);
                 burst.config |= change != Change::None && touches_config(&ev, &looped.paths);
                 burst.add(change, changed, Instant::now());
@@ -193,6 +216,11 @@ fn event_loop<W: Waker>(raw: Receiver<Input>, mut looped: Looped, tx: Sender<Msg
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return,
+        }
+        if let Some(p) = prober.due(Instant::now())
+            && !probed(p)
+        {
+            return;
         }
         let config = burst.config;
         if let Some((change, changed, last_event)) = burst.take_due(Instant::now()) {

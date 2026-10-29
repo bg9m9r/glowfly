@@ -1,0 +1,11 @@
+window 320x180
+Label "Glowfly 1.0.0"
+Label "Checking that changes on disk show up live."
+Label "Glowfly 1.0.0"
+Label "Live: changes to files show up as they happen."
+Label "Glowfly 1.0.0"
+Label "Glowfly can't write to this repository, so it can't check that changes show up live."
+Label "Glowfly 1.0.0"
+Button "Slow updates"
+Label "Glowfly 1.0.0"
+Button "Not live"

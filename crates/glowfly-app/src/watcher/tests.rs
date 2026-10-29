@@ -164,6 +164,7 @@ fn next_any(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<Rep
             _ => panic!("unexpected scoped message"),
         },
         Msg::Watch(WatchMsg::WatchFailed { error, .. }) => panic!("watcher failed: {error}"),
+        Msg::Watch(WatchMsg::Probed { .. }) => next_any(rx, workdir, timeout), // probe_tests.rs
         _ => panic!("unexpected message"),
     }
 }

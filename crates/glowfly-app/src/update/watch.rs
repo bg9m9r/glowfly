@@ -1,12 +1,14 @@
 //! Live working-tree updates: keeping the file watcher on the active tab's repository,
-//! refreshing when it reports changes made outside Glowfly, and reading the effective identity
-//! again when the repository's config changed.
+//! refreshing when it reports changes made outside Glowfly, reading the effective identity
+//! again when the repository's config changed, and noting what the watcher's probe found (a
+//! silent watcher is warned about once per repository and polled instead).
 
 use crate::effect::{Effect, WatchTarget};
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::WatchMsg;
 use crate::state::AppState;
-use crate::state::watch::WATCH_SETTLE;
+use crate::state::watch::{Probe, REMOTE_POLL, WATCH_SETTLE};
+use std::path::PathBuf;
 use std::time::Instant;
 
 /// How the user refreshes by hand: "press F5" with Refresh's current key, else "choose Refresh".
@@ -63,13 +65,31 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
         WatchMsg::WatchFailed { workdir, error } => {
             tracing::warn!("file watching failed for {}: {error}", workdir.display());
             // Reported once per repository; it is retried (silently) when its tab is selected again.
+            st.watch.probes.remove(&workdir);
             if st.watch.failed.insert(workdir.clone()) {
                 st.toast(false, failed_text(&st.keymap), now);
                 // Quiet: the toast above says it, so this shouldn't announce a failure.
                 st.log_quiet(false, format!("File watching stopped for {}: {error}", glowfly_core::native_path::shown(&workdir)));
             }
         }
+        WatchMsg::Probed { workdir, probe } => probed(st, workdir, probe, now),
     }
+}
+
+/// Notes what the probe of `workdir`'s watcher found. A silent one is polled from now on
+/// (`WatchState::poll_interval`) and, unless the network-volume note already said why, warned
+/// about once per repository this session.
+fn probed(st: &mut AppState, workdir: PathBuf, probe: Probe, now: Instant) {
+    tracing::debug!(workdir = %workdir.display(), ?probe, "the file watcher's probe");
+    st.watch.probes.insert(workdir.clone(), probe);
+    if probe != Probe::Silent || st.watch.remote.contains_key(&workdir) || !st.watch.silent_warned.insert(workdir.clone()) {
+        return;
+    }
+    let t = st.settings.lang();
+    let shown = glowfly_core::native_path::shown(&workdir);
+    let text = t.trf("watch.silent.toast", &[("repo", &shown), ("secs", &REMOTE_POLL.as_secs())]);
+    st.toast(false, text.clone(), now);
+    st.log_quiet(false, text);
 }
 
 /// Whether a burst whose last event came at `last_event` should refresh the active tab: watching
