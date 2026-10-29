@@ -12,7 +12,10 @@
 # for one tag fail as well, since every later job finds the release by its tag.
 set -Eeuo pipefail
 
-[ "$#" -eq 1 ] && [ -n "$1" ] && [ "${1#-}" = "$1" ] || { echo "usage: release-draft.sh <tag>" >&2; exit 2; }
+if ! { [ "$#" -eq 1 ] && [ -n "$1" ] && [ "${1#-}" = "$1" ]; }; then
+  echo "usage: release-draft.sh <tag>" >&2
+  exit 2
+fi
 tag="$1"
 : "${GH_REPO:?GH_REPO must name owner/repo}"
 [[ "$tag" =~ ^v[0-9A-Za-z.+-]+$ ]] || { echo "::error::'$tag' isn't a release tag (v<version>)"; exit 2; }
