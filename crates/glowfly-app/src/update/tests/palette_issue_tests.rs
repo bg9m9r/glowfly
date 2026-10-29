@@ -45,7 +45,7 @@ fn create_issue_opens_the_dialog_or_says_why_not() {
     assert!(entry(&st, "Create issue…").is_none(), "no tracker");
     let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
     st.session.forge.as_mut().unwrap().host = Some(dc);
-    let why = "Bitbucket Data Center has no issue tracker of its own; choose Jira under Repo-specific preferences > Issue tracker";
+    let why = "Bitbucket Data Center has no issue tracker of its own; choose Jira under Preferences > This repository > Issue tracker";
     assert_eq!(entry(&st, "Create issue…"), Some(Some(why.into())), "Bitbucket Data Center points to Jira");
     assert!(entry(&st, "View issue…").is_none());
     done(st, dir);

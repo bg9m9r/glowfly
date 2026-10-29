@@ -1,4 +1,4 @@
-//! The branch hues, in two presets (Preferences > UI Customization > Commit graph > Branch
+//! The branch hues, in two presets (Preferences > Appearance > Commit graph > Branch
 //! colors).
 //!
 //! Standard (P1): 14 hues kept out of the accent band (about 145 to 175 deg OKLCH) and the

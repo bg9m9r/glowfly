@@ -10,13 +10,13 @@ Label "Your Trello API key and a token allowed for it: read access lists cards; 
 Label "Allow a read-only token"
 Label "Allow a token that can create cards"
 Button "Connect" [disabled]
-Label "Trello is an issue tracker. Once connected, choose it and a board for a repository under Repo-specific preferences > Issue tracker."
+Label "Trello is an issue tracker. Once connected, choose it and a board for a repository under Preferences > This repository > Issue tracker."
 painted:
   "General"
   "Git"
   "Profile"
   "Integrations"
-  "UI customization"
+  "Appearance"
   "Language & region"
   "Diff viewer"
   "Keyboard"

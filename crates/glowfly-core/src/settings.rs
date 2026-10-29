@@ -94,12 +94,12 @@ pub struct Settings {
     /// "system" or a code from i18n::Lang (Preferences > General).
     pub language: String,
 
-    // UI customization
+    // Appearance
     pub theme: ThemeChoice,
     pub notification_location: Corner,
-    /// After a background fetch, toast when the checked-out branch falls (further) behind its upstream (Preferences > UI Customization).
+    /// After a background fetch, toast when the checked-out branch falls (further) behind its upstream (Preferences > Appearance).
     pub behind_alerts: bool,
-    /// While the window is unfocused, also show behind alerts and finished jobs as OS notifications (Preferences > UI Customization).
+    /// While the window is unfocused, also show behind alerts and finished jobs as OS notifications (Preferences > Appearance).
     pub desktop_notifications: bool,
     /// "system" or a locale such as "de_DE".
     pub date_locale: String,
@@ -116,7 +116,7 @@ pub struct Settings {
     pub toolbar_labels: bool,
     /// Tooltips and popups appear without fading or sliding in (egui's animations off).
     pub reduce_motion: bool,
-    /// Window zoom in percent (keys, palette, Preferences > UI Customization); read through
+    /// Window zoom in percent (keys, palette, Preferences > Appearance); read through
     /// `zoom_level()`/`zoom_factor()`.
     pub zoom_percent: u16,
     /// Draw the left panel of branches, remotes and other refs.
@@ -130,17 +130,17 @@ pub struct Settings {
     pub spellcheck: bool,
     /// Look up author avatars online (opt-in); was `use_initials`, which no file opts into now.
     pub avatar_lookups: bool,
-    /// The quick-branch (New branch) button on the checked-out commit (Preferences > UI Customization).
+    /// The quick-branch (New branch) button on the checked-out commit (Preferences > Appearance).
     pub ghost_refs: bool,
     /// Trace a branch on hover: light up its commits while the pointer is on its graph label.
     pub highlight_ref_rows: bool,
     /// Show a WIP row in the graph for each other worktree with uncommitted changes
-    /// (Preferences > UI Customization).
+    /// (Preferences > Appearance).
     pub worktree_wips: bool,
-    /// Keep tabs of one repository's worktrees side by side (Preferences > UI Customization).
+    /// Keep tabs of one repository's worktrees side by side (Preferences > Appearance).
     pub group_worktree_tabs: bool,
     pub branch_visibility: BranchVisibility,
-    /// The branch hues: standard or colour-blind safe (Preferences > UI Customization).
+    /// The branch hues: standard or colour-blind safe (Preferences > Appearance).
     pub branch_palette: BranchPalette,
     pub columns: GraphColumns,
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.

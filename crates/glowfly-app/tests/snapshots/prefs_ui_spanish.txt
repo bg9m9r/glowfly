@@ -2,7 +2,7 @@ window 1400x2400
 Label "Glowfly 0.1.0"
 Button "Volver"
 Label "Preferencias"
-Label "Interfaz"
+Label "Apariencia"
 CheckBox "Según el sistema (Grafito en modo oscuro, Amanecer en modo claro)" [off]
 Label "Oscuros"
 RadioButton "Grafito" [off]

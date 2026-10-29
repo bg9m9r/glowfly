@@ -51,8 +51,8 @@ Label "Damit öffnen Links aus einem Browser oder Chat ein Repository, einen Bra
 Label "Anmeldungen"
 CheckBox "In Glowfly eingegebene HTTPS-Anmeldungen merken" [on]
 Label "Sobald Git einen in Glowfly eingegebenen Benutzernamen und ein Passwort oder Token akzeptiert, wird die Anmeldung mit dem Credential-Helper von Git gespeichert. Ist kein Helper eingerichtet, richtet Glowfly den Anmeldedatenspeicher des Systems für Git ein."
-Button "Alle vergessen" [disabled]
-Button "Alle vergessen + Git Credential Manager" [disabled]
+Button "Gespeicherte Tokens löschen" [disabled]
+Button "Tokens und Anmeldungen in Git Credential Manager löschen" [disabled]
 Label "Glowfly hat keine gespeicherten Verbindungen, die sich entfernen ließen."
 Label "Diagnose"
 CheckBox "Die Git-Befehle, die Glowfly ausführt, mit ihrer Dauer ins Aktivitätsprotokoll schreiben" [off]
@@ -64,7 +64,7 @@ Label "activity.jsonl bewahrt das Aktivitätsprotokoll über Sitzungen hinweg au
 painted:
   "Profil"
   "Integrationen"
-  "Oberfläche"
+  "Darstellung"
   "Sprache und Region"
   "Diff-Ansicht"
   "Tastatur"

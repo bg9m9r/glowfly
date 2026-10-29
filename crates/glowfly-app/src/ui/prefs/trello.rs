@@ -1,5 +1,5 @@
 //! Trello's parts of Preferences: the API key and token links on its Integrations page, and
-//! the Board picker under Repo-specific preferences > Issue tracker.
+//! the Board picker under This repository > Issue tracker.
 
 use super::{help, row};
 use crate::msg::{ForgeMsg, Msg};

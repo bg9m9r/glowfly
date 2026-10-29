@@ -113,7 +113,7 @@ pub enum ForgeMsg {
         token: Option<(Option<String>, String)>,
         result: Result<String, String>,
     },
-    /// Repo-specific preferences > Issue tracker from the side list; loads Trello boards when
+    /// This repository > Issue tracker from the side list; loads Trello boards when
     /// Trello is chosen.
     ShowTrackerPage,
     /// Load (or reload) a connected Trello account's boards for the Board picker.

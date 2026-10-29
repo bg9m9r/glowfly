@@ -115,7 +115,7 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 - A one-time notice for people who had avatars before they became opt-in, saying where to turn them back on
 - Look up avatars from a connected self-hosted server's own API (GitLab Self-Managed, GitHub Enterprise Server) instead of never
-- A per-repository override of the avatar setting (Repo-Specific Preferences)
+- A per-repository override of the avatar setting (Preferences > This repository)
 - A palette entry that turns avatar lookups on or off
 - Empty the avatar disk cache when lookups are turned off
 - Ship PRIVACY.md in every package beside the licences
@@ -124,7 +124,7 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 - A hands-on tutorial in a practice repository (make a branch, commit and merge in a sandbox)
 - A Check again button on the welcome's git step (git is looked for once, at startup)
-- Choosing a theme in the welcome itself (it links to UI Customization for now)
+- Choosing a theme in the welcome itself (it links to Appearance for now)
 - A welcome step that names the first profile or sets up signing and SSH keys
 - Tour steps for tabs, the terminal panel, the activity log and the status bar
 - Keep tour progress across restarts

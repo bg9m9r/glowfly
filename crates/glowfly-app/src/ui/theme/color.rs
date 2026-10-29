@@ -1,5 +1,5 @@
 //! The active color palette. Call sites read colors through functions (`color::text()`) so the
-//! theme can switch at runtime (Preferences > UI Customization > Theme). The palette is a
+//! theme can switch at runtime (Preferences > Appearance > Theme). The palette is a
 //! per-thread copy the shell sets with [`set_palette`] at the start of each frame.
 
 use super::families::{Ansi, Attention, Branch, LANE_COUNT, REPO_HUES, Repository, Status};

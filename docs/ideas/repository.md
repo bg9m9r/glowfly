@@ -231,7 +231,7 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Notice the saved git disappearing during a session without Look again (e.g. when a job fails to start it)
 - Return to the saved git automatically when it comes back (e.g. a removable drive is reconnected)
 
-### Automatically group worktree tabs together
+### Worktree tabs side by side
 
 - A tab group context menu: close the group, close the other groups, move the group to the start
   or end

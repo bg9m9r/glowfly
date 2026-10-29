@@ -38,7 +38,7 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 
 ### Comfortable look
 
-- An opt-in compact density in Preferences > UI Customization (Comfortable | Compact: about
+- An opt-in compact density in Preferences > Appearance (Comfortable | Compact: about
   28 px rows on a 4 px grid), never the default
 - 16 px padding and grid spacing for the bottom panels (activity log, terminal, conflict
   output), the banners and the Git Flow panel

@@ -1,4 +1,4 @@
-//! Preferences > UI Customization > Theme: the built-in themes' cards (`theme_picker.rs`), the
+//! Preferences > Appearance > Theme: the built-in themes' cards (`theme_picker.rs`), the
 //! theme files' dropdown, the themes folder's buttons, and the selected file's problems.
 
 use super::{help, row};

@@ -1,11 +1,11 @@
-//! Which parts of the commit graph are shown (Preferences > UI Customization > Commit Graph).
+//! Which parts of the commit graph are shown (Preferences > Appearance > Commit Graph).
 //! Files written before the COMMIT column had separate author and SHA toggles; either one on
 //! shows the COMMIT column, which holds the author with the short SHA under it.
 
 use super::DescriptionMode;
 use serde::{Deserialize, Serialize};
 
-/// Which parts of the commit graph are shown (UI Customization > graph toggles).
+/// Which parts of the commit graph are shown (Appearance > graph toggles).
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(from = "StoredColumns")]
 pub struct GraphColumns {

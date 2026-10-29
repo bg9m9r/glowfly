@@ -1,4 +1,4 @@
-//! The Board picker of Repo-specific preferences > Issue tracker, for a Trello tracker.
+//! The Board picker of This repository > Issue tracker, for a Trello tracker.
 
 use glowfly_core::forge::{Account, TrelloBoard};
 

@@ -407,7 +407,7 @@ painted:
   "Git"
   "Profile"
   "Integrations"
-  "UI customization"
+  "Appearance"
   "Language & region"
   "Diff viewer"
   "Keyboard"

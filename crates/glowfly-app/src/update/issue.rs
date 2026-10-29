@@ -157,7 +157,7 @@ pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     super::issue_create::reload_pending(st, fx);
 }
 
-/// The issue tracker was chosen again (Repo-Specific Preferences): the panel closes, and so
+/// The issue tracker was chosen again (Preferences > This repository): the panel closes, and so
 /// does a Create issue dialog for another tracker.
 pub(super) fn tracker_changed(st: &mut AppState) {
     close(st);

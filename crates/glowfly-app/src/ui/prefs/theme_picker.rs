@@ -1,4 +1,4 @@
-//! Preferences > UI Customization > Theme: the built-in themes as cards, grouped dark and light,
+//! Preferences > Appearance > Theme: the built-in themes as cards, grouped dark and light,
 //! each a small picture of the main window in that theme (title bar, sidebar, graph lanes with
 //! main in the accent, a selected row and a primary button) with its name under it and its
 //! description on hover. "Match the system" sits above them.

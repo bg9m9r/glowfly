@@ -23,7 +23,7 @@ painted:
   "Git"
   "Profile"
   "Integrations"
-  "UI customization"
+  "Appearance"
   "Diff viewer"
   "Keyboard"
   "External tools"

@@ -1,4 +1,4 @@
-//! The Board picker of Repo-specific preferences > Issue tracker, while Trello is the
+//! The Board picker of This repository > Issue tracker, while Trello is the
 //! repository's tracker: each account's boards load once per Preferences session.
 
 use crate::effect::{AccountEffect, Effect};

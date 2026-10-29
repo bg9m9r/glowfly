@@ -1,4 +1,4 @@
-//! Preferences > UI customization > Commit graph: which columns the graph shows (one labelled
+//! Preferences > Appearance > Commit graph: which columns the graph shows (one labelled
 //! checkbox each, in one row), how commit descriptions show, the branch colour preset, and the
 //! two layout resets.
 

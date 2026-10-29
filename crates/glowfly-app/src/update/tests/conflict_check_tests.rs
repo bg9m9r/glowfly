@@ -1,4 +1,4 @@
-//! Conflict prediction: when the automatic check runs (and when it doesn't), one at a time per
+//! The conflict check: when the automatic check runs (and when it doesn't), one at a time per
 //! tab, deduped, kept across tab switches, asked again by F5, errors logged once, the
 //! preference, and the checks the branch menus ask for.
 

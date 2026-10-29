@@ -40,9 +40,9 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     ui.add_space(10.0);
     if provider.is_tracker_only() {
         let text = if provider == Provider::Trello {
-            "Trello is an issue tracker. Once connected, choose it and a board for a repository under Repo-specific preferences > Issue tracker."
+            "Trello is an issue tracker. Once connected, choose it and a board for a repository under Preferences > This repository > Issue tracker."
         } else {
-            "Jira is an issue tracker. Once connected, choose it for a repository under Repo-specific preferences > Issue tracker."
+            "Jira is an issue tracker. Once connected, choose it for a repository under Preferences > This repository > Issue tracker."
         };
         row(ui, "", |ui| help(ui, text));
     }

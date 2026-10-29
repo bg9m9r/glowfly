@@ -85,7 +85,7 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 - Per-profile diff header toggles (inline/split layout, hunks/whole file, ignore whitespace, word wrap)
 - Per-profile External Tools (editor and terminal programs)
 - Per-profile repository-specific settings (issue tracker, hidden and shown-only refs)
-- A "Saved with profile X" caption on the General, UI Customization and Editor pages
+- A "Saved with profile X" caption on the General, Appearance and Diff viewer pages
 - Copy or reset one profile's preferences from another profile on the Profile page
 - Refresh an open Clone dialog's account list when the profile switches
 - Show a profile's folder-rule count on its row in the profile list (e.g. "Ada <a@b> · 2 folders")

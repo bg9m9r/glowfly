@@ -124,7 +124,7 @@ fn why_creating_is_blocked() {
     st.session.forge = Some(ForgeState::new(Some(dc), "origin".into(), None));
     assert_eq!(
         create_blocked(&st).as_deref(),
-        Some("Bitbucket Data Center has no issue tracker of its own; choose Jira under Repo-specific preferences > Issue tracker")
+        Some("Bitbucket Data Center has no issue tracker of its own; choose Jira under Preferences > This repository > Issue tracker")
     );
     let ghe = Target { provider: Provider::GitHubEnterprise, host: "git.acme.io".into(), ..github() };
     st.session.forge = Some(ForgeState::new(Some(ghe.clone()), "origin".into(), Some(ghe)));

@@ -33,7 +33,7 @@ painted:
   "General"
   "Git"
   "Integrations"
-  "UI customization"
+  "Appearance"
   "Language & region"
   "Diff viewer"
   "Keyboard"
