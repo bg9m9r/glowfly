@@ -78,6 +78,6 @@ fn whole(workdir: &Path, generation: u64, submodules: bool, open_stamp: Option<u
     };
     let slow = repo::slow(started.elapsed(), workdir);
     let submodules = repo::submodules_if_any(workdir, submodules).ok().flatten();
-    let lfs_patterns = Some(glowfly_core::lfs::root_patterns(workdir));
+    let lfs_patterns = Some(glowfly_core::lfs::repo_patterns(workdir));
     Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow, lfs_patterns, index })
 }

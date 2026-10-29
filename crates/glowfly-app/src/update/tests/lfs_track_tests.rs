@@ -45,7 +45,7 @@ fn cleanup(dir: &Path) {
 }
 
 fn pattern(raw: &str) -> LfsPattern {
-    LfsPattern { raw: raw.into(), display: glowfly_core::lfs::unescape_pattern(raw), lockable: false }
+    LfsPattern::root(raw, false)
 }
 
 fn installed() -> LfsInstall {

@@ -80,7 +80,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let commit_template = template::commit_template(&repo, &workdir);
     let merge_message = op_state::has_merge_msg(state).then(|| merge_msg::merge_message(&repo)).flatten();
     let gitflow = crate::gitflow::read_config(&repo);
-    let lfs_patterns = crate::lfs::root_patterns(&workdir);
+    let lfs_patterns = crate::lfs::patterns_in(&repo, &workdir);
     let mut refs: HashMap<Oid, Vec<RefLabel>> = HashMap::new();
     if detached && let Some(o) = head_oid {
         refs.entry(o).or_default().push(RefLabel { name: "HEAD".into(), full: String::new(), kind: RefKind::Head, is_head: true });
