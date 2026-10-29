@@ -159,8 +159,9 @@ fn git_am_of_a_patch_that_writes_a_hook_is_held_and_trust_and_run_takes_only_tha
     let out = work.parent().unwrap().join("patches");
     git(&other, &["format-patch", "-q", "-1", "-o", &out.to_string_lossy()]);
     let patch = std::fs::read_dir(&out).unwrap().flatten().next().unwrap().path();
-    let cmds: &[&[&str]] = &[&["am", "--3way", &patch.to_string_lossy()]];
-    let reason = glowfly_core::trust::incoming::Unchecked::Patched(".githooks/post-applypatch".into());
+    let cmds: &[&[&str]] = &[&["am", &patch.to_string_lossy()]];
+    let digest = glowfly_core::trust::content_digest(&std::fs::read(&patch).unwrap());
+    let reason = glowfly_core::trust::incoming::Unchecked::Patched { path: ".githooks/post-applypatch".into(), digest };
     match crate::runner::execute_checked(trusted(&work), job(&work, cmds)) {
         Some(Msg::Trust(TrustMsg::Stale(s))) => {
             assert_eq!(s.unchecked, Some(crate::effect::Accepted { at: Some(0), reason: reason.clone() }));
@@ -176,5 +177,52 @@ fn git_am_of_a_patch_that_writes_a_hook_is_held_and_trust_and_run_takes_only_tha
     let (ok, output) = done(crate::runner::execute_checked(accepted, job(&work, cmds))).expect("it runs");
     assert!(ok, "{output}");
     assert!(work.join(".githooks/post-applypatch").exists());
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}
+
+#[test]
+fn an_acceptance_covers_its_one_item_and_every_other_is_still_compared() {
+    let (work, _bare, other) = following("accept-one");
+    let out = work.parent().unwrap().join("patches");
+    for hook in ["post-applypatch", "pre-commit"] {
+        std::fs::write(
+            other.join(format!(".githooks/{hook}")),
+            "#!/bin/sh
+exit 0
+",
+        )
+        .unwrap();
+        git(&other, &["add", "."]);
+        git(&other, &["commit", "-q", "-m", hook]);
+    }
+    git(&other, &["format-patch", "-q", "-2", "-o", &out.to_string_lossy()]);
+    let mut patches: Vec<PathBuf> = std::fs::read_dir(&out).unwrap().flatten().map(|e| e.path()).collect();
+    patches.sort();
+    let (first, second) = (patches[0].to_string_lossy().into_owned(), patches[1].to_string_lossy().into_owned());
+    let cmds: &[&[&str]] = &[&["am", &first, &second]];
+    let first_reason = match crate::runner::execute_checked(trusted(&work), job(&work, cmds)) {
+        Some(Msg::Trust(TrustMsg::Stale(s))) => s.unchecked.expect("unchecked").reason,
+        other => panic!("held: {}", other.is_some()),
+    };
+    // Accepting the first patch leaves the second one held: it writes another hook.
+    let accepted = TrustCheck { accepted: Some(crate::effect::Accepted { at: Some(0), reason: first_reason.clone() }), ..trusted(&work) };
+    match crate::runner::execute_checked(accepted, job(&work, cmds)) {
+        Some(Msg::Trust(TrustMsg::Stale(s))) => assert_ne!(s.unchecked.map(|a| a.reason), Some(first_reason)),
+        other => panic!("still held: {}", other.is_some()),
+    }
+    assert!(!work.join(".githooks/pre-commit").exists(), "nothing applied");
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}
+
+#[test]
+fn a_command_the_gate_doesn_t_read_is_held_where_hooks_follow_the_working_tree() {
+    let (work, _bare, _other) = following("unmodeled");
+    match crate::runner::execute_checked(trusted(&work), job(&work, &[&["bisect", "start"]])) {
+        Some(Msg::Trust(TrustMsg::Stale(s))) => {
+            assert!(matches!(s.unchecked.map(|a| a.reason), Some(glowfly_core::trust::incoming::Unchecked::Unmodeled(_))));
+        }
+        other => panic!("held: {}", other.is_some()),
+    }
+    assert!(!work.join(".git/BISECT_START").exists(), "bisect never ran");
     let _ = std::fs::remove_dir_all(work.parent().unwrap());
 }

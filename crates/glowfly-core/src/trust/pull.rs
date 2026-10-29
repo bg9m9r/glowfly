@@ -5,7 +5,9 @@
 //! (`fetched`) and compared, and then exactly those are merged or rebased onto (`Pull::pinned`)
 //! with the pull's own choice of merge or rebase (`--rebase`, `branch.<name>.rebase`,
 //! `pull.rebase`) and fast-forward (`--ff`, `--ff-only`, `pull.ff`), decided as git 2.34 and
-//! later decide it (`Pull::plan`), with no second fetch.
+//! later decide it (`Pull::plan`), with no second fetch: a merge is `git merge FETCH_HEAD`
+//! (git's own message), a rebase starts from the fork point git would use, and both carry
+//! `GIT_REFLOG_ACTION` as git pull sets it. Values git refuses are refused the same way.
 
 use git2::{Oid, Repository};
 
@@ -18,8 +20,6 @@ pub struct Pull {
     pub fetch: Vec<String>,
     /// The options that go to the merge or rebase.
     merge: Vec<String>,
-    /// `--log[=<n>]` or `--no-log`: they go to `git fmt-merge-msg`, which makes the message.
-    log: Vec<String>,
     rebase: Vec<String>,
     /// `--rebase[=<how>]` or `--no-rebase` as given.
     how: Option<String>,
@@ -27,118 +27,29 @@ pub struct Pull {
     ff: Option<String>,
     /// `--dry-run`: only the fetch runs.
     dry_run: bool,
-    /// A remote or refspec was named: the fork point isn't the branch's upstream.
-    named: bool,
+    /// The remote and the first refspec named, for the fork point.
+    remote: Option<String>,
+    refspec: Option<String>,
+    /// `--recurse-submodules` or `--no-recurse-submodules` as given.
+    recurse: Option<bool>,
+    /// `GIT_REFLOG_ACTION` as git pull sets it: `pull` and its arguments.
+    pub reflog: String,
+    /// The command as given.
+    cmd: Vec<String>,
 }
 
-/// One commit FETCH_HEAD marks for merging, with its line as git wrote it.
+/// One commit FETCH_HEAD marks for merging (for a tag fetched, the tag), with its line.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fetched {
     pub oid: Oid,
     pub line: String,
 }
 
-/// Options that go to both commands.
-const BOTH: &[&str] = &["-q", "--quiet", "-v", "--verbose", "--progress", "--no-progress"];
-/// Options that go to the merge only.
-const MERGE: &[&str] = &[
-    "--commit",
-    "--no-commit",
-    "-e",
-    "--edit",
-    "--no-edit",
-    "--stat",
-    "-n",
-    "--no-stat",
-    "--summary",
-    "--no-summary",
-    "--compact-summary",
-    "--squash",
-    "--no-squash",
-    "--verify-signatures",
-    "--no-verify-signatures",
-    "--allow-unrelated-histories",
-];
-/// Options that go to the merge and to the rebase.
-const SHARED: &[&str] = &["--signoff", "--no-signoff", "--verify", "--no-verify", "--autostash", "--no-autostash", "--no-gpg-sign"];
-/// Options of the merge and the rebase that take the next argument as their value.
-const SHARED_VALUED: &[&str] = &["-s", "--strategy", "-X", "--strategy-option"];
-/// Fetch options that take the next argument as their value.
-const FETCH_VALUED: &[&str] = &[
-    "--depth",
-    "--deepen",
-    "--shallow-since",
-    "--shallow-exclude",
-    "-j",
-    "--jobs",
-    "--upload-pack",
-    "-o",
-    "--server-option",
-    "--refmap",
-    "--negotiation-tip",
-    "--filter",
-];
-
 impl Pull {
-    /// The pull `cmd` (its arguments, without `git`), or None when it isn't one.
-    pub fn of(cmd: &[String]) -> Option<Pull> {
-        let at = super::incoming::sub_at(cmd)?;
-        if cmd[at] != "pull" {
-            return None;
-        }
-        let globals = cmd[..at].to_vec();
-        let mut p = Pull {
-            globals: globals.clone(),
-            fetch: [globals, vec!["fetch".to_owned(), "--update-head-ok".to_owned()]].concat(),
-            merge: Vec::new(),
-            log: Vec::new(),
-            rebase: Vec::new(),
-            how: None,
-            ff: None,
-            dry_run: false,
-            named: false,
-        };
-        let mut it = cmd[at + 1..].iter();
-        while let Some(a) = it.next() {
-            let s = a.as_str();
-            match s {
-                "-r" | "--rebase" => p.how = Some("true".to_owned()),
-                "--no-rebase" => p.how = Some("false".to_owned()),
-                _ if s.starts_with("--rebase=") => p.how = Some(s["--rebase=".len()..].to_owned()),
-                "--ff" | "--no-ff" | "--ff-only" => p.ff = Some(s.to_owned()),
-                "--dry-run" => {
-                    p.dry_run = true;
-                    p.fetch.push(a.clone());
-                }
-                _ if BOTH.contains(&s) => {
-                    p.fetch.push(a.clone());
-                    p.merge.push(a.clone());
-                    p.rebase.push(a.clone());
-                }
-                "--log" | "--no-log" => p.log.push(a.clone()),
-                _ if s.starts_with("--log=") => p.log.push(a.clone()),
-                _ if MERGE.contains(&s) || s.starts_with("--cleanup=") => p.merge.push(a.clone()),
-                _ if SHARED.contains(&s) || s.starts_with("-S") || s.starts_with("--gpg-sign") || shared_joined(s) => {
-                    p.merge.push(a.clone());
-                    p.rebase.push(a.clone());
-                }
-                _ if SHARED_VALUED.contains(&s) => {
-                    let v = it.next().cloned().unwrap_or_default();
-                    p.merge.extend([a.clone(), v.clone()]);
-                    p.rebase.extend([a.clone(), v]);
-                }
-                _ if FETCH_VALUED.contains(&s) => {
-                    p.fetch.push(a.clone());
-                    p.fetch.extend(it.next().cloned());
-                }
-                _ if s.starts_with('-') => p.fetch.push(a.clone()),
-                _ => {
-                    p.named = true;
-                    p.fetch.push(a.clone());
-                }
-            }
-        }
-        Some(p)
+    /// The pull as it was given (run as it is when the person chose to run what can't be
+    /// pinned).
+    pub fn original(&self) -> Vec<String> {
+        self.cmd.clone()
     }
 
     /// Whether only the fetch runs (`--dry-run`).
@@ -156,18 +67,28 @@ impl Pull {
             return Err("There is no candidate for merging among the refs that you just fetched.".to_owned());
         }
         let config = repo.config().and_then(|mut c| c.snapshot()).map_err(|e| e.message().to_owned())?;
-        let mut ff = self.ff.clone().or_else(|| configured_ff(&config));
+        let mut ff = match &self.ff {
+            Some(f) => Some(f.clone()),
+            None => configured_ff(&config)?,
+        };
         if self.ff.is_none() && self.how.is_some() && ff.as_deref() == Some("--ff-only") {
             ff = Some("--ff".to_owned());
         }
-        let (mut rebase, unspecified) = self.rebase_choice(repo, &config);
+        let (mut rebase, unspecified) = self.rebase_choice(repo, &config)?;
         let Ok(head) = repo.head().and_then(|h| h.peel_to_commit()).map(|c| c.id()) else {
             // An unborn branch takes the fetched commit as it is.
             return Ok(Plan::Merge(ff));
         };
-        let descends = |a: Oid, b: Oid| a == b || repo.graph_descendant_of(a, b).unwrap_or(false);
-        let can_ff = matches!(heads, [h] if descends(h.oid, head));
-        let up_to_date = heads.iter().all(|h| descends(head, h.oid));
+        let descends =
+            |a: Oid, b: Oid| -> Result<bool, String> { Ok(a == b || repo.graph_descendant_of(a, b).map_err(|e| e.message().to_owned())?) };
+        let can_ff = match heads {
+            [h] => descends(h.oid, head)?,
+            _ => false,
+        };
+        let mut up_to_date = true;
+        for h in heads {
+            up_to_date &= descends(head, h.oid)?;
+        }
         let divergent = !can_ff && !up_to_date;
         if ff.as_deref() == Some("--ff-only") {
             if divergent {
@@ -188,31 +109,74 @@ impl Pull {
 
     /// Whether the pull rebases, and how (the option, else `branch.<current>.rebase`, else
     /// `pull.rebase`); and whether nothing chose either way.
-    fn rebase_choice(&self, repo: &Repository, config: &git2::Config) -> (Option<&'static str>, bool) {
+    fn rebase_choice(&self, repo: &Repository, config: &git2::Config) -> Result<(Option<&'static str>, bool), String> {
+        if let Some(how) = &self.how {
+            return Ok((rebase_kind(how, "--rebase")?, false));
+        }
         let branch = repo.head().ok().filter(|h| h.is_branch()).and_then(|h| h.shorthand().map(str::to_owned));
-        let configured =
-            branch.and_then(|b| config.get_string(&format!("branch.{b}.rebase")).ok()).or_else(|| config.get_string("pull.rebase").ok());
-        let unspecified = self.how.is_none() && configured.is_none();
-        (self.how.clone().or(configured).and_then(|how| rebase_kind(&how)), unspecified)
+        let keys = branch.map(|b| format!("branch.{b}.rebase")).into_iter().chain(["pull.rebase".to_owned()]);
+        for key in keys {
+            if let Ok(v) = config.get_string(&key) {
+                return Ok((rebase_kind(&v, &key)?, false));
+            }
+        }
+        Ok((None, true))
     }
 
     /// Whether git would require a clean working tree before this pull fetches: it rebases
     /// (`--ff-only` aside, which git checks only later) without `--autostash` or
     /// `rebase.autoStash`.
-    pub(super) fn needs_clean_tree(&self, repo: &Repository) -> bool {
-        let Ok(config) = repo.config().and_then(|mut c| c.snapshot()) else { return false };
-        let stash = match (self.rebase.iter().rev().find(|a| a.ends_with("autostash")), config.get_bool("rebase.autoStash")) {
-            (Some(a), _) => a == "--autostash",
-            (None, v) => v.unwrap_or(false),
-        };
-        self.rebase_choice(repo, &config).0.is_some() && !stash && repo.head().is_ok()
+    /// `Err` when the config can't be read (or holds a value git refuses).
+    pub(super) fn needs_clean_tree(&self, repo: &Repository) -> Result<bool, String> {
+        let config = repo.config().and_then(|mut c| c.snapshot()).map_err(|e| e.message().to_owned())?;
+        Ok(self.rebase_choice(repo, &config)?.0.is_some() && !self.autostash(&config, "rebase.autoStash") && repo.head().is_ok())
     }
 
-    /// The command that takes exactly `heads` as `plan` says: a merge of them with `message`
-    /// (git's own, from `git fmt-merge-msg`), a fast-forward to the one of them, or a rebase
-    /// onto it from `fork_point` when there is one.
-    pub fn command(&self, plan: &Plan, heads: &[Fetched], message: &str, fork_point: Option<Oid>) -> Vec<String> {
-        let oids = heads.iter().map(|h| h.oid.to_string());
+    /// Whether the merge or rebase stashes local changes first: the option, else `key`.
+    pub(super) fn autostash(&self, config: &git2::Config, key: &str) -> bool {
+        match self.merge.iter().rev().find(|a| a.ends_with("autostash")) {
+            Some(a) => a == "--autostash",
+            None => config.get_bool(key).unwrap_or(false),
+        }
+    }
+
+    /// Whether the pull updates submodules after it merges (`--recurse-submodules`, else
+    /// `submodule.recurse`).
+    pub(super) fn recurses(&self, config: &git2::Config) -> bool {
+        self.recurse.unwrap_or_else(|| config.get_bool("submodule.recurse").unwrap_or(false))
+    }
+
+    /// The `-X` options and strategy the merge or rebase gets.
+    pub(super) fn how(&self) -> crate::trust::incoming::How {
+        let mut how = crate::trust::incoming::How::default();
+        let mut it = self.rebase.iter();
+        while let Some(a) = it.next() {
+            let value = |p: &str, it: &mut std::slice::Iter<'_, String>| {
+                if a == p { it.next().cloned() } else { a.strip_prefix(p).map(|v| v.trim_start_matches('=').to_owned()) }
+            };
+            if a.starts_with("--strategy-option") || a.starts_with("-X") {
+                how.xopts.extend(value(if a.starts_with("-X") { "-X" } else { "--strategy-option" }, &mut it));
+            } else if a.starts_with("--strategy") || a.starts_with("-s") {
+                how.strategy = value(if a.starts_with("-s") { "-s" } else { "--strategy" }, &mut it);
+            }
+        }
+        how.unrelated = self.merge.iter().any(|a| a == "--allow-unrelated-histories");
+        how
+    }
+
+    /// The command that takes exactly `heads` (peeled to commits) as `plan` says: a merge of
+    /// FETCH_HEAD (with git's own message), a fast-forward to it (with the merge options, and
+    /// `--autostash` when `autostash`), or a rebase onto it from `fork_point` when there is one.
+    pub fn command(&self, plan: &Plan, heads: &[Fetched], fork_point: Option<Oid>, autostash: bool) -> Vec<String> {
+        let merge = |ff: Option<String>| {
+            let mut cmd = [self.globals.clone(), vec!["merge".to_owned()], self.merge.clone()].concat();
+            if autostash && !cmd.iter().any(|a| a.ends_with("autostash")) {
+                cmd.push("--autostash".to_owned());
+            }
+            cmd.extend(ff);
+            cmd.push("FETCH_HEAD".to_owned());
+            cmd
+        };
         match plan {
             Plan::Rebase(how) => {
                 let mut cmd = [self.globals.clone(), vec!["rebase".to_owned()], self.rebase.clone()].concat();
@@ -223,31 +187,44 @@ impl Pull {
                 cmd.extend(["--onto".to_owned(), onto.clone(), fork_point.map_or(onto, |f| f.to_string())]);
                 cmd
             }
-            Plan::FastForward => [self.globals.clone(), crate::gitcli::args(&["merge", "--ff-only"]), oids.collect()].concat(),
-            Plan::Merge(ff) => {
-                let mut cmd = [self.globals.clone(), vec!["merge".to_owned()], self.merge.clone()].concat();
-                cmd.extend(ff.clone());
-                // The message has the log already, as merge.log or the pull's --log made it.
-                cmd.extend(["--no-log".to_owned(), "-m".to_owned(), message.trim_end().to_owned()]);
-                cmd.extend(oids);
-                cmd
-            }
+            Plan::FastForward => merge(Some("--ff-only".to_owned())),
+            Plan::Merge(ff) => merge(ff.clone()),
         }
     }
 
-    /// `plan` and `command` together (`message` is used only by a merge).
-    pub fn pinned(&self, repo: &Repository, heads: &[Fetched], message: &str, fork_point: Option<Oid>) -> Result<Vec<String>, String> {
-        Ok(self.command(&self.plan(repo, heads)?, heads, message, fork_point))
+    /// `plan` and `command` together.
+    pub fn pinned(&self, repo: &Repository, heads: &[Fetched], fork_point: Option<Oid>) -> Result<Vec<String>, String> {
+        Ok(self.command(&self.plan(repo, heads)?, heads, fork_point, false))
     }
 
     /// The remote-tracking branch whose reflog gives the fork point a rebasing pull starts
-    /// from: the current branch's upstream, when the pull named no remote.
+    /// from, as git pull finds it: with a remote and a refspec named, where that remote's
+    /// fetch refspecs store the refspec's source; else the current branch's upstream (with a
+    /// remote named, only when the branch's remote is that one).
     pub fn fork_ref(&self, repo: &Repository) -> Option<String> {
-        if self.named {
-            return None;
+        if let (Some(remote), Some(spec)) = (&self.remote, &self.refspec) {
+            let src = spec.trim_start_matches('+').split(':').next().unwrap_or_default();
+            let src = if src.starts_with("refs/") { src.to_owned() } else { format!("refs/heads/{src}") };
+            let r = repo.find_remote(remote).ok()?;
+            let mut specs = r.refspecs().filter(|s| s.direction() == git2::Direction::Fetch && s.src_matches(&src));
+            return specs.find_map(|s| s.transform(&src).ok().and_then(|d| d.as_str().map(str::to_owned)));
         }
         let head = repo.head().ok()?;
-        repo.branch_upstream_name(head.name()?).ok()?.as_str().map(str::to_owned)
+        let name = head.name()?;
+        if let Some(remote) = &self.remote
+            && repo.branch_upstream_remote(name).ok()?.as_str() != Some(remote.as_str())
+        {
+            return None;
+        }
+        repo.branch_upstream_name(name).ok()?.as_str().map(str::to_owned)
+    }
+
+    /// Whether the explicit refspec stores into the branch checked out (`pull origin x:main`
+    /// on main), which git handles by updating the working tree from the old HEAD.
+    pub(super) fn stores_into_head(&self, repo: &Repository) -> bool {
+        let Some((_, dst)) = self.refspec.as_deref().and_then(|s| s.split_once(':')) else { return false };
+        let dst = if dst.starts_with("refs/") { dst.to_owned() } else { format!("refs/heads/{dst}") };
+        repo.head().ok().and_then(|h| h.name().map(str::to_owned)).is_some_and(|h| h.eq_ignore_ascii_case(&dst))
     }
 }
 
@@ -262,37 +239,46 @@ pub enum Plan {
     FastForward,
 }
 
-/// `pull.ff` as the merge option it means.
-fn configured_ff(config: &git2::Config) -> Option<String> {
-    let v = config.get_string("pull.ff").ok()?.to_ascii_lowercase();
-    Some(
-        match v.as_str() {
-            "only" => "--ff-only",
-            "false" | "no" | "off" | "0" => "--no-ff",
-            _ => "--ff",
-        }
-        .to_owned(),
-    )
-}
-
-/// A rebase setting (`true`, `merges`, `interactive`, `false`) as how the rebase runs; None
-/// for a merge.
-fn rebase_kind(how: &str) -> Option<&'static str> {
-    match how.to_ascii_lowercase().as_str() {
-        "false" | "no" | "off" | "0" => None,
-        "merges" | "m" | "preserve" | "p" => Some("--rebase-merges"),
-        "interactive" | "i" => Some("-i"),
-        _ => Some(""),
+/// A value as git reads a boolean: Some(true), Some(false), or None when it isn't one.
+fn boolean(v: &str) -> Option<bool> {
+    match v.to_ascii_lowercase().as_str() {
+        "true" | "yes" | "on" => Some(true),
+        "false" | "no" | "off" | "" => Some(false),
+        n => n.parse::<i64>().ok().map(|n| n != 0),
     }
 }
 
-/// `-s<x>`, `-X<x>` or `--strategy=<x>` written as one argument.
-fn shared_joined(s: &str) -> bool {
-    (s.len() > 2 && (s.starts_with("-s") || s.starts_with("-X"))) || s.starts_with("--strategy=") || s.starts_with("--strategy-option=")
+/// git's refusal of `value` for `key`.
+fn invalid(key: &str, value: &str) -> String {
+    format!("fatal: invalid value for '{key}': '{value}'")
 }
 
-/// The commits the last fetch in `repo` marked for merging, from FETCH_HEAD, with their lines
-/// (for `git fmt-merge-msg`). `Err` when it can't be read or a line doesn't parse.
+/// `pull.ff` as the merge option it means; `Err` for a value git refuses.
+fn configured_ff(config: &git2::Config) -> Result<Option<String>, String> {
+    let Ok(v) = config.get_string("pull.ff") else { return Ok(None) };
+    let ff = match (v.eq_ignore_ascii_case("only"), boolean(&v)) {
+        (true, _) => "--ff-only",
+        (_, Some(false)) => "--no-ff",
+        (_, Some(true)) => "--ff",
+        (_, None) => return Err(invalid("pull.ff", &v)),
+    };
+    Ok(Some(ff.to_owned()))
+}
+
+/// A rebase setting (`true`, `merges`, `interactive`, `false`) as how the rebase runs; None
+/// for a merge. `Err` for a value git refuses (`preserve` is gone since git 2.34).
+fn rebase_kind(how: &str, key: &str) -> Result<Option<&'static str>, String> {
+    match (how, boolean(how)) {
+        (_, Some(false)) => Ok(None),
+        (_, Some(true)) => Ok(Some("")),
+        ("merges" | "m", _) => Ok(Some("--rebase-merges")),
+        ("interactive" | "i", _) => Ok(Some("-i")),
+        _ => Err(invalid(key, how)),
+    }
+}
+
+/// The commits the last fetch in `repo` marked for merging, from FETCH_HEAD, with their lines.
+/// `Err` when it can't be read or a line doesn't parse.
 pub fn fetched(repo: &Repository) -> Result<Vec<Fetched>, String> {
     let path = repo.path().join("FETCH_HEAD");
     let text = std::fs::read_to_string(&path).map_err(|e| format!("Couldn't read {}: {e}", path.display()))?;
@@ -308,6 +294,8 @@ pub fn fetched(repo: &Repository) -> Result<Vec<Fetched>, String> {
     Ok(out)
 }
 
+#[path = "pull_args.rs"]
+mod args;
 #[path = "pull_run.rs"]
 mod run;
 pub use run::{Git, PullRun, run_pinned};

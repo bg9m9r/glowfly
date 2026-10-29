@@ -76,8 +76,13 @@ fn unclear(rel: &str) -> bool {
 }
 
 /// Whether the `/`-separated path `p` (from a patch, a pathspec) is at or around one of the
-/// places `follows` names, as a folding file system matches names (`fold`).
-pub(super) fn touches(p: &str, follows: &[Follow]) -> bool {
+/// places `follows` names, as a folding file system matches names (`fold`), or may be (an
+/// unclear part, `unclear`).
+pub(crate) fn touches(p: &str, follows: &[Follow]) -> bool {
+    // A name only the file system resolves (`GITHO~1`) may be any of them.
+    if !follows.is_empty() && unclear(p) {
+        return true;
+    }
     let folded = |s: &str| s.split('/').filter(|x| !x.is_empty() && *x != ".").map(fold).collect::<Vec<_>>().join("/");
     let p = folded(p);
     follows.iter().any(|f| {

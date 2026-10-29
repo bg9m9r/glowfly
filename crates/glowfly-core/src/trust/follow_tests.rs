@@ -128,6 +128,7 @@ fn a_checkout_of_another_branch_compares_its_hooks() {
     let follows = scan(&work).follows;
     let check = |args: &[&str]| {
         targets(&crate::gitcli::args(args))
+            .unwrap()
             .iter()
             .flat_map(|t| commits(&repo, &follows, t).unwrap())
             .all(|oid| allows(Some(&saved), &incoming(&repo, &follows, oid).unwrap()))

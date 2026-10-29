@@ -74,8 +74,9 @@ pub fn sync(path: &Path, op: SyncOp, trust: Option<&crate::settings::SavedTrust>
     if op == SyncOp::Pull && !follows.is_empty() {
         let pull = crate::trust::pull::Pull::of(&command(op)).expect("a pull");
         let mut timed_out = false;
-        let mut git = |args: &[String], input: &str| {
-            let out = gitcli::output(path, args, input, gitcli::NO_PROMPTS, Some(TIMEOUT));
+        let mut git = |args: &[String], input: &str, extra: &[(&str, &str)]| {
+            let env: Vec<(&str, &str)> = gitcli::NO_PROMPTS.iter().chain(extra).copied().collect();
+            let out = gitcli::output(path, args, input, &env, Some(TIMEOUT));
             timed_out |= out.timed_out;
             (out.ok, out.combined())
         };

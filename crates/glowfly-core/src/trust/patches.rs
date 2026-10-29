@@ -1,119 +1,72 @@
-//! The paths the patches `git am` applies would write, read from the mails themselves (no git
-//! runs): when one of them is a place hooks run from that follows the working tree, the hooks
-//! it writes run in that same `git am` (`post-applypatch`) or in the next git command, so the
-//! job is held (incoming.rs).
+//! What the patches `git am` applies would write, asked of git (plumbing.rs): each mailbox is
+//! split and decoded as am decodes it (base64, quoted-printable, MIME), and `git apply
+//! --numstat` names the paths. When one of them is a place hooks run from that follows the
+//! working tree, the hooks it writes run in that same `git am` (`post-applypatch`) or in the
+//! next git command, so the job is held (`Unchecked::Patched`, with the mailbox's digest so
+//! another mailbox under the same name isn't covered by that choice). A patch format other
+//! than a mailbox (stgit, an hg export, a series file) is Unmodeled.
 
-use super::Follow;
-use super::follow::touches;
-use super::incoming::Unchecked;
+use crate::trust::Follow;
+use crate::trust::follow::touches;
+use crate::trust::incoming::Unchecked;
+use git2::Repository;
 use std::path::Path;
 
-/// The first place in `follows` that a patch in the mailbox at `file` writes, or `Err` when the
-/// file can't be read. Paths lose their first part, as git's default `-p1` strips them.
-pub(super) fn touched_in(file: &Path, follows: &[Follow]) -> Result<Option<String>, Unchecked> {
+/// Whether a patch in the mailbox at `file` writes a place in `follows` (Patched); `apply`: the
+/// options `git am` passes on to `git apply` (`-p2`, `--directory=x`, `--exclude=x`).
+pub(super) fn check_mailbox(repo: &Repository, file: &Path, apply: &[String], follows: &[Follow]) -> Result<(), Unchecked> {
     let bytes = std::fs::read(file).map_err(|e| Unchecked::Unreadable(format!("{}: {e}", file.display())))?;
-    Ok(paths(&String::from_utf8_lossy(&bytes)).into_iter().find(|p| touches(p, follows)))
+    if !is_mailbox(&bytes) {
+        return Err(Unchecked::Unmodeled(format!("a patch that isn't a mailbox ({})", file.display())));
+    }
+    let paths = crate::trust::plumbing::mailbox_paths(repo, file, apply)?;
+    held(&paths, follows, &bytes)
 }
 
-/// Every path the diffs in `text` name, old and new, without git's `a/` and `b/` prefixes.
-/// Where a line can be split more than one way, every reading is kept: more paths are
-/// compared, never fewer.
-pub(super) fn paths(text: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    for line in text.lines().map(|l| l.trim_end_matches('\r')) {
-        if let Some(rest) = line.strip_prefix("diff --git ") {
-            out.extend(git_header(rest));
-        } else if let Some(rest) = line.strip_prefix("--- ").or_else(|| line.strip_prefix("+++ ")) {
-            let p = unquote(rest.split('\t').next().unwrap_or(rest));
-            if p != "/dev/null" {
-                out.push(strip_one(&p));
-            }
-        } else if let Some(rest) = ["rename from ", "rename to ", "copy from ", "copy to "].iter().find_map(|k| line.strip_prefix(k)) {
-            out.push(unquote(rest));
-        }
-    }
-    out.retain(|p| !p.is_empty());
-    out.sort();
-    out.dedup();
-    out
+/// The same for the patches left in an `am` in progress (`rebase-apply`, from `next` to
+/// `last`), each a mail as `git mailsplit` wrote it.
+pub(super) fn check_applying(repo: &Repository, follows: &[Follow]) -> Result<(), Unchecked> {
+    let apply = repo.path().join("rebase-apply");
+    let number = |f: &str| std::fs::read_to_string(apply.join(f)).ok().and_then(|t| t.trim().parse::<u32>().ok());
+    let (Some(next), Some(last)) = (number("next"), number("last")) else {
+        return Err(Unchecked::Unmodeled("an am in progress Glowfly can't read".to_owned()));
+    };
+    let scratch = crate::trust::plumbing::scratch()?;
+    (next..=last).try_for_each(|n| {
+        let Ok(mail) = std::fs::read(apply.join(format!("{n:04}"))) else { return Ok(()) };
+        held(&crate::trust::plumbing::mail_paths(repo, &mail, &scratch.0, &[])?, follows, &mail)
+    })
 }
 
-/// The paths in a `diff --git a/<old> b/<new>` header. Quoted names are read as git writes
-/// them; an unquoted one is split at each ` b/` that could end the old name.
-fn git_header(rest: &str) -> Vec<String> {
-    if rest.starts_with('"') || rest.ends_with('"') {
-        return quoted_pair(rest).into_iter().map(|p| strip_one(&p)).collect();
-    }
-    let mut out = Vec::new();
-    for (i, _) in rest.match_indices(" b/") {
-        let (old, new) = (&rest[..i], &rest[i + 1..]);
-        if strip_one(old) == strip_one(new) {
-            return vec![strip_one(old)];
-        }
-        out.extend([strip_one(old), strip_one(new)]);
-    }
-    if out.is_empty() {
-        out.push(strip_one(rest));
-    }
-    out
+/// Whether the plain patch at `file` (`git apply <file>`, with its `apply` options) writes a
+/// place in `follows`.
+pub(super) fn check_patch(repo: &Repository, file: &Path, apply: &[String], follows: &[Follow]) -> Result<(), Unchecked> {
+    let bytes = std::fs::read(file).map_err(|e| Unchecked::Unreadable(format!("{}: {e}", file.display())))?;
+    held(&crate::trust::plumbing::patch_paths(repo, file, apply)?, follows, &bytes)
 }
 
-/// Two names of which at least one is C-quoted.
-fn quoted_pair(rest: &str) -> Vec<String> {
-    if let Some(q) = rest.strip_prefix('"') {
-        let Some(end) = closing(q) else { return vec![unquote(rest)] };
-        return vec![unquote(&rest[..end + 2]), unquote(rest[end + 2..].trim_start())];
+fn held(paths: &[String], follows: &[Follow], mailbox: &[u8]) -> Result<(), Unchecked> {
+    match paths.iter().find(|p| touches(p, follows)) {
+        Some(p) => Err(Unchecked::Patched { path: p.clone(), digest: crate::trust::content_digest(mailbox) }),
+        None => Ok(()),
     }
-    let at = rest.find(" \"").unwrap_or(rest.len());
-    vec![rest[..at].to_owned(), unquote(rest[at..].trim_start())]
 }
 
-/// The index in `q` (after an opening quote) of the closing quote.
-fn closing(q: &str) -> Option<usize> {
-    let mut escaped = false;
-    for (i, c) in q.char_indices() {
-        match c {
-            '\\' if !escaped => escaped = true,
-            '"' if !escaped => return Some(i),
-            _ => escaped = false,
-        }
+/// Whether `bytes` is what `git am` takes as a mailbox (its patch-format detection): a `From `
+/// line or mail headers first, and not an stgit patch, stgit series or hg export.
+fn is_mailbox(bytes: &[u8]) -> bool {
+    let text = String::from_utf8_lossy(&bytes[..bytes.len().min(4096)]);
+    let mut lines = text.lines().map(|l| l.trim_end_matches('\r'));
+    let (l1, l2, l3) = (lines.next().unwrap_or(""), lines.next().unwrap_or(""), lines.next().unwrap_or(""));
+    if l1.starts_with("# This series applies on GIT commit") || l1 == "# HG changeset patch" {
+        return false;
     }
-    None
-}
-
-/// A name as git C-quotes it (`"a/\303\251"`), or as written when it isn't quoted.
-fn unquote(s: &str) -> String {
-    let Some(inner) = s.strip_prefix('"').and_then(|r| r.strip_suffix('"')) else { return s.to_owned() };
-    let mut bytes = Vec::new();
-    let mut it = inner.bytes().peekable();
-    while let Some(b) = it.next() {
-        if b != b'\\' {
-            bytes.push(b);
-            continue;
-        }
-        match it.next() {
-            Some(b'n') => bytes.push(b'\n'),
-            Some(b't') => bytes.push(b'\t'),
-            Some(d @ b'0'..=b'7') => {
-                let mut v = u32::from(d - b'0');
-                for _ in 0..2 {
-                    if let Some(n) = it.peek().copied().filter(u8::is_ascii_digit) {
-                        v = v * 8 + u32::from(n - b'0');
-                        it.next();
-                    }
-                }
-                bytes.push(v as u8);
-            }
-            Some(other) => bytes.push(other),
-            None => {}
-        }
+    if !l1.is_empty() && l2.is_empty() && (l3.starts_with("From:") || l3.starts_with("Author:") || l3.starts_with("Date:")) {
+        return false;
     }
-    String::from_utf8_lossy(&bytes).into_owned()
-}
-
-/// `p` without its first part (git's default `-p1`: `a/x` is `x`).
-fn strip_one(p: &str) -> String {
-    p.split_once('/').map_or_else(|| p.to_owned(), |(_, rest)| rest.to_owned())
+    let header =
+        |l: &str| l.split_once(':').is_some_and(|(k, _)| !k.is_empty() && k.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'));
+    l1.starts_with("From ") || header(l1)
 }
 
 #[cfg(test)]
@@ -121,16 +74,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_path_a_patch_names_is_read() {
-        let mail = "From x\nSubject: [PATCH] hooks\n\n---\n\
-            diff --git a/.githooks/post-applypatch b/.githooks/post-applypatch\nnew file mode 100755\n\
-            --- /dev/null\n+++ b/.githooks/post-applypatch\n@@ -0,0 +1 @@\n+echo hi\n\
-            diff --git a/x y b/z w\nrename from x y\nrename to z w\n\
-            diff --git \"a/\\303\\251\" \"b/\\303\\251\"\nGIT binary patch\n";
-        let got = paths(mail);
-        for want in [".githooks/post-applypatch", "x y", "z w", "é"] {
-            assert!(got.contains(&want.to_owned()), "{want} in {got:?}");
-        }
+    fn only_a_mailbox_is_read_as_one() {
+        assert!(is_mailbox(b"From 1a2b Mon Sep 17 00:00:00 2001\nFrom: a\n"));
+        assert!(is_mailbox(b"From: a <a@b>\nSubject: x\n"));
+        assert!(!is_mailbox(b"# HG changeset patch\n# User a\n"));
+        assert!(!is_mailbox(b"# This series applies on GIT commit 1a2b\nx.patch\n"));
+        assert!(!is_mailbox(b"Fix the thing\n\nFrom: a <a@b>\n"), "stgit");
+        assert!(!is_mailbox(b"diff --git a/x b/x\n"), "a bare diff: git can't detect it either");
     }
 
     #[test]
@@ -138,6 +88,7 @@ mod tests {
         let follows = [Follow { path: ".githooks".into(), tracked: None, hooks: true }];
         assert!(touches(".GITHOOKS/post-applypatch", &follows));
         assert!(touches(".githooks./x", &follows));
+        assert!(touches("GITHO~1/x", &follows), "a short name only the volume resolves");
         assert!(!touches("src/main.rs", &follows));
     }
 }

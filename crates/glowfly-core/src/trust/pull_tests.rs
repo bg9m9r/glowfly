@@ -19,7 +19,8 @@ fn a_pull_s_options_go_to_its_fetch_or_what_follows() {
     let p = pull(&["-c", "x=y", "pull", "-q", "--no-edit", "--prune", "--depth", "3", "origin", "main"]);
     assert_eq!(p.fetch, args(&["-c", "x=y", "fetch", "--update-head-ok", "-q", "--prune", "--depth", "3", "origin", "main"]));
     assert_eq!(p.merge, args(&["-q", "--no-edit"]));
-    assert!(p.named);
+    assert_eq!((p.remote.as_deref(), p.refspec.as_deref()), (Some("origin"), Some("main")));
+    assert_eq!(p.reflog, "pull -q --no-edit --prune --depth 3 origin main", "GIT_REFLOG_ACTION as git pull sets it");
     assert!(pull(&["pull", "--dry-run"]).fetch_only());
 }
 
@@ -35,16 +36,20 @@ fn the_pinned_command_merges_or_rebases_exactly_the_checked_commits() {
     let repo = Repository::open(&work).unwrap();
     let oid = repo.revparse_single("origin/main").unwrap().id();
     let o = oid.to_string();
-    let msg = "Merge branch 'main' of ../origin";
-    let pinned = |a: &[&str]| pull(a).pinned(&repo, &[head(oid)], msg, None);
+    let pinned = |a: &[&str]| pull(a).pinned(&repo, &[head(oid)], None);
+    assert_eq!(
+        pinned(&["pull", "--rebase=preserve"]),
+        Err("fatal: invalid value for '--rebase': 'preserve'".to_owned()),
+        "as git refuses it"
+    );
     // Nothing chosen anywhere (the user's own config may choose): git refuses.
     let config = repo.config().unwrap();
     if config.get_string("pull.rebase").is_err() && config.get_string("pull.ff").is_err() {
         assert!(pinned(&["pull"]).is_err(), "divergent branches need a choice");
     }
     git(&work, &["config", "pull.rebase", "false"]);
-    assert_eq!(pinned(&["pull"]), Ok(args(&["merge", "--no-log", "-m", msg, &o])));
-    assert_eq!(pinned(&["pull", "--no-ff"]), Ok(args(&["merge", "--no-ff", "--no-log", "-m", msg, &o])));
+    assert_eq!(pinned(&["pull"]), Ok(args(&["merge", "FETCH_HEAD"])));
+    assert_eq!(pinned(&["pull", "--no-ff"]), Ok(args(&["merge", "--no-ff", "FETCH_HEAD"])));
     git(&work, &["config", "pull.ff", "only"]);
     assert!(pinned(&["pull"]).is_err(), "pull.ff=only can't fast-forward");
     // A rebase on the command line overrides pull.ff=only.
@@ -57,18 +62,18 @@ fn the_pinned_command_merges_or_rebases_exactly_the_checked_commits() {
     let fork = repo.head().unwrap().peel_to_commit().unwrap().parent_id(0).unwrap();
     let p = pull(&["pull", "--rebase=merges", "-Xours"]);
     assert_eq!(
-        p.pinned(&repo, &[head(oid)], msg, Some(fork)),
+        p.pinned(&repo, &[head(oid)], Some(fork)),
         Ok(args(&["rebase", "-Xours", "--rebase-merges", "--onto", &o, &fork.to_string()]))
     );
     git(&work, &["config", "branch.main.rebase", "false"]);
     git(&work, &["config", "pull.ff", "false"]);
-    assert_eq!(pinned(&["pull"]), Ok(args(&["merge", "--no-ff", "--no-log", "-m", msg, &o])));
+    assert_eq!(pinned(&["pull"]), Ok(args(&["merge", "--no-ff", "FETCH_HEAD"])));
     git(&work, &["config", "branch.main.rebase", "true"]);
-    assert!(pull(&["pull"]).pinned(&repo, &[head(oid), head(oid)], msg, None).is_err(), "can't rebase onto two");
-    assert!(pull(&["pull"]).pinned(&repo, &[], msg, None).is_err(), "nothing to merge");
+    assert!(pull(&["pull"]).pinned(&repo, &[head(oid), head(oid)], None).is_err(), "can't rebase onto two");
+    assert!(pull(&["pull"]).pinned(&repo, &[], None).is_err(), "nothing to merge");
     // A rebasing pull with nothing of its own to replay fast-forwards, as git does.
     git(&work, &["reset", "-q", "--hard", "HEAD~1"]);
-    assert_eq!(pinned(&["pull"]), Ok(args(&["merge", "--ff-only", &o])));
+    assert_eq!(pinned(&["pull"]), Ok(args(&["merge", "--ff-only", "FETCH_HEAD"])));
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }
@@ -93,13 +98,19 @@ fn same_as_git(name: &str, a: &[&str], setup: &dyn Fn(&Path)) {
     remote_commit(&bare, "main", "r.txt", "r\n");
     let cmd = args(a);
     let (real_ok, real_out) = crate::gitcli::run_with_input(&real, &cmd, "", crate::gitcli::NO_PROMPTS);
-    let mut run = |c: &[String], input: &str| crate::gitcli::run_with_input(&pinned, c, input, crate::gitcli::NO_PROMPTS);
+    let mut run = |c: &[String], input: &str, extra: &[(&str, &str)]| {
+        let env: Vec<(&str, &str)> = crate::gitcli::NO_PROMPTS.iter().chain(extra).copied().collect();
+        crate::gitcli::run_with_input(&pinned, c, input, &env)
+    };
     let PullRun::Ran { ok, output } = run_pinned(&pinned, &Pull::of(&cmd).unwrap(), &[], None, None, &mut run) else { panic!("it runs") };
     assert_eq!(ok, real_ok, "{a:?}: git said {real_out}; pinned said {output}");
     let end = |d: &Path| {
         let r = Repository::open(d).unwrap();
         let c = r.head().unwrap().peel_to_commit().unwrap();
-        (c.message().unwrap_or_default().to_owned(), c.parent_count(), c.tree_id())
+        let reflog = crate::gitcli::run_with_input(d, &args(&["reflog", "-1", "--format=%gs"]), "", &[]).1;
+        // The reflog says what made the last change, as git pull words it.
+        let reflog = reflog.split(':').next().unwrap_or_default().trim().to_owned();
+        (c.message().unwrap_or_default().to_owned(), c.parent_count(), c.tree_id(), reflog)
     };
     assert_eq!(end(&pinned), end(&real), "{a:?}: {output}");
     for d in [&seed, &bare, &real, &pinned] {
@@ -135,6 +146,26 @@ fn a_pinned_pull_ends_as_git_pull_does() {
         set_config(d, &[("pull.rebase", "true")]);
         local_commit(d);
     });
+    same_as_git("pull-same-invalid", &["pull"], &|d| set_config(d, &[("pull.rebase", "sometimes")]));
+    same_as_git("pull-same-invalid-ff", &["pull"], &|d| set_config(d, &[("pull.ff", "maybe")]));
+    same_as_git("pull-same-named", &["pull", "--rebase", "origin", "main"], &local_commit);
+    same_as_git("pull-same-autostash", &["pull", "--rebase", "--autostash"], &|d| write(d, "a.txt", "edited\n"));
+}
+
+#[test]
+fn a_rebasing_pull_starts_from_the_fork_point_of_the_branch_its_refspec_stores_into() {
+    let (work, bare) = with_origin("pull-fork-ref");
+    git(&bare, &["branch", "other", "main"]);
+    git(&work, &["fetch", "-q"]);
+    let repo = Repository::open(&work).unwrap();
+    assert_eq!(pull(&["pull", "origin", "other"]).fork_ref(&repo).as_deref(), Some("refs/remotes/origin/other"));
+    assert_eq!(pull(&["pull", "origin", "+other:x"]).fork_ref(&repo).as_deref(), Some("refs/remotes/origin/other"));
+    assert_eq!(pull(&["pull", "origin"]).fork_ref(&repo).as_deref(), Some("refs/remotes/origin/main"), "the upstream's own remote");
+    assert_eq!(pull(&["pull", "elsewhere"]).fork_ref(&repo), None, "another remote's: no fork point");
+    assert!(pull(&["pull", "origin", "other:main"]).stores_into_head(&repo));
+    assert!(!pull(&["pull", "origin", "other:x"]).stores_into_head(&repo));
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&bare);
 }
 
 #[test]
@@ -173,7 +204,7 @@ fn run(work: &std::path::Path, saved: &crate::settings::SavedTrust) -> PullRun {
     let repo = Repository::open(work).unwrap();
     let follows = crate::trust::scan_now(&repo).follows;
     assert!(!follows.is_empty());
-    let mut git = |a: &[String], input: &str| crate::gitcli::run_with_input(work, a, input, crate::gitcli::NO_PROMPTS);
+    let mut git = |a: &[String], input: &str, _: &[(&str, &str)]| crate::gitcli::run_with_input(work, a, input, crate::gitcli::NO_PROMPTS);
     run_pinned(work, &pull(&["pull", "--ff-only"]), &follows, Some(saved), None, &mut git)
 }
 
@@ -185,8 +216,7 @@ fn a_pinned_pull_merges_what_it_checked_and_holds_other_hooks() {
     remote_commit(&bare, "main", "b.txt", "b\n");
     let PullRun::Ran { ok: true, output } = run(&work, &saved) else { panic!("it runs") };
     assert_eq!(output.matches("$ git fetch").count(), 1, "{output}");
-    assert!(output.contains("$ git merge --ff-only --no-log -m"), "{output}");
-    assert!(!output.contains("fmt-merge-msg --no-log"), "merge.log decides the message");
+    assert!(output.contains("$ git merge --ff-only FETCH_HEAD"), "{output}");
     assert!(work.join("b.txt").exists());
     assert!(std::fs::read_to_string(work.join("ran.txt")).unwrap().contains("one"), "the trusted hook ran as post-merge");
     // Upstream changed the hook: only the fetch ran, and the hook didn't.
@@ -197,6 +227,22 @@ fn a_pinned_pull_merges_what_it_checked_and_holds_other_hooks() {
     assert_eq!(Repository::open(&work).unwrap().head().unwrap().target(), head, "nothing merged");
     let ran = std::fs::read_to_string(work.join("ran.txt")).unwrap_or_default();
     assert!(!ran.contains("two"), "the incoming hook never ran: {ran}");
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&bare);
+}
+
+#[test]
+fn a_pull_the_pinned_one_can_t_match_is_held_before_it_fetches() {
+    let (work, bare) = following("pull-held");
+    let saved = crate::settings::SavedTrust::trusted(Some(crate::trust::scan_at(&work).unwrap().print()));
+    remote_commit(&bare, "main", "b.txt", "b\n");
+    git(&work, &["config", "submodule.recurse", "true"]);
+    let PullRun::Refused { refused: crate::trust::compare::Refused::Unchecked(crate::trust::incoming::Unchecked::Unmodeled(_)), output } =
+        run(&work, &saved)
+    else {
+        panic!("held")
+    };
+    assert!(!output.contains("$ git fetch"), "{output}");
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }

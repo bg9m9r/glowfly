@@ -242,7 +242,10 @@ pub(super) fn run_git_gated(
     }
     let mut output = String::new();
     let mut moved = false;
-    let mut git = |c: &[String], input: &str| gitcli::run_with_input(cwd, c, input, job_env(prompts));
+    let mut git = |c: &[String], input: &str, extra: &[(&str, &str)]| {
+        let env: Vec<(&str, &str)> = job_env(prompts).iter().chain(extra).copied().collect();
+        gitcli::run_with_input(cwd, c, input, &env)
+    };
     for (at, c) in cmds.iter().enumerate() {
         let (success, text) = match gate.before(at, c, &mut git) {
             Step::Halt(halt, ran) => {
@@ -256,7 +259,7 @@ pub(super) fn run_git_gated(
             }
             Step::Run => {
                 output.push_str(&format!("$ git {}\n", glowfly_core::text::redact_credentials(&c.join(" "))));
-                git(c, "")
+                git(c, "", &[])
             }
         };
         moved |= !matches!(glowfly_core::trust::incoming::sub_name(c), Some("fetch"));

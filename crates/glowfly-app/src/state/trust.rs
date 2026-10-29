@@ -320,9 +320,9 @@ pub fn unchecked_text(t: glowfly_core::i18n::Lang, u: &glowfly_core::trust::inco
     match u {
         Unchecked::Unresolved(rev) => t.trf("trust.unchecked.unresolved", &[("rev", &printable(rev))]),
         Unchecked::Unreadable(e) => t.trf("trust.unchecked.unreadable", &[("error", &printable(e))]),
-        Unchecked::Patched(p) => t.trf("trust.unchecked.patched", &[("path", &printable(p))]),
+        Unchecked::Patched { path, .. } => t.trf("trust.unchecked.patched", &[("path", &printable(path))]),
         Unchecked::Conflicted(p) => t.trf("trust.unchecked.conflicted", &[("path", &printable(p))]),
-        Unchecked::Unknown => t.tr("trust.unchecked.unknown").to_owned(),
+        Unchecked::Unmodeled(what) => t.trf("trust.unchecked.unmodeled", &[("what", &printable(what))]),
     }
 }
 

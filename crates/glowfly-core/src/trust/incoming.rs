@@ -1,16 +1,44 @@
-//! The commits a job brings into the working tree, read from its git arguments, so the hooks
-//! that follow the working tree (follow.rs) can be compared with the trusted print before it
-//! runs: the branch a checkout or switch moves to, the commits a merge takes, every commit a
-//! rebase, cherry-pick or revert replays (and the branch a rebase checks out first), the tree a
-//! `checkout <tree-ish> -- <paths>` writes the hooks from, the patches `git am` applies, and the
-//! steps left in a rebase, cherry-pick or `am` in progress. A pull is pinned instead (pull.rs). Reading the arguments and
-//! resolving them uses libgit2 only, the way git resolves them; what can't be resolved that way
-//! is `Unchecked`, and the caller holds the job rather than run it unchecked.
+//! The commits a job brings into the working tree, so the hooks that follow the working tree
+//! (follow.rs) can be compared with the trusted print before it runs: the branch a checkout or
+//! switch moves to, the commits a merge takes, every commit a rebase, cherry-pick or revert
+//! replays (and the branch a rebase checks out first), the tree or index a checkout or restore
+//! of paths writes from, a stash it applies, the patches `git am` or `git apply` writes, and
+//! the steps left in a rebase, cherry-pick or `am` in progress (sequencer.rs). The arguments
+//! are read in targets.rs; revisions and rev-lists are resolved by git itself (plumbing.rs);
+//! what merges leave is compared in merged.rs. A pull is pinned instead (pull.rs). Whatever
+//! can't be read that way is `Unchecked`, and the caller holds the job rather than run it.
 
-use super::{Follow, TrustScan, follow};
+use super::{Follow, TrustScan, follow, plumbing};
 use crate::settings::SavedTrust;
-use git2::{Oid, Repository, Sort};
+use git2::{Oid, Repository};
 use std::path::Path;
+
+#[path = "patches.rs"]
+mod patches;
+#[path = "sequencer.rs"]
+pub(super) mod sequencer;
+#[path = "targets.rs"]
+mod targets;
+pub use targets::targets;
+
+/// How a merge, replay or pick is made, from its options.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct How {
+    /// `-s`: ort or recursive (both made as ort), or a merge's `ours`; others are Unmodeled.
+    pub strategy: Option<String>,
+    /// `-X` options, given to `git merge-tree` as they are.
+    pub xopts: Vec<String>,
+    /// A pick's or revert's `-m`: the parent a merge commit is taken against.
+    pub mainline: Option<u32>,
+    pub unrelated: bool,
+    /// Options a cherry-pick or revert gives its rev-list (`--not`, `--branches`).
+    pub walk: Vec<String>,
+    /// A rebase's `--fork-point` or `--no-fork-point`.
+    pub fork_point: Option<bool>,
+    /// A rebase's `--reapply-cherry-picks`.
+    pub reapply: bool,
+    pub autostash: bool,
+}
 
 /// One thing a command brings in.
 #[derive(Clone, Debug, PartialEq)]
@@ -19,116 +47,54 @@ pub enum Target {
     /// then the remote branches of that name it would make a branch from. `paths`: a checkout
     /// whose one argument may name files instead (`git checkout a.txt`).
     Switch { name: String, paths: bool },
-    /// A revision as the command names it (a new branch's start).
+    /// A revision as the command names it (a new branch's start, `reset --hard <rev>`).
     Rev(String),
     /// The commits a merge takes (`FETCH_HEAD`: every one the last fetch marked for merging).
-    Merged(Vec<String>),
-    /// The mailboxes `git am` applies (none: from standard input, which a job doesn't give).
-    Mailbox(Vec<String>),
+    Merged { revs: Vec<String>, how: How },
+    /// The patch files `git am` (`mailbox`) or `git apply` writes, with the options that move
+    /// or filter their paths.
+    Patches { files: Vec<String>, apply: Vec<String>, mailbox: bool },
     /// A commit known already (the rebase panel's base, a todo step).
     Commit(Oid),
     /// What `git rebase` replays: the commits of `branch` (HEAD when None, checked out first
     /// otherwise) not in `upstream` (the branch's upstream when None; nothing hidden with
     /// `root`), and where it starts: `onto`, else the merge base (`keep_base`), else `upstream`.
-    Replayed { onto: Option<String>, upstream: Option<String>, branch: Option<String>, root: bool, keep_base: bool },
+    Replayed { onto: Option<String>, upstream: Option<String>, branch: Option<String>, root: bool, keep_base: bool, how: How },
     /// The commits a cherry-pick (or a revert: each one's parents' version) takes.
-    Picked { revs: Vec<String>, revert: bool },
-    /// `checkout <tree> -- <paths>`: the tree's version, when one of `paths` reaches a place
-    /// hooks run from. `maybe_paths`: written without `--`, so `tree` may be a file too.
+    Picked { revs: Vec<String>, revert: bool, how: How },
+    /// `checkout <tree> -- <paths>`, `restore --source`: the tree's version, when one of
+    /// `paths` reaches a place hooks run from. `maybe_paths`: written without `--`, so `tree`
+    /// may be a file too.
     Paths { tree: String, paths: Vec<String>, maybe_paths: bool },
-    /// The steps left in the rebase, cherry-pick, revert or `am` in progress (`--continue`,
-    /// `--skip`).
-    Sequencer,
+    /// `checkout -- <paths>`, `restore <paths>`: the index's version of the paths.
+    Index(Vec<String>),
+    /// `stash apply` or `pop`: the stash merged onto HEAD, its untracked files, and with
+    /// `index` its index.
+    Stash { spec: String, index: bool },
+    /// A rebase made from a list Glowfly wrote (the rebase panel): the commits it picks in
+    /// order onto `onto` (None: a new root); `picks` None when a step merges or resets.
+    Steps { onto: Option<Oid>, picks: Option<Vec<Oid>> },
+    /// The patches left in the `am` in progress.
+    Applying,
+    /// The steps left in the rebase, cherry-pick or revert in progress (`--continue`;
+    /// `skip`: from HEAD, the current step dropped).
+    Sequencer { skip: bool },
 }
 
 /// Why what a command brings in couldn't be compared: the job is held, never run unchecked.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Unchecked {
-    /// A revision libgit2 can't resolve the way git would (`@{push}`), or one git refuses too.
+    /// A revision git can't resolve now.
     Unresolved(String),
     /// An object can't be read, as in a partial clone that fetched without it.
     Unreadable(String),
-    /// A patch `git am` applies writes into a place hooks run from (the path it names).
-    Patched(String),
+    /// A patch writes into a place hooks run from (the path it names), from the patches with
+    /// this digest.
+    Patched { path: String, digest: String },
     /// Merging what it brings in conflicts in a place hooks run from (the path).
     Conflicted(String),
-    /// A form of the command Glowfly doesn't read (`am` from standard input, `am -p2`).
-    Unknown,
-}
-
-/// Whether `opt` of the subcommand `sub` takes the next argument as its value.
-fn valued(sub: &str, opt: &str) -> bool {
-    let of: &[&str] = match sub {
-        "checkout" | "switch" => &["-b", "-B", "-c", "-C", "--orphan", "--create", "--force-create", "--conflict", "--pathspec-from-file"],
-        "merge" => &["-m", "-F", "--file", "-s", "-X", "--strategy", "--strategy-option", "--into-name", "--cleanup"],
-        "rebase" => &["--onto", "-s", "-X", "-x", "--exec", "--strategy", "--strategy-option", "--whitespace"],
-        "cherry-pick" | "revert" => &["-m", "--mainline", "-s", "-X", "--strategy", "--strategy-option", "--cleanup"],
-        "am" => &["--patch-format", "--exclude", "--include", "--resolvemsg", "-C"],
-        _ => &[],
-    };
-    of.contains(&opt)
-}
-
-/// What the git command `cmd` (its arguments, without `git`) brings into the working tree.
-/// Empty for a command that moves to no other commit (`checkout -- <file>`, `merge --abort`,
-/// `checkout -b new`), for a pull (pinned by pull.rs) and for every other command.
-pub fn targets(cmd: &[String]) -> Vec<Target> {
-    let Some(at) = sub_at(cmd) else { return Vec::new() };
-    let (sub, args) = (cmd[at].as_str(), &cmd[at + 1..]);
-    let mut positional = Vec::new();
-    let mut after_dashes: Option<Vec<String>> = None;
-    let (mut onto, mut root, mut keep_base, mut sequencer, mut creates, mut unread) = (None, false, false, false, false, false);
-    let mut it = args.iter();
-    while let Some(a) = it.next() {
-        match a.as_str() {
-            "--" => {
-                after_dashes = Some(it.by_ref().cloned().collect());
-                break;
-            }
-            "--abort" | "--quit" | "--show-current-patch" => return Vec::new(),
-            "--continue" | "--skip" | "--edit-todo" => sequencer = true,
-            "-" => positional.push("@{-1}".to_owned()),
-            "--onto" if sub == "rebase" => onto = it.next().cloned(),
-            "--root" => root = true,
-            "--keep-base" => keep_base = true,
-            "-b" | "-B" | "-c" | "-C" | "--orphan" | "--create" | "--force-create" if matches!(sub, "checkout" | "switch") => {
-                creates = true;
-                it.next();
-            }
-            v if valued(sub, v) => {
-                it.next();
-            }
-            v if v.starts_with("--onto=") => onto = Some(v["--onto=".len()..].to_owned()),
-            // Paths moved or stripped otherwise than `a/` and `b/`: what the patches write isn't known.
-            v if sub == "am" && (v.starts_with("--directory") || (v.starts_with("-p") && v != "-p1")) => unread = true,
-            v if v.starts_with('-') => {}
-            v => positional.push(v.to_owned()),
-        }
-    }
-    let rev = |s: &String| Target::Rev(s.clone());
-    match sub {
-        "rebase" | "cherry-pick" | "revert" | "am" if sequencer => vec![Target::Sequencer],
-        _ if sequencer => Vec::new(),
-        "checkout" | "switch" if creates => positional.first().map(rev).into_iter().collect(),
-        "switch" => positional.first().map(|n| Target::Switch { name: n.clone(), paths: false }).into_iter().collect(),
-        "checkout" => match (positional.as_slice(), after_dashes) {
-            ([], _) => Vec::new(),
-            ([tree, ..], Some(paths)) if !paths.is_empty() => vec![Target::Paths { tree: tree.clone(), paths, maybe_paths: false }],
-            ([name], Some(_)) => vec![Target::Switch { name: name.clone(), paths: false }],
-            ([name], None) => vec![Target::Switch { name: name.clone(), paths: true }],
-            ([tree, rest @ ..], _) => vec![Target::Paths { tree: tree.clone(), paths: rest.to_vec(), maybe_paths: true }],
-        },
-        "merge" if positional.is_empty() => vec![Target::Merged(vec!["@{upstream}".to_owned()])],
-        "merge" => vec![Target::Merged(positional)],
-        "am" if unread || positional.is_empty() => vec![Target::Mailbox(Vec::new())],
-        "am" => vec![Target::Mailbox(positional)],
-        "rebase" => {
-            let (upstream, branch) = (positional.first().cloned(), positional.get(1).cloned());
-            vec![Target::Replayed { onto, upstream: if root { None } else { upstream }, branch, root, keep_base }]
-        }
-        "cherry-pick" | "revert" => vec![Target::Picked { revs: positional, revert: sub == "revert" }],
-        _ => Vec::new(),
-    }
+    /// A command, or a form of one, Glowfly doesn't read (what it is).
+    Unmodeled(String),
 }
 
 /// `cmd`'s subcommand (`fetch` in `-c x=y fetch origin`).
@@ -151,36 +117,30 @@ pub(crate) fn sub_at(cmd: &[String]) -> Option<usize> {
 
 /// The trees and commits whose versions of the places `follows` names `target` brings into
 /// `repo`'s working tree, as git would resolve it now. Empty when it brings in none of them
-/// (a checkout of files only, a checkout of paths no hook runs from).
+/// (a checkout of files only, a checkout of paths no hook runs from). What its merges leave
+/// is compared by merged.rs.
 pub fn commits(repo: &Repository, follows: &[Follow], target: &Target) -> Result<Vec<Oid>, Unchecked> {
+    let base = repo.workdir().unwrap_or_else(|| repo.path());
     match target {
         Target::Commit(oid) => Ok(vec![*oid]),
         Target::Rev(spec) => Ok(vec![commit(repo, spec)?]),
-        Target::Merged(revs) => {
-            let mut out = Vec::new();
-            for r in revs {
-                if r == "FETCH_HEAD" {
-                    let heads = super::pull::fetched(repo).map_err(Unchecked::Unreadable)?;
-                    out.extend(heads.iter().map(|h| h.oid));
-                } else {
-                    out.push(commit(repo, r)?);
-                }
+        Target::Merged { revs, .. } => merge_heads(repo, revs),
+        Target::Patches { files, apply, mailbox } => {
+            let three_way = plumbing::config(repo, "am.threeWay", Some("bool")).map_err(Unchecked::Unreadable)?;
+            if *mailbox && three_way.as_deref() == Some("true") {
+                return Err(Unchecked::Unmodeled("git am with am.threeWay".to_owned()));
             }
-            Ok(out)
-        }
-        Target::Mailbox(files) if files.is_empty() => Err(Unchecked::Unknown),
-        Target::Mailbox(files) => {
-            let base = repo.workdir().unwrap_or_else(|| repo.path());
             for f in files {
-                if let Some(p) = super::patches::touched_in(&base.join(f), follows)? {
-                    return Err(Unchecked::Patched(p));
-                }
+                let check = if *mailbox { patches::check_mailbox } else { patches::check_patch };
+                check(repo, &base.join(f), apply, follows)?;
             }
             Ok(Vec::new())
         }
         Target::Switch { name, paths } => {
-            let branch = repo.find_reference(&format!("refs/heads/{name}")).ok().and_then(|r| r.peel_to_commit().ok());
-            if let Some(c) = branch.map(|c| c.id()).or_else(|| commit(repo, name).ok()) {
+            if let Ok(b) = plumbing::resolve(repo, &format!("refs/heads/{name}"), "commit") {
+                return Ok(vec![b]);
+            }
+            if let Ok(c) = commit(repo, name) {
                 return Ok(vec![c]);
             }
             if *paths && is_path(repo, name) {
@@ -191,74 +151,131 @@ pub fn commits(repo: &Repository, follows: &[Follow], target: &Target) -> Result
         }
         Target::Paths { tree, paths, maybe_paths } => {
             let reaches = paths.iter().any(|p| reaches(p, follows));
-            match repo.revparse_single(tree).ok().and_then(|o| o.peel_to_tree().ok()) {
-                Some(_) if !reaches => Ok(Vec::new()),
-                Some(t) => Ok(vec![t.id()]),
+            match plumbing::resolve(repo, tree, "tree") {
+                Ok(_) if !reaches => Ok(Vec::new()),
+                Ok(t) => Ok(vec![t]),
                 // `git checkout a.txt b.txt`: files from the index.
-                None if *maybe_paths && is_path(repo, tree) => Ok(Vec::new()),
-                None => Err(Unchecked::Unresolved(tree.clone())),
+                Err(_) if *maybe_paths && is_path(repo, tree) => {
+                    commits(repo, follows, &Target::Index([vec![tree.clone()], paths.clone()].concat()))
+                }
+                Err(e) => Err(e),
             }
         }
-        Target::Replayed { onto, upstream, branch, root, keep_base } => replayed(repo, onto, upstream, branch, *root, *keep_base),
-        Target::Picked { revs, revert } => {
-            let mut picked = Vec::new();
-            for r in revs {
-                if r.contains("..") || r.starts_with('^') {
-                    let mut w = repo.revwalk().map_err(|e| unreadable(&e))?;
-                    w.push_range(r).map_err(|_| Unchecked::Unresolved(r.clone()))?;
-                    picked.extend(listed(w)?);
-                } else {
-                    picked.push(commit(repo, r)?);
-                }
-            }
+        Target::Index(paths) if !paths.iter().any(|p| reaches(p, follows)) => Ok(Vec::new()),
+        // The index as a tree (objects only; an index with conflicts can't be one).
+        Target::Index(_) => repo.index().and_then(|mut i| i.write_tree()).map(|t| vec![t]).map_err(|e| unreadable(&e)),
+        Target::Stash { spec, index } => {
+            let stash = commit(repo, spec)?;
+            let c = repo.find_commit(stash).map_err(|e| unreadable(&e))?;
+            // Its untracked files (the third parent), and with --index its index (the second).
+            let mut out = vec![stash];
+            out.extend(c.parent_id(2).ok());
+            out.extend(c.parent_id(1).ok().filter(|_| *index));
+            Ok(out)
+        }
+        Target::Steps { onto, picks } => Ok(onto.iter().chain(picks.iter().flatten()).copied().collect()),
+        Target::Replayed { .. } => {
+            let r = replay(repo, target)?;
+            Ok([vec![r.tip], r.onto.into_iter().collect(), r.picks].concat())
+        }
+        Target::Picked { revs, revert, how } => {
+            let picked = picks(repo, revs, *revert, how)?;
             if *revert { parents(repo, &picked) } else { Ok(picked) }
         }
-        Target::Sequencer => sequencer(repo, follows),
+        Target::Applying if repo.path().join("rebase-apply/applying").exists() => {
+            patches::check_applying(repo, follows).map(|()| Vec::new())
+        }
+        Target::Applying => Ok(Vec::new()),
+        Target::Sequencer { .. } => Ok(sequencer::read(repo)?.commits),
     }
 }
 
-/// `Target::Replayed`'s commits: where it starts, the branch it checks out first, and every
-/// commit it replays.
-fn replayed(
-    repo: &Repository,
-    onto: &Option<String>,
-    upstream: &Option<String>,
-    branch: &Option<String>,
-    root: bool,
-    keep_base: bool,
-) -> Result<Vec<Oid>, Unchecked> {
-    let upstream = match upstream {
-        Some(u) => Some(commit(repo, u)?),
-        None if root => None,
-        None => Some(commit(repo, "@{upstream}")?),
-    };
-    let tip = match branch {
-        Some(b) => commit(repo, b)?,
-        None => commit(repo, "HEAD")?,
-    };
-    let mut out = vec![tip];
-    match (onto, upstream) {
-        (Some(o), _) => out.push(commit(repo, o)?),
-        (None, Some(u)) if keep_base => out.push(repo.merge_base(u, tip).map_err(|e| unreadable(&e))?),
-        (None, Some(u)) => out.push(u),
-        (None, None) => {}
+/// The commits a merge of `revs` takes.
+pub(super) fn merge_heads(repo: &Repository, revs: &[String]) -> Result<Vec<Oid>, Unchecked> {
+    let mut out = Vec::new();
+    for r in revs {
+        if r == "FETCH_HEAD" {
+            for h in super::pull::fetched(repo).map_err(Unchecked::Unreadable)? {
+                out.push(commit(repo, &h.oid.to_string())?);
+            }
+        } else {
+            out.push(commit(repo, r)?);
+        }
     }
-    out.extend(walk(repo, &[tip], upstream.as_slice())?);
     Ok(out)
+}
+
+/// What a rebase replays and where.
+pub(super) struct Replay {
+    /// The branch it checks out first (HEAD when it names none).
+    pub tip: Oid,
+    /// Where it starts (None: a new root, `--root` without `--onto`).
+    pub onto: Option<Oid>,
+    /// The commits it picks, in order, as git lists them (merges dropped, and those upstream
+    /// has already unless `--reapply-cherry-picks`).
+    pub picks: Vec<Oid>,
+}
+
+/// `Target::Replayed`'s replay, listed by `git rev-list` the way git rebase lists it: the
+/// commits in `upstream...branch` on the branch's side, without merges, oldest first, and
+/// with the upstream named by default, after its fork point unless `rebase.forkPoint` is off.
+pub(super) fn replay(repo: &Repository, target: &Target) -> Result<Replay, Unchecked> {
+    let Target::Replayed { onto, upstream, branch, root, keep_base, how } = target else {
+        return Err(Unchecked::Unmodeled("a replay".to_owned()));
+    };
+    if plumbing::config(repo, "rebase.backend", None).map_err(Unchecked::Unreadable)?.as_deref() == Some("apply") {
+        return Err(Unchecked::Unmodeled("git rebase with rebase.backend=apply".to_owned()));
+    }
+    let branch_spec = branch.clone().unwrap_or_else(|| "HEAD".to_owned());
+    let tip = commit(repo, &branch_spec)?;
+    let named = upstream.clone().unwrap_or_else(|| "@{upstream}".to_owned());
+    let up = if *root { None } else { Some(commit(repo, &named)?) };
+    let start = match (onto, up) {
+        (Some(o), _) => Some(commit(repo, o)?),
+        (None, Some(u)) if *keep_base => Some(repo.merge_base(u, tip).map_err(|e| unreadable(&e))?),
+        (None, Some(u)) => Some(u),
+        (None, None) => None,
+    };
+    let mut list: Vec<String> = ["--reverse", "--topo-order", "--no-merges"].map(str::to_owned).to_vec();
+    match up {
+        Some(u) => {
+            list.push("--right-only".to_owned());
+            if !how.reapply {
+                list.push("--cherry-pick".to_owned());
+            }
+            list.push(format!("{u}...{tip}"));
+            let config = plumbing::config(repo, "rebase.forkPoint", Some("bool")).map_err(Unchecked::Unreadable)?;
+            let fork = how.fork_point.unwrap_or(upstream.is_none() && !*keep_base && config.as_deref() != Some("false"));
+            if fork && let Some(f) = plumbing::fork_point(repo, &named, &branch_spec) {
+                list.push(format!("^{f}"));
+            }
+        }
+        None => list.push(tip.to_string()),
+    }
+    Ok(Replay { tip, onto: start, picks: plumbing::rev_list(repo, &list)? })
+}
+
+/// The commits a cherry-pick or revert of `revs` takes, in the order it takes them: each named
+/// one as given, or with a range or rev-list option the walk git makes (oldest first for a
+/// cherry-pick, newest first for a revert).
+pub(super) fn picks(repo: &Repository, revs: &[String], revert: bool, how: &How) -> Result<Vec<Oid>, Unchecked> {
+    let walks = !how.walk.is_empty() || revs.iter().any(|r| r.contains("..") || r.starts_with('^'));
+    if !walks {
+        return revs.iter().map(|r| commit(repo, r)).collect();
+    }
+    let mut list: Vec<String> = if revert { Vec::new() } else { vec!["--reverse".to_owned()] };
+    list.extend(how.walk.iter().cloned());
+    list.extend(revs.iter().cloned());
+    plumbing::rev_list(repo, &list)
 }
 
 fn unreadable(e: &git2::Error) -> Unchecked {
     Unchecked::Unreadable(e.message().to_owned())
 }
 
-/// The commit `spec` names, as libgit2 parses it. A search by message (`:/text`,
-/// `rev^{/text}`) is Unresolved: libgit2 and git can find different commits for it.
-fn commit(repo: &Repository, spec: &str) -> Result<Oid, Unchecked> {
-    if spec.contains(":/") || spec.contains("{/") {
-        return Err(Unchecked::Unresolved(spec.to_owned()));
-    }
-    let found = repo.revparse_single(spec).ok().and_then(|o| o.peel_to_commit().ok());
-    found.map(|c| c.id()).ok_or_else(|| Unchecked::Unresolved(spec.to_owned()))
+/// The commit `spec` names, as git resolves it now.
+pub(super) fn commit(repo: &Repository, spec: &str) -> Result<Oid, Unchecked> {
+    plumbing::resolve(repo, spec, "commit")
 }
 
 /// Whether `name` is a file git would check out instead (in the index or the working tree).
@@ -301,82 +318,12 @@ fn reaches(p: &str, follows: &[Follow]) -> bool {
     follow::touches(p, follows)
 }
 
-/// The commits reachable from `push` and not from `hide`. However many there are, each is
-/// compared only where hooks run from (a few tree reads each, compare.rs).
-fn walk(repo: &Repository, push: &[Oid], hide: &[Oid]) -> Result<Vec<Oid>, Unchecked> {
-    let mut w = repo.revwalk().map_err(|e| unreadable(&e))?;
-    for p in push {
-        w.push(*p).map_err(|e| unreadable(&e))?;
-    }
-    for h in hide {
-        w.hide(*h).map_err(|e| unreadable(&e))?;
-    }
-    listed(w)
-}
-
-/// The walk's commits, oldest first (the order a replay applies them in).
-pub(super) fn listed(mut w: git2::Revwalk<'_>) -> Result<Vec<Oid>, Unchecked> {
-    let _ = w.set_sorting(Sort::TOPOLOGICAL | Sort::REVERSE);
-    w.map(|oid| oid.map_err(|e| unreadable(&e))).collect()
-}
-
 /// The parents of each of `commits`: the versions a revert brings back.
-fn parents(repo: &Repository, commits: &[Oid]) -> Result<Vec<Oid>, Unchecked> {
+pub(super) fn parents(repo: &Repository, commits: &[Oid]) -> Result<Vec<Oid>, Unchecked> {
     let mut out = Vec::new();
     for c in commits {
         out.extend(repo.find_commit(*c).map_err(|e| unreadable(&e))?.parent_ids());
     }
-    Ok(out)
-}
-
-/// The commits the steps left in the sequencer in progress take: a rebase's todo (with its
-/// `onto`) or a cherry-pick's or revert's (each revert step's parents); for an `am` or an
-/// `am`-style rebase (`rebase-apply`), the patches left (held when one writes where hooks run
-/// from). A step naming a commit that doesn't resolve, or a step Glowfly doesn't know, is
-/// Unresolved.
-fn sequencer(repo: &Repository, follows: &[Follow]) -> Result<Vec<Oid>, Unchecked> {
-    let git = repo.path();
-    let mut out = Vec::new();
-    for onto in ["rebase-merge/onto", "rebase-apply/onto"] {
-        if let Ok(onto) = std::fs::read_to_string(git.join(onto)) {
-            out.push(commit(repo, onto.trim())?);
-        }
-    }
-    let apply = git.join("rebase-apply");
-    if apply.exists() {
-        let number = |f: &str| std::fs::read_to_string(apply.join(f)).ok().and_then(|t| t.trim().parse::<u32>().ok());
-        let (Some(next), Some(last)) = (number("next"), number("last")) else { return Err(Unchecked::Unknown) };
-        for n in next..=last {
-            let patch = apply.join(format!("{n:04}"));
-            if patch.exists()
-                && let Some(p) = super::patches::touched_in(&patch, follows)?
-            {
-                return Err(Unchecked::Patched(p));
-            }
-        }
-    }
-    let mut reverts = Vec::new();
-    for todo in ["rebase-merge/git-rebase-todo", "sequencer/todo"] {
-        let Ok(text) = std::fs::read_to_string(git.join(todo)) else { continue };
-        for line in text.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')) {
-            let verb = line.split_whitespace().next().unwrap_or_default();
-            let mut args = line.split_whitespace().skip(1).filter(|w| !w.starts_with('-'));
-            let named = match verb {
-                "pick" | "p" | "reword" | "r" | "edit" | "e" | "squash" | "s" | "fixup" | "f" | "revert" => args.next(),
-                // `merge -C <commit> <label>`: its commit, when it names one; the labels are
-                // commits rewritten earlier in the same rebase, compared as those steps.
-                "merge" | "m" => line.split_whitespace().skip_while(|w| !matches!(*w, "-C" | "-c")).nth(1),
-                // `reset <label>` is a step rewritten earlier; `reset <commit>` takes that commit.
-                "reset" | "t" => args.next().filter(|w| w.len() >= 7 && w.bytes().all(|b| b.is_ascii_hexdigit())),
-                "drop" | "d" | "exec" | "x" | "break" | "b" | "label" | "l" | "update-ref" | "u" | "noop" => None,
-                _ => return Err(Unchecked::Unresolved(line.to_owned())),
-            };
-            let Some(word) = named else { continue };
-            let oid = commit(repo, word)?;
-            if verb == "revert" { reverts.push(oid) } else { out.push(oid) }
-        }
-    }
-    out.extend(parents(repo, &reverts)?);
     Ok(out)
 }
 
@@ -391,6 +338,9 @@ pub fn allows(saved: Option<&SavedTrust>, incoming: &TrustScan) -> bool {
     }
 }
 
+#[cfg(test)]
+#[path = "incoming_more_tests.rs"]
+mod more_tests;
 #[cfg(test)]
 #[path = "incoming_tests.rs"]
 mod tests;

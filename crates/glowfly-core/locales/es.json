@@ -2496,7 +2496,7 @@
   "trust.stale.terminal": "El terminal",
   "trust.unchecked.conflicted": "Fusionar lo que trae daría un conflicto en {path}, desde donde se ejecutan hooks, y dejaría marcas de conflicto en un hook. Confiar y ejecutar lo ejecuta de todos modos.",
   "trust.unchecked.patched": "Un parche que aplica escribe {path}, desde donde se ejecutan hooks, y git ejecutaría lo que escribe. Confiar y ejecutar lo ejecuta de todos modos.",
-  "trust.unchecked.unknown": "Glowfly no puede saber qué escribe esta forma del comando donde se ejecutan hooks, así que no se comparó con lo que confiaste. Confiar y ejecutar lo ejecuta de todos modos.",
+  "trust.unchecked.unmodeled": "Glowfly no puede saber qué escribe {what} donde se ejecutan hooks, así que no se comparó con lo que confiaste. Confiar y ejecutar lo ejecuta de todos modos.",
   "trust.unchecked.unreadable": "Glowfly no pudo leer los commits que esto trae ({error}), como ocurre en un clon parcial, así que sus hooks no se compararon con lo que confiaste. Confiar y ejecutar lo ejecuta de todos modos; o tráelos primero con los hooks desactivados (git -c core.hooksPath= fetch).",
   "trust.unchecked.unresolved": "Glowfly no puede saber qué commit nombra {rev} como lo haría git, así que los hooks que trae no se compararon con lo que confiaste. Confiar y ejecutar lo ejecuta de todos modos.",
   "undo.preview.abort_again": "La cancela de nuevo, guardando su trabajo",

@@ -40,8 +40,12 @@ fn both_trusted(repo: &Repository) -> (Vec<Follow>, SavedTrust) {
     (now.follows, SavedTrust::trusted(Some(print)))
 }
 
-fn merge_side(repo: &Repository) -> Vec<Step> {
-    steps(repo, &Target::Merged(vec!["side".into()])).unwrap()
+fn merge_side(repo: &Repository) -> Chain {
+    merge(repo, How::default())
+}
+
+fn merge(repo: &Repository, how: How) -> Chain {
+    steps(repo, &Target::Merged { revs: vec!["side".into()], how }).unwrap().expect("a merge")
 }
 
 fn cleanup(dir: &Path) {
@@ -61,8 +65,22 @@ fn a_merge_of_two_trusted_versions_that_makes_a_third_is_held() {
         other => panic!("held: {other:?}"),
     }
     // A cherry-pick of side's commit makes the same third version.
-    let picks = steps(&repo, &Target::Picked { revs: vec!["side".into()], revert: false }).unwrap();
+    let picks = steps(&repo, &Target::Picked { revs: vec!["side".into()], revert: false, how: How::default() }).unwrap().unwrap();
     assert!(matches!(check(&repo, &follows, Some(&saved), &picks), Err(Refused::Held(_))));
+    // So does replaying main's commit onto side, in a rebase or from the rebase panel.
+    let replay =
+        Target::Replayed { onto: None, upstream: Some("side".into()), branch: None, root: false, keep_base: false, how: How::default() };
+    assert!(matches!(check(&repo, &follows, Some(&saved), &steps(&repo, &replay).unwrap().unwrap()), Err(Refused::Held(_))));
+    let main = repo.head().unwrap().target().unwrap();
+    let panel = Target::Steps { onto: Some(side), picks: Some(vec![main]) };
+    assert!(matches!(check(&repo, &follows, Some(&saved), &steps(&repo, &panel).unwrap().unwrap()), Err(Refused::Held(_))));
+    assert!(matches!(steps(&repo, &Target::Steps { onto: Some(side), picks: None }), Err(Unchecked::Unmodeled(_))));
+    // An octopus merge isn't made here.
+    let octopus = Target::Merged { revs: vec!["side".into(), "side~1".into()], how: How::default() };
+    assert!(matches!(steps(&repo, &octopus), Err(Unchecked::Unmodeled(_))));
+    // `-s ours` keeps HEAD's tree.
+    let ours = How { strategy: Some("ours".into()), ..How::default() };
+    assert_eq!(steps(&repo, &Target::Merged { revs: vec!["side".into()], how: ours }), Ok(None));
     cleanup(&dir);
 }
 
@@ -77,7 +95,34 @@ fn a_merge_that_conflicts_in_the_hooks_folder_is_held_as_conflicted() {
     let (follows, saved) = both_trusted(&repo);
     let got = check(&repo, &follows, Some(&saved), &merge_side(&repo));
     assert_eq!(got, Err(Refused::Unchecked(Unchecked::Conflicted(".githooks/post-merge".into()))));
+    // With -X theirs git resolves the conflict (into a third version): the option is honoured.
+    let theirs = How { xopts: vec!["theirs".into()], ..How::default() };
+    assert!(matches!(check(&repo, &follows, Some(&saved), &merge(&repo, theirs)), Err(Refused::Held(_))));
     cleanup(&dir);
+}
+
+#[test]
+fn a_conflict_elsewhere_still_compares_the_hooks_as_merged() {
+    let dir = diverged("merged-elsewhere", "echo mine");
+    for (branch, text) in [
+        (
+            "side", "theirs
+",
+        ),
+        (
+            "main", "mine
+",
+        ),
+    ] {
+        git(&dir, &["checkout", "-q", branch]);
+        std::fs::write(dir.join("a.txt"), text).unwrap();
+        git(&dir, &["add", "."]);
+        git(&dir, &["-c", "core.hooksPath=", "commit", "-q", "-m", "a"]);
+    }
+    let repo = Repository::open(&dir).unwrap();
+    let (follows, saved) = both_trusted(&repo);
+    // git stops at a.txt's conflict, but it has written the merged hook already.
+    assert!(matches!(check(&repo, &follows, Some(&saved), &merge_side(&repo)), Err(Refused::Held(_))));
 }
 
 #[test]

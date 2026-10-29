@@ -12,10 +12,12 @@ mod digest;
 use digest::Reading;
 pub mod compare;
 pub mod follow;
+mod home;
 pub mod incoming;
 pub mod merged;
-mod patches;
+pub mod plumbing;
 pub mod pull;
+use home::home_expanded;
 mod stamp;
 pub use stamp::stamp;
 mod print;
@@ -303,21 +305,11 @@ fn runs_transport(url: &str) -> bool {
     url.get(..5).is_some_and(|p| p.eq_ignore_ascii_case("ext::"))
 }
 
-/// `core.hooksPath` with a leading `~` expanded as git expands it: `~` and `~/x` from the home
-/// folder, `~user/x` from that user's, beside the home folder. Without a home folder it stays
-/// as written (a folder named `~` in the working tree).
-fn home_expanded(v: &str, home: Option<&Path>) -> PathBuf {
-    let Some(rest) = v.strip_prefix('~') else { return PathBuf::from(v) };
-    let Some(home) = home else { return PathBuf::from(v) };
-    let (user, path) = rest.split_once(std::path::is_separator).unwrap_or((rest, ""));
-    let base = if user.is_empty() { home.to_path_buf() } else { home.parent().unwrap_or(home).join(user) };
-    if path.is_empty() { base } else { base.join(path) }
-}
-
 /// The folder git takes hooks from. `local` is the repository's own core.hooksPath, if set.
 fn hooks_dir(repo: &Repository, config: Option<&Config>, local: Option<String>) -> Option<PathBuf> {
     if let Some(v) = local {
-        let p = home_expanded(&v, crate::settings::home_dir().as_deref());
+        // A home that can't be found: hooks may be anywhere, so the whole working tree follows.
+        let Some(p) = home_expanded(&v, crate::settings::home_dir().as_deref()) else { return repo.workdir().map(Path::to_path_buf) };
         if p.is_absolute() {
             return Some(p);
         }

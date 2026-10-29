@@ -7,7 +7,11 @@ use crate::testutil::*;
 use crate::trust::TrustScan;
 
 fn of(a: &[&str]) -> Vec<Target> {
-    targets(&args(a))
+    targets(&args(a)).unwrap()
+}
+
+fn unmodeled(a: &[&str]) -> bool {
+    matches!(targets(&args(a)), Err(Unchecked::Unmodeled(_)))
 }
 
 fn rev(s: &str) -> Target {
@@ -20,16 +24,25 @@ fn switch(s: &str, paths: bool) -> Target {
 
 fn replayed(onto: Option<&str>, upstream: Option<&str>, branch: Option<&str>) -> Target {
     let s = |v: Option<&str>| v.map(str::to_owned);
-    Target::Replayed { onto: s(onto), upstream: s(upstream), branch: s(branch), root: false, keep_base: false }
+    Target::Replayed { onto: s(onto), upstream: s(upstream), branch: s(branch), root: false, keep_base: false, how: How::default() }
+}
+
+fn merged(revs: &[&str]) -> Target {
+    Target::Merged { revs: args(revs), how: How::default() }
+}
+
+fn picked(revs: &[&str], revert: bool, how: How) -> Target {
+    Target::Picked { revs: args(revs), revert, how }
+}
+
+fn patches(file: &str, apply: &[&str], mailbox: bool) -> Target {
+    Target::Patches { files: args(&[file]), apply: args(apply), mailbox }
 }
 
 /// A scratch repository with one commit.
 fn committed(name: &str) -> std::path::PathBuf {
     let dir = scratch_repo(name);
-    write(
-        &dir, "a.txt", "one
-",
-    );
+    write(&dir, "a.txt", "one\n");
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "first"]);
     dir
@@ -43,21 +56,32 @@ fn the_commands_that_move_the_working_tree_name_what_they_bring() {
     assert_eq!(of(&["checkout", "--track", "origin/x", "--"]), [switch("origin/x", false)]);
     assert_eq!(of(&["checkout", "-b", "new", "origin/x"]), [rev("origin/x")]);
     assert_eq!(of(&["checkout", "-b", "new"]), [], "a new branch at HEAD");
-    assert_eq!(of(&["checkout", "--", "a.txt"]), [], "files from the index");
+    assert_eq!(of(&["checkout", "--", "a.txt"]), [Target::Index(args(&["a.txt"]))], "files from the index");
     let paths = |tree: &str, p: &[&str], maybe| Target::Paths { tree: tree.into(), paths: args(p), maybe_paths: maybe };
     assert_eq!(of(&["checkout", "v1", "--", ".githooks"]), [paths("v1", &[".githooks"], false)]);
     assert_eq!(of(&["checkout", "v1", "a.txt"]), [paths("v1", &["a.txt"], true)]);
+    assert_eq!(of(&["restore", "--source=v1", "--", ".githooks"]), [paths("v1", &[".githooks"], false)]);
+    assert_eq!(of(&["restore", "-s", "v1", "x"]), [paths("v1", &["x"], false)], "-s is restore's source");
+    assert_eq!(of(&["restore", ".githooks"]), [Target::Index(args(&[".githooks"]))]);
+    assert_eq!(of(&["restore", "--staged", "x"]), [], "the index only");
     assert_eq!(of(&["switch", "-c", "new", "v1"]), [rev("v1")]);
     assert_eq!(of(&["switch", "topic"]), [switch("topic", false)]);
     assert_eq!(of(&["checkout", "-"]), [switch("@{-1}", true)]);
-    assert_eq!(of(&["merge", "--no-ff", "-m", "msg", "topic", "other"]), [Target::Merged(args(&["topic", "other"]))]);
-    assert_eq!(of(&["merge"]), [Target::Merged(args(&["@{upstream}"]))]);
-    assert_eq!(of(&["merge", "FETCH_HEAD"]), [Target::Merged(args(&["FETCH_HEAD"]))]);
-    assert_eq!(of(&["am", "--3way", "/p/x.patch"]), [Target::Mailbox(args(&["/p/x.patch"]))]);
-    assert_eq!(of(&["am", "--continue"]), [Target::Sequencer]);
-    assert_eq!(of(&["am", "--skip"]), [Target::Sequencer]);
-    assert_eq!(of(&["am", "-p2", "x.patch"]), [Target::Mailbox(Vec::new())], "other paths: not read");
-    assert_eq!(of(&["am", "--directory=.githooks", "x.patch"]), [Target::Mailbox(Vec::new())]);
+    assert_eq!(of(&["merge", "--no-ff", "-m", "msg", "topic", "other"]), [merged(&["topic", "other"])]);
+    assert_eq!(of(&["merge"]), [merged(&["@{upstream}"])]);
+    assert_eq!(of(&["merge", "FETCH_HEAD"]), [merged(&["FETCH_HEAD"])]);
+    let x = How { xopts: args(&["ours", "patience"]), ..How::default() };
+    assert_eq!(of(&["merge", "-Xours", "--strategy-option=patience", "t"]), [Target::Merged { revs: args(&["t"]), how: x }]);
+    assert!(unmodeled(&["merge", "-s", "resolve", "t"]), "a strategy git merge-tree doesn't make");
+    assert_eq!(of(&["am", "/p/x.patch", "/p/y.patch"]), [patches("/p/x.patch", &[], true), patches("/p/y.patch", &[], true)]);
+    assert_eq!(of(&["am", "-p2", "--directory=.githooks", "x.patch"]), [patches("x.patch", &["-p2", "--directory=.githooks"], true)]);
+    assert!(unmodeled(&["am", "--3way", "x.patch"]), "a three-way fallback isn't read");
+    assert!(unmodeled(&["am", "--patch-format=stgit", "x.patch"]));
+    assert!(unmodeled(&["am"]), "patches from standard input");
+    assert_eq!(of(&["apply", "x.patch"]), [patches("x.patch", &[], false)]);
+    assert_eq!(of(&["apply", "--cached", "x.patch"]), [], "the index only");
+    assert_eq!(of(&["am", "--continue"]), [Target::Applying, Target::Sequencer { skip: false }]);
+    assert_eq!(of(&["am", "--skip"]), [Target::Applying, Target::Sequencer { skip: true }]);
     assert_eq!(of(&["merge", "--abort"]), []);
     assert_eq!(of(&["rebase", "main"]), [replayed(None, Some("main"), None)]);
     assert_eq!(of(&["rebase", "main", "topic"]), [replayed(None, Some("main"), Some("topic"))], "topic is checked out first");
@@ -65,12 +89,46 @@ fn the_commands_that_move_the_working_tree_name_what_they_bring() {
     assert_eq!(of(&["rebase", "--onto=v2", "v1", "topic"]), [replayed(Some("v2"), Some("v1"), Some("topic"))]);
     assert_eq!(of(&["rebase"]), [replayed(None, None, None)]);
     assert!(matches!(of(&["rebase", "--root"]).as_slice(), [Target::Replayed { root: true, upstream: None, .. }]));
-    assert_eq!(of(&["rebase", "--continue"]), [Target::Sequencer]);
-    assert_eq!(of(&["cherry-pick", "--skip"]), [Target::Sequencer]);
-    assert_eq!(of(&["cherry-pick", "-x", "a..b", "c"]), [Target::Picked { revs: args(&["a..b", "c"]), revert: false }]);
-    assert_eq!(of(&["revert", "-m", "1", "c"]), [Target::Picked { revs: args(&["c"]), revert: true }]);
+    for apply in [&["rebase", "--apply", "main"][..], &["rebase", "-C2", "main"], &["rebase", "-i", "main"], &["rebase", "-r", "main"]] {
+        assert!(unmodeled(apply), "{apply:?}");
+    }
+    assert_eq!(of(&["rebase", "--continue"]), [Target::Applying, Target::Sequencer { skip: false }]);
+    assert_eq!(of(&["cherry-pick", "--skip"]), [Target::Applying, Target::Sequencer { skip: true }]);
+    assert_eq!(of(&["cherry-pick", "-x", "-s", "a..b", "c"]), [picked(&["a..b", "c"], false, How::default())], "-s signs off");
+    let m = How { mainline: Some(1), ..How::default() };
+    assert_eq!(of(&["revert", "-m", "1", "c"]), [picked(&["c"], true, m)]);
+    let walk = How { walk: args(&["--branches", "--not"]), ..How::default() };
+    assert_eq!(of(&["cherry-pick", "--branches", "--not", "main"]), [picked(&["main"], false, walk)], "rev-list options go to git");
+    assert!(unmodeled(&["cherry-pick", "--stdin"]));
+    assert_eq!(of(&["stash", "pop", "--index", "1"]), [Target::Stash { spec: "stash@{1}".into(), index: true }]);
+    assert_eq!(of(&["stash", "apply"]), [Target::Stash { spec: "stash@{0}".into(), index: false }]);
+    assert_eq!(of(&["stash", "push", "-u"]), []);
+    assert_eq!(of(&["reset", "--hard", "v1"]), [rev("v1")]);
+    assert_eq!(of(&["reset", "v1"]), [], "the index only");
     assert_eq!(of(&["-c", "x=y", "pull", "--rebase"]), [], "pinned by pull.rs");
     assert_eq!(of(&["commit", "-m", "x"]), []);
+    assert_eq!(of(&["lfs", "fetch"]), []);
+    assert_eq!(of(&["worktree", "remove", "x"]), []);
+}
+
+#[test]
+fn a_command_glowfly_doesn_t_read_is_held() {
+    for cmd in [
+        &["bisect", "good"][..],
+        &["my-alias"],
+        &["submodule", "update", "--init"],
+        &["worktree", "add", "../x"],
+        &["lfs", "pull"],
+        &["sparse-checkout", "set", "x"],
+        &["stash", "frobnicate"],
+        &["read-tree", "-u", "HEAD"],
+        &["-c", "core.hooksPath=/elsewhere", "commit"],
+        &["-c", "Core.HooksPath=x", "status"],
+        &["--work-tree=/x", "checkout", "main"],
+        &["-C", "/x", "status"],
+    ] {
+        assert!(unmodeled(cmd), "{cmd:?}");
+    }
 }
 
 #[test]
@@ -91,8 +149,9 @@ fn a_checkout_resolves_its_name_the_way_git_does() {
     git(&work, &["tag", "dup", &only.to_string()]);
     git(&work, &["branch", "dup", "main"]);
     assert_eq!(get(&switch("dup", false)), Ok(vec![head]));
-    // libgit2 doesn't know `@{push}`: held.
-    assert!(matches!(get(&rev("@{push}")), Err(Unchecked::Unresolved(_))));
+    // `@{push}`, which libgit2 can't resolve, as git resolves it.
+    let push = repo.revparse_single("refs/remotes/origin/main").unwrap().id();
+    assert_eq!(get(&rev("@{push}")), Ok(vec![push]));
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }
@@ -136,9 +195,9 @@ fn a_replay_lists_every_commit_it_replays_and_where_it_starts() {
     let got = commits(&repo, &[], &replayed(None, Some("main"), Some("topic"))).unwrap();
     assert_eq!(got.len(), 5, "topic's tip (checked out first), main, then the three replayed: {got:?}");
     assert!(got.contains(&id("topic~2")) && got.contains(&id("main")));
-    let picked = commits(&repo, &[], &Target::Picked { revs: args(&["main..topic"]), revert: false }).unwrap();
-    assert_eq!(picked.len(), 3);
-    let reverted = commits(&repo, &[], &Target::Picked { revs: args(&["topic"]), revert: true }).unwrap();
+    let range = commits(&repo, &[], &picked(&["main..topic"], false, How::default())).unwrap();
+    assert_eq!(range.len(), 3);
+    let reverted = commits(&repo, &[], &picked(&["topic"], true, How::default())).unwrap();
     assert_eq!(reverted, [id("topic~1")], "a revert brings back the parent's version");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -175,96 +234,7 @@ fn a_long_replay_is_compared_commit_by_commit_where_hooks_run_from() {
     let saved = SavedTrust::trusted(Some(now.print()));
     let first = repo.revparse_single("long~1400").unwrap().id();
     assert_eq!(super::super::compare::check(&repo, &follows, Some(&saved), &[first]), Ok(()), "a plain one is covered");
-    let got = super::super::compare::check_targets(&repo, &follows, Some(&saved), &[target]);
+    let got = super::super::compare::check_targets(&repo, &follows, Some(&saved), &[target], None);
     assert!(matches!(got, Err(super::super::compare::Refused::Held(_))), "{got:?}");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn a_mailbox_that_writes_where_hooks_run_from_is_held() {
-    let dir = committed("incoming-am");
-    let repo = Repository::open(&dir).unwrap();
-    let mail = "From 0 Mon Sep 17 00:00:00 2001\nSubject: [PATCH] x\n\n---\n\
-        diff --git a/.GitHooks/post-applypatch b/.GitHooks/post-applypatch\nnew file mode 100755\n\
-        --- /dev/null\n+++ b/.GitHooks/post-applypatch\n@@ -0,0 +1 @@\n+echo hi\n";
-    write(&dir, "hooks.patch", mail);
-    write(&dir, "plain.patch", &mail.replace(".GitHooks/post-applypatch", "src/x.txt"));
-    let follows = hooks_follow();
-    let held = commits(&repo, &follows, &Target::Mailbox(args(&["hooks.patch"])));
-    assert_eq!(held, Err(Unchecked::Patched(".GitHooks/post-applypatch".into())), "any spelling the volume folds");
-    assert_eq!(commits(&repo, &follows, &Target::Mailbox(args(&["plain.patch"]))), Ok(vec![]));
-    assert!(matches!(commits(&repo, &follows, &Target::Mailbox(args(&["missing.patch"]))), Err(Unchecked::Unreadable(_))));
-    assert_eq!(commits(&repo, &follows, &Target::Mailbox(Vec::new())), Err(Unchecked::Unknown));
-    // `am --continue`: the patches left in rebase-apply.
-    let apply = repo.path().join("rebase-apply");
-    std::fs::create_dir_all(&apply).unwrap();
-    std::fs::write(apply.join("next"), "2\n").unwrap();
-    std::fs::write(apply.join("last"), "2\n").unwrap();
-    std::fs::write(apply.join("0001"), mail).unwrap();
-    std::fs::write(apply.join("0002"), mail.replace(".GitHooks/post-applypatch", "src/x.txt")).unwrap();
-    assert_eq!(commits(&repo, &follows, &Target::Sequencer), Ok(vec![]), "the one applied already doesn't count");
-    std::fs::write(apply.join("next"), "1\n").unwrap();
-    assert!(matches!(commits(&repo, &follows, &Target::Sequencer), Err(Unchecked::Patched(_))));
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn a_todo_step_that_doesn_t_resolve_is_unresolved() {
-    let dir = committed("incoming-todo");
-    let repo = Repository::open(&dir).unwrap();
-    let head = repo.head().unwrap().target().unwrap();
-    let todo = repo.path().join("rebase-merge");
-    std::fs::create_dir_all(&todo).unwrap();
-    std::fs::write(todo.join("onto"), format!("{head}\n")).unwrap();
-    let write_todo = |text: &str| std::fs::write(todo.join("git-rebase-todo"), text).unwrap();
-    write_todo(&format!("pick {head} x\nlabel l\nreset l\nexec make\nmerge -C {head} l # m\n"));
-    assert_eq!(commits(&repo, &[], &Target::Sequencer), Ok(vec![head, head, head]));
-    write_todo("pick deadbeefdeadbeef x\n");
-    assert_eq!(commits(&repo, &[], &Target::Sequencer), Err(Unchecked::Unresolved("deadbeefdeadbeef".into())));
-    write_todo("frobnicate x\n");
-    assert!(matches!(commits(&repo, &[], &Target::Sequencer), Err(Unchecked::Unresolved(_))), "a step Glowfly doesn't know");
-    // A search by message: libgit2 and git can find different commits.
-    assert_eq!(commits(&repo, &[], &rev(":/first")), Err(Unchecked::Unresolved(":/first".into())));
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn a_merge_of_fetch_head_takes_every_commit_marked_for_merging() {
-    let dir = committed("incoming-fetch-head");
-    let repo = Repository::open(&dir).unwrap();
-    let head = repo.head().unwrap().target().unwrap();
-    let other = repo.blob(b"x").unwrap();
-    let a = repo
-        .commit(
-            None,
-            &repo.signature().unwrap(),
-            &repo.signature().unwrap(),
-            "a",
-            &repo.head().unwrap().peel_to_tree().unwrap(),
-            &[&repo.find_commit(head).unwrap()],
-        )
-        .unwrap();
-    std::fs::write(
-        repo.path().join("FETCH_HEAD"),
-        format!("{head}\t\tbranch 'main' of x\n{a}\t\tbranch 'b' of x\n{other}\tnot-for-merge\tbranch 'c' of x\n"),
-    )
-    .unwrap();
-    assert_eq!(commits(&repo, &[], &Target::Merged(args(&["FETCH_HEAD"]))), Ok(vec![head, a]));
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn a_checkout_of_paths_compares_the_tree_only_when_they_reach_the_hooks() {
-    let dir = committed("incoming-paths");
-    let repo = Repository::open(&dir).unwrap();
-    let follows = [Follow { path: ".githooks".into(), tracked: None, hooks: true }];
-    let paths = |p: &[&str]| Target::Paths { tree: "HEAD".into(), paths: args(p), maybe_paths: false };
-    let tree = repo.head().unwrap().peel_to_tree().unwrap().id();
-    assert_eq!(commits(&repo, &follows, &paths(&["a.txt"])), Ok(vec![]));
-    assert_eq!(commits(&repo, &follows, &paths(&[".githooks/post-checkout"])), Ok(vec![tree]));
-    assert_eq!(commits(&repo, &follows, &paths(&["."])), Ok(vec![tree]), "the whole tree");
-    assert_eq!(commits(&repo, &follows, &paths(&["*.sh"])), Ok(vec![tree]), "a wildcard may reach them");
-    let missing = Target::Paths { tree: "nope".into(), paths: args(&[".githooks"]), maybe_paths: false };
-    assert!(commits(&repo, &follows, &missing).is_err());
     let _ = std::fs::remove_dir_all(&dir);
 }

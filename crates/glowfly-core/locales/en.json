@@ -2496,7 +2496,7 @@
   "trust.stale.terminal": "The terminal",
   "trust.unchecked.conflicted": "Merging what it brings in would conflict in {path}, where hooks run from, leaving conflict markers in a hook. Trust and run runs it anyway.",
   "trust.unchecked.patched": "A patch it applies writes {path}, where hooks run from, and git would run what it writes. Trust and run runs it anyway.",
-  "trust.unchecked.unknown": "Glowfly can't tell what this form of the command writes where hooks run from, so it wasn't compared with what you trusted. Trust and run runs it anyway.",
+  "trust.unchecked.unmodeled": "Glowfly can't tell what {what} writes where hooks run from, so it wasn't compared with what you trusted. Trust and run runs it anyway.",
   "trust.unchecked.unreadable": "Glowfly couldn't read the commits it brings in ({error}), as happens in a partial clone, so their hooks weren't compared with what you trusted. Trust and run runs it anyway; or fetch them first with hooks turned off (git -c core.hooksPath= fetch).",
   "trust.unchecked.unresolved": "Glowfly can't tell which commit {rev} names the way git would, so the hooks it brings in weren't compared with what you trusted. Trust and run runs it anyway.",
   "undo.preview.abort_again": "Aborts it again, keeping its work",

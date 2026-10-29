@@ -2496,7 +2496,7 @@
   "trust.stale.terminal": "Das Terminal",
   "trust.unchecked.conflicted": "Das Zusammenführen dessen, was dies holt, würde in {path}, wo Hooks ausgeführt werden, einen Konflikt ergeben und Konfliktmarkierungen in einem Hook hinterlassen. Vertrauen und ausführen führt es trotzdem aus.",
   "trust.unchecked.patched": "Ein Patch, den dies anwendet, schreibt {path}, wo Hooks ausgeführt werden, und git würde ausführen, was er schreibt. Vertrauen und ausführen führt es trotzdem aus.",
-  "trust.unchecked.unknown": "Glowfly kann nicht erkennen, was diese Form des Befehls dort schreibt, wo Hooks ausgeführt werden, daher wurde es nicht mit dem verglichen, dem du vertraut hast. Vertrauen und ausführen führt es trotzdem aus.",
+  "trust.unchecked.unmodeled": "Glowfly kann nicht erkennen, was {what} dort schreibt, wo Hooks ausgeführt werden, daher wurde es nicht mit dem verglichen, dem du vertraut hast. Vertrauen und ausführen führt es trotzdem aus.",
   "trust.unchecked.unreadable": "Glowfly konnte die Commits, die dies holt, nicht lesen ({error}), wie es in einem partiellen Klon vorkommt, daher wurden ihre Hooks nicht mit dem verglichen, dem du vertraut hast. Vertrauen und ausführen führt es trotzdem aus; oder hole sie zuerst mit ausgeschalteten Hooks (git -c core.hooksPath= fetch).",
   "trust.unchecked.unresolved": "Glowfly kann nicht so wie git bestimmen, welchen Commit {rev} bezeichnet, daher wurden die Hooks, die er mitbringt, nicht mit dem verglichen, dem du vertraut hast. Vertrauen und ausführen führt es trotzdem aus.",
   "undo.preview.abort_again": "Bricht ihn erneut ab und bewahrt seine Arbeit auf",

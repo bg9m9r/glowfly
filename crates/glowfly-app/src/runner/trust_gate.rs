@@ -11,10 +11,10 @@
 use crate::effect::{Accepted, Effect, RebaseEffect};
 use glowfly_core::i18n::Lang;
 use glowfly_core::pick_ops::Picking;
-use glowfly_core::rebase::{MergeParent, MergeStep, ResetTo, TodoStep, Upstream};
+use glowfly_core::rebase::{MergeParent, MergeStep, RebaseAction, ResetTo, Resume, TodoStep, Upstream};
 use glowfly_core::settings::SavedTrust;
 use glowfly_core::trust::compare::{self, Refused};
-use glowfly_core::trust::incoming::{self, Target};
+use glowfly_core::trust::incoming::{self, How, Target};
 use glowfly_core::trust::pull::{Pull, PullRun, run_pinned};
 use glowfly_core::trust::{Follow, TrustScan};
 use std::cell::{Cell, RefCell};
@@ -34,6 +34,21 @@ fn step_commits(step: &TodoStep) -> Vec<git2::Oid> {
     out
 }
 
+/// The commits `steps` pick in order, onto what the rebase starts from; None when one merges
+/// or resets (what it leaves isn't made in memory).
+fn picks(steps: &[TodoStep]) -> Option<Vec<git2::Oid>> {
+    let mut out = Vec::new();
+    for s in steps {
+        match s {
+            TodoStep::Commit(i) if i.action == RebaseAction::Drop => {}
+            TodoStep::Commit(i) => out.push(i.oid),
+            TodoStep::Exec(_) | TodoStep::Break | TodoStep::UpdateRef(_) => {}
+            TodoStep::Label { .. } | TodoStep::Reset(_) | TodoStep::Merge(_) => return None,
+        }
+    }
+    Some(out)
+}
+
 /// What `effect` brings in by itself (a job of git commands is compared command by command
 /// instead, by `Gate`).
 pub(super) fn targets(effect: &Effect) -> Vec<Target> {
@@ -44,28 +59,30 @@ pub(super) fn targets(effect: &Effect) -> Vec<Target> {
         branch: Some(format!("refs/heads/{top}")),
         root: false,
         keep_base: false,
+        how: How::default(),
     };
     match effect {
         Effect::Pick(j) => {
             let revert = matches!(j.picking, Picking::Revert);
-            vec![Target::Picked { revs: j.oids.iter().map(|o| o.to_string()).collect(), revert }]
+            vec![Target::Picked { revs: j.oids.iter().map(|o| o.to_string()).collect(), revert, how: How::default() }]
         }
         Effect::Rebase(RebaseEffect::Start { request, .. }) => {
             let base = match request.upstream {
-                Upstream::Commit(oid) => Some(commit(oid)),
+                Upstream::Commit(oid) => Some(oid),
                 Upstream::Root => None,
             };
-            base.into_iter().chain(request.items.iter().flat_map(step_commits).map(commit)).collect()
+            let made = Target::Steps { onto: base, picks: picks(&request.items) };
+            std::iter::once(made).chain(request.items.iter().flat_map(step_commits).map(commit)).collect()
         }
-        Effect::Rebase(RebaseEffect::Resume { .. }) => vec![Target::Sequencer],
+        Effect::Rebase(RebaseEffect::Resume { how, .. }) => vec![Target::Sequencer { skip: matches!(how, Resume::Skip) }],
         Effect::Rebase(RebaseEffect::EditTodo { request, .. }) => {
             let steps = request.steps.iter().flat_map(step_commits).map(commit);
-            std::iter::once(Target::Sequencer).chain(steps).collect()
+            std::iter::once(Target::Sequencer { skip: false }).chain(steps).collect()
         }
         Effect::Rebase(
             RebaseEffect::Restack { job, .. } | RebaseEffect::ResumeRestack { job, .. } | RebaseEffect::EndRestack { job, .. },
         ) => {
-            let resume = matches!(effect, Effect::Rebase(RebaseEffect::ResumeRestack { .. })).then_some(Target::Sequencer);
+            let resume = matches!(effect, Effect::Rebase(RebaseEffect::ResumeRestack { .. })).then_some(Target::Sequencer { skip: false });
             // Ending one goes back to the branch it started on; the others replay their steps.
             let ends = matches!(effect, Effect::Rebase(RebaseEffect::EndRestack { .. }));
             let steps = job.plan.steps.iter().filter(|_| !ends).map(|s| replay(&s.onto, s.upstream, &s.top));
@@ -131,7 +148,7 @@ impl From<Refused> for Halt {
 
 /// Compares what `targets` bring into the repository at `workdir` (whose hooks follow the
 /// working tree at `follows`) with `saved`: the commits, and what the merges they make leave.
-/// `accept`: the one reason it couldn't be compared that passes.
+/// `accept`: the one reason an item couldn't be compared that passes (that item only).
 pub(super) fn compare(
     workdir: &Path,
     follows: &[Follow],
@@ -142,16 +159,8 @@ pub(super) fn compare(
     if follows.is_empty() || targets.is_empty() {
         return Ok(());
     }
-    let unchecked = |u: incoming::Unchecked| if accept == Some(&u) { Ok(()) } else { Err(Halt::Unchecked(u)) };
-    let repo = match git2::Repository::open(workdir) {
-        Ok(r) => r,
-        Err(e) => return unchecked(incoming::Unchecked::Unreadable(e.message().to_owned())),
-    };
-    match compare::check_targets(&repo, follows, saved, targets) {
-        Ok(()) => Ok(()),
-        Err(Refused::Unchecked(u)) => unchecked(u),
-        Err(r) => Err(r.into()),
-    }
+    let repo = git2::Repository::open(workdir).map_err(|e| Halt::Unchecked(incoming::Unchecked::Unreadable(e.message().to_owned())))?;
+    compare::check_targets(&repo, follows, saved, targets, accept).map_err(Halt::from)
 }
 
 /// The comparison a job of git commands gets before each of its commands.
@@ -207,7 +216,10 @@ impl Gate {
                 PullRun::Refused { refused, output } => Step::Halt(refused.into(), output),
             };
         }
-        match compare(&self.workdir, &follows, self.saved.as_ref(), &incoming::targets(cmd), accept) {
+        // Where nothing follows the working tree there is nothing to compare; otherwise a
+        // command Glowfly doesn't read is held.
+        let targets = if follows.is_empty() { Ok(Vec::new()) } else { compare::skip_accepted(incoming::targets(cmd), accept) };
+        match targets.map_err(Halt::from).and_then(|t| compare(&self.workdir, &follows, self.saved.as_ref(), &t, accept)) {
             Ok(()) => Step::Run,
             Err(h) => Step::Halt(h, String::new()),
         }
