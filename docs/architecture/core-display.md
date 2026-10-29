@@ -42,10 +42,10 @@ source file, update its line here.
 
 ## Search
 
-- `fuzzy.rs`, `matching.rs`: matching for the command palette, filters and search.
+- `fuzzy.rs`, `matching.rs`: matching for the command palette, filters and search (`contains_lower` looks for an ASCII needle in place, without lowercasing, even in text that isn't all ASCII).
 - `commit_query.rs`: commit search queries: author and path terms, matching rows, the author list.
 - `path_query.rs`: path terms of the commit search: folder, file name or glob, matched ignoring case and Unicode form.
-- `commit_index/`: the whole-history index for search: every commit the graph's walk would visit, in its order, with what search matches.
+- `commit_index/`: the whole-history index for search: every commit the graph's walk would visit, in its order, with what search matches (the summary and the whole flattened body, held once). Tests: `tests.rs`, `build_tests.rs`, `store_tests.rs`, `deep_match_tests.rs` (a match past the preview, found with and without the index; an old-format file rebuilt).
 - `commit_index/build.rs`: build and incremental update off the UI thread.
 - `commit_index/store.rs`: the saved index per repository in the cache folder: used as it is or as a base, pruned by age and size.
 - `commit_index/store/format.rs`: the saved file's layout: header, sections, CRC trailer, and the checks on read.

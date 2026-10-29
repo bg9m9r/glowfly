@@ -189,7 +189,7 @@ pub use workfile_unrm::{StagedNew, index_clear_for, restage_new, staged_new, sta
 pub use worktree_counts::{COUNT_TIMEOUT, ChangesRead, WorktreeCount, count_worktree};
 pub use worktrees::{WorktreeInfo, worktree_wip_heads, worktrees_at};
 
-pub use commit_info::{Author, Authors, CommitInfo, Parents, Text};
+pub use commit_info::{Author, Authors, BODY_PREVIEW, CommitInfo, Parents, Text};
 pub use snapshot::{CommitDetail, LoadOptions, Snapshot};
 pub use walk_reuse::{Frontier, Prior};
 
