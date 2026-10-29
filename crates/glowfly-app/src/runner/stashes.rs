@@ -12,7 +12,7 @@ use glowfly_core::stash_ops::{self, PutBack};
 use glowfly_core::undo::{self, UndoKind};
 use std::path::Path;
 
-pub(super) fn run(e: StashEffect) -> Option<Msg> {
+pub(super) fn run(e: StashEffect, gate: Option<&super::trust_gate::Gate>) -> Option<Msg> {
     match e {
         StashEffect::Rename { cwd, index, oid, message } => Some(rename(&cwd, index, oid, &message)),
         StashEffect::PutBack(req) => Some(put_back(req)),
@@ -28,24 +28,34 @@ pub(super) fn run(e: StashEffect) -> Option<Msg> {
             Some(Msg::Stash(StashMsg::PathsRead { ask, paths }))
         }
         StashEffect::AbortKeeping { cwd, keep } => {
-            let (ok, output, action) = abort_keeping(&cwd, Some(&keep));
+            let (ok, output, action, _) = abort_keeping(&cwd, Some(&keep), super::undo_run::UndoGit { gate });
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo: Some(UndoResult::Recorded(action)) }))
         }
     }
 }
 
 /// Keeps the work of the operation in progress in `cwd`, then aborts it (`undo::abort_keeping`,
-/// which puts everything back when an abort command fails): whether that worked, the output, and
-/// the abort to record for Undo. Old kept aborts' refs are dropped unless `prune` lists them
-/// (`None`: none are).
-pub(super) fn abort_keeping(cwd: &Path, prune: Option<&[git2::Oid]>) -> (bool, String, Option<undo::Action>) {
-    let r = undo::abort_keeping(cwd, prune, |cmds| super::git_ops::run_git(cwd, cmds, None, true));
-    (r.ok, r.output, r.action)
+/// which puts everything back when an abort command fails), its commands run by `git` (through
+/// the trust gate, #273, when there is one): whether that worked, the output, the abort to
+/// record for Undo, and `UndoGit::run`'s `held` when the gate held a command (the work is put
+/// back then too). Old kept aborts' refs are dropped unless `prune` lists them (`None`: none are).
+pub(super) fn abort_keeping(
+    cwd: &Path,
+    prune: Option<&[git2::Oid]>,
+    git: super::undo_run::UndoGit,
+) -> (bool, String, Option<undo::Action>, Option<bool>) {
+    let mut held = None;
+    let r = undo::abort_keeping(cwd, prune, |cmds| {
+        let ran = git.run(cwd, cmds);
+        held = ran.held;
+        (ran.ok, ran.output)
+    });
+    (r.ok, r.output, r.action, held)
 }
 
 impl Execute for StashEffect {
-    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        run(self)
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        run(self, cx.gate.map(|(g, _)| g))
     }
 }
 

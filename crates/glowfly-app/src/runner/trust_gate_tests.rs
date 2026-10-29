@@ -293,3 +293,37 @@ fn undo_s_stash_pop_goes_through_the_gate() {
     assert!(!work.parent().unwrap().join("evil.txt").exists(), "the hook never ran");
     let _ = std::fs::remove_dir_all(work.parent().unwrap());
 }
+
+#[test]
+fn a_kept_abort_s_redo_goes_through_the_gate() {
+    let (work, check, _, evil) = head_on_an_unchecked_hook("abort-again");
+    // A merge in progress whose index lacks HEAD's new hook: aborting it keeping its work puts
+    // the hook back from HEAD, and the abort's ref updates would run it.
+    git(&work, &["-c", "core.hooksPath=", "rm", "-q", "--cached", ".githooks/reference-transaction"]);
+    std::fs::write(work.join(".git/MERGE_HEAD"), format!("{evil}\n")).unwrap();
+    std::fs::write(work.join(".git/MERGE_MSG"), "Merge\n").unwrap();
+    let follows = glowfly_core::trust::scan_at(&work).unwrap().follows;
+    let gate = Gate::new(work.clone(), follows, check.saved.clone(), None, check.lang);
+    let action = glowfly_core::undo::Action::AbortKept {
+        op: glowfly_core::undo::MoveOp::Merge,
+        saved: git2::Oid::zero(),
+        head: evil,
+        branch: Some("main".into()),
+        left: glowfly_core::undo::Changes(Vec::new()),
+    };
+    let git_ = crate::runner::undo_run::UndoGit { gate: Some(&gate) };
+    let ran = crate::runner::undo_run::undo_run(&work, action, true, Default::default(), git_);
+    assert!(!ran.ok, "held: {}", ran.output);
+    assert!(ran.output.contains("trust"), "says why: {}", ran.output);
+    assert!(work.join(".git/MERGE_HEAD").exists(), "the merge is still in progress");
+    // The kept abort itself is held the same way.
+    let fx = Effect::Stash(crate::effect::StashEffect::AbortKeeping { cwd: work.clone(), keep: Vec::new() });
+    // Trusted as it is now: only the gate stands between the abort and the hook.
+    let got = crate::runner::execute_checked(trusted(&work), fx);
+    let (ok, output) = done(got).expect("the job ends");
+    assert!(!ok && output.contains("trust"), "held: {output}");
+    assert!(work.join(".git/MERGE_HEAD").exists(), "the merge is still in progress");
+    assert!(!work.join(".githooks/reference-transaction").exists(), "the hook was never written");
+    assert!(!work.parent().unwrap().join("evil.txt").exists(), "and never ran");
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}
