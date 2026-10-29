@@ -152,9 +152,13 @@ fn carry_out(
             Ok(output) => done(output, action.clone(), action),
             Err(e) => failed(format!("Could not put back the files of the {}: {e}", action.describe())),
         },
-        Ok(Plan::AbortAgain) => match super::stashes::abort_keeping(cwd, None) {
-            (true, output, Some(again)) => done(output, action, again),
-            (_, output, _) => failed(output),
-        },
+        Ok(Plan::AbortAgain) => {
+            let (ok, output, again, h) = super::stashes::abort_keeping(cwd, None, git);
+            *held = h;
+            match (ok, again) {
+                (true, Some(again)) => done(output, action, again),
+                _ => failed(output),
+            }
+        }
     }
 }

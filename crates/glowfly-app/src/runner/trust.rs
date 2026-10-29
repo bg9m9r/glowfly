@@ -11,7 +11,7 @@
 
 use super::execute::{Cx, Execute, execute_with};
 use super::trust_gate::{self, Gate, Halt};
-use crate::effect::{Accepted, Checked, Effect, Sealed, TrustCheck, TrustEffect};
+use crate::effect::{Accepted, Checked, Effect, Sealed, StashEffect, TrustCheck, TrustEffect};
 use crate::msg::{InheritedRepo, Msg, Stale, TrustMsg};
 use glowfly_core::trust::incoming::Unchecked;
 use glowfly_core::trust::{self, TrustScan};
@@ -104,7 +104,8 @@ pub(super) fn verify(c: &TrustCheck, effect: &Effect) -> Verdict {
     let accept = c.accepted.as_ref().filter(|a| a.at.is_none()).map(|a| &a.reason);
     match trust_gate::compare(&c.workdir, &now.follows, c.saved.as_ref(), &trust_gate::targets(effect), accept) {
         Ok(()) => {
-            let commands = matches!(effect, Effect::RunGit { .. } | Effect::UndoRedo { .. });
+            let commands =
+                matches!(effect, Effect::RunGit { .. } | Effect::UndoRedo { .. } | Effect::Stash(StashEffect::AbortKeeping { .. }));
             let gate = || Gate::new(c.workdir.clone(), now.follows.clone(), c.saved.clone(), c.accepted.clone(), c.lang);
             Verdict::Pass(commands.then(gate))
         }
