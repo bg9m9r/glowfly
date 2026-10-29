@@ -158,11 +158,26 @@ impl Walk<'_> {
 
 /// `file`'s bytes when it is a regular file (links followed) no larger than `MAX_FILE_BYTES`.
 fn read_small(file: &Path) -> Option<Vec<u8>> {
-    let meta = std::fs::metadata(file).ok()?;
-    if !meta.is_file() || meta.len() > MAX_FILE_BYTES {
+    read_file_bounded(file, MAX_FILE_BYTES)
+}
+
+/// `file`'s bytes when it is a regular file (links followed) of at most `limit` bytes, whatever
+/// size it reports. On Unix it is opened without waiting (a FIFO put in its place since it was
+/// looked at can't block the read), and the opened file itself is checked.
+pub(crate) fn read_file_bounded(file: &Path, limit: u64) -> Option<Vec<u8>> {
+    let mut open = std::fs::OpenOptions::new();
+    open.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        open.custom_flags(libc::O_NONBLOCK);
+    }
+    let f = open.open(file).ok()?;
+    let meta = f.metadata().ok()?;
+    if !meta.is_file() || meta.len() > limit {
         return None;
     }
-    read_bounded(std::fs::File::open(file).ok()?, MAX_FILE_BYTES)
+    read_bounded(f, limit)
 }
 
 /// All of `r` when it holds at most `limit` bytes, reading never more than one past it.
@@ -248,7 +263,7 @@ fn path_of(b: &[u8]) -> PathBuf {
 
 /// The short name of the branch `git_dir`'s HEAD names (born or not); None when detached.
 pub fn head_branch(git_dir: &Path) -> Option<Vec<u8>> {
-    let head = std::fs::read(git_dir.join("HEAD")).ok()?;
+    let head = read_file_bounded(&git_dir.join("HEAD"), 4096)?;
     let target = head.strip_prefix(b"ref:")?.trim_ascii();
     Some(target.strip_prefix(b"refs/heads/")?.to_vec())
 }

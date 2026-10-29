@@ -319,3 +319,67 @@ fn at_most_max_nested_repositories_are_tracked_and_the_rest_still_walked() {
     assert_eq!(s.sweep(&mut ig, later()), Some(Vec::new()));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A nested repository made with libgit2 (`objects` and all), whose HEAD the test then rewrites.
+fn bare_nested(dir: &Path, name: &str) -> PathBuf {
+    let at = dir.join(name);
+    git2::Repository::init(&at).unwrap();
+    at
+}
+
+#[test]
+fn a_nested_head_naming_a_file_outside_its_refs_is_not_read() {
+    let dir = repo("sweep-nested-escape", 0);
+    let inner = bare_nested(&dir, "inner");
+    write(&dir, "big.txt", "one\n");
+    for target in ["../../big.txt", "refs/../../../big.txt", "/etc/passwd", "refs\\heads\\x", "refs/heads/a\0b"] {
+        assert!(!nested::ref_name_ok(target.as_bytes()), "{target}");
+    }
+    assert!(nested::ref_name_ok(b"refs/heads/feature/x"));
+    write(&inner, ".git/HEAD", "ref: ../../big.txt\n");
+    let before = nested::refs_of(&inner);
+    assert!(before.is_some());
+    write(&dir, "big.txt", "two, longer\n");
+    assert_eq!(nested::refs_of(&inner), before, "the file it names isn't read");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_oversized_or_irregular_nested_head_is_no_repository() {
+    let dir = repo("sweep-nested-head", 0);
+    let inner = bare_nested(&dir, "inner");
+    assert!(nested::refs_of(&inner).is_some());
+    write(&inner, ".git/HEAD", &format!("ref: refs/heads/{}\n", "x".repeat(8192)));
+    assert_eq!(nested::refs_of(&inner), None, "too large");
+    std::fs::remove_file(inner.join(".git/HEAD")).unwrap();
+    std::fs::create_dir(inner.join(".git/HEAD")).unwrap();
+    assert_eq!(nested::refs_of(&inner), None, "a folder");
+    #[cfg(unix)]
+    {
+        std::fs::remove_dir(inner.join(".git/HEAD")).unwrap();
+        let fifo = std::ffi::CString::new(inner.join(".git/HEAD").into_os_string().into_encoded_bytes()).unwrap();
+        // SAFETY: `fifo` is a NUL-terminated path that outlives the call.
+        assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
+        assert_eq!(nested::refs_of(&inner), None, "a FIFO, opened without waiting");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_nested_branch_switch_and_pack_refs_change_its_fingerprint() {
+    let dir = repo("sweep-nested-pack", 0);
+    let inner = dir.join("inner");
+    std::fs::create_dir_all(&inner).unwrap();
+    git(&inner, &["init", "-q", "-b", "main"]);
+    crate::testutil::set_config(&inner, &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false")]);
+    write(&inner, "a.txt", "a\n");
+    git(&inner, &["add", "."]);
+    git(&inner, &["commit", "-q", "-m", "a"]);
+    let first = nested::refs_of(&inner);
+    git(&inner, &["checkout", "-q", "-b", "side"]);
+    let switched = nested::refs_of(&inner);
+    assert_ne!(switched, first, "a branch switch");
+    crate::testkit::git_cli(&inner, &["pack-refs", "--all"]);
+    assert_ne!(nested::refs_of(&inner), switched, "the loose ref packed");
+    let _ = std::fs::remove_dir_all(&dir);
+}
