@@ -2156,7 +2156,7 @@
   "sidebar.worktrees.empty": "Sin worktrees",
   "sidebar.worktrees.header": "Worktrees",
   "sidebar.worktrees.prune": "Limpiar worktrees que faltan",
-  "sign_in.saved.cached": "No hay ningún asistente de llavero instalado, así que ahora git guarda los inicios de sesión en memoria con su asistente de caché, durante 15 minutos tras cada uso (credential.helper en tu configuración global de git). Se guardó el inicio de sesión de {host}. Instala git-credential-libsecret para conservarlos tras reiniciar.",
+  "sign_in.saved.cached": "No hay ningún asistente de llavero instalado, así que ahora git guarda los inicios de sesión en memoria con su asistente de caché, durante 15 minutos tras cada uso (credential.helper en tu configuración global de git). Se guardó el inicio de sesión de {host}. Instala git-credential-libsecret para conservarlos tras reiniciar. Para deshacerlo: git config --global --unset credential.helper",
   "sign_in.saved.failed": "No se pudo guardar el inicio de sesión de {host}: {why}",
   "sign_in.saved.helper": "Se guardó el inicio de sesión de {host} con el asistente de credenciales de git.",
   "sign_in.saved.set_up": "Ahora git guarda los inicios de sesión con {helper} (credential.helper en tu configuración global de git). Se guardó el inicio de sesión de {host}.",

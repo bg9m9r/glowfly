@@ -165,17 +165,47 @@ pub(crate) enum Plan {
 }
 
 /// Chooses the [`Plan`] from git's helper setting, the persistent store `installed` finds (only
-/// asked when git has no helper) and the memory-only `fallback`.
-pub(crate) fn plan(config: HelperConfig, installed: impl FnOnce() -> Option<String>, fallback: Option<&str>) -> Plan {
+/// asked when git has no helper) and the memory-only `fallback` this git can run (only asked when
+/// no persistent store is installed).
+pub(crate) fn plan(config: HelperConfig, installed: impl FnOnce() -> Option<String>, fallback: impl FnOnce() -> Option<String>) -> Plan {
     match config {
         HelperConfig::Set => Plan::Approve,
         HelperConfig::TurnedOff => Plan::TurnedOff,
-        HelperConfig::None => match (installed(), fallback) {
-            (Some(name), _) => Plan::SetUp(name),
-            (None, Some(cache)) => Plan::Cache(cache.to_owned()),
-            (None, None) => Plan::Missing,
+        HelperConfig::None => match installed() {
+            Some(name) => Plan::SetUp(name),
+            None => fallback().map_or(Plan::Missing, Plan::Cache),
         },
     }
+}
+
+/// This OS's [`fallback_helper`], when this git has it: a git built without Unix sockets, or a
+/// package that leaves it out, has no `credential-cache`, and naming a missing helper in the
+/// config would make git warn on every HTTPS operation.
+pub fn usable_fallback(cwd: &Path, env: &[(&str, &str)]) -> Option<String> {
+    let name = fallback_helper(std::env::consts::OS)?;
+    cache_runs(cwd, env).then(|| name.to_owned())
+}
+
+/// Whether `git credential-cache` runs here: `exit` on a socket nobody uses checks the command
+/// and its `--socket` option without touching a running daemon (nor making the folder).
+pub(crate) fn cache_runs(cwd: &Path, env: &[(&str, &str)]) -> bool {
+    let unused = crate::paths::temp_dir().join(format!("glowfly-cc-probe-{}", std::process::id())).join("s");
+    let socket = format!("--socket={}", unused.display());
+    gitcli::output(cwd, &args(&["credential-cache", &socket, "exit"]), "", &quiet_env(env), Some(gitcli::READ_TIMEOUT)).ok
+}
+
+/// `value` as a POSIX extended regex that matches only itself, for `git config --unset`'s value
+/// pattern (`--fixed-value` needs git 2.30).
+fn exact_value(value: &str) -> String {
+    let mut re = String::from("^");
+    for ch in value.chars() {
+        if "\\.^$*+?()[]{}|".contains(ch) {
+            re.push('\\');
+        }
+        re.push(ch);
+    }
+    re.push('$');
+    re
 }
 
 /// The first of this OS's [`platform_helpers`] that is installed: `git-credential-<name>` in
@@ -213,19 +243,20 @@ pub enum Remembered {
 /// Saves `c` with git's credential helper, setting up the platform's store when git has none
 /// (or, on Linux without a keyring helper, git's in-memory cache).
 pub fn remember(cwd: &Path, c: &HttpsCredential) -> Result<Remembered, String> {
-    remember_in(cwd, c, &[], installed_helper, fallback_helper(std::env::consts::OS))
+    remember_in(cwd, c, &[], installed_helper, |cwd| usable_fallback(cwd, &[]))
 }
 
 /// [`remember`] with `env` added to every git call, `find` naming the store to set up and
-/// `fallback` the memory-only helper for when it finds none.
+/// `fallback` the memory-only helper for when it finds none. A helper added to the global config
+/// is removed again (that value only) when the save itself fails, so no broken set-up is left.
 pub(crate) fn remember_in(
     cwd: &Path,
     c: &HttpsCredential,
     env: &[(&str, &str)],
     find: impl Fn(&Path) -> Option<String>,
-    fallback: Option<&str>,
+    fallback: impl Fn(&Path) -> Option<String>,
 ) -> Result<Remembered, String> {
-    let (helper, done) = match plan(helper_config(cwd, &c.url(), env), || find(cwd), fallback) {
+    let (helper, done) = match plan(helper_config(cwd, &c.url(), env), || find(cwd), || fallback(cwd)) {
         Plan::Approve => return send(cwd, c, "approve", env).map(|()| Remembered::Helper),
         Plan::TurnedOff => return Ok(Remembered::TurnedOff),
         Plan::Missing => return Err(format!("no credential store is set up ({})", setup_hint(std::env::consts::OS))),
@@ -237,7 +268,13 @@ pub(crate) fn remember_in(
     if !out.ok {
         return Err(failure(&out, "could not set credential.helper"));
     }
-    send(cwd, c, "approve", env).map(|()| done)
+    send(cwd, c, "approve", env).map(|()| done).inspect_err(|_| take_back(cwd, &helper, env))
+}
+
+/// Removes `helper` from the global config's `credential.helper`, that exact value only.
+pub(crate) fn take_back(cwd: &Path, helper: &str, env: &[(&str, &str)]) {
+    let unset = args(&["config", "--global", "--unset", "credential.helper", &exact_value(helper)]);
+    let _ = gitcli::output(cwd, &unset, "", &quiet_env(env), Some(gitcli::READ_TIMEOUT));
 }
 
 /// Tells git's credential helpers that `c` was rejected, so they drop it.

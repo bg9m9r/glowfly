@@ -257,6 +257,7 @@ fn reports_what_became_of_the_sign_in() {
     remembered(&mut st, Ok(Remembered::Cached));
     let cached = st.toasts.last().unwrap();
     assert!(cached.ok && cached.text.contains("in memory") && cached.text.contains("git-credential-libsecret"), "{}", cached.text);
+    assert!(cached.text.ends_with("git config --global --unset credential.helper"), "names the undo: {}", cached.text);
 
     let e = "no credential store is set up (install git-credential-libsecret or set credential.helper)";
     remembered(&mut st, Err(e.into()));

@@ -63,11 +63,12 @@ fn knows_each_platforms_store() {
 fn chooses_the_helper_for_each_setup() {
     let found = || Some("libsecret".to_owned());
     let unasked = || -> Option<String> { panic!("only asked when git has no helper") };
-    assert_eq!(plan(HelperConfig::Set, unasked, Some("cache")), Plan::Approve, "the user's helper, even with a fallback");
-    assert_eq!(plan(HelperConfig::TurnedOff, unasked, Some("cache")), Plan::TurnedOff, "turned off on purpose: no fallback");
-    assert_eq!(plan(HelperConfig::None, found, Some("cache")), Plan::SetUp("libsecret".into()), "a keyring beats the cache");
-    assert_eq!(plan(HelperConfig::None, || None, Some("cache")), Plan::Cache("cache".into()), "Linux without a keyring");
-    assert_eq!(plan(HelperConfig::None, || None, None), Plan::Missing, "elsewhere: the install hint");
+    let cache = || Some("cache".to_owned());
+    assert_eq!(plan(HelperConfig::Set, unasked, unasked), Plan::Approve, "the user's helper, even with a fallback");
+    assert_eq!(plan(HelperConfig::TurnedOff, unasked, unasked), Plan::TurnedOff, "turned off on purpose: no fallback");
+    assert_eq!(plan(HelperConfig::None, found, unasked), Plan::SetUp("libsecret".into()), "a keyring beats the cache");
+    assert_eq!(plan(HelperConfig::None, || None, cache), Plan::Cache("cache".into()), "Linux without a keyring");
+    assert_eq!(plan(HelperConfig::None, || None, || None), Plan::Missing, "elsewhere, or no credential-cache: the install hint");
 }
 
 /// A helper that appends its action and its input to log.txt in the repository.
@@ -91,12 +92,30 @@ fn log(dir: &Path) -> String {
 }
 
 #[test]
+fn a_failed_save_takes_its_set_up_back() {
+    // git's approve ignores a helper's own failure, so this is the undo a failed save runs.
+    let (dir, global) = isolated("cred-undo");
+    let helper = "!f() { cat >/dev/null; exit 1; }; f";
+    let value = helper.replace('"', "\\\"");
+    std::fs::write(&global, format!("[user]\n\tname = Ada\n[credential]\n\thelper = \"{value}\"\n")).unwrap();
+    take_back(&dir, "cache", &env(&global));
+    assert!(std::fs::read_to_string(&global).unwrap().contains("helper"), "another value is left alone");
+    take_back(&dir, helper, &env(&global));
+    let config = std::fs::read_to_string(&global).unwrap();
+    assert!(!config.contains("helper ="), "the added line is gone, regex characters and all: {config}");
+    assert!(config.contains("name = Ada"), "the rest is kept: {config}");
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_file(&global);
+}
+
+#[test]
 fn approves_and_rejects_through_the_configured_helper() {
     let (dir, global) = isolated("cred-helper");
     set_config(&dir, &[("credential.helper", LOGGING_HELPER)]);
     let c = cred("https://example.com", "ada", "hunter2").unwrap();
     let none = |_: &Path| -> Option<String> { panic!("a configured helper needs no set-up") };
-    assert_eq!(remember_in(&dir, &c, &env(&global), none, Some("cache")), Ok(Remembered::Helper), "a configured helper wins");
+    let cache = |_: &Path| Some("cache".to_owned());
+    assert_eq!(remember_in(&dir, &c, &env(&global), none, cache), Ok(Remembered::Helper), "a configured helper wins");
     let text = log(&dir);
     assert!(text.starts_with("store\n"), "{text}");
     for field in ["protocol=https", "host=example.com", "username=ada", "password=hunter2"] {
@@ -114,7 +133,7 @@ fn stores_nothing_when_helpers_are_turned_off() {
     set_config(&dir, &[("credential.helper", "")]);
     let c = cred("https://example.com", "ada", "hunter2").unwrap();
     let found = |_: &Path| Some(LOGGING_HELPER.to_owned());
-    assert_eq!(remember_in(&dir, &c, &env(&global), found, Some(LOGGING_HELPER)), Ok(Remembered::TurnedOff));
+    assert_eq!(remember_in(&dir, &c, &env(&global), found, found), Ok(Remembered::TurnedOff));
     assert!(!dir.join("log.txt").exists(), "no helper ran");
     assert!(!Path::new(&global).exists(), "no helper was set up");
     let _ = std::fs::remove_dir_all(&dir);
@@ -124,9 +143,13 @@ fn stores_nothing_when_helpers_are_turned_off() {
 fn sets_up_the_platform_store_when_git_has_none() {
     let (dir, global) = isolated("cred-setup");
     let c = cred("https://example.com", "ada", "hunter2").unwrap();
-    assert!(remember_in(&dir, &c, &env(&global), |_: &Path| None, None).unwrap_err().contains("no credential store is set up"));
+    let nothing = |_: &Path| None;
+    let missing = remember_in(&dir, &c, &env(&global), nothing, nothing).unwrap_err();
+    assert!(missing.contains("no credential store is set up"), "no store and no credential-cache: {missing}");
+    assert!(!Path::new(&global).exists(), "no helper named that git can't run");
     let found = |_: &Path| Some(LOGGING_HELPER.to_owned());
-    assert_eq!(remember_in(&dir, &c, &env(&global), found, Some("cache")), Ok(Remembered::SetUp(LOGGING_HELPER.into())));
+    let cache = |_: &Path| Some("cache".to_owned());
+    assert_eq!(remember_in(&dir, &c, &env(&global), found, cache), Ok(Remembered::SetUp(LOGGING_HELPER.into())));
     let config = std::fs::read_to_string(&global).unwrap();
     assert!(config.contains("helper"), "{config}");
     assert!(log(&dir).starts_with("store\n"), "{}", log(&dir));
@@ -181,7 +204,9 @@ fn falls_back_to_the_in_memory_cache() {
     let c = cred("https://example.com", "ada", "hunter2").unwrap();
     let mut env = env(&global).to_vec();
     env.push(("GIT_TERMINAL_PROMPT", "0"));
-    assert_eq!(remember_in(&dir, &c, &env, |_: &Path| None, Some(&daemon.helper)), Ok(Remembered::Cached));
+    assert!(cache_runs(&dir, &env), "the probe finds the command the daemon runs");
+    let helper = |_: &Path| Some(daemon.helper.clone());
+    assert_eq!(remember_in(&dir, &c, &env, |_: &Path| None, helper), Ok(Remembered::Cached));
     let config = std::fs::read_to_string(&global).unwrap();
     assert!(config.contains("--socket="), "{config}");
     // git now answers from the cache, without asking.
