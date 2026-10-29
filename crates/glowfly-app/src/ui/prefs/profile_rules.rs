@@ -1,6 +1,7 @@
 //! Preferences > Profile's Folders row (the selected profile's folder rules with Remove, Add
 //! folder… and Use for this repository) and Open repository row (where the open repository's
-//! identity comes from, with Use <profile> here when its own identity comes before a rule).
+//! identity comes from, with Use <profile> here when its own identity comes before a rule, and a
+//! warning for each `GIT_AUTHOR_*` or `GIT_COMMITTER_*` variable set in Glowfly's environment).
 //! Everything is a `Msg`; the texts are in state/profile_rules.rs and state/repo_identity.rs.
 
 use super::{help, row};
@@ -11,7 +12,7 @@ use crate::state::profile_rules::{
     has_repository, rule_line,
 };
 use crate::state::profiles::ProfilesPage;
-use crate::state::repo_identity::{here_line, not_applied, not_applied_line, shadow_line, shadowed, use_here_label};
+use crate::state::repo_identity::{env_warnings, here_line, not_applied, not_applied_line, shadow_line, shadowed, use_here_label};
 use crate::ui::theme::color;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
@@ -57,6 +58,9 @@ pub fn here_row(ui: &mut Ui, settings: &Settings, here: &RepoHere<'_>, width: f3
             && let Some(p) = id.expected.and_then(|p| settings.profile(p))
         {
             warning(ui, &not_applied_line(&p.name));
+        }
+        for line in env_warnings(settings.lang(), id) {
+            warning(ui, &line);
         }
     });
 }

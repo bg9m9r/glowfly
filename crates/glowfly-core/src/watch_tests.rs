@@ -345,3 +345,23 @@ fn included_config_files_reload_everything_wherever_they_are() {
     let _ = std::fs::remove_dir_all(&outside);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn config_files_are_told_apart() {
+    let common = crate::paths::temp_dir().join("glowfly-watch-config").join(".git");
+    let git_dir = common.join("worktrees").join("wt");
+    let wd = crate::paths::temp_dir().join("glowfly-watch-config-wt");
+    let mut paths = WatchPaths::new(&wd, &git_dir).with_common(&common);
+    let included = crate::paths::temp_dir().join("glowfly-watch-config-shared.inc");
+    paths.set_config_files(std::slice::from_ref(&included));
+    for yes in [git_dir.join("config.worktree"), common.join("config"), included] {
+        assert!(paths.is_config(&yes), "{}", yes.display());
+    }
+    for no in
+        [common.join("config.worktree"), common.join("config.lock"), git_dir.join("HEAD"), wd.join("config"), common.join("refs/config")]
+    {
+        assert!(!paths.is_config(&no), "{}", no.display());
+    }
+    let main = WatchPaths::new(&wd, &common);
+    assert!(main.is_config(&common.join("config")) && main.is_config(&common.join("config.worktree")));
+}

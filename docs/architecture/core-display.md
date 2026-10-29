@@ -55,7 +55,7 @@ source file, update its line here.
 
 ## Watching for changes
 
-- `watch.rs`: which file changes in a repository matter, and the work-tree paths a change names (`Change::Paths`, at most `MAX_WATCH_PATHS` per burst).
+- `watch.rs`: which file changes in a repository matter, the work-tree paths a change names (`Change::Paths`, at most `MAX_WATCH_PATHS` per burst), and which paths are the repository's config (`WatchPaths::is_config`).
 - The git dir's index is `Change::Index`, which keeps a burst's paths.
 - A submodule's HEAD or refs moving (in `<git dir>/modules/…` or a nested `.git` folder) reads the parent's whole status; their index, logs and objects don't count.
 - `config` and `config.worktree` reload in full, and so do the files they include, wherever they are (`WatchPaths::set_config_files`), as do a linked worktree's shared refs, packed-refs, HEAD and config in the common git dir.

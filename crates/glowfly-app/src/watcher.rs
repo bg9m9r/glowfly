@@ -2,7 +2,8 @@
 //! own drops the ones that don't matter (`glowfly_core::watch`), coalesces the rest into bursts
 //! and sends one message per burst: `WatchMsg::RepoChanged`, with the work-tree paths it saw when
 //! nothing else changed, or `WatchMsg::IndexChanged` when the index changed too (with those
-//! paths). Owned by the runner (`Effect::Watch`). On Windows the safety poll asks the same
+//! paths), followed by `WatchMsg::ConfigChanged` when the burst touched the repository's config
+//! (the identity commits get may have changed). Owned by the runner (`Effect::Watch`). On Windows the safety poll asks the same
 //! thread to sweep the tree (`Effect::SweepWatch`, `glowfly_core::watch_sweep`) for changes the
 //! watcher may have dropped; what it finds goes through the same classification and bursts.
 //! Config files the repository's config includes are watched where they are (`includes.rs`).
@@ -174,6 +175,7 @@ fn event_loop<W: Waker>(raw: Receiver<Input>, mut looped: Looped, tx: Sender<Msg
             Ok(Input::Sweep) => swept(&mut sweep, &looped.paths, &mut ignores, &mut burst),
             Ok(Input::Event(Ok(ev))) => {
                 let (change, changed) = classify(&ev, &looped.paths, &mut ignores);
+                burst.config |= change != Change::None && touches_config(&ev, &looped.paths);
                 burst.add(change, changed, Instant::now());
             }
             Ok(Input::Event(Err(e))) => {
@@ -185,12 +187,14 @@ fn event_loop<W: Waker>(raw: Receiver<Input>, mut looped: Looped, tx: Sender<Msg
                     }
                     waker.wake();
                 }
-                // Events may have been lost.
+                // Events may have been lost, the config's among them.
+                burst.config = true;
                 burst.add(Change::Full, Vec::new(), Instant::now());
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return,
         }
+        let config = burst.config;
         if let Some((change, changed, last_event)) = burst.take_due(Instant::now()) {
             let count = changed.len();
             tracing::debug!(workdir = %target.workdir.display(), ?change, paths = count, "files changed outside Glowfly");
@@ -206,9 +210,21 @@ fn event_loop<W: Waker>(raw: Receiver<Input>, mut looped: Looped, tx: Sender<Msg
             if tx.send(Msg::Scoped { workdir: target.workdir.clone(), msg: Box::new(msg) }).is_err() {
                 return;
             }
+            // After the reload it rides along with, so both read the same config.
+            if config {
+                let msg = Box::new(Msg::Watch(WatchMsg::ConfigChanged));
+                if tx.send(Msg::Scoped { workdir: target.workdir.clone(), msg }).is_err() {
+                    return;
+                }
+            }
             waker.wake();
         }
     }
+}
+
+/// Whether `ev` names one of the repository's config files, or lost events that may have.
+fn touches_config(ev: &Event, paths: &WatchPaths) -> bool {
+    ev.need_rescan() || ev.paths.iter().any(|p| paths.is_config(p))
 }
 
 /// Runs one sweep of the tree into `burst`: the paths it found as events, or a whole read when
@@ -221,7 +237,9 @@ fn swept(sweep: &mut Sweep, paths: &WatchPaths, ignores: &mut Ignores, burst: &m
         None => burst.add(Change::Status, Vec::new(), Instant::now()),
         Some(found) => {
             for p in found {
-                let (change, changed) = classify(&Event::new(EventKind::Any).add_path(p), paths, ignores);
+                let ev = Event::new(EventKind::Any).add_path(p);
+                let (change, changed) = classify(&ev, paths, ignores);
+                burst.config |= change != Change::None && touches_config(&ev, paths);
                 burst.add(change, changed, Instant::now());
             }
         }
@@ -285,6 +303,8 @@ struct Burst {
     change: Change,
     /// The work-tree paths seen while the burst is at most `Change::Index`.
     paths: BTreeSet<String>,
+    /// One of the repository's config files changed (or events were lost).
+    config: bool,
 }
 
 impl Burst {
@@ -329,6 +349,9 @@ impl Burst {
     }
 }
 
+#[cfg(test)]
+#[path = "watcher/config_tests.rs"]
+mod config_tests;
 #[cfg(test)]
 #[path = "watcher/include_tests.rs"]
 mod include_tests;

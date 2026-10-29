@@ -1,5 +1,6 @@
-//! Live working-tree updates: keeping the file watcher on the active tab's repository, and
-//! refreshing when it reports changes made outside Glowfly.
+//! Live working-tree updates: keeping the file watcher on the active tab's repository,
+//! refreshing when it reports changes made outside Glowfly, and reading the effective identity
+//! again when the repository's config changed.
 
 use crate::effect::{Effect, WatchTarget};
 use crate::keymap::{BindingId, Keymap};
@@ -43,6 +44,13 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             if wanted(st, last_event) {
                 super::custom_commands::watched(st, Some(paths.as_slice()), fx);
                 super::refresh_index::refresh_index(st, paths, fx);
+            }
+        }
+        // Not held back by a job or Glowfly's own writes like a reload: the read is cheap and
+        // changes nothing.
+        WatchMsg::ConfigChanged => {
+            if st.settings.watch_files {
+                super::profile_rules::want_identity(st, fx);
             }
         }
         WatchMsg::RemoteVolume { workdir, kind } => {
