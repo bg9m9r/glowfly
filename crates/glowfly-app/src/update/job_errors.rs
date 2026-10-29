@@ -1,10 +1,12 @@
 //! A failed job's toast: git's cause in plain words and the fix that answers it
 //! (glowfly_core::git_errors), or "<label> failed: <last line>". Every fix only opens a dialog
-//! or a Preferences page, or runs what the failed job meant to run; none discards work.
+//! or a Preferences page, or runs what the failed job meant to run (Try again on a lock file or
+//! an HTTPS sign-in, update/job_retry.rs); none discards work.
 
 use crate::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, StashMsg};
 use crate::remote::RemoteMsg;
 use crate::state::auto_stash::StashRetry;
+use crate::state::job_spec::Retry;
 use crate::state::prefs::PrefPage;
 use crate::state::{AppState, RunningJob, ToastAction};
 use glowfly_core::auth_failure::AuthNeed;
@@ -23,8 +25,14 @@ pub(super) struct Explained {
 
 /// Explains `job`'s failure from its `output`, when git's cause is one Glowfly recognises.
 /// `retry` is the guarded operation it ran without stashing (update/auto_stash.rs), for
-/// Stash and <op>.
-pub(super) fn explain(st: &AppState, job: &RunningJob, retry: Option<StashRetry>, output: &str) -> Option<Explained> {
+/// Stash and <op>; `again` the job's spec, for Try again.
+pub(super) fn explain(
+    st: &AppState,
+    job: &RunningJob,
+    retry: Option<StashRetry>,
+    again: Option<&Retry>,
+    output: &str,
+) -> Option<Explained> {
     let cause = classify(output)?;
     let t = st.settings.lang();
     // What the fixes look at: the job's own repository, while it is the active tab.
@@ -38,6 +46,7 @@ pub(super) fn explain(st: &AppState, job: &RunningJob, retry: Option<StashRetry>
         |r: StashRetry| fix(crate::state::auto_stash::button(t, &r.op), Msg::AutoStash(crate::msg::AutoStashMsg::Retry(Box::new(r))));
     let view_conflicts =
         |f: &String| fix(t.tr("details.banner.view_conflicts.button"), Msg::Conflict(ConflictMsg::OpenConflict(f.clone())));
+    let try_again = || again.map(|r| super::job_retry::button(t, r));
     let pull = || fix(t.tr("git_errors.pull.button"), Msg::git("Pull", &["pull", "--ff"]));
     let set_upstream = || head.clone().and_then(|b| fix(t.tr("branch.menu.set_upstream"), Msg::Branch(BranchMsg::SetUpstreamDialog(b))));
     let (text, fix) = match cause {
@@ -78,7 +87,8 @@ pub(super) fn explain(st: &AppState, job: &RunningJob, retry: Option<StashRetry>
             fix(t.tr("git_errors.create_branch.button"), Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() })),
         ),
         Cause::UnknownRef { name } => (t.trf("git_errors.unknown_ref", &[("name", &name)]), None),
-        Cause::Locked { file } => (t.trf("git_errors.locked", &[("file", &file)]), None),
+        Cause::Locked { file } => (t.trf("git_errors.locked", &[("file", &file)]), try_again()),
+        Cause::SignIn(AuthNeed::Https) => (t.tr("git_errors.sign_in.https").to_owned(), try_again()),
         Cause::SignIn(need) => sign_in(t, need, fix),
         Cause::HostKeyChanged => (t.tr("git_errors.host_key_changed").to_owned(), None),
         Cause::Remote(f) => {

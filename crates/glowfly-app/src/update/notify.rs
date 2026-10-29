@@ -87,13 +87,25 @@ pub(super) fn unchanged(st: &mut AppState) {
     st.behind_watch.take_if(|w| generation > w.after_gen);
 }
 
-/// A toast's action button (or, with `details`, its Details beside a fix) was clicked: removes
-/// the toast and runs that button's message, unless it is for a repository whose tab is no
-/// longer active.
-pub(super) fn toast_action(st: &mut AppState, id: u64, details: bool, now: Instant, fx: &mut Vec<Effect>) {
+/// A toast's button: its action, the second fix beside it, or Details.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ToastButton {
+    Action,
+    Alt,
+    Details,
+}
+
+/// A toast's button was clicked: removes the toast and runs that button's message, unless it
+/// is for a repository whose tab is no longer active.
+pub(super) fn toast_action(st: &mut AppState, id: u64, button: ToastButton, now: Instant, fx: &mut Vec<Effect>) {
     let Some(i) = st.toasts.iter().position(|t| t.id == id) else { return };
     let t = st.toasts.remove(i);
-    let Some(action) = (if details { t.details } else { t.action }) else { return };
+    let action = match button {
+        ToastButton::Action => t.action,
+        ToastButton::Alt => t.alt,
+        ToastButton::Details => t.details,
+    };
+    let Some(action) = action else { return };
     run_action(st, action, now, fx);
 }
 

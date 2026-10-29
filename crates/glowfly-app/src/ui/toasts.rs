@@ -97,12 +97,16 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                             });
                         });
                     });
-                    if t.action.is_some() || t.details.is_some() {
+                    if t.action.is_some() || t.alt.is_some() || t.details.is_some() {
                         ui.add_space(4.0);
                         ui.scope(|ui| {
                             ui.multiply_opacity(fade);
                             ui.horizontal(|ui| {
-                                let buttons = [(&t.action, Msg::ToastAction(t.id)), (&t.details, Msg::ToastDetails(t.id))];
+                                let buttons = [
+                                    (&t.action, Msg::ToastAction(t.id)),
+                                    (&t.alt, Msg::ToastAlt(t.id)),
+                                    (&t.details, Msg::ToastDetails(t.id)),
+                                ];
                                 for (a, msg) in buttons {
                                     let Some(a) = a else { continue };
                                     if ui.add(buttons::secondary(&a.label).small()).clicked() {

@@ -155,7 +155,7 @@ fn causes_get_their_fix() {
         (
             "fatal: Unable to create '/tmp/r/.git/index.lock': File exists.",
             "Another git program is using this repository (index.lock exists).",
-            "Details",
+            "Try again",
         ),
         (
             "fatal: unable to access 'https://git.example.com/a.git/': Could not resolve host: git.example.com",
@@ -184,6 +184,7 @@ fn causes_get_their_fix() {
             "Push" => matches!(action_msg(&st, t), Msg::Job(JobMsg::Push { force: false })),
             "Create branch…" => matches!(action_msg(&st, t), Msg::Branch(BranchMsg::NewBranch { start: None, name }) if name.is_empty()),
             "SSH keys" => matches!(action_msg(&st, t), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh))),
+            "Try again" => matches!(action_msg(&st, t), Msg::Job(JobMsg::Retry(r)) if r.spec.cmds == vec![args(&["push"])]),
             _ => t.details.is_none(),
         };
         assert!(ok, "{output}: the fix's message");
