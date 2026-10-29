@@ -2476,6 +2476,8 @@
   "tools.deleted": "One side deleted the file: keep or delete it with the buttons below",
   "tools.diff_setup.tip": "No external diff tool is set in Preferences: this uses the one git config names, or opens Preferences > External tools to choose one.",
   "tools.editor_setup.tip": "No external editor is set yet: this opens Preferences > External tools to choose one.",
+  "tools.git_diff.exited_later": "git difftool for {target} ({program}) failed after it started: it exited with code {code}",
+  "tools.git_diff.stopped_later": "git difftool for {target} ({program}) was stopped after it started",
   "tools.in_merge_tool": "Open in the merge tool: save and close it there first",
   "tools.merge_setup.tip": "No external merge tool is set in Preferences: this uses the one git config names, or opens Preferences > External tools to choose one.",
   "tools.merge_tool.button": "Open in merge tool",

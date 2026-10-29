@@ -68,6 +68,10 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
                 fail(st, text, now);
             }
         }
+        ToolsMsg::DiffToolFailedLater { program, target, code, said } => {
+            let text = crate::state::tool_git::failed_later_text(st.settings.lang(), &program, &target, code, &said);
+            fail(st, text, now);
+        }
         ToolsMsg::OpenDiff(target) => super::tool_compare::open_diff(st, target, now, fx),
         ToolsMsg::ResolveInMergeTool(path) => super::tool_compare::resolve(st, path, now, fx),
         ToolsMsg::MergeToolExited { workdir, path, program, end } => super::tool_compare::exited(st, workdir, path, program, end, now, fx),

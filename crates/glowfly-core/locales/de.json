@@ -2476,6 +2476,8 @@
   "tools.deleted": "Eine Seite hat die Datei gelöscht: Behalte oder lösche sie mit den Schaltflächen unten",
   "tools.diff_setup.tip": "In den Einstellungen ist kein externes Diff-Werkzeug festgelegt: Dies verwendet das aus der git-Konfiguration oder öffnet Einstellungen > Externe Programme, um eines zu wählen.",
   "tools.editor_setup.tip": "Noch kein externer Editor festgelegt: Dies öffnet Einstellungen > Externe Programme, um einen zu wählen.",
+  "tools.git_diff.exited_later": "git difftool für {target} ({program}) ist nach dem Start fehlgeschlagen: Es wurde mit Code {code} beendet",
+  "tools.git_diff.stopped_later": "git difftool für {target} ({program}) wurde nach dem Start abgebrochen",
   "tools.in_merge_tool": "Im Merge-Werkzeug geöffnet: Speichere und schließe sie dort zuerst",
   "tools.merge_setup.tip": "In den Einstellungen ist kein externes Merge-Werkzeug festgelegt: Dies verwendet das aus der git-Konfiguration oder öffnet Einstellungen > Externe Programme, um eines zu wählen.",
   "tools.merge_tool.button": "Im Merge-Werkzeug öffnen",

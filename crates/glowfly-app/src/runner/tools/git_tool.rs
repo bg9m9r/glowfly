@@ -2,7 +2,9 @@
 //! A configured command runs in sh on copies Glowfly writes, as in `compare`; a built-in tool
 //! runs through `git difftool` (on those copies) or `git mergetool` (which writes and removes its
 //! own, and stages the file itself). The diff tool is left running and only a failure is
-//! reported; the merge tool is waited for and reported as `MergeToolExited`.
+//! reported: a command's within `EARLY_EXIT`, `git difftool`'s within its longer watch or,
+//! since git waits for the tool, whenever it exits with an error later (`DiffToolFailedLater`).
+//! The merge tool is waited for and reported as `MergeToolExited`.
 
 use super::compare::{launch_failure, reason};
 use crate::msg::Msg;
@@ -12,7 +14,7 @@ use glowfly_core::error::{Error, Result};
 use glowfly_core::external_tools::compare::{diff_files, fingerprint, merge_files};
 use glowfly_core::external_tools::git_config::GitToolRun;
 use glowfly_core::external_tools::shell_tool::{ShellLaunch, diff_env, merge_env, run_shell_to_exit, spawn_shell};
-use glowfly_core::external_tools::{Watched, early_exit_message, temp, watch_for};
+use glowfly_core::external_tools::{Ended, early_exit_message, temp, watch_to_end};
 use glowfly_core::gitcli::{self, args};
 use glowfly_core::native_path::native;
 use glowfly_core::repo;
@@ -25,8 +27,13 @@ use std::time::Duration;
 const GIT_DIFFTOOL_EARLY_EXIT: Duration = Duration::from_secs(10);
 
 /// Writes the diff's versions and starts git config's diff tool on them. Only a failure is
-/// reported.
+/// reported; for `git difftool` this waits as long as the tool runs, to report a late one.
 pub(super) fn open_diff(req: GitDiffRequest) -> Option<Msg> {
+    open_diff_watching(req, GIT_DIFFTOOL_EARLY_EXIT)
+}
+
+/// [`open_diff`], watching `git difftool` for `window` before a failure counts as late.
+fn open_diff_watching(req: GitDiffRequest, window: Duration) -> Option<Msg> {
     let failed = |failure| {
         let (program, target) = (req.tool.name.clone(), req.target.path().to_owned());
         Some(Msg::Tools(ToolsMsg::LaunchFailed { kind: ToolKind::DiffTool, program, target, failure }))
@@ -40,12 +47,14 @@ pub(super) fn open_diff(req: GitDiffRequest) -> Option<Msg> {
             script: cmd.clone(),
             env: diff_env(&files.local, &files.remote, req.target.path()),
             cwd: req.workdir.clone(),
-        }),
-        GitToolRun::BuiltIn { .. } => git_difftool(&req, &files.local, &files.remote),
+        })
+        .map(|()| None),
+        GitToolRun::BuiltIn { .. } => git_difftool(&req, &files.local, &files.remote, window),
         GitToolRun::Unknown => Err(Error::Other(format!("git config sets no command for the diff tool {}", req.tool.name))),
     };
     match started {
-        Ok(()) => None,
+        // The copies stay: the tool may have handed them to a window that is still open.
+        Ok(later) => later,
         Err(e) => {
             let _ = files.session.remove();
             failed(launch_failure(&e))
@@ -54,18 +63,27 @@ pub(super) fn open_diff(req: GitDiffRequest) -> Option<Msg> {
 }
 
 /// Starts `git difftool` with the built-in tool on `local` and `remote`, watching it as a
-/// program Glowfly starts: a quick failure is the error, with git's most telling line.
-fn git_difftool(req: &GitDiffRequest, local: &Path, remote: &Path) -> Result<()> {
+/// program Glowfly starts: a quick failure is the error, with git's most telling line. One
+/// still running after the watch is waited for, and a later failure is the message returned.
+fn git_difftool(req: &GitDiffRequest, local: &Path, remote: &Path, window: Duration) -> Result<Option<Msg>> {
     let tool = format!("--tool={}", req.tool.name);
     let (local, remote) = (native(local).to_string_lossy().into_owned(), native(remote).to_string_lossy().into_owned());
     let a = args(&["difftool", "--no-prompt", &tool, "--no-index", "--", &local, &remote]);
     let mut cmd = gitcli::command(&req.workdir, &a, gitcli::NO_PROMPTS);
     cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
     let child = cmd.spawn().map_err(|e| Error::Other(format!("git couldn't start: {e}")))?;
-    match watch_for(child, GIT_DIFFTOOL_EARLY_EXIT) {
-        Watched::Exited { code, stderr } if code != Some(0) => Err(Error::Other(early_exit_message(code, &git_said(&stderr, "")))),
-        _ => Ok(()),
-    }
+    Ok(match watch_to_end(child, window)? {
+        Ended::Early { code, stderr } if code != Some(0) => return Err(Error::Other(early_exit_message(code, &git_said(&stderr, "")))),
+        Ended::Later { code, stderr } if code != Some(0) => Some(failed_later(req, code, &stderr)),
+        _ => None,
+    })
+}
+
+/// The report of `git difftool` for `req` exiting with `code` after its watch, having printed
+/// `stderr`.
+fn failed_later(req: &GitDiffRequest, code: Option<i32>, stderr: &str) -> Msg {
+    let (program, target) = (req.tool.name.clone(), req.target.path().to_owned());
+    Msg::Tools(ToolsMsg::DiffToolFailedLater { program, target, code, said: git_said(stderr, "") })
 }
 
 /// Runs git config's merge tool on the conflicted file until it exits and says how it ended.

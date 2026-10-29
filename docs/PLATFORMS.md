@@ -215,7 +215,9 @@ second one next to it.
 3. **Quote raw command lines for cmd and PowerShell yourself,** and use `CREATE_NEW_CONSOLE` for
    terminals and `CREATE_NO_WINDOW` for helpers, so nothing flashes a console.
 4. **Watch started programs for `external_tools::EARLY_EXIT` (1.5 s)** and report an early
-   non-zero exit with the first stderr line. Starting a program is not proof it ran.
+   non-zero exit with the first stderr line. Starting a program is not proof it ran. `git
+   difftool` gets 10 s (its scripts start slowly on Windows) and is then waited for
+   (`watch_to_end`), so a failure that comes later is still reported.
 5. **macOS `open -a` takes options only after `--args`, with `-n`;** a running app never sees
    `--args`.
 6. **Search PATH like the OS does** (`external_tools.rs`): on Unix the file needs an exec bit;
@@ -227,6 +229,9 @@ second one next to it.
    read-only, and keep the file's name (`names::portable`) so tools can highlight it. They hold
    the stored bytes unless the repository is trusted, when `git cat-file --filters` gives the
    checkout form. A macOS application bundle that Glowfly waits for runs through `open -W`.
+   The sessions a Glowfly process made (`<pid>-<hex>`) are removed when its window closes
+   (`temp::remove_own_sessions`); a copy a tool still holds open on Windows stays for the
+   24-hour sweep.
 8. **A downloaded update is opened only after its SHA-256 matches the release's published
    checksum, and only on the user's click** (`app_update::download`, `runner/updates.rs`). The
    file's name comes from the server, so it is checked first (`app_update::asset_name_ok`: 1 to

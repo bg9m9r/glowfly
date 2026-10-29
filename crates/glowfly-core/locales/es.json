@@ -2476,6 +2476,8 @@
   "tools.deleted": "Un lado eliminó el archivo: consérvalo o elimínalo con los botones de abajo",
   "tools.diff_setup.tip": "No hay herramienta de diff externa en Preferencias: esto usa la que indique la configuración de git, o abre Preferencias > Herramientas externas para elegir una.",
   "tools.editor_setup.tip": "Aún no hay editor externo: esto abre Preferencias > Herramientas externas para elegir uno.",
+  "tools.git_diff.exited_later": "git difftool para {target} ({program}) falló después de iniciarse: terminó con el código {code}",
+  "tools.git_diff.stopped_later": "git difftool para {target} ({program}) se detuvo después de iniciarse",
   "tools.in_merge_tool": "Abierto en la herramienta de fusión: guárdalo y ciérralo allí primero",
   "tools.merge_setup.tip": "No hay herramienta de fusión externa en Preferencias: esto usa la que indique la configuración de git, o abre Preferencias > Herramientas externas para elegir una.",
   "tools.merge_tool.button": "Abrir en la herramienta de fusión",

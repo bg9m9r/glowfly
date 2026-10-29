@@ -128,3 +128,32 @@ fn git_diff_tools_report_only_failures() {
     assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("difftool.glowfly-no-such-tool.cmd not set")), "{f:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_git_difftool_failure_after_the_watch_is_reported_when_it_comes() {
+    let dir = conflicted("git-diff-tool-late");
+    git(&dir, &["checkout", "-q", "--theirs", "--", "a.txt"]);
+    git(&dir, &["add", "a.txt"]);
+    std::fs::write(
+        dir.join("a.txt"),
+        "edited
+",
+    )
+    .unwrap();
+    let req = GitDiffRequest {
+        tool: builtin("glowfly-no-such-tool"),
+        workdir: dir.clone(),
+        target: DiffTarget::Unstaged("a.txt".into()),
+        filters: false,
+    };
+    // No watch at all: git's failure comes after it, and is still reported, with git's line.
+    match open_diff_watching(req, Duration::ZERO) {
+        Some(Msg::Tools(ToolsMsg::DiffToolFailedLater { program, target, code: Some(c), said })) => {
+            assert_eq!((program.as_str(), target.as_str()), ("glowfly-no-such-tool", "a.txt"));
+            assert!(c != 0 && said.contains("glowfly-no-such-tool"), "{c}: {said}");
+        }
+        Some(Msg::Tools(other)) => panic!("expected a late diff tool failure, got {other:?}"),
+        _ => panic!("expected a late diff tool failure"),
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

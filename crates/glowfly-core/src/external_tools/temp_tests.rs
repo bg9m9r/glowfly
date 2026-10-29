@@ -107,3 +107,25 @@ fn a_shared_or_linked_root_is_refused() {
     assert!(root_in(&open, None).is_err());
     let _ = remove_tree(&scratch);
 }
+
+#[test]
+fn quitting_removes_only_this_process_sessions() {
+    let root = scratch("quit");
+    let a = Session::create(&root).unwrap();
+    a.write("ours", "a.txt", b"read-only copy").unwrap();
+    let b = Session::create(&root).unwrap();
+    assert!(used_root(&root), "the root is remembered for quitting");
+    let pid = std::process::id();
+    // Another process's session, a file and a bare prefix are left alone.
+    let other = root.join(format!("{}-0011223344556677", pid.wrapping_add(1)));
+    fs::create_dir(&other).unwrap();
+    let file = root.join(format!("{pid}-file"));
+    fs::write(&file, "").unwrap();
+    let bare = root.join(format!("{pid}-"));
+    fs::create_dir(&bare).unwrap();
+    let (a, b) = (a.dir().to_owned(), b.dir().to_owned());
+    remove_sessions_of(&root, pid);
+    assert!(!a.exists() && !b.exists(), "this process's sessions, read-only copies too");
+    assert!(other.is_dir() && file.is_file() && bare.is_dir());
+    let _ = remove_tree(&root);
+}
