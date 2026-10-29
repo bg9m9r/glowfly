@@ -218,6 +218,13 @@ fn failed_launches_are_logged_and_toasted() {
     assert_eq!(failure(&st), "Could not open a.txt in subl: Access is denied.");
     run(&mut st, failed(ToolKind::Terminal, LaunchFailure::Other("boom".into())));
     assert_eq!(failure(&st), "Could not start the terminal subl: boom");
+    // git difftool failing after its watch: reported when it comes.
+    let late = ToolsMsg::DiffToolFailedLater { program: "meld".into(), target: "a.txt".into(), code: Some(1), said: "boom".into() };
+    assert!(late.clone().on_inactive().is_none());
+    assert!(run(&mut st, late).is_empty());
+    assert_eq!(failure(&st), "git difftool for a.txt (meld) failed after it started: it exited with code 1: boom");
+    let action = st.toasts.last().and_then(|t| t.action.as_ref()).map(|a| a.label.as_str());
+    assert_ne!(action, Some("Open preferences"), "the settings can't fix it");
 
     // Every message is unscoped: nothing needs keeping for an inactive tab.
     for m in [

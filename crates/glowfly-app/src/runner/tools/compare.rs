@@ -1,5 +1,5 @@
 //! Opening a diff in the external diff tool and running the merge tool on a conflict. The diff
-//! tool is started and left running (its copies stay for the 24-hour sweep, since many tools
+//! tool is started and left running (its copies stay until Glowfly quits, since many tools
 //! hand them to a window that is already open); the merge tool is waited for, its copies are
 //! removed when it exits, and how it ended is reported as `MergeToolExited`.
 

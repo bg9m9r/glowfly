@@ -242,3 +242,26 @@ fn watch_reports_an_early_exit_with_stderr() {
         other => panic!("expected an early exit, got {other:?}"),
     }
 }
+
+#[test]
+fn watch_to_end_reports_a_failure_that_comes_after_the_window() {
+    let Ok(sh) = crate::custom_commands::find_sh() else { return eprintln!("no sh here; skipping") };
+    let start = |script: &str| {
+        Command::new(&sh)
+            .args(["-c", script])
+            .current_dir(crate::paths::temp_dir())
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap()
+    };
+    // Past the window: waited for, and its late exit and stderr reported.
+    let late = watch_to_end(start("sleep 1; echo '  ' >&2; echo late failure >&2; exit 4"), Duration::from_millis(100)).unwrap();
+    assert!(matches!(&late, Ended::Later { code: Some(4), stderr } if stderr.contains("late failure")), "{late:?}");
+    let fine = watch_to_end(start("sleep 1"), Duration::from_millis(100)).unwrap();
+    assert_eq!(fine, Ended::Later { code: Some(0), stderr: String::new() });
+    // Within it: the early exit, as `watch_for` says.
+    let early = watch_to_end(start("echo early >&2; exit 3"), Duration::from_secs(20)).unwrap();
+    assert!(matches!(&early, Ended::Early { code: Some(3), stderr } if stderr.contains("early")), "{early:?}");
+}

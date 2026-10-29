@@ -11,11 +11,16 @@ use crate::persist::{WriteOptions, remove_tree, write_file};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
+
+/// The roots this process made sessions in, for [`remove_own_sessions`].
+static USED_ROOTS: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
 
 /// How old a session folder must be before a new session sweeps it away. Diff tools often hand
 /// their files to a window that is already open, so a diff session is never removed when the
-/// program exits; this is when it goes.
+/// program exits; it goes when Glowfly quits ([`remove_own_sessions`]), and this sweep catches
+/// those a Glowfly that didn't quit cleanly left.
 pub const SWEEP_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// The folder sessions are made in: `glowfly-tools` in the temporary folder when it is private
@@ -82,6 +87,11 @@ impl Session {
     /// [`SWEEP_AGE`].
     pub fn create(root: &Path) -> io::Result<Session> {
         sweep(root, SWEEP_AGE, SystemTime::now());
+        if let Ok(mut used) = USED_ROOTS.lock()
+            && !used.iter().any(|r| r == root)
+        {
+            used.push(root.to_owned());
+        }
         for _ in 0..16 {
             let mut bytes = [0u8; 8];
             getrandom::fill(&mut bytes).map_err(|e| io::Error::other(e.to_string()))?;
@@ -142,6 +152,36 @@ pub fn sweep(root: &Path, older_than: Duration, now: SystemTime) {
             let _ = remove_tree(&path);
         }
     }
+}
+
+/// Removes the sessions this process made, in every root it used: for when Glowfly quits, so a
+/// diff tool's copies don't wait for the sweep. A copy a tool still holds open (Windows) stays
+/// for the sweep.
+pub fn remove_own_sessions() {
+    let roots = USED_ROOTS.lock().map(|r| r.clone()).unwrap_or_default();
+    for root in roots {
+        remove_sessions_of(&root, std::process::id());
+    }
+}
+
+/// Removes the session folders process `pid` made directly in `root` (named `<pid>-<hex>`).
+/// Links and files are left alone, and nothing that fails stops the rest.
+pub fn remove_sessions_of(root: &Path, pid: u32) {
+    let prefix = format!("{pid}-");
+    let Ok(entries) = fs::read_dir(root) else { return };
+    for entry in entries.flatten() {
+        let mine = entry.file_name().to_str().is_some_and(|n| n.strip_prefix(&prefix).is_some_and(|hex| !hex.is_empty()));
+        let path = entry.path();
+        if mine && fs::symlink_metadata(&path).is_ok_and(|m| m.is_dir()) {
+            let _ = remove_tree(&path);
+        }
+    }
+}
+
+/// Whether this process made a session in `root`.
+#[cfg(test)]
+pub(crate) fn used_root(root: &Path) -> bool {
+    USED_ROOTS.lock().is_ok_and(|r| r.iter().any(|u| u == root))
 }
 
 /// The name a copy of `repo_path` gets: its last part, with any backslash made '-' (so a name

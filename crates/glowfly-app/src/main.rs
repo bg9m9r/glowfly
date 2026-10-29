@@ -136,7 +136,11 @@ fn main() -> eframe::Result {
         event_loop_builder: platform::native_menu::event_loop_hook(),
         ..Default::default()
     };
-    eframe::run_native("Glowfly", options, Box::new(move |cc| Ok(Box::new(ui::GlowflyApp::new(cc, start, logs, mica, probe)))))
+    let ran = eframe::run_native("Glowfly", options, Box::new(move |cc| Ok(Box::new(ui::GlowflyApp::new(cc, start, logs, mica, probe)))));
+    // The window has closed: the copies this session gave the diff tool go now, not at the
+    // 24-hour sweep.
+    glowfly_core::external_tools::temp::remove_own_sessions();
+    ran
 }
 
 /// What the command line asks the new window to open; either goes to a window already running

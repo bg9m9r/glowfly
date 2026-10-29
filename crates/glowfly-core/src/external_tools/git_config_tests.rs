@@ -74,6 +74,43 @@ fn diff_falls_back_to_merge_tool_like_git() {
 }
 
 #[test]
+fn gui_tools_come_first_as_git_difftool_gui_picks() {
+    let name = |all: &[Entry], mode: ToolMode| run_of(all, mode, &yes).map(|t| (t.0, t.1));
+    let named = |n: &str, k: &str| Some((n.to_owned(), k.to_owned()));
+    let every = [set("diff.tool", "d"), set("merge.tool", "m"), set("diff.guitool", "dg"), set("merge.guitool", "mg")];
+    assert_eq!(name(&every, ToolMode::Diff), named("dg", "diff.guitool"));
+    assert_eq!(name(&every, ToolMode::Merge), named("mg", "merge.guitool"));
+    // diff.guitool, merge.guitool, diff.tool, merge.tool; merge mode never reads diff.*.
+    assert_eq!(name(&[set("diff.tool", "d"), set("merge.guitool", "mg")], ToolMode::Diff), named("mg", "merge.guitool"));
+    assert_eq!(name(&[set("diff.guitool", "dg"), set("merge.tool", "m")], ToolMode::Merge), named("m", "merge.tool"));
+    assert_eq!(name(&[set("diff.guitool", "dg")], ToolMode::Merge), None);
+    // An empty guitool is unset.
+    assert_eq!(name(&[set("diff.guitool", ""), set("diff.tool", "d")], ToolMode::Diff), named("d", "diff.tool"));
+    // guiDefault false skips the guitool keys, as a plain `git difftool`; each mode reads its own.
+    for off in ["false", "no", "off", "0"] {
+        let all = [every.as_slice(), &[set("difftool.guidefault", off)]].concat();
+        assert_eq!(name(&all, ToolMode::Diff), named("d", "diff.tool"), "{off}");
+        assert_eq!(name(&all, ToolMode::Merge), named("mg", "merge.guitool"), "{off}");
+        let all = [every.as_slice(), &[set("mergetool.guidefault", off)]].concat();
+        assert_eq!(name(&all, ToolMode::Merge), named("m", "merge.tool"), "{off}");
+        assert_eq!(name(&all, ToolMode::Diff), named("dg", "diff.guitool"), "{off}");
+    }
+    // true, auto (Glowfly's window is a display), valueless, a value git can't read, and the
+    // last value winning.
+    for on in [Some("true"), Some("Auto"), None, Some("maybe")] {
+        let all = [every.as_slice(), &[e("difftool.guidefault", on)]].concat();
+        assert_eq!(name(&all, ToolMode::Diff), named("dg", "diff.guitool"), "{on:?}");
+    }
+    let all = [every.as_slice(), &[set("difftool.guidefault", "false"), set("difftool.guidefault", "true")]].concat();
+    assert_eq!(name(&all, ToolMode::Diff), named("dg", "diff.guitool"));
+    // The GUI tool's command follows the same difftool, then mergetool, order.
+    let all = [set("diff.guitool", "g"), set("mergetool.g.cmd", "g-merge"), set("difftool.d.cmd", "d-cmd"), set("diff.tool", "d")];
+    assert_eq!(run_of(&all, ToolMode::Diff, &no).unwrap().2, command("mergetool.g.cmd", "g-merge"));
+    let all = [all.as_slice(), &[set("difftool.g.cmd", "g-diff")]].concat();
+    assert_eq!(run_of(&all, ToolMode::Diff, &no).unwrap().2, command("difftool.g.cmd", "g-diff"));
+}
+
+#[test]
 fn trust_exit_code_reads_git_booleans() {
     let trust = |v: Option<Option<&str>>, mode: ToolMode| {
         let mut all = vec![set("merge.tool", "m"), set("mergetool.m.cmd", "c")];
@@ -149,6 +186,15 @@ fn read_honours_includes_and_scopes() {
     let want =
         GitToolRun::Command { key: "mergetool.m.cmd".into(), cmd: "m-cmd \"$MERGED\"".into(), trust_exit_code: true, from_repo: true };
     assert_eq!(merge.run, want);
+
+    // git reads the GUI keys too: the repository's diff.guitool comes first, until its
+    // difftool.guiDefault turns that off.
+    set_config(&dir, &[("diff.guitool", "gg"), ("difftool.gg.cmd", "gg-cmd")]);
+    let diff = read(&dir, true, &env).unwrap().diff.unwrap();
+    assert_eq!((diff.name.as_str(), diff.chosen_by.as_str()), ("gg", "diff.guitool"));
+    assert!(matches!(diff.run, GitToolRun::Command { from_repo: true, ref cmd, .. } if cmd == "gg-cmd"), "{diff:?}");
+    set_config(&dir, &[("difftool.guiDefault", "false")]);
+    assert_eq!(read(&dir, true, &env).unwrap().diff.unwrap().name, "g");
 
     set_config(&dir, &[("difftool.g.cmd", "local-cmd")]);
     let diff = read(&dir, true, &env).unwrap().diff.unwrap();

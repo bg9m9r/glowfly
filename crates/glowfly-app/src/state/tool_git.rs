@@ -38,6 +38,16 @@ pub fn held_text(mode: ToolMode, tool: &GitTool) -> String {
     format!("{} (git config's {}) wasn't opened: {why}. Trust the repository, then open it again.", tool.name, kind(mode))
 }
 
+/// `git difftool` running `program` on `target` failed after its early-exit watch: it exited
+/// with `code` (None: it was stopped), git saying `said` ("" when nothing).
+pub fn failed_later_text(t: Lang, program: &str, target: &str, code: Option<i32>, said: &str) -> String {
+    let how = match code {
+        Some(code) => t.trf("tools.git_diff.exited_later", &[("program", &program), ("target", &target), ("code", &code)]),
+        None => t.trf("tools.git_diff.stopped_later", &[("program", &program), ("target", &target)]),
+    };
+    if said.is_empty() { how } else { format!("{how}: {said}") }
+}
+
 /// git config couldn't be read for a click.
 pub fn read_failed_text(mode: ToolMode, e: &str) -> String {
     format!("Could not read git config's {}: {e}", kind(mode))

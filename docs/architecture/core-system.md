@@ -122,10 +122,10 @@ source file, update its line here.
 ## External tools (`external_tools.rs`, `external_tools/`)
 
 - External programs (Preferences > External Tools): argument templates and each tool's placeholders (`template.rs`).
-- Finding the program on PATH, starting it detached or waiting for it to exit (`run_to_exit`).
-- `temp.rs`: the private folder for the copies diff and merge tools open: one session folder per opening, swept after 24 hours.
+- Finding the program on PATH, starting it detached or waiting for it to exit (`run_to_exit`), or watching it to its end to report a late failure (`watch_to_end`).
+- `temp.rs`: the private folder for the copies diff and merge tools open: one session folder per opening, removed when Glowfly quits and swept after 24 hours.
 - `compare.rs`: writing those copies for a diff or a conflict, from `repo/tool_sides.rs`.
-- `git_config.rs`: when Preferences sets no diff or merge tool: git config's diff and merge tools, read through gitcli with git's fallbacks, and which values are the repository's own.
+- `git_config.rs`: when Preferences sets no diff or merge tool: git config's diff and merge tools, read through gitcli with git's fallbacks (the `guitool` keys first, as `--gui`, unless `guiDefault` is false), and which values are the repository's own.
 - `shell_tool.rs`: running a configured tool command in sh with LOCAL/REMOTE/MERGED/BASE.
 
 ## Glowfly's own updates (`app_update.rs`, `app_update/`)
