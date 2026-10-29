@@ -61,8 +61,13 @@ fn during_operation(a: &Action) -> bool {
 }
 
 impl UndoHistory {
-    /// A new undoable action succeeded.
+    /// A new undoable action succeeded. A kept abort of the stopped operation drops what the
+    /// operation's own steps recorded, as a plain abort does (`aborted`).
     pub fn record(&mut self, a: Action) {
+        if let (Action::AbortKept { .. }, Some(s)) = (&a, &self.stopped) {
+            let since = self.undo.split_off(s.depth.min(self.undo.len()));
+            self.undo.extend(since.into_iter().filter(Action::is_content));
+        }
         if !during_operation(&a) {
             self.stopped = None;
         }
@@ -105,6 +110,19 @@ impl UndoHistory {
     /// The repository no longer matches the history.
     pub fn clear(&mut self) {
         *self = Self::default();
+    }
+
+    /// Drops the top of the undo stack (or the redo stack, with `redo`) alone, keeping a stopped
+    /// operation's count of older entries true.
+    pub fn pop_top(&mut self, redo: bool) {
+        if redo {
+            self.redo.pop();
+        } else {
+            self.undo.pop();
+            if let Some(s) = &mut self.stopped {
+                s.depth = s.depth.min(self.undo.len());
+            }
+        }
     }
 
     /// `a` (the top of the undo stack) was undone.
@@ -293,6 +311,37 @@ mod tests {
         h.stopped_at(s.clone());
         h.record(checkout());
         assert!(h.stopped.is_none(), "a new action ends it");
+
+        // A kept abort drops the operation's own steps too, and ends it.
+        let mut h = UndoHistory::default();
+        h.record(checkout());
+        h.stopped_at(s.clone());
+        h.record(resolve.clone());
+        h.record(discard());
+        let kept = Action::AbortKept {
+            op: glowfly_core::undo::MoveOp::Merge,
+            saved: git2::Oid::zero(),
+            head: git2::Oid::zero(),
+            branch: None,
+            left: glowfly_core::undo::Changes(Vec::new()),
+        };
+        h.record(kept.clone());
+        assert_eq!(h.undo, vec![checkout(), discard(), kept]);
+        assert!(h.stopped.is_none());
+    }
+
+    #[test]
+    fn dropping_the_top_alone_keeps_the_stopped_depth_true() {
+        let mut h = UndoHistory::default();
+        h.record(checkout());
+        h.record(discard());
+        h.stopped_at(start(2));
+        h.pop_top(false);
+        assert_eq!(h.stopped.as_ref().map(|s| s.depth), Some(1));
+        h.redo.push(checkout());
+        h.pop_top(true);
+        assert!(h.redo.is_empty());
+        assert_eq!(h.undo, vec![checkout()]);
     }
 
     #[test]
