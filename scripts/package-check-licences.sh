@@ -12,7 +12,8 @@
 #   *.dmg, *.app      Glowfly.app/Contents/Resources/ (the dmg is attached read-only; macOS only)
 #   *.AppImage        usr/share/doc/glowfly/ (--appimage-extract, so on its own architecture)
 #   *.deb             usr/share/doc/glowfly/ (dpkg-deb)
-#   *.rpm             usr/share/doc/glowfly/ (rpm2cpio and cpio)
+#   *.rpm             usr/share/doc/glowfly/ (bsdtar, which reads the zstd payload and drops the
+#                     leading / that cpio would extract to)
 set -Eeuo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -89,9 +90,8 @@ for pkg in "$@"; do
       expect_docs "$work/usr/share/doc/glowfly" "$name"
       ;;
     *.rpm)
-      need rpm2cpio "$name"
-      need cpio "$name"
-      (cd "$work" && rpm2cpio "$abs" | cpio -idm --quiet)
+      need bsdtar "$name"
+      bsdtar -xf "$abs" -C "$work" || fail "couldn't unpack $name"
       expect_docs "$work/usr/share/doc/glowfly" "$name"
       ;;
     *) fail "$name isn't a package this check reads" ;;
