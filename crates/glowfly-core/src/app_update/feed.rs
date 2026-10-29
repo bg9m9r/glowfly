@@ -81,6 +81,21 @@ impl Feed {
             }
         }
     }
+
+    /// `asset`'s bytes as they arrive, for a download streamed to disk. The caller limits how
+    /// many it reads.
+    pub(super) fn open(&self, asset: &Asset) -> Result<Box<dyn Read + Send>, String> {
+        match self {
+            Feed::Hosted(_) => crate::forge::open_public(&asset.url).map_err(|e| e.to_string()),
+            Feed::Folder(dir) => {
+                if !release::asset_name_ok(&asset.name) {
+                    return Err(format!("{} isn't a file name Glowfly reads", crate::text::printable(&asset.name)));
+                }
+                let file = std::fs::File::open(dir.join(&asset.name)).map_err(|e| e.to_string())?;
+                Ok(Box::new(file))
+            }
+        }
+    }
 }
 
 /// The contents of `path`, refused (as `InvalidData`) when longer than `limit`.

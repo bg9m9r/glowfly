@@ -10,7 +10,7 @@ use super::theme::color;
 use super::widgets::truncate::{cut_job, paint_cut};
 use super::widgets::{self, Icon};
 use crate::msg::{Msg, PrefsMsg, UpdateMsg};
-use crate::state::updates::{ChipKind, UpdateStatus, download_failed_text};
+use crate::state::updates::{ChipKind, UpdateStatus, download_failed_text, stale_text};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
@@ -67,6 +67,14 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         return;
     }
     let tip = match (kind, st.updates.settled()) {
+        (ChipKind::Available, UpdateStatus::Stale { file, problem, .. }) => {
+            format!(
+                "{}
+{}",
+                stale_text(t, file, *problem),
+                t.tr("updates.chip_tip.retry")
+            )
+        }
         (ChipKind::Available, _) => t.tr("updates.chip_tip.available").to_owned(),
         (ChipKind::Downloaded, _) => match st.updates.downloaded().map(|d| d.1) {
             Some(m) if m.restarts() => t.tr("updates.chip_tip.install_restart").to_owned(),

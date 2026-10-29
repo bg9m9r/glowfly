@@ -136,7 +136,8 @@ source file, update its line here.
 - `host.rs`: the machine's real processor under emulation.
 - `appimage.rs`: whether this copy runs from an AppImage and which file that is.
 - `sums.rs`: `SHA256SUMS` files.
-- `download.rs`: downloading a file into the Downloads folder only after its SHA-256 matches.
+- `download.rs`: downloading a file into the Downloads folder, streamed to a temporary file beside it and renamed into place only after its SHA-256 matches, with progress and Cancel; `check_saved` reads a saved file again.
+- `download_tests.rs`: streamed downloads from a local feed (progress, Cancel and a mismatch removing the partial file).
 - `feed.rs`: where releases are read from: the hosting service or a local folder named by `GLOWFLY_UPDATE_FEED`.
 - `check.rs`: the headless check behind `glowfly --check-update`.
 - `method.rs`: Install and restart: how a downloaded file is installed.

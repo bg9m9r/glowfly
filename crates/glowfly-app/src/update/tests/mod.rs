@@ -280,6 +280,7 @@ pub(super) mod undo_revert_tests;
 pub(super) mod undo_stash_safety_tests;
 pub(super) mod undo_stash_tests;
 pub(super) mod undo_tests;
+pub(super) mod updates_download_tests;
 pub(super) mod updates_flatpak_tests;
 pub(super) mod updates_notes_tests;
 pub(super) mod updates_recheck_tests;

@@ -77,7 +77,7 @@ pub use model::*;
 pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, jira_project, keep_jira_key, mention};
-pub use releases::{fetch_public, latest_release, releases_api};
+pub use releases::{fetch_public, latest_release, open_public, releases_api};
 pub(crate) use remote::split_url;
 pub use remote::{Connection, parse_host, parse_remote};
 pub use repo_size::repo_size;

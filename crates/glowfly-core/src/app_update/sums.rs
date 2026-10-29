@@ -46,3 +46,17 @@ pub fn expected(text: &str, name: &str) -> Option<[u8; 32]> {
 pub fn sha256(bytes: &[u8]) -> [u8; 32] {
     Sha256::digest(bytes).into()
 }
+
+/// The SHA-256 digest of everything `reader` gives, read in chunks rather than held whole.
+pub(super) fn sha256_reader(mut reader: impl std::io::Read) -> std::io::Result<[u8; 32]> {
+    let mut hasher = Sha256::new();
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        match reader.read(&mut buf) {
+            Ok(0) => return Ok(hasher.finalize().into()),
+            Ok(n) => hasher.update(&buf[..n]),
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(e) => return Err(e),
+        }
+    }
+}

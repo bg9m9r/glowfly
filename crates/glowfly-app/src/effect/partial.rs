@@ -85,13 +85,15 @@ pub struct ContentRequest {
     pub cmds: Vec<Vec<String>>,
 }
 
-/// Which running git commands `Effect::StopGit` stops.
+/// Which running git commands (or downloads) `Effect::StopGit` stops.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StopKey {
     /// The active job's (a `RunGit` that only fetches).
     Job,
     /// A background download of missing contents.
     Content(u64),
+    /// The download of Glowfly's own update (`UpdateEffect::Download`).
+    UpdateDownload,
 }
 
 impl Effect {

@@ -22,7 +22,7 @@ const RIGHT: f64 = 960.0 - 24.0 + 1.0;
 /// The window's height, less the status bar (its version text sits at the window's right edge).
 const STATUS_HEIGHT: f32 = 30.0;
 
-type Narrow = Harness<'static, (AppState, Vec<crate::msg::Msg>)>;
+pub(super) type Narrow = Harness<'static, (AppState, Vec<crate::msg::Msg>)>;
 
 fn narrow(st: AppState) -> Narrow {
     narrow_tall(st, 700.0)
@@ -35,7 +35,7 @@ fn narrow_tall(st: AppState, height: f32) -> Narrow {
 }
 
 /// The widgets above the status bar whose right edge is past the content column, by label.
-fn overflowing(h: &Narrow) -> Vec<String> {
+pub(super) fn overflowing(h: &Narrow) -> Vec<String> {
     let status_top = f64::from(h.ctx.screen_rect().height() - STATUS_HEIGHT);
     h.query_all_by(|_| true)
         .filter_map(|n| {

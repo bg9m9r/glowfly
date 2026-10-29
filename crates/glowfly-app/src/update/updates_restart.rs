@@ -86,6 +86,8 @@ pub(super) fn ready(st: &mut AppState, result: Result<(), String>, now: Instant,
                 workdir: None,
             };
             st.toast_action(false, text, action, now);
+            // A file gone or changed since is offered for download again.
+            super::updates_download::check_saved(st, fx);
         }
     }
 }
