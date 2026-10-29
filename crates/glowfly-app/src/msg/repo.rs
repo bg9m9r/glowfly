@@ -187,6 +187,10 @@ pub enum WatchMsg {
     /// The index changed (debounced, `Msg::Scoped` as `RepoChanged`); `paths`: work-tree paths
     /// named in the same burst.
     IndexChanged { paths: Vec<String>, last_event: Instant },
+    /// The repository's config (`config`, `config.worktree`, the common dir's `config` or a file
+    /// they include) changed outside Glowfly, right after the `RepoChanged` it came with
+    /// (`Msg::Scoped` as `RepoChanged`): the identity commits get may differ now.
+    ConfigChanged,
     /// The file watcher could not start or stopped working for `workdir`.
     WatchFailed { workdir: PathBuf, error: String },
     /// `workdir` is on a network or virtual file system of this `kind` ("SMB", "WSL"…), which
@@ -199,7 +203,11 @@ impl WatchMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::RepoChanged { .. } | Self::IndexChanged { .. } | Self::WatchFailed { .. } | Self::RemoteVolume { .. } => None,
+            Self::RepoChanged { .. }
+            | Self::IndexChanged { .. }
+            | Self::ConfigChanged
+            | Self::WatchFailed { .. }
+            | Self::RemoteVolume { .. } => None,
         }
     }
 }

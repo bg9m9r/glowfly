@@ -103,6 +103,11 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 - A "Pick a profile for this folder" prompt when cloning or initializing into a folder no rule covers
 - Per-rule signing settings (gpg.format, commit.gpgsign) written into the profile's include file
 - Remove a repository's own identity from config.worktree too (extensions.worktreeConfig) when using a profile there
+- Re-read the identity when the global or XDG git config, or a profile's include file, changes outside Glowfly (only the repository's config is watched)
+- Name the committer in the commit box too when GIT_COMMITTER_NAME or GIT_COMMITTER_EMAIL is set (the line names the author)
+- Warn about GIT_AUTHOR_DATE and GIT_COMMITTER_DATE in the environment as well
+- Offer to keep GIT_AUTHOR_* and GIT_COMMITTER_* from Glowfly's git children (env_remove), so the config's identity applies
+- Warn about the identity variables in the Repo > Identity page and the welcome identity step too
 
 ### GPG passphrase prompts
 

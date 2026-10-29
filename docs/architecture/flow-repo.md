@@ -111,6 +111,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Glowfly never writes a repository's own identity, and removes it only after the Use <profile> here confirmation.
 - Which profile applies is read from git (`repo_identity::read`), never worked out by Glowfly alone; Glowfly's own matching only says what to expect.
 - A mismatch places the entries again once per git dir and session.
+- `GIT_AUTHOR_*` and `GIT_COMMITTER_*` in Glowfly's environment come before any config for every git child: the runner adds them to each read (`RepoIdentity::overrides`), and the commit box and Profile page warn, naming each one.
+- An outside edit to the repository's config (`config`, `config.worktree`, the common dir's `config` or an included file) reads the identity again (`WatchMsg::ConfigChanged`, after the full reload).
 
 ## Dashboard
 

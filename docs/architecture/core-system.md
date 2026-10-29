@@ -93,7 +93,7 @@ source file, update its line here.
 - `profile_includes.rs`, `profile_includes/`: profile folder rules in the global git config: an `[includeIf "gitdir:<folder>/"]` entry per rule pointing at the profile's include file in Glowfly's `git-profiles` folder (`[user]` only, no profile name).
 - `pattern.rs`: the patterns and the include file's quoting.
 - `profile_includes/` also holds the plan (entries shallow-first), the sync (files rewritten when changed; with `place`, Glowfly's own sections removed and added again at the end of the file, sections pointing elsewhere or shared with the user's keys left alone), and checking a picked folder (resolved, valid text, case folding probed).
-- `repo_identity.rs`: a repository's effective identity and where git read it (`git config --show-origin`): a profile's include file, the repository's own config or elsewhere, plus what the rules expect; removing the repository's own name and email.
+- `repo_identity.rs`: a repository's effective identity and where git read it (`git config --show-origin`): a profile's include file, the repository's own config or elsewhere, plus what the rules expect; the identity variables set in the environment (`env_overrides`); removing the repository's own name and email.
 
 ## Files, logs, text and dates
 

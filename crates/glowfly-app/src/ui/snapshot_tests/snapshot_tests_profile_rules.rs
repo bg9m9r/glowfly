@@ -1,8 +1,8 @@
 //! Preferences > Profile's folder rules and Open repository row, and the commit box's identity
 //! line: a profile with a folder rule and a repository rule in a repository its rule applies
 //! to, a repository whose own identity comes before the rule, a profile without rules (with a
-//! refusal shown), plus the clicks the rows turn into messages. Rule paths are fixed display
-//! strings; nothing is read from git.
+//! refusal shown), identity variables set in the environment (both views warn), plus the clicks
+//! the rows turn into messages. Rule paths are fixed display strings; nothing is read from git.
 
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, with_repo};
 use crate::msg::Msg;
@@ -14,7 +14,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::paths;
-use glowfly_core::repo_identity::{IdentitySource, RepoIdentity};
+use glowfly_core::repo_identity::{EnvOverride, IdentitySource, RepoIdentity};
 use glowfly_core::settings::{FolderRule, Profile, ProfileId, ThemeChoice};
 use std::path::PathBuf;
 
@@ -93,6 +93,7 @@ fn own() -> RepoIdentity {
         local_name: Some("Ada".into()),
         local_email: Some("ada@acme.example".into()),
         expected: Some(WORK),
+        ..RepoIdentity::default()
     }
 }
 
@@ -175,6 +176,40 @@ fn rule_clicks_turn_into_messages() {
     h.get_by_label("Use Work here").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, Msg::Profile(ProfileMsg::AskUseHere(WORK)))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Work's identity with GIT_AUTHOR_EMAIL set and GIT_COMMITTER_NAME set empty.
+fn overridden() -> RepoIdentity {
+    let env = |var: &'static str, value: &str| EnvOverride { var, value: value.into() };
+    RepoIdentity { overrides: vec![env("GIT_AUTHOR_EMAIL", "ci@build.example"), env("GIT_COMMITTER_NAME", "")], ..from_work() }
+}
+
+#[test]
+fn prefs_profile_rules_env() {
+    let (mut st, dir) = page(ThemeChoice::Dark, "profile-rules-env", ruled());
+    read_as(&mut st, overridden());
+    let mut h = harness_sized(st, true, SIZE);
+    h.run();
+    h.check_snapshot("prefs_profile_rules_env");
+    assert!(h.query_by_label_contains("GIT_AUTHOR_EMAIL is set in Glowfly's environment").is_some(), "names the variable");
+    assert!(h.query_by_label_contains("the committer name \"\" from it").is_some(), "an empty value shows as empty");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn commit_box_identity_env() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-identity-env");
+    st.settings.profiles = vec![Profile { id: WORK, name: "Work".into(), ..Profile::default() }];
+    let git_dir = st.snap.as_ref().unwrap().git_dir.clone();
+    st.identities.insert(git_dir, overridden());
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("commit_box_identity_env");
+    // The line may be cut to the room beside Amend; the author git gives comes first.
+    assert!(h.query_by_label_contains("as Ada Lovelace <ci@build.example>").is_some(), "the author from the environment");
     drop(h);
     remove_fixture(&dir);
 }

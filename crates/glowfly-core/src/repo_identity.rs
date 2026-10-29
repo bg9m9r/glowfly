@@ -1,13 +1,16 @@
 //! Where a repository's author identity comes from, as git sees it: the effective user.name and
 //! user.email with the file each was read from (`git config --show-origin`), told apart as a
 //! profile's include file (a folder rule), the repository's own config, or anywhere else (the
-//! global or system config). Also what the folder rules say should apply, and removing the
-//! repository's own name and email so a profile's rule can apply (asked first by the app).
+//! global or system config). Also what the folder rules say should apply, the
+//! `GIT_AUTHOR_*` / `GIT_COMMITTER_*` variables in Glowfly's environment that git takes before
+//! any config (`env_overrides`), and removing the repository's own name and email so a
+//! profile's rule can apply (asked first by the app).
 
 use crate::gitcli::{self, args};
 use crate::paths;
 use crate::profile_includes;
 use crate::settings::{FolderRule, ProfileId, profile_for_git_dir};
+use std::ffi::OsString;
 use std::path::{Component, Path, PathBuf};
 
 /// The file the effective identity was read from.
@@ -35,6 +38,37 @@ pub struct RepoIdentity {
     pub local_email: Option<String>,
     /// What the rules say should apply (`profile_for_git_dir` on the resolved git dir).
     pub expected: Option<ProfileId>,
+    /// The identity variables set in Glowfly's environment, which git children inherit and use
+    /// instead of the config (`env_overrides`); `read` leaves them empty.
+    pub overrides: Vec<EnvOverride>,
+}
+
+/// The variables git reads for a commit's author and committer before any config, in this
+/// order.
+pub const ENV_VARS: [&str; 4] = ["GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"];
+
+/// One of `ENV_VARS` that is set (an empty value counts: git uses it too).
+#[derive(Clone, Debug, PartialEq)]
+pub struct EnvOverride {
+    pub var: &'static str,
+    pub value: String,
+}
+
+impl RepoIdentity {
+    /// The value `var` (one of `ENV_VARS`) is set to, if it is.
+    pub fn override_of(&self, var: &str) -> Option<&str> {
+        self.overrides.iter().find(|o| o.var == var).map(|o| o.value.as_str())
+    }
+}
+
+/// The `ENV_VARS` that `env` sets, in `ENV_VARS` order. Pure.
+pub fn env_overrides_with(env: impl Fn(&str) -> Option<OsString>) -> Vec<EnvOverride> {
+    ENV_VARS.iter().filter_map(|&var| env(var).map(|v| EnvOverride { var, value: v.to_string_lossy().into_owned() })).collect()
+}
+
+/// [`env_overrides_with`] for this process, whose environment every git child inherits.
+pub fn env_overrides() -> Vec<EnvOverride> {
+    env_overrides_with(crate::flatpak::host_var)
 }
 
 /// Reads the identity git gives commits in `workdir` (whose git dir is `git_dir`), with
