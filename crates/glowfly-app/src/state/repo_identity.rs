@@ -1,7 +1,8 @@
 //! The open repositories' effective identities as git reported them (`AppState::identities`, by
 //! git dir), the include sync's state (`AppState::includes`), and the words built from them: the
 //! Profile page's Open repository row, the commit box's identity line and the Repo > Identity
-//! hints. Pure.
+//! hints, plus the warnings both views give when `GIT_AUTHOR_*` or `GIT_COMMITTER_*` in
+//! Glowfly's environment take the place of the config (`RepoIdentity::overrides`). Pure.
 
 use crate::state::profiles::identity_line;
 use glowfly_core::i18n::Lang;
@@ -68,8 +69,37 @@ pub fn here_line(repo: &str, id: &RepoIdentity, settings: &Settings, git_dir: &P
     }
 }
 
-/// The commit box's identity line and whether it is a warning (no identity).
+/// The author a commit gets: `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL` in place of the config's.
+fn author_who(id: &RepoIdentity) -> Option<String> {
+    let name = id.override_of("GIT_AUTHOR_NAME").unwrap_or(&id.name);
+    let email = id.override_of("GIT_AUTHOR_EMAIL").unwrap_or(&id.email);
+    identity_line(name, email)
+}
+
+/// The identity variables that are set, by name, for a line.
+fn override_names(id: &RepoIdentity) -> String {
+    id.overrides.iter().map(|o| o.var).collect::<Vec<_>>().join(", ")
+}
+
+/// The first name variable set but empty: git refuses to commit with an empty name
+/// (`empty ident name not allowed`). An empty email is allowed.
+fn empty_name(id: &RepoIdentity) -> Option<&'static str> {
+    id.overrides.iter().find(|o| o.var.ends_with("_NAME") && o.value.is_empty()).map(|o| o.var)
+}
+
+/// The commit box's identity line and whether it is a warning (no identity, or variables in the
+/// environment take the place of the config; an empty name variable, which stops commits).
 pub fn commit_identity_line(t: Lang, id: &RepoIdentity, settings: &Settings) -> (String, bool) {
+    if let Some(var) = empty_name(id) {
+        return (t.trf("commit.identity.env.empty_name", &[("var", &var)]), true);
+    }
+    if !id.overrides.is_empty() {
+        let line = match author_who(id) {
+            Some(who) => t.trf("commit.identity.env.line", &[("who", &who), ("vars", &override_names(id))]),
+            None => t.tr("commit.identity.unset").to_owned(),
+        };
+        return (line, true);
+    }
     let Some(who) = who(id) else { return (t.tr("commit.identity.unset").to_owned(), true) };
     let with_profile = |name: &str| t.trf("commit.identity.profile", &[("who", &who), ("profile", &name)]);
     let text = match &id.source {
@@ -81,6 +111,40 @@ pub fn commit_identity_line(t: Lang, id: &RepoIdentity, settings: &Settings) -> 
         },
     };
     (text, false)
+}
+
+/// The commit box's identity line's hover text while variables in the environment take the
+/// place of the config; None when none is set.
+pub fn env_tip(t: Lang, id: &RepoIdentity) -> Option<String> {
+    let set: Vec<String> = id.overrides.iter().map(|o| format!("{}={}", o.var, shown_value(&o.value))).collect();
+    (!set.is_empty()).then(|| t.trf("commit.identity.env.tip", &[("vars", &set.join(", "))]))
+}
+
+/// A variable's value for a line, without control or bidi characters (`text::printable`), so it
+/// can't break or reorder the line; an empty one as `""`, which git takes too.
+fn shown_value(value: &str) -> String {
+    let shown = glowfly_core::text::printable(value);
+    if shown.is_empty() { "\"\"".to_owned() } else { shown }
+}
+
+/// The Profile page's Open repository warnings: one per identity variable set in the
+/// environment, naming it and the value commits take from it (or, for an empty name, that git
+/// won't commit).
+pub fn env_warnings(t: Lang, id: &RepoIdentity) -> Vec<String> {
+    let line = |var: &str, value: &str| {
+        if var.ends_with("_NAME") && value.is_empty() {
+            return t.trf("prefs.profile.env.empty_name.warn", &[("var", &var)]);
+        }
+        let value = shown_value(value);
+        let args: [(&str, &dyn std::fmt::Display); 2] = [("var", &var), ("value", &value)];
+        match var {
+            "GIT_AUTHOR_NAME" => t.trf("prefs.profile.env.author_name.warn", &args),
+            "GIT_AUTHOR_EMAIL" => t.trf("prefs.profile.env.author_email.warn", &args),
+            "GIT_COMMITTER_NAME" => t.trf("prefs.profile.env.committer_name.warn", &args),
+            _ => t.trf("prefs.profile.env.committer_email.warn", &args),
+        }
+    };
+    id.overrides.iter().map(|o| line(o.var, &o.value)).collect()
 }
 
 /// The profile a rule says applies, when the repository's own identity comes first and

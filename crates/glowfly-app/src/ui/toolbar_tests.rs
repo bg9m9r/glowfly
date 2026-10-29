@@ -315,30 +315,3 @@ fn toolbar_pickers_short() {
     drop(h);
     remove_fixture(&dir);
 }
-
-/// Folder's right edge and Refresh's left edge (the end of the middle group and the start of
-/// the right-hand one), in a window `width` wide with captions, in `lang`, for `variant`'s
-/// `case`.
-fn group_edges(case: usize, lang: &str, width: f32) -> (f64, f64) {
-    let (mut st, dir) = variant(case, true, &format!("toolbar-narrow-{case}-{lang}-{width}"));
-    st.settings.language = lang.into();
-    let t = st.settings.lang();
-    let names = ["toolbar.folder.name", "toolbar.refresh.name"].map(|k| t.tr(k));
-    let mut h = harness_sized(st, true, egui::vec2(width, 600.0));
-    h.run();
-    let edges = (span(&h, names[0]).1, span(&h, names[1]).0);
-    drop(h);
-    remove_fixture(&dir);
-    edges
-}
-
-#[test]
-fn a_narrow_window_narrows_the_pickers_before_the_groups_meet() {
-    // 1280 px: a maximized window on a 1920 px screen at 150%; German captions need 1330 px.
-    for (lang, width) in [("en", 1280.0), ("en", 1250.0), ("de", 1330.0)] {
-        for case in 0..6 {
-            let (folder, refresh) = group_edges(case, lang, width);
-            assert!(refresh - folder >= 18.0, "{lang} {width}, case {case}: Folder ends at {folder}, Refresh starts at {refresh}");
-        }
-    }
-}

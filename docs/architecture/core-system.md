@@ -59,7 +59,7 @@ source file, update its line here.
 - Key encoding and PTY sessions.
 - `shell.rs`: which shell to start from Preferences > Terminal.
 - `activity.rs`: whether the shell is running a program, in front or as a background job.
-- `procs.rs`: the process lists `activity.rs` reads: a Windows ToolHelp snapshot and image paths, Linux `/proc`, macOS libproc.
+- `procs.rs`: the process lists `activity.rs` reads: a Windows ToolHelp snapshot and image paths, Linux `/proc`, macOS libproc; and every process's program file (`program_paths`), for the update's `.bak` cleanup.
 - `title.rs`: the window title a program sets, with what of it names a running command.
 
 ## Settings (`settings.rs`, `settings/`)
@@ -93,7 +93,7 @@ source file, update its line here.
 - `profile_includes.rs`, `profile_includes/`: profile folder rules in the global git config: an `[includeIf "gitdir:<folder>/"]` entry per rule pointing at the profile's include file in Glowfly's `git-profiles` folder (`[user]` only, no profile name).
 - `pattern.rs`: the patterns and the include file's quoting.
 - `profile_includes/` also holds the plan (entries shallow-first), the sync (files rewritten when changed; with `place`, Glowfly's own sections removed and added again at the end of the file, sections pointing elsewhere or shared with the user's keys left alone), and checking a picked folder (resolved, valid text, case folding probed).
-- `repo_identity.rs`: a repository's effective identity and where git read it (`git config --show-origin`): a profile's include file, the repository's own config or elsewhere, plus what the rules expect; removing the repository's own name and email.
+- `repo_identity.rs`: a repository's effective identity and where git read it (`git config --show-origin`): a profile's include file, the repository's own config or elsewhere, plus what the rules expect; the identity variables set in the environment (`env_overrides`); removing the repository's own name and email.
 
 ## Files, logs, text and dates
 
@@ -143,8 +143,10 @@ source file, update its line here.
 - `method.rs`: Install and restart: how a downloaded file is installed.
 - `archive.rs`: the program and doc files of a portable copy's archive.
 - `swap.rs`: swapping them (or an AppImage file) in place with rollback.
-- `staging.rs`: the private staging folder and tidying it.
+- `backups.rs`: recording each backup a swap makes (`<backup>.record`: size and SHA-256), and removing a recorded `.bak` program that still matches its record once no process runs it (regular files only, never through a link); tests in `backups_tests.rs`.
+- `staging.rs`: the private staging folder, put in the first place the helper runs from (the temp folder, else beside the program or in the cache folder, for a noexec temp), and tidying it; tests in `staging_tests.rs`.
 - `plan.rs`: the helper's plan.
-- `restart.rs`: preparing and handing over.
-- `launch.rs`: starting processes detached.
-- `finish.rs`: the helper itself, behind `glowfly --finish-update`.
+- `restart.rs`: preparing and handing over; tests in `restart_tests.rs`.
+- `launch.rs`: starting processes detached, and trying whether a copied helper runs (`try_run`: `--version` must print this build's version and exit successfully within 5 s); tests in `launch_tests.rs`.
+- `finish.rs`: the helper itself, behind `glowfly --finish-update` (a backup's record is deleted only after the backup), and the fixed words it logs; tests in `finish_tests.rs`.
+- `report.rs`: the last installer run's failure or cancel, read from `update.log` at the next start and marked shown; tests in `report_tests.rs`.

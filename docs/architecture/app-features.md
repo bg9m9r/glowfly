@@ -7,7 +7,7 @@ source file, update its line here. Each section lists one feature's files in eve
 ## Glowfly's own updates (`UpdateMsg`, `UpdateEffect`)
 
 - Files: `msg/updates.rs`, `effect/updates.rs`, `runner/updates.rs`, `runner/update_restart.rs`, `state/updates.rs`, `state/release_notes.rs`, `update/updates.rs`, `update/updates_download.rs`, `update/updates_restart.rs`, `update/release_notes.rs`.
-- The check's and download's status, opening the release notes, and the runner's check, download, Install and restart, and tidying of old staging folders.
+- The check's and download's status, opening the release notes, and the runner's check, download, Install and restart, and the start's tidying (`UpdateEffect::Tidy`): old staging folders and `.bak` programs, and the last installer run's failure, toasted by `update/updates_restart.rs::last_install` (`UpdateMsg::LastInstall`).
 - `update/updates_download.rs`: starting a download, its progress and Cancel (`StopKey::UpdateDownload`), its result, and reading the downloaded file again (`UpdateEffect::CheckSaved`), which turns a gone or changed file into Download again (`UpdateStatus::Stale`).
 - Drawn by `ui/release_notes.rs` (the dialog), `ui/update_notice.rs` (the status bar chip) and `ui/prefs/updates_row.rs` (Preferences > General > Updates).
 
@@ -71,9 +71,9 @@ source file, update its line here. Each section lists one feature's files in eve
 - Files: `state/repo_identity.rs`, `state/profile_rules.rs`, `update/profile_rules.rs`, `ui/prefs/profile_rules.rs`.
 - `AppState::identities`: the identities git reported by git dir.
 - `AppState::includes`: the one-at-a-time include sync and the git dirs repaired this session.
-- `state/repo_identity.rs`: the words of the Open repository row, the commit box's identity line and the Repo > Identity hints.
+- `state/repo_identity.rs`: the words of the Open repository row, the commit box's identity line and the Repo > Identity hints, and both views' warnings for `GIT_AUTHOR_*` / `GIT_COMMITTER_*` in the environment.
 - `state/profile_rules.rs`: the Folders row's texts.
-- `update/profile_rules.rs`: adding after the runner's check, removing, syncing (never during a switch), reading the identity on open, focus, closing Preferences and after a sync or switch, the one placing repair per git dir, and Use <profile> here behind a danger confirmation.
+- `update/profile_rules.rs`: adding after the runner's check, removing, syncing (never during a switch), reading the identity on open, focus, closing Preferences, a watched config change (`WatchMsg::ConfigChanged`) and after a sync or switch, the one placing repair per git dir, and Use <profile> here behind a danger confirmation.
 - `ui/prefs/profile_rules.rs`: the Folders and Open repository rows.
 
 ## Several selected commits

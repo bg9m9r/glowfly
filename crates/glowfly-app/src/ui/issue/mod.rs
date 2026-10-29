@@ -18,7 +18,6 @@ use crate::msg::{IssueMsg, Msg};
 use crate::state::AppState;
 use crate::state::issue::IssueView;
 use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
@@ -57,7 +56,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut V
         .show_inside(ui, |ui| conversation::show(ui, st, md, msgs));
 }
 
-/// The icon, mention and title on the left; Close, Copy link and Open in browser on the right.
+/// The icon, mention and title on the left; Close, Copy link and Open in browser on the right
+/// (in a ⋯ menu when they would squeeze the title, `panel_header`).
 fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &IssueView, open_label: &str, msgs: &mut Vec<Msg>) {
     let url = &v.issue.url;
     ui.horizontal(|ui| {
@@ -67,14 +67,9 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &IssueView, open_label: &str, 
                 msgs.push(Msg::Issue(IssueMsg::Close));
             }
             let no_link = format!("The service sent no link for this {}.", v.noun);
-            let has_link = !url.is_empty();
-            let why = (!has_link).then_some(no_link.as_str());
-            if ui.add(buttons::secondary("Copy link").enabled(has_link).why(why)).clicked() {
-                msgs.push(Msg::Copy(url.clone()));
-            }
-            if ui.add(buttons::secondary(open_label).enabled(has_link).why(why)).clicked() {
-                msgs.push(Msg::OpenUrl(url.clone()));
-            }
+            let lead_w = crate::ui::panel_header::text_w(ui, &v.mention);
+            let links = crate::ui::panel_header::Links { url, open_label, no_link: &no_link, lead_w };
+            crate::ui::panel_header::show(ui, t, keys, links, msgs);
             if v.reloading {
                 ui.label(RichText::new("Updating…").color(color::weak()));
             }

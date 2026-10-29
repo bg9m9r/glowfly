@@ -1,7 +1,8 @@
 //! Headless tests for profile folder rules: adding (picked folder or the open repository) after
 //! the runner's check, removing, the one-at-a-time include syncs (waiting for a switch, and holding one),
-//! deleting and editing a ruled profile, the identity reads with their one repair, and Use
-//! <profile> here behind its confirmation. No effect runs: syncs write the global git config.
+//! deleting and editing a ruled profile, the identity reads with their one repair and the
+//! warnings for identity variables in the environment, and Use <profile> here behind its
+//! confirmation. No effect runs: syncs write the global git config.
 
 use super::profiles_tests::{PERSONAL, WORK, profile, run, saves, two_profiles};
 use super::tests::{finish_keeping, scratch_repo};
@@ -282,4 +283,64 @@ fn rule_results_are_dropped_for_an_inactive_tab() {
     for m in msgs {
         assert!(m.on_inactive().is_none());
     }
+}
+
+#[test]
+fn identity_variables_in_the_environment_are_warned_about_one_by_one() {
+    use crate::state::repo_identity::{commit_identity_line, env_tip, env_warnings};
+    use glowfly_core::repo_identity::{ENV_VARS, EnvOverride};
+    let (mut st, dir) = with_repo("rules-env");
+    let gd = git_dir(&st);
+    let t = glowfly_core::i18n::Lang::En;
+    for var in ENV_VARS {
+        let value = if var.ends_with("EMAIL") { "ci@build.example" } else { "Build Bot" };
+        let id = RepoIdentity { overrides: vec![EnvOverride { var, value: value.into() }], ..identity(IdentitySource::Elsewhere, None) };
+        let fx = profile(&mut st, ProfileMsg::IdentityRead { git_dir: gd.clone(), result: Ok(id) });
+        assert!(fx.is_empty(), "{fx:?}");
+        let read = &st.identities[&gd];
+        let (line, warn) = commit_identity_line(t, read, &st.settings);
+        assert!(warn && line.ends_with(&format!("environment: {var}")), "{line}");
+        // Only the author's variables change whom the commit box names.
+        let author = if var.starts_with("GIT_AUTHOR") { value } else { "x@y.example" };
+        assert!(line.contains(author), "{line}");
+        assert!(env_tip(t, read).is_some_and(|tip| tip.contains(&format!("{var}={value}"))));
+        let warned = env_warnings(t, read);
+        assert!(matches!(&warned[..], [w] if w.starts_with(var) && w.contains(value)), "{warned:?}");
+    }
+    // Read again without them: the warnings go.
+    let fx = profile(&mut st, ProfileMsg::IdentityRead { git_dir: gd.clone(), result: Ok(identity(IdentitySource::Elsewhere, None)) });
+    assert!(fx.is_empty());
+    assert!(env_warnings(t, &st.identities[&gd]).is_empty() && env_tip(t, &st.identities[&gd]).is_none());
+    assert!(!commit_identity_line(t, &st.identities[&gd], &st.settings).1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_empty_name_variable_says_git_wont_commit_and_values_are_made_printable() {
+    use crate::state::repo_identity::{commit_identity_line, env_tip, env_warnings};
+    use glowfly_core::repo_identity::EnvOverride;
+    let (mut st, dir) = with_repo("rules-env-empty");
+    let gd = git_dir(&st);
+    let t = glowfly_core::i18n::Lang::En;
+    let env = |var: &'static str, value: &str| EnvOverride { var, value: value.into() };
+    for var in ["GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"] {
+        let id = RepoIdentity { overrides: vec![env("GIT_AUTHOR_EMAIL", ""), env(var, "")], ..identity(IdentitySource::Elsewhere, None) };
+        profile(&mut st, ProfileMsg::IdentityRead { git_dir: gd.clone(), result: Ok(id) });
+        let read = &st.identities[&gd];
+        assert_eq!(commit_identity_line(t, read, &st.settings), (format!("{var} is empty: git won't commit"), true));
+        let warned = env_warnings(t, read);
+        assert!(warned[0].contains("the author email \"\" from it"), "an empty email is allowed: {warned:?}");
+        assert!(warned[1].starts_with(&format!("{var} is set but empty")) && warned[1].contains("won't commit"), "{warned:?}");
+    }
+    // A newline or bidi control in a value can't break or reorder the line.
+    let id =
+        RepoIdentity { overrides: vec![env("GIT_AUTHOR_EMAIL", "a@b\n\u{202E}moc.liame")], ..identity(IdentitySource::Elsewhere, None) };
+    profile(&mut st, ProfileMsg::IdentityRead { git_dir: gd.clone(), result: Ok(id) });
+    let read = &st.identities[&gd];
+    let tip = env_tip(t, read).unwrap();
+    let warned = env_warnings(t, read);
+    for text in [&tip, &warned[0]] {
+        assert!(text.contains("a@b moc.liame") && !text.contains(['\n', '\u{202E}']), "{text}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
 }

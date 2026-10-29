@@ -160,6 +160,7 @@ fn next_any(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<Rep
         Msg::Scoped { workdir: w, msg } if w == workdir => match *msg {
             Msg::Watch(WatchMsg::RepoChanged { full, paths, .. }) => Some(Report::Changed(full, paths)),
             Msg::Watch(WatchMsg::IndexChanged { paths, .. }) => Some(Report::Index(paths)),
+            Msg::Watch(WatchMsg::ConfigChanged) => next_any(rx, workdir, timeout), // config_tests.rs
             _ => panic!("unexpected scoped message"),
         },
         Msg::Watch(WatchMsg::WatchFailed { error, .. }) => panic!("watcher failed: {error}"),

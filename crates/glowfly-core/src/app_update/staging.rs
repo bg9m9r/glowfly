@@ -1,9 +1,12 @@
 //! The private folder an update is prepared in: `<temp>/glowfly-update-<16 hex>`, made fresh
 //! (never reused, so an existing name or a planted link fails) and, on Unix, readable by this
 //! user only. It holds the helper (a copy of the running program), its plan and an MSI's copy.
-//! On Windows the helper can't delete its own program, so [`tidy`] removes old folders at the
-//! next start.
+//! When the helper can't run from the temporary folder (mounted noexec on Linux or macOS), the
+//! next place is tried: beside the program, then the cache folder ([`create_runnable`]). On
+//! Windows the helper can't delete its own program, so [`tidy`] removes old folders at the next
+//! start.
 
+use crate::native_path::shown;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
@@ -72,69 +75,47 @@ pub fn tidy(temp: &Path, now: SystemTime) -> usize {
     removed
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn create_makes_a_fresh_private_folder() {
-        let temp = crate::paths::temp_dir().join(format!("glowfly-staging-create-{}", std::process::id()));
-        let _ = crate::persist::remove_tree(&temp);
-        std::fs::create_dir_all(&temp).unwrap();
-        let a = create(&temp).unwrap();
-        let b = create(&temp).unwrap();
-        assert_ne!(a, b);
-        for d in [&a, &b] {
-            assert_eq!(d.parent(), Some(temp.as_path()));
-            assert!(is_staging_name(&d.file_name().unwrap().to_string_lossy()), "{}", d.display());
-            assert!(d.is_dir());
-        }
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            assert_eq!(std::fs::metadata(&a).unwrap().permissions().mode() & 0o777, 0o700);
-        }
-        // Fresh: nothing of an existing folder is reused, and the temp folder must exist.
-        assert!(create(&temp.join("missing")).is_err());
-        let _ = crate::persist::remove_tree(&temp);
-    }
-
-    #[test]
-    fn staging_names() {
-        assert!(is_staging_name("glowfly-update-0123456789abcdef"));
-        for name in [
-            "glowfly-update-XYZ",
-            "glowfly-update-0123456789ABCDEF",
-            "glowfly-update-0123456789abcde",
-            "glowfly-update-0123456789abcdef0",
-            "glowfly-update-",
-            "other-0123456789abcdef",
-        ] {
-            assert!(!is_staging_name(name), "{name}");
-        }
-    }
-
-    #[test]
-    fn stale_after_an_hour() {
-        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000);
-        let ago = |mins: u64| now - Duration::from_secs(mins * 60);
-        assert!(!stale(ago(59), now));
-        assert!(stale(ago(61), now));
-        assert!(!stale(now + Duration::from_secs(600), now), "from the future");
-    }
-
-    #[test]
-    fn tidy_keeps_fresh_and_unrelated_entries() {
-        let temp = crate::paths::temp_dir().join(format!("glowfly-staging-tidy-{}", std::process::id()));
-        let _ = crate::persist::remove_tree(&temp);
-        std::fs::create_dir_all(temp.join("unrelated")).unwrap();
-        std::fs::write(temp.join("glowfly-update-aaaaaaaaaaaaaaaa"), "a file").unwrap();
-        let fresh = create(&temp).unwrap();
-        assert_eq!(tidy(&temp, SystemTime::now()), 0);
-        assert!(fresh.is_dir() && temp.join("unrelated").is_dir() && temp.join("glowfly-update-aaaaaaaaaaaaaaaa").is_file());
-        // Two hours on, the staging folder is left over; the file and the other folder stay.
-        assert_eq!(tidy(&temp, SystemTime::now() + Duration::from_secs(7200)), 1);
-        assert!(!fresh.exists() && temp.join("unrelated").is_dir() && temp.join("glowfly-update-aaaaaaaaaaaaaaaa").is_file());
-        let _ = crate::persist::remove_tree(&temp);
-    }
+/// A staging folder with the helper in it.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Staged {
+    pub dir: PathBuf,
+    pub helper: PathBuf,
 }
+
+/// Creates a staging folder in the first of `places` (folders that exist) where a copy of `exe`
+/// named `helper_name` runs, as `runs` finds by trying it (`launch::try_run`). A place that
+/// fails is left as it was; when none works, every place's reason is said.
+pub fn create_runnable(
+    places: &[PathBuf],
+    exe: &Path,
+    helper_name: &str,
+    runs: &dyn Fn(&Path) -> std::io::Result<()>,
+) -> Result<Staged, String> {
+    let mut why = Vec::new();
+    for (i, place) in places.iter().enumerate() {
+        if places[..i].iter().any(|p| crate::paths::same_spelling(p, place)) {
+            continue;
+        }
+        let dir = match create(place) {
+            Ok(d) => d,
+            Err(e) => {
+                why.push(format!("{}: {e}", shown(place)));
+                continue;
+            }
+        };
+        let helper = dir.join(helper_name);
+        // A copy keeps the executable bit.
+        match std::fs::copy(exe, &helper).map(drop).and_then(|()| runs(&helper)) {
+            Ok(()) => return Ok(Staged { dir, helper }),
+            Err(e) => {
+                why.push(format!("{}: {e}", shown(place)));
+                let _ = crate::persist::remove_tree(&dir);
+            }
+        }
+    }
+    Err(format!("Couldn't find a folder the update helper can run from ({}).", why.join("; ")))
+}
+
+#[cfg(test)]
+#[path = "staging_tests.rs"]
+mod tests;

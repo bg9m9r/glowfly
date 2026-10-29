@@ -1,8 +1,9 @@
 //! Install and restart, on Glowfly's side: the downloaded file is checked again, a private
-//! staging folder gets a copy of this program as the helper, and then either the MSI's copy is
-//! staged or the portable program (or the AppImage file) is swapped in place. Only once all of that worked is the
-//! helper started and told to go; any failure first undoes what was done, so a helper that
-//! never hears "go" has nothing to undo.
+//! staging folder gets a copy of this program as the helper (in the first place it runs from:
+//! the temp folder, else beside the program or in the cache folder), and then either the MSI's
+//! copy is staged or the portable program (or the AppImage file) is swapped in place. Only once
+//! all of that worked is the helper started and told to go; any failure first undoes what was
+//! done, so a helper that never hears "go" has nothing to undo.
 
 use super::appimage;
 use super::archive;
@@ -30,8 +31,9 @@ pub struct RestartRequest {
     /// The file Install replaces and starts again: `exe` for an MSI or portable copy, the
     /// AppImage file for an AppImage copy.
     pub target: PathBuf,
-    /// Where the staging folder goes (`paths::temp_dir()`).
-    pub temp: PathBuf,
+    /// Where the staging folder may go, in order: `paths::temp_dir()`, then fallbacks for a
+    /// temp folder the helper can't run from (`staging::create_runnable`).
+    pub places: Vec<PathBuf>,
     pub os: TargetOs,
 }
 
@@ -42,11 +44,16 @@ pub struct Prepared {
     pub helper: PathBuf,
     pub staging: PathBuf,
     applied: Option<Applied>,
+    /// The backups' records (backups.rs), removed when the preparation is undone.
+    records: Vec<PathBuf>,
 }
 
 impl Prepared {
     /// Undoes the preparation: the old program is put back and the staging folder removed.
     pub fn abandon(self) -> Result<(), String> {
+        for r in &self.records {
+            let _ = persist::remove_file(r);
+        }
         let back = self.applied.map_or(Ok(()), Applied::rollback);
         let removed = persist::remove_tree(&self.staging).map_err(|e| format!("Couldn't remove {}: {e}", shown(&self.staging)));
         back.and(removed)
@@ -60,12 +67,19 @@ fn helper_name(os: TargetOs) -> &'static str {
 
 /// Prepares the update without starting anything.
 pub fn prepare(req: &RestartRequest) -> Result<Prepared, String> {
+    prepare_with(req, &super::launch::try_run)
+}
+
+/// [`prepare`], with `runs` trying whether the copied helper can run where it was put.
+pub fn prepare_with(req: &RestartRequest, runs: &dyn Fn(&Path) -> std::io::Result<()>) -> Result<Prepared, String> {
     let bytes = read_verified(&req.file, &req.sha256)?;
     if !req.method.restarts() {
         return Err("This update can't be installed in place.".to_owned());
     }
-    let staging = staging::create(&req.temp).map_err(|e| format!("Couldn't create a folder in {}: {e}", shown(&req.temp)))?;
-    let mut prepared = Prepared { plan_path: staging.join("plan.json"), helper: staging.join(helper_name(req.os)), staging, applied: None };
+    let staged = staging::create_runnable(&req.places, &req.exe, helper_name(req.os), runs)?;
+    let staging = staged.dir;
+    let mut prepared =
+        Prepared { plan_path: staging.join("plan.json"), helper: staged.helper, staging, applied: None, records: Vec::new() };
     match fill(req, &bytes, &mut prepared) {
         Ok(()) => Ok(prepared),
         // What couldn't be undone is said too.
@@ -77,9 +91,8 @@ pub fn prepare(req: &RestartRequest) -> Result<Prepared, String> {
 }
 
 fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(), String> {
-    // A copy keeps the executable bit; for an MSI it has to be a copy anyway, since msiexec
-    // replaces the installed program.
-    std::fs::copy(&req.exe, &prepared.helper).map_err(|e| format!("Couldn't copy {}: {e}", shown(&req.exe)))?;
+    // The helper is a copy (staging::create_runnable); for an MSI it has to be anyway, since
+    // msiexec replaces the installed program.
     let staging = &prepared.staging;
     let mut msi = None;
     let mut remove = Vec::new();
@@ -96,7 +109,7 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
             let entries = archive::read(&file_name, bytes, archive::wanted(req.os))?;
             let plan = swap::plan(&entries, &req.target, req.os, Path::exists)?;
             let applied = swap::apply(&plan, &entries)?;
-            remove.clone_from(&applied.backups);
+            remove = recorded(&applied.backups, &mut prepared.records);
             prepared.applied = Some(applied);
         }
         InstallMethod::SwapAppImage => {
@@ -107,7 +120,7 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
             let entries = vec![archive::Entry { name: archive::program_name(TargetOs::Linux).to_owned(), bytes: bytes.to_vec() }];
             let plan = swap::plan(&entries, &req.target, req.os, |_| false)?;
             let applied = swap::apply(&plan, &entries)?;
-            remove.clone_from(&applied.backups);
+            remove = recorded(&applied.backups, &mut prepared.records);
             prepared.applied = Some(applied);
         }
         InstallMethod::OpenAndQuit | InstallMethod::ShowOnly => return Err("This update can't be installed in place.".to_owned()),
@@ -116,11 +129,23 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
     plan.write(&prepared.plan_path)
 }
 
+/// Records each backup (backups.rs), which lets the next start remove one the helper couldn't
+/// delete, and returns the files the helper deletes: the backups, each with its record once it
+/// is gone. A backup whose record couldn't be written is only left for the user.
+fn recorded(backups: &[PathBuf], records: &mut Vec<PathBuf>) -> Vec<PathBuf> {
+    for b in backups {
+        if let Ok(r) = super::backups::record(b) {
+            records.push(r);
+        }
+    }
+    backups.to_vec()
+}
+
 /// Prepares the update, starts the helper and tells it to go. On success Glowfly should quit:
 /// the helper waits for that.
 pub fn start(req: &RestartRequest) -> Result<(), String> {
     let prepared = prepare(req)?;
-    let cwd = req.target.parent().unwrap_or(&req.temp);
+    let cwd = req.target.parent().unwrap_or(&prepared.staging);
     let mut child = match super::launch::start_helper(&prepared.helper, &prepared.plan_path, cwd) {
         Ok(c) => c,
         Err(e) => {

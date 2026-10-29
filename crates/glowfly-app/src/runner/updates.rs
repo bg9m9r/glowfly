@@ -1,7 +1,8 @@
 //! Glowfly's own updates: asking for the newest release, downloading and verifying its file
 //! (streamed to disk, with progress at most every `PROGRESS_EVERY` and a stop checked between
 //! chunks), checking a downloaded file again, Install and restart (runner/update_restart.rs), and
-//! removing the staging folders earlier updates left behind.
+//! at the start: removing the staging folders and old programs earlier updates left behind, and
+//! reading how the last installer run went.
 
 use super::execute::{Cx, Execute};
 use super::update_restart;
@@ -9,6 +10,7 @@ use crate::effect::UpdateEffect;
 use crate::msg::{CheckedRelease, Msg, UpdateMsg};
 use glowfly_core::app_update::{Offer, Progress};
 use glowfly_core::{app_update, paths, settings};
+use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
 
 /// A download's progress is sent at most this often.
@@ -23,11 +25,7 @@ pub(super) fn run(e: UpdateEffect, cx: &Cx<'_>) -> Option<Msg> {
             Some(Msg::Updates(UpdateMsg::SavedChecked { file, problem }))
         }
         UpdateEffect::Restart(job) => Some(update_restart::run(*job)),
-        UpdateEffect::Tidy => {
-            let n = app_update::tidy_staging(&paths::temp_dir(), SystemTime::now());
-            tracing::debug!("removed {n} staging folders earlier updates left");
-            None
-        }
+        UpdateEffect::Tidy => tidy(),
     }
 }
 
@@ -35,6 +33,31 @@ impl Execute for UpdateEffect {
     fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
         run(self, cx)
     }
+}
+
+/// Removes what earlier updates left (staging folders wherever Install and restart may put
+/// them, and old programs no process runs), then reads the last installer run's problem.
+fn tidy() -> Option<Msg> {
+    let own = update_restart::own_files().ok();
+    let programs: Vec<PathBuf> = own.iter().flat_map(|(exe, image)| std::iter::once(exe.clone()).chain(image.clone())).collect();
+    let mut places = vec![paths::temp_dir()];
+    for p in &programs {
+        places.extend(update_restart::staging_places(p).into_iter().skip(1));
+    }
+    places.sort();
+    places.dedup();
+    let n: usize = places.iter().map(|p| app_update::tidy_staging(p, SystemTime::now())).sum();
+    tracing::debug!("removed {n} staging folders earlier updates left");
+    let cleared = app_update::remove_unused_backups(&programs, glowfly_core::terminal::program_paths);
+    tracing::debug!(
+        "old programs: removed {:?}, still running {:?}, not recorded {:?}, failed {:?}",
+        cleared.removed,
+        cleared.running,
+        cleared.unrecorded,
+        cleared.failed
+    );
+    let last = settings::log_dir().and_then(|dir| app_update::take_last_install(&dir))?;
+    Some(Msg::Updates(UpdateMsg::LastInstall(last)))
 }
 
 /// Downloads `offer`'s file into the Downloads folder, sending its progress through `cx.send`

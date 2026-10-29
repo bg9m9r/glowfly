@@ -2,31 +2,39 @@
 //! branch pickers (`toolbar_pickers.rs`, in fixed slots so the bar never moves when the names
 //! change), then the git actions and app buttons, each group on its own recessed surface
 //! (`widgets::tool_group`) with even gaps between them (`widgets::tool_gap`). The middle groups
-//! follow the pickers, the pull request group shows only with a hosting service, and the
-//! right-hand group is anchored to the window's edge with the untrusted and conflict chips
-//! before it, so a chip appearing moves nothing else. Each button's tooltip comes from
-//! `toolbar_tips.rs`, and its enabled flag from the same rule in `state/toolbar_tips.rs`; the
-//! menus are in `toolbar_menus.rs`.
+//! (`toolbar_groups.rs`) follow the pickers, the pull request group shows only with a hosting
+//! service, and the right-hand group is anchored to the window's edge with the untrusted and
+//! conflict chips before it, so a chip appearing moves nothing else. In a narrow window the
+//! parts that don't fit fold into the More menu (`toolbar_fold.rs`, `toolbar_more.rs`); a chip
+//! counts in what must fit, so it folds a group rather than squeezing the pickers. Each
+//! button's tooltip comes from `toolbar_tips.rs`, and its enabled flag from the same rule in
+//! `state/toolbar_tips.rs`; the menus are in `toolbar_menus.rs`.
 
 use super::backdrop::{self, Surface};
 use super::theme::color;
-use super::widgets::reason::{self, ItemState};
 use super::widgets::{self, Icon, tooltip::attach};
-use crate::msg::{BranchMsg, ForgeMsg, JobMsg, Msg, PaletteMsg, PrefsMsg, PublishMsg, RepoMsg};
-use crate::state::toolbar_tips as rules;
+use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
 use crate::state::{AppState, PrefPage};
-use crate::ui::widgets::menu::separator;
-use eframe::egui::{self, Align, Layout};
-use menus::{split, terminal_button};
+use eframe::egui::{self, Align, Id, Layout};
+use fold::{ORDER, Part, is_folded};
 
+#[path = "toolbar_fold.rs"]
+mod fold;
+#[path = "toolbar_groups.rs"]
+mod groups;
 #[cfg(test)]
 #[path = "toolbar_look_tests.rs"]
 mod look_tests;
 #[path = "toolbar_menus.rs"]
 mod menus;
+#[path = "toolbar_more.rs"]
+mod more;
 #[cfg(test)]
 #[path = "toolbar_names_tests.rs"]
 mod names_tests;
+#[cfg(test)]
+#[path = "toolbar_narrow_tests.rs"]
+mod narrow_tests;
 #[path = "toolbar_pickers.rs"]
 mod pickers;
 #[cfg(test)]
@@ -40,6 +48,8 @@ pub(super) mod tips;
 
 /// Between the untrusted chip and the conflict chip.
 const CHIP_GAP: f32 = 8.0;
+/// Where the toolbar keeps the chips' width with their gaps, measured each frame.
+const CHIPS: &str = "toolbar-chips";
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
@@ -54,158 +64,54 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.set_height(widgets::GROUP_H);
+                let room = ui.available_width();
                 // [repository › branch]
                 pickers::pickers(ui, st, msgs);
                 let Some(snap) = &st.snap else { return };
-                let after_pickers = ui.cursor().min.x;
-                let (keys, idle) = (&st.keymap, st.job.is_none());
-                widgets::tool_gap(ui);
-                widgets::tool_group(ui, |ui| {
-                    let r = tool(
-                        ui,
-                        Icon::Undo,
-                        t.tr("toolbar.undo.button"),
-                        t.tr("toolbar.undo.name"),
-                        idle && !st.session.undo.undo.is_empty(),
-                    );
-                    if attach(r, keys, t, || tips::undo(st)).clicked() {
-                        msgs.push(Msg::Job(JobMsg::Undo));
-                    }
-                    let r = tool(
-                        ui,
-                        Icon::Redo,
-                        t.tr("toolbar.redo.button"),
-                        t.tr("toolbar.redo.name"),
-                        idle && !st.session.undo.redo.is_empty(),
-                    );
-                    if attach(r, keys, t, || tips::redo(st)).clicked() {
-                        msgs.push(Msg::Job(JobMsg::Redo));
-                    }
-                });
-                widgets::tool_gap(ui);
                 let host = st.session.forge.as_ref().filter(|f| f.host.is_some());
-                widgets::tool_group(ui, |ui| {
-                    let pull = (Icon::Pull, t.tr("toolbar.pull.button"), t.tr("toolbar.pull.name"));
-                    // The button's text, and the job's label (English: it is also log and undo text).
-                    let variants = [
-                        (t.tr("toolbar.pull_ff"), "Pull (fast-forward if possible)", &["pull", "--ff"][..]),
-                        (t.tr("toolbar.pull_ff_only"), "Pull (fast-forward only)", &["pull", "--ff-only"][..]),
-                        (t.tr("toolbar.pull_rebase"), "Pull (rebase)", &["pull", "--rebase"][..]),
-                    ];
-                    let live =
-                        rules::fetch_blocked(st).is_none() || variants.iter().any(|v| rules::pull_variant_blocked(st, v.0).is_none());
-                    let menu = (t.tr("toolbar.pull_menu"), 240.0, live);
-                    let r = split(ui, "pull-menu", pull, rules::pull_blocked(st).is_none(), labels, menu, |ui| {
-                        // A blocked entry shows its reason; a ready one, what it would do.
-                        let why = rules::fetch_blocked(st);
-                        let r = reason::menu_button(ui, t.tr("toolbar.fetch_all"), "", ItemState::blocked_by(why.as_deref()));
-                        let r = if why.is_none() { attach(r, keys, t, || tips::fetch_all(st)) } else { r };
-                        if r.clicked() {
-                            msgs.push(Msg::git("Fetch all", &["fetch", "--all", "--prune"]));
-                        }
-                        for (text, label, a) in variants {
-                            let why = rules::pull_variant_blocked(st, text);
-                            let r = reason::menu_button(ui, text, "", ItemState::blocked_by(why.as_deref()));
-                            let r = if why.is_none() { attach(r, keys, t, || tips::pull_variant(st, text)) } else { r };
-                            if r.clicked() {
-                                msgs.push(Msg::git(label, a));
-                            }
-                        }
-                    });
-                    if attach(r, keys, t, || tips::pull(st)).clicked() {
-                        msgs.push(Msg::git("Pull", &["pull", "--ff"]));
-                    }
-                    let push = (Icon::Push, t.tr("toolbar.push.button"), t.tr("toolbar.push.name"));
-                    let menu = (t.tr("toolbar.push_menu"), if host.is_some() { 260.0 } else { 200.0 }, rules::busy_blocked(st).is_none());
-                    let r = split(ui, "push-menu", push, rules::push_blocked(st).is_none(), labels, menu, |ui| {
-                        let busy = rules::busy_blocked(st);
-                        if snap.remotes.is_empty()
-                            && reason::menu_button(ui, t.tr("toolbar.publish"), "", ItemState::blocked_by(busy.as_deref())).clicked()
-                        {
-                            msgs.push(Msg::Publish(PublishMsg::PublishDialog));
-                        }
-                        if let Some(fs) = host {
-                            separator(ui);
-                            super::pr_menu_items::push_pr_item(ui, t, snap, fs, idle, msgs);
-                        }
-                        // Destructive, so last and set apart.
-                        separator(ui);
-                        let force = ItemState::danger_unless(busy.as_deref());
-                        if reason::menu_button(ui, t.tr("toolbar.force_push"), "", force).clicked() {
-                            msgs.push(Msg::confirm_danger(
-                                t.tr("toolbar.force_push.title"),
-                                t.tr("toolbar.force_push.body").into(),
-                                t.tr("toolbar.force_push.button"),
-                                Msg::Job(JobMsg::Push { force: true }),
-                            ));
-                        }
-                    });
-                    if attach(r, keys, t, || tips::push(st)).clicked() {
-                        msgs.push(Msg::Job(JobMsg::Push { force: false }));
-                    }
-                });
-                widgets::tool_gap(ui);
-                widgets::tool_group(ui, |ui| {
-                    let enabled = rules::branch_blocked(st).is_none();
-                    let r = tool(ui, Icon::Branch, t.tr("toolbar.branch.button"), t.tr("toolbar.branch.name"), enabled);
-                    if attach(r, keys, t, || tips::branch(st)).clicked() {
-                        msgs.push(Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }));
-                    }
-                    let r =
-                        tool(ui, Icon::Stash, t.tr("toolbar.stash.button"), t.tr("toolbar.stash.name"), rules::stash_blocked(st).is_none());
-                    if attach(r, keys, t, || tips::stash(st)).clicked() {
-                        msgs.push(Msg::git("Stash", &["stash", "push", "-u"]));
-                    }
-                    let r = tool(ui, Icon::Pop, t.tr("toolbar.pop.button"), t.tr("toolbar.pop.name"), rules::pop_blocked(st).is_none());
-                    if attach(r, keys, t, || tips::pop(st)).clicked() {
-                        msgs.extend(crate::state::stash_confirm::pop_latest(snap, t));
-                    }
-                });
-                if let Some(fs) = host {
+                let chips = ui.ctx().data(|d| d.get_temp::<f32>(Id::new(CHIPS))).unwrap_or(0.0);
+                let k = fold::folded(&widths(ui, st, host.is_some(), room, chips));
+                let shown = |part| !is_folded(part, k);
+                let after_pickers = ui.cursor().min.x;
+                let keys = &st.keymap;
+                if shown(Part::Undo) {
                     widgets::tool_gap(ui);
-                    widgets::tool_group(ui, |ui| {
-                        let service = fs.host_provider().map(glowfly_core::forge::Provider::name).unwrap_or_default();
-                        let merge_request = fs.pr_noun() == "merge request";
-                        let args: &[(&str, &dyn std::fmt::Display)] = &[("service", &service)];
-                        let name = if merge_request {
-                            t.trf("toolbar.pr.name_merge_request", args)
-                        } else {
-                            t.trf("toolbar.pr.name_pull_request", args)
-                        };
-                        // The name starts with the caption, so speech input finds the button by what it shows.
-                        let pr = (Icon::PullRequest, t.tr("toolbar.pr.button"), name.as_str());
-                        let menu_name =
-                            if merge_request { t.tr("toolbar.pr_menu.merge_request") } else { t.tr("toolbar.pr_menu.pull_request") };
-                        let menu = (menu_name, 260.0, super::pr_menu_items::pr_menu_live(snap, fs, idle));
-                        let r = split(ui, "pr-menu", pr, rules::pr_blocked(st).is_none(), labels, menu, |ui| {
-                            super::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
-                        });
-                        if attach(r, keys, t, || tips::pr(st, fs)).clicked()
-                            && let Some(b) = &snap.head_branch
-                        {
-                            msgs.push(Msg::Forge(ForgeMsg::CreatePrDialog { source: b.clone(), target: None }));
-                        }
-                    });
+                    groups::undo(ui, st, msgs);
                 }
                 widgets::tool_gap(ui);
-                widgets::tool_group(ui, |ui| {
-                    terminal_button(ui, st, labels, super::terminal::right_click_item(t, &st.settings), msgs);
-                    let r = tool(ui, Icon::Folder, t.tr("toolbar.folder.button"), t.tr("toolbar.folder.name"), true);
-                    if attach(r, keys, t, || tips::folder(st)).clicked() {
-                        msgs.push(Msg::OpenFolder(snap.workdir.clone()));
-                    }
-                });
+                groups::sync(ui, st, snap, host, msgs);
+                if shown(Part::Branch) {
+                    widgets::tool_gap(ui);
+                    groups::branch(ui, st, snap, msgs);
+                }
+                if let Some(fs) = host.filter(|_| shown(Part::Pr)) {
+                    widgets::tool_gap(ui);
+                    groups::pr(ui, st, snap, fs, msgs);
+                }
+                if shown(Part::Files) {
+                    widgets::tool_gap(ui);
+                    groups::files(ui, st, snap, msgs);
+                }
+                // A pull request group that isn't there folds without needing the menu.
+                if ORDER[..k].iter().any(|&p| p != Part::Pr || host.is_some()) {
+                    widgets::tool_gap(ui);
+                    more::show(ui, st, snap, host, k, msgs);
+                }
                 let middle = ui.cursor().min.x - after_pickers;
 
                 let flips = ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     let group = widgets::tool_group(ui, |ui| {
-                        let r = tool(ui, Icon::Gear, t.tr("toolbar.settings.button"), t.tr("toolbar.settings.name"), true);
-                        if attach(r, keys, t, || tips::settings(st)).clicked() {
-                            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
+                        if shown(Part::Settings) {
+                            let r = tool(ui, Icon::Gear, t.tr("toolbar.settings.button"), t.tr("toolbar.settings.name"), true);
+                            if attach(r, keys, t, || tips::settings(st)).clicked() {
+                                msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
+                            }
                         }
-                        let r = tool(ui, Icon::Palette, t.tr("toolbar.commands.button"), t.tr("toolbar.commands.name"), true);
-                        if attach(r, keys, t, || tips::palette(st)).clicked() {
-                            msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
+                        if shown(Part::Commands) {
+                            let r = tool(ui, Icon::Palette, t.tr("toolbar.commands.button"), t.tr("toolbar.commands.name"), true);
+                            if attach(r, keys, t, || tips::palette(st)).clicked() {
+                                msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
+                            }
                         }
                         let toggle =
                             |ui: &mut egui::Ui, icon, label: &str, name: &str, on| widgets::tool_toggle(ui, icon, label, name, on, labels);
@@ -231,10 +137,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     }
                     super::conflict_check::indicator(ui, st, msgs);
                     let right = ui.min_rect().width();
-                    (search, log, if right > gap { right } else { buttons })
+                    (search, log, if right > gap { right } else { buttons }, buttons)
                 });
                 // View state, flipped once the tooltips above are drawn from it.
-                let (search, log, right) = flips.inner;
+                let (search, log, right, buttons) = flips.inner;
+                remember(ui.ctx(), CHIPS, right - buttons);
                 // Everything after the pickers, with a group gap at least before the right-hand group.
                 pickers::remember_rest(ui.ctx(), middle + widgets::GROUP_GAP + right);
                 if search {
@@ -245,4 +152,37 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             });
         });
+}
+
+/// Keeps `value` under `key` for the next frame, drawing once more when it changed.
+fn remember(ctx: &egui::Context, key: &str, value: f32) {
+    let old = ctx.data_mut(|d| std::mem::replace(d.get_temp_mut_or(Id::new(key), 0.0), value));
+    if (old - value).abs() >= 0.5 {
+        ctx.request_repaint();
+    }
+}
+
+/// The widths the fold decision needs (`toolbar_fold::Widths`), in a toolbar row `room` wide
+/// with the chips and their gaps taking `chips`.
+fn widths(ui: &egui::Ui, st: &AppState, host: bool, room: f32, chips: f32) -> fold::Widths {
+    let t = st.settings.lang();
+    let slot = |key: &'static str, split: bool| groups::slot(ui, st, t.tr(key), split);
+    let plain = |keys: &[&'static str]| groups::group_width(&keys.iter().map(|k| slot(k, false)).collect::<Vec<_>>());
+    let gap = widgets::GROUP_GAP;
+    let sync = groups::group_width(&[slot("toolbar.pull.button", true), slot("toolbar.push.button", true)]);
+    let right = plain(&["toolbar.search.button", "toolbar.activity.button", "toolbar.refresh.button"]);
+    let pr = if host { gap + groups::group_width(&[slot("toolbar.pr.button", true)]) } else { 0.0 };
+    let in_right = |key| slot(key, false) + widgets::TOOL_SPACING;
+    let parts = [
+        gap + plain(&["toolbar.terminal.button", "toolbar.folder.button"]),
+        gap + plain(&["toolbar.undo.button", "toolbar.redo.button"]),
+        gap + plain(&["toolbar.branch.button", "toolbar.stash.button", "toolbar.pop.button"]),
+        pr,
+        in_right("toolbar.commands.button"),
+        in_right("toolbar.settings.button"),
+    ];
+    let more = gap + groups::group_width(&[groups::slot(ui, st, more::caption(st), false)]);
+    // The pickers' room counts the spacing after their group, as `toolbar_pickers` does.
+    let pickers = pickers::COMFORT + ui.spacing().item_spacing.x;
+    fold::Widths { room, pickers, fixed: 2.0 * gap + sync + right + chips, more, parts }
 }
