@@ -58,12 +58,21 @@ pub fn parse_remote(url: &str, connections: &[Connection]) -> Option<Target> {
 
 /// Whether every URL and credential request built from `t` goes to the server it names: its
 /// host is the whole authority of `https://<host>/` (no `/`, `?`, `#`, `@`, backslash, white
-/// space or control character ends it early or moves it), and its decoded owner, project and
-/// repository hold no control character (a line break would add a line to a `git credential`
-/// request).
+/// space or control character ends it early or moves it), it holds only `host_char`s (so no
+/// `%`: a percent-encoded host could be decoded into another server's name), and its decoded
+/// owner, project and repository hold no control character (a line break would add a line to
+/// a `git credential` request).
 pub(crate) fn sound(t: &Target) -> bool {
     let host = https_host(&format!("https://{}/", t.host));
-    host.is_some_and(|h| h == t.host.to_ascii_lowercase()) && [&t.owner, &t.project, &t.repo].iter().all(|s| !s.contains(char::is_control))
+    host.is_some_and(|h| h == t.host.to_ascii_lowercase())
+        && t.host.chars().all(host_char)
+        && [&t.owner, &t.project, &t.repo].iter().all(|s| !s.contains(char::is_control))
+}
+
+/// What a host name, its port and an IPv6 address in brackets are written with: letters,
+/// digits, `-`, `.`, `_`, `:`, `[` and `]`.
+fn host_char(c: char) -> bool {
+    c.is_alphanumeric() || matches!(c, '-' | '.' | '_' | ':' | '[' | ']')
 }
 
 fn recognize(url: &str, connections: &[Connection]) -> Option<Target> {
