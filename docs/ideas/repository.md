@@ -125,6 +125,10 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Disable "Only this file" when a broader pattern already covers the file (attribute lookup in
   the background)
 - Warn when a folder pattern would also catch a nested .gitattributes in that folder
+- Say on the Git LFS page when the file or byte cap left some nested .gitattributes unread
+- Read LFS patterns from untracked nested .gitattributes and from core.attributesFile too
+- Open a nested .gitattributes or info/attributes from its pattern's row on the Git LFS page
+- Untrack a nested file's pattern by editing that file (git-lfs only edits the root one)
 - Untrack lines that `--filename` wrote with backslash-escaped glob characters (`git lfs
   untrack` leaves them): remove them directly
 - Offer to convert files already committed (`git lfs migrate`) after tracking their pattern

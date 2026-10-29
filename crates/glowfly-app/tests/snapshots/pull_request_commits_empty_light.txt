@@ -109,6 +109,7 @@ painted:
   "Filter (branches, PRs, issues)"
   "Local"
   "3"
+  "1"
   "Remote"
   "1"
   "Pull requests"

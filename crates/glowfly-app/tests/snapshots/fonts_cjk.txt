@@ -1,0 +1,18 @@
+window 440x330
+Label "田中太郎"
+Label "設定画面を修正"
+Label "王小明"
+Label "修复登录页面"
+Label "김민준"
+Label "검색 기능 추가"
+Button "機能/検索"
+Button "기능/검색"
+Label "docs/日本語/設定.md"
+Label "资源/图标.png"
+Label "src/한국어/모듈.rs"
+Label "2026/10/13 火曜日 午後 6:30"
+Label "2026/10/13 星期二 下午 6:30"
+Label "2026/10/13 화요일 오후 6:30"
+painted:
+  "1"
+  "1"

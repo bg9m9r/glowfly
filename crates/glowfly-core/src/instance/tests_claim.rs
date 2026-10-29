@@ -6,6 +6,22 @@ use super::tests::{listen, listen_with, scratch};
 use super::*;
 use std::time::{Duration, Instant};
 
+/// The claim at `lock` once it is free, waiting up to `REQUEST_TIMEOUT`. A lock that was just
+/// given up can look held for a moment on Linux: a process another test thread is starting holds
+/// a copy of every open file until it execs.
+fn claim_soon(lock: &std::path::Path) -> Option<Claim> {
+    let deadline = Instant::now() + REQUEST_TIMEOUT;
+    loop {
+        if let Some(c) = claim_at(lock).unwrap() {
+            return Some(c);
+        }
+        if Instant::now() >= deadline {
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
 #[test]
 fn only_one_window_holds_the_claim() {
     let dir = scratch("claim-one");
@@ -14,7 +30,7 @@ fn only_one_window_holds_the_claim() {
     assert!(claim_at(&lock).unwrap().is_none(), "held: a second claim gets nothing");
     assert!(claim_at(&lock).unwrap().is_none(), "still held");
     drop(first);
-    let second = claim_at(&lock).unwrap().expect("given up with its holder");
+    let second = claim_soon(&lock).expect("given up with its holder");
     drop(second);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -69,7 +85,7 @@ fn a_second_window_waits_and_takes_over() {
     assert!(first_rx.try_recv().is_err());
     drop(second);
     assert!(!path.exists());
-    assert!(claim_at(&dir.join(LOCK_NAME)).unwrap().is_some(), "and gave the claim up when it closed");
+    assert!(claim_soon(&dir.join(LOCK_NAME)).is_some(), "and gave the claim up when it closed");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -82,12 +98,7 @@ fn a_waiting_window_that_closed_gives_a_later_claim_up() {
     drop(second);
     drop(first);
     // The closed window's thread takes the lock and lets it go again at once.
-    let deadline = Instant::now() + REQUEST_TIMEOUT;
-    let mut claim = None;
-    while claim.is_none() && Instant::now() < deadline {
-        claim = claim_at(&dir.join(LOCK_NAME)).unwrap();
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    let claim = claim_soon(&dir.join(LOCK_NAME));
     assert!(claim.is_some(), "nobody keeps the claim");
     assert!(!path.exists(), "and nobody listens");
     drop(claim);

@@ -32,6 +32,8 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 - `theme/fonts.rs`: the bundled fonts: Noto Sans, its semibold family and JetBrains Mono ahead of egui's fallbacks, from `assets/fonts/`.
 - `theme/fonts.rs` is the one font setup, installed by `GlowflyApp::new`, `theme::apply_style` and the glyph check.
+- `theme/fonts.rs` ends both families with the CJK fallbacks: the system's (`platform/system_fonts.rs`), or in tests the Noto Sans CJK subset in `assets/fonts/test/`.
+- `theme/missing_glyphs.rs`: in debug builds, a warning once per character a frame draws that no loaded font has.
 - `theme/type_scale.rs`: the type scale: five steps, caption 11, small 12, body 14, subhead 16 and title 20 px, with nothing under the 11 px floor.
 - The type scale has one section-header style, Noto Sans SemiBold at body size, and SemiBold titles.
 - `theme::apply_style` installs the steps as egui's text styles.

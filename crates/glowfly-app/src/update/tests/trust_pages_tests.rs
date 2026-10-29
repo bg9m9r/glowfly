@@ -52,7 +52,7 @@ fn the_lfs_page_reads_nothing_while_git_is_held_and_reads_once_trusted() {
     assert!(page.held && page.status.is_none());
 
     assert!(!loads_lfs(&run(&mut st, Msg::Lfs(LfsMsg::Reload))));
-    let pattern = LfsPattern { raw: "*.psd".into(), display: "*.psd".into(), lockable: false };
+    let pattern = LfsPattern::root("*.psd", false);
     let mut fx = Vec::new();
     super::lfs::patterns_read(&mut st, Some(vec![pattern]), &mut fx);
     assert!(!loads_lfs(&fx), "new patterns don't read with git either");

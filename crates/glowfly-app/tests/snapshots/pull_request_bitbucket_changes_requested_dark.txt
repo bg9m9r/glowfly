@@ -109,6 +109,7 @@ Label "Each commit is replayed onto main, with no merge commit."
 RadioButton "Squash and merge" [off]
 Label "The commits are combined into one commit on main."
 CheckBox "Delete search on origin after merging" [off]
+CheckBox "Delete local branch search too" [disabled, off]
 Button "Merge pull request"
 MultilineTextInput "Write a comment"
 Button "Comment" [disabled]

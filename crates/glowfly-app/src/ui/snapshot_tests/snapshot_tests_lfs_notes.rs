@@ -23,7 +23,7 @@ fn pushed(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Ms
 fn missing_lfs(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     st.lfs.install = LfsInstall::Missing;
-    st.snap.as_mut().unwrap().lfs_patterns = vec![LfsPattern { raw: "*.psd".into(), display: "*.psd".into(), lockable: false }];
+    st.snap.as_mut().unwrap().lfs_patterns = vec![LfsPattern::root("*.psd", false)];
     (st, dir)
 }
 

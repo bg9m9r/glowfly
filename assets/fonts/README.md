@@ -19,3 +19,7 @@ The checksums are of the files as released (LF line endings for the licence text
 static TrueType files (for Noto Sans its unhinted build), not the variable fonts: egui draws
 only a variable font's default instance. To update a font, replace the file with the new release's, update its row
 here and the version in `THIRD-PARTY-NOTICES.md`.
+
+Chinese, Japanese and Korean are drawn in the operating system's own fonts, found at startup
+(`crates/glowfly-app/src/platform/system_fonts.rs`); none is bundled. `test/` holds a small
+subset of Noto Sans CJK that only the tests use in their place; its README says how it was made.

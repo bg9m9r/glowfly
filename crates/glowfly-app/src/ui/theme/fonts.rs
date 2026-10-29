@@ -1,8 +1,11 @@
 //! The bundled fonts: Noto Sans for interface text (Regular, and SemiBold as the `semibold`
 //! family) and JetBrains Mono for monospace text, each ahead of egui's own fonts, which stay as
-//! fallbacks (emoji, symbols). This is the one font setup: the app installs it before its first
-//! pass, `theme::apply_style` installs it for every themed context, and the glyph check asks
-//! these fonts. The files and their licences are in `assets/fonts/`.
+//! fallbacks (emoji, symbols). Behind them all come the fonts for Chinese, Japanese and Korean:
+//! the system's own (`platform::system_fonts`, found once at startup), or in tests a small
+//! bundled subset of Noto Sans CJK, so snapshots and the glyph check don't depend on the
+//! machine's fonts. This is the one font setup: the app installs it before its first pass,
+//! `theme::apply_style` installs it for every themed context, and the glyph check asks these
+//! fonts. The files and their licences are in `assets/fonts/`.
 
 use eframe::egui::{self, FontData, FontDefinitions, FontFamily, FontId};
 use std::sync::{Arc, OnceLock};
@@ -15,13 +18,32 @@ const REGULAR: &str = "NotoSans-Regular";
 const SEMIBOLD_FONT: &str = "NotoSans-SemiBold";
 const MONO: &str = "JetBrainsMono-Regular";
 
+/// The tests' CJK font, in place of the system's: the characters of the CJK snapshot and the
+/// ja_JP, zh_CN and ko_KR dates, cut from Noto Sans CJK SC (`assets/fonts/test/README.md`).
+#[cfg(test)]
+pub(crate) const TEST_CJK: &[u8] = include_bytes!("../../../../../assets/fonts/test/NotoSansCJKsc-TestSubset.otf");
+
+/// The CJK fallbacks, as (name, font): the system's in the app, the test subset in tests.
+fn cjk_fallbacks() -> Vec<(String, FontData)> {
+    #[cfg(test)]
+    {
+        vec![("NotoSansCJK-TestSubset".to_owned(), FontData::from_static(TEST_CJK))]
+    }
+    #[cfg(not(test))]
+    {
+        let found = crate::platform::system_fonts::found();
+        found.iter().map(|f| (f.name.clone(), FontData { index: f.index, ..FontData::from_static(f.data) })).collect()
+    }
+}
+
 /// The name of the semibold family (`FontFamily::Name`).
 pub const SEMIBOLD: &str = "semibold";
 
 /// egui's default fonts with the bundled ones in front: Proportional starts with Noto Sans,
 /// Monospace with JetBrains Mono (then egui's Hack, then Noto Sans for what neither has), and
 /// the semibold family with Noto Sans SemiBold, then the whole Proportional list. egui's lists
-/// are taken from its defaults, so an egui upgrade keeps its fallbacks.
+/// are taken from its defaults, so an egui upgrade keeps its fallbacks. The CJK fallbacks end
+/// both lists: after egui's symbol fonts, so a symbol keeps the glyph it had before.
 pub fn definitions() -> &'static FontDefinitions {
     static DEFS: OnceLock<FontDefinitions> = OnceLock::new();
     DEFS.get_or_init(|| {
@@ -38,6 +60,11 @@ pub fn definitions() -> &'static FontDefinitions {
         monospace.extend(egui_mono.next());
         monospace.push(REGULAR.to_owned());
         monospace.extend(egui_mono);
+        for (name, data) in cjk_fallbacks() {
+            defs.font_data.insert(name.clone(), Arc::new(data));
+            proportional.push(name.clone());
+            monospace.push(name);
+        }
         let mut semibold = vec![SEMIBOLD_FONT.to_owned()];
         semibold.extend(proportional.iter().cloned());
         defs.families.insert(FontFamily::Proportional, proportional);
@@ -66,18 +93,23 @@ pub fn semibold(ui: &egui::Ui, size: f32) -> FontId {
 mod tests {
     use super::*;
 
+    const CJK_TEST: &str = "NotoSansCJK-TestSubset";
+
     #[test]
     fn definitions_put_the_bundled_fonts_first_and_keep_eguis_as_fallback() {
         let ours = definitions();
         let egui_defaults = FontDefinitions::default();
         let list = |d: &FontDefinitions, f: FontFamily| d.families[&f].clone();
-        let prop = list(ours, FontFamily::Proportional);
-        let mono = list(ours, FontFamily::Monospace);
+        let (mut prop, mut mono) = (list(ours, FontFamily::Proportional), list(ours, FontFamily::Monospace));
         let semi = list(ours, FontFamily::Name(SEMIBOLD.into()));
+        assert_eq!(semi[1..], prop[..], "semibold falls back to the whole Proportional list");
+        // The CJK fallback ends both lists; the rest is checked without it.
+        for l in [&mut prop, &mut mono] {
+            assert_eq!(l.pop().as_deref(), Some(CJK_TEST), "the CJK font comes last: {l:?}");
+        }
         assert_eq!(prop[0], REGULAR);
         assert_eq!(mono[0], MONO);
         assert_eq!(semi[0], SEMIBOLD_FONT);
-        assert_eq!(semi[1..], prop[..], "semibold falls back to the whole Proportional list");
         assert_eq!(prop[1..], list(&egui_defaults, FontFamily::Proportional)[..], "then egui's whole Proportional list");
         for (family, ours) in [(FontFamily::Proportional, &prop), (FontFamily::Monospace, &mono)] {
             let theirs = list(&egui_defaults, family.clone());
@@ -85,7 +117,7 @@ mod tests {
             let kept: Vec<&String> = ours.iter().filter(|n| theirs.contains(n)).collect();
             assert_eq!(kept, theirs.iter().collect::<Vec<_>>(), "{family:?} keeps egui's list in order");
         }
-        for name in [REGULAR, SEMIBOLD_FONT, MONO] {
+        for name in [REGULAR, SEMIBOLD_FONT, MONO, CJK_TEST] {
             assert!(ours.font_data.contains_key(name), "{name} is installed");
         }
     }
@@ -103,6 +135,7 @@ mod tests {
         let files = [
             ("Noto Sans", include_str!("../../../../../assets/fonts/NotoSans-OFL.txt")),
             ("JetBrains Mono", include_str!("../../../../../assets/fonts/JetBrainsMono-OFL.txt")),
+            ("Noto Sans CJK", include_str!("../../../../../assets/fonts/test/NotoSansCJK-OFL.txt")),
         ];
         for (name, file) in files {
             let notice = glowfly_core::notices::licenses().iter().find(|n| n.name == name).unwrap_or_else(|| panic!("no {name} notice"));
@@ -129,5 +162,19 @@ mod tests {
         install(&ctx);
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         assert_eq!(family(&ctx), FontFamily::Name(SEMIBOLD.into()));
+    }
+
+    #[test]
+    fn every_family_draws_cjk_and_hangul_from_the_fallback() {
+        let ctx = egui::Context::default();
+        install(&ctx);
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        let fonts = [FontId::proportional(13.0), FontId::monospace(13.0), FontId::new(13.0, FontFamily::Name(SEMIBOLD.into()))];
+        for font in fonts {
+            // 日 (Han), あ (kana), 한 (Hangul).
+            for c in ['\u{65E5}', '\u{3042}', '\u{D55C}'] {
+                assert!(ctx.fonts(|f| f.has_glyph(&font, c)), "U+{:04X} in {font:?}", c as u32);
+            }
+        }
     }
 }

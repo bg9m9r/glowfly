@@ -1,12 +1,13 @@
-//! The Git LFS notices: when the main window's "git-lfs missing" banner shows and how it is
-//! dismissed, and the diff's LFS note (kept per target, Show pointer text across reloads, parked
-//! with its tab, no in-file stops for next/previous change while the summary shows).
+//! The Git LFS notices: when the main window's "git-lfs missing" banner shows (patterns in the
+//! root, a nested .gitattributes or info/attributes) and how it is dismissed, and the diff's LFS
+//! note (kept per target, Show pointer text across reloads, parked with its tab, no in-file stops
+//! for next/previous change while the summary shows).
 
 use super::diff_tests::three_hunks;
-use super::tests::{drive, scratch_repo, state};
+use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::lfs::LfsMsg;
-use crate::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg};
+use crate::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
 use crate::state::diff_nav::{self, Step};
 use crate::state::lfs::LfsInstall;
 use crate::state::lfs_notes::{banner_workdir, pointer_shown, summary};
@@ -14,7 +15,7 @@ use crate::state::lines::LineClick;
 use crate::state::{AppState, PrefPage};
 use git2::Oid;
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide, Pointer};
-use glowfly_core::lfs::{LfsPattern, LfsStatus};
+use glowfly_core::lfs::{LfsPattern, LfsStatus, PatternSource};
 use glowfly_core::repo::DiffTarget;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -27,7 +28,7 @@ fn opened(st: &mut AppState, name: &str) -> PathBuf {
     let dir = scratch_repo(name);
     drive(st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let snap = st.snap.as_mut().expect("opened");
-    snap.lfs_patterns = vec![LfsPattern { raw: "*.psd".into(), display: "*.psd".into(), lockable: false }];
+    snap.lfs_patterns = vec![LfsPattern::root("*.psd", false)];
     dir
 }
 
@@ -67,6 +68,40 @@ fn the_banner_shows_only_when_git_lfs_is_missing_and_patterns_exist() {
     assert_eq!(banner_workdir(&st), Some(workdir(&st).as_path()));
     st.snap.as_mut().unwrap().lfs_patterns.clear();
     assert_eq!(banner_workdir(&st), None, "no patterns");
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn the_banner_shows_for_patterns_only_in_a_nested_gitattributes() {
+    let dir = scratch_repo("lfs-notes-nested");
+    std::fs::create_dir_all(dir.join("art")).unwrap();
+    std::fs::write(dir.join("art/.gitattributes"), "*.psd filter=lfs diff=lfs merge=lfs -text\r\n").unwrap();
+    git(&dir, &["add", "art/.gitattributes"]);
+    git(&dir, &["commit", "-q", "-m", "art in LFS"]);
+    let mut st = state();
+    st.lfs.install = LfsInstall::Missing;
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let patterns = &st.snap.as_ref().expect("opened").lfs_patterns;
+    assert_eq!(patterns.iter().map(|p| (&*p.raw, &p.source)).collect::<Vec<_>>(), [("*.psd", &PatternSource::Nested("art".into()))]);
+    assert_eq!(banner_workdir(&st), Some(workdir(&st).as_path()));
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn the_banner_shows_for_patterns_only_in_info_attributes() {
+    let dir = scratch_repo("lfs-notes-info");
+    let mut st = state();
+    st.lfs.install = LfsInstall::Missing;
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    assert_eq!(banner_workdir(&st), None);
+    std::fs::write(dir.join(".git/info/attributes"), "*.bin filter=lfs -text\n").unwrap();
+    // A whole status read (the watcher's) brings the patterns.
+    let changed = WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() };
+    let scoped = Msg::Scoped { workdir: workdir(&st), msg: Box::new(Msg::Watch(changed)) };
+    let fx = update(&mut st, scoped, Instant::now());
+    finish(&mut st, fx);
+    assert_eq!(st.snap.as_ref().unwrap().lfs_patterns.iter().map(|p| &p.source).collect::<Vec<_>>(), [&PatternSource::Info]);
+    assert_eq!(banner_workdir(&st), Some(workdir(&st).as_path()));
     cleanup(&[&dir]);
 }
 

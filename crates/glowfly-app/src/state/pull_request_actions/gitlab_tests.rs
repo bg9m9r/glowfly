@@ -84,24 +84,24 @@ fn prefill_keeps_to_the_listed_choices() {
     let mut d = detail();
     d.style = approvals(true, None);
     d.methods = vec![MergeMethod::Squash, MergeMethod::Merge];
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!((forms.review_event, forms.merge_method), (ReviewEvent::Comment, Some(MergeMethod::Squash)));
     forms.review_event = ReviewEvent::Unapprove;
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.review_event, ReviewEvent::Unapprove, "still approved");
     d.style = approvals(false, None);
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.review_event, ReviewEvent::Comment);
     forms.review_event = ReviewEvent::RequestChanges;
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.review_event, ReviewEvent::Comment);
     forms.review_event = ReviewEvent::Approve;
     d.me = "ada".into();
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.review_event, ReviewEvent::Approve, "GitLab's rules decide whether its author may approve");
     let mut github = detail();
     github.me = "ada".into();
-    prefill(&mut forms, &github);
+    prefill(&mut forms, &github, None);
     assert_eq!(forms.review_event, ReviewEvent::Comment, "GitHub's author can't approve");
 }
 
@@ -127,7 +127,7 @@ fn merge_choices_and_texts() {
 fn fast_forward_confirmation() {
     let mut v = mr(|d| d.methods = vec![MergeMethod::FastForward]);
     v.forms.merge_method = Some(MergeMethod::FastForward);
-    let Msg::Confirm { title, body, .. } = merge_confirm(&v, None) else { panic!("a confirmation") };
+    let Msg::Confirm { title, body, .. } = merge_confirm(Lang::En, &v, None, None) else { panic!("a confirmation") };
     assert!(body.contains("into main by a fast-forward?"), "{body}");
     assert_eq!(title, "Merge");
 }

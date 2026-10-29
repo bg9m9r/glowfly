@@ -107,6 +107,7 @@ Label "Write a summary for this choice"
 Label "Merge"
 Label "No conflicts with main"
 CheckBox "Delete search on origin after merging" [off]
+CheckBox "Delete local branch search too" [off]
 Button "Merge pull request" [disabled]
 Label "None of this repository's merge strategies can be used from Glowfly yet; merge it on the service"
 MultilineTextInput "Write a comment"

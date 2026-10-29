@@ -110,6 +110,7 @@ pub mod publish;
 pub mod pull_request;
 pub mod pull_request_actions;
 pub mod pull_request_checks;
+pub mod pull_request_cleanup;
 pub mod pull_request_commits;
 pub mod pull_request_line_comment;
 pub mod pull_request_line_map;
@@ -406,8 +407,7 @@ pub struct AppState {
     /// Settings as last saved, to detect edits made in Preferences.
     pub saved_settings: String,
     pub recent: Vec<PathBuf>,
-    /// Recent or favorite repository folders found missing by the last check
-    /// (`RecentMsg::FoldersChecked`).
+    /// Recent or favorite repository folders found missing by the last check (`RecentMsg::FoldersChecked`).
     pub missing_repos: Vec<PathBuf>,
     /// A listed folder that failed to open, waiting for the folder check to say whether it is
     /// gone (then Glowfly offers to remove it from the lists; update/recent.rs).
@@ -484,18 +484,18 @@ pub struct AppState {
     /// The running remote tag push or delete (update/tags.rs), for its headline.
     pub tag_job: Option<tags::RemoteTagJob>,
     pub tag_checkout: Option<tags::TagCheckoutJob>,
+    /// The running clean-up after a pull request merge that deletes the local branch, for its headline.
+    pub pr_cleanup: Option<pull_request_cleanup::CleanupJob>,
     /// The running Apply patch job (update/patch.rs), for its headline.
     pub patch_apply: Option<patch::PendingApply>,
     /// The glowfly:// link being opened and the scheme registration (global).
     pub deep_link: deep_link::DeepLinkState,
-    /// The profile a switch is writing to the global git config (app-wide: the config is
-    /// global).
+    /// The profile a switch is writing to the global git config (app-wide: the config is global).
     pub profile_switch: Option<glowfly_core::settings::ProfileId>,
     /// The profiles (the current one or the switch's target) whose fields were edited while a
     /// switch ran: their git writes wait until it ends.
     pub profile_switch_edits: Vec<glowfly_core::settings::ProfileId>,
-    /// The repositories' effective identities as git last reported them, by `Snapshot::git_dir`
-    /// as spelled (global: kept across tabs; state/repo_identity.rs).
+    /// The repositories' effective identities as git last reported them, by `Snapshot::git_dir` as spelled (global, kept across tabs).
     pub identities: HashMap<PathBuf, glowfly_core::repo_identity::RepoIdentity>,
     /// Writing the profiles' include files and global entries (global).
     pub includes: repo_identity::IncludeSync,
@@ -503,8 +503,7 @@ pub struct AppState {
     pub trust: trust::TrustSession,
     /// The commands from the commands.toml files (custom_commands.rs).
     pub custom_commands: custom_commands::CustomCommands,
-    /// The first-run welcome and the tour (global, not per tab; nothing saved but the welcome
-    /// flag).
+    /// The first-run welcome and the tour (global, not per tab; nothing saved but the welcome flag).
     pub onboarding: onboarding::Onboarding,
     /// The cross-repository dashboard: global, not parked with a tab.
     pub dashboard: dashboard::Dashboard,
@@ -567,6 +566,7 @@ impl AppState {
             gitflow_finish: None,
             tag_job: None,
             tag_checkout: None,
+            pr_cleanup: None,
             patch_apply: None,
             deep_link: Default::default(),
             profile_switch: None,

@@ -41,7 +41,7 @@ pub struct Snapshot {
     pub commit_encoding: crate::commit_encoding::MessageEncoding,
     /// The gitflow.* settings (Preferences > Git Flow, palette Start entries).
     pub gitflow: crate::gitflow::GitFlowConfig,
-    /// The root .gitattributes' LFS patterns (empty without one); refreshed by full loads and whole status reads (`LoadMsg`).
+    /// The LFS patterns of every attributes file (`lfs::repo_patterns`); refreshed by full loads and whole status reads (`LoadMsg`).
     pub lfs_patterns: Vec<crate::lfs::LfsPattern>,
     /// The operation in progress (`repo::state`: a pick or revert sequence with picks left
     /// counts, even once libgit2 says clean).
