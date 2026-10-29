@@ -34,6 +34,9 @@ pub(in crate::ui) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) 
     git(&dir, &["update-ref", "refs/remotes/origin/main", "main"], d);
     if with_source {
         git(&dir, &["update-ref", "refs/remotes/origin/search", "search"], d);
+        // search tracks it, so the merge form offers to delete the local branch too.
+        git(&dir, &["config", "branch.search.remote", "origin"], d);
+        git(&dir, &["config", "branch.search.merge", "refs/heads/search"], d);
     }
     reload(&mut st, &dir, &LoadOptions::all(500));
     let target =

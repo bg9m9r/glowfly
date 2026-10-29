@@ -123,6 +123,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "status_tip_shown",
     "repo_submodule_updates",
     "repo_year_branches",
+    "repo_merge_methods",
     "favorite_repos",
     "project_folders",
     "external_tools",

@@ -1,7 +1,8 @@
 //! The "Merge" section: whether the service would merge now, the merge methods the service
 //! offers (none when the repository allows none Glowfly can send), the commit title and
-//! message, deleting the source branch afterwards, and the Merge button (with a confirmation,
-//! and why it is disabled under it). A merged pull request offers to delete its source branch.
+//! message, deleting the source branch afterwards (on the remote, and the local branch), and the
+//! Merge button (with a confirmation, and why it is disabled under it). A merged pull request
+//! offers to delete its source branch.
 
 use super::super::theme::color;
 use super::{heading, note, tone_color};
@@ -9,8 +10,9 @@ use crate::msg::Msg;
 use crate::state::pull_request::{PrAction, PrView};
 use crate::state::pull_request_actions::{
     delete_after_merge_blocked, delete_branch_offer, error_for, merge_blocked, merge_button, merge_choices, merge_confirm, mergeability,
-    method_blocked, method_help, method_label,
+    merging, method_blocked, method_help, method_label,
 };
+use crate::state::pull_request_cleanup::local_delete;
 use crate::ui::theme::controls;
 use crate::ui::widgets::{buttons, reason};
 use eframe::egui::{self, RichText, Ui};
@@ -36,11 +38,11 @@ pub(super) fn show(ui: &mut Ui, t: Lang, v: &mut PrView, snap: Option<&Snapshot>
             }
         }
         PrState::Closed => note(ui, "Closed without merging.", color::weak()),
-        PrState::Open => open(ui, v, default_branch, msgs),
+        PrState::Open => open(ui, t, v, snap, default_branch, msgs),
     }
 }
 
-fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Vec<Msg>) {
+fn open(ui: &mut Ui, t: Lang, v: &mut PrView, snap: Option<&Snapshot>, default_branch: Option<&str>, msgs: &mut Vec<Msg>) {
     if let Some((tone, text)) = mergeability(v) {
         note(ui, text, tone_color(tone));
         ui.add_space(4.0);
@@ -89,11 +91,14 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
             r.on_disabled_hover_text(why);
         }
     }
+    if let Some(snap) = snap {
+        local(ui, t, v, snap, default_branch);
+    }
     ui.add_space(4.0);
     let blocked = merge_blocked(v);
     let r = ui.add(buttons::secondary(merge_button(v)).enabled(blocked.is_none()).why(blocked.as_deref()));
     if r.clicked() {
-        msgs.push(merge_confirm(v, default_branch));
+        msgs.push(merge_confirm(t, v, snap, default_branch));
     }
     // Unless the mergeability note above already says it.
     let shown = mergeability(v).map(|(_, text)| text);
@@ -102,5 +107,26 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
     }
     if let Some(e) = error_for(v, &PrAction::Merge) {
         note(ui, e.to_owned(), color::removed());
+    }
+}
+
+/// "Delete local branch … too" (checking out the target first when it is checked out here),
+/// disabled with the reason when it can't go; nothing without a local branch.
+fn local(ui: &mut Ui, t: Lang, v: &mut PrView, snap: &Snapshot, default_branch: Option<&str>) {
+    let Some(plan) = merging(v, default_branch).and_then(|m| local_delete(t, snap, &m)) else { return };
+    let target = printable(&v.pr.target);
+    let (branch, plan) = plan;
+    let branch = printable(&branch);
+    let label = match &plan {
+        Ok(d) if d.checkout.is_some() => t.trf("pr.merge.delete_local.check_head", &[("branch", &branch), ("target", &target)]),
+        _ => t.trf("pr.merge.delete_local.check", &[("branch", &branch)]),
+    };
+    let blocked = plan.err();
+    if blocked.is_some() {
+        v.forms.delete_local = false;
+    }
+    let r = ui.add_enabled(blocked.is_none(), controls::Check::new(&mut v.forms.delete_local, label));
+    if let Some(why) = &blocked {
+        r.on_disabled_hover_text(why);
     }
 }

@@ -96,7 +96,7 @@ pub(super) fn err(message: &str) -> ForgeError {
 
 pub(super) fn merged_ok(delete: bool) -> PrReply {
     let result = Ok(Merged { sha: "m1".into() });
-    PrReply::Merged { method: MergeMethod::Squash, remote: "origin".into(), source: "feature".into(), delete, result }
+    PrReply::Merged { method: MergeMethod::Squash, remote: "origin".into(), source: "feature".into(), delete, delete_local: false, result }
 }
 
 pub(super) fn view(st: &AppState) -> &crate::state::pull_request::PrView {

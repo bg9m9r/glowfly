@@ -219,16 +219,16 @@ fn deleting_after_the_merge() {
 fn the_merge_confirmation_names_the_method_and_the_deletion() {
     let mut v = view(Some(detail()));
     v.forms.merge_method = Some(MergeMethod::Squash);
-    let Msg::Confirm { title, body, button, then } = merge_confirm(&v, Some("main")) else { panic!("not a confirmation") };
+    let Msg::Confirm { title, body, button, then } = merge_confirm(Lang::En, &v, None, Some("main")) else { panic!("not a confirmation") };
     assert_eq!((title.as_str(), button.as_str()), ("Merge pull request", "Merge"));
     assert_eq!(body, "Merge #12 \u{201c}Search page\u{201d} into main by squashing its commits?");
     assert!(matches!(*then, Msg::PullRequest(crate::pull_request::PullRequestMsg::Merge)));
     v.forms.merge_method = Some(MergeMethod::Merge);
     v.forms.delete_branch = true;
-    let Msg::Confirm { body, .. } = merge_confirm(&v, Some("main")) else { panic!() };
+    let Msg::Confirm { body, .. } = merge_confirm(Lang::En, &v, None, Some("main")) else { panic!() };
     assert_eq!(body, "Merge #12 \u{201c}Search page\u{201d} into main by a merge commit? Then delete search on origin.");
     v.forms.merge_method = Some(MergeMethod::Rebase);
-    let Msg::Confirm { body, .. } = merge_confirm(&v, Some("search")) else { panic!() };
+    let Msg::Confirm { body, .. } = merge_confirm(Lang::En, &v, None, Some("search")) else { panic!() };
     assert!(body.ends_with("by rebasing its commits?"), "the default branch is never deleted: {body}");
 }
 
@@ -237,16 +237,16 @@ fn prefill_picks_an_allowed_method_and_a_verdict_the_user_may_give() {
     let mut forms = PrForms { review_event: ReviewEvent::Approve, merge_method: Some(MergeMethod::Merge), ..PrForms::default() };
     let mut d = detail();
     d.methods = vec![MergeMethod::Squash, MergeMethod::Rebase];
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.merge_method, Some(MergeMethod::Squash));
     assert_eq!(forms.review_event, ReviewEvent::Approve);
     forms.merge_method = Some(MergeMethod::Rebase);
     d.me = "ada".into();
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.merge_method, Some(MergeMethod::Rebase), "an allowed choice stays");
     assert_eq!(forms.review_event, ReviewEvent::Comment, "the author can only comment");
     d.methods.clear();
-    prefill(&mut forms, &d);
+    prefill(&mut forms, &d, None);
     assert_eq!(forms.merge_method, None);
 }
 

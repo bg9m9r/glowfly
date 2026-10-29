@@ -125,7 +125,14 @@ fn squash_merges_and_fetches() {
     let PrCall::Merge { req, .. } = &job.call else { panic!("{:?}", job.call) };
     assert_eq!((req.method, req.head_sha.as_str()), (MergeMethod::Squash, "h7"));
     let result = Ok(Merged { sha: "m1".into() });
-    let reply = PrReply::Merged { method: MergeMethod::Squash, remote: "origin".into(), source: "feature".into(), delete: false, result };
+    let reply = PrReply::Merged {
+        method: MergeMethod::Squash,
+        remote: "origin".into(),
+        source: "feature".into(),
+        delete: false,
+        delete_local: false,
+        result,
+    };
     let msg = reply_msg(&st, reply);
     let fx = update(&mut st, Msg::PullRequest(msg), Instant::now());
     let fetch = ["fetch", "--prune", "origin"].map(String::from).to_vec();

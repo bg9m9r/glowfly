@@ -92,12 +92,14 @@ pub enum PrCall {
         /// The head the page showed; GitLab approves only that head.
         head_sha: String,
     },
-    /// Merge; once merged, `source` is deleted on `remote` (when `delete`) and `remote` fetched.
+    /// Merge; once merged, `source` is deleted on `remote` (when `delete`), `remote` fetched and
+    /// the local branch deleted (when `delete_local`).
     Merge {
         req: MergeRequest,
         remote: String,
         source: String,
         delete: bool,
+        delete_local: bool,
     },
     /// Reply to code comment thread `thread`, whose first comment is `comment`.
     Reply {
@@ -196,6 +198,7 @@ pub enum PrReply {
         remote: String,
         source: String,
         delete: bool,
+        delete_local: bool,
         result: Result<Merged, ForgeError>,
     },
     RepliedToThread {
