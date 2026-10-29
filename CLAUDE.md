@@ -38,7 +38,9 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/gl
      commit needs a new review.
    - Merging needs every review conversation resolved: answer or fix each one, then resolve it.
    - Once CI and `AI review` pass: `gh pr merge <n> --rebase` (never `--admin`; GitHub deletes the
-     remote branch), then `git -C C:/projects/glowfly pull --ff-only`.
+     remote branch), then `git -C C:/projects/glowfly pull --ff-only`. Merge only PRs whose author
+     (`gh pr view <n> --json author -q .author.login`) is `bg9m9r`, `app/dependabot` or
+     `app/github-actions`; anyone else's PR is the owner's to merge, whatever its status says.
    - `git worktree remove ../glowfly-worktrees/<slug>`, `git fetch --prune`, and once the PR shows
      MERGED, `git branch -D <branch>` (a rebase merge rewrites the commits, so `-d` refuses).
    Dependabot and release PRs get the same review before merging. A release-please PR is opened
