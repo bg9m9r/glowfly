@@ -7,17 +7,22 @@
 #
 #   bash scripts/release-publish.sh v0.3.0 <release id>    # needs gh, GH_TOKEN and GH_REPO
 #   bash scripts/release-publish.sh --check v0.3.0 <SHA256SUMS> <assets file>
+#   bash scripts/release-publish.sh --latest v0.3.1 <current latest tag, or ->
 #
 # --check runs only the check and changes nothing; <assets file> has one `<name> <digest>` line
-# per attached file, the digest `sha256:<hex>` or `-` when GitHub gave none.
+# per attached file (more fields are ignored), the digest `sha256:<hex>` or `-` when GitHub gave
+# none. --latest prints whether the tag would be made the latest release. Both are tested by
+# scripts/release-publish-check-test.sh.
 #
-# A full release (vX.Y.Z) is published as the latest release. A pre-release (v0.3.0-rc.1) is
-# published as a pre-release and never as the latest, so the app's update check, which reads
-# the latest release, doesn't offer it. An already published release is left as it is.
+# A full release (vX.Y.Z) is published as the latest release only when it is newer than the
+# current latest one, so publishing an older version by hand leaves the latest alone. A
+# pre-release (v0.3.0-rc.1) is published as a pre-release and never as the latest, so the app's
+# update check, which reads the latest release, doesn't offer it. An already published release
+# is left as it is.
 set -Eeuo pipefail
 
 usage() {
-  echo "usage: release-publish.sh <tag> <release id> | --check <tag> <SHA256SUMS> <assets file>" >&2
+  echo "usage: release-publish.sh <tag> <release id> | --check <tag> <SHA256SUMS> <assets file> | --latest <tag> <latest tag or ->" >&2
   exit 2
 }
 
@@ -26,10 +31,15 @@ usage() {
 check() {
   local tag="$1" sums="$2" assets="$3"
   [ -f "$sums" ] && [ -f "$assets" ] || usage
+  # awk tells the two files apart by FNR == NR, which an empty first file would break.
+  if ! grep -q '[^[:space:]]' "$assets"; then
+    echo "::error::The release has no files attached"
+    return 1
+  fi
   awk -v bundle="glowfly-$tag.intoto.jsonl" '
+    { sub(/\r$/, "") }
     FNR == NR { if (NF >= 1) digest[$1] = (NF >= 2 ? tolower($2) : "-"); next }
     {
-      sub(/\r$/, "")
       if ($0 == "") next
       name = $2; sub(/^\*/, "", name)
       if (length($1) != 64 || $1 !~ /^[0-9a-fA-F]+$/ || name == "") { print "::error::SHA256SUMS line " FNR " is not <sha256>  <file>: " $0; bad = 1; next }
@@ -49,10 +59,30 @@ check() {
   ' "$assets" "$sums"
 }
 
+# `true` when the full release <tag> should become the latest: there is no latest release (<current>
+# is `-` or empty) or <tag> is a newer version than it. `false` otherwise, and for a pre-release.
+make_latest() {
+  local tag="$1" current="$2"
+  if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo false
+  elif [ -z "$current" ] || [ "$current" = - ]; then
+    echo true
+  elif [ "$tag" != "$current" ] && [ "$(printf '%s\n%s\n' "${current#v}" "${tag#v}" | sort -V | tail -n1)" = "${tag#v}" ]; then
+    echo true
+  else
+    echo false
+  fi
+}
+
 case "${1:-}" in
   --check)
     [ "$#" -eq 4 ] || usage
     check "$2" "$3" "$4"
+    exit
+    ;;
+  --latest)
+    [ "$#" -eq 3 ] || usage
+    make_latest "$2" "$3"
     exit
     ;;
   "" | -*) usage ;;
@@ -77,17 +107,24 @@ gh api "repos/$GH_REPO/git/ref/tags/$tag" > /dev/null || { echo "::error::Tag $t
 
 work="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/glowfly-publish.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
-gh api --paginate "repos/$GH_REPO/releases/$id/assets?per_page=100" --jq '.[] | "\(.name) \(.digest // "-")"' > "$work/assets"
-gh release download "$tag" --pattern SHA256SUMS --dir "$work/sums"
-check "$tag" "$work/sums/SHA256SUMS" "$work/assets"
-
-if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  prerelease=false latest=true
+# The files of this release, by its id: `<name> <digest> <asset id>`.
+gh api --paginate "repos/$GH_REPO/releases/$id/assets?per_page=100" --jq '.[] | "\(.name) \(.digest // "-") \(.id)"' > "$work/assets"
+sums_id="$(awk '$1 == "SHA256SUMS" { print $3; exit }' "$work/assets")"
+if [ -n "$sums_id" ]; then
+  gh api -H 'Accept: application/octet-stream' "repos/$GH_REPO/releases/assets/$sums_id" > "$work/SHA256SUMS"
 else
-  prerelease=true latest=false
+  : > "$work/SHA256SUMS"
 fi
+check "$tag" "$work/SHA256SUMS" "$work/assets"
+
+# The newest published full release, which a full release must be newer than to become the latest.
+newest="$(gh api --paginate "repos/$GH_REPO/releases?per_page=100" \
+  --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' \
+  | { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sed 's/^v//' | sort -V | tail -n1)"
+latest="$(make_latest "$tag" "${newest:+v$newest}")"
+if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then prerelease=false; else prerelease=true; fi
 published="$(gh api -X PATCH "repos/$GH_REPO/releases/$id" -F draft=false -F prerelease="$prerelease" \
   -f make_latest="$latest" --jq '"\(.draft) \(.prerelease) \(.html_url)"')"
 read -r draft is_pre url <<< "$published"
 [ "$draft" = false ] && [ "$is_pre" = "$prerelease" ] || { echo "::error::Publishing $tag returned '$published'"; exit 1; }
-echo "release: published $tag (pre-release: $prerelease, latest: $latest) at $url"
+echo "release: published $tag (pre-release: $prerelease, latest: $latest, newest before: ${newest:-none}) at $url"
