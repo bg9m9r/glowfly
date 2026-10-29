@@ -192,17 +192,40 @@ pub fn unix_dirs(var: impl Fn(&str) -> Option<OsString>) -> Vec<PathBuf> {
     out
 }
 
-/// The system font folders, which only administrators can write: the only ones whose files
-/// are memory-mapped (`super::load`). Fonts anywhere else, the user's own folders among them,
-/// are read into memory.
-pub fn system_roots() -> Vec<PathBuf> {
-    if cfg!(windows) {
-        windows_fonts().into_iter().collect()
+/// The kinds of system whose font folders differ.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum System {
+    Windows,
+    MacOs,
+    Unix,
+}
+
+impl System {
+    pub const CURRENT: System = if cfg!(windows) {
+        System::Windows
     } else if cfg!(target_os = "macos") {
-        ["/System/Library/Fonts", "/Library/Fonts"].map(PathBuf::from).to_vec()
+        System::MacOs
     } else {
-        ["/usr/share/fonts", "/usr/local/share/fonts", "/run/host/fonts"].map(PathBuf::from).to_vec()
+        System::Unix
+    };
+}
+
+/// The system font folders only root (or TrustedInstaller) can write: the only ones whose
+/// files are memory-mapped (`super::load`). macOS's `/Library/Fonts` isn't one: an admin user,
+/// usually the first account, writes it without sudo, so it is searched but read. Fonts anywhere
+/// else, the user's own folders among them, are read into memory. `windows_fonts` is
+/// `%SystemRoot%\Fonts`.
+pub fn system_roots_for(system: System, windows_fonts: Option<PathBuf>) -> Vec<PathBuf> {
+    match system {
+        System::Windows => windows_fonts.into_iter().collect(),
+        System::MacOs => vec![PathBuf::from("/System/Library/Fonts")],
+        System::Unix => ["/usr/share/fonts", "/usr/local/share/fonts", "/run/host/fonts"].map(PathBuf::from).to_vec(),
     }
+}
+
+/// `system_roots_for` the running system.
+pub fn system_roots() -> Vec<PathBuf> {
+    system_roots_for(System::CURRENT, windows_fonts())
 }
 
 /// `%SystemRoot%\Fonts`.

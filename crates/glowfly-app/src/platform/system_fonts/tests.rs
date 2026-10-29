@@ -179,3 +179,20 @@ fn reads_fonts_from_other_folders_and_through_links() {
     assert!(load(&root.join("missing.otf"), &roots).is_none());
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn only_folders_root_alone_writes_are_mapped() {
+    use candidates::{System, system_roots_for};
+    let mac = system_roots_for(System::MacOs, None);
+    assert!(mappable(Path::new("/System/Library/Fonts/PingFang.ttc"), &mac));
+    assert!(mappable(Path::new("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"), &mac));
+    assert!(!mappable(Path::new("/Library/Fonts/Arial Unicode.ttf"), &mac), "admin users write /Library/Fonts without sudo");
+    assert!(!mappable(Path::new("/Users/me/Library/Fonts/a.ttc"), &mac));
+    assert!(candidates::macos(None, None).iter().any(|c| c.path.starts_with("/Library/Fonts")), "but it is still searched");
+    let unix = system_roots_for(System::Unix, None);
+    assert!(mappable(Path::new("/usr/local/share/fonts/a.ttc"), &unix));
+    assert!(!mappable(Path::new("/home/me/.fonts/a.ttc"), &unix));
+    let fonts = PathBuf::from(r"C:\Windows\Fonts");
+    assert_eq!(system_roots_for(System::Windows, Some(fonts.clone())), [fonts]);
+    assert!(system_roots_for(System::Windows, None).is_empty(), "no SystemRoot, nothing mapped");
+}

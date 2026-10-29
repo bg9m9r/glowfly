@@ -5,7 +5,8 @@
 //! language prefers, and keeps a file only while it adds a script still missing, so one to
 //! three fonts are kept. One in a system font folder is memory-mapped, not read: its tables stay
 //! in the file and only the pages egui reads (the few glyphs drawn) take memory. One in a
-//! folder the user can write (`~/.local/share/fonts`, `~/Library/Fonts`) is read into memory,
+//! folder the user can write (`~/.local/share/fonts`, `~/Library/Fonts`, macOS's
+//! `/Library/Fonts`, which admin users write) is read into memory,
 //! since it can be rewritten in place while mapped. A font that is missing, can't be
 //! loaded or doesn't parse is skipped without a word; none found leaves the bundled fonts.
 
@@ -158,13 +159,15 @@ fn load(path: &Path, roots: &[PathBuf]) -> Option<Bytes> {
     }
     // SAFETY: the bytes must not change while mapped (egui reads glyph outlines from them for
     // the whole run). The file is mapped read-only and only when its resolved path is inside a
-    // system font folder that only administrators can write (`candidates::system_roots`:
-    // `%SystemRoot%\Fonts`, which only TrustedInstaller may write; `/System/Library/Fonts`,
-    // `/Library/Fonts`; `/usr/share/fonts`, `/usr/local/share/fonts`, `/run/host/fonts`). Their
-    // fonts change only through the OS or a package manager: on Unix by writing a new file and
-    // renaming it over the old one, which leaves the mapped file intact; Windows refuses to
-    // delete or truncate a mapped file. An administrator rewriting a font in place would
-    // change the bytes, as for every program that maps system fonts.
+    // system font folder that only root or TrustedInstaller can write
+    // (`candidates::system_roots`: `%SystemRoot%\Fonts`, which only TrustedInstaller may write;
+    // `/System/Library/Fonts`, on the read-only system volume; `/usr/share/fonts`,
+    // `/usr/local/share/fonts`, `/run/host/fonts`, owned by root). macOS's `/Library/Fonts` is
+    // left out: admin users write it without sudo. These fonts change only through the OS or a
+    // package manager: on Unix by writing a new file and renaming it over the old one, which
+    // leaves the mapped file intact; Windows refuses to delete or truncate a mapped file. Root
+    // rewriting a font in place would change the bytes, as for every program that maps
+    // system fonts.
     unsafe { memmap2::Mmap::map(&file) }.ok().map(Bytes::Mapped)
 }
 

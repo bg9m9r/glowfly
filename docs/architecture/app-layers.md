@@ -147,7 +147,7 @@ source file, update its line here. Features that span every layer are in
 - `platform/macos_menu.rs`: the AppKit menus, built and updated from the plan, with the delegate that leaves every key to the window but Cmd+H and Option+Cmd+H.
 - `platform/primary_selection.rs`: the Linux PRIMARY selection the terminal sets and middle-click pastes (smithay-clipboard on Wayland, arboard on X11).
 - `platform/system_fonts.rs`: the system's Chinese, Japanese and Korean fonts, searched once on a startup thread and kept while each adds a script: mapped from a system font folder, read into memory from anywhere else.
-- `platform/system_fonts/candidates.rs`: the known font files of each system, in the order the system language prefers, the Linux font folders searched for them (the system's first), and the system font folders that may be mapped.
+- `platform/system_fonts/candidates.rs`: the known font files of each system, in the order the system language prefers, the Linux font folders searched for them (the system's first), and the system font folders that may be mapped: only those root or TrustedInstaller alone can write, so not macOS's `/Library/Fonts`.
 - `platform/native_window/`: the Windows window procedure (see Window chrome in [flow-shell.md](flow-shell.md)).
 
 ## `keymap/`: key bindings
