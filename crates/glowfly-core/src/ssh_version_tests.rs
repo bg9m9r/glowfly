@@ -32,8 +32,8 @@ fn picks_the_ssh_git_runs_in_gits_order() {
         shell("'/my ssh/ssh' -v"),
         "then core.sshCommand, kept whole for sh"
     );
-    assert_eq!(ssh_command(os("  "), os("ssh -v"), None), shell("ssh -v"), "an empty command is skipped");
-    assert_eq!(ssh_command(None, os(""), os("/usr/local/bin/ssh")), program("/usr/local/bin/ssh"), "then GIT_SSH, run directly");
+    assert_eq!(ssh_command(os(""), os("ssh -v"), None), shell(""), "a set GIT_SSH_COMMAND counts even when empty, as in git");
+    assert_eq!(ssh_command(None, None, os("/usr/local/bin/ssh")), program("/usr/local/bin/ssh"), "then GIT_SSH, run directly");
     assert_eq!(ssh_command(None, None, os("")), program("ssh"));
     assert_eq!(ssh_command(None, None, None), program("ssh"));
 }
@@ -49,10 +49,13 @@ fn reads_the_repositorys_core_ssh_command() {
         Some(OsStr::new("'/opt/my ssh/ssh' -i 'a key'")),
         "from a folder inside it too"
     );
-    let unset_env = [("GIT_SSH_COMMAND", "")];
-    assert_eq!(ssh_command_for(Some(&dir), &unset_env), SshCommand::Shell("'/opt/my ssh/ssh' -i 'a key'".into()));
+    assert_eq!(ssh_command_in(Some(&dir), None, Some(OsStr::new("plink"))), SshCommand::Shell("'/opt/my ssh/ssh' -i 'a key'".into()));
     let env = [("GIT_SSH_COMMAND", "ssh -v")];
     assert_eq!(ssh_command_for(Some(&dir), &env), SshCommand::Shell("ssh -v".into()), "the environment overrides the config");
+    assert!(
+        needs_legacy(None) && (!cfg!(unix) || legacy_for(&ssh_command_in(Some(&dir), None, None))),
+        "a command line gets the safe set-up"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -72,21 +75,15 @@ fn every_prepared_child_leads_its_own_session() {
     assert_eq!(session, pid);
 }
 
-/// A fake old OpenSSH in a folder whose name has a space, printing its version as ssh does.
+/// An executable `/bin/sh` script running `body`, in a folder whose name has a space: a fake old
+/// OpenSSH, or one that only leaves a file behind when it runs.
 #[cfg(unix)]
-fn fake_old_ssh(name: &str) -> (std::path::PathBuf, String) {
+fn script(name: &str, body: &str) -> (std::path::PathBuf, String) {
     use std::os::unix::fs::PermissionsExt;
     let dir = crate::paths::temp_dir().join(format!("glowfly-{name}-{}", std::process::id())).join("my ssh");
     std::fs::create_dir_all(&dir).unwrap();
     let ssh = dir.join("old ssh");
-    std::fs::write(
-        &ssh,
-        "#!/bin/sh
-for a; do [ \"$a\" = -V ] && echo 'OpenSSH_7.9p1, OpenSSL 1.1.1' >&2 && exit 0; done
-exit 2
-",
-    )
-    .unwrap();
+    std::fs::write(&ssh, format!("#!/bin/sh\n{body}\n")).unwrap();
     std::fs::set_permissions(&ssh, std::fs::Permissions::from_mode(0o755)).unwrap();
     let path = ssh.to_str().unwrap().to_owned();
     (dir, path)
@@ -94,25 +91,27 @@ exit 2
 
 #[cfg(unix)]
 #[test]
-fn reads_the_version_through_the_shell_as_git_runs_it() {
-    let (dir, ssh) = fake_old_ssh("ssh-version-shell");
-    let quoted = SshCommand::Shell(format!("'{ssh}' -o BatchMode=yes -i \"$HOME/.ssh/id\"").into());
-    assert_eq!(detect(&quoted), Some((7, 9)), "quoting and variables are the shell's");
-    assert!(legacy_for(&quoted));
-    let wrapped = SshCommand::Shell(format!("FOO=1 \"{ssh}\"").into());
-    assert_eq!(detect(&wrapped), Some((7, 9)), "an assignment before the program works as in sh");
-    assert_eq!(detect(&SshCommand::Program(ssh.clone().into())), Some((7, 9)), "GIT_SSH is run directly");
-    assert_eq!(detect(&SshCommand::Shell(ssh.into())), None, "unquoted, the space splits the path, as it does for git");
+fn reads_an_environment_programs_version() {
+    let (dir, ssh) = script("ssh-version-program", "[ \"$1\" = -V ] && echo 'OpenSSH_7.9p1, OpenSSL 1.1.1' >&2");
+    assert_eq!(detect(OsStr::new(&ssh)), Some((7, 9)));
+    assert!(legacy_for(&SshCommand::Program(ssh.into())), "an old GIT_SSH gets the legacy set-up");
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
 #[cfg(unix)]
 #[test]
-fn a_repositorys_old_ssh_gets_the_legacy_set_up() {
-    let (dir, ssh) = fake_old_ssh("ssh-version-repo");
-    let repo = crate::testutil::scratch_repo("ssh-version-repo");
+fn a_repositorys_ssh_command_never_runs() {
+    let (dir, ssh) = script("ssh-version-marker", "touch \"$(dirname \"$0\")/ran\"");
+    let marker = dir.join("ran");
+    let repo = crate::testutil::scratch_repo("ssh-version-marker");
     crate::testkit::git(&repo, &["config", "core.sshCommand", &format!("'{ssh}'")]);
-    assert!(legacy_askpass_in(Some(&repo), &[("GIT_SSH_COMMAND", "")]));
+    assert!(legacy_askpass_in(Some(&repo), &[]), "the safe set-up, without reading its version");
+    assert!(legacy_for(&ssh_command_in(Some(&repo), None, None)));
+    let a = crate::gitcli::AskpassEnv { exe: "glowfly".into(), addr: "127.0.0.1:1".into(), token: "ab".into() };
+    let _ = crate::gitcli::askpass_vars_in(&a, Some(&repo), &[]);
+    let read = crate::gitcli::output(&repo, &["config".to_owned(), "--get".to_owned(), "core.sshCommand".to_owned()], "", &[], None);
+    assert!(read.ok, "{read:?}");
+    assert!(!marker.exists(), "nothing a repository's config names runs for a read");
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
     let _ = std::fs::remove_dir_all(&repo);
 }
