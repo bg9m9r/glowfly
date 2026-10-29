@@ -85,23 +85,48 @@ fn the_approval_stays_on_prepare_which_finds_the_draft() {
     for out in ["tag:", "release-id:", "draft:"] {
         assert!(prepare.contains(&format!("      {out} ${{{{ steps.")), "prepare outputs {out}");
     }
+    // Every job after prepare needs it and runs only when it succeeded, that is, was approved:
+    // `!cancelled()` alone would also run a job after a rejected or failed prepare.
     for (name, job) in &jobs {
         if name != "release-please" && name != "prepare" {
             assert!(needs(job).first().map(String::as_str) == Some("prepare"), "{name} needs prepare");
+            let cond = condition(job);
+            assert!(cond.contains("needs.prepare.result == 'success'"), "{name}'s if: requires prepare's success: {cond}");
+            assert!(cond.starts_with("${{ !cancelled() && "), "{name}'s if: {cond}");
+            assert!(!cond.contains("||"), "{name}'s if: has an alternative that could skip the gate: {cond}");
         }
     }
+}
+
+/// The job's `if:` expression, joined from a `>-` block over several lines.
+fn condition(job: &str) -> String {
+    let mut lines = job.lines().skip_while(|l| !l.starts_with("    if: "));
+    let first = lines.next().and_then(|l| l.strip_prefix("    if: ")).unwrap_or("");
+    if first != ">-" {
+        return first.to_owned();
+    }
+    let block: Vec<&str> = lines.take_while(|l| l.starts_with("      ")).map(str::trim).collect();
+    block.join(" ")
 }
 
 #[test]
 fn the_publish_script_marks_pre_releases_and_checks_the_files() {
     let script = workspace_file("scripts/release-publish.sh");
-    assert!(script.contains(
-        "if [[ \"$tag\" =~ ^v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then\n  prerelease=false latest=true\nelse\n  prerelease=true latest=false\n"
-    ));
+    assert!(script.contains(r#"if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then prerelease=false; else prerelease=true; fi"#));
+    assert!(script.contains("latest=\"$(make_latest \"$tag\" \"${newest:+v$newest}\")\"\n"), "an older version never becomes the latest");
     assert!(script.contains("-F draft=false -F prerelease=\"$prerelease\""));
     assert!(script.contains("-f make_latest=\"$latest\""));
-    assert!(script.contains("check \"$tag\" \"$work/sums/SHA256SUMS\" \"$work/assets\"\n"), "the files are checked before publishing");
+    assert!(script.contains("check \"$tag\" \"$work/SHA256SUMS\" \"$work/assets\"\n"), "the files are checked before publishing");
     // The manifests use the same test for a pre-release.
     let manifests = workspace_file("scripts/fill-manifests.sh");
-    assert!(manifests.contains("if ! [[ \"$tag\" =~ ^v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then"));
+    assert!(manifests.contains(r#"if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then"#));
+}
+
+#[test]
+fn sha256sums_never_lists_itself() {
+    let workflow = workspace_file(".github/workflows/release.yml");
+    let jobs = jobs(&workflow);
+    let (_, sums) = jobs.iter().find(|(n, _)| n == "checksums").unwrap();
+    assert!(sums.contains("(cd dist && sha256sum -- *) | sort -k2 > \"$RUNNER_TEMP/SHA256SUMS\"\n"), "written outside dist");
+    assert!(sums.contains("mv \"$RUNNER_TEMP/SHA256SUMS\" dist/SHA256SUMS\n"));
 }

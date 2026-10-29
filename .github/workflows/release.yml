@@ -249,13 +249,15 @@ jobs:
           persist-credentials: false
           ref: ${{ needs.prepare.outputs.tag }}
       # A re-run finds this job's earlier bundle among the 'glowfly-*' files: it isn't hashed.
+      # SHA256SUMS is written outside dist and moved in, so it never lists itself.
       - name: Write SHA256SUMS
         run: |
           mkdir dist
           gh release download "$TAG" --dir dist --pattern 'glowfly-*' --pattern 'git-*.tar.xz'
           bash scripts/release-check-git-source.sh dist
           rm -f dist/*.sha256 dist/*.intoto.jsonl
-          (cd dist && sha256sum -- * | sort -k2 > SHA256SUMS)
+          (cd dist && sha256sum -- *) | sort -k2 > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" dist/SHA256SUMS
           cat dist/SHA256SUMS
       - name: Attest the build provenance
         id: attest
@@ -276,7 +278,7 @@ jobs:
   manifests:
     name: Attach the Homebrew and winget manifests
     needs: [prepare, checksums]
-    if: ${{ !cancelled() && needs.checksums.result == 'success' }}
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && needs.checksums.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write # reads the draft's SHA256SUMS and uploads the manifests to it
@@ -300,15 +302,16 @@ jobs:
   # Publishes the draft, last and only when every job above succeeded, so a published release
   # already has all its files: with release immutability on, they and the tag are locked from
   # then on. scripts/release-publish.sh first checks that SHA256SUMS, the provenance bundle and
-  # every file SHA256SUMS lists are attached, then publishes a vX.Y.Z tag as the latest release
-  # and any other tag (v0.3.0-rc.1) as a pre-release that is never the latest. A failed job
+  # every file SHA256SUMS lists are attached, then publishes a vX.Y.Z tag (as the latest release
+  # only when it is newer than every published one, so an older version built by hand doesn't
+  # take it) and any other tag (v0.3.0-rc.1) as a pre-release that is never the latest. A failed job
   # leaves the draft for "Re-run failed jobs". A release that was already published when the run
   # began (a rebuild) is left as it is.
   publish:
     name: Publish the release
     needs: [prepare, build, flatpak, checksums, manifests]
     if: >-
-      ${{ !cancelled() && needs.prepare.outputs.draft == 'true'
+      ${{ !cancelled() && needs.prepare.result == 'success' && needs.prepare.outputs.draft == 'true'
       && needs.build.result == 'success' && needs.flatpak.result == 'success'
       && needs.checksums.result == 'success' && needs.manifests.result == 'success' }}
     runs-on: ubuntu-latest

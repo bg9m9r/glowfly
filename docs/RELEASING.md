@@ -35,9 +35,12 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 6. The **publish** job runs last, and only when every job above succeeded. It
    (`scripts/release-publish.sh`) checks that `SHA256SUMS`, the provenance bundle and every file
    `SHA256SUMS` lists are on the draft, each with the listed SHA-256 where GitHub reports the
-   file's digest, and then publishes it: a `vX.Y.Z` tag as the latest release, any other tag
-   (`v0.3.0-rc.1`) as a pre-release that is never the latest. Until then the release is a draft
-   that only people with write access see.
+   file's digest, and then publishes it: a `vX.Y.Z` tag as the latest release when it is newer
+   than every published full release (an older version built by hand stays out of the way), any
+   other tag (`v0.3.0-rc.1`) as a pre-release that is never the latest. Until then the release is
+   a draft that only people with write access see. `scripts/release-publish-check-test.sh` tests
+   the check and the latest-release choice on fixtures; the Installers workflow runs it, and
+   lints both release scripts with shellcheck.
 
 The build matrix has six targets: Windows x64 and ARM64 (both on `windows-latest`; ARM64 is
 cross-compiled with the image's ARM64 build tools, and LLVM's clang is put on `PATH` for ring),
