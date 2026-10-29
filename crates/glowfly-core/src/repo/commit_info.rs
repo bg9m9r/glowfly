@@ -2,15 +2,19 @@
 //!
 //! The author is shared: a walk reads each commit's signature once and looks its (name, email)
 //! up in an [`Authors`] table, so every commit by the same person points at one copy of the
-//! two strings. Texts are boxed (no spare capacity) and the usual single parent is kept in the
-//! commit itself.
+//! two strings. Texts are shared on clone (a reload that takes commits from the one before
+//! points at the same text instead of copying it), with no spare capacity, and the usual single
+//! parent is kept in the commit itself.
+//!
+//! The body is held whole, once, flattened to one line: search matches all of it, and the graph
+//! row and its hover show the start of it (`body_preview`).
 
 use git2::Oid;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 /// A commit's parents, first parent first; one is kept inline, merges spill to the heap.
 pub type Parents = SmallVec<[Oid; 1]>;
@@ -19,7 +23,8 @@ pub type Parents = SmallVec<[Oid; 1]>;
 pub struct CommitInfo {
     pub oid: Oid,
     pub summary: Text,
-    /// Message body flattened to one line (shown dimmed after the summary).
+    /// The whole message body flattened to one line: what search matches. The graph shows its
+    /// start (`body_preview`) dimmed after the summary.
     pub body: Text,
     /// Name and email from the author signature, shared with the other commits by them.
     pub author: Author,
@@ -28,14 +33,49 @@ pub struct CommitInfo {
     pub parents: Parents,
 }
 
-/// A string that can't grow: two words instead of a `String`'s three, and no spare capacity.
-/// Reads as a `str`.
-#[derive(Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Text(Box<str>);
+/// How many bytes of the body the graph shows before it cuts the preview at the next word.
+pub const BODY_PREVIEW: usize = 240;
+
+impl CommitInfo {
+    /// The start of the body the graph shows: the whole flattened body up to the end of the
+    /// first word that reaches past `BODY_PREVIEW` bytes, and whether more follows (shown as
+    /// "…"). Borrowed from the body, so the preview costs no memory of its own.
+    pub fn body_preview(&self) -> (&str, bool) {
+        body_preview(&self.body)
+    }
+}
+
+/// `CommitInfo::body_preview` of the flattened body `body` (words joined by single spaces).
+pub fn body_preview(body: &str) -> (&str, bool) {
+    // The words are joined by ASCII spaces, so a space past the limit is a char boundary.
+    match body.as_bytes().get(BODY_PREVIEW + 1..).and_then(|rest| memchr::memchr(b' ', rest)) {
+        Some(i) => (&body[..BODY_PREVIEW + 1 + i], true),
+        None => (body, false),
+    }
+}
+
+/// A string that can't grow, shared on clone: two words like a `Box<str>`, no spare capacity,
+/// and every empty text points at one shared allocation. Reads as a `str`.
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Text(Arc<str>);
+
+/// The one allocation every empty `Text` shares (most commits have no body).
+static EMPTY: LazyLock<Arc<str>> = LazyLock::new(|| Arc::from(""));
+
+impl Default for Text {
+    fn default() -> Text {
+        Text(Arc::clone(&EMPTY))
+    }
+}
 
 impl Text {
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Whether `self` and `other` are the same shared copy (not just equal).
+    pub fn ptr_eq(&self, other: &Text) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
     }
 }
 
@@ -60,13 +100,13 @@ impl Borrow<str> for Text {
 
 impl From<&str> for Text {
     fn from(s: &str) -> Text {
-        Text(s.into())
+        if s.is_empty() { Text::default() } else { Text(s.into()) }
     }
 }
 
 impl From<String> for Text {
     fn from(s: String) -> Text {
-        Text(s.into_boxed_str())
+        Text::from(s.as_str())
     }
 }
 
@@ -78,7 +118,7 @@ impl From<&Text> for String {
 
 impl From<Text> for String {
     fn from(t: Text) -> String {
-        t.0.into_string()
+        t.0.as_ref().to_owned()
     }
 }
 

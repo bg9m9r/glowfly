@@ -29,6 +29,8 @@ pub(super) enum MonitorNote {
     TooOld(Version),
     /// Linux: Watchman with git's hook, in words only.
     Watchman,
+    /// This git was built without the daemon: nothing is said or offered.
+    NotBuilt,
 }
 
 /// What the note says about the monitor, given the speed-ups set, what the OS and git offer and
@@ -40,6 +42,7 @@ pub(super) fn monitor_note(s: StatusSpeedups, offer: MonitorOffer, remote: bool)
         MonitorOffer::Daemon => MonitorNote::Offer,
         MonitorOffer::TooOld(v) => MonitorNote::TooOld(v),
         MonitorOffer::Watchman => MonitorNote::Watchman,
+        MonitorOffer::NotBuilt => MonitorNote::NotBuilt,
     }
 }
 
@@ -60,7 +63,7 @@ pub(super) fn check_for(st: &mut AppState, slow: Option<&SlowStatus>, os: Os, no
     let s = slow.speedups;
     let version = st.git.info.as_ref().and_then(|i| i.version);
     let remote = st.watch.remote.contains_key(&workdir);
-    let note = monitor_note(s, repo::monitor_offer_for(os, version), remote);
+    let note = monitor_note(s, st.git.monitor_offer_for(os), remote);
     let cache = repo::untracked_cache_helps(s) && repo::untracked_cache_works(version);
     let text = note_text(slow.took, s, cache, &note);
     if cache || note == MonitorNote::Offer {
@@ -68,7 +71,7 @@ pub(super) fn check_for(st: &mut AppState, slow: Option<&SlowStatus>, os: Os, no
         let action = ToastAction { label: "Turn on".into(), msg: Box::new(msg), workdir: Some(workdir) };
         st.toast_action(true, text.clone(), action, now);
         st.log_quiet(true, text);
-    } else if note != MonitorNote::On {
+    } else if !matches!(note, MonitorNote::On | MonitorNote::NotBuilt) {
         st.toast(true, text.clone(), now);
         st.log_quiet(true, text);
     }
@@ -103,7 +106,7 @@ pub(super) fn note_text(took: Duration, s: StatusSpeedups, cache: bool, monitor:
         "can speed this up"
     };
     match monitor {
-        MonitorNote::On => {}
+        MonitorNote::On | MonitorNote::NotBuilt => {}
         MonitorNote::Offer => {
             text.push_str(&format!(" Git's built-in {name} {ends}; it is a small git process that keeps running in the background."))
         }
@@ -137,6 +140,9 @@ pub(super) fn speed_up(st: &mut AppState, speedups: StatusSpeedups, cache: bool,
 /// is on too; the headline says what is on, or in plain words why the monitor isn't.
 pub(super) fn sped_up(st: &mut AppState, output: String, monitor: MonitorOutcome, cache: Option<bool>, now: Instant, fx: &mut Vec<Effect>) {
     let ok = monitor.is_watching() && cache != Some(false);
+    if monitor.is_watching() {
+        super::status_monitor::shown_as(st, true);
+    }
     let headline = sped_up_headline(&monitor, cache);
     super::ops::finish_job(st, ok, output, headline, None, now, fx);
 }
@@ -155,7 +161,7 @@ fn sped_up_headline(monitor: &MonitorOutcome, cache: Option<bool>) -> Option<Str
 
 #[cfg(test)]
 #[path = "tests/status_tip_tests.rs"]
-mod tests;
+pub(super) mod tests;
 
 #[cfg(test)]
 #[path = "tests/status_tip_monitor_tests.rs"]

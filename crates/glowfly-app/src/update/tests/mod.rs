@@ -303,6 +303,7 @@ pub(super) mod work_files_unstage_tests;
 pub(super) mod worktree_branch_tests;
 pub(super) mod worktree_counts_tests;
 pub(super) mod worktree_manage_tests;
+pub(super) mod worktree_monitor_tests;
 pub(super) mod worktree_move_tests;
 pub(super) mod worktree_remote_tests;
 pub(super) mod worktree_remove_remote_tests;

@@ -1,6 +1,6 @@
 //! The whole-history index for the graph's search: every commit the graph's history walk would
-//! visit, in the order it visits them, with what search matches in them (the summary, the body
-//! flattened as the graph shows it, the author's name and email) and both dates. A large
+//! visit, in the order it visits them, with what search matches in them (the summary, the whole
+//! body flattened to one line as the graph holds it, the author's name and email) and both dates. A large
 //! repository's graph loads only its newest commits; the index lets search count and find
 //! matches in all of them, and says how far the graph has to load to show one.
 //!
@@ -9,9 +9,9 @@
 //! author terms are matched here exactly as the graph matches loaded commits
 //! (`CommitQuery::text_matches`, `CommitQuery::author_matches`); path terms are not indexed.
 //!
-//! Memory: about 110 bytes per commit plus its summary and capped body, roughly 300 to 400 bytes
-//! per commit on histories with long messages. Texts live in blocks of about 1 MiB that an
-//! updated index shares with the one it was built from.
+//! Memory: about 110 bytes per commit plus its summary and whole body, each held once: about
+//! 600 bytes per commit on git.git's history (485 of them text). Texts live in blocks of about
+//! 1 MiB that an updated index shares with the one it was built from.
 //!
 //! A finished index can be saved to the cache folder and read back in a later session
 //! (`store.rs`), as it is for the same history or as the base of an update.
@@ -32,6 +32,8 @@ pub use store::{Store, StoreFile, Stored, worth_saving};
 
 #[cfg(test)]
 mod build_tests;
+#[cfg(test)]
+mod deep_match_tests;
 #[cfg(test)]
 mod store_tests;
 #[cfg(test)]
@@ -142,7 +144,7 @@ impl CommitIndex {
         self.entries.get(pos).map(|e| self.texts_of(e).0)
     }
 
-    /// The flattened body of the commit at `pos`.
+    /// The whole flattened body of the commit at `pos`.
     pub fn body_at(&self, pos: usize) -> Option<&str> {
         self.entries.get(pos).map(|e| self.texts_of(e).1)
     }

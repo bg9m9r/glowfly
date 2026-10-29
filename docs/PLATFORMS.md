@@ -624,6 +624,16 @@ second one next to it.
    `git fsmonitor--daemon status` says it is watching (`repo::turn_on_monitor`). Never set
    fsmonitor.allowRemote or fsmonitor.socketDir for the user, nor a hook path (the trust check
    flags one). On Linux, suggest Watchman with git's fsmonitor-watchman hook in text only.
+   Offer it only to a git whose `git version --build-options` names `fsmonitor--daemon`
+   (`repo::daemon_built`). On Windows the daemon holds its working directory open: stop it
+   (`repo::stop_monitor`) before removing or moving a worktree. Turning it off unsets
+   core.fsmonitor (every local value: `--unset-all`) before stopping the daemon, so no git
+   started meanwhile starts it again.
+7. **libgit2's index writes drop the extensions it doesn't know** (the untracked cache, the
+   monitor's token). Don't copy them back into a rewritten index; a trusted whole status read
+   lets git record them again (`repo::index_ext`), the token only where a daemon can give one
+   (`repo::daemon_serves`), and once per index state (`repo::RecordMemo`), so a record that
+   brings nothing back isn't repeated on every refresh.
 
 ### Persistence
 

@@ -87,6 +87,7 @@ mod status;
 mod stops;
 mod submodules;
 mod terminal;
+mod terminal_hold;
 mod terminal_out;
 mod themes;
 mod tools;

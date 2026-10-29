@@ -156,6 +156,9 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Match path: queries in a large loaded history on the query worker too (they still match on the UI thread once files are searched)
 - Work out the author picker's list on a worker for a large history (it groups every loaded commit on the UI thread)
 - Match a large history from the index's answer when it is current (the loaded commits are its first positions) instead of a second scan
+- Match a needle that isn't ASCII without lowercasing each non-ASCII message per keystroke (fold the texts once, or a Unicode case-insensitive search)
+- Share the loaded commits' texts with the history index's blocks instead of holding a second copy of each message there
+- Highlight where a match far into the body is (a snippet around it in the row hover or the details panel)
 
 ### Saved search index
 

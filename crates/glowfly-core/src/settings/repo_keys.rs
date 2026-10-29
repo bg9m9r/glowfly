@@ -1,5 +1,5 @@
 //! Settings saved per repository (graph filters, pinned branch colours, repository colours, pull
-//! request and issue filters, the issue tracker, trust decisions, whether submodules are kept updated) are keyed by the repository's resolved working directory
+//! request and issue filters, the issue tracker, trust decisions, whether submodules are kept updated, whether year-like branch names name issues) are keyed by the repository's resolved working directory
 //! (`Snapshot::real_workdir`), saved losslessly (`paths::encode`). One set of helpers reads and
 //! writes every such map, so a repository opened by another spelling (a link, a short 8.3 name,
 //! libgit2's `C:/x/` form) finds its settings, a new entry replaces one saved under another
@@ -98,6 +98,17 @@ impl Settings {
         set(&mut self.repo_submodule_updates, real, v);
     }
 
+    /// Whether branch names that start with a year (`2024-cleanup`) name an issue in the
+    /// repository at `real` (off unless the repository turned it on).
+    pub fn year_branches_for(&self, real: &Path) -> bool {
+        get(&self.repo_year_branches, real).copied().unwrap_or(false)
+    }
+
+    /// Saves the repository's choice; off removes the entry.
+    pub fn set_year_branches(&mut self, real: &Path, on: bool) {
+        set(&mut self.repo_year_branches, real, on.then_some(true));
+    }
+
     /// Whether submodules are updated after checkouts and pulls in the repository at `real`: its
     /// own choice, else Preferences > General.
     pub fn keeps_submodules_updated(&self, real: &Path) -> bool {
@@ -119,7 +130,7 @@ impl Settings {
     }
 
     /// Moves the graph filter, branch colour pins, repository colour, pull request and issue filters, issue tracker,
-    /// slow-status note and submodule choice saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
+    /// slow-status note, submodule and year-branch choices saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
     /// resolved key `real`. Trust decisions and their prints were always saved under the resolved
     /// key and are left alone. Returns whether anything moved.
     pub fn adopt_repo_keys(&mut self, real: &Path, aliases: &[&Path]) -> bool {
@@ -127,9 +138,10 @@ impl Settings {
         let forge_filters = adopt(&mut self.repo_forge_filters, real, aliases);
         let tips = adopt(&mut self.status_tip_shown, real, aliases);
         let subs = adopt(&mut self.repo_submodule_updates, real, aliases);
+        let years = adopt(&mut self.repo_year_branches, real, aliases);
         let pins = adopt(&mut self.branch_pins, real, aliases);
         let colours = adopt(&mut self.repo_colours, real, aliases);
-        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips | subs | pins | colours
+        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips | subs | years | pins | colours
     }
 }
 

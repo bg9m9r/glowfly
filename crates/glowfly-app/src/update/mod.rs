@@ -138,6 +138,7 @@ mod stack_push;
 mod stage_folder;
 mod stash;
 mod stash_push;
+mod status_monitor;
 mod status_tip;
 mod submodule_add;
 mod submodule_batch;

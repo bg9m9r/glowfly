@@ -37,7 +37,7 @@ pub(super) fn load_repo(
     {
         let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
         let started = std::time::Instant::now();
-        let read = repo::status_and_index(&path, k.git_status).map_err(err);
+        let read = repo::status_and_index_with(&path, k.git_status, Some(graph_cache.records())).map_err(err);
         let slow = repo::slow(started.elapsed(), &path);
         let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
         let lfs_patterns = Some(glowfly_core::lfs::root_patterns(&path));

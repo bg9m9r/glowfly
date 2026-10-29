@@ -1,6 +1,6 @@
 //! Preferences > Integrations (one page per hosting service: a card for each connected account,
 //! then Add another account or the sign-in form, integrations_form.rs) and Repo > Issue
-//! Tracker.
+//! Tracker (with whether year-like branch names name issues).
 
 use super::integrations_form::{account_card, aligned, sign_in_form};
 use super::{help, row, text_field, trello};
@@ -10,7 +10,7 @@ use crate::state::{ForgeState, PrefsState};
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
-use glowfly_core::forge::{Account, Provider};
+use glowfly_core::forge::{Account, Provider, RefStyle};
 use glowfly_core::settings::{Settings, TrackerChoice};
 use std::path::Path;
 
@@ -102,6 +102,9 @@ pub fn tracker_page(
             help(ui, "Connect Jira Cloud, Jira Data Center or Trello under Integrations to use it here.");
         }
     });
+    if fs.and_then(ForgeState::style).is_some_and(|r| matches!(r, RefStyle::Hash | RefStyle::AzureBoards)) {
+        year_branches_row(ui, s, workdir, msgs);
+    }
     if let TrackerChoice::Trello { account, board, board_name } = &current {
         trello::board_row(ui, account, board, board_name, &prefs.trello_boards, msgs);
     }
@@ -120,4 +123,18 @@ pub fn tracker_page(
             );
         });
     }
+}
+
+/// Whether a branch name starting with a year (`2024-cleanup`) names an issue, for trackers
+/// with numbered issues.
+fn year_branches_row(ui: &mut Ui, s: &Settings, workdir: &Path, msgs: &mut Vec<Msg>) {
+    let t = s.lang();
+    row(ui, t.tr("prefs.tracker.year_branches.label"), |ui| {
+        // Not bound to the setting: update saves it and tells the open repository.
+        let mut on = s.year_branches_for(workdir);
+        if controls::checkbox(ui, &mut on, t.tr("prefs.tracker.year_branches.check")).changed() {
+            msgs.push(Msg::Forge(ForgeMsg::SetYearBranches(on)));
+        }
+        help(ui, t.tr("prefs.tracker.year_branches.help"));
+    });
 }

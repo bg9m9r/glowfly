@@ -113,6 +113,8 @@ macro_rules! effect_areas {
             Selection(crate::effect::SelectionEffect),
             /// Git's file system monitor started and set, then the cache's commands (monitor.rs); unscoped like RunGit.
             TurnOnMonitor(crate::effect::MonitorJob),
+            /// Git's file system monitor unset and stopped (monitor.rs); unscoped like RunGit.
+            TurnOffMonitor(crate::effect::MonitorOff),
             /// Another effect with the trust re-check the runner makes before it starts it
             /// (effect/trust_check.rs, runner/trust.rs); its metadata is that effect's.
             Checked(Box<crate::effect::Checked>),

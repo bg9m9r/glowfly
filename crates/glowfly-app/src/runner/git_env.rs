@@ -1,5 +1,6 @@
-//! Finding git and its version (at startup), finding the installed gits and switching to one
-//! (Preferences > Git), and listing a folder in `safe.directory` (`Effect::GitEnv`).
+//! Finding git and its version (at startup) and whether it has the file system monitor daemon,
+//! finding the installed gits and switching to one (Preferences > Git), and listing a folder in
+//! `safe.directory` (`Effect::GitEnv`).
 
 use super::execute::{Cx, Execute};
 use crate::effect::LoadKind;
@@ -18,6 +19,9 @@ pub(super) fn run(effect: GitEnvEffect) -> Msg {
         }
         GitEnvEffect::Discover { generation, cwd } => GitEnvMsg::Discovered { generation, candidates: git_program::discover(&cwd) },
         GitEnvEffect::CheckPathGit { cwd } => GitEnvMsg::PathGitChecked(git_program::path_git(&cwd)),
+        GitEnvEffect::ProbeMonitor { generation, cwd } => {
+            GitEnvMsg::MonitorProbed { generation, daemon: glowfly_core::repo::daemon_built(&cwd) }
+        }
         // Checked before it is put into effect: a git that doesn't work is never run for a job.
         GitEnvEffect::Use { program: Some(p), cwd } => match git_program::probe(&p, &cwd) {
             Ok(v) => {

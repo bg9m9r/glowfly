@@ -4,8 +4,8 @@
 
 use crate::effect::partial::{ContentRequest, PartialEffect, StopKey};
 use crate::effect::{
-    CloneEffect, ConflictEffect, ConflictRead, Effect, LfsEffect, MonitorJob, ReposEffect, SelectionEffect, SparseEffect, StackRequest,
-    WorktreeEffect,
+    CloneEffect, ConflictEffect, ConflictRead, Effect, LfsEffect, MonitorJob, MonitorOff, ReposEffect, SelectionEffect, SparseEffect,
+    StackRequest, WorktreeEffect,
 };
 use crate::worktree::{CountRequest, MoveRequest, NewWorktree, RemoveRequest};
 use glowfly_core::repo_sync::SyncOp;
@@ -51,6 +51,7 @@ fn moved_effects_keep_their_metadata() {
             ("sparse-checkout", None, Some(cwd.as_path()), true),
         ),
         (Effect::TurnOnMonitor(MonitorJob { cwd: cwd.clone(), then: Vec::new() }), ("turn-on-monitor", None, Some(cwd.as_path()), true)),
+        (Effect::TurnOffMonitor(MonitorOff { cwd: cwd.clone() }), ("turn-off-monitor", None, Some(cwd.as_path()), true)),
         (
             Effect::Conflict(ConflictEffect::Load { workdir: w.clone(), path: "a.txt".into(), generation: 1 }),
             ("load-conflict", scoped, None, true),
@@ -94,6 +95,7 @@ fn moved_effects_keep_their_metadata() {
                 force: glowfly_core::worktree_ops::RemoveForce::None,
                 delete_branch: None,
                 delete_remote: None,
+                stop_monitor: false,
             })),
             ("remove-worktree", None, Some(repo.as_path()), true),
         ),
@@ -108,6 +110,7 @@ fn moved_effects_keep_their_metadata() {
                 to: folder("moved"),
                 name: "other".into(),
                 folder: None,
+                stop_monitor: false,
             })),
             ("move-worktree", None, Some(repo.as_path()), true),
         ),

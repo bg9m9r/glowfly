@@ -12,12 +12,25 @@ pub(super) fn status(workdir: &Path) -> Option<(Vec<FileEntry>, Vec<FileEntry>)>
     status_within(workdir, READ_TIMEOUT).ok()
 }
 
+/// `status`, letting git write the index: it records the untracked cache and the file system
+/// monitor's token there again after an index write that dropped them (`index_ext.rs`).
+pub(super) fn status_recording(workdir: &Path) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
+    read(workdir, READ_TIMEOUT, true).ok()
+}
+
 /// `status`, given up after `timeout`. Err(true) when git ran out of time, Err(false) when it
 /// failed otherwise.
 pub(super) fn status_within(workdir: &Path, timeout: Duration) -> Result<(Vec<FileEntry>, Vec<FileEntry>), bool> {
+    read(workdir, timeout, false)
+}
+
+fn read(workdir: &Path, timeout: Duration, record: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>), bool> {
     // Without optional locks git doesn't rewrite the index, which the file watcher would report
     // as a change, reading the status again.
-    let cmd = args(&["--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=all"]);
+    let mut cmd = args(&["--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=all"]);
+    if record {
+        cmd.remove(0);
+    }
     // Paths are git's bytes, which needn't be UTF-8: kept undecoded until `rpath` reads them.
     let (out, stdout) = output_bytes(workdir, &cmd, NO_PROMPTS, Some(timeout));
     if !out.ok {

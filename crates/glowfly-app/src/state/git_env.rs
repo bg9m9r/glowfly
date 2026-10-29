@@ -4,6 +4,8 @@
 
 use glowfly_core::git_program::Candidate;
 use glowfly_core::git_version::{self, Feature, GitInfo, Version};
+use glowfly_core::opens::Os;
+use glowfly_core::repo::{self, MonitorOffer};
 use std::path::{Path, PathBuf};
 
 #[derive(Default)]
@@ -19,6 +21,9 @@ pub struct GitState {
     /// is dropped.
     pub switches: u64,
     pub page: GitPage,
+    /// Whether this git was built with its file system monitor daemon (`git version
+    /// --build-options`); None until the probe after each check answers.
+    pub monitor_daemon: Option<bool>,
 }
 
 /// Preferences > Git: the gits found and the one being checked.
@@ -81,6 +86,22 @@ impl GitState {
             Ok(v) if git_version::new_enough(v) => Some((c.path.as_path(), v)),
             _ => None,
         }
+    }
+
+    /// What git's file system monitor offers on `os` with this git ([`repo::monitor_offer_for`]).
+    pub fn monitor_offer_for(&self, os: Os) -> MonitorOffer {
+        repo::monitor_offer_for(os, self.info.as_ref().and_then(|i| i.version), self.monitor_daemon)
+    }
+
+    /// Whether removing or moving a worktree stops its file system monitor daemon first: on
+    /// Windows, where the daemon holds the folder open, with a git that has the daemon.
+    pub fn stops_monitor_for(&self, os: Os) -> bool {
+        os == Os::Windows && self.monitor_offer_for(os) == MonitorOffer::Daemon
+    }
+
+    /// [`GitState::stops_monitor_for`] on this OS.
+    pub fn stops_monitor(&self) -> bool {
+        self.stops_monitor_for(Os::current())
     }
 
     /// The version of a git that runs but lacks some features.

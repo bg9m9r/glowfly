@@ -69,6 +69,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
             refresh(st, true, false, now, fx);
             super::trello::want_boards(st, fx);
         }
+        ForgeMsg::SetYearBranches(on) => super::issue::set_year_branches(st, on, fx),
         ForgeMsg::ShowTrackerPage => super::trello::show_page(st, fx),
         ForgeMsg::LoadTrelloBoards(account) => super::trello::load_boards(st, account, fx),
         ForgeMsg::TrelloBoardsLoaded { account, result } => super::trello::boards_loaded(st, account, result),
@@ -93,6 +94,7 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
         }
         _ => Some(ForgeState { pr_repos, ..ForgeState::new(host, remote, tracker) }),
     };
+    st.session.forge.iter_mut().for_each(|f| f.year_branches = st.settings.year_branches_for(&snap.real_workdir));
     // An edited remote, a new connection or another profile can change the tracker.
     super::issue::tracker_detected(st);
 }

@@ -109,6 +109,7 @@ impl Recovery {
             | Effect::Stash(StashEffect::Rename { .. })
             | Effect::Sparse(SparseEffect::Checkout { .. })
             | Effect::TurnOnMonitor(_)
+            | Effect::TurnOffMonitor(_)
             | Effect::Stack(_)
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(InitEffect::Run { .. })

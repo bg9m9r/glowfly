@@ -46,11 +46,15 @@ pub(super) struct Cells<'a> {
 }
 
 /// The summary in `fg` and, when given, the body preview after it in the smaller `weak` text.
-pub(super) fn message_job(summary: &str, body: Option<&str>, fg: Color32, weak: Color32) -> LayoutJob {
+pub(super) fn message_job(summary: &str, body: Option<(&str, bool)>, fg: Color32, weak: Color32) -> LayoutJob {
     let mut job = LayoutJob::default();
     job.append(summary, 0.0, TextFormat { valign: Align::Center, ..TextFormat::simple(type_scale::font(type_scale::BODY), fg) });
-    if let Some(body) = body.filter(|b| !b.is_empty()) {
-        job.append(body, 10.0, TextFormat { valign: Align::Center, ..TextFormat::simple(type_scale::font(type_scale::SMALL), weak) });
+    if let Some((body, cut)) = body.filter(|b| !b.0.is_empty()) {
+        let format = TextFormat { valign: Align::Center, ..TextFormat::simple(type_scale::font(type_scale::SMALL), weak) };
+        job.append(body, 10.0, format.clone());
+        if cut {
+            job.append("…", 0.0, format);
+        }
     }
     job
 }
@@ -69,7 +73,7 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
             let col = if *draft { color::weak() } else { color::progress() };
             x += widgets::chip(&mp, x, mid, label, color::wash(col, 0.35), col) + 6.0;
         }
-        let body = row.show_body.then_some(c.body.as_str());
+        let body = row.show_body.then(|| c.body_preview());
         text.msg = paint_cut(&mp, pos2(x, mid), message_job(&c.summary, body, fg, weak), cols.msg.1 - x);
     }
     if cfg.changes
@@ -112,11 +116,15 @@ fn paint_cut_right(p: &Painter, right: Pos2, text: &str, font: FontId, color: Co
 }
 
 /// The hover of a cut message: the summary in strong text, then the body preview when the row
-/// showed it, wrapped.
+/// showed it, wrapped (the start of the body, as the row shows it, not all of a long one).
 pub(super) fn message_tip(ui: &mut Ui, c: &CommitInfo, with_body: bool) {
     ui.set_max_width(TIP_W);
     ui.add(Label::new(RichText::new(&c.summary).font(type_scale::strong(ui, type_scale::BODY))).wrap());
     if with_body && !c.body.is_empty() {
-        ui.add(Label::new(RichText::new(&c.body).color(color::weak())).wrap());
+        let text = match c.body_preview() {
+            (start, true) => format!("{start}…"),
+            (all, false) => all.to_owned(),
+        };
+        ui.add(Label::new(RichText::new(text).color(color::weak())).wrap());
     }
 }

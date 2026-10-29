@@ -31,6 +31,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Every UI checkout of a local branch goes through `BranchMsg::Checkout`, which refuses a branch another worktree has checked out.
 - Moving a worktree (`update/worktree_move.rs`) points the tabs, the recent list, the closed tabs, favorites and `KnownFolders` at the new folder.
 - Removing a worktree closes the other tabs showing it first (`update/worktree_manage.rs`).
+- On Windows, removing or moving a worktree stops its file system monitor daemon first (`RemoveRequest::stop_monitor`, `MoveRequest::stop_monitor`, from `GitState::stops_monitor`), since it holds the folder open.
 - Each tab has a `TabId` for as long as it is open: what a request waiting for an answer names it by, since its index changes when tabs move or close.
 - Closing a tab that holds work only in memory (a commit draft, conflict choices, an edited dialog, a parked Create issue form, comments typed in the pull request or issue panel, or kept for an issue whose panel closed) or whose terminals run a program (asked about first, `update/terminal_busy.rs`) asks first (`state/tab_losses.rs`), and the confirmation carries a `CloseRequest` by id (`update/tabs_close.rs`).
 - A tab's label (Rename tab, `update/tab_label.rs`) is saved with the open tabs in tabs.txt and kept on the recently closed list.
@@ -149,6 +150,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - A whole read slower than `repo::SLOW_STATUS` shows a note once per repository (`update/status_tip.rs`) whose button turns on git's untracked cache in a job.
 - On Windows and macOS with git 2.36 or newer, the note's button also turns on git's built-in file system monitor (`Effect::TurnOnMonitor`: `git fsmonitor--daemon` started and confirmed, core.fsmonitor=true set only once it is watching, reported as `LoadMsg::StatusSpedUp`).
 - On Linux the note suggests Watchman with git's fsmonitor-watchman hook, in words only.
+- After each check of git (`GitEnvMsg::Detected`, a switch) `GitEnvEffect::ProbeMonitor` asks `git version --build-options` whether it has the daemon (`GitState::monitor_daemon`); a git built without it gets no Turn on (`MonitorOffer::NotBuilt`).
+- Repository > Hooks shows a File system monitor row while core.fsmonitor is on (Turn off: `LoadMsg::TurnOffMonitor`, a job through the trust gate that unsets it, then stops the daemon, `update/status_monitor.rs`) or while the daemon can be turned on (the note's job).
 
 ## Loading more history and reloads
 

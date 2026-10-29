@@ -15,14 +15,14 @@ use std::time::{Duration, Instant};
 
 const TOOK: Duration = Duration::from_millis(2400);
 
-pub(super) fn opened(name: &str) -> (AppState, PathBuf) {
+pub(in crate::update) fn opened(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     (st, dir)
 }
 
-pub(super) fn speedups(untracked_cache: bool, fsmonitor: bool) -> StatusSpeedups {
+pub(in crate::update) fn speedups(untracked_cache: bool, fsmonitor: bool) -> StatusSpeedups {
     StatusSpeedups { fsmonitor, untracked_cache, show_untracked_all: None }
 }
 

@@ -1,6 +1,7 @@
-//! A loaded commit's shared author and boxed texts: interning and lookup keys, and a walk over a
-//! fixture history (many authors, unicode names, an empty email, a `.mailmap`) reading exactly
-//! what git holds, with one shared copy per author.
+//! A loaded commit's shared author and texts: interning and lookup keys, the body preview, texts
+//! shared on clone and by a reload, and a walk over a fixture history (many authors, unicode
+//! names, an empty email, a `.mailmap`) reading exactly what git holds, with one shared copy per
+//! author.
 
 use super::*;
 use crate::commit_query::{CommitQuery, authors};
@@ -91,5 +92,65 @@ fn a_walk_reads_what_git_holds_and_shares_each_author() {
     assert_eq!(picker.len(), people.len() + 1);
     assert!(picker.iter().any(|a| a.name == "李小龍" && a.email == "lee@example.cn" && a.commits == 4));
     assert!(picker.iter().any(|a| a.name == "Nobody" && a.email.is_empty() && a.commits == 1));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The cut the walk used to store: words joined by spaces, "…" once past 240 bytes.
+fn old_capped(body: &str) -> String {
+    let mut out = String::new();
+    for word in body.split_whitespace() {
+        if out.len() > 240 {
+            out.push('…');
+            break;
+        }
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(word);
+    }
+    out
+}
+
+#[test]
+fn the_preview_shows_what_the_graph_showed_before_bodies_were_whole() {
+    let words = ["a", "fix", "résumé", "ünïcode✨", "x", "longer-word-here", "🎉🎉", "ok"];
+    for n in [0, 1, 10, 30, 35, 36, 37, 40, 41, 60, 200] {
+        for shift in 0..words.len() {
+            let raw: Vec<&str> = (0..n).map(|i| words[(i + shift) % words.len()]).collect();
+            let body = flatten_body(&raw.join("\n  "));
+            let (start, cut) = body_preview(&body);
+            let shown = if cut { format!("{start}…") } else { start.to_owned() };
+            assert_eq!(shown, old_capped(&body), "{n} words from {shift}");
+            assert!(body.starts_with(start));
+        }
+    }
+    assert_eq!(body_preview(""), ("", false));
+}
+
+#[test]
+fn texts_are_shared_on_clone_and_empty_ones_share_one_allocation() {
+    let a = Text::from("a body");
+    assert!(a.clone().ptr_eq(&a));
+    assert!(Text::from("").ptr_eq(&Text::default()) && Text::from(String::new()).ptr_eq(&Text::default()));
+    assert_eq!(String::from(a.clone()), "a body");
+    assert_eq!(a, Text::from("a body".to_owned()));
+}
+
+#[test]
+fn a_reload_shares_the_texts_of_the_commits_it_takes_again() {
+    let dir = scratch_repo("commit-info-share");
+    for i in 0..5 {
+        write(&dir, "f.txt", &i.to_string());
+        git(&dir, &["add", "."]);
+        git(&dir, &["commit", "-q", "-m", &format!("Change {i}"), "-m", &format!("Body {i} {}", "word ".repeat(80))]);
+    }
+    let opts = LoadOptions::all(100);
+    let first = load(&dir, &opts).unwrap();
+    let again = super::super::load_reusing(&dir, &opts, &Default::default(), Some(&first.prior())).unwrap();
+    assert_eq!(again.commits.len(), 5);
+    for (a, b) in again.commits.iter().zip(first.commits.iter()) {
+        assert!(a.body.ptr_eq(&b.body) && a.summary.ptr_eq(&b.summary), "{}", a.summary);
+        assert!(a.body.len() > BODY_PREVIEW, "held whole");
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
