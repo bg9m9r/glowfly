@@ -74,6 +74,8 @@ pub struct ForgeState {
     pub jira_projects: ProjectKeys,
     /// The signed-in user, issue searches and dialog options of PR and issue filters.
     pub filters: super::forge_filters::FilterState,
+    /// Branch names like `2024-cleanup` name an issue (`Settings::year_branches_for`; set by detect).
+    pub year_branches: bool,
 }
 
 impl ForgeState {
@@ -100,6 +102,7 @@ impl ForgeState {
             details: PrDetailPass::default(),
             jira_projects: ProjectKeys::Unknown,
             filters: Default::default(),
+            year_branches: false,
         }
     }
 
@@ -165,7 +168,7 @@ impl ForgeState {
     }
 
     pub fn branch_issue(&self, branch: &str) -> Option<String> {
-        self.style().and_then(|s| forge::branch_issue(s, branch)).filter(|k| self.keeps(k))
+        self.style().and_then(|s| forge::branch_issue(s, branch, self.year_branches)).filter(|k| self.keeps(k))
     }
 
     /// Jira keys count only for the project filter, else the site's projects once known.

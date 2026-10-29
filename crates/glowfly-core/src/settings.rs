@@ -77,8 +77,7 @@ pub struct Settings {
     pub auto_prune: bool,
     pub default_branch: String,
     pub initial_commits: usize,
-    /// Load more history when the graph is scrolled near the end of a truncated history
-    /// (Preferences > General).
+    /// Load more history when the graph is scrolled near the end of a truncated history (Preferences > General).
     pub load_more_on_scroll: bool,
     /// Index large repositories' whole history for search (Preferences > General).
     pub index_history: bool,
@@ -134,8 +133,7 @@ pub struct Settings {
     pub ghost_refs: bool,
     /// Trace a branch on hover: light up its commits while the pointer is on its graph label.
     pub highlight_ref_rows: bool,
-    /// Show a WIP row in the graph for each other worktree with uncommitted changes
-    /// (Preferences > Appearance).
+    /// Show a WIP row in the graph for each other worktree with uncommitted changes (Preferences > Appearance).
     pub worktree_wips: bool,
     /// Keep tabs of one repository's worktrees side by side (Preferences > Appearance).
     pub group_worktree_tabs: bool,
@@ -146,8 +144,7 @@ pub struct Settings {
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
     #[serde(default)]
     pub column_widths: ColumnWidths,
-    /// Changed files in one list or grouped in folders (list header toggle, Preferences > UI
-    /// Customization).
+    /// Changed files in one list or grouped in folders (list header toggle, Preferences > UI Customization).
     #[serde(default)]
     pub file_list_mode: FileListMode,
 
@@ -164,8 +161,7 @@ pub struct Settings {
     pub diff_ignore_whitespace: bool,
     /// Diff text size in points (Preferences > Diff viewer); read through `diff_font_px()`.
     pub diff_font_size: f32,
-    /// Columns per tab stop when drawing diff text (Preferences > Diff viewer); read through
-    /// `tab_columns()`.
+    /// Columns per tab stop when drawing diff text (Preferences > Diff viewer); read through `tab_columns()`.
     pub tab_size: u8,
     /// Old/new line numbers in the diff gutters (Preferences > Diff viewer).
     pub diff_line_numbers: bool,
@@ -228,6 +224,9 @@ pub struct Settings {
     /// Per-repository override of `submodules.keep_updated`, keyed by `repo_keys`; no entry follows it.
     #[serde(default)]
     pub repo_submodule_updates: HashMap<String, bool>,
+    /// Repositories (by `repo_keys`) whose branch names like `2024-cleanup` name issue 2024 (This repository > Issue tracker).
+    #[serde(default)]
+    pub repo_year_branches: HashMap<String, bool>,
     /// Favorite repositories (welcome screen and repository menu), as working-directory paths in
     /// the order they were added.
     #[serde(default)]
@@ -362,6 +361,7 @@ impl Default for Settings {
             repo_trust_prints: HashMap::new(),
             status_tip_shown: HashMap::new(),
             repo_submodule_updates: HashMap::new(),
+            repo_year_branches: HashMap::new(),
             favorite_repos: Vec::new(),
             project_folders: Vec::new(),
             external_tools: ExternalTools::default(),

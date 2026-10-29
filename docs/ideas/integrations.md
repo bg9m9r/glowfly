@@ -88,6 +88,9 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Read per-PR details a few at a time in parallel once the test mock supports calls from other threads
 - Let users add their own words to the list of Jira non-project prefixes
 - Read the cached Jira project keys again when a key's project is missing (a project created after the first read)
+- Skip 8-digit dates (`20241016-release`) like year-like branch names; they are still read as issues
+- An explicit `ab#123` or `wi-123` branch marker for Azure Boards, like `gh-` and `issue-`
+- Ask once, on the first year-like branch in a repository, instead of relying on the Issue tracker page to be found
 
 ### Trello
 
