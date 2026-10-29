@@ -208,6 +208,8 @@ pub enum JobMsg {
     Deepen(glowfly_core::shallow_ops::Deepen),
     /// `Deepen` without the size check (the confirmation's button).
     DeepenNow(glowfly_core::shallow_ops::Deepen),
+    /// Try again: runs a failed job's spec once more, in the tab it started in (update/job_retry.rs).
+    Retry(Box<crate::state::job_spec::Retry>),
     /// The status bar's Cancel: stops the active job when it only fetches (update/job_stop.rs).
     Cancel,
     /// The runner stopped the active job; `output` is what it printed until then.
@@ -257,6 +259,7 @@ impl JobMsg {
             | Self::Push { .. }
             | Self::Deepen(..)
             | Self::DeepenNow(..)
+            | Self::Retry(_)
             | Self::Cancel
             | Self::Stopped { .. }
             | Self::Undo

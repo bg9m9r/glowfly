@@ -1,8 +1,9 @@
 //! Git LFS: whether git-lfs is installed, whether a repository is set up for it, the patterns
-//! `.gitattributes` stores in LFS, checks for a new pattern and the LFS command lines.
+//! its attributes files store in LFS, checks for a new pattern and the LFS command lines.
 //!
-//! What a file row can track (the file, its extension or its folder) is in `track`; pointer
-//! files are read in `pointer`.
+//! What a file row can track (the file, its extension or its folder) is in `track`; which
+//! attributes files the patterns are read from is in `sources`; pointer files are read in
+//! `pointer`.
 //!
 //! Reading the status never runs a git-lfs command that writes: `git lfs track` without
 //! arguments, for example, quietly installs the hooks. Only `git lfs version` runs; the rest is
@@ -14,20 +15,30 @@ use crate::i18n::Lang;
 use std::path::{Path, PathBuf};
 
 pub mod pointer;
+mod sources;
 mod track;
+pub use sources::{MAX_BYTES, MAX_NESTED_FILES, PatternSource, patterns_in, repo_patterns, root_patterns};
 pub use track::{
-    TrackTarget, check_target, extension, extension_pattern, folder_pattern, literal_glob, root_patterns, track_filename_args,
-    track_targets,
+    TrackTarget, check_target, extension, extension_pattern, folder_pattern, literal_glob, track_filename_args, track_targets,
 };
 
-/// A pattern `.gitattributes` stores in LFS.
+/// A pattern an attributes file stores in LFS.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LfsPattern {
-    /// As written in `.gitattributes`.
+    /// As written in the file.
     pub raw: String,
     /// `raw` as typed: see [`unescape_pattern`].
     pub display: String,
     pub lockable: bool,
+    /// The file it was read from; a nested file's pattern applies inside its folder.
+    pub source: PatternSource,
+}
+
+impl LfsPattern {
+    /// A pattern of the root `.gitattributes`.
+    pub fn root(raw: &str, lockable: bool) -> Self {
+        Self { raw: raw.into(), display: unescape_pattern(raw), lockable, source: PatternSource::Root }
+    }
 }
 
 /// What the Git LFS page shows about a repository.
@@ -37,7 +48,9 @@ pub struct LfsStatus {
     pub version: Option<String>,
     /// git-lfs is installed, its pre-push hook is in place and the LFS filters are configured.
     pub initialized: bool,
+    /// Every attributes file's patterns: see [`repo_patterns`].
     pub patterns: Vec<LfsPattern>,
+    /// Whether the root `.gitattributes` exists.
     pub has_gitattributes: bool,
     /// LFS hooks that exist but aren't git-lfs's, so setting up would stop at them.
     pub foreign_hooks: Vec<String>,
@@ -144,7 +157,7 @@ fn split_line(line: &str) -> Option<(String, Vec<&str>)> {
     }
 }
 
-/// The patterns stored in LFS by a `.gitattributes` file's text. A later line for the same
+/// The patterns stored in LFS by a `.gitattributes` file's text, as the root file's. A later line for the same
 /// pattern that unsets or changes the filter removes it; a later `filter=lfs` line replaces the
 /// earlier entry in place.
 pub fn parse_attributes(text: &str) -> Vec<LfsPattern> {
@@ -166,7 +179,8 @@ pub fn parse_attributes(text: &str) -> Vec<LfsPattern> {
         let existing = patterns.iter().position(|p| p.raw == raw);
         match (lfs, existing) {
             (Some(true), at) => {
-                let p = LfsPattern { display: unescape_pattern(&raw), lockable: attrs.contains(&"lockable"), raw };
+                let p =
+                    LfsPattern { display: unescape_pattern(&raw), lockable: attrs.contains(&"lockable"), raw, source: PatternSource::Root };
                 match at {
                     Some(i) => patterns[i] = p,
                     None => patterns.push(p),
@@ -184,11 +198,12 @@ pub fn parse_attributes(text: &str) -> Vec<LfsPattern> {
 /// The repository's Git LFS status. Writes nothing and runs no git-lfs command except
 /// `git lfs version`.
 pub fn status(workdir: &Path) -> Result<LfsStatus> {
-    let (has_gitattributes, patterns) = match std::fs::read(workdir.join(".gitattributes")) {
-        Ok(bytes) => (true, parse_attributes(&String::from_utf8_lossy(&bytes))),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (false, Vec::new()),
+    let has_gitattributes = match std::fs::metadata(workdir.join(".gitattributes")) {
+        Ok(_) => true,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
         Err(e) => return Err(Error::Io(e)),
     };
+    let patterns = repo_patterns(workdir);
     let version = installed();
     let (pre_push, foreign_hooks) = hook_state(&hooks_dir(workdir)?);
     let initialized = version.is_some() && pre_push && filters_configured(workdir);
@@ -294,7 +309,8 @@ impl PatternProblem {
     }
 }
 
-/// Checks a typed pattern against the tracked ones; returns it trimmed.
+/// Checks a typed pattern against the tracked ones; returns it trimmed. Only the root file's
+/// count: tracking writes there, and a nested file's pattern covers only its folder.
 pub fn check_pattern(input: &str, existing: &[LfsPattern]) -> Result<String, PatternProblem> {
     let p = input.trim();
     if p.is_empty() {
@@ -313,7 +329,7 @@ pub fn check_pattern(input: &str, existing: &[LfsPattern]) -> Result<String, Pat
         return Err(PatternProblem::GitFile);
     }
     let escaped = escape_pattern(p);
-    if existing.iter().any(|e| e.raw == escaped) {
+    if existing.iter().any(|e| e.source.is_root() && e.raw == escaped) {
         return Err(PatternProblem::AlreadyTracked(p.to_owned()));
     }
     Ok(p.to_owned())

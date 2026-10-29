@@ -54,6 +54,7 @@ mod keys;
 mod lfs;
 mod line_counts;
 mod load;
+mod lock;
 mod logs;
 mod monitor;
 mod notify;

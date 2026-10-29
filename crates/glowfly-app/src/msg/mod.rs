@@ -29,6 +29,7 @@ mod init;
 mod issue;
 mod keys;
 mod layout;
+mod lock;
 mod notify;
 mod op_preview;
 mod partial;
@@ -61,6 +62,7 @@ pub use init::InitMsg;
 pub use issue::IssueMsg;
 pub use keys::KeysMsg;
 pub use layout::LayoutMsg;
+pub use lock::LockMsg;
 pub use notify::NotifyMsg;
 pub use op_preview::{OpPreviewMsg, ResetMode};
 pub use partial::{ContentFailure, PartialMsg};
@@ -117,6 +119,8 @@ msg_areas! { msg_enum! {
         ConfirmAlt,
         /// A toast's action button (state/toasts.rs): runs its message and removes the toast (update/notify.rs).
         ToastAction(u64),
+        /// A toast's second fix (`Toast::alt`): runs it and removes the toast (update/notify.rs).
+        ToastAlt(u64),
         /// A toast's Details beside its fix (state/toasts.rs): removes the toast and shows the
         /// activity log.
         ToastDetails(u64),
@@ -143,6 +147,7 @@ msg_areas! { msg_enum! {
         | Msg::ConfirmAccepted
         | Msg::ConfirmAlt
         | Msg::ToastAction(_)
+        | Msg::ToastAlt(_)
         | Msg::ToastDetails(_)
         | Msg::CloseModal
         | Msg::Copy(_)
@@ -159,7 +164,7 @@ msg_areas! { msg_enum! {
         Msg::Tick(_) => "tick",
         Msg::Scoped { msg, .. } => msg.area(),
         Msg::Confirm { .. } | Msg::ConfirmDanger { .. } | Msg::ConfirmAccepted | Msg::ConfirmAlt | Msg::CloseModal => "confirm",
-        Msg::ToastAction(_) | Msg::ToastDetails(_) => "toast",
+        Msg::ToastAction(_) | Msg::ToastAlt(_) | Msg::ToastDetails(_) => "toast",
         Msg::Copy(_) | Msg::OpenUrl(_) | Msg::OpenTerminal | Msg::OpenFolder(_) => "outside",
         Msg::ClearLog | Msg::Logged { .. } => "log",
     }

@@ -12,7 +12,7 @@ source file, update its line here.
 - `safe_directory.rs`: repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling.
 - `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`), and a folder's name and parent for list rows.
 - `volume.rs`: whether a folder is on a network or virtual file system.
-- `git_errors.rs`: why a failed git command failed, from its untranslated output (cause plus listed files and names), for the failure toast; `-c apply.whitespace=nowarn` on merge, pull and stash so git's internal patch warnings stay out of job logs (pure).
+- `git_errors.rs`: why a failed git command failed, from its untranslated output (cause plus listed files and names, and the lock file's whole path), for the failure toast; `-c apply.whitespace=nowarn` on merge, pull and stash so git's internal patch warnings stay out of job logs (pure).
 - `remote_failure.rs`: why git couldn't reach or read a remote (unreachable host, missing repository, no access, a server certificate it couldn't verify).
 - `error.rs`: typed errors; `error/advice.rs` rewrites a hosting service's refusal as one translated sentence that says what to do.
 - `quoted.rs`: decoding git's C-quoted paths (`"caf\303\251.txt"`), for blame's porcelain and sparse checkout lists.
@@ -43,6 +43,9 @@ source file, update its line here.
 ## One window, links and the URL scheme
 
 - `instance/`: one window for links and folders: the lock that picks it (`claim.rs`: one holder, a later window waits and takes over), its loopback listener and private instance file (address, token, process id in the runtime folder), and a second process handing its `glowfly://` link or folder over (letting the window take the foreground on Windows); the protocol's tests and the claim's (`tests.rs`, `tests_claim.rs`).
+- `git_procs.rs`: whether any git process runs, for Delete lock file: None, the programs found, or Unknown and why (an unreadable list or name, `/proc` with `hidepid`, Flatpak, an open WSL session); the credential-cache and fsmonitor daemons are left out when their command line says so; tests in `git_procs_tests.rs`.
+- `git_procs/os.rs`: its process lists and git processes' command lines (ToolHelp and `NtQueryInformationProcess`, `/proc`, libproc and `KERN_PROCARGS2`).
+- `lock_file.rs`: Delete lock file's checks and delete: only the path git named, a plain file inside the git dir or common dir, never through a link, and only while no git runs; tests in `lock_file_tests.rs`.
 - `link.rs`: `glowfly://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit.
 - `link/find.rs`: checking a folder for the linked repository and its target (libgit2 reads only).
 - `url_scheme/`: registering the `glowfly` scheme for this user, and the pure decisions both platforms read (the Linux package's own `glowfly-links.desktop` in `XDG_DATA_DIRS` counts too).
@@ -59,7 +62,7 @@ source file, update its line here.
 - Key encoding and PTY sessions.
 - `shell.rs`: which shell to start from Preferences > Terminal.
 - `activity.rs`: whether the shell is running a program, in front or as a background job.
-- `procs.rs`: the process lists `activity.rs` reads: a Windows ToolHelp snapshot and image paths, Linux `/proc`, macOS libproc; and every process's program file (`program_paths`), for the update's `.bak` cleanup.
+- `procs.rs`: the process lists `activity.rs` and `git_procs.rs` read: a Windows ToolHelp snapshot and image paths, Linux `/proc`, macOS libproc; and every process's program file (`program_paths`), for the update's `.bak` cleanup.
 - `title.rs`: the window title a program sets, with what of it names a running command.
 
 ## Settings (`settings.rs`, `settings/`)

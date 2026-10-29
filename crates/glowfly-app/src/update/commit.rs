@@ -51,7 +51,7 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
 
 /// Commits the draft, after `git add --all` when `stage_all`. Refused with a toast (not the
 /// log, so a keypress doesn't pop it open) when the draft or repository isn't ready.
-fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut Vec<Effect>) {
     if let Some(why) = commit_blocked(st, stage_all) {
         st.toast(false, why, now);
         return;

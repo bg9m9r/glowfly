@@ -23,6 +23,7 @@ source file, update its line here. Features that span every layer are in
 - `dialog.rs`: `DialogMsg`, carried by a dialog's backdrop click, Esc or close button and the discard question.
 - `op_preview.rs`: `OpPreviewMsg`, carried by the operation preview's open, result, Preview again and Apply.
 - `notify.rs`: `NotifyMsg`, carried by holding and closing toasts and clicks on desktop notifications.
+- `lock.rs`: `LockMsg`, Delete lock file's check after a failed job, the confirmed delete and its result.
 - A few cross-cutting messages live in `Msg` itself (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …).
 
 ## `effect/`: effects
@@ -40,6 +41,7 @@ source file, update its line here. Features that span every layer are in
 - `selection.rs`: `SelectionEffect`: comparing two commits or a commit and the working tree, and a multi-selection's stacked list (`StackRequest`).
 - `lfs.rs`: `LfsEffect`: whether git-lfs is installed and the LFS page's status.
 - `branch.rs`: `BranchEffect`: counting the commits a branch delete would lose, for the Delete dialog.
+- `lock.rs`: `LockEffect`: checking a lock file a failed job named, and deleting it (on the repository's queue).
 - `sparse.rs`: `SparseEffect`: the Sparse Checkout page's state and `git sparse-checkout`.
 - `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
 - `worktree.rs`: `WorktreeEffect`: the worktree folder check, removing, moving and counting other worktrees' changes.
@@ -70,6 +72,7 @@ source file, update its line here. Features that span every layer are in
 - `rebase_onto.rs`: rebasing onto a graph commit.
 - `stash_confirm.rs`: whether applying, popping or deleting a stash asks first or is refused over conflicts, for every entry point, and the files the stash and the working tree both change; tests in `stash_confirm_tests.rs`.
 - `auto_stash.rs`: the auto-stash prompt, its texts and the stashes waiting to go back.
+- `job_spec.rs`: `JobSpec`, a git job for `start_job`, and `Retry`, Try again's copy of one with the tab it started in.
 - `palette_nav.rs`: the palette's page and end keys.
 - `palette_selected.rs`: the palette's entries for the selected commit.
 - `palette_suggested.rs`: the empty query's Recent, Suggested and All commands groups and which commands the repository's state suggests.
@@ -107,6 +110,8 @@ source file, update its line here. Features that span every layer are in
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
 - `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
+- `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
+- `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.
 - `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it).
 
 ## `runner/`: background work
@@ -115,6 +120,7 @@ source file, update its line here. Features that span every layer are in
 - `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate among them), with the flat variants' arms.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
 - `branches.rs`: the `Execute` impl of `BranchEffect`.
+- `lock.rs`: the `Execute` impl of `LockEffect` (`glowfly_core::lock_file`).
 - `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.
 - `load.rs`: a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.

@@ -86,7 +86,7 @@ impl LfsInstall {
 #[derive(Clone, Copy)]
 pub struct TrackContext<'a> {
     pub install: &'a LfsInstall,
-    /// The root .gitattributes' LFS patterns.
+    /// Every attributes file's LFS patterns (only the root file's block a target).
     pub patterns: &'a [LfsPattern],
     pub submodules: &'a [SubmoduleInfo],
 }

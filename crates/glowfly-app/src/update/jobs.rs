@@ -4,81 +4,16 @@
 
 use super::trust::Gate;
 use crate::effect::{Effect, PickJob};
-use crate::state::auto_stash::{AutoStashJob, Making};
-use crate::state::push_pr::PrStart;
+use crate::state::auto_stash::Making;
 use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob};
 use glowfly_core::journal::Op;
-use glowfly_core::pick_ops::Picking;
 use glowfly_core::undo::UndoKind;
 use std::path::PathBuf;
 use std::time::Instant;
 
-/// A git command sequence to run as the (single) active job.
-pub(super) struct JobSpec {
-    pub label: String,
-    pub cmds: Vec<Vec<String>>,
-    pub cwd: Option<PathBuf>,
-    pub quiet: bool,
-    pub clear_commit: bool,
-    /// Push the branch once the job (a commit) succeeds.
-    pub then_push: bool,
-    /// Open the create pull request dialog once the job (a push) succeeds.
-    pub then_pr: Option<PrStart>,
-    /// Check the repository again for a pending link's target once the job (a fetch) ends.
-    pub then_link: bool,
-    /// Open this repository in the active tab once the job succeeds; how it was made decides
-    /// whether it is trusted (update/trust.rs).
-    pub then_open: Option<(PathBuf, Created)>,
-    pub write_file: Option<(PathBuf, String)>,
-    /// Record the job for undo when it is this kind of operation. Left `None`, a single command
-    /// run in the active tab's repository is recognised by `UndoKind::classify`.
-    pub record: Option<UndoKind>,
-    /// The journal note to write when the job moves HEAD or the op's branch. Left `None`, a job
-    /// in the active tab's repository gets the note its recorded kind calls for.
-    pub journal: Option<Op>,
-    /// Run nothing unless this revision still resolves to this commit.
-    pub expect: Option<(String, git2::Oid)>,
-    /// The job starts with this auto-stash, to put back once it ends (update/auto_stash.rs).
-    pub auto_stash: Option<AutoStashJob>,
-    /// The job's last command is a cherry-pick or revert of these commits: it runs as
-    /// Effect::Pick, carried past the commits that change nothing.
-    pub pick: Option<PickPlan>,
-    /// The check to run when the job fails (`Effect::RunGit::on_fail_check`).
-    pub on_fail_check: Option<Vec<String>>,
-}
-
-/// What a cherry-pick or revert job's last command takes (`JobSpec::pick`).
-pub(super) struct PickPlan {
-    pub picking: Picking,
-    /// The commits, in the command's order.
-    pub oids: Vec<git2::Oid>,
-    /// git has `--skip` (2.23 or newer).
-    pub can_skip: bool,
-}
-
-impl JobSpec {
-    pub fn new(label: String, cmds: Vec<Vec<String>>) -> Self {
-        Self {
-            label,
-            cmds,
-            cwd: None,
-            quiet: false,
-            clear_commit: false,
-            then_push: false,
-            then_pr: None,
-            then_link: false,
-            then_open: None,
-            write_file: None,
-            record: None,
-            journal: None,
-            expect: None,
-            auto_stash: None,
-            pick: None,
-            on_fail_check: None,
-        }
-    }
-}
+use crate::state::job_spec::Retry;
+pub(super) use crate::state::job_spec::{JobSpec, PickPlan};
 
 /// What became of a job that was asked to start.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -101,6 +36,9 @@ pub(super) fn busy(st: &mut AppState, quiet: bool) -> bool {
 
 /// Runs `spec` as the active job. Holding it for the trust prompt pushes no effect.
 pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Started {
+    // Try again runs the same spec (update/job_retry.rs); a job with its own auto-stash offers
+    // Stash and <op> instead, and a quiet one shows no toast.
+    let again = (spec.auto_stash.is_none() && !spec.quiet).then(|| spec.clone());
     let auto_stash = spec.auto_stash;
     // A plain job outside the guard: its failure over local changes can still offer the stash.
     let plain = (auto_stash.is_none() && spec.cwd.is_none() && !spec.quiet && spec.cmds.len() == 1).then(|| spec.cmds[0].clone());
@@ -150,6 +88,7 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     };
     let started = launch(st, job, spec.cwd, effect, fx);
     if started != Started::No {
+        st.logs.job_retry = again.and_then(|spec| Some(Retry { tab: st.tabs.get(st.active_tab)?.id, workdir: st.workdir(), spec }));
         super::submodule_batch::job_started(st, &label, moves);
         super::auto_stash::started_plain(st, &label, plain);
         // Also for a job held for the trust prompt; dropping it clears this.
@@ -234,6 +173,7 @@ pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce
         return Started::No;
     }
     let Some(cwd) = st.workdir() else { return Started::No };
+    st.logs.job_retry = None;
     st.job = Some(RunningJob {
         label: label.into(),
         workdir: Some(cwd.clone()),
@@ -311,6 +251,8 @@ fn launch(
     if busy(st, job.quiet) {
         return Started::No;
     }
+    // Only start_job keeps a Try again, after this.
+    st.logs.job_retry = None;
     let explicit = cwd.is_some();
     let Some(cwd) = cwd.or_else(|| st.workdir()) else { return Started::No };
     let makes = matches!(job.then_open, Some((_, Created::Clone | Created::Init)));
