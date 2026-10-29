@@ -4,8 +4,8 @@
 //! when that part stops. The branch goes only once the fetched target contains it
 //! (`merge-base --is-ancestor`), and then through `git branch -d`, so git still refuses a branch
 //! whose commits would be lost; a branch checked out here goes after checking out the target, and
-//! only from a clean working tree; one checked out in another worktree stays. Pure: the job is
-//! started by update/pull_request/cleanup.rs.
+//! only from a clean working tree; one checked out in another worktree stays. A refused delete
+//! puts the branch's upstream back. Pure: the job is started by update/pull_request/cleanup.rs.
 
 use super::branches::{checkout_local, pr_source_refused};
 use super::worktree_branches::elsewhere;
@@ -30,20 +30,19 @@ pub struct Merging<'a> {
     pub default_branch: Option<&'a str>,
 }
 
-/// What deleting the local branch takes: its name, and the checkout of the target first when it
-/// is checked out here.
+/// What deleting the local branch takes: its name, the branch its upstream names on the remote
+/// (the pull request's source), and the checkout of the target first when it is checked out here.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LocalDelete {
     pub branch: String,
+    pub upstream: String,
     pub checkout: Option<Vec<String>>,
 }
 
-/// The local branch of the pull request's source: the one tracking `<remote>/<source>`, else
-/// one named `source` that tracks nothing (a same-named branch tracking something else is
-/// another branch).
+/// The local branch of the pull request's source: the one tracking `<remote>/<source>`. A branch
+/// that merely has the source's name may be another branch, so it is never offered.
 pub fn local_branch<'a>(snap: &'a Snapshot, remote: &str, source: &str) -> Option<&'a BranchInfo> {
-    let tracks = |b: &&BranchInfo| b.tracking.as_ref().is_some_and(|t| t.remote == remote && t.merge == source);
-    snap.locals.iter().find(tracks).or_else(|| snap.locals.iter().find(|b| b.name == source && b.tracking.is_none()))
+    snap.locals.iter().find(|b| b.tracking.as_ref().is_some_and(|t| t.remote == remote && t.merge == source))
 }
 
 /// Whether nothing would be carried over or lost by checking out another branch: no staged,
@@ -88,14 +87,15 @@ fn plan(t: Lang, snap: &Snapshot, m: &Merging, b: &BranchInfo) -> Result<LocalDe
     if let Some(why) = refused {
         return Err(why);
     }
+    let upstream = m.source.to_owned();
     if !b.is_head {
-        return Ok(LocalDelete { branch: branch.to_owned(), checkout: None });
+        return Ok(LocalDelete { branch: branch.to_owned(), upstream, checkout: None });
     }
     let checkout = checkout_target(snap, m.remote, target).filter(|_| elsewhere(snap, target).is_none());
     match checkout {
         None => Err(t.trf("pr.merge.delete_local.no_target", &[("branch", &branch), ("target", &target)])),
         Some(_) if !clean(snap) => Err(t.trf("pr.merge.delete_local.dirty", &[("branch", &branch), ("target", &target)])),
-        Some(c) => Ok(LocalDelete { branch: branch.to_owned(), checkout: Some(c) }),
+        Some(c) => Ok(LocalDelete { branch: branch.to_owned(), upstream, checkout: Some(c) }),
     }
 }
 
@@ -110,19 +110,32 @@ pub enum LocalStep {
 
 /// The commands that delete the local branch, after the fetch. `git branch -d` judges a branch
 /// by its upstream (else HEAD), which the remote delete and the prune have usually removed and a
-/// stale checked-out target doesn't contain, so the branch tracks the fetched target just before
-/// the delete: git's own check then is the one that matters. That happens only once the target is
-/// known to contain the branch, and `-d` removes the branch's config with it (Undo restores the
-/// upstream it had).
+/// stale checked-out target doesn't contain, so the branch's upstream names the target just
+/// before the delete (`branch.<name>.merge`; the remote is already the pull request's): git's own
+/// check then is the one that matters. That happens only once the target is known to contain the
+/// branch, and `-d` removes the branch's config with it (Undo restores the upstream it had); if
+/// git refuses, the job's `restore_upstream` puts it back.
 pub fn local_delete_cmds(d: &LocalDelete, remote: &str, target: &str) -> Vec<(LocalStep, Vec<String>)> {
     let onto = format!("refs/remotes/{remote}/{target}");
     let mut cmds = vec![(LocalStep::Check, args(&["merge-base", "--is-ancestor", &format!("refs/heads/{}", d.branch), &onto]))];
     if let Some(c) = &d.checkout {
         cmds.push((LocalStep::Checkout, c.clone()));
     }
-    cmds.push((LocalStep::Delete, args(&["branch", &format!("--set-upstream-to={onto}"), &d.branch])));
+    cmds.push((LocalStep::Delete, merge_config(&d.branch, target)));
     cmds.push((LocalStep::Delete, args(&["branch", "-d", &d.branch])));
     cmds
+}
+
+/// `git config branch.<branch>.merge refs/heads/<onto>`.
+fn merge_config(branch: &str, onto: &str) -> Vec<String> {
+    args(&["config", &format!("branch.{branch}.merge"), &format!("refs/heads/{onto}")])
+}
+
+/// The command that puts the branch's upstream back, run when the job fails (its
+/// `on_fail_check`). It writes the value the branch had, so after a failure before the repoint it
+/// changes nothing, and it prints nothing.
+pub fn restore_upstream(d: &LocalDelete) -> Vec<String> {
+    merge_config(&d.branch, &d.upstream)
 }
 
 /// The running clean-up job that deletes a local branch, for its headline.
@@ -134,12 +147,16 @@ pub struct CleanupJob {
     pub target: String,
     /// Each command's step, in order; None for the remote part (the remote delete, the fetch).
     pub steps: Vec<Option<LocalStep>>,
+    /// `restore_upstream`, which the runner echoes after the job's own output when it fails.
+    pub restore: Vec<String>,
 }
 
 impl CleanupJob {
     /// The failed job's headline when it stopped in the local part, which keeps the branch; None
     /// when it stopped before (git's cause in plain words says that better).
     pub fn stopped(&self, t: Lang, output: &str) -> Option<String> {
+        let restore = format!("$ git {}", self.restore.join(" "));
+        let output = output.rfind(&restore).map_or(output, |at| &output[..at]);
         let step = (*self.steps.get(failed_step(output, self.steps.len()))?)?;
         // git's own error line, rather than the hints it prints after it.
         let error = output.lines().rfind(|l| l.starts_with("error: ") || l.starts_with("fatal: "));

@@ -220,6 +220,8 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Delete the local branch of a fork's pull request (a branch checked out from the fork)
 - Fast-forward the local target branch after a merge, in the same job
 - Remember the "Delete … after merging" and "Delete local branch" choices per repository
+- Undo of a merge's local branch delete: check the branch out again when it was checked out
+  before, the working tree is clean and HEAD is still on the target (now it stays on the target)
 
 ### Deep links
 

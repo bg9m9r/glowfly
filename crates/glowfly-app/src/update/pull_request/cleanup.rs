@@ -8,7 +8,7 @@
 use super::super::ops::{JobSpec, Started, busy, start_job};
 use crate::effect::Effect;
 use crate::state::AppState;
-use crate::state::pull_request_cleanup::{CleanupJob, LocalDelete, Merging, local_delete, local_delete_cmds};
+use crate::state::pull_request_cleanup::{CleanupJob, LocalDelete, Merging, local_delete, local_delete_cmds, restore_upstream};
 use glowfly_core::forge::MergeMethod;
 use glowfly_core::gitcli::args;
 use glowfly_core::remote_ops::fetch_cmd;
@@ -29,6 +29,8 @@ pub(super) fn after_merge(
     let plan = local.filter(|(target, _)| !target.is_empty()).and_then(|(target, method)| {
         let snap = st.snap.as_ref()?;
         let default_branch = st.session.forge.as_ref().and_then(|f| f.default_branch.as_deref());
+        // With the panel closed: the merge only asked for the local delete of a same-repository
+        // pull request, and the target check still guards it.
         let same_repo = st.session.pull_request.view.as_ref().and_then(|v| v.loaded()).is_none_or(|p| p.detail.same_repo);
         let m = Merging { remote, source, target, method: Some(method), same_repo, default_branch };
         let (branch, plan) = local_delete(t, snap, &m)?;
@@ -93,8 +95,12 @@ fn start_local(
         steps.push(Some(step));
         cmds.push(cmd);
     }
-    let job = CleanupJob { label: label.clone(), branch: d.branch.clone(), remote: remote.to_owned(), target: target.to_owned(), steps };
-    let spec = JobSpec { record: Some(UndoKind::DeleteBranch(d.branch.clone())), ..JobSpec::new(label, cmds) };
+    let restore = restore_upstream(&d);
+    let (branch, remote, target) = (d.branch.clone(), remote.to_owned(), target.to_owned());
+    let job = CleanupJob { label: label.clone(), branch, remote, target, steps, restore: restore.clone() };
+    // A failed job leaves the branch: its upstream goes back to the source.
+    let spec =
+        JobSpec { record: Some(UndoKind::DeleteBranch(d.branch.clone())), on_fail_check: Some(restore), ..JobSpec::new(label, cmds) };
     if start_job(st, spec, fx) != Started::No {
         st.pr_cleanup = Some(job);
     }

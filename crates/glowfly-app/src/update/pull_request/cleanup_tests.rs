@@ -60,7 +60,7 @@ fn merge_on_service(work: &Path, back_to: &str) {
 const PUSH_DELETE: &[&str] = &["push", "origin", "--delete", "feature"];
 const FETCH: &[&str] = &["fetch", "--prune", "origin"];
 const CHECK: &[&str] = &["merge-base", "--is-ancestor", "refs/heads/feature", "refs/remotes/origin/main"];
-const TRACK: &[&str] = &["branch", "--set-upstream-to=refs/remotes/origin/main", "feature"];
+const TRACK: &[&str] = &["config", "branch.feature.merge", "refs/heads/main"];
 const DELETE: &[&str] = &["branch", "-d", "feature"];
 
 #[test]
@@ -201,6 +201,29 @@ fn a_branch_with_commits_the_target_lacks_is_kept() {
     let upstream = glowfly_core::testkit::git_out(&dirs[0], &["rev-parse", "--abbrev-ref", "feature@{upstream}"]);
     assert_eq!(upstream.trim(), "origin/feature", "its upstream is left alone");
     done(st, dirs);
+}
+
+#[test]
+fn a_refused_delete_puts_the_upstream_back() {
+    let (mut st, _, dirs) = opened("prc-local-restore");
+    merge_on_service(&dirs[0], "main");
+    refresh(&mut st);
+    loaded(&mut st, |_| {});
+    let fx = reply(&mut st, false);
+    // Checked out in a worktree added after the plan: git refuses the delete after the repoint.
+    let wt = dirs[0].with_file_name("prc-local-restore-linked");
+    let _ = std::fs::remove_dir_all(&wt);
+    git(&dirs[0], &["worktree", "add", "-q", &wt.display().to_string(), "feature"]);
+    finish_keeping(&mut st, fx);
+    assert!(locals(&dirs[0]).lines().any(|b| b == "feature"), "kept");
+    let merge = glowfly_core::testkit::git_out(&dirs[0], &["config", "branch.feature.merge"]);
+    assert_eq!(merge.trim(), "refs/heads/feature", "it tracks the source again, not main");
+    let toast = st.toasts.iter().find(|t| !t.ok).map(|t| t.text.as_str()).unwrap_or_default();
+    assert!(toast.starts_with("Kept local branch feature: git didn't delete it."), "{toast}");
+    assert!(st.pr_cleanup.is_none());
+    drop(st);
+    let _ = std::fs::remove_dir_all(&wt);
+    super::tests::cleanup(&[&dirs[0], &dirs[1]]);
 }
 
 #[test]
