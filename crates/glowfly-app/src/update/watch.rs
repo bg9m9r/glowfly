@@ -66,6 +66,7 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             tracing::warn!("file watching failed for {}: {error}", workdir.display());
             // Reported once per repository; it is retried (silently) when its tab is selected again.
             st.watch.probes.remove(&workdir);
+            st.watch.down.insert(workdir.clone());
             if st.watch.failed.insert(workdir.clone()) {
                 st.toast(false, failed_text(&st.keymap), now);
                 // Quiet: the toast above says it, so this shouldn't announce a failure.
@@ -118,6 +119,11 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
     };
     let workdir = want.as_ref().map(|t| t.workdir.clone());
     if workdir != st.watch.target {
+        // A new watcher probes again: the dot checks, and an old Silent no longer polls.
+        if let Some(w) = &workdir {
+            st.watch.probes.remove(w);
+            st.watch.down.remove(w);
+        }
         st.watch.target = workdir;
         st.watch.quiet_until = None;
         fx.push(Effect::Watch(want));

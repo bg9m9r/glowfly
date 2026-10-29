@@ -43,7 +43,7 @@ source file, update its line here.
 ## One window, links and the URL scheme
 
 - `instance/`: one window for links and folders: the lock that picks it (`claim.rs`: one holder, a later window waits and takes over), its loopback listener and private instance file (address, token, process id in the runtime folder), and a second process handing its `glowfly://` link or folder over (letting the window take the foreground on Windows); the protocol's tests and the claim's (`tests.rs`, `tests_claim.rs`).
-- `git_procs.rs`: whether any git process runs, for Delete lock file: None, the programs found, or Unknown and why (an unreadable list or name, `/proc` with `hidepid`, Flatpak, an open WSL session); the credential-cache and fsmonitor daemons are left out when their command line says so; tests in `git_procs_tests.rs`.
+- `git_procs.rs`: whether any git process runs, for Delete lock file: None, the programs found, or Unknown and why (an unreadable list or name, `/proc` with `hidepid`, Flatpak, an open WSL session); the credential-cache and fsmonitor daemons are left out when their command line says so; and whether one pid runs (`running`, for the watcher's stale probes); tests in `git_procs_tests.rs`.
 - `git_procs/os.rs`: its process lists and git processes' command lines (ToolHelp and `NtQueryInformationProcess`, `/proc`, libproc and `KERN_PROCARGS2`).
 - `lock_file.rs`: Delete lock file's checks and delete: only the path git named, a plain file inside the git dir or common dir, never through a link, and only while no git runs; tests in `lock_file_tests.rs`.
 - `link.rs`: `glowfly://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit.

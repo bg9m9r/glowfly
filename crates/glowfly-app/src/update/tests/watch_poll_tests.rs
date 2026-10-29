@@ -159,3 +159,27 @@ fn a_live_or_unknown_probe_and_a_silent_network_volume_say_nothing_more() {
     assert_eq!(st.watch.live_updates(), None, "watching off: no dot");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_restarted_watcher_checks_again() {
+    let (mut st, dir) = opened("watch-probe-restart");
+    let workdir = st.workdir().unwrap();
+    let restart = |st: &mut AppState| {
+        st.settings.watch_files = false;
+        super::watch::sync(st, &mut Vec::new());
+        st.settings.watch_files = true;
+        let mut fx = Vec::new();
+        super::watch::sync(st, &mut fx);
+        assert!(matches!(&fx[..], [Effect::Watch(Some(_))]), "{fx:?}");
+    };
+    update(&mut st, probed(&workdir, Probe::Silent), Instant::now());
+    assert_eq!(st.watch.poll_interval(), Some(REMOTE_POLL));
+    restart(&mut st);
+    assert_eq!(st.watch.live_updates(), Some(LiveUpdates::Checking), "the new watcher's probe is out");
+    assert_eq!(st.watch.poll_interval(), if cfg!(windows) { Some(WINDOWS_POLL) } else { None }, "an old Silent no longer polls");
+    update(&mut st, Msg::Watch(WatchMsg::WatchFailed { workdir: workdir.clone(), error: "gone".into() }), Instant::now());
+    assert_eq!(st.watch.live_updates(), Some(LiveUpdates::Failed));
+    restart(&mut st);
+    assert_eq!(st.watch.live_updates(), Some(LiveUpdates::Checking), "a retried watcher isn't failed yet");
+    let _ = std::fs::remove_dir_all(&dir);
+}

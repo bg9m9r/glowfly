@@ -16,14 +16,23 @@ fn probe_files(git_dir: &Path) -> Vec<String> {
     names_of(git_dir).into_iter().filter(|n| n.starts_with("glowfly-watch-")).collect()
 }
 
+/// A started probe and when its wait began (its deadline less the timeout).
+fn started(git_dir: &Path) -> (Prober, Instant) {
+    let (p, unknown) = Prober::start(git_dir);
+    assert_eq!(unknown, None);
+    let Prober::Waiting { deadline, .. } = &p else { panic!("the probe is out: {p:?}") };
+    let t0 = *deadline - PROBE_TIMEOUT;
+    (p, t0)
+}
+
 #[test]
 fn the_probe_s_own_event_makes_it_live_and_removes_it() {
     let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-probe-seen-{}", std::process::id()));
     init_repo(&dir);
     let git_dir = dir.join(".git");
-    let t0 = Instant::now();
-    let (mut p, unknown) = Prober::start(&git_dir, t0);
-    assert_eq!(unknown, None);
+    let before = Instant::now();
+    let (mut p, t0) = started(&git_dir);
+    assert!(t0 >= before, "the wait starts once the file is out");
     assert_eq!(p.wait(t0), Some(PROBE_TIMEOUT));
     let name = probe_files(&git_dir).pop().expect("the probe is out");
     assert!(name.ends_with(".lock"));
@@ -45,8 +54,7 @@ fn no_event_in_time_is_silent_until_any_event_comes() {
     let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-probe-silent-{}", std::process::id()));
     init_repo(&dir);
     let git_dir = dir.join(".git");
-    let t0 = Instant::now();
-    let (mut p, _) = Prober::start(&git_dir, t0);
+    let (mut p, t0) = started(&git_dir);
     assert_eq!(p.due(t0 + PROBE_TIMEOUT), Some(Probe::Silent));
     assert!(probe_files(&git_dir).is_empty(), "removed at the timeout");
     assert_eq!(p.due(t0 + PROBE_TIMEOUT * 2), None, "said once");
@@ -60,7 +68,7 @@ fn no_event_in_time_is_silent_until_any_event_comes() {
 #[test]
 fn a_git_dir_that_cannot_be_written_is_unknown() {
     let missing = glowfly_core::paths::temp_dir().join("glowfly-app-test-probe-missing").join(".git");
-    let (p, unknown) = Prober::start(&missing, Instant::now());
+    let (p, unknown) = Prober::start(&missing);
     assert_eq!(unknown, Some(Probe::Unknown));
     assert_eq!(p.wait(Instant::now()), None);
 }

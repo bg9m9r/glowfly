@@ -177,7 +177,7 @@ fn event_loop<W: Waker>(raw: Receiver<Input>, mut looped: Looped, tx: Sender<Msg
         }
         ok
     };
-    let (mut prober, unknown) = Prober::start(&target.git_dir, Instant::now());
+    let (mut prober, unknown) = Prober::start(&target.git_dir);
     if let Some(p) = unknown
         && !probed(p)
     {

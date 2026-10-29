@@ -23,8 +23,12 @@ pub struct WatchState {
     pub remote: HashMap<PathBuf, &'static str>,
     /// When the status was last re-read on the timer (see `poll_every`).
     pub last_poll: Option<Instant>,
-    /// What each repository's latest watcher probe found (removed when its watcher fails).
+    /// What each repository's current watcher probe found (cleared when its watcher restarts
+    /// or fails).
     pub probes: HashMap<PathBuf, Probe>,
+    /// Repositories whose current watcher failed (cleared when it restarts), unlike `failed`,
+    /// which remembers for the session that it was said.
+    pub down: HashSet<PathBuf>,
     /// Repositories whose silent watcher was already reported this session.
     pub silent_warned: HashSet<PathBuf>,
 }
@@ -95,7 +99,7 @@ impl WatchState {
             Some(Probe::Live) => LiveUpdates::Live,
             Some(Probe::Silent) => LiveUpdates::Silent,
             Some(Probe::Unknown) => LiveUpdates::Unknown,
-            None if self.failed.contains(target) => LiveUpdates::Failed,
+            None if self.down.contains(target) => LiveUpdates::Failed,
             None => LiveUpdates::Checking,
         })
     }
@@ -130,7 +134,7 @@ mod tests {
         w.probes.insert(repo.clone(), Probe::Live);
         assert_eq!(w.poll_interval(), poll_every(true, cfg!(windows), false));
         w.probes.clear();
-        w.failed.insert(repo);
+        w.down.insert(repo);
         assert_eq!(w.live_updates(), Some(LiveUpdates::Failed));
         w.target = None;
         assert_eq!(w.live_updates(), None, "nothing watched: no dot");

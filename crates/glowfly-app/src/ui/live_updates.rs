@@ -2,10 +2,12 @@
 //! (`WatchState::live_updates`): a faint ring while the watcher's probe is out, an accent dot
 //! while changes arrive live, a weak ring for a read-only repository the probe couldn't test,
 //! and a warn dot ("Slow updates", polled) or warn ring ("Not live", the watcher failed) with a
-//! label. Only the two warn states take a click, which refreshes now. A painted shape, not a
+//! label. Only the two warn states take a click (and the keyboard focus, with an inset ring),
+//! which refreshes now. A painted shape, not a
 //! glyph; the tooltip says what each state means.
 
 use super::theme::color;
+use super::theme::tokens::{self, radius};
 use crate::keymap::BindingId;
 use crate::msg::{Msg, RepoMsg};
 use crate::state::AppState;
@@ -71,6 +73,10 @@ pub(super) fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>)
     if let Some(g) = text {
         let at = pos2(rect.left(), rect.center().y - g.size().y / 2.0);
         p.galley(at, g, color::weak());
+    }
+    // Packed in the bar's row, like a quiet button: the inset ring.
+    if clickable && resp.has_focus() {
+        tokens::focus_ring_inset(p, rect, radius::SM);
     }
     let name = look.label.map_or_else(|| look.tip.clone(), str::to_owned);
     let kind = if clickable { egui::WidgetType::Button } else { egui::WidgetType::Label };

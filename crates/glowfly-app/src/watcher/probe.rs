@@ -25,10 +25,11 @@ pub(super) enum Prober {
 }
 
 impl Prober {
-    /// Places the probe in `git_dir`; with no file, `Done` and `Probe::Unknown` to report.
-    pub(super) fn start(git_dir: &Path, now: Instant) -> (Prober, Option<Probe>) {
+    /// Places the probe in `git_dir`; with no file, `Done` and `Probe::Unknown` to report. The
+    /// wait starts once the file is out (placing it may first sweep stale probes away).
+    pub(super) fn start(git_dir: &Path) -> (Prober, Option<Probe>) {
         match ProbeFile::place(git_dir) {
-            Some(file) => (Prober::Waiting { file, deadline: now + PROBE_TIMEOUT }, None),
+            Some(file) => (Prober::Waiting { file, deadline: Instant::now() + PROBE_TIMEOUT }, None),
             None => (Prober::Done, Some(Probe::Unknown)),
         }
     }

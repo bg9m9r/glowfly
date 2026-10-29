@@ -31,7 +31,7 @@ fn watching(probe: Option<Probe>, failed: bool) -> AppState {
         st.watch.probes.insert(repo(), p);
     }
     if failed {
-        st.watch.failed.insert(repo());
+        st.watch.down.insert(repo());
     }
     st
 }
@@ -59,12 +59,12 @@ fn live_updates_states() {
         egui::CentralPanel::default().frame(egui::Frame::new().fill(color::toolbar())).show(ctx, |ui| {
             for (probe, failed) in states {
                 st.watch.probes.clear();
-                st.watch.failed.clear();
+                st.watch.down.clear();
                 if let Some(p) = probe {
                     st.watch.probes.insert(repo(), p);
                 }
                 if failed {
-                    st.watch.failed.insert(repo());
+                    st.watch.down.insert(repo());
                 }
                 let _ = ui.allocate_ui_with_layout(vec2(300.0, 26.0), Layout::right_to_left(Align::Center), |ui| {
                     ui.label(RichText::new("Glowfly 1.0.0").color(color::faint()));
