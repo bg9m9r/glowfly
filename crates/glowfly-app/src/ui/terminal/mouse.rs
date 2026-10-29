@@ -1,16 +1,28 @@
-//! The mouse on the terminal grid: the wheel scrolls the history, dragging the left button
-//! selects text in reading order (copied when the drag ends, with Copy on select), and on Linux
-//! a middle click pastes.
+//! The mouse on the terminal grid: the wheel scrolls the history (on the alternate screen it
+//! sends arrow keys to the full-screen program), dragging the left button selects text in
+//! reading order and scrolls the history past the top or bottom edge, a double-click selects a
+//! word and a triple-click a line (each copied with Copy on select), and on Linux a middle
+//! click pastes.
 
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::terminal::Selection;
 use crate::terminal::TerminalMsg;
 use eframe::egui::{self, Event, MouseWheelUnit, PointerButton, Pos2};
-use glowfly_core::terminal::TermPoint;
+use glowfly_core::terminal::{KeyMods, TermInput, TermKey, TermPoint};
 
 /// Rows one wheel notch scrolls.
 const ROWS_PER_NOTCH: f32 = 3.0;
+
+/// Rows a second a drag just past the grid's edge scrolls; each row's height further out adds
+/// as many again.
+const EDGE_ROWS_PER_SEC: f32 = 8.0;
+
+/// The fastest a drag past the edge scrolls, in rows a second.
+const EDGE_MAX_ROWS_PER_SEC: f32 = 200.0;
+
+/// The most arrow keys one frame's wheel sends a full-screen program.
+const MAX_WHEEL_KEYS: i32 = 100;
 
 /// Where the grid's cells are: its top-left corner, a cell's size and the screen's size.
 pub(super) struct Geometry {
@@ -26,6 +38,13 @@ pub(super) struct Geometry {
 pub(super) fn cell_at(pos: Pos2, origin: Pos2, cw: f32, rh: f32, rows: u16, cols: u16) -> (u16, u16) {
     let r = ((pos.y - origin.y) / rh).floor().clamp(0.0, f32::from(rows.saturating_sub(1)));
     let c = ((pos.x - origin.x) / cw).round().clamp(0.0, f32::from(cols));
+    (r as u16, c as u16)
+}
+
+/// The cell under `pos`, as (row, col), kept within the screen (col 0..cols).
+pub(super) fn cell_under(pos: Pos2, g: &Geometry) -> (u16, u16) {
+    let r = ((pos.y - g.origin.y) / g.rh).floor().clamp(0.0, f32::from(g.rows.saturating_sub(1)));
+    let c = ((pos.x - g.origin.x) / g.cw).floor().clamp(0.0, f32::from(g.cols.saturating_sub(1)));
     (r as u16, c as u16)
 }
 
@@ -50,7 +69,36 @@ pub(super) fn wheel_rows(events: &[Event], rh: f32, rows: u16, rem: &mut f32) ->
     whole as i32
 }
 
-/// The wheel, drag selection and middle click on the grid `resp` of session `index`.
+/// What the wheel's `rows` (back when positive) send a full-screen program: an Up arrow per
+/// row back, a Down arrow per row forward. They are encoded in the program's cursor-keys mode
+/// when they are sent (update/terminal.rs).
+pub(super) fn wheel_keys(rows: i32) -> Vec<TermInput> {
+    let key = if rows > 0 { TermKey::Up } else { TermKey::Down };
+    let n = rows.unsigned_abs().min(MAX_WHEEL_KEYS.unsigned_abs()) as usize;
+    vec![TermInput::Key { key, mods: KeyMods::default() }; n]
+}
+
+/// The whole rows a selection drag at height `y` scrolls in a frame of `dt` seconds: back
+/// (positive) above `top`, forward below `bottom`, faster the further out, the part of a row
+/// carried in `rem`. Inside the grid nothing scrolls and `rem` is dropped.
+pub(super) fn edge_rows(y: f32, top: f32, bottom: f32, rh: f32, dt: f32, rem: &mut f32) -> i32 {
+    let past = if y < top {
+        top - y
+    } else if y > bottom {
+        bottom - y
+    } else {
+        *rem = 0.0;
+        return 0;
+    };
+    let speed = (EDGE_ROWS_PER_SEC * (1.0 + past.abs() / rh.max(1.0))).min(EDGE_MAX_ROWS_PER_SEC);
+    let total = *rem + past.signum() * speed * dt.clamp(0.0, 0.1);
+    let whole = total.trunc();
+    *rem = total - whole;
+    whole as i32
+}
+
+/// The wheel, drag selection, word and line clicks, and middle click on the grid `resp` of
+/// session `index`.
 pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, index: usize, g: &Geometry, msgs: &mut Vec<Msg>) {
     let copy_on_select = st.settings.terminal.copy_on_select;
     if st.settings.terminal.middle_click_pastes() && resp.clicked_by(PointerButton::Middle) {
@@ -59,10 +107,15 @@ pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, in
     let session = &mut st.terminal.sessions[index];
     if resp.hovered() {
         let rows = ui.input(|i| wheel_rows(&i.events, g.rh, g.rows, &mut st.terminal.wheel_rem));
-        if session.screen.alternate() {
+        if !session.screen.alternate() {
+            if rows != 0 {
+                msgs.push(Msg::Terminal(TerminalMsg::Scroll(rows)));
+            }
+        } else if session.screen.mouse_reporting() {
+            // The program asked for mouse events, which the terminal doesn't report yet.
             st.terminal.wheel_rem = 0.0;
         } else if rows != 0 {
-            msgs.push(Msg::Terminal(TerminalMsg::Scroll(rows)));
+            msgs.push(Msg::Terminal(TerminalMsg::Input(wheel_keys(rows))));
         }
     }
     let screen = &session.screen;
@@ -76,56 +129,49 @@ pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, in
             let from = ui.input(|i| i.pointer.press_origin()).unwrap_or(pos);
             session.selection = Some(Selection { anchor: point(from), head: point(pos), epoch: screen.epoch() });
         }
+        st.terminal.edge_rem = 0.0;
         resp.request_focus();
-    } else if resp.dragged_by(PointerButton::Primary) {
-        let head = pos.map(point);
-        if let (Some(sel), Some(head)) = (session.selection.as_mut(), head) {
-            sel.head = head;
+    } else if resp.dragged_by(PointerButton::Primary)
+        && let Some(pos) = pos
+    {
+        if let Some(sel) = session.selection.as_mut() {
+            sel.head = point(pos);
+        }
+        // The last row, or the grid's edge while a smaller screen size is on its way.
+        let bottom = (g.origin.y + f32::from(g.rows) * g.rh).min(resp.rect.max.y);
+        if !screen.alternate() && !(g.origin.y..=bottom).contains(&pos.y) {
+            let dt = ui.input(|i| i.stable_dt);
+            let rows = edge_rows(pos.y, g.origin.y, bottom, g.rh, dt, &mut st.terminal.edge_rem);
+            if rows != 0 {
+                msgs.push(Msg::Terminal(TerminalMsg::Scroll(rows)));
+            }
+            // Keep scrolling while the pointer is held still out there.
+            ui.ctx().request_repaint();
+        } else {
+            st.terminal.edge_rem = 0.0;
         }
     }
-    if copy_on_select && resp.drag_stopped_by(PointerButton::Primary) && session.selection.is_some_and(|s| s.range(screen).is_some()) {
-        msgs.push(Msg::Terminal(TerminalMsg::CopySelection { keep: true }));
+    let mut picked = false;
+    if let Some(pos) = pos.filter(|_| resp.clicked()) {
+        let (r, col) = cell_under(pos, g);
+        let line = session.screen.top_line() + u64::from(r);
+        let range = if resp.triple_clicked() {
+            Some(session.screen.line_at(line))
+        } else if resp.double_clicked() {
+            Some(session.screen.word_at(TermPoint { line, col }))
+        } else {
+            None
+        };
+        let epoch = session.screen.epoch();
+        session.selection = range.map(|(anchor, head)| Selection { anchor, head, epoch });
+        picked = range.is_some();
     }
-    if resp.clicked() {
-        session.selection = None;
+    let ended = picked || resp.drag_stopped_by(PointerButton::Primary);
+    if copy_on_select && ended && session.selection.is_some_and(|s| s.range(&session.screen).is_some()) {
+        msgs.push(Msg::Terminal(TerminalMsg::CopySelection { keep: true }));
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use eframe::egui::{Modifiers, pos2, vec2};
-
-    #[test]
-    fn cells_round_to_the_nearest_boundary() {
-        let o = pos2(10.0, 20.0);
-        let at = |x, y| cell_at(pos2(x, y), o, 8.0, 16.0, 24, 80);
-        assert_eq!(at(10.0, 20.0), (0, 0));
-        assert_eq!(at(13.9, 35.9), (0, 0), "left half of the first cell");
-        assert_eq!(at(14.1, 36.1), (1, 1), "right half: the boundary after it");
-        assert_eq!(at(0.0, 0.0), (0, 0), "above and left of the grid");
-        assert_eq!(at(5000.0, 5000.0), (23, 80), "past the last cell");
-    }
-
-    fn wheel(unit: MouseWheelUnit, y: f32, modifiers: Modifiers) -> Event {
-        Event::MouseWheel { unit, delta: vec2(0.0, y), modifiers }
-    }
-
-    #[test]
-    fn wheel_steps() {
-        let none = Modifiers::NONE;
-        let mut rem = 0.0;
-        assert_eq!(wheel_rows(&[wheel(MouseWheelUnit::Line, 1.0, none)], 16.0, 24, &mut rem), 3);
-        assert_eq!(wheel_rows(&[wheel(MouseWheelUnit::Line, -2.0, none)], 16.0, 24, &mut rem), -6);
-        assert_eq!(wheel_rows(&[wheel(MouseWheelUnit::Page, 1.0, none)], 16.0, 24, &mut rem), 24);
-        // Points: 10 px of a 16 px row is carried until a whole row has come.
-        assert_eq!(wheel_rows(&[wheel(MouseWheelUnit::Point, 10.0, none)], 16.0, 24, &mut rem), 0);
-        assert_eq!(wheel_rows(&[wheel(MouseWheelUnit::Point, 10.0, none)], 16.0, 24, &mut rem), 1);
-        assert!((rem - 0.25).abs() < 1e-4, "{rem}");
-        let mut rem = 0.0;
-        for zoom in [Modifiers::CTRL, Modifiers::COMMAND, Modifiers::MAC_CMD | Modifiers::COMMAND] {
-            assert_eq!(wheel_rows(&[wheel(MouseWheelUnit::Line, 1.0, zoom)], 16.0, 24, &mut rem), 0, "{zoom:?}");
-        }
-        assert_eq!(rem, 0.0);
-    }
-}
+#[path = "mouse_tests.rs"]
+mod tests;

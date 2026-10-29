@@ -241,6 +241,11 @@ impl TermScreen {
         Modes { application_cursor: screen.application_cursor(), bracketed_paste: screen.bracketed_paste() }
     }
 
+    /// Whether the program asked to be sent mouse events (xterm mouse reporting).
+    pub fn mouse_reporting(&self) -> bool {
+        self.parser.screen().mouse_protocol_mode() != vt100::MouseProtocolMode::None
+    }
+
     /// The text in view, rows joined with newlines, trailing blanks trimmed (for tests).
     pub fn text(&self) -> String {
         let lines: Vec<String> = self

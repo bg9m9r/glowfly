@@ -90,13 +90,7 @@ impl TermScreen {
     /// Columns `from..to` of `line` and whether it wraps onto the next; trimmed unless it does.
     /// Leaves the parser's offset where reading put it.
     fn line_text(&mut self, line: u64, from: u16, to: u16) -> (String, bool) {
-        let row = if line >= self.pushed {
-            self.parser.screen_mut().set_scrollback(0);
-            (line - self.pushed) as u16
-        } else {
-            self.parser.screen_mut().set_scrollback((self.pushed - line) as usize);
-            0
-        };
+        let row = self.seek(line);
         let screen = self.parser.screen();
         let mut text = String::new();
         for c in from..to {
