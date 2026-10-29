@@ -11,8 +11,9 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 ## Colours
 
-- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the graph's ref chip colours (neutral, edged chips).
+- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the graph's ref chip colours (neutral, edged chips).
 - `theme/no_brown_tests.rs`: every built-in's surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets, stay out of the brown zone (Dusk's bronze selection excepted).
+- `theme/no_brown_text_tests.rs`: every built-in's coloured text (status, syntax, terminal colours) stays out of the text brown zone, and the light themes' amber text reads at 4.5:1 on its surfaces (High contrast light's amber excepted).
 - `snapshot_tests/snapshot_tests_colour_sheet.rs`: an ignored test that renders every built-in's main window and chip strip into `GLOWFLY_SHEET_DIR`, for judging colour by eye.
 - `theme/families.rs`: the token families: status, branch, repository, attention, and the terminal's colours.
 - `theme/ansi.rs`: the terminal's colours, one table per built-in, with the readability check Preferences warns from.
