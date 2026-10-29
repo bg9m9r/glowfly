@@ -379,8 +379,8 @@ The Flatpak build has no network, so `scripts/package-flatpak.sh` works in two s
 machine with cargo, `bash scripts/package-flatpak.sh vendor` copies every crate into `vendor/`
 and writes the cargo config that points at it to `packaging/flatpak/generated/` (both ignored by
 git). Then, where `flatpak` and `flatpak-builder` are installed (or in the
-`ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08` image the workflows use, run
-with `--privileged`), `bash scripts/package-flatpak.sh bundle v0.3.0` fills in the AppStream
+`ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08` image the workflows use, pinned
+there by digest, run with `--privileged`), `bash scripts/package-flatpak.sh bundle v0.3.0` fills in the AppStream
 metadata, builds `packaging/flatpak/io.github.bg9m9r.glowfly.yml` (git from its pinned tarball,
 then Glowfly offline) and writes `dist/glowfly-v0.3.0-x86_64-unknown-linux-gnu.flatpak` and its
 `.sha256`. Install it with `flatpak install --user ./dist/glowfly-…flatpak`.

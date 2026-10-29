@@ -176,7 +176,7 @@ fn create_issue_azure_dark() {
     let mut form = IssueForm::new(azure);
     form.options_loaded(CreateOptions {
         labels: vec!["ux".into(), "backend".into()],
-        people: vec![person("ada@contoso.com", "Ada Lovelace"), person("grace@contoso.com", "Grace Hopper")],
+        people: vec![person("ada@example.com", "Ada Lovelace"), person("grace@example.com", "Grace Hopper")],
         types: ["Bug", "Epic", "Feature", "Task", "User Story"].map(|t| named(t, t)).to_vec(),
         default_type: Some("User Story".into()),
         epics: vec![named("1", "Epic · Accounts"), named("2", "Feature · Search")],
@@ -185,7 +185,7 @@ fn create_issue_azure_dark() {
         ..Default::default()
     });
     form.labels = vec!["ux".into(), "sign-in".into()];
-    form.people = vec!["ada@contoso.com".into()];
+    form.people = vec!["ada@example.com".into()];
     form.epic = Some("1".into());
     let (st, dir) = with_form(ThemeChoice::Dark, "issue-create-azure", form, |_| {});
     let mut h = harness(st, true);

@@ -28,8 +28,10 @@ concurrency:
 
 env:
   # The Flathub builder image the Flatpak bundle is built in. Its tag pins the freedesktop
-  # runtime (packaging/flatpak/io.github.bg9m9r.glowfly.yml) and the flatpak-builder generation.
-  FLATPAK_IMAGE: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+  # runtime (packaging/flatpak/io.github.bg9m9r.glowfly.yml) and the flatpak-builder generation;
+  # the digest (of the tag's multi-platform index) pins the image itself, so a re-pushed tag
+  # changes nothing until the digest is updated here and in the Installers workflow.
+  FLATPAK_IMAGE: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08@sha256:c91a88269eee8fcdd73ecf43064232fbebe27411f926f63f38bdf70c51f2ceae
 
 jobs:
   release-please:

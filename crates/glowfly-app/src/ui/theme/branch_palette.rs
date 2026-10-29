@@ -12,7 +12,7 @@
 //! light tones take a deep Wine in Olive's slot and a Navy in Gold's, and their Orange is a clear
 //! amber at hue 62, the one warm line that stays clean at 3:1 on every light theme.
 //!
-//! Colour-blind safe: 8 hues that stay apart under protan, deutan and tritan vision as well as
+//! Colour-blind friendly: 8 hues that stay apart under protan, deutan and tritan vision as well as
 //! normal vision (Red, Aqua, Yellow, Blue, Plum, Lime, Purple, Periwinkle), out of the same
 //! bands. Dark themes take the dark tones for lines and chips; every light theme takes the line
 //! tones for lines and the text tones for chips. `applied` puts the chosen preset into a palette.
@@ -144,10 +144,10 @@ pub const BRANCH_LIGHT: Branch = Branch { lanes: LIGHT_LINES, chips: LIGHT_TEXT,
 pub const BRANCH_LIGHT_STRONG: Branch =
     Branch { lanes: LIGHT_STRONG_LINES, chips: LIGHT_TEXT, preset: BranchPalette::Standard, names: LIGHT_NAMES };
 
-/// How many hues the colour-blind safe preset has.
+/// How many hues the colour-blind friendly preset has.
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
 
-/// Colour-blind safe lines and chips on dark themes (4.2:1 on Dark's and High contrast dark's
+/// Colour-blind friendly lines and chips on dark themes (4.2:1 on Dark's and High contrast dark's
 /// background and panel).
 pub const CB_DARK_TONES: [Color32; CB] = [
     hex(0xed485a), // 0 Red
@@ -160,7 +160,7 @@ pub const CB_DARK_TONES: [Color32; CB] = [
     hex(0xa2b5f2), // 7 Periwinkle
 ];
 
-/// Colour-blind safe lines, dots and bands on light themes (3:1 on the background and panel
+/// Colour-blind friendly lines, dots and bands on light themes (3:1 on the background and panel
 /// of Light, High contrast light and Sand). A yellow dark enough reads olive on paper, so the
 /// light set's Yellow is the clear amber, and its Lime a deeper green to stay apart from the
 /// amber under protan and deutan vision.
@@ -175,7 +175,7 @@ pub const CB_LIGHT_LINES: [Color32; CB] = [
     hex(0x3a45cf), // 7 Periwinkle
 ];
 
-/// Colour-blind safe chip text and tints on light themes (4.5:1 on their surfaces).
+/// Colour-blind friendly chip text and tints on light themes (4.5:1 on their surfaces).
 pub const CB_LIGHT_TEXT: [Color32; CB] = [
     hex(0x8b0422), // 0 Red
     hex(0x0a4b4b), // 1 Aqua
@@ -187,7 +187,7 @@ pub const CB_LIGHT_TEXT: [Color32; CB] = [
     hex(0x4158bd), // 7 Periwinkle
 ];
 
-/// The colour-blind safe hues' names, slot by slot.
+/// The colour-blind friendly hues' names, slot by slot.
 pub const CB_NAMES: [Hue; CB] = [Hue::Red, Hue::Aqua, Hue::Yellow, Hue::Blue, Hue::Plum, Hue::Lime, Hue::Purple, Hue::Periwinkle];
 /// The light colour-blind set's names: Orange for Yellow.
 pub const CB_LIGHT_NAMES: [Hue; CB] = [Hue::Red, Hue::Aqua, Hue::Orange, Hue::Blue, Hue::Plum, Hue::Lime, Hue::Purple, Hue::Periwinkle];
@@ -203,14 +203,14 @@ pub const fn pad<T: Copy>(t: [T; CB]) -> [T; LANE_COUNT] {
     out
 }
 
-/// Colour-blind safe, on Garden dark and High contrast dark.
+/// Colour-blind friendly, on Garden dark and High contrast dark.
 pub const BRANCH_CB_DARK: Branch =
     Branch { lanes: pad(CB_DARK_TONES), chips: pad(CB_DARK_TONES), preset: BranchPalette::ColourBlind, names: pad(CB_NAMES) };
-/// Colour-blind safe, on Garden light, High contrast light and Sand.
+/// Colour-blind friendly, on Garden light, High contrast light and Sand.
 pub const BRANCH_CB_LIGHT: Branch =
     Branch { lanes: pad(CB_LIGHT_LINES), chips: pad(CB_LIGHT_TEXT), preset: BranchPalette::ColourBlind, names: pad(CB_LIGHT_NAMES) };
 
-/// `p` with the branch preset `b`: Standard keeps its own family; the colour-blind safe preset
+/// `p` with the branch preset `b`: Standard keeps its own family; the colour-blind friendly preset
 /// takes the palette's own colour-blind family (a theme file's from its base).
 pub fn applied(mut p: Palette, b: BranchPalette) -> Palette {
     if b == BranchPalette::ColourBlind {

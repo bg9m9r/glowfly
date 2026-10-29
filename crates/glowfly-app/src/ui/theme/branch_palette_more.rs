@@ -61,7 +61,7 @@ pub const COBALT_CB_LIGHT_NAMES: [Hue; CB] = with(CB_LIGHT_NAMES, COBALT_CB_SLOT
 /// Ember.
 pub const BRANCH_EMBER: Branch =
     Branch { lanes: FLAME_DARK_TONES, chips: FLAME_DARK_TONES, preset: BranchPalette::Standard, names: FLAME_NAMES };
-/// Colour-blind safe, on Ember.
+/// Colour-blind friendly, on Ember.
 pub const BRANCH_CB_EMBER: Branch = Branch {
     lanes: pad(FLAME_CB_DARK_TONES),
     chips: pad(FLAME_CB_DARK_TONES),
@@ -71,7 +71,7 @@ pub const BRANCH_CB_EMBER: Branch = Branch {
 /// Graphite.
 pub const BRANCH_GRAPHITE: Branch =
     Branch { lanes: COBALT_DARK_TONES, chips: COBALT_DARK_TONES, preset: BranchPalette::Standard, names: COBALT_NAMES };
-/// Colour-blind safe, on Graphite.
+/// Colour-blind friendly, on Graphite.
 pub const BRANCH_CB_GRAPHITE: Branch = Branch {
     lanes: pad(COBALT_CB_DARK_TONES),
     chips: pad(COBALT_CB_DARK_TONES),
@@ -81,7 +81,7 @@ pub const BRANCH_CB_GRAPHITE: Branch = Branch {
 /// Linen.
 pub const BRANCH_LINEN: Branch =
     Branch { lanes: COBALT_LIGHT_LINES, chips: COBALT_LIGHT_TEXT, preset: BranchPalette::Standard, names: LINEN_NAMES };
-/// Colour-blind safe, on Linen.
+/// Colour-blind friendly, on Linen.
 pub const BRANCH_CB_LINEN: Branch = Branch {
     lanes: pad(COBALT_CB_LIGHT_LINES),
     chips: pad(COBALT_CB_LIGHT_TEXT),

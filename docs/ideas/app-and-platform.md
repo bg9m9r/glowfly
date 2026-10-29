@@ -23,7 +23,7 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Offline pull request review: fetch a pull request's refs and threads, review and comment
   offline, and send the queued comments and approvals when back online
 - Accessibility as a headline: screen-reader support through AccessKit everywhere, a keyboard
-  path for every operation, reduced motion, and colour-blind-safe lanes with patterns
+  path for every operation, reduced motion, and colour-blind-friendly lanes with patterns
 - Monorepo tools: history and graph filtered to a folder, a CODEOWNERS overlay in file lists
   and diffs, and editing the sparse-checkout cone from the file tree
 - Daily work log: a private, local summary of the day's commits, branches and pull requests

@@ -28,8 +28,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # The Flathub builder image, as in the Release workflow.
-  FLATPAK_IMAGE: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+  # The Flathub builder image, as in the Release workflow: tag freedesktop-25.08, pinned by the
+  # digest of its multi-platform index. Update the two workflows together.
+  FLATPAK_IMAGE: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08@sha256:c91a88269eee8fcdd73ecf43064232fbebe27411f926f63f38bdf70c51f2ceae
 
 jobs:
   windows:

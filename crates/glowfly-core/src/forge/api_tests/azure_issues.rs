@@ -13,7 +13,7 @@ fn t() -> Target {
 }
 
 const STORY: &str = r#"{"id":5,"fields":{"System.Title":"Login page","System.State":"Active","System.WorkItemType":"User Story",
-    "System.AssignedTo":{"displayName":"Ada","uniqueName":"ada@contoso.com"},"System.Tags":"ux; needs design",
+    "System.AssignedTo":{"displayName":"Ada","uniqueName":"ada@example.com"},"System.Tags":"ux; needs design",
     "System.Description":"<div>Users sign in.</div><ul><li>Email</li><li>SSO &amp; more</li></ul>",
     "System.CreatedBy":{"displayName":"Grace"},"System.CreatedDate":"2026-01-02T10:00:00.000Z"},
     "relations":[{"rel":"System.LinkTypes.Related","url":"https://dev.azure.com/contoso/_apis/wit/workItems/9"},
@@ -90,9 +90,9 @@ fn options_offer_types_tags_people_and_parents() {
                 Reply::json(r#"{"id":"p-1","defaultTeam":{"id":"team-1","name":"Fabrikam Web Team"}}"#)
             }
             "GET dev.azure.com/contoso/_apis/projects/Fabrikam%20Web/teams/team-1/members?$top=100&api-version=7.1" => Reply::json(
-                r#"{"value":[{"identity":{"displayName":"Ada","uniqueName":"ada@contoso.com"}},
+                r#"{"value":[{"identity":{"displayName":"Ada","uniqueName":"ada@example.com"}},
                 {"identity":{"displayName":"Readers","uniqueName":"[Fabrikam]\\Readers","isContainer":true}},
-                {"identity":{"displayName":"Ada","uniqueName":"ada@contoso.com"}}]}"#,
+                {"identity":{"displayName":"Ada","uniqueName":"ada@example.com"}}]}"#,
             ),
             "POST dev.azure.com/contoso/Fabrikam%20Web/_apis/wit/wiql?$top=1000&api-version=7.1" => {
                 Reply::json(r#"{"workItems":[{"id":1},{"id":2}]}"#)
@@ -108,7 +108,7 @@ fn options_offer_types_tags_people_and_parents() {
     assert_eq!(o.types.iter().map(|n| n.key.as_str()).collect::<Vec<_>>(), ["Bug", "Epic", "User Story", "Feature"]);
     assert_eq!(o.default_type.as_deref(), Some("User Story"));
     assert_eq!(o.labels, ["ux", "backend"]);
-    assert_eq!(o.people, [Person { id: "ada@contoso.com".into(), name: "Ada".into() }]);
+    assert_eq!(o.people, [Person { id: "ada@example.com".into(), name: "Ada".into() }]);
     let parents: Vec<(&str, &str)> = o.epics.iter().map(|e| (e.key.as_str(), e.title.as_str())).collect();
     assert_eq!(parents, [("1", "Epic · Accounts"), ("2", "Feature · Search")]);
     assert_eq!((o.labels_free, o.max_assignees), (true, 1));
@@ -143,7 +143,7 @@ fn create_posts_a_json_patch() {
     let new = NewIssue {
         description: "Sign in <fast>\nwith SSO\n\nThen more".into(),
         labels: vec!["a".into(), "b".into()],
-        assignees: vec!["ada@contoso.com".into()],
+        assignees: vec!["ada@example.com".into()],
         kind: Some("User Story".into()),
         epic: Some("1".into()),
         ..new_issue("Login page")
@@ -159,7 +159,7 @@ fn create_posts_a_json_patch() {
             add("/fields/System.Title", "Login page".into()),
             add("/fields/System.Description", "<div>Sign in &lt;fast&gt;<br>with SSO</div><div><br></div><div>Then more</div>".into()),
             add("/fields/System.Tags", "a; b".into()),
-            add("/fields/System.AssignedTo", "ada@contoso.com".into()),
+            add("/fields/System.AssignedTo", "ada@example.com".into()),
             add(
                 "/relations/-",
                 serde_json::json!({ "rel": "System.LinkTypes.Hierarchy-Reverse", "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1" })

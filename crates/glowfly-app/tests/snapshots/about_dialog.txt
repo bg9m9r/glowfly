@@ -4,6 +4,7 @@ Dialog
   Button "Close this dialog"
   Label "A fast, native Git client for Windows, macOS and Linux."
   Label "Licensed under MIT OR Apache-2.0"
+  Label "Provided as is, without warranty of any kind; see the license files."
   Label "Git 2.47.1"
   Button "Third-party notices…"
   Button "Privacy"
