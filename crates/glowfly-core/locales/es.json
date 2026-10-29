@@ -1432,7 +1432,7 @@
   "prefs.general.forget.connections.other": "Desconecta {count} integraciones y borra sus tokens guardados. El segundo botón también cierra la sesión de Git Credential Manager en esos servidores.",
   "prefs.general.forget.gcm_body.one": "Esto desconecta todas las integraciones y además quita el inicio de sesión que Git Credential Manager guardó para {count} servidor. git push y pull a ese servidor te pedirán que vuelvas a iniciar sesión.",
   "prefs.general.forget.gcm_body.other": "Esto desconecta todas las integraciones y además quita los inicios de sesión que Git Credential Manager guardó para {count} servidores. git push y pull a esos servidores te pedirán que vuelvas a iniciar sesión.",
-  "prefs.general.forget.gcm_button": "Borrar tokens e inicios de sesión de Git Credential Manager",
+  "prefs.general.forget.gcm_button": "También cerrar sesión en Git Credential Manager",
   "prefs.general.forget.label": "Conexiones guardadas",
   "prefs.general.forget.none": "Glowfly no tiene conexiones guardadas que quitar.",
   "prefs.general.frame_times.check": "Mostrar en una esquina de la ventana cuánto tarda cada fotograma",

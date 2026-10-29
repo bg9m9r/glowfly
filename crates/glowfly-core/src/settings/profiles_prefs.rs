@@ -1,5 +1,5 @@
 //! What switches with a profile besides its identity: the app preferences (General except the
-//! language, Appearance and Editor except word wrap) and the connected hosting-service accounts.
+//! language, Appearance and Diff viewer except word wrap) and the connected hosting-service accounts.
 //! Everything else in `Settings` (repository-specific settings, trust, favorites, tools, diff
 //! header toggles, window and dialog state) stays global; a test makes every new setting pick
 //! a side.
@@ -79,7 +79,7 @@ profile_prefs! {
     branch_palette: BranchPalette,
     columns: GraphColumns,
     column_widths: ColumnWidths,
-    // Editor
+    // Diff viewer
     diff_font_size: f32,
     tab_size: u8,
     diff_line_numbers: bool,

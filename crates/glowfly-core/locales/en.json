@@ -1432,7 +1432,7 @@
   "prefs.general.forget.connections.other": "Disconnects {count} integrations and deletes their saved tokens. The second button also signs Git Credential Manager out of those hosts.",
   "prefs.general.forget.gcm_body.one": "This disconnects every integration and also removes the sign-in Git Credential Manager stored for {count} host. git push and pull to that host will ask you to sign in again.",
   "prefs.general.forget.gcm_body.other": "This disconnects every integration and also removes the sign-ins Git Credential Manager stored for {count} hosts. git push and pull to those hosts will ask you to sign in again.",
-  "prefs.general.forget.gcm_button": "Remove tokens and Git Credential Manager sign-ins",
+  "prefs.general.forget.gcm_button": "Also sign out of Git Credential Manager",
   "prefs.general.forget.label": "Saved connections",
   "prefs.general.forget.none": "Glowfly has no stored connections to remove.",
   "prefs.general.frame_times.check": "Show how long each frame takes, in a corner of the window",

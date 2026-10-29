@@ -48,7 +48,7 @@ Label "Sign-ins"
 CheckBox "Remember HTTPS sign-ins typed in Glowfly" [on]
 Label "Once git accepts a username and password or token typed in Glowfly, it is saved with git's credential helper. With no helper set up, Glowfly sets up the system's credential store for git."
 Button "Remove saved tokens" [disabled]
-Button "Remove tokens and Git Credential Manager sign-ins" [disabled]
+Button "Also sign out of Git Credential Manager" [disabled]
 Label "Glowfly has no stored connections to remove."
 Label "Diagnostics"
 CheckBox "Add the git commands Glowfly runs, with their timings, to the activity log" [off]
