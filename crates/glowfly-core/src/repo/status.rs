@@ -83,7 +83,10 @@ pub(super) fn load_status_with(
     if let Some(workdir) = repo.workdir()
         && git_status
         && wants_git(repo)
-        && let Some(lists) = super::status_cli::status(workdir)
+        && let Some(lists) = match super::index_ext::lost_speedups(repo) {
+            true => super::status_cli::status_recording(workdir),
+            false => super::status_cli::status(workdir),
+        }
     {
         return Ok(mark_rows(repo, lists, found));
     }

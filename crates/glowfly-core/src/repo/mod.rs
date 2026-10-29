@@ -56,6 +56,7 @@ mod graph_cache;
 mod history;
 mod history_forward;
 mod index;
+mod index_ext;
 mod index_memo;
 mod lfs_marks;
 mod line_counts;
@@ -134,8 +135,9 @@ pub use file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, 
 pub use file_bytes::{FileBytes, file_bytes_at};
 pub use folder_history::{folder_file_today, folder_history};
 pub use fsmonitor::{
-    FSMONITOR_DAEMON, MonitorOffer, MonitorOutcome, MonitorTrouble, monitor_enable_cmd, monitor_offer, monitor_offer_for,
-    monitor_record_cmd, monitor_start_cmd, monitor_status_cmd, turn_on_monitor,
+    FSMONITOR_DAEMON, MonitorOffer, MonitorOutcome, MonitorTrouble, daemon_built, daemon_in_build_options, monitor_disable_cmd,
+    monitor_enable_cmd, monitor_offer, monitor_offer_for, monitor_record_cmd, monitor_start_cmd, monitor_status_cmd, monitor_stop_cmd,
+    stop_monitor, turn_off_monitor, turn_on_monitor,
 };
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};

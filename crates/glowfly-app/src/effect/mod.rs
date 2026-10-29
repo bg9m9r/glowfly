@@ -71,7 +71,7 @@ pub use line_counts::{FailedLineCounts, LineCountsEffect};
 pub use meta::EffectMeta;
 #[cfg(test)]
 pub use meta::SandboxRule;
-pub use monitor::MonitorJob;
+pub use monitor::{MonitorJob, MonitorOff};
 pub use notify::{DesktopNote, NoteKind};
 pub use op_preview::OpPreviewJob;
 pub use os::OsEffect;

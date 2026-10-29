@@ -202,6 +202,7 @@ fn folder_left_and_branch_failed() {
         force: RemoveForce::None,
         delete_branch: Some("busy".into()),
         delete_remote: None,
+        stop_monitor: false,
     };
     let msg = WorktreeMsg::Removed(Box::new(Removed {
         request,

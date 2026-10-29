@@ -148,6 +148,13 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Offer the monitor when a later status read is slow after the untracked cache was turned on (the note shows once per repository)
 - Show whether the fsmonitor daemon is watching in the status bar or Preferences
 - Lend pooled repositories to more reads (full load, blame, file history, compare, conflicts) once their costs are measured
+- Read core.fsmonitor and the untracked cache from every scope (global, config.worktree) on Repository > Hooks, and say where a value Turn off can't unset is set
+- Skip the worktree remove's daemon stop for a git that stops the daemon itself (git 2.54 removed a watched worktree without it in testing)
+- Write the index through git (`update-index --index-info`, `apply --cached`) for hunk and line staging, so the untracked cache and monitor token never need recording again
+- Say in the activity log when a status read recorded the untracked cache or monitor token again
+- Find a large index's extensions without walking its entries (from the end-of-index-entries extension, or a memo by the index file's stat), so indexes over 64 MiB are checked too
+- Hold the pool only while git itself (or a program it starts) runs in a terminal, if holding through long programs (an editor, a dev server) turns out to cost noticeable reads
+- Hold the repositories a terminal changes to with `cd`, not only the one it started in
 
 ### Welcome screen
 

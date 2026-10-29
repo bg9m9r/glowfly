@@ -32,7 +32,13 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
                 }
             }
             look_for_path_git(&mut st.git.path_git, &info, fx);
+            probe_monitor(st, &info, fx);
             st.git.info = Some(info);
+        }
+        GitEnvMsg::MonitorProbed { generation, daemon } => {
+            if generation == st.git.switches {
+                st.git.monitor_daemon = daemon;
+            }
         }
         GitEnvMsg::PathGitChecked(c) => {
             if st.git.saved_git_unusable() {
@@ -143,6 +149,15 @@ fn detect(st: &AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::GitEnv(GitEnvEffect::Detect { generation: st.git.switches, cwd: st.any_dir() }));
 }
 
+/// Asks the git `info` describes whether it has the file system monitor daemon, when it runs
+/// and the answer could matter (Windows and macOS: the daemon isn't offered on Linux).
+fn probe_monitor(st: &mut AppState, info: &GitInfo, fx: &mut Vec<Effect>) {
+    st.git.monitor_daemon = None;
+    if info.version.is_some() && glowfly_core::opens::Os::current() != glowfly_core::opens::Os::Linux {
+        fx.push(Effect::GitEnv(GitEnvEffect::ProbeMonitor { generation: st.git.switches, cwd: AppState::outside_dir() }));
+    }
+}
+
 /// Starts the check of the PATH git when `info` says the saved git can't run; any other answer
 /// drops the last one.
 fn look_for_path_git(path_git: &mut Option<Candidate>, info: &GitInfo, fx: &mut Vec<Effect>) {
@@ -184,8 +199,9 @@ fn switched(st: &mut AppState, program: Option<PathBuf>, info: GitInfo, from_ban
         }
         _ => None,
     };
-    st.git.info = Some(info);
     st.git.switches += 1;
+    probe_monitor(st, &info, fx);
+    st.git.info = Some(info);
     st.git.banner_dismissed = false;
     st.git.path_git = None;
     st.log(true, format!("Glowfly now runs {what}"));

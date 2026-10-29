@@ -3,9 +3,10 @@
 //! the UI thread. Requests sent while the shell is still starting wait in its channel. Kills
 //! bypass that queue: a write stuck on a shell that isn't reading must not hold up a stop.
 //! Whether a shell is running a program is read on a thread of its own, since a process
-//! snapshot takes milliseconds.
+//! snapshot takes milliseconds. A command typed there holds its repository (terminal_hold.rs).
 
 use super::execute::{Cx, Execute};
+use super::terminal_hold::CommandHold;
 use super::{Runner, Waker};
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -89,11 +90,12 @@ impl ProbeSlot {
     }
 }
 
-/// A running session: its request channel, its kill switch and its activity probe.
+/// A running session: its request channel, kill switch, activity probe and command hold.
 struct Handle {
     ctl: Sender<Control>,
     kill: Arc<KillSwitch>,
     probe: Arc<ProbeSlot>,
+    hold: Arc<CommandHold>,
 }
 
 /// The running sessions by id. Dropping it (the app quitting) stops every shell.
@@ -165,7 +167,8 @@ impl<W: Waker + Clone> Runner<W> {
                 let (ctl, rx) = mpsc::channel();
                 let kill = Arc::new(KillSwitch::default());
                 let probe = Arc::new(ProbeSlot::default());
-                self.terminals.map().insert(id, Handle { ctl: ctl.clone(), kill: kill.clone(), probe: probe.clone() });
+                let hold = Arc::new(CommandHold::new(cwd.clone()));
+                self.terminals.map().insert(id, Handle { ctl: ctl.clone(), kill: kill.clone(), probe: probe.clone(), hold });
                 let report = Reporter { tx: self.tx.clone(), waker: self.waker.clone() };
                 let failed = report.clone();
                 let spawned = std::thread::Builder::new().name("glowfly-terminal".into()).spawn(move || {
@@ -181,7 +184,14 @@ impl<W: Waker + Clone> Runner<W> {
                     failed.send(TerminalMsg::SpawnFailed { id, error: format!("could not start a thread: {e}") });
                 }
             }
-            TerminalEffect::Write { id, bytes } => self.terminals.send(id, Control::Write(bytes)),
+            TerminalEffect::Write { id, bytes } => {
+                let hold = super::terminal_hold::runs_command(&bytes)
+                    .then(|| self.terminals.map().get(&id).map(|h| (h.hold.clone(), h.probe.get())));
+                if let Some((hold, probe)) = hold.flatten() {
+                    hold.command_started(probe);
+                }
+                self.terminals.send(id, Control::Write(bytes));
+            }
             TerminalEffect::Resize { id, rows, cols } => self.terminals.send(id, Control::Resize(rows, cols)),
             TerminalEffect::Kill(id) => self.terminals.kill(id),
             // Only forgets the handle: the session's thread ends by itself once its shell has.
@@ -319,7 +329,7 @@ mod tests {
         let kill = Arc::new(KillSwitch::default());
         let n = counted(&kill);
         let terminals = Terminals::default();
-        terminals.map().insert(7, Handle { ctl, kill, probe: Arc::default() });
+        terminals.map().insert(7, Handle { ctl, kill, probe: Arc::default(), hold: Arc::default() });
         terminals.send(7, Control::Write(b"stuck".to_vec()));
         terminals.kill(7);
         assert_eq!(n.load(Ordering::SeqCst), 1, "the shell is stopped at once");
@@ -334,7 +344,7 @@ mod tests {
         let terminals = Terminals::default();
         let kill = Arc::new(KillSwitch::default());
         let n = counted(&kill);
-        terminals.map().insert(1, Handle { ctl: mpsc::channel().0, kill, probe: Arc::default() });
+        terminals.map().insert(1, Handle { ctl: mpsc::channel().0, kill, probe: Arc::default(), hold: Arc::default() });
         drop(terminals);
         assert_eq!(n.load(Ordering::SeqCst), 1);
     }
@@ -346,7 +356,7 @@ mod tests {
         slot.set(ShellProbe::default());
         assert_eq!(slot.get().map(|p| p.activity()), Some(ShellActivity::Unknown), "a probe of no process");
         let terminals = Terminals::default();
-        terminals.map().insert(3, Handle { ctl: mpsc::channel().0, kill: Arc::default(), probe: Arc::default() });
+        terminals.map().insert(3, Handle { ctl: mpsc::channel().0, kill: Arc::default(), probe: Arc::default(), hold: Arc::default() });
         assert!(terminals.probe(3).is_none(), "not started yet");
         assert!(terminals.probe(4).is_none(), "no such session");
     }

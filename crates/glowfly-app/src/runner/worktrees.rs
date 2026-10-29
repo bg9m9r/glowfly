@@ -1,7 +1,8 @@
 //! Checking the folder of a worktree about to be created (`WorktreeEffect::CheckFolder`),
 //! removing one, then deleting its branch (and that branch on its remote) when asked
 //! (`WorktreeEffect::Remove`), moving one (`WorktreeEffect::Move`), and counting other
-//! worktrees' changes in the background (`WorktreeEffect::CountChanges`).
+//! worktrees' changes in the background (`WorktreeEffect::CountChanges`). A remove or move asked
+//! to stops the worktree's file system monitor daemon first, which on Windows holds its folder.
 
 use super::execute::{Cx, Execute};
 use crate::effect::WorktreeEffect;
@@ -63,8 +64,9 @@ fn first_line<'a>(text: &'a str, fallback: &'a str) -> &'a str {
 /// is first checked to contain the branch (before the local delete takes its ref), and the
 /// push that deletes it runs only when that check and the local delete both worked.
 pub(super) fn remove(r: RemoveRequest) -> Msg {
+    let stopped = stop_first(r.stop_monitor, &r.path);
     let rep = worktree_ops::remove(&r.repo, &r.path, r.force);
-    let mut output = rep.output;
+    let mut output = joined(stopped, rep.output);
     let (mut branch, mut remote, mut undo) = (None, None, None);
     if matches!(rep.outcome, RemoveOutcome::Removed | RemoveOutcome::FolderLeft)
         && let Some(b) = r.delete_branch.clone()
@@ -98,6 +100,26 @@ pub(super) fn remove(r: RemoveRequest) -> Msg {
 
 /// Moves the worktree (`worktree_ops::move_worktree`), as `WorktreeMsg::Moved`.
 pub(super) fn move_(request: MoveRequest) -> Msg {
+    let stopped = stop_first(request.stop_monitor, &request.from);
     let rep = worktree_ops::move_worktree(&request.repo, &request.from, &request.to);
-    Msg::Worktree(WorktreeMsg::Moved { request, outcome: rep.outcome, output: rep.output })
+    Msg::Worktree(WorktreeMsg::Moved { request, outcome: rep.outcome, output: joined(stopped, rep.output) })
 }
+
+/// When `stop`, stops the file system monitor daemon watching the worktree at `path`, so it lets
+/// go of the folder; its log ("" when none ran or `stop` is false).
+fn stop_first(stop: bool, path: &std::path::Path) -> String {
+    if stop && path.is_dir() { glowfly_core::repo::stop_monitor(path) } else { String::new() }
+}
+
+/// The stop's log, then the remove's or move's.
+fn joined(stopped: String, output: String) -> String {
+    match (stopped.is_empty(), output.is_empty()) {
+        (true, _) => output,
+        (false, true) => stopped,
+        (false, false) => format!("{stopped}\n{output}"),
+    }
+}
+
+#[cfg(test)]
+#[path = "worktrees_tests.rs"]
+mod tests;

@@ -88,6 +88,8 @@ fn read_from(cwd: &Path, has_repo: bool, global_file: Option<&Path>) -> GitConfi
         repo_name: read(false, "user.name"),
         repo_email: read(false, "user.email"),
         hooks_path: read(false, "core.hooksPath"),
+        // A hook's path isn't a boolean: only git's own daemon reads as on.
+        fsmonitor: get(false, Some("bool"), "core.fsmonitor").as_deref() == Some("true"),
         gpg_program: read(true, "gpg.program"),
         ssh_program: read(true, "gpg.ssh.program"),
         x509_program: read(true, "gpg.x509.program"),

@@ -108,8 +108,10 @@ pub(super) fn remove(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (name, force) = (form.name.clone(), form.force());
     let delete_remote = form.remote_ticked().cloned();
     let delete_branch = form.delete_branch.then(|| form.branch.clone()).flatten();
+    let stop_monitor = st.git.stops_monitor();
     let effect = move |repo| {
-        Effect::Worktree(WorktreeEffect::Remove(RemoveRequest { repo, path: wt.path, name, force, delete_branch, delete_remote }))
+        let path = wt.path;
+        Effect::Worktree(WorktreeEffect::Remove(RemoveRequest { repo, path, name, force, delete_branch, delete_remote, stop_monitor }))
     };
     if ops::begin_job(st, "Remove worktree", true, effect, fx) == ops::Started::Now {
         st.modal = None;

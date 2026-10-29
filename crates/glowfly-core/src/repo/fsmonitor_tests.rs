@@ -4,22 +4,26 @@
 use super::*;
 use crate::gitcli::args;
 use crate::repo::{StatusSpeedups, status_speedups, untracked_cache_cmds};
-use crate::testutil::scratch_repo;
+use crate::testutil::{git, scratch_repo};
 use std::path::PathBuf;
 
 #[test]
 fn offers_follow_the_os_and_version() {
     for os in [Os::Windows, Os::MacOs] {
         for v in [Some((2, 36, 0)), Some((2, 54, 1)), None] {
-            assert_eq!(monitor_offer_for(os, v), MonitorOffer::Daemon, "{os:?} {v:?}");
+            for daemon in [Some(true), None] {
+                assert_eq!(monitor_offer_for(os, v, daemon), MonitorOffer::Daemon, "{os:?} {v:?}");
+            }
+            assert_eq!(monitor_offer_for(os, v, Some(false)), MonitorOffer::NotBuilt, "{os:?} {v:?}");
         }
-        assert_eq!(monitor_offer_for(os, Some((2, 35, 9))), MonitorOffer::TooOld((2, 35, 9)));
+        assert_eq!(monitor_offer_for(os, Some((2, 35, 9)), None), MonitorOffer::TooOld((2, 35, 9)));
+        assert_eq!(monitor_offer_for(os, Some((2, 35, 9)), Some(false)), MonitorOffer::TooOld((2, 35, 9)));
     }
     for v in [Some((2, 35, 9)), Some((2, 36, 0)), Some((2, 54, 1)), None] {
-        assert_eq!(monitor_offer_for(Os::Linux, v), MonitorOffer::Watchman, "{v:?}");
+        assert_eq!(monitor_offer_for(Os::Linux, v, Some(true)), MonitorOffer::Watchman, "{v:?}");
     }
     for v in [Some((2, 30, 0)), Some((2, 45, 0)), None] {
-        assert_eq!(monitor_offer(v), monitor_offer_for(Os::current(), v));
+        assert_eq!(monitor_offer(v, None), monitor_offer_for(Os::current(), v, None));
     }
 }
 
@@ -28,6 +32,8 @@ fn the_commands_are_gits_own() {
     assert_eq!(monitor_status_cmd().join(" "), "fsmonitor--daemon status");
     assert_eq!(monitor_start_cmd().join(" "), "fsmonitor--daemon start");
     assert_eq!(monitor_enable_cmd().join(" "), "config core.fsmonitor true");
+    assert_eq!(monitor_disable_cmd().join(" "), "config --unset core.fsmonitor");
+    assert_eq!(monitor_stop_cmd().join(" "), "fsmonitor--daemon stop");
     assert_eq!(monitor_record_cmd().join(" "), "status --porcelain --untracked-files=all");
     assert_eq!(untracked_cache_cmds(StatusSpeedups::default()).last(), Some(&monitor_record_cmd()));
 }
@@ -96,7 +102,7 @@ fn turning_it_on_keeps_trust() {
 
 /// Stops the daemon watching `0` and removes the folder, even when an assertion failed: on
 /// Windows the daemon holds the folder open.
-struct Stopped(PathBuf);
+pub(crate) struct Stopped(pub(crate) PathBuf);
 
 impl Drop for Stopped {
     fn drop(&mut self) {
@@ -124,8 +130,7 @@ fn turned_on(dir: &Path) -> (MonitorOutcome, String) {
 fn the_daemon_starts_and_is_confirmed() {
     let dir = scratch_repo("fsmonitor-live");
     let guard = Stopped(dir.clone());
-    let build = gitcli::read(&dir, &args(&["version", "--build-options"])).stdout;
-    if !build.contains("feature: fsmonitor--daemon") {
+    if daemon_built(&dir) != Some(true) {
         eprintln!("skipped: this git has no built-in file system monitor");
         return;
     }
@@ -138,5 +143,43 @@ fn the_daemon_starts_and_is_confirmed() {
     let (outcome, log) = turned_on(&dir);
     assert_eq!(outcome, MonitorOutcome::Watching { started: false }, "{log}");
     assert!(!log.contains("fsmonitor--daemon start"), "{log}");
+
+    // Off again: the setting is gone and no daemon watches; a second time changes nothing.
+    let (ok, log) = turn_off_monitor(&dir);
+    assert!(ok, "{log}");
+    assert!(log.contains("$ git config --unset core.fsmonitor") && log.contains("$ git fsmonitor--daemon stop"), "{log}");
+    assert!(!status_speedups(&dir).fsmonitor, "{log}");
+    let status = gitcli::output(&dir, &monitor_status_cmd(), "", gitcli::NO_PROMPTS, None);
+    assert_eq!(status_answer(&status), Ok(false), "{log}");
+    let (ok, log) = turn_off_monitor(&dir);
+    assert!(ok, "already off: {log}");
+    assert_eq!(stop_monitor(&dir), "", "none running");
     drop(guard);
+}
+
+#[test]
+fn build_options_name_the_daemon() {
+    let built = "git version 2.54.0.windows.1\ncpu: x86_64\nfeature: fsmonitor--daemon\ngettext: enabled\n";
+    assert!(daemon_in_build_options(built));
+    assert!(daemon_in_build_options("feature: fsmonitor--daemon\r\n"));
+    assert!(!daemon_in_build_options("git version 2.43.0\ncpu: x86_64\nsizeof-long: 8\n"));
+    assert!(!daemon_in_build_options("feature: fsmonitor--daemon-ish\n"));
+    let dir = scratch_repo("fsmonitor-probe");
+    let probed = daemon_built(&dir).expect("git answers");
+    let raw = gitcli::read(&dir, &args(&["version", "--build-options"])).stdout;
+    assert_eq!(probed, raw.contains("feature: fsmonitor--daemon"), "{raw}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn stopping_and_turning_off_without_a_daemon() {
+    let dir = scratch_repo("fsmonitor-off");
+    assert_eq!(stop_monitor(&dir), "", "no daemon runs here");
+    git(&dir, &["config", "core.fsmonitor", "true"]);
+    let (ok, log) = turn_off_monitor(&dir);
+    assert!(ok, "{log}");
+    assert!(!status_speedups(&dir).fsmonitor, "{log}");
+    let (ok, log) = turn_off_monitor(&dir);
+    assert!(ok, "never set: {log}");
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -1,10 +1,12 @@
-//! The slow-status note's job for git's built-in file system monitor (`Effect::TurnOnMonitor`):
-//! check, start, confirm and set it (`repo::turn_on_monitor`), then have git write its token (and
-//! the untracked cache, when that was offered too) into the index.
+//! The jobs for git's built-in file system monitor. Turn on (`Effect::TurnOnMonitor`, from the
+//! slow-status note or Repository > Hooks): check, start, confirm and set it
+//! (`repo::turn_on_monitor`), then have git write its token (and the untracked cache, when that
+//! was offered too) into the index. Turn off (`Effect::TurnOffMonitor`): unset it and stop the
+//! daemon (`repo::turn_off_monitor`).
 
 use super::execute::{Cx, Execute};
 use super::git_ops;
-use crate::effect::MonitorJob;
+use crate::effect::{MonitorJob, MonitorOff};
 use crate::msg::{LoadMsg, Msg};
 use glowfly_core::repo;
 use std::path::Path;
@@ -12,6 +14,13 @@ use std::path::Path;
 impl Execute for MonitorJob {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
         Some(turn_on(&self.cwd, &self.then))
+    }
+}
+
+impl Execute for MonitorOff {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        let (ok, output) = repo::turn_off_monitor(&self.cwd);
+        Some(Msg::Load(LoadMsg::MonitorTurnedOff { output, ok }))
     }
 }
 
