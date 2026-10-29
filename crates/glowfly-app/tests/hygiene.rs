@@ -36,7 +36,7 @@ const LONG_FILES: &[(&str, usize)] = &[
 
 /// How many log and toast calls in `update/` and `state/` still pass English text. Lower it when
 /// you translate some; never raise it.
-const ENGLISH_LOG_CALLS: usize = 180;
+const ENGLISH_LOG_CALLS: usize = 179;
 
 /// Fixture builders and the only files that may define them (as `fn <name>(`, or the full
 /// signature for `harness`). A new test reuses one of these instead of writing its own copy.

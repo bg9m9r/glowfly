@@ -1,6 +1,7 @@
 //! The first-run welcome (identity, hosting service, git check, start) and the tour of the main
 //! window. The welcome reads and writes only user.name and user.email in the global git config;
-//! closing or finishing it sets `settings.welcome_done`, the one thing saved.
+//! closing or finishing it sets `settings.welcome_done` and the Start step's avatar choice
+//! (`settings.avatar_lookups`), the only things saved.
 
 use crate::effect::{Effect, LoadKind};
 use crate::onboarding::{OnboardingEffect, OnboardingMsg, StartChoice};
@@ -96,7 +97,7 @@ pub(super) fn loaded(st: &mut AppState, kind: LoadKind) {
 
 /// Opens the welcome at the first step and reads git's identity for it.
 fn open(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.onboarding.welcome = Some(Welcome::new());
+    st.onboarding.welcome = Some(Welcome { avatars: st.settings.avatar_lookups, ..Welcome::new() });
     fx.push(Effect::Onboarding(OnboardingEffect::ReadIdentity { cwd: AppState::outside_dir() }));
 }
 
@@ -107,10 +108,14 @@ fn go(st: &mut AppState, step: Option<WelcomeStep>) {
     }
 }
 
-/// Closes the welcome; the first time, remembers that it was seen.
+/// Closes the welcome, keeping its avatar choice; the first time, remembers that it was seen.
 fn finish(st: &mut AppState, fx: &mut Vec<Effect>) {
-    st.onboarding.welcome = None;
-    if !st.settings.welcome_done {
+    let avatars = st.onboarding.welcome.take().map(|w| w.avatars);
+    let changed = avatars.is_some_and(|on| on != st.settings.avatar_lookups);
+    if let Some(on) = avatars {
+        st.settings.avatar_lookups = on;
+    }
+    if changed || !st.settings.welcome_done {
         st.settings.welcome_done = true;
         fx.push(super::prefs::save_settings(st));
     }

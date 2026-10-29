@@ -150,7 +150,7 @@ fn open_github_repo(st: &mut AppState, name: &str) -> PathBuf {
 fn account_change_reloads_forge() {
     let mut st = with_setups();
     st.settings.profile_mut(PERSONAL).unwrap().prefs = None;
-    (st.settings.auto_fetch_minutes, st.settings.use_initials) = (0, true);
+    (st.settings.auto_fetch_minutes, st.settings.avatar_lookups) = (0, false);
     let a = open_github_repo(&mut st, "profile-forge-a");
     st.session.forge.as_mut().unwrap().prs = vec![pr(1)];
     let b = open_github_repo(&mut st, "profile-forge-b");

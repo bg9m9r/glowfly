@@ -30,4 +30,8 @@ without warranty of any kind, express or implied. `THIRD-PARTY-NOTICES.md` lists
 of the code it includes. When a release has a `.flatpak` file, that bundle also includes git,
 which is under the GNU General Public License, version 2: its notice is `GIT-NOTICE.md` in the
 bundle, and the git source archive it was built from is attached to the release.
+
+**Privacy.** Glowfly sends no telemetry. It checks GitHub for updates once a day, and looks up
+author pictures only if you turn that on. [PRIVACY.md](https://github.com/bg9m9r/glowfly/blob/main/PRIVACY.md)
+lists everything it sends and where.
 <!-- glowfly-release-header:end -->

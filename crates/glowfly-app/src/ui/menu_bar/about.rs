@@ -1,10 +1,10 @@
 //! Help > About Glowfly (`Modal::About`): the version, licence and git in use and the project's
 //! website. Third-party notices… opens the bundled licenses in their own dialog
-//! (`notices.rs`).
+//! (`notices.rs`); Privacy opens the privacy notice (PRIVACY.md) on the website.
 
 use crate::msg::{AppMsg, Msg};
 use crate::state::git_env::GitState;
-use crate::state::menu_bar::{LICENSE, WEBSITE, git_line, version_info};
+use crate::state::menu_bar::{LICENSE, PRIVACY, WEBSITE, git_line, version_info};
 use crate::ui::dialog_frame::{Cx, Dialog, Footer};
 use crate::ui::widgets::buttons;
 use eframe::egui;
@@ -22,9 +22,14 @@ pub(crate) fn about(ui: &mut egui::Ui, cx: Cx, git: &GitState, version: &str, ms
             ui.label(line);
         }
         ui.add_space(8.0);
-        if ui.add(buttons::secondary(t.tr("about.notices.button")).small()).clicked() {
-            msgs.push(Msg::App(AppMsg::ShowNotices));
-        }
+        ui.horizontal(|ui| {
+            if ui.add(buttons::secondary(t.tr("about.notices.button")).small()).clicked() {
+                msgs.push(Msg::App(AppMsg::ShowNotices));
+            }
+            if ui.add(buttons::secondary(t.tr("about.privacy.button")).small()).clicked() {
+                msgs.push(Msg::OpenUrl(PRIVACY.to_owned()));
+            }
+        });
     });
     let footer = Footer::new()
         .extra(buttons::secondary(t.tr("about.website.button")))

@@ -17,6 +17,7 @@ pub(super) mod auto_stash_guard_tests;
 pub(super) mod auto_stash_index_tests;
 pub(super) mod auto_stash_saved_tests;
 pub(super) mod auto_stash_tests;
+pub(super) mod avatars_tests;
 pub(super) mod blame_tests;
 pub(super) mod branch_colour_tests;
 pub(super) mod branch_delete_tests;

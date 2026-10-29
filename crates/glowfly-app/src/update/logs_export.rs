@@ -53,10 +53,11 @@ pub(super) fn exported(st: &mut AppState, dest: PathBuf, result: Result<BundleRe
     match result {
         Ok(r) => {
             let name = dest.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-            let files = if r.files == 1 { "1 file".to_owned() } else { format!("{} files", r.files) };
-            let label = crate::state::files::show_in_folder(st.settings.lang()).to_owned();
+            let t = st.settings.lang();
+            let label = crate::state::files::show_in_folder(t).to_owned();
             let action = ToastAction { label, msg: Box::new(Msg::Logs(LogsMsg::ShowExported(dest.clone()))), workdir: None };
-            st.toast_action(true, format!("Exported the logs to {name} ({files})"), action, now);
+            // Says what the bundle holds, so it is read before being posted anywhere public.
+            st.toast_action(true, t.trn("logs.exported.toast", r.files, &[("name", &name)]), action, now);
             st.log_quiet(true, format!("Exported the logs to {}", native_path::shown(&dest)));
         }
         Err(e) => {

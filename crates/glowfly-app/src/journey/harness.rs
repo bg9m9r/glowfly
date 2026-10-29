@@ -65,7 +65,7 @@ fn settings() -> Settings {
         theme: ThemeChoice::Dark,
         language: "en".into(),
         date_locale: "en_US".into(),
-        use_initials: true,
+        avatar_lookups: false,
         auto_fetch_minutes: 0,
         watch_files: false,
         conflict_check: false,

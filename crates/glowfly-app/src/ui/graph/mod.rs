@@ -135,6 +135,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let commands = crate::state::custom_commands::MenuCommands::for_state(st);
         let now = st.view.now;
         let offset = st.view.utc_offset;
+        let show_avatars = crate::ui::avatars::shown(st);
         let avatars = &mut cache.avatars;
         let stats = &st.session.reads.stats;
         let wip_label = t.tr("graph.wip.label");
@@ -243,7 +244,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     if kind == NodeKind::Merge {
                         nodes::merge_dot(&gp, pos2(node_x, mid), lane_col);
                     } else {
-                        let av = if settings.use_initials { None } else { Some(&mut *avatars) };
+                        let av = if show_avatars { Some(&mut *avatars) } else { None };
                         nodes::commit(&gp, pos2(node_x, mid), c.author.name(), c.author.email(), lane_col, av);
                     }
                 }

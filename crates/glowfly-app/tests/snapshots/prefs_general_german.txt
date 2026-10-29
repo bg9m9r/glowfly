@@ -7,7 +7,7 @@ Label "Updates"
 CheckBox "Einmal täglich nach Updates suchen" [on]
 Label "Glowfly 0.1.0 · Noch nie geprüft"
 Button "Jetzt prüfen"
-Label "Glowfly fragt einmal täglich die Releases-API von GitHub nach dem neuesten Release seines Repositorys. Dabei wird nichts über dich oder deine Repositorys gesendet. Downloads werden mit den veröffentlichten SHA-256-Prüfsummen des Releases abgeglichen."
+Label "Glowfly fragt einmal täglich die Releases-API von GitHub nach dem neuesten Release seines Repositorys. GitHub sieht dabei deine IP-Adresse und die Version von Glowfly, aber nichts über deine Repositorys. Downloads werden mit den veröffentlichten SHA-256-Prüfsummen des Releases abgeglichen."
 Label "Git"
 Label "git 2.45.1 unter C:\\Program Files\\Git\\cmd\\git.exe"
 Button "Auswählen…"

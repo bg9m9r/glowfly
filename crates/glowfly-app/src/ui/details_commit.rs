@@ -149,7 +149,7 @@ fn person_row(ui: &mut Ui, st: &AppState, cache: &mut UiCache, d: &CommitDetail,
     );
     ui.allocate_ui_with_layout(vec2(ui.available_width(), PERSON_H), Layout::left_to_right(Align::Center), |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(PERSON_H, PERSON_H), Sense::hover());
-        let av = if st.settings.use_initials { None } else { Some(&mut cache.avatars) };
+        let av = if super::avatars::shown(st) { Some(&mut cache.avatars) } else { None };
         let ring = st.snap.as_ref().and_then(|s| s.commit_swatch(d.oid)).map_or_else(color::faint, line);
         draw_avatar(ui.painter(), rect.center(), AVATAR_R, &d.author, &d.email, ring, av);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

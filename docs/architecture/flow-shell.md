@@ -78,7 +78,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - On macOS (`Chrome::native_menu`) `state/menu_native.rs` plans the system menu bar from the same model: the app menu takes About, Preferences and Quit, beside Services, Hide, Hide Others and Show All; key equivalents; tags of generation and item index.
 - `platform/macos_menu.rs` builds the system menu bar, and `ui/app_menu.rs` runs its picks before each frame's input and hands it the menus after the frame's messages (docs/PLATFORMS.md, Menus).
 - The menu bar's own window actions are `AppMsg` (`update/app.rs`).
-- About opens `Modal::About`, whose Third-party notices… button opens `Modal::Notices` in its place (`ui/menu_bar/notices.rs`, with Back to About), which lists the licenses `glowfly_core::notices` parses from THIRD-PARTY-NOTICES.md (embedded at build time).
+- About opens `Modal::About`, whose Privacy button opens PRIVACY.md on the website and whose Third-party notices… button opens `Modal::Notices` in its place (`ui/menu_bar/notices.rs`, with Back to About), which lists the licenses `glowfly_core::notices` parses from THIRD-PARTY-NOTICES.md (embedded at build time).
 - Each menu is drawn from the model by `menu_bar::contents`, so the bar and the title bar's menu button share them.
 - `bar.rs`: the titles as buttons, each menu opened below its title through `menu_anchor.rs`.
 - The title bar's menu button shows the five titles as submenus, or one menu alone under a row of titles when opened from the keyboard.

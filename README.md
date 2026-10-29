@@ -117,8 +117,9 @@ board) under Repo-Specific Preferences > Issue Tracker.
 - **Linking**: a new PR links the issues mentioned on its branch. Azure Boards links through the
   API, GitHub and GitLab get `Closes #n`, Bitbucket gets `Resolves #n`, Jira gets the key, and
   Trello gets the card link.
-- **Credentials**: an environment variable, then a token saved in the Windows Credential Manager,
-  then Git Credential Manager (the same sign-in `git push` uses). Background refreshes (every 5
+- **Credentials**: an environment variable, then a token saved in the system's credential store
+  (Windows Credential Manager, the macOS Keychain or the Secret Service on Linux), then Git
+  Credential Manager (the same sign-in `git push` uses). Background refreshes (every 5
   minutes) never show a sign-in window.
 - **Live check**: `GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture` runs
   read-only API calls against a real service.
@@ -138,8 +139,8 @@ sub-list, and forms with right-aligned labels.
   Trello).
   Each has a connection card with "Connect to …" (signs in through Git Credential Manager), or a
   host domain plus token. Credentials are verified before being saved.
-- **UI Customization**: graph columns, the quick-branch button, trace a branch on hover, and
-  branch visibility (All branches / Relevant branches).
+- **UI Customization**: graph columns, author pictures (off unless turned on), the quick-branch
+  button, trace a branch on hover, and branch visibility (All branches / Relevant branches).
 - **Language & region**: interface language, date/time locale and four patterns (Date, Long
   date, Date and time and Full date and time) that follow the locale until you type your own,
   and relative dates.
@@ -152,7 +153,15 @@ sub-list, and forms with right-aligned labels.
 App settings live in `settings.json` in `%APPDATA%\Glowfly` on Windows,
 `~/Library/Application Support/Glowfly` on macOS and `$XDG_CONFIG_HOME/glowfly` (usually
 `~/.config/glowfly`) on Linux. Git settings are written straight to git
-config. Tokens go to the Windows Credential Manager.
+config. Tokens go to the system's credential store: Windows Credential Manager on Windows,
+the Keychain on macOS and the Secret Service (GNOME Keyring, KWallet) on Linux.
+
+## Privacy
+
+No telemetry, analytics or crash reports. Glowfly goes online for a daily update check (GitHub
+sees your IP address and the app's version; it can be turned off), for the hosting services
+and remotes you use, and for author pictures only if you turn them on. [PRIVACY.md](PRIVACY.md)
+lists every request and what it sends.
 
 ## Architecture
 

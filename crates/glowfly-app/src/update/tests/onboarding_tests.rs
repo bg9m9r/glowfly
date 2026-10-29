@@ -1,7 +1,7 @@
 //! Headless tests for the first-run welcome (startup, the identity step's read, checks and
-//! write, step navigation, closing and finishing) and the tour (steps, resume, starting after a
-//! repository opens) and their palette entries. No git config is read or written: the effects
-//! are checked, and their results sent by hand.
+//! write, step navigation, closing and finishing, the avatar opt-in) and the tour (steps,
+//! resume, starting after a repository opens) and their palette entries. No git config is read
+//! or written: the effects are checked, and their results sent by hand.
 
 use super::tests::{scratch_repo, state};
 use super::update;
@@ -273,6 +273,20 @@ fn closing_counts_as_seen() {
     assert!(matches!(fx.as_slice(), [Effect::Onboarding(OnboardingEffect::ReadIdentity { .. })]));
     assert_eq!(step(&st), Some(WelcomeStep::Identity));
     assert!(!saves(&run(&mut st, O::CloseWelcome)), "already seen: nothing to save");
+}
+
+#[test]
+fn the_avatar_choice_is_kept_when_the_welcome_closes() {
+    let mut st = welcome(Identity::default());
+    assert!(!st.onboarding.welcome.as_ref().unwrap().avatars, "off unless chosen");
+    st.onboarding.welcome.as_mut().unwrap().avatars = true;
+    assert!(saves(&run(&mut st, O::Finish(None))) && st.settings.avatar_lookups);
+    run(&mut st, O::ShowWelcome);
+    assert!(st.onboarding.welcome.as_ref().unwrap().avatars, "seeded from the setting");
+    assert!(!saves(&run(&mut st, O::CloseWelcome)), "unchanged and already seen: nothing to save");
+    run(&mut st, O::ShowWelcome);
+    st.onboarding.welcome.as_mut().unwrap().avatars = false;
+    assert!(saves(&run(&mut st, O::CloseWelcome)) && !st.settings.avatar_lookups);
 }
 
 #[test]

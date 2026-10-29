@@ -4,11 +4,19 @@
 //! At most `MAX_TEXTURES` textures stay loaded: once there are more, `end_frame` frees the ones
 //! drawn least recently (down to seven eighths of the limit, so it doesn't run every frame).
 //! A freed avatar is asked for again when it is next drawn, and comes from the disk cache.
+//! Views draw avatars only while `shown` (lookups turned on, and a publicly hosted repository);
+//! otherwise initials.
 
+use crate::state::AppState;
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions};
 use glowfly_core::avatars::Image;
 use std::borrow::Cow;
 use std::collections::HashMap;
+
+/// Whether the active tab's views draw (and so ask for) avatars: see `avatars::lookups_allowed`.
+pub(crate) fn shown(st: &AppState) -> bool {
+    glowfly_core::avatars::lookups_allowed(st.settings.avatar_lookups, st.snap.as_ref().map_or(&[], |s| &s.remote_urls))
+}
 
 /// The most avatar textures kept (64 x 64 RGBA, 16 KB each: 8 MB).
 pub const MAX_TEXTURES: usize = 512;

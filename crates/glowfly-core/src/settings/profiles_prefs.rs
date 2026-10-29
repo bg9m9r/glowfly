@@ -70,7 +70,7 @@ profile_prefs! {
     show_toolbar: bool,
     show_menu_bar: bool,
     spellcheck: bool,
-    use_initials: bool,
+    avatar_lookups: bool,
     ghost_refs: bool,
     highlight_ref_rows: bool,
     worktree_wips: bool,

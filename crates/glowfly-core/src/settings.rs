@@ -128,8 +128,8 @@ pub struct Settings {
     /// Draw the menu bar (File, Edit, View, Window, Help) at the top of the window.
     pub show_menu_bar: bool,
     pub spellcheck: bool,
-    /// Initials instead of Gravatar / hosting-service avatars.
-    pub use_initials: bool,
+    /// Look up author avatars online (opt-in); was `use_initials`, which no file opts into now.
+    pub avatar_lookups: bool,
     /// The quick-branch (New branch) button on the checked-out commit (Preferences > UI Customization).
     pub ghost_refs: bool,
     /// Trace a branch on hover: light up its commits while the pointer is on its graph label.
@@ -325,7 +325,7 @@ impl Default for Settings {
             show_toolbar: true,
             show_menu_bar: true,
             spellcheck: true,
-            use_initials: false,
+            avatar_lookups: false,
             ghost_refs: true,
             highlight_ref_rows: true,
             worktree_wips: true,

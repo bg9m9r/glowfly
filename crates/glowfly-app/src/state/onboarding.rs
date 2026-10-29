@@ -77,12 +77,20 @@ pub struct Welcome {
     pub identity: IdentityForm,
     /// "Show me around once it opens" (edited in place by the view).
     pub tour_after: bool,
+    /// "Show authors' pictures from Gravatar" (edited in place by the view): seeded from
+    /// `settings.avatar_lookups` and written back when the welcome closes.
+    pub avatars: bool,
 }
 
 impl Welcome {
     /// At the first step, waiting for the identity read.
     pub fn new() -> Self {
-        Welcome { step: WelcomeStep::Identity, identity: IdentityForm { reading: true, ..IdentityForm::default() }, tour_after: true }
+        Welcome {
+            step: WelcomeStep::Identity,
+            identity: IdentityForm { reading: true, ..IdentityForm::default() },
+            tour_after: true,
+            avatars: false,
+        }
     }
 
     /// The name the header greets, after the identity step: the one git now holds (seeded from

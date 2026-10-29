@@ -6,6 +6,7 @@ Dialog
   Label "Licensed under MIT OR Apache-2.0"
   Label "Git 2.47.1"
   Button "Third-party notices…"
+  Button "Privacy"
   Button "Website"
   Button "Copy version info"
   Button "Close" [focused]

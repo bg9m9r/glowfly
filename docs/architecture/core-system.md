@@ -80,6 +80,7 @@ source file, update its line here.
 - `file_lists.rs`: how the changed-file lists show their files (List or Tree).
 - `ui_choices.rs`: the notification corner, descriptions, branch visibility and the diff viewer's layout and mode; `tracker.rs`: where a repository's issues come from.
 - `welcome_done`: whether the first-run welcome was seen (true for any file written before it existed).
+- `avatar_lookups`: author pictures looked up online, off unless chosen (it replaced `use_initials`, which a file no longer opts into).
 - `updates.rs`: the update check and the release notes seen.
 - `downloads.rs`: the Downloads folder updates are saved to.
 - `date_fmt.rs`: how dates are shown: the four patterns (Date, Long date, Date and time, Full date and time), blank following the date locale, relative ages and date hover text.
@@ -107,7 +108,7 @@ source file, update its line here.
 - `dates.rs`: dates: moment.js-style patterns, localized month and weekday words, relative ages.
 - `dates/locale_patterns.rs`: each language's usual patterns for the date locale (ISO 8601 otherwise), keyed by a normalised locale tag with the OS locale read once per run.
 - `spell.rs`: spell checking.
-- `avatars.rs`: avatar fetching.
+- `avatars.rs`: avatar fetching, and when it may happen (`lookups_allowed`: turned on, and a remote on github.com, gitlab.com, bitbucket.org or codeberg.org).
 - `text.rs`: safe display of outside text.
 - `changelog.rs`: release notes in release-please's Markdown (the bundled `CHANGELOG.md`, a release's body): releases, sections and styled items.
 - `notices.rs`: parses the licenses in THIRD-PARTY-NOTICES.md, section by marked section (fonts, egui's fonts, syntax definitions, encoding tables, libgit2, Rust crates, AppImage runtime); a block covering many crates gets a short name.

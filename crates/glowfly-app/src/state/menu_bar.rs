@@ -10,6 +10,8 @@ use glowfly_core::settings::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS};
 
 /// Help > Glowfly website.
 pub const WEBSITE: &str = env!("CARGO_PKG_REPOSITORY");
+/// About's Privacy button: the privacy notice (PRIVACY.md) on the project's site.
+pub const PRIVACY: &str = concat!(env!("CARGO_PKG_REPOSITORY"), "/blob/main/PRIVACY.md");
 /// Help > Report an issue.
 pub const ISSUES: &str = concat!(env!("CARGO_PKG_REPOSITORY"), "/issues");
 /// The version in About, the status bar and the copied version info.

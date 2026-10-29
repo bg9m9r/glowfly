@@ -147,7 +147,7 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
 }
 
 /// Step 4: open, clone or start a repository as cards, then the tour and where the look is
-/// changed in one quiet row.
+/// changed in one quiet row, and the opt-in to author pictures with what it sends.
 pub fn start(ui: &mut egui::Ui, t: Lang, w: &mut Welcome, has_repo: bool, msgs: &mut Vec<Msg>) {
     text(ui, t.tr("welcome.start.intro"));
     ui.add_space(16.0);
@@ -166,4 +166,7 @@ pub fn start(ui: &mut egui::Ui, t: Lang, w: &mut Welcome, has_repo: bool, msgs: 
             msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ui)));
         }
     });
+    ui.add_space(8.0);
+    controls::checkbox(ui, &mut w.avatars, t.tr("welcome.start.avatars.check"));
+    weak(ui, t.tr("prefs.ui.avatars.help"));
 }

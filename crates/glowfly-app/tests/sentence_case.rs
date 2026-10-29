@@ -27,6 +27,7 @@ const PROPER: &[&str] = &[
     "Boards",
     "Bitbucket",
     "Gitea",
+    "Gravatar",
     "Jira",
     "Trello",
     "Windows",

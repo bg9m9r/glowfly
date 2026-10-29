@@ -1,6 +1,8 @@
 //! Author avatar lookup. GitHub noreply addresses use GitHub's
 //! avatar service; everything else asks Gravatar (by SHA-256 of the email, never the address
-//! itself). Images and misses are cached in `avatars` under the config folder.
+//! itself). Images and misses are cached in `avatars` under the config folder. Lookups are
+//! opt-in (`Settings::avatar_lookups`) and only for repositories on a public hosting service
+//! (`lookups_allowed`), so co-workers' emails in a self-hosted or local repository never leave.
 
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
@@ -8,6 +10,10 @@ use std::sync::LazyLock;
 use std::time::{Duration, SystemTime};
 
 const SIZE: u32 = 64;
+/// The public hosting services whose repositories may have their authors' avatars looked up,
+/// with the SSH hosts that stand for them.
+const PUBLIC_HOSTS: [&str; 7] =
+    ["github.com", "gitlab.com", "bitbucket.org", "codeberg.org", "ssh.github.com", "altssh.gitlab.com", "altssh.bitbucket.org"];
 /// The largest avatar download accepted, and the largest image decoded from it.
 const MAX_BYTES: u64 = 2 * 1024 * 1024;
 const MAX_SIDE: u32 = 1024;
@@ -21,6 +27,15 @@ fn hash(email: &str) -> String {
 
 fn cache_dir() -> Option<PathBuf> {
     crate::settings::cache_dir().map(|d| d.join("avatars"))
+}
+
+/// Whether avatars may be looked up for a repository with these `(name, url)` remotes: only
+/// when the user turned lookups `on` and a remote is on a public hosting service. A repository
+/// without remotes, or with only self-hosted ones, counts as private.
+pub fn lookups_allowed(on: bool, remote_urls: &[(String, String)]) -> bool {
+    on && remote_urls
+        .iter()
+        .any(|(_, url)| crate::auth_failure::url_host(url).is_some_and(|h| PUBLIC_HOSTS.contains(&crate::auth_failure::bare(&h))))
 }
 
 /// The avatar URL for an email address.
@@ -126,6 +141,28 @@ mod tests {
         assert!(g.starts_with("https://gravatar.com/avatar/") && g.ends_with("?s=64&d=404"));
         assert_eq!(g, url_for("ada@example.com"), "normalized before hashing");
         assert!(!g.contains("example"), "the address itself is never sent");
+    }
+
+    #[test]
+    fn looks_up_only_when_on_and_publicly_hosted() {
+        let remotes = |urls: &[&str]| urls.iter().map(|u| ("origin".to_owned(), (*u).to_owned())).collect::<Vec<_>>();
+        for url in [
+            "https://github.com/o/r.git",
+            "git@gitlab.com:o/r.git",
+            "ssh://git@ssh.github.com:443/o/r.git",
+            "https://user@bitbucket.org/o/r",
+            "https://CODEBERG.org/o/r",
+        ] {
+            assert!(lookups_allowed(true, &remotes(&[url])), "{url}");
+            assert!(!lookups_allowed(false, &remotes(&[url])), "off: {url}");
+        }
+        for url in
+            ["https://git.example.com/o/r.git", "git@github.example.com:o/r.git", "https://github.com.evil.io/o/r", "C:/repos/r", "../r"]
+        {
+            assert!(!lookups_allowed(true, &remotes(&[url])), "{url}");
+        }
+        assert!(!lookups_allowed(true, &[]), "no remote counts as private");
+        assert!(lookups_allowed(true, &remotes(&["https://git.example.com/o/r", "https://github.com/o/r"])), "one public remote");
     }
 
     fn png(w: u32, h: u32) -> Vec<u8> {

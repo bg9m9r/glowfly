@@ -80,7 +80,8 @@ fn exported_ok_and_failed() {
     logs(&mut st, LogsMsg::Exported { dest: dest(), result: Ok(report) });
     let t = st.toasts.last().expect("a toast");
     assert!(t.ok);
-    assert_eq!(t.text, "Exported the logs to bundle.txt (4 files)");
+    assert!(t.text.starts_with("Exported the logs to bundle.txt (4 files). It holds repository paths"), "{}", t.text);
+    assert!(t.text.ends_with("check it before sharing it publicly."), "says to read it before sharing: {}", t.text);
     let action = t.action.as_ref().expect("show in folder");
     assert_eq!(action.label, crate::state::files::show_in_folder(st.settings.lang()));
     assert!(matches!(&*action.msg, Msg::Logs(LogsMsg::ShowExported(p)) if *p == dest()));

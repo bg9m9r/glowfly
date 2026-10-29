@@ -109,6 +109,16 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Copy one run from an open routine group's sub-rows
 - A palette entry to copy the current log tab
 - Offer to attach the exported bundle when choosing Help > Report an issue
+- Show what an exported bundle holds (and its repository paths) in an in-app dialog before the save dialog, not only in the toast after it
+
+### Privacy and avatar lookups
+
+- A one-time notice for people who had avatars before they became opt-in, saying where to turn them back on
+- Look up avatars from a connected self-hosted server's own API (GitLab Self-Managed, GitHub Enterprise Server) instead of never
+- A per-repository override of the avatar setting (Repo-Specific Preferences)
+- A palette entry that turns avatar lookups on or off
+- Empty the avatar disk cache when lookups are turned off
+- Ship PRIVACY.md in every package beside the licences
 
 ### Onboarding
 

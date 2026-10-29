@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Puts the fixed header (packaging/release-notes-header.md: unsigned builds, checking a download
-# against SHA256SUMS, no warranty and the licences) at the top of a GitHub release's notes, above
+# against SHA256SUMS, no warranty and the licences, and the privacy notice) at the top of a GitHub release's notes, above
 # what release-please or GitHub wrote. Run by the Release workflow's prepare job once the release
 # exists. A header already there, between the file's start and end markers, is replaced, so a
 # re-run leaves one.

@@ -67,8 +67,8 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, menu_bar_row: bool)
     check_row(ui, label, &mut s.reduce_motion, check, Some(text));
     let (label, check, text) = (t.tr("prefs.ui.spellcheck.label"), t.tr("prefs.ui.spellcheck.check"), t.tr("prefs.ui.spellcheck.help"));
     check_row(ui, label, &mut s.spellcheck, check, Some(text));
-    let (label, check, text) = (t.tr("prefs.ui.initials.label"), t.tr("prefs.ui.initials.check"), t.tr("prefs.ui.initials.help"));
-    check_row(ui, label, &mut s.use_initials, check, Some(text));
+    let (label, check, text) = (t.tr("prefs.ui.avatars.label"), t.tr("prefs.ui.avatars.check"), t.tr("prefs.ui.avatars.help"));
+    check_row(ui, label, &mut s.avatar_lookups, check, Some(text));
     let (label, check, text) = (t.tr("prefs.ui.ghost.label"), t.tr("prefs.ui.ghost.check"), t.tr("prefs.ui.ghost.help"));
     check_row(ui, label, &mut s.ghost_refs, check, Some(text));
     check_row(ui, t.tr("prefs.ui.highlight_rows.label"), &mut s.highlight_ref_rows, t.tr("prefs.ui.highlight_rows.check"), None);

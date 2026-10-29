@@ -13,6 +13,8 @@ Dialog
   Label "Lege ein leeres Repository in einem neuen oder vorhandenen Ordner an."
   CheckBox "Nach dem Öffnen herumführen" [on]
   Label "Design und Layout änderst du unter Einstellungen > Oberfläche"
+  CheckBox "Autorenbilder von Gravatar zeigen" [off]
+  Label "Sendet einen Hash der E-Mail-Adresse jedes Autors an Gravatar, nur bei Repositorys auf github.com, gitlab.com, bitbucket.org oder codeberg.org."
   Button "Zurück"
   Button "Fertig" [focused]
 painted:

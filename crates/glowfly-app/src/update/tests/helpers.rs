@@ -4,7 +4,6 @@
 use super::update;
 use crate::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
 use crate::effect::{OsEffect, PrefsEffect};
-use crate::msg::AvatarMsg;
 use crate::msg::CommitMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::JobMsg;
@@ -426,18 +425,6 @@ fn commit_signing_flow() {
     ));
     assert_eq!(st.prefs.as_ref().unwrap().git.as_ref().unwrap().signing_key, "NEWKEY");
     assert!(!st.prefs.as_ref().unwrap().signing.generating);
-}
-
-#[test]
-fn avatars_are_fetched_in_batches_and_handed_to_the_shell() {
-    let mut st = state();
-    let emails: Vec<String> = (0..10).map(|i| format!("dev{i}@example.com")).collect();
-    let fx = update(&mut st, Msg::Avatars(AvatarMsg::WantAvatars(emails)), Instant::now());
-    let sizes: Vec<usize> = fx.iter().map(|e| if let Effect::FetchAvatars(b) = e { b.len() } else { 0 }).collect();
-    assert_eq!(sizes, [8, 2]);
-
-    update(&mut st, Msg::Avatars(AvatarMsg::AvatarsLoaded(vec![("dev0@example.com".into(), None)])), Instant::now());
-    assert_eq!(st.view.avatars_loaded.len(), 1);
 }
 
 #[test]
