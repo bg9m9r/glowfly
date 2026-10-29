@@ -240,7 +240,10 @@ pub(super) fn fork_created(
                     f.step = ForkStep::Ready { user };
                     f.error = Some(e);
                 }
-                None => st.log(false, format!("Forking {} on {service} failed: {}", target.display(), error_text(&e))),
+                None => {
+                    let why = error_text(st.settings.lang(), target, &e);
+                    st.log(false, format!("Forking {} on {service} failed: {why}", target.display()));
+                }
             }
             return;
         }

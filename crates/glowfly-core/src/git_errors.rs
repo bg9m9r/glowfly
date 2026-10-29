@@ -114,7 +114,7 @@ pub fn classify(output: &str) -> Option<Cause> {
     if let Some(cause) = upstream(&lines) {
         return Some(cause);
     }
-    if lines.iter().any(|l| l.contains("Not possible to fast-forward")) {
+    if lower.iter().any(|l| diverged_pull(l)) {
         return Some(Cause::Diverged { branch: None });
     }
     if lines.iter().any(|l| l.contains("You are not currently on a branch.")) {
@@ -292,6 +292,14 @@ fn upstream(lines: &[&str]) -> Option<Cause> {
         }
         _ => None,
     }
+}
+
+/// A pull (`line` in lowercase) that stopped because the branch and its upstream both have
+/// commits: "not possible to fast-forward" (`--ff-only` or `pull.ff=only`, with or without
+/// ", aborting"), or "need to specify how to reconcile divergent branches" (git 2.33 and later,
+/// when no pull mode is configured).
+fn diverged_pull(line: &str) -> bool {
+    line.contains("not possible to fast-forward") || line.contains("how to reconcile divergent branches")
 }
 
 /// The name in git's ways of saying it can't find a ref, revision or path.

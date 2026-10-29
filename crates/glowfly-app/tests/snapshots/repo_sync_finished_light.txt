@@ -10,7 +10,7 @@ Dialog
   Label "Nothing to pull: the branch has no upstream"
   Button "Open"
   Label "docs"
-  Label "Failed: Not possible to fast-forward, aborting."
+  Label "Failed: This branch and its upstream have both moved on, so it can't be fast-forwarded. Open the repository to pull with a merge or rebase there."
   Button "Open"
   Button "Retry"
   Button "Close" [focused]

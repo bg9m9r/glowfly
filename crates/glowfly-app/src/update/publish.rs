@@ -12,6 +12,7 @@ use glowfly_core::gitcli::args;
 use glowfly_core::paths::same_spelling;
 
 pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
     match msg {
         PublishMsg::PublishDialog => open(st, fx),
         PublishMsg::PublishAccount(i) => {
@@ -38,7 +39,7 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                     f.clear_error();
                 }
                 Err(e) => {
-                    let sentence = advice::service(account.provider.name(), Ask::Owners, &e);
+                    let sentence = advice::service(t, account.provider.name(), Ask::Owners, &e);
                     let raw = format!("Couldn't sign in to {}: {e}", account.display());
                     match sentence {
                         Some(s) => f.set_error(Some(s), e),
@@ -77,7 +78,7 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                 Some(f) => {
                     let (owner, name) = (f.owner.clone(), f.name.trim().to_owned());
                     let service = f.account().map_or("GitHub", |a| a.provider.name());
-                    let sentence = advice::service(service, Ask::CreateRepo { owner: &owner, name: &name }, &e);
+                    let sentence = advice::service(t, service, Ask::CreateRepo { owner: &owner, name: &name }, &e);
                     f.creating = false;
                     f.set_error(sentence, e);
                 }

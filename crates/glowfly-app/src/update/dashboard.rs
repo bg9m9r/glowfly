@@ -9,6 +9,8 @@ use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use crate::state::dashboard::{AccountRow, AccountState, Basis, PendingPr, Phase, pr_label};
 use crate::state::dashboard_plan::{plan, repos_to_read};
+use crate::state::error_words::hosting;
+use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, Account, Target};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -138,12 +140,14 @@ fn sign_in(st: &mut AppState, account: Account, fx: &mut Vec<Effect>) {
 }
 
 fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
+    let lang = st.settings.lang();
     let d = &mut st.dashboard;
     if r.generation != d.generation {
         return;
     }
     for a in r.accounts {
         let key = a.account.key();
+        let said = |e: crate::effect::ForgeError| hosting(lang, a.account.provider, Ask::Read, &e);
         if d.account(&a.account).is_none() {
             d.accounts.push(AccountRow::new(a.account.clone(), AccountState::Pending));
         }
@@ -152,11 +156,11 @@ fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
             let Some(data) = d.targets.iter_mut().find(|x| x.target == t.target) else { continue };
             if let Some(p) = t.prs {
                 drop_auth |= p.as_ref().is_err_and(|e| e.auth);
-                data.prs = Some(p.map_err(|e| e.message));
+                data.prs = Some(p.map_err(said));
             }
             if let Some(i) = t.issues {
                 drop_auth |= i.as_ref().is_err_and(|e| e.auth);
-                data.issues = Some(i.map_err(|e| e.message));
+                data.issues = Some(i.map_err(said));
             }
         }
         let Some(row) = d.accounts.iter_mut().find(|x| x.account == a.account) else { continue };
@@ -172,7 +176,7 @@ fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
         }
         match a.me {
             Some(Ok(me)) => (row.me, row.me_error) = (Some(me), None),
-            Some(Err(e)) => row.me_error = Some(e.message),
+            Some(Err(e)) => row.me_error = Some(said(e)),
             None => {}
         }
         if drop_auth {

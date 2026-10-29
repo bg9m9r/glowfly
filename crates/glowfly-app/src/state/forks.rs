@@ -5,7 +5,9 @@
 
 use super::remotes::Job;
 use crate::effect::ForgeError;
+use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, Connection, Fork, ForkList, Target};
+use glowfly_core::i18n::Lang;
 use glowfly_core::remote_ops::{add_cmds, check_remote_name, check_url};
 use glowfly_core::repo::{RemoteInfo, Snapshot};
 use std::path::PathBuf;
@@ -168,9 +170,10 @@ pub fn visible(p: &ForkPicker) -> Vec<usize> {
     (0..p.list.forks.len()).filter(|i| p.list.forks[*i].full_name.to_lowercase().contains(&filter)).collect()
 }
 
-/// A failed request's text, with how to fix a sign-in failure.
-pub fn error_text(e: &ForgeError) -> String {
-    if e.auth { format!("{} Sign in again in Preferences > Integrations.", e.message) } else { e.message.clone() }
+/// A failed fork request's text for `target`'s service: in plain words when Glowfly knows the
+/// failure, else the service's own with how to fix a sign-in failure (`error_words::hosting`).
+pub fn error_text(t: Lang, target: &Target, e: &ForgeError) -> String {
+    super::error_words::hosting(t, target.provider, Ask::Fork, e)
 }
 
 /// A valid, unused remote name for a fork owned by `owner`.

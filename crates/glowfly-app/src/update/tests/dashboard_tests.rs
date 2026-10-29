@@ -257,7 +257,7 @@ fn replies_fill_the_rows_and_failures_are_kept_apart() {
     assert!(d.auth.contains_key(&gh("o", "r").account().key()));
     let mine = sections(d, DashShow::Mine, "");
     let api = mine[0].repos.iter().find(|r| r.data.target.repo == "api").unwrap();
-    assert_eq!(api.error, Some("HTTP 502: bad gateway"));
+    assert_eq!(api.error, Some("GitHub had a problem on its side. Try again in a few minutes."), "in plain words");
     let assigned = sections(d, DashShow::Assigned, "");
     assert!(assigned[0].repos.iter().any(|r| r.data.target.repo == "api" && r.rows.len() == 1), "its issues still list");
     assert_eq!((d.fetched_at, d.fetched.is_some(), d.phase), (Some(1_000), true, Phase::Idle));

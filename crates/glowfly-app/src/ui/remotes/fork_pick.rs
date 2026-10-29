@@ -78,7 +78,7 @@ pub fn show(
     if p.loading {
         pane_status::loading_line(ui, "Loading forks…");
     } else if let Some(e) = &p.error {
-        let error = error_text(e);
+        let error = error_text(cx.t, &p.target, e);
         let f = Failure { title: "Couldn't list the forks", error: &error, retry: Some(Msg::Remote(RemoteMsg::RetryForks)) };
         pane_status::failed_line(ui, cx.t, f, msgs);
     } else if p.list.forks.is_empty() {

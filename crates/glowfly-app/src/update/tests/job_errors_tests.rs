@@ -1,6 +1,7 @@
 //! Failure toasts that say what to do: git's cause in plain words, the fix beside Details, the
 //! Stash and <op> retry for a guarded job that ran over changes the snapshot hadn't shown yet,
-//! and no `<stdin>` whitespace warnings in a refused pull's log.
+//! Edit remote… on a remote that is missing or unreadable, and no `<stdin>` whitespace warnings
+//! in a refused pull's log.
 
 use super::auto_stash_tests::{git_cmds, up};
 use super::branch_tests::{remote_commit, with_origin};
@@ -9,9 +10,10 @@ use super::tests::{clean_tree, drive, finish, git, scratch_repo, state};
 use crate::effect::Effect;
 use crate::logs::LogKind;
 use crate::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, RepoMsg};
+use crate::remote::RemoteMsg;
 use crate::state::prefs::PrefPage;
 use crate::state::toasts::Toast;
-use crate::state::{AppState, RunningJob};
+use crate::state::{AppState, Modal, RunningJob};
 use glowfly_core::gitcli::args;
 use std::path::{Path, PathBuf};
 
@@ -193,6 +195,60 @@ fn causes_get_their_fix() {
     done(&mut st, &format!(" ! [rejected]        feature -> feature (non-fast-forward)\n{PUSH_FAILED}"));
     assert_eq!(labels(last_toast(&st)), (Some("Details"), None));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The remote the last toast's Edit remote… opens, if it has that fix.
+fn edits_remote(st: &AppState) -> Option<String> {
+    let t = last_toast(st);
+    match action_msg(st, t) {
+        Msg::Remote(RemoteMsg::EditDialog(name)) if labels(t).0 == Some("Edit remote…") => Some(name.clone()),
+        _ => None,
+    }
+}
+
+#[test]
+fn missing_or_unreadable_remotes_offer_edit_remote() {
+    let (mut st, work, bare) = with_origin("je-edit-remote");
+    // A real fetch from a URL with nothing there.
+    let gone = work.with_file_name("je-edit-remote-nowhere.git");
+    git(&work, &["remote", "set-url", "origin", &gone.display().to_string()]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    let fx = up(&mut st, Msg::git("Fetch", &["fetch", "origin"]));
+    finish(&mut st, fx);
+    assert!(last_toast(&st).text.starts_with("The remote repository wasn't found."), "{}", last_toast(&st).text);
+    assert_eq!(edits_remote(&st).as_deref(), Some("origin"));
+    let id = last_toast(&st).id;
+    drive(&mut st, Msg::ToastAction(id));
+    assert!(matches!(&st.modal, Some(Modal::Remote(_))), "the Edit remote dialog opens");
+    st.modal = None;
+
+    // With two remotes, the one git names, prints the URL of, or the branch tracks.
+    git(&work, &["remote", "add", "backup", "https://git.example.com/ada/backup.git"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    let cases = [
+        ("fatal: 'backup' does not appear to be a git repository\nfatal: Could not read from remote repository.", "backup"),
+        ("remote: Repository not found.\nfatal: repository 'https://git.example.com/ada/backup.git/' not found", "backup"),
+        ("fatal: repository 'https://h.example/x.git/' not found\nerror: could not fetch backup", "backup"),
+        ("ERROR: Repository not found.\nfatal: Could not read from remote repository.", "origin"),
+    ];
+    for (output, remote) in cases {
+        up(&mut st, Msg::git("Fetch", &["fetch", "--all"]));
+        done(&mut st, output);
+        assert_eq!(edits_remote(&st).as_deref(), Some(remote), "{output}");
+    }
+    // Unreachable hosts and certificates are no URL problem.
+    for output in [
+        "fatal: unable to access 'https://git.example.com/ada/backup.git/': Could not resolve host: git.example.com",
+        "fatal: unable to access 'https://git.example.com/ada/backup.git/': SSL certificate problem: unable to get local issuer certificate",
+    ] {
+        up(&mut st, Msg::git("Fetch", &["fetch", "--all"]));
+        done(&mut st, output);
+        assert_eq!(edits_remote(&st), None, "{output}");
+    }
+    assert!(last_toast(&st).text.starts_with("Git couldn't verify the security certificate of git.example.com."));
+    for d in [&work, &bare] {
+        let _ = std::fs::remove_dir_all(d);
+    }
 }
 
 #[test]

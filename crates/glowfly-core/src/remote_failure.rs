@@ -2,6 +2,8 @@
 //! `LANGUAGE=C`): the host can't be reached, the repository isn't there, the account may not see
 //! it, or only git's "Could not read from remote repository". git prints that last line
 //! whenever its ssh transport fails, so the real cause is looked for on the other lines first.
+//! A server certificate git couldn't verify (common behind company proxies that inspect HTTPS)
+//! is told apart from an unreachable host: it needs a certificate authority, not a network.
 //! Sign-in and host-key failures are `auth_failure`'s. Pure: no I/O.
 
 use crate::auth_failure::{bare, quoted_after, url_host};
@@ -18,7 +20,26 @@ pub enum RemoteFailure {
     NoAccess,
     /// Only git's "Could not read from remote repository." with no clearer cause.
     Unreadable,
+    /// The TLS connection failed because git couldn't verify the server's certificate (an
+    /// unknown or self-signed authority, an expired certificate, a name that doesn't match).
+    /// `host` is the server's name when the output gives it.
+    Certificate { host: Option<String> },
 }
+
+/// How curl's TLS backends (OpenSSL, GnuTLS, Schannel, Secure Transport) and Go-based helpers
+/// such as git-lfs say a server certificate wasn't trusted, in lowercase. Matched anywhere in a
+/// line, so the wording around them can differ between git and library versions.
+const CERTIFICATE: [&str; 9] = [
+    "ssl certificate problem",
+    "server certificate verification failed",
+    "certificate verify failed",
+    "sec_e_untrusted_root",
+    "cert_trust_is_untrusted_root",
+    "issued by an authority that is not trusted",
+    "certificate signed by unknown authority",
+    "ssl peer certificate or ssh remote key was not ok",
+    "certificate subject name",
+];
 
 /// The phrases of curl's and ssh's failed name lookups and connections that name the host
 /// right after them, each with the text that must follow.
@@ -48,6 +69,9 @@ const NOT_FOUND: [&str; 4] = [
 /// nothing about that.
 pub fn read(text: &str) -> Option<RemoteFailure> {
     let lines: Vec<&str> = text.lines().collect();
+    if lines.iter().any(|l| certificate(l)) {
+        return Some(RemoteFailure::Certificate { host: lines.iter().find_map(|l| access_host(l)) });
+    }
     let named = lines.iter().find_map(|l| named_host(l));
     if named.is_some() || lines.iter().any(|l| UNNAMED.iter().any(|m| l.contains(m))) {
         let host = named.or_else(|| lines.iter().find_map(|l| access_host(l)));
@@ -61,6 +85,12 @@ pub fn read(text: &str) -> Option<RemoteFailure> {
         return Some(RemoteFailure::NoAccess);
     }
     lines.iter().any(|l| l.contains("Could not read from remote repository")).then_some(RemoteFailure::Unreadable)
+}
+
+/// A line that says the server's certificate wasn't trusted.
+fn certificate(line: &str) -> bool {
+    let lower = line.to_lowercase();
+    CERTIFICATE.iter().any(|m| lower.contains(m))
 }
 
 /// The host a failed lookup or connection on `line` names.

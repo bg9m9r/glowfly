@@ -129,19 +129,19 @@ fn assigned_prs_show_for_a_repository_whose_issues_live_elsewhere() {
 #[test]
 fn assigned_shows_the_pr_error_when_issues_loaded_and_no_prs_without_the_user() {
     let one = || Ok(vec![issue("7", "Crash on start")]);
-    let st = widgets_with(Err(failed("HTTP 502: bad gateway")), one(), ada());
+    let st = widgets_with(Err(failed("HTTP 422: validation failed")), one(), ada());
     let shown = assigned_repo(&st, "widgets");
-    assert_eq!(shown, Some((vec!["issue 7".into()], Some("HTTP 502: bad gateway".into()))), "the issues still list");
+    assert_eq!(shown, Some((vec!["issue 7".into()], Some("HTTP 422: validation failed".into()))), "the issues still list");
 
-    let st = widgets_with(Err(failed("HTTP 502: bad gateway")), Err(failed("HTTP 500")), ada());
-    assert_eq!(assigned_repo(&st, "widgets"), Some((Vec::new(), Some("HTTP 500".into()))), "the issues' error first");
+    let st = widgets_with(Err(failed("HTTP 422: validation failed")), Err(failed("HTTP 409")), ada());
+    assert_eq!(assigned_repo(&st, "widgets"), Some((Vec::new(), Some("HTTP 409".into()))), "the issues' error first");
 
     // Azure DevOps pull requests have no assignee, so their list failing doesn't matter here.
     let mut st = state();
     st.dashboard.generation = 1;
     deliver(&mut st, vec![scanned("site", &[("origin", "https://dev.azure.com/acme/web/_git/site")], &[])]);
     let az = target_of(&st, Provider::AzureDevOps);
-    let a = answer(az.clone(), Err(failed("HTTP 502: bad gateway")), one());
+    let a = answer(az.clone(), Err(failed("HTTP 422: validation failed")), one());
     run(&mut st, reply(1, false, vec![signed_in(az.account(), ada(), vec![a])]));
     assert_eq!(assigned_repo(&st, &az.repo), Some((vec!["issue 7".into()], None)));
 

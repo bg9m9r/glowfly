@@ -150,7 +150,8 @@ pub fn verb(kind: SyncKind) -> &'static str {
 }
 
 /// What a finished repository's row says, and whether it is bad news. A failure reaching the
-/// remote or signing in is said in plain words (`error_words::sync_failure`), others with
+/// remote, signing in, a diverged pull or a lock file is said in plain words
+/// (`error_words::sync_failure`), others with
 /// git's last line.
 pub fn outcome_text(t: Lang, kind: SyncKind, o: &Outcome) -> (String, bool) {
     match o {
@@ -304,7 +305,8 @@ mod tests {
             text(SyncKind::Pull, &failed("terminal prompts disabled", prompts)).0.starts_with("Failed: The server needs you to sign in.")
         );
         let diverged = "fatal: Not possible to fast-forward, aborting.";
-        assert_eq!(text(SyncKind::Pull, &failed(diverged, diverged)).0, format!("Failed: {diverged}"), "git's own words");
+        let said = text(SyncKind::Pull, &failed(diverged, diverged)).0;
+        assert!(said.starts_with("Failed: This branch and its upstream have both moved on"), "{said}");
         assert_eq!(nothing_to_sync(SyncKind::Fetch, SyncScope::Favorites), "No repositories to fetch: no favorite can be found.");
     }
 }

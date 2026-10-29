@@ -1,10 +1,11 @@
 use super::{Ask, service};
 use crate::error::Error;
+use crate::i18n::Lang;
 
 const CREATE: Ask = Ask::CreateRepo { owner: "ada", name: "demo" };
 
 fn say(ask: Ask, e: Error) -> Option<String> {
-    service("GitHub", ask, &e.to_string())
+    service(Lang::En, "GitHub", ask, &e.to_string())
 }
 
 #[test]
@@ -49,5 +50,38 @@ fn network_and_server_trouble() {
 fn other_text_is_left_alone() {
     assert_eq!(say(CREATE, Error::Decode("x".into())), None);
     assert_eq!(say(Ask::Owners, Error::Http { status: 422, message: "Validation failed".into() }), None);
-    assert_eq!(service("GitHub", Ask::Owners, "name already exists"), None, "only a create is about a name");
+    assert_eq!(service(Lang::En, "GitHub", Ask::Owners, "name already exists"), None, "only a create is about a name");
+}
+
+#[test]
+fn forks_changes_and_reads_get_their_own_refusals() {
+    let denied = || Error::Forbidden("the server said “Resource not accessible by integration”".into());
+    let fork = say(Ask::Fork, denied()).unwrap();
+    assert!(fork.starts_with("Your GitHub account can't fork this repository."), "{fork}");
+    let change = say(Ask::Change, denied()).unwrap();
+    assert!(change.starts_with("Your GitHub account can't make this change in the repository."), "{change}");
+    assert_eq!(say(Ask::Read, denied()), say(Ask::Owners, denied()), "reads say what the owner list says");
+    let gone = say(Ask::Fork, Error::NotFound("the server said “Not Found”".into())).unwrap();
+    assert!(gone.starts_with("GitHub can't find this repository for your account."), "{gone}");
+    // A missing issue or pull request is named by the service's own words.
+    assert_eq!(say(Ask::Change, Error::NotFound("Issue #12 wasn't found".into())), None);
+    assert_eq!(say(Ask::Read, Error::NotFound("x".into())), None);
+    for ask in [Ask::Fork, Ask::Change, Ask::Read] {
+        let bad = Error::Auth("the server said “Bad credentials”".into());
+        assert!(say(ask, bad).unwrap().starts_with("GitHub didn't accept your sign-in."));
+        assert!(say(ask, Error::Auth("401".into())).unwrap().starts_with("GitHub didn't accept your sign-in."));
+        // Glowfly's own explanation already says what to do.
+        assert_eq!(say(ask, Error::Auth("the Trello token has expired".into())), None);
+        assert_eq!(say(ask, Error::Forbidden("this token can read cards but not create them".into())), None);
+        assert!(say(ask, Error::Network("timed out".into())).unwrap().contains("couldn't reach GitHub"));
+        assert!(say(ask, Error::Http { status: 503, message: "x".into() }).unwrap().contains("problem on its side"));
+    }
+}
+
+#[test]
+fn sentences_follow_the_language() {
+    let e = Error::Network("timed out".into()).to_string();
+    let de = service(Lang::De, "GitLab", Ask::Change, &e).unwrap();
+    assert_ne!(de, service(Lang::En, "GitLab", Ask::Change, &e).unwrap());
+    assert!(de.contains("GitLab"), "{de}");
 }

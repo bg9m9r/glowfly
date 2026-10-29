@@ -22,7 +22,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`.
 - A click sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only while the toast's repository is the active tab.
 - A failed job's toast says git's cause in plain words and can carry a fix (`update/job_errors.rs`, from `git_errors::classify`), with Details beside it in `Toast::details` (`Msg::ToastDetails`, which works from any tab).
-- Failures reaching or reading a remote get their sentences from `state/error_words.rs`, which the Fetch/Pull repositories rows share.
+- Failures reaching or reading a remote get their sentences from `state/error_words.rs`, which the Fetch/Pull repositories rows share; a missing or unreadable remote's toast offers Edit remote…. Hosting-service failures (fork, pull request, issue, comment, dashboard, status bar) go through its `hosting`, from `error::advice`.
 - `toast_replacing` updates a toast still on screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
 - Every toast has an x (`NotifyMsg::CloseToast`) that removes it without running its action.
 - The conflict view's Resolved and Saved-with-markers toasts carry Undo while the entry that did it is the newest (`update/conflict.rs::undo_button`, run as `JobMsg::UndoWith`, which refuses once the history moved).

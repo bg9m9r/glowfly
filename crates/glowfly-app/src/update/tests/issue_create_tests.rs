@@ -218,6 +218,20 @@ fn a_failure_keeps_the_dialog_with_the_message() {
 }
 
 #[test]
+fn a_refusal_glowfly_knows_is_said_in_plain_words() {
+    let (mut st, dir) = ready("issue-create-denied");
+    run(&mut st, IssueMsg::Create);
+    let denied = crate::effect::ForgeError { message: "access denied: the server said “Must have push access”".into(), auth: false };
+    let msg = reply(&st, IssueReply::Created(Err(denied)));
+    run(&mut st, msg);
+    let shown = form(&st).error.clone().unwrap_or_default();
+    assert!(shown.starts_with("Your GitHub account can't make this change in the repository."), "{shown}");
+    // The log keeps the service's own words.
+    assert!(st.log.last().is_some_and(|l| l.text.contains("Must have push access")));
+    done(st, dir);
+}
+
+#[test]
 fn after_cancel_or_for_another_tab_the_reply_is_only_reported() {
     let (mut st, dir) = ready("issue-create-cancel");
     run(&mut st, IssueMsg::Create);

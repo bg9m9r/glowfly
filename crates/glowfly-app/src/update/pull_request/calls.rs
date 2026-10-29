@@ -9,9 +9,11 @@ use super::super::ops::{JobSpec, busy, start_job};
 use crate::effect::{Effect, ForgeError};
 use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PrRequest};
 use crate::state::AppState;
+use crate::state::error_words::hosting;
 use crate::state::pull_request::{Page, PrAction};
 use crate::state::pull_request_actions::{comment_blocked, deletes_after_merge, merge_blocked, prefill, review_blocked};
 use crate::state::pull_request_line_comment::adopt_new_threads;
+use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, MergeRequest, PrPage, ReviewEvent, Target};
 use glowfly_core::gitcli::args;
 use glowfly_core::remote_ops::fetch_cmd;
@@ -222,6 +224,7 @@ pub(super) fn replied(
         return;
     }
     st.log(ok, text.clone());
+    let t = st.settings.lang();
     if open && let Some(v) = st.session.pull_request.view.as_mut() {
         v.busy = None;
         if let Some(e) = reply_error(&reply) {
@@ -232,7 +235,7 @@ pub(super) fn replied(
                 PrReply::Resolved { thread, .. } => PrAction::Resolve(thread.clone()),
                 _ => PrAction::Merge,
             };
-            v.action_error = Some((action, e.message.clone()));
+            v.action_error = Some((action, hosting(t, target.provider, Ask::Change, e)));
         }
     }
     match reply {

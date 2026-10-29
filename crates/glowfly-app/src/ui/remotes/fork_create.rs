@@ -90,7 +90,7 @@ pub fn show(
         ForkStep::Checking => match &f.error {
             None => spinner_line(ui, format!("Looking for your fork of {repo}…")),
             Some(e) => {
-                let error = error_text(e);
+                let error = error_text(cx.t, &f.target, e);
                 let f = Failure { title: "Couldn't look for your fork", error: &error, retry: Some(Msg::Remote(RemoteMsg::RetryForks)) };
                 pane_status::failed_line(ui, cx.t, f, msgs);
             }
@@ -128,7 +128,7 @@ pub fn show(
             let (enter, problem) = name_field(ui, f, snap, !creating, focus);
             if let Some(e) = &f.error {
                 ui.add_space(4.0);
-                form_message::form(ui, Message::error(error_text(e)));
+                form_message::form(ui, Message::error(error_text(cx.t, &f.target, e)));
             }
             if creating {
                 ui.add_space(4.0);

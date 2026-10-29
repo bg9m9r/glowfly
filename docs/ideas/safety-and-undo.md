@@ -159,6 +159,9 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 
 ### Errors say what to do
 
+- Explain Schannel's revocation-check failures (CRYPT_E_NO_REVOCATION_CHECK, common behind
+  proxies on Windows) apart from untrusted certificates
+- A fix on the certificate toast that shows the http.sslCAInfo and http.sslBackend values in use
 - A Fetch-then-fast-forward fix for a sidebar Fast-forward that was rejected as non-fast-forward
   on a non-HEAD branch
 - Certificate phrases also match a failing signing helper (gitsign's x509 text) and `remote:` hook lines of a rejected push; match only git's own transport errors

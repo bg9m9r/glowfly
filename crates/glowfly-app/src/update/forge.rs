@@ -4,8 +4,10 @@
 use super::pr_details;
 use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
+use crate::state::error_words::{hosting, hosting_log};
 use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, ProjectKeys, Status, pr_repos, tracker_target};
 use git2::Oid;
+use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, Account, Connection, Target};
 use glowfly_core::repo::Snapshot;
 use std::time::Instant;
@@ -183,6 +185,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
     let mut prs_changed = false;
     // Created pull requests' sources and whether a create failed, for a stack's run.
     let (mut created, mut create_failed) = (Vec::new(), false);
+    let (t, provider) = (st.settings.lang(), reply.target.provider);
     let Some(fs) = st.session.forge.as_mut() else { return };
     let is_host = fs.host.as_ref() == Some(&reply.target);
     let is_tracker = fs.tracker.as_ref() == Some(&reply.target);
@@ -222,7 +225,8 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
                     fs.auth.remove(&key);
                 }
                 create_failed = true;
-                logs.push((false, format!("Creating the {} failed: {}", fs.pr_noun(), e.message)));
+                let line = format!("Creating the {} failed: {}", fs.pr_noun(), e.message);
+                logs.push((false, hosting_log(t, provider, Ask::Change, &e, line)));
             }
             // The rest belongs to the code host's and the tracker's repositories.
             _ if other_repo => {}
@@ -245,7 +249,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
                 if e.auth {
                     fs.auth.remove(&key);
                 }
-                fs.host_status = Status::Error(e.message);
+                fs.host_status = Status::Error(hosting(t, provider, Ask::Read, &e));
             }
             ForgeResult::MyIssues(Ok(items)) => {
                 for i in &items {
@@ -258,7 +262,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
                 if e.auth {
                     fs.auth.remove(&key);
                 }
-                fs.tracker_status = Status::Error(e.message);
+                fs.tracker_status = Status::Error(hosting(t, provider, Ask::Read, &e));
             }
             ForgeResult::Issues(keys, result) => {
                 if let Ok(items) = result {
@@ -280,7 +284,8 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
             }
             ForgeResult::Created(Err(e)) => {
                 create_failed = true;
-                logs.push((false, format!("Creating the {} failed: {}", fs.pr_noun(), e.message)));
+                let line = format!("Creating the {} failed: {}", fs.pr_noun(), e.message);
+                logs.push((false, hosting_log(t, provider, Ask::Change, &e, line)));
             }
             ForgeResult::TipChecks(asked, r) => super::build_status::replied(fs, &asked, r.map_err(drop), now),
             ForgeResult::PrDetails(r) => prs_changed |= pr_details::replied(fs, r, &key, now),

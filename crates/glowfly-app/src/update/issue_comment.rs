@@ -4,9 +4,11 @@
 
 use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob};
 use crate::state::AppState;
+use crate::state::error_words::hosting;
 use crate::state::issue::{Details, IssueView};
 use crate::state::issue_comment::{FIELD, comment_blocked, with_quote};
 use crate::state::issue_words;
+use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, Entry, Target};
 use std::path::Path;
 use std::time::Instant;
@@ -76,6 +78,9 @@ pub(super) fn commented(
         Ok(_) => (true, format!("Commented on {label}")),
         Err(e) => (false, format!("Commenting on {label} failed: {}", e.message)),
     };
+    // What the panel, the kept draft and the toast say; the log keeps the service's words.
+    let t = st.settings.lang();
+    let result = result.map_err(|e| ForgeError { message: hosting(t, target.provider, Ask::Change, &e), ..e });
     let failure = result.as_ref().err().map(|e| e.message.clone());
     if active
         && result.as_ref().is_err_and(|e| e.auth)
