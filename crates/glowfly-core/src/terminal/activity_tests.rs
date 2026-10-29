@@ -231,7 +231,13 @@ fn live_shell(tag: &str, command: &str, program: &str) {
     };
     wait_for(&mut session, &|a| *a == ShellActivity::Idle);
     session.write(command.as_bytes()).expect("write");
-    let busy = wait_for(&mut session, &|a| matches!(a, ShellActivity::Running { .. }));
+    // Right after the command is written the shell's child is still the shell until it execs
+    // the program, so wait for the program's name rather than the first `Running`.
+    let named = |got: &Option<String>| match program {
+        Some(p) => got.as_deref().is_some_and(|g| g.eq_ignore_ascii_case(p)),
+        None => true,
+    };
+    let busy = wait_for(&mut session, &|a| matches!(a, ShellActivity::Running { program: got } if named(got)));
     let ShellActivity::Running { program: got } = busy else { unreachable!() };
     match program {
         Some(p) => assert!(got.as_deref().is_some_and(|g| g.eq_ignore_ascii_case(p)), "{got:?}"),
