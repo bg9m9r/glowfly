@@ -46,7 +46,7 @@ Button "Unregister" [disabled]
 Label "Lets links from a browser or chat open a repository, branch, commit or tag in Glowfly. Only your user account is affected."
 Label "Sign-ins"
 CheckBox "Remember HTTPS sign-ins typed in Glowfly" [on]
-Label "Once git accepts a username and password or token typed in Glowfly, it is saved with git's credential helper. With no helper set up, Glowfly sets up the system's credential store for git."
+Label "Once git accepts a username and password or token typed in Glowfly, it is saved with git's credential helper. With no helper set up, Glowfly sets up the system's credential store for git. On Linux without a keyring helper, git's in-memory cache keeps them for 15 minutes after each use instead."
 Button "Remove saved tokens" [disabled]
 Button "Also sign out of Git Credential Manager" [disabled]
 Label "Glowfly has no stored connections to remove."

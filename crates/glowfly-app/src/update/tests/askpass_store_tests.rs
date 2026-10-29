@@ -5,6 +5,7 @@ use super::tests::state;
 use super::update;
 use crate::effect::{CredentialEffect, Effect};
 use crate::msg::{CredentialMsg, JobMsg, Msg};
+use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob};
 use glowfly_core::askpass::Prompt;
 use glowfly_core::git_credential::Remembered;
@@ -31,6 +32,11 @@ fn type_in(st: &mut AppState, user: &str, secret: &str) -> Vec<Effect> {
 }
 
 fn start_job(st: &mut AppState, workdir: Option<PathBuf>) {
+    start(st, workdir, None);
+}
+
+/// Starts a job in `workdir` that opens what it makes (a clone's `then_open`).
+fn start(st: &mut AppState, workdir: Option<PathBuf>, then_open: Option<(PathBuf, Created)>) {
     st.job = Some(RunningJob {
         label: "Push".into(),
         workdir,
@@ -39,7 +45,7 @@ fn start_job(st: &mut AppState, workdir: Option<PathBuf>) {
         then_push: false,
         then_pr: None,
         then_link: false,
-        then_open: None,
+        then_open,
         keeps_undo: true,
         fetches: false,
     });
@@ -84,6 +90,47 @@ fn a_sign_in_that_worked_is_saved_once() {
         assert_eq!(stored(&fx), [(true, expected, "https".into(), "github.com".into(), "ada".into(), "hunter2".into())]);
         assert!(st.askpass.typed.is_empty());
     }
+}
+
+#[test]
+fn a_git_lfs_sign_in_is_saved_too() {
+    // git-lfs asks itself, with the endpoint in double quotes; its password prompt follows.
+    let mut st = state();
+    start_job(&mut st, None);
+    ask(&mut st, 1, "Username for \"https://github.com/o/r.git/info/lfs\"");
+    assert!(st.askpass.remember);
+    type_in(&mut st, "ada", "hunter2");
+    let fx = ask(&mut st, 2, "Password for \"https://ada@github.com/o/r.git/info/lfs\"");
+    assert!(st.askpass.queue.is_empty(), "answered with the kept password: {fx:?}");
+    let fx = finish(
+        &mut st,
+        true,
+        "$ git push
+Uploading LFS objects: 100% (1/1)",
+    );
+    assert_eq!(stored(&fx), [(true, AppState::outside_dir(), "https".into(), "github.com".into(), "ada".into(), "hunter2".into())]);
+    let Some(Effect::Credential(CredentialEffect::Remember { credential, .. })) = fx.iter().find(|e| matches!(e, Effect::Credential(_)))
+    else {
+        unreachable!()
+    };
+    assert_eq!(credential.path.as_deref(), Some("o/r.git/info/lfs"), "git drops the path unless credential.useHttpPath is set");
+}
+
+#[test]
+fn a_clone_sign_in_is_saved_outside_the_active_repository() {
+    // The remote is new: the active tab's own credential settings don't apply to it.
+    let active = glowfly_core::paths::temp_dir().join("glowfly-remember-active");
+    let dest = glowfly_core::paths::temp_dir().join("glowfly-remember-clone");
+    let mut st = state();
+    start(&mut st, Some(active.clone()), Some((dest, Created::Clone)));
+    sign_in(&mut st, 1, "example.com", "hunter2");
+    let fx = finish(&mut st, true, "$ git clone https://example.com/team/app.git");
+    assert_eq!(stored(&fx), [(true, AppState::outside_dir(), "https".into(), "example.com".into(), "ada".into(), "hunter2".into())]);
+
+    // Any other job saves it with the settings of the repository it ran in.
+    start(&mut st, Some(active.clone()), None);
+    sign_in(&mut st, 2, "example.com", "hunter2");
+    assert_eq!(stored(&finish(&mut st, true, ""))[0].1, active);
 }
 
 #[test]
@@ -199,6 +246,17 @@ fn reports_what_became_of_the_sign_in() {
     let text = "Git now saves sign-ins with libsecret (credential.helper in your global git config). Saved the sign-in for github.com.";
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == text));
     assert!(st.log.last().is_some_and(|l| l.text == text));
+
+    let toasts = st.toasts.len();
+    remembered(&mut st, Ok(Remembered::TurnedOff));
+    assert_eq!(st.toasts.len(), toasts, "turned off on purpose: no toast");
+    let quiet = st.log.last().unwrap();
+    assert!(quiet.ok && quiet.text == "Didn't save the sign-in for github.com: credential.helper is turned off.", "{}", quiet.text);
+    assert!(!st.view.show_log);
+
+    remembered(&mut st, Ok(Remembered::Cached));
+    let cached = st.toasts.last().unwrap();
+    assert!(cached.ok && cached.text.contains("in memory") && cached.text.contains("git-credential-libsecret"), "{}", cached.text);
 
     let e = "no credential store is set up (install git-credential-libsecret or set credential.helper)";
     remembered(&mut st, Err(e.into()));

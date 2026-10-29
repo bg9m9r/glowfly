@@ -15,6 +15,8 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
   jobs
 - Keep paused auto-fetch remotes across restarts
 - A desktop notification when a remote needs a sign-in
+- Move a Linux user from the `cache` fallback to libsecret once git-credential-libsecret is installed
+- Drop rejected git LFS sign-ins too (git-lfs's failure output names its endpoint differently)
 - A status-bar chip listing paused remotes once their banner lines are dismissed
 - Let the dialog's Remember choice update the default in Preferences > General
 

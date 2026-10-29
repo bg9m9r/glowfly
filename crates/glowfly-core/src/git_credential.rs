@@ -3,8 +3,10 @@
 //!
 //! When git has no `credential.helper` at all, [`remember`] sets up the platform's credential
 //! store (Git Credential Manager or wincred, the macOS keychain, libsecret) in the global git
-//! config first. A helper set to the empty value means the user turned helpers off; nothing is
-//! saved then. Every git call here runs with [`gitcli::BACKGROUND`], so none of them prompts.
+//! config first; on Linux without a keyring helper that is git's in-memory `cache`. A helper set
+//! to the empty value means the user turned helpers off; nothing is saved then. The password
+//! only ever reaches git on stdin. Every git call here runs with [`gitcli::BACKGROUND`], so none
+//! of them prompts.
 
 use crate::askpass::{self, Secret};
 use crate::gitcli::{self, GitOutput, args};
@@ -140,6 +142,42 @@ pub fn setup_hint(os: &str) -> &'static str {
     }
 }
 
+/// The helper to fall back to on `os` when none of its [`platform_helpers`] is installed: git's
+/// in-memory `cache` on Linux, where a keyring helper is often missing. It keeps a sign-in for 15
+/// minutes after git last used it, and nothing reaches the disk.
+pub fn fallback_helper(os: &str) -> Option<&'static str> {
+    (os == "linux").then_some("cache")
+}
+
+/// What [`remember`] does for a URL.
+#[derive(Debug, PartialEq)]
+pub(crate) enum Plan {
+    /// Hand the sign-in to the helper the user configured.
+    Approve,
+    /// The user turned helpers off: save nothing.
+    TurnedOff,
+    /// Add this persistent store to the global git config first.
+    SetUp(String),
+    /// No persistent store is installed: add this memory-only helper first.
+    Cache(String),
+    /// Nothing to save it with.
+    Missing,
+}
+
+/// Chooses the [`Plan`] from git's helper setting, the persistent store `installed` finds (only
+/// asked when git has no helper) and the memory-only `fallback`.
+pub(crate) fn plan(config: HelperConfig, installed: impl FnOnce() -> Option<String>, fallback: Option<&str>) -> Plan {
+    match config {
+        HelperConfig::Set => Plan::Approve,
+        HelperConfig::TurnedOff => Plan::TurnedOff,
+        HelperConfig::None => match (installed(), fallback) {
+            (Some(name), _) => Plan::SetUp(name),
+            (None, Some(cache)) => Plan::Cache(cache.to_owned()),
+            (None, None) => Plan::Missing,
+        },
+    }
+}
+
 /// The first of this OS's [`platform_helpers`] that is installed: `git-credential-<name>` in
 /// git's exec path (or the `bin` folder next to it, where Git for Windows keeps Git Credential
 /// Manager) or on PATH.
@@ -164,35 +202,42 @@ pub enum Remembered {
     Helper,
     /// No helper was set, so this one was added to the global git config first.
     SetUp(String),
+    /// No helper was set and no persistent store is installed, so git's in-memory `cache` was
+    /// added to the global git config first: the sign-in lasts while git keeps using it.
+    Cached,
+    /// `credential.helper` is set to the empty value: the user turned saving off, so nothing was
+    /// saved.
+    TurnedOff,
 }
 
-/// Saves `c` with git's credential helper, setting up the platform's store when git has none.
+/// Saves `c` with git's credential helper, setting up the platform's store when git has none
+/// (or, on Linux without a keyring helper, git's in-memory cache).
 pub fn remember(cwd: &Path, c: &HttpsCredential) -> Result<Remembered, String> {
-    remember_in(cwd, c, &[], installed_helper)
+    remember_in(cwd, c, &[], installed_helper, fallback_helper(std::env::consts::OS))
 }
 
-/// [`remember`] with `env` added to every git call and `find` naming the store to set up.
+/// [`remember`] with `env` added to every git call, `find` naming the store to set up and
+/// `fallback` the memory-only helper for when it finds none.
 pub(crate) fn remember_in(
     cwd: &Path,
     c: &HttpsCredential,
     env: &[(&str, &str)],
     find: impl Fn(&Path) -> Option<String>,
+    fallback: Option<&str>,
 ) -> Result<Remembered, String> {
-    match helper_config(cwd, &c.url(), env) {
-        HelperConfig::Set => send(cwd, c, "approve", env).map(|()| Remembered::Helper),
-        HelperConfig::TurnedOff => Err("credential.helper is turned off for this repository".into()),
-        HelperConfig::None => {
-            let Some(name) = find(cwd) else {
-                return Err(format!("no credential store is set up ({})", setup_hint(std::env::consts::OS)));
-            };
-            let add = args(&["config", "--global", "--add", "credential.helper", &name]);
-            let out = gitcli::output(cwd, &add, "", &quiet_env(env), Some(gitcli::READ_TIMEOUT));
-            if !out.ok {
-                return Err(failure(&out, "could not set credential.helper"));
-            }
-            send(cwd, c, "approve", env).map(|()| Remembered::SetUp(name))
-        }
+    let (helper, done) = match plan(helper_config(cwd, &c.url(), env), || find(cwd), fallback) {
+        Plan::Approve => return send(cwd, c, "approve", env).map(|()| Remembered::Helper),
+        Plan::TurnedOff => return Ok(Remembered::TurnedOff),
+        Plan::Missing => return Err(format!("no credential store is set up ({})", setup_hint(std::env::consts::OS))),
+        Plan::SetUp(name) => (name.clone(), Remembered::SetUp(name)),
+        Plan::Cache(helper) => (helper, Remembered::Cached),
+    };
+    let add = args(&["config", "--global", "--add", "credential.helper", &helper]);
+    let out = gitcli::output(cwd, &add, "", &quiet_env(env), Some(gitcli::READ_TIMEOUT));
+    if !out.ok {
+        return Err(failure(&out, "could not set credential.helper"));
     }
+    send(cwd, c, "approve", env).map(|()| done)
 }
 
 /// Tells git's credential helpers that `c` was rejected, so they drop it.

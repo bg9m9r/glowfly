@@ -50,7 +50,7 @@ Button "Anular el registro" [disabled]
 Label "Permite que los enlaces de un navegador o un chat abran en Glowfly un repositorio, una rama, un commit o una etiqueta. Solo afecta a tu cuenta de usuario."
 Label "Inicios de sesión"
 CheckBox "Recordar los inicios de sesión HTTPS escritos en Glowfly" [on]
-Label "Cuando git acepta un nombre de usuario y una contraseña o un token escritos en Glowfly, se guardan con el asistente de credenciales de git. Si no hay ningún asistente configurado, Glowfly configura el almacén de credenciales del sistema para git."
+Label "Cuando git acepta un nombre de usuario y una contraseña o un token escritos en Glowfly, se guardan con el asistente de credenciales de git. Si no hay ningún asistente configurado, Glowfly configura el almacén de credenciales del sistema para git. En Linux sin un asistente de llavero, la caché en memoria de git los guarda en su lugar durante 15 minutos tras cada uso."
 Button "Borrar tokens guardados" [disabled]
 Button "También cerrar sesión en Git Credential Manager" [disabled]
 Label "Glowfly no tiene conexiones guardadas que quitar."
@@ -90,4 +90,3 @@ painted:
   "Cambios sin confirmar"
   "Enlaces de Glowfly"
   "Recordar inicios de sesión"
-  "Conexiones guardadas"
