@@ -47,6 +47,14 @@ The diff viewer, blame and file history, range-diff, conflict prediction and the
 - Trim the bundled syntax set to the languages Glowfly wants, if the extra ~0.6 MB of binary
   size matters
 - A per-file language picker (e.g. in the diff header), remembered per path
+- Gitattributes at a version: also load the folders' `.gitattributes` on a rename's old path
+  (only the new path's are loaded for a single-file view), and drop custom `[attr]` macros
+  from earlier commits in the graph stats' reused handle
+- Gitattributes for working-tree content: libgit2 reads the index's `.gitattributes` under the
+  working tree's (git reads the index's only when the working file is missing)
+- Diff tool copies of an index version: follow the index's gitattributes (git has no
+  `GIT_ATTR_SOURCE` for the index), and tell users of git before 2.40 that copies of a commit
+  follow the working tree's attributes
 - Take the hunk-header function context from `.gitattributes` diff drivers (`diff=<lang>`,
   `xfuncname`) rather than only libgit2's default (lines starting with a letter, `_` or `$`)
 - Parse the hunk-header context in the file's context (the state at the function line in the

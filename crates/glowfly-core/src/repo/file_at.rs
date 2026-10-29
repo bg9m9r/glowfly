@@ -35,7 +35,8 @@ pub enum LfsState {
     Unavailable(String),
 }
 
-/// A file's lines (without their line endings) and its `linguist-language` attribute.
+/// A file's lines (without their line endings) and its `linguist-language` attribute (from the
+/// commit read's own `.gitattributes` files).
 #[derive(Clone, Debug, PartialEq)]
 pub struct FileAt {
     pub lines: Vec<String>,
@@ -57,5 +58,5 @@ pub fn file_at_with(workdir: &Path, oid: Oid, path: &str, o: FileAtOptions) -> R
     let r = super::file_bytes::read(workdir, oid, path, o, true)?;
     // `lines` drops each "\n" or "\r\n" and adds no empty line after a final newline.
     let lines = String::from_utf8_lossy(&r.bytes).lines().map(String::from).collect();
-    Ok(FileAt { lines, language: super::attrs::linguist_language(&r.repo, path), lfs: r.lfs, read_at: r.read_at })
+    Ok(FileAt { lines, language: r.language, lfs: r.lfs, read_at: r.read_at })
 }

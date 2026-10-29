@@ -55,7 +55,9 @@ fn apply_in(
         HunkOp::Discard => (ApplyLocation::WorkDir, true),
         HunkOp::Unstage => (ApplyLocation::Index, true),
     };
-    let diff = target_diff(&repo, &shown, LoadDiffOptions { ignore_whitespace, ..Default::default() }, None)?;
+    // On a handle reading the shown version's gitattributes, so binary files are the viewer's.
+    let attrs = super::attr_source::for_target(&repo, &shown);
+    let diff = target_diff(&attrs, &shown, LoadDiffOptions { ignore_whitespace, ..Default::default() }, None)?;
     let again = if lines.is_some() { "select the lines again" } else { "try again on the updated diff" };
     let stale = || Error::NotFound(format!("the diff changed; {again}"));
     let patch = file_patch(&diff, path)?.ok_or_else(stale)?;
@@ -75,7 +77,7 @@ fn apply_in(
         return Err(Error::NotFound("no changed lines selected".into()));
     }
     let (content, selected) = if ignore_whitespace {
-        let full = target_diff(&repo, &shown, LoadDiffOptions::default(), None)?;
+        let full = target_diff(&attrs, &shown, LoadDiffOptions::default(), None)?;
         let full = file_patch(&full, path)?.ok_or_else(stale)?;
         exact_context(&raw, &side_lines(&full, reverse)?, reverse, &selected)?
     } else {

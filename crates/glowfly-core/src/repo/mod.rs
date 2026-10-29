@@ -20,7 +20,7 @@
 //! sizes and image previews), `touching` (commits that
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `workfile_unrm` (putting a deleted file back for undo), `noclobber` and
 //! `removal` (working-tree files), `tracked`,
-//! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
+//! `attrs` (gitattributes, read from the source `attr_source` picks for the version shown), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
 //! `shallow`; `pr_compare` (a pull request's source tip, files and commits), `line_map` (a file's lines mapped across commits, following renames, for pull request threads), `divergence` (the commits on each side of a branch and its upstream, from the
 //! loaded graph), `unmerged` (the commits deleting a branch would leave on no branch) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
@@ -29,6 +29,7 @@
 
 use git2::Oid;
 
+mod attr_source;
 mod attrs;
 mod binary_sides;
 mod blame;
