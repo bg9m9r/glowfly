@@ -17,6 +17,12 @@ use std::path::Path;
 mod patches;
 #[path = "sequencer.rs"]
 pub(super) mod sequencer;
+// What the fuzz targets read with (src/fuzzing/).
+#[cfg(any(test, feature = "fuzzing"))]
+pub(crate) use {
+    patches::is_mailbox,
+    sequencer::{Todo, add_steps},
+};
 #[path = "targets.rs"]
 mod targets;
 pub use targets::targets;

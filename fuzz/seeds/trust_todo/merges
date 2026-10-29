@@ -1,0 +1,7 @@
+label onto
+reset onto
+pick 1a2b3c4 one
+label branch
+reset onto
+merge -C 5d6e7f8 branch # Merge branch
+update-ref refs/heads/x

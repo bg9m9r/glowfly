@@ -29,6 +29,9 @@ pub mod error;
 pub mod external_tools;
 pub mod flatpak;
 pub mod forge;
+#[cfg(any(test, feature = "fuzzing"))]
+#[doc(hidden)]
+pub mod fuzzing;
 pub mod fuzzy;
 pub mod git_credential;
 pub mod git_errors;

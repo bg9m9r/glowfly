@@ -1,0 +1,1 @@
+fetch https://a:b@h/x and ssh://git@h/y and C:/repos/z

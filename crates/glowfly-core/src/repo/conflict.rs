@@ -225,7 +225,7 @@ pub fn marker_size<'a>(texts: impl Iterator<Item = &'a str>) -> usize {
 
 /// Splits libgit2's merged text (zdiff3 style, labels "ours", "base", "theirs", markers of
 /// size `n`) into clean runs and conflict chunks.
-pub(super) fn parse_merged(text: &str, n: usize) -> Result<Vec<Segment>> {
+pub(crate) fn parse_merged(text: &str, n: usize) -> Result<Vec<Segment>> {
     #[derive(PartialEq)]
     enum State {
         Clean,

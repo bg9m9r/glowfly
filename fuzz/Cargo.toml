@@ -1,0 +1,75 @@
+# The fuzz targets (cargo-fuzz, libFuzzer) for the parsers in glowfly-core that read text from
+# other people. Each target only hands its bytes to a check in glowfly-core's `fuzzing` module
+# (crates/glowfly-core/src/fuzzing/), where the invariants are written. This is a workspace of
+# its own, outside the main one, so `cargo build`, clippy and the tests never need nightly or
+# libFuzzer. Run a target with `cargo +nightly fuzz run <target>` from the repository root
+# (docs/architecture/tests.md, "Fuzzing").
+[package]
+name = "glowfly-fuzz"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+glowfly-core = { path = "../crates/glowfly-core", features = ["fuzzing"] }
+
+[workspace]
+members = ["."]
+
+# Line tables, so a crash's stack trace names the lines.
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "conflict_markers"
+path = "fuzz_targets/conflict_markers.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "patch_summary"
+path = "fuzz_targets/patch_summary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "redact_credentials"
+path = "fuzz_targets/redact_credentials.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "remote_url"
+path = "fuzz_targets/remote_url.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "trust_fetch_head"
+path = "fuzz_targets/trust_fetch_head.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "trust_patch"
+path = "fuzz_targets/trust_patch.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "trust_todo"
+path = "fuzz_targets/trust_todo.rs"
+test = false
+doc = false
+bench = false

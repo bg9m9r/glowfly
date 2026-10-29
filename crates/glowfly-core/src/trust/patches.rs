@@ -54,7 +54,7 @@ fn held(paths: &[String], follows: &[Follow], mailbox: &[u8]) -> Result<(), Unch
 
 /// Whether `bytes` is what `git am` takes as a mailbox (its patch-format detection): a `From `
 /// line or mail headers first, and not an stgit patch, stgit series or hg export.
-fn is_mailbox(bytes: &[u8]) -> bool {
+pub(crate) fn is_mailbox(bytes: &[u8]) -> bool {
     let text = String::from_utf8_lossy(&bytes[..bytes.len().min(4096)]);
     let mut lines = text.lines().map(|l| l.trim_end_matches('\r'));
     let (l1, l2, l3) = (lines.next().unwrap_or(""), lines.next().unwrap_or(""), lines.next().unwrap_or(""));

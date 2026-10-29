@@ -1,0 +1,18 @@
+From 1a2b Mon Sep 17 00:00:00 2001
+From: A <a@b>
+Date: Mon, 1 Jan 2024 00:00:00 +0000
+Subject: [PATCH 1/2] First
+  folded
+
+---
+diff --git a/src/a.rs b/src/a.rs
+--- a/src/a.rs
++++ b/src/a.rs
+@@ -1 +1 @@
+-a
++b
+From 3c4d Mon Sep 17 00:00:00 2001
+From: A <a@b>
+Subject: [PATCH 2/2] Second
+
+diff --git "a/café" "b/café"

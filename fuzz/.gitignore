@@ -1,0 +1,9 @@
+# cargo-fuzz's working folders. The corpus a run grows is kept by CI's cache, not in git; the
+# seeds it starts from are in seeds/.
+/target/
+/corpus/
+/artifacts/
+/coverage/
+# Made from the main Cargo.lock before a build (see .github/workflows/fuzz.yml), so the fuzz
+# build uses the same dependency versions as the app.
+/Cargo.lock
