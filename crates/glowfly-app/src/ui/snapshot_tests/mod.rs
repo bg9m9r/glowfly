@@ -87,6 +87,7 @@ pub(super) mod snapshot_tests_menu_danger;
 pub(super) mod snapshot_tests_menu_header;
 pub(super) mod snapshot_tests_mica;
 pub(super) mod snapshot_tests_more_themes;
+pub(super) mod snapshot_tests_narrow;
 pub(super) mod snapshot_tests_onboarding;
 pub(super) mod snapshot_tests_op_preview;
 pub(super) mod snapshot_tests_op_steps;

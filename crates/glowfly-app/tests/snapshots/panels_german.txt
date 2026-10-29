@@ -120,6 +120,7 @@ painted:
   "222c0ad"
   "vor 22 Tagen"
   "✔ main"
+  "+1"
   "Ada Lovelace"
   "f0d635c"
   "vor 23 Tagen"
