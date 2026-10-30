@@ -56,6 +56,19 @@ fn creating_groups_hands_out_colours_and_moves_the_repository_in() {
 }
 
 #[test]
+fn create_and_rename_refuse_a_name_in_use_or_blank() {
+    let mut st = grouped();
+    assert!(run(&mut st, GroupMsg::Create { name: " work ".into(), repo: Some(PathBuf::from("/w/a")) }).is_empty(), "Work exists");
+    assert_eq!(st.settings.repo_groups.len(), 2);
+    assert!(!st.settings.repo_groups.iter().any(|g| g.repos.contains(&"/w/a".to_owned())), "nothing moved either");
+    assert!(run(&mut st, GroupMsg::Rename { group: 1, name: "WORK".into() }).is_empty(), "another group's name");
+    assert!(run(&mut st, GroupMsg::Rename { group: 1, name: " \t ".into() }).is_empty(), "blank");
+    assert_eq!(st.settings.repo_groups[1].name, "Home");
+    assert_eq!(saves(&run(&mut st, GroupMsg::Rename { group: 0, name: "work".into() })), 1, "its own name in another case");
+    assert_eq!(st.settings.repo_groups[0].name, "work");
+}
+
+#[test]
 fn the_dialogs_open_with_the_right_form() {
     let mut st = grouped();
     run(&mut st, GroupMsg::NewDialog { repo: Some(PathBuf::from("/w/a")) });

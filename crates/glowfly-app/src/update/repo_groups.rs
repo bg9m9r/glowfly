@@ -26,8 +26,9 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
         GroupMsg::Create { name, repo } => create(st, &name, repo.as_deref()),
         GroupMsg::Rename { group, name } => {
             let name = clean_group_name(&name);
+            let usable = !name_taken(st, &name, Some(group));
             match st.settings.repo_groups.get_mut(group) {
-                Some(g) if !name.is_empty() && g.name != name => {
+                Some(g) if usable && g.name != name => {
                     g.name = name;
                     true
                 }
@@ -56,7 +57,7 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
 /// nothing.
 fn create(st: &mut AppState, name: &str, repo: Option<&Path>) -> bool {
     let name = clean_group_name(name);
-    if name.is_empty() {
+    if name_taken(st, &name, None) {
         return false;
     }
     let colour = new_group_colour(&st.settings.repo_groups);
@@ -65,6 +66,13 @@ fn create(st: &mut AppState, name: &str, repo: Option<&Path>) -> bool {
         move_repo(st, p, Some(st.settings.repo_groups.len() - 1), usize::MAX);
     }
     true
+}
+
+/// Whether `name` can't be a group's: blank, or another group's than `except` (case ignored).
+/// The dialog says so first (`GroupForm::problem`); this keeps any other sender honest.
+fn name_taken(st: &AppState, name: &str, except: Option<usize>) -> bool {
+    let low = name.to_lowercase();
+    name.is_empty() || st.settings.repo_groups.iter().enumerate().any(|(i, g)| Some(i) != except && g.name.to_lowercase() == low)
 }
 
 /// Removes group `g`; its repositories stay favorites, moved after the ungrouped ones in their

@@ -135,11 +135,13 @@ fn retarget(st: &mut AppState, from: &Path, to: &Path, folder: Option<FolderId>,
     let favorites: Vec<PathBuf> = st.settings.favorite_repos.iter().map(|f| paths::decode(f)).collect();
     if let Some(favorites) = replaced(&favorites, |p| st.same_folder(p, from), to) {
         st.settings.favorite_repos = favorites.iter().map(|p| paths::encode(p)).collect();
-        // Its groups list it under the new folder too.
+        // Its groups list it under the new folder too, spelled as the favorite that stayed (`to`
+        // may already have been a favorite under another spelling).
+        let entry = crate::state::repo_groups::favorite_entry(st, to).unwrap_or_else(|| paths::encode(to));
         let mut groups = std::mem::take(&mut st.settings.repo_groups);
         for r in groups.iter_mut().flat_map(|g| g.repos.iter_mut()) {
             if st.same_folder(&paths::decode(r), from) {
-                *r = paths::encode(to);
+                *r = entry.clone();
             }
         }
         st.settings.repo_groups = groups;
