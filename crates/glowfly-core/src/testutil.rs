@@ -39,6 +39,20 @@ pub(crate) fn alias_of(dir: &Path) -> Option<PathBuf> {
     made.then_some(link)
 }
 
+/// A loopback address (`127.0.0.1:<port>`) where nothing listens, and the socket that keeps it
+/// so: bound, without SO_REUSEADDR, but never listening. While the socket lives no other
+/// listener (another test's included) can take the port, unlike a listener bound and dropped,
+/// whose freed port can be reused at once. Connecting there is refused on Linux and Windows;
+/// BSD stacks such as macOS's may drop the attempt instead, so it fails at the caller's connect
+/// timeout.
+pub(crate) fn closed_port() -> (String, socket2::Socket) {
+    use socket2::{Domain, Protocol, SockAddr, Socket, Type};
+    let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP)).unwrap();
+    socket.bind(&SockAddr::from(std::net::SocketAddr::from(([127, 0, 0, 1], 0)))).unwrap();
+    let addr = socket.local_addr().unwrap().as_socket().unwrap();
+    (addr.to_string(), socket)
+}
+
 /// `file:///srv/x` on Unix, `file:///C:/x` on Windows.
 pub(crate) fn file_url(p: &Path) -> String {
     let s = p.display().to_string().replace('\\', "/");

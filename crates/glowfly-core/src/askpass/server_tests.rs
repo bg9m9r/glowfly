@@ -129,11 +129,8 @@ fn strangers_get_nothing() {
     assert!(buf.is_empty());
     assert!(events.recv_timeout(Duration::from_millis(300)).is_err(), "no event for either");
 
-    // Nothing listening.
-    let addr = {
-        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        l.local_addr().unwrap().to_string()
-    };
+    // Nothing listening (and nothing can start to while `_held` keeps the port).
+    let (addr, _held) = crate::testutil::closed_port();
     assert!(matches!(ask(&addr, "t", "p", None, WAIT), Err(HelperError::Unreachable(_))));
 }
 

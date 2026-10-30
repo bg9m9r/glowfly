@@ -29,7 +29,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `testkit/guard.rs`: when a command goes to the git CLI after all: hooks, signing, filters and working-tree encodings, submodules, sparse checkout, repository extensions, an operation in progress, environment that redirects git.
 - `testkit/bin.rs`: a stand-in Recycle Bin / Trash folder that tests' `Trasher` and `Untrasher` move files into and take them back out of, so no test touches the real one; each process's folder is emptied on first use, since Windows reuses process ids.
 - `testkit/tests.rs`: one history built both ways (the CLI and in-process) gives the same commits, refs, reflogs, index, files and config.
-- `crates/glowfly-core/src/testutil.rs`: core's own fixtures (`scratch_repo`, origins, submodules, partial clones, byte-level `raw_commit`s) on the kit.
+- `crates/glowfly-core/src/testutil.rs`: core's own fixtures (`scratch_repo`, origins, submodules, partial clones, byte-level `raw_commit`s) on the kit, and `closed_port`, a loopback port held bound but never listening.
 
 ## The built executable
 
