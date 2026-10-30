@@ -12,6 +12,8 @@ source file, update its line here.
 - `safe_directory.rs`: repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling.
 - `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`), and a folder's name and parent for list rows.
 - `volume.rs`: whether a folder is on a network or virtual file system.
+- `conflict_lines.rs`: the paths git's CONFLICT lines name (rename, delete and directory conflicts included), each once, for `git_errors`; a path that reads more than one way is counted but not named until `ordered` matches it to the status's unmerged paths (pure).
+- `crlf_warnings.rs`: git's "LF will be replaced by CRLF" and "CRLF will be replaced by LF" warnings folded into one line for job logs (pure).
 - `git_errors.rs`: why a failed git command failed, from its untranslated output (cause plus listed files and names, and the lock file's whole path), for the failure toast; `-c apply.whitespace=nowarn` on merge, pull and stash so git's internal patch warnings stay out of job logs (pure).
 - `remote_failure.rs`: why git couldn't reach or read a remote (unreachable host, missing repository, no access, a server certificate it couldn't verify).
 - `error.rs`: typed errors; `error/advice.rs` rewrites a hosting service's refusal as one translated sentence that says what to do.
@@ -62,7 +64,7 @@ source file, update its line here.
 - Key encoding and PTY sessions.
 - `shell.rs`: which shell to start from Preferences > Terminal.
 - `activity.rs`: whether the shell is running a program, in front or as a background job.
-- `procs.rs`: the process lists `activity.rs` and `git_procs.rs` read: a Windows ToolHelp snapshot and image paths, Linux `/proc`, macOS libproc; and every process's program file (`program_paths`), for the update's `.bak` cleanup.
+- `procs.rs`: the process lists `activity.rs` and `git_procs.rs` read: a Windows ToolHelp snapshot, image paths and creation times, Linux `/proc`, macOS libproc; and every process's program file (`program_paths`), for the update's `.bak` cleanup.
 - `title.rs`: the window title a program sets, with what of it names a running command.
 
 ## Settings (`settings.rs`, `settings/`)

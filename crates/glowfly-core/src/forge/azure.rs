@@ -5,13 +5,14 @@ pub(super) use super::azure_work_items::wiql;
 use super::azure_work_items::work_items;
 use super::checks::per_pr;
 use super::details::{PrDetails, checks_of};
+use super::head_repo::AzureFork;
 use super::http::get_paged;
 use super::issue_details::{CreateOptions, IssueDetails, NewIssue};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Conditions, Entry, FilterKind, FilterOptions, Issue, Me, NewPullRequest, PrFacets, PullRequest, RefStyle,
-    Reviewer, Target, TipQuery, azure_checks, azure_issues, enc, get, post,
+    Account, Auth, Checks, Conditions, Entry, FilterKind, FilterOptions, HeadRepo, Issue, Me, NewPullRequest, PrFacets, PullRequest,
+    RefStyle, Reviewer, Target, TipQuery, azure_checks, azure_issues, enc, get, post,
 };
 use crate::error::{Error, Result};
 use serde::Deserialize;
@@ -118,6 +119,8 @@ struct ApiPr {
     repository: Option<ApiRepo>,
     #[serde(default)]
     labels: Vec<Name>,
+    #[serde(default)]
+    fork_source: Option<AzureFork>,
 }
 
 #[derive(Deserialize)]
@@ -174,6 +177,7 @@ fn convert(t: &Target, p: ApiPr, checks: Option<Checks>) -> PullRequest {
         url: pr_url(t, p.pull_request_id),
         title: p.title,
         description: p.description.unwrap_or_default(),
+        head_repo: HeadRepo::of_azure(p.fork_source.as_ref()),
         source: p.source_ref_name.trim_start_matches("refs/heads/").to_owned(),
         target: p.target_ref_name.trim_start_matches("refs/heads/").to_owned(),
         author: p.created_by.display_name,

@@ -2,12 +2,13 @@
 
 use super::checks::per_pr;
 use super::details::{PrDetails, checks_of};
+use super::head_repo::RepoName;
 use super::issue_details::{CreateOptions, IssueDetails, NewIssue};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Conditions, Entry, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, PullRequest,
-    Reviewer, Target, TipQuery, bitbucket_checks, bitbucket_issues, enc, get, post,
+    Account, Auth, Checks, Conditions, Entry, FilterKind, FilterOptions, HeadRepo, Issue, IssueFacets, Me, NewPullRequest, PrFacets,
+    PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, bitbucket_issues, enc, get, post,
 };
 use crate::error::Result;
 use serde::Deserialize;
@@ -84,6 +85,9 @@ struct Endpoint {
     branch: Branch,
     #[serde(default)]
     commit: Option<Commit>,
+    /// Null on the source once its fork is deleted.
+    #[serde(default)]
+    repository: Option<RepoName>,
 }
 
 #[derive(Deserialize)]
@@ -149,6 +153,7 @@ fn convert_cloud(p: CloudPr, checks: Option<Checks>) -> PullRequest {
         id: p.id,
         title: p.title,
         description: p.description,
+        head_repo: HeadRepo::of_repos(&p.source.repository, &p.destination.repository),
         source: p.source.branch.name,
         target: p.destination.branch.name,
         author: p.author.display_name,

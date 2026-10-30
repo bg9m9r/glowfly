@@ -39,13 +39,15 @@ pub enum HeadFetch {
 /// The key the panel compares from now.
 pub fn files_key(v: &PrView) -> FilesKey {
     let head = v.pr.head.clone().filter(|h| is_commit_prefix(h));
-    FilesKey { target: v.tips.target, branch: if fork_known(v) { None } else { v.tips.source }, head }
+    let on_fork_remote = v.source_remote.as_deref().is_some_and(|r| r != v.remote);
+    FilesKey { target: v.tips.target, branch: if fork_known(v) && !on_fork_remote { None } else { v.tips.source }, head }
 }
 
-/// The loaded page says the source branch is in another repository (a fork), so the
-/// remote-tracking branch with its name isn't it.
+/// The service's list or its loaded page says the source branch is in another repository (a
+/// fork), so the code host's remote-tracking branch with its name isn't it (the fork's own
+/// remote's is, when it is a remote here).
 pub fn fork_known(v: &PrView) -> bool {
-    v.loaded().is_some_and(|p| !p.detail.same_repo)
+    !v.pr.head_repo.is_same() || v.loaded().is_some_and(|p| !p.detail.same_repo)
 }
 
 /// Why the local branches may not show the pull request as the service has it, or how the
@@ -79,17 +81,20 @@ pub enum OutOfSync {
 impl OutOfSync {
     pub fn text(&self, v: &PrView) -> String {
         let (r, pr, noun, label) = (&v.remote, &v.pr, v.noun, &v.label);
+        // The remote the source branch is on (a fork's, when it is a remote here).
+        let s = v.source_remote.as_deref().unwrap_or(r);
         match self {
             OutOfSync::TargetMissing => format!("{r}/{} isn't in this repository. Fetch {r} to compare.", pr.target),
             OutOfSync::SourceMissing if head_fetchable(v) => {
-                format!("{r}/{} isn't in this repository. Fetch {label}'s head from {r} to compare.", pr.source)
+                format!("{s}/{} isn't in this repository. Fetch {label}'s head from {r} to compare.", pr.source)
             }
+            OutOfSync::SourceMissing if s != r.as_str() => format!("{s}/{} isn't in this repository. Fetch {s} to compare.", pr.source),
             OutOfSync::SourceMissing => {
                 format!("{r}/{} isn't in this repository. Fetch {r} to compare. A branch on a fork can't be fetched from {r}.", pr.source)
             }
-            OutOfSync::SourceDeleted => format!("{r}/{} was deleted after the merge.", pr.source),
+            OutOfSync::SourceDeleted => format!("{s}/{} was deleted after the merge.", pr.source),
             OutOfSync::SourceDiffers { local, head } => format!(
-                "{r}/{} is at {}, but the {noun} is at {}. Fetch {r} to see its latest changes.",
+                "{s}/{} is at {}, but the {noun} is at {}. Fetch {s} to see its latest changes.",
                 pr.source,
                 short(&local.to_string()),
                 short(head)
@@ -98,10 +103,10 @@ impl OutOfSync {
                 format!("This {noun} comes from a fork, so this shows its head commit {}.", short(&head.to_string()))
             }
             OutOfSync::HeadUsed { branch: None, head, .. } => {
-                format!("{r}/{} isn't in this repository, so this shows the {noun}'s head commit {}.", pr.source, short(&head.to_string()))
+                format!("{s}/{} isn't in this repository, so this shows the {noun}'s head commit {}.", pr.source, short(&head.to_string()))
             }
             OutOfSync::HeadUsed { branch: Some(b), head, .. } => format!(
-                "{r}/{} is at {}; this shows the {noun}'s head commit {}, which is already here.",
+                "{s}/{} is at {}; this shows the {noun}'s head commit {}, which is already here.",
                 pr.source,
                 short(&b.to_string()),
                 short(&head.to_string())

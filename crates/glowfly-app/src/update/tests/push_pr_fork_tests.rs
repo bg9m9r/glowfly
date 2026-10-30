@@ -33,7 +33,7 @@ fn add_remote(work: &Path, name: &str, url: &str, bare: &Path) {
     fetch_from(work, name, bare);
 }
 
-fn fetch_from(work: &Path, name: &str, bare: &Path) {
+pub(super) fn fetch_from(work: &Path, name: &str, bare: &Path) {
     git(work, &["fetch", "-q", &bare.display().to_string(), &format!("+refs/heads/*:refs/remotes/{name}/*")]);
 }
 
@@ -162,6 +162,7 @@ fn a_fork_on_origin_opens_into_upstream() {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: "https://github.com/o/r/pull/12".into(),

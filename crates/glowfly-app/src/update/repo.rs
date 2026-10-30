@@ -39,6 +39,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 return; // superseded by a newer load
             }
             st.loading = false;
+            let read = result.is_ok();
             match result {
                 Ok(snap) => {
                     st.refresh.more_retries = 0;
@@ -61,6 +62,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     super::push_pr::load_failed(st, fx);
                 }
             }
+            super::conflict_count::status_read(st, read);
             super::refresh::load_finished(st, fx);
         }
         RepoMsg::SelectWip => select_wip(st, fx),

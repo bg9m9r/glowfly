@@ -26,6 +26,7 @@ fn pr(id: u64, title: &str, source: &str, draft: bool, checks: Option<Checks>) -
         draft,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks,
         url: format!("https://github.com/o/r/pull/{id}"),

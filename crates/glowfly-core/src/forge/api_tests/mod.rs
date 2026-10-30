@@ -15,6 +15,7 @@ mod bitbucket_review;
 mod check_list;
 mod filter_teams;
 mod filters;
+mod fork_pr_list;
 mod fork_prs;
 mod forks;
 mod github;
@@ -59,6 +60,7 @@ fn listed(id: u64, head: Option<String>) -> PullRequest {
         draft: false,
         reviewers: Vec::new(),
         head,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: String::new(),

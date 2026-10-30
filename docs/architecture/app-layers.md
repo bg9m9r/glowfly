@@ -76,6 +76,7 @@ source file, update its line here. Features that span every layer are in
 - `stash_confirm.rs`: whether applying, popping or deleting a stash asks first or is refused over conflicts, for every entry point, and the files the stash and the working tree both change; tests in `stash_confirm_tests.rs`.
 - `auto_stash.rs`: the auto-stash prompt, its texts and the stashes waiting to go back.
 - `job_spec.rs`: `JobSpec`, a git job for `start_job`, and `Retry`, Try again's copy of one with the tab it started in.
+- `job_spec/labels.rs`: a job's English label shown in the UI language, for the headlines built from it.
 - `palette_nav.rs`: the palette's page and end keys.
 - `palette_selected.rs`: the palette's entries for the selected commit.
 - `palette_suggested.rs`: the empty query's Recent, Suggested and All commands groups and which commands the repository's state suggests.
@@ -116,6 +117,7 @@ source file, update its line here. Features that span every layer are in
 - `branch_push.rs`: Force push with lease of any branch with an upstream (refused when its upstream or that upstream's tip changed since the confirmation), the toolbar's Force push of the checked-out branch, and Push to all remotes as one job naming the remotes that failed.
 - `branch_sync.rs`: Rename with the remote as one job (rename, `push -u` of the new name, then the old name deleted under a lease) with a headline saying what is left when a step fails, and Delete remote branch with the tracking branches' upstreams unset after it.
 - `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
+- `conflict_count.rs`: a conflicts toast, its run and View conflicts taking the count and files of the first status read after the job, in place of git's CONFLICT lines; that read, or the next job, ends the wait.
 - `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.
 - `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it).
 

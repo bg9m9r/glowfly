@@ -22,6 +22,7 @@ mod commit;
 mod compare_wip;
 mod conflict;
 mod conflict_check;
+mod conflict_count;
 mod conflict_files;
 mod custom_commands;
 mod custom_commands_run;

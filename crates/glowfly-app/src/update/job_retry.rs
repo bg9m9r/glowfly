@@ -55,7 +55,7 @@ pub(super) fn after_headline(t: Lang, retry: Option<&Retry>, output: &str) -> Op
 /// repository. None when it may.
 pub(super) fn refusal(st: &AppState, retry: &Retry) -> Option<String> {
     let t = st.settings.lang();
-    let label = retry.spec.label.as_str();
+    let label = crate::state::job_spec::labels::shown(t, &retry.spec.label);
     let job: [(&str, &dyn std::fmt::Display); 1] = [("job", &label)];
     if !st.tabs.iter().any(|tab| tab.id == retry.tab) {
         return Some(t.trf("job_retry.tab_closed", &job));

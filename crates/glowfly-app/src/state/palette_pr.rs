@@ -26,7 +26,7 @@ fn branch_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         format!("Create {noun} for {name}…"),
         "pull merge request pr mr review open new start",
     ));
-    if push_pr::push_item(snap, fs).is_ok() {
+    if push_pr::push_item(st.settings.lang(), snap, fs).is_ok() {
         out.push(entry(
             PaletteCommand::PushAndCreatePr(name.clone()),
             format!("Push {name} and create a {noun}…"),

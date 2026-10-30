@@ -31,6 +31,7 @@ fn pr(id: u64, head: &str) -> PullRequest {
         draft: false,
         reviewers: vec![Reviewer { name: "Grace".into(), state: "no vote".into(), required: false }],
         head: Some(head.into()),
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: String::new(),

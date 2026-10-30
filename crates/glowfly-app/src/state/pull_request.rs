@@ -20,8 +20,8 @@ use glowfly_core::forge::{PrPage, PrState, PullRequest, reviews_in_app};
 use glowfly_core::repo::{BranchChanges, DiffTarget, FileEntry, RangeCommits, Snapshot, SourceTip};
 use glowfly_core::text::is_bidi_control;
 
-/// The local tips of a pull request's branches: `refs/remotes/<remote>/<target>` and
-/// `refs/remotes/<remote>/<source>`, when they exist.
+/// The local tips of a pull request's branches: `refs/remotes/<remote>/<target>` and the source
+/// on the remote of the repository it is on (`ForgeState::source_remote`), when they exist.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Tips {
     pub target: Option<Oid>,
@@ -29,16 +29,18 @@ pub struct Tips {
 }
 
 impl Tips {
-    pub fn of(snap: &Snapshot, remote: &str, pr: &PullRequest) -> Tips {
-        Tips::in_remotes(&snap.remotes, remote, pr)
+    pub fn of(snap: &Snapshot, remote: &str, source_remote: Option<&str>, pr: &PullRequest) -> Tips {
+        Tips::in_remotes(&snap.remotes, remote, source_remote, pr)
     }
 
     /// `of`, from a snapshot's `remotes` (branch names there have no remote prefix, so a
     /// remote named `up/stream` never lends its branches to `up`).
-    pub fn in_remotes(remotes: &[(String, Vec<(String, Oid)>)], remote: &str, pr: &PullRequest) -> Tips {
-        let branches = remotes.iter().find(|(name, _)| name == remote).map(|(_, b)| b.as_slice()).unwrap_or_default();
-        let tip = |name: &str| branches.iter().find(|(b, _)| b == name).map(|(_, oid)| *oid);
-        Tips { target: tip(&pr.target), source: tip(&pr.source) }
+    pub fn in_remotes(remotes: &[(String, Vec<(String, Oid)>)], remote: &str, source_remote: Option<&str>, pr: &PullRequest) -> Tips {
+        let tip = |remote: &str, name: &str| {
+            let branches = remotes.iter().find(|(r, _)| r == remote).map(|(_, b)| b.as_slice()).unwrap_or_default();
+            branches.iter().find(|(b, _)| b == name).map(|(_, oid)| *oid)
+        };
+        Tips { target: tip(remote, &pr.target), source: source_remote.and_then(|r| tip(r, &pr.source)) }
     }
 }
 
@@ -100,6 +102,9 @@ pub struct PrView {
     pub noun: &'static str,
     /// The remote that points at the service.
     pub remote: String,
+    /// The remote of the repository the source branch is on (`ForgeState::source_remote`):
+    /// `remote`, a fork's, or None when that repository isn't a remote here.
+    pub source_remote: Option<String>,
     /// Whether the last refresh of the service's list still had it.
     pub listed: bool,
     pub tips: Tips,
@@ -131,12 +136,14 @@ pub struct PrView {
 
 impl PrView {
     pub fn new(pr: PullRequest, fs: &ForgeState, snap: &Snapshot) -> PrView {
-        let tips = Tips::of(snap, &fs.remote, &pr);
+        let source_remote = fs.source_remote(&pr);
+        let tips = Tips::of(snap, &fs.remote, source_remote.as_deref(), &pr);
         let page = initial_page(fs);
         PrView {
             label: fs.pr_label(pr.id),
             noun: fs.pr_noun(),
             remote: fs.remote.clone(),
+            source_remote,
             listed: true,
             tips,
             files: Files::Missing,

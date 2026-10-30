@@ -1,8 +1,9 @@
-//! The systems' process lists for activity.rs: Windows' ToolHelp snapshot and the image path of
-//! a process; on Linux `/proc`, on macOS libproc, for a process's name and a shell's children.
-//! Also the program file of every process ([`program_paths`]), which tells Glowfly's update
-//! cleanup whether an old program still runs. Everything here only reads, and anything that
-//! can't be read is left out. `git_procs.rs` reads the same lists for Delete lock file.
+//! The systems' process lists for activity.rs: Windows' ToolHelp snapshot, and the image path
+//! and creation time of a process; on Linux `/proc`, on macOS libproc, for a process's name
+//! and a shell's children. Also the program file of every process ([`program_paths`]), which
+//! tells Glowfly's update cleanup whether an old program still runs. Everything here only
+//! reads, and anything that can't be read is left out. `git_procs.rs` reads the same lists for
+//! Delete lock file.
 
 /// Every process on the system, from a ToolHelp snapshot.
 #[cfg(windows)]
@@ -51,6 +52,23 @@ pub(super) fn image_path(pid: u32) -> Option<String> {
     // SAFETY: `process` is open and not used after this.
     let _ = unsafe { CloseHandle(process) };
     ok.then(|| String::from_utf16_lossy(&buf[..(len as usize).min(buf.len())]))
+}
+
+/// When process `pid` started, in 100 ns units since 1601 (a FILETIME), when this user may ask.
+#[cfg(windows)]
+pub(super) fn started(pid: u32) -> Option<u64> {
+    use windows::Win32::Foundation::{CloseHandle, FILETIME};
+    use windows::Win32::System::Threading::{GetProcessTimes, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+    // SAFETY: the call takes no pointers; the returned handle is closed below.
+    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+    let (mut created, mut exited, mut kernel, mut user) =
+        (FILETIME::default(), FILETIME::default(), FILETIME::default(), FILETIME::default());
+    // SAFETY: `process` is open with the query right the call needs; the four FILETIMEs are
+    // writable and outlive the call.
+    let ok = unsafe { GetProcessTimes(process, &mut created, &mut exited, &mut kernel, &mut user) }.is_ok();
+    // SAFETY: `process` is open and not used after this.
+    let _ = unsafe { CloseHandle(process) };
+    ok.then(|| (u64::from(created.dwHighDateTime) << 32) | u64::from(created.dwLowDateTime))
 }
 
 /// A process's command name.

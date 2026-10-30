@@ -104,6 +104,16 @@ fn a_clone_whose_folders_failed_still_opens() {
     assert!(loads(&fx, &dest), "{fx:?}");
     assert!(st.trust.created.contains(&dest));
 
+    // A cause the classifier knows is said in plain words.
+    let mut st = state();
+    update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
+    let locked = "$ git clone x\n$ git sparse-checkout set\nfatal: Unable to create '/w/app/.git/index.lock': File exists.";
+    let o = CloneOutcome { cloned: true, ok: false, output: locked.into() };
+    update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
+    let text = &st.toasts.last().unwrap().text;
+    assert!(text.starts_with("Cloned app, but setting its folders failed: Another git program is using this repository"), "{text}");
+    assert!(text.ends_with("delete that file. Choose them in Preferences > Sparse checkout."), "{text}");
+
     let mut st = state();
     update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
     let o = CloneOutcome { cloned: false, ok: false, output: "$ git clone x\nfatal: repository not found".into() };

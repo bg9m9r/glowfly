@@ -54,9 +54,10 @@ fn run_logged(r: &RemoveRequest, cmd: &[String], output: &mut String) -> (bool, 
     (ok, text)
 }
 
-/// The first line of git's text: the error comes first, hints follow it.
-fn first_line<'a>(text: &'a str, fallback: &'a str) -> &'a str {
-    text.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or(fallback)
+/// What a failed command printed, trimmed, or `fallback` when it printed nothing.
+fn whole(text: &str, fallback: &str) -> String {
+    let text = text.trim();
+    if text.is_empty() { fallback } else { text }.to_owned()
 }
 
 /// Removes the worktree, then (only once its record is gone) deletes the branch with
@@ -82,17 +83,13 @@ pub(super) fn remove(r: RemoveRequest) -> Msg {
             remote = match (remote_cmds, merged) {
                 (Some(cmds), Some(true)) => {
                     let (pushed, text) = run_logged(&r, &cmds[2], &mut output);
-                    Some(if pushed {
-                        RemoteOutcome::Deleted
-                    } else {
-                        RemoteOutcome::Failed(first_line(&text, "git push failed").to_owned())
-                    })
+                    Some(if pushed { RemoteOutcome::Deleted } else { RemoteOutcome::Failed(whole(&text, "git push failed")) })
                 }
                 (Some(_), _) => Some(RemoteOutcome::Kept),
                 (None, _) => None,
             };
         } else {
-            branch = Some(Err(first_line(&text, "git branch -d failed").to_owned()));
+            branch = Some(Err(whole(&text, "git branch -d failed")));
         }
     }
     Msg::Worktree(WorktreeMsg::Removed(Box::new(Removed { request: r, outcome: rep.outcome, output, branch, remote, undo })))

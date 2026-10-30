@@ -260,6 +260,7 @@ fn with_open_pr(name: &str, head: bool) -> (AppState, PathBuf) {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: "https://github.com/o/r/pull/7".into(),

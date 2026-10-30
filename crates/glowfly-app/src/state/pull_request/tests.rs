@@ -16,6 +16,7 @@ pub(crate) fn pr(head: Option<&str>) -> PullRequest {
         draft: false,
         reviewers: Vec::new(),
         head: head.map(str::to_owned),
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: String::new(),
@@ -29,6 +30,7 @@ pub(crate) fn view(pr: PullRequest, tips: Tips) -> PrView {
         label: "#7".into(),
         noun: "pull request",
         remote: "origin".into(),
+        source_remote: Some("origin".into()),
         listed: true,
         tips,
         files: Files::Missing,
@@ -60,9 +62,12 @@ fn tips_come_from_the_named_remote_only() {
         ("up/stream".to_owned(), vec![("main".to_owned(), oid(2)), ("feature".to_owned(), oid(3))]),
     ];
     let p = pr(None);
-    assert_eq!(Tips::in_remotes(&remotes, "up", &p), Tips { target: Some(oid(1)), source: None });
-    assert_eq!(Tips::in_remotes(&remotes, "up/stream", &p), Tips { target: Some(oid(2)), source: Some(oid(3)) });
-    assert_eq!(Tips::in_remotes(&remotes, "gone", &p), Tips { target: None, source: None });
+    assert_eq!(Tips::in_remotes(&remotes, "up", Some("up"), &p), Tips { target: Some(oid(1)), source: None });
+    assert_eq!(Tips::in_remotes(&remotes, "up/stream", Some("up/stream"), &p), Tips { target: Some(oid(2)), source: Some(oid(3)) });
+    assert_eq!(Tips::in_remotes(&remotes, "gone", Some("gone"), &p), Tips { target: None, source: None });
+    // A fork's source is read from the fork's remote, and from nowhere when it isn't one here.
+    assert_eq!(Tips::in_remotes(&remotes, "up", Some("up/stream"), &p), Tips { target: Some(oid(1)), source: Some(oid(3)) });
+    assert_eq!(Tips::in_remotes(&remotes, "up/stream", None, &p), Tips { target: Some(oid(2)), source: None });
 }
 
 #[test]

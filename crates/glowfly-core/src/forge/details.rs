@@ -94,6 +94,7 @@ mod tests {
             draft: false,
             reviewers: vec![reviewer("Grace", "no vote"), reviewer("Linus", "no vote")],
             head: Some(head.into()),
+            head_repo: Default::default(),
             merge_status: None,
             checks: None,
             url: String::new(),

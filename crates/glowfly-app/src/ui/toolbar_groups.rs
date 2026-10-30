@@ -141,7 +141,7 @@ pub(super) fn pr(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, fs: &ForgeSt
         // The name starts with the caption, so speech input finds the button by what it shows.
         let pr = (Icon::PullRequest, t.tr("toolbar.pr.button"), name.as_str());
         let menu_name = if merge_requests(fs) { t.tr("toolbar.pr_menu.merge_request") } else { t.tr("toolbar.pr_menu.pull_request") };
-        let menu = (menu_name, 260.0, crate::ui::pr_menu_items::pr_menu_live(snap, fs, idle));
+        let menu = (menu_name, 260.0, crate::ui::pr_menu_items::pr_menu_live(t, snap, fs, idle));
         let r = split(ui, "pr-menu", pr, rules::pr_blocked(st).is_none(), st.settings.toolbar_labels, menu, |ui| {
             crate::ui::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
         });

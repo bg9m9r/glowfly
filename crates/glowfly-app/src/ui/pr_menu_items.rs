@@ -56,7 +56,7 @@ pub(super) fn local(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot,
     }
     let into = push_pr::chosen_target(sel, b, snap, fs);
     let into = into.as_deref();
-    let state = push_pr::host_branch(b, snap, fs);
+    let state = push_pr::host_branch(t, b, snap, fs);
     // The service refuses a source it doesn't have, so a missing branch is only offered pushed.
     if !matches!(state, Some(HostBranch::Missing)) {
         menu_item(msgs, ui, t.trf("pr.menu.create", &[("noun", &noun)]), create(name, None));
@@ -100,7 +100,7 @@ pub(super) fn remote(
     }
     let h = head.name.as_str();
     let args: [(&str, &dyn std::fmt::Display); 2] = [("noun", &noun), ("branch", &h)];
-    match push_pr::host_branch(head, snap, fs) {
+    match push_pr::host_branch(t, head, snap, fs) {
         state if push_pr::needs_push(&state) => {
             menu_item(msgs, ui, t.trf("pr.menu.push_head_into_this", &args), push(h, Some(name)));
         }
@@ -155,16 +155,17 @@ pub(super) fn pr_menu(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, fs: &ForgeSta
 
 /// Whether the PR dropdown holds an item that can be used now: opening the open pull request,
 /// creating one for the checked-out branch, or pushing it and creating one.
-pub(super) fn pr_menu_live(snap: &Snapshot, fs: &ForgeState, idle: bool) -> bool {
+pub(super) fn pr_menu_live(t: Lang, snap: &Snapshot, fs: &ForgeState, idle: bool) -> bool {
     let head = snap.head_info();
-    head.and_then(|b| push_pr::open_pr(snap, fs, &b.name)).is_some() || (idle && (head.is_some() || push_pr::push_item(snap, fs).is_ok()))
+    head.and_then(|b| push_pr::open_pr(snap, fs, &b.name)).is_some()
+        || (idle && (head.is_some() || push_pr::push_item(t, snap, fs).is_ok()))
 }
 
 /// "Push <head> and create a …" in the Push and PR dropdowns: enabled when idle and the
 /// checked-out branch has no open pull request and needs a push, otherwise saying why not.
 pub(super) fn push_pr_item(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, fs: &ForgeState, idle: bool, msgs: &mut Vec<Msg>) {
     let noun = fs.pr_word(t);
-    let item = push_pr::push_item(snap, fs);
+    let item = push_pr::push_item(t, snap, fs);
     let label = match snap.head_info() {
         Some(b) => t.trf("pr.menu.push_head_create", &[("noun", &noun), ("branch", &b.name)]),
         None => t.trf("pr.menu.push_create", &[("noun", &noun)]),

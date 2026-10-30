@@ -176,16 +176,23 @@ pub fn same_repository(a: &str, b: &str, connections: &[Connection]) -> bool {
     }
     let low = |s: &str| s.to_lowercase();
     if let (Some(x), Some(y)) = (parse_remote(a, connections), parse_remote(b, connections)) {
-        return x.provider == y.provider
-            && hostname(&low(&x.host)) == hostname(&low(&y.host))
-            && low(&x.owner) == low(&y.owner)
-            && low(&x.project) == low(&y.project)
-            && low(&x.repo) == low(&y.repo);
+        return same_target(&x, &y);
     }
     match (split_url(a), split_url(b)) {
         (Some((ha, sa, _)), Some((hb, sb, _))) => hostname(&ha) == hostname(&hb) && low(&sa.join("/")) == low(&sb.join("/")),
         _ => a == b,
     }
+}
+
+/// Whether two parsed remotes are one hosted repository: the same service, host (ports aside),
+/// owner, project and repository, ignoring letter case.
+pub(crate) fn same_target(x: &Target, y: &Target) -> bool {
+    let low = |s: &str| s.to_lowercase();
+    x.provider == y.provider
+        && hostname(&low(&x.host)) == hostname(&low(&y.host))
+        && low(&x.owner) == low(&y.owner)
+        && low(&x.project) == low(&y.project)
+        && low(&x.repo) == low(&y.repo)
 }
 
 #[cfg(test)]

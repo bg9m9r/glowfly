@@ -32,6 +32,7 @@ fn pr(id: u64, title: &str, author: &str, awaiting: &[&str]) -> PullRequest {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: format!("https://github.com/o/r/pull/{id}"),

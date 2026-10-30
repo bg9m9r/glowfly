@@ -22,7 +22,7 @@ fn branch(st: &AppState, name: &str) -> BranchInfo {
 }
 
 fn state_of(st: &AppState, name: &str) -> Option<HostBranch> {
-    push_pr::host_branch(&branch(st, name), st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap())
+    push_pr::host_branch(st.settings.lang(), &branch(st, name), st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap())
 }
 
 fn target(st: &AppState, sel: Option<Oid>, name: &str) -> Option<String> {
@@ -112,6 +112,7 @@ fn pr_for(source: &str) -> PullRequest {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: String::new(),
@@ -148,7 +149,7 @@ fn open_pr_is_found_by_the_upstream_name() {
     let (snap, fs) = (st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap());
     assert_eq!(push_pr::open_pr(snap, fs, "wip").map(|p| p.id), Some(7), "wip is feature on the host");
     assert!(push_pr::open_pr(snap, fs, "topic").is_none());
-    assert!(matches!(push_pr::push_item(snap, fs), Err(why) if why.contains("already has")));
+    assert!(matches!(push_pr::push_item(st.settings.lang(), snap, fs), Err(why) if why.contains("already has")));
     assert!(pr_commands(&st).is_empty(), "no create entries for a branch with an open pull request");
     cleanup(&work, &bare);
 }
