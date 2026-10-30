@@ -37,7 +37,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             }
             for b in linked {
                 ui.horizontal(|ui| {
-                    let elsewhere = crate::state::worktree_branches::checkout_blocked(snap, &b.name);
+                    let elsewhere = crate::state::worktree_branches::checkout_blocked(st.settings.lang(), snap, &b.name);
                     let blocked = if b.is_head {
                         Some("Checked out")
                     } else if let Some(why) = elsewhere.as_deref() {

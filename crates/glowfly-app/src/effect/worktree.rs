@@ -14,7 +14,8 @@ pub enum WorktreeEffect {
     CheckFolder(NewWorktree),
     /// `git worktree remove` then, if asked, `git branch -d`; unscoped like RunGit (ends the job).
     Remove(RemoveRequest),
-    /// Other worktrees' changes the load left Pending (`WorktreeMsg::ChangesCounted`).
+    /// Other worktrees' changes the load left Pending, or counted ones read again after a reload
+    /// that kept the snapshot (`WorktreeMsg::ChangesCounted`).
     CountChanges(CountRequest),
     /// `git worktree move` once the target is free; unscoped like RunGit (ends the job).
     Move(MoveRequest),

@@ -18,7 +18,7 @@ use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg};
 use crate::state::rebase_onto::onto_commit_blocker;
 use crate::state::remote_branch::TrackingCheckout;
-use crate::state::{ForgeState, Selection, branches, pr_repos, remote_branch, worktree_branches};
+use crate::state::{ForgeState, Selection, pr_repos, remote_branch, worktree_branches};
 use crate::ui::widgets::menu::{item_named, named, separator};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
@@ -48,7 +48,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     checkout_items(ui, t, (remote, name), oid, snap, msgs);
     separator(ui);
     if let Some(b) = tracking {
-        let blocked = branches::fast_forward_blocked(b, snap.state);
+        let blocked = worktree_branches::fast_forward_blocked(t, snap, b);
         let ff = Msg::Branch(BranchMsg::FastForwardBranch(b.name.clone()));
         let label = named(t.tr("remote_branch.menu.fast_forward_local"), &[("branch", &b.name)]);
         menu_row(msgs, ui, item_named(label).blocked(blocked.as_deref()), ff);
@@ -127,7 +127,7 @@ fn checkout_items(ui: &mut egui::Ui, t: Lang, (remote, name): (&str, &str), oid:
 /// fast-forward" when it is only behind, and saying on hover that a diverged one stays put.
 fn tracker_item(ui: &mut egui::Ui, t: Lang, (remote, name): (&str, &str), tip: Oid, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let local = b.name.as_str();
-    let blocked = worktree_branches::checkout_blocked(snap, local);
+    let blocked = worktree_branches::checkout_blocked(t, snap, local);
     let plan = remote_branch::tracking_checkout(b, tip);
     let template = match plan {
         TrackingCheckout::FastForward { .. } => t.tr("remote_branch.menu.checkout_fast_forward"),

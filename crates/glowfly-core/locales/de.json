@@ -2895,5 +2895,14 @@
   "welcome.subtitle": "Vier kurze Schritte, dann kann es losgehen.",
   "welcome.title": "Willkommen bei Glowfly",
   "welcome_screen.find.button": "Repositorys in Ordnern suchen",
-  "welcome_screen.tagline": "Ein schneller, nativer Git-Client"
+  "welcome_screen.tagline": "Ein schneller, nativer Git-Client",
+  "worktree_branch.blocked.bisecting": "{branch} wird gerade im Worktree unter {path} per Bisect durchsucht. Beende den Bisect dort zuerst.",
+  "worktree_branch.blocked.checkout": "{branch} ist im Worktree unter {path} ausgecheckt. Öffne stattdessen diesen Worktree.",
+  "worktree_branch.blocked.delete": "{branch} ist im Worktree unter {path} ausgecheckt. Entferne zuerst diesen Worktree oder checke dort einen anderen Branch aus.",
+  "worktree_branch.blocked.missing": "{branch} ist im Worktree unter {path} ausgecheckt, dessen Ordner fehlt. Bereinige ihn zuerst.",
+  "worktree_branch.blocked.rebasing": "{branch} wird gerade im Worktree unter {path} rebased. Setze den Rebase dort zuerst fort oder brich ihn ab.",
+  "worktree_branch.tip.bisecting": "Mitten im Bisect im Worktree unter {path}",
+  "worktree_branch.tip.checked_out": "Im Worktree unter {path} ausgecheckt",
+  "worktree_branch.tip.missing": "{line} (Ordner fehlt; zuerst bereinigen)",
+  "worktree_branch.tip.rebasing": "Mitten im Rebase im Worktree unter {path}"
 }

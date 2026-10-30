@@ -27,7 +27,8 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             super::forge::refresh(st, true, false, now, fx);
         }
         RepoMsg::WindowFocused => {
-            // Pick up changes made outside the app.
+            // Pick up changes made outside the app, other worktrees' included at once.
+            st.refresh.recount.forget();
             if st.job.is_none() {
                 refresh(st, fx);
             }
@@ -342,7 +343,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     super::custom_commands::loaded(st, fx);
     super::submodule_batch::opened(st, kind, now, fx);
     super::conflict_check::want(st, fx);
-    super::worktree_counts::want(st, fx);
+    super::worktree_counts::loaded(st, now, fx);
     super::commit::prefill(st);
     super::watch::sync(st, fx);
     super::terminal::sync(st, fx);

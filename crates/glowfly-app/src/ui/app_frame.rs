@@ -59,6 +59,10 @@ impl GlowflyApp {
         if let Some(at) = self.st.refresh.more_retry_at {
             ctx.request_repaint_after(at.saturating_duration_since(now));
         }
+        // Other worktrees are counted again once the interval since the last count has passed.
+        if let Some(at) = self.st.refresh.recount.due().filter(|_| self.st.refresh.counting.is_none()) {
+            ctx.request_repaint_after(at.saturating_duration_since(now));
+        }
         // A query typed into a large history is matched once typing pauses.
         if let Some(at) = self.st.session.search.loaded.due {
             ctx.request_repaint_after(at.saturating_duration_since(now));

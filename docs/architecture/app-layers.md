@@ -94,6 +94,7 @@ source file, update its line here. Features that span every layer are in
 - `tip.rs`: the rich tooltip's data.
 - `undo_preview.rs`: what Undo and Redo would change.
 - `op_preview.rs`: the operation preview's dialog data, its title and headline, why Apply is off (busy, loading, nothing to do or stale) and the message Apply sends, the same as the direct menu item's.
+- `refresh/recount.rs`: when other worktrees' changes are counted again after a reload that kept the snapshot (at most once per `RECOUNT_EVERY`).
 - `load_more.rs`: a failed load for more history, the graph's row under the last commit (Load more, or the end row's sentence with Fetch full history and Load more) and how far a filtering search has looked.
 - `AppState` holds no egui types; textures and fonts live in a `UiCache` owned by the UI layer.
 

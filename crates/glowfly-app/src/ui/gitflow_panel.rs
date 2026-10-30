@@ -193,7 +193,7 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
         if ui.add(buttons::secondary("Finish…")).on_hover_text(format!("Finish {} {}", g.kind.noun(), b.short)).clicked() {
             msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
         }
-        let elsewhere = st.snap.as_ref().and_then(|s| crate::state::worktree_branches::checkout_blocked(s, b.name));
+        let elsewhere = st.snap.as_ref().and_then(|s| crate::state::worktree_branches::checkout_blocked(st.settings.lang(), s, b.name));
         let why = if b.head {
             Some("It is checked out.")
         } else if let Some(w) = elsewhere.as_deref() {

@@ -2895,5 +2895,14 @@
   "welcome.subtitle": "Cuatro pasos breves para empezar.",
   "welcome.title": "Te damos la bienvenida a Glowfly",
   "welcome_screen.find.button": "Buscar repositorios en carpetas",
-  "welcome_screen.tagline": "Un cliente de Git rápido y nativo"
+  "welcome_screen.tagline": "Un cliente de Git rápido y nativo",
+  "worktree_branch.blocked.bisecting": "{branch} está a mitad de un bisect en el worktree de {path}. Termina primero el bisect allí.",
+  "worktree_branch.blocked.checkout": "{branch} está extraída en el worktree de {path}. Abre ese worktree en su lugar.",
+  "worktree_branch.blocked.delete": "{branch} está extraída en el worktree de {path}. Elimina primero ese worktree o extrae allí otra rama.",
+  "worktree_branch.blocked.missing": "{branch} está extraída en el worktree de {path}, cuya carpeta falta. Límpialo primero.",
+  "worktree_branch.blocked.rebasing": "{branch} está a mitad de un rebase en el worktree de {path}. Continúa o cancela primero el rebase allí.",
+  "worktree_branch.tip.bisecting": "A mitad de un bisect en el worktree de {path}",
+  "worktree_branch.tip.checked_out": "Extraída en el worktree de {path}",
+  "worktree_branch.tip.missing": "{line} (falta la carpeta; límpialo primero)",
+  "worktree_branch.tip.rebasing": "A mitad de un rebase en el worktree de {path}"
 }

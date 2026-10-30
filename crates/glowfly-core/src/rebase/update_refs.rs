@@ -163,20 +163,14 @@ fn checked_out(repo: &Repository) -> HashSet<String> {
         if head && let Some(r) = read("HEAD").trim().strip_prefix("ref:") {
             out.insert(r.trim().to_owned());
         }
-        for f in ["rebase-merge/head-name", "rebase-apply/head-name"] {
-            let r = read(f);
-            if r.trim().starts_with("refs/") {
-                out.insert(r.trim().to_owned());
-            }
+        // Being rebased or bisected there, read as the worktree list reads it.
+        if let Some(held) = crate::repo::held_branch(&dir) {
+            out.insert(format!("refs/heads/{}", held.name));
         }
         // Three lines a ref: its name, where it was, where it goes.
         out.extend(
             read("rebase-merge/update-refs").lines().step_by(3).map(str::trim).filter(|l| l.starts_with("refs/")).map(str::to_owned),
         );
-        let bisect = read("BISECT_START");
-        if !bisect.trim().is_empty() {
-            out.insert(format!("refs/heads/{}", bisect.trim()));
-        }
     }
     out
 }

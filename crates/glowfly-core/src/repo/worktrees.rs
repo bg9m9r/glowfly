@@ -1,7 +1,9 @@
 //! The repository's worktrees: the main one and the linked ones registered under the common git
-//! dir, read through libgit2 for the left panel. Other worktrees' uncommitted changes, for their
-//! WIP rows in the graph, are counted in `worktree_counts`.
+//! dir, read through libgit2 for the left panel, each with the branch it is rebasing or
+//! bisecting (`op_state::held_branch`). Other worktrees' uncommitted changes, for their WIP rows
+//! in the graph, are counted in `worktree_counts`.
 
+use super::op_state::{BranchUse, HeldBranch, held_branch};
 use super::status::ChangeCounts;
 use super::worktree_counts::ChangesRead;
 use crate::error::Result;
@@ -20,6 +22,9 @@ pub struct WorktreeInfo {
     pub branch: Option<String>,
     /// HEAD's commit; None for an unborn branch or an unreadable HEAD.
     pub head: Option<Oid>,
+    /// The branch a rebase or bisect there stopped on, with HEAD detached: git holds it as
+    /// checked out there.
+    pub held: Option<HeldBranch>,
     /// The worktree the snapshot was loaded from.
     pub current: bool,
     /// Some(reason) when locked ("" without a reason).
@@ -45,6 +50,15 @@ impl WorktreeInfo {
         self.name.is_none()
     }
 
+    /// How this worktree has local branch `branch` (exact name), if it does: checked out, or
+    /// being rebased or bisected there.
+    /// Being rebased or bisected comes first: `git bisect start --no-checkout` leaves HEAD on
+    /// the branch it bisects, and git refuses to rename it then too.
+    pub fn uses(&self, branch: &str) -> Option<BranchUse> {
+        let held = self.held.as_ref().filter(|h| h.name == branch).map(|h| h.by);
+        held.or_else(|| (self.branch.as_deref() == Some(branch)).then_some(BranchUse::CheckedOut))
+    }
+
     /// The folder's last path component (the whole path when it has none).
     pub fn folder_name(&self) -> String {
         self.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| self.path.display().to_string())
@@ -67,6 +81,7 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
     if let Some(workdir) = common.workdir() {
         let path = normalize(workdir);
         let (branch, head) = read_head(common.path(), &common);
+        let held = held_branch(common.path());
         let current = is_current(&path);
         let folder = crate::paths::FolderId::of(&path);
         out.push(WorktreeInfo {
@@ -74,6 +89,7 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
             path,
             branch,
             head,
+            held,
             current,
             locked: None,
             missing: false,
@@ -96,7 +112,9 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
             };
             let missing = wt.validate().is_err();
             let prunable = wt.is_prunable(None).unwrap_or(false);
-            let (branch, head) = read_head(&common.commondir().join("worktrees").join(name), &common);
+            let git_dir = common.commondir().join("worktrees").join(name);
+            let (branch, head) = read_head(&git_dir, &common);
+            let held = held_branch(&git_dir);
             let current = is_current(&path);
             let folder = crate::paths::FolderId::of(&path);
             Some(WorktreeInfo {
@@ -104,6 +122,7 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
                 path,
                 branch,
                 head,
+                held,
                 current,
                 locked,
                 missing,

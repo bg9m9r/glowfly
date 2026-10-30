@@ -153,7 +153,7 @@ pub use load::{load, load_cached, load_reusing, messages_between};
 pub use load_more::{HistoryPage, MoreLoaded, load_more};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use merge_msg::merge_message;
-pub use op_state::state;
+pub use op_state::{BranchUse, HeldBranch, held_branch, state};
 pub use pr_compare::{PR_COMMITS_MAX, PrCompare, RangeCommit, RangeCommits, SourceFrom, SourceTip, is_commit_prefix, pr_compare};
 pub use push_config::{PushRemotes, push_remotes};
 pub use refs_key::{RACY_WINDOW, open_file_stamp, refs_key, stamp_trustworthy};
@@ -385,5 +385,7 @@ mod workfile_rm_tests;
 mod workfile_tests;
 #[cfg(test)]
 mod workfile_unrm_tests;
+#[cfg(test)]
+mod worktree_held_tests;
 #[cfg(test)]
 mod worktrees_tests;
