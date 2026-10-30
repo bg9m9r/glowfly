@@ -32,6 +32,7 @@ pub(super) mod commit_encoding_tests;
 pub(super) mod commit_tests;
 pub(super) mod compare_wip_tests;
 pub(super) mod conflict_check_tests;
+pub(super) mod conflict_count_tests;
 pub(super) mod conflict_files_tests;
 pub(super) mod conflict_layout_tests;
 pub(super) mod conflict_mark_safety_tests;

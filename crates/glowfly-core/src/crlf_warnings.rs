@@ -24,22 +24,25 @@ pub fn is_warning(line: &str) -> bool {
 }
 
 /// `output` with its line-ending warnings, when there are two or more, replaced by `line(n)` (n:
-/// how many were folded) where the first one was. One warning alone is kept as git wrote it.
+/// how many were folded) where the first one was, with that line's ending. One warning alone is
+/// kept as git wrote it; every other line keeps its own ending.
 pub fn fold(output: &str, line: impl FnOnce(usize) -> String) -> Cow<'_, str> {
     let n = output.lines().filter(|l| is_warning(l)).count();
     if n < 2 {
         return Cow::Borrowed(output);
     }
     let mut folded = Some(line(n));
-    let mut out: Vec<Cow<str>> = Vec::new();
-    for l in output.lines() {
-        if !is_warning(l) {
-            out.push(Cow::Borrowed(l));
+    let mut out = String::with_capacity(output.len());
+    for l in output.split_inclusive('\n') {
+        let text = l.trim_end_matches(['\n', '\r']);
+        if !is_warning(text) {
+            out.push_str(l);
         } else if let Some(f) = folded.take() {
-            out.push(Cow::Owned(f));
+            out.push_str(&f);
+            out.push_str(&l[text.len()..]);
         }
     }
-    Cow::Owned(out.join("\n"))
+    Cow::Owned(out)
 }
 
 #[cfg(test)]
@@ -59,6 +62,15 @@ mod tests {
             $ git commit -m x\n\
             [main 1a2b3c4] x";
         assert_eq!(fold(out, said), "$ git add -A\n(3 line-ending warnings)\n$ git commit -m x\n[main 1a2b3c4] x");
+    }
+
+    #[test]
+    fn keeps_line_endings() {
+        let w = |f: &str| format!("warning: in the working copy of '{f}', LF will be replaced by CRLF");
+        let out = format!("$ git add\r\n{}\r\n{}\r\ndone\r\n", w("a"), w("b"));
+        assert_eq!(fold(&out, said), "$ git add\r\n(2 line-ending warnings)\r\ndone\r\n");
+        let last = format!("x\n{}\n{}", w("a"), w("b"));
+        assert_eq!(fold(&last, said), "x\n(2 line-ending warnings)\n");
     }
 
     #[test]

@@ -20,7 +20,7 @@ pub mod config_includes;
 pub mod conflict_check;
 pub mod conflict_edit;
 pub mod conflict_folds;
-mod conflict_lines;
+pub mod conflict_lines;
 pub mod conflict_pick;
 pub mod conflict_restore;
 pub mod conflict_rows;

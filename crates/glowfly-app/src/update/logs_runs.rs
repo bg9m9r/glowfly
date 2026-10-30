@@ -57,11 +57,11 @@ pub(super) fn job_ended(
         (None, Some(e)) => e.text.clone(),
         (None, None) => last_message(&shown),
     };
-    let conflicts = explained.as_ref().is_some_and(|e| e.conflicts);
+    let conflicts = explained.as_ref().and_then(|e| e.conflicts.clone());
     let (headline, fix) = match (headline, explained) {
         (Some(h), _) => (h, (!ok).then(|| super::job_retry::after_headline(t, again.as_ref(), output)).flatten()),
         (None, Some(e)) => (e.text, e.fix),
-        (None, None) => (job_errors::default_headline(t, &job.label, ok, &shown), None),
+        (None, None) => (job_errors::default_headline(t, &job.label, ok, output), None),
     };
     super::notify::desktop(st, NoteKind::Job, &headline, repo, fx);
     // Pushed first, so a failure's announcement gives this toast its Details.
@@ -70,8 +70,10 @@ pub(super) fn job_ended(
     if !ok {
         st.logs.open.insert(id);
     }
-    if conflicts {
-        super::conflict_count::expect(st, job, id);
+    // A conflicts toast before this one keeps the count it has.
+    st.logs.recount = None;
+    if let Some((named, unsure)) = conflicts {
+        super::conflict_count::expect(st, job, id, named, unsure);
     }
     if let Some(f) = fix {
         let retrying = matches!(*f.msg, Msg::Job(JobMsg::Retry(_)));
@@ -92,6 +94,7 @@ pub(super) fn job_cancelled(st: &mut AppState, job: &RunningJob, output: &str, h
     let run = RunInfo { title: job.label.clone(), summary: "Cancelled".to_owned(), took_ms, routine: is_routine_label(&job.label) };
     if !job.quiet {
         st.toast(true, headline, now);
+        st.logs.recount = None;
     }
     st.log_run_in(job.workdir.as_deref(), true, text, run, false);
 }

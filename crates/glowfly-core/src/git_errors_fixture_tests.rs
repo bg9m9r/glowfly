@@ -73,7 +73,7 @@ fn local_untracked_conflicts_and_refs() {
 
     // (d) Both edited a.txt.
     let out = fails(&dir, &["merge", "side"]);
-    assert_eq!(classify(&out), Some(Cause::Conflicts { files: files(&["a.txt"]) }), "{out}");
+    assert_eq!(classify(&out), Some(Cause::Conflicts { files: files(&["a.txt"]), unsure: vec![] }), "{out}");
     git(&dir, &["merge", "--abort"]);
 
     // (i) A ref that doesn't exist.
@@ -156,8 +156,8 @@ fn rename_delete_and_directory_conflicts_count_each_unmerged_path() {
     }
     unmerged.sort();
     unmerged.dedup();
-    let Some(Cause::Conflicts { mut files }) = classify(&out) else { panic!("{out}") };
+    let Some(Cause::Conflicts { mut files, unsure }) = classify(&out) else { panic!("{out}") };
     files.sort();
-    assert_eq!(files, unmerged, "{out}");
+    assert_eq!((files, unsure), (unmerged, vec![]), "{out}");
     cleanup(&[&dir]);
 }

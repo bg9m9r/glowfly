@@ -114,7 +114,7 @@ source file, update its line here. Features that span every layer are in
 - `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
 - `branch_sync.rs`: Rename with the remote as one job (rename, `push -u` of the new name, then the old name deleted under a lease) with a headline saying what is left when a step fails, and Delete remote branch with the tracking branches' upstreams unset after it.
 - `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
-- `conflict_count.rs`: a conflicts toast and its run taking the count of the status read after the job, in place of git's CONFLICT lines.
+- `conflict_count.rs`: a conflicts toast, its run and View conflicts taking the count and files of the first status read after the job, in place of git's CONFLICT lines; that read, or the next job, ends the wait.
 - `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.
 - `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it).
 

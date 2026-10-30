@@ -21,9 +21,10 @@ use glowfly_core::stash_ops::StashScope;
 pub(super) struct Explained {
     pub text: String,
     pub fix: Option<ToastAction>,
-    /// It stopped on conflicts: the count in `text` is from git's CONFLICT lines until the
-    /// refreshed status counts them (update/conflict_count.rs).
-    pub conflicts: bool,
+    /// It stopped on conflicts: the paths git's CONFLICT lines named, and the readings of those
+    /// they left open, which give `text`'s count until the status read after the job does
+    /// (update/conflict_count.rs).
+    pub conflicts: Option<(Vec<String>, Vec<Vec<String>>)>,
 }
 
 /// Explains `job`'s failure from its `output`, when git's cause is one Glowfly recognises.
@@ -53,12 +54,16 @@ pub(super) fn explain(
     let pull = || fix(t.tr("git_errors.pull.button"), Msg::git("Pull", &["pull", "--ff"]));
     let set_upstream = || head.clone().and_then(|b| fix(t.tr("branch.menu.set_upstream"), Msg::Branch(BranchMsg::SetUpstreamDialog(b))));
     let text = crate::state::error_words::cause(t, &cause);
-    let conflicts = matches!(cause, Cause::Conflicts { .. });
+    let conflicts = match &cause {
+        Cause::Conflicts { files, unsure } => Some((files.clone(), unsure.clone())),
+        _ => None,
+    };
     let fix = match cause {
         Cause::LocalChanges { .. } => retry.map_or_else(stash_dialog, stash_and),
         Cause::MergeRefused => retry.and_then(stash_and),
         Cause::UntrackedInTheWay { .. } => stash_dialog(),
-        Cause::Conflicts { files } => files.first().and_then(view_conflicts),
+        // Only a path git's line names one way: a cut-short reading names no file.
+        Cause::Conflicts { files, .. } => files.first().and_then(view_conflicts),
         Cause::Unresolved => first_conflict(snap).and_then(|f| view_conflicts(&f)),
         Cause::MergeInProgress | Cause::PushRefused { .. } | Cause::UnknownRef { .. } | Cause::HostKeyChanged => None,
         Cause::PushBehind { branch } => is_head(&branch).then(pull).flatten(),
@@ -111,15 +116,17 @@ fn first_conflict(snap: Option<&Snapshot>) -> Option<String> {
     snap?.unstaged.iter().find(|f| f.status == '!').map(|f| f.path.clone())
 }
 
-/// "<label> succeeded", or "<label> failed: <the last line git printed>", with the label in the
-/// UI language (state/job_spec/labels.rs).
+/// "<label> succeeded", or "<label> failed: <the last line git printed>" (not a line-ending
+/// warning, glowfly_core::crlf_warnings), with the label in the UI language
+/// (state/job_spec/labels.rs).
 pub(super) fn default_headline(t: Lang, label: &str, ok: bool, output: &str) -> String {
     let job = crate::state::job_spec::labels::shown(t, label);
     if ok {
-        t.trf("job.headline.succeeded", &[("job", &job)])
-    } else {
-        t.trf("job.headline.failed", &[("job", &job), ("why", &super::ops::last_line(output))])
+        return t.trf("job.headline.succeeded", &[("job", &job)]);
     }
+    let real = output.lines().rfind(|l| !l.starts_with("$ ") && !glowfly_core::crlf_warnings::is_warning(l));
+    let why = real.unwrap_or_else(|| super::ops::last_line(output));
+    t.trf("job.headline.failed", &[("job", &job), ("why", &why)])
 }
 
 /// Why a flow's git command failed, for its own headline: the cause in plain words

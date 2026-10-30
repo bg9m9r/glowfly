@@ -112,14 +112,21 @@ pub struct Recount {
     pub workdir: PathBuf,
     /// The load generation when the job ended: a status read started before has an older view.
     pub generation: u64,
+    /// The paths git's lines named, and the readings of those they left open
+    /// (`glowfly_core::conflict_lines`), to put the status's paths in git's order.
+    pub named: Vec<String>,
+    pub unsure: Vec<Vec<String>>,
 }
 
-/// The paths `snap`'s status lists as conflicted, each once.
-pub fn unmerged(snap: &Snapshot) -> usize {
-    let mut paths: Vec<&str> = snap.unstaged.iter().filter(|f| f.status == '!').map(|f| f.path.as_str()).collect();
-    paths.sort_unstable();
-    paths.dedup();
-    paths.len()
+/// How many paths `snap`'s status lists as conflicted, each once, and those Glowfly can name to
+/// git (`conflicted_paths`), in list order.
+pub fn unmerged(snap: &Snapshot) -> (usize, Vec<String>) {
+    let mut all: Vec<&str> = snap.unstaged.iter().filter(|f| f.status == '!').map(|f| f.path.as_str()).collect();
+    all.sort_unstable();
+    all.dedup();
+    let mut named = conflicted_paths(snap);
+    named.dedup();
+    (all.len(), named)
 }
 
 #[cfg(test)]

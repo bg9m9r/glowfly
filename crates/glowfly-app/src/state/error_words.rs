@@ -18,7 +18,7 @@ pub fn cause(t: Lang, cause: &Cause) -> String {
         Cause::LocalChanges { files } => t.trn("git_errors.local_changes", files.len(), &[]),
         Cause::MergeRefused => t.tr("git_errors.merge_refused").to_owned(),
         Cause::UntrackedInTheWay { files } => t.trn("git_errors.untracked", files.len(), &[]),
-        Cause::Conflicts { files } => conflicts(t, files.len()),
+        Cause::Conflicts { files, unsure } => conflicts(t, files.len() + unsure.len()),
         Cause::Unresolved => t.tr("git_errors.unresolved").to_owned(),
         Cause::MergeInProgress => t.tr("git_errors.merge_in_progress").to_owned(),
         Cause::PushBehind { .. } => t.tr("git_errors.push_behind").to_owned(),

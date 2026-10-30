@@ -15,9 +15,11 @@ pub enum Cause {
     UntrackedInTheWay {
         files: Vec<String>,
     },
-    /// The operation stopped on conflicts in `files` (empty when git names none).
+    /// The operation stopped on conflicts in `files` (empty when git names none), and in a
+    /// path for each of `unsure`, whose readings (`conflict_lines`) leave open which it is.
     Conflicts {
         files: Vec<String>,
+        unsure: Vec<Vec<String>>,
     },
     /// Conflicts from earlier aren't resolved yet.
     Unresolved,
@@ -106,7 +108,8 @@ pub fn classify(output: &str) -> Option<Cause> {
         return Some(Cause::MergeInProgress);
     }
     if lines.iter().any(|l| conflict_line(l)) {
-        return Some(Cause::Conflicts { files: crate::conflict_lines::conflict_files(&lines) });
+        let (files, unsure) = crate::conflict_lines::conflict_paths(&lines);
+        return Some(Cause::Conflicts { files, unsure });
     }
     if let Some(cause) = rejected(&lines) {
         return Some(cause);
