@@ -8,9 +8,10 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 use std::path::{Path, PathBuf};
 
-/// The favorite repositories, in the order the user put them.
+/// The favorite repositories in the order shown: each group's, then the ungrouped ones, each in
+/// the order the user put them (`repo_groups`). The favorite keys follow it.
 pub fn favorites(s: &Settings) -> Vec<PathBuf> {
-    s.favorite_repos.iter().map(|f| glowfly_core::paths::decode(f)).collect()
+    super::repo_groups::shown_favorites(s)
 }
 
 /// Whether `p` is a favorite: the same folder as one (`AppState::same_folder`).

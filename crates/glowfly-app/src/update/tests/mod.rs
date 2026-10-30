@@ -203,6 +203,7 @@ pub(super) mod remote_checkout_tests;
 pub(super) mod remote_fork_tests;
 pub(super) mod remote_tests;
 pub(super) mod repo_colour_tests;
+pub(super) mod repo_groups_tests;
 pub(super) mod repo_scan_tests;
 pub(super) mod repo_sync_tests;
 pub(super) mod retry_tests;

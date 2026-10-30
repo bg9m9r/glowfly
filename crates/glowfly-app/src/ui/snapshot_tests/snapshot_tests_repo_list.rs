@@ -4,7 +4,7 @@
 
 use super::snapshot_tests::{harness, render, settings};
 use super::snapshot_tests_select::click;
-use crate::msg::{Msg, RecentMsg};
+use crate::msg::{GroupMsg, Msg, RecentMsg};
 use crate::state::{AppState, Tab};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, Rect, pos2, vec2};
@@ -140,7 +140,7 @@ fn welcome_favorite_row_menu() {
     assert!(!disabled(&h, "Move down"));
     h.get_by_label("Move down").click();
     h.run();
-    assert!(matches!(last(&h), Msg::Recent(RecentMsg::MoveFavorite { from: 0, to: 1 })));
+    assert!(matches!(last(&h), Msg::Groups(GroupMsg::MoveRepo { path, group: None, index: 1 }) if path == &PathBuf::from(web())));
 }
 
 fn pointer(h: &mut H, pos: Pos2, button: Option<bool>) {
@@ -177,7 +177,8 @@ fn welcome_favorites_drag() {
     h.check_snapshot("welcome_favorites_drag");
     pointer(&mut h, over, Some(false));
     h.run();
-    assert!(matches!(last(&h), Msg::Recent(RecentMsg::MoveFavorite { from: 1, to: 0 })), "moved above the first");
+    let moved = |p: &PathBuf| p == &PathBuf::from(api());
+    assert!(matches!(last(&h), Msg::Groups(GroupMsg::MoveRepo { path, group: None, index: 0 }) if moved(path)), "moved above the first");
 }
 
 #[test]

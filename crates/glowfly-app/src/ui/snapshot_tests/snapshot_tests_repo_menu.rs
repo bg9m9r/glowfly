@@ -18,7 +18,7 @@ use glowfly_core::settings::{RepoColour, ThemeChoice};
 use std::path::{Path, PathBuf};
 
 /// Opens the toolbar's repository menu: the button named by the repository, in the toolbar.
-fn open_repo_menu(h: &mut H) {
+pub(super) fn open_repo_menu(h: &mut H) {
     let name = h
         .get_all_by_label("demo")
         .filter_map(|n| n.bounding_box())

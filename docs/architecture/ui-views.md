@@ -88,8 +88,11 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 - `stack_menu.rs`: the local branch menu's stack header note and its restack, Push stack and Create pull requests for the stack items.
 - `create_pr_dialog.rs`: the create dialog's step line and Skip during a stack's run.
 - `stack_rows.rs`: the LOCAL rows' stack indentation and painted elbows.
-- `repo_colour_menu.rs`: the tab menu's and the welcome rows' repository Color submenu, with the square swatches in `repo_swatch.rs`.
-- `repo_menu_list.rs`: the repository menu's and File > Open recent's Favorites and Recent groups, the filter field of a long list, and Remove missing / Clear recent.
+- `repo_colour_menu.rs`: the tab menu's, the welcome rows' and the group headers' Color submenu, with the square swatches in `repo_swatch.rs`.
+- `repo_list_groups.rs`: the welcome screen's repository group headers (swatch, name, New group, Open all, ⋯) and the group menu; `repo_list_drag.rs` drags favorites between groups.
+- `repo_group_menu.rs`: a welcome favorite's Move to group submenu, the way to group without dragging.
+- `repo_group_dialog.rs`: the New group and Rename group dialog.
+- `repo_menu_list.rs`: the repository menu's and File > Open recent's repository groups, Favorites and Recent, the filter field of a long list, and Remove missing / Clear recent.
 - `repo_menu_row.rs`: one repository row of those menus: name, parent path, status, and the star and × on hover or focus; Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
 
 ## Snapshot tests

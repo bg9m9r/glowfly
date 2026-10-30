@@ -1,0 +1,9 @@
+Dialog
+  Label "New group"
+  Label "C:\\work\\docs"
+  Button "Close this dialog"
+  Label "Name"
+  TextInput "Name" = "work" [focused]
+  Label "There's already a group called work."
+  Button "Cancel"
+  Button "Create" [disabled]

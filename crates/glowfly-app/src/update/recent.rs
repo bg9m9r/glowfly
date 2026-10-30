@@ -3,6 +3,7 @@
 
 use crate::effect::Effect;
 use crate::msg::{FolderCheck, Msg, RecentMsg};
+use crate::state::repo_groups::prune;
 use crate::state::repo_lists::{favorites, forget_confirm, is_favorite, is_listed, is_missing, paths_to_check};
 use crate::state::{AppState, Modal};
 use glowfly_core::paths;
@@ -27,14 +28,6 @@ pub(super) fn handle(st: &mut AppState, msg: RecentMsg, now: Instant, fx: &mut V
         RecentMsg::SetFavorite { path, favorite: false } => unfavorite(st, &path, fx),
         RecentMsg::CheckFolders => check_folders(st, fx),
         RecentMsg::FoldersChecked(checks) => folders_checked(st, checks),
-        RecentMsg::MoveFavorite { from, to } => {
-            let favs = &mut st.settings.favorite_repos;
-            if from != to && from < favs.len() && to < favs.len() {
-                let f = favs.remove(from);
-                favs.insert(to, f);
-                fx.push(super::prefs::save_settings(st));
-            }
-        }
         RecentMsg::OpenFavorite(n) => match favorites(&st.settings).into_iter().nth(n) {
             Some(p) => super::tabs::open(st, p, fx),
             None => {
@@ -64,7 +57,8 @@ fn unfavorite(st: &mut AppState, p: &Path, fx: &mut Vec<Effect>) {
     let favorites = std::mem::take(&mut st.settings.favorite_repos);
     let before = favorites.len();
     st.settings.favorite_repos = favorites.into_iter().filter(|f| !st.same_folder(&paths::decode(f), p)).collect();
-    if st.settings.favorite_repos.len() != before {
+    // A favorite no longer is one in its group either.
+    if (st.settings.favorite_repos.len() != before) | prune(&mut st.settings) {
         fx.push(super::prefs::save_settings(st));
     }
 }
@@ -84,7 +78,7 @@ fn remove_missing(st: &mut AppState, fx: &mut Vec<Effect>) {
     let favorites = std::mem::take(&mut st.settings.favorite_repos);
     let before = favorites.len();
     st.settings.favorite_repos = favorites.into_iter().filter(|f| !is_missing(st, &paths::decode(f))).collect();
-    if st.settings.favorite_repos.len() != before {
+    if (st.settings.favorite_repos.len() != before) | prune(&mut st.settings) {
         fx.push(super::prefs::save_settings(st));
     }
     st.missing_repos.clear();

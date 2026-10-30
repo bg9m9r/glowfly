@@ -152,7 +152,12 @@ pub(super) fn paint_separator(p: &egui::Painter, left: Rect, gap: f32) {
 
 /// The color of the `n`th group from the left, so neighbouring groups differ.
 pub(super) fn group_color(n: usize) -> Color32 {
-    color::repo_group(n).gamma_multiply(0.8)
+    group_tint(color::repo_group(n))
+}
+
+/// A hue as a group strip and chip show it: a little quieter than a swatch.
+pub(super) fn group_tint(c: Color32) -> Color32 {
+    c.gamma_multiply(0.8)
 }
 
 /// The strip under a grouped tab: inset at the group's outer ends, and across the `gap` to the

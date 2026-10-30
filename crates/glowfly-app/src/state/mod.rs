@@ -133,6 +133,7 @@ pub mod release_notes;
 pub mod remote_branch;
 pub mod remotes;
 pub mod repo_colours;
+pub mod repo_groups;
 pub mod repo_identity;
 pub mod repo_lists;
 pub mod repo_scan;
@@ -385,6 +386,7 @@ pub enum Modal {
     SyncRepos,
     /// Rename tab (`ui/tab_dialog.rs`).
     RenameTab(tabs::RenameTabForm),
+    RepoGroup(repo_groups::GroupForm),
     /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
     Mainline(pick::MainlineForm),
     /// Uncommitted changes in the way of an operation: stash them and carry on (`ui/auto_stash_dialog.rs`).
@@ -432,8 +434,7 @@ pub struct AppState {
     /// detail and draft, the repository reads, the selection, forge data, undo history, commit
     /// search and view state), parked whole with the tab (state/session.rs).
     pub session: session::RepoSession,
-    /// Restacks stopped on a conflict, with the steps still to run once the banner's Continue or
-    /// Skip finishes that step; keyed by working folder rather than parked with a tab.
+    /// Restacks stopped on a conflict, with the steps still to run once the banner's Continue or Skip finishes that step (by folder).
     pub restacks: Vec<stack::PendingRestack>,
     pub job: Option<RunningJob>,
     /// The active job's stop, when it can be stopped (state/job_stop.rs).
@@ -447,8 +448,7 @@ pub struct AppState {
     pub toasts: Vec<Toast>,
     /// Last toast id handed out (state/toasts.rs).
     pub toast_seq: u64,
-    /// How far behind the checked-out branch was when the active tab's auto-fetch ended, until
-    /// the reload after it lands (update/notify.rs).
+    /// How far behind the checked-out branch was when the active tab's auto-fetch ended, until the reload after it lands (notify.rs).
     pub behind_watch: Option<notify::BehindWatch>,
     pub modal: Option<Modal>,
     pub dialog: dialog_guard::DialogGuard,
