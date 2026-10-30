@@ -50,6 +50,9 @@ pub struct SubmoduleInfo {
     /// recorded commit contains. Updating to the recorded commit leaves them reachable only from
     /// the submodule's reflog. Usually commits made on the detached HEAD a previous update left.
     pub left_behind: Vec<(Oid, String)>,
+    /// A cone-mode sparse checkout leaves its folder out (`sparse_ops::cone_folders`). git still
+    /// initializes it when asked, so the batch updates leave it out instead.
+    pub outside_sparse: bool,
 }
 
 /// The most commits `SubmoduleInfo::left_behind` lists.
@@ -79,6 +82,7 @@ pub(super) fn list(repo: &Repository) -> Vec<SubmoduleInfo> {
     let config = repo.config().and_then(|mut c| c.snapshot()).ok();
     let base = url_base(repo, config.as_ref());
     let workdir = repo.workdir().map(Path::to_path_buf);
+    let cone = crate::sparse_ops::cone_folders(repo);
     let mut out: Vec<SubmoduleInfo> = subs
         .iter()
         .filter_map(|sm| {
@@ -100,7 +104,8 @@ pub(super) fn list(repo: &Repository) -> Vec<SubmoduleInfo> {
             let clone_url = url.as_ref().map(|u| configured.unwrap_or_else(|| crate::submodule_ops::resolve_url(u, &base)));
             let branch = sm.branch().map(str::to_owned);
             let added = sm.head_id().is_none();
-            Some(SubmoduleInfo { name, path, url, clone_url, branch, added, recorded, checked_out, state, left_behind })
+            let outside_sparse = cone.as_ref().is_some_and(|f| !crate::sparse_ops::in_cone(&path, f));
+            Some(SubmoduleInfo { name, path, url, clone_url, branch, added, recorded, checked_out, state, left_behind, outside_sparse })
         })
         .collect();
     out.sort_by(|a, b| a.path.cmp(&b.path));

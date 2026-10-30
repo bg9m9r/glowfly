@@ -2,7 +2,8 @@
 //! (Update all asks before leaving commits behind), the offer to initialize submodules when a
 //! repository opens, and keeping submodules updated after checkouts, pulls, merges, rebases and
 //! resets (Preferences > General, overridden per repository from the header menu). That update
-//! leaves out any submodule where it would leave commits behind, and says so in the log.
+//! leaves out any submodule where it would leave commits behind, and says so in the log; no batch
+//! initializes a submodule the sparse checkout leaves out (named in the log once).
 
 use super::ops::{JobSpec, Started, start_job};
 use crate::effect::{Effect, LoadKind, SubmoduleEffect};
@@ -56,6 +57,7 @@ fn run(st: &mut AppState, batch: Batch, list: &[SubmoduleInfo], confirmed: bool,
     for sm in &plan.skipped {
         st.log(true, skipped_line(sm));
     }
+    note_outside(st, &plan.outside);
     if plan.targets.is_empty() {
         if batch != Batch::Auto {
             st.log(true, nothing_to_do(batch));
@@ -83,6 +85,18 @@ fn run(st: &mut AppState, batch: Batch, list: &[SubmoduleInfo], confirmed: bool,
         let folders = new.iter().map(|p| super::submodules::folder_of(&workdir, p)).collect();
         super::trust_inherit::expect(st, label, InheritKind::Submodule, folders);
     }
+}
+
+/// Names in the log, once per repository and session, the submodules a batch left out because
+/// the sparse checkout leaves their folders out.
+fn note_outside(st: &mut AppState, paths: &[String]) {
+    let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()).filter(|_| !paths.is_empty()) else { return };
+    if st.submodules.sparse_noted.iter().any(|p| same_spelling(p, &real)) {
+        return;
+    }
+    st.submodules.sparse_noted.push(real);
+    let t = st.settings.lang();
+    st.log(true, t.trf("submodules.log.outside_sparse", &[("paths", &paths.join(", "))]));
 }
 
 /// Whether the active repository has submodules and keeps them updated after checkouts.

@@ -2451,6 +2451,7 @@
   "status.via": "· via {source}",
   "status.zoom": "Zoom {percent}%",
   "status.zoom_reset_tip": "Reset zoom to 100%",
+  "submodules.log.outside_sparse": "Left out the submodules the sparse checkout leaves out: {paths}. Add their folders in Preferences > Sparse checkout to check them out.",
   "tabs.close_confirm.button.one": "Close tab",
   "tabs.close_confirm.button.other": "Close {count} tabs",
   "tabs.close_confirm.title.one": "Close tab?",

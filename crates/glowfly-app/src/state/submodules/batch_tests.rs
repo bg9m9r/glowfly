@@ -25,6 +25,7 @@ fn sm(path: &str, state: SubmoduleState, url: bool) -> SubmoduleInfo {
         checked_out,
         state,
         left_behind: Vec::new(),
+        outside_sparse: false,
     }
 }
 

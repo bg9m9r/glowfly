@@ -1,7 +1,7 @@
 //! Updating several submodules in one job: Initialize all, Update all (which asks before leaving
 //! commits behind) and the update after a checkout, pull, merge, rebase or reset (which leaves
 //! out any submodule where it would), with their texts, and what this session remembers about
-//! them.
+//! them. None of them initializes a submodule a cone sparse checkout leaves out.
 
 use super::{count_commits, named_commits};
 use crate::submodule::Batch;
@@ -19,6 +19,8 @@ pub struct SubmoduleSession {
     pub once_finished: bool,
     /// Resolved workdirs whose uninitialized submodules were offered (or initialized) this session.
     pub offered: Vec<PathBuf>,
+    /// Resolved workdirs whose submodules outside the sparse checkout were named in the log.
+    pub sparse_noted: Vec<PathBuf>,
 }
 
 /// What a batch does with a list of submodules.
@@ -32,11 +34,14 @@ pub struct BatchPlan {
     pub stranding: Vec<SubmoduleInfo>,
     /// After a job: left out, because updating would leave commits behind.
     pub skipped: Vec<SubmoduleInfo>,
+    /// Not checked out and left out: the sparse checkout leaves their folders out.
+    pub outside: Vec<String>,
 }
 
-/// Has a URL and no checkout (uninitialized, or its folder is gone).
+/// Has a URL and no checkout (uninitialized, or its folder is gone), and the sparse checkout
+/// keeps its folder: git would check one outside it out all the same.
 fn needs_init(sm: &SubmoduleInfo) -> bool {
-    sm.url.is_some() && !sm.is_initialized()
+    sm.url.is_some() && !sm.is_initialized() && !sm.outside_sparse
 }
 
 /// Has a URL and is checked out at another commit than the recorded one.
@@ -47,6 +52,9 @@ fn needs_update(sm: &SubmoduleInfo) -> bool {
 pub fn plan(batch: Batch, list: &[SubmoduleInfo]) -> BatchPlan {
     let mut p = BatchPlan::default();
     for sm in list {
+        if sm.outside_sparse && sm.url.is_some() && !sm.is_initialized() {
+            p.outside.push(sm.path.clone());
+        }
         let wanted = match batch {
             Batch::InitAll => needs_init(sm),
             Batch::UpdateAll | Batch::Auto => needs_init(sm) || needs_update(sm),

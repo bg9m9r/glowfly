@@ -188,7 +188,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - An operation that stops for conflicts fails, so nothing is updated until Continue or that commit finishes it; a stash pop that stops has nothing that finishes it, so the next moving job (or Update all) brings the submodules in step.
 - `finish_job` then reads the submodules again (`SubmoduleEffect::CheckAll`, scoped) when that job succeeded in the tab that is still active, and the update leaves out any submodule where it would strand commits.
 - The mark is matched by label and workdir, so one left by a job the trust prompt held never fires for another.
-- `opened` offers (once per session) to initialize a newly opened repository's submodules; a clone made with Clone submodules too unticked counts as offered (`update/clone.rs`, matched by any name of the repository, as trust's `names_repo` does), so it isn't given them.
+- No batch initializes a submodule a cone sparse checkout leaves out (`SubmoduleInfo::outside_sparse`, `BatchPlan::outside`); they are named in the log once per repository and session.
+- `opened` offers (once per session) to initialize a newly opened repository's submodules; a clone made with Clone submodules too unticked, or any sparse clone (its own step did its folders' submodules), counts as offered (`update/clone.rs`, matched by any name of the repository, as trust's `names_repo` does), so it isn't given them.
 
 ## Auto-stash
 

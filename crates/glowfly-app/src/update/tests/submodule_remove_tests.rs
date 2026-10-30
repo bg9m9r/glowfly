@@ -151,6 +151,7 @@ fn remove_in_an_untrusted_repository_asks_first() {
         checked_out: Some(id),
         state: SubmoduleState::InSync,
         left_behind: Vec::new(),
+        outside_sparse: false,
         clone_url: None,
         branch: None,
         added: false,

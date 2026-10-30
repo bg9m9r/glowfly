@@ -83,7 +83,8 @@ pub(super) fn check_parent(st: &AppState, delay: Duration, fx: &mut Vec<Effect>)
 }
 
 /// Starts the Clone dialog's clone as the active job. A clone without its submodules is not
-/// offered (or, keeping submodules updated, given) them when it opens: the box said no.
+/// offered (or, keeping submodules updated, given) them when it opens: the box said no. Nor is a
+/// sparse clone, whose own step handled them.
 fn clone_repo(st: &mut AppState, req: CloneRequest, fx: &mut Vec<Effect>) {
     // The dialog blocks these; checked again so no other sender can start a bad clone.
     if req.name.is_empty() || glowfly_core::remote_ops::check_url(&req.url).is_err() {
@@ -105,7 +106,9 @@ fn clone_repo(st: &mut AppState, req: CloneRequest, fx: &mut Vec<Effect>) {
         st.log(false, format!("Could not clone: {why}"));
         return;
     }
-    if !submodules {
+    // A sparse clone's own step did its folders' submodules (or said why not): the open doesn't
+    // try them, nor the ones outside the folders, again.
+    if !submodules || sparse.is_some() {
         st.submodules.offered.push(dest.clone());
     }
     if let Some(sparse) = sparse {

@@ -142,12 +142,13 @@ fn a_clone_without_submodules_made_through_a_link_is_not_given_them() {
 fn a_sparse_clone_whose_submodules_failed_says_so() {
     let sparse = Some(Sparse { folders: vec!["libs".into()], partial: false });
     let (st, dirs) = clone_with_a_submodule("clone-subs-refused", CloneOptions { sparse, submodules: true, shallow: None }, false);
-    // Keeping submodules updated, the open tries Initialize all again after it; the clone's own
-    // toast still says what failed.
+    // Keeping submodules updated, the open doesn't try them again: one toast says what failed.
     let start = "Cloned copy and set its folders, but cloning its submodules failed: ";
     let texts: Vec<&str> = st.toasts.iter().map(|t| t.text.as_str()).collect();
     let toast = st.toasts.iter().find(|t| t.text.starts_with(start)).unwrap_or_else(|| panic!("{texts:?}"));
     assert!(!toast.ok);
+    assert_eq!(st.toasts.iter().filter(|t| !t.ok).count(), 1, "{texts:?}");
+    assert!(!log_texts(&st).iter().any(|l| l.contains("Initialize submodules")), "{:?}", log_texts(&st));
     assert!(toast.text.ends_with("Try again with Update all submodules in the SUBMODULES section."), "{}", toast.text);
     assert!(st.snap.as_ref().is_some_and(|s| s.workdir.ends_with("copy")), "the clone still opens");
     remove(&dirs);

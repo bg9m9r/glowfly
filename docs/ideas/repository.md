@@ -94,6 +94,8 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Shallow (`--shallow-submodules`) and filtered (`--also-filter-submodules`) submodules when a
   shallow or partial clone takes them; they get their whole history now
 - Clone the submodules of folders added later to a sparse clone's checkout
+- Leave out of the batch updates the submodules a patterns-mode sparse checkout leaves out (only
+  cone mode is read now)
 
 ### Worktrees
 

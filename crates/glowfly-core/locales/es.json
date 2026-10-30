@@ -2451,6 +2451,7 @@
   "status.via": "· mediante {source}",
   "status.zoom": "Zoom {percent} %",
   "status.zoom_reset_tip": "Restablecer el zoom al 100 %",
+  "submodules.log.outside_sparse": "Se omitieron los submódulos que el checkout parcial deja fuera: {paths}. Añade sus carpetas en Preferencias > Checkout parcial para hacerles checkout.",
   "tabs.close_confirm.button.one": "Cerrar pestaña",
   "tabs.close_confirm.button.other": "Cerrar {count} pestañas",
   "tabs.close_confirm.title.one": "¿Cerrar la pestaña?",

@@ -246,6 +246,7 @@ pub(super) mod submodule_after_tests;
 pub(super) mod submodule_batch_tests;
 pub(super) mod submodule_edit_tests;
 pub(super) mod submodule_remove_tests;
+pub(super) mod submodule_sparse_tests;
 pub(super) mod submodule_tests;
 pub(super) mod tab_groups_tests;
 pub(super) mod tab_label_tests;
