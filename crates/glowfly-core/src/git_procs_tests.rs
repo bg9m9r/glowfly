@@ -76,12 +76,27 @@ fn hidepid_hides_other_users_processes() {
     assert!(!proc_hidden("proc /mnt/x proc rw,hidepid=2 0 0"), "another mount of proc");
 }
 
+/// Waits (up to ten seconds) until the just spawned `pid` runs git: between fork and exec a
+/// child still shows its parent's name and command line (the test binary's).
+#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
+fn exec_done(pid: u32) {
+    let names_git = |line: &[String]| {
+        let program = line.first().and_then(|a| std::path::Path::new(a).file_name()?.to_str());
+        program.is_some_and(is_git)
+    };
+    let until = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !os::args(pid).is_some_and(|line| names_git(&line)) && std::time::Instant::now() < until {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
 #[test]
 #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
 fn a_running_git_and_its_command_line_are_found() {
     use std::process::{Command, Stdio};
     // Waits on its input until it is closed.
     let mut child = Command::new("git").args(["hash-object", "--stdin"]).stdin(Stdio::piped()).stdout(Stdio::null()).spawn().unwrap();
+    exec_done(child.id());
     let v = scan();
     let line = os::args(child.id());
     drop(child.stdin.take());
