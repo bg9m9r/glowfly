@@ -184,6 +184,8 @@
   "clone.service.connect": "Conecta GitHub, GitLab o Bitbucket en Preferencias > Integraciones para elegir entre tus repositorios.",
   "clone.service.open_integrations.button": "Abrir integraciones",
   "clone.service.use_url.link": "Escribir una URL en su lugar",
+  "clone.submodules.check": "Clonar también los submódulos",
+  "clone.submodules.sparse_note": "Solo se clonan los submódulos de las carpetas que tienen checkout.",
   "clone.toast.folders_failed": "Se clonó {name}, pero no se pudieron establecer sus carpetas: {why}. Elígelas en Preferencias > Checkout parcial.",
   "commands.confirm.button": "Ejecutar",
   "commands.confirm.default": "¿Ejecutar {name}?",

@@ -10,7 +10,9 @@ use glowfly_core::{clone_ops, forge};
 pub(super) fn run(e: CloneEffect) -> Msg {
     Msg::Clone(match e {
         CloneEffect::CheckParent { parent, delay } => return super::files::check_clone_parent(parent, delay),
-        CloneEffect::Sparse { parent, cmd, dest, folders } => CloneMsg::Finished(clone_ops::run_sparse(&parent, &cmd, &dest, &folders)),
+        CloneEffect::Sparse { parent, cmd, dest, folders, submodules } => {
+            CloneMsg::Finished(clone_ops::run_sparse(&parent, &cmd, &dest, &folders, &submodules))
+        }
         CloneEffect::ListRepos { account, cwd } => {
             let result =
                 forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::my_repos(&account, &a)).map_err(ForgeError::from);

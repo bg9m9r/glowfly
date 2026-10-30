@@ -184,6 +184,8 @@
   "clone.service.connect": "Connect GitHub, GitLab or Bitbucket in Preferences > Integrations to pick from your repositories.",
   "clone.service.open_integrations.button": "Open integrations",
   "clone.service.use_url.link": "Enter a URL instead",
+  "clone.submodules.check": "Clone submodules too",
+  "clone.submodules.sparse_note": "Only the submodules inside the folders to check out are cloned.",
   "clone.toast.folders_failed": "Cloned {name}, but setting its folders failed: {why}. Choose them in Preferences > Sparse checkout.",
   "commands.confirm.button": "Run",
   "commands.confirm.default": "Run {name}?",

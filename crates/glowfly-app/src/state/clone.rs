@@ -1,6 +1,6 @@
 //! The Clone dialog's form: the URL (typed, or picked from the user's repositories on a
-//! connected service, `clone_service`), the parent folder, and the shallow and sparse clone
-//! options, with the pure rules that check them as the user types and the request they turn into.
+//! connected service, `clone_service`), the parent folder, and the shallow, sparse and submodule
+//! clone options, with the pure rules that check them as the user types and the request they turn into.
 
 use super::clone_service::{CloneSource, ServicePicker};
 use chrono::NaiveDate;
@@ -39,6 +39,8 @@ pub struct CloneForm {
     pub sparse_folders: String,
     /// Download file contents only for those folders (`--filter=blob:none`).
     pub partial: bool,
+    /// Clone the submodules too; starts as Preferences > General keeps submodules updated.
+    pub submodules: bool,
     /// The "Your repositories" tab.
     pub service: ServicePicker,
     /// The parent folder text last checked on disk (trimmed) and the folder it names (`~`
@@ -86,6 +88,7 @@ impl CloneForm {
             sparse: false,
             sparse_folders: String::new(),
             partial: false,
+            submodules: false,
             service: ServicePicker::default(),
             parent_checked: None,
             touched: super::touched::Touched::default(),
@@ -199,7 +202,7 @@ impl CloneForm {
             // The folder the check found; the text itself only before any check (tests).
             parent: self.parent_folder().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from(self.parent.trim())),
             name,
-            options: CloneOptions { shallow, sparse },
+            options: CloneOptions { shallow, sparse, submodules: self.submodules },
         })
     }
 }

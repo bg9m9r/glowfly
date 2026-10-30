@@ -20,5 +20,6 @@ Dialog
   TextInput "Branch" = "release/2.0"
   Label "Only this branch is downloaded. Leave it empty for the remote's default branch."
   CheckBox "Sparse checkout (check out only some folders)" [off]
+  CheckBox "Clone submodules too" [off]
   Button "Cancel"
   Button "Clone" [focused]

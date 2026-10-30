@@ -31,7 +31,12 @@ fn sparse_form(folders: &str) -> CloneForm {
 
 fn sparse_request(folders: &[&str]) -> CloneRequest {
     let sparse = Some(Sparse { folders: folders.iter().map(|f| (*f).to_owned()).collect(), partial: false });
-    CloneRequest { url: URL.into(), parent: work().into(), name: "app".into(), options: CloneOptions { shallow: None, sparse } }
+    CloneRequest {
+        url: URL.into(),
+        parent: work().into(),
+        name: "app".into(),
+        options: CloneOptions { shallow: None, sparse, submodules: false },
+    }
 }
 
 #[test]
@@ -61,7 +66,9 @@ fn a_sparse_clone_is_one_job_that_opens_the_clone() {
     let mut st = state();
     let req = sparse_request(&["docs"]);
     let fx = update(&mut st, Msg::Clone(CloneMsg::Start(req.clone())), Instant::now());
-    let [Effect::Clone(CloneEffect::Sparse { parent, cmd, dest, folders })] = fx.as_slice() else { panic!("unexpected effects {fx:?}") };
+    let [Effect::Clone(CloneEffect::Sparse { parent, cmd, dest, folders, .. })] = fx.as_slice() else {
+        panic!("unexpected effects {fx:?}")
+    };
     assert_eq!(parent, &req.parent);
     assert_eq!(dest, &req.parent.join("app"));
     assert_eq!(cmd, &["clone", "--sparse", "--", URL, "app"]);
@@ -141,7 +148,7 @@ fn sparse_clone_end_to_end_checks_out_only_the_chosen_folder() {
         url: src.display().to_string(),
         parent: parent.clone(),
         name: "copy".into(),
-        options: CloneOptions { shallow: None, sparse },
+        options: CloneOptions { shallow: None, sparse, submodules: false },
     };
     drive(&mut st, Msg::Clone(CloneMsg::Start(req)));
     let dest = parent.join("copy");

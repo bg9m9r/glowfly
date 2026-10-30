@@ -68,7 +68,12 @@ fn start(st: &mut AppState, redo: bool, action: Action, opts: UndoOpts, fx: &mut
         }
         _ => format!("{} {}", if redo { "Redo" } else { "Undo" }, action.describe()),
     };
-    super::ops::begin_job(st, &label, true, move |cwd| Effect::UndoRedo { cwd, action, redo, opts }, fx);
+    // An undo or redo that moves HEAD with the index may be followed by updating the submodules.
+    let moves = glowfly_core::submodule_ops::undo_moves_work_tree(&action, redo);
+    let started = super::ops::begin_job(st, &label, true, move |cwd| Effect::UndoRedo { cwd, action, redo, opts }, fx);
+    if started != super::ops::Started::No {
+        super::submodule_batch::job_started(st, &label, moves);
+    }
 }
 
 /// The toast of a "Stash changes and undo" whose stashed changes didn't simply come back after

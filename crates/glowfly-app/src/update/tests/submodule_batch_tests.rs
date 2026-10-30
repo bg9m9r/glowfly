@@ -23,7 +23,7 @@ fn batch(batch: Batch, confirmed: bool) -> Msg {
 
 /// Runs the effects `finish` would run, one step: the effects their results lead to come back
 /// instead of running.
-fn step(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
+pub(super) fn step(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let mut out = Vec::new();
     for e in fx.into_iter().filter(|e| !skipped(e)) {
         if let Some(m) = runner::execute(e) {
@@ -33,12 +33,12 @@ fn step(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     out
 }
 
-fn checks_all(fx: &[Effect], want: Batch) -> bool {
+pub(super) fn checks_all(fx: &[Effect], want: Batch) -> bool {
     fx.iter().any(|e| matches!(e, Effect::Submodule(SubmoduleEffect::CheckAll { batch, .. }) if *batch == want))
 }
 
 /// The commands of the git job in `fx` labelled `label`, if one was started.
-fn job_cmds(st: &AppState, fx: &[Effect], label: &str) -> Option<Vec<Vec<String>>> {
+pub(super) fn job_cmds(st: &AppState, fx: &[Effect], label: &str) -> Option<Vec<Vec<String>>> {
     if st.job.as_ref().map(|j| j.label.as_str()) != Some(label) {
         return None;
     }
@@ -105,7 +105,7 @@ fn update_all_asks_when_commits_would_be_stranded() {
 
 /// `opened`, plus a branch `other` that records a newer commit of the submodule; main is
 /// checked out with the submodule in sync.
-fn two_branches(name: &str) -> (AppState, PathBuf, PathBuf) {
+pub(super) fn two_branches(name: &str) -> (AppState, PathBuf, PathBuf) {
     let (mut st, parent, lib) = opened(name);
     let dir = parent.join(PATH);
     std::fs::write(dir.join("a.txt"), "other\n").unwrap();
@@ -121,12 +121,12 @@ fn two_branches(name: &str) -> (AppState, PathBuf, PathBuf) {
     (st, parent, lib)
 }
 
-fn checkout_other() -> Msg {
+pub(super) fn checkout_other() -> Msg {
     Msg::git("Checkout", &["checkout", "other", "--"])
 }
 
 /// Starts `msg`'s job and runs it: the effects its end leads to.
-fn after_job(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn after_job(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     let fx = update(st, msg, Instant::now());
     step(st, fx)
 }

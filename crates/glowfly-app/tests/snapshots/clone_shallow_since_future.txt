@@ -20,5 +20,6 @@ Dialog
   TextInput "Branch" = "bad name"
   Label "Not a valid branch or tag name."
   CheckBox "Sparse checkout (check out only some folders)" [off]
+  CheckBox "Clone submodules too" [off]
   Button "Cancel"
   Button "Clone" [disabled]

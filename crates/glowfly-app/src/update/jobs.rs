@@ -70,8 +70,11 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         let c = spec.cmds.iter().find(|c| UndoKind::classify(c).as_ref() == Some(k)).or(spec.cmds.last())?;
         Op::of_kind(k, c)
     });
-    // A branch checkout, pull, merge or reset may be followed by updating the submodules.
-    let moves = glowfly_core::submodule_ops::moves_work_tree(&spec.cmds) && spec.cwd.is_none();
+    // A branch checkout, pull, merge, cherry-pick, revert, stash pop or reset may be followed by
+    // updating the submodules; so may the commit that finishes a merge, cherry-pick or revert
+    // that stopped for conflicts (stopping, it failed and updated nothing).
+    let finishes = st.snap.as_ref().is_some_and(|s| glowfly_core::submodule_ops::finishes_operation(s.state, &spec.cmds));
+    let moves = (glowfly_core::submodule_ops::moves_work_tree(&spec.cmds) || finishes) && spec.cwd.is_none();
     let (label, quiet) = (job.label.clone(), spec.quiet);
     // A fetch in the active repository can pause or resume its remotes' auto-fetch.
     let sign_in_cmds = if spec.cwd.is_none() { spec.cmds.clone() } else { Vec::new() };
