@@ -20,7 +20,9 @@ pub fn moves_work_tree(cmds: &[Vec<String>]) -> bool {
 
 /// Whether `cmds`, run while the repository is in `state`, finish a merge, cherry-pick or revert
 /// that stopped for conflicts: a commit, which records what the stopped operation left in the
-/// index (the gitlinks it moved included).
+/// index (the gitlinks it moved included). In a cherry-pick or revert sequence it finishes only
+/// the stopped pick: the sequence ends with it only when no picks are left, which the caller
+/// checks once it has run.
 pub fn finishes_operation(state: RepositoryState, cmds: &[Vec<String>]) -> bool {
     use RepositoryState::*;
     matches!(state, Merge | CherryPick | CherryPickSequence | Revert | RevertSequence)

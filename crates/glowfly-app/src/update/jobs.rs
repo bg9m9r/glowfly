@@ -7,6 +7,7 @@ use crate::effect::{Effect, PickJob};
 use crate::state::auto_stash::Making;
 use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob};
+use git2::RepositoryState;
 use glowfly_core::journal::Op;
 use glowfly_core::undo::UndoKind;
 use std::path::PathBuf;
@@ -73,7 +74,10 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     // A branch checkout, pull, merge, cherry-pick, revert, stash pop or reset may be followed by
     // updating the submodules; so may the commit that finishes a merge, cherry-pick or revert
     // that stopped for conflicts (stopping, it failed and updated nothing).
-    let finishes = st.snap.as_ref().is_some_and(|s| glowfly_core::submodule_ops::finishes_operation(s.state, &spec.cmds));
+    // In a sequence that commit may finish only one pick: then only the sequence's end updates.
+    let state = st.snap.as_ref().map(|s| s.state);
+    let finishes = state.is_some_and(|s| glowfly_core::submodule_ops::finishes_operation(s, &spec.cmds));
+    let in_sequence = finishes && matches!(state, Some(RepositoryState::CherryPickSequence | RepositoryState::RevertSequence));
     let moves = (glowfly_core::submodule_ops::moves_work_tree(&spec.cmds) || finishes) && spec.cwd.is_none();
     let (label, quiet) = (job.label.clone(), spec.quiet);
     // A fetch in the active repository can pause or resume its remotes' auto-fetch.
@@ -93,6 +97,9 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     if started != Started::No {
         st.logs.job_retry = again.and_then(|spec| Some(Retry { tab: st.tabs.get(st.active_tab)?.id, workdir: st.workdir(), spec }));
         super::submodule_batch::job_started(st, &label, moves);
+        if in_sequence {
+            super::submodule_batch::only_once_finished(st);
+        }
         super::auto_stash::started_plain(st, &label, plain);
         // Also for a job held for the trust prompt; dropping it clears this.
         if let Some(job) = auto_stash {

@@ -24,7 +24,7 @@ pub(super) fn batch(st: &mut AppState, batch: Batch, confirmed: bool, fx: &mut V
         let list = st.snap.as_ref().map(|s| s.submodules.clone()).unwrap_or_default();
         run(st, batch, &list, true, fx);
     } else if let Some(workdir) = st.workdir() {
-        fx.push(Effect::Submodule(SubmoduleEffect::CheckAll { workdir, batch }));
+        fx.push(Effect::Submodule(SubmoduleEffect::CheckAll { workdir, batch, once_finished: false }));
     }
 }
 
@@ -94,6 +94,13 @@ fn auto_wanted(st: &AppState) -> bool {
 /// it when `moves` (it may change the commits the submodules are recorded at).
 pub(super) fn job_started(st: &mut AppState, label: &str, moves: bool) {
     st.submodules.after_job = if moves { st.workdir().map(|w| (w, label.to_owned())) } else { None };
+    st.submodules.once_finished = false;
+}
+
+/// The job `job_started` just remembered commits a pick of a cherry-pick or revert sequence: the
+/// update follows it only if the sequence ended there (Continue updates after the rest).
+pub(super) fn only_once_finished(st: &mut AppState) {
+    st.submodules.once_finished = st.submodules.after_job.is_some();
 }
 
 /// The active job ended. When it is the one `job_started` remembered, it succeeded in the tab
@@ -101,10 +108,11 @@ pub(super) fn job_started(st: &mut AppState, label: &str, moves: bool) {
 /// for the update.
 pub(super) fn job_finished(st: &mut AppState, label: &str, workdir: Option<&Path>, ok: bool, here: bool, fx: &mut Vec<Effect>) {
     let Some((w, l)) = st.submodules.after_job.take() else { return };
+    let once_finished = std::mem::take(&mut st.submodules.once_finished);
     if l != label || !workdir.is_some_and(|j| same_spelling(j, &w)) || !ok || !here || !auto_wanted(st) {
         return;
     }
-    fx.push(Effect::Submodule(SubmoduleEffect::CheckAll { workdir: w, batch: Batch::Auto }));
+    fx.push(Effect::Submodule(SubmoduleEffect::CheckAll { workdir: w, batch: Batch::Auto, once_finished }));
 }
 
 /// After a load: a repository just opened whose submodules aren't checked out is offered to
@@ -115,7 +123,8 @@ pub(super) fn opened(st: &mut AppState, kind: LoadKind, now: Instant, fx: &mut V
     }
     let Some(snap) = st.snap.as_ref() else { return };
     let targets = plan(Batch::InitAll, &snap.submodules).targets.len();
-    if targets == 0 || st.submodules.offered.iter().any(|p| same_spelling(p, &snap.real_workdir)) {
+    // Also by another name (a link, a junction, a subst drive), as trust finds what it made.
+    if targets == 0 || st.submodules.offered.iter().any(|p| same_spelling(p, &snap.real_workdir) || st.names_repo(snap, p)) {
         return;
     }
     let (real, workdir, name, list) = (snap.real_workdir.clone(), snap.workdir.clone(), snap.name.clone(), snap.submodules.clone());

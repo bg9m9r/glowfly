@@ -89,6 +89,8 @@ pub fn clone_cmd(url: &str, name: &str, opts: &CloneOptions) -> Vec<String> {
 pub struct CloneOutcome {
     /// The clone itself succeeded, so the new folder is a repository.
     pub cloned: bool,
+    /// Its folders were set too, so only the submodule step can have failed after that.
+    pub folders_set: bool,
     /// Every step succeeded.
     pub ok: bool,
     /// The job log: each command line, then git's output.
@@ -117,14 +119,14 @@ pub fn run_sparse(parent: &Path, cmd: &[String], dest: &Path, folders: &[String]
         output.push_str(out);
     }
     if !ok {
-        return CloneOutcome { cloned: false, ok: false, output };
+        return CloneOutcome { cloned: false, folders_set: false, ok: false, output };
     }
     let set = SparseCommand::Set { mode: SparseMode::Cone, paths: folders.to_vec() };
     let (set_ok, text) = sparse_ops::run(dest, &set);
     output.push('\n');
     output.push_str(&text);
     if !set_ok {
-        return CloneOutcome { cloned: true, ok: false, output };
+        return CloneOutcome { cloned: true, folders_set: false, ok: false, output };
     }
     for c in submodules {
         let (c_ok, out) = gitcli::run_with_input(dest, c, "", &[]);
@@ -136,10 +138,10 @@ pub fn run_sparse(parent: &Path, cmd: &[String], dest: &Path, folders: &[String]
             output.push_str(out);
         }
         if !c_ok {
-            return CloneOutcome { cloned: true, ok: false, output };
+            return CloneOutcome { cloned: true, folders_set: true, ok: false, output };
         }
     }
-    CloneOutcome { cloned: true, ok: true, output }
+    CloneOutcome { cloned: true, folders_set: true, ok: true, output }
 }
 
 /// Whether git reads `url` as a path on this computer rather than a URL (git's own rules:

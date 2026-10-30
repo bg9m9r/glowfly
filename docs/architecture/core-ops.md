@@ -22,7 +22,7 @@ source file, update its line here.
 ## Command lines and checks (`*_ops.rs`)
 
 - `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`: command lines and input checks for branches, tags and remotes.
-- `clone_ops.rs`: cloning (with `--recurse-submodules` for Clone submodules too), with the sparse clone job: the clone, then the folders to check out, then only those folders' submodules (`sparse_submodule_cmds`; git's sparse checkout leaves gitlinks out).
+- `clone_ops.rs`: cloning (with `--recurse-submodules` for Clone submodules too), with the sparse clone job: the clone, then the folders to check out, then only those folders' submodules (`sparse_submodule_cmds`; git's sparse checkout leaves gitlinks out); `CloneOutcome::folders_set` tells a failed submodule step from failed folders, each with its own toast.
 - `shallow_ops.rs`: fetching more of a shallow clone's history.
 - `worktree_ops.rs`: worktrees; moving one: `worktree_ops/moving.rs`.
 - `submodule_ops.rs`: submodules: the Add dialog's fields; removing one (deinit, `git rm`, then its stored module, with what would be lost); `set-url` / `set-branch` for editing one; batch `submodule update` command lines; resolving relative URLs; which commands, undos and redos move the work tree (and which commit finishes a stopped operation), after which submodules may be updated.

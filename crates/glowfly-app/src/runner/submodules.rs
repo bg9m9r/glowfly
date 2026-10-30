@@ -20,7 +20,7 @@ pub(super) fn run(e: SubmoduleEffect) -> Msg {
             let result = repo::check_submodule_path(&repo, &path).map_err(|p| p.message(&path));
             SubmoduleMsg::AddPathChecked { repo, path, result }
         }
-        SubmoduleEffect::CheckAll { workdir, batch } => {
+        SubmoduleEffect::CheckAll { workdir, batch, .. } => {
             SubmoduleMsg::CheckedAll { batch, result: repo::submodules_at(&workdir).map_err(|e| e.to_string()) }
         }
         SubmoduleEffect::CheckRemove { workdir, path } => {
@@ -34,8 +34,19 @@ pub(super) fn run(e: SubmoduleEffect) -> Msg {
     })
 }
 
+/// Whether an operation is still in progress at `workdir` (a sequence's picks left included).
+fn in_progress(workdir: &std::path::Path) -> bool {
+    git2::Repository::open(workdir).is_ok_and(|r| repo::state(&r) != git2::RepositoryState::Clean)
+}
+
 impl Execute for SubmoduleEffect {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        if let SubmoduleEffect::CheckAll { workdir, once_finished: true, .. } = &self
+            && in_progress(workdir)
+        {
+            tracing::debug!("the sequence goes on; the submodules wait for its end");
+            return None;
+        }
         Some(run(self))
     }
 }

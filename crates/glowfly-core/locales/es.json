@@ -187,6 +187,7 @@
   "clone.submodules.check": "Clonar también los submódulos",
   "clone.submodules.sparse_note": "Solo se clonan los submódulos de las carpetas que tienen checkout.",
   "clone.toast.folders_failed": "Se clonó {name}, pero no se pudieron establecer sus carpetas: {why}. Elígelas en Preferencias > Checkout parcial.",
+  "clone.toast.submodules_failed": "Se clonó {name} y se establecieron sus carpetas, pero no se pudieron clonar sus submódulos: {why}. Vuelve a intentarlo con Actualizar todos los submódulos en la sección SUBMODULES.",
   "commands.confirm.button": "Ejecutar",
   "commands.confirm.default": "¿Ejecutar {name}?",
   "commands.confirm.from_repo": "Viene del archivo .glowfly/commands.toml de este repositorio, no de tu propio archivo de comandos.",

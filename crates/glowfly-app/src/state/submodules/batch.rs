@@ -14,6 +14,9 @@ use std::path::PathBuf;
 pub struct SubmoduleSession {
     /// The workdir and label of a started job that, once it succeeds, updates the submodules.
     pub after_job: Option<(PathBuf, String)>,
+    /// That job is a commit in a cherry-pick or revert sequence: it updates only if the sequence
+    /// ended with it, not while picks are left.
+    pub once_finished: bool,
     /// Resolved workdirs whose uninitialized submodules were offered (or initialized) this session.
     pub offered: Vec<PathBuf>,
 }

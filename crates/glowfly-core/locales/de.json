@@ -187,6 +187,7 @@
   "clone.submodules.check": "Submodule mitklonen",
   "clone.submodules.sparse_note": "Nur die Submodule in den Ordnern, die ausgecheckt werden, werden geklont.",
   "clone.toast.folders_failed": "{name} wurde geklont, aber das Festlegen seiner Ordner ist fehlgeschlagen: {why}. Wähle sie unter Einstellungen > Sparse Checkout.",
+  "clone.toast.submodules_failed": "{name} wurde geklont und seine Ordner festgelegt, aber das Klonen seiner Submodule ist fehlgeschlagen: {why}. Versuche es im Abschnitt SUBMODULES mit Alle Submodule aktualisieren erneut.",
   "commands.confirm.button": "Ausführen",
   "commands.confirm.default": "{name} ausführen?",
   "commands.confirm.from_repo": "Er stammt aus der Datei .glowfly/commands.toml dieses Repositorys, nicht aus deiner eigenen Befehlsdatei.",

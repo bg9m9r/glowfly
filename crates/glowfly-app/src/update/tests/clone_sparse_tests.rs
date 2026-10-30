@@ -102,7 +102,12 @@ fn a_clone_whose_folders_failed_still_opens() {
     let mut st = state();
     update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
     let dest = PathBuf::from(work()).join("app");
-    let o = CloneOutcome { cloned: true, ok: false, output: "$ git clone x\n$ git sparse-checkout set\nfatal: no space".into() };
+    let o = CloneOutcome {
+        cloned: true,
+        folders_set: false,
+        ok: false,
+        output: "$ git clone x\n$ git sparse-checkout set\nfatal: no space".into(),
+    };
     let fx = update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
     assert!(st.job.is_none());
     let toast = st.toasts.last().unwrap();
@@ -115,7 +120,7 @@ fn a_clone_whose_folders_failed_still_opens() {
     let mut st = state();
     update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
     let locked = "$ git clone x\n$ git sparse-checkout set\nfatal: Unable to create '/w/app/.git/index.lock': File exists.";
-    let o = CloneOutcome { cloned: true, ok: false, output: locked.into() };
+    let o = CloneOutcome { cloned: true, folders_set: false, ok: false, output: locked.into() };
     update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
     let text = &st.toasts.last().unwrap().text;
     assert!(text.starts_with("Cloned app, but setting its folders failed: Another git program is using this repository"), "{text}");
@@ -123,7 +128,7 @@ fn a_clone_whose_folders_failed_still_opens() {
 
     let mut st = state();
     update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
-    let o = CloneOutcome { cloned: false, ok: false, output: "$ git clone x\nfatal: repository not found".into() };
+    let o = CloneOutcome { cloned: false, folders_set: false, ok: false, output: "$ git clone x\nfatal: repository not found".into() };
     let fx = update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
     assert!(st.job.is_none());
     assert!(!loads(&fx, &dest) && st.trust.created.is_empty(), "{fx:?}");

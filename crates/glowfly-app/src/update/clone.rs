@@ -1,7 +1,8 @@
 //! The Clone dialog: opening it (Clone submodules too follows Preferences > General), checking
 //! its parent folder on disk as the user types (the view only reads the answer), its Your
-//! repositories tab (`clone_service`), starting the clone and the end of a sparse one. A plain
-//! clone is a git job; a sparse one is `CloneEffect::Sparse`.
+//! repositories tab (`clone_service`), starting the clone and the end of a sparse one (its folders
+//! or, after them, its submodules may fail). A plain clone is a git job; a sparse one is
+//! `CloneEffect::Sparse`.
 
 use super::jobs::{JobSpec, start_job};
 use crate::effect::CloneEffect;
@@ -47,15 +48,15 @@ pub(super) fn handle(st: &mut AppState, msg: CloneMsg, now: Instant, fx: &mut Ve
                     .unwrap_or_default();
                 let t = st.settings.lang();
                 let why = super::job_errors::reason(t, &o.output);
-                t.trf("clone.toast.folders_failed", &[("name", &name), ("why", &why.trim_end_matches('.'))])
+                // The folders were set when only the submodule step failed after them.
+                let args = [("name", &name as &dyn std::fmt::Display), ("why", &why.trim_end_matches('.'))];
+                if o.folders_set { t.trf("clone.toast.submodules_failed", &args) } else { t.trf("clone.toast.folders_failed", &args) }
             });
             super::jobs::finish_made(st, o.cloned, o.ok, o.output, headline, now, fx);
         }
     }
 }
 
-/// Asks whether the open Clone dialog's parent folder exists, after `delay`. An empty field
-/// needs no answer.
 /// Opens the Clone dialog, with `url` filled in (a link's remote).
 pub(super) fn open_with(st: &mut AppState, url: Option<String>, fx: &mut Vec<Effect>) {
     let parent = st.recent.first().and_then(|p| p.parent()).map(glowfly_core::native_path::shown).unwrap_or_default();
@@ -70,6 +71,8 @@ pub(super) fn open_with(st: &mut AppState, url: Option<String>, fx: &mut Vec<Eff
     check_parent(st, Duration::ZERO, fx);
 }
 
+/// Asks whether the open Clone dialog's parent folder exists, after `delay`. An empty field
+/// needs no answer.
 pub(super) fn check_parent(st: &AppState, delay: Duration, fx: &mut Vec<Effect>) {
     if let Some(Modal::Clone(form)) = &st.modal {
         let parent = form.parent.trim();
