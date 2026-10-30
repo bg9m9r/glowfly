@@ -1,6 +1,7 @@
 //! Headless tests for the remote a pull request's push goes to under push config:
 //! `branch.<name>.pushRemote`, then `remote.pushDefault`, before the fork the branch tracks or
-//! the code host's remote, and a configured remote that can't be used logged once.
+//! the code host's remote; a configured name with no remote logged once and passed over, and a
+//! configured remote off the code host refusing the push.
 
 use super::push_pr_fork_tests::with_fork;
 use super::push_pr_tests::cleanup;
@@ -10,6 +11,7 @@ use crate::effect::Effect;
 use crate::msg::{ForgeMsg, Msg, RepoMsg};
 use crate::state::AppState;
 use crate::state::pr_repos::{UnusablePush, pr_push_target};
+use crate::state::push_pr::{HostBranch, host_branch};
 use glowfly_core::gitcli::args;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -70,7 +72,7 @@ fn a_missing_push_remote_falls_back_and_is_logged_once() {
     let (snap, fs) = (st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap());
     let b = snap.locals.iter().find(|b| b.name == "topic").unwrap();
     let unusable = UnusablePush { key: "branch.topic.pushRemote".into(), remote: "gone".into() };
-    assert_eq!(pr_push_target(b, snap, fs), ("ada".to_owned(), Some(unusable)), "on to pushDefault");
+    assert_eq!(pr_push_target(b, snap, fs), Ok(("ada".to_owned(), Some(unusable))), "on to pushDefault");
     assert_eq!(push_and_start(&mut st, "topic"), push("ada", "topic", false));
     assert_eq!(push_and_start(&mut st, "topic"), push("ada", "topic", false));
     assert_eq!(warnings(&st), 1, "logged once: {:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
@@ -81,11 +83,21 @@ fn a_missing_push_remote_falls_back_and_is_logged_once() {
 }
 
 #[test]
-fn a_push_remote_off_the_code_host_falls_back() {
+fn a_push_remote_off_the_code_host_refuses_the_push() {
+    // The user meant the branch for backup, so it isn't pushed to origin instead.
     let (mut st, work, bare, ada) = with_fork("pr-config-off-host");
     git(&work, &["remote", "add", "backup", "https://example.com/backup/r.git"]);
     config(&mut st, &work, "remote.pushDefault", "backup");
-    assert_eq!(push_and_start(&mut st, "topic"), push("origin", "topic", true), "the code host's remote, as without config");
-    assert_eq!(warnings(&st), 1);
+    assert!(push_and_start(&mut st, "topic").is_empty(), "nothing pushed");
+    let why = "remote.pushDefault names backup, which isn't a repository on GitHub, so topic isn't pushed for a pull request. \
+        Point remote.pushDefault at a remote on GitHub, or pick the repository in the create dialog.";
+    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(why));
+    let (snap, fs) = (st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap());
+    let b = snap.locals.iter().find(|b| b.name == "topic").unwrap();
+    assert_eq!(host_branch(st.settings.lang(), b, snap, fs), Some(HostBranch::Blocked(why.to_owned())), "the menus say why");
+    // A pushRemote that names a PR repository still wins over it.
+    config(&mut st, &work, "branch.topic.pushRemote", "ada");
+    assert_eq!(push_and_start(&mut st, "topic"), push("ada", "topic", true));
+    assert_eq!(warnings(&st), 0);
     done(work, bare, ada);
 }

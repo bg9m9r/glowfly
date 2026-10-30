@@ -120,7 +120,7 @@ fn convert(m: ApiMr, approved: Approved, checks: Option<Checks>) -> PullRequest 
         title: m.title,
         description: m.description.unwrap_or_default(),
         source: m.source_branch,
-        head_repo: HeadRepo::of_ids(m.source_project_id, m.target_project_id),
+        head_repo: HeadRepo::of_ids(m.source_project_id, m.target_project_id, &Default::default()),
         target: m.target_branch,
         author: m.author.name,
         draft: m.draft || m.work_in_progress,
@@ -190,11 +190,15 @@ impl super::Forge for GitLab {
     fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
         let mrs: Vec<ApiMr> = page::by_link(auth, format!("{}/merge_requests?state=opened&per_page=100", project_api(t)))?;
         let checks = per_pr(&mrs, |m| gitlab_checks::head_pipeline(t, auth, m.iid));
+        // The list names a fork only by its project id: read each fork's path once.
+        let forks = mrs.iter().filter(|m| m.source_project_id != m.target_project_id).filter_map(|m| m.source_project_id);
+        let paths = super::head_repo::gitlab_fork_paths(t, auth, forks);
         let mut out = Vec::with_capacity(mrs.len());
         for (i, (m, checks)) in mrs.into_iter().zip(checks).enumerate() {
             // An approvals lookup that fails leaves the merge request without votes.
             let approved = if i < CHECKED_PRS { votes(t, auth, m.iid).unwrap_or_default() } else { Approved::default() };
-            out.push(convert(m, approved, checks));
+            let head_repo = HeadRepo::of_ids(m.source_project_id, m.target_project_id, &paths);
+            out.push(PullRequest { head_repo, ..convert(m, approved, checks) });
         }
         Ok(out)
     }

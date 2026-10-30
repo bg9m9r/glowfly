@@ -4,13 +4,19 @@
 //! repository (https or SSH, letter case, a `.git` suffix and ports aside), so a same-named
 //! branch on another repository is never taken for a fork's source.
 
-use super::{Provider, Target, forks};
+use super::{Auth, Provider, Target, forks, get};
 use serde::Deserialize;
+use std::collections::HashMap;
+
+/// At most this many GitLab fork projects are looked up per list; the rest stay known only by id.
+const GITLAB_FORK_LOOKUPS: usize = 20;
 
 /// A repository in a list answer, by full name: GitHub's `head.repo` and `base.repo`, Bitbucket
-/// Cloud's `source.repository` and `destination.repository` (null for a deleted fork).
+/// Cloud's `source.repository` and `destination.repository` (null for a deleted fork). A
+/// missing name reads as empty: an unknown repository, not a failed list.
 #[derive(Deserialize)]
 pub(super) struct RepoName {
+    #[serde(default)]
     full_name: String,
 }
 
@@ -22,7 +28,8 @@ pub enum HeadRepo {
     Same,
     /// Another repository (a fork). `name` is its full name as the service gives it (`owner/repo`,
     /// a GitLab namespace path, a Data Center `PROJECT/repo`, an Azure `project/repo`); empty when
-    /// the list names it only by id (GitLab's `source_project_id`).
+    /// it is unknown (a GitLab fork whose project couldn't be read, an entry without a name), and
+    /// then it matches no remote.
     Fork { name: String },
     /// The fork was deleted: the list has no repository for the source.
     Deleted,
@@ -38,12 +45,15 @@ pub(super) struct AzureFork {
 
 #[derive(Deserialize)]
 struct AzureRepo {
+    #[serde(default)]
     name: String,
+    #[serde(default)]
     project: AzureProject,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct AzureProject {
+    #[serde(default)]
     name: String,
 }
 
@@ -53,6 +63,7 @@ impl HeadRepo {
         match fork.map(|f| f.repository.as_ref()) {
             None => HeadRepo::Same,
             Some(None) => HeadRepo::Deleted,
+            Some(Some(r)) if r.name.is_empty() || r.project.name.is_empty() => HeadRepo::Fork { name: String::new() },
             Some(Some(r)) => HeadRepo::Fork { name: format!("{}/{}", r.project.name, r.name) },
         }
     }
@@ -62,6 +73,7 @@ impl HeadRepo {
     /// same repository.
     pub(super) fn of_names(head: Option<&str>, base: Option<&str>) -> HeadRepo {
         match (head, base) {
+            (Some(""), _) => HeadRepo::Fork { name: String::new() },
             (Some(h), Some(b)) if h.eq_ignore_ascii_case(b) => HeadRepo::Same,
             (Some(h), _) => HeadRepo::Fork { name: h.to_owned() },
             (None, Some(_)) => HeadRepo::Deleted,
@@ -69,11 +81,12 @@ impl HeadRepo {
         }
     }
 
-    /// From the list's source and target project ids (GitLab's): another project is a fork known
-    /// only by id, no source project a deleted fork.
-    pub(super) fn of_ids(head: Option<u64>, base: Option<u64>) -> HeadRepo {
+    /// From the list's source and target project ids (GitLab's): another project is a fork, named
+    /// by its path from `paths` (`gitlab_fork_paths`) or else unknown; no source project is a
+    /// deleted fork.
+    pub(super) fn of_ids(head: Option<u64>, base: Option<u64>, paths: &HashMap<u64, String>) -> HeadRepo {
         match (head, base) {
-            (Some(h), Some(b)) if h != b => HeadRepo::Fork { name: String::new() },
+            (Some(h), Some(b)) if h != b => HeadRepo::Fork { name: paths.get(&h).cloned().unwrap_or_default() },
             (None, Some(_)) => HeadRepo::Deleted,
             _ => HeadRepo::Same,
         }
@@ -98,6 +111,21 @@ impl HeadRepo {
             HeadRepo::Deleted => false,
         }
     }
+}
+
+/// The paths (`path_with_namespace`) of the GitLab fork projects `ids`, each asked once, at most
+/// `GITLAB_FORK_LOOKUPS`; one that can't be read is left out, and its fork stays unknown.
+pub(super) fn gitlab_fork_paths(t: &Target, auth: &Auth, ids: impl IntoIterator<Item = u64>) -> HashMap<u64, String> {
+    #[derive(Deserialize)]
+    struct Project {
+        path_with_namespace: String,
+    }
+    let mut ids: Vec<u64> = ids.into_iter().collect();
+    ids.sort_unstable();
+    ids.dedup();
+    let ask =
+        |id: &u64| get::<Project>(auth, &format!("https://{}/api/v4/projects/{id}", t.host)).ok().map(|p| (*id, p.path_with_namespace));
+    ids.iter().take(GITLAB_FORK_LOOKUPS).filter_map(ask).filter(|(_, p)| !p.is_empty()).collect()
 }
 
 /// The fork named `name` on `base`'s service: owner and repository split at the last `/` (an
@@ -130,10 +158,13 @@ mod tests {
         assert_eq!(HeadRepo::of_names(Some("ada/app"), Some("team/app")), HeadRepo::Fork { name: "ada/app".into() });
         assert_eq!(HeadRepo::of_names(None, Some("team/app")), HeadRepo::Deleted);
         assert_eq!(HeadRepo::of_names(None, None), HeadRepo::Same);
-        assert_eq!(HeadRepo::of_ids(Some(7), Some(7)), HeadRepo::Same);
-        assert_eq!(HeadRepo::of_ids(Some(9), Some(7)), HeadRepo::Fork { name: String::new() });
-        assert_eq!(HeadRepo::of_ids(None, Some(7)), HeadRepo::Deleted);
-        assert_eq!(HeadRepo::of_ids(None, None), HeadRepo::Same);
+        let paths = HashMap::from([(9, "bob/app".to_owned())]);
+        assert_eq!(HeadRepo::of_ids(Some(7), Some(7), &paths), HeadRepo::Same);
+        assert_eq!(HeadRepo::of_ids(Some(9), Some(7), &paths), HeadRepo::Fork { name: "bob/app".into() });
+        assert_eq!(HeadRepo::of_ids(Some(8), Some(7), &paths), HeadRepo::Fork { name: String::new() }, "not read");
+        assert_eq!(HeadRepo::of_ids(None, Some(7), &paths), HeadRepo::Deleted);
+        assert_eq!(HeadRepo::of_ids(None, None, &paths), HeadRepo::Same);
+        assert_eq!(HeadRepo::of_names(Some(""), Some("team/app")), HeadRepo::Fork { name: String::new() }, "a nameless head");
     }
 
     #[test]

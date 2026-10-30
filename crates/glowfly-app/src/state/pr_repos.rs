@@ -8,6 +8,7 @@ use super::ForgeState;
 use super::branches;
 use git2::Oid;
 use glowfly_core::forge::{self, Connection, Target};
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot, Tracking};
 
 /// A configured remote whose repository is on the code host's account.
@@ -94,8 +95,9 @@ pub fn push_remote(b: &BranchInfo, fs: &ForgeState) -> String {
     branches::remote_tracking(b).filter(|t| is_fork(fs, &t.remote)).map(|t| t.remote.clone()).unwrap_or_else(|| fs.remote.clone())
 }
 
-/// A push remote named in config that a pull request's push can't use: no remote of that name,
-/// or one that isn't a repository on the code host's account.
+/// A push remote named in config that a pull request's push can't use: no remote of that name
+/// (passed over and logged), or one that isn't a repository on the code host's account (refused,
+/// since the user meant the branch to go there and not to the code host's remote).
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnusablePush {
     /// `branch.<name>.pushRemote` or `remote.pushDefault`.
@@ -104,32 +106,45 @@ pub struct UnusablePush {
 }
 
 /// The remote a pull request from `b` is pushed to, as git would push it: the remote of
-/// `branch.<name>.pushRemote`, else of `remote.pushDefault`, when it is a PR repository's; else
-/// `push_remote`. The first configured remote that can't be used comes with it, for the log.
-pub fn pr_push_target(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> (String, Option<UnusablePush>) {
+/// `branch.<name>.pushRemote`, else of `remote.pushDefault`; else `push_remote`. A configured
+/// name with no remote is passed over and comes with the answer, for the log; a configured remote
+/// that isn't a PR repository refuses the push (Err).
+pub fn pr_push_target(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Result<(String, Option<UnusablePush>), UnusablePush> {
     let config = &snap.push_remotes;
     let by_branch = config.of_branch(&b.name).map(|r| (format!("branch.{}.pushRemote", b.name), r));
     let by_default = config.default.as_deref().map(|r| ("remote.pushDefault".to_owned(), r));
-    let mut unusable = None;
+    let mut missing = None;
     for (key, remote) in by_branch.into_iter().chain(by_default) {
-        let known = snap.remotes.iter().any(|(n, _)| n == remote);
-        if known && (remote == fs.remote || is_pr_remote(fs, remote)) {
-            return (remote.to_owned(), unusable);
+        let unusable = UnusablePush { key, remote: remote.to_owned() };
+        if !snap.remotes.iter().any(|(n, _)| n == remote) {
+            missing.get_or_insert(unusable);
+        } else if remote == fs.remote || is_pr_remote(fs, remote) {
+            return Ok((remote.to_owned(), missing));
+        } else {
+            return Err(unusable);
         }
-        unusable.get_or_insert(UnusablePush { key, remote: remote.to_owned() });
     }
-    (push_remote(b, fs), unusable)
+    Ok((push_remote(b, fs), missing))
 }
 
-/// `pr_push_target`'s remote.
-pub fn pr_push_remote(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> String {
-    pr_push_target(b, snap, fs).0
+/// `pr_push_target`'s remote, or the configured remote that refuses the push.
+pub fn pr_push_remote(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Result<String, UnusablePush> {
+    pr_push_target(b, snap, fs).map(|(r, _)| r)
+}
+
+/// Why push config refuses `branch`'s push for a pull request (`pr_push_target`'s Err).
+pub fn push_refused(t: Lang, u: &UnusablePush, branch: &str, fs: &ForgeState) -> String {
+    let service = fs.host.as_ref().map(|h| h.provider.name()).unwrap_or_default();
+    let noun = fs.pr_word(t);
+    let args: [(&str, &dyn std::fmt::Display); 5] =
+        [("key", &u.key), ("remote", &u.remote), ("service", &service), ("branch", &branch), ("noun", &noun)];
+    t.trf("pr.push_remote.refused", &args)
 }
 
 /// Whether `b`'s pull request is pushed to `remote` because push config names it rather than
 /// what the branch tracks.
 pub fn pushed_by_config(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -> bool {
-    pr_push_remote(b, snap, fs) == remote && push_remote(b, fs) != remote
+    pr_push_remote(b, snap, fs).is_ok_and(|r| r == remote) && push_remote(b, fs) != remote
 }
 
 /// The branch on `remote` that `b` tracks as its own: any on the code host's remote or a fork,

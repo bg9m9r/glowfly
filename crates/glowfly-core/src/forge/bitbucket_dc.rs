@@ -63,19 +63,26 @@ struct DcRef {
 
 #[derive(Deserialize)]
 struct DcRepo {
+    #[serde(default)]
     slug: String,
+    #[serde(default)]
     project: DcProject,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct DcProject {
+    #[serde(default)]
     key: String,
 }
 
 impl DcRef {
-    /// The repository's `PROJECT/slug` (a personal one's key is `~USER`).
+    /// The repository's `PROJECT/slug` (a personal one's key is `~USER`); empty, so unknown,
+    /// when either is missing.
     fn repo_name(&self) -> Option<String> {
-        self.repository.as_ref().map(|r| format!("{}/{}", r.project.key, r.slug))
+        let name = |r: &DcRepo| {
+            if r.slug.is_empty() || r.project.key.is_empty() { String::new() } else { format!("{}/{}", r.project.key, r.slug) }
+        };
+        self.repository.as_ref().map(name)
     }
 }
 

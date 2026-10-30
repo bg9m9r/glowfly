@@ -9,6 +9,7 @@ use super::pr_repos;
 use super::{ForgeState, Selection};
 use git2::Oid;
 use glowfly_core::forge::PullRequest;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
 
 /// A create dialog to open once a push lands: `source` is the branch's name on the remote it
@@ -51,9 +52,13 @@ fn host_tip(host: &[(String, Oid)], name: &str) -> Option<Oid> {
 }
 
 /// Where `b` stands on the remote its pull request is pushed to (`pr_repos::pr_push_remote`);
-/// None without a code host or when that remote isn't loaded.
-pub fn host_branch(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Option<HostBranch> {
-    host_branch_on(b, snap, fs, &pr_repos::pr_push_remote(b, snap, fs))
+/// None without a code host or when that remote isn't loaded. Push config naming a remote that
+/// can't take it blocks the push, saying why in `t`.
+pub fn host_branch(t: Lang, b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Option<HostBranch> {
+    match pr_repos::pr_push_remote(b, snap, fs) {
+        Ok(remote) => host_branch_on(b, snap, fs, &remote),
+        Err(u) => fs.host.as_ref().map(|_| HostBranch::Blocked(pr_repos::push_refused(t, &u, &b.name, fs))),
+    }
 }
 
 /// Where `b` stands on `remote`; None without a code host or when `remote` isn't loaded.
@@ -117,15 +122,18 @@ pub fn chosen_target_for(
 
 /// The toolbar's and the palette's "Push <head> and create a …" item: the checked-out branch's
 /// name when it can be pushed for a new pull request, else why not.
-pub fn push_item(snap: &Snapshot, fs: &ForgeState) -> Result<String, String> {
+pub fn push_item(t: Lang, snap: &Snapshot, fs: &ForgeState) -> Result<String, String> {
     let Some(b) = snap.head_info() else { return Err("Check out a branch first.".to_owned()) };
     if let Some(pr) = open_pr(snap, fs, &b.name) {
         return Err(format!("{} already has {} {}.", b.name, fs.pr_noun(), fs.pr_label(pr.id)));
     }
-    match host_branch(b, snap, fs) {
+    match host_branch(t, b, snap, fs) {
         Some(HostBranch::Missing | HostBranch::Ahead(_)) => Ok(b.name.clone()),
         Some(HostBranch::Blocked(why)) => Err(why),
-        Some(HostBranch::Pushed) | None => Err(format!("{} is up to date on {}.", b.name, pr_repos::pr_push_remote(b, snap, fs))),
+        Some(HostBranch::Pushed) | None => {
+            let remote = pr_repos::pr_push_remote(b, snap, fs).unwrap_or_else(|u| u.remote);
+            Err(format!("{} is up to date on {remote}.", b.name))
+        }
     }
 }
 
@@ -187,7 +195,7 @@ pub fn pr_push(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -
 /// there (a local branch's upstream there may be named differently).
 pub fn open_pr<'a>(snap: &Snapshot, fs: &'a ForgeState, name: &str) -> Option<&'a PullRequest> {
     let local = snap.locals.iter().find(|b| b.name == name);
-    let remote = local.map(|b| pr_repos::pr_push_remote(b, snap, fs)).unwrap_or_else(|| fs.remote.clone());
+    let remote = local.and_then(|b| pr_repos::pr_push_remote(b, snap, fs).ok()).unwrap_or_else(|| fs.remote.clone());
     fs.pr_from(&remote, &pr_source_on(snap, fs, &remote, name))
 }
 

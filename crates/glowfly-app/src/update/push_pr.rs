@@ -20,9 +20,10 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
     if fs.host.is_none() {
         return;
     }
+    // A refused push config leaves the pick to the dialog's From repository.
     let from = match from {
         Some(f) => Some(f),
-        None => push_pr::local_for(snap, fs, &name).cloned().map(|b| push_target(st, &b)),
+        None => push_pr::local_for(snap, fs, &name).cloned().and_then(|b| push_target(st, &b).ok()),
     };
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     let from = from.filter(|r| pr_repos::is_pr_remote(fs, r)).unwrap_or_else(|| fs.remote.clone());
@@ -54,12 +55,14 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
     super::forge::want_issues(st, keys, fx);
 }
 
-/// The remote `b`'s pull request is pushed to (`pr_repos::pr_push_target`). A push remote named
-/// in config that can't be used is logged once per key and remote, and the next choice is taken.
-fn push_target(st: &mut AppState, b: &BranchInfo) -> String {
-    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return String::new() };
-    let (remote, unusable) = pr_repos::pr_push_target(b, snap, fs);
-    let Some(u) = unusable else { return remote };
+/// The remote `b`'s pull request is pushed to (`pr_repos::pr_push_target`), or why push config
+/// refuses it. A configured name with no remote is logged once per key and remote, and the next
+/// choice is taken.
+fn push_target(st: &mut AppState, b: &BranchInfo) -> Result<String, String> {
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return Err(String::new()) };
+    let (remote, missing) =
+        pr_repos::pr_push_target(b, snap, fs).map_err(|u| pr_repos::push_refused(st.settings.lang(), &u, &b.name, fs))?;
+    let Some(u) = missing else { return Ok(remote) };
     let service = fs.host.as_ref().map(|h| h.provider.name()).unwrap_or_default();
     let t = st.settings.lang();
     let args: [(&str, &dyn std::fmt::Display); 5] =
@@ -68,7 +71,7 @@ fn push_target(st: &mut AppState, b: &BranchInfo) -> String {
     if st.session.forge.as_mut().is_some_and(|f| f.push_warned.insert(format!("{}={}", u.key, u.remote))) {
         st.log(false, text);
     }
-    remote
+    Ok(remote)
 }
 
 /// Pushes local `branch` to `remote` (None: its push remote), then opens the create dialog (at
@@ -82,7 +85,10 @@ pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, rem
         st.log(false, format!("Branch {branch} no longer exists."));
         return;
     };
-    let remote = remote.unwrap_or_else(|| push_target(st, &b));
+    let remote = match remote.map_or_else(|| push_target(st, &b), Ok) {
+        Ok(r) => r,
+        Err(why) => return st.log(false, why),
+    };
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     let Some(state) = push_pr::host_branch_on(&b, snap, fs, &remote) else {
         st.log(false, format!("There is no remote named {remote}."));

@@ -16,7 +16,7 @@ source file, update its line here.
 - `details.rs`: per-PR checks and votes read after the list.
 - `review/`: pull request conversations, review threads, reviews and merging, routing in `route.rs`: GitHub's in `github.rs` and `github_threads.rs`, GitLab merge requests' notes, approvals and merging in `gitlab.rs`, Bitbucket Cloud pull requests' comments and votes in `bitbucket.rs`, Data Center's in `bitbucket_dc.rs`, and both services' merging in `bitbucket_merge.rs`.
 - `pr_heads.rs`: each service's head on a fork.
-- `head_repo.rs`: the repository a listed pull request's source is on (`PullRequest::head_repo`: the same one, a fork or a deleted fork, from each service's list) and whether a remote's repository is it; fixtures for every service in `api_tests/fork_pr_list.rs`.
+- `head_repo.rs`: the repository a listed pull request's source is on (`PullRequest::head_repo`: the same one, a fork or a deleted fork, from each service's list, a GitLab fork's path read by its project id, a nameless entry as an unknown fork) and whether a remote's repository is it; fixtures for every service in `api_tests/fork_pr_list.rs`.
 - `repo_size.rs`: the hosting service's reported repository size (see Partial clones in [core-ops.md](core-ops.md)).
 
 ## Issues

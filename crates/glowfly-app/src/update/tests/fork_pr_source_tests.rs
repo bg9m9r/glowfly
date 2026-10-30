@@ -7,11 +7,11 @@ use super::push_pr_fork_tests::{fetch_from, with_fork};
 use super::push_pr_tests::{cleanup, commit_on, fetch};
 use super::tests::{drive, git};
 use crate::effect::{ForgeReply, ForgeResult};
-use crate::msg::{BranchMsg, ForgeMsg, Msg, RepoMsg};
+use crate::msg::{AutoStashMsg, BranchMsg, ForgeMsg, Msg, RepoMsg};
 use crate::pull_request::PullRequestMsg;
-use crate::state::AppState;
 use crate::state::pull_request_source::fork_known;
 use crate::state::push_pr::open_pr;
+use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::forge::{HeadRepo, PullRequest};
 use std::path::PathBuf;
@@ -108,13 +108,21 @@ fn a_forks_pull_request_comes_from_the_forks_remote() {
 
     // The local topic tracks nothing on ada: it is another branch with the same name.
     drive(&mut st, Msg::Branch(BranchMsg::CheckoutPullRequest { id: 6 }));
-    assert!(logged(&st, "The local branch topic isn't ada/topic, where #6 comes from."));
+    assert!(logged(&st, "The local branch topic neither tracks nor pushes to ada/topic, where #6 comes from"));
 
     // Pushed to ada by config, the local topic's pull request is the fork's.
     git(&dirs[0], &["config", "branch.topic.pushRemote", "ada"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let (snap, fs) = (st.snap.as_ref().unwrap(), st.session.forge.as_ref().unwrap());
     assert_eq!(open_pr(snap, fs, "topic").map(|p| p.id), Some(6));
+    // ...and it is the fork's branch, so checking the pull request out checks it out.
+    let before = st.log.len();
+    drive(&mut st, Msg::Branch(BranchMsg::CheckoutPullRequest { id: 6 }));
+    assert_eq!(st.log.len(), before, "nothing refused: {:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
+    // The fixture leaves a.txt edited, so the checkout asks to stash it first.
+    assert!(matches!(st.modal, Some(Modal::AutoStash(_))), "the checkout waits on the auto-stash prompt");
+    drive(&mut st, Msg::AutoStash(AutoStashMsg::Stash));
+    assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("topic"));
     done(dirs);
 }
 

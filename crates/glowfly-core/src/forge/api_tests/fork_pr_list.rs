@@ -47,7 +47,8 @@ fn github_enterprise_server_lists_the_head_repository() {
     assert!(prs[1].head_repo.is(&remote("ssh://git@github.acme.io/Bob/app-fork"), &base));
 }
 
-/// GitLab names projects by id only; a deleted fork's `source_project_id` is null.
+/// GitLab names the source project by id only (its path is read by id); a deleted fork's
+/// `source_project_id` is null.
 const GL: &str = r#"[
   {"iid":1,"title":"Own","source_branch":"topic","target_branch":"main","author":{"name":"Ada"},
    "web_url":"https://gitlab.com/team/app/-/merge_requests/1","source_project_id":7,"target_project_id":7},
@@ -57,21 +58,96 @@ const GL: &str = r#"[
    "web_url":"https://gitlab.com/team/app/-/merge_requests/3","source_project_id":null,"target_project_id":7}
 ]"#;
 
+/// Two merge requests from the same fork project, so its path is asked once.
+const GL_TWO: &str = r#"[
+  {"iid":2,"title":"Fork","source_branch":"topic","target_branch":"main","author":{"name":"Bob"},
+   "web_url":"https://gitlab.com/team/app/-/merge_requests/2","source_project_id":9,"target_project_id":7},
+  {"iid":4,"title":"Fork too","source_branch":"other","target_branch":"main","author":{"name":"Bob"},
+   "web_url":"https://gitlab.com/team/app/-/merge_requests/4","source_project_id":9,"target_project_id":7}
+]"#;
+
+#[test]
+fn gitlab_reads_a_forks_path_by_its_project_id() {
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET gitlab.com/api/v4/projects/team%2Fapp/merge_requests?state=opened&per_page=100" => Reply::json(GL_TWO),
+        "GET gitlab.com/api/v4/projects/9" => Reply::json(r#"{"id":9,"path_with_namespace":"bob/sub/app"}"#),
+        _ => Reply::not_found(),
+    });
+    let base = remote("https://gitlab.com/team/app");
+    let prs = pull_requests(&base, &token(Provider::GitLab)).unwrap();
+    assert_eq!(heads(&prs), [(2, "topic", fork("bob/sub/app")), (4, "other", fork("bob/sub/app"))]);
+    assert_eq!(routes(&m).iter().filter(|r| r.as_str() == "GET gitlab.com/api/v4/projects/9").count(), 1, "asked once");
+    assert!(prs[0].head_repo.is(&remote("git@gitlab.com:Bob/sub/app.git"), &base));
+    assert!(!prs[0].head_repo.is(&base, &base));
+}
+
 #[test]
 fn gitlab_lists_forks_by_project_id() {
+    // The fork's project can't be read here: it stays unknown, and the list still loads.
     let _m = list_server("GET gitlab.com/api/v4/projects/team%2Fapp/merge_requests?state=opened&per_page=100".into(), GL);
     let base = remote("https://gitlab.com/team/app");
     let prs = pull_requests(&base, &token(Provider::GitLab)).unwrap();
     assert_eq!(heads(&prs), [(1, "topic", HeadRepo::Same), (2, "topic", fork("")), (3, "topic", HeadRepo::Deleted)]);
-    // A fork known only by id is no local remote's, not even the base repository's.
+    // An unknown fork is no local remote's, not even the base repository's.
     assert!(!prs[1].head_repo.is(&base, &base));
 }
 
 #[test]
-fn gitlab_self_managed_lists_forks_by_project_id() {
-    let _m = list_server("GET gitlab.acme.io/api/v4/projects/group%2Fapp/merge_requests?state=opened&per_page=100".into(), GL);
+fn gitlab_self_managed_reads_the_forks_path_on_its_own_server() {
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET gitlab.acme.io/api/v4/projects/group%2Fapp/merge_requests?state=opened&per_page=100" => Reply::json(GL),
+        "GET gitlab.acme.io/api/v4/projects/9" => Reply::json(r#"{"path_with_namespace":"ada/app"}"#),
+        _ => Reply::not_found(),
+    });
     let prs = pull_requests(&remote("https://gitlab.acme.io/group/app"), &token(Provider::GitLabSelfManaged)).unwrap();
-    assert_eq!(prs[1].head_repo, fork(""));
+    assert_eq!(prs[1].head_repo, fork("ada/app"));
+    assert_eq!(find(&m, "GET gitlab.acme.io/api/v4/projects/9").header("Authorization"), Some("Bearer tok"));
+}
+
+/// Entries missing a repository's name read as an unknown fork; the rest of the list loads.
+#[test]
+fn a_nameless_head_repository_is_unknown_not_a_failed_list() {
+    const GH_ODD: &str = r#"[
+      {"number":1,"title":"Odd","html_url":"https://github.com/team/app/pull/1","user":{"login":"ada"},
+       "head":{"ref":"topic","sha":"a1","repo":{}},"base":{"ref":"main","sha":"b","repo":{"full_name":"team/app"}}},
+      {"number":2,"title":"Own","html_url":"https://github.com/team/app/pull/2","user":{"login":"ada"},
+       "head":{"ref":"x","sha":"a2","repo":{"full_name":"team/app"}},"base":{"ref":"main","sha":"b","repo":{"full_name":"team/app"}}}
+    ]"#;
+    let _m = list_server("GET api.github.com/repos/team/app/pulls?state=open&per_page=100".into(), GH_ODD);
+    let prs = pull_requests(&remote("https://github.com/team/app"), &token(Provider::GitHub)).unwrap();
+    assert_eq!(heads(&prs), [(1, "topic", fork("")), (2, "x", HeadRepo::Same)]);
+    drop(_m);
+
+    const AZ_ODD: &str = r#"{"count":2,"value":[
+      {"pullRequestId":1,"title":"Odd","sourceRefName":"refs/heads/topic","targetRefName":"refs/heads/main","createdBy":{"displayName":"Ada"},
+       "forkSource":{"repository":{"id":"f1","name":"web-fork"}}},
+      {"pullRequestId":2,"title":"Own","sourceRefName":"refs/heads/x","targetRefName":"refs/heads/main","createdBy":{"displayName":"Ada"}}
+    ]}"#;
+    let list =
+        "GET dev.azure.com/contoso/Web/_apis/git/repositories/app/pullrequests?searchCriteria.status=active&$top=100&api-version=7.1";
+    let _m = list_server(list.into(), AZ_ODD);
+    let prs = pull_requests(&remote("https://dev.azure.com/contoso/Web/_git/app"), &token(Provider::AzureDevOps)).unwrap();
+    assert_eq!(heads(&prs), [(1, "topic", fork("")), (2, "x", HeadRepo::Same)]);
+    drop(_m);
+
+    const BB_ODD: &str = r#"{"values":[
+      {"id":1,"title":"Odd","source":{"branch":{"name":"topic"},"repository":{"type":"repository"}},
+       "destination":{"branch":{"name":"main"},"repository":{"full_name":"team/app"}},"links":{"html":{"href":"https://bitbucket.org/team/app/pull-requests/1"}}}
+    ]}"#;
+    let list = "GET api.bitbucket.org/2.0/repositories/team/app/pullrequests?state=OPEN&pagelen=50&fields=%2Bvalues.participants";
+    let _m = list_server(list.into(), BB_ODD);
+    let prs = pull_requests(&remote("https://bitbucket.org/team/app"), &token(Provider::Bitbucket)).unwrap();
+    assert_eq!(heads(&prs), [(1, "topic", fork(""))]);
+    drop(_m);
+
+    const DC_ODD: &str = r#"{"isLastPage":true,"values":[
+      {"id":1,"title":"Odd","fromRef":{"displayId":"topic","repository":{"slug":"api"}},
+       "toRef":{"displayId":"master","repository":{"slug":"api","project":{"key":"PROJ"}}},"author":{"user":{"displayName":"Ada"}},
+       "links":{"self":[{"href":"https://bitbucket.acme.io/projects/PROJ/repos/api/pull-requests/1"}]}}
+    ]}"#;
+    let _m = list_server("GET bitbucket.acme.io/rest/api/1.0/projects/PROJ/repos/api/pull-requests?state=OPEN&limit=100".into(), DC_ODD);
+    let prs = pull_requests(&remote("https://bitbucket.acme.io/scm/PROJ/api.git"), &token(Provider::BitbucketDataCenter)).unwrap();
+    assert_eq!(heads(&prs), [(1, "topic", fork(""))]);
 }
 
 /// Bitbucket Cloud's `source.repository` is null once the fork is deleted.

@@ -178,8 +178,7 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
   when the panel closes)
 - Fork pull requests on Azure DevOps and Bitbucket Cloud: fetch the source branch from the fork's
   URL (they publish no head ref)
-- GitLab fork merge requests: read the source project's path by its id, so a fork remote here is
-  matched as the source (the list names it only by id)
+- Remember GitLab fork projects' paths across refreshes instead of reading them once per list
 - Checking out a fork pull request whose fork isn't a remote here: offer to add the fork as a remote
 - Keep fork pull requests' branches visible under Relevant branches by repository, not only by name
 - Commits tab rows: avatars, signature badges, each commit's checks, and cherry-pick, create
