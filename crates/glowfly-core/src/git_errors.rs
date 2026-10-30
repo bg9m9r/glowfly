@@ -106,7 +106,7 @@ pub fn classify(output: &str) -> Option<Cause> {
         return Some(Cause::MergeInProgress);
     }
     if lines.iter().any(|l| conflict_line(l)) {
-        return Some(Cause::Conflicts { files: conflict_files(&lines) });
+        return Some(Cause::Conflicts { files: crate::conflict_lines::conflict_files(&lines) });
     }
     if let Some(cause) = rejected(&lines) {
         return Some(cause);
@@ -203,22 +203,6 @@ fn conflict_line(l: &str) -> bool {
         // A rebase prints its progress ("Rebasing (1/1)") in front, on the same line.
         || l.contains("error: could not apply ")
         || l.contains("error: could not revert ")
-}
-
-/// The files git's CONFLICT lines name, in order, each once.
-fn conflict_files(lines: &[&str]) -> Vec<String> {
-    let mut files: Vec<String> = Vec::new();
-    for l in lines.iter().filter(|l| l.starts_with("CONFLICT (")) {
-        let file = if let Some((_, p)) = l.split_once("Merge conflict in ") {
-            Some(p.trim())
-        } else {
-            l.split_once("): ").and_then(|(_, rest)| rest.split_once(" deleted in ")).map(|(p, _)| p.trim())
-        };
-        if let Some(f) = file.filter(|f| !f.is_empty() && !files.iter().any(|x| x == f)) {
-            files.push(f.to_owned());
-        }
-    }
-    files
 }
 
 /// The text between `prefix` and the next `'` in `line`.

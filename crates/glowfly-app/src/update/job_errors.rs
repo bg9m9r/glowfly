@@ -21,6 +21,9 @@ use glowfly_core::stash_ops::StashScope;
 pub(super) struct Explained {
     pub text: String,
     pub fix: Option<ToastAction>,
+    /// It stopped on conflicts: the count in `text` is from git's CONFLICT lines until the
+    /// refreshed status counts them (update/conflict_count.rs).
+    pub conflicts: bool,
 }
 
 /// Explains `job`'s failure from its `output`, when git's cause is one Glowfly recognises.
@@ -49,69 +52,37 @@ pub(super) fn explain(
     let try_again = || again.map(|r| super::job_retry::button(t, r));
     let pull = || fix(t.tr("git_errors.pull.button"), Msg::git("Pull", &["pull", "--ff"]));
     let set_upstream = || head.clone().and_then(|b| fix(t.tr("branch.menu.set_upstream"), Msg::Branch(BranchMsg::SetUpstreamDialog(b))));
-    let (text, fix) = match cause {
-        Cause::LocalChanges { files } => {
-            let text = if files.is_empty() {
-                t.tr("git_errors.local_changes.unlisted").to_owned()
-            } else {
-                t.trn("git_errors.local_changes", files.len(), &[])
-            };
-            (text, retry.map_or_else(stash_dialog, stash_and))
-        }
-        Cause::MergeRefused => (t.tr("git_errors.merge_refused").to_owned(), retry.and_then(stash_and)),
-        Cause::UntrackedInTheWay { files } => (t.trn("git_errors.untracked", files.len(), &[]), stash_dialog()),
-        Cause::Conflicts { files } => match files.first() {
-            Some(first) => (t.trn("git_errors.conflicts", files.len(), &[]), view_conflicts(first)),
-            None => (t.tr("git_errors.conflicts.unlisted").to_owned(), None),
-        },
-        Cause::Unresolved => (t.tr("git_errors.unresolved").to_owned(), first_conflict(snap).and_then(|f| view_conflicts(&f))),
-        Cause::MergeInProgress => (t.tr("git_errors.merge_in_progress").to_owned(), None),
-        Cause::PushBehind { branch } => (t.tr("git_errors.push_behind").to_owned(), if is_head(&branch) { pull() } else { None }),
-        Cause::StaleLease { .. } => (
-            t.tr("git_errors.stale_lease").to_owned(),
-            fix(t.tr("git_errors.fetch.button"), Msg::git("Fetch all", &["fetch", "--all", "--prune"])),
-        ),
-        Cause::PushRefused { reason } => (t.trf("git_errors.push_refused", &[("reason", &reason)]), None),
-        Cause::NoUpstream { push_branch: Some(b) } => (
-            t.trf("git_errors.no_upstream.push", &[("branch", &b)]),
-            fix(t.tr("git_errors.push.button"), Msg::Job(JobMsg::Push { force: false })),
-        ),
-        Cause::NoUpstream { push_branch: None } => (t.tr("git_errors.no_upstream.pull").to_owned(), set_upstream()),
-        Cause::UpstreamGone { branch } => (t.trf("git_errors.upstream_gone", &[("branch", &branch)]), set_upstream()),
+    let text = crate::state::error_words::cause(t, &cause);
+    let conflicts = matches!(cause, Cause::Conflicts { .. });
+    let fix = match cause {
+        Cause::LocalChanges { .. } => retry.map_or_else(stash_dialog, stash_and),
+        Cause::MergeRefused => retry.and_then(stash_and),
+        Cause::UntrackedInTheWay { .. } => stash_dialog(),
+        Cause::Conflicts { files } => files.first().and_then(view_conflicts),
+        Cause::Unresolved => first_conflict(snap).and_then(|f| view_conflicts(&f)),
+        Cause::MergeInProgress | Cause::PushRefused { .. } | Cause::UnknownRef { .. } | Cause::HostKeyChanged => None,
+        Cause::PushBehind { branch } => is_head(&branch).then(pull).flatten(),
+        Cause::StaleLease { .. } => fix(t.tr("git_errors.fetch.button"), Msg::git("Fetch all", &["fetch", "--all", "--prune"])),
+        Cause::NoUpstream { push_branch: Some(_) } => fix(t.tr("git_errors.push.button"), Msg::Job(JobMsg::Push { force: false })),
+        Cause::NoUpstream { push_branch: None } | Cause::UpstreamGone { .. } => set_upstream(),
         Cause::Diverged { branch } => {
             let ours = branch.as_deref().is_none_or(is_head) && head.is_some();
-            (t.tr("git_errors.diverged").to_owned(), if ours { pull() } else { None })
+            ours.then(pull).flatten()
         }
-        Cause::DetachedHead => (
-            t.tr("git_errors.detached").to_owned(),
-            fix(t.tr("git_errors.create_branch.button"), Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() })),
-        ),
-        Cause::UnknownRef { name } => (t.trf("git_errors.unknown_ref", &[("name", &name)]), None),
-        Cause::Locked { file } => (t.trf("git_errors.locked", &[("file", &file)]), try_again()),
-        Cause::SignIn(AuthNeed::Https) => (t.tr("git_errors.sign_in.https").to_owned(), try_again()),
-        Cause::SignIn(need) => sign_in(t, need, fix),
-        Cause::HostKeyChanged => (t.tr("git_errors.host_key_changed").to_owned(), None),
+        Cause::DetachedHead => {
+            fix(t.tr("git_errors.create_branch.button"), Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }))
+        }
+        Cause::Locked { .. } | Cause::SignIn(AuthNeed::Https) => try_again(),
+        Cause::SignIn(AuthNeed::Ssh) => fix(t.tr("git_errors.ssh_keys.button"), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh))),
+        Cause::SignIn(AuthNeed::HostKey) => None,
         Cause::Remote(f) => {
             // A remote that isn't there, or can't be read, often has a wrong URL.
             let wrong_url = matches!(f, RemoteFailure::NotFound | RemoteFailure::Unreadable);
             let edit = snap.filter(|_| wrong_url).and_then(|s| failing_remote(s, output));
-            let edit = edit.and_then(|name| fix(t.tr("git_errors.edit_remote.button"), Msg::Remote(RemoteMsg::EditDialog(name))));
-            (crate::state::error_words::remote(t, &f), edit)
+            edit.and_then(|name| fix(t.tr("git_errors.edit_remote.button"), Msg::Remote(RemoteMsg::EditDialog(name))))
         }
     };
-    Some(Explained { text, fix })
-}
-
-/// The sign-in failures' texts; an SSH key the server refused offers Preferences > SSH.
-fn sign_in(t: Lang, need: AuthNeed, fix: impl Fn(&str, Msg) -> Option<ToastAction>) -> (String, Option<ToastAction>) {
-    match need {
-        AuthNeed::Https => (t.tr("git_errors.sign_in.https").to_owned(), None),
-        AuthNeed::Ssh => (
-            t.tr("git_errors.sign_in.ssh").to_owned(),
-            fix(t.tr("git_errors.ssh_keys.button"), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh))),
-        ),
-        AuthNeed::HostKey => (t.tr("git_errors.host_key").to_owned(), None),
-    }
+    Some(Explained { text, fix, conflicts })
 }
 
 /// The configured remote a failed fetch, pull or push was talking to, judged from its
@@ -140,7 +111,19 @@ fn first_conflict(snap: Option<&Snapshot>) -> Option<String> {
     snap?.unstaged.iter().find(|f| f.status == '!').map(|f| f.path.clone())
 }
 
-/// "<label> succeeded", or "<label> failed: <the last line git printed>".
-pub(super) fn default_headline(label: &str, ok: bool, output: &str) -> String {
-    if ok { format!("{label} succeeded") } else { format!("{label} failed: {}", super::ops::last_line(output)) }
+/// "<label> succeeded", or "<label> failed: <the last line git printed>", with the label in the
+/// UI language (state/job_spec/labels.rs).
+pub(super) fn default_headline(t: Lang, label: &str, ok: bool, output: &str) -> String {
+    let job = crate::state::job_spec::labels::shown(t, label);
+    if ok {
+        t.trf("job.headline.succeeded", &[("job", &job)])
+    } else {
+        t.trf("job.headline.failed", &[("job", &job), ("why", &super::ops::last_line(output))])
+    }
+}
+
+/// Why a flow's git command failed, for its own headline: the cause in plain words
+/// (state/error_words.rs), else the last line git printed.
+pub(super) fn reason(t: Lang, output: &str) -> String {
+    crate::state::error_words::explained(t, output).unwrap_or_else(|| super::ops::last_line(output).to_owned())
 }

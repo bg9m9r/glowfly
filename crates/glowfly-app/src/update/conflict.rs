@@ -211,12 +211,14 @@ pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 }
 
-/// The working-tree status changed: the conflict lists are read again, and once the open file
+/// The working-tree status changed: the conflict lists are read again, a conflicts toast takes
+/// the status's count (update/conflict_count.rs), and once the open file
 /// is no longer conflicted the view moves on. Resolved by Glowfly (saved, a whole side, marked
 /// resolved) it opens the next conflicted file; otherwise (outside the app) it closes. Picks
 /// are otherwise kept.
 pub(super) fn status_changed(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     super::conflict_files::want(st, fx);
+    super::conflict_count::status_read(st);
     let (Some(c), Some(snap)) = (&st.session.conflict.view, &st.snap) else { return };
     let conflicted: Vec<&str> = snap.unstaged.iter().filter(|f| f.status == '!').map(|f| f.path.as_str()).collect();
     if conflicted.contains(&c.path.as_str()) {

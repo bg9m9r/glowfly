@@ -113,7 +113,10 @@ pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<Stri
     let output = if stashed {
         match after_commands(output, 1) {
             Some(rest) => rest,
-            None => return Some(stash_failed(st.settings.lang(), &label, last_line(output))),
+            None => {
+                let t = st.settings.lang();
+                return Some(stash_failed(t, &label, &super::job_errors::reason(t, output)));
+            }
         }
     } else {
         output
@@ -127,7 +130,7 @@ pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<Stri
         None => {}
     }
     let steps: Vec<String> = plan.steps.into_iter().map(|x| x.what).collect();
-    Some(stopped(&label, &steps, output, resumable))
+    Some(stopped(st.settings.lang(), &label, &steps, output, resumable))
 }
 
 /// The headline when the auto-stash before a Finish failed, so none of its steps ran.
@@ -137,7 +140,7 @@ pub(super) fn stash_failed(t: Lang, label: &str, why: &str) -> String {
 
 /// Which step stopped the job and what is still to do (`resumable`: the steps after a conflicted
 /// merge were remembered for Continue finish).
-pub(super) fn stopped(label: &str, steps: &[String], output: &str, resumable: bool) -> String {
+pub(super) fn stopped(t: Lang, label: &str, steps: &[String], output: &str, resumable: bool) -> String {
     let i = failed_step(output, steps.len());
     let failed = steps.get(i).map(String::as_str).unwrap_or("");
     let rest = steps.get(i + 1..).unwrap_or_default();
@@ -147,9 +150,10 @@ pub(super) fn stopped(label: &str, steps: &[String], output: &str, resumable: bo
             if resumable { "Resolve them, commit the merge, then use Continue finish." } else { "Resolve them and commit the merge." };
         format!("{label} stopped: \"{failed}\" has conflicts. {then}{todo}")
     } else {
-        // git's own error line, rather than the hints it prints after it.
-        let error = output.lines().rfind(|l| l.starts_with("error: ") || l.starts_with("fatal: "));
-        let why = error.unwrap_or_else(|| last_line(output)).trim_end_matches('.');
+        // The cause in plain words, else git's own error line rather than the hints after it.
+        let error = || output.lines().rfind(|l| l.starts_with("error: ") || l.starts_with("fatal: ")).unwrap_or_else(|| last_line(output));
+        let why = crate::state::error_words::explained(t, output).unwrap_or_else(|| error().to_owned());
+        let why = why.trim_end_matches('.');
         format!("{label} stopped at \"{failed}\": {why}.{todo}")
     }
 }
