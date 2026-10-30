@@ -54,7 +54,7 @@ impl Pull {
         let globals = cmd[..at].to_vec();
         let mut p = Pull {
             globals: globals.clone(),
-            fetch: [globals, vec!["fetch".to_owned(), "--update-head-ok".to_owned()]].concat(),
+            fetch: [globals, vec!["fetch".to_owned()]].concat(),
             merge: Vec::new(),
             rebase: Vec::new(),
             how: None,

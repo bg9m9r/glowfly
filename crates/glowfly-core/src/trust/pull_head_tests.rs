@@ -97,3 +97,43 @@ fn a_pull_whose_fetch_may_store_into_the_branch_checked_out_is_git_pull_s_alone(
         remove(&dirs);
     }
 }
+
+#[test]
+fn a_store_into_the_branch_checked_out_the_early_check_misses_is_refused_by_the_fetch() {
+    let mirror_remote = |d: &Path| {
+        let url = crate::gitcli::run_with_input(d, &args(&["remote", "get-url", "origin"]), "", &[]).1;
+        git(d, &["remote", "add", "mirror", url.trim()]);
+        git(d, &["config", "--replace-all", "remote.mirror.fetch", "+refs/heads/*:refs/heads/*"]);
+    };
+    let none = |_: &Path| {};
+    type Case<'a> = (&'a str, &'a [&'a str], &'a dyn Fn(&Path));
+    let cases: [Case; 4] = [
+        ("pull-short-pattern", &["pull", "origin", "r*:r*"], &none),
+        ("pull-refmap", &["pull", "origin", "main", "--refmap=+refs/heads/*:refs/heads/*"], &none),
+        ("pull-all", &["pull", "--all"], &mirror_remote),
+        ("pull-c-refspec", &["-c", "remote.origin.fetch=+refs/heads/*:refs/heads/*", "pull"], &none),
+    ];
+    for (name, a, setup) in cases {
+        let dirs = twins(name, &|d| {
+            set_config(d, &[("pull.rebase", "false")]);
+            setup(d);
+        });
+        remote_commit(&dirs[1], "main", "r.txt", "r\n");
+        let repo = Repository::open(&dirs[3]).unwrap();
+        assert!(!pull(a).stores_into_head(&repo), "{a:?}: the early check misses it");
+        let head = || Repository::open(&dirs[3]).unwrap().head().unwrap().target();
+        let before = head();
+        // Held after the fetch git refused, with nothing moved.
+        let PullRun::Refused { refused: Refused::Unchecked(Unchecked::Unmodeled(_)), output } = pinned(&dirs[3], a) else {
+            panic!("{a:?}: held")
+        };
+        assert!(output.contains("refusing to fetch into"), "{a:?}: {output}");
+        assert_eq!(head(), before, "{a:?}: {output}");
+        // The split hands it to git pull, which ends as git pull does.
+        let (_, split) = pull_both(&dirs[2], &dirs[3], a, true);
+        let pulled = split.lines().any(|l| l.starts_with("$ git ") && l.split(' ').any(|w| w == "pull"));
+        assert!(split.contains("refusing to fetch into") && pulled, "{a:?}: {split}");
+        assert!(dirs[3].join("r.txt").exists(), "{a:?}: {split}");
+        remove(&dirs);
+    }
+}

@@ -81,6 +81,11 @@ pub fn classify(output: &str) -> Option<Cause> {
     let lines: Vec<&str> = meaningful(output).collect();
     let text = lines.join("\n");
     let lower: Vec<String> = lines.iter().map(|l| l.to_lowercase()).collect();
+    // First: whatever else went wrong (a lock, files in the way), the branch has moved and the
+    // working tree hasn't, which trying again won't mend.
+    if let Some(cause) = fetch_moved_head(output) {
+        return Some(cause);
+    }
     if let Some(file) = lines.iter().find_map(|l| locked(l)) {
         return Some(Cause::Locked { file });
     }
@@ -92,9 +97,6 @@ pub fn classify(output: &str) -> Option<Cause> {
     }
     if let Some(f) = crate::remote_failure::read(&text) {
         return Some(Cause::Remote(f));
-    }
-    if let Some(cause) = fetch_moved_head(output) {
-        return Some(cause);
     }
     let untracked = |l: &str| {
         l.contains("untracked working tree files would be overwritten by") || l.contains("untracked working tree files would be removed by")
@@ -175,10 +177,12 @@ fn subcommand(args: &[String]) -> Option<usize> {
     None
 }
 
-/// git pull's "Cannot fast-forward your working tree", with the commit of the `$ git diff <commit>`
-/// line it advises (an echo-like line, so read from the whole output).
+/// git pull's "Cannot fast-forward your working tree" (never in a `$ git …` echo), with the
+/// commit of the `$ git diff <commit>` line it advises (an echo-like line, read from the whole
+/// output).
 fn fetch_moved_head(output: &str) -> Option<Cause> {
-    let mut after = output.lines().skip_while(|l| !l.contains("Cannot fast-forward your working tree"));
+    let anchor = |l: &&str| !l.starts_with("$ ") && !l.starts_with("hint:") && l.contains("Cannot fast-forward your working tree");
+    let mut after = output.lines().skip_while(|l| !anchor(l));
     after.next()?;
     let from = after.take(3).find_map(|l| l.strip_prefix("$ git diff ")).unwrap_or_default().trim().to_owned();
     Some(Cause::FetchMovedHead { from })

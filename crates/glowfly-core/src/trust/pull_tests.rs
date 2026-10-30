@@ -17,7 +17,7 @@ fn head(oid: Oid) -> Fetched {
 fn a_pull_s_options_go_to_its_fetch_or_what_follows() {
     assert_eq!(Pull::of(&args(&["fetch"])), None);
     let p = pull(&["-c", "x=y", "pull", "-q", "--no-edit", "--prune", "--depth", "3", "origin", "main"]);
-    assert_eq!(p.fetch, args(&["-c", "x=y", "fetch", "--update-head-ok", "-q", "--prune", "--depth", "3", "origin", "main"]));
+    assert_eq!(p.fetch, args(&["-c", "x=y", "fetch", "-q", "--prune", "--depth", "3", "origin", "main"]));
     assert_eq!(p.merge, args(&["-q", "--no-edit"]));
     assert_eq!((p.remote.as_deref(), p.refspec.as_deref()), (Some("origin"), Some("main")));
     assert_eq!(p.reflog, "pull -q --no-edit --prune --depth 3 origin main", "GIT_REFLOG_ACTION as git pull sets it");
@@ -200,14 +200,19 @@ fn a_fetch_that_may_store_into_the_branch_checked_out_runs_as_git_pull() {
     assert!(!stores(&["pull", "origin", "main:"]), "no destination");
     git(&work, &["config", "--add", "remote.origin.fetch", "+refs/tags/*:refs/heads/*"]);
     assert!(stores(&["pull"]), "a configured pattern that matches main");
-    // HEAD moved by the fetch all the same: the pull stops with git's words, files untouched.
-    git(&work, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/heads/*"]);
+    // The branch moved while the fetch ran all the same (something else moved it): the pull
+    // stops with git's words, files untouched.
+    git(&work, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"]);
     set_config(&work, &[("pull.rebase", "false")]);
     let old = repo.head().unwrap().target().unwrap();
     remote_commit(&bare, "main", "r.txt", "r\n");
     let mut run = |c: &[String], input: &str, extra: &[(&str, &str)]| {
         let env: Vec<(&str, &str)> = crate::gitcli::NO_PROMPTS.iter().chain(extra).copied().collect();
-        crate::gitcli::run_with_input(&work, c, input, &env)
+        let ran = crate::gitcli::run_with_input(&work, c, input, &env);
+        if c.iter().any(|a| a == "fetch") {
+            git(&work, &["update-ref", "refs/heads/main", "refs/remotes/origin/main"]);
+        }
+        ran
     };
     let PullRun::Ran { ok: false, output } = run_pinned(&work, &pull(&["pull"]), &[], None, None, &mut run) else { panic!("it stops") };
     assert_eq!(crate::git_errors::classify(&output), Some(crate::git_errors::Cause::FetchMovedHead { from: old.to_string() }), "{output}");

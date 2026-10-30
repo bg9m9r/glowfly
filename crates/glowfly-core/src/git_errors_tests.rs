@@ -278,3 +278,11 @@ fn a_working_tree_that_couldn_t_follow_the_fetched_branch_names_the_commit_it_wa
     assert_eq!(classify(&format!("{untracked}\n{advice}")), moved("1a2b3c4d"));
     assert_eq!(classify("fatal: Cannot fast-forward your working tree."), moved(""));
 }
+
+#[test]
+fn a_working_tree_that_couldn_t_follow_comes_before_a_lock_and_never_from_an_echo() {
+    let lock = "fatal: Unable to create '/r/.git/index.lock': File exists.\n\nAnother git process seems to be running in this repository.";
+    let advice = "fatal: Cannot fast-forward your working tree.\nAfter making sure that you saved anything precious from\n$ git diff 1a2b3c4d\noutput, run\n$ git reset --hard\nto recover.";
+    assert_eq!(classify(&format!("{lock}\n{advice}")), Some(Cause::FetchMovedHead { from: s("1a2b3c4d") }));
+    assert_eq!(classify("$ git commit -m Cannot fast-forward your working tree\nerror: nothing"), None);
+}

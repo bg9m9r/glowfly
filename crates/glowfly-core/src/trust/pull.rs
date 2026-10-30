@@ -224,19 +224,29 @@ impl Pull {
     /// Whether the fetch may store into the branch checked out, born or not (judged before it
     /// runs, erring towards yes): a refspec named, or a configured fetch refspec of the remote
     /// it fetches from (git applies those to what it fetches even when refspecs are named),
-    /// whose destination is that branch, a pattern that could match it, or one it can't read.
+    /// whose destination is that branch, a pattern that could match it, or one it can't read;
+    /// or config it can't read. Only an early check (it saves a fetch): the split's fetch runs
+    /// without `--update-head-ok`, so git refuses whatever this misses.
     pub(super) fn stores_into_head(&self, repo: &Repository) -> bool {
         // The branch HEAD names, born or not: a fetch into an unborn one makes it.
         let Some(head) = repo.find_reference("HEAD").ok().and_then(|h| h.symbolic_target().map(str::to_owned)) else { return false };
         let remote = self.remote.clone().or_else(|| repo.branch_upstream_remote(&head).ok()?.as_str().map(str::to_owned));
         let key = format!("remote.{}.fetch", remote.as_deref().unwrap_or("origin"));
         let mut configured = Vec::new();
-        if let Ok(config) = repo.config().and_then(|mut c| c.snapshot())
-            && let Ok(mut values) = config.multivar(&key, None)
-        {
-            while let Some(Ok(v)) = values.next() {
-                configured.extend(v.value().map(str::to_owned));
+        // Config that can't be read may say anything.
+        let Ok(config) = repo.config().and_then(|mut c| c.snapshot()) else { return true };
+        match config.multivar(&key, None) {
+            Ok(mut values) => {
+                while let Some(v) = values.next() {
+                    let Ok(v) = v else { return true };
+                    match v.value() {
+                        Some(v) => configured.push(v.to_owned()),
+                        None => return true,
+                    }
+                }
             }
+            Err(e) if e.code() == git2::ErrorCode::NotFound => {}
+            Err(_) => return true,
         }
         self.refspecs.iter().chain(&configured).any(|s| may_store(s, &head))
     }

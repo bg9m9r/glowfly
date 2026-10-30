@@ -2,9 +2,10 @@
 //! brought (compare.rs, as the merge or rebase that follows would take it), then that merge or
 //! rebase of exactly those commits, with `GIT_REFLOG_ACTION` as git pull sets it. A pull that
 //! updates submodules, may store into the branch checked out (judged before the fetch, erring
-//! towards yes) or pulls into an unborn branch is held. The split never updates the working
-//! tree itself: a fetch that moved HEAD anyway ends the pull there, with git's own words for a
-//! working tree that couldn't follow the branch.
+//! towards yes, and refused by the fetch itself, which runs without `--update-head-ok`) or
+//! pulls into an unborn branch is held. The split never updates the working tree itself: a
+//! branch that moved anyway ends the pull there, with git's own words for a working tree that
+//! couldn't follow it.
 //!
 //! `run_split` is the same split for a pull with nothing to compare (a job that can be stopped
 //! in its fetch): whatever the split doesn't model, or any way it would fail other than git's
@@ -148,7 +149,18 @@ fn run(
         Ok(false) => {}
     }
     let head_before = repo.head().ok().and_then(|h| h.target());
+    let fetch_from = output.len();
     if !shown(&pull.fetch, &mut output, git) {
+        // Without --update-head-ok git refuses a fetch that would store into a branch checked
+        // out (here or in another worktree) before it writes any ref: what the split doesn't
+        // model, whatever refspec, --refmap, --all or -c made it so.
+        if output[fetch_from..].to_ascii_lowercase().contains("refusing to fetch into") {
+            let u = Unchecked::Unmodeled("git pull into the branch checked out".to_owned());
+            if whole || accept == Some(&u) {
+                return pull_whole(output, git);
+            }
+            return refused(Refused::Unchecked(u), output);
+        }
         return done(false, output);
     }
     if pull.fetch_only() {
@@ -160,11 +172,12 @@ fn run(
         Err(e) => return refused(unreadable(e.message()), output),
     };
     let head_after = repo.head().ok().and_then(|h| h.target());
-    // The fetch stored into the branch checked out after all (it changed while the pull ran):
+    // The branch checked out moved all the same (something else moved it while the pull ran):
     // the branch has moved and the working tree hasn't. That is left as it is, with git's words
     // for it (git_errors::Cause::FetchMovedHead says what to do), rather than brought along.
-    if head_after != head_before {
-        let from = head_before.map_or_else(|| "HEAD".to_owned(), |o| o.to_string());
+    if let Some(from) = head_before
+        && head_after != head_before
+    {
         let why = format!(
             "warning: fetch updated the current branch head.\nfatal: Cannot fast-forward your working tree.\nAfter making sure that you saved anything precious from\n$ git diff {from}\noutput, run\n$ git reset --hard\nto recover."
         );
