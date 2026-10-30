@@ -1,9 +1,11 @@
 //! Repository trust's work in the runner: reading the repositories Glowfly just made from a
 //! trusted one, so they can be trusted on the same terms (`Effect::Trust`), and the re-check
 //! just before trust-gated work starts (`Effect::Checked`, `verify`): the repository is scanned
-//! again with libgit2 (settings, hooks read whole, the commands file, where hooks follow the
-//! working tree) and compared with the decision it was sent under, and where hooks follow the
-//! working tree, what the work brings in is compared too (runner/trust_gate.rs): the commits an
+//! again with libgit2 (settings, hooks read whole, the commands file, where hooks and config
+//! programs follow the working tree, and the same for each checked-out submodule, which git
+//! runs inside during a status, a recursing fetch or a submodule update) and compared with the
+//! decision it was sent under, and where hooks or programs follow the working tree, what the
+//! work brings in is compared too (runner/trust_gate.rs): the commits an
 //! effect names before it starts, and for a job of git commands each command's just before it
 //! runs, a pull pinned to the commits its fetch brought. Nothing the repository names runs for
 //! the check; a pull's fetch runs (under the settings just checked) to learn what it merges.
@@ -77,13 +79,18 @@ fn scan(c: &TrustCheck, repo: &git2::Repository) -> TrustScan {
     }
     let mut cache = SCANS.lock().unwrap_or_else(|e| e.into_inner());
     let scans = cache.get_or_insert_with(HashMap::new);
-    if let Some((stamp, scan)) = scans.get(&c.workdir)
-        && *stamp == trust::stamp(repo, scan)
+    let last = scans.get(&c.workdir);
+    // Taken before the scan, on the last scan's places (where hooks are listed, the submodules
+    // that follow their working tree), so a change while scanning is never kept under a stamp
+    // made after it; one whose places moved since misses once and is taken again on the new.
+    let before = last.map_or_else(|| trust::stamp(repo, &TrustScan::default()), |(_, s)| trust::stamp(repo, s));
+    if let Some((stamp, scan)) = last
+        && *stamp == before
     {
         return scan.clone();
     }
     let now = trust::scan_now(repo);
-    scans.insert(c.workdir.clone(), (trust::stamp(repo, &now), now.clone()));
+    scans.insert(c.workdir.clone(), (before, now.clone()));
     now
 }
 

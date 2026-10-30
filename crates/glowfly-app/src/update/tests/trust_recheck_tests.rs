@@ -12,30 +12,30 @@ use crate::state::trust::TrustPrompt;
 use crate::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 
-fn prompt(st: &AppState) -> &TrustPrompt {
+pub(super) fn prompt(st: &AppState) -> &TrustPrompt {
     let Some(Modal::Trust(p)) = &st.modal else { panic!("expected the trust prompt") };
     p
 }
 
-fn trust_and_run(st: &mut AppState) -> Vec<Effect> {
+pub(super) fn trust_and_run(st: &mut AppState) -> Vec<Effect> {
     let real = real(st);
     sealed(st, Msg::Trust(TrustMsg::Decide { real, trusted: true }))
 }
 
 /// `run`, keeping each effect's trust check (`Effect::Checked`).
-fn sealed(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn sealed(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     crate::update::update_sealed(st, msg, std::time::Instant::now())
 }
 
 /// The job effect of `fx`, which carries its check.
-fn checked_job(fx: Vec<Effect>) -> Effect {
+pub(super) fn checked_job(fx: Vec<Effect>) -> Effect {
     let job = fx.into_iter().find(|e| matches!(e, Effect::Checked(c) if matches!(c.effect, Effect::RunGit { .. })));
     job.expect("a checked job")
 }
 
 /// Runs the checked job as the runner would, feeding it back to update when it is held again:
 /// whether it ran.
-fn recheck(st: &mut AppState, job: Effect) -> bool {
+pub(super) fn recheck(st: &mut AppState, job: Effect) -> bool {
     let Effect::Checked(c) = job else { panic!("checked") };
     let crate::effect::Checked { effect, check } = *c;
     match crate::runner::execute_checked(check, effect).expect("a message") {
@@ -47,7 +47,7 @@ fn recheck(st: &mut AppState, job: Effect) -> bool {
     }
 }
 
-fn pull() -> Msg {
+pub(super) fn pull() -> Msg {
     Msg::git("Pull", &["pull", "--ff"])
 }
 
@@ -90,7 +90,7 @@ fn trusted_tracked_hooks(name: &str) -> (AppState, std::path::PathBuf, std::path
     (st, work, bare)
 }
 
-fn cleanup(dirs: &[&Path]) {
+pub(super) fn cleanup(dirs: &[&Path]) {
     for d in dirs {
         let _ = std::fs::remove_dir_all(d);
     }

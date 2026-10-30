@@ -4,7 +4,21 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 
 ### Repository trust
 
-- Rescan submodules (their own settings and hooks) between a job's commands, as `scan_now` does for the repository itself; it skips them now (#277).
+- Follow a script a config program names by a bare name before the working tree has it
+  (`python x.py`, with `x.py` added by a later pull): a bare word counts only when it exists.
+- Stop the one-time extra asks from made-up paths in a config program (a sed expression such as
+  `s/[[:space:]]*$//`, the space-split pieces of a quoted path with spaces such as
+  `"C:/Program Files/Python/python.exe"` or `"~/My Keys/id"`), e.g. by not splitting a quoted word.
+- Follow the scripts a followed config program's script sources; only the files the setting names
+  are followed (a `/…` right after a substitution is read from the working tree, whatever it holds).
+- Read an MSYS-style `/c/...` path and a `\\?\` or `\\.\` prefixed one in a config program as the
+  Windows paths they are, so one pointing into the working tree is followed (they are taken as
+  written now, so outside it).
+- Put a followed config program's on-disk digest in the print too, so an uncommitted edit of it
+  asks again (only the version HEAD tracks is in it now).
+- Tell git's real `fatal: refusing to fetch into` refusal from one a hostile server fakes over ssh
+  stderr or an ERR packet to steer a pull onto the hand-over-to-`git pull` path (a known gap; that
+  path still needs the user's accept when gated).
 - Tell apart two items that couldn't be read for the same reason, so Trust and run on one doesn't pass the other too.
 - Send a job's `on_fail_check` command through the trust gate like its own commands.
 - Make the merges of a rebase-merges todo, an octopus merge and an `am -3` fallback in memory, so they are compared instead of held.
@@ -41,8 +55,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   too much where there are many)
 - Stamp a submodule's included config files and a hooks folder its core.hooksPath points
   outside its git dir in the refresh key (only its own config files and hooks folder are now)
-- Re-check checked-out submodules' settings and hooks in the runner just before a job, as the
-  repository's own are (the runner's re-check skips submodules)
 - Compare the incoming hooks of `reset --hard`, stash apply, submodule update and custom
   commands too (checkout, switch, merge, rebase, pull, cherry-pick, revert and the interactive
   rebase, undo and stack jobs are compared)

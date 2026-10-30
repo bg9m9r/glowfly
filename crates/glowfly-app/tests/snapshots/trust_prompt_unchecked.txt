@@ -1,5 +1,5 @@
 Dialog
-  Label "Trust the incoming hooks?"
+  Label "Trust the incoming hooks and scripts?"
   Button "Close this dialog"
   Label "tools"
   Label "C:\\work\\tools"
@@ -8,7 +8,7 @@ Dialog
   Label "This repository's own settings or hooks make git run programs. So far Glowfly has only read its files."
   Label "Settings that run commands"
   Label "core.hooksPath = .githooks"
-  Label "These hooks change with the branch (.githooks is in the working tree): Glowfly asks again before a checkout, merge, pull or rebase brings in other versions of them."
+  Label "What these hooks and settings run changes with the branch (.githooks is in the working tree): Glowfly asks again before a checkout, merge, pull or rebase brings in other versions of it."
   Label "Trust it only if you know where it came from. Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
   Button "Cancel" [focused]
   Button "Trust and run"

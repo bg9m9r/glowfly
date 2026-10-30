@@ -1,8 +1,10 @@
 //! A cheap stamp of what a trust scan reads (`scan_now`): the size and modification time of
 //! the repository's own config files and the files they include, of each file in the hooks
-//! folder, of the commands file, and the commit HEAD is on (the version of the hooks that follow
-//! the working tree). Stats only, no file is read: while the stamp is unchanged, the scan it was
-//! taken with still stands, so frequent reads (a status read by git) can reuse it.
+//! folder, of the commands file, and the commit HEAD is on (the version of the hooks and config
+//! programs that follow the working tree); the config files and hooks of its submodules' git
+//! dirs (`repo::submodule_stamps`), and the commit each submodule that follows its own working
+//! tree is on. Stats and small reads only: while the stamp is unchanged, the scan it was taken
+//! with still stands, so frequent reads (a status read by git) can reuse it.
 
 use super::TrustScan;
 use git2::{ConfigLevel, Repository};
@@ -31,32 +33,57 @@ pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
         }
     }
     repo.head().ok().and_then(|r| r.target()).hash(&mut h);
+    crate::repo::submodule_stamps(repo, std::time::SystemTime::now(), &mut h);
+    if let Some(w) = repo.workdir() {
+        for sub in scan.submodules.iter().filter(|s| !s.scan.follows.is_empty()) {
+            let head = Repository::open(w.join(&sub.path)).ok().and_then(|r| r.head().ok().and_then(|r| r.target()));
+            (&sub.path, head).hash(&mut h);
+        }
+    }
     h.finish()
 }
 
 /// The files the repository's own config includes (`include.path`, `includeIf.*.path`, nested
 /// ones too, which libgit2 lists at the same level), as named: `~` from the home folder, and a
-/// relative one both from the git dir and from beside each file already found (git resolves it
-/// from the folder of the file that includes it).
-fn includes(repo: &Repository) -> Vec<PathBuf> {
-    let mut out = Vec::new();
+/// relative one from the git dir, from the common dir (a linked worktree's shared config) and
+/// from beside each file already found (git resolves it from the folder of the file that
+/// includes it). The scan follows those in the working tree (`programs.rs`).
+pub(super) fn includes(repo: &Repository) -> Vec<PathBuf> {
+    include_entries(repo).into_iter().flat_map(|e| e.paths).collect()
+}
+
+/// One include setting of the repository's own config, with the files it may name.
+pub(super) struct Include {
+    /// The key as libgit2 spells it (`include.path`, `includeif.gitdir:x/.path`).
+    pub name: String,
+    pub value: String,
+    pub paths: Vec<PathBuf>,
+}
+
+/// Each include setting, in file order, with the files `includes` takes it to name.
+pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
+    let mut out: Vec<Include> = Vec::new();
     let Ok(config) = repo.config() else { return out };
     for level in [ConfigLevel::Local, ConfigLevel::Worktree] {
         let Ok(c) = config.open_level(level) else { continue };
         let Ok(mut entries) = c.entries(None) else { continue };
         while let Some(Ok(e)) = entries.next() {
-            let name = e.name().unwrap_or_default().to_ascii_lowercase();
-            let included = name == "include.path" || (name.starts_with("includeif.") && name.ends_with(".path"));
-            if let Some(v) = e.value().filter(|_| included) {
-                let p = crate::paths::expand_home(v, crate::settings::home_dir().as_deref());
-                if p.is_absolute() {
-                    out.push(p);
-                } else {
-                    let beside: Vec<PathBuf> = out.iter().filter_map(|f| f.parent().map(|d| d.join(&p))).collect();
-                    out.push(repo.path().join(&p));
-                    out.extend(beside);
+            let name = e.name().unwrap_or_default().to_owned();
+            let lower = name.to_ascii_lowercase();
+            let included = lower == "include.path" || (lower.starts_with("includeif.") && lower.ends_with(".path"));
+            let Some(v) = e.value().filter(|_| included) else { continue };
+            let p = crate::paths::expand_home(v, crate::settings::home_dir().as_deref());
+            let mut paths = Vec::new();
+            if p.is_absolute() {
+                paths.push(p);
+            } else {
+                paths.push(repo.path().join(&p));
+                if repo.commondir() != repo.path() {
+                    paths.push(repo.commondir().join(&p));
                 }
+                paths.extend(out.iter().flat_map(|i| &i.paths).filter_map(|f| f.parent().map(|d| d.join(&p))));
             }
+            out.push(Include { name, value: v.to_owned(), paths });
         }
     }
     out

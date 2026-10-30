@@ -5,7 +5,8 @@
 //! records each such place with the version of it HEAD tracks (`Follow`), so the trust print
 //! covers that version, and `incoming` reads another commit's version from its tree (objects
 //! only: no checkout, filter, hook or fsmonitor runs) so a job that brings it in can be held
-//! until the user trusts it.
+//! until the user trusts it. A file a config program runs or an include names in the working
+//! tree (`programs.rs`) is followed the same way.
 
 use super::{TrustScan, is_hook_name};
 use git2::{ObjectType, Oid, Repository, Tree};
@@ -27,12 +28,13 @@ pub struct Follow {
 }
 
 /// The places inside `repo`'s working tree that its hooks run from: `hooks_dir` when it is
-/// there, and the target of each of `hooks` (paths in that folder) that is a link into it,
-/// each with the version HEAD tracks. A place reached through a link inside the working tree
+/// there, the target of each of `hooks` (paths in that folder) that is a link into it, and each
+/// of `programs` (the files its settings run or include, `programs.rs`) that is in it, each
+/// with the version HEAD tracks. A place reached through a link inside the working tree
 /// (the hooks folder, or a folder above it, is a tracked link) is recorded both as spelled
 /// (the link itself, so another target is another version) and where it leads on disk (what
 /// the hooks there are). Empty for a bare repository or hooks in the git dir.
-pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf]) -> Vec<Follow> {
+pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf], programs: &[PathBuf]) -> Vec<Follow> {
     let Some(workdir) = repo.workdir() else { return Vec::new() };
     let mut out: Vec<Follow> = Vec::new();
     let mut add = |path: String, hooks: bool| {
@@ -55,6 +57,19 @@ pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf
         if is_link {
             for rel in inside(repo, workdir, &crate::paths::resolve(hook)) {
                 add_place(rel, false);
+            }
+        }
+    }
+    for p in programs {
+        // The working tree itself (a glob's matches may be anywhere in it) follows all of it.
+        // A `:` in a program's path is a name character outside Windows (programs.rs cuts at
+        // it there), so only an 8.3 short name is unclear.
+        for rel in inside(repo, workdir, p) {
+            let spelled = if cfg!(windows) { rel.clone() } else { rel.replace(':', "") };
+            if unclear(&spelled) {
+                add(String::new(), false);
+            } else {
+                add(rel, false);
             }
         }
     }
@@ -101,7 +116,7 @@ pub(super) fn within(path: &str, root: &str) -> bool {
 /// and resolved on disk when that is another place (a link inside the tree, an absolute path,
 /// another spelling of the same folder). Both count: the spelled place has the link git checks
 /// out, the resolved one the hooks it leads to.
-fn inside(repo: &Repository, workdir: &Path, path: &Path) -> Vec<String> {
+pub(super) fn inside(repo: &Repository, workdir: &Path, path: &Path) -> Vec<String> {
     let git_dirs = [repo.path(), repo.commondir()];
     let in_git_dir = |p: &Path| git_dirs.iter().filter_map(|g| lexical(g)).any(|g| p.starts_with(g));
     let as_spelled = lexical(path).filter(|p| !in_git_dir(p)).and_then(|p| rel(&p, &lexical(workdir)?));

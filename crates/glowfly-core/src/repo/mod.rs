@@ -156,6 +156,7 @@ pub use merge_msg::merge_message;
 pub use op_state::{BranchUse, HeldBranch, held_branch, state};
 pub use pr_compare::{PR_COMMITS_MAX, PrCompare, RangeCommit, RangeCommits, SourceFrom, SourceTip, is_commit_prefix, pr_compare};
 pub use push_config::{PushRemotes, push_remotes};
+pub(crate) use refs_key::submodule_stamps;
 pub use refs_key::{RACY_WINDOW, open_file_stamp, refs_key, stamp_trustworthy};
 pub use remotes::RemoteInfo;
 pub(crate) use removal::TRASH_NAME;

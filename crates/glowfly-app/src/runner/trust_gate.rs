@@ -194,8 +194,8 @@ pub(super) enum Step {
 
 impl Gate {
     /// Compares what `cmd`, the job's command number `at`, brings in now; a pull runs here,
-    /// pinned, through `git`. After a command that may have changed the repository, its own
-    /// settings and hooks are scanned again first.
+    /// pinned, through `git`. After a command that may have changed the repository, its
+    /// settings and hooks, and its checked-out submodules', are scanned again first.
     pub(super) fn before(&self, at: usize, cmd: &[String], git: &mut glowfly_core::trust::pull::Git<'_>) -> Step {
         if self.moved.get() {
             let now = match git2::Repository::open(&self.workdir) {
