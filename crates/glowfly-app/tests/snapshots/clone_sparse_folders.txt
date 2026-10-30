@@ -16,5 +16,7 @@ Dialog
   Label "Files at the top of the repository are always checked out. Leave the list empty to check out only those."
   CheckBox "Download file contents only for these folders (partial clone)" [on]
   Label "Faster for large repositories. Glowfly can't show changes to files that weren't downloaded."
+  CheckBox "Clone submodules too" [on]
+  Label "Only the submodules inside the folders to check out are cloned."
   Button "Cancel"
   Button "Clone" [focused]

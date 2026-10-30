@@ -111,6 +111,7 @@ mod tests {
             checked_out: Some(id),
             state: SubmoduleState::InSync,
             left_behind: Vec::new(),
+            outside_sparse: false,
         };
         EditForm::new(PathBuf::from("repo"), &sm)
     }

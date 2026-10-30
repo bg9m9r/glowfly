@@ -117,7 +117,13 @@ fn a_panicking_sparse_monitor_or_worktree_job_ends_its_job() {
 fn panicking_clone_and_init_effects_end_their_job_or_spinner() {
     use glowfly_core::forge::Provider;
     let jobs = [
-        Effect::Clone(CloneEffect::Sparse { parent: "C:/p".into(), cmd: vec![], dest: "C:/p/r".into(), folders: vec![] }),
+        Effect::Clone(CloneEffect::Sparse {
+            parent: "C:/p".into(),
+            cmd: vec![],
+            dest: "C:/p/r".into(),
+            folders: vec![],
+            submodules: vec![],
+        }),
         Effect::Init(InitEffect::Run {
             folder: "C:/n".into(),
             plan: glowfly_core::init_ops::InitPlan { branch: None, files: vec![], commit: None },

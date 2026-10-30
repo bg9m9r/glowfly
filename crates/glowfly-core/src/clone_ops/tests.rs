@@ -10,7 +10,7 @@ fn date(y: i32, m: u32, d: u32) -> NaiveDate {
 }
 
 fn shallow(limit: HistoryLimit, branch: Option<&str>) -> CloneOptions {
-    CloneOptions { shallow: Some(Shallow { limit, branch: branch.map(str::to_owned) }), sparse: None }
+    CloneOptions { shallow: Some(Shallow { limit, branch: branch.map(str::to_owned) }), sparse: None, submodules: false }
 }
 
 #[test]
@@ -205,6 +205,23 @@ fn sparse_clone_cmds() {
 }
 
 #[test]
+fn submodule_clone_cmds() {
+    let opts = CloneOptions { submodules: true, ..CloneOptions::default() };
+    assert_eq!(clone_cmd(URL, "app", &opts), ["clone", "--recurse-submodules", "--", URL, "app"]);
+    let opts = CloneOptions { submodules: true, ..shallow(HistoryLimit::Depth(1), None) };
+    assert_eq!(clone_cmd(URL, "app", &opts), ["clone", "--depth=1", "--single-branch", "--recurse-submodules", "--", URL, "app"]);
+    // A sparse clone updates its folders' submodules after setting them, not in the clone.
+    let opts = CloneOptions { sparse: sparse(true), submodules: true, ..CloneOptions::default() };
+    assert_eq!(clone_cmd(URL, "app", &opts), ["clone", "--sparse", "--filter=blob:none", "--", URL, "app"]);
+    assert!(sparse_submodule_cmds(&[]).is_empty(), "only the root's files: no submodule is checked out");
+    let folders = ["a".to_owned(), "b c".to_owned()];
+    assert_eq!(
+        sparse_submodule_cmds(&folders),
+        [args(&["submodule", "update", "--init", "--recursive", "--", ":(literal)a", ":(literal)b c"])]
+    );
+}
+
+#[test]
 fn no_local_comes_once_and_only_when_needed() {
     let local = r"C:\src\repo";
     let partial = CloneOptions { sparse: sparse(true), ..CloneOptions::default() };
@@ -246,7 +263,7 @@ fn sparse_clone_of(name: &str, partial: bool) {
     let opts = CloneOptions { sparse: sparse(partial), ..CloneOptions::default() };
     let cmd = clone_cmd(&src.display().to_string(), "copy", &opts);
     let dest = parent.join("copy");
-    let o = run_sparse(&parent, &cmd, &dest, &["a".to_owned()]);
+    let o = run_sparse(&parent, &cmd, &dest, &["a".to_owned()], &[]);
     assert!(o.cloned && o.ok, "{}", o.output);
     assert!(dest.join("a/x.txt").is_file() && dest.join("root.txt").is_file(), "{}", o.output);
     assert!(!dest.join("b").exists(), "{}", o.output);
@@ -279,9 +296,65 @@ fn a_failed_sparse_clone_runs_no_second_step() {
     let opts = CloneOptions { sparse: sparse(false), ..CloneOptions::default() };
     let cmd = clone_cmd(&src.display().to_string(), "copy", &opts);
     let dest = parent.join("copy");
-    let o = run_sparse(&parent, &cmd, &dest, &["a".to_owned()]);
-    assert!(!o.cloned && !o.ok, "{}", o.output);
+    let o = run_sparse(&parent, &cmd, &dest, &["a".to_owned()], &[]);
+    assert!(!o.cloned && !o.folders_set && !o.ok, "{}", o.output);
     assert!(!dest.exists());
     assert!(!o.output.contains("sparse-checkout"), "{}", o.output);
     let _ = std::fs::remove_dir_all(&parent);
+}
+
+/// `folders_source` with a submodule at `a/lib` and one at `b/lib`, both from a library repository
+/// named by its folder path. Returns (source, library).
+fn source_with_submodules(name: &str) -> (PathBuf, PathBuf) {
+    let src = folders_source(name);
+    let lib = scratch_repo(&format!("{name}-lib"));
+    write(&lib, "lib.txt", "lib");
+    git(&lib, &["add", "."]);
+    git(&lib, &["commit", "-q", "-m", "lib"]);
+    let url = lib.display().to_string();
+    for path in ["a/lib", "b/lib"] {
+        git(&src, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, path]);
+    }
+    git(&src, &["commit", "-q", "-m", "subs"]);
+    (src, lib)
+}
+
+/// Sparse-clones `src` checking out `a`, its submodules too, with `prefix` before each
+/// submodule command.
+fn sparse_clone_with_submodules(src: &Path, prefix: &[&str]) -> (PathBuf, CloneOutcome) {
+    let parent = into(src);
+    let opts = CloneOptions { sparse: sparse(false), submodules: true, ..CloneOptions::default() };
+    let cmd = clone_cmd(&src.display().to_string(), "copy", &opts);
+    let folders = ["a".to_owned()];
+    let subs: Vec<Vec<String>> = sparse_submodule_cmds(&folders).into_iter().map(|c| [args(prefix), c].concat()).collect();
+    let o = run_sparse(&parent, &cmd, &parent.join("copy"), &folders, &subs);
+    (parent, o)
+}
+
+#[test]
+fn sparse_clone_with_submodules_clones_only_its_folders_ones() {
+    let (src, lib) = source_with_submodules("clone-sparse-subs");
+    // The fixture's submodule URL is a folder, which git allows only when asked.
+    let (parent, o) = sparse_clone_with_submodules(&src, &["-c", "protocol.file.allow=always"]);
+    let dest = parent.join("copy");
+    assert!(o.cloned && o.folders_set && o.ok, "{}", o.output);
+    assert!(dest.join("a/lib/lib.txt").is_file(), "{}", o.output);
+    assert!(!dest.join("b").exists(), "{}", o.output);
+    assert!(o.output.contains("$ git -c protocol.file.allow=always submodule update"), "{}", o.output);
+    for d in [&parent, &src, &lib] {
+        let _ = std::fs::remove_dir_all(d);
+    }
+}
+
+#[test]
+fn a_failed_submodule_step_still_has_its_folders_set() {
+    let (src, lib) = source_with_submodules("clone-sparse-subs-refused");
+    // Refused whatever the machine's git config allows: the command's own setting wins.
+    let (parent, o) = sparse_clone_with_submodules(&src, &["-c", "protocol.file.allow=never"]);
+    assert!(o.cloned && o.folders_set && !o.ok, "{}", o.output);
+    assert!(o.output.contains("$ git -c protocol.file.allow=never submodule update"), "{}", o.output);
+    assert_eq!(crate::sparse_ops::status(&parent.join("copy"), true).unwrap().paths, ["a"]);
+    for d in [&parent, &src, &lib] {
+        let _ = std::fs::remove_dir_all(d);
+    }
 }

@@ -31,7 +31,12 @@ fn sparse_form(folders: &str) -> CloneForm {
 
 fn sparse_request(folders: &[&str]) -> CloneRequest {
     let sparse = Some(Sparse { folders: folders.iter().map(|f| (*f).to_owned()).collect(), partial: false });
-    CloneRequest { url: URL.into(), parent: work().into(), name: "app".into(), options: CloneOptions { shallow: None, sparse } }
+    CloneRequest {
+        url: URL.into(),
+        parent: work().into(),
+        name: "app".into(),
+        options: CloneOptions { shallow: None, sparse, submodules: false },
+    }
 }
 
 #[test]
@@ -61,7 +66,9 @@ fn a_sparse_clone_is_one_job_that_opens_the_clone() {
     let mut st = state();
     let req = sparse_request(&["docs"]);
     let fx = update(&mut st, Msg::Clone(CloneMsg::Start(req.clone())), Instant::now());
-    let [Effect::Clone(CloneEffect::Sparse { parent, cmd, dest, folders })] = fx.as_slice() else { panic!("unexpected effects {fx:?}") };
+    let [Effect::Clone(CloneEffect::Sparse { parent, cmd, dest, folders, .. })] = fx.as_slice() else {
+        panic!("unexpected effects {fx:?}")
+    };
     assert_eq!(parent, &req.parent);
     assert_eq!(dest, &req.parent.join("app"));
     assert_eq!(cmd, &["clone", "--sparse", "--", URL, "app"]);
@@ -95,7 +102,12 @@ fn a_clone_whose_folders_failed_still_opens() {
     let mut st = state();
     update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
     let dest = PathBuf::from(work()).join("app");
-    let o = CloneOutcome { cloned: true, ok: false, output: "$ git clone x\n$ git sparse-checkout set\nfatal: no space".into() };
+    let o = CloneOutcome {
+        cloned: true,
+        folders_set: false,
+        ok: false,
+        output: "$ git clone x\n$ git sparse-checkout set\nfatal: no space".into(),
+    };
     let fx = update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
     assert!(st.job.is_none());
     let toast = st.toasts.last().unwrap();
@@ -108,7 +120,7 @@ fn a_clone_whose_folders_failed_still_opens() {
     let mut st = state();
     update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
     let locked = "$ git clone x\n$ git sparse-checkout set\nfatal: Unable to create '/w/app/.git/index.lock': File exists.";
-    let o = CloneOutcome { cloned: true, ok: false, output: locked.into() };
+    let o = CloneOutcome { cloned: true, folders_set: false, ok: false, output: locked.into() };
     update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
     let text = &st.toasts.last().unwrap().text;
     assert!(text.starts_with("Cloned app, but setting its folders failed: Another git program is using this repository"), "{text}");
@@ -116,7 +128,7 @@ fn a_clone_whose_folders_failed_still_opens() {
 
     let mut st = state();
     update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
-    let o = CloneOutcome { cloned: false, ok: false, output: "$ git clone x\nfatal: repository not found".into() };
+    let o = CloneOutcome { cloned: false, folders_set: false, ok: false, output: "$ git clone x\nfatal: repository not found".into() };
     let fx = update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
     assert!(st.job.is_none());
     assert!(!loads(&fx, &dest) && st.trust.created.is_empty(), "{fx:?}");
@@ -141,7 +153,7 @@ fn sparse_clone_end_to_end_checks_out_only_the_chosen_folder() {
         url: src.display().to_string(),
         parent: parent.clone(),
         name: "copy".into(),
-        options: CloneOptions { shallow: None, sparse },
+        options: CloneOptions { shallow: None, sparse, submodules: false },
     };
     drive(&mut st, Msg::Clone(CloneMsg::Start(req)));
     let dest = parent.join("copy");

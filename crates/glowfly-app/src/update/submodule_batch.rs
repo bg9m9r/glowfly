@@ -2,7 +2,8 @@
 //! (Update all asks before leaving commits behind), the offer to initialize submodules when a
 //! repository opens, and keeping submodules updated after checkouts, pulls, merges, rebases and
 //! resets (Preferences > General, overridden per repository from the header menu). That update
-//! leaves out any submodule where it would leave commits behind, and says so in the log.
+//! leaves out any submodule where it would leave commits behind, and says so in the log; no batch
+//! initializes a submodule the sparse checkout leaves out (named in the log once).
 
 use super::ops::{JobSpec, Started, start_job};
 use crate::effect::{Effect, LoadKind, SubmoduleEffect};
@@ -24,7 +25,7 @@ pub(super) fn batch(st: &mut AppState, batch: Batch, confirmed: bool, fx: &mut V
         let list = st.snap.as_ref().map(|s| s.submodules.clone()).unwrap_or_default();
         run(st, batch, &list, true, fx);
     } else if let Some(workdir) = st.workdir() {
-        fx.push(Effect::Submodule(SubmoduleEffect::CheckAll { workdir, batch }));
+        fx.push(Effect::Submodule(SubmoduleEffect::CheckAll { workdir, batch, once_finished: false }));
     }
 }
 
@@ -56,6 +57,7 @@ fn run(st: &mut AppState, batch: Batch, list: &[SubmoduleInfo], confirmed: bool,
     for sm in &plan.skipped {
         st.log(true, skipped_line(sm));
     }
+    note_outside(st, &plan.outside);
     if plan.targets.is_empty() {
         if batch != Batch::Auto {
             st.log(true, nothing_to_do(batch));
@@ -85,6 +87,18 @@ fn run(st: &mut AppState, batch: Batch, list: &[SubmoduleInfo], confirmed: bool,
     }
 }
 
+/// Names in the log, once per repository and session, the submodules a batch left out because
+/// the sparse checkout leaves their folders out.
+fn note_outside(st: &mut AppState, paths: &[String]) {
+    let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()).filter(|_| !paths.is_empty()) else { return };
+    if st.submodules.sparse_noted.iter().any(|p| same_spelling(p, &real)) {
+        return;
+    }
+    st.submodules.sparse_noted.push(real);
+    let t = st.settings.lang();
+    st.log(true, t.trf("submodules.log.outside_sparse", &[("paths", &paths.join(", "))]));
+}
+
 /// Whether the active repository has submodules and keeps them updated after checkouts.
 fn auto_wanted(st: &AppState) -> bool {
     st.snap.as_ref().is_some_and(|s| !s.submodules.is_empty() && st.settings.keeps_submodules_updated(&s.real_workdir))
@@ -94,6 +108,13 @@ fn auto_wanted(st: &AppState) -> bool {
 /// it when `moves` (it may change the commits the submodules are recorded at).
 pub(super) fn job_started(st: &mut AppState, label: &str, moves: bool) {
     st.submodules.after_job = if moves { st.workdir().map(|w| (w, label.to_owned())) } else { None };
+    st.submodules.once_finished = false;
+}
+
+/// The job `job_started` just remembered commits a pick of a cherry-pick or revert sequence: the
+/// update follows it only if the sequence ended there (Continue updates after the rest).
+pub(super) fn only_once_finished(st: &mut AppState) {
+    st.submodules.once_finished = st.submodules.after_job.is_some();
 }
 
 /// The active job ended. When it is the one `job_started` remembered, it succeeded in the tab
@@ -101,10 +122,11 @@ pub(super) fn job_started(st: &mut AppState, label: &str, moves: bool) {
 /// for the update.
 pub(super) fn job_finished(st: &mut AppState, label: &str, workdir: Option<&Path>, ok: bool, here: bool, fx: &mut Vec<Effect>) {
     let Some((w, l)) = st.submodules.after_job.take() else { return };
+    let once_finished = std::mem::take(&mut st.submodules.once_finished);
     if l != label || !workdir.is_some_and(|j| same_spelling(j, &w)) || !ok || !here || !auto_wanted(st) {
         return;
     }
-    fx.push(Effect::Submodule(SubmoduleEffect::CheckAll { workdir: w, batch: Batch::Auto }));
+    fx.push(Effect::Submodule(SubmoduleEffect::CheckAll { workdir: w, batch: Batch::Auto, once_finished }));
 }
 
 /// After a load: a repository just opened whose submodules aren't checked out is offered to
@@ -115,7 +137,8 @@ pub(super) fn opened(st: &mut AppState, kind: LoadKind, now: Instant, fx: &mut V
     }
     let Some(snap) = st.snap.as_ref() else { return };
     let targets = plan(Batch::InitAll, &snap.submodules).targets.len();
-    if targets == 0 || st.submodules.offered.iter().any(|p| same_spelling(p, &snap.real_workdir)) {
+    // Also by another name (a link, a junction, a subst drive), as trust finds what it made.
+    if targets == 0 || st.submodules.offered.iter().any(|p| same_spelling(p, &snap.real_workdir) || st.names_repo(snap, p)) {
         return;
     }
     let (real, workdir, name, list) = (snap.real_workdir.clone(), snap.workdir.clone(), snap.name.clone(), snap.submodules.clone());

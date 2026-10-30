@@ -24,6 +24,13 @@ fn work_tree_moving_commands() {
         &["reset", "--mixed", "x"],
         &["-c", "k=v", "pull"],
         &["--literal-pathspecs", "-C", "dir", "checkout", "main"],
+        &["cherry-pick", "abc1234"],
+        &["cherry-pick", "--continue"],
+        &["revert", "--no-edit", "abc1234"],
+        &["revert", "--skip"],
+        &["stash", "pop", "stash@{0}"],
+        &["stash", "apply", "stash@{1}"],
+        &["stash", "pop", "--index", "stash@{0}"],
     ];
     for c in moving {
         assert!(moves_work_tree(&[s(c)]), "{c:?}");
@@ -39,11 +46,62 @@ fn work_tree_moving_commands() {
         &["fetch", "--all"],
         &["submodule", "update", "--init", "--recursive"],
         &["-c", "k=v"],
+        &["stash", "push", "-u"],
+        &["stash", "drop", "stash@{0}"],
+        &["stash"],
     ];
     for c in still {
         assert!(!moves_work_tree(&[s(c)]), "{c:?}");
     }
     assert!(!moves_work_tree(&[]));
+}
+
+#[test]
+fn commits_that_finish_a_stopped_operation() {
+    use git2::RepositoryState::*;
+    let commit = [s(&["commit", "-F", "msg"])];
+    for state in [Merge, CherryPick, CherryPickSequence, Revert, RevertSequence] {
+        assert!(finishes_operation(state, &commit), "{state:?}");
+        assert!(!finishes_operation(state, &[s(&["add", "a.txt"])]), "{state:?}");
+    }
+    for state in [Clean, Rebase, RebaseInteractive, Bisect] {
+        assert!(!finishes_operation(state, &commit), "{state:?}");
+    }
+    assert!(finishes_operation(Merge, &[s(&["add", "--all"]), s(&["commit", "-F", "msg"])]), "stage all and commit");
+}
+
+#[test]
+fn undos_that_move_the_work_tree() {
+    use crate::undo::{Action, Changes, HeadPos, MoveOp, ResetMode};
+    let o = git2::Oid::zero();
+    let reset = |mode| Action::Reset { mode, branch: None, from: o, to: o, stash: None };
+    let moving = [
+        Action::Checkout { from: HeadPos::Detached(o), to: HeadPos::Branch("x".into()), created: None },
+        reset(ResetMode::Hard),
+        reset(ResetMode::Mixed),
+        Action::Moved { op: MoveOp::CherryPick, detail: None, branch: None, from: o, to: o },
+        Action::Moved { op: MoveOp::Revert, detail: None, branch: None, from: o, to: o },
+        Action::Restacked { detail: "restack".into(), moves: Vec::new(), partial: false },
+        Action::StashPush { stash: o, head: o, message: "m".into(), replay: None },
+        Action::StashApply { pop: true, stash: o, head: o, message: "m".into(), left: Changes(Vec::new()) },
+        Action::DiscardAll { stash: o, head: o },
+    ];
+    for a in &moving {
+        assert!(undo_moves_work_tree(a, false) && undo_moves_work_tree(a, true), "{a:?}");
+    }
+    let still = [
+        reset(ResetMode::Soft),
+        Action::Commit { branch: None, from: o, to: o, message: "m".into(), amend: false },
+        Action::CreateBranch { name: "b".into(), oid: o, upstream: None },
+        Action::CreateTag { name: "t".into(), oid: o },
+        Action::StashDrop { stash: o, message: "m".into() },
+    ];
+    for a in &still {
+        assert!(!undo_moves_work_tree(a, false) && !undo_moves_work_tree(a, true), "{a:?}");
+    }
+    let kept = Action::AbortKept { op: MoveOp::Merge, saved: o, head: o, branch: None, left: Changes(Vec::new()) };
+    assert!(!undo_moves_work_tree(&kept, false), "undoing the abort puts the merge back in progress");
+    assert!(undo_moves_work_tree(&kept, true), "redoing it aborts again");
 }
 
 #[test]
