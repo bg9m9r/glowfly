@@ -42,7 +42,7 @@ source file, update its line here. Each section lists one feature's files in eve
 - A partial clone's missing contents: the diff, File view or blame read that waits, its background download (trusted) or download job (through the trust gate), Cancel, and the read again (`PartialMsg::ContentMissing`, `PartialEffect::FetchContent`).
 - The status bar's Cancel for a job with a network command (`RunGit::stoppable`, `JobMsg::Cancel`, `Effect::StopGit`), with the stops the runner registers when it is handed a stoppable effect (`runner/stops.rs`), and the job ending as cancelled with no Try again.
 - Which command a stoppable job runs (`JobMsg::Step`, `state::job_stop::Step`): Cancel only during a fetch, push, clone or a pull's fetch half, disabled with the reason during a pull's merge or rebase or any other command.
-- `runner/job_steps.rs` runs those jobs: network commands with `--progress` and a stop that ends their process tree, a pull as its fetch then its merge or rebase (`trust::pull::run_pinned`), other commands to their end, and the clean-up after a stop (a fetch's or push's locks, a clone's folder); tests in `job_steps_tests.rs`.
+- `runner/job_steps.rs` runs those jobs: network commands with `--progress` and a stop that ends their process tree, a pull as its fetch then its merge or rebase (`trust::pull::run_split`, which has `git pull` itself do whatever the split doesn't model or would refuse), other commands to their end, and the clean-up after a stop (a fetch's or push's locks, a clone's folder); tests in `job_steps_tests.rs`.
 - The transfer's progress beside the job's label (`JobMsg::Progress`, a few times a second at most; `state::job_stop::progress_text`).
 
 ## Whole-history search index (`IndexEffect`, `SearchMsg::Index*`)

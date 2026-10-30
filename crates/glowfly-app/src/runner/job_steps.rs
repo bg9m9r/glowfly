@@ -5,9 +5,11 @@
 //! - A fetch, push or clone runs with `--progress` through `gitcli::output_watching`: a stop
 //!   ends git's whole process tree (remote helpers and ssh too), and its progress lines are
 //!   sent as `JobMsg::Progress`, a few times a second at most, and folded in the log.
-//! - A pull runs as its fetch and then its merge or rebase (`trust::pull::run_pinned`, which
-//!   ends as `git pull` does), so only the fetch can be stopped. A pull the split doesn't model
-//!   (one updating submodules) runs whole and can't be stopped once it starts.
+//! - A pull runs as its fetch and then its merge or rebase (`trust::pull::run_split`), so only
+//!   the fetch can be stopped. Whatever the split doesn't model (submodules, a fetch that may
+//!   store into the branch checked out) and every way it would fail before its merge or rebase
+//!   (divergent branches, no upstream, an upstream gone) run as `git pull` itself, which can't
+//!   be stopped once it starts, so the outcome and git's words are `git pull`'s.
 //! - Any other command, a merge or rebase included, runs to its end; a stop asked meanwhile
 //!   ends the job before the next command starts. Nothing here kills a merge or rebase.
 //!
@@ -91,12 +93,16 @@ impl<'a> Live<'a> {
     /// Runs the job command `c`, echoed as `$ git …` first: a splittable pull as its fetch and
     /// its merge or rebase, anything else as it is. Whether it succeeded, and the output.
     fn command(&mut self, c: &[String]) -> (bool, String) {
+        let echo = format!("$ git {}", glowfly_core::text::redact_credentials(&c.join(" ")));
         if gitcli::subcommand(c) == Some("pull")
             && let Some(pull) = glowfly_core::trust::pull::Pull::of(c)
-            && git2::Repository::open(self.cwd).is_ok_and(|r| pull.splits(&r))
         {
             let cwd = self.cwd;
-            let run = glowfly_core::trust::pull::run_pinned(cwd, &pull, &[], None, None, &mut |a, i, e| self.git(a, i, e));
+            let run = glowfly_core::trust::pull::run_split(cwd, &pull, &mut |a, i, e| self.git(a, i, e));
+            // A stop says only that: a check it cut short (the clean tree a rebase needs) didn't fail.
+            if self.stopped {
+                return (false, echo);
+            }
             return match run {
                 glowfly_core::trust::pull::PullRun::Ran { ok, output } => (ok, output),
                 // With nothing to compare, only an unreadable repository refuses a pull.
@@ -105,7 +111,6 @@ impl<'a> Live<'a> {
                 }
             };
         }
-        let echo = format!("$ git {}", glowfly_core::text::redact_credentials(&c.join(" ")));
         let (ok, text) = self.git(c, "", &[]);
         (ok, if text.is_empty() { echo } else { format!("{echo}\n{text}") })
     }

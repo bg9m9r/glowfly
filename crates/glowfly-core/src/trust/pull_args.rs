@@ -62,6 +62,7 @@ impl Pull {
             dry_run: false,
             remote: None,
             refspec: None,
+            refspecs: Vec::new(),
             recurse: None,
             cmd: cmd.to_vec(),
             reflog: std::iter::once("pull").chain(cmd[at + 1..].iter().map(String::as_str)).collect::<Vec<_>>().join(" "),
@@ -111,8 +112,9 @@ impl Pull {
                 _ => {
                     if p.remote.is_none() {
                         p.remote = Some(a.clone());
-                    } else if p.refspec.is_none() {
-                        p.refspec = Some(a.clone());
+                    } else {
+                        p.refspec.get_or_insert_with(|| a.clone());
+                        p.refspecs.push(a.clone());
                     }
                     p.fetch.push(a.clone());
                 }

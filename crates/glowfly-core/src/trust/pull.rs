@@ -30,6 +30,8 @@ pub struct Pull {
     /// The remote and the first refspec named, for the fork point.
     remote: Option<String>,
     refspec: Option<String>,
+    /// Every refspec named, in order.
+    refspecs: Vec<String>,
     /// `--recurse-submodules` or `--no-recurse-submodules` as given.
     recurse: Option<bool>,
     /// `GIT_REFLOG_ACTION` as git pull sets it: `pull` and its arguments.
@@ -146,14 +148,6 @@ impl Pull {
         self.recurse.unwrap_or_else(|| config.get_bool("submodule.recurse").unwrap_or(false))
     }
 
-    /// Whether this pull can run as its fetch and then its merge or rebase ([`run_pinned`] with
-    /// nothing to compare) and end as `git pull` would: not when it updates submodules or
-    /// stores into the branch checked out, which the pinned pull doesn't model.
-    pub fn splits(&self, repo: &Repository) -> bool {
-        let Ok(config) = repo.config().and_then(|mut c| c.snapshot()) else { return false };
-        !(self.recurses(&config) && !self.fetch_only()) && !self.stores_into_head(repo)
-    }
-
     /// The `-X` options and strategy the merge or rebase gets.
     pub(super) fn how(&self) -> crate::trust::incoming::How {
         let mut how = crate::trust::incoming::How::default();
@@ -227,12 +221,22 @@ impl Pull {
         repo.branch_upstream_name(name).ok()?.as_str().map(str::to_owned)
     }
 
-    /// Whether the explicit refspec stores into the branch checked out (`pull origin x:main`
-    /// on main), which git handles by updating the working tree from the old HEAD.
+    /// Whether the fetch may store into the branch checked out, which git handles by updating
+    /// the working tree from the old HEAD: a refspec named that stores there (`pull origin x:main`
+    /// on main, any of them), or a configured fetch refspec of the remote it fetches from that
+    /// does (`+refs/heads/*:refs/heads/*`; git applies those to what it fetches even when
+    /// refspecs are named).
     pub(super) fn stores_into_head(&self, repo: &Repository) -> bool {
-        let Some((_, dst)) = self.refspec.as_deref().and_then(|s| s.split_once(':')) else { return false };
-        let dst = if dst.starts_with("refs/") { dst.to_owned() } else { format!("refs/heads/{dst}") };
-        repo.head().ok().and_then(|h| h.name().map(str::to_owned)).is_some_and(|h| h.eq_ignore_ascii_case(&dst))
+        let Some(head) = repo.head().ok().and_then(|h| h.name().map(str::to_owned)) else { return false };
+        let named = self.refspecs.iter().filter_map(|s| s.split_once(':')).any(|(_, dst)| {
+            let dst = if dst.starts_with("refs/") { dst.to_owned() } else { format!("refs/heads/{dst}") };
+            head.eq_ignore_ascii_case(&dst)
+        });
+        let remote = self.remote.clone().or_else(|| repo.branch_upstream_remote(&head).ok()?.as_str().map(str::to_owned));
+        let configured = repo
+            .find_remote(remote.as_deref().unwrap_or("origin"))
+            .is_ok_and(|r| r.refspecs().any(|s| s.direction() == git2::Direction::Fetch && s.dst_matches(&head)));
+        named || configured
     }
 }
 
@@ -312,7 +316,7 @@ pub(crate) fn fetched_in(text: &str) -> Result<Vec<Fetched>, &str> {
 mod args;
 #[path = "pull_run.rs"]
 mod run;
-pub use run::{Git, PullRun, run_pinned};
+pub use run::{Git, PullRun, run_pinned, run_split};
 
 #[cfg(test)]
 #[path = "pull_tests.rs"]

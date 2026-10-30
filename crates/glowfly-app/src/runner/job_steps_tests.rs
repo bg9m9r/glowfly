@@ -194,3 +194,17 @@ fn progress_is_asked_for_and_sent_a_few_times_a_second() {
     assert!(w.chunk(b"Resolving deltas:  50% (5/10)\r", t + Duration::from_millis(300)).is_some());
     assert!(w.chunk(b"From x\n", t + Duration::from_secs(1)).is_none());
 }
+
+#[test]
+fn a_stop_before_a_rebasing_pull_s_checks_says_only_that_it_was_cancelled() {
+    let dir = temp("pull-checks");
+    repo(&dir);
+    let stop = Stop::new();
+    stop.stop();
+    let mut live = Live::new(&dir, false, &stop, &|_| {});
+    let (ok, text) = live.command(&args(&["pull", "--rebase"]));
+    assert!(!ok && live.stopped);
+    assert_eq!(text, "$ git pull --rebase", "no check it cut short reads as failed");
+    assert_eq!(live.finish(format!("{text}\n")), "$ git pull --rebase\nCancelled.");
+    let _ = std::fs::remove_dir_all(&dir);
+}
