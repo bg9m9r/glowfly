@@ -228,3 +228,4 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - A keyboard shortcut for the File view's Text / Preview switch
 - Preview other renderable text (reStructuredText, AsciiDoc)
 - Use the editor font and size for code blocks in the File view preview (they use the body size now)
+- Rendered Markdown: keep punctuation glued to a styled run on its row when wrapping (`**bold**,` can wrap before the comma), and give inline code chips padding inside their background

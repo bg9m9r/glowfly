@@ -70,6 +70,35 @@ fn inline_styles_and_merging() {
 }
 
 #[test]
+fn the_space_or_punctuation_around_a_styled_run_stays_in_the_runs() {
+    let code = InlineStyle { code: true, ..InlineStyle::default() };
+    let strike = InlineStyle { strike: true, ..InlineStyle::default() };
+    assert_eq!(
+        para("Read *try* the **bold** and `code` then ~~old~~ [link](https://x.test) end"),
+        [
+            plain("Read "),
+            styled("try", EM),
+            plain(" the "),
+            styled("bold", STRONG),
+            plain(" and "),
+            styled("code", code),
+            plain(" then "),
+            styled("old", strike),
+            plain(" "),
+            linked("link", "https://x.test"),
+            plain(" end")
+        ]
+    );
+    assert_eq!(
+        para("*try*. **b**, `c`)"),
+        [styled("try", EM), plain(". "), styled("b", STRONG), plain(", "), styled("c", code), plain(")")]
+    );
+    assert_eq!(para("a _try_ b"), [plain("a "), styled("try", EM), plain(" b")]);
+    // A marker with a space on its inner side closes nothing: the text stays as written.
+    assert_eq!(para("x **a **b"), [plain("x **a **b")]);
+}
+
+#[test]
 fn links_carry_their_url_and_style() {
     assert_eq!(
         para("see [the docs](https://example.com/docs) now"),
