@@ -67,6 +67,12 @@ pub enum Cause {
     HostKeyChanged,
     /// Only "Merge with strategy <s> failed." was recognised.
     MergeRefused,
+    /// A pull's fetch moved the branch checked out and the working tree didn't follow (git's
+    /// "Cannot fast-forward your working tree"): the commit the branch was on, as git names it
+    /// ("" when it doesn't).
+    FetchMovedHead {
+        from: String,
+    },
 }
 
 /// Why `output` (a failed job's combined output, untranslated) says git failed, when it is a
@@ -75,6 +81,11 @@ pub fn classify(output: &str) -> Option<Cause> {
     let lines: Vec<&str> = meaningful(output).collect();
     let text = lines.join("\n");
     let lower: Vec<String> = lines.iter().map(|l| l.to_lowercase()).collect();
+    // First: whatever else went wrong (a lock, files in the way), the branch has moved and the
+    // working tree hasn't, which trying again won't mend.
+    if let Some(cause) = fetch_moved_head(output) {
+        return Some(cause);
+    }
     if let Some(file) = lines.iter().find_map(|l| locked(l)) {
         return Some(Cause::Locked { file });
     }
@@ -164,6 +175,18 @@ fn subcommand(args: &[String]) -> Option<usize> {
         }
     }
     None
+}
+
+/// git pull's "fatal: Cannot fast-forward your working tree" (its own line), with the
+/// commit of the `$ git diff <commit>` line it advises (an echo-like line, read from the whole
+/// output).
+fn fetch_moved_head(output: &str) -> Option<Cause> {
+    // git's own fatal line only: never an echo, a hint or a remote's `remote:` line.
+    let anchor = |l: &&str| l.starts_with("fatal: Cannot fast-forward your working tree");
+    let mut after = output.lines().skip_while(|l| !anchor(l));
+    after.next()?;
+    let from = after.take(3).find_map(|l| l.strip_prefix("$ git diff ")).unwrap_or_default().trim().to_owned();
+    Some(Cause::FetchMovedHead { from })
 }
 
 /// The lines worth matching: no `$ git …` echoes and no hints.

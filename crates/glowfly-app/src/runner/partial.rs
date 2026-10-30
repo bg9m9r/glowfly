@@ -2,7 +2,6 @@
 //! background (`Effect::Partial`).
 
 use super::execute::{Cx, Execute};
-use super::git_ops;
 use crate::effect::partial::{ContentRequest, HistorySizeRequest, PartialEffect};
 use crate::msg::{ContentFailure, Msg, PartialMsg};
 use glowfly_core::forge;
@@ -51,7 +50,8 @@ fn size(r: HistorySizeRequest) -> Msg {
 /// Runs the download without prompts, stopped when `stop` is asked.
 fn fetch(r: ContentRequest, stop: Option<&Stop>) -> Msg {
     let stop = stop.cloned().unwrap_or_default();
-    let (ok, output, stopped) = git_ops::run_git_until(&r.workdir, &r.cmds, false, &stop);
+    let ran = super::job_steps::run(&r.workdir, &r.cmds, false, &stop, &|_| {}, false);
+    let (ok, output, stopped) = (ran.ok, ran.output, ran.stopped);
     let result = match (ok, stopped) {
         (_, true) => Err(ContentFailure::Stopped),
         (true, false) => Ok(()),

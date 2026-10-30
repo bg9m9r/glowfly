@@ -17,7 +17,7 @@ fn head(oid: Oid) -> Fetched {
 fn a_pull_s_options_go_to_its_fetch_or_what_follows() {
     assert_eq!(Pull::of(&args(&["fetch"])), None);
     let p = pull(&["-c", "x=y", "pull", "-q", "--no-edit", "--prune", "--depth", "3", "origin", "main"]);
-    assert_eq!(p.fetch, args(&["-c", "x=y", "fetch", "--update-head-ok", "-q", "--prune", "--depth", "3", "origin", "main"]));
+    assert_eq!(p.fetch, args(&["-c", "x=y", "fetch", "-q", "--prune", "--depth", "3", "origin", "main"]));
     assert_eq!(p.merge, args(&["-q", "--no-edit"]));
     assert_eq!((p.remote.as_deref(), p.refspec.as_deref()), (Some("origin"), Some("main")));
     assert_eq!(p.reflog, "pull -q --no-edit --prune --depth 3 origin main", "GIT_REFLOG_ACTION as git pull sets it");
@@ -80,29 +80,57 @@ fn the_pinned_command_merges_or_rebases_exactly_the_checked_commits() {
 
 /// Two clones of one origin, set up alike by `setup` (local config and commits); then origin
 /// gets a commit. `git pull <a>` runs in the first, the pinned pull in the second: both end
-/// alike (success, the message of HEAD, its parents, its tree).
+/// alike (success, the message of HEAD, its parents, its tree, the working tree's status, and
+/// what the error classifier makes of a failure).
 fn same_as_git(name: &str, a: &[&str], setup: &dyn Fn(&Path)) {
+    same_as_git_by(name, a, setup, false);
+}
+
+/// `same_as_git` with `run_split` (`split`) or `run_pinned` with nothing to compare. Returns what
+/// git pull and the split printed.
+fn same_as_git_by(name: &str, a: &[&str], setup: &dyn Fn(&Path), split: bool) -> (String, String) {
+    let [seed, bare, real, pinned] = twins(name, setup);
+    remote_commit(&bare, "main", "r.txt", "r\n");
+    let said = pull_both(&real, &pinned, a, split);
+    for d in [&seed, &bare, &real, &pinned] {
+        let _ = std::fs::remove_dir_all(d);
+    }
+    said
+}
+
+/// An origin (with the repository it was pushed from) and two clones of it set up alike by
+/// `setup`: seed, origin, the clone git pull runs in, the one the split runs in.
+fn twins(name: &str, setup: &dyn Fn(&Path)) -> [std::path::PathBuf; 4] {
     let (seed, bare) = with_origin(name);
     let clone = |n: &str| {
         let dir = seed.with_file_name(format!("{}-{n}", seed.file_name().unwrap().to_string_lossy()));
         let _ = std::fs::remove_dir_all(&dir);
         git(dir.parent().unwrap(), &["-c", "core.autocrlf=false", "clone", "-q", &bare.display().to_string(), &dir.display().to_string()]);
-        set_config(
-            &dir,
-            &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")],
-        );
+        set_config(&dir, TEST_CONFIG);
         setup(&dir);
         dir
     };
     let (real, pinned) = (clone("real"), clone("pinned"));
-    remote_commit(&bare, "main", "r.txt", "r\n");
+    [seed, bare, real, pinned]
+}
+
+/// The config both repositories of a comparison get.
+const TEST_CONFIG: &[(&str, &str)] =
+    &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")];
+
+/// `git pull <a>` in `real`, the split (`split`) or pinned pull in `pinned`: both end alike
+/// (success, the message of HEAD, its parents, its tree, the reflog's last entry, the working
+/// tree's status, and what the error classifier makes of a failure). What each printed.
+fn pull_both(real: &Path, pinned: &Path, a: &[&str], split: bool) -> (String, String) {
     let cmd = args(a);
-    let (real_ok, real_out) = crate::gitcli::run_with_input(&real, &cmd, "", crate::gitcli::NO_PROMPTS);
+    let (real_ok, real_out) = crate::gitcli::run_with_input(real, &cmd, "", crate::gitcli::NO_PROMPTS);
     let mut run = |c: &[String], input: &str, extra: &[(&str, &str)]| {
         let env: Vec<(&str, &str)> = crate::gitcli::NO_PROMPTS.iter().chain(extra).copied().collect();
-        crate::gitcli::run_with_input(&pinned, c, input, &env)
+        crate::gitcli::run_with_input(pinned, c, input, &env)
     };
-    let PullRun::Ran { ok, output } = run_pinned(&pinned, &Pull::of(&cmd).unwrap(), &[], None, None, &mut run) else { panic!("it runs") };
+    let p = Pull::of(&cmd).unwrap();
+    let ran = if split { run_split(pinned, &p, &mut run) } else { run_pinned(pinned, &p, &[], None, None, &mut run) };
+    let PullRun::Ran { ok, output } = ran else { panic!("it runs") };
     assert_eq!(ok, real_ok, "{a:?}: git said {real_out}; pinned said {output}");
     let end = |d: &Path| {
         let r = Repository::open(d).unwrap();
@@ -110,12 +138,87 @@ fn same_as_git(name: &str, a: &[&str], setup: &dyn Fn(&Path)) {
         let reflog = crate::gitcli::run_with_input(d, &args(&["reflog", "-1", "--format=%gs"]), "", &[]).1;
         // The reflog says what made the last change, as git pull words it.
         let reflog = reflog.split(':').next().unwrap_or_default().trim().to_owned();
-        (c.message().unwrap_or_default().to_owned(), c.parent_count(), c.tree_id(), reflog)
+        let status = crate::gitcli::run_with_input(d, &args(&["status", "--porcelain"]), "", &[]).1;
+        (c.message().unwrap_or_default().to_owned(), c.parent_count(), c.tree_id(), reflog, status)
     };
-    assert_eq!(end(&pinned), end(&real), "{a:?}: {output}");
-    for d in [&seed, &bare, &real, &pinned] {
-        let _ = std::fs::remove_dir_all(d);
+    assert_eq!(end(pinned), end(real), "{a:?}: {output}");
+    assert_eq!(
+        crate::git_errors::classify(&output),
+        crate::git_errors::classify(&real_out),
+        "{a:?}: git said {real_out}; split said {output}"
+    );
+    (real_out, output)
+}
+
+#[test]
+fn a_split_pull_fails_as_git_pull_does_and_is_explained_the_same() {
+    use crate::git_errors::{Cause, classify};
+    // Divergent branches with no choice anywhere (the user's own config may make one).
+    let (probe, probe_bare) = with_origin("pull-split-probe");
+    let config = Repository::open(&probe).unwrap().config().unwrap().snapshot().unwrap();
+    let chosen = config.get_string("pull.rebase").is_ok() || config.get_string("pull.ff").is_ok();
+    let _ = std::fs::remove_dir_all(&probe);
+    let _ = std::fs::remove_dir_all(&probe_bare);
+    if !chosen {
+        let (git_said, split) = same_as_git_by("pull-split-diverged", &["pull"], &local_commit, true);
+        assert!(matches!(classify(&split), Some(Cause::Diverged { branch: None })), "git said: {git_said} -- split said: {split}");
     }
+    // The upstream was deleted on the remote.
+    let gone = |d: &Path| set_config(d, &[("branch.main.merge", "refs/heads/gone")]);
+    let (git_said, split) = same_as_git_by("pull-split-gone", &["pull"], &gone, true);
+    assert!(matches!(classify(&split), Some(Cause::UpstreamGone { .. })), "git said: {git_said} -- split said: {split}");
+    // No upstream at all.
+    let none = |d: &Path| {
+        git(d, &["config", "--unset", "branch.main.merge"]);
+        git(d, &["config", "--unset", "branch.main.remote"]);
+    };
+    let (git_said, split) = same_as_git_by("pull-split-none", &["pull"], &none, true);
+    assert!(matches!(classify(&split), Some(Cause::NoUpstream { push_branch: None })), "git said: {git_said} -- split said: {split}");
+}
+
+#[test]
+fn a_fetch_that_may_store_into_the_branch_checked_out_runs_as_git_pull() {
+    let mirror = |d: &Path| {
+        git(d, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/heads/*"]);
+        set_config(d, &[("pull.rebase", "false")]);
+    };
+    same_as_git_by("pull-split-mirror", &["pull"], &mirror, true);
+    let (work, bare) = with_origin("pull-stores-head");
+    mirror(&work);
+    let repo = Repository::open(&work).unwrap();
+    let stores = |a: &[&str]| pull(a).stores_into_head(&repo);
+    assert!(stores(&["pull"]), "a configured refspec stores into main");
+    assert!(stores(&["pull", "origin", "x:y"]), "configured ones apply to named refspecs too");
+    git(&work, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"]);
+    assert!(!stores(&["pull"]));
+    assert!(stores(&["pull", "origin", "a:x", "b:main"]), "any named refspec, not just the first");
+    assert!(stores(&["pull", "origin", "main:heads/main"]), "a short destination as git spells it out");
+    assert!(stores(&["pull", "origin", "refs/heads/*:refs/heads/*"]), "a pattern that matches main");
+    assert!(stores(&["pull", "origin", "+refs/heads/m*:refs/heads/m*"]));
+    assert!(!stores(&["pull", "origin", "refs/heads/*:refs/heads/feature/*"]), "a pattern that can't");
+    assert!(stores(&["pull", "origin", "a:x*y*"]), "a destination it can't read");
+    assert!(!stores(&["pull", "origin", "main:"]), "no destination");
+    git(&work, &["config", "--add", "remote.origin.fetch", "+refs/tags/*:refs/heads/*"]);
+    assert!(stores(&["pull"]), "a configured pattern that matches main");
+    // The branch moved while the fetch ran all the same (something else moved it): the pull
+    // stops with git's words, files untouched.
+    git(&work, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"]);
+    set_config(&work, &[("pull.rebase", "false")]);
+    let old = repo.head().unwrap().target().unwrap();
+    remote_commit(&bare, "main", "r.txt", "r\n");
+    let mut run = |c: &[String], input: &str, extra: &[(&str, &str)]| {
+        let env: Vec<(&str, &str)> = crate::gitcli::NO_PROMPTS.iter().chain(extra).copied().collect();
+        let ran = crate::gitcli::run_with_input(&work, c, input, &env);
+        if c.iter().any(|a| a == "fetch") {
+            git(&work, &["update-ref", "refs/heads/main", "refs/remotes/origin/main"]);
+        }
+        ran
+    };
+    let PullRun::Ran { ok: false, output } = run_pinned(&work, &pull(&["pull"]), &[], None, None, &mut run) else { panic!("it stops") };
+    assert_eq!(crate::git_errors::classify(&output), Some(crate::git_errors::Cause::FetchMovedHead { from: old.to_string() }), "{output}");
+    assert!(!work.join("r.txt").exists(), "the working tree is left alone: {output}");
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&bare);
 }
 
 fn local_commit(d: &Path) {
@@ -252,3 +355,6 @@ fn a_pull_the_pinned_one_can_t_match_is_held_before_it_fetches() {
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }
+
+#[path = "pull_head_tests.rs"]
+mod head;

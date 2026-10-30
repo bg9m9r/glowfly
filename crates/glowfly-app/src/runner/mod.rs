@@ -49,6 +49,7 @@ mod index_query;
 mod init;
 mod instance;
 mod issues;
+mod job_steps;
 mod journal;
 mod keys;
 mod lfs;

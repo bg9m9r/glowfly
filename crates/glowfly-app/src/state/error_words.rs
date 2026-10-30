@@ -17,6 +17,8 @@ pub fn cause(t: Lang, cause: &Cause) -> String {
         Cause::LocalChanges { files } if files.is_empty() => t.tr("git_errors.local_changes.unlisted").to_owned(),
         Cause::LocalChanges { files } => t.trn("git_errors.local_changes", files.len(), &[]),
         Cause::MergeRefused => t.tr("git_errors.merge_refused").to_owned(),
+        Cause::FetchMovedHead { from } if from.is_empty() => t.tr("git_errors.fetch_moved_head.unnamed").to_owned(),
+        Cause::FetchMovedHead { from } => t.trf("git_errors.fetch_moved_head", &[("commit", &from.get(..7).unwrap_or(from))]),
         Cause::UntrackedInTheWay { files } => t.trn("git_errors.untracked", files.len(), &[]),
         Cause::Conflicts { files, unsure } => conflicts(t, files.len() + unsure.len()),
         Cause::Unresolved => t.tr("git_errors.unresolved").to_owned(),

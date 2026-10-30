@@ -267,3 +267,26 @@ fatal: Unable to create '/tmp/r/.git/index.lock': File exists."
     assert_eq!(lock_path(&both).as_deref(), Some("/tmp/r/.git/index.lock"));
     assert_eq!(classify(&both), Some(Cause::Locked { file: "index.lock".into() }));
 }
+
+#[test]
+fn a_working_tree_that_couldn_t_follow_the_fetched_branch_names_the_commit_it_was_on() {
+    let advice = "fatal: Cannot fast-forward your working tree.\nAfter making sure that you saved anything precious from\n$ git diff 1a2b3c4d\noutput, run\n$ git reset --hard\nto recover.";
+    let moved = |from: &str| Some(Cause::FetchMovedHead { from: s(from) });
+    assert_eq!(classify(&format!("warning: fetch updated the current branch head.\n{advice}")), moved("1a2b3c4d"));
+    // Untracked files in the way are why, but the branch has moved: that is what to fix first.
+    let untracked = "error: The following untracked working tree files would be overwritten by merge:\n\tc.txt\nPlease move or remove them before you merge.\nAborting";
+    assert_eq!(classify(&format!("{untracked}\n{advice}")), moved("1a2b3c4d"));
+    assert_eq!(classify("fatal: Cannot fast-forward your working tree."), moved(""));
+}
+
+#[test]
+fn a_working_tree_that_couldn_t_follow_comes_before_a_lock_and_never_from_an_echo() {
+    let lock = "fatal: Unable to create '/r/.git/index.lock': File exists.\n\nAnother git process seems to be running in this repository.";
+    let advice = "fatal: Cannot fast-forward your working tree.\nAfter making sure that you saved anything precious from\n$ git diff 1a2b3c4d\noutput, run\n$ git reset --hard\nto recover.";
+    assert_eq!(classify(&format!("{lock}\n{advice}")), Some(Cause::FetchMovedHead { from: s("1a2b3c4d") }));
+    assert_eq!(classify("$ git commit -m Cannot fast-forward your working tree\nerror: nothing"), None);
+    // A remote can print anything on its `remote:` lines.
+    let remote =
+        "remote: fatal: Cannot fast-forward your working tree.\nremote: $ git diff 1a2b3c4d\nfatal: the remote end hung up unexpectedly";
+    assert!(!matches!(classify(remote), Some(Cause::FetchMovedHead { .. })), "{remote}");
+}

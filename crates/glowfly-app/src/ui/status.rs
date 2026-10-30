@@ -69,18 +69,41 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
         });
 }
 
-/// The running job (right to left: Cancel when it can be stopped, its label, a spinner).
+/// The running job (right to left: Cancel when it can be stopped, or disabled with the reason
+/// while it is on a step that can't be, its transfer's progress, its label, a spinner).
 fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(job) = &st.job else { return };
     let t = st.settings.lang();
+    let label = crate::state::job_spec::labels::shown(t, &job.label);
+    let named: [(&str, &dyn std::fmt::Display); 1] = [("job", &label)];
     if st.job_cancellable() {
-        let tip = t.trf("status.job.cancel.tip", &[("job", &job.label)]);
+        let step = st.job_stop.as_ref().map(|s| s.step).unwrap_or_default();
+        let tip = cancel_tip(t, step, &named);
         let cancel = buttons::quiet(t.tr("common.cancel.button")).height(20.0).tip(&tip);
         if ui.add(cancel).clicked() {
             msgs.push(Msg::Job(JobMsg::Cancel));
         }
+    } else if let Some(step) = st.job_cancel_blocked() {
+        let why = cancel_tip(t, step, &named);
+        ui.add(buttons::quiet(t.tr("common.cancel.button")).height(20.0).enabled(false).why(Some(&why)));
     }
-    let text = if st.job_cancelling() { t.trf("status.job.cancelling", &[("job", &job.label)]) } else { format!("{}…", job.label) };
+    if let Some(p) = st.job_progress() {
+        ui.label(RichText::new(crate::state::job_stop::progress_text(t, p)).color(color::faint()));
+    }
+    let text = if st.job_cancelling() { t.trf("status.job.cancelling", &named) } else { format!("{label}…") };
     ui.label(RichText::new(text).color(color::weak()));
     ui.add(egui::Spinner::new().size(12.0));
+}
+
+/// What Cancel says while the job runs `step`: what a stop does, or why it can't stop now.
+fn cancel_tip(t: glowfly_core::i18n::Lang, step: crate::state::job_stop::Step, job: &[(&str, &dyn std::fmt::Display)]) -> String {
+    use crate::state::job_stop::Step;
+    match step {
+        Step::Fetch => t.trf("status.job.cancel.tip", job),
+        Step::Push => t.trf("status.job.cancel.push_tip", job),
+        Step::Clone => t.trf("status.job.cancel.clone_tip", job),
+        Step::Merge => t.trf("status.job.cancel.merging_tip", job),
+        Step::Rebase => t.trf("status.job.cancel.rebasing_tip", job),
+        Step::Local => t.trf("status.job.cancel.local_tip", job),
+    }
 }

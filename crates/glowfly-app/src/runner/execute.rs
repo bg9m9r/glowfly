@@ -2,8 +2,8 @@
 //! `<area>.rs`) and the arms of the flat variants, with the result message each sends back.
 
 use super::{
-    diff_gaps, expect, files, forge_calls, git_ops, highlight, history, journal, load, op_stops, path_search, revert, saves, signatures,
-    status, undo_run,
+    diff_gaps, expect, files, forge_calls, git_ops, highlight, history, job_steps, journal, load, op_stops, path_search, revert, saves,
+    signatures, status, undo_run,
 };
 use crate::effect::areas::{effect_areas, effect_match};
 use crate::effect::{Effect, UndoResult};
@@ -119,38 +119,60 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
             });
             // The journal note sees the refs before git runs and after the undo record is read.
             Some(journal::around(&cwd, journal, || {
-                // Only a job that just fetches has a stop, and it writes no file.
-                let (ok, output, start) = match (cx.stop.filter(|_| write_file.is_none()), cx.gate) {
-                    (Some(stop), _) => match git_ops::run_git_until(&cwd, &cmds, prompts, stop) {
-                        (_, output, true) => return Msg::Job(JobMsg::Stopped { output }),
-                        (ok, output, false) => (ok, output, None),
-                    },
-                    (None, Some((gate, _))) => match git_ops::run_git_gated_noting(&cwd, &cmds, write_file, prompts, gate, stops) {
-                        (git_ops::Gated::Done(ok, output), start) => (ok, output, start),
-                        (git_ops::Gated::Halted { halt, moved: false, at, .. }, _) => {
-                            let (job, check) = again.expect("a gate");
-                            let now = git2::Repository::open(&cwd).map(|r| glowfly_core::trust::scan_now(&r)).unwrap_or_default();
-                            return match super::trust::halted(now, halt) {
-                                super::trust::Verdict::Stale(f) => super::trust::stale(check, job, f.0, f.1, None),
-                                super::trust::Verdict::Unchecked(f) => {
-                                    let accepted = crate::effect::Accepted { at: Some(at), reason: f.1 };
-                                    super::trust::stale(check, job, f.0, None, Some(accepted))
-                                }
-                                _ => unreachable!("halted is held or unchecked"),
-                            };
+                // A job with a network command has a stop, and it writes no file (job_steps.rs).
+                let (ok, output, start, stopped) = match (cx.stop.filter(|_| write_file.is_none()), cx.gate) {
+                    (Some(stop), None) => {
+                        let r = job_steps::run(&cwd, &cmds, prompts, stop, cx.send, stops);
+                        (r.ok, r.output, r.start, r.stopped)
+                    }
+                    (stop, Some((gate, _))) => {
+                        let mut live = stop.map(|s| job_steps::Live::new(&cwd, prompts, s, cx.send));
+                        let (gated, start) = match live.as_mut() {
+                            Some(l) => git_ops::run_git_gated_with(&cwd, &cmds, gate, stops, &mut |a, i, e| l.git(a, i, e)),
+                            None => git_ops::run_git_gated_noting(&cwd, &cmds, write_file, prompts, gate, stops),
+                        };
+                        let stopped = live.as_ref().is_some_and(|l| l.stopped);
+                        match gated {
+                            git_ops::Gated::Done(ok, output) => {
+                                let output = match &live {
+                                    Some(l) => l.finish(output),
+                                    None => output,
+                                };
+                                (ok && !stopped, output, start, stopped)
+                            }
+                            git_ops::Gated::Halted { halt, moved: false, at, .. } => {
+                                let (job, check) = again.expect("a gate");
+                                let now = git2::Repository::open(&cwd).map(|r| glowfly_core::trust::scan_now(&r)).unwrap_or_default();
+                                return match super::trust::halted(now, halt) {
+                                    super::trust::Verdict::Stale(f) => super::trust::stale(check, job, f.0, f.1, None),
+                                    super::trust::Verdict::Unchecked(f) => {
+                                        let accepted = crate::effect::Accepted { at: Some(at), reason: f.1 };
+                                        super::trust::stale(check, job, f.0, None, Some(accepted))
+                                    }
+                                    _ => unreachable!("halted is held or unchecked"),
+                                };
+                            }
+                            git_ops::Gated::Halted { output, halt, .. } => {
+                                (false, format!("{output}\n{}", halt.describe(gate.lang)), None, false)
+                            }
                         }
-                        (git_ops::Gated::Halted { output, halt, .. }, _) => (false, format!("{output}\n{}", halt.describe(gate.lang)), None),
-                    },
-                    (None, None) if stops => op_stops::run_noting_start(&cwd, &cmds, write_file, prompts),
+                    }
+                    (None, None) if stops => {
+                        let (ok, output, start) = op_stops::run_noting_start(&cwd, &cmds, write_file, prompts);
+                        (ok, output, start, false)
+                    }
                     (None, None) => {
                         let (ok, output) = git_ops::run_git(&cwd, &cmds, write_file, prompts);
-                        (ok, output, None)
+                        (ok, output, None, false)
                     }
                 };
                 let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
                 let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
                 let undo = op_stops::stopped(&cwd, ok, start).or(undo);
                 let undo = if ok && aborts { Some(UndoResult::Aborted(undo::op_start(&cwd))) } else { undo };
+                if stopped {
+                    return Msg::Job(JobMsg::Stopped { output, undo });
+                }
                 let mut output = output;
                 match on_fail_check.filter(|_| !ok) {
                     Some(check) if git_ops::check_passes(&cwd, &check, prompts, &mut output) => {

@@ -30,6 +30,8 @@ pub struct Pull {
     /// The remote and the first refspec named, for the fork point.
     remote: Option<String>,
     refspec: Option<String>,
+    /// Every refspec named, in order.
+    refspecs: Vec<String>,
     /// `--recurse-submodules` or `--no-recurse-submodules` as given.
     recurse: Option<bool>,
     /// `GIT_REFLOG_ACTION` as git pull sets it: `pull` and its arguments.
@@ -219,12 +221,59 @@ impl Pull {
         repo.branch_upstream_name(name).ok()?.as_str().map(str::to_owned)
     }
 
-    /// Whether the explicit refspec stores into the branch checked out (`pull origin x:main`
-    /// on main), which git handles by updating the working tree from the old HEAD.
+    /// Whether the fetch may store into the branch checked out, born or not (judged before it
+    /// runs, erring towards yes): a refspec named, or a configured fetch refspec of the remote
+    /// it fetches from (git applies those to what it fetches even when refspecs are named),
+    /// whose destination is that branch, a pattern that could match it, or one it can't read;
+    /// or config it can't read. Only an early check (it saves a fetch): the split's fetch runs
+    /// without `--update-head-ok`, so git refuses whatever this misses.
     pub(super) fn stores_into_head(&self, repo: &Repository) -> bool {
-        let Some((_, dst)) = self.refspec.as_deref().and_then(|s| s.split_once(':')) else { return false };
-        let dst = if dst.starts_with("refs/") { dst.to_owned() } else { format!("refs/heads/{dst}") };
-        repo.head().ok().and_then(|h| h.name().map(str::to_owned)).is_some_and(|h| h.eq_ignore_ascii_case(&dst))
+        // The branch HEAD names, born or not: a fetch into an unborn one makes it.
+        let Some(head) = repo.find_reference("HEAD").ok().and_then(|h| h.symbolic_target().map(str::to_owned)) else { return false };
+        let remote = self.remote.clone().or_else(|| repo.branch_upstream_remote(&head).ok()?.as_str().map(str::to_owned));
+        let key = format!("remote.{}.fetch", remote.as_deref().unwrap_or("origin"));
+        let mut configured = Vec::new();
+        // Config that can't be read may say anything.
+        let Ok(config) = repo.config().and_then(|mut c| c.snapshot()) else { return true };
+        match config.multivar(&key, None) {
+            Ok(mut values) => {
+                while let Some(v) = values.next() {
+                    let Ok(v) = v else { return true };
+                    match v.value() {
+                        Some(v) => configured.push(v.to_owned()),
+                        None => return true,
+                    }
+                }
+            }
+            Err(e) if e.code() == git2::ErrorCode::NotFound => {}
+            Err(_) => return true,
+        }
+        self.refspecs.iter().chain(&configured).any(|s| may_store(s, &head))
+    }
+}
+
+/// Whether the fetch refspec `spec` may store into the ref `head` (`refs/heads/…`): its
+/// destination, spelled out as git spells out a short one, is `head`, a pattern that could match
+/// it, or something this can't read (more than one `*`). A negative refspec or one with no
+/// destination stores nothing.
+fn may_store(spec: &str, head: &str) -> bool {
+    let spec = spec.trim().trim_start_matches('+');
+    let Some((_, dst)) = spec.split_once(':').filter(|_| !spec.starts_with('^')) else { return false };
+    if dst.is_empty() {
+        return false;
+    }
+    let full = if dst.starts_with("refs/") {
+        dst.to_owned()
+    } else if ["heads/", "tags/", "remotes/"].iter().any(|p| dst.starts_with(p)) {
+        format!("refs/{dst}")
+    } else {
+        format!("refs/heads/{dst}")
+    };
+    let (full, head) = (full.to_ascii_lowercase(), head.to_ascii_lowercase());
+    match full.split('*').collect::<Vec<_>>().as_slice() {
+        [exact] => *exact == head,
+        [pre, post] => head.len() >= pre.len() + post.len() && head.starts_with(pre) && head.ends_with(post),
+        _ => true,
     }
 }
 
@@ -304,7 +353,7 @@ pub(crate) fn fetched_in(text: &str) -> Result<Vec<Fetched>, &str> {
 mod args;
 #[path = "pull_run.rs"]
 mod run;
-pub use run::{Git, PullRun, run_pinned};
+pub use run::{Git, PullRun, run_pinned, run_split};
 
 #[cfg(test)]
 #[path = "pull_tests.rs"]

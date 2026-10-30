@@ -84,8 +84,8 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     let sign_in_cmds = if spec.cwd.is_none() { spec.cmds.clone() } else { Vec::new() };
     // `git lfs install` adds settings and hooks the trust decision didn't see (trust_inherit.rs).
     let lfs_install = spec.cwd.is_none() && spec.cmds.iter().any(|c| c.windows(2).any(|w| w[0] == "lfs" && w[1] == "install"));
-    // Only a job that just fetches can be cancelled: stopping it leaves the repository as it was.
-    let stoppable = spec.write_file.is_none() && !spec.cmds.is_empty() && spec.cmds.iter().all(|c| fetch_only(c));
+    // A job with a network command can be cancelled while that command runs (update/job_stop.rs).
+    let stoppable = spec.write_file.is_none() && crate::state::job_stop::Step::any_network(&spec.cmds);
     let (cmds, write_file, expect, pick, on_fail_check) = (spec.cmds, spec.write_file, spec.expect, spec.pick, spec.on_fail_check);
     let effect = move |cwd| match pick {
         Some(PickPlan { picking, oids, can_skip }) => {
@@ -113,11 +113,6 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         }
     }
     started
-}
-
-/// A command that only fetches objects and refs (not `pull`, which merges afterwards).
-fn fetch_only(cmd: &[String]) -> bool {
-    glowfly_core::gitcli::subcommand(cmd) == Some("fetch")
 }
 
 /// Makes a job labelled `label` the active one in the active tab's repository, running the

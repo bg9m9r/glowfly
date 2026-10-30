@@ -210,12 +210,19 @@ pub enum JobMsg {
     DeepenNow(glowfly_core::shallow_ops::Deepen),
     /// Try again: runs a failed job's spec once more, in the tab it started in (update/job_retry.rs).
     Retry(Box<crate::state::job_spec::Retry>),
-    /// The status bar's Cancel: stops the active job when it only fetches (update/job_stop.rs).
+    /// The status bar's Cancel: stops the active job while it runs a network command
+    /// (update/job_stop.rs).
     Cancel,
-    /// The runner stopped the active job; `output` is what it printed until then.
+    /// The runner stopped the active job; `output` is what it printed until then, `undo` what
+    /// the commands before the stopped one left for the undo history (as a failure's).
     Stopped {
         output: String,
+        undo: Option<UndoResult>,
     },
+    /// The active stoppable job started this kind of command: Cancel follows it.
+    Step(crate::state::job_stop::Step),
+    /// The active job's transfer progress, as git printed it (sent a few times a second at most).
+    Progress(glowfly_core::git_progress::Progress),
     /// Undo the active tab's most recent undoable operation.
     Undo,
     Redo,
@@ -262,6 +269,8 @@ impl JobMsg {
             | Self::Retry(_)
             | Self::Cancel
             | Self::Stopped { .. }
+            | Self::Step(_)
+            | Self::Progress(_)
             | Self::Undo
             | Self::Redo
             | Self::UndoWith { .. }

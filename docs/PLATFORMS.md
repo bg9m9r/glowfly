@@ -424,9 +424,13 @@ second one next to it.
 12. **Stop a git child only through `gitcli::output_until`** (with a `gitcli::Stop`). It starts
     git so its whole process tree can be ended (`process_tree.rs`): on Unix in a new session,
     then SIGTERM to the process group, 3 s grace, then SIGKILL; on Windows in a job object that
-    is terminated, since killing git.exe alone leaves its remote helpers and ssh running. Never
-    `Child::kill` a git that may have started children. After a stop, remove only the lock and
-    temporary files the run made (`stop_cleanup`), never ones that were there before it.
+    is terminated, since killing git.exe alone leaves its remote helpers and ssh running, and
+    waited on until no process is left in it (termination is asynchronous). Never
+    `Child::kill` a git that may have started children. Stop only network commands (fetch, push,
+    clone, a pull's fetch half run on its own); never a merge or rebase. After a stop, remove
+    only the lock and temporary files the run made (`stop_cleanup`), never ones that were there
+    before it, and a stopped clone's folder only when the clone made it (`clone_stop`): a folder
+    that existed before, even an empty one, is kept.
 13. **Profile folder rules are `includeIf.gitdir` entries built only by
     `profile_includes::gitdir_pattern`**: forward slashes on Windows (a UNC share as
     `//server/share/`, and only there: on Unix a backslash is a name character and is escaped),
