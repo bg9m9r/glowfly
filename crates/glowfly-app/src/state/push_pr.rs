@@ -51,11 +51,11 @@ fn host_tip(host: &[(String, Oid)], name: &str) -> Option<Oid> {
     host.iter().find(|(n, _)| n == name).map(|(_, o)| *o)
 }
 
-/// Where `b` stands on the remote its pull request is pushed to (`pr_repos::pr_push_remote`);
+/// Where `b` stands on the remote its pull request is pushed to (`pr_repos::pr_push_target`);
 /// None without a code host or when that remote isn't loaded. Push config naming a remote that
 /// can't take it blocks the push, saying why in `t`.
 pub fn host_branch(t: Lang, b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Option<HostBranch> {
-    match pr_repos::pr_push_remote(b, snap, fs) {
+    match pr_repos::pr_push_target(b, snap, fs) {
         Ok(remote) => host_branch_on(b, snap, fs, &remote),
         Err(u) => fs.host.as_ref().map(|_| HostBranch::Blocked(pr_repos::push_refused(t, &u, &b.name, fs))),
     }
@@ -131,7 +131,7 @@ pub fn push_item(t: Lang, snap: &Snapshot, fs: &ForgeState) -> Result<String, St
         Some(HostBranch::Missing | HostBranch::Ahead(_)) => Ok(b.name.clone()),
         Some(HostBranch::Blocked(why)) => Err(why),
         Some(HostBranch::Pushed) | None => {
-            let remote = pr_repos::pr_push_remote(b, snap, fs).unwrap_or_else(|u| u.remote);
+            let remote = pr_repos::pr_push_target(b, snap, fs).unwrap_or_else(|u| u.remote);
             Err(format!("{} is up to date on {remote}.", b.name))
         }
     }
@@ -191,11 +191,11 @@ pub fn pr_push(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -
 }
 
 /// The open pull request from branch `name`, found by the repository it is pushed to
-/// (`pr_repos::pr_push_remote` for a local branch, else the code host's) and the name it has
+/// (`pr_repos::pr_push_target` for a local branch, else the code host's) and the name it has
 /// there (a local branch's upstream there may be named differently).
 pub fn open_pr<'a>(snap: &Snapshot, fs: &'a ForgeState, name: &str) -> Option<&'a PullRequest> {
     let local = snap.locals.iter().find(|b| b.name == name);
-    let remote = local.and_then(|b| pr_repos::pr_push_remote(b, snap, fs).ok()).unwrap_or_else(|| fs.remote.clone());
+    let remote = local.and_then(|b| pr_repos::pr_push_target(b, snap, fs).ok()).unwrap_or_else(|| fs.remote.clone());
     fs.pr_from(&remote, &pr_source_on(snap, fs, &remote, name))
 }
 

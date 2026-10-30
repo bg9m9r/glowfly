@@ -56,22 +56,10 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
 }
 
 /// The remote `b`'s pull request is pushed to (`pr_repos::pr_push_target`), or why push config
-/// refuses it. A configured name with no remote is logged once per key and remote, and the next
-/// choice is taken.
-fn push_target(st: &mut AppState, b: &BranchInfo) -> Result<String, String> {
+/// refuses it.
+fn push_target(st: &AppState, b: &BranchInfo) -> Result<String, String> {
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return Err(String::new()) };
-    let (remote, missing) =
-        pr_repos::pr_push_target(b, snap, fs).map_err(|u| pr_repos::push_refused(st.settings.lang(), &u, &b.name, fs))?;
-    let Some(u) = missing else { return Ok(remote) };
-    let service = fs.host.as_ref().map(|h| h.provider.name()).unwrap_or_default();
-    let t = st.settings.lang();
-    let args: [(&str, &dyn std::fmt::Display); 5] =
-        [("key", &u.key), ("remote", &u.remote), ("service", &service), ("branch", &b.name), ("fallback", &remote)];
-    let text = t.trf("pr.push_remote.unusable", &args);
-    if st.session.forge.as_mut().is_some_and(|f| f.push_warned.insert(format!("{}={}", u.key, u.remote))) {
-        st.log(false, text);
-    }
-    Ok(remote)
+    pr_repos::pr_push_target(b, snap, fs).map_err(|u| pr_repos::push_refused(st.settings.lang(), &u, &b.name, fs))
 }
 
 /// Pushes local `branch` to `remote` (None: its push remote), then opens the create dialog (at

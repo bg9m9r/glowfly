@@ -95,41 +95,32 @@ pub fn push_remote(b: &BranchInfo, fs: &ForgeState) -> String {
     branches::remote_tracking(b).filter(|t| is_fork(fs, &t.remote)).map(|t| t.remote.clone()).unwrap_or_else(|| fs.remote.clone())
 }
 
-/// A push remote named in config that a pull request's push can't use: no remote of that name
-/// (passed over and logged), or one that isn't a repository on the code host's account (refused,
-/// since the user meant the branch to go there and not to the code host's remote).
+/// A push remote named in config that a pull request's push can't use, so the push is refused:
+/// no remote of that name (git's own push would fail), or one that isn't a repository on the code
+/// host's account (the user meant the branch to go there and not to the code host's remote).
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnusablePush {
     /// `branch.<name>.pushRemote` or `remote.pushDefault`.
     pub key: String,
     pub remote: String,
+    /// No remote of that name exists here.
+    pub missing: bool,
 }
 
 /// The remote a pull request from `b` is pushed to, as git would push it: the remote of
 /// `branch.<name>.pushRemote`, else of `remote.pushDefault`; else `push_remote`. A configured
-/// name with no remote is passed over and comes with the answer, for the log; a configured remote
-/// that isn't a PR repository refuses the push (Err).
-pub fn pr_push_target(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Result<(String, Option<UnusablePush>), UnusablePush> {
+/// remote that is missing or isn't a PR repository refuses the push (Err); git never moves on to
+/// the next choice, so neither does this.
+pub fn pr_push_target(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Result<String, UnusablePush> {
     let config = &snap.push_remotes;
     let by_branch = config.of_branch(&b.name).map(|r| (format!("branch.{}.pushRemote", b.name), r));
     let by_default = config.default.as_deref().map(|r| ("remote.pushDefault".to_owned(), r));
-    let mut missing = None;
-    for (key, remote) in by_branch.into_iter().chain(by_default) {
-        let unusable = UnusablePush { key, remote: remote.to_owned() };
-        if !snap.remotes.iter().any(|(n, _)| n == remote) {
-            missing.get_or_insert(unusable);
-        } else if remote == fs.remote || is_pr_remote(fs, remote) {
-            return Ok((remote.to_owned(), missing));
-        } else {
-            return Err(unusable);
-        }
+    let Some((key, remote)) = by_branch.or(by_default) else { return Ok(push_remote(b, fs)) };
+    let missing = !snap.remotes.iter().any(|(n, _)| n == remote);
+    if !missing && (remote == fs.remote || is_pr_remote(fs, remote)) {
+        return Ok(remote.to_owned());
     }
-    Ok((push_remote(b, fs), missing))
-}
-
-/// `pr_push_target`'s remote, or the configured remote that refuses the push.
-pub fn pr_push_remote(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Result<String, UnusablePush> {
-    pr_push_target(b, snap, fs).map(|(r, _)| r)
+    Err(UnusablePush { key, remote: remote.to_owned(), missing })
 }
 
 /// Why push config refuses `branch`'s push for a pull request (`pr_push_target`'s Err).
@@ -138,13 +129,13 @@ pub fn push_refused(t: Lang, u: &UnusablePush, branch: &str, fs: &ForgeState) ->
     let noun = fs.pr_word(t);
     let args: [(&str, &dyn std::fmt::Display); 5] =
         [("key", &u.key), ("remote", &u.remote), ("service", &service), ("branch", &branch), ("noun", &noun)];
-    t.trf("pr.push_remote.refused", &args)
+    if u.missing { t.trf("pr.push_remote.missing", &args) } else { t.trf("pr.push_remote.refused", &args) }
 }
 
 /// Whether `b`'s pull request is pushed to `remote` because push config names it rather than
 /// what the branch tracks.
 pub fn pushed_by_config(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -> bool {
-    pr_push_remote(b, snap, fs).is_ok_and(|r| r == remote) && push_remote(b, fs) != remote
+    pr_push_target(b, snap, fs).is_ok_and(|r| r == remote) && push_remote(b, fs) != remote
 }
 
 /// The branch on `remote` that `b` tracks as its own: any on the code host's remote or a fork,

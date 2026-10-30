@@ -81,6 +81,31 @@ fn gitlab_reads_a_forks_path_by_its_project_id() {
     assert!(!prs[0].head_repo.is(&base, &base));
 }
 
+/// Merge requests from three fork projects (8, 9 and 10), asked in id order.
+const GL_THREE: &str = r#"[
+  {"iid":2,"title":"A","source_branch":"a","target_branch":"main","author":{"name":"Bob"},
+   "web_url":"https://gitlab.com/team/app/-/merge_requests/2","source_project_id":8,"target_project_id":7},
+  {"iid":3,"title":"B","source_branch":"b","target_branch":"main","author":{"name":"Bob"},
+   "web_url":"https://gitlab.com/team/app/-/merge_requests/3","source_project_id":9,"target_project_id":7},
+  {"iid":4,"title":"C","source_branch":"c","target_branch":"main","author":{"name":"Bob"},
+   "web_url":"https://gitlab.com/team/app/-/merge_requests/4","source_project_id":10,"target_project_id":7}
+]"#;
+
+#[test]
+fn gitlab_stops_reading_fork_paths_after_an_error_other_than_not_found() {
+    // 8 is private (404, passed over), 9 fails (500, stops), so 10 isn't asked.
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET gitlab.com/api/v4/projects/team%2Fapp/merge_requests?state=opened&per_page=100" => Reply::json(GL_THREE),
+        "GET gitlab.com/api/v4/projects/9" => Reply::status(500, r#"{"message":"down"}"#),
+        "GET gitlab.com/api/v4/projects/10" => Reply::json(r#"{"path_with_namespace":"carol/app"}"#),
+        _ => Reply::not_found(),
+    });
+    let prs = pull_requests(&remote("https://gitlab.com/team/app"), &token(Provider::GitLab)).unwrap();
+    assert_eq!(heads(&prs), [(2, "a", fork("")), (3, "b", fork("")), (4, "c", fork(""))], "the list still loads");
+    let asked = |id: u64| routes(&m).iter().filter(|r| **r == format!("GET gitlab.com/api/v4/projects/{id}")).count();
+    assert_eq!((asked(8), asked(9), asked(10)), (1, 1, 0));
+}
+
 #[test]
 fn gitlab_lists_forks_by_project_id() {
     // The fork's project can't be read here: it stays unknown, and the list still loads.

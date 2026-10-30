@@ -114,7 +114,9 @@ impl HeadRepo {
 }
 
 /// The paths (`path_with_namespace`) of the GitLab fork projects `ids`, each asked once, at most
-/// `GITLAB_FORK_LOOKUPS`; one that can't be read is left out, and its fork stays unknown.
+/// `GITLAB_FORK_LOOKUPS`. One that can't be read (404, such as a private fork) is left out and its
+/// fork stays unknown; any other error stops the lookups, as `checks::per_pr` does, leaving the
+/// rest unknown too.
 pub(super) fn gitlab_fork_paths(t: &Target, auth: &Auth, ids: impl IntoIterator<Item = u64>) -> HashMap<u64, String> {
     #[derive(Deserialize)]
     struct Project {
@@ -123,9 +125,18 @@ pub(super) fn gitlab_fork_paths(t: &Target, auth: &Auth, ids: impl IntoIterator<
     let mut ids: Vec<u64> = ids.into_iter().collect();
     ids.sort_unstable();
     ids.dedup();
-    let ask =
-        |id: &u64| get::<Project>(auth, &format!("https://{}/api/v4/projects/{id}", t.host)).ok().map(|p| (*id, p.path_with_namespace));
-    ids.iter().take(GITLAB_FORK_LOOKUPS).filter_map(ask).filter(|(_, p)| !p.is_empty()).collect()
+    let mut out = HashMap::new();
+    for id in ids.into_iter().take(GITLAB_FORK_LOOKUPS) {
+        match get::<Project>(auth, &format!("https://{}/api/v4/projects/{id}", t.host)) {
+            Ok(p) if !p.path_with_namespace.is_empty() => {
+                out.insert(id, p.path_with_namespace);
+            }
+            Ok(_) => {}
+            Err(e) if e.is_not_found() => {}
+            Err(_) => break,
+        }
+    }
+    out
 }
 
 /// The fork named `name` on `base`'s service: owner and repository split at the last `/` (an

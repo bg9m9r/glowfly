@@ -76,8 +76,6 @@ pub struct ForgeState {
     pub filters: super::forge_filters::FilterState,
     /// Branch names like `2024-cleanup` name an issue (`Settings::year_branches_for`; set by detect).
     pub year_branches: bool,
-    /// The push config entries (`key=remote`) already logged as unusable for a pull request's push.
-    pub push_warned: HashSet<String>,
 }
 
 impl ForgeState {
@@ -105,7 +103,6 @@ impl ForgeState {
             jira_projects: ProjectKeys::Unknown,
             filters: Default::default(),
             year_branches: false,
-            push_warned: HashSet::new(),
         }
     }
 

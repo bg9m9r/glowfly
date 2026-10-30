@@ -127,6 +127,21 @@ fn a_forks_pull_request_comes_from_the_forks_remote() {
 }
 
 #[test]
+fn a_branch_tracking_the_forks_other_branch_is_refused() {
+    let (mut st, dirs, _, _) = with_two_topics("fork-src-other");
+    // The local topic tracks ada/other, with no push config: it isn't ada's topic.
+    git(&dirs[0], &["push", "-q", &dirs[2].display().to_string(), "main:other"]);
+    fetch_from(&dirs[0], "ada", &dirs[2]);
+    git(&dirs[0], &["branch", "-q", "--set-upstream-to=ada/other", "topic"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    listed(&mut st, vec![pr(8, HeadRepo::Fork { name: "ada/r".into() })]);
+    drive(&mut st, Msg::Branch(BranchMsg::CheckoutPullRequest { id: 8 }));
+    assert!(logged(&st, "The local branch topic neither tracks nor pushes to ada/topic, where #8 comes from"));
+    assert!(st.job.is_none() && st.modal.is_none(), "nothing checked out");
+    done(dirs);
+}
+
+#[test]
 fn a_pull_request_from_the_same_repository_keeps_the_code_hosts_branch() {
     let (mut st, dirs, origin_topic, _) = with_two_topics("fork-src-same");
     listed(&mut st, vec![pr(7, HeadRepo::Same)]);
