@@ -78,7 +78,9 @@ fn trust_prompt_hooks_only() {
     h.check_snapshot("trust_prompt_hooks_only");
     assert!(h.query_by_label_contains("xxx…").is_some(), "the long value is cut");
     assert!(h.query_by_label("in .githooks").is_some());
-    assert!(h.query_by_label_contains("These hooks change with the branch (.githooks is in the working tree)").is_some());
+    assert!(
+        h.query_by_label_contains("What these hooks and settings run changes with the branch (.githooks is in the working tree)").is_some()
+    );
     h.get_by_label("Trust").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::Decide { trusted: true, .. }))));
@@ -105,7 +107,7 @@ fn trust_prompt_incoming() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("trust_prompt_incoming");
-    assert!(h.query_by_label("Trust the incoming hooks?").is_some());
+    assert!(h.query_by_label("Trust the incoming hooks and scripts?").is_some());
     assert!(h.query_by_label_contains("The commit this brings in has other versions").is_some());
     assert!(h.query_by_label("post-merge").is_some());
     assert!(h.query_by_label("Trust and run").is_some());

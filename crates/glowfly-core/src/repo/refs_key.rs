@@ -87,7 +87,7 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
 /// `modules/` (any depth: names may hold `/`, and nested submodules sit in `modules/` of their
 /// parent's), and the `.git` folders of submodules `.gitmodules` lists that keep their own.
 /// Only stats and small reads; never opens a repository.
-fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut DefaultHasher) {
+pub(crate) fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut DefaultHasher) {
     modules_stamps(&repo.commondir().join("modules"), 0, now, h);
     let Some(workdir) = repo.workdir() else { return };
     let Ok(cfg) = git2::Config::open(&workdir.join(".gitmodules")) else { return };

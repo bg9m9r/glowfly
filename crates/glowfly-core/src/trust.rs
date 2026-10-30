@@ -16,6 +16,7 @@ mod home;
 pub mod incoming;
 pub mod merged;
 pub mod plumbing;
+mod programs;
 pub mod pull;
 use home::home_expanded;
 mod stamp;
@@ -151,10 +152,11 @@ pub fn scan_top(repo: &Repository) -> TrustScan {
     scan_top_reading(repo, Reading::Capped)
 }
 
-/// What the runner checks just before a job or shell starts: `scan_top` with every hook read
-/// whole, so its print compares with a saved one (submodules aside: see `incoming::recheck`).
+/// What the runner checks just before a job, shell or read starts: `scan`, submodules with a
+/// git dir included (git runs inside them during a status, a recursing fetch or a submodule
+/// update), so its print compares with the one a full load saved.
 pub fn scan_now(repo: &Repository) -> TrustScan {
-    scan_top_reading(repo, Reading::Whole)
+    scan(repo)
 }
 
 fn scan_top_reading(repo: &Repository, reading: Reading) -> TrustScan {
@@ -200,7 +202,8 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
             paths.push(path);
         }
     }
-    out.follows = follow::find(repo, out.hooks_dir.as_deref(), &paths);
+    let programs = programs::scan(repo, &mut out.config);
+    out.follows = follow::find(repo, out.hooks_dir.as_deref(), &paths, &programs);
     out
 }
 

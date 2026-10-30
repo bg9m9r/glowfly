@@ -218,3 +218,22 @@ fn a_submodule_s_config_or_hooks_changed_between_refreshes_changes_the_refresh_k
     let _ = std::fs::remove_dir_all(&parent);
     let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("glowfly-test-reask-sub-key-lib-{}", std::process::id())));
 }
+
+#[test]
+fn the_runner_s_scan_sees_a_submodule_hook_added_since_the_load_and_its_stamp_changes() {
+    let (parent, _sub) = with_submodule("reask-sub-now");
+    let repo = Repository::open(&parent).unwrap();
+    let loaded = scan(&repo);
+    let saved = crate::settings::SavedTrust::trusted(Some(loaded.print()));
+    let now = scan_now(&repo);
+    assert!(allows(Some(&saved), &now));
+    let before = stamp(&repo, &now);
+    // A hook in the submodule's git dir after the load: git runs it inside a recursing fetch.
+    hook(&parent.join(".git/modules/libs/lib/hooks"), "post-checkout");
+    let now = scan_now(&repo);
+    assert_eq!(now.submodules.iter().map(|s| s.path.as_str()).collect::<Vec<_>>(), ["libs/lib"]);
+    assert!(!allows(Some(&saved), &now), "not covered: the job asks again");
+    assert_ne!(stamp(&repo, &now), before, "a read's cached scan isn't reused either");
+    let _ = std::fs::remove_dir_all(&parent);
+    let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("glowfly-test-reask-sub-now-lib-{}", std::process::id())));
+}

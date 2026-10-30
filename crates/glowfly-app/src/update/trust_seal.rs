@@ -190,12 +190,11 @@ pub(super) fn stale(st: &mut AppState, s: Stale) {
     }
 }
 
-/// The active tab takes the runner's scan of its own settings and hooks (keeping the
-/// submodules its last full load found), so its standing, the Untrusted chip and the prompt
-/// follow what is on disk now; the next full load reads it all again. Returns that scan.
-fn adopt(st: &mut AppState, mut now: TrustScan) -> TrustScan {
+/// The active tab takes the runner's scan of its settings and hooks and those of its
+/// checked-out submodules (`trust::scan_now`), so its standing, the Untrusted chip and the
+/// prompt follow what is on disk now; the next full load reads it all again. Returns that scan.
+fn adopt(st: &mut AppState, now: TrustScan) -> TrustScan {
     if let Some(snap) = st.snap.as_mut() {
-        now.submodules = snap.trust_scan.submodules.clone();
         snap.trust_print = now.print();
         snap.trust_scan = now.clone();
     }

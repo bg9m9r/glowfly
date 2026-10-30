@@ -1,9 +1,11 @@
 //! Repository trust's work in the runner: reading the repositories Glowfly just made from a
 //! trusted one, so they can be trusted on the same terms (`Effect::Trust`), and the re-check
 //! just before trust-gated work starts (`Effect::Checked`, `verify`): the repository is scanned
-//! again with libgit2 (settings, hooks read whole, the commands file, where hooks follow the
-//! working tree) and compared with the decision it was sent under, and where hooks follow the
-//! working tree, what the work brings in is compared too (runner/trust_gate.rs): the commits an
+//! again with libgit2 (settings, hooks read whole, the commands file, where hooks and config
+//! programs follow the working tree, and the same for each checked-out submodule, which git
+//! runs inside during a status, a recursing fetch or a submodule update) and compared with the
+//! decision it was sent under, and where hooks or programs follow the working tree, what the
+//! work brings in is compared too (runner/trust_gate.rs): the commits an
 //! effect names before it starts, and for a job of git commands each command's just before it
 //! runs, a pull pinned to the commits its fetch brought. Nothing the repository names runs for
 //! the check; a pull's fetch runs (under the settings just checked) to learn what it merges.
