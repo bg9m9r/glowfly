@@ -125,6 +125,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "repo_year_branches",
     "repo_merge_methods",
     "favorite_repos",
+    "repo_groups",
     "project_folders",
     "external_tools",
     "profiles",

@@ -16,6 +16,8 @@ macro_rules! msg_areas {
             Repo(crate::msg::RepoMsg) "repo" => repo::handle(now, fx);
             /// The recent and favorite repository lists (update/recent.rs).
             Recent(crate::msg::RecentMsg) "recent" => recent::handle(now, fx);
+            /// Repository groups of favorites (update/repo_groups.rs).
+            Groups(crate::msg::GroupMsg) "groups" => repo_groups::handle(now, fx);
             /// Finding repositories in project folders (update/repos.rs).
             Repos(crate::msg::ReposMsg) "repos" => repos::handle(now, fx);
             /// Refresh results and loading more history (update/refresh.rs).
@@ -205,7 +207,7 @@ mod tests {
     #[test]
     fn area_names_are_unique_and_kebab_case() {
         let names = Msg::AREAS;
-        assert_eq!(names.len(), 66, "one per area row");
+        assert_eq!(names.len(), 67, "one per area row");
         for (i, name) in names.iter().enumerate() {
             assert!(!name.is_empty() && name.bytes().all(|b| b.is_ascii_lowercase() || b == b'-'), "{name:?}");
             assert!(!name.starts_with('-') && !name.ends_with('-'), "{name:?}");

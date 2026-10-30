@@ -25,6 +25,7 @@ mod profile_rules;
 mod profiles;
 mod profiles_prefs;
 mod repo_colours;
+mod repo_groups;
 pub mod repo_keys;
 mod submodules;
 mod terminal;
@@ -56,6 +57,7 @@ pub use profile_rules::{RuleProblem, profile_for_git_dir, rule_for_git_dir, rule
 pub use profiles::{DEFAULT_PROFILE_NAME, FolderRule, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
 pub use repo_colours::RepoColour;
+pub use repo_groups::{GROUP_ORDER, MAX_GROUP_NAME, RepoGroup, clean_name as clean_group_name, new_group_colour};
 pub use submodules::{SubmodulePrefs, SubmoduleUpdates};
 pub use terminal::{
     CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalColours, TerminalPrefs,
@@ -84,8 +86,7 @@ pub struct Settings {
     pub reopen_last_repo: bool,
     /// Refresh when files change outside Glowfly (Preferences > General).
     pub watch_files: bool,
-    /// Dry-run merge the current branch against its upstream or default branch after loads and
-    /// fetches (Preferences > General).
+    /// Dry-run merge the current branch against its upstream or default branch after loads and fetches (Preferences > General).
     pub conflict_check: bool,
     /// Update submodules after checkouts and pulls (Preferences > General).
     pub submodules: SubmodulePrefs,
@@ -229,8 +230,10 @@ pub struct Settings {
     /// Favorite repositories (welcome screen and repository menu), as working-directory paths in the order added.
     #[serde(default)]
     pub favorite_repos: Vec<String>,
-    /// Folders the Find repositories dialog looks for repositories in (`paths::encode`d), in
-    /// the order they were added.
+    /// Named groups of favorites with their colours (`repo_groups`), in the order shown.
+    #[serde(default)]
+    pub repo_groups: Vec<RepoGroup>,
+    /// Folders the Find repositories dialog looks for repositories in (`paths::encode`d), in the order they were added.
     #[serde(default)]
     pub project_folders: Vec<String>,
     /// Preferences > External tools.
@@ -249,17 +252,14 @@ pub struct Settings {
     /// Key pairs outside ~/.ssh that Preferences > SSH lists (Use existing).
     #[serde(default)]
     pub ssh_extra_keys: Vec<PathBuf>,
-    /// Ask for OpenPGP signing passphrases in Glowfly rather than GnuPG's own window
-    /// (Preferences > Commit Signing).
+    /// Ask for OpenPGP signing passphrases in Glowfly rather than GnuPG's own window (Preferences > Commit Signing).
     pub gpg_prompts_in_app: bool,
-    /// Save HTTPS sign-ins typed in the credential prompt with git's credential helper
-    /// (Preferences > General).
+    /// Save HTTPS sign-ins typed in the credential prompt with git's credential helper (Preferences > General).
     pub remember_https_credentials: bool,
     /// Add git commands and their timings to the activity log and write details to the error log (Preferences > General).
     #[serde(default)]
     pub extended_logging: bool,
-    /// Show the last, average and slowest frame times in a corner of the window
-    /// (Preferences > General > Diagnostics).
+    /// Show the last, average and slowest frame times in a corner of the window (Preferences > General > Diagnostics).
     #[serde(default)]
     pub show_frame_times: bool,
     /// Keyboard shortcuts the user changed (Preferences > Keyboard): a binding's stable id
@@ -268,8 +268,7 @@ pub struct Settings {
     /// ignores what it can't use.
     #[serde(default)]
     pub keybindings: BTreeMap<String, Vec<String>>,
-    /// The git program Glowfly runs (Preferences > Git): an absolute path, or None for git from
-    /// PATH.
+    /// The git program Glowfly runs (Preferences > Git): an absolute path, or None for git from PATH.
     pub git_program: Option<String>,
     /// The git version ("2.34.1") whose too-old banner was hidden with Don't show again. Another
     /// version shows the banner again, and it never hides the banner for a git that can't run.
@@ -363,6 +362,7 @@ impl Default for Settings {
             repo_year_branches: HashMap::new(),
             repo_merge_methods: HashMap::new(),
             favorite_repos: Vec::new(),
+            repo_groups: Vec::new(),
             project_folders: Vec::new(),
             external_tools: ExternalTools::default(),
             profiles: Vec::new(),

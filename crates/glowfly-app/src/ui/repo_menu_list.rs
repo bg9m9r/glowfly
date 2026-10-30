@@ -1,21 +1,27 @@
-//! The repository lists of the toolbar's repository menu and File > Open recent: Favorites
-//! and Recent under group headers, one `repo_menu_row` per repository with shared columns, a
+//! The repository lists of the toolbar's repository menu and File > Open recent: each
+//! repository group (its swatch in the header's icon column), the ungrouped Favorites and Recent
+//! under group headers (a header shows only while it has rows), one `repo_menu_row` per
+//! repository with shared columns, a
 //! filter field above them once there are more than `FILTER_FROM` (focused when the menu
 //! opens; Enter opens the first match, Down moves to it), and the closing group, Remove
 //! missing entries… and Clear recent…, both of which ask first.
 
 use super::common::{menu_danger, menu_item};
 use super::repo_menu_row::{self, Act, Columns, Row, Status, Words};
+use super::repo_swatch;
 use super::theme::color;
 use super::widgets::menu;
+use super::widgets::menu_row::PaintIcon;
 use super::widgets::text_field::TextField;
 use crate::msg::{Msg, RecentMsg, RepoMsg};
 use crate::state::AppState;
 use crate::state::repo_colours::listed_colour;
+use crate::state::repo_groups::{any_colour, members, ungrouped};
 use crate::state::repo_lists::{
     clear_recent_msg, favorites, is_missing, is_open, matches_filter, missing_counts, recent_rows, remove_missing_msg,
 };
 use eframe::egui::{self, Id, Key, RichText};
+use glowfly_core::settings::RepoColour;
 use std::path::{Path, PathBuf};
 
 /// The menu's width while it lists repositories: room for a name, its parent and a status.
@@ -32,15 +38,21 @@ pub fn lists(ui: &mut egui::Ui, st: &AppState, filter: bool, msgs: &mut Vec<Msg>
     if favs.is_empty() && recent.is_empty() {
         return false;
     }
+    let s = &st.settings;
     ui.set_min_width(WIDTH);
     let query = if filter && favs.len() + recent.len() > FILTER_FROM { Some(filter_field(ui, t.tr("repos.menu.filter"))) } else { None };
     let q = query.as_ref().map_or("", |(q, _)| q.as_str());
     let make = |p: &PathBuf, removable| row(st, p, removable);
-    let favs: Vec<Row> = favs.iter().filter(|p| matches_filter(p, q)).map(|p| make(p, false)).collect();
-    let recent: Vec<Row> = recent.iter().filter(|p| matches_filter(p, q)).map(|p| make(p, true)).collect();
+    let rows_of =
+        |list: &[PathBuf], removable| -> Vec<Row> { list.iter().filter(|p| matches_filter(p, q)).map(|p| make(p, removable)).collect() };
+    // (header, its swatch, rows): the groups, then the ungrouped favorites, then Recent.
+    let mut sections: Vec<(&str, Option<RepoColour>, Vec<Row>)> =
+        s.repo_groups.iter().enumerate().map(|(g, group)| (group.name.as_str(), group.hue(), rows_of(&members(s, g), false))).collect();
+    sections.push((t.tr("repos.favorites.header"), None, rows_of(&ungrouped(s), false)));
+    sections.push((t.tr("repos.recent.header"), None, rows_of(&recent, true)));
     let words = words(st);
-    let all: Vec<&Row> = favs.iter().chain(&recent).collect();
-    let cols = Columns::measure(ui, &all, &words, !st.settings.repo_colours.is_empty());
+    let all: Vec<&Row> = sections.iter().flat_map(|(_, _, rows)| rows).collect();
+    let cols = Columns::measure(ui, &all, &words, any_colour(s));
     if let Some((_, field)) = &query {
         if let Some(first) = all.first() {
             if super::widgets::text_field::entered(ui, field) {
@@ -54,11 +66,11 @@ pub fn lists(ui: &mut egui::Ui, st: &AppState, filter: bool, msgs: &mut Vec<Msg>
             menu::inset(ui, |ui| ui.label(RichText::new(t.tr("repos.menu.no_match")).color(color::weak())));
         }
     }
-    for (title, rows) in [(t.tr("repos.favorites.header"), &favs), (t.tr("repos.recent.header"), &recent)] {
+    for (title, hue, rows) in &sections {
         if rows.is_empty() {
             continue;
         }
-        menu::group_header(ui, title);
+        menu::group_header_with(ui, title, hue.map(|c| (repo_swatch::paint_slot as PaintIcon, color::repo_hue(c))));
         for r in rows {
             let done = repo_menu_row::show(ui, r, cols, &words);
             act(ui, r, done, msgs);

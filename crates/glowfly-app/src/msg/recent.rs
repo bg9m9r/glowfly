@@ -17,8 +17,6 @@ pub enum RecentMsg {
     CheckFolders,
     /// Result of `Effect::CheckRepoFolders`: what was found at each folder checked.
     FoldersChecked(Vec<FolderCheck>),
-    /// Move favorite `from` so it ends up at index `to` (dragging, Move up and Move down).
-    MoveFavorite { from: usize, to: usize },
     /// Open the favorite at this index (0 for the first; Open favorite repository 1 to 9).
     OpenFavorite(usize),
     /// Add an unloaded tab for each of these folders not shown by a tab and not missing, then
@@ -53,7 +51,6 @@ impl RecentMsg {
             | Self::SetFavorite { .. }
             | Self::CheckFolders
             | Self::FoldersChecked(_)
-            | Self::MoveFavorite { .. }
             | Self::OpenFavorite(_)
             | Self::OpenAll(_)
             | Self::RemoveMissing

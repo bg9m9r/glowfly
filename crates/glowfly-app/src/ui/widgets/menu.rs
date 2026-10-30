@@ -37,7 +37,7 @@ pub use super::menu_split::Part;
 use crate::ui::menu_keys::{self, Kind};
 use eframe::egui::menu::BarState;
 use eframe::egui::{
-    self, AboveOrBelow, Color32, CornerRadius, Id, InnerResponse, PopupCloseBehavior, Response, Sense, Stroke, Ui, WidgetText, vec2,
+    self, AboveOrBelow, Color32, CornerRadius, Id, InnerResponse, PopupCloseBehavior, Rect, Response, Sense, Stroke, Ui, WidgetText, vec2,
 };
 
 /// The row metrics menus use now: comfortable (a compact variant is opt-in, not offered yet).
@@ -274,16 +274,27 @@ pub fn inset<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
 /// the place of the group's separator (a `separator` right after it draws nothing), can't be
 /// focused or clicked, and is a heading to screen readers.
 pub fn group_header(ui: &mut Ui, text: &str) -> Response {
+    group_header_with(ui, text, None)
+}
+
+/// `group_header` with `icon` (a painter and its colour, as `Item::icon` takes them) painted in
+/// the icon column, which the header then needs: a repository group's swatch.
+pub fn group_header_with(ui: &mut Ui, text: &str, icon: Option<(super::menu_row::PaintIcon, Color32)>) -> Response {
     let first = at_mark(ui, "menu-start");
     let gap = if first { tokens::HEADER_FIRST_GAP } else { tokens::HEADER_GAP - ui.spacing().item_spacing.y };
     ui.add_space(gap.max(0.0));
     let pad = ui.spacing().button_padding.x;
-    let x = columns::used(ui).label_x(pad);
+    let cols = if icon.is_some() { columns::note(ui, Columns { icon: true, ..Columns::default() }) } else { columns::used(ui) };
+    let x = cols.label_x(pad);
     let galley = ui.painter().layout_no_wrap(text.to_owned(), type_scale::strong(ui, type_scale::SMALL), color::weak());
     let (rect, resp) = ui.allocate_at_least(vec2(x + galley.size().x + pad, tokens::HEADER_H), Sense::hover());
     if ui.is_rect_visible(rect) {
         let at = egui::pos2(rect.left() + x, rect.center().y - galley.size().y / 2.0);
         ui.painter().galley(at, galley, color::weak());
+        if let Some((paint, c)) = icon {
+            let slot = Rect::from_min_size(egui::pos2(rect.left() + cols.icon_left(pad), rect.top()), vec2(columns::ICON_W, rect.height()));
+            paint(ui.painter(), slot, c);
+        }
     }
     // Egui's label node (with its bounds), turned into a named heading.
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, text));

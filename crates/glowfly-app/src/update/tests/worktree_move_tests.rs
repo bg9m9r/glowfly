@@ -1,6 +1,6 @@
 //! Headless tests for moving a worktree: the refusals (main, this tab's, missing, locked), the
 //! typed target's problems, a move through the runner and what follows it (an inactive tab, the
-//! recent list, the closed tabs, favorites and the saved tabs point at the new folder), a taken
+//! recent list, the closed tabs, favorites, repository groups and the saved tabs point at the new folder), a taken
 //! target reopening the dialog with the error, and Browse… filling the dialog.
 
 use super::tests::{drive, finish, git, same_place, scratch_repo, state};
@@ -9,12 +9,14 @@ use crate::effect::Effect;
 use crate::effect::WorktreeEffect;
 use crate::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg, TabsMsg};
 use crate::runner;
+use crate::state::repo_groups::members;
 use crate::state::tabs::ClosedTab;
 use crate::state::worktree_move::{MoveForm, target_problem};
 use crate::state::worktrees::find;
 use crate::state::{AppState, Modal};
 use crate::worktree::WorktreeMsg;
 use glowfly_core::paths;
+use glowfly_core::settings::RepoGroup;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -105,6 +107,7 @@ fn a_move_retargets_tabs_and_lists() {
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert!(st.tabs[1].parked.as_ref().is_some_and(|p| p.snap.is_some()));
     st.settings.favorite_repos = vec![paths::encode(&side)];
+    st.settings.repo_groups = vec![grouping(&[&side])];
     st.closed_tabs = vec![ClosedTab { path: side.clone(), label: Some("Side work".into()) }];
     let to = side.with_file_name("deeper").join("renamed");
     drive(&mut st, wt(WorktreeMsg::MoveDialog(side.clone())));
@@ -124,6 +127,8 @@ fn a_move_retargets_tabs_and_lists() {
     assert!(tab.parked.as_ref().is_some_and(|p| p.snap.is_none()), "loads again when selected");
     assert!(st.recent.iter().any(|p| p == &to) && !st.recent.iter().any(|p| same_place(p, &side)), "{:?}", st.recent);
     assert_eq!(st.settings.favorite_repos, [paths::encode(&to)]);
+    assert_eq!(st.settings.repo_groups[0].repos, [paths::encode(&to)], "its group follows it");
+    assert_eq!(members(&st.settings, 0), [paths::decode(&paths::encode(&to))], "and still shows it");
     let closed: Vec<_> = st.closed_tabs.iter().map(|c| (c.path.clone(), c.label.as_deref())).collect();
     assert_eq!(closed, [(to.clone(), Some("Side work"))], "the closed tab keeps its label");
     assert!(st.snap.as_ref().unwrap().worktrees.iter().any(|w| same_place(&w.path, &to)));
@@ -132,6 +137,33 @@ fn a_move_retargets_tabs_and_lists() {
     assert!(same_place(&st.snap.as_ref().unwrap().workdir, &to), "the tab loads the new folder");
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     let _ = std::fs::remove_dir_all(side.with_file_name("deeper"));
+    cleanup(&dir, &side);
+}
+
+/// A group called Work listing `folders`.
+fn grouping(folders: &[&Path]) -> RepoGroup {
+    let mut g = RepoGroup::new("Work", None);
+    g.repos = folders.iter().map(|f| paths::encode(f)).collect();
+    g
+}
+
+#[test]
+fn a_move_onto_a_favorite_keeps_it_in_the_group() {
+    let (mut st, dir, side) = opened("wtmv-grouped");
+    let to = side.with_file_name("renamed");
+    // The target is a favorite already, spelled with a trailing separator, and listed first,
+    // so that spelling is the one the favorites keep.
+    let other = format!("{}/", paths::encode(&to));
+    st.settings.favorite_repos = vec![other.clone(), paths::encode(&side)];
+    st.settings.repo_groups = vec![grouping(&[&side])];
+    drive(&mut st, wt(WorktreeMsg::MoveDialog(side.clone())));
+    form(&mut st).folder = to.display().to_string();
+    let fx = submit(&mut st);
+    finish(&mut st, fx);
+    assert!(to.join("a.txt").exists());
+    assert_eq!(st.settings.favorite_repos, std::slice::from_ref(&other));
+    assert_eq!(st.settings.repo_groups[0].repos, [other], "the group names the favorite that stayed");
+    assert_eq!(members(&st.settings, 0).len(), 1, "so it isn't dropped from the group");
     cleanup(&dir, &side);
 }
 

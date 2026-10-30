@@ -193,6 +193,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             }
             Modal::SyncRepos => close = super::repo_sync::show(ui, cx, repo_sync, msgs),
             Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, cx, form, msgs),
+            Modal::RepoGroup(form) => close = super::repo_group_dialog::show(ui, cx, form, msgs),
             Modal::Mainline(form) => close = super::mainline_dialog::show(ui, cx, form, idle, msgs),
             Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, cx, o, msgs),
             Modal::AutoStash(ask) => close = super::auto_stash_dialog::show(ui, cx, ask, msgs),

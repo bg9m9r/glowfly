@@ -30,7 +30,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Worktrees and branches: a local branch another worktree has checked out, or is rebasing or bisecting, is found by its exact name (`WorktreeInfo::uses`) and `WorktreeInfo::current` (`state/worktree_branches.rs`), never by comparing folder spellings.
 - That one source refuses checkout, delete and fast-forward of such a branch, and rename and force push of one being rebased or bisected (git renames one merely checked out elsewhere), naming the worktree and what it is doing; the LOCAL row's tooltip says the same.
 - Every UI checkout of a local branch goes through `BranchMsg::Checkout`, which refuses a branch another worktree has checked out.
-- Moving a worktree (`update/worktree_move.rs`) points the tabs, the recent list, the closed tabs, favorites and `KnownFolders` at the new folder.
+- Moving a worktree (`update/worktree_move.rs`) points the tabs, the recent list, the closed tabs, favorites, repository groups and `KnownFolders` at the new folder.
 - Removing a worktree closes the other tabs showing it first (`update/worktree_manage.rs`).
 - On Windows, removing or moving a worktree stops its file system monitor daemon first (`RemoveRequest::stop_monitor`, `MoveRequest::stop_monitor`, from `GitState::stops_monitor`), since it holds the folder open.
 - Each tab has a `TabId` for as long as it is open: what a request waiting for an answer names it by, since its index changes when tabs move or close.

@@ -77,6 +77,7 @@ source file, update its line here.
 - Per-repository graph filters.
 - `branch_colours.rs`: the branch colour preset and per-repository pinned branch colours.
 - `repo_colours.rs`: repository colours per working folder, saved as stable names (a retired name loads as its replacement).
+- `repo_groups.rs`: named groups of favorites with a colour each; every favorite stays in `favorite_repos`, so older versions still list them, and `new_group_colour` picks a new group's hue.
 - `forge_filters.rs`: per-repository PR and issue filters.
 - Repository trust decisions.
 - Named profiles with their identity (seeding, syncing with git, name checks).

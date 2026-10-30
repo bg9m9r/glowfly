@@ -133,10 +133,12 @@ pub mod release_notes;
 pub mod remote_branch;
 pub mod remotes;
 pub mod repo_colours;
+pub mod repo_groups;
 pub mod repo_identity;
 pub mod repo_lists;
 pub mod repo_scan;
 pub mod repo_sync;
+mod running_job;
 pub mod search;
 pub mod section_actions;
 pub mod selection;
@@ -194,6 +196,7 @@ pub use commit::CommitDraft;
 pub use forge::{ForgeState, ProjectKeys, Status, tracker_target};
 pub use logs::{LOG_LIMIT, LogEntry};
 pub use prefs::{PrefPage, PrefsState, host_text};
+pub use running_job::RunningJob;
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};
 pub use view::{ColumnDrag, ViewState, file_folds, file_tree, frame_times, list_keys, wip_lists};
@@ -239,27 +242,6 @@ impl Selection {
     pub fn wip_shown(&self) -> bool {
         matches!(self, Selection::Wip | Selection::VsWorkdir(_))
     }
-}
-
-/// A git command sequence that is running.
-pub struct RunningJob {
-    pub label: String,
-    /// The repository the job runs in (its tab), if any.
-    pub workdir: Option<PathBuf>,
-    /// Background jobs (auto-fetch) don't show toasts or announce failures.
-    pub quiet: bool,
-    pub clear_commit: bool,
-    pub then_open: Option<(PathBuf, trust::Created)>,
-    /// Run the push flow when this (commit) job succeeds.
-    pub then_push: bool,
-    /// Open the create pull request dialog for this branch once this (push) job succeeds.
-    pub then_pr: Option<push_pr::PrStart>,
-    /// Check the repository again for a pending link's target once this (fetch) job succeeds (update/deep_link_open.rs).
-    pub then_link: bool,
-    /// The job can't make the undo history wrong (fetch, push, or an undo/redo itself).
-    pub keeps_undo: bool,
-    /// The job fetches (a fetch or pull command): its success moves `Snapshot::fetched_at`.
-    pub fetches: bool,
 }
 
 /// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter
@@ -385,6 +367,8 @@ pub enum Modal {
     SyncRepos,
     /// Rename tab (`ui/tab_dialog.rs`).
     RenameTab(tabs::RenameTabForm),
+    /// New group and Rename group (`ui/repo_group_dialog.rs`).
+    RepoGroup(repo_groups::GroupForm),
     /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
     Mainline(pick::MainlineForm),
     /// Uncommitted changes in the way of an operation: stash them and carry on (`ui/auto_stash_dialog.rs`).

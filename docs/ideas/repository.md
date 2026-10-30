@@ -20,6 +20,10 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   stderr or an ERR packet to steer a pull onto the hand-over-to-`git pull` path (a known gap; that
   path still needs the user's accept when gated).
 - Tell apart two items that couldn't be read for the same reason, so Trust and run on one doesn't pass the other too.
+- Read `$` inside single quotes as plain text: a filter like `perl -pe 's/x/$1/'` is taken to follow the whole tree and asks again on every change
+- Follow a path built from a command, such as `$(git rev-parse --show-cdup)tools/x.sh`, which follows nothing now
+- Expand `~+/x` (the current folder) in configured commands
+- Notice tracked code that no word of a command names: `python -m pkg.mod`, `npm run x`, `make x`
 - Send a job's `on_fail_check` command through the trust gate like its own commands.
 - Make the merges of a rebase-merges todo, an octopus merge and an `am -3` fallback in memory, so they are compared instead of held.
 - A Preferences list to review and revoke trust decisions (they are already remembered per
@@ -252,6 +256,19 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Ctrl+O shown beside Open repository… once menus have a shortcut column
 - Remove missing entries… in the macOS native File > Open recent menu as well
 
+### Repository groups
+
+- Collapse a group on the welcome screen and in the repository menu
+- Group actions (Open all, New group…) on the repository menu's group headers too
+- Drag a whole group to reorder the groups (Move up and Move down only today)
+- Move to group on Recent rows, starring the repository in the same step
+- Fetch or pull one group's repositories from Fetch or pull repositories
+- The group's name in its repositories' tab tooltips
+- A group's repository count on its header
+- Select the whole name when Rename group opens
+- Worktree tab group hues that skip the hues repositories and groups already use
+- Group headings in the macOS native File > Open recent menu (it lists every favorite under one Favorites heading)
+
 ### Git engine choice
 
 - Warn when the chosen git is a minimal install with no shell for hook scripts (on Windows, no sh.exe next to it)
@@ -274,7 +291,5 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Collapse a tab group to one tab showing a count
 - A modifier-drag that takes one tab out of its group or drops it into another group
 - A repository name chip at the start of each group in the tab strip
-- Strip colors chosen per repository, shared with the repository manager's group colors once
-  those exist (#239)
 - Save each tab's group in the tabs file so the startup read isn't needed
 - Keyboard shortcuts to jump to the next or previous tab group

@@ -152,22 +152,6 @@ fn opening_a_repository_clears_its_missing_mark() {
 }
 
 #[test]
-fn move_favorite_reorders_and_saves_once() {
-    let mut st = state();
-    st.settings.favorite_repos = vec!["/w/a".into(), "/w/b".into(), "/w/c".into()];
-    let fx = run(&mut st, RecentMsg::MoveFavorite { from: 2, to: 0 });
-    assert_eq!(st.settings.favorite_repos, ["/w/c", "/w/a", "/w/b"]);
-    assert_eq!(saved_favorites(&fx), [vec!["/w/c".to_owned(), "/w/a".into(), "/w/b".into()]]);
-    let fx = run(&mut st, RecentMsg::MoveFavorite { from: 0, to: 1 });
-    assert_eq!(st.settings.favorite_repos, ["/w/a", "/w/c", "/w/b"]);
-    assert_eq!(fx.len(), 1, "{fx:?}");
-    assert!(run(&mut st, RecentMsg::MoveFavorite { from: 1, to: 1 }).is_empty(), "no move");
-    assert!(run(&mut st, RecentMsg::MoveFavorite { from: 3, to: 0 }).is_empty(), "out of range");
-    assert!(run(&mut st, RecentMsg::MoveFavorite { from: 0, to: 3 }).is_empty(), "out of range");
-    assert_eq!(st.settings.favorite_repos, ["/w/a", "/w/c", "/w/b"]);
-}
-
-#[test]
 fn open_favorite_opens_it_or_says_there_is_none() {
     let dir = scratch_repo("recent-open-favorite");
     let mut st = state();

@@ -16,8 +16,8 @@
 use super::backdrop::{self, Surface};
 use super::tab_drag::{SLIDE, Slot, drag, lefts_after};
 use super::tab_paint::{
-    CHIP_GAP, CHIP_H, LIFT, SWATCH_ROOM, TabLook, chip_room, close_rect, group_color, paint_group_chip, paint_group_strip, paint_separator,
-    paint_tab, tab_width,
+    CHIP_GAP, CHIP_H, LIFT, SWATCH_ROOM, TabLook, chip_room, close_rect, group_color, group_tint, paint_group_chip, paint_group_strip,
+    paint_separator, paint_tab, tab_width,
 };
 use super::theme::branch_colours::line;
 use super::theme::color;
@@ -88,6 +88,8 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let measure = |i: usize| ui.painter().layout_no_wrap(name(i).to_owned(), active_font.clone(), Color32::PLACEHOLDER).size().x;
         let repo_of = |i: usize| repo_colours::tab_colour(st, i).map(color::repo_hue);
         let swatch_room = |i: usize| if repo_of(i).is_some() { SWATCH_ROOM } else { 0.0 };
+        // A worktree group's strip and chip take its repository's colour when it has one.
+        let strip_of = |first: usize, n: usize| repo_of(first).map_or_else(|| group_color(n), group_tint);
         let natural: Vec<f32> = (0..st.tabs.len()).map(|i| tab_width(measure(i) + swatch_room(i))).collect();
         // Room for the tabs before + (and the tab list, when it shows).
         let room = ui.available_width() - GAP - PLUS_W;
@@ -160,7 +162,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                         // Where the group's ends will be after the drop.
                         let at = |j: usize| new_index(&f.order, j);
                         let (lo, hi) = members.clone().map(at).fold((usize::MAX, 0), |(lo, hi), j| (lo.min(j), hi.max(j)));
-                        paint_group_strip(p, rect, group_color(*n), at(i) == lo, at(i) == hi, GAP);
+                        paint_group_strip(p, rect, strip_of(members.start, *n), at(i) == lo, at(i) == hi, GAP);
                     }
                 }
                 None => {
@@ -170,9 +172,10 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                     let cut = paint_tab(p, tab_rect(i, rect), name(i), font_of(active), tab);
                     let chip = (chips[i] > 0.0).then(|| chip_rect(i, rect));
                     if let Some((members, n)) = group {
-                        paint_group_strip(p, tab_rect(i, rect), group_color(*n), i == members.start, i + 1 == members.end, GAP);
-                        if let Some(c) = chip {
-                            paint_group_chip(p, c, group_name(i), group_color(*n));
+                        let c = strip_of(members.start, *n);
+                        paint_group_strip(p, tab_rect(i, rect), c, i == members.start, i + 1 == members.end, GAP);
+                        if let Some(r) = chip {
+                            paint_group_chip(p, r, group_name(i), c);
                         }
                     }
                     let on_chip = chip.is_some_and(|c| r.hover_pos().is_some_and(|p| c.contains(p)));
@@ -209,8 +212,8 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
             let tab = TabLook { hovered: true, floating: true, close_alpha: if active { 1.0 } else { 0.0 }, ..look(f.from, active) };
             let rect = tab_rect(f.from, f.rect);
             paint_tab(ui.painter(), rect, name(f.from), font_of(active), tab);
-            if let Some((_, n)) = shown_at(&shown, f.from) {
-                paint_group_strip(ui.painter(), rect, group_color(*n), true, true, GAP);
+            if let Some((members, n)) = shown_at(&shown, f.from) {
+                paint_group_strip(ui.painter(), rect, strip_of(members.start, *n), true, true, GAP);
             }
         }
         new_tab_button(ui, t, &st.keymap, height, msgs);
@@ -247,7 +250,10 @@ fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<
     let n = st.tabs.len();
     let no_repo = st.tabs[i].path.is_none().then(|| t.tr("tabs.menu.rename.blocked"));
     item(ui, msgs, t.tr("tabs.menu.rename"), "", no_repo, Msg::Tabs(TabsMsg::RenameTabDialog(i)));
-    super::repo_colour_menu::items(ui, t, repo_colours::tab_path(&st.tabs[i]), repo_colours::tab_colour(st, i), msgs);
+    let path = repo_colours::tab_path(&st.tabs[i]);
+    let own = path.and_then(|p| st.settings.repo_colour_for(p));
+    let grouped = st.tabs[i].path.as_deref().and_then(|p| crate::state::repo_groups::group_hue(st, p)).is_some();
+    super::repo_colour_menu::items(ui, t, path, (own, grouped), msgs);
     separator(ui);
     item(ui, msgs, t.tr("tabs.menu.close"), "", None, Msg::Tabs(TabsMsg::CloseTab(i)));
     let only = (n <= 1).then(|| t.tr("tabs.menu.close_others.blocked"));
