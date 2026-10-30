@@ -22,7 +22,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `frame_layout.rs` draws the window's panels in order.
 - `panel_rails.rs` draws the side panels' rails.
 - `toasts.rs` draws the toasts.
-- `status.rs` draws the status bar; `live_updates.rs` its live-updates dot beside the version (a label and a click to refresh only when updates are slow or off).
+- `status.rs` draws the status bar (a running job's label, its transfer's progress and its Cancel, disabled with the reason while it merges); `live_updates.rs` its live-updates dot beside the version (a label and a click to refresh only when updates are slow or off).
 - `menu_anchor.rs` opens a menu that drops below a custom-drawn button (the title bar's menu button, the pickers).
 - `menu_keys/`: the keyboard in every menu, run on each menu level's contents by `widgets::menu::styled` (menu spec §9): `level.rs` the keys (Up and Down wrapping, Home, End, Right and Left between a row's parts, typeahead, Esc and Left closing one level and giving the focus back), `items.rs` the level's focusable items in rows, `stash.rs` the keys kept from the views while a menu is open, `memory.rs` what is kept between frames; tests in `tests.rs`, `bar_tests.rs` and `view_tests.rs`.
 - `repo_line.rs`: the 2 px line in the active tab's repository colour along the window's top edge; which tab shows which colour is `state/repo_colours.rs`.

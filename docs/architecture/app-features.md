@@ -37,10 +37,13 @@ source file, update its line here. Each section lists one feature's files in eve
 
 ## Partial clones and stopping jobs
 
-- Files: `msg/partial.rs`, `effect/partial.rs`, `state/partial.rs`, `state/partial_confirm.rs`, `state/job_stop.rs`, `update/partial.rs`, `update/partial_size.rs`, `update/partial_content.rs`, `update/job_stop.rs`, `runner/partial.rs`, `runner/stops.rs`, `ui/content_fetch.rs`.
+- Files: `msg/partial.rs`, `effect/partial.rs`, `state/partial.rs`, `state/partial_confirm.rs`, `state/job_stop.rs`, `update/partial.rs`, `update/partial_size.rs`, `update/partial_content.rs`, `update/job_stop.rs`, `runner/partial.rs`, `runner/stops.rs`, `runner/job_steps.rs`, `ui/content_fetch.rs`.
 - Fetch full history's size check and its confirmation for a large history (`PartialMsg::HistorySized`).
 - A partial clone's missing contents: the diff, File view or blame read that waits, its background download (trusted) or download job (through the trust gate), Cancel, and the read again (`PartialMsg::ContentMissing`, `PartialEffect::FetchContent`).
-- The status bar's Cancel for a job that only fetches (`RunGit::stoppable`, `JobMsg::Cancel`, `Effect::StopGit`), with the stops the runner registers when it is handed a stoppable effect (`runner/stops.rs`), and the job ending as cancelled.
+- The status bar's Cancel for a job with a network command (`RunGit::stoppable`, `JobMsg::Cancel`, `Effect::StopGit`), with the stops the runner registers when it is handed a stoppable effect (`runner/stops.rs`), and the job ending as cancelled with no Try again.
+- Which command a stoppable job runs (`JobMsg::Step`, `state::job_stop::Step`): Cancel only during a fetch, push, clone or a pull's fetch half, disabled with the reason during a pull's merge or rebase or any other command.
+- `runner/job_steps.rs` runs those jobs: network commands with `--progress` and a stop that ends their process tree, a pull as its fetch then its merge or rebase (`trust::pull::run_pinned`), other commands to their end, and the clean-up after a stop (a fetch's or push's locks, a clone's folder); tests in `job_steps_tests.rs`.
+- The transfer's progress beside the job's label (`JobMsg::Progress`, a few times a second at most; `state::job_stop::progress_text`).
 
 ## Whole-history search index (`IndexEffect`, `SearchMsg::Index*`)
 

@@ -165,11 +165,25 @@ pub fn output_with(
 /// [`output`] without a timeout that stops git, and every process it started, once `stop` is
 /// requested ([`crate::process_tree`]): the result then has `stopped` set and is not `ok`. A
 /// stop requested before the call returns at once without starting git. Only for commands
-/// whose interruption leaves the repository consistent (fetches); the caller removes the
-/// lock and temporary files a stopped fetch leaves ([`crate::stop_cleanup`]).
+/// whose interruption leaves the repository consistent (fetch, push, clone; never a merge or
+/// rebase); the caller removes the lock and temporary files a stopped one leaves
+/// ([`crate::stop_cleanup`], [`crate::clone_stop`]).
 pub fn output_until(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], stop: &Stop) -> GitOutput {
+    output_watching(cwd, args, input, env, stop, &mut |_| {})
+}
+
+/// [`output_until`], handing each piece of stderr to `watch` as git writes it (on the calling
+/// thread, while it waits), for its `--progress` lines ([`crate::git_progress`]).
+pub fn output_watching(
+    cwd: &Path,
+    args: &[String],
+    input: &str,
+    env: &[(&str, &str)],
+    stop: &Stop,
+    watch: &mut dyn FnMut(&[u8]),
+) -> GitOutput {
     let program = crate::git_program::program();
-    let (mut out, stdout) = raw_with(&program, cwd, args, input, env, None, Some(stop));
+    let (mut out, stdout) = raw_with(&program, cwd, args, input, env, None, Some((stop, watch)));
     out.stdout = String::from_utf8_lossy(&stdout).into_owned();
     out
 }
@@ -191,6 +205,9 @@ pub fn subcommand(args: &[String]) -> Option<&str> {
     None
 }
 
+/// A stoppable run's stop and the watcher of its stderr (`raw_with`).
+type Until<'a> = Option<(&'a Stop, &'a mut dyn FnMut(&[u8]))>;
+
 /// What [`GitOutput::stderr`] starts with when the program couldn't be started or waited for.
 pub(crate) const SPAWN_FAILED: &str = "failed to run git: ";
 
@@ -209,7 +226,7 @@ fn raw_with(
     input: &str,
     env: &[(&str, &str)],
     timeout: Option<Duration>,
-    stop: Option<&Stop>,
+    stop: Until<'_>,
 ) -> (GitOutput, Vec<u8>) {
     let start = Instant::now();
     let result = raw_inner(program, cwd, args, input, env, timeout, stop);
@@ -279,9 +296,9 @@ fn raw_inner(
     input: &str,
     env: &[(&str, &str)],
     timeout: Option<Duration>,
-    stop: Option<&Stop>,
+    stop: Until<'_>,
 ) -> (GitOutput, Vec<u8>) {
-    if stop.is_some_and(Stop::requested) {
+    if stop.as_ref().is_some_and(|(s, _)| s.requested()) {
         let stderr = format!("git {} was cancelled before it started", args.join(" "));
         return (GitOutput { stderr, stopped: true, ..GitOutput::default() }, Vec::new());
     }
@@ -301,10 +318,20 @@ fn raw_inner(
             let _ = stdin.write_all(&input);
         });
     }
-    let tree = stop.map(|_| crate::process_tree::attach(&child));
+    let tree = stop.as_ref().map(|_| crate::process_tree::attach(&child));
     let stdout = wait::drain(child.stdout.take());
-    let stderr = wait::drain(child.stderr.take());
-    let waited = match wait::wait(&mut child, timeout, stop.zip(tree.as_ref())) {
+    // A stoppable command's stderr is watched as it arrives.
+    let mut stderr = wait::Streamed::start(child.stderr.take());
+    let (stop, mut watch) = match stop {
+        Some((s, w)) => (Some(s), Some(w)),
+        None => (None, None),
+    };
+    let mut tick = || {
+        if let Some(w) = watch.as_deref_mut() {
+            stderr.poll(w);
+        }
+    };
+    let waited = match wait::wait(&mut child, timeout, stop.zip(tree.as_ref()), &mut tick) {
         Ok(w) => w,
         Err(e) => return (GitOutput::failed(format!("{SPAWN_FAILED}{e}")), Vec::new()),
     };
@@ -316,7 +343,7 @@ fn raw_inner(
         ok: status.is_some_and(|s| s.success()),
         code: status.and_then(|s| s.code()),
         stdout: String::new(),
-        stderr: String::from_utf8_lossy(&wait::collect(&stderr, grace)).into_owned(),
+        stderr: String::from_utf8_lossy(&stderr.finish(grace)).into_owned(),
         timed_out,
         stopped,
         forced: waited.forced,

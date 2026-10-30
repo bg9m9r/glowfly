@@ -146,6 +146,14 @@ impl Pull {
         self.recurse.unwrap_or_else(|| config.get_bool("submodule.recurse").unwrap_or(false))
     }
 
+    /// Whether this pull can run as its fetch and then its merge or rebase ([`run_pinned`] with
+    /// nothing to compare) and end as `git pull` would: not when it updates submodules or
+    /// stores into the branch checked out, which the pinned pull doesn't model.
+    pub fn splits(&self, repo: &Repository) -> bool {
+        let Ok(config) = repo.config().and_then(|mut c| c.snapshot()) else { return false };
+        !(self.recurses(&config) && !self.fetch_only()) && !self.stores_into_head(repo)
+    }
+
     /// The `-X` options and strategy the merge or rebase gets.
     pub(super) fn how(&self) -> crate::trust::incoming::How {
         let mut how = crate::trust::incoming::How::default();

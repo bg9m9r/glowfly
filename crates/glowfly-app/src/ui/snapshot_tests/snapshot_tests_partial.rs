@@ -1,6 +1,7 @@
 //! A partial clone's missing contents (the diff, File view and blame panes while they download,
-//! wait for the trust prompt, failed or were cancelled), the status bar's Cancel for a job that
-//! only fetches and its size check, and the confirmation before a large Fetch full history.
+//! wait for the trust prompt, failed or were cancelled), the status bar's Cancel for a network
+//! job (with its transfer's progress, or disabled while a pull merges) and the size check, and
+//! the confirmation before a large Fetch full history.
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -8,7 +9,7 @@ use super::snapshot_tests_history::with_file_view;
 use crate::msg::{JobMsg, Msg, PartialMsg};
 use crate::state::blame::BlameView;
 use crate::state::history::TextState;
-use crate::state::job_stop::JobStop;
+use crate::state::job_stop::{JobStop, Step};
 use crate::state::partial::{ContentPhase, ContentView, PendingContent, Sizing, Wait};
 use crate::state::{AppState, Modal, RunningJob};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -148,12 +149,41 @@ fn status_job_cancel() {
 fn status_job_cancelling() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "partial-status-cancelling");
     st.job = Some(job("Fetch"));
-    st.job_stop = Some(JobStop { requested: true, stopped: false });
+    st.job_stop = Some(JobStop { requested: true, ..JobStop::default() });
     let mut h = harness(st, false);
     h.run_steps(4);
     h.check_snapshot("status_job_cancelling");
     assert!(h.query_by_label("Cancelling Fetch…").is_some());
     assert!(h.query_by_label("Cancel").is_none(), "asked once");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn status_job_progress() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "partial-status-progress");
+    st.job = Some(job("Push"));
+    let progress = glowfly_core::git_progress::parse("Writing objects:  45% (450/1000), 1.20 MiB | 300.00 KiB/s");
+    st.job_stop = Some(JobStop { step: Step::Push, progress, ..JobStop::default() });
+    let mut h = harness(st, true);
+    h.run_steps(4);
+    h.check_snapshot("status_job_progress");
+    assert!(h.query_by_label("Sending 45% · 1.2 MB · 300.0 KB/s").is_some());
+    assert!(matches!(&click(&mut h, "Cancel")[..], [Msg::Job(JobMsg::Cancel)]));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn status_job_merging() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "partial-status-merging");
+    st.job = Some(job("Pull"));
+    st.job_stop = Some(JobStop { step: Step::Merge, ..JobStop::default() });
+    let mut h = harness(st, false);
+    h.run_steps(4);
+    h.check_snapshot("status_job_merging");
+    assert!(h.query_by_label("Pull…").is_some());
+    assert!(click(&mut h, "Cancel").is_empty(), "a merge can't be stopped");
     drop(h);
     remove_fixture(&dir);
 }

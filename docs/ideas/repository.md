@@ -180,6 +180,10 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - A custom initial commit message in the Init dialog
 - Size Fetch more commits (`--deepen`) too, and Bitbucket Data Center and the other services
   that report no size (count the remote's objects some other way)
+- Cancel a sparse clone too (it runs as its own effect, not through the job's stoppable steps)
+- Stop a pull that updates submodules during its fetch (it runs as one `git pull`, which can't be
+  split safely)
+- Show a clone's progress in the Clone dialog and the taskbar button, not only the status bar
 - Prefetch a commit's missing contents in the background when it is selected in a partial
   clone, so its diff opens at once, and download a whole folder's contents for a folder diff
 - Download missing contents for the commit diff's line counts, the binary preview and the

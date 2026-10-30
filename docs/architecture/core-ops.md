@@ -7,9 +7,11 @@ source file, update its line here.
 
 - `gitcli.rs`: the git CLI, for commands that honour hooks, credentials and signing; reports every command's timing to the observer the app sets.
 - `gitcli/askpass_vars.rs`: the askpass environment a git child gets, with the `DISPLAY` placeholder for the old OpenSSH its repository's ssh may be.
-- `gitcli/wait.rs` waits for a child: pipes drained on their own threads, a timeout, and a `Stop` the caller can ask.
-- `output_until` runs a command that can be stopped, and `process_tree.rs` ends it with everything it started (a new session and its process group on Unix: SIGTERM, then SIGKILL after 3 s; a job object on Windows).
-- `stop_cleanup.rs` removes the ref locks and temporary pack and object files a stopped fetch left behind (only files made after the run started).
+- `gitcli/wait.rs` waits for a child: pipes drained on their own threads (a stoppable command's stderr in chunks as it arrives), a timeout, and a `Stop` the caller can ask.
+- `output_until` runs a command that can be stopped (`output_watching` also hands its stderr to the caller as git writes it), and `process_tree.rs` ends it with everything it started (a new session and its process group on Unix: SIGTERM, then SIGKILL after 3 s to whatever is left in the group; a job object on Windows, waited on until its processes are gone).
+- `stop_cleanup.rs` removes the ref locks and temporary pack and object files a stopped fetch or push left behind (only files made after the run started).
+- `clone_stop.rs`: what a stopped clone leaves: the folder it made is removed, a folder that was there before (an empty one the user picked) is kept with only the entries that appeared since removed.
+- `git_progress.rs`: git's `--progress` lines read into numbers (objects, bytes, rate) for the status bar, the newest one in a stream of chunks, and in-place redraws folded for the log.
 
 ## Partial clones (`partial.rs`, `history_size.rs`, `forge/repo_size.rs`)
 

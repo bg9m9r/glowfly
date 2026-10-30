@@ -57,6 +57,58 @@ pub(super) fn drain(pipe: Option<impl std::io::Read + Send + 'static>) -> Draine
     rx
 }
 
+/// A pipe read on a new thread in chunks as they arrive, so the caller can watch it (git's
+/// progress on stderr) while it waits.
+pub(super) struct Streamed {
+    rx: std::sync::mpsc::Receiver<Vec<u8>>,
+    got: Vec<u8>,
+}
+
+impl Streamed {
+    pub fn start(pipe: Option<impl std::io::Read + Send + 'static>) -> Self {
+        let (tx, rx) = std::sync::mpsc::channel();
+        if let Some(mut pipe) = pipe {
+            std::thread::spawn(move || {
+                let mut buf = [0u8; 8192];
+                loop {
+                    match pipe.read(&mut buf) {
+                        Ok(0) | Err(_) => break,
+                        Ok(n) => {
+                            if tx.send(buf[..n].to_vec()).is_err() {
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        Self { rx, got: Vec::new() }
+    }
+
+    /// Hands what arrived since the last call to `watch`.
+    pub fn poll(&mut self, watch: &mut dyn FnMut(&[u8])) {
+        while let Ok(chunk) = self.rx.try_recv() {
+            watch(&chunk);
+            self.got.extend_from_slice(&chunk);
+        }
+    }
+
+    /// Everything read, once the pipe is closed (or, with `grace`, once that much time passed).
+    pub fn finish(mut self, grace: Option<Duration>) -> Vec<u8> {
+        let deadline = grace.map(|g| Instant::now() + g);
+        loop {
+            let next = match deadline {
+                Some(d) => self.rx.recv_timeout(d.saturating_duration_since(Instant::now())).ok(),
+                None => self.rx.recv().ok(),
+            };
+            match next {
+                Some(chunk) => self.got.extend_from_slice(&chunk),
+                None => return self.got,
+            }
+        }
+    }
+}
+
 pub(super) fn collect(rx: &Drained, grace: Option<Duration>) -> Vec<u8> {
     match grace {
         Some(d) => rx.recv_timeout(d).unwrap_or_default(),
@@ -65,8 +117,13 @@ pub(super) fn collect(rx: &Drained, grace: Option<Duration>) -> Vec<u8> {
 }
 
 /// Waits for `child`, killing it once `timeout` passes, and stopping its whole process tree
-/// once `stop` is requested.
-pub(super) fn wait(child: &mut Child, timeout: Option<Duration>, stop: Option<(&Stop, &Tree)>) -> std::io::Result<Waited> {
+/// once `stop` is requested; `tick` runs at every poll.
+pub(super) fn wait(
+    child: &mut Child,
+    timeout: Option<Duration>,
+    stop: Option<(&Stop, &Tree)>,
+    tick: &mut dyn FnMut(),
+) -> std::io::Result<Waited> {
     let ended = |status| Waited { status, timed_out: false, stopped: false, forced: false };
     if timeout.is_none() && stop.is_none() {
         return child.wait().map(|s| ended(Some(s)));
@@ -74,6 +131,7 @@ pub(super) fn wait(child: &mut Child, timeout: Option<Duration>, stop: Option<(&
     let deadline = timeout.map(|t| Instant::now() + t);
     let poll = Duration::from_millis(if timeout.is_some() { 5 } else { 10 });
     loop {
+        tick();
         if let Some(s) = child.try_wait()? {
             return Ok(ended(Some(s)));
         }

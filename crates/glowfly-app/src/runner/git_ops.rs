@@ -155,8 +155,29 @@ pub(super) fn run_git_gated_noting(
     gate: &super::trust_gate::Gate,
     note: bool,
 ) -> (Gated, Option<undo::OpStart>) {
+    if let Some((path, contents)) = write_file
+        && let Err(e) = glowfly_core::persist::atomic_write(&path, &contents)
+    {
+        return (Gated::Done(false, format!("Could not write {}: {e}", path.display())), None);
+    }
+    let mut git = |c: &[String], input: &str, extra: &[(&str, &str)]| {
+        let env: Vec<(&str, &str)> = job_env(prompts).iter().chain(extra).copied().collect();
+        gitcli::run_with_input(cwd, c, input, &env)
+    };
+    run_git_gated_with(cwd, cmds, gate, note, &mut git)
+}
+
+/// `run_git_gated_noting` with each command (a pull's fetch and merge too) run by `git`: a
+/// stoppable job's (runner/job_steps.rs). Writes no file.
+pub(super) fn run_git_gated_with(
+    cwd: &Path,
+    cmds: &[Vec<String>],
+    gate: &super::trust_gate::Gate,
+    note: bool,
+    git: &mut glowfly_core::trust::pull::Git<'_>,
+) -> (Gated, Option<undo::OpStart>) {
     let mut start = None;
-    let gated = gated_steps(cwd, cmds, write_file, prompts, gate, &mut |at| {
+    let gated = gated_steps(cmds, gate, git, &mut |at| {
         if note && at + 1 == cmds.len() {
             start = undo::op_start(cwd);
         }
@@ -165,28 +186,17 @@ pub(super) fn run_git_gated_noting(
 }
 
 fn gated_steps(
-    cwd: &Path,
     cmds: &[Vec<String>],
-    write_file: Option<(std::path::PathBuf, Vec<u8>)>,
-    prompts: bool,
     gate: &super::trust_gate::Gate,
+    git: &mut glowfly_core::trust::pull::Git<'_>,
     before: &mut dyn FnMut(usize),
 ) -> Gated {
     use super::trust_gate::Step;
-    if let Some((path, contents)) = write_file
-        && let Err(e) = glowfly_core::persist::atomic_write(&path, &contents)
-    {
-        return Gated::Done(false, format!("Could not write {}: {e}", path.display()));
-    }
     let mut output = String::new();
     let mut moved = false;
-    let mut git = |c: &[String], input: &str, extra: &[(&str, &str)]| {
-        let env: Vec<(&str, &str)> = job_env(prompts).iter().chain(extra).copied().collect();
-        gitcli::run_with_input(cwd, c, input, &env)
-    };
     for (at, c) in cmds.iter().enumerate() {
         before(at);
-        let (success, text) = match gate.before(at, c, &mut git) {
+        let (success, text) = match gate.before(at, c, git) {
             Step::Halt(halt, ran) => {
                 output.push_str(&ran);
                 return Gated::Halted { halt, output: output.trim_end().to_owned(), moved, at };
@@ -225,37 +235,6 @@ pub(super) fn check_passes(cwd: &Path, check: &[String], prompts: bool, output: 
     passed
 }
 
-/// `run_git` for a job that only fetches, stopped when `stop` is asked (`Effect::StopGit`):
-/// git's process tree is ended, then the lock and temporary files it left in the repository are
-/// removed. Returns (ok, output, stopped); a stopped run runs none of the commands after it.
-pub(super) fn run_git_until(cwd: &Path, cmds: &[Vec<String>], prompts: bool, stop: &gitcli::Stop) -> (bool, String, bool) {
-    let before = glowfly_core::stop_cleanup::scan(cwd);
-    let mut output = String::new();
-    for c in cmds {
-        output.push_str(&format!("$ git {}\n", glowfly_core::text::redact_credentials(&c.join(" "))));
-        let out = gitcli::output_until(cwd, c, "", job_env(prompts), stop);
-        let text = out.combined();
-        if !text.is_empty() {
-            output.push_str(&text);
-            output.push('\n');
-        }
-        if out.stopped {
-            output.push_str("Cancelled.\n");
-            let removed = before.as_ref().map(glowfly_core::stop_cleanup::clean).unwrap_or_default();
-            match removed.len() {
-                0 => {}
-                1 => output.push_str("Removed 1 file the stopped fetch left behind.\n"),
-                n => output.push_str(&format!("Removed {n} files the stopped fetch left behind.\n")),
-            }
-            return (false, output.trim_end().to_owned(), true);
-        }
-        if !out.ok {
-            return (false, output.trim_end().to_owned(), false);
-        }
-    }
-    (true, output.trim_end().to_owned(), false)
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -263,36 +242,5 @@ mod tests {
         assert_eq!(super::job_env(false), glowfly_core::gitcli::BACKGROUND);
         assert!(super::job_env(false).contains(&("GCM_INTERACTIVE", "never")));
         assert!(super::job_env(true).is_empty(), "a job that may prompt keeps the askpass helper");
-    }
-
-    #[test]
-    fn a_stopped_job_ends_its_git_and_removes_what_it_left_behind() {
-        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-stop-cleanup-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let (ok, out) = glowfly_core::gitcli::run(&dir, &glowfly_core::gitcli::args(&["init", "-q"]));
-        assert!(ok, "{out}");
-        let lock = dir.join(".git/refs/heads/topic.lock");
-        // Leaves a ref lock behind, as a fetch stopped while updating refs would.
-        let alias = "alias.slow=!echo x > .git/refs/heads/topic.lock && sleep 20";
-        let cmds = [glowfly_core::gitcli::args(&["-c", alias, "slow"]), glowfly_core::gitcli::args(&["status"])];
-        let stop = glowfly_core::gitcli::Stop::new();
-        let asker = stop.clone();
-        let watched = lock.clone();
-        std::thread::spawn(move || {
-            let until = std::time::Instant::now() + std::time::Duration::from_secs(20);
-            while !watched.exists() && std::time::Instant::now() < until {
-                std::thread::sleep(std::time::Duration::from_millis(20));
-            }
-            asker.stop();
-        });
-        let started = std::time::Instant::now();
-        let (ok, out, stopped) = super::run_git_until(&dir, &cmds, false, &stop);
-        assert!(stopped && !ok, "{out}");
-        assert!(started.elapsed() < std::time::Duration::from_secs(15), "took {:?}", started.elapsed());
-        assert!(out.contains("Cancelled.") && out.contains("Removed 1 file the stopped fetch left behind."), "{out}");
-        assert!(!out.contains("$ git status"), "nothing after the stopped command runs");
-        assert!(!lock.exists());
-        let _ = std::fs::remove_dir_all(&dir);
     }
 }

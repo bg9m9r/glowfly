@@ -4,18 +4,20 @@
 //! - Unix: the child starts in its own session and process group (`setsid`, as every git child
 //!   does so ssh asks the askpass helper: [`crate::ssh_version::prepare`]). A stop sends
 //!   SIGTERM to the group, so git's own signal handlers remove its lock files, and SIGKILL to
-//!   the group after [`STOP_GRACE`] if git is still running. SIGKILL is sent only before git is
-//!   reaped, so a recycled process id is never signalled.
+//!   the group after [`STOP_GRACE`] if git or anything else in the group is still running.
+//!   SIGKILL goes either before git is reaped or while the group still has members, so a
+//!   recycled process id is never signalled.
 //! - Windows: the child is put in a job object right after it starts, and a stop terminates
-//!   the job (there is no graceful signal for a windowless child). If the assignment fails the
-//!   child alone is killed. The job is not killed when Glowfly exits.
+//!   the job (there is no graceful signal for a windowless child), then waits up to
+//!   [`STOP_GRACE`] for every process in it to be gone, so files they held (a clone's folder)
+//!   can be removed. If the assignment fails the child alone is killed. The job is not killed
+//!   when Glowfly exits.
 
 use std::process::{Child, Command};
-#[cfg(unix)]
 use std::time::Duration;
 
-/// How long git gets to exit after SIGTERM before the group is killed.
-#[cfg(unix)]
+/// How long git gets to exit after SIGTERM before the group is killed (on Windows, how long a
+/// terminated job's processes get to be gone).
 pub(crate) const STOP_GRACE: Duration = Duration::from_secs(3);
 
 /// Prepares `cmd` so its whole process tree can be stopped: a new session on Unix.
@@ -79,12 +81,29 @@ impl Tree {
         // SAFETY: kill only sends a signal; ESRCH (the group is gone) is fine.
         let _ = unsafe { libc::kill(-self.pgid, libc::SIGTERM) };
         let deadline = std::time::Instant::now() + STOP_GRACE;
+        let mut exited = false;
         while std::time::Instant::now() < deadline {
             match child.try_wait() {
-                Ok(Some(_)) => return false,
+                Ok(Some(_)) => {
+                    exited = true;
+                    break;
+                }
                 Ok(None) => std::thread::sleep(Duration::from_millis(10)),
                 Err(_) => break,
             }
+        }
+        if exited {
+            // git is gone; its remote helper or ssh may still be ending. A group with members
+            // keeps its id, so it can't belong to anyone else while `kill(.., 0)` finds it.
+            // SAFETY: signal 0 only checks; SIGKILL goes to a group that still exists.
+            while unsafe { libc::kill(-self.pgid, 0) } == 0 {
+                if std::time::Instant::now() >= deadline {
+                    let _ = unsafe { libc::kill(-self.pgid, libc::SIGKILL) };
+                    return true;
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            return false;
         }
         // git hasn't been reaped, so its pid (the group's id) can't have been reused.
         // SAFETY: as above.
@@ -109,6 +128,13 @@ impl Tree {
             }
         }
         let _ = child.wait();
+        if let Some(job) = self.job {
+            // Termination is asynchronous: wait until the helpers and ssh are gone too.
+            let deadline = std::time::Instant::now() + STOP_GRACE;
+            while active_processes(job).is_some_and(|n| n > 0) && std::time::Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
         true
     }
 
@@ -118,6 +144,19 @@ impl Tree {
         let _ = child.wait();
         true
     }
+}
+
+/// How many processes in `job` are still running; None when that can't be read.
+#[cfg(windows)]
+fn active_processes(job: windows::Win32::Foundation::HANDLE) -> Option<u32> {
+    use windows::Win32::System::JobObjects::{
+        JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, JobObjectBasicAccountingInformation, QueryInformationJobObject,
+    };
+    let mut info = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION::default();
+    let size = std::mem::size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32;
+    // SAFETY: the job handle is open until drop, and `info` is a writable buffer of `size` bytes.
+    unsafe { QueryInformationJobObject(Some(job), JobObjectBasicAccountingInformation, (&raw mut info).cast(), size, None) }.ok()?;
+    Some(info.ActiveProcesses)
 }
 
 #[cfg(windows)]

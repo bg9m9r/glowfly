@@ -241,7 +241,8 @@ fn quit_anyway_stops_a_fetch_and_closes_once_it_has_ended() {
     assert!(fx.iter().any(|e| matches!(e, Effect::StopGit(StopKey::Job))), "the stop is sent: {fx:?}");
     assert!(!closes(&fx), "the window waits for the stopped fetch: {fx:?}");
     assert!(st.view.quit_after_stop && !st.view.quitting);
-    let fx = run(&mut st, Msg::Job(JobMsg::Stopped { output: "Cancelled.\nRemoved 1 file the stopped fetch left behind.".into() }));
+    let output = "Cancelled.\nRemoved 1 file the stopped command left behind.".into();
+    let fx = run(&mut st, Msg::Job(JobMsg::Stopped { output, undo: None }));
     assert!(closes(&fx), "{fx:?}");
     assert!(st.view.quitting && !st.view.quit_after_stop);
 }
