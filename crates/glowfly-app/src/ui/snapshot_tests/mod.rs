@@ -82,6 +82,7 @@ pub(super) mod snapshot_tests_lineup;
 pub(super) mod snapshot_tests_load_more;
 pub(super) mod snapshot_tests_logs;
 pub(super) mod snapshot_tests_logs_copy;
+pub(super) mod snapshot_tests_markdown_runs;
 pub(super) mod snapshot_tests_menu_copy;
 pub(super) mod snapshot_tests_menu_danger;
 pub(super) mod snapshot_tests_menu_header;
