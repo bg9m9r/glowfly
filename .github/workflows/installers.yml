@@ -230,7 +230,7 @@ jobs:
   # (ad-hoc signed) and checks the licence and notice files in the .app, the dmg and the tar.gz.
   macos:
     name: Packages (macOS)
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

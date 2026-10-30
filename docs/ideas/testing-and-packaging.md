@@ -33,6 +33,7 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Sign the .rpm (rpm --addsign) and the AppImage, and publish apt and dnf repositories
 - Debian version for pre-release tags: map '-' to '~' in --deb-version as the rpm does
 - Automate the Homebrew tap and winget-pkgs submissions from the release job with a token
+- release-please's first try at creating the draft release failed with an empty error just after it made the tag (0.3.0-rc.1, the first draft-mode release); re-running the job made the draft. Find the cause, or have the job retry once
 - Rename a swapped AppImage whose file name carries the old version to the new release's name
 - An aarch64 Flatpak bundle (a native arm64 builder image, or a QEMU build if it fits the time)
 - Publish Glowfly on Flathub (cargo-sources.json from the lock file, screenshots, submission) so flatpak update and software centres bring new releases
