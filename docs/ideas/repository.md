@@ -20,6 +20,10 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   stderr or an ERR packet to steer a pull onto the hand-over-to-`git pull` path (a known gap; that
   path still needs the user's accept when gated).
 - Tell apart two items that couldn't be read for the same reason, so Trust and run on one doesn't pass the other too.
+- Read `$` inside single quotes as plain text: a filter like `perl -pe 's/x/$1/'` is taken to follow the whole tree and asks again on every change
+- Follow a path built from a command, such as `$(git rev-parse --show-cdup)tools/x.sh`, which follows nothing now
+- Expand `~+/x` (the current folder) in configured commands
+- Notice tracked code that no word of a command names: `python -m pkg.mod`, `npm run x`, `make x`
 - Send a job's `on_fail_check` command through the trust gate like its own commands.
 - Make the merges of a rebase-merges todo, an octopus merge and an `am -3` fallback in memory, so they are compared instead of held.
 - A Preferences list to review and revoke trust decisions (they are already remembered per
@@ -263,6 +267,7 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - A group's repository count on its header
 - Select the whole name when Rename group opens
 - Worktree tab group hues that skip the hues repositories and groups already use
+- Group headings in the macOS native File > Open recent menu (it lists every favorite under one Favorites heading)
 
 ### Git engine choice
 
