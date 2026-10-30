@@ -146,6 +146,17 @@ fn menu_bar_defaults_shown_and_old_files_load() {
 }
 
 #[test]
+fn system_title_bar_defaults_off_and_round_trips() {
+    // Files written before the setting existed keep the drawn Windows title bar.
+    assert!(!Settings::default().system_title_bar);
+    let empty: Settings = serde_json::from_str("{}").unwrap();
+    assert!(!empty.system_title_bar);
+    let on = Settings { system_title_bar: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.system_title_bar);
+}
+
+#[test]
 fn ignore_whitespace_defaults_off() {
     // Files written before the toggle existed show every whitespace change.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

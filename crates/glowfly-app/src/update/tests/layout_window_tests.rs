@@ -1,17 +1,18 @@
 //! Headless tests for full screen and bringing hidden side panels back: the toggle asks the shell
 //! and saves nothing, a full-screen window drops moves and resizes and leaves full screen on
-//! Maximize or Restore, the palette entry follows the window, and the edge strips' message.
+//! Maximize or Restore, the palette entry follows the window, the edge strips' message, and the
+//! Windows system title bar switch, which saves and waits for the next start.
 
 use super::tests::{scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, UiEffect};
 use crate::keymap::BindingId;
-use crate::msg::{AppMsg, LayoutMsg, Msg, PaletteMsg};
-use crate::state::AppState;
+use crate::msg::{AppMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg};
 use crate::state::blame::BlameView;
 use crate::state::layout::{DetailsShape, Panel, details_shape, shown};
 use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::window_chrome::{ResizeEdge, WindowCmd};
+use crate::state::window_chrome::{Chrome, ResizeEdge, WindowCmd};
+use crate::state::{AppState, PrefPage, PrefsState};
 use glowfly_core::repo::{self, LoadOptions};
 use std::time::Instant;
 
@@ -153,4 +154,19 @@ fn edge_strip_message_brings_side_panels_back() {
     assert_eq!(details_shape(&st), DetailsShape::Rail);
     drop(st);
     let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn the_system_title_bar_switch_saves_and_waits_for_the_next_start() {
+    let mut st = state();
+    st.view.chrome = Chrome::Windows;
+    st.prefs = Some(PrefsState::new(PrefPage::Ui));
+    st.settings.system_title_bar = true;
+    let fx = send(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.system_title_bar)), "saved");
+    assert_eq!(st.view.chrome, Chrome::Windows, "the drawn frame stays until Glowfly restarts");
+    assert!(window_cmds(&fx).is_empty(), "nothing asks the window to change now");
+    st.settings.system_title_bar = false;
+    let fx = send(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if !s.system_title_bar)), "and back");
 }

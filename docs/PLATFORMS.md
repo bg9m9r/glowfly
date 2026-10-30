@@ -30,7 +30,7 @@ second one next to it.
 | Timestamps | NTFS 100 ns; FAT 2 s | APFS ns; HFS+ 1 s | ns on ext4 and btrfs; network attribute caches lag |
 | Notifications | WinRT toasts; Focus Assist can hide them | Notification Center; Do Not Disturb can hide them | freedesktop notifications over D-Bus; needs a notification server |
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
-| Window frame | Drawn by Glowfly: no system decorations; its own title bar, window buttons, resize edges and border, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
+| Window frame | Drawn by Glowfly (or the system's, by choice): no system decorations; its own title bar, window buttons, resize edges and border with DWM's shadow and rounded corners, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
 | Menus | The drawn title bar's menu button | The system menu bar (the app menu, then File, Edit, View, Window and Help) and the title bar's menu button | The in-window menu bar, which can be hidden |
 | Terminal keys and selection | Alt with a letter, digit or punctuation key sends ESC and the character; no PRIMARY selection | Option composes characters unless Option as Meta is on (Preferences > Terminal); no PRIMARY selection | Alt as on Windows; a mouse selection sets PRIMARY and a middle click pastes it (X11 and Wayland) |
 
@@ -558,6 +558,9 @@ second one next to it.
    and draws no window buttons or edges), and everything else `Chrome::System` (the system frame,
    the menu bar and the tab bar). Ask the `Chrome` value what to draw (`drawn`, `window_buttons`,
    `resize_edges`, `alt_opens_menu`, `leading_inset`), never `cfg!(target_os)` in a view.
+   Preferences > UI > Use the Windows title bar (`system_title_bar`) gives Windows
+   `Chrome::System` instead (`Chrome::chosen`). The viewport is built before the first frame, so
+   `main.rs` reads the settings first and the switch takes effect at the next start.
 2. **Views never send viewport commands:** a drag, double-click, window button or resize edge
    pushes `AppMsg::Window`, and only the shell (`ui/app.rs`) turns it into a
    `ViewportCommand`; `tests/layering.rs` checks.
@@ -567,17 +570,24 @@ second one next to it.
    so Windows 11 shows Snap Layouts over it. Windows then tracks the button and egui sees no
    pointer there: its hover and press come from `st.view.window.max_button`, and its click
    reaches update from the shell (`ui/app_native.rs`) as `AppMsg::Window(SetMaximized)`. The
-   shell hands the OS the button's rect each frame (`window_frame::caption_geometry`).
+   shell hands the OS the button's rect each frame (`window_frame::caption_geometry`). The top
+   `EDGE` points of the button answer `HTTOP` instead (none while maximized or full screen), so
+   the window resizes from there like from the rest of its top edge (`CaptionGeometry::hit`).
+   In a drawn title bar, dragging the only tab moves the window, as the empty bar does.
 5. **Alt+Space and a right-click on the empty bar open the window's system menu** through
    `platform::native_window` (the only place with Win32 calls; `tests/layering.rs` checks).
    egui never sees Alt+Space, and the shell cancels the Alt tap once the menu has shown. The
    chosen command goes back as `WM_SYSCOMMAND`, so Windows carries it out.
-6. **Mica only on build 22621 or later, with transparency effects on and high contrast off,**
+6. **The drawn frame asks DWM for the shadow and rounded corners the system frame has:** a
+   1 px `DwmExtendFrameIntoClientArea` margin brings the shadow back, and
+   `DWMWA_WINDOW_CORNER_PREFERENCE` rounds the corners on Windows 11 (Windows 10 rejects it and
+   keeps square corners; a failure is only logged). Windows squares the corners while maximized.
+7. **Mica only on build 22621 or later, with transparency effects on and high contrast off,**
    and only behind the title bar, toolbar and sidebar, painted through `ui::backdrop::fill`.
    Everything else stays opaque. The tints come from `backdrop::mica_tint`'s ladder, which keeps
    text readable over stand-in Mica colours; a surface that can't reach the floors at any step
    stays opaque, and high-contrast themes stay solid.
-7. **Full screen is F11, except on macOS** (Ctrl+Cmd+F there, since F11 shows the desktop),
+8. **Full screen is F11, except on macOS** (Ctrl+Cmd+F there, since F11 shows the desktop),
    chosen with `cfg!` in `keymap/table.rs` so both branches compile everywhere. It is the
    window's state, never saved: `LayoutMsg::ToggleFullscreen` sends `WindowCmd::SetFullscreen`
    from `st.view.window.fullscreen`, which the shell reads each frame, so full screen entered

@@ -1,6 +1,7 @@
 //! The pure parts of the drawn Windows frame's glue with the OS (`platform::native_window`):
 //! the Maximize button as Windows tracks it for Snap Layouts (`CaptionButton`), where the
-//! caption parts are (`CaptionGeometry`), the system menu's item states, and whether the title
+//! caption parts are and what Windows' hit test answers over them (`CaptionGeometry::hit`),
+//! the system menu's item states, and whether the title
 //! bar, toolbar and sidebar sit on the Mica backdrop (`Backdrop`). Tested on every OS; only the
 //! Windows glue drives most of it.
 
@@ -31,8 +32,30 @@ impl PxRect {
 pub struct CaptionGeometry {
     /// The Maximize (or Restore) button.
     pub max_button: PxRect,
+    /// How many pixels at the button's top resize the window instead, like the edge strip
+    /// beside it: 0 while maximized or full screen.
+    pub top_edge: i32,
     /// Where Alt+Space opens the system menu: just below the title bar's menu button.
     pub menu_at: (i32, i32),
+}
+
+/// What Windows' hit test (`WM_NCHITTEST`) answers over a drawn caption part.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CaptionHit {
+    /// The top edge: Windows resizes the window from it (`HTTOP`).
+    Top,
+    /// The Maximize button: Windows 11 shows Snap Layouts over it (`HTMAXBUTTON`).
+    MaxButton,
+}
+
+impl CaptionGeometry {
+    /// The answer at client point (`x`, `y`); None leaves the point to egui (the client area).
+    pub fn hit(self, x: i32, y: i32) -> Option<CaptionHit> {
+        if !self.max_button.contains(x, y) {
+            return None;
+        }
+        Some(if y < self.max_button.top + self.top_edge { CaptionHit::Top } else { CaptionHit::MaxButton })
+    }
 }
 
 /// The drawn Maximize button while Windows tracks it: hovered, and pressed on it.
@@ -182,6 +205,34 @@ mod tests {
         let empty = PxRect::default();
         assert!(empty.is_empty() && !empty.contains(0, 0));
         assert!(PxRect { left: 5, top: 0, right: 5, bottom: 9 }.is_empty());
+    }
+
+    #[test]
+    fn the_top_strip_over_maximize_resizes_and_the_rest_snaps() {
+        let max_button = PxRect { left: 1348, top: 0, right: 1394, bottom: 36 };
+        let g = CaptionGeometry { max_button, top_edge: 5, menu_at: (8, 44) };
+        for (x, y, hit) in [
+            (1348, 0, Some(CaptionHit::Top)),
+            (1393, 4, Some(CaptionHit::Top)),
+            (1370, 5, Some(CaptionHit::MaxButton)),
+            (1393, 35, Some(CaptionHit::MaxButton)),
+            (1347, 2, None),
+            (1394, 2, None),
+            (1370, 36, None),
+            (700, 2, None),
+        ] {
+            assert_eq!(g.hit(x, y), hit, "({x}, {y})");
+        }
+        // Maximized: no resize strip, the whole button snaps.
+        let maximized = CaptionGeometry { top_edge: 0, ..g };
+        assert_eq!(maximized.hit(1370, 0), Some(CaptionHit::MaxButton));
+        // Full screen: no button for Windows at all.
+        let full = CaptionGeometry { max_button: PxRect::default(), top_edge: 0, ..g };
+        assert_eq!(full.hit(0, 0), None);
+        // A strip as tall as the button leaves no Snap Layouts, never a hit outside it.
+        let all_edge = CaptionGeometry { top_edge: 50, ..g };
+        assert_eq!(all_edge.hit(1370, 35), Some(CaptionHit::Top));
+        assert_eq!(all_edge.hit(1370, 40), None);
     }
 
     #[test]

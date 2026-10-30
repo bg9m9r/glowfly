@@ -1,5 +1,5 @@
 //! The window frame on each OS and the pure parts of a title bar Glowfly draws itself: which
-//! frame applies (`Chrome`), the window actions the bar asks for and full screen (`WindowCmd`),
+//! frame applies (`Chrome`, with the Windows system title bar setting), the window actions the bar asks for and full screen (`WindowCmd`),
 //! what the shell
 //! knows about the window (`WindowInfo`, with the Maximize button as Windows tracks it; full
 //! screen narrows what a `WindowCmd` does there, `WindowCmd::in_window`) and the
@@ -39,6 +39,21 @@ impl Chrome {
     /// The frame of the OS Glowfly was built for.
     pub const fn current() -> Chrome {
         Self::for_os(Os::current())
+    }
+
+    /// The frame for `os` when the Windows system title bar setting is `system_title_bar`: the
+    /// system's frame on Windows when it is on; other OSes ignore it.
+    pub const fn chosen(os: Os, system_title_bar: bool) -> Chrome {
+        match Self::for_os(os) {
+            Chrome::Windows if system_title_bar => Chrome::System,
+            c => c,
+        }
+    }
+
+    /// Whether Preferences offers the system title bar setting: where the OS's frame is the one
+    /// Glowfly draws on Windows.
+    pub const fn offers_system_title_bar(os: Os) -> bool {
+        matches!(Self::for_os(os), Chrome::Windows)
     }
 
     /// Whether Glowfly draws the title bar (with the menu button and the tabs).
@@ -194,6 +209,18 @@ mod tests {
         assert_eq!(Chrome::for_os(Os::Linux), Chrome::System);
         assert_eq!(Chrome::current(), Chrome::for_os(Os::current()));
         assert_eq!(Chrome::default(), Chrome::System);
+    }
+
+    #[test]
+    fn the_system_title_bar_setting_only_changes_windows() {
+        assert_eq!(Chrome::chosen(Os::Windows, false), Chrome::Windows);
+        assert_eq!(Chrome::chosen(Os::Windows, true), Chrome::System);
+        for on in [false, true] {
+            assert_eq!(Chrome::chosen(Os::MacOs, on), Chrome::MacOs, "{on}");
+            assert_eq!(Chrome::chosen(Os::Linux, on), Chrome::System, "{on}");
+        }
+        assert!(Chrome::offers_system_title_bar(Os::Windows));
+        assert!(!Chrome::offers_system_title_bar(Os::MacOs) && !Chrome::offers_system_title_bar(Os::Linux));
     }
 
     #[test]

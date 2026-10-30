@@ -4,7 +4,7 @@
 //! over the title bar while a dialog blocks it. Everything here pushes `AppMsg::Window`; only
 //! the shell sends viewport commands. It also works out the caption geometry the shell hands
 //! the OS (`caption_geometry`): where the Maximize button is, for Snap Layouts (none in full
-//! screen), and where Alt+Space opens the system menu.
+//! screen), the resize strip along its top, and where Alt+Space opens the system menu.
 
 use super::theme::color;
 use super::title_bar;
@@ -70,8 +70,12 @@ pub(crate) fn caption_geometry(ctx: &egui::Context, st: &AppState) -> Option<Cap
     let (screen, ppp) = (ctx.screen_rect(), ctx.pixels_per_point());
     let at = title_bar::menu_at(ctx).unwrap_or(pos2(screen.left() + 8.0, screen.top() + title_bar::TITLE_H));
     let menu_at = ((at.x * ppp).round() as i32, (at.y * ppp).round() as i32);
-    let max_button = if st.view.window.fullscreen { PxRect::default() } else { to_px(max_button_rect(screen), ppp) };
-    Some(CaptionGeometry { max_button, menu_at })
+    let window = st.view.window;
+    let max_button = if window.fullscreen { PxRect::default() } else { to_px(max_button_rect(screen), ppp) };
+    // The edge strips' thickness in pixels (`EDGE` screen points): resizing from above the
+    // button too, as the strip beside it does; none where the strips are off.
+    let top_edge = if window.maximized || window.fullscreen { 0 } else { (EDGE / ctx.zoom_factor() * ppp).round() as i32 };
+    Some(CaptionGeometry { max_button, top_edge, menu_at })
 }
 
 fn direction(e: ResizeEdge) -> ResizeDirection {
@@ -178,6 +182,7 @@ fn resize_edges(ctx: &egui::Context, screen: Rect, msgs: &mut Vec<Msg>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::window_chrome::WindowInfo;
 
     #[test]
     fn each_frame_sets_up_its_viewport() {
@@ -248,6 +253,34 @@ mod tests {
         let full = caption_geometry(&ctx, &st).expect("Glowfly draws the buttons");
         assert_eq!(full.max_button, PxRect::default(), "no Snap Layouts in full screen");
         assert_eq!(full.menu_at, windowed.menu_at, "Alt+Space still opens the system menu");
+    }
+
+    #[test]
+    fn the_top_strip_over_maximize_matches_the_edges() {
+        let ctx = egui::Context::default();
+        let mut st = AppState::new(glowfly_core::settings::Settings::default(), Vec::new(), std::time::Instant::now());
+        st.view.chrome = Chrome::Windows;
+        let geometry = |ctx: &egui::Context, st: &AppState, ppp: f32| {
+            let input = egui::RawInput {
+                viewports: std::iter::once((
+                    egui::ViewportId::ROOT,
+                    egui::ViewportInfo { native_pixels_per_point: Some(ppp), ..Default::default() },
+                ))
+                .collect(),
+                ..Default::default()
+            };
+            let _ = ctx.run(input, |_| {});
+            caption_geometry(ctx, st).expect("Glowfly draws the buttons")
+        };
+        assert_eq!(geometry(&ctx, &st, 1.0).top_edge, 5, "5 pt at 100%");
+        assert_eq!(geometry(&ctx, &st, 1.5).top_edge, 8, "7.5 px rounded at 150%");
+        ctx.set_zoom_factor(2.0);
+        assert_eq!(geometry(&ctx, &st, 1.0).top_edge, 5, "zooming keeps the strip's screen size");
+        ctx.set_zoom_factor(1.0);
+        st.view.window.maximized = true;
+        assert_eq!(geometry(&ctx, &st, 1.0).top_edge, 0, "no resizing while maximized");
+        st.view.window = WindowInfo { fullscreen: true, ..WindowInfo::default() };
+        assert_eq!(geometry(&ctx, &st, 1.0).top_edge, 0, "nor in full screen");
     }
 
     #[test]
