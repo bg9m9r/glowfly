@@ -65,6 +65,7 @@ source file, update its line here. Features that span every layer are in
 - `branches/rejected_push.rs`: the local branch a push rejected as behind was for, read from the job's push command, git's rejection line and its `To` URL (matched on push URLs, one remote only), for the toast's Force push with lease.
 - `branch_sync.rs`: the Rename dialog's form and whether it may rename the branch on its remote too (refused for the default branch, a Git Flow base, a branch behind its upstream, a name the remote has), that job's headline by the step it reached, and the Delete remote branch dialog's data (the local branches tracking it, Unset upstream).
 - `stack.rs`: why a restack is refused.
+- `running_job.rs`: `RunningJob`, the git command sequence that is running and what follows its success.
 - `stack_push.rs`: a stack's push targets and why Push stack is off.
 - `stack_prs.rs`: a stack's pull request layers, the bottom layer's base, why Create pull requests for the stack is off and the run of create dialogs.
 - `palette_stack.rs`: the palette's stack entries.
