@@ -67,11 +67,20 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
                 None => super::pr_menu_items::remote(ui, t, (name, oid), snap, fs, c.sel, msgs),
             }
         }
-        // A fork on the code host's account: a pull request from it into the base repository.
+        // A fork on the code host's account: its listed pull request (matched by repository and
+        // branch), else one from it into the base repository.
         Some(fs) if pr_repos::is_pr_remote(fs, remote) => {
             separator(ui);
-            let create = Msg::Forge(ForgeMsg::CreatePrFrom { remote: remote.to_owned(), source: name.to_owned() });
-            menu_item(msgs, ui, t.trf("pr.menu.create", &[("noun", &fs.pr_word(t))]), create);
+            match fs.pr_from(remote, name) {
+                Some(pr) => {
+                    let label = t.trf("pr.menu.open", &[("noun", &fs.pr_word(t)), ("pr", &fs.pr_label(pr.id))]);
+                    menu_item(msgs, ui, label, Msg::OpenUrl(pr.url.clone()))
+                }
+                None => {
+                    let create = Msg::Forge(ForgeMsg::CreatePrFrom { remote: remote.to_owned(), source: name.to_owned() });
+                    menu_item(msgs, ui, t.trf("pr.menu.create", &[("noun", &fs.pr_word(t))]), create);
+                }
+            }
         }
         // Another remote of a repository on a code host: pull requests go through the host's.
         Some(_) => {}

@@ -169,6 +169,8 @@ pub(super) fn prs_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
             let summary_changed = view.pr.checks != pr.checks;
             head_changed = view.pr.head != pr.head;
             let head_moved = pr.head.is_some() && view.checks.loaded().is_some_and(|l| !l.sha.is_empty() && !pr.head_matches(&l.sha));
+            // Another repository for the source (a fork the list now names) gives other tips.
+            head_changed |= view.pr.head_repo != pr.head_repo;
             view.pr = pr.clone();
             view.listed = true;
             stale = view.loaded().is_some_and(|p| pr.head.is_some() && !pr.head_matches(&p.detail.head_sha));
@@ -178,7 +180,7 @@ pub(super) fn prs_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     if head_changed {
         view.head_fetch = HeadFetch::Idle;
-        source::rekey(st, fx, false);
+        source::retip(st, fx, false);
     }
     if stale {
         load(st, fx);

@@ -13,6 +13,7 @@ fn pr(id: u64, facets: PrFacets) -> PullRequest {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: String::new(),

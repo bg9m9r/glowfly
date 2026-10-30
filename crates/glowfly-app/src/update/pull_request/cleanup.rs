@@ -29,9 +29,11 @@ pub(super) fn after_merge(
     let plan = local.filter(|(target, _)| !target.is_empty()).and_then(|(target, method)| {
         let snap = st.snap.as_ref()?;
         let default_branch = st.session.forge.as_ref().and_then(|f| f.default_branch.as_deref());
-        // With the panel closed: the merge only asked for the local delete of a same-repository
-        // pull request, and the target check still guards it.
-        let same_repo = st.session.pull_request.view.as_ref().and_then(|v| v.loaded()).is_none_or(|p| p.detail.same_repo);
+        // A fork's source, by the service's list or its page, is never the local branch here. With
+        // the panel closed: the merge only asked for the local delete of a same-repository pull
+        // request, and the target check still guards it.
+        let view = st.session.pull_request.view.as_ref();
+        let same_repo = view.is_none_or(|v| v.pr.head_repo.is_same() && v.loaded().is_none_or(|p| p.detail.same_repo));
         let m = Merging { remote, source, target, method: Some(method), same_repo, default_branch };
         let (branch, plan) = local_delete(t, snap, &m)?;
         Some((target, branch, plan))

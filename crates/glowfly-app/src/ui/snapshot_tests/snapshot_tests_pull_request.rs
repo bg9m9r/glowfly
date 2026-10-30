@@ -61,6 +61,7 @@ pub(in crate::ui) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) 
         draft: !with_source,
         reviewers,
         head: Some(tip(&st, "search").to_string()),
+        head_repo: Default::default(),
         merge_status: with_source.then(|| "mergeable".into()),
         checks: None,
         url: "https://github.com/acme/demo/pull/12".into(),

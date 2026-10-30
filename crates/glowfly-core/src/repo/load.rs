@@ -163,6 +163,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
     let remote_info = super::remotes::remote_info(&repo, &names);
     let remote_heads = super::remotes::remote_heads(&repo, &names);
+    let push_remotes = super::push_config::push_remotes(&repo);
     let remote_urls = remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
 
     let (mut tags, mut other_tags, mut lightweight_tags) = (Vec::new(), Vec::new(), HashSet::new());
@@ -275,6 +276,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         remotes,
         remote_info,
         remote_heads,
+        push_remotes,
         tags,
         other_tags,
         lightweight_tags,

@@ -33,6 +33,7 @@ pub(crate) fn view(d: Option<PrDetail>) -> PrView {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: String::new(),
@@ -43,6 +44,7 @@ pub(crate) fn view(d: Option<PrDetail>) -> PrView {
         label: "#12".into(),
         noun: "pull request",
         remote: "origin".into(),
+        source_remote: Some("origin".into()),
         listed: true,
         tips: Tips { target: None, source: None },
         files: Files::Missing,
@@ -207,6 +209,11 @@ fn deleting_after_the_merge() {
     assert_eq!(delete_after_merge_blocked(&v, Some("main")), None);
     let v = with(|d| d.same_repo = false);
     assert_eq!(delete_after_merge_blocked(&v, Some("main")).as_deref(), Some("The source branch is on a fork"));
+    // The service's list knows the fork even when the page doesn't say.
+    let mut v = view(Some(detail()));
+    v.pr.head_repo = glowfly_core::forge::HeadRepo::Fork { name: "bob/app".into() };
+    assert_eq!(delete_after_merge_blocked(&v, Some("main")).as_deref(), Some("The source branch is on a fork"));
+    assert!(!merging(&v, Some("main")).unwrap().same_repo);
     let v = view(Some(detail()));
     assert_eq!(delete_after_merge_blocked(&v, Some("search")).as_deref(), Some("search is the repository's default branch"));
     let mut v = with(|d| d.deletes_merged_branches = true);

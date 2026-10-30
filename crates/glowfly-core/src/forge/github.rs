@@ -3,10 +3,11 @@
 use super::filters::github::{TeamRef, team_key};
 use super::github_checks;
 pub(super) use super::github_issues::{ApiIssue, to_issue};
+use super::head_repo::RepoName;
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Conditions, CreateOptions, Entry, FilterKind, FilterOptions, Issue, IssueDetails, Me, NewIssue, NewPullRequest,
-    PrFacets, Provider, PullRequest, Reviewer, Target, enc, get, github_issues, page, post,
+    Account, Auth, Checks, Conditions, CreateOptions, Entry, FilterKind, FilterOptions, HeadRepo, Issue, IssueDetails, Me, NewIssue,
+    NewPullRequest, PrFacets, Provider, PullRequest, Reviewer, Target, enc, get, github_issues, page, post,
 };
 use crate::error::Result;
 use serde::Deserialize;
@@ -65,6 +66,8 @@ struct Ref {
     sha: String,
     #[serde(default)]
     user: Option<Login>,
+    #[serde(default)]
+    repo: Option<RepoName>,
 }
 
 #[derive(Deserialize)]
@@ -116,7 +119,7 @@ struct Details {
     checks: Option<Checks>,
 }
 
-fn convert(p: ApiPr, d: Details) -> PullRequest {
+fn convert(d: Details, p: ApiPr) -> PullRequest {
     // Latest review per reviewer wins; comments don't change a vote.
     let mut states: Vec<(String, String)> = Vec::new();
     for r in d.reviews {
@@ -148,11 +151,13 @@ fn convert(p: ApiPr, d: Details) -> PullRequest {
         labels: p.labels.into_iter().map(|l| l.name).collect(),
         milestone: p.milestone.map(|m| m.title),
     };
+    let head_repo = HeadRepo::of_repos(&p.head.repo, &p.base.repo);
     PullRequest {
         id: p.number,
         title: p.title,
         description: p.body.unwrap_or_default(),
         source: p.head.name,
+        head_repo,
         target: p.base.name,
         author: p.user.login,
         draft: p.draft,
@@ -233,13 +238,7 @@ impl super::Forge for GitHub {
         let prs: Vec<ApiPr> = page::by_link(auth, format!("{}/pulls?state=open&per_page=100", repo_api(t)))?;
         let numbers: Vec<u64> = prs.iter().map(|p| p.number).collect();
         let mut details = details(t, auth, &numbers);
-        Ok(prs
-            .into_iter()
-            .map(|p| {
-                let d = details.remove(&p.number).unwrap_or_default();
-                convert(p, d)
-            })
-            .collect())
+        Ok(prs.into_iter().map(|p| convert(details.remove(&p.number).unwrap_or_default(), p)).collect())
     }
 
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
@@ -257,7 +256,7 @@ impl super::Forge for GitHub {
             body["head_repo"] = r.into();
         }
         let created: ApiPr = post(auth, &format!("{}/pulls", repo_api(t)), body)?;
-        Ok(convert(created, Details::default()))
+        Ok(convert(Details::default(), created))
     }
 
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
@@ -349,7 +348,7 @@ mod tests {
             r#"[{"user":{"login":"grace"},"state":"CHANGES_REQUESTED"},{"user":{"login":"grace"},"state":"APPROVED"},{"user":{"login":"bob"},"state":"COMMENTED"}]"#,
         )
         .unwrap();
-        let pr = convert(p, Details { reviews, checks: None });
+        let pr = convert(Details { reviews, checks: None }, p);
         assert_eq!((pr.id, pr.source.as_str(), pr.target.as_str()), (4, "feature/search", "main"));
         assert_eq!(pr.approvals(), 1);
         assert_eq!(pr.reviewers.len(), 2);
@@ -386,7 +385,7 @@ mod tests {
         )
         .unwrap();
         let reviews: Vec<Review> = serde_json::from_str(r#"[{"user":{"login":"bob"},"state":"APPROVED"}]"#).unwrap();
-        let f = convert(p, Details { reviews, checks: None }).facets;
+        let f = convert(Details { reviews, checks: None }, p).facets;
         assert_eq!(
             (f.author_id.as_str(), f.assignee_ids.as_slice(), f.milestone.as_deref()),
             ("ada", &["grace".to_owned()][..], Some("v1"))

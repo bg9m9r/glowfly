@@ -58,6 +58,7 @@ fn pr(id: u64, title: &str, author: &str, checks: Option<Checks>) -> PullRequest
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks,
         url: format!("https://example.com/pr/{id}"),

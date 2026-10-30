@@ -71,6 +71,8 @@ pub struct Snapshot {
     /// Each remote's default branch from `refs/remotes/<remote>/HEAD`, as (remote, branch
     /// without prefix), in `remotes` order; remotes without one are left out.
     pub remote_heads: Vec<(String, String)>,
+    /// `branch.<name>.pushRemote` and `remote.pushDefault` (`push_config`).
+    pub push_remotes: PushRemotes,
     pub tags: Vec<(String, Oid)>,
     /// Tags that point at a tree or blob instead of a commit: not shown, but their names are taken.
     pub other_tags: Vec<String>,

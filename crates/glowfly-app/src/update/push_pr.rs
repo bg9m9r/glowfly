@@ -1,6 +1,6 @@
 //! Starting a pull request: the create dialog (source and target repositories and branches,
-//! title, linked issues), pushing the branch first (to the code host's remote, or to the fork it
-//! comes from), and opening the dialog once that push has landed.
+//! title, linked issues), pushing the branch first (to the remote push config names, else to the
+//! code host's remote or the fork it comes from), and opening the dialog once that push has landed.
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::{Effect, ForgeCall};
@@ -10,19 +10,23 @@ use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::branch_ops;
 use glowfly_core::forge::{NewPullRequest, Target};
+use glowfly_core::repo::BranchInfo;
 
 /// Opens the create dialog for `name` (a local branch or a branch on a PR repository's remote),
 /// with `preferred` as the target when it is one. `from` is the remote the source is on; None
-/// takes the branch's push remote (`pr_repos::push_remote`), else the code host's.
+/// takes the branch's push remote (`pr_repos::pr_push_target`), else the code host's.
 pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<String>, from: Option<String>, fx: &mut Vec<Effect>) {
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     if fs.host.is_none() {
         return;
     }
-    let from = from
-        .or_else(|| push_pr::local_for(snap, fs, &name).map(|b| pr_repos::push_remote(b, fs)))
-        .filter(|r| pr_repos::is_pr_remote(fs, r))
-        .unwrap_or_else(|| fs.remote.clone());
+    // A refused push config leaves the pick to the dialog's From repository.
+    let from = match from {
+        Some(f) => Some(f),
+        None => push_pr::local_for(snap, fs, &name).cloned().and_then(|b| push_target(st, &b).ok()),
+    };
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
+    let from = from.filter(|r| pr_repos::is_pr_remote(fs, r)).unwrap_or_else(|| fs.remote.clone());
     let local = push_pr::local_for_on(snap, fs, &from, &name);
     let source = push_pr::pr_source_on(snap, fs, &from, &name);
     let into = pr_repos::default_into(snap, fs, &from, preferred.as_deref());
@@ -51,6 +55,13 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
     super::forge::want_issues(st, keys, fx);
 }
 
+/// The remote `b`'s pull request is pushed to (`pr_repos::pr_push_target`), or why push config
+/// refuses it.
+fn push_target(st: &AppState, b: &BranchInfo) -> Result<String, String> {
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return Err(String::new()) };
+    pr_repos::pr_push_target(b, snap, fs).map_err(|u| pr_repos::push_refused(st.settings.lang(), &u, &b.name, fs))
+}
+
 /// Pushes local `branch` to `remote` (None: its push remote), then opens the create dialog (at
 /// once when the remote already has everything). A diverged branch is refused, never forced.
 pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, remote: Option<String>, fx: &mut Vec<Effect>) {
@@ -62,7 +73,11 @@ pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, rem
         st.log(false, format!("Branch {branch} no longer exists."));
         return;
     };
-    let remote = remote.unwrap_or_else(|| pr_repos::push_remote(&b, fs));
+    let remote = match remote.map_or_else(|| push_target(st, &b), Ok) {
+        Ok(r) => r,
+        Err(why) => return st.log(false, why),
+    };
+    let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     let Some(state) = push_pr::host_branch_on(&b, snap, fs, &remote) else {
         st.log(false, format!("There is no remote named {remote}."));
         return;
