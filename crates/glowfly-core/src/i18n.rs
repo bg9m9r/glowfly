@@ -14,6 +14,9 @@ mod tests;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Display;
 
+#[cfg(all(unix, not(target_os = "macos")))]
+pub(crate) use system::env_message_locales;
+pub(crate) use system::is_c_locale;
 pub use system::{LocaleEnv, detect_system_language, message_locales, pick, system};
 
 /// The Language setting's value for "follow the OS".

@@ -51,7 +51,7 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
             .unwrap_or(s.date_locale.as_str())
             .to_owned();
         let shown = if s.date_locale == "system" {
-            t.trf("prefs.ui.date_locale.system", &[("locale", &sys_locale::get_locale().unwrap_or_default())])
+            t.trf("prefs.ui.date_locale.system", &[("locale", &glowfly_core::dates::system_date_locale().unwrap_or_default())])
         } else {
             current
         };

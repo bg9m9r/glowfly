@@ -1,7 +1,7 @@
 //! Each locale's usual date patterns, the ISO 8601 fallback and locale-tag normalisation.
-//! Every case names its locale, so nothing here reads the OS.
+//! Every case names its locale or injects the environment, so nothing here reads the OS.
 
-use super::locale_patterns::{DateKind, default_pattern, locale_tag};
+use super::locale_patterns::{DateKind, default_pattern, locale_tag, time_locale};
 
 const KINDS: [DateKind; 4] = [DateKind::Date, DateKind::LongDate, DateKind::DateTime, DateKind::Full];
 
@@ -78,4 +78,38 @@ fn locale_tags_are_normalised() {
     assert_eq!(locale_tag("EN").as_deref(), Some("en"));
     assert_eq!(locale_tag("C"), None);
     assert_eq!(locale_tag("POSIX"), None);
+}
+
+/// `time_locale` over a fixed set of variables instead of the process environment.
+fn time_locale_of(vars: &[(&str, &str)]) -> Option<String> {
+    time_locale(|name| vars.iter().find(|(k, _)| *k == name).map(|(_, v)| (*v).to_owned()))
+}
+
+#[test]
+fn the_date_locale_follows_lc_all_lc_time_then_lang() {
+    let all = [("LC_ALL", "de_DE.UTF-8"), ("LC_TIME", "fr_FR.UTF-8"), ("LANG", "en_US.UTF-8")];
+    assert_eq!(time_locale_of(&all).as_deref(), Some("de_DE.UTF-8"));
+    assert_eq!(time_locale_of(&all[1..]).as_deref(), Some("fr_FR.UTF-8"));
+    assert_eq!(time_locale_of(&all[2..]).as_deref(), Some("en_US.UTF-8"));
+    // LANGUAGE orders translations only; it never picks the date format.
+    assert_eq!(time_locale_of(&[("LANGUAGE", "de:fr"), ("LANG", "en_GB.UTF-8")]).as_deref(), Some("en_GB.UTF-8"));
+    assert_eq!(time_locale_of(&[("LANGUAGE", "de")]), None);
+    // Empty values count as unset.
+    assert_eq!(time_locale_of(&[("LC_ALL", ""), ("LC_TIME", ""), ("LANG", "sv_SE")]).as_deref(), Some("sv_SE"));
+    assert_eq!(time_locale_of(&[("LC_ALL", ""), ("LANG", "")]), None);
+    assert_eq!(time_locale_of(&[]), None);
+}
+
+#[test]
+fn a_c_date_locale_overrides_lang_and_means_iso() {
+    for c in ["C", "POSIX", "C.UTF-8"] {
+        let found = time_locale_of(&[("LC_ALL", c), ("LANG", "de_DE.UTF-8")]);
+        assert_eq!(found.as_deref(), Some(c));
+        assert_eq!(found.as_deref().and_then(locale_tag), None, "{c}");
+        assert_eq!(row(c), ISO, "{c}");
+    }
+    let found = time_locale_of(&[("LC_TIME", "C"), ("LANG", "de_DE.UTF-8")]);
+    assert_eq!(found.as_deref(), Some("C"));
+    let found = time_locale_of(&[("LC_TIME", "en_US.UTF-8"), ("LANG", "C")]);
+    assert_eq!(found.as_deref().and_then(locale_tag).as_deref(), Some("en_US"));
 }

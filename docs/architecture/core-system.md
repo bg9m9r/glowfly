@@ -112,8 +112,8 @@ source file, update its line here.
 - `bundle.rs`: the bug-report bundle: every log file verbatim under a short header, written in one go.
 - `i18n.rs`, `i18n/`, `locales/`: the UI's translations: languages, the bundled catalogs (English base, per-language JSON), lookups with {name} placeholders and English fallback, the OS language read once at startup (gettext's order and C rule on Linux).
 - `dates.rs`: dates: moment.js-style patterns, localized month and weekday words, relative ages.
-- `dates/locale_patterns.rs`: each language's usual patterns for the date locale (ISO 8601 otherwise), keyed by a normalised locale tag with the OS locale read once per run.
-- `spell.rs`: spell checking.
+- `dates/locale_patterns.rs`: each language's usual patterns for the date locale (ISO 8601 otherwise), keyed by a normalised locale tag with the OS locale read once per run (Linux: LC_ALL, LC_TIME, LANG).
+- `spell.rs`: spell checking, and the OS's spell-check language order (gettext's on Linux).
 - `avatars.rs`: avatar fetching, and when it may happen (`lookups_allowed`: turned on, and a remote on github.com, gitlab.com, bitbucket.org or codeberg.org).
 - `text.rs`: safe display of outside text.
 - `changelog.rs`: release notes in release-please's Markdown (the bundled `CHANGELOG.md`, a release's body): releases, sections and styled items.

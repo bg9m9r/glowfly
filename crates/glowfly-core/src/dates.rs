@@ -5,7 +5,7 @@ use crate::i18n::Lang;
 use chrono::{DateTime, FixedOffset, Locale};
 
 mod locale_patterns;
-pub use locale_patterns::{DateKind, default_pattern};
+pub use locale_patterns::{DateKind, default_pattern, system_date_locale, time_locale};
 
 /// Converts a moment.js pattern to a chrono format string. Text in `[brackets]` is literal.
 pub fn to_chrono(pattern: &str) -> String {

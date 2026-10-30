@@ -107,5 +107,23 @@ fn split(tag: &str) -> Option<(String, Option<String>)> {
 /// The OS locale, normalised; read on first use and kept for the rest of the run.
 fn system_tag() -> Option<String> {
     static TAG: OnceLock<Option<String>> = OnceLock::new();
-    TAG.get_or_init(|| sys_locale::get_locale().and_then(|l| normalise(&l))).clone()
+    TAG.get_or_init(|| system_date_locale().and_then(|l| normalise(&l))).clone()
+}
+
+/// The OS's date locale as the OS spells it ("en-US", "de_DE.UTF-8", "C"), for Preferences to
+/// show. Linux and other Unix: the C library's order for dates (`time_locale`); Windows and
+/// macOS: sys-locale's locale.
+pub fn system_date_locale() -> Option<String> {
+    #[cfg(all(unix, not(target_os = "macos")))]
+    return time_locale(|name| std::env::var(name).ok());
+    #[cfg(not(all(unix, not(target_os = "macos"))))]
+    sys_locale::get_locale()
+}
+
+/// The locale the C library formats dates in, from the environment `var` reads: the first
+/// non-empty of LC_ALL, LC_TIME and LANG. None when all are unset or empty (the C locale). A C or
+/// POSIX value is returned as is (LC_ALL=C still overrides LANG); `locale_tag` maps it to ISO.
+/// LANGUAGE only orders message translations, so it never counts here.
+pub fn time_locale(var: impl Fn(&str) -> Option<String>) -> Option<String> {
+    ["LC_ALL", "LC_TIME", "LANG"].into_iter().filter_map(var).find(|v| !v.is_empty())
 }

@@ -404,7 +404,11 @@ second one next to it.
    `C`/`POSIX` (including `C.UTF-8`) or unset. The first supported language wins, and
    `C`/`POSIX` first or nothing supported means English. Nothing else reads these variables for
    it, and it is never read again while Glowfly runs. It is independent of the `LANGUAGE=C`
-   that `gitcli` gives git children (rule 5).
+   that `gitcli` gives git children (rule 5). The spell-check language follows the same gettext
+   order on Linux (`spell::system_languages`, C/POSIX giving none), but the date locale's
+   "system" choice follows the C library's order for dates instead (`dates::system_date_locale`):
+   the first non-empty of `LC_ALL`, `LC_TIME`, `LANG`, never `LANGUAGE`, with `C`/`POSIX` meaning
+   ISO 8601. Windows and macOS use sys-locale's locale for both.
 10. **`GLOWFLY_UPDATE_FEED` replaces the release feed with a local folder** (`app_update::Feed`).
     Unset or empty means the hosting service over https, as always. Set, it must be an absolute
     path (`Path::is_absolute`, so `/feed` counts as relative on Windows, which needs a drive or
