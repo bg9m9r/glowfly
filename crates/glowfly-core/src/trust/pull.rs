@@ -227,7 +227,8 @@ impl Pull {
     /// does (`+refs/heads/*:refs/heads/*`; git applies those to what it fetches even when
     /// refspecs are named).
     pub(super) fn stores_into_head(&self, repo: &Repository) -> bool {
-        let Some(head) = repo.head().ok().and_then(|h| h.name().map(str::to_owned)) else { return false };
+        // The branch HEAD names, born or not: a fetch into an unborn one makes it.
+        let Some(head) = repo.find_reference("HEAD").ok().and_then(|h| h.symbolic_target().map(str::to_owned)) else { return false };
         let named = self.refspecs.iter().filter_map(|s| s.split_once(':')).any(|(_, dst)| {
             let dst = if dst.starts_with("refs/") { dst.to_owned() } else { format!("refs/heads/{dst}") };
             head.eq_ignore_ascii_case(&dst)

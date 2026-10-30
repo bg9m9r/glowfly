@@ -79,6 +79,8 @@ pub(super) struct Live<'a> {
     pub stopped: bool,
     /// The kind of command last announced.
     step: Option<Step>,
+    /// How many commands have started.
+    started: usize,
     /// The repository's lock and temporary files before its first fetch or push.
     before: Option<stop_cleanup::Before>,
     /// The folder of the clone that was stopped.
@@ -87,7 +89,7 @@ pub(super) struct Live<'a> {
 
 impl<'a> Live<'a> {
     pub fn new(cwd: &'a Path, prompts: bool, stop: &'a Stop, send: &'a dyn Fn(Msg)) -> Self {
-        Self { cwd, prompts, stop, send, stopped: false, step: None, before: None, clone: None }
+        Self { cwd, prompts, stop, send, stopped: false, step: None, started: 0, before: None, clone: None }
     }
 
     /// Runs the job command `c`, echoed as `$ git …` first: a splittable pull as its fetch and
@@ -97,11 +99,15 @@ impl<'a> Live<'a> {
         if gitcli::subcommand(c) == Some("pull")
             && let Some(pull) = glowfly_core::trust::pull::Pull::of(c)
         {
-            let cwd = self.cwd;
+            let (cwd, started) = (self.cwd, self.started);
             let run = glowfly_core::trust::pull::run_split(cwd, &pull, &mut |a, i, e| self.git(a, i, e));
-            // A stop says only that: a check it cut short (the clean tree a rebase needs) didn't fail.
+            let (glowfly_core::trust::pull::PullRun::Ran { output, .. } | glowfly_core::trust::pull::PullRun::Refused { output, .. }) =
+                &run;
+            // A stop before any of its commands started says only that: a check it cut short (the
+            // clean tree a rebase needs) didn't fail. After one started, what they did stays in the
+            // log (a fetch that moved the branch, and what that left).
             if self.stopped {
-                return (false, echo);
+                return (false, if self.started > started { output.clone() } else { echo });
             }
             return match run {
                 glowfly_core::trust::pull::PullRun::Ran { ok, output } => (ok, output),
@@ -127,6 +133,7 @@ impl<'a> Live<'a> {
             self.step = Some(step);
             (self.send)(Msg::Job(JobMsg::Step(step)));
         }
+        self.started += 1;
         let env: Vec<(&str, &str)> = job_env(self.prompts).iter().chain(extra).copied().collect();
         if !step.stoppable() {
             return gitcli::run_with_input(self.cwd, cmd, input, &env);

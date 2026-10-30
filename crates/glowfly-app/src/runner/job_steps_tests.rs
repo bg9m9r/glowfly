@@ -208,3 +208,28 @@ fn a_stop_before_a_rebasing_pull_s_checks_says_only_that_it_was_cancelled() {
     assert_eq!(live.finish(format!("{text}\n")), "$ git pull --rebase\nCancelled.");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_stop_after_a_fetch_that_moved_the_branch_keeps_what_the_fetch_did_in_the_log() {
+    let dir = temp("pull-moved");
+    let (work, origin) = (dir.join("work"), dir.join("origin"));
+    repo(&origin);
+    git_in(&dir, &["clone", "-q", &origin.display().to_string(), "work"]);
+    std::fs::write(origin.join("b.txt"), "b\n").unwrap();
+    git_in(&origin, &["add", "."]);
+    git_in(&origin, &["-c", "user.name=T", "-c", "user.email=t@e", "commit", "-q", "-m", "two"]);
+    // A wildcard refspec named stores into main; the stop comes once the fetch is done.
+    let stop = Stop::new();
+    let asker = stop.clone();
+    let send = move |m: Msg| {
+        if matches!(m, Msg::Job(JobMsg::Step(Step::Local))) {
+            asker.stop();
+        }
+    };
+    let mut live = Live::new(&work, false, &stop, &send);
+    let (ok, text) = live.command(&args(&["pull", "origin", "refs/heads/*:refs/heads/*"]));
+    assert!(!ok && live.stopped, "{text}");
+    assert!(text.contains("$ git fetch"), "{text}");
+    assert!(text.contains("Cannot fast-forward your working tree"), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

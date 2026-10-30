@@ -89,28 +89,47 @@ fn same_as_git(name: &str, a: &[&str], setup: &dyn Fn(&Path)) {
 /// `same_as_git` with `run_split` (`split`) or `run_pinned` with nothing to compare. Returns what
 /// git pull and the split printed.
 fn same_as_git_by(name: &str, a: &[&str], setup: &dyn Fn(&Path), split: bool) -> (String, String) {
+    let [seed, bare, real, pinned] = twins(name, setup);
+    remote_commit(&bare, "main", "r.txt", "r\n");
+    let said = pull_both(&real, &pinned, a, split);
+    for d in [&seed, &bare, &real, &pinned] {
+        let _ = std::fs::remove_dir_all(d);
+    }
+    said
+}
+
+/// An origin (with the repository it was pushed from) and two clones of it set up alike by
+/// `setup`: seed, origin, the clone git pull runs in, the one the split runs in.
+fn twins(name: &str, setup: &dyn Fn(&Path)) -> [std::path::PathBuf; 4] {
     let (seed, bare) = with_origin(name);
     let clone = |n: &str| {
         let dir = seed.with_file_name(format!("{}-{n}", seed.file_name().unwrap().to_string_lossy()));
         let _ = std::fs::remove_dir_all(&dir);
         git(dir.parent().unwrap(), &["-c", "core.autocrlf=false", "clone", "-q", &bare.display().to_string(), &dir.display().to_string()]);
-        set_config(
-            &dir,
-            &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")],
-        );
+        set_config(&dir, TEST_CONFIG);
         setup(&dir);
         dir
     };
     let (real, pinned) = (clone("real"), clone("pinned"));
-    remote_commit(&bare, "main", "r.txt", "r\n");
+    [seed, bare, real, pinned]
+}
+
+/// The config both repositories of a comparison get.
+const TEST_CONFIG: &[(&str, &str)] =
+    &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false"), ("core.autocrlf", "false")];
+
+/// `git pull <a>` in `real`, the split (`split`) or pinned pull in `pinned`: both end alike
+/// (success, the message of HEAD, its parents, its tree, the reflog's last entry, the working
+/// tree's status, and what the error classifier makes of a failure). What each printed.
+fn pull_both(real: &Path, pinned: &Path, a: &[&str], split: bool) -> (String, String) {
     let cmd = args(a);
-    let (real_ok, real_out) = crate::gitcli::run_with_input(&real, &cmd, "", crate::gitcli::NO_PROMPTS);
+    let (real_ok, real_out) = crate::gitcli::run_with_input(real, &cmd, "", crate::gitcli::NO_PROMPTS);
     let mut run = |c: &[String], input: &str, extra: &[(&str, &str)]| {
         let env: Vec<(&str, &str)> = crate::gitcli::NO_PROMPTS.iter().chain(extra).copied().collect();
-        crate::gitcli::run_with_input(&pinned, c, input, &env)
+        crate::gitcli::run_with_input(pinned, c, input, &env)
     };
     let p = Pull::of(&cmd).unwrap();
-    let ran = if split { run_split(&pinned, &p, &mut run) } else { run_pinned(&pinned, &p, &[], None, None, &mut run) };
+    let ran = if split { run_split(pinned, &p, &mut run) } else { run_pinned(pinned, &p, &[], None, None, &mut run) };
     let PullRun::Ran { ok, output } = ran else { panic!("it runs") };
     assert_eq!(ok, real_ok, "{a:?}: git said {real_out}; pinned said {output}");
     let end = |d: &Path| {
@@ -122,15 +141,12 @@ fn same_as_git_by(name: &str, a: &[&str], setup: &dyn Fn(&Path), split: bool) ->
         let status = crate::gitcli::run_with_input(d, &args(&["status", "--porcelain"]), "", &[]).1;
         (c.message().unwrap_or_default().to_owned(), c.parent_count(), c.tree_id(), reflog, status)
     };
-    assert_eq!(end(&pinned), end(&real), "{a:?}: {output}");
+    assert_eq!(end(pinned), end(real), "{a:?}: {output}");
     assert_eq!(
         crate::git_errors::classify(&output),
         crate::git_errors::classify(&real_out),
         "{a:?}: git said {real_out}; split said {output}"
     );
-    for d in [&seed, &bare, &real, &pinned] {
-        let _ = std::fs::remove_dir_all(d);
-    }
     (real_out, output)
 }
 
@@ -316,3 +332,6 @@ fn a_pull_the_pinned_one_can_t_match_is_held_before_it_fetches() {
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }
+
+#[path = "pull_head_tests.rs"]
+mod head;
