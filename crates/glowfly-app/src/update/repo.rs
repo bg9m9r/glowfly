@@ -248,6 +248,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
         let ignore_whitespace = st.settings.diff_ignore_whitespace;
         let whole_file = st.settings.diff_mode == DiffMode::WholeFile;
         st.view.diff_opening = Some(target.clone());
+        super::wip_list::opened(st, &target);
         fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None, ignore_whitespace, whole_file });
     }
 }

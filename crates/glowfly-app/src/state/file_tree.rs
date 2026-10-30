@@ -111,22 +111,16 @@ pub fn file_order(paths: &[&str]) -> Vec<usize> {
     order
 }
 
-/// The next (`down`) or previous visible file after or before the file `from` (an index into
-/// `paths`), its place taken in the full tree order so a file hidden in a closed folder still
-/// steps on. `from: None` gives the first visible file; None at either end.
-pub fn step_visible(paths: &[&str], closed: impl Fn(&str) -> bool, from: Option<usize>, down: bool) -> Option<usize> {
-    let order = file_order(paths);
-    // Shown as the rows are: a fold that names no row (a stale key) hides nothing.
+/// Every file index of `paths` in tree order, each with whether it is shown with `closed`'s
+/// folds (a fold that names no row, a stale key, hides nothing).
+pub fn shown_order(paths: &[&str], closed: impl Fn(&str) -> bool) -> Vec<(usize, bool)> {
     let mut shown = vec![false; paths.len()];
     for r in tree_rows(paths, closed) {
         if let TreeRow::File { index, .. } = r {
             shown[index] = true;
         }
     }
-    let hidden = |i: usize| !shown[i];
-    let Some(from) = from else { return order.into_iter().find(|&i| !hidden(i)) };
-    let at = order.iter().position(|&i| i == from)?;
-    if down { order[at + 1..].iter().copied().find(|&i| !hidden(i)) } else { order[..at].iter().rev().copied().find(|&i| !hidden(i)) }
+    file_order(paths).into_iter().map(|i| (i, shown[i])).collect()
 }
 
 /// Whether `path` lies under the folder `folder`: "src/a" is under "src"; "src2/a", "src.txt"

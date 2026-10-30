@@ -3,9 +3,9 @@
 //! use: S/U stage or unstage the open working-tree file (its selected lines, when a selection is
 //! visible), R reverts the selected lines or the current hunk of a commit or comparison diff,
 //! Ctrl+Shift+S/U stage or unstage everything, Ctrl+Shift+M goes to the commit message, and
-//! Ctrl+/ opens or closes the shortcut sheet (the default keys). Up/Down in a focused Unstaged or
-//! Staged Files list step between its files, and after S or U staged or unstaged the whole open
-//! file the view moves on to its neighbour (`wip_list.rs`).
+//! Ctrl+/ opens or closes the shortcut sheet (the default keys). The keys of a focused Unstaged
+//! or Staged Files list go to `wip_keys.rs`; after the whole open file was staged or unstaged
+//! the view moves on to its neighbour (`wip_list.rs`).
 
 use crate::effect::Effect;
 use crate::keymap::KeyAction;
@@ -36,26 +36,13 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
             toggle_sheet(st);
             None
         }
-        KeyAction::StepFile { staged, down } => {
-            super::wip_list::step(st, staged, down, fx);
+        KeyAction::WipList { staged, key } => {
+            super::wip_keys::handle(st, staged, key, now, fx);
             None
         }
     };
-    // A whole file staged or unstaged by its key moves the view on once the operation worked.
-    let whole = match &msg {
-        Some(Msg::Stage(StageMsg::StageFile(p))) => Some(DiffTarget::Unstaged(p.clone())),
-        Some(Msg::Stage(StageMsg::UnstageFile(p))) => Some(DiffTarget::Staged(p.clone())),
-        _ => None,
-    };
     if let Some(m) = msg {
-        let before = fx.len();
         fx.extend(super::update_sealed(st, m, now));
-        // Not when nothing was sent (a refusal, or the merge tool asked first).
-        if let Some(t) = whole
-            && fx[before..].iter().any(|e| matches!(e, Effect::LocalOp { .. }))
-        {
-            super::wip_list::stage_sent(st, t);
-        }
     }
 }
 

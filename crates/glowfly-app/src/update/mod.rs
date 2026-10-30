@@ -175,6 +175,7 @@ mod updates;
 mod updates_download;
 mod updates_restart;
 mod watch;
+mod wip_keys;
 mod wip_list;
 pub(crate) mod work_files;
 mod work_files_delete;

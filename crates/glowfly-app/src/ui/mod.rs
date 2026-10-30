@@ -86,6 +86,7 @@ mod layout;
 mod lfs_badge;
 mod lfs_banner;
 mod line_counts;
+mod list_focus;
 mod list_row;
 mod live_updates;
 mod mainline_dialog;

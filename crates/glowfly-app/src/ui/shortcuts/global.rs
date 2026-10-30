@@ -7,6 +7,7 @@
 //! that would reach its shell. Then the keys of custom commands (`custom_keys.rs`), only while
 //! nothing covers the main window, then the menus' Alt+letter mnemonics (`ui/menu_bar/keys.rs`),
 //! which the view drawing the menus opens. Quit works anywhere but under a credential prompt.
+//! A focused Unstaged or Staged Files list takes its keys first (`ui/wip_keys.rs`).
 //! Presses no binding takes are left for the views; Esc goes on to the Esc chain in
 //! `ui/central.rs`. While a menu is open, its keys (those without Ctrl, Alt or Cmd) are set
 //! aside for it first (`ui/menu_keys`), so no binding or view behind it sees them.
@@ -37,6 +38,8 @@ pub(crate) fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>)
         return;
     }
     let live = Live::now(ctx, st);
+    // A focused Unstaged or Staged Files list takes its own keys before any binding.
+    crate::ui::wip_keys::input(ctx, live.prefs || live.askpass || live.palette || live.dialog || live.sheet, msgs);
     while let Some((id, chord, repeat)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
         // A held key would queue the same fetch or push again and again.
         if repeat && runs_command(id) {
@@ -216,7 +219,15 @@ fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         | I::RebaseAddBreak
         | I::RebaseRemoveStep
         | I::RebaseEditStep
-        | I::PrefsRevert => false,
+        | I::PrefsRevert
+        | I::WipStepFile
+        | I::WipExtendFiles
+        | I::WipEdgeFile
+        | I::WipPageFile
+        | I::WipToggleFiles
+        | I::WipOpenFile
+        | I::WipDiscardFile
+        | I::WipOtherList => false,
     }
 }
 
@@ -363,7 +374,15 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         | I::RebaseAddBreak
         | I::RebaseRemoveStep
         | I::RebaseEditStep
-        | I::PrefsRevert => return,
+        | I::PrefsRevert
+        | I::WipStepFile
+        | I::WipExtendFiles
+        | I::WipEdgeFile
+        | I::WipPageFile
+        | I::WipToggleFiles
+        | I::WipOpenFile
+        | I::WipDiscardFile
+        | I::WipOtherList => return,
     };
     msgs.push(msg);
 }

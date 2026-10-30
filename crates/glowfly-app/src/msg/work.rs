@@ -15,6 +15,11 @@ pub enum StageMsg {
     UnstageFile(String),
     StageAll,
     UnstageAll,
+    /// Stage these files of Unstaged Files (the ones a Shift move selected) as a whole, in one
+    /// operation. Conflicted ones are left for the conflict view.
+    StagePaths(Vec<String>),
+    /// Unstage these staged files as a whole, in one operation.
+    UnstagePaths(Vec<String>),
     /// Stage everything under the folder `path` (no trailing '/'), from a folder row of
     /// Unstaged Files.
     StageFolder(String),
@@ -101,6 +106,8 @@ impl StageMsg {
             | Self::UnstageFile(..)
             | Self::StageAll
             | Self::UnstageAll
+            | Self::StagePaths(..)
+            | Self::UnstagePaths(..)
             | Self::StageFolder(..)
             | Self::UnstageFolder(..)
             | Self::DiscardFile(..)

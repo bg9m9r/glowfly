@@ -1,8 +1,27 @@
 //! The New file and Rename file dialogs' form: the typed path, the last error and whether a
 //! request is running; what status says about a path being deleted, the trash's name, the
-//! file manager's show-in-folder label, and the offer of the home Trash (`TrashOffer`).
+//! file manager's show-in-folder label, the offer of the home Trash (`TrashOffer`), and the
+//! message that asks to discard an Unstaged Files row (its menu item and Delete key send it).
 
+use crate::msg::{Msg, StageMsg, WorkFileMsg};
 use glowfly_core::i18n::Lang;
+use glowfly_core::repo::FileEntry;
+
+/// Discard changes for the unstaged file `f`: an untracked one asks with the trash's wording
+/// (`WorkFileMsg::DiscardUntracked`), a tracked one with the danger confirmation; either can be
+/// undone. Not for a conflicted file, which has no index version to go back to.
+pub fn discard_msg(t: Lang, f: &FileEntry) -> Msg {
+    if f.status == '?' {
+        Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone()))
+    } else {
+        Msg::confirm_danger(
+            t.tr("details.wip.discard.title"),
+            t.trf("details.wip.discard.body", &[("path", &f.path)]),
+            t.tr("details.wip.discard.button"),
+            Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
+        )
+    }
+}
 
 /// Why Open and Show in folder are off for a file the working tree doesn't have.
 pub const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";

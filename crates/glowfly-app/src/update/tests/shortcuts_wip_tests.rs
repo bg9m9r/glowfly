@@ -10,6 +10,8 @@ use crate::keymap::KeyAction;
 use crate::msg::{DiffMsg, Msg, RepoMsg, StageMsg, TabsMsg};
 use crate::state::AppState;
 use crate::state::lines::LineClick;
+use crate::state::list_keys::{ListKey, ListMove};
+use crate::state::wip_lists::MoveOn;
 use glowfly_core::repo::{self, DiffTarget, FileEntry, LoadOptions};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -47,7 +49,7 @@ fn key(st: &mut AppState, action: KeyAction) -> Vec<Effect> {
 }
 
 fn step(st: &mut AppState, staged: bool, down: bool) -> Vec<Effect> {
-    key(st, KeyAction::StepFile { staged, down })
+    key(st, KeyAction::WipList { staged, key: ListKey::Move(ListMove::Step { down }) })
 }
 
 /// The diffs `fx` asks for, with whether each is a reload.
@@ -155,7 +157,7 @@ fn s_acts_on_the_file_still_loading() {
     step(&mut st, false, true);
     let fx = key(&mut st, KeyAction::Stage);
     assert_eq!(local_op(&fx), Some(&LocalOp::StageFile("b.txt".into())), "{fx:?}");
-    assert_eq!(st.view.stage_move_on, Some(un("b.txt")));
+    assert_eq!(st.view.stage_move_on.as_ref().map(|m| &m.from), Some(&un("b.txt")));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -166,7 +168,7 @@ fn s_on_selected_lines_does_not_move_on() {
     assert!(update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 2, how: LineClick::Only }), Instant::now()).is_empty());
     let fx = key(&mut st, KeyAction::Stage);
     assert!(matches!(local_op(&fx), Some(LocalOp::Lines { .. })), "{fx:?}");
-    assert_eq!(st.view.stage_move_on, None);
+    assert!(st.view.stage_move_on.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -192,7 +194,7 @@ fn s_moves_on_to_the_next_unstaged_file_end_to_end() {
     assert!(st.session.diff.view.is_none(), "{:?}", st.session.diff.view.as_ref().map(|(t, _)| t));
     assert!(st.snap.as_ref().unwrap().unstaged.is_empty());
     assert_eq!(st.view.diff_opening, None);
-    assert_eq!(st.view.stage_move_on, None);
+    assert!(st.view.stage_move_on.is_none());
     all_ok(&st);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -224,11 +226,11 @@ fn u_moves_on_in_the_staged_list_end_to_end() {
 fn a_failed_stage_stays_on_the_file() {
     let (mut st, dir) = three_files("wip-keys-failed");
     show(&mut st, un("b.txt"));
-    st.view.stage_move_on = Some(un("b.txt"));
+    st.view.stage_move_on = Some(MoveOn { from: un("b.txt"), to: Some(un("c.txt")) });
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Err("no".into()))), Instant::now());
     assert!(loads(&fx).is_empty(), "{fx:?}");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
-    assert_eq!(st.view.stage_move_on, None);
+    assert!(st.view.stage_move_on.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -287,12 +289,12 @@ fn parking_a_tab_drops_a_pending_open_and_move_on() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     update(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("a.txt"))), Instant::now());
-    st.view.stage_move_on = Some(un("a.txt"));
+    st.view.stage_move_on = Some(MoveOn { from: un("a.txt"), to: None });
     assert!(st.view.diff_opening.is_some());
     drive(&mut st, Msg::Tabs(TabsMsg::NewTab));
     assert_eq!(st.view.diff_opening, None);
-    assert_eq!(st.view.stage_move_on, None);
+    assert!(st.view.stage_move_on.is_none());
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert_eq!(st.view.stage_move_on, None);
+    assert!(st.view.stage_move_on.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

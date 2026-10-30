@@ -251,6 +251,9 @@ pub(super) fn park(st: &mut AppState) -> Parked {
     st.view.diff_landing = None;
     st.view.diff_opening = None;
     st.view.stage_move_on = None;
+    // The WIP lists' selection and places name the parked tab's files.
+    st.view.wip_span = None;
+    st.view.wip_place = [None, None];
     st.view.diff_cursor = None;
     // Reads the forge data, so before it moves.
     super::stack_prs::parked(st);

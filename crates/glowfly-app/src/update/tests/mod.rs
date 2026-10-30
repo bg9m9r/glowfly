@@ -303,6 +303,7 @@ pub(super) mod watch_tests;
 pub(super) mod whitespace_ops_tests;
 pub(super) mod whitespace_tests;
 pub(super) mod whole_file_tests;
+pub(super) mod wip_keys_tests;
 pub(super) mod work_files_discard_tests;
 pub(super) mod work_files_failed_tests;
 pub(super) mod work_files_large_tests;

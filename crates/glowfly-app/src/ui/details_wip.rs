@@ -30,13 +30,13 @@ use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
-use crate::msg::WorkFileMsg;
 use crate::state::AppState;
 use crate::state::custom_commands::MenuCommands;
 use crate::state::file_folds::FileFolds;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::op_steps::op_kind;
 use crate::state::tool_compare::ToolAvail;
+use crate::state::wip_lists;
 use crate::tools::ToolsMsg;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText};
@@ -44,14 +44,18 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry, Snapshot, WipLineCounts};
 use glowfly_core::settings::FileListMode;
 use glowfly_core::undo::DISCARD_STASH_MESSAGE;
+use std::collections::HashSet;
 
 pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    super::wip_keys::requested(ui.ctx(), st);
     let Some(snap) = &st.snap else { return };
     // The file being opened is highlighted at once, so a click or a step answers immediately.
     let opening = st.view.diff_opening.as_ref().filter(|t| t.is_working_tree());
+    let spans = [false, true].map(|staged| wip_lists::span_set(st, staged));
     let open = OpenFile {
         diff: opening.or(st.session.diff.view.as_ref().map(|(t, _)| t)),
         conflict: st.session.conflict.view.as_ref().map(|c| c.path.as_str()),
+        spans: [spans[0].as_ref(), spans[1].as_ref()],
     };
 
     let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
@@ -126,6 +130,8 @@ pub(super) struct RowContext<'a> {
 pub(super) struct OpenFile<'a> {
     pub diff: Option<&'a DiffTarget>,
     pub conflict: Option<&'a str>,
+    /// The files a Shift move selected in Unstaged, then Staged Files, when several.
+    pub spans: [Option<&'a HashSet<String>>; 2],
 }
 
 /// The Discard all confirmation, naming Undo's current key.
@@ -170,17 +176,20 @@ pub(super) fn wip_file_row(
         (false, true) => t.tr("details.wip.mark_resolved.button"),
         (false, false) => t.tr("details.wip.stage.button"),
     };
-    let selected = match open.diff {
+    let current = match open.diff {
         _ if conflicted => open.conflict == Some(f.path.as_str()),
         Some(DiffTarget::Staged(p)) => staged && *p == f.path,
         Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
         _ => false,
     };
+    // One of the files a Shift move selected (never a conflicted one, which has its own list).
+    let picked = !conflicted && open.spans[usize::from(staged)].is_some_and(|s| s.contains(&f.path));
+    let selected = current || picked;
     // The row's action sits at its end: always on a conflicted row (Mark resolved), else while the
     // row is hovered or current, in place of its line counts. The S and U keys, the conflict
     // view's Save and mark resolved and the row's menu reach it too.
     let at = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), super::widgets::LIST_ROW_H));
-    let show_action = conflicted || selected || ui.rect_contains_pointer(at);
+    let show_action = conflicted || current || ui.rect_contains_pointer(at);
     // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
     let usable = !matches!(f.hazard, Some(glowfly_core::repo::Hazard::NotUtf8(_)));
     // In a narrow panel the action is a check mark named by it, and the conflict count waits
@@ -227,25 +236,14 @@ pub(super) fn wip_file_row(
         });
     }
     // Shift+F10 opens the selected file's menu while its list has the keyboard.
-    let keyboard = selected && super::wip_keys::focused_list(ui.ctx()) == Some(staged);
+    let keyboard = current && super::wip_keys::focused_list(ui.ctx()) == Some(staged);
     r.row_menu_for(keyboard, |ui| {
         if conflicted {
             menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
         }
         menu_item(msgs, ui, action, toggle());
         // Checking out the index version of a conflicted path means nothing. Both ask first.
-        let discard = (!staged && !conflicted).then(|| {
-            if f.status == '?' {
-                Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone()))
-            } else {
-                Msg::confirm_danger(
-                    t.tr("details.wip.discard.title"),
-                    t.trf("details.wip.discard.body", &[("path", &f.path)]),
-                    t.tr("details.wip.discard.button"),
-                    Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
-                )
-            }
-        });
+        let discard = (!staged && !conflicted).then(|| crate::state::files::discard_msg(t, f));
         file_menu::stash_file_item(ui, t, msgs, snap, f);
         file_menu::patch_file_item(ui, t, msgs, f, staged);
         if f.status != '?' {

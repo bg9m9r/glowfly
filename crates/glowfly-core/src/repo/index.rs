@@ -80,6 +80,27 @@ pub fn stage_file(workdir: &Path, path: &str) -> Result<()> {
     git(workdir, &["add", "--all", "--", path])
 }
 
+/// Stages each of `paths` as `stage_file` does, in as few `git add` runs as their length allows
+/// (a command line has a limit, lowest on Windows). Stops at the first run that fails.
+pub fn stage_paths(workdir: &Path, paths: &[String]) -> Result<()> {
+    /// The bytes of paths one run takes, well under Windows' 32 767-character command line.
+    const BATCH: usize = 16 * 1024;
+    let mut rest = paths;
+    while !rest.is_empty() {
+        let mut len = 0;
+        let n = rest.iter().take_while(|p| {
+            len += p.len() + 1;
+            len <= BATCH
+        });
+        let n = n.count().max(1);
+        let mut a = vec!["add", "--all", "--"];
+        a.extend(rest[..n].iter().map(String::as_str));
+        git(workdir, &a)?;
+        rest = &rest[n..];
+    }
+    Ok(())
+}
+
 /// Stages every change in the working tree, new files included (ignored ones are skipped).
 pub fn stage_all(workdir: &Path) -> Result<()> {
     git(workdir, &["add", "--all"])
