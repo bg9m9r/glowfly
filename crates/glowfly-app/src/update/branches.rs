@@ -2,7 +2,8 @@
 //! its tracking local branch, in `branch_checkout.rs`), rename (also
 //! on the remote, and deleting a remote branch, in `branch_sync.rs`), set
 //! and unset the upstream, fast-forward without checkout, push to the upstream or a chosen
-//! remote, and delete together with the remote branch (deleting the local branch alone is in
+//! remote (force push and push to all remotes in `branch_push.rs`), and delete together with
+//! the remote branch (deleting the local branch alone is in
 //! `branch_delete.rs`). Each re-checks the branch against the
 //! current snapshot (a menu or confirm can be stale), then runs `branch_ops` commands as the
 //! single active git job.
@@ -17,7 +18,7 @@ use glowfly_core::branch_ops::{self, check_branch_name, is_valid_branch_name};
 use glowfly_core::repo::BranchInfo;
 use glowfly_core::undo::UndoKind;
 
-pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: BranchMsg, now: std::time::Instant, fx: &mut Vec<Effect>) {
     match msg {
         BranchMsg::Checkout(name) => super::branch_checkout::checkout(st, &name, fx),
         BranchMsg::CheckoutRemote { remote, name } => super::branch_checkout::checkout_remote(st, &remote, &name, fx),
@@ -43,17 +44,7 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
             }
             start_job(st, JobSpec::new("Unset upstream".into(), vec![branch_ops::unset_upstream_cmd(&name)]), fx);
         }
-        BranchMsg::FastForwardBranch(name) => {
-            let Some(b) = find(st, &name) else { return };
-            let state = st.snap.as_ref().map(|s| s.state).unwrap_or(git2::RepositoryState::Clean);
-            if let Some(why) = branches::fast_forward_blocked(&b, state) {
-                st.log(false, why);
-                return;
-            }
-            if let Some(cmd) = branch_ops::fast_forward_cmd(&b) {
-                start_job(st, JobSpec::new("Fast-forward".into(), vec![cmd]), fx);
-            }
-        }
+        BranchMsg::FastForwardBranch(name) => fast_forward(st, &name, fx),
         BranchMsg::DeleteDialog(name) => super::branch_delete::open(st, &name, fx),
         BranchMsg::UnmergedCounted { name, tip, count } => super::branch_delete::counted(st, &name, tip, count),
         BranchMsg::Delete { name, tip, force } => super::branch_delete::delete(st, &name, tip, force, fx),
@@ -61,6 +52,22 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
         BranchMsg::DeleteRemote { remote, name, unset } => super::branch_sync::delete_remote(st, &remote, &name, &unset, fx),
         BranchMsg::DeleteBranchAndRemote(name) => delete_with_remote(st, &name, fx),
         BranchMsg::PushBranch { branch, remote } => push(st, &branch, remote.as_deref(), fx),
+        BranchMsg::ForcePush { branch, remote, dest, seen } => super::branch_push::force_push(st, &branch, (&remote, &dest), seen, fx),
+        BranchMsg::PushAll(branch) => super::branch_push::push_all(st, &branch, fx),
+        BranchMsg::PushedAll { branch, total, result } => super::branch_push::pushed_all(st, &branch, total, result, now, fx),
+    }
+}
+
+/// Fast-forwards the local branch `name` to its upstream, unless that is refused.
+pub(super) fn fast_forward(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
+    let Some(b) = find(st, name) else { return };
+    let state = st.snap.as_ref().map(|s| s.state).unwrap_or(git2::RepositoryState::Clean);
+    if let Some(why) = branches::fast_forward_blocked(&b, state) {
+        st.log(false, why);
+        return;
+    }
+    if let Some(cmd) = branch_ops::fast_forward_cmd(&b) {
+        start_job(st, JobSpec::new("Fast-forward".into(), vec![cmd]), fx);
     }
 }
 

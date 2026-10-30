@@ -61,7 +61,7 @@ macro_rules! msg_areas {
             /// Creating, renaming, deleting and discarding working-tree files (update/work_files.rs).
             WorkFile(crate::msg::WorkFileMsg) "work-file" => work_files::handle(now, fx);
             /// Branch menus and dialogs (update/branches.rs).
-            Branch(crate::msg::BranchMsg) "branch" => branches::handle(fx);
+            Branch(crate::msg::BranchMsg) "branch" => branches::handle(now, fx);
             /// The Clone dialog (update/clone.rs).
             Clone(crate::msg::CloneMsg) "clone" => clone::handle(now, fx);
             /// The Init dialog (update/init.rs).

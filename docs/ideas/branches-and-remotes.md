@@ -15,6 +15,12 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Show the remote branch's name (not a commit) in the interactive rebase dialog started from a
   remote row
 - Compare with the current branch from the local branch and tag menus too
+- Push to all remotes: a log line per remote saying what it took (new, updated, up to date)
+- Refuse force pushing a branch the code host protects, from its branch protection rules, as the
+  default branch and Git Flow bases are refused today
+- Force push with lease of a branch whose `branch.<name>.pushRemote` or `remote.pushDefault`
+  (`PushRemotes`) names another remote than its upstream's: offer it toward that push remote too,
+  leasing its tracking branch there, instead of only toward the upstream
 
 ### Check out a remote branch with its tracking branch fast-forwarded
 

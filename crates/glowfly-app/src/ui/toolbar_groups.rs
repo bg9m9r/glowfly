@@ -58,13 +58,9 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
     }
     separator(ui);
     let force = ItemState::danger_unless(busy.as_deref());
+    // Its confirmation warns plainly before overwriting the default branch or a Git Flow base.
     if reason::menu_button(ui, t.tr("toolbar.force_push"), "", force).clicked() {
-        msgs.push(Msg::confirm_danger(
-            t.tr("toolbar.force_push.title"),
-            t.tr("toolbar.force_push.body").into(),
-            t.tr("toolbar.force_push.button"),
-            Msg::Job(JobMsg::Push { force: true }),
-        ));
+        msgs.push(crate::state::branches::push::head_force_confirm(t, snap));
     }
 }
 

@@ -76,6 +76,7 @@ pub mod preview;
 pub mod preview_image;
 pub(crate) mod process_tree;
 pub mod profile_includes;
+pub mod push_all;
 mod quoted;
 pub mod range_diff;
 pub mod rebase;

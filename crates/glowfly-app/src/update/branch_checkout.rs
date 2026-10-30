@@ -55,8 +55,9 @@ pub(super) fn checkout_remote(st: &mut AppState, remote: &str, name: &str, fx: &
 }
 
 /// Checks out `local`, which tracks `remote`/`name`, fast-forwarding it to that branch first
-/// when it is only behind. The checked-out one is fast-forwarded in place (`FastForwardBranch`);
-/// one another worktree has is refused before anything moves.
+/// when it is only behind. The checked-out one is fast-forwarded in place (as
+/// `FastForwardBranch` does, update/branches.rs); one another worktree has is refused before
+/// anything moves.
 pub(super) fn checkout_tracking(st: &mut AppState, remote: &str, name: &str, local: &str, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     let upstream = format!("{remote}/{name}");
@@ -72,7 +73,7 @@ pub(super) fn checkout_tracking(st: &mut AppState, remote: &str, name: &str, loc
     let plan = remote_branch::tracking_checkout(&b, tip);
     if b.is_head {
         match plan {
-            TrackingCheckout::FastForward { .. } => super::branches::handle(st, BranchMsg::FastForwardBranch(b.name), fx),
+            TrackingCheckout::FastForward { .. } => super::branches::fast_forward(st, &b.name, fx),
             _ => st.log(false, t.trf("remote_branch.checkout.already", &[("branch", &local)])),
         }
         return;

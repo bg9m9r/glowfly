@@ -54,6 +54,7 @@ fn fixed(t: Lang, label: &str) -> Option<&'static str> {
         "Publish to GitHub" => t.tr("job.label.publish_github"),
         "Pull" => t.tr("job.label.pull"),
         "Push" => t.tr("job.label.push"),
+        "Push to all remotes" => t.tr("job.label.push_all"),
         "Put back stashed changes" => t.tr("job.label.put_back"),
         "Rebase" => t.tr("job.label.rebase"),
         "Remove worktree" => t.tr("job.label.remove_worktree"),

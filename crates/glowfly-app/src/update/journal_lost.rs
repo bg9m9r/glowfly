@@ -38,7 +38,7 @@ pub(super) fn handle(st: &mut AppState, msg: LostMsg, now: Instant, fx: &mut Vec
         LostMsg::Restore(oid) => restore(st, oid, now),
         LostMsg::CreateBranch(oid) => {
             let Some(c) = commit(st, oid).filter(|c| c.kind == LostKind::Commit) else { return };
-            super::branches::handle(st, rules::create_branch(&c), fx);
+            super::branches::handle(st, rules::create_branch(&c), now, fx);
         }
         LostMsg::Apply(oid) => {
             let (Some(c), Some(snap)) = (stash(st, oid), st.snap.as_ref()) else { return };
