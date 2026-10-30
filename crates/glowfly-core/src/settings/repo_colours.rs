@@ -11,8 +11,8 @@ use std::path::Path;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum RepoColour {
     Rose,
-    Ochre,
     Fern,
+    Mint,
     Teal,
     Sky,
     Slate,
@@ -22,19 +22,20 @@ pub enum RepoColour {
 
 impl RepoColour {
     /// Every hue, in slot order.
-    pub const ALL: [RepoColour; 8] = [Self::Rose, Self::Ochre, Self::Fern, Self::Teal, Self::Sky, Self::Slate, Self::Iris, Self::Plum];
+    pub const ALL: [RepoColour; 8] = [Self::Rose, Self::Fern, Self::Mint, Self::Teal, Self::Sky, Self::Slate, Self::Iris, Self::Plum];
 
     /// The hue's slot in the palette's repository hues.
     pub fn index(self) -> usize {
         self as usize
     }
 
-    /// The name saved in settings.json. These are stored in users' files: never rename them.
+    /// The name saved in settings.json. These are stored in users' files: never rename them (a
+    /// retired hue's name loads as its replacement, see [`RepoColour::from_id`]).
     pub fn id(self) -> &'static str {
         match self {
             Self::Rose => "rose",
-            Self::Ochre => "ochre",
             Self::Fern => "fern",
+            Self::Mint => "mint",
             Self::Teal => "teal",
             Self::Sky => "sky",
             Self::Slate => "slate",
@@ -43,9 +44,13 @@ impl RepoColour {
         }
     }
 
-    /// The hue saved as `id`, or None for a name this version doesn't know.
+    /// The hue saved as `id`, or None for a name this version doesn't know. `ochre`, the hue
+    /// Mint replaced (it read khaki), loads as Mint.
     pub fn from_id(id: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|c| c.id() == id)
+        match id {
+            "ochre" => Some(Self::Mint),
+            _ => Self::ALL.into_iter().find(|c| c.id() == id),
+        }
     }
 }
 
@@ -115,6 +120,21 @@ mod tests {
     }
 
     #[test]
+    fn an_old_ochre_loads_as_mint() {
+        let dir = crate::paths::temp_dir().join(format!("glowfly-settings-colour-ochre-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("settings.json");
+        std::fs::write(&file, r#"{"auto_fetch_minutes":5,"repo_colours":{"/w/repo":"ochre"}}"#).unwrap();
+        let (mut s, problem) = Settings::load_from(&file);
+        assert!(problem.is_none(), "{problem:?}");
+        assert_eq!(s.repo_colour_for(Path::new("/w/repo")), Some(RepoColour::Mint));
+        assert!(s.set_repo_colour(Path::new("/w/repo"), Some(RepoColour::Mint)), "choosing Mint saves its own name");
+        assert_eq!(s.repo_colours.values().next().map(String::as_str), Some("mint"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn setting_reports_changes_and_keeps_one_entry_per_spelling() {
         let mut s = Settings::default();
         let repo = PathBuf::from("/w/repo");
@@ -131,7 +151,7 @@ mod tests {
     #[test]
     fn the_ids_never_change() {
         let ids: Vec<_> = RepoColour::ALL.iter().map(|c| c.id()).collect();
-        assert_eq!(ids, ["rose", "ochre", "fern", "teal", "sky", "slate", "iris", "plum"]);
+        assert_eq!(ids, ["rose", "fern", "mint", "teal", "sky", "slate", "iris", "plum"]);
         for (i, c) in RepoColour::ALL.into_iter().enumerate() {
             assert_eq!(RepoColour::from_id(c.id()), Some(c));
             assert_eq!(c.index(), i);

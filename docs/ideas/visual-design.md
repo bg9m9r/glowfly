@@ -156,3 +156,16 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
   (they should go through `color::wash`)
 - Pine's gold-lane row bands now step toward teal (the field's own hue); judge whether a plain
   neutral lift reads better there
+- The light themes' amber text (#985700 on Dawn) is the most orange a 4.5:1 amber can be, still a
+  burnt orange; split it like the branch amber's line and text tones: a clear amber (OKLCH about
+  0.62) for status letters, dots and icons that need only 3:1, and the dark one (or neutral ink)
+  for amber words
+- High contrast light's amber text (`warn`, `modified`, `syn_type`, terminal yellows) is exempt
+  from the text zone, as any amber at 7:1 is chocolate; consider dropping amber there for
+  `modified` (a neutral letter with a mark)
+- Sand's and Linen's warm neutral inks (text, weak, Sand's `syn_comment` and terminal greys) are
+  left out of the text check; judge them in the editor and terminal sheets
+- Mint (hue 176.5) sits 6.6 deg from Mist's sea-glass accent; they part by lightness and chroma,
+  but judge the tab swatch beside Mist's accent
+- The branch hue Olive (#9ea827) is vivid and passes the zone, but its name sits oddly with the
+  no-olive rule; consider renaming it (Lime is taken; Chartreuse?)

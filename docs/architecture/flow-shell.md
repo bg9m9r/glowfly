@@ -22,6 +22,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`.
 - A click sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only while the toast's repository is the active tab.
 - A failed job's toast says git's cause in plain words and can carry a fix (`update/job_errors.rs`, from `git_errors::classify`), with Details beside it in `Toast::details` (`Msg::ToastDetails`, which works from any tab), and a second fix between them in `Toast::alt` (`Msg::ToastAlt`): Delete lock file comes first with Try again beside it (`update/lock_file.rs`, `update/job_retry.rs`).
+- Every cause's sentence comes from `state/error_words.rs` (`cause`, `explained`), which the auto-stash put-back, clone, submodule, Git Flow and worktree headlines and the Fetch/Pull repositories rows share; a toast that stopped on conflicts takes its count from the status read after the job (`update/conflict_count.rs`). The fallback "<label> failed: …" names the job in the UI language (`state/job_spec/labels.rs`).
 - Failures reaching or reading a remote get their sentences from `state/error_words.rs`, which the Fetch/Pull repositories rows share; a missing or unreadable remote's toast offers Edit remote…. Hosting-service failures (fork, pull request, issue, comment, dashboard, status bar) go through its `hosting`, from `error::advice`.
 - `toast_replacing` updates a toast still on screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
 - Every toast has an x (`NotifyMsg::CloseToast`) that removes it without running its action.
@@ -164,6 +165,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Nothing opens the panel by itself: a failure logged with `log` / `log_in` is announced at the end of `update` as a failure toast with Details (`logs_tabs::announce`), or gives Details to a failure toast pushed in that update.
 - Details selects the line's tab and shows its activity log, opening the failed run's row.
 - An entry is a note or a run: a job that ends in `ops::finish_job` is logged by `update/logs_runs.rs` (`job_ended`) with a `RunInfo`, persisted as the line's optional `run` object.
+- A run's text has git's line-ending warnings folded into one line that says how many (`glowfly_core::crlf_warnings`).
 - A `RunInfo` holds the job's label, a one-line summary from `logs::last_message` or git's explained cause, and its duration from `LogsState::job_started`, which `logs_runs::stamp` sets at the end of `update`.
 - A loud failure's row starts open (`LogsState::open`), and its fix is kept once in `LogsState::fixes`: the failure toast's button is a `LogsMsg::Fix(id)` proxy, so the panel and the toast run it once.
 - `state::activity_rows::rows` groups the view's rows (session headers, runs and notes, consecutive successful auto-fetches as one routine row); `cap_routine` keeps such a streak to `ROUTINE_KEEP` entries, the first counting the rest.

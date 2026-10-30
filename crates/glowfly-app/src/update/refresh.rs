@@ -33,8 +33,10 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 super::selection::refreshed(st, &snap, fx);
                 st.snap = Some(snap);
             }
-            remember_index(st, result.is_ok(), index);
+            let read = result.is_ok();
+            remember_index(st, read, index);
             apply_status(st, result, submodules, open_stamp, now, fx);
+            super::conflict_count::status_read(st, read);
             super::lfs::patterns_read(st, lfs_patterns, fx);
             super::pick::state_changed(st, state_before);
             super::auto_stash::seen(st, true, now, fx);
@@ -58,6 +60,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             // Applied even when the status itself is out of date and deferred.
             super::lfs::patterns_read(st, lfs_patterns, fx);
             let state_before = st.snap.as_ref().map(|s| s.state);
+            let read = result.is_ok();
             if let Some(queued) = st.refresh.status_queued.take() {
                 // Already out of date: show it, but leave the diff to the next read.
                 match super::refresh_paths::show_deferred(st, result, submodules, queued) {
@@ -75,6 +78,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                     Err(e) => apply_status(st, Err(e), submodules, open_stamp, now, fx),
                 }
             }
+            super::conflict_count::status_read(st, read);
             super::pick::state_changed(st, state_before);
             super::auto_stash::seen(st, false, now, fx);
             super::status_tip::check(st, slow.as_ref(), now, fx);

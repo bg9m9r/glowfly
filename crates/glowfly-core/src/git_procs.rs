@@ -55,6 +55,16 @@ pub fn scan() -> GitProcesses {
     }
 }
 
+/// Whether a process with `pid` runs now; None when that can't be told (no process list, or
+/// the Flatpak sandbox, which sees only its own processes). Reads the whole list: worker
+/// threads only.
+pub fn running(pid: u32) -> Option<bool> {
+    if crate::flatpak::in_flatpak() {
+        return None;
+    }
+    os::list().ok().map(|list| list.iter().any(|(p, _)| *p == pid))
+}
+
 /// One process of a list: its pid and its executable's name, None when that couldn't be read.
 pub(crate) type Proc = (u32, Option<String>);
 

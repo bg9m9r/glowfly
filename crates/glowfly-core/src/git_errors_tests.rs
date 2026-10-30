@@ -50,13 +50,16 @@ fn untracked_beats_merge_refused() {
 fn conflicts_unresolved_and_merge_in_progress() {
     let content =
         "Auto-merging f\nCONFLICT (content): Merge conflict in f\nAutomatic merge failed; fix conflicts and then commit the result.";
-    assert_eq!(classify(content), Some(Cause::Conflicts { files: vec![s("f")] }));
+    assert_eq!(classify(content), Some(Cause::Conflicts { files: vec![s("f")], unsure: vec![] }));
     let mixed = "CONFLICT (content): Merge conflict in f\nCONFLICT (modify/delete): gone.txt deleted in side and modified in HEAD.  Version HEAD of gone.txt left in tree.\nCONFLICT (content): Merge conflict in f\nAutomatic merge failed; fix conflicts and then commit the result.";
-    assert_eq!(classify(mixed), Some(Cause::Conflicts { files: vec![s("f"), s("gone.txt")] }), "deduplicated, in order");
+    assert_eq!(classify(mixed), Some(Cause::Conflicts { files: vec![s("f"), s("gone.txt")], unsure: vec![] }), "deduplicated, in order");
     let rebase = "Auto-merging f\nCONFLICT (content): Merge conflict in f\nerror: could not apply 1a2b3c4... edit f\nhint: Resolve all conflicts manually";
-    assert_eq!(classify(rebase), Some(Cause::Conflicts { files: vec![s("f")] }));
-    assert_eq!(classify("error: could not apply 1a2b3c4... edit f"), Some(Cause::Conflicts { files: vec![] }));
-    assert_eq!(classify("Rebasing (1/1)error: could not apply 1a2b3c4... edit f"), Some(Cause::Conflicts { files: vec![] }));
+    assert_eq!(classify(rebase), Some(Cause::Conflicts { files: vec![s("f")], unsure: vec![] }));
+    assert_eq!(classify("error: could not apply 1a2b3c4... edit f"), Some(Cause::Conflicts { files: vec![], unsure: vec![] }));
+    assert_eq!(
+        classify("Rebasing (1/1)error: could not apply 1a2b3c4... edit f"),
+        Some(Cause::Conflicts { files: vec![], unsure: vec![] })
+    );
     for text in [
         "error: Pulling is not possible because you have unmerged files.\nhint: Fix them up in the work tree.\nfatal: Exiting because of an unresolved conflict.",
         "error: Merging is not possible because you have unmerged files.",

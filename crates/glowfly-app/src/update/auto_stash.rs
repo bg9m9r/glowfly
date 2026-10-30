@@ -375,7 +375,7 @@ pub(super) fn told(
             st.log(false, text);
         }
         PutBack::Failed | PutBack::NotReady => {
-            let text = failed(t, name, super::ops::last_line(output));
+            let text = failed(t, name, &super::job_errors::reason(t, output));
             st.toast_action(false, text.clone(), show_action(t, oid, workdir), now);
             st.log(false, text);
         }

@@ -203,6 +203,9 @@ pub enum WatchMsg {
     /// `workdir` is on a network or virtual file system of this `kind` ("SMB", "WSL"…), which
     /// may not report changes made elsewhere.
     RemoteVolume { workdir: PathBuf, kind: &'static str },
+    /// What the watcher of `workdir` found by touching a probe file in its git dir after it
+    /// started (`watcher/probe.rs`); a later event after `Silent` sends `Live`.
+    Probed { workdir: PathBuf, probe: crate::state::watch::Probe },
 }
 
 impl WatchMsg {
@@ -214,7 +217,8 @@ impl WatchMsg {
             | Self::IndexChanged { .. }
             | Self::ConfigChanged
             | Self::WatchFailed { .. }
-            | Self::RemoteVolume { .. } => None,
+            | Self::RemoteVolume { .. }
+            | Self::Probed { .. } => None,
         }
     }
 }

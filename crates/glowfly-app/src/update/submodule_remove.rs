@@ -74,7 +74,10 @@ pub(super) fn removed(st: &mut AppState, request: RemoveRequest, report: RemoveR
     let (ok, headline, extra) = match &outcome {
         RemoveOutcome::Removed => (true, Some(removed_headline(path)), None),
         RemoveOutcome::DeinitFailed => (false, None, None),
-        RemoveOutcome::RmFailed => (false, Some(rm_failed_headline(path, ops::last_line(&output))), None),
+        RemoveOutcome::RmFailed => {
+            let why = super::job_errors::reason(st.settings.lang(), &output);
+            (false, Some(rm_failed_headline(path, why.trim_end_matches('.'))), None)
+        }
         RemoveOutcome::ModuleLeft { dir, error } => (true, Some(git_part_headline(path)), Some(module_left_text(path, dir, error))),
     };
     ops::finish_job(st, ok, output, headline, None, now, fx);

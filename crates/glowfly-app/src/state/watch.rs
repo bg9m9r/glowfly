@@ -1,5 +1,6 @@
-//! The file watcher as `update` sees it: which repository the runner watches, and the grace
-//! period after Glowfly's own changes.
+//! The file watcher as `update` sees it: which repository the runner watches, the grace
+//! period after Glowfly's own changes, and whether its probe showed that events arrive (the
+//! status bar's live-updates dot, `LiveUpdates`).
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -22,6 +23,40 @@ pub struct WatchState {
     pub remote: HashMap<PathBuf, &'static str>,
     /// When the status was last re-read on the timer (see `poll_every`).
     pub last_poll: Option<Instant>,
+    /// What each repository's current watcher probe found (cleared when its watcher restarts
+    /// or fails).
+    pub probes: HashMap<PathBuf, Probe>,
+    /// Repositories whose current watcher failed (cleared when it restarts), unlike `failed`,
+    /// which remembers for the session that it was said.
+    pub down: HashSet<PathBuf>,
+    /// Repositories whose silent watcher was already reported this session.
+    pub silent_warned: HashSet<PathBuf>,
+}
+
+/// What the watcher's probe (`glowfly_core::watch_probe`) found: its file's event arrived, it
+/// didn't within `PROBE_TIMEOUT`, or no probe could be placed (a read-only git dir).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Probe {
+    Live,
+    Silent,
+    Unknown,
+}
+
+/// How long the watcher waits for its probe's event before it calls the watcher silent.
+pub const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// What the status bar's live-updates dot says about the watched repository.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum LiveUpdates {
+    /// The watcher started; its probe hasn't answered yet.
+    Checking,
+    Live,
+    /// Events don't arrive: the status is re-read on the timer instead.
+    Silent,
+    /// A read-only repository: no probe, so nobody knows.
+    Unknown,
+    /// The watcher couldn't start or stopped.
+    Failed,
 }
 
 /// How often a repository on a network or virtual file system is re-read.
@@ -49,10 +84,24 @@ pub fn sweep_poll(windows: bool, remote: bool, failed: bool) -> bool {
 }
 
 impl WatchState {
-    /// `poll_every` for the watched repository on this system.
+    /// `poll_every` for the watched repository on this system; a watcher whose probe went
+    /// unanswered is polled like one on a network file system.
     pub fn poll_interval(&self) -> Option<Duration> {
         let target = self.target.as_ref()?;
-        poll_every(true, cfg!(windows), self.remote.contains_key(target))
+        let silent = self.probes.get(target) == Some(&Probe::Silent);
+        poll_every(true, cfg!(windows), self.remote.contains_key(target) || silent)
+    }
+
+    /// The live-updates dot for the watched repository; None while nothing is watched.
+    pub fn live_updates(&self) -> Option<LiveUpdates> {
+        let target = self.target.as_ref()?;
+        Some(match self.probes.get(target) {
+            Some(Probe::Live) => LiveUpdates::Live,
+            Some(Probe::Silent) => LiveUpdates::Silent,
+            Some(Probe::Unknown) => LiveUpdates::Unknown,
+            None if self.down.contains(target) => LiveUpdates::Failed,
+            None => LiveUpdates::Checking,
+        })
     }
 
     /// `sweep_poll` for the watched repository on this system.
@@ -72,6 +121,23 @@ mod tests {
         assert_eq!(poll_every(true, false, true), Some(REMOTE_POLL));
         assert_eq!(poll_every(true, true, true), Some(REMOTE_POLL));
         assert_eq!(poll_every(false, true, true), None, "watching is off: focus and F5 only");
+    }
+
+    #[test]
+    fn a_silent_probe_polls_and_the_dot_follows_the_probe() {
+        let repo = PathBuf::from("/r");
+        let mut w = WatchState { target: Some(repo.clone()), ..WatchState::default() };
+        assert_eq!(w.live_updates(), Some(LiveUpdates::Checking));
+        w.probes.insert(repo.clone(), Probe::Silent);
+        assert_eq!(w.live_updates(), Some(LiveUpdates::Silent));
+        assert_eq!(w.poll_interval(), Some(REMOTE_POLL));
+        w.probes.insert(repo.clone(), Probe::Live);
+        assert_eq!(w.poll_interval(), poll_every(true, cfg!(windows), false));
+        w.probes.clear();
+        w.down.insert(repo);
+        assert_eq!(w.live_updates(), Some(LiveUpdates::Failed));
+        w.target = None;
+        assert_eq!(w.live_updates(), None, "nothing watched: no dot");
     }
 
     #[test]

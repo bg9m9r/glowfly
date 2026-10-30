@@ -14,6 +14,7 @@ use crate::state::worktree_manage::{
 use crate::state::worktrees::find;
 use crate::state::{AppState, Modal};
 use crate::worktree::{RemoteOutcome, RemoveRequest, Removed};
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Tracking, WorktreeInfo};
 use glowfly_core::worktree_ops::{Refusal, RemoveOutcome, lock_cmd, prune_cmd, unlock_cmd};
 use std::path::PathBuf;
@@ -119,12 +120,19 @@ pub(super) fn remove(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// What a remote branch delete that didn't happen leaves to say, after the branch was deleted.
-fn remote_text(name: &str, branch: &str, remote: Option<&str>, outcome: Option<&RemoteOutcome>) -> Option<String> {
+fn remote_text(t: Lang, name: &str, branch: &str, remote: Option<&str>, outcome: Option<&RemoteOutcome>) -> Option<String> {
     match (remote, outcome) {
-        (Some(r), Some(RemoteOutcome::Failed(e))) => Some(remote_failed_text(name, branch, r, e)),
+        (Some(r), Some(RemoteOutcome::Failed(e))) => Some(remote_failed_text(name, branch, r, &why(t, e))),
         (Some(r), Some(RemoteOutcome::Kept)) => Some(remote_kept_text(name, branch, r)),
         _ => None,
     }
+}
+
+/// Why git failed, from what it printed (`text`): the cause in plain words
+/// (state/error_words.rs), else git's first line.
+fn why(t: Lang, text: &str) -> String {
+    let first = || text.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or(text).to_owned();
+    crate::state::error_words::explained(t, text).unwrap_or_else(first)
 }
 
 /// The remove finished: one toast and log entry for the outcome (plus a second entry for a
@@ -136,15 +144,16 @@ pub(super) fn removed(st: &mut AppState, r: Removed, now: Instant, fx: &mut Vec<
         (Some(a), Some(b)) => glowfly_core::paths::same_spelling(a, &b),
         _ => false,
     };
+    let t = st.settings.lang();
     let name = r.request.name.as_str();
     let branch = r.request.delete_branch.as_deref().unwrap_or_default();
     let remote = r.request.delete_remote.as_ref().map(Tracking::display);
     let branch_err = |e: &str| match &remote {
-        Some(rn) => format!("{} {rn} was kept.", branch_failed_text(name, branch, e)),
-        None => branch_failed_text(name, branch, e),
+        Some(rn) => format!("{} {rn} was kept.", branch_failed_text(name, branch, &why(t, e))),
+        None => branch_failed_text(name, branch, &why(t, e)),
     };
     // After the branch was deleted: the remote branch's failure, if any.
-    let remote_err = remote_text(name, branch, remote.as_deref(), r.remote.as_ref());
+    let remote_err = remote_text(t, name, branch, remote.as_deref(), r.remote.as_ref());
     let deleted_remote = remote.as_deref().filter(|_| r.remote == Some(RemoteOutcome::Deleted));
     let (ok, headline, extra) = match (&r.outcome, &r.branch) {
         (RemoveOutcome::Removed, None) => (true, Some(removed_headline(name, None, None)), None),

@@ -12,6 +12,8 @@ source file, update its line here.
 - `safe_directory.rs`: repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling.
 - `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`), and a folder's name and parent for list rows.
 - `volume.rs`: whether a folder is on a network or virtual file system.
+- `conflict_lines.rs`: the paths git's CONFLICT lines name (rename, delete and directory conflicts included), each once, for `git_errors`; a path that reads more than one way is counted but not named until `ordered` matches it to the status's unmerged paths (pure).
+- `crlf_warnings.rs`: git's "LF will be replaced by CRLF" and "CRLF will be replaced by LF" warnings folded into one line for job logs (pure).
 - `git_errors.rs`: why a failed git command failed, from its untranslated output (cause plus listed files and names, and the lock file's whole path), for the failure toast; `-c apply.whitespace=nowarn` on merge, pull and stash so git's internal patch warnings stay out of job logs (pure).
 - `remote_failure.rs`: why git couldn't reach or read a remote (unreachable host, missing repository, no access, a server certificate it couldn't verify).
 - `error.rs`: typed errors; `error/advice.rs` rewrites a hosting service's refusal as one translated sentence that says what to do.
@@ -43,7 +45,7 @@ source file, update its line here.
 ## One window, links and the URL scheme
 
 - `instance/`: one window for links and folders: the lock that picks it (`claim.rs`: one holder, a later window waits and takes over), its loopback listener and private instance file (address, token, process id in the runtime folder), and a second process handing its `glowfly://` link or folder over (letting the window take the foreground on Windows); the protocol's tests and the claim's (`tests.rs`, `tests_claim.rs`).
-- `git_procs.rs`: whether any git process runs, for Delete lock file: None, the programs found, or Unknown and why (an unreadable list or name, `/proc` with `hidepid`, Flatpak, an open WSL session); the credential-cache and fsmonitor daemons are left out when their command line says so; tests in `git_procs_tests.rs`.
+- `git_procs.rs`: whether any git process runs, for Delete lock file: None, the programs found, or Unknown and why (an unreadable list or name, `/proc` with `hidepid`, Flatpak, an open WSL session); the credential-cache and fsmonitor daemons are left out when their command line says so; and whether one pid runs (`running`, for the watcher's stale probes); tests in `git_procs_tests.rs`.
 - `git_procs/os.rs`: its process lists and git processes' command lines (ToolHelp and `NtQueryInformationProcess`, `/proc`, libproc and `KERN_PROCARGS2`).
 - `lock_file.rs`: Delete lock file's checks and delete: only the path git named, a plain file inside the git dir or common dir, never through a link, and only while no git runs; tests in `lock_file_tests.rs`.
 - `link.rs`: `glowfly://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit.
@@ -74,7 +76,7 @@ source file, update its line here.
 - `graph_columns.rs`: which graph columns show (mapping an old file's separate author and SHA toggles onto the COMMIT column) and their widths.
 - Per-repository graph filters.
 - `branch_colours.rs`: the branch colour preset and per-repository pinned branch colours.
-- `repo_colours.rs`: repository colours per working folder, saved as stable names.
+- `repo_colours.rs`: repository colours per working folder, saved as stable names (a retired name loads as its replacement).
 - `forge_filters.rs`: per-repository PR and issue filters.
 - Repository trust decisions.
 - Named profiles with their identity (seeding, syncing with git, name checks).

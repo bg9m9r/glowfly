@@ -73,7 +73,7 @@ fn local_untracked_conflicts_and_refs() {
 
     // (d) Both edited a.txt.
     let out = fails(&dir, &["merge", "side"]);
-    assert_eq!(classify(&out), Some(Cause::Conflicts { files: files(&["a.txt"]) }), "{out}");
+    assert_eq!(classify(&out), Some(Cause::Conflicts { files: files(&["a.txt"]), unsure: vec![] }), "{out}");
     git(&dir, &["merge", "--abort"]);
 
     // (i) A ref that doesn't exist.
@@ -125,4 +125,39 @@ fn remote_rejections_and_upstreams() {
     let out = fails(&work, &["pull", "--ff"]);
     assert_eq!(classify(&out), Some(Cause::UpstreamGone { branch: "gone".into() }), "{out}");
     cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn rename_delete_and_directory_conflicts_count_each_unmerged_path() {
+    // side renames a.txt and r.txt and turns the file f into a directory; main deletes a.txt,
+    // renames r.txt another way and edits f.
+    let dir = scratch_repo("ge-renames");
+    write(&dir, "f", "k\n");
+    write(&dir, "r.txt", "x\ny\nz\n");
+    commit(&dir, "a.txt", "one\ntwo\nthree\nfour\n");
+    git(&dir, &["checkout", "-q", "-b", "side"]);
+    git(&dir, &["mv", "a.txt", "b.txt"]);
+    git(&dir, &["mv", "r.txt", "r1.txt"]);
+    git(&dir, &["rm", "-q", "f"]);
+    std::fs::create_dir(dir.join("f")).unwrap();
+    commit(&dir, "f/z", "z\n");
+    git(&dir, &["checkout", "-q", "main"]);
+    git(&dir, &["rm", "-q", "a.txt"]);
+    git(&dir, &["mv", "r.txt", "r2.txt"]);
+    commit(&dir, "f", "k\nmain\n");
+    let out = fails(&dir, &["merge", "side"]);
+    // Each conflicted path once, as the status lists it.
+    let index = git2::Repository::open(&dir).unwrap().index().unwrap();
+    let mut unmerged: Vec<String> = Vec::new();
+    for c in index.conflicts().unwrap().flatten() {
+        for e in [c.ancestor, c.our, c.their].into_iter().flatten() {
+            unmerged.push(String::from_utf8_lossy(&e.path).into_owned());
+        }
+    }
+    unmerged.sort();
+    unmerged.dedup();
+    let Some(Cause::Conflicts { mut files, unsure }) = classify(&out) else { panic!("{out}") };
+    files.sort();
+    assert_eq!((files, unsure), (unmerged, vec![]), "{out}");
+    cleanup(&[&dir]);
 }

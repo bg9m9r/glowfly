@@ -77,6 +77,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("wip_file_menu_danger_light", Window),
     ("repo_menu_dark", TopLeft(640.0, 620.0)),
     ("repo_menu_light", TopLeft(640.0, 620.0)),
+    ("live_updates_states", Window),
     // Narrow windows: the toolbar folded into More, the graph's columns given way.
     ("narrow_900_en", Window),
     ("narrow_900_de", Window),

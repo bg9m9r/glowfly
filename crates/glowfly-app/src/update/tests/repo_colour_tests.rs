@@ -85,8 +85,8 @@ fn a_listed_path_takes_its_open_tabs_colour() {
     assert_eq!(listed_colour(&st, &fake("shown")), Some(RepoColour::Sky), "the tab shows that folder");
     assert_eq!(listed_colour(&st, &fake("real")), Some(RepoColour::Sky));
     assert_eq!(listed_colour(&st, &fake("other")), None);
-    st.settings.set_repo_colour(&fake("shown"), Some(RepoColour::Ochre));
-    assert_eq!(listed_colour(&st, &fake("shown")), Some(RepoColour::Ochre), "its own colour comes first");
+    st.settings.set_repo_colour(&fake("shown"), Some(RepoColour::Mint));
+    assert_eq!(listed_colour(&st, &fake("shown")), Some(RepoColour::Mint), "its own colour comes first");
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn a_stale_entry_under_the_listed_spelling_goes_too() {
     let mut st = tabs(&["shown"], 0);
     st.tabs[0].real = Some(fake("real"));
     st.settings.set_repo_colour(&fake("real"), Some(RepoColour::Sky));
-    st.settings.set_repo_colour(&fake("shown"), Some(RepoColour::Ochre));
+    st.settings.set_repo_colour(&fake("shown"), Some(RepoColour::Mint));
     let fx = set(&mut st, fake("shown"), None);
     assert_eq!(saves(&fx), 1, "{fx:?}");
     assert!(st.settings.repo_colours.is_empty(), "{:?}", st.settings.repo_colours);

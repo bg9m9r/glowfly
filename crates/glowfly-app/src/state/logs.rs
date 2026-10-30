@@ -140,6 +140,8 @@ pub struct LogsState {
     /// The active job's spec with the tab it started in, for Try again if it fails
     /// (update/job_retry.rs); set by `start_job`, cleared by any other job.
     pub job_retry: Option<super::job_spec::Retry>,
+    /// The last conflicts toast, until the status read after its job counts the files.
+    pub recount: Option<super::conflict_files::Recount>,
 }
 
 impl LogsState {

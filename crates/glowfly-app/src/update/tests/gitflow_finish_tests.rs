@@ -212,12 +212,12 @@ fn stopped_headlines() {
     let conflict = "$ git checkout main --\nSwitched to branch 'main'\n$ git merge --no-ff --no-edit refs/heads/release/1.2.0\n\
                     CONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.";
     assert_eq!(
-        stopped("Finish release 1.2.0", &steps, conflict, false),
+        stopped(glowfly_core::i18n::Lang::En, "Finish release 1.2.0", &steps, conflict, false),
         "Finish release 1.2.0 stopped: \"merge release/1.2.0 into main\" has conflicts. Resolve them and commit the merge. \
          Still to do: tag main as v1.2.0, check out develop, merge release/1.2.0 into develop, delete release/1.2.0."
     );
     assert_eq!(
-        stopped("Finish release 1.2.0", &steps, conflict, true),
+        stopped(glowfly_core::i18n::Lang::En, "Finish release 1.2.0", &steps, conflict, true),
         "Finish release 1.2.0 stopped: \"merge release/1.2.0 into main\" has conflicts. Resolve them, commit the merge, then \
          use Continue finish. Still to do: tag main as v1.2.0, check out develop, merge release/1.2.0 into develop, delete \
          release/1.2.0."
@@ -227,12 +227,20 @@ fn stopped_headlines() {
     let not_merged = "$ git checkout develop --\n$ git merge --no-ff --no-edit refs/heads/feature/x\nMerge made.\n$ git branch -d feature/x\n\
                       error: the branch 'feature/x' is not fully merged\nhint: If you are sure you want to delete it, run 'git branch -D feature/x'";
     assert_eq!(
-        stopped("Finish feature x", &feature, not_merged, false),
+        stopped(glowfly_core::i18n::Lang::En, "Finish feature x", &feature, not_merged, false),
         "Finish feature x stopped at \"delete feature/x\": error: the branch 'feature/x' is not fully merged."
     );
 
+    let behind = "$ git checkout develop --\nerror: Your local changes to the following files would be overwritten by checkout:\n\
+                  \ta.txt\nPlease commit your changes or stash them before you switch branches.\nAborting";
     assert_eq!(
-        stopped("Finish feature x", &feature, "Could not start git.", false),
+        stopped(glowfly_core::i18n::Lang::En, "Finish feature x", &feature, behind, false),
+        "Finish feature x stopped at \"check out develop\": Your changes to 1 file would be overwritten. Still to do: merge \
+         feature/x into develop, delete feature/x."
+    );
+
+    assert_eq!(
+        stopped(glowfly_core::i18n::Lang::En, "Finish feature x", &feature, "Could not start git.", false),
         "Finish feature x stopped at \"check out develop\": Could not start git. Still to do: merge feature/x into develop, delete feature/x."
     );
 }
