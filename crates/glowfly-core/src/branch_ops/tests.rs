@@ -180,6 +180,53 @@ fn fast_forward_without_checkout() {
     cleanup(&[&work, &bare]);
 }
 
+/// The fast-forward a remote branch checkout runs first: a strict fast-forward, leased on the
+/// branch's tip as the snapshot saw it.
+#[test]
+fn fast_forward_ref_only_moves_forward() {
+    let (work, bare) = with_origin("bops-ff-ref");
+    git(&work, &["branch", "feature"]);
+    git(&work, &["push", "-q", "-u", "origin", "feature"]);
+    remote_commit(&bare, "feature", "f1.txt", "f1");
+    git(&work, &["fetch", "-q", "origin"]);
+    let (from, to) = (ref_oid(&work, "refs/heads/feature").unwrap(), ref_oid(&work, "refs/remotes/origin/feature").unwrap());
+    let cmds = fast_forward_ref_cmds("feature", from, to, "origin/feature");
+    assert_eq!(cmds[0], args(&["merge-base", "--is-ancestor", &from.to_string(), &to.to_string()]));
+    assert!(run_all(&work, &cmds));
+    assert_eq!(ref_oid(&work, "refs/heads/feature"), Some(to));
+
+    // Moved since (the lease no longer holds): nothing changes.
+    local_commit(&work, "feature", "local");
+    let moved = ref_oid(&work, "refs/heads/feature");
+    assert!(!run_all(&work, &fast_forward_ref_cmds("feature", to, to, "origin/feature")[1..]), "update-ref leased on the old tip");
+    assert_eq!(ref_oid(&work, "refs/heads/feature"), moved);
+    // Diverged: the ancestry check stops it before update-ref.
+    remote_commit(&bare, "feature", "f2.txt", "f2");
+    git(&work, &["fetch", "-q", "origin"]);
+    let remote = ref_oid(&work, "refs/remotes/origin/feature").unwrap();
+    assert!(!run_all(&work, &fast_forward_ref_cmds("feature", moved.unwrap(), remote, "origin/feature")));
+    assert_eq!(ref_oid(&work, "refs/heads/feature"), moved);
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn create_tracking_branch_under_another_name() {
+    let (work, bare) = with_origin("bops-track-as");
+    git(&work, &["push", "-q", "origin", "main:feature"]);
+    git(&work, &["fetch", "-q", "origin"]);
+    assert_eq!(
+        create_tracking_cmd("mine", "origin", "feature", false),
+        args(&["branch", "--track", "mine", "refs/remotes/origin/feature"])
+    );
+    assert!(run(&work, &create_tracking_cmd("mine", "origin", "feature", false)).0);
+    assert_eq!(info(&work, "mine").tracking, Some(Tracking { remote: "origin".into(), merge: "feature".into() }));
+    assert!(run(&work, &create_tracking_cmd("also", "origin", "feature", true)).0);
+    let s = load(&work, &LoadOptions::all(100)).unwrap();
+    assert_eq!(s.head_branch.as_deref(), Some("also"));
+    assert_eq!(info(&work, "also").upstream.as_deref(), Some("origin/feature"));
+    cleanup(&[&work, &bare]);
+}
+
 #[test]
 fn rename_moves_the_upstream_config() {
     let (work, bare) = with_origin("bops-rename");

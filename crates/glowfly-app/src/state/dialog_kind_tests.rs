@@ -64,7 +64,7 @@ fn publish(owners: &[&str], owner: &str) -> Modal {
 #[test]
 fn forms_info_and_confirms_are_told_apart() {
     let forms = [
-        Modal::NewBranch { start: None, name: String::new(), checkout: true, touched: Default::default() },
+        Modal::NewBranch { start: None, name: String::new(), checkout: true, track: None, touched: Default::default() },
         Modal::Clone(CloneForm::new(String::new())),
         Modal::RenameBranch(crate::state::branch_sync::RenameForm::new("feature".into())),
         Modal::CreatePr {

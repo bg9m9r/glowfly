@@ -125,9 +125,9 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
                 let texts = confirm_dialog::Texts { title, body, button, details: None };
                 close = confirm_dialog::show(ui, cx, texts, Tone::Normal, None, Some(alt), msgs)
             }
-            Modal::NewBranch { start, name, checkout, touched } => {
+            Modal::NewBranch { start, name, checkout, track, touched } => {
                 // Not under a credential prompt or the discard question: its fields need the keyboard.
-                let form = super::branch_dialogs::NewBranchForm { start: start.as_deref(), name, checkout, touched };
+                let form = super::branch_dialogs::NewBranchForm { start: start.as_deref(), name, checkout, track: track.as_ref(), touched };
                 close = super::branch_dialogs::new_branch(ui, cx, form, snap, msgs);
             }
             Modal::NewTag(form) => close = super::tag_dialog::new_tag(ui, cx, form, snap, push_tags, msgs),

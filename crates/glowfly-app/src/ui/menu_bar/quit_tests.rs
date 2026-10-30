@@ -95,7 +95,7 @@ fn quit_confirm_unsaved_dialog() {
     conflict.picks = vec![ChunkPick::Sides(Choice::Ours)];
     conflict.auto = vec![None];
     st.session.conflict.view = Some(conflict);
-    st.modal = Some(Modal::NewBranch { start: None, name: String::new(), checkout: true, touched: Default::default() });
+    st.modal = Some(Modal::NewBranch { start: None, name: String::new(), checkout: true, track: None, touched: Default::default() });
     st.dialog.track(st.modal.as_ref());
     if let Some(Modal::NewBranch { name, .. }) = st.modal.as_mut() {
         *name = "feature/login".into();

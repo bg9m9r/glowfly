@@ -41,7 +41,7 @@ fn steps(keys: &[&'static str]) -> Vec<&'static str> {
 }
 
 fn new_branch(name: &str) -> Modal {
-    Modal::NewBranch { start: None, name: name.into(), checkout: true, touched: Default::default() }
+    Modal::NewBranch { start: None, name: name.into(), checkout: true, track: None, touched: Default::default() }
 }
 
 /// Any message from a dialog, or a close, other than `want`.

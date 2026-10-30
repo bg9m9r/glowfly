@@ -4,11 +4,18 @@
 pub enum BranchMsg {
     /// Check out local branch `.0`, unless it is HEAD or checked out in another worktree.
     Checkout(String),
-    /// Check out the local branch tracking remote branch `name` on `remote`, or create one
-    /// tracking it.
+    /// Check out the local branch tracking remote branch `name` on `remote` (the one
+    /// `remote_branch::tracking_local` picks), fast-forwarded to it, or create one tracking it.
     CheckoutRemote {
         remote: String,
         name: String,
+    },
+    /// Check out `local`, one of the local branches tracking `name` on `remote`, first
+    /// fast-forwarding it to that remote branch when it is only behind (update/branch_checkout.rs).
+    CheckoutTracking {
+        remote: String,
+        name: String,
+        local: String,
     },
     /// Check out the source branch of the listed pull request `id` (update/pr_checkout.rs):
     /// its local branch, or a new one tracking the code host's remote.
@@ -75,6 +82,12 @@ pub enum BranchMsg {
         start: Option<String>,
         name: String,
     },
+    /// Open the New branch dialog at remote branch `name` on `remote`: the new branch tracks it,
+    /// under a name of its own.
+    NewTrackingBranch {
+        remote: String,
+        name: String,
+    },
 }
 
 impl BranchMsg {
@@ -84,6 +97,7 @@ impl BranchMsg {
         match self {
             Self::Checkout(..)
             | Self::CheckoutRemote { .. }
+            | Self::CheckoutTracking { .. }
             | Self::CheckoutPullRequest { .. }
             | Self::RenameBranchDialog(..)
             | Self::RenameBranch { .. }
@@ -98,7 +112,8 @@ impl BranchMsg {
             | Self::DeleteRemote { .. }
             | Self::DeleteBranchAndRemote(..)
             | Self::PushBranch { .. }
-            | Self::NewBranch { .. } => None,
+            | Self::NewBranch { .. }
+            | Self::NewTrackingBranch { .. } => None,
         }
     }
 }

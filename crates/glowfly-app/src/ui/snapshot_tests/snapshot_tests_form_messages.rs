@@ -17,7 +17,7 @@ type H = Harness<'static, (AppState, Vec<Msg>)>;
 const INVALID: &str = "Not a valid branch name.";
 
 fn new_branch(name: &str) -> Modal {
-    Modal::NewBranch { start: None, name: name.into(), checkout: true, touched: Touched::default() }
+    Modal::NewBranch { start: None, name: name.into(), checkout: true, track: None, touched: Touched::default() }
 }
 
 /// Types `text` into the focused field.

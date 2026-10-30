@@ -13,7 +13,7 @@ use crate::state::branch_sync::{RenameForm, remote_rename};
 use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use eframe::egui;
-use glowfly_core::branch_ops::{NameProblem, branch_name_warning, check_branch_name, is_valid_branch_name};
+use glowfly_core::branch_ops::{NameProblem, branch_name_warning, check_branch_name, create_tracking_cmd, is_valid_branch_name};
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::{BranchInfo, Snapshot};
 
@@ -37,26 +37,32 @@ fn name_message(name: &str, problem: Option<&NameProblem>) -> Option<Message<'st
 }
 
 /// What the New branch dialog edits: the commit it starts at (HEAD when None), the name, the
-/// checkout box, and which fields were edited.
+/// checkout box, and which fields were edited. With `track` (remote, branch) it starts at that
+/// remote branch instead and always tracks it, which the name field's note says.
 pub struct NewBranchForm<'a> {
     pub start: Option<&'a str>,
     pub name: &'a mut String,
     pub checkout: &'a mut bool,
+    pub track: Option<&'a (String, String)>,
     pub touched: &'a mut Touched,
 }
 
 /// The new branch dialog; returns true when it should close. Its field keeps the keyboard focus
 /// unless `cx.keyboard` is false.
 pub fn new_branch(ui: &mut egui::Ui, cx: Cx, f: NewBranchForm, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
-    let heading = match (f.start, snap.and_then(|s| s.head_branch.as_deref())) {
-        (Some(s), _) => format!("New branch at {}", &s[..7.min(s.len())]),
-        (None, Some(b)) => format!("New branch from {b}"),
-        (None, None) => "New branch at HEAD".to_owned(),
+    let t = cx.t;
+    let upstream = f.track.map(|(remote, name)| format!("{remote}/{name}"));
+    let heading = match (&upstream, f.start, snap.and_then(|s| s.head_branch.as_deref())) {
+        (Some(u), ..) => format!("New branch from {u}"),
+        (None, Some(s), _) => format!("New branch at {}", &s[..7.min(s.len())]),
+        (None, None, Some(b)) => format!("New branch from {b}"),
+        (None, None, None) => "New branch at HEAD".to_owned(),
     };
     let d = Dialog::new(cx, heading).begin(ui);
     let locals = locals(snap);
     let shown = name_message(f.name.trim(), check_branch_name(f.name.trim(), &locals, None).err().as_ref());
-    let group = FieldGroup::new("Branch name").message(f.touched, NAME, shown);
+    let note = upstream.as_deref().map(|u| Message::info(t.trf("branch.new.tracks_note", &[("upstream", &u)])));
+    let group = FieldGroup::new("Branch name").message(f.touched, NAME, shown).note(note);
     let r = group.show(ui, |ui| ui.add(TextField::new(f.name).hint("branch-name")));
     form_message::track(f.touched, NAME, &r);
     let submit = text_field::entered(ui, &r);
@@ -71,10 +77,14 @@ pub fn new_branch(ui: &mut egui::Ui, cx: Cx, f: NewBranchForm, snap: Option<&Sna
         f.touched.attempt();
     }
     if out.primary {
-        let mut cmd = if *f.checkout { args(&["checkout", "-b", new]) } else { args(&["branch", new]) };
-        if let Some(s) = f.start {
-            cmd.push(s.to_owned());
-        }
+        let cmd = match f.track {
+            Some((remote, name)) => create_tracking_cmd(new, remote, name, *f.checkout),
+            None => {
+                let mut cmd = if *f.checkout { args(&["checkout", "-b", new]) } else { args(&["branch", new]) };
+                cmd.extend(f.start.map(str::to_owned));
+                cmd
+            }
+        };
         msgs.push(Msg::Job(JobMsg::Git { label: "Create branch".into(), cmds: vec![cmd] }));
     }
     out.primary || out.dismiss

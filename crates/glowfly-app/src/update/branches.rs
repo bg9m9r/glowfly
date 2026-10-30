@@ -1,5 +1,5 @@
-//! Branch operations from the branch menus: checkout (refused for a branch another worktree
-//! has), checkout from a remote branch (its tracking local branch, or a new one), rename (also
+//! Branch operations from the branch menus: checkout (local, or from a remote branch through
+//! its tracking local branch, in `branch_checkout.rs`), rename (also
 //! on the remote, and deleting a remote branch, in `branch_sync.rs`), set
 //! and unset the upstream, fast-forward without checkout, push to the upstream or a chosen
 //! remote, and delete together with the remote branch (deleting the local branch alone is in
@@ -9,9 +9,8 @@
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
-use crate::msg::{BranchMsg, Msg};
+use crate::msg::BranchMsg;
 use crate::state::branches::{self, NO_REMOTES};
-use crate::state::remote_branch;
 use crate::state::worktree_branches;
 use crate::state::{AppState, Modal};
 use glowfly_core::branch_ops::{self, check_branch_name, is_valid_branch_name};
@@ -20,12 +19,14 @@ use glowfly_core::undo::UndoKind;
 
 pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
     match msg {
-        BranchMsg::Checkout(name) => checkout(st, &name, fx),
-        BranchMsg::CheckoutRemote { remote, name } => checkout_remote(st, &remote, &name, fx),
+        BranchMsg::Checkout(name) => super::branch_checkout::checkout(st, &name, fx),
+        BranchMsg::CheckoutRemote { remote, name } => super::branch_checkout::checkout_remote(st, &remote, &name, fx),
+        BranchMsg::CheckoutTracking { remote, name, local } => super::branch_checkout::checkout_tracking(st, &remote, &name, &local, fx),
         BranchMsg::CheckoutPullRequest { id } => super::pr_checkout::checkout(st, id, fx),
         BranchMsg::NewBranch { start, name } => {
-            st.modal = Some(Modal::NewBranch { start, name, checkout: true, touched: Default::default() })
+            st.modal = Some(Modal::NewBranch { start, name, checkout: true, track: None, touched: Default::default() })
         }
+        BranchMsg::NewTrackingBranch { remote, name } => super::branch_checkout::new_tracking(st, remote, name),
         BranchMsg::RenameBranchDialog(name) => {
             if let Some(b) = find(st, &name) {
                 st.modal = Some(Modal::RenameBranch(crate::state::branch_sync::RenameForm::new(b.name)));
@@ -71,50 +72,6 @@ pub(super) fn find(st: &mut AppState, name: &str) -> Option<BranchInfo> {
         st.log(false, format!("Branch {name} no longer exists."));
     }
     b
-}
-
-/// Checks out local branch `name`, unless it is HEAD or another worktree has it.
-fn checkout(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
-    let Some(b) = find(st, name) else { return };
-    if b.is_head {
-        st.log(false, format!("{name} is already checked out."));
-        return;
-    }
-    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::checkout_blocked(s, name)) {
-        st.log(false, why);
-        return;
-    }
-    // A single command: `start_job` records it for undo as `JobMsg::Git` would.
-    let spec = JobSpec::new("Checkout".into(), vec![branches::checkout_local(name)]);
-    let retry = || Msg::Branch(BranchMsg::Checkout(name.to_owned()));
-    super::auto_stash::start_guarded(st, spec, retry, fx);
-}
-
-/// Checks out the local branch tracking `remote`/`name`, or creates one tracking it, unless the
-/// remote branch is gone, its tracking branch is HEAD or a local branch already has its name.
-fn checkout_remote(st: &mut AppState, remote: &str, name: &str, fx: &mut Vec<Effect>) {
-    let Some(snap) = st.snap.as_ref() else { return };
-    if remote_branch::exists(snap, remote, name).is_none() {
-        st.log(false, format!("{remote}/{name} no longer exists."));
-        return;
-    }
-    if let Some(b) = remote_branch::tracking_local(snap, remote, name) {
-        let (local, head) = (b.name.clone(), b.is_head);
-        if head {
-            st.log(false, format!("{local} is already checked out."));
-        } else {
-            checkout(st, &local, fx);
-        }
-        return;
-    }
-    if let Some(why) = remote_branch::checkout_blocked(snap, remote, name) {
-        st.log(false, why);
-        return;
-    }
-    // A single command: `start_job` records it for undo (`UndoKind::Checkout`).
-    let spec = JobSpec::new("Checkout".into(), vec![remote_branch::checkout_cmd(remote, name)]);
-    let retry = || Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.to_owned(), name: name.to_owned() });
-    super::auto_stash::start_guarded(st, spec, retry, fx);
 }
 
 /// Renames `old` to `new`, and with `remote` its upstream too (update/branch_sync.rs).

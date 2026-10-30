@@ -198,6 +198,7 @@ pub(super) mod recent_tests;
 pub(super) mod refresh_index_tests;
 pub(super) mod refresh_tests;
 pub(super) mod remote_branch_tests;
+pub(super) mod remote_checkout_tests;
 pub(super) mod remote_fork_tests;
 pub(super) mod remote_tests;
 pub(super) mod repo_colour_tests;
