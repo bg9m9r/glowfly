@@ -64,7 +64,8 @@ pub enum RemoteOutcome {
     Failed(String),
 }
 
-/// Other worktrees' changes the load of `workdir` left Pending, to count in the background.
+/// Other worktrees' changes the load of `workdir` left Pending (or counted ones, read again), to
+/// count in the background.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CountRequest {
     /// The workdir of the tab the request came from.

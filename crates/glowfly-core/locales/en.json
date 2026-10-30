@@ -2913,5 +2913,14 @@
   "welcome.subtitle": "Four short steps to get you set up.",
   "welcome.title": "Welcome to Glowfly",
   "welcome_screen.find.button": "Find repositories in folders",
-  "welcome_screen.tagline": "A fast, native Git client"
+  "welcome_screen.tagline": "A fast, native Git client",
+  "worktree_branch.blocked.bisecting": "{branch} is mid-bisect in the worktree at {path}. End the bisect there first.",
+  "worktree_branch.blocked.checkout": "{branch} is checked out in the worktree at {path}. Open that worktree instead.",
+  "worktree_branch.blocked.delete": "{branch} is checked out in the worktree at {path}. Remove that worktree or check out another branch there first.",
+  "worktree_branch.blocked.missing": "{branch} is checked out in the worktree at {path}, whose folder is missing. Prune it first.",
+  "worktree_branch.blocked.rebasing": "{branch} is mid-rebase in the worktree at {path}. Continue or abort the rebase there first.",
+  "worktree_branch.tip.bisecting": "Mid-bisect in the worktree at {path}",
+  "worktree_branch.tip.checked_out": "Checked out in the worktree at {path}",
+  "worktree_branch.tip.missing": "{line} (folder missing; prune it first)",
+  "worktree_branch.tip.rebasing": "Mid-rebase in the worktree at {path}"
 }

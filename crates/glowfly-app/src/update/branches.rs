@@ -58,11 +58,12 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, now: std::time::Instant,
     }
 }
 
-/// Fast-forwards the local branch `name` to its upstream, unless that is refused.
+/// Fast-forwards the local branch `name` to its upstream, unless that is refused (also when
+/// another worktree has it).
 pub(super) fn fast_forward(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
     let Some(b) = find(st, name) else { return };
-    let state = st.snap.as_ref().map(|s| s.state).unwrap_or(git2::RepositoryState::Clean);
-    if let Some(why) = branches::fast_forward_blocked(&b, state) {
+    let t = st.settings.lang();
+    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::fast_forward_blocked(t, s, &b)) {
         st.log(false, why);
         return;
     }
@@ -81,9 +82,15 @@ pub(super) fn find(st: &mut AppState, name: &str) -> Option<BranchInfo> {
     b
 }
 
-/// Renames `old` to `new`, and with `remote` its upstream too (update/branch_sync.rs).
+/// Renames `old` to `new`, and with `remote` its upstream too (update/branch_sync.rs), unless
+/// another worktree is rebasing or bisecting `old`.
 fn rename(st: &mut AppState, old: &str, new: &str, remote: bool, fx: &mut Vec<Effect>) {
     let Some(b) = find(st, old) else { return };
+    let t = st.settings.lang();
+    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::held_blocked(t, s, old)) {
+        st.log(false, why);
+        return;
+    }
     if new == old {
         st.log(false, format!("{old} already has that name."));
         return;
@@ -143,7 +150,7 @@ fn delete_with_remote(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
         st.log(false, format!("{name} is checked out. Check out another branch before deleting it."));
         return;
     }
-    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::delete_blocked(s, name)) {
+    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::delete_blocked(st.settings.lang(), s, name)) {
         st.log(false, why);
         return;
     }

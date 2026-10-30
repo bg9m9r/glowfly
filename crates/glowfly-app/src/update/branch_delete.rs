@@ -64,5 +64,5 @@ fn refused(st: &AppState, name: &str, is_head: bool) -> Option<String> {
     if is_head {
         return Some(t.trf("branch.delete.checked_out", &[("branch", &name)]));
     }
-    st.snap.as_ref().and_then(|s| worktree_branches::delete_blocked(s, name))
+    st.snap.as_ref().and_then(|s| worktree_branches::delete_blocked(st.settings.lang(), s, name))
 }

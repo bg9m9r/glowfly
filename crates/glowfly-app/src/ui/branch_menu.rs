@@ -30,7 +30,7 @@ use crate::state::branches::{self, NO_REMOTES};
 use crate::state::commit_menu::menu_trim;
 use crate::state::custom_commands::MenuCommands;
 use crate::state::gitflow_base::{Deleting, guard};
-use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
+use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere, fast_forward_blocked, held_blocked};
 use crate::state::worktrees::open_blocked;
 use crate::state::{ForgeState, Selection};
 use crate::ui::widgets::menu::{item, item_named, named, separator, submenu};
@@ -117,7 +117,7 @@ fn primary_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, ms
     let name = b.name.as_str();
     if !b.is_head {
         let checkout = Msg::Branch(BranchMsg::Checkout(name.to_owned()));
-        menu_item_if(msgs, ui, t.tr("branch.menu.checkout"), checkout_blocked(snap, name).as_deref(), checkout);
+        menu_item_if(msgs, ui, t.tr("branch.menu.checkout"), checkout_blocked(t, snap, name).as_deref(), checkout);
         if let Some(wt) = elsewhere(snap, name) {
             let open = Msg::Worktree(WorktreeMsg::Open(wt.path.clone()));
             menu_item_if(msgs, ui, t.tr("branch.menu.open_worktree"), open_blocked(wt), open);
@@ -125,7 +125,7 @@ fn primary_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, ms
     }
     push_items(ui, t, b, snap, msgs);
     if menu_trim::fast_forward_applies(b) {
-        let ff_blocked = branches::fast_forward_blocked(b, snap.state);
+        let ff_blocked = fast_forward_blocked(t, snap, b);
         let ff = match branches::upstream_label(b) {
             Some(up) => item_named(named(t.tr("branch.menu.fast_forward_to"), &[("upstream", &up)])),
             None => item(t.tr("branch.menu.fast_forward")),
@@ -143,7 +143,8 @@ fn branch_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
         let base = WorktreeBase::Branch(name.to_owned());
         menu_item(msgs, ui, t.tr("branch.menu.create_worktree"), Msg::Worktree(WorktreeMsg::CreateDialog(base)));
     }
-    menu_item(msgs, ui, t.tr("branch.menu.rename"), Msg::Branch(BranchMsg::RenameBranchDialog(name.to_owned())));
+    let rename = Msg::Branch(BranchMsg::RenameBranchDialog(name.to_owned()));
+    menu_item_if(msgs, ui, t.tr("branch.menu.rename"), held_blocked(t, snap, name).as_deref(), rename);
     let no_remotes = snap.remotes.is_empty().then_some(NO_REMOTES);
     menu_item_if(msgs, ui, t.tr("branch.menu.set_upstream"), no_remotes, Msg::Branch(BranchMsg::SetUpstreamDialog(name.to_owned())));
     if b.tracking.is_some() {
@@ -263,7 +264,7 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
 fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let head = snap.head_branch.as_deref();
-    let in_worktree = delete_blocked(snap, name);
+    let in_worktree = delete_blocked(t, snap, name);
     let in_worktree = in_worktree.as_deref();
     let with_remote = branches::can_delete_with_remote(b);
     menu_danger(msgs, ui, t.tr("branch.menu.delete"), in_worktree, Msg::Branch(BranchMsg::DeleteDialog(name.to_owned())));

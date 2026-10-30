@@ -129,6 +129,7 @@ fn info(branch: Option<&str>, locked: Option<&str>) -> WorktreeInfo {
         path: PathBuf::from("/work/app-worktrees/feature-login"),
         branch: branch.map(str::to_owned),
         head: Some(Oid::from_str("1234567890abcdef1234567890abcdef12345678").unwrap()),
+        held: None,
         current: false,
         locked: locked.map(str::to_owned),
         missing: false,

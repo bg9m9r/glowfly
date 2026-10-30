@@ -1,6 +1,7 @@
 //! A cheap fingerprint of everything a full load reads besides the working-tree status: refs,
 //! HEAD, stashes, the repository state, config (the shared one and the worktree's own), linked
-//! worktrees, a shallow clone's `shallow` file and the trust print of the repository's own
+//! worktrees and every worktree's HEAD and the branch it is rebasing or bisecting, a shallow
+//! clone's `shallow` file and the trust print of the repository's own
 //! settings, hooks and commands file (`trust::scan_top`). When it hasn't changed since the last
 //! load, re-reading the status is enough and the history needn't be walked again.
 
@@ -59,7 +60,12 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     // stamped here, so a change loads in full and the full trust scan sees it.
     submodule_stamps(repo, now, &mut h);
     // The root .gitattributes' LFS patterns aren't in it: every whole status read brings them.
-    // Linked worktrees: added, removed, locked or switched to another branch.
+    // The main worktree's HEAD and the branch it is rebasing or bisecting, seen from a linked
+    // one (they are the current worktree's own otherwise, and hashed above too).
+    std::fs::read(common.join("HEAD")).ok().hash(&mut h);
+    super::op_state::held_branch(common).hash(&mut h);
+    // Linked worktrees: added, removed, locked, switched to another branch, or rebasing or
+    // bisecting one.
     if let Ok(dir) = std::fs::read_dir(common.join("worktrees")) {
         let mut names: Vec<_> = dir.flatten().map(|e| e.path()).collect();
         names.sort();
@@ -71,6 +77,7 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
             gitdir.as_deref().map(|g| Path::new(g.trim()).exists()).hash(&mut h);
             gitdir.hash(&mut h);
             p.join("locked").exists().hash(&mut h);
+            super::op_state::held_branch(&p).hash(&mut h);
         }
     }
     Ok(h.finish())

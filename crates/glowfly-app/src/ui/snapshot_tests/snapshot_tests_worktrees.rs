@@ -38,6 +38,7 @@ fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>
         path: p(path),
         branch: branch.map(str::to_owned),
         head,
+        held: None,
         current: false,
         locked: None,
         missing: false,

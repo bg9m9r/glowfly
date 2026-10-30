@@ -34,7 +34,7 @@ pub(super) fn checkout(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
         let why = if b.is_head {
             Some(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &source)]))
         } else {
-            worktree_branches::checkout_blocked(snap, &source)
+            worktree_branches::checkout_blocked(t, snap, &source)
         };
         if let Some(why) = why {
             st.log(false, why);

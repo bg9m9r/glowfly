@@ -46,6 +46,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             super::forge::refresh(st, false, false, now, fx);
             super::push_pr::loaded(st, fx);
             super::worktree_counts::want(st, fx);
+            super::worktree_counts::recount(st, now, fx);
             load_finished(st, fx);
         }
         LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow, lfs_patterns, index } => {
@@ -82,6 +83,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             super::pick::state_changed(st, state_before);
             super::auto_stash::seen(st, false, now, fx);
             super::status_tip::check(st, slow.as_ref(), now, fx);
+            super::worktree_counts::recount(st, now, fx);
         }
         LoadMsg::SpeedUpStatus { speedups, cache, monitor } => super::status_tip::speed_up(st, speedups, cache, monitor, fx),
         LoadMsg::StatusSpedUp { output, monitor, cache } => super::status_tip::sped_up(st, output, monitor, cache, now, fx),
@@ -150,6 +152,7 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
         open_stamp: st.refresh.open_stamp,
         extra_commits: st.refresh.extra_commits,
         counting: st.refresh.counting,
+        recount: st.refresh.recount,
         more_retries: st.refresh.more_retries,
         deeper: st.refresh.deeper.take(),
         queued,

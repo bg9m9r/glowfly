@@ -27,6 +27,7 @@ use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::forge::{self, FilterKind};
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::{GraphFilter, SizedPanel};
 
@@ -140,10 +141,11 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             // A cut name comes first, whole.
             let whole = cut.then(|| label.clone());
             let stacked = crate::state::stack_rows::tip_line(t, row.link);
-            let lines: Vec<String> = [whole, tracking, stacked, tip, worktree.map(crate::state::worktree_branches::local_tip_line)]
-                .into_iter()
-                .flatten()
-                .collect();
+            let lines: Vec<String> =
+                [whole, tracking, stacked, tip, worktree.map(|wt| crate::state::worktree_branches::local_tip_line(t, wt, &b.name))]
+                    .into_iter()
+                    .flatten()
+                    .collect();
             let r = if lines.is_empty() {
                 r
             } else {
@@ -185,7 +187,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let section = ("prs", title, chip_tip, view.rows.len());
         forge_filter_menu::header(ui, t, section, &mut sections.prs, picker, (add, &menu), msgs);
         if sections.prs {
-            pull_requests(ui, snap, f, &view, sel, &shown, msgs);
+            pull_requests(ui, (t, snap), f, &view, sel, &shown, msgs);
         }
     }
     if let Some(f) = fs.filter(|f| f.tracker.is_some()) {
@@ -223,7 +225,15 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     ui.add_space(12.0);
 }
 
-fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrView, sel: &Selection, shown: &Shown, msgs: &mut Vec<Msg>) {
+fn pull_requests(
+    ui: &mut egui::Ui,
+    (t, snap): (Lang, &Snapshot),
+    f: &ForgeState,
+    view: &PrView,
+    sel: &Selection,
+    shown: &Shown,
+    msgs: &mut Vec<Msg>,
+) {
     if let Some(h) = &view.hint {
         forge_filter_menu::hint(ui, h, msgs);
     }
@@ -271,7 +281,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
             // has it); otherwise a new branch tracking the remote one is made.
             let local = snap.locals.iter().any(|b| b.name == pr.source);
             let blocked = match crate::state::branches::pr_checkout(snap, &f.remote, &pr.source) {
-                Ok(_) if local => crate::state::worktree_branches::checkout_blocked(snap, &pr.source),
+                Ok(_) if local => crate::state::worktree_branches::checkout_blocked(t, snap, &pr.source),
                 Ok(_) => None,
                 Err(why) => Some(why),
             };

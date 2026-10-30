@@ -27,6 +27,7 @@ fn worktree() -> WorktreeInfo {
         path: folder("app-feature"),
         branch: Some("feature".into()),
         head: None,
+        held: None,
         current: false,
         locked: None,
         missing: false,

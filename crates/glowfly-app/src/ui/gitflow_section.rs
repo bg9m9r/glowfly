@@ -106,7 +106,7 @@ pub(super) fn section(
                 Some(wt) => format!(
                     "{tip}
 {}",
-                    crate::state::worktree_branches::local_tip_line(wt)
+                    crate::state::worktree_branches::local_tip_line(t, wt, b.name)
                 ),
                 None => tip,
             };

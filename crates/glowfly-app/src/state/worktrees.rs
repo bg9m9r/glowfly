@@ -192,9 +192,9 @@ pub fn find<'a>(snap: &'a Snapshot, path: &Path) -> Option<&'a WorktreeInfo> {
     snap.worktrees.iter().find(|w| same_spelling(&w.path, path))
 }
 
-/// The worktree that has `branch` checked out.
+/// The worktree that has `branch` checked out, or is rebasing or bisecting it.
 pub fn checked_out_in<'a>(snap: &'a Snapshot, branch: &str) -> Option<&'a WorktreeInfo> {
-    snap.worktrees.iter().find(|w| w.branch.as_deref() == Some(branch))
+    snap.worktrees.iter().find(|w| w.uses(branch).is_some())
 }
 
 /// `<parent of the main worktree>/<its folder name>-worktrees/<slug>`; the open workdir stands
