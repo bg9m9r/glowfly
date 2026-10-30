@@ -182,6 +182,4 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Try again for a job that failed past its first command, from the failed command on (`cmds[at..]`), where each step allows it
 - Lock holders Delete lock file can't see: libgit2 or JGit tools and a second Glowfly (not named git), WSL2 work with no `wsl.exe` left running, and containers on the macOS or Windows VM backends
 - Count conflicts only from a whole status read: a partial read after a failed job can shrink the count
-- Open both names of a rename/rename conflict from View conflicts (the old name is skipped today)
 - Keep conflicted paths that aren't UTF-8 in the recount's file list instead of leaving it empty
-

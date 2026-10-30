@@ -22,7 +22,7 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   (`PushRemotes`) names another remote than its upstream's: offer it toward that push remote too,
   leasing its tracking branch there, instead of only toward the upstream
 
-### Force push with lease from any branch
+### Force push with lease from any branch, and push to all remotes
 
 - Put the default-branch warning in its own paragraph of the confirmation
 - Tests for the Git Flow base warnings, not only the default branch's
