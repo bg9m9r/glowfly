@@ -9,8 +9,11 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Stop the one-time extra asks from made-up paths in a config program (a sed expression such as
   `s/[[:space:]]*$//`, the space-split pieces of a quoted path with spaces such as
   `"C:/Program Files/Python/python.exe"` or `"~/My Keys/id"`), e.g. by not splitting a quoted word.
-- Resolve shell variables other than the working folder's (`$HOME/x`, `$(cmd)/x`) in a config
-  program, and the scripts a followed script sources; only the files the setting names are followed.
+- Follow the scripts a followed config program's script sources; only the files the setting names
+  are followed (a `/…` right after a substitution is read from the working tree, whatever it holds).
+- Read an MSYS-style `/c/...` path and a `\\?\` or `\\.\` prefixed one in a config program as the
+  Windows paths they are, so one pointing into the working tree is followed (they are taken as
+  written now, so outside it).
 - Put a followed config program's on-disk digest in the print too, so an uncommitted edit of it
   asks again (only the version HEAD tracks is in it now).
 - Tell git's real `fatal: refusing to fetch into` refusal from one a hostile server fakes over ssh

@@ -62,8 +62,15 @@ pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf
     }
     for p in programs {
         // The working tree itself (a glob's matches may be anywhere in it) follows all of it.
+        // A `:` in a program's path is a name character outside Windows (programs.rs cuts at
+        // it there), so only an 8.3 short name is unclear.
         for rel in inside(repo, workdir, p) {
-            add_place(rel, false);
+            let spelled = if cfg!(windows) { rel.clone() } else { rel.replace(':', "") };
+            if unclear(&spelled) {
+                add(String::new(), false);
+            } else {
+                add(rel, false);
+            }
         }
     }
     // HEAD's tree is read only when something follows the working tree. One that can't be read

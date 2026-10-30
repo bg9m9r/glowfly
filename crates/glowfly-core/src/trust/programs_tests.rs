@@ -73,10 +73,21 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
         ("filter.x.clean", "sh ./t*/x.sh", &["", "t*/x.sh"]),
         ("filter.x.clean", "sh lib/*.sh", &["lib", "lib/*.sh"]),
         ("filter.x.clean", "sh *.sh", &[""]),
-        // Quoted, it is no glob: a sed expression is one made-up path, and a stream name is
-        // the file it opens.
-        ("filter.x.clean", "sed -e 's/[[:space:]]*$//'", &["s/[["]),
+        ("filter.x.clean", "sh lib/$NAME.sh", &["lib"]),
+        // Shell syntax is no glob: a function in a credential helper follows nothing.
+        ("credential.helper", "!f() { echo \"password=$TOKEN\"; }; f", &[]),
+        ("filter.x.clean", "[[ -n $X ]] && sh lib/ok.sh", &["lib/ok.sh"]),
+        // A stream name is the file it opens.
         ("core.fsmonitor", "./tools/fsm.sh::$DATA", &["tools/fsm.sh"]),
+        // Whatever a substitution says, a `/` right after it is read from the working tree.
+        ("filter.x.smudge", "sh `git rev-parse --show-toplevel`/tools/bt.sh", &["tools/bt.sh"]),
+        ("filter.x.smudge", "sh \"`git rev-parse --show-toplevel`\"/tools/bq.sh", &["tools/bq.sh"]),
+        ("filter.x.smudge", "sh $( git rev-parse --show-toplevel )/tools/sp.sh", &["tools/sp.sh"]),
+        ("filter.x.smudge", "sh $(git  rev-parse  --show-toplevel)/tools/ds.sh", &["tools/ds.sh"]),
+        ("filter.x.smudge", "sh $(git rev-parse --show-superproject-working-tree)/sw.sh", &["sw.sh"]),
+        ("filter.x.smudge", "sh ${PWD%/}/pw.sh", &["pw.sh"]),
+        // An escaped space stays in the word.
+        ("core.fsmonitor", r"./my\ fsm.sh", &["my", "my fsm.sh"]),
         ("diff.x.textconv", "present", &["present"]),
         ("diff.x.command", "\"$PWD/tools/diff me.sh\" --x", &["tools/diff", "tools/diff me.sh"]),
         ("merge.x.driver", "tools/merge.sh %O %A %B", &["tools/merge.sh"]),
@@ -96,7 +107,8 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
         ("core.editor", "code --wait", &[]),
         ("credential.helper", "store", &[]),
         ("core.sshCommand", "ssh -o ControlPath=~/.ssh/cm-%r", &[]),
-        ("core.sshCommand", "ssh -i $HOME/.ssh/id", &[]),
+        // A variable's value may be the working folder: an untracked `.ssh/id` there.
+        ("core.sshCommand", "ssh -i $HOME/.ssh/id", &[".ssh/id"]),
         ("remote.origin.url", "https://example.com/a/b.git", &[]),
         ("diff.x.textconv", ".", &[]),
         ("core.fsmonitor", ".git/fsm.sh", &[]),
@@ -105,6 +117,12 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
     for (key, value, want) in cases {
         assert_eq!(followed(&dir, key, value), *want, "{key} = {value}");
     }
+    // A `:` is a name character outside Windows, where both readings count; on Windows the
+    // part before it is what opens. Quoted, a sed expression is no glob, only made-up paths.
+    let (colon, sed): (&[&str], &[&str]) =
+        if cfg!(windows) { (&["tools"], &["s/[["]) } else { (&["tools", "tools:v2/x.sh"], &["s/[[", "s/[[:space:]]*$"]) };
+    assert_eq!(followed(&dir, "filter.x.clean", "sh tools:v2/x.sh"), colon);
+    assert_eq!(followed(&dir, "filter.x.clean", "sed -e 's/[[:space:]]*$//'"), sed);
     // An absolute path into the working tree counts, one elsewhere doesn't.
     let inside = dir.join("bin").join("abs.sh");
     assert_eq!(followed(&dir, "gpg.program", &inside.display().to_string()), ["bin/abs.sh"]);
@@ -122,6 +140,20 @@ fn a_repository_whose_programs_are_installed_elsewhere_keeps_its_print() {
     assert!(s.follows.is_empty(), "{:?}", s.follows);
     assert_eq!(s.config.len(), 2);
     cleanup(&[&dir]);
+}
+
+#[test]
+fn a_credential_helper_function_keeps_its_print_across_a_pull() {
+    let (work, bare) = with_origin("programs-helper");
+    git(&work, &["config", "credential.helper", "!f() { echo \"password=$TOKEN\"; }; f"]);
+    let s = scan_of(&work);
+    assert!(s.follows.is_empty(), "shell syntax is no path: {:?}", s.follows);
+    let saved = trusted(&work);
+    remote_commit(&bare, "main", "b.txt", "b\n");
+    git(&work, &["pull", "-q", "--ff-only"]);
+    assert!(work.join("b.txt").exists());
+    assert!(trust_covers(&saved, &scan_of(&work)), "an unrelated change asks nothing");
+    cleanup(&[&work, &bare]);
 }
 
 /// A repository with origin whose `core.fsmonitor` is its tracked `tools/fsm.sh`.
