@@ -61,8 +61,8 @@ pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf
         }
     }
     for p in programs {
-        // A setting that names the working tree itself (`.`) runs nothing from it.
-        for rel in inside(repo, workdir, p).into_iter().filter(|r| !r.is_empty()) {
+        // The working tree itself (a glob's matches may be anywhere in it) follows all of it.
+        for rel in inside(repo, workdir, p) {
             add_place(rel, false);
         }
     }

@@ -6,6 +6,9 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 
 - Follow a script a config program names by a bare name before the working tree has it
   (`python x.py`, with `x.py` added by a later pull): a bare word counts only when it exists.
+- Stop the one-time extra asks from made-up paths in a config program (a sed expression such as
+  `s/[[:space:]]*$//`, the space-split pieces of a quoted path with spaces such as
+  `"C:/Program Files/Python/python.exe"` or `"~/My Keys/id"`), e.g. by not splitting a quoted word.
 - Resolve shell variables other than the working folder's (`$HOME/x`, `$(cmd)/x`) in a config
   program, and the scripts a followed script sources; only the files the setting names are followed.
 - Put a followed config program's on-disk digest in the print too, so an uncommitted edit of it

