@@ -1657,7 +1657,7 @@ dependencies = [
 
 [[package]]
 name = "glowfly"
-version = "0.2.0-rc.1"
+version = "0.3.0-rc.1"
 dependencies = [
  "ab_glyph",
  "arboard",
@@ -1690,7 +1690,7 @@ dependencies = [
 
 [[package]]
 name = "glowfly-core"
-version = "0.2.0-rc.1"
+version = "0.3.0-rc.1"
 dependencies = [
  "base64 0.23.1",
  "chrono",

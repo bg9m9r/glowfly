@@ -6,7 +6,7 @@ default-members = ["crates/glowfly-app"]
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "0.2.0-rc.1"
+version = "0.3.0-rc.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/bg9m9r/glowfly"
