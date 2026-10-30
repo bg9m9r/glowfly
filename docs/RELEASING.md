@@ -45,7 +45,7 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 The build matrix has six targets: Windows x64 and ARM64 (both on `windows-latest`; ARM64 is
 cross-compiled with the image's ARM64 build tools, and LLVM's clang is put on `PATH` for ring),
 Linux x86_64 (`ubuntu-22.04`) and aarch64 (`ubuntu-22.04-arm`, built natively), and macOS on
-Apple silicon and Intel (`macos-14`).
+Apple silicon and Intel (`macos-15`).
 
 When a job fails, the release stays a draft: fix the cause and choose **Re-run failed jobs**.
 The re-run uploads to the same draft (`--clobber` replaces a file from the first try), the jobs
