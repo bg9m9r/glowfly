@@ -314,19 +314,23 @@ second one next to it.
     in its own tab rather than being hidden.
 11. **Whether a terminal's shell is running a program comes only from
     `terminal::ShellProbe::activity`, off the UI thread** (the process lists are read in
-    `terminal/procs.rs`). Closing a terminal tab, Kill, closing its repository's tab, Install and
-    restart and quitting all ask it. On Windows it reads the shell's child processes from a
-    ToolHelp snapshot: console hosts (`conhost.exe`, `OpenConsole.exe`) and WSL's `wslhost.exe`
-    are ignored, and a single child with the shell's own executable name is a launcher (Git
-    Bash's `bin` `bash.exe` starting the one in `usr/bin`, System32's `wsl.exe` starting WSL's)
-    that is followed, up to four levels, unless `QueryFullProcessImageNameW` shows both run the
-    same file (PowerShell's `Start-Job`: a background job). Any other child counts, background
-    jobs included. A `wsl.exe` with no other child is Unknown: what runs inside the distribution
-    isn't a Windows process. On Unix it compares the PTY's foreground process group with the
-    shell's pid, and at the prompt counts the shell's children as background jobs (Linux: from
-    `/proc/<pid>/stat`, in the shell's session and not ended; macOS: libproc's
-    `proc_listpids(PROC_PPID_ONLY)`). Linux names the program from `/proc/<pid>/comm`, macOS
-    from `proc_name`. Anything that can't be read is Unknown, which never prompts.
+    `terminal/procs.rs`). Closing a terminal tab, Kill, closing its repository's tab, Install
+    and restart and quitting all ask it. On Windows it reads the shell's child processes from a
+    ToolHelp snapshot, counting only those created at or after their parent (`GetProcessTimes`,
+    read only for the pids whose parent pid matches; either time unreadable leaves it out):
+    Windows keeps a dead parent's pid, which a new shell may reuse. Console hosts
+    (`conhost.exe`, `OpenConsole.exe`) and WSL's `wslhost.exe` are ignored, and a single child
+    with the shell's own executable name is a launcher (Git Bash's `bin` `bash.exe` starting the
+    one in `usr/bin`, System32's `wsl.exe` starting WSL's) that is followed, up to four levels,
+    unless `QueryFullProcessImageNameW` shows both run the same file (PowerShell's `Start-Job`:
+    a background job). Any other child counts, background jobs included. A `wsl.exe` with no
+    other child is Unknown: what runs inside the distribution isn't a Windows process. On Unix a
+    parent pid is never stale (an orphan is reparented to init or a subreaper). It compares the
+    PTY's foreground process group with the shell's pid, and at the prompt counts the shell's
+    children as background jobs (Linux: from `/proc/<pid>/stat`, in the shell's session and not
+    ended; macOS: libproc's `proc_listpids(PROC_PPID_ONLY)`). Linux names the program from
+    `/proc/<pid>/comm`, macOS from `proc_name`. Anything that can't be read is Unknown, which
+    never prompts.
 
 ### Environment and git
 

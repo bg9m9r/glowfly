@@ -1,5 +1,6 @@
 //! Whether a terminal's shell is running a program, so closing it, closing its repository's tab
-//! or quitting can ask first. Windows reads the shell's child processes; Unix compares the
+//! or quitting can ask first. Windows reads the shell's child processes (those that started
+//! after it: Windows keeps a dead parent's pid, which a new process may reuse); Unix compares the
 //! terminal's foreground process group with the shell, then looks for the shell's children
 //! (background jobs). The systems' process lists are read in procs.rs. Reading it can take
 //! milliseconds, so callers ask off the UI thread.
@@ -34,7 +35,7 @@ impl ShellProbe {
 #[cfg(windows)]
 fn os_activity(p: &ShellProbe) -> ShellActivity {
     match (p.pid, super::procs::process_table()) {
-        (Some(pid), Some(table)) => tree_activity(&table, pid, super::procs::image_path),
+        (Some(pid), Some(table)) => tree_activity(&table, pid, super::procs::image_path, super::procs::started),
         _ => ShellActivity::Unknown,
     }
 }
@@ -78,12 +79,27 @@ fn helper(exe: &str) -> bool {
 /// (PowerShell's Start-Job starting another pwsh.exe: a background job). Any other child is the
 /// running program, whether it runs in front or in the background. A `wsl.exe` with no
 /// child of its own is Unknown: the programs inside the distribution aren't Windows processes.
+///
+/// A process counts as a child only when `started` (a creation time) says it started at or
+/// after its parent; either time unknown leaves it out. Windows keeps a process's parent pid
+/// after the parent ends, and a new process may get that pid: csrss.exe, whose parent smss.exe
+/// ends at boot, then looks like the new process's child. Times are read only for the processes
+/// whose parent pid matches.
 #[cfg_attr(not(windows), allow(dead_code))]
-pub(crate) fn tree_activity(procs: &[ProcEntry], shell: u32, image: impl Fn(u32) -> Option<String>) -> ShellActivity {
+pub(crate) fn tree_activity(
+    procs: &[ProcEntry],
+    shell: u32,
+    image: impl Fn(u32) -> Option<String>,
+    started: impl Fn(u32) -> Option<u64>,
+) -> ShellActivity {
     let mut at = shell;
     for _ in 0..LAUNCHER_DEPTH {
         let exe = procs.iter().find(|p| p.pid == at).map_or("", |p| p.exe.as_str());
-        let kids: Vec<&ProcEntry> = procs.iter().filter(|p| p.parent == at && p.pid != at && !helper(&p.exe)).collect();
+        let mut kids: Vec<&ProcEntry> = procs.iter().filter(|p| p.parent == at && p.pid != at && !helper(&p.exe)).collect();
+        if !kids.is_empty() {
+            let born = started(at);
+            kids.retain(|k| matches!((born, started(k.pid)), (Some(parent), Some(kid)) if kid >= parent));
+        }
         match kids.as_slice() {
             [] if exe.eq_ignore_ascii_case("wsl.exe") => return ShellActivity::Unknown,
             [] => return ShellActivity::Idle,
