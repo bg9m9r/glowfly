@@ -26,6 +26,13 @@ pub fn detect_system_language() {
 /// Linux and other Unix: gettext's order, read from the environment.
 #[cfg(all(unix, not(target_os = "macos")))]
 fn os_locales() -> Vec<String> {
+    env_message_locales()
+}
+
+/// Linux and other Unix: `message_locales` for the process environment (also the spell-check
+/// language's order, `spell::system_languages`).
+#[cfg(all(unix, not(target_os = "macos")))]
+pub(crate) fn env_message_locales() -> Vec<String> {
     let var = |name: &str| std::env::var(name).ok();
     let (lc_all, lc_messages, lang, language) = (var("LC_ALL"), var("LC_MESSAGES"), var("LANG"), var("LANGUAGE"));
     message_locales(LocaleEnv {
@@ -65,7 +72,7 @@ pub fn message_locales(env: LocaleEnv<'_>) -> Vec<String> {
 }
 
 /// Whether a locale name is C or POSIX, with any `.codeset` or `@modifier` (`C.UTF-8`, `C.utf8`).
-fn is_c_locale(locale: &str) -> bool {
+pub(crate) fn is_c_locale(locale: &str) -> bool {
     let base = locale.split(['.', '@']).next().unwrap_or_default();
     base.eq_ignore_ascii_case("c") || base.eq_ignore_ascii_case("posix")
 }
