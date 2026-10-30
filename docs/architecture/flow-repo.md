@@ -192,8 +192,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Auto-stash
 
-- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pr_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
-- One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start and a pull request's checkout (`start_guarded_as` with their own `AutoStashFor`).
+- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pr_checkout.rs`, `update/branch_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
+- One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start, a pull request's checkout and a remote branch checkout that fast-forwards its tracking branch first (`start_guarded_as` with their own `AutoStashFor`).
 - Each entry point passes its single command and a retry message to `gate`.
 - Only staged changes and changed tracked files count (`Snapshot::has_tracked_changes`): untracked files and an unstaged submodule row don't.
 - On a dirty tree with nothing in progress the gate opens `Modal::AutoStash` holding the retry (Always stash skips it, except for a hard reset), and the answer reruns the retry with `st.auto_stash.approved` set for just that call.

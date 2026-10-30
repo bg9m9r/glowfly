@@ -1,14 +1,15 @@
 //! The right-click menu of a remote-tracking branch, shared by the REMOTE rows of the left panel
-//! and the remote-branch labels in the graph, in groups: checkout (the local branch tracking it,
-//! or a new one), a new branch and a worktree; fast-forward of that local branch, merge, rebase,
-//! conflict check, compare and set upstream against the checked-out branch, and comparing it
-//! with its version before the last force-push (Range-diff), merge and rebase as split rows
-//! whose eye button previews them; pull requests (also from a fork remote into the base
-//! repository); hide or solo, and its colour; copying its name or a link; and delete on the
-//! remote (its dialog, `remote_branch_delete_dialog.rs`, warns of local branches tracking it).
-//! The branch's name heads the menu once; the items leave it out, and other names in
-//! labels are cut to fit, in full on hover. Disabled items say why on hover, with the same text
-//! `update` logs when it refuses a late message.
+//! and the remote-branch labels in the graph, in groups: checkout (each local branch tracking it,
+//! fast-forwarded to it when only behind, or a new one), a new branch tracking it and a worktree;
+//! fast-forward of the local branch tracking it, merge, rebase, conflict check, compare and set
+//! upstream against the checked-out branch, and comparing it with its version before the last
+//! force-push (Range-diff), merge and rebase as split rows whose eye button previews them; pull
+//! requests (also from a fork remote into the base repository); hide or solo, and its colour;
+//! copying its name or a link; and delete on the remote (its dialog,
+//! `remote_branch_delete_dialog.rs`, warns of local branches tracking it). The branch's name
+//! heads the menu once; the items leave it out, and other names in labels are cut to fit, in
+//! full on hover. Disabled items say why on hover, with the same text `update` logs when it
+//! refuses a late message.
 
 use super::common::{menu_danger, menu_header, menu_item, menu_item_if, menu_row, menu_row_preview};
 use super::ref_visibility;
@@ -16,6 +17,7 @@ use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg};
 use crate::state::rebase_onto::onto_commit_blocker;
+use crate::state::remote_branch::TrackingCheckout;
 use crate::state::{ForgeState, Selection, branches, pr_repos, remote_branch, worktree_branches};
 use crate::ui::widgets::menu::{item_named, named, separator};
 use crate::worktree::WorktreeMsg;
@@ -43,7 +45,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     let full = format!("{remote}/{name}");
     menu_header(ui, &full);
     let tracking = remote_branch::tracking_local(snap, remote, name);
-    checkout_items(ui, t, (remote, name), oid, tracking, snap, msgs);
+    checkout_items(ui, t, (remote, name), oid, snap, msgs);
     separator(ui);
     if let Some(b) = tracking {
         let blocked = branches::fast_forward_blocked(b, snap.state);
@@ -101,35 +103,47 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     menu_danger(msgs, ui, t.tr("remote_branch.menu.delete"), None, delete);
 }
 
-/// Check out the tracking branch (or create one), create a branch here, and create a worktree.
-fn checkout_items(
-    ui: &mut egui::Ui,
-    t: Lang,
-    (remote, name): (&str, &str),
-    oid: Oid,
-    tracking: Option<&BranchInfo>,
-    snap: &Snapshot,
-    msgs: &mut Vec<Msg>,
-) {
-    match tracking {
-        Some(b) if !b.is_head => {
-            let local = b.name.as_str();
-            let blocked = worktree_branches::checkout_blocked(snap, local);
-            let label = named(t.tr("remote_branch.menu.checkout_local"), &[("branch", local)]);
-            menu_row(msgs, ui, item_named(label).blocked(blocked.as_deref()), Msg::Branch(BranchMsg::Checkout(local.to_owned())));
-        }
-        Some(_) => {}
-        None => {
-            let blocked = remote_branch::checkout_blocked(snap, remote, name);
-            let checkout = Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.to_owned(), name: name.to_owned() });
-            menu_item_if(msgs, ui, t.tr("branch.menu.checkout"), blocked.as_deref(), checkout);
-        }
+/// Check out each local branch tracking it (fast-forwarded to it when only behind), or create
+/// one, create a branch tracking it and create a worktree.
+fn checkout_items(ui: &mut egui::Ui, t: Lang, (remote, name): (&str, &str), oid: Oid, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let trackers = remote_branch::trackers(snap, remote, name);
+    for b in trackers.iter().filter(|b| !b.is_head) {
+        tracker_item(ui, t, (remote, name), oid, b, snap, msgs);
     }
-    let new_branch = Msg::Branch(BranchMsg::NewBranch { start: Some(oid.to_string()), name: String::new() });
+    if trackers.is_empty() {
+        let blocked = remote_branch::checkout_blocked(snap, remote, name);
+        let checkout = Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.to_owned(), name: name.to_owned() });
+        menu_item_if(msgs, ui, t.tr("branch.menu.checkout"), blocked.as_deref(), checkout);
+    }
+    let new_branch = Msg::Branch(BranchMsg::NewTrackingBranch { remote: remote.to_owned(), name: name.to_owned() });
     menu_item(msgs, ui, t.tr("commits.menu.create_branch"), new_branch);
     if name != "HEAD" {
         let base = WorktreeBase::Remote { remote: remote.to_owned(), branch: name.to_owned() };
         menu_item(msgs, ui, t.tr("branch.menu.create_worktree"), Msg::Worktree(WorktreeMsg::CreateDialog(base)));
+    }
+}
+
+/// Checkout of local branch `b`, which tracks `remote`/`name` (at `tip`): named "and
+/// fast-forward" when it is only behind, and saying on hover that a diverged one stays put.
+fn tracker_item(ui: &mut egui::Ui, t: Lang, (remote, name): (&str, &str), tip: Oid, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let local = b.name.as_str();
+    let blocked = worktree_branches::checkout_blocked(snap, local);
+    let plan = remote_branch::tracking_checkout(b, tip);
+    let template = match plan {
+        TrackingCheckout::FastForward { .. } => t.tr("remote_branch.menu.checkout_fast_forward"),
+        _ => t.tr("remote_branch.menu.checkout_local"),
+    };
+    let msg = Msg::Branch(BranchMsg::CheckoutTracking { remote: remote.to_owned(), name: name.to_owned(), local: local.to_owned() });
+    let r = item_named(named(template, &[("branch", local)])).blocked(blocked.as_deref()).show(ui);
+    let r = match plan {
+        TrackingCheckout::Diverged { ahead, behind } if blocked.is_none() => {
+            r.on_hover_text(remote_branch::diverged_note(t, local, &format!("{remote}/{name}"), ahead, behind))
+        }
+        _ => r,
+    };
+    if r.clicked() {
+        msgs.push(msg);
+        ui.close_menu();
     }
 }
 
