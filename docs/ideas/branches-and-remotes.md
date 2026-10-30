@@ -22,6 +22,15 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   (`PushRemotes`) names another remote than its upstream's: offer it toward that push remote too,
   leasing its tracking branch there, instead of only toward the upstream
 
+### Check out a remote branch with its tracking branch fast-forwarded
+
+- Offer Merge, Rebase or Reset to the remote for a diverged tracking branch, not only checking it
+  out where it is
+- Undo of a checkout that fast-forwarded the tracking branch also moves the branch back (only
+  HEAD goes back now)
+- Palette entries for remote branches a local branch tracks, checking out and fast-forwarding it
+- The tracking New branch dialog: suggest a name, and a box to leave the upstream unset
+
 ### Keep the remote in step on rename and remote delete
 
 - Rename a branch whose upstream is gone: push the new name and make it the upstream, with

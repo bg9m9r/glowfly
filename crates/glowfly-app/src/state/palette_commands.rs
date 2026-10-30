@@ -167,7 +167,8 @@ pub enum PaletteCommand {
     ToolbarLabels(bool),
     Theme(ThemeChoice),
     Checkout(String),
-    /// `git checkout --track <remote>/<branch>`: creates a local branch tracking it.
+    /// Checks out remote branch `branch` on `remote` (`BranchMsg::CheckoutRemote`): creates a
+    /// local branch tracking it.
     CheckoutRemote {
         remote: String,
         branch: String,

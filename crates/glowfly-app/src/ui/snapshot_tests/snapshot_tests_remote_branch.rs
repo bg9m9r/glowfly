@@ -1,5 +1,5 @@
-//! The REMOTE row menu of the left panel: the local branch that tracks the remote branch
-//! (checkout, fast-forward) or a new one, and the operations against the checked-out branch.
+//! The REMOTE row menu of the left panel: the local branches that track the remote branch
+//! (checkout, also with a fast-forward, and fast-forward) or a new one, and the operations against the checked-out branch.
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -102,6 +102,37 @@ fn remote_branch_menu_untracked() {
     h.get_by_label("Checkout").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, BranchMsg::CheckoutRemote { remote, name } if remote == "origin" && name == "topic")));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Several local branches tracking the remote branch: one checkout each, named, the one only
+/// behind offered with its fast-forward; Create branch here… opens the tracking New branch.
+#[test]
+fn remote_branch_menu_several_trackers() {
+    let (mut st, dir) = with_remote(ThemeChoice::Dark, "remote-branch-menu-trackers", &[]);
+    for (name, ahead, behind) in [("search", 1, 1), ("login-page", 0, 1)] {
+        let b = branch(&mut st, name);
+        b.tracking = Some(Tracking { remote: "origin".into(), merge: "search".into() });
+        b.upstream = Some("origin/search".into());
+        b.upstream_ref = Some("refs/remotes/origin/search".into());
+        (b.ahead, b.behind) = (ahead, behind);
+    }
+    let mut h = harness(st, true);
+    h.run();
+    open_remote_row(&mut h, "search");
+    assert!(h.query_by_label("Checkout search").is_some(), "the diverged one, checked out where it is");
+    assert!(h.query_by_label("Checkout and fast-forward login-page").is_some());
+    assert!(h.query_by_label("Checkout").is_none(), "no new tracking branch offered");
+    h.get_by_label("Checkout and fast-forward login-page").click();
+    h.run();
+    let want = |m: &BranchMsg| matches!(m, BranchMsg::CheckoutTracking { remote, name, local } if remote == "origin" && name == "search" && local == "login-page");
+    assert!(sent(&h, want));
+
+    open_remote_row(&mut h, "search");
+    h.get_by_label("Create branch here…").click();
+    h.run();
+    assert!(sent(&h, |m| matches!(m, BranchMsg::NewTrackingBranch { remote, name } if remote == "origin" && name == "search")));
     drop(h);
     remove_fixture(&dir);
 }

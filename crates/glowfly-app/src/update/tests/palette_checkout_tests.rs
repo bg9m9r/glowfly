@@ -83,7 +83,7 @@ fn remote_entry_runs_checkout_track() {
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd.clone())));
     assert!(st.palette.is_none());
     let (cmds, record) = run_git(&fx);
-    assert_eq!(cmds, vec![args(&["checkout", "--track", "origin/other"])]);
+    assert_eq!(cmds, vec![args(&["checkout", "--track", "origin/other", "--"])]);
     assert_eq!(record, Some(UndoKind::Checkout));
 
     let mut st = state();
@@ -109,7 +109,7 @@ fn remote_name_with_slash() {
     assert_eq!(e.command, cmd);
     assert!(find(&st, "Checkout team/fork/topic").is_none(), "local topic exists");
     let (cmds, _) = run_git(&run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd))));
-    assert_eq!(cmds, vec![args(&["checkout", "--track", "team/fork/fix/x"])]);
+    assert_eq!(cmds, vec![args(&["checkout", "--track", "team/fork/fix/x", "--"])]);
     cleanup(&[&dir]);
 }
 

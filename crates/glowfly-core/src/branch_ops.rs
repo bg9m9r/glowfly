@@ -144,6 +144,27 @@ pub fn fast_forward_cmd(b: &BranchInfo) -> Option<Vec<String>> {
     })
 }
 
+/// Moves local branch `name`, which isn't checked out, from `from` to `to` (the tip of its
+/// upstream `upstream`), only as a fast-forward: `merge-base --is-ancestor` stops the sequence
+/// unless `from` is an ancestor of `to`, and `update-ref` is leased on `from`, so a branch that
+/// moved since is left alone. The caller refuses a branch another worktree has checked out.
+pub fn fast_forward_ref_cmds(name: &str, from: git2::Oid, to: git2::Oid, upstream: &str) -> Vec<Vec<String>> {
+    let (from, to) = (from.to_string(), to.to_string());
+    let reason = format!("fast-forward to {upstream}");
+    vec![
+        args(&["merge-base", "--is-ancestor", &from, &to]),
+        args(&["update-ref", "-m", &reason, &format!("refs/heads/{name}"), &to, &from]),
+    ]
+}
+
+/// Creates local branch `name` at remote-tracking branch `remote`/`remote_branch` with that as
+/// its upstream (`--track`, so the two names can differ), checking it out when `checkout`. The
+/// start is the full ref name, so a local branch spelled like it is never picked instead.
+pub fn create_tracking_cmd(name: &str, remote: &str, remote_branch: &str, checkout: bool) -> Vec<String> {
+    let start = format!("refs/remotes/{remote}/{remote_branch}");
+    if checkout { args(&["checkout", "-b", name, "--track", &start]) } else { args(&["branch", "--track", name, &start]) }
+}
+
 /// Sets `branch` to track `remote_branch` on `remote`. When the remote-tracking ref `exists`,
 /// git's --set-upstream-to does it; otherwise (not pushed or fetched yet, which git refuses)
 /// the two config values are written directly.

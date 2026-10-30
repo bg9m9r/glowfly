@@ -1,4 +1,4 @@
-//! Branch operations: the new branch, rename and upstream dialogs, the local branch menu, and
+//! Branch operations: the new branch (also tracking a remote branch), rename and upstream dialogs, the local branch menu, and
 //! hiding or soloing branches from the left panel. Shares the fixture repository and renderer
 //! with `snapshot_tests`.
 
@@ -58,13 +58,34 @@ fn rename_branch_dialog() {
     remove_fixture(&dir);
 }
 
+/// From a remote branch's menu: the dialog starts there, says the new branch tracks it, and
+/// creates it with `--track` under the name typed.
+#[test]
+fn new_branch_dialog_tracking() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "new-branch-tracking");
+    let start = Some(tip(&st, "search").to_string());
+    let track = Some(("origin".to_owned(), "search".to_owned()));
+    st.modal = Some(Modal::NewBranch { start, name: "mine".into(), checkout: true, track, touched: Touched::default() });
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("new_branch_dialog_tracking");
+    assert!(h.query_by_label_contains("The new branch tracks origin/search, also under another name.").is_some());
+    h.get_by_label("Create").click();
+    h.run();
+    let want = glowfly_core::branch_ops::create_tracking_cmd("mine", "origin", "search", true);
+    let sent = h.state().1.iter().any(|m| matches!(m, Msg::Job(crate::msg::JobMsg::Git { cmds, .. }) if *cmds == [want.clone()]));
+    assert!(sent, "{:?}", h.state().1.len());
+    drop(h);
+    remove_fixture(&dir);
+}
+
 /// A folder of the new name exists in another case: on Windows and macOS the branch would land
 /// in it, so the name is refused on every OS.
 #[test]
 fn new_branch_dialog_folder_case() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "new-branch-folder-case");
     branch(&mut st, "search").name = "feature/search".into();
-    st.modal = Some(Modal::NewBranch { start: None, name: "Feature/login".into(), checkout: true, touched: typed() });
+    st.modal = Some(Modal::NewBranch { start: None, name: "Feature/login".into(), checkout: true, track: None, touched: typed() });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("new_branch_dialog_folder_case");

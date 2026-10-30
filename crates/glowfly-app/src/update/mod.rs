@@ -10,6 +10,7 @@ mod auto_stash_restack;
 mod auto_stash_saved;
 mod avatars;
 mod blame;
+mod branch_checkout;
 mod branch_colour;
 mod branch_delete;
 mod branch_push;
