@@ -60,7 +60,7 @@ pub enum RemoteOutcome {
     Deleted,
     /// Not tried: HEAD doesn't contain the branch (`merge-base --is-ancestor` failed).
     Kept,
-    /// The push failed; the first line of its output.
+    /// The push failed; what it printed.
     Failed(String),
 }
 

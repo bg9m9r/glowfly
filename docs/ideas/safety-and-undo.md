@@ -170,6 +170,11 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Try again for jobs started as effects (`begin_job`: stash, undo, rebase) and for auto-stash-wrapped jobs, which `start_job`'s kept spec doesn't cover
 - Delete lock file for libgit2's own lock errors (an index.lock met by a stage or discard), which `git_errors::classify` doesn't read
 - Narrow "git is running" to this repository on Linux and macOS (a process's cwd, `-C`, `GIT_DIR`) instead of any git on the machine
+- Offer View conflicts on a conflicts toast once the status names the files, when git's CONFLICT lines named none
+- Carry the status's conflict count into the activity file's line and the desktop note, which keep git's count
+- Keep the file names of folded line-ending warnings reachable (a fold-out row in the activity log, or in Show output and Copy log)
+- Fold git's pre-2.37 line-ending warnings ("LF will be replaced by CRLF in <path>." with its "original line endings" line) too
+- Translate the English frames around flow headlines (submodule remove, worktree remove, Git Flow stopped, Init, credential prompts) and job labels that join two names
 - Say on the failed run why Delete lock file isn't offered (git running, or which Unknown) rather than only offering Try again
 - Cancelling the Delete lock file confirmation drops both buttons; keep them until one runs
 - Try again for a job that failed past its first command, from the failed command on (`cmds[at..]`), where each step allows it

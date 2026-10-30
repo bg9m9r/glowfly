@@ -217,6 +217,13 @@ fn headlines_skip_the_stash_command() {
         Some("Finish feature login didn't start: your changes couldn't be stashed: error: could not write index")
     );
     pending(&mut st, &dir);
+    let locked = "$ git stash push -m x\nfatal: Unable to create '/r/.git/index.lock': File exists.";
+    let says = headline(&mut st, false, locked).unwrap_or_default();
+    assert!(
+        says.starts_with("Finish feature login didn't start: your changes couldn't be stashed: Another git program is using"),
+        "{says}"
+    );
+    pending(&mut st, &dir);
     let second = "$ git stash push -m x\nSaved working directory\n$ git checkout develop --\n\
                   $ git merge --no-ff --no-edit refs/heads/feature/login\nerror: something broke";
     assert_eq!(

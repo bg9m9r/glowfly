@@ -32,5 +32,7 @@ pub(super) fn stopped(st: &mut AppState, output: String, now: Instant, fx: &mut 
     let Some(label) = st.job.as_ref().map(|j| j.label.clone()) else { return };
     st.job_stop.get_or_insert_with(JobStop::default).stopped = true;
     super::partial_content::job_stopped(st);
-    super::ops::finish_job(st, false, output, Some(format!("{label} cancelled")), None, now, fx);
+    let t = st.settings.lang();
+    let headline = t.trf("job.headline.cancelled", &[("job", &crate::state::job_spec::labels::shown(t, &label))]);
+    super::ops::finish_job(st, false, output, Some(headline), None, now, fx);
 }

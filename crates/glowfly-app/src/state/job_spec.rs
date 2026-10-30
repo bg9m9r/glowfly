@@ -2,6 +2,8 @@
 //! command takes when it is a cherry-pick or revert, and the `Retry` a failed one's Try again
 //! sends (`JobMsg::Retry`, update/job_retry.rs): the same spec once more, for the same tab.
 
+pub mod labels;
+
 use crate::state::auto_stash::AutoStashJob;
 use crate::state::push_pr::PrStart;
 use crate::state::tabs::TabId;

@@ -1,7 +1,9 @@
 //! The WIP panel's Conflicted Files and Resolved Files lists: the conflict markers left in each
 //! conflicted file, the files resolved so far (git's resolve-undo record), and the rules for
 //! stepping to the next conflicted file, for which resolved files can be marked conflicted
-//! again, and for the "markers left" and Mark conflicted confirmations.
+//! again, and for the "markers left" and Mark conflicted confirmations. A job that stopped on
+//! conflicts first counts git's CONFLICT lines; its toast waits (`Recount`) for the status read
+//! after it to count the unmerged paths, each once (update/conflict_count.rs).
 
 use super::AppState;
 use super::path_hazards::hazard_of;
@@ -10,6 +12,7 @@ use git2::RepositoryState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Hazard, ResolvedFile, Snapshot};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Default)]
 pub struct ConflictFiles {
@@ -97,6 +100,33 @@ pub fn markers_warning(left: &[(String, usize)]) -> String {
             )
         }
     }
+}
+
+/// A conflicts toast waiting for the status read after its job.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Recount {
+    /// The toast and the run it says the count in.
+    pub toast: u64,
+    pub entry: super::logs::EntryId,
+    /// The job's repository.
+    pub workdir: PathBuf,
+    /// The load generation when the job ended: a status read started before has an older view.
+    pub generation: u64,
+    /// The paths git's lines named, and the readings of those they left open
+    /// (`glowfly_core::conflict_lines`), to put the status's paths in git's order.
+    pub named: Vec<String>,
+    pub unsure: Vec<Vec<String>>,
+}
+
+/// How many paths `snap`'s status lists as conflicted, each once, and those Glowfly can name to
+/// git (`conflicted_paths`), in list order.
+pub fn unmerged(snap: &Snapshot) -> (usize, Vec<String>) {
+    let mut all: Vec<&str> = snap.unstaged.iter().filter(|f| f.status == '!').map(|f| f.path.as_str()).collect();
+    all.sort_unstable();
+    all.dedup();
+    let mut named = conflicted_paths(snap);
+    named.dedup();
+    (all.len(), named)
 }
 
 #[cfg(test)]
