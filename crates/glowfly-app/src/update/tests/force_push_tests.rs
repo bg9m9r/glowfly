@@ -1,7 +1,8 @@
 //! Headless tests for Force push: the lease names the remote commit the snapshot last saw, so
 //! a remote branch that moved since (and was fetched in the background) is never overwritten;
-//! the same from a branch row for a branch that isn't checked out, its refusals, the rejected
-//! push toast's Force push with lease, and Push to all remotes.
+//! the same from a branch row for a branch that isn't checked out, the refusals (the toolbar's
+//! too), the rejected push toast's Force push with lease (only for the push git rejected), and
+//! Push to all remotes.
 
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, finish, git};
@@ -28,8 +29,10 @@ fn cleanup(dirs: &[&Path]) {
     }
 }
 
-/// Rewrites main's last commit locally (so the push needs force) and reloads the snapshot.
-fn rewrite_main(st: &mut crate::state::AppState, work: &Path) {
+/// Checks out feature (main, the default branch, is never force pushed) and rewrites its last
+/// commit locally, so the push needs force; reloads the snapshot.
+fn rewrite_feature(st: &mut crate::state::AppState, work: &Path) {
+    git(work, &["switch", "-q", "feature"]);
     git(work, &["commit", "-q", "--amend", "-m", "rewritten"]);
     drive(st, Msg::Repo(RepoMsg::Refresh));
 }
@@ -37,18 +40,18 @@ fn rewrite_main(st: &mut crate::state::AppState, work: &Path) {
 #[test]
 fn force_push_leases_the_commit_the_snapshot_saw() {
     let (mut st, work, bare) = with_origin("force-lease-cmd");
-    rewrite_main(&mut st, &work);
-    let seen = rev(&work, "origin/main");
+    rewrite_feature(&mut st, &work);
+    let seen = rev(&work, "origin/feature");
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, .. }] => assert_eq!(
             cmds[..],
             [args(&[
                 "push",
-                &format!("--force-with-lease=refs/heads/main:{seen}"),
+                &format!("--force-with-lease=refs/heads/feature:{seen}"),
                 "--force-if-includes",
                 "origin",
-                "refs/heads/main:refs/heads/main",
+                "refs/heads/feature:refs/heads/feature",
             ])]
         ),
         other => panic!("expected a push, got {other:?}"),
@@ -59,26 +62,39 @@ fn force_push_leases_the_commit_the_snapshot_saw() {
 #[test]
 fn force_push_replaces_an_unchanged_remote() {
     let (mut st, work, bare) = with_origin("force-lease-ok");
-    rewrite_main(&mut st, &work);
+    rewrite_feature(&mut st, &work);
     drive(&mut st, Msg::Job(JobMsg::Push { force: true }));
-    assert_eq!(rev(&bare, "main"), rev(&work, "main"), "{:?}", st.log.last().map(|l| &l.text));
+    assert_eq!(rev(&bare, "feature"), rev(&work, "feature"), "{:?}", st.log.last().map(|l| &l.text));
     cleanup(&[&work, &bare]);
 }
 
 #[test]
 fn force_push_refuses_when_the_remote_moved_after_the_snapshot() {
     let (mut st, work, bare) = with_origin("force-lease-moved");
-    rewrite_main(&mut st, &work);
-    // Someone else pushes, and a background fetch updates origin/main without the snapshot
+    rewrite_feature(&mut st, &work);
+    // Someone else pushes, and a background fetch updates origin/feature without the snapshot
     // being reloaded: bare --force-with-lease would now overwrite their commit.
-    remote_commit(&bare, "main", "theirs.txt");
+    remote_commit(&bare, "feature", "theirs.txt");
     git(&work, &["fetch", "-q", "origin"]);
-    let theirs = rev(&bare, "main");
-    assert_eq!(rev(&work, "origin/main"), theirs);
+    let theirs = rev(&bare, "feature");
+    assert_eq!(rev(&work, "origin/feature"), theirs);
     drive(&mut st, Msg::Job(JobMsg::Push { force: true }));
-    assert_eq!(rev(&bare, "main"), theirs, "their commit survives");
+    assert_eq!(rev(&bare, "feature"), theirs, "their commit survives");
     let log = st.log.last().map(|l| l.text.clone()).unwrap_or_default();
     assert!(log.contains("Force push FAILED") && log.contains("stale info"), "{log}");
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn the_toolbar_never_force_pushes_the_default_branch() {
+    let (mut st, work, bare) = with_origin("force-lease-head-main");
+    git(&work, &["commit", "-q", "--amend", "-m", "rewritten"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    let main = rev(&bare, "main");
+    assert!(update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now()).is_empty(), "nothing is pushed");
+    let log = st.log.last().map(|l| l.text.clone()).unwrap_or_default();
+    assert_eq!(log, "main is the default branch of origin, so it is never force pushed: others build on it.");
+    assert_eq!(rev(&bare, "main"), main);
     cleanup(&[&work, &bare]);
 }
 
@@ -164,7 +180,7 @@ fn force_push_refuses_the_default_branch_and_a_moved_upstream() {
     let t = st.settings.lang();
     let why = force_blocked(t, st.snap.as_ref().unwrap(), branch(&st, "main")).expect("main is refused");
     assert_eq!(why, "main is the default branch of origin, so it is never force pushed: others build on it.");
-    let main = Msg::Branch(BranchMsg::ForcePush { branch: "main".into(), seen: None });
+    let main = Msg::Branch(BranchMsg::ForcePush { branch: "main".into(), remote: "origin".into(), dest: "main".into(), seen: None });
     assert!(update(&mut st, main, Instant::now()).is_empty());
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(why.as_str()));
     // The confirmation counted origin/feature at one commit; a fetch since moved it.
@@ -176,6 +192,14 @@ fn force_push_refuses_the_default_branch_and_a_moved_upstream() {
     assert!(update(&mut st, then, Instant::now()).is_empty(), "nothing is pushed");
     let log = st.log.last().map(|l| l.text.clone()).unwrap_or_default();
     assert!(log.starts_with("origin/feature moved since you confirmed"), "{log}");
+    // Its upstream was set to another branch since: refused, whatever that one's tip.
+    let (_, then) = confirmation(&st, "feature");
+    git(&work, &["push", "-q", "origin", "feature:other"]);
+    git(&work, &["branch", "-q", "-u", "origin/other", "feature"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(update(&mut st, then, Instant::now()).is_empty(), "nothing is pushed");
+    let log = st.log.last().map(|l| l.text.clone()).unwrap_or_default();
+    assert!(log.starts_with("The upstream of feature is no longer origin/feature"), "{log}");
     cleanup(&[&work, &bare]);
 }
 
@@ -221,6 +245,54 @@ fn a_push_rejected_as_behind_offers_force_push_for_that_branch() {
     let labels: Vec<&str> = fixes.iter().map(|f| f.0.as_str()).collect();
     assert_eq!(labels, ["Pull", "Force push with lease…"]);
     assert!(forces(fixes[1].1, "feature"), "only the rejected branch");
+    cleanup(&[&work, &bare]);
+}
+
+/// The labels of the newest toast's fixes.
+fn fix_labels(st: &AppState) -> Vec<String> {
+    toast_fixes(st).into_iter().map(|f| f.0).collect()
+}
+
+const BEHIND: &str = "The remote has commits your branch doesn't have.";
+
+#[test]
+fn a_rejected_push_to_another_remote_offers_no_force_push() {
+    let (mut st, work, bare) = with_origin("force-lease-fork");
+    let fork = bare.with_file_name(format!("{}-fork.git", work.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&fork);
+    std::fs::create_dir_all(&fork).unwrap();
+    git(&fork, &["init", "-q", "--bare"]);
+    git(&work, &["remote", "add", "fork", &fork.display().to_string()]);
+    git(&work, &["push", "-q", "fork", "feature"]);
+    // fork moves on; feature (tracking origin/feature) gets a commit of its own.
+    remote_commit(&fork, "feature", "theirs.txt");
+    git(&work, &["switch", "-q", "feature"]);
+    git(&work, &["commit", "-q", "--allow-empty", "-m", "ours"]);
+    git(&work, &["switch", "-q", "main"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    drive(&mut st, Msg::Branch(BranchMsg::PushBranch { branch: "feature".into(), remote: Some("fork".into()) }));
+    let text = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
+    assert!(text.starts_with(BEHIND), "{text}");
+    assert!(!fix_labels(&st).iter().any(|l| l.starts_with("Force push")), "origin never rejected anything");
+    cleanup(&[&work, &bare, &fork]);
+}
+
+#[test]
+fn a_rejected_push_of_another_branch_to_an_upstream_name_offers_no_force_push() {
+    let (mut st, work, bare) = with_origin("force-lease-other-src");
+    // x has no upstream; y tracks origin/x.
+    git(&work, &["branch", "x"]);
+    git(&work, &["push", "-q", "origin", "x"]);
+    git(&work, &["branch", "-q", "--track", "y", "origin/x"]);
+    remote_commit(&bare, "x", "theirs.txt");
+    git(&work, &["switch", "-q", "x"]);
+    git(&work, &["commit", "-q", "--allow-empty", "-m", "ours"]);
+    git(&work, &["switch", "-q", "main"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    drive(&mut st, Msg::Branch(BranchMsg::PushBranch { branch: "x".into(), remote: None }));
+    let text = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
+    assert!(text.starts_with(BEHIND), "{text}");
+    assert!(!fix_labels(&st).iter().any(|l| l.starts_with("Force push")), "y was never pushed");
     cleanup(&[&work, &bare]);
 }
 

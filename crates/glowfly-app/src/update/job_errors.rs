@@ -1,7 +1,8 @@
 //! A failed job's toast: git's cause in plain words and the fix that answers it
 //! (glowfly_core::git_errors), or "<label> failed: <last line>". Every fix only opens a dialog
-//! (Force push with lease asks first) or a Preferences page, or runs what the failed job meant to run (Try again on a lock file or
-//! an HTTPS sign-in, update/job_retry.rs); none discards work.
+//! (Force push with lease asks first) or a Preferences page, or runs what the failed job meant
+//! to run (Try again on a lock file or an HTTPS sign-in, update/job_retry.rs); none discards
+//! work.
 
 use crate::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, StashMsg};
 use crate::remote::RemoteMsg;
@@ -70,8 +71,10 @@ pub(super) fn explain(
         Cause::Unresolved => (t.tr("git_errors.unresolved").to_owned(), first_conflict(snap).and_then(|f| view_conflicts(&f))),
         Cause::MergeInProgress => (t.tr("git_errors.merge_in_progress").to_owned(), None),
         Cause::PushBehind { branch } => {
-            // Force push with lease of the branch git rejected, its confirmation first.
-            let rejected = snap.and_then(|s| Some((s, crate::state::branches::push::rejected_local(s, &branch, output)?)));
+            // Force push with lease of the branch git rejected, read from the job's own push
+            // command; its confirmation first.
+            let cmd = again.and_then(|r| r.spec.cmds.first().filter(|_| r.spec.cmds.len() == 1));
+            let rejected = snap.zip(cmd).and_then(|(s, c)| Some((s, crate::state::branches::rejected_push::rejected_local(s, c, output)?)));
             let force = rejected.and_then(|(s, b)| crate::state::branches::push::force_confirm(t, s, b).ok());
             let force = force.and_then(|m| fix(t.tr("git_errors.force_push.button"), m));
             let pulled = if is_head(&branch) { pull() } else { None };

@@ -61,7 +61,7 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, now: std::time::Instant,
         BranchMsg::DeleteRemote { remote, name, unset } => super::branch_sync::delete_remote(st, &remote, &name, &unset, fx),
         BranchMsg::DeleteBranchAndRemote(name) => delete_with_remote(st, &name, fx),
         BranchMsg::PushBranch { branch, remote } => push(st, &branch, remote.as_deref(), fx),
-        BranchMsg::ForcePush { branch, seen } => super::branch_push::force_push(st, &branch, seen, fx),
+        BranchMsg::ForcePush { branch, remote, dest, seen } => super::branch_push::force_push(st, &branch, (&remote, &dest), seen, fx),
         BranchMsg::PushAll(branch) => super::branch_push::push_all(st, &branch, fx),
         BranchMsg::PushedAll { branch, total, result } => super::branch_push::pushed_all(st, &branch, total, result, now, fx),
     }

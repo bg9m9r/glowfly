@@ -183,6 +183,7 @@
   "branch_push.force.no_upstream": "{branch} no tiene upstream en un remoto al que enviar forzando.",
   "branch_push.force.production": "Git Flow usa {branch} como rama de producción, así que nunca se envía forzando.",
   "branch_push.force.title": "Envío forzado de {branch}",
+  "branch_push.force.upstream_changed": "El upstream de {branch} ya no es {upstream}, así que no se envió forzando. Revisa su nuevo upstream y vuelve a intentarlo.",
   "branch_sync.delete.gone": "{upstream} ya no existe.",
   "branch_sync.rename.behind.one": "{upstream} tiene {count} commit que {branch} no tiene. Haz pull primero, o se perdería al eliminar {upstream}.",
   "branch_sync.rename.behind.other": "{upstream} tiene {count} commits que {branch} no tiene. Haz pull primero, o se perderían al eliminar {upstream}.",

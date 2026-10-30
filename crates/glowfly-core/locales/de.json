@@ -183,6 +183,7 @@
   "branch_push.force.no_upstream": "{branch} hat keinen Upstream auf einem Remote für einen Force-Push.",
   "branch_push.force.production": "Git Flow nutzt {branch} als Produktions-Branch, deshalb wird er nie mit Force gepusht.",
   "branch_push.force.title": "Force-Push von {branch}",
+  "branch_push.force.upstream_changed": "Der Upstream von {branch} ist nicht mehr {upstream}, daher wurde nicht mit Force gepusht. Sieh dir den neuen Upstream an und versuche es dann erneut.",
   "branch_sync.delete.gone": "{upstream} gibt es nicht mehr.",
   "branch_sync.rename.behind.one": "{upstream} hat {count} Commit, den {branch} nicht hat. Pulle ihn zuerst, sonst ginge er beim Löschen von {upstream} verloren.",
   "branch_sync.rename.behind.other": "{upstream} hat {count} Commits, die {branch} nicht hat. Pulle sie zuerst, sonst gingen sie beim Löschen von {upstream} verloren.",

@@ -60,7 +60,8 @@ source file, update its line here. Features that span every layer are in
 - `AppState`: plain data, one file per area; pure rules (why an action is blocked, form checks, labels) live next to their data.
 - `stack_rows.rs`: the LOCAL section's stack tree.
 - `branch_delete.rs`: the branch Delete dialog's data (the tip, what would be lost, the Git Flow role), its words and the message its danger button sends.
-- `branches/push.rs`: which branches may be force pushed (refused for the remote's default branch and a Git Flow base), the confirmation naming the commits the remote would lose, the local branch a rejected push was for, and Push to all remotes' headline.
+- `branches/push.rs`: which branches may be force pushed, from a row or the toolbar (refused for the remote's default branch and a Git Flow base), the confirmation naming the commits the remote would lose, and Push to all remotes' headline.
+- `branches/rejected_push.rs`: the local branch a push rejected as behind was for, read from the job's push command and git's rejection line, for the toast's Force push with lease.
 - `branch_sync.rs`: the Rename dialog's form and whether it may rename the branch on its remote too (refused for the default branch, a Git Flow base, a branch behind its upstream, a name the remote has), that job's headline by the step it reached, and the Delete remote branch dialog's data (the local branches tracking it, Unset upstream).
 - `stack.rs`: why a restack is refused.
 - `stack_push.rs`: a stack's push targets and why Push stack is off.
@@ -112,7 +113,7 @@ source file, update its line here. Features that span every layer are in
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
 - `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
-- `branch_push.rs`: Force push with lease of any branch with an upstream (refused when the upstream moved since the confirmation), and Push to all remotes as one job naming the remotes that failed.
+- `branch_push.rs`: Force push with lease of any branch with an upstream (refused when its upstream or that upstream's tip changed since the confirmation), the toolbar's Force push of the checked-out branch, and Push to all remotes as one job naming the remotes that failed.
 - `branch_sync.rs`: Rename with the remote as one job (rename, `push -u` of the new name, then the old name deleted under a lease) with a headline saying what is left when a step fails, and Delete remote branch with the tracking branches' upstreams unset after it.
 - `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
 - `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.

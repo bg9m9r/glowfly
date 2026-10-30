@@ -1,7 +1,9 @@
 //! Force push with lease of any local branch with an upstream, from its row's menu or a
-//! rejected push's toast, and Push to all remotes (state/branch_push.rs). Force push re-checks
-//! the refusals against the current snapshot, refuses when the upstream moved since the
-//! confirmation counted its commits, and runs `force_push_cmd` with that lease. Push to all
+//! rejected push's toast, the toolbar's Force push of the checked-out branch, and Push to all
+//! remotes (state/branches/push.rs). Force push re-checks the refusals against the current
+//! snapshot (the toolbar's too: never the remote's default branch or a Git Flow base), refuses
+//! when the upstream or its tip changed since the confirmation counted its commits, and runs
+//! `force_push_cmd` with that lease. Push to all
 //! remotes runs one job (`BranchEffect::PushAll`) that pushes to each remote in turn, never
 //! forced, and names the remotes that failed. Neither moves a local branch, so the undo history
 //! stays.
@@ -10,7 +12,7 @@ use super::ops::{JobSpec, finish_job, start_job};
 use crate::effect::{BranchEffect, Effect};
 use crate::state::AppState;
 use crate::state::branches::NO_REMOTES;
-use crate::state::branches::push::{force_blocked, pushed_all_headline, seen_tip};
+use crate::state::branches::push::{force_blocked, head_force_blocked, pushed_all_headline, seen_tip};
 use git2::Oid;
 use glowfly_core::push_all::{self, PushedAll};
 use std::time::Instant;
@@ -18,13 +20,19 @@ use std::time::Instant;
 /// The job label of Push to all remotes (English: it is also log text).
 pub const PUSH_ALL: &str = "Push to all remotes";
 
-/// Force pushes `name` to its upstream, leasing the tip the confirmation saw (`seen`).
-pub(super) fn force_push(st: &mut AppState, name: &str, seen: Option<Oid>, fx: &mut Vec<Effect>) {
+/// Force pushes `name` to the upstream the confirmation named (`dest` on `remote`), leasing
+/// the tip it saw (`seen`).
+pub(super) fn force_push(st: &mut AppState, name: &str, (remote, dest): (&str, &str), seen: Option<Oid>, fx: &mut Vec<Effect>) {
     let Some(b) = super::branches::find(st, name) else { return };
     let Some(snap) = st.snap.as_ref() else { return };
     let t = st.settings.lang();
     if let Some(why) = force_blocked(t, snap, &b) {
         st.log(false, why);
+        return;
+    }
+    // The upstream was set to another branch since the confirmation.
+    if crate::state::branches::remote_tracking(&b).is_none_or(|up| up.remote != remote || up.merge != dest) {
+        st.log(false, t.trf("branch_push.force.upstream_changed", &[("branch", &name), ("upstream", &format!("{remote}/{dest}"))]));
         return;
     }
     // A fetch since the confirmation moved the upstream: its count no longer holds.
@@ -35,6 +43,23 @@ pub(super) fn force_push(st: &mut AppState, name: &str, seen: Option<Oid>, fx: &
     }
     let if_includes = st.git.has(glowfly_core::git_version::Feature::ForceIfIncludes);
     let Some(cmd) = super::ops::force_push_cmd(&b, snap, if_includes) else { return };
+    start_job(st, JobSpec::new("Force push".into(), vec![cmd]), fx);
+}
+
+/// The toolbar's Force push of the checked-out branch (to its upstream, or as a new branch
+/// with `-u`), with the lease the snapshot saw; with nowhere to push, the Publish dialog.
+pub(super) fn force_head(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Some(b) = st.snap.as_ref().and_then(|s| s.head_info()).cloned() else { return };
+    let Some(snap) = st.snap.as_ref() else { return };
+    if let Some(why) = head_force_blocked(st.settings.lang(), snap, &b) {
+        st.log(false, why);
+        return;
+    }
+    let if_includes = st.git.has(glowfly_core::git_version::Feature::ForceIfIncludes);
+    let Some(cmd) = super::ops::force_push_cmd(&b, snap, if_includes) else {
+        // No remote to push to: offer to create the repository on GitHub.
+        return super::publish::open(st, fx);
+    };
     start_job(st, JobSpec::new("Force push".into(), vec![cmd]), fx);
 }
 

@@ -57,7 +57,10 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
         crate::ui::pr_menu_items::push_pr_item(ui, t, snap, fs, st.job.is_none(), msgs);
     }
     separator(ui);
-    let force = ItemState::danger_unless(busy.as_deref());
+    // Refused as a branch row's is: never the remote's default branch or a Git Flow base.
+    let refused = snap.head_info().and_then(|b| crate::state::branches::push::head_force_blocked(t, snap, b));
+    let why = busy.clone().or(refused);
+    let force = ItemState::danger_unless(why.as_deref());
     if reason::menu_button(ui, t.tr("toolbar.force_push"), "", force).clicked() {
         msgs.push(Msg::confirm_danger(
             t.tr("toolbar.force_push.title"),

@@ -1,8 +1,8 @@
-//! Force push with lease of any local branch and Push to all remotes (update/branch_push.rs, from `state/branches.rs`):
-//! which branches may be force pushed (`force_blocked`: only one with an upstream on a remote,
-//! never the remote's default branch or a Git Flow base, as Rename refuses on the remote),
-//! the confirmation naming the commits the remote would lose (`force_confirm`), the local
-//! branch a rejected push was for (`rejected_local`), and Push to all remotes' headline.
+//! Force push with lease of any local branch and Push to all remotes (update/branch_push.rs):
+//! which branches may be force pushed (`force_blocked` for a row: only one with an upstream
+//! on a remote; never the remote's default branch or a Git Flow base, as Rename refuses on the
+//! remote, which `head_force_blocked` also applies to the toolbar's), the confirmation naming
+//! the commits the remote would lose (`force_confirm`), and Push to all remotes' headline.
 
 use crate::msg::{BranchMsg, Msg};
 use crate::state::{branch_sync, branches, remote_branch};
@@ -23,6 +23,20 @@ pub fn force_blocked(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Option<String>
     if !snap.remotes.iter().any(|(r, _)| r == remote) {
         return Some(t.trf("branch_push.force.no_remote", &[("remote", &remote)]));
     }
+    base_refusal(t, snap, name, remote, dest)
+}
+
+/// Why the toolbar's Force push of the checked-out branch `b` is refused: its push target
+/// (`push_target`, which may be a new branch) is the remote's default branch, or either name
+/// is a Git Flow base. None when it may run, or when there is nowhere to push.
+pub fn head_force_blocked(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Option<String> {
+    let (remote, dest, _) = branches::push_target(b, snap, None)?;
+    base_refusal(t, snap, &b.name, &remote, &dest)
+}
+
+/// Why force pushing local `name` to `dest` on `remote` is refused: the remote's default
+/// branch, or a Git Flow base by either name (others build on those).
+fn base_refusal(t: Lang, snap: &Snapshot, name: &str, remote: &str, dest: &str) -> Option<String> {
     if branch_sync::is_default(snap, remote, dest) {
         return Some(t.trf("branch_push.force.default", &[("branch", &dest), ("remote", &remote)]));
     }
@@ -60,26 +74,10 @@ pub fn force_confirm(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Result<Msg, St
         (Some(_), n) => t.trn("branch_push.force.body", n, &args),
     };
     let body = format!("{lost} {}", t.trf("branch_push.force.body.lease", &args));
-    let then = Msg::Branch(BranchMsg::ForcePush { branch: b.name.clone(), seen });
+    let (branch, remote, dest) = (b.name.clone(), tr.remote.clone(), tr.merge.clone());
+    let then = Msg::Branch(BranchMsg::ForcePush { branch, remote, dest, seen });
     let title = t.trf("branch_push.force.title", &[("branch", &b.name)]);
     Ok(Msg::confirm_danger(&title, body, t.tr("toolbar.force_push.button"), then))
-}
-
-/// The local branch whose push git rejected as behind, from the rejected remote branch `dest`
-/// and the job's `output`: the one branch whose upstream is `dest`, narrowed to the remote
-/// whose URL the output prints when several are. None when that leaves it open.
-pub fn rejected_local<'a>(snap: &'a Snapshot, dest: &str, output: &str) -> Option<&'a BranchInfo> {
-    let tracking = |b: &&BranchInfo| branches::remote_tracking(b).is_some_and(|t| t.merge == dest);
-    let all: Vec<&BranchInfo> = snap.locals.iter().filter(tracking).collect();
-    if let [only] = all.as_slice() {
-        return Some(only);
-    }
-    let printed = |remote: &str| {
-        let info = snap.remote_info.iter().find(|r| r.name == remote);
-        info.is_some_and(|r| r.urls.iter().chain(&r.push_urls).any(|u| !u.is_empty() && output.contains(u.trim_end_matches('/'))))
-    };
-    let on: Vec<&BranchInfo> = all.into_iter().filter(|b| branches::remote_tracking(b).is_some_and(|t| printed(&t.remote))).collect();
-    if let [only] = on.as_slice() { Some(only) } else { None }
 }
 
 /// Push to all remotes' headline: every remote took it, or which ones didn't.

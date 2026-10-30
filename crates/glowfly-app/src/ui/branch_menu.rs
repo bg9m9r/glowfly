@@ -104,7 +104,8 @@ fn force_push_item(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, upstream: &str, s
     match branch_push::force_confirm(t, snap, b) {
         Ok(ask) => menu_row(msgs, ui, item_named(label).state(ItemState::danger_unless(None)), ask),
         Err(why) => {
-            let refused = Msg::Branch(BranchMsg::ForcePush { branch: b.name.clone(), seen: None });
+            let refused =
+                Msg::Branch(BranchMsg::ForcePush { branch: b.name.clone(), remote: String::new(), dest: String::new(), seen: None });
             menu_row(msgs, ui, item_named(label).state(ItemState::danger_unless(Some(&why))), refused);
         }
     }
