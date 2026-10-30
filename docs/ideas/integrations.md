@@ -91,6 +91,7 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Skip 8-digit dates (`20241016-release`) like year-like branch names; they are still read as issues
 - An explicit `ab#123` or `wi-123` branch marker for Azure Boards, like `gh-` and `issue-`
 - Ask once, on the first year-like branch in a repository, instead of relying on the Issue tracker page to be found
+- A 403 from GitLab's project lookup stops the fork lookups; tell a private project apart from missing permission and go on
 
 ### Trello
 
