@@ -1,11 +1,14 @@
 //! Sparse checkout: the worktree's state (on or off, folders or patterns, the paths, how many
 //! tracked files are left out), checks of the paths a user typed, and the `git sparse-checkout`
-//! command lines. The app runs them through gitcli.
+//! command lines. The app runs them through gitcli. Which folders a cone keeps is in `cone.rs`.
 
 use crate::error::{Error, Result};
 use crate::gitcli::{self, args};
 use git2::{IndexEntryExtendedFlag, Repository};
 use std::path::Path;
+
+mod cone;
+pub use cone::{cone_folders, in_cone};
 
 /// How git matches the sparse paths.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

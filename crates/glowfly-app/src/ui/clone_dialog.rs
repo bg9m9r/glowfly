@@ -1,6 +1,6 @@
 //! The Clone dialog: the URL (typed, or picked from the user's repositories on a connected
-//! service, drawn by `clone_service.rs`), the folder to clone into and the shallow and sparse
-//! clone options, checked as the user types with the pure rules in `state::clone`.
+//! service, drawn by `clone_service.rs`), the folder to clone into and the shallow, sparse and
+//! submodule clone options, checked as the user types with the pure rules in `state::clone`.
 
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
@@ -17,6 +17,7 @@ use crate::ui::widgets::form_message::{self, Message};
 use chrono::NaiveDate;
 use eframe::egui::{self, Id, RichText};
 use glowfly_core::forge::Connection;
+use glowfly_core::i18n::Lang;
 use std::path::Path;
 
 pub(super) fn note(ui: &mut egui::Ui, text: &str) {
@@ -105,6 +106,14 @@ fn sparse_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, blo
         controls::checkbox(ui, &mut form.partial, "Download file contents only for these folders (partial clone)");
         note(ui, "Faster for large repositories. Glowfly can't show changes to files that weren't downloaded.");
     });
+}
+
+/// Clone submodules too, with what it means for a sparse clone.
+fn submodule_option(ui: &mut egui::Ui, t: Lang, form: &mut CloneForm) {
+    controls::checkbox(ui, &mut form.submodules, t.tr("clone.submodules.check"));
+    if form.submodules && form.sparse {
+        ui.indent("glowfly-clone-submodules", |ui| note(ui, t.tr("clone.submodules.sparse_note")));
+    }
 }
 
 /// The Clone dialog; returns true when it should close. `today` is the local date, the latest
@@ -200,5 +209,6 @@ fn body(
     ui.add_space(6.0);
     shallow_options(ui, form, today);
     sparse_options(ui, form, today, sparse_blocked);
+    submodule_option(ui, cx.t, form);
     close
 }

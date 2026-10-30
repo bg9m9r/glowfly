@@ -76,6 +76,7 @@ fn info(path: &str) -> SubmoduleInfo {
         checked_out: Some(id),
         state: SubmoduleState::InSync,
         left_behind: Vec::new(),
+        outside_sparse: false,
         clone_url: None,
         branch: None,
         added: false,

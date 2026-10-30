@@ -19,8 +19,10 @@ pub enum SubmoduleEffect {
     /// Reads what removing the submodule at `path` would delete. Reported as
     /// `SubmoduleMsg::RemoveChecked`.
     CheckRemove { workdir: PathBuf, path: String },
-    /// Reads every submodule again before a batch update. Reported as `SubmoduleMsg::CheckedAll`.
-    CheckAll { workdir: PathBuf, batch: Batch },
+    /// Reads every submodule again before a batch update. Reported as `SubmoduleMsg::CheckedAll`;
+    /// `once_finished`: nothing is reported while an operation is still in progress there (a
+    /// sequence with picks left).
+    CheckAll { workdir: PathBuf, batch: Batch, once_finished: bool },
     /// Deinitializes the submodule, removes it with `git rm` and deletes its stored module. It
     /// ends the active job (`SubmoduleMsg::Removed`).
     Remove(RemoveRequest),

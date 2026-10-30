@@ -1,17 +1,61 @@
-//! Keeping submodules up to date and editing them: which git commands move the parent's work
-//! tree (after which its submodules may need updating), the batch `git submodule update`
-//! commands, and the commands that change a submodule's URL and branch.
+//! Keeping submodules up to date and editing them: which git commands, undos and redos move the
+//! parent's work tree (after which its submodules may need updating), the batch
+//! `git submodule update` commands, and the commands that change a submodule's URL and branch.
 
 use crate::clone_ops::check_clone_branch;
+use crate::undo::{Action, ResetMode};
+use git2::RepositoryState;
 
 /// The most bytes of pathspecs one batch command carries.
 pub const BATCH_PATH_BYTES: usize = 16 * 1024;
 
 /// Whether running `cmds` (git argument lists) can change the commits the parent records for its
-/// submodules: a branch checkout or switch, a pull, merge or rebase, or a reset other than
-/// `--soft`. Checking out or resetting paths doesn't count.
+/// submodules: a branch checkout or switch, a pull, merge or rebase, a cherry-pick or revert
+/// (also `--continue`, `--skip` and `--abort`), a stash pop or apply, or a reset other than
+/// `--soft`. Checking out or resetting paths doesn't count. One that stops for conflicts fails,
+/// so nothing follows it until the operation is finished.
 pub fn moves_work_tree(cmds: &[Vec<String>]) -> bool {
     cmds.iter().any(|c| moves(c))
+}
+
+/// Whether `cmds`, run while the repository is in `state`, finish a merge, cherry-pick or revert
+/// that stopped for conflicts: a commit, which records what the stopped operation left in the
+/// index (the gitlinks it moved included). In a cherry-pick or revert sequence it finishes only
+/// the stopped pick: the sequence ends with it only when no picks are left, which the caller
+/// checks once it has run.
+pub fn finishes_operation(state: RepositoryState, cmds: &[Vec<String>]) -> bool {
+    use RepositoryState::*;
+    matches!(state, Merge | CherryPick | CherryPickSequence | Revert | RevertSequence)
+        && cmds.iter().any(|c| crate::gitcli::subcommand(c) == Some("commit"))
+}
+
+/// Whether undoing (or, with `redo`, redoing) `action` can change the commits the parent's index
+/// records for its submodules, as `moves_work_tree` says for a command: it moves HEAD with the
+/// index (a checkout, a mixed or hard reset, a merge and the like, a restack) or puts index
+/// changes back or away (stashes, Discard all). A soft reset (a commit's undo, a soft reset's)
+/// leaves the index as it is, ref and single-file changes touch no gitlink, and the conflict
+/// kinds (a saved resolution, Mark resolved, undoing an abort) leave an operation in progress,
+/// which is finished first.
+pub fn undo_moves_work_tree(action: &Action, redo: bool) -> bool {
+    match action {
+        Action::Checkout { .. } | Action::Moved { .. } | Action::Restacked { .. } => true,
+        Action::Reset { mode, .. } => *mode != ResetMode::Soft,
+        Action::StashPush { .. } | Action::StashApply { .. } | Action::DiscardAll { .. } => true,
+        // Redoing aborts again, back to where the operation started.
+        Action::AbortKept { .. } => redo,
+        Action::Commit { .. }
+        | Action::DeleteBranch { .. }
+        | Action::CreateBranch { .. }
+        | Action::CreateTag { .. }
+        | Action::SetBranch { .. }
+        | Action::StashDrop { .. }
+        | Action::Discard { .. }
+        | Action::Restore { .. }
+        | Action::DeleteFile { .. }
+        | Action::UnstageGone { .. }
+        | Action::Resolve { .. }
+        | Action::Conflicts { .. } => false,
+    }
 }
 
 fn moves(cmd: &[String]) -> bool {
@@ -30,7 +74,8 @@ fn moves(cmd: &[String]) -> bool {
     let paths_after_dashes = rest.iter().position(|a| a == "--").is_some_and(|d| d + 1 < rest.len());
     match sub.as_str() {
         "checkout" | "switch" => !paths_after_dashes && !["--ours", "--theirs", "-p", "--patch"].iter().any(|f| has(f)),
-        "pull" | "merge" | "rebase" => true,
+        "pull" | "merge" | "rebase" | "cherry-pick" | "revert" => true,
+        "stash" => rest.first().is_some_and(|a| a == "pop" || a == "apply"),
         "reset" => !has("--soft") && !paths_after_dashes,
         _ => false,
     }

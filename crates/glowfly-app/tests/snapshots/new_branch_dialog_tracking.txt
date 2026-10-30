@@ -1,0 +1,9 @@
+Dialog
+  Label "New branch from origin/search"
+  Button "Close this dialog"
+  Label "Branch name"
+  TextInput "Branch name" = "mine" [focused]
+  Label "The new branch tracks origin/search, also under another name."
+  CheckBox "Check out after creating" [on]
+  Button "Cancel"
+  Button "Create"

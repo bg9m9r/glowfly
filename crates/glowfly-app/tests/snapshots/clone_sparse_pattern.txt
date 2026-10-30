@@ -16,5 +16,6 @@ Dialog
   Label "\"src/*.rs\" looks like a pattern. List folders here; patterns can be set after cloning in Preferences > Sparse checkout."
   CheckBox "Download file contents only for these folders (partial clone)" [off]
   Label "Faster for large repositories. Glowfly can't show changes to files that weren't downloaded."
+  CheckBox "Clone submodules too" [off]
   Button "Cancel"
   Button "Clone" [disabled]

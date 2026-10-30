@@ -1,7 +1,8 @@
 //! A failed job's toast: git's cause in plain words and the fix that answers it
 //! (glowfly_core::git_errors), or "<label> failed: <last line>". Every fix only opens a dialog
-//! or a Preferences page, or runs what the failed job meant to run (Try again on a lock file or
-//! an HTTPS sign-in, update/job_retry.rs); none discards work.
+//! (Force push with lease asks first) or a Preferences page, or runs what the failed job meant
+//! to run (Try again on a lock file or an HTTPS sign-in, update/job_retry.rs); none discards
+//! work.
 
 use crate::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, StashMsg};
 use crate::remote::RemoteMsg;
@@ -17,10 +18,12 @@ use glowfly_core::remote_failure::RemoteFailure;
 use glowfly_core::repo::{RemoteInfo, Snapshot};
 use glowfly_core::stash_ops::StashScope;
 
-/// A failure toast's text and the button that fixes its cause, if Glowfly has one.
+/// A failure toast's text and the button that fixes its cause, if Glowfly has one, with a
+/// second fix beside it (Force push with lease beside Pull).
 pub(super) struct Explained {
     pub text: String,
     pub fix: Option<ToastAction>,
+    pub alt: Option<ToastAction>,
     /// It stopped on conflicts: the paths git's CONFLICT lines named, and the readings of those
     /// they left open, which give `text`'s count until the status read after the job does
     /// (update/conflict_count.rs).
@@ -58,6 +61,7 @@ pub(super) fn explain(
         Cause::Conflicts { files, unsure } => Some((files.clone(), unsure.clone())),
         _ => None,
     };
+    let mut alt = None;
     let fix = match cause {
         Cause::LocalChanges { .. } => retry.map_or_else(stash_dialog, stash_and),
         Cause::MergeRefused => retry.and_then(stash_and),
@@ -68,7 +72,18 @@ pub(super) fn explain(
         Cause::MergeInProgress | Cause::PushRefused { .. } | Cause::UnknownRef { .. } | Cause::HostKeyChanged => None,
         // What to keep from the working tree is the person's to judge before a reset.
         Cause::FetchMovedHead { .. } => None,
-        Cause::PushBehind { branch } => is_head(&branch).then(pull).flatten(),
+        Cause::PushBehind { branch } => {
+            // Force push with lease of the branch git rejected, read from the job's own push
+            // command; its confirmation first.
+            let cmd = again.and_then(|r| r.spec.cmds.first().filter(|_| r.spec.cmds.len() == 1));
+            let rejected = snap.zip(cmd).and_then(|(s, c)| Some((s, crate::state::branches::rejected_push::rejected_local(s, c, output)?)));
+            let force = rejected.and_then(|(s, b)| crate::state::branches::push::force_confirm(t, s, b).ok());
+            let force = force.and_then(|m| fix(t.tr("git_errors.force_push.button"), m));
+            let pulled = if is_head(&branch) { pull() } else { None };
+            let (main, second) = if pulled.is_some() { (pulled, force) } else { (force, None) };
+            alt = second;
+            main
+        }
         Cause::StaleLease { .. } => fix(t.tr("git_errors.fetch.button"), Msg::git("Fetch all", &["fetch", "--all", "--prune"])),
         Cause::NoUpstream { push_branch: Some(_) } => fix(t.tr("git_errors.push.button"), Msg::Job(JobMsg::Push { force: false })),
         Cause::NoUpstream { push_branch: None } | Cause::UpstreamGone { .. } => set_upstream(),
@@ -89,7 +104,7 @@ pub(super) fn explain(
             edit.and_then(|name| fix(t.tr("git_errors.edit_remote.button"), Msg::Remote(RemoteMsg::EditDialog(name))))
         }
     };
-    Some(Explained { text, fix, conflicts })
+    Some(Explained { text, fix, alt, conflicts })
 }
 
 /// The configured remote a failed fetch, pull or push was talking to, judged from its

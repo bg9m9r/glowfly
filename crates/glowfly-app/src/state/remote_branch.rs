@@ -1,11 +1,12 @@
-//! A remote-tracking branch's operations: the local branch that tracks it, whether it can be
-//! checked out or compared with HEAD, and why not, and how a graph label splits into remote and
-//! branch. The remote branch menu shows these reasons on disabled items and `update` logs the
-//! same text when it refuses a late message.
+//! A remote-tracking branch's operations: the local branches that track it (and whether checking
+//! one out fast-forwards it first), whether it can be checked out or compared with HEAD, and why
+//! not, and how a graph label splits into remote and branch. The remote branch menu shows these
+//! reasons on disabled items and `update` logs the same text when it refuses a late message.
 
 use git2::Oid;
-use glowfly_core::branch_ops::{NameProblem, check_branch_name};
+use glowfly_core::branch_ops::{FastForward, NameProblem, check_branch_name, fast_forward_state};
 use glowfly_core::gitcli::args;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
 
 /// Whether local branch `b` tracks `name` on `remote`.
@@ -13,11 +14,45 @@ pub fn tracks(b: &BranchInfo, remote: &str, name: &str) -> bool {
     b.tracking.as_ref().is_some_and(|t| t.remote == remote && t.merge == name)
 }
 
-/// The local branch tracking `remote`/`name`: the checked-out one first, then the one named
-/// `name`, then the first in `snap.locals`.
+/// The local branches tracking `remote`/`name`: the checked-out one first, then the one named
+/// `name`, then the others in `snap.locals`' order.
+pub fn trackers<'a>(snap: &'a Snapshot, remote: &str, name: &str) -> Vec<&'a BranchInfo> {
+    let mut found: Vec<&BranchInfo> = snap.locals.iter().filter(|b| tracks(b, remote, name)).collect();
+    found.sort_by_key(|b| (!b.is_head, b.name != name));
+    found
+}
+
+/// The local branch tracking `remote`/`name` that a plain checkout of it uses: the first of
+/// `trackers`.
 pub fn tracking_local<'a>(snap: &'a Snapshot, remote: &str, name: &str) -> Option<&'a BranchInfo> {
-    let found: Vec<&BranchInfo> = snap.locals.iter().filter(|b| tracks(b, remote, name)).collect();
-    found.iter().find(|b| b.is_head).or_else(|| found.iter().find(|b| b.name == name)).or(found.first()).copied()
+    trackers(snap, remote, name).into_iter().next()
+}
+
+/// What checking out local branch `b` from its upstream's row does, `tip` being the upstream's
+/// tip: a plain checkout (up to date or only ahead), a fast-forward to `tip` first (only
+/// behind), or a checkout that leaves it where it is (diverged).
+#[derive(Debug, PartialEq)]
+pub enum TrackingCheckout {
+    Plain,
+    FastForward { from: Oid, to: Oid },
+    Diverged { ahead: usize, behind: usize },
+}
+
+pub fn tracking_checkout(b: &BranchInfo, tip: Oid) -> TrackingCheckout {
+    match fast_forward_state(b) {
+        FastForward::Ready { .. } => match b.oid {
+            Some(from) if from != tip => TrackingCheckout::FastForward { from, to: tip },
+            _ => TrackingCheckout::Plain,
+        },
+        FastForward::Diverged { ahead, behind } => TrackingCheckout::Diverged { ahead, behind },
+        _ => TrackingCheckout::Plain,
+    }
+}
+
+/// What checking out a diverged `branch` from `upstream`'s row says: it stays where it is.
+pub fn diverged_note(t: Lang, branch: &str, upstream: &str, ahead: usize, behind: usize) -> String {
+    let args: [(&str, &dyn std::fmt::Display); 4] = [("branch", &branch), ("upstream", &upstream), ("ahead", &ahead), ("behind", &behind)];
+    t.trf("remote_branch.checkout.diverged", &args)
 }
 
 /// Splits remote-tracking label `label` ("origin/feature") into its remote and branch name, by

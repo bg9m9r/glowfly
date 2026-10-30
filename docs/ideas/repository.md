@@ -88,6 +88,14 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Update nested submodules that are out of sync inside an in-sync parent submodule on Update all
 - Per-submodule progress and a cancel button for long recursive updates
 - Translate the SUBMODULES section, its menus and dialogs
+- Update the submodules once a stash pop that stopped for conflicts is resolved (nothing finishes
+  it as Continue does), and after a stash push or Discard all puts a staged gitlink back
+- Pass trust on to the submodules a Clone submodules too clone checks out, as Initialize all does
+- Shallow (`--shallow-submodules`) and filtered (`--also-filter-submodules`) submodules when a
+  shallow or partial clone takes them; they get their whole history now
+- Clone the submodules of folders added later to a sparse clone's checkout
+- Leave out of the batch updates the submodules a patterns-mode sparse checkout leaves out (only
+  cone mode is read now)
 
 ### Worktrees
 

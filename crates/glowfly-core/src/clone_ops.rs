@@ -1,9 +1,10 @@
 //! Cloning a repository: the `git clone` command line (a full clone, or a shallow one limited by
 //! a commit count or a start date, optionally of one branch, and optionally sparse: only some
-//! folders checked out, and with a partial clone only their file contents downloaded) and the
-//! checks for the Clone dialog's fields. The app runs a plain clone through `gitcli`, so
-//! credentials, config and hooks apply; a sparse clone is one job here ([`run_sparse`]): the
-//! clone, then `git sparse-checkout set` in the new folder.
+//! folders checked out, and with a partial clone only their file contents downloaded; optionally
+//! with its submodules) and the checks for the Clone dialog's fields. The app runs a plain clone
+//! through `gitcli`, so credentials, config and hooks apply; a sparse clone is one job here
+//! ([`run_sparse`]): the clone, then `git sparse-checkout set` in the new folder, then the
+//! submodules inside the chosen folders.
 
 use crate::gitcli;
 use crate::sparse_ops::{self, SparseCommand, SparseMode};
@@ -40,6 +41,10 @@ pub struct Sparse {
 pub struct CloneOptions {
     pub shallow: Option<Shallow>,
     pub sparse: Option<Sparse>,
+    /// Clone the submodules too (`--recurse-submodules`). They get git's defaults: their whole
+    /// history and every file, whatever the shallow and partial options say for the parent.
+    /// With a sparse clone see [`sparse_submodule_cmds`].
+    pub submodules: bool,
 }
 
 /// `git clone` arguments (without the leading `git`) that clone `url` into the folder `name`,
@@ -65,6 +70,11 @@ pub fn clone_cmd(url: &str, name: &str, opts: &CloneOptions) -> Vec<String> {
             cmd.push("--filter=blob:none".to_owned());
         }
     }
+    // git's sparse checkout leaves gitlinks out of its patterns, so `--recurse-submodules`
+    // would check out every submodule; a sparse clone updates its folders' ones afterwards.
+    if opts.submodules && opts.sparse.is_none() {
+        cmd.push("--recurse-submodules".to_owned());
+    }
     // git ignores --depth and --filter for a plain path ("local clone") unless the normal
     // transport is used.
     if (opts.shallow.is_some() || partial) && is_local_source(url) {
@@ -79,16 +89,28 @@ pub fn clone_cmd(url: &str, name: &str, opts: &CloneOptions) -> Vec<String> {
 pub struct CloneOutcome {
     /// The clone itself succeeded, so the new folder is a repository.
     pub cloned: bool,
+    /// Its folders were set too, so only the submodule step can have failed after that.
+    pub folders_set: bool,
     /// Every step succeeded.
     pub ok: bool,
     /// The job log: each command line, then git's output.
     pub output: String,
 }
 
+/// The commands a sparse clone with submodules runs in the new repository once its folders are
+/// set: `git submodule update --init --recursive` for the submodules inside `folders` only, as
+/// the sparse checkout leaves the others out (none for an empty list: only the root's files are
+/// checked out). Without `--checkout`, as `git clone --recurse-submodules` updates them.
+pub fn sparse_submodule_cmds(folders: &[String]) -> Vec<Vec<String>> {
+    if folders.is_empty() { Vec::new() } else { crate::submodule_ops::batch_update_cmds(Some(folders), false) }
+}
+
 /// Runs the clone `cmd` (from [`clone_cmd`] with `--sparse`) in `parent`, then sets the folders
-/// to check out in the new repository `dest` (cone mode, no sparse index). Credential prompts
-/// are allowed, as for any clone the user starts. A failed clone skips the second step.
-pub fn run_sparse(parent: &Path, cmd: &[String], dest: &Path, folders: &[String]) -> CloneOutcome {
+/// to check out in the new repository `dest` (cone mode, no sparse index), then runs
+/// `submodules` there (from [`sparse_submodule_cmds`], empty for none). Credential prompts are
+/// allowed, as for any clone the user starts. Each step runs only when the one before it
+/// succeeded.
+pub fn run_sparse(parent: &Path, cmd: &[String], dest: &Path, folders: &[String], submodules: &[Vec<String>]) -> CloneOutcome {
     let (ok, out) = gitcli::run_with_input(parent, cmd, "", &[]);
     let mut output = crate::text::redact_credentials(&format!("$ git {}", cmd.join(" ")));
     let out = out.trim();
@@ -97,13 +119,29 @@ pub fn run_sparse(parent: &Path, cmd: &[String], dest: &Path, folders: &[String]
         output.push_str(out);
     }
     if !ok {
-        return CloneOutcome { cloned: false, ok: false, output };
+        return CloneOutcome { cloned: false, folders_set: false, ok: false, output };
     }
     let set = SparseCommand::Set { mode: SparseMode::Cone, paths: folders.to_vec() };
     let (set_ok, text) = sparse_ops::run(dest, &set);
     output.push('\n');
     output.push_str(&text);
-    CloneOutcome { cloned: true, ok: set_ok, output }
+    if !set_ok {
+        return CloneOutcome { cloned: true, folders_set: false, ok: false, output };
+    }
+    for c in submodules {
+        let (c_ok, out) = gitcli::run_with_input(dest, c, "", &[]);
+        output.push('\n');
+        output.push_str(&crate::text::redact_credentials(&format!("$ git {}", c.join(" "))));
+        let out = out.trim();
+        if !out.is_empty() {
+            output.push('\n');
+            output.push_str(out);
+        }
+        if !c_ok {
+            return CloneOutcome { cloned: true, folders_set: true, ok: false, output };
+        }
+    }
+    CloneOutcome { cloned: true, folders_set: true, ok: true, output }
 }
 
 /// Whether git reads `url` as a path on this computer rather than a URL (git's own rules:

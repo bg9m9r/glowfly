@@ -154,37 +154,6 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
     }
 }
 
-/// Starts the Clone dialog's clone as the active job.
-pub(super) fn clone_repo(st: &mut AppState, req: crate::state::clone::CloneRequest, fx: &mut Vec<Effect>) {
-    // The dialog blocks these; checked again so no other sender can start a bad clone.
-    if req.name.is_empty() || glowfly_core::remote_ops::check_url(&req.url).is_err() {
-        st.log(false, format!("Could not clone: {} isn't a URL or folder git can clone.", req.url));
-        return;
-    }
-    // Never resolved against the process's working folder.
-    if !req.parent.is_absolute() {
-        st.log(false, format!("Could not clone: {} isn't the full path of a folder.", req.parent.display()));
-        return;
-    }
-    let dest = req.parent.join(&req.name);
-    let cmd = glowfly_core::clone_ops::clone_cmd(&req.url, &req.name, &req.options);
-    if let Some(sparse) = req.options.sparse {
-        if let Some(why) = st.git.blocked(glowfly_core::git_version::Feature::SparseCheckout) {
-            st.log(false, format!("Could not clone: {why}"));
-            return;
-        }
-        let (then_open, folders) = (Some((dest.clone(), Created::Clone)), sparse.folders);
-        let effect = |parent| Effect::Clone(crate::effect::CloneEffect::Sparse { parent, cmd, dest, folders });
-        super::jobs::start_effect_job(st, "Clone", req.parent, then_open, effect, fx);
-        return;
-    }
-    start_job(
-        st,
-        JobSpec { cwd: Some(req.parent), then_open: Some((dest, Created::Clone)), ..JobSpec::new("Clone".into(), vec![cmd]) },
-        fx,
-    );
-}
-
 /// Stages, unstages or discards the selected diff lines, when the selection belongs to the
 /// diff on screen and `op` fits it (stage or discard unstaged lines, unstage staged ones).
 /// Discarding every line of an untracked file discards the file, as its Discard does.
@@ -243,14 +212,7 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
     };
     let has_upstream = snap.head_info().is_some_and(|b| b.upstream.is_some());
     if force {
-        let if_includes = st.git.has(glowfly_core::git_version::Feature::ForceIfIncludes);
-        let Some(cmd) = snap.head_info().and_then(|b| force_push_cmd(b, snap, if_includes)) else {
-            // No remote to push to: offer to create the repository on GitHub.
-            super::publish::open(st, fx);
-            return;
-        };
-        start_job(st, JobSpec::new("Force push".into(), vec![cmd]), fx);
-        return;
+        return super::branch_push::force_head(st, fx);
     }
     let mut cmd = args(&["push"]);
     if !has_upstream {

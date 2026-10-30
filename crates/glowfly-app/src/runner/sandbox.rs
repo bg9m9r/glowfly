@@ -211,7 +211,8 @@ mod tests {
         let account =
             glowfly_core::forge::Account { provider: glowfly_core::forge::Provider::GitHub, host: "github.com".into(), org: String::new() };
         assert!(runner.admit(Effect::Clone(CloneEffect::ListRepos { account, cwd: dir.clone() })).is_none());
-        let sparse = CloneEffect::Sparse { parent: dir.clone(), cmd: Vec::new(), dest: dir.join("c"), folders: Vec::new() };
+        let sparse =
+            CloneEffect::Sparse { parent: dir.clone(), cmd: Vec::new(), dest: dir.join("c"), folders: Vec::new(), submodules: Vec::new() };
         assert!(runner.admit(Effect::Clone(sparse)).is_some());
         assert_eq!(runner.dropped(), ["pick-patch-save", "pick-patch", "list-my-repos"]);
         let _ = std::fs::remove_dir_all(&dir);

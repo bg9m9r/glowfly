@@ -168,6 +168,7 @@ fn edit_dialog(theme: ThemeChoice, name: &str, dark: bool) {
         checked_out: Some(id),
         state: glowfly_core::repo::SubmoduleState::InSync,
         left_behind: Vec::new(),
+        outside_sparse: false,
     };
     let mut form = EditForm::new(st.snap.as_ref().unwrap().workdir.clone(), &sm);
     form.url = "-x".into();
@@ -208,6 +209,7 @@ fn submodule_edit_dialog_saves() {
         checked_out: Some(id),
         state: glowfly_core::repo::SubmoduleState::InSync,
         left_behind: Vec::new(),
+        outside_sparse: false,
     };
     let mut form = EditForm::new(st.snap.as_ref().unwrap().workdir.clone(), &sm);
     form.branch = "dev".into();

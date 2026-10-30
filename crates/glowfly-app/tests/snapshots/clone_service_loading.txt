@@ -12,5 +12,6 @@ Dialog
   Button "Browse…"
   CheckBox "Shallow clone (download only recent history)" [off]
   CheckBox "Sparse checkout (check out only some folders)" [off]
+  CheckBox "Clone submodules too" [off]
   Button "Cancel"
   Button "Clone" [disabled]

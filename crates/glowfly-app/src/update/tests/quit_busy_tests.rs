@@ -304,7 +304,7 @@ fn a_sparse_clone_asks_before_quitting() {
         url: "https://example.com/team/app.git".into(),
         parent,
         name: "app".into(),
-        options: CloneOptions { shallow: None, sparse },
+        options: CloneOptions { shallow: None, sparse, submodules: false },
     };
     run(&mut st, Msg::Clone(CloneMsg::Start(req)));
     assert!(st.job.is_some(), "a sparse clone runs as a job");

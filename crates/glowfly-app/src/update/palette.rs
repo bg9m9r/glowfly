@@ -315,7 +315,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         C::ToolbarLabels(on) => Msg::Prefs(PrefsMsg::SetToolbarLabels(on)),
         C::Theme(t) => Msg::Prefs(PrefsMsg::SetTheme(t)),
         C::Checkout(name) => Msg::Branch(crate::msg::BranchMsg::Checkout(name)),
-        C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
+        C::CheckoutRemote { remote, branch } => Msg::Branch(crate::msg::BranchMsg::CheckoutRemote { remote, name: branch }),
         C::CheckoutTag(name) => Msg::Tag(TagMsg::Checkout { tag: name }),
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
         C::CopyLink(t) => Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)),

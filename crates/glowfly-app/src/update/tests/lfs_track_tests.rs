@@ -103,6 +103,7 @@ fn submodule(path: &str) -> SubmoduleInfo {
         checked_out: None,
         state: SubmoduleState::InSync,
         left_behind: vec![],
+        outside_sparse: false,
         clone_url: None,
         branch: None,
         added: false,

@@ -34,6 +34,7 @@ fn info(path: &str, state: SubmoduleState, url: Option<&str>) -> SubmoduleInfo {
         checked_out,
         state,
         left_behind: Vec::new(),
+        outside_sparse: false,
         clone_url: None,
         branch: None,
         added: false,

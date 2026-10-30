@@ -6,8 +6,10 @@
 //! rename and upstream; the stack items for a branch in a stack (`stack_menu.rs`); pull requests
 //! (pushing the branch first when the code host lacks it, into the branch selected before;
 //! without a code host, a disabled item saying why); hide or solo in the graph, and its colour;
-//! copying its name or a link; the custom commands (`custom_menu.rs`); and delete (one item,
-//! whose dialog offers Delete anyway for a branch with commits on no other branch).
+//! copying its name or a link; the custom commands (`custom_menu.rs`); and, destructive so last,
+//! force push with lease to its upstream (asking first, with what the remote would lose) and
+//! delete (one item, whose dialog offers Delete anyway for a branch with commits on no other
+//! branch). "Push to" ends with All remotes when there are several.
 //! The branch's name heads the menu once; other names in labels are cut to fit, in full on hover.
 //! Disabled items say why on hover, with the same text `update` logs when it refuses a late
 //! message.
@@ -23,6 +25,7 @@ use crate::msg::Msg;
 use crate::msg::OpPreviewMsg;
 use crate::msg::RebaseMsg;
 use crate::range_diff::RangeDiffMsg;
+use crate::state::branches::push as branch_push;
 use crate::state::branches::{self, NO_REMOTES};
 use crate::state::commit_menu::menu_trim;
 use crate::state::custom_commands::MenuCommands;
@@ -82,9 +85,29 @@ pub fn local_branch_menu(
     let link = Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::LocalBranch(name.to_owned())));
     menu_item(msgs, ui, t.tr("refs.copy.link_item"), link);
     super::custom_menu::group(ui, t, cmds, Place::Branch, Target::Branch(name.to_owned()), msgs);
-    if !b.is_head {
+    let tracked = branches::remote_tracking(b);
+    if tracked.is_some() || !b.is_head {
         separator(ui);
+    }
+    if let Some(tr) = tracked {
+        force_push_item(ui, t, b, &tr.display(), snap, msgs);
+    }
+    if !b.is_head {
         delete_items(ui, t, b, snap, msgs);
+    }
+}
+
+/// Force push with lease to `upstream`, asking first; refused (with the reason on hover) for
+/// the remote's default branch and Git Flow's bases.
+fn force_push_item(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, upstream: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let label = named(t.tr("branch.menu.force_push"), &[("upstream", upstream)]);
+    match branch_push::force_confirm(t, snap, b) {
+        Ok(ask) => menu_row(msgs, ui, item_named(label).state(ItemState::danger_unless(None)), ask),
+        Err(why) => {
+            let refused =
+                Msg::Branch(BranchMsg::ForcePush { branch: b.name.clone(), remote: String::new(), dest: String::new(), seen: None });
+            menu_row(msgs, ui, item_named(label).state(ItemState::danger_unless(Some(&why))), refused);
+        }
     }
 }
 
@@ -184,7 +207,8 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
     }
 }
 
-/// Push, and the "Push to" submenu (one entry per remote) when it offers more than Push.
+/// Push, and the "Push to" submenu (one entry per remote, then All remotes when there are
+/// several) when it offers more than Push.
 fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let has_remotes = !snap.remotes.is_empty();
@@ -223,6 +247,11 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
                 blocked,
                 Msg::Branch(BranchMsg::PushBranch { branch: name.to_owned(), remote: Some(remote.clone()) }),
             );
+        }
+        // Each remote in turn, never forced; the upstream stays as it is.
+        if snap.remotes.len() > 1 {
+            separator(ui);
+            menu_item(msgs, ui, t.tr("branch.menu.push_to.all"), Msg::Branch(BranchMsg::PushAll(name.to_owned())));
         }
     });
 }

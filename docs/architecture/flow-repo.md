@@ -184,16 +184,18 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Submodules after a job
 
-- `update/submodule_batch.rs` keeps submodules updated after a checkout, pull, merge, rebase or reset (Preferences > General, overridden per repository).
-- `start_job` and the rebase launches mark the job in `st.submodules.after_job` when `submodule_ops::moves_work_tree` says it can change the recorded commits.
+- `update/submodule_batch.rs` keeps submodules updated after a checkout, pull, merge, rebase, cherry-pick, revert, stash pop or apply, reset, or undo or redo (Preferences > General, overridden per repository).
+- `start_job` and the rebase launches mark the job in `st.submodules.after_job` when `submodule_ops::moves_work_tree` says it can change the recorded commits, or `finishes_operation` says it is the commit that finishes a merge, cherry-pick or revert stopped for conflicts (in a sequence that commit marks `once_finished`, and the runner drops its `CheckAll` while picks are left, so only the sequence's end updates); `update/undo.rs` marks an undo or redo when `undo_moves_work_tree` says so (not a soft reset, nor one that leaves an operation in progress).
+- An operation that stops for conflicts fails, so nothing is updated until Continue or that commit finishes it; a stash pop that stops has nothing that finishes it, so the next moving job (or Update all) brings the submodules in step.
 - `finish_job` then reads the submodules again (`SubmoduleEffect::CheckAll`, scoped) when that job succeeded in the tab that is still active, and the update leaves out any submodule where it would strand commits.
 - The mark is matched by label and workdir, so one left by a job the trust prompt held never fires for another.
-- `opened` offers (once per session) to initialize a newly opened repository's submodules.
+- No batch initializes a submodule a cone sparse checkout leaves out (`SubmoduleInfo::outside_sparse`, `BatchPlan::outside`); they are named in the log once per repository and session.
+- `opened` offers (once per session) to initialize a newly opened repository's submodules; a clone made with Clone submodules too unticked, or any sparse clone (its own step did its folders' submodules), counts as offered (`update/clone.rs`, matched by any name of the repository, as trust's `names_repo` does), so it isn't given them.
 
 ## Auto-stash
 
-- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pr_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
-- One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start and a pull request's checkout (`start_guarded_as` with their own `AutoStashFor`).
+- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pr_checkout.rs`, `update/branch_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
+- One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start, a pull request's checkout and a remote branch checkout that fast-forwards its tracking branch first (`start_guarded_as` with their own `AutoStashFor`).
 - Each entry point passes its single command and a retry message to `gate`.
 - Only staged changes and changed tracked files count (`Snapshot::has_tracked_changes`): untracked files and an unstaged submodule row don't.
 - On a dirty tree with nothing in progress the gate opens `Modal::AutoStash` holding the retry (Always stash skips it, except for a hard reset), and the answer reruns the retry with `st.auto_stash.approved` set for just that call.
