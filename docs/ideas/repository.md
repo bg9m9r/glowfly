@@ -113,6 +113,11 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Carry a moved worktree's per-repository settings (graph filter, forge filters) and trust
   decision to its new folder
 - Close or move terminal sessions running in a worktree before moving it
+- Hold the branches a rebase in another worktree will move (`rebase-merge/update-refs`) as
+  checked out there too, as git does
+- Refuse renaming or force pushing a branch the current worktree is rebasing or bisecting
+  before git does
+- Show "rebasing <branch>" or "bisecting <branch>" in a WORKTREES row whose HEAD one detached
 - Offer to close the other tab before Move as well, or confirm before closing a tab that has an
   unsent commit message
 - A Count now action on a worktree row whose changes were too large to count

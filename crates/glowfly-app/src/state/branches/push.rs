@@ -12,11 +12,15 @@ use glowfly_core::gitflow::FlowBase;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
 
-/// Why `b` can't be force pushed, or None when it may be: it needs an upstream on a remote
-/// that still exists, and that upstream must not be the remote's default branch, nor either
-/// name a Git Flow base (others build on those).
+/// Why `b` can't be force pushed, or None when it may be: no other worktree may be rebasing or
+/// bisecting it, it needs an upstream on a remote that still exists, and that upstream must not
+/// be the remote's default branch, nor either name a Git Flow base (others build on those).
 pub fn force_blocked(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Option<String> {
     let name = b.name.as_str();
+    // Its tip moves when that rebase ends: the lease would hold for the wrong commits.
+    if let Some(why) = crate::state::worktree_branches::held_blocked(t, snap, name) {
+        return Some(why);
+    }
     let Some(tr) = branches::remote_tracking(b) else {
         return Some(t.trf("branch_push.force.no_upstream", &[("branch", &name)]));
     };

@@ -293,6 +293,7 @@ crate::msg::msg_areas! { area_router! {
             load_more::tick(st, t, fx);
             search_loaded::tick(st, t, fx);
             history_index::tick(st, t, fx);
+            worktree_counts::tick(st, t, fx);
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {

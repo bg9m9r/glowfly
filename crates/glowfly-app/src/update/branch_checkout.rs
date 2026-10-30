@@ -21,7 +21,7 @@ pub(super) fn checkout(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
         st.log(false, format!("{name} is already checked out."));
         return;
     }
-    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::checkout_blocked(s, name)) {
+    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::checkout_blocked(st.settings.lang(), s, name)) {
         st.log(false, why);
         return;
     }
@@ -78,7 +78,7 @@ pub(super) fn checkout_tracking(st: &mut AppState, remote: &str, name: &str, loc
         }
         return;
     }
-    if let Some(why) = worktree_branches::checkout_blocked(snap, local) {
+    if let Some(why) = worktree_branches::checkout_blocked(t, snap, local) {
         st.log(false, why);
         return;
     }

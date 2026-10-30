@@ -27,7 +27,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Settings saved per repository are keyed by `real_workdir` through `settings::repo_keys`.
 - Worktree tab groups: each `Tab::group` is its repository's common git dir (`Snapshot::common`, or for restored tabs `Effect::ReadTabGroups`, read at startup without loading them).
 - The pure rules for tab group blocks, drops and regrouping are in `state/tab_groups.rs`, applied by `update/tab_groups.rs` and drawn by `ui/tabs.rs`.
-- Worktrees and branches: a local branch another worktree has checked out is found by its exact name and `WorktreeInfo::current` (`state/worktree_branches.rs`), never by comparing folder spellings.
+- Worktrees and branches: a local branch another worktree has checked out, or is rebasing or bisecting, is found by its exact name (`WorktreeInfo::uses`) and `WorktreeInfo::current` (`state/worktree_branches.rs`), never by comparing folder spellings.
+- That one source refuses checkout, delete and fast-forward of such a branch, and rename and force push of one being rebased or bisected (git renames one merely checked out elsewhere), naming the worktree and what it is doing; the LOCAL row's tooltip says the same.
 - Every UI checkout of a local branch goes through `BranchMsg::Checkout`, which refuses a branch another worktree has checked out.
 - Moving a worktree (`update/worktree_move.rs`) points the tabs, the recent list, the closed tabs, favorites and `KnownFolders` at the new folder.
 - Removing a worktree closes the other tabs showing it first (`update/worktree_manage.rs`).
@@ -181,6 +182,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - The runner reads each through git with `COUNT_TIMEOUT` when git may run there, otherwise through libgit2.
 - `WorktreeMsg::ChangesCounted` fills in the counts for the same `refs_key` and lays the graph out again.
 - A read that times out, or one libgit2 would have to make of a huge index, is `TooLarge` and shown as not counted until the next full load.
+- A reload that keeps the snapshot (the watcher's, a status-only one) counts the counted ones again through the same effect (`worktree_counts::recount`), at most once per `RECOUNT_EVERY` (`state/refresh/recount.rs`); one asked for sooner runs on a tick or when the running count ends. Returning to the tab (its `RefreshState` reset) or the window (`RepoMsg::WindowFocused`) counts at once.
 
 ## Submodules after a job
 

@@ -114,7 +114,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 ui.set_min_width(220.0);
                 for b in &snap.locals {
                     // The current branch is checked and stays enabled: a click just closes the menu.
-                    let why = (!b.is_head).then(|| crate::state::worktree_branches::checkout_blocked(snap, &b.name)).flatten();
+                    let why = (!b.is_head).then(|| crate::state::worktree_branches::checkout_blocked(t, snap, &b.name)).flatten();
                     let dot = Some(line(snap.branch_swatch(&b.name)));
                     let r =
                         menu::item(b.name.as_str()).current(b.is_head).icon(branch_dot::paint_slot, dot).blocked(why.as_deref()).show(ui);

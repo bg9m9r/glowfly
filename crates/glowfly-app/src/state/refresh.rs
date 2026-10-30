@@ -3,6 +3,8 @@
 //! It also holds a failed load for more history with its automatic retries, and a filtering
 //! search loading further back (`load_more.rs`).
 
+pub mod recount;
+
 use crate::state::load_more::DeeperSearch;
 use crate::state::{AppState, MAX_COMMITS};
 use glowfly_core::repo::{LoadOptions, Snapshot};
@@ -75,6 +77,9 @@ pub struct RefreshState {
     /// The `refs_key` a background count of other worktrees' changes runs for; one at a time.
     /// Kept across loads (`refresh::start`), reset by a tab switch.
     pub counting: Option<u64>,
+    /// When other worktrees' changes are counted again after a reload that kept the snapshot.
+    /// Kept across loads like `counting`; a tab switch resets it, so returning counts at once.
+    pub recount: recount::Recount,
     /// The error of the last load that asked for more history, until a load starts.
     pub more_failed: Option<String>,
     /// When the next automatic retry of that load is due.

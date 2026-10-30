@@ -61,11 +61,13 @@ source file, update its line here.
 - The picks a file saved with markers holds: `conflict_saved.rs`.
 - The MERGE_MSG of a stopped merge, cherry-pick or revert without its comment lines, read from the worktree's own git dir and decoded from the commit encoding to prefill the commit draft: `merge_msg.rs`.
 - The operation in progress as loads report it: libgit2's state, or the pick or revert sequence `sequencer/todo` still holds after its stopped commit was committed: `op_state.rs`. Tests: `op_state_tests.rs`.
+- The branch a worktree is rebasing or bisecting with HEAD detached (`held_branch`, from its own git dir's `rebase-merge/head-name`, `rebase-apply/head-name` or `BISECT_START`; also used by the rebase's update-refs check): `op_state.rs`. Tests: `worktree_held_tests.rs`.
 
 ## Submodules, worktrees, remotes
 
 - Submodules: their state, including a missing folder and one added but not committed, the .gitmodules branch and the URL git clones from, a relative one resolved.
 - Whether a new submodule can go in a folder: the index, the disk, .gitignore, a leftover stored module.
-- Worktrees, and other worktrees' changes, counted within the load's limits or in the background: `worktree_counts.rs`.
+- Worktrees, with the branch each is rebasing or bisecting (`WorktreeInfo::held`, `uses`): `worktrees.rs`.
+- Other worktrees' changes, counted within the load's limits or in the background: `worktree_counts.rs`.
 - Remotes and shallow-clone boundaries.
 - Where git pushes a branch when no remote is named (`branch.<name>.pushRemote`, then `remote.pushDefault`, through config includes): `push_config.rs`.
