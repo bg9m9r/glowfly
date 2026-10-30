@@ -22,6 +22,7 @@ source file, update its line here.
 ## Command lines and checks (`*_ops.rs`)
 
 - `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`: command lines and input checks for branches, tags and remotes.
+- `push_all.rs`: Push to all remotes: one branch pushed to every remote in turn, going on past a failure, never forced and setting no upstream.
 - `clone_ops.rs`: cloning, with the sparse clone job: the clone, then the folders to check out.
 - `shallow_ops.rs`: fetching more of a shallow clone's history.
 - `worktree_ops.rs`: worktrees; moving one: `worktree_ops/moving.rs`.

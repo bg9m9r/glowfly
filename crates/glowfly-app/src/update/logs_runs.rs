@@ -53,10 +53,10 @@ pub(super) fn job_ended(
         (None, Some(e)) => e.text.clone(),
         (None, None) => last_message(output),
     };
-    let (headline, fix) = match (headline, explained) {
-        (Some(h), _) => (h, (!ok).then(|| super::job_retry::after_headline(st.settings.lang(), again.as_ref(), output)).flatten()),
-        (None, Some(e)) => (e.text, e.fix),
-        (None, None) => (job_errors::default_headline(&job.label, ok, output), None),
+    let (headline, fix, alt) = match (headline, explained) {
+        (Some(h), _) => (h, (!ok).then(|| super::job_retry::after_headline(st.settings.lang(), again.as_ref(), output)).flatten(), None),
+        (None, Some(e)) => (e.text, e.fix, e.alt),
+        (None, None) => (job_errors::default_headline(&job.label, ok, output), None, None),
     };
     super::notify::desktop(st, NoteKind::Job, &headline, repo, fx);
     // Pushed first, so a failure's announcement gives this toast its Details.
@@ -67,11 +67,27 @@ pub(super) fn job_ended(
     }
     if let Some(f) = fix {
         let retrying = matches!(*f.msg, Msg::Job(JobMsg::Retry(_)));
-        let proxy = st.logs.keep_fix(id, f);
-        st.set_last_toast_action(proxy);
+        keep_fixes(st, id, f, alt);
         // A lock file in the way may be offered for deleting, once the runner has looked.
         if retrying {
             super::lock_file::check_after(job, id, output, fx);
+        }
+    }
+}
+
+/// Keeps `fix` (and `alt` beside it) as run `id`'s fixes and gives the failure toast just
+/// pushed their buttons.
+fn keep_fixes(st: &mut AppState, id: EntryId, fix: ToastAction, alt: Option<ToastAction>) {
+    let Some(alt) = alt else {
+        let proxy = st.logs.keep_fix(id, fix);
+        return st.set_last_toast_action(proxy);
+    };
+    // `offer_first` puts the fix before the one kept so far.
+    st.logs.keep_fix(id, alt);
+    if let Some((main, second)) = st.logs.offer_first(id, fix) {
+        st.set_last_toast_action(main);
+        if let Some(t) = st.toasts.last_mut() {
+            t.alt = Some(second);
         }
     }
 }

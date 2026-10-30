@@ -2,7 +2,8 @@
 //! has), checkout from a remote branch (its tracking local branch, or a new one), rename (also
 //! on the remote, and deleting a remote branch, in `branch_sync.rs`), set
 //! and unset the upstream, fast-forward without checkout, push to the upstream or a chosen
-//! remote, and delete together with the remote branch (deleting the local branch alone is in
+//! remote (force push and push to all remotes in `branch_push.rs`), and delete together with
+//! the remote branch (deleting the local branch alone is in
 //! `branch_delete.rs`). Each re-checks the branch against the
 //! current snapshot (a menu or confirm can be stale), then runs `branch_ops` commands as the
 //! single active git job.
@@ -18,7 +19,7 @@ use glowfly_core::branch_ops::{self, check_branch_name, is_valid_branch_name};
 use glowfly_core::repo::BranchInfo;
 use glowfly_core::undo::UndoKind;
 
-pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: BranchMsg, now: std::time::Instant, fx: &mut Vec<Effect>) {
     match msg {
         BranchMsg::Checkout(name) => checkout(st, &name, fx),
         BranchMsg::CheckoutRemote { remote, name } => checkout_remote(st, &remote, &name, fx),
@@ -60,6 +61,9 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
         BranchMsg::DeleteRemote { remote, name, unset } => super::branch_sync::delete_remote(st, &remote, &name, &unset, fx),
         BranchMsg::DeleteBranchAndRemote(name) => delete_with_remote(st, &name, fx),
         BranchMsg::PushBranch { branch, remote } => push(st, &branch, remote.as_deref(), fx),
+        BranchMsg::ForcePush { branch, seen } => super::branch_push::force_push(st, &branch, seen, fx),
+        BranchMsg::PushAll(branch) => super::branch_push::push_all(st, &branch, fx),
+        BranchMsg::PushedAll { branch, total, result } => super::branch_push::pushed_all(st, &branch, total, result, now, fx),
     }
 }
 

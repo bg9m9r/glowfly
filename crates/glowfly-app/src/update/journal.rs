@@ -33,7 +33,7 @@ pub(super) fn handle(st: &mut AppState, msg: JournalMsg, now: Instant, fx: &mut 
             let (Some(view), Some(snap)) = (&st.session.journal.view, &st.snap) else { return };
             let Some(row) = view.row(&key) else { return };
             let msg = journal_restore::create_branch(row, snap);
-            super::branches::handle(st, msg, fx);
+            super::branches::handle(st, msg, now, fx);
         }
         JournalMsg::Tab(tab) => super::journal_lost::show_tab(st, tab, fx),
         JournalMsg::Lost(m) => super::journal_lost::handle(st, m, now, fx),

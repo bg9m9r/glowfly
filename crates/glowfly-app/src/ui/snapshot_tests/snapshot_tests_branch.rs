@@ -129,6 +129,15 @@ fn branch_menu() {
     h.run();
     let want = crate::deep_link::LinkTarget::LocalBranch("search".into());
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
+    // Force push with lease asks first, for this branch.
+    open_menu(&mut h);
+    h.get_by_label("Force push to origin/search (with lease)…").click();
+    h.run();
+    let forces = |m: &Msg| {
+        let Msg::ConfirmDanger { then, .. } = m else { return false };
+        matches!(&**then, Msg::Branch(BranchMsg::ForcePush { branch, .. }) if branch == "search")
+    };
+    assert!(h.state().1.iter().any(forces), "Force push asks first");
     drop(h);
 
     // Diverged: no fast-forward, and the branch can be deleted together with origin/search.
@@ -151,6 +160,16 @@ fn branch_menu() {
     h.run();
     open_menu(&mut h);
     assert!(h.get_by_label("Delete together with origin/search…").is_disabled());
+    drop(h);
+
+    // The remote's default branch is never force pushed: the item says why.
+    let (mut st, _) = with_repo(ThemeChoice::Dark, "branch-menu");
+    tracked(&mut st, 0, 0);
+    branch(&mut st, "search").tracking = Some(Tracking { remote: "origin".into(), merge: "main".into() });
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h);
+    assert!(h.get_by_label("Force push to origin/main (with lease)…").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

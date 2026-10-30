@@ -91,7 +91,7 @@ pub fn remote_rename(t: Lang, snap: &Snapshot, b: &BranchInfo, new: &str) -> Opt
 
 /// Whether `name` is `remote`'s default branch: its recorded HEAD, or without one the main
 /// branch Glowfly picks (`Snapshot::mainline`).
-fn is_default(snap: &Snapshot, remote: &str, name: &str) -> bool {
+pub(crate) fn is_default(snap: &Snapshot, remote: &str, name: &str) -> bool {
     match snap.remote_heads.iter().find(|(r, _)| r == remote) {
         Some((_, head)) => head == name,
         None => snap.mainline().as_deref() == Some(name),

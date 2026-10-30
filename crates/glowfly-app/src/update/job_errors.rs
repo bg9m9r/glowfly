@@ -1,6 +1,6 @@
 //! A failed job's toast: git's cause in plain words and the fix that answers it
 //! (glowfly_core::git_errors), or "<label> failed: <last line>". Every fix only opens a dialog
-//! or a Preferences page, or runs what the failed job meant to run (Try again on a lock file or
+//! (Force push with lease asks first) or a Preferences page, or runs what the failed job meant to run (Try again on a lock file or
 //! an HTTPS sign-in, update/job_retry.rs); none discards work.
 
 use crate::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, StashMsg};
@@ -17,10 +17,12 @@ use glowfly_core::remote_failure::RemoteFailure;
 use glowfly_core::repo::{RemoteInfo, Snapshot};
 use glowfly_core::stash_ops::StashScope;
 
-/// A failure toast's text and the button that fixes its cause, if Glowfly has one.
+/// A failure toast's text and the button that fixes its cause, if Glowfly has one, with a
+/// second fix beside it (Force push with lease beside Pull).
 pub(super) struct Explained {
     pub text: String,
     pub fix: Option<ToastAction>,
+    pub alt: Option<ToastAction>,
 }
 
 /// Explains `job`'s failure from its `output`, when git's cause is one Glowfly recognises.
@@ -49,6 +51,7 @@ pub(super) fn explain(
     let try_again = || again.map(|r| super::job_retry::button(t, r));
     let pull = || fix(t.tr("git_errors.pull.button"), Msg::git("Pull", &["pull", "--ff"]));
     let set_upstream = || head.clone().and_then(|b| fix(t.tr("branch.menu.set_upstream"), Msg::Branch(BranchMsg::SetUpstreamDialog(b))));
+    let mut alt = None;
     let (text, fix) = match cause {
         Cause::LocalChanges { files } => {
             let text = if files.is_empty() {
@@ -66,7 +69,16 @@ pub(super) fn explain(
         },
         Cause::Unresolved => (t.tr("git_errors.unresolved").to_owned(), first_conflict(snap).and_then(|f| view_conflicts(&f))),
         Cause::MergeInProgress => (t.tr("git_errors.merge_in_progress").to_owned(), None),
-        Cause::PushBehind { branch } => (t.tr("git_errors.push_behind").to_owned(), if is_head(&branch) { pull() } else { None }),
+        Cause::PushBehind { branch } => {
+            // Force push with lease of the branch git rejected, its confirmation first.
+            let rejected = snap.and_then(|s| Some((s, crate::state::branches::push::rejected_local(s, &branch, output)?)));
+            let force = rejected.and_then(|(s, b)| crate::state::branches::push::force_confirm(t, s, b).ok());
+            let force = force.and_then(|m| fix(t.tr("git_errors.force_push.button"), m));
+            let pulled = if is_head(&branch) { pull() } else { None };
+            let (main, second) = if pulled.is_some() { (pulled, force) } else { (force, None) };
+            alt = second;
+            (t.tr("git_errors.push_behind").to_owned(), main)
+        }
         Cause::StaleLease { .. } => (
             t.tr("git_errors.stale_lease").to_owned(),
             fix(t.tr("git_errors.fetch.button"), Msg::git("Fetch all", &["fetch", "--all", "--prune"])),
@@ -99,7 +111,7 @@ pub(super) fn explain(
             (crate::state::error_words::remote(t, &f), edit)
         }
     };
-    Some(Explained { text, fix })
+    Some(Explained { text, fix, alt })
 }
 
 /// The sign-in failures' texts; an SSH key the server refused offers Preferences > SSH.

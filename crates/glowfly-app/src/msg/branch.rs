@@ -71,6 +71,20 @@ pub enum BranchMsg {
         branch: String,
         remote: Option<String>,
     },
+    /// Force push local `branch` to its upstream with lease, expecting the upstream at `seen`
+    /// (None: not on the remote), as its confirmation said (update/branch_push.rs).
+    ForcePush {
+        branch: String,
+        seen: Option<git2::Oid>,
+    },
+    /// Push local branch `.0` to every remote, one after another (update/branch_push.rs).
+    PushAll(String),
+    /// Push to all remotes ended (`BranchEffect::PushAll`); unscoped like RunGit.
+    PushedAll {
+        branch: String,
+        total: usize,
+        result: glowfly_core::push_all::PushedAll,
+    },
     NewBranch {
         start: Option<String>,
         name: String,
@@ -98,6 +112,9 @@ impl BranchMsg {
             | Self::DeleteRemote { .. }
             | Self::DeleteBranchAndRemote(..)
             | Self::PushBranch { .. }
+            | Self::ForcePush { .. }
+            | Self::PushAll(..)
+            | Self::PushedAll { .. }
             | Self::NewBranch { .. } => None,
         }
     }
