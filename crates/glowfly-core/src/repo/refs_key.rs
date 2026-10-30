@@ -85,21 +85,45 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
 
 /// Stamps the config files and hooks of the submodules' git dirs: those under the common dir's
 /// `modules/` (any depth: names may hold `/`, and nested submodules sit in `modules/` of their
-/// parent's), and the `.git` folders of submodules `.gitmodules` lists that keep their own.
-/// Only stats and small reads; never opens a repository.
+/// parent's), and for each submodule `.gitmodules` lists or the index has a gitlink for (git's
+/// status runs git in an unlisted one too), its own `.git` folder or the git dir its `.git`
+/// file points to (which may be outside `modules/`). Only stats and small reads, and the index
+/// re-read only when its file changed; never opens a repository.
 pub(crate) fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut DefaultHasher) {
     modules_stamps(&repo.commondir().join("modules"), 0, now, h);
     let Some(workdir) = repo.workdir() else { return };
-    let Ok(cfg) = git2::Config::open(&workdir.join(".gitmodules")) else { return };
-    let Ok(entries) = cfg.entries(Some(r"^submodule\..*\.path$")) else { return };
     let mut paths = Vec::new();
-    let _ = entries.for_each(|e| paths.extend(e.value().map(str::to_owned)));
+    if let Ok(cfg) = git2::Config::open(&workdir.join(".gitmodules"))
+        && let Ok(entries) = cfg.entries(Some(r"^submodule\..*\.path$"))
+    {
+        let _ = entries.for_each(|e| paths.extend(e.value().map(str::to_owned)));
+    }
+    if let Ok(mut index) = repo.index()
+        && index.read(false).is_ok()
+    {
+        let links = index.iter().filter(|e| e.mode == 0o160000).filter_map(|e| String::from_utf8(e.path).ok());
+        paths.extend(links);
+    }
+    paths.sort();
+    paths.dedup();
     for p in paths {
         let dot_git = workdir.join(&p).join(".git");
-        if std::fs::symlink_metadata(&dot_git).is_ok_and(|m| m.is_dir()) {
-            p.hash(h);
-            git_dir_stamps(&dot_git, now, h);
-        }
+        let Ok(meta) = std::fs::symlink_metadata(&dot_git) else { continue };
+        let git_dir = if meta.is_dir() {
+            dot_git
+        } else if meta.is_file() {
+            // A `.git` file: `gitdir: <path>`, relative to the submodule's folder.
+            let Some(target) =
+                std::fs::read_to_string(&dot_git).ok().and_then(|t| t.trim().strip_prefix("gitdir:").map(|g| g.trim().to_owned()))
+            else {
+                continue;
+            };
+            workdir.join(&p).join(target)
+        } else {
+            continue;
+        };
+        p.hash(h);
+        git_dir_stamps(&git_dir, now, h);
     }
 }
 

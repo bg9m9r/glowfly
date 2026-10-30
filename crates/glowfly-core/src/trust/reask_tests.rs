@@ -237,3 +237,23 @@ fn the_runner_s_scan_sees_a_submodule_hook_added_since_the_load_and_its_stamp_ch
     let _ = std::fs::remove_dir_all(&parent);
     let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("glowfly-test-reask-sub-now-lib-{}", std::process::id())));
 }
+
+#[test]
+fn an_unlisted_gitlink_s_git_dir_elsewhere_is_in_the_refresh_key() {
+    let parent = scratch_repo("reask-unlisted");
+    let elsewhere = parent.with_file_name(format!("glowfly-test-reask-unlisted-git-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&elsewhere);
+    // A repository inside, its git dir outside `modules/`, added as a gitlink .gitmodules lacks.
+    git(&parent, &["init", "-q", "--separate-git-dir", &elsewhere.display().to_string(), "inner"]);
+    let inner = parent.join("inner");
+    write(&inner, "x.txt", "x\n");
+    git(&inner, &["-c", "user.name=T", "-c", "user.email=t@e", "add", "."]);
+    git(&inner, &["-c", "user.name=T", "-c", "user.email=t@e", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "x"]);
+    git(&parent, &["add", "inner"]);
+    let key = || refs_key(&parent).unwrap();
+    let k0 = key();
+    hook(&elsewhere.join("hooks"), "post-checkout");
+    assert_ne!(key(), k0, "git status runs git in it, which runs its hooks");
+    let _ = std::fs::remove_dir_all(&parent);
+    let _ = std::fs::remove_dir_all(&elsewhere);
+}

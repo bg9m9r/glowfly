@@ -79,13 +79,18 @@ fn scan(c: &TrustCheck, repo: &git2::Repository) -> TrustScan {
     }
     let mut cache = SCANS.lock().unwrap_or_else(|e| e.into_inner());
     let scans = cache.get_or_insert_with(HashMap::new);
-    if let Some((stamp, scan)) = scans.get(&c.workdir)
-        && *stamp == trust::stamp(repo, scan)
+    let last = scans.get(&c.workdir);
+    // Taken before the scan, on the last scan's places (where hooks are listed, the submodules
+    // that follow their working tree), so a change while scanning is never kept under a stamp
+    // made after it; one whose places moved since misses once and is taken again on the new.
+    let before = last.map_or_else(|| trust::stamp(repo, &TrustScan::default()), |(_, s)| trust::stamp(repo, s));
+    if let Some((stamp, scan)) = last
+        && *stamp == before
     {
         return scan.clone();
     }
     let now = trust::scan_now(repo);
-    scans.insert(c.workdir.clone(), (trust::stamp(repo, &now), now.clone()));
+    scans.insert(c.workdir.clone(), (before, now.clone()));
     now
 }
 
