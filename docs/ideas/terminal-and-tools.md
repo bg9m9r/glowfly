@@ -107,3 +107,4 @@ The built-in terminal, custom commands, external tools and a command-line compan
 - Right-click menu on a pill: Rename, Restart, Close, Close others
 - Bell or new-output indicator on inactive terminal tabs
 - Restart terminal in the More menu when the active shell has ended
+- Show an elevated child process as running in the pill (its start time can't be read, so it shows Idle)

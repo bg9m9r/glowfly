@@ -41,6 +41,8 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - `ref_name_ok` accepts components that are only dots or end in a dot or space, which Windows trims; refuse components starting with `.` and any `:`, as git's ref rules do
 - A nested `.git` file or `commondir` that names a UNC path makes the sweep open a file over SMB; refuse network paths there
 - `read_file_bounded` opens a file before checking its type; check before the open, or open with `O_NOCTTY`
+- Tell a probe file deleted from another machine (an SMB share, or from WSL) apart from a watcher that went quiet
+- Drop a Probed result that arrives from a watcher already replaced
 
 ### Commit panel extras
 

@@ -22,6 +22,14 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   (`PushRemotes`) names another remote than its upstream's: offer it toward that push remote too,
   leasing its tracking branch there, instead of only toward the upstream
 
+### Force push with lease from any branch
+
+- Put the default-branch warning in its own paragraph of the confirmation
+- Tests for the Git Flow base warnings, not only the default branch's
+- Build the warning text when the confirmation opens, so it can't go stale
+- Say which push URLs were read when a remote has several `pushurl`s and only some match
+- Run Push to all remotes as a job, so it can be stopped and shows progress
+
 ### Check out a remote branch with its tracking branch fast-forwarded
 
 - Offer Merge, Rebase or Reset to the remote for a diverged tracking branch, not only checking it
@@ -30,6 +38,9 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   HEAD goes back now)
 - Palette entries for remote branches a local branch tracks, checking out and fast-forwarding it
 - The tracking New branch dialog: suggest a name, and a box to leave the upstream unset
+- Say so when the checkout fails after the tracking branch was fast-forwarded, or move it back
+- Explain a failing `merge-base` (unusual fetch refspecs) instead of a bare "Checkout failed"
+- Wrap the long `//!` lines in `snapshot_tests_branch.rs` and `snapshot_tests_remote_branch.rs`
 
 ### Keep the remote in step on rename and remote delete
 
@@ -123,6 +134,7 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Search a service's forks on the server, beyond the newest 1000
 - Accept Unicode IDN hosts with combining marks (virama, ZWJ/ZWNJ), which the host-character allowlist (`host_char`) now refuses
 - Accept IPv6 literal hosts with a zone (`[fe80::1%25eth0]`), which are refused now
+- Push to a URL set as `branch.<b>.pushRemote` as git does, instead of refusing it
 
 ### Tag management
 

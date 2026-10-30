@@ -96,6 +96,9 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Clone the submodules of folders added later to a sparse clone's checkout
 - Leave out of the batch updates the submodules a patterns-mode sparse checkout leaves out (only
   cone mode is read now)
+- When the sparse folders can't be read, skip uninitialised submodules in the unattended runs (keep-updated after a job, auto-initialise on open)
+- Update submodules after `cherry-pick --quit` or `revert --quit` ends a sequence that a mid-sequence commit left
+- A test that a remote checkout with fast-forward updates submodules
 
 ### Worktrees
 
