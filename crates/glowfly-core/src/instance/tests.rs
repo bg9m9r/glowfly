@@ -178,9 +178,7 @@ fn no_window_means_not_running() {
     assert!(matches!(hand_off_via(&path, &link("glowfly://repo?root=abc")), Err(HandOffError::NotRunning)));
 
     // A file left by a window that is gone: its port is closed.
-    let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let addr = closed.local_addr().unwrap().to_string();
-    drop(closed);
+    let (addr, _held) = crate::testutil::closed_port();
     file::write(&path, &InstanceFile { addr, token: "1".repeat(32), pid: 1 }).unwrap();
     let start = Instant::now();
     assert!(matches!(hand_off_via(&path, &Handed::Folder(folder())), Err(HandOffError::NotRunning)));

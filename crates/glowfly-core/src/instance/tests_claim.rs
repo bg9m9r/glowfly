@@ -43,9 +43,7 @@ fn files_a_crashed_window_left_never_block_start_up() {
     // instance file naming a closed port.
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join(LOCK_NAME), b"").unwrap();
-    let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let addr = closed.local_addr().unwrap().to_string();
-    drop(closed);
+    let (addr, _held) = crate::testutil::closed_port();
     file::write(&path, &InstanceFile { addr, token: "1".repeat(32), pid: 1 }).unwrap();
 
     let started = Instant::now();

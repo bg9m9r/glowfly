@@ -60,6 +60,9 @@ two-face = { version = "0.5.2", default-features = false, features = ["syntect-f
 
 [dev-dependencies]
 filetime = "0.2.29"
+# A loopback port held bound but never listening, for "nothing listens there" tests
+# (testutil::closed_port): std can only bind a TCP socket by listening on it.
+socket2 = "0.6"
 two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
 
 # Linux: save tokens in the desktop keyring (GNOME Keyring, KWallet) through the Secret Service.
