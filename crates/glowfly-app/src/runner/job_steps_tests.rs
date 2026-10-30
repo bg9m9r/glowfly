@@ -210,26 +210,34 @@ fn a_stop_before_a_rebasing_pull_s_checks_says_only_that_it_was_cancelled() {
 }
 
 #[test]
-fn a_stop_after_a_fetch_that_moved_the_branch_keeps_what_the_fetch_did_in_the_log() {
-    let dir = temp("pull-moved");
+fn a_stop_after_a_pull_s_fetch_keeps_what_it_fetched_in_the_log_and_never_rebases() {
+    let dir = temp("pull-after-fetch");
     let (work, origin) = (dir.join("work"), dir.join("origin"));
     repo(&origin);
     git_in(&dir, &["clone", "-q", &origin.display().to_string(), "work"]);
-    std::fs::write(origin.join("b.txt"), "b\n").unwrap();
-    git_in(&origin, &["add", "."]);
-    git_in(&origin, &["-c", "user.name=T", "-c", "user.email=t@e", "commit", "-q", "-m", "two"]);
-    // A wildcard refspec named stores into main; the stop comes once the fetch is done.
+    let commit = |d: &Path, file: &str| {
+        std::fs::write(d.join(file), "x\n").unwrap();
+        git_in(d, &["add", "."]);
+        git_in(d, &["-c", "user.name=T", "-c", "user.email=t@e", "commit", "-q", "-m", file]);
+    };
+    commit(&origin, "b.txt");
+    commit(&work, "l.txt");
+    let head = || gitcli::run(&work, &args(&["rev-parse", "HEAD"])).1;
+    let before = head();
+    // The rebase's fork point is looked up after the fetch: the stop comes then.
     let stop = Stop::new();
     let asker = stop.clone();
-    let send = move |m: Msg| {
-        if matches!(m, Msg::Job(JobMsg::Step(Step::Local))) {
-            asker.stop();
-        }
+    let fetched = std::cell::Cell::new(false);
+    let send = move |m: Msg| match m {
+        Msg::Job(JobMsg::Step(Step::Fetch)) => fetched.set(true),
+        Msg::Job(JobMsg::Step(Step::Local)) if fetched.get() => asker.stop(),
+        _ => {}
     };
     let mut live = Live::new(&work, false, &stop, &send);
-    let (ok, text) = live.command(&args(&["pull", "origin", "refs/heads/*:refs/heads/*"]));
+    let (ok, text) = live.command(&args(&["pull", "--rebase"]));
     assert!(!ok && live.stopped, "{text}");
     assert!(text.contains("$ git fetch"), "{text}");
-    assert!(text.contains("Cannot fast-forward your working tree"), "{text}");
+    assert!(text.contains("was cancelled before it started"), "{text}");
+    assert_eq!(head(), before, "nothing was rebased: {text}");
     let _ = std::fs::remove_dir_all(&dir);
 }

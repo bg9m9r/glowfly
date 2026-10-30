@@ -872,6 +872,8 @@
   "git_errors.diverged": "Dein Branch und sein Upstream haben sich beide weiterentwickelt, daher ist kein Fast-Forward möglich. Pulle stattdessen mit Merge oder Rebase.",
   "git_errors.edit_remote.button": "Remote bearbeiten…",
   "git_errors.fetch.button": "Abrufen",
+  "git_errors.fetch_moved_head": "Der Abruf hat den ausgecheckten Branch selbst verschoben und deine Dateien so gelassen, wie sie waren. Sie sehen jetzt wie Änderungen aus, die die abgerufenen Commits rückgängig machen. Sichere deine eigenen Änderungen (vergleiche mit {commit}) und setze dann hart auf den Branch zurück, um deine Dateien zu aktualisieren.",
+  "git_errors.fetch_moved_head.unnamed": "Der Abruf hat den ausgecheckten Branch selbst verschoben und deine Dateien so gelassen, wie sie waren. Sie sehen jetzt wie Änderungen aus, die die abgerufenen Commits rückgängig machen. Sichere deine eigenen Änderungen und setze dann hart auf den Branch zurück, um deine Dateien zu aktualisieren.",
   "git_errors.host_key": "Der SSH-Hostschlüssel des Servers wurde nicht bestätigt, daher hat Git keine Verbindung aufgebaut.",
   "git_errors.host_key_changed": "Der SSH-Hostschlüssel des Servers hat sich geändert. Jemand könnte die Verbindung abfangen: Frag beim Betreiber des Servers nach, bevor du dich wieder verbindest.",
   "git_errors.local_changes.one": "Deine Änderungen an {count} Datei würden überschrieben.",

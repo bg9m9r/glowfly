@@ -267,3 +267,14 @@ fatal: Unable to create '/tmp/r/.git/index.lock': File exists."
     assert_eq!(lock_path(&both).as_deref(), Some("/tmp/r/.git/index.lock"));
     assert_eq!(classify(&both), Some(Cause::Locked { file: "index.lock".into() }));
 }
+
+#[test]
+fn a_working_tree_that_couldn_t_follow_the_fetched_branch_names_the_commit_it_was_on() {
+    let advice = "fatal: Cannot fast-forward your working tree.\nAfter making sure that you saved anything precious from\n$ git diff 1a2b3c4d\noutput, run\n$ git reset --hard\nto recover.";
+    let moved = |from: &str| Some(Cause::FetchMovedHead { from: s(from) });
+    assert_eq!(classify(&format!("warning: fetch updated the current branch head.\n{advice}")), moved("1a2b3c4d"));
+    // Untracked files in the way are why, but the branch has moved: that is what to fix first.
+    let untracked = "error: The following untracked working tree files would be overwritten by merge:\n\tc.txt\nPlease move or remove them before you merge.\nAborting";
+    assert_eq!(classify(&format!("{untracked}\n{advice}")), moved("1a2b3c4d"));
+    assert_eq!(classify("fatal: Cannot fast-forward your working tree."), moved(""));
+}

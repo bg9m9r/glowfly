@@ -67,6 +67,12 @@ pub enum Cause {
     HostKeyChanged,
     /// Only "Merge with strategy <s> failed." was recognised.
     MergeRefused,
+    /// A pull's fetch moved the branch checked out and the working tree didn't follow (git's
+    /// "Cannot fast-forward your working tree"): the commit the branch was on, as git names it
+    /// ("" when it doesn't).
+    FetchMovedHead {
+        from: String,
+    },
 }
 
 /// Why `output` (a failed job's combined output, untranslated) says git failed, when it is a
@@ -86,6 +92,9 @@ pub fn classify(output: &str) -> Option<Cause> {
     }
     if let Some(f) = crate::remote_failure::read(&text) {
         return Some(Cause::Remote(f));
+    }
+    if let Some(cause) = fetch_moved_head(output) {
+        return Some(cause);
     }
     let untracked = |l: &str| {
         l.contains("untracked working tree files would be overwritten by") || l.contains("untracked working tree files would be removed by")
@@ -164,6 +173,15 @@ fn subcommand(args: &[String]) -> Option<usize> {
         }
     }
     None
+}
+
+/// git pull's "Cannot fast-forward your working tree", with the commit of the `$ git diff <commit>`
+/// line it advises (an echo-like line, so read from the whole output).
+fn fetch_moved_head(output: &str) -> Option<Cause> {
+    let mut after = output.lines().skip_while(|l| !l.contains("Cannot fast-forward your working tree"));
+    after.next()?;
+    let from = after.take(3).find_map(|l| l.strip_prefix("$ git diff ")).unwrap_or_default().trim().to_owned();
+    Some(Cause::FetchMovedHead { from })
 }
 
 /// The lines worth matching: no `$ git …` echoes and no hints.

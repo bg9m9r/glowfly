@@ -6,10 +6,11 @@
 //!   ends git's whole process tree (remote helpers and ssh too), and its progress lines are
 //!   sent as `JobMsg::Progress`, a few times a second at most, and folded in the log.
 //! - A pull runs as its fetch and then its merge or rebase (`trust::pull::run_split`), so only
-//!   the fetch can be stopped. Whatever the split doesn't model (submodules, a fetch that may
-//!   store into the branch checked out) and every way it would fail before its merge or rebase
-//!   (divergent branches, no upstream, an upstream gone) run as `git pull` itself, which can't
-//!   be stopped once it starts, so the outcome and git's words are `git pull`'s.
+//!   the fetch can be stopped. Whatever the split doesn't model (submodules, an unborn branch,
+//!   a fetch that may store into the branch checked out) and every way it would fail before its
+//!   merge or rebase (divergent branches, no upstream, an upstream gone) run as `git pull`
+//!   itself, which can't be stopped once it starts, so the outcome and git's words are `git
+//!   pull`'s. The split never updates the working tree itself.
 //! - Any other command, a merge or rebase included, runs to its end; a stop asked meanwhile
 //!   ends the job before the next command starts. Nothing here kills a merge or rebase.
 //!
@@ -105,7 +106,7 @@ impl<'a> Live<'a> {
                 &run;
             // A stop before any of its commands started says only that: a check it cut short (the
             // clean tree a rebase needs) didn't fail. After one started, what they did stays in the
-            // log (a fetch that moved the branch, and what that left).
+            // log (what the fetch brought, and that the merge or rebase didn't start).
             if self.stopped {
                 return (false, if self.started > started { output.clone() } else { echo });
             }

@@ -872,6 +872,8 @@
   "git_errors.diverged": "Your branch and its upstream have both moved on, so a fast-forward isn't possible. Pull with a merge or rebase instead.",
   "git_errors.edit_remote.button": "Edit remote…",
   "git_errors.fetch.button": "Fetch",
+  "git_errors.fetch_moved_head": "The fetch moved the checked-out branch itself and left your files as they were, so they now look like changes that undo the fetched commits. Save any changes of your own (compare with {commit}), then hard-reset to the branch to bring your files up to date.",
+  "git_errors.fetch_moved_head.unnamed": "The fetch moved the checked-out branch itself and left your files as they were, so they now look like changes that undo the fetched commits. Save any changes of your own, then hard-reset to the branch to bring your files up to date.",
   "git_errors.host_key": "The server's SSH host key wasn't confirmed, so git didn't connect.",
   "git_errors.host_key_changed": "The server's SSH host key has changed. Someone may be intercepting the connection: check with the server's owner before connecting again.",
   "git_errors.local_changes.one": "Your changes to {count} file would be overwritten.",

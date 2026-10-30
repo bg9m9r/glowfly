@@ -872,6 +872,8 @@
   "git_errors.diverged": "Tu rama y su upstream han avanzado las dos, así que no es posible un avance rápido. Trae con fusión o rebase en su lugar.",
   "git_errors.edit_remote.button": "Editar remoto…",
   "git_errors.fetch.button": "Obtener",
+  "git_errors.fetch_moved_head": "La obtención movió la propia rama activa y dejó tus archivos como estaban, así que ahora parecen cambios que deshacen los commits obtenidos. Guarda tus propios cambios (compara con {commit}) y luego haz un reset duro a la rama para poner tus archivos al día.",
+  "git_errors.fetch_moved_head.unnamed": "La obtención movió la propia rama activa y dejó tus archivos como estaban, así que ahora parecen cambios que deshacen los commits obtenidos. Guarda tus propios cambios y luego haz un reset duro a la rama para poner tus archivos al día.",
   "git_errors.host_key": "La clave de host SSH del servidor no se confirmó, así que git no se conectó.",
   "git_errors.host_key_changed": "La clave de host SSH del servidor ha cambiado. Alguien podría estar interceptando la conexión: consúltalo con el responsable del servidor antes de volver a conectarte.",
   "git_errors.local_changes.one": "Tus cambios en {count} archivo se sobrescribirían.",

@@ -66,6 +66,8 @@ pub(super) fn explain(
         Cause::Conflicts { files, .. } => files.first().and_then(view_conflicts),
         Cause::Unresolved => first_conflict(snap).and_then(|f| view_conflicts(&f)),
         Cause::MergeInProgress | Cause::PushRefused { .. } | Cause::UnknownRef { .. } | Cause::HostKeyChanged => None,
+        // What to keep from the working tree is the person's to judge before a reset.
+        Cause::FetchMovedHead { .. } => None,
         Cause::PushBehind { branch } => is_head(&branch).then(pull).flatten(),
         Cause::StaleLease { .. } => fix(t.tr("git_errors.fetch.button"), Msg::git("Fetch all", &["fetch", "--all", "--prune"])),
         Cause::NoUpstream { push_branch: Some(_) } => fix(t.tr("git_errors.push.button"), Msg::Job(JobMsg::Push { force: false })),

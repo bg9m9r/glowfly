@@ -177,23 +177,41 @@ fn a_split_pull_fails_as_git_pull_does_and_is_explained_the_same() {
 }
 
 #[test]
-fn a_fetch_that_moves_the_branch_checked_out_leaves_a_clean_tree_at_the_fetched_tip() {
+fn a_fetch_that_may_store_into_the_branch_checked_out_runs_as_git_pull() {
     let mirror = |d: &Path| {
         git(d, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/heads/*"]);
         set_config(d, &[("pull.rebase", "false")]);
     };
-    // The split runs it as git pull; the pinned pull brings the working tree along itself.
     same_as_git_by("pull-split-mirror", &["pull"], &mirror, true);
-    let (_, pinned) = same_as_git_by("pull-pinned-mirror", &["pull"], &mirror, false);
-    assert!(pinned.contains("fast-forwarding your working tree"), "{pinned}");
     let (work, bare) = with_origin("pull-stores-head");
     mirror(&work);
     let repo = Repository::open(&work).unwrap();
-    assert!(pull(&["pull"]).stores_into_head(&repo), "a configured refspec stores into main");
-    assert!(pull(&["pull", "origin", "x:y"]).stores_into_head(&repo), "configured ones apply to named refspecs too");
+    let stores = |a: &[&str]| pull(a).stores_into_head(&repo);
+    assert!(stores(&["pull"]), "a configured refspec stores into main");
+    assert!(stores(&["pull", "origin", "x:y"]), "configured ones apply to named refspecs too");
     git(&work, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"]);
-    assert!(!pull(&["pull"]).stores_into_head(&repo));
-    assert!(pull(&["pull", "origin", "a:x", "b:main"]).stores_into_head(&repo), "any named refspec, not just the first");
+    assert!(!stores(&["pull"]));
+    assert!(stores(&["pull", "origin", "a:x", "b:main"]), "any named refspec, not just the first");
+    assert!(stores(&["pull", "origin", "main:heads/main"]), "a short destination as git spells it out");
+    assert!(stores(&["pull", "origin", "refs/heads/*:refs/heads/*"]), "a pattern that matches main");
+    assert!(stores(&["pull", "origin", "+refs/heads/m*:refs/heads/m*"]));
+    assert!(!stores(&["pull", "origin", "refs/heads/*:refs/heads/feature/*"]), "a pattern that can't");
+    assert!(stores(&["pull", "origin", "a:x*y*"]), "a destination it can't read");
+    assert!(!stores(&["pull", "origin", "main:"]), "no destination");
+    git(&work, &["config", "--add", "remote.origin.fetch", "+refs/tags/*:refs/heads/*"]);
+    assert!(stores(&["pull"]), "a configured pattern that matches main");
+    // HEAD moved by the fetch all the same: the pull stops with git's words, files untouched.
+    git(&work, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/heads/*"]);
+    set_config(&work, &[("pull.rebase", "false")]);
+    let old = repo.head().unwrap().target().unwrap();
+    remote_commit(&bare, "main", "r.txt", "r\n");
+    let mut run = |c: &[String], input: &str, extra: &[(&str, &str)]| {
+        let env: Vec<(&str, &str)> = crate::gitcli::NO_PROMPTS.iter().chain(extra).copied().collect();
+        crate::gitcli::run_with_input(&work, c, input, &env)
+    };
+    let PullRun::Ran { ok: false, output } = run_pinned(&work, &pull(&["pull"]), &[], None, None, &mut run) else { panic!("it stops") };
+    assert_eq!(crate::git_errors::classify(&output), Some(crate::git_errors::Cause::FetchMovedHead { from: old.to_string() }), "{output}");
+    assert!(!work.join("r.txt").exists(), "the working tree is left alone: {output}");
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }

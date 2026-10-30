@@ -221,23 +221,49 @@ impl Pull {
         repo.branch_upstream_name(name).ok()?.as_str().map(str::to_owned)
     }
 
-    /// Whether the fetch may store into the branch checked out, which git handles by updating
-    /// the working tree from the old HEAD: a refspec named that stores there (`pull origin x:main`
-    /// on main, any of them), or a configured fetch refspec of the remote it fetches from that
-    /// does (`+refs/heads/*:refs/heads/*`; git applies those to what it fetches even when
-    /// refspecs are named).
+    /// Whether the fetch may store into the branch checked out, born or not (judged before it
+    /// runs, erring towards yes): a refspec named, or a configured fetch refspec of the remote
+    /// it fetches from (git applies those to what it fetches even when refspecs are named),
+    /// whose destination is that branch, a pattern that could match it, or one it can't read.
     pub(super) fn stores_into_head(&self, repo: &Repository) -> bool {
         // The branch HEAD names, born or not: a fetch into an unborn one makes it.
         let Some(head) = repo.find_reference("HEAD").ok().and_then(|h| h.symbolic_target().map(str::to_owned)) else { return false };
-        let named = self.refspecs.iter().filter_map(|s| s.split_once(':')).any(|(_, dst)| {
-            let dst = if dst.starts_with("refs/") { dst.to_owned() } else { format!("refs/heads/{dst}") };
-            head.eq_ignore_ascii_case(&dst)
-        });
         let remote = self.remote.clone().or_else(|| repo.branch_upstream_remote(&head).ok()?.as_str().map(str::to_owned));
-        let configured = repo
-            .find_remote(remote.as_deref().unwrap_or("origin"))
-            .is_ok_and(|r| r.refspecs().any(|s| s.direction() == git2::Direction::Fetch && s.dst_matches(&head)));
-        named || configured
+        let key = format!("remote.{}.fetch", remote.as_deref().unwrap_or("origin"));
+        let mut configured = Vec::new();
+        if let Ok(config) = repo.config().and_then(|mut c| c.snapshot())
+            && let Ok(mut values) = config.multivar(&key, None)
+        {
+            while let Some(Ok(v)) = values.next() {
+                configured.extend(v.value().map(str::to_owned));
+            }
+        }
+        self.refspecs.iter().chain(&configured).any(|s| may_store(s, &head))
+    }
+}
+
+/// Whether the fetch refspec `spec` may store into the ref `head` (`refs/heads/…`): its
+/// destination, spelled out as git spells out a short one, is `head`, a pattern that could match
+/// it, or something this can't read (more than one `*`). A negative refspec or one with no
+/// destination stores nothing.
+fn may_store(spec: &str, head: &str) -> bool {
+    let spec = spec.trim().trim_start_matches('+');
+    let Some((_, dst)) = spec.split_once(':').filter(|_| !spec.starts_with('^')) else { return false };
+    if dst.is_empty() {
+        return false;
+    }
+    let full = if dst.starts_with("refs/") {
+        dst.to_owned()
+    } else if ["heads/", "tags/", "remotes/"].iter().any(|p| dst.starts_with(p)) {
+        format!("refs/{dst}")
+    } else {
+        format!("refs/heads/{dst}")
+    };
+    let (full, head) = (full.to_ascii_lowercase(), head.to_ascii_lowercase());
+    match full.split('*').collect::<Vec<_>>().as_slice() {
+        [exact] => *exact == head,
+        [pre, post] => head.len() >= pre.len() + post.len() && head.starts_with(pre) && head.ends_with(post),
+        _ => true,
     }
 }
 

@@ -1,10 +1,10 @@
 //! Running a pull pinned to its one fetch (pull.rs): the fetch, the comparison of what it
 //! brought (compare.rs, as the merge or rebase that follows would take it), then that merge or
 //! rebase of exactly those commits, with `GIT_REFLOG_ACTION` as git pull sets it. A pull that
-//! updates submodules, stores into the branch checked out, or whose fetch moved HEAD is held.
-//! A fetch that moved HEAD anyway (one the person chose to run) has the working tree brought
-//! from the old tip to the new one first, as git pull does; one that made an unborn branch has
-//! the commit it merges checked out from nothing, as git pull does on an unborn branch.
+//! updates submodules, may store into the branch checked out (judged before the fetch, erring
+//! towards yes) or pulls into an unborn branch is held. The split never updates the working
+//! tree itself: a fetch that moved HEAD anyway ends the pull there, with git's own words for a
+//! working tree that couldn't follow the branch.
 //!
 //! `run_split` is the same split for a pull with nothing to compare (a job that can be stopped
 //! in its fetch): whatever the split doesn't model, or any way it would fail other than git's
@@ -51,8 +51,8 @@ pub fn run_pinned(
 }
 
 /// Runs `pull` as its fetch and then its merge or rebase, with nothing to compare, ending as
-/// `git pull` would: a pull that updates submodules or may store into the branch checked out
-/// runs whole, and so does one the split would refuse after its fetch (git pull's second fetch
+/// `git pull` would: a pull that updates submodules, may store into the branch checked out or
+/// pulls into an unborn branch runs whole, and so does one the split would refuse after its fetch (git pull's second fetch
 /// then finds nothing new). Never `PullRun::Refused` but for a repository that can't be opened.
 pub fn run_split(path: &Path, pull: &Pull, git: &mut Git<'_>) -> PullRun {
     run(path, pull, &[], None, None, git, true)
@@ -106,6 +106,9 @@ fn run(
         None
     } else if pull.recurses(&config) && !pull.fetch_only() {
         Some("git pull --recurse-submodules")
+    } else if repo.head().is_err() {
+        // git pull checks out into an unborn branch its own way (whatever --ff or --squash say).
+        Some("git pull into a branch with no commits yet")
     } else if pull.stores_into_head(&repo) {
         Some("git pull into the branch checked out")
     } else {
@@ -157,36 +160,15 @@ fn run(
         Err(e) => return refused(unreadable(e.message()), output),
     };
     let head_after = repo.head().ok().and_then(|h| h.target());
-    // The fetch stored into the branch checked out: moved it, or made it when it was unborn.
-    let moved = head_after.filter(|_| head_after != head_before);
-    if moved.is_some()
-        && !follows.is_empty()
-        && let Err(r) = skip_accepted::<()>(Err(Unchecked::Unmodeled("a fetch that moved the branch checked out".to_owned())), accept)
-    {
-        return refused(r, output);
-    }
-    // As git pull's two-way merge does: the index refreshed first (a file only touched isn't a
-    // change), then `from`'s tree to `to`'s in the index and working tree.
-    let fast_forward = |from: &str, to: &str, output: &mut String, git: &mut Git<'_>| {
-        let _ = git(&crate::gitcli::args(&["update-index", "-q", "--refresh"]), "", &[]);
-        let (ok, text) = git(&crate::gitcli::args(&["read-tree", "-m", "-u", from, to]), "", &[]);
-        if !text.is_empty() {
-            output.push_str(text.trim_end());
-            output.push('\n');
-        }
-        ok
-    };
-    if let (Some(old), Some(new)) = (head_before, moved) {
-        // As git pull does: the working tree follows the branch from the old tip to the new.
-        output.push_str(&format!(
-            "warning: fetch updated the current branch head.\nwarning: fast-forwarding your working tree from\nwarning: commit {old}.\n"
-        ));
-        if !fast_forward(&old.to_string(), &new.to_string(), &mut output, git) {
-            let why = format!(
-                "fatal: Cannot fast-forward your working tree.\nAfter making sure that you saved anything precious from\n$ git diff {old}\noutput, run\n$ git reset --hard\nto recover."
-            );
-            return failed(&why, output);
-        }
+    // The fetch stored into the branch checked out after all (it changed while the pull ran):
+    // the branch has moved and the working tree hasn't. That is left as it is, with git's words
+    // for it (git_errors::Cause::FetchMovedHead says what to do), rather than brought along.
+    if head_after != head_before {
+        let from = head_before.map_or_else(|| "HEAD".to_owned(), |o| o.to_string());
+        let why = format!(
+            "warning: fetch updated the current branch head.\nfatal: Cannot fast-forward your working tree.\nAfter making sure that you saved anything precious from\n$ git diff {from}\noutput, run\n$ git reset --hard\nto recover."
+        );
+        return failed(&why, output);
     }
     let mut heads = match fetched(&repo) {
         Ok(h) => h,
@@ -198,34 +180,6 @@ fn run(
             Ok(c) => h.oid = c,
             Err(u) => return as_git(Refused::Unchecked(u), output, git),
         }
-    }
-    if let (None, Some(new)) = (head_before, moved) {
-        // An unborn branch the fetch made: as git pull does for an unborn branch, the commit it
-        // merges is checked out from nothing and HEAD set to it (a merge would find HEAD there
-        // already and leave the index empty).
-        let [merged] = heads.as_slice() else {
-            let why = if heads.is_empty() {
-                "There is no candidate for merging among the refs that you just fetched."
-            } else {
-                "fatal: Cannot merge multiple branches into empty head."
-            };
-            return as_git(Refused::Unchecked(Unchecked::Unmodeled(why.to_owned())), output, git);
-        };
-        if let Err(r) = check_targets(&repo, follows, saved, &[Target::Commit(merged.oid)], accept) {
-            return refused(r, output);
-        }
-        let empty = match repo.treebuilder(None).and_then(|b| b.write()) {
-            Ok(t) => t.to_string(),
-            Err(e) => return as_git(unreadable(e.message()), output, git),
-        };
-        let to = merged.oid.to_string();
-        if !fast_forward(&empty, &to, &mut output, git) {
-            return done(false, output);
-        }
-        let set = crate::gitcli::args(&["update-ref", "-m", "initial pull", "HEAD", &to, &new.to_string()]);
-        let (ok, text) = git(&set, "", &[]);
-        output.push_str(text.trim_end());
-        return done(ok, output);
     }
     let plan = match pull.plan(&repo, &heads) {
         Ok(p) => p,

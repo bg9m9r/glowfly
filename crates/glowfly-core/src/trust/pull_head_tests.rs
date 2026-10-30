@@ -1,6 +1,6 @@
-//! A fetch that stores into the branch checked out, compared with real `git pull`: one that
-//! makes an unborn branch, one held when it can't be compared, and a two-way merge over a file
-//! that was only touched.
+//! Pulls whose fetch may store into the branch checked out, or that pull into an unborn branch,
+//! compared with real `git pull`: the split hands them to git pull before it fetches (the
+//! pinned pull holds them), so the working tree is only ever brought along by git itself.
 
 use super::*;
 use crate::trust::Follow;
@@ -19,7 +19,6 @@ fn unborn_twins(name: &str, setup: &dyn Fn(&Path)) -> [PathBuf; 4] {
         std::fs::create_dir_all(&dir).unwrap();
         git(&dir, &["init", "-q", "-b", "main"]);
         set_config(&dir, TEST_CONFIG);
-        set_config(&dir, &[("pull.rebase", "false")]);
         git(&dir, &["remote", "add", "origin", &bare.display().to_string()]);
         setup(&dir);
         dir
@@ -38,57 +37,63 @@ fn mirror(d: &Path) {
     git(d, &["config", "--replace-all", "remote.origin.fetch", "+refs/heads/*:refs/heads/*"]);
 }
 
+/// `name` ignored (in `.git/info/exclude`) and written with "mine".
+fn ignored(d: &Path, name: &str) {
+    write(d, ".git/info/exclude", &format!("{name}\n"));
+    write(d, name, "mine\n");
+}
+
+/// What a pinned pull with something to compare does with `a` in `work`.
+fn pinned(work: &Path, a: &[&str]) -> PullRun {
+    let follows = [Follow { path: ".githooks".to_owned(), tracked: None, hooks: true }];
+    let mut git = |c: &[String], input: &str, _: &[(&str, &str)]| crate::gitcli::run_with_input(work, c, input, crate::gitcli::NO_PROMPTS);
+    run_pinned(work, &pull(a), &follows, None, None, &mut git)
+}
+
+/// Held before the fetch, as a pull the pinned one doesn't model.
+fn held_before_fetching(run: PullRun) {
+    let PullRun::Refused { refused: Refused::Unchecked(Unchecked::Unmodeled(_)), output } = &run else { panic!("held: {run:?}") };
+    assert!(!output.contains("$ git fetch"), "{output}");
+}
+
 #[test]
-fn a_fetch_that_makes_the_unborn_branch_checked_out_ends_as_git_pull_does() {
+fn a_pull_into_an_unborn_branch_ends_as_git_pull_does() {
     // A name, the pull, and the setup both repositories get.
     type Case<'a> = (&'a str, &'a [&'a str], fn(&Path));
-    let cases: [Case; 2] =
-        [("pull-unborn-named", &["pull", "origin", "main:main"], |_| {}), ("pull-unborn-mirror", &["pull", "origin", "main"], mirror)];
+    let cases: [Case; 5] = [
+        ("pull-unborn", &["pull", "origin", "main"], |_| {}),
+        ("pull-unborn-noff", &["pull", "--no-ff", "origin", "main"], |_| {}),
+        ("pull-unborn-named", &["pull", "origin", "main:main"], |_| {}),
+        ("pull-unborn-mirror", &["pull", "origin", "main"], mirror),
+        ("pull-unborn-ignored", &["pull", "origin", "main:main"], |d| ignored(d, "a.txt")),
+    ];
     for (name, a, setup) in cases {
-        for split in [true, false] {
-            let dirs = unborn_twins(&format!("{name}-{split}"), &setup);
-            let repo = Repository::open(&dirs[3]).unwrap();
-            assert!(pull(a).stores_into_head(&repo), "{a:?}: an unborn branch is matched too");
-            // The split runs it as git pull; the pinned pull checks the commit out itself.
-            let (_, ours) = pull_both(&dirs[2], &dirs[3], a, split);
-            assert!(dirs[3].join("a.txt").exists(), "{a:?}: {ours}");
-            remove(&dirs);
-        }
+        let dirs = unborn_twins(name, &setup);
+        // Still unborn: held before anything is fetched.
+        held_before_fetching(pinned(&dirs[3], a));
+        let (_, split) = pull_both(&dirs[2], &dirs[3], a, true);
+        assert!(!split.contains("$ git fetch"), "{a:?}: git pull alone, no fetch of the split's own: {split}");
+        let file = |d: &Path| std::fs::read_to_string(d.join("a.txt")).ok();
+        assert_eq!(file(&dirs[3]), file(&dirs[2]), "{a:?}");
+        remove(&dirs);
     }
 }
 
 #[test]
-fn a_pinned_pull_holds_a_fetch_that_makes_the_unborn_branch_checked_out() {
-    let follows = [Follow { path: ".githooks".to_owned(), tracked: None, hooks: true }];
-    let dirs = unborn_twins("pull-unborn-held", &|_| {});
-    let work = &dirs[3];
-    let mut git = |a: &[String], input: &str, _: &[(&str, &str)]| crate::gitcli::run_with_input(work, a, input, crate::gitcli::NO_PROMPTS);
-    // Known before it fetches.
-    let held = run_pinned(work, &pull(&["pull", "origin", "main:main"]), &follows, None, None, &mut git);
-    let PullRun::Refused { refused: Refused::Unchecked(Unchecked::Unmodeled(_)), output } = held else { panic!("held: {held:?}") };
-    assert!(!output.contains("$ git fetch"), "{output}");
-    // A wildcard named isn't matched before the fetch; HEAD born by it is held after.
-    let held = run_pinned(work, &pull(&["pull", "origin", "refs/heads/*:refs/heads/*"]), &follows, None, None, &mut git);
-    let PullRun::Refused { refused: Refused::Unchecked(Unchecked::Unmodeled(why)), output } = held else { panic!("held: {held:?}") };
-    assert_eq!(why, "a fetch that moved the branch checked out", "{output}");
-    assert!(output.contains("$ git fetch"), "{output}");
-    assert!(!work.join("a.txt").exists(), "nothing checked out: {output}");
-    remove(&dirs);
-}
-
-#[test]
-fn a_file_only_touched_doesn_t_stop_the_working_tree_following_a_fetched_branch() {
-    let touched = |d: &Path| {
-        mirror(d);
-        set_config(d, &[("pull.rebase", "false")]);
-        // Same content, a newer time: the index's stat no longer matches.
-        let f = std::fs::File::options().write(true).open(d.join("a.txt")).unwrap();
-        f.set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(120)).unwrap();
-    };
-    let dirs = twins("pull-touched", &touched);
-    remote_commit(&dirs[1], "main", "a.txt", "two\n");
-    let (_, pinned) = pull_both(&dirs[2], &dirs[3], &["pull"], false);
-    assert!(pinned.contains("fast-forwarding your working tree"), "{pinned}");
-    assert_eq!(std::fs::read_to_string(dirs[3].join("a.txt")).unwrap(), "two\n");
-    remove(&dirs);
+fn a_pull_whose_fetch_may_store_into_the_branch_checked_out_is_git_pull_s_alone() {
+    let ignores = |d: &Path| ignored(d, "c.txt");
+    for (name, a) in
+        [("pull-wildcard", &["pull", "origin", "refs/heads/*:refs/heads/*"][..]), ("pull-ignored", &["pull", "origin", "main:main"])]
+    {
+        let dirs = twins(name, &ignores);
+        // origin's new c.txt lands where an ignored c.txt is: git pull keeps that file.
+        remote_commit(&dirs[1], "main", "c.txt", "c\n");
+        let (_, split) = pull_both(&dirs[2], &dirs[3], a, true);
+        assert!(!split.contains("$ git fetch"), "{a:?}: {split}");
+        let file = |d: &Path| std::fs::read_to_string(d.join("c.txt")).unwrap();
+        assert_eq!(file(&dirs[3]), file(&dirs[2]), "{a:?}");
+        assert_eq!(file(&dirs[3]), "mine\n", "{a:?}: the ignored file is kept");
+        held_before_fetching(pinned(&dirs[3], a));
+        remove(&dirs);
+    }
 }
