@@ -61,6 +61,9 @@ fn recountable(w: &WorktreeInfo) -> bool {
 pub(super) fn recount(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let wanted = st.settings.worktree_wips && st.snap.as_ref().is_some_and(|s| s.worktrees.iter().any(recountable));
     if !wanted {
+        // Nothing left to read again (now too large, missing, or the option off): a recount kept
+        // for later would stay due, and tick on every frame.
+        st.refresh.recount.drop_due();
         return;
     }
     if st.refresh.counting.is_some() {

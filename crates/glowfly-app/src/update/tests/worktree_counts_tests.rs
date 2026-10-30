@@ -4,7 +4,7 @@
 //! dropped, a too-large worktree isn't retried, the option off counts nothing, a slow count
 //! offers the untracked cache, git reads a worktree only by that worktree's own trust, and a
 //! status-only reload counts the others again, at most once per interval unless the window or
-//! tab is returned to.
+//! tab is returned to, with a recount kept for later dropped once nothing is left to count.
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
@@ -286,5 +286,29 @@ fn a_status_only_reload_counts_other_worktrees_again_at_most_once_per_interval()
     assert_eq!(counts(&fx).len(), 1, "returning to the window counts at once: {fx:?}");
     run_count(&mut st, fx, Instant::now());
     assert_eq!(linked_info(&st).changes, SIDE);
+    cleanup(&[&linked, &dir]);
+}
+
+#[test]
+fn a_waiting_recount_is_dropped_once_nothing_is_left_to_count() {
+    let (mut st, dir, linked) = opened("wtcount-recount-gone");
+    let path = linked_info(&st).path.clone();
+    let key = refs_key(&st);
+    // A recount runs, and a watcher reload asks for another meanwhile.
+    let fx = step(&mut st, Msg::Repo(RepoMsg::WindowFocused));
+    assert_eq!(counts(&fx).len(), 1, "{fx:?}");
+    let watched = Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
+    assert!(counts(&step(&mut st, watched)).is_empty());
+    let due = st.refresh.recount.due().expect("kept for when the count ends");
+    // The recount's read times out: the worktree is too large to count now.
+    let too_large = vec![result(&path, ChangesRead::TooLarge, ChangeCounts::default(), None)];
+    let done = Msg::Worktree(WorktreeMsg::ChangesCounted { refs_key: key, counts: too_large });
+    assert!(counts(&update(&mut st, done, Instant::now())).is_empty());
+    assert_eq!(linked_info(&st).read, ChangesRead::TooLarge);
+
+    let later = due + Duration::from_secs(1);
+    assert!(counts(&update(&mut st, Msg::Tick(later), later)).is_empty(), "nothing to count");
+    assert_eq!(st.refresh.recount.due(), None, "no recount stays due, so no repaint is asked for every frame");
+    assert!(!st.refresh.recount.is_due(later + RECOUNT_EVERY));
     cleanup(&[&linked, &dir]);
 }

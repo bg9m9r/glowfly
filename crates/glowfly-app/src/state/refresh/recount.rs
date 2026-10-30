@@ -55,6 +55,11 @@ impl Recount {
         self.due.is_some_and(|d| now >= d)
     }
 
+    /// Nothing is left to count again: no recount is kept for later.
+    pub fn drop_due(&mut self) {
+        self.due = None;
+    }
+
     /// The next recount runs at once (back in the window).
     pub fn forget(&mut self) {
         *self = Self::default();

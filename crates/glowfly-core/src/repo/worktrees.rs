@@ -52,11 +52,11 @@ impl WorktreeInfo {
 
     /// How this worktree has local branch `branch` (exact name), if it does: checked out, or
     /// being rebased or bisected there.
+    /// Being rebased or bisected comes first: `git bisect start --no-checkout` leaves HEAD on
+    /// the branch it bisects, and git refuses to rename it then too.
     pub fn uses(&self, branch: &str) -> Option<BranchUse> {
-        if self.branch.as_deref() == Some(branch) {
-            return Some(BranchUse::CheckedOut);
-        }
-        self.held.as_ref().filter(|h| h.name == branch).map(|h| h.by)
+        let held = self.held.as_ref().filter(|h| h.name == branch).map(|h| h.by);
+        held.or_else(|| (self.branch.as_deref() == Some(branch)).then_some(BranchUse::CheckedOut))
     }
 
     /// The folder's last path component (the whole path when it has none).

@@ -88,6 +88,12 @@ fn a_bisect_holds_the_branch_it_started_from_not_a_commit() {
     git(&wt, &["bisect", "reset"]);
     assert_eq!(worktrees(&dir)[1].held, None);
 
+    git(&wt, &["bisect", "start", "--no-checkout", "topic", "topic~4"]);
+    let l = worktrees(&dir)[1].clone();
+    assert_eq!(l.branch.as_deref(), Some("topic"), "--no-checkout leaves HEAD on the branch");
+    assert_eq!(l.uses("topic"), Some(BranchUse::Bisecting), "bisecting comes first: git won't rename it");
+    git(&wt, &["bisect", "reset"]);
+
     git(&wt, &["checkout", "-q", "--detach"]);
     git(&wt, &["bisect", "start", "HEAD", "HEAD~4"]);
     assert_eq!(worktrees(&dir)[1].held, None, "started detached: BISECT_START holds a commit");

@@ -1,6 +1,7 @@
 //! A cheap fingerprint of everything a full load reads besides the working-tree status: refs,
 //! HEAD, stashes, the repository state, config (the shared one and the worktree's own), linked
-//! worktrees and every worktree's HEAD and the branch it is rebasing or bisecting, a shallow clone's `shallow` file and the trust print of the repository's own
+//! worktrees and every worktree's HEAD and the branch it is rebasing or bisecting, a shallow
+//! clone's `shallow` file and the trust print of the repository's own
 //! settings, hooks and commands file (`trust::scan_top`). When it hasn't changed since the last
 //! load, re-reading the status is enough and the history needn't be walked again.
 
