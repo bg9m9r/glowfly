@@ -1,21 +1,49 @@
-//! The Windows calls behind the drawn frame: the Mica backdrop and its dark or light mode, the
-//! settings that turn it off (transparency effects, high contrast), and the system menu.
+//! The Windows calls behind the drawn frame: the frame shadow and Windows 11's rounded corners,
+//! the Mica backdrop and its dark or light mode, the settings that turn it off (transparency
+//! effects, high contrast), and the system menu.
 
 use crate::state::window_native::{SysItem, system_menu_items};
 use std::ffi::c_void;
 use windows::Win32::Foundation::{HWND, LPARAM, POINT, WPARAM};
 use windows::Win32::Graphics::Dwm::{
-    DWM_SYSTEMBACKDROP_TYPE, DWMSBT_MAINWINDOW, DWMWA_SYSTEMBACKDROP_TYPE, DWMWA_USE_IMMERSIVE_DARK_MODE, DwmSetWindowAttribute,
+    DWM_SYSTEMBACKDROP_TYPE, DWM_WINDOW_CORNER_PREFERENCE, DWMSBT_MAINWINDOW, DWMWA_SYSTEMBACKDROP_TYPE, DWMWA_USE_IMMERSIVE_DARK_MODE,
+    DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmExtendFrameIntoClientArea, DwmSetWindowAttribute,
 };
 use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::System::Registry::HKEY_CURRENT_USER;
 use windows::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
+use windows::Win32::UI::Controls::MARGINS;
 use windows::Win32::UI::WindowsAndMessaging::{
     EnableMenuItem, GetCursorPos, GetSystemMenu, IsZoomed, MF_BYCOMMAND, MF_ENABLED, MF_GRAYED, PostMessageW, SC_CLOSE, SC_MAXIMIZE,
     SC_MINIMIZE, SC_MOVE, SC_RESTORE, SC_SIZE, SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
     TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, TPM_TOPALIGN, TrackPopupMenu, WM_SYSCOMMAND,
 };
 use windows::core::BOOL;
+
+/// Gives the frameless window what the system frame has: DWM's shadow, which it draws once the
+/// frame reaches 1 px into the client area (Glowfly paints over that pixel), and on Windows 11
+/// rounded corners (Windows 10 doesn't know the attribute and keeps square ones). Windows itself
+/// squares the corners and drops the shadow while the window is maximized.
+pub(super) fn set_frame_look(hwnd: HWND) {
+    let margins = MARGINS { cxLeftWidth: 1, cxRightWidth: 1, cyTopHeight: 1, cyBottomHeight: 1 };
+    // SAFETY: `margins` is a MARGINS that outlives the call, for our own live window.
+    if let Err(e) = unsafe { DwmExtendFrameIntoClientArea(hwnd, &margins) } {
+        tracing::debug!("could not give the window a shadow: {e}");
+    }
+    let round = DWMWCP_ROUND;
+    // SAFETY: `round` is a DWM_WINDOW_CORNER_PREFERENCE, the size passed, and outlives the call.
+    let r = unsafe {
+        DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_WINDOW_CORNER_PREFERENCE,
+            (&raw const round).cast::<c_void>(),
+            std::mem::size_of::<DWM_WINDOW_CORNER_PREFERENCE>() as u32,
+        )
+    };
+    if let Err(e) = r {
+        tracing::debug!("no rounded corners (before Windows 11): {e}");
+    }
+}
 
 /// Asks DWM for Mica behind the window; false where Windows doesn't support it (before build
 /// 22621 the attribute is unknown and the call fails).

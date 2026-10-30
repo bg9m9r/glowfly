@@ -105,7 +105,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         identity: st.identities.get(&s.git_dir),
         healed: st.includes.healed.contains(&s.git_dir),
     });
-    let menu_bar_row = !st.view.chrome.drawn();
+    let frame_rows = appearance::FrameRows { menu_bar: !st.view.chrome.drawn(), system_title_bar: st.view.system_title_bar_offered };
     let on_network = st.snap.as_ref().is_some_and(|s| st.watch.remote.contains_key(&s.workdir));
     let monitor = git::MonitorRow {
         offered: st.git.monitor_offer_for(glowfly_core::opens::Os::current()) == glowfly_core::repo::MonitorOffer::Daemon && !on_network,
@@ -160,7 +160,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
-                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, menu_bar_row, msgs),
+                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, frame_rows, msgs),
                     PrefPage::Language => language::language_page(ui, settings, now),
                     PrefPage::DiffViewer => diff_viewer::diff_viewer_page(ui, settings),
                     PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &mut prefs.keys, keymap, msgs),

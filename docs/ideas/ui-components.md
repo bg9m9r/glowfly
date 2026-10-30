@@ -240,6 +240,9 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - The system menu opened by Alt+Space highlights its first item
 - Mica behind Preferences' navigation and the status bar
 - The build-status mark's cut-out ring matches a Mica sidebar
+- Switch between the drawn and the system title bar on Windows without restarting
+- Resize from the top edge above Minimize and Close and from the top-right corner, where the window buttons may win the pointer over the edge strips
+- Double-clicking the only tab maximizes the window, like the empty bar
 - The Maximize button's tooltip while Windows tracks it for Snap Layouts
 - A Preferences switch for solid surfaces where Mica is available
 - A slightly lighter Dark `faint`, so Dark's sidebar can sit on Mica too (it misses 4.5:1 over

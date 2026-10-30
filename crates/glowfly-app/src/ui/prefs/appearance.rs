@@ -8,8 +8,16 @@ use eframe::egui::{self, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 
-/// `menu_bar_row`: the system frame's menu bar can be turned off (a drawn title bar has none).
-pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, menu_bar_row: bool, msgs: &mut Vec<Msg>) {
+/// The Interface rows that depend on the window frame.
+#[derive(Clone, Copy)]
+pub struct FrameRows {
+    /// The system frame's menu bar can be turned off (a drawn title bar has none).
+    pub menu_bar: bool,
+    /// Windows can use its own title bar instead of the drawn one (from the next start).
+    pub system_title_bar: bool,
+}
+
+pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, frame: FrameRows, msgs: &mut Vec<Msg>) {
     use glowfly_core::settings::Corner;
     let t = s.lang();
     super::theme_row::theme_row(ui, s, themes, msgs);
@@ -37,13 +45,14 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, menu_bar_row:
         }
         help(ui, t.tr("prefs.ui.desktop_notifications.help"));
     });
-    interface_section(ui, t, s, menu_bar_row);
+    interface_section(ui, t, s, frame);
     super::appearance_graph::graph_section(ui, t, s);
 }
 
-/// Interface: zoom, the panels, toolbar labels, reduced motion, spell checking, the graph's
-/// extras and how changed-file lists show their files.
-fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, menu_bar_row: bool) {
+/// Interface: zoom, the panels and toolbar, the Windows title bar, the menu bar, toolbar labels,
+/// reduced motion, spell checking, the graph's extras and how changed-file lists show their
+/// files.
+fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, frame: FrameRows) {
     use glowfly_core::settings::BranchVisibility as BV;
     section(ui, t.tr("prefs.ui.interface.section"));
     row(ui, t.tr("prefs.ui.zoom.label"), |ui| {
@@ -57,7 +66,11 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, menu_bar_row: bool)
     check_row(ui, t.tr("prefs.ui.details_panel.label"), &mut s.show_details_panel, t.tr("prefs.ui.details_panel.check"), None);
     let (label, check, text) = (t.tr("prefs.ui.toolbar.label"), t.tr("prefs.ui.toolbar.check"), t.tr("prefs.ui.toolbar.help"));
     check_row(ui, label, &mut s.show_toolbar, check, Some(text));
-    if menu_bar_row {
+    if frame.system_title_bar {
+        let (label, check, text) = (t.tr("prefs.ui.title_bar.label"), t.tr("prefs.ui.title_bar.check"), t.tr("prefs.ui.title_bar.help"));
+        check_row(ui, label, &mut s.system_title_bar, check, Some(text));
+    }
+    if frame.menu_bar {
         let (label, check, text) = (t.tr("prefs.ui.menu_bar.label"), t.tr("prefs.ui.menu_bar.check"), t.tr("prefs.ui.menu_bar.help"));
         check_row(ui, label, &mut s.show_menu_bar, check, Some(text));
     }

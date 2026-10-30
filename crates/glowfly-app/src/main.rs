@@ -117,7 +117,9 @@ fn main() -> eframe::Result {
     }
     // Before any window exists: an installed Windows copy takes the id its shortcuts carry.
     platform::claim_app_id();
-    let chrome = state::window_chrome::Chrome::current();
+    // Read before the window is made: it picks the Windows frame (Preferences > UI).
+    let loaded = glowfly_core::settings::Settings::load();
+    let chrome = state::window_chrome::Chrome::chosen(glowfly_core::opens::Os::current(), loaded.0.system_title_bar);
     // Mica behind the drawn Windows frame needs a transparent window, made only where it shows.
     let mica = chrome == state::window_chrome::Chrome::Windows && platform::native_window::mica_capable();
     let options = eframe::NativeOptions {
@@ -138,7 +140,11 @@ fn main() -> eframe::Result {
         event_loop_builder: platform::native_menu::event_loop_hook(),
         ..Default::default()
     };
-    let ran = eframe::run_native("Glowfly", options, Box::new(move |cc| Ok(Box::new(ui::GlowflyApp::new(cc, start, logs, mica, probe)))));
+    let ran = eframe::run_native(
+        "Glowfly",
+        options,
+        Box::new(move |cc| Ok(Box::new(ui::GlowflyApp::new(cc, start, logs, loaded, chrome, mica, probe)))),
+    );
     // The window has closed: the copies this session gave the diff tool go now, not at the
     // 24-hour sweep.
     glowfly_core::external_tools::temp::remove_own_sessions();

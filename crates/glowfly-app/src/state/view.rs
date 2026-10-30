@@ -170,9 +170,12 @@ pub struct ViewState {
     /// The tool view in which the collapsed commit panel was expanded; set and cleared only by
     /// update (`state::layout::drop_stale_expansion`), so it isn't parked with a tab.
     pub details_expanded_for: Option<super::layout::ToolView>,
-    /// Who draws the window frame: set once by the real app (`Chrome::current`); tests keep
+    /// Who draws the window frame: set once by the real app (`Chrome::chosen`); tests keep
     /// `System` unless they pick another.
     pub chrome: Chrome,
+    /// Preferences > UI offers the Windows system title bar setting: set once by the real app on
+    /// Windows (`Chrome::offers_system_title_bar`); tests keep it off unless they turn it on.
+    pub system_title_bar_offered: bool,
     /// Whether the window is maximized or fullscreen, read by the shell each frame.
     pub window: WindowInfo,
     /// The Alt tap that opens a drawn title bar's menu (`ui/title_bar.rs`).
@@ -244,6 +247,7 @@ impl Default for ViewState {
             zoom_toast: None,
             details_expanded_for: None,
             chrome: Chrome::System,
+            system_title_bar_offered: false,
             window: WindowInfo::default(),
             alt_tap: AltTap::default(),
             menu_keys: Default::default(),

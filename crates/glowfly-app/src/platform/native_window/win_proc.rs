@@ -1,7 +1,9 @@
 //! The window procedure Glowfly puts in front of winit's (a plain `GWLP_WNDPROC` subclass, which
 //! needs no common-controls manifest). It answers Windows' hit test with `HTMAXBUTTON` over the
-//! drawn Maximize button, so Windows 11 shows Snap Layouts there, and tracks that button's
-//! hover, press and click itself, since egui sees no pointer there then. It opens the system
+//! drawn Maximize button, so Windows 11 shows Snap Layouts there, and with `HTTOP` over the thin
+//! strip along its top, so the window resizes from there as from the rest of its top edge
+//! (`CaptionGeometry::hit`). It tracks the button's hover, press and click itself, since egui
+//! sees no pointer there then. It opens the system
 //! menu on Alt+Space and on the shell's request, and re-reads the backdrop settings when they
 //! change. Everything else goes on to winit.
 //!
@@ -10,7 +12,7 @@
 //! is enough), with no `RefCell`, unwrap or indexing that can fail.
 
 use super::{NativeFrame, win_system};
-use crate::state::window_native::{BackdropSupport, CaptionButton, CaptionEvent, CaptionGeometry, PxRect};
+use crate::state::window_native::{BackdropSupport, CaptionButton, CaptionEvent, CaptionGeometry, CaptionHit, PxRect};
 use std::ffi::c_void;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicIsize, AtomicU8, Ordering::Relaxed};
@@ -20,7 +22,7 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetKeyState, TME_LEAVE, TME_NONCLIENT, TRACKMOUSEEVENT, TrackMouseEvent, VK_CONTROL, VK_SPACE,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallWindowProcW, DefWindowProcW, GWLP_WNDPROC, HTMAXBUTTON, PostMessageW, SetWindowLongPtrW, WM_APP, WM_DWMCOMPOSITIONCHANGED,
+    CallWindowProcW, DefWindowProcW, GWLP_WNDPROC, HTMAXBUTTON, HTTOP, PostMessageW, SetWindowLongPtrW, WM_APP, WM_DWMCOMPOSITIONCHANGED,
     WM_NCDESTROY, WM_NCHITTEST, WM_NCLBUTTONDBLCLK, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP, WM_NCMOUSELEAVE, WM_NCMOUSEMOVE, WM_SETTINGCHANGE,
     WM_SYSCHAR, WM_SYSKEYDOWN, WM_THEMECHANGED, WNDPROC,
 };
@@ -33,6 +35,8 @@ static HWND_RAW: AtomicIsize = AtomicIsize::new(0);
 static PREV_PROC: AtomicIsize = AtomicIsize::new(0);
 /// The Maximize button in client pixels: left, top, right, bottom.
 static MAX_RECT: [AtomicI32; 4] = [AtomicI32::new(0), AtomicI32::new(0), AtomicI32::new(0), AtomicI32::new(0)];
+/// The resize strip along the button's top, in pixels.
+static TOP_EDGE: AtomicI32 = AtomicI32::new(0);
 /// Where Alt+Space opens the system menu, in client pixels.
 static MENU_AT: [AtomicI32; 2] = [AtomicI32::new(0), AtomicI32::new(0)];
 /// The button's state: bit 0 hovered, bit 1 pressed.
@@ -71,6 +75,7 @@ pub(super) fn install(hwnd: isize, mica: bool, ctx: eframe::egui::Context) -> bo
         return false;
     }
     PREV_PROC.store(prev, Relaxed);
+    win_system::set_frame_look(hwnd_of(hwnd));
     if mica {
         SUPPORTED.store(win_system::set_backdrop(hwnd_of(hwnd)), Relaxed);
     }
@@ -97,6 +102,7 @@ pub(super) fn set_geometry(g: Option<CaptionGeometry>) {
     for (slot, v) in MAX_RECT.iter().zip([r.left, r.top, r.right, r.bottom]) {
         slot.store(v, Relaxed);
     }
+    TOP_EDGE.store(g.map_or(0, |g| g.top_edge), Relaxed);
     if let Some(g) = g {
         MENU_AT[0].store(g.menu_at.0, Relaxed);
         MENU_AT[1].store(g.menu_at.1, Relaxed);
@@ -111,9 +117,11 @@ pub(super) fn post_system_menu(hwnd: isize) {
     }
 }
 
-fn max_rect() -> PxRect {
+/// The caption geometry last recorded.
+fn geometry() -> CaptionGeometry {
     let [l, t, r, b] = &MAX_RECT;
-    PxRect { left: l.load(Relaxed), top: t.load(Relaxed), right: r.load(Relaxed), bottom: b.load(Relaxed) }
+    let max_button = PxRect { left: l.load(Relaxed), top: t.load(Relaxed), right: r.load(Relaxed), bottom: b.load(Relaxed) };
+    CaptionGeometry { max_button, top_edge: TOP_EDGE.load(Relaxed), menu_at: (MENU_AT[0].load(Relaxed), MENU_AT[1].load(Relaxed)) }
 }
 
 fn from_bits(bits: u8) -> CaptionButton {
@@ -208,8 +216,10 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPAR
     match msg {
         WM_NCHITTEST => {
             let p = client_point(hwnd, lp);
-            if max_rect().contains(p.x, p.y) {
-                return LRESULT(HTMAXBUTTON as isize);
+            match geometry().hit(p.x, p.y) {
+                Some(CaptionHit::Top) => return LRESULT(HTTOP as isize),
+                Some(CaptionHit::MaxButton) => return LRESULT(HTMAXBUTTON as isize),
+                None => {}
             }
         }
         WM_NCMOUSEMOVE => {

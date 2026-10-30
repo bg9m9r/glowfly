@@ -62,19 +62,22 @@ pub struct GlowflyApp {
 }
 
 impl GlowflyApp {
-    /// `mica`: the viewport was made transparent for the Mica backdrop. `probe`: the smoke
-    /// tests' state file, when `GLOWFLY_SMOKE_PROBE` asked for one.
+    /// `loaded`: the settings file as read before the window was made. `chrome`: the frame the
+    /// viewport was built for; `mica`: it was made transparent for the Mica backdrop. `probe`:
+    /// the smoke tests' state file, when `GLOWFLY_SMOKE_PROBE` asked for one.
     pub fn new(
         cc: &eframe::CreationContext<'_>,
         start: Option<crate::StartArg>,
         logs: crate::logging::LogSetup,
+        loaded: (Settings, Option<glowfly_core::settings::LoadProblem>),
+        chrome: crate::state::window_chrome::Chrome,
         mica: bool,
         probe: Option<crate::smoke_probe::ProbeWriter>,
     ) -> Self {
         let ctx = &cc.egui_ctx;
         // Before the first pass, so the first frame is drawn in the bundled fonts.
         theme::fonts::install(ctx);
-        let (settings, problem) = Settings::load();
+        let (settings, problem) = loaded;
         // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
         glowfly_core::git_program::set(glowfly_core::git_program::from_setting(settings.git_program.as_deref()).as_deref());
         let recent = crate::platform::load_recent();
@@ -88,7 +91,9 @@ impl GlowflyApp {
         }
         let mut app = Self::assemble(ctx, settings, recent, Runner::new);
         // Only the real app draws its own frame where the OS calls for it; test apps keep System.
-        app.st.view.chrome = crate::state::window_chrome::Chrome::current();
+        app.st.view.chrome = chrome;
+        app.st.view.system_title_bar_offered =
+            crate::state::window_chrome::Chrome::offers_system_title_bar(glowfly_core::opens::Os::current());
         app.native = NativeWindow::install(cc, app.st.view.chrome, mica, ctx.clone());
         app.menu = NativeMenu::install(app.st.view.chrome, ctx.clone());
         app.primary = PrimarySelection::install(cc);

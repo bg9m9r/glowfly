@@ -88,7 +88,6 @@ pub struct Settings {
     /// fetches (Preferences > General).
     pub conflict_check: bool,
     /// Update submodules after checkouts and pulls (Preferences > General).
-    #[serde(default)]
     pub submodules: SubmodulePrefs,
     /// "system" or a code from i18n::Lang (Preferences > General).
     pub language: String,
@@ -126,6 +125,8 @@ pub struct Settings {
     pub show_toolbar: bool,
     /// Draw the menu bar (File, Edit, View, Window, Help) at the top of the window.
     pub show_menu_bar: bool,
+    /// Windows: the system's title bar and frame instead of the drawn ones, from the next start (Preferences > UI).
+    pub system_title_bar: bool,
     pub spellcheck: bool,
     /// Look up author avatars online (opt-in); was `use_initials`, which no file opts into now.
     pub avatar_lookups: bool,
@@ -171,10 +172,8 @@ pub struct Settings {
     #[serde(default)]
     pub diff_word_wrap: bool,
     /// The blame header's whitespace and move toggles.
-    #[serde(default)]
     pub blame: BlamePrefs,
     /// The file history's Diff / File choice (header toggle and Preferences > Diff viewer).
-    #[serde(default)]
     pub history: HistoryPrefs,
 
     /// Push the branch after each successful commit (commit box checkbox).
@@ -322,6 +321,7 @@ impl Default for Settings {
             show_details_panel: true,
             show_toolbar: true,
             show_menu_bar: true,
+            system_title_bar: false,
             spellcheck: true,
             avatar_lookups: false,
             ghost_refs: true,

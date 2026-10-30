@@ -1,7 +1,7 @@
 //! The title bar Glowfly draws on Windows and macOS: snapshots of the bar (dark, light,
 //! maximized, full screen, macOS, Close hovered, the menu and its File submenu, Preferences, German, many
 //! tabs), and what its parts send: the window buttons, moving and maximizing from the empty
-//! bar, resizing from the edges, all of it over a dialog, and the Alt tap. With the system
+//! bar or the only tab, resizing from the edges, all of it over a dialog, and the Alt tap. With the system
 //! frame none of it is drawn.
 
 use crate::msg::{AppMsg, Msg, TabsMsg};
@@ -190,6 +190,22 @@ fn the_empty_bar_moves_and_maximizes_the_window() {
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 1 }))));
     drop(h);
     remove_fixture(&dir);
+}
+
+#[test]
+fn dragging_the_only_tab_moves_the_window() {
+    for (chrome, moves) in [(Chrome::Windows, true), (Chrome::MacOs, true), (Chrome::System, false)] {
+        let (mut st, dir) = fixture(chrome, ThemeChoice::Dark, &format!("title-bar-one-tab-{chrome:?}"));
+        st.tabs.truncate(1);
+        let mut h = open(st, true);
+        let tab = crate::ui::tabs_tests::tab_centre(&h, 0);
+        drag_from(&mut h, tab);
+        let want: &[WindowCmd] = if moves { &[WindowCmd::StartDrag] } else { &[] };
+        assert_eq!(sent(&h), want, "{chrome:?}");
+        assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { .. }))), "{chrome:?}");
+        drop(h);
+        remove_fixture(&dir);
+    }
 }
 
 /// The window actions a press at `at` sends with `chrome`, maximized or not.

@@ -4,7 +4,8 @@
 //! itself (`strip`, from `title_bar.rs`). Each tab is as wide as its name (measured in the
 //! active tab's font, so selecting one never changes its width) until they no longer fit, when
 //! they share the width evenly. They are drawn by `tab_paint.rs`; they are dragged sideways to
-//! reorder them (`tab_drag.rs`, Esc cancels a drag), and right-clicking one offers Rename tab
+//! reorder them (`tab_drag.rs`, Esc cancels a drag; the only tab in a drawn title bar moves the
+//! window instead), and right-clicking one offers Rename tab
 //! and its repository's Color, and the close actions. A coloured repository's tab shows its
 //! swatch before the icon, and is that much wider. With Group worktree tabs on, tabs of one
 //! repository's worktrees form a group (`state/tab_groups.rs`) marked by a colored strip along
@@ -120,7 +121,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
             .collect();
         #[cfg(test)]
         ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new(RECTS), slots.iter().map(|s| s.rect).collect::<Vec<_>>()));
-        let floating = drag(ui, &slots, &blocks, msgs);
+        let floating = drag(ui, &slots, &blocks, st.view.chrome.drawn(), msgs);
         // The toolbar's fill, which the active tab runs into, and its band in the checked-out
         // branch's colour (the accent when detached or without a repository).
         let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());

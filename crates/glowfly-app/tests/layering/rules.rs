@@ -181,7 +181,6 @@ pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
 
 /// Justified exceptions, as (file under `src/`, pattern as reported, reason).
 pub const ALLOWED: &[(&str, &str, &str)] = &[
-    ("ui/app.rs", "Settings::load", "the shell loads the settings once, at startup"),
     ("ui/app.rs", "git_program::set", "the shell puts the saved git into effect once, at startup, before any git runs"),
     ("ui/app.rs", "themes::load_all", "the shell loads the theme files once, at startup, from the folder settings.json was just read from"),
     ("ui/app.rs", "platform::load_recent", "the shell loads the recent list once, at startup"),

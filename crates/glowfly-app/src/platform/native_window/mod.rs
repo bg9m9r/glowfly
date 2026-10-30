@@ -1,7 +1,8 @@
 //! The drawn Windows frame's glue with the OS: a window procedure in front of winit's
 //! (`win_proc.rs`) that answers Windows' hit test with the Maximize button, so Windows 11 shows
-//! Snap Layouts over it, opens the system menu on Alt+Space or on request, and reads whether
-//! the Mica backdrop applies (`win_system.rs`). Only the shell (`ui/app.rs`, `ui/app_native.rs`)
+//! Snap Layouts over it, and with the top edge above it, and opens the system menu on Alt+Space
+//! or on request; the frame's shadow and rounded corners, and whether the Mica backdrop applies
+//! (`win_system.rs`). Only the shell (`ui/app.rs`, `ui/app_native.rs`)
 //! talks to it: each frame it polls a `NativeFrame` and hands back the caption geometry the
 //! views recorded. Elsewhere, and with another frame, nothing is installed.
 

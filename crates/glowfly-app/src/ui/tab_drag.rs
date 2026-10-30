@@ -2,10 +2,12 @@
 //! kept in egui's temporary memory from its start to the drop, Esc snaps the tab back, and the
 //! drop pushes `MoveTab` when it changes the order. Tabs are as wide as their names, so the slot
 //! a drop lands on is the one whose centre is nearest the floating tab's, and the other tabs
-//! slide (animated) to where the drop would put them (`lefts_after`).
+//! slide (animated) to where the drop would put them (`lefts_after`). In a drawn title bar the
+//! only tab has nothing to swap with, so dragging it moves the window, as the empty bar does.
 
-use crate::msg::{Msg, TabsMsg};
+use crate::msg::{AppMsg, Msg, TabsMsg};
 use crate::state::tab_groups::{is_identity, move_order};
+use crate::state::window_chrome::WindowCmd;
 use crate::ui::theme::tokens::motion;
 use eframe::egui::{self, CursorIcon, Id, Key, PointerButton, Rect, Response, pos2};
 use std::ops::Range;
@@ -49,12 +51,16 @@ pub(super) struct Slot {
 
 /// Tracks a tab drag: returns where the dragged tab floats while one is in progress, and pushes
 /// `MoveTab` with the slot under it when dropping it there changes the order (`blocks` are the
-/// tabs that move together, `tab_groups::move_order`).
-pub(super) fn drag(ui: &egui::Ui, slots: &[Slot], blocks: &[Range<usize>], msgs: &mut Vec<Msg>) -> Option<Floating> {
+/// tabs that move together, `tab_groups::move_order`). With `moves_window` (a drawn title bar),
+/// dragging the only tab moves the window instead.
+pub(super) fn drag(ui: &egui::Ui, slots: &[Slot], blocks: &[Range<usize>], moves_window: bool, msgs: &mut Vec<Msg>) -> Option<Floating> {
     let drag_id = Id::new(DRAG_ID);
     let n = slots.len();
     if n < 2 {
         ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
+        if moves_window && slots.first().is_some_and(|s| s.r.drag_started_by(PointerButton::Primary)) {
+            msgs.push(Msg::App(AppMsg::Window(WindowCmd::StartDrag)));
+        }
         return None;
     }
     if let Some((i, s)) = slots.iter().enumerate().find(|(_, s)| s.r.drag_started_by(PointerButton::Primary))
