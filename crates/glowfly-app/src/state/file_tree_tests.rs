@@ -109,6 +109,16 @@ fn file_order_ignores_folds_and_matches_the_rows() {
     assert_eq!(file_order(&paths), vec![2, 4, 3, 1, 0]);
 }
 
+/// The visible file after (`down`) or before `from` (the first for None), as the WIP lists' keys
+/// find it: through `shown_order` and `ListMove`.
+fn step_visible(paths: &[&str], closed: impl Fn(&str) -> bool, from: Option<usize>, down: bool) -> Option<usize> {
+    use crate::state::list_keys::{ListMove, place_in};
+    let order = shown_order(paths, closed);
+    let visible: Vec<usize> = order.iter().filter(|(_, s)| *s).map(|(i, _)| *i).collect();
+    let to = ListMove::Step { down }.target(visible.len(), place_in(&order, from))?;
+    Some(visible[to])
+}
+
 #[test]
 fn step_visible_skips_closed_folders() {
     // Tree order: app/main.rs (2), lib/a.rs (3), lib/b.rs (1), z.txt (0).

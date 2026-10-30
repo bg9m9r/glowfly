@@ -96,12 +96,20 @@ pub enum BindingId {
     Quit,
     PrefsSave,
     PrefsRevert,
+    WipStepFile,
+    WipExtendFiles,
+    WipEdgeFile,
+    WipPageFile,
+    WipToggleFiles,
+    WipOpenFile,
+    WipDiscardFile,
+    WipOtherList,
 }
 
 use BindingId as I;
 
 /// How many ids there are.
-const COUNT: usize = 94;
+const COUNT: usize = 102;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
 const KEYS: [(BindingId, &str); COUNT] = [
@@ -199,6 +207,14 @@ const KEYS: [(BindingId, &str); COUNT] = [
     (I::Quit, "quit"),
     (I::PrefsSave, "save-preferences-page"),
     (I::PrefsRevert, "revert-preferences-page"),
+    (I::WipStepFile, "wip-step-file"),
+    (I::WipExtendFiles, "wip-extend-files"),
+    (I::WipEdgeFile, "wip-edge-file"),
+    (I::WipPageFile, "wip-page-file"),
+    (I::WipToggleFiles, "wip-stage-or-unstage"),
+    (I::WipOpenFile, "wip-open-file"),
+    (I::WipDiscardFile, "wip-discard-file"),
+    (I::WipOtherList, "wip-other-list"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.

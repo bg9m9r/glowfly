@@ -11,6 +11,7 @@ use crate::msg::{DiffMsg, HistoryMsg, LayoutMsg, Msg, RepoMsg, StageMsg, TabsMsg
 use crate::state::AppState;
 use crate::state::diff_nav;
 use crate::state::file_folds::FileListId;
+use crate::state::list_keys::{ListKey, ListMove};
 use glowfly_core::repo::{self, DiffTarget, FileEntry, Hazard, HistoryStart, LoadOptions};
 use glowfly_core::settings::FileListMode;
 use std::path::{Path, PathBuf};
@@ -59,7 +60,8 @@ fn loaded(fx: &[Effect]) -> Option<&DiffTarget> {
 }
 
 fn step(st: &mut AppState, down: bool) -> Option<DiffTarget> {
-    let fx = run(st, Msg::Shortcut(KeyAction::StepFile { staged: false, down }));
+    let key = ListKey::Move(ListMove::Step { down });
+    let fx = run(st, Msg::Shortcut(KeyAction::WipList { staged: false, key }));
     loaded(&fx).cloned()
 }
 

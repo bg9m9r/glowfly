@@ -106,9 +106,11 @@ fn ids_are_stable() {
     assert_eq!(BindingId::from_key("New-Tab"), None);
     assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
     assert_eq!(
-        BindingId::ALL[BindingId::ALL.len() - 4..],
+        BindingId::ALL[BindingId::ALL.len() - 12..BindingId::ALL.len() - 8],
         [BindingId::SendPrText, BindingId::Quit, BindingId::PrefsSave, BindingId::PrefsRevert]
     );
+    assert_eq!(BindingId::from_key("wip-other-list"), Some(BindingId::WipOtherList));
+    assert_eq!(BindingId::ALL.last(), Some(&BindingId::WipOtherList));
     assert_eq!(BindingId::from_key("save-preferences-page"), Some(BindingId::PrefsSave));
 }
 
@@ -267,7 +269,18 @@ fn filter_by_label_key_and_note() {
 
     let stage = keys.filter("stage");
     assert_eq!(stage.iter().map(|(g, _)| *g).collect::<Vec<_>>(), [Group::Staging]);
-    assert_eq!(ids(&stage), [I::Stage, I::Unstage, I::StageAll, I::UnstageAll, I::StageAllAndCommit]);
+    // The WIP lists' rows match by their note ("in the Unstaged and Staged Files lists").
+    let wip = [
+        I::WipStepFile,
+        I::WipExtendFiles,
+        I::WipPageFile,
+        I::WipEdgeFile,
+        I::WipToggleFiles,
+        I::WipOpenFile,
+        I::WipDiscardFile,
+        I::WipOtherList,
+    ];
+    assert_eq!(ids(&stage), [[I::Stage, I::Unstage, I::StageAll, I::UnstageAll, I::StageAllAndCommit].as_slice(), &wip].concat());
     assert_eq!(ids(&keys.filter("STAGE")), ids(&stage), "case is ignored");
 
     assert_eq!(ids(&keys.filter("f7")), [I::NextChange, I::PrevChange]);
@@ -387,6 +400,20 @@ fn defaults_text_names_the_default_keys() {
     let alt = super::chord::KeyLabels::native().alt();
     assert_eq!(k.defaults_text(I::NextChange), format!("F7 or {alt}+Down"), "the defaults, not the current keys");
     assert_eq!(k.keys_text(I::NextChange), "F8");
+}
+
+#[test]
+fn wip_list_keys_are_fixed_and_kept_apart() {
+    for b in BINDINGS.iter().filter(|b| b.when == When::WipLists) {
+        assert!(!b.rebindable, "{:?}", b.id);
+    }
+    // A focused list takes its keys before any binding: only bindings that work anywhere a list
+    // can have the focus can't share them.
+    for other in [When::Graph, When::Diff, When::WorkingDiff, When::Lists, When::Blame, When::Message, When::RebasePanel] {
+        assert!(!When::WipLists.overlaps(other) && !other.overlaps(When::WipLists), "{other:?}");
+    }
+    assert!(When::WipLists.overlaps(When::NotTyping) && When::NotTyping.overlaps(When::WipLists));
+    assert!(When::WipLists.overlaps(When::Anywhere) && When::WipLists.overlaps(When::WipLists));
 }
 
 #[test]

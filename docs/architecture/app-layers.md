@@ -82,7 +82,9 @@ source file, update its line here. Features that span every layer are in
 - `palette_suggested.rs`: the empty query's Recent, Suggested and All commands groups and which commands the repository's state suggests.
 - `op_actions.rs`: the operation in progress: its banner commands.
 - `op_steps.rs`: the WIP panel's steps (which operation, each step's state, which are open and their words).
-- `file_tree.rs`: a changed-file list grouped in folders: the tree's rows in order (compacted folder chains, folders first), its file order and stepping past collapsed folders.
+- `file_tree.rs`: a changed-file list grouped in folders: the tree's rows in order (compacted folder chains, folders first), and its file order with which files collapsed folders hide.
+- `list_keys.rs`: the keys of a file list with the keyboard focus (`ListKey`) and where a step, page or edge move lands in its visible order (`ListMove::target`), for any list built on `ui/list_focus.rs`.
+- `wip_lists.rs`: the Unstaged and Staged Files lists as their keys see them: their files in on-screen order, the file the keys act on, the Shift-selected files (`WipSpan`) and the move-on after a stage (`MoveOn`).
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
@@ -113,7 +115,8 @@ source file, update its line here. Features that span every layer are in
 - `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once and a merge preview in a held repository waiting for the trust prompt (`trust::hold_waiting`), since merge-tree runs the repository's merge drivers.
 - `load_more.rs`: a load for more history going on from the walk (the page taken in below the rows on screen), and a failed one kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
-- `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
+- `wip_list.rs`: opening the file a WIP list key lands on, moving on to the nearest file after the open one was staged or unstaged as a whole (key, button or menu, alone or with the selected files), asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
+- `wip_keys.rs`: the keys of a focused Unstaged or Staged Files list: moves, Shift selection, Space, Enter, Delete through the discard confirmation, and Left/Right to the other list keeping the place. Tests in `update/tests/wip_keys_tests.rs`.
 - `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
 - `branch_push.rs`: Force push with lease of any branch with an upstream (refused when its upstream or that upstream's tip changed since the confirmation), the toolbar's Force push of the checked-out branch, and Push to all remotes as one job naming the remotes that failed.
 - `branch_sync.rs`: Rename with the remote as one job (rename, `push -u` of the new name, then the old name deleted under a lease) with a headline saying what is left when a step fails, and Delete remote branch with the tracking branches' upstreams unset after it.
@@ -121,7 +124,7 @@ source file, update its line here. Features that span every layer are in
 - `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
 - `conflict_count.rs`: a conflicts toast, its run and View conflicts taking the count and files of the first status read after the job, in place of git's CONFLICT lines; that read, or the next job, ends the wait.
 - `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.
-- `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it).
+- `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it), and staging or unstaging the files a Shift move selected together.
 
 ## `runner/`: background work
 

@@ -350,3 +350,28 @@ fn commit_detail_reads_author_and_committer_apart() {
     assert_eq!((d.author.as_str(), d.email.as_str()), ("Ada Lovelace", "ada@example.com"));
     assert_eq!((d.committer.as_str(), d.committer_email.as_str()), ("Grace Hopper", "grace@example.com"));
 }
+
+#[test]
+fn stage_paths_stages_exactly_those_paths_in_batches() {
+    let dir = scratch_repo("stage-paths");
+    write(&dir, "gone.txt", "old\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    std::fs::remove_file(dir.join("gone.txt")).unwrap();
+    // More names than one run takes (16 KiB of paths), a glob-like name, and one left alone.
+    let many: Vec<String> = (0..300).map(|n| format!("{}-{n:03}.txt", "x".repeat(60))).collect();
+    for p in &many {
+        write(&dir, p, "new\n");
+    }
+    write(&dir, "[ab].txt", "literal\n");
+    write(&dir, "a.txt", "not staged\n");
+    let mut paths = many.clone();
+    paths.extend(["[ab].txt".to_owned(), "gone.txt".to_owned()]);
+    stage_paths(&dir, &paths).unwrap();
+    let s = load(&dir, &LoadOptions::all(1000)).unwrap();
+    assert_eq!(s.staged.len(), paths.len(), "every named path, its removal included");
+    assert!(s.staged.iter().any(|f| f.path == "gone.txt" && f.status == 'D'));
+    assert_eq!(s.unstaged.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["a.txt"]);
+    stage_paths(&dir, &[]).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+}

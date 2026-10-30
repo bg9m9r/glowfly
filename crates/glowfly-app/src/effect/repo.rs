@@ -11,6 +11,8 @@ use std::sync::Arc;
 #[derive(Debug, PartialEq)]
 pub enum LocalOp {
     StageFile(String),
+    /// Stages these exact paths as `StageFile` does each.
+    StagePaths(Vec<String>),
     StageAll,
     UnstagePaths(Vec<String>),
     /// Checks out the index version of a tracked file.

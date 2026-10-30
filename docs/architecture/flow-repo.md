@@ -14,7 +14,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 - A step's file is `ViewState::diff_landing` until it loads; a refresh while it loads asks for the step's file again (`update/diff.rs::renew_step`) instead of reloading the old one.
 - Once it lands, `ViewState::file_reveal` makes the file list it came from scroll to it once (`ui/file_reveal.rs`, guarded by the landing's generation).
-- A plain open works the same way: its file is `ViewState::diff_opening` until it arrives, and a refresh meanwhile asks for it again (`update/wip_list.rs::renew_open`) while its list still holds it, so a quick click, a WIP list step or the move-on after S or U isn't lost.
+- A plain open works the same way: its file is `ViewState::diff_opening` until it arrives, and a refresh meanwhile asks for it again (`update/wip_list.rs::renew_open`) while its list still holds it, so a quick click, a WIP list step or the move-on after staging the open file isn't lost.
 
 ## Tabs
 

@@ -8,6 +8,16 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - The pinned commit box is measured the frame before, so a resize settles one frame late
 - A key to open the next step or run step 3's primary (see Keyboard shortcuts for Continue)
 
+### Keyboard in the WIP lists
+
+- Delete on several Shift-selected files discards them all after one confirmation (it discards
+  the current file only now)
+- Shift+click and Ctrl/Cmd+click to select WIP files with the pointer, the same selection the
+  Shift keys make, and the row menu acting on all of them
+- In Tree mode, a key to collapse or expand the current file's folder (Left and Right go to the
+  other list)
+- Space on a file with selected lines in its diff stages just those lines, as S does
+
 ### Stash and carry on
 
 - Interactive rebase and graph edits: use the named auto-stash instead of git's `--autostash`

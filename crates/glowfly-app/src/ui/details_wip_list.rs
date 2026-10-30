@@ -16,8 +16,9 @@ use glowfly_core::repo::{DiffTarget, FileEntry, Snapshot};
 /// The Unstaged or Staged Files list of the working tree. Conflicted files have their own list
 /// (`conflict_files::show`), so Unstaged Files leaves them out. It scrolls to the file a step
 /// landed on. The list takes the keyboard focus as one Tab stop, or by a click on a row; while
-/// it has it, Up/Down step between its files and its current row (or, with none, the list) is
-/// ringed. In Tree mode its files are grouped under folder rows, which a click collapses.
+/// it has it, its keys (`wip_keys.rs`) act on its files and its current row (or, with none, the
+/// list) is ringed. The files a Shift move selected are drawn selected. In Tree mode its files
+/// are grouped under folder rows, which a click collapses.
 pub(in crate::ui) fn file_list(
     ui: &mut egui::Ui,
     snap: &Snapshot,
@@ -50,8 +51,10 @@ pub(in crate::ui) fn file_list(
     // The list's area, for its focus target: registered before the rows, after the header.
     let h = if count == 0 { row_h } else { (rows.len() as f32 * (row_h + ui.spacing().item_spacing.y)).min(max_h) };
     let area_rect = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), h));
-    let focus = crate::ui::wip_keys::target(ui, staged, area_rect, &title);
-    crate::ui::wip_keys::arrows(ui, staged, msgs);
+    let pitch = row_h + ui.spacing().item_spacing.y;
+    // A page keeps one row of the last in view.
+    let page = ((max_h / pitch).floor() as usize).saturating_sub(1);
+    let focus = crate::ui::wip_keys::target(ui, staged, area_rect, &title, page);
     let focused = focus.has_focus();
     let area = egui::ScrollArea::vertical().id_salt(id).max_height(max_h).auto_shrink([false, true]);
     if count == 0 {

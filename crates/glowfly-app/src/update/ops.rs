@@ -21,10 +21,18 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             }
             // Marking a file resolved while the merge tool has it open stages the markers.
             if !super::conflict::in_tool(st, &p) {
+                let paths = vec![p.clone()];
                 local(st, LocalOp::StageFile(p), fx);
+                super::wip_list::stage_sent(st, false, &paths);
             }
         }
-        StageMsg::UnstageFile(p) => local(st, LocalOp::UnstagePaths(vec![p]), fx),
+        StageMsg::UnstageFile(p) => {
+            let paths = vec![p];
+            super::wip_list::stage_sent(st, true, &paths);
+            local(st, LocalOp::UnstagePaths(paths), fx);
+        }
+        StageMsg::StagePaths(paths) => super::stage_folder::stage_paths(st, paths, fx),
+        StageMsg::UnstagePaths(paths) => super::stage_folder::unstage_paths(st, paths, fx),
         StageMsg::StageAll => {
             // Staging a conflicted file marks it resolved, markers and all, so that is done
             // file by file in the conflict view. A toast, not the log: Ctrl+Shift+S sends this.

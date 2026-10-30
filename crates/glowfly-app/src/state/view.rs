@@ -17,6 +17,10 @@ pub mod file_tree;
 /// The shell's frame timing, which fills `ViewState::frame_times`.
 #[path = "frame_times.rs"]
 pub mod frame_times;
+#[path = "list_keys.rs"]
+pub mod list_keys;
+#[path = "wip_lists.rs"]
+pub mod wip_lists;
 
 /// Each left-panel section's open state; views toggle them directly.
 pub struct Sections {
@@ -93,10 +97,19 @@ pub struct ViewState {
     /// cleared when a result of the current generation arrives, the diff closes or the tab is
     /// parked. Changed only by `update`.
     pub diff_opening: Option<DiffTarget>,
-    /// The file S or U is staging or unstaging as a whole, so that when its operation reports
-    /// success the view moves on to its neighbour (`update/wip_list.rs`). Changed only by
+    /// The open file being staged or unstaged as a whole (alone or with the other selected
+    /// files), and the file to open when its operation reports success (`update/wip_list.rs`).
+    /// Changed only by `update`.
+    pub stage_move_on: Option<super::wip_lists::MoveOn>,
+    /// The files a Shift move selected in the Unstaged or Staged Files list. Changed only by
     /// `update`.
-    pub stage_move_on: Option<DiffTarget>,
+    pub wip_span: Option<super::wip_lists::WipSpan>,
+    /// The file each of those lists (Unstaged, then Staged) last opened, where going to the
+    /// list from the other one lands. Changed only by `update`.
+    pub wip_place: [Option<String>; 2],
+    /// Give that list (`Some(staged)`) the keyboard focus on the next frame (set by `update`,
+    /// taken by the view).
+    pub wip_focus: Option<bool>,
     /// A file opened from a pull request's code comment thread, still loading, and the line
     /// (side, number) to land on. Set and cleared only by `update`.
     pub diff_open_line: Option<(DiffTarget, glowfly_core::diff_rows::LineSide, u32)>,
@@ -213,6 +226,9 @@ impl Default for ViewState {
             file_reveal: None,
             diff_opening: None,
             stage_move_on: None,
+            wip_span: None,
+            wip_place: [None, None],
+            wip_focus: None,
             diff_open_line: None,
             pr_thread_scroll: None,
             issue_comment_focus: false,

@@ -19,6 +19,7 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> glowfly_core::error::Resu
     let done = |r: glowfly_core::error::Result<()>| r.map(|()| None);
     match op {
         LocalOp::StageFile(p) => done(repo::stage_file(workdir, &p)),
+        LocalOp::StagePaths(paths) => done(repo::stage_paths(workdir, &paths)),
         LocalOp::StageAll => done(repo::stage_all(workdir)),
         LocalOp::UnstagePaths(paths) => done(repo::unstage_paths(workdir, &paths)),
         LocalOp::DiscardFile(path) => saving(&path, Discarded::File, &|| repo::discard_file(workdir, &path)),

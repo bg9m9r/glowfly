@@ -139,7 +139,17 @@ pub(in crate::ui) fn harness_sized(st: AppState, dark: bool, size: egui::Vec2) -
     harness_palette_sized(st, if dark { theme::GARDEN_DARK } else { theme::GARDEN_LIGHT }, size)
 }
 
-pub(in crate::ui) fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
+pub(in crate::ui) fn harness_palette_sized(st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
+    build(st, p, size, false)
+}
+
+/// `harness` that also runs the shortcuts before each frame's drawing, as the app's input
+/// handling does (the keys a focused list takes first among them).
+pub(in crate::ui) fn keys_harness(st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
+    build(st, if dark { theme::GARDEN_DARK } else { theme::GARDEN_LIGHT }, SIZE, true)
+}
+
+fn build(mut st: AppState, p: Palette, size: egui::Vec2, keys: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
@@ -163,6 +173,9 @@ pub(in crate::ui) fn harness_palette_sized(mut st: AppState, p: Palette, size: e
             // so the WIP row's counts match the files shown.
             if let Some(snap) = st.snap.as_mut() {
                 snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
+            }
+            if keys {
+                crate::ui::shortcuts::input(ctx, st, msgs);
             }
             draw(ctx, st, cache, msgs);
         },
