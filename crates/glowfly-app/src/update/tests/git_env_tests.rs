@@ -125,6 +125,8 @@ fn discarding_needs_git_restore() {
 #[test]
 fn force_push_leaves_out_force_if_includes_for_an_old_git() {
     let (mut st, work, bare) = with_origin("git-env-force");
+    // feature: main, the default branch, is never force pushed.
+    super::tests::git(&work, &["switch", "-q", "feature"]);
     super::tests::git(&work, &["commit", "-q", "--amend", "-m", "rewritten"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     git_version(&mut st, (2, 29, 2));

@@ -359,7 +359,7 @@ fn held_prompt(st: &AppState) -> Option<&str> {
 fn a_dialog_that_closes_itself_leaves_the_prompt_for_its_job() {
     let st = submit_held(
         "trust-new-branch",
-        Modal::NewBranch { start: None, name: "topic".into(), checkout: false, touched: Default::default() },
+        Modal::NewBranch { start: None, name: "topic".into(), checkout: false, track: None, touched: Default::default() },
         "Create",
     );
     assert_eq!(held_prompt(&st), Some("Create branch"), "the prompt names the job");

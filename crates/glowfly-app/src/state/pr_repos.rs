@@ -1,12 +1,14 @@
 //! Pull requests across forks: the repositories a pull request can come from or go to (the
 //! remotes on the code host's account, "PR repositories"), which of them is the base (a remote
 //! named exactly `upstream`, else the code host's), the remote a branch's pull request is pushed
-//! to, and the create dialog's From / Into defaults and target branches. Pure.
+//! to (`branch.<name>.pushRemote`, then `remote.pushDefault`, then the fork it tracks), and the
+//! create dialog's From / Into defaults and target branches. Pure.
 
 use super::ForgeState;
 use super::branches;
 use git2::Oid;
 use glowfly_core::forge::{self, Connection, Target};
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot, Tracking};
 
 /// A configured remote whose repository is on the code host's account.
@@ -86,11 +88,54 @@ pub fn is_fork(fs: &ForgeState, remote: &str) -> bool {
     remote != fs.remote && remote != base_remote(fs) && is_pr_remote(fs, remote)
 }
 
-/// The remote a pull request from `b` is pushed to: the fork it tracks, else the code host's. A
-/// branch started from the base repository (tracking `upstream/main`) still goes to the code
-/// host's remote, never onto the branch it was started from.
+/// The remote a pull request from `b` is pushed to without push config: the fork it tracks,
+/// else the code host's. A branch started from the base repository (tracking `upstream/main`)
+/// still goes to the code host's remote, never onto the branch it was started from.
 pub fn push_remote(b: &BranchInfo, fs: &ForgeState) -> String {
     branches::remote_tracking(b).filter(|t| is_fork(fs, &t.remote)).map(|t| t.remote.clone()).unwrap_or_else(|| fs.remote.clone())
+}
+
+/// A push remote named in config that a pull request's push can't use, so the push is refused:
+/// no remote of that name (git's own push would fail), or one that isn't a repository on the code
+/// host's account (the user meant the branch to go there and not to the code host's remote).
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnusablePush {
+    /// `branch.<name>.pushRemote` or `remote.pushDefault`.
+    pub key: String,
+    pub remote: String,
+    /// No remote of that name exists here.
+    pub missing: bool,
+}
+
+/// The remote a pull request from `b` is pushed to, as git would push it: the remote of
+/// `branch.<name>.pushRemote`, else of `remote.pushDefault`; else `push_remote`. A configured
+/// remote that is missing or isn't a PR repository refuses the push (Err); git never moves on to
+/// the next choice, so neither does this.
+pub fn pr_push_target(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Result<String, UnusablePush> {
+    let config = &snap.push_remotes;
+    let by_branch = config.of_branch(&b.name).map(|r| (format!("branch.{}.pushRemote", b.name), r));
+    let by_default = config.default.as_deref().map(|r| ("remote.pushDefault".to_owned(), r));
+    let Some((key, remote)) = by_branch.or(by_default) else { return Ok(push_remote(b, fs)) };
+    let missing = !snap.remotes.iter().any(|(n, _)| n == remote);
+    if !missing && (remote == fs.remote || is_pr_remote(fs, remote)) {
+        return Ok(remote.to_owned());
+    }
+    Err(UnusablePush { key, remote: remote.to_owned(), missing })
+}
+
+/// Why push config refuses `branch`'s push for a pull request (`pr_push_target`'s Err).
+pub fn push_refused(t: Lang, u: &UnusablePush, branch: &str, fs: &ForgeState) -> String {
+    let service = fs.host.as_ref().map(|h| h.provider.name()).unwrap_or_default();
+    let noun = fs.pr_word(t);
+    let args: [(&str, &dyn std::fmt::Display); 5] =
+        [("key", &u.key), ("remote", &u.remote), ("service", &service), ("branch", &branch), ("noun", &noun)];
+    if u.missing { t.trf("pr.push_remote.missing", &args) } else { t.trf("pr.push_remote.refused", &args) }
+}
+
+/// Whether `b`'s pull request is pushed to `remote` because push config names it rather than
+/// what the branch tracks.
+pub fn pushed_by_config(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -> bool {
+    pr_push_target(b, snap, fs).is_ok_and(|r| r == remote) && push_remote(b, fs) != remote
 }
 
 /// The branch on `remote` that `b` tracks as its own: any on the code host's remote or a fork,

@@ -270,6 +270,8 @@ pub enum Modal {
         start: Option<String>,
         name: String,
         checkout: bool,
+        /// The remote branch (remote, name) the new branch tracks, starting at its tip.
+        track: Option<(String, String)>,
         touched: touched::Touched,
     },
     NewTag(tags::TagForm),
@@ -290,8 +292,7 @@ pub enum Modal {
         button: String,
         then: Box<Msg>,
     },
-    /// `Confirm` with a collapsed Details under the body (the literal values behind a
-    /// plain-words question).
+    /// `Confirm` with a collapsed Details under the body (the values behind a plain-words question).
     ConfirmDetails {
         title: String,
         body: String,
@@ -461,8 +462,7 @@ pub struct AppState {
     pub sign_in: sign_in::SignInNotices,
     /// Submodule updates after jobs and the offers made on open (global, not per tab).
     pub submodules: submodules::batch::SubmoduleSession,
-    /// Git LFS: whether git-lfs is installed and banner dismissals (global; the open diff's LFS
-    /// summary is in `session.diff`).
+    /// Git LFS: git-lfs installed, banner dismissals (global; the diff's LFS summary: `session.diff`).
     pub lfs: lfs::LfsSession,
     /// The git Glowfly runs and what it can do (global): checked at startup.
     pub git: git_env::GitState,

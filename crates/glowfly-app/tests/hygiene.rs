@@ -31,13 +31,13 @@ const LINE_LIMIT: usize = 400;
 /// The non-test files over `LINE_LIMIT` today, with their length as a ceiling.
 const LONG_FILES: &[(&str, usize)] = &[
     ("crates/glowfly-app/src/state/mod.rs", 590),
-    ("crates/glowfly-core/src/forge/github.rs", 406),
+    ("crates/glowfly-core/src/forge/github.rs", 405),
     ("crates/glowfly-core/src/settings.rs", 408),
 ];
 
 /// How many log and toast calls in `update/` and `state/` still pass English text. Lower it when
 /// you translate some; never raise it.
-const ENGLISH_LOG_CALLS: usize = 178;
+const ENGLISH_LOG_CALLS: usize = 176;
 
 /// Fixture builders and the only files that may define them (as `fn <name>(`, or the full
 /// signature for `harness`). A new test reuses one of these instead of writing its own copy.

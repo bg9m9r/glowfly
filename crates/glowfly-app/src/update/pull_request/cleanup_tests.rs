@@ -1,8 +1,8 @@
 //! Headless tests for the clean-up after a merge from the pull request panel: the job's commands
 //! with and without deleting the local branch, the checked-out branch (a clean working tree
 //! checks out the target first; changes keep the branch), a branch checked out in another
-//! worktree, a refusal for commits the target lacks (run for real against a local remote), and
-//! the merge method remembered per repository.
+//! worktree, a fork's same-named branch kept, a refusal for commits the target lacks (run for real
+//! against a local remote), and the merge method remembered per repository.
 
 use super::super::tests::{drive, finish_keeping, git};
 use super::super::update;
@@ -108,6 +108,24 @@ fn merged_with_local_delete_runs_remote_steps_then_the_checked_delete() {
     assert_eq!(st2.job.as_ref().map(|j| j.label.as_str()), Some("Fetch origin and delete local branch feature"));
     done(st, dirs);
     done(st2, dirs2);
+}
+
+#[test]
+fn a_fork_listed_by_the_service_keeps_the_same_named_local_branch() {
+    // The page says the same repository, but the service's list has the source on a fork: the
+    // local `feature` tracking origin/feature is another branch, so it is never offered or deleted.
+    let (mut st, _, dirs) = opened("prc-local-fork");
+    loaded(&mut st, |_| {});
+    let fork = glowfly_core::forge::HeadRepo::Fork { name: "bob/app".into() };
+    st.session.pull_request.view.as_mut().unwrap().pr.head_repo = fork;
+    st.session.pull_request.view.as_mut().unwrap().forms.delete_local = true;
+    let fx = run(&mut st, PullRequestMsg::Merge);
+    assert!(matches!(calls(&fx).first().map(|j| &j.call), Some(PrCall::Merge { delete_local: false, .. })));
+    st.session.pull_request.view.as_mut().unwrap().busy = None;
+    let fx = reply(&mut st, false);
+    assert_eq!(git_jobs(&fx), [[FETCH].map(cmd).to_vec()]);
+    assert!(logged(&st).iter().any(|l| l.contains("The source branch is on a fork")), "{:?}", logged(&st));
+    done(st, dirs);
 }
 
 #[test]

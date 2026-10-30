@@ -297,6 +297,7 @@ fn forge_replies_update_pull_requests_and_errors() {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: Some(checks.clone()),
         url: "u".into(),

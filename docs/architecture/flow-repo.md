@@ -46,15 +46,16 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 - Detect lists the remotes on the code host's account as PR repositories (`ForgeState::pr_repos`, built by `state/pr_repos.rs`: the code host's first, one per repository).
 - The base is a remote named `upstream`, else the code host's.
-- A branch tracking a fork remote is pushed and measured there (`pr_repos::push_remote`, `state/push_pr.rs`'s `*_on` functions).
+- A branch's pull request is pushed to the remote of `branch.<name>.pushRemote`, then `remote.pushDefault` (read into `Snapshot::push_remotes` by `glowfly-core/src/repo/push_config.rs`), else the fork remote it tracks, else the code host's (`pr_repos::pr_push_target`, `state/push_pr.rs`'s `*_on` functions); a configured remote that doesn't exist or isn't on the code host's account refuses the push, as git never moves on to the next choice. Tests in `update/tests/push_pr_config_tests.rs`.
 - The create dialog picks From / Into (`ui/create_pr_repos.rs`, `update/pr_repo_pick.rs`), and `update/push_pr.rs::create` sends the request to the Into repository with `NewPullRequest::source_repo` set to the fork.
 - Each service's head on a fork is in `glowfly-core/src/forge/pr_heads.rs`.
+- A listed pull request's source is matched by repository and branch, never by name alone: `ForgeState::pr_from` and `source_remote` match the list's head repository (`forge/head_repo.rs`) to the PR repositories' remotes, for the menus, the panel's tips and checking the source out (`update/pr_checkout.rs`). Tests in `update/tests/fork_pr_source_tests.rs`.
 - Push to your fork… goes through the Fork dialog with `ForkCreate::then_pr`, whose add job also pushes the branch (`update/fork_pr.rs`).
 
 ## Pull request source tip
 
 - The pull request panel compares from the target's remote-tracking tip to a source tip the runner picks (`glowfly-core/src/repo/pr_compare.rs`).
-- The source tip is the head commit the service listed when it is already in the object database, else the remote-tracking source branch (never a same-named branch once the page says the source is on a fork).
+- The source tip is the head commit the service listed when it is already in the object database, else the remote-tracking source branch (on the source repository's remote, `PrView::source_remote`: never a same-named branch of the code host's remote once the list or the page says the source is on a fork).
 - The files and the commits in `target..source` come from one load.
 - With no source here at all, the panel fetches the service's head ref once in the background, without prompts and writing no ref (`update/pull_request/source.rs`, `Provider::pr_head_ref`, `remote_ops::fetch_ref_cmd`), then compares again.
 - The source notes and their buttons are in `state/pull_request_source.rs`.
@@ -193,8 +194,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Auto-stash
 
-- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pr_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
-- One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start and a pull request's checkout (`start_guarded_as` with their own `AutoStashFor`).
+- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pr_checkout.rs`, `update/branch_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
+- One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start, a pull request's checkout and a remote branch checkout that fast-forwards its tracking branch first (`start_guarded_as` with their own `AutoStashFor`).
 - Each entry point passes its single command and a retry message to `gate`.
 - Only staged changes and changed tracked files count (`Snapshot::has_tracked_changes`): untracked files and an unstaged submodule row don't.
 - On a dirty tree with nothing in progress the gate opens `Modal::AutoStash` holding the retry (Always stash skips it, except for a hard reset), and the answer reruns the retry with `st.auto_stash.approved` set for just that call.

@@ -51,9 +51,13 @@ pub(super) fn rekey(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
 /// Reads the tips again from the snapshot, then asks as `rekey` does.
 pub(super) fn retip(st: &mut AppState, fx: &mut Vec<Effect>, again: bool) {
     let (Some(snap), Some(view)) = (&st.snap, &st.session.pull_request.view) else { return };
-    let tips = Tips::of(snap, &view.remote, &view.pr);
+    // Without a code host any more (detection found none) the panel keeps where its source was.
+    let host = st.session.forge.as_ref().filter(|f| f.host.is_some());
+    let source_remote = host.map_or_else(|| view.source_remote.clone(), |f| f.source_remote(&view.pr));
+    let tips = Tips::of(snap, &view.remote, source_remote.as_deref(), &view.pr);
     if let Some(v) = st.session.pull_request.view.as_mut() {
         v.tips = tips;
+        v.source_remote = source_remote;
     }
     rekey(st, fx, again);
 }

@@ -211,14 +211,7 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
     };
     let has_upstream = snap.head_info().is_some_and(|b| b.upstream.is_some());
     if force {
-        let if_includes = st.git.has(glowfly_core::git_version::Feature::ForceIfIncludes);
-        let Some(cmd) = snap.head_info().and_then(|b| force_push_cmd(b, snap, if_includes)) else {
-            // No remote to push to: offer to create the repository on GitHub.
-            super::publish::open(st, fx);
-            return;
-        };
-        start_job(st, JobSpec::new("Force push".into(), vec![cmd]), fx);
-        return;
+        return super::branch_push::force_head(st, fx);
     }
     let mut cmd = args(&["push"]);
     if !has_upstream {

@@ -28,6 +28,8 @@ fn classify_recognises_glowfly_commands() {
         (&["branch", "-D", "x"], Some(UndoKind::DeleteBranch("x".into()))),
         (&["branch", "x"], Some(UndoKind::CreateBranch("x".into()))),
         (&["branch", "x", sha], Some(UndoKind::CreateBranch("x".into()))),
+        (&["branch", "--track", "x", "refs/remotes/o/y"], Some(UndoKind::CreateBranch("x".into()))),
+        (&["checkout", "-b", "x", "--track", "refs/remotes/o/y"], Some(UndoKind::Checkout)),
         (&["branch", "-m", "a", "b"], None),
         (&["branch", "--unset-upstream", "x"], None),
         (&["branch", "--set-upstream-to=o/x", "x"], None),

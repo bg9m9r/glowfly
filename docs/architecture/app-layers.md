@@ -40,7 +40,7 @@ source file, update its line here. Features that span every layer are in
 - `trust_check.rs`: `TrustCheck`, what the runner checks just before a trust-gated effect starts; `Seal`, a check update records beside the effect it pushed; and `Checked` (`Effect::Checked`), an effect carrying its check to the runner.
 - `selection.rs`: `SelectionEffect`: comparing two commits or a commit and the working tree, and a multi-selection's stacked list (`StackRequest`).
 - `lfs.rs`: `LfsEffect`: whether git-lfs is installed and the LFS page's status.
-- `branch.rs`: `BranchEffect`: counting the commits a branch delete would lose, for the Delete dialog.
+- `branch.rs`: `BranchEffect`: counting the commits a branch delete would lose, for the Delete dialog, and the Push to all remotes job.
 - `lock.rs`: `LockEffect`: checking a lock file a failed job named, and deleting it (on the repository's queue).
 - `sparse.rs`: `SparseEffect`: the Sparse Checkout page's state and `git sparse-checkout`.
 - `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
@@ -60,6 +60,8 @@ source file, update its line here. Features that span every layer are in
 - `AppState`: plain data, one file per area; pure rules (why an action is blocked, form checks, labels) live next to their data.
 - `stack_rows.rs`: the LOCAL section's stack tree.
 - `branch_delete.rs`: the branch Delete dialog's data (the tip, what would be lost, the Git Flow role), its words and the message its danger button sends.
+- `branches/push.rs`: which branches a row or toast may force push (refused for the remote's default branch and a Git Flow base), the confirmation naming the commits the remote would lose, the toolbar's confirmation (warning plainly before it overwrites a default or base branch), and Push to all remotes' headline.
+- `branches/rejected_push.rs`: the local branch a push rejected as behind was for, read from the job's push command, git's rejection line and its `To` URL (matched on push URLs, one remote only), for the toast's Force push with lease.
 - `branch_sync.rs`: the Rename dialog's form and whether it may rename the branch on its remote too (refused for the default branch, a Git Flow base, a branch behind its upstream, a name the remote has), that job's headline by the step it reached, and the Delete remote branch dialog's data (the local branches tracking it, Unset upstream).
 - `stack.rs`: why a restack is refused.
 - `stack_push.rs`: a stack's push targets and why Push stack is off.
@@ -112,7 +114,9 @@ source file, update its line here. Features that span every layer are in
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: Up/Down between the Unstaged or Staged Files, moving on to the neighbouring file after S or U, asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
 - `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
+- `branch_push.rs`: Force push with lease of any branch with an upstream (refused when its upstream or that upstream's tip changed since the confirmation), the toolbar's Force push of the checked-out branch, and Push to all remotes as one job naming the remotes that failed.
 - `branch_sync.rs`: Rename with the remote as one job (rename, `push -u` of the new name, then the old name deleted under a lease) with a headline saying what is left when a step fails, and Delete remote branch with the tracking branches' upstreams unset after it.
+- `branch_checkout.rs`: checkout of a local branch, and of a remote branch through a local branch tracking it (one chosen of several, `CheckoutTracking`) fast-forwarded first in the same job when only behind (ancestry check, then `update-ref` leased on the old tip), a diverged one checked out where it is with a note, or a new tracking branch; the New branch dialog opened tracking a remote branch. Tests in `update/tests/remote_checkout_tests.rs`.
 - `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
 - `conflict_count.rs`: a conflicts toast, its run and View conflicts taking the count and files of the first status read after the job, in place of git's CONFLICT lines; that read, or the next job, ends the wait.
 - `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.
@@ -123,7 +127,7 @@ source file, update its line here. Features that span every layer are in
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
 - `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate among them), with the flat variants' arms.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
-- `branches.rs`: the `Execute` impl of `BranchEffect`.
+- `branches.rs`: the `Execute` impl of `BranchEffect` (the count, and each push of Push to all remotes in turn).
 - `lock.rs`: the `Execute` impl of `LockEffect` (`glowfly_core::lock_file`).
 - `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.
 - `load.rs`: a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.

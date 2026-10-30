@@ -127,6 +127,7 @@ mod tests {
             draft: false,
             reviewers: Vec::new(),
             head: None,
+            head_repo: Default::default(),
             merge_status: None,
             checks: Some(Checks { url: url.into(), ..Checks::from_counts(1, 0, 0, true) }),
             url: String::new(),

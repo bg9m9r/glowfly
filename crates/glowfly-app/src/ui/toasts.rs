@@ -101,7 +101,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                         ui.add_space(4.0);
                         ui.scope(|ui| {
                             ui.multiply_opacity(fade);
-                            ui.horizontal(|ui| {
+                            // Wrapped, so two fixes and Details stay inside the frame in any language.
+                            ui.horizontal_wrapped(|ui| {
                                 let buttons = [
                                     (&t.action, Msg::ToastAction(t.id)),
                                     (&t.alt, Msg::ToastAlt(t.id)),

@@ -203,7 +203,7 @@ pub fn merge_blocked(v: &PrView) -> Option<String> {
 pub fn delete_after_merge_blocked(v: &PrView, default_branch: Option<&str>) -> Option<String> {
     let Some(page) = v.loaded() else { return Some(format!("The {} hasn't loaded yet", v.noun)) };
     let d = &page.detail;
-    if !d.same_repo {
+    if !d.same_repo || !v.pr.head_repo.is_same() {
         Some("The source branch is on a fork".to_owned())
     } else if default_branch == Some(v.pr.source.as_str()) {
         Some(format!("{} is the repository's default branch", v.pr.source))
@@ -223,7 +223,9 @@ pub fn deletes_after_merge(v: &PrView, default_branch: Option<&str>) -> bool {
 pub fn merging<'a>(v: &'a PrView, default_branch: Option<&'a str>) -> Option<Merging<'a>> {
     let d = &v.loaded()?.detail;
     let (remote, source, target) = (v.remote.as_str(), v.pr.source.as_str(), v.pr.target.as_str());
-    Some(Merging { remote, source, target, method: v.forms.merge_method, same_repo: d.same_repo, default_branch })
+    // A fork's source, by the service's list or its page, is never the local branch here.
+    let same_repo = d.same_repo && v.pr.head_repo.is_same();
+    Some(Merging { remote, source, target, method: v.forms.merge_method, same_repo, default_branch })
 }
 
 /// How the merge will delete the local branch: asked for, and allowed.
@@ -264,7 +266,7 @@ pub fn delete_branch_offer(t: Lang, v: &PrView, snap: &Snapshot, default_branch:
     if v.state() != Some(PrState::Merged) || delete_after_merge_blocked(v, default_branch).is_some() {
         return None;
     }
-    super::pull_request::Tips::of(snap, &v.remote, &v.pr).source?;
+    super::pull_request::Tips::of(snap, &v.remote, v.source_remote.as_deref(), &v.pr).source?;
     let (remote, source) = (v.remote.as_str(), v.pr.source.as_str());
     let confirm = Msg::confirm_danger(
         "Delete remote branch",

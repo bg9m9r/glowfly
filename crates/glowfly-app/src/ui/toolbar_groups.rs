@@ -58,13 +58,9 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
     }
     separator(ui);
     let force = ItemState::danger_unless(busy.as_deref());
+    // Its confirmation warns plainly before overwriting the default branch or a Git Flow base.
     if reason::menu_button(ui, t.tr("toolbar.force_push"), "", force).clicked() {
-        msgs.push(Msg::confirm_danger(
-            t.tr("toolbar.force_push.title"),
-            t.tr("toolbar.force_push.body").into(),
-            t.tr("toolbar.force_push.button"),
-            Msg::Job(JobMsg::Push { force: true }),
-        ));
+        msgs.push(crate::state::branches::push::head_force_confirm(t, snap));
     }
 }
 
@@ -145,7 +141,7 @@ pub(super) fn pr(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, fs: &ForgeSt
         // The name starts with the caption, so speech input finds the button by what it shows.
         let pr = (Icon::PullRequest, t.tr("toolbar.pr.button"), name.as_str());
         let menu_name = if merge_requests(fs) { t.tr("toolbar.pr_menu.merge_request") } else { t.tr("toolbar.pr_menu.pull_request") };
-        let menu = (menu_name, 260.0, crate::ui::pr_menu_items::pr_menu_live(snap, fs, idle));
+        let menu = (menu_name, 260.0, crate::ui::pr_menu_items::pr_menu_live(t, snap, fs, idle));
         let r = split(ui, "pr-menu", pr, rules::pr_blocked(st).is_none(), st.settings.toolbar_labels, menu, |ui| {
             crate::ui::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
         });

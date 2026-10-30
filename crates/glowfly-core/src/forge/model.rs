@@ -1,7 +1,7 @@
 //! The common model every service maps to: pull requests with their reviewers, issues, and
 //! a pull request to create.
 
-use super::{Checks, IssueFacets, PrFacets, Target};
+use super::{Checks, HeadRepo, IssueFacets, PrFacets, Target};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Reviewer {
@@ -17,6 +17,9 @@ pub struct PullRequest {
     pub title: String,
     pub description: String,
     pub source: String,
+    /// The repository `source` is on (a fork's, or none left), from the service's list: a
+    /// branch of that name on another repository isn't the source.
+    pub head_repo: HeadRepo,
     pub target: String,
     pub author: String,
     pub draft: bool,

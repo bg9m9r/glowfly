@@ -1,6 +1,7 @@
 //! Toasts: a plain one stacked with a behind alert whose Pull button sends `Msg::ToastAction`,
 //! in the top and bottom corners, all one width and 12 px inside the chrome (under the toolbar,
 //! or the tabs when it is hidden). Each has its x top right, and the pointer over one holds it.
+//! A failure's two fixes and Details wrap inside the toast in German at every zoom.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::{Msg, NotifyMsg};
@@ -155,6 +156,34 @@ fn toast_failure_two_fixes() {
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ToastAlt(i) if *i == id)), "the second fix sends ToastAlt");
     remove_fixture(&dir);
+}
+
+/// A push rejected as behind, in German (the longest labels): Pull, Force push with lease and
+/// Details wrap inside the toast at every zoom, never past its edge.
+#[test]
+fn toast_push_behind_two_fixes_de() {
+    for zoom in [100, 150, 200] {
+        let (mut st, dir) = with_repo(ThemeChoice::Dark, "toast-push-behind");
+        (st.settings.notification_location, st.settings.language, st.settings.zoom_percent) = (Corner::TopRight, "de".into(), zoom);
+        let t = st.settings.lang();
+        let labels = [t.tr("git_errors.pull.button"), t.tr("git_errors.force_push.button"), t.tr("common.details.button")];
+        st.toast(false, t.tr("git_errors.push_behind"), Instant::now());
+        let button = |label: &str| ToastAction { label: label.into(), msg: Box::new(Msg::ClearLog), workdir: Some(dir.clone()) };
+        let toast = st.toasts.last_mut().unwrap();
+        (toast.action, toast.alt, toast.details) = (Some(button(labels[0])), Some(button(labels[1])), Some(button(labels[2])));
+        let mut h = harness(st, true);
+        h.run();
+        if zoom == 100 {
+            h.check_snapshot("toast_push_behind_two_fixes_de");
+        }
+        let text = h.get_by_label(t.tr("git_errors.push_behind")).bounding_box().expect("the text");
+        for l in labels {
+            let b = h.get_by_label(l).bounding_box().expect(l);
+            assert!(b.x0 >= text.x0 && b.x1 <= text.x0 + f64::from(crate::ui::toasts::TOAST_W), "{l} inside the toast at {zoom}%");
+        }
+        drop(h);
+        remove_fixture(&dir);
+    }
 }
 
 /// The second toast's x, hovered: lit with its tooltip, beside the wrapped text's first line;

@@ -13,8 +13,13 @@ fn no_image(_: u32) -> Option<String> {
     None
 }
 
+/// Every process started at the same time, so every parent pid holds.
+fn same_start(_: u32) -> Option<u64> {
+    Some(0)
+}
+
 fn tree(procs: &[ProcEntry], shell: u32) -> ShellActivity {
-    tree_activity(procs, shell, no_image)
+    tree_activity(procs, shell, no_image, same_start)
 }
 
 /// No shell has children.
@@ -90,17 +95,46 @@ fn a_same_named_child_from_the_same_program_is_a_job_not_a_launcher() {
     // PowerShell's Start-Job runs another pwsh.exe from the same file.
     let t = [proc(10, 1, "pwsh.exe"), proc(11, 10, "pwsh.exe")];
     let image = |_: u32| Some(r"C:\Program Files\PowerShell\7\pwsh.exe".to_owned());
-    assert_eq!(tree_activity(&t, 10, image), running("pwsh"));
+    assert_eq!(tree_activity(&t, 10, image, same_start), running("pwsh"));
     // Git Bash's launcher (bin) starts the real bash (usr\bin): followed.
     let image = |pid: u32| Some(if pid == 10 { r"C:\Git\bin\bash.exe" } else { r"C:\Git\usr\bin\bash.exe" }.to_owned());
     let t = [proc(10, 1, "bash.exe"), proc(11, 10, "bash.exe")];
-    assert_eq!(tree_activity(&t, 10, image), ShellActivity::Idle);
+    assert_eq!(tree_activity(&t, 10, image, same_start), ShellActivity::Idle);
     // Paths compare ignoring case; an unknown path keeps following.
     let t = [proc(10, 1, "pwsh.exe"), proc(11, 10, "pwsh.exe")];
     let image = |pid: u32| Some(if pid == 10 { r"C:\PS\pwsh.exe" } else { r"c:\ps\PWSH.EXE" }.to_owned());
-    assert_eq!(tree_activity(&t, 10, image), running("pwsh"));
+    assert_eq!(tree_activity(&t, 10, image, same_start), running("pwsh"));
     let image = |pid: u32| (pid == 10).then(|| r"C:\PS\pwsh.exe".to_owned());
-    assert_eq!(tree_activity(&t, 10, image), ShellActivity::Idle);
+    assert_eq!(tree_activity(&t, 10, image, same_start), ShellActivity::Idle);
+}
+
+/// csrss.exe keeps the pid of smss.exe, which ended at boot, as its parent; a shell that gets
+/// that pid later isn't its parent.
+#[test]
+fn a_child_older_than_its_parent_is_not_its_child() {
+    let started = |pid: u32| match pid {
+        10 => Some(500),
+        11 => Some(100),
+        12 => Some(500),
+        13 => Some(600),
+        _ => None,
+    };
+    let stale = [proc(10, 1, "cmd.exe"), proc(11, 10, "csrss.exe")];
+    assert_eq!(tree_activity(&stale, 10, no_image, started), ShellActivity::Idle);
+    // A child started at or after the shell still counts, beside the stale one.
+    let t = [proc(10, 1, "cmd.exe"), proc(11, 10, "csrss.exe"), proc(13, 10, "ping.exe")];
+    assert_eq!(tree_activity(&t, 10, no_image, started), running("ping"));
+    let t = [proc(10, 1, "cmd.exe"), proc(11, 10, "csrss.exe"), proc(12, 10, "git.exe")];
+    assert_eq!(tree_activity(&t, 10, no_image, started), running("git"));
+    // A child whose time can't be read is left out, and so is every child of a shell whose own
+    // time can't be read.
+    let t = [proc(10, 1, "cmd.exe"), proc(14, 10, "ping.exe")];
+    assert_eq!(tree_activity(&t, 10, no_image, started), ShellActivity::Idle);
+    let t = [proc(14, 1, "cmd.exe"), proc(13, 14, "ping.exe")];
+    assert_eq!(tree_activity(&t, 14, no_image, started), ShellActivity::Idle);
+    // A launcher's children are compared with the launcher's child, not with the shell.
+    let t = [proc(10, 1, "bash.exe"), proc(12, 10, "bash.exe"), proc(11, 12, "csrss.exe")];
+    assert_eq!(tree_activity(&t, 10, no_image, started), ShellActivity::Idle);
 }
 
 #[test]
@@ -122,9 +156,9 @@ fn wsl_helpers_are_ignored_and_its_shell_is_unknown() {
         proc(13, 12, "wslhost.exe"),
         proc(14, 13, "conhost.exe"),
     ];
-    assert_eq!(tree_activity(&t, 10, image), ShellActivity::Unknown);
+    assert_eq!(tree_activity(&t, 10, image, same_start), ShellActivity::Unknown);
     t.push(proc(15, 12, "PING.EXE"));
-    assert_eq!(tree_activity(&t, 10, image), running("PING"));
+    assert_eq!(tree_activity(&t, 10, image, same_start), running("PING"));
     // A plain shell with no children is still Idle.
     assert_eq!(tree(&[proc(10, 1, "cmd.exe")], 10), ShellActivity::Idle);
 }

@@ -148,6 +148,7 @@ fn create_pr_needs_a_host_a_branch_and_no_open_pr() {
         draft: false,
         reviewers: Vec::new(),
         head: None,
+        head_repo: Default::default(),
         merge_status: None,
         checks: None,
         url: "u".into(),
