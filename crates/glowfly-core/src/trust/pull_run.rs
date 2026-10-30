@@ -154,7 +154,8 @@ fn run(
         // Without --update-head-ok git refuses a fetch that would store into a branch checked
         // out (here or in another worktree) before it writes any ref: what the split doesn't
         // model, whatever refspec, --refmap, --all or -c made it so.
-        if output[fetch_from..].to_ascii_lowercase().contains("refusing to fetch into") {
+        // git's own line only: a remote's `remote:` lines can say anything.
+        if output[fetch_from..].lines().any(|l| l.to_ascii_lowercase().starts_with("fatal: refusing to fetch into")) {
             let u = Unchecked::Unmodeled("git pull into the branch checked out".to_owned());
             if whole || accept == Some(&u) {
                 return pull_whole(output, git);

@@ -137,3 +137,23 @@ fn a_store_into_the_branch_checked_out_the_early_check_misses_is_refused_by_the_
         remove(&dirs);
     }
 }
+
+#[test]
+fn a_remote_saying_git_s_refusal_is_only_a_failed_fetch() {
+    let (work, bare) = with_origin("pull-remote-says");
+    let follows = [Follow { path: ".githooks".to_owned(), tracked: None, hooks: true }];
+    // The remote prints git's refusal on its own lines, then the fetch fails.
+    let said =
+        "remote: fatal: refusing to fetch into branch 'refs/heads/main' checked out at '/x'\nfatal: could not read from remote repository";
+    let mut git = |c: &[String], input: &str, _: &[(&str, &str)]| {
+        if c.iter().any(|a| a == "fetch") {
+            return (false, said.to_owned());
+        }
+        crate::gitcli::run_with_input(&work, c, input, crate::gitcli::NO_PROMPTS)
+    };
+    let gated = run_pinned(&work, &pull(&["pull"]), &follows, None, None, &mut git);
+    assert!(matches!(&gated, PullRun::Ran { ok: false, .. }), "not held under the remote's words: {gated:?}");
+    let PullRun::Ran { ok: false, output } = run_split(&work, &pull(&["pull"]), &mut git) else { panic!("it fails") };
+    assert!(!output.lines().any(|l| l.starts_with("$ git pull")), "no git pull of its own: {output}");
+    remove(&[work, bare]);
+}

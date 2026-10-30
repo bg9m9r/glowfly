@@ -177,11 +177,12 @@ fn subcommand(args: &[String]) -> Option<usize> {
     None
 }
 
-/// git pull's "Cannot fast-forward your working tree" (never in a `$ git …` echo), with the
+/// git pull's "fatal: Cannot fast-forward your working tree" (its own line), with the
 /// commit of the `$ git diff <commit>` line it advises (an echo-like line, read from the whole
 /// output).
 fn fetch_moved_head(output: &str) -> Option<Cause> {
-    let anchor = |l: &&str| !l.starts_with("$ ") && !l.starts_with("hint:") && l.contains("Cannot fast-forward your working tree");
+    // git's own fatal line only: never an echo, a hint or a remote's `remote:` line.
+    let anchor = |l: &&str| l.starts_with("fatal: Cannot fast-forward your working tree");
     let mut after = output.lines().skip_while(|l| !anchor(l));
     after.next()?;
     let from = after.take(3).find_map(|l| l.strip_prefix("$ git diff ")).unwrap_or_default().trim().to_owned();

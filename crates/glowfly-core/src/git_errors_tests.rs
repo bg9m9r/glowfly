@@ -285,4 +285,8 @@ fn a_working_tree_that_couldn_t_follow_comes_before_a_lock_and_never_from_an_ech
     let advice = "fatal: Cannot fast-forward your working tree.\nAfter making sure that you saved anything precious from\n$ git diff 1a2b3c4d\noutput, run\n$ git reset --hard\nto recover.";
     assert_eq!(classify(&format!("{lock}\n{advice}")), Some(Cause::FetchMovedHead { from: s("1a2b3c4d") }));
     assert_eq!(classify("$ git commit -m Cannot fast-forward your working tree\nerror: nothing"), None);
+    // A remote can print anything on its `remote:` lines.
+    let remote =
+        "remote: fatal: Cannot fast-forward your working tree.\nremote: $ git diff 1a2b3c4d\nfatal: the remote end hung up unexpectedly";
+    assert!(!matches!(classify(remote), Some(Cause::FetchMovedHead { .. })), "{remote}");
 }
