@@ -60,8 +60,8 @@ source file, update its line here. Features that span every layer are in
 - `AppState`: plain data, one file per area; pure rules (why an action is blocked, form checks, labels) live next to their data.
 - `stack_rows.rs`: the LOCAL section's stack tree.
 - `branch_delete.rs`: the branch Delete dialog's data (the tip, what would be lost, the Git Flow role), its words and the message its danger button sends.
-- `branches/push.rs`: which branches may be force pushed, from a row or the toolbar (refused for the remote's default branch and a Git Flow base), the confirmation naming the commits the remote would lose, and Push to all remotes' headline.
-- `branches/rejected_push.rs`: the local branch a push rejected as behind was for, read from the job's push command and git's rejection line, for the toast's Force push with lease.
+- `branches/push.rs`: which branches a row or toast may force push (refused for the remote's default branch and a Git Flow base), the confirmation naming the commits the remote would lose, the toolbar's confirmation (warning plainly before it overwrites a default or base branch), and Push to all remotes' headline.
+- `branches/rejected_push.rs`: the local branch a push rejected as behind was for, read from the job's push command, git's rejection line and its `To` URL (matched on push URLs, one remote only), for the toast's Force push with lease.
 - `branch_sync.rs`: the Rename dialog's form and whether it may rename the branch on its remote too (refused for the default branch, a Git Flow base, a branch behind its upstream, a name the remote has), that job's headline by the step it reached, and the Delete remote branch dialog's data (the local branches tracking it, Unset upstream).
 - `stack.rs`: why a restack is refused.
 - `stack_push.rs`: a stack's push targets and why Push stack is off.

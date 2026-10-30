@@ -30,11 +30,21 @@ fn behind_rejection(l: &str) -> Option<(&str, &str)> {
     Some((short(src.trim()), short(dst.trim())))
 }
 
-/// The remote whose URL git's `To <url>` line in `output` prints, exactly.
+/// The one remote a push goes to at the URL of the last `To <url>` line before git's first
+/// rejection in `output`: matched on each remote's push URLs (its `pushurl`s, or else its
+/// `url`s, where git sends a push). None when no remote, or more than one, pushes there.
 fn printed_remote<'a>(snap: &'a Snapshot, output: &str) -> Option<&'a str> {
-    let url = output.lines().find_map(|l| l.strip_prefix("To "))?.trim().trim_end_matches('/');
-    let named = |u: &String| u.trim_end_matches('/') == url;
-    snap.remote_info.iter().find(|r| r.urls.iter().chain(&r.push_urls).any(named)).map(|r| r.name.as_str())
+    let before = output.lines().take_while(|l| behind_rejection(l).is_none());
+    let url = before.filter_map(|l| l.strip_prefix("To ")).last()?.trim().trim_end_matches('/');
+    let pushes_there = |r: &&glowfly_core::repo::RemoteInfo| {
+        let urls = if r.push_urls.is_empty() { &r.urls } else { &r.push_urls };
+        urls.iter().any(|u| u.trim_end_matches('/') == url)
+    };
+    let mut found = snap.remote_info.iter().filter(pushes_there);
+    match (found.next(), found.next()) {
+        (Some(r), None) => Some(r.name.as_str()),
+        _ => None,
+    }
 }
 
 /// The local branch the failed push job `cmd` (its one command) was for, when git rejected it

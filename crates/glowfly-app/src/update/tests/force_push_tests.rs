@@ -10,7 +10,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::logs::LogsMsg;
 use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
-use crate::state::branches::push::{force_blocked, force_confirm};
+use crate::state::branches::push::{force_blocked, force_confirm, head_force_confirm};
 use crate::state::{AppState, ToastAction};
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::BranchInfo;
@@ -86,15 +86,22 @@ fn force_push_refuses_when_the_remote_moved_after_the_snapshot() {
 }
 
 #[test]
-fn the_toolbar_never_force_pushes_the_default_branch() {
+fn the_toolbar_warns_before_force_pushing_the_default_branch() {
     let (mut st, work, bare) = with_origin("force-lease-head-main");
     git(&work, &["commit", "-q", "--amend", "-m", "rewritten"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    let main = rev(&bare, "main");
-    assert!(update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now()).is_empty(), "nothing is pushed");
-    let log = st.log.last().map(|l| l.text.clone()).unwrap_or_default();
-    assert_eq!(log, "main is the default branch of origin, so it is never force pushed: others build on it.");
-    assert_eq!(rev(&bare, "main"), main);
+    // A repository of one may need it, so it is asked about plainly rather than refused.
+    let t = st.settings.lang();
+    let Msg::ConfirmDanger { body, then, .. } = head_force_confirm(t, st.snap.as_ref().unwrap()) else { panic!("a confirmation") };
+    let warning = "main is the default branch of origin, which others build on: this overwrites origin/main with your local main.";
+    assert!(body.contains(warning) && body.contains("origin/main has 1 commit that main doesn't have"), "{body}");
+    drive(&mut st, *then);
+    assert_eq!(rev(&bare, "main"), rev(&work, "main"), "{:?}", st.log.last().map(|l| &l.text));
+    // A branch others don't build on gets the plain question.
+    git(&work, &["switch", "-q", "feature"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    let Msg::ConfirmDanger { body, .. } = head_force_confirm(t, st.snap.as_ref().unwrap()) else { panic!("a confirmation") };
+    assert_eq!(body, "Overwrite the remote branch with your local history?");
     cleanup(&[&work, &bare]);
 }
 
@@ -294,6 +301,28 @@ fn a_rejected_push_of_another_branch_to_an_upstream_name_offers_no_force_push() 
     assert!(text.starts_with(BEHIND), "{text}");
     assert!(!fix_labels(&st).iter().any(|l| l.starts_with("Force push")), "y was never pushed");
     cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn a_rejection_at_a_url_origin_only_fetches_from_offers_no_force_push() {
+    let (mut st, work, bare) = with_origin("force-lease-pushurl");
+    // origin fetches from U (bare) but pushes to P; upstream has U as its url, and feature
+    // pushes there (pushRemote), so a plain push of feature goes to U.
+    let p = bare.with_file_name(format!("{}-pushurl.git", work.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&p);
+    git(bare.parent().unwrap(), &["clone", "-q", "--bare", &bare.display().to_string(), &p.display().to_string()]);
+    git(&work, &["remote", "set-url", "--push", "origin", &p.display().to_string()]);
+    git(&work, &["remote", "add", "upstream", &bare.display().to_string()]);
+    git(&work, &["config", "branch.feature.pushRemote", "upstream"]);
+    remote_commit(&bare, "feature", "theirs.txt");
+    git(&work, &["switch", "-q", "feature"]);
+    git(&work, &["commit", "-q", "--allow-empty", "-m", "ours"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    drive(&mut st, Msg::Job(JobMsg::Push { force: false }));
+    let text = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
+    assert!(text.starts_with(BEHIND), "{text}");
+    assert!(!fix_labels(&st).iter().any(|l| l.starts_with("Force push")), "origin pushes to P, which rejected nothing");
+    cleanup(&[&work, &bare, &p]);
 }
 
 #[test]

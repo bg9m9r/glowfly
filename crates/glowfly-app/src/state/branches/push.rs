@@ -1,10 +1,11 @@
 //! Force push with lease of any local branch and Push to all remotes (update/branch_push.rs):
-//! which branches may be force pushed (`force_blocked` for a row: only one with an upstream
-//! on a remote; never the remote's default branch or a Git Flow base, as Rename refuses on the
-//! remote, which `head_force_blocked` also applies to the toolbar's), the confirmation naming
-//! the commits the remote would lose (`force_confirm`), and Push to all remotes' headline.
+//! which branches a row or toast may force push (`force_blocked`: only one with an upstream on
+//! a remote; never the remote's default branch or a Git Flow base, as Rename refuses on the
+//! remote), the confirmation naming the commits the remote would lose (`force_confirm`), the
+//! toolbar's confirmation, which warns plainly before overwriting a default or base branch
+//! (`head_force_confirm`), and Push to all remotes' headline.
 
-use crate::msg::{BranchMsg, Msg};
+use crate::msg::{BranchMsg, JobMsg, Msg};
 use crate::state::{branch_sync, branches, remote_branch};
 use git2::Oid;
 use glowfly_core::gitflow::FlowBase;
@@ -26,28 +27,69 @@ pub fn force_blocked(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Option<String>
     base_refusal(t, snap, name, remote, dest)
 }
 
-/// Why the toolbar's Force push of the checked-out branch `b` is refused: its push target
-/// (`push_target`, which may be a new branch) is the remote's default branch, or either name
-/// is a Git Flow base. None when it may run, or when there is nowhere to push.
-pub fn head_force_blocked(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Option<String> {
-    let (remote, dest, _) = branches::push_target(b, snap, None)?;
-    base_refusal(t, snap, &b.name, &remote, &dest)
+/// A branch others build on: the remote's default branch, or a Git Flow base (by its name).
+enum Base<'a> {
+    Default,
+    Production(&'a str),
+    Development(&'a str),
 }
 
-/// Why force pushing local `name` to `dest` on `remote` is refused: the remote's default
-/// branch, or a Git Flow base by either name (others build on those).
-fn base_refusal(t: Lang, snap: &Snapshot, name: &str, remote: &str, dest: &str) -> Option<String> {
+/// Whether force pushing local `name` to `dest` on `remote` overwrites a branch others build
+/// on: the remote's default branch, or a Git Flow base by either name.
+fn base<'a>(snap: &Snapshot, name: &'a str, remote: &str, dest: &'a str) -> Option<Base<'a>> {
     if branch_sync::is_default(snap, remote, dest) {
-        return Some(t.trf("branch_push.force.default", &[("branch", &dest), ("remote", &remote)]));
+        return Some(Base::Default);
     }
-    for n in [name, dest] {
-        match snap.gitflow.base_role(n) {
-            Some(FlowBase::Production) => return Some(t.trf("branch_push.force.production", &[("branch", &n)])),
-            Some(FlowBase::Development) => return Some(t.trf("branch_push.force.development", &[("branch", &n)])),
-            None => {}
-        }
+    [name, dest].into_iter().find_map(|n| match snap.gitflow.base_role(n)? {
+        FlowBase::Production => Some(Base::Production(n)),
+        FlowBase::Development => Some(Base::Development(n)),
+    })
+}
+
+/// Why a row or toast may not force push local `name` to `dest` on `remote`.
+fn base_refusal(t: Lang, snap: &Snapshot, name: &str, remote: &str, dest: &str) -> Option<String> {
+    Some(match base(snap, name, remote, dest)? {
+        Base::Default => t.trf("branch_push.force.default", &[("branch", &dest), ("remote", &remote)]),
+        Base::Production(n) => t.trf("branch_push.force.production", &[("branch", &n)]),
+        Base::Development(n) => t.trf("branch_push.force.development", &[("branch", &n)]),
+    })
+}
+
+/// The toolbar's Force push confirmation for the checked-out branch. Force pushing the remote's
+/// default branch or a Git Flow base stays possible there (a repository of one may need it), so
+/// for those the body says plainly which branch it is, what it overwrites and how many commits
+/// that upstream has that the branch lacks.
+pub fn head_force_confirm(t: Lang, snap: &Snapshot) -> Msg {
+    let plain = t.tr("toolbar.force_push.body");
+    let body = match snap.head_info().and_then(|b| head_force_warning(t, snap, b)) {
+        Some(warning) => format!("{plain} {warning}"),
+        None => plain.to_owned(),
+    };
+    let (title, button) = (t.tr("toolbar.force_push.title"), t.tr("toolbar.force_push.button"));
+    Msg::confirm_danger(title, body, button, Msg::Job(JobMsg::Push { force: true }))
+}
+
+/// The toolbar confirmation's warning for `b` when its push target is a branch others build on.
+fn head_force_warning(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Option<String> {
+    let (remote, dest, _) = branches::push_target(b, snap, None)?;
+    let upstream = format!("{remote}/{dest}");
+    let kind = base(snap, &b.name, &remote, &dest)?;
+    let base_name = match kind {
+        Base::Default => dest.as_str(),
+        Base::Production(n) | Base::Development(n) => n,
+    };
+    let args: [(&str, &dyn std::fmt::Display); 5] =
+        [("branch", &b.name), ("base", &base_name), ("remote", &remote), ("upstream", &upstream), ("dest", &dest)];
+    let mut warning = match kind {
+        Base::Default => t.trf("branch_push.force.warn.default", &args),
+        Base::Production(_) => t.trf("branch_push.force.warn.production", &args),
+        Base::Development(_) => t.trf("branch_push.force.warn.development", &args),
+    };
+    let tracks = branches::remote_tracking(b).is_some_and(|tr| tr.remote == remote && tr.merge == dest);
+    if tracks && b.behind > 0 {
+        warning = format!("{warning} {}", t.trn("branch_push.force.body", b.behind, &args));
     }
-    None
+    Some(warning)
 }
 
 /// The upstream's tip as the snapshot last saw it (inner None: not on the remote), the lease's

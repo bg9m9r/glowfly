@@ -166,6 +166,8 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
   on a non-HEAD branch
 - Certificate phrases also match a failing signing helper (gitsign's x509 text) and `remote:` hook lines of a rejected push; match only git's own transport errors
 - Under Schannel, `http.sslCAInfo` is used only with `http.schannelUseSSLCAInfo=true`; say so in the certificate help
+- Force push with lease on the rejected-push toast also when `url.<base>.insteadOf` / `pushInsteadOf` rewrites the URL git prints in `To` (today nothing is offered)
+- Read push options that take a separate value (`-o x`, `--push-option x`, `--repo x`, `--receive-pack x`) when finding a rejected push's remote and refspec
 - Match git-lfs's other Go certificate wordings
 - Try again for jobs started as effects (`begin_job`: stash, undo, rebase) and for auto-stash-wrapped jobs, which `start_job`'s kept spec doesn't cover
 - Delete lock file for libgit2's own lock errors (an index.lock met by a stage or discard), which `git_errors::classify` doesn't read
