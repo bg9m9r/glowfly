@@ -12,6 +12,8 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 `runner/` with `watcher.rs` and `watcher/` is glowfly-runner's: `runner/x.rs` below is
 `crates/glowfly-runner/src/x.rs`, and `runner/mod.rs` is its `lib.rs`; the app names it `crate::runner`.
 
+`flows/` is glowfly-flows' (`crates/glowfly-flows/src/flows/`), a test-only crate.
+
 ## Entry points
 
 - `main.rs`: starts the window, or hands a `glowfly://` argument to the window already running; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`GLOWFLY_GPG_WRAPPER`) and askpass helper, and has two command-line modes for scripts (`cli_update.rs`).
@@ -198,7 +200,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `ui/probe.rs` builds it as JSON from egui's current pass (AccessKit names and widget rects with their regions, the drawn panels including the drawn title bar, the window frame being drawn as `chrome`, the keyboard focus) and a few `AppState` fields; the shell offers it after each frame.
 - `smoke_probe.rs` writes only changed ones, with a rising `seq`, atomically from its own thread, retrying a failed write (a reader holding the file on Windows) until it lands or a newer one replaces it.
 - `testing.rs` (glowfly-model; tests only, and other crates' tests through `test-support`): the fixtures every test may use and that run no effect: `state()`, `scratch_repo`, `long_repo`, `clean_tree`, `keys`, `same_place`, the kit's `git`.
-- `flows/` (tests only): `update`'s end-to-end tests, which run effects through the runner (`runner::testing`), and the tests that share helpers with them; `mod.rs` lists them (`pull_request/` for the pull request panel's), and `helpers.rs` has `drive`, `finish` and `finish_keeping` and the effects they skip. Out of `update/` so the model's own tests never need the runner.
+- `flows/` (tests only; glowfly-flows, whose `lib.rs` has only `cfg(test)` items: the model's modules and the runner under their app paths, and `mod flows`): `update`'s end-to-end tests, which run effects through the runner (`runner::testing`), and the tests that share helpers with them; `mod.rs` lists them (`pull_request/` for the pull request panel's), and `helpers.rs` has `drive`, `finish` and `finish_keeping` and the effects they skip. Out of `update/` so the model's own tests never need the runner.
 - `journey/` (tests only): whole-app journeys: the real app (`GlowflyApp::for_test`) in an egui_kittest harness on fixture repositories.
 - `journey/find.rs`: driving it by clicking and typing on widgets found by accessible name: a region of the window, the open command palette among them, and a pick among equal names.
 - `journey/harness.rs`: waiting until the app is idle after each step.

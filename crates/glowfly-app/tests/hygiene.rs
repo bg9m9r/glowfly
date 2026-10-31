@@ -60,9 +60,9 @@ const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
         &[
             "crates/glowfly-model/src/state/menu_model_tests.rs",
             "crates/glowfly-app/src/ui/snapshot_tests/helpers.rs",
-            "crates/glowfly-app/src/flows/lines_tests.rs",
-            "crates/glowfly-app/src/flows/profile_rules_tests.rs",
-            "crates/glowfly-app/src/flows/shortcuts_tests.rs",
+            "crates/glowfly-flows/src/flows/lines_tests.rs",
+            "crates/glowfly-flows/src/flows/profile_rules_tests.rs",
+            "crates/glowfly-flows/src/flows/shortcuts_tests.rs",
         ],
     ),
     (

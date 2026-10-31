@@ -17,10 +17,11 @@ processes, the environment, git).
 
 ## Layout
 
-Four crates. `glowfly-core` is a library with no egui and no app state. `glowfly-model` is a
+Five crates. `glowfly-core` is a library with no egui and no app state. `glowfly-model` is a
 library with the app's state, messages, effects and `update`, and no egui. `glowfly-app` is the
 binary (package `glowfly`).
 `glowfly-runner` is a library that carries out the model's effects on worker threads, with no egui.
+`glowfly-flows` holds only tests: `update`'s end-to-end tests, run through the runner.
 
 ### Per-area files (`docs/architecture/`)
 
@@ -155,7 +156,7 @@ source file, update its line in the matching file.
 6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
 7. **Tests.** Write an `update` test in `update/tests/<area>_tests.rs`, registered with one
    `mod` line in `update/tests/mod.rs` (one that runs effects through the runner, with `drive`
-   or `finish`, goes in `flows/<area>_tests.rs`, listed in `flows/mod.rs`); snapshot tests go in `ui/snapshot_tests/`, registered
+   or `finish`, goes in glowfly-flows' `flows/<area>_tests.rs`, listed in `flows/mod.rs`); snapshot tests go in `ui/snapshot_tests/`, registered
    in its `mod.rs`. Add a core test on a fixture
    repository (see `scratch_repo`; build fixtures with the test kit's `git`, `testkit/`) for new
    git logic, and an `egui_kittest` snapshot for a new view (harnesses from

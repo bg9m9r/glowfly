@@ -4,6 +4,7 @@ members = [
     "crates/glowfly-core",
     "crates/glowfly-model",
     "crates/glowfly-runner",
+    "crates/glowfly-flows",
     "crates/glowfly-app",
 ]
 default-members = ["crates/glowfly-app"]

@@ -3,8 +3,8 @@
 # Every query of the default suite stays on, rust/hard-coded-cryptographic-value and
 # rust/cleartext-logging included. Only test code is left out: it holds made-up tokens and keys
 # and logs them on purpose. The fuzz checks count as test code: they build only for tests and
-# the `fuzz/` crate, and print the made-up passwords of a failing input. The shipped code is
-# scanned in full.
+# the `fuzz/` crate, and print the made-up passwords of a failing input. glowfly-flows is a
+# crate of tests only. The shipped code is scanned in full.
 name: Glowfly CodeQL config
 
 paths-ignore:
@@ -14,6 +14,7 @@ paths-ignore:
   - '**/snapshot_tests/**'
   - '**/snapshot_tests*.rs'
   - '**/testkit/**'
+  - 'crates/glowfly-flows/**'
   - 'crates/glowfly-core/src/fuzzing/**'
   - 'crates/glowfly-core/src/fuzzing.rs'
   - 'fuzz/**'

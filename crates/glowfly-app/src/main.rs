@@ -8,8 +8,6 @@
 
 mod cli_update;
 #[cfg(test)]
-mod flows;
-#[cfg(test)]
 mod glyph_check;
 #[cfg(test)]
 mod journey;
@@ -21,8 +19,6 @@ mod ui;
 
 // The model's modules, under the names they had when they lived here, so `crate::state::…` and
 // the like keep resolving.
-#[cfg(test)]
-pub(crate) use glowfly_model::testing;
 pub(crate) use glowfly_model::{
     conflict_check, custom_commands, deep_link, effect, git_env, gitflow, journal, keymap, lfs, logs, msg, onboarding, patch, profile,
     pull_request, range_diff, remote, ssh, start_arg, state, submodule, tag, terminal, themes, tools, update, worktree,
