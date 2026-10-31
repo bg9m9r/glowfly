@@ -58,7 +58,6 @@ is reviewed again.
 | RUSTSEC-2024-0436 | paste (unmaintained) | A proc-macro of accesskit_windows (eframe 0.31); runs only at compile time |
 | RUSTSEC-2026-0192 | ttf-parser (unmaintained) | ab_glyph, epaint's font rasterizer (egui 0.31); no flaw is known, only that it is unmaintained |
 | RUSTSEC-2026-0370, RUSTSEC-2026-0371, RUSTSEC-2026-0372 | zvariant, zbus_names, zvariant_derive (merged into zbus 6) | Still required by zbus 4 and 5 (accesskit_unix, rfd, notify-rust) |
-| GHSA-qwgh-2vcv-g2f7 | block-buffer 0.10 | Linux only, through digest 0.10 (keyring's dbus-secret-service via hkdf, hmac and sha2; zbus via sha1). The flaw needs a hash compress callback that panics, and RustCrypto's hashes never do; 0.10 also keeps its cursor in a field of its own, outside the block the advisory corrupts |
 
 ## Supported versions
 

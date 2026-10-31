@@ -80,6 +80,9 @@ pub enum LinkDialog {
     /// The text isn't a link Glowfly can open: why, and the text as shown. `unknown_kind` is
     /// the kind of link this version doesn't know ("draft"), which a newer version may open.
     Invalid { text: String, reason: String, unknown_kind: Option<String> },
+    /// The link's url is a file or network path, which a link is never let open (hardening:
+    /// links come from outside). `text` is the link as shown.
+    LocalPath { text: String },
     /// No copy of the repository was found. `what` is the target ("branch feature/x"), `repo`
     /// what the link names the repository by, `problem` why the located folder didn't match.
     NotFound { what: String, repo: String, can_clone: bool, problem: Option<String> },
@@ -129,9 +132,12 @@ pub fn pick_reason_text(t: Lang, r: PickReason) -> &'static str {
 }
 
 /// The URL of remote `name` in `snap` (libgit2's, with url.insteadOf applied), without any
-/// password or token in it, since a link is made to be shared.
+/// password or token in it, since a link is made to be shared. None for a remote that is a file
+/// or network path: a link never carries one (opening it would refuse it), so it names the
+/// repository by its root commit alone.
 fn url_of(snap: &Snapshot, name: &str) -> Option<String> {
-    snap.remote_urls.iter().find(|(n, _)| n == name).map(|(_, u)| link::shareable_url(u)).filter(|u| !u.is_empty())
+    let url = snap.remote_urls.iter().find(|(n, _)| n == name).map(|(_, u)| link::shareable_url(u));
+    url.filter(|u| !u.is_empty() && link::is_remote_url(u))
 }
 
 /// The remote a link names when nothing else says which: the checked-out branch's upstream

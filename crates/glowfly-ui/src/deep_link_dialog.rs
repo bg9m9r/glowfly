@@ -1,5 +1,5 @@
-//! The dialogs a glowfly:// link may need (`Modal::DeepLink`): a link Glowfly can't open, a
-//! repository not found here (locate it on disk or clone it), and several copies to choose
+//! The dialogs a glowfly:// link may need (`Modal::DeepLink`): a link Glowfly can't open (or
+//! won't, when its URL is a file or network path), a repository not found here (locate it on disk or clone it), and several copies to choose
 //! from. Esc closes them through the usual `CloseModal`, which gives the link up.
 
 use super::common::capitalize;
@@ -34,6 +34,14 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, d: &LinkDialog, msgs: &mut Vec<Msg>) -> b
         LinkDialog::Invalid { text, reason, unknown_kind: None } => {
             let d = Dialog::new(cx, "Can't open this link").size(Size::Small).begin(ui);
             ui.add(egui::Label::new(format!("Glowfly can't open this link: {reason}.")).wrap());
+            ui.add_space(6.0);
+            ui.add(egui::Label::new(RichText::new(text.as_str()).monospace().color(color::weak())).wrap());
+            d.finish(ui, Footer::new().close()).dismiss
+        }
+        LinkDialog::LocalPath { text } => {
+            let t = cx.t;
+            let d = Dialog::new(cx, t.tr("deep_link.local_path.title")).size(Size::Small).begin(ui);
+            ui.add(egui::Label::new(t.tr("deep_link.local_path.body")).wrap());
             ui.add_space(6.0);
             ui.add(egui::Label::new(RichText::new(text.as_str()).monospace().color(color::weak())).wrap());
             d.finish(ui, Footer::new().close()).dismiss
