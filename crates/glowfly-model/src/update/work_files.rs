@@ -26,7 +26,7 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
         WorkFileMsg::RenameFile { from, to, stage } => rename(st, from, to, stage, fx),
         WorkFileMsg::SetRenameStages(on) if st.settings.stage_renames != on => {
             st.settings.stage_renames = on;
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
         }
         WorkFileMsg::DeleteFile { path, confirmed: false } => ask_delete(st, path),
         WorkFileMsg::DiscardUntracked(path) => ask_discard(st, path),

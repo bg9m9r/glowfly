@@ -29,7 +29,7 @@ fn set_word_wrap_saves_and_keeps_top_row() {
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetWordWrap(true)));
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_word_wrap));
     assert!(st.settings.diff_word_wrap);
-    assert_eq!(st.saved_settings, serde_json::to_string(&st.settings).unwrap());
+    assert_eq!(st.settings_file.saved, serde_json::to_string(&st.settings).unwrap());
     assert_eq!(st.view.diff_scroll_to_row, Some(4), "the top row stays in place");
     assert_eq!(st.view.diff_cursor, Some(4), "rows are numbered the same");
 

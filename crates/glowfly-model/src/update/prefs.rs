@@ -68,21 +68,21 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::SelectIntegration(p) => select_integration(st, p),
         PrefsMsg::GitConfig { global, key, value } => super::prefs_save::write_now(st, global, key, value, fx),
         PrefsMsg::SettingsEdited => {
-            if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.saved_settings.as_str()) {
-                fx.push(save_settings(st));
+            if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.settings_file.saved.as_str()) {
+                fx.extend(save_settings(st));
             }
             sync_live_settings(st, fx);
         }
         PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {
                 st.settings.theme = t;
-                fx.push(save_settings(st));
+                fx.extend(save_settings(st));
             }
         }
         PrefsMsg::SetToolbarLabels(on) => {
             if st.settings.toolbar_labels != on {
                 st.settings.toolbar_labels = on;
-                fx.push(save_settings(st));
+                fx.extend(save_settings(st));
             }
         }
         PrefsMsg::SetDesktopNotifications(on) => super::notify::set_desktop(st, on, fx),
@@ -223,7 +223,10 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             }
         },
         PrefsMsg::FolderPicked { path: None, .. } => {}
-        PrefsMsg::SettingsUnreadable(text) => unreadable(st, text, now),
+        PrefsMsg::SettingsUnreadable(problem) => super::settings_file::at_start(st, problem, now),
+        PrefsMsg::RetrySettingsRead => super::settings_file::retry(st, fx),
+        PrefsMsg::SettingsReread(loaded) => super::settings_file::reread(st, loaded.0, loaded.1, now, fx),
+        PrefsMsg::OpenSettingsFolder => super::settings_file::open_folder(st, fx),
         PrefsMsg::Navigate(page) => super::prefs_nav::navigate(st, page, now, fx),
         PrefsMsg::SavePage => {
             super::prefs_save::save_page(st, fx);
@@ -256,20 +259,19 @@ pub(super) fn load_signing_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::Prefs(PrefsEffect::ListSigningKeys { format, program: non_empty(git.program(), format.default_program()) }));
 }
 
-/// Tells the user, in a toast and the activity log, that their settings file couldn't be read.
-fn unreadable(st: &mut AppState, text: String, now: Instant) {
-    st.log(false, text.clone());
-    st.toast(false, text, now);
-}
-
 /// Records the current settings as saved and returns the effect that writes them; open
-/// Preferences shows its "Saved" tick.
-pub(super) fn save_settings(st: &mut AppState) -> Effect {
-    st.saved_settings = serde_json::to_string(&st.settings).unwrap_or_default();
+/// Preferences shows its "Saved" tick. None while the settings file couldn't be read: the
+/// settings in use then started from defaults, and writing them would replace the user's own
+/// (update/settings_file.rs).
+pub(super) fn save_settings(st: &mut AppState) -> Option<Effect> {
+    if !st.settings_file.writable() {
+        return None;
+    }
+    st.settings_file.saved = serde_json::to_string(&st.settings).unwrap_or_default();
     if let Some(p) = st.prefs.as_mut() {
         p.saved.mark();
     }
-    Effect::SaveSettings(Box::new(st.settings.clone()))
+    Some(Effect::SaveSettings(Box::new(st.settings.clone())))
 }
 
 /// Makes the file watcher, the conflict check and the tab groups follow the settings. Sent every frame while

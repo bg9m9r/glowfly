@@ -20,7 +20,7 @@ pub(super) fn imported(st: &mut AppState, file: &str, result: Result<ImportRepor
     }
     let Some((id, name)) = report.saved.first() else { return };
     st.settings.terminal.colours = TerminalColours::Scheme(id.clone());
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     fx.push(Effect::Theme(ThemeEffect::Load));
     let mut text = match report.saved.len() {
         1 => format!("Imported the terminal color scheme {name} and switched the terminal to it."),

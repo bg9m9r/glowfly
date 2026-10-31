@@ -128,6 +128,7 @@ pub mod search_loaded;
 mod search_paths;
 mod selection;
 mod selection_focus;
+mod settings_file;
 mod shallow;
 mod shortcuts;
 mod sign_in;

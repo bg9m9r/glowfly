@@ -150,6 +150,7 @@ mod repo_menu_list;
 mod repo_menu_row;
 mod repo_swatch;
 mod repo_sync;
+mod settings_banner;
 pub mod shortcuts;
 mod sidebar;
 mod sign_in_banner;

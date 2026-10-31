@@ -76,7 +76,7 @@ pub fn check_for(st: &mut AppState, slow: Option<&SlowStatus>, os: Os, now: Inst
         st.log_quiet(true, text);
     }
     st.settings.mark_status_tip_shown(&real);
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
 }
 
 /// The note for a read that took `took`, offering the untracked cache (`cache`) or not, and

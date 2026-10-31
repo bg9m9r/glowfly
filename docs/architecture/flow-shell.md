@@ -131,6 +131,12 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - An auto-fetch that fails for want of a sign-in (`auth_failure::fetch_failures`) pauses those remotes (global, in memory, by workdir and remote), and auto-fetch leaves paused remotes out.
 - The banner offers a fetch that can prompt, and any fetch of the remote that works resumes it.
 
+## Unreadable settings file
+
+- Files: `state/settings_file.rs`, `update/settings_file.rs`, `ui/settings_banner.rs`; flow tests in `settings_file_tests.rs`.
+- A startup load whose `LoadProblem` is `locked` (`PrefsMsg::SettingsUnreadable`) sets `settings_file.unreadable`: defaults are in use, and `update/prefs.rs::save_settings` returns no save while it is set, so they can't replace the user's file.
+- The banner (under the toolbar and above Preferences) stays until Try again (`PrefsEffect::ReadSettings`, `Settings::reload`) reads the file; its settings then replace the defaults, the keymap and live settings follow, and saving goes on. Open settings folder shows where the file is.
+
 ## Git LFS notices
 
 - Files: `state/lfs.rs`'s `LfsSession`, `state/lfs_notes.rs`, `state/session.rs` (the open diff's note), `ui/lfs_banner.rs`, `ui/lfs_badge.rs`, `ui/diff/lfs_note.rs`.

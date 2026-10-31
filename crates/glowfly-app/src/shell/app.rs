@@ -117,7 +117,7 @@ impl GlowflyApp {
         app.start(ctx, themes, Some(logs));
         if let Some(problem) = problem {
             tracing::warn!("settings: {}", problem.message());
-            app.dispatch(ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem.message())));
+            app.dispatch(ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem)));
         }
         if !paths.is_empty() {
             app.dispatch(ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, labels, active }));

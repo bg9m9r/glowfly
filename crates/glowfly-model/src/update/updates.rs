@@ -119,7 +119,7 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
     };
     st.settings.updates.last_checked = Some(st.view.now);
     st.updates.retry_at = None;
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     let u = &st.updates;
     let offer = found.as_ref().and_then(|f| app_update::offer(&f.release, &u.current, u.platform, f.install));
     // A file already downloaded for this release (or a newer one) stays.

@@ -60,7 +60,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
         ForgeMsg::SetTracker(choice) => {
             let Some(w) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
             st.settings.set_tracker(&w, choice);
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
             if let Some(snap) = st.snap.take() {
                 detect(st, &snap);
                 st.snap = Some(snap);
@@ -336,7 +336,7 @@ fn connected(
             }
             st.settings.connections.retain(|c| c.account != account);
             st.settings.connections.push(Connection { account: account.clone(), user: user.clone(), method });
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
             if let Some(p) = st.prefs.as_mut() {
                 p.int_token.clear();
                 p.int_adding = false;
@@ -372,7 +372,7 @@ fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
     if !st.settings.account_in_use(account) {
         fx.push(Effect::Account(AccountEffect::DeleteToken(account.clone())));
     }
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     super::dashboard::account_changed(st, account, fx);
     if let Some(fs) = st.session.forge.as_mut() {
         fs.auth.remove(&account.key());

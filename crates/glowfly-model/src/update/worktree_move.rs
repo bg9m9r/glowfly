@@ -146,7 +146,7 @@ fn retarget(st: &mut AppState, from: &Path, to: &Path, folder: Option<FolderId>,
         }
         st.settings.repo_groups = groups;
         crate::state::repo_groups::prune(&mut st.settings);
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     st.known.forget(from);
     if let Some(id) = id {

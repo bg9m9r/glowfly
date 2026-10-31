@@ -21,7 +21,7 @@ pub(super) fn handle(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
         TagMsg::CreateTag { at, name, message, push } => create(st, &at, &name, &message, push, fx),
         TagMsg::SetPushNewTags(on) if st.settings.push_new_tags != on => {
             st.settings.push_new_tags = on;
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
         }
         TagMsg::SetPushNewTags(_) => {}
         TagMsg::Push { tag, remotes } => start_remote(st, RemoteTagOp::Push, tag, remotes, fx),

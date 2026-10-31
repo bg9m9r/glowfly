@@ -351,17 +351,6 @@ fn commit_signing_flow() {
 }
 
 #[test]
-fn unreadable_settings_are_reported_once() {
-    let mut st = state();
-    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable("Settings could not be read".into())), Instant::now());
-    assert!(fx.is_empty(), "{fx:?}");
-    assert!(st.log.iter().any(|l| !l.ok && l.text == "Settings could not be read"));
-    assert!(!st.view.show_log);
-    assert_eq!(st.toasts.len(), 1);
-    assert!(crate::flows::logs_tabs_tests::failure_with_details(&st), "its toast offers Details");
-}
-
-#[test]
 fn job_output_hides_credentials_in_urls() {
     let dir = scratch_repo("redact");
     let cmds = vec![args(&["remote", "add", "x", "https://ada:TOKEN123@example.com/o/r.git"])];

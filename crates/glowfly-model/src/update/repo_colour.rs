@@ -18,6 +18,6 @@ pub(super) fn set(st: &mut AppState, path: &Path, colour: Option<RepoColour>, fx
         changed |= st.settings.set_repo_colour(path, None);
     }
     if changed {
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
 }

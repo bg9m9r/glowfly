@@ -155,7 +155,7 @@ pub(super) fn set_desktop(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) {
         return;
     }
     st.settings.desktop_notifications = on;
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     if on {
         fx.push(Effect::Notify(DesktopNote::confirmation()));
     }

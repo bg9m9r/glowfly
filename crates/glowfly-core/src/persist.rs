@@ -235,13 +235,26 @@ pub(crate) fn needs_chmod(have: u32, want: u32) -> bool {
 /// Moves `path` aside to the first free `<name>.bak`, `<name>.bak-2`, `<name>.bak-3`, … and
 /// returns the new name.
 pub fn move_aside(path: &Path) -> std::io::Result<PathBuf> {
-    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    let backup = (1..)
-        .map(|i| path.with_file_name(if i == 1 { format!("{name}.bak") } else { format!("{name}.bak-{i}") }))
-        .find(|p| p.symlink_metadata().is_err())
-        .expect("an unused backup name");
+    let backup = free_backup_name(path);
     std::fs::rename(path, &backup)?;
     Ok(backup)
+}
+
+/// Writes `bytes` (what was read from `path`) to the backup name `move_aside` would pick, leaving
+/// `path` where it is, and returns that name.
+pub fn keep_copy(path: &Path, bytes: &[u8]) -> std::io::Result<PathBuf> {
+    let backup = free_backup_name(path);
+    atomic_write(&backup, bytes)?;
+    Ok(backup)
+}
+
+/// The first of `<name>.bak`, `<name>.bak-2`, `<name>.bak-3`, … beside `path` that doesn't exist.
+fn free_backup_name(path: &Path) -> PathBuf {
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    (1..)
+        .map(|i| path.with_file_name(if i == 1 { format!("{name}.bak") } else { format!("{name}.bak-{i}") }))
+        .find(|p| p.symlink_metadata().is_err())
+        .expect("an unused backup name")
 }
 
 /// Orders saves of one file that run on separate threads: each save takes a ticket when it is

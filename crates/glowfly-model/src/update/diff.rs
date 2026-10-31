@@ -114,7 +114,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
                 st.view.diff_cursor = None; // the rows are numbered differently now
             }
             st.settings.diff_layout = layout;
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
         }
         DiffMsg::SetDiffMode(mode) => set_mode(st, mode, fx),
         DiffMsg::DiffHighlighted { target, generation, hunks, whole } => super::highlight::apply(st, target, generation, hunks, whole),
@@ -126,7 +126,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             st.view.diff_lines.clear();
             // The gaps between the hunks shown now may sit where others did: read them again.
             st.session.tab_view.diff_expanded.drop_gap_text();
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
             // Hunk rows change, so the diff reopens at the top; hunk operations wait for it, and
             // then count the hunks shown under the new setting.
             super::repo::reopen_diff(st, fx);
@@ -145,7 +145,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             if let Some(c) = &st.session.conflict.view {
                 st.view.conflict_scroll_to = Some(c.current);
             }
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
         }
         DiffMsg::SelectDiffLine { .. }
         | DiffMsg::StartLineDrag { .. }
@@ -225,7 +225,7 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
         .and_then(|(_, d)| hunk_at_top(d, old, layout, st.session.tab_view.diff_top_row, &st.session.tab_view.diff_expanded));
     st.settings.diff_mode = mode;
     st.view.diff_lines.clear();
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     match mode {
         DiffMode::WholeFile => {
             // The whole file comes with a reload; it opens on the same hunk's block, and hunk

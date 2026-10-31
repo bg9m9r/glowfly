@@ -50,7 +50,7 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
             // Only a git that runs but is too old: the can't-run banner must stay findable.
             let Some(v) = st.git.too_old() else { return };
             st.settings.git_banner_hidden_for = Some(show(v));
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
             st.log(
                 true,
                 format!(
@@ -183,7 +183,7 @@ fn choose(st: &mut AppState, program: Option<PathBuf>, from_banner: bool, fx: &m
 fn switched(st: &mut AppState, program: Option<PathBuf>, info: GitInfo, from_banner: bool, now: Instant, fx: &mut Vec<Effect>) {
     // A picked path was refused unless it is valid Unicode, so nothing is lost here.
     st.settings.git_program = program.map(|p| p.to_string_lossy().into_owned());
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     if let Some(text) = info.problem() {
         st.log_quiet(false, text);
     }

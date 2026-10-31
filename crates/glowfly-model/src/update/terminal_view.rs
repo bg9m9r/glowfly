@@ -119,6 +119,6 @@ pub(super) fn panel_height(st: &mut AppState, h: f32, fx: &mut Vec<Effect>) {
     let Some(h) = crate::state::panel_layout::TERMINAL.sanitize(h) else { return };
     if st.settings.terminal.panel_height != Some(h) {
         st.settings.terminal.panel_height = Some(h);
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
 }

@@ -43,7 +43,7 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
                         p.profiles.adding = None;
                         p.profiles.fill(&st.settings, Some(id));
                     }
-                    fx.push(save_settings(st));
+                    fx.extend(save_settings(st));
                 }
                 Err(problem) => {
                     if let Some(form) = st.prefs.as_mut().and_then(|p| p.profiles.adding.as_mut()) {
@@ -61,7 +61,7 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
                         p.profiles.refresh(&st.settings);
                     }
                     if st.settings.profile(id).map(|p| p.name.clone()) != before {
-                        fx.push(save_settings(st));
+                        fx.extend(save_settings(st));
                     }
                 }
                 Err(problem) => {
@@ -87,7 +87,7 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
             }
             match st.settings.delete_profile(id) {
                 Ok(removed) => {
-                    fx.push(save_settings(st));
+                    fx.extend(save_settings(st));
                     if !removed.folders.is_empty() {
                         super::profile_rules::request_sync(st, true, fx);
                     }
@@ -149,7 +149,7 @@ pub(super) fn start_switch(st: &mut AppState, id: ProfileId, fx: &mut Vec<Effect
 pub(super) fn on_config(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(git) = st.prefs.as_ref().and_then(|p| p.git.as_ref()).map(git_identity) else { return };
     if st.profile_switch.is_none() && st.settings.seed_or_sync_profiles(&git) {
-        fx.push(save_settings(st));
+        fx.extend(save_settings(st));
     }
     if let Some(p) = st.prefs.as_mut() {
         p.profiles.fill(&st.settings, None);
@@ -171,7 +171,7 @@ pub fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityField, valu
     if !changed {
         return;
     }
-    fx.push(save_settings(st));
+    fx.extend(save_settings(st));
     // Its include file has the identity; the entries stay where they are.
     if st.settings.profile(id).is_some_and(|p| !p.folders.is_empty()) {
         super::profile_rules::request_sync(st, false, fx);
@@ -224,7 +224,7 @@ fn applied(
                     // The accounts and preferences switch with the identity.
                     let swap = st.settings.swap_profile_setup(id);
                     st.settings.active_profile = Some(id);
-                    fx.push(save_settings(st));
+                    fx.extend(save_settings(st));
                     super::profile_setup::switched(st, swap, now, fx);
                     st.toast(true, switched(name), now);
                     super::profile_rules::want_identity(st, fx);

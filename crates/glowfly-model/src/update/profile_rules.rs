@@ -45,7 +45,7 @@ pub(super) fn folder_checked(st: &mut AppState, id: ProfileId, result: Result<Fo
         Err(e) => Some(e),
     };
     if problem.is_none() {
-        fx.push(save_settings(st));
+        fx.extend(save_settings(st));
         request_sync(st, true, fx);
     }
     if let Some(p) = st.prefs.as_mut() {
@@ -55,7 +55,7 @@ pub(super) fn folder_checked(st: &mut AppState, id: ProfileId, result: Result<Fo
 
 pub(super) fn remove_folder(st: &mut AppState, id: ProfileId, path: &str, fx: &mut Vec<Effect>) {
     if st.settings.remove_folder_rule(id, path) {
-        fx.push(save_settings(st));
+        fx.extend(save_settings(st));
         request_sync(st, true, fx);
     }
 }

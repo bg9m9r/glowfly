@@ -40,7 +40,7 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, now: Instant, fx: &mut Vec<E
                 return;
             }
             st.settings.extended_logging = on;
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
             fx.push(Effect::Logs(LogsEffect::SetExtended(on)));
             st.log_quiet(
                 true,

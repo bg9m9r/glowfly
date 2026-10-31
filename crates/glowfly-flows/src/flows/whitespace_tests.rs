@@ -56,7 +56,7 @@ fn toggle_saves_and_reloads_the_open_diff() {
         if s.diff_ignore_whitespace));
     assert!(st.view.diff_lines.is_empty(), "hunk rows change, so the selection goes");
     assert_eq!(st.hunk_ops_gen(), None, "hunk buttons wait for the reload");
-    assert_eq!(st.saved_settings, serde_json::to_string(&st.settings).unwrap());
+    assert_eq!(st.settings_file.saved, serde_json::to_string(&st.settings).unwrap());
 
     assert!(run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true))).is_empty(), "no change, nothing to do");
 

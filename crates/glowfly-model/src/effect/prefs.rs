@@ -1,7 +1,7 @@
 //! Effects behind the Preferences pages: reading and writing git config values (one at a time,
 //! or a page's save as one batch that reports back, `WriteGitConfig`), and listing,
-//! generating and exporting signing keys (`Effect::Prefs`, run by runner/config.rs and
-//! runner/keys.rs). Unscoped.
+//! generating and exporting signing keys, and reading the settings file again after it couldn't
+//! be read (`Effect::Prefs`, run by runner/config.rs and runner/keys.rs). Unscoped.
 
 use super::EffectMeta;
 use super::SandboxRule;
@@ -21,12 +21,38 @@ pub struct ConfigWrite {
 /// `PrefsMsg::ConfigSaved` with `ticket`.
 #[derive(Debug)]
 pub enum PrefsEffect {
-    ReadGitConfig { cwd: PathBuf, has_repo: bool },
-    SetGitConfig { cwd: PathBuf, global: bool, key: String, value: Option<String> },
-    WriteGitConfig { cwd: PathBuf, ticket: u64, writes: Vec<ConfigWrite> },
-    ListSigningKeys { format: SigningFormat, program: String },
-    GenerateGpgKey { program: String, name: String, email: String, passphrase: String },
-    ExportPublicKey { format: SigningFormat, program: String, key: String },
+    ReadGitConfig {
+        cwd: PathBuf,
+        has_repo: bool,
+    },
+    SetGitConfig {
+        cwd: PathBuf,
+        global: bool,
+        key: String,
+        value: Option<String>,
+    },
+    WriteGitConfig {
+        cwd: PathBuf,
+        ticket: u64,
+        writes: Vec<ConfigWrite>,
+    },
+    ListSigningKeys {
+        format: SigningFormat,
+        program: String,
+    },
+    GenerateGpgKey {
+        program: String,
+        name: String,
+        email: String,
+        passphrase: String,
+    },
+    ExportPublicKey {
+        format: SigningFormat,
+        program: String,
+        key: String,
+    },
+    /// Reads `settings.json` again (`Settings::reload`), reporting `PrefsMsg::SettingsReread`.
+    ReadSettings,
 }
 
 impl EffectMeta for PrefsEffect {
@@ -39,6 +65,7 @@ impl EffectMeta for PrefsEffect {
             PrefsEffect::ListSigningKeys { .. } => "list-keys",
             PrefsEffect::GenerateGpgKey { .. } => "generate-key",
             PrefsEffect::ExportPublicKey { .. } => "export-key",
+            PrefsEffect::ReadSettings => "read-settings",
         }
     }
 
@@ -54,7 +81,8 @@ impl EffectMeta for PrefsEffect {
             | PrefsEffect::SetGitConfig { .. }
             | PrefsEffect::WriteGitConfig { .. }
             | PrefsEffect::ListSigningKeys { .. }
-            | PrefsEffect::ExportPublicKey { .. } => true,
+            | PrefsEffect::ExportPublicKey { .. }
+            | PrefsEffect::ReadSettings => true,
             PrefsEffect::GenerateGpgKey { .. } => false,
         }
     }
@@ -64,7 +92,8 @@ impl EffectMeta for PrefsEffect {
         None
     }
 
-    /// A repository's own config runs; the global config and the signing keys are dropped.
+    /// A repository's own config runs; the global config, the signing keys and the app's own
+    /// settings file are dropped.
     fn sandbox(&self) -> SandboxRule {
         match self {
             PrefsEffect::ReadGitConfig { .. } | PrefsEffect::SetGitConfig { global: false, .. } => SandboxRule::Run,
@@ -73,7 +102,8 @@ impl EffectMeta for PrefsEffect {
             PrefsEffect::SetGitConfig { global: true, .. }
             | PrefsEffect::ListSigningKeys { .. }
             | PrefsEffect::GenerateGpgKey { .. }
-            | PrefsEffect::ExportPublicKey { .. } => SandboxRule::Drop,
+            | PrefsEffect::ExportPublicKey { .. }
+            | PrefsEffect::ReadSettings => SandboxRule::Drop,
         }
     }
 }

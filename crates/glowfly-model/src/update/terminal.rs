@@ -129,7 +129,7 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, now: std::time::Instant,
 pub(super) fn remember_open(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.settings.terminal.panel_open != st.terminal.open {
         st.settings.terminal.panel_open = st.terminal.open;
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
 }
 

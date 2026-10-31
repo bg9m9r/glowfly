@@ -31,7 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
         }
         CommitMsg::SetPushAfterCommit(on) if st.settings.push_after_commit != on => {
             st.settings.push_after_commit = on;
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
         }
         CommitMsg::SetPushAfterCommit(_) => {}
         CommitMsg::CommitMerge => {

@@ -49,7 +49,7 @@ fn set_diff_layout_saves_and_keeps_hunk() {
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.diff_layout == DiffLayout::Split)));
-    assert_eq!(st.saved_settings, serde_json::to_string(&st.settings).unwrap());
+    assert_eq!(st.settings_file.saved, serde_json::to_string(&st.settings).unwrap());
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
     assert_eq!(st.session.tab_view.diff_top_row, split[1]);
 

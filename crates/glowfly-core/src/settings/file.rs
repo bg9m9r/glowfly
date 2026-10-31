@@ -3,6 +3,7 @@
 use super::{Settings, config_dir};
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// Something went wrong reading the settings file; shown to the user once.
 #[derive(Clone, Debug, PartialEq)]
@@ -13,14 +14,19 @@ pub struct LoadProblem {
     pub reset: Option<Vec<String>>,
     /// What failed, for the activity log.
     pub detail: String,
+    /// The file that couldn't be read (or kept a copy of) and is still where it was: defaults
+    /// are in use, and saving them would overwrite it, so nothing may be saved until it reads
+    /// cleanly (`Settings::reload`). `None` when saving is safe.
+    pub locked: Option<PathBuf>,
 }
 
 impl LoadProblem {
     pub fn message(&self) -> String {
-        let what = match &self.reset {
-            None => "Settings could not be read and were reset to defaults".to_owned(),
-            Some(keys) if keys.is_empty() => "The settings file had a problem and was rewritten".to_owned(),
-            Some(keys) => format!("Some settings could not be read and were reset: {}", keys.join(", ")),
+        let what = match (&self.locked, &self.reset) {
+            (Some(_), _) => "Settings could not be read; defaults are used and nothing is saved until the file can be read".to_owned(),
+            (None, None) => "Settings could not be read and were reset to defaults".to_owned(),
+            (None, Some(keys)) if keys.is_empty() => "The settings file had a problem and was rewritten".to_owned(),
+            (None, Some(keys)) => format!("Some settings could not be read and were reset: {}", keys.join(", ")),
         };
         let kept = match &self.backup {
             Some(b) => format!(" The original file was kept as {}.", b.display()),
@@ -28,7 +34,16 @@ impl LoadProblem {
         };
         format!("{what} ({}).{kept}", self.detail)
     }
+
+    /// The problem of a file that stays where it is, unread: saving must wait.
+    fn locked(path: &Path, detail: String) -> Self {
+        LoadProblem { backup: None, reset: None, detail, locked: Some(path.to_owned()) }
+    }
 }
+
+/// How long to wait before each new try at reading the settings file after one fails: a virus
+/// scanner or sync client holding it (a Windows sharing violation) lets go within moments.
+pub const READ_WAITS: [Duration; 3] = [Duration::from_millis(40), Duration::from_millis(120), Duration::from_millis(350)];
 
 pub fn settings_file() -> Option<PathBuf> {
     config_dir().map(|d| d.join("settings.json"))
@@ -36,7 +51,8 @@ pub fn settings_file() -> Option<PathBuf> {
 
 impl Settings {
     /// The saved settings, or defaults. A file that can't be read fully is moved aside first
-    /// (so a later save can't overwrite it) and the problem is returned for the user.
+    /// (so a later save can't overwrite it) and the problem is returned for the user; one that
+    /// can't be read at all, or moved, stays put and the problem says saving must wait.
     pub fn load() -> (Settings, Option<LoadProblem>) {
         match settings_file() {
             Some(f) => Settings::load_from(&f),
@@ -44,28 +60,69 @@ impl Settings {
         }
     }
 
+    /// `load` again after it reported a `locked` problem: the file is first copied to `.bak`
+    /// once it reads, since the defaults in use since then may be saved over it next.
+    pub fn reload() -> (Settings, Option<LoadProblem>) {
+        match settings_file() {
+            Some(f) => Settings::load_with(&f, &READ_WAITS, |p: &Path| std::fs::read(p), true),
+            None => (Settings::default(), None),
+        }
+    }
+
     pub fn load_from(path: &Path) -> (Settings, Option<LoadProblem>) {
-        let bytes = match std::fs::read(path) {
-            Ok(b) => b,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return (Settings::default(), None),
-            Err(e) => {
-                let detail = format!("could not read {}: {e}", path.display());
-                return (existing_defaults(), Some(LoadProblem { backup: None, reset: None, detail }));
+        Settings::load_with(path, &READ_WAITS, |p: &Path| std::fs::read(p), false)
+    }
+
+    /// `load_from`, reading with `read` and trying again after each of `waits` while it fails.
+    /// When a try failed (here, or `failed_before` in an earlier load), what was read is copied
+    /// to `.bak` before it is returned, so the first save after it can't lose the file.
+    pub fn load_with(
+        path: &Path,
+        waits: &[Duration],
+        mut read: impl FnMut(&Path) -> std::io::Result<Vec<u8>>,
+        failed_before: bool,
+    ) -> (Settings, Option<LoadProblem>) {
+        let mut waits = waits.iter();
+        let mut failed = failed_before;
+        let bytes = loop {
+            match read(path) {
+                Ok(b) => break b,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => return (Settings::default(), None),
+                Err(e) => match waits.next() {
+                    Some(wait) => {
+                        failed = true;
+                        std::thread::sleep(*wait);
+                    }
+                    None => {
+                        let detail = format!("could not read {}: {e}", path.display());
+                        return (existing_defaults(), Some(LoadProblem::locked(path, detail)));
+                    }
+                },
             }
         };
         let (settings, reset, detail) = match serde_json::from_slice::<Settings>(&bytes) {
-            Ok(s) => return (migrate(s), None),
+            Ok(s) if !failed => return (migrate(s), None),
+            Ok(s) => {
+                return match crate::persist::keep_copy(path, &bytes) {
+                    Ok(_) => (migrate(s), None),
+                    Err(e) => {
+                        let detail = format!("read {} only after it failed, and could not back it up: {e}", path.display());
+                        (existing_defaults(), Some(LoadProblem::locked(path, detail)))
+                    }
+                };
+            }
             Err(e) => match lenient(&bytes) {
                 Some((s, reset)) => (s, Some(reset), e.to_string()),
                 None => (existing_defaults(), None, e.to_string()),
             },
         };
+        // Moved aside, the original can't be overwritten by any save after this.
         let backup = match crate::persist::move_aside(path) {
             Ok(b) => Some(b),
             Err(e) => {
                 // Keep the original where it is; defaults are used but the file isn't lost.
                 let detail = format!("{detail}; could not back it up: {e}");
-                return (existing_defaults(), Some(LoadProblem { backup: None, reset: None, detail }));
+                return (existing_defaults(), Some(LoadProblem::locked(path, detail)));
             }
         };
         let settings = migrate(settings);
@@ -73,7 +130,7 @@ impl Settings {
         if reset.is_some() {
             let _ = settings.save_to(path);
         }
-        (settings, Some(LoadProblem { backup, reset, detail }))
+        (settings, Some(LoadProblem { backup, reset, detail, locked: None }))
     }
 
     pub fn save(&self) -> std::io::Result<()> {
@@ -146,3 +203,7 @@ fn lenient(bytes: &[u8]) -> Option<(Settings, Vec<String>)> {
     let settings = serde_json::from_value(Value::Object(kept)).ok()?;
     Some((settings, reset))
 }
+
+#[cfg(test)]
+#[path = "file_tests.rs"]
+mod tests;

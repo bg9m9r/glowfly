@@ -22,7 +22,7 @@ pub(super) fn handle(st: &mut AppState, msg: RecentMsg, now: Instant, fx: &mut V
         RecentMsg::SetFavorite { path, favorite: true } => {
             if !is_favorite(st, &path) {
                 st.settings.favorite_repos.push(paths::encode(&path));
-                fx.push(super::prefs::save_settings(st));
+                fx.extend(super::prefs::save_settings(st));
             }
         }
         RecentMsg::SetFavorite { path, favorite: false } => unfavorite(st, &path, fx),
@@ -59,7 +59,7 @@ fn unfavorite(st: &mut AppState, p: &Path, fx: &mut Vec<Effect>) {
     st.settings.favorite_repos = favorites.into_iter().filter(|f| !st.same_folder(&paths::decode(f), p)).collect();
     // A favorite no longer is one in its group either.
     if (st.settings.favorite_repos.len() != before) | prune(&mut st.settings) {
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
 }
 
@@ -79,7 +79,7 @@ fn remove_missing(st: &mut AppState, fx: &mut Vec<Effect>) {
     let before = favorites.len();
     st.settings.favorite_repos = favorites.into_iter().filter(|f| !is_missing(st, &paths::decode(f))).collect();
     if (st.settings.favorite_repos.len() != before) | prune(&mut st.settings) {
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     st.missing_repos.clear();
 }
