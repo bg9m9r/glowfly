@@ -20,10 +20,11 @@ fn diff() -> FileDiff {
     FileDiff { binary: false, hunks: vec![hunk(1), hunk(40)], highlight: None, intraline: Default::default(), whole: None }
 }
 
-/// The WIP lists with b/two.txt open between a.txt and z.txt (List mode), and its diff.
-fn state() -> AppState {
+/// The WIP lists with b/two.txt open between a.txt and z.txt (List mode), and its diff;
+/// `name` keeps each test's repository folder apart.
+fn state(name: &str) -> AppState {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
-    let mut snap = snapshot("header-cache");
+    let mut snap = snapshot(name);
     snap.unstaged = rows(&[("z.txt", 'M'), ("b/two.txt", 'M'), ("a.txt", 'A')]);
     st.snap = Some(snap);
     st.session.diff.view = Some((DiffTarget::Unstaged("b/two.txt".into()), Arc::new(diff())));
@@ -39,7 +40,7 @@ fn frame(cache: &mut HeaderCache, st: &AppState) -> (usize, usize) {
 
 #[test]
 fn the_header_parts_are_kept_until_what_they_come_from_changes() {
-    let mut st = state();
+    let mut st = state("header-cache-kept");
     let mut cache = HeaderCache::default();
     for _ in 0..3 {
         assert_eq!(frame(&mut cache, &st), (1, 1), "redrawing the same diff reuses its parts");
@@ -93,7 +94,7 @@ fn the_header_parts_are_kept_until_what_they_come_from_changes() {
 
 #[test]
 fn a_status_read_merged_in_place_is_a_new_list() {
-    let mut st = state();
+    let mut st = state("header-cache-merged");
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged = rows(&[("a.txt", 'A'), ("b/two.txt", 'M'), ("z.txt", 'M')]);
     status_set(snap, true, None);
