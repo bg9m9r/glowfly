@@ -58,6 +58,10 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Prune old `settings.json.bak-N` copies: each start after a passing read failure keeps another
 - When the read file names a git that no longer runs, the PATH git stays in effect until the
   next start, while the settings name the other: offer to forget it on the refusal toast
+- Trust Glowfly records for a repository created while settings are held is dropped by a
+  successful Try again, so the repository asks again.
+- `carry_records` adds `status_tip_shown` entries with a plain insert rather than
+  `repo_keys::set`, so two spellings of one path can both be kept.
 
 ### Notifications
 
@@ -214,3 +218,8 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - A `RepoSession` lookup for a workdir, active or parked, in place of the hand-written active-or-parked matches in update/ops.rs, gitflow_resume.rs, tab_losses.rs, pull_request/line_comment.rs and inactive.rs
 - `TabView::graph_scroll`'s viewport height belongs to the window, not the tab: split it out if a keyboard step before the first frame after a switch ever needs the right height
 - Fold `TabView::parked_in` and `diff_top_row` into `DiffSlot`, so the open diff, its top row and the mode it was counted in live together
+
+### Build and tooling
+
+- Build time: split core's libgit2-free parts (settings, forge, i18n) into their own crate so
+  model and ui stop rebuilding when only git code changes.
