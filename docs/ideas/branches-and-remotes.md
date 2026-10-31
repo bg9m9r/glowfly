@@ -138,6 +138,7 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Accept IPv6 literal hosts with a zone (`[fe80::1%25eth0]`), which are refused now
 - Push to a URL set as `branch.<b>.pushRemote` as git does, instead of refusing it
 - A remote, upstream, branch or tag left out of the snapshot because its name reads as an option just vanishes; say so (a notice in the REMOTE section or the trust prompt) so the user can rename it
+- Push-remote values (`branch.<name>.pushRemote`, `remote.pushDefault`) in `repo/push_config.rs` aren't filtered at load; they are safe today only because `pr_push_target` pushes to names it finds in `snap.remotes`
 
 ### Tag management
 

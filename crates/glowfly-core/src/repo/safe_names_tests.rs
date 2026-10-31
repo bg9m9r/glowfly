@@ -1,5 +1,6 @@
 //! A repository whose config and refs hold names git would read as options: the load leaves
-//! them out, and no command built from what it keeps has a name in option position.
+//! them out, and no command built from what it keeps has a name in option position; and git
+//! accepts the builders' `--` forms.
 
 use super::*;
 use crate::testkit::git_out;
@@ -171,4 +172,30 @@ fn every_builder_ends_options_before_a_supplied_name() {
         assert_not_in_option_position(&positional, &names);
         assert!(c.contains(&evil) || c.iter().any(|a| a.contains(e)), "{c:?} doesn't use the name");
     }
+}
+
+/// git itself takes the new forms: options first, then `--`, then the names.
+#[test]
+fn git_accepts_the_forms_with_dashes() {
+    use crate::{branch_ops, gitcli::run, remote_ops, tag_ops};
+    let work = scratch_repo("safe-names-real-git");
+    write(&work, "a.txt", "one\n");
+    git(&work, &["add", "."]);
+    git(&work, &["commit", "-q", "-m", "first"]);
+    git(&work, &["checkout", "-q", "-b", "side"]);
+    write(&work, "b.txt", "two\n");
+    git(&work, &["add", "."]);
+    git(&work, &["commit", "-q", "-m", "second"]);
+    git(&work, &["checkout", "-q", "main"]);
+    let side = git_out(&work, &["rev-parse", "side"]).trim().to_owned();
+    let mut cmds = vec![branch_ops::merge_cmd("side"), tag_ops::annotate_tag_cmd("n", &side, "m")];
+    cmds.extend(remote_ops::add_cmds("up", "https://example.invalid/r.git", Some("https://example.invalid/p.git"), false));
+    for c in &cmds {
+        let (ok, out) = run(&work, c);
+        assert!(ok, "{c:?}: {out}");
+    }
+    assert_eq!(git_out(&work, &["rev-parse", "HEAD"]).trim(), side, "the merge fast-forwarded");
+    assert_eq!(git_out(&work, &["rev-parse", "n^{commit}"]).trim(), side);
+    assert_eq!(git_out(&work, &["config", "remote.up.pushurl"]).trim(), "https://example.invalid/p.git");
+    let _ = std::fs::remove_dir_all(&work);
 }
