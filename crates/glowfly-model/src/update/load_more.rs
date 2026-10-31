@@ -81,7 +81,7 @@ pub(super) fn extended(st: &mut AppState, generation: u64, result: Result<Box<Hi
             if pending {
                 super::large_graph::relayout(st, fx);
             }
-            super::forge::resolve_pr_heads(st);
+            super::pr_heads::resolve_pr_heads(st);
             super::search::snapshot_changed(st, fx);
         }
     }
