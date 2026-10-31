@@ -28,7 +28,7 @@ pub fn deepen_cmd(remote: &str, how: Deepen) -> Vec<String> {
         Deepen::Full => "--unshallow".to_owned(),
         Deepen::By(n) => format!("--deepen={n}"),
     };
-    vec!["fetch".to_owned(), flag, remote.to_owned()]
+    vec!["fetch".to_owned(), flag, "--".to_owned(), remote.to_owned()]
 }
 
 #[cfg(test)]

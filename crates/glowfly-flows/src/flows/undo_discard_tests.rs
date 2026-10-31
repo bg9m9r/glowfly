@@ -123,7 +123,7 @@ fn edited_since_is_refused_and_clears() {
 fn a_discard_survives_a_job_that_cant_be_undone() {
     let (mut st, dir) = two_hunks("undo-discard-unrelated");
     discard_first_hunk(&mut st);
-    drive(&mut st, Msg::git("Rename branch", &["branch", "-m", "main", "trunk"]));
+    drive(&mut st, Msg::git("Rename branch", &["branch", "-m", "--", "main", "trunk"]));
     assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"), "the job couldn't be undone");
     assert!(matches!(st.session.undo.undo.last(), Some(Action::Discard { what: Discarded::Hunk, .. })), "{:?}", st.session.undo.undo);
 

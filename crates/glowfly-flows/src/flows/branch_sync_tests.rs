@@ -190,9 +190,9 @@ fn delete_remote_warns_of_tracking_branches_and_unsets_them() {
     assert_eq!(
         cmds,
         &[
-            args(&["push", "origin", "--delete", "feature"]),
-            args(&["branch", "--unset-upstream", "copy"]),
-            args(&["branch", "--unset-upstream", "feature"])
+            args(&["push", "--delete", "--", "origin", "feature"]),
+            args(&["branch", "--unset-upstream", "--", "copy"]),
+            args(&["branch", "--unset-upstream", "--", "feature"])
         ]
     );
     assert!(st.modal.is_none());

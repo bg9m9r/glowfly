@@ -137,6 +137,8 @@ fn a_checkout_of_another_branch_compares_its_hooks() {
     assert!(!check(&["merge", "--no-ff", "side"]));
     assert!(!check(&["cherry-pick", "side"]), "a pick replays it");
     assert!(!check(&["rebase", "main", "side"]), "the branch a rebase checks out first");
+    assert!(!check(&["merge", "--", "side"]), "after `--` a merge still names a revision");
+    assert!(!check(&["rebase", "--", "main", "side"]), "and so does a rebase");
     assert!(!check(&["checkout", "side", "--", ".githooks"]), "the folder from another tree");
     assert!(check(&["checkout", "side", "--", "a.txt"]), "a file away from the hooks");
     assert!(check(&["checkout", "main", "--"]), "the branch already trusted");

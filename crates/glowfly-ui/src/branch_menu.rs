@@ -35,6 +35,7 @@ use crate::ui::widgets::menu::{item, item_named, named, separator, submenu};
 use crate::ui::widgets::reason::ItemState;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
+use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
 use glowfly_core::custom_commands::Place;
 use glowfly_core::i18n::Lang;
 use glowfly_core::op_preview::PreviewOp;
@@ -179,7 +180,7 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
                     ui,
                     merge,
                     (t.tr("op_preview.menu.merge"), None),
-                    Msg::git("Merge", &["merge", name]),
+                    Msg::git_cmd("Merge", merge_cmd(name)),
                     merge_preview,
                 );
                 let rebase_preview = preview(PreviewOp::Rebase { onto: name.to_owned(), oid });
@@ -188,13 +189,13 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
                     ui,
                     rebase,
                     (t.tr("op_preview.menu.rebase"), None),
-                    Msg::git("Rebase", &["rebase", name]),
+                    Msg::git_cmd("Rebase", rebase_cmd(name)),
                     rebase_preview,
                 );
             }
             None => {
-                menu_row(msgs, ui, merge, Msg::git("Merge", &["merge", name]));
-                menu_row(msgs, ui, rebase, Msg::git("Rebase", &["rebase", name]));
+                menu_row(msgs, ui, merge, Msg::git_cmd("Merge", merge_cmd(name)));
+                menu_row(msgs, ui, rebase, Msg::git_cmd("Rebase", rebase_cmd(name)));
             }
         }
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch(name.to_owned())));

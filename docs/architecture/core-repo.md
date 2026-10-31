@@ -71,3 +71,4 @@ source file, update its line here.
 - Other worktrees' changes, counted within the load's limits or in the background: `worktree_counts.rs`.
 - Remotes and shallow-clone boundaries.
 - Where git pushes a branch when no remote is named (`branch.<name>.pushRemote`, then `remote.pushDefault`, through config includes): `push_config.rs`.
+- Which repository-supplied names a load keeps (`is_safe_ref_name`; remotes through `remote_ops::is_safe_remote_name`): a remote, upstream, branch or tag name git could read as an option is left out, and a checked-out one shows as a detached HEAD: `safe_names.rs`. Tests: `safe_names_tests.rs`.

@@ -85,7 +85,7 @@ pub(crate) fn tag_menu(ui: &mut egui::Ui, t: Lang, name: &str, snap: &Snapshot, 
     menu_item(msgs, ui, t.tr("refs.copy.name_item"), Msg::Copy(tag()));
     menu_item(msgs, ui, t.tr("refs.copy.link_item"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Tag(tag()))));
     separator(ui);
-    let delete = Msg::git("Delete tag", &["tag", "-d", name]);
+    let delete = Msg::git("Delete tag", &["tag", "-d", "--", name]);
     let body = t.trf("tag.delete.body", &[("tag", &name)]);
     let confirm = Msg::confirm_danger(t.tr("tag.delete.title"), body, t.tr("common.delete.button"), delete);
     menu_danger(msgs, ui, t.tr("tag.menu.delete_locally"), None, confirm);

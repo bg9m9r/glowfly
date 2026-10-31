@@ -244,7 +244,8 @@ pub fn init_created_new(output: &str) -> bool {
     output.lines().any(|l| l.contains("Initialized empty Git repository"))
 }
 
-/// The display key when the setting `name` = `value` makes git run a program.
+/// The display key when the setting `name` = `value` makes git run a program, or names a remote
+/// git could read as an option (the snapshot leaves that remote out).
 fn command_key(name: &str, value: &str) -> Option<String> {
     // An empty value resets a list (credential.helper) or turns the setting off.
     if value.is_empty() {
@@ -259,8 +260,9 @@ fn command_key(name: &str, value: &str) -> Option<String> {
         let shadows = ALIASED_COMMANDS.iter().any(|c| c.eq_ignore_ascii_case(cmd));
         return shadows.then(|| format!("alias.{}", cmd.to_ascii_lowercase()));
     }
-    if name == "protocol.allow" {
-        return value.eq_ignore_ascii_case("always").then(|| name.to_owned());
+    if name == "protocol.allow" || name == "remote.pushdefault" {
+        let on = if name == "protocol.allow" { value.eq_ignore_ascii_case("always") } else { value.starts_with('-') };
+        return on.then(|| name.to_owned());
     }
     if name == "core.fsmonitor" {
         // A boolean means git's built-in daemon; anything else is a hook's path.
@@ -280,9 +282,10 @@ fn command_key(name: &str, value: &str) -> Option<String> {
         "filter" => matches!(key, "clean" | "smudge" | "process"),
         // git difftool / mergetool start a tool's own command, or a built-in tool from `.path`.
         "difftool" | "mergetool" => matches!(key, "cmd" | "path"),
+        "remote" if sub.starts_with('-') => true,
         "remote" => matches!(key, "uploadpack" | "receivepack") || (matches!(key, "url" | "pushurl") && runs_transport(value)),
         // A branch's remote can be a URL.
-        "branch" => matches!(key, "remote" | "pushremote") && runs_transport(value),
+        "branch" => matches!(key, "remote" | "pushremote") && (runs_transport(value) || value.starts_with('-')),
         // Rewrites matching URLs to the subsection.
         "url" => matches!(key, "insteadof" | "pushinsteadof") && runs_transport(sub),
         // Lets ext:: run, including for submodule URLs from .gitmodules.

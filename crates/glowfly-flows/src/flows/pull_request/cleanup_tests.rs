@@ -57,11 +57,11 @@ fn merge_on_service(work: &Path, back_to: &str) {
     git(work, &["branch", "-q", "-D", "svc"]);
 }
 
-const PUSH_DELETE: &[&str] = &["push", "origin", "--delete", "feature"];
-const FETCH: &[&str] = &["fetch", "--prune", "origin"];
+const PUSH_DELETE: &[&str] = &["push", "--delete", "--", "origin", "feature"];
+const FETCH: &[&str] = &["fetch", "--prune", "--", "origin"];
 const CHECK: &[&str] = &["merge-base", "--is-ancestor", "refs/heads/feature", "refs/remotes/origin/main"];
 const TRACK: &[&str] = &["config", "branch.feature.merge", "refs/heads/main"];
-const DELETE: &[&str] = &["branch", "-d", "feature"];
+const DELETE: &[&str] = &["branch", "-d", "--", "feature"];
 
 #[test]
 fn the_form_sends_the_local_delete_only_when_it_can_happen() {

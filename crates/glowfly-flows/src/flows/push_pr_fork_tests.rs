@@ -224,7 +224,7 @@ fn picking_a_repository_reloads_the_targets() {
 fn push_to_the_from_remote_then_the_dialog_opens_from_it() {
     let (mut st, work, bare, ada) = with_fork("pr-fork-push");
     let fx = update(&mut st, msg(ForgeMsg::PushToForPr { branch: "topic".into(), remote: "ada".into(), target: None }), Instant::now());
-    assert_eq!(run_git(&fx), [&vec![args(&["push", "-u", "ada", "refs/heads/topic:refs/heads/topic"])]]);
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "-u", "--", "ada", "refs/heads/topic:refs/heads/topic"])]]);
     let then = PrStart { source: "topic".into(), target: None, remote: Some("ada".into()) };
     assert_eq!(st.job.as_ref().and_then(|j| j.then_pr.clone()), Some(then));
     st.job = None;
@@ -241,7 +241,7 @@ fn a_branch_tracking_the_fork_is_pushed_there() {
     commit_on(&work, "topic", "topic", "More topic");
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = update(&mut st, msg(ForgeMsg::PushAndStartPr { branch: "topic".into(), target: None }), Instant::now());
-    assert_eq!(run_git(&fx), [&vec![args(&["push", "ada", "refs/heads/topic:refs/heads/topic"])]]);
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "--", "ada", "refs/heads/topic:refs/heads/topic"])]]);
     cleanup(&work, &bare);
     let _ = std::fs::remove_dir_all(&ada);
 }
@@ -280,11 +280,11 @@ fn a_branch_started_from_upstream_is_pushed_to_the_code_hosts_remote() {
     git(&work, &["branch", "-q", "--set-upstream-to=main", "local"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = update(&mut st, msg(ForgeMsg::PushAndStartPr { branch: "started".into(), target: None }), Instant::now());
-    assert_eq!(run_git(&fx), [&vec![args(&["push", "origin", "refs/heads/started:refs/heads/started"])]], "not onto upstream's main");
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "--", "origin", "refs/heads/started:refs/heads/started"])]], "not onto upstream's main");
     st.job = None;
     // Tracking a local branch: as before, no -u even with upstream present.
     let fx = update(&mut st, msg(ForgeMsg::PushAndStartPr { branch: "local".into(), target: None }), Instant::now());
-    assert_eq!(run_git(&fx), [&vec![args(&["push", "origin", "refs/heads/local:refs/heads/local"])]]);
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "--", "origin", "refs/heads/local:refs/heads/local"])]]);
     st.job = None;
     // The dialog opens from origin with the branch's own name, into upstream.
     drive(&mut st, msg(ForgeMsg::CreatePrDialog { source: "started".into(), target: None }));
@@ -295,7 +295,7 @@ fn a_branch_started_from_upstream_is_pushed_to_the_code_hosts_remote() {
     assert_eq!(dialog(&st).map(|d| d.0), Some("started".into()));
     let fx =
         update(&mut st, msg(ForgeMsg::PushToForPr { branch: "started".into(), remote: "upstream".into(), target: None }), Instant::now());
-    assert_eq!(run_git(&fx), [&vec![args(&["push", "upstream", "refs/heads/started:refs/heads/started"])]]);
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "--", "upstream", "refs/heads/started:refs/heads/started"])]]);
     cleanup(&work, &bare);
     let _ = std::fs::remove_dir_all(&up);
 }

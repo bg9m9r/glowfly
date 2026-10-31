@@ -74,7 +74,10 @@ fn annotate_starts_one_job() {
     let fx = update(&mut st, annotate(&sha, " notes "), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, expect, record, .. }] => {
-            assert_eq!(cmds, &[vec!["tag".to_owned(), "-a".into(), "-f".into(), "v1".into(), sha.clone(), "-m".into(), "notes".into()]]);
+            assert_eq!(
+                cmds,
+                &[vec!["tag".to_owned(), "-a".into(), "-f".into(), "-m".into(), "notes".into(), "--".into(), "v1".into(), sha.clone()]]
+            );
             assert_eq!(expect, &Some(("refs/tags/v1".to_owned(), git2::Oid::from_str(&sha).unwrap())));
             assert!(record.is_none(), "nothing is recorded for undo");
         }

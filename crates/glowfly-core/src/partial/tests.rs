@@ -150,11 +150,12 @@ fn downloads_go_in_batches_with_the_noop_negotiator() {
         "-c",
         "fetch.negotiationAlgorithm=noop",
         "fetch",
-        "origin",
         "--no-tags",
         "--no-write-fetch-head",
         "--recurse-submodules=no",
         "--filter=blob:none",
+        "--",
+        "origin",
     ]);
     assert_eq!(cmds.iter().map(|c| c.len() - head.len()).collect::<Vec<_>>(), [200, 200, 50]);
     for c in &cmds {

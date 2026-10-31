@@ -112,7 +112,7 @@ fn fetch_full_history_job() {
     assert!(st.partial.sizing.is_none() && st.modal.is_none(), "a small history doesn't ask");
     match &fx[..] {
         [Effect::RunGit { cmds, prompts, .. }] => {
-            assert_eq!(cmds, &argv(&["fetch", "--unshallow", "origin"]));
+            assert_eq!(cmds, &argv(&["fetch", "--unshallow", "--", "origin"]));
             assert!(prompts, "a job the user started may ask for credentials");
         }
         other => panic!("expected one RunGit, got {} effects", other.len()),
@@ -141,14 +141,14 @@ fn deepen_reaches_the_remote_of_the_upstream() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(listed(&st, FULL), [Some("from up".to_owned())]);
     let fx = run(&mut st, deepen(Deepen::By(2)));
-    assert_eq!(git_cmds(&fx), argv(&["fetch", "--deepen=2", "up"]));
+    assert_eq!(git_cmds(&fx), argv(&["fetch", "--deepen=2", "--", "up"]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch 2 more commits"));
     st.job = None;
 
     git(&dest, &["branch", "--unset-upstream"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = run(&mut st, deepen(Deepen::By(2)));
-    assert_eq!(git_cmds(&fx), argv(&["fetch", "--deepen=2", "origin"]), "origin when no upstream says otherwise");
+    assert_eq!(git_cmds(&fx), argv(&["fetch", "--deepen=2", "--", "origin"]), "origin when no upstream says otherwise");
     cleanup(&[&src, &dest]);
 }
 

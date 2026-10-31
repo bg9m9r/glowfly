@@ -87,7 +87,7 @@ fn removes_the_worktree_and_both_branches() {
     assert!(!on_remote(&bare, "feature"), "deleted on origin");
     assert_eq!(last_toast(&st), (true, "Removed worktree feature and deleted branch feature and origin/feature".to_owned()));
     let log = &st.log.last().unwrap().text;
-    assert!(log.contains("merge-base --is-ancestor refs/heads/feature HEAD") && log.contains("push origin --delete feature"), "{log}");
+    assert!(log.contains("merge-base --is-ancestor refs/heads/feature HEAD") && log.contains("push --delete -- origin feature"), "{log}");
     assert_eq!(st.session.undo.undo.len(), 1, "the local delete is undoable");
     cleanup(&[&work, &bare]);
 }

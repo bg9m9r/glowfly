@@ -272,7 +272,7 @@ pub fn delete_branch_offer(t: Lang, v: &PrView, snap: &Snapshot, default_branch:
         "Delete remote branch",
         format!("Delete branch {source} on {remote}? This affects everyone using the remote."),
         "Delete",
-        Msg::git("Delete remote branch", &["push", remote, "--delete", source]),
+        Msg::git("Delete remote branch", &["push", "--delete", "--", remote, source]),
     );
     Some(super::gitflow_base::guard(t, snap, source, Deleting::Remote(remote), confirm))
 }

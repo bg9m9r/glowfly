@@ -131,7 +131,7 @@ fn a_branch_that_is_not_checked_out_moves_with_update_ref_even_on_a_dirty_tree()
 fn a_deleted_branch_is_made_again() {
     let (mut st, dir) = opened("journal-restore-deleted");
     let first = rev(&dir, "topic");
-    drive(&mut st, Msg::git("Delete branch", &["branch", "-D", "topic"]));
+    drive(&mut st, Msg::git("Delete branch", &["branch", "-D", "--", "topic"]));
     open_loaded(&mut st, &dir);
     let r = row(&st, &Subject::Branch("topic".into()), first);
     assert!(matches!(&r.note, Some(n) if matches!(&n.op, Op::DeleteBranch { .. })), "the delete's note row");

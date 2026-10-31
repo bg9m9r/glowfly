@@ -197,7 +197,7 @@ fn add_fork_runs_one_job() {
     run(&mut st, RemoteMsg::PickFork(0));
     picker(&mut st).fetch_after = false;
     let (_, cmds) = git_job(&run(&mut st, RemoteMsg::AddFork));
-    assert_eq!(cmds, v(&[&["remote", "add", "ada", "https://github.com/ada/app.git"]]));
+    assert_eq!(cmds, v(&[&["remote", "add", "--", "ada", "https://github.com/ada/app.git"]]));
     assert!(st.modal.is_none(), "closed once the job starts");
 
     // While that job runs, another add keeps the dialog open.
@@ -208,7 +208,7 @@ fn add_fork_runs_one_job() {
     assert!(st.modal.is_some() && last_log(&st).contains("still running"), "{}", last_log(&st));
     st.job = None;
     let (_, cmds) = git_job(&run(&mut st, RemoteMsg::AddFork));
-    assert_eq!(cmds, v(&[&["remote", "add", "ada", "https://github.com/ada/app.git"], &["fetch", "--prune", "ada"]]));
+    assert_eq!(cmds, v(&[&["remote", "add", "--", "ada", "https://github.com/ada/app.git"], &["fetch", "--prune", "--", "ada"]]));
     st.job = None;
 
     // A taken name, or a fork that is already a remote: logged, the dialog stays.
@@ -233,7 +233,7 @@ fn an_ssh_origin_adds_the_ssh_url() {
     loaded(&mut st, vec![fork("ada")]);
     run(&mut st, RemoteMsg::PickFork(0));
     let (_, cmds) = git_job(&run(&mut st, RemoteMsg::AddFork));
-    assert_eq!(cmds[0], args(&["remote", "add", "ada", "git@github.com:ada/app.git"]));
+    assert_eq!(cmds[0], args(&["remote", "add", "--", "ada", "git@github.com:ada/app.git"]));
     cleanup(&[&dir]);
 }
 
@@ -273,7 +273,7 @@ fn fork_dialog_steps() {
     assert!(matches!(&creator(&mut st).step, ForkStep::Mine { fork, .. } if fork.full_name == "ada/app"));
     assert_eq!(creator(&mut st).name, "ada");
     let (_, cmds) = git_job(&run(&mut st, RemoteMsg::AddMyFork));
-    assert_eq!(cmds, v(&[&["remote", "add", "ada", "https://github.com/ada/app.git"], &["fetch", "--prune", "ada"]]));
+    assert_eq!(cmds, v(&[&["remote", "add", "--", "ada", "https://github.com/ada/app.git"], &["fetch", "--prune", "--", "ada"]]));
     assert!(st.modal.is_none());
     st.job = None;
 
@@ -304,11 +304,11 @@ fn a_created_fork_is_added_and_fetched() {
     assert!(st.log.iter().any(|l| l.text == "Created the fork ada/app on GitHub (https://github.com/ada/app)."));
     let (cwd, cmds) = git_job(&fx);
     assert_eq!(cwd, w);
-    assert_eq!(cmds, v(&[&["remote", "add", "ada", "https://github.com/ada/app.git"], &["fetch", "--prune", "ada"]]));
+    assert_eq!(cmds, v(&[&["remote", "add", "--", "ada", "https://github.com/ada/app.git"], &["fetch", "--prune", "--", "ada"]]));
     st.job = None;
 
     let (_, cmds) = git_job(&created(&mut st, w.clone(), "ada", false));
-    assert_eq!(cmds, v(&[&["remote", "add", "ada", "https://github.com/ada/app.git"]]));
+    assert_eq!(cmds, v(&[&["remote", "add", "--", "ada", "https://github.com/ada/app.git"]]));
     assert_eq!(last_log(&st), "GitHub is still preparing the fork; fetch ada in a minute.");
     st.job = None;
 
@@ -342,7 +342,7 @@ fn a_fork_created_after_switching_tabs_is_added_to_its_repository() {
     assert_ne!(workdir(&st), w, "the other tab is active");
     let (cwd, cmds) = git_job(&created(&mut st, w.clone(), "ada", true));
     assert_eq!(cwd, w);
-    assert_eq!(cmds[0], args(&["remote", "add", "ada", "https://github.com/ada/app.git"]));
+    assert_eq!(cmds[0], args(&["remote", "add", "--", "ada", "https://github.com/ada/app.git"]));
     assert_eq!(st.job.as_ref().and_then(|j| j.workdir.clone()), Some(w));
     cleanup(&[&a, &b]);
 }

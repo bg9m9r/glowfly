@@ -35,7 +35,7 @@ fn history_rewrites_carry_a_note_and_everyday_commands_do_not() {
     assert_eq!(op_of(&mut st, &["reset", "--hard", &first]), Some(Op::Reset { mode: "hard".into(), to: first[..7].into() }));
     assert!(matches!(op_of(&mut st, &["reset", "--soft", &first]), Some(Op::Reset { .. })));
     assert_eq!(op_of(&mut st, &["commit", "--amend", "-m", "x"]), Some(Op::Amend));
-    assert_eq!(op_of(&mut st, &["branch", "-D", "topic"]), Some(Op::DeleteBranch { name: "topic".into() }));
+    assert_eq!(op_of(&mut st, &["branch", "-D", "--", "topic"]), Some(Op::DeleteBranch { name: "topic".into() }));
     for cmd in [&["commit", "-m", "x"][..], &["checkout", "topic"], &["fetch"], &["push"], &["stash", "push"], &["branch", "new"]] {
         assert_eq!(op_of(&mut st, cmd), None, "{cmd:?}");
     }

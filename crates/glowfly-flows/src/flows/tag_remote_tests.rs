@@ -93,7 +93,7 @@ fn push_all_commands() {
     let fx = update(&mut st, push("v1", &["origin", "backup"]), Instant::now());
     assert_eq!(
         job_cmds(&fx),
-        [cmd(&["push", "origin", "refs/tags/v1:refs/tags/v1"]), cmd(&["push", "backup", "refs/tags/v1:refs/tags/v1"])]
+        [cmd(&["push", "--", "origin", "refs/tags/v1:refs/tags/v1"]), cmd(&["push", "--", "backup", "refs/tags/v1:refs/tags/v1"])]
     );
     assert_eq!(label(&st), "Push tag v1 to origin and backup");
     assert!(st.tag_job.is_some());
@@ -101,7 +101,7 @@ fn push_all_commands() {
     // "Push to origin" goes through the same message with one remote.
     st.job = None;
     let fx = update(&mut st, push("v1", &["origin"]), Instant::now());
-    assert_eq!(job_cmds(&fx), [cmd(&["push", "origin", "refs/tags/v1:refs/tags/v1"])]);
+    assert_eq!(job_cmds(&fx), [cmd(&["push", "--", "origin", "refs/tags/v1:refs/tags/v1"])]);
     assert_eq!(label(&st), "Push tag v1 to origin");
     cleanup(&[&work, &origin, &backup]);
 }
@@ -110,17 +110,20 @@ fn push_all_commands() {
 fn delete_remote_commands() {
     let (mut st, work, origin, backup) = with_two("tag-delete-cmds");
     let fx = update(&mut st, delete("v1", &["origin"]), Instant::now());
-    assert_eq!(job_cmds(&fx), [cmd(&["push", "origin", "--delete", "refs/tags/v1"])]);
+    assert_eq!(job_cmds(&fx), [cmd(&["push", "--delete", "--", "origin", "refs/tags/v1"])]);
     assert_eq!(label(&st), "Delete tag v1 from origin");
 
     st.job = None;
     let fx = update(&mut st, delete("v1", &["origin", "backup"]), Instant::now());
-    assert_eq!(job_cmds(&fx), [cmd(&["push", "origin", "--delete", "refs/tags/v1"]), cmd(&["push", "backup", "--delete", "refs/tags/v1"])]);
+    assert_eq!(
+        job_cmds(&fx),
+        [cmd(&["push", "--delete", "--", "origin", "refs/tags/v1"]), cmd(&["push", "--delete", "--", "backup", "refs/tags/v1"])]
+    );
     assert_eq!(label(&st), "Delete tag v1 from origin and backup");
 
     st.job = None;
     let fx = update(&mut st, delete("v1", &["origin", "origin"]), Instant::now());
-    assert_eq!(job_cmds(&fx), [cmd(&["push", "origin", "--delete", "refs/tags/v1"])], "duplicates are dropped");
+    assert_eq!(job_cmds(&fx), [cmd(&["push", "--delete", "--", "origin", "refs/tags/v1"])], "duplicates are dropped");
     assert_eq!(label(&st), "Delete tag v1 from origin");
     cleanup(&[&work, &origin, &backup]);
 }
@@ -158,7 +161,7 @@ fn remote_tag_refusals() {
     // A delete doesn't need the local tag.
     st.job = None;
     let fx = update(&mut st, delete("v9", &["origin"]), Instant::now());
-    assert_eq!(job_cmds(&fx), [cmd(&["push", "origin", "--delete", "refs/tags/v9"])]);
+    assert_eq!(job_cmds(&fx), [cmd(&["push", "--delete", "--", "origin", "refs/tags/v9"])]);
     assert!(st.tag_job.is_some());
     cleanup(&[&work, &origin, &backup]);
 }
@@ -189,7 +192,7 @@ fn confirm_then_delete() {
     assert_eq!(body, "Delete tag v1 from origin? Your local tag stays, and anyone who already fetched it keeps their copy.");
     assert_eq!(button, "Delete from origin");
     let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
-    assert_eq!(job_cmds(&fx), [cmd(&["push", "origin", "--delete", "refs/tags/v1"])]);
+    assert_eq!(job_cmds(&fx), [cmd(&["push", "--delete", "--", "origin", "refs/tags/v1"])]);
     cleanup(&[&work, &origin, &backup]);
 }
 

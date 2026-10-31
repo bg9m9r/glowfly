@@ -43,8 +43,8 @@ fn merged_ok_with_delete_runs_push_delete_then_fetch() {
     loaded(&mut st, |_| {});
     let msg = reply_msg(&st, merged_ok(true));
     let fx = update(&mut st, Msg::PullRequest(msg), Instant::now());
-    let push = ["push", "origin", "--delete", "feature"].map(String::from).to_vec();
-    let fetch = ["fetch", "--prune", "origin"].map(String::from).to_vec();
+    let push = ["push", "--delete", "--", "origin", "feature"].map(String::from).to_vec();
+    let fetch = ["fetch", "--prune", "--", "origin"].map(String::from).to_vec();
     assert_eq!(git_jobs(&fx), [vec![push, fetch]]);
     assert_eq!((refreshes(&fx), loads(&fx)), (1, 1));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Delete feature and fetch origin"));
@@ -58,7 +58,7 @@ fn merged_ok_without_delete_only_fetches() {
     loaded(&mut st, |_| {});
     let msg = reply_msg(&st, merged_ok(false));
     let fx = update(&mut st, Msg::PullRequest(msg), Instant::now());
-    assert_eq!(git_jobs(&fx), [vec![["fetch", "--prune", "origin"].map(String::from).to_vec()]]);
+    assert_eq!(git_jobs(&fx), [vec![["fetch", "--prune", "--", "origin"].map(String::from).to_vec()]]);
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch origin"));
     done(st, dirs);
 }

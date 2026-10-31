@@ -30,7 +30,7 @@ fn plain(branch: &str) -> Msg {
         T.tr("branch.delete_both.title"),
         format!("Delete {branch} and origin/{branch}?"),
         T.tr("branch.delete_both.button"),
-        Msg::git("Delete branch", &["branch", "-d", branch]),
+        Msg::git("Delete branch", &["branch", "-d", "--", branch]),
     )
 }
 
@@ -112,7 +112,7 @@ fn delete_base_runs_or_cancels() {
     let delete = form.delete_msg().expect("nothing to count: main contains develop");
     let fx = run(&mut st, delete);
     assert!(st.modal.is_none());
-    assert_eq!(git_job(&fx), Some(vec![args(&["branch", "-d", "develop"])]));
+    assert_eq!(git_job(&fx), Some(vec![args(&["branch", "-d", "--", "develop"])]));
     assert_eq!(job_label(&st).as_deref(), Some("Delete branch"));
     finish(&mut st, fx);
     assert!(!git_run(&dir, &args(&["rev-parse", "--verify", "--quiet", "refs/heads/develop"])).0);
@@ -126,12 +126,12 @@ fn remote_and_pull_request_deletes_warn() {
         T.tr("remote_branch.delete.title"),
         T.trf("remote_branch.delete.body", &[("branch", &"develop"), ("remote", &"origin")]),
         T.tr("common.delete.button"),
-        Msg::git("Delete remote branch", &["push", "origin", "--delete", "develop"]),
+        Msg::git("Delete remote branch", &["push", "--delete", "--", "origin", "develop"]),
     );
     let m = parts(&guard(T, st.snap.as_ref().unwrap(), "develop", Deleting::Remote("origin"), confirm));
     assert_eq!((m.0.as_str(), m.2.as_str()), ("Delete development branch", "Delete anyway"));
     assert!(m.1.ends_with(&format!("\n\n{DEVELOP} {REMOTE}")), "{}", m.1);
-    assert_eq!(m.4, vec![args(&["push", "origin", "--delete", "develop"])]);
+    assert_eq!(m.4, vec![args(&["push", "--delete", "--", "origin", "develop"])]);
 
     // A merged pull request whose source is develop (not the default branch).
     let mut d = crate::state::pull_request_actions::tests::detail();

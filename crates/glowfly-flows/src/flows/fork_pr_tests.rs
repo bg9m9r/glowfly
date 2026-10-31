@@ -65,7 +65,7 @@ fn pushed_to_ada() -> PrStart {
     PrStart { source: "topic".into(), target: Some("main".into()), remote: Some("ada".into()) }
 }
 
-const PUSH: [&str; 4] = ["push", "-u", "ada", "refs/heads/topic:refs/heads/topic"];
+const PUSH: [&str; 5] = ["push", "-u", "--", "ada", "refs/heads/topic:refs/heads/topic"];
 
 #[test]
 fn push_to_your_fork_opens_the_fork_dialog_for_the_base() {
@@ -82,7 +82,8 @@ fn a_fork_the_user_has_is_added_and_pushed_in_one_job() {
     let (mut st, work, bare) = with_host("fork-pr-mine");
     open(&mut st, Some(fork("ada")));
     let cmds = git_job(&run(&mut st, RemoteMsg::AddMyFork));
-    let add = [args(&["remote", "add", "ada", "https://github.com/ada/r.git"]), args(&["fetch", "--prune", "ada"]), args(&PUSH)];
+    let add =
+        [args(&["remote", "add", "--", "ada", "https://github.com/ada/r.git"]), args(&["fetch", "--prune", "--", "ada"]), args(&PUSH)];
     assert_eq!(cmds, add);
     assert_eq!(then_pr(&st), Some(pushed_to_ada()));
     assert!(st.modal.is_none());
@@ -110,12 +111,13 @@ fn a_created_fork_is_added_and_pushed_once_ready() {
         run(st, RemoteMsg::ForkCreated { workdir: workdir.clone(), target: origin(), name: "ada".into(), result })
     };
     let cmds = git_job(&created(&mut st, true));
-    let add = [args(&["remote", "add", "ada", "https://github.com/ada/r.git"]), args(&["fetch", "--prune", "ada"]), args(&PUSH)];
+    let add =
+        [args(&["remote", "add", "--", "ada", "https://github.com/ada/r.git"]), args(&["fetch", "--prune", "--", "ada"]), args(&PUSH)];
     assert_eq!(cmds, add);
     assert_eq!(then_pr(&st), Some(pushed_to_ada()));
     st.job = None;
 
-    assert_eq!(git_job(&created(&mut st, false)), [args(&["remote", "add", "ada", "https://github.com/ada/r.git"])]);
+    assert_eq!(git_job(&created(&mut st, false)), [args(&["remote", "add", "--", "ada", "https://github.com/ada/r.git"])]);
     assert_eq!(then_pr(&st), None);
     assert!(st.log.iter().any(|l| l.text.contains("still preparing the fork; push topic to ada in a minute")));
     cleanup(&work, &bare);

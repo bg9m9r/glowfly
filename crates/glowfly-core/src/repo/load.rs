@@ -67,6 +67,12 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
             (None, branch, false)
         }
     };
+    // A checked-out branch whose name git could read as an option shows as a detached HEAD, so
+    // no command is built from its name.
+    let (head_branch, detached) = match head_branch {
+        Some(b) if !super::is_safe_ref_name(&b) => (None, true),
+        b => (b, detached),
+    };
 
     // The checked-out branch is always shown: a saved filter may still hide it after a checkout.
     let mut opts = opts.clone();
@@ -100,12 +106,17 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         } else {
             continue;
         };
-        if opts.hidden.iter().any(|h| h == full) {
+        // A name git could read as an option is left out.
+        if opts.hidden.iter().any(|h| h == full) || !super::is_safe_ref_name(short) {
             continue;
         }
         let Ok(commit) = r.peel_to_commit() else { continue };
-        let is_head = kind == RefKind::Local && Some(short) == head_branch.as_deref();
-        refs.entry(commit.id()).or_default().push(RefLabel { name: short.to_owned(), full: full.to_owned(), kind, is_head });
+        refs.entry(commit.id()).or_default().push(RefLabel {
+            name: short.to_owned(),
+            full: full.to_owned(),
+            kind,
+            is_head: kind == RefKind::Local && Some(short) == head_branch.as_deref(),
+        });
     }
     for labels in refs.values_mut() {
         labels.sort_by(|a, b| (!a.is_head, a.kind, &a.name).cmp(&(!b.is_head, b.kind, &b.name)));
@@ -116,6 +127,9 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     for b in repo.branches(Some(BranchType::Local))? {
         let (b, _) = b?;
         let name = b.name()?.unwrap_or_default().to_owned();
+        if !super::is_safe_ref_name(&name) {
+            continue;
+        }
         let oid = b.get().target();
         let full = format!("refs/heads/{name}");
         let tracking = match (repo.branch_upstream_remote(&full), repo.branch_upstream_merge(&full)) {
@@ -125,15 +139,17 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
             },
             _ => None,
         };
+        // An upstream whose remote or branch name git could misread is dropped as a whole.
+        let tracking = tracking.filter(|t| super::safe_names::upstream_remote_ok(&t.remote) && super::is_safe_ref_name(&t.merge));
         let (upstream, upstream_ref, ahead, behind) = match b.upstream() {
-            Ok(u) => {
+            Ok(u) if tracking.is_some() => {
                 let (a, bh) = match (oid, u.get().target()) {
                     (Some(x), Some(y)) => cache.ahead_behind(&repo, x, y),
                     _ => (0, 0),
                 };
                 (u.name().ok().flatten().map(str::to_owned), u.get().name().map(str::to_owned), a, bh)
             }
-            Err(_) => (None, None, 0, 0),
+            _ => (None, None, 0, 0),
         };
         // Only deleting a branch together with its remote branch asks, and the walk can be long.
         let remote_upstream = upstream_ref.as_deref().is_some_and(|r| r.starts_with("refs/remotes/"));
@@ -144,13 +160,14 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref, merged });
     }
 
-    let mut remotes: Vec<(String, Vec<(String, Oid)>)> = repo.remotes()?.iter().flatten().map(|r| (r.to_owned(), Vec::new())).collect();
+    let mut remotes: Vec<(String, Vec<(String, Oid)>)> =
+        repo.remotes()?.iter().flatten().filter(|r| super::safe_names::remote_ok(r)).map(|r| (r.to_owned(), Vec::new())).collect();
     for b in repo.branches(Some(BranchType::Remote))? {
         let (b, _) = b?;
         let (Some(name), Some(oid)) = (b.name()?.map(str::to_owned), b.get().target()) else {
             continue;
         };
-        if name.ends_with("/HEAD") {
+        if name.ends_with("/HEAD") || !super::is_safe_ref_name(&name) {
             continue;
         }
         // Remote names may contain '/', so pick the longest matching remote prefix.
@@ -167,7 +184,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let remote_urls = remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
 
     let (mut tags, mut other_tags, mut lightweight_tags) = (Vec::new(), Vec::new(), HashSet::new());
-    for t in repo.tag_names(None)?.iter().flatten() {
+    for t in repo.tag_names(None)?.iter().flatten().filter(|t| super::is_safe_ref_name(t)) {
         // A ref that names the commit itself has no tag object: a lightweight tag.
         let found = repo.revparse_single(&format!("refs/tags/{t}")).and_then(|o| {
             let light = o.kind() == Some(git2::ObjectType::Commit);
