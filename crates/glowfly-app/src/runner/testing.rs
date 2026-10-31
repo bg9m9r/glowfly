@@ -6,7 +6,7 @@
 //! touches the real Recycle Bin or Trash and never runs the test binary as git's editor.
 
 use super::execute::{Cx, Execute, execute_with};
-use super::seams::Seams;
+use super::seams::{Seams, SeamsKind};
 use super::{Runner, Waker};
 use crate::effect::{Checked, Effect, FileOp, TrustCheck};
 use crate::msg::Msg;
@@ -21,6 +21,7 @@ pub(crate) use super::highlight::{decorate, decorate_in_context};
 /// The tests' stand-ins. A path search's chunk may take far longer than the app's, so a busy
 /// machine (the whole suite running in parallel) cannot split a small search into several.
 pub const SEAMS: Seams = Seams {
+    kind: SeamsKind::StandIn,
     trashers: undo::Trashers { system: test_trash, home: test_trash, restore: test_untrash },
     sequence_editor: copy_editor,
     chunk: Duration::from_secs(30),

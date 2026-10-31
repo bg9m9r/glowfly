@@ -3,17 +3,12 @@
 
 use super::*;
 use crate::effect::DeleteMode;
-use glowfly_core::repo::{Trasher, Untrasher};
-use std::ptr::fn_addr_eq;
 
-/// Whether `s` is the tests' stand-ins: the folder trash for all three, and `cp` as the editor.
+/// Whether `s` is the tests' stand-ins (its kind, and `cp` as the editor). That the stand-in
+/// trash is what a delete reaches is checked by running one
+/// (`a_delete_run_by_a_test_goes_to_the_stand_in_bin`).
 fn stand_ins(s: &Seams) -> bool {
-    let (t, real) = (s.trashers, Seams::REAL.trashers);
-    let trash: [Trasher; 2] = [t.system, t.home];
-    let stand_in = trash.iter().all(|f| fn_addr_eq(*f, SEAMS.trashers.system as Trasher));
-    let real_trash = trash.iter().any(|f| fn_addr_eq(*f, real.system) || fn_addr_eq(*f, real.home));
-    let untrash = fn_addr_eq(t.restore, SEAMS.trashers.restore as Untrasher) && !fn_addr_eq(t.restore, real.restore);
-    stand_in && !real_trash && untrash && matches!((s.sequence_editor)(), SequenceEditor::Copy)
+    s.kind == SeamsKind::StandIn && matches!((s.sequence_editor)(), SequenceEditor::Copy)
 }
 
 #[test]

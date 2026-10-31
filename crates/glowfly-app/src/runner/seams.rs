@@ -10,8 +10,23 @@ use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
 use std::time::Duration;
 
+/// Which set a `Seams` is, so a check can tell them apart without comparing function
+/// addresses (Rust doesn't promise each function a unique one). Only the sandbox's checks
+/// read it (`testing_tests.rs`).
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SeamsKind {
+    /// The app's (`Seams::REAL`).
+    Real,
+    /// The tests' (`testing::SEAMS`).
+    StandIn,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Seams {
+    /// Which set this is.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub kind: SeamsKind,
     /// Where a delete moves a file, and how Undo takes it back out.
     pub trashers: undo::Trashers,
     /// The command git runs as `GIT_SEQUENCE_EDITOR`.
@@ -25,6 +40,7 @@ impl Seams {
     /// executable as the sequence editor, and chunks of about 150 ms so matches fill in from the
     /// top.
     pub const REAL: Seams = Seams {
+        kind: SeamsKind::Real,
         trashers: undo::Trashers { system: repo::os_trash, home: repo::home_trash, restore: repo::os_untrash },
         sequence_editor: helper_editor,
         chunk: Duration::from_millis(150),
