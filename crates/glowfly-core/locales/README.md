@@ -39,7 +39,8 @@ One flat JSON object per language, keys sorted:
 
 Add it to `en.json` and to every other language. `cargo test -p glowfly-core i18n` lists keys a
 language lacks, keys English lacks and changed placeholders; `cargo test -p glowfly --test
-i18n_keys` lists keys the code uses that `en.json` lacks, and English keys nothing uses.
+source_checks i18n_keys` lists keys the code uses that `en.json` lacks, and English keys nothing
+uses.
 
 ## Adding a language
 

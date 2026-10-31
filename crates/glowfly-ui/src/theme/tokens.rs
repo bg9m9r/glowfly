@@ -4,8 +4,8 @@
 //! from the palette (surfaces, layers, tones) are in `surfaces.rs`.
 //!
 //! Views name a token (`radius::MD`, `motion::STANDARD`) instead of a number, and
-//! `tests/tokens.rs` checks that no view file puts a literal radius, a shadow or a hand-made
-//! accent focus ring in its place.
+//! `tests/view_checks/tokens.rs` checks that no view file puts a literal radius, a shadow or a
+//! hand-made accent focus ring in its place.
 
 use super::color::{self, Palette};
 use eframe::egui::{Color32, Painter, Rect, Shadow, Stroke, StrokeKind};

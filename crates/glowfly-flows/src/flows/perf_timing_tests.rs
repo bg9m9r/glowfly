@@ -1,7 +1,7 @@
 //! Timings of the whole-history work `update` does on the UI thread (search, clean <-> dirty
 //! relayout, branch hover, swapping snapshots), against a large repository named by
 //! `GLOWFLY_PERF_REPO`. Ignored; run by hand in release:
-//! `GLOWFLY_PERF_REPO=<repo> cargo test -p glowfly --release perf_timing -- --ignored --nocapture`.
+//! `GLOWFLY_PERF_REPO=<repo> cargo test -p glowfly-flows --release perf_timing -- --ignored --nocapture`.
 
 use super::tests::state;
 use crate::msg::{GraphMsg, Msg, SearchMsg};

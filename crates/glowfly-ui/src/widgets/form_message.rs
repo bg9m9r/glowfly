@@ -57,7 +57,7 @@ pub fn field(ui: &mut Ui, touched: &Touched, field: &str, msg: Option<Message>) 
 
 /// `msg` under a field, at once: for the answer to a try (a wrong password, a failed save or
 /// load), never for a problem with a value being typed, which goes through `field`. Dialogs
-/// other than the credential prompt don't call it (`tests/message_styles.rs`).
+/// other than the credential prompt don't call it (`tests/view_checks/message_styles.rs`).
 pub fn line(ui: &mut Ui, msg: Message) {
     ui.add_space(2.0 - ui.spacing().item_spacing.y);
     let row_h = ui.fonts(|f| f.row_height(&FontId::proportional(FIELD_FONT)));

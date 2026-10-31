@@ -1,8 +1,8 @@
 //! The one menu style, and the only ways to open a menu: every context menu, dropdown,
 //! submenu, menu-bar menu and split-button menu calls `style` first, through `context_menu`,
 //! `submenu`, `custom_button`, `below`, `popup_below` / `popup_above_or_below` here,
-//! `row_menu::RowMenuExt::row_menu` or `menu_anchor::menu_below` (`tests/menus.rs` checks;
-//! `popover_below` is the popup for contents that are not menu rows). egui gives its own
+//! `row_menu::RowMenuExt::row_menu` or `menu_anchor::menu_below` (`tests/view_checks/menus.rs`
+//! checks; `popover_below` is the popup for contents that are not menu rows). egui gives its own
 //! menus 2 px of button padding and nothing to popups, so the style replaces egui's after it
 //! is set: rows `row_h` tall on a `row_h + row_gap` pitch, text `pad_x` inside a transparent
 //! pill with `radius::SM` corners, between `min_w` and `max_w` wide (`theme::spacing::menu`,

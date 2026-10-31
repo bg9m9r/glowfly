@@ -2,8 +2,8 @@
 //! ring, and checkboxes and radio buttons that are always a visible box or circle.
 //!
 //! They size, sense and describe themselves (accesskit role, label, toggled state) exactly as
-//! egui's own widgets do, so swapping one in moves nothing. `tests/controls.rs` checks that
-//! views use these instead of egui's.
+//! egui's own widgets do, so swapping one in moves nothing. `tests/view_checks/controls.rs`
+//! checks that views use these instead of egui's.
 
 use super::color;
 use super::tokens::{self, radius};

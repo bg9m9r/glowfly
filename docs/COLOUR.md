@@ -344,7 +344,7 @@ outside the families and unchanged by the brand colour.
     is the one exception: at 7:1 on white any amber is chocolate. Neutral inks (body text,
     comments, the terminal's black, white and foreground) are judged as greys, not hues.
   - `snapshot_tests/snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
-    (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly colour_sheet -- --ignored`).
+    (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly-ui --lib colour_sheet -- --ignored`).
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
   lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7% and text fields
   4%) go through `contrast::tint`. It is a plain mix, except on a dark palette whose surface is

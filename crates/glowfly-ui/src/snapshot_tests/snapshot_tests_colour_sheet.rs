@@ -2,7 +2,7 @@
 //! folder for judging its colours by eye (docs/COLOUR.md, "No brown"): the main window over the
 //! pinned-branch graph (`<id>_main.png`) and a strip of its ref chips on the background, a
 //! selected and a hovered row, then its bands, tints and washes (`<id>_chips.png`).
-//! `GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly colour_sheet -- --ignored`.
+//! `GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly-ui --lib colour_sheet -- --ignored`.
 
 use super::with_bands;
 use crate::state::Selection;
