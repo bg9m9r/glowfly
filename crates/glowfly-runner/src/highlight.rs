@@ -73,8 +73,9 @@ pub(super) fn load_job(
 
 /// Syntax spans and word marks for a loaded diff and its whole file, reusing `previous`'s spans,
 /// with each hunk highlighted on its own (`decorate_in_context` without old text).
-#[cfg(test)]
-pub(crate) fn decorate(path: &str, d: &mut FileDiff, previous: Option<&FileDiff>) {
+#[cfg(any(test, feature = "test-support"))]
+#[doc(hidden)]
+pub fn decorate(path: &str, d: &mut FileDiff, previous: Option<&FileDiff>) {
     decorate_in_context(path, None, d, previous, None);
 }
 
@@ -82,13 +83,7 @@ pub(crate) fn decorate(path: &str, d: &mut FileDiff, previous: Option<&FileDiff>
 /// `language` is the path's `linguist-language` gitattribute (an override of the detected
 /// language for both). With `old` (the old file's text), the hunks are highlighted in context;
 /// the whole file needs none. Large diffs come back with a pending highlight, for `finish_job`.
-pub(crate) fn decorate_in_context(
-    path: &str,
-    language: Option<&str>,
-    d: &mut FileDiff,
-    previous: Option<&FileDiff>,
-    old: Option<&Arc<OldText>>,
-) {
+pub fn decorate_in_context(path: &str, language: Option<&str>, d: &mut FileDiff, previous: Option<&FileDiff>, old: Option<&Arc<OldText>>) {
     let hint = SyntaxHint { path, language };
     d.highlight = highlight::highlight_in_context(hint, d, previous, old);
     d.intraline = intraline::intraline(d);

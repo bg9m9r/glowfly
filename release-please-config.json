@@ -25,7 +25,8 @@
         { "type": "toml", "path": "Cargo.toml", "jsonpath": "$.workspace.package.version" },
         { "type": "toml", "path": "Cargo.lock", "jsonpath": "$.package[?(@.name.value=='glowfly')].version" },
         { "type": "toml", "path": "Cargo.lock", "jsonpath": "$.package[?(@.name.value=='glowfly-core')].version" },
-        { "type": "toml", "path": "Cargo.lock", "jsonpath": "$.package[?(@.name.value=='glowfly-model')].version" }
+        { "type": "toml", "path": "Cargo.lock", "jsonpath": "$.package[?(@.name.value=='glowfly-model')].version" },
+        { "type": "toml", "path": "Cargo.lock", "jsonpath": "$.package[?(@.name.value=='glowfly-runner')].version" }
       ]
     }
   }

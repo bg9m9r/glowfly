@@ -4,10 +4,10 @@
 
 use super::execute::{Cx, Execute};
 use crate::effect::LoadKind;
-use crate::git_env::{GitEnvEffect, GitEnvMsg};
 use crate::msg::Msg;
 use glowfly_core::git_program;
 use glowfly_core::git_version::{self, GitInfo};
+use glowfly_model::git_env::{GitEnvEffect, GitEnvMsg};
 use std::path::PathBuf;
 
 pub(super) fn run(effect: GitEnvEffect) -> Msg {

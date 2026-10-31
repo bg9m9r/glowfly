@@ -17,6 +17,7 @@ path = "src/main.rs"
 [dependencies]
 glowfly-core.workspace = true
 glowfly-model.workspace = true
+glowfly-runner.workspace = true
 chrono.workspace = true
 git2.workspace = true
 serde_json.workspace = true
@@ -26,10 +27,6 @@ sys-locale.workspace = true
 ab_glyph = "0.2.32"
 eframe = "0.31"
 memmap2 = "0.9.11"
-notify = "8.2"
-notify-rust = "4"
-open = "5"
-rfd = "0.15"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "chrono"] }
 
@@ -61,6 +58,8 @@ raw-window-handle = "0.6"
 glowfly-core = { workspace = true, features = ["testkit"] }
 # The model's pure test helpers (glowfly-model's src/testing.rs).
 glowfly-model = { workspace = true, features = ["test-support"] }
+# The runner's test entry points (glowfly-runner's src/testing.rs).
+glowfly-runner = { workspace = true, features = ["test-support"] }
 egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }
 # One wgpu device for all view tests (ui/snapshot_check.rs); the version kittest renders with.
 egui-wgpu = { version = "0.31", default-features = false }

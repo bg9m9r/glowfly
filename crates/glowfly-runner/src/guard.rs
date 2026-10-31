@@ -17,9 +17,9 @@ use crate::msg::StageMsg;
 use crate::msg::UpdateMsg;
 use crate::msg::{ContentFailure, PartialMsg};
 use crate::remote::{RemoteEffect, RemoteMsg};
-use crate::ssh::SshFailure;
-use crate::tools::ToolEffect;
 use glowfly_core::forge::{Account, Target};
+use glowfly_model::ssh::SshFailure;
+use glowfly_model::tools::ToolEffect;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 

@@ -69,18 +69,18 @@ fn same_item(a: &StartArg, b: &StartArg) -> bool {
 
 /// A link the OS handed over.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-pub(crate) fn link_item(text: String) -> StartArg {
+pub fn link_item(text: String) -> StartArg {
     StartArg::Link(text)
 }
 
 /// A folder (or file) the OS handed over as a `file:` URL; None for any other URL.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-pub(crate) fn folder_item(url: &str) -> Option<StartArg> {
+pub fn folder_item(url: &str) -> Option<StartArg> {
     glowfly_core::paths::from_file_url(url).map(StartArg::Path)
 }
 
 /// The Apple event codes Glowfly.app answers: four characters read as a big-endian number.
-pub(crate) mod codes {
+pub mod codes {
     #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
     pub const fn four_cc(c: &[u8; 4]) -> u32 {
@@ -118,7 +118,7 @@ pub fn attach(sink: Sink) {
 
 /// An item the OS handed over, from its event handler.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
-pub(crate) fn received(item: StartArg) {
+pub fn received(item: StartArg) {
     match &item {
         StartArg::Link(text) => tracing::debug!("the OS handed over the link {}", crate::state::deep_link::shown_link(text)),
         StartArg::Path(p) => tracing::debug!("the OS handed over {}", glowfly_core::native_path::shown(p)),

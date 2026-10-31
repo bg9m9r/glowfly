@@ -7,12 +7,12 @@
 use super::Waker;
 use super::execute::{Cx, Execute};
 use crate::effect::Effect;
-use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
 use crate::msg::Msg;
 use crate::state::LOG_LIMIT;
 use glowfly_core::gitcli::{self, GitRun};
 use glowfly_core::logs::{self, ActivityEntry, ActivityFile, LogTail, RotatingFile};
 use glowfly_core::native_path;
+use glowfly_model::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};

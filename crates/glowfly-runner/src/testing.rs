@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
-pub(crate) use super::highlight::{decorate, decorate_in_context};
+pub use super::highlight::{decorate, decorate_in_context};
 
 /// The tests' stand-ins. A path search's chunk may take far longer than the app's, so a busy
 /// machine (the whole suite running in parallel) cannot split a small search into several.

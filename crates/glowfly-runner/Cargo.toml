@@ -1,0 +1,36 @@
+[package]
+name = "glowfly-runner"
+description = "Glowfly's runner: carries out the model's effects on worker threads (no UI)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+doctest = false
+
+[features]
+# The test entry points in src/testing.rs (one effect run to completion, the sandboxed runner,
+# all with the stand-in seams) for the other crates' tests; their dev-dependencies turn this on.
+# Only adds items.
+test-support = ["glowfly-model/test-support"]
+
+[dependencies]
+glowfly-core.workspace = true
+glowfly-model.workspace = true
+chrono.workspace = true
+git2.workspace = true
+serde_json.workspace = true
+notify = "8.2"
+notify-rust = "4"
+open = "5"
+rfd = "0.15"
+tracing = "0.1.44"
+
+[dev-dependencies]
+glowfly-core = { workspace = true, features = ["testkit"] }
+glowfly-model = { workspace = true, features = ["test-support"] }

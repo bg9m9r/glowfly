@@ -1,8 +1,8 @@
 //! Predicting merge conflicts with git merge-tree (Effect::CheckConflicts).
 
 use super::execute::{Cx, Execute};
-use crate::conflict_check::{CheckJob, ConflictCheckMsg};
 use crate::msg::Msg;
+use glowfly_model::conflict_check::{CheckJob, ConflictCheckMsg};
 
 pub(super) fn run(job: CheckJob) -> Msg {
     let CheckJob { workdir, request, manual, generation } = job;

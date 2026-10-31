@@ -15,11 +15,9 @@ mod glyph_check;
 mod journey;
 mod logging;
 mod platform;
-mod runner;
 mod shell;
 mod smoke_probe;
 mod ui;
-mod watcher;
 
 // The model's modules, under the names they had when they lived here, so `crate::state::…` and
 // the like keep resolving.
@@ -29,6 +27,8 @@ pub(crate) use glowfly_model::{
     conflict_check, custom_commands, deep_link, effect, git_env, gitflow, journal, keymap, lfs, logs, msg, onboarding, patch, profile,
     pull_request, range_diff, remote, ssh, start_arg, state, submodule, tag, terminal, themes, tools, update, worktree,
 };
+// The runner, under the name its module had here.
+pub(crate) use glowfly_runner as runner;
 
 use eframe::egui;
 use glowfly_core::askpass::{self, HelperError, Outcome};

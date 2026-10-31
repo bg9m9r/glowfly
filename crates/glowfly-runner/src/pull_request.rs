@@ -10,9 +10,9 @@
 use super::execute::{Cx, Execute};
 use crate::effect::ForgeError;
 use crate::msg::Msg;
-use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
 use glowfly_core::forge::{self, Auth, CheckQuery, ReviewRequest};
 use glowfly_core::repo;
+use glowfly_model::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
 
 pub(super) fn run(e: PrEffect) -> Msg {
     match e {

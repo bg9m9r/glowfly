@@ -2,7 +2,7 @@
 
 use super::execute::{Cx, Execute};
 use crate::msg::Msg;
-use crate::range_diff::{RangeDiffJob, RangeDiffMsg};
+use glowfly_model::range_diff::{RangeDiffJob, RangeDiffMsg};
 
 pub(super) fn run(job: RangeDiffJob) -> Msg {
     let r = glowfly_core::range_diff::compare(&job.workdir, &job.ends, job.mainline);

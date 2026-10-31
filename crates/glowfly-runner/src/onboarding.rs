@@ -2,8 +2,8 @@
 
 use super::execute::{Cx, Execute};
 use crate::msg::Msg;
-use crate::onboarding::{OnboardingEffect, OnboardingMsg};
 use glowfly_core::identity;
+use glowfly_model::onboarding::{OnboardingEffect, OnboardingMsg};
 
 pub(super) fn run(effect: OnboardingEffect) -> Msg {
     Msg::Onboarding(match effect {

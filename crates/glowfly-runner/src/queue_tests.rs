@@ -138,7 +138,7 @@ fn which_effects_queue() {
     assert_eq!(Effect::holds(&sync(SyncOp::Fetch { prune: true })), Some(w.as_path()));
     assert_eq!(Effect::holds(&git(&[&["pull"]])), Some(w.as_path()));
     // A custom shell command may change anything; reading the commands files changes nothing.
-    use crate::custom_commands::{CustomCommandEffect, ShellRun};
+    use glowfly_model::custom_commands::{CustomCommandEffect, ShellRun};
     let shell = Effect::CustomCommand(CustomCommandEffect::RunShell(ShellRun { cwd: w.clone(), script: "make".into() }));
     assert_eq!(Effect::queue(&shell), Some(w.as_path()));
     assert_eq!(Effect::queue(&Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: w.clone() })), None);
@@ -162,9 +162,9 @@ fn which_effects_queue() {
     // Reading a patch file and copying a commit's patch only read too.
     assert_eq!(Effect::queue(&Effect::Patch(crate::patch::PatchEffect::Inspect { workdir: w.clone(), path: w.join("x.patch") })), None);
     assert_eq!(Effect::queue(&Effect::Patch(crate::patch::PatchEffect::Copy { workdir: w.clone(), oids: Vec::new() })), None);
-    assert_eq!(Effect::queue(&Effect::Tool(crate::tools::ToolEffect::PickProgram(crate::tools::ToolKind::Editor))), None);
+    assert_eq!(Effect::queue(&Effect::Tool(glowfly_model::tools::ToolEffect::PickProgram(glowfly_model::tools::ToolKind::Editor))), None);
     // A conflict check writes only unreferenced objects.
-    let request = crate::conflict_check::CheckRequest {
+    let request = glowfly_model::conflict_check::CheckRequest {
         branch: "feature".into(),
         ours: git2::Oid::zero(),
         target: glowfly_core::conflict_check::MergeTarget {
@@ -173,7 +173,7 @@ fn which_effects_queue() {
             kind: glowfly_core::conflict_check::TargetKind::DefaultBranch,
         },
     };
-    let job = crate::conflict_check::CheckJob { workdir: w.clone(), request, manual: false, generation: 0 };
+    let job = glowfly_model::conflict_check::CheckJob { workdir: w.clone(), request, manual: false, generation: 0 };
     assert_eq!(Effect::queue(&Effect::CheckConflicts(job)), None);
     // Switching profiles writes the global git config only.
     let identity = glowfly_core::identity::Identity::default();
@@ -192,7 +192,7 @@ fn which_effects_queue() {
         assert_eq!(Effect::queue(&Effect::Profile(e)), None);
     }
     // So does the welcome's identity step.
-    let write = crate::onboarding::OnboardingEffect::WriteIdentity { cwd: w.clone(), identity: Default::default() };
+    let write = glowfly_model::onboarding::OnboardingEffect::WriteIdentity { cwd: w.clone(), identity: Default::default() };
     assert_eq!(Effect::queue(&Effect::Onboarding(write)), None);
     // Saving a typed sign-in talks to git's credential helper only.
     let secret = glowfly_core::askpass::Secret::new("hunter2");

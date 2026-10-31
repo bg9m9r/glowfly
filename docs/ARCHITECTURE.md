@@ -17,9 +17,10 @@ processes, the environment, git).
 
 ## Layout
 
-Three crates. `glowfly-core` is a library with no egui and no app state. `glowfly-model` is a
+Four crates. `glowfly-core` is a library with no egui and no app state. `glowfly-model` is a
 library with the app's state, messages, effects and `update`, and no egui. `glowfly-app` is the
 binary (package `glowfly`).
+`glowfly-runner` is a library that carries out the model's effects on worker threads, with no egui.
 
 ### Per-area files (`docs/architecture/`)
 

@@ -9,6 +9,9 @@ source file, update its line here. Features that span every layer are in
 same names, so `crate::state::…` reads the same in both. The rest is glowfly-app's
 (`crates/glowfly-app/src/`).
 
+`runner/` with `watcher.rs` and `watcher/` is glowfly-runner's: `runner/x.rs` below is
+`crates/glowfly-runner/src/x.rs`, and `runner/mod.rs` is its `lib.rs`; the app names it `crate::runner`.
+
 ## Entry points
 
 - `main.rs`: starts the window, or hands a `glowfly://` argument to the window already running; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`GLOWFLY_GPG_WRAPPER`) and askpass helper, and has two command-line modes for scripts (`cli_update.rs`).
@@ -146,7 +149,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
 - `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate and seams among them), with the flat variants' arms.
 - `seams.rs`: `Seams`, what the work reaches outside the repositories with: the trash, the sequence editor and the path search's chunk time; `Seams::REAL` in the app, the stand-ins of `testing::SEAMS` in tests.
-- `testing.rs` (tests only): the entry points tests run the runner through (`execute`, `execute_checked`, `sandboxed`, the stand-in trash `test_bin`, the diff decoration), always with the stand-ins; `testing_tests.rs` checks they never reach the real trash or editor.
+- `testing.rs` (tests only, and other crates' tests through glowfly-runner's `test-support` feature): the entry points tests run the runner through (`execute`, `execute_checked`, `sandboxed`, the stand-in trash `test_bin`, the diff decoration), always with the stand-ins; `testing_tests.rs` checks they never reach the real trash or editor.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
 - `branches.rs`: the `Execute` impl of `BranchEffect` (the count, and each push of Push to all remotes in turn).
 - `lock.rs`: the `Execute` impl of `LockEffect` (`glowfly_core::lock_file`).
@@ -164,7 +167,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - Effects that change a repository, and fetches, keep it out of the repository pool while they run (`Effect::holds`, `repo_pool::hold`); a closed tab lets go of its handles (`BackgroundEffect::Forget`).
 - A line written to a built-in terminal holds its repository out of the pool while the shell runs a program, read from its activity probe (`runner/terminal_hold.rs`); what was typed is never read.
 - `sandbox.rs`: keeps the journeys' runner (`testing::sandboxed`; none in the app) inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
-- `watcher.rs` (in `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`); `watcher/includes.rs` watches the folders of the config files the repository's config includes (`watcher/include_tests.rs`); a burst that touched the config also sends `WatchMsg::ConfigChanged` (`watcher/config_tests.rs`); `watcher/probe.rs` checks after starting that events arrive at all and sends `WatchMsg::Probed` (`watcher/probe_tests.rs`).
+- `watcher.rs` (glowfly-runner's `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`); `watcher/includes.rs` watches the folders of the config files the repository's config includes (`watcher/include_tests.rs`); a burst that touched the config also sends `WatchMsg::ConfigChanged` (`watcher/config_tests.rs`); `watcher/probe.rs` checks after starting that events arrive at all and sends `WatchMsg::Probed` (`watcher/probe_tests.rs`).
 
 ## `runner/platform.rs` and `platform/`: OS integration
 

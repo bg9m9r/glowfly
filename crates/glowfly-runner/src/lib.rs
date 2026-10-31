@@ -1,5 +1,5 @@
-//! Executes `Effect`s on worker threads and reports results as `Msg`s. This is the only place
-//! the app starts background work.
+//! Glowfly's runner: executes `Effect`s on worker threads and reports results as `Msg`s. This is
+//! the only place the app starts background work. No window: the shell hands it a `Waker`.
 //!
 //! `Runner::run` starts one named thread per effect. A few effects get special handling: the
 //! file watcher (`Effect::Watch`), credential-prompt answers, the terminal's shell sessions and
@@ -10,6 +10,14 @@
 //! folder's file for that area (`worktrees`, `rebase`, `sparse`, …), as does work longer than a
 //! line for the flat variants (`files`, `highlight`, …); the git, file and network code itself
 //! lives in `glowfly-core`.
+
+// `crate::runner::…` names this crate, as it did the app's `runner` module.
+use crate as runner;
+// The model's modules this crate names by their old `crate::…` paths. (Those that share a name
+// with one of the runner's own modules are named `glowfly_model::…`.)
+#[cfg(test)]
+use glowfly_model::update;
+use glowfly_model::{effect, msg, patch, profile, remote, start_arg, state, submodule, worktree};
 
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -67,7 +75,7 @@ mod partial;
 mod patches;
 mod path_search;
 mod pick;
-pub(crate) mod platform;
+pub mod platform;
 mod profiles;
 mod pull_request;
 mod queue;
@@ -91,7 +99,8 @@ mod submodules;
 mod terminal;
 mod terminal_hold;
 mod terminal_out;
-#[cfg(test)]
+#[cfg(any(test, feature = "test-support"))]
+#[doc(hidden)]
 pub mod testing;
 mod themes;
 mod tools;
@@ -102,6 +111,7 @@ mod undo_run;
 mod undo_stash;
 mod update_restart;
 mod updates;
+pub mod watcher;
 mod worktrees;
 
 use execute::{Cx, err, execute_with};
@@ -120,7 +130,8 @@ impl Waker {
     }
 
     /// A waker that does nothing (tests).
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-support"))]
+    #[doc(hidden)]
     pub fn none() -> Self {
         Self::new(|| {})
     }

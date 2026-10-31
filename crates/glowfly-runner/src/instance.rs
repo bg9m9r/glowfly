@@ -4,9 +4,9 @@
 //! reported as their command-line form would be.
 
 use super::Runner;
-use crate::deep_link::DeepLinkMsg;
 use crate::msg::Msg;
 use glowfly_core::instance::{self, Handed};
+use glowfly_model::deep_link::DeepLinkMsg;
 
 impl Runner {
     /// Listens for links and folders (once no other window does); on failure each opens its own

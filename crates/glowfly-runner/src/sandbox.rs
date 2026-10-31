@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn custom_commands_are_dropped() {
-        use crate::custom_commands::{CustomCommandEffect, ShellRun};
+        use glowfly_model::custom_commands::{CustomCommandEffect, ShellRun};
         let dir = folder("custom");
         let (tx, _rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());

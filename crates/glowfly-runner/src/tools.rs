@@ -5,9 +5,9 @@
 
 use super::execute::{Cx, Execute};
 use crate::msg::Msg;
-use crate::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 use glowfly_core::external_tools;
 use glowfly_core::external_tools::git_config;
+use glowfly_model::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 
 mod compare;
 #[cfg(test)]

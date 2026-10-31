@@ -4,14 +4,14 @@
 
 use super::execute::{Cx, Execute};
 use crate::msg::Msg;
-use crate::themes::{ThemeEffect, ThemeMsg};
 use glowfly_core::settings::{terminal_schemes, themes};
+use glowfly_model::themes::{ThemeEffect, ThemeMsg};
 
 pub(super) fn run(effect: ThemeEffect) -> Option<Msg> {
     match effect {
         ThemeEffect::Load => {
             let cat = themes::load_all();
-            crate::themes::trace_problems(&cat);
+            glowfly_model::themes::trace_problems(&cat);
             Some(Msg::Theme(ThemeMsg::Loaded(cat)))
         }
         ThemeEffect::OpenFolder => {

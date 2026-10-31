@@ -2,11 +2,11 @@
 //! folders for the linked repository, and the scheme registration.
 
 use super::execute::{Cx, Execute};
-use crate::deep_link::{DeepLinkEffect, DeepLinkMsg};
 use crate::msg::Msg;
 use crate::state::deep_link::NOTHING_TO_LINK;
 use glowfly_core::link::{Link, find};
 use glowfly_core::url_scheme;
+use glowfly_model::deep_link::{DeepLinkEffect, DeepLinkMsg};
 use std::path::PathBuf;
 
 pub(super) fn run(e: DeepLinkEffect) -> Msg {
@@ -79,8 +79,8 @@ fn scheme_step(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::deep_link::FindOrigin;
     use glowfly_core::link;
+    use glowfly_model::deep_link::FindOrigin;
 
     #[test]
     fn flatpak_never_registers_links() {

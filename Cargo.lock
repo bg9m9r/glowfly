@@ -1668,16 +1668,13 @@ dependencies = [
  "git2",
  "glowfly-core",
  "glowfly-model",
+ "glowfly-runner",
  "image",
  "memmap2",
- "notify",
- "notify-rust",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
- "open",
  "raw-window-handle",
- "rfd",
  "serde_json",
  "smithay-clipboard",
  "sys-locale",
@@ -1735,6 +1732,22 @@ dependencies = [
  "chrono",
  "git2",
  "glowfly-core",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "glowfly-runner"
+version = "0.3.0-rc.1"
+dependencies = [
+ "chrono",
+ "git2",
+ "glowfly-core",
+ "glowfly-model",
+ "notify",
+ "notify-rust",
+ "open",
+ "rfd",
  "serde_json",
  "tracing",
 ]

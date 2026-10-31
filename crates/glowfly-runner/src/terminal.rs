@@ -10,9 +10,9 @@ use super::terminal_hold::CommandHold;
 use super::{Runner, Waker};
 use crate::effect::Effect;
 use crate::msg::Msg;
-use crate::terminal::{AfterCheck, BusyCheck, TerminalEffect, TerminalMsg};
 use glowfly_core::settings::ShellSetting;
 use glowfly_core::terminal::{ShellActivity, ShellProbe, pty, shell};
+use glowfly_model::terminal::{AfterCheck, BusyCheck, TerminalEffect, TerminalMsg};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -292,8 +292,8 @@ fn short_name(program: &str) -> String {
 mod tests {
     use super::{Control, Handle, KillSwitch, ProbeSlot, Reporter, Terminals, check_activity, short_name};
     use crate::msg::Msg;
-    use crate::terminal::{AfterCheck, BusyCheck, TerminalMsg};
     use glowfly_core::terminal::{ShellActivity, ShellProbe};
+    use glowfly_model::terminal::{AfterCheck, BusyCheck, TerminalMsg};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, mpsc};
 

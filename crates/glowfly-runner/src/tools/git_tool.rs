@@ -9,7 +9,6 @@
 use super::compare::{launch_failure, reason};
 use crate::msg::Msg;
 use crate::state::tool_git::{command_end, git_merge_end, git_said};
-use crate::tools::{GitDiffRequest, GitMergeRequest, LaunchFailure, MergeEnd, ToolKind, ToolsMsg};
 use glowfly_core::error::{Error, Result};
 use glowfly_core::external_tools::compare::{diff_files, fingerprint, merge_files};
 use glowfly_core::external_tools::git_config::GitToolRun;
@@ -18,6 +17,7 @@ use glowfly_core::external_tools::{Ended, early_exit_message, temp, watch_to_end
 use glowfly_core::gitcli::{self, args};
 use glowfly_core::native_path::native;
 use glowfly_core::repo;
+use glowfly_model::tools::{GitDiffRequest, GitMergeRequest, LaunchFailure, MergeEnd, ToolKind, ToolsMsg};
 use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;

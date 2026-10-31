@@ -2,11 +2,11 @@
 //! ends its job or loading state.
 
 use super::*;
-use crate::ssh::SshMsg;
 use crate::state::{AppState, RunningJob};
 use crate::update::update;
 use glowfly_core::settings::Settings;
 use glowfly_core::undo::UndoKind;
+use glowfly_model::ssh::SshMsg;
 use std::time::Instant;
 
 #[test]
@@ -68,8 +68,8 @@ fn a_panicking_stash_rename_ends_its_job() {
 
 #[test]
 fn a_panicking_merge_tool_ends_its_job() {
-    use crate::tools::{GitMergeRequest, MergeToolRequest};
     use glowfly_core::external_tools::git_config::{GitTool, GitToolRun};
+    use glowfly_model::tools::{GitMergeRequest, MergeToolRequest};
     let req =
         MergeToolRequest { program: "m".into(), template: String::new(), workdir: "C:/r".into(), path: "a.txt".into(), filters: false };
     let tool = GitTool { name: "m".into(), chosen_by: "merge.tool".into(), run: GitToolRun::BuiltIn { path: None } };
@@ -215,9 +215,9 @@ fn a_panicking_load_ends_the_load() {
 
 #[test]
 fn a_panicking_ssh_effect_ends_the_page_state() {
-    use crate::ssh::{GenerateFailure, SshEffect};
     use crate::state::{PrefPage, PrefsState};
     use glowfly_core::ssh_keys::NewKey;
+    use glowfly_model::ssh::{GenerateFailure, SshEffect};
     let key = NewKey { path: "C:/h/.ssh/id".into(), comment: String::new(), passphrase: "s3cret".into() };
     let effect = Effect::Ssh(SshEffect::Generate { keygen: "C:/ssh-keygen.exe".into(), key, overwrite: false });
     assert!(effect.scope().is_none(), "unscoped: the page gets its answer whichever tab is active");
@@ -240,11 +240,11 @@ fn a_panicking_ssh_effect_ends_the_page_state() {
 
 #[test]
 fn panicking_key_choice_agent_and_upload_effects_report_failures() {
-    use crate::ssh::SshEffect;
     use crate::state::ssh_service::{UploadForm, UploadState};
     use crate::state::{PrefPage, PrefsState};
     use glowfly_core::forge::{Account, Provider};
     use glowfly_core::ssh_keys::AgentReach;
+    use glowfly_model::ssh::SshEffect;
     let prefs_busy = |st: &mut AppState| st.prefs.as_mut().unwrap().ssh.choice_busy = true;
     let panicked = |effect: Effect| {
         assert!(effect.scope().is_none(), "unscoped");

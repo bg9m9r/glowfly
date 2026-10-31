@@ -1,7 +1,7 @@
 //! The runner's side of the operating system: the recent-repositories and tabs files, what is
 //! at the listed folders, terminals, file managers (opening a folder, or showing a file selected
 //! in it), and the inbox where the folders and links the OS hands over wait until the runner
-//! attaches (`open_events`). The window's own glue with the OS is the shell's (`crate::platform`).
+//! attaches (`open_events`). The window's own glue with the OS is the app's (its `platform` module).
 
 use std::path::{Path, PathBuf};
 
@@ -21,7 +21,7 @@ pub fn load_recent() -> Vec<PathBuf> {
 
 /// The recent list in recent.txt: one path per line (`paths::encode`, which leaves plain paths
 /// as earlier versions wrote them).
-pub(crate) fn parse_recent(text: &str) -> Vec<PathBuf> {
+pub fn parse_recent(text: &str) -> Vec<PathBuf> {
     text.lines().map(|l| l.strip_suffix('\r').unwrap_or(l)).filter(|l| !l.is_empty()).map(glowfly_core::paths::decode).collect()
 }
 
@@ -71,7 +71,7 @@ pub fn load_tabs() -> SavedTabs {
 /// tabs.txt: the active index on the first line, then one repository per line
 /// (`paths::encode`, which escapes every control character), followed by a tab character and
 /// the tab's label when it has one. Files from earlier versions have no labels.
-pub(crate) fn parse_tabs(text: &str) -> SavedTabs {
+pub fn parse_tabs(text: &str) -> SavedTabs {
     let mut lines = text.lines().map(|l| l.strip_suffix('\r').unwrap_or(l));
     let active: usize = lines.next().and_then(|l| l.trim().parse().ok()).unwrap_or(0);
     let (paths, labels): (Vec<PathBuf>, Vec<Option<String>>) = lines

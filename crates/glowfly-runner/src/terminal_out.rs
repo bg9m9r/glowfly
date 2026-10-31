@@ -4,7 +4,7 @@
 //! meanwhile is merged into the next one, sent once update has fed the last (its `Ack` is
 //! dropped). Past `MAX_WAITING` bytes the PTY reader waits, which holds the shell back.
 
-use crate::terminal::{Ack, TerminalMsg};
+use glowfly_model::terminal::{Ack, TerminalMsg};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 
 /// Output kept waiting for the UI before the reader stops reading.

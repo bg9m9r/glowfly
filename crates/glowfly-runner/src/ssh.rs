@@ -5,11 +5,11 @@
 
 use super::execute::{Cx, Execute};
 use crate::msg::Msg;
-use crate::ssh::{GenerateFailure, ServiceKeyError, SshEffect, SshMsg};
 use glowfly_core::error::Error;
 use glowfly_core::forge;
 use glowfly_core::signing::home_dir;
 use glowfly_core::ssh_keys;
+use glowfly_model::ssh::{GenerateFailure, ServiceKeyError, SshEffect, SshMsg};
 use std::path::PathBuf;
 
 /// Where global reads and writes run: the home folder, else the current folder.

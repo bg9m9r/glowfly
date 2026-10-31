@@ -1,6 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["crates/glowfly-core", "crates/glowfly-model", "crates/glowfly-app"]
+members = [
+    "crates/glowfly-core",
+    "crates/glowfly-model",
+    "crates/glowfly-runner",
+    "crates/glowfly-app",
+]
 default-members = ["crates/glowfly-app"]
 # The fuzz targets are a workspace of their own (fuzz/Cargo.toml): they need nightly and libFuzzer.
 exclude = ["fuzz"]
@@ -20,6 +25,7 @@ serde_json = "1.0.154"
 sys-locale = "0.3.2"
 glowfly-core = { path = "crates/glowfly-core" }
 glowfly-model = { path = "crates/glowfly-model" }
+glowfly-runner = { path = "crates/glowfly-runner" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"

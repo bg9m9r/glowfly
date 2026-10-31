@@ -73,11 +73,14 @@ mod tests {
     fn file_targets_levels() {
         let normal = file_targets(false);
         assert!(normal.would_enable("glowfly", &Level::WARN));
-        assert!(normal.would_enable("glowfly::runner", &Level::ERROR));
+        assert!(normal.would_enable("glowfly_runner::guard", &Level::ERROR));
         assert!(!normal.would_enable("glowfly", &Level::INFO));
         let extended = file_targets(true);
         assert!(extended.would_enable("glowfly", &Level::DEBUG));
         assert!(extended.would_enable("glowfly_core::gitcli", &Level::DEBUG));
+        // The other crates' targets start with "glowfly" too.
+        assert!(extended.would_enable("glowfly_runner::guard", &Level::DEBUG));
+        assert!(extended.would_enable("glowfly_model::update", &Level::DEBUG));
         assert!(!extended.would_enable("glowfly", &Level::TRACE));
         assert!(extended.would_enable("wgpu_core", &Level::INFO));
         assert!(!extended.would_enable("wgpu_core", &Level::DEBUG));

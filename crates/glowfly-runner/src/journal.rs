@@ -5,9 +5,9 @@
 
 use super::execute::err;
 use super::execute::{Cx, Execute};
-use crate::journal::{JournalEffect, JournalMsg, LostMsg};
 use crate::msg::Msg;
 use glowfly_core::journal::{self, Op, notes};
+use glowfly_model::journal::{JournalEffect, JournalMsg, LostMsg};
 use std::path::Path;
 
 pub(super) fn run(e: JournalEffect) -> Msg {
