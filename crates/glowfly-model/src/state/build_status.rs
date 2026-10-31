@@ -9,11 +9,11 @@ use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 /// The least time between two tip requests.
-pub const TIP_REQUEST_GAP: Duration = Duration::from_secs(15);
+const TIP_REQUEST_GAP: Duration = Duration::from_secs(15);
 /// How soon a pending tip is asked about again while it is on screen.
 pub const TIP_PENDING_RECHECK: Duration = Duration::from_secs(60);
 /// How long a finished (or "no status") answer stays fresh; also the back-off after an error.
-pub const TIP_RECHECK: Duration = FORGE_REFRESH_INTERVAL;
+const TIP_RECHECK: Duration = FORGE_REFRESH_INTERVAL;
 /// The most tips asked about in one request.
 pub const TIPS_PER_REQUEST: usize = 10;
 /// The most tips one frame reports as drawn.

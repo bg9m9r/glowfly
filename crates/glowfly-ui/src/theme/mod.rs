@@ -196,7 +196,7 @@ impl ThemeCache {
     }
 
     /// Makes the terminal colours `choice` picks active for this frame (`color::set_terminal`).
-    pub fn select_terminal(&mut self, choice: &TerminalColours, themes: &ThemeState) {
+    fn select_terminal(&mut self, choice: &TerminalColours, themes: &ThemeState) {
         let palette = self.palette.unwrap_or(DEFAULT_DARK);
         let fresh = matches!(&self.terminal_key, Some((c, g, p)) if c == choice && *g == themes.generation && *p == palette);
         if !fresh {

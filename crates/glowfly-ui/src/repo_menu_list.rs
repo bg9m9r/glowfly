@@ -27,7 +27,7 @@ use std::path::{Path, PathBuf};
 /// The menu's width while it lists repositories: room for a name, its parent and a status.
 pub const WIDTH: f32 = 380.0;
 /// The filter field shows once more repositories than this are listed.
-pub const FILTER_FROM: usize = 8;
+const FILTER_FROM: usize = 8;
 
 /// The Favorites and Recent groups, with the filter field above them when `filter` and the
 /// lists are long. Returns whether anything was drawn.

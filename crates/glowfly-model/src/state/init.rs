@@ -7,11 +7,11 @@ use glowfly_core::init_ops::{
 };
 use std::path::PathBuf;
 
-pub const RELATIVE: &str = "Enter the full path of the folder (it may start with ~).";
-pub const NO_PARENT: &str = "Its parent folder doesn't exist.";
-pub const NEW_FOLDER: &str = "A new folder is created.";
-pub const IS_REPO: &str = "This folder is already a Git repository. Git keeps its history; only the files you choose below are added.";
-pub const HAS_FILES: &str = "The files already in this folder are left as they are (not committed).";
+const RELATIVE: &str = "Enter the full path of the folder (it may start with ~).";
+const NO_PARENT: &str = "Its parent folder doesn't exist.";
+const NEW_FOLDER: &str = "A new folder is created.";
+const IS_REPO: &str = "This folder is already a Git repository. Git keeps its history; only the files you choose below are added.";
+const HAS_FILES: &str = "The files already in this folder are left as they are (not committed).";
 pub const GITIGNORE_KEPT: &str = "This folder already has a .gitignore; it is kept.";
 pub const BRANCH_INVALID: &str = "Not a valid branch name.";
 

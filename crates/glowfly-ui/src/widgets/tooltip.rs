@@ -94,7 +94,7 @@ fn begin(ui: &mut Ui) {
 }
 
 /// Draws `text` as the rich tooltip's one body sentence, with no title.
-pub fn show_text(ui: &mut Ui, text: &str) {
+fn show_text(ui: &mut Ui, text: &str) {
     begin(ui);
     ui.add(Label::new(RichText::new(text).size(type_scale::BODY).color(color::text())).wrap());
 }

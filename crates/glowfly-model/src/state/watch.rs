@@ -79,7 +79,7 @@ pub fn poll_every(watching: bool, windows: bool, remote: bool) -> Option<Duratio
 
 /// Whether the poll sweeps the tree (`Effect::SweepWatch`) rather than reading the whole status:
 /// on Windows, for a local repository whose watcher hasn't failed.
-pub fn sweep_poll(windows: bool, remote: bool, failed: bool) -> bool {
+fn sweep_poll(windows: bool, remote: bool, failed: bool) -> bool {
     windows && !remote && !failed
 }
 

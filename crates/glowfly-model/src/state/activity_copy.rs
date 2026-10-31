@@ -36,7 +36,7 @@ pub fn entry_text(e: &LogEntry, t: Lang, utc_offset: i32) -> String {
 
 /// A routine group: each run's block, oldest first, with a blank line between them, and a note
 /// of the runs the routine cap dropped.
-pub fn group_text(group: &[LogEntry], t: Lang, utc_offset: i32) -> String {
+fn group_text(group: &[LogEntry], t: Lang, utc_offset: i32) -> String {
     let mut blocks: Vec<String> = group.iter().map(|e| entry_text(e, t, utc_offset)).collect();
     if let Some(folded) = group.first().map(|e| e.folded).filter(|n| *n > 0)
         && let Some(last) = blocks.last_mut()

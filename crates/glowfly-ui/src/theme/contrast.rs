@@ -61,7 +61,7 @@ fn oklch_linear(l: f64, c: f64, h: f64) -> [f64; 3] {
 }
 
 /// The opaque sRGB colour of OKLCH (`l`, `c`, `h` in degrees), each channel clipped to the gamut.
-pub fn from_oklch(l: f64, c: f64, h: f64) -> Color32 {
+fn from_oklch(l: f64, c: f64, h: f64) -> Color32 {
     let [r, g, bl] = oklch_linear(l, c, h);
     let enc = |v: f64| {
         let v = v.clamp(0.0, 1.0);

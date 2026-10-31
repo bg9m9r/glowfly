@@ -169,7 +169,7 @@ pub fn multi_blocked(t: Lang, m: &MultiSelection) -> Option<&'static str> {
 
 /// For local branch `b`: its tracking remote, and the names the mainline must not be (the
 /// branch and its upstream).
-pub fn exclude_for_branch(b: &BranchInfo) -> (Option<String>, Vec<String>) {
+fn exclude_for_branch(b: &BranchInfo) -> (Option<String>, Vec<String>) {
     let remote = b.tracking.as_ref().filter(|t| t.is_remote()).map(|t| t.remote.clone());
     let mut exclude = vec![b.name.clone()];
     exclude.extend(b.tracking.as_ref().map(|t| t.display()));

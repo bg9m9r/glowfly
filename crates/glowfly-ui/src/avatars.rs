@@ -19,7 +19,7 @@ pub(crate) fn shown(st: &AppState) -> bool {
 }
 
 /// The most avatar textures kept (64 x 64 RGBA, 16 KB each: 8 MB).
-pub const MAX_TEXTURES: usize = 512;
+const MAX_TEXTURES: usize = 512;
 
 enum State {
     Pending,

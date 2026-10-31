@@ -11,7 +11,7 @@ use super::window_native::CaptionButton;
 use glowfly_core::opens::Os;
 
 /// The room left at the start of the macOS bar for the traffic lights.
-pub const TRAFFIC_LIGHTS_W: f32 = 78.0;
+const TRAFFIC_LIGHTS_W: f32 = 78.0;
 
 /// Who draws the window's frame.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -28,7 +28,7 @@ pub enum Chrome {
 }
 
 impl Chrome {
-    pub const fn for_os(os: Os) -> Chrome {
+    const fn for_os(os: Os) -> Chrome {
         match os {
             Os::Windows => Chrome::Windows,
             Os::MacOs => Chrome::MacOs,

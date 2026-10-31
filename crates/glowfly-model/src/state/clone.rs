@@ -174,7 +174,7 @@ impl CloneForm {
     }
 
     /// The folders to check out, cleaned up, when sparse checkout is on.
-    pub fn sparse_cleaned(&self) -> Option<Result<Vec<String>, PathProblem>> {
+    fn sparse_cleaned(&self) -> Option<Result<Vec<String>, PathProblem>> {
         self.sparse.then(|| parse_paths(&self.sparse_folders, SparseMode::Cone))
     }
 

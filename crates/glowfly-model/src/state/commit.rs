@@ -209,7 +209,7 @@ pub fn pushes_after(st: &AppState) -> bool {
 }
 
 /// A summary's length up to here reads well (git-commit(1): ideally under 50 characters).
-pub const SUMMARY_SOFT: usize = 50;
+const SUMMARY_SOFT: usize = 50;
 /// Past this, logs and hosting services cut the summary off.
 pub const SUMMARY_HARD: usize = 72;
 

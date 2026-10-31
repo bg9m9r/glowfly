@@ -18,7 +18,7 @@ use glowfly_core::i18n::Lang;
 
 /// The unsaved work in one tab.
 #[derive(Debug, PartialEq)]
-pub struct Loss {
+struct Loss {
     /// The tab's shown name.
     pub tab: String,
     /// A commit message draft that isn't blank.
@@ -74,7 +74,7 @@ fn issue_typed(f: &IssueForm) -> bool {
 
 /// What closing tab `i` would lose, if anything. The active tab's work is in `AppState`; another
 /// tab's is parked with it (a restored tab that was never loaded has none).
-pub fn loss_of(st: &AppState, i: usize) -> Option<Loss> {
+fn loss_of(st: &AppState, i: usize) -> Option<Loss> {
     let tab = st.tabs.get(i)?;
     let (session, form) = if i == st.active_tab {
         (&st.session, holds_edited_form(&st.dialog, st.modal.as_ref()))

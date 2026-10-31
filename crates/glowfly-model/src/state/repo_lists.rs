@@ -64,7 +64,7 @@ pub fn missing_counts(st: &AppState) -> (usize, usize) {
 }
 
 /// The title and body of the question asked before removing the missing entries.
-pub fn remove_missing_confirm(t: Lang, recent: usize, favs: usize) -> (String, String) {
+fn remove_missing_confirm(t: Lang, recent: usize, favs: usize) -> (String, String) {
     let total = recent + favs;
     let body = match (recent, favs) {
         (0, _) => t.trn("repos.remove_missing.body_favorites", total, &[]),
@@ -117,7 +117,7 @@ pub fn favorite_label(t: Lang, fav: bool) -> &'static str {
 }
 
 /// The title and body of the question asked before clearing `n` recent entries.
-pub fn clear_recent_confirm(t: Lang, n: usize) -> (String, String) {
+fn clear_recent_confirm(t: Lang, n: usize) -> (String, String) {
     (t.tr("repos.clear_recent.title").to_owned(), t.trn("repos.clear_recent.body", n, &[]))
 }
 

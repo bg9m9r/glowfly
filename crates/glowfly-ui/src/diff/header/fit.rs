@@ -56,7 +56,7 @@ const MIN_FOLDER: f32 = 28.0;
 
 impl Plan {
     /// The left-hand parts' width under this plan.
-    pub fn left_width(&self, w: &Widths) -> f32 {
+    fn left_width(&self, w: &Widths) -> f32 {
         let mut x = w.icon + w.gap + self.folder_w + self.name_w;
         if self.status && w.status > 0.0 {
             x += w.gap + w.status;

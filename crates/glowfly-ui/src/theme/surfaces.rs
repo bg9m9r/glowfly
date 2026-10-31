@@ -174,7 +174,7 @@ impl Palette {
     /// field, or a strong one on paper); then a colour of `c`'s lightness in the background's
     /// own hue and chroma, so the wash lifts the surface without tinting it and the colour stays
     /// on the text, edge or mark beside it (docs/COLOUR.md, "No brown").
-    pub fn wash_colour(&self, c: Color32, t: f32) -> Color32 {
+    fn wash_colour(&self, c: Color32, t: f32) -> Color32 {
         let c = contrast::clear(c);
         let surfaces = [self.bg, self.panel, self.toolbar, self.raised, self.input];
         if !surfaces.iter().any(|&s| contrast::brownish(mix(s, c, t))) {

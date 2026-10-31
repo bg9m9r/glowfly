@@ -51,7 +51,7 @@ pub fn shown_favorites(s: &Settings) -> Vec<PathBuf> {
 }
 
 /// The group the repository at `p` is in, if it is a grouped favorite.
-pub fn group_of(st: &AppState, p: &Path) -> Option<usize> {
+fn group_of(st: &AppState, p: &Path) -> Option<usize> {
     let s = &st.settings;
     (0..s.repo_groups.len()).find(|&g| members(s, g).iter().any(|m| st.same_folder(m, p)))
 }

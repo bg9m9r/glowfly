@@ -12,16 +12,16 @@ use eframe::egui::{self, Align2, Color32, RichText, Sense, Stroke, Ui, pos2, vec
 pub const LABEL_W: f32 = 240.0;
 pub const GAP: f32 = 18.0;
 pub const ROW_W: f32 = 480.0;
-pub const MIN_FIELD_W: f32 = 220.0;
+const MIN_FIELD_W: f32 = 220.0;
 
 /// How a row fits `avail` points: side by side, or the label over the controls.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RowLayout {
+struct RowLayout {
     pub stacked: bool,
     pub field_w: f32,
 }
 
-pub fn row_layout(avail: f32) -> RowLayout {
+fn row_layout(avail: f32) -> RowLayout {
     let field_w = (avail - LABEL_W - GAP).min(ROW_W);
     if field_w < MIN_FIELD_W {
         RowLayout { stacked: true, field_w: avail.clamp(0.0, ROW_W) }

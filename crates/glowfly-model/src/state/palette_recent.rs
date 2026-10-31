@@ -21,7 +21,7 @@ use glowfly_core::settings::ThemeChoice;
 use glowfly_core::stash_ops::StashScope;
 
 /// Most commands the palette remembers.
-pub const MAX_RECENT_COMMANDS: usize = 10;
+const MAX_RECENT_COMMANDS: usize = 10;
 
 /// Recently run commands' keys, most recent first, without duplicates.
 #[derive(Default, Debug)]

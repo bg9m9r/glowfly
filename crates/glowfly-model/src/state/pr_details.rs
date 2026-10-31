@@ -7,7 +7,7 @@ use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
 /// Details older than this are read again on the next list refresh.
-pub const DETAILS_MAX_AGE: Duration = Duration::from_secs(15 * 60);
+const DETAILS_MAX_AGE: Duration = Duration::from_secs(15 * 60);
 
 #[derive(Default)]
 pub struct PrDetailPass {

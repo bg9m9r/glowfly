@@ -18,7 +18,7 @@ use glowfly_core::push_all::{self, PushedAll};
 use std::time::Instant;
 
 /// The job label of Push to all remotes (English: it is also log text).
-pub const PUSH_ALL: &str = "Push to all remotes";
+const PUSH_ALL: &str = "Push to all remotes";
 
 /// Force pushes `name` to the upstream the confirmation named (`dest` on `remote`), leasing
 /// the tip it saw (`seen`).

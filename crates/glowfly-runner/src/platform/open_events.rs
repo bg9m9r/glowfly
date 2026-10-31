@@ -83,7 +83,7 @@ pub fn folder_item(url: &str) -> Option<StartArg> {
 pub mod codes {
     #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
-    pub const fn four_cc(c: &[u8; 4]) -> u32 {
+    const fn four_cc(c: &[u8; 4]) -> u32 {
         u32::from_be_bytes(*c)
     }
 

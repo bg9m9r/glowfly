@@ -24,11 +24,11 @@ use eframe::egui::{self, Color32, CornerRadius, Galley, Id, Response, Sense, Wid
 use std::sync::Arc;
 
 /// The room for the repository and branch names, whatever names they show.
-pub const REPO_SLOT: f32 = 120.0;
-pub const BRANCH_SLOT: f32 = 168.0;
+const REPO_SLOT: f32 = 120.0;
+const BRANCH_SLOT: f32 = 168.0;
 /// The narrowest the repository and branch names are cut to in a small window.
-pub const REPO_MIN: f32 = 32.0;
-pub const BRANCH_MIN: f32 = 40.0;
+const REPO_MIN: f32 = 32.0;
+const BRANCH_MIN: f32 = 40.0;
 /// The names' room the pickers keep before toolbar groups start to fold
 /// (`toolbar_fold.rs`): about a repository of 64 px and a branch of 96, so a 1400 px window
 /// with a hosting service still shows every group in English.
@@ -56,7 +56,7 @@ const MENU_ID: &str = "toolbar-pickers";
 /// the window leaves for both: the full slots when they fit; otherwise the wider shrinks toward
 /// the narrower, then both evenly, never below `REPO_MIN` and `BRANCH_MIN` (nor above their full
 /// widths). The names shown never change them.
-pub fn name_widths(slots: (f32, f32), room: f32) -> (f32, f32) {
+fn name_widths(slots: (f32, f32), room: f32) -> (f32, f32) {
     let (repo, branch) = slots;
     if repo + branch <= room {
         return (repo, branch);

@@ -15,9 +15,9 @@ use crate::ui::theme::tokens::radius;
 use eframe::egui::{self, CornerRadius, Sense, Stroke, StrokeKind, pos2, vec2};
 
 /// The edge strip's width.
-pub const EDGE_W: f32 = 16.0;
+const EDGE_W: f32 = 16.0;
 /// The collapsed commit panel's width.
-pub const RAIL_W: f32 = 44.0;
+const RAIL_W: f32 = 44.0;
 
 /// The strip a hidden `panel` (Left or Details) leaves at its edge of the window.
 pub(super) fn edge(ctx: &egui::Context, st: &AppState, panel: Panel, msgs: &mut Vec<Msg>) {

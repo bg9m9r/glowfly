@@ -192,7 +192,7 @@ macro_rules! msg_enum {
 
             /// Every area's short name, in the table's order.
             #[cfg(test)]
-            pub const AREAS: &'static [&'static str] = &[$($name),*];
+            const AREAS: &'static [&'static str] = &[$($name),*];
         }
     };
 }

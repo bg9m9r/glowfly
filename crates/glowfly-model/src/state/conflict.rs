@@ -170,7 +170,7 @@ impl ConflictView {
     }
 
     /// The first chunk not resolved yet, or 0 when every chunk is.
-    pub fn first_open(&self) -> usize {
+    fn first_open(&self) -> usize {
         self.picks.iter().position(ChunkPick::is_open).unwrap_or(0)
     }
 

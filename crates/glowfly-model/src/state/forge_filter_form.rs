@@ -6,7 +6,7 @@ use glowfly_core::forge::{Conditions, FilterKind, Provider, SavedFilter};
 use glowfly_core::settings::RepoForgeFilters;
 
 /// The longest name a saved filter may have, in characters.
-pub const MAX_NAME: usize = 60;
+const MAX_NAME: usize = 60;
 
 pub struct FilterForm {
     /// The saved filter being changed; None for a new one.

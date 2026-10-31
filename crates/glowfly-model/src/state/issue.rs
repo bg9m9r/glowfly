@@ -124,7 +124,7 @@ fn capitalized(s: &str) -> String {
 
 /// The listed copy of issue `key`: assigned to the user, found by the shown filter, or cached
 /// for a commit message's reference.
-pub fn find_listed<'a>(fs: &'a ForgeState, key: &str) -> Option<&'a Issue> {
+fn find_listed<'a>(fs: &'a ForgeState, key: &str) -> Option<&'a Issue> {
     let searched = fs.filters.issues.iter().flat_map(|l| l.items.iter());
     fs.my_issues.iter().chain(searched).find(|i| i.key == key).or_else(|| fs.cache.get(key))
 }
@@ -179,7 +179,7 @@ pub fn meta_rows(v: &IssueView, settings: &Settings, offset: i32) -> Vec<(&'stat
 }
 
 /// Whether local branch `name` is named after issue `key`.
-pub fn links_branch(fs: &ForgeState, name: &str, key: &str) -> bool {
+fn links_branch(fs: &ForgeState, name: &str, key: &str) -> bool {
     fs.branch_issue(name).as_deref() == Some(key)
 }
 
@@ -190,7 +190,7 @@ pub fn linked_branches<'a>(snap: &'a Snapshot, fs: &ForgeState, key: &str) -> Ve
 
 /// The details a newly opened panel starts with: loading, or none for a tracker without
 /// issue details in Glowfly.
-pub fn initial_details(fs: &ForgeState) -> Details {
+fn initial_details(fs: &ForgeState) -> Details {
     if fs.tracker.as_ref().is_some_and(|t| issues_in_app(t.provider)) { Details::Loading } else { Details::Unsupported }
 }
 

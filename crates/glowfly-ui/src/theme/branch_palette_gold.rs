@@ -34,8 +34,8 @@ pub(super) const fn with<T: Copy, const N: usize>(mut t: [T; N], i: usize, c: T)
 /// The slot Jade takes.
 pub const JADE_SLOT: usize = 11;
 /// The colour-blind slots that make room: Yellow and Lime.
-pub const CB_YELLOW_SLOT: usize = 2;
-pub const CB_LIME_SLOT: usize = 5;
+const CB_YELLOW_SLOT: usize = 2;
+const CB_LIME_SLOT: usize = 5;
 
 /// Jade's dark tone (lines and chips on Dusk).
 pub const JADE_DARK: Color32 = hex(0x56d1a3);
@@ -49,17 +49,17 @@ pub const DAWN_FOREST_SLOT: usize = 13;
 
 /// The standard hues with Jade.
 pub const GOLD_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, JADE_SLOT, JADE_DARK);
-pub const GOLD_NAMES: [Hue; LANE_COUNT] = with(NAMES, JADE_SLOT, Hue::Jade);
+const GOLD_NAMES: [Hue; LANE_COUNT] = with(NAMES, JADE_SLOT, Hue::Jade);
 /// Dawn's light tones: Jade and Forest.
 pub const DAWN_LIGHT_TEXT: [Color32; LANE_COUNT] = with(with(LIGHT_TEXT, JADE_SLOT, JADE_LIGHT_TEXT), DAWN_FOREST_SLOT, FOREST_TEXT);
 pub const DAWN_LIGHT_LINES: [Color32; LANE_COUNT] = with(with(LIGHT_LINES, JADE_SLOT, JADE_LIGHT_LINE), DAWN_FOREST_SLOT, FOREST_LINE);
-pub const DAWN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, JADE_SLOT, Hue::Jade), DAWN_FOREST_SLOT, Hue::Forest);
+const DAWN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, JADE_SLOT, Hue::Jade), DAWN_FOREST_SLOT, Hue::Forest);
 
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
 
 /// The colour-blind friendly dark tones beside the gold: Orange and a paler Lime.
 pub const GOLD_CB_DARK_TONES: [Color32; CB] = with(with(CB_DARK_TONES, CB_YELLOW_SLOT, hex(0xeb8f13)), CB_LIME_SLOT, hex(0xc8feac));
-pub const GOLD_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, CB_YELLOW_SLOT, Hue::Orange);
+const GOLD_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, CB_YELLOW_SLOT, Hue::Orange);
 
 /// Dusk.
 pub const BRANCH_DUSK: Branch =

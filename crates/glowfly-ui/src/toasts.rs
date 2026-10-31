@@ -24,7 +24,7 @@ pub(super) struct ToastBounds {
 /// Every toast frame's outer width; its text wraps inside.
 pub const TOAST_W: f32 = 360.0;
 /// Between a toast and the chrome or window edge beside it.
-pub const TOAST_MARGIN: f32 = 12.0;
+const TOAST_MARGIN: f32 = 12.0;
 /// Between two stacked toasts.
 const TOAST_GAP: f32 = 6.0;
 /// The frame's inner margin, left and right.

@@ -37,23 +37,23 @@ pub const COBALT_JADE_SLOT: usize = 7;
 pub const COBALT_CB_SLOT: usize = 7;
 
 pub const FLAME_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, FLAME_JADE_SLOT, JADE_DARK);
-pub const FLAME_NAMES: [Hue; LANE_COUNT] = with(NAMES, FLAME_JADE_SLOT, Hue::Jade);
+const FLAME_NAMES: [Hue; LANE_COUNT] = with(NAMES, FLAME_JADE_SLOT, Hue::Jade);
 /// A light Jade (OKLCH hue 170) for the colour-blind set's Yellow.
 pub const FLAME_CB_DARK_TONES: [Color32; CB] = with(CB_DARK_TONES, FLAME_CB_SLOT, hex(0x57dcb4));
-pub const FLAME_CB_NAMES: [Hue; CB] = with(CB_NAMES, FLAME_CB_SLOT, Hue::Jade);
+const FLAME_CB_NAMES: [Hue; CB] = with(CB_NAMES, FLAME_CB_SLOT, Hue::Jade);
 
 pub const COBALT_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, COBALT_JADE_SLOT, JADE_DARK);
 pub const COBALT_LIGHT_TEXT: [Color32; LANE_COUNT] =
     with(with(LIGHT_TEXT, COBALT_JADE_SLOT, JADE_LIGHT_TEXT), LIGHT_NAVY_SLOT, FOREST_TEXT);
 pub const COBALT_LIGHT_LINES: [Color32; LANE_COUNT] =
     with(with(LIGHT_LINES, COBALT_JADE_SLOT, JADE_LIGHT_LINE), LIGHT_NAVY_SLOT, FOREST_LINE);
-pub const COBALT_NAMES: [Hue; LANE_COUNT] = with(NAMES, COBALT_JADE_SLOT, Hue::Jade);
-pub const LINEN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, COBALT_JADE_SLOT, Hue::Jade), LIGHT_NAVY_SLOT, Hue::Forest);
+const COBALT_NAMES: [Hue; LANE_COUNT] = with(NAMES, COBALT_JADE_SLOT, Hue::Jade);
+const LINEN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, COBALT_JADE_SLOT, Hue::Jade), LIGHT_NAVY_SLOT, Hue::Forest);
 /// A light Rose (hue 18) for Periwinkle on Graphite; a deep Wine (hue 350) on Linen, as line and
 /// chip tone both.
 pub const COBALT_CB_DARK_TONES: [Color32; CB] = with(CB_DARK_TONES, COBALT_CB_SLOT, hex(0xf49194));
-pub const COBALT_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, COBALT_CB_SLOT, Hue::Rose);
-pub const WINE: Color32 = hex(0x800953);
+const COBALT_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, COBALT_CB_SLOT, Hue::Rose);
+const WINE: Color32 = hex(0x800953);
 pub const COBALT_CB_LIGHT_LINES: [Color32; CB] = with(CB_LIGHT_LINES, COBALT_CB_SLOT, WINE);
 pub const COBALT_CB_LIGHT_TEXT: [Color32; CB] = with(CB_LIGHT_TEXT, COBALT_CB_SLOT, WINE);
 pub const COBALT_CB_LIGHT_NAMES: [Hue; CB] = with(CB_LIGHT_NAMES, COBALT_CB_SLOT, Hue::Wine);

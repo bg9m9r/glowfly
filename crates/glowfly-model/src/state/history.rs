@@ -200,7 +200,7 @@ impl FileHistoryView {
     }
 
     /// The text the File view shows, once the shown version's has arrived.
-    pub fn shown_text(&self) -> Option<&Arc<FileTextData>> {
+    fn shown_text(&self) -> Option<&Arc<FileTextData>> {
         let (oid, path, status) = self.shown()?;
         let before = status == 'D';
         let t = self.text.as_ref().filter(|t| t.oid == oid && t.path == path && t.before == before)?;

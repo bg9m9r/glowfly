@@ -11,18 +11,18 @@ use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Res
 
 /// A tool slot's width with captions shown; a longer caption widens it to the caption plus
 /// `CAPTION_PAD`.
-pub const TOOL_W: f32 = 56.0;
+const TOOL_W: f32 = 56.0;
 /// A tool slot's width with captions hidden.
-pub const TOOL_W_BARE: f32 = 40.0;
+const TOOL_W_BARE: f32 = 40.0;
 /// A tool slot's height, the toolbar row's whole height.
 pub const TOOL_H: f32 = 48.0;
 /// Room beside a caption inside its slot, both sides together.
-pub const CAPTION_PAD: f32 = 8.0;
+const CAPTION_PAD: f32 = 8.0;
 /// The icon's centre and the caption's, below the slot's top.
-pub const ICON_Y: f32 = 17.0;
-pub const CAPTION_Y: f32 = 37.0;
+const ICON_Y: f32 = 17.0;
+const CAPTION_Y: f32 = 37.0;
 /// The corners of a slot's hover fill, pressed fill and focus ring.
-pub const TOOL_RADIUS: u8 = radius::MD;
+const TOOL_RADIUS: u8 = radius::MD;
 /// Between the buttons of one toolbar group (egui's item spacing there); a dropdown caret sits
 /// right against its button.
 pub const TOOL_SPACING: f32 = 2.0;

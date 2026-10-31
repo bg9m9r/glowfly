@@ -20,7 +20,7 @@ pub struct StoppedFinish {
 }
 
 /// The steps still to run: "tag main as v1.2.0, check out develop, …".
-pub fn rest_text(r: &FinishResume) -> String {
+fn rest_text(r: &FinishResume) -> String {
     r.plan.steps.iter().map(|s| s.what.as_str()).collect::<Vec<_>>().join(", ")
 }
 
@@ -40,7 +40,7 @@ pub fn gone_text(t: Lang, r: &FinishResume, why: &ResumeGone) -> String {
 }
 
 /// Why the steps no longer apply, to fill `gone_text` (no full stop).
-pub fn gone_reason(t: Lang, why: &ResumeGone) -> String {
+fn gone_reason(t: Lang, why: &ResumeGone) -> String {
     match why {
         ResumeGone::NotSetUp => t.tr("gitflow.resume.why.not_set_up").to_owned(),
         ResumeGone::SettingsChanged => t.tr("gitflow.resume.why.settings_changed").to_owned(),

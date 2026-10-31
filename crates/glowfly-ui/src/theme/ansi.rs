@@ -34,8 +34,8 @@ const fn table([bg, fg, accent]: [u32; 3], c: [u32; 16]) -> Ansi {
 }
 
 /// Body text's least contrast on the background, and dim text's (colour 8).
-pub const BODY_MIN: f64 = 4.5;
-pub const DIM_MIN: f64 = 3.0;
+const BODY_MIN: f64 = 4.5;
+const DIM_MIN: f64 = 3.0;
 
 /// Whether a scheme is a dark one: light text on a dark background.
 pub fn is_dark(t: &Ansi) -> bool {

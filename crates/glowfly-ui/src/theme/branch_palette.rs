@@ -32,14 +32,14 @@ const fn hex(c: u32) -> Color32 {
 
 /// The light tones' clear amber (OKLCH hue 62, chroma at the sRGB edge): 3:1 on Sand's paper
 /// as a line; its text tone (4.5:1) is a deep amber, lettered in the ink (`contrast::clean_ink`).
-pub const AMBER_LINE: Color32 = hex(0xc47100);
-pub const AMBER_TEXT: Color32 = hex(0x7c4600);
+const AMBER_LINE: Color32 = hex(0xc47100);
+const AMBER_TEXT: Color32 = hex(0x7c4600);
 /// Wine (hue 352) and Navy (hue 262), darker than their neighbours, in Olive's and Gold's
 /// light slots; Forest (hue 142) where the accent leaves the green free (Dawn, Linen).
-pub const WINE_LINE: Color32 = hex(0x952c63);
-pub const WINE_TEXT: Color32 = hex(0x6f1647);
-pub const NAVY_LINE: Color32 = hex(0x2750a2);
-pub const NAVY_TEXT: Color32 = hex(0x17397b);
+const WINE_LINE: Color32 = hex(0x952c63);
+const WINE_TEXT: Color32 = hex(0x6f1647);
+const NAVY_LINE: Color32 = hex(0x2750a2);
+const NAVY_TEXT: Color32 = hex(0x17397b);
 pub const FOREST_LINE: Color32 = hex(0x2c6b27);
 pub const FOREST_TEXT: Color32 = hex(0x1d4f19);
 /// The light slots that take another hue than the dark tones': Olive (Wine) and Gold (Navy).

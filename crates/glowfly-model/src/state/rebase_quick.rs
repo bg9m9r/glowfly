@@ -9,12 +9,12 @@ use glowfly_core::repo::{CommitInfo, Snapshot};
 use std::path::PathBuf;
 
 pub const REWORD_LABEL: &str = "Reword commit";
-pub const SQUASH_LABEL: &str = "Squash commits";
-pub const DROP_LABEL: &str = "Drop commits";
+const SQUASH_LABEL: &str = "Squash commits";
+const DROP_LABEL: &str = "Drop commits";
 /// Why an edit didn't run: HEAD moved after it was chosen.
 pub const QUICK_STALE: &str = "The branch changed since you chose this; nothing was changed. Try again.";
 pub const BLANK: &str = "Enter a message.";
-pub const SAME_MESSAGE: &str = "The message is unchanged.";
+const SAME_MESSAGE: &str = "The message is unchanged.";
 pub const STASH_NOTE: &str = "Your uncommitted changes are stashed first and put back when the rebase ends.";
 
 /// Why each menu entry is unavailable; `None` when it can be used.

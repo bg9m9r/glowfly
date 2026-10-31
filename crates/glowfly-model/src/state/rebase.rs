@@ -13,7 +13,7 @@ use glowfly_core::repo::Snapshot;
 mod update_refs;
 
 pub const LOADING: &str = "The commit list is still loading.";
-pub const STARTING: &str = "The interactive rebase is already running.";
+const STARTING: &str = "The interactive rebase is already running.";
 pub const JOB_RUNNING: &str = "Another operation is still running.";
 pub const CONFLICTED_FILES: &str = "Resolve the conflicted files before rebasing.";
 /// Said before a rebase stashes the uncommitted changes (`--autostash`).

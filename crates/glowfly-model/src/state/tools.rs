@@ -10,7 +10,7 @@ use std::path::Path;
 
 /// The file rows' menu item, in English for the log line that names it (update/files.rs).
 pub const OPEN_IN_EDITOR: &str = "Open in external editor";
-pub const NO_EDITOR: &str = "No external editor is set. Choose one in Preferences > External tools.";
+const NO_EDITOR: &str = "No external editor is set. Choose one in Preferences > External tools.";
 
 /// The file rows' menu item.
 pub fn open_in_editor(t: Lang) -> &'static str {

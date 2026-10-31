@@ -71,7 +71,7 @@ impl MultiSelection {
     }
 
     /// `build` with the moving end at `cursor`.
-    pub fn build_at(oids: impl IntoIterator<Item = Oid>, anchor: Oid, cursor: Oid, snap: &Snapshot) -> Selection {
+    fn build_at(oids: impl IntoIterator<Item = Oid>, anchor: Oid, cursor: Oid, snap: &Snapshot) -> Selection {
         let oids = in_graph_order(oids, snap, false);
         match oids.as_slice() {
             [] => Selection::None,

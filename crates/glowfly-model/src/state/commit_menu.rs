@@ -46,7 +46,7 @@ pub fn commit_name(c: &CommitInfo) -> String {
 }
 
 /// The Hard reset confirmation's body. `current` is the checked-out branch (None: detached).
-pub fn hard_reset_body(t: Lang, current: Option<&str>, c: &CommitInfo) -> String {
+fn hard_reset_body(t: Lang, current: Option<&str>, c: &CommitInfo) -> String {
     t.trf("commits.menu.reset.hard_body", &[("branch", &current.unwrap_or("HEAD")), ("commit", &commit_name(c))])
 }
 

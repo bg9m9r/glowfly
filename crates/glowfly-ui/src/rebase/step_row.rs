@@ -13,8 +13,8 @@ use crate::ui::widgets::{Icon, paint_cut_text};
 use eframe::egui::{Rect, Response, Ui, pos2};
 use glowfly_core::rebase::TodoStep;
 
-pub const BREAK_NOTE: &str = "Stop here; Continue goes on";
-pub const NO_COMMAND: &str = "(no command yet)";
+const BREAK_NOTE: &str = "Stop here; Continue goes on";
+const NO_COMMAND: &str = "(no command yet)";
 
 /// The row's background, chip and text.
 pub(super) fn paint_step(ui: &Ui, rect: Rect, step: &TodoStep, shade: Shade) {

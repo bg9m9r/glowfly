@@ -30,7 +30,7 @@ use includes::IncludeWatches;
 use probe::Prober;
 
 /// A burst fires this long after its last relevant event…
-pub const QUIET: Duration = Duration::from_millis(300);
+const QUIET: Duration = Duration::from_millis(300);
 /// …or this long after its first, if events keep coming.
 pub const MAX_WAIT: Duration = Duration::from_secs(2);
 
@@ -95,7 +95,7 @@ enum Input {
 
 /// A running watcher. Dropping it stops notify and the sender, which ends the event thread
 /// (which holds notify only weakly, to watch included config files' folders).
-pub struct RepoWatcher {
+struct RepoWatcher {
     _inner: Arc<Mutex<notify::RecommendedWatcher>>,
     input: Sender<Input>,
     workdir: PathBuf,

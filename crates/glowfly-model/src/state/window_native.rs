@@ -158,7 +158,7 @@ pub fn backdrop(s: BackdropSupport, tint: Option<MicaTint>) -> Backdrop {
 }
 
 /// The first Windows build with the documented system backdrop attribute (Windows 11 22H2).
-pub const MICA_MIN_BUILD: u32 = 22621;
+const MICA_MIN_BUILD: u32 = 22621;
 
 /// Whether Windows build `build` can show Mica behind the window.
 pub fn mica_build(build: Option<u32>) -> bool {

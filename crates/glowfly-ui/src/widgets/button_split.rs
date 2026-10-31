@@ -42,7 +42,7 @@ impl<'a> SplitButton<'a> {
 
     /// Whether the caret can be clicked (true by default, even while the action is disabled).
     #[allow(dead_code)]
-    pub fn menu_enabled(mut self, enabled: bool) -> Self {
+    fn menu_enabled(mut self, enabled: bool) -> Self {
         self.menu_enabled = enabled;
         self
     }

@@ -84,7 +84,7 @@ pub struct RemoteTagJob {
 }
 
 /// "a", "a and b", or "a, b and c".
-pub fn remote_list(remotes: &[String]) -> String {
+fn remote_list(remotes: &[String]) -> String {
     match remotes {
         [] => String::new(),
         [one] => one.clone(),

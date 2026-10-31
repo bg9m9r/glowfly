@@ -59,7 +59,7 @@ fn tabs_file() -> Option<PathBuf> {
 
 /// The open tabs of a saved session: their folders, their labels (one per folder) and the
 /// index of the active one.
-pub type SavedTabs = (Vec<PathBuf>, Vec<Option<String>>, usize);
+type SavedTabs = (Vec<PathBuf>, Vec<Option<String>>, usize);
 
 /// The tabs open when Glowfly last closed, their labels and the index of the active one.
 /// Nothing is looked at here (this runs before the window opens, and a network share may not

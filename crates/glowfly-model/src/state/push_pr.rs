@@ -200,7 +200,7 @@ pub fn open_pr<'a>(snap: &Snapshot, fs: &'a ForgeState, name: &str) -> Option<&'
 }
 
 /// Why the pull request items are off when no remote is on a code host, and there are no remotes.
-pub const NO_REMOTE_FOR_PR: &str = "Add a remote on a code host such as GitHub or GitLab to create pull requests.";
+const NO_REMOTE_FOR_PR: &str = "Add a remote on a code host such as GitHub or GitLab to create pull requests.";
 
 /// Why the pull request items are off when no remote is on a code host: `remote` (the one the
 /// branch tracks or is on, else the default one) isn't on one, or there are no remotes.

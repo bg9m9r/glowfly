@@ -24,7 +24,7 @@ pub struct CommentDraft {
 
 impl CommentDraft {
     /// Whether closing the panel would lose it: it has text, or it is being posted.
-    pub fn worth_keeping(&self) -> bool {
+    fn worth_keeping(&self) -> bool {
         self.posting || !self.text.trim().is_empty()
     }
 }

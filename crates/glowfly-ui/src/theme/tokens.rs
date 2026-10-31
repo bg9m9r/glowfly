@@ -96,10 +96,10 @@ pub const FOCUS_W: f32 = 2.0;
 pub const FOCUS_GAP: f32 = 2.0;
 /// The inset ring of a control packed tightly in a row or group, where an outside ring would
 /// reach its neighbour.
-pub const FOCUS_INSET_W: f32 = 1.5;
+const FOCUS_INSET_W: f32 = 1.5;
 /// A focused text field's soft halo outside its accent edge.
-pub const HALO_W: f32 = 3.0;
-pub const HALO_ALPHA: f32 = 0.22;
+const HALO_W: f32 = 3.0;
+const HALO_ALPHA: f32 = 0.22;
 
 /// The focus ring of a standalone control at `rect` with `r` corners: 2 px of accent, 2 px
 /// outside it, its corners following the control's.

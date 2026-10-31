@@ -8,7 +8,7 @@ use super::table::{BINDINGS, Binding, GROUPS, Group, binding, runs_command};
 use std::collections::BTreeMap;
 
 /// The most keys one action can have (Preferences > Keyboard hides Add at this many).
-pub const MAX_CHORDS: usize = 4;
+const MAX_CHORDS: usize = 4;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Keymap {

@@ -9,7 +9,7 @@ use eframe::egui::Color32;
 use glowfly_core::branch_colour::{Swatch, person_slot};
 
 /// How far the fill behind initials moves from the background toward the person's line tone.
-pub const INITIALS_FILL: f32 = 0.30;
+const INITIALS_FILL: f32 = 0.30;
 
 /// `s`'s line tone in the active palette.
 pub fn line(s: Swatch) -> Color32 {

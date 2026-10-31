@@ -175,7 +175,7 @@ pub fn zoom_toast_text(percent: u16) -> String {
 }
 
 /// The status bar's reset button while zoomed, e.g. "Zoom 125%".
-pub fn zoom_chip_text(percent: u16) -> String {
+fn zoom_chip_text(percent: u16) -> String {
     format!("Zoom {percent}%")
 }
 

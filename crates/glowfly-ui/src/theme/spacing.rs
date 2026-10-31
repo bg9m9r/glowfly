@@ -37,7 +37,7 @@ pub mod menu {
     pub const COMFORTABLE: Metrics = Metrics { row_h: 28.0, row_gap: 2.0, pad_x: 12.0, min_w: 200.0, max_w: 380.0 };
     /// The opt-in dense variant: 22 px rows on a 24 px pitch (no setting picks it yet).
     #[allow(dead_code)]
-    pub const COMPACT: Metrics = Metrics { row_h: 22.0, row_gap: 2.0, pad_x: 8.0, min_w: 180.0, max_w: 340.0 };
+    const COMPACT: Metrics = Metrics { row_h: 22.0, row_gap: 2.0, pad_x: 8.0, min_w: 180.0, max_w: 340.0 };
     /// The menu frame's inner margin, so pills sit this far from its edge (egui's `Margin`).
     pub const FRAME_PAD: i8 = 4;
     /// The space between items in a row (a label and its shortcut).

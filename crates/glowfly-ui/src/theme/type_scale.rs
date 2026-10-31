@@ -29,14 +29,14 @@ pub const TITLE: f32 = 20.0;
 /// The five steps, smallest first.
 pub const STEPS: [f32; 5] = [CAPTION, SMALL, BODY, SUBHEAD, TITLE];
 /// No text is drawn smaller.
-pub const FLOOR: f32 = CAPTION;
+const FLOOR: f32 = CAPTION;
 /// The welcome screen's wordmark: the logo, not a text step.
 pub const WORDMARK: f32 = 2.0 * TITLE;
 
 /// The names of the extra egui text styles (`TextStyle::Name`).
-pub const CAPTION_STYLE: &str = "caption";
-pub const SMALL_STYLE: &str = "small";
-pub const SUBHEAD_STYLE: &str = "subhead";
+const CAPTION_STYLE: &str = "caption";
+const SMALL_STYLE: &str = "small";
+const SUBHEAD_STYLE: &str = "subhead";
 
 /// Sets egui's text styles to the scale: `Small` is the caption step, `Body`, `Button` and
 /// `Monospace` the body step, `Heading` the title step, plus the named caption, small and

@@ -22,7 +22,7 @@ use std::time::Instant;
 pub const LOG_LIMIT: usize = 500;
 
 /// The most fixes kept for failed runs; the oldest go first.
-pub const FIX_LIMIT: usize = 20;
+const FIX_LIMIT: usize = 20;
 
 /// When an entry from an earlier session was written (Unix seconds).
 #[derive(Clone, Copy, Debug, PartialEq)]

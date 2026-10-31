@@ -18,11 +18,11 @@ use eframe::egui::{Align, Direction, Layout, Response, RichText, Sense, TextStyl
 pub use super::menu_reason::{ItemState, menu_button};
 
 /// The reason line's text size, and the height a `line` always takes.
-pub const LINE_SIZE: f32 = type_scale::SMALL;
+const LINE_SIZE: f32 = type_scale::SMALL;
 pub const LINE_H: f32 = 18.0;
 /// The least free space in a dialog footer's row for its reason to go there, and the space
 /// between the reason and the dismiss button.
-pub const IN_ROW_MIN: f32 = 140.0;
+const IN_ROW_MIN: f32 = 140.0;
 pub const ROW_GAP: f32 = 12.0;
 /// The height of a dialog footer's buttons, which the reason in their row is centred on.
 const FOOTER_ROW_H: f32 = 28.0;

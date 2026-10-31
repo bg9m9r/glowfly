@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 /// The most commits whose counts are kept; the oldest stored goes first.
-pub const MAX_CACHED_COMMITS: usize = 64;
+const MAX_CACHED_COMMITS: usize = 64;
 
 /// Line counts of commits and of the working tree (parked with the tab).
 #[derive(Default)]

@@ -106,7 +106,7 @@ impl RowMetrics<'_> {
     }
 
     /// How many whole rows from `top` fit in `viewport_h`.
-    pub fn visible_from(&self, top: usize, viewport_h: f32, rows: usize) -> usize {
+    fn visible_from(&self, top: usize, viewport_h: f32, rows: usize) -> usize {
         match self {
             Self::Uniform(h) => (viewport_h / h).floor() as usize,
             Self::Varied(_) => {

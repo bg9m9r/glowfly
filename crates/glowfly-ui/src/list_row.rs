@@ -42,7 +42,7 @@ pub fn list_row(ui: &mut Ui, indent: f32, text: &str, right: Option<(&str, Color
 
 /// `list_row` with `slot` px kept free at the right edge (right of the dim right-hand parts), for
 /// a painted marker; returns the row's response and the slot's rect (zero-width when slot is 0).
-pub fn list_row_slot(
+fn list_row_slot(
     ui: &mut Ui,
     indent: f32,
     text: &str,

@@ -11,11 +11,11 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 /// A frame at least this long is logged.
-pub const SLOW_FRAME: Duration = Duration::from_millis(50);
+const SLOW_FRAME: Duration = Duration::from_millis(50);
 /// The shortest gap between two slow-frame lines.
-pub const SLOW_LOG_EVERY: Duration = Duration::from_secs(2);
+const SLOW_LOG_EVERY: Duration = Duration::from_secs(2);
 /// How many recent frames the average and the slowest are taken over.
-pub const KEPT_FRAMES: usize = 120;
+const KEPT_FRAMES: usize = 120;
 /// How many message areas a slow-frame line names, slowest first.
 const AREAS_NAMED: usize = 3;
 

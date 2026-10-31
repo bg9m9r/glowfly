@@ -29,7 +29,7 @@ pub struct IncludeSync {
     pub error: Option<String>,
 }
 
-pub const NO_IDENTITY_HERE: &str = "No author identity set.";
+const NO_IDENTITY_HERE: &str = "No author identity set.";
 
 fn who(id: &RepoIdentity) -> Option<String> {
     identity_line(&id.name, &id.email)

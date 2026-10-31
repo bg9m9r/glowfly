@@ -135,7 +135,7 @@ pub const STROKE: f32 = 1.6;
 /// (the toolbar, the grid every icon is drawn on).
 pub const SIZE_SM: f32 = 14.0;
 pub const SIZE_MD: f32 = 16.0;
-pub const SIZE_LG: f32 = 20.0;
+const SIZE_LG: f32 = 20.0;
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
     paint_icon_stroke(p, c, icon, Stroke::new(STROKE, col));

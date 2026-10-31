@@ -200,7 +200,7 @@ impl ForgeState {
         }
     }
 
-    pub fn known_projects(&self) -> Option<&HashSet<String>> {
+    fn known_projects(&self) -> Option<&HashSet<String>> {
         match &self.jira_projects {
             ProjectKeys::Known(set) => Some(set),
             _ => None,

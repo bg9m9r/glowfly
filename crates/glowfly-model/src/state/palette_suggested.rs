@@ -12,10 +12,10 @@ use glowfly_core::fuzzy;
 use glowfly_core::rebase::Resume;
 
 /// Most commands the Suggested group shows.
-pub const MAX_SUGGESTED: usize = 5;
+const MAX_SUGGESTED: usize = 5;
 
 /// Where `cmd` goes among the suggestions now (0 first), or None when it isn't suggested.
-pub fn suggestion_rank(st: &AppState, cmd: &PaletteCommand) -> Option<usize> {
+fn suggestion_rank(st: &AppState, cmd: &PaletteCommand) -> Option<usize> {
     use PaletteCommand as C;
     let Some(snap) = &st.snap else { return matches!(cmd, C::OpenRepo).then_some(0) };
     let head = snap.head_info();

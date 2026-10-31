@@ -168,7 +168,7 @@ pub fn name_problem(t: Lang, name: &str) -> Option<&'static str> {
 }
 
 /// The first problem with an email for commits: blank, no @, or spaces inside.
-pub fn email_problem(t: Lang, email: &str) -> Option<&'static str> {
+fn email_problem(t: Lang, email: &str) -> Option<&'static str> {
     let email = email.trim();
     if email.is_empty() {
         Some(t.tr("welcome.identity.email_blank"))

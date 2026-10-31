@@ -21,7 +21,7 @@ pub const OLDER_THAN_LOADED: &str = "This commit is older than the loaded histor
 /// Why a link can't be made for a repository.
 pub const NOTHING_TO_LINK: &str = "this repository has no commits and no remote yet";
 /// The longest part of an invalid link the dialog shows.
-pub const SHOWN_LINK_CHARS: usize = 200;
+const SHOWN_LINK_CHARS: usize = 200;
 
 #[derive(Default)]
 pub struct DeepLinkState {
@@ -136,7 +136,7 @@ fn url_of(snap: &Snapshot, name: &str) -> Option<String> {
 
 /// The remote a link names when nothing else says which: the checked-out branch's upstream
 /// remote, else `origin`, else the first.
-pub fn preferred_remote(snap: &Snapshot) -> Option<&str> {
+fn preferred_remote(snap: &Snapshot) -> Option<&str> {
     let has = |n: &str| snap.remote_urls.iter().any(|(r, _)| r == n);
     let upstream = snap.head_info().and_then(|b| b.tracking.as_ref()).filter(|t| t.is_remote()).map(|t| t.remote.as_str());
     upstream.filter(|r| has(r)).or_else(|| has("origin").then_some("origin")).or_else(|| snap.remote_urls.first().map(|(r, _)| r.as_str()))

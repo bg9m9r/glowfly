@@ -8,7 +8,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::{patch_ops, pick_ops};
 
-pub type StateAction = (&'static str, &'static [&'static str]);
+type StateAction = (&'static str, &'static [&'static str]);
 
 const REBASE_ACTIONS: &[StateAction] =
     &[("Continue", &["rebase", "--continue"]), ("Skip commit", &["rebase", "--skip"]), ("Abort rebase", &["rebase", "--abort"])];

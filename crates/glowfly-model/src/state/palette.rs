@@ -95,7 +95,7 @@ pub struct Hit {
 
 /// One row of an issue sub-list: the issue's key, its state (shown dim, matched as a keyword)
 /// and the branch name built from it.
-pub struct IssuePickRow {
+struct IssuePickRow {
     key: String,
     detail: String,
     name: String,

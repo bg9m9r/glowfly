@@ -31,7 +31,7 @@ use std::time::Instant;
 
 pub const JOB_LABEL: &str = "Restack";
 /// The quiet job that ends a stopped restack whose rebase ended another way.
-pub const END_LABEL: &str = "End restack";
+const END_LABEL: &str = "End restack";
 
 /// Starts the restack `scope` asks for, unless it is refused or must ask about uncommitted
 /// changes first (`autostash`: the question was asked and answered).

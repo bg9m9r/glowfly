@@ -21,17 +21,17 @@ use eframe::egui::{Id, Ui};
 /// The state column's width, the icon column's, and the gap after each.
 pub const STATE_W: f32 = 16.0;
 pub const ICON_W: f32 = 16.0;
-pub const LEAD_GAP: f32 = 8.0;
+const LEAD_GAP: f32 = 8.0;
 /// The least space between a label and the reason, shortcut or chevron after it.
 pub const LABEL_GAP: f32 = 24.0;
 /// The reason slot's width, the chevron slot's, and the gap between two trailing slots.
 pub const INFO_SLOT: f32 = 16.0;
 pub const CHEVRON_W: f32 = 12.0;
-pub const SLOT_GAP: f32 = 8.0;
+const SLOT_GAP: f32 = 8.0;
 /// A split row's trailing button: its square's side, and how far it reaches in from the text
 /// inset (it is centred on the chevrons' centre, so it overhangs the inset by the rest).
 pub const BUTTON_W: f32 = 20.0;
-pub const BUTTON_SLOT: f32 = CHEVRON_W / 2.0 + BUTTON_W / 2.0;
+const BUTTON_SLOT: f32 = CHEVRON_W / 2.0 + BUTTON_W / 2.0;
 
 /// What a menu's rows need room for.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

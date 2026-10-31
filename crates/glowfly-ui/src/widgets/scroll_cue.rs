@@ -7,7 +7,7 @@
 use eframe::egui::{self, Color32, Mesh, Rect, Ui, pos2, scroll_area::ScrollAreaOutput, style::ScrollStyle};
 
 /// How tall a fade is, at most (and never more than a third of the view).
-pub const FADE_H: f32 = 24.0;
+const FADE_H: f32 = 24.0;
 
 /// The cue's scroll bar: floating, always visible, in the text colour.
 pub fn style() -> ScrollStyle {
@@ -31,12 +31,12 @@ pub fn style() -> ScrollStyle {
 
 /// Which edges of a vertical view cut its content: (top, bottom). Half a pixel of slack keeps
 /// rounding from drawing a fade on content that fits.
-pub fn cut_edges(offset_y: f32, view_h: f32, content_h: f32) -> (bool, bool) {
+fn cut_edges(offset_y: f32, view_h: f32, content_h: f32) -> (bool, bool) {
     (offset_y > 0.5, offset_y + view_h < content_h - 0.5)
 }
 
 /// Paints the fades over `out`'s view where its content is cut, in `surface`.
-pub fn paint_fades<R>(ui: &Ui, out: &ScrollAreaOutput<R>, surface: Color32) {
+fn paint_fades<R>(ui: &Ui, out: &ScrollAreaOutput<R>, surface: Color32) {
     let rect = out.inner_rect;
     let (top, bottom) = cut_edges(out.state.offset.y, rect.height(), out.content_size.y);
     let h = FADE_H.min(rect.height() / 3.0);

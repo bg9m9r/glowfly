@@ -203,7 +203,7 @@ pub fn standing(s: &Settings, snap: &Snapshot) -> Standing {
 
 /// `standing` from the saved decision, whether the scan found nothing, and whether the
 /// decision covers the scan (`SavedTrust::covers`).
-pub fn standing_of(saved: Option<RepoTrust>, clean: bool, covered: bool) -> Standing {
+fn standing_of(saved: Option<RepoTrust>, clean: bool, covered: bool) -> Standing {
     match saved {
         Some(RepoTrust::Trusted) if !covered => Standing::Changed,
         Some(RepoTrust::Trusted) => Standing::Trusted,
@@ -301,7 +301,7 @@ pub fn hooks_label(dir: &Path, workdir: &Path) -> String {
 }
 
 /// The most characters of a setting's value the dialog shows.
-pub const VALUE_CHARS: usize = 80;
+const VALUE_CHARS: usize = 80;
 
 /// A setting's value for the dialog: control characters dropped, cut to `VALUE_CHARS` with "…".
 pub fn shown_value(value: &str) -> String {

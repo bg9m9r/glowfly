@@ -4,7 +4,7 @@
 use glowfly_core::sparse_ops::{SparseMode, SparseStatus};
 
 /// Job labels.
-pub const ENABLE_LABEL: &str = "Turn on sparse checkout";
+const ENABLE_LABEL: &str = "Turn on sparse checkout";
 pub const SAVE_LABEL: &str = "Save sparse paths";
 pub const REAPPLY_LABEL: &str = "Reapply sparse paths";
 pub const DISABLE_LABEL: &str = "Turn off sparse checkout";

@@ -33,7 +33,7 @@ impl Spec {
     }
 
     /// The largest size for `room`; at least `min` (the fit gives way below that).
-    pub fn max_for(&self, room: f32) -> f32 {
+    fn max_for(&self, room: f32) -> f32 {
         (room * self.max_frac).min(self.max_abs).max(self.min)
     }
 

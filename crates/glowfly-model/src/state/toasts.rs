@@ -12,13 +12,13 @@ use crate::msg::Msg;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-pub const TOAST_LIFETIME: Duration = Duration::from_secs(5);
+const TOAST_LIFETIME: Duration = Duration::from_secs(5);
 /// How long a toast with an action button stays up, so there is time to click it.
 pub const ACTION_TOAST_LIFETIME: Duration = Duration::from_secs(10);
 /// The most toasts shown at once; a new one drops the oldest that isn't held.
 const TOAST_LIMIT: usize = 4;
 /// The least time a toast has left once the pointer leaves it.
-pub const HOLD_GRACE: Duration = Duration::from_secs(2);
+const HOLD_GRACE: Duration = Duration::from_secs(2);
 /// A toast fades out over its last second.
 const FADE: Duration = Duration::from_secs(1);
 

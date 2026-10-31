@@ -17,8 +17,8 @@ use crate::ui::widgets::buttons;
 use eframe::egui::{self, CornerRadius, Id, Response, RichText, Stroke, Ui};
 use glowfly_core::i18n::Lang;
 
-pub const COMBINED_LABEL: &str = "Message of the combined commit";
-pub const COMMAND_HINT: &str = "Shell command, e.g. cargo test";
+const COMBINED_LABEL: &str = "Message of the combined commit";
+const COMMAND_HINT: &str = "Shell command, e.g. cargo test";
 
 /// The open editor, under the SHA and summary and as wide as the row.
 pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut UiCache, spell: bool, msgs: &mut Vec<Msg>) {

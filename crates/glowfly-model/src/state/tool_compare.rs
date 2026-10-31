@@ -13,8 +13,8 @@ use std::path::Path;
 
 /// The file history's button (its views aren't translated yet; the rest use the key).
 pub const OPEN_IN_DIFF_TOOL: &str = "Open in external diff tool";
-pub const NO_DIFF_TOOL: &str = "No external diff tool is set. Choose one in Preferences > External tools.";
-pub const NO_MERGE_TOOL: &str = "No external merge tool is set. Choose one in Preferences > External tools.";
+const NO_DIFF_TOOL: &str = "No external diff tool is set. Choose one in Preferences > External tools.";
+const NO_MERGE_TOOL: &str = "No external merge tool is set. Choose one in Preferences > External tools.";
 /// The palette's details when no tool is set.
 pub const NO_DIFF_TOOL_DETAIL: &str = "no diff tool set";
 pub const NO_MERGE_TOOL_DETAIL: &str = "no merge tool set";

@@ -52,7 +52,7 @@ impl DeleteForm {
     }
 
     /// Whether commits only on the branch would be lost, or might be (the count failed).
-    pub fn loses_work(&self) -> bool {
+    fn loses_work(&self) -> bool {
         !matches!(self.lost, Lost::Known(0) | Lost::Counting)
     }
 

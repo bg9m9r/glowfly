@@ -100,7 +100,7 @@ impl AddForm {
 }
 
 /// How the repo path `rel` collides with a submodule the snapshot lists.
-pub fn snapshot_problem(snap: &Snapshot, rel: &str) -> Option<AddPathProblem> {
+fn snapshot_problem(snap: &Snapshot, rel: &str) -> Option<AddPathProblem> {
     let under = |inner: &str, outer: &str| inner.len() > outer.len() && inner.starts_with(outer) && inner.as_bytes()[outer.len()] == b'/';
     snap.submodules.iter().find_map(|sm| {
         if sm.path == rel {
