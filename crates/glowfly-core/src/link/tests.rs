@@ -29,8 +29,8 @@ fn every_kind_survives_a_round_trip() {
     round_trip(&link(url, Some(ROOT), Target::Commit(ROOT.into())));
     round_trip(&link(None, Some(ROOT), Target::Commit("ab".repeat(32))));
     round_trip(&link(url, Some(ROOT), Target::Tag("v1.0".into())));
-    let uri = round_trip(&link(Some("/srv/my repos/r#1"), Some(ROOT), Target::Repository));
-    assert!(uri.contains("url=%2Fsrv%2Fmy%20repos%2Fr%231&"), "{uri}");
+    let uri = round_trip(&link(Some("https://h/my repos/r#1"), Some(ROOT), Target::Repository));
+    assert!(uri.contains("url=https%3A%2F%2Fh%2Fmy%20repos%2Fr%231&"), "{uri}");
     assert_eq!(round_trip(&link(url, None, Target::Repository)), "glowfly://repo?url=https%3A%2F%2Fgithub.com%2Fo%2Fr.git");
     assert_eq!(round_trip(&link(None, Some(ROOT), Target::Repository)), format!("glowfly://repo?root={ROOT}"));
 }
@@ -83,6 +83,65 @@ fn malformed_links_are_refused_with_their_reason() {
     assert_eq!(parse(&huge), Err(LinkError::TooLong));
     // Every reason reads as a sentence fragment of Glowfly's own.
     assert!(LinkError::UnknownKind("draft".into()).to_string().contains("newer Glowfly"));
+}
+
+#[test]
+fn links_never_carry_a_file_or_network_path() {
+    let refused = [
+        r"\\host\share\r.git",
+        "//host/share/r.git",
+        r"\\?\UNC\host\share\r",
+        r"\\?\C:\src\r",
+        r"\\.\C:\src\r",
+        "//?/UNC/host/share",
+        "//./C:/src/r",
+        "file:///srv/git/r",
+        "FILE://host/share/r",
+        "File:/srv/r",
+        "file:r",
+        "file::/srv/r",
+        "fIlE:////host/share",
+        r"C:\src\r",
+        "c:/src/r",
+        "C:r",
+        "/srv/git/r",
+        r"\srv\r",
+        "./r",
+        "../r",
+        "~/r",
+        "r",
+        "src/r:x",
+        r"src\r:x",
+        " //host/share",
+        r"https:\\host\share",
+        "https:////host/share",
+        r"https://\host\share",
+        "hg::/srv/r",
+        r"git::\\host\share",
+    ];
+    for url in refused {
+        assert!(!is_remote_url(url), "{url}");
+        let text = format!("glowfly://repo?url={}&root={ROOT}", enc(url));
+        assert_eq!(parse(&text), Err(LinkError::LocalUrl), "{url}");
+    }
+    let accepted = [
+        "https://github.com/o/r.git",
+        "HTTP://h:8080/o/r",
+        "ssh://git@h:22/o/r",
+        "git+ssh://h/o/r",
+        "git://h/o/r",
+        "git@github.com:o/r.git",
+        "host:o/r",
+        "[::1]:o/r",
+        "codecommit::us-east-1://r",
+    ];
+    for url in accepted {
+        assert!(is_remote_url(url), "{url}");
+        let text = format!("glowfly://repo?url={}&root={ROOT}", enc(url));
+        assert_eq!(parse(&text).map(|l| l.url), Ok(Some(url.to_owned())), "{url}");
+    }
+    // A link without a url still opens by its root commit.
+    assert!(parse(&format!("glowfly://repo?root={ROOT}")).is_ok());
 }
 
 #[test]

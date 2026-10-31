@@ -1,0 +1,6 @@
+Dialog
+  Label "Glowfly won't open this link"
+  Button "Close this dialog"
+  Label "This link names a file or network path instead of a remote URL, so Glowfly won't open it. To clone from a path, type it into the Clone dialog yourself."
+  Label "glowfly://repo?url=%5C%5Chost%5Cshare%5Capp.git&root=0123456789abcdef0123456789abcdef01234567"
+  Button "Close" [focused]

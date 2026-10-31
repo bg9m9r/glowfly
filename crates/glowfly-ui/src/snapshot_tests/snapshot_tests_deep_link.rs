@@ -1,7 +1,7 @@
-//! The glowfly:// link dialogs (a link Glowfly can't open, one of a kind only a newer version
-//! knows, Repository not found with and without a URL to clone, a located folder that doesn't
-//! match, choosing among several copies) and Preferences > General's Glowfly Links row. Each
-//! test clicks a button and checks the message it sends.
+//! The glowfly:// link dialogs (a link Glowfly can't open, one naming a file or network path,
+//! one of a kind only a newer version knows, Repository not found with and without a URL to
+//! clone, a located folder that doesn't match, choosing among several copies) and Preferences >
+//! General's Glowfly Links row. Each test clicks a button and checks the message it sends.
 
 use super::snapshot_tests::{harness, harness_sized, settings};
 use crate::deep_link::{DeepLinkMsg, FindOrigin};
@@ -43,6 +43,20 @@ fn sent(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, want: &dyn Fn(&Msg)
 
 fn branch(url: Option<&str>) -> Link {
     Link { url: url.map(str::to_owned), root: Some(ROOT.into()), target: Target::Branch("feature/login".into()) }
+}
+
+#[test]
+fn deep_link_local_path() {
+    let mut st = app(ThemeChoice::Dark);
+    let text = Link { url: Some(r"\\host\share\app.git".into()), root: Some(ROOT.into()), target: Target::Repository }.to_uri();
+    send(&mut st, DeepLinkMsg::Open(text));
+    assert!(matches!(st.modal, Some(Modal::DeepLink(LinkDialog::LocalPath { .. }))));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("deep_link_local_path");
+    h.get_by_label("Close").click();
+    h.run();
+    assert!(sent(&h, &|m| matches!(m, Msg::CloseModal)));
 }
 
 #[test]
