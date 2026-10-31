@@ -1,5 +1,6 @@
 //! The "Trust this repository?" dialog: what in the repository's own config and hooks makes git
-//! run programs, and the Trust / Don't trust choice (update/trust.rs records it). When a git
+//! run programs (and, apart, settings that change how git connects: TLS checks and proxies),
+//! and the Trust / Don't trust choice (update/trust.rs records it). When a git
 //! job the user started, or the built-in terminal's shells, wait for the decision, it says so
 //! and offers Trust and run or Cancel instead. For a repository trusted earlier that gained
 //! settings or hooks since (or whose hook scripts or commands file changed), it asks again and
@@ -16,7 +17,7 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
-use glowfly_core::trust::TrustScan;
+use glowfly_core::trust::{ConfigCommand, TrustScan, is_network_setting};
 use std::path::Path;
 
 /// Draws the prompt; returns true when Cancel was clicked (the dialog closes without a
@@ -120,12 +121,11 @@ fn commands(ui: &mut Ui, t: Lang) {
 
 /// The settings and hooks of one repository (the top one or a submodule).
 fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path) {
-    if !scan.config.is_empty() {
-        ui.label(type_scale::section_text(ui, "Settings that run commands"));
-        for c in &scan.config {
-            let row = format!("{} = {}", printable(&c.key), shown_value(&c.value));
-            ui.add(egui::Label::new(RichText::new(row).monospace()).wrap());
-        }
+    let (network, commands): (Vec<_>, Vec<_>) = scan.config.iter().partition(|c| is_network_setting(&c.key));
+    settings(ui, "Settings that run commands", &commands);
+    if !network.is_empty() {
+        settings(ui, t.tr("trust.network.title"), &network);
+        ui.add(egui::Label::new(RichText::new(t.tr("trust.network.note")).color(color::weak())).wrap());
         ui.add_space(6.0);
     }
     if !scan.hooks.is_empty() {
@@ -144,6 +144,19 @@ fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path) {
         }
     }
     follows(ui, t, scan);
+}
+
+/// One group of settings under `title`, one `key = value` row each; nothing when empty.
+fn settings(ui: &mut Ui, title: &str, rows: &[&ConfigCommand]) {
+    if rows.is_empty() {
+        return;
+    }
+    ui.label(type_scale::section_text(ui, title));
+    for c in rows {
+        let row = format!("{} = {}", printable(&c.key), shown_value(&c.value));
+        ui.add(egui::Label::new(RichText::new(row).monospace()).wrap());
+    }
+    ui.add_space(6.0);
 }
 
 /// Where hooks come from the working tree: they change with the branch.

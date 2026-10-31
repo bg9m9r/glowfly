@@ -101,6 +101,20 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
         ("url.ext::./bin/t.insteadOf", "https://example.com/", &["bin/t"]),
         ("submodule.x.update", "!$(git rev-parse --show-toplevel)/bin/update", &["bin/update"]),
         ("difftool.x.path", "bin/difftool", &["bin/difftool"]),
+        // git-lfs's programs, and a CA bundle git reads.
+        ("lfs.customtransfer.x.path", "./bin/agent", &["bin/agent"]),
+        ("lfs.customtransfer.x.args", "tools/agent.py --fast", &["tools/agent.py"]),
+        ("lfs.extension.x.clean", "sh tools/lfs-clean.sh %f", &["tools/lfs-clean.sh"]),
+        ("lfs.extension.x.smudge", "tools/lfs-smudge %f", &["tools/lfs-smudge"]),
+        ("http.sslCAInfo", "certs/ca.pem", &["certs/ca.pem"]),
+        ("http.https://example.com/.sslCAPath", "./certs", &["certs"]),
+        // One path, spaces and all, never split into words.
+        ("http.sslCAInfo", "my certs/ca file.pem", &["my certs/ca file.pem"]),
+        // A transfer agent's name, a TLS switch or a proxy names no file.
+        ("lfs.standaloneTransferAgent", "present", &[]),
+        ("http.sslVerify", "present", &[]),
+        ("http.proxy", "present:8080", &[]),
+        ("remote.origin.proxy", "present", &[]),
         // What names no file in the working tree follows nothing.
         ("filter.lfs.clean", "git-lfs clean -- %f", &[]),
         ("filter.lfs.process", "git-lfs filter-process", &[]),

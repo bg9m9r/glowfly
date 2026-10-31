@@ -298,6 +298,7 @@ mod trust_held_tab_tests;
 mod trust_held_tests;
 mod trust_inherit_tests;
 mod trust_pages_tests;
+mod trust_patch_export_tests;
 mod trust_print_tests;
 mod trust_recheck_programs_tests;
 mod trust_recheck_tests;

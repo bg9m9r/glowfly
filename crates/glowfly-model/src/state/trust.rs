@@ -80,6 +80,8 @@ pub struct Waiting {
     /// `Snapshot::real_workdir` of the repository it waits for.
     pub real: PathBuf,
     pub what: WaitingFor,
+    /// What the prompt says waits (`TrustPrompt::held`), and the label its re-check goes by.
+    pub label: Option<String>,
 }
 
 /// What waits.
@@ -87,7 +89,7 @@ pub enum WaitingFor {
     /// Open in external terminal: the launch.
     Terminal(crate::effect::Effect),
     /// A read whose git runs the repository's own programs (a conflict check: merge-tree runs
-    /// its merge drivers).
+    /// its merge drivers; a patch of uncommitted changes: git diff runs its filters).
     Read(crate::effect::Effect),
     /// A merge preview: its dialog opens and the preview runs.
     Preview(crate::effect::OpPreviewJob),

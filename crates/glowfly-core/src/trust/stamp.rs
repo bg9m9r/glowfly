@@ -71,7 +71,11 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
             let name = e.name().unwrap_or_default().to_owned();
             let lower = name.to_ascii_lowercase();
             let included = lower == "include.path" || (lower.starts_with("includeif.") && lower.ends_with(".path"));
-            let Some(v) = e.value().filter(|_| included) else { continue };
+            // A bare key has no value (git2's `value` would panic on it), and names no file.
+            if !included || !e.has_value() {
+                continue;
+            }
+            let Some(v) = e.value() else { continue };
             let p = crate::paths::expand_home(v, crate::settings::home_dir().as_deref());
             let mut paths = Vec::new();
             if p.is_absolute() {

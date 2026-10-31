@@ -238,7 +238,8 @@ impl Pull {
         match config.multivar(&key, None) {
             Ok(mut values) => {
                 while let Some(v) = values.next() {
-                    let Ok(v) = v else { return true };
+                    // A bare key has no value (git2's `value` would panic): unreadable.
+                    let Some(v) = v.ok().filter(|v| v.has_value()) else { return true };
                     match v.value() {
                         Some(v) => configured.push(v.to_owned()),
                         None => return true,

@@ -3,8 +3,10 @@
 //! A repository from elsewhere can name programs in its `.git/config` (an ssh command, a
 //! credential helper, filters, an fsmonitor hook) or carry hooks, and git runs them as soon as it
 //! touches the repository. `scan` lists them with libgit2 only, so reading them runs nothing.
+//! It lists the settings that change how git connects (TLS checks, proxies) too (`keys.rs`).
 
 use git2::{Config, ConfigLevel, Repository};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -13,6 +15,9 @@ use digest::Reading;
 pub mod compare;
 pub mod follow;
 mod home;
+mod keys;
+use keys::command_key;
+pub use keys::is_network_setting;
 pub mod incoming;
 pub mod merged;
 pub mod plumbing;
@@ -26,7 +31,8 @@ pub use digest::of_bytes as content_digest;
 pub use follow::Follow;
 pub use print::{TrustPrint, allows};
 
-/// A setting from the repository's own config that makes git run a program.
+/// A setting from the repository's own config that makes git run a program, or changes how it
+/// connects (`is_network_setting`).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConfigCommand {
     /// The key in its usual spelling, e.g. `core.sshCommand`.
@@ -108,30 +114,6 @@ pub const HOOK_NAMES: &[&str] = &[
     "post-index-change",
 ];
 
-/// Single keys that name a program, as libgit2 returns them (lowercase), with their usual spelling.
-const COMMAND_KEYS: &[(&str, &str)] = &[
-    ("core.sshcommand", "core.sshCommand"),
-    ("core.hookspath", "core.hooksPath"),
-    ("core.editor", "core.editor"),
-    ("core.askpass", "core.askPass"),
-    ("core.gitproxy", "core.gitProxy"),
-    ("sequence.editor", "sequence.editor"),
-    ("diff.external", "diff.external"),
-    ("credential.helper", "credential.helper"),
-    ("gpg.program", "gpg.program"),
-    ("gpg.openpgp.program", "gpg.openpgp.program"),
-    ("gpg.x509.program", "gpg.x509.program"),
-    ("gpg.ssh.program", "gpg.ssh.program"),
-    ("gpg.ssh.defaultkeycommand", "gpg.ssh.defaultKeyCommand"),
-    // Run to list an alternate's refs during fetch negotiation.
-    ("core.alternaterefscommand", "core.alternateRefsCommand"),
-];
-
-/// The git commands Glowfly runs that aren't built into git, so a repository's alias of the
-/// same name runs in their place when the program is missing (git looks for `git-<name>`
-/// before aliases, but after its built-in commands, which an alias never replaces).
-const ALIASED_COMMANDS: &[&str] = &["lfs", "mergetool"];
-
 /// How deep `scan` follows submodules inside submodules.
 const MAX_SUBMODULE_DEPTH: usize = 8;
 
@@ -184,7 +166,19 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
             if !matches!(e.level(), ConfigLevel::Local | ConfigLevel::Worktree) {
                 return;
             }
-            let (Some(name), Some(value)) = (e.name(), e.value()) else { return };
+            // Names and values that aren't UTF-8 are read too (git runs them all the same),
+            // each byte that isn't kept apart (`keys::text_of`).
+            let name = keys::text_of(e.name_bytes());
+            let name = name.as_ref();
+            let value = if e.has_value() {
+                keys::text_of(e.value_bytes())
+            } else if keys::network_key(name).is_some() {
+                // A bare key (true): only a connection setting counts then, as with any value.
+                Cow::Borrowed("")
+            } else {
+                return;
+            };
+            let value = value.as_ref();
             if let Some(key) = command_key(name, value) {
                 if name == "core.hookspath" {
                     local_hooks_path = Some(value.to_owned());
@@ -242,73 +236,6 @@ pub fn scan_at(path: &Path) -> crate::error::Result<TrustScan> {
 /// Whether `git init` output says it made a new repository (not "Reinitialized existing").
 pub fn init_created_new(output: &str) -> bool {
     output.lines().any(|l| l.contains("Initialized empty Git repository"))
-}
-
-/// The display key when the setting `name` = `value` makes git run a program, or names a remote
-/// git could read as an option (the snapshot leaves that remote out).
-fn command_key(name: &str, value: &str) -> Option<String> {
-    // An empty value resets a list (credential.helper) or turns the setting off.
-    if value.is_empty() {
-        return None;
-    }
-    if let Some((_, shown)) = COMMAND_KEYS.iter().find(|(k, _)| *k == name) {
-        return Some((*shown).to_owned());
-    }
-    // git runs an alias for a command it can't find (alias.lfs when git-lfs isn't installed),
-    // in any letter case of the name.
-    if let Some(cmd) = name.strip_prefix("alias.").map(|rest| rest.strip_suffix(".command").unwrap_or(rest)) {
-        let shadows = ALIASED_COMMANDS.iter().any(|c| c.eq_ignore_ascii_case(cmd));
-        return shadows.then(|| format!("alias.{}", cmd.to_ascii_lowercase()));
-    }
-    if name == "protocol.allow" || name == "remote.pushdefault" {
-        let on = if name == "protocol.allow" { value.eq_ignore_ascii_case("always") } else { value.starts_with('-') };
-        return on.then(|| name.to_owned());
-    }
-    if name == "core.fsmonitor" {
-        // A boolean means git's built-in daemon; anything else is a hook's path.
-        return Config::parse_bool(value).is_err().then(|| name.to_owned());
-    }
-    let (first, last) = (name.find('.')?, name.rfind('.')?);
-    if first == last {
-        return None;
-    }
-    let (section, sub, key) = (&name[..first], &name[first + 1..last], &name[last + 1..]);
-    let runs = match section {
-        "credential" => key == "helper",
-        "diff" => matches!(key, "command" | "textconv"),
-        "merge" => key == "driver",
-        // `git submodule update` runs `!command` (only from the repository's own config).
-        "submodule" => key == "update" && value.starts_with('!'),
-        "filter" => matches!(key, "clean" | "smudge" | "process"),
-        // git difftool / mergetool start a tool's own command, or a built-in tool from `.path`.
-        "difftool" | "mergetool" => matches!(key, "cmd" | "path"),
-        "remote" if sub.starts_with('-') => true,
-        "remote" => matches!(key, "uploadpack" | "receivepack") || (matches!(key, "url" | "pushurl") && runs_transport(value)),
-        // A branch's remote can be a URL.
-        "branch" => matches!(key, "remote" | "pushremote") && (runs_transport(value) || value.starts_with('-')),
-        // Rewrites matching URLs to the subsection.
-        "url" => matches!(key, "insteadof" | "pushinsteadof") && runs_transport(sub),
-        // Lets ext:: run, including for submodule URLs from .gitmodules.
-        "protocol" => sub == "ext" && key == "allow" && value != "never",
-        // libgit2 reads a conditional include only for the conditions it knows; git may read
-        // others (hasconfig:), so what such a file sets is unseen.
-        "includeif" => key == "path" && !["gitdir:", "gitdir/i:", "onbranch:"].iter().any(|c| sub.starts_with(c)),
-        _ => false,
-    };
-    if !runs {
-        return None;
-    }
-    Some(match section {
-        "includeif" => format!("includeIf.{sub}.path"),
-        "url" => format!("url.{sub}.{}", if key == "insteadof" { "insteadOf" } else { "pushInsteadOf" }),
-        _ => name.to_owned(),
-    })
-}
-
-/// Whether git reaching `url` runs a command: the ext:: transport (any case, since a Windows
-/// file system finds its helper under any spelling).
-fn runs_transport(url: &str) -> bool {
-    url.get(..5).is_some_and(|p| p.eq_ignore_ascii_case("ext::"))
 }
 
 /// The folder git takes hooks from. `local` is the repository's own core.hooksPath, if set.
