@@ -52,7 +52,7 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, now: Instant, fx: &mu
         SelectionMsg::ToggleWip => super::compare_wip::toggle(st, fx),
         SelectionMsg::CompareWithWorkdir(oid) => super::compare_wip::compare(st, oid, fx),
         SelectionMsg::CompareWithHead { oid, name } => compare_with_head(st, oid, &name, fx),
-        SelectionMsg::WorkdirCompareLoaded { oid, generation, result } => super::compare_wip::loaded(st, oid, generation, result),
+        SelectionMsg::WorkdirCompareLoaded { oid, generation, result } => super::compare_wip::loaded(st, oid, generation, result, fx),
         SelectionMsg::CherryPick(oids) => super::pick::run(st, PickOp::CherryPick, oids, None, fx),
         SelectionMsg::Revert(oids) => super::pick::run(st, PickOp::Revert, oids, None, fx),
         SelectionMsg::PickWithMainline { op, oids, mainline } => super::pick::run(st, op, oids, Some(mainline), fx),

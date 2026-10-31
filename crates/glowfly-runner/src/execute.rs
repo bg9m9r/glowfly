@@ -62,9 +62,10 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         Effect::LoadDetail { workdir, oid } => {
             Some(Msg::Repo(RepoMsg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }))
         }
-        Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file } => Some(highlight::load_job(
+        Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed } => Some(highlight::load_job(
             workdir,
             target,
+            listed,
             reload,
             generation,
             previous,

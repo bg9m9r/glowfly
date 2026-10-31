@@ -6,7 +6,7 @@
 use crate::effect::Effect;
 use crate::effect::SelectionEffect;
 use crate::state::selection_wip::{WorkdirCompare, wip_toggled};
-use crate::state::{AppState, Selection};
+use crate::state::{AppState, Selection, diff_nav};
 use git2::Oid;
 use glowfly_core::repo::{Comparison, Snapshot};
 
@@ -56,8 +56,15 @@ pub(super) fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::Selection(SelectionEffect::WorkdirCompare { workdir, oid: w.oid, generation: w.generation, swapped: w.swapped }));
 }
 
-/// A file list read: kept when it is the latest read for the compared commit.
-pub(super) fn loaded(st: &mut AppState, oid: Oid, generation: u64, result: Result<Comparison, String>) {
+/// A file list read: kept when it is the latest read for the compared commit. The open diff of
+/// one of its files is read again when that file's row changed: it was read going by the old
+/// row (`diff_nav::file_order::listed`), which only names the rename partner the old list paired it with.
+pub(super) fn loaded(st: &mut AppState, oid: Oid, generation: u64, result: Result<Comparison, String>, fx: &mut Vec<Effect>) {
+    let open_row = |st: &AppState| {
+        let (target, _) = st.session.diff.view.as_ref().filter(|(t, _)| t.workdir_compared() == Some(oid))?;
+        diff_nav::file_order::listed(st, target).cloned()
+    };
+    let before = open_row(st);
     match &mut st.session.selection {
         Selection::VsWorkdir(w) if w.oid == oid && w.generation == generation => {
             w.changes = Some(result.clone());
@@ -65,7 +72,10 @@ pub(super) fn loaded(st: &mut AppState, oid: Oid, generation: u64, result: Resul
                 st.log(false, e);
             }
         }
-        _ => tracing::debug!("dropped a stale working-tree comparison of {oid} (read {generation})"),
+        _ => return tracing::debug!("dropped a stale working-tree comparison of {oid} (read {generation})"),
+    }
+    if before.is_some() && open_row(st) != before {
+        super::repo::reload_diff(st, fx);
     }
 }
 

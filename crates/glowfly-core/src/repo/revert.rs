@@ -89,7 +89,7 @@ pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
     let attrs = super::attr_source::for_target(&repo, target);
     let diff = target_diff(&attrs, target, LoadDiffOptions { ignore_whitespace: ws, ..Default::default() }, None)?;
     let no_changes = || Error::NotFound(format!("no changes in {path}"));
-    let position = |d: &git2::Diff| d.deltas().position(|d| super::rpath::touches(&d, path)).ok_or_else(no_changes);
+    let position = |d: &git2::Diff| super::rpath::delta_of(d, path).ok_or_else(no_changes);
     let idx = position(&diff)?;
     let delta = diff.get_delta(idx).ok_or_else(no_changes)?;
     if req.dest.is_some() && delta.status() == Delta::Deleted {

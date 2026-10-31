@@ -284,3 +284,17 @@ fn whole_shown(st: &AppState) -> bool {
 fn is_fold(w: &WholeFile, key: u32) -> bool {
     folds(w).iter().any(|f| f.key == key)
 }
+
+/// The viewer's load of `target`, with the diff settings of now and its list row.
+pub(super) fn load_effect(
+    st: &AppState,
+    workdir: std::path::PathBuf,
+    target: DiffTarget,
+    reload: bool,
+    generation: u64,
+    previous: Option<std::sync::Arc<FileDiff>>,
+) -> Effect {
+    let (ignore_whitespace, whole_file) = (st.settings.diff_ignore_whitespace, st.settings.diff_mode == DiffMode::WholeFile);
+    let listed = diff_nav::file_order::listed(st, &target).cloned();
+    Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed }
+}
