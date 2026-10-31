@@ -95,6 +95,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `job_spec.rs`: `JobSpec`, a git job for `start_job`, and `Retry`, Try again's copy of one with the tab it started in.
 - `job_spec/labels.rs`: a job's English label shown in the UI language, for the headlines built from it.
 - `palette_nav.rs`: the palette's page and end keys.
+- `palette_cache.rs`: the open palette's command list kept between frames (checkout entries until the refs change, the ranking per query); tests in `palette_cache_tests.rs`.
 - `palette_selected.rs`: the palette's entries for the selected commit.
 - `palette_suggested.rs`: the empty query's Recent, Suggested and All commands groups and which commands the repository's state suggests.
 - `op_actions.rs`: the operation in progress: its banner commands.

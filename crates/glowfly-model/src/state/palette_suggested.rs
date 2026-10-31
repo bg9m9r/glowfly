@@ -6,8 +6,8 @@
 use super::AppState;
 use super::op_steps::conflicted;
 use super::palette::Group;
+use super::palette_commands::PaletteCommand;
 use super::palette_commands::palette_commands_rebase::RebaseCommand;
-use super::palette_commands::{Entry, PaletteCommand};
 use glowfly_core::fuzzy;
 use glowfly_core::rebase::Resume;
 
@@ -15,7 +15,7 @@ use glowfly_core::rebase::Resume;
 const MAX_SUGGESTED: usize = 5;
 
 /// Where `cmd` goes among the suggestions now (0 first), or None when it isn't suggested.
-fn suggestion_rank(st: &AppState, cmd: &PaletteCommand) -> Option<usize> {
+pub(super) fn suggestion_rank(st: &AppState, cmd: &PaletteCommand) -> Option<usize> {
     use PaletteCommand as C;
     let Some(snap) = &st.snap else { return matches!(cmd, C::OpenRepo).then_some(0) };
     let head = snap.head_info();
@@ -45,9 +45,12 @@ type Ranked = (usize, fuzzy::Match);
 
 /// The empty query's list (`ranked`: the recent commands first, then the rest in entry order)
 /// split into Recent, Suggested and All commands, each command once, with the groups' first
-/// rows. No groups when only one would have rows.
-pub(super) fn grouped(st: &AppState, all: &[Option<Entry>], ranked: Vec<Ranked>) -> (Vec<Ranked>, Vec<(Group, usize)>) {
-    let command = |i: usize| all[i].as_ref().map(|e| &e.command);
+/// rows. No groups when only one would have rows. `command` gives the command of entry `i`.
+pub(super) fn grouped<'a>(
+    st: &AppState,
+    command: impl Fn(usize) -> Option<&'a PaletteCommand>,
+    ranked: Vec<Ranked>,
+) -> (Vec<Ranked>, Vec<(Group, usize)>) {
     let is_recent = |i: usize| command(i).and_then(PaletteCommand::recall_key).is_some_and(|k| st.palette_recent.position(k).is_some());
     let (recent, rest): (Vec<_>, Vec<_>) = ranked.into_iter().partition(|(i, _)| is_recent(*i));
     let rank = |i: usize| command(i).and_then(|c| suggestion_rank(st, c));
@@ -74,6 +77,7 @@ pub(super) fn grouped(st: &AppState, all: &[Option<Entry>], ranked: Vec<Ranked>)
 
 #[cfg(test)]
 mod tests {
+    use super::super::palette_commands::Entry;
     use super::*;
     use glowfly_core::repo::{FileEntry, RemoteInfo};
     use glowfly_core::settings::Settings;
@@ -124,13 +128,10 @@ mod tests {
         let snap = crate::state::op_fixture::snapshot("suggested-none");
         let dir = snap.workdir.clone();
         st.snap = Some(snap);
-        let all: Vec<Option<Entry>> = super::super::palette_commands::entries(&st)
-            .into_iter()
-            .filter(|e| suggestion_rank(&st, &e.command).is_none())
-            .map(Some)
-            .collect();
+        let all: Vec<Entry> =
+            super::super::palette_commands::entries(&st).into_iter().filter(|e| suggestion_rank(&st, &e.command).is_none()).collect();
         let ranked = (0..all.len()).map(|i| (i, fuzzy::Match { score: 0, positions: Vec::new() })).collect();
-        let (rows, groups) = grouped(&st, &all, ranked);
+        let (rows, groups) = grouped(&st, |i| all.get(i).map(|e| &e.command), ranked);
         assert!(groups.is_empty(), "no recents and no suggestions: no headings");
         assert_eq!(rows.iter().map(|r| r.0).collect::<Vec<_>>(), (0..all.len()).collect::<Vec<_>>(), "entry order");
         let _ = std::fs::remove_dir_all(&dir);
