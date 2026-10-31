@@ -6,22 +6,27 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 
 ## Source checks (`crates/glowfly-app/tests/`)
 
-- `crates/glowfly-app/tests/layering.rs`: no I/O in the app's `ui/` or the model's `update/` or `state/` (see Rules; its `ALLOWED` table is in `tests/layering/rules.rs`).
-- `crates/glowfly-app/tests/controls.rs`: views under `ui/` draw text fields, checkboxes, radio buttons and modals with `theme/controls.rs` and `theme::modal`, not egui's own.
-- `controls.rs`: dialogs (and the first-run welcome) draw their title and buttons through `dialog_frame` (no headings, egui buttons or English Cancel / Close) and their text fields as `widgets::TextField` (no `controls::field(` or `TextEdit::`).
-- `controls.rs`: the dialogs for less familiar operations each have a guide side pane, and no other dialog has one.
-- `controls.rs`: preference pages and panels use `widgets::buttons` with translated Cancel and Close; nothing wraps a styled button in `add_enabled`.
-- `crates/glowfly-app/tests/type_scale.rs`: view text stays on the type scale: no pixel sizes in `FontId`, `.size(` or font constants, no egui small text or `RichText::strong()` (headers use `type_scale::section`, emphasis `type_scale::strong`), and no link coloured by hand; `ALLOWED` names the exceptions.
-- `crates/glowfly-app/tests/tokens.rs`: views stay on the design tokens (`ui/theme/tokens.rs`): no number in `CornerRadius::same(`, `.corner_radius(`, a `CornerRadius { nw: … }` or a `*RADIUS*` constant, no hand-made `Shadow` or `popup_shadow` (outside `theme/mod.rs`), and no accent `rect_stroke` (focus rings go through `tokens::focus_ring`); the icon shapes are exempt and `ALLOWED` names the exceptions.
-- `crates/glowfly-app/tests/sentence_case.rs`: English labels are in sentence case: `en.json`'s label values (not tips, help or other prose) and the first literal at the views' label calls, with proper nouns and acronyms keeping their capitals.
-- `crates/glowfly-app/tests/menus.rs`: views open menus, submenus and menu popups only through `ui/widgets/menu.rs` (or `row_menu` / `menu_anchor`), so every menu gets the shared style.
-- `crates/glowfly-app/tests/message_styles.rs`: only `widgets/banner.rs` fills with the banner colour (the diff's Git LFS note keeps it as a box), and the forms converted to `widgets/form_message.rs` don't colour problem lines red or amber themselves; shares the source reading with `controls.rs` (`tests/support/views.rs`).
+- `crates/glowfly-app/tests/layering.rs`: no I/O in glowfly-ui's `src/` or the model's `update/` or `state/` (see Rules; its `ALLOWED` table is in `tests/layering/rules.rs`).
 - `crates/glowfly-app/tests/hygiene.rs`: ratchets across every crate: non-test files stay under 400 lines (`LONG_FILES` holds today's longer files at their length as a ceiling) and open with a `//!` doc.
 - `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).
 - `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, the kit's `git`, …) are not redefined or handed one folder name twice.
-- `hygiene.rs`: view tests build their harnesses with `ui::snapshot_check::builder()` (`HARNESS_MAKERS` names the exceptions).
+- `hygiene.rs`: view tests build their harnesses with glowfly-ui's `snapshot_check::builder()` (`HARNESS_MAKERS` names the exceptions).
 - `hygiene/test_switches.rs`: the non-test code of every crate but glowfly-core has no `cfg(test)` behaviour switch (`cfg!(test)`, `cfg(not(test))`, `#[cfg(test)]` on a statement or field); only the shell (`TEST_SWITCH_FILES`) may keep one.
 - `crates/glowfly-app/tests/i18n_keys.rs`: every translation key the code of any crate looks up exists in English, and every English key is used.
+
+## View checks (`crates/glowfly-ui/tests/view_checks/`, one binary)
+
+- `view_checks/main.rs`: the binary; `support/` holds what the checks share (the dialog files, reading the sources).
+- `crates/glowfly-ui/tests/view_checks/controls.rs`: views draw text fields, checkboxes, radio buttons and modals with `theme/controls.rs` and `theme::modal`, not egui's own.
+- `controls.rs`: dialogs (and the first-run welcome) draw their title and buttons through `dialog_frame` (no headings, egui buttons or English Cancel / Close) and their text fields as `widgets::TextField` (no `controls::field(` or `TextEdit::`).
+- `controls.rs`: the dialogs for less familiar operations each have a guide side pane, and no other dialog has one.
+- `controls.rs`: preference pages and panels use `widgets::buttons` with translated Cancel and Close; nothing wraps a styled button in `add_enabled`.
+- `crates/glowfly-ui/tests/view_checks/type_scale.rs`: view text stays on the type scale: no pixel sizes in `FontId`, `.size(` or font constants, no egui small text or `RichText::strong()` (headers use `type_scale::section`, emphasis `type_scale::strong`), and no link coloured by hand; `ALLOWED` names the exceptions.
+- `crates/glowfly-ui/tests/view_checks/tokens.rs`: views stay on the design tokens (`theme/tokens.rs`): no number in `CornerRadius::same(`, `.corner_radius(`, a `CornerRadius { nw: … }` or a `*RADIUS*` constant, no hand-made `Shadow` or `popup_shadow` (outside `theme/mod.rs`), and no accent `rect_stroke` (focus rings go through `tokens::focus_ring`); the icon shapes are exempt and `ALLOWED` names the exceptions.
+- `crates/glowfly-ui/tests/view_checks/sentence_case.rs`: English labels are in sentence case: `en.json`'s label values (not tips, help or other prose) and the first literal at the views' label calls, with proper nouns and acronyms keeping their capitals.
+- `crates/glowfly-ui/tests/view_checks/menus.rs`: views open menus, submenus and menu popups only through `widgets/menu.rs` (or `row_menu` / `menu_anchor`), so every menu gets the shared style.
+- `crates/glowfly-ui/tests/view_checks/message_styles.rs`: only `widgets/banner.rs` fills with the banner colour (the diff's Git LFS note keeps it as a box), and the forms converted to `widgets/form_message.rs` don't colour problem lines red or amber themselves; shares the source reading with `controls.rs` (`support/views.rs`, which the app's `hygiene.rs` and `i18n_keys.rs` include too).
+- `crates/glowfly-ui/tests/view_checks/dialog_fields.rs`: every dialog's `TextField` sits inside a `FieldGroup` (label, field, help), never in a row beside a label; a list's filter box is exempt.
 
 ## The shared test kit (`crates/glowfly-core/src/testkit/`)
 
@@ -62,8 +67,8 @@ A failing input lands in `fuzz/artifacts/<target>/`; `cargo +nightly fuzz run <t
 ## Images
 
 - `crates/glowfly-app/tests/app_icon.rs`: the app icon: draws it (`app_icon/draw.rs`) and checks every PNG in `assets/icon/` and inside `glowfly.ico` and `glowfly.icns` (`app_icon/containers.rs`); `UPDATE_ICONS=1` rewrites them.
-- `crates/glowfly-app/tests/snapshots/`: approved view snapshots: a `<name>.txt` text snapshot for every view test, and a `<name>.png` for the pixel goldens (`src/ui/snapshot_check/goldens.rs`).
-- `scripts/rerender-conflicted.ps1`: after a merge or rebase stops on snapshot conflicts, re-renders only the conflicted snapshots (the tests that name them) and stages them; `-DryRun` lists them.
+- `crates/glowfly-ui/tests/snapshots/`: approved view snapshots: a `<name>.txt` text snapshot for every view test (glowfly-ui's, and the app's `runner_snapshots/`), and a `<name>.png` for the pixel goldens (`crates/glowfly-ui/src/snapshot_check/goldens.rs`).
+- `scripts/rerender-conflicted.ps1`: after a merge or rebase stops on snapshot conflicts, re-renders only the conflicted snapshots (the tests that name them, in glowfly-ui's library or the app's binary) and stages them; `-DryRun` lists them.
 
 ## Installers
 

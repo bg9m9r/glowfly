@@ -36,10 +36,11 @@ are fuzzed nightly (`.github/workflows/fuzz.yml`); how to run a target yourself 
 Fuzzing in `docs/architecture/tests.md`.
 
 UI changes are covered by snapshot tests. Every view test keeps a text snapshot (`<name>.txt`:
-the accessibility tree and the painted text) in `crates/glowfly-app/tests/snapshots/`, and about a
+the accessibility tree and the painted text) in `crates/glowfly-ui/tests/snapshots/`, and about a
 hundred pixel goldens (the themes, graph, diffs, design sheets and a few dialogs, listed in
-`src/ui/snapshot_check/goldens.rs`) also keep a PNG. Re-render them with
-`UPDATE_SNAPSHOTS=1 cargo test -p glowfly snapshot`, read the changed text, look at the changed
+`crates/glowfly-ui/src/snapshot_check/goldens.rs`) also keep a PNG. Re-render them with
+`UPDATE_SNAPSHOTS=1 cargo test -p glowfly-ui snapshot` (and `-p glowfly snapshot` for the few
+that run effects through the runner), read the changed text, look at the changed
 PNGs, and commit them with your change. A mismatch writes `<name>.diff.txt` or `<name>.diff.png`
 beside the snapshot.
 
@@ -51,7 +52,7 @@ driver that keeps your side (your own choice; the repository doesn't ship one):
 ```
 git config merge.glowfly-snapshot.name "keep ours; re-render with scripts/rerender-conflicted.ps1"
 git config merge.glowfly-snapshot.driver true
-echo "crates/glowfly-app/tests/snapshots/* merge=glowfly-snapshot" >> .git/info/attributes
+echo "crates/glowfly-ui/tests/snapshots/* merge=glowfly-snapshot" >> .git/info/attributes
 ```
 
 With that driver git reports no conflict, so run the snapshot tests after the merge instead.

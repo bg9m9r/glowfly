@@ -1,8 +1,8 @@
-# glowfly-app UI: views, panels and menus (`crates/glowfly-app/src/ui/`)
+# UI: views, panels and menus (glowfly-ui, `crates/glowfly-ui/src/`)
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
-source file, update its line here. Paths are relative to `ui/` unless they start with `state/`,
-`update/` or `ui/`.
+source file, update its line here. Paths are relative to `ui/` (glowfly-ui's `src/`) unless they
+start with `state/`, `update/` or `ui/`.
 
 ## Dialogs with their own files
 
@@ -98,8 +98,10 @@ source file, update its line here. Paths are relative to `ui/` unless they start
 
 ## Snapshot tests
 
-- `snapshot_tests/`: the views' snapshot tests, one file per view group (`mod.rs` lists them), with the shared fixtures in `helpers.rs`.
-- `snapshot_check/mod.rs`: `check_snapshot` (the text snapshot, plus the image for a golden, cropped as listed; skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices.
+- `snapshot_tests/`: the views' snapshot tests, one file per view group (`mod.rs` lists them), with the shared fixtures in `snapshot_fixtures.rs`.
+- `snapshot_fixtures.rs` (tests, and the app's tests through glowfly-ui's `test-support` feature): the fixture repository, harnesses and `render`; `snapshot_fixtures/scenes.rs`: the merge stopped on conflicts and the two-author history the tests share.
+- The app's `runner_snapshots/` holds the view snapshot tests that run effects through the runner (the whole-file and wrapped diffs, the conflict markers warning, the path search), on these fixtures and snapshots; glowfly-ui never depends on the runner.
+- `snapshot_check/mod.rs`: `check_snapshot` (the text snapshot, plus the image for a golden, cropped as listed; skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices; under `test-support` for the app's tests too, always against glowfly-ui's `tests/snapshots/`.
 - `snapshot_check/text.rs`: a frame's text snapshot: the accessibility tree's roles, labels, values and states, then the painted text no widget carries; only the dialogs when one is open.
 - `snapshot_check/compare.rs`: comparing a text snapshot with `tests/snapshots/<name>.txt` (`.new.txt` always, `.diff.txt` on a mismatch, `UPDATE_SNAPSHOTS=1` accepts).
 - `snapshot_check/goldens.rs`: the ~110 pixel goldens and their crop (window, dialog, top strip, top-left corner), checked against the PNGs on disk.

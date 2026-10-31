@@ -1,7 +1,7 @@
 # Bundled fonts
 
 Glowfly draws its interface in these fonts, embedded in the binary with `include_bytes!`
-(`crates/glowfly-app/src/ui/theme/fonts.rs`). The files are copied unmodified from the upstream
+(`crates/glowfly-ui/src/theme/fonts.rs`). The files are copied unmodified from the upstream
 releases below: no subsetting, no renaming of the font data. Both families are licensed under
 the SIL Open Font License, Version 1.1; the license texts are next to them and in
 `THIRD-PARTY-NOTICES.md`, which Help > About lists. egui's own built-in fonts stay behind them as

@@ -2,7 +2,7 @@
 
 How Glowfly uses colour: the families every palette is built from, what each colour is for,
 the hue bands and contrast floors the tests hold every built-in theme to, and how to add a
-colour. The palettes live in `crates/glowfly-app/src/ui/theme/` (`color.rs` declares
+colour. The palettes live in `crates/glowfly-ui/src/theme/` (`color.rs` declares
 `Palette`, `families.rs` the token families, `builtin_dusk.rs`, `builtin_garden.rs`,
 `builtin_extra.rs`, `builtin_sea.rs`, `builtin_warm.rs` and `builtin_cobalt.rs` the thirteen
 built-ins, `builtin.rs` which theme takes which); the tests that check this page are

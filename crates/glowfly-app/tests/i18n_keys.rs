@@ -6,7 +6,7 @@
 //! `common.cancel.button` and `common.close.button`, and a view's close × is
 //! `widgets::ghost::close_view`.
 
-#[path = "support/views.rs"]
+#[path = "../../glowfly-ui/tests/view_checks/support/views.rs"]
 mod views;
 
 use glowfly_core::i18n::Lang;

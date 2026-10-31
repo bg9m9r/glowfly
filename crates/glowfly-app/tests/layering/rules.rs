@@ -2,7 +2,7 @@
 //! outside work they may not reach, the core functions that do I/O and the justified exceptions.
 
 /// The source folders that must do no I/O, under `crates/`.
-pub const DIRS: &[&str] = &["glowfly-app/src/ui", "glowfly-model/src/update", "glowfly-model/src/state"];
+pub const DIRS: &[&str] = &["glowfly-ui/src", "glowfly-model/src/update", "glowfly-model/src/state"];
 
 const FILES: &str = "the file system";
 const CLOCK: &str = "the clock (update gets `now`; views read `st.view.now`)";

@@ -11,8 +11,8 @@
 //! - The shared fixture builders are not written again: each helper in `FIXTURE_HELPERS` is
 //!   defined only in the files listed for it, and no two tests pass `scratch_repo` or `long_repo`
 //!   the same folder name (tests run in parallel and would share the folder).
-//! - View tests build their harnesses with `ui::snapshot_check::builder()`, which lends them
-//!   pooled wgpu devices, not with `Harness::builder()` or `Harness::new*` (`HARNESS_MAKERS`).
+//! - View tests build their harnesses with glowfly-ui's `snapshot_check::builder()`, which lends
+//!   them pooled wgpu devices, not with `Harness::builder()` or `Harness::new*` (`HARNESS_MAKERS`).
 //! - The app's non-test code doesn't behave differently under test: no `cfg!(test)`, no
 //!   `cfg(not(test))`, no `#[cfg(test)]` on a statement or a field (test-only items are fine).
 //!   A dependency is never built with `cfg(test)`, so once the app is split into crates such a
@@ -20,11 +20,11 @@
 //!   instead (`runner::testing`). Only the shell (`TEST_SWITCH_FILES`), whose tests are its own
 //!   crate's, may keep one.
 //!
-//! Test code is what `support/views.rs` calls test code: files named `tests.rs`, `*_tests.rs` or
-//! `snapshot_tests*.rs`, modules declared under `#[cfg(test)]`, and inline `#[cfg(test)] mod`
-//! blocks (blanked out for the log check).
+//! Test code is what glowfly-ui's `tests/view_checks/support/views.rs` calls test code: files
+//! named `tests.rs`, `*_tests.rs` or `snapshot_tests*.rs`, modules declared under `#[cfg(test)]`,
+//! and inline `#[cfg(test)] mod` blocks (blanked out for the log check).
 
-#[path = "support/views.rs"]
+#[path = "../../glowfly-ui/tests/view_checks/support/views.rs"]
 mod views;
 
 #[path = "hygiene/test_switches.rs"]
@@ -54,12 +54,12 @@ const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
     ("fn git(dir: &Path, a: &[&str])", &["crates/glowfly-core/src/testkit/mod.rs"]),
     ("fn scratch_repo(", &["crates/glowfly-model/src/testing.rs", "crates/glowfly-core/src/testutil.rs"]),
     ("fn long_repo(", &["crates/glowfly-model/src/testing.rs"]),
-    ("fn fixture_repo(", &["crates/glowfly-app/src/ui/snapshot_tests/helpers.rs"]),
+    ("fn fixture_repo(", &["crates/glowfly-ui/src/snapshot_fixtures.rs"]),
     (
         "fn with_repo(",
         &[
             "crates/glowfly-model/src/state/menu_model_tests.rs",
-            "crates/glowfly-app/src/ui/snapshot_tests/helpers.rs",
+            "crates/glowfly-ui/src/snapshot_fixtures.rs",
             "crates/glowfly-flows/src/flows/lines_tests.rs",
             "crates/glowfly-flows/src/flows/profile_rules_tests.rs",
             "crates/glowfly-flows/src/flows/shortcuts_tests.rs",
@@ -68,20 +68,20 @@ const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
     (
         "fn harness(st: AppState, field: bool)",
         &[
-            "crates/glowfly-app/src/ui/shortcuts/command_keys_tests.rs",
-            "crates/glowfly-app/src/ui/shortcuts/fold_key_tests.rs",
-            "crates/glowfly-app/src/ui/shortcuts/history_tests.rs",
-            "crates/glowfly-app/src/ui/shortcuts/layout_tests.rs",
-            "crates/glowfly-app/src/ui/shortcuts/rebound_tests.rs",
-            "crates/glowfly-app/src/ui/shortcuts/select_tests.rs",
-            "crates/glowfly-app/src/ui/shortcuts/tests.rs",
+            "crates/glowfly-ui/src/shortcuts/command_keys_tests.rs",
+            "crates/glowfly-ui/src/shortcuts/fold_key_tests.rs",
+            "crates/glowfly-ui/src/shortcuts/history_tests.rs",
+            "crates/glowfly-ui/src/shortcuts/layout_tests.rs",
+            "crates/glowfly-ui/src/shortcuts/rebound_tests.rs",
+            "crates/glowfly-ui/src/shortcuts/select_tests.rs",
+            "crates/glowfly-ui/src/shortcuts/tests.rs",
         ],
     ),
 ];
 
 /// The files that may build an egui_kittest harness directly: the shared builder itself, and
 /// the journeys' harness, which never renders.
-const HARNESS_MAKERS: &[&str] = &["crates/glowfly-app/src/ui/snapshot_check/mod.rs", "crates/glowfly-app/src/journey/harness.rs"];
+const HARNESS_MAKERS: &[&str] = &["crates/glowfly-ui/src/snapshot_check/mod.rs", "crates/glowfly-app/src/journey/harness.rs"];
 
 /// One source file: its path from the repository root (with `/`), its text, and whether it is
 /// test code.
@@ -326,7 +326,7 @@ fn harnesses_come_from_the_shared_builder() {
     for s in all_sources().iter().filter(|s| !HARNESS_MAKERS.contains(&s.path.as_str())) {
         for (i, line) in code_lines(&s.text).iter().enumerate() {
             if line.contains("Harness::builder(") || line.contains("Harness::new") {
-                problems.push(format!("{}:{}: build the harness with crate::ui::snapshot_check::builder()", s.path, i + 1));
+                problems.push(format!("{}:{}: build the harness with glowfly-ui's snapshot_check::builder()", s.path, i + 1));
             }
         }
     }

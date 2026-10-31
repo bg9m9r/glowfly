@@ -4,6 +4,7 @@ members = [
     "crates/glowfly-core",
     "crates/glowfly-model",
     "crates/glowfly-runner",
+    "crates/glowfly-ui",
     "crates/glowfly-flows",
     "crates/glowfly-app",
 ]
@@ -27,6 +28,7 @@ sys-locale = "0.3.2"
 glowfly-core = { path = "crates/glowfly-core" }
 glowfly-model = { path = "crates/glowfly-model" }
 glowfly-runner = { path = "crates/glowfly-runner" }
+glowfly-ui = { path = "crates/glowfly-ui" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"

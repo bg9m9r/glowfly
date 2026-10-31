@@ -13,18 +13,21 @@ mod glyph_check;
 mod journey;
 mod logging;
 mod platform;
+#[cfg(test)]
+mod runner_snapshots;
 mod shell;
 mod smoke_probe;
-mod ui;
 
 // The model's modules, under the names they had when they lived here, so `crate::state::…` and
 // the like keep resolving.
-pub(crate) use glowfly_model::{
-    conflict_check, custom_commands, deep_link, effect, git_env, gitflow, journal, keymap, lfs, logs, msg, onboarding, patch, profile,
-    pull_request, range_diff, remote, ssh, start_arg, state, submodule, tag, terminal, themes, tools, update, worktree,
-};
+#[cfg(test)]
+pub(crate) use glowfly_model::keymap;
+pub(crate) use glowfly_model::{effect, git_env, lfs, logs, msg, onboarding, start_arg, state, terminal, themes, update};
 // The runner, under the name its module had here.
 pub(crate) use glowfly_runner as runner;
+// The views, under the name they had when they lived here, so the shell's `crate::ui::…` paths
+// keep resolving.
+use glowfly_ui as ui;
 
 use eframe::egui;
 use glowfly_core::askpass::{self, HelperError, Outcome};

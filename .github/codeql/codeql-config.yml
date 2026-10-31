@@ -13,6 +13,8 @@ paths-ignore:
   - '**/tests.rs'
   - '**/snapshot_tests/**'
   - '**/snapshot_tests*.rs'
+  - 'crates/glowfly-ui/src/snapshot_fixtures.rs'
+  - 'crates/glowfly-ui/src/snapshot_fixtures/**'
   - '**/testkit/**'
   - 'crates/glowfly-flows/**'
   - 'crates/glowfly-core/src/fuzzing/**'

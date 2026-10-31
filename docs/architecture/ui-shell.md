@@ -1,13 +1,15 @@
-# glowfly-app UI: the shell, window layout, toolbar, tabs and terminal panel (`crates/glowfly-app/src/shell/`, `src/ui/`)
+# UI: the shell, window layout, toolbar, tabs and terminal panel (`crates/glowfly-app/src/shell/`, glowfly-ui)
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
-source file, update its line here. `ui/` holds the egui views, one file or folder per region; the
+source file, update its line here. `ui/` holds the egui views, one file or folder per region: it
+is the glowfly-ui crate (`crates/glowfly-ui/src/`, which the app names `crate::ui`); the
 other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md) and
 [ui-theme.md](ui-theme.md). How the shell's pieces behave is in [flow-shell.md](flow-shell.md).
 
 ## The shell
 
 - `shell/mod.rs`: the shell, outside `ui/` (it stays in the binary); it draws with `ui::draw` and `UiCache`.
+- `ui/lib.rs` (glowfly-ui's root): the views' modules, `draw` and `UiCache`; it names the model's modules as the app does, and `use crate as ui` keeps the views' `crate::ui::…` paths.
 - `shell/app.rs` is the shell: it owns the runner and dispatches messages.
 - `shell/app_effects.rs` carries out the effects that need the window (`Effect::Ui`): the clipboard and the Linux PRIMARY selection, the title, attention, closing and window commands.
 - `shell/app_testing.rs` builds the shell for the journeys, without eframe and with a sandboxed runner.

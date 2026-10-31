@@ -1663,12 +1663,12 @@ dependencies = [
  "arboard",
  "chrono",
  "eframe",
- "egui-wgpu",
  "egui_kittest",
  "git2",
  "glowfly-core",
  "glowfly-model",
  "glowfly-runner",
+ "glowfly-ui",
  "image",
  "memmap2",
  "objc2 0.6.5",
@@ -1761,6 +1761,22 @@ dependencies = [
  "notify-rust",
  "open",
  "rfd",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "glowfly-ui"
+version = "0.3.0-rc.1"
+dependencies = [
+ "chrono",
+ "eframe",
+ "egui-wgpu",
+ "egui_kittest",
+ "git2",
+ "glowfly-core",
+ "glowfly-model",
+ "image",
  "serde_json",
  "tracing",
 ]

@@ -1,4 +1,4 @@
-# glowfly-app UI: shared widgets, dialogs and states (`crates/glowfly-app/src/ui/`)
+# UI: shared widgets, dialogs and states (glowfly-ui, `crates/glowfly-ui/src/`)
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
 source file, update its line here.
@@ -27,7 +27,7 @@ source file, update its line here.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: one selection fill with a left accent bar and lifted hover, shared by the graph, sidebar rows, file rows and the file history list.
-- `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu`, `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `group_header` (the one group-header style, in place of its separator), `inset` for plain lines at the label column, and `danger_style` / `danger_submenu` for destructive items; `tests/menus.rs` checks.
+- `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu`, `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `group_header` (the one group-header style, in place of its separator), `inset` for plain lines at the label column, and `danger_style` / `danger_submenu` for destructive items; `tests/view_checks/menus.rs` checks.
 - `widgets/menu_columns.rs`: a menu's shared columns (state, icon, label, reason slot, shortcut, end slot for a chevron or a trailing button), learned from its rows each pass so every row lines up.
 - `widgets/menu_row.rs`: the menu row (`menu::item`): a ✓, radio dot or current-choice ✓ in the state column, a dot or swatch in the icon column, the label, the info mark and the shortcut on the menu's columns; `item_named` for a label with cut names, `trailing_button` + `show_split` for a split row.
 - `widgets/menu_split.rs`: a split menu row's trailing icon button (its own target, focus, tooltip and name, blocked with its row or by its own reason) and `Part`, which part was clicked.
@@ -64,7 +64,7 @@ source file, update its line here.
 - `needs_you.rs`: the coral "needs you" badge and pill, always with the warning mark and the only reader of the coral.
 - `widgets/severity.rs`: the error, warning and information marks.
 - `widgets/form_message.rs`: a form's messages, under a field once it was edited or a submit was tried (`state/touched.rs`), or for the whole form in a tinted box.
-- `tests/message_styles.rs` checks banners and every dialog's messages.
+- `tests/view_checks/message_styles.rs` checks banners and every dialog's messages.
 
 ## Dialogs
 
