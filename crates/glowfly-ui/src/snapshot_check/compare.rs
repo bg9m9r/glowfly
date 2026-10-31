@@ -34,14 +34,17 @@ pub(super) fn check(dir: &Path, name: &str, text: &str, update: bool) -> Result<
     }
     let shown = std::path::absolute(&path).unwrap_or(path);
     let Some(approved) = approved else {
-        return Err(format!("Missing text snapshot: {}. Run `UPDATE_SNAPSHOTS=1 cargo test -p glowfly` to write it.", shown.display()));
+        return Err(format!(
+            "Missing text snapshot: {}. Run `UPDATE_SNAPSHOTS=1 cargo test -p glowfly-ui -p glowfly` to write it.",
+            shown.display()
+        ));
     };
     let diff = line_diff(&approved, text);
     std::fs::write(&diff_path, &diff).map_err(|e| format!("could not write {}: {e}", diff_path.display()))?;
     let changed = diff.lines().count();
     let first: Vec<&str> = diff.lines().take(8).collect();
     Err(format!(
-        "'{name}' text snapshot did not match {}: {changed} lines differ (all in {}):\n{}\nRun `UPDATE_SNAPSHOTS=1 cargo test -p glowfly` to accept the new text.",
+        "'{name}' text snapshot did not match {}: {changed} lines differ (all in {}):\n{}\nRun `UPDATE_SNAPSHOTS=1 cargo test -p glowfly-ui -p glowfly` to accept the new text.",
         shown.display(),
         diff_path.display(),
         first.join("\n")

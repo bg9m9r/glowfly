@@ -183,5 +183,5 @@ fn goldens_match_the_approved_images() {
     let stray: Vec<_> = images.difference(&goldens).collect();
     assert!(stray.is_empty(), "images in {} that are not goldens (delete them, or list them in GOLDENS): {stray:?}", dir.display());
     let missing: Vec<_> = goldens.difference(&images).collect();
-    assert!(missing.is_empty(), "goldens without an image (run UPDATE_SNAPSHOTS=1 cargo test -p glowfly): {missing:?}");
+    assert!(missing.is_empty(), "goldens without an image (run UPDATE_SNAPSHOTS=1 cargo test -p glowfly-ui -p glowfly): {missing:?}");
 }
