@@ -83,6 +83,11 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   rewrites within the timestamp granularity reuse a stale read scan)
 - Don't ask again after a checkout when a hook's checked-out bytes differ from the trusted
   commit's only by line endings (core.autocrlf)
+- A trust path that isn't valid UTF-8 (core.hooksPath, program paths) isn't followed into the
+  file it names, so on Unix a change to that file doesn't ask again.
+- `programs::ca_file` doesn't skip the working-tree root the way `path_of` does, so
+  `http.sslCAPath=.` follows the whole tree (noisy, but safe).
+- The bare `remote.<n>.fetch` guard in `trust/pull.rs` has no test.
 
 ### Submodules
 
