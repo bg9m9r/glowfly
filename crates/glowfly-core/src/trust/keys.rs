@@ -4,6 +4,7 @@
 //! steer unasked since its sign-ins travel over them.
 
 use git2::Config;
+use std::borrow::Cow;
 
 /// Single keys that name a program, as libgit2 returns them (lowercase), with their usual spelling.
 const COMMAND_KEYS: &[(&str, &str)] = &[
@@ -137,6 +138,28 @@ pub fn is_network_setting(key: &str) -> bool {
         None => return false,
     };
     network_key(&lower).is_some()
+}
+
+/// Config bytes as text: as written when they are UTF-8; otherwise each byte that isn't is
+/// U+FFFD and its two hex digits, and a U+FFFD written in the text is doubled, so two different
+/// byte strings never read the same (the print compares the text).
+pub(super) fn text_of(bytes: &[u8]) -> Cow<'_, str> {
+    const MARK: char = '\u{FFFD}';
+    let doubled = |s: &str| s.replace(MARK, "\u{FFFD}\u{FFFD}");
+    match std::str::from_utf8(bytes) {
+        Ok(s) if !s.contains(MARK) => Cow::Borrowed(s),
+        Ok(s) => Cow::Owned(doubled(s)),
+        Err(_) => {
+            let mut out = String::new();
+            for chunk in bytes.utf8_chunks() {
+                out.push_str(&doubled(chunk.valid()));
+                for b in chunk.invalid() {
+                    out.push_str(&format!("{MARK}{b:02X}"));
+                }
+            }
+            Cow::Owned(out)
+        }
+    }
 }
 
 /// Whether git reaching `url` runs a command: the ext:: transport (any case, since a Windows

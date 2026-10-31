@@ -108,6 +108,8 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
         ("lfs.extension.x.smudge", "tools/lfs-smudge %f", &["tools/lfs-smudge"]),
         ("http.sslCAInfo", "certs/ca.pem", &["certs/ca.pem"]),
         ("http.https://example.com/.sslCAPath", "./certs", &["certs"]),
+        // One path, spaces and all, never split into words.
+        ("http.sslCAInfo", "my certs/ca file.pem", &["my certs/ca file.pem"]),
         // A transfer agent's name, a TLS switch or a proxy names no file.
         ("lfs.standaloneTransferAgent", "present", &[]),
         ("http.sslVerify", "present", &[]),

@@ -36,6 +36,10 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>) -> Vec<Pa
         }
     };
     for c in config.iter() {
+        if let Some(path) = ca_file(workdir, home.as_deref(), c) {
+            add(path);
+            continue;
+        }
         let Some(text) = command_text(c) else { continue };
         for word in candidates(text) {
             path_of(workdir, home.as_deref(), &word).into_iter().for_each(&mut add);
@@ -56,15 +60,27 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>) -> Vec<Pa
     out
 }
 
-/// The command a setting runs, or the file it reads (a CA bundle), as written; None for one
-/// that names neither (core.hooksPath, whose hooks `follow.rs` follows itself; protocol.allow;
-/// an include; git-lfs's choice of transfer agent, a name; a TLS switch or a proxy).
+/// The CA file or folder a TLS setting reads (`http.sslCAInfo`, `http.sslCAPath`): its whole
+/// value is one path, as git reads it (a `~` expanded), relative to the working tree.
+fn ca_file(workdir: &Path, home: Option<&Path>, c: &ConfigCommand) -> Option<PathBuf> {
+    let key = c.key.to_ascii_lowercase();
+    let reads = super::is_network_setting(&c.key) && (key.ends_with(".sslcainfo") || key.ends_with(".sslcapath"));
+    if !reads || c.value.is_empty() {
+        return None;
+    }
+    let p = if c.value.starts_with('~') { crate::paths::expand_home(&c.value, home) } else { PathBuf::from(&c.value) };
+    Some(if p.is_absolute() { p } else { workdir.join(p) })
+}
+
+/// The command a setting runs, as written; None for one that names no command (core.hooksPath,
+/// whose hooks `follow.rs` follows itself; protocol.allow; an include; git-lfs's choice of
+/// transfer agent, a name; a connection setting, whose CA files `ca_file` reads).
 fn command_text(c: &ConfigCommand) -> Option<&str> {
     let key = c.key.to_ascii_lowercase();
     if key == "core.hookspath" || key.starts_with("protocol.") || key.starts_with("includeif.") || key == "lfs.standalonetransferagent" {
         return None;
     }
-    if super::is_network_setting(&c.key) && !(key.ends_with(".sslcainfo") || key.ends_with(".sslcapath")) {
+    if super::is_network_setting(&c.key) {
         return None;
     }
     // url.<base>.insteadOf: the command is in the URL the key names.

@@ -93,3 +93,32 @@ fn a_repositorys_own_tls_proxy_and_lfs_settings_are_scanned() {
     assert!(s.config.contains(&ConfigCommand { key: "remote.origin.proxy".into(), value: "socks5://p".into() }));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn config_bytes_that_arent_utf8_read_as_distinct_text() {
+    assert_eq!(text_of(b"plain"), "plain");
+    assert_eq!(text_of(b"sh \xff.sh"), "sh \u{FFFD}FF.sh");
+    // A U+FFFD written in the text is doubled, so no other bytes read the same.
+    assert_eq!(text_of("sh \u{FFFD}FF.sh".as_bytes()), "sh \u{FFFD}\u{FFFD}FF.sh");
+    assert_ne!(text_of(b"\xfe"), text_of(b"\xff"));
+}
+
+#[test]
+fn program_settings_that_arent_utf8_are_still_scanned() {
+    let dir = scratch_repo("trust-keys-bytes");
+    let config = dir.join(".git/config");
+    let mut bytes = std::fs::read(&config).unwrap();
+    bytes.extend_from_slice(b"[filter \"x\"]\n\tclean = sh \xff.sh\n[filter \"\xfe\"]\n\tsmudge = cat\n");
+    std::fs::write(&config, bytes).unwrap();
+    let s = scan_at(&dir).unwrap();
+    let got: Vec<(&str, &str)> = s.config.iter().map(|c| (c.key.as_str(), c.value.as_str())).collect();
+    assert_eq!(got, [("filter.x.clean", "sh \u{FFFD}FF.sh"), ("filter.\u{FFFD}FE.smudge", "cat")]);
+    // Another byte in its place asks again.
+    let before = s.print();
+    let mut bytes = std::fs::read(&config).unwrap();
+    let at = bytes.iter().position(|b| *b == 0xff).unwrap();
+    bytes[at] = 0xfd;
+    std::fs::write(&config, bytes).unwrap();
+    assert!(!before.covers(&scan_at(&dir).unwrap().print()));
+    let _ = std::fs::remove_dir_all(&dir);
+}

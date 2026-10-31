@@ -166,14 +166,17 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
             if !matches!(e.level(), ConfigLevel::Local | ConfigLevel::Worktree) {
                 return;
             }
-            let Some(name) = e.name() else { return };
-            let raw = if e.has_value() { Some(e.value_bytes()) } else { None };
-            let value = match raw.map(std::str::from_utf8) {
-                Some(Ok(v)) => Cow::Borrowed(v),
-                // A bare key (true) or a value that isn't UTF-8: only a connection setting
-                // counts then, as it does with any value.
-                _ if keys::network_key(name).is_some() => String::from_utf8_lossy(raw.unwrap_or_default()),
-                _ => return,
+            // Names and values that aren't UTF-8 are read too (git runs them all the same),
+            // each byte that isn't kept apart (`keys::text_of`).
+            let name = keys::text_of(e.name_bytes());
+            let name = name.as_ref();
+            let value = if e.has_value() {
+                keys::text_of(e.value_bytes())
+            } else if keys::network_key(name).is_some() {
+                // A bare key (true): only a connection setting counts then, as with any value.
+                Cow::Borrowed("")
+            } else {
+                return;
             };
             let value = value.as_ref();
             if let Some(key) = command_key(name, value) {
