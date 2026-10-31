@@ -34,7 +34,7 @@ fn state() -> AppState {
 /// Draws one frame's header and checks it against a fresh build.
 fn frame(cache: &mut HeaderCache, st: &AppState) -> (usize, usize) {
     assert_eq!(cache.model(st), model(st), "the cached header is the fresh one");
-    (cache.row_builds, cache.list_builds)
+    cache.builds()
 }
 
 #[test]

@@ -38,10 +38,8 @@ pub struct HeaderCache {
     pub(super) counts: (usize, usize),
     /// The open file's place in the list it came from.
     pub(super) order: FileOrder,
-    /// How many times the rows and counts, and the file order, were built.
-    #[cfg(test)]
+    /// How many times the rows and counts, and the file order, were built (`builds`).
     row_builds: usize,
-    #[cfg(test)]
     list_builds: usize,
 }
 
@@ -50,6 +48,11 @@ impl HeaderCache {
     pub fn model(&mut self, st: &AppState) -> Option<HeaderModel> {
         self.refresh(st);
         diff_header::build(st, self)
+    }
+
+    /// How many times the change rows and counts, and the file order, were built.
+    pub fn builds(&self) -> (usize, usize) {
+        (self.row_builds, self.list_builds)
     }
 
     /// Rebuilds the parts whose inputs changed since the last call; clears them without a diff.
@@ -64,19 +67,13 @@ impl HeaderCache {
         if !self.diff_key.as_ref().is_some_and(|(k, ex)| *k == key && ex == expanded) {
             self.rows = crate::state::diff_nav::shown_change_rows(st);
             self.counts = diff_header::line_counts(diff);
-            #[cfg(test)]
-            {
-                self.row_builds += 1;
-            }
+            self.row_builds += 1;
             self.diff_key = Some((key, expanded.clone()));
         }
         let key = file_order::key(st, target);
         if self.list_key.as_ref() != Some(&key) {
             self.order = file_order::file_order(st, target);
-            #[cfg(test)]
-            {
-                self.list_builds += 1;
-            }
+            self.list_builds += 1;
             self.list_key = Some(key);
         }
     }
