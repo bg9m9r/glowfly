@@ -17,8 +17,26 @@ processes, the environment, git).
 
 ## Layout
 
-Two crates. `glowfly-core` is a library with no egui and no app state. `glowfly-app` is the
-binary (package `glowfly`).
+Six crates. Dependencies point one way: core <- model <- {runner, ui}; the app <- {model, runner, ui};
+flows <- {model, runner}.
+
+`glowfly-core` is a library with no egui and no app state: git reads and writes, the git CLI and
+the forge APIs.
+
+`glowfly-model` is a library with the app's state, messages, effects and `update`, and no egui.
+
+`glowfly-runner` is a library that carries out the model's effects on worker threads, plus the
+file watcher and the OS helpers effects need, with no egui.
+
+`glowfly-ui` is a library with the egui views (`ui/` in these docs, `crates/glowfly-ui/src/`): it
+depends on the model and never on the runner, and the app names it `crate::ui`. Its approved
+snapshots are in `crates/glowfly-ui/tests/snapshots/`; its `test-support` feature lends the app's
+tests the snapshot builder, the fixtures and the test fonts.
+
+`glowfly-flows` holds only tests: `update`'s end-to-end tests, run through the runner.
+
+`glowfly-app` is the binary (package `glowfly`): `main.rs`, the shell that ties the window, the
+runner and the views together, the window glue and every OS-specific dependency.
 
 ### Per-area files (`docs/architecture/`)
 
@@ -31,9 +49,9 @@ source file, update its line in the matching file.
 - [core-display.md](architecture/core-display.md): the commit graph and branch colours, diff, whole-file and conflict rows, syntax highlighting, image and Markdown previews, search and the history index, watching for changes.
 - [core-system.md](architecture/core-system.md): which git runs, paths and errors, credentials and signing, SSH keys, one window and `glowfly://` links, the terminal, settings, identity and profiles, files and logs, translations and dates, external tools, Glowfly's own updates.
 - [core-forge.md](architecture/core-forge.md): hosting services (`forge/`).
-- [app-layers.md](architecture/app-layers.md): `glowfly-app`'s entry points (`main.rs`, `cli_update.rs`, `logging.rs`, `build.rs`) and its layers: `msg/`, `effect/`, `state/`, `update/`, `runner/`, `platform.rs`, `keymap/`, and the test-only modules (`journey/`, `glyph_check/`, the smoke probe).
+- [app-layers.md](architecture/app-layers.md): `glowfly-app`'s and `glowfly-model`'s entry points (`main.rs`, `start_arg.rs`, `cli_update.rs`, `logging.rs`, `build.rs`) and its layers: `msg/`, `effect/`, `state/`, `update/`, `runner/`, `platform/` (window glue) and `runner/platform.rs` (OS helpers), `keymap/`, and the test-only modules (`journey/`, `glyph_check/`, the smoke probe).
 - [app-features.md](architecture/app-features.md): features whose files span every layer: updates, the journal, custom commands, partial clones, the history index, range-diff, profile folder rules, multi-commit selection.
-- [ui-shell.md](architecture/ui-shell.md): `ui/app.rs` and the shell, window layout, toolbar, repository tabs, terminal panel.
+- [ui-shell.md](architecture/ui-shell.md): the shell (`shell/`), window layout, toolbar, repository tabs, terminal panel.
 - [ui-views.md](architecture/ui-views.md): dialogs with their own files, blame and the File view, Markdown, the graph, commit details and the WIP panel, the diff, object menus, snapshot tests.
 - [ui-widgets.md](architecture/ui-widgets.md): `widgets/`, rows and lists, disabled reasons, tooltips, empty and banner states, the dialog frame.
 - [ui-theme.md](architecture/ui-theme.md): `theme/`: controls and modals, colours, fonts and the type scale, spacing and tokens.
@@ -75,11 +93,11 @@ source file, update its line in the matching file.
 ## Rules
 
 1. `glowfly-core` must not depend on `eframe`/`egui`.
-2. `ui/`, `update/` and `state/` do no I/O. `tests/layering.rs` denies whole families (the file
+2. `ui/`, `update/` and `state/` do no I/O. `tests/source_checks/layering.rs` denies whole families (the file
    system, processes, network, threads, environment, clock, libgit2 access) and the core
-   functions that do I/O, and names the file and line of each use. The few justified exceptions
-   (the shell's startup in `ui/app.rs`) are listed in its `ALLOWED` table
-   (`tests/layering/rules.rs`) with a reason.
+   functions that do I/O, and names the file and line of each use. The shell (`src/shell/`), which
+   owns the window, the clock and the startup loads, is outside them; the few justified exceptions
+   are listed in its `ALLOWED` table (`tests/source_checks/layering/rules.rs`) with a reason.
 3. New behavior gets an `update` test; new git or API logic gets a `glowfly-core` test. A flow that
    crosses views, the runner and git gets a journey step (`src/journey/`).
 4. New views get an `egui_kittest` snapshot when practical. Views read time from
@@ -111,7 +129,7 @@ source file, update its line in the matching file.
     (keys in `crates/glowfly-core/locales/`, see its README). Translated text is never matched
     against git output or used as an egui id; ids use fixed `from_id_salt` strings. Write each
     key as a literal inside the call (`t.tr("conflict.panes.ours")`, never a key held in a
-    variable): `tests/i18n_keys.rs` finds the keys the code uses that way.
+    variable): `tests/source_checks/i18n_keys.rs` finds the keys the code uses that way.
 
 ## Recipe: adding a feature
 
@@ -152,8 +170,9 @@ source file, update its line in the matching file.
    Say in the enum's `on_inactive` what the result still needs if its tab is no longer active.
 6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
 7. **Tests.** Write an `update` test in `update/tests/<area>_tests.rs`, registered with one
-   `mod` line in `update/tests/mod.rs`; snapshot tests go in `ui/snapshot_tests/`, registered
-   in its `mod.rs`. Add a core test on a fixture
+   `mod` line in `update/tests/mod.rs` (one that runs effects through the runner, with `drive`
+   or `finish`, goes in glowfly-flows' `flows/<area>_tests.rs`, listed in `flows/mod.rs`); snapshot tests go in `ui/snapshot_tests/`, registered
+   in its `mod.rs` (one whose state comes through the runner goes in the app's `runner_snapshots/`). Add a core test on a fixture
    repository (see `scratch_repo`; build fixtures with the test kit's `git`, `testkit/`) for new
    git logic, and an `egui_kittest` snapshot for a new view (harnesses from
    `ui::snapshot_check::builder()`). A flow that crosses views, the runner and git gets a

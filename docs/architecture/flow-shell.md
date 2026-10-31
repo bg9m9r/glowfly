@@ -58,14 +58,14 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `ui/title_bar.rs` draws the 44 px bar: the menu button (the menus of `ui/menu_bar::menus` as submenus), the tabs (`tabs::strip`) and empty space that moves or maximizes the window.
 - `ui/window_frame.rs` builds the viewport for each chrome (`viewport`, used by `main.rs`).
 - On Windows `ui/window_frame.rs` draws an `Order::Tooltip` overlay above every dialog: the window buttons (`ui/window_buttons.rs`), the resize edges and corners (none while maximized), a 1 px border, and a drag zone over the bar while a dialog blocks it.
-- Views push `AppMsg::Window`; `update/app.rs` returns `UiEffect::Window`, and the shell sends the viewport command (`ui/app_effects.rs`, `window_frame::viewport_cmd`), the only `send_viewport_cmd` outside the shell's own effects (`tests/layering.rs`).
+- Views push `AppMsg::Window`; `update/app.rs` returns `UiEffect::Window`, and the shell sends the viewport command (`shell/app_effects.rs`, `window_frame::viewport_cmd`), the only `send_viewport_cmd` outside the shell's own effects (`tests/source_checks/layering.rs`).
 - On Windows the shell also installs `platform/native_window/` (`GlowflyApp::new`): a window procedure in front of winit's (`win_proc.rs`, its state in atomics).
 - `win_proc.rs` answers the hit test (`CaptionGeometry::hit`) with `HTMAXBUTTON` over the drawn Maximize button for Snap Layouts, and with `HTTOP` over the resize strip along its top.
 - `win_system.rs` opens the system menu on Alt+Space or on `WindowCmd::SystemMenu`, gives the frame DWM's shadow and Windows 11's rounded corners, sets the Mica backdrop and reads transparency and high contrast.
-- Each frame `ui/app_native.rs` polls it into view state (`WindowInfo::max_button`, `ViewState::backdrop`, a click as `SetMaximized`, a shown menu cancelling the Alt tap) and hands back `window_frame::caption_geometry`.
+- Each frame `shell/app_native.rs` polls it into view state (`WindowInfo::max_button`, `ViewState::backdrop`, a click as `SetMaximized`, a shown menu cancelling the Alt tap) and hands back `window_frame::caption_geometry`.
 - The pure parts of the native window are in `state/window_native.rs`.
-- Only `ui/app.rs` and `ui/app_native.rs` may name `platform::native_window`, and no view, update or state code names `windows::Win32` (`tests/layering.rs`).
-- Only `ui/app.rs` (opening it) and `ui/app_effects.rs` (`UiEffect::SetPrimary`, `UiEffect::PastePrimary`) may name `platform::primary_selection` (`tests/layering.rs`).
+- Only the shell (`src/shell/`) and `main.rs` may name `platform::native_window`, and no view, update or state code names `windows::Win32` (`tests/source_checks/layering.rs`).
+- Only the shell may name `platform::primary_selection`: `shell/app.rs` opens it and `shell/app_effects.rs` runs `UiEffect::SetPrimary` and `UiEffect::PastePrimary` (`tests/source_checks/layering.rs`).
 - `ui/backdrop.rs` picks the palette's Mica tints (`mica_tint`, cached in `ThemeCache`) and gives the title bar, toolbar and sidebar their fill (`backdrop::fill`).
 - `GlowflyApp::clear_color` clears to transparent only while Mica shows.
 
@@ -78,7 +78,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - The texts and reasons are pure helpers in `state/menu_bar.rs`, `state/repo_lists.rs` and `UndoHistory::undo_entry`.
 - The themes' names in the language (View > Theme and Preferences' Theme row) are in `state/theme_names.rs`.
 - On macOS (`Chrome::native_menu`) `state/menu_native.rs` plans the system menu bar from the same model: the app menu takes About, Preferences and Quit, beside Services, Hide, Hide Others and Show All; key equivalents; tags of generation and item index.
-- `platform/macos_menu.rs` builds the system menu bar, and `ui/app_menu.rs` runs its picks before each frame's input and hands it the menus after the frame's messages (docs/PLATFORMS.md, Menus).
+- `platform/macos_menu.rs` builds the system menu bar, and `shell/app_menu.rs` runs its picks before each frame's input and hands it the menus after the frame's messages (docs/PLATFORMS.md, Menus).
 - The menu bar's own window actions are `AppMsg` (`update/app.rs`).
 - About opens `Modal::About`, whose Privacy button opens PRIVACY.md on the website and whose Third-party notices… button opens `Modal::Notices` in its place (`ui/menu_bar/notices.rs`, with Back to About), which lists the licenses `glowfly_core::notices` parses from THIRD-PARTY-NOTICES.md (embedded at build time).
 - Each menu is drawn from the model by `menu_bar::contents`, so the bar and the title bar's menu button share them.
@@ -111,7 +111,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `update/notify.rs::desktop` returns `Effect::Notify` (a `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and `st.view.focused` is false.
 - The shell sets `view.focused` from egui at the start of each frame, before runner results are handled, so `update` never asks egui.
 - Finished non-quiet jobs (`update/ops.rs::finish_job`) and behind alerts use it; turning the setting on sends one confirmation regardless of focus.
-- `runner/notify.rs` shows the note through notify-rust (the only caller, `tests/layering.rs`) and reports a refusal as `PrefsMsg::DesktopNotificationFailed`.
+- `runner/notify.rs` shows the note through notify-rust (the only caller, `tests/source_checks/layering.rs`) and reports a refusal as `PrefsMsg::DesktopNotificationFailed`.
 - A note carries the repository it is about (`DesktopNote::workdir`); the effect's worker thread waits for the user's answer (at most `MAX_WAITING` at once) and reports a click as `NotifyMsg::DesktopClicked`.
 - A click focuses the window (`UiEffect::FocusWindow`) and shows that repository through `update::tabs::open`, or, under a dialog (`deep_link::busy`), offers Show in a toast.
 - Glowfly's identity with the OS is `glowfly_core::app_identity` (`APP_ID`, `DESKTOP_ENTRY`): an installed Windows copy takes the app id before its window opens (`platform/app_id.rs`) and posts toasts under it, Glowfly.app posts under its bundle id, and Linux notes name the desktop entry.

@@ -1,8 +1,18 @@
-# glowfly-app: entry points and layers (`crates/glowfly-app/src/`)
+# glowfly-app and glowfly-model: entry points and layers
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
 source file, update its line here. Features that span every layer are in
 [app-features.md](app-features.md); the views are in the `ui-*.md` files.
+
+`msg/`, `effect/`, `state/`, `update/`, `keymap/`, the per-area types, `start_arg.rs` and
+`testing.rs` are glowfly-model's (`crates/glowfly-model/src/`); the app re-exports them under the
+same names, so `crate::state::…` reads the same in both. The rest is glowfly-app's
+(`crates/glowfly-app/src/`).
+
+`runner/` with `watcher.rs` and `watcher/` is glowfly-runner's: `runner/x.rs` below is
+`crates/glowfly-runner/src/x.rs`, and `runner/mod.rs` is its `lib.rs`; the app names it `crate::runner`.
+
+`flows/` is glowfly-flows' (`crates/glowfly-flows/src/flows/`), a test-only crate.
 
 ## Entry points
 
@@ -10,7 +20,10 @@ source file, update its line here. Features that span every layer are in
 - `cli_update.rs`: `glowfly --version` and `glowfly --check-update <folder>` (exit 0 downloaded, 3 up to date, 1 failed, 2 usage): the installer checks' command-line modes, run before logging, settings and the window.
 - `logging.rs`: the tracing setup, after the helper modes exit: warnings, errors and panics to `errors.log` (rotated; debug details with extended logging, switched at runtime), and the panic hook.
 - `logging.rs` sends `RUST_LOG` to stderr, with each span's time as it closes (`glowfly=debug`: effects and the phases of a load or an index build; `glowfly=trace`: frames, their phases and each message).
-- `build.rs`: bundles `CHANGELOG.md` into the program (`OUT_DIR`) and, for Windows, embeds the icon and version details in `glowfly.exe`.
+- `start_arg.rs` (glowfly-model): `StartArg`, what a new window is asked to open (a folder or a `glowfly://` link) and the message that opens it; `main.rs` reads it from the command line.
+- `build.rs`: for Windows, embeds the icon and version details in `glowfly.exe`.
+- glowfly-model's `lib.rs`: declares the model's modules; its `test-support` feature adds `testing.rs` and the few test helpers marked `#[doc(hidden)]` for other crates' tests (features only add items).
+- glowfly-model's `build.rs`: bundles `CHANGELOG.md` into the program (`OUT_DIR`, read by `state/release_notes.rs`).
 
 ## `msg/`: messages
 
@@ -51,6 +64,7 @@ source file, update its line here. Features that span every layer are in
 - `stack.rs`: `StackEffect`, `StackPushJob`: a stack's push with the remote tips it saw and whether pull requests follow.
 - `names.rs`: `Effect::name`, `timed` (flat variants; areas delegate).
 - `scope.rs`: `Effect::scope`, `queue`, `holds` (flat variants, with the fetch and push rule; areas delegate).
+- `sandbox.rs`: `Effect::sandbox`, what the whole-app tests' runner does with each effect (`SandboxRule`; flat variants, areas delegate).
 
 ## Per-area message and effect types
 
@@ -94,7 +108,7 @@ source file, update its line here. Features that span every layer are in
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
 - `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Pop previews.
 - `section_actions.rs`: what each left-panel section header's + does (its name, why it is off and the message it sends).
-- `session.rs`: `RepoSession`, the per-tab views paired with their generation counters (`Gen`, `PrSlot`), the open diff as `DiffSlot` with its counter, the commit detail and draft, the repository reads, the selection, forge data, undo history and commit search, and the issue comment drafts kept after their panel closed (`issue_drafts`, `state/issue_comment.rs::KeptDrafts`), parked whole with the tab; `counters()` lists every counter (the reads' included) and `resume_after` keeps them rising across tabs and drops the forge replies in flight (`replies_dropped`); the diff's `shown_gen` is carried rather than counted. Tests in `session_tests.rs`; the switch itself in `update/tests/tabs_session_tests.rs`.
+- `session.rs`: `RepoSession`, the per-tab views paired with their generation counters (`Gen`, `PrSlot`), the open diff as `DiffSlot` with its counter, the commit detail and draft, the repository reads, the selection, forge data, undo history and commit search, and the issue comment drafts kept after their panel closed (`issue_drafts`, `state/issue_comment.rs::KeptDrafts`), parked whole with the tab; `counters()` lists every counter (the reads' included) and `resume_after` keeps them rising across tabs and drops the forge replies in flight (`replies_dropped`); the diff's `shown_gen` is carried rather than counted. Tests in `session_tests.rs`; the switch itself in `flows/tabs_session_tests.rs`.
 - `session_reads.rs`: `RepoReads`, what was read from the tab's repository (commit stats, line counts, signatures, conflict check): `parked` splits the results (which go with the tab, requests in flight dropped) from the counters (which stay behind), `clear` forgets them when another repository opens. Tests in `session_reads_tests.rs`.
 - `session_view.rs`: `TabView`, the per-tab view state in `RepoSession::tab_view` (search text, ref filter, graph scroll, file-list folds, the diff's opened folds and top row with the mode and layout it was counted in).
 - `tip.rs`: the rich tooltip's data.
@@ -106,7 +120,7 @@ source file, update its line here. Features that span every layer are in
 
 ## `update/`: state changes
 
-- `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests in `update/tests/` (`mod.rs` lists them, `helpers.rs` holds the shared fixtures).
+- `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests: those that need no runner in `update/tests/` (`mod.rs` lists them), the ones that run effects (and those sharing helpers with them) in `flows/`; the shared fixtures are in `testing.rs`.
 - `terminal_schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
 - `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip; a stop whose rebase ended another way ends as the quiet `EndRestack` job (back to the branch checked out before, stash put back, finished part recorded for undo).
 - `auto_stash_restack.rs`: a restack's auto-stash as a pending entry while its stop waits (held from the ordinary put-back, saved for a restart), and telling how the restack's own put-back went.
@@ -116,17 +130,17 @@ source file, update its line here. Features that span every layer are in
 - `branch_colour.rs`: pinned branch colours and the preset's hue count brought into the snapshot at load, on Preferences edits and on a tab's return.
 - `repo_colour.rs`: repository colours from the Color submenus.
 - `repo_groups.rs`: repository groups: the dialogs, colours, order, Remove group and moving favorites in and out (tests in `update/tests/repo_groups_tests.rs`).
-- `trust_seal.rs`: sealing trust-gated jobs, shells and previews for the runner's re-check (`push`), wrapping them and every read that lets git run (`read_in`) as `Effect::Checked` before update returns (`wrap`, from `update::update_sealed`), and holding work again when the re-check finds the repository no longer covered or what it brings in can't be compared (`TrustMsg::Stale`); tests in `update/tests/trust_recheck_tests.rs` and `trust_recheck_programs_tests.rs` (a tracked config program, a submodule's hook).
+- `trust_seal.rs`: sealing trust-gated jobs, shells and previews for the runner's re-check (`push`), wrapping them and every read that lets git run (`read_in`) as `Effect::Checked` before update returns (`wrap`, from `update::update_sealed`), and holding work again when the re-check finds the repository no longer covered or what it brings in can't be compared (`TrustMsg::Stale`); tests in `flows/trust_recheck_tests.rs` and `trust_recheck_programs_tests.rs` (a tracked config program, a submodule's hook).
 - `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once and a merge preview in a held repository waiting for the trust prompt (`trust::hold_waiting`), since merge-tree runs the repository's merge drivers.
 - `load_more.rs`: a load for more history going on from the walk (the page taken in below the rows on screen), and a failed one kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: opening the file a WIP list key lands on, moving on to the nearest file after the open one was staged or unstaged as a whole (key, button or menu, alone or with the selected files), asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
-- `wip_keys.rs`: the keys of a focused Unstaged or Staged Files list: moves, Shift selection, Space, Enter, Delete through the discard confirmation, and Left/Right to the other list keeping the place. Tests in `update/tests/wip_keys_tests.rs`.
-- `file_list_keys.rs`: the moves of a focused commit, comparison, pull request, folder history, Conflicted or Resolved Files list, opening the file they land on as its click would (never leaving unsaved conflict picks). Tests in `update/tests/file_list_keys_tests.rs`.
+- `wip_keys.rs`: the keys of a focused Unstaged or Staged Files list: moves, Shift selection, Space, Enter, Delete through the discard confirmation, and Left/Right to the other list keeping the place. Tests in `flows/wip_keys_tests.rs`.
+- `file_list_keys.rs`: the moves of a focused commit, comparison, pull request, folder history, Conflicted or Resolved Files list, opening the file they land on as its click would (never leaving unsaved conflict picks). Tests in `flows/file_list_keys_tests.rs`.
 - `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
 - `branch_push.rs`: Force push with lease of any branch with an upstream (refused when its upstream or that upstream's tip changed since the confirmation), the toolbar's Force push of the checked-out branch, and Push to all remotes as one job naming the remotes that failed.
 - `branch_sync.rs`: Rename with the remote as one job (rename, `push -u` of the new name, then the old name deleted under a lease) with a headline saying what is left when a step fails, and Delete remote branch with the tracking branches' upstreams unset after it.
-- `branch_checkout.rs`: checkout of a local branch, and of a remote branch through a local branch tracking it (one chosen of several, `CheckoutTracking`) fast-forwarded first in the same job when only behind (ancestry check, then `update-ref` leased on the old tip), a diverged one checked out where it is with a note, or a new tracking branch; the New branch dialog opened tracking a remote branch. Tests in `update/tests/remote_checkout_tests.rs`.
+- `branch_checkout.rs`: checkout of a local branch, and of a remote branch through a local branch tracking it (one chosen of several, `CheckoutTracking`) fast-forwarded first in the same job when only behind (ancestry check, then `update-ref` leased on the old tip), a diverged one checked out where it is with a note, or a new tracking branch; the New branch dialog opened tracking a remote branch. Tests in `flows/remote_checkout_tests.rs`.
 - `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
 - `conflict_count.rs`: a conflicts toast, its run and View conflicts taking the count and files of the first status read after the job, in place of git's CONFLICT lines; that read, or the next job, ends the wait.
 - `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.
@@ -135,7 +149,9 @@ source file, update its line here. Features that span every layer are in
 ## `runner/`: background work
 
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
-- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate among them), with the flat variants' arms.
+- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate and seams among them), with the flat variants' arms.
+- `seams.rs`: `Seams`, what the work reaches outside the repositories with: the trash, the sequence editor and the path search's chunk time; `Seams::REAL` in the app, the stand-ins of `testing::SEAMS` in tests.
+- `testing.rs` (tests only, and other crates' tests through glowfly-runner's `test-support` feature): the entry points tests run the runner through (`execute`, `execute_checked`, `sandboxed`, the stand-in trash `test_bin`, the diff decoration), always with the stand-ins; `testing_tests.rs` checks they never reach the real trash or editor.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
 - `branches.rs`: the `Execute` impl of `BranchEffect` (the count, and each push of Push to all remotes in turn).
 - `lock.rs`: the `Execute` impl of `LockEffect` (`glowfly_core::lock_file`).
@@ -146,21 +162,22 @@ source file, update its line here. Features that span every layer are in
 - `undo_run.rs`: undo and redo as the runner carries them out: plans the action as the repository is now and runs its git commands, through the trust gate when there is one (`UndoGit`), saying whether anything may have changed (`UndoRun::acted`).
 - `undo_stash.rs`: Stash changes and undo: stops first when the stash list or index can't be read or intent-to-add files can't be stashed; stashes under a message with a nonce per run (untracked too only when the stash stays) and finds that stash anywhere in the list; runs the undo; after a merge, pull, cherry-pick, revert or rebase undo, or when nothing was undone, puts the changes back with `stash pop --index` only; every git command goes through the trust gate; otherwise the stash stays and the result names it and says why (`UndoStash`).
 - `op_stops.rs`: notes where a merge, pull, cherry-pick, revert or rebase job's operation starts (after any auto-stash in front of it) and reports `UndoResult::Stopped` when it stops in progress; a plain abort reports where it ended (`UndoResult::Aborted`), and `UndoHistory::aborted` keeps the older entries only when that is the same place.
-- `logs.rs`: the one ordered worker for the log files.
+- `logs.rs`: the one ordered worker for the log files, attached to what `logging.rs` set up (`LogSetup`).
 - `guard.rs`: panic recovery: a panicking effect still sends the result that ends its job or loading state (`Recovery::of`); tests in `guard_tests.rs`.
 - `trust.rs`: reading the repositories made from a trusted one, and the re-check just before a sealed effect starts (`verify`, on its worker; a shell's in its session thread): a scan with libgit2 (checked-out submodules too, which git runs inside) compared with the decision it was sent under, and an incoming commit's hooks and config programs that follow the working tree; a read whose check fails reads without git where it can (a status read); a read's scan is reused while its stamp is unchanged (`trust::stamp`); tests in `trust_tests.rs`.
 - `trust_gate.rs`: the commits an effect names (a pick, a rebase step, an undo) compared before it starts, and the per-command gate a job's git commands go through where hooks follow the working tree (`Gate::before`: a command it doesn't read held, a pull pinned to what its one fetch brought, each later command compared just before it runs, and the repository scanned again after any command but a fetch); a rebase panel step's `reset` and merge parents are compared too; Trust and run on a prompt that couldn't compare passes that reason at that command only (`Accepted`); tests in `trust_gate_tests.rs`.
 - Effects that change a repository, and fetches, keep it out of the repository pool while they run (`Effect::holds`, `repo_pool::hold`); a closed tab lets go of its handles (`BackgroundEffect::Forget`).
 - A line written to a built-in terminal holds its repository out of the pool while the shell runs a program, read from its activity probe (`runner/terminal_hold.rs`); what was typed is never read.
-- `sandbox.rs` (tests only): keeps the journeys' runner inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
-- `watcher.rs` (in `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`); `watcher/includes.rs` watches the folders of the config files the repository's config includes (`watcher/include_tests.rs`); a burst that touched the config also sends `WatchMsg::ConfigChanged` (`watcher/config_tests.rs`); `watcher/probe.rs` checks after starting that events arrive at all and sends `WatchMsg::Probed` (`watcher/probe_tests.rs`).
+- `sandbox.rs`: keeps the journeys' runner (`testing::sandboxed`; none in the app) inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
+- `watcher.rs` (glowfly-runner's `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`); `watcher/includes.rs` watches the folders of the config files the repository's config includes (`watcher/include_tests.rs`); a burst that touched the config also sends `WatchMsg::ConfigChanged` (`watcher/config_tests.rs`); `watcher/probe.rs` checks after starting that events arrive at all and sends `WatchMsg::Probed` (`watcher/probe_tests.rs`).
 
-## `platform.rs`: OS integration
+## `runner/platform.rs` and `platform/`: OS integration
 
-- Recent repositories and which listed folders are missing, open tabs, terminals, the file manager.
-- `platform/icon.rs`: the window icon.
+- `runner/platform.rs`: recent repositories and which listed folders are missing, open tabs, the file manager; `runner/platform/terminal.rs`: terminals.
+- `runner/platform/open_events.rs`: the inbox where the folders and links the OS hands over wait until the runner attaches.
+- `platform/mod.rs`: the window's glue with the OS, only for the shell and `main.rs` (the files below).
 - `platform/app_id.rs`: the installed Windows copy's app id, taken before the window opens.
-- `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `platform/open_events.rs` until the runner attaches.
+- `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `runner/platform/open_events.rs` until the runner attaches (`platform::install_open_events`).
 - `platform/native_menu.rs`: the macOS system menu bar showing Glowfly's menus: the facade, the queue of clicked items' tags and the hook that turns winit's default app menu off.
 - `platform/macos_menu.rs`: the AppKit menus, built and updated from the plan, with the delegate that leaves every key to the window but Cmd+H and Option+Cmd+H.
 - `platform/primary_selection.rs`: the Linux PRIMARY selection the terminal sets and middle-click pastes (smithay-clipboard on Wayland, arboard on X11).
@@ -182,12 +199,15 @@ source file, update its line here. Features that span every layer are in
 - `smoke_probe.rs`, `ui/probe.rs`: the opt-in state file the installer checks read to see the app start and draw (`GLOWFLY_SMOKE_PROBE`, an absolute path; off otherwise, with no thread and AccessKit left alone).
 - `ui/probe.rs` builds it as JSON from egui's current pass (AccessKit names and widget rects with their regions, the drawn panels including the drawn title bar, the window frame being drawn as `chrome`, the keyboard focus) and a few `AppState` fields; the shell offers it after each frame.
 - `smoke_probe.rs` writes only changed ones, with a rising `seq`, atomically from its own thread, retrying a failed write (a reader holding the file on Windows) until it lands or a newer one replaces it.
+- `testing.rs` (glowfly-model; tests only, and other crates' tests through `test-support`): the fixtures every test may use and that run no effect: `state()`, `scratch_repo`, `long_repo`, `clean_tree`, `keys`, `same_place`, the kit's `git`.
+- `flows/` (tests only; glowfly-flows, whose `lib.rs` has only `cfg(test)` items: the model's modules and the runner under their app paths, and `mod flows`): `update`'s end-to-end tests, which run effects through the runner (`runner::testing`), and the tests that share helpers with them; `mod.rs` lists them (`pull_request/` for the pull request panel's), and `helpers.rs` has `drive`, `finish` and `finish_keeping` and the effects they skip. Out of `update/` so the model's own tests never need the runner.
+- `runner_snapshots/` (tests only): the view snapshot tests whose state comes through the runner (`snapshot_tests_whole.rs`, `snapshot_tests_wrap.rs`, and one test each in `snapshot_tests_conflict_files.rs` and `snapshot_tests_search.rs`), on glowfly-ui's fixtures and approved snapshots.
 - `journey/` (tests only): whole-app journeys: the real app (`GlowflyApp::for_test`) in an egui_kittest harness on fixture repositories.
 - `journey/find.rs`: driving it by clicking and typing on widgets found by accessible name: a region of the window, the open command palette among them, and a pick among equal names.
 - `journey/harness.rs`: waiting until the app is idle after each step.
 - `journey/fixture.rs`: checking the screen and the repository on disk.
 - `journey/` is in the crate because the package has no library target `tests/` could reach.
-- `glyph_check/` (tests only): every non-ASCII character in the app's and core's string literals and in the translation files has a glyph in the fonts egui draws with.
+- `glyph_check/` (tests only): every non-ASCII character in every crate's string literals and in the translation files has a glyph in the fonts egui draws with.
 - `glyph_check/scan.rs` finds the characters, skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.
 - `glyph_check/` installs the app's bundled fonts through `ui::theme::fonts::install`, as the app does.
 - `glyph_check/cjk_dates.rs`: every month, weekday and half-day word of the ja_JP, zh_CN and ko_KR dates has a glyph, in the tests' CJK font and in the machine's own where it has them.

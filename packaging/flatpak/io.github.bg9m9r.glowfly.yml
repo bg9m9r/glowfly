@@ -34,7 +34,7 @@ modules:
   # flags leave out gitk, git-gui, translations, Perl and Python. git builds its Rust parts
   # (libgitcore) with cargo; they have no dependencies, so this needs no network. The release
   # attaches this exact tarball (scripts/package-flatpak.sh), and GIT-NOTICE.md names its
-  # version, address and sha256: change them together (tests/flatpak_package.rs checks).
+  # version, address and sha256: change them together (tests/packaging/flatpak_package.rs checks).
   - name: git
     buildsystem: simple
     build-options:

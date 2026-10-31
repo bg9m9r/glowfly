@@ -1,0 +1,35 @@
+//! The job of Effect::OpPreview: what an operation would do, worked out without changing the
+//! repository (runner/op_preview.rs, glowfly_core::op_preview).
+
+use super::EffectMeta;
+use super::SandboxRule;
+use std::path::{Path, PathBuf};
+
+/// One preview of `request` in the repository at `workdir`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct OpPreviewJob {
+    pub workdir: PathBuf,
+    pub request: glowfly_core::op_preview::Request,
+}
+
+impl EffectMeta for OpPreviewJob {
+    fn name(&self) -> &'static str {
+        "op-preview"
+    }
+
+    fn scope(&self) -> Option<&PathBuf> {
+        Some(&self.workdir)
+    }
+
+    fn timed(&self) -> bool {
+        true
+    }
+
+    fn queue(&self) -> Option<&Path> {
+        None
+    }
+
+    fn sandbox(&self) -> SandboxRule {
+        SandboxRule::Run
+    }
+}

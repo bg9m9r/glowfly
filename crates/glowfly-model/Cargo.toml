@@ -1,0 +1,29 @@
+[package]
+name = "glowfly-model"
+description = "Glowfly's state, messages, effects and update logic (no UI, no I/O runner)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+doctest = false
+
+[features]
+# The pure test helpers in src/testing.rs (a fresh state, the fixture repositories) for the
+# other crates' tests; their dev-dependencies turn this on. Only adds items.
+test-support = ["glowfly-core/testkit"]
+
+[dependencies]
+glowfly-core.workspace = true
+chrono.workspace = true
+git2.workspace = true
+serde_json.workspace = true
+tracing = "0.1.44"
+
+[dev-dependencies]
+glowfly-core = { workspace = true, features = ["testkit"] }

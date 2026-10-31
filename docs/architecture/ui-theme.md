@@ -1,11 +1,11 @@
-# glowfly-app UI: theme, colours, type and tokens (`crates/glowfly-app/src/ui/theme/`)
+# UI: theme, colours, type and tokens (`crates/glowfly-ui/src/theme/`)
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
 source file, update its line here. What each colour is for is in [COLOUR.md](../COLOUR.md).
 
 ## Controls and modals
 
-- `theme/controls.rs`: the themed form controls: text fields with a border and focus ring, and checkboxes and radio buttons drawn as visible boxes and circles; views use these, which `tests/controls.rs` checks.
+- `theme/controls.rs`: the themed form controls: text fields with a border and focus ring, and checkboxes and radio buttons drawn as visible boxes and circles; views use these, which `tests/view_checks/controls.rs` checks.
 - `theme::modal`: every modal: the themed backdrop and dialog border.
 - `theme::show_modal`: shows a modal with its contents under one accessibility node of role Dialog (what screen readers and the text snapshots see).
 
@@ -33,7 +33,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 - `theme/fonts.rs`: the bundled fonts: Noto Sans, its semibold family and JetBrains Mono ahead of egui's fallbacks, from `assets/fonts/`.
 - `theme/fonts.rs` is the one font setup, installed by `GlowflyApp::new`, `theme::apply_style` and the glyph check.
-- `theme/fonts.rs` ends both families with the CJK fallbacks: the system's (`platform/system_fonts.rs`), or in tests the Noto Sans CJK subset in `assets/fonts/test/`.
+- `theme/fonts.rs` ends both families with the CJK fallbacks: the system's, which the shell hands over at startup (`fonts::use_cjk`, from `platform/system_fonts.rs`), or until then (and in tests) the Noto Sans CJK subset in `assets/fonts/test/`.
 - `theme/missing_glyphs.rs`: in debug builds, a warning once per character a frame draws that no loaded font has.
 - `theme/type_scale.rs`: the type scale: five steps, caption 11, small 12, body 14, subhead 16 and title 20 px, with nothing under the 11 px floor.
 - The type scale has one section-header style, Noto Sans SemiBold at body size, and SemiBold titles.

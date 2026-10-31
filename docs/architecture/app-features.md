@@ -2,7 +2,8 @@
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
 source file, update its line here. Each section lists one feature's files in every layer
-(`msg/`, `effect/`, `state/`, `update/`, `runner/`, `ui/`), all under `crates/glowfly-app/src/`.
+(`msg/`, `effect/`, `state/`, `update/`, `runner/`, `ui/`): `runner/` and `ui/` under
+`crates/glowfly-app/src/`, the rest under `crates/glowfly-model/src/`.
 
 ## Glowfly's own updates (`UpdateMsg`, `UpdateEffect`)
 

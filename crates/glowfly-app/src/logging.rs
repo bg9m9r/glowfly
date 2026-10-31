@@ -4,24 +4,13 @@
 //! logged with their thread, message, location and backtrace before the default hook runs.
 //! Extended logging raises the error log's level at runtime through `LogSetup::file_detail`.
 
+use crate::runner::{FileDetail, LogSetup};
 use glowfly_core::logs::{ERROR_FILE, ERROR_LOG_BYTES, KEEP_ROTATED, RotatingFile};
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::Level;
 use tracing_subscriber::filter::{EnvFilter, Targets};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, reload};
-
-/// Switches the error log between its normal and extended levels.
-pub type FileDetail = Arc<dyn Fn(bool) + Send + Sync>;
-
-/// What `init` set up, for the runner's log worker.
-pub struct LogSetup {
-    /// The logs folder; None when this system has no place for it (logs stay in memory).
-    pub dir: Option<PathBuf>,
-    /// Sets the error log's level for extended logging (true) or not; None without a folder.
-    pub file_detail: Option<FileDetail>,
-}
 
 /// Installs the tracing subscriber and the panic hook.
 pub fn init() -> LogSetup {
@@ -84,11 +73,14 @@ mod tests {
     fn file_targets_levels() {
         let normal = file_targets(false);
         assert!(normal.would_enable("glowfly", &Level::WARN));
-        assert!(normal.would_enable("glowfly::runner", &Level::ERROR));
+        assert!(normal.would_enable("glowfly_runner::guard", &Level::ERROR));
         assert!(!normal.would_enable("glowfly", &Level::INFO));
         let extended = file_targets(true);
         assert!(extended.would_enable("glowfly", &Level::DEBUG));
         assert!(extended.would_enable("glowfly_core::gitcli", &Level::DEBUG));
+        // The other crates' targets start with "glowfly" too.
+        assert!(extended.would_enable("glowfly_runner::guard", &Level::DEBUG));
+        assert!(extended.would_enable("glowfly_model::update", &Level::DEBUG));
         assert!(!extended.would_enable("glowfly", &Level::TRACE));
         assert!(extended.would_enable("wgpu_core", &Level::INFO));
         assert!(!extended.would_enable("wgpu_core", &Level::DEBUG));

@@ -16,6 +16,9 @@ path = "src/main.rs"
 
 [dependencies]
 glowfly-core.workspace = true
+glowfly-model.workspace = true
+glowfly-runner.workspace = true
+glowfly-ui.workspace = true
 chrono.workspace = true
 git2.workspace = true
 serde_json.workspace = true
@@ -25,10 +28,6 @@ sys-locale.workspace = true
 ab_glyph = "0.2.32"
 eframe = "0.31"
 memmap2 = "0.9.11"
-notify = "8.2"
-notify-rust = "4"
-open = "5"
-rfd = "0.15"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "chrono"] }
 
@@ -58,12 +57,16 @@ raw-window-handle = "0.6"
 [dev-dependencies]
 # The shared fixture helpers (glowfly-core's src/testkit/): repositories built in-process.
 glowfly-core = { workspace = true, features = ["testkit"] }
+# The model's pure test helpers (glowfly-model's src/testing.rs).
+glowfly-model = { workspace = true, features = ["test-support"] }
+# The runner's test entry points (glowfly-runner's src/testing.rs).
+glowfly-runner = { workspace = true, features = ["test-support"] }
+# The views' test helpers (glowfly-ui's snapshot_check, snapshot_fixtures and test fonts).
+glowfly-ui = { workspace = true, features = ["test-support"] }
 egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }
-# One wgpu device for all view tests (ui/snapshot_check.rs); the version kittest renders with.
-egui-wgpu = { version = "0.31", default-features = false }
-# tests/app_icon.rs renders the app icon and checks the PNGs in assets/icon.
+# tests/packaging/app_icon.rs renders the app icon and checks the PNGs in assets/icon.
 image = { version = "0.25", default-features = false, features = ["png"] }
-# tests/linux_packages.rs reads the package metadata below.
+# tests/packaging/linux_packages.rs reads the package metadata below.
 toml = "1.1"
 
 # The icon and version details of glowfly.exe (build.rs).
@@ -81,7 +84,7 @@ priority = "optional"
 # the windowing ones at run time (dlopen), so those are named here, for Debian 12 and Ubuntu
 # 22.04 or newer: xkbcommon (the keyboard; its X11 part on X11), Xlib with its xcb bridge, the
 # cursor and input extensions, xcb, the Wayland client and its EGL bridge, and the GL loaders
-# (EGL first, GLX on X11). tests/linux_packages.rs keeps this list and the .rpm's in step.
+# (EGL first, GLX on X11). tests/packaging/linux_packages.rs keeps this list and the .rpm's in step.
 depends = "$auto, git, libxkbcommon0, libxkbcommon-x11-0, libx11-6, libx11-xcb1, libxcursor1, libxi6, libxcb1, libwayland-client0, libwayland-egl1, libegl1, libgl1"
 extended-description = """Glowfly is a native Git client: a commit graph, diffs, staging by file, hunk or line, branches, stashes, rebases and pull requests from the hosting service."""
 assets = [
@@ -107,7 +110,7 @@ assets = [
 # The .rpm (cargo-generate-rpm, scripts/package-linux.sh): the same files as the .deb. The
 # version is set from the tag at packaging time. No asset is marked `doc`: systems set to skip
 # documentation (Fedora's container images use dnf's tsflags=nodocs) would then leave the
-# licenses out, and the install check expects every file (tests/linux_packages.rs).
+# licenses out, and the install check expects every file (tests/packaging/linux_packages.rs).
 [package.metadata.generate-rpm]
 name = "glowfly"
 summary = "A native Git client"

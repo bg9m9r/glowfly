@@ -47,10 +47,10 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 - Detect lists the remotes on the code host's account as PR repositories (`ForgeState::pr_repos`, built by `state/pr_repos.rs`: the code host's first, one per repository).
 - The base is a remote named `upstream`, else the code host's.
-- A branch's pull request is pushed to the remote of `branch.<name>.pushRemote`, then `remote.pushDefault` (read into `Snapshot::push_remotes` by `glowfly-core/src/repo/push_config.rs`), else the fork remote it tracks, else the code host's (`pr_repos::pr_push_target`, `state/push_pr.rs`'s `*_on` functions); a configured remote that doesn't exist or isn't on the code host's account refuses the push, as git never moves on to the next choice. Tests in `update/tests/push_pr_config_tests.rs`.
+- A branch's pull request is pushed to the remote of `branch.<name>.pushRemote`, then `remote.pushDefault` (read into `Snapshot::push_remotes` by `glowfly-core/src/repo/push_config.rs`), else the fork remote it tracks, else the code host's (`pr_repos::pr_push_target`, `state/push_pr.rs`'s `*_on` functions); a configured remote that doesn't exist or isn't on the code host's account refuses the push, as git never moves on to the next choice. Tests in `flows/push_pr_config_tests.rs`.
 - The create dialog picks From / Into (`ui/create_pr_repos.rs`, `update/pr_repo_pick.rs`), and `update/push_pr.rs::create` sends the request to the Into repository with `NewPullRequest::source_repo` set to the fork.
 - Each service's head on a fork is in `glowfly-core/src/forge/pr_heads.rs`.
-- A listed pull request's source is matched by repository and branch, never by name alone: `ForgeState::pr_from` and `source_remote` match the list's head repository (`forge/head_repo.rs`) to the PR repositories' remotes, for the menus, the panel's tips and checking the source out (`update/pr_checkout.rs`). Tests in `update/tests/fork_pr_source_tests.rs`.
+- A listed pull request's source is matched by repository and branch, never by name alone: `ForgeState::pr_from` and `source_remote` match the list's head repository (`forge/head_repo.rs`) to the PR repositories' remotes, for the menus, the panel's tips and checking the source out (`update/pr_checkout.rs`). Tests in `flows/fork_pr_source_tests.rs`.
 - Push to your fork… goes through the Fork dialog with `ForkCreate::then_pr`, whose add job also pushes the branch (`update/fork_pr.rs`).
 
 ## Pull request source tip
@@ -144,7 +144,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 - Right after it starts, the watcher places a probe file in the git dir (`glowfly_core::watch_probe`, `watcher/probe.rs`) and reports `WatchMsg::Probed`: `Live` once its event arrives, `Silent` after `PROBE_TIMEOUT` (5 s) without one, `Unknown` when the git dir can't be written.
 - `update/watch.rs` keeps the answer per repository in `WatchState::probes`; a silent watcher is warned about once per repository and session (not on a network volume, whose notice already said why) and polled like a network volume (`WatchState::poll_interval`) until any later event sends `Live`.
-- The status bar's dot (`ui/live_updates.rs`) shows `WatchState::live_updates`; tests in `update/tests/watch_poll_tests.rs` and `ui/snapshot_tests/snapshot_tests_live_updates.rs`.
+- The status bar's dot (`ui/live_updates.rs`) shows `WatchState::live_updates`; tests in `flows/watch_poll_tests.rs` and `ui/snapshot_tests/snapshot_tests_live_updates.rs`.
 
 ## Incremental status
 

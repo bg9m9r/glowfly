@@ -1,7 +1,7 @@
 //! The Apple events macOS sends Glowfly.app instead of a command line: Get URL (`GURL`) for a
 //! `glowfly://` link opened anywhere, and Open Documents (`odoc`) for a folder chosen under
 //! Finder's Open With, dropped on the Dock icon or passed to `open -a`. packaging/macos/
-//! Info.plist declares both, and each item goes to `open_events`, which holds it until the
+//! Info.plist declares both, and each item goes to the runner's `open_events`, which holds it until the
 //! runner listens.
 //!
 //! The handlers are installed twice. Once before eframe starts, which is enough for Get URL,
@@ -10,7 +10,7 @@
 //! event that started the app right after that notification. Installing again replaces the
 //! handler, so twice is harmless.
 
-use super::open_events::{self, codes::*};
+use crate::runner::platform::open_events::{self, codes::*};
 use objc2::rc::Retained;
 use objc2::runtime::{NSObject, NSObjectProtocol};
 use objc2::{MainThreadMarker, MainThreadOnly, define_class, msg_send, sel};

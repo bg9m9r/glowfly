@@ -133,8 +133,8 @@ Install and restart reads the zip and tar.gz layout (`glowfly-<tag>-<target>/` h
 program and the doc files) to swap a portable copy in place (`app_update/archive.rs`), so keep
 it when the packaging scripts change.
 
-The app icon is drawn by `crates/glowfly-app/tests/app_icon.rs`; `UPDATE_ICONS=1 cargo test -p
-glowfly --test app_icon` redraws the files in `assets/icon/`. The Windows build embeds
+The app icon is drawn by `crates/glowfly-app/tests/packaging/app_icon.rs`; `UPDATE_ICONS=1 cargo test -p
+glowfly --test packaging app_icon` redraws the files in `assets/icon/`. The Windows build embeds
 `glowfly.ico` in `glowfly.exe` (`build.rs`, through winresource).
 
 ## Homebrew and winget
@@ -181,7 +181,7 @@ The source itself goes out with the bundle: `package-flatpak.sh bundle` copies t
 flatpak-builder downloaded (or downloads it again), checks it against the manifest's sha256 and
 writes it to `dist/git-<version>.tar.xz`, and the flatpak job uploads it beside the `.flatpak`.
 When git is updated, change its url and sha256 in the manifest and the version, url and sha256 in
-`GIT-NOTICE.md` together; `tests/flatpak_package.rs` fails until they match.
+`GIT-NOTICE.md` together; `tests/packaging/flatpak_package.rs` fails until they match.
 
 ## The release notes header
 

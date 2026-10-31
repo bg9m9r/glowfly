@@ -48,7 +48,7 @@ second one next to it.
    `\\wsl.localhost`. Use it for paths that don't exist, or as the cheap first check.
 3. **No disk work in `update` or views.** Use `AppState::same_folder`, `names_repo` and
    `tab_showing` (`state/known_folders.rs`), which read identities that workers cached in
-   `Snapshot::folder`, `Tab::folder` and `KnownFolders`. `tests/layering.rs` flags
+   `Snapshot::folder`, `Tab::folder` and `KnownFolders`. `tests/source_checks/layering.rs` flags
    `paths::{resolve, temp_dir, same_folder}` and `FolderId::of` there.
 4. **Resolve outside paths before comparing them with git's.** Anything from argv, typed text,
    settings, the recent and tabs files or `%TEMP%` goes through `paths::resolve`, which follows
@@ -232,7 +232,7 @@ second one next to it.
    bit and the symlink target (`opens::FileFacts`). In a repository the user chose not to trust,
    refuse; otherwise confirm. Cloned files carry no Mark-of-the-Web or quarantine flag.
 2. **Never give cmd.exe a UNC working directory.** Use `pushd` inside the command or PowerShell
-   `-LiteralPath` (`platform/terminal.rs`).
+   `-LiteralPath` (`runner/platform/terminal.rs`).
 3. **Quote raw command lines for cmd and PowerShell yourself,** and use `CREATE_NEW_CONSOLE` for
    terminals and `CREATE_NO_WINDOW` for helpers, so nothing flashes a console.
 4. **Watch started programs for `external_tools::EARLY_EXIT` (1.5 s)** and report an early
@@ -298,7 +298,7 @@ second one next to it.
 9. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
    libdbus) on Linux. A missing notification server is an error the confirmation reports;
-   never call it from update or views (`tests/layering.rs`). A click comes back through the same
+   never call it from update or views (`tests/source_checks/layering.rs`). A click comes back through the same
    worker thread, which waits for the answer (Linux notes declare the "default" action so a
    click on the body is reported). Glowfly's own app id (`app_identity::APP_ID`) is used on
    Windows only by the installed copy, whose shortcuts register it (an id nothing registers makes
@@ -514,7 +514,7 @@ second one next to it.
    document. `platform/macos_events.rs` installs its handlers before eframe starts and again at
    `NSApplicationWillFinishLaunchingNotification`, since AppKit installs its own Open Documents
    handler while launching and dispatches the launch event right after. Items wait in
-   `platform/open_events.rs` until `Runner::start_open_events` attaches, then become the same
+   `runner/platform/open_events.rs` until `Runner::start_open_events` attaches, then become the same
    messages as the command line (`StartArg::into_msg`); an event repeating the command line's
    item within 10 s of startup (`paths::same_spelling`, links as exact text) is dropped once. An
    Open Documents item is a `file:` URL, read with `paths::from_file_url`. A `-psn_...` argument
@@ -562,20 +562,20 @@ second one next to it.
    `Chrome::System` instead (`Chrome::chosen`). The viewport is built before the first frame, so
    `main.rs` reads the settings first and the switch takes effect at the next start.
 2. **Views never send viewport commands:** a drag, double-click, window button or resize edge
-   pushes `AppMsg::Window`, and only the shell (`ui/app.rs`) turns it into a
-   `ViewportCommand`; `tests/layering.rs` checks.
+   pushes `AppMsg::Window`, and only the shell (`shell/app.rs`) turns it into a
+   `ViewportCommand`; `tests/source_checks/layering.rs` checks.
 3. **Resize edges are Windows-only and off while maximized or full screen,** like the 1 px
    border; on macOS the system frame resizes the window.
 4. **The drawn Maximize button answers Windows' hit test (`WM_NCHITTEST`) with `HTMAXBUTTON`,**
    so Windows 11 shows Snap Layouts over it. Windows then tracks the button and egui sees no
    pointer there: its hover and press come from `st.view.window.max_button`, and its click
-   reaches update from the shell (`ui/app_native.rs`) as `AppMsg::Window(SetMaximized)`. The
+   reaches update from the shell (`shell/app_native.rs`) as `AppMsg::Window(SetMaximized)`. The
    shell hands the OS the button's rect each frame (`window_frame::caption_geometry`). The top
    `EDGE` points of the button answer `HTTOP` instead (none while maximized or full screen), so
    the window resizes from there like from the rest of its top edge (`CaptionGeometry::hit`).
    In a drawn title bar, dragging the only tab moves the window, as the empty bar does.
 5. **Alt+Space and a right-click on the empty bar open the window's system menu** through
-   `platform::native_window` (the only place with Win32 calls; `tests/layering.rs` checks).
+   `platform::native_window` (the only place with Win32 calls; `tests/source_checks/layering.rs` checks).
    egui never sees Alt+Space, and the shell cancels the Alt tap once the menu has shown. The
    chosen command goes back as `WM_SYSCOMMAND`, so Windows carries it out.
 6. **The drawn frame asks DWM for the shadow and rounded corners the system frame has:** a
