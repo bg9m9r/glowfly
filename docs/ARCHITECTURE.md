@@ -93,11 +93,11 @@ source file, update its line in the matching file.
 ## Rules
 
 1. `glowfly-core` must not depend on `eframe`/`egui`.
-2. `ui/`, `update/` and `state/` do no I/O. `tests/layering.rs` denies whole families (the file
+2. `ui/`, `update/` and `state/` do no I/O. `tests/source_checks/layering.rs` denies whole families (the file
    system, processes, network, threads, environment, clock, libgit2 access) and the core
    functions that do I/O, and names the file and line of each use. The shell (`src/shell/`), which
    owns the window, the clock and the startup loads, is outside them; the few justified exceptions
-   are listed in its `ALLOWED` table (`tests/layering/rules.rs`) with a reason.
+   are listed in its `ALLOWED` table (`tests/source_checks/layering/rules.rs`) with a reason.
 3. New behavior gets an `update` test; new git or API logic gets a `glowfly-core` test. A flow that
    crosses views, the runner and git gets a journey step (`src/journey/`).
 4. New views get an `egui_kittest` snapshot when practical. Views read time from
@@ -129,7 +129,7 @@ source file, update its line in the matching file.
     (keys in `crates/glowfly-core/locales/`, see its README). Translated text is never matched
     against git output or used as an egui id; ids use fixed `from_id_salt` strings. Write each
     key as a literal inside the call (`t.tr("conflict.panes.ours")`, never a key held in a
-    variable): `tests/i18n_keys.rs` finds the keys the code uses that way.
+    variable): `tests/source_checks/i18n_keys.rs` finds the keys the code uses that way.
 
 ## Recipe: adding a feature
 

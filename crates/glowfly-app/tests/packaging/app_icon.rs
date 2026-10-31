@@ -1,4 +1,4 @@
-//! The app icon in `assets/icon/`: `UPDATE_ICONS=1 cargo test -p glowfly --test app_icon`
+//! The app icon in `assets/icon/`: `UPDATE_ICONS=1 cargo test -p glowfly --test packaging app_icon`
 //! renders it (`app_icon/draw.rs`, with `app_icon/paint.rs`) and rewrites the PNGs, `glowfly.ico` and `glowfly.icns`
 //! (`app_icon/containers.rs`), and the Windows installer's bitmaps in `assets/installer/`
 //! (`app_icon/installer.rs`). Without the variable it checks that every checked-in image
@@ -69,7 +69,7 @@ fn assert_matches(what: &str, png_bytes: &[u8], size: u32, want: &[u8]) {
     let worst = got.iter().zip(want).map(|(a, b)| a.abs_diff(*b)).max().unwrap_or(0);
     assert!(
         worst <= TOLERANCE,
-        "{what} differs from the drawing by up to {worst}; run UPDATE_ICONS=1 cargo test -p glowfly --test app_icon"
+        "{what} differs from the drawing by up to {worst}; run UPDATE_ICONS=1 cargo test -p glowfly --test packaging app_icon"
     );
 }
 
@@ -121,7 +121,7 @@ fn the_installer_art_matches_its_drawing() {
         let worst = got.iter().zip(rgb).map(|(a, b)| a.abs_diff(*b)).max().unwrap_or(0);
         assert!(
             worst <= TOLERANCE,
-            "{name} differs from the drawing by up to {worst}; run UPDATE_ICONS=1 cargo test -p glowfly --test app_icon"
+            "{name} differs from the drawing by up to {worst}; run UPDATE_ICONS=1 cargo test -p glowfly --test packaging app_icon"
         );
     }
 }

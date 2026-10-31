@@ -213,7 +213,7 @@ fn views_update_and_state_do_no_io() {
     assert!(
         report.is_empty(),
         "views, update and state must not do I/O. Return an Effect and do the work in the runner \
-         (glowfly-runner), or add a justified entry to ALLOWED in tests/layering.rs:\n{}",
+         (glowfly-runner), or add a justified entry to ALLOWED in tests/source_checks/layering.rs:\n{}",
         report.join("\n")
     );
 }

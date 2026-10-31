@@ -1,6 +1,6 @@
 //! Shows desktop notifications through the OS (notify-rust): WinRT toasts on Windows,
 //! Notification Center on macOS, freedesktop notifications over D-Bus on Linux. The only code
-//! that reaches the OS notification API (tests/layering.rs).
+//! that reaches the OS notification API (tests/source_checks/layering.rs).
 //!
 //! The effect's worker thread then waits for the user's answer (at most `MAX_WAITING` at once)
 //! and reports a click as `NotifyMsg::DesktopClicked`. Installed copies post under Glowfly's own

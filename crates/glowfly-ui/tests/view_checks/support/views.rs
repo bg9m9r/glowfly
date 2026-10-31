@@ -1,5 +1,5 @@
 //! Reading the sources for the source checks (glowfly-ui's view checks, and the app crate's
-//! `hygiene.rs` and `i18n_keys.rs`, which include this file too): every file of a crate marked
+//! `source_checks` binary, which includes this file too): every file of a crate marked
 //! test or not, the non-test files of glowfly-ui (the views), and each file's code with comments
 //! and inline test modules blanked out.
 

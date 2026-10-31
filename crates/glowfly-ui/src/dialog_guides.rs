@@ -1,6 +1,6 @@
 //! The side panes of the dialogs for less familiar operations (`dialog_frame::Guide`): each
 //! explains its operation in a few steps, from git's own documentation, under "How it works".
-//! The keys are written out in full so the key check (`tests/i18n_keys.rs`) sees them.
+//! The keys are written out in full so the key check (`tests/source_checks/i18n_keys.rs`) sees them.
 
 use super::dialog_frame::Guide;
 use glowfly_core::i18n::Lang;

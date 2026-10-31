@@ -99,7 +99,7 @@ fn join(dir: &str, name: &str) -> String {
 
 /// `src` with each `#[cfg(test)]` item (its attributes, and a braced body or the lines up to a
 /// `;` or `,`) replaced by empty lines, so line numbers stay put. Braces are counted per line, as
-/// `tests/layering.rs` does.
+/// `tests/source_checks/layering.rs` does.
 fn blank_test_items(src: &str) -> String {
     let lines: Vec<&str> = src.lines().collect();
     let mut out: Vec<&str> = Vec::with_capacity(lines.len());

@@ -58,14 +58,14 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `ui/title_bar.rs` draws the 44 px bar: the menu button (the menus of `ui/menu_bar::menus` as submenus), the tabs (`tabs::strip`) and empty space that moves or maximizes the window.
 - `ui/window_frame.rs` builds the viewport for each chrome (`viewport`, used by `main.rs`).
 - On Windows `ui/window_frame.rs` draws an `Order::Tooltip` overlay above every dialog: the window buttons (`ui/window_buttons.rs`), the resize edges and corners (none while maximized), a 1 px border, and a drag zone over the bar while a dialog blocks it.
-- Views push `AppMsg::Window`; `update/app.rs` returns `UiEffect::Window`, and the shell sends the viewport command (`shell/app_effects.rs`, `window_frame::viewport_cmd`), the only `send_viewport_cmd` outside the shell's own effects (`tests/layering.rs`).
+- Views push `AppMsg::Window`; `update/app.rs` returns `UiEffect::Window`, and the shell sends the viewport command (`shell/app_effects.rs`, `window_frame::viewport_cmd`), the only `send_viewport_cmd` outside the shell's own effects (`tests/source_checks/layering.rs`).
 - On Windows the shell also installs `platform/native_window/` (`GlowflyApp::new`): a window procedure in front of winit's (`win_proc.rs`, its state in atomics).
 - `win_proc.rs` answers the hit test (`CaptionGeometry::hit`) with `HTMAXBUTTON` over the drawn Maximize button for Snap Layouts, and with `HTTOP` over the resize strip along its top.
 - `win_system.rs` opens the system menu on Alt+Space or on `WindowCmd::SystemMenu`, gives the frame DWM's shadow and Windows 11's rounded corners, sets the Mica backdrop and reads transparency and high contrast.
 - Each frame `shell/app_native.rs` polls it into view state (`WindowInfo::max_button`, `ViewState::backdrop`, a click as `SetMaximized`, a shown menu cancelling the Alt tap) and hands back `window_frame::caption_geometry`.
 - The pure parts of the native window are in `state/window_native.rs`.
-- Only the shell (`src/shell/`) and `main.rs` may name `platform::native_window`, and no view, update or state code names `windows::Win32` (`tests/layering.rs`).
-- Only the shell may name `platform::primary_selection`: `shell/app.rs` opens it and `shell/app_effects.rs` runs `UiEffect::SetPrimary` and `UiEffect::PastePrimary` (`tests/layering.rs`).
+- Only the shell (`src/shell/`) and `main.rs` may name `platform::native_window`, and no view, update or state code names `windows::Win32` (`tests/source_checks/layering.rs`).
+- Only the shell may name `platform::primary_selection`: `shell/app.rs` opens it and `shell/app_effects.rs` runs `UiEffect::SetPrimary` and `UiEffect::PastePrimary` (`tests/source_checks/layering.rs`).
 - `ui/backdrop.rs` picks the palette's Mica tints (`mica_tint`, cached in `ThemeCache`) and gives the title bar, toolbar and sidebar their fill (`backdrop::fill`).
 - `GlowflyApp::clear_color` clears to transparent only while Mica shows.
 
@@ -111,7 +111,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `update/notify.rs::desktop` returns `Effect::Notify` (a `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and `st.view.focused` is false.
 - The shell sets `view.focused` from egui at the start of each frame, before runner results are handled, so `update` never asks egui.
 - Finished non-quiet jobs (`update/ops.rs::finish_job`) and behind alerts use it; turning the setting on sends one confirmation regardless of focus.
-- `runner/notify.rs` shows the note through notify-rust (the only caller, `tests/layering.rs`) and reports a refusal as `PrefsMsg::DesktopNotificationFailed`.
+- `runner/notify.rs` shows the note through notify-rust (the only caller, `tests/source_checks/layering.rs`) and reports a refusal as `PrefsMsg::DesktopNotificationFailed`.
 - A note carries the repository it is about (`DesktopNote::workdir`); the effect's worker thread waits for the user's answer (at most `MAX_WAITING` at once) and reports a click as `NotifyMsg::DesktopClicked`.
 - A click focuses the window (`UiEffect::FocusWindow`) and shows that repository through `update::tabs::open`, or, under a dialog (`deep_link::busy`), offers Show in a toast.
 - Glowfly's identity with the OS is `glowfly_core::app_identity` (`APP_ID`, `DESKTOP_ENTRY`): an installed Windows copy takes the app id before its window opens (`platform/app_id.rs`) and posts toasts under it, Glowfly.app posts under its bundle id, and Linux notes name the desktop entry.

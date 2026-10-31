@@ -48,7 +48,7 @@ second one next to it.
    `\\wsl.localhost`. Use it for paths that don't exist, or as the cheap first check.
 3. **No disk work in `update` or views.** Use `AppState::same_folder`, `names_repo` and
    `tab_showing` (`state/known_folders.rs`), which read identities that workers cached in
-   `Snapshot::folder`, `Tab::folder` and `KnownFolders`. `tests/layering.rs` flags
+   `Snapshot::folder`, `Tab::folder` and `KnownFolders`. `tests/source_checks/layering.rs` flags
    `paths::{resolve, temp_dir, same_folder}` and `FolderId::of` there.
 4. **Resolve outside paths before comparing them with git's.** Anything from argv, typed text,
    settings, the recent and tabs files or `%TEMP%` goes through `paths::resolve`, which follows
@@ -298,7 +298,7 @@ second one next to it.
 9. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
    libdbus) on Linux. A missing notification server is an error the confirmation reports;
-   never call it from update or views (`tests/layering.rs`). A click comes back through the same
+   never call it from update or views (`tests/source_checks/layering.rs`). A click comes back through the same
    worker thread, which waits for the answer (Linux notes declare the "default" action so a
    click on the body is reported). Glowfly's own app id (`app_identity::APP_ID`) is used on
    Windows only by the installed copy, whose shortcuts register it (an id nothing registers makes
@@ -563,7 +563,7 @@ second one next to it.
    `main.rs` reads the settings first and the switch takes effect at the next start.
 2. **Views never send viewport commands:** a drag, double-click, window button or resize edge
    pushes `AppMsg::Window`, and only the shell (`shell/app.rs`) turns it into a
-   `ViewportCommand`; `tests/layering.rs` checks.
+   `ViewportCommand`; `tests/source_checks/layering.rs` checks.
 3. **Resize edges are Windows-only and off while maximized or full screen,** like the 1 px
    border; on macOS the system frame resizes the window.
 4. **The drawn Maximize button answers Windows' hit test (`WM_NCHITTEST`) with `HTMAXBUTTON`,**
@@ -575,7 +575,7 @@ second one next to it.
    the window resizes from there like from the rest of its top edge (`CaptionGeometry::hit`).
    In a drawn title bar, dragging the only tab moves the window, as the empty bar does.
 5. **Alt+Space and a right-click on the empty bar open the window's system menu** through
-   `platform::native_window` (the only place with Win32 calls; `tests/layering.rs` checks).
+   `platform::native_window` (the only place with Win32 calls; `tests/source_checks/layering.rs` checks).
    egui never sees Alt+Space, and the shell cancels the Alt tap once the menu has shown. The
    chosen command goes back as `WM_SYSCOMMAND`, so Windows carries it out.
 6. **The drawn frame asks DWM for the shadow and rounded corners the system frame has:** a

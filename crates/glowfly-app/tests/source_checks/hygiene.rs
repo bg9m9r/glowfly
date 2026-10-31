@@ -1,4 +1,4 @@
-//! Ratchets on source hygiene across both crates (`glowfly-app` and `glowfly-core`), so the
+//! Ratchets on source hygiene across every crate under `crates/`, so the
 //! rules in CONTRIBUTING.md hold without anyone checking by hand, and today's exceptions can only
 //! shrink:
 //!
@@ -24,8 +24,7 @@
 //! named `tests.rs`, `*_tests.rs` or `snapshot_tests*.rs`, modules declared under `#[cfg(test)]`,
 //! and inline `#[cfg(test)] mod` blocks (blanked out for the log check).
 
-#[path = "../../glowfly-ui/tests/view_checks/support/views.rs"]
-mod views;
+use crate::views;
 
 #[path = "hygiene/test_switches.rs"]
 mod test_switches;
@@ -124,7 +123,7 @@ fn length_problem(path: &str, lines: usize) -> Option<String> {
             "{path}:{lines}: {lines} lines, over its ceiling of {ceiling} in LONG_FILES; split it by responsibility rather than growing it"
         )),
         Some(_) if lines <= LINE_LIMIT => {
-            Some(format!("{path}: {lines} lines, back under {LINE_LIMIT}; remove it from LONG_FILES in tests/hygiene.rs"))
+            Some(format!("{path}: {lines} lines, back under {LINE_LIMIT}; remove it from LONG_FILES in tests/source_checks/hygiene.rs"))
         }
         Some(_) => None,
         None if lines > LINE_LIMIT => Some(format!(
@@ -246,7 +245,7 @@ fn log_and_toast_text_is_translated() {
     );
     assert!(
         sites.len() == ENGLISH_LOG_CALLS,
-        "only {} log/toast calls in update/ and state/ pass English text now: lower ENGLISH_LOG_CALLS in tests/hygiene.rs to {}",
+        "only {} log/toast calls in update/ and state/ pass English text now: lower ENGLISH_LOG_CALLS in tests/source_checks/hygiene.rs to {}",
         sites.len(),
         sites.len()
     );
