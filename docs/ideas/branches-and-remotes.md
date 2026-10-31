@@ -24,6 +24,16 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Merge from the menus names the short branch (so the merge message reads `Merge branch 'x'`), which git resolves to a same-named tag first; pass the full ref and write the usual message ourselves
 - Undo plans (`undo/refs.rs`: `branch -D`, `tag -d`, recreate, `--set-upstream-to`), Git Flow init and finish, and the create-branch and create-tag commands still put names before options end; their names are typed and validated or already passed the load, but `--` (with the undo classifier taught it) would make that local
 
+### Whether HEAD contains each branch, without a walk per branch on every load
+
+- A checkout to an unrelated branch or a rebase still walks once per tip outside the loaded rows;
+  answers kept for other commits than HEADs (the upstream a rebase went onto) could cover them
+- Walks on the load's own handle after the graph's walk read the walked commits from disk again
+  (libgit2 holds them parsed and looks for the raw object): check `stack::read` and the other
+  queries after the walk, and give them a handle of their own where it shows
+- Reading each local branch's upstream costs about 1 ms per branch even with every answer cached
+  (config lookups); read the `branch.*` settings once per load
+
 ### Force push with lease from any branch, and push to all remotes
 
 - Put the default-branch warning in its own paragraph of the confirmation

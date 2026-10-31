@@ -151,13 +151,8 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
             }
             _ => (None, None, 0, 0),
         };
-        // Only deleting a branch together with its remote branch asks, and the walk can be long.
-        let remote_upstream = upstream_ref.as_deref().is_some_and(|r| r.starts_with("refs/remotes/"));
-        let merged = match (oid, head_oid) {
-            (Some(tip), Some(head)) => tip == head || (remote_upstream && cache.contains(&repo, head, tip)),
-            _ => false,
-        };
-        locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref, merged });
+        // `merged` is worked out after the walk, from the loaded rows (`branch_merged`).
+        locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref, merged: false });
     }
 
     let mut remotes: Vec<(String, Vec<(String, Oid)>)> =
@@ -262,6 +257,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     drop(reuse);
     let (commits, truncated) = (walked.commits, walked.truncated);
     let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
+    super::branch_merged::mark(&repo, cache, head_oid, &commits, &row_of, &mut locals);
 
     let mut snap = Snapshot {
         workdir,
