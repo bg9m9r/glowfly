@@ -1,6 +1,7 @@
 //! Headless tests for glowfly:// links: which URL and name a copied link carries, the toast and
 //! clipboard after the runner builds it, reading a link that arrives (refused text, the search
-//! candidates, a dialog in the way, a newer link), and the scheme registration's status.
+//! candidates, a dialog in the way, a newer link, one whose URL is a file or network path), and
+//! the scheme registration's status.
 
 use super::branch_tests::with_origin;
 use super::tests::{drive, git, state};
@@ -43,6 +44,14 @@ fn url_of(st: &AppState, remote: &str) -> Option<String> {
     st.snap.as_ref().unwrap().remote_urls.iter().find(|(n, _)| n == remote).map(|(_, u)| u.clone())
 }
 
+/// Points origin at an https URL in the snapshot (the fixture's is a folder); returns it.
+fn remote_at_https(st: &mut AppState) -> String {
+    let url = "https://example.com/me/app.git".to_owned();
+    let snap = st.snap.as_mut().unwrap();
+    snap.remote_urls.iter_mut().filter(|(n, _)| n == "origin").for_each(|(_, u)| *u = url.clone());
+    url
+}
+
 #[test]
 fn a_copied_link_names_the_shared_branch_and_its_remote() {
     let (mut st, work, bare) = with_origin("link-copy");
@@ -53,8 +62,10 @@ fn a_copied_link_names_the_shared_branch_and_its_remote() {
     git(&work, &["branch", "solo"]);
     git(&work, &["tag", "v1.0"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    let origin = url_of(&st, "origin");
-    assert!(origin.is_some());
+    // The fixture's origin is a folder, which a link never carries: by root commit alone.
+    assert!(url_of(&st, "origin").is_some());
+    assert_eq!(copy(&mut st, LinkTarget::Repository { remote: Some("origin".into()) }).0, None);
+    let origin = Some(remote_at_https(&mut st));
     assert_eq!(
         copy(&mut st, LinkTarget::LocalBranch("feat-local".into())),
         (origin.clone(), Target::Branch("feat-x".into()), "branch feat-x".into())
@@ -96,6 +107,7 @@ fn a_copied_link_names_the_shared_branch_and_its_remote() {
 #[test]
 fn the_built_link_is_copied_with_a_toast() {
     let (mut st, work, bare) = with_origin("link-built");
+    remote_at_https(&mut st);
     // End to end through the runner: the link carries the URL and the root commit.
     let fx = send(&mut st, DeepLinkMsg::Copy(LinkTarget::LocalBranch("feature".into())));
     let built = crate::runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
@@ -155,6 +167,40 @@ fn invalid_text_explains_itself() {
     match &st.modal {
         Some(Modal::DeepLink(LinkDialog::Invalid { unknown_kind, .. })) => assert_eq!(*unknown_kind, None),
         _ => panic!("expected the invalid-link dialog"),
+    }
+}
+
+#[test]
+fn a_link_to_a_file_or_network_path_is_refused() {
+    let with_url = |url: &str| Link { url: Some(url.into()), root: Some(ROOT.into()), target: Target::Repository }.to_uri();
+    let paths = [
+        r"\\host\share\r.git",
+        "//host/share/r",
+        r"\\?\UNC\host\share\r",
+        r"\\.\C:\r",
+        "file:///srv/r",
+        "FiLe://host/r",
+        r"C:\src\r",
+        "/srv/r",
+        "r",
+    ];
+    for path in paths {
+        let mut st = state();
+        let fx = send(&mut st, DeepLinkMsg::Open(with_url(path)));
+        assert!(!fx.iter().any(|e| matches!(e, Effect::DeepLink(_))), "{path}: no search");
+        assert!(st.deep_link.pending.is_none(), "{path}");
+        match &st.modal {
+            Some(Modal::DeepLink(LinkDialog::LocalPath { text })) => assert!(text.starts_with("glowfly://repo?url="), "{text}"),
+            _ => panic!("{path}: expected the refusal"),
+        }
+        let logged = st.log.last().map(|l| (l.ok, l.text.as_str()));
+        assert_eq!(logged, Some((false, st.settings.lang().tr("deep_link.local_path.log"))), "{path}");
+    }
+    for url in ["https://github.com/o/r.git", "ssh://git@host:22/o/r", "git@github.com:o/r.git"] {
+        let mut st = state();
+        let fx = send(&mut st, DeepLinkMsg::Open(with_url(url)));
+        assert!(fx.iter().any(|e| matches!(e, Effect::DeepLink(DeepLinkEffect::Find { .. }))), "{url}: searched for");
+        assert_eq!(st.deep_link.pending.as_ref().and_then(|p| p.link.url.as_deref()), Some(url));
     }
 }
 

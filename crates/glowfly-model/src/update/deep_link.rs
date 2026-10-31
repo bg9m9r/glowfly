@@ -84,6 +84,7 @@ fn open(st: &mut AppState, text: String, now: Instant, fx: &mut Vec<Effect>) {
     st.deep_link.seq += 1;
     st.deep_link.pending = None;
     match link::parse(&text) {
+        Err(link::LinkError::LocalUrl) => refuse_path(st, &text),
         Err(e) => {
             let unknown_kind = match &e {
                 link::LinkError::UnknownKind(k) => Some(k.clone()),
@@ -101,6 +102,15 @@ fn open(st: &mut AppState, text: String, now: Instant, fx: &mut Vec<Effect>) {
             fx.push(Effect::DeepLink(DeepLinkEffect::Find { link, candidates, seq, origin }));
         }
     }
+}
+
+/// Hardening: a link whose url is a file or network path is refused outright, never searched
+/// for or offered for cloning. A path typed into the clone dialog is still the user's to clone.
+fn refuse_path(st: &mut AppState, text: &str) {
+    tracing::warn!("refused a glowfly:// link whose url is a file or network path");
+    let t = st.settings.lang();
+    st.log_quiet(false, t.tr("deep_link.local_path.log"));
+    st.modal = Some(Modal::DeepLink(LinkDialog::LocalPath { text: dl::shown_link(text) }));
 }
 
 /// Whether another dialog or Preferences is open, which a link's dialogs and tab switch must not

@@ -21,7 +21,8 @@
 //! it), a missing name or sha, a sha that isn't 7 to 64 hex digits, a root that isn't 40 or 64,
 //! a known parameter given twice, a link with neither url nor root, bad percent-encoding or
 //! UTF-8, control characters, a ref name git would refuse, a url that is empty, starts with `-`
-//! or uses git's `ext::` or `fd::` transports, and text over [`MAX_LINK`]. Unknown parameters
+//! or uses git's `ext::` or `fd::` transports, a url that names a local or network file path
+//! rather than a remote ([`is_remote_url`]), and text over [`MAX_LINK`]. Unknown parameters
 //! and a fragment are ignored, so newer links still open.
 
 pub mod find;
@@ -82,6 +83,10 @@ pub enum LinkError {
     NoRepository,
     #[error("its remote URL can't be used")]
     BadUrl,
+    /// The url is a file path (local, UNC or `file:`) rather than a remote. Hardening: a link
+    /// arrives from outside, and has no reason to point Glowfly at a path.
+    #[error("its URL is a file or network path, not a remote URL")]
+    LocalUrl,
     #[error("it gives \"{0}\" more than once")]
     Duplicate(&'static str),
     #[error("it contains characters that aren't allowed or aren't encoded properly")]
@@ -224,11 +229,48 @@ pub fn parse(text: &str) -> Result<Link, LinkError> {
         if u.trim().is_empty() || u.starts_with('-') || lower.starts_with("ext::") || lower.starts_with("fd::") {
             return Err(LinkError::BadUrl);
         }
+        if !is_remote_url(u) {
+            return Err(LinkError::LocalUrl);
+        }
     }
     if url.is_none() && root.is_none() {
         return Err(LinkError::NoRepository);
     }
     Ok(Link { url, root: root.map(|r| r.to_ascii_lowercase()), target })
+}
+
+/// Whether `url` names a remote git reaches over the network rather than a file path: a
+/// `scheme://` URL other than `file:`, a remote helper's `<transport>::<address>` whose address
+/// passes this check too, or git's scp form `[user@]host:path`. Paths are refused: UNC paths
+/// (`\\host\share`, `//host/share` and their `\\?\` and `\\.\` device forms), `file:` in any
+/// case, drive paths (`C:\x`, `C:x`), absolute, relative and `~` paths, and anything else git
+/// would read as a path (no `:` before the first `/` or `\`). Hardening for links, which come
+/// from outside; a URL typed into the clone dialog isn't checked by this.
+pub fn is_remote_url(url: &str) -> bool {
+    let u = url.trim();
+    let starts_as_path = u.starts_with(['/', '\\', '.', '~']);
+    if u.is_empty() || starts_as_path || u.get(..5).is_some_and(|p| p.eq_ignore_ascii_case("file:")) {
+        return false;
+    }
+    let Some(colon) = u.find(':') else { return false };
+    let before = &u[..colon];
+    // A separator before the colon makes it a path with a colon further on; one letter is a
+    // drive, never a host.
+    if before.contains(['/', '\\']) || (before.len() == 1 && before.as_bytes()[0].is_ascii_alphabetic()) {
+        return false;
+    }
+    let is_scheme = before.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'+' | b'-' | b'.'));
+    let rest = &u[colon + 1..];
+    if let Some(address) = rest.strip_prefix(':') {
+        // A `transport::address` helper: the address mustn't be a path either.
+        return is_remote_url(address);
+    }
+    match rest.strip_prefix("//") {
+        // `scheme://host…`: the host must be there, and not start another path.
+        Some(after) if is_scheme => !after.is_empty() && !after.starts_with(['/', '\\']),
+        // The scp form `host:path`; a `\` straight after the colon only reads as a path.
+        _ => !rest.starts_with('\\'),
+    }
 }
 
 /// A branch or tag name git accepts under `prefix`.
