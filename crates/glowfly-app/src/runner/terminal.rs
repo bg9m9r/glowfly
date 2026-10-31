@@ -141,12 +141,12 @@ impl Terminals {
 
 /// Sends a session's results to update and wakes the UI.
 #[derive(Clone)]
-struct Reporter<W> {
+struct Reporter {
     tx: Sender<Msg>,
-    waker: W,
+    waker: Waker,
 }
 
-impl<W: Waker> Reporter<W> {
+impl Reporter {
     fn send(&self, m: TerminalMsg) {
         self.send_msg(Msg::Terminal(m));
     }
@@ -158,7 +158,7 @@ impl<W: Waker> Reporter<W> {
     }
 }
 
-impl<W: Waker + Clone> Runner<W> {
+impl Runner {
     /// Runs a terminal effect; a shell with a trust `check` starts only once it passes, in its
     /// session thread (runner/trust.rs).
     pub(super) fn terminal(&self, e: TerminalEffect, check: Option<crate::effect::TrustCheck>) {
@@ -214,7 +214,7 @@ impl<W: Waker + Clone> Runner<W> {
 /// Reports what session `id`'s shell is doing (with `then`, what waits on the answer), reading
 /// `probe` on its own thread so the UI thread never waits for it. No probe (the session is gone
 /// or still starting) is Unknown.
-fn check_activity<W: Waker + Clone>(id: u64, then: AfterCheck, probe: Option<ShellProbe>, report: Reporter<W>) {
+fn check_activity(id: u64, then: AfterCheck, probe: Option<ShellProbe>, report: Reporter) {
     let Some(probe) = probe else {
         return report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown, then });
     };
@@ -229,7 +229,7 @@ fn check_activity<W: Waker + Clone>(id: u64, then: AfterCheck, probe: Option<She
 
 /// Reports what each of `probes`' shells is doing in one answer (with `then`), reading them on
 /// one thread of its own. A missing probe, or no thread, is Unknown.
-fn check_busy<W: Waker + Clone>(probes: Vec<(u64, Option<ShellProbe>)>, then: BusyCheck, report: Reporter<W>) {
+fn check_busy(probes: Vec<(u64, Option<ShellProbe>)>, then: BusyCheck, report: Reporter) {
     let unknown: Vec<(u64, ShellActivity)> = probes.iter().map(|(id, _)| (*id, ShellActivity::Unknown)).collect();
     let thread_report = report.clone();
     let spawned = std::thread::Builder::new().name("glowfly-terminal-probe".into()).spawn(move || {
@@ -252,7 +252,7 @@ struct Channels {
 /// Runs session `id`: starts the shell `choice` names, reports it, then carries out requests
 /// until the shell has ended. Returning drops the PTY, which ends its output reader. A chosen
 /// shell that can't be found is reported, never replaced by another.
-fn session<W: Waker + Clone>(id: u64, cwd: &Path, (rows, cols): (u16, u16), choice: &ShellSetting, ch: Channels, report: Reporter<W>) {
+fn session(id: u64, cwd: &Path, (rows, cols): (u16, u16), choice: &ShellSetting, ch: Channels, report: Reporter) {
     let Channels { rx, ctl, kill, probe } = ch;
     let shell = match shell::resolve(choice) {
         Ok(s) => s,
@@ -364,12 +364,7 @@ mod tests {
     #[test]
     fn checking_a_session_without_a_probe_reports_unknown() {
         let (tx, rx) = mpsc::channel();
-        #[derive(Clone)]
-        struct NoWake;
-        impl super::Waker for NoWake {
-            fn wake(&self) {}
-        }
-        check_activity(9, AfterCheck::Kill, None, Reporter { tx, waker: NoWake });
+        check_activity(9, AfterCheck::Kill, None, Reporter { tx, waker: crate::runner::Waker::none() });
         match rx.try_recv() {
             Ok(Msg::Terminal(TerminalMsg::Activity { id: 9, activity, then })) => {
                 assert_eq!(activity, ShellActivity::Unknown);
@@ -381,14 +376,9 @@ mod tests {
 
     #[test]
     fn checking_several_sessions_reports_them_in_one_answer() {
-        #[derive(Clone)]
-        struct NoWake;
-        impl super::Waker for NoWake {
-            fn wake(&self) {}
-        }
         let (tx, rx) = mpsc::channel();
         let probes = vec![(4, None), (5, Some(ShellProbe::default()))];
-        super::check_busy(probes, BusyCheck::Quit, Reporter { tx, waker: NoWake });
+        super::check_busy(probes, BusyCheck::Quit, Reporter { tx, waker: crate::runner::Waker::none() });
         match rx.recv_timeout(std::time::Duration::from_secs(10)) {
             Ok(Msg::Terminal(TerminalMsg::BusyChecked { found, then })) => {
                 assert_eq!(found, vec![(4, ShellActivity::Unknown), (5, ShellActivity::Unknown)]);

@@ -69,7 +69,7 @@ impl IndexWorker {
         self.disk.attach(dir);
     }
 
-    pub(super) fn submit<W: Waker + Clone>(&self, e: IndexEffect, tx: Sender<Msg>, waker: W) {
+    pub(super) fn submit(&self, e: IndexEffect, tx: Sender<Msg>, waker: Waker) {
         match e {
             IndexEffect::Build { workdir, build, key, base } => {
                 let start = {
@@ -102,7 +102,7 @@ impl IndexWorker {
     }
 
     /// Works through the waiting builds, newest first, until none is left.
-    fn work<W: Waker>(&self, tx: &Sender<Msg>, waker: &W) {
+    fn work(&self, tx: &Sender<Msg>, waker: &Waker) {
         loop {
             let r = {
                 let mut b = self.builds();
@@ -148,7 +148,7 @@ impl IndexWorker {
 }
 
 /// Sends `msg` for the tab of `workdir`.
-pub(super) fn send<W: Waker>(tx: &Sender<Msg>, waker: &W, workdir: &std::path::Path, msg: SearchMsg) {
+pub(super) fn send(tx: &Sender<Msg>, waker: &Waker, workdir: &std::path::Path, msg: SearchMsg) {
     if tx.send(Msg::Scoped { workdir: workdir.to_path_buf(), msg: Box::new(Msg::Search(msg)) }).is_ok() {
         waker.wake();
     }
@@ -183,12 +183,6 @@ mod tests {
     use glowfly_core::gitcli::{args, run};
     use std::sync::mpsc;
     use std::time::Duration;
-
-    #[derive(Clone)]
-    struct NoWake;
-    impl Waker for NoWake {
-        fn wake(&self) {}
-    }
 
     fn repo(name: &str) -> (PathBuf, IndexKey) {
         let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-index-worker-{name}-{}", std::process::id()));
@@ -234,11 +228,11 @@ mod tests {
             b.thread = true;
             b.running = Some((dir.clone(), Arc::clone(&running)));
         }
-        w.submit(build(&dir, 1, &key), tx.clone(), NoWake);
+        w.submit(build(&dir, 1, &key), tx.clone(), Waker::none());
         assert!(running.load(Ordering::Relaxed), "the running build is told to stop");
-        w.submit(build(&dir, 2, &key), tx.clone(), NoWake);
+        w.submit(build(&dir, 2, &key), tx.clone(), Waker::none());
         assert_eq!(w.builds().waiting.iter().map(|r| r.build).collect::<Vec<_>>(), [2], "the waiting one is replaced");
-        w.work(&tx, &NoWake);
+        w.work(&tx, &Waker::none());
         assert_eq!(built(&rx), [2]);
         let b = w.builds();
         assert!(!b.thread && b.running.is_none() && b.waiting.is_empty());
@@ -253,9 +247,9 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         let w = IndexWorker::default();
         w.builds().thread = true;
-        w.submit(build(&a, 1, &key_a), tx.clone(), NoWake);
-        w.submit(build(&b, 2, &key_b), tx.clone(), NoWake);
-        w.work(&tx, &NoWake);
+        w.submit(build(&a, 1, &key_a), tx.clone(), Waker::none());
+        w.submit(build(&b, 2, &key_b), tx.clone(), Waker::none());
+        w.work(&tx, &Waker::none());
         assert_eq!(built(&rx), [2, 1]);
         let _ = std::fs::remove_dir_all(&a);
         let _ = std::fs::remove_dir_all(&b);
@@ -272,12 +266,12 @@ mod tests {
             b.thread = true;
             b.running = Some((dir.clone(), Arc::clone(&running)));
         }
-        w.submit(build(&dir, 1, &key), tx.clone(), NoWake);
+        w.submit(build(&dir, 1, &key), tx.clone(), Waker::none());
         running.store(false, Ordering::Relaxed);
-        w.submit(IndexEffect::Forget { workdir: dir.clone() }, tx.clone(), NoWake);
+        w.submit(IndexEffect::Forget { workdir: dir.clone() }, tx.clone(), Waker::none());
         assert!(running.load(Ordering::Relaxed), "the running build is stopped");
         assert!(w.builds().waiting.is_empty(), "the waiting build is dropped");
-        w.work(&tx, &NoWake);
+        w.work(&tx, &Waker::none());
         assert!(built(&rx).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -291,8 +285,8 @@ mod tests {
         let w = IndexWorker::default();
         w.attach_store(store.clone());
         w.builds().thread = true;
-        w.submit(build(&dir, 1, &key), tx.clone(), NoWake);
-        w.work(&tx, &NoWake);
+        w.submit(build(&dir, 1, &key), tx.clone(), Waker::none());
+        w.work(&tx, &Waker::none());
         assert_eq!(built(&rx), [1]);
         let file = commit_index::Store::new(store.clone()).file_of(&dir).unwrap();
         assert!(file.path.exists(), "saved once work returns");
@@ -301,9 +295,9 @@ mod tests {
         let w = IndexWorker::default();
         w.attach_store(store.clone());
         w.builds().thread = true;
-        w.submit(build(&dir, 2, &key), tx.clone(), NoWake);
+        w.submit(build(&dir, 2, &key), tx.clone(), Waker::none());
         w.builds().waiting[0].stop.store(true, Ordering::Relaxed);
-        w.work(&tx, &NoWake);
+        w.work(&tx, &Waker::none());
         assert!(built(&rx).is_empty());
         assert!(file.path.exists(), "a stopped read keeps the file");
         let _ = std::fs::remove_dir_all(&store);

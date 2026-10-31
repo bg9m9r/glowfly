@@ -63,7 +63,7 @@ impl QueryWorker {
     }
 
     /// Asks for `r`, instead of any request still waiting, and stops the one running.
-    pub(super) fn submit<W: Waker + Clone>(&self, r: QueryRequest, tx: Sender<Msg>, waker: W) {
+    pub(super) fn submit(&self, r: QueryRequest, tx: Sender<Msg>, waker: Waker) {
         let start = {
             let mut s = self.slot();
             s.next = Some(r);
@@ -89,7 +89,7 @@ impl QueryWorker {
     }
 
     /// Works through requests until none is waiting.
-    fn work<W: Waker>(&self, tx: &Sender<Msg>, waker: &W) {
+    fn work(&self, tx: &Sender<Msg>, waker: &Waker) {
         loop {
             let QueryRequest { workdir, request, haystack, query } = {
                 let mut s = self.slot();
@@ -124,12 +124,6 @@ mod tests {
     use std::sync::mpsc;
     use std::time::Duration;
 
-    #[derive(Clone)]
-    struct NoWake;
-    impl Waker for NoWake {
-        fn wake(&self) {}
-    }
-
     #[test]
     fn a_newer_query_replaces_a_waiting_one() {
         let info = |n: u8, summary: &str| CommitInfo {
@@ -152,10 +146,10 @@ mod tests {
             haystack: Haystack::Index(Arc::clone(&index)),
             query: CommitQuery::parse(q),
         };
-        w.submit(req(1, "other"), tx.clone(), NoWake);
-        w.submit(req(2, "fix"), tx.clone(), NoWake);
+        w.submit(req(1, "other"), tx.clone(), Waker::none());
+        w.submit(req(2, "fix"), tx.clone(), Waker::none());
         assert!(rx.recv_timeout(Duration::from_millis(50)).is_err(), "the replaced request is dropped silently");
-        w.work(&tx, &NoWake);
+        w.work(&tx, &Waker::none());
         assert!(!w.slot().running && w.slot().next.is_none());
         let Ok(Msg::Scoped { workdir, msg }) = rx.try_recv() else { panic!("a report") };
         assert_eq!(workdir, PathBuf::from("r"));

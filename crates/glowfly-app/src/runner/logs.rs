@@ -49,7 +49,7 @@ pub(super) struct LogWorker {
 impl LogWorker {
     /// Starts the worker thread on `setup`'s folder and has gitcli report every git command to
     /// it. Once, at startup.
-    pub(super) fn attach<W: Waker + Clone>(&mut self, setup: LogSetup, tx: Sender<Msg>, waker: W) {
+    pub(super) fn attach(&mut self, setup: LogSetup, tx: Sender<Msg>, waker: Waker) {
         let Some(jobs) = self.start(setup, tx, waker) else { return };
         let extended = Arc::clone(&self.extended);
         gitcli::observe_runs(Box::new(move |run| {
@@ -60,7 +60,7 @@ impl LogWorker {
     }
 
     /// Starts the worker thread, without the git observer (tests use this directly).
-    pub(super) fn start<W: Waker + Clone>(&mut self, setup: LogSetup, tx: Sender<Msg>, waker: W) -> Option<Sender<Job>> {
+    pub(super) fn start(&mut self, setup: LogSetup, tx: Sender<Msg>, waker: Waker) -> Option<Sender<Job>> {
         self.file_detail = setup.file_detail;
         let (jobs, rx) = channel();
         let state = Worker::new(setup.dir, Arc::clone(&self.extended), tx, waker);
@@ -128,7 +128,7 @@ pub(super) fn folder_of(effect: &Effect) -> String {
     path.map(native_path::shown).unwrap_or_default()
 }
 
-struct Worker<W> {
+struct Worker {
     dir: Option<PathBuf>,
     /// When this session started, in Unix seconds.
     session: i64,
@@ -139,11 +139,11 @@ struct Worker<W> {
     failures: u8,
     perf: Option<RotatingFile>,
     tx: Sender<Msg>,
-    waker: W,
+    waker: Waker,
 }
 
-impl<W: Waker> Worker<W> {
-    fn new(dir: Option<PathBuf>, extended: Arc<AtomicBool>, tx: Sender<Msg>, waker: W) -> Self {
+impl Worker {
+    fn new(dir: Option<PathBuf>, extended: Arc<AtomicBool>, tx: Sender<Msg>, waker: Waker) -> Self {
         let perf = dir.as_ref().map(|d| RotatingFile::new(d.join(logs::PERF_FILE), logs::PERF_LOG_BYTES, logs::KEEP_ROTATED));
         let session = chrono::Utc::now().timestamp();
         Self { dir, session, extended, activity: None, unsaved: Vec::new(), failures: 0, perf, tx, waker }

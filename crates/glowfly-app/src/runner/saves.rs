@@ -2,7 +2,7 @@
 //! own thread, so each file's saves are ordered: one that was requested before a save that has
 //! already been written is dropped, and the newest snapshot always lands last.
 
-use super::{Runner, Waker};
+use super::Runner;
 use crate::effect::Effect;
 use crate::msg::Msg;
 use glowfly_core::persist::LatestOnly;
@@ -26,7 +26,7 @@ impl Saves {
     }
 }
 
-impl<W: Waker + Clone> Runner<W> {
+impl Runner {
     /// Starts a save effect, or hands any other effect back.
     pub(super) fn save(&self, effect: Effect) -> Option<Effect> {
         let Some(order) = self.saves.order(&effect) else { return Some(effect) };

@@ -55,9 +55,9 @@ impl Drop for Busy {
     }
 }
 
-impl<W: Waker + Clone> Runner<W> {
+impl Runner {
     /// `Runner::new` for a whole-app test: saves land in `files`, and outside effects are dropped.
-    pub(crate) fn sandboxed(tx: Sender<Msg>, waker: W, files: PathBuf) -> Self {
+    pub(crate) fn sandboxed(tx: Sender<Msg>, waker: Waker, files: PathBuf) -> Self {
         let mut runner = Self::new(tx, waker);
         runner.sandbox = Some(Sandbox { files, dropped: Default::default() });
         runner
@@ -154,12 +154,6 @@ mod tests {
     use crate::profile::ProfileEffect;
     use std::sync::mpsc;
 
-    #[derive(Clone)]
-    struct NoWake;
-    impl Waker for NoWake {
-        fn wake(&self) {}
-    }
-
     fn folder(name: &str) -> PathBuf {
         let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-sandbox-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -171,7 +165,7 @@ mod tests {
     fn runs_repository_effects_and_drops_outside_ones() {
         let dir = folder("admit");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
         let status =
             Effect::LoadStatus { workdir: dir.clone(), generation: 1, submodules: false, open: None, git_status: false, paths: None };
         assert!(matches!(runner.admit(status), Some(Effect::LoadStatus { .. })));
@@ -186,7 +180,7 @@ mod tests {
     fn a_sweep_without_a_watcher_reads_the_whole_status() {
         let dir = folder("sweep");
         let (tx, rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
         runner.run(Effect::SweepWatch { workdir: dir.clone() });
         let msg = rx.recv_timeout(std::time::Duration::from_secs(5)).expect("a message");
         let Msg::Scoped { workdir, msg } = msg else { panic!("scoped to the repository") };
@@ -199,7 +193,7 @@ mod tests {
     fn patch_pickers_and_the_service_repo_list_are_dropped() {
         let dir = folder("split");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
         let what = glowfly_core::patch_ops::PatchSource::Commits { oids: Vec::new(), paths: Vec::new() };
         let pick_save = PatchEffect::PickSave { workdir: dir.clone(), what: what.clone(), name: "a.patch".into() };
         assert!(runner.admit(Effect::Patch(pick_save)).is_none());
@@ -223,7 +217,7 @@ mod tests {
         use glowfly_core::profile_includes::IncludePlan;
         let dir = folder("profiles");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
         let (workdir, git_dir) = (dir.clone(), dir.join(".git"));
         let read = ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new() };
         assert!(runner.admit(Effect::Profile(read)).is_some());
@@ -241,7 +235,7 @@ mod tests {
         use crate::custom_commands::{CustomCommandEffect, ShellRun};
         let dir = folder("custom");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
         assert!(runner.admit(Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: dir.clone() })).is_none());
         let shell = CustomCommandEffect::RunShell(ShellRun { cwd: dir.clone(), script: "true".into() });
         assert!(runner.admit(Effect::CustomCommand(shell)).is_none());
@@ -254,7 +248,7 @@ mod tests {
         use crate::effect::{ConflictEffect, ConflictRead, LfsEffect, MonitorJob, SelectionEffect, SparseEffect, WorktreeEffect};
         let dir = folder("moved");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
         assert!(runner.admit(Effect::TurnOnMonitor(MonitorJob { cwd: dir.clone(), then: Vec::new() })).is_none());
         let oid = git2::Oid::zero();
         let count = crate::worktree::CountRequest { workdir: dir.clone(), refs_key: 1, targets: Vec::new() };
@@ -285,7 +279,7 @@ mod tests {
     fn saves_are_written_into_the_folder_before_admit_returns() {
         let dir = folder("saves");
         let (tx, rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
         let repo = dir.join("repo");
         assert!(runner.admit(Effect::SaveRecent(vec![repo.clone()])).is_none());
         let tabs = Effect::SaveTabs { paths: vec![repo.clone()], labels: vec![Some("Web".into())], active: 0 };

@@ -1,13 +1,13 @@
 //! The credential-prompt listener: started once with the app, it reports prompts from the
 //! askpass helper as `Msg`s and hands the dialog's answers back to the waiting helper.
 
-use super::{Runner, Waker};
+use super::Runner;
 use crate::msg::CredentialMsg;
 use crate::msg::Msg;
 use glowfly_core::askpass::{self, Event, Reply};
 use glowfly_core::gitcli::{self, AskpassEnv};
 
-impl<W: Waker + Clone> Runner<W> {
+impl Runner {
     /// Opens the loopback listener and points every later git child at it. On failure prompts
     /// fail as before (git has no terminal to ask on).
     pub fn start_askpass(&mut self) {

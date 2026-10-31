@@ -1,7 +1,7 @@
 //! A live watcher and the config files the repository's config includes from outside it: an
 //! edit to one reloads everything, and an include added later is followed.
 
-use super::tests::{NoWake, init_repo, next_change, settle};
+use super::tests::{init_repo, next_change, settle};
 use super::*;
 use glowfly_core::testkit::git_cli as git;
 
@@ -18,7 +18,7 @@ fn edits_to_included_config_files_outside_the_repository_reload_everything() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &dir);
 
     std::fs::write(shared.join("other.txt"), "x\n").unwrap();

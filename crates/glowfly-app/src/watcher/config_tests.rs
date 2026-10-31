@@ -1,7 +1,7 @@
 //! A live watcher and the repository's config: an outside edit to it sends
 //! `WatchMsg::ConfigChanged` right after the full reload it causes, and other edits don't.
 
-use super::tests::{NoWake, init_repo, settle};
+use super::tests::{init_repo, settle};
 use super::*;
 use glowfly_core::testkit::git_cli as git;
 
@@ -34,7 +34,7 @@ fn an_outside_config_edit_says_the_config_changed() {
     init_repo(&dir);
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &dir);
 
     git(&dir, &["config", "user.name", "Grace Hopper"]);

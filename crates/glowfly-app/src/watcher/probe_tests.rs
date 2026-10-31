@@ -4,7 +4,7 @@
 use super::*;
 use crate::effect::WatchTarget;
 use crate::msg::{Msg, WatchMsg};
-use crate::watcher::tests::{NoWake, init_repo};
+use crate::watcher::tests::init_repo;
 use notify::EventKind;
 use notify::event::{CreateKind, RemoveKind};
 
@@ -88,7 +88,7 @@ fn a_live_watcher_sees_its_probe() {
     init_repo(&dir);
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = crate::watcher::start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = crate::watcher::start(&target, tx, crate::runner::Waker::none()).expect("watcher starts");
     let deadline = Instant::now() + Duration::from_secs(10);
     let probe = loop {
         match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {

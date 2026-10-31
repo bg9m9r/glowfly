@@ -1,18 +1,11 @@
 use super::*;
 use std::sync::mpsc::Receiver;
 
-#[derive(Clone)]
-struct NoWake;
-
-impl Waker for NoWake {
-    fn wake(&self) {}
-}
-
 fn worker(dir: &std::path::Path) -> (LogWorker, Receiver<Msg>) {
     let (tx, rx) = channel();
     let mut w = LogWorker::default();
     let setup = LogSetup { dir: Some(dir.to_owned()), file_detail: None };
-    assert!(w.start(setup, tx, NoWake).is_some());
+    assert!(w.start(setup, tx, Waker::none()).is_some());
     (w, rx)
 }
 
@@ -116,7 +109,7 @@ fn worker_exports_after_queued_appends() {
 
     let (tx, rx) = channel();
     let mut w = LogWorker::default();
-    assert!(w.start(LogSetup { dir: None, file_detail: None }, tx, NoWake).is_some());
+    assert!(w.start(LogSetup { dir: None, file_detail: None }, tx, Waker::none()).is_some());
     w.submit(LogsEffect::Export { dest: dest.clone(), header: Vec::new() });
     assert_eq!(next(&rx), LogsMsg::Exported { dest, result: Err(NO_FOLDER.to_owned()) });
     drop(w);

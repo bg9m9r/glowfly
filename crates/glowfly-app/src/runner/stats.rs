@@ -30,7 +30,7 @@ impl StatsWorker {
     }
 
     /// Asks for the stats of `oids`, ahead of (and instead of) any request still waiting.
-    pub(super) fn submit<W: Waker + Clone>(&self, workdir: PathBuf, oids: Vec<Oid>, tx: Sender<Msg>, waker: W) {
+    pub(super) fn submit(&self, workdir: PathBuf, oids: Vec<Oid>, tx: Sender<Msg>, waker: Waker) {
         let (replaced, start) = {
             let mut s = self.slot();
             let replaced = s.next.replace((workdir, oids));
@@ -58,7 +58,7 @@ impl StatsWorker {
     }
 
     /// Works through requests until none is waiting.
-    fn work<W: Waker>(&self, tx: &Sender<Msg>, waker: &W) {
+    fn work(&self, tx: &Sender<Msg>, waker: &Waker) {
         loop {
             let (workdir, oids) = {
                 let mut s = self.slot();
@@ -84,7 +84,7 @@ impl StatsWorker {
     }
 }
 
-fn report<W: Waker>(tx: &Sender<Msg>, waker: &W, workdir: PathBuf, msg: Msg) {
+fn report(tx: &Sender<Msg>, waker: &Waker, workdir: PathBuf, msg: Msg) {
     if tx.send(Msg::Scoped { workdir, msg: Box::new(msg) }).is_ok() {
         waker.wake();
     }
@@ -96,12 +96,6 @@ mod tests {
     use std::sync::mpsc;
     use std::time::Duration;
 
-    #[derive(Clone)]
-    struct NoWake;
-    impl Waker for NoWake {
-        fn wake(&self) {}
-    }
-
     #[test]
     fn a_newer_request_replaces_one_still_waiting() {
         let (tx, rx) = mpsc::channel();
@@ -111,15 +105,15 @@ mod tests {
         let a = Oid::from_bytes(&[1; 20]).unwrap();
         let b = Oid::from_bytes(&[2; 20]).unwrap();
         let dir = glowfly_core::paths::temp_dir().join("glowfly-stats-no-repo");
-        w.submit(dir.clone(), vec![a], tx.clone(), NoWake);
-        w.submit(dir.clone(), vec![b], tx.clone(), NoWake);
+        w.submit(dir.clone(), vec![a], tx.clone(), Waker::none());
+        w.submit(dir.clone(), vec![b], tx.clone(), Waker::none());
         let Ok(Msg::Scoped { workdir, msg }) = rx.recv_timeout(Duration::from_secs(5)) else { panic!("a report") };
         assert_eq!(workdir, dir);
         assert!(matches!(*msg, Msg::Repo(RepoMsg::StatsDropped(ref o)) if *o == [a]), "the older request is dropped");
         assert_eq!(w.slot().next.as_ref().map(|(_, o)| o.clone()), Some(vec![b]));
 
         // The worker takes the waiting request, and ends once none is left.
-        w.work(&tx, &NoWake);
+        w.work(&tx, &Waker::none());
         assert!(!w.slot().running && w.slot().next.is_none());
     }
 }

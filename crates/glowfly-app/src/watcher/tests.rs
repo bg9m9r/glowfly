@@ -136,12 +136,6 @@ fn events_name_their_work_tree_paths() {
     assert_eq!(classify(&rescan, &paths, &mut ignores), (Change::Full, Vec::new()));
 }
 
-#[derive(Clone)]
-pub(super) struct NoWake;
-impl Waker for NoWake {
-    fn wake(&self) {}
-}
-
 /// The git CLI itself: these tests are about how the watcher sees git's own writes.
 use glowfly_core::testkit::git_cli as git;
 
@@ -213,7 +207,7 @@ fn watcher_reports_an_outside_edit() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &dir);
 
     std::fs::write(dir.join("a.txt"), "one\ntwo\n").unwrap();
@@ -258,7 +252,7 @@ fn edits_to_a_force_added_ignored_file_are_reported() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &dir);
 
     std::fs::write(dir.join("target/out.o"), "obj").unwrap();
@@ -289,7 +283,7 @@ fn a_terminal_add_reports_an_index_change() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &dir);
 
     git(&dir, &["add", "a.txt"]);
@@ -314,7 +308,7 @@ fn index_writes_in_a_linked_worktree_stay_quiet() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &dir);
 
     // Staging and status in the linked worktree rewrite `.git/worktrees/<name>/index`.
@@ -344,7 +338,7 @@ fn a_linked_worktree_sees_branches_change_in_the_common_git_dir() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: linked.clone(), git_dir };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &linked);
 
     // A branch made in the main worktree lands in the shared refs.
@@ -383,7 +377,7 @@ fn links_out_of_the_repository_are_not_followed() {
 
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &dir);
 
     std::fs::write(outside.join("x.txt"), "outside").unwrap();

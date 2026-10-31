@@ -3,12 +3,12 @@
 //! `DeepLinkMsg::OpenFolder`, and what the OS hands over as events (`platform::open_events`),
 //! reported as their command-line form would be.
 
-use super::{Runner, Waker};
+use super::Runner;
 use crate::deep_link::DeepLinkMsg;
 use crate::msg::Msg;
 use glowfly_core::instance::{self, Handed};
 
-impl<W: Waker + Clone> Runner<W> {
+impl Runner {
     /// Listens for links and folders (once no other window does); on failure each opens its own
     /// window, as before.
     pub fn start_instance(&mut self) {

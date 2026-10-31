@@ -16,7 +16,7 @@ use crate::msg::TabsMsg;
 use crate::platform::native_menu::NativeMenu;
 use crate::platform::native_window::NativeWindow;
 use crate::platform::primary_selection::PrimarySelection;
-use crate::runner::Runner;
+use crate::runner::{Runner, Waker};
 use crate::state::AppState;
 use eframe::egui;
 use glowfly_core::settings::{Settings, ThemeCatalog};
@@ -38,7 +38,7 @@ pub(crate) use testing::TestStart;
 pub struct GlowflyApp {
     st: AppState,
     cache: UiCache,
-    runner: Runner<egui::Context>,
+    runner: Runner,
     results: Receiver<Msg>,
     /// The palette for the chosen theme, set at the start of every frame.
     theme: theme::ThemeCache,
@@ -128,7 +128,7 @@ impl GlowflyApp {
         ctx: &egui::Context,
         settings: Settings,
         recent: Vec<PathBuf>,
-        make_runner: impl FnOnce(Sender<Msg>, egui::Context) -> Runner<egui::Context>,
+        make_runner: impl FnOnce(Sender<Msg>, Waker) -> Runner,
     ) -> Self {
         let (tx, results) = mpsc::channel();
         Self {
@@ -143,7 +143,7 @@ impl GlowflyApp {
                 diff_images: Default::default(),
                 markdown: Default::default(),
             },
-            runner: make_runner(tx, ctx.clone()),
+            runner: make_runner(tx, repaint(ctx)),
             results,
             theme: theme::ThemeCache::default(),
             native: None,
@@ -370,6 +370,12 @@ impl Step {
 /// The startup steps to run: all of them, or (`outside` false) only those inside the process.
 fn steps(outside: bool) -> impl Iterator<Item = Step> {
     STARTUP.into_iter().filter(move |s| outside || !s.outside())
+}
+
+/// The runner's waker: a result asks egui for the next frame.
+fn repaint(ctx: &egui::Context) -> Waker {
+    let ctx = ctx.clone();
+    Waker::new(move || ctx.request_repaint())
 }
 
 #[cfg(test)]

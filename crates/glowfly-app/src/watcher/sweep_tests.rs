@@ -1,7 +1,7 @@
 //! Sweeps asked of a live watcher (the Windows safety poll): the first reads everything, later
 //! ones report only what changed, and only the watched repository's watcher sweeps.
 
-use super::tests::{NoWake, init_repo, next_change, next_report, settle};
+use super::tests::{init_repo, next_change, next_report, settle};
 use super::*;
 
 #[test]
@@ -10,7 +10,7 @@ fn a_live_watcher_sweeps_its_own_tree() {
     init_repo(&dir);
     let (tx, rx) = std::sync::mpsc::channel();
     let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-    let watcher = start(&target, tx, NoWake).expect("watcher starts");
+    let watcher = start(&target, tx, Waker::none()).expect("watcher starts");
     settle(&rx, &dir);
     let slot = WatchSlot(Arc::new(Mutex::new((1, Some(watcher)))));
 

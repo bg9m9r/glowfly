@@ -111,20 +111,31 @@ pub(crate) use sandbox::rule as sandbox_rule;
 #[cfg(test)]
 pub use trust::execute_checked;
 
-/// Wakes the UI when a result arrives (so it can process the message promptly).
-pub trait Waker: Send + Sync + 'static {
-    fn wake(&self);
-}
+/// Wakes the UI when a result arrives (so it can process the message promptly). The shell makes
+/// one that asks egui for a repaint: the runner knows nothing of the window.
+#[derive(Clone)]
+pub struct Waker(Arc<dyn Fn() + Send + Sync>);
 
-impl Waker for eframe::egui::Context {
-    fn wake(&self) {
-        self.request_repaint();
+impl Waker {
+    /// A waker that calls `wake`.
+    pub fn new(wake: impl Fn() + Send + Sync + 'static) -> Self {
+        Self(Arc::new(wake))
+    }
+
+    /// A waker that does nothing (tests).
+    #[cfg(test)]
+    pub fn none() -> Self {
+        Self::new(|| {})
+    }
+
+    pub fn wake(&self) {
+        (self.0)();
     }
 }
 
-pub struct Runner<W: Waker + Clone> {
+pub struct Runner {
     tx: Sender<Msg>,
-    waker: W,
+    waker: Waker,
     watch: crate::watcher::WatchSlot,
     /// The credential-prompt listener, once started (never in tests).
     askpass: Option<Arc<glowfly_core::askpass::Server>>,
@@ -158,8 +169,8 @@ pub struct Runner<W: Waker + Clone> {
     tally: Arc<sandbox::Tally>,
 }
 
-impl<W: Waker + Clone> Runner<W> {
-    pub fn new(tx: Sender<Msg>, waker: W) -> Self {
+impl Runner {
+    pub fn new(tx: Sender<Msg>, waker: Waker) -> Self {
         Self {
             tx,
             waker,

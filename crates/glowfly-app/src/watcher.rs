@@ -42,7 +42,7 @@ pub struct WatchSlot(Arc<Mutex<(u64, Option<RepoWatcher>)>>);
 impl WatchSlot {
     /// Stops the current watcher and, for `Some`, starts watching `target` on a background
     /// thread (a recursive registration can take a while on Linux).
-    pub fn set<W: Waker + Clone>(&self, target: Option<WatchTarget>, tx: Sender<Msg>, waker: W) {
+    pub fn set(&self, target: Option<WatchTarget>, tx: Sender<Msg>, waker: Waker) {
         let (generation, old) = {
             let mut slot = self.0.lock().unwrap_or_else(|e| e.into_inner());
             slot.0 += 1;
@@ -105,7 +105,7 @@ pub struct RepoWatcher {
 /// refs, HEAD and config it shares through the common git dir. Symbolic links are not followed: one
 /// pointing at a home folder would use up Linux's inotify watches, and what it points to isn't
 /// part of the repository.
-fn start<W: Waker + Clone>(target: &WatchTarget, tx: Sender<Msg>, waker: W) -> Result<RepoWatcher, String> {
+fn start(target: &WatchTarget, tx: Sender<Msg>, waker: Waker) -> Result<RepoWatcher, String> {
     let (raw_tx, raw_rx) = std::sync::mpsc::channel::<Input>();
     let describe = |p: &Path, e: notify::Error| format!("could not watch {}: {e}", glowfly_core::native_path::shown(p));
     let config = notify::Config::default().with_follow_symlinks(false);
@@ -164,7 +164,7 @@ impl Looped {
     }
 }
 
-fn event_loop<W: Waker>(raw: Receiver<Input>, mut looped: Looped, tx: Sender<Msg>, waker: W) {
+fn event_loop(raw: Receiver<Input>, mut looped: Looped, tx: Sender<Msg>, waker: Waker) {
     let (target, common) = (looped.target.clone(), looped.common.clone());
     let mut ignores = Ignores::open(&target.workdir);
     let mut sweep = Sweep::new(&target.workdir, &target.git_dir, common.as_deref());

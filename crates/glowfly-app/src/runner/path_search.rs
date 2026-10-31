@@ -42,7 +42,7 @@ impl PathSearchWorker {
     }
 
     /// Asks for `r`, instead of any request still waiting, and stops the one running.
-    pub(super) fn submit<W: Waker + Clone>(&self, r: Request, tx: Sender<Msg>, waker: W) {
+    pub(super) fn submit(&self, r: Request, tx: Sender<Msg>, waker: Waker) {
         let start = {
             let mut s = self.slot();
             s.next = Some(r);
@@ -67,7 +67,7 @@ impl PathSearchWorker {
     }
 
     /// Works through requests until none is waiting.
-    fn work<W: Waker>(&self, tx: &Sender<Msg>, waker: &W) {
+    fn work(&self, tx: &Sender<Msg>, waker: &Waker) {
         loop {
             let Request { workdir, request, terms, oids } = {
                 let mut s = self.slot();
@@ -113,7 +113,7 @@ impl PathSearchWorker {
     }
 }
 
-fn report<W: Waker>(tx: &Sender<Msg>, waker: &W, workdir: PathBuf, request: u64, result: Result<PathsChunk, String>) {
+fn report(tx: &Sender<Msg>, waker: &Waker, workdir: PathBuf, request: u64, result: Result<PathsChunk, String>) {
     let msg = Msg::Search(SearchMsg::PathsSearched { request, result });
     if tx.send(Msg::Scoped { workdir, msg: Box::new(msg) }).is_ok() {
         waker.wake();
@@ -133,12 +133,6 @@ pub(super) fn once(r: Request) -> Msg {
 mod tests {
     use super::*;
     use std::sync::mpsc;
-
-    #[derive(Clone)]
-    struct NoWake;
-    impl Waker for NoWake {
-        fn wake(&self) {}
-    }
 
     use glowfly_core::testkit::git;
 
@@ -164,13 +158,13 @@ mod tests {
         w.slot().running = true;
         let terms = vec![PathTerm::parse("docs").unwrap()];
         let req = |request, oids| Request { workdir: dir.clone(), request, terms: terms.clone(), oids };
-        w.submit(req(1, vec![one]), tx.clone(), NoWake);
-        w.submit(req(2, vec![two, one]), tx.clone(), NoWake);
+        w.submit(req(1, vec![one]), tx.clone(), Waker::none());
+        w.submit(req(2, vec![two, one]), tx.clone(), Waker::none());
         assert!(rx.recv_timeout(Duration::from_millis(50)).is_err(), "the replaced request is dropped silently");
         assert_eq!(w.slot().next.as_ref().map(|r| r.request), Some(2));
 
         // The worker takes the waiting request, reports it in one chunk, and ends.
-        w.work(&tx, &NoWake);
+        w.work(&tx, &Waker::none());
         assert!(!w.slot().running && w.slot().next.is_none());
         let Ok(Msg::Scoped { workdir, msg }) = rx.try_recv() else { panic!("a report") };
         assert_eq!(workdir, dir);
