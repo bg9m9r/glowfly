@@ -1,11 +1,15 @@
 //! The diff header as plain data, built once per frame by ui/diff/header/ and tested without
 //! egui: the file's folder, name, kind and change counts, the context it is shown in, where
 //! Previous and Next go and the counter between them, the View menu's settings, the file
-//! actions with their disabled reasons, and the one primary action.
+//! actions with their disabled reasons, and the one primary action. Its slow parts (change rows,
+//! counts, file order) come from a `HeaderCache` that keeps them between frames.
+
+pub mod cache;
 
 use super::diff_nav::{self, Counter, StepKind};
 use super::files::not_in_workdir;
 use super::{AppState, Selection};
+use cache::HeaderCache;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::preview_image::is_image_path;
@@ -163,14 +167,23 @@ pub enum Primary {
     Unstage(String),
 }
 
-/// The header of the diff on screen.
+/// The header of the diff on screen, its slow parts built fresh; the diff view keeps them in a
+/// `HeaderCache` between frames.
 pub fn model(st: &AppState) -> Option<HeaderModel> {
+    HeaderCache::default().model(st)
+}
+
+/// The header of the diff on screen, from `parts` (refreshed for `st`).
+pub(super) fn build(st: &AppState, parts: &HeaderCache) -> Option<HeaderModel> {
     let (target, diff) = st.session.diff.view.as_ref()?;
     let path = target.path().to_owned();
     let (folder, name) = split_path(&path);
     let lfs_summary = super::lfs_notes::summary(st).is_some();
     let has_rows = !diff.binary && !diff.hunks.is_empty() && !lfs_summary;
-    let [prev, next] = [diff_nav::step(st, -1).kind(), diff_nav::step(st, 1).kind()];
+    let pos = diff_nav::position(st);
+    let order = &parts.order;
+    let step = |dir: isize| diff_nav::step_from(&parts.rows, pos, dir, || order.neighbour(dir).cloned()).kind();
+    let [prev, next] = [step(-1), step(1)];
     let change = if diff.binary {
         let sides = super::diff_preview::shown(st);
         ChangeText::Sizes {
@@ -178,7 +191,7 @@ pub fn model(st: &AppState) -> Option<HeaderModel> {
             new: sides.and_then(|s| s.new.as_ref()).map(|s| s.size),
         }
     } else if has_rows {
-        let (added, removed) = line_counts(diff);
+        let (added, removed) = parts.counts;
         ChangeText::Lines { added, removed }
     } else {
         ChangeText::None
@@ -187,15 +200,15 @@ pub fn model(st: &AppState) -> Option<HeaderModel> {
         folder,
         name,
         kind: kind(&path, diff),
-        status: diff_nav::file_status(st, target).map(|s| if s == '?' { 'A' } else { s }),
+        status: order.status.map(|s| if s == '?' { 'A' } else { s }),
         change,
         context: context(st, target, st.settings.lang()),
         prev,
         next,
         show_nav: has_rows || prev != StepKind::End || next != StepKind::End,
-        counter: diff_nav::counter(st),
+        counter: diff_nav::counter_from(&parts.rows, pos, || order.place),
         view: (!diff.binary && !lfs_summary).then(|| view_group(st, diff, has_rows)),
-        actions: actions(st, target),
+        actions: actions(st, target, order.status),
         primary: match target {
             DiffTarget::Unstaged(p) => Some(Primary::Stage(p.clone())),
             DiffTarget::Staged(p) => Some(Primary::Unstage(p.clone())),
@@ -280,7 +293,7 @@ fn view_group(st: &AppState, diff: &FileDiff, rows: bool) -> ViewGroup {
     }
 }
 
-fn actions(st: &AppState, target: &DiffTarget) -> Actions {
+fn actions(st: &AppState, target: &DiffTarget, status: Option<char>) -> Actions {
     let t = st.settings.lang();
     let diff_tool = Some(super::tool_compare::ToolSetup::of(t, &st.settings.external_tools).diff);
     let none = Actions { restore: None, open: None, diff_tool };
@@ -297,7 +310,7 @@ fn actions(st: &AppState, target: &DiffTarget) -> Actions {
         }
         DiffTarget::Unstaged(p) | DiffTarget::Staged(p) | DiffTarget::ToWorkdir(_, p) | DiffTarget::FromWorkdir(_, p) => Actions {
             restore: None,
-            open: Some(OpenAction { path: p.clone(), missing: (!working_file_on_disk(st, target)).then(|| not_in_workdir(t)) }),
+            open: Some(OpenAction { path: p.clone(), missing: (!working_file_on_disk(st, target, status)).then(|| not_in_workdir(t)) }),
             diff_tool,
         },
         DiffTarget::Between(..) => none,
@@ -307,8 +320,8 @@ fn actions(st: &AppState, target: &DiffTarget) -> Actions {
 /// Whether the working file of a working-tree diff is there: not for an unstaged deletion, nor
 /// for a staged one unless the path is listed again as untracked; for a comparison with the
 /// working tree, as the comparison found it (from the working tree to a commit, its 'A' rows are
-/// the files the working tree lacks).
-fn working_file_on_disk(st: &AppState, target: &DiffTarget) -> bool {
+/// the files the working tree lacks; `status` is the file's letter in that list).
+fn working_file_on_disk(st: &AppState, target: &DiffTarget, status: Option<char>) -> bool {
     let snap: Option<&Snapshot> = st.snap.as_ref();
     let unstaged = |p: &str| snap.and_then(|s| s.unstaged.iter().find(|f| f.path == p)).map(|f| f.status);
     match target {
@@ -320,16 +333,16 @@ fn working_file_on_disk(st: &AppState, target: &DiffTarget) -> bool {
         DiffTarget::ToWorkdir(o, p) => match &st.session.selection {
             Selection::VsWorkdir(w) if w.oid == *o && !w.swapped => match &w.changes {
                 Some(Ok(c)) => c.in_workdir(p),
-                _ => diff_nav::file_status(st, target) != Some('D'),
+                _ => status != Some('D'),
             },
-            _ => diff_nav::file_status(st, target) != Some('D'),
+            _ => status != Some('D'),
         },
         DiffTarget::FromWorkdir(o, p) => match &st.session.selection {
             Selection::VsWorkdir(w) if w.oid == *o && w.swapped => match &w.changes {
                 Some(Ok(c)) => c.in_workdir(p),
-                _ => diff_nav::file_status(st, target) != Some('A'),
+                _ => status != Some('A'),
             },
-            _ => diff_nav::file_status(st, target) != Some('A'),
+            _ => status != Some('A'),
         },
         DiffTarget::Commit(..) | DiffTarget::Between(..) => true,
     }

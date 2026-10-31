@@ -265,6 +265,9 @@ pub(super) fn set_status(snap: &mut Snapshot, status: Status, submodules: Option
 /// submodules read with them, and the graph's WIP row.
 pub fn status_set(snap: &mut Snapshot, was_dirty: bool, submodules: Option<Vec<SubmoduleInfo>>) {
     snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
+    // Whole reads replace the lists and path or index reads merge into them in place: either
+    // way they are new lists for what keys on them (the diff header's file order).
+    snap.status_stamp = glowfly_core::repo::next_status_stamp();
     // A commit or checkout inside a submodule changes its row, not the history.
     if let Some(list) = submodules {
         snap.submodules = list;

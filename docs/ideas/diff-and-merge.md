@@ -93,8 +93,8 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
   commit's diff of the file)
 - An optional wrap-around from the last changed file back to the first (with a notice)
 - Show which file of how many (e.g. 3 of 12) in the diff header
-- Cache the change rows behind the Previous/Next buttons too (their state rebuilds the change
-  rows twice per frame)
+- The header's Open action still looks the file up in the Unstaged list every frame
+  (`diff_header::working_file_on_disk`); keep that in the header cache too
 - Keep a wrapped line's indentation on its continuation lines
 - A marker in the gutter on continuation lines of a wrapped row
 - Wrap by display width so wide (CJK, emoji) characters count as two columns

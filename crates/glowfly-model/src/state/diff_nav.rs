@@ -1,11 +1,13 @@
-//! Next/previous change across files: where a step goes, and the file list a diff came from.
+//! Next/previous change across files: where a step goes, the counter between the arrows, and the
+//! neighbouring file in the list a diff came from (`diff_nav/file_order.rs`).
 
-use super::file_tree;
-use super::history::{FileHistoryView, HistoryKind};
-use super::{AppState, Selection};
+pub mod file_order;
+
+use super::AppState;
+use file_order::source_entries;
 use glowfly_core::diff_rows::step_change;
-use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry};
-use glowfly_core::settings::{FileListMode, Settings};
+use glowfly_core::repo::{DiffTarget, FileDiff};
+use glowfly_core::settings::Settings;
 use glowfly_core::whole_file::{self, Expanded};
 
 /// The change a file opened by stepping lands on.
@@ -76,19 +78,29 @@ pub fn change_rows_of(d: &FileDiff, s: &Settings, ex: &Expanded) -> Vec<usize> {
     if d.binary { Vec::new() } else { whole_file::change_rows(d, s.diff_mode, s.diff_layout, ex) }
 }
 
+/// The open diff's change rows as stepping and the header see them: none while the LFS summary
+/// shows instead of the rows.
+pub fn shown_change_rows(st: &AppState) -> Vec<usize> {
+    let Some((_, d)) = st.session.diff.view.as_ref() else { return Vec::new() };
+    if super::lfs_notes::summary(st).is_some() { Vec::new() } else { change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded) }
+}
+
 /// Where a step of `dir` (1 next, -1 previous) from the open diff goes.
 pub fn step(st: &AppState, dir: isize) -> Step {
-    let Some((target, d)) = st.session.diff.view.as_ref().filter(|_| dir != 0) else { return Step::End };
-    // The LFS summary shows instead of the rows: nothing to stop at inside the file.
-    let rows = if super::lfs_notes::summary(st).is_some() {
-        Vec::new()
-    } else {
-        change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded)
-    };
-    if let Some(row) = step_change(&rows, position(st), dir) {
+    let Some((target, _)) = st.session.diff.view.as_ref().filter(|_| dir != 0) else { return Step::End };
+    step_from(&shown_change_rows(st), position(st), dir, || next_file(st, target, dir))
+}
+
+/// Where a step of `dir` from row `pos` goes: the next of `rows` that way, else the file `file`
+/// gives.
+pub fn step_from(rows: &[usize], pos: usize, dir: isize, file: impl FnOnce() -> Option<DiffTarget>) -> Step {
+    if dir == 0 {
+        return Step::End;
+    }
+    if let Some(row) = step_change(rows, pos, dir) {
         return Step::Row(row);
     }
-    match next_file(st, target, dir) {
+    match file() {
         Some(t) => Step::File(t, Landing::for_step(dir)),
         None => Step::End,
     }
@@ -118,89 +130,15 @@ pub fn next_file(st: &AppState, from: &DiffTarget, dir: isize) -> Option<DiffTar
     files.get(j).cloned()
 }
 
-/// The selected folder entry's files, when `from` is one of that commit's diffs.
-fn history_files(h: &FileHistoryView, from: &DiffTarget) -> Option<Vec<(DiffTarget, char)>> {
-    let DiffTarget::Commit(oid, _) = from else { return None };
-    let e = h.selected_entry().filter(|e| h.kind == HistoryKind::Folder && e.oid == *oid)?;
-    Some(e.files.iter().map(|f| (DiffTarget::Commit(*oid, f.path.clone()), f.status)).collect())
-}
-
 /// Whether `t` is in the file list it was opened from (`source_files`).
 pub fn in_list(st: &AppState, t: &DiffTarget) -> bool {
     source_files(st, t).is_some_and(|files| files.contains(t))
 }
 
-/// The file list `from` was opened from, in on-screen order, as diff targets: the Unstaged then
-/// the Staged Files list (conflicted entries open the conflict view, so they are left out), the
-/// commit details list, the open pull request's list, the comparison list, a stacked list's
-/// files across its commits, or in a history the selected folder entry's files. `None` in a file history, which shows one file, or when the
-/// list isn't the one on screen.
+/// The file list `from` was opened from, in on-screen order, as diff targets
+/// (`file_order::source_entries`).
 fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
     Some(source_entries(st, from)?.into_iter().map(|(t, _)| t).collect())
-}
-
-/// `source_files` with each file's status letter.
-fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, char)>> {
-    if let Some(h) = &st.session.history.view {
-        return history_files(h, from);
-    }
-    let of = |files: &[FileEntry], make: &dyn Fn(String) -> DiffTarget| -> Vec<(DiffTarget, char)> {
-        files.iter().map(|f| (make(f.path.clone()), f.status)).collect()
-    };
-    // The lists drawn as a tree walk their files in tree order.
-    let shown = |files: &[FileEntry], make: &dyn Fn(String) -> DiffTarget| tree_ordered(st, of(files, make));
-    match from {
-        DiffTarget::Unstaged(_) | DiffTarget::Staged(_) => {
-            let snap = st.snap.as_ref()?;
-            let unstaged = snap.unstaged.iter().filter(|f| f.status != '!').map(|f| (DiffTarget::Unstaged(f.path.clone()), f.status));
-            let staged = snap.staged.iter().map(|f| (DiffTarget::Staged(f.path.clone()), f.status));
-            Some(tree_ordered(st, unstaged.collect()).into_iter().chain(tree_ordered(st, staged.collect())).collect())
-        }
-        DiffTarget::Commit(oid, _) => {
-            if let Some(d) = st.session.detail.as_ref().filter(|d| d.oid == *oid) {
-                return Some(shown(&d.files, &|p| DiffTarget::Commit(*oid, p)));
-            }
-            // A stacked list: every section's files, commit by commit.
-            let Selection::Commits(m) = &st.session.selection else { return None };
-            let Some(Ok(stack)) = &m.stacked else { return None };
-            stack
-                .iter()
-                .any(|c| c.oid == *oid)
-                .then(|| stack.iter().flat_map(|c| shown(&c.files, &|p| DiffTarget::Commit(c.oid, p))).collect())
-        }
-        DiffTarget::Between(a, b, _) => {
-            if let Some(files) = st.session.pull_request.view.as_ref().and_then(|v| v.diff_files(*a, *b)) {
-                return Some(of(files, &|p| DiffTarget::Between(*a, *b, p)));
-            }
-            match &st.session.selection {
-                Selection::Commits(m) if m.compare_ends() == Some((*a, *b)) => match &m.changes {
-                    Some(Ok(c)) => Some(shown(&c.files, &|p| DiffTarget::Between(*a, *b, p))),
-                    _ => None,
-                },
-                _ => None,
-            }
-        }
-        // Only the list of the comparison's current direction: a ToWorkdir target is never
-        // walked through a swapped list, or the reverse.
-        DiffTarget::ToWorkdir(o, _) | DiffTarget::FromWorkdir(o, _) => match &st.session.selection {
-            Selection::VsWorkdir(w) if w.oid == *o && w.swapped == matches!(from, DiffTarget::FromWorkdir(..)) => match &w.changes {
-                Some(Ok(c)) => Some(of(&c.files, &|p| w.target(p))),
-                _ => None,
-            },
-            _ => None,
-        },
-    }
-}
-
-/// `entries` (one list's files) in tree order while the lists show as a tree, else unchanged.
-fn tree_ordered(st: &AppState, entries: Vec<(DiffTarget, char)>) -> Vec<(DiffTarget, char)> {
-    if st.settings.file_list_mode != FileListMode::Tree {
-        return entries;
-    }
-    let paths: Vec<&str> = entries.iter().map(|(t, _)| t.path()).collect();
-    let order = file_tree::file_order(&paths);
-    let mut slots: Vec<Option<(DiffTarget, char)>> = entries.into_iter().map(Some).collect();
-    order.into_iter().filter_map(|i| slots[i].take()).collect()
 }
 
 /// Where the header's counter stands: change `index` of `total` in the open diff, or with no
@@ -216,27 +154,20 @@ pub struct Counter {
 /// continues from, at least 1, as `current_hunk` counts), or for a file without rows (binary,
 /// empty, an LFS summary) its place in the list it came from. `None` when neither applies.
 pub fn counter(st: &AppState) -> Option<Counter> {
-    let (target, d) = st.session.diff.view.as_ref()?;
-    let rows = if super::lfs_notes::summary(st).is_some() {
-        Vec::new()
-    } else {
-        change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded)
-    };
-    if !rows.is_empty() {
-        let index = rows.partition_point(|&r| r <= position(st)).max(1);
-        return Some(Counter { index, total: rows.len(), files: false });
-    }
-    let files = source_files(st, target)?;
-    let i = files.iter().position(|t| t == target)?;
-    Some(Counter { index: i + 1, total: files.len(), files: true })
+    let (target, _) = st.session.diff.view.as_ref()?;
+    counter_from(&shown_change_rows(st), position(st), || {
+        let files = source_files(st, target)?;
+        Some((files.iter().position(|t| t == target)?, files.len()))
+    })
 }
 
-/// `target`'s status letter in the list it came from (M, A, D, R, T, ?), when it is listed.
-pub fn file_status(st: &AppState, target: &DiffTarget) -> Option<char> {
-    if let Some(s) = source_entries(st, target).and_then(|e| e.into_iter().find(|(t, _)| t == target).map(|(_, s)| s)) {
-        return Some(s);
+/// The counter over `rows` from row `pos`, else from the file's index and list length `place`
+/// gives.
+pub fn counter_from(rows: &[usize], pos: usize, place: impl FnOnce() -> Option<(usize, usize)>) -> Option<Counter> {
+    if !rows.is_empty() {
+        let index = rows.partition_point(|&r| r <= pos).max(1);
+        return Some(Counter { index, total: rows.len(), files: false });
     }
-    // A file history's commit diff isn't in a list but its detail may still name it.
-    let DiffTarget::Commit(oid, path) = target else { return None };
-    st.session.detail.as_ref().filter(|d| d.oid == *oid)?.files.iter().find(|f| f.path == *path).map(|f| f.status)
+    let (i, total) = place()?;
+    Some(Counter { index: i + 1, total, files: true })
 }

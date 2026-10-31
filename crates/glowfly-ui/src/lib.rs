@@ -236,6 +236,8 @@ pub struct UiCache {
     pub avatars: avatars::Avatars,
     pub speller: Speller,
     pub diff_rows: diff::rows_cache::DiffRowsCache,
+    /// The diff header's change rows, line counts and file order.
+    pub diff_header: crate::state::diff_header::cache::HeaderCache,
     /// The file history File view's line widths and wrapped row heights.
     pub history_text: history_text_cache::HistoryTextCache,
     /// The blame view's line widths and wrapped row heights.

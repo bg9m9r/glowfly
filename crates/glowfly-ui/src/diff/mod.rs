@@ -119,7 +119,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         st.view.diff_scroll_to_row = None;
         return;
     }
-    if let Some(m) = crate::state::diff_header::model(st) {
+    if let Some(m) = cache.diff_header.model(st) {
         header::show(ui, &m, &st.keymap, st.settings.lang(), msgs);
     }
     body(ui, st, cache, msgs);

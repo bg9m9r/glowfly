@@ -297,6 +297,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         unstaged,
         staged,
         changes,
+        status_stamp: super::next_status_stamp(),
         slow_status,
         index_memo,
         folding,

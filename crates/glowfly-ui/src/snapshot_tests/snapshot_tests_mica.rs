@@ -47,6 +47,7 @@ fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harnes
                 avatars: Avatars::default(),
                 speller: Speller::new(),
                 diff_rows: Default::default(),
+                diff_header: Default::default(),
                 history_text: Default::default(),
                 blame_rows: Default::default(),
                 diff_images: Default::default(),

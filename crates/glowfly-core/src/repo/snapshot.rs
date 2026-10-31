@@ -1,11 +1,20 @@
 //! A loaded repository (`Snapshot`), the options it was loaded with (`LoadOptions`) and one
-//! commit's details (`CommitDetail`). `Snapshot`'s queries are in `snapshot_impl`.
+//! commit's details (`CommitDetail`), and the stamps of its file lists. `Snapshot`'s queries are in
+//! `snapshot_impl`.
 
 use super::*;
 use crate::graph::Layout;
 use git2::{Oid, RepositoryState};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// A stamp for a snapshot's file lists that no snapshot of this process has had
+/// (`Snapshot::status_stamp`).
+pub fn next_status_stamp() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    NEXT.fetch_add(1, Ordering::Relaxed)
+}
 
 /// A repository as a load read it: its history, refs, status and what the graph shows.
 pub struct Snapshot {
@@ -83,6 +92,10 @@ pub struct Snapshot {
     pub staged: Vec<FileEntry>,
     /// The counts of `staged` and `unstaged`, kept with them.
     pub changes: ChangeCounts,
+    /// Stamps `unstaged` and `staged`: a new number at every load and every status read that
+    /// changes them in place (`next_status_stamp`), unique across snapshots, so equal stamps mean
+    /// the same lists.
+    pub status_stamp: u64,
     /// The index entries the staged list was read from; None when unknown.
     pub index_memo: Option<std::sync::Arc<IndexMemo>>,
     /// The status read took long (`SLOW_STATUS`); what could speed it up.
