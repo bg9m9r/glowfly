@@ -199,7 +199,7 @@ pub use worktree_counts::{COUNT_TIMEOUT, ChangesRead, WorktreeCount, count_workt
 pub use worktrees::{WorktreeInfo, worktree_wip_heads, worktrees_at};
 
 pub use commit_info::{Author, Authors, BODY_PREVIEW, CommitInfo, Parents, Text};
-pub use snapshot::{CommitDetail, LoadOptions, Snapshot};
+pub use snapshot::{CommitDetail, LoadOptions, Snapshot, next_status_stamp};
 pub use walk_reuse::{Frontier, Prior};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

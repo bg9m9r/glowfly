@@ -33,14 +33,16 @@ pub struct HeaderCache {
     diff_key: Option<(DiffKey, Expanded)>,
     list_key: Option<ListKey>,
     /// The rows Previous and Next stop at (none while the LFS summary shows).
-    pub rows: Vec<usize>,
+    pub(super) rows: Vec<usize>,
     /// The diff's '+' and '-' lines.
-    pub counts: (usize, usize),
+    pub(super) counts: (usize, usize),
     /// The open file's place in the list it came from.
-    pub order: FileOrder,
-    /// How many times the rows and counts, and the file order, were built (for tests).
-    pub row_builds: usize,
-    pub list_builds: usize,
+    pub(super) order: FileOrder,
+    /// How many times the rows and counts, and the file order, were built.
+    #[cfg(test)]
+    row_builds: usize,
+    #[cfg(test)]
+    list_builds: usize,
 }
 
 impl HeaderCache {
@@ -53,7 +55,8 @@ impl HeaderCache {
     /// Rebuilds the parts whose inputs changed since the last call; clears them without a diff.
     pub fn refresh(&mut self, st: &AppState) {
         let Some((target, diff)) = st.session.diff.view.as_ref() else {
-            *self = HeaderCache { row_builds: self.row_builds, list_builds: self.list_builds, ..Default::default() };
+            (self.diff_key, self.list_key) = (None, None);
+            (self.rows, self.counts, self.order) = (Vec::new(), (0, 0), FileOrder::default());
             return;
         };
         let key = diff_key(st, diff);
@@ -61,13 +64,19 @@ impl HeaderCache {
         if !self.diff_key.as_ref().is_some_and(|(k, ex)| *k == key && ex == expanded) {
             self.rows = crate::state::diff_nav::shown_change_rows(st);
             self.counts = diff_header::line_counts(diff);
-            self.row_builds += 1;
+            #[cfg(test)]
+            {
+                self.row_builds += 1;
+            }
             self.diff_key = Some((key, expanded.clone()));
         }
         let key = file_order::key(st, target);
         if self.list_key.as_ref() != Some(&key) {
             self.order = file_order::file_order(st, target);
-            self.list_builds += 1;
+            #[cfg(test)]
+            {
+                self.list_builds += 1;
+            }
             self.list_key = Some(key);
         }
     }

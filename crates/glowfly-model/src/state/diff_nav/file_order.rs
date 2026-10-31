@@ -14,8 +14,8 @@ use glowfly_core::settings::FileListMode;
 enum ListSource<'a> {
     /// A folder history's selected entry.
     History(Oid, &'a [FileEntry]),
-    /// The Unstaged then the Staged Files list.
-    Wip(&'a [FileEntry], &'a [FileEntry]),
+    /// The Unstaged then the Staged Files list, with their `Snapshot::status_stamp`.
+    Wip(&'a [FileEntry], &'a [FileEntry], u64),
     /// The commit details list.
     Commit(Oid, &'a [FileEntry]),
     /// A stacked list's files across its commits.
@@ -36,29 +36,46 @@ fn slice<T>(s: &[T]) -> Slice {
     Slice(s.as_ptr() as usize, s.len())
 }
 
-/// What the file order of a diff was built from: the target, the list mode, and the lists it read
-/// by address and length (and the commit details, a file history's fallback for the status).
-/// Lists are replaced whole when they are read again, the new one allocated while the old one is
-/// still alive, so a reload always shows here as a new address or length.
+/// What the file order of a diff was built from: the target, the list mode, and the list it read
+/// (and the commit details, a file history's fallback for the status).
+///
+/// The WIP lists are keyed by their stamp: status reads also merge rows into them in place
+/// (`repo::merge_unstaged`), keeping their buffer and length, and every write goes through
+/// `update::refresh::status_set`, which stamps them anew (as every load does). The other lists
+/// are keyed by address and length, with the working-tree comparison's read generation: they are
+/// never edited in place, only replaced whole by the result of a new read (a commit's details,
+/// a comparison, a stacked list, a pull request's files, a history walk), and the new list is
+/// built while the old one is still alive, so a replacement always has a new address. Only two
+/// replacements of the same list between two frames could bring a freed buffer back at the same
+/// length, and the target's commit or ends (in `from`) must still match.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ListKey {
     from: DiffTarget,
     tree: bool,
-    source: Option<(u8, [Slice; 2])>,
+    source: Option<SourceKey>,
     detail: Option<(Oid, Slice)>,
 }
 
+/// One list's part of a `ListKey`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SourceKey {
+    /// The WIP lists' `Snapshot::status_stamp`.
+    Stamp(u64),
+    /// The list's kind (`ListSource`'s order), its address and length, and for a working-tree
+    /// comparison its read generation.
+    Slice(u8, Slice, u64),
+}
+
 impl ListSource<'_> {
-    fn key(&self) -> (u8, [Slice; 2]) {
-        let none = Slice::default();
-        match self {
-            ListSource::History(_, f) => (0, [slice(f), none]),
-            ListSource::Wip(u, s) => (1, [slice(u), slice(s)]),
-            ListSource::Commit(_, f) => (2, [slice(f), none]),
-            ListSource::Stacked(s) => (3, [slice(s), none]),
-            ListSource::PullRequest(_, _, f) => (4, [slice(f), none]),
-            ListSource::Compare(_, _, f) => (5, [slice(f), none]),
-            ListSource::Workdir(_, f) => (6, [slice(f), none]),
+    fn key(&self) -> SourceKey {
+        match *self {
+            ListSource::Wip(_, _, stamp) => SourceKey::Stamp(stamp),
+            ListSource::History(_, f) => SourceKey::Slice(0, slice(f), 0),
+            ListSource::Commit(_, f) => SourceKey::Slice(2, slice(f), 0),
+            ListSource::Stacked(s) => SourceKey::Slice(3, slice(s), 0),
+            ListSource::PullRequest(_, _, f) => SourceKey::Slice(4, slice(f), 0),
+            ListSource::Compare(_, _, f) => SourceKey::Slice(5, slice(f), 0),
+            ListSource::Workdir(w, f) => SourceKey::Slice(6, slice(f), w.generation),
         }
     }
 
@@ -70,7 +87,7 @@ impl ListSource<'_> {
         let shown = |files: &[FileEntry], make: &dyn Fn(String) -> DiffTarget| tree_ordered(st, of(files, make));
         match *self {
             ListSource::History(oid, files) => of(files, &|p| DiffTarget::Commit(oid, p)),
-            ListSource::Wip(unstaged, staged) => {
+            ListSource::Wip(unstaged, staged, _) => {
                 let unstaged = unstaged.iter().filter(|f| f.status != '!').map(|f| (DiffTarget::Unstaged(f.path.clone()), f.status));
                 let staged = staged.iter().map(|f| (DiffTarget::Staged(f.path.clone()), f.status));
                 tree_ordered(st, unstaged.collect()).into_iter().chain(tree_ordered(st, staged.collect())).collect()
@@ -98,7 +115,7 @@ fn list_source<'a>(st: &'a AppState, from: &DiffTarget) -> Option<ListSource<'a>
     match from {
         DiffTarget::Unstaged(_) | DiffTarget::Staged(_) => {
             let snap = st.snap.as_ref()?;
-            Some(ListSource::Wip(&snap.unstaged, &snap.staged))
+            Some(ListSource::Wip(&snap.unstaged, &snap.staged, snap.status_stamp))
         }
         DiffTarget::Commit(oid, _) => {
             if let Some(d) = st.session.detail.as_ref().filter(|d| d.oid == *oid) {

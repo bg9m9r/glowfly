@@ -71,7 +71,6 @@ start with `state/`, `update/` or `ui/`.
 ## Diff
 
 - `diff/header/`: the diff's file header, one 48 px row built from `state/diff_header.rs`'s model.
-- `state/diff_header/cache.rs` (`UiCache::diff_header`): the header's change rows, line counts and file order, built again only when the diff, view mode, layout, folds, list or list mode change.
 - `diff/header/identity.rs`: the file's icon, folder, name and chips.
 - `diff/header/nav.rs`: hunk and file steps with the counter.
 - `diff/header/view_menu.rs`: the View button and its menu.

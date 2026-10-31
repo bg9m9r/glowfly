@@ -7,7 +7,8 @@ use crate::state::AppState;
 use crate::state::diff_header::model;
 use crate::state::diff_nav::Counter;
 use crate::state::op_fixture::{rows, snapshot};
-use glowfly_core::repo::{DiffLine, DiffTarget, FileDiff, Hunk};
+use crate::update::refresh::status_set;
+use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileEntry, Hunk};
 use glowfly_core::settings::{DiffLayout, FileListMode, Settings};
 use std::sync::Arc;
 use std::time::Instant;
@@ -66,7 +67,9 @@ fn the_header_parts_are_kept_until_what_they_come_from_changes() {
     assert_eq!(frame(&mut cache, &st), (5, 1), "a fold closed");
 
     // A status read replaces the list: a new list, even with the same files.
-    st.snap.as_mut().unwrap().unstaged = rows(&[("z.txt", 'M'), ("b/two.txt", 'D'), ("a.txt", 'A')]);
+    let snap = st.snap.as_mut().unwrap();
+    snap.unstaged = rows(&[("z.txt", 'M'), ("b/two.txt", 'D'), ("a.txt", 'A')]);
+    status_set(snap, true, None);
     assert_eq!(frame(&mut cache, &st), (5, 2), "a new list");
     assert_eq!(cache.order.status, Some('D'));
 
@@ -86,4 +89,27 @@ fn the_header_parts_are_kept_until_what_they_come_from_changes() {
     st.session.diff.view = None;
     assert_eq!(cache.model(&st), None);
     assert!(cache.rows.is_empty() && cache.order.place.is_none());
+}
+
+#[test]
+fn a_status_read_merged_in_place_is_a_new_list() {
+    let mut st = state();
+    let snap = st.snap.as_mut().unwrap();
+    snap.unstaged = rows(&[("a.txt", 'A'), ("b/two.txt", 'M'), ("z.txt", 'M')]);
+    status_set(snap, true, None);
+    let mut cache = HeaderCache::default();
+    assert_eq!(frame(&mut cache, &st), (1, 1));
+    assert_eq!(cache.order.place, Some((1, 3)));
+    assert_eq!(cache.order.prev, Some(DiffTarget::Unstaged("a.txt".into())));
+
+    // The watcher reports a.txt gone and c.txt new: one row out, one in, in the same buffer.
+    let snap = st.snap.as_mut().unwrap();
+    let before = (snap.unstaged.as_ptr(), snap.unstaged.len());
+    repo::merge_unstaged(&mut snap.unstaged, &["a.txt".into()], vec![FileEntry::new("c.txt", '?')], false);
+    assert_eq!((snap.unstaged.as_ptr(), snap.unstaged.len()), before, "the list kept its buffer and length");
+    status_set(snap, true, None);
+    assert_eq!(frame(&mut cache, &st), (1, 2), "the merged list is a new list");
+    assert_eq!(cache.order.place, Some((0, 3)));
+    assert_eq!(cache.order.prev, None);
+    assert_eq!(cache.order.next, Some(DiffTarget::Unstaged("c.txt".into())));
 }
