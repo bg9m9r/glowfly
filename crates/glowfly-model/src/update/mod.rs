@@ -76,7 +76,7 @@ mod logs_copy;
 mod logs_export;
 mod logs_runs;
 mod logs_tabs;
-pub mod notify;
+mod notify;
 mod onboarding;
 mod op_preview;
 mod op_progress;
