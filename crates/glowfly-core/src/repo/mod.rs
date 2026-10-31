@@ -7,11 +7,9 @@
 //! queries in `snapshot_impl`);
 //! the work is split by area: `load` (history, refs, status; `walk` and `walk_order` read the
 //! history, `walk_reuse` takes what an earlier load read, `load_more` goes on from where a cut
-//! walk stopped), `branch_colours` (laying the graph
-//! out with each lane's owner and colour), `status_paths` and `status_merge`
+//! walk stopped, `branch_merged` which local branches HEAD contains), `branch_colours` (laying the graph out with each lane's owner and colour), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up) and `fsmonitor`
-//! (git's built-in file system monitor), `diff`
-//! (and `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
+//! (git's built-in file system monitor), `diff` (and `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
 //! file of a commit or of the working tree),
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit) and `file_bytes` (its bytes, binary or not, for the image preview), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
@@ -35,6 +33,7 @@ mod binary_sides;
 mod blame;
 mod blame_porcelain;
 pub mod branch_colours;
+mod branch_merged;
 mod collide;
 mod commit_detail;
 mod commit_info;
@@ -270,6 +269,8 @@ pub struct StashInfo {
 
 #[cfg(test)]
 mod branch_colours_tests;
+#[cfg(test)]
+mod branch_merged_tests;
 #[cfg(test)]
 mod bytes_tests;
 #[cfg(test)]
