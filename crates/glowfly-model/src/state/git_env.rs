@@ -34,6 +34,9 @@ pub struct GitPage {
     /// None while a scan runs.
     pub candidates: Option<Vec<Candidate>>,
     pub checking: Option<Checking>,
+    /// A git to check and use once the running check ends (the settings file's, read while a
+    /// choice was being checked; update/settings_file.rs). None: nothing waits.
+    pub then_use: Option<Option<std::path::PathBuf>>,
     /// The last choice that was refused: (its shown path, why).
     pub refusal: Option<(String, String)>,
 }

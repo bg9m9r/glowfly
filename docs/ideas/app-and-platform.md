@@ -56,6 +56,8 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Try reading the file again on its own now and then (or when the window regains focus), not
   only on Try again
 - Prune old `settings.json.bak-N` copies: each start after a passing read failure keeps another
+- When the read file names a git that no longer runs, the PATH git stays in effect until the
+  next start, while the settings name the other: offer to forget it on the refusal toast
 
 ### Notifications
 

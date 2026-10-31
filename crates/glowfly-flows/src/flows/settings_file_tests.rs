@@ -5,9 +5,10 @@
 
 use crate::effect::{Effect, OsEffect, PrefsEffect};
 use crate::flows::state;
-use crate::git_env::GitEnvEffect;
+use crate::git_env::{GitEnvEffect, GitEnvMsg};
 use crate::msg::{Msg, PrefsMsg, UpdateMsg};
 use crate::state::AppState;
+use crate::state::git_env::Checking;
 use crate::update::update;
 use glowfly_core::settings::{LoadProblem, Settings};
 use std::path::PathBuf;
@@ -128,10 +129,53 @@ fn startup_steps_save_nothing_while_the_file_is_held() {
     st.settings_file.hold(Some(&unreadable("access is denied")));
     let fx = run(&mut st, Msg::Updates(UpdateMsg::Startup));
     assert_eq!(saves(&fx), 0, "{fx:?}");
-    // Reported after the steps: still held, not toasted twice.
+    // Reported after the steps: still held.
     run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(unreadable("access is denied"))));
     assert!(!st.settings_file.writable());
-    assert_eq!(saves(&toggle_labels(&mut st)), 0);
+    let seen = st.settings.updates.notes_seen.clone();
+    assert!(seen.is_some(), "the step recorded the notes as seen");
+
+    // A read with nothing edited meanwhile: the plain toast, though a step changed a setting.
+    run(&mut st, Msg::Prefs(PrefsMsg::RetrySettingsRead));
+    let older = Settings { auto_fetch_minutes: 17, ..Settings::default() };
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((older, None)))));
+    assert!(st.toasts.iter().any(|t| t.ok && !t.text.contains("were not kept")), "no edits were dropped");
+    assert!(!st.toasts.iter().any(|t| t.text.contains("were not kept")));
+    // The file's older notes_seen doesn't reopen the notes next start: the newer one is kept and saved.
+    assert_eq!(st.settings.updates.notes_seen, seen);
+    assert_eq!(st.settings.auto_fetch_minutes, 17);
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.updates.notes_seen == seen && s.auto_fetch_minutes == 17)),
+        "{fx:?}"
+    );
+}
+
+#[test]
+fn a_file_that_saw_newer_notes_keeps_them() {
+    let mut st = state();
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(unreadable("access is denied"))));
+    st.settings.updates.notes_seen = Some("0.0.1".into());
+    let mut real = Settings::default();
+    real.updates.notes_seen = Some("99.0.0".into());
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((real, None)))));
+    assert_eq!(st.settings.updates.notes_seen.as_deref(), Some("99.0.0"));
+    assert_eq!(saves(&fx), 0, "nothing to write back: {fx:?}");
+}
+
+#[test]
+fn the_files_git_waits_for_a_check_already_running() {
+    let mut st = state();
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(unreadable("access is denied"))));
+    // A choice on the Git page is being checked.
+    let picked = PathBuf::from("/usr/local/bin/git");
+    st.git.page.checking = Some(Checking { program: Some(picked.clone()), from_banner: false });
+    let git = PathBuf::from("/opt/git/bin/git");
+    let real = Settings { git_program: Some(git.to_string_lossy().into_owned()), ..Settings::default() };
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((real, None)))));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::GitEnv(GitEnvEffect::Use { .. }))), "not while the other runs: {fx:?}");
+    // The running check ends; then the file's git is checked and used.
+    let fx = run(&mut st, Msg::GitEnv(GitEnvMsg::Switched { program: Some(picked), result: Err("not a git".into()) }));
+    assert!(fx.iter().any(|e| matches!(e, Effect::GitEnv(GitEnvEffect::Use { program: Some(p), .. }) if *p == git)), "{fx:?}");
 }
 
 #[test]
