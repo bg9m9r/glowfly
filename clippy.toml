@@ -1,3 +1,6 @@
+# The library crates' public items get the same lints as the binary's: nothing outside the
+# workspace uses their API, so clippy needn't spare it.
+avoid-breaking-exported-api = false
 # View tests compare images through `CheckSnapshot::check_snapshot` (glowfly-ui's src/snapshot_check/),
 # which GLOWFLY_SKIP_SNAPSHOTS can turn off on CI runners without the approved renderer.
 disallowed-methods = [

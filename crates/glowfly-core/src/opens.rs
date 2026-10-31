@@ -9,6 +9,8 @@ use std::path::Path;
 
 /// The operating system whose default-program rules apply.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+// `MacOs` is the system's name, not the enum's repeated.
+#[allow(clippy::enum_variant_names)]
 pub enum Os {
     Windows,
     MacOs,
