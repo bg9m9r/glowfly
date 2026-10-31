@@ -20,7 +20,7 @@ use crate::runner::{Runner, Waker};
 use crate::state::AppState;
 use crate::ui::{UiCache, avatars, build_status, layout, shortcuts, theme};
 use eframe::egui;
-use glowfly_core::settings::{Settings, ThemeCatalog};
+use glowfly_core::settings::{LoadProblem, Settings, ThemeCatalog};
 use glowfly_core::spell::Speller;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -70,7 +70,7 @@ impl GlowflyApp {
         cc: &eframe::CreationContext<'_>,
         start: Option<crate::start_arg::StartArg>,
         logs: crate::runner::LogSetup,
-        loaded: (Settings, Option<glowfly_core::settings::LoadProblem>),
+        loaded: (Settings, Option<LoadProblem>),
         chrome: crate::state::window_chrome::Chrome,
         mica: bool,
         probe: Option<crate::smoke_probe::ProbeWriter>,
@@ -114,11 +114,7 @@ impl GlowflyApp {
         // the folder sits next to the settings file just read.
         let themes = glowfly_core::settings::themes::load_all();
         crate::themes::trace_problems(&themes);
-        app.start(ctx, themes, Some(logs));
-        if let Some(problem) = problem {
-            tracing::warn!("settings: {}", problem.message());
-            app.dispatch(ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem)));
-        }
+        app.start(ctx, themes, Some(logs), problem);
         if !paths.is_empty() {
             app.dispatch(ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, labels, active }));
         }
@@ -164,9 +160,10 @@ impl GlowflyApp {
         }
     }
 
-    /// Runs the `STARTUP` steps in order. With `logs` (the real app) every step runs; without
-    /// (a test app) the steps that reach outside the process are skipped.
-    fn start(&mut self, ctx: &egui::Context, themes: ThemeCatalog, logs: Option<crate::runner::LogSetup>) {
+    /// Runs the `STARTUP` steps in order: all with `logs` (the real app); a test app skips those reaching outside the process.
+    /// A settings file left unread (`problem`) holds saving back before any step (some save), and is reported after them.
+    fn start(&mut self, ctx: &egui::Context, themes: ThemeCatalog, logs: Option<crate::runner::LogSetup>, problem: Option<LoadProblem>) {
+        self.st.settings_file.hold(problem.as_ref());
         let outside = logs.is_some();
         let mut logs = logs;
         let mut themes = Some(themes);
@@ -197,6 +194,9 @@ impl GlowflyApp {
                 Step::Updates => self.dispatch(ctx, Msg::Updates(crate::msg::UpdateMsg::Startup)),
                 Step::RecentFolders => self.dispatch(ctx, Msg::Recent(RecentMsg::CheckFolders)),
             }
+        }
+        if let Some(problem) = problem {
+            self.dispatch(ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem)));
         }
     }
 

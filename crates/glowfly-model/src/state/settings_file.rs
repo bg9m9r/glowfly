@@ -2,6 +2,7 @@
 //! held back because the file couldn't be read (update/settings_file.rs). While it is, the
 //! settings in use are defaults, and writing them would replace the user's real ones.
 
+use glowfly_core::settings::LoadProblem;
 use std::path::PathBuf;
 
 #[derive(Debug, Default)]
@@ -25,6 +26,15 @@ pub struct Unreadable {
 impl SettingsFile {
     pub fn new(saved: String) -> Self {
         SettingsFile { saved, unreadable: None }
+    }
+
+    /// Holds saving back when the startup load says the file stays unread (`problem.locked`).
+    /// The shell calls this before any startup step runs, since some of them save settings;
+    /// `PrefsMsg::SettingsUnreadable` then tells the user.
+    pub fn hold(&mut self, problem: Option<&LoadProblem>) {
+        if let Some(LoadProblem { locked: Some(file), detail, .. }) = problem {
+            self.unreadable = Some(Unreadable { file: file.clone(), detail: detail.clone(), reading: false });
+        }
     }
 
     /// Whether settings may be written now.

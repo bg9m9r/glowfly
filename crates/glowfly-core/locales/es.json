@@ -2348,6 +2348,7 @@
   "settings_file.banner.text": "Se usa la configuración predeterminada y no se guarda nada hasta que se pueda leer el archivo.",
   "settings_file.banner.title": "Glowfly no pudo leer su archivo de configuración",
   "settings_file.read.toast": "Se leyó el archivo de configuración: vuelve a usarse tu configuración guardada.",
+  "settings_file.read_dropped.toast": "Se leyó el archivo de configuración: vuelve a usarse tu configuración guardada. Los cambios hechos mientras no se podía guardar no se conservaron.",
   "settings_file.still.log": "El archivo de configuración sigue sin poder leerse ({detail}). No se guarda nada hasta que se pueda.",
   "settings_file.unreadable.log": "Glowfly no pudo leer su archivo de configuración, así que usa la configuración predeterminada y no guardará ningún cambio hasta que se pueda leer ({detail}).",
   "sidebar.action.add_remote": "Añadir remoto",

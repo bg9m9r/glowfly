@@ -2348,6 +2348,7 @@
   "settings_file.banner.text": "Defaults are in use, and nothing is saved until the file can be read.",
   "settings_file.banner.title": "Glowfly couldn't read its settings file",
   "settings_file.read.toast": "The settings file was read: your saved settings are back in use.",
+  "settings_file.read_dropped.toast": "The settings file was read: your saved settings are back in use. Changes made while they couldn't be saved were not kept.",
   "settings_file.still.log": "The settings file still can't be read ({detail}). Nothing is saved until it can.",
   "settings_file.unreadable.log": "Glowfly couldn't read its settings file, so it is using default settings and won't save any changes until the file can be read ({detail}).",
   "sidebar.action.add_remote": "Add remote",

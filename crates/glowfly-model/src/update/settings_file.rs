@@ -6,18 +6,19 @@
 
 use crate::effect::{Effect, OsEffect, PrefsEffect};
 use crate::state::AppState;
-use crate::state::settings_file::Unreadable;
 use glowfly_core::settings::{LoadProblem, Settings, SetupSwap};
 use std::time::Instant;
 
 /// The settings file couldn't be read at startup: in the activity log, with a toast unless
 /// saving now waits for it (then the banner says so, and stays until it reads).
 pub(super) fn at_start(st: &mut AppState, problem: LoadProblem, now: Instant) {
+    tracing::warn!("settings: {}", problem.message());
     match problem.locked {
-        Some(file) => {
+        Some(_) => {
             let t = st.settings.lang();
             st.log_quiet(false, t.trf("settings_file.unreadable.log", &[("detail", &problem.detail)]));
-            st.settings_file.unreadable = Some(Unreadable { file, detail: problem.detail, reading: false });
+            // Usually already held by the shell, before the startup steps.
+            st.settings_file.hold(Some(&problem));
         }
         None => {
             let text = problem.message();
@@ -57,8 +58,13 @@ pub(super) fn reread(st: &mut AppState, settings: Settings, problem: Option<Load
     }
     st.settings_file.unreadable = None;
     let git_changed = settings.git_program != st.settings.git_program;
+    // Edits made while saving was held back are dropped for the file's settings.
+    let edited = serde_json::to_string(&st.settings).ok().as_deref() != Some(st.settings_file.saved.as_str());
     st.settings_file.saved = serde_json::to_string(&settings).unwrap_or_default();
     st.settings = settings;
+    // Built from the settings only at startup; everything else reads them every frame or is
+    // brought up to date by `switched` below.
+    st.terminal.open = st.settings.terminal.panel_open;
     let (keymap, key_problems) = crate::keymap::Keymap::from_overrides(&st.settings.keybindings);
     st.keymap = keymap;
     for p in key_problems {
@@ -70,13 +76,15 @@ pub(super) fn reread(st: &mut AppState, settings: Settings, problem: Option<Load
         // Damaged but moved aside: said like at startup.
         Some(problem) => at_start(st, problem, now),
         None => {
-            let text = t.tr("settings_file.read.toast");
+            let text = t.tr(if edited { "settings_file.read_dropped.toast" } else { "settings_file.read.toast" });
             st.log(true, text);
             st.toast(true, text, now);
         }
     }
     super::profile_setup::switched(st, SetupSwap { prefs: true, connections: true }, now, fx);
+    // The git that runs was set from the defaults at startup: put the file's into effect.
     if git_changed {
-        super::git_env::discover(st, fx);
+        let program = st.settings.git_program.as_deref().map(std::path::PathBuf::from);
+        super::git_env::use_program(st, program, fx);
     }
 }

@@ -179,6 +179,12 @@ fn choose(st: &mut AppState, program: Option<PathBuf>, from_banner: bool, fx: &m
     fx.push(Effect::GitEnv(GitEnvEffect::Use { program, cwd: AppState::outside_dir() }));
 }
 
+/// Puts `program` (None: git from PATH), the git the settings name, into effect as Preferences
+/// > Git would: checked first, then `Switched` follows the new git everywhere.
+pub(super) fn use_program(st: &mut AppState, program: Option<PathBuf>, fx: &mut Vec<Effect>) {
+    choose(st, program, false, fx);
+}
+
 /// The runner has put `program` into effect: save it and follow the new git everywhere.
 fn switched(st: &mut AppState, program: Option<PathBuf>, info: GitInfo, from_banner: bool, now: Instant, fx: &mut Vec<Effect>) {
     // A picked path was refused unless it is valid Unicode, so nothing is lost here.

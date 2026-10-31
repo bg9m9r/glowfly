@@ -1,10 +1,12 @@
 //! Headless tests for a settings file Glowfly couldn't read: a damaged one moved aside is
 //! reported once and saving goes on; one that couldn't be read at all holds every save back
-//! until Try again reads it, and the settings read then replace the defaults.
+//! (the startup steps' too) until Try again reads it, and the settings read then replace the
+//! defaults, the git they name included.
 
 use crate::effect::{Effect, OsEffect, PrefsEffect};
 use crate::flows::state;
-use crate::msg::{Msg, PrefsMsg};
+use crate::git_env::GitEnvEffect;
+use crate::msg::{Msg, PrefsMsg, UpdateMsg};
 use crate::state::AppState;
 use crate::update::update;
 use glowfly_core::settings::{LoadProblem, Settings};
@@ -99,7 +101,7 @@ fn an_unreadable_file_holds_every_save_back_until_a_try_reads_it() {
     assert!(st.settings_file.writable());
     assert_eq!(st.settings.auto_fetch_minutes, 17, "the file's settings, not the edits made meanwhile");
     assert_eq!(st.settings_file.saved, serde_json::to_string(&real).unwrap());
-    assert!(st.toasts.iter().any(|t| t.ok), "told it worked");
+    assert!(st.toasts.iter().any(|t| t.ok && t.text.contains("were not kept")), "told it worked, and that the edits went");
     let fx = toggle_labels(&mut st);
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.auto_fetch_minutes == 17 && !s.toolbar_labels), "{fx:?}");
 }
@@ -112,4 +114,46 @@ fn a_late_try_result_after_the_file_was_read_is_ignored() {
     assert_ne!(st.settings.auto_fetch_minutes, 17, "nothing was waiting for it");
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::RetrySettingsRead)).is_empty());
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::OpenSettingsFolder)).is_empty());
+}
+
+#[test]
+fn startup_steps_save_nothing_while_the_file_is_held() {
+    // The release notes step records the version seen, which saves.
+    let mut st = state();
+    st.settings.updates.notes_seen = None;
+    assert_eq!(saves(&run(&mut st, Msg::Updates(UpdateMsg::Startup))), 1, "it saves normally");
+    let mut st = state();
+    st.settings.updates.notes_seen = None;
+    // What the shell does before the first startup step.
+    st.settings_file.hold(Some(&unreadable("access is denied")));
+    let fx = run(&mut st, Msg::Updates(UpdateMsg::Startup));
+    assert_eq!(saves(&fx), 0, "{fx:?}");
+    // Reported after the steps: still held, not toasted twice.
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(unreadable("access is denied"))));
+    assert!(!st.settings_file.writable());
+    assert_eq!(saves(&toggle_labels(&mut st)), 0);
+}
+
+#[test]
+fn a_read_puts_the_files_git_and_terminal_panel_into_effect() {
+    let mut st = state();
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(unreadable("access is denied"))));
+    run(&mut st, Msg::Prefs(PrefsMsg::RetrySettingsRead));
+    let git = PathBuf::from("/opt/git/bin/git");
+    let mut real = Settings { git_program: Some(git.to_string_lossy().into_owned()), ..Settings::default() };
+    real.terminal.panel_open = true;
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((real, None)))));
+    // Checked, then put into effect for every git call (`Switched`), as Preferences > Git does.
+    assert!(fx.iter().any(|e| matches!(e, Effect::GitEnv(GitEnvEffect::Use { program: Some(p), .. }) if *p == git)), "{fx:?}");
+    assert!(st.terminal.open, "the terminal panel as the file left it");
+    assert!(st.toasts.iter().any(|t| t.ok && !t.text.contains("were not kept")), "nothing was edited meanwhile");
+}
+
+#[test]
+fn a_read_with_the_same_git_leaves_it_alone() {
+    let mut st = state();
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(unreadable("access is denied"))));
+    let real = Settings { git_program: st.settings.git_program.clone(), ..Settings::default() };
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((real, None)))));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::GitEnv(GitEnvEffect::Use { .. }))), "{fx:?}");
 }

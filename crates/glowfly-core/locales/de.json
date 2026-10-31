@@ -2348,6 +2348,7 @@
   "settings_file.banner.text": "Es gelten die Standardeinstellungen, und bis die Datei gelesen werden kann, wird nichts gespeichert.",
   "settings_file.banner.title": "Glowfly konnte seine Einstellungsdatei nicht lesen",
   "settings_file.read.toast": "Die Einstellungsdatei wurde gelesen: deine gespeicherten Einstellungen gelten wieder.",
+  "settings_file.read_dropped.toast": "Die Einstellungsdatei wurde gelesen: deine gespeicherten Einstellungen gelten wieder. Änderungen, die in der Zwischenzeit nicht gespeichert werden konnten, wurden verworfen.",
   "settings_file.still.log": "Die Einstellungsdatei kann weiterhin nicht gelesen werden ({detail}). Bis dahin wird nichts gespeichert.",
   "settings_file.unreadable.log": "Glowfly konnte seine Einstellungsdatei nicht lesen. Es verwendet die Standardeinstellungen und speichert keine Änderungen, bis die Datei gelesen werden kann ({detail}).",
   "sidebar.action.add_remote": "Remote hinzufügen",

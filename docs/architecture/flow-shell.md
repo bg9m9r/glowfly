@@ -134,8 +134,8 @@ repository flows are in [flow-repo.md](flow-repo.md).
 ## Unreadable settings file
 
 - Files: `state/settings_file.rs`, `update/settings_file.rs`, `ui/settings_banner.rs`; flow tests in `settings_file_tests.rs`.
-- A startup load whose `LoadProblem` is `locked` (`PrefsMsg::SettingsUnreadable`) sets `settings_file.unreadable`: defaults are in use, and `update/prefs.rs::save_settings` returns no save while it is set, so they can't replace the user's file.
-- The banner (under the toolbar and above Preferences) stays until Try again (`PrefsEffect::ReadSettings`, `Settings::reload`) reads the file; its settings then replace the defaults, the keymap and live settings follow, and saving goes on. Open settings folder shows where the file is.
+- A startup load whose `LoadProblem` is `locked` sets `settings_file.unreadable` (`SettingsFile::hold`) before the first startup step, since some save, and `PrefsMsg::SettingsUnreadable` reports it after them: defaults are in use, and `update/prefs.rs::save_settings` returns no save while it is set, so they can't replace the user's file. Journey: `journey/settings_unreadable.rs`.
+- The banner (under the toolbar and above Preferences) stays until Try again (`PrefsEffect::ReadSettings`, `Settings::reload`) reads the file; its settings then replace the defaults (a toast says when edits made meanwhile were dropped), the keymap, the terminal panel and live settings follow, the git they name is put into effect (`GitEnvEffect::Use`), and saving goes on. Open settings folder shows where the file is.
 
 ## Git LFS notices
 
