@@ -2,10 +2,12 @@
 //! family) and JetBrains Mono for monospace text, each ahead of egui's own fonts, which stay as
 //! fallbacks (emoji, symbols). Behind them all come the fonts for Chinese, Japanese and Korean:
 //! the system's own, which the shell hands over at startup (`use_cjk`, from
-//! `platform::system_fonts`), or until then a small bundled subset of Noto Sans CJK, which tests
-//! keep, so snapshots and the glyph check don't depend on the machine's fonts. This is the one font setup: the app installs it before its first pass,
-//! `theme::apply_style` installs it for every themed context, and the glyph check asks these
-//! fonts. The files and their licences are in `assets/fonts/`.
+//! `platform::system_fonts`); none until one is handed over. Tests hand over a small subset of
+//! Noto Sans CJK instead (`use_test_cjk`, from the snapshot builder, the journeys' harness and
+//! the glyph check), so snapshots and the glyph check don't depend on the machine's fonts; the
+//! subset is compiled into tests only. This is the one font setup: the app installs it before
+//! its first pass, `theme::apply_style` installs it for every themed context, and the glyph
+//! check asks these fonts. The files and their licences are in `assets/fonts/`.
 
 use eframe::egui::{self, FontData, FontDefinitions, FontFamily, FontId};
 use std::sync::{Arc, OnceLock};
@@ -18,9 +20,9 @@ const REGULAR: &str = "NotoSans-Regular";
 const SEMIBOLD_FONT: &str = "NotoSans-SemiBold";
 const MONO: &str = "JetBrainsMono-Regular";
 
-/// The CJK font until the shell hands over the system's (tests keep it): the characters of the
-/// CJK snapshot and the ja_JP, zh_CN and ko_KR dates, cut from Noto Sans CJK SC
-/// (`assets/fonts/test/README.md`).
+/// The tests' CJK font (`use_test_cjk`): the characters of the CJK snapshot and the ja_JP, zh_CN
+/// and ko_KR dates, cut from Noto Sans CJK SC (`assets/fonts/test/README.md`). Not in the app.
+#[cfg(test)]
 const TEST_CJK: &[u8] = include_bytes!("../../../../../assets/fonts/test/NotoSansCJKsc-TestSubset.otf");
 
 /// The CJK fallbacks the shell handed over (`use_cjk`).
@@ -35,12 +37,11 @@ pub fn use_cjk(fonts: Vec<(String, FontData)>) {
     }
 }
 
-/// The CJK fallbacks, as (name, font): the ones the shell handed over, else the bundled subset.
-fn cjk_fallbacks() -> Vec<(String, FontData)> {
-    match CJK.get() {
-        Some(fonts) => fonts.clone(),
-        None => vec![("NotoSansCJK-TestSubset".to_owned(), FontData::from_static(TEST_CJK))],
-    }
+/// Tests: hands over the bundled CJK subset as the CJK fallback, unless it already is. Every
+/// test entry point that draws calls it before it installs the fonts.
+#[cfg(test)]
+pub(crate) fn use_test_cjk() {
+    let _ = CJK.set(vec![("NotoSansCJK-TestSubset".to_owned(), FontData::from_static(TEST_CJK))]);
 }
 
 /// The name of the semibold family (`FontFamily::Name`).
@@ -51,34 +52,43 @@ pub const SEMIBOLD: &str = "semibold";
 /// the semibold family with Noto Sans SemiBold, then the whole Proportional list. egui's lists
 /// are taken from its defaults, so an egui upgrade keeps its fallbacks. The CJK fallbacks end
 /// both lists: after egui's symbol fonts, so a symbol keeps the glyph it had before.
+/// Until CJK fonts are handed over, the definitions have none, and are kept apart from the ones
+/// built after, so an early call doesn't fix the fonts without them.
 pub fn definitions() -> &'static FontDefinitions {
+    static WITHOUT_CJK: OnceLock<FontDefinitions> = OnceLock::new();
     static DEFS: OnceLock<FontDefinitions> = OnceLock::new();
-    DEFS.get_or_init(|| {
-        let mut defs = FontDefinitions::default();
-        for (name, data) in [(REGULAR, NOTO_SANS), (SEMIBOLD_FONT, NOTO_SANS_SEMIBOLD), (MONO, JETBRAINS_MONO)] {
-            defs.font_data.insert(name.to_owned(), Arc::new(FontData::from_static(data)));
-        }
-        let egui_list = |defs: &FontDefinitions, f: &FontFamily| defs.families.get(f).cloned().unwrap_or_default();
-        let mut proportional = vec![REGULAR.to_owned()];
-        proportional.extend(egui_list(&defs, &FontFamily::Proportional));
-        let mut monospace = vec![MONO.to_owned()];
-        let mut egui_mono = egui_list(&defs, &FontFamily::Monospace).into_iter();
-        // egui's monospace font first, then Noto Sans ahead of egui's proportional fallbacks.
-        monospace.extend(egui_mono.next());
-        monospace.push(REGULAR.to_owned());
-        monospace.extend(egui_mono);
-        for (name, data) in cjk_fallbacks() {
-            defs.font_data.insert(name.clone(), Arc::new(data));
-            proportional.push(name.clone());
-            monospace.push(name);
-        }
-        let mut semibold = vec![SEMIBOLD_FONT.to_owned()];
-        semibold.extend(proportional.iter().cloned());
-        defs.families.insert(FontFamily::Proportional, proportional);
-        defs.families.insert(FontFamily::Monospace, monospace);
-        defs.families.insert(FontFamily::Name(SEMIBOLD.into()), semibold);
-        defs
-    })
+    match CJK.get() {
+        Some(cjk) => DEFS.get_or_init(|| build(cjk)),
+        None => WITHOUT_CJK.get_or_init(|| build(&[])),
+    }
+}
+
+/// The definitions with `cjk` (name, font) as the CJK fallbacks.
+fn build(cjk: &[(String, FontData)]) -> FontDefinitions {
+    let mut defs = FontDefinitions::default();
+    for (name, data) in [(REGULAR, NOTO_SANS), (SEMIBOLD_FONT, NOTO_SANS_SEMIBOLD), (MONO, JETBRAINS_MONO)] {
+        defs.font_data.insert(name.to_owned(), Arc::new(FontData::from_static(data)));
+    }
+    let egui_list = |defs: &FontDefinitions, f: &FontFamily| defs.families.get(f).cloned().unwrap_or_default();
+    let mut proportional = vec![REGULAR.to_owned()];
+    proportional.extend(egui_list(&defs, &FontFamily::Proportional));
+    let mut monospace = vec![MONO.to_owned()];
+    let mut egui_mono = egui_list(&defs, &FontFamily::Monospace).into_iter();
+    // egui's monospace font first, then Noto Sans ahead of egui's proportional fallbacks.
+    monospace.extend(egui_mono.next());
+    monospace.push(REGULAR.to_owned());
+    monospace.extend(egui_mono);
+    for (name, data) in cjk.iter().cloned() {
+        defs.font_data.insert(name.clone(), Arc::new(data));
+        proportional.push(name.clone());
+        monospace.push(name);
+    }
+    let mut semibold = vec![SEMIBOLD_FONT.to_owned()];
+    semibold.extend(proportional.iter().cloned());
+    defs.families.insert(FontFamily::Proportional, proportional);
+    defs.families.insert(FontFamily::Monospace, monospace);
+    defs.families.insert(FontFamily::Name(SEMIBOLD.into()), semibold);
+    defs
 }
 
 /// Installs the bundled fonts in `ctx`, from its next pass on (or its first, before any). egui
@@ -104,6 +114,7 @@ mod tests {
 
     #[test]
     fn definitions_put_the_bundled_fonts_first_and_keep_eguis_as_fallback() {
+        use_test_cjk();
         let ours = definitions();
         let egui_defaults = FontDefinitions::default();
         let list = |d: &FontDefinitions, f: FontFamily| d.families[&f].clone();
@@ -173,6 +184,7 @@ mod tests {
 
     #[test]
     fn every_family_draws_cjk_and_hangul_from_the_fallback() {
+        use_test_cjk();
         let ctx = egui::Context::default();
         install(&ctx);
         let _ = ctx.run(egui::RawInput::default(), |_| {});

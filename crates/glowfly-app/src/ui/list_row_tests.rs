@@ -10,6 +10,7 @@ use crate::ui::widgets::section_header;
 fn pass(mut body: impl FnMut(&mut Ui)) -> Vec<egui::epaint::ClippedShape> {
     let ctx = egui::Context::default();
     let input = || egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(300.0, 400.0))), ..Default::default() };
+    fonts::use_test_cjk();
     fonts::install(&ctx);
     let _ = ctx.run(input(), |_| {});
     let out = ctx.run(input(), |ctx| {
@@ -124,6 +125,7 @@ fn passes(frames: Vec<Vec<egui::Event>>, mut body: impl FnMut(&mut Ui)) {
     let ctx = egui::Context::default();
     let input =
         |events| egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(300.0, 400.0))), events, ..Default::default() };
+    fonts::use_test_cjk();
     fonts::install(&ctx);
     let _ = ctx.run(input(Vec::new()), |_| {});
     for events in frames {

@@ -41,6 +41,7 @@ struct Ink {
 fn ink(src: &str, width: f32) -> Vec<Ink> {
     let ctx = egui::Context::default();
     let input = || egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(width, 400.0))), ..Default::default() };
+    fonts::use_test_cjk();
     fonts::install(&ctx);
     let _ = ctx.run(input(), |_| {});
     let mut cache = MarkdownCache::default();

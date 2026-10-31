@@ -46,6 +46,7 @@ pub(crate) fn skip_requested(value: Option<&str>) -> bool {
 /// in unless a test picks another.
 pub(crate) fn builder<S>() -> HarnessBuilder<S> {
     crate::ui::theme::color::set_palette(&crate::ui::theme::GARDEN_DARK);
+    crate::ui::theme::fonts::use_test_cjk();
     Harness::builder().renderer(LazyRenderer::new(Pooled::take))
 }
 

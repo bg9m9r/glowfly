@@ -88,6 +88,7 @@ mod tests {
     #[test]
     fn warns_once_per_character_without_a_glyph() {
         let ctx = egui::Context::default();
+        super::super::fonts::use_test_cjk();
         super::super::fonts::install(&ctx);
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         // Thai ก and Devanagari क are in no loaded font; é, … and 日 are.

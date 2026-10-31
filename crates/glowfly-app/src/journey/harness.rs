@@ -101,6 +101,7 @@ impl Journey {
         let mut settings = settings();
         tweak(&mut settings);
         let start = TestStart { settings, files: fx.config(), trusted, open, chrome };
+        crate::ui::theme::fonts::use_test_cjk();
         let h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).renderer(NoRender).build_state(
             |ctx, shell: &mut Shell| {
                 if shell.app.is_none() {

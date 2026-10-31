@@ -24,6 +24,7 @@ const NEVER_DRAWN: &[(char, &str)] =
 /// They exist only after the first pass.
 fn fonts() -> egui::Context {
     let ctx = egui::Context::default();
+    crate::ui::theme::fonts::use_test_cjk();
     crate::ui::theme::fonts::install(&ctx);
     let _ = ctx.run(egui::RawInput::default(), |_| {});
     ctx
