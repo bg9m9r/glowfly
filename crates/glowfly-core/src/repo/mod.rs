@@ -240,7 +240,7 @@ impl Tracking {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct BranchInfo {
     pub name: String,
     pub oid: Option<Oid>,

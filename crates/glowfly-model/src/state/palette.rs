@@ -1,6 +1,7 @@
 //! The command palette (Ctrl+P): whether it is open, what is typed, which row is selected, and
-//! the commands it lists for the query. App-wide, never parked with a tab. The view, `update`
-//! and the tests all build the list through `entries` and `listed` (or `shown`), which keep at
+//! the commands it lists for the query. App-wide, never parked with a tab. The view and `update`
+//! get the list through `listed_open`, which keeps it between frames (`palette_cache`); the tests
+//! build it from scratch through `entries` and `listed` (or `shown`). Both keep at
 //! most `MAX_COMMAND_ROWS` of the ranked matches; the commands themselves are
 //! in `palette_commands`. Some commands open a second step: a list of items for that command
 //! (`Mode::Pick`), such as tracked files, stashes, profiles or assigned issues, or a free-text field (`Mode::Input`), such
@@ -11,6 +12,10 @@
 
 pub use super::palette_commands::{Entry, PaletteCommand, entries};
 pub use super::palette_kinds::{InputKind, PickKind, StashAction};
+
+#[path = "palette_cache.rs"]
+mod palette_cache;
+use palette_cache::{CommandCache, by_recency};
 
 use super::AppState;
 use super::forge::ForgeState;
@@ -29,6 +34,8 @@ pub struct Palette {
     pub scroll_to_selected: bool,
     /// The command list, or a command's sub-list.
     pub mode: Mode,
+    /// The command list from the last frame (`listed_open`).
+    pub commands: CommandCache,
 }
 
 /// What the palette lists.
@@ -292,24 +299,17 @@ pub struct Listed {
 
 /// `entries` filtered and ranked for `query`, cut to `MAX_COMMAND_ROWS`.
 pub fn listed(st: &AppState, query: &str) -> Listed {
-    let mut all: Vec<Option<Entry>> = entries(st).into_iter().map(Some).collect();
-    let items: Vec<(&str, &str)> = all.iter().flatten().map(|e| (e.label.as_str(), e.keywords)).collect();
+    let entries = entries(st);
+    let items: Vec<(&str, &str)> = entries.iter().map(|e| (e.label.as_str(), e.keywords)).collect();
     let mut ranked = fuzzy::rank(query, &items);
-    if !st.palette_recent.is_empty() {
-        // Recently run commands first among equal scores (all of them, for an empty query). The
-        // sort is stable, so the ranking's own tie-breaks still order the rest.
-        let recency: Vec<usize> = all
-            .iter()
-            .flatten()
-            .map(|e| e.command.recall_key().and_then(|k| st.palette_recent.position(k)).unwrap_or(usize::MAX))
-            .collect();
-        ranked.sort_by(|a, b| b.1.score.cmp(&a.1.score).then(recency[a.0].cmp(&recency[b.0])));
-    }
+    let command = |i: usize| entries.get(i).map(|e| &e.command);
+    by_recency(st, command, &mut ranked);
     let total = ranked.len();
     let mut groups = Vec::new();
     if query.trim().is_empty() {
-        (ranked, groups) = grouped(st, &all, ranked);
+        (ranked, groups) = grouped(st, command, ranked);
     }
+    let mut all: Vec<Option<Entry>> = entries.into_iter().map(Some).collect();
     let rows = ranked
         .into_iter()
         .take(MAX_COMMAND_ROWS)
@@ -317,6 +317,18 @@ pub fn listed(st: &AppState, query: &str) -> Listed {
         .collect();
     groups.retain(|&(_, first)| first < MAX_COMMAND_ROWS);
     Listed { rows, total, groups }
+}
+
+/// The open palette's command list for its query: `listed`, kept between frames by the
+/// palette's `CommandCache`. Empty while the palette is closed.
+pub fn listed_open(st: &mut AppState) -> Listed {
+    let Some(p) = st.palette.as_mut() else { return Listed { rows: Vec::new(), total: 0, groups: Vec::new() } };
+    let (query, mut cache) = (p.query.clone(), std::mem::take(&mut p.commands));
+    let listed = cache.listed(st, &query);
+    if let Some(p) = st.palette.as_mut() {
+        p.commands = cache;
+    }
+    listed
 }
 
 /// The rows of `listed`.
@@ -350,7 +362,7 @@ pub fn row_count(st: &mut AppState) -> usize {
     let Some(p) = st.palette.as_ref() else { return 0 };
     let query = p.query.clone();
     match p.mode {
-        Mode::Commands => return shown(st, &query).len(),
+        Mode::Commands => return listed_open(st).rows.len(),
         Mode::Input(_) => return 0,
         Mode::Pick(_) => {}
     }

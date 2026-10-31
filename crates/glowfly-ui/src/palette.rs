@@ -164,8 +164,10 @@ fn input_step(ui: &mut Ui, kind: InputKind, query: &str, msgs: &mut Vec<Msg>, ru
 
 /// The commands matching the query (at most `MAX_COMMAND_ROWS`).
 fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_selected: bool) {
-    let Some(query) = st.palette.as_ref().map(|p| p.query.clone()) else { return };
-    let listed = palette::listed(st, &query);
+    if st.palette.is_none() {
+        return;
+    }
+    let listed = palette::listed_open(st);
     let list = &listed.rows;
     let t = st.settings.lang();
     let Some(p) = st.palette.as_mut() else { return };

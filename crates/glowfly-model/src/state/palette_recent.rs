@@ -24,7 +24,7 @@ use glowfly_core::stash_ops::StashScope;
 const MAX_RECENT_COMMANDS: usize = 10;
 
 /// Recently run commands' keys, most recent first, without duplicates.
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct RecentCommands {
     keys: Vec<&'static str>,
 }

@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 #[path = "palette_checkouts.rs"]
 mod palette_checkouts;
+pub(crate) use palette_checkouts::{RefEntries, ref_entries};
 #[path = "palette_commands_rebase.rs"]
 pub mod palette_commands_rebase;
 #[path = "palette_commands_repos.rs"]
@@ -224,6 +225,7 @@ pub enum PaletteCommand {
     Stack(palette_stack::StackCommand),
 }
 
+#[derive(Clone, PartialEq)]
 pub struct Entry {
     pub command: PaletteCommand,
     pub label: String,
@@ -260,22 +262,26 @@ pub(super) fn folder_name(path: &Path) -> String {
 /// repositories, then remote branch and tag checkouts (last, so a repository with many refs
 /// doesn't push the rest past the row cap).
 pub fn entries(st: &AppState) -> Vec<Entry> {
-    use palette_checkouts::{checkout_entries, remote_checkout_entries, tag_checkout_entries};
+    let (mut out, split) = fixed_entries(st);
+    let refs = ref_entries(st.snap.as_ref());
+    out.splice(split..split, refs.locals);
+    out.extend(refs.others);
+    out
+}
+
+/// The entries that don't come one per ref, and where the local branch checkouts go among them
+/// (`entries` puts them there and the remote and tag checkouts after them all). The palette's
+/// cache rebuilds these every frame and the ref entries only when the refs change.
+pub(crate) fn fixed_entries(st: &AppState) -> (Vec<Entry>, usize) {
     let mut out = Vec::new();
     if let Some(snap) = &st.snap {
         repo_entries(st, snap, &mut out);
     }
     app_entries(st, &mut out);
     palette_commands_repos::list_entries(st, &mut out);
-    if let Some(snap) = &st.snap {
-        checkout_entries(snap, &mut out);
-    }
+    let split = out.len();
     palette_commands_repos::repo_entries(st, &mut out);
-    if let Some(snap) = &st.snap {
-        remote_checkout_entries(snap, &mut out);
-        tag_checkout_entries(snap, &mut out);
-    }
-    out
+    (out, split)
 }
 
 /// Commands for the open repository.
