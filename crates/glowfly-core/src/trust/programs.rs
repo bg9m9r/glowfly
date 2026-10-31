@@ -1,6 +1,7 @@
 //! Config programs that run files from the working tree. A setting such as
 //! `core.fsmonitor=./tools/fsm.sh`, `filter.x.smudge=python tools/smudge.py`,
-//! `credential.helper=!./bin/creds` or `include.path=../shared.cfg` names a file the branch
+//! `credential.helper=!./bin/creds`, `lfs.customtransfer.x.path=./bin/agent`,
+//! `http.sslCAInfo=certs/ca.pem` or `include.path=../shared.cfg` names a file the branch
 //! carries: a checkout or pull that changes it changes what git runs (or which settings it
 //! reads) without changing the setting's text. `scan` lists the files such settings name, so
 //! the scan follows them as it follows a hooks folder in the working tree (`follow.rs`): the
@@ -55,11 +56,15 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>) -> Vec<Pa
     out
 }
 
-/// The command a setting runs, as written; None for one that names no command (core.hooksPath,
-/// whose hooks `follow.rs` follows itself; protocol.allow; an include).
+/// The command a setting runs, or the file it reads (a CA bundle), as written; None for one
+/// that names neither (core.hooksPath, whose hooks `follow.rs` follows itself; protocol.allow;
+/// an include; git-lfs's choice of transfer agent, a name; a TLS switch or a proxy).
 fn command_text(c: &ConfigCommand) -> Option<&str> {
     let key = c.key.to_ascii_lowercase();
-    if key == "core.hookspath" || key.starts_with("protocol.") || key.starts_with("includeif.") {
+    if key == "core.hookspath" || key.starts_with("protocol.") || key.starts_with("includeif.") || key == "lfs.standalonetransferagent" {
+        return None;
+    }
+    if super::is_network_setting(&c.key) && !(key.ends_with(".sslcainfo") || key.ends_with(".sslcapath")) {
         return None;
     }
     // url.<base>.insteadOf: the command is in the URL the key names.

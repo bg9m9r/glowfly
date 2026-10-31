@@ -16,6 +16,7 @@ use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::UpdateMsg;
 use crate::msg::{ContentFailure, PartialMsg};
+use crate::patch::{PatchEffect, PatchMsg};
 use crate::remote::{RemoteEffect, RemoteMsg};
 use glowfly_core::forge::{Account, Target};
 use glowfly_model::ssh::SshFailure;
@@ -70,6 +71,8 @@ enum Kind {
     Sizing(PathBuf, u64),
     /// A background download of missing contents: its pane shows it until it ends.
     Content(u64),
+    /// Saving a patch to this file: it says the patch wasn't created.
+    Patch(PathBuf),
     Log,
 }
 
@@ -132,6 +135,7 @@ impl Recovery {
             Effect::Stash(StashEffect::PutBack(r)) => Kind::PutBack(r.cwd.clone(), r.oid),
             Effect::Partial(PartialEffect::SizeHistory(r)) => Kind::Sizing(r.workdir.clone(), r.id),
             Effect::Partial(PartialEffect::FetchContent(r)) => Kind::Content(r.id),
+            Effect::Patch(PatchEffect::Export { dest, .. }) => Kind::Patch(dest.clone()),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -195,6 +199,7 @@ impl Recovery {
                 Msg::Partial(PartialMsg::HistorySized { workdir, id, size: glowfly_core::history_size::HistorySize::Unknown })
             }
             Kind::Content(id) => Msg::Partial(PartialMsg::ContentFetched { id, result: Err(ContentFailure::Failed(text)) }),
+            Kind::Patch(dest) => Msg::Patch(PatchMsg::Exported { dest, result: Err(text) }),
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {

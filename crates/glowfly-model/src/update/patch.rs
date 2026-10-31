@@ -42,6 +42,9 @@ pub(super) fn handle(st: &mut AppState, m: PatchMsg, now: Instant, fx: &mut Vec<
         PatchMsg::ChangesDialog { scope, path } => changes::dialog(st, scope, path),
         PatchMsg::SaveChanges { scope, paths, untracked } => changes::save(st, scope, paths, untracked, now, fx),
         PatchMsg::SaveTo { dest: None, .. } => {}
+        PatchMsg::SaveTo { workdir, what: what @ PatchSource::Changes(_), dest: Some(dest) } => {
+            changes::export(st, workdir, what, dest, fx)
+        }
         PatchMsg::SaveTo { workdir, what, dest: Some(dest) } => fx.push(Effect::Patch(PatchEffect::Export { workdir, what, dest })),
         PatchMsg::Exported { dest, result } => match result {
             Ok(r) => {

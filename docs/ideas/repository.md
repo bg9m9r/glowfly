@@ -20,6 +20,15 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
   stderr or an ERR packet to steer a pull onto the hand-over-to-`git pull` path (a known gap; that
   path still needs the user's accept when gated).
 - Tell apart two items that couldn't be read for the same reason, so Trust and run on one doesn't pass the other too.
+- Ask about the other connection settings a repository can set too (`http.sslBackend`,
+  `sslVersion`, `sslCipherList`, `proxySSLCAInfo`, `curloptResolve`, `extraHeader`,
+  `cookieFile`); only TLS checks, CA files and proxies ask now.
+- Check which keys git-lfs reads from a tracked `.lfsconfig` (`lfs.url`, `remote.<n>.lfsurl`)
+  and whether any of them should ask, as the repository's own config does.
+- Word the trust prompt's intro for a repository whose only findings are connection settings
+  (it says settings or hooks run programs).
+- Read config entries without a value (a bare key) safely in `repo/blame.rs` and
+  `repo/remotes.rs`, as the trust scan does now.
 - Read `$` inside single quotes as plain text: a filter like `perl -pe 's/x/$1/'` is taken to follow the whole tree and asks again on every change
 - Follow a path built from a command, such as `$(git rev-parse --show-cdup)tools/x.sh`, which follows nothing now
 - Expand `~+/x` (the current folder) in configured commands

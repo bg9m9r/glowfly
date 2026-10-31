@@ -211,10 +211,10 @@ pub(super) fn hold_waiting(st: &mut AppState, what: WaitingFor, label: Option<St
     ask(st, &real, terminal);
     let Some(Modal::Trust(p)) = &mut st.modal else { return };
     if label.is_some() {
-        p.held = label;
+        p.held.clone_from(&label);
     }
     tracing::debug!("holding {} until {} is trusted", p.held.as_deref().unwrap_or("the external terminal"), real.display());
-    st.trust.waiting = Some(Waiting { real, what });
+    st.trust.waiting = Some(Waiting { real, what, label });
 }
 
 /// The trust prompt was closed without a decision: the held job, if any, is dropped.
@@ -320,8 +320,7 @@ pub(super) fn released(st: &mut AppState, fx: &mut Vec<Effect>) {
                 super::trust_seal::push(st, effect, Sealed::Waiting { kind: WaitingKind::Terminal, label: None }, &cwd, fx);
             }
             WaitingFor::Read(effect) => {
-                let label = st.settings.lang().tr("branch.menu.check_conflicts").to_owned();
-                super::trust_seal::push(st, effect, Sealed::Waiting { kind: WaitingKind::Read, label: Some(label) }, &cwd, fx);
+                super::trust_seal::push(st, effect, Sealed::Waiting { kind: WaitingKind::Read, label: w.label }, &cwd, fx);
             }
             WaitingFor::Preview(job) => super::op_preview::start(st, job, fx),
         }

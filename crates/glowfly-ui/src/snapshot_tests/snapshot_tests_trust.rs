@@ -14,7 +14,7 @@ use glowfly_core::trust::{ConfigCommand, Follow, SubmoduleScan, TrustScan};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-fn with_prompt(theme: ThemeChoice, scan: TrustScan) -> AppState {
+pub(super) fn with_prompt(theme: ThemeChoice, scan: TrustScan) -> AppState {
     prompt_state(theme, scan, false, None)
 }
 
@@ -37,7 +37,7 @@ fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option
     st
 }
 
-fn setting(key: &str, value: &str) -> ConfigCommand {
+pub(super) fn setting(key: &str, value: &str) -> ConfigCommand {
     ConfigCommand { key: key.into(), value: value.into() }
 }
 

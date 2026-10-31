@@ -4,20 +4,22 @@
 //! runner must find just before it starts (effect/trust_check.rs, runner/trust.rs). Before
 //! update returns, each sealed effect is wrapped with its check (`wrap`, `Effect::Checked`), and
 //! so is every read that lets git run in a repository (`read_in`: a status read by git, a
-//! signature check, a diff or blame through git's filters). When the check finds the
-//! repository no longer covered (a hook edited while the prompt was open, a pull that brings
+//! signature check, a diff or blame through git's filters, a patch of uncommitted changes).
+//! When the check finds the repository no longer covered (a hook edited while the prompt was open, a pull that brings
 //! other hooks into a hooks folder that follows the working tree), the work comes back here
 //! (`stale`): the active tab takes the scan just made, and the work waits for the trust prompt
 //! again, which names what changed.
 
 use crate::effect::{Accepted, Checked, Effect, LfsEffect, Seal, Sealed, SparseEffect, TrustCheck, WaitingKind};
 use crate::msg::Stale;
+use crate::patch::PatchEffect;
 use crate::state::AppState;
 use crate::state::Modal;
 use crate::state::tabs::is_repo_at;
 use crate::state::terminal::SessionStatus;
 use crate::state::trust::{TrustPrompt, WaitingFor, saved_for};
 use crate::tools::ToolEffect;
+use glowfly_core::patch_ops::PatchSource;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::trust::TrustScan;
 use std::path::Path;
@@ -115,6 +117,8 @@ fn read_in(e: &Effect) -> Option<&Path> {
         Effect::LoadBlame(r) => &r.workdir,
         Effect::RangeDiff(j) => &j.workdir,
         Effect::CheckConflicts(j) => &j.workdir,
+        // git diff of the working tree runs its filters (the Create patch dialog seals it, too).
+        Effect::Patch(PatchEffect::Export { workdir, what: PatchSource::Changes(_), .. }) => workdir,
         _ => return None,
     };
     Some(w.as_path())

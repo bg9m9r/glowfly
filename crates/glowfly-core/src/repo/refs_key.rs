@@ -96,7 +96,8 @@ pub(crate) fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut Defau
     if let Ok(cfg) = git2::Config::open(&workdir.join(".gitmodules"))
         && let Ok(entries) = cfg.entries(Some(r"^submodule\..*\.path$"))
     {
-        let _ = entries.for_each(|e| paths.extend(e.value().map(str::to_owned)));
+        // A bare `path` key has no value, which git2's `value` would panic on.
+        let _ = entries.for_each(|e| paths.extend(e.has_value().then(|| e.value()).flatten().map(str::to_owned)));
     }
     if let Ok(mut index) = repo.index()
         && index.read(false).is_ok()
