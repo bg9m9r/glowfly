@@ -26,7 +26,7 @@ fn batch(batch: Batch, confirmed: bool) -> Msg {
 pub(super) fn step(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let mut out = Vec::new();
     for e in fx.into_iter().filter(|e| !skipped(e)) {
-        if let Some(m) = runner::execute(e) {
+        if let Some(m) = runner::testing::execute(e) {
             out.extend(update(st, m, Instant::now()));
         }
     }
@@ -61,7 +61,7 @@ fn init_all_runs_one_job() {
         [Effect::Submodule(e @ SubmoduleEffect::CheckAll { batch: Batch::InitAll, .. })] => assert!(e.scope().is_some()),
         other => panic!("{other:?}"),
     }
-    let m = runner::execute(fx.into_iter().next().unwrap()).unwrap();
+    let m = runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
     let Msg::Scoped { msg, .. } = &m else { panic!("expected a scoped result") };
     assert!(matches!(&**msg, Msg::Submodule(SubmoduleMsg::CheckedAll { batch: Batch::InitAll, result: Ok(_) })));
     let fx = update(&mut st, m, Instant::now());

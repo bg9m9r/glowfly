@@ -291,7 +291,7 @@ pub(super) fn selected_target(st: &AppState) -> DiffTarget {
 
 /// Runs `effect` and feeds its results back, as `drive` does.
 pub(super) fn run(st: &mut AppState, effect: Effect) {
-    if let Some(m) = crate::runner::execute(effect) {
+    if let Some(m) = crate::runner::testing::execute(effect) {
         drive(st, m);
     }
 }
@@ -305,7 +305,7 @@ fn tab_switch_reloads_the_selected_entrys_diff() {
     // The walk lands, selecting entry 0 and asking for its diff, which is still in flight
     // when the user switches tabs: its result is dropped.
     let walk = fx.into_iter().find(|e| matches!(e, Effect::LoadFileHistory { .. })).unwrap();
-    if let Some(m) = crate::runner::execute(walk) {
+    if let Some(m) = crate::runner::testing::execute(walk) {
         update(&mut st, m, Instant::now());
     }
     assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(0));

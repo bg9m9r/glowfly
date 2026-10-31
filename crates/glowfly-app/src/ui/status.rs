@@ -44,7 +44,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     }
                 }
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.label(RichText::new(format!("Glowfly {}", crate::state::menu_bar::VERSION)).color(color::faint()));
+                    ui.label(RichText::new(format!("Glowfly {}", st.updates.shown)).color(color::faint()));
                     super::live_updates::status_item(ui, st, msgs);
                     super::update_notice::status_item(ui, st, msgs);
                     super::layout::status_items(ui, st, msgs);

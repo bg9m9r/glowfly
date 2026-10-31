@@ -3,7 +3,6 @@
 //! chip and report in ui/conflict_check.rs, the branch menus in ui/branch_menu.rs).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use git2::Oid;
 use glowfly_core::conflict_check::{MergeTarget, Prediction};
@@ -46,7 +45,6 @@ impl EffectMeta for CheckJob {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

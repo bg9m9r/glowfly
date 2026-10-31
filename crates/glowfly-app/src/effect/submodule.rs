@@ -2,7 +2,6 @@
 //! again before an update or a removal is confirmed, checking the Add dialog's folder on disk, and removing a submodule.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use crate::submodule::{Batch, RemoveRequest};
 use std::path::{Path, PathBuf};
@@ -65,7 +64,6 @@ impl EffectMeta for SubmoduleEffect {
         }
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

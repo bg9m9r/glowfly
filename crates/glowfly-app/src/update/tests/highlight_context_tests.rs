@@ -91,7 +91,7 @@ fn medium_file_opens_colored_then_corrects() {
     assert!(matches!(&held[0], Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
 
     let view = (st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
-    let msg = runner::execute(held.remove(0)).expect("a result");
+    let msg = runner::testing::execute(held.remove(0)).expect("a result");
     assert!(update(&mut st, msg, Instant::now()).is_empty());
     let d = shown(&st);
     assert!(!hl(d).is_pending());
@@ -112,7 +112,7 @@ fn adopt_requires_same_old_text() {
     // A reload arrives pending, to be parsed in context: the per-hunk spans don't stand in.
     let repo::ViewDiff { diff: mut fresh, old, .. } = repo::load_diff_for_view(&dir, &target(), LoadDiffOptions::default()).unwrap();
     assert!(old.is_some());
-    runner::decorate_in_context("a.rs", None, &mut fresh, None, old.as_ref());
+    runner::testing::decorate_in_context("a.rs", None, &mut fresh, None, old.as_ref());
     assert!(hl(&fresh).is_pending());
     let msg = Msg::Repo(RepoMsg::DiffLoaded {
         target: target(),

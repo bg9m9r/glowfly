@@ -86,7 +86,7 @@ fn perf_timing() {
         let fx = super::update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), now);
         println!("hover #{n}: {:?}", t.elapsed());
         for e in fx {
-            if let Some(m) = crate::runner::execute(e) {
+            if let Some(m) = crate::runner::testing::execute(e) {
                 let t = Instant::now();
                 let _ = super::update(&mut st, m, now);
                 println!("  ancestry delivered: {:?}", t.elapsed());

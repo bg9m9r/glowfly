@@ -2,7 +2,6 @@
 //! change nothing (runner/pick.rs).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use git2::Oid;
 use glowfly_core::journal::Op;
@@ -43,7 +42,6 @@ impl EffectMeta for PickJob {
         Some(&self.cwd)
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

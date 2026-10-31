@@ -43,7 +43,7 @@ fn read_paths(fx: &[Effect]) -> Option<Vec<String>> {
 /// Runs the one status read in `fx` and hands its result to `update`.
 fn run_read(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let read = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).expect("a status read");
-    let msg = runner::execute(read).expect("a result");
+    let msg = runner::testing::execute(read).expect("a result");
     update(st, msg, Instant::now())
 }
 
@@ -141,7 +141,7 @@ fn paths_that_cannot_be_read_alone_read_everything_in_the_same_effect() {
         git_status: true,
         paths: Some(owned(&[".gitignore"])),
     };
-    let msg = runner::execute(read).expect("a result");
+    let msg = runner::testing::execute(read).expect("a result");
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped") };
     assert!(matches!(&*msg, Msg::Load(LoadMsg::StatusLoaded { result: Ok(StatusRead::Whole(..)), .. })), "a whole read");
     st.refresh.status_busy = true;
@@ -256,7 +256,7 @@ fn glowfly_s_own_operations_and_polls_read_everything() {
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());
     let op = fx.into_iter().find(|e| matches!(e, Effect::LocalOp { .. })).expect("a local op");
-    let done = runner::execute(op).expect("a result");
+    let done = runner::testing::execute(op).expect("a result");
     let fx = update(&mut st, done, Instant::now());
     assert_eq!(read_paths(&fx), None, "staging reads the whole status");
     finish(&mut st, fx);
@@ -276,7 +276,7 @@ fn a_path_read_of_an_older_load_is_dropped() {
     let (mut st, dir, workdir) = opened("paths-stale");
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
     let ask = update(&mut st, changed(&workdir, false, Some(&["a.txt"])), Instant::now());
-    let msg = runner::execute(ask.into_iter().next().unwrap()).unwrap();
+    let msg = runner::testing::execute(ask.into_iter().next().unwrap()).unwrap();
     st.load_gen += 1;
     assert!(update(&mut st, msg, Instant::now()).is_empty());
     assert!(st.snap.as_ref().unwrap().unstaged.is_empty(), "not applied");

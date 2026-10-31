@@ -75,7 +75,12 @@ impl GlowflyApp {
         probe: Option<crate::smoke_probe::ProbeWriter>,
     ) -> Self {
         let ctx = &cc.egui_ctx;
-        // Before the first pass, so the first frame is drawn in the bundled fonts.
+        // The system's CJK fonts behind the bundled ones (searched since startup; this waits for
+        // them), then the fonts before the first pass, so the first frame is drawn in them.
+        let cjk = crate::platform::system_fonts::found();
+        theme::fonts::use_cjk(
+            cjk.iter().map(|f| (f.name.clone(), egui::FontData { index: f.index, ..egui::FontData::from_static(f.data) })).collect(),
+        );
         theme::fonts::install(ctx);
         let (settings, problem) = loaded;
         // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
@@ -90,6 +95,8 @@ impl GlowflyApp {
             paths.extend(recent.first().cloned());
         }
         let mut app = Self::assemble(ctx, settings, recent, Runner::new);
+        // The build's version; test apps keep the placeholder, so snapshots survive releases.
+        app.st.updates.set_version(env!("CARGO_PKG_VERSION"));
         // Only the real app draws its own frame where the OS calls for it; test apps keep System.
         app.st.view.chrome = chrome;
         app.st.view.system_title_bar_offered =

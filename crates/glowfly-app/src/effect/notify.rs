@@ -1,7 +1,6 @@
 //! Desktop (OS) notifications: what `update` asks the runner to show (runner/notify.rs).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use std::path::{Path, PathBuf};
 
@@ -56,7 +55,6 @@ impl EffectMeta for DesktopNote {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

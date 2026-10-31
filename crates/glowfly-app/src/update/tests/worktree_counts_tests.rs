@@ -65,7 +65,7 @@ fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     while let Some(m) = queue.pop() {
         for e in update(st, m, Instant::now()) {
             if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
-                queue.extend(runner::execute(e));
+                queue.extend(runner::testing::execute(e));
             } else {
                 all.push(e);
             }
@@ -103,7 +103,7 @@ fn a_large_worktree_is_counted_after_the_graph() {
     assert_eq!(st.refresh.counting, Some(refs_key(&st)));
 
     let count = fx.into_iter().find(|e| matches!(e, Effect::Worktree(WorktreeEffect::CountChanges(_)))).unwrap();
-    let done = runner::execute(count).expect("a result");
+    let done = runner::testing::execute(count).expect("a result");
     let fx = update(&mut st, done, Instant::now());
     assert!(counts(&fx).is_empty(), "nothing left to count");
     let wt = linked_info(&st);
@@ -235,7 +235,7 @@ fn another_worktree_is_counted_by_its_own_trust_not_the_tab_s() {
         assert_eq!(asked.len(), 1, "{fx:?}");
         assert_eq!(asked[0].targets[0].1.as_ref().map(|t| t.trust), decision, "the worktree's own decision, not the tab's");
         let count = fx.into_iter().find(|e| matches!(e, Effect::Worktree(WorktreeEffect::CountChanges(_)))).unwrap();
-        let done = runner::execute(count).expect("a result");
+        let done = runner::testing::execute(count).expect("a result");
         update(st, done, Instant::now());
         let wt = linked_info(st);
         assert_eq!((wt.read, wt.changes), (ChangesRead::Counted, SIDE));
@@ -253,7 +253,7 @@ fn another_worktree_is_counted_by_its_own_trust_not_the_tab_s() {
 /// Runs the one count among `fx`, and delivers its result at `now`.
 fn run_count(st: &mut AppState, fx: Vec<Effect>, now: Instant) -> Vec<Effect> {
     let count = fx.into_iter().find(|e| matches!(e, Effect::Worktree(WorktreeEffect::CountChanges(_)))).expect("a count");
-    let done = runner::execute(count).expect("a result");
+    let done = runner::testing::execute(count).expect("a result");
     update(st, done, now)
 }
 

@@ -6,7 +6,6 @@
 //! ui/ssh_keygen_dialog.rs).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use crate::msg::Inactive;
 use glowfly_core::forge::{Account, AddKeyOutcome};
@@ -248,7 +247,6 @@ impl EffectMeta for SshEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

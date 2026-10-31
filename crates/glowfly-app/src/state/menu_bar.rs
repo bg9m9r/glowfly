@@ -14,12 +14,10 @@ pub const WEBSITE: &str = env!("CARGO_PKG_REPOSITORY");
 pub const PRIVACY: &str = concat!(env!("CARGO_PKG_REPOSITORY"), "/blob/main/PRIVACY.md");
 /// Help > Report an issue.
 pub const ISSUES: &str = concat!(env!("CARGO_PKG_REPOSITORY"), "/issues");
-/// The version in About, the status bar and the copied version info.
-#[cfg(not(test))]
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-/// Tests show a fixed version, so a release's version bump leaves the snapshots alone.
-#[cfg(test)]
-pub const VERSION: &str = "0.1.0";
+/// The version About, the status bar and the copied version info show until the shell sets the
+/// build's (`UpdatesState::set_version`): tests keep it, so a release's version bump leaves the
+/// snapshots alone.
+pub const PLACEHOLDER_VERSION: &str = "0.1.0";
 /// The licence line in About.
 pub const LICENSE: &str = env!("CARGO_PKG_LICENSE");
 
@@ -113,10 +111,10 @@ pub fn git_line(git: &GitState) -> Option<String> {
     Some(format!("Git {}", glowfly_core::git_version::show(v)))
 }
 
-/// About's Copy version info: "Glowfly 0.1.0" and the git line with where git is, for bug
-/// reports.
-pub fn version_info(git: &GitState) -> String {
-    let mut out = format!("Glowfly {VERSION}");
+/// About's Copy version info: "Glowfly 0.1.0" (`version`) and the git line with where git is,
+/// for bug reports.
+pub fn version_info(version: &str, git: &GitState) -> String {
+    let mut out = format!("Glowfly {version}");
     if let Some(line) = git_line(git) {
         out.push('\n');
         out.push_str(&line);

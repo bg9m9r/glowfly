@@ -1,7 +1,6 @@
 //! The Git LFS effects (`Effect::Lfs`): whether git-lfs is installed, and the preferences page's
 //! status (runner/lfs.rs).
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::meta::EffectMeta;
 use std::path::{Path, PathBuf};
@@ -39,7 +38,6 @@ impl EffectMeta for LfsEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

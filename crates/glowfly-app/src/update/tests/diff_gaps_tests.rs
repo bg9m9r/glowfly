@@ -63,7 +63,7 @@ fn loads(fx: &[Effect]) -> usize {
 /// Runs the LoadDiffGaps effects among `fx` and applies their results.
 pub(super) fn land(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadDiffGaps { .. })) {
-        let msg = runner::execute(e).expect("a result");
+        let msg = runner::testing::execute(e).expect("a result");
         run(st, msg);
     }
 }

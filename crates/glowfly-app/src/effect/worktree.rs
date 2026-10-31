@@ -1,7 +1,6 @@
 //! The worktree effects (`Effect::Worktree`); their requests are in `crate::worktree`
 //! (runner/worktrees.rs).
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::meta::EffectMeta;
 use crate::worktree::{CountRequest, MoveRequest, NewWorktree, RemoveRequest};
@@ -51,7 +50,6 @@ impl EffectMeta for WorktreeEffect {
         }
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

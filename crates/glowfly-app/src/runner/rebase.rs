@@ -11,16 +11,9 @@ use glowfly_core::rebase::{self, Outcome, SequenceEditor};
 use glowfly_core::undo::{self, RebaseStart};
 use std::path::Path;
 
-/// The command git runs to install the prepared todo: this executable in `--write-todo` mode.
-/// Unit tests run inside the test binary, which has no such mode, so they copy the file.
-fn sequence_editor() -> SequenceEditor {
-    if cfg!(test) {
-        return SequenceEditor::Copy;
-    }
-    std::env::current_exe().map(SequenceEditor::Helper).unwrap_or(SequenceEditor::Copy)
-}
-
-pub(super) fn run(e: RebaseEffect) -> Msg {
+/// Runs `e`; a rebase installs its prepared todo with `sequence_editor` (the runner's `Seams`:
+/// this executable in `--write-todo` mode).
+pub(super) fn run(e: RebaseEffect, sequence_editor: fn() -> SequenceEditor) -> Msg {
     Msg::Rebase(match e {
         RebaseEffect::LoadPlan { workdir, base, generation } => {
             RebaseMsg::RebasePlanLoaded { generation, result: rebase::plan(&workdir, &base).map_err(err) }
@@ -61,8 +54,8 @@ pub(super) fn run(e: RebaseEffect) -> Msg {
 }
 
 impl Execute for RebaseEffect {
-    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        Some(run(self))
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self, cx.seams.sequence_editor))
     }
 }
 

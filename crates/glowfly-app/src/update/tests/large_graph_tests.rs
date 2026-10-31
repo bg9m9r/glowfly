@@ -90,7 +90,7 @@ fn a_layout_that_no_longer_fits_is_ignored() {
 fn finish_one(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let mut out = Vec::new();
     for e in fx {
-        if let Some(m) = crate::runner::execute(e) {
+        if let Some(m) = crate::runner::testing::execute(e) {
             out.extend(update(st, m, Instant::now()));
         }
     }

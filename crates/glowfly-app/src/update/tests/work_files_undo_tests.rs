@@ -21,7 +21,7 @@ use std::time::Instant;
 
 /// How many files in the stand-in bin hold `contents`.
 fn in_bin(contents: &str) -> usize {
-    let Ok(dir) = std::fs::read_dir(runner::files::test_bin()) else { return 0 };
+    let Ok(dir) = std::fs::read_dir(runner::testing::test_bin()) else { return 0 };
     dir.flatten().filter(|e| std::fs::read_to_string(e.path()).is_ok_and(|t| t == contents)).count()
 }
 
@@ -140,7 +140,7 @@ fn a_delete_for_an_inactive_tab_goes_into_its_history() {
         .find(|e| matches!(e, Effect::WorkFile { .. }))
         .expect("a delete");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::execute(effect).expect("a result");
+    let reply = runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Scoped { .. }), "scoped to tab A's repository");
     update(&mut st, reply, Instant::now());
 

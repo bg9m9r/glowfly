@@ -1,7 +1,6 @@
 //! A stack push job (`Effect::Stack`, runner/stack.rs).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::stack::PushTarget;
 use std::path::{Path, PathBuf};
@@ -41,7 +40,6 @@ impl EffectMeta for StackEffect {
     }
 
     /// Journeys push to local bare repositories.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

@@ -89,15 +89,15 @@ fn links_point_at_the_project() {
 #[test]
 fn version_info_names_glowfly_and_git() {
     let mut git = GitState::default();
-    assert_eq!(version_info(&git), format!("Glowfly {VERSION}"));
+    assert_eq!(version_info(PLACEHOLDER_VERSION, &git), format!("Glowfly {PLACEHOLDER_VERSION}"));
     assert_eq!(git_line(&git), None);
     git.info = Some(GitInfo { path: None, version: None, chosen: false });
     assert_eq!(git_line(&git), None, "git didn't say its version");
     git.info = Some(GitInfo { path: None, version: Some((2, 47, 1)), chosen: false });
     assert_eq!(git_line(&git).as_deref(), Some("Git 2.47.1"));
-    assert_eq!(version_info(&git), format!("Glowfly {VERSION}\nGit 2.47.1"));
+    assert_eq!(version_info(PLACEHOLDER_VERSION, &git), format!("Glowfly {PLACEHOLDER_VERSION}\nGit 2.47.1"));
     let program = glowfly_core::paths::temp_dir().join("git");
     git.info = Some(GitInfo { path: Some(program.clone()), version: Some((2, 47, 1)), chosen: true });
     let shown = glowfly_core::native_path::shown(&program);
-    assert_eq!(version_info(&git), format!("Glowfly {VERSION}\nGit 2.47.1 ({shown})"));
+    assert_eq!(version_info(PLACEHOLDER_VERSION, &git), format!("Glowfly {PLACEHOLDER_VERSION}\nGit 2.47.1 ({shown})"));
 }

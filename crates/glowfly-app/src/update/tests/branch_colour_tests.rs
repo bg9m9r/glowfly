@@ -54,7 +54,7 @@ fn colours_survive_the_clean_to_dirty_relayout() {
     let changed =
         Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })) };
     let fx = update(&mut st, changed, Instant::now());
-    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::execute).expect("a status read");
+    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::testing::execute).expect("a status read");
     let _ = update(&mut st, status, Instant::now());
 
     let snap = st.snap.as_ref().unwrap();

@@ -3,7 +3,6 @@
 //! Unscoped: they run outside any repository's tab.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::forge::{Account, NewRepo};
 use std::path::{Path, PathBuf};
@@ -73,7 +72,6 @@ impl EffectMeta for AccountEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

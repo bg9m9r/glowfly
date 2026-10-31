@@ -50,7 +50,7 @@ fn loads(st: &mut AppState, msg: Msg) -> Vec<String> {
         for e in update(st, m, Instant::now()) {
             if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
                 seen.push(format!("{e:?}"));
-                queue.extend(runner::execute(e));
+                queue.extend(runner::testing::execute(e));
             }
         }
     }

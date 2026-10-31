@@ -245,7 +245,7 @@ fn removes_a_submodule_end_to_end() {
     assert!(store(&parent).exists());
     let fx = run(&mut st, sm(SubmoduleMsg::RemoveDialog(PATH.into())));
     for e in fx {
-        let m = runner::execute(e).expect("the check answers");
+        let m = runner::testing::execute(e).expect("the check answers");
         drive(&mut st, m);
     }
     assert!(matches!(st.modal, Some(Modal::RemoveSubmodule(_))));

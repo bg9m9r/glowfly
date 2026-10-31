@@ -2,7 +2,6 @@
 //! commits deleting a branch would leave on no branch, for the Delete dialog, and the Push to
 //! all remotes job.
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::meta::EffectMeta;
 use git2::Oid;
@@ -43,7 +42,6 @@ impl EffectMeta for BranchEffect {
     }
 
     /// Journeys push to local bare repositories.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

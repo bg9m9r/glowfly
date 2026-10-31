@@ -57,7 +57,7 @@ fn last_log(st: &AppState) -> String {
 fn submit(st: &mut AppState) -> Vec<Effect> {
     let fx = update(st, wt(WorktreeMsg::Move), Instant::now());
     let [Effect::Worktree(WorktreeEffect::Move(_))] = &fx[..] else { panic!("{fx:?} {:?}", st.log.last().map(|l| &l.text)) };
-    let moved = runner::execute(fx.into_iter().next().unwrap()).unwrap();
+    let moved = runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
     update(st, moved, Instant::now())
 }
 

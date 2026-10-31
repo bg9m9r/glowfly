@@ -69,6 +69,9 @@ pub enum ChipKind {
 
 pub struct UpdatesState {
     pub status: UpdateStatus,
+    /// This copy's version as About, the status bar and the log export show it
+    /// (`menu_bar::PLACEHOLDER_VERSION` until the shell sets the build's, `set_version`).
+    pub shown: &'static str,
     /// This copy's version (tests set another).
     pub current: Version,
     /// This system, for picking the file to download (tests set another).
@@ -93,8 +96,8 @@ impl Default for UpdatesState {
     fn default() -> Self {
         Self {
             status: UpdateStatus::Idle,
-            // The same version as core's CURRENT_VERSION, except fixed in tests.
-            current: Version::parse(super::menu_bar::VERSION).unwrap_or(Version { major: 0, minor: 0, patch: 0, pre: Vec::new() }),
+            shown: super::menu_bar::PLACEHOLDER_VERSION,
+            current: parsed(super::menu_bar::PLACEHOLDER_VERSION),
             platform: app_update::current_platform(),
             auto_from: None,
             retry_at: None,
@@ -105,6 +108,18 @@ impl Default for UpdatesState {
             transfer: Transfer::default(),
         }
     }
+}
+
+impl UpdatesState {
+    /// This copy is `version` (the shell, at startup, with the build's).
+    pub fn set_version(&mut self, version: &'static str) {
+        self.shown = version;
+        self.current = parsed(version);
+    }
+}
+
+fn parsed(version: &str) -> Version {
+    Version::parse(version).unwrap_or(Version { major: 0, minor: 0, patch: 0, pre: Vec::new() })
 }
 
 pub fn latest_text(t: Lang, current: &Version) -> String {

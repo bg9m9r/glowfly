@@ -14,8 +14,15 @@ use std::path::Path;
 /// `opts.stash_first`, local changes are stashed first (`undo_stash::stash_and_undo`). Where
 /// hooks follow the working tree, every git command (the stash's too) goes through `gate`, and
 /// a command it holds fails the undo.
-pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, gate: Option<&super::trust_gate::Gate>) -> Msg {
-    let git = UndoGit { gate };
+pub(super) fn undo_redo(
+    cwd: &Path,
+    action: Action,
+    redo: bool,
+    opts: UndoOpts,
+    gate: Option<&super::trust_gate::Gate>,
+    trashers: undo::Trashers,
+) -> Msg {
+    let git = UndoGit { gate, trashers };
     let (ok, output, undo) = if opts.stash_first {
         super::undo_stash::stash_and_undo(cwd, action, redo, opts, git)
     } else {
@@ -25,10 +32,12 @@ pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool, opts: UndoOpts, 
     Msg::Job(JobMsg::JobDone { ok, output, undo: Some(undo) })
 }
 
-/// How undo runs its git commands: through the trust gate (#273) when there is one.
+/// How undo runs its git commands: through the trust gate (#273) when there is one; and the
+/// trash a put-back or a delete-again uses (the runner's `Seams`).
 #[derive(Clone, Copy)]
 pub(super) struct UndoGit<'a> {
     pub gate: Option<&'a super::trust_gate::Gate>,
+    pub trashers: undo::Trashers,
 }
 
 impl UndoGit<'_> {
@@ -125,12 +134,10 @@ fn carry_out(
                 }
             }
         }
-        Ok(Plan::PutBack { path, content, staged, via }) => {
-            match undo::put_back(cwd, &path, content, staged.as_ref(), via, super::files::TRASHERS) {
-                Ok(how) => done(how.wrote(&path, staged.is_some(), via), action.clone(), action),
-                Err(e) => failed(format!("Could not put back {path}: {e}")),
-            }
-        }
+        Ok(Plan::PutBack { path, content, staged, via }) => match undo::put_back(cwd, &path, content, staged.as_ref(), via, git.trashers) {
+            Ok(how) => done(how.wrote(&path, staged.is_some(), via), action.clone(), action),
+            Err(e) => failed(format!("Could not put back {path}: {e}")),
+        },
         Ok(Plan::Restage { path, staged }) => match undo::restage(cwd, &path, &staged) {
             Ok(()) => done(action.wrote(redo), action.clone(), action),
             Err(e) => failed(format!("Could not stage {path} again: {e}")),
@@ -139,7 +146,7 @@ fn carry_out(
             Ok(()) => done(action.wrote(redo), action.clone(), action),
             Err(e) => failed(format!("Could not unstage {path}: {e}")),
         },
-        Ok(Plan::DeleteAgain { path, via, staged }) => match undo::delete_again(cwd, &path, via, staged, super::files::TRASHERS) {
+        Ok(Plan::DeleteAgain { path, via, staged }) => match undo::delete_again(cwd, &path, via, staged, git.trashers) {
             Ok(_) => done(action.wrote(redo), action.clone(), action),
             Err(Error::TrashRefused(r)) => failed(format!("The {TRASH} couldn't take {path}: {}", r.detail)),
             Err(e) => failed(format!("Could not delete {path}: {e}")),

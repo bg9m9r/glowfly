@@ -147,7 +147,7 @@ fn a_revert_for_a_parked_tab_goes_to_its_history() {
         .find(|e| matches!(e, Effect::Revert { .. }))
         .expect("a revert");
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
-    let reply = runner::execute(effect).expect("a result");
+    let reply = runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Scoped { .. }), "scoped to tab A's repository");
     run(&mut st, reply);
     assert_eq!(read(&a), OLD);

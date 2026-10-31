@@ -179,7 +179,7 @@ fn diffs_arrive_highlighted_including_reloads() {
     let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }));
     assert!(held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, previous: Some(p), .. } if p.hunks.len() == 2)), "{held:?}");
     for e in held {
-        if let Some(msg) = crate::runner::execute(e) {
+        if let Some(msg) = crate::runner::testing::execute(e) {
             drive(&mut st, msg);
         }
     }
@@ -225,7 +225,7 @@ pub(super) fn drive_holding_diffs(st: &mut AppState, msg: Msg) -> Vec<Effect> {
             match effect {
                 Effect::LoadDiff { .. } => held.push(effect),
                 Effect::LoadStatus { .. } | Effect::LocalOp { .. } | Effect::LoadRepo { .. } => {
-                    queue.extend(crate::runner::execute(effect))
+                    queue.extend(crate::runner::testing::execute(effect))
                 }
                 _ => {}
             }
@@ -267,7 +267,7 @@ fn hunk_ops_wait_for_the_reload_after_a_hunk_op() {
     // The same click confirmed after the reload lands is refused too.
     run(&mut st, Msg::confirm("Discard hunk", "Discard?".into(), "Discard", discard_h1()));
     for effect in held {
-        let reloaded = crate::runner::execute(effect).expect("diff result");
+        let reloaded = crate::runner::testing::execute(effect).expect("diff result");
         run(&mut st, reloaded);
     }
     assert_eq!(st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
@@ -292,7 +292,7 @@ fn late_diff_results_do_not_replace_a_newer_diff_or_reopen_a_closed_one() {
     let b = DiffTarget::Staged("b.txt".into());
     let load = |fx: Vec<Effect>| -> Msg {
         let Ok([effect]) = <[Effect; 1]>::try_from(fx) else { panic!("expected one diff load") };
-        crate::runner::execute(effect).expect("diff result")
+        crate::runner::testing::execute(effect).expect("diff result")
     };
 
     // A is opened, then B; A's result arrives last and is ignored.

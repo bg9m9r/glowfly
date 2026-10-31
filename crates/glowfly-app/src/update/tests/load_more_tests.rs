@@ -106,7 +106,7 @@ fn scrolling_while_a_refresh_runs_queues_one_load() {
 
     // The first load finishes: the queued one runs, once, with the higher limit.
     let load = running.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).unwrap();
-    let msg = crate::runner::execute(load).unwrap();
+    let msg = crate::runner::testing::execute(load).unwrap();
     let fx = update(&mut st, msg, Instant::now());
     assert_eq!(one_full_load(&fx), 2 * limit);
     finish(&mut st, fx);

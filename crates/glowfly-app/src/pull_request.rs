@@ -8,7 +8,6 @@
 //! and `Msg::Copy`.
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 pub mod line_comment;
 
@@ -180,7 +179,6 @@ impl EffectMeta for PrEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

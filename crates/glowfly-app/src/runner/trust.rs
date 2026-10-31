@@ -188,13 +188,6 @@ pub(super) fn before_shell(check: Option<TrustCheck>, spawn: impl FnOnce() -> Ef
     }
 }
 
-/// `execute` with the trust re-check `c` first, for tests.
-#[cfg(test)]
-pub fn execute_checked(c: TrustCheck, effect: Effect) -> Option<Msg> {
-    let cx = Cx { cancelled: &|| false, graph_cache: &glowfly_core::repo::GraphCache::default(), stop: None, gate: None, send: &|_| {} };
-    Execute::execute(Box::new(Checked { effect, check: c }), &cx)
-}
-
 #[cfg(test)]
 #[path = "trust_tests.rs"]
 mod tests;

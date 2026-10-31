@@ -14,10 +14,6 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-/// How long a chunk may take before it is reported. Tests allow far longer, so a busy machine
-/// (the whole suite running in parallel) cannot split a small search into several chunks.
-const CHUNK: Duration = if cfg!(test) { Duration::from_secs(30) } else { Duration::from_millis(150) };
-
 pub(super) struct Request {
     pub workdir: PathBuf,
     pub request: u64,
@@ -41,8 +37,9 @@ impl PathSearchWorker {
         self.0.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Asks for `r`, instead of any request still waiting, and stops the one running.
-    pub(super) fn submit(&self, r: Request, tx: Sender<Msg>, waker: Waker) {
+    /// Asks for `r`, instead of any request still waiting, and stops the one running. A chunk
+    /// may take `chunk` before it is reported (the runner's `Seams`).
+    pub(super) fn submit(&self, r: Request, chunk: Duration, tx: Sender<Msg>, waker: Waker) {
         let start = {
             let mut s = self.slot();
             s.next = Some(r);
@@ -55,7 +52,7 @@ impl PathSearchWorker {
         }
         let worker = self.clone();
         let (tx2, waker2) = (tx.clone(), waker.clone());
-        if let Err(e) = std::thread::Builder::new().name("glowfly-search-paths".into()).spawn(move || worker.work(&tx2, &waker2)) {
+        if let Err(e) = std::thread::Builder::new().name("glowfly-search-paths".into()).spawn(move || worker.work(chunk, &tx2, &waker2)) {
             tracing::error!("could not start the path search thread: {e}");
             let mut s = self.slot();
             s.running = false;
@@ -67,7 +64,7 @@ impl PathSearchWorker {
     }
 
     /// Works through requests until none is waiting.
-    fn work(&self, tx: &Sender<Msg>, waker: &Waker) {
+    fn work(&self, chunk: Duration, tx: &Sender<Msg>, waker: &Waker) {
         loop {
             let Request { workdir, request, terms, oids } = {
                 let mut s = self.slot();
@@ -82,7 +79,7 @@ impl PathSearchWorker {
             let newer = || self.slot().next.is_some();
             let mut start = 0;
             loop {
-                let deadline = Instant::now() + CHUNK;
+                let deadline = Instant::now() + chunk;
                 let stop = || newer() || Instant::now() >= deadline;
                 let rest = &oids[start..];
                 match catch_unwind(AssertUnwindSafe(|| repo::commits_touching(&workdir, rest, &terms, &stop))) {
@@ -120,7 +117,7 @@ fn report(tx: &Sender<Msg>, waker: &Waker, workdir: PathBuf, request: u64, resul
     }
 }
 
-/// Runs request `r` to the end at once (the test path, `runner::execute`).
+/// Runs request `r` to the end at once (the test path, `runner::testing::execute`).
 pub(super) fn once(r: Request) -> Msg {
     let Request { workdir, request, terms, oids } = r;
     let result = repo::commits_touching(&workdir, &oids, &terms, &|| false)
@@ -133,6 +130,8 @@ pub(super) fn once(r: Request) -> Msg {
 mod tests {
     use super::*;
     use std::sync::mpsc;
+
+    const CHUNK: Duration = crate::runner::testing::SEAMS.chunk;
 
     use glowfly_core::testkit::git;
 
@@ -158,13 +157,13 @@ mod tests {
         w.slot().running = true;
         let terms = vec![PathTerm::parse("docs").unwrap()];
         let req = |request, oids| Request { workdir: dir.clone(), request, terms: terms.clone(), oids };
-        w.submit(req(1, vec![one]), tx.clone(), Waker::none());
-        w.submit(req(2, vec![two, one]), tx.clone(), Waker::none());
+        w.submit(req(1, vec![one]), CHUNK, tx.clone(), Waker::none());
+        w.submit(req(2, vec![two, one]), CHUNK, tx.clone(), Waker::none());
         assert!(rx.recv_timeout(Duration::from_millis(50)).is_err(), "the replaced request is dropped silently");
         assert_eq!(w.slot().next.as_ref().map(|r| r.request), Some(2));
 
         // The worker takes the waiting request, reports it in one chunk, and ends.
-        w.work(&tx, &Waker::none());
+        w.work(CHUNK, &tx, &Waker::none());
         assert!(!w.slot().running && w.slot().next.is_none());
         let Ok(Msg::Scoped { workdir, msg }) = rx.try_recv() else { panic!("a report") };
         assert_eq!(workdir, dir);

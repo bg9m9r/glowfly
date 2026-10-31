@@ -5,27 +5,26 @@
 //! and recorded by name. The tally counts effects started and still in flight, so a test can
 //! tell when the app is idle.
 
-use super::{Runner, Waker};
-use crate::effect::areas::{effect_areas, effect_match};
-use crate::effect::{Effect, EffectMeta, SandboxRule};
+use super::Runner;
+use crate::effect::{Effect, SandboxRule};
 use crate::msg::Msg;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
+/// Built by `testing::sandboxed` only.
 pub(super) struct Sandbox {
     /// Where settings.json, recent.txt and tabs.txt are written.
-    files: PathBuf,
+    pub(super) files: PathBuf,
     /// The names of the effects dropped, in order.
-    dropped: Arc<Mutex<Vec<&'static str>>>,
+    pub(super) dropped: Arc<Mutex<Vec<&'static str>>>,
 }
 
 /// Effects started, and the names of those still running or queued.
 #[derive(Default)]
 pub(super) struct Tally {
-    started: AtomicU64,
-    in_flight: Mutex<Vec<&'static str>>,
+    pub(super) started: AtomicU64,
+    pub(super) in_flight: Mutex<Vec<&'static str>>,
 }
 
 /// One effect in flight; dropping it (also while a panicking effect unwinds) ends it.
@@ -34,7 +33,7 @@ pub(super) struct Busy {
     name: &'static str,
 }
 
-fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(super) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
@@ -56,30 +55,11 @@ impl Drop for Busy {
 }
 
 impl Runner {
-    /// `Runner::new` for a whole-app test: saves land in `files`, and outside effects are dropped.
-    pub(crate) fn sandboxed(tx: Sender<Msg>, waker: Waker, files: PathBuf) -> Self {
-        let mut runner = Self::new(tx, waker);
-        runner.sandbox = Some(Sandbox { files, dropped: Default::default() });
-        runner
-    }
-
-    pub(crate) fn started(&self) -> u64 {
-        self.tally.started.load(Ordering::SeqCst)
-    }
-
-    pub(crate) fn in_flight_names(&self) -> Vec<&'static str> {
-        lock(&self.tally.in_flight).clone()
-    }
-
-    pub(crate) fn dropped(&self) -> Vec<&'static str> {
-        self.sandbox.as_ref().map(|s| lock(&s.dropped).clone()).unwrap_or_default()
-    }
-
     /// The effect to run as usual, or None when the sandbox handled it (a save it wrote, or an
     /// effect it dropped). Without a sandbox every effect runs.
     pub(super) fn admit(&self, effect: Effect) -> Option<Effect> {
         let Some(sandbox) = &self.sandbox else { return Some(effect) };
-        match rule(&effect) {
+        match effect.sandbox() {
             SandboxRule::Run => Some(effect),
             SandboxRule::Save => {
                 if let Some(msg) = save_into(&sandbox.files, effect)
@@ -96,40 +76,6 @@ impl Runner {
             }
         }
     }
-}
-
-/// What the sandbox does with `effect`: an area's rule comes from its `EffectMeta`; every flat
-/// variant is listed, so a new one has to be placed.
-pub(crate) fn rule(effect: &Effect) -> SandboxRule {
-    effect_areas! { effect_match! { effect, |e| e.sandbox(), {
-        Effect::LoadRepo { .. }
-        | Effect::LoadStatus { .. }
-        | Effect::LoadIndexStatus { .. }
-        | Effect::LoadDetail { .. }
-        | Effect::LoadDiff { .. }
-        | Effect::HighlightDiff { .. }
-        | Effect::LoadDiffGaps { .. }
-        | Effect::LoadBinarySides { .. }
-        | Effect::LocalOp { .. }
-        | Effect::Revert { .. }
-        | Effect::RestoreFile { .. }
-        | Effect::WorkFile { .. }
-        | Effect::LoadTrackedPaths { .. }
-        | Effect::LoadFileHistory { .. }
-        | Effect::RunGit { .. }
-        | Effect::UndoRedo { .. }
-        | Effect::Stats { .. }
-        | Effect::SearchPaths { .. }
-        | Effect::VerifySignature { .. }
-        | Effect::CheckRepoFolders(_)
-        | Effect::ReadTabGroups(_)
-        | Effect::Watch(_)
-        | Effect::SweepWatch { .. }
-        | Effect::AnswerPrompt { .. }
-        | Effect::StopGit(_) => SandboxRule::Run,
-        Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. } => SandboxRule::Save,
-        Effect::Forge { .. } | Effect::FetchAvatars(_) => SandboxRule::Drop,
-    } } }
 }
 
 /// `saves::save_now`, writing into `folder`.
@@ -152,6 +98,7 @@ mod tests {
     use crate::effect::{CloneEffect, DesktopNote, NoteKind, OsEffect};
     use crate::patch::PatchEffect;
     use crate::profile::ProfileEffect;
+    use crate::runner::Waker;
     use std::sync::mpsc;
 
     fn folder(name: &str) -> PathBuf {
@@ -165,7 +112,7 @@ mod tests {
     fn runs_repository_effects_and_drops_outside_ones() {
         let dir = folder("admit");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
+        let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         let status =
             Effect::LoadStatus { workdir: dir.clone(), generation: 1, submodules: false, open: None, git_status: false, paths: None };
         assert!(matches!(runner.admit(status), Some(Effect::LoadStatus { .. })));
@@ -180,7 +127,7 @@ mod tests {
     fn a_sweep_without_a_watcher_reads_the_whole_status() {
         let dir = folder("sweep");
         let (tx, rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
+        let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         runner.run(Effect::SweepWatch { workdir: dir.clone() });
         let msg = rx.recv_timeout(std::time::Duration::from_secs(5)).expect("a message");
         let Msg::Scoped { workdir, msg } = msg else { panic!("scoped to the repository") };
@@ -193,7 +140,7 @@ mod tests {
     fn patch_pickers_and_the_service_repo_list_are_dropped() {
         let dir = folder("split");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
+        let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         let what = glowfly_core::patch_ops::PatchSource::Commits { oids: Vec::new(), paths: Vec::new() };
         let pick_save = PatchEffect::PickSave { workdir: dir.clone(), what: what.clone(), name: "a.patch".into() };
         assert!(runner.admit(Effect::Patch(pick_save)).is_none());
@@ -217,7 +164,7 @@ mod tests {
         use glowfly_core::profile_includes::IncludePlan;
         let dir = folder("profiles");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
+        let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         let (workdir, git_dir) = (dir.clone(), dir.join(".git"));
         let read = ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new() };
         assert!(runner.admit(Effect::Profile(read)).is_some());
@@ -235,7 +182,7 @@ mod tests {
         use crate::custom_commands::{CustomCommandEffect, ShellRun};
         let dir = folder("custom");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
+        let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         assert!(runner.admit(Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: dir.clone() })).is_none());
         let shell = CustomCommandEffect::RunShell(ShellRun { cwd: dir.clone(), script: "true".into() });
         assert!(runner.admit(Effect::CustomCommand(shell)).is_none());
@@ -248,7 +195,7 @@ mod tests {
         use crate::effect::{ConflictEffect, ConflictRead, LfsEffect, MonitorJob, SelectionEffect, SparseEffect, WorktreeEffect};
         let dir = folder("moved");
         let (tx, _rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
+        let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         assert!(runner.admit(Effect::TurnOnMonitor(MonitorJob { cwd: dir.clone(), then: Vec::new() })).is_none());
         let oid = git2::Oid::zero();
         let count = crate::worktree::CountRequest { workdir: dir.clone(), refs_key: 1, targets: Vec::new() };
@@ -279,7 +226,7 @@ mod tests {
     fn saves_are_written_into_the_folder_before_admit_returns() {
         let dir = folder("saves");
         let (tx, rx) = mpsc::channel();
-        let runner = Runner::sandboxed(tx, Waker::none(), dir.clone());
+        let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         let repo = dir.join("repo");
         assert!(runner.admit(Effect::SaveRecent(vec![repo.clone()])).is_none());
         let tabs = Effect::SaveTabs { paths: vec![repo.clone()], labels: vec![Some("Web".into())], active: 0 };

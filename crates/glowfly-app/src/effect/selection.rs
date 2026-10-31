@@ -2,7 +2,6 @@
 //! working tree, and each selected commit's own changes for a multi-selection with no combined
 //! diff (runner/selection.rs).
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::meta::EffectMeta;
 use git2::Oid;
@@ -56,7 +55,6 @@ impl EffectMeta for SelectionEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

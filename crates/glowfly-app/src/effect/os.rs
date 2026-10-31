@@ -3,7 +3,6 @@
 //! runner/os.rs). Unscoped; none of them touches the repository.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use crate::msg::{FilePurpose, FolderPurpose};
 use std::path::{Path, PathBuf};
@@ -60,7 +59,6 @@ impl EffectMeta for OsEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

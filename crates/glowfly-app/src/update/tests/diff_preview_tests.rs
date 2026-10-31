@@ -46,7 +46,7 @@ fn open(st: &mut AppState, target: DiffTarget) -> Vec<Effect> {
 /// Runs the LoadDiff among `fx` and applies its result, returning the effects that raised.
 fn deliver_diff(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { .. })).expect("a diff load");
-    let msg = runner::execute(load).expect("a result");
+    let msg = runner::testing::execute(load).expect("a result");
     run(st, msg)
 }
 
@@ -80,7 +80,7 @@ fn a_binary_diff_asks_for_its_sides_once() {
     assert!(p.target == bin() && p.sides.is_none(), "loading");
     // Running it fills the sides in.
     for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadBinarySides { .. })) {
-        let msg = runner::execute(e).expect("a result");
+        let msg = runner::testing::execute(e).expect("a result");
         assert!(matches!(&msg, Msg::Scoped { msg, .. } if matches!(**msg, Msg::Diff(DiffMsg::BinarySidesLoaded { .. }))));
         drive(&mut st, msg);
     }

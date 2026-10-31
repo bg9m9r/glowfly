@@ -2,7 +2,6 @@
 //! of a stash's files and the abort that keeps an operation's work for Undo (`Effect::Stash`).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use crate::state::stash_confirm::StashAsk;
 use git2::Oid;
@@ -85,7 +84,6 @@ impl EffectMeta for StashEffect {
         }
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

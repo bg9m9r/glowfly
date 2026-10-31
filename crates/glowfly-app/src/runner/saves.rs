@@ -33,7 +33,6 @@ impl Runner {
         let (order, ticket) = (order.clone(), order.ticket());
         let (tx, waker) = (self.tx.clone(), self.waker.clone());
         let name = effect.name();
-        #[cfg(test)]
         let busy = self.tally.begin(name);
         let spawned = std::thread::Builder::new().name(format!("glowfly-{name}")).spawn(move || {
             if let Some(msg) = order.write(ticket, || save_now(effect)).flatten()
@@ -41,7 +40,6 @@ impl Runner {
             {
                 waker.wake();
             }
-            #[cfg(test)]
             drop(busy);
         });
         if let Err(e) = spawned {

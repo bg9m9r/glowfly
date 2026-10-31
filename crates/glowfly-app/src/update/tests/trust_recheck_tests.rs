@@ -38,7 +38,7 @@ pub(super) fn checked_job(fx: Vec<Effect>) -> Effect {
 pub(super) fn recheck(st: &mut AppState, job: Effect) -> bool {
     let Effect::Checked(c) = job else { panic!("checked") };
     let crate::effect::Checked { effect, check } = *c;
-    match crate::runner::execute_checked(check, effect).expect("a message") {
+    match crate::runner::testing::execute_checked(check, effect).expect("a message") {
         msg @ Msg::Trust(TrustMsg::Stale(_)) => {
             drive(st, msg);
             false

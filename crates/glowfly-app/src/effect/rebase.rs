@@ -4,7 +4,6 @@
 //! a stopped restack.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::rebase::{EditTodoRequest, QuickEdit, RebaseBase, Resume, StartRequest};
 use glowfly_core::stack::{RestackPlan, RestackStep};
@@ -99,7 +98,6 @@ impl EffectMeta for RebaseEffect {
         }
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

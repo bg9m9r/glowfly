@@ -4,7 +4,6 @@
 //! changes the repository.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use super::Shared;
 use git2::Oid;
@@ -61,7 +60,6 @@ impl EffectMeta for BackgroundEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

@@ -57,7 +57,7 @@ fn filter(st: &mut AppState, q: &str) -> Vec<Effect> {
 /// raised.
 fn finish_truncated(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).expect("a load");
-    let Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Ok(mut snap) })) = crate::runner::execute(load) else {
+    let Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Ok(mut snap) })) = crate::runner::testing::execute(load) else {
         panic!("the load succeeds")
     };
     snap.truncated = true;
@@ -168,7 +168,7 @@ fn path_terms_wait_for_the_file_search() {
     let mut loaded = 0;
     while let Some(search) = fx.iter().position(|e| matches!(e, Effect::SearchPaths { .. })) {
         assert!(st.session.search.searching_files());
-        let reply = crate::runner::execute(fx.swap_remove(search)).expect("a report");
+        let reply = crate::runner::testing::execute(fx.swap_remove(search)).expect("a report");
         fx = update(&mut st, reply, Instant::now());
         loaded += loads(&fx).len();
     }

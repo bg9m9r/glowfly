@@ -58,7 +58,7 @@ fn auto_fetch_in_an_lfs_repository_starts_a_quiet_lfs_download() {
     let tick = st.last_fetch + Duration::from_secs(61);
     let mut fx = update(&mut st, Msg::Tick(tick), Instant::now());
     assert!(matches!(&fx[..], [Effect::RunGit { .. }]), "{fx:?}");
-    let done = runner::execute(fx.remove(0)).expect("the fetch's result");
+    let done = runner::testing::execute(fx.remove(0)).expect("the fetch's result");
     let fx = update(&mut st, done, Instant::now());
     let quiet = fx.iter().any(|e| matches!(e, Effect::RunGit { cmds, prompts: false, .. } if *cmds == [args(&["lfs", "fetch"])]));
     assert!(quiet, "{fx:?}");

@@ -40,6 +40,7 @@ mod prefs;
 mod rebase;
 mod repo;
 mod repos;
+mod sandbox;
 mod scope;
 mod selection;
 mod sparse;
@@ -71,7 +72,6 @@ pub use lfs::LfsEffect;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
 pub use lock::LockEffect;
 pub use meta::EffectMeta;
-#[cfg(test)]
 pub use meta::SandboxRule;
 pub use monitor::{MonitorJob, MonitorOff};
 pub use notify::{DesktopNote, NoteKind};

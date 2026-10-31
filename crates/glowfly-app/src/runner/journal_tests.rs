@@ -1,6 +1,6 @@
 use crate::effect::{Effect, UndoOpts};
 use crate::msg::{JobMsg, Msg};
-use crate::runner::execute;
+use crate::runner::testing::execute;
 use git2::Oid;
 use glowfly_core::gitcli::args;
 use glowfly_core::journal::{Op, notes};

@@ -235,7 +235,7 @@ fn adds_a_local_repository_end_to_end() {
     f.path_edited = true;
     let fx = run(&mut st, sm(SubmoduleMsg::AddEdited));
     for e in fx {
-        let m = runner::execute(e).expect("the check answers");
+        let m = runner::testing::execute(e).expect("the check answers");
         drive(&mut st, m);
     }
     assert_eq!(form(&mut st).checked, Some(("libs/lib".into(), Ok(Vec::new()))));

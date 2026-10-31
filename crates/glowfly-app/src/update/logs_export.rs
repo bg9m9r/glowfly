@@ -6,7 +6,6 @@ use crate::effect::{Effect, OsEffect};
 use crate::logs::{LogsEffect, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::menu_bar::VERSION;
 use crate::state::toasts::ToastAction;
 use glowfly_core::logs::{self, BundleReport};
 use glowfly_core::{git_version, native_path};
@@ -38,7 +37,7 @@ pub(super) fn header(st: &AppState) -> Vec<(String, String)> {
     };
     let pairs = [
         ("Exported", logs::stamp(st.view.now, st.view.utc_offset)),
-        ("Glowfly", VERSION.to_owned()),
+        ("Glowfly", st.updates.shown.to_owned()),
         ("OS", logs::platform()),
         ("Git", git),
         ("Extended logging", if st.settings.extended_logging { "on" } else { "off" }.to_owned()),

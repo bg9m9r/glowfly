@@ -7,7 +7,6 @@
 
 use crate::effect::EffectMeta;
 use crate::effect::LoadKind;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use glowfly_core::git_program::Candidate;
 use glowfly_core::git_version::GitInfo;
@@ -164,7 +163,6 @@ impl EffectMeta for GitEnvEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         match self {
             GitEnvEffect::Detect { .. }

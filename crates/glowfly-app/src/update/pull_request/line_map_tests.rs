@@ -170,7 +170,7 @@ fn a_moved_tip_asks_again() {
     assert_eq!(current(view(&st)), None, "the old maps aren't used while the files load");
     assert!(marks(view(&st), "f.txt").is_none());
     let files = fx.into_iter().find(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_)))).expect("the files load again");
-    let msg = crate::runner::execute(files).expect("an answer");
+    let msg = crate::runner::testing::execute(files).expect("an answer");
     let fx = update(&mut st, msg, Instant::now());
     let asked = jobs(&fx);
     let [job] = &asked[..] else { panic!("asked again: {asked:?}") };

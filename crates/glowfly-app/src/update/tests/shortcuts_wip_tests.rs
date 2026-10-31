@@ -254,7 +254,8 @@ fn a_status_read_while_a_file_opens_asks_for_that_file() {
     let fx = update(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("b.txt"))), Instant::now());
     assert_eq!(loads(&fx), vec![(un("b.txt"), false)]);
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
-    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(crate::runner::execute).expect("a status read");
+    let status =
+        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(crate::runner::testing::execute).expect("a status read");
     let fx = update(&mut st, status, Instant::now());
     assert_eq!(loads(&fx), vec![(un("b.txt"), false)], "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -276,7 +277,8 @@ fn a_file_still_opening_that_left_its_list_is_dropped() {
     show(&mut st, un("a.txt"));
     update(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("x.txt"))), Instant::now());
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
-    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(crate::runner::execute).expect("a status read");
+    let status =
+        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(crate::runner::testing::execute).expect("a status read");
     let fx = update(&mut st, status, Instant::now());
     assert_eq!(loads(&fx), vec![(un("a.txt"), true)], "{fx:?}");
     assert_eq!(st.view.diff_opening, None);

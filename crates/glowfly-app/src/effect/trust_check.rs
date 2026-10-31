@@ -5,7 +5,6 @@
 //! (`Effect::Checked`): update wraps each effect it sealed before returning it
 //! (update/trust_seal.rs), so nothing pairs them up later.
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::{Effect, EffectMeta};
 use glowfly_core::settings::SavedTrust;
@@ -104,9 +103,8 @@ impl EffectMeta for Checked {
         self.effect.stop_key()
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
-        crate::runner::sandbox_rule(&self.effect)
+        self.effect.sandbox()
     }
 }
 

@@ -98,7 +98,7 @@ fn the_built_link_is_copied_with_a_toast() {
     let (mut st, work, bare) = with_origin("link-built");
     // End to end through the runner: the link carries the URL and the root commit.
     let fx = send(&mut st, DeepLinkMsg::Copy(LinkTarget::LocalBranch("feature".into())));
-    let built = crate::runner::execute(fx.into_iter().next().unwrap()).unwrap();
+    let built = crate::runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
     let fx = update(&mut st, built, Instant::now());
     let uri = match &fx[..] {
         [Effect::Ui(UiEffect::CopyText(uri))] => uri.clone(),

@@ -46,7 +46,7 @@ pub(super) fn drive_holding_highlights(st: &mut AppState, msg: Msg) -> Vec<Effec
             match effect {
                 Effect::HighlightDiff { .. } => held.push(effect),
                 Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. } | Effect::LocalOp { .. } => {
-                    queue.extend(runner::execute(effect))
+                    queue.extend(runner::testing::execute(effect))
                 }
                 _ => {}
             }
@@ -59,7 +59,7 @@ pub(super) fn drive_holding_highlights(st: &mut AppState, msg: Msg) -> Vec<Effec
 fn result_of(e: &Effect) -> Msg {
     let Effect::HighlightDiff { workdir, target, generation, diff } = e else { panic!("not a HighlightDiff") };
     let e = Effect::HighlightDiff { workdir: workdir.clone(), target: target.clone(), generation: *generation, diff: diff.clone() };
-    runner::execute(e).expect("finished")
+    runner::testing::execute(e).expect("finished")
 }
 
 fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -122,7 +122,7 @@ fn big_diff_opens_plain_then_colors() {
     );
 
     let view = (st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
-    let msg = runner::execute(held.remove(0)).expect("a result");
+    let msg = runner::testing::execute(held.remove(0)).expect("a result");
     assert!(matches!(msg, Msg::Scoped { .. }));
     assert!(up(&mut st, msg).is_empty());
     assert_colored(shown(&st));
@@ -189,7 +189,7 @@ fn whole_file_over_limit_gets_colors() {
     let w = shown(&st).whole.as_deref().expect("the whole file is loaded");
     assert!(pending(w.diff.highlight.as_ref()));
     assert_eq!(held.len(), 1);
-    let msg = runner::execute(held.remove(0)).unwrap();
+    let msg = runner::testing::execute(held.remove(0)).unwrap();
     up(&mut st, msg);
     assert_colored(&shown(&st).whole.as_deref().unwrap().diff);
 
@@ -203,7 +203,7 @@ fn whole_file_over_limit_gets_colors() {
 
 /// Executes the held diff loads and applies their results, returning the effects.
 pub(super) fn land(st: &mut AppState, held: Vec<Effect>) -> Vec<Effect> {
-    held.into_iter().filter_map(runner::execute).flat_map(|m| up(st, m)).collect()
+    held.into_iter().filter_map(runner::testing::execute).flat_map(|m| up(st, m)).collect()
 }
 
 #[test]
@@ -244,7 +244,7 @@ fn reload_keeps_colors_without_plain_flash() {
     assert!(pending(w.highlight.as_ref()));
     assert_eq!(w.highlight.as_ref().unwrap().line(0, 10), line10.as_slice(), "carried, no plain flash");
     let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
-    let msg = runner::execute(fx.remove(i.expect("a background pass"))).unwrap();
+    let msg = runner::testing::execute(fx.remove(i.expect("a background pass"))).unwrap();
     up(&mut st, msg);
     assert_colored(&whole(&st));
     let _ = std::fs::remove_dir_all(&dir);

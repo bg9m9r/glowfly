@@ -128,7 +128,7 @@ fn finish_naming(st: &mut AppState, fx: Vec<Effect>) -> Vec<&'static str> {
         for effect in fx {
             names.push(effect.name());
             if !skipped(&effect) {
-                queue.extend(runner::execute(effect));
+                queue.extend(runner::testing::execute(effect));
             }
         }
         let Some(m) = queue.pop() else { return names };

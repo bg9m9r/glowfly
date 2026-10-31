@@ -30,7 +30,7 @@ fn index_changed(workdir: &Path, paths: &[&str]) -> Msg {
 /// Runs the one status read in `fx` and returns its result message, unscoped.
 fn result_of(fx: Vec<Effect>) -> Msg {
     let read = fx.into_iter().find(|e| matches!(e, Effect::LoadIndexStatus { .. } | Effect::LoadStatus { .. })).expect("a status read");
-    match runner::execute(read).expect("a result") {
+    match runner::testing::execute(read).expect("a result") {
         Msg::Scoped { msg, .. } => *msg,
         other => other,
     }

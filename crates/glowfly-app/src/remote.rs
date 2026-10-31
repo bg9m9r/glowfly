@@ -4,7 +4,6 @@
 
 use crate::effect::EffectMeta;
 use crate::effect::ForgeError;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use glowfly_core::forge::{Auth, CreatedFork, ForkList, ForkLookup, Target};
 use std::path::{Path, PathBuf};
@@ -113,7 +112,6 @@ impl EffectMeta for RemoteEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

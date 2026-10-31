@@ -1,7 +1,6 @@
 //! The effects of a shallow clone's size check and a partial clone's missing contents
 //! (runner/partial.rs), and the keys of the git commands that can be stopped (`Effect::StopGit`).
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::areas::{effect_areas, effect_match};
 use super::{Effect, EffectMeta};
@@ -48,7 +47,6 @@ impl EffectMeta for PartialEffect {
     }
 
     /// The size check may ask a hosting service.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         match self {
             PartialEffect::FetchContent(_) => SandboxRule::Run,

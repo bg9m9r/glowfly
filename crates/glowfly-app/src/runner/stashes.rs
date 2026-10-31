@@ -12,7 +12,7 @@ use glowfly_core::stash_ops::{self, PutBack};
 use glowfly_core::undo::{self, UndoKind};
 use std::path::Path;
 
-pub(super) fn run(e: StashEffect, gate: Option<&super::trust_gate::Gate>) -> Option<Msg> {
+pub(super) fn run(e: StashEffect, gate: Option<&super::trust_gate::Gate>, trashers: glowfly_core::undo::Trashers) -> Option<Msg> {
     match e {
         StashEffect::Rename { cwd, index, oid, message } => Some(rename(&cwd, index, oid, &message)),
         StashEffect::PutBack(req) => Some(put_back(req)),
@@ -28,7 +28,7 @@ pub(super) fn run(e: StashEffect, gate: Option<&super::trust_gate::Gate>) -> Opt
             Some(Msg::Stash(StashMsg::PathsRead { ask, paths }))
         }
         StashEffect::AbortKeeping { cwd, keep } => {
-            let (ok, output, action, _) = abort_keeping(&cwd, Some(&keep), super::undo_run::UndoGit { gate });
+            let (ok, output, action, _) = abort_keeping(&cwd, Some(&keep), super::undo_run::UndoGit { gate, trashers });
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo: Some(UndoResult::Recorded(action)) }))
         }
     }
@@ -55,7 +55,7 @@ pub(super) fn abort_keeping(
 
 impl Execute for StashEffect {
     fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
-        run(self, cx.gate.map(|(g, _)| g))
+        run(self, cx.gate.map(|(g, _)| g), cx.seams.trashers)
     }
 }
 

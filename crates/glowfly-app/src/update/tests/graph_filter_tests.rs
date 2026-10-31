@@ -48,7 +48,7 @@ fn op(st: &mut AppState, op: FilterOp) -> Vec<Effect> {
 fn run(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx {
         if matches!(e, Effect::LoadRepo { .. })
-            && let Some(m) = runner::execute(e)
+            && let Some(m) = runner::testing::execute(e)
         {
             drive(st, m);
         }
@@ -128,7 +128,7 @@ fn checking_out_hidden_branch_shows_it_again() {
     git(&dir, &["checkout", "-q", "feature"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::execute(e)).flatten()).unwrap();
+    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the load already showed it");
@@ -223,7 +223,7 @@ fn deleted_refs_are_pruned() {
     git(&dir, &["branch", "-D", "feature", "other"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::execute(e)).flatten()).unwrap();
+    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
@@ -309,7 +309,7 @@ fn deleted_tags_are_pruned() {
     git(&dir, &["tag", "-d", "rel", "keep"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::execute(e)).flatten()).unwrap();
+    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));

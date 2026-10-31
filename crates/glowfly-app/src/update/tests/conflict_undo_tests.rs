@@ -249,7 +249,7 @@ fn a_resolution_saved_for_an_inactive_tab_goes_to_its_history() {
         .find(|e| matches!(e, Effect::LocalOp { .. }))
         .expect("a save");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::execute(effect).expect("a result");
+    let reply = runner::testing::execute(effect).expect("a result");
     update(&mut st, reply, Instant::now());
 
     assert!(st.session.undo.undo.is_empty(), "tab B's history is untouched");

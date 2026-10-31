@@ -4,7 +4,7 @@
 //! follow the language.
 
 use crate::msg::{Msg, UpdateMsg};
-use crate::state::menu_bar::VERSION;
+use crate::state::menu_bar::PLACEHOLDER_VERSION as VERSION;
 use crate::state::release_notes::NotesDialog;
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use crate::ui::snapshot_check::CheckSnapshot;

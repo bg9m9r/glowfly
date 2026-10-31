@@ -68,7 +68,7 @@ fn forgets(fx: &[Effect]) -> Vec<PathBuf> {
 /// Runs the one build in `fx` and hands its result to update; the effects that raised.
 pub(super) fn run_build(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let build = fx.into_iter().find(|e| matches!(e, Effect::Index(IndexEffect::Build { .. }))).expect("a build");
-    let msg = crate::runner::execute(build).expect("a result");
+    let msg = crate::runner::testing::execute(build).expect("a result");
     update(st, msg, Instant::now())
 }
 
@@ -231,7 +231,7 @@ fn opening_another_repo_in_the_tab_forgets_the_old_one() {
     let mut fx = Vec::new();
     super::repo::load(&mut st, next.clone(), crate::effect::LoadKind::Open, &mut fx);
     let mut kept = Vec::new();
-    let msg = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).and_then(crate::runner::execute).unwrap();
+    let msg = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).and_then(crate::runner::testing::execute).unwrap();
     kept.extend(update(&mut st, msg, Instant::now()));
     assert_eq!(forgets(&kept), [old]);
     assert!(st.session.search.index.ready.is_none() && st.session.search.index.building.is_none());
@@ -251,7 +251,7 @@ fn an_index_built_for_a_parked_tab_is_kept() {
     let fx = update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
     finish(&mut st, fx);
     assert_eq!(st.active_tab, 1);
-    let result = crate::runner::execute(build).unwrap();
+    let result = crate::runner::testing::execute(build).unwrap();
     assert!(matches!(&result, Msg::Scoped { workdir, .. } if *workdir == dir || super::tests::same_place(workdir, &dir)));
     update(&mut st, result, Instant::now());
     let parked = st.tabs[0].parked.as_ref().unwrap();

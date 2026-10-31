@@ -5,7 +5,6 @@
 //! discarded changes Glowfly kept and restores them.
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use crate::state::journal_lost::JournalTab;
 use git2::Oid;
@@ -174,7 +173,6 @@ impl EffectMeta for JournalEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

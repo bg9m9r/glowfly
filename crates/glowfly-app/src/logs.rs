@@ -4,7 +4,6 @@
 //! update/logs_copy.rs, update/logs_export.rs, runner/logs.rs, logging.rs, ui/activity_log.rs).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use crate::state::logs::EntryId;
 use crate::state::tabs::TabId;
@@ -192,7 +191,6 @@ impl EffectMeta for LogsEffect {
     }
 
     /// A no-op: the log worker is never attached in a test. The save dialog is dropped.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         match self {
             Self::LoadActivity

@@ -243,7 +243,7 @@ fn whole_file_stage_block_end_to_end() {
         "{held:?}"
     );
     for e in held {
-        if let Some(msg) = crate::runner::execute(e) {
+        if let Some(msg) = crate::runner::testing::execute(e) {
             drive(&mut st, msg);
         }
     }

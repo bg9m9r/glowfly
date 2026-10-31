@@ -2,7 +2,6 @@
 //! (libgit2, no program runs), scoped to the repository's tab.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use git2::Oid;
 use std::path::{Path, PathBuf};
@@ -54,7 +53,6 @@ impl EffectMeta for LineCountsEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

@@ -4,7 +4,6 @@
 //! patch and Apply patch dialogs).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use git2::Oid;
 use glowfly_core::patch_ops::{AmOptions, ApplyOptions, ExportReport, PatchSource, PatchSummary, SaveReport, WipScope};
@@ -128,7 +127,6 @@ impl EffectMeta for PatchEffect {
     }
 
     /// The file dialogs are dropped.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         match self {
             PatchEffect::Export { .. } | PatchEffect::Inspect { .. } | PatchEffect::Copy { .. } => SandboxRule::Run,

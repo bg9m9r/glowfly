@@ -6,7 +6,6 @@
 //! Commands submenu in ui/custom_menu.rs and the keys in ui/shortcuts/custom_keys.rs.
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use glowfly_core::custom_commands::{FileRead, Source};
 use std::path::{Path, PathBuf};
@@ -97,7 +96,6 @@ impl EffectMeta for CustomCommandEffect {
     }
 
     /// Reads the user's config folder; runs the OS shell.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

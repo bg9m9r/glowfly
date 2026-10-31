@@ -2,7 +2,6 @@
 //! made from a trusted one, so they can be trusted too (update/trust_inherit.rs).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use crate::state::trust::InheritKind;
 use std::path::{Path, PathBuf};
@@ -33,7 +32,6 @@ impl EffectMeta for TrustEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

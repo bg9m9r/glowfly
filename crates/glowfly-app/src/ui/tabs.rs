@@ -121,7 +121,6 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                 Slot { rect, r, close }
             })
             .collect();
-        #[cfg(test)]
         ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new(RECTS), slots.iter().map(|s| s.rect).collect::<Vec<_>>()));
         let floating = drag(ui, &slots, &blocks, st.view.chrome.drawn(), msgs);
         // The toolbar's fill, which the active tab runs into, and its band in the checked-out
@@ -224,7 +223,6 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
 }
 
 /// Where the strip keeps its tabs' rects for the tests (`tab_rects`).
-#[cfg(test)]
 const RECTS: &str = "tab-rects";
 
 /// The tabs' rects as last drawn.

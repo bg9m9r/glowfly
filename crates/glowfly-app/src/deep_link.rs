@@ -6,7 +6,6 @@
 //! ui/prefs/links.rs).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use git2::Oid;
 use glowfly_core::link::find::Found;
@@ -144,7 +143,6 @@ impl EffectMeta for DeepLinkEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

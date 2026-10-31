@@ -230,7 +230,7 @@ fn undo_result_lands_in_its_own_tab() {
         update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).into_iter().find(|e| matches!(e, Effect::UndoRedo { .. })).expect("undo");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     assert!(st.session.undo.undo.is_empty() && st.session.undo.blocked.is_none(), "tab B has its own history");
-    let reply = runner::execute(effect).expect("a result");
+    let reply = runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Job(JobMsg::JobDone { .. })), "undo results are not scoped to the active tab");
     let fx = update(&mut st, reply, Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "tab B is not refreshed");

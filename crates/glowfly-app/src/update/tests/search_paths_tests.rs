@@ -69,7 +69,7 @@ fn settle(st: &mut AppState, fx: Vec<Effect>) -> Vec<(u64, Vec<Oid>)> {
         for effect in fx {
             match effect {
                 Effect::SearchPaths { request, oids, .. } => asked.push((request, oids)),
-                e if !skipped(&e) => queue.extend(runner::execute(e)),
+                e if !skipped(&e) => queue.extend(runner::testing::execute(e)),
                 _ => {}
             }
         }

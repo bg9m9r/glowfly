@@ -269,7 +269,7 @@ fn a_closed_tab_lets_go_of_its_repository_handles() {
 fn forgetting_a_repository_drops_its_pooled_handles() {
     use glowfly_core::repo_pool::{Use, kept, lend};
     let dir = super::tests::scratch_repo("forget-pooled");
-    let forget = || crate::runner::execute(Effect::Background(BackgroundEffect::Forget(dir.clone())));
+    let forget = || crate::runner::testing::execute(Effect::Background(BackgroundEffect::Forget(dir.clone())));
     let lent = lend(&dir, Use::Workdir).unwrap();
     assert!(forget().is_none());
     drop(lent);

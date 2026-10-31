@@ -52,7 +52,7 @@ fn answer(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let mut out = Vec::new();
     for e in fx {
         if matches!(e, Effect::Index(IndexEffect::Query { .. })) {
-            let msg = crate::runner::execute(e).unwrap();
+            let msg = crate::runner::testing::execute(e).unwrap();
             out.extend(update(st, msg, Instant::now()));
         }
     }

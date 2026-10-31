@@ -81,7 +81,7 @@ pub(super) fn diff(st: &AppState) -> &FileDiff {
 /// Runs every effect in `fx` and the messages they lead to, as the app would.
 pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx {
-        if let Some(m) = runner::execute(e) {
+        if let Some(m) = runner::testing::execute(e) {
             drive(st, m);
         }
     }
@@ -127,7 +127,7 @@ fn next_at_last_change_opens_next_file_on_first_change() {
     assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));
     // b.bin has nothing to land on: c.txt is requested instead, and b.bin never shows.
     let [e] = <[Effect; 1]>::try_from(fx).unwrap();
-    let fx = run(&mut st, runner::execute(e).expect("diff result"));
+    let fx = run(&mut st, runner::testing::execute(e).expect("diff result"));
     assert_eq!(one_load(&fx), (&unstaged("c.txt"), false));
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the skipped file is never shown");
     assert_eq!(st.hunk_ops_gen(), None, "hunk operations wait for the new diff");
@@ -264,7 +264,7 @@ fn landing_dropped_by_other_open_and_close() {
     let stale = pending_step(&mut st);
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(unstaged("c.txt"))));
     assert_eq!(st.view.diff_landing, None, "a click on another file cancels the step");
-    run(&mut st, runner::execute(stale).unwrap());
+    run(&mut st, runner::testing::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the stale b.bin result is ignored");
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));

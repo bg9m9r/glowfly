@@ -2,7 +2,6 @@
 //! runner/terminal.rs, ui/terminal/).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use glowfly_core::settings::{ShellChoice, ShellSetting};
 use glowfly_core::terminal::{ShellActivity, TermInput};
@@ -260,7 +259,6 @@ impl EffectMeta for TerminalEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

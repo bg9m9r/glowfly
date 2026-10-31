@@ -152,7 +152,7 @@ fn delete_lock_file_is_refused_while_git_runs() {
         .spawn()
         .unwrap();
     let effect = Effect::Lock(LockEffect::Delete { workdir, lock: lock.clone(), retry });
-    let result = crate::runner::execute(effect);
+    let result = crate::runner::testing::execute(effect);
     drop(git.stdin.take());
     let _ = git.wait();
     let Some(Msg::Lock(done @ LockMsg::Deleted { result: Err(Refusal::GitRunning(_) | Refusal::Unknown(_)), .. })) = result else {

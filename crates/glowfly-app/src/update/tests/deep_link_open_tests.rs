@@ -198,7 +198,7 @@ fn a_missing_target_offers_fetch_and_looks_again() {
     assert_eq!(fx.len(), 1, "{fx:?}");
     let job = fx.remove(0);
     assert!(matches!(&job, Effect::RunGit { cmds, .. } if cmds[0] == glowfly_core::remote_ops::fetch_cmd("origin")), "{job:?}");
-    let run = crate::runner::execute(job).unwrap();
+    let run = crate::runner::testing::execute(job).unwrap();
     assert!(st.job.as_ref().is_some_and(|j| j.then_link));
     let fx = update(&mut st, run, Instant::now());
     let (candidates, origin) = find(&fx).expect("looks again");
@@ -206,7 +206,7 @@ fn a_missing_target_offers_fetch_and_looks_again() {
     assert_eq!(candidates.len(), 1);
     // The real check finds the fetched branch, and selects it.
     let check = fx.into_iter().find(|e| matches!(e, Effect::DeepLink(DeepLinkEffect::Find { .. }))).unwrap();
-    let answered = crate::runner::execute(check).unwrap();
+    let answered = crate::runner::testing::execute(check).unwrap();
     let fx = update(&mut st, answered, Instant::now());
     finish(&mut st, fx);
     assert_eq!(st.session.selection, Selection::Commit(tip(&work, "main")));
@@ -256,7 +256,7 @@ fn clone_fills_the_url_and_the_clone_is_checked() {
     update(&mut st, Msg::CloseModal, Instant::now());
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(work.clone())), Instant::now());
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).unwrap();
-    let loaded = crate::runner::execute(load).unwrap();
+    let loaded = crate::runner::testing::execute(load).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     let (candidates, origin) = find(&fx).expect("the clone is checked");
     assert_eq!(origin, FindOrigin::AfterClone);

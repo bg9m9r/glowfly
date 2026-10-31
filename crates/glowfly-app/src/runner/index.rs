@@ -154,7 +154,7 @@ pub(super) fn send(tx: &Sender<Msg>, waker: &Waker, workdir: &std::path::Path, m
     }
 }
 
-/// Runs `e` to the end at once (the test path, `runner::execute`): a build without progress
+/// Runs `e` to the end at once (the test path, `runner::testing::execute`): a build without progress
 /// reports, a query or match, and nothing for Forget.
 pub(super) fn once(e: IndexEffect) -> Option<Msg> {
     let msg = match e {

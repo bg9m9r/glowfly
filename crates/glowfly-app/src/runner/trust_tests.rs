@@ -4,6 +4,7 @@
 use super::*;
 use crate::effect::{Sealed, TrustCheck};
 use crate::msg::{JobMsg, TrustMsg};
+use crate::runner::testing::execute_checked;
 use glowfly_core::settings::SavedTrust;
 use std::path::{Path, PathBuf};
 

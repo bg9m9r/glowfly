@@ -59,7 +59,7 @@ fn with_whole(name: &str, theme: ThemeChoice, layout: DiffLayout, commit: bool, 
     };
     let opts = LoadDiffOptions { ignore_whitespace: ignore_ws, whole_file: true };
     let mut diff = repo::load_diff_with(&dir, &target, opts).unwrap();
-    crate::runner::decorate(target.path(), &mut diff, None);
+    crate::runner::testing::decorate(target.path(), &mut diff, None);
     let w = diff.whole.as_deref().expect("the whole file loads");
     assert_eq!(w.blocks.len(), 2);
     assert!(w.diff.highlight.is_some(), "shapes.rs is highlighted as Rust");
@@ -150,7 +150,7 @@ fn with_notes(name: &str, theme: ThemeChoice, layout: DiffLayout) -> (AppState, 
     let target = DiffTarget::Unstaged("notes.txt".into());
     let opts = LoadDiffOptions { ignore_whitespace: false, whole_file: true };
     let mut diff = repo::load_diff_with(&dir, &target, opts).unwrap();
-    crate::runner::decorate(target.path(), &mut diff, None);
+    crate::runner::testing::decorate(target.path(), &mut diff, None);
     let w = diff.whole.as_deref().expect("the whole file loads");
     assert_eq!(w.blocks.len(), 2);
     assert_eq!(folds(w).iter().map(|f| f.len()).collect::<Vec<_>>(), [8, 11, 7]);

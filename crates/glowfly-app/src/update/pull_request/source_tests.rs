@@ -62,7 +62,7 @@ fn head_jobs(fx: &[Effect]) -> Vec<&HeadJob> {
 
 /// Runs `e` and hands its result to `update`, returning the effects that raised.
 fn step(st: &mut AppState, e: Effect) -> Vec<Effect> {
-    let msg = crate::runner::execute(e).expect("a result");
+    let msg = crate::runner::testing::execute(e).expect("a result");
     update(st, msg, Instant::now())
 }
 

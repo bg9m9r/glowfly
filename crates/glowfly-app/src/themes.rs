@@ -4,7 +4,6 @@
 //! (Preferences > Terminal > Colours).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use glowfly_core::settings::terminal_schemes::ImportReport;
 use glowfly_core::settings::{ThemeCatalog, ThemeProblem};
@@ -116,7 +115,6 @@ impl EffectMeta for ThemeEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

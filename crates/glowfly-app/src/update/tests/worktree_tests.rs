@@ -71,7 +71,7 @@ fn run(st: &mut AppState, fx: Vec<Effect>) -> Vec<Vec<String>> {
             Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::Worktree(WorktreeEffect::CheckFolder(_)) => {}
             _ => continue,
         }
-        if let Some(m) = runner::execute(e) {
+        if let Some(m) = runner::testing::execute(e) {
             let more = update(st, m, Instant::now());
             ran.extend(run(st, more));
         }
@@ -83,7 +83,7 @@ fn run(st: &mut AppState, fx: Vec<Effect>) -> Vec<Vec<String>> {
 fn submit(st: &mut AppState) -> Vec<Effect> {
     let fx = update(st, wt(WorktreeMsg::Submit), Instant::now());
     let [Effect::Worktree(WorktreeEffect::CheckFolder(_))] = &fx[..] else { panic!("{fx:?}") };
-    let checked = runner::execute(fx.into_iter().next().unwrap()).unwrap();
+    let checked = runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
     update(st, checked, Instant::now())
 }
 
@@ -289,7 +289,8 @@ fn folder_check_after_cancel_is_dropped() {
         let fx = update(st, wt(WorktreeMsg::Submit), Instant::now());
         let [Effect::Worktree(WorktreeEffect::CheckFolder(req))] = &fx[..] else { panic!("{fx:?}") };
         let req = req.clone();
-        let Some(Msg::Worktree(WorktreeMsg::FolderChecked { result, .. })) = runner::execute(fx.into_iter().next().unwrap()) else {
+        let Some(Msg::Worktree(WorktreeMsg::FolderChecked { result, .. })) = runner::testing::execute(fx.into_iter().next().unwrap())
+        else {
             panic!("no folder check result")
         };
         (req, result)

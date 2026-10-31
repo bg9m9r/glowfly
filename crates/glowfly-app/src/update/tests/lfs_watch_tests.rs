@@ -75,7 +75,7 @@ fn a_refresh_that_finds_the_refs_unchanged_picks_up_the_patterns() {
     // A rescan (events were lost) checks the refs first.
     let fx = update(&mut st, watched_full(&workdir, true), Instant::now());
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { known: Some(_), .. })).expect("a checked refresh");
-    let msg = runner::execute(load).expect("a result");
+    let msg = runner::testing::execute(load).expect("a result");
     assert!(matches!(msg, Msg::Load(LoadMsg::RepoUnchanged { lfs_patterns: Some(_), .. })));
     let fx = update(&mut st, msg, Instant::now());
     finish(&mut st, fx);

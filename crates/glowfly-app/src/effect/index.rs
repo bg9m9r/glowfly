@@ -3,7 +3,6 @@
 //! apart from the index's saved copy in the cache folder, scoped to the repository's tab.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::commit_query::CommitQuery;
@@ -75,7 +74,6 @@ impl EffectMeta for IndexEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

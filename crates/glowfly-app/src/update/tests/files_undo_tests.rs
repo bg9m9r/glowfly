@@ -115,7 +115,7 @@ fn restore_result_for_inactive_tab_goes_to_its_history() {
         .find(|e| matches!(e, Effect::RestoreFile { .. }))
         .expect("a restore");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::execute(effect).expect("a result");
+    let reply = runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Scoped { .. }), "scoped to tab A's repository");
     update(&mut st, reply, Instant::now());
 

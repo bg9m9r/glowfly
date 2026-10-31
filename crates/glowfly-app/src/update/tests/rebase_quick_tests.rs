@@ -36,7 +36,7 @@ pub(super) fn prepare(st: &mut AppState, edit: QuickEdit) -> Vec<Effect> {
     let fx = up(st, Msg::Rebase(RebaseMsg::Edit(edit)));
     let [e @ Effect::Rebase(RebaseEffect::PrepareEdit { .. })] = &fx[..] else { panic!("expected a preparation, got {fx:?}") };
     assert!(e.scope().is_some(), "the result comes back for this tab only");
-    let msg = crate::runner::execute(fx.into_iter().next().unwrap()).expect("a result");
+    let msg = crate::runner::testing::execute(fx.into_iter().next().unwrap()).expect("a result");
     up(st, msg)
 }
 

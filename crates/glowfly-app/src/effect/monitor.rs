@@ -2,7 +2,6 @@
 //! (`repo::turn_on_monitor`), then the cache's commands, and of `Effect::TurnOffMonitor`:
 //! core.fsmonitor unset and the daemon stopped (`repo::turn_off_monitor`) (runner/monitor.rs).
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::meta::EffectMeta;
 use std::path::{Path, PathBuf};
@@ -34,7 +33,6 @@ impl EffectMeta for MonitorJob {
     }
 
     /// Starts a git daemon that outlives the run.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }
@@ -66,7 +64,6 @@ impl EffectMeta for MonitorOff {
     }
 
     /// Stops a daemon some other process may own.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

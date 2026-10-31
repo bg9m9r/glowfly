@@ -53,7 +53,7 @@ fn one_more(fx: Vec<Effect>) -> Effect {
 /// load's, the answer is kept to its tab by the load generation).
 #[track_caller]
 fn run_page(load: Effect) -> Msg {
-    let msg = crate::runner::execute(load).unwrap();
+    let msg = crate::runner::testing::execute(load).unwrap();
     assert!(matches!(msg, Msg::Load(LoadMsg::HistoryExtended { result: Ok(_), .. })), "a page, not a full load");
     msg
 }
@@ -95,7 +95,7 @@ fn load_more_goes_on_from_the_walk_without_a_full_load() {
 fn load_more_after_refs_moved_loads_in_full() {
     let (mut st, dir) = opened("resume-moved", 1200, 500);
     git(&dir, &["commit", "-q", "--allow-empty", "-m", "on top"]);
-    let msg = crate::runner::execute(one_more(load_more(&mut st))).unwrap();
+    let msg = crate::runner::testing::execute(one_more(load_more(&mut st))).unwrap();
     let Msg::Repo(RepoMsg::RepoLoaded { kind: LoadKind::Refresh, result: Ok(snap), .. }) = msg else { panic!("a full refresh") };
     assert_eq!(&*snap.commits[0].summary, "on top");
     assert_eq!(snap.commits.len(), 1000);
@@ -113,7 +113,7 @@ fn a_refresh_merged_into_load_more_reads_the_status_after() {
     update(&mut st, Msg::Repo(RepoMsg::WindowFocused), Instant::now());
     assert_eq!(st.refresh.queued, Some(Depth::Checked));
 
-    let fx = update(&mut st, crate::runner::execute(first).unwrap(), Instant::now());
+    let fx = update(&mut st, crate::runner::testing::execute(first).unwrap(), Instant::now());
     assert!(st.refresh.status_after);
     let fx = update(&mut st, run_page(one_more(fx)), Instant::now());
     assert_eq!(status_reads(&fx), 1, "the refresh's status read: {fx:?}");
@@ -235,7 +235,7 @@ fn a_status_read_dropped_by_load_more_is_read_after_the_page() {
     let load = one_more(load_more(&mut st));
     assert!(st.refresh.status_after);
     let read = read.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).unwrap();
-    update(&mut st, crate::runner::execute(read).unwrap(), Instant::now());
+    update(&mut st, crate::runner::testing::execute(read).unwrap(), Instant::now());
     let fx = update(&mut st, run_page(load), Instant::now());
     assert_eq!(status_reads(&fx), 1, "read again: {fx:?}");
     finish(&mut st, fx);

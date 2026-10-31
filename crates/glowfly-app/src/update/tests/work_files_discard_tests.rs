@@ -249,7 +249,7 @@ fn discard_end_to_end(name: &str, to_trash: bool) -> (PathBuf, AppState, String)
 
 /// Whether the test build's stand-in bin holds u.txt with `contents`.
 fn in_test_bin(contents: &str) -> bool {
-    std::fs::read_dir(crate::runner::files::test_bin())
+    std::fs::read_dir(crate::runner::testing::test_bin())
         .into_iter()
         .flatten()
         .flatten()

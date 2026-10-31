@@ -254,7 +254,8 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     let [Effect::Clone(CloneEffect::CheckParent { parent, delay })] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
     assert_eq!((parent.clone(), *delay), (dir.display().to_string(), super::clone::PARENT_CHECK_DELAY));
     let answer =
-        crate::runner::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() })).unwrap();
+        crate::runner::testing::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() }))
+            .unwrap();
     // An answer for text that has changed since is dropped.
     update(&mut st, Msg::Clone(CloneMsg::ParentChecked { parent: "elsewhere".into(), found: Some("elsewhere".into()) }), now);
     assert_eq!(form(&mut st).parent_is_dir(), None);
@@ -268,7 +269,8 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     let fx = update(&mut st, Msg::Clone(CloneMsg::ParentEdited), now);
     let [Effect::Clone(CloneEffect::CheckParent { parent, .. })] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
     let answer =
-        crate::runner::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() })).unwrap();
+        crate::runner::testing::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() }))
+            .unwrap();
     update(&mut st, answer, now);
     assert_eq!(form(&mut st).problems_now(today()).folder.as_deref(), Some("That folder doesn't exist."));
 

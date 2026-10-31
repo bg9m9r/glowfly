@@ -100,6 +100,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
     let connections = &st.settings.connections;
     let keys = &st.keymap;
     let git = &st.git;
+    let version = st.updates.shown;
     let t = st.settings.lang();
     let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
@@ -180,7 +181,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::DeepLink(d) => close = super::deep_link_dialog::show(ui, cx, d, msgs),
             Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, cx, form, fs, msgs),
             Modal::RewordCommit(form) => close = super::rebase::reword_dialog::show(ui, cx, form, snap, idle, msgs),
-            Modal::About => close = super::menu_bar::about(ui, cx, git, crate::state::menu_bar::VERSION, msgs),
+            Modal::About => close = super::menu_bar::about(ui, cx, git, version, msgs),
             Modal::Notices => close = super::menu_bar::notices(ui, cx, msgs),
             Modal::ReleaseNotes(d) => close = super::release_notes::show(ui, cx, d, msgs),
             Modal::UndoCreated(form) => close = super::undo_dialog::created_branch(ui, cx, form, msgs),

@@ -3,7 +3,6 @@
 //! the clone ends the active job and the others answer the dialog whichever tab is active.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::forge::Account;
 use std::path::{Path, PathBuf};
@@ -44,7 +43,6 @@ impl EffectMeta for CloneEffect {
     }
 
     /// The list of the user's repositories asks a hosting service.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         match self {
             CloneEffect::Sparse { .. } | CloneEffect::CheckParent { .. } => SandboxRule::Run,

@@ -40,12 +40,10 @@ pub trait EffectMeta {
     }
 
     /// What the whole-app tests' runner does with it (runner/sandbox.rs).
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule;
 }
 
 /// What the whole-app tests' runner does with an effect.
-#[cfg(test)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SandboxRule {
     /// Runs as in the app: repository and file work inside the test's folders.

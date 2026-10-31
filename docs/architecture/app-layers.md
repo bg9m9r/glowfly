@@ -51,6 +51,7 @@ source file, update its line here. Features that span every layer are in
 - `stack.rs`: `StackEffect`, `StackPushJob`: a stack's push with the remote tips it saw and whether pull requests follow.
 - `names.rs`: `Effect::name`, `timed` (flat variants; areas delegate).
 - `scope.rs`: `Effect::scope`, `queue`, `holds` (flat variants, with the fetch and push rule; areas delegate).
+- `sandbox.rs`: `Effect::sandbox`, what the whole-app tests' runner does with each effect (`SandboxRule`; flat variants, areas delegate).
 
 ## Per-area message and effect types
 
@@ -135,7 +136,9 @@ source file, update its line here. Features that span every layer are in
 ## `runner/`: background work
 
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
-- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate among them), with the flat variants' arms.
+- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate and seams among them), with the flat variants' arms.
+- `seams.rs`: `Seams`, what the work reaches outside the repositories with: the trash, the sequence editor and the path search's chunk time; `Seams::REAL` in the app, the stand-ins of `testing::SEAMS` in tests.
+- `testing.rs` (tests only): the entry points tests run the runner through (`execute`, `execute_checked`, `sandboxed`, the stand-in trash `test_bin`, the diff decoration), always with the stand-ins; `testing_tests.rs` checks they never reach the real trash or editor.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
 - `branches.rs`: the `Execute` impl of `BranchEffect` (the count, and each push of Push to all remotes in turn).
 - `lock.rs`: the `Execute` impl of `LockEffect` (`glowfly_core::lock_file`).
@@ -152,7 +155,7 @@ source file, update its line here. Features that span every layer are in
 - `trust_gate.rs`: the commits an effect names (a pick, a rebase step, an undo) compared before it starts, and the per-command gate a job's git commands go through where hooks follow the working tree (`Gate::before`: a command it doesn't read held, a pull pinned to what its one fetch brought, each later command compared just before it runs, and the repository scanned again after any command but a fetch); a rebase panel step's `reset` and merge parents are compared too; Trust and run on a prompt that couldn't compare passes that reason at that command only (`Accepted`); tests in `trust_gate_tests.rs`.
 - Effects that change a repository, and fetches, keep it out of the repository pool while they run (`Effect::holds`, `repo_pool::hold`); a closed tab lets go of its handles (`BackgroundEffect::Forget`).
 - A line written to a built-in terminal holds its repository out of the pool while the shell runs a program, read from its activity probe (`runner/terminal_hold.rs`); what was typed is never read.
-- `sandbox.rs` (tests only): keeps the journeys' runner inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
+- `sandbox.rs`: keeps the journeys' runner (`testing::sandboxed`; none in the app) inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
 - `watcher.rs` (in `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`); `watcher/includes.rs` watches the folders of the config files the repository's config includes (`watcher/include_tests.rs`); a burst that touched the config also sends `WatchMsg::ConfigChanged` (`watcher/config_tests.rs`); `watcher/probe.rs` checks after starting that events arrive at all and sends `WatchMsg::Probed` (`watcher/probe_tests.rs`).
 
 ## `platform.rs`: OS integration

@@ -27,7 +27,7 @@ fn drive(st: &mut AppState, msg: Msg) {
                         | Effect::Selection(SelectionEffect::WorkdirCompare { .. })
                 )
             {
-                queue.extend(crate::runner::execute(e));
+                queue.extend(crate::runner::testing::execute(e));
             }
         }
     }

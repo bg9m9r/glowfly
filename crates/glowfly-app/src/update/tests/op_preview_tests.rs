@@ -54,7 +54,7 @@ fn merge(f: Oid) -> PreviewOp {
 /// Runs a held preview and hands its result to `update`.
 fn deliver(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let effect = fx.into_iter().next().expect("a preview");
-    let msg = runner::execute(effect).expect("a result");
+    let msg = runner::testing::execute(effect).expect("a result");
     up(st, msg)
 }
 

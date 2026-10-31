@@ -1,9 +1,9 @@
 //! The bundled fonts: Noto Sans for interface text (Regular, and SemiBold as the `semibold`
 //! family) and JetBrains Mono for monospace text, each ahead of egui's own fonts, which stay as
 //! fallbacks (emoji, symbols). Behind them all come the fonts for Chinese, Japanese and Korean:
-//! the system's own (`platform::system_fonts`, found once at startup), or in tests a small
-//! bundled subset of Noto Sans CJK, so snapshots and the glyph check don't depend on the
-//! machine's fonts. This is the one font setup: the app installs it before its first pass,
+//! the system's own, which the shell hands over at startup (`use_cjk`, from
+//! `platform::system_fonts`), or until then a small bundled subset of Noto Sans CJK, which tests
+//! keep, so snapshots and the glyph check don't depend on the machine's fonts. This is the one font setup: the app installs it before its first pass,
 //! `theme::apply_style` installs it for every themed context, and the glyph check asks these
 //! fonts. The files and their licences are in `assets/fonts/`.
 
@@ -18,21 +18,28 @@ const REGULAR: &str = "NotoSans-Regular";
 const SEMIBOLD_FONT: &str = "NotoSans-SemiBold";
 const MONO: &str = "JetBrainsMono-Regular";
 
-/// The tests' CJK font, in place of the system's: the characters of the CJK snapshot and the
-/// ja_JP, zh_CN and ko_KR dates, cut from Noto Sans CJK SC (`assets/fonts/test/README.md`).
-#[cfg(test)]
-pub(crate) const TEST_CJK: &[u8] = include_bytes!("../../../../../assets/fonts/test/NotoSansCJKsc-TestSubset.otf");
+/// The CJK font until the shell hands over the system's (tests keep it): the characters of the
+/// CJK snapshot and the ja_JP, zh_CN and ko_KR dates, cut from Noto Sans CJK SC
+/// (`assets/fonts/test/README.md`).
+const TEST_CJK: &[u8] = include_bytes!("../../../../../assets/fonts/test/NotoSansCJKsc-TestSubset.otf");
 
-/// The CJK fallbacks, as (name, font): the system's in the app, the test subset in tests.
-fn cjk_fallbacks() -> Vec<(String, FontData)> {
-    #[cfg(test)]
-    {
-        vec![("NotoSansCJK-TestSubset".to_owned(), FontData::from_static(TEST_CJK))]
+/// The CJK fallbacks the shell handed over (`use_cjk`).
+static CJK: OnceLock<Vec<(String, FontData)>> = OnceLock::new();
+
+/// Puts `fonts` (name, font) behind the bundled ones for Chinese, Japanese and Korean, in place
+/// of the bundled subset: the shell, once, with the system's, before anything asks for the
+/// fonts (`definitions` reads them once).
+pub fn use_cjk(fonts: Vec<(String, FontData)>) {
+    if CJK.set(fonts).is_err() {
+        tracing::warn!("the CJK fonts were already chosen");
     }
-    #[cfg(not(test))]
-    {
-        let found = crate::platform::system_fonts::found();
-        found.iter().map(|f| (f.name.clone(), FontData { index: f.index, ..FontData::from_static(f.data) })).collect()
+}
+
+/// The CJK fallbacks, as (name, font): the ones the shell handed over, else the bundled subset.
+fn cjk_fallbacks() -> Vec<(String, FontData)> {
+    match CJK.get() {
+        Some(fonts) => fonts.clone(),
+        None => vec![("NotoSansCJK-TestSubset".to_owned(), FontData::from_static(TEST_CJK))],
     }
 }
 

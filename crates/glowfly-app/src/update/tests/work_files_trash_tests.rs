@@ -322,7 +322,7 @@ fn end_to_end_trash() {
     drive(&mut st, Msg::ConfirmAccepted);
 
     assert!(!dir.join("a.txt").exists());
-    let bin = crate::runner::files::test_bin();
+    let bin = crate::runner::testing::test_bin();
     let landed = std::fs::read_dir(&bin)
         .unwrap()
         .flatten()

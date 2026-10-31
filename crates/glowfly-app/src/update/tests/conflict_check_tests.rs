@@ -44,7 +44,7 @@ fn drive_holding(st: &mut AppState, msg: Msg) -> Vec<CheckJob> {
             match effect {
                 Effect::CheckConflicts(job) => held.push(job),
                 e if skipped(&e) => {}
-                e => queue.extend(runner::execute(e)),
+                e => queue.extend(runner::testing::execute(e)),
             }
         }
     }
@@ -57,7 +57,7 @@ fn open(st: &mut AppState, dir: &Path) -> Vec<CheckJob> {
 
 /// Runs a held check and applies its result; returns the checks that leads to.
 fn deliver(st: &mut AppState, job: CheckJob) -> Vec<CheckJob> {
-    let msg = runner::execute(Effect::CheckConflicts(job)).unwrap();
+    let msg = runner::testing::execute(Effect::CheckConflicts(job)).unwrap();
     drive_holding(st, msg)
 }
 

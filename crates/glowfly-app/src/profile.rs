@@ -5,7 +5,6 @@
 //! ui/prefs/profile_rules.rs).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use crate::msg::Inactive;
 use crate::state::prefs::GitConfigValues;
@@ -154,7 +153,6 @@ impl EffectMeta for ProfileEffect {
 
     /// A repository's own config, read or (asked first) its identity removed, runs; the global
     /// git config, Glowfly's config folder or a picked folder is dropped.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         match self {
             ProfileEffect::ReadIdentity { .. } | ProfileEffect::ClearLocalIdentity { .. } => SandboxRule::Run,

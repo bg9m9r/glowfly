@@ -128,7 +128,7 @@ pub(in crate::update) fn finish_keeping(st: &mut AppState, fx: Vec<Effect>) -> V
             if skipped(&effect) {
                 kept.push(effect);
             } else {
-                queue.extend(runner::execute(effect));
+                queue.extend(runner::testing::execute(effect));
             }
         }
         let Some(m) = queue.pop() else { return kept };
@@ -454,7 +454,7 @@ fn job_output_hides_credentials_in_urls() {
         stoppable: false,
         on_fail_check: None,
     };
-    let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = runner::execute(effect) else { panic!("expected JobDone") };
+    let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = runner::testing::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");
     assert!(!output.contains("TOKEN123") && output.contains("https://***@example.com/o/r.git"), "{output}");
     let _ = std::fs::remove_dir_all(&dir);

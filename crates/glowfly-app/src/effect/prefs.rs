@@ -4,7 +4,6 @@
 //! runner/keys.rs). Unscoped.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::signing::SigningFormat;
 use std::path::{Path, PathBuf};
@@ -66,7 +65,6 @@ impl EffectMeta for PrefsEffect {
     }
 
     /// A repository's own config runs; the global config and the signing keys are dropped.
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         match self {
             PrefsEffect::ReadGitConfig { .. } | PrefsEffect::SetGitConfig { global: false, .. } => SandboxRule::Run,

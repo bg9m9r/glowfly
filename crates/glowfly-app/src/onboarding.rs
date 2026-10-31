@@ -3,7 +3,6 @@
 //! ui/welcome.rs, ui/welcome_steps.rs, ui/tour.rs).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use crate::msg::{CloneMsg, Inactive, Msg, RepoMsg};
 use glowfly_core::identity::Identity;
@@ -114,7 +113,6 @@ impl EffectMeta for OnboardingEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

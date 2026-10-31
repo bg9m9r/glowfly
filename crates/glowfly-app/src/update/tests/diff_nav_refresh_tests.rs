@@ -38,7 +38,7 @@ fn status_refresh_keeps_pending_step() {
     let fx = refresh(&mut st, |_| true);
     assert_eq!(one_load(&fx), (&unstaged("b.bin"), false), "the step's file is asked for again");
     assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));
-    run(&mut st, runner::execute(stale).unwrap());
+    run(&mut st, runner::testing::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the superseded request doesn't land");
     assert!(st.view.diff_landing.is_some(), "and doesn't end the step");
     finish(&mut st, fx);
@@ -57,7 +57,7 @@ fn refresh_that_changes_the_list_steps_to_the_new_neighbour() {
     let fx = refresh(&mut st, |f| f.path != "b.bin");
     assert_eq!(one_load(&fx), (&unstaged("c.txt"), false));
     assert_eq!(st.view.diff_landing, Some((unstaged("c.txt"), Landing::First)));
-    run(&mut st, runner::execute(stale).unwrap());
+    run(&mut st, runner::testing::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")));
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));

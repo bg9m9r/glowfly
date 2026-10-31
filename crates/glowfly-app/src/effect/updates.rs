@@ -1,7 +1,6 @@
 //! Effects of Glowfly's own updates, run by runner/updates.rs.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use super::partial::StopKey;
 use glowfly_core::app_update::{InstallMethod, Offer, Version};
@@ -74,7 +73,6 @@ impl EffectMeta for UpdateEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

@@ -9,7 +9,7 @@ use crate::ui::dialog_frame::{Cx, Dialog, Footer};
 use crate::ui::widgets::buttons;
 use eframe::egui;
 
-/// Draws the dialog for Glowfly `version` (`menu_bar::VERSION`; tests pass a fixed one so a
+/// Draws the dialog for Glowfly `version` (`UpdatesState::shown`; tests keep a fixed one so a
 /// release doesn't change their images) in `cx.t`; true when it should close. The copied version
 /// info stays English, for bug reports.
 pub(crate) fn about(ui: &mut egui::Ui, cx: Cx, git: &GitState, version: &str, msgs: &mut Vec<Msg>) -> bool {
@@ -39,7 +39,7 @@ pub(crate) fn about(ui: &mut egui::Ui, cx: Cx, git: &GitState, version: &str, ms
     let out = d.finish(ui, footer);
     match out.extra {
         Some(0) => msgs.push(Msg::OpenUrl(WEBSITE.to_owned())),
-        Some(_) => msgs.push(Msg::Copy(version_info(git))),
+        Some(_) => msgs.push(Msg::Copy(version_info(version, git))),
         None => {}
     }
     out.dismiss

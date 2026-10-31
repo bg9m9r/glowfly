@@ -55,7 +55,7 @@ fn open(path: &str) -> Msg {
 /// window, watcher and saving effects are skipped as in `drive`.
 fn finish(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadRepo { .. } | Effect::RunGit { .. })) {
-        if let Some(m) = runner::execute(e) {
+        if let Some(m) = runner::testing::execute(e) {
             drive(st, m);
         }
     }
@@ -185,7 +185,7 @@ fn status_reload_refreshes_submodules() {
     assert_eq!(sub(&st).state, SubmoduleState::InSync);
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
     assert!(matches!(&fx[..], [Effect::LoadStatus { submodules: true, .. }]), "{fx:?}");
-    let loaded = fx.into_iter().filter_map(runner::execute).collect::<Vec<_>>();
+    let loaded = fx.into_iter().filter_map(runner::testing::execute).collect::<Vec<_>>();
     let fx: Vec<Effect> = loaded.into_iter().flat_map(|m| update(&mut st, m, Instant::now())).collect();
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
     assert_eq!(sub(&st).state, SubmoduleState::OutOfSync);
@@ -257,7 +257,7 @@ fn checked_submodule_gone_or_unreadable_is_logged() {
 /// Runs the `SubmoduleEffect::Check` effects in `fx` and handles their results.
 fn finish_checks(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx.into_iter().filter(|e| matches!(e, Effect::Submodule(SubmoduleEffect::Check { .. }))) {
-        if let Some(m) = runner::execute(e) {
+        if let Some(m) = runner::testing::execute(e) {
             drive(st, m);
         }
     }

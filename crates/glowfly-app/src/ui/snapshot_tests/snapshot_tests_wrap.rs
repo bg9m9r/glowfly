@@ -99,7 +99,7 @@ fn diff_wrap_whole_file_light() {
     let target = DiffTarget::Unstaged("wrap.rs".into());
     let opts = LoadDiffOptions { ignore_whitespace: false, whole_file: true };
     let mut diff = repo::load_diff_with(&dir, &target, opts).unwrap();
-    crate::runner::decorate(target.path(), &mut diff, None);
+    crate::runner::testing::decorate(target.path(), &mut diff, None);
     let w = diff.whole.as_deref().expect("the whole file loads");
     let all = folds(w);
     assert_eq!(all.iter().map(|f| f.len()).collect::<Vec<_>>(), [6, 7]);

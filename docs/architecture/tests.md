@@ -20,6 +20,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).
 - `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, the kit's `git`, …) are not redefined or handed one folder name twice.
 - `hygiene.rs`: view tests build their harnesses with `ui::snapshot_check::builder()` (`HARNESS_MAKERS` names the exceptions).
+- `hygiene/test_switches.rs`: the app's non-test code has no `cfg(test)` behaviour switch (`cfg!(test)`, `cfg(not(test))`, `#[cfg(test)]` on a statement or field); only the shell (`TEST_SWITCH_FILES`) may keep one.
 - `crates/glowfly-app/tests/i18n_keys.rs`: every translation key the code looks up exists in English, and every English key is used.
 
 ## The shared test kit (`crates/glowfly-core/src/testkit/`)

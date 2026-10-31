@@ -29,7 +29,7 @@ fn loads(fx: &[Effect]) -> Vec<&Effect> {
 /// The one load in `fx`, run: the message it reports.
 fn run_load(fx: Vec<Effect>) -> Msg {
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).expect("a load");
-    runner::execute(load).expect("a result")
+    runner::testing::execute(load).expect("a result")
 }
 
 fn quiet_job(dir: &std::path::Path) -> RunningJob {
@@ -125,7 +125,7 @@ fn status_reads_merge_and_a_new_change_relayouts_the_graph() {
     assert!(update(&mut st, changed(), Instant::now()).is_empty(), "waits for the read running");
     assert!(update(&mut st, changed(), Instant::now()).is_empty());
 
-    let status = first.into_iter().next().and_then(runner::execute).unwrap();
+    let status = first.into_iter().next().and_then(runner::testing::execute).unwrap();
     let fx = update(&mut st, status, Instant::now());
     assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "one more read for both: {fx:?}");
     assert!(loads(&fx).is_empty());
@@ -158,7 +158,7 @@ fn read_status(st: &mut AppState) -> Vec<Effect> {
     let changed =
         Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })) };
     let fx = update(st, changed, Instant::now());
-    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::execute).expect("a status read");
+    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::testing::execute).expect("a status read");
     update(st, status, Instant::now())
 }
 

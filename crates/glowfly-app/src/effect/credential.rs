@@ -1,7 +1,6 @@
 //! Saving and dropping HTTPS sign-ins typed in the credential prompt (runner/credentials.rs).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::git_credential::HttpsCredential;
 use std::path::{Path, PathBuf};
@@ -36,7 +35,6 @@ impl EffectMeta for CredentialEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

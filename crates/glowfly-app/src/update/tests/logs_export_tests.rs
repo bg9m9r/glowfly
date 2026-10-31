@@ -6,7 +6,7 @@ use crate::effect::{Effect, OsEffect};
 use crate::logs::{LogsEffect, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::menu_bar::VERSION;
+use crate::state::menu_bar::PLACEHOLDER_VERSION as VERSION;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::logs::{BundleReport, bundle_name};
 use glowfly_core::native_path;

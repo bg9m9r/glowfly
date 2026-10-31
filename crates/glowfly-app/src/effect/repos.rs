@@ -2,7 +2,6 @@
 //! folders, and fetching or pulling one listed repository.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::repo_sync::SyncOp;
 use glowfly_core::settings::SavedTrust;
@@ -54,7 +53,6 @@ impl EffectMeta for ReposEffect {
         }
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

@@ -2,7 +2,6 @@
 //! and the init job. All unscoped: the dialog and the job live outside any repository's tab.
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::init_ops::InitPlan;
 use std::path::{Path, PathBuf};
@@ -41,7 +40,6 @@ impl EffectMeta for InitEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

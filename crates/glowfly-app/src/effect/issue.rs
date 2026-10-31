@@ -4,7 +4,6 @@
 
 use super::EffectMeta;
 use super::ForgeError;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::forge::{Auth, CreateOptions, Entry, Issue, IssueDetails, NewIssue, Target};
 use std::path::{Path, PathBuf};
@@ -76,7 +75,6 @@ impl EffectMeta for IssueEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

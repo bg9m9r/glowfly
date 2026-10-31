@@ -4,7 +4,6 @@
 
 use super::GlowflyApp;
 use crate::msg::{Msg, RepoMsg};
-use crate::runner::Runner;
 use crate::state::AppState;
 use crate::state::window_chrome::Chrome;
 use eframe::egui;
@@ -47,7 +46,7 @@ impl GlowflyApp {
         for path in &trusted {
             crate::state::trust::record(&mut settings, path, RepoTrust::Trusted);
         }
-        let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| Runner::sandboxed(tx, waker, files));
+        let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| crate::runner::testing::sandboxed(tx, waker, files));
         app.st.view.chrome = chrome;
         app.start(ctx, ThemeCatalog::default(), None);
         if let Some(path) = open {

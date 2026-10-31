@@ -5,7 +5,7 @@ use crate::journal::JournalMsg;
 use crate::msg::{AppMsg, JobMsg, LayoutMsg, Msg, TabsMsg, UpdateMsg};
 use crate::state::journal::JournalView;
 use crate::state::layout::Panel;
-use crate::state::menu_bar::VERSION;
+use crate::state::menu_bar::PLACEHOLDER_VERSION as VERSION;
 use crate::state::{AppState, Modal, git_env::GitState};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};

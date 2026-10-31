@@ -74,9 +74,9 @@ mod range_diff;
 mod rebase;
 mod repos;
 mod revert;
-#[cfg(test)]
 mod sandbox;
 mod saves;
+mod seams;
 mod selection;
 mod signatures;
 mod sparse;
@@ -90,6 +90,8 @@ mod submodules;
 mod terminal;
 mod terminal_hold;
 mod terminal_out;
+#[cfg(test)]
+pub mod testing;
 mod themes;
 mod tools;
 mod trust;
@@ -101,15 +103,8 @@ mod update_restart;
 mod updates;
 mod worktrees;
 
-#[cfg(test)]
-pub use execute::execute;
 use execute::{Cx, err, execute_with};
-#[cfg(test)]
-pub(crate) use highlight::{decorate, decorate_in_context};
-#[cfg(test)]
-pub(crate) use sandbox::rule as sandbox_rule;
-#[cfg(test)]
-pub use trust::execute_checked;
+use seams::Seams;
 
 /// Wakes the UI when a result arrives (so it can process the message promptly). The shell makes
 /// one that asks egui for a repaint: the runner knows nothing of the window.
@@ -162,10 +157,13 @@ pub struct Runner {
     logs: logs::LogWorker,
     /// The stops of the running git commands that can be cancelled (`Effect::StopGit`).
     stops: Arc<stops::Stops>,
-    /// Whole-app tests: where saves go and which effects are dropped (`sandbox.rs`).
-    #[cfg(test)]
+    /// What the work reaches outside the repositories with (`seams.rs`): the real trash and
+    /// sequence editor, or the tests' stand-ins (`testing::sandboxed`).
+    seams: Seams,
+    /// Whole-app tests: where saves go and which effects are dropped (`sandbox.rs`). None in
+    /// the app, where every effect runs.
     sandbox: Option<sandbox::Sandbox>,
-    #[cfg(test)]
+    /// Effects started and still in flight, so a whole-app test can tell when the app is idle.
     tally: Arc<sandbox::Tally>,
 }
 
@@ -187,9 +185,8 @@ impl Runner {
             index: Default::default(),
             logs: Default::default(),
             stops: Default::default(),
-            #[cfg(test)]
+            seams: Seams::REAL,
             sandbox: None,
-            #[cfg(test)]
             tally: Default::default(),
         }
     }
@@ -230,7 +227,6 @@ impl Runner {
     }
 
     fn run_checked(&self, effect: Effect, check: Option<crate::effect::TrustCheck>) {
-        #[cfg(test)]
         let Some(effect) = self.admit(effect) else { return };
         let effect = match effect {
             Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
@@ -246,7 +242,7 @@ impl Runner {
             }
             Effect::SearchPaths { workdir, request, terms, oids } => {
                 let r = path_search::Request { workdir, request, terms, oids };
-                return self.path_search.submit(r, self.tx.clone(), self.waker.clone());
+                return self.path_search.submit(r, self.seams.chunk, self.tx.clone(), self.waker.clone());
             }
             Effect::Index(e) => return self.index.submit(e, self.tx.clone(), self.waker.clone()),
             other => match self.save(other) {
@@ -268,9 +264,9 @@ impl Runner {
         // Registered now, so a stop asked while it waits in its repository's queue is kept.
         let stop = effect.stop_key().map(|key| (key, self.stops.register(key)));
         let stops = Arc::clone(&self.stops);
+        let seams = self.seams;
         // Effects that don't wait on the user are timed for the performance log.
         let perf = if effect.timed() { self.logs.perf_probe().map(|p| (p, logs::folder_of(&effect))) } else { None };
-        #[cfg(test)]
         let busy = self.tally.begin(name);
         let job: queue::Job = Box::new(move || {
             let _span = tracing::debug_span!("effect", name).entered();
@@ -283,7 +279,7 @@ impl Runner {
                 }
             };
             let stop_ref = stop.as_ref().map(|(_, s)| s);
-            let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop_ref, gate: None, send: &send };
+            let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop_ref, gate: None, send: &send, seams };
             let msg = guard::guarded(recovery, || match check {
                 Some(c) => trust::checked(c, effect, |text| failed.failed(text), &cx),
                 None => execute_with(effect, &cx),
@@ -302,7 +298,6 @@ impl Runner {
             {
                 waker.wake();
             }
-            #[cfg(test)]
             drop(busy);
         });
         let job = match repo {

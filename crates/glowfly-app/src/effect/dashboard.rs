@@ -3,7 +3,6 @@
 
 use super::EffectMeta;
 use super::ForgeError;
-#[cfg(test)]
 use super::SandboxRule;
 use glowfly_core::forge::{Account, Auth, Connection, Issue, Me, PullRequest, Target};
 use std::path::{Path, PathBuf};
@@ -96,7 +95,6 @@ impl EffectMeta for DashboardEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

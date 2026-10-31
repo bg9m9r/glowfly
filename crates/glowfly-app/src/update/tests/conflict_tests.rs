@@ -225,7 +225,7 @@ fn a_failed_save_reenables_save() {
     assert_eq!(fx.len(), 1);
     // The write is refused and saving ends (the status reload that follows isn't run here).
     for effect in fx {
-        if let Some(m) = crate::runner::execute(effect) {
+        if let Some(m) = crate::runner::testing::execute(effect) {
             update(&mut st, m, Instant::now());
         }
     }

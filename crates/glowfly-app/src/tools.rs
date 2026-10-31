@@ -5,7 +5,6 @@
 //! update/tool_git.rs, runner/tools/git_tool.rs).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use glowfly_core::external_tools::Launch;
 use glowfly_core::external_tools::git_config::{GitTool, GitTools};
@@ -204,7 +203,6 @@ impl EffectMeta for ToolEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Drop
     }

@@ -2,7 +2,6 @@
 //! repository (runner/op_preview.rs, glowfly_core::op_preview).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use std::path::{Path, PathBuf};
 
@@ -30,7 +29,6 @@ impl EffectMeta for OpPreviewJob {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

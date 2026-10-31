@@ -36,7 +36,7 @@ fn staging_a_hunk_of_a_big_file_finishes_inline() {
     assert_eq!(d.hunks.len(), 2);
     assert!(d.highlight.as_ref().is_some_and(|h| h.is_pending()), "over {} lines in context", highlight::MAX_LINES);
     assert_eq!(held.len(), 1);
-    let msg = runner::execute(held.remove(0)).expect("finished");
+    let msg = runner::testing::execute(held.remove(0)).expect("finished");
     update(&mut st, msg, Instant::now());
     assert!(shown(&st).highlight.as_ref().is_some_and(|h| !h.is_pending() && h.checkpoints() > 0));
 

@@ -176,7 +176,7 @@ fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     while let Some(m) = queue.pop() {
         for e in update(st, m, Instant::now()) {
             if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
-                queue.extend(runner::execute(e));
+                queue.extend(runner::testing::execute(e));
             } else {
                 all.push(e);
             }
@@ -247,7 +247,7 @@ fn watch_failure_is_reported_once_per_repository() {
 fn full_report(st: &mut AppState, workdir: &Path) -> bool {
     let fx = update(st, changed(workdir, true, Instant::now()), Instant::now());
     let [Effect::LoadRepo { kind: LoadKind::Refresh, known: Some(_), .. }] = &fx[..] else { panic!("a checked refresh: {fx:?}") };
-    let msgs: Vec<Msg> = fx.into_iter().filter_map(runner::execute).collect();
+    let msgs: Vec<Msg> = fx.into_iter().filter_map(runner::testing::execute).collect();
     let full = msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::RepoLoaded { .. })));
     for m in msgs {
         let fx = update(st, m, Instant::now());
@@ -313,7 +313,7 @@ fn a_config_edit_outside_reads_the_identity_again() {
     };
     assert_eq!(g, &git_dir);
     // The read only reads git config; the repository's own name comes before any global one.
-    let msg = runner::execute(fx.remove(0)).expect("a result");
+    let msg = runner::testing::execute(fx.remove(0)).expect("a result");
     let fx = update(&mut st, msg, Instant::now());
     finish(&mut st, fx);
     assert_eq!(st.identities[&git_dir].name, "Grace Hopper", "the edited config");

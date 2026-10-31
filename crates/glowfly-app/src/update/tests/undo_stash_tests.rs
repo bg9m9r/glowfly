@@ -157,7 +157,7 @@ fn refusal_for_an_inactive_tab_offers_nothing() {
     let effect =
         update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).into_iter().find(|e| matches!(e, Effect::UndoRedo { .. })).expect("undo");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::execute(effect).expect("a result");
+    let reply = runner::testing::execute(effect).expect("a result");
     assert!(matches!(&reply, Msg::Job(JobMsg::JobDone { undo: Some(UndoResult::Refused { offer_stash: true, .. }), .. })));
     update(&mut st, reply, Instant::now());
     let t = st.toasts.last().unwrap();

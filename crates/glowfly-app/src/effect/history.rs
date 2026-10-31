@@ -1,7 +1,6 @@
 //! The file history's request for a file's text (`Effect::LoadFileText`).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use git2::Oid;
 use std::path::{Path, PathBuf};
@@ -35,7 +34,6 @@ impl EffectMeta for FileTextRequest {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

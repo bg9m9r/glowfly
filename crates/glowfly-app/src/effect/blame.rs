@@ -1,7 +1,6 @@
 //! The blame view's request (`Effect::LoadBlame`).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use git2::Oid;
 use glowfly_core::repo::BlameOptions;
@@ -40,7 +39,6 @@ impl EffectMeta for BlameRequest {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

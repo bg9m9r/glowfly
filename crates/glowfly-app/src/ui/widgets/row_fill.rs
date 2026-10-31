@@ -53,8 +53,8 @@ mod tests {
 
     #[test]
     fn selected_rows_get_the_fill_and_a_left_accent_bar() {
-        let pal = color::current();
         let f = fills(true, true);
+        let pal = color::current();
         assert!(f.contains(&(ROW, pal.selected)), "the fill spans the row: {f:?}");
         let bar = f.iter().find(|(_, c)| *c == pal.accent).expect("an accent bar");
         assert_eq!(bar.0, Rect::from_min_size(ROW.left_top(), vec2(ACCENT_BAR_W, ROW.height())));
@@ -63,8 +63,8 @@ mod tests {
 
     #[test]
     fn hovered_rows_are_lifted() {
-        let pal = color::current();
         let f = fills(false, true);
+        let pal = color::current();
         assert_eq!(f[0], (ROW, pal.hover));
         let lines: Vec<_> = f[1..].iter().collect();
         assert_eq!(lines.len(), 2, "two shadow lines: {f:?}");

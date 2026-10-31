@@ -103,7 +103,7 @@ fn conflict_markers_warning() {
     let paths = vec!["alpha.txt".to_owned(), "beta.txt".to_owned()];
     let fx = crate::update::update(&mut st, Msg::Conflict(ConflictMsg::MarkResolved(paths)), Instant::now());
     for effect in fx {
-        if let Some(m) = crate::runner::execute(effect) {
+        if let Some(m) = crate::runner::testing::execute(effect) {
             crate::update::update(&mut st, m, Instant::now());
         }
     }

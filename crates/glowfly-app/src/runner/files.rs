@@ -30,32 +30,6 @@ pub(super) fn restore(workdir: &Path, oid: Oid, path: String, overwrite: bool) -
     Msg::Files(FilesMsg::FileRestored { path, oid, result, undo })
 }
 
-/// Moves a deleted file to the system trash, or to the home Trash when its drive's can't be
-/// used, and takes it back out for Undo. The app's test build uses a stand-in folder for all of
-/// them instead, so tests never touch the real Recycle Bin / Trash.
-#[cfg(not(test))]
-pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: repo::os_trash, home: repo::home_trash, restore: repo::os_untrash };
-#[cfg(test)]
-pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: test_trash, home: test_trash, restore: test_untrash };
-
-/// The stand-in trash of the app's test build: a folder in the temp dir, one per process.
-#[cfg(test)]
-pub(crate) fn test_bin() -> std::path::PathBuf {
-    glowfly_core::testkit::bin::own("glowfly-app-test-bin")
-}
-
-/// Moves `full` into `test_bin()` under a unique name (`glowfly_core::testkit::bin`).
-#[cfg(test)]
-fn test_trash(full: &Path) -> Result<(), repo::TrashRefusal> {
-    glowfly_core::testkit::bin::move_in(&test_bin(), full)
-}
-
-/// Takes `full` back out of `test_bin()` for Undo.
-#[cfg(test)]
-fn test_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> repo::Untrashed {
-    glowfly_core::testkit::bin::take_out(&test_bin(), full, ours)
-}
-
 /// Runs `op` in `workdir`. A create or plain rename reports whether git ignores the new path (a
 /// staged rename's new path stays tracked) and any warnings about the new name; a delete reports how the working copy went. A staged
 /// rename goes through git mv; UnstageDelete also takes the file out of the index, and
@@ -66,13 +40,10 @@ fn test_untrash(full: &Path, ours: &dyn Fn(&Path) -> bool) -> repo::Untrashed {
 /// `WorkFileMsg::TrashRefused`, so the user can retry or be asked about deleting it permanently.
 /// Delete, UnstageDelete and Discard keep the file's bytes first, and UnstageGone its staged
 /// entry, so all of them can be undone; one that fails after the file went still reports its
-/// undo entry (`WorkFileMsg::WorkFileFailed`).
-pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
-    work_file_with(workdir, op, TRASHERS)
-}
-
-/// `work_file` with the trashes given.
-fn work_file_with(workdir: &Path, op: FileOp, trashers: undo::Trashers) -> Msg {
+/// undo entry (`WorkFileMsg::WorkFileFailed`). A deleted file goes to `trashers` (the
+/// runner's `Seams`: the system trash, or the home Trash when its drive's can't be used), and
+/// Undo takes it back out of them.
+pub(super) fn work_file(workdir: &Path, op: FileOp, trashers: undo::Trashers) -> Msg {
     let deleting = |r: Result<undo::DeletedSaving, undo::DeleteFailed>| match r {
         Ok(s) => Ok(WorkFileOk::from_saving(s)),
         Err(undo::DeleteFailed { error, undo: Some(undo) }) => Err((error, Some(undo))),
@@ -126,21 +97,6 @@ fn lines_instead(workdir: &Path, path: &str, seen: &SeenLines) -> Msg {
         ignore_whitespace: s.ignore_whitespace,
     };
     super::git_ops::local_done(workdir, op)
-}
-
-/// `work_file` with the stand-in trashes, for tests.
-#[cfg(test)]
-pub(crate) fn work_file_for_test(workdir: &Path, op: FileOp) -> Msg {
-    work_file_with(workdir, op, TRASHERS)
-}
-
-/// `work_file` with a trash that refuses every file (`TrashProblem::NoTrash`), for tests.
-#[cfg(test)]
-pub(crate) fn refused_for_test(workdir: &Path, op: FileOp) -> Msg {
-    fn refuse(_: &Path) -> Result<(), repo::TrashRefusal> {
-        Err(repo::TrashRefusal::new(repo::TrashProblem::NoTrash, "no bin"))
-    }
-    work_file_with(workdir, op, undo::Trashers { system: refuse, home: refuse, ..TRASHERS })
 }
 
 /// The paths in the index, for the palette's file finder.

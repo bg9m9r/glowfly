@@ -1,7 +1,6 @@
 //! The conflict effects (`Effect::Conflict`): loading a conflicted file for the conflict view,
 //! and counting the conflict markers in working files (runner/conflict_files.rs).
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::meta::EffectMeta;
 use super::repo::ConflictRead;
@@ -39,7 +38,6 @@ impl EffectMeta for ConflictEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

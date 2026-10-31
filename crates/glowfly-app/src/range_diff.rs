@@ -5,7 +5,6 @@
 //! multi-commit menu (two commits).
 
 use crate::effect::EffectMeta;
-#[cfg(test)]
 use crate::effect::SandboxRule;
 use git2::Oid;
 use glowfly_core::range_diff::{Ends, Outcome};
@@ -66,7 +65,6 @@ impl EffectMeta for RangeDiffJob {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

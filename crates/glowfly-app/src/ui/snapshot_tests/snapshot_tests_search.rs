@@ -117,7 +117,7 @@ fn send_and_search(st: &mut AppState, msg: SearchMsg) {
     let fx = crate::update::update(st, Msg::Search(msg), Instant::now());
     for effect in fx {
         if matches!(effect, crate::effect::Effect::SearchPaths { .. })
-            && let Some(reply) = crate::runner::execute(effect)
+            && let Some(reply) = crate::runner::testing::execute(effect)
         {
             crate::update::update(st, reply, Instant::now());
         }

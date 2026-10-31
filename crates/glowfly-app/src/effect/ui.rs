@@ -1,7 +1,6 @@
 //! Effects that need the window, carried out by the UI shell (`Effect::Ui`).
 
 use super::EffectMeta;
-#[cfg(test)]
 use super::SandboxRule;
 use crate::state::window_chrome::WindowCmd;
 use std::path::{Path, PathBuf};
@@ -49,7 +48,6 @@ impl EffectMeta for UiEffect {
         None
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

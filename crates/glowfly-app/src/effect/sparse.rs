@@ -1,7 +1,6 @@
 //! The sparse checkout effects (`Effect::Sparse`): the preferences page's state and
 //! `git sparse-checkout` (runner/sparse.rs).
 
-#[cfg(test)]
 use super::SandboxRule;
 use super::meta::EffectMeta;
 use std::path::{Path, PathBuf};
@@ -41,7 +40,6 @@ impl EffectMeta for SparseEffect {
         }
     }
 
-    #[cfg(test)]
     fn sandbox(&self) -> SandboxRule {
         SandboxRule::Run
     }

@@ -28,6 +28,8 @@ pub(super) struct Cx<'a> {
     /// Sends a message before the effect's result and wakes the UI (an update download's
     /// progress); tests drop them.
     pub send: &'a dyn Fn(Msg),
+    /// What the work reaches outside the repositories with (`seams.rs`).
+    pub seams: super::seams::Seams,
 }
 
 /// Runs one effect area's value to completion (blocking), returning the message to send back.
@@ -35,14 +37,8 @@ pub(super) trait Execute {
     fn execute(self, cx: &Cx<'_>) -> Option<Msg>;
 }
 
-/// Runs one effect to completion (blocking) and returns the message to send back, if any.
-/// Results that belong to one repository come back as `Msg::Scoped`.
-#[cfg(test)]
-pub fn execute(effect: Effect) -> Option<Msg> {
-    execute_with(effect, &Cx { cancelled: &|| false, graph_cache: &repo::GraphCache::default(), stop: None, gate: None, send: &|_| {} })
-}
-
-/// `execute` with the runner's `Cx`.
+/// Runs one effect to completion (blocking) with the runner's `Cx` and returns the message to
+/// send back, if any. Results that belong to one repository come back as `Msg::Scoped`.
 pub(super) fn execute_with(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
     let scope = effect.scope().cloned();
     let msg = execute_unscoped(effect, cx)?;
@@ -86,7 +82,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         Effect::LocalOp { workdir, op } => Some(git_ops::local_done(&workdir, op)),
         Effect::Revert { workdir, req } => Some(revert::run(&workdir, req)),
         Effect::RestoreFile { workdir, oid, path, overwrite } => Some(files::restore(&workdir, oid, path, overwrite)),
-        Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
+        Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op, cx.seams.trashers)),
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
         Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable: _, on_fail_check } => {
             if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
@@ -186,7 +182,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
             let what = action.describe();
             let op = if redo { glowfly_core::journal::Op::Redo { what } } else { glowfly_core::journal::Op::Undo { what } };
             let gate = cx.gate.map(|(g, _)| g);
-            Some(journal::around(&cwd, Some(op), || undo_run::undo_redo(&cwd, action, redo, opts, gate)))
+            Some(journal::around(&cwd, Some(op), || undo_run::undo_redo(&cwd, action, redo, opts, gate, cx.seams.trashers)))
         }
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
             Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))

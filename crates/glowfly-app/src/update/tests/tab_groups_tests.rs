@@ -142,7 +142,7 @@ fn restored_tabs_are_pulled_together_once_read() {
         let fx = update(&mut st, Msg::Tabs(TabsMsg::RestoreTabs { paths: paths.clone(), labels: Vec::new(), active: 1 }), Instant::now());
         let read = fx.iter().find_map(|e| if let Effect::ReadTabGroups(p) = e { Some(p.clone()) } else { None });
         assert_eq!(read.as_ref(), Some(&paths), "every restored tab is read");
-        let Some(Msg::Tabs(TabsMsg::GroupsRead(mut results))) = crate::runner::execute(Effect::ReadTabGroups(paths)) else {
+        let Some(Msg::Tabs(TabsMsg::GroupsRead(mut results))) = crate::runner::testing::execute(Effect::ReadTabGroups(paths)) else {
             panic!("the read reports GroupsRead")
         };
         // A tab closed meanwhile.
