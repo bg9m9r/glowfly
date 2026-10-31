@@ -1,11 +1,11 @@
-# glowfly-app UI: theme, colours, type and tokens (`crates/glowfly-app/src/ui/theme/`)
+# UI: theme, colours, type and tokens (`crates/glowfly-ui/src/theme/`)
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
 source file, update its line here. What each colour is for is in [COLOUR.md](../COLOUR.md).
 
 ## Controls and modals
 
-- `theme/controls.rs`: the themed form controls: text fields with a border and focus ring, and checkboxes and radio buttons drawn as visible boxes and circles; views use these, which `tests/controls.rs` checks.
+- `theme/controls.rs`: the themed form controls: text fields with a border and focus ring, and checkboxes and radio buttons drawn as visible boxes and circles; views use these, which `tests/view_checks/controls.rs` checks.
 - `theme::modal`: every modal: the themed backdrop and dialog border.
 - `theme::show_modal`: shows a modal with its contents under one accessibility node of role Dialog (what screen readers and the text snapshots see).
 

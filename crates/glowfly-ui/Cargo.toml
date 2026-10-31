@@ -1,0 +1,40 @@
+[package]
+name = "glowfly-ui"
+description = "Glowfly's views: egui drawing of the model's state, turning input into messages."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[lib]
+doctest = false
+
+[features]
+# The view tests' helpers for the app crate's tests (src/snapshot_check/, src/snapshot_fixtures.rs,
+# `palette_rect` and the bundled CJK subset in theme/fonts.rs); its dev-dependency turns this on.
+# Only adds items, and never reaches a release build.
+test-support = ["dep:egui_kittest", "dep:egui-wgpu", "dep:image", "glowfly-core/testkit", "glowfly-model/test-support"]
+
+[dependencies]
+glowfly-core.workspace = true
+glowfly-model.workspace = true
+chrono.workspace = true
+git2.workspace = true
+serde_json.workspace = true
+eframe = "0.31"
+tracing = "0.1.44"
+egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"], optional = true }
+# One wgpu device for all view tests (src/snapshot_check/); the version kittest renders with.
+egui-wgpu = { version = "0.31", default-features = false, optional = true }
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+
+[dev-dependencies]
+glowfly-core = { workspace = true, features = ["testkit"] }
+glowfly-model = { workspace = true, features = ["test-support"] }
+egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }
+egui-wgpu = { version = "0.31", default-features = false }
+image = { version = "0.25", default-features = false, features = ["png"] }

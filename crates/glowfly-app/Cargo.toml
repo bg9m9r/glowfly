@@ -17,6 +17,7 @@ path = "src/main.rs"
 [dependencies]
 glowfly-core.workspace = true
 glowfly-model.workspace = true
+glowfly-ui.workspace = true
 chrono.workspace = true
 git2.workspace = true
 serde_json.workspace = true
@@ -61,9 +62,9 @@ raw-window-handle = "0.6"
 glowfly-core = { workspace = true, features = ["testkit"] }
 # The model's pure test helpers (glowfly-model's src/testing.rs).
 glowfly-model = { workspace = true, features = ["test-support"] }
+# The views' test helpers (glowfly-ui's snapshot_check, snapshot_fixtures and test fonts).
+glowfly-ui = { workspace = true, features = ["test-support"] }
 egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }
-# One wgpu device for all view tests (ui/snapshot_check.rs); the version kittest renders with.
-egui-wgpu = { version = "0.31", default-features = false }
 # tests/app_icon.rs renders the app icon and checks the PNGs in assets/icon.
 image = { version = "0.25", default-features = false, features = ["png"] }
 # tests/linux_packages.rs reads the package metadata below.

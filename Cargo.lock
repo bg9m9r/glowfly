@@ -1663,11 +1663,11 @@ dependencies = [
  "arboard",
  "chrono",
  "eframe",
- "egui-wgpu",
  "egui_kittest",
  "git2",
  "glowfly-core",
  "glowfly-model",
+ "glowfly-ui",
  "image",
  "memmap2",
  "notify",
@@ -1735,6 +1735,22 @@ dependencies = [
  "chrono",
  "git2",
  "glowfly-core",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "glowfly-ui"
+version = "0.3.0-rc.1"
+dependencies = [
+ "chrono",
+ "eframe",
+ "egui-wgpu",
+ "egui_kittest",
+ "git2",
+ "glowfly-core",
+ "glowfly-model",
+ "image",
  "serde_json",
  "tracing",
 ]

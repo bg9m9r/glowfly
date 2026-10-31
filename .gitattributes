@@ -2,7 +2,7 @@
 * text=auto
 *.png binary
 # Text snapshots are compared byte for byte (after CRLF is folded); keep them LF everywhere.
-crates/glowfly-app/tests/snapshots/*.txt text eol=lf
+crates/glowfly-ui/tests/snapshots/*.txt text eol=lf
 *.sh text eol=lf
 *.sublime-syntax text eol=lf
 crates/glowfly-core/src/init_ops/** text eol=lf

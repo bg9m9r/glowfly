@@ -1,8 +1,9 @@
 # Test-only font
 
 `NotoSansCJKsc-TestSubset.otf` stands in for the operating system's Chinese, Japanese and Korean
-fonts in tests (`crates/glowfly-app/src/ui/theme/fonts.rs`, under `cfg(test)`), so snapshots and
-the glyph check give the same result on every machine. It is not compiled into the app, which
+fonts in tests (`crates/glowfly-ui/src/theme/fonts.rs`, under `cfg(test)` or the `test-support`
+feature, which only the app's tests turn on), so snapshots and the glyph check give the same
+result on every machine. It is not compiled into the app, which
 uses the system's own fonts (`crates/glowfly-app/src/platform/system_fonts.rs`).
 
 It is a subset of Noto Sans CJK SC Regular, version 2.004, licensed under the SIL Open Font

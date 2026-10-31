@@ -1,5 +1,5 @@
-//! Keeps slow and outside work out of views, `update` and state. Everything under the app's
-//! `src/ui/` and glowfly-model's `src/update/` and `src/state/` must stay pure: views draw
+//! Keeps slow and outside work out of views, `update` and state. Everything under glowfly-ui's
+//! `src/` and glowfly-model's `src/update/` and `src/state/` must stay pure: views draw
 //! `AppState` and push `Msg`s, `update` changes state and returns `Effect`s, and the runner
 //! (`src/runner/`) does the I/O. The shell (`src/shell/`), which owns the window, the clock and the
 //! startup loads, is outside them.
@@ -152,9 +152,14 @@ fn test_only_modules(src: &str) -> Vec<String> {
 /// The path (under `src/`, without `.rs`) of module `name` declared in the file at `rel`.
 fn child_module(rel: &str, name: &str) -> String {
     let stem = rel.trim_end_matches(".rs");
-    match stem.strip_suffix("/mod") {
-        Some(dir) => format!("{dir}/{name}"),
-        None => format!("{stem}/{name}"),
+    let (dir, file) = stem.rsplit_once('/').unwrap_or(("", stem));
+    // A `mod.rs`, or a crate root (`lib.rs` or `main.rs` straight under `src`), declares its
+    // modules beside it; any other file, in the folder named after it.
+    let crate_root = (file == "lib" || file == "main") && (dir.is_empty() || dir == "src" || dir.ends_with("/src"));
+    match (file == "mod" || crate_root, dir.is_empty()) {
+        (true, true) => name.to_owned(),
+        (true, false) => format!("{dir}/{name}"),
+        (false, _) => format!("{stem}/{name}"),
     }
 }
 
@@ -261,4 +266,6 @@ fn reports_name_the_line_and_skip_test_code() {
     assert_eq!(declared, ["snapshot_check", "helpers"]);
     assert_eq!(child_module("ui/mod.rs", "snapshot_check"), "ui/snapshot_check");
     assert_eq!(child_module("ui/graph.rs", "x"), "ui/graph/x");
+    assert_eq!(child_module("glowfly-ui/src/lib.rs", "snapshot_check"), "glowfly-ui/src/snapshot_check");
+    assert_eq!(child_module("glowfly-ui/src/theme/lib.rs", "x"), "glowfly-ui/src/theme/lib/x", "only a crate root");
 }
