@@ -115,9 +115,12 @@ impl UndoKind {
                 "--hard" => Some(UndoKind::Reset(ResetMode::Hard)),
                 _ => None,
             },
-            ["branch", "-d" | "-D", name] if plain(name) => Some(UndoKind::DeleteBranch((*name).to_owned())),
+            // `--` before a name a repository supplied (branch_ops, journal::restore).
+            ["branch", "-d" | "-D", name] | ["branch", "-d" | "-D", "--", name] if plain(name) => {
+                Some(UndoKind::DeleteBranch((*name).to_owned()))
+            }
             ["branch", name] if plain(name) => Some(UndoKind::CreateBranch((*name).to_owned())),
-            ["branch", name, start] | ["branch", "--track", name, start] if plain(name) && plain(start) => {
+            ["branch", name, start] | ["branch", "--" | "--track", name, start] if plain(name) && plain(start) => {
                 Some(UndoKind::CreateBranch((*name).to_owned()))
             }
             ["tag", name, at] if plain(name) && plain(at) => Some(UndoKind::CreateTag((*name).to_owned())),

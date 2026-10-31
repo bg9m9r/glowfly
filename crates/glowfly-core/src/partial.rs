@@ -42,7 +42,7 @@ pub fn allow_extension() {
 /// first remote whose `promisor` setting is true (read as git reads booleans). None when it
 /// isn't a partial clone.
 pub fn promisor_remote(workdir: &Path) -> Option<String> {
-    let ok_name = |n: &str| !n.is_empty() && !n.starts_with('-');
+    let ok_name = crate::remote_ops::is_safe_remote_name;
     let named = gitcli::read(workdir, &gitcli::args(&["config", "--get", "extensions.partialClone"]));
     let name = named.stdout.trim();
     if named.ok && ok_name(name) {
@@ -174,11 +174,12 @@ pub fn fetch_cmds(remote: &str, oids: &[Oid]) -> Vec<Vec<String>> {
                 "-c",
                 "fetch.negotiationAlgorithm=noop",
                 "fetch",
-                remote,
                 "--no-tags",
                 "--no-write-fetch-head",
                 "--recurse-submodules=no",
                 "--filter=blob:none",
+                "--",
+                remote,
             ]);
             cmd.extend(batch.iter().map(Oid::to_string));
             cmd

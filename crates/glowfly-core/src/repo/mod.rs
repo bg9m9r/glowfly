@@ -80,6 +80,7 @@ mod revert;
 mod revert_file;
 mod revert_merge;
 mod rpath;
+mod safe_names;
 mod shallow;
 mod shown_ws;
 mod snapshot;
@@ -169,6 +170,7 @@ pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_con
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};
 pub(crate) use rpath::shown as shown_path;
+pub use safe_names::is_safe_ref_name;
 pub use stacked::*;
 pub use status::{ChangeCounts, status_and_index, status_and_index_with, status_at};
 pub use status_index::{IndexStatus, status_after_index_change};
@@ -348,6 +350,8 @@ mod revert_tests;
 mod revert_workdir_tests;
 #[cfg(test)]
 mod revert_ws_tests;
+#[cfg(test)]
+mod safe_names_tests;
 #[cfg(test)]
 mod shallow_tests;
 #[cfg(test)]

@@ -76,7 +76,7 @@ pub(super) fn remove(r: RemoveRequest) -> Msg {
         let remote_cmds = r.delete_remote.as_ref().map(|t| delete_with_remote_cmds(&b, t));
         let merged = remote_cmds.as_ref().map(|c| run_logged(&r, &c[0], &mut output).0);
         let before = undo::before(&r.repo, &UndoKind::DeleteBranch(b.clone())).ok();
-        let (ok, text) = run_logged(&r, &args(&["branch", "-d", &b]), &mut output);
+        let (ok, text) = run_logged(&r, &args(&["branch", "-d", "--", &b]), &mut output);
         if ok {
             branch = Some(Ok(()));
             undo = before.and_then(|x| undo::after(&r.repo, UndoKind::DeleteBranch(b), x).ok().flatten());

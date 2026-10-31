@@ -53,7 +53,7 @@ pub(super) fn delete(st: &mut AppState, name: &str, tip: Oid, force: bool, fx: &
         st.log(false, why);
         return;
     }
-    let cmd = args(&["branch", if force { "-D" } else { "-d" }, name]);
+    let cmd = args(&["branch", if force { "-D" } else { "-d" }, "--", name]);
     let expect = Some((format!("refs/heads/{name}"), tip));
     super::git_job::run(st, "Delete branch".into(), vec![cmd], None, expect, fx);
 }

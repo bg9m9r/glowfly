@@ -122,7 +122,7 @@ pub fn local_delete_cmds(d: &LocalDelete, remote: &str, target: &str) -> Vec<(Lo
         cmds.push((LocalStep::Checkout, c.clone()));
     }
     cmds.push((LocalStep::Delete, merge_config(&d.branch, target)));
-    cmds.push((LocalStep::Delete, args(&["branch", "-d", &d.branch])));
+    cmds.push((LocalStep::Delete, args(&["branch", "-d", "--", &d.branch])));
     cmds
 }
 

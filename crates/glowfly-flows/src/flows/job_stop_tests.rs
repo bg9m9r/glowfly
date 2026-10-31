@@ -100,7 +100,7 @@ fn cancel_and_stop(st: &mut AppState, output: &str) {
 #[test]
 fn a_push_is_cancelled_and_never_offered_again() {
     let (mut st, dir, origin) = with_origin("job-stop-push");
-    let fx = run(&mut st, Msg::git("Push", &["push", "origin", "main"]));
+    let fx = run(&mut st, Msg::git("Push", &["push", "--", "origin", "main"]));
     assert_eq!(stoppable(&fx), Some(true));
     assert!(st.job_cancellable());
     assert_eq!(st.job_stop.as_ref().map(|s| s.step), Some(Step::Push));
@@ -168,7 +168,7 @@ fn a_clone_is_cancelled_and_not_opened() {
 fn a_job_with_a_local_step_before_its_push_waits_for_that_step() {
     let (mut st, dir, origin) = with_origin("job-stop-two");
     git(&dir, &["branch", "old"]);
-    let cmds = vec![args(&["branch", "-D", "old"]), args(&["push", "origin", "--delete", "old"])];
+    let cmds = vec![args(&["branch", "-D", "--", "old"]), args(&["push", "--delete", "--", "origin", "old"])];
     let fx = run(&mut st, Msg::Job(JobMsg::Git { label: "Delete local and remote branch".into(), cmds }));
     assert_eq!(stoppable(&fx), Some(true));
     assert_eq!(st.job_cancel_blocked(), Some(Step::Local), "the local delete runs first");

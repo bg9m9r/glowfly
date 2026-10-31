@@ -52,7 +52,7 @@ pub(super) fn after_merge(
     }
     let mut cmds = Vec::new();
     if delete {
-        cmds.push(args(&["push", remote, "--delete", source]));
+        cmds.push(args(&["push", "--delete", "--", remote, source]));
     }
     cmds.push(fetch_cmd(remote));
     let local = match plan {

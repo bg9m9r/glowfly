@@ -26,7 +26,7 @@ fn sized(st: &AppState, id: u64, size: HistorySize) -> Msg {
 }
 
 fn unshallow(fx: &[Effect]) -> bool {
-    let want = [glowfly_core::gitcli::args(&["fetch", "--unshallow", "origin"])];
+    let want = [glowfly_core::gitcli::args(&["fetch", "--unshallow", "--", "origin"])];
     matches!(fx, [Effect::RunGit { cmds, stoppable: true, .. }] if cmds[..] == want[..])
 }
 

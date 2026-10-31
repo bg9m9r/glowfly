@@ -1,20 +1,23 @@
 //! Checks and command lines for adding, editing, fetching and removing a remote. Everything here
 //! is pure; the app runs the commands through `gitcli` so credentials and the user's git config
-//! apply.
+//! apply. Each command ends its options with `--`, so no remote name or URL reads as one.
 
 use crate::gitcli::args;
 use crate::repo::RemoteInfo;
 
-/// Whether git accepts `name` as a remote name: `refs/remotes/<name>/x` must pass the
-/// ref-format rules, and a name starting with '-' would read as an option. A trailing dot is
-/// refused too: git allows it, but Windows drops it from the refs/remotes/<name> folder.
+/// Whether Glowfly lets the user give a remote `name`: one [`is_safe_remote_name`] accepts,
+/// without a trailing dot (git allows it, but Windows drops it from the refs/remotes/<name>
+/// folder).
 pub fn is_valid_remote_name(name: &str) -> bool {
+    !name.ends_with('.') && is_safe_remote_name(name)
+}
+
+/// Whether a remote `name`, typed or read from a repository's config, may reach a git command
+/// line: `refs/remotes/<name>/x` must pass the ref-format rules, and a name starting with '-'
+/// would read as an option. The snapshot leaves out remotes whose names fail this.
+pub fn is_safe_remote_name(name: &str) -> bool {
     // Control characters first: git2 panics on an interior NUL when it builds its C string.
-    !name.is_empty()
-        && !name.starts_with('-')
-        && !name.ends_with('.')
-        && !name.chars().any(char::is_control)
-        && git2::Remote::is_valid_name(name)
+    !name.is_empty() && !name.starts_with('-') && !name.chars().any(char::is_control) && git2::Remote::is_valid_name(name)
 }
 
 /// Why a remote name can't be used.
@@ -144,9 +147,9 @@ pub fn exact_regex(s: &str) -> String {
 
 /// `git remote add`, then a separate push URL when given, then a fetch when asked.
 pub fn add_cmds(name: &str, url: &str, push_url: Option<&str>, fetch: bool) -> Vec<Vec<String>> {
-    let mut cmds = vec![args(&["remote", "add", name, url])];
+    let mut cmds = vec![args(&["remote", "add", "--", name, url])];
     if let Some(p) = push_url {
-        cmds.push(args(&["remote", "set-url", "--push", name, p]));
+        cmds.push(args(&["remote", "set-url", "--push", "--", name, p]));
     }
     if fetch {
         cmds.push(fetch_cmd(name));
@@ -171,33 +174,33 @@ pub fn edit_cmds(old: &RemoteInfo, new: &RemoteEdit) -> Vec<Vec<String>> {
     let mut cmds = Vec::new();
     let n = new.name;
     if old.name != n {
-        cmds.push(args(&["remote", "rename", &old.name, n]));
+        cmds.push(args(&["remote", "rename", "--", &old.name, n]));
     }
     if old.fetch_url() != new.url {
-        let mut c = args(&["remote", "set-url", n, new.url]);
+        let mut c = args(&["remote", "set-url", "--", n, new.url]);
         if old.urls.len() > 1 {
             c.push(exact_regex(old.fetch_url()));
         }
         cmds.push(c);
     }
     match (old.push_url(), new.push_url) {
-        (None, Some(p)) => cmds.push(args(&["remote", "set-url", "--push", n, p])),
+        (None, Some(p)) => cmds.push(args(&["remote", "set-url", "--push", "--", n, p])),
         (Some(o), Some(p)) if o != p => {
-            let mut c = args(&["remote", "set-url", "--push", n, p]);
+            let mut c = args(&["remote", "set-url", "--push", "--", n, p]);
             if old.push_urls.len() > 1 {
                 c.push(exact_regex(o));
             }
             cmds.push(c);
         }
-        (Some(o), None) => cmds.push(args(&["remote", "set-url", "--delete", "--push", n, &exact_regex(o)])),
+        (Some(o), None) => cmds.push(args(&["remote", "set-url", "--delete", "--push", "--", n, &exact_regex(o)])),
         _ => {}
     }
     cmds
 }
 
-/// `git fetch --prune <name>`, like the toolbar's Fetch all.
+/// `git fetch --prune -- <name>`, like the toolbar's Fetch all.
 pub fn fetch_cmd(name: &str) -> Vec<String> {
-    args(&["fetch", "--prune", name])
+    args(&["fetch", "--prune", "--", name])
 }
 
 /// Fetches `refname` from `remote` (a pull request's head ref) for its objects only: no tags,
@@ -208,13 +211,13 @@ pub fn fetch_ref_cmd(remote: &str, refname: &str, write_fetch_head: bool) -> Vec
     if !write_fetch_head {
         cmd.push("--no-write-fetch-head".into());
     }
-    cmd.extend([remote.to_owned(), refname.to_owned()]);
+    cmd.extend(["--".to_owned(), remote.to_owned(), refname.to_owned()]);
     cmd
 }
 
-/// `git remote remove <name>`.
+/// `git remote remove -- <name>`.
 pub fn remove_cmd(name: &str) -> Vec<String> {
-    args(&["remote", "remove", name])
+    args(&["remote", "remove", "--", name])
 }
 
 /// `url` with the password of a scheme://user:password@host URL replaced by ***.

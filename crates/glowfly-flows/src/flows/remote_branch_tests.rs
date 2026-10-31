@@ -179,7 +179,7 @@ fn conflict_check_remote_branch() {
 fn set_upstream_from_remote_row() {
     let (mut st, work, bare) = with_origin("rb-set-upstream");
     let msg = Msg::Branch(BranchMsg::SetUpstream { branch: "main".into(), remote: "origin".into(), name: "feature".into() });
-    assert_eq!(cmds(&mut st, msg), vec![args(&["branch", "--set-upstream-to=origin/feature", "main"])]);
+    assert_eq!(cmds(&mut st, msg), vec![args(&["branch", "--set-upstream-to=origin/feature", "--", "main"])]);
     cleanup(&[&work, &bare]);
 }
 

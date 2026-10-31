@@ -98,7 +98,7 @@ fn rename_dialog_and_checks() {
     let (mut st, work, bare) = with_origin("br-rename");
     update(&mut st, Msg::Branch(BranchMsg::RenameBranchDialog("feature".into())), Instant::now());
     assert!(matches!(&st.modal, Some(Modal::RenameBranch(f)) if f.old == "feature" && f.name == "feature" && !f.remote));
-    assert_eq!(cmds(&mut st, rename("feature", " feature-2 ")), vec![args(&["branch", "-m", "feature", "feature-2"])]);
+    assert_eq!(cmds(&mut st, rename("feature", " feature-2 ")), vec![args(&["branch", "-m", "--", "feature", "feature-2"])]);
     assert!(st.modal.is_none(), "the dialog closes");
 
     add_local(&mut st, "group/x");
@@ -146,7 +146,7 @@ fn upstream_dialog_and_commands() {
 
     let set =
         |name: &str, remote: &str| Msg::Branch(BranchMsg::SetUpstream { branch: "x".into(), remote: remote.into(), name: name.into() });
-    assert_eq!(cmds(&mut st, set("feature", "origin")), vec![args(&["branch", "--set-upstream-to=origin/feature", "x"])]);
+    assert_eq!(cmds(&mut st, set("feature", "origin")), vec![args(&["branch", "--set-upstream-to=origin/feature", "--", "x"])]);
     assert_eq!(
         cmds(&mut st, set("nothere", "origin")),
         vec![args(&["config", "branch.x.remote", "origin"]), args(&["config", "branch.x.merge", "refs/heads/nothere"])]
@@ -164,7 +164,7 @@ fn upstream_dialog_and_commands() {
 
     assert_eq!(
         cmds(&mut st, Msg::Branch(BranchMsg::UnsetUpstream("feature".into()))),
-        vec![args(&["branch", "--unset-upstream", "feature"])]
+        vec![args(&["branch", "--unset-upstream", "--", "feature"])]
     );
     update(&mut st, Msg::Branch(BranchMsg::UnsetUpstream("feature".into())), Instant::now());
     done(&mut st, true);
@@ -258,8 +258,8 @@ fn delete_with_remote_commands_and_refusals() {
                 cmds,
                 &vec![
                     args(&["merge-base", "--is-ancestor", "refs/heads/feature", "HEAD"]),
-                    args(&["branch", "-d", "feature"]),
-                    args(&["push", "origin", "--delete", "feature"])
+                    args(&["branch", "-d", "--", "feature"]),
+                    args(&["push", "--delete", "--", "origin", "feature"])
                 ]
             );
             assert!(matches!(record, Some(UndoKind::DeleteBranch(n)) if n == "feature"));
@@ -271,7 +271,7 @@ fn delete_with_remote_commands_and_refusals() {
     b.upstream_ref = Some("refs/remotes/origin/other".into());
     assert_eq!(
         cmds(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into())))[2],
-        args(&["push", "origin", "--delete", "other"])
+        args(&["push", "--delete", "--", "origin", "other"])
     );
 
     // Not merged into HEAD: refused, since both deletes would leave its commits on no branch.
@@ -352,20 +352,26 @@ fn push_targets_and_refusals() {
     let (mut st, work, bare) = with_origin("br-push");
     let push = |b: &str, r: Option<&str>| Msg::Branch(BranchMsg::PushBranch { branch: b.into(), remote: r.map(str::to_owned) });
     local(&mut st, "feature").ahead = 1;
-    assert_eq!(cmds(&mut st, push("feature", None)), vec![args(&["push", "origin", "refs/heads/feature:refs/heads/feature"])]);
+    assert_eq!(cmds(&mut st, push("feature", None)), vec![args(&["push", "--", "origin", "refs/heads/feature:refs/heads/feature"])]);
 
     add_local(&mut st, "x");
-    assert_eq!(cmds(&mut st, push("x", None)), vec![args(&["push", "-u", "origin", "refs/heads/x:refs/heads/x"])]);
+    assert_eq!(cmds(&mut st, push("x", None)), vec![args(&["push", "-u", "--", "origin", "refs/heads/x:refs/heads/x"])]);
     let x = local(&mut st, "x");
     x.tracking = Some(Tracking { remote: ".".into(), merge: "main".into() });
     x.upstream_ref = Some("refs/heads/main".into());
-    assert_eq!(cmds(&mut st, push("x", None)), vec![args(&["push", "origin", "refs/heads/x:refs/heads/x"])], "no -u");
+    assert_eq!(cmds(&mut st, push("x", None)), vec![args(&["push", "--", "origin", "refs/heads/x:refs/heads/x"])], "no -u");
 
     st.snap.as_mut().unwrap().remotes.push(("backup".into(), Vec::new()));
     let b = local(&mut st, "feature");
     b.tracking = Some(Tracking { remote: "origin".into(), merge: "other".into() });
-    assert_eq!(cmds(&mut st, push("feature", Some("backup"))), vec![args(&["push", "backup", "refs/heads/feature:refs/heads/feature"])]);
-    assert_eq!(cmds(&mut st, push("feature", Some("origin"))), vec![args(&["push", "origin", "refs/heads/feature:refs/heads/other"])]);
+    assert_eq!(
+        cmds(&mut st, push("feature", Some("backup"))),
+        vec![args(&["push", "--", "backup", "refs/heads/feature:refs/heads/feature"])]
+    );
+    assert_eq!(
+        cmds(&mut st, push("feature", Some("origin"))),
+        vec![args(&["push", "--", "origin", "refs/heads/feature:refs/heads/other"])]
+    );
 
     local(&mut st, "feature").behind = 2;
     assert!(cmds(&mut st, push("feature", None)).is_empty());
@@ -383,10 +389,10 @@ fn which_jobs_keep_the_undo_history() {
     use super::undo::keeps_history;
     let keeps = |a: &[&str]| keeps_history(&[args(a)]);
     assert!(keeps(&["config", "branch.x.remote", "origin"]));
-    assert!(keeps(&["branch", "--set-upstream-to=origin/x", "x"]));
-    assert!(keeps(&["branch", "--unset-upstream", "x"]));
+    assert!(keeps(&["branch", "--set-upstream-to=origin/x", "--", "x"]));
+    assert!(keeps(&["branch", "--unset-upstream", "--", "x"]));
     assert!(keeps(&["fetch", "--all"]));
-    assert!(keeps(&["push", "-u", "origin", "refs/heads/x:refs/heads/x"]));
+    assert!(keeps(&["push", "-u", "--", "origin", "refs/heads/x:refs/heads/x"]));
     assert!(!keeps(&["fetch", "--no-recurse-submodules", ".", "a:b"]));
-    assert!(!keeps(&["branch", "-m", "a", "b"]));
+    assert!(!keeps(&["branch", "-m", "--", "a", "b"]));
 }

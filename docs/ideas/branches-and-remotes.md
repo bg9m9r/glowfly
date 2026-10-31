@@ -21,6 +21,8 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Force push with lease of a branch whose `branch.<name>.pushRemote` or `remote.pushDefault`
   (`PushRemotes`) names another remote than its upstream's: offer it toward that push remote too,
   leasing its tracking branch there, instead of only toward the upstream
+- Merge from the menus names the short branch (so the merge message reads `Merge branch 'x'`), which git resolves to a same-named tag first; pass the full ref and write the usual message ourselves
+- Undo plans (`undo/refs.rs`: `branch -D`, `tag -d`, recreate, `--set-upstream-to`), Git Flow init and finish, and the create-branch and create-tag commands still put names before options end; their names are typed and validated or already passed the load, but `--` (with the undo classifier taught it) would make that local
 
 ### Force push with lease from any branch, and push to all remotes
 
@@ -135,6 +137,7 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Accept Unicode IDN hosts with combining marks (virama, ZWJ/ZWNJ), which the host-character allowlist (`host_char`) now refuses
 - Accept IPv6 literal hosts with a zone (`[fe80::1%25eth0]`), which are refused now
 - Push to a URL set as `branch.<b>.pushRemote` as git does, instead of refusing it
+- A remote, upstream, branch or tag left out of the snapshot because its name reads as an option just vanishes; say so (a notice in the REMOTE section or the trust prompt) so the user can rename it
 
 ### Tag management
 

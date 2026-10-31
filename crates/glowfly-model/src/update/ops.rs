@@ -229,7 +229,7 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
             super::publish::open(st, fx);
             return;
         };
-        cmd.extend(["-u".to_owned(), remote, branch]);
+        cmd.extend(["-u".to_owned(), "--".to_owned(), remote, branch]);
     }
     start_job(st, JobSpec::new("Push".into(), vec![cmd]), fx);
 }
@@ -250,7 +250,7 @@ pub(super) fn force_push_cmd(b: &glowfly_core::repo::BranchInfo, snap: &Snapshot
     if set_upstream {
         cmd.push("-u".into());
     }
-    cmd.extend([remote, format!("refs/heads/{}:refs/heads/{dest}", b.name)]);
+    cmd.extend(["--".to_owned(), remote, format!("refs/heads/{}:refs/heads/{dest}", b.name)]);
     Some(cmd)
 }
 

@@ -71,28 +71,28 @@ fn exact_regex_escapes() {
 
 #[test]
 fn add_cmds_lines() {
-    assert_eq!(add_cmds("up", "https://h/r.git", None, false), vec![v(&["remote", "add", "up", "https://h/r.git"])]);
+    assert_eq!(add_cmds("up", "https://h/r.git", None, false), vec![v(&["remote", "add", "--", "up", "https://h/r.git"])]);
     assert_eq!(
         add_cmds("up", "u", Some("p"), false),
-        vec![v(&["remote", "add", "up", "u"]), v(&["remote", "set-url", "--push", "up", "p"])]
+        vec![v(&["remote", "add", "--", "up", "u"]), v(&["remote", "set-url", "--push", "--", "up", "p"])]
     );
     assert_eq!(
         add_cmds("team/fork", "u", None, true),
-        vec![v(&["remote", "add", "team/fork", "u"]), v(&["fetch", "--prune", "team/fork"])]
+        vec![v(&["remote", "add", "--", "team/fork", "u"]), v(&["fetch", "--prune", "--", "team/fork"])]
     );
-    assert_eq!(fetch_cmd("o"), v(&["fetch", "--prune", "o"]));
-    assert_eq!(remove_cmd("o"), v(&["remote", "remove", "o"]));
+    assert_eq!(fetch_cmd("o"), v(&["fetch", "--prune", "--", "o"]));
+    assert_eq!(remove_cmd("o"), v(&["remote", "remove", "--", "o"]));
 }
 
 #[test]
 fn fetch_ref_cmd_lines() {
     assert_eq!(
         fetch_ref_cmd("origin", "refs/pull/7/head", false),
-        v(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap=", "--no-write-fetch-head", "origin", "refs/pull/7/head"])
+        v(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap=", "--no-write-fetch-head", "--", "origin", "refs/pull/7/head"])
     );
     assert_eq!(
         fetch_ref_cmd("up", "refs/merge-requests/3/head", true),
-        v(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap=", "up", "refs/merge-requests/3/head"])
+        v(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap=", "--", "up", "refs/merge-requests/3/head"])
     );
 }
 
@@ -101,26 +101,29 @@ fn edit_cmds_lines() {
     let one = info("origin", &["u1"], &[]);
     let edit = |name, url, push| RemoteEdit { name, url, push_url: push };
     assert!(edit_cmds(&one, &edit("origin", "u1", None)).is_empty());
-    assert_eq!(edit_cmds(&one, &edit("up", "u1", None)), vec![v(&["remote", "rename", "origin", "up"])]);
-    assert_eq!(edit_cmds(&one, &edit("origin", "u2", None)), vec![v(&["remote", "set-url", "origin", "u2"])]);
+    assert_eq!(edit_cmds(&one, &edit("up", "u1", None)), vec![v(&["remote", "rename", "--", "origin", "up"])]);
+    assert_eq!(edit_cmds(&one, &edit("origin", "u2", None)), vec![v(&["remote", "set-url", "--", "origin", "u2"])]);
     let two = info("origin", &["u.1", "u2"], &[]);
-    assert_eq!(edit_cmds(&two, &edit("origin", "u3", None)), vec![v(&["remote", "set-url", "origin", "u3", r"^u\.1$"])]);
-    assert_eq!(edit_cmds(&one, &edit("origin", "u1", Some("p"))), vec![v(&["remote", "set-url", "--push", "origin", "p"])]);
+    assert_eq!(edit_cmds(&two, &edit("origin", "u3", None)), vec![v(&["remote", "set-url", "--", "origin", "u3", r"^u\.1$"])]);
+    assert_eq!(edit_cmds(&one, &edit("origin", "u1", Some("p"))), vec![v(&["remote", "set-url", "--push", "--", "origin", "p"])]);
     let pushed = info("origin", &["u1"], &["p1"]);
     assert!(edit_cmds(&pushed, &edit("origin", "u1", Some("p1"))).is_empty());
-    assert_eq!(edit_cmds(&pushed, &edit("origin", "u1", Some("p2"))), vec![v(&["remote", "set-url", "--push", "origin", "p2"])]);
+    assert_eq!(edit_cmds(&pushed, &edit("origin", "u1", Some("p2"))), vec![v(&["remote", "set-url", "--push", "--", "origin", "p2"])]);
     let pushed2 = info("origin", &["u1"], &["p+1", "p2"]);
     assert_eq!(
         edit_cmds(&pushed2, &edit("origin", "u1", Some("p3"))),
-        vec![v(&["remote", "set-url", "--push", "origin", "p3", r"^p\+1$"])]
+        vec![v(&["remote", "set-url", "--push", "--", "origin", "p3", r"^p\+1$"])]
     );
-    assert_eq!(edit_cmds(&pushed, &edit("origin", "u1", None)), vec![v(&["remote", "set-url", "--delete", "--push", "origin", "^p1$"])]);
+    assert_eq!(
+        edit_cmds(&pushed, &edit("origin", "u1", None)),
+        vec![v(&["remote", "set-url", "--delete", "--push", "--", "origin", "^p1$"])]
+    );
     assert_eq!(
         edit_cmds(&pushed, &edit("up", "u2", Some("p2"))),
         vec![
-            v(&["remote", "rename", "origin", "up"]),
-            v(&["remote", "set-url", "up", "u2"]),
-            v(&["remote", "set-url", "--push", "up", "p2"]),
+            v(&["remote", "rename", "--", "origin", "up"]),
+            v(&["remote", "set-url", "--", "up", "u2"]),
+            v(&["remote", "set-url", "--push", "--", "up", "p2"]),
         ]
     );
 }

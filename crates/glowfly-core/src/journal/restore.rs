@@ -32,7 +32,7 @@ pub fn checkout_detached(oid: Oid) -> Vec<String> {
 
 /// Makes branch `name` again at `oid`.
 pub fn create_branch(name: &str, oid: Oid) -> Vec<String> {
-    args(&["branch", name, &oid.to_string()])
+    args(&["branch", "--", name, &oid.to_string()])
 }
 
 #[cfg(test)]
@@ -51,6 +51,6 @@ mod tests {
         assert_eq!(reset_to(to), args(&["reset", "--hard", &t]));
         assert_eq!(checkout_branch("main"), args(&["checkout", "main", "--"]));
         assert_eq!(checkout_detached(to), args(&["checkout", "--detach", &t, "--"]));
-        assert_eq!(create_branch("old", to), args(&["branch", "old", &t]));
+        assert_eq!(create_branch("old", to), args(&["branch", "--", "old", &t]));
     }
 }

@@ -20,7 +20,7 @@ fn commands_check_the_target_first_and_delete_with_dash_d() {
         [
             (LocalStep::Check, strs(&["merge-base", "--is-ancestor", "refs/heads/feature", "refs/remotes/origin/main"])),
             (LocalStep::Delete, strs(&["config", "branch.feature.merge", "refs/heads/main"])),
-            (LocalStep::Delete, strs(&["branch", "-d", "feature"])),
+            (LocalStep::Delete, strs(&["branch", "-d", "--", "feature"])),
         ]
     );
     assert_eq!(restore_upstream(&d), strs(&["config", "branch.feature.merge", "refs/heads/feature"]), "the upstream it had");

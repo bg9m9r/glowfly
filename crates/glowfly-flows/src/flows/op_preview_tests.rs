@@ -113,7 +113,7 @@ fn apply_sends_what_the_menu_item_sends() {
     let (mut st, dir, c, f) = with_feature("opp-apply");
     deliver_open(&mut st, merge(f));
     let fx = up(&mut st, Msg::OpPreview(OpPreviewMsg::Apply(None)));
-    assert_eq!(git_cmds(&fx), [args(&["merge", "feature"])]);
+    assert_eq!(git_cmds(&fx), [args(&["merge", "--", "feature"])]);
     assert!(!matches!(st.modal, Some(Modal::OpPreview(_))), "the dialog closed");
     st.job = None;
 

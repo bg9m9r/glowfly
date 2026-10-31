@@ -135,7 +135,7 @@ fn squash_merges_and_fetches() {
     };
     let msg = reply_msg(&st, reply);
     let fx = update(&mut st, Msg::PullRequest(msg), Instant::now());
-    let fetch = ["fetch", "--prune", "origin"].map(String::from).to_vec();
+    let fetch = ["fetch", "--prune", "--", "origin"].map(String::from).to_vec();
     assert_eq!(git_jobs(&fx), [vec![fetch]]);
     assert!(st.log.iter().any(|l| l.ok && l.text == "Merged #7 into main (squash)"));
     done(st, dirs);

@@ -52,7 +52,11 @@ pub(super) fn read(repo: &Repository) -> Result<Read> {
     let mut tips = Vec::new();
     for b in repo.branches(Some(BranchType::Local))? {
         let (b, _) = b?;
+        // A name git could read as an option is left out, as the snapshot leaves it out.
         let Ok(Some(name)) = b.name() else { continue };
+        if !crate::repo::is_safe_ref_name(name) {
+            continue;
+        }
         let name = name.to_owned();
         if let Some(tip) = b.get().target() {
             tips.push((name.clone(), tip));

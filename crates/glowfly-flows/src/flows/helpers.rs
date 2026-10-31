@@ -293,7 +293,7 @@ fn push_sets_upstream_for_new_branches() {
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: false }), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, prompts, .. }] => {
-            assert_eq!(cmds[0], args(&["push", "-u", "origin", "main"]));
+            assert_eq!(cmds[0], args(&["push", "-u", "--", "origin", "main"]));
             assert!(prompts, "user-started jobs may ask for credentials");
         }
         other => panic!("expected a push, got {other:?}"),
@@ -364,7 +364,7 @@ fn unreadable_settings_are_reported_once() {
 #[test]
 fn job_output_hides_credentials_in_urls() {
     let dir = scratch_repo("redact");
-    let cmds = vec![args(&["remote", "add", "x", "https://ada:TOKEN123@example.com/o/r.git"])];
+    let cmds = vec![args(&["remote", "add", "--", "x", "https://ada:TOKEN123@example.com/o/r.git"])];
     let effect = Effect::RunGit {
         cwd: dir.clone(),
         cmds,

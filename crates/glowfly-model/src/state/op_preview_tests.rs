@@ -61,9 +61,9 @@ fn apply_sends_what_the_menus_send() {
     let s = snap("opp-apply");
     let t = Lang::En;
     let merge = apply_msg(t, &s, &PreviewOp::Merge { theirs: "feature".into(), oid: oid(2) }, None).unwrap();
-    assert_eq!(git_cmd(&merge), Some(("Merge".into(), vec![args(&["merge", "feature"])])));
+    assert_eq!(git_cmd(&merge), Some(("Merge".into(), vec![args(&["merge", "--", "feature"])])));
     let rebase = apply_msg(t, &s, &PreviewOp::Rebase { onto: "origin/x".into(), oid: oid(3) }, None).unwrap();
-    assert_eq!(git_cmd(&rebase), Some(("Rebase".into(), vec![args(&["rebase", "origin/x"])])));
+    assert_eq!(git_cmd(&rebase), Some(("Rebase".into(), vec![args(&["rebase", "--", "origin/x"])])));
     let to = oid(4);
     let reset = PreviewOp::Reset { to };
     let soft = apply_msg(t, &s, &reset, Some(ResetMode::Soft)).unwrap();
