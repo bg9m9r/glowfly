@@ -77,7 +77,8 @@ is listed per area in [docs/architecture/](docs/architecture/). The short versio
 - Views in `ui/` only draw and push `Msg`s. Views, `update/` and `state/` do no I/O
   (`tests/layering.rs` checks this).
 - Each area's messages are an enum in `msg/<area>.rs`, its effects in `effect/<area>.rs` (run by
-  `runner/<area>.rs`), and its `update` tests in `update/tests/<area>_tests.rs`.
+  `runner/<area>.rs`), and its `update` tests in `update/tests/<area>_tests.rs` (in
+  `flows/<area>_tests.rs` when they run effects through the runner).
 - Keep files under about 400 lines; split by responsibility. When you add, move or remove a
   source file, update its line in the matching `docs/architecture/<area>.md`.
 - Operations that should honour the user's git config, hooks or credentials go through the git

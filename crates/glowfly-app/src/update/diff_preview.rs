@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 /// A diff was shown (opened or reloaded): a binary one without an LFS summary asks for its
 /// sides, keeping the previous ones on screen when it is the same file; any other drops them.
-pub(super) fn diff_shown(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn diff_shown(st: &mut AppState, fx: &mut Vec<Effect>) {
     let binary = st.session.diff.view.as_ref().filter(|(_, d)| d.binary).map(|(t, _)| t.clone());
     let Some(target) = binary.filter(|_| crate::state::lfs_notes::summary(st).is_none()) else {
         st.session.diff_preview = None;
@@ -44,7 +44,7 @@ pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, res
 
 /// A tab came back: its preview's result was dropped while it was parked, so a preview still
 /// loading for the diff on screen asks again.
-pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     let generation = st.session.diff.shown_gen;
     let on_screen = st.session.diff.view.as_ref().map(|(t, _)| t.clone());
     let Some(p) = st.session.diff_preview.as_mut().filter(|p| p.sides.is_none() && on_screen.as_ref() == Some(&p.target)) else {

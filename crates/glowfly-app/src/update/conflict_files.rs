@@ -13,7 +13,7 @@ use glowfly_core::repo::{ConflictSummary, Hazard};
 
 /// The status changed (or the tab was opened or activated): reads the lists again while an
 /// operation is in progress or files are conflicted, and clears them once it is all over.
-pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     let generation = st.session.conflict_files.generation + 1;
     let (Some(snap), Some(workdir)) = (&st.snap, st.workdir()) else {
         st.session.conflict_files = ConflictFiles { generation, ..Default::default() };
@@ -122,7 +122,3 @@ pub(super) fn read_done(
         },
     }
 }
-
-#[cfg(test)]
-#[path = "tests/palette_conflict_tests.rs"]
-mod palette_tests;

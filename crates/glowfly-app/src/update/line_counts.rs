@@ -54,7 +54,7 @@ pub(super) fn commit_loaded(st: &mut AppState, oid: Oid, result: Result<Arc<File
 }
 
 /// The working tree's status was read: count its files again (none to count when it is clean).
-pub(super) fn status_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn status_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(snap) = st.snap.as_ref() else { return };
     if !snap.is_dirty() {
         st.session.reads.line_counts.clear_wip();

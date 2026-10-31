@@ -30,7 +30,7 @@ pub(super) fn hunk_at_top(d: &FileDiff, mode: DiffMode, layout: DiffLayout, top:
 /// The row a freshly opened diff starts at: hunk `hunk`'s header or change block when given;
 /// otherwise the top in the hunk view and the first change block in the whole-file view.
 /// Rows are counted with the folds in `ex` open.
-pub(super) fn opening_row(d: &FileDiff, s: &Settings, hunk: Option<usize>, ex: &Expanded) -> usize {
+pub(crate) fn opening_row(d: &FileDiff, s: &Settings, hunk: Option<usize>, ex: &Expanded) -> usize {
     let mode = s.diff_mode;
     let change = hunk.and_then(|h| change_of_hunk(d, mode, h)).or(shown(d, mode).map(|_| 0));
     change.and_then(|i| change_rows(d, mode, s.diff_layout, ex).get(i).copied()).unwrap_or(0)

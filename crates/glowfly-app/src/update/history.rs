@@ -126,7 +126,7 @@ pub(super) fn open(st: &mut AppState, path: String, at: Option<Oid>, select: Opt
 }
 
 /// Why commit `oid` can't be selected on the graph.
-pub(super) fn not_on_graph(oid: Oid) -> String {
+pub(crate) fn not_on_graph(oid: Oid) -> String {
     format!("{} is not visible on the graph: its branch is hidden or it is older than the commit limit", &oid.to_string()[..7])
 }
 
@@ -234,14 +234,14 @@ pub(super) fn close(st: &mut AppState) {
 
 /// The selected entry's diff (of the selected file, in a folder history), when it is not the
 /// diff on screen.
-pub(super) fn missing_diff(st: &AppState) -> Option<DiffTarget> {
+pub(crate) fn missing_diff(st: &AppState) -> Option<DiffTarget> {
     let target = st.session.history.view.as_ref()?.target()?;
     st.session.diff.view.as_ref().is_none_or(|(t, _)| *t != target).then_some(target)
 }
 
 /// After a tab switch: requests dropped while the tab was parked (the walk, the selected
 /// entry's diff and the File view's text) are sent again.
-pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     if let Some(target) = missing_diff(st) {
         super::repo::open_diff(st, target, fx);
     }

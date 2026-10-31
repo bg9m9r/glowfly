@@ -114,7 +114,3 @@ pub(super) fn discard_edit(st: &mut AppState, k: usize) {
     c.current = k;
     c.rebuild_edit();
 }
-
-#[cfg(test)]
-#[path = "tests/conflict_edit_tests.rs"]
-mod tests;

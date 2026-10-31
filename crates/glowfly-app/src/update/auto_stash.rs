@@ -44,7 +44,7 @@ use std::time::Instant;
 pub(super) const PUT_BACK_LABEL: &str = "Put back stashed changes";
 
 /// What an entry point does with its command.
-pub(super) enum Gate {
+pub(crate) enum Gate {
     /// Run it as it is: nothing to stash, nothing guarded, or Discard and reset. With the retry
     /// of a guarded command that runs without stashing, for its failure's Stash and <op>.
     Run(Option<StashRetry>),
@@ -56,7 +56,7 @@ pub(super) enum Gate {
 
 /// Whether `cmd` may run now on the active tab's tree; `retry` is the message that starts it
 /// again once the prompt is answered.
-pub(super) fn gate(st: &mut AppState, cmd: &[String], retry: impl FnOnce() -> Msg) -> Gate {
+pub(crate) fn gate(st: &mut AppState, cmd: &[String], retry: impl FnOnce() -> Msg) -> Gate {
     let Some(snap) = st.snap.as_ref() else { return Gate::Run(None) };
     let Some(op) = AutoStashFor::of_command(cmd, snap.head_branch.as_deref()) else { return Gate::Run(None) };
     gate_for(st, op, retry)

@@ -40,7 +40,7 @@ pub(super) fn resume(st: &mut AppState, how: Resume, now: Instant, fx: &mut Vec<
 /// The headline for a rebase that stopped, with the step when the count is known. `ok` is
 /// git's exit status: a failed run that stopped at an edit or elsewhere means git refused to go
 /// on (nothing staged after resolving, say), in its own words.
-pub(super) fn stopped_headline(label: &str, p: &RebaseProgress, ok: bool, output: &str) -> String {
+pub(crate) fn stopped_headline(label: &str, p: &RebaseProgress, ok: bool, output: &str) -> String {
     if !ok && matches!(p.stop.kind, StopKind::Edit | StopKind::Other) {
         return format!("Couldn't continue the rebase: {}", super::ops::last_line(output));
     }

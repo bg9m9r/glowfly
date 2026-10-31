@@ -13,7 +13,7 @@ use std::time::Duration;
 
 /// How long after an edit the folder is checked. Each new folder text asks again after this
 /// pause; answers for text that has changed since are dropped.
-pub(super) const ADD_CHECK_DELAY: Duration = Duration::from_millis(250);
+pub(crate) const ADD_CHECK_DELAY: Duration = Duration::from_millis(250);
 
 pub(super) fn dialog(st: &mut AppState) {
     let Some(snap) = st.snap.as_ref() else { return };

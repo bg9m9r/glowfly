@@ -18,7 +18,7 @@ pub(super) use crate::state::job_spec::{JobSpec, PickPlan};
 
 /// What became of a job that was asked to start.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(super) enum Started {
+pub(crate) enum Started {
     /// It is the active job and its effect was pushed.
     Now,
     /// It waits for the trust prompt; no effect was pushed.
@@ -36,7 +36,7 @@ pub(super) fn busy(st: &mut AppState, quiet: bool) -> bool {
 }
 
 /// Runs `spec` as the active job. Holding it for the trust prompt pushes no effect.
-pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Started {
+pub(crate) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Started {
     // Try again runs the same spec (update/job_retry.rs); a job with its own auto-stash offers
     // Stash and <op> instead, and a quiet one shows no toast.
     let again = (spec.auto_stash.is_none() && !spec.quiet).then(|| spec.clone());
@@ -119,7 +119,7 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
 /// effect `effect` builds for that folder, unless another job is running (said in the log).
 /// Holding it for the trust prompt pushes no effect, so callers that close their dialog only
 /// when an effect was pushed keep it open.
-pub(super) fn begin_job(
+pub(crate) fn begin_job(
     st: &mut AppState,
     label: &str,
     keeps_undo: bool,

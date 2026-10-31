@@ -274,7 +274,7 @@ pub(super) fn save_settings(st: &mut AppState) -> Effect {
 
 /// Makes the file watcher, the conflict check and the tab groups follow the settings. Sent every frame while
 /// Preferences is open (and after a profile switch): both are no-ops when nothing changed.
-pub(super) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.settings.watch_files != st.watch.enabled {
         st.watch.enabled = st.settings.watch_files;
         super::watch::sync(st, fx);

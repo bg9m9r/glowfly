@@ -218,7 +218,7 @@ pub(super) fn hold_waiting(st: &mut AppState, what: WaitingFor, label: Option<St
 }
 
 /// The trust prompt was closed without a decision: the held job, if any, is dropped.
-pub(super) fn dismissed(st: &mut AppState) {
+pub(crate) fn dismissed(st: &mut AppState) {
     st.trust.waiting = None;
     if let Some(h) = st.trust.held.take() {
         forget(st, h, false);

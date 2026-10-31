@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 
 /// How long after an edit the parent folder is checked. Each edit asks again after this pause;
 /// answers for text that has changed since are dropped.
-pub(super) const PARENT_CHECK_DELAY: Duration = Duration::from_millis(250);
+pub(crate) const PARENT_CHECK_DELAY: Duration = Duration::from_millis(250);
 
 pub(super) fn handle(st: &mut AppState, msg: CloneMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {

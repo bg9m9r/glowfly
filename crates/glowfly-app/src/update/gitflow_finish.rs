@@ -98,7 +98,7 @@ pub(super) fn finish(st: &mut AppState, branch: &str, options: FinishOptions, st
 /// job. Always clears the pending job. A success clears the remembered steps of that branch; a
 /// conflict with steps after it remembers them for the job's tab; any other failure of a
 /// Continue finish drops them.
-pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<String> {
+pub(crate) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<String> {
     let pending = st.gitflow_finish.take()?;
     let workdir = match st.job.as_ref() {
         Some(j) if j.label == pending.label => j.workdir.clone(),
@@ -140,7 +140,7 @@ pub(super) fn stash_failed(t: Lang, label: &str, why: &str) -> String {
 
 /// Which step stopped the job and what is still to do (`resumable`: the steps after a conflicted
 /// merge were remembered for Continue finish).
-pub(super) fn stopped(t: Lang, label: &str, steps: &[String], output: &str, resumable: bool) -> String {
+pub(crate) fn stopped(t: Lang, label: &str, steps: &[String], output: &str, resumable: bool) -> String {
     let i = failed_step(output, steps.len());
     let failed = steps.get(i).map(String::as_str).unwrap_or("");
     let rest = steps.get(i + 1..).unwrap_or_default();

@@ -13,14 +13,8 @@ use std::time::Instant;
 
 #[path = "blame_find.rs"]
 mod find;
-#[cfg(test)]
-#[path = "tests/blame_head_tests.rs"]
-mod head_tests;
 #[path = "blame_nav.rs"]
 mod nav;
-#[cfg(test)]
-#[path = "tests/blame_nav_tests.rs"]
-mod nav_tests;
 
 /// Shown instead of a blame while git is held in the repository.
 pub(crate) use crate::state::blame::HELD;

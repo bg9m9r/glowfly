@@ -7,17 +7,7 @@
 #[path = "patch_apply.rs"]
 mod apply;
 #[path = "patch_changes.rs"]
-mod changes;
-
-#[cfg(test)]
-#[path = "tests/patch_apply_tests.rs"]
-mod apply_tests;
-#[cfg(test)]
-#[path = "tests/patch_changes_tests.rs"]
-mod changes_tests;
-#[cfg(test)]
-#[path = "tests/patch_copy_tests.rs"]
-mod copy_tests;
+pub(crate) mod changes;
 
 use crate::effect::OsEffect;
 use crate::effect::{Effect, UiEffect};

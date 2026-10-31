@@ -128,7 +128,7 @@ pub(super) fn more(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// Loads the repository at `path` into the active tab, superseding any load in flight.
-pub(super) fn load(st: &mut AppState, path: PathBuf, kind: LoadKind, fx: &mut Vec<Effect>) {
+pub(crate) fn load(st: &mut AppState, path: PathBuf, kind: LoadKind, fx: &mut Vec<Effect>) {
     start(st, path, kind, None, false, fx);
 }
 
@@ -263,7 +263,7 @@ pub(super) fn set_status(snap: &mut Snapshot, status: Status, submodules: Option
 
 /// What follows new status lists in `snap` (dirty before them: `was_dirty`): their counts, the
 /// submodules read with them, and the graph's WIP row.
-pub(super) fn status_set(snap: &mut Snapshot, was_dirty: bool, submodules: Option<Vec<SubmoduleInfo>>) {
+pub(crate) fn status_set(snap: &mut Snapshot, was_dirty: bool, submodules: Option<Vec<SubmoduleInfo>>) {
     snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
     // A commit or checkout inside a submodule changes its row, not the history.
     if let Some(list) = submodules {

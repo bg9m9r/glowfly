@@ -111,7 +111,7 @@ fn wanted(st: &AppState, last_event: Instant) -> bool {
 
 /// Points the watcher at the active tab's repository, or stops it (no repository, or the
 /// preference is off). Does nothing when it already watches the right one.
-pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
     let want = if st.settings.watch_files {
         st.snap.as_ref().map(|s| WatchTarget { workdir: s.workdir.clone(), git_dir: s.git_dir.clone() })
     } else {

@@ -55,7 +55,7 @@ pub(super) fn set_preview(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) {
 }
 
 /// Asks for the shown file's text when the File view needs it.
-pub(super) fn want_text(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn want_text(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     let smudge = st.runs_git_unasked();
     let Some(view) = st.session.history.view.as_mut() else { return };

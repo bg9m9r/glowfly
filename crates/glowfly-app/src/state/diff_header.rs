@@ -207,7 +207,7 @@ pub fn model(st: &AppState) -> Option<HeaderModel> {
 }
 
 /// `p` split at its last '/' into the folder (with the '/') and the name, bytes as given.
-fn split_path(p: &str) -> (String, String) {
+pub(crate) fn split_path(p: &str) -> (String, String) {
     match p.rfind('/') {
         Some(i) => (p[..=i].to_owned(), p[i + 1..].to_owned()),
         None => (String::new(), p.to_owned()),
@@ -334,7 +334,3 @@ fn working_file_on_disk(st: &AppState, target: &DiffTarget) -> bool {
         DiffTarget::Commit(..) | DiffTarget::Between(..) => true,
     }
 }
-
-#[cfg(test)]
-#[path = "diff_header_tests.rs"]
-mod tests;

@@ -73,7 +73,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, now: Instant, fx: &mut V
 
 /// The query changed: its matches (on the query worker for a large history unless `now`), the
 /// path and index answers it needs, and the next Enter's starting point.
-pub(super) fn query_changed(st: &mut AppState, now: bool, fx: &mut Vec<Effect>) {
+pub(crate) fn query_changed(st: &mut AppState, now: bool, fx: &mut Vec<Effect>) {
     st.session.search.query = CommitQuery::parse(&st.session.tab_view.search);
     let asked = !now && super::search_loaded::ask(st, fx);
     if !asked {
@@ -99,7 +99,7 @@ pub(super) fn matches_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// Parses the query and finds its matches in the loaded history (path terms as far as found).
-pub(super) fn recompute(st: &mut AppState) {
+pub(crate) fn recompute(st: &mut AppState) {
     st.session.search.loaded.pending = None;
     st.session.search.query = CommitQuery::parse(&st.session.tab_view.search);
     let touching = &st.session.search.paths.touching;

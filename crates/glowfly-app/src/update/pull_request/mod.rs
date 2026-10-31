@@ -19,42 +19,14 @@ use glowfly_core::repo::DiffTarget;
 use source::{request, retip, shows_diff};
 use std::time::Instant;
 
-#[cfg(test)]
-mod bitbucket_tests;
 pub(super) mod calls;
-#[cfg(test)]
-mod calls_tests;
 mod checks;
-#[cfg(test)]
-mod checks_tests;
 pub(super) mod cleanup;
-#[cfg(test)]
-mod cleanup_tests;
 mod commits;
-#[cfg(test)]
-mod commits_tests;
-#[cfg(test)]
-mod gitlab_tests;
 mod line_comment;
-#[cfg(test)]
-mod line_comment_leave_tests;
-#[cfg(test)]
-mod line_comment_reply_tests;
-#[cfg(test)]
-mod line_comment_tests;
 mod line_map;
-#[cfg(test)]
-mod line_map_tests;
-#[cfg(test)]
-mod merge_tests;
 mod source;
-#[cfg(test)]
-mod source_tests;
-#[cfg(test)]
-pub(in crate::update) mod tests;
 mod threads;
-#[cfg(test)]
-mod threads_tests;
 
 pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {

@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 
 /// What the note says about a file system monitor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum MonitorNote {
+pub(crate) enum MonitorNote {
     /// core.fsmonitor is already set: nothing to say.
     On,
     /// Git's built-in monitor, with a button.
@@ -53,7 +53,7 @@ pub(super) fn check(st: &mut AppState, slow: Option<&SlowStatus>, now: Instant, 
 }
 
 /// `check` as on `os`.
-pub(super) fn check_for(st: &mut AppState, slow: Option<&SlowStatus>, os: Os, now: Instant, fx: &mut Vec<Effect>) {
+pub(crate) fn check_for(st: &mut AppState, slow: Option<&SlowStatus>, os: Os, now: Instant, fx: &mut Vec<Effect>) {
     let Some(slow) = slow else { return };
     let Some(snap) = st.snap.as_ref() else { return };
     if !st.runs_git_unasked() || st.settings.status_tip_shown_for(&snap.real_workdir) {
@@ -81,7 +81,7 @@ pub(super) fn check_for(st: &mut AppState, slow: Option<&SlowStatus>, os: Os, no
 
 /// The note for a read that took `took`, offering the untracked cache (`cache`) or not, and
 /// saying `monitor` about the file system monitor.
-pub(super) fn note_text(took: Duration, s: StatusSpeedups, cache: bool, monitor: &MonitorNote) -> String {
+pub(crate) fn note_text(took: Duration, s: StatusSpeedups, cache: bool, monitor: &MonitorNote) -> String {
     let mut text = format!("Reading this repository's changes took {:.1} s.", took.as_secs_f64());
     let name = "file system monitor (core.fsmonitor)";
     let terminal = s.show_untracked_all.is_none();
@@ -158,11 +158,3 @@ fn sped_up_headline(monitor: &MonitorOutcome, cache: Option<bool>) -> Option<Str
         (MonitorOutcome::Trouble(t), _) => t.text(),
     })
 }
-
-#[cfg(test)]
-#[path = "tests/status_tip_tests.rs"]
-pub(super) mod tests;
-
-#[cfg(test)]
-#[path = "tests/status_tip_monitor_tests.rs"]
-mod monitor_tests;

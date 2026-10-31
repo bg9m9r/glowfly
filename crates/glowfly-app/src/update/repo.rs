@@ -177,7 +177,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
     }
 }
 
-pub(super) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(crate) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
     if open_missing_history_diff(st, fx) || super::diff::renew_step(st, fx) || super::wip_list::renew_open(st, fx) {
         return;
     }

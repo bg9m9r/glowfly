@@ -256,7 +256,7 @@ pub(super) fn force_push_cmd(b: &glowfly_core::repo::BranchInfo, snap: &Snapshot
 
 /// The active job ended: logs it as a run and toasts it (update/logs_runs.rs), closes the credential prompts it left, updates the undo history of the
 /// tab it ran in, and refreshes that tab if it is still active.
-pub(super) fn finish_job(
+pub(crate) fn finish_job(
     st: &mut AppState,
     ok: bool,
     output: String,

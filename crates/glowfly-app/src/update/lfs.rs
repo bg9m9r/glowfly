@@ -81,7 +81,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
 /// A whole status read brought every attributes file's LFS patterns (None: a read of some
 /// paths). New ones replace the snapshot's, and an open Git LFS page reads its status again in
 /// place.
-pub(super) fn patterns_read(st: &mut AppState, patterns: Option<Vec<LfsPattern>>, fx: &mut Vec<Effect>) {
+pub(crate) fn patterns_read(st: &mut AppState, patterns: Option<Vec<LfsPattern>>, fx: &mut Vec<Effect>) {
     let (Some(patterns), Some(snap)) = (patterns, st.snap.as_mut()) else { return };
     if patterns == snap.lfs_patterns {
         return;

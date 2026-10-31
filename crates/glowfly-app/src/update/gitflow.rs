@@ -56,7 +56,7 @@ pub(super) fn fill(st: &mut AppState) {
 /// A new snapshot arrived: follow a stopped Finish (gitflow_resume.rs), and refill the open page
 /// when it belongs to another repository, or when the config changed and the form wasn't edited
 /// (an edited form keeps the user's values) or now matches it (a successful Save).
-pub(super) fn snapshot_changed(st: &mut AppState) {
+pub(crate) fn snapshot_changed(st: &mut AppState) {
     super::gitflow_resume::snapshot_changed(st);
     let (Some(prefs), Some(snap)) = (st.prefs.as_mut(), st.snap.as_ref()) else { return };
     let page = &mut prefs.gitflow;

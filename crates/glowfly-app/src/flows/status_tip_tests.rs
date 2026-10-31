@@ -1,0 +1,216 @@
+//! The note after a slow status read: when it shows, what it offers, that it shows once per
+//! repository, and the job its button starts.
+
+use crate::effect::{Effect, LoadKind, StatusRead};
+use crate::flows::{drive, scratch_repo, state};
+use crate::msg::{LoadMsg, Msg, RepoMsg};
+use crate::state::AppState;
+use crate::update::status_tip::{MonitorNote, check_for, note_text};
+use crate::update::update;
+use glowfly_core::git_version::GitInfo;
+use glowfly_core::opens::Os;
+use glowfly_core::repo::{self, SlowStatus, StatusSpeedups};
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
+
+const TOOK: Duration = Duration::from_millis(2400);
+
+pub(crate) fn opened(name: &str) -> (AppState, PathBuf) {
+    let dir = scratch_repo(name);
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    (st, dir)
+}
+
+pub(crate) fn speedups(untracked_cache: bool, fsmonitor: bool) -> StatusSpeedups {
+    StatusSpeedups { fsmonitor, untracked_cache, show_untracked_all: None }
+}
+
+/// A whole status read of the active repository that took `TOOK`, with `s` set.
+pub(super) fn slow_read(st: &AppState, s: StatusSpeedups) -> Msg {
+    let snap = st.snap.as_ref().unwrap();
+    let result = Ok(StatusRead::Whole(snap.unstaged.clone(), snap.staged.clone(), snap.state));
+    let slow = Some(SlowStatus { took: TOOK, speedups: s });
+    Msg::Load(LoadMsg::StatusLoaded {
+        generation: st.load_gen,
+        result,
+        submodules: None,
+        open_stamp: None,
+        slow,
+        lfs_patterns: None,
+        index: None,
+    })
+}
+
+/// Hands `slow_read` to `update`: the effects it returns.
+fn read_slowly(st: &mut AppState, s: StatusSpeedups) -> Vec<Effect> {
+    let msg = slow_read(st, s);
+    update(st, msg, Instant::now())
+}
+
+/// `check_for` on `os` after a slow whole read with `s` set: the effects it returns.
+pub(super) fn check_on(st: &mut AppState, s: StatusSpeedups, os: Os) -> Vec<Effect> {
+    let slow = SlowStatus { took: TOOK, speedups: s };
+    let mut fx = Vec::new();
+    check_for(st, Some(&slow), os, Instant::now(), &mut fx);
+    fx
+}
+
+pub(super) fn saves(fx: &[Effect]) -> usize {
+    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+}
+
+pub(super) fn marked(st: &AppState) -> bool {
+    st.settings.status_tip_shown_for(&st.snap.as_ref().unwrap().real_workdir)
+}
+
+#[test]
+fn a_slow_read_offers_the_untracked_cache_once() {
+    let (mut st, dir) = opened("tip-offer");
+    let n = st.toasts.len();
+    let fx = read_slowly(&mut st, speedups(false, false));
+    assert_eq!(st.toasts.len(), n + 1);
+    let toast = st.toasts.last().unwrap();
+    assert!(
+        toast.text.contains("2.4 s") && toast.text.contains("untracked cache") && toast.text.contains("core.fsmonitor"),
+        "{}",
+        toast.text
+    );
+    assert_eq!(toast.action.as_ref().map(|a| a.label.as_str()), Some("Turn on"));
+    assert_eq!(saves(&fx), 1);
+    assert!(marked(&st));
+    assert!(st.log.iter().any(|l| l.text.contains("2.4 s")), "logged too");
+
+    let fx = read_slowly(&mut st, speedups(false, false));
+    assert_eq!(st.toasts.len(), n + 1, "never twice");
+    assert_eq!(saves(&fx), 0);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_note_mentions_only_what_is_off() {
+    let (mut st, dir) = opened("tip-fsmonitor");
+    let n = st.toasts.len();
+    check_on(&mut st, speedups(true, false), Os::Linux);
+    let toast = st.toasts.last().unwrap();
+    assert_eq!(st.toasts.len(), n + 1);
+    assert!(toast.action.is_none() && toast.text.contains("core.fsmonitor") && !toast.text.contains("untracked"), "{}", toast.text);
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let (mut st, dir) = opened("tip-nothing");
+    let n = st.toasts.len();
+    let fx = check_on(&mut st, speedups(true, true), Os::Windows);
+    assert_eq!(st.toasts.len(), n, "both on: nothing to say");
+    assert!(marked(&st) && saves(&fx) == 1, "but never checked again");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    // status.showUntrackedFiles=normal keeps the cache from helping Glowfly's read.
+    let (mut st, dir) = opened("tip-normal");
+    let s = StatusSpeedups { show_untracked_all: Some(false), ..speedups(false, false) };
+    check_on(&mut st, s, Os::Linux);
+    assert!(st.toasts.last().unwrap().action.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_held_repository_gets_no_note() {
+    let (mut st, dir) = crate::flows::trust_held_tests::held_repo("tip-held");
+    let n = st.toasts.len();
+    let fx = read_slowly(&mut st, speedups(false, false));
+    assert_eq!(st.toasts.len(), n);
+    assert_eq!(saves(&fx), 0);
+    assert!(!marked(&st));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_older_git_gets_no_button() {
+    let (mut st, dir) = opened("tip-old-git");
+    st.git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 36, 1)), chosen: false });
+    check_on(&mut st, speedups(false, false), Os::Linux);
+    let toast = st.toasts.last().unwrap();
+    assert!(toast.action.is_none() && toast.text.contains("core.fsmonitor") && !toast.text.contains("untracked"), "{}", toast.text);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_slow_load_checks_too() {
+    let (mut st, dir) = opened("tip-load");
+    let mut snap = repo::load(&dir, &st.load_options(&dir)).unwrap();
+    snap.slow_status = Some(SlowStatus { took: TOOK, speedups: speedups(false, false) });
+    let n = st.toasts.len();
+    let msg = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Ok(Box::new(snap)) });
+    st.loading = true;
+    update(&mut st, msg, Instant::now());
+    assert_eq!(st.toasts.len(), n + 1);
+    assert!(marked(&st));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn turn_on_starts_the_job_in_the_repository() {
+    let (mut st, dir) = opened("tip-turn-on");
+    let s = speedups(false, false);
+    let msg = Msg::Load(LoadMsg::SpeedUpStatus { speedups: s, cache: true, monitor: false });
+    let fx = update(&mut st, msg, Instant::now());
+    let workdir = st.workdir().unwrap();
+    assert!(matches!(&fx[..], [Effect::RunGit { cwd, cmds, .. }] if cwd == &workdir && cmds == &repo::untracked_cache_cmds(s)), "{fx:?}");
+    assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Turn on the untracked cache"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn turn_on_does_nothing_from_another_tab() {
+    let (mut st, dir) = opened("tip-other-tab");
+    read_slowly(&mut st, speedups(false, false));
+    let toast = st.toasts.last_mut().unwrap();
+    let id = toast.id;
+    // The note was for a repository that is no longer the active tab.
+    toast.action.as_mut().unwrap().workdir = Some(dir.with_file_name("glowfly-tip-elsewhere"));
+    let fx = update(&mut st, Msg::ToastAction(id), Instant::now());
+    assert!(fx.is_empty(), "{fx:?}");
+    assert!(st.job.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_note_reads_naturally() {
+    let unset = speedups(false, false);
+    assert_eq!(
+        note_text(TOOK, unset, true, &MonitorNote::Offer),
+        "Reading this repository's changes took 2.4 s. Git's untracked cache and its built-in file system monitor (core.fsmonitor) \
+         can speed this up; the monitor is a small git process that keeps running in the background. Turning the cache on also makes \
+         git status in a terminal list every untracked file rather than their folders."
+    );
+    let all = StatusSpeedups { show_untracked_all: Some(true), ..unset };
+    assert!(!note_text(TOOK, all, true, &MonitorNote::Offer).contains("terminal"), "already listed one by one");
+    assert!(!note_text(TOOK, all, true, &MonitorNote::Watchman).contains("terminal"));
+    assert_eq!(
+        note_text(TOOK, unset, true, &MonitorNote::Watchman),
+        "Reading this repository's changes took 2.4 s. Git's untracked cache can speed this up; turning it on also makes git status \
+         in a terminal list every untracked file rather than their folders. On Linux, Watchman with git's fsmonitor-watchman hook \
+         (core.fsmonitor) can help further."
+    );
+    let short = Duration::from_millis(1549);
+    let cache_on = speedups(true, false);
+    assert_eq!(
+        note_text(short, cache_on, false, &MonitorNote::Offer),
+        "Reading this repository's changes took 1.5 s. Git's built-in file system monitor (core.fsmonitor) can speed this up; it is a \
+         small git process that keeps running in the background."
+    );
+    assert_eq!(
+        note_text(short, cache_on, false, &MonitorNote::Watchman),
+        "Reading this repository's changes took 1.5 s. On Linux, Watchman with git's fsmonitor-watchman hook (core.fsmonitor) can \
+         speed this up."
+    );
+    assert_eq!(
+        note_text(short, cache_on, false, &MonitorNote::TooOld((2, 35, 1))),
+        "Reading this repository's changes took 1.5 s. Git 2.36 or newer has a built-in file system monitor (core.fsmonitor) that can \
+         speed this up (you have 2.35.1)."
+    );
+    assert_eq!(
+        note_text(short, cache_on, false, &MonitorNote::Remote),
+        "Reading this repository's changes took 1.5 s. Git's built-in file system monitor (core.fsmonitor) doesn't watch repositories \
+         on network drives."
+    );
+}

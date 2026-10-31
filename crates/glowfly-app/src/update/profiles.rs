@@ -161,7 +161,7 @@ pub(super) fn on_config(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// forgets it here. While a switch runs, that write waits for it (two writers would fight over
 /// the file, and the switch's would win or lose at random): the profile that ends up current
 /// gets its identity written afterwards.
-pub(super) fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityField, value: &str, fx: &mut Vec<Effect>) {
+pub(crate) fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityField, value: &str, fx: &mut Vec<Effect>) {
     let Some(profile) = st.settings.profile_mut(id) else { return };
     let changed = match field {
         IdentityField::AuthorName => replace(&mut profile.author_name, value.to_owned()),

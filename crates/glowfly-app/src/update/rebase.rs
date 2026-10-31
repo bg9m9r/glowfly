@@ -222,7 +222,7 @@ fn start(st: &mut AppState, confirmed: bool, autostash: bool, now: Instant, fx: 
 }
 
 /// Runs `request` as the active job labelled `label`; `detail` names it in the undo history.
-pub(super) fn launch(st: &mut AppState, label: &str, request: StartRequest, detail: String, fx: &mut Vec<Effect>) -> Started {
+pub(crate) fn launch(st: &mut AppState, label: &str, request: StartRequest, detail: String, fx: &mut Vec<Effect>) -> Started {
     let started = super::ops::begin_job(st, label, false, move |cwd| Effect::Rebase(RebaseEffect::Start { cwd, request, detail }), fx);
     if started != Started::No {
         super::submodule_batch::job_started(st, label, true);

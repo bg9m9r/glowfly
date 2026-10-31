@@ -17,7 +17,7 @@ use glowfly_core::undo::Action;
 use std::time::Instant;
 
 /// Logged when the diff a hunk or line index was taken from has changed.
-pub(super) const DIFF_CHANGED: &str = "The diff changed before the revert ran, so nothing was changed. Try again on the updated diff.";
+pub(crate) const DIFF_CHANGED: &str = "The diff changed before the revert ran, so nothing was changed. Try again on the updated diff.";
 
 /// Reverts hunk `index` of the open commit or comparison diff shown at `generation`.
 pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Vec<Effect>) {

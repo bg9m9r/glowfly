@@ -153,7 +153,3 @@ pub(super) fn settle(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     st.view.quit_ask = Some(QuitAsk { work, terminals, unsaved: ask.unsaved });
 }
-
-#[cfg(test)]
-#[path = "tests/app_tests.rs"]
-mod tests;

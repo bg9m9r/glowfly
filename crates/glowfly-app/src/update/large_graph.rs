@@ -37,7 +37,7 @@ pub(super) fn relayout(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// A worker's layout for request `request`: shown when it still fits the snapshot (an older one
 /// that fits is as good), the replaced one freed on a worker.
-pub(super) fn laid_out(st: &mut AppState, request: u64, fit: &LayoutFit, layout: Layout, fx: &mut Vec<Effect>) {
+pub(crate) fn laid_out(st: &mut AppState, request: u64, fit: &LayoutFit, layout: Layout, fx: &mut Vec<Effect>) {
     if st.refresh.relayout == Some(request) {
         st.refresh.relayout = None;
     }
@@ -47,7 +47,7 @@ pub(super) fn laid_out(st: &mut AppState, request: u64, fit: &LayoutFit, layout:
 }
 
 /// Shows the snapshot a load made; the one it replaces is freed on a worker when large.
-pub(super) fn show(st: &mut AppState, snap: glowfly_core::repo::Snapshot, fx: &mut Vec<Effect>) {
+pub(crate) fn show(st: &mut AppState, snap: glowfly_core::repo::Snapshot, fx: &mut Vec<Effect>) {
     match st.snap.replace(snap) {
         Some(old) if large(&old) => free(fx, "snapshot", Box::new(old)),
         _ => {}

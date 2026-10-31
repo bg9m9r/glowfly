@@ -152,7 +152,8 @@ source file, update its line in the matching file.
    Say in the enum's `on_inactive` what the result still needs if its tab is no longer active.
 6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
 7. **Tests.** Write an `update` test in `update/tests/<area>_tests.rs`, registered with one
-   `mod` line in `update/tests/mod.rs`; snapshot tests go in `ui/snapshot_tests/`, registered
+   `mod` line in `update/tests/mod.rs` (one that runs effects through the runner, with `drive`
+   or `finish`, goes in `flows/<area>_tests.rs`, listed in `flows/mod.rs`); snapshot tests go in `ui/snapshot_tests/`, registered
    in its `mod.rs`. Add a core test on a fixture
    repository (see `scratch_repo`; build fixtures with the test kit's `git`, `testkit/`) for new
    git logic, and an `egui_kittest` snapshot for a new view (harnesses from

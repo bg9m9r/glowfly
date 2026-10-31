@@ -12,6 +12,8 @@ mod custom_commands;
 mod deep_link;
 mod effect;
 mod file_op;
+#[cfg(test)]
+mod flows;
 mod git_env;
 mod gitflow;
 #[cfg(test)]
@@ -40,6 +42,8 @@ mod state;
 mod submodule;
 mod tag;
 mod terminal;
+#[cfg(test)]
+mod testing;
 mod themes;
 mod tools;
 mod ui;

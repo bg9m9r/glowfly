@@ -85,7 +85,3 @@ pub(super) fn apply(
     super::conflict::status_changed(st, now, fx);
     super::compare_wip::status_read(st, fx);
 }
-
-#[cfg(test)]
-#[path = "tests/refresh_paths_tests.rs"]
-mod tests;

@@ -109,7 +109,3 @@ pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
     }
     st.toast_action(false, a.text, action, now);
 }
-
-#[cfg(test)]
-#[path = "tests/logs_tabs_tests.rs"]
-pub(super) mod tests;

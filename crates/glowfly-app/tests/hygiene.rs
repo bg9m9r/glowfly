@@ -52,17 +52,17 @@ const ENGLISH_LOG_CALLS: usize = 176;
 /// signature for `harness`). A new test reuses one of these instead of writing its own copy.
 const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
     ("fn git(dir: &Path, a: &[&str])", &["crates/glowfly-core/src/testkit/mod.rs"]),
-    ("fn scratch_repo(", &["crates/glowfly-app/src/update/tests/helpers.rs", "crates/glowfly-core/src/testutil.rs"]),
-    ("fn long_repo(", &["crates/glowfly-app/src/update/tests/helpers.rs"]),
+    ("fn scratch_repo(", &["crates/glowfly-app/src/testing.rs", "crates/glowfly-core/src/testutil.rs"]),
+    ("fn long_repo(", &["crates/glowfly-app/src/testing.rs"]),
     ("fn fixture_repo(", &["crates/glowfly-app/src/ui/snapshot_tests/helpers.rs"]),
     (
         "fn with_repo(",
         &[
             "crates/glowfly-app/src/state/menu_model_tests.rs",
             "crates/glowfly-app/src/ui/snapshot_tests/helpers.rs",
-            "crates/glowfly-app/src/update/tests/lines_tests.rs",
-            "crates/glowfly-app/src/update/tests/profile_rules_tests.rs",
-            "crates/glowfly-app/src/update/tests/shortcuts_tests.rs",
+            "crates/glowfly-app/src/flows/lines_tests.rs",
+            "crates/glowfly-app/src/flows/profile_rules_tests.rs",
+            "crates/glowfly-app/src/flows/shortcuts_tests.rs",
         ],
     ),
     (

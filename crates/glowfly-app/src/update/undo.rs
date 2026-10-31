@@ -80,7 +80,7 @@ fn start(st: &mut AppState, redo: bool, action: Action, opts: UndoOpts, fx: &mut
 /// the undo: they stay in the stash (named), came back only in part, or went back because
 /// nothing was undone. It wins over every other headline, so git's own words can't hide where
 /// the changes are.
-pub(super) fn stash_headline(st: &AppState, undo: &Option<UndoResult>) -> Option<String> {
+pub(crate) fn stash_headline(st: &AppState, undo: &Option<UndoResult>) -> Option<String> {
     let t = st.settings.lang();
     let (action, s) = match undo {
         Some(UndoResult::Done { before, stash: Some(s), .. }) => (Some(before.describe()), s),
@@ -118,7 +118,7 @@ pub(super) fn stash_headline(st: &AppState, undo: &Option<UndoResult>) -> Option
 /// A fetch into the repository itself (`fetch . a:b`, a fast-forward without checkout) moves a
 /// branch, so it doesn't count; LFS track, untrack, pull and checkout write working-tree files.
 /// git's own options before the subcommand (`-c name=value fetch ...`) are skipped.
-pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
+pub(crate) fn keeps_history(cmds: &[Vec<String>]) -> bool {
     cmds.iter().all(|c| {
         let a: Vec<&str> = c[subcommand_at(c)..].iter().map(String::as_str).collect();
         match a.as_slice() {

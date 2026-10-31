@@ -34,7 +34,3 @@ pub(super) fn shown_as(st: &mut AppState, on: bool) {
         values.fsmonitor = on;
     }
 }
-
-#[cfg(test)]
-#[path = "tests/status_monitor_tests.rs"]
-mod tests;
