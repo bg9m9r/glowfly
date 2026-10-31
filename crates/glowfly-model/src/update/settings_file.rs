@@ -76,7 +76,7 @@ pub(super) fn reread(st: &mut AppState, settings: Settings, problem: Option<Load
         // Damaged but moved aside: said like at startup.
         Some(problem) => at_start(st, problem, now),
         None => {
-            let text = t.tr(if edited { "settings_file.read_dropped.toast" } else { "settings_file.read.toast" });
+            let text = if edited { t.tr("settings_file.read_dropped.toast") } else { t.tr("settings_file.read.toast") };
             st.log(true, text);
             st.toast(true, text, now);
         }
