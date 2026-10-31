@@ -25,11 +25,6 @@ ignore = [
     { id = "RUSTSEC-2026-0370", reason = "zvariant: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
-    # block-buffer 0.10 comes in through digest 0.10 (sha1 in zbus 4; sha2 and hmac in
-    # keyring's dbus-secret-service), whose users have no release on digest 0.11. The advisory
-    # is a cursor kept inside the block, which a panicking compress leaves overwritten: 0.10
-    # keeps its cursor in a field of its own, and the SHA compress functions don't panic.
-    { id = "GHSA-qwgh-2vcv-g2f7", reason = "block-buffer 0.10 keeps its cursor outside the block (digest 0.10: zbus 4, dbus-secret-service)" },
 ]
 # osv-scanner.toml lists the same advisories with the same reasons, for OpenSSF Scorecard's OSV
 # scan, and SECURITY.md's Known advisories table names them; a test keeps the three in step.

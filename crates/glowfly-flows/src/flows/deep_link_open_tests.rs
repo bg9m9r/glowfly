@@ -243,7 +243,9 @@ fn a_repository_without_remotes_gets_no_fetch_button() {
 #[test]
 fn clone_fills_the_url_and_the_clone_is_checked() {
     let (_, work, bare) = with_origin("link-clone");
-    let url = bare.display().to_string();
+    // A link carries a remote URL, never a folder: the clone has it as a second remote.
+    let url = "https://example.com/me/app.git".to_owned();
+    git(&work, &["remote", "add", "mirror", &url]);
     let mut st = state();
     let text = Link { url: Some(url.clone()), root: None, target: Target::Branch("feature".into()) }.to_uri();
     answer(&mut st, &text, Vec::new());
