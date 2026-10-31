@@ -1,4 +1,4 @@
-# glowfly-app UI: the shell, window layout, toolbar, tabs and terminal panel (`crates/glowfly-app/src/ui/`)
+# glowfly-app UI: the shell, window layout, toolbar, tabs and terminal panel (`crates/glowfly-app/src/shell/`, `src/ui/`)
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
 source file, update its line here. `ui/` holds the egui views, one file or folder per region; the
@@ -7,11 +7,14 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 
 ## The shell
 
-- `ui/app.rs` is the shell: it owns the runner and dispatches messages.
-- `ui/app_effects.rs` carries out the effects that need the window (`Effect::Ui`): the clipboard and the Linux PRIMARY selection, the title, attention, closing and window commands.
-- `ui/app_testing.rs` builds the shell for the journeys, without eframe and with a sandboxed runner.
-- `ui/app_frame.rs` times each frame's phases and each message's handling, kept by `state/frame_times.rs`: frames of 50 ms or more go to the performance log.
-- `frame_overlay.rs`: the frame-time overlay Preferences > General can show.
+- `shell/mod.rs`: the shell, outside `ui/` (it stays in the binary); it draws with `ui::draw` and `UiCache`.
+- `shell/app.rs` is the shell: it owns the runner and dispatches messages.
+- `shell/app_effects.rs` carries out the effects that need the window (`Effect::Ui`): the clipboard and the Linux PRIMARY selection, the title, attention, closing and window commands.
+- `shell/app_testing.rs` builds the shell for the journeys, without eframe and with a sandboxed runner.
+- `shell/app_frame.rs` times each frame's phases and each message's handling, kept by `state/frame_times.rs`: frames of 50 ms or more go to the performance log.
+- `shell/app_native.rs` and `shell/app_menu.rs`: the shell's side of the drawn Windows frame's OS glue and of the macOS system menu bar (see [flow-shell.md](flow-shell.md)).
+- `ui/frame_overlay.rs`: the frame-time overlay Preferences > General can show, drawn by the shell.
+- `ui/app_icon.rs`: the app icon, for the window (`main.rs`) and the welcome screen's mark (`ui/app_mark.rs`).
 - `ui/access.rs` gives painted buttons and hint-only text fields their accessible names (a toolbar button's name describes it and differs from the palette's rows).
 - `central.rs` holds the central-area routing (which view fills it: the pull request panel and the issue panel (`issue/`) share one place) and the Esc chain.
 - `panel_header.rs`: the pull request and issue panels' header links (Copy link, Open in browser), folded into a ⋯ menu when they would squeeze the title.

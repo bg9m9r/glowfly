@@ -115,7 +115,7 @@ pub fn pr_menu_item(ui: &mut Ui, pr: &PullRequest, msgs: &mut Vec<Msg>) {
 
 /// After a frame is drawn: reports a changed set of tips on screen, and wakes the window when a
 /// shown tip is due to be asked about again (so pending markers update without input).
-pub(super) fn after_draw(st: &mut AppState, ctx: &egui::Context, now: Instant, msgs: &mut Vec<Msg>) {
+pub(crate) fn after_draw(st: &mut AppState, ctx: &egui::Context, now: Instant, msgs: &mut Vec<Msg>) {
     // The pull request panel's running checks are read again once a minute.
     if let Some(d) = st.session.pull_request.view.as_ref().and_then(|v| v.checks.next_wake(now)) {
         ctx.request_repaint_after(d);

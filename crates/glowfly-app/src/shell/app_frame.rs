@@ -7,14 +7,10 @@ use super::GlowflyApp;
 use eframe::egui;
 use std::time::{Duration, Instant};
 
-/// The frame-time overlay, drawn by the shell over the window.
-#[path = "frame_overlay.rs"]
-mod frame_overlay;
-
 impl GlowflyApp {
     /// The frame-time overlay over everything `ui::draw` drew (when Preferences turns it on).
     pub(super) fn draw_overlay(&self, ctx: &egui::Context) {
-        frame_overlay::show(ctx, &self.st);
+        crate::ui::frame_overlay::show(ctx, &self.st);
     }
 
     /// Runs `f` as the frame phase `name`: timed, and traced as a span.

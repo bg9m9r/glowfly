@@ -5,7 +5,7 @@ use super::{all_sources, code_lines};
 
 /// The files whose non-test code may switch on `cfg(test)`: the shell, which stays in the
 /// binary, whose own unit tests (the journeys) are what it switches for. Only shrinks.
-const TEST_SWITCH_FILES: &[&str] = &["crates/glowfly-app/src/ui/app.rs"];
+const TEST_SWITCH_FILES: &[&str] = &["crates/glowfly-app/src/shell/app.rs"];
 
 /// The lines (1-based) of `src`'s code that switch on `cfg(test)`: `cfg!(test)`, a
 /// `cfg(not(test))` (lint attributes aside), and `#[cfg(test)]` on anything but an item.

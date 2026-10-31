@@ -3,13 +3,13 @@
 //! on it, the system menu, whether Mica applies) into view state and messages; after drawing it
 //! hands the OS the caption geometry the views recorded.
 
-use super::theme::color;
-use super::window_frame;
 use crate::msg::{AppMsg, Msg};
 use crate::platform::native_window::{NativeFrame, NativeWindow};
 use crate::state::AppState;
 use crate::state::window_chrome::{WindowCmd, WindowInfo};
 use crate::state::window_native::{self, Backdrop, MicaTint};
+use crate::ui::theme::color;
+use crate::ui::window_frame;
 use eframe::egui::{self, Color32};
 
 /// Takes the OS's news into `st` and `msgs`; `tint` is the palette's Mica tint.

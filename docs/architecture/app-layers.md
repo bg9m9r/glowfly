@@ -10,6 +10,7 @@ source file, update its line here. Features that span every layer are in
 - `cli_update.rs`: `glowfly --version` and `glowfly --check-update <folder>` (exit 0 downloaded, 3 up to date, 1 failed, 2 usage): the installer checks' command-line modes, run before logging, settings and the window.
 - `logging.rs`: the tracing setup, after the helper modes exit: warnings, errors and panics to `errors.log` (rotated; debug details with extended logging, switched at runtime), and the panic hook.
 - `logging.rs` sends `RUST_LOG` to stderr, with each span's time as it closes (`glowfly=debug`: effects and the phases of a load or an index build; `glowfly=trace`: frames, their phases and each message).
+- `start_arg.rs`: `StartArg`, what a new window is asked to open (a folder or a `glowfly://` link) and the message that opens it; `main.rs` reads it from the command line.
 - `build.rs`: bundles `CHANGELOG.md` into the program (`OUT_DIR`) and, for Windows, embeds the icon and version details in `glowfly.exe`.
 
 ## `msg/`: messages
@@ -149,7 +150,7 @@ source file, update its line here. Features that span every layer are in
 - `undo_run.rs`: undo and redo as the runner carries them out: plans the action as the repository is now and runs its git commands, through the trust gate when there is one (`UndoGit`), saying whether anything may have changed (`UndoRun::acted`).
 - `undo_stash.rs`: Stash changes and undo: stops first when the stash list or index can't be read or intent-to-add files can't be stashed; stashes under a message with a nonce per run (untracked too only when the stash stays) and finds that stash anywhere in the list; runs the undo; after a merge, pull, cherry-pick, revert or rebase undo, or when nothing was undone, puts the changes back with `stash pop --index` only; every git command goes through the trust gate; otherwise the stash stays and the result names it and says why (`UndoStash`).
 - `op_stops.rs`: notes where a merge, pull, cherry-pick, revert or rebase job's operation starts (after any auto-stash in front of it) and reports `UndoResult::Stopped` when it stops in progress; a plain abort reports where it ended (`UndoResult::Aborted`), and `UndoHistory::aborted` keeps the older entries only when that is the same place.
-- `logs.rs`: the one ordered worker for the log files.
+- `logs.rs`: the one ordered worker for the log files, attached to what `logging.rs` set up (`LogSetup`).
 - `guard.rs`: panic recovery: a panicking effect still sends the result that ends its job or loading state (`Recovery::of`); tests in `guard_tests.rs`.
 - `trust.rs`: reading the repositories made from a trusted one, and the re-check just before a sealed effect starts (`verify`, on its worker; a shell's in its session thread): a scan with libgit2 (checked-out submodules too, which git runs inside) compared with the decision it was sent under, and an incoming commit's hooks and config programs that follow the working tree; a read whose check fails reads without git where it can (a status read); a read's scan is reused while its stamp is unchanged (`trust::stamp`); tests in `trust_tests.rs`.
 - `trust_gate.rs`: the commits an effect names (a pick, a rebase step, an undo) compared before it starts, and the per-command gate a job's git commands go through where hooks follow the working tree (`Gate::before`: a command it doesn't read held, a pull pinned to what its one fetch brought, each later command compared just before it runs, and the repository scanned again after any command but a fetch); a rebase panel step's `reset` and merge parents are compared too; Trust and run on a prompt that couldn't compare passes that reason at that command only (`Accepted`); tests in `trust_gate_tests.rs`.
@@ -158,12 +159,13 @@ source file, update its line here. Features that span every layer are in
 - `sandbox.rs`: keeps the journeys' runner (`testing::sandboxed`; none in the app) inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight.
 - `watcher.rs` (in `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`); `watcher/includes.rs` watches the folders of the config files the repository's config includes (`watcher/include_tests.rs`); a burst that touched the config also sends `WatchMsg::ConfigChanged` (`watcher/config_tests.rs`); `watcher/probe.rs` checks after starting that events arrive at all and sends `WatchMsg::Probed` (`watcher/probe_tests.rs`).
 
-## `platform.rs`: OS integration
+## `runner/platform.rs` and `platform/`: OS integration
 
-- Recent repositories and which listed folders are missing, open tabs, terminals, the file manager.
-- `platform/icon.rs`: the window icon.
+- `runner/platform.rs`: recent repositories and which listed folders are missing, open tabs, the file manager; `runner/platform/terminal.rs`: terminals.
+- `runner/platform/open_events.rs`: the inbox where the folders and links the OS hands over wait until the runner attaches.
+- `platform/mod.rs`: the window's glue with the OS, only for the shell and `main.rs` (the files below).
 - `platform/app_id.rs`: the installed Windows copy's app id, taken before the window opens.
-- `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `platform/open_events.rs` until the runner attaches.
+- `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `runner/platform/open_events.rs` until the runner attaches (`platform::install_open_events`).
 - `platform/native_menu.rs`: the macOS system menu bar showing Glowfly's menus: the facade, the queue of clicked items' tags and the hook that turns winit's default app menu off.
 - `platform/macos_menu.rs`: the AppKit menus, built and updated from the plan, with the delegate that leaves every key to the window but Cmd+H and Option+Cmd+H.
 - `platform/primary_selection.rs`: the Linux PRIMARY selection the terminal sets and middle-click pastes (smithay-clipboard on Wayland, arboard on X11).

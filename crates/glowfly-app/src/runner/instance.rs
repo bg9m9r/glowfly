@@ -33,7 +33,7 @@ impl Runner {
     /// those that came before the window: each becomes the message its command-line form would.
     pub fn start_open_events(&mut self) {
         let (tx, waker) = (self.tx.clone(), self.waker.clone());
-        crate::platform::open_events::attach(Box::new(move |item| {
+        super::platform::open_events::attach(Box::new(move |item| {
             if tx.send(item.into_msg()).is_ok() {
                 waker.wake();
             }

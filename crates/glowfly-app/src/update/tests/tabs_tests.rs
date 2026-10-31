@@ -134,11 +134,11 @@ fn close_and_reopen_tabs() {
 fn an_os_folder_opens_as_a_tab() {
     let (a, b) = (scratch_repo("tabs-os-a"), scratch_repo("tabs-os-b"));
     let mut st = state();
-    drive(&mut st, crate::StartArg::Path(a.clone()).into_msg());
-    drive(&mut st, crate::StartArg::Path(b.clone()).into_msg());
+    drive(&mut st, crate::start_arg::StartArg::Path(a.clone()).into_msg());
+    drive(&mut st, crate::start_arg::StartArg::Path(b.clone()).into_msg());
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     assert!(active_is(&st, &b), "the last folder ends up active");
-    drive(&mut st, crate::StartArg::Path(a.clone()).into_msg());
+    drive(&mut st, crate::start_arg::StartArg::Path(a.clone()).into_msg());
     assert_eq!((st.tabs.len(), st.active_tab), (2, 0), "an open folder selects its tab");
     assert!(active_is(&st, &a));
     cleanup(&[&a, &b]);

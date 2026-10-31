@@ -58,7 +58,7 @@ pub(super) fn open_url(url: &str) -> Option<Msg> {
 }
 
 pub(super) fn open_terminal(dir: &Path) -> Option<Msg> {
-    crate::platform::open_terminal(dir).err().and_then(|e| failed(format!("Could not open a terminal: {e}")))
+    super::platform::open_terminal(dir).err().and_then(|e| failed(format!("Could not open a terminal: {e}")))
 }
 
 pub(super) fn open_folder(dir: &Path) -> Option<Msg> {
@@ -66,7 +66,7 @@ pub(super) fn open_folder(dir: &Path) -> Option<Msg> {
     if !dir.is_dir() {
         return failed(format!("Could not open {shown}: the folder is gone"));
     }
-    crate::platform::open_in_file_manager(dir).err().and_then(|e| failed(format!("Could not open {shown} in the file manager: {e}")))
+    super::platform::open_in_file_manager(dir).err().and_then(|e| failed(format!("Could not open {shown} in the file manager: {e}")))
 }
 
 /// Opens the working-tree file `rel` of `workdir` in its default program, without waiting for
@@ -97,7 +97,7 @@ pub(super) fn reveal(p: &Path) -> Option<Msg> {
     if let Some(m) = missing(p) {
         return Some(m);
     }
-    crate::platform::reveal_in_file_manager(p)
+    super::platform::reveal_in_file_manager(p)
         .err()
         .and_then(|e| failed(format!("Could not show {}: {e}", glowfly_core::native_path::shown(p))))
 }

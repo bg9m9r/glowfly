@@ -114,7 +114,7 @@ fn a_multi_revert_restores_the_file() {
 }
 
 fn labels(state: RepositoryState) -> Vec<&'static str> {
-    crate::ui::common::state_actions(state).unwrap().iter().map(|(l, _)| *l).collect()
+    crate::state::op_actions::state_actions(state).unwrap().iter().map(|(l, _)| *l).collect()
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn a_stopped_cherry_pick_selects_the_wip_row_and_skips_on() {
     assert!(matches!(state, RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{state:?}");
     assert_eq!(st.session.selection, Selection::Wip);
     assert_eq!(labels(state), ["Continue", "Skip commit", "Abort cherry-pick"]);
-    let (label, skip) = crate::ui::common::state_actions(state).unwrap()[1];
+    let (label, skip) = crate::state::op_actions::state_actions(state).unwrap()[1];
     let recorded = st.session.undo.undo.len();
     drive(&mut st, Msg::git(label, skip));
     assert_eq!(st.session.undo.undo.len(), recorded, "a skip is never recorded for undo");

@@ -32,8 +32,10 @@ mod pull_request;
 mod range_diff;
 mod remote;
 mod runner;
+mod shell;
 mod smoke_probe;
 mod ssh;
+mod start_arg;
 mod state;
 mod submodule;
 mod tag;
@@ -48,6 +50,9 @@ mod worktree;
 use eframe::egui;
 use glowfly_core::askpass::{self, HelperError, Outcome};
 use std::ffi::{OsStr, OsString};
+// Public at the root, as it was when it lived here: what it reaches (`Msg`, and through it the
+// state and effects) keeps the dead-code lint for the binary as it was.
+pub use start_arg::StartArg;
 use std::path::{Path, PathBuf};
 
 fn main() -> eframe::Result {
@@ -110,7 +115,7 @@ fn main() -> eframe::Result {
     }
     // Before eframe starts AppKit: the Apple event that started Glowfly.app comes before the
     // window exists.
-    platform::open_events::install(start.as_ref());
+    platform::install_open_events(start.as_ref());
     // Inside Flatpak, libgit2 reads the host's ~/.config/git like the git it starts does.
     if let Err(e) = glowfly_core::flatpak::init() {
         tracing::warn!("{e}");
@@ -131,7 +136,7 @@ fn main() -> eframe::Result {
                 .with_title("Glowfly")
                 .with_inner_size([1440.0, 880.0])
                 .with_min_inner_size([960.0, 540.0])
-                .with_icon(crate::platform::app_icon())
+                .with_icon(ui::app_icon())
                 // The Wayland app id: matches glowfly.desktop (and its StartupWMClass), or the
                 // Flatpak's io.github.bg9m9r.glowfly.desktop.
                 .with_app_id(glowfly_core::app_identity::desktop_entry()),
@@ -143,41 +148,12 @@ fn main() -> eframe::Result {
     let ran = eframe::run_native(
         "Glowfly",
         options,
-        Box::new(move |cc| Ok(Box::new(ui::GlowflyApp::new(cc, start, logs, loaded, chrome, mica, probe)))),
+        Box::new(move |cc| Ok(Box::new(shell::GlowflyApp::new(cc, start, logs, loaded, chrome, mica, probe)))),
     );
     // The window has closed: the copies this session gave the diff tool go now, not at the
     // 24-hour sweep.
     glowfly_core::external_tools::temp::remove_own_sessions();
     ran
-}
-
-/// What the command line asks the new window to open; either goes to a window already running
-/// first (`forwarded`).
-#[derive(Clone, Debug, PartialEq)]
-pub enum StartArg {
-    /// A repository folder, made absolute.
-    Path(PathBuf),
-    /// A `glowfly://` link.
-    Link(String),
-}
-
-impl StartArg {
-    /// The message that opens it: the same message for the command line and for what the OS
-    /// hands over.
-    pub fn into_msg(self) -> msg::Msg {
-        match self {
-            StartArg::Path(p) => msg::Msg::Repo(msg::RepoMsg::Open(p)),
-            StartArg::Link(t) => msg::Msg::DeepLink(deep_link::DeepLinkMsg::Open(t)),
-        }
-    }
-
-    /// What a second process hands to the running window for it.
-    fn handed(&self) -> glowfly_core::instance::Handed {
-        match self {
-            StartArg::Path(p) => glowfly_core::instance::Handed::Folder(p.clone()),
-            StartArg::Link(t) => glowfly_core::instance::Handed::Link(t.clone()),
-        }
-    }
 }
 
 /// Hands `item` to the window that holds the claim on links and folders when another does
@@ -327,16 +303,6 @@ mod start_path_tests {
         let dir = glowfly_core::paths::temp_dir().join("glowfly-start-arg");
         assert!(matches!(start_arg(dir.clone().into_os_string()), StartArg::Path(p) if p == dir));
         assert!(matches!(start_arg(OsString::from("glowfly")), StartArg::Path(p) if p.is_absolute()));
-    }
-
-    #[test]
-    fn start_arguments_become_the_open_messages() {
-        use crate::deep_link::DeepLinkMsg;
-        use crate::msg::{Msg, RepoMsg};
-        let p = glowfly_core::paths::temp_dir().join("glowfly-start-msg");
-        assert!(matches!(StartArg::Path(p.clone()).into_msg(), Msg::Repo(RepoMsg::Open(q)) if q == p));
-        let t = "glowfly://tag/v1?url=x".to_owned();
-        assert!(matches!(StartArg::Link(t.clone()).into_msg(), Msg::DeepLink(DeepLinkMsg::Open(u)) if u == t));
     }
 
     #[test]

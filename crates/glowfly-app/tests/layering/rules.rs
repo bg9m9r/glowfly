@@ -181,24 +181,10 @@ pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
 
 /// Justified exceptions, as (file under `src/`, pattern as reported, reason).
 pub const ALLOWED: &[(&str, &str, &str)] = &[
-    ("ui/app.rs", "git_program::set", "the shell puts the saved git into effect once, at startup, before any git runs"),
-    ("ui/app.rs", "themes::load_all", "the shell loads the theme files once, at startup, from the folder settings.json was just read from"),
-    ("ui/app.rs", "platform::load_recent", "the shell loads the recent list once, at startup"),
-    ("ui/app.rs", "platform::load_tabs", "the shell loads the last session's tabs once, at startup"),
-    ("ui/app.rs", "Instant::now", "the shell stamps each frame and message with the time"),
-    ("ui/app_frame.rs", "Instant::now", "the shell times each frame and each of its phases"),
-    ("ui/app.rs", "Local::now", "the shell sets `st.view.now` once per frame"),
-    ("ui/app_effects.rs", "send_viewport_cmd", "the shell turns window effects into viewport commands"),
-    ("ui/app.rs", "platform::native_window", "the shell installs the native window glue once, at startup"),
-    ("ui/app_native.rs", "platform::native_window", "the shell trades caption geometry and window state with the OS each frame"),
     (
         "state/updates.rs",
         "app_update::current_platform",
         "the default update state asks the processor once (cached, no disk), so an emulated build is offered the Arm file",
     ),
-    ("ui/app.rs", "platform::native_menu", "the shell installs the system menu bar once, at startup"),
-    ("ui/app.rs", "platform::primary_selection", "the shell opens the PRIMARY selection once, at startup"),
-    ("ui/app_effects.rs", "platform::primary_selection", "the shell sets and reads the PRIMARY selection for the terminal's effects"),
-    ("ui/app_menu.rs", "platform::native_menu", "the shell trades picks and menus with the system menu bar each frame"),
     ("state/app_queries.rs", "std::env", "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read"),
 ];

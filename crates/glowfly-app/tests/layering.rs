@@ -1,6 +1,7 @@
 //! Keeps slow and outside work out of views, `update` and state. Everything under `src/ui/`,
 //! `src/update/` and `src/state/` must stay pure: views draw `AppState` and push `Msg`s, `update`
-//! changes state and returns `Effect`s, and the runner (`src/runner/`) does the I/O.
+//! changes state and returns `Effect`s, and the runner (`src/runner/`) does the I/O. The shell
+//! (`src/shell/`), which owns the window, the clock and the startup loads, is outside them.
 //!
 //! The check denies whole families of calls (files, processes, network, threads, environment,
 //! clocks, libgit2 access) and the `glowfly-core` functions that do I/O. Core *types* and pure

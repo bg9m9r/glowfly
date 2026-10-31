@@ -101,7 +101,7 @@ fn cherry_pick_conflict_shows_banner_state() {
     assert!(st.toasts.iter().any(|t| !t.ok && t.text == "Stopped on conflicts in 1 file. Resolve it, then continue or abort."));
     let state = st.snap.as_ref().unwrap().state;
     assert!(matches!(state, RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{state:?}");
-    let actions = crate::ui::common::state_actions(state).unwrap();
+    let actions = crate::state::op_actions::state_actions(state).unwrap();
     let title = crate::state::op_actions::banner_title(glowfly_core::i18n::Lang::En, st.snap.as_ref().unwrap());
     assert_eq!(title.as_deref(), Some("Cherry-pick in progress"));
     let labels: Vec<&str> = actions.iter().map(|(l, _)| *l).collect();

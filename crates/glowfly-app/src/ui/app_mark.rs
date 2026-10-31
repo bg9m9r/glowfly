@@ -14,7 +14,7 @@ fn icon(ctx: &Context) -> TextureHandle {
     if let Some(t) = ctx.data(|d| d.get_temp::<TextureHandle>(id)) {
         return t;
     }
-    let data = crate::platform::app_icon();
+    let data = super::app_icon();
     let image = ColorImage::from_rgba_unmultiplied([data.width as usize, data.height as usize], &data.rgba);
     let t = ctx.load_texture("app-mark-icon", image, TextureOptions::LINEAR);
     ctx.data_mut(|d| d.insert_temp(id, t.clone()));

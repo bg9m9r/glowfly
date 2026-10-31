@@ -4,7 +4,7 @@
 //! state with the OS glue each frame (`app_native.rs`), and on macOS it runs the system menu
 //! bar's picks and hands it the menus (`app_menu.rs`).
 
-use super::{UiCache, app_menu, app_native, avatars, build_status, layout, shortcuts, theme};
+use super::{app_menu, app_native};
 use crate::effect::Effect;
 use crate::msg::AppMsg;
 use crate::msg::AvatarMsg;
@@ -18,6 +18,7 @@ use crate::platform::native_window::NativeWindow;
 use crate::platform::primary_selection::PrimarySelection;
 use crate::runner::{Runner, Waker};
 use crate::state::AppState;
+use crate::ui::{UiCache, avatars, build_status, layout, shortcuts, theme};
 use eframe::egui;
 use glowfly_core::settings::{Settings, ThemeCatalog};
 use glowfly_core::spell::Speller;
@@ -67,8 +68,8 @@ impl GlowflyApp {
     /// the smoke tests' state file, when `GLOWFLY_SMOKE_PROBE` asked for one.
     pub fn new(
         cc: &eframe::CreationContext<'_>,
-        start: Option<crate::StartArg>,
-        logs: crate::logging::LogSetup,
+        start: Option<crate::start_arg::StartArg>,
+        logs: crate::runner::LogSetup,
         loaded: (Settings, Option<glowfly_core::settings::LoadProblem>),
         chrome: crate::state::window_chrome::Chrome,
         mica: bool,
@@ -85,10 +86,10 @@ impl GlowflyApp {
         let (settings, problem) = loaded;
         // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
         glowfly_core::git_program::set(glowfly_core::git_program::from_setting(settings.git_program.as_deref()).as_deref());
-        let recent = crate::platform::load_recent();
+        let recent = crate::runner::platform::load_recent();
         // Restore the last session's tabs (or, before tabs were saved, the last repository).
         let (mut paths, labels, active) =
-            if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), Vec::new(), 0) };
+            if settings.reopen_last_repo { crate::runner::platform::load_tabs() } else { (Vec::new(), Vec::new(), 0) };
         if paths.is_empty() && settings.reopen_last_repo {
             // Not checked here (a network share may not answer): a folder that is gone fails to
             // load like any other.
@@ -106,7 +107,7 @@ impl GlowflyApp {
         app.primary = PrimarySelection::install(cc);
         if probe.is_some() {
             // Before the first frame, so the probe sees named widgets from the start.
-            super::probe::enable(ctx);
+            crate::ui::probe::enable(ctx);
         }
         app.probe = probe;
         // Read now, not through the runner, so the first frame already has the theme's colors;
@@ -165,7 +166,7 @@ impl GlowflyApp {
 
     /// Runs the `STARTUP` steps in order. With `logs` (the real app) every step runs; without
     /// (a test app) the steps that reach outside the process are skipped.
-    fn start(&mut self, ctx: &egui::Context, themes: ThemeCatalog, logs: Option<crate::logging::LogSetup>) {
+    fn start(&mut self, ctx: &egui::Context, themes: ThemeCatalog, logs: Option<crate::runner::LogSetup>) {
         let outside = logs.is_some();
         let mut logs = logs;
         let mut themes = Some(themes);
@@ -269,7 +270,7 @@ impl GlowflyApp {
         msgs.append(&mut native_msgs);
         self.phase("draw", |app| {
             app.input(ctx, &mut msgs);
-            super::draw(ctx, &mut app.st, &mut app.cache, &mut msgs);
+            crate::ui::draw(ctx, &mut app.st, &mut app.cache, &mut msgs);
             app.draw_overlay(ctx);
         });
         // Debug builds: warn once about each character drawn as a box.
@@ -300,7 +301,7 @@ impl GlowflyApp {
         // thread (`smoke_probe.rs`), never by a view. A changed one asks for one more frame, so
         // the widgets drawn catch up with the messages just handled.
         if let Some(p) = &mut self.probe
-            && p.offer(super::probe::snapshot(ctx, &self.st))
+            && p.offer(crate::ui::probe::snapshot(ctx, &self.st))
         {
             ctx.request_repaint();
         }

@@ -12,14 +12,14 @@ use glowfly_core::settings::DEFAULT_ZOOM_PERCENT;
 
 /// At start-up, before the first frame: hands the zoom keys to the keymap (egui's own would
 /// still zoom on Ctrl+-/Ctrl+= after they are rebound) and applies the saved zoom.
-pub(super) fn start(ctx: &egui::Context, st: &AppState) {
+pub(crate) fn start(ctx: &egui::Context, st: &AppState) {
     ctx.options_mut(|o| o.zoom_with_keyboard = false);
     apply_zoom(ctx, st);
 }
 
 /// Makes egui's zoom the settings' (it takes effect from the next pass). The exact compare is
 /// safe: both come from the same integer percent.
-pub(super) fn apply_zoom(ctx: &egui::Context, st: &AppState) {
+pub(crate) fn apply_zoom(ctx: &egui::Context, st: &AppState) {
     let z = st.settings.zoom_factor();
     if ctx.zoom_factor() != z {
         ctx.set_zoom_factor(z);

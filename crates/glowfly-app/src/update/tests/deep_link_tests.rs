@@ -180,7 +180,7 @@ fn a_link_is_looked_for_in_tabs_favorites_and_recent() {
 #[test]
 fn an_os_link_opens_like_the_command_line() {
     let mut st = state();
-    let fx = update(&mut st, crate::StartArg::Link(link_text("tag/v1")).into_msg(), Instant::now());
+    let fx = update(&mut st, crate::start_arg::StartArg::Link(link_text("tag/v1")).into_msg(), Instant::now());
     assert!(focuses(&fx));
     let (_, seq, origin) = find(&fx);
     assert_eq!((seq, origin), (st.deep_link.seq, FindOrigin::Search));

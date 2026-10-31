@@ -7,7 +7,6 @@
 use super::Waker;
 use super::execute::{Cx, Execute};
 use crate::effect::Effect;
-use crate::logging::{FileDetail, LogSetup};
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
 use crate::msg::Msg;
 use crate::state::LOG_LIMIT;
@@ -19,6 +18,17 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
+
+/// Switches the error log between its normal and extended levels.
+pub type FileDetail = Arc<dyn Fn(bool) + Send + Sync>;
+
+/// What the app's tracing setup (`logging::init`) made, for the log worker.
+pub struct LogSetup {
+    /// The logs folder; None when this system has no place for it (logs stay in memory).
+    pub dir: Option<PathBuf>,
+    /// Sets the error log's level for extended logging (true) or not; None without a folder.
+    pub file_detail: Option<FileDetail>,
+}
 
 /// Appends that fail this many times in a row turn the activity file off for the session.
 const MAX_APPEND_FAILURES: u8 = 3;

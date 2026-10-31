@@ -34,7 +34,7 @@ pub fn viewport(chrome: Chrome, mica: bool, b: ViewportBuilder) -> ViewportBuild
 
 /// The viewport command that carries out `cmd`; None for the system menu, which the shell
 /// opens through the OS glue.
-pub(super) fn viewport_cmd(cmd: WindowCmd) -> Option<egui::ViewportCommand> {
+pub(crate) fn viewport_cmd(cmd: WindowCmd) -> Option<egui::ViewportCommand> {
     Some(match cmd {
         WindowCmd::StartDrag => egui::ViewportCommand::StartDrag,
         WindowCmd::BeginResize(e) => egui::ViewportCommand::BeginResize(direction(e)),

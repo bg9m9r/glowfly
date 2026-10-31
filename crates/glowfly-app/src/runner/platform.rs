@@ -1,29 +1,12 @@
-//! Operating-system integration: the recent-repositories and tabs files, what is at the listed
-//! folders, terminals, file managers (opening a folder, or showing a file selected in it), the
-//! window icon, the drawn Windows frame's glue with the OS (`native_window`), the app id an
-//! installed Windows copy takes before its window opens (`claim_app_id`), and the folders and
-//! links macOS hands Glowfly.app as Apple events (`macos_events`), which wait in `open_events`
-//! until the runner attaches, the macOS system menu bar showing Glowfly's menus
-//! (`native_menu`, built in AppKit by `macos_menu`), and the Linux PRIMARY selection the
-//! terminal sets and pastes (`primary_selection`), plus the system's fonts for Chinese, Japanese
-//! and Korean (`system_fonts`).
+//! The runner's side of the operating system: the recent-repositories and tabs files, what is
+//! at the listed folders, terminals, file managers (opening a folder, or showing a file selected
+//! in it), and the inbox where the folders and links the OS hands over wait until the runner
+//! attaches (`open_events`). The window's own glue with the OS is the shell's (`crate::platform`).
 
 use std::path::{Path, PathBuf};
 
-mod app_id;
-mod icon;
-#[cfg(target_os = "macos")]
-mod macos_events;
-#[cfg(target_os = "macos")]
-mod macos_menu;
-pub mod native_menu;
-pub mod native_window;
 pub mod open_events;
-pub mod primary_selection;
-pub mod system_fonts;
 mod terminal;
-pub use app_id::claim as claim_app_id;
-pub use icon::app_icon;
 pub use terminal::open_terminal;
 
 fn recent_file() -> Option<PathBuf> {

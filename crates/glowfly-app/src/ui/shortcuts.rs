@@ -40,7 +40,7 @@ mod terminal_tests;
 mod tests;
 
 pub(super) use caps::Caps;
-pub(super) use global::input;
+pub(crate) use global::input;
 pub(super) use sheet::show as sheet;
 
 /// Whether the widget with the keyboard focus is a text field.

@@ -40,10 +40,10 @@ fn saves_land_in_the_test_folder() {
     let j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
     j.see("app", super::find::Region::Toolbar);
     let recent = std::fs::read_to_string(j.config_file("recent.txt")).expect("recent.txt is saved in the test's folder");
-    let listed = crate::platform::parse_recent(&recent);
+    let listed = crate::runner::platform::parse_recent(&recent);
     assert!(listed.iter().any(|p| Journey::same(p, &repo)), "{listed:?}");
     let tabs = std::fs::read_to_string(j.config_file("tabs.txt")).expect("tabs.txt is saved in the test's folder");
-    let (paths, _, _) = crate::platform::parse_tabs(&tabs);
+    let (paths, _, _) = crate::runner::platform::parse_tabs(&tabs);
     assert!(paths.iter().any(|p| Journey::same(p, &repo)), "{paths:?}");
 }
 

@@ -67,6 +67,7 @@ mod partial;
 mod patches;
 mod path_search;
 mod pick;
+pub(crate) mod platform;
 mod profiles;
 mod pull_request;
 mod queue;
@@ -104,6 +105,7 @@ mod updates;
 mod worktrees;
 
 use execute::{Cx, err, execute_with};
+pub use logs::{FileDetail, LogSetup};
 use seams::Seams;
 
 /// Wakes the UI when a result arrives (so it can process the message promptly). The shell makes
@@ -192,7 +194,7 @@ impl Runner {
     }
 
     /// Starts the log worker on the folder `logging::init` chose. Once, at startup.
-    pub fn attach_logs(&mut self, setup: crate::logging::LogSetup) {
+    pub fn attach_logs(&mut self, setup: LogSetup) {
         self.logs.attach(setup, self.tx.clone(), self.waker.clone());
     }
 

@@ -1,9 +1,9 @@
 //! Folders and links the OS hands the running process instead of putting them on the command
-//! line: macOS sends them to Glowfly.app as Apple events (`macos_events.rs`). They can arrive
+//! line: macOS sends them to Glowfly.app as Apple events (`platform/macos_events.rs`). They can arrive
 //! before the window exists, so they wait here until the runner attaches, and then become the
 //! start argument's messages (`StartArg::into_msg`). Elsewhere nothing posts here.
 
-use crate::StartArg;
+use crate::start_arg::StartArg;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -104,12 +104,10 @@ fn inbox() -> MutexGuard<'static, Inbox> {
     INBOX.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// Starts taking the OS's events, before the window exists; `start` is what the command line
-/// already opens.
+/// Starts keeping the OS's items, before the window exists (`platform::install_open_events`);
+/// `start` is what the command line already opens.
 pub fn install(start: Option<&StartArg>) {
     inbox().expect_start(start.cloned(), Instant::now());
-    #[cfg(target_os = "macos")]
-    super::macos_events::install();
 }
 
 /// Sends every item, the early ones first, to `sink`. The sink runs with the inbox locked, so

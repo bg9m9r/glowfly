@@ -1,6 +1,6 @@
-//! The egui layer. Views draw `AppState` and push `Msg`s; the shell (`app.rs`) feeds those
-//! messages and background results through `update`, runs the resulting effects, and handles
-//! the few effects that need the window.
+//! The egui layer. Views draw `AppState` and push `Msg`s; the shell (`crate::shell`) feeds
+//! those messages and background results through `update`, runs the resulting effects, and
+//! handles the few effects that need the window. `draw` and `UiCache` are what it draws with.
 
 mod access;
 mod activity_fold;
@@ -10,7 +10,7 @@ mod am_banner;
 mod askpass;
 mod askpass_host_key;
 mod auto_stash_dialog;
-mod avatars;
+pub(crate) mod avatars;
 pub(crate) mod backdrop;
 mod blame;
 mod branch_colour_menu;
@@ -18,7 +18,7 @@ mod branch_delete_dialog;
 mod branch_dialogs;
 mod branch_dot;
 mod branch_menu;
-mod build_status;
+pub(crate) mod build_status;
 mod central;
 mod clone_dialog;
 mod clone_service;
@@ -63,6 +63,7 @@ mod find_bar;
 mod forge_filter_dialog;
 mod forge_filter_menu;
 mod frame_layout;
+pub(crate) mod frame_overlay;
 mod git_banner;
 mod gitflow_dialog;
 mod gitflow_finish_dialog;
@@ -83,7 +84,7 @@ mod image_paint;
 mod init_dialog;
 mod issue;
 mod journal;
-mod layout;
+pub(crate) mod layout;
 mod lfs_badge;
 mod lfs_banner;
 mod line_counts;
@@ -139,7 +140,7 @@ mod repo_menu_list;
 mod repo_menu_row;
 mod repo_swatch;
 mod repo_sync;
-mod shortcuts;
+pub(crate) mod shortcuts;
 mod sidebar;
 mod sign_in_banner;
 mod signature_badge;
@@ -178,7 +179,7 @@ mod welcome_header;
 mod welcome_steps;
 pub mod widgets;
 mod window_buttons;
-mod window_frame;
+pub(crate) mod window_frame;
 pub(crate) mod wip_keys;
 mod worktree_dialog;
 mod worktree_manage_dialog;
@@ -207,13 +208,9 @@ use central::escape_key;
 use eframe::egui;
 use glowfly_core::spell::Speller;
 
-mod app;
+mod app_icon;
 mod app_mark;
-mod app_menu;
-mod app_native;
-pub use app::GlowflyApp;
-#[cfg(test)]
-pub(crate) use app::TestStart;
+pub use app_icon::app_icon;
 #[cfg(test)]
 pub(crate) use palette::area_rect as palette_rect;
 pub use window_frame::viewport as window_viewport;

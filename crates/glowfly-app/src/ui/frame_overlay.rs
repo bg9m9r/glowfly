@@ -1,6 +1,6 @@
 //! The frame-time overlay (Preferences > General > Diagnostics > Frame times): the last,
 //! average and slowest of the recent frames in the window's bottom-left corner, from the
-//! times the shell keeps (`state/frame_times.rs`), drawn by the shell (`app_frame.rs`) over
+//! times the shell keeps (`state/frame_times.rs`), drawn by the shell (`shell/app_frame.rs`) over
 //! everything else. Off by default; it doesn't take clicks.
 
 use crate::state::AppState;
@@ -9,7 +9,7 @@ use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align2, FontId, RichText, Stroke, vec2};
 
-pub(super) fn show(ctx: &egui::Context, st: &AppState) {
+pub(crate) fn show(ctx: &egui::Context, st: &AppState) {
     if !st.settings.show_frame_times {
         return;
     }

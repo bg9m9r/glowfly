@@ -6,8 +6,8 @@ mod actions;
 
 use super::find::{self, Pick, Region};
 use super::fixture::Fixture;
+use crate::shell::{GlowflyApp, TestStart};
 use crate::state::window_chrome::Chrome;
-use crate::ui::{GlowflyApp, TestStart};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use egui_kittest::{Harness, TestRenderer};

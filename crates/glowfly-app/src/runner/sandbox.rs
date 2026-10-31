@@ -82,9 +82,9 @@ impl Runner {
 fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
     let (what, result) = match effect {
         Effect::SaveSettings(settings) => ("settings", settings.save_to(&folder.join("settings.json"))),
-        Effect::SaveRecent(list) => ("the recent repositories", crate::platform::save_recent_to(&folder.join("recent.txt"), &list)),
+        Effect::SaveRecent(list) => ("the recent repositories", super::platform::save_recent_to(&folder.join("recent.txt"), &list)),
         Effect::SaveTabs { paths, labels, active } => {
-            ("the open tabs", crate::platform::save_tabs_to(&folder.join("tabs.txt"), &paths, &labels, active))
+            ("the open tabs", super::platform::save_tabs_to(&folder.join("tabs.txt"), &paths, &labels, active))
         }
         _ => return None,
     };
@@ -234,9 +234,9 @@ mod tests {
         let settings = glowfly_core::settings::Settings { auto_fetch_minutes: 7, ..Default::default() };
         assert!(runner.admit(Effect::SaveSettings(Box::new(settings))).is_none());
         let recent = std::fs::read_to_string(dir.join("recent.txt")).unwrap();
-        assert_eq!(crate::platform::parse_recent(&recent), std::slice::from_ref(&repo));
+        assert_eq!(crate::runner::platform::parse_recent(&recent), std::slice::from_ref(&repo));
         let tabs = std::fs::read_to_string(dir.join("tabs.txt")).unwrap();
-        assert_eq!(crate::platform::parse_tabs(&tabs), (vec![repo], vec![Some("Web".to_owned())], 0));
+        assert_eq!(crate::runner::platform::parse_tabs(&tabs), (vec![repo], vec![Some("Web".to_owned())], 0));
         let saved = std::fs::read_to_string(dir.join("settings.json")).unwrap();
         assert!(saved.contains("\"auto_fetch_minutes\": 7"), "{saved}");
         assert!(rx.try_recv().is_err(), "nothing failed");

@@ -31,9 +31,9 @@ source file, update its line in the matching file.
 - [core-display.md](architecture/core-display.md): the commit graph and branch colours, diff, whole-file and conflict rows, syntax highlighting, image and Markdown previews, search and the history index, watching for changes.
 - [core-system.md](architecture/core-system.md): which git runs, paths and errors, credentials and signing, SSH keys, one window and `glowfly://` links, the terminal, settings, identity and profiles, files and logs, translations and dates, external tools, Glowfly's own updates.
 - [core-forge.md](architecture/core-forge.md): hosting services (`forge/`).
-- [app-layers.md](architecture/app-layers.md): `glowfly-app`'s entry points (`main.rs`, `cli_update.rs`, `logging.rs`, `build.rs`) and its layers: `msg/`, `effect/`, `state/`, `update/`, `runner/`, `platform.rs`, `keymap/`, and the test-only modules (`journey/`, `glyph_check/`, the smoke probe).
+- [app-layers.md](architecture/app-layers.md): `glowfly-app`'s entry points (`main.rs`, `start_arg.rs`, `cli_update.rs`, `logging.rs`, `build.rs`) and its layers: `msg/`, `effect/`, `state/`, `update/`, `runner/`, `platform.rs`, `keymap/`, and the test-only modules (`journey/`, `glyph_check/`, the smoke probe).
 - [app-features.md](architecture/app-features.md): features whose files span every layer: updates, the journal, custom commands, partial clones, the history index, range-diff, profile folder rules, multi-commit selection.
-- [ui-shell.md](architecture/ui-shell.md): `ui/app.rs` and the shell, window layout, toolbar, repository tabs, terminal panel.
+- [ui-shell.md](architecture/ui-shell.md): the shell (`shell/`), window layout, toolbar, repository tabs, terminal panel.
 - [ui-views.md](architecture/ui-views.md): dialogs with their own files, blame and the File view, Markdown, the graph, commit details and the WIP panel, the diff, object menus, snapshot tests.
 - [ui-widgets.md](architecture/ui-widgets.md): `widgets/`, rows and lists, disabled reasons, tooltips, empty and banner states, the dialog frame.
 - [ui-theme.md](architecture/ui-theme.md): `theme/`: controls and modals, colours, fonts and the type scale, spacing and tokens.
@@ -77,9 +77,9 @@ source file, update its line in the matching file.
 1. `glowfly-core` must not depend on `eframe`/`egui`.
 2. `ui/`, `update/` and `state/` do no I/O. `tests/layering.rs` denies whole families (the file
    system, processes, network, threads, environment, clock, libgit2 access) and the core
-   functions that do I/O, and names the file and line of each use. The few justified exceptions
-   (the shell's startup in `ui/app.rs`) are listed in its `ALLOWED` table
-   (`tests/layering/rules.rs`) with a reason.
+   functions that do I/O, and names the file and line of each use. The shell (`src/shell/`), which
+   owns the window, the clock and the startup loads, is outside them; the few justified exceptions
+   are listed in its `ALLOWED` table (`tests/layering/rules.rs`) with a reason.
 3. New behavior gets an `update` test; new git or API logic gets a `glowfly-core` test. A flow that
    crosses views, the runner and git gets a journey step (`src/journey/`).
 4. New views get an `egui_kittest` snapshot when practical. Views read time from

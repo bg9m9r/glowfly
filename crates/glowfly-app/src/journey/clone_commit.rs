@@ -31,7 +31,7 @@ fn clone_stage_commit_push_pull() {
     assert_eq!(disk::head_branch(&clone).as_deref(), Some("main"));
     assert_eq!(Some(disk::head_oid(&clone)), disk::remote_oid(&bare, "main"));
     let recent = std::fs::read_to_string(j.config_file("recent.txt")).unwrap();
-    assert!(crate::platform::parse_recent(&recent).iter().any(|p| Journey::same(p, &clone)), "{recent}");
+    assert!(crate::runner::platform::parse_recent(&recent).iter().any(|p| Journey::same(p, &clone)), "{recent}");
 
     // step 2: two edits far apart in notes.txt (two hunks) and a new file.
     configure_clone(&clone);

@@ -1,4 +1,5 @@
-//! The window icon (Windows and X11; macOS takes the bundle's icon, Wayland the desktop entry's).
+//! The app icon: the window's (Windows and X11; macOS takes the bundle's icon, Wayland the
+//! desktop entry's) and the welcome screen's mark beside the wordmark (`app_mark`).
 
 use eframe::egui::IconData;
 use std::sync::Arc;

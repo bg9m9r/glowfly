@@ -53,8 +53,8 @@ impl Runner {
 pub(super) fn save_now(effect: Effect) -> Option<Msg> {
     let (what, result) = match effect {
         Effect::SaveSettings(settings) => ("settings", settings.save()),
-        Effect::SaveRecent(list) => ("the recent repositories", crate::platform::save_recent(&list)),
-        Effect::SaveTabs { paths, labels, active } => ("the open tabs", crate::platform::save_tabs(&paths, &labels, active)),
+        Effect::SaveRecent(list) => ("the recent repositories", super::platform::save_recent(&list)),
+        Effect::SaveTabs { paths, labels, active } => ("the open tabs", super::platform::save_tabs(&paths, &labels, active)),
         _ => return None,
     };
     let e = result.err()?;
