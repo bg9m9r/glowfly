@@ -60,6 +60,7 @@ pub(super) mod diff_tests;
 pub(super) mod editor_tests;
 pub(super) mod failure_headline_tests;
 pub(super) mod fetch_time_tests;
+pub(super) mod file_list_keys_tests;
 pub(super) mod file_tree_tests;
 pub(super) mod files_open_tests;
 pub(super) mod files_tests;

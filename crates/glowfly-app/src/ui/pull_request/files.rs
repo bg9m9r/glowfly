@@ -1,10 +1,12 @@
 //! The pull request panel's changed files: the heading, notes on local branches that are
 //! missing or behind, or on the head commit shown instead (with Fetch buttons; the Commits tab
-//! shows the same notes), and the list, whose rows open their diff.
+//! shows the same notes), and the list, whose rows open their diff. The list takes the keyboard
+//! focus as a whole (`file_list_keys.rs`).
 
 use super::super::details::file_reveal::reveal;
 use super::super::details::{RowActions, changed_file_row};
 use super::super::empty_state::{EmptyIcon, empty_state};
+use super::super::file_list_keys;
 use super::super::file_menu::RowSource;
 use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
@@ -13,6 +15,7 @@ use crate::pull_request::PullRequestMsg;
 use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::lfs::TrackContext;
+use crate::state::list_keys::FileList;
 use crate::state::pull_request::{Files, PrView, empty_text, files_heading, unrelated_text};
 use crate::state::pull_request_source::{
     NoteTone, fetch_blocked, head_button, head_fetch_blocked, offers_fetch, offers_head_fetch, out_of_sync, tone,
@@ -32,7 +35,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
         Files::Loaded(c) => files_heading(c.comparison.files.len()),
         _ => "Files changed".to_owned(),
     };
-    ui.label(type_scale::section_text(ui, heading));
+    ui.label(type_scale::section_text(ui, heading.clone()));
     notes(ui, st, v, msgs);
     let weak = |ui: &mut Ui, text: String| ui.add(egui::Label::new(RichText::new(text).color(color::weak())).wrap());
     match &v.files {
@@ -52,23 +55,29 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
         Files::Loaded(c) => {
             let Some(tip) = v.source_tip() else { return };
             let (base, files) = (c.base, &c.comparison.files);
-            let open = st.session.diff.view.as_ref().map(|(t, _)| t);
+            let open = crate::state::wip_lists::cursor(st);
             let lfs = TrackContext::of(st);
             let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
             let commands = crate::state::custom_commands::MenuCommands::for_state(st);
             let row_h = crate::ui::widgets::LIST_ROW_H;
-            egui::ScrollArea::vertical().id_salt("pr-files").auto_shrink([false, false]).show_rows(ui, row_h, files.len(), |ui, range| {
-                let index = |t: &DiffTarget| files.iter().position(|f| v.diff_target(&f.path).as_ref() == Some(t));
+            let index = |t: &DiffTarget| files.iter().position(|f| v.diff_target(&f.path).as_ref() == Some(t));
+            let current = open.and_then(index);
+            let focus = file_list_keys::target(ui, FileList::PullRequest, files.len(), ui.available_height(), &heading);
+            let area = egui::ScrollArea::vertical().id_salt("pr-files").auto_shrink([false, false]);
+            let shown = area.show_rows(ui, row_h, files.len(), |ui, range| {
                 reveal(ui, "pr-files", st.view.file_reveal.as_ref(), index, &range, row_h);
-                for f in &files[range] {
+                for row in range {
+                    let f = &files[row];
                     let Some(target) = v.diff_target(&f.path) else { continue };
                     let src = RowSource::Between { from: base, to: tip };
                     let in_workdir = c.comparison.in_workdir(&f.path);
                     let actions =
                         RowActions { src, history_at: tip, in_workdir, lfs, tools, patch_blocked: None, lines: None, commands: &commands };
-                    changed_file_row(ui, st.settings.lang(), f, target, open, actions, msgs);
+                    let r = changed_file_row(ui, st.settings.lang(), f, target, open, actions, msgs);
+                    focus.row(ui, &r, current == Some(row));
                 }
             });
+            focus.rest(ui, &shown, current.is_some());
         }
     }
 }

@@ -57,6 +57,7 @@ Button "Committed by Ada Lovelace"
 Button "Compare with working directory"
 Button "Show as tree"
 Label "1 changed file"
+Unknown "1 changed file"
 Button "grace.txt" [off]
 Button "Resize branch / tag column"
 Button "Resize commit column"

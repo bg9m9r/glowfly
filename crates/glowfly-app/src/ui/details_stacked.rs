@@ -1,7 +1,8 @@
 //! The stacked list of a multi-selection with no combined diff (not one line of history, or one
 //! reaching a shallow clone's boundary): each selected commit's own changed files, newest first,
 //! under a header naming the commit. Each file opens that commit's diff of it. In Tree mode each
-//! section's files are grouped in folders, each section keeping its own folds.
+//! section's files are grouped in folders, each section keeping its own folds. The list takes the
+//! keyboard focus as a whole (`file_list_keys.rs`), its keys stepping across the sections.
 
 use super::common::short;
 use super::details::file_reveal::reveal;
@@ -15,6 +16,7 @@ use crate::msg::{Msg, SelectionMsg};
 use crate::state::AppState;
 use crate::state::file_folds::FileListId;
 use crate::state::lfs::TrackContext;
+use crate::state::list_keys::FileList;
 use crate::state::selection::{CommitBlock, MultiSelection, STACK_LIMIT};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText, UiBuilder};
@@ -81,22 +83,26 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
         })
         .collect();
     let rows = rows_of(stack, &sections);
-    let open = st.session.diff.view.as_ref().map(|(target, _)| target);
+    let open = crate::state::wip_lists::cursor(st);
     let lfs = TrackContext::of(st);
     let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
     let commands = crate::state::custom_commands::MenuCommands::for_state(st);
     let row_h = widgets::LIST_ROW_H;
     let parents = |c: &StackedCommit| snap.row_of.get(&c.oid).map_or(1, |&r| snap.commits[r].parents.len());
-    egui::ScrollArea::vertical().id_salt("multi-stacked").auto_shrink([false, false]).show_rows(ui, row_h, rows.len(), |ui, range| {
-        let index = |want: &DiffTarget| {
-            rows.iter().position(|r| match *r {
-                Row::File(i, j, _) => *want == DiffTarget::Commit(stack[i].oid, stack[i].files[j].path.clone()),
-                _ => false,
-            })
-        };
+    let index = |want: &DiffTarget| {
+        rows.iter().position(|r| match *r {
+            Row::File(i, j, _) => *want == DiffTarget::Commit(stack[i].oid, stack[i].files[j].path.clone()),
+            _ => false,
+        })
+    };
+    let current = open.and_then(index);
+    let focus =
+        super::file_list_keys::target(ui, FileList::Stacked, rows.len(), ui.available_height(), t.tr("details.multi.stacked.title"));
+    let area = egui::ScrollArea::vertical().id_salt("multi-stacked").auto_shrink([false, false]);
+    let shown = area.show_rows(ui, row_h, rows.len(), |ui, range| {
         reveal(ui, "multi-stacked", st.view.file_reveal.as_ref(), index, &range, row_h);
-        for &row in &rows[range] {
-            match row {
+        for at in range {
+            match rows[at] {
                 Row::Header(i) => header(ui, t, &stack[i], snap, parents(&stack[i]) > 1),
                 Row::Empty => {
                     let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), row_h), egui::Sense::hover());
@@ -105,10 +111,11 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
                 }
                 Row::Folder(i, k) => {
                     let Shown::Folder(folder) = sections[i].get(k) else { continue };
-                    let at = Some(stack[i].oid);
+                    let seen = Some(stack[i].oid);
                     let menu =
-                        |ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str| folder_menu::items(ui, t, msgs, path, at, FolderStage::None);
-                    folder_row(ui, folder, false, msgs, FileListId::Stacked(stack[i].oid), menu);
+                        |ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str| folder_menu::items(ui, t, msgs, path, seen, FolderStage::None);
+                    let r = folder_row(ui, folder, true, msgs, FileListId::Stacked(stack[i].oid), menu);
+                    focus.row(ui, &r, false);
                 }
                 Row::File(i, j, depth) => {
                     let (c, f) = (&stack[i], &stack[i].files[j]);
@@ -123,11 +130,13 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
                         lines: None,
                         commands: &commands,
                     };
-                    changed_file_row_at(ui, t, f, (DiffTarget::Commit(c.oid, f.path.clone()), open), actions, depth, msgs);
+                    let r = changed_file_row_at(ui, t, f, (DiffTarget::Commit(c.oid, f.path.clone()), open), actions, depth, msgs);
+                    focus.row(ui, &r, current == Some(at));
                 }
             }
         }
     });
+    focus.rest(ui, &shown, current.is_some());
 }
 
 /// A section's header: the commit's short SHA and summary, cut to leave room for its file count

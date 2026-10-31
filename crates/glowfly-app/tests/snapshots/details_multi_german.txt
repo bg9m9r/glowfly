@@ -60,6 +60,7 @@ Button "Richtung tauschen"
 Label "3 Commits zusammengefasst"
 Button "Als Baum anzeigen"
 Label "3 geänderte Dateien"
+Unknown "3 geänderte Dateien"
 Button "app.txt" [off]
 Button "login.txt" [off]
 Button "search.txt" [off]

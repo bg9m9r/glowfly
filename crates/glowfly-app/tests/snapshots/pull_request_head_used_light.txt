@@ -84,6 +84,7 @@ Button "Commits  1" [off]
 Button "Files changed  1" [on]
 Label "1 file changed"
 Label "origin/search isn't in this repository, so this shows the pull request's head commit 222c0ad."
+Unknown "1 file changed"
 Button "search.txt" [off]
 Label "Select a file to see its changes."
 painted:

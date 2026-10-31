@@ -248,7 +248,7 @@ fn resolving_with_a_side_needs_the_open_file() {
 }
 
 /// `two_conflicts` opened, with the conflict view loaded on a.txt.
-fn opened_two(name: &str) -> (AppState, PathBuf) {
+pub(crate) fn opened_two(name: &str) -> (AppState, PathBuf) {
     let dir = two_conflicts(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));

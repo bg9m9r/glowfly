@@ -12,6 +12,8 @@ use std::time::Instant;
 
 #[path = "file_folds.rs"]
 pub mod file_folds;
+#[path = "file_lists.rs"]
+pub mod file_lists;
 #[path = "file_tree.rs"]
 pub mod file_tree;
 /// The shell's frame timing, which fills `ViewState::frame_times`.

@@ -59,6 +59,7 @@ Button "Swap direction"
 Label "3 commits combined"
 Button "Show as tree"
 Label "2 changed files"
+Unknown "2 changed files"
 Button "README.md" [off]
 Button "app.txt" [off]
 Button "Resize branch / tag column"

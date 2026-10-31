@@ -19,6 +19,7 @@ use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::state::file_folds::FileListId;
 use crate::state::lfs::TrackContext;
+use crate::state::list_keys::FileList;
 use crate::state::selection::MultiSelection;
 use crate::state::selection_span::Span;
 use crate::state::{AppState, Selection};
@@ -153,60 +154,65 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
             ui.label(RichText::new(t.tr("details.multi.same_files")).color(color::weak()));
         }
         Some(Ok(c)) => {
-            let open = st.session.diff.view.as_ref().map(|(target, _)| target);
+            let open = crate::state::wip_lists::cursor(st);
             let lfs = TrackContext::of(st);
             let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
             let commands = crate::state::custom_commands::MenuCommands::for_state(st);
             let row_h = widgets::LIST_ROW_H;
             let mode = st.settings.file_list_mode;
+            let heading = t.trn("details.commit.changed_files", c.files.len(), &[]);
             super::details_wip::header::frame(ui, |ui| {
                 mode_toggle(ui, t, mode, msgs);
                 ui.with_layout(egui::Layout::left_to_right(Align::Center), |ui| {
-                    ui.label(type_scale::section_text(ui, t.trn("details.commit.changed_files", c.files.len(), &[])));
+                    ui.label(type_scale::section_text(ui, heading.clone()));
                 });
             });
             let paths = || c.files.iter().map(|f| f.path.as_str()).collect();
             let rows = ListRows::of(ui, mode, c.files.len(), paths, st.session.tab_view.file_folds.closed(FileListId::Compare));
-            egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show_rows(
+            let index = |t: &DiffTarget| {
+                let i = c.files.iter().position(|f| *t == DiffTarget::Between(from, to, f.path.clone()))?;
+                rows.row_of_file(i)
+            };
+            let current = open.and_then(index);
+            let focus = super::file_list_keys::target(ui, FileList::Compare, rows.len(), ui.available_height(), &heading);
+            let shown = egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show_rows(
                 ui,
                 row_h,
                 rows.len(),
                 |ui, range| {
-                    let index = |t: &DiffTarget| {
-                        let i = c.files.iter().position(|f| *t == DiffTarget::Between(from, to, f.path.clone()))?;
-                        rows.row_of_file(i)
-                    };
                     reveal(ui, "multi-files", st.view.file_reveal.as_ref(), index, &range, row_h);
                     for row in range {
-                        let (i, depth) = match rows.get(row) {
-                            Shown::File { index, depth } => (index, depth),
+                        let r = match rows.get(row) {
+                            Shown::File { index, depth } => {
+                                let f = &c.files[index];
+                                let target = DiffTarget::Between(from, to, f.path.clone());
+                                let src = RowSource::Between { from, to };
+                                let in_workdir = c.in_workdir(&f.path);
+                                let actions = RowActions {
+                                    src,
+                                    history_at: m.oids[0],
+                                    in_workdir,
+                                    lfs,
+                                    tools,
+                                    patch_blocked: None,
+                                    lines: None,
+                                    commands: &commands,
+                                };
+                                changed_file_row_at(ui, t, f, (target, open), actions, depth, msgs)
+                            }
                             Shown::Folder(folder) => {
                                 let at = Some(m.oids[0]);
                                 let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str| {
                                     folder_menu::items(ui, t, msgs, path, at, FolderStage::None);
                                 };
-                                folder_row(ui, folder, false, msgs, FileListId::Compare, menu);
-                                continue;
+                                folder_row(ui, folder, true, msgs, FileListId::Compare, menu)
                             }
                         };
-                        let f = &c.files[i];
-                        let target = DiffTarget::Between(from, to, f.path.clone());
-                        let src = RowSource::Between { from, to };
-                        let in_workdir = c.in_workdir(&f.path);
-                        let actions = RowActions {
-                            src,
-                            history_at: m.oids[0],
-                            in_workdir,
-                            lfs,
-                            tools,
-                            patch_blocked: None,
-                            lines: None,
-                            commands: &commands,
-                        };
-                        changed_file_row_at(ui, t, f, (target, open), actions, depth, msgs);
+                        focus.row(ui, &r, current == Some(row));
                     }
                 },
             );
+            focus.rest(ui, &shown, current.is_some());
         }
     }
 }

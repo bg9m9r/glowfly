@@ -52,6 +52,7 @@ Button "Parent 7e24110"
 Button "Compare with working directory"
 Button "Show as tree"
 Label "1 changed file"
+Unknown "1 changed file"
 Button "login.txt" [off]
 Button "Resize commit column"
 Button "Resize date column"

@@ -7,7 +7,7 @@
 //! that would reach its shell. Then the keys of custom commands (`custom_keys.rs`), only while
 //! nothing covers the main window, then the menus' Alt+letter mnemonics (`ui/menu_bar/keys.rs`),
 //! which the view drawing the menus opens. Quit works anywhere but under a credential prompt.
-//! A focused Unstaged or Staged Files list takes its keys first (`ui/wip_keys.rs`).
+//! A focused file list takes its keys first (`ui/wip_keys.rs`, `ui/file_list_keys.rs`).
 //! Presses no binding takes are left for the views; Esc goes on to the Esc chain in
 //! `ui/central.rs`. While a menu is open, its keys (those without Ctrl, Alt or Cmd) are set
 //! aside for it first (`ui/menu_keys`), so no binding or view behind it sees them.
@@ -38,8 +38,10 @@ pub(crate) fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>)
         return;
     }
     let live = Live::now(ctx, st);
-    // A focused Unstaged or Staged Files list takes its own keys before any binding.
-    crate::ui::wip_keys::input(ctx, live.prefs || live.askpass || live.palette || live.dialog || live.sheet, msgs);
+    // A focused file list takes its own keys before any binding.
+    let covered = live.prefs || live.askpass || live.palette || live.dialog || live.sheet;
+    crate::ui::wip_keys::input(ctx, covered, msgs);
+    crate::ui::file_list_keys::input(ctx, covered, msgs);
     while let Some((id, chord, repeat)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
         // A held key would queue the same fetch or push again and again.
         if repeat && runs_command(id) {
@@ -73,7 +75,7 @@ struct Live {
     sheet: bool,
     /// A dialog other than the sheet.
     dialog: bool,
-    /// A text field has the keyboard (a focused WIP file list isn't typing).
+    /// A text field has the keyboard (a focused file list isn't typing).
     typing: bool,
     /// A working-tree diff is open, or a working-tree file is opening.
     working_diff: bool,
@@ -103,7 +105,9 @@ impl Live {
             sheet,
             // The welcome counts as a dialog, except while Preferences hides it.
             dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
-            typing: ctx.wants_keyboard_input() && crate::ui::wip_keys::focused_list(ctx).is_none(),
+            typing: ctx.wants_keyboard_input()
+                && crate::ui::wip_keys::focused_list(ctx).is_none()
+                && crate::ui::file_list_keys::focused(ctx).is_none(),
             working_diff: st
                 .view
                 .diff_opening
@@ -227,7 +231,10 @@ fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         | I::WipToggleFiles
         | I::WipOpenFile
         | I::WipDiscardFile
-        | I::WipOtherList => false,
+        | I::WipOtherList
+        | I::FileStepFile
+        | I::FilePageFile
+        | I::FileEdgeFile => false,
     }
 }
 
@@ -382,7 +389,10 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         | I::WipToggleFiles
         | I::WipOpenFile
         | I::WipDiscardFile
-        | I::WipOtherList => return,
+        | I::WipOtherList
+        | I::FileStepFile
+        | I::FilePageFile
+        | I::FileEdgeFile => return,
     };
     msgs.push(msg);
 }

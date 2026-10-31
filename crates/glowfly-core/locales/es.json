@@ -368,6 +368,7 @@
   "conflict.files.conflicted.header": "Archivos en conflicto ({count})",
   "conflict.files.count.one": "{count} conflicto",
   "conflict.files.count.other": "{count} conflictos",
+  "conflict.files.keys_kept": "{path} tiene elecciones sin guardar: guárdalas o descártalas antes de pasar a otro archivo.",
   "conflict.files.mark_all_conflicted.button": "Marcar todo en conflicto",
   "conflict.files.mark_all_conflicted.tip": "Recupera los conflictos de cada archivo resuelto",
   "conflict.files.mark_all_resolved.button": "Marcar todo como resuelto",

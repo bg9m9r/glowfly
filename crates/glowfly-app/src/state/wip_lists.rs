@@ -6,7 +6,6 @@ use super::file_folds::FileListId;
 use super::list_keys::{Place, place_in};
 use crate::state::AppState;
 use glowfly_core::repo::{DiffTarget, FileEntry, Snapshot};
-use glowfly_core::settings::FileListMode;
 use std::collections::HashSet;
 
 /// The files a Shift move selected in one list: every visible file from `anchor` to `head`.
@@ -55,13 +54,8 @@ pub fn path_in(staged: bool, t: &DiffTarget) -> Option<&str> {
 /// `files` in on-screen order (indices into it), each with whether it is shown: the tree's
 /// order with its collapsed folders in Tree mode, else the list's own.
 pub fn order(st: &AppState, files: &[&FileEntry], staged: bool) -> Vec<(usize, bool)> {
-    if st.settings.file_list_mode != FileListMode::Tree {
-        return (0..files.len()).map(|i| (i, true)).collect();
-    }
     let list = if staged { FileListId::Staged } else { FileListId::Unstaged };
-    let folds = &st.session.tab_view.file_folds;
-    let paths: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
-    super::file_tree::shown_order(&paths, |f| folds.is_closed(list, f))
+    super::file_lists::tree_order(st, files.iter().map(|f| f.path.as_str()).collect(), list)
 }
 
 /// The list's visible files in order, as indices into `files`.

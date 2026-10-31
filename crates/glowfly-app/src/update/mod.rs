@@ -34,6 +34,7 @@ mod dialog;
 mod diff;
 mod diff_gaps;
 mod diff_preview;
+mod file_list_keys;
 mod files;
 mod fold_keys;
 mod forge;

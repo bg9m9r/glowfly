@@ -55,6 +55,7 @@ Button "Show as tree"
 Label "−2"
 Label "+38"
 Label "6 changed files"
+Unknown "6 changed files"
 Button "README.md" [off]
 Label "+2"
 Button "app.txt" [off]

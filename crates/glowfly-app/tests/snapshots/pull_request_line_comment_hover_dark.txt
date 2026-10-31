@@ -84,6 +84,7 @@ Button "Overview" [off]
 Button "Commits  1" [off]
 Button "Files changed  1" [on]
 Label "1 file changed"
+Unknown "1 file changed"
 Button "search.txt" [on]
 Label "Comments on this file  1"
 Button "Hide"

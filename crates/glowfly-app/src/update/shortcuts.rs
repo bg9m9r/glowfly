@@ -4,8 +4,9 @@
 //! visible), R reverts the selected lines or the current hunk of a commit or comparison diff,
 //! Ctrl+Shift+S/U stage or unstage everything, Ctrl+Shift+M goes to the commit message, and
 //! Ctrl+/ opens or closes the shortcut sheet (the default keys). The keys of a focused Unstaged
-//! or Staged Files list go to `wip_keys.rs`; after the whole open file was staged or unstaged
-//! the view moves on to its neighbour (`wip_list.rs`).
+//! or Staged Files list go to `wip_keys.rs`, the moves of the other file lists to
+//! `file_list_keys.rs`; after the whole open file was staged or unstaged the view moves on to
+//! its neighbour (`wip_list.rs`).
 
 use crate::effect::Effect;
 use crate::keymap::KeyAction;
@@ -38,6 +39,10 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
         }
         KeyAction::WipList { staged, key } => {
             super::wip_keys::handle(st, staged, key, now, fx);
+            None
+        }
+        KeyAction::FileList { list, mv } => {
+            super::file_list_keys::handle(st, list, mv, now, fx);
             None
         }
     };

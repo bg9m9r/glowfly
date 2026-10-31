@@ -15,6 +15,7 @@ use crate::ui::snapshot_tests::snapshot_tests_line_counts::{lines, with_wip, wri
 use crate::ui::snapshot_tests::snapshot_tests_select::click;
 use crate::ui::snapshot_tests::{git, harness, remove_fixture, with_repo};
 use crate::ui::theme::{apply_theme, color};
+use eframe::egui::accesskit::Role;
 use eframe::egui::{self, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -121,7 +122,7 @@ fn details_compare_tree() {
     let mut h = harness(tree(st), true);
     h.run();
     assert!(h.query_by_label("docs/").is_some() && h.query_by_label("src/lib/").is_some());
-    assert!(h.query_by_label(&Lang::En.trn("details.commit.changed_files", 3, &[])).is_some(), "the new header");
+    assert!(h.query_by_role_and_label(Role::Label, &Lang::En.trn("details.commit.changed_files", 3, &[])).is_some(), "the new header");
     h.check_snapshot("details_compare_tree");
     drop(h);
     remove_fixture(&dir);

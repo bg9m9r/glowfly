@@ -187,6 +187,12 @@ pub fn file_row<R>(ui: &mut Ui, selected: bool, name: &str, add: impl FnOnce(&mu
     file_row_in(ui, selected, name, Sense::click(), Layout::left_to_right(Align::Center), add)
 }
 
+/// `file_row` for a list that takes the keyboard focus as a whole (`ui/file_list_keys.rs`): the
+/// row takes clicks but is no Tab stop of its own.
+pub fn keyed_file_row<R>(ui: &mut Ui, selected: bool, name: &str, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    file_row_in(ui, selected, name, Sense::CLICK, Layout::left_to_right(Align::Center), add)
+}
+
 /// `file_row` with an `end` part flush with the row's right edge (a file's line counts): `end` is
 /// laid out first, right to left, so it keeps its width and `add`'s widgets (the path) are cut
 /// before it. `.response` is the whole row's click response, as for `file_row`.

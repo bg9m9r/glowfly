@@ -61,6 +61,8 @@ pub enum When {
     WorkingDiff,
     /// The Unstaged or Staged Files list has the keyboard focus.
     WipLists,
+    /// A list that only opens files has the keyboard focus (`state::list_keys::FileList`).
+    FileLists,
     /// A diff of a commit or comparison (pull requests and File history included).
     CommitDiff,
     DiffOrConflict,
@@ -90,6 +92,7 @@ impl When {
             When::Anywhere | When::NotTyping => None,
             When::WorkingDiff => Some("in a diff of uncommitted changes or the Unstaged and Staged Files lists"),
             When::WipLists => Some("in the Unstaged and Staged Files lists"),
+            When::FileLists => Some("in a commit's, comparison's, pull request's, folder history's or conflict's file list"),
             When::CommitDiff => Some("in a diff of a commit or comparison"),
             When::DiffOrConflict => Some("in a diff or the conflict view"),
             When::Diff => Some("in a diff"),
@@ -112,15 +115,15 @@ impl When {
     /// overlap one another; each place with its own text field (the commit message, the search
     /// field, the palette, a dialog, a pull request's text boxes) overlaps only itself, and the palette's two lists overlap.
     /// The rebase panel is drawn only when no diff, list, graph or blame view is, so it
-    /// overlaps only itself, `Anywhere` and `NotTyping`; so do the WIP lists' keys, which a
-    /// focused list takes before any other binding sees them.
+    /// overlaps only itself, `Anywhere` and `NotTyping`; so do the file lists' keys (the WIP
+    /// lists' and the others'), which a focused list takes before any other binding sees them.
     pub fn overlaps(self, other: When) -> bool {
         use When as W;
         let browsing = |w: When| {
             matches!(w, W::NotTyping | W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Diff | W::Lists | W::Blame | W::Graph)
         };
         let palette = |w: When| matches!(w, W::InPalette | W::PaletteStep);
-        let panel = |a: When, b: When| matches!(a, W::RebasePanel | W::WipLists) && b == W::NotTyping;
+        let panel = |a: When, b: When| matches!(a, W::RebasePanel | W::WipLists | W::FileLists) && b == W::NotTyping;
         self == other
             || self == W::Anywhere
             || other == W::Anywhere
@@ -203,6 +206,9 @@ pub const BINDINGS: &[Binding] = &[
         W::WipLists,
     ),
     fixed(I::WipOtherList, G::Staging, "Go to the Unstaged or Staged Files list", &[C::plain(K::Left), C::plain(K::Right)], W::WipLists),
+    fixed(I::FileStepFile, G::Navigation, "Open the file above or below", &[C::plain(K::Up), C::plain(K::Down)], W::FileLists),
+    fixed(I::FilePageFile, G::Navigation, "Open the file a page up or down", &[C::plain(K::PageUp), C::plain(K::PageDown)], W::FileLists),
+    fixed(I::FileEdgeFile, G::Navigation, "Open the first or last file", &[C::plain(K::Home), C::plain(K::End)], W::FileLists),
     fixed(I::SelectRow, G::Navigation, "Select the row above or below", &[C::plain(K::Up), C::plain(K::Down)], W::Lists),
     fixed(I::ExtendSelection, G::Navigation, "Extend the commit selection up or down", &[C::shift(K::Up), C::shift(K::Down)], W::Lists),
     b(I::SelectAllCommits, G::Navigation, "Select every commit shown in the graph", &[C::cmd(K::Letter('A'))], W::Lists),

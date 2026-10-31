@@ -9,6 +9,7 @@ use super::snapshot_tests_select::click;
 use crate::msg::{Msg, RepoMsg};
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -179,7 +180,7 @@ fn details_commit_long_body() {
     let mut h = harness(st, true);
     h.run();
     let label = h.get_by_label_contains("Line 1 of a long").bounding_box().expect("the body");
-    let files = h.get_by_label_contains("changed files").bounding_box().expect("the files header");
+    let files = h.get_by_role_and_label(Role::Label, "6 changed files").bounding_box().expect("the files header");
     assert!(label.y1 - label.y0 > 320.0, "the body is longer than any cap");
     // From the body's top (inside the block's margin) to the files header: the capped block,
     // its margin, the gap and the separator.

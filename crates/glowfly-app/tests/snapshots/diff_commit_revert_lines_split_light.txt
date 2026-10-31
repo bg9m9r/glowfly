@@ -51,6 +51,7 @@ Button "Parent b9eb369"
 Button "Compare with working directory"
 Button "Show as tree"
 Label "1 changed file"
+Unknown "1 changed file"
 Button "app.txt" [on]
 Label "app.txt"
 Label "M +2 −1"

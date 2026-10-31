@@ -34,8 +34,8 @@ pub use ids::{BindingId, FAVORITE_BINDINGS};
 pub use rebind::{Check, Slot, apply, check, fold_ctrl, reset_taking, same_keys, swap_chord};
 pub use table::*;
 
-/// What the staging, commit-message and sheet keys, and the keys of a focused Unstaged or
-/// Staged Files list, ask `update/shortcuts.rs` to do.
+/// What the staging, commit-message and sheet keys, and the keys of a focused file list, ask
+/// `update/shortcuts.rs` to do.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyAction {
     Stage,
@@ -50,5 +50,11 @@ pub enum KeyAction {
     WipList {
         staged: bool,
         key: crate::state::list_keys::ListKey,
+    },
+    /// A move in a focused list that only opens files (commit, comparison, pull request, folder
+    /// history, Conflicted and Resolved Files).
+    FileList {
+        list: crate::state::list_keys::FileList,
+        mv: crate::state::list_keys::ListMove,
     },
 }

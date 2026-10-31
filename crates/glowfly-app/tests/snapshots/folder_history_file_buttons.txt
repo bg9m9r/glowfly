@@ -57,6 +57,7 @@ Label "Commit 305823d"
 Label "View on graph"
 Button "Copy SHA"
 Label "2 files changed in src/"
+Unknown "2 files changed in src/"
 Button "lexer.rs" [off]
 Label "A"
 Button "lib.rs" [on]

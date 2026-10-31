@@ -54,6 +54,7 @@ Button "Show as tree"
 Label "−0"
 Label "+1"
 Label "1 changed file"
+Unknown "1 changed file"
 Button "login.txt" [off]
 Label "+1"
 Button "Resize branch / tag column"

@@ -6,6 +6,7 @@
 use crate::keymap::KeyAction;
 use crate::msg::Msg;
 use crate::state::AppState;
+use crate::state::list_keys::KeySet;
 use eframe::egui;
 
 /// The focus target of the Unstaged (`staged: false`) or Staged Files list.
@@ -30,7 +31,7 @@ pub(super) fn target(ui: &mut egui::Ui, staged: bool, rect: egui::Rect, name: &s
 pub(crate) fn input(ctx: &egui::Context, covered: bool, msgs: &mut Vec<Msg>) {
     super::list_focus::restore(ctx);
     let Some(staged) = focused_list(ctx).filter(|_| !covered) else { return };
-    for key in super::list_focus::take(ctx, list_id(staged)) {
+    for key in super::list_focus::take(ctx, list_id(staged), KeySet::ALL) {
         msgs.push(Msg::Shortcut(KeyAction::WipList { staged, key }));
     }
 }

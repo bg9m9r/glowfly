@@ -56,6 +56,7 @@ Button "Parent f0d635c"
 Button "Compare with working directory"
 Button "Show as tree"
 Label "1 changed file"
+Unknown "1 changed file"
 Button "topic.txt" [off]
 Button "Resize branch / tag column"
 Button "Resize commit column"

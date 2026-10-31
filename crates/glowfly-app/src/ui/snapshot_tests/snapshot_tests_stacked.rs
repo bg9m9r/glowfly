@@ -9,6 +9,7 @@ use super::snapshot_tests_select::with_selection;
 use crate::state::pick::{MainlineForm, PickOp};
 use crate::state::{AppState, Modal, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
@@ -16,7 +17,7 @@ use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
 
-const STACKED: [&str; 3] = ["Search results page", "Fix build on Windows", "Initial commit"];
+pub(in crate::ui) const STACKED: [&str; 3] = ["Search results page", "Fix build on Windows", "Initial commit"];
 
 fn commit(st: &AppState, summary: &str) -> Oid {
     st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == summary).unwrap().oid
@@ -34,7 +35,7 @@ fn stacked_changes() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label(&gap).is_some(), "the gap is named");
-    assert!(h.query_by_label("Each commit's own changes, newest first").is_some());
+    assert!(h.query_by_role_and_label(Role::Label, "Each commit's own changes, newest first").is_some());
     h.check_snapshot("stacked_changes");
     drop(h);
     remove_fixture(&dir);
@@ -56,7 +57,7 @@ fn stacked_changes_german() {
     let mut h = harness(st, true);
     h.run();
     let de = Lang::De;
-    assert!(h.query_by_label(de.tr("details.multi.stacked.title")).is_some());
+    assert!(h.query_by_role_and_label(Role::Label, de.tr("details.multi.stacked.title")).is_some());
     assert!(h.query_all_by_label(&de.trn("details.multi.stacked.files", 1, &[])).count() >= 1);
     for key in ["details.multi.stacked.title", "details.multi.stacked.merge_note", "details.multi.stacked.no_files"] {
         assert!(h.query_by_label(Lang::En.tr(key)).is_none(), "{key} isn't left in English");
