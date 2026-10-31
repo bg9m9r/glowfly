@@ -75,9 +75,14 @@ fn sources() -> Vec<(String, String)> {
     // Read at run time: a binary built in another worktree (shared target dir) keeps that
     // worktree's compile-time path.
     let app = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into()));
+    let crates = app.parent().expect("the app crate sits in crates/");
     let mut files = Vec::new();
-    rust_files(&app.join("src"), &mut files);
-    rust_files(&app.join("../glowfly-core/src"), &mut files);
+    // Every crate's sources.
+    for entry in std::fs::read_dir(crates).expect("the crates folder").flatten() {
+        if entry.path().join("src").is_dir() {
+            rust_files(&entry.path().join("src"), &mut files);
+        }
+    }
     assert!(files.len() > 100, "found the sources");
     files.into_iter().filter(|f| !is_test_file(f)).map(|f| (f.display().to_string(), code(&std::fs::read_to_string(&f).unwrap()))).collect()
 }

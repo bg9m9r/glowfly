@@ -39,7 +39,7 @@ const LINE_LIMIT: usize = 400;
 
 /// The non-test files over `LINE_LIMIT` today, with their length as a ceiling.
 const LONG_FILES: &[(&str, usize)] = &[
-    ("crates/glowfly-app/src/state/mod.rs", 574),
+    ("crates/glowfly-model/src/state/mod.rs", 574),
     ("crates/glowfly-core/src/forge/github.rs", 405),
     ("crates/glowfly-core/src/settings.rs", 408),
 ];
@@ -52,13 +52,13 @@ const ENGLISH_LOG_CALLS: usize = 176;
 /// signature for `harness`). A new test reuses one of these instead of writing its own copy.
 const FIXTURE_HELPERS: &[(&str, &[&str])] = &[
     ("fn git(dir: &Path, a: &[&str])", &["crates/glowfly-core/src/testkit/mod.rs"]),
-    ("fn scratch_repo(", &["crates/glowfly-app/src/testing.rs", "crates/glowfly-core/src/testutil.rs"]),
-    ("fn long_repo(", &["crates/glowfly-app/src/testing.rs"]),
+    ("fn scratch_repo(", &["crates/glowfly-model/src/testing.rs", "crates/glowfly-core/src/testutil.rs"]),
+    ("fn long_repo(", &["crates/glowfly-model/src/testing.rs"]),
     ("fn fixture_repo(", &["crates/glowfly-app/src/ui/snapshot_tests/helpers.rs"]),
     (
         "fn with_repo(",
         &[
-            "crates/glowfly-app/src/state/menu_model_tests.rs",
+            "crates/glowfly-model/src/state/menu_model_tests.rs",
             "crates/glowfly-app/src/ui/snapshot_tests/helpers.rs",
             "crates/glowfly-app/src/flows/lines_tests.rs",
             "crates/glowfly-app/src/flows/profile_rules_tests.rs",
@@ -91,16 +91,29 @@ struct Source {
     test: bool,
 }
 
-/// Every `.rs` file under both crates' `src/`.
+/// The folders under `crates/` that hold a crate with sources, sorted.
+fn crate_names() -> Vec<String> {
+    let crates = app_src().parent().and_then(|app| app.parent()).map(PathBuf::from).expect("the crates folder");
+    let mut names: Vec<String> = std::fs::read_dir(&crates)
+        .expect("the crates folder")
+        .flatten()
+        .filter(|e| e.path().join("src").is_dir())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+/// Every `.rs` file under every crate's `src/`.
 fn all_sources() -> Vec<Source> {
     let crates = app_src().parent().and_then(|app| app.parent()).map(PathBuf::from).expect("the crates folder");
     let mut out = Vec::new();
-    for name in ["glowfly-app", "glowfly-core"] {
-        for (rel, text, test) in crate_sources(&crates.join(name).join("src")) {
+    for name in crate_names() {
+        for (rel, text, test) in crate_sources(&crates.join(&name).join("src")) {
             out.push(Source { path: format!("crates/{name}/src/{rel}"), text, test });
         }
     }
-    assert!(out.len() > 500, "found the sources of both crates");
+    assert!(out.len() > 500, "found the sources of the crates");
     out
 }
 
@@ -218,7 +231,7 @@ fn english_log_calls(src: &str) -> Vec<usize> {
 fn log_and_toast_text_is_translated() {
     let mut sites = Vec::new();
     for s in all_sources().iter().filter(|s| !s.test) {
-        let area = s.path.strip_prefix("crates/glowfly-app/src/").unwrap_or("");
+        let area = s.path.strip_prefix("crates/glowfly-model/src/").unwrap_or("");
         if area.starts_with("update/") || area.starts_with("state/") {
             sites.extend(english_log_calls(&s.text).into_iter().map(|line| format!("{}:{line}", s.path)));
         }
@@ -286,9 +299,9 @@ fn fixture_helpers_are_shared_not_copied() {
             }
         }
     }
-    for krate in ["crates/glowfly-app/", "crates/glowfly-core/"] {
+    for krate in crate_names().iter().map(|name| format!("crates/{name}/")) {
         let mut uses: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-        for s in sources.iter().filter(|s| s.path.starts_with(krate)) {
+        for s in sources.iter().filter(|s| s.path.starts_with(&krate)) {
             for (name, line, func) in fixture_names(&s.text) {
                 uses.entry(name).or_default().insert(format!("{}:{line} (in {func})", s.path));
             }

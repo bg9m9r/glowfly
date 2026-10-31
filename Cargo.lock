@@ -1667,6 +1667,7 @@ dependencies = [
  "egui_kittest",
  "git2",
  "glowfly-core",
+ "glowfly-model",
  "image",
  "memmap2",
  "notify",
@@ -1725,6 +1726,17 @@ dependencies = [
  "vt100",
  "windows 0.61.3",
  "zip",
+]
+
+[[package]]
+name = "glowfly-model"
+version = "0.3.0-rc.1"
+dependencies = [
+ "chrono",
+ "git2",
+ "glowfly-core",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

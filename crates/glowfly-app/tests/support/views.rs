@@ -40,15 +40,22 @@ pub fn is_test_file(rel: &str) -> bool {
     stem == "tests" || stem.ends_with("_tests") || stem.starts_with("snapshot_tests")
 }
 
-/// The modules `src` declares only for tests (`#[cfg(test)]` followed by `mod name;`).
+/// The modules `src` declares only for tests: `#[cfg(test)]`, or the `test-support` feature's
+/// `#[cfg(any(test, feature = "test-support"))]`, then any other attributes, then `mod name;`.
 pub fn test_only_modules(src: &str) -> Vec<String> {
     let lines: Vec<&str> = src.lines().map(str::trim).collect();
-    lines
-        .windows(2)
-        .filter(|w| w[0] == "#[cfg(test)]")
-        .filter_map(|w| w[1].strip_prefix("pub(crate) ").or(Some(w[1]))?.strip_prefix("mod ")?.strip_suffix(';'))
-        .map(str::to_owned)
-        .collect()
+    let mut out = Vec::new();
+    for (i, l) in lines.iter().enumerate() {
+        if *l != "#[cfg(test)]" && *l != "#[cfg(any(test, feature = \"test-support\"))]" {
+            continue;
+        }
+        let Some(item) = lines[i + 1..].iter().find(|l| !l.starts_with("#[")) else { continue };
+        let item = ["pub(crate) ", "pub "].iter().fold(*item, |s, v| s.strip_prefix(v).unwrap_or(s));
+        if let Some(name) = item.strip_prefix("mod ").and_then(|m| m.strip_suffix(';')) {
+            out.push(name.to_owned());
+        }
+    }
+    out
 }
 
 /// The path (under `src/`, without `.rs`) of module `name` declared in the file at `rel`.

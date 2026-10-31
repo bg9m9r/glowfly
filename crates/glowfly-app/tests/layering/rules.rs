@@ -1,8 +1,8 @@
 //! The rules `layering.rs` checks: the source folders that must stay pure, the families of
 //! outside work they may not reach, the core functions that do I/O and the justified exceptions.
 
-/// The source folders that must do no I/O.
-pub const DIRS: &[&str] = &["ui", "update", "state"];
+/// The source folders that must do no I/O, under `crates/`.
+pub const DIRS: &[&str] = &["glowfly-app/src/ui", "glowfly-model/src/update", "glowfly-model/src/state"];
 
 const FILES: &str = "the file system";
 const CLOCK: &str = "the clock (update gets `now`; views read `st.view.now`)";
@@ -179,12 +179,16 @@ pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ),
 ];
 
-/// Justified exceptions, as (file under `src/`, pattern as reported, reason).
+/// Justified exceptions, as (file under `crates/`, pattern as reported, reason).
 pub const ALLOWED: &[(&str, &str, &str)] = &[
     (
-        "state/updates.rs",
+        "glowfly-model/src/state/updates.rs",
         "app_update::current_platform",
         "the default update state asks the processor once (cached, no disk), so an emulated build is offered the Arm file",
     ),
-    ("state/app_queries.rs", "std::env", "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read"),
+    (
+        "glowfly-model/src/state/app_queries.rs",
+        "std::env",
+        "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read",
+    ),
 ];

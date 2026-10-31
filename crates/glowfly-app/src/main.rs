@@ -7,56 +7,33 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod cli_update;
-mod conflict_check;
-mod custom_commands;
-mod deep_link;
-mod effect;
-mod file_op;
 #[cfg(test)]
 mod flows;
-mod git_env;
-mod gitflow;
 #[cfg(test)]
 mod glyph_check;
-mod journal;
 #[cfg(test)]
 mod journey;
-mod keymap;
-mod lfs;
 mod logging;
-mod logs;
-mod msg;
-mod onboarding;
-mod patch;
 mod platform;
-mod profile;
-mod pull_request;
-mod range_diff;
-mod remote;
 mod runner;
 mod shell;
 mod smoke_probe;
-mod ssh;
-mod start_arg;
-mod state;
-mod submodule;
-mod tag;
-mod terminal;
-#[cfg(test)]
-mod testing;
-mod themes;
-mod tools;
 mod ui;
-mod update;
 mod watcher;
-mod worktree;
+
+// The model's modules, under the names they had when they lived here, so `crate::state::…` and
+// the like keep resolving.
+#[cfg(test)]
+pub(crate) use glowfly_model::testing;
+pub(crate) use glowfly_model::{
+    conflict_check, custom_commands, deep_link, effect, git_env, gitflow, journal, keymap, lfs, logs, msg, onboarding, patch, profile,
+    pull_request, range_diff, remote, ssh, start_arg, state, submodule, tag, terminal, themes, tools, update, worktree,
+};
 
 use eframe::egui;
 use glowfly_core::askpass::{self, HelperError, Outcome};
+use start_arg::StartArg;
 use std::ffi::{OsStr, OsString};
-// Public at the root, as it was when it lived here: what it reaches (`Msg`, and through it the
-// state and effects) keeps the dead-code lint for the binary as it was.
-pub use start_arg::StartArg;
 use std::path::{Path, PathBuf};
 
 fn main() -> eframe::Result {

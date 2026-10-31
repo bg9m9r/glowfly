@@ -61,7 +61,7 @@ pub(super) fn test_only_modules(rel: &str, src: &str) -> Vec<String> {
     let lines: Vec<&str> = src.lines().map(str::trim).collect();
     let mut out = Vec::new();
     for (i, l) in lines.iter().enumerate() {
-        let Some(rest) = l.strip_prefix("#[cfg(test)]") else { continue };
+        let Some(rest) = strip_test_cfg(l) else { continue };
         let mut path = None;
         let mut item = rest.trim();
         let mut j = i;
@@ -87,6 +87,12 @@ pub(super) fn test_only_modules(rel: &str, src: &str) -> Vec<String> {
     out
 }
 
+/// What follows a test-only `cfg` at the start of `line`: `#[cfg(test)]`, or the `test-support`
+/// feature's `#[cfg(any(test, feature = "test-support"))]` (test helpers other crates' tests use).
+fn strip_test_cfg(line: &str) -> Option<&str> {
+    line.strip_prefix("#[cfg(test)]").or_else(|| line.strip_prefix("#[cfg(any(test, feature = \"test-support\"))]"))
+}
+
 fn join(dir: &str, name: &str) -> String {
     if dir.is_empty() { name.to_owned() } else { format!("{dir}/{name}") }
 }
@@ -99,7 +105,7 @@ fn blank_test_items(src: &str) -> String {
     let mut out: Vec<&str> = Vec::with_capacity(lines.len());
     let mut i = 0;
     while i < lines.len() {
-        let Some(rest) = lines[i].trim().strip_prefix("#[cfg(test)]") else {
+        let Some(rest) = strip_test_cfg(lines[i].trim()) else {
             out.push(lines[i]);
             i += 1;
             continue;

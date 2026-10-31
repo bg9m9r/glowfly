@@ -1,0 +1,309 @@
+//! Preferences: opening/closing, settings persistence, git config, folder pickers, and the
+//! messages of the navigation and the save model (prefs_nav.rs, prefs_save.rs, prefs_leave.rs).
+
+use crate::effect::Effect;
+use crate::effect::{OsEffect, PrefsEffect};
+use crate::msg::PrefsMsg;
+use crate::msg::{FilePurpose, FolderPurpose};
+use crate::state::{AppState, Modal, PrefPage, PrefsState, host_text};
+use glowfly_core::forge::Provider;
+use glowfly_core::settings::TrackerChoice;
+use glowfly_core::signing::SigningFormat;
+use std::time::Instant;
+
+pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Vec<Effect>) {
+    match msg {
+        PrefsMsg::OpenPrefs(page) => {
+            let mut prefs = PrefsState::new(page);
+            if let Some(w) = st.snap.as_ref().map(|s| s.real_workdir.clone())
+                && let TrackerChoice::Jira { project, .. } = st.settings.tracker_for(&w)
+            {
+                prefs.jira_project = project;
+            }
+            st.prefs = Some(prefs);
+            if page == PrefPage::Tools {
+                super::tool_git::read_for_page(st, fx);
+            }
+            // Which program opens glowfly:// links (General), read again at every opening.
+            super::deep_link::check_scheme(st, fx);
+            // Whether the downloaded update is still there (General's Updates row).
+            super::updates_download::check_saved(st, fx);
+            if page == PrefPage::RepoTracker {
+                super::trello::want_boards(st, fx);
+            }
+            if page == PrefPage::RepoGitFlow {
+                super::gitflow::fill(st);
+            }
+            if page == PrefPage::RepoLfs {
+                super::lfs::load(st, fx);
+            }
+            if page == PrefPage::RepoSparse {
+                super::sparse::load(st, fx);
+            }
+            if page == PrefPage::Ssh {
+                super::ssh::load(st, fx);
+            }
+            if page == PrefPage::Git {
+                super::git_env::discover(st, fx);
+            }
+            // Start the Integrations page on the open repository's service.
+            let provider = st.session.forge.as_ref().and_then(|f| f.host_provider()).unwrap_or(Provider::GitHub);
+            select_integration(st, provider);
+            fx.push(Effect::Prefs(PrefsEffect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() }));
+        }
+        PrefsMsg::ClosePrefs => {
+            st.prefs = None;
+            // The Commit Signing page may have changed the program or the allowed signers file.
+            st.session.reads.signatures.clear();
+            // The diff's scroll offset is in pixels: keep the same top row if the editor font
+            // size (and so the row height) changed.
+            if st.session.diff.view.is_some() {
+                st.view.diff_scroll_to_row = Some(st.session.tab_view.diff_top_row);
+            }
+            // The commit limit or branch visibility may have changed.
+            super::repo::refresh(st, fx);
+            // So may the profiles' folder rules or the repository's identity.
+            super::profile_rules::want_identity(st, fx);
+        }
+        PrefsMsg::SelectIntegration(p) => select_integration(st, p),
+        PrefsMsg::GitConfig { global, key, value } => super::prefs_save::write_now(st, global, key, value, fx),
+        PrefsMsg::SettingsEdited => {
+            if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.saved_settings.as_str()) {
+                fx.push(save_settings(st));
+            }
+            sync_live_settings(st, fx);
+        }
+        PrefsMsg::SetTheme(t) => {
+            if st.settings.theme != t {
+                st.settings.theme = t;
+                fx.push(save_settings(st));
+            }
+        }
+        PrefsMsg::SetToolbarLabels(on) => {
+            if st.settings.toolbar_labels != on {
+                st.settings.toolbar_labels = on;
+                fx.push(save_settings(st));
+            }
+        }
+        PrefsMsg::SetDesktopNotifications(on) => super::notify::set_desktop(st, on, fx),
+        PrefsMsg::DesktopNotificationFailed { text, confirm } => super::notify::desktop_failed(st, text, confirm, now),
+        PrefsMsg::GitConfigLoaded(values) => {
+            if let Some(p) = st.prefs.as_mut() {
+                p.ssh.prefill_comment(&values.user_email);
+                p.git_saved = Some(values.clone());
+                p.git = Some(values);
+                if p.page == PrefPage::Profile {
+                    super::profiles::on_config(st, fx);
+                }
+            }
+            load_signing_keys(st, fx);
+        }
+        PrefsMsg::LoadSigningKeys => load_signing_keys(st, fx),
+        PrefsMsg::SigningKeysLoaded(result) => {
+            if let Some(p) = st.prefs.as_mut() {
+                match result {
+                    Ok(keys) => {
+                        p.signing.keys = Some(keys);
+                        p.signing.keys_error = None;
+                    }
+                    Err(e) => {
+                        p.signing.keys = Some(Vec::new());
+                        p.signing.keys_error = Some(e);
+                    }
+                }
+            }
+        }
+        PrefsMsg::GenerateGpgKey => {
+            let Some(p) = st.prefs.as_mut() else { return };
+            let Some(git) = p.git.as_ref() else { return };
+            let program = non_empty(&git.gpg_program, "gpg");
+            p.signing.generating = true;
+            fx.push(Effect::Prefs(PrefsEffect::GenerateGpgKey {
+                program,
+                name: git.user_name.clone(),
+                email: git.user_email.clone(),
+                passphrase: std::mem::take(&mut p.signing.passphrase),
+            }));
+        }
+        PrefsMsg::GpgKeyGenerated(result) => {
+            if let Some(p) = st.prefs.as_mut() {
+                p.signing.generating = false;
+            }
+            match result {
+                Ok(id) => {
+                    if let Some(git) = st.prefs.as_mut().and_then(|p| p.git.as_mut()) {
+                        git.signing_key = id.clone();
+                    }
+                    fx.push(Effect::Prefs(PrefsEffect::SetGitConfig {
+                        cwd: st.any_dir(),
+                        global: true,
+                        key: "user.signingkey".into(),
+                        value: Some(id.clone()),
+                    }));
+                    st.toast(true, format!("Created GPG key {id} and set it as your signing key"), now);
+                    load_signing_keys(st, fx);
+                }
+                Err(e) => st.log(false, format!("Could not generate a GPG key: {e}")),
+            }
+        }
+        PrefsMsg::CopyPublicKey => {
+            let Some(git) = st.prefs.as_ref().and_then(|p| p.git.as_ref()) else { return };
+            if git.signing_key.is_empty() {
+                return;
+            }
+            let format = SigningFormat::from_config(&git.signing_format);
+            let program = non_empty(git.program(), format.default_program());
+            fx.push(Effect::Prefs(PrefsEffect::ExportPublicKey { format, program, key: git.signing_key.clone() }));
+        }
+        PrefsMsg::PublicKeyExported(result) => match result {
+            Ok(text) => {
+                fx.push(Effect::Ui(crate::effect::UiEffect::CopyText(text)));
+                st.toast(true, "Public key copied to the clipboard", now);
+            }
+            Err(e) => st.log(false, format!("Could not export the public key: {e}")),
+        },
+        PrefsMsg::PickFile(purpose) => {
+            let title = match purpose {
+                FilePurpose::SigningProgram => "Signing program",
+                FilePurpose::SshAllowedSigners => "Allowed signers file",
+            };
+            fx.push(Effect::Os(OsEffect::PickFile { title: title.into(), purpose }));
+        }
+        // Only fills the field: the Save / Revert bar writes it.
+        PrefsMsg::FilePicked { purpose, path: Some(path) } => {
+            let value = path.display().to_string();
+            let Some(git) = st.prefs.as_mut().and_then(|p| p.git.as_mut()) else { return };
+            match purpose {
+                FilePurpose::SigningProgram => match SigningFormat::from_config(&git.signing_format) {
+                    SigningFormat::OpenPgp => git.gpg_program = value,
+                    SigningFormat::Ssh => git.ssh_program = value,
+                    SigningFormat::X509 => git.x509_program = value,
+                },
+                FilePurpose::SshAllowedSigners => git.ssh_allowed_signers = value,
+            }
+            load_signing_keys(st, fx);
+        }
+        PrefsMsg::FilePicked { path: None, .. } => {}
+        PrefsMsg::PickFolder(purpose) => {
+            let title = match purpose {
+                FolderPurpose::OpenRepo => "Open a Git repository",
+                FolderPurpose::InitRepo => "New repository in…",
+                FolderPurpose::CloneParent => "Clone into folder",
+                FolderPurpose::HooksPath => "Hooks folder",
+                FolderPurpose::WorktreeParent => "Create the worktree in…",
+                FolderPurpose::LocateLinkedRepo => "Locate the linked repository",
+                FolderPurpose::ProjectFolder => crate::state::repo_scan::PICK_TITLE,
+                FolderPurpose::ProfileFolder(_) => crate::state::profile_rules::PICK_FOLDER_TITLE,
+            };
+            fx.push(Effect::Os(OsEffect::PickFolder { title: title.into(), purpose }));
+        }
+        PrefsMsg::FolderPicked { purpose, path: Some(path) } => match purpose {
+            FolderPurpose::OpenRepo => super::tabs::open(st, path, fx),
+            FolderPurpose::WorktreeParent => super::worktrees::parent_picked(st, path),
+            FolderPurpose::LocateLinkedRepo => super::deep_link::located(st, path, fx),
+            FolderPurpose::ProjectFolder => super::repo_scan::folder_picked(st, path, fx),
+            FolderPurpose::ProfileFolder(id) => super::profile_rules::folder_picked(st, id, path, fx),
+            FolderPurpose::InitRepo => {
+                if let Some(Modal::Init(form)) = st.modal.as_mut() {
+                    form.folder = glowfly_core::native_path::shown(&path);
+                }
+                super::init::check_folder(st, std::time::Duration::ZERO, fx);
+            }
+            FolderPurpose::CloneParent => {
+                if let Some(Modal::Clone(form)) = st.modal.as_mut() {
+                    form.parent = path.display().to_string();
+                }
+                super::clone::check_parent(st, std::time::Duration::ZERO, fx);
+            }
+            // Only fills the field: the Save / Revert bar writes it.
+            FolderPurpose::HooksPath => {
+                if let Some(git) = st.prefs.as_mut().and_then(|p| p.git.as_mut()) {
+                    git.hooks_path = path.display().to_string();
+                }
+            }
+        },
+        PrefsMsg::FolderPicked { path: None, .. } => {}
+        PrefsMsg::SettingsUnreadable(text) => unreadable(st, text, now),
+        PrefsMsg::Navigate(page) => super::prefs_nav::navigate(st, page, now, fx),
+        PrefsMsg::SavePage => {
+            super::prefs_save::save_page(st, fx);
+        }
+        PrefsMsg::ConfigSaved { ticket, result } => super::prefs_save::written(st, ticket, result, now),
+        PrefsMsg::RevertPage => super::prefs_save::revert_page(st),
+        PrefsMsg::LeaveSave => super::prefs_save::leave_save(st, now, fx),
+        PrefsMsg::LeaveDiscard => super::prefs_save::leave_discard(st, now, fx),
+        PrefsMsg::ShowAccountForm(on) => {
+            if let Some(p) = st.prefs.as_mut() {
+                p.int_adding = on;
+                p.int_token.clear();
+                p.int_user.clear();
+                p.int_error = None;
+            }
+        }
+    }
+}
+
+fn non_empty(value: &str, default: &str) -> String {
+    if value.trim().is_empty() { default.to_owned() } else { value.trim().to_owned() }
+}
+
+/// Lists the keys usable for the configured signing format.
+pub(super) fn load_signing_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Some(p) = st.prefs.as_mut() else { return };
+    let Some(git) = p.git.as_ref() else { return };
+    let format = SigningFormat::from_config(&git.signing_format);
+    p.signing.keys = None;
+    fx.push(Effect::Prefs(PrefsEffect::ListSigningKeys { format, program: non_empty(git.program(), format.default_program()) }));
+}
+
+/// Tells the user, in a toast and the activity log, that their settings file couldn't be read.
+fn unreadable(st: &mut AppState, text: String, now: Instant) {
+    st.log(false, text.clone());
+    st.toast(false, text, now);
+}
+
+/// Records the current settings as saved and returns the effect that writes them; open
+/// Preferences shows its "Saved" tick.
+pub(super) fn save_settings(st: &mut AppState) -> Effect {
+    st.saved_settings = serde_json::to_string(&st.settings).unwrap_or_default();
+    if let Some(p) = st.prefs.as_mut() {
+        p.saved.mark();
+    }
+    Effect::SaveSettings(Box::new(st.settings.clone()))
+}
+
+/// Makes the file watcher, the conflict check and the tab groups follow the settings. Sent every frame while
+/// Preferences is open (and after a profile switch): both are no-ops when nothing changed.
+pub fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if st.settings.watch_files != st.watch.enabled {
+        st.watch.enabled = st.settings.watch_files;
+        super::watch::sync(st, fx);
+    }
+    if !st.settings.conflict_check {
+        if !st.session.reads.conflict_checks.is_empty() {
+            st.session.reads.conflict_checks.clear();
+        }
+    } else {
+        super::conflict_check::want(st, fx);
+    }
+    super::history_index::sync(st, fx);
+    super::tab_groups::regroup(st, fx);
+    super::branch_colour::sync(st);
+}
+
+/// Switches the Integrations page to `provider`, prefilling the host for the open repository.
+pub(super) fn select_integration(st: &mut AppState, provider: Provider) {
+    let host = st.session.forge.as_ref().and_then(|f| f.host.clone()).filter(|t| t.provider == provider);
+    let saved = st.settings.connections.iter().find(|c| c.account.provider == provider).map(|c| c.account.clone());
+    let Some(p) = st.prefs.as_mut() else { return };
+    p.int_provider = provider;
+    p.int_adding = false;
+    p.int_error = None;
+    p.int_token.clear();
+    p.int_user.clear();
+    p.int_host = match (host, saved) {
+        (Some(t), _) => host_text(&t.account()),
+        (None, Some(a)) => host_text(&a),
+        _ => String::new(),
+    };
+}

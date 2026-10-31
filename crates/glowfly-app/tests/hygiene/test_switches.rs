@@ -1,5 +1,5 @@
-//! The hygiene ratchet on `cfg(test)` behaviour switches in the app's non-test code (see
-//! hygiene.rs).
+//! The hygiene ratchet on `cfg(test)` behaviour switches in the non-test code of every crate but
+//! glowfly-core (see hygiene.rs).
 
 use super::{all_sources, code_lines};
 
@@ -38,7 +38,7 @@ fn test_switches(src: &str) -> Vec<usize> {
 fn non_test_code_does_not_switch_on_cfg_test() {
     let sources = all_sources();
     let mut problems = Vec::new();
-    for s in sources.iter().filter(|s| !s.test && s.path.starts_with("crates/glowfly-app/src/")) {
+    for s in sources.iter().filter(|s| !s.test && !s.path.starts_with("crates/glowfly-core/src/")) {
         let lines = test_switches(&s.text);
         if TEST_SWITCH_FILES.contains(&s.path.as_str()) {
             if lines.is_empty() {

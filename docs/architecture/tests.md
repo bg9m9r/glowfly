@@ -6,7 +6,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 
 ## Source checks (`crates/glowfly-app/tests/`)
 
-- `crates/glowfly-app/tests/layering.rs`: no I/O in `ui/`, `update/` or `state/` (see Rules; its `ALLOWED` table is in `tests/layering/rules.rs`).
+- `crates/glowfly-app/tests/layering.rs`: no I/O in the app's `ui/` or the model's `update/` or `state/` (see Rules; its `ALLOWED` table is in `tests/layering/rules.rs`).
 - `crates/glowfly-app/tests/controls.rs`: views under `ui/` draw text fields, checkboxes, radio buttons and modals with `theme/controls.rs` and `theme::modal`, not egui's own.
 - `controls.rs`: dialogs (and the first-run welcome) draw their title and buttons through `dialog_frame` (no headings, egui buttons or English Cancel / Close) and their text fields as `widgets::TextField` (no `controls::field(` or `TextEdit::`).
 - `controls.rs`: the dialogs for less familiar operations each have a guide side pane, and no other dialog has one.
@@ -16,12 +16,12 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `crates/glowfly-app/tests/sentence_case.rs`: English labels are in sentence case: `en.json`'s label values (not tips, help or other prose) and the first literal at the views' label calls, with proper nouns and acronyms keeping their capitals.
 - `crates/glowfly-app/tests/menus.rs`: views open menus, submenus and menu popups only through `ui/widgets/menu.rs` (or `row_menu` / `menu_anchor`), so every menu gets the shared style.
 - `crates/glowfly-app/tests/message_styles.rs`: only `widgets/banner.rs` fills with the banner colour (the diff's Git LFS note keeps it as a box), and the forms converted to `widgets/form_message.rs` don't colour problem lines red or amber themselves; shares the source reading with `controls.rs` (`tests/support/views.rs`).
-- `crates/glowfly-app/tests/hygiene.rs`: ratchets across both crates: non-test files stay under 400 lines (`LONG_FILES` holds today's longer files at their length as a ceiling) and open with a `//!` doc.
+- `crates/glowfly-app/tests/hygiene.rs`: ratchets across every crate: non-test files stay under 400 lines (`LONG_FILES` holds today's longer files at their length as a ceiling) and open with a `//!` doc.
 - `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).
 - `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, the kit's `git`, …) are not redefined or handed one folder name twice.
 - `hygiene.rs`: view tests build their harnesses with `ui::snapshot_check::builder()` (`HARNESS_MAKERS` names the exceptions).
-- `hygiene/test_switches.rs`: the app's non-test code has no `cfg(test)` behaviour switch (`cfg!(test)`, `cfg(not(test))`, `#[cfg(test)]` on a statement or field); only the shell (`TEST_SWITCH_FILES`) may keep one.
-- `crates/glowfly-app/tests/i18n_keys.rs`: every translation key the code looks up exists in English, and every English key is used.
+- `hygiene/test_switches.rs`: the non-test code of every crate but glowfly-core has no `cfg(test)` behaviour switch (`cfg!(test)`, `cfg(not(test))`, `#[cfg(test)]` on a statement or field); only the shell (`TEST_SWITCH_FILES`) may keep one.
+- `crates/glowfly-app/tests/i18n_keys.rs`: every translation key the code of any crate looks up exists in English, and every English key is used.
 
 ## The shared test kit (`crates/glowfly-core/src/testkit/`)
 

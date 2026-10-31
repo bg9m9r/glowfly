@@ -1,8 +1,13 @@
-# glowfly-app: entry points and layers (`crates/glowfly-app/src/`)
+# glowfly-app and glowfly-model: entry points and layers
 
 Part of [ARCHITECTURE.md](../ARCHITECTURE.md). One line per file or topic: when you add or move a
 source file, update its line here. Features that span every layer are in
 [app-features.md](app-features.md); the views are in the `ui-*.md` files.
+
+`msg/`, `effect/`, `state/`, `update/`, `keymap/`, the per-area types, `start_arg.rs` and
+`testing.rs` are glowfly-model's (`crates/glowfly-model/src/`); the app re-exports them under the
+same names, so `crate::state::…` reads the same in both. The rest is glowfly-app's
+(`crates/glowfly-app/src/`).
 
 ## Entry points
 
@@ -10,8 +15,10 @@ source file, update its line here. Features that span every layer are in
 - `cli_update.rs`: `glowfly --version` and `glowfly --check-update <folder>` (exit 0 downloaded, 3 up to date, 1 failed, 2 usage): the installer checks' command-line modes, run before logging, settings and the window.
 - `logging.rs`: the tracing setup, after the helper modes exit: warnings, errors and panics to `errors.log` (rotated; debug details with extended logging, switched at runtime), and the panic hook.
 - `logging.rs` sends `RUST_LOG` to stderr, with each span's time as it closes (`glowfly=debug`: effects and the phases of a load or an index build; `glowfly=trace`: frames, their phases and each message).
-- `start_arg.rs`: `StartArg`, what a new window is asked to open (a folder or a `glowfly://` link) and the message that opens it; `main.rs` reads it from the command line.
-- `build.rs`: bundles `CHANGELOG.md` into the program (`OUT_DIR`) and, for Windows, embeds the icon and version details in `glowfly.exe`.
+- `start_arg.rs` (glowfly-model): `StartArg`, what a new window is asked to open (a folder or a `glowfly://` link) and the message that opens it; `main.rs` reads it from the command line.
+- `build.rs`: for Windows, embeds the icon and version details in `glowfly.exe`.
+- glowfly-model's `lib.rs`: declares the model's modules; its `test-support` feature adds `testing.rs` and the few test helpers marked `#[doc(hidden)]` for other crates' tests (features only add items).
+- glowfly-model's `build.rs`: bundles `CHANGELOG.md` into the program (`OUT_DIR`, read by `state/release_notes.rs`).
 
 ## `msg/`: messages
 
@@ -187,14 +194,14 @@ source file, update its line here. Features that span every layer are in
 - `smoke_probe.rs`, `ui/probe.rs`: the opt-in state file the installer checks read to see the app start and draw (`GLOWFLY_SMOKE_PROBE`, an absolute path; off otherwise, with no thread and AccessKit left alone).
 - `ui/probe.rs` builds it as JSON from egui's current pass (AccessKit names and widget rects with their regions, the drawn panels including the drawn title bar, the window frame being drawn as `chrome`, the keyboard focus) and a few `AppState` fields; the shell offers it after each frame.
 - `smoke_probe.rs` writes only changed ones, with a rising `seq`, atomically from its own thread, retrying a failed write (a reader holding the file on Windows) until it lands or a newer one replaces it.
-- `testing.rs` (tests only): the fixtures every test may use and that run no effect: `state()`, `scratch_repo`, `long_repo`, `clean_tree`, `keys`, `same_place`, the kit's `git`.
+- `testing.rs` (glowfly-model; tests only, and other crates' tests through `test-support`): the fixtures every test may use and that run no effect: `state()`, `scratch_repo`, `long_repo`, `clean_tree`, `keys`, `same_place`, the kit's `git`.
 - `flows/` (tests only): `update`'s end-to-end tests, which run effects through the runner (`runner::testing`), and the tests that share helpers with them; `mod.rs` lists them (`pull_request/` for the pull request panel's), and `helpers.rs` has `drive`, `finish` and `finish_keeping` and the effects they skip. Out of `update/` so the model's own tests never need the runner.
 - `journey/` (tests only): whole-app journeys: the real app (`GlowflyApp::for_test`) in an egui_kittest harness on fixture repositories.
 - `journey/find.rs`: driving it by clicking and typing on widgets found by accessible name: a region of the window, the open command palette among them, and a pick among equal names.
 - `journey/harness.rs`: waiting until the app is idle after each step.
 - `journey/fixture.rs`: checking the screen and the repository on disk.
 - `journey/` is in the crate because the package has no library target `tests/` could reach.
-- `glyph_check/` (tests only): every non-ASCII character in the app's and core's string literals and in the translation files has a glyph in the fonts egui draws with.
+- `glyph_check/` (tests only): every non-ASCII character in every crate's string literals and in the translation files has a glyph in the fonts egui draws with.
 - `glyph_check/scan.rs` finds the characters, skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.
 - `glyph_check/` installs the app's bundled fonts through `ui::theme::fonts::install`, as the app does.
 - `glyph_check/cjk_dates.rs`: every month, weekday and half-day word of the ja_JP, zh_CN and ko_KR dates has a glyph, in the tests' CJK font and in the machine's own where it has them.

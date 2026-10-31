@@ -1,7 +1,8 @@
-//! Keeps slow and outside work out of views, `update` and state. Everything under `src/ui/`,
-//! `src/update/` and `src/state/` must stay pure: views draw `AppState` and push `Msg`s, `update`
-//! changes state and returns `Effect`s, and the runner (`src/runner/`) does the I/O. The shell
-//! (`src/shell/`), which owns the window, the clock and the startup loads, is outside them.
+//! Keeps slow and outside work out of views, `update` and state. Everything under the app's
+//! `src/ui/` and glowfly-model's `src/update/` and `src/state/` must stay pure: views draw
+//! `AppState` and push `Msg`s, `update` changes state and returns `Effect`s, and the runner
+//! (`src/runner/`) does the I/O. The shell (`src/shell/`), which owns the window, the clock and the
+//! startup loads, is outside them.
 //!
 //! The check denies whole families of calls (files, processes, network, threads, environment,
 //! clocks, libgit2 access) and the `glowfly-core` functions that do I/O. Core *types* and pure
@@ -10,7 +11,8 @@
 //! fails the check too.
 //!
 //! Test code is skipped: files named `tests.rs`, `*_tests.rs` or `snapshot_tests*.rs`, modules
-//! declared under `#[cfg(test)]`, and inline `#[cfg(test)] mod` blocks. Tests build fixture
+//! declared under `#[cfg(test)]` (or the test-support feature's `cfg`), and inline
+//! `#[cfg(test)] mod` blocks. Tests build fixture
 //! repositories on disk.
 
 #[path = "layering/rules.rs"]
@@ -129,15 +131,22 @@ fn is_test_file(rel: &str) -> bool {
     stem == "tests" || stem.ends_with("_tests") || stem.starts_with("snapshot_tests")
 }
 
-/// The modules `src` declares only for tests (`#[cfg(test)]` followed by `mod name;`).
+/// The modules `src` declares only for tests: `#[cfg(test)]`, or the `test-support` feature's
+/// `#[cfg(any(test, feature = "test-support"))]`, then any other attributes, then `mod name;`.
 fn test_only_modules(src: &str) -> Vec<String> {
     let lines: Vec<&str> = src.lines().map(str::trim).collect();
-    lines
-        .windows(2)
-        .filter(|w| w[0] == "#[cfg(test)]")
-        .filter_map(|w| w[1].strip_prefix("pub(crate) ").or(Some(w[1]))?.strip_prefix("mod ")?.strip_suffix(';'))
-        .map(str::to_owned)
-        .collect()
+    let mut out = Vec::new();
+    for (i, l) in lines.iter().enumerate() {
+        if *l != "#[cfg(test)]" && *l != "#[cfg(any(test, feature = \"test-support\"))]" {
+            continue;
+        }
+        let Some(item) = lines[i + 1..].iter().find(|l| !l.starts_with("#[")) else { continue };
+        let item = ["pub(crate) ", "pub "].iter().fold(*item, |s, v| s.strip_prefix(v).unwrap_or(s));
+        if let Some(name) = item.strip_prefix("mod ").and_then(|m| m.strip_suffix(';')) {
+            out.push(name.to_owned());
+        }
+    }
+    out
 }
 
 /// The path (under `src/`, without `.rs`) of module `name` declared in the file at `rel`.
@@ -164,14 +173,14 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 fn views_update_and_state_do_no_io() {
     // Read at run time: a binary built in another worktree (shared target dir) keeps that
     // worktree's compile-time path.
-    let src =
-        std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into())).join("src");
+    let manifest = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into()));
+    let src = manifest.parent().expect("the app crate sits in crates/").to_path_buf();
     let mut report = Vec::new();
     let mut used = vec![false; ALLOWED.len()];
     for dir in DIRS {
         let mut files = Vec::new();
         rust_files(&src.join(dir), &mut files);
-        assert!(files.len() > 10, "found the files under src/{dir}");
+        assert!(files.len() > 10, "found the files under crates/{dir}");
         let rel = |f: &Path| f.strip_prefix(&src).unwrap().to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/");
         let sources: Vec<(String, String)> = files.iter().map(|f| (rel(f), std::fs::read_to_string(f).unwrap())).collect();
         let test_only: Vec<String> =
@@ -186,14 +195,14 @@ fn views_update_and_state_do_no_io() {
             for v in found {
                 match ALLOWED.iter().position(|(f, p, _)| f == rel && *p == v.pattern) {
                     Some(k) => used[k] = true,
-                    None => report.push(format!("src/{rel}:{}: `{}` reaches {}", v.line, v.pattern, v.what)),
+                    None => report.push(format!("crates/{rel}:{}: `{}` reaches {}", v.line, v.pattern, v.what)),
                 }
             }
         }
     }
     for (k, (file, pat, _)) in ALLOWED.iter().enumerate() {
         if !used[k] {
-            report.push(format!("src/{file}: the ALLOWED entry for `{pat}` matches nothing; remove it"));
+            report.push(format!("crates/{file}: the ALLOWED entry for `{pat}` matches nothing; remove it"));
         }
     }
     assert!(

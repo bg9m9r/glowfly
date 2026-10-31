@@ -1,5 +1,5 @@
 //! Tests only: every non-ASCII character the app can show from its own source (string and char
-//! literals in `glowfly-app/src` and `glowfly-core/src`, outside comments and test code) and
+//! literals in every crate's `src/` under `crates/`, outside comments and test code) and
 //! from the translation files (`glowfly-core/locales/*.json`) has a glyph in the fonts egui
 //! draws with. A character without one draws as a box.
 //!
@@ -45,6 +45,18 @@ fn crates_dir() -> PathBuf {
     manifest.parent().expect("the app crate sits in crates/").to_path_buf()
 }
 
+/// The folders under `crates/` that hold a crate with sources, sorted.
+fn crate_names(crates: &Path) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(crates)
+        .unwrap_or_else(|e| panic!("{}: {e}", crates.display()))
+        .flatten()
+        .filter(|e| e.path().join("src").is_dir())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
 /// Every `.rs` file under `dir`, as (path relative to `dir` with `/` separators, contents).
 fn rust_files(dir: &Path) -> Vec<(String, String)> {
     let mut out = Vec::new();
@@ -70,7 +82,8 @@ fn shown_characters() -> (Vec<(char, String, usize)>, usize, usize) {
     let crates = crates_dir();
     let mut found = Vec::new();
     let mut rust = 0;
-    for krate in ["glowfly-app", "glowfly-core"] {
+    for krate in crate_names(&crates) {
+        let krate = krate.as_str();
         let files = rust_files(&crates.join(krate).join("src"));
         let test_only: Vec<String> = files.iter().flat_map(|(rel, src)| scan::test_only_modules(rel, src)).collect();
         for (rel, src) in &files {
