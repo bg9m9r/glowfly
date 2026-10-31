@@ -35,6 +35,7 @@ pub(crate) fn keys_harness(mut st: AppState, size: egui::Vec2) -> H {
                 avatars: Avatars::default(),
                 speller: Speller::new(),
                 diff_rows: Default::default(),
+                diff_header: Default::default(),
                 history_text: Default::default(),
                 history_preview: Default::default(),
                 blame_rows: Default::default(),

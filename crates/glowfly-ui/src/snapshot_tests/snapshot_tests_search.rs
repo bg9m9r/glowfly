@@ -201,6 +201,7 @@ fn keys_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
                 avatars: Avatars::default(),
                 speller: Speller::new(),
                 diff_rows: Default::default(),
+                diff_header: Default::default(),
                 history_text: Default::default(),
                 history_preview: Default::default(),
                 blame_rows: Default::default(),

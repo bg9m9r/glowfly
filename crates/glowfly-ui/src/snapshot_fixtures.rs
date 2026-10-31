@@ -168,6 +168,7 @@ fn build(mut st: AppState, p: Palette, size: egui::Vec2, keys: bool) -> Harness<
                 avatars: Avatars::default(),
                 speller: Speller::new(),
                 diff_rows: Default::default(),
+                diff_header: Default::default(),
                 history_text: Default::default(),
                 history_preview: Default::default(),
                 blame_rows: Default::default(),
