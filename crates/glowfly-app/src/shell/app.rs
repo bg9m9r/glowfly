@@ -10,7 +10,6 @@ use crate::msg::AppMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
-use crate::msg::RecentMsg;
 use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
 use crate::platform::native_menu::NativeMenu;
@@ -20,7 +19,7 @@ use crate::runner::{Runner, Waker};
 use crate::state::AppState;
 use crate::ui::{UiCache, avatars, build_status, layout, shortcuts, theme};
 use eframe::egui;
-use glowfly_core::settings::{Settings, ThemeCatalog};
+use glowfly_core::settings::{LoadProblem, Settings};
 use glowfly_core::spell::Speller;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -30,6 +29,8 @@ use std::time::Instant;
 mod effects;
 #[path = "app_frame.rs"]
 mod frame_timing;
+#[path = "app_start.rs"]
+mod start;
 #[cfg(test)]
 #[path = "app_testing.rs"]
 mod testing;
@@ -70,7 +71,7 @@ impl GlowflyApp {
         cc: &eframe::CreationContext<'_>,
         start: Option<crate::start_arg::StartArg>,
         logs: crate::runner::LogSetup,
-        loaded: (Settings, Option<glowfly_core::settings::LoadProblem>),
+        loaded: (Settings, Option<LoadProblem>),
         chrome: crate::state::window_chrome::Chrome,
         mica: bool,
         probe: Option<crate::smoke_probe::ProbeWriter>,
@@ -114,11 +115,7 @@ impl GlowflyApp {
         // the folder sits next to the settings file just read.
         let themes = glowfly_core::settings::themes::load_all();
         crate::themes::trace_problems(&themes);
-        app.start(ctx, themes, Some(logs));
-        if let Some(problem) = problem {
-            tracing::warn!("settings: {}", problem.message());
-            app.dispatch(ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem.message())));
-        }
+        app.start(ctx, themes, Some(logs), problem);
         if !paths.is_empty() {
             app.dispatch(ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, labels, active }));
         }
@@ -161,42 +158,6 @@ impl GlowflyApp {
             frames: Default::default(),
             #[cfg(test)]
             drained: 0,
-        }
-    }
-
-    /// Runs the `STARTUP` steps in order. With `logs` (the real app) every step runs; without
-    /// (a test app) the steps that reach outside the process are skipped.
-    fn start(&mut self, ctx: &egui::Context, themes: ThemeCatalog, logs: Option<crate::runner::LogSetup>) {
-        let outside = logs.is_some();
-        let mut logs = logs;
-        let mut themes = Some(themes);
-        for step in steps(outside) {
-            match step {
-                Step::Theme => {
-                    if let Some(themes) = themes.take() {
-                        self.dispatch(ctx, Msg::Theme(crate::themes::ThemeMsg::Loaded(themes)));
-                    }
-                }
-                Step::Layout => layout::start(ctx, &self.st),
-                // git and ssh ask for missing credentials through a dialog from now on.
-                Step::Askpass => self.runner.start_askpass(),
-                // The log files, and earlier sessions' activity.
-                Step::Logs => {
-                    if let Some(logs) = logs.take() {
-                        self.runner.attach_logs(logs);
-                        self.dispatch(ctx, Msg::Logs(crate::logs::LogsMsg::Start));
-                    }
-                }
-                Step::IndexStore => self.runner.attach_index_store(glowfly_core::commit_index::Store::default_dir()),
-                // Links opened while this window runs come here instead of a new window.
-                Step::Instance => self.runner.start_instance(),
-                Step::OpenEvents => self.runner.start_open_events(),
-                Step::Lfs => self.dispatch(ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect)),
-                Step::GitEnv => self.dispatch(ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect)),
-                Step::Onboarding => self.dispatch(ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup)),
-                Step::Updates => self.dispatch(ctx, Msg::Updates(crate::msg::UpdateMsg::Startup)),
-                Step::RecentFolders => self.dispatch(ctx, Msg::Recent(RecentMsg::CheckFolders)),
-            }
         }
     }
 
@@ -327,74 +288,8 @@ impl eframe::App for GlowflyApp {
     }
 }
 
-/// One step of starting the app, after the state and the runner exist.
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Step {
-    /// The themes read from disk, so the first frame has their colors.
-    Theme,
-    /// The zoom keys handed to the keymap, and the saved zoom.
-    Layout,
-    Askpass,
-    Logs,
-    /// The search index's saved copies in the cache folder.
-    IndexStore,
-    Instance,
-    /// Folders and links the OS hands over (macOS Apple events), including those that came
-    /// before the window.
-    OpenEvents,
-    Lfs,
-    GitEnv,
-    /// The welcome's first step.
-    Onboarding,
-    Updates,
-    /// Which recent folders are still there.
-    RecentFolders,
-}
-
-/// Startup, in order; a test app runs the same order minus the `outside` steps.
-const STARTUP: [Step; 12] = [
-    Step::Theme,
-    Step::Layout,
-    Step::Askpass,
-    Step::Logs,
-    Step::IndexStore,
-    Step::Instance,
-    Step::OpenEvents,
-    Step::Lfs,
-    Step::GitEnv,
-    Step::Onboarding,
-    Step::Updates,
-    Step::RecentFolders,
-];
-
-impl Step {
-    /// Whether the step starts a server or a worker, leads to a network call, or touches
-    /// process-wide state (the OS events' inbox).
-    fn outside(self) -> bool {
-        matches!(self, Step::Askpass | Step::Logs | Step::IndexStore | Step::Instance | Step::OpenEvents | Step::Updates)
-    }
-}
-
-/// The startup steps to run: all of them, or (`outside` false) only those inside the process.
-fn steps(outside: bool) -> impl Iterator<Item = Step> {
-    STARTUP.into_iter().filter(move |s| outside || !s.outside())
-}
-
 /// The runner's waker: a result asks egui for the next frame.
 fn repaint(ctx: &egui::Context) -> Waker {
     let ctx = ctx.clone();
     Waker::new(move || ctx.request_repaint())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn startup_keeps_the_app_order_and_a_test_app_skips_only_outside_steps() {
-        use Step::*;
-        let app = [Theme, Layout, Askpass, Logs, IndexStore, Instance, OpenEvents, Lfs, GitEnv, Onboarding, Updates, RecentFolders];
-        assert_eq!(steps(true).collect::<Vec<_>>(), app);
-        assert_eq!(steps(false).collect::<Vec<_>>(), [Theme, Layout, Lfs, GitEnv, Onboarding, RecentFolders]);
-    }
 }

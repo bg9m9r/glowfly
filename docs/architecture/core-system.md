@@ -69,6 +69,7 @@ source file, update its line here.
 
 ## Settings (`settings.rs`, `settings/`)
 
+- `file.rs`: reading and writing `settings.json`. A read that fails is tried again after short waits (`READ_WAITS`), and one that worked only after a failure keeps a copy as `.bak` first; a damaged file is moved aside to `.bak`; a file that can't be read, copied or moved stays put and its `LoadProblem::locked` says nothing may be saved until `Settings::reload` reads it. Tests in `file_tests.rs`.
 - Preferences, theme choices and theme files: `themes.rs` parses them, aliases and loops included; `themes_io.rs` reads the themes folder and writes new files.
 - `terminal_schemes.rs`: terminal color schemes: the `terminal_*` keys and the stored scheme files.
 - `terminal_schemes/wt.rs` and `iterm.rs` read Windows Terminal JSON and iTerm2 `.itermcolors` files to import, and `io.rs` reads and writes the themes folder's `terminal` folder.
@@ -103,7 +104,7 @@ source file, update its line here.
 
 ## Files, logs, text and dates
 
-- `persist.rs`: crash-safe writes of Glowfly's own files and of files saved for the user (patches), `write_streamed` for large files; appends to logs.
+- `persist.rs`: crash-safe writes of Glowfly's own files and of files saved for the user (patches), `write_streamed` for large files; appends to logs; backups beside a file (`move_aside`, `keep_copy`).
 - `logs.rs`, `logs/`: Glowfly's log files.
 - `activity.rs`: the activity log's file format and trimming.
 - `rotate.rs`: the size-rotating writer of the error and performance logs.

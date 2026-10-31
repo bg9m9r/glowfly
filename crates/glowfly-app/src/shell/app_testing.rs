@@ -7,7 +7,7 @@ use crate::msg::{Msg, RepoMsg};
 use crate::state::AppState;
 use crate::state::window_chrome::Chrome;
 use eframe::egui;
-use glowfly_core::settings::{RepoTrust, Settings, ThemeCatalog};
+use glowfly_core::settings::{LoadProblem, RepoTrust, Settings, ThemeCatalog};
 use std::path::PathBuf;
 
 /// How a test app starts.
@@ -21,6 +21,8 @@ pub(crate) struct TestStart {
     pub open: Option<PathBuf>,
     /// The window frame to draw from the first frame on, as `Chrome::current()` picks it.
     pub chrome: Chrome,
+    /// What the settings load reported, as if the file couldn't be read.
+    pub problem: Option<LoadProblem>,
 }
 
 /// What the app is doing, for a test waiting until it is idle.
@@ -42,13 +44,13 @@ impl GlowflyApp {
     /// askpass server, the single-instance listener, the log worker and the update check never
     /// start. The runner is sandboxed (see `runner/sandbox.rs`).
     pub(crate) fn for_test(ctx: &egui::Context, start: TestStart) -> Self {
-        let TestStart { mut settings, files, trusted, open, chrome } = start;
+        let TestStart { mut settings, files, trusted, open, chrome, problem } = start;
         for path in &trusted {
             crate::state::trust::record(&mut settings, path, RepoTrust::Trusted);
         }
         let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| crate::runner::testing::sandboxed(tx, waker, files));
         app.st.view.chrome = chrome;
-        app.start(ctx, ThemeCatalog::default(), None);
+        app.start(ctx, ThemeCatalog::default(), None, problem);
         if let Some(path) = open {
             app.dispatch(ctx, Msg::Repo(RepoMsg::Open(path)));
         }

@@ -1,12 +1,12 @@
 //! The window's panels in drawing order: the status bar, the top chrome (the drawn title bar
 //! with the tabs, or with the system frame the menu bar and the tab bar; then the toolbar,
-//! operation strip and banners), the side panels with their rails, the central view (or the
+//! operation strip and banners; the settings banner above Preferences too), the side panels with their rails, the central view (or the
 //! maximised terminal panel in its place) and the tour. egui gives each panel the room the ones before it left, so the order is the layout.
 
 use super::toasts::ToastBounds;
 use super::{
     UiCache, activity_log, central, details, git_banner, gitflow_resume_banner, lfs_banner, menu_bar, op_strip, panel_rails, panel_size,
-    prefs, repo_line, sidebar, sign_in_banner, status, tabs, terminal, title_bar, toolbar, tour,
+    prefs, repo_line, settings_banner, sidebar, sign_in_banner, status, tabs, terminal, title_bar, toolbar, tour,
 };
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -28,6 +28,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
         st.terminal.focused = false;
         // Nor is the menu bar, so its menu closes (a drawn title bar closes its own).
         menu_bar::hide(ctx);
+        // Above the page, since changes made there aren't saved either.
+        settings_banner::show(ctx, st, msgs);
         let top = ctx.available_rect().top();
         prefs::show(ctx, st, msgs);
         return ToastBounds { top, bottom };
@@ -41,6 +43,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     }
     op_strip::show(ctx, st, msgs);
     git_banner::show(ctx, st, msgs);
+    settings_banner::show(ctx, st, msgs);
     if st.snap.is_some() && !st.dashboard.open {
         sign_in_banner::show(ctx, st, msgs);
         lfs_banner::show(ctx, st, msgs);

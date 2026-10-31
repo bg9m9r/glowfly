@@ -132,7 +132,7 @@ pub(super) fn stop_using(st: &mut AppState, repo: bool, confirmed: bool, fx: &mu
 /// repository's only when it is trusted); a command Glowfly didn't write stays, flagged.
 pub(super) fn set_use_agent(st: &mut AppState, on: bool, now: Instant, fx: &mut Vec<Effect>) {
     st.settings.use_ssh_agent = on;
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     if !on {
         return;
     }

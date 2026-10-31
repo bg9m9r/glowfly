@@ -1,4 +1,5 @@
-//! Reading the git configuration values Preferences shows, and writing one or a page's save.
+//! Reading the git configuration values Preferences shows, and writing one or a page's save;
+//! reading the settings file again after it couldn't be read.
 
 use super::execute::{Cx, Execute};
 use crate::effect::{ConfigWrite, PrefsEffect};
@@ -20,6 +21,7 @@ pub(super) fn run(e: PrefsEffect) -> Option<Msg> {
             Some(super::keys::generate_gpg(&program, &name, &email, &passphrase))
         }
         PrefsEffect::ExportPublicKey { format, program, key } => Some(super::keys::export_public(format, &program, &key)),
+        PrefsEffect::ReadSettings => Some(Msg::Prefs(PrefsMsg::SettingsReread(Box::new(glowfly_core::settings::Settings::reload())))),
     }
 }
 

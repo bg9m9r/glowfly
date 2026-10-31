@@ -117,7 +117,7 @@ fn finish(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     if changed || !st.settings.welcome_done {
         st.settings.welcome_done = true;
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
 }
 
@@ -185,7 +185,7 @@ fn written(st: &mut AppState, identity: Identity, result: Result<(), String>, fx
                 let s = &st.settings;
                 let key = s.active_profile().or(s.profiles.first()).and_then(|p| p.signing_key.clone());
                 if st.settings.seed_or_sync_profiles(&Identity { signing_key: key, ..identity }) {
-                    fx.push(super::prefs::save_settings(st));
+                    fx.extend(super::prefs::save_settings(st));
                 }
             }
         }

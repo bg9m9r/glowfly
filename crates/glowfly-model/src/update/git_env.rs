@@ -50,7 +50,7 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
             // Only a git that runs but is too old: the can't-run banner must stay findable.
             let Some(v) = st.git.too_old() else { return };
             st.settings.git_banner_hidden_for = Some(show(v));
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
             st.log(
                 true,
                 format!(
@@ -131,6 +131,9 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
                     None => refused_text(st, "git from your PATH".to_owned(), why, now),
                 },
             }
+            if let Some(next) = st.git.page.then_use.take() {
+                choose(st, next, false, fx);
+            }
         }
     }
 }
@@ -179,11 +182,22 @@ fn choose(st: &mut AppState, program: Option<PathBuf>, from_banner: bool, fx: &m
     fx.push(Effect::GitEnv(GitEnvEffect::Use { program, cwd: AppState::outside_dir() }));
 }
 
+/// Puts `program` (None: git from PATH), the git the settings name, into effect as the Git
+/// page would: checked first, then `Switched` follows the new git everywhere. A check already
+/// running goes first, then this one.
+pub(super) fn use_program(st: &mut AppState, program: Option<PathBuf>, fx: &mut Vec<Effect>) {
+    if st.git.page.checking.is_some() {
+        st.git.page.then_use = Some(program);
+    } else {
+        choose(st, program, false, fx);
+    }
+}
+
 /// The runner has put `program` into effect: save it and follow the new git everywhere.
 fn switched(st: &mut AppState, program: Option<PathBuf>, info: GitInfo, from_banner: bool, now: Instant, fx: &mut Vec<Effect>) {
     // A picked path was refused unless it is valid Unicode, so nothing is lost here.
     st.settings.git_program = program.map(|p| p.to_string_lossy().into_owned());
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     if let Some(text) = info.problem() {
         st.log_quiet(false, text);
     }

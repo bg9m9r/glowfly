@@ -74,8 +74,15 @@ pub enum PrefsMsg {
         purpose: FolderPurpose,
         path: Option<PathBuf>,
     },
-    /// The settings file couldn't be read at startup (it was backed up); shown once.
-    SettingsUnreadable(String),
+    /// The settings file couldn't be read at startup: shown once, or, when saving must wait for
+    /// it (`LoadProblem::locked`), in a banner until it reads (update/settings_file.rs).
+    SettingsUnreadable(glowfly_core::settings::LoadProblem),
+    /// The banner's Try again: read the settings file again.
+    RetrySettingsRead,
+    /// A try at reading the settings file again finished (`PrefsEffect::ReadSettings`).
+    SettingsReread(Box<(glowfly_core::settings::Settings, Option<glowfly_core::settings::LoadProblem>)>),
+    /// The banner's Open settings folder.
+    OpenSettingsFolder,
     /// A navigation row: show this page (asking first when the open one has unsaved edits).
     Navigate(PrefPage),
     /// The Save / Revert bar's Save (or Ctrl/Cmd+S): write the open page's edits.
@@ -122,6 +129,9 @@ impl PrefsMsg {
             | Self::PublicKeyExported(..)
             | Self::FolderPicked { .. }
             | Self::SettingsUnreadable(..)
+            | Self::RetrySettingsRead
+            | Self::SettingsReread(..)
+            | Self::OpenSettingsFolder
             | Self::Navigate(..)
             | Self::SavePage
             | Self::ConfigSaved { .. }

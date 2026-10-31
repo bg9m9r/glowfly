@@ -31,7 +31,7 @@ pub(super) fn set_pane(st: &mut AppState, pane: HistoryPane, fx: &mut Vec<Effect
     }
     if st.settings.history.pane != pane {
         st.settings.history.pane = pane;
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     if let Some(view) = st.session.history.view.as_mut() {
         view.pane = pane;
@@ -47,7 +47,7 @@ pub(super) fn set_preview(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) {
     }
     if st.settings.history.preview != on {
         st.settings.history.preview = on;
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     if let Some(view) = st.session.history.view.as_mut() {
         view.nav.to_top = true;

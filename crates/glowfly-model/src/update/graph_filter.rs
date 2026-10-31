@@ -38,7 +38,7 @@ fn filter(st: &mut AppState, op: FilterOp, fx: &mut Vec<Effect>) {
         return;
     }
     st.settings.set_graph_filter(&w, f);
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     super::repo::refresh(st, fx);
 }
 
@@ -62,7 +62,7 @@ pub(super) fn loaded(st: &mut AppState, snap: &Snapshot, kind: LoadKind, fx: &mu
         st.settings.set_graph_filter(&snap.real_workdir, f);
     }
     if adopted || hidden_changed || solo_changed {
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     // Loaded with the filter saved for another spelling (the path it was opened by, before its
     // resolved form was known): load again with its own.

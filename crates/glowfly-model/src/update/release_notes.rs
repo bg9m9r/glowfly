@@ -24,7 +24,7 @@ pub(super) fn startup_notes(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     st.settings.updates.notes_seen = Some(current.clone());
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     // A new install shows the welcome instead; a file from before release notes counts as an
     // upgrade (it has seen the welcome).
     let upgrade = st.settings.welcome_done && st.onboarding.welcome.is_none();

@@ -13,6 +13,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `shell/app.rs` is the shell: it owns the runner and dispatches messages.
 - `shell/app_effects.rs` carries out the effects that need the window (`Effect::Ui`): the clipboard and the Linux PRIMARY selection, the title, attention, closing and window commands.
 - `shell/app_testing.rs` builds the shell for the journeys, without eframe and with a sandboxed runner.
+- `shell/app_start.rs`: the startup steps in order (a test app leaves out those reaching outside the process), with a settings file the load couldn't read held before the first, since some save.
 - `shell/app_frame.rs` times each frame's phases and each message's handling, kept by `state/frame_times.rs`: frames of 50 ms or more go to the performance log.
 - `shell/app_native.rs` and `shell/app_menu.rs`: the shell's side of the drawn Windows frame's OS glue and of the macOS system menu bar (see [flow-shell.md](flow-shell.md)).
 - `ui/frame_overlay.rs`: the frame-time overlay Preferences > General can show, drawn by the shell.

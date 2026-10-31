@@ -58,7 +58,7 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
                 ToolKind::DiffTool => tools.diff_tool = value,
                 ToolKind::MergeTool => tools.merge_tool = value,
             }
-            fx.push(super::prefs::save_settings(st));
+            fx.extend(super::prefs::save_settings(st));
         }
         ToolsMsg::LaunchFailed { kind, program, target, failure } => {
             let text = failure_text(kind, &program, &target, &failure);

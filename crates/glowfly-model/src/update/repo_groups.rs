@@ -49,7 +49,7 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
         GroupMsg::MoveRepo { path, group, index } => move_repo(st, &path, group, index),
     };
     if changed {
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
 }
 

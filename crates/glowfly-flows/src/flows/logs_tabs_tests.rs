@@ -2,6 +2,7 @@
 //! of opening the panel, lines that follow their tab, and earlier entries handed out at load.
 
 use crate::effect::{Effect, LoadKind};
+use crate::flows::settings_file_tests::{DAMAGED_TEXT, damaged};
 use crate::flows::state;
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
 use crate::msg::{JobMsg, Msg, PrefsMsg, RepoMsg, TabsMsg};
@@ -91,7 +92,7 @@ fn a_failure_doesnt_open_the_panel() {
 #[test]
 fn a_failure_toast_gets_details_instead_of_a_second_toast() {
     let mut st = state();
-    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable("Settings could not be read".into())));
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(damaged())));
     assert_eq!(st.toasts.len(), 1);
     assert!(failure_with_details(&st));
     assert!(!st.view.show_log);
@@ -335,12 +336,12 @@ fn clear_empties_only_this_tab() {
 #[test]
 fn startup_lines_follow_the_restored_tab() {
     let mut st = state();
-    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable("Settings could not be read".into())));
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(damaged())));
     let (a, b) = (repo("a"), repo("b"));
     run(&mut st, Msg::Tabs(TabsMsg::RestoreTabs { paths: vec![a, b.clone()], labels: vec![None, None], active: 1 }));
     assert_eq!(st.tabs.len(), 2, "the startup tab is dropped");
     assert_eq!(st.tabs[st.active_tab].path.as_deref(), Some(b.as_path()));
-    assert!(st.log.iter().any(|l| l.text == "Settings could not be read"), "{:?}", texts(&st.log));
+    assert!(st.log.iter().any(|l| l.text == DAMAGED_TEXT), "{:?}", texts(&st.log));
 }
 
 #[test]

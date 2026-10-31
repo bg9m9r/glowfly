@@ -171,7 +171,7 @@ pub(super) fn set_year_branches(st: &mut AppState, on: bool, fx: &mut Vec<Effect
     if let Some(f) = st.session.forge.as_mut() {
         f.year_branches = on;
     }
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
 }
 
 /// The tracker was worked out again (after a refresh, a new connection or a profile switch):

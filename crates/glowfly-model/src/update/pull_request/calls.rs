@@ -135,7 +135,7 @@ pub(super) fn merge(st: &mut AppState, fx: &mut Vec<Effect>) {
         && st.settings.merge_method_for(&real) != Some(method)
     {
         st.settings.set_merge_method(&real, method);
-        fx.push(super::super::prefs::save_settings(st));
+        fx.extend(super::super::prefs::save_settings(st));
     }
 }
 

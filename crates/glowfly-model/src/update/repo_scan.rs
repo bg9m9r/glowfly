@@ -26,7 +26,7 @@ pub(super) fn folder_picked(st: &mut AppState, path: PathBuf, fx: &mut Vec<Effec
         return;
     }
     st.settings.project_folders.push(paths::encode(&path));
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     rescan(st, fx);
 }
 
@@ -37,7 +37,7 @@ pub(super) fn remove_folder(st: &mut AppState, root: &Path, fx: &mut Vec<Effect>
     if st.settings.project_folders.len() == before {
         return;
     }
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     st.repo_scan.found.retain(|r| !paths::same_spelling(&r.root, root));
     st.repo_scan.unreadable.retain(|(r, _)| !paths::same_spelling(r, root));
     rescan(st, fx);

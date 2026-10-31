@@ -142,5 +142,5 @@ fn set_confirm(st: &mut AppState, on: bool) {
 /// Saves the changed bindings with the other settings.
 fn persist(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.settings.keybindings = st.keymap.overrides();
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
 }

@@ -237,6 +237,7 @@ mod selection_focus_tests;
 mod selection_span_tests;
 mod selection_stacked_tests;
 mod selection_tests;
+pub(crate) mod settings_file_tests;
 mod shallow_tests;
 mod shortcuts_tests;
 mod shortcuts_wip_tests;

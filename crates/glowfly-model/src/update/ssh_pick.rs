@@ -47,7 +47,7 @@ pub(super) fn picked(st: &mut AppState, result: Option<(PathBuf, Result<SshKeyPa
     let extra = &mut st.settings.ssh_extra_keys;
     if private.to_str().is_some() && !extra.iter().any(|p| same_spelling(p, &private)) {
         extra.push(private);
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     st.toast(true, t.trf("prefs.ssh.keys.added.toast", &[("file", &file)]), now);
 }
@@ -68,5 +68,5 @@ pub(super) fn forget(st: &mut AppState, key: &Path, fx: &mut Vec<Effect>) {
             listing.keys.retain(|k| !same_spelling(&k.private, key));
         }
     }
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
 }

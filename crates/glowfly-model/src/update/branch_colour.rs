@@ -24,7 +24,7 @@ pub(super) fn pin(st: &mut AppState, key: &str, slot: Option<u8>, fx: &mut Vec<E
     let real = snap.real_workdir.clone();
     if st.settings.set_branch_pin(&real, key, slot) {
         sync(st);
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
 }
 

@@ -147,6 +147,7 @@ pub mod selection_wip;
 pub mod session;
 pub mod session_reads;
 pub mod session_view;
+pub mod settings_file;
 pub mod shallow;
 pub mod sign_in;
 pub mod signatures;
@@ -386,8 +387,8 @@ pub struct AppState {
     pub settings: Settings,
     /// The keys in effect: the defaults with `settings.keybindings` applied.
     pub keymap: crate::keymap::Keymap,
-    /// Settings as last saved, to detect edits made in Preferences.
-    pub saved_settings: String,
+    /// The settings as last saved, and whether saving waits for the file to be read.
+    pub settings_file: settings_file::SettingsFile,
     pub recent: Vec<PathBuf>,
     /// Recent or favorite repository folders found missing by the last check (`RecentMsg::FoldersChecked`).
     pub missing_repos: Vec<PathBuf>,
@@ -412,9 +413,8 @@ pub struct AppState {
     pub load_gen: u64,
     pub loading: bool,
     pub refresh: refresh::RefreshState,
-    /// The active tab's per-tab state (its views with their counters, the open diff, the commit
-    /// detail and draft, the repository reads, the selection, forge data, undo history, commit
-    /// search and view state), parked whole with the tab (state/session.rs).
+    /// The active tab's per-tab state (its views with their counters, the open diff, the commit detail and draft, the repository
+    /// reads, the selection, forge data, undo history, commit search and view state), parked whole with the tab (session.rs).
     pub session: session::RepoSession,
     /// Restacks stopped on a conflict, with the steps still to run once the banner's Continue or
     /// Skip finishes that step; keyed by working folder rather than parked with a tab.
@@ -499,14 +499,14 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(settings: Settings, recent: Vec<PathBuf>, now: Instant) -> Self {
-        let saved_settings = serde_json::to_string(&settings).unwrap_or_default();
+        let settings_file = settings_file::SettingsFile::new(serde_json::to_string(&settings).unwrap_or_default());
         let watch = watch::WatchState { enabled: settings.watch_files, ..Default::default() };
         let terminal = terminal::TerminalPanel::restored(&settings.terminal);
         let (keymap, key_problems) = crate::keymap::Keymap::from_overrides(&settings.keybindings);
         let mut st = Self {
             settings,
             keymap,
-            saved_settings,
+            settings_file,
             recent,
             missing_repos: Vec::new(),
             missing_offer: None,

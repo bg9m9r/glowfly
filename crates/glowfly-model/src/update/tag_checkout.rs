@@ -63,5 +63,5 @@ pub(super) fn warned(st: &mut AppState, pending: TagCheckoutJob, fx: &mut Vec<Ef
     st.set_last_toast_action(ToastAction { label: "Create branch…".into(), msg, workdir: pending.workdir });
     st.log(true, DETACHED_WARNING);
     st.settings.detached_head_warned = true;
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
 }

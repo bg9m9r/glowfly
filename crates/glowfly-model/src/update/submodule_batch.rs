@@ -157,5 +157,5 @@ pub(super) fn opened(st: &mut AppState, kind: LoadKind, now: Instant, fx: &mut V
 pub(super) fn set_updates(st: &mut AppState, choice: SubmoduleUpdates, fx: &mut Vec<Effect>) {
     let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
     st.settings.set_submodule_updates(&real, choice.as_override());
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
 }

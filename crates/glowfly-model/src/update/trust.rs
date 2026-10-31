@@ -80,7 +80,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     } else {
         record(&mut st.settings, real, RepoTrust::NotTrusted);
     }
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     if matches!(st.modal, Some(Modal::Trust(_))) {
         st.modal = None;
     }
@@ -297,7 +297,7 @@ pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
         false
     };
     if save {
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     maybe_ask(st, kind == LoadKind::Open);
     released(st, fx);

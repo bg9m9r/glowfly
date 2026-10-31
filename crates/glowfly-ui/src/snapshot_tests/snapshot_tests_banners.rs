@@ -1,10 +1,11 @@
 //! The shared banner style (`widgets/banner.rs`) in its kinds: git missing (an error), the saved
-//! git gone with the git on PATH offered, git too old (a warning, light), and the operation strip while a job runs (progress, with its
+//! git gone with the git on PATH offered, git too old (a warning, light), the settings file that
+//! couldn't be read (an error), and the operation strip while a job runs (progress, with its
 //! spinner). The sign-in, Git LFS and older git banners in dark are in their own areas' tests.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::git_env::GitEnvMsg;
-use crate::msg::{Msg, RepoMsg};
+use crate::msg::{Msg, PrefsMsg, RepoMsg};
 use crate::state::git_env::Checking;
 use crate::state::{AppState, RunningJob};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -13,7 +14,7 @@ use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::git_program::Candidate;
 use glowfly_core::git_version::GitInfo;
-use glowfly_core::settings::ThemeChoice;
+use glowfly_core::settings::{LoadProblem, ThemeChoice};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -85,6 +86,30 @@ fn banner_git_too_old_light() {
     h.run();
     h.check_snapshot("banner_git_too_old_light");
     assert!(h.query_by_label_contains("Git 2.34.1 is older than 2.38").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn banner_settings_unreadable() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "banner-settings-unreadable");
+    let file = PathBuf::from("/home/me/.config/glowfly/settings.json");
+    let detail = "could not read /home/me/.config/glowfly/settings.json: Permission denied (os error 13)".to_owned();
+    let problem = LoadProblem { backup: None, reset: None, detail, locked: Some(file) };
+    crate::update::update(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem)), Instant::now());
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("banner_settings_unreadable");
+    assert!(h.query_by_label("Glowfly couldn't read its settings file").is_some());
+    assert!(matches!(&click(&mut h, "Try again")[..], [Msg::Prefs(PrefsMsg::RetrySettingsRead)]));
+    assert!(matches!(&click(&mut h, "Open settings folder")[..], [Msg::Prefs(PrefsMsg::OpenSettingsFolder)]));
+    h.state_mut().0.settings_file.unreadable.as_mut().unwrap().reading = true;
+    h.run();
+    assert!(click(&mut h, "Try again").is_empty(), "disabled while a try runs");
+    // Preferences doesn't save either, so it shows there too.
+    h.state_mut().0.prefs = Some(crate::state::PrefsState::new(crate::state::PrefPage::General));
+    h.run();
+    assert!(h.query_by_label("Glowfly couldn't read its settings file").is_some(), "above Preferences");
     drop(h);
     remove_fixture(&dir);
 }

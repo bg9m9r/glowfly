@@ -49,6 +49,16 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
   in settings at once, so today only the error shows)
 - Git Flow and sparse checkout: show "Saved" when their job succeeds, not when it starts
 
+### Unreadable settings file
+
+- Keep the changes made while saving was held back and offer to apply them over the file once
+  it reads (today the file's settings replace them)
+- Try reading the file again on its own now and then (or when the window regains focus), not
+  only on Try again
+- Prune old `settings.json.bak-N` copies: each start after a passing read failure keeps another
+- When the read file names a git that no longer runs, the PATH git stays in effect until the
+  next start, while the settings name the other: offer to forget it on the refusal toast
+
 ### Notifications
 
 - Behind alerts for other local branches with upstreams and for inactive tabs, batched into one

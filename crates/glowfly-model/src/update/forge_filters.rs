@@ -43,7 +43,7 @@ pub(super) fn edit_filters(st: &mut AppState, fx: &mut Vec<Effect>, change: impl
         return false;
     }
     st.settings.set_forge_filters(&real, f);
-    fx.push(super::prefs::save_settings(st));
+    fx.extend(super::prefs::save_settings(st));
     true
 }
 

@@ -11,7 +11,7 @@ use crate::state::window_chrome::Chrome;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use egui_kittest::{Harness, TestRenderer};
-use glowfly_core::settings::{Settings, ThemeChoice};
+use glowfly_core::settings::{LoadProblem, Settings, ThemeChoice};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -100,7 +100,25 @@ impl Journey {
     ) -> Self {
         let mut settings = settings();
         tweak(&mut settings);
-        let start = TestStart { settings, files: fx.config(), trusted, open, chrome };
+        let start = TestStart { settings, files: fx.config(), trusted, open, chrome, problem: None };
+        Self::launch(fx, start)
+    }
+
+    /// Starts the app as if its settings file couldn't be read (`problem`), on the welcome screen.
+    pub fn start_unreadable(fx: Fixture, problem: LoadProblem) -> Self {
+        let start = TestStart {
+            settings: settings(),
+            files: fx.config(),
+            trusted: Vec::new(),
+            open: None,
+            chrome: Chrome::System,
+            problem: Some(problem),
+        };
+        Self::launch(fx, start)
+    }
+
+    /// Builds the app from `start` and waits until it is idle.
+    fn launch(fx: Fixture, start: TestStart) -> Self {
         crate::ui::theme::fonts::use_test_cjk();
         let h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).renderer(NoRender).build_state(
             |ctx, shell: &mut Shell| {

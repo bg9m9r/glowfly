@@ -86,7 +86,7 @@ pub(super) fn inherited(
         names.push(folder_name(&repo.real));
     }
     if !names.is_empty() {
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
         st.log_quiet(true, format!("Trusted {}: made from {}, which you trust.", names.join(", "), folder_name(from)));
     }
     if let Some(p) = open {

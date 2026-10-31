@@ -102,7 +102,7 @@ pub(super) fn set_wrap_lines(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) 
         return;
     }
     st.settings.blame.wrap_lines = on;
-    fx.push(super::super::prefs::save_settings(st));
+    fx.extend(super::super::prefs::save_settings(st));
     if let Some(view) = st.session.blame.view.as_mut() {
         view.scroll_to = Some(BlameLanding { line: view.top_line, center: false });
     }
@@ -110,7 +110,7 @@ pub(super) fn set_wrap_lines(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) 
 
 /// After a toggle: saves the settings and blames the open view again.
 fn saved(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    fx.push(super::super::prefs::save_settings(st));
+    fx.extend(super::super::prefs::save_settings(st));
     reload_in_place(st, now, fx);
 }
 

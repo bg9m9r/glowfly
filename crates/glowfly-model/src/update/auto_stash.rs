@@ -334,7 +334,7 @@ fn answer(st: &mut AppState, stash: bool, now: Instant, fx: &mut Vec<Effect>) {
     }
     if stash && ask.always && !st.settings.auto_stash {
         st.settings.auto_stash = true;
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     approve_and_run(st, ask.op, stash, ask.retry, now, fx);
 }

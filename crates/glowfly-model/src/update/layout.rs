@@ -32,7 +32,7 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
             if let Some(v) = panel_layout::spec(panel).sanitize(size)
                 && st.settings.panel_sizes.set(panel, v)
             {
-                fx.push(super::prefs::save_settings(st));
+                fx.extend(super::prefs::save_settings(st));
             }
         }
         LayoutMsg::ExpandDetails => st.view.details_expanded_for = tool_view(st),
@@ -44,7 +44,7 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
         LayoutMsg::SetFileListMode(m) => {
             if st.settings.file_list_mode != m {
                 st.settings.file_list_mode = m;
-                fx.push(super::prefs::save_settings(st));
+                fx.extend(super::prefs::save_settings(st));
             }
         }
         LayoutMsg::ToggleFolder { list, path } => st.session.tab_view.file_folds.toggle(list, path),
@@ -73,7 +73,7 @@ pub(super) fn reveal_details(st: &mut AppState, fx: &mut Vec<Effect>) {
 fn zoom(st: &mut AppState, new: u16, now: Instant, fx: &mut Vec<Effect>) {
     if new != st.settings.zoom_percent {
         st.settings.zoom_percent = new;
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     let text = zoom_toast_text(st.settings.zoom_level());
     st.view.zoom_toast = Some(st.toast_replacing(st.view.zoom_toast, true, text, now));
@@ -83,7 +83,7 @@ fn zoom(st: &mut AppState, new: u16, now: Instant, fx: &mut Vec<Effect>) {
 fn set(st: &mut AppState, p: Panel, on: bool, fx: &mut Vec<Effect>) -> bool {
     let changed = set_shown(&mut st.settings, p, on);
     if changed {
-        fx.push(super::prefs::save_settings(st));
+        fx.extend(super::prefs::save_settings(st));
     }
     changed
 }
