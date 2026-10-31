@@ -148,7 +148,9 @@ pub(super) fn start_switch(st: &mut AppState, id: ProfileId, fx: &mut Vec<Effect
 /// may hold some of the other profile's values, and the current profile would take them.
 pub(super) fn on_config(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(git) = st.prefs.as_ref().and_then(|p| p.git.as_ref()).map(git_identity) else { return };
-    if st.profile_switch.is_none() && st.settings.seed_or_sync_profiles(&git) {
+    // Not into the defaults in use while the settings file is unread: the file's profiles are
+    // synced once it reads and the page opens again.
+    if st.profile_switch.is_none() && st.settings_file.writable() && st.settings.seed_or_sync_profiles(&git) {
         fx.extend(save_settings(st));
     }
     if let Some(p) = st.prefs.as_mut() {

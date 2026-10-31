@@ -201,3 +201,66 @@ fn a_read_with_the_same_git_leaves_it_alone() {
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((real, None)))));
     assert!(!fx.iter().any(|e| matches!(e, Effect::GitEnv(GitEnvEffect::Use { .. }))), "{fx:?}");
 }
+
+/// A state that started on an unread settings file the way the shell starts it: held, the
+/// startup steps run (Updates records the release notes), then reported.
+fn started_held() -> AppState {
+    let mut st = state();
+    st.settings.updates.notes_seen = None;
+    st.settings_file.hold(Some(&unreadable("access is denied")));
+    run(&mut st, Msg::Updates(UpdateMsg::Startup));
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(unreadable("access is denied"))));
+    st
+}
+
+#[test]
+fn what_glowfly_records_by_itself_is_no_edit_and_its_newer_records_are_kept() {
+    let mut st = started_held();
+    // The automatic update check, 15 s in, records when it worked.
+    st.view.now = 1_800_000_000;
+    let fx = run(&mut st, Msg::Updates(UpdateMsg::Checked { manual: false, result: Ok(None) }));
+    assert_eq!(saves(&fx), 0, "held: {fx:?}");
+    assert_eq!(st.settings.updates.last_checked, Some(1_800_000_000));
+    // A one-time notice shown meanwhile.
+    st.settings.detached_head_warned = true;
+    let mut real = Settings { auto_fetch_minutes: 17, ..Settings::default() };
+    real.updates.last_checked = Some(1_700_000_000);
+    real.status_tip_shown.insert("C:/repo".into(), true);
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((real, None)))));
+    assert!(st.toasts.iter().any(|t| t.ok), "told it worked");
+    assert!(!st.toasts.iter().any(|t| t.text.contains("were not kept")), "nothing the user changed was dropped");
+    let s = &st.settings;
+    assert_eq!((s.auto_fetch_minutes, s.updates.last_checked, s.detached_head_warned), (17, Some(1_800_000_000), true));
+    assert_eq!(s.status_tip_shown.get("C:/repo"), Some(&true), "the file's records stay too");
+    assert!(s.updates.notes_seen.is_some(), "the notes recorded this start");
+    assert!(
+        fx.iter()
+            .any(|e| matches!(e, Effect::SaveSettings(s) if s.updates.last_checked == Some(1_800_000_000) && s.auto_fetch_minutes == 17)),
+        "the newer records are written into the file's settings: {fx:?}"
+    );
+}
+
+#[test]
+fn a_users_edit_while_held_is_said_to_be_dropped() {
+    let mut st = started_held();
+    st.view.now = 1_800_000_000;
+    run(&mut st, Msg::Updates(UpdateMsg::Checked { manual: false, result: Ok(None) }));
+    toggle_labels(&mut st);
+    run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((Settings::default(), None)))));
+    assert!(
+        st.toasts.iter().any(|t| t.ok && t.text.contains("were not kept")),
+        "{:?}",
+        st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn the_profile_page_seeds_no_profile_into_held_defaults() {
+    let mut st = started_held();
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(crate::state::PrefPage::Profile)));
+    let values =
+        crate::state::prefs::GitConfigValues { user_name: "Ada".into(), user_email: "ada@example.com".into(), ..Default::default() };
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values)));
+    assert!(st.settings.profiles.is_empty(), "no profile seeded from git");
+    assert_eq!(saves(&fx), 0);
+}

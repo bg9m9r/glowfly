@@ -6,7 +6,7 @@
 
 use crate::effect::{Effect, OsEffect, PrefsEffect};
 use crate::state::AppState;
-use glowfly_core::app_update::Version;
+use crate::state::settings_file::{carry_records, user_view};
 use glowfly_core::settings::{LoadProblem, Settings, SetupSwap};
 use std::time::Instant;
 
@@ -62,14 +62,14 @@ pub(super) fn reread(st: &mut AppState, settings: Settings, problem: Option<Load
     }
     st.settings_file.unreadable = None;
     let git_changed = settings.git_program != st.settings.git_program;
-    // Edits made while saving was held back are dropped for the file's settings.
-    let edited = serde_json::to_string(&st.settings).ok().as_deref() != Some(st.settings_file.saved.as_str());
+    // Edits the user made while saving was held back are dropped for the file's settings; what
+    // Glowfly recorded by itself meanwhile isn't an edit, and its newer records are kept.
+    let baseline = serde_json::from_str::<Settings>(&st.settings_file.saved).ok();
+    let edited = baseline.is_none_or(|b| user_view(&b) != user_view(&st.settings));
     st.settings_file.saved = serde_json::to_string(&settings).unwrap_or_default();
-    // The release notes recorded seen at this start stay seen, or they would open again.
-    let notes = newer_notes(st.settings.updates.notes_seen.take(), settings.updates.notes_seen.clone());
-    let notes_newer = notes != settings.updates.notes_seen;
+    let mut settings = settings;
+    let carried = carry_records(&st.settings, &mut settings);
     st.settings = settings;
-    st.settings.updates.notes_seen = notes;
     // Built from the settings only at startup; everything else reads them every frame or is
     // brought up to date by `switched` below.
     st.terminal.open = st.settings.terminal.panel_open;
@@ -89,7 +89,7 @@ pub(super) fn reread(st: &mut AppState, settings: Settings, problem: Option<Load
             st.toast(true, text, now);
         }
     }
-    if notes_newer {
+    if carried {
         fx.extend(super::prefs::save_settings(st));
     }
     super::profile_setup::switched(st, SetupSwap { prefs: true, connections: true }, now, fx);
@@ -97,15 +97,5 @@ pub(super) fn reread(st: &mut AppState, settings: Settings, problem: Option<Load
     if git_changed {
         let program = st.settings.git_program.as_deref().map(std::path::PathBuf::from);
         super::git_env::use_program(st, program, fx);
-    }
-}
-
-/// The later of two "release notes seen" versions; one that doesn't parse counts as none.
-fn newer_notes(ours: Option<String>, file: Option<String>) -> Option<String> {
-    let parsed = |v: &Option<String>| v.as_deref().and_then(Version::parse);
-    match (parsed(&ours), parsed(&file)) {
-        (Some(a), Some(b)) if a > b => ours,
-        (Some(_), None) => ours,
-        _ => file,
     }
 }
