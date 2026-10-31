@@ -53,6 +53,12 @@ allow = [
     "Zlib",
 ]
 confidence-threshold = 0.9
+# colored (MPL-2.0) is in only the view tests' tree (egui_kittest's dify, through glowfly-ui's
+# `test-support` feature, which only dev-dependencies turn on): it is never built into Glowfly,
+# which source_checks/dependencies.rs checks for the app's normal edges.
+exceptions = [
+    { allow = ["MPL-2.0"], crate = "colored" },
+]
 
 [bans]
 multiple-versions = "allow"
