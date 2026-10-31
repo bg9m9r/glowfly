@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.4.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.3.0-rc.1...v0.4.0-rc.1) (2026-10-31)
+
+
+### Features
+
+* group favorite repositories in the repository menu and welcome screen ([1339e99](https://github.com/bg9m9r/glowfly/commit/1339e990428369f8f2b2ca4a3363a6bdf8bf6c03)), closes [#239](https://github.com/bg9m9r/glowfly/issues/239)
+* move through commit, comparison and conflict file lists with the arrow keys ([52d0baf](https://github.com/bg9m9r/glowfly/commit/52d0baf4ee756ef6a4dfb30a726db76a6d992c41)), closes [#221](https://github.com/bg9m9r/glowfly/issues/221)
+* stage, unstage, open and discard files from the keyboard in the WIP lists ([a5ef54d](https://github.com/bg9m9r/glowfly/commit/a5ef54d41b5a3043f818ba5f91b8707ca70d3c95)), closes [#218](https://github.com/bg9m9r/glowfly/issues/218)
+
+
+### Bug fixes
+
+* ask about git-lfs programs and TLS/proxy settings, and re-check the patch export ([#390](https://github.com/bg9m9r/glowfly/issues/390)) ([911b6c1](https://github.com/bg9m9r/glowfly/commit/911b6c108f49bf3e1d5e194db229a91e45afd537)), closes [#363](https://github.com/bg9m9r/glowfly/issues/363)
+* base the date locale on LC_ALL, LC_TIME and LANG and the spell-check language on gettext's order on Linux ([69aba48](https://github.com/bg9m9r/glowfly/commit/69aba48eeae3e4d6d51da93674b7d9bd734a05eb)), closes [#233](https://github.com/bg9m9r/glowfly/issues/233)
+* don't overwrite settings with defaults when the settings file can't be read ([#392](https://github.com/bg9m9r/glowfly/issues/392)) ([43214e0](https://github.com/bg9m9r/glowfly/commit/43214e08b99f53a1008d9605938d5fe8bb645633)), closes [#387](https://github.com/bg9m9r/glowfly/issues/387)
+* follow config programs that run tracked scripts, and re-check submodules before jobs ([77a71e1](https://github.com/bg9m9r/glowfly/commit/77a71e12b694fd664f74f96432a0b4b21f5f19e2)), closes [#277](https://github.com/bg9m9r/glowfly/issues/277)
+* keep the gap after italic text and beside inline code in rendered Markdown ([85c57b4](https://github.com/bg9m9r/glowfly/commit/85c57b4fa20aeede5ad0a18e056aaf871388f992)), closes [#230](https://github.com/bg9m9r/glowfly/issues/230)
+* make the drawn Windows title bar resize, drag, round and shadow like the system one ([40a3e9e](https://github.com/bg9m9r/glowfly/commit/40a3e9ee51e25e9b8755a36da3754c66ae61e57f)), closes [#229](https://github.com/bg9m9r/glowfly/issues/229)
+* validate repository-supplied remote and ref names before passing them to git ([#391](https://github.com/bg9m9r/glowfly/issues/391)) ([820ea2d](https://github.com/bg9m9r/glowfly/commit/820ea2d7bd2155699ed84b30f1121e4a88e2666d)), closes [#362](https://github.com/bg9m9r/glowfly/issues/362)
+
+
+### Performance
+
+* match pull request heads to loaded commits without a history scan per PR ([4703f38](https://github.com/bg9m9r/glowfly/commit/4703f383d0e3422212244df06508d509aab9e961)), closes [#380](https://github.com/bg9m9r/glowfly/issues/380)
+* stop walking history per local branch on every load after HEAD moves ([819fb4c](https://github.com/bg9m9r/glowfly/commit/819fb4c0d957e57ba0182e56e9a3ee4a0ab5e998)), closes [#378](https://github.com/bg9m9r/glowfly/issues/378)
+
 ## [0.3.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.2.0-rc.1...v0.3.0-rc.1) (2026-10-30)
 
 
