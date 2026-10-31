@@ -50,6 +50,7 @@ fn force_push_leases_the_commit_the_snapshot_saw() {
                 "push",
                 &format!("--force-with-lease=refs/heads/feature:{seen}"),
                 "--force-if-includes",
+                "--",
                 "origin",
                 "refs/heads/feature:refs/heads/feature",
             ])]
@@ -119,6 +120,7 @@ fn force_push_of_a_new_branch_expects_it_absent() {
                 "--force-with-lease=refs/heads/topic:",
                 "--force-if-includes",
                 "-u",
+                "--",
                 "origin",
                 "refs/heads/topic:refs/heads/topic"
             ])]
@@ -169,6 +171,7 @@ fn force_push_of_a_branch_that_is_not_checked_out_leases_its_upstream() {
                 "push",
                 &format!("--force-with-lease=refs/heads/feature:{seen}"),
                 "--force-if-includes",
+                "--",
                 "origin",
                 "refs/heads/feature:refs/heads/feature",
             ])]

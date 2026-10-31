@@ -5,6 +5,7 @@
 use crate::effect::OpPreviewJob;
 use crate::msg::{Msg, RebaseMsg, ResetMode, SelectionMsg};
 use git2::Oid;
+use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
 use glowfly_core::i18n::Lang;
 use glowfly_core::op_preview::{AfterRow, CommitLine, GoneWhy, OpPreview, Outcome, PreviewOp, StopWhy};
 use glowfly_core::rebase::QuickEdit;
@@ -235,8 +236,8 @@ pub fn apply_blocker(t: Lang, job_running: bool, snap: &Snapshot, d: &PreviewDia
 /// None for a reset sends nothing).
 pub fn apply_msg(t: Lang, snap: &Snapshot, op: &PreviewOp, mode: Option<ResetMode>) -> Option<Msg> {
     Some(match op {
-        PreviewOp::Merge { theirs, .. } => Msg::git("Merge", &["merge", theirs]),
-        PreviewOp::Rebase { onto, .. } => Msg::git("Rebase", &["rebase", onto]),
+        PreviewOp::Merge { theirs, .. } => Msg::git_cmd("Merge", merge_cmd(theirs)),
+        PreviewOp::Rebase { onto, .. } => Msg::git_cmd("Rebase", rebase_cmd(onto)),
         PreviewOp::Reset { to } => {
             let sha = to.to_string();
             match mode? {

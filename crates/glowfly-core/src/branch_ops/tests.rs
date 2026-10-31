@@ -56,9 +56,9 @@ fn fast_forward_states_and_commands() {
 
 #[test]
 fn command_builders() {
-    assert_eq!(rename_cmd("a", "b"), args(&["branch", "-m", "a", "b"]));
-    assert_eq!(unset_upstream_cmd("a"), args(&["branch", "--unset-upstream", "a"]));
-    assert_eq!(set_upstream_cmds("a", "origin", "b", true), vec![args(&["branch", "--set-upstream-to=origin/b", "a"])]);
+    assert_eq!(rename_cmd("a", "b"), args(&["branch", "-m", "--", "a", "b"]));
+    assert_eq!(unset_upstream_cmd("a"), args(&["branch", "--unset-upstream", "--", "a"]));
+    assert_eq!(set_upstream_cmds("a", "origin", "b", true), vec![args(&["branch", "--set-upstream-to=origin/b", "--", "a"])]);
     assert_eq!(
         set_upstream_cmds("a", "origin", "b", false),
         vec![args(&["config", "branch.a.remote", "origin"]), args(&["config", "branch.a.merge", "refs/heads/b"])]
@@ -68,12 +68,12 @@ fn command_builders() {
         delete_with_remote_cmds("a", &t),
         vec![
             args(&["merge-base", "--is-ancestor", "refs/heads/a", "HEAD"]),
-            args(&["branch", "-d", "a"]),
-            args(&["push", "origin", "--delete", "other"])
+            args(&["branch", "-d", "--", "a"]),
+            args(&["push", "--delete", "--", "origin", "other"])
         ]
     );
-    assert_eq!(push_cmd("a", "origin", "b", true), args(&["push", "-u", "origin", "refs/heads/a:refs/heads/b"]));
-    assert_eq!(push_cmd("a", "backup", "a", false), args(&["push", "backup", "refs/heads/a:refs/heads/a"]));
+    assert_eq!(push_cmd("a", "origin", "b", true), args(&["push", "-u", "--", "origin", "refs/heads/a:refs/heads/b"]));
+    assert_eq!(push_cmd("a", "backup", "a", false), args(&["push", "--", "backup", "refs/heads/a:refs/heads/a"]));
     assert_eq!(t.display(), "origin/other");
     assert_eq!(Tracking { remote: ".".into(), merge: "main".into() }.display(), "main");
 }
@@ -396,17 +396,17 @@ fn rename_with_remote_pushes_before_deleting() {
     assert_eq!(
         rename_with_remote_cmds("feat", "feature", "origin", "feat-old", tip),
         vec![
-            args(&["branch", "-m", "feat", "feature"]),
-            args(&["push", "-u", "origin", "refs/heads/feature:refs/heads/feature"]),
-            args(&["push", &format!("--force-with-lease=refs/heads/feat-old:{tip}"), "origin", "--delete", "feat-old"]),
+            args(&["branch", "-m", "--", "feat", "feature"]),
+            args(&["push", "-u", "--", "origin", "refs/heads/feature:refs/heads/feature"]),
+            args(&["push", &format!("--force-with-lease=refs/heads/feat-old:{tip}"), "--delete", "--", "origin", "feat-old"]),
         ]
     );
     assert_eq!(
         delete_remote_cmds("origin", "x", &["a".into(), "b".into()]),
         vec![
-            args(&["push", "origin", "--delete", "x"]),
-            args(&["branch", "--unset-upstream", "a"]),
-            args(&["branch", "--unset-upstream", "b"])
+            args(&["push", "--delete", "--", "origin", "x"]),
+            args(&["branch", "--unset-upstream", "--", "a"]),
+            args(&["branch", "--unset-upstream", "--", "b"])
         ]
     );
 }

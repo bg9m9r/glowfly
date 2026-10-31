@@ -127,8 +127,8 @@ fn add_with_push_url_no_fetch() {
     assert_eq!(
         git_cmds(&fx),
         v(&[
-            &["remote", "add", "x", "https://example.invalid/x.git"],
-            &["remote", "set-url", "--push", "x", "https://example.invalid/p.git"]
+            &["remote", "add", "--", "x", "https://example.invalid/x.git"],
+            &["remote", "set-url", "--push", "--", "x", "https://example.invalid/p.git"]
         ])
     );
     drop_job(&mut st);
@@ -186,7 +186,7 @@ fn edit_rename_and_push_url() {
     let fx = run(&mut st, RemoteMsg::Submit);
     assert_eq!(
         git_cmds(&fx),
-        v(&[&["remote", "rename", "origin", "upstream"], &["remote", "set-url", "--push", "upstream", "C:/elsewhere.git"]])
+        v(&[&["remote", "rename", "--", "origin", "upstream"], &["remote", "set-url", "--push", "--", "upstream", "C:/elsewhere.git"]])
     );
     assert!(st.modal.is_none());
     drop_job(&mut st);
@@ -227,7 +227,7 @@ fn edit_clears_push_url() {
     assert_eq!(f.push_url, "https://h/x+y(1).git");
     f.push_url.clear();
     let fx = run(&mut st, RemoteMsg::Submit);
-    assert_eq!(git_cmds(&fx), v(&[&["remote", "set-url", "--delete", "--push", "origin", r"^https://h/x\+y\(1\)\.git$"]]));
+    assert_eq!(git_cmds(&fx), v(&[&["remote", "set-url", "--delete", "--push", "--", "origin", r"^https://h/x\+y\(1\)\.git$"]]));
     drop_job(&mut st);
     run(&mut st, RemoteMsg::EditDialog("origin".into()));
     form(&mut st).push_url.clear();
@@ -285,7 +285,7 @@ fn fetch_one_remote() {
     let (mut st, work, bare) = with_origin("remote-fetch");
     super::branch_tests::remote_commit(&bare, "main", "new.txt");
     let fx = run(&mut st, RemoteMsg::Fetch("origin".into()));
-    assert_eq!(git_cmds(&fx), v(&[&["fetch", "--prune", "origin"]]));
+    assert_eq!(git_cmds(&fx), v(&[&["fetch", "--prune", "--", "origin"]]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch origin"));
     drop_job(&mut st);
     drive(&mut st, Msg::Remote(RemoteMsg::Fetch("origin".into())));
@@ -307,11 +307,11 @@ fn fetch_one_remote() {
 #[test]
 fn remote_jobs_and_undo() {
     let keeps = |a: &[&str]| super::undo::keeps_history(&[args(a)]);
-    assert!(keeps(&["remote", "add", "x", "u"]));
-    assert!(keeps(&["remote", "set-url", "--push", "x", "u"]));
-    assert!(keeps(&["fetch", "--prune", "origin"]));
-    assert!(!keeps(&["remote", "rename", "a", "b"]));
-    assert!(!keeps(&["remote", "remove", "a"]));
+    assert!(keeps(&["remote", "add", "--", "x", "u"]));
+    assert!(keeps(&["remote", "set-url", "--push", "--", "x", "u"]));
+    assert!(keeps(&["fetch", "--prune", "--", "origin"]));
+    assert!(!keeps(&["remote", "rename", "--", "a", "b"]));
+    assert!(!keeps(&["remote", "remove", "--", "a"]));
 
     let (mut st, work, bare) = with_origin("remote-undo");
     st.session.undo.record(Action::DeleteBranch { name: "gone".into(), oid: git2::Oid::zero(), upstream: None });
@@ -362,7 +362,7 @@ fn palette_remote_entries() {
         Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::Fetch("origin".into())))),
         Instant::now(),
     );
-    assert_eq!(git_cmds(&fx), v(&[&["fetch", "--prune", "origin"]]));
+    assert_eq!(git_cmds(&fx), v(&[&["fetch", "--prune", "--", "origin"]]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch origin"));
     drop_job(&mut st);
     update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog))), Instant::now());

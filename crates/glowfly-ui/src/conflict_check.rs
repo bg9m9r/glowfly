@@ -13,6 +13,7 @@ use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::popover_below;
 use eframe::egui::{self, Id, RichText, Sense, pos2, vec2};
+use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
 use glowfly_core::conflict_check::Prediction;
 use glowfly_core::i18n::Lang;
 use glowfly_model::conflict_check::ConflictCheckMsg;
@@ -154,8 +155,8 @@ fn actions(t: Lang, report: &ConflictReport) -> Vec<(String, Msg)> {
     let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
     let names: [(&str, &dyn std::fmt::Display); 2] = [("ours", &ours), ("theirs", &theirs)];
     vec![
-        (t.trf("conflict_check.merge.button", &names), Msg::git("Merge", &["merge", theirs])),
-        (t.trf("conflict_check.rebase.button", &names), Msg::git("Rebase", &["rebase", theirs])),
+        (t.trf("conflict_check.merge.button", &names), Msg::git_cmd("Merge", merge_cmd(theirs))),
+        (t.trf("conflict_check.rebase.button", &names), Msg::git_cmd("Rebase", rebase_cmd(theirs))),
     ]
 }
 

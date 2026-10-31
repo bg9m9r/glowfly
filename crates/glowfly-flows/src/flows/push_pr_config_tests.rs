@@ -24,7 +24,7 @@ fn push_and_start(st: &mut AppState, branch: &str) -> Vec<Vec<Vec<String>>> {
 
 fn push(remote: &str, branch: &str, upstream: bool) -> Vec<Vec<Vec<String>>> {
     let spec = format!("refs/heads/{branch}:refs/heads/{branch}");
-    let cmd = if upstream { args(&["push", "-u", remote, &spec]) } else { args(&["push", remote, &spec]) };
+    let cmd = if upstream { args(&["push", "-u", "--", remote, &spec]) } else { args(&["push", "--", remote, &spec]) };
     vec![vec![cmd]]
 }
 

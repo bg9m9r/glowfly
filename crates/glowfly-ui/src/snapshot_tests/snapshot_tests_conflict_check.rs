@@ -49,7 +49,7 @@ fn conflict_popover() {
     assert!(h.query_by_label("docs/guide with space.md").is_some());
     h.get_by_label("Merge main into search").click();
     h.run();
-    let merge = vec![args(&["merge", "main"])];
+    let merge = vec![args(&["merge", "--", "main"])];
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if *cmds == merge)));
     drop(h);
     remove_fixture(&dir);

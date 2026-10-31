@@ -81,10 +81,10 @@ mod tests {
     #[test]
     fn the_upstream_remote_gets_the_upstream_name_and_no_push_sets_an_upstream() {
         let p = plan(&branch("topic", Some(("origin", "feature/topic"))), ["origin", "fork"]);
-        assert_eq!(p[0].cmd, args(&["push", "origin", "refs/heads/topic:refs/heads/feature/topic"]));
-        assert_eq!(p[1].cmd, args(&["push", "fork", "refs/heads/topic:refs/heads/topic"]));
+        assert_eq!(p[0].cmd, args(&["push", "--", "origin", "refs/heads/topic:refs/heads/feature/topic"]));
+        assert_eq!(p[1].cmd, args(&["push", "--", "fork", "refs/heads/topic:refs/heads/topic"]));
         let none = plan(&branch("topic", None), ["origin"]);
-        assert_eq!(none[0].cmd, args(&["push", "origin", "refs/heads/topic:refs/heads/topic"]));
+        assert_eq!(none[0].cmd, args(&["push", "--", "origin", "refs/heads/topic:refs/heads/topic"]));
     }
 
     #[test]
@@ -103,7 +103,7 @@ mod tests {
         let pushes = plan(&branch("main", None), ["broken", "good"]);
         let done = run(&work, &pushes, gitcli::BACKGROUND);
         assert_eq!(done.failed, ["broken"], "{}", done.output);
-        assert!(done.output.contains("$ git push good refs/heads/main:refs/heads/main"), "{}", done.output);
+        assert!(done.output.contains("$ git push -- good refs/heads/main:refs/heads/main"), "{}", done.output);
         let (ok, _) = gitcli::run(&bare, &args(&["rev-parse", "--verify", "refs/heads/main"]));
         assert!(ok, "the second remote got the branch");
         let _ = std::fs::remove_dir_all(&work);

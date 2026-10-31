@@ -289,6 +289,11 @@ pub fn targets(cmd: &[String]) -> Result<Vec<Target>, Unchecked> {
             continue;
         }
         match a {
+            // After `--` a merge, rebase or pick still names revisions; elsewhere it names paths.
+            "--" if matches!(sub, "merge" | "rebase" | "cherry-pick" | "revert") => {
+                positional.extend(it.by_ref().cloned());
+                break;
+            }
             "--" => {
                 after_dashes = Some(it.by_ref().cloned().collect());
                 break;

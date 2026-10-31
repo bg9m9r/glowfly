@@ -253,6 +253,20 @@ fn a_diff_or_merge_tools_path_is_listed() {
 }
 
 #[test]
+fn a_remote_or_upstream_name_that_reads_as_an_option_asks() {
+    let dir = scratch_repo("trust-dash-remote");
+    git(&dir, &["config", "remote.-x.url", "https://example.com/r.git"]);
+    git(&dir, &["config", "branch.main.remote", "--upload-pack=evil"]);
+    git(&dir, &["config", "remote.pushDefault", "-y"]);
+    git(&dir, &["config", "remote.origin.url", "https://example.com/r.git"]);
+    git(&dir, &["config", "branch.other.remote", "origin"]);
+    let s = scan_at(&dir).unwrap();
+    let found: Vec<&str> = keys(&s).iter().map(|(k, _)| *k).collect();
+    assert_eq!(found, ["remote.-x.url", "branch.main.remote", "remote.pushdefault"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_home_relative_hooks_path_is_expanded_as_git_does() {
     let home = Path::new("/home/ada");
     assert_eq!(home_expanded("~/hooks", Some(home)), Some(home.join("hooks")));

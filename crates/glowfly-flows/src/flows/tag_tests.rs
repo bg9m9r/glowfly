@@ -80,7 +80,7 @@ fn create_tag_commands() {
     match &fx[..] {
         [Effect::RunGit { cmds, .. }] => {
             assert_eq!(cmds[0], ["tag", "-a", "v1", sha.as_str(), "-m", "notes"]);
-            assert_eq!(cmds[1], ["push", "origin", "refs/tags/v1:refs/tags/v1"]);
+            assert_eq!(cmds[1], ["push", "--", "origin", "refs/tags/v1:refs/tags/v1"]);
             assert_eq!(cmds.len(), 2);
         }
         other => panic!("unexpected effects {other:?}"),

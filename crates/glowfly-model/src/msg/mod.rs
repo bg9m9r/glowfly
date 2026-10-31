@@ -188,7 +188,12 @@ pub enum Inactive {
 
 impl Msg {
     pub fn git(label: &str, a: &[&str]) -> Msg {
-        Msg::Job(JobMsg::Git { label: label.into(), cmds: vec![args(a)] })
+        Msg::git_cmd(label, args(a))
+    }
+
+    /// `git` with a command line a builder made (e.g. `branch_ops::merge_cmd`).
+    pub fn git_cmd(label: &str, cmd: Vec<String>) -> Msg {
+        Msg::Job(JobMsg::Git { label: label.into(), cmds: vec![cmd] })
     }
 
     pub fn confirm(title: &str, body: String, button: &str, then: Msg) -> Msg {

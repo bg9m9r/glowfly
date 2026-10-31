@@ -78,7 +78,7 @@ fn merged_branch_deletes_without_a_count() {
     assert_eq!((&f.lost, f.button(T), f.lost_note(T)), (&Lost::Known(0), "Delete", None));
     let (fx, cmds) = press(&mut st);
     assert!(st.modal.is_none(), "the dialog closes");
-    assert_eq!(cmds, vec![args(&["branch", "-d", "topic"])]);
+    assert_eq!(cmds, vec![args(&["branch", "-d", "--", "topic"])]);
     finish(&mut st, fx);
     assert_eq!(tip(&st, "topic"), None);
     cleanup(&dir);
@@ -100,7 +100,7 @@ fn unmerged_branch_counts_then_deletes_anyway_and_undo_brings_it_back() {
     assert_eq!(f.lost_note(T).as_deref(), Some(note));
 
     let (fx, cmds) = press(&mut st);
-    assert_eq!(cmds, vec![args(&["branch", "-D", "topic"])]);
+    assert_eq!(cmds, vec![args(&["branch", "-D", "--", "topic"])]);
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Delete branch"));
     finish(&mut st, fx);
     assert_eq!(tip(&st, "topic"), None);
@@ -119,7 +119,7 @@ fn branch_on_another_branch_offers_plain_delete() {
     finish(&mut st, fx);
     assert_eq!((&form(&st).lost, form(&st).button(T)), (&Lost::Known(0), "Delete"));
     // git branch -d would refuse: copy isn't HEAD or topic's upstream.
-    assert_eq!(press(&mut st).1, vec![args(&["branch", "-D", "topic"])]);
+    assert_eq!(press(&mut st).1, vec![args(&["branch", "-D", "--", "topic"])]);
     cleanup(&dir);
 }
 

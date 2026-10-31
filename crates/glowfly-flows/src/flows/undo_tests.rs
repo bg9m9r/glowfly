@@ -105,7 +105,7 @@ fn git_jobs_record_their_kind() {
     let merge = UndoKind::Move { op: glowfly_core::undo::MoveOp::Merge, detail: Some("x".into()) };
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == merge), "{fx:?}");
     st.job = None;
-    let fx = update(&mut st, Msg::git("Rename branch", &["branch", "-m", "x", "y"]), Instant::now());
+    let fx = update(&mut st, Msg::git("Rename branch", &["branch", "-m", "--", "x", "y"]), Instant::now());
     assert!(matches!(&fx[..], [Effect::RunGit { record: None, .. }]), "{fx:?}");
     st.job = None;
     let fx = update(&mut st, Msg::git("Checkout", &["checkout", "x"]), Instant::now());
@@ -123,7 +123,7 @@ fn unrecorded_job_blocks_and_fetch_keeps_history() {
     done(&mut st, false);
     assert_eq!(st.session.undo.undo.len(), 1, "a failed job changes nothing");
 
-    update(&mut st, Msg::git("Rename branch", &["branch", "-m", "main", "trunk"]), Instant::now());
+    update(&mut st, Msg::git("Rename branch", &["branch", "-m", "--", "main", "trunk"]), Instant::now());
     done(&mut st, true);
     assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty());
     assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"));
@@ -207,7 +207,7 @@ fn delete_branch_undo_restores_branch() {
     git(&dir, &["branch", "feature"]);
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let tip = st.snap.as_ref().unwrap().head_oid;
-    drive(&mut st, Msg::git("Delete branch", &["branch", "-d", "feature"]));
+    drive(&mut st, Msg::git("Delete branch", &["branch", "-d", "--", "feature"]));
     assert!(!st.snap.as_ref().unwrap().locals.iter().any(|b| b.name == "feature"));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(st.snap.as_ref().unwrap().locals.iter().any(|b| b.name == "feature" && b.oid == tip));

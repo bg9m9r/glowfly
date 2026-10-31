@@ -163,7 +163,8 @@ fn read_head(git_dir: &Path, common: &Repository) -> (Option<String>, Option<Oid
         let full = target.trim();
         let head = common.refname_to_id(full).ok();
         let branch = full.strip_prefix("refs/heads/").unwrap_or(full).to_owned();
-        return (Some(branch), head);
+        // A branch name git could read as an option shows as a detached HEAD, as in the load.
+        return (super::is_safe_ref_name(&branch).then_some(branch), head);
     }
     match Oid::from_str(text) {
         Ok(oid) => (None, Some(oid)),

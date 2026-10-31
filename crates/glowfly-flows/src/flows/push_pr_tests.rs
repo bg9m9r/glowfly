@@ -84,7 +84,7 @@ fn open_after_load(st: &AppState) -> Option<PrStart> {
 fn push_and_start_pushes_missing_branch_with_upstream() {
     let (mut st, work, bare) = with_host("pr-push-missing");
     let fx = update(&mut st, push("topic", None), Instant::now());
-    assert_eq!(run_git(&fx), [&vec![args(&["push", "-u", "origin", "refs/heads/topic:refs/heads/topic"])]]);
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "-u", "--", "origin", "refs/heads/topic:refs/heads/topic"])]]);
     assert_eq!(fx.len(), 1);
     assert_eq!(st.job.as_ref().and_then(|j| j.then_pr.clone()), Some(PrStart { source: "topic".into(), target: None, remote: None }));
     cleanup(&work, &bare);
@@ -120,7 +120,7 @@ fn ahead_branch_pushes_to_its_upstream_without_u() {
     commit_on(&work, "feature", "feature", "More feature");
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = update(&mut st, push("feature", None), Instant::now());
-    assert_eq!(run_git(&fx), [&vec![args(&["push", "origin", "refs/heads/feature:refs/heads/feature"])]]);
+    assert_eq!(run_git(&fx), [&vec![args(&["push", "--", "origin", "refs/heads/feature:refs/heads/feature"])]]);
     cleanup(&work, &bare);
 }
 

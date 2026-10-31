@@ -124,9 +124,20 @@ pub fn fast_forward_state(b: &BranchInfo) -> FastForward {
     }
 }
 
-/// `git branch -m old new`: git moves the branch's config and reflog with it.
+/// `git branch -m -- old new`: git moves the branch's config and reflog with it.
 pub fn rename_cmd(old: &str, new: &str) -> Vec<String> {
-    args(&["branch", "-m", old, new])
+    args(&["branch", "-m", "--", old, new])
+}
+
+/// `git merge -- <name>`. The name stays as the menus show it, since git puts it in the merge
+/// commit's message (`refs/heads/x` would show there); `--` keeps it from reading as an option.
+pub fn merge_cmd(name: &str) -> Vec<String> {
+    args(&["merge", "--", name])
+}
+
+/// `git rebase -- <onto>`: `--` keeps the name from reading as an option.
+pub fn rebase_cmd(onto: &str) -> Vec<String> {
+    args(&["rebase", "--", onto])
 }
 
 /// The command that fast-forwards `b` to its upstream, when it can. The checked-out branch
@@ -170,7 +181,7 @@ pub fn create_tracking_cmd(name: &str, remote: &str, remote_branch: &str, checko
 /// the two config values are written directly.
 pub fn set_upstream_cmds(branch: &str, remote: &str, remote_branch: &str, exists: bool) -> Vec<Vec<String>> {
     if exists {
-        vec![args(&["branch", &format!("--set-upstream-to={remote}/{remote_branch}"), branch])]
+        vec![args(&["branch", &format!("--set-upstream-to={remote}/{remote_branch}"), "--", branch])]
     } else {
         vec![
             args(&["config", &format!("branch.{branch}.remote"), remote]),
@@ -180,7 +191,7 @@ pub fn set_upstream_cmds(branch: &str, remote: &str, remote_branch: &str, exists
 }
 
 pub fn unset_upstream_cmd(branch: &str) -> Vec<String> {
-    args(&["branch", "--unset-upstream", branch])
+    args(&["branch", "--unset-upstream", "--", branch])
 }
 
 /// Deletes `branch` and then its upstream branch on the remote, only when HEAD contains the
@@ -192,8 +203,8 @@ pub fn unset_upstream_cmd(branch: &str) -> Vec<String> {
 pub fn delete_with_remote_cmds(branch: &str, t: &Tracking) -> Vec<Vec<String>> {
     vec![
         args(&["merge-base", "--is-ancestor", &format!("refs/heads/{branch}"), "HEAD"]),
-        args(&["branch", "-d", branch]),
-        args(&["push", &t.remote, "--delete", &t.merge]),
+        args(&["branch", "-d", "--", branch]),
+        args(&["push", "--delete", "--", &t.remote, &t.merge]),
     ]
 }
 
@@ -204,25 +215,25 @@ pub fn delete_with_remote_cmds(branch: &str, t: &Tracking) -> Vec<Vec<String>> {
 /// is only deleted once the new one is there.
 pub fn rename_with_remote_cmds(old: &str, new: &str, remote: &str, remote_old: &str, tip: git2::Oid) -> Vec<Vec<String>> {
     let lease = format!("--force-with-lease=refs/heads/{remote_old}:{tip}");
-    vec![rename_cmd(old, new), push_cmd(new, remote, new, true), args(&["push", &lease, remote, "--delete", remote_old])]
+    vec![rename_cmd(old, new), push_cmd(new, remote, new, true), args(&["push", &lease, "--delete", "--", remote, remote_old])]
 }
 
 /// Deletes branch `name` on `remote`, then unsets the upstream of each of `unset` (the local
 /// branches that tracked it). The upstreams stay when the delete fails.
 pub fn delete_remote_cmds(remote: &str, name: &str, unset: &[String]) -> Vec<Vec<String>> {
-    let mut cmds = vec![args(&["push", remote, "--delete", name])];
+    let mut cmds = vec![args(&["push", "--delete", "--", remote, name])];
     cmds.extend(unset.iter().map(|b| unset_upstream_cmd(b)));
     cmds
 }
 
 /// Pushes local `branch` to `remote_branch` on `remote` with an explicit refspec; `set_upstream`
-/// adds -u so the branch tracks it afterwards.
+/// adds -u so the branch tracks it afterwards. `--` ends the options before the remote's name.
 pub fn push_cmd(branch: &str, remote: &str, remote_branch: &str, set_upstream: bool) -> Vec<String> {
     let mut cmd = args(&["push"]);
     if set_upstream {
         cmd.push("-u".into());
     }
-    cmd.push(remote.to_owned());
+    cmd.extend(["--".to_owned(), remote.to_owned()]);
     cmd.push(format!("refs/heads/{branch}:refs/heads/{remote_branch}"));
     cmd
 }

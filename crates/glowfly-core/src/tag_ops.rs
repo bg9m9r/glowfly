@@ -110,22 +110,22 @@ pub fn tag_cmd(name: &str, at: &str, message: &str) -> Vec<String> {
 }
 
 /// Replaces tag `name` with an annotated tag at commit `at` (a full sha):
-/// `git tag -a -f <name> <at> -m <message>`. Run through `gitcli`, so tag.gpgSign signs it and
+/// `git tag -a -f -m <message> -- <name> <at>`. Run through `gitcli`, so tag.gpgSign signs it and
 /// hooks apply; if building or signing the tag object fails, git leaves the old ref untouched.
 pub fn annotate_tag_cmd(name: &str, at: &str, message: &str) -> Vec<String> {
-    args(&["tag", "-a", "-f", name, at, "-m", message])
+    args(&["tag", "-a", "-f", "-m", message, "--", name, at])
 }
 
 /// Pushes tag `name` to `remote`. The full refspec keeps a branch with the same name from being
 /// pushed instead.
 pub fn push_tag_cmd(remote: &str, name: &str) -> Vec<String> {
-    args(&["push", remote, &format!("refs/tags/{name}:refs/tags/{name}")])
+    args(&["push", "--", remote, &format!("refs/tags/{name}:refs/tags/{name}")])
 }
 
 /// Deletes tag `name` from `remote`. The full ref makes sure a branch named like the tag is never
 /// deleted instead. It runs through `gitcli`, so credentials, hooks and config apply.
 pub fn delete_remote_tag_cmd(remote: &str, name: &str) -> Vec<String> {
-    args(&["push", remote, "--delete", &format!("refs/tags/{name}")])
+    args(&["push", "--delete", "--", remote, &format!("refs/tags/{name}")])
 }
 
 #[cfg(test)]

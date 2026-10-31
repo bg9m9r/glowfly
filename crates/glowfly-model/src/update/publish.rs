@@ -69,7 +69,7 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                     st.modal = None;
                 }
                 st.log(true, format!("Created {} ({}).", repo.full_name, repo.html_url));
-                let cmds = vec![args(&["remote", "add", "origin", &repo.clone_url]), args(&["push", "-u", "origin", &branch])];
+                let cmds = vec![args(&["remote", "add", "--", "origin", &repo.clone_url]), args(&["push", "-u", "--", "origin", &branch])];
                 // It runs in the published repository even if another tab is active now, as
                 // that repository's trust decision allows (update/trust.rs).
                 start_job(st, JobSpec { cwd: Some(workdir), ..JobSpec::new("Publish to GitHub".into(), cmds) }, fx);
