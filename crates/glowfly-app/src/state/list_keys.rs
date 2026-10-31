@@ -1,6 +1,7 @@
 //! The keys of a file list that has the keyboard focus (`ui/list_focus.rs` reads them, `update`
-//! acts on them) and where a move lands in the list's visible order. Shared by every list that
-//! takes the focus as a whole; no egui types.
+//! acts on them), which of them each list takes (`KeySet`), the lists that only move the open
+//! file (`FileList`), and where a move lands in the list's visible order. Shared by every list
+//! that takes the focus as a whole; no egui types.
 
 /// One key of a focused file list.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -17,6 +18,73 @@ pub enum ListKey {
     Delete,
     /// Left (`right: false`) or Right: go to the list on that side.
     Across { right: bool },
+}
+
+/// The keys a focused list takes besides its plain moves; the others are left for the bindings
+/// (Delete is Drop commit in the graph, so a list that discards nothing must not take it).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct KeySet {
+    /// The moves with Shift (`ListKey::Extend`).
+    pub extend: bool,
+    pub toggle: bool,
+    pub open: bool,
+    pub delete: bool,
+    /// Left and Right (`ListKey::Across`).
+    pub across: bool,
+}
+
+impl KeySet {
+    /// Every key: the Unstaged and Staged Files lists.
+    pub const ALL: KeySet = KeySet { extend: true, toggle: true, open: true, delete: true, across: true };
+    /// The plain moves alone: the lists that only open files (`FileList`).
+    pub const MOVES: KeySet = KeySet { extend: false, toggle: false, open: false, delete: false, across: false };
+
+    /// Whether the list takes `key`.
+    pub fn takes(self, key: ListKey) -> bool {
+        match key {
+            ListKey::Move(_) => true,
+            ListKey::Extend(_) => self.extend,
+            ListKey::Toggle => self.toggle,
+            ListKey::Open => self.open,
+            ListKey::Delete => self.delete,
+            ListKey::Across { .. } => self.across,
+        }
+    }
+}
+
+/// A file list whose keys only move the open file (`KeySet::MOVES`): Up/Down, Page Up/Page Down
+/// and Home/End open the file they land on, as a click on its row would.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum FileList {
+    /// The selected commit's changed files.
+    Commit,
+    /// The files that differ across a multi-selection (a pair, or one line of commits).
+    Compare,
+    /// A multi-selection's stacked list: each commit's own files.
+    Stacked,
+    /// A commit compared with the working directory.
+    Workdir,
+    /// The pull request's changed files.
+    PullRequest,
+    /// The folder history's files of the selected commit.
+    FolderHistory,
+    /// Conflicted Files, during an operation in progress.
+    Conflicted,
+    /// Resolved Files, during an operation in progress.
+    Resolved,
+}
+
+impl FileList {
+    pub const ALL: [FileList; 8] = [
+        FileList::Commit,
+        FileList::Compare,
+        FileList::Stacked,
+        FileList::Workdir,
+        FileList::PullRequest,
+        FileList::FolderHistory,
+        FileList::Conflicted,
+        FileList::Resolved,
+    ];
 }
 
 /// Where a move goes from the current file.
@@ -131,6 +199,17 @@ mod tests {
         assert_eq!(DOWN.target(2, at), None);
         assert_eq!(UP.target(3, Place::Hidden { before: 0 }), None);
         assert_eq!(ListMove::Page { down: true, rows: 2 }.target(5, at), Some(3));
+    }
+
+    #[test]
+    fn a_key_set_takes_moves_and_its_own_keys() {
+        let mv = ListKey::Move(DOWN);
+        assert!(KeySet::MOVES.takes(mv) && KeySet::ALL.takes(mv));
+        for k in [ListKey::Extend(DOWN), ListKey::Toggle, ListKey::Open, ListKey::Delete, ListKey::Across { right: true }] {
+            assert!(!KeySet::MOVES.takes(k) && KeySet::ALL.takes(k), "{k:?}");
+        }
+        let across = KeySet { across: true, ..KeySet::MOVES };
+        assert!(across.takes(ListKey::Across { right: false }) && !across.takes(ListKey::Delete));
     }
 
     #[test]

@@ -106,11 +106,12 @@ fn ids_are_stable() {
     assert_eq!(BindingId::from_key("New-Tab"), None);
     assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
     assert_eq!(
-        BindingId::ALL[BindingId::ALL.len() - 12..BindingId::ALL.len() - 8],
+        BindingId::ALL[BindingId::ALL.len() - 15..BindingId::ALL.len() - 11],
         [BindingId::SendPrText, BindingId::Quit, BindingId::PrefsSave, BindingId::PrefsRevert]
     );
     assert_eq!(BindingId::from_key("wip-other-list"), Some(BindingId::WipOtherList));
-    assert_eq!(BindingId::ALL.last(), Some(&BindingId::WipOtherList));
+    assert_eq!(BindingId::from_key("file-list-step-file"), Some(BindingId::FileStepFile));
+    assert_eq!(BindingId::ALL.last(), Some(&BindingId::FileEdgeFile));
     assert_eq!(BindingId::from_key("save-preferences-page"), Some(BindingId::PrefsSave));
 }
 
@@ -414,6 +415,18 @@ fn wip_list_keys_are_fixed_and_kept_apart() {
     }
     assert!(When::WipLists.overlaps(When::NotTyping) && When::NotTyping.overlaps(When::WipLists));
     assert!(When::WipLists.overlaps(When::Anywhere) && When::WipLists.overlaps(When::WipLists));
+}
+
+#[test]
+fn file_list_keys_are_fixed_and_kept_apart() {
+    for b in BINDINGS.iter().filter(|b| b.when == When::FileLists) {
+        assert!(!b.rebindable, "{:?}", b.id);
+    }
+    // Only one list has the focus, so these share their keys with the WIP lists'.
+    for other in [When::Graph, When::Diff, When::Lists, When::Blame, When::Message, When::RebasePanel, When::WipLists] {
+        assert!(!When::FileLists.overlaps(other) && !other.overlaps(When::FileLists), "{other:?}");
+    }
+    assert!(When::FileLists.overlaps(When::NotTyping) && When::FileLists.overlaps(When::Anywhere));
 }
 
 #[test]

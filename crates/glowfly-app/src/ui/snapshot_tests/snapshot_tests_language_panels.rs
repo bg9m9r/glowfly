@@ -122,7 +122,7 @@ fn details_commit_german() {
     h.run();
     let short = crate::ui::common::short(oid);
     for text in [Lang::De.trn("details.commit.changed_files", n, &[]), Lang::De.trf("details.commit.sha", &[("sha", &short)])] {
-        assert!(h.query_by_label(&text).is_some(), "{text} is shown");
+        assert!(h.query_all_by_label(&text).next().is_some(), "{text} is shown");
     }
     h.check_snapshot("details_commit_german");
     drop(h);
@@ -179,7 +179,7 @@ fn details_workdir_spanish() {
     let mut h = harness(st, true);
     h.run();
     let changes = Lang::Es.trf("details.workdir.changes", &[("sha", &short(oid))]);
-    assert!(h.query_by_label(&changes).is_some(), "{changes} is shown");
+    assert!(h.query_all_by_label(&changes).next().is_some(), "{changes} is shown");
     h.check_snapshot("details_workdir_spanish");
     drop(h);
     remove_fixture(&dir);

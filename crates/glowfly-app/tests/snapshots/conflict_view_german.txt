@@ -52,6 +52,7 @@ Label "Konflikte lösen"
 Label "noch 1"
 Button "Weitere Aktionen"
 Label "Dateien mit Konflikten (1)"
+Unknown "Dateien mit Konflikten (1)"
 Button "settings.txt" [on]
 Button "Als gelöst markieren"
 Button "Konflikte ansehen"

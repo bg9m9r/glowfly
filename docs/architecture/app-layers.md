@@ -86,7 +86,8 @@ source file, update its line here. Features that span every layer are in
 - `op_actions.rs`: the operation in progress: its banner commands.
 - `op_steps.rs`: the WIP panel's steps (which operation, each step's state, which are open and their words).
 - `file_tree.rs`: a changed-file list grouped in folders: the tree's rows in order (compacted folder chains, folders first), and its file order with which files collapsed folders hide.
-- `list_keys.rs`: the keys of a file list with the keyboard focus (`ListKey`) and where a step, page or edge move lands in its visible order (`ListMove::target`), for any list built on `ui/list_focus.rs`.
+- `list_keys.rs`: the keys of a file list with the keyboard focus (`ListKey`), which of them each list takes (`KeySet`), the lists that only open files (`FileList`) and where a step, page or edge move lands in its visible order (`ListMove::target`), for any list built on `ui/list_focus.rs`.
+- `file_lists.rs`: the lists that only open files as their keys see them: what each row opens (a diff, a conflict, a folder history file), in on-screen order, and the current row.
 - `wip_lists.rs`: the Unstaged and Staged Files lists as their keys see them: their files in on-screen order, the file the keys act on, the Shift-selected files (`WipSpan`) and the move-on after a stage (`MoveOn`).
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
@@ -121,6 +122,7 @@ source file, update its line here. Features that span every layer are in
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: opening the file a WIP list key lands on, moving on to the nearest file after the open one was staged or unstaged as a whole (key, button or menu, alone or with the selected files), asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
 - `wip_keys.rs`: the keys of a focused Unstaged or Staged Files list: moves, Shift selection, Space, Enter, Delete through the discard confirmation, and Left/Right to the other list keeping the place. Tests in `update/tests/wip_keys_tests.rs`.
+- `file_list_keys.rs`: the moves of a focused commit, comparison, pull request, folder history, Conflicted or Resolved Files list, opening the file they land on as its click would (never leaving unsaved conflict picks). Tests in `update/tests/file_list_keys_tests.rs`.
 - `branch_delete.rs`: opening the branch Delete dialog (counting first unless the checked-out branch contains the branch), taking in the count for the dialog that asked, and the delete job with its revision check.
 - `branch_push.rs`: Force push with lease of any branch with an upstream (refused when its upstream or that upstream's tip changed since the confirmation), the toolbar's Force push of the checked-out branch, and Push to all remotes as one job naming the remotes that failed.
 - `branch_sync.rs`: Rename with the remote as one job (rename, `push -u` of the new name, then the old name deleted under a lease) with a headline saying what is left when a step fails, and Delete remote branch with the tracking branches' upstreams unset after it.

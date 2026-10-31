@@ -56,6 +56,7 @@ Label "a39752f"
 Button "Swap direction"
 Button "Show as list"
 Label "3 changed files"
+Unknown "3 changed files"
 Button "docs/" [off]
 Label "1"
 Button "docs/intro.md" [off]

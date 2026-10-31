@@ -104,12 +104,15 @@ pub enum BindingId {
     WipOpenFile,
     WipDiscardFile,
     WipOtherList,
+    FileStepFile,
+    FilePageFile,
+    FileEdgeFile,
 }
 
 use BindingId as I;
 
 /// How many ids there are.
-const COUNT: usize = 102;
+const COUNT: usize = 105;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
 const KEYS: [(BindingId, &str); COUNT] = [
@@ -215,6 +218,9 @@ const KEYS: [(BindingId, &str); COUNT] = [
     (I::WipOpenFile, "wip-open-file"),
     (I::WipDiscardFile, "wip-discard-file"),
     (I::WipOtherList, "wip-other-list"),
+    (I::FileStepFile, "file-list-step-file"),
+    (I::FilePageFile, "file-list-page-file"),
+    (I::FileEdgeFile, "file-list-edge-file"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.

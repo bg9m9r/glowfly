@@ -47,6 +47,7 @@ Button "Copiar SHA"
 Label "Esc vuelve al commit"
 Label "Cambios de f0d635c al árbol de trabajo"
 Button "Invertir sentido"
+Unknown "Cambios de f0d635c al árbol de trabajo"
 Button "app.txt" [off]
 Button "login.txt" [off]
 Button "new.txt" [off]

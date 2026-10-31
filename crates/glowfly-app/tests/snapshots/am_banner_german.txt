@@ -53,6 +53,7 @@ Label "Konflikte lösen"
 Label "noch 1"
 Button "Weitere Aktionen"
 Label "Dateien mit Konflikten (1)"
+Unknown "Dateien mit Konflikten (1)"
 Button "src/login.rs" [off]
 Button "Als gelöst markieren"
 Button "Konflikte ansehen"

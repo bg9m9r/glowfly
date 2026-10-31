@@ -11,6 +11,7 @@ use crate::state::pull_request_checks::ChecksPane;
 use crate::state::{AppState, ForgeState, Status};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
+use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{CheckList, Provider, PullRequest, Reviewer, Target};
 use glowfly_core::repo::{self, LoadOptions, PrCompare};
@@ -98,7 +99,7 @@ fn pull_request_dark() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("pull_request_dark");
-    assert!(h.query_by_label("1 file changed").is_some());
+    assert!(h.query_by_role_and_label(Role::Label, "1 file changed").is_some());
     assert!(h.query_by_label("Files changed  1").is_some());
     assert!(h.query_by_label_contains("Fetch origin").is_none(), "nothing is out of sync");
     drop(h);

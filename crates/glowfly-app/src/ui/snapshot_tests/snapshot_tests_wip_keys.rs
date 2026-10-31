@@ -23,7 +23,7 @@ use glowfly_core::repo::{self, DiffTarget};
 use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
 
-type H = Harness<'static, (AppState, Vec<Msg>)>;
+pub(in crate::ui) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The working tree with line counts and app.txt's unstaged diff open. Unstaged Files: README.md,
 /// app.txt, login.txt, notes/todo.md; Staged Files: app.txt, search.txt.
@@ -37,7 +37,7 @@ fn with_open(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 
 /// Clicks the empty area of the row named `name` (the first, when both lists have one), then
 /// moves the pointer away so no hover shows.
-fn click_row(h: &mut H, name: &str) {
+pub(in crate::ui) fn click_row(h: &mut H, name: &str) {
     let b = h.get_all_by_role_and_label(Role::Button, name).find_map(|n| n.bounding_box()).expect("the row has bounds");
     // The middle: the row's end holds Stage or Unstage while the pointer is over it.
     click(h, pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32), PointerButton::Primary);

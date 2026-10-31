@@ -48,6 +48,12 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 
 - Topological next/previous (the next or previous commit on the selected commit's own branch
   line) and first/last row in the graph
+- Space in a focused Conflicted Files list marks the open file resolved (moving on to the next),
+  and in Resolved Files asks to mark it conflicted again
+- Left/Right between the Conflicted and Resolved Files lists, as between Unstaged and Staged
+- Enter in the commit, comparison and pull request file lists opens the list's current file
+  when another view covers it
+- Up/Down in a multi-selection's list of selected commits
 
 ### Rebind keyboard shortcuts
 

@@ -1,12 +1,14 @@
 //! A file list that takes the keyboard focus as a whole, as one Tab stop: its focus target
 //! (an id the list registers over its rows each frame), the keys it takes while it has the
-//! focus (`state::list_keys::ListKey`, read before any binding by the shortcuts), and its
+//! focus (`state::list_keys::ListKey`, read before any binding by the shortcuts; each list names
+//! the keys it takes beyond its moves, `KeySet`, and leaves the rest to the bindings), and its
 //! arrows kept from egui's own focus moves. egui reads the arrows for those moves at the start
 //! of a frame, before the list can lock them, so on the first frame after the list took the
 //! focus an arrow would also carry the focus away: the list takes it back on the next frame
-//! (`restore`). For the WIP lists (`wip_keys.rs`) and any other list built the same way.
+//! (`restore`). For the WIP lists (`wip_keys.rs`), the lists that only move the open file
+//! (`file_list_keys.rs`) and any other list built the same way.
 
-use crate::state::list_keys::{ListKey, ListMove};
+use crate::state::list_keys::{KeySet, ListKey, ListMove};
 use eframe::egui::{self, Event, EventFilter, Id, Key, Modifiers, WidgetInfo, WidgetType};
 
 /// The arrows are the list's; Tab and Esc still move and drop the focus.
@@ -53,26 +55,31 @@ pub(crate) fn restore(ctx: &egui::Context) {
 }
 
 /// Takes this frame's keys of the list `id` while it has the focus, in the order pressed: plain
-/// Up/Down, Page Up/Page Down and Home/End (repeats too), the same with Shift alone, and plain
-/// Space, Enter, Delete (or Mod+Backspace), Left and Right (not their repeats). Other keys and
-/// modifiers are left for the bindings and egui.
-pub(crate) fn take(ctx: &egui::Context, id: Id) -> Vec<ListKey> {
+/// Up/Down, Page Up/Page Down and Home/End (repeats too), and those of `keys`: the same with
+/// Shift alone, and plain Space, Enter, Delete (or Mod+Backspace), Left and Right (not their
+/// repeats). Other keys and modifiers are left for the bindings and egui (though egui never
+/// moves the focus off the list with an arrow).
+pub(crate) fn take(ctx: &egui::Context, id: Id, keys: KeySet) -> Vec<ListKey> {
     if !ctx.memory(|m| m.has_focus(id)) {
         return Vec::new();
     }
     let page = ctx.data(|d| d.get_temp::<usize>(id.with("page"))).unwrap_or(1);
     let pass = ctx.cumulative_pass_nr();
     let locked = ctx.data(|d| d.get_temp::<u64>(id.with("locked"))).is_some_and(|p| p + 1 == pass);
-    let mut keys = Vec::new();
+    let mut taken = Vec::new();
     let mut arrow = false;
     ctx.input_mut(|i| {
         i.events.retain(|e| {
             let Event::Key { key, pressed: true, repeat, modifiers, .. } = e else { return true };
             let Some(k) = key_of(*key, *modifiers, page) else { return true };
+            // Even an arrow the list leaves alone would carry the focus off before the lock.
             arrow |= matches!(key, Key::ArrowUp | Key::ArrowDown | Key::ArrowLeft | Key::ArrowRight);
+            if !keys.takes(k) {
+                return true;
+            }
             let once = matches!(k, ListKey::Toggle | ListKey::Open | ListKey::Delete | ListKey::Across { .. });
             if !(once && *repeat) {
-                keys.push(k);
+                taken.push(k);
             }
             false
         });
@@ -81,7 +88,7 @@ pub(crate) fn take(ctx: &egui::Context, id: Id) -> Vec<ListKey> {
         ctx.data_mut(|d| d.insert_temp(restore_id(), Some(id)));
         ctx.request_repaint();
     }
-    keys
+    taken
 }
 
 /// What `key` with `m` does in a focused list, if it is one of its keys.

@@ -63,6 +63,7 @@ Button "Parent 222c0ad"
 Button "Compare with working directory"
 Button "Show as tree"
 Label "1 changed file"
+Unknown "1 changed file"
 Button "paging.txt" [off]
 Button "Close panel"
 Button "Copy link"

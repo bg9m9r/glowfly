@@ -13,6 +13,7 @@ use crate::state::pull_request_source::HeadFetch;
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
+use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use git2::{Oid, Repository, Signature, Time};
 use glowfly_core::forge::CheckList;
@@ -134,7 +135,7 @@ fn pull_request_head_used_light() {
     let note = "origin/search isn't in this repository, so this shows the pull request's head commit";
     assert!(h.query_by_label_contains(note).is_some());
     assert!(h.query_by_label("Fetch origin").is_none(), "only a head-used note");
-    assert!(h.query_by_label("1 file changed").is_some());
+    assert!(h.query_by_role_and_label(Role::Label, "1 file changed").is_some());
     drop(h);
     remove_fixture(&dir);
 }

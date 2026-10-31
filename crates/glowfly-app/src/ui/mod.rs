@@ -55,6 +55,7 @@ mod empty_state;
 mod empty_state_icons;
 mod file_buttons;
 mod file_dialogs;
+pub(crate) mod file_list_keys;
 mod file_menu;
 mod file_status;
 mod file_view_switch;

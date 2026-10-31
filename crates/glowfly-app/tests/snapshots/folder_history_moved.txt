@@ -57,6 +57,7 @@ Label "Commit dfb0f51"
 Label "View on graph"
 Button "Copy SHA"
 Label "2 files changed in crates/text/"
+Unknown "2 files changed in crates/text/"
 Button "lexer.rs" [on]
 Label "R"
 Button "util.rs" [off]

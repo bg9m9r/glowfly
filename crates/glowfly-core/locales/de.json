@@ -368,6 +368,7 @@
   "conflict.files.conflicted.header": "Dateien mit Konflikten ({count})",
   "conflict.files.count.one": "{count} Konflikt",
   "conflict.files.count.other": "{count} Konflikte",
+  "conflict.files.keys_kept": "{path} hat nicht gespeicherte Auswahlen: Speichere oder verwirf sie, bevor du zu einer anderen Datei wechselst.",
   "conflict.files.mark_all_conflicted.button": "Alle als Konflikt markieren",
   "conflict.files.mark_all_conflicted.tip": "Holt die Konflikte jeder gelösten Datei zurück",
   "conflict.files.mark_all_resolved.button": "Alle als gelöst markieren",

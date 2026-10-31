@@ -368,6 +368,7 @@
   "conflict.files.conflicted.header": "Conflicted files ({count})",
   "conflict.files.count.one": "{count} conflict",
   "conflict.files.count.other": "{count} conflicts",
+  "conflict.files.keys_kept": "{path} has picks that aren't saved: save or reset them before moving to another file.",
   "conflict.files.mark_all_conflicted.button": "Mark all conflicted",
   "conflict.files.mark_all_conflicted.tip": "Bring the conflicts of every resolved file back",
   "conflict.files.mark_all_resolved.button": "Mark all resolved",

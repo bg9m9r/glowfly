@@ -53,6 +53,7 @@ Label "Resolve conflicts"
 Label "1 left"
 Button "Mark all resolved"
 Label "Conflicted files (1)"
+Unknown "Conflicted files (1)"
 Button "src/login.rs" [off]
 Button "Mark resolved"
 Button "View conflicts"

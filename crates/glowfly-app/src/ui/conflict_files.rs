@@ -1,16 +1,20 @@
 //! The WIP panel's Conflicted Files and Resolved Files lists, in step 1 of an operation in
 //! progress (`op_steps`): conflicted files with their marker counts and Mark resolved at the
 //! row's end (Mark all resolved in the header), and resolved files with Mark conflicted (one
-//! or all).
+//! or all). Each list takes the keyboard focus as a whole (`file_list_keys.rs`): its keys open
+//! the file they land on, and Mark resolved of the open file moves on to the next conflicted one.
 
 use super::common::menu_item;
+use super::details::file_reveal::reveal;
 use super::details_wip::{OpenFile, RowContext, wip_file_row};
+use super::file_list_keys;
 use super::file_menu;
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
 use crate::msg::{ConflictMsg, Msg, RepoMsg};
 use crate::state::AppState;
 use crate::state::conflict_files::{mark_conflicted_body, restorable_paths};
+use crate::state::list_keys::FileList;
 use crate::state::path_hazards::hazard_of;
 use crate::state::tool_compare::merging;
 use crate::ui::theme::type_scale;
@@ -82,12 +86,23 @@ fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, 
         msg: Msg::Conflict(ConflictMsg::MarkResolved(usable.clone())),
     };
     header(ui, t, t.trf("conflict.files.conflicted.header", &[("count", &rows.len())]), action, msgs);
+    let name = t.trf("conflict.files.conflicted.header", &[("count", &rows.len())]);
+    let current = open.conflict.and_then(|p| rows.iter().position(|f| f.path == p));
+    let focus = file_list_keys::target(ui, FileList::Conflicted, rows.len(), lists.height, &name);
+    let row_h = super::widgets::LIST_ROW_H;
     let area = egui::ScrollArea::vertical().id_salt("Conflicted files").max_height(lists.height).auto_shrink([false, true]);
-    area.show_rows(ui, super::widgets::LIST_ROW_H, rows.len(), |ui, range| {
-        for f in &rows[range] {
-            let _ = wip_file_row(ui, snap, f, false, open, ctx, st.session.conflict_files.count_note(t, &f.path), msgs);
+    let shown = area.show_rows(ui, row_h, rows.len(), |ui, range| {
+        // A key's landing is named by the file's working-tree target (`update/file_list_keys.rs`).
+        let index = |want: &DiffTarget| rows.iter().position(|f| *want == DiffTarget::Unstaged(f.path.clone()));
+        reveal(ui, "Conflicted files", st.view.file_reveal.as_ref(), index, &range, row_h);
+        for row in range {
+            let f = rows[row];
+            let ctx = RowContext { keyed: true, ..ctx };
+            let r = wip_file_row(ui, snap, f, false, open, ctx, st.session.conflict_files.count_note(t, &f.path), msgs);
+            focus.row(ui, &r, current == Some(row));
         }
     });
+    focus.rest(ui, &shown, current.is_some());
 }
 
 fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, open: &OpenFile, msgs: &mut Vec<Msg>) {
@@ -103,12 +118,21 @@ fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, op
         msg: Msg::confirm(title, mark_conflicted_body(t, &all), button, then),
     };
     header(ui, t, t.trf("conflict.files.resolved.header", &[("count", &rows.len())]), action, msgs);
+    let name = t.trf("conflict.files.resolved.header", &[("count", &rows.len())]);
+    let opens = |r: &ResolvedFile| matches!(open.diff, Some(DiffTarget::Staged(p)) if *p == r.entry.path);
+    let current = rows.iter().position(|r| opens(r));
+    let focus = file_list_keys::target(ui, FileList::Resolved, rows.len(), lists.height, &name);
+    let row_h = super::widgets::LIST_ROW_H;
     let area = egui::ScrollArea::vertical().id_salt("Resolved files").max_height(lists.height).auto_shrink([false, true]);
-    area.show_rows(ui, super::widgets::LIST_ROW_H, rows.len(), |ui, range| {
-        for r in &rows[range] {
-            resolved_row(ui, st, snap, r, open, msgs);
+    let shown = area.show_rows(ui, row_h, rows.len(), |ui, range| {
+        let index = |want: &DiffTarget| rows.iter().position(|r| *want == DiffTarget::Staged(r.entry.path.clone()));
+        reveal(ui, "Resolved files", st.view.file_reveal.as_ref(), index, &range, row_h);
+        for row in range {
+            let resp = resolved_row(ui, st, snap, rows[row], open, msgs);
+            focus.row(ui, &resp, current == Some(row));
         }
     });
+    focus.rest(ui, &shown, current.is_some());
 }
 
 /// Why Mark conflicted is off for `r`, or None.
@@ -125,7 +149,14 @@ fn blocked(st: &AppState, t: Lang, r: &ResolvedFile) -> Option<String> {
 
 /// A resolved file: a check, the path (opens its staged diff when it has one) and Mark
 /// conflicted, which asks first.
-fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedFile, open: &OpenFile, msgs: &mut Vec<Msg>) {
+fn resolved_row(
+    ui: &mut egui::Ui,
+    st: &AppState,
+    snap: &Snapshot,
+    r: &ResolvedFile,
+    open: &OpenFile,
+    msgs: &mut Vec<Msg>,
+) -> egui::Response {
     let (path, t) = (&r.entry.path, st.settings.lang());
     let why = blocked(st, t, r);
     let mark = t.tr("conflict.files.mark_conflicted.button");
@@ -149,7 +180,7 @@ fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedF
             msgs.push(confirm());
         }
     };
-    let row = super::widgets::file_row_with_end(ui, selected, path, end, |ui| {
+    let row = super::widgets::keyed_file_row_with_end(ui, selected, path, end, |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
         paint_icon(ui.painter(), rect.center(), Icon::Check, color::added());
         super::widgets::row_text(ui, egui::RichText::new(path).monospace(), selected);
@@ -159,11 +190,13 @@ fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedF
     if row.clicked() && staged {
         msgs.push(Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged(path.clone()))));
     }
-    row.row_menu(|ui| {
+    let keyboard = selected && file_list_keys::focused(ui.ctx()) == Some(FileList::Resolved);
+    row.row_menu_for(keyboard, |ui| {
         super::common::menu_item_if(msgs, ui, mark, why.as_deref(), confirm());
         menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(path.clone()));
         if r.entry.hazard.is_none() {
             file_menu::history_items(ui, t, msgs, path, None, None);
         }
     });
+    row
 }

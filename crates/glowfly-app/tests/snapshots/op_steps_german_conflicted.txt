@@ -52,12 +52,14 @@ Label "Konflikte lösen"
 Label "noch 2"
 Button "Weitere Aktionen"
 Label "Dateien mit Konflikten (2)"
+Unknown "Dateien mit Konflikten (2)"
 Button "alpha.txt" [off]
 Button "Als gelöst markieren"
 Button "beta.txt" [off]
 Button "Als gelöst markieren"
 Button "Weitere Aktionen"
 Label "Gelöste Dateien (1)"
+Unknown "Gelöste Dateien (1)"
 Button "gamma.txt" [off]
 Button "Konflikte ansehen"
 Button "Ausblenden: Prüfen, was hineinkommt"

@@ -18,6 +18,7 @@ use crate::msg::{Msg, SelectionMsg};
 use crate::state::AppState;
 use crate::state::file_folds::FileListId;
 use crate::state::lfs::TrackContext;
+use crate::state::list_keys::FileList;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
@@ -181,20 +182,23 @@ fn body_block(ui: &mut Ui, body: &str) {
 }
 
 /// The "N changed files" header with the List / Tree toggle and the total on its right, then
-/// the file rows (as a tree in Tree mode, its folds kept for every commit).
+/// the file rows (as a tree in Tree mode, its folds kept for every commit). The list takes the
+/// keyboard focus as a whole (`file_list_keys.rs`).
 fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
-    let open = st.session.diff.view.as_ref().map(|(target, _)| target);
+    // The file being opened is highlighted at once, so a click or a key answers immediately.
+    let open = crate::state::wip_lists::cursor(st);
     let n = d.files.len();
     let counts = st.session.reads.line_counts.commit(d.oid);
     let mode = st.settings.file_list_mode;
+    let heading = t.trn("details.commit.changed_files", n, &[]);
     super::details_wip::header::frame(ui, |ui| {
         mode_toggle(ui, t, mode, msgs);
         if let Some(c) = counts.filter(|c| c.complete) {
             super::line_counts::total(ui, c.total);
         }
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-            ui.label(type_scale::section_text(ui, t.trn("details.commit.changed_files", n, &[])));
+            ui.label(type_scale::section_text(ui, heading.clone()));
         });
     });
     let rows = ListRows::of(
@@ -208,32 +212,36 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
     let commands = crate::state::custom_commands::MenuCommands::for_state(st);
     let row_h = widgets::LIST_ROW_H;
-    ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, rows.len(), |ui, range| {
-        let index = |t: &DiffTarget| {
-            let i = d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()))?;
-            rows.row_of_file(i)
-        };
+    let index = |t: &DiffTarget| {
+        let i = d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()))?;
+        rows.row_of_file(i)
+    };
+    let current = open.and_then(index);
+    let focus = super::file_list_keys::target(ui, FileList::Commit, rows.len(), ui.available_height(), &heading);
+    let shown = ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, rows.len(), |ui, range| {
         file_reveal::reveal(ui, "commit-files", st.view.file_reveal.as_ref(), index, &range, row_h);
         for row in range {
-            let (i, depth) = match rows.get(row) {
-                Shown::File { index, depth } => (index, depth),
+            let r = match rows.get(row) {
+                Shown::File { index, depth } => {
+                    let f = &d.files[index];
+                    let patch_blocked = (d.parents.len() > 1).then(|| crate::state::selection::CommitBlock::PatchMerge.text(t));
+                    let src = RowSource::Commit(d.oid);
+                    let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
+                    let in_workdir = d.in_workdir(&f.path);
+                    let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, tools, patch_blocked, lines, commands: &commands };
+                    changed_file_row_at(ui, t, f, (DiffTarget::Commit(d.oid, f.path.clone()), open), actions, depth, msgs)
+                }
                 Shown::Folder(folder) => {
                     let menu = |ui: &mut Ui, msgs: &mut Vec<Msg>, path: &str| {
                         folder_menu::items(ui, t, msgs, path, Some(d.oid), FolderStage::None)
                     };
-                    folder_row(ui, folder, false, msgs, FileListId::Commit, menu);
-                    continue;
+                    folder_row(ui, folder, true, msgs, FileListId::Commit, menu)
                 }
             };
-            let f = &d.files[i];
-            let patch_blocked = (d.parents.len() > 1).then(|| crate::state::selection::CommitBlock::PatchMerge.text(t));
-            let src = RowSource::Commit(d.oid);
-            let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
-            let in_workdir = d.in_workdir(&f.path);
-            let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, tools, patch_blocked, lines, commands: &commands };
-            changed_file_row_at(ui, t, f, (DiffTarget::Commit(d.oid, f.path.clone()), open), actions, depth, msgs);
+            focus.row(ui, &r, current == Some(row));
         }
     });
+    focus.rest(ui, &shown, current.is_some());
 }
 
 #[cfg(test)]

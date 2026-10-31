@@ -77,7 +77,8 @@ pub(super) struct RowActions<'a> {
 /// A file changed by a commit (or between two), which opens `target`: its status chip, its path
 /// (cut first), its `+N −M` right after it, its marks, and the line-count bar at the right end.
 /// Its menu opens the file's history as seen from `actions.history_at`, and has the file
-/// actions.
+/// actions. Its list takes the keyboard focus as a whole (`file_list_keys.rs`), so the row is
+/// no Tab stop; it returns the row's response.
 pub(super) fn changed_file_row(
     ui: &mut egui::Ui,
     t: Lang,
@@ -86,8 +87,8 @@ pub(super) fn changed_file_row(
     open: Option<&DiffTarget>,
     actions: RowActions<'_>,
     msgs: &mut Vec<Msg>,
-) {
-    changed_file_row_at(ui, t, f, (target, open), actions, None, msgs);
+) -> egui::Response {
+    changed_file_row_at(ui, t, f, (target, open), actions, None, msgs)
 }
 
 /// `changed_file_row` at `depth` in a list shown as a tree (None: a flat list): indented, and
@@ -100,7 +101,7 @@ pub(super) fn changed_file_row_at(
     actions: RowActions<'_>,
     depth: Option<usize>,
     msgs: &mut Vec<Msg>,
-) {
+) -> egui::Response {
     let selected = open == Some(&target);
     let lines = actions.lines;
     let row = |ui: &mut egui::Ui| {
@@ -116,14 +117,18 @@ pub(super) fn changed_file_row_at(
         super::lfs_badge::badge(ui, f);
     };
     let r = match lines {
-        Some((n, largest)) => widgets::file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::bar_end(ui, n, largest), row),
-        None => widgets::file_row(ui, selected, &f.path, row),
+        Some((n, largest)) => {
+            widgets::keyed_file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::bar_end(ui, n, largest), row)
+        }
+        None => widgets::keyed_file_row(ui, selected, &f.path, row),
     }
     .response;
     if r.clicked() {
         msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
     }
-    r.row_menu(|ui| {
+    // Shift+F10 opens the open file's menu while its list has the keyboard.
+    let keyboard = selected && super::file_list_keys::focused(ui.ctx()).is_some();
+    r.row_menu_for(keyboard, |ui| {
         // Blame needs the file at `history_at`: a commit compared with the working tree
         // lacks the files added since; another commit lacks the ones it deleted.
         let a = actions;
@@ -137,4 +142,5 @@ pub(super) fn changed_file_row_at(
         let items = if a.in_workdir { track_items(t, &f.path, a.lfs) } else { Vec::new() };
         file_menu::commit_file_items(ui, t, msgs, a.src, f, a.in_workdir, &items, a.tools, a.patch_blocked, a.commands);
     });
+    r
 }

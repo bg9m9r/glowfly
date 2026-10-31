@@ -54,6 +54,7 @@ Button "Elternteil 7e24110"
 Button "Mit Arbeitsverzeichnis vergleichen"
 Button "Als Baum anzeigen"
 Label "1 geänderte Datei"
+Unknown "1 geänderte Datei"
 Button "login.txt" [off]
 Button "Resize branch / tag column"
 Button "Resize commit column"
