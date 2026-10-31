@@ -355,7 +355,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     } else {
         super::conflict::status_changed(st, now, fx);
     }
-    super::forge::resolve_pr_heads(st);
+    super::pr_heads::resolve_pr_heads(st);
     if kind == LoadKind::Refresh {
         super::pull_request::refreshed(st, fx);
         super::journal::refreshed(st, fx);

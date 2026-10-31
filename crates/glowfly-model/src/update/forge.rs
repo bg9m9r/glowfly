@@ -6,7 +6,6 @@ use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
 use crate::state::error_words::{hosting, hosting_log};
 use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, ProjectKeys, Status, pr_repos, tracker_target};
-use git2::Oid;
 use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, Account, Connection, Target};
 use glowfly_core::repo::Snapshot;
@@ -166,22 +165,6 @@ pub(super) fn want_issues(st: &mut AppState, keys: Vec<String>, fx: &mut Vec<Eff
     request(st, tracker, false, ForgeCall::Issues(missing), fx);
 }
 
-/// Maps each pull request's head SHA (or SHA prefix) to a commit in the graph.
-pub(super) fn resolve_pr_heads(st: &mut AppState) {
-    let (Some(fs), Some(snap)) = (st.session.forge.as_mut(), st.snap.as_ref()) else { return };
-    fs.pr_heads.clear();
-    for pr in &fs.prs {
-        let Some(head) = pr.head.as_deref() else { continue };
-        let oid = Oid::from_str(head)
-            .ok()
-            .filter(|o| head.len() == 40 && snap.row_of.contains_key(o))
-            .or_else(|| snap.commits.iter().find(|c| pr.head_matches(&c.oid.to_string())).map(|c| c.oid));
-        if let Some(o) = oid {
-            fs.pr_heads.insert(pr.id, o);
-        }
-    }
-}
-
 fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effect>) {
     let mut logs: Vec<(bool, String)> = Vec::new();
     let mut prs_changed = false;
@@ -305,7 +288,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
         st.log(ok, text);
     }
     if prs_changed {
-        resolve_pr_heads(st);
+        super::pr_heads::resolve_pr_heads(st);
         super::build_status::seed_from_prs(st, now);
         super::pull_request::prs_changed(st, fx);
         super::dashboard::prs_arrived(st, now, fx);

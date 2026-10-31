@@ -91,6 +91,7 @@ pub mod pick;
 mod pick_done;
 mod pr_checkout;
 mod pr_details;
+mod pr_heads;
 mod pr_repo_pick;
 pub mod prefs;
 mod prefs_leave;
