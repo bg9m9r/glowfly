@@ -174,8 +174,10 @@ lists every request and what it sends.
 
 ## Architecture
 
-Two crates: `glowfly-core` (git, hosting services, settings; no UI) and `glowfly-app` (the egui
-app, built as an Elm-style message/update loop with background effects).
+An Elm-style message/update loop with background effects, in six crates: `glowfly-core` (git,
+hosting services, settings; no UI), `glowfly-model` (the app's state, messages, effects and
+`update`), `glowfly-runner` (runs the effects), `glowfly-ui` (the egui views), `glowfly-flows`
+(end-to-end tests) and `glowfly-app` (the binary that ties them together).
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the layout and the rules that keep it
 tidy.
 

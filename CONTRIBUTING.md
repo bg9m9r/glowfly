@@ -60,9 +60,9 @@ With that driver git reports no conflict, so run the snapshot tests after the me
 A few other commands regenerate checked-in files or help with debugging:
 
 ```
-UPDATE_ICONS=1 cargo test -p glowfly --test packaging app_icon      # redraw assets/icon/ after changing tests/packaging/app_icon/draw.rs
-UPDATE_NOTICES=1 cargo test -p glowfly-core notice        # regenerate THIRD-PARTY-NOTICES.md after a dependency change
-RUST_LOG=glowfly=debug cargo run -- <repo path>           # log background work as it runs
+UPDATE_ICONS=1 cargo test -p glowfly --test packaging app_icon   # redraw assets/icon/ after changing tests/packaging/app_icon/draw.rs
+UPDATE_NOTICES=1 cargo test -p glowfly-core notice                # regenerate THIRD-PARTY-NOTICES.md after a dependency change
+RUST_LOG=glowfly=debug cargo run -- <repo path>                   # log background work as it runs
 GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture   # read-only check against a real host
 ```
 
@@ -71,15 +71,19 @@ GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture   # re
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before structural changes; what each file holds
 is listed per area in [docs/architecture/](docs/architecture/). The short version:
 
+- The code is six crates (`crates/`): `glowfly-core`, `glowfly-model` (state, messages, effects,
+  `update`), `glowfly-runner` (runs effects), `glowfly-ui` (the egui views), `glowfly-flows`
+  (end-to-end `update` tests) and `glowfly-app` (the binary). Only glowfly-ui and the app use egui,
+  and the views never depend on the runner (`tests/source_checks/dependencies.rs` checks).
 - Git, CLI and network code lives in `glowfly-core`, which must not depend on egui.
 - New behaviour is a `Msg` handled in `update/<area>.rs`. Anything slow returns an `Effect` that
-  the runner (`runner/mod.rs`) executes in the background, reporting back with a result `Msg`.
+  the runner (glowfly-runner) executes in the background, reporting back with a result `Msg`.
   Test it with a headless `update` test. The architecture document has a step-by-step recipe.
 - Views in `ui/` only draw and push `Msg`s. Views, `update/` and `state/` do no I/O
   (`tests/source_checks/layering.rs` checks this).
 - Each area's messages are an enum in `msg/<area>.rs`, its effects in `effect/<area>.rs` (run by
   `runner/<area>.rs`), and its `update` tests in `update/tests/<area>_tests.rs` (in
-  `flows/<area>_tests.rs` when they run effects through the runner).
+  glowfly-flows' `flows/<area>_tests.rs` when they run effects through the runner).
 - Keep files under about 400 lines; split by responsibility. When you add, move or remove a
   source file, update its line in the matching `docs/architecture/<area>.md`.
 - Operations that should honour the user's git config, hooks or credentials go through the git
@@ -96,8 +100,9 @@ Tests come in three kinds: core logic runs against small fixture repositories (s
 `scratch_repo` helper), behaviour is tested headlessly through `update`, and views use
 `egui_kittest` snapshots. `tests/source_checks/hygiene.rs` keeps some of these rules from slipping: a new file
 over 400 lines, a source file without a `//!` doc comment, English text in a log line or toast in
-`update/` or `state/` (use the translations, `t.tr`), or a copied test fixture helper fails it.
-Its allowlists only ever shrink.
+`update/` or `state/` (use the translations, `t.tr`), or a copied test fixture helper fails it,
+and `tests/source_checks/dead_pub.rs` fails a public item in the model, runner or views that no
+other file names. Their allowlists only ever shrink.
 
 ## Original work only
 

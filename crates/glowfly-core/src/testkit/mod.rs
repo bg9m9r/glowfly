@@ -1,4 +1,4 @@
-//! The test kit both crates' tests share (the app turns it on with the `testkit` feature): one
+//! The test kit every crate's tests share (their dev-dependencies turn on the `testkit` feature): one
 //! `git` for building fixture repositories, plus config and file helpers.
 //!
 //! Starting a git process costs tens to hundreds of milliseconds on Windows, and the suites make

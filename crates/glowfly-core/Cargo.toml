@@ -14,7 +14,7 @@ workspace = true
 doctest = false
 
 [features]
-# The fixture helpers in src/testkit/ for the app's tests (its dev-dependency turns this on).
+# The fixture helpers in src/testkit/ for the other crates' tests (their dev-dependencies turn this on).
 testkit = []
 # The checks the fuzz targets in fuzz/ run (src/fuzzing/), and the crate-private parsers they
 # reach. Only the fuzz crate turns this on.
