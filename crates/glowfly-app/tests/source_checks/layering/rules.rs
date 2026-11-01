@@ -1,8 +1,10 @@
-//! The rules `layering.rs` checks: the source folders that must stay pure, the families of
-//! outside work they may not reach, the core functions that do I/O and the justified exceptions.
+//! The rules `layering.rs` checks: the crates that must stay pure, the families of outside work
+//! they may not reach, the functions of core's I/O modules that are pure anyway and the justified
+//! exceptions.
 
-/// The source folders that must do no I/O, under `crates/`.
-pub const DIRS: &[&str] = &["glowfly-ui/src", "glowfly-model/src/update", "glowfly-model/src/state"];
+/// The crates that must do no I/O, under `crates/`, each with the files under its `src/` that
+/// are skipped: the model's `testing.rs`, the fixture helpers other crates' tests use.
+pub const CHECKED: &[(&str, &[&str])] = &[("glowfly-ui", &[]), ("glowfly-model", &["testing.rs"])];
 
 const FILES: &str = "the file system";
 const CLOCK: &str = "the clock (update gets `now`; views read `st.view.now`)";
@@ -61,124 +63,31 @@ pub const DENIED: &[(&str, &str)] = &[
     ("platform::native_menu", "the OS menu bar (only the shell talks to it)"),
     ("platform::primary_selection", "the PRIMARY selection (only the shell talks to it)"),
     ("windows::Win32", "the OS (Win32 calls belong in platform/)"),
+    ("ActivityFile::open", "core I/O"),
+    ("FolderId::of", "core I/O"),
+    ("CommonDir::at", "core I/O"),
 ];
+
+/// Text a `DENIED` pattern may start without reaching anything: compile-time constants.
+pub const NOT_DENIED: &[&str] = &["std::env::consts", "env::consts"];
 
 /// `git2::` items that are plain data and may be used anywhere.
 pub const GIT2_TYPES: &[&str] = &["Oid", "RepositoryState"];
 
-/// Core functions that touch the repository, network, credential store or other processes.
-pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
-    (
-        "repo",
-        &[
-            "load",
-            "status_at",
-            "messages_between",
-            "commit_stats",
-            "commit_detail",
-            "commit_line_counts",
-            "wip_line_counts",
-            "compare",
-            "load_diff",
-            "load_diff_with",
-            "load_diff_for_view",
-            "load_listed_diff",
-            "binary_sides",
-            "apply_hunk",
-            "apply_lines",
-            "stage_file",
-            "stage_all",
-            "unstage_paths",
-            "discard_file",
-            "discard_untracked",
-            "load_conflict",
-            "file_history",
-            "file_at",
-            "file_at_with",
-            "file_bytes_at",
-            "write_resolution",
-            "resolve_with_side",
-            "restore_file",
-            "create_file",
-            "rename_file",
-            "delete_file",
-            "delete_staged_new_file",
-            "unstage_gone_new_file",
-            "os_trash",
-            "submodules_at",
-            "worktrees_at",
-            "line_maps",
-            "pr_line_maps",
-        ],
-    ),
-    ("gitcli", &["run", "run_with_input", "version", "observe_runs"]),
-    ("dashboard", &["read_repo", "fetch_target", "run_bounded"]),
-    ("git_program", &["set", "probe", "discover", "precheck"]),
-    ("logs", &["read_tail", "bundle_text", "write_bundle"]),
-    ("i18n", &["detect_system_language"]),
-    ("persist", &["append", "open_append"]),
-    ("ActivityFile", &["open"]),
-    ("settings", &["log_dir", "downloads_dir"]),
-    ("app_update", &["download", "install_kind", "appimage_file", "current_platform"]),
-    ("conflict_check", &["predict"]),
-    ("stash_ops", &["changed_paths"]),
-    (
-        "forge",
-        &[
-            "verify",
-            "pull_requests",
-            "default_branch",
-            "create_pull_request",
-            "my_issues",
-            "issues",
-            "resolve_auth",
-            "save_token",
-            "delete_token",
-            "from_credential_manager",
-            "forget_credential_manager",
-            "service",
-            "repo_owners",
-            "create_repo",
-            "list_forks",
-            "find_my_fork",
-            "create_fork",
-            "latest_release",
-            "fetch_public",
-        ],
-    ),
-    ("avatars", &["fetch"]),
-    ("signature_check", &["verify_commit", "signature_format"]),
-    ("signing", &["list_gpg_keys", "list_ssh_keys", "generate_gpg_key", "export_public_key"]),
-    ("ssh_keys", &["find_keygen", "fingerprint", "list_key_pairs", "list", "generate"]),
-    ("undo", &["before", "after", "plan", "redone", "discard_saving", "restore_saving", "write_saved"]),
-    ("rebase", &["plan", "start", "stopped_at", "install_todo", "resume", "progress", "prepare_edit"]),
-    ("askpass", &["start", "start_with", "ask", "ask_from_env", "ask_gpg", "ask_gpg_from_env"]),
-    ("gpg_prompt", &["run_wrapper"]),
-    ("program", &["user_program"]),
-    ("real", &["passthrough"]),
-    ("server", &["start", "start_with"]),
-    ("pty", &["spawn"]),
-    ("shell", &["resolve"]),
-    ("lfs", &["status", "installed", "hook_state"]),
-    ("gitflow", &["read_config"]),
-    ("worktree_ops", &["check_folder", "remove", "dirty_count"]),
-    ("paths", &["resolve", "temp_dir", "same_folder"]),
-    ("FolderId", &["of"]),
-    ("CommonDir", &["at"]),
-    (
-        "platform",
-        &[
-            "load_recent",
-            "save_recent",
-            "check_folders",
-            "load_tabs",
-            "save_tabs",
-            "open_terminal",
-            "open_in_file_manager",
-            "reveal_in_file_manager",
-        ],
-    ),
+/// `git2::` associated functions that only check or build plain values, no repository.
+pub const GIT2_PURE_CALLS: &[&str] = &[
+    "Reference::is_valid_name",
+    "Remote::is_valid_name",
+    "Branch::name_is_valid",
+    "Config::parse_bool",
+    "Signature::new",
+    "Time::new",
+    "Error::new",
 ];
+
+/// Functions of core modules that do I/O (`core_io.rs`) which are pure themselves, as their path
+/// under core. Every other function of such a module counts as I/O.
+pub const PURE_FUNCTIONS: &[&str] = &[];
 
 /// Justified exceptions, as (file under `crates/`, pattern as reported, reason).
 pub const ALLOWED: &[(&str, &str, &str)] = &[
@@ -191,5 +100,25 @@ pub const ALLOWED: &[(&str, &str, &str)] = &[
         "glowfly-model/src/state/app_queries.rs",
         "std::env",
         "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read",
+    ),
+    (
+        "glowfly-model/src/state/trust.rs",
+        "trust::scan_at",
+        "`record_as_found` is a test-support helper (`cfg(any(test, feature = \"test-support\"))`), built only for tests",
+    ),
+    (
+        "glowfly-ui/src/prefs/language.rs",
+        "dates::system_date_locale",
+        "names the system date locale in the picker: an environment read, no disk; found when the core rule was derived (#365)",
+    ),
+    (
+        "glowfly-ui/src/prefs/language.rs",
+        "dates::format",
+        "previews a date pattern, in the system locale when that is chosen (an environment read); found in #365",
+    ),
+    (
+        "glowfly-ui/src/repo_menu_list.rs",
+        "native_path::name_and_parent",
+        "shows the home folder as `~`, read from HOME (an environment read, no disk); found in #365",
     ),
 ];

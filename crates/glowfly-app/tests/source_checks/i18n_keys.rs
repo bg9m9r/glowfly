@@ -10,50 +10,11 @@ use crate::views;
 
 use glowfly_core::i18n::Lang;
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    for entry in std::fs::read_dir(dir).unwrap().flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            rust_files(&path, out);
-        } else if path.extension().is_some_and(|e| e == "rs") {
-            out.push(path);
-        }
-    }
-}
-
-fn is_test_file(path: &Path) -> bool {
-    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-    stem == "tests" || stem.ends_with("_tests") || stem.starts_with("snapshot_tests")
-}
-
-/// The source without comment lines and without inline `#[cfg(test)] mod … { … }` blocks.
+/// The source without comments and without inline `#[cfg(test)] mod … { … }` blocks.
 fn code(src: &str) -> String {
-    let lines: Vec<&str> = src.lines().collect();
-    let mut out = String::new();
-    let mut i = 0;
-    while i < lines.len() {
-        let next = lines.get(i + 1).map(|l| l.trim()).unwrap_or("");
-        if lines[i].trim() == "#[cfg(test)]" && next.starts_with("mod ") && next.ends_with('{') {
-            i += 1;
-            let mut depth = 0i64;
-            while i < lines.len() {
-                depth += lines[i].matches('{').count() as i64 - lines[i].matches('}').count() as i64;
-                i += 1;
-                if depth <= 0 {
-                    break;
-                }
-            }
-            continue;
-        }
-        if !lines[i].trim_start().starts_with("//") {
-            out.push_str(lines[i]);
-            out.push('\n');
-        }
-        i += 1;
-    }
-    out
+    views::code_lines(src).join("\n")
 }
 
 /// The literal keys `code` passes to `.<call>(`: (key, plural).
@@ -70,20 +31,24 @@ fn keys_in(code: &str) -> Vec<(String, bool)> {
     out
 }
 
+/// Every crate's non-test sources, as (path, code).
 fn sources() -> Vec<(String, String)> {
-    // Read at run time: a binary built in another worktree (shared target dir) keeps that
-    // worktree's compile-time path.
-    let app = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into()));
-    let crates = app.parent().expect("the app crate sits in crates/");
-    let mut files = Vec::new();
-    // Every crate's sources.
-    for entry in std::fs::read_dir(crates).expect("the crates folder").flatten() {
-        if entry.path().join("src").is_dir() {
-            rust_files(&entry.path().join("src"), &mut files);
+    let crates = views::app_src().parent().and_then(|app| app.parent()).map(PathBuf::from).expect("the crates folder");
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(&crates).expect("the crates folder").flatten() {
+        let src = entry.path().join("src");
+        if src.is_dir() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            out.extend(
+                views::crate_sources(&src)
+                    .into_iter()
+                    .filter(|s| !s.2)
+                    .map(|(rel, text, _)| (format!("crates/{name}/src/{rel}"), code(&text))),
+            );
         }
     }
-    assert!(files.len() > 100, "found the sources");
-    files.into_iter().filter(|f| !is_test_file(f)).map(|f| (f.display().to_string(), code(&std::fs::read_to_string(&f).unwrap()))).collect()
+    assert!(out.len() > 100, "found the sources");
+    out
 }
 
 #[test]

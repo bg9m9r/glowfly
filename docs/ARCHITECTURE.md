@@ -93,9 +93,10 @@ source file, update its line in the matching file.
 ## Rules
 
 1. `glowfly-core` must not depend on `eframe`/`egui`.
-2. `ui/`, `update/` and `state/` do no I/O. `tests/source_checks/layering.rs` denies whole families (the file
-   system, processes, network, threads, environment, clock, libgit2 access) and the core
-   functions that do I/O, and names the file and line of each use. The shell (`src/shell/`), which
+2. `ui/` and the model (`update/`, `state/`, `msg/`, `effect/` and the rest) do no I/O.
+   `tests/source_checks/layering.rs` denies whole families (the file system, processes, network,
+   threads, environment, clock, libgit2 access) and the core functions that do I/O, worked out
+   from core's own sources, and names the file and line of each use. The shell (`src/shell/`), which
    owns the window, the clock and the startup loads, is outside them; the few justified exceptions
    are listed in its `ALLOWED` table (`tests/source_checks/layering/rules.rs`) with a reason.
 3. New behavior gets an `update` test; new git or API logic gets a `glowfly-core` test. A flow that
