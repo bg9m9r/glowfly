@@ -19,8 +19,8 @@ use crate::ui::common::{menu_item, short};
 use crate::ui::menu_anchor;
 use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::BORDER_W;
+use crate::ui::theme::sizes::{self, ControlSize};
+use crate::ui::theme::tokens::{BORDER_W, radius};
 use crate::ui::theme::type_scale::{self, BODY, CAPTION};
 use crate::ui::widgets;
 use crate::ui::widgets::menu::{self, separator};
@@ -41,9 +41,10 @@ const BRANCH_MIN: f32 = 40.0;
 /// (`toolbar_fold.rs`): about a repository of 64 px and a branch of 96, so a 1400 px window
 /// with a hosting service still shows every group in English.
 const COMFORT_NAMES: f32 = 64.0 + 96.0;
-/// A part's side padding, and the height of its caption and name, centred in its segment.
+/// A part's side padding, and the room between its caption and its name (the two centred as one
+/// block in the segment).
 const PAD_X: f32 = 10.0;
-const PART_H: f32 = 40.0;
+const CAPTION_GAP: f32 = 2.0;
 /// The size whose focus style the segments take (their corners are the frame's).
 const PICKER_SIZE: ControlSize = ControlSize::Large;
 /// The caret's room after a name, and the branch icon's before it.
@@ -116,7 +117,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         segs.push(Seg { w: part_w(branch_w, true), enabled: true });
     }
     let style = BarStyle::Framed { fill: color::tool_backing() };
-    let bar = segment_bar(ui, PICKER_SIZE, widgets::GROUP_H, widgets::GROUP_RADIUS, style, &segs);
+    let bar = segment_bar(ui, PICKER_SIZE, widgets::TOOL_H, radius::LG, style, &segs);
     let menu_id = Id::new(MENU_ID);
     let mut open =
         vec![menu_anchor::menu_below(ui, menu_id, &bar.responses[0], menu_anchor::MenuCmd::None, |ui| repo_menu(ui, t, st, msgs))];
@@ -170,9 +171,10 @@ fn part(ui: &egui::Ui, r: Response, caption: &str, (name, dot): (Arc<Galley>, Op
     let caption = cut_galley(ui.ctx(), cut_job(caption.to_owned(), type_scale::font(CAPTION), color::weak()), rect.width() - 2.0 * PAD_X);
     let p = ui.painter();
     let x = rect.left() + PAD_X;
-    let top = rect.center().y - PART_H / 2.0;
-    p.galley(pos2(x, top + 12.0 - caption.size().y / 2.0), caption, color::weak());
-    let row_y = top + 27.0;
+    let cap_h = caption.size().y;
+    let top = sizes::centred_top(rect, cap_h + CAPTION_GAP + name.size().y);
+    p.galley(pos2(x, top), caption, color::weak());
+    let row_y = top + cap_h + CAPTION_GAP + name.size().y / 2.0;
     match dot {
         Some(Some(c)) => {
             p.circle_filled(pos2(x + 7.0, row_y), 4.0, c);

@@ -15,7 +15,7 @@ source file, update its line here.
 - Buttons have one disabled look: a neutral fill and weak text, never an outline or egui's fade, and a `why` shown on hover.
 - `button_look.rs`: each button kind's colours per state, and `paint_target`, where a toolbar target's state becomes pixels: the quiet layer over its own shape, a single framed control's border going weak while lit, and its focus ring on the same corners.
 - `button_split.rs`: the split button (an action and its menu caret as one pill).
-- `widgets/tool.rs`: the toolbar's buttons, toggles and split buttons, each lighting its whole slot; `widgets::tool_group` a borderless group and `tool_gap` the divider between groups.
+- `widgets/tool.rs`: the toolbar's buttons, toggles and split buttons, each lighting its whole slot; `widgets::tool_group` a borderless group and `tool_gap` the divider between groups, `split_gap` the room after a split's caret.
 - `widgets/segment_bar.rs`: flush segments in one shape (the toolbar pickers' framed bar, a split button's quiet one), each its own target, with full-height dividers in a framed bar; tests in `segment_bar_tests.rs`.
 - `widgets/ghost.rs`: ghost buttons (at a `ControlSize`) and dividers, shared by the diff's file header, the terminal panel's header and the graph's New branch… button.
 - `widgets/segmented.rs`: a segmented control at a `ControlSize` whose segments can be disabled with a reason on hover.

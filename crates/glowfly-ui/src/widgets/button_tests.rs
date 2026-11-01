@@ -102,8 +102,7 @@ fn sizes_meet_the_minimums() {
         let r = ui.add(secondary("Stage hunk").height(17.0).min_width(120.0));
         assert_eq!(r.rect.height(), 17.0, "an exact height");
         assert_eq!(r.rect.width(), 120.0, "the least width still applies");
-        let quiet_w = quiet("Fetch").desired_width(ui) - 2.0 * 8.0;
-        assert_eq!(secondary("Fetch").desired_width(ui) - 2.0 * 12.0, quiet_w, "framed 12 px beside the text, quiet 8");
+        assert_eq!(quiet("Fetch").desired_width(ui), secondary("Fetch").desired_width(ui), "quiet and framed: 12 px beside the text");
         let small_quiet = quiet("Fetch").size(ControlSize::Compact);
         assert_eq!(small_quiet.desired_width(ui) - small_quiet.galley(ui).size().x, 16.0, "Compact quiet: 8 px each side");
         let r = ui.add(quiet("Fetch").size(ControlSize::Compact));
@@ -124,7 +123,7 @@ fn icon_only_is_square_and_named() {
         assert_eq!(icon_only(Icon::Refresh, "Refresh").desired_width(ui), HEIGHT);
         let r = ui.add(icon_only(Icon::Close, "Close").size(ControlSize::Small));
         assert_eq!(r.rect.size(), vec2(SMALL_HEIGHT, SMALL_HEIGHT));
-        assert_eq!(icon_only(Icon::Close, "Close").size(ControlSize::Small).icon_size(), icon::SIZE_SM, "the size's icon");
+        assert_eq!(icon_only(Icon::Close, "Close").size(ControlSize::Small).icon_size(), icon::SIZE_MD, "the size's icon");
     });
     h.run();
     h.get_by_label("Refresh").hover();

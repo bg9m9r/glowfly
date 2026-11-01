@@ -10,10 +10,13 @@ fn the_control_sizes_follow_the_table() {
         (m.h, m.pad_x, m.quiet_pad_x, m.text, m.icon, m.icon_gap, m.radius, m.hit)
     };
     assert_eq!(row(ControlSize::Compact), (22.0, 0.0, 8.0, SMALL, 14.0, 4.0, radius::MD, 28.0));
-    assert_eq!(row(ControlSize::Small), (24.0, 10.0, 8.0, SMALL, 14.0, 4.0, radius::MD, 28.0));
-    assert_eq!(row(ControlSize::Regular), (28.0, 12.0, 8.0, BODY, 16.0, 6.0, radius::MD, 28.0));
-    assert_eq!(row(ControlSize::Large), (36.0, 16.0, 12.0, BODY, 16.0, 8.0, radius::LG, 36.0));
+    assert_eq!(row(ControlSize::Small), (24.0, 10.0, 10.0, SMALL, 16.0, 6.0, radius::MD, 28.0));
+    assert_eq!(row(ControlSize::Regular), (28.0, 12.0, 12.0, BODY, 16.0, 6.0, radius::MD, 28.0));
+    assert_eq!(row(ControlSize::Large), (36.0, 16.0, 16.0, BODY, 16.0, 8.0, radius::LG, 36.0));
     assert_eq!(ControlSize::default(), ControlSize::Regular);
+    for s in [ControlSize::Small, ControlSize::Regular, ControlSize::Large] {
+        assert_eq!(s.metrics().quiet_pad_x, s.metrics().pad_x, "{s:?}: quiet padding matches its framed sibling's");
+    }
     assert!(!ControlSize::Compact.allows_frame());
     assert!(ControlSize::Small.allows_frame() && ControlSize::Large.allows_frame());
 }

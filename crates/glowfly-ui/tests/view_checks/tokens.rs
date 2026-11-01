@@ -241,15 +241,7 @@ fn views_take_their_sizes_from_the_size_tokens() {
     for (rel, text) in &view_sources() {
         found.extend(size_violations(rel, text).into_iter().map(|v| format!("{rel}:{v}")));
     }
-    eprintln!(
-        "size check (log only): {} hand-set sizes, allowlist {SIZE_LITERALS}
-{}",
-        found.len(),
-        found.join(
-            "
-"
-        )
-    );
+    eprintln!("size check (log only): {} hand-set sizes, allowlist {SIZE_LITERALS}\n{}", found.len(), found.join("\n"));
     if found.len() != SIZE_LITERALS {
         eprintln!("size check: the count moved from {SIZE_LITERALS} to {}; lower SIZE_LITERALS when it falls", found.len());
     }

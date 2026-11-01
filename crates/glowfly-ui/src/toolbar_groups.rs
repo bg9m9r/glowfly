@@ -101,6 +101,7 @@ pub(super) fn sync(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Opti
         if attach(r, keys, t, || tips::pull(st)).clicked() {
             msgs.push(Msg::git("Pull", &["pull", "--ff"]));
         }
+        widgets::split_gap(ui);
         let push = (Icon::Push, t.tr("toolbar.push.button"), t.tr("toolbar.push.name"));
         let menu = (t.tr("toolbar.push_menu"), if host.is_some() { 260.0 } else { 200.0 }, rules::busy_blocked(st).is_none());
         let r = split(ui, "push-menu", push, rules::push_blocked(st).is_none(), labels, menu, |ui| push_items(ui, st, snap, host, msgs));

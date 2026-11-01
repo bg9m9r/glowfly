@@ -18,6 +18,9 @@ const FIELD_TINT: f32 = 0.04;
 const GUIDE_TINT: f32 = 0.07;
 /// How far the toolbar groups' backing moves from `toolbar` toward the accent.
 const TOOL_TINT: f32 = 0.09;
+/// How far a light palette's framed toolbar bar edge moves from `border` toward `text`, so it
+/// reads on the tool backing.
+const TOOL_EDGE: f32 = 0.20;
 /// How far the dark overlay moves from `raised` toward `text`: one step lighter.
 const OVERLAY_STEP: f32 = 0.06;
 /// How far the dark overlay's edge moves from the overlay toward `text`.
@@ -60,6 +63,13 @@ impl Palette {
     /// a violet step: `contrast::tint` keeps it in the indigo family).
     pub fn tool_backing(&self) -> Color32 {
         contrast::tint(self.toolbar, self.accent, TOOL_TINT, self.dark)
+    }
+
+    /// The edge and dividers of a framed toolbar bar (the pickers) at rest: `border` on dark
+    /// palettes; on light ones `border` 20% toward `text`, since `border` all but vanishes on the
+    /// tool backing there.
+    pub fn tool_edge(&self) -> Color32 {
+        if self.dark { self.border } else { mix(self.border, self.text, TOOL_EDGE) }
     }
 
     /// A hovered tool button on the backing.
@@ -231,6 +241,7 @@ active!(
     field_fill,
     guide_fill,
     tool_backing,
+    tool_edge,
     tool_hover,
     tool_press,
     tool_pressed,

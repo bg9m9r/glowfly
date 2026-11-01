@@ -11,7 +11,7 @@ use super::button_look::{Press, Target, paint_target};
 use super::segment_bar::{BarStyle, Seg, segment_bar};
 use super::{Icon, paint_icon};
 use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::{BORDER_W, CARET_HIT_W, radius};
+use crate::ui::theme::tokens::{BORDER_W, CARET_HIT_W};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, pos2, vec2};
 
@@ -34,20 +34,21 @@ const TOOL_SIZE: ControlSize = ControlSize::Regular;
 pub const TOOL_SPACING: f32 = 2.0;
 /// Between two toolbar groups: the divider with its margins (`ghost::divider`).
 pub const GROUP_GAP: f32 = super::ghost::DIVIDER_W;
-/// The room a framed toolbar group (the pickers) keeps around a tool slot's height inside its
-/// border, and its corners: nested around the slots' corners, that room and the border.
-const GROUP_PAD: u8 = 3;
-pub const GROUP_RADIUS: u8 = radius::around(radius::MD, GROUP_PAD + BORDER_W as u8);
-/// The toolbar row's height: a tool slot with a framed group's room and border around it.
-pub const GROUP_H: f32 = TOOL_H + 2.0 * (GROUP_PAD as f32 + BORDER_W);
+/// The toolbar row's height: a tool slot with room above and below it.
+const GROUP_PAD: f32 = 3.0;
+pub const GROUP_H: f32 = TOOL_H + 2.0 * (GROUP_PAD + BORDER_W);
 /// A dropdown caret button's width.
 pub const CARET_W: f32 = CARET_HIT_W;
 /// The caret glyph: a stroked chevron `CARET_ARM` either side of its centre and `CARET_DROP`
 /// tall, in the tab glyphs' line width.
 const CARET_ARM: f32 = 3.5;
 const CARET_DROP: f32 = 2.0;
-/// The line between a split button's halves.
-const DIVIDER_H: f32 = 24.0;
+/// The line between a split button's halves: an icon's height, shorter than the divider between
+/// groups, so a caret reads as part of its action.
+const DIVIDER_H: f32 = TOOL_SIZE.metrics().icon;
+/// After a split button's caret, before the next slot of its group: more than `TOOL_SPACING`,
+/// so the caret sits closer to its own action than to the next one.
+pub const SPLIT_GAP: f32 = 8.0;
 
 /// Toolbar button: the icon with its caption under it (captions optional). `name` is its
 /// accessible name, which includes the caption; the caller attaches the tooltip
@@ -148,6 +149,12 @@ pub fn tool_group<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> egui::Inner
         ui.spacing_mut().item_spacing.x = TOOL_SPACING;
         add(ui)
     })
+}
+
+/// The room after a split button's caret when another slot of its group follows: `SPLIT_GAP`
+/// in all, whatever the group's spacing.
+pub fn split_gap(ui: &mut Ui) {
+    ui.add_space(SPLIT_GAP - ui.spacing().item_spacing.x);
 }
 
 /// The divider between two toolbar groups, `GROUP_GAP` wide whatever the item spacing around it.

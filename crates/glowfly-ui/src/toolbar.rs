@@ -169,7 +169,9 @@ fn widths(ui: &egui::Ui, st: &AppState, host: bool, room: f32, chips: f32) -> fo
     let slot = |key: &'static str, split: bool| groups::slot(ui, st, t.tr(key), split);
     let plain = |keys: &[&'static str]| groups::group_width(&keys.iter().map(|k| slot(k, false)).collect::<Vec<_>>());
     let gap = widgets::GROUP_GAP;
-    let sync = groups::group_width(&[slot("toolbar.pull.button", true), slot("toolbar.push.button", true)]);
+    // Pull's caret is followed by Push: `SPLIT_GAP` between them, not the group's spacing.
+    let split_gap = widgets::SPLIT_GAP - widgets::TOOL_SPACING;
+    let sync = groups::group_width(&[slot("toolbar.pull.button", true), slot("toolbar.push.button", true)]) + split_gap;
     let right = plain(&["toolbar.search.button", "toolbar.activity.button", "toolbar.refresh.button"]);
     let pr = if host { gap + groups::group_width(&[slot("toolbar.pr.button", true)]) } else { 0.0 };
     let in_right = |key| slot(key, false) + widgets::TOOL_SPACING;

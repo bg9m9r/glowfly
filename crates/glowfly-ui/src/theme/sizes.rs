@@ -33,13 +33,14 @@ pub struct Metrics {
     /// Room beside the content of a bordered or filled control (0 for Compact, which can't be
     /// either).
     pub pad_x: f32,
-    /// Room beside the content of a quiet control.
+    /// Room beside the content of a quiet control: its framed sibling's, so hover shapes match
+    /// in a row; only Compact is denser.
     pub quiet_pad_x: f32,
     /// The text step.
     pub text: f32,
     /// The icon size, alone or before the text.
     pub icon: f32,
-    /// Between an icon and the text.
+    /// Between an icon and the text: 4 beside a 14 px icon, 6 beside a 16 px one (8 in Large).
     pub icon_gap: f32,
     /// The corners.
     pub radius: u8,
@@ -55,13 +56,13 @@ impl ControlSize {
                 Metrics { h: 22.0, pad_x: 0.0, quiet_pad_x: 8.0, text: SMALL, icon: SIZE_SM, icon_gap: 4.0, radius: radius::MD, hit: 28.0 }
             }
             Self::Small => {
-                Metrics { h: 24.0, pad_x: 10.0, quiet_pad_x: 8.0, text: SMALL, icon: SIZE_SM, icon_gap: 4.0, radius: radius::MD, hit: 28.0 }
+                Metrics { h: 24.0, pad_x: 10.0, quiet_pad_x: 10.0, text: SMALL, icon: SIZE_MD, icon_gap: 6.0, radius: radius::MD, hit: 28.0 }
             }
             Self::Regular => {
-                Metrics { h: 28.0, pad_x: 12.0, quiet_pad_x: 8.0, text: BODY, icon: SIZE_MD, icon_gap: 6.0, radius: radius::MD, hit: 28.0 }
+                Metrics { h: 28.0, pad_x: 12.0, quiet_pad_x: 12.0, text: BODY, icon: SIZE_MD, icon_gap: 6.0, radius: radius::MD, hit: 28.0 }
             }
             Self::Large => {
-                Metrics { h: 36.0, pad_x: 16.0, quiet_pad_x: 12.0, text: BODY, icon: SIZE_MD, icon_gap: 8.0, radius: radius::LG, hit: 36.0 }
+                Metrics { h: 36.0, pad_x: 16.0, quiet_pad_x: 16.0, text: BODY, icon: SIZE_MD, icon_gap: 8.0, radius: radius::LG, hit: 36.0 }
             }
         }
     }
@@ -120,7 +121,13 @@ impl ChipSize {
 /// Where `galley` goes to sit centred in `rect` from its left edge: its top on a whole point
 /// above the centre line (egui then snaps it to physical pixels), so text never sits low.
 pub fn text_pos(rect: Rect, galley: &Galley) -> Pos2 {
-    pos2(rect.left(), (rect.center().y - galley.size().y / 2.0).floor())
+    pos2(rect.left(), centred_top(rect, galley.size().y))
+}
+
+/// The top of a block `h` tall centred in `rect`, rounded as `text_pos` rounds: for a stack of
+/// galleys (a caption over a name).
+pub fn centred_top(rect: Rect, h: f32) -> f32 {
+    (rect.center().y - h / 2.0).floor()
 }
 
 /// Whether a row `row_h` tall can host a control of `size`: 4 px clear above and below a

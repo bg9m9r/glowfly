@@ -2,8 +2,8 @@
 //! state and focus. A framed bar (the toolbar's Repository › Branch pickers) paints its fill
 //! and 1 px border, full-height 1 px dividers between its segments, and each segment's state
 //! over the segment's whole shape, its corners the bar's inner ones on the outer ends and square
-//! where segments meet; a framed bar of one segment is a single framed control, whose border
-//! goes `weak` while it is lit. A quiet bar (a toolbar split button) has no frame: its
+//! where segments meet, its edge and dividers in `tool_edge`; a framed bar of one segment is a
+//! single framed control, its whole frame the target, whose border goes `weak` while it is lit. A quiet bar (a toolbar split button) has no frame: its
 //! divider always shows, and only the hovered segment lights. A disabled segment never lights.
 //! Every state is painted by `button_look::paint_target`.
 //!
@@ -51,11 +51,13 @@ pub fn segment_bar(ui: &mut Ui, size: ControlSize, h: f32, outer: u8, style: Bar
     let w = segs.iter().map(|s| s.w).sum::<f32>() + 2.0 * border;
     let (rect, bar) = ui.allocate_exact_size(vec2(w, h), Sense::hover());
     let mut x = rect.left() + border;
+    // A framed bar of one segment lights its whole frame, so its whole frame is the target.
+    let single_frame = border > 0.0 && segs.len() == 1;
     let responses = segs
         .iter()
         .enumerate()
         .map(|(i, s)| {
-            let r = Rect::from_min_size(pos2(x, rect.top() + border), vec2(s.w, h - 2.0 * border));
+            let r = if single_frame { rect } else { Rect::from_min_size(pos2(x, rect.top() + border), vec2(s.w, h - 2.0 * border)) };
             x += s.w;
             let sense = if s.enabled { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE };
             ui.interact(r, segment_id(bar.id, i), sense)
@@ -84,7 +86,12 @@ impl Bar {
     pub fn paint(&self, ui: &Ui, latched: &[bool]) {
         let p = ui.painter();
         let single = self.responses.len() == 1;
-        let border = Stroke::new(BORDER_W, color::border());
+        // A framed bar's edge and dividers read on its fill (`tool_edge`); a quiet split's
+        // divider is the plain border colour.
+        let border = match self.style {
+            BarStyle::Framed { .. } => Stroke::new(BORDER_W, color::tool_edge()),
+            BarStyle::Quiet { .. } => Stroke::new(BORDER_W, color::border()),
+        };
         if let BarStyle::Framed { fill } = self.style {
             p.rect_filled(self.rect, self.outer, fill);
         }
@@ -98,9 +105,7 @@ impl Bar {
             // A framed bar of one segment is a single framed control: the target is the whole
             // frame, and it paints the border itself.
             let target = match self.style {
-                BarStyle::Framed { .. } if single => {
-                    Target { rect: self.rect, corners: CornerRadius::same(self.outer), edge: Some(border) }
-                }
+                BarStyle::Framed { .. } if single => Target { rect: r.rect, corners: CornerRadius::same(self.outer), edge: Some(border) },
                 _ => Target { rect: r.rect, corners: self.corners(i), edge: None },
             };
             paint_target(p, target, self.size, press, r.has_focus());
