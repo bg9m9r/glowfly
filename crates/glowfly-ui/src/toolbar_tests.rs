@@ -63,7 +63,11 @@ fn groups_are_spaced_evenly() {
     let gap = |h: &H, a: &str, b: &str| span(h, b).0 - span(h, a).1;
     assert_eq!(gap(&h, "Undo the last action", "Redo the undone action"), 2.0, "within a group");
     assert_eq!(gap(&h, "Pull the current branch", "More pull actions"), 0.0, "a caret touches its button");
-    assert_eq!(gap(&h, "More pull actions", "Push the current branch"), f64::from(crate::ui::widgets::SPLIT_GAP), "a caret is set apart from the next action");
+    assert_eq!(
+        gap(&h, "More pull actions", "Push the current branch"),
+        f64::from(crate::ui::widgets::SPLIT_GAP),
+        "a caret is set apart from the next action"
+    );
     assert_eq!(
         gap(&h, "Redo the undone action", "Pull the current branch"),
         f64::from(crate::ui::widgets::GROUP_GAP),

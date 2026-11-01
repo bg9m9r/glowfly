@@ -55,9 +55,16 @@ impl ControlSize {
             Self::Compact => {
                 Metrics { h: 22.0, pad_x: 0.0, quiet_pad_x: 8.0, text: SMALL, icon: SIZE_SM, icon_gap: 4.0, radius: radius::MD, hit: 28.0 }
             }
-            Self::Small => {
-                Metrics { h: 24.0, pad_x: 10.0, quiet_pad_x: 10.0, text: SMALL, icon: SIZE_MD, icon_gap: 6.0, radius: radius::MD, hit: 28.0 }
-            }
+            Self::Small => Metrics {
+                h: 24.0,
+                pad_x: 10.0,
+                quiet_pad_x: 10.0,
+                text: SMALL,
+                icon: SIZE_MD,
+                icon_gap: 6.0,
+                radius: radius::MD,
+                hit: 28.0,
+            },
             Self::Regular => {
                 Metrics { h: 28.0, pad_x: 12.0, quiet_pad_x: 12.0, text: BODY, icon: SIZE_MD, icon_gap: 6.0, radius: radius::MD, hit: 28.0 }
             }
