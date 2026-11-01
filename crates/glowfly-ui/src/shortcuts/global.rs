@@ -43,8 +43,11 @@ pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let covered = live.prefs || live.askpass || live.palette || live.dialog || live.sheet;
     crate::ui::wip_keys::input(ctx, covered, msgs);
     crate::ui::file_list_keys::input(ctx, covered, msgs);
-    // Ctrl+C reaches egui as a Copy event: a binding of it (Copy commit IDs) gets it as a key.
-    ctx.input_mut(|i| super::chords::copy_as_key(i, &st.keymap, |id, shell| allowed(id, shell, &live)));
+    // Ctrl+C reaches egui as a Copy event: a binding of it (Copy commit IDs) gets it as a key,
+    // while the graph takes the keys and no label text (a commit message) is selected.
+    if copy_is_the_graphs(ctx) {
+        ctx.input_mut(|i| super::chords::copy_as_key(i, &st.keymap, |id, shell| allowed(id, shell, &live)));
+    }
     while let Some((id, chord, repeat)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
         // A held key would queue the same fetch or push again and again.
         if repeat && runs_command(id) {
@@ -250,4 +253,10 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         | I::OpenCommitDetails => return,
     };
     msgs.push(msg);
+}
+
+/// Whether this frame's Copy is the graph's: it has the keyboard focus or nothing has, and no
+/// label text is selected (that selection copies its own text).
+fn copy_is_the_graphs(ctx: &egui::Context) -> bool {
+    crate::ui::pane_focus::graph_active(ctx) && !egui::text_selection::LabelSelectionState::load(ctx).has_selection()
 }

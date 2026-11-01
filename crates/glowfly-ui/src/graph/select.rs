@@ -63,7 +63,7 @@ const KEYS: KeySet = KeySet { extend: true, toggle: false, open: true, delete: f
 /// moves. Registered before the rows, so their clicks still go to them.
 pub(super) fn target(ui: &mut egui::Ui, rect: egui::Rect, name: &str, page: usize, focus: bool) {
     let id = pane_focus::graph_id();
-    list_focus::target(ui, id, rect, name, page);
+    list_focus::target(ui, id, rect, name, page, true);
     if focus {
         list_focus::request(ui.ctx(), id);
     }

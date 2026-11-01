@@ -121,21 +121,48 @@ fn target(ui: &mut egui::Ui, id: Id, rect: Rect, name: &str, focus: bool) -> Tar
     Target { rect, focused: r.has_focus() }
 }
 
+fn files_wanted_id() -> Id {
+    Id::new("pane-focus-files")
+}
+
+fn files_empty_id() -> Id {
+    Id::new("pane-focus-files-empty")
+}
+
 /// Before the details panel's contents: when the file list was asked for, the first list
-/// target drawn takes the focus (`list_focus::target`).
+/// target drawn with rows takes the focus (`list_focus::target`), or with none, the first list.
 pub(crate) fn begin_details(ctx: &egui::Context, st: &mut AppState) {
     let want = take(st, &[Pane::Files]);
-    ctx.data_mut(|d| d.insert_temp(Id::new("pane-focus-files"), want));
+    ctx.data_mut(|d| {
+        d.insert_temp(files_wanted_id(), want);
+        d.remove_temp::<Option<Id>>(files_empty_id());
+    });
 }
 
-/// Whether the list target being drawn should take the focus (once).
-pub(crate) fn list_wanted(ctx: &egui::Context) -> bool {
-    ctx.data_mut(|d| d.remove_temp::<bool>(Id::new("pane-focus-files"))).unwrap_or(false)
+/// Whether the list target `id` being drawn should take the focus (once): the first with rows.
+/// The first one without is kept, for when no list has rows.
+pub(crate) fn list_wanted(ctx: &egui::Context, id: Id, has_rows: bool) -> bool {
+    ctx.data_mut(|d| {
+        if !d.get_temp::<bool>(files_wanted_id()).unwrap_or(false) {
+            return false;
+        }
+        if has_rows {
+            d.remove_temp::<bool>(files_wanted_id());
+        } else if d.get_temp::<Option<Id>>(files_empty_id()).flatten().is_none() {
+            d.insert_temp(files_empty_id(), Some(id));
+        }
+        has_rows
+    })
 }
 
-/// After the details panel: a request no list took is dropped.
+/// After the details panel: when no list had rows, the first one takes the focus (on the WIP
+/// panel, Unstaged Files).
 pub(crate) fn end_details(ctx: &egui::Context) {
-    ctx.data_mut(|d| d.remove_temp::<bool>(Id::new("pane-focus-files")));
+    let (wanted, empty) = ctx
+        .data_mut(|d| (d.remove_temp::<bool>(files_wanted_id()).unwrap_or(false), d.remove_temp::<Option<Id>>(files_empty_id()).flatten()));
+    if let Some(id) = empty.filter(|_| wanted) {
+        ctx.memory_mut(|m| m.request_focus(id));
+    }
 }
 
 fn last_id() -> Id {
@@ -153,7 +180,9 @@ pub(crate) fn end_frame(ctx: &egui::Context) {
 /// with the graph shown: the graph takes the focus back, and that is all the Esc does.
 pub(crate) fn escape_to_graph(ctx: &egui::Context, st: &AppState) -> bool {
     let last = ctx.data(|d| d.get_temp::<Option<Id>>(last_id())).flatten();
-    let back = last.is_some_and(|id| id != graph_id()) && !st.view.was_typing && st.graph_shown();
+    // Preferences and the tour keep their own Esc (revert the page, close; close the tour).
+    let covered = st.prefs.is_some() || st.onboarding.tour.is_some();
+    let back = last.is_some_and(|id| id != graph_id()) && !st.view.was_typing && !covered && st.graph_shown();
     if back {
         ctx.memory_mut(|m| m.request_focus(graph_id()));
     }

@@ -16,15 +16,16 @@ use eframe::egui::{self, Event, EventFilter, Id, Key, Modifiers, WidgetInfo, Wid
 const FILTER: EventFilter = EventFilter { vertical_arrows: true, horizontal_arrows: true, tab: false, escape: false };
 
 /// Registers the list's focus target `id` over `rect` (its rows, or its "none" line), named
-/// `name`, with `page` rows in view (Page Up and Page Down move that many). Register it before
+/// `name`, with `page` rows in view (Page Up and Page Down move that many); `has_rows` says
+/// whether it has any (the file list's pane key goes to the first that has). Register it before
 /// the rows: Tab reaches it after what comes before the list and before the rows' own buttons,
 /// and as it senses no clicks a press on a row goes to the row.
-pub(crate) fn target(ui: &mut egui::Ui, id: Id, rect: egui::Rect, name: &str, page: usize) -> egui::Response {
+pub(crate) fn target(ui: &mut egui::Ui, id: Id, rect: egui::Rect, name: &str, page: usize, has_rows: bool) -> egui::Response {
     let r = ui.interact(rect, id, egui::Sense::focusable_noninteractive());
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, name));
     let ctx = ui.ctx();
-    // The first list the details panel draws after the file list's pane key.
-    if super::pane_focus::list_wanted(ctx) {
+    // The first list with rows the details panel draws after the file list's pane key.
+    if super::pane_focus::list_wanted(ctx, id, has_rows) {
         request(ctx, id);
     }
     // Its rows show their selection as focused only while the list has the focus.
