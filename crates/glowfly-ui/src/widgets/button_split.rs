@@ -6,9 +6,10 @@
 //! toolbar's split buttons do.
 
 use super::button_look::{self, Press};
-use super::buttons::{Kind, StyledButton};
+use super::buttons::StyledButton;
 use crate::ui::access;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::surfaces::Tone;
 use crate::ui::theme::tokens::{self, radius};
 use eframe::egui::{CursorIcon, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
@@ -34,6 +35,13 @@ pub fn split<'a>(button: StyledButton<'a>, menu_name: &'a str) -> SplitButton<'a
 }
 
 impl<'a> SplitButton<'a> {
+    /// Both halves' size (the action's height, text and corners; Regular by default). Compact
+    /// is for quiet splits only.
+    pub fn size(mut self, size: ControlSize) -> Self {
+        self.button = self.button.size(size);
+        self
+    }
+
     /// Whether the menu is open: the caret half stays latched.
     pub fn open(mut self, open: bool) -> Self {
         self.open = open;
@@ -58,7 +66,8 @@ impl<'a> SplitButton<'a> {
         let SplitButton { button, menu_name, open, menu_enabled, menu_tone } = self;
         let kind = button.kind();
         let main_on = button.is_enabled() && ui.is_enabled();
-        let main = button.show_shaped(ui, radius::left(radius::MD), false);
+        let r = button.radius();
+        let main = button.show_shaped(ui, radius::left(r), false);
         ui.add_space(-ui.spacing().item_spacing.x);
         let menu_enabled = menu_enabled && ui.is_enabled();
         let sense = if menu_enabled { Sense::click() } else { Sense::hover() };
@@ -85,15 +94,15 @@ impl<'a> SplitButton<'a> {
                 look.ink = p.tone(t);
             }
             let painter = ui.painter();
-            painter.rect(rect, radius::right(radius::MD), look.fill, look.edge, StrokeKind::Inside);
+            painter.rect(rect, radius::right(r), look.fill, look.edge, StrokeKind::Inside);
             let main_fill = button_look::look(kind, main_on, Press::Rest).fill;
-            let line = if kind == Kind::Quiet { p.border } else { p.shade_fill(main_fill, DIVIDER_SHADE) };
+            let line = if !kind.framed() { p.border } else { p.shade_fill(main_fill, DIVIDER_SHADE) };
             let x = rect.left().round() + 0.5;
             let inset = if look.edge.width > 0.0 { 1.0 } else { 0.0 };
             painter.line_segment([pos2(x, rect.top() + inset), pos2(x, rect.bottom() - inset)], Stroke::new(1.0_f32, line));
             super::caret(painter, rect.center(), look.ink);
             if caret.has_focus() {
-                tokens::focus_ring(painter, rect, radius::MD);
+                tokens::focus_ring(painter, rect, r);
             }
         }
         let caret = if menu_enabled { caret.on_hover_cursor(CursorIcon::PointingHand) } else { caret };

@@ -11,6 +11,7 @@ use crate::state::ssh::SshPage;
 use crate::state::ssh_marks::{ConfigWhere, KeyMark, key_marks, outside_folder, remembered};
 use crate::state::ssh_use::add_blocked;
 use crate::ui::common::menu_item;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::menu::submenu;
@@ -111,7 +112,10 @@ fn actions(ui: &mut Ui, t: Lang, key: &SshKeyPair, page: &SshPage, cx: &SshConte
     ui.horizontal(|ui| {
         ui.spacing_mut().button_padding = vec2(6.0, 2.0);
         let blocked = add_blocked(page, cx.job.as_deref(), t);
-        let add = buttons::secondary(t.tr("prefs.ssh.card.add_agent.button")).small().enabled(blocked.is_none()).why(blocked.as_deref());
+        let add = buttons::secondary(t.tr("prefs.ssh.card.add_agent.button"))
+            .size(ControlSize::Small)
+            .enabled(blocked.is_none())
+            .why(blocked.as_deref());
         if ui.add(add).clicked() {
             msgs.push(Msg::Ssh(SshMsg::AddToAgent(key.private.clone())));
         }
@@ -127,7 +131,8 @@ fn actions(ui: &mut Ui, t: Lang, key: &SshKeyPair, page: &SshPage, cx: &SshConte
             }
         });
         if remembered(key, &cx.extra) {
-            let forget = buttons::secondary(t.tr("prefs.ssh.card.forget.button")).small().tip(t.tr("prefs.ssh.card.forget.tip"));
+            let forget =
+                buttons::secondary(t.tr("prefs.ssh.card.forget.button")).size(ControlSize::Small).tip(t.tr("prefs.ssh.card.forget.tip"));
             if ui.add(forget).clicked() {
                 msgs.push(Msg::Ssh(SshMsg::ForgetKey(key.private.clone())));
             }

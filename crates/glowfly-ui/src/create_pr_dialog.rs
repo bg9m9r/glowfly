@@ -14,6 +14,7 @@ use crate::state::branches;
 use crate::state::pr_repos::{self, PrRepoPick};
 use crate::state::push_pr::{self, HostBranch};
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
@@ -193,12 +194,12 @@ fn push_buttons(
     msgs: &mut Vec<Msg>,
 ) {
     if let Some(local) = local
-        && ui.add(buttons::secondary(format!("Push {local}")).small().enabled(idle)).clicked()
+        && ui.add(buttons::secondary(format!("Push {local}")).size(ControlSize::Small).enabled(idle)).clicked()
     {
         msgs.push(Msg::Forge(ForgeMsg::PushToForPr { branch: local, remote: from.to_owned(), target: Some(target.clone()) }));
     }
     if let Some(branch) = to_fork
-        && ui.add(buttons::secondary("Push to your fork…").small().enabled(idle)).clicked()
+        && ui.add(buttons::secondary("Push to your fork…").size(ControlSize::Small).enabled(idle)).clicked()
     {
         msgs.push(Msg::Forge(ForgeMsg::PushToMyFork { branch, target: Some(target) }));
     }

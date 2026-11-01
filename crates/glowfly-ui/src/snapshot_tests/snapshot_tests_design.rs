@@ -10,6 +10,7 @@ use super::buttons::{self, Kind, StyledButton};
 use super::{Icon, paint_icon_sized};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::theme::color::{self, Palette};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::surfaces::Tone;
 use crate::ui::theme::tokens::{Elevation, radius, shadow};
 use crate::ui::theme::{self, type_scale};
@@ -31,6 +32,7 @@ fn button(kind: Kind, label: &'static str) -> StyledButton<'static> {
         Kind::Secondary => buttons::secondary(label),
         Kind::Quiet => buttons::quiet(label),
         Kind::Danger => buttons::danger(label),
+        Kind::DangerQuiet => buttons::danger_quiet(label),
     }
 }
 
@@ -93,14 +95,14 @@ fn render_buttons(name: &str, p: Palette) {
                 caption(ui, "Split");
                 let _ = split(buttons::primary("Commit 2 files"), "More").open(true).show(ui);
                 let _ = split(buttons::primary("Commit (skip hooks)"), "More").menu_tone(Some(Tone::Warning)).show(ui);
-                let _ = split(buttons::secondary("Fetch").small(), "More").show(ui);
+                let _ = split(buttons::secondary("Fetch").size(ControlSize::Small), "More").show(ui);
             });
             ui.horizontal(|ui| {
                 caption(ui, "Small");
                 for (kind, label) in KINDS {
-                    ui.add(button(kind, label).small());
+                    ui.add(button(kind, label).size(ControlSize::Small));
                 }
-                ui.add(buttons::icon_only(Icon::Close, "Close").small());
+                ui.add(buttons::icon_only(Icon::Close, "Close").size(ControlSize::Small));
             });
             *first = false;
         },

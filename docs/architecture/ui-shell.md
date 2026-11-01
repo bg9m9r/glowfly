@@ -35,12 +35,12 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 
 ## Toolbar
 
-- `toolbar.rs` draws its buttons in groups, each on a recessed surface (`widgets::tool_group`; the buttons, toggles and split buttons in `widgets/tool.rs`).
+- `toolbar.rs` draws its buttons in borderless groups of quiet buttons set apart by dividers (`widgets::tool_group`, `tool_gap`; the buttons, toggles and split buttons in `widgets/tool.rs`).
 - `toolbar_menus.rs`: the toolbar's menus.
 - `toolbar_groups.rs`: the middle groups' buttons, the split buttons' menus and the groups' widths.
 - `toolbar_fold.rs`: which parts fold into the More menu in a narrow window, and in what order.
 - `toolbar_more.rs`: the More button and its menu of the folded buttons.
-- `toolbar_pickers.rs`: the repository and branch pickers in fixed slots so the bar never moves when the names change.
+- `toolbar_pickers.rs`: the repository and branch pickers, one framed segment bar whose segments each light whole, in fixed slots so the bar never moves when the names change.
 - Each toolbar button's tooltip comes from `toolbar_tips.rs`.
 
 ## Repository tabs

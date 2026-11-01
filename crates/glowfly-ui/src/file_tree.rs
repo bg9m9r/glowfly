@@ -7,6 +7,7 @@ use crate::msg::{LayoutMsg, Msg};
 use crate::state::file_folds::FileListId;
 use crate::state::file_tree::{self, TreeRow};
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::{self, Icon, buttons, icon};
@@ -104,7 +105,7 @@ pub(crate) fn mode_toggle(ui: &mut Ui, t: Lang, mode: FileListMode, msgs: &mut V
         FileListMode::List => (Icon::TreeView, t.tr("files.tree.show_tree.tip"), FileListMode::Tree),
         FileListMode::Tree => (Icon::ListView, t.tr("files.tree.show_list.tip"), FileListMode::List),
     };
-    if ui.add(buttons::icon_only(icon, tip).small().tip(tip)).clicked() {
+    if ui.add(buttons::icon_only(icon, tip).size(ControlSize::Small).tip(tip)).clicked() {
         msgs.push(Msg::Layout(LayoutMsg::SetFileListMode(other)));
     }
 }

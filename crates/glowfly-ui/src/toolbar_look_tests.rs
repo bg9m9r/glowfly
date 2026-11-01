@@ -1,6 +1,6 @@
 //! Snapshots of the toolbar's split buttons and toggles: hovering a dropdown caret lights the
-//! button and its caret as one pill, and the Terminal, Search and Activity toggles keep a fill
-//! while their panel is shown.
+//! caret alone, and the Terminal, Search and Activity toggles stay latched while their panel
+//! is shown.
 
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;

@@ -7,6 +7,7 @@ use super::controls::{self, ghost_with};
 use crate::msg::{DiffMsg, Msg};
 use crate::state::diff_header::ViewGroup;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets;
 use crate::ui::widgets::menu::{self, popup_below};
 use eframe::egui::{PopupCloseBehavior, Ui, pos2};
@@ -21,7 +22,7 @@ const CHEVRON_W: f32 = 14.0;
 /// The button's width with its full label and with "View".
 pub(super) fn widths(ui: &Ui, t: Lang, v: Option<&ViewGroup>) -> (f32, f32) {
     let Some(v) = v else { return (0.0, 0.0) };
-    let w = |label: &str| controls::ghost_width(ui, false, Some(label), CHEVRON_W);
+    let w = |label: &str| controls::ghost_width(ui, ControlSize::Regular, false, Some(label), CHEVRON_W);
     (w(&v.label(t)), w(t.tr("diff.header.view.button")))
 }
 
@@ -30,7 +31,7 @@ pub(super) fn show(ui: &mut Ui, t: Lang, v: &ViewGroup, short: bool, msgs: &mut 
     let label = if short { t.tr("diff.header.view.button").to_owned() } else { v.label(t) };
     let id = ui.make_persistent_id("diff-view-menu");
     let open = ui.memory(|m| m.is_popup_open(id));
-    let resp = ghost_with(ui, None, Some(&label), &label, true, CHEVRON_W);
+    let resp = ghost_with(ui, ControlSize::Regular, None, Some(&label), &label, true, CHEVRON_W);
     let c = pos2(resp.rect.right() - 8.0 - 4.0, resp.rect.center().y);
     widgets::chevron(ui.painter(), c, true, color::weak());
     let resp = if open { resp } else { resp.on_hover_text(t.tr("diff.header.view.menu.tip")) };

@@ -17,6 +17,7 @@ use crate::state::conflict_files::{mark_conflicted_body, restorable_paths};
 use crate::state::list_keys::FileList;
 use crate::state::path_hazards::hazard_of;
 use crate::state::tool_compare::merging;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::row_menu::RowMenuExt;
@@ -57,7 +58,7 @@ struct Action<'a> {
 /// a long language).
 fn header(ui: &mut egui::Ui, t: Lang, title: String, action: Action, msgs: &mut Vec<Msg>) {
     super::details_wip::header::frame(ui, |ui| {
-        let b = buttons::quiet(action.label).small().enabled(action.why.is_none());
+        let b = buttons::quiet(action.label).size(ControlSize::Small).enabled(action.why.is_none());
         let b = if action.why.is_some() { b.why(action.why.as_deref()) } else { b.tip(action.tip) };
         let font = type_scale::section(ui);
         let title_w = ui.fonts(|f| f.layout_no_wrap(title.clone(), font, egui::Color32::PLACEHOLDER).size().x);
@@ -174,7 +175,7 @@ fn resolved_row(
         if !show_action {
             return;
         }
-        let b = buttons::quiet(mark).small().enabled(why.is_none());
+        let b = buttons::quiet(mark).size(ControlSize::Small).enabled(why.is_none());
         let b = if why.is_some() { b.why(why.as_deref()) } else { b.tip(t.tr("conflict.files.mark_conflicted.tip")) };
         if ui.add(b).clicked() {
             msgs.push(confirm());

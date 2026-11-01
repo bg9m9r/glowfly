@@ -7,6 +7,8 @@
 //! - secondary: everything else, `text` on the `panel` fill with an `input_border` edge;
 //! - quiet: transparent until hovered, for toolbars, headers and rows;
 //! - danger: a step that loses work, white strong text on the `danger` fill;
+//! - quiet danger (`danger_quiet`): a step that loses work among quiet ones, danger text and
+//!   no fill until hovered;
 //! - icon-only (`icon_only`): a square quiet button whose name is its tooltip and accessible
 //!   name;
 //! - split (`split`, in `button_split.rs`): an action and its menu caret joined into one pill.
@@ -19,34 +21,24 @@
 //! `blocked`). A focused filled button gets the 2 px accent ring 2 px outside its edge
 //! (`tokens::focus_ring`); a quiet one, packed among others, the inset ring.
 //!
-//! Sizes: 28 px high at body-size text (14 px) by default; `small` is 24 px high at the small
-//! text step (12 px) with 10 px beside the text and a 14 px leading icon, so its text keeps about
-//! 4 px above and below inside the edge, the same room a 28 px button gives body text. Taller
-//! with `min_height`, or an exact `height` inside a fixed-height row. Corners are `radius::MD`.
+//! Sizes come from `theme::sizes` (`size`, Regular by default): the height, the text step, the
+//! room beside the text (`pad_x` framed, `quiet_pad_x` quiet), the icon and its gap, and the
+//! corners. Compact is for quiet buttons only. The text keeps at least 4 px above and below
+//! inside a framed button's edge and 3 px inside a quiet one's. Taller with `min_height`, or an
+//! exact `height` and `text_size` inside a fixed-height row, until those rows take a size.
 
 use super::button_look::{self, Press};
 use super::icon::{self, Icon};
-use crate::ui::theme::tokens::{self, radius};
-use crate::ui::theme::type_scale;
+use crate::ui::theme::sizes::{ControlSize, Metrics};
+use crate::ui::theme::tokens;
 use eframe::egui::{self, Color32, CornerRadius, Response, Sense, StrokeKind, TextStyle, Ui, Widget, WidgetText, pos2, vec2};
 use std::borrow::Cow;
 
 pub use super::button_split::split;
 
-/// Room beside the text, and beside a small button's.
-const PAD_X: f32 = 12.0;
-const SMALL_PAD_X: f32 = 10.0;
-/// The least room above and below the text. Body text lays out about 20 px tall and small text
-/// about 16 px, so the minimum heights decide a button's height, not this.
+/// The least room above and below the text. The sizes' heights keep more than this, so they
+/// decide a button's height; this only matters for text taller than its size expects.
 const MIN_PAD_Y: f32 = 2.0;
-/// The least height of a button, and of a small one (inline Browse…, Retry).
-const HEIGHT: f32 = 28.0;
-pub const SMALL_HEIGHT: f32 = 24.0;
-/// A small button's text step: one step under the body text the 28 px button carries.
-const SMALL_TEXT: f32 = type_scale::SMALL;
-/// Between a leading icon and the text, and in a small button.
-const ICON_GAP: f32 = 6.0;
-const SMALL_ICON_GAP: f32 = 4.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
@@ -56,6 +48,16 @@ pub enum Kind {
     Secondary,
     Quiet,
     Danger,
+    /// Danger text with no fill until hovered.
+    #[allow(dead_code)]
+    DangerQuiet,
+}
+
+impl Kind {
+    /// Whether it has a border or a fill at rest: every kind but the quiet ones.
+    pub fn framed(self) -> bool {
+        !matches!(self, Self::Quiet | Self::DangerQuiet)
+    }
 }
 
 /// A button in one of the styles; add it with `ui.add`.
@@ -68,7 +70,7 @@ pub struct StyledButton<'a> {
     tip: Option<&'a str>,
     min_width: f32,
     min_height: f32,
-    small: bool,
+    size: ControlSize,
     text_size: Option<f32>,
     height: Option<f32>,
     max_width: Option<f32>,
@@ -105,6 +107,13 @@ pub fn danger<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::Danger)
 }
 
+/// A step that loses work among quiet actions (a hunk's Discard): danger text, no fill until
+/// hovered. Part of the family before a view needs it.
+#[allow(dead_code)]
+pub(crate) fn danger_quiet<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
+    StyledButton::new(text.into(), Kind::DangerQuiet)
+}
+
 /// A square quiet button showing `icon` only; `name` is its accessible name and, unless `tip`
 /// is set, its tooltip.
 pub fn icon_only<'a>(icon: Icon, name: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
@@ -121,7 +130,7 @@ impl<'a> StyledButton<'a> {
             tip: None,
             min_width: 0.0,
             min_height: 0.0,
-            small: false,
+            size: ControlSize::Regular,
             text_size: None,
             height: None,
             max_width: None,
@@ -161,14 +170,17 @@ impl<'a> StyledButton<'a> {
         self
     }
 
-    /// 24 px high at the small text step, for buttons inline with a field, a row or a line of
-    /// chips (Browse…, Retry, Compare with working directory).
-    pub fn small(mut self) -> Self {
-        self.small = true;
+    /// Its size (Regular by default): Small for buttons inline with a field, a row or a line of
+    /// chips (Browse…, Retry, Compare with working directory). Compact is for quiet buttons
+    /// only: asking for a framed Compact button panics in debug builds.
+    pub fn size(mut self, size: ControlSize) -> Self {
+        debug_assert!(size.allows_frame() || !self.kind.framed(), "a {:?} button can't be Compact", self.kind);
+        self.size = size;
         self
     }
 
-    /// A 16 px icon before the text. Part of the family before a view needs it.
+    /// An icon before the text, at the size's icon size. Part of the family before a view
+    /// needs it.
     #[allow(dead_code)]
     pub fn icon(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
@@ -207,29 +219,36 @@ impl<'a> StyledButton<'a> {
         self.kind
     }
 
-    /// The room beside the text.
-    fn pad_x(&self) -> f32 {
-        if self.small { SMALL_PAD_X } else { PAD_X }
+    /// Its size's corners.
+    pub(super) fn radius(&self) -> u8 {
+        self.metrics().radius
     }
 
-    /// A leading icon's size, or an icon-only button's (which keeps 16 px in 24 px).
+    fn metrics(&self) -> Metrics {
+        self.size.metrics()
+    }
+
+    /// The room beside the text: the size's framed or quiet padding.
+    fn pad_x(&self) -> f32 {
+        let m = self.metrics();
+        if self.kind.framed() { m.pad_x } else { m.quiet_pad_x }
+    }
+
+    /// A leading icon's size, or an icon-only button's: the size's icon.
     fn icon_size(&self) -> f32 {
-        if self.small && !self.icon_only { icon::SIZE_SM } else { icon::SIZE_MD }
+        self.metrics().icon
     }
 
     /// The room a leading icon takes before the text.
     fn icon_w(&self) -> f32 {
-        let gap = if self.small { SMALL_ICON_GAP } else { ICON_GAP };
-        if self.icon.is_some() && !self.icon_only { self.icon_size() + gap } else { 0.0 }
+        if self.icon.is_some() && !self.icon_only { self.icon_size() + self.metrics().icon_gap } else { 0.0 }
     }
 
     /// The text laid out in the placeholder colour, so painting gives it the state's ink.
     fn galley(&self, ui: &Ui) -> std::sync::Arc<egui::Galley> {
         let shown = if self.icon_only { "" } else { self.text.as_ref() };
         let mut text = egui::RichText::new(shown).color(Color32::PLACEHOLDER);
-        if let Some(px) = self.text_size.or(self.small.then_some(SMALL_TEXT)) {
-            text = text.size(px);
-        }
+        text = text.size(self.text_size.unwrap_or(self.metrics().text));
         match self.max_width {
             Some(max) => {
                 let room = (max - 2.0 * self.pad_x() - self.icon_w()).max(0.0);
@@ -239,8 +258,11 @@ impl<'a> StyledButton<'a> {
         }
     }
 
-    fn size(&self, galley: &egui::Galley) -> egui::Vec2 {
-        let h_min = if self.small { SMALL_HEIGHT } else { HEIGHT.max(self.min_height) };
+    /// Its size around `galley`. Where the size sets the height (no `height` or `text_size`),
+    /// debug builds check the inset against the real text: at least `galley_h + 8` for a
+    /// framed button and `+ 6` for a quiet one.
+    fn measure(&self, galley: &egui::Galley) -> egui::Vec2 {
+        let h_min = self.metrics().h.max(self.min_height);
         if self.icon_only {
             let side = self.height.unwrap_or(h_min);
             return vec2(side.max(self.min_width), side);
@@ -249,12 +271,19 @@ impl<'a> StyledButton<'a> {
         if let Some(h) = self.height {
             return vec2(w, h);
         }
+        debug_assert!(
+            self.text_size.is_some() || h_min + 0.5 >= galley.size().y + ControlSize::inset(self.kind.framed()),
+            "{:?} text {} px tall doesn't keep its inset in a {h_min} px {:?} button",
+            self.size,
+            galley.size().y,
+            self.kind
+        );
         vec2(w, h_min.max(galley.size().y + 2.0 * MIN_PAD_Y))
     }
 
     /// The width it takes in `ui` (for laying out a right-aligned row).
     pub fn desired_width(&self, ui: &Ui) -> f32 {
-        self.size(&self.galley(ui)).x
+        self.measure(&self.galley(ui)).x
     }
 
     /// Adds it with `corners` (a split button's half takes its outer ones), `latched` while a
@@ -262,7 +291,7 @@ impl<'a> StyledButton<'a> {
     pub(super) fn show_shaped(self, ui: &mut Ui, corners: CornerRadius, latched: bool) -> Response {
         let enabled = self.enabled && ui.is_enabled();
         let galley = self.galley(ui);
-        let size = self.size(&galley);
+        let size = self.measure(&galley);
         let (rect, resp) = ui.allocate_exact_size(size, if enabled { Sense::click() } else { Sense::hover() });
         let text = self.text.as_ref();
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, text));
@@ -284,10 +313,10 @@ impl<'a> StyledButton<'a> {
                 p.galley(pos2(left + self.icon_w(), rect.center().y - galley.size().y / 2.0), galley, look.ink);
             }
             if resp.has_focus() {
-                if self.kind == Kind::Quiet {
-                    tokens::focus_ring_inset(p, rect, radius::MD);
+                if self.kind.framed() {
+                    tokens::focus_ring(p, rect, self.metrics().radius);
                 } else {
-                    tokens::focus_ring(p, rect, radius::MD);
+                    tokens::focus_ring_inset(p, rect, self.metrics().radius);
                 }
             }
         }
@@ -310,7 +339,8 @@ impl<'a> StyledButton<'a> {
 
 impl Widget for StyledButton<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        self.show_shaped(ui, CornerRadius::same(radius::MD), false)
+        let corners = CornerRadius::same(self.metrics().radius);
+        self.show_shaped(ui, corners, false)
     }
 }
 

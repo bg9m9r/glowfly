@@ -15,6 +15,7 @@ use crate::state::AppState;
 use crate::state::issue::{Details, IssueView};
 use crate::state::issue_comment::POSTING;
 use crate::state::pull_request::description_text;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Frame, Margin, RichText, Ui};
@@ -105,7 +106,7 @@ fn comment(ui: &mut Ui, v: &IssueView, i: usize, c: &Entry, clock: Clock<'_>, md
             crate::ui::date_tip::time_label(ui, clock.settings, c.time, clock.now, clock.offset);
         }
         let posting = v.comment.posting;
-        if ui.add(buttons::quiet("Reply").small().enabled(!posting).why(posting.then_some(POSTING))).clicked() {
+        if ui.add(buttons::quiet("Reply").size(ControlSize::Small).enabled(!posting).why(posting.then_some(POSTING))).clicked() {
             msgs.push(Msg::Issue(IssueMsg::Quote(i)));
         }
     });

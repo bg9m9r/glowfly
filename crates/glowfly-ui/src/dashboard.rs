@@ -13,6 +13,7 @@ use crate::state::dashboard::{AccountState, DashShow, Phase, service_header};
 use crate::state::dashboard_rows::{Row, counts, empty_hint, empty_text, sections};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Ui};
@@ -162,7 +163,7 @@ fn controls(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let labels = DashShow::ALL.map(|s| format!("{} ({})", s.label(), n[s.index()]));
     let options = DashShow::ALL.map(|s| Segment::new(s, labels[s.index()].as_str(), TIPS[s.index()]));
     ui.horizontal(|ui| {
-        if let Some(s) = segmented_opts(ui, st.dashboard.show, &options) {
+        if let Some(s) = segmented_opts(ui, ControlSize::Regular, st.dashboard.show, &options) {
             msgs.push(dash(DashboardMsg::Show(s)));
         }
         ui.add_space(12.0);
@@ -215,7 +216,7 @@ fn account_name(a: &Account) -> String {
 
 /// One "Not loaded" line: the text, then its buttons, centred on a small button's height.
 fn problem(ui: &mut Ui, text: String, add_buttons: impl FnOnce(&mut Ui)) {
-    let size = egui::vec2(ui.available_width(), buttons::SMALL_HEIGHT);
+    let size = egui::vec2(ui.available_width(), ControlSize::Small.metrics().h);
     ui.allocate_ui_with_layout(size, Layout::left_to_right(Align::Center), |ui| {
         ui.add_space(26.0);
         ui.label(RichText::new(text).size(type_scale::SMALL).color(color::text()));
@@ -225,7 +226,7 @@ fn problem(ui: &mut Ui, text: String, add_buttons: impl FnOnce(&mut Ui)) {
 }
 
 fn connect(ui: &mut Ui, msgs: &mut Vec<Msg>) {
-    if ui.add(buttons::secondary("Connect…").small()).clicked() {
+    if ui.add(buttons::secondary("Connect…").size(ControlSize::Small)).clicked() {
         msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
     }
 }
@@ -254,7 +255,7 @@ fn not_loaded(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         match &a.state {
             AccountState::NotConnected => problem(ui, format!("{name}: not connected"), |ui| connect(ui, msgs)),
             AccountState::SignInFailed(e) => problem(ui, format!("{name}: {e}"), |ui| {
-                if ui.add(buttons::secondary("Sign in").small()).clicked() {
+                if ui.add(buttons::secondary("Sign in").size(ControlSize::Small)).clicked() {
                     msgs.push(dash(DashboardMsg::SignIn(a.account.clone())));
                 }
                 connect(ui, msgs);

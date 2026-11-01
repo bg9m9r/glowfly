@@ -12,6 +12,13 @@
 //! `tokens.rs` itself is exempt, and so are the icon shapes (`ICON_FILES`), whose corners are
 //! geometry, not the corner scale. `ALLOWED` names the few deliberate exceptions. Test code is
 //! skipped, as in `type_scale.rs`.
+//!
+//! The size check (`theme/sizes.rs`, control sizing spec §7) finds sizes views set by hand
+//! outside `widgets/` and `theme/`: a button's `.height(`, `.min_height(` or `.text_size(`, a
+//! text field's `.margin(`, a `*_H`, `*HEIGHT`, `*PAD`, `*PAD_X` or `CHIP_*` const set to a
+//! number, `allocate_exact_size(vec2(…, <number>))`, and text centred by hand
+//! (`center().y - <galley>.size().y / 2.0`). It only logs them for now, against the counted
+//! allowlist `SIZE_LITERALS`, which only shrinks; it starts failing once the sizes are swept.
 
 use crate::support::views;
 
@@ -139,4 +146,137 @@ fn allowed_entries_let_their_line_through() {
     assert!(violations("tour.rs", src, &mut used).is_empty());
     assert_eq!(used, [0]);
     assert_eq!(violations("other.rs", src, &mut Vec::new()).len(), 1);
+}
+
+/// How many hand-set sizes the size check finds today. Lower it as call sites take a
+/// `ControlSize`; never raise it.
+const SIZE_LITERALS: usize = 157;
+
+/// The folders that define sizes, which the size check skips.
+const SIZE_HOMES: &[&str] = &["widgets/", "theme/"];
+
+/// Whether `s` starts with a number, after an optional minus sign.
+fn starts_with_number(s: &str) -> bool {
+    starts_with_digit(s.trim_start().trim_start_matches('-'))
+}
+
+/// Whether `line` calls `call` with an argument (not `rect.height()`).
+fn calls_with_argument(line: &str, call: &str) -> bool {
+    line.match_indices(call).any(|(i, _)| !line[i + call.len()..].starts_with(')'))
+}
+
+/// The hand-set sizes on one line of code, as messages.
+fn size_problems(line: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let button = line.contains("buttons::") || line.contains("button") || line.contains("styled");
+    for call in [".height(", ".min_height(", ".text_size("] {
+        if button && calls_with_argument(line, call) {
+            found.push(format!("a button's `{call}`; give it a ControlSize"));
+        }
+    }
+    if line.contains(".margin(") {
+        found.push("a text field's `.margin(`; fields take their padding from their ControlSize".to_owned());
+    }
+    if let Some((name, value)) = const_decl(line)
+        && line.split_once(':').and_then(|(_, rest)| rest.split_once('=')).is_some_and(|(ty, _)| ty.trim() == "f32")
+        && (name.ends_with("_H")
+            || name.ends_with("HEIGHT")
+            || name.ends_with("PAD")
+            || name.ends_with("PAD_X")
+            || name.starts_with("CHIP_"))
+        && starts_with_number(value)
+    {
+        found.push(format!("`{name}` is a number; take it from theme::sizes"));
+    }
+    for call in ["allocate_exact_size(vec2(", "allocate_exact_size(egui::vec2("] {
+        for (i, _) in line.match_indices(call) {
+            let args = &line[i + call.len()..];
+            // The second argument of vec2: after the first top-level comma.
+            let mut depth = 0;
+            let second = args.char_indices().find_map(|(j, c)| match c {
+                '(' => {
+                    depth += 1;
+                    None
+                }
+                ')' if depth == 0 => Some(None),
+                ')' => {
+                    depth -= 1;
+                    None
+                }
+                ',' if depth == 0 => Some(Some(&args[j + 1..])),
+                _ => None,
+            });
+            if let Some(Some(h)) = second
+                && starts_with_number(h)
+            {
+                found.push("`allocate_exact_size` with a number for the height; take it from a size".to_owned());
+            }
+        }
+    }
+    if let Some(i) = line.find("center().y - ")
+        && line[i..].contains(".size().y / 2.0")
+    {
+        found.push("text centred by hand; use sizes::text_pos".to_owned());
+    }
+    found
+}
+
+/// The hand-set sizes in the file at `rel`, as "line: message".
+fn size_violations(rel: &str, src: &str) -> Vec<String> {
+    if SIZE_HOMES.iter().any(|home| rel.starts_with(home)) {
+        return Vec::new();
+    }
+    let mut found = Vec::new();
+    for (i, line) in code_lines(src).iter().enumerate() {
+        found.extend(size_problems(line).into_iter().map(|m| format!("{}: {m}", i + 1)));
+    }
+    found
+}
+
+/// Log-only for now: lists the hand-set sizes and compares their count with `SIZE_LITERALS`,
+/// without failing.
+#[test]
+fn views_take_their_sizes_from_the_size_tokens() {
+    let mut found = Vec::new();
+    for (rel, text) in &view_sources() {
+        found.extend(size_violations(rel, text).into_iter().map(|v| format!("{rel}:{v}")));
+    }
+    eprintln!(
+        "size check (log only): {} hand-set sizes, allowlist {SIZE_LITERALS}
+{}",
+        found.len(),
+        found.join(
+            "
+"
+        )
+    );
+    if found.len() != SIZE_LITERALS {
+        eprintln!("size check: the count moved from {SIZE_LITERALS} to {}; lower SIZE_LITERALS when it falls", found.len());
+    }
+}
+
+#[test]
+fn the_size_check_catches_each_hand_set_size() {
+    let src = "const ROW_H: f32 = 22.0;
+const CHIP_GAP: f32 = 4.0;
+const SIDE_PAD: f32 = -2.0;
+const TOP_H: f32 = ROW_H;
+const ROWS_H: usize = 3;
+fn a(ui: &mut Ui, g: &Galley) {
+    ui.add(buttons::quiet(t).height(20.0));
+    let b = button.min_height(BUTTON_H);
+    let s = styled.text_size(body);
+    TextEdit::singleline(&mut s).margin(m);
+    let (r, _) = ui.allocate_exact_size(vec2(w, 22.0), Sense::hover());
+    let (r, _) = ui.allocate_exact_size(vec2(f(1.0, 2.0), h), Sense::hover());
+    let y = rect.center().y - g.size().y / 2.0;
+    let h = rect.height();
+    ui.set_min_height(20.0);
+}
+";
+    let found = size_violations("op_strip.rs", src);
+    let lines: Vec<&str> = found.iter().map(|f| f.split(':').next().unwrap()).collect();
+    assert_eq!(lines, ["1", "2", "3", "7", "8", "9", "10", "11", "13"], "{found:?}");
+    assert!(size_violations("widgets/buttons.rs", src).is_empty(), "widgets/ defines sizes");
+    assert!(size_violations("theme/sizes.rs", src).is_empty(), "theme/ defines sizes");
 }

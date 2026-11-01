@@ -2,6 +2,7 @@ window 1400x820
 Label "Glowfly 0.1.0"
 Button "New tab"
 Button "demo"
+Button "main"
 TextInput "Find a repository" = "doc" [focused]
 Heading "Recent"
 Button "C:\\work\\docs"
@@ -13,7 +14,6 @@ Button "Find repositories in folders…"
 Button "Fetch or pull repositories"
 Button "Add this repository to favorites"
 Button "Clear recent…"
-Button "main"
 Button "Undo the last action" [disabled]
 Button "Redo the undone action" [disabled]
 Button "Pull the current branch" [disabled]

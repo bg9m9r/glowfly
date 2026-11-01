@@ -9,10 +9,10 @@ use super::ref_group::Chip;
 use crate::ui::build_status;
 use crate::ui::theme::color;
 use crate::ui::theme::contrast::{self, ChipStyle, readable_on};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets;
-use crate::ui::widgets::ghost;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use eframe::egui::{Color32, CornerRadius, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use glowfly_core::forge::CheckState;
@@ -187,7 +187,7 @@ pub(super) struct RefsRow<'a> {
     pub pointer: Option<Pos2>,
     /// Leave room for the New branch… ghost button after the labels.
     pub ghost: bool,
-    /// The ghost button's width (`ghost::small_width`).
+    /// The ghost button's width (`ghost::ghost_width` at Compact).
     pub ghost_w: f32,
 }
 
@@ -258,8 +258,8 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
     // draws it there; other commits: right-click > Create branch here): labelled, or its plus
     // alone where the label doesn't fit.
     if row.ghost {
-        let at = |w: f32| Rect::from_min_size(pos2(end + GAP, mid - ghost::SMALL_HEIGHT / 2.0), vec2(w, ghost::SMALL_HEIGHT));
-        out.ghost_at = [(row.ghost_w, true), (ghost::SMALL_HEIGHT, false)]
+        let at = |w: f32| Rect::from_min_size(pos2(end + GAP, mid - ghost_h() / 2.0), vec2(w, ghost_h()));
+        out.ghost_at = [(row.ghost_w, true), (ghost_h(), false)]
             .into_iter()
             .map(|(w, labelled)| (at(w), labelled))
             .find(|(r, _)| r.right() <= cols.refs.1);
@@ -299,6 +299,11 @@ pub(super) fn tip_list(ui: &mut Ui, t: Lang, chips: &[Chip], tones: &[Color32]) 
     for (chip, tone) in chips.iter().zip(tones) {
         tip_row(ui, t, chip, *tone);
     }
+}
+
+/// The New branch… ghost button's height: a Compact control's.
+fn ghost_h() -> f32 {
+    ControlSize::Compact.metrics().h
 }
 
 #[cfg(test)]

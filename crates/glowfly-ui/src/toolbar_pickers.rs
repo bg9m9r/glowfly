@@ -1,11 +1,15 @@
-//! The toolbar's Repository › Branch pickers: one group of two parts, each a caption over a
-//! name with its caret. Each part has a fixed slot for its name (`REPO_SLOT`, `BRANCH_SLOT`), so
-//! switching tabs or branches never resizes the group or moves the groups after it; only a
-//! window too narrow for everything shrinks the slots (`name_widths`). A longer branch name keeps
-//! its start and end around a "…" (`truncate::cut_middle_in`), a longer repository name is cut
-//! at its end; groups after them fold away before the names go below `COMFORT`. A cut name
-//! shows whole on hover, and the accessible name is always the whole name. The branch name follows a dot in the checked-out branch's colour (a ring while HEAD is
-//! detached), and each branch in its menu has its colour dot, the checked-out one checked.
+//! The toolbar's Repository › Branch pickers: one framed segment bar (`widgets::segment_bar`)
+//! of two segments parted by a full-height divider, each a caption over a name with its caret,
+//! lighting its whole segment while hovered, held or open (the repository picker alone, with
+//! no repository open, lights its whole frame). Each part has a fixed slot for its name
+//! (`REPO_SLOT`, `BRANCH_SLOT`), so switching tabs or branches never resizes the bar or moves
+//! the groups after it; only a window too narrow for everything shrinks the slots
+//! (`name_widths`). A longer branch name keeps its start and end around a "…"
+//! (`truncate::cut_middle_in`), a longer repository name is cut at its end; groups after them
+//! fold away before the names go below `COMFORT`. A cut name shows whole on hover, and the
+//! accessible name is always the whole name. The branch name follows a dot in the checked-out
+//! branch's colour (a ring while HEAD is detached), and each branch in its menu has its colour
+//! dot, the checked-out one checked.
 
 use super::menus::repo_menu;
 use crate::msg::{BranchMsg, Msg};
@@ -15,12 +19,16 @@ use crate::ui::common::{menu_item, short};
 use crate::ui::menu_anchor;
 use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
+use crate::ui::theme::sizes::ControlSize;
+use crate::ui::theme::tokens::BORDER_W;
 use crate::ui::theme::type_scale::{self, BODY, CAPTION};
+use crate::ui::widgets;
 use crate::ui::widgets::menu::{self, separator};
+use crate::ui::widgets::segment_bar::{BarStyle, Seg, segment_bar};
 use crate::ui::widgets::truncate::{cut_galley, cut_job, cut_middle_in};
-use crate::ui::widgets::{self, Icon};
-use eframe::egui::{self, Color32, CornerRadius, Galley, Id, Response, Sense, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{self, Color32, Galley, Id, Response, WidgetInfo, WidgetType, pos2};
+use glowfly_core::i18n::Lang;
+use glowfly_core::repo::Snapshot;
 use std::sync::Arc;
 
 /// The room for the repository and branch names, whatever names they show.
@@ -33,20 +41,18 @@ const BRANCH_MIN: f32 = 40.0;
 /// (`toolbar_fold.rs`): about a repository of 64 px and a branch of 96, so a 1400 px window
 /// with a hosting service still shows every group in English.
 const COMFORT_NAMES: f32 = 64.0 + 96.0;
-/// A part's side padding, height and corners.
+/// A part's side padding, and the height of its caption and name, centred in its segment.
 const PAD_X: f32 = 10.0;
 const PART_H: f32 = 40.0;
-const PART_RADIUS: u8 = radius::inside(widgets::GROUP_RADIUS, widgets::GROUP_PAD as u8);
+/// The size whose focus style the segments take (their corners are the frame's).
+const PICKER_SIZE: ControlSize = ControlSize::Large;
 /// The caret's room after a name, and the branch icon's before it.
 const CARET_ROOM: f32 = 14.0;
 const ICON_ROOM: f32 = 20.0;
-/// The chevron between the parts.
-const CHEVRON_W: f32 = 14.0;
 /// One part's room besides its name.
 const PART_FRAME: f32 = 2.0 * PAD_X + CARET_ROOM;
-/// The group's room besides the names: both parts' frames, the branch icon, the chevron with
-/// the spacing either side of it, and the group's padding and stroke.
-const FRAMES: f32 = 2.0 * PART_FRAME + ICON_ROOM + CHEVRON_W + 2.0 * widgets::TOOL_SPACING + 2.0 * (widgets::GROUP_PAD as f32 + 1.0);
+/// The bar's room besides the names: both parts' frames, the branch icon and the border.
+const FRAMES: f32 = 2.0 * PART_FRAME + ICON_ROOM + 2.0 * BORDER_W;
 /// Where the toolbar keeps the width of everything after the pickers, measured each frame.
 const REST: &str = "toolbar-after-pickers";
 /// The pickers' menus: one bar, so hovering the other part moves an open menu to it.
@@ -97,71 +103,76 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let rest = ui.ctx().data(|d| d.get_temp::<f32>(Id::new(REST)));
     let names_room = rest.map_or(f32::INFINITY, |rest| ui.available_width() - rest - FRAMES - ui.spacing().item_spacing.x);
     let (repo_w, branch_w) = name_widths((REPO_SLOT, BRANCH_SLOT), names_room);
-    widgets::tool_group(ui, |ui| {
-        ui.set_min_height(widgets::TOOL_H);
-        let g = cut_galley(ui.ctx(), cut_job(repo.clone(), font.clone(), color::text()), repo_w);
-        let cut = g.elided;
-        part(ui, t.tr("toolbar.repository"), (g, repo_w), None, &repo, cut, |ui| repo_menu(ui, t, st, msgs));
-        if let (Some(snap), Some(head)) = (&st.snap, &head) {
-            let (rect, _) = ui.allocate_exact_size(vec2(CHEVRON_W, PART_H), Sense::hover());
-            widgets::paint_icon_sized(ui.painter(), rect.center(), Icon::ExpandRight, color::faint(), widgets::icon::SIZE_SM);
-            let shown = cut_middle_in(ui.painter(), head, &font, branch_w);
-            let cut = shown != *head;
-            let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());
-            // A dot in the checked-out branch's colour; a ring while HEAD is detached.
-            let tone = snap.head_swatch().map(line);
-            part(ui, t.tr("toolbar.branch"), (g, branch_w), Some(tone), head, cut, |ui| {
-                ui.set_min_width(220.0);
-                for b in &snap.locals {
-                    // The current branch is checked and stays enabled: a click just closes the menu.
-                    let why = (!b.is_head).then(|| crate::state::worktree_branches::checkout_blocked(t, snap, &b.name)).flatten();
-                    let dot = Some(line(snap.branch_swatch(&b.name)));
-                    let r =
-                        menu::item(b.name.as_str()).current(b.is_head).icon(branch_dot::paint_slot, dot).blocked(why.as_deref()).show(ui);
-                    let r =
-                        if b.is_head { r.on_hover_text(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)])) } else { r };
-                    if r.clicked() {
-                        if !b.is_head {
-                            msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
-                        }
-                        ui.close_menu();
-                    }
-                }
-                separator(ui);
-                let new_branch = Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() });
-                menu_item(msgs, ui, t.tr("toolbar.new_branch"), new_branch);
-            });
-        }
+    let repo_g = cut_galley(ui.ctx(), cut_job(repo.clone(), font.clone(), color::text()), repo_w);
+    let branch = st.snap.as_ref().zip(head.as_ref()).map(|(snap, head)| {
+        let shown = cut_middle_in(ui.painter(), head, &font, branch_w);
+        let cut = shown != *head;
+        let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());
+        // A dot in the checked-out branch's colour; a ring while HEAD is detached.
+        (snap, head, g, cut, snap.head_swatch().map(line))
     });
+    let mut segs = vec![Seg { w: part_w(repo_w, false), enabled: true }];
+    if branch.is_some() {
+        segs.push(Seg { w: part_w(branch_w, true), enabled: true });
+    }
+    let style = BarStyle::Framed { fill: color::tool_backing() };
+    let bar = segment_bar(ui, PICKER_SIZE, widgets::GROUP_H, widgets::GROUP_RADIUS, style, &segs);
+    let menu_id = Id::new(MENU_ID);
+    let mut open =
+        vec![menu_anchor::menu_below(ui, menu_id, &bar.responses[0], menu_anchor::MenuCmd::None, |ui| repo_menu(ui, t, st, msgs))];
+    if let (Some((snap, ..)), Some(r)) = (&branch, bar.responses.get(1)) {
+        open.push(menu_anchor::menu_below(ui, menu_id, r, menu_anchor::MenuCmd::None, |ui| branch_menu(ui, t, snap, msgs)));
+    }
+    bar.paint(ui, &open);
+    let mut responses = bar.responses.into_iter();
+    let cut = repo_g.elided;
+    part(ui, responses.next().expect("the repository segment"), t.tr("toolbar.repository"), (repo_g, None), &repo, cut);
+    if let (Some((_, head, g, cut, tone)), Some(r)) = (branch, responses.next()) {
+        part(ui, r, t.tr("toolbar.branch"), (g, Some(tone)), head, cut);
+    }
 }
 
-/// One picker: `caption` over `name` (with `dot` before it: a branch dot, or a ring for None) in a slot of the
-/// width paired with it, and the caret pinned at the part's right, opening `menu` below it.
-/// Named by `full`, which also shows on hover when the name was `cut`.
-fn part(
-    ui: &mut egui::Ui,
-    caption: &str,
-    (name, slot): (Arc<Galley>, f32),
-    dot: Option<Option<Color32>>,
-    full: &str,
-    cut: bool,
-    menu: impl FnOnce(&mut egui::Ui),
-) -> Response {
-    let icon_w = if dot.is_some() { ICON_ROOM } else { 0.0 };
-    // The slot, not the name, sets the width; in a very narrow window the caption is cut too.
-    let w = 2.0 * PAD_X + icon_w + slot + CARET_ROOM;
-    let caption = cut_galley(ui.ctx(), cut_job(caption.to_owned(), type_scale::font(CAPTION), color::weak()), w - 2.0 * PAD_X);
-    let (rect, r) = ui.allocate_exact_size(vec2(w, PART_H), Sense::click());
-    let open = menu_anchor::menu_below(ui, Id::new(MENU_ID), &r, menu_anchor::MenuCmd::None, menu);
-    let p = ui.painter();
-    if open {
-        p.rect_filled(rect, CornerRadius::same(PART_RADIUS), color::tool_pressed());
-    } else if r.hovered() {
-        p.rect_filled(rect, CornerRadius::same(PART_RADIUS), color::tool_hover());
+/// The branch picker's menu: the local branches with their colour dots, the checked-out one
+/// checked, then New branch.
+fn branch_menu(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    ui.set_min_width(220.0);
+    for b in &snap.locals {
+        // The current branch is checked and stays enabled: a click just closes the menu.
+        let why = (!b.is_head).then(|| crate::state::worktree_branches::checkout_blocked(t, snap, &b.name)).flatten();
+        let dot = Some(line(snap.branch_swatch(&b.name)));
+        let r = menu::item(b.name.as_str()).current(b.is_head).icon(branch_dot::paint_slot, dot).blocked(why.as_deref()).show(ui);
+        let r = if b.is_head { r.on_hover_text(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)])) } else { r };
+        if r.clicked() {
+            if !b.is_head {
+                msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
+            }
+            ui.close_menu();
+        }
     }
+    separator(ui);
+    let new_branch = Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() });
+    menu_item(msgs, ui, t.tr("toolbar.new_branch"), new_branch);
+}
+
+/// A part's width around a name slot `slot` wide, with room for a branch dot before it when
+/// `dot`. The slot, not the name, sets the width.
+fn part_w(slot: f32, dot: bool) -> f32 {
+    2.0 * PAD_X + if dot { ICON_ROOM } else { 0.0 } + slot + CARET_ROOM
+}
+
+/// Paints one picker over its segment `r`: `caption` over the name galley (with its dot before
+/// it: a branch dot, or a ring for None), and the caret pinned at the segment's right. Named by
+/// `full`, which also shows on hover when the name was `cut`.
+fn part(ui: &egui::Ui, r: Response, caption: &str, (name, dot): (Arc<Galley>, Option<Option<Color32>>), full: &str, cut: bool) -> Response {
+    let rect = r.rect;
+    let icon_w = if dot.is_some() { ICON_ROOM } else { 0.0 };
+    // In a very narrow window the caption is cut too.
+    let caption = cut_galley(ui.ctx(), cut_job(caption.to_owned(), type_scale::font(CAPTION), color::weak()), rect.width() - 2.0 * PAD_X);
+    let p = ui.painter();
     let x = rect.left() + PAD_X;
-    p.galley(pos2(x, rect.top() + 12.0 - caption.size().y / 2.0), caption, color::weak());
-    let row_y = rect.top() + 27.0;
+    let top = rect.center().y - PART_H / 2.0;
+    p.galley(pos2(x, top + 12.0 - caption.size().y / 2.0), caption, color::weak());
+    let row_y = top + 27.0;
     match dot {
         Some(Some(c)) => {
             p.circle_filled(pos2(x + 7.0, row_y), 4.0, c);

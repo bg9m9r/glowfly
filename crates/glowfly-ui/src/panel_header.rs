@@ -9,6 +9,7 @@ use super::widgets::menu::{self, popup_below};
 use crate::keymap::Keymap;
 use crate::msg::Msg;
 use crate::state::tip::Tip;
+use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::{self, PopupCloseBehavior, Ui};
 use glowfly_core::i18n::Lang;
 
@@ -47,7 +48,7 @@ pub fn show(ui: &mut Ui, t: Lang, keys: &Keymap, links: Links<'_>, msgs: &mut Ve
     }
     let id = ui.make_persistent_id("panel-header-links");
     let name = t.tr("panel.header.more.name");
-    let r = icon_tip(ghost::ghost(ui, Some(Icon::More), None, name, true), keys, t, Tip::new(name));
+    let r = icon_tip(ghost::ghost(ui, ControlSize::Regular, Some(Icon::More), None, name, true), keys, t, Tip::new(name));
     if r.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }

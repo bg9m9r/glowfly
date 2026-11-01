@@ -8,6 +8,7 @@ use super::theme::color;
 use super::widgets::buttons;
 use super::widgets::severity::{self, Severity};
 use crate::msg::Msg;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Ui, vec2};
 use glowfly_core::i18n::Lang;
@@ -85,9 +86,9 @@ pub fn failed_line(ui: &mut Ui, t: Lang, f: Failure, msgs: &mut Vec<Msg>) {
         ui.add(egui::Label::new(RichText::new(&message).color(color::weak())).wrap());
         ui.horizontal(|ui| {
             if f.retry.is_some() {
-                again = ui.add(buttons::secondary(t.tr("common.try_again.button")).small()).clicked();
+                again = ui.add(buttons::secondary(t.tr("common.try_again.button")).size(ControlSize::Small)).clicked();
             }
-            copy = ui.add(buttons::secondary(t.tr("common.copy_details.button")).small()).clicked();
+            copy = ui.add(buttons::secondary(t.tr("common.copy_details.button")).size(ControlSize::Small)).clicked();
         });
     });
     if copy {

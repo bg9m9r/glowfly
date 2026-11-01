@@ -1,7 +1,7 @@
 //! Top toolbar, on the side panels' surface so the active tab runs into it: the repository ›
-//! branch pickers (`toolbar_pickers.rs`, in fixed slots so the bar never moves when the names
-//! change), then the git actions and app buttons, each group on its own recessed surface
-//! (`widgets::tool_group`) with even gaps between them (`widgets::tool_gap`). The middle groups
+//! branch pickers (`toolbar_pickers.rs`, one framed segment bar in fixed slots so the bar never
+//! moves when the names change), then the git actions and app buttons in borderless groups of
+//! quiet buttons (`widgets::tool_group`), each set apart by a divider (`widgets::tool_gap`). The middle groups
 //! (`toolbar_groups.rs`) follow the pickers, the pull request group shows only with a hosting
 //! service, and the right-hand group is anchored to the window's edge with the untrusted and
 //! conflict chips before it, so a chip appearing moves nothing else. In a narrow window the

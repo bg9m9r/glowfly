@@ -12,6 +12,7 @@ use crate::state::tip::Tip;
 use crate::tools::ToolsMsg;
 use crate::ui::common::menu_item_if;
 use crate::ui::file_menu::restore_msg;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::menu::popup_below;
 use crate::ui::widgets::{Icon, buttons};
 use eframe::egui::{PopupCloseBehavior, Ui};
@@ -67,7 +68,7 @@ fn items(t: Lang, a: &Actions) -> Vec<Item> {
 /// the space before it.
 pub(super) fn widths(ui: &Ui, t: Lang, a: &Actions) -> (f32, f32, f32) {
     let items = items(t, a);
-    let labelled = items.iter().map(|i| controls::ghost_width(ui, true, Some(i.label), 0.0)).sum::<f32>()
+    let labelled = items.iter().map(|i| controls::ghost_width(ui, ControlSize::Regular, true, Some(i.label), 0.0)).sum::<f32>()
         + items.len().saturating_sub(1) as f32 * SPACE;
     let folded = if items.is_empty() { 0.0 } else { controls::HEIGHT };
     let tool = match a.diff_tool {
@@ -88,7 +89,7 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, fold: bool, keys: &Keymap, t: L
             if i > 0 {
                 ui.add_space(SPACE);
             }
-            let mut r = ghost(ui, Some(item.icon), Some(item.label), item.label, item.missing.is_none());
+            let mut r = ghost(ui, ControlSize::Regular, Some(item.icon), Some(item.label), item.label, item.missing.is_none());
             r = match item.missing {
                 Some(why) => r.on_hover_text(why),
                 None => r.on_hover_text(item.tip),
@@ -109,7 +110,7 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, fold: bool, keys: &Keymap, t: L
             Some(note) => tip.body(note),
             None => tip,
         };
-        let r = icon_tip(ghost(ui, Some(Icon::ExternalDiff), None, name, true), keys, t, tip);
+        let r = icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::ExternalDiff), None, name, true), keys, t, tip);
         if r.clicked() {
             msgs.push(Msg::Tools(ToolsMsg::OpenDiff(m.target.clone())));
             r.surrender_focus();
@@ -121,7 +122,7 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, fold: bool, keys: &Keymap, t: L
 fn more(ui: &mut Ui, items: Vec<Item>, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
     let id = ui.make_persistent_id("diff-file-actions");
     let name = t.tr("diff.header.more");
-    let r = icon_tip(ghost(ui, Some(Icon::More), None, name, true), keys, t, Tip::new(name));
+    let r = icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::More), None, name, true), keys, t, Tip::new(name));
     if r.clicked() {
         ui.memory_mut(|mem| mem.toggle_popup(id));
     }

@@ -45,4 +45,5 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 ## Spacing and tokens
 
 - `theme/spacing.rs`: the spacing grid and panel padding, and the menu row metrics (comfortable and compact) and frame margin.
-- `theme/tokens.rs`: the design tokens every theme reads: the radius scale with nested container radii, the Float and Dialog elevations, the focus ring, the inset ring for packed controls and a text field's halo, and the motion timings and easing, instant with Reduce motion.
+- `theme/sizes.rs`: the control sizes (Compact 22, Small 24, Regular 28, Large 36: height, padding, text, icon, gap, corners, hit area), the chip sizes (Badge 18, Chip 22), `text_pos` (text centred on a whole point) and `fits` (which sizes a row can host).
+- `theme/tokens.rs`: the design tokens every theme reads: the radius scale with nested container radii and a segment's corners (`radius::segment`), the border width, the least hit area and a split's caret width, the Float and Dialog elevations, the focus ring, the inset ring for packed controls and a text field's halo, and the motion timings and easing, instant with Reduce motion.

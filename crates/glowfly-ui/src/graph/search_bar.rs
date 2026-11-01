@@ -10,6 +10,7 @@ use crate::state::{AppState, Selection};
 use crate::ui::access;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::segmented::segmented;
 use crate::ui::widgets::{self, Icon, truncate};
@@ -73,7 +74,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         // The SearchFilter key flips between the two modes, so both tips name it.
         let highlight = st.keymap.tip("Mark the matching commits and dim the rest", BindingId::SearchFilter);
         let filter = st.keymap.tip("Show only matching commits", BindingId::SearchFilter);
-        if segmented(ui, st.session.search.filter, &[(false, "Highlight", &highlight), (true, "Filter", &filter)]).is_some() {
+        if segmented(ui, ControlSize::Regular, st.session.search.filter, &[(false, "Highlight", &highlight), (true, "Filter", &filter)]).is_some() {
             msgs.push(Msg::Search(SearchMsg::ToggleFilter));
         }
 
@@ -111,7 +112,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             };
         });
 
-        if ui.add(buttons::secondary(st.settings.lang().tr("common.close.button")).small()).clicked() {
+        if ui.add(buttons::secondary(st.settings.lang().tr("common.close.button")).size(ControlSize::Small)).clicked() {
             msgs.push(Msg::Search(SearchMsg::Close));
         }
     });

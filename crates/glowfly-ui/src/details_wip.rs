@@ -23,6 +23,7 @@ use super::file_menu::{self, ToolItem};
 use super::op_steps::TopArgs;
 use super::theme::color;
 use super::widgets::{Icon, buttons};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::row_menu::RowMenuExt;
 
 use crate::keymap::{BindingId, Keymap};
@@ -196,7 +197,7 @@ pub(super) fn wip_file_row(
     // for the conflict view, so the file's name keeps its room.
     let narrow = at.width() < NARROW_ROW;
     let end = |ui: &mut egui::Ui| {
-        let button = if narrow { buttons::icon_only(Icon::Check, action) } else { buttons::quiet(action).small() };
+        let button = if narrow { buttons::icon_only(Icon::Check, action) } else { buttons::quiet(action).size(ControlSize::Small) };
         if show_action {
             if ui.add(button.enabled(usable)).clicked() {
                 msgs.push(toggle());

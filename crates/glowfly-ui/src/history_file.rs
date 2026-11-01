@@ -14,11 +14,12 @@ use super::empty_state::{EmptyIcon, empty_state};
 use super::find_bar::{self, FindIntent, plural};
 use super::pane_status::{self, Failure};
 use super::theme::color;
-use super::widgets::{scroll_cue, segmented, truncate};
+use super::widgets::{scroll_cue, truncate};
 use crate::msg::{DiffMsg, HistoryMsg, Msg};
 use crate::state::AppState;
 use crate::state::blame_find::ranges;
 use crate::state::history::{FileTextData, Preview, TextState};
+use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Align2, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::preview::{self, PreviewKind};
 use glowfly_core::repo::{BINARY_NOT_SHOWN, LfsState};
@@ -144,7 +145,7 @@ fn toolbar(ui: &mut Ui, st: &mut AppState, bar: Bar<'_>, msgs: &mut Vec<Msg>) {
     let text_tools = !bar.previewing;
     // Only as tall as the switch when it is there, so other files keep their toolbar.
     let row_h = ui.spacing().interact_size.y;
-    let first_h = if bar.toggle.is_some() { row_h.max(segmented::HEIGHT) } else { row_h };
+    let first_h = if bar.toggle.is_some() { row_h.max(ControlSize::Regular.metrics().h) } else { row_h };
     let mut find = |ui: &mut Ui, msgs: &mut Vec<Msg>| {
         for intent in find_bar::find_and_line(ui, &mut nav.find, &mut nav.goto, &mut nav.focus_find) {
             msgs.push(Msg::History(match intent {

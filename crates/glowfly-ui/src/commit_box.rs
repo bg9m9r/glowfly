@@ -25,6 +25,7 @@ use crate::state::CommitDraft;
 use crate::state::commit::{SUMMARY_HARD, SummaryLength, amend_blocked, commit_blocked, pushes_after, summary_length};
 use crate::state::repo_identity::{commit_identity_line, env_tip};
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::popup_below;
 use crate::ui::widgets::{buttons, reason, truncate_label};
@@ -105,7 +106,10 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
             issue_chip(ui, fs, &key, msgs);
             let hover = if fs.message_ref(&key) == tag { t.tr("commit.link_tip.mention") } else { t.tr("commit.link_tip.link") };
             if !mentioned
-                && ui.add(buttons::secondary(t.trf("commit.link_button", &[("tag", &tag)])).small()).on_hover_text(hover).clicked()
+                && ui
+                    .add(buttons::secondary(t.trf("commit.link_button", &[("tag", &tag)])).size(ControlSize::Small))
+                    .on_hover_text(hover)
+                    .clicked()
             {
                 msgs.push(Msg::Commit(CommitMsg::AppendToDescription(fs.message_ref(&key))));
             }

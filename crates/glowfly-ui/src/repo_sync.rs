@@ -8,6 +8,7 @@ use super::theme::color;
 use super::widgets::{buttons, truncate};
 use crate::msg::{Msg, RepoMsg, ReposMsg};
 use crate::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, can_open, can_retry, failure_tip, outcome_text};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
 use glowfly_core::i18n::Lang;
@@ -93,13 +94,13 @@ fn row(ui: &mut egui::Ui, t: Lang, sync: &RepoSync, index: usize, r: &SyncRow, m
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if can_open(r) {
-                let open = buttons::secondary(t.tr("repo_sync.open.button")).small();
+                let open = buttons::secondary(t.tr("repo_sync.open.button")).size(ControlSize::Small);
                 if ui.add(open).on_hover_text(t.tr("repo_sync.open.tip")).clicked() {
                     msgs.push(Msg::Repo(RepoMsg::Open(r.path.clone())));
                     opened = true;
                 }
             }
-            if can_retry(r) && ui.add(buttons::secondary(t.tr("repo_sync.retry.button")).small()).clicked() {
+            if can_retry(r) && ui.add(buttons::secondary(t.tr("repo_sync.retry.button")).size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::Repos(ReposMsg::RetrySync { generation: sync.generation, index }));
             }
         });

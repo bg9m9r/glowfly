@@ -1,6 +1,7 @@
 //! Colors: the built-in palettes, palettes built from theme files, and egui widget styling,
 //! with the bundled fonts (`fonts.rs`), the type scale (`type_scale.rs`), the spacing grid
-//! (`spacing.rs`), the design tokens (`tokens.rs`: corners, elevations, focus, motion) and the
+//! (`spacing.rs`), the control and chip sizes (`sizes.rs`), the design tokens (`tokens.rs`:
+//! corners, borders, hit areas, elevations, focus, motion) and the
 //! colour tokens worked out from a palette (`surfaces.rs`: overlay, state layers, tones).
 //!
 //! Views read colors through `color::text()` etc.; the terminal reads `color::term()`, which
@@ -35,6 +36,7 @@ pub mod custom;
 pub mod families;
 pub mod fonts;
 pub mod missing_glyphs;
+pub mod sizes;
 pub mod spacing;
 pub mod surfaces;
 pub mod terminal_scheme;

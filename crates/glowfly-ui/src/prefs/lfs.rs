@@ -12,6 +12,7 @@ use crate::msg::TrustMsg;
 use crate::state::blocked::BUSY;
 use crate::state::lfs::{INSTALL_URL, LfsPage};
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Key, RichText, Ui};
@@ -231,7 +232,7 @@ fn pattern_list(ui: &mut Ui, t: Lang, patterns: &[LfsPattern], editable: bool, b
             }
             if editable && p.source.is_root() {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.add(buttons::secondary("Untrack").small().enabled(!busy)).clicked() {
+                    if ui.add(buttons::secondary("Untrack").size(ControlSize::Small).enabled(!busy)).clicked() {
                         msgs.push(Msg::Lfs(LfsMsg::Untrack(p.raw.clone())));
                     }
                 });

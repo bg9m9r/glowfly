@@ -21,6 +21,7 @@ use crate::state::op_actions::action_text;
 use crate::state::op_confirm::{Risky, banner_msg};
 use crate::state::op_steps::{self, OpKind, OpStep, StepState, step_state};
 use crate::state::rebase_banner::action_msg;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::menu::{popup_above_or_below, separator};
 use eframe::egui::{self, Align, Layout, Rect, RichText, Sense, Stroke, Ui, vec2};
 use git2::RepositoryState;
@@ -118,7 +119,7 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
         OpKind::Merge | OpKind::Conflicts => commit_box::show(ui, st, cache, BoxStyle { titled: false, primary: true }, msgs),
         _ => {
             let toggle = if form_open { t.tr("details.steps.commit_form.hide") } else { t.tr("details.steps.commit_form.show") };
-            if ui.add(buttons::quiet(toggle).small()).clicked() {
+            if ui.add(buttons::quiet(toggle).size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::Layout(LayoutMsg::ToggleOpStep(OpStep::CommitForm)));
             }
             if form_open {
@@ -235,7 +236,7 @@ fn heading(ui: &mut Ui, st: &AppState, snap: &Snapshot, conflicts_left: bool, ms
 pub(super) fn title_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, title: &str, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let actions: Vec<_> = state_actions(snap.state).into_iter().flatten().filter(|(_, a)| destructive(a)).collect();
-    let quiet = |label: &'static str| buttons::quiet(action_text(t, label)).small();
+    let quiet = |label: &'static str| buttons::quiet(action_text(t, label)).size(ControlSize::Small);
     let gap = ui.spacing().item_spacing.x;
     let buttons_w: f32 = actions.iter().map(|(label, _)| quiet(label).desired_width(ui) + gap).sum();
     let font = type_scale::strong(ui, type_scale::SUBHEAD);

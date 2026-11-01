@@ -21,6 +21,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::journal_lost::JournalTab;
 use crate::state::tip::Tip;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use eframe::egui::{self, Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_model::journal::JournalMsg;
@@ -65,7 +66,8 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     }
     row.add_space(8.0);
     let refresh = t.tr("journal.refresh.tip");
-    if icon_tip(ghost(&mut row, Some(Icon::Refresh), None, refresh, true), &st.keymap, t, Tip::new(refresh)).clicked() {
+    if icon_tip(ghost(&mut row, ControlSize::Regular, Some(Icon::Refresh), None, refresh, true), &st.keymap, t, Tip::new(refresh)).clicked()
+    {
         msgs.push(Msg::Journal(JournalMsg::Refresh));
     }
     row.add_space(12.0);
@@ -73,7 +75,7 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         Segment::new(JournalTab::States, t.tr("journal.tab.states.label"), t.tr("journal.tab.states.tip")),
         Segment::new(JournalTab::Lost, t.tr("journal.tab.lost.label"), t.tr("journal.tab.lost.tip")),
     ];
-    if let Some(tab) = segmented_opts(&mut row, tab, &options) {
+    if let Some(tab) = segmented_opts(&mut row, ControlSize::Regular, tab, &options) {
         msgs.push(Msg::Journal(JournalMsg::Tab(tab)));
     }
     let room = row.available_width() - 16.0;

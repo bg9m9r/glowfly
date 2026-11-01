@@ -11,13 +11,14 @@ source file, update its line here.
 - `scroll_cue.rs`: the always-visible thin scroll bar and the edge fades of dialog bodies, Preferences and the File view.
 - `ghost::close_view`: the × that closes a view (the diff, blame, a history, an issue or pull request), with Close and its Esc cap in the tooltip.
 - `widgets::remove_icon`: the weak × that removes a key in Preferences > Keyboard and closes a toast.
-- `buttons.rs`: the button family, seven kinds: primary, tonal, secondary, quiet, danger, icon-only and split, all 28 px or 24 px small with `radius::MD` corners.
+- `buttons.rs`: the button family, eight kinds: primary, tonal, secondary, quiet, danger, quiet danger, icon-only and split, sized by a `ControlSize` (`.size`, Regular by default; Compact quiet only).
 - Buttons have one disabled look: a neutral fill and weak text, never an outline or egui's fade, and a `why` shown on hover.
-- `button_look.rs`: each button kind's colours per state.
+- `button_look.rs`: each button kind's colours per state, and `paint_target`, where a toolbar target's state becomes pixels: the quiet layer over its own shape, a single framed control's border going weak while lit, and its focus ring on the same corners.
 - `button_split.rs`: the split button (an action and its menu caret as one pill).
-- `widgets/tool.rs`: the toolbar's buttons, toggles and split buttons; `widgets::tool_group` the recessed surface each group sits on.
-- `widgets/ghost.rs`: ghost buttons and dividers, shared by the diff's file header and the terminal panel's header.
-- `widgets/segmented.rs`: a segmented control whose segments can be disabled with a reason on hover.
+- `widgets/tool.rs`: the toolbar's buttons, toggles and split buttons, each lighting its whole slot; `widgets::tool_group` a borderless group and `tool_gap` the divider between groups.
+- `widgets/segment_bar.rs`: flush segments in one shape (the toolbar pickers' framed bar, a split button's quiet one), each its own target, with full-height dividers in a framed bar; tests in `segment_bar_tests.rs`.
+- `widgets/ghost.rs`: ghost buttons (at a `ControlSize`) and dividers, shared by the diff's file header, the terminal panel's header and the graph's New branch… button.
+- `widgets/segmented.rs`: a segmented control at a `ControlSize` whose segments can be disabled with a reason on hover.
 - `widgets/quiet_chip.rs`: quiet chips (the commit details' SHA, parents and committer).
 - `widgets/details.rs`: a collapsed Details under a confirmation's plain words, also under the Publish dialog's rewritten service errors.
 
