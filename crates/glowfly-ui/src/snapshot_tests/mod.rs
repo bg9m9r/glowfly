@@ -114,6 +114,7 @@ pub(super) mod snapshot_tests_prefs_keyboard;
 pub(super) mod snapshot_tests_prefs_layout;
 pub(super) mod snapshot_tests_prefs_notify;
 pub(super) mod snapshot_tests_prefs_save;
+pub(super) mod snapshot_tests_prefs_signing;
 pub(super) mod snapshot_tests_prefs_terminal;
 pub(super) mod snapshot_tests_profile_rules;
 pub(super) mod snapshot_tests_profiles;

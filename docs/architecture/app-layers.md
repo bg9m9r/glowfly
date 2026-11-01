@@ -125,7 +125,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests: those that need no runner in `update/tests/` (`mod.rs` lists them), the ones that run effects (and those sharing helpers with them) in `flows/`; the shared fixtures are in `testing.rs`.
 - `prefs.rs`: opening and closing Preferences, the settings file and the settings that apply at once, and the routing of the window's other messages.
 - `prefs_nav.rs`: `enter_page`, the one way a Preferences page is shown (opening on it, its navigation row, its area's `ShowPage`) and what it reads as it opens; tests in `flows/prefs_pages_tests.rs`.
-- `prefs_signing.rs`: Commit Signing's key list, Generate GPG key and copying a public key.
+- `prefs_signing.rs`: Commit Signing's key list, Generate GPG key, Extend by 2 years and copying a public key (tests in `update/tests/prefs_signing_tests.rs`).
 - `prefs_pick.rs`: the file and folder pickers and where each picked path goes.
 - `terminal_schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
 - `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip; a stop whose rebase ended another way ends as the quiet `EndRestack` job (back to the branch checked out before, stash put back, finished part recorded for undo).

@@ -50,6 +50,8 @@ pub enum PrefsMsg {
     LoadSigningKeys,
     GenerateGpgKey,
     CopyPublicKey,
+    /// The expired-key warning's Extend by 2 years: move the chosen OpenPGP key's expiry.
+    ExtendKey,
     PickFile(FilePurpose),
     /// Switch the colour theme (saved in settings).
     SetTheme(ThemeChoice),
@@ -70,6 +72,8 @@ pub enum PrefsMsg {
     SigningKeysLoaded(Result<Vec<glowfly_core::signing::SigningKey>, String>),
     GpgKeyGenerated(Result<String, String>),
     PublicKeyExported(Result<String, String>),
+    /// `PrefsEffect::ExtendGpgKey` finished.
+    KeyExtended(Result<(), glowfly_core::gpg_prompt::extend::ExtendFailed>),
     FolderPicked {
         purpose: FolderPurpose,
         path: Option<PathBuf>,
@@ -117,6 +121,7 @@ impl PrefsMsg {
             | Self::LoadSigningKeys
             | Self::GenerateGpgKey
             | Self::CopyPublicKey
+            | Self::ExtendKey
             | Self::PickFile(..)
             | Self::SetTheme(..)
             | Self::SetToolbarLabels(..)
@@ -127,6 +132,7 @@ impl PrefsMsg {
             | Self::SigningKeysLoaded(..)
             | Self::GpgKeyGenerated(..)
             | Self::PublicKeyExported(..)
+            | Self::KeyExtended(..)
             | Self::FolderPicked { .. }
             | Self::SettingsUnreadable(..)
             | Self::RetrySettingsRead

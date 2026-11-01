@@ -33,6 +33,7 @@
 
 pub mod args;
 pub mod env;
+pub mod extend;
 pub mod flow;
 pub mod program;
 pub mod real;
@@ -43,6 +44,8 @@ pub mod status;
 mod args_tests;
 #[cfg(test)]
 mod env_tests;
+#[cfg(test)]
+mod extend_tests;
 #[cfg(test)]
 mod flow_tests;
 #[cfg(test)]

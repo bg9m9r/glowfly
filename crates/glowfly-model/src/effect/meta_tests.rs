@@ -151,4 +151,5 @@ fn prefs_effects_are_timed_unless_they_wait_on_the_passphrase() {
     assert!(timed(PrefsEffect::ExportPublicKey { format: SigningFormat::OpenPgp, program: "gpg".into(), key: "k".into() }));
     let generate = PrefsEffect::GenerateGpgKey { program: "gpg".into(), name: "n".into(), email: "e".into(), passphrase: String::new() };
     assert!(!timed(generate), "waits on the passphrase dialog");
+    assert!(!timed(PrefsEffect::ExtendGpgKey { program: "gpg".into(), key: "k".into() }), "waits on the passphrase prompt");
 }

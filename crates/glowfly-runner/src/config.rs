@@ -21,6 +21,7 @@ pub(super) fn run(e: PrefsEffect) -> Option<Msg> {
             Some(super::keys::generate_gpg(&program, &name, &email, &passphrase))
         }
         PrefsEffect::ExportPublicKey { format, program, key } => Some(super::keys::export_public(format, &program, &key)),
+        PrefsEffect::ExtendGpgKey { program, key } => Some(super::keys::extend_gpg(&program, &key)),
         PrefsEffect::ReadSettings => Some(Msg::Prefs(PrefsMsg::SettingsReread(Box::new(glowfly_core::settings::Settings::reload())))),
     }
 }

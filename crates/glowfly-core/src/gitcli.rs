@@ -44,6 +44,11 @@ pub fn enable_askpass(env: AskpassEnv) -> bool {
     ASKPASS.set(env).is_ok()
 }
 
+/// The listener [`enable_askpass`] set, for the app's own gpg runs (`gpg_prompt::extend`).
+pub(crate) fn askpass_listener() -> Option<&'static AskpassEnv> {
+    ASKPASS.get()
+}
+
 /// One git command that ended, for the observer set with [`observe_runs`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct GitRun {

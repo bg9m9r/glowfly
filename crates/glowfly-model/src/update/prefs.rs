@@ -59,6 +59,8 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::GpgKeyGenerated(result) => super::prefs_signing::gpg_key_generated(st, result, now, fx),
         PrefsMsg::CopyPublicKey => super::prefs_signing::copy_public_key(st, fx),
         PrefsMsg::PublicKeyExported(result) => super::prefs_signing::public_key_exported(st, result, now, fx),
+        PrefsMsg::ExtendKey => super::prefs_signing::extend_key(st, fx),
+        PrefsMsg::KeyExtended(result) => super::prefs_signing::key_extended(st, result, now, fx),
         // File and folder pickers.
         PrefsMsg::PickFile(purpose) => super::prefs_pick::pick_file(purpose, fx),
         PrefsMsg::FilePicked { purpose, path: Some(path) } => super::prefs_pick::file_picked(st, purpose, &path, fx),

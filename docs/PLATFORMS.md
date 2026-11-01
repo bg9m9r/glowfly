@@ -247,6 +247,10 @@ second one next to it.
    non-zero exit with the first stderr line. Starting a program is not proof it ran. `git
    difftool` gets 10 s (its scripts start slowly on Windows) and is then waited for
    (`watch_to_end`), so a failure that comes later is still reported.
+   On Windows, links and files open in Glowfly's own process: the `open` crate is built with
+   `shellexecute-on-windows` (`ShellExecuteEx`). Without it `open` starts a hidden PowerShell
+   that starts the browser, which may not come to the front, and a PowerShell still starting
+   after 250 ms counts as opened, so failures never reached the log (#420).
 5. **macOS `open -a` takes options only after `--args`, with `-n`;** a running app never sees
    `--args`.
 6. **Search PATH like the OS does** (`external_tools.rs`): on Unix the file needs an exec bit;

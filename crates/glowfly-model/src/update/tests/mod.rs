@@ -22,6 +22,7 @@ pub(super) mod palette_profile_tests;
 pub(super) mod palette_theme_tests;
 pub(super) mod pr_details_tests;
 pub(super) mod pr_heads_tests;
+pub(super) mod prefs_signing_tests;
 pub(super) mod repo_colour_tests;
 pub(super) mod repo_groups_tests;
 pub(super) mod terminal_schemes_tests;

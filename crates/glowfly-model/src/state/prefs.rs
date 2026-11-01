@@ -153,6 +153,10 @@ pub struct SigningState {
     pub keys_error: Option<String>,
     pub passphrase: String,
     pub generating: bool,
+    /// Extend by 2 years is running.
+    pub extending: bool,
+    /// Why the last Extend by 2 years failed, until the next try or key change.
+    pub extend_error: Option<String>,
 }
 
 pub struct PrefsState {

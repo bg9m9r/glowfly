@@ -44,7 +44,7 @@ mod ssh_sign_tests;
 
 use std::time::Duration;
 
-pub use client::{HelperError, Outcome, ask, ask_from_env, ask_gpg, ask_gpg_from_env};
+pub use client::{HelperError, Outcome, ask, ask_from_env, ask_gpg, ask_gpg_from_env, ask_gpg_in_app};
 pub use host_key::HostKey;
 pub use prompt::{PromptKind, classify, host, user_and_host};
 pub use protocol::{ENV_ADDR, ENV_SSH_SIGNING_KEY, ENV_TOKEN, GpgAsk, SSH_HINT_ENV, SshSignAsk};

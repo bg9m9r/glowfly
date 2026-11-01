@@ -113,6 +113,15 @@ mod tests {
         }
     }
 
+    /// Links on Windows open from this process (ShellExecuteEx), not from a hidden PowerShell
+    /// whose browser can't come to the front and whose failures read as success (#420).
+    #[test]
+    fn windows_opens_links_in_this_process() {
+        let manifest = include_str!("../Cargo.toml");
+        let open = manifest.lines().find(|l| l.starts_with("open =")).expect("the open dependency");
+        assert!(open.contains("\"shellexecute-on-windows\""), "{open}");
+    }
+
     #[test]
     fn only_https_links_are_opened() {
         for url in ["", "file:///C:/Windows/System32/calc.exe", "javascript:alert(1)", r"C:\Windows\notepad.exe", "https://x.example/a b"] {

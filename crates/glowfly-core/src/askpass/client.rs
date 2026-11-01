@@ -94,3 +94,9 @@ pub fn ask_gpg_from_env(ask: &GpgAsk) -> Result<Outcome, HelperError> {
     let (addr, token) = from_env()?;
     ask_gpg(&addr, &token, ask, HELPER_WAIT)
 }
+
+/// [`ask_gpg`] from inside the app, at the listener gitcli's children use (none in tests).
+pub fn ask_gpg_in_app(ask: &GpgAsk) -> Result<Outcome, HelperError> {
+    let a = crate::gitcli::askpass_listener().ok_or(HelperError::NotConfigured)?;
+    ask_gpg(&a.addr, &a.token, ask, HELPER_WAIT)
+}
