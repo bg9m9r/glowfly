@@ -79,6 +79,8 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Hosting-service journeys against a local fake API (pull requests, issues, build status)
 - On a journey failure, save a rendered screenshot where wgpu is available, to make CI failures easier to read
 - Accessible names for the remaining painted widgets (section headers, graph ref chips, sidebar ahead/behind counts), plus a test that every clickable widget has one
+- Preferences' navigation rows have no accessible names, so journeys can't click their way to a page
+- Journeys click through AccessKit actions, which skip hit-testing; a pointer-press click would catch a widget drawn over another
 
 ### Faster tests (the shared test kit)
 

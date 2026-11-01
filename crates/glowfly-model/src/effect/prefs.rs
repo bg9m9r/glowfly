@@ -51,6 +51,12 @@ pub enum PrefsEffect {
         program: String,
         key: String,
     },
+    /// Moves the OpenPGP key `key`'s expiry (and its subkeys') to two years from now, asking
+    /// for its passphrase in the app (`gpg_prompt::extend`); reports `PrefsMsg::KeyExtended`.
+    ExtendGpgKey {
+        program: String,
+        key: String,
+    },
     /// Reads `settings.json` again (`Settings::reload`), reporting `PrefsMsg::SettingsReread`.
     ReadSettings,
 }
@@ -65,6 +71,7 @@ impl EffectMeta for PrefsEffect {
             PrefsEffect::ListSigningKeys { .. } => "list-keys",
             PrefsEffect::GenerateGpgKey { .. } => "generate-key",
             PrefsEffect::ExportPublicKey { .. } => "export-key",
+            PrefsEffect::ExtendGpgKey { .. } => "extend-key",
             PrefsEffect::ReadSettings => "read-settings",
         }
     }
@@ -83,7 +90,7 @@ impl EffectMeta for PrefsEffect {
             | PrefsEffect::ListSigningKeys { .. }
             | PrefsEffect::ExportPublicKey { .. }
             | PrefsEffect::ReadSettings => true,
-            PrefsEffect::GenerateGpgKey { .. } => false,
+            PrefsEffect::GenerateGpgKey { .. } | PrefsEffect::ExtendGpgKey { .. } => false,
         }
     }
 
@@ -103,6 +110,7 @@ impl EffectMeta for PrefsEffect {
             | PrefsEffect::ListSigningKeys { .. }
             | PrefsEffect::GenerateGpgKey { .. }
             | PrefsEffect::ExportPublicKey { .. }
+            | PrefsEffect::ExtendGpgKey { .. }
             | PrefsEffect::ReadSettings => SandboxRule::Drop,
         }
     }

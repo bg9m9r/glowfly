@@ -19,18 +19,27 @@ pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &m
             let p = &mut st.askpass;
             let Some(front) = p.queue.pop_front() else { return };
             fx.push(Effect::AnswerPrompt { id: front.id, reply: Reply::Cancel });
+            p.clear_buffers();
+            // Preferences' own prompt says nothing about the running job.
+            if front.prompt.kind.is_app_own() {
+                return;
+            }
             p.ended = Some(PromptEnd::Cancelled);
             p.ended_signing = front.prompt.kind.is_signing();
             p.carry = None;
-            p.clear_buffers();
         }
         CredentialMsg::CredentialPromptExpired(id) => {
             let p = &mut st.askpass;
             let Some(i) = p.queue.iter().position(|q| q.id == id) else { return };
-            let signing = p.queue.remove(i).is_some_and(|q| q.prompt.kind.is_signing());
+            let Some(gone) = p.queue.remove(i) else { return };
             if i == 0 {
                 p.clear_buffers();
             }
+            // Preferences reports its own prompt's timeout (`PrefsMsg::KeyExtended`).
+            if gone.prompt.kind.is_app_own() {
+                return;
+            }
+            let signing = gone.prompt.kind.is_signing();
             p.ended = Some(PromptEnd::TimedOut);
             p.ended_signing = signing;
             let text = if signing { "The signing passphrase prompt timed out." } else { "The credential prompt timed out." };
@@ -111,8 +120,10 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
         }
         _ => Secret::new(std::mem::take(&mut p.secret)),
     };
-    p.answered.push(front.prompt.text);
-    p.answered_hosts.extend(host);
+    if !front.prompt.kind.is_app_own() {
+        p.answered.push(front.prompt.text);
+        p.answered_hosts.extend(host);
+    }
     p.clear_buffers();
     fx.push(Effect::AnswerPrompt { id: front.id, reply: Reply::Answer(answer) });
 }
@@ -153,8 +164,13 @@ pub(super) fn job_finished(
         p.typed.clear();
     }
     super::askpass_store::settle(p, ok, cwd, output, fx);
-    let left = std::mem::take(&mut p.queue);
-    if !left.is_empty() {
+    // Preferences' own prompt outlives the job; the job's are cancelled.
+    let front_was_app_own = p.queue.front().is_some_and(|q| q.prompt.kind.is_app_own());
+    let mut left = Vec::new();
+    for q in std::mem::take(&mut p.queue) {
+        if q.prompt.kind.is_app_own() { p.queue.push_back(q) } else { left.push(q) }
+    }
+    if !left.is_empty() && !front_was_app_own {
         p.clear_buffers();
     }
     fx.extend(left.into_iter().map(|q| Effect::AnswerPrompt { id: q.id, reply: Reply::Cancel }));

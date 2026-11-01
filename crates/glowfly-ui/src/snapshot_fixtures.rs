@@ -277,6 +277,7 @@ fn preferences_commit_signing() {
         label: "Ada Lovelace <ada@example.com>".into(),
         expires: None,
         expired: false,
+        revoked: false,
     }]);
     st.prefs = Some(prefs);
     let mut h = harness(st, true);

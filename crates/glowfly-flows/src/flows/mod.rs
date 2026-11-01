@@ -23,6 +23,7 @@ pub(crate) use crate::testing::*;
 pub(crate) use helpers::*;
 
 mod app_tests;
+mod askpass_extend_tests;
 mod askpass_gpg_tests;
 mod askpass_ssh_sign_tests;
 mod askpass_store_tests;

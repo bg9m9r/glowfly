@@ -19,6 +19,11 @@ pub(super) fn generate_gpg(program: &str, name: &str, email: &str, passphrase: &
     Msg::Prefs(PrefsMsg::GpgKeyGenerated(signing::generate_gpg_key(program, name, email, passphrase, now).map_err(|e| e.to_string())))
 }
 
+/// `gpg_prompt::extend`, with the passphrase asked in the app.
+pub(super) fn extend_gpg(program: &str, key: &str) -> Msg {
+    Msg::Prefs(PrefsMsg::KeyExtended(glowfly_core::gpg_prompt::extend::extend_gpg_key(program, key)))
+}
+
 pub(super) fn export_public(format: SigningFormat, program: &str, key: &str) -> Msg {
     Msg::Prefs(PrefsMsg::PublicKeyExported(signing::export_public_key(format, program, key).map_err(|e| e.to_string())))
 }

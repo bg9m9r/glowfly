@@ -27,7 +27,11 @@ git2.workspace = true
 serde_json.workspace = true
 notify = "8.2"
 notify-rust = "4"
-open = "5"
+# On Windows, links and files open through ShellExecuteEx in this process. Without the feature
+# `open` starts a hidden PowerShell that starts the browser: that grandchild has no right to come
+# to the front, so the page opened behind Glowfly's window, and a PowerShell that failed after
+# its 250 ms check was reported as opened (#420).
+open = { version = "5", features = ["shellexecute-on-windows"] }
 rfd = "0.15"
 tracing = "0.1.44"
 

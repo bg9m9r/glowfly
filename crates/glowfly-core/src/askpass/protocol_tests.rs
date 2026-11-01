@@ -19,7 +19,7 @@ fn requests_and_responses_round_trip_on_one_line() {
 
 #[test]
 fn signing_requests_round_trip_and_old_requests_still_decode() {
-    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry: true };
+    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry: true, extend: false };
     let line = encode_gpg_request("abc", &ask);
     assert_eq!(line.matches('\n').count(), 1);
     let req = decode_request(&line).unwrap();
@@ -30,6 +30,9 @@ fn signing_requests_round_trip_and_old_requests_still_decode() {
     let old = r#"{"v":1,"token":"a","prompt":"Password for 'https://x': ","hint":null}"#;
     let req = decode_request(old).unwrap();
     assert!(req.gpg.is_none());
+    // A signing request from a helper older than `extend` is the wrapper's, as before.
+    let old_gpg = r#"{"v":1,"token":"a","prompt":"p","hint":null,"gpg":{"key":"K","user":null,"retry":false}}"#;
+    assert_eq!(decode_request(old_gpg).unwrap().gpg.map(|g| g.extend), Some(false));
     assert!(!encode_request("a", "p", None).contains("gpg"), "askpass requests leave the field out");
 
     let line = encode_response(&Response::UseSystem);

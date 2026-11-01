@@ -3,6 +3,7 @@
 
 use crate::effect::{Effect, PrefsEffect, UiEffect};
 use crate::state::AppState;
+use glowfly_core::gpg_prompt::extend::ExtendFailed;
 use glowfly_core::signing::{SigningFormat, SigningKey};
 use std::time::Instant;
 
@@ -16,6 +17,7 @@ pub(super) fn load_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(git) = p.git.as_ref() else { return };
     let format = SigningFormat::from_config(&git.signing_format);
     p.signing.keys = None;
+    p.signing.extend_error = None;
     fx.push(Effect::Prefs(PrefsEffect::ListSigningKeys { format, program: non_empty(git.program(), format.default_program()) }));
 }
 
@@ -67,6 +69,44 @@ pub(super) fn gpg_key_generated(st: &mut AppState, result: Result<String, String
         }
         Err(e) => st.log(false, format!("Could not generate a GPG key: {e}")),
     }
+}
+
+/// Extend by 2 years on the chosen OpenPGP key.
+pub(super) fn extend_key(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Some(p) = st.prefs.as_mut() else { return };
+    let Some(git) = p.git.as_ref() else { return };
+    if p.signing.extending || git.signing_key.is_empty() || SigningFormat::from_config(&git.signing_format) != SigningFormat::OpenPgp {
+        return;
+    }
+    p.signing.extending = true;
+    p.signing.extend_error = None;
+    let program = non_empty(&git.gpg_program, SigningFormat::OpenPgp.default_program());
+    fx.push(Effect::Prefs(PrefsEffect::ExtendGpgKey { program, key: git.signing_key.clone() }));
+}
+
+/// Says how extending went, and reloads the keys unless the prompt was cancelled: a failure can
+/// come after the primary key was already extended (a subkey's run failed). A failure stays on
+/// the page, with the help link, until the next try or reload.
+pub(super) fn key_extended(st: &mut AppState, result: Result<(), ExtendFailed>, now: Instant, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
+    let Some(p) = st.prefs.as_mut() else { return };
+    p.signing.extending = false;
+    let key = p.git.as_ref().map(|g| g.signing_key.clone()).unwrap_or_default();
+    let error = match result {
+        Ok(()) => {
+            st.toast(true, t.trf("prefs.signing.extend.done", &[("key", &key)]), now);
+            return load_keys(st, fx);
+        }
+        // The user chose to stop before gpg changed anything: nothing to explain or reload.
+        Err(ExtendFailed::Cancelled) => return,
+        Err(ExtendFailed::TimedOut) => t.tr("prefs.signing.extend.timed_out").to_owned(),
+        Err(ExtendFailed::Gpg(e)) => e,
+    };
+    load_keys(st, fx);
+    if let Some(p) = st.prefs.as_mut() {
+        p.signing.extend_error = Some(error.clone());
+    }
+    st.log(false, t.trf("prefs.signing.extend.failed", &[("key", &key), ("error", &error)]));
 }
 
 pub(super) fn copy_public_key(st: &AppState, fx: &mut Vec<Effect>) {

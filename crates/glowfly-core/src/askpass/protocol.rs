@@ -27,6 +27,9 @@ pub struct GpgAsk {
     pub key: String,
     pub user: Option<String>,
     pub retry: bool,
+    /// Asked by Preferences' Extend by 2 years in the app itself, not by a git job's signing.
+    #[serde(default)]
+    pub extend: bool,
 }
 
 /// What the askpass helper asks for when ssh-keygen prompts while git signs with an SSH key

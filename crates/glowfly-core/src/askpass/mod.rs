@@ -44,7 +44,7 @@ mod ssh_sign_tests;
 
 use std::time::Duration;
 
-pub use client::{HelperError, Outcome, ask, ask_from_env, ask_gpg, ask_gpg_from_env};
+pub use client::{HelperError, Outcome, ask, ask_from_env, ask_gpg, ask_gpg_from_env, ask_gpg_in_app};
 pub use host_key::HostKey;
 pub use prompt::{PromptKind, classify, host, user_and_host};
 pub use protocol::{ENV_ADDR, ENV_SSH_SIGNING_KEY, ENV_TOKEN, GpgAsk, SSH_HINT_ENV, SshSignAsk};
@@ -118,8 +118,9 @@ impl Prompt {
 
     /// The signing wrapper's request for an OpenPGP key's passphrase.
     pub fn gpg(ask: GpgAsk) -> Self {
-        let GpgAsk { key, user, retry } = ask;
-        Prompt { text: format!("Passphrase for OpenPGP key {key}"), hint: None, kind: PromptKind::GpgPassphrase { key, user, retry } }
+        let GpgAsk { key, user, retry, extend } = ask;
+        let kind = PromptKind::GpgPassphrase { key: key.clone(), user, retry, extend };
+        Prompt { text: format!("Passphrase for OpenPGP key {key}"), hint: None, kind }
     }
 
     /// The askpass helper's request for an SSH signing key's passphrase (ssh-keygen asks while

@@ -2,18 +2,21 @@
 //! where the key's passphrase is asked, key generation, and signing defaults. The switches and
 //! lists write at once; the program and the allowed signers file wait for the Save / Revert bar.
 
-use super::{check_row, help, primary_button, row, text_field, warn};
+use super::{check_row, help, primary_button, row, text_field, warn, warn_then};
 use crate::msg::PrefsMsg;
 use crate::msg::{FilePurpose, Msg};
 use crate::state::PrefsState;
-use crate::ui::theme::color;
+use crate::state::prefs::SigningState;
 use crate::ui::theme::controls;
+use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
+use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 use glowfly_core::signing::SigningFormat;
 
+/// The fallback when Extend by 2 years fails: how to extend a key by hand.
 const RENEW_HELP: &str = "https://docs.github.com/en/authentication/managing-commit-signature-verification/updating-an-expired-gpg-key";
 
 fn set(msgs: &mut Vec<Msg>, key: &str, value: &str) {
@@ -98,10 +101,11 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                 git.signing_key = id.clone();
                 set(msgs, "user.signingkey", &id);
             }
-            if widgets::icon_button(ui, Icon::Refresh, "Reload keys").clicked() {
+            if widgets::icon_button(ui, Icon::Refresh, t.tr("prefs.signing.reload_keys.tip")).clicked() {
                 msgs.push(Msg::Prefs(PrefsMsg::LoadSigningKeys));
             }
-            if ui.add(buttons::secondary("Copy public key").enabled(!git.signing_key.is_empty())).clicked() {
+            let copy = buttons::secondary(t.tr("prefs.signing.copy_public_key.button")).enabled(!git.signing_key.is_empty());
+            if ui.add(copy).clicked() {
                 msgs.push(Msg::Prefs(PrefsMsg::CopyPublicKey));
             }
         });
@@ -109,11 +113,14 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
             warn(ui, e);
         }
         let selected = signing.keys.as_ref().and_then(|ks| ks.iter().find(|k| k.id == git.signing_key));
-        if selected.is_some_and(|k| k.expired) {
-            warn(ui, "This key has expired; commits signed with it won't verify.");
+        match selected {
+            Some(k) if k.revoked => warn(ui, t.tr("prefs.signing.revoked.warn")),
+            Some(k) if k.expired => warn(ui, t.tr("prefs.signing.expired.warn")),
+            _ => {}
         }
-        if format == SigningFormat::OpenPgp && ui.link(t.tr("prefs.signing.extend_key.link")).clicked() {
-            msgs.push(Msg::OpenUrl(RENEW_HELP.into()));
+        // A revoked key can't be brought back by a new date.
+        if format == SigningFormat::OpenPgp {
+            extend_row(ui, t, selected.is_some_and(|k| k.expired && !k.revoked), signing, msgs);
         }
         if format == SigningFormat::Ssh {
             help(ui, "Public keys found in your .ssh folder. Git signs with the matching private key or your SSH agent.");
@@ -174,5 +181,31 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     let help = Some("Glowfly commits and tags through git, so these settings also apply on the command line.");
     if check_row(ui, "Sign tags", &mut git.tag_gpgsign, "Sign new tags by default", help).changed() {
         set(msgs, "tag.gpgsign", &git.tag_gpgsign.to_string());
+    }
+}
+
+/// Extend by 2 years under the expired-key warning (`offer`); after a failure (which may have
+/// extended the key but not a subkey, so it shows whether or not the key still reads expired),
+/// what went wrong with a link to doing it by hand at its end.
+fn extend_row(ui: &mut Ui, t: Lang, offer: bool, signing: &SigningState, msgs: &mut Vec<Msg>) {
+    if offer {
+        ui.horizontal(|ui| {
+            let button = buttons::secondary(t.tr("prefs.signing.extend.button")).enabled(!signing.extending);
+            if ui.add(button).clicked() {
+                msgs.push(Msg::Prefs(PrefsMsg::ExtendKey));
+            }
+            if signing.extending {
+                ui.add(egui::Spinner::new().size(16.0));
+            }
+        });
+    }
+    if let Some(e) = &signing.extend_error {
+        warn_then(ui, &t.trf("prefs.signing.extend.failed.warn", &[("error", e)]), |ui| {
+            // Whole, on the next row when it doesn't fit after the message.
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+            if ui.link(RichText::new(t.tr("prefs.signing.extend.by_hand.link")).size(type_scale::SMALL)).clicked() {
+                msgs.push(Msg::OpenUrl(RENEW_HELP.into()));
+            }
+        });
     }
 }

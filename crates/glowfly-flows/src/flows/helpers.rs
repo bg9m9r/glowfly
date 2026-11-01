@@ -325,7 +325,7 @@ fn commit_signing_flow() {
         }
         other => panic!("expected a key listing, got {other:?}"),
     }
-    let key = SigningKey { id: "ABCD".into(), label: "Ada <ada@example.com>".into(), expires: None, expired: false };
+    let key = SigningKey { id: "ABCD".into(), label: "Ada <ada@example.com>".into(), expires: None, expired: false, revoked: false };
     update(&mut st, Msg::Prefs(PrefsMsg::SigningKeysLoaded(Ok(vec![key]))), Instant::now());
     assert_eq!(st.prefs.as_ref().unwrap().signing.keys.as_ref().map(Vec::len), Some(1));
 

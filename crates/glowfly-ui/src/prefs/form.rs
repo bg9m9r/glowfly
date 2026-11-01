@@ -116,15 +116,31 @@ pub fn help(ui: &mut Ui, text: &str) {
 
 pub fn warn(ui: &mut Ui, text: &str) {
     ui.horizontal_top(|ui| {
-        let (r, _) = ui.allocate_exact_size(vec2(12.0, 14.0), Sense::hover());
-        let c = r.center();
-        ui.painter().add(egui::Shape::convex_polygon(
-            vec![pos2(c.x, c.y - 5.0), pos2(c.x + 5.5, c.y + 4.5), pos2(c.x - 5.5, c.y + 4.5)],
-            Color32::TRANSPARENT,
-            Stroke::new(1.3_f32, color::warn()),
-        ));
+        warn_icon(ui);
         ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
     });
+}
+
+/// `warn` with `then` (a link, say) inline after the text, wrapping with it.
+pub fn warn_then(ui: &mut Ui, text: &str, then: impl FnOnce(&mut Ui)) {
+    ui.horizontal_wrapped(|ui| {
+        warn_icon(ui);
+        // Not selectable: a wrapped label's rect spans its rows, the end of the last one too,
+        // and would take the pointer from `then`.
+        ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).selectable(false));
+        then(ui);
+    });
+}
+
+/// The warning triangle in front of a warning line.
+fn warn_icon(ui: &mut Ui) {
+    let (r, _) = ui.allocate_exact_size(vec2(12.0, 14.0), Sense::hover());
+    let c = r.center();
+    ui.painter().add(egui::Shape::convex_polygon(
+        vec![pos2(c.x, c.y - 5.0), pos2(c.x + 5.5, c.y + 4.5), pos2(c.x - 5.5, c.y + 4.5)],
+        Color32::TRANSPARENT,
+        Stroke::new(1.3_f32, color::warn()),
+    ));
 }
 
 pub fn caption(ui: &mut Ui, text: &str) {

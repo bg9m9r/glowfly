@@ -1,0 +1,47 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+Button "Back"
+Label "Preferences"
+Label "Commit signing"
+ComboBox
+TextInput
+Button "Browse"
+Label "Usually \"gpg\" or \"gpg2\" on your PATH, or browse to the program. Leave empty for git's default."
+ComboBox
+Button "Reload keys"
+Button "Copy public key"
+Label "This key has expired, so git can't sign new commits with it."
+Button "Extend by 2 years"
+Label "Couldn't extend the key: gpg: agent refused the operation."
+Label "How to extend it by hand"
+CheckBox "Ask for the key's passphrase in Glowfly" [on]
+Label "Off: GnuPG shows its own passphrase window, for example one that reads the passphrase from your system keychain. Needs git 2.31 or newer and GnuPG 2.1.12 or newer; with older versions GnuPG's own window is used."
+PasswordInput
+Button "Generate"
+Label "Creates a 4096-bit RSA key for the name and email in your profile, valid for 2 years, and makes it your signing key."
+CheckBox "Sign new commits by default" [off]
+CheckBox "Sign new tags by default" [off]
+Label "Glowfly commits and tags through git, so these settings also apply on the command line."
+painted:
+  "General"
+  "Git"
+  "Profile"
+  "Integrations"
+  "Appearance"
+  "Language & region"
+  "Diff viewer"
+  "Keyboard"
+  "External tools"
+  "Terminal"
+  "SSH"
+  "Signing format"
+  "OpenPGP"
+  "GPG program"
+  "gpg"
+  "Signing key"
+  "ABCDEF0123456789"
+  "Passphrase prompt"
+  "Generate new GPG key"
+  "Passphrase (optional)"
+  "Sign commits"
+  "Sign tags"
