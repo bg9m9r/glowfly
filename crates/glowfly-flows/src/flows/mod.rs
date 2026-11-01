@@ -186,6 +186,7 @@ mod pick_tests;
 mod pr_checkout_tests;
 mod prefs_leave_profile_tests;
 mod prefs_leave_tests;
+mod prefs_pages_tests;
 mod prefs_save_tests;
 mod prefs_write_tests;
 mod profile_rules_tests;

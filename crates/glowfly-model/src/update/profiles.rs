@@ -20,13 +20,7 @@ use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
-        ProfileMsg::ShowPage => {
-            let Some(p) = st.prefs.as_mut() else { return };
-            p.page = PrefPage::Profile;
-            if p.git.is_some() {
-                on_config(st, fx);
-            }
-        }
+        ProfileMsg::ShowPage => super::prefs_nav::enter_page(st, PrefPage::Profile, fx),
         ProfileMsg::Select(id) => {
             let Some(p) = st.prefs.as_mut() else { return };
             p.profiles.fill(&st.settings, Some(id));

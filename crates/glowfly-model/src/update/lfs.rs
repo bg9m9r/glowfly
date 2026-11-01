@@ -25,12 +25,7 @@ const NOT_INSTALLED: &str = "Git LFS isn't installed.";
 
 pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
-        LfsMsg::ShowPage => {
-            if let Some(p) = st.prefs.as_mut() {
-                p.page = PrefPage::RepoLfs;
-                load(st, fx);
-            }
-        }
+        LfsMsg::ShowPage => super::prefs_nav::enter_page(st, PrefPage::RepoLfs, fx),
         LfsMsg::Reload => load(st, fx),
         LfsMsg::Initialize => initialize(st, fx),
         LfsMsg::InitializeWhenReady => {

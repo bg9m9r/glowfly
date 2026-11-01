@@ -18,14 +18,7 @@ use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
-        SshMsg::ShowPage => {
-            let Some(p) = st.prefs.as_mut() else { return };
-            p.page = PrefPage::Ssh;
-            if let Some(email) = p.git.as_ref().map(|g| g.user_email.clone()) {
-                p.ssh.prefill_comment(&email);
-            }
-            load(st, fx);
-        }
+        SshMsg::ShowPage => super::prefs_nav::enter_page(st, PrefPage::Ssh, fx),
         SshMsg::Reload => load(st, fx),
         SshMsg::Loaded { generation, result } => {
             let Some(page) = st.prefs.as_mut().map(|p| &mut p.ssh).filter(|s| s.generation == generation) else { return };

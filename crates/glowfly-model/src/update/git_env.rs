@@ -77,12 +77,9 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
             st.toast(false, text.clone(), now);
             st.log(false, text);
         }
-        GitEnvMsg::ShowPage => match st.prefs.as_mut() {
+        GitEnvMsg::ShowPage => match st.prefs {
             None => super::prefs::handle(st, PrefsMsg::OpenPrefs(PrefPage::Git), now, fx),
-            Some(p) => {
-                p.page = PrefPage::Git;
-                discover(st, fx);
-            }
+            Some(_) => super::prefs_nav::enter_page(st, PrefPage::Git, fx),
         },
         GitEnvMsg::Rescan => {
             discover(st, fx);
