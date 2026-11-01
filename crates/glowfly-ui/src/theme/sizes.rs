@@ -36,6 +36,9 @@ pub struct Metrics {
     /// Room beside the content of a quiet control: its framed sibling's, so hover shapes match
     /// in a row; only Compact is denser.
     pub quiet_pad_x: f32,
+    /// Room beside a ghost control's content (`widgets::ghost`): denser than a quiet button's,
+    /// as ghosts sit in tight header rows.
+    pub ghost_pad_x: f32,
     /// The text step.
     pub text: f32,
     /// The icon size, alone or before the text.
@@ -52,25 +55,50 @@ impl ControlSize {
     /// The size's measures.
     pub const fn metrics(self) -> Metrics {
         match self {
-            Self::Compact => {
-                Metrics { h: 22.0, pad_x: 0.0, quiet_pad_x: 8.0, text: SMALL, icon: SIZE_SM, icon_gap: 4.0, radius: radius::MD, hit: 28.0 }
-            }
+            Self::Compact => Metrics {
+                h: 22.0,
+                pad_x: 0.0,
+                quiet_pad_x: 8.0,
+                ghost_pad_x: 8.0,
+                text: SMALL,
+                icon: SIZE_SM,
+                icon_gap: 4.0,
+                radius: radius::MD,
+                hit: 28.0,
+            },
             Self::Small => Metrics {
                 h: 24.0,
                 pad_x: 10.0,
                 quiet_pad_x: 10.0,
+                ghost_pad_x: 8.0,
                 text: SMALL,
                 icon: SIZE_MD,
                 icon_gap: 6.0,
                 radius: radius::MD,
                 hit: 28.0,
             },
-            Self::Regular => {
-                Metrics { h: 28.0, pad_x: 12.0, quiet_pad_x: 12.0, text: BODY, icon: SIZE_MD, icon_gap: 6.0, radius: radius::MD, hit: 28.0 }
-            }
-            Self::Large => {
-                Metrics { h: 36.0, pad_x: 16.0, quiet_pad_x: 16.0, text: BODY, icon: SIZE_MD, icon_gap: 8.0, radius: radius::LG, hit: 36.0 }
-            }
+            Self::Regular => Metrics {
+                h: 28.0,
+                pad_x: 12.0,
+                quiet_pad_x: 12.0,
+                ghost_pad_x: 8.0,
+                text: BODY,
+                icon: SIZE_MD,
+                icon_gap: 6.0,
+                radius: radius::MD,
+                hit: 28.0,
+            },
+            Self::Large => Metrics {
+                h: 36.0,
+                pad_x: 16.0,
+                quiet_pad_x: 16.0,
+                ghost_pad_x: 12.0,
+                text: BODY,
+                icon: SIZE_MD,
+                icon_gap: 8.0,
+                radius: radius::LG,
+                hit: 36.0,
+            },
         }
     }
 

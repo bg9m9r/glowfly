@@ -214,9 +214,13 @@ fn a_framed_tool_bar_edge_reads_on_the_backing() {
             assert!(edge > border, "{name}: the edge reads more than the border ({edge:.2} against {border:.2})");
         }
     }
-    // The default light palette (`main_light`, `repo_menu_light`): at least 1.5:1.
-    let p = GARDEN_LIGHT;
-    let r = ratio(p.tool_edge(), p.tool_backing());
-    assert!(r >= 1.5, "the picker edge on the tool backing {r:.2}");
-    assert_eq!(p.tool_edge(), mix(p.border, p.text, 0.20));
+    // Every built-in light palette: the picker edge reads at least 1.5:1 on its fill.
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        if !p.dark {
+            let r = ratio(p.tool_edge(), p.tool_backing());
+            assert!(r >= 1.5, "{t:?}: the picker edge on the tool backing {r:.2}");
+        }
+    }
+    assert_eq!(GARDEN_LIGHT.tool_edge(), mix(GARDEN_LIGHT.border, GARDEN_LIGHT.text, 0.22));
 }

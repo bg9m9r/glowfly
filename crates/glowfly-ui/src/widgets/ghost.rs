@@ -41,7 +41,7 @@ pub fn text_w(ui: &Ui, text: &str, font: FontId) -> f32 {
 }
 
 /// The width a ghost control of `size` takes: a square of its height for an icon alone, else
-/// its content with the size's quiet padding either side. `extra` is room for something painted
+/// its content with the size's ghost padding either side. `extra` is room for something painted
 /// after the label (a chevron).
 pub fn ghost_width(ui: &Ui, size: ControlSize, icon: bool, label: Option<&str>, extra: f32) -> f32 {
     let m = size.metrics();
@@ -49,7 +49,7 @@ pub fn ghost_width(ui: &Ui, size: ControlSize, icon: bool, label: Option<&str>, 
         None => m.h,
         Some(text) => {
             let icon_w = if icon { m.icon + m.icon_gap } else { 0.0 };
-            2.0 * m.quiet_pad_x + icon_w + text_w(ui, text, font_of(size)) + extra
+            2.0 * m.ghost_pad_x + icon_w + text_w(ui, text, font_of(size)) + extra
         }
     }
 }
@@ -124,7 +124,7 @@ fn paint(p: &Painter, rect: Rect, size: ControlSize, icon: Option<Icon>, label: 
             }
         }
         Some(text) => {
-            let mut x = rect.left() + m.quiet_pad_x;
+            let mut x = rect.left() + m.ghost_pad_x;
             if let Some(icon) = icon {
                 paint_icon_sized(p, pos2(x + m.icon / 2.0, rect.center().y), icon, fg, m.icon);
                 x += m.icon + m.icon_gap;

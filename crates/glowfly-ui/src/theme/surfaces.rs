@@ -20,7 +20,7 @@ const GUIDE_TINT: f32 = 0.07;
 const TOOL_TINT: f32 = 0.09;
 /// How far a light palette's framed toolbar bar edge moves from `border` toward `text`, so it
 /// reads on the tool backing.
-const TOOL_EDGE: f32 = 0.20;
+const TOOL_EDGE: f32 = 0.22;
 /// How far the dark overlay moves from `raised` toward `text`: one step lighter.
 const OVERLAY_STEP: f32 = 0.06;
 /// How far the dark overlay's edge moves from the overlay toward `text`.
@@ -66,7 +66,7 @@ impl Palette {
     }
 
     /// The edge and dividers of a framed toolbar bar (the pickers) at rest: `border` on dark
-    /// palettes; on light ones `border` 20% toward `text`, since `border` all but vanishes on the
+    /// palettes; on light ones `border` 22% toward `text`, since `border` all but vanishes on the
     /// tool backing there.
     pub fn tool_edge(&self) -> Color32 {
         if self.dark { self.border } else { mix(self.border, self.text, TOOL_EDGE) }

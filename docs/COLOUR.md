@@ -298,7 +298,7 @@ outside the families and unchanged by the brand colour.
   open one 16% (`tool_hover`, `tool_pressed`). Icons are `text`, or `faint` when disabled; no
   icon has its own colour.
 - A framed toolbar bar (the Repository › Branch pickers) has its edge and dividers in
-  `Palette::tool_edge`: `border` on dark palettes, `border` 20% toward `text` on light ones, so the
+  `Palette::tool_edge`: `border` on dark palettes, `border` 22% toward `text` on light ones, so the
   edge reads at least 1.5:1 on the tool backing; lit, a lone segment's edge goes `weak`.
 - The chrome's own marks (fills, icons, chips, strips, lines) use at most three hue families at
   once: the accent (focus, the active tab's line, the terminal-open bar, the toolbar backing),
