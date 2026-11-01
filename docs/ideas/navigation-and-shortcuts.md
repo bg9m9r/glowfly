@@ -43,6 +43,10 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 - The toolbar buttons' keys also exposed as the accessibility keyboard-shortcut property
 - Accessible names that say what the repository and branch pickers are ("Repository: <name>")
 - Footer text listing the PgUp/PgDn and Home/End keys
+- If palette checkout labels are ever localized or read a setting, add that input to the cache's
+  `RefInputs`
+- The palette cache's across-modes test doesn't list anything in the sub-list; make it a real
+  round trip
 
 ### Keyboard shortcuts
 

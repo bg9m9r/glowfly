@@ -247,6 +247,8 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - An Open in Glowfly Finder Quick Action or Services menu entry for folders
 - Start-up can wait about 7 s instead of 3 s to hand a path over; cap the connect and reply timeouts at the time left
 - Any local process can stall the hand-over listener for 3 s per connection; serve each connection off the accept loop or drop it sooner
+- Recognise a bracketed IPv6 host first in `link::is_remote_url`; scp-form IPv6 is accepted today only through the helper branch
+- Check a link's URL again just before cloning (git treats an existing folder of that name as local)
 
 ### Cross-repo dashboard
 
