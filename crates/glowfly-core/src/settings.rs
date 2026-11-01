@@ -45,7 +45,7 @@ pub use branch_colours::BranchPalette;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use downloads::downloads_dir;
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
-pub use file::{LoadProblem, settings_file};
+pub use file::{LoadProblem, READ_WAITS, settings_file};
 pub use file_lists::FileListMode;
 pub use forge_filters::RepoForgeFilters;
 pub use graph_columns::GraphColumns;

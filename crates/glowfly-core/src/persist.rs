@@ -241,10 +241,11 @@ pub fn move_aside(path: &Path) -> std::io::Result<PathBuf> {
 }
 
 /// Writes `bytes` (what was read from `path`) to the backup name `move_aside` would pick, leaving
-/// `path` where it is, and returns that name.
+/// `path` where it is, and returns that name. The copy is private (`WriteOptions::private`), as
+/// the files kept this way are.
 pub fn keep_copy(path: &Path, bytes: &[u8]) -> std::io::Result<PathBuf> {
     let backup = free_backup_name(path);
-    atomic_write(&backup, bytes)?;
+    write_file(&backup, bytes, WriteOptions { private: true, ..WriteOptions::default() })?;
     Ok(backup)
 }
 

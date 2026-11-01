@@ -169,6 +169,14 @@ second one next to it.
    delete the backups last (see `ssh_keys/generate.rs` and `settings/file.rs`).
 7. **Saves from several threads go through `persist::LatestOnly`** so an older save can't land
    after a newer one.
+8. **Glowfly's own files that name repositories or people are private:** `settings.json` (and
+   the copy `persist::keep_copy` keeps of it), `recent.txt`, `tabs.txt` and the instance file are
+   written with `WriteOptions { private: true }` (0600, and 0700 for a folder the write creates,
+   on Unix).
+9. **A list file that can't be read is never saved over:** read it with retries, and when it
+   still fails keep it in place and skip this session's saves of it
+   (`runner/platform/state_files.rs`, like the settings file's `locked`). Decode a line-based
+   file line by line, so one bad line costs only itself.
 
 ### Deleting and trash
 

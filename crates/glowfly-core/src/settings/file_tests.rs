@@ -142,3 +142,23 @@ fn a_locked_problem_says_saving_waits() {
     let problem = LoadProblem { backup: None, reset: None, detail: "busy".into(), locked: Some("settings.json".into()) };
     assert_eq!(problem.message(), "Settings could not be read; defaults are used and nothing is saved until the file can be read (busy).");
 }
+
+#[cfg(unix)]
+#[test]
+fn the_settings_file_and_its_copy_are_private_on_unix() {
+    use std::os::unix::fs::PermissionsExt;
+    let text = br#"{"auto_fetch_minutes": 9}"#;
+    let (dir, file) = scratch_settings("private", text);
+    // Written readable by everyone, as earlier versions did.
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+    let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+    let _ = Settings::load_with(&file, &NO_WAITS, busy_for(1), false);
+    assert_eq!(mode(&dir.join("settings.json.bak")), 0o600, "the copy kept after a failed try");
+    Settings::default().save_to(&file).unwrap();
+    assert_eq!(mode(&file), 0o600);
+    // A folder the save creates is this user's only too.
+    let nested = dir.join("config").join("settings.json");
+    Settings::default().save_to(&nested).unwrap();
+    assert_eq!((mode(&nested), mode(nested.parent().unwrap())), (0o600, 0o700));
+    let _ = std::fs::remove_dir_all(&dir);
+}
