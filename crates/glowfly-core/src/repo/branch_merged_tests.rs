@@ -16,39 +16,55 @@ fn commit_at(repo: &Repository, parent: Option<Oid>, time: i64, msg: &str) -> Oi
     repo.commit(None, &sig, &sig, msg, &tree, &refs).unwrap()
 }
 
-/// Local branch `name` at `tip`, tracking `origin/<name>` at the same commit.
-fn tracked(repo: &Repository, name: &str, tip: Oid) {
-    repo.reference(&format!("refs/heads/{name}"), tip, true, "test").unwrap();
-    repo.reference(&format!("refs/remotes/origin/{name}"), tip, true, "test").unwrap();
-    let mut cfg = repo.config().unwrap();
-    cfg.set_str(&format!("branch.{name}.remote"), "origin").unwrap();
-    cfg.set_str(&format!("branch.{name}.merge"), &format!("refs/heads/{name}")).unwrap();
-}
-
 /// A `main` of `length` commits with `each` merged branches (at commits of main) and `each`
 /// unmerged ones (one commit off main, forking all along it), all tracking `origin`. Returns
-/// main's tip.
+/// main's tip. Every commit has the empty tree. The history is written by one `git fast-import`
+/// into a pack, and the branches' config in one write: thousands of loose objects and a config
+/// rewrite per branch took most of the long test's time.
 fn many_branches(dir: &Path, length: usize, each: usize) -> Oid {
+    use std::fmt::Write as _;
     let repo = Repository::open(dir).unwrap();
     repo.remote("origin", "https://example.com/never-fetched.git").unwrap();
-    let mut chain = Vec::with_capacity(length);
-    let mut tip = None;
+    let mut stream = String::new();
+    let commit = |stream: &mut String, branch: &str, mark: usize, from: Option<usize>, time: i64, msg: &str| {
+        let from = from.map(|m| format!("from :{m}\n")).unwrap_or_default();
+        let who = format!("committer Test <test@example.com> {time} +0000");
+        let _ = write!(stream, "commit {branch}\nmark :{mark}\n{who}\ndata {}\n{msg}\n{from}\n", msg.len());
+    };
+    let reset = |stream: &mut String, r: &str, mark: usize| {
+        let _ = write!(stream, "reset {r}\nfrom :{mark}\n\n");
+    };
+    // Main's commits are marks 1..=length, chained on the branch; the open ones follow.
     for i in 0..length {
-        let c = commit_at(&repo, tip, 1_600_000_000 + i as i64 * 60, &format!("main {i}"));
-        chain.push(c);
-        tip = Some(c);
+        commit(&mut stream, "refs/heads/main", i + 1, None, 1_600_000_000 + i as i64 * 60, &format!("main {i}"));
     }
     let step = length / each;
+    let mut config = String::new();
     for k in 0..each {
-        let at = chain[k * step];
-        tracked(&repo, &format!("done-{k}"), at);
-        let side = commit_at(&repo, Some(at), 1_600_000_000 + (k * step) as i64 * 60 + 30, &format!("side {k}"));
-        tracked(&repo, &format!("open-{k}"), side);
+        let at = k * step + 1;
+        let side = length + 1 + k;
+        commit(
+            &mut stream,
+            &format!("refs/heads/open-{k}"),
+            side,
+            Some(at),
+            1_600_000_000 + (k * step) as i64 * 60 + 30,
+            &format!("side {k}"),
+        );
+        for (name, mark) in [(format!("done-{k}"), at), (format!("open-{k}"), side)] {
+            reset(&mut stream, &format!("refs/heads/{name}"), mark);
+            reset(&mut stream, &format!("refs/remotes/origin/{name}"), mark);
+            let _ = write!(config, "[branch \"{name}\"]\n\tremote = origin\n\tmerge = refs/heads/{name}\n");
+        }
     }
-    let tip = tip.unwrap();
-    repo.reference("refs/heads/main", tip, true, "test").unwrap();
+    let (ok, out) = crate::gitcli::run_with_input(dir, &crate::gitcli::args(&["fast-import", "--quiet"]), &stream, &[]);
+    assert!(ok, "git fast-import: {out}");
+    let path = dir.join(".git/config");
+    let mut text = std::fs::read_to_string(&path).unwrap();
+    text.push_str(&config);
+    std::fs::write(&path, text).unwrap();
     repo.set_head("refs/heads/main").unwrap();
-    tip
+    repo.find_reference("refs/heads/main").unwrap().target().unwrap()
 }
 
 /// Moves `main` (checked out) on by one commit, as a commit in the app would.

@@ -7,13 +7,31 @@ use std::path::{Path, PathBuf};
 
 /// An empty repository on `main` with a fixed identity, in a fresh temporary folder.
 pub(crate) fn scratch_repo(name: &str) -> PathBuf {
-    crate::partial::allow_extension();
-    let dir = crate::paths::temp_dir().join(format!("glowfly-test-{name}-{}", std::process::id()));
+    let dir = scratch_dir(name);
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    git(&dir, &["init", "-b", "main"]);
+    init_repo(&dir);
+    dir
+}
+
+/// A copy of `template` in the folder `scratch_repo(name)` would make. When the folder is a
+/// repository, its index is refreshed for the copied files' new times; a template of several
+/// repositories leaves that to the caller.
+pub(crate) fn scratch_copy(name: &str, template: &crate::testkit::Template) -> PathBuf {
+    let dir = scratch_dir(name);
+    template.copy_to(&dir);
+    if dir.join(".git").is_dir() {
+        git(&dir, &["update-index", "-q", "--refresh"]);
+    }
+    dir
+}
+
+/// The empty repository `scratch_repo` makes, in the existing folder `dir` (where a template's
+/// build starts).
+pub(crate) fn init_repo(dir: &Path) {
+    git(dir, &["init", "-b", "main"]);
     set_config(
-        &dir,
+        dir,
         &[
             ("user.name", "Test"),
             ("user.email", "test@example.com"),
@@ -23,7 +41,11 @@ pub(crate) fn scratch_repo(name: &str) -> PathBuf {
             ("maintenance.auto", "false"),
         ],
     );
-    dir
+}
+
+fn scratch_dir(name: &str) -> PathBuf {
+    crate::partial::allow_extension();
+    crate::paths::temp_dir().join(format!("glowfly-test-{name}-{}", std::process::id()))
 }
 
 /// A second name for the folder `dir`, made next to it (`<name>-alias`): a symlink, or on Windows

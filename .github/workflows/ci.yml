@@ -21,6 +21,12 @@ jobs:
   # the longest is about a third of the whole: lint (fmt and clippy), core (glowfly-core's
   # tests), flows (glowfly-flows' tests) and rest (every other crate's tests). Each part keeps its
   # own Rust cache. Together they are the full check.
+  #
+  # CARGO_PROFILE_DEV_DEBUG=0 leaves out debug info for the workspace crates (dependencies have
+  # none anyway), which makes the test build smaller and faster; panics still name their file and
+  # line. RUST_TEST_THREADS runs twice as many tests as the runner's 4 vCPUs, since the tests
+  # mostly wait on the git processes they start. Both are set on the steps after the cache, not
+  # on the job: the cache key includes CARGO_* and RUST_* variables.
   check-part:
     name: Check (Windows, ${{ matrix.part }})
     strategy:
@@ -63,6 +69,8 @@ jobs:
         shell: pwsh
         env:
           PART: ${{ matrix.part }}
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          RUST_TEST_THREADS: "8"
         run: ./scripts/check.ps1 -Only $env:PART
       # make-perf-repos.ps1 on small local fixtures (docs/PERF_REPOS.md); downloads nothing.
       - name: Large test repository script
@@ -116,7 +124,11 @@ jobs:
           git config --global user.email "ci@example.com"
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      # Twice the runner's 4 vCPUs, and no debug info; see the Windows check.
       - name: Tests
+        env:
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          RUST_TEST_THREADS: "8"
         run: cargo test --workspace --locked
       - name: Large test repository script
         shell: pwsh

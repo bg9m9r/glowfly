@@ -20,8 +20,11 @@ mod guard;
 pub mod procs;
 mod push;
 mod refs;
+mod template;
 #[cfg(test)]
 mod tests;
+
+pub use template::Template;
 
 use crate::gitcli::{args, run_with_input};
 use std::path::Path;

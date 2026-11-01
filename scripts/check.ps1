@@ -5,12 +5,20 @@
 #
 # The parts add up to the full check: lint (fmt and clippy), core (glowfly-core's tests), flows
 # (glowfly-flows' tests) and rest (every other crate's tests).
+#
+# The tests run on RUST_TEST_THREADS threads; when it isn't set, on twice the logical cores (at
+# most 32). The suites mostly wait on the git processes they start rather than on the CPU, so
+# more threads than cores finish sooner. Set it lower when other builds share the machine.
 param(
     [ValidateSet('all', 'lint', 'core', 'flows', 'rest')]
     [string]$Only = 'all'
 )
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
+
+if (-not $env:RUST_TEST_THREADS) {
+    $env:RUST_TEST_THREADS = [string][Math]::Min(2 * [Environment]::ProcessorCount, 32)
+}
 
 if ($Only -eq 'all' -or $Only -eq 'lint') {
     cargo fmt --all -- --check
@@ -51,6 +59,7 @@ if ($testArgs) {
         }
         $identity = "[user]`n`tname = Glowfly Tests`n`temail = tests@example.invalid`n"
         Set-Content -LiteralPath (Join-Path $env:HOME ".gitconfig") -Encoding utf8NoBOM -NoNewline -Value $identity
+        Write-Host "Test threads: $env:RUST_TEST_THREADS"
         cargo test @testArgs
         $tested = $LASTEXITCODE
     } finally {
