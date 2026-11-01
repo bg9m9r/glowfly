@@ -15,6 +15,7 @@ use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{RepoColour, RepoGroup, ThemeChoice};
 use std::path::PathBuf;
+use std::time::Instant;
 
 fn docs() -> String {
     abs("docs")
@@ -165,4 +166,11 @@ fn repo_group_dialog() {
     h.run();
     let made = |name: &str, repo: &Option<PathBuf>| name == "Clients" && repo.as_deref() == Some(std::path::Path::new(&docs()));
     assert!(matches!(last(&h), Msg::Groups(GroupMsg::Create { name, repo }) if made(name, repo)));
+    let (st, sent) = h.state_mut();
+    let create = sent.pop().expect("the Create message");
+    crate::update::update(st, create, Instant::now());
+    h.run();
+    assert!(h.state().0.modal.is_none(), "Create closes the dialog");
+    assert!(h.query_by_label("Create").is_none(), "its Create button is gone");
+    assert!(h.query_by_label("Clients").is_some(), "the start page lists the new group");
 }
