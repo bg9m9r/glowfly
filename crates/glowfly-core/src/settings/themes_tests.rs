@@ -167,26 +167,61 @@ fn choices_and_builtins() {
         assert_eq!(BuiltinTheme::from_id(t.id()), Some(t));
     }
     assert_eq!(ThemeChoice::System.label(), "Match system");
-    assert_eq!(ThemeChoice::Sand.label(), "Sand");
+    assert_eq!(ThemeChoice::Porcelain.label(), "Porcelain");
     assert_eq!((ThemeChoice::Dark.label(), ThemeChoice::Light.label()), ("Dusk".to_owned(), "Dawn".to_owned()));
-    assert_eq!(BuiltinTheme::from_id("garden-dark"), Some(BuiltinTheme::GardenDark));
     assert_eq!(ThemeChoice::Custom("ocean".into()).label(), "ocean");
     assert_eq!(ThemeChoice::HighContrastDark.palette_label(), "High contrast dark");
     let cat = ThemeCatalog { files: vec![p(r#"{"base": "light"}"#)], ..ThemeCatalog::default() };
     assert_eq!(cat.base_of(&ThemeChoice::Custom("ocean".into()), true), BuiltinTheme::Light);
     assert_eq!(cat.base_of(&ThemeChoice::Custom("gone".into()), false), BuiltinTheme::Graphite);
-    assert_eq!(cat.base_of(&ThemeChoice::System, false), BuiltinTheme::Light);
+    assert_eq!(cat.base_of(&ThemeChoice::System, false), BuiltinTheme::Porcelain);
+}
+
+#[test]
+fn the_lineup_is_eight_twins() {
+    use BuiltinTheme as B;
+    let ids: Vec<_> = B::ALL.iter().map(|t| t.id()).collect();
+    assert_eq!(ids, ["graphite", "midnight", "dusk", "high-contrast-dark", "porcelain", "mist", "dawn", "high-contrast-light"]);
+    // The dark themes, then each one's light twin in the same place.
+    let (dark, light) = B::ALL.split_at(4);
+    assert!(dark.iter().all(|t| t.is_dark()) && light.iter().all(|t| !t.is_dark()));
+    assert_eq!((B::DEFAULT_DARK, B::DEFAULT_LIGHT), (dark[0], light[0]));
+    assert_eq!(ThemeChoice::BUILT_IN.len(), B::ALL.len() + 1, "and Match system");
+}
+
+#[test]
+fn every_removed_base_still_loads() {
+    use BuiltinTheme as B;
+    let bases = [
+        ("ember", B::Graphite),
+        ("pine", B::Dark),
+        ("garden-dark", B::Midnight),
+        ("garden-light", B::Mist),
+        ("sand", B::Porcelain),
+        ("linen", B::Porcelain),
+        ("dark", B::Dark),
+        ("light", B::Light),
+        ("dusk", B::Dark),
+        ("dawn", B::Light),
+    ];
+    for (base, want) in bases {
+        let f = p(&format!(r##"{{"name": "Old", "base": "{base}", "colors": {{"accent": "#123456"}}}}"##));
+        assert_eq!((f.base, f.problems.as_slice()), (want, &[][..]), "{base}");
+        assert_eq!(f.colors["accent"], rgb(0x123456), "{base} keeps its colours");
+    }
+    assert_eq!(B::from_id("neon"), None);
 }
 
 #[test]
 fn starter_json_round_trips() {
     let colors: Vec<(&str, [u8; 3])> = COLOR_KEYS.iter().enumerate().map(|(i, k)| (*k, [i as u8, 255 - i as u8, (i * 3) as u8])).collect();
     let name = r#"My "best" \ theme"#;
-    let text = starter_json(name, BuiltinTheme::Sand, &colors);
+    let text = starter_json(name, BuiltinTheme::Light, &colors);
+    assert!(text.contains(r#""base": "dawn""#), "Create from current writes today's id");
     assert!(text.ends_with("}\n"));
     let f = p(&text);
     assert!(f.problems.is_empty(), "{:?}", f.problems);
-    assert_eq!((f.name.as_str(), f.base), (name, BuiltinTheme::Sand));
+    assert_eq!((f.name.as_str(), f.base), (name, BuiltinTheme::Light));
     for (k, c) in &colors {
         assert_eq!(f.colors[k], ColorValue::Rgb(*c), "{k}");
     }
@@ -217,7 +252,7 @@ fn load_dir_reads_json_files() {
     let ids: Vec<_> = cat.files.iter().map(|f| (f.id.as_str(), f.name.as_str())).collect();
     assert_eq!(ids, [("B", "Apple"), ("big", "big"), ("c", "mango"), ("a", "zebra")]);
     assert_eq!(cat.get("big").unwrap().problems, [ThemeProblem::TooLarge]);
-    assert_eq!(cat.get("c").unwrap().base, BuiltinTheme::Sand);
+    assert_eq!(cat.get("c").unwrap().base, BuiltinTheme::Porcelain, "a retired base opens in its successor");
     assert!(cat.get("A").is_none(), "ids are case-sensitive");
     assert!(cat.error.is_none());
     let _ = std::fs::remove_dir_all(&dir);

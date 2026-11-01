@@ -25,3 +25,4 @@ pub(super) mod pr_heads_tests;
 pub(super) mod repo_colour_tests;
 pub(super) mod repo_groups_tests;
 pub(super) mod terminal_schemes_tests;
+pub(super) mod themes_tests;

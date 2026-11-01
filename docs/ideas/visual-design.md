@@ -5,7 +5,6 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 ### Custom themes
 
 - Reload theme files automatically when they change on disk (watch the themes folder)
-- Follow system with a chosen dark and light theme pair (today it picks Dusk or Dawn, never the Garden pair)
 - A theme file based on another theme file (inheritance, with loops detected across files)
 - Edit colors in Preferences with a color picker and live preview, saved to the theme file
 - Suggest the closest color name for an unknown key ("acent" -> "accent")
@@ -150,8 +149,6 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 
 ### No brown
 
-- Sand is still a cream-and-greige theme by name; consider re-toning it to clean cream with
-  neutral chrome, or retiring it for Linen
 - A hygiene check that flags `gamma_multiply` on a status, accent or repository colour in `ui/`
   (they should go through `color::wash`)
 - Pine's gold-lane row bands now step toward teal (the field's own hue); judge whether a plain

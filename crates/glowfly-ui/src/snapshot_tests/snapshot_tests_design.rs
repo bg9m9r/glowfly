@@ -126,11 +126,6 @@ fn design_buttons_high_contrast_dark() {
     render_buttons("design_buttons_high_contrast_dark", theme::HIGH_CONTRAST_DARK);
 }
 
-#[test]
-fn design_buttons_sand() {
-    render_buttons("design_buttons_sand", theme::SAND);
-}
-
 /// A labelled swatch at `rect` in `fill`, with `ink` text (the label under it when `ink` is
 /// None).
 fn swatch(ui: &Ui, rect: Rect, r: impl Into<CornerRadius>, fill: egui::Color32, label: &str, ink: Option<egui::Color32>) {

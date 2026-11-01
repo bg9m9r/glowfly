@@ -86,11 +86,6 @@ fn controls_light() {
 }
 
 #[test]
-fn controls_sand() {
-    render_controls("controls_sand", super::SAND);
-}
-
-#[test]
 fn controls_high_contrast_dark() {
     render_controls("controls_high_contrast_dark", super::HIGH_CONTRAST_DARK);
 }

@@ -3,21 +3,16 @@ Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
 Label "Appearance"
-CheckBox "Match the system (Graphite in dark mode, Dawn in light mode)" [off]
+CheckBox "Match the system's dark or light mode" [off]
 Label "Dark"
 RadioButton "Graphite" [off]
-RadioButton "Dusk" [on]
 RadioButton "Midnight" [off]
-RadioButton "Ember" [off]
-RadioButton "Pine" [off]
-RadioButton "Garden Dark" [off]
+RadioButton "Dusk" [on]
 RadioButton "High Contrast Dark" [off]
 Label "Light"
-RadioButton "Dawn" [off]
+RadioButton "Porcelain" [off]
 RadioButton "Mist" [off]
-RadioButton "Linen" [off]
-RadioButton "Sand" [off]
-RadioButton "Garden Light" [off]
+RadioButton "Dawn" [off]
 RadioButton "High Contrast Light" [off]
 Label "Dusk: Indigo dusk under a lantern-gold accent, from the app icon."
 Label "Theme file"
@@ -25,7 +20,7 @@ ComboBox
 Button "Open themes folder"
 Button "Reload"
 Button "Create from current"
-Label "Theme files are JSON files in the themes folder. Each one names a base theme (dark for Dusk, light for Dawn, or midnight, mist, graphite, ember, pine, linen, sand, garden-dark, garden-light, high-contrast-dark or high-contrast-light) and sets the colors it changes, either as #rrggbb or as the name of another color; every color it leaves out comes from the base. Create from current writes a file with every color of the theme in use. Press Reload after editing a file."
+Label "A theme file is a JSON file in the themes folder. It names a base theme (graphite, midnight, dusk, high-contrast-dark, porcelain, mist, dawn or high-contrast-light) and changes any of its colors. Create from current writes one to start from."
 ComboBox
 CheckBox "Say when the branch falls behind its upstream" [on]
 Label "After a background fetch, say when the checked-out branch has fallen behind its upstream, with a button to pull."
@@ -87,3 +82,7 @@ painted:
   "SSH"
   "Theme"
   "None"
+  "Notification location"
+  "Bottom left"
+  "Behind alerts"
+  "Desktop notifications"

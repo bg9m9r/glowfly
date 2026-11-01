@@ -159,7 +159,10 @@ mod tests {
     #[test]
     fn the_groups_hold_every_builtin_once() {
         let (dark, light) = (group(true), group(false));
-        assert_eq!((dark[0], light[0]), (BuiltinTheme::Graphite, BuiltinTheme::Light), "the default pair leads");
+        assert_eq!((dark[0], light[0]), (BuiltinTheme::Graphite, BuiltinTheme::Porcelain), "the default pair leads");
+        // Each light twin sits under its dark one.
+        assert_eq!(dark, [BuiltinTheme::Graphite, BuiltinTheme::Midnight, BuiltinTheme::Dark, BuiltinTheme::HighContrastDark]);
+        assert_eq!(light, [BuiltinTheme::Porcelain, BuiltinTheme::Mist, BuiltinTheme::Light, BuiltinTheme::HighContrastLight]);
         assert_eq!(dark.len() + light.len(), BuiltinTheme::ALL.len());
         for b in BuiltinTheme::ALL {
             assert!(dark.contains(&b) != light.contains(&b), "{b:?}");

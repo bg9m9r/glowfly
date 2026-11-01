@@ -1,9 +1,9 @@
-//! Dusk and Dawn, the standard pair, drawn from the app icon: its dusk tile (indigo into plum)
-//! tints the neutrals, and the glowfly's lantern gold is Dusk's accent, so the main branch runs
-//! in gold as the icon's first lane does. On Dawn's paper a gold line dark enough to read is
-//! brown, so Dawn keeps the gold on its buttons and selected row and takes an iris violet (OKLCH
-//! hue 283, the dawn sky over the lavender paper) for the accent. Tags take the plum of the
-//! tile's lower edge. `modified` and `warn` sit on the orange side of the gold (OKLCH hue about
+//! Dusk and Dawn, the pair drawn from the app icon: its dusk tile (indigo into plum) tints the
+//! neutrals, and the glowfly's lantern gold is Dusk's accent, so the main branch runs in gold as
+//! the icon's first lane does; Dusk's selected row is an indigo step under the gold bar. On
+//! Dawn's paper a gold line dark enough to read is brown, so Dawn's one accent is an iris violet
+//! (OKLCH hue 283, the dawn sky over the lavender paper), on its buttons and selected row too.
+//! Tags take the plum of the tile's lower edge. `modified` and `warn` sit on the orange side of the gold (OKLCH hue about
 //! 64), out of the gold accent's band. The values and the rules they meet are in
 //! docs/COLOUR.md.
 
@@ -17,7 +17,7 @@ const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
 }
 
-/// The standard dark theme: indigo neutrals under a lantern-gold accent.
+/// Indigo neutrals under a lantern-gold accent.
 pub const DUSK: Palette = Palette {
     dark: true,
     bg: hex(0x1b1829),
@@ -29,7 +29,7 @@ pub const DUSK: Palette = Palette {
     input_border: hex(0x89839e),
     dialog_border: hex(0x89839e),
     hover: hex(0x332d44),
-    selected: hex(0x573b11),
+    selected: hex(0x362f58),
     text: hex(0xe6e5ef),
     strong: hex(0xffffff),
     weak: hex(0xb6b3c8),
@@ -67,8 +67,7 @@ pub const DUSK: Palette = Palette {
     ansi: super::ansi::DUSK,
 };
 
-/// The standard light theme: faintly lavender paper and indigo ink, an iris accent and the
-/// lantern gold on primary buttons and the selected row.
+/// Faintly lavender paper and indigo ink under an iris accent.
 pub const DAWN: Palette = Palette {
     dark: false,
     bg: hex(0xf7f6fc),
@@ -80,16 +79,16 @@ pub const DAWN: Palette = Palette {
     input_border: hex(0x747188),
     dialog_border: hex(0x747188),
     hover: hex(0xece9f5),
-    selected: hex(0xf8e4bb),
+    selected: hex(0xe6e1fa),
     text: hex(0x211f38),
     strong: hex(0x100d26),
     weak: hex(0x54526d),
     faint: hex(0x6b6882),
     accent: hex(0x5a47cf),
-    primary: hex(0xefb146),
-    on_primary: hex(0x1b1933),
+    primary: hex(0x5a47cf),
+    on_primary: hex(0xffffff),
     primary_off: hex(0xe6e5ee),
-    primary_border: hex(0xd19006),
+    primary_border: hex(0x4535b5),
     danger: hex(0xc0332a),
     danger_off: hex(0xfedadc),
     tag_bg: hex(0xf5d8ea),

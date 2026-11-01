@@ -161,13 +161,13 @@ fn vine(p: &Painter, r: Rect, s: &ArtStyle) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::theme::{self, DARK, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, LIGHT, SAND};
+    use crate::ui::theme::{self, DARK, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, LIGHT, PORCELAIN};
     use contrast::ratio;
 
     const ALL: [(&str, Palette); 5] = [
         ("Dark", DARK),
         ("Light", LIGHT),
-        ("Sand", SAND),
+        ("Porcelain", PORCELAIN),
         ("High contrast dark", HIGH_CONTRAST_DARK),
         ("High contrast light", HIGH_CONTRAST_LIGHT),
     ];

@@ -1,6 +1,6 @@
 //! App preferences persisted to `settings.json` in the config folder (see `paths`).
 
-use crate::forge::{Account, Connection};
+use crate::forge::Connection;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -95,6 +95,9 @@ pub struct Settings {
 
     // Appearance
     pub theme: ThemeChoice,
+    /// A retired theme the file named (as shown, and its successor), for the one-time toast.
+    #[serde(skip)]
+    pub retired_theme: Option<(String, BuiltinTheme)>,
     pub notification_location: Corner,
     /// After a background fetch, toast when the checked-out branch falls (further) behind its upstream (Preferences > Appearance).
     pub behind_alerts: bool,
@@ -304,6 +307,7 @@ impl Default for Settings {
             submodules: SubmodulePrefs::default(),
             language: crate::i18n::SYSTEM.into(),
             theme: ThemeChoice::Graphite,
+            retired_theme: None,
             notification_location: Corner::BottomLeft,
             behind_alerts: true,
             desktop_notifications: false,
@@ -387,10 +391,6 @@ impl Default for Settings {
 pub const MIN_INITIAL_COMMITS: usize = 500;
 
 impl Settings {
-    pub fn connection(&self, account: &Account) -> Option<&Connection> {
-        self.connections.iter().find(|c| &c.account == account)
-    }
-
     pub fn commit_limit(&self) -> usize {
         self.initial_commits.max(MIN_INITIAL_COMMITS)
     }

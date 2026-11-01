@@ -120,7 +120,7 @@ fn prefs_terminal_colours_dark() {
     assert!(h.query_by_label_contains("Hard to read on this background: yellow, bright yellow.").is_some());
     h.query_all_by_role(Role::ComboBox).nth(1).expect("the colors menu").click();
     h.run();
-    for label in ["Match app theme", "Dusk", "Sand", "High Contrast Light"] {
+    for label in ["Match app theme", "Dusk", "Porcelain", "High Contrast Light"] {
         assert!(h.query_all_by_label(label).next().is_some(), "{label}");
     }
 }

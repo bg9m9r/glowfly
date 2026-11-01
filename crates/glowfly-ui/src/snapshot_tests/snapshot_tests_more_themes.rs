@@ -1,6 +1,6 @@
-//! The six themes added beside Dusk and Dawn (Midnight, Mist, Ember, Pine, Graphite and
-//! Linen), each as the main window over a graph of four pinned branches with a commit's details
-//! open (`theme_<id>`), and Preferences' theme picker (`prefs_theme_picker*`).
+//! Midnight, Mist, Graphite and Porcelain, each as the main window over a graph of four pinned
+//! branches with a commit's details open (`theme_<id>`), and Preferences' theme picker
+//! (`prefs_theme_picker*`).
 
 use super::snapshot_tests::{harness_palette_sized, remove_fixture, settings};
 use super::snapshot_tests_graph_bands::with_bands;
@@ -38,23 +38,13 @@ fn theme_mist() {
 }
 
 #[test]
-fn theme_ember() {
-    main_in(BuiltinTheme::Ember);
-}
-
-#[test]
-fn theme_pine() {
-    main_in(BuiltinTheme::Pine);
-}
-
-#[test]
 fn theme_graphite() {
     main_in(BuiltinTheme::Graphite);
 }
 
 #[test]
-fn theme_linen() {
-    main_in(BuiltinTheme::Linen);
+fn theme_porcelain() {
+    main_in(BuiltinTheme::Porcelain);
 }
 
 /// Preferences > Appearance with `choice` picked, drawn in its own palette.
@@ -71,7 +61,7 @@ fn picker(name: &str, choice: ThemeChoice) {
 fn prefs_theme_picker() {
     // The default: Graphite.
     picker("prefs_theme_picker", ThemeChoice::Graphite);
-    picker("prefs_theme_picker_linen", ThemeChoice::Linen);
+    picker("prefs_theme_picker_porcelain", ThemeChoice::Porcelain);
 }
 
 #[test]

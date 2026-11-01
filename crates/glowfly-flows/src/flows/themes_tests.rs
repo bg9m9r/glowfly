@@ -56,7 +56,7 @@ fn create_from_current_names_and_bases_the_copy() {
 
     st.settings.theme = ThemeChoice::System;
     let f = created(&run(&mut st, ThemeMsg::CreateFromCurrent { colors, dark: false }));
-    assert_eq!((f.name.as_str(), f.base), ("Dawn (copy)", BuiltinTheme::Light), "the theme the system picked");
+    assert_eq!((f.name.as_str(), f.base), ("Porcelain (copy)", BuiltinTheme::Porcelain), "the theme the system picked");
 }
 
 /// How many failure toasts are up.

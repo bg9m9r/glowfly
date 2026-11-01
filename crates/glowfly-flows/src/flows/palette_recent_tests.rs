@@ -83,10 +83,10 @@ fn query_ranking_beats_recency() {
 fn recency_breaks_score_ties() {
     let mut st = state();
     let before = labels(&st, "theme");
-    assert_eq!(before[..3], ["Theme: Dawn", "Theme: Dusk", "Theme: Pine"]);
-    run_cmd(&mut st, C::Theme(ThemeChoice::Dark));
+    assert_eq!(before[..3], ["Theme: Dusk", "Theme: Mist", "Theme: Dawn"]);
+    run_cmd(&mut st, C::Theme(ThemeChoice::Light));
     let after = labels(&st, "theme");
-    assert_eq!(after[..3], ["Theme: Dusk", "Theme: Dawn", "Theme: Pine"]);
+    assert_eq!(after[..3], ["Theme: Dawn", "Theme: Dusk", "Theme: Mist"]);
     assert_eq!(after.len(), before.len());
 }
 
@@ -190,7 +190,7 @@ fn recall_keys_are_unique() {
         C::Theme(ThemeChoice::System),
         C::Theme(ThemeChoice::HighContrastDark),
         C::Theme(ThemeChoice::HighContrastLight),
-        C::Theme(ThemeChoice::Sand),
+        C::Theme(ThemeChoice::Porcelain),
         C::FileHistory,
         C::Blame,
         C::Remote(RemoteMsg::AddDialog),

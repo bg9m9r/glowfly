@@ -4,9 +4,9 @@
 
 use super::branch_colours::{line_in, swatches};
 use super::contrast::{mix, oklch, tint, unbrown};
+use super::tests::palettes;
 use super::*;
 use eframe::egui::Color32;
-use glowfly_core::settings::BuiltinTheme;
 
 /// The angle between two hues (0 to 180).
 fn apart(a: f64, b: f64) -> f64 {
@@ -31,8 +31,7 @@ fn tints(p: &color::Palette) -> Vec<(String, Color32, Color32)> {
 fn tints_on_a_coloured_dark_field_keep_its_family() {
     let mut failures = Vec::new();
     let mut checked = 0;
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         for (what, field, c) in tints(p) {
             let ((_, fc, fh), (_, cc, ch)) = (oklch(field), oklch(c));
             if !p.dark || fc < 0.02 {
@@ -41,7 +40,7 @@ fn tints_on_a_coloured_dark_field_keep_its_family() {
             checked += 1;
             // The byte rounding can lose a hair of chroma or turn the hue a little past the fence.
             if cc < fc - 0.002 || apart(ch, fh) > 22.0 {
-                failures.push(format!("{t:?}: {what} is chroma {cc:.3} hue {ch:.0} on a field of {fc:.3} {fh:.0}"));
+                failures.push(format!("{t}: {what} is chroma {cc:.3} hue {ch:.0} on a field of {fc:.3} {fh:.0}"));
             }
         }
     }
@@ -52,11 +51,10 @@ fn tints_on_a_coloured_dark_field_keep_its_family() {
 #[test]
 fn tint_is_the_plain_mix_on_light_and_neutral_fields() {
     let gold = Color32::from_rgb(0xf6, 0xc1, 0x59);
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         if !p.dark || oklch(p.bg).1 < 0.012 {
             // The plain mix, kept out of the brown zone (docs/COLOUR.md, "No brown").
-            assert_eq!(tint(p.bg, gold, 0.07, p.dark), unbrown(p.bg, mix(p.bg, gold, 0.07)), "{t:?}");
+            assert_eq!(tint(p.bg, gold, 0.07, p.dark), unbrown(p.bg, mix(p.bg, gold, 0.07)), "{t}");
         }
     }
     // Dusk: the gold on indigo would mix to a warm grey (chroma 0.017); the tint stays violet.

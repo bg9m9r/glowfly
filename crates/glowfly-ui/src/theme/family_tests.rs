@@ -1,17 +1,14 @@
 //! The colour families: the brand values, the reserved OKLCH hue bands, tinted neutrals, primary
 //! ink, status chips, sand tags and theme files (docs/COLOUR.md has the rules).
 
-use super::bands::{GOLD_BAND, accent_band, hue, in_reserved_band};
+use super::bands::{accent_band, hue, in_reserved_band};
 use super::color::Palette;
 use super::contrast::{self, ChipStyle, oklch, ratio};
+use super::tests::{high_contrast, palettes};
 use super::tests::{ocean, rgb};
 use super::*;
 use eframe::egui::Color32;
 use glowfly_core::settings::{BuiltinTheme, ColorValue};
-
-fn high(t: BuiltinTheme) -> bool {
-    matches!(t, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight)
-}
 
 fn report(failures: &[String]) {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -60,18 +57,9 @@ fn accent_family_sits_in_the_accent_band() {
     let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {
         let p = builtin(t);
-        for (key, c) in [("accent", p.accent), ("primary", p.primary), ("primary_border", p.primary_border), ("selected", p.selected)] {
-            // Ember's selected row is a deep red and Pine's a petrol blue, not a dark wash of
-            // their orange or gold, which would read as brown (docs/COLOUR.md, "No brown").
-            if matches!(t, BuiltinTheme::Ember | BuiltinTheme::Pine) && key == "selected" {
-                continue;
-            }
-            // Dawn's accent is the iris (a gold line on paper reads brown); its buttons and
-            // selected row keep the lantern gold.
-            if t == BuiltinTheme::Light && key != "accent" {
-                assert!(GOLD_BAND.contains(&hue(c)), "Dawn's {key} stays gold");
-                continue;
-            }
+        // The selected row follows the sleekness rules instead (`more_themes_tests.rs`, rule 2):
+        // a quiet step in the accent's hue, or the field's beside a warm accent.
+        for (key, c) in [("accent", p.accent), ("primary", p.primary), ("primary_border", p.primary_border)] {
             let h = hue(c);
             if !accent_band(t).contains(&h) {
                 failures.push(format!("{t:?}: {key}'s OKLCH hue is {h:.1}"));
@@ -171,15 +159,14 @@ fn dusk_and_dawn_neutrals_take_the_dusk() {
 #[test]
 fn primary_ink_reads() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
-        let min = if high(t) { 7.0 } else { 4.5 };
+    for (t, p) in palettes() {
+        let min = if high_contrast(p) { 7.0 } else { 4.5 };
         let pole = if p.dark { Color32::WHITE } else { Color32::BLACK };
         // As a primary button rests, hovers and is pressed.
         for shade in [0.0, 0.10, 0.18] {
             let r = ratio(p.on_primary, contrast::mix(p.primary, pole, shade));
             if r < min {
-                failures.push(format!("{t:?}: on_primary at shade {shade} is {r:.2}:1"));
+                failures.push(format!("{t}: on_primary at shade {shade} is {r:.2}:1"));
             }
         }
     }
@@ -189,17 +176,16 @@ fn primary_ink_reads() {
 #[test]
 fn status_chips_are_readable() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         for key in STATUS_AND_WARN {
             let col = p.get(key).unwrap();
             let (fill, fg) = contrast::change_chip(col, p);
             let r = ratio(fg, fill);
             if fill.a() != 255 || r < 4.5 {
-                failures.push(format!("{t:?} {key} chip: {r:.2}:1, fill alpha {}", fill.a()));
+                failures.push(format!("{t} {key} chip: {r:.2}:1, fill alpha {}", fill.a()));
             }
             if !p.dark && fill != contrast::unbrown(p.bg, contrast::mix(p.bg, col, 0.10)) {
-                failures.push(format!("{t:?} {key} chip: not a 10% tint"));
+                failures.push(format!("{t} {key} chip: not a 10% tint"));
             }
         }
     }
@@ -239,8 +225,8 @@ fn custom_files_inherit_the_families() {
     let own = DARK.accent;
     let p = custom::build(&ocean(BuiltinTheme::Dark, &[("accent", ColorValue::Rgb([own.r(), own.g(), own.b()]))]));
     assert_eq!(p.branch, DARK.branch);
-    let p = custom::build(&ocean(BuiltinTheme::Sand, &[("accent", ColorValue::Rgb([1, 2, 3]))]));
-    assert_eq!(p.branch, SAND.branch, "Sand keeps its own");
+    let p = custom::build(&ocean(BuiltinTheme::Porcelain, &[("accent", ColorValue::Rgb([1, 2, 3]))]));
+    assert_eq!(p.branch, PORCELAIN.branch, "Porcelain keeps its own");
     let text = br##"{ "base": "dark", "colors": { "green": "#010203" } }"##;
     let p = custom::build(&glowfly_core::settings::themes::parse("ocean", std::path::Path::new("ocean.json"), text));
     assert_eq!(p.status.added, Color32::from_rgb(1, 2, 3), "the old name sets added");
@@ -251,7 +237,7 @@ fn custom_files_inherit_the_families() {
 fn custom_primary_without_ink_stays_readable() {
     let build = |base, colors: &[(&'static str, ColorValue)]| custom::build(&ocean(base, colors));
     // A file made from the old Dark starter: its own primary, no on_primary.
-    let old_dark = build(BuiltinTheme::GardenDark, &[("primary", ColorValue::Rgb([0x0e, 0x7a, 0x85]))]);
+    let old_dark = build(BuiltinTheme::Graphite, &[("primary", ColorValue::Rgb([0x0e, 0x7a, 0x85]))]);
     assert_eq!(old_dark.on_primary, Color32::WHITE);
     for (base, rgb) in [(BuiltinTheme::Dark, [0x1f, 0x3a, 0x8a]), (BuiltinTheme::Light, [0xf5, 0xd0, 0x4a])] {
         let p = build(base, &[("primary", ColorValue::Rgb(rgb))]);
@@ -259,8 +245,8 @@ fn custom_primary_without_ink_stays_readable() {
         assert!(r >= 4.5, "{base:?} with primary {rgb:?}: on_primary is {r:.2}:1");
     }
     // The base ink stays while it reads, and a file's own on_primary is kept as set.
-    let near = build(BuiltinTheme::GardenDark, &[("primary", ColorValue::Rgb([0x55, 0xcc, 0x90]))]);
-    assert_eq!(near.on_primary, GARDEN_DARK.on_primary);
+    let near = build(BuiltinTheme::Graphite, &[("primary", ColorValue::Rgb([0x55, 0xcc, 0x90]))]);
+    assert_eq!(near.on_primary, GRAPHITE.on_primary);
     let own = build(BuiltinTheme::Dark, &[("primary", ColorValue::Rgb([0x0e, 0x7a, 0x85])), ("on_primary", ColorValue::Rgb([1, 2, 3]))]);
     assert_eq!(own.on_primary, Color32::from_rgb(1, 2, 3));
 }

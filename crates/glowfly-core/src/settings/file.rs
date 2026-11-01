@@ -101,6 +101,8 @@ impl Settings {
                 },
             }
         };
+        // A retired theme met before this read isn't this file's.
+        let _ = super::theme_choice::take_retired();
         let (settings, reset, detail) = match serde_json::from_slice::<Settings>(&bytes) {
             Ok(s) if !failed => return (migrate(s), None),
             Ok(s) => {
@@ -162,7 +164,10 @@ fn existing_defaults() -> Settings {
 
 /// Early builds stored a preset name ("Iso", "Long", "Relative") in `date_format`; builds
 /// before the patterns followed the locale saved the old built-in patterns, which mean "unset".
+/// A retired theme (in `theme` or a profile's copy) has already loaded as its successor; the
+/// first one read is kept for the toast.
 fn migrate(mut s: Settings) -> Settings {
+    s.retired_theme = super::theme_choice::take_retired();
     if matches!(s.date_format.as_str(), "Iso" | "Long" | "Relative") {
         s.relative_dates = s.date_format == "Relative";
         s.date_format = Settings::default().date_format;

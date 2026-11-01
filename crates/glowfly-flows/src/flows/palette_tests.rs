@@ -97,18 +97,13 @@ fn entries_without_repo() {
             "Hide toolbar",
             "Hide menu bar",
             "Theme: Graphite",
-            "Theme: Dawn",
+            "Theme: Porcelain",
             "Theme: Follow system",
-            "Theme: Dusk",
             "Theme: Midnight",
-            "Theme: Ember",
-            "Theme: Pine",
-            "Theme: Garden dark",
+            "Theme: Dusk",
             "Theme: High contrast dark",
             "Theme: Mist",
-            "Theme: Linen",
-            "Theme: Sand",
-            "Theme: Garden light",
+            "Theme: Dawn",
             "Theme: High contrast light",
             "Configure external tools",
             "Configure terminal",
@@ -178,22 +173,22 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 39);
+    assert_eq!(shown(&st, "").len(), 34);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 38);
+    assert_eq!(p.selected, 33);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
 
-    // Fourteen theme entries and "Show the welcome" match "theme".
+    // Nine theme entries and "Show the welcome" match "theme".
     st.palette.as_mut().unwrap().query = "theme".into();
-    for _ in 0..15 {
+    for _ in 0..10 {
         run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     }
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     // A selection past the end is clamped to the last row, then moved.
-    st.palette.as_mut().unwrap().selected = 15;
+    st.palette.as_mut().unwrap().selected = 10;
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     // No matches: stays on 0.

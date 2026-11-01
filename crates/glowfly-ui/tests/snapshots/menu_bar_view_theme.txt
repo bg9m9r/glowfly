@@ -24,20 +24,15 @@ CheckBox "Ignore whitespace" [off]
 CheckBox "Wrap long lines" [off]
 Button "Theme"
 RadioButton "Graphite" [off]
-RadioButton "Dawn" [off]
+RadioButton "Porcelain" [off]
 RadioButton "Match system" [off]
 Heading "Dark"
-RadioButton "Dusk" [on]
 RadioButton "Midnight" [off]
-RadioButton "Ember" [off]
-RadioButton "Pine" [off]
-RadioButton "Garden Dark" [off]
+RadioButton "Dusk" [on]
 RadioButton "High Contrast Dark" [off]
 Heading "Light"
 RadioButton "Mist" [off]
-RadioButton "Linen" [off]
-RadioButton "Sand" [off]
-RadioButton "Garden Light" [off]
+RadioButton "Dawn" [off]
 RadioButton "High Contrast Light" [off]
 Button "Theme settings…"
 Button "Refresh"

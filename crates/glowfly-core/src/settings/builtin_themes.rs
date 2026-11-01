@@ -1,145 +1,147 @@
-//! The built-in themes: their ids (a theme file's `base`), names, kinds, and how the settings'
-//! `ThemeChoice` maps onto them.
+//! The built-in themes: their ids (a theme file's `base`), names, kinds, the themes that took
+//! the place of the retired ones, and how the settings' `ThemeChoice` maps onto them.
 
 use super::ThemeChoice;
 
-/// A palette that ships with Glowfly; theme files start from one. `Dark` and `Light` are Dusk and
-/// Dawn (from the app icon); Graphite is the default dark theme (`DEFAULT_DARK`) and Dawn the
-/// default light one. The Garden pair is the earlier green look.
-/// The ids `dark` and `light` (and the settings' `Dark` and `Light`) stay the standard pair's, so
-/// files written before the pair was renamed open in Dusk and Dawn.
+/// A palette that ships with Glowfly; theme files start from one. Eight, in four twin pairs:
+/// Graphite and Porcelain (the defaults), Midnight and Mist, Dusk and Dawn (from the app icon),
+/// and the high-contrast pair. `Dark` and `Light` are Dusk and Dawn: the settings' `Dark` and
+/// `Light` and the ids `dark` and `light` stay theirs, so files written before the pair was
+/// renamed open in Dusk and Dawn.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BuiltinTheme {
-    /// Dusk.
-    Dark,
-    /// Dawn.
-    Light,
-    GardenDark,
-    GardenLight,
-    HighContrastDark,
-    HighContrastLight,
-    Sand,
-    /// Blue-black night with a sea-glass accent.
-    Midnight,
-    /// Midnight's light twin: cool fog paper, deep sea-glass.
-    Mist,
-    /// Oxblood charcoal with a flame-orange accent.
-    Ember,
-    /// Deep pine green with the lantern gold.
-    Pine,
     /// Near-neutral graphite with a cobalt accent.
     Graphite,
-    /// Clean warm paper with deep cobalt.
-    Linen,
+    /// Blue-black night with a sea-glass accent.
+    Midnight,
+    /// Dusk.
+    Dark,
+    HighContrastDark,
+    /// Graphite's light twin: neutral white, grey-black ink and cobalt.
+    Porcelain,
+    /// Midnight's light twin: cool fog paper, deep sea-glass.
+    Mist,
+    /// Dawn.
+    Light,
+    HighContrastLight,
 }
+
+/// The themes no longer included, by the name settings saved them under: their name as it was
+/// shown, and the theme that took their place.
+const RETIRED: [(&str, &str, BuiltinTheme); 6] = [
+    ("Pine", "Pine", BuiltinTheme::Dark),
+    ("GardenDark", "Garden Dark", BuiltinTheme::Midnight),
+    ("GardenLight", "Garden Light", BuiltinTheme::Mist),
+    ("Ember", "Ember", BuiltinTheme::Graphite),
+    ("Sand", "Sand", BuiltinTheme::Porcelain),
+    ("Linen", "Linen", BuiltinTheme::Porcelain),
+];
+
+/// The retired themes' ids as theme files' `base` named them, and the theme each opens in now.
+const RETIRED_IDS: [(&str, BuiltinTheme); 6] = [
+    ("ember", BuiltinTheme::Graphite),
+    ("pine", BuiltinTheme::Dark),
+    ("garden-dark", BuiltinTheme::Midnight),
+    ("garden-light", BuiltinTheme::Mist),
+    ("sand", BuiltinTheme::Porcelain),
+    ("linen", BuiltinTheme::Porcelain),
+];
 
 impl BuiltinTheme {
     /// The default dark theme: new settings, Match system on a dark desktop, older settings'
     /// `"Dark"` and a theme file that isn't in the folder show it.
     pub const DEFAULT_DARK: Self = Self::Graphite;
-    /// The default light theme.
-    pub const DEFAULT_LIGHT: Self = Self::Light;
+    /// The default light theme: Match system on a light desktop.
+    pub const DEFAULT_LIGHT: Self = Self::Porcelain;
 
-    pub const ALL: [Self; 13] = [
-        Self::Dark,
-        Self::Light,
-        Self::GardenDark,
-        Self::GardenLight,
-        Self::HighContrastDark,
-        Self::HighContrastLight,
-        Self::Sand,
-        Self::Midnight,
-        Self::Mist,
-        Self::Ember,
-        Self::Pine,
+    /// The dark themes, then their light twins in the same order.
+    pub const ALL: [Self; 8] = [
         Self::Graphite,
-        Self::Linen,
+        Self::Midnight,
+        Self::Dark,
+        Self::HighContrastDark,
+        Self::Porcelain,
+        Self::Mist,
+        Self::Light,
+        Self::HighContrastLight,
     ];
 
-    /// The name a theme file's `base` uses.
+    /// The name a theme file's `base` uses; Create from current writes it.
     pub fn id(self) -> &'static str {
         match self {
-            Self::Dark => "dark",
-            Self::Light => "light",
-            Self::GardenDark => "garden-dark",
-            Self::GardenLight => "garden-light",
-            Self::HighContrastDark => "high-contrast-dark",
-            Self::HighContrastLight => "high-contrast-light",
-            Self::Sand => "sand",
-            Self::Midnight => "midnight",
-            Self::Mist => "mist",
-            Self::Ember => "ember",
-            Self::Pine => "pine",
             Self::Graphite => "graphite",
-            Self::Linen => "linen",
+            Self::Midnight => "midnight",
+            Self::Dark => "dusk",
+            Self::HighContrastDark => "high-contrast-dark",
+            Self::Porcelain => "porcelain",
+            Self::Mist => "mist",
+            Self::Light => "dawn",
+            Self::HighContrastLight => "high-contrast-light",
         }
     }
 
-    /// The theme for a `base` value, spelled exactly as `id` gives it.
+    /// The theme for a `base` value, spelled exactly as `id` gives it, or as an older file did:
+    /// `dark` and `light` for Dusk and Dawn, and a retired theme's id for its successor.
     pub fn from_id(id: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|t| t.id() == id)
+        match id {
+            "dark" => Some(Self::Dark),
+            "light" => Some(Self::Light),
+            _ => Self::ALL.into_iter().find(|t| t.id() == id).or_else(|| RETIRED_IDS.iter().find(|(old, _)| *old == id).map(|(_, t)| *t)),
+        }
+    }
+
+    /// The theme that took the place of a retired one, by the name settings saved it under
+    /// (`"GardenDark"`), with the name it was shown under (`"Garden Dark"`). None for any other
+    /// name.
+    pub fn successor(saved: &str) -> Option<(&'static str, Self)> {
+        RETIRED.iter().find(|(name, _, _)| *name == saved).map(|(_, shown, t)| (*shown, *t))
     }
 
     pub fn label(self) -> &'static str {
         match self {
-            Self::Dark => "Dusk",
-            Self::Light => "Dawn",
-            Self::GardenDark => "Garden Dark",
-            Self::GardenLight => "Garden Light",
-            Self::HighContrastDark => "High Contrast Dark",
-            Self::HighContrastLight => "High Contrast Light",
-            Self::Sand => "Sand",
-            Self::Midnight => "Midnight",
-            Self::Mist => "Mist",
-            Self::Ember => "Ember",
-            Self::Pine => "Pine",
             Self::Graphite => "Graphite",
-            Self::Linen => "Linen",
+            Self::Midnight => "Midnight",
+            Self::Dark => "Dusk",
+            Self::HighContrastDark => "High Contrast Dark",
+            Self::Porcelain => "Porcelain",
+            Self::Mist => "Mist",
+            Self::Light => "Dawn",
+            Self::HighContrastLight => "High Contrast Light",
         }
     }
 
     /// Light text on a dark background.
     pub fn is_dark(self) -> bool {
-        matches!(self, Self::Dark | Self::GardenDark | Self::HighContrastDark | Self::Midnight | Self::Ember | Self::Pine | Self::Graphite)
+        matches!(self, Self::Graphite | Self::Midnight | Self::Dark | Self::HighContrastDark)
     }
 
     /// The choice that shows this theme.
     pub fn choice(self) -> ThemeChoice {
         match self {
-            Self::Dark => ThemeChoice::Dark,
-            Self::Light => ThemeChoice::Light,
-            Self::GardenDark => ThemeChoice::GardenDark,
-            Self::GardenLight => ThemeChoice::GardenLight,
-            Self::HighContrastDark => ThemeChoice::HighContrastDark,
-            Self::HighContrastLight => ThemeChoice::HighContrastLight,
-            Self::Sand => ThemeChoice::Sand,
-            Self::Midnight => ThemeChoice::Midnight,
-            Self::Mist => ThemeChoice::Mist,
-            Self::Ember => ThemeChoice::Ember,
-            Self::Pine => ThemeChoice::Pine,
             Self::Graphite => ThemeChoice::Graphite,
-            Self::Linen => ThemeChoice::Linen,
+            Self::Midnight => ThemeChoice::Midnight,
+            Self::Dark => ThemeChoice::Dark,
+            Self::HighContrastDark => ThemeChoice::HighContrastDark,
+            Self::Porcelain => ThemeChoice::Porcelain,
+            Self::Mist => ThemeChoice::Mist,
+            Self::Light => ThemeChoice::Light,
+            Self::HighContrastLight => ThemeChoice::HighContrastLight,
         }
     }
 }
 
 impl ThemeChoice {
     /// The built-in choices, in the order the menus list them: the default pair (Graphite and
-    /// Dawn) and Match system, then the other dark themes, then the other light ones.
-    pub const BUILT_IN: [ThemeChoice; 14] = [
+    /// Porcelain) and Match system, then the other dark themes, then their light twins.
+    pub const BUILT_IN: [ThemeChoice; 9] = [
         ThemeChoice::Graphite,
-        ThemeChoice::Light,
+        ThemeChoice::Porcelain,
         ThemeChoice::System,
-        ThemeChoice::Dark,
         ThemeChoice::Midnight,
-        ThemeChoice::Ember,
-        ThemeChoice::Pine,
-        ThemeChoice::GardenDark,
+        ThemeChoice::Dark,
         ThemeChoice::HighContrastDark,
         ThemeChoice::Mist,
-        ThemeChoice::Linen,
-        ThemeChoice::Sand,
-        ThemeChoice::GardenLight,
+        ThemeChoice::Light,
         ThemeChoice::HighContrastLight,
     ];
 
@@ -151,17 +153,12 @@ impl ThemeChoice {
             Self::Light => BuiltinTheme::Light,
             Self::System if system_dark => BuiltinTheme::DEFAULT_DARK,
             Self::System => BuiltinTheme::DEFAULT_LIGHT,
-            Self::GardenDark => BuiltinTheme::GardenDark,
-            Self::GardenLight => BuiltinTheme::GardenLight,
             Self::HighContrastDark => BuiltinTheme::HighContrastDark,
             Self::HighContrastLight => BuiltinTheme::HighContrastLight,
-            Self::Sand => BuiltinTheme::Sand,
             Self::Midnight => BuiltinTheme::Midnight,
             Self::Mist => BuiltinTheme::Mist,
-            Self::Ember => BuiltinTheme::Ember,
-            Self::Pine => BuiltinTheme::Pine,
             Self::Graphite => BuiltinTheme::Graphite,
-            Self::Linen => BuiltinTheme::Linen,
+            Self::Porcelain => BuiltinTheme::Porcelain,
             Self::Custom(_) => return None,
         })
     }
@@ -181,8 +178,6 @@ impl ThemeChoice {
             Self::Dark => "Dusk",
             Self::Light => "Dawn",
             Self::System => "Follow system",
-            Self::GardenDark => "Garden dark",
-            Self::GardenLight => "Garden light",
             Self::HighContrastDark => "High contrast dark",
             Self::HighContrastLight => "High contrast light",
             Self::Custom(id) => return id.clone(),
