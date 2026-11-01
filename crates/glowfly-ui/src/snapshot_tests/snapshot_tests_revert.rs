@@ -124,6 +124,32 @@ fn diff_commit_revert_lines() {
     remove_fixture(&dir);
 }
 
+/// Whether any label in `h` names a working-tree action.
+fn stage_verbs(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>) -> Vec<&'static str> {
+    ["Stage", "Unstage", "Discard"].into_iter().filter(|v| h.query_by_label_contains(v).is_some()).collect()
+}
+
+#[test]
+fn diff_commit_readonly_dark() {
+    // At rest: the signs, no check boxes or bars, and only Revert on the header.
+    let (st, dir) = with_line_diff("readonly", ThemeChoice::Dark, DiffLayout::Inline, &[]);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Revert hunk").is_some());
+    assert_eq!(stage_verbs(&h), Vec::<&str>::new(), "a read-only diff offers no working-tree action");
+    drop(h);
+    let (st, _) = with_line_diff("readonly", ThemeChoice::Dark, DiffLayout::Inline, &[]);
+    render("diff_commit_readonly_dark", st, true);
+    // With lines selected it reverts them, still with no stage verb.
+    let (st, _) = with_line_diff("readonly", ThemeChoice::Dark, DiffLayout::Split, &[1, 2]);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Revert 2 lines").is_some());
+    assert_eq!(stage_verbs(&h), Vec::<&str>::new());
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn commit_diff_lines_click_and_revert() {
     use crate::msg::DiffMsg;

@@ -121,7 +121,6 @@ painted:
   "2"
   "fn greeting(name: &str, count: u32) -> String {"
   "3"
-  "-"
   "let message = format!(\"Hello {name}, welcome back! You have {count} new"
   "notifications waiting in your inbox, and the weekly summary of the projects"
   "you follow is ready to read whenever you have a moment to spare today.\", name"

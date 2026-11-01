@@ -111,6 +111,11 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Pass the list row to the hunk view's gap read too, so a renamed file's gaps don't read the whole comparison
 - When a working-tree comparison's list is re-read while a file's diff is still opening and its row changed, open it again with the new row (today only a diff on screen is re-read)
 
+### Gutter line selection
+
+- The gutter tooltip opens below the row and covers the next line, the one a Shift-click range
+  usually targets: anchor it left of the pointer, or show it once per diff
+
 ### Merge conflict tool
 
 - Syntax highlighting in the conflict panes

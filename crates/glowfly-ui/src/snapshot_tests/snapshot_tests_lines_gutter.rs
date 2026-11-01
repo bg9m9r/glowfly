@@ -143,8 +143,10 @@ fn diff_gutter_toggles_lines_split() {
     gutter_test(DiffLayout::Split, true, None, "diff_lines_gutter_split");
 }
 
-/// The gutter's hover text on a commit diff, where lines are picked for Revert lines.
-const REVERT_TIP: &str = "Select line for Revert lines";
+/// The gutter's hover text on a commit diff, where lines are picked to revert.
+const REVERT_TIP: &str = "Select this line to revert";
+/// The gutter's hover text on a working-tree diff, where lines are picked to stage or discard.
+const STAGE_TIP: &str = "Select this line to stage or discard";
 
 /// Hovers `at` long enough for a tooltip to show (the app's 400 ms delay).
 fn hover_long(h: &mut H, at: Pos2) {
@@ -171,17 +173,21 @@ fn diff_commit_gutter_hover_says_how_to_select() {
     // Over the gutter of `+fix the build`: the hollow check box, the faint bar and the hover text.
     hover_long(&mut h, pos2(261.0 + 100.0, y));
     assert!(h.query_by_label_contains(REVERT_TIP).is_some(), "the gutter says how to pick lines");
+    for verb in ["stage", "Stage", "discard", "Discard"] {
+        assert!(h.query_by_label_contains(verb).is_none(), "a read-only diff shows no {verb}");
+    }
     h.check_snapshot("diff_commit_gutter_hover");
     drop(h);
     remove_fixture(&dir);
 
-    // A working-tree diff's gutter picks lines for staging, so the Revert lines text isn't shown.
+    // A working-tree diff's gutter picks lines to stage or discard, never to revert.
     let (st, dir) = with_diff(DiffLayout::Inline, "gutter-tip-wip");
     let mut h = harness(st, true);
     h.run();
     let at = spots(&h, DiffLayout::Inline);
     hover_long(&mut h, (at.gutter)(NEW));
-    assert!(h.query_by_label_contains(REVERT_TIP).is_none(), "no Revert lines text on a working-tree diff");
+    assert!(h.query_by_label_contains(STAGE_TIP).is_some(), "the stage text on a working-tree diff");
+    assert!(h.query_by_label_contains(REVERT_TIP).is_none(), "no revert text on a working-tree diff");
     drop(h);
     remove_fixture(&dir);
 }

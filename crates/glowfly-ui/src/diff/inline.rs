@@ -35,7 +35,7 @@ pub(super) fn show(
     // Wrapped lines fit the viewer, so nothing scrolls sideways.
     let width = if v.wrap.is_some() { ui.available_width() } else { ui.available_width().max(cols.text + widest as f32 * char_w + 40.0) };
 
-    super::wrap::scroll(ui, "diff", rows.len(), m, scroll_to, |ui, i, h| {
+    super::wrap::scroll(ui, super::wrap::DIFF, rows.len(), m, scroll_to, |ui, i, h| {
         // Line gutters sense clicks and drags by their own stable ids (auto ids shift as rows scroll).
         let (rect, _) = ui.allocate_exact_size(vec2(width, h), Sense::hover());
         match rows[i] {
@@ -80,7 +80,7 @@ pub(super) fn show(
                     Some(_) => {
                         let resp = line_sense(ui, gutter_rect(rect, cols.text), ui.id().with(("diff-line", hunk, line)), dl.origin);
                         drag_over(ui, v, rect, hunk, line, msgs);
-                        line_click(ui, &resp, hunk, line, dl.origin, v.gutter_tip(), msgs)
+                        line_click(ui, &resp, v, hunk, line, dl.origin, msgs)
                     }
                     None => LineHover::default(),
                 };

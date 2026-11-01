@@ -64,7 +64,7 @@ Button "More file actions"
 Button "Open in external diff tool"
 Button "Close diff"
 Button "Revert hunk"
-Label "Select line for Revert lines · Shift for a range"
+Label "Select this line to revert · Shift-click for a range"
 painted:
   "api-server"
   "Repository"

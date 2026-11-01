@@ -11,8 +11,9 @@
 //! rows grow to fit. Changed lines are selected from their gutter (the line numbers and the
 //! sign) only: a click adds a line to the selection or takes it out, Shift-click selects a range,
 //! and a press-and-drag adds the lines of its hunk it crosses; the gutter shows a hollow check
-//! box and a faint bar while hovered (`line_check`), and on a commit or comparison diff says
-//! what the lines are for. The code beside it picks no lines. A changed PNG or JPEG shows its
+//! box and a faint bar while hovered (`line_check`) and says what picking the line is for on
+//! that diff; once a hunk has a selection, all its changed lines show their boxes. The code
+//! beside it picks no lines, and a drag on it doesn't scroll. A changed PNG or JPEG shows its
 //! before and after images (`preview`). On a pull request's file, a hovered line offers a
 //! button that starts a code comment on it (`comment_add`), and the unposted one is marked.
 
@@ -109,10 +110,24 @@ impl DiffView<'_> {
         self.sel.is_some_and(|s| s.contains(self.target, hunk, line))
     }
 
-    /// The hover text of a changed line's gutter on a diff whose lines are picked for Revert
-    /// lines (a commit's or a comparison's), so the selection there can be found.
-    pub fn gutter_tip(&self) -> Option<&'static str> {
-        self.target.reverts_hunks().then(|| self.t.tr("diff.gutter.revert.tip"))
+    /// The hover text of a changed line's gutter, naming what picking the line is for on this
+    /// diff, as its hunk header offers: stage or discard, unstage, revert, or (on a pull
+    /// request's file where code comments can start) comment on or revert. `None` where lines
+    /// have no action (a commit compared from the working tree).
+    pub fn line_pick_tip(&self) -> Option<&'static str> {
+        let key = match self.target {
+            DiffTarget::FromWorkdir(..) => return None,
+            _ if self.comments.is_some_and(|c| c.blocked.is_none()) => "diff.gutter.comment.tip",
+            DiffTarget::Unstaged(_) => "diff.gutter.stage.tip",
+            DiffTarget::Staged(_) => "diff.gutter.unstage.tip",
+            DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => "diff.gutter.revert.tip",
+        };
+        Some(self.t.tr(key))
+    }
+
+    /// Whether hunk `hunk` holds selected lines: then every changed line of it shows its box.
+    pub fn hunk_picked(&self, hunk: usize) -> bool {
+        self.sel.is_some_and(|s| s.count_in(self.target, hunk) > 0)
     }
 }
 
@@ -208,11 +223,13 @@ fn how(ui: &Ui, changed: bool) -> LineClick {
     }
 }
 
-/// Whether the pointer is over a selectable (`+`/`-`) line's gutter (the line numbers and the
-/// sign): what shows its hollow check box and the faint bar.
+/// How a selectable (`+`/`-`) line's gutter shows it can be picked: `gutter` while the pointer
+/// is over it (the line numbers and the sign), which shows its hollow check box and the faint
+/// bar; `hunk` while its hunk holds selected lines, which shows the box alone.
 #[derive(Clone, Copy, Default)]
 pub(super) struct LineHover {
     pub gutter: bool,
+    pub hunk: bool,
 }
 
 /// The gutter of a line (a row in inline, a cell in split) whose text starts `text` from the
@@ -234,21 +251,14 @@ pub(super) fn line_sense(ui: &Ui, gutter: Rect, id: Id, origin: char) -> Respons
 /// line's gutter adds it to the selection or takes it out (as Ctrl/Cmd-click does), Shift-click
 /// selects a range; a plain click in any other line's gutter clears the selection. A press on a
 /// `+`/`-` line's gutter that moves becomes a drag (`StartLineDrag`), which adds to the
-/// selection. On a diff that reverts lines (`revert`), a hovered changed line's gutter says how.
-pub(super) fn line_click(
-    ui: &Ui,
-    resp: &Response,
-    hunk: usize,
-    line: usize,
-    origin: char,
-    revert: Option<&str>,
-    msgs: &mut Vec<Msg>,
-) -> LineHover {
+/// selection. A hovered changed line's gutter says what picking it is for
+/// (`DiffView::line_pick_tip`).
+pub(super) fn line_click(ui: &Ui, resp: &Response, v: &DiffView, hunk: usize, line: usize, origin: char, msgs: &mut Vec<Msg>) -> LineHover {
     let changed = matches!(origin, '+' | '-');
     let gutter = changed && resp.hovered();
     if gutter {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-        if let Some(tip) = revert {
+        if let Some(tip) = v.line_pick_tip() {
             resp.clone().on_hover_text(tip);
         }
     }
@@ -263,7 +273,7 @@ pub(super) fn line_click(
             msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));
         }
     }
-    LineHover { gutter }
+    LineHover { gutter, hunk: changed && v.hunk_picked(hunk) }
 }
 
 /// During a line drag, reports the row at `rect` (line `line` of hunk `hunk`; 0 for a hunk

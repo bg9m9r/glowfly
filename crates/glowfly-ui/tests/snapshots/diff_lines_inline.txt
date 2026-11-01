@@ -117,7 +117,6 @@ painted:
   "2"
   "fix"
   "2"
-  "+"
   "fixed build"
   "3"
   "new line"

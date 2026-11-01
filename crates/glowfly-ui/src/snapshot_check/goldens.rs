@@ -120,6 +120,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("diff_lines_gutter_selected_dark", Window),
     ("diff_lines_gutter_selected_light", Window),
     ("diff_commit_gutter_hover", Window),
+    ("diff_commit_readonly_dark", Window),
     ("diff_wrap_inline", Window),
     ("diff_whole_inline", Window),
     ("diff_gap_filled_split_light", Window),

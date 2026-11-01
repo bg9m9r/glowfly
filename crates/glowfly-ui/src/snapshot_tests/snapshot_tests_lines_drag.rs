@@ -115,11 +115,20 @@ fn diff_gutter_drag_selects_lines_split() {
     drag_test(DiffLayout::Split, 54.0, 200.0);
 }
 
-/// Drags in `layout` across the code of a commit diff, from its first changed line's text to
-/// its last one's (in split, the row below holds the last), and checks that no line is picked on the way or at the release.
+/// Drags in `layout` up across the code of a commit diff, from its last changed line's text to
+/// its first one's (in split, the row above holds the last), and checks that no line is picked
+/// on the way or at the release, and that the diff, taller than the view, doesn't scroll.
 fn code_drag_test(layout: DiffLayout, name: &str) {
-    // ` app`, `-fix`, `+fix the build`, `+on Windows`, none selected.
-    let (st, dir) = with_line_diff(name, ThemeChoice::Dark, layout, &[]);
+    // ` app`, `-fix`, `+fix the build`, `+on Windows`, none selected, then enough added lines
+    // to scroll.
+    let (mut st, dir) = with_line_diff(name, ThemeChoice::Dark, layout, &[]);
+    let (target, d) = st.session.diff.view.as_ref().unwrap();
+    let mut d = (**d).clone();
+    for n in 4..120 {
+        d.hunks[0].lines.push(glowfly_core::repo::DiffLine { origin: '+', old: None, new: Some(n), text: format!("more {n}") });
+    }
+    d.intraline = Default::default();
+    st.session.diff.view = Some((target.clone(), d.into()));
     let (first, last) = (1, 3);
     let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
     let mut h = harness(st, true);
@@ -130,9 +139,11 @@ fn code_drag_test(layout: DiffLayout, name: &str) {
     // well inside it either way.
     let (from, to) =
         (pos2(ROWS_LEFT + 200.0, header_y + (first + 1) as f32 * row_h), pos2(ROWS_LEFT + 260.0, header_y + (last + 1) as f32 * row_h));
-    let mut sent = drag(&mut h, from, to);
-    button(&mut h, to, false);
+    let mut sent = drag(&mut h, to, from);
+    button(&mut h, from, false);
     sent.extend(frame(&mut h));
+    let after = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");
+    assert_eq!((after.y0, after.y1), (b.y0, b.y1), "a drag on the code doesn't scroll the diff");
     let picked = sent.iter().filter(|m| matches!(m, DiffMsg::StartLineDrag { .. } | DiffMsg::SelectDiffLine { .. })).count();
     assert_eq!(picked, 0, "a drag across the code picks no lines");
     assert!(h.state().0.view.diff_lines.is_empty());
