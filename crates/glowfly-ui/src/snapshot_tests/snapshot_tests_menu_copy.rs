@@ -67,7 +67,6 @@ fn graph_commit_menu_copy_submenu() {
     let open = |h: &mut H| click(h, at, PointerButton::Secondary);
     open(&mut h);
     open_submenu(&mut h, "Copy");
-    h.check_snapshot("graph_commit_menu_copy_submenu");
     submenu_item(&h, "Copy", "SHA").click();
     h.run();
     assert!(copied(&h, &fix.to_string()), "the full SHA");

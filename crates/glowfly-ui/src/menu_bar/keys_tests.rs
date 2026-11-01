@@ -11,6 +11,7 @@ use crate::state::menu_keys::{TopMenu, mnemonics};
 use crate::state::window_chrome::Chrome;
 use crate::state::{AppState, PrefPage, PrefsState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::snapshot_tests::snapshot_tests_painted::underlined;
 use crate::ui::snapshot_tests::{NOW, remove_fixture};
 use eframe::egui::{self, Event, InputState, Key, Modifiers};
 use egui_kittest::Harness;
@@ -309,9 +310,13 @@ fn a_focused_field_doesnt_get_the_letter() {
 fn menu_bar_mnemonics() {
     let (st, dir) = fixture("menu-keys-marks");
     let mut h = keys_harness(st, SIZE);
+    h.run_ok();
+    assert!(underlined(&h).is_empty(), "no marks until Alt is held");
     h.input_mut().modifiers = Modifiers::ALT;
     h.run_ok();
-    h.check_snapshot("menu_bar_mnemonics");
+    let marks = underlined(&h);
+    assert_eq!(marks.len(), TopMenu::ALL.len(), "a mark in each title: {marks:?}");
+    assert!(marks.iter().all(|m| m.chars().count() == 1), "one letter each: {marks:?}");
     drop(h);
     remove_fixture(&dir);
 }

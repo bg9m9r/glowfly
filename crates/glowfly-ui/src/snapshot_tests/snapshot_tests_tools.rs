@@ -76,12 +76,18 @@ fn preferences_tools_git_config_unknown_light() {
 
 #[test]
 fn diff_header_diff_tool_set_light() {
+    use egui_kittest::kittest::Queryable;
     let (mut st, dir) = super::snapshot_tests_diff::with_diff(glowfly_core::settings::DiffLayout::Inline, "diff-tool-set");
     st.settings.theme = ThemeChoice::Light;
     st.settings.external_tools.diff_tool = "meld".into();
     let mut h = super::snapshot_tests::harness(st, false);
     h.run();
-    h.check_snapshot("diff_header_diff_tool_set_light");
+    // The header looks the same with a tool set; its button opens the file in it.
+    h.get_by_label("Open in external diff tool").click();
+    h.run();
+    let sent = |m: &crate::msg::Msg| matches!(m, crate::msg::Msg::Tools(crate::tools::ToolsMsg::OpenDiff(t)) if t.path() == "app.txt");
+    assert!(h.state().1.iter().any(sent), "Open in external diff tool opens app.txt's diff");
+    drop(h);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 

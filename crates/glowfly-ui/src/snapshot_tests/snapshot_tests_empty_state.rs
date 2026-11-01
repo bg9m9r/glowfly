@@ -42,27 +42,21 @@ fn whitespace_only(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
 
 #[test]
 fn diff_binary_empty_state() {
-    for (theme, dark, name) in [(ThemeChoice::Light, false, "diff_binary_light"), (ThemeChoice::Dark, true, "diff_binary_dark")] {
-        let (st, dir) = with_binary_diff(&format!("diff-binary-{dark}"), theme);
-        let mut h = harness(st, dark);
-        h.run();
-        assert!(h.query_by_label(BINARY_TITLE).is_some());
-        assert!(h.query_by_label("13 bytes before, 17 bytes after").is_some(), "both sizes");
-        h.check_snapshot(name);
-        drop(h);
-        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-    }
+    let (st, dir) = with_binary_diff("diff-binary-true", ThemeChoice::Dark);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label(BINARY_TITLE).is_some());
+    assert!(h.query_by_label("13 bytes before, 17 bytes after").is_some(), "both sizes");
+    h.check_snapshot("diff_binary_dark");
+    drop(h);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
 #[test]
 fn diff_whitespace_only_empty_state() {
-    for (theme, dark, name) in
-        [(ThemeChoice::Light, false, "diff_whitespace_only_light"), (ThemeChoice::Dark, true, "diff_whitespace_only")]
-    {
-        let (st, dir) = whitespace_only(&format!("diff-ws-empty-{dark}"), theme);
-        render(name, st, dark);
-        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-    }
+    let (st, dir) = whitespace_only("diff-ws-empty-true", ThemeChoice::Dark);
+    render("diff_whitespace_only", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
 #[test]

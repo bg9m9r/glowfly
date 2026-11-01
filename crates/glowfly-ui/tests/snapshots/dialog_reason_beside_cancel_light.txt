@@ -1,7 +1,0 @@
-window 520x260
-Label "New branch"
-Button "Close this dialog"
-Label "The branch starts at main."
-Label "Enter a name for the branch."
-Button "Cancel"
-Button "Create branch" [disabled]

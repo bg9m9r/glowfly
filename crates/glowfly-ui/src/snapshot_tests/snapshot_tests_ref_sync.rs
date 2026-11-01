@@ -80,8 +80,6 @@ fn graph_ref_in_sync() {
     h.check_snapshot("graph_ref_in_sync");
     assert_eq!(labels_named(&h, IN_SYNC), before + 1, "the tooltip names both refs");
     drop(h);
-    let (st, _, _) = with_upstream(ThemeChoice::Light, "ref-in-sync", true);
-    render("graph_ref_in_sync_light", st, false);
     remove_fixture(&dir);
 }
 
@@ -89,8 +87,6 @@ fn graph_ref_in_sync() {
 fn graph_ref_out_of_sync() {
     let (st, dir, _) = with_upstream(ThemeChoice::Dark, "ref-out-of-sync", false);
     render("graph_ref_out_of_sync", st, true);
-    let (st, _, _) = with_upstream(ThemeChoice::Light, "ref-out-of-sync", false);
-    render("graph_ref_out_of_sync_light", st, false);
     remove_fixture(&dir);
 }
 

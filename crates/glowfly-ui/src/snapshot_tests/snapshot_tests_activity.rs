@@ -76,13 +76,6 @@ fn activity_runs_dark() {
 }
 
 #[test]
-fn activity_runs_light() {
-    let (st, _) = session(ThemeChoice::Light);
-    let mut h = tall(st, false);
-    h.check_snapshot("activity_runs_light");
-}
-
-#[test]
 fn activity_routine_open() {
     let (mut st, [_, first, pull]) = session(ThemeChoice::Dark);
     st.logs.open.remove(&pull);

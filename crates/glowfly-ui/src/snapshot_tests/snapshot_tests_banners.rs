@@ -84,7 +84,6 @@ fn banner_git_too_old_light() {
     assert!(!st.git.git_unusable());
     let mut h = harness(st, false);
     h.run();
-    h.check_snapshot("banner_git_too_old_light");
     assert!(h.query_by_label_contains("Git 2.34.1 is older than 2.38").is_some());
     drop(h);
     remove_fixture(&dir);

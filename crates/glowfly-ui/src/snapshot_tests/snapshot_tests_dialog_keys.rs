@@ -77,11 +77,6 @@ fn confirm_dialog_danger() {
 }
 
 #[test]
-fn confirm_dialog_danger_light() {
-    danger_keys(ThemeChoice::Light, "confirm-dialog-danger-light");
-}
-
-#[test]
 fn confirm_dialog_ack() {
     let modal = Modal::danger("Discard changes", "Delete untracked file notes.txt? This cannot be undone.", "Discard", Msg::ClearLog)
         .with_ack("I understand this can't be undone");

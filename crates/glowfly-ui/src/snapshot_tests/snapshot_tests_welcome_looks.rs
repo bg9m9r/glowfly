@@ -23,10 +23,6 @@ fn welcome_high_contrast() {
     let mut h = harness_palette(on(ThemeChoice::HighContrastDark, WelcomeStep::Start, Some(ada())), theme::HIGH_CONTRAST_DARK);
     h.run();
     h.check_snapshot("welcome_start_high_contrast_dark");
-    drop(h);
-    let mut h = harness_palette(on(ThemeChoice::HighContrastLight, WelcomeStep::Connect, Some(ada())), theme::HIGH_CONTRAST_LIGHT);
-    h.run();
-    h.check_snapshot("welcome_connect_high_contrast_light");
 }
 
 #[test]

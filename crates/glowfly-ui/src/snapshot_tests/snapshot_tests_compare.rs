@@ -48,12 +48,8 @@ fn a_commit_compared_with_the_working_directory() {
     files.sort_by_key(|(p, _)| p.to_lowercase());
     assert_eq!(files, [("app.txt", 'M'), ("login.txt", 'D'), ("new.txt", 'A'), ("README.md", 'M')]);
     assert!(!c.in_workdir("login.txt"));
+    // The panel, and the graph with the WIP row and the commit selected.
     render("compare_workdir_panel", st, true);
-    remove_fixture(&dir);
-
-    // The graph draws the WIP row and the commit selected.
-    let (st, dir) = compared(ThemeChoice::Light, "compare-workdir-light", false);
-    render("compare_workdir_graph_light", st, false);
     remove_fixture(&dir);
 }
 

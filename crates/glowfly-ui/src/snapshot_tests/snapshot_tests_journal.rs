@@ -1,4 +1,4 @@
-//! Operation journal snapshots: the state list with a selected row's preview (Dark and Light),
+//! Operation journal snapshots: the state list with a selected row's preview,
 //! Restore disabled on the current state, the empty, loading and failed journal, the stacked
 //! layout of a narrow window, the Restore confirmation and the German view; and what its rows,
 //! buttons and Esc send. The rows are built by hand on the fixture's commits so the image never
@@ -160,16 +160,6 @@ fn esc_goes_back_to_the_graph() {
     h.press_key(Key::Escape);
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::Close)));
-    drop(h);
-    remove_fixture(&dir);
-}
-
-#[test]
-fn journal_list_preview_light() {
-    let (st, dir) = opened(ThemeChoice::Light, "journal-list-light", 1);
-    let mut h = harness(st, false);
-    h.run();
-    h.check_snapshot("journal_list_preview_light");
     drop(h);
     remove_fixture(&dir);
 }

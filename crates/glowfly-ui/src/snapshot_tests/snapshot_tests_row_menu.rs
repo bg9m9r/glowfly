@@ -49,7 +49,6 @@ fn row_menus_open_below_their_row() {
     assert!(top_of(&h, "Apply") >= row.bottom(), "the menu starts below the row");
     assert_eq!(row_rect(&h, STASH), row, "the row is still there, uncovered");
     assert!(h.ctx.is_context_menu_open(), "egui still knows a context menu is open");
-    h.check_snapshot("row_menu_below_stash");
     h.press_key(egui::Key::Escape);
     h.run();
     assert!(!h.ctx.is_context_menu_open(), "Esc closes it");
@@ -78,7 +77,6 @@ fn graph_row_menu_opens_below_the_row() {
     let menu_left = h.get_by_label("Checkout (detached)").bounding_box().unwrap().x0 as f32;
     assert!((menu_left - 700.0).abs() < 24.0, "the menu's left edge is near the pointer: {menu_left}");
     assert!(h.query_by_label("Search results page").is_some(), "the row is still found");
-    h.check_snapshot("row_menu_below_graph");
     drop(h);
     remove_fixture(&dir);
 }

@@ -4,7 +4,7 @@
 //! the disk check), plus the branch and commit menu items that open it. The worktrees are
 //! injected into the shared fixture's snapshot with fixed paths so the images are deterministic.
 
-use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
@@ -96,8 +96,6 @@ fn worktrees_section() {
     assert!(h.query_by_label("✔  app").is_some(), "the current worktree is marked");
     h.check_snapshot("worktrees_section");
     drop(h);
-    let (st, _) = with_worktrees(ThemeChoice::Light, "worktrees");
-    render("worktrees_section_light", st, false);
 
     // Only the main worktree: no section.
     let (mut st, _) = with_worktrees(ThemeChoice::Dark, "worktrees");

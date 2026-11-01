@@ -9,7 +9,8 @@ use super::snapshot_tests_select::{click, row_y};
 use crate::state::AppState;
 use crate::ui::graph::ROW_H;
 use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme;
+use crate::ui::snapshot_tests::snapshot_tests_painted::fills_at;
+use crate::ui::theme::{self, color};
 use eframe::egui::{Event, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{RefKind, RefLabel};
@@ -103,9 +104,6 @@ fn history_label_marks() {
     // In sync: one chip with the local and remote marks; the tag with its mark.
     let (st, dir, _) = with_upstream(ThemeChoice::Dark, "history-marks", true);
     render("history_label_marks", st, true);
-    // Out of sync: the remote branch's own chip with the remote mark only.
-    let (st, _, _) = with_upstream(ThemeChoice::Light, "history-marks", false);
-    render("history_label_marks_light", st, false);
     remove_fixture(&dir);
 }
 
@@ -121,11 +119,16 @@ fn history_row_selected_and_hovered() {
     }
     let merge = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;
     assert!(st.session.selection.includes(merge), "the click selected row 2");
-    h.input_mut().events.push(Event::PointerMoved(pos2(700.0, row_y(3))));
+    // Each row's fills, under the pointer's x.
+    let (selected, hovered) = (pos2(700.0, row_y(2)), pos2(700.0, row_y(3)));
+    assert!(!fills_at(&h, hovered).contains(&color::hover()), "row 3 is plain before the pointer comes");
+    h.input_mut().events.push(Event::PointerMoved(hovered));
     for _ in 0..4 {
         h.step();
     }
-    h.check_snapshot("history_row_selected_and_hovered");
+    assert!(fills_at(&h, selected).contains(&color::selected()), "row 2 keeps the selection's fill");
+    assert!(fills_at(&h, hovered).contains(&color::hover()), "row 3 takes the hover fill");
+    assert!(!fills_at(&h, selected).contains(&color::hover()), "the selected row isn't lifted");
     drop(h);
     remove_fixture(&dir);
 }

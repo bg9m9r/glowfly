@@ -25,18 +25,16 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
 
 #[test]
 fn dashboard_empty() {
-    for (theme, name, dark) in [(ThemeChoice::Dark, "dashboard_empty", true), (ThemeChoice::Light, "dashboard_empty_light", false)] {
-        let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
-        st.dashboard.open = true;
-        let mut h = harness(st, dark);
-        h.run();
-        h.check_snapshot(name);
-        assert!(h.query_by_label("No repositories yet").is_some());
-        assert!(matches!(&click(&mut h, "Open repository…")[..], [Msg::Repo(RepoMsg::PickRepo)]));
-        assert!(matches!(&click(&mut h, "Clone repository…")[..], [Msg::Clone(CloneMsg::Dialog)]));
-        let msgs = click(&mut h, "Connect a service…");
-        assert!(matches!(&msgs[..], [Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations))]));
-    }
+    let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
+    st.dashboard.open = true;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("dashboard_empty");
+    assert!(h.query_by_label("No repositories yet").is_some());
+    assert!(matches!(&click(&mut h, "Open repository…")[..], [Msg::Repo(RepoMsg::PickRepo)]));
+    assert!(matches!(&click(&mut h, "Clone repository…")[..], [Msg::Clone(CloneMsg::Dialog)]));
+    let msgs = click(&mut h, "Connect a service…");
+    assert!(matches!(&msgs[..], [Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations))]));
 }
 
 #[test]
@@ -53,33 +51,29 @@ fn dashboard_filter_no_match() {
 
 #[test]
 fn graph_search_no_matches() {
-    for (theme, name, dark) in
-        [(ThemeChoice::Dark, "graph_search_no_matches", true), (ThemeChoice::Light, "graph_search_no_matches_light", false)]
-    {
-        let (mut st, dir) = with_two_authors(theme, &format!("search-none-{dark}"));
-        searching(&mut st, "nothing like this");
-        send(&mut st, SearchMsg::ToggleFilter);
-        let mut h = harness(st, dark);
-        h.run();
-        assert!(h.query_by_label("No matches").is_some());
-        assert!(h.query_by_label("No commits match").is_some());
-        let hint = glowfly_core::i18n::Lang::En.tr("search.empty.hint");
-        assert!(h.query_by_label_contains(hint).is_some(), "the syntax hint");
-        let n = h.state().0.snap.as_ref().unwrap().commits.len();
-        assert!(h.query_by_label_contains(&format!("Searched the whole history ({n} commits).")).is_some());
-        assert!(h.query_by_label("Load more commits").is_none(), "the whole history is loaded");
-        assert!(h.query_by_label("Keep searching").is_none());
-        h.check_snapshot(name);
-        // The pane's button (the lower one: the search field has a clear button by that name too).
-        assert_eq!(h.query_all_by_label("Clear search").count(), 2);
-        h.state_mut().1.clear();
-        let y = |n: &egui_kittest::kittest::Node<'_>| n.bounding_box().map_or(0.0, |r| r.y0);
-        h.get_all_by_label("Clear search").max_by(|a, b| y(a).total_cmp(&y(b))).unwrap().click();
-        h.run();
-        assert!(matches!(&h.state().1[..], [Msg::Search(SearchMsg::Clear)]));
-        drop(h);
-        remove_fixture(&dir);
-    }
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-none-true");
+    searching(&mut st, "nothing like this");
+    send(&mut st, SearchMsg::ToggleFilter);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("No matches").is_some());
+    assert!(h.query_by_label("No commits match").is_some());
+    let hint = glowfly_core::i18n::Lang::En.tr("search.empty.hint");
+    assert!(h.query_by_label_contains(hint).is_some(), "the syntax hint");
+    let n = h.state().0.snap.as_ref().unwrap().commits.len();
+    assert!(h.query_by_label_contains(&format!("Searched the whole history ({n} commits).")).is_some());
+    assert!(h.query_by_label("Load more commits").is_none(), "the whole history is loaded");
+    assert!(h.query_by_label("Keep searching").is_none());
+    h.check_snapshot("graph_search_no_matches");
+    // The pane's button (the lower one: the search field has a clear button by that name too).
+    assert_eq!(h.query_all_by_label("Clear search").count(), 2);
+    h.state_mut().1.clear();
+    let y = |n: &egui_kittest::kittest::Node<'_>| n.bounding_box().map_or(0.0, |r| r.y0);
+    h.get_all_by_label("Clear search").max_by(|a, b| y(a).total_cmp(&y(b))).unwrap().click();
+    h.run();
+    assert!(matches!(&h.state().1[..], [Msg::Search(SearchMsg::Clear)]));
+    drop(h);
+    remove_fixture(&dir);
 }
 
 #[test]

@@ -1,4 +1,0 @@
-Dialog
-  Label "New branch"
-  TextInput = "release/2.0"
-  CheckBox "Check out after creating" [on]

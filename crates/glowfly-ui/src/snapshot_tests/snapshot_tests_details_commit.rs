@@ -88,18 +88,14 @@ fn center(h: &H, label: &str) -> Pos2 {
 
 #[test]
 fn details_commit_title_first() {
-    for (theme, name, dark) in
-        [(ThemeChoice::Dark, "details_commit_title_first", true), (ThemeChoice::Light, "details_commit_title_first_light", false)]
-    {
-        let (st, dir, _) = with_commit(theme, "details-title-first", MESSAGE);
-        let mut h = harness(st, dark);
-        h.run();
-        assert_eq!(h.query_all_by_label("Add the guide and search index").count(), 2, "the graph row and the title");
-        assert!(h.query_by_label(&Lang::En.trf("details.commit.committer.label", &[("committer", &"Grace Hopper")])).is_some());
-        h.check_snapshot(name);
-        drop(h);
-        remove_fixture(&dir);
-    }
+    let (st, dir, _) = with_commit(ThemeChoice::Dark, "details-title-first", MESSAGE);
+    let mut h = harness(st, true);
+    h.run();
+    assert_eq!(h.query_all_by_label("Add the guide and search index").count(), 2, "the graph row and the title");
+    assert!(h.query_by_label(&Lang::En.trf("details.commit.committer.label", &[("committer", &"Grace Hopper")])).is_some());
+    h.check_snapshot("details_commit_title_first");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 #[test]

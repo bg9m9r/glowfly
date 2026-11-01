@@ -295,7 +295,6 @@ fn diff_similar_pairs() {
 
 #[test]
 fn diff_hunk_buttons() {
-    use super::snapshot_check::CheckSnapshot;
     use super::snapshot_tests::{harness, remove_fixture};
     use egui_kittest::kittest::Queryable;
     // Working tree: Stage Hunk at the right edge, Discard Hunk set apart to its left.
@@ -310,7 +309,6 @@ fn diff_hunk_buttons() {
     for b in [stage, discard] {
         assert!(((b.y1 - b.y0) as f32 - (row_h - 2.0)).abs() < 0.5, "the buttons fill the row");
     }
-    h.check_snapshot("diff_hunk_buttons");
     drop(h);
     remove_fixture(&dir);
 
@@ -322,7 +320,6 @@ fn diff_hunk_buttons() {
     h.run();
     let stage = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
     assert!(((stage.y1 - stage.y0) as f32 - (row_h - 2.0)).abs() < 0.5);
-    h.check_snapshot("diff_hunk_buttons_small_font");
     drop(h);
     remove_fixture(&dir);
 

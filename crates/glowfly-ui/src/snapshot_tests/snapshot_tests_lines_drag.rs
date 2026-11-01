@@ -6,7 +6,6 @@ use super::with_diff;
 use crate::msg::{DiffMsg, Msg};
 use crate::state::AppState;
 use crate::state::lines::LineClick;
-use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -54,9 +53,9 @@ fn drag(h: &mut H, from: Pos2, to: Pos2) -> Vec<DiffMsg> {
 }
 
 /// Drags in `layout` from the `-fix` row (at x `from_x` left of the hunk's right end) down to
-/// the `+new line` row (at `to_x`), checks the messages and selection, snapshots it as `name`,
-/// and releases.
-fn drag_test(layout: DiffLayout, name: &str, from_x: f32, to_x: f32) {
+/// the `+new line` row (at `to_x`), checks the messages and selection (what the gutter tests'
+/// snapshots show), and releases.
+fn drag_test(layout: DiffLayout, from_x: f32, to_x: f32) {
     let (st, dir) = with_diff(layout, "diff-drag");
     let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
@@ -84,7 +83,6 @@ fn drag_test(layout: DiffLayout, name: &str, from_x: f32, to_x: f32) {
     let changed: Vec<usize> = (fix..=new_line).filter(|&i| matches!(lines[i].origin, '+' | '-')).collect();
     assert_eq!(sel.lines.iter().copied().collect::<Vec<_>>(), changed);
     assert!(sel.dragging().is_some());
-    h.check_snapshot(name);
 
     button(&mut h, to, false);
     let sent = frame(&mut h);
@@ -98,11 +96,11 @@ fn drag_test(layout: DiffLayout, name: &str, from_x: f32, to_x: f32) {
 
 #[test]
 fn diff_drag_selects_lines() {
-    drag_test(DiffLayout::Inline, "diff_lines_drag_inline", 300.0, 300.0);
+    drag_test(DiffLayout::Inline, 300.0, 300.0);
 }
 
 #[test]
 fn diff_drag_selects_lines_split() {
     // Split: from the left `-fix` cell to the right `+new line` cell, the row below it.
-    drag_test(DiffLayout::Split, "diff_lines_drag_split", 600.0, 200.0);
+    drag_test(DiffLayout::Split, 600.0, 200.0);
 }

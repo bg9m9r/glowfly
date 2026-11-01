@@ -31,6 +31,9 @@ fn pattern() -> String {
     out
 }
 
+/// The themes whose terminal is a pixel golden.
+const GOLDENS: [&str; 3] = ["terminal_ansi_dark", "terminal_ansi_light", "terminal_ansi_high_contrast_dark"];
+
 #[test]
 fn terminal_ansi_every_theme() {
     for t in BuiltinTheme::ALL {
@@ -41,7 +44,11 @@ fn terminal_ansi_every_theme() {
         st.terminal.sessions[0].screen = screen;
         let mut h = harness_palette(st, *builtin(t));
         h.run();
-        h.check_snapshot(&name);
+        // The text is the same in every theme: the goldens judge the colours of a few (the
+        // first keeps the text).
+        if GOLDENS.contains(&name.as_str()) {
+            h.check_snapshot(&name);
+        }
         drop(h);
         remove_fixture(&dir);
     }

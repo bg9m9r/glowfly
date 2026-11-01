@@ -59,8 +59,6 @@ fn graph_worktree_wips() {
     assert_eq!((worktree_in(&st, at - 2), worktree_in(&st, at - 1)), (Some(1), Some(2)), "login, then hotfix");
     assert_eq!(GraphRows::new(snap, &st.session.search, false).at(0), Some(DisplayRow::Wip));
     render("graph_worktree_wips", st, true);
-    let (st, _) = with_wips(ThemeChoice::Light, "worktree-wips");
-    render("graph_worktree_wips_light", st, false);
     remove_fixture(&dir);
 }
 

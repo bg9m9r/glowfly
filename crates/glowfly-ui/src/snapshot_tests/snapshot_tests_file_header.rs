@@ -58,7 +58,9 @@ fn file_header_wide_dark() {
 fn file_header_commit_light() {
     let (st, dir) = with_commit_diff("file-header-commit", ThemeChoice::Light, DiffLayout::Inline, false);
     let short = st.session.detail.as_ref().unwrap().oid.to_string()[..7].to_owned();
-    let h = render("file_header_commit_light", st, false);
+    // The window is `diff_commit_header_buttons`'s; here, what the header holds.
+    let mut h = harness_sized(st, false, WIDE);
+    h.run();
     for label in ["Restore\u{2026}", "Open", super::file_menu::SHOW_IN_FOLDER, short.as_str()] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }

@@ -1,10 +1,12 @@
 //! The one way view tests compare against approved snapshots (`check_snapshot`). Every check
 //! compares a text snapshot of the frame (`text.rs`, `compare.rs`); the pixel goldens listed in
-//! `goldens.rs` are also compared as images, cropped as listed. With `GLOWFLY_SKIP_SNAPSHOTS=1`
-//! (CI on macOS and Linux, where the images were not rendered, wgpu may have no adapter and the
-//! platform's own labels differ) the comparisons are skipped with a note, and the rest of each
-//! test (driving the harness, checking messages) still runs. Every harness comes from
-//! [`builder`], so harnesses reuse wgpu devices instead of each making its own.
+//! `goldens.rs` are also compared as images, cropped as listed (and only as images when their
+//! text would repeat another snapshot's; `identical.rs` keeps the texts apart). With
+//! `GLOWFLY_SKIP_SNAPSHOTS=1` (CI on macOS and Linux, where the images were not rendered, wgpu
+//! may have no adapter and the platform's own labels differ) the comparisons are skipped with a
+//! note, and the rest of each test (driving the harness, checking messages) still runs. Every
+//! harness comes from [`builder`], so harnesses reuse wgpu devices instead of each making its
+//! own.
 
 use eframe::egui;
 use eframe::egui::mutex::RwLock;
@@ -14,6 +16,8 @@ use std::sync::{Arc, Mutex};
 
 mod compare;
 mod goldens;
+#[cfg(test)]
+mod identical;
 #[cfg(test)]
 mod tests;
 mod text;
@@ -92,8 +96,8 @@ impl TestRenderer for Pooled {
 }
 
 pub trait CheckSnapshot {
-    /// Compares the last frame's text snapshot, and for a golden its image (no more than
-    /// `TOLERATED_PIXELS` may differ), unless snapshots are skipped.
+    /// Compares the last frame's text snapshot (unless it is an image-only golden), and for a
+    /// golden its image (no more than `TOLERATED_PIXELS` may differ), unless snapshots are skipped.
     fn check_snapshot(&mut self, name: &str);
 }
 
@@ -104,9 +108,8 @@ impl<S> CheckSnapshot for Harness<'_, S> {
             eprintln!("note: {SKIP_VAR} is set; not comparing snapshot {name}");
             return;
         }
-        let text = text::of(self);
         let dir = std::path::Path::new(compare::DIR);
-        let text_result = compare::check(dir, name, &text, compare::updating());
+        let text_result = if goldens::image_only(name) { Ok(()) } else { compare::check(dir, name, &text::of(self), compare::updating()) };
         if let Some(crop) = goldens::crop(name) {
             let image = self.render().unwrap_or_else(|e| panic!("could not render {name}: {e}"));
             let image = crop_image(image, crop_rect(self, crop), self.ctx.pixels_per_point());

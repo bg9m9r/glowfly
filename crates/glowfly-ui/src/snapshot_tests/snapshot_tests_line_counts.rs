@@ -1,12 +1,14 @@
 //! Line counts: a commit's file rows and header total, the working tree's Unstaged and Staged
 //! Files rows, and the graph's WIP row (chips and total at the default columns; narrow, where
 //! the total and then the chips are hidden before the label is cut; and in High Contrast Dark).
-//! Dark and light.
+//! Dark, with the WIP row's light golden.
 
 use super::snapshot_tests::{git, harness, harness_palette, remove_fixture, render, with_repo};
 use super::theme;
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::snapshot_tests::snapshot_tests_painted::bounds;
+use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ResizableColumn::Refs;
 use glowfly_core::settings::ThemeChoice;
@@ -70,8 +72,6 @@ fn details_commit_line_counts() {
     let counts = st.session.reads.line_counts.commit(st.session.detail.as_ref().unwrap().oid).unwrap();
     assert!(counts.complete && counts.get("logo.png").is_none(), "the binary file has no counts");
     render("details_commit_line_counts", st, true);
-    let (st, _) = with_commit(ThemeChoice::Light, "lines-commit");
-    render("details_commit_line_counts_light", st, false);
     remove_fixture(&dir);
 }
 
@@ -80,9 +80,15 @@ fn details_wip_line_counts() {
     let (st, dir) = with_wip(ThemeChoice::Dark, "lines-wip");
     let w = st.session.reads.line_counts.wip().unwrap();
     assert!(w.unstaged.get("notes/todo.md").is_some() && w.staged.get("search.txt").is_some());
-    render("details_wip_line_counts", st, true);
-    let (st, _) = with_wip(ThemeChoice::Light, "lines-wip");
-    render("details_wip_line_counts_light", st, false);
+    // The window is `graph_wip_row`'s; here, the counts beside the rows.
+    let mut h = harness(st, true);
+    h.run();
+    for (file, count) in [("notes/todo.md", "+4"), ("search.txt", "+30")] {
+        let row = bounds(&h.get_by_label(file));
+        let label = h.get_all_by_label(count).map(|n| bounds(&n)).find(|b| (b.center().y - row.center().y).abs() < row.height());
+        assert!(label.is_some_and(|b| b.left() > row.left()), "{count} on {file}'s row");
+    }
+    drop(h);
     remove_fixture(&dir);
 }
 

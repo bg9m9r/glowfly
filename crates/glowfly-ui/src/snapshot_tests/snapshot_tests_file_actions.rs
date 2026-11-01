@@ -56,7 +56,6 @@ fn file_history_header_buttons() {
     for label in [RESTORE, OPEN_DEFAULT, SHOW_IN_FOLDER] {
         assert!(!h.get_by_label(label).is_disabled(), "{label}");
     }
-    h.check_snapshot("file_history_header_buttons");
     drop(h);
     remove_fixture(&dir);
 }

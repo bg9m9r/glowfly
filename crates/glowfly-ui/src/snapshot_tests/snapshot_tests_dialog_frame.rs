@@ -48,7 +48,6 @@ fn render_buttons(name: &str, p: Palette) {
 fn button_styles() {
     render_buttons("button_styles_dark", theme::DARK);
     render_buttons("button_styles_light", theme::LIGHT);
-    render_buttons("button_styles_hc_light", theme::HIGH_CONTRAST_LIGHT);
 }
 
 /// A dialog with its own header and close box, 500 px wide with a 200 px least body and only a

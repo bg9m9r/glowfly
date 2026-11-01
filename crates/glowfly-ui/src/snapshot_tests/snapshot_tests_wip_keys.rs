@@ -65,23 +65,16 @@ fn mv(m: ListMove) -> (bool, ListKey) {
 const DOWN: ListMove = ListMove::Step { down: true };
 const UP: ListMove = ListMove::Step { down: false };
 
-fn focused_row(theme: ThemeChoice, dark: bool, name: &str) {
-    let (st, dir) = with_open(theme, "wip-keys-row");
-    let mut h = harness(st, dark);
+#[test]
+fn wip_list_focused_row() {
+    let (st, dir) = with_open(ThemeChoice::Dark, "wip-keys-row");
+    let mut h = harness(st, true);
     h.run();
     click_row(&mut h, "app.txt");
     assert_eq!(focused_list(&h.ctx), Some(false), "the click focused the Unstaged list");
-    h.check_snapshot(name);
+    h.check_snapshot("wip_list_focused_row_dark");
     drop(h);
-    if !dark {
-        remove_fixture(&dir);
-    }
-}
-
-#[test]
-fn wip_list_focused_row() {
-    focused_row(ThemeChoice::Dark, true, "wip_list_focused_row_dark");
-    focused_row(ThemeChoice::Light, false, "wip_list_focused_row_light");
+    remove_fixture(&dir);
 }
 
 #[test]

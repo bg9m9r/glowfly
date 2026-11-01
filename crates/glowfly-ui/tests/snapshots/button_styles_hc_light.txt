@@ -1,9 +1,0 @@
-window 440x150
-Button "Create branch"
-Button "Cancel"
-Button "Delete branch"
-Button "Create branch" [disabled]
-Button "Cancel" [disabled]
-Button "Delete branch" [disabled]
-Button "Focused" [focused]
-Button "Browse…"

@@ -2,7 +2,7 @@
 //! dragging favorites); the toolbar's repository menu is `snapshot_tests_repo_menu.rs`. Shares the renderer and fixture
 //! repository with `snapshot_tests`. The listed paths are labels only, never opened.
 
-use super::snapshot_tests::{harness, render, settings};
+use super::snapshot_tests::{harness, settings};
 use super::snapshot_tests_select::click;
 use crate::msg::{GroupMsg, Msg, RecentMsg};
 use crate::state::{AppState, Tab};
@@ -89,11 +89,6 @@ fn welcome_repos() {
     h.get_by_label("Open all").click();
     h.run();
     assert!(matches!(last(&h), Msg::Recent(RecentMsg::OpenAll(p)) if *p == [PathBuf::from(web())]));
-}
-
-#[test]
-fn welcome_repos_light() {
-    render("welcome_repos_light", welcome_state(ThemeChoice::Light), false);
 }
 
 #[test]

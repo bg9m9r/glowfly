@@ -65,8 +65,9 @@ fn layout_details_rail_folder_history_light() {
     let (st, dir) = with_folder("rail-folder", ThemeChoice::Light);
     let mut h = harness(st, false);
     h.run();
-    h.check_snapshot("layout_details_rail_folder_history_light");
+    // The rail beside the folder history (the same window as `folder_history`).
     assert!(drawn(&h, "detail").is_none());
+    assert_eq!(drawn(&h, "detail-rail").expect("the rail").width(), 44.0);
     // The fixture's edited README.
     assert!(h.query_by_label("1 changed file").is_some());
     drop(h);
