@@ -55,6 +55,7 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - Drop a Probed result that arrives from a watcher already replaced
 - Start the network-volume timer's clock again at the end of a full reload too (focus regained), so an overdue poll doesn't read the share right after it
 - Say in the network-volume notice that a slow share is re-read less often than every 10 seconds
+- The window still asks for a repaint after the base poll interval (10 s), so a stretched network-volume gap can fire up to one repaint late: request it at last_poll + poll_gap
 
 ### Commit panel extras
 
