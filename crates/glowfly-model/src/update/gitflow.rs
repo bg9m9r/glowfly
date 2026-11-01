@@ -19,12 +19,7 @@ use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, m: GitFlowMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
-        GitFlowMsg::ShowPage => {
-            if let Some(p) = st.prefs.as_mut() {
-                p.page = PrefPage::RepoGitFlow;
-                fill(st);
-            }
-        }
+        GitFlowMsg::ShowPage => super::prefs_nav::enter_page(st, PrefPage::RepoGitFlow, fx),
         GitFlowMsg::Apply => {
             apply(st, fx);
         }

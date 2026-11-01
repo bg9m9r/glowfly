@@ -15,12 +15,7 @@ const OFF: &str = "Sparse checkout is off in this repository.";
 
 pub(super) fn handle(st: &mut AppState, m: SparseMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
-        SparseMsg::ShowPage => {
-            if let Some(p) = st.prefs.as_mut() {
-                p.page = PrefPage::RepoSparse;
-                load(st, fx);
-            }
-        }
+        SparseMsg::ShowPage => super::prefs_nav::enter_page(st, PrefPage::RepoSparse, fx),
         SparseMsg::Reload => load(st, fx),
 
         SparseMsg::Apply => {

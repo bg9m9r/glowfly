@@ -5,7 +5,7 @@ use super::pr_details;
 use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
 use crate::state::error_words::{hosting, hosting_log};
-use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, ProjectKeys, Status, pr_repos, tracker_target};
+use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, PrefPage, ProjectKeys, Status, pr_repos, tracker_target};
 use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, Account, Connection, Target};
 use glowfly_core::repo::Snapshot;
@@ -69,7 +69,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
             super::trello::want_boards(st, fx);
         }
         ForgeMsg::SetYearBranches(on) => super::issue::set_year_branches(st, on, fx),
-        ForgeMsg::ShowTrackerPage => super::trello::show_page(st, fx),
+        ForgeMsg::ShowTrackerPage => super::prefs_nav::enter_page(st, PrefPage::RepoTracker, fx),
         ForgeMsg::LoadTrelloBoards(account) => super::trello::load_boards(st, account, fx),
         ForgeMsg::TrelloBoardsLoaded { account, result } => super::trello::boards_loaded(st, account, result),
     }

@@ -2,17 +2,10 @@
 //! repository's tracker: each account's boards load once per Preferences session.
 
 use crate::effect::{AccountEffect, Effect};
+use crate::state::AppState;
 use crate::state::trello::BoardList;
-use crate::state::{AppState, PrefPage};
 use glowfly_core::forge::{self, Account, TrelloBoard};
 use glowfly_core::settings::TrackerChoice;
-
-/// Opens the Issue Tracker page from the side list.
-pub(super) fn show_page(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(p) = st.prefs.as_mut() else { return };
-    p.page = PrefPage::RepoTracker;
-    want_boards(st, fx);
-}
 
 /// Loads the boards of the repository's Trello account, unless they are loaded or loading.
 pub(super) fn want_boards(st: &mut AppState, fx: &mut Vec<Effect>) {

@@ -66,7 +66,7 @@ pub(super) fn save_page(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
                 ]
             });
             // The key list follows the program.
-            super::prefs::load_signing_keys(st, fx);
+            super::prefs_signing::load_keys(st, fx);
             true
         }
         PrefPage::Profile => {

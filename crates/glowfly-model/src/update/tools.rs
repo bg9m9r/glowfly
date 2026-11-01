@@ -105,9 +105,13 @@ pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
     super::trust_seal::push(st, effect, sealed, &w, fx);
 }
 
-/// Opens Preferences > External Tools (a tool entry run while its program isn't set).
+/// Shows Preferences > External Tools (a tool entry run while its program isn't set), opening
+/// Preferences when it is closed.
 pub(super) fn show_page(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    super::prefs::handle(st, PrefsMsg::OpenPrefs(PrefPage::Tools), now, fx);
+    match st.prefs {
+        None => super::prefs::handle(st, PrefsMsg::OpenPrefs(PrefPage::Tools), now, fx),
+        Some(_) => super::prefs_nav::enter_page(st, PrefPage::Tools, fx),
+    }
 }
 
 /// A failure for the activity log and a red toast.
