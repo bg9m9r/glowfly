@@ -144,33 +144,11 @@ pub fn focus_halo(p: &Painter, rect: Rect, r: u8) {
     p.rect_stroke(rect.expand(1.0), radius::around(r, 1), stroke, StrokeKind::Outside);
 }
 
-/// The OKLCH chroma `selected_inactive` keeps: a neutral (the spec allows at most 0.02,
-/// `inactive_tests.rs`), a little under so rounding to 8-bit channels can't carry it over; only
-/// the focused pane's selection carries the palette's selection colour.
-const INACTIVE_AIM: f64 = 0.018;
-/// How far `selected_inactive` moves in OKLCH lightness per step while it makes `weak` readable.
-const INACTIVE_STEP: f64 = 0.005;
-
 /// The selected row's fill in a pane without the keyboard focus (the graph, the file lists):
-/// `selected` with its chroma cut to `INACTIVE_AIM` (a grey where that would read brown),
-/// moved away from `weak` until `weak` text on it reaches 4.5:1.
+/// a neutral in `selected`'s hue that stands apart from `selected` and `hover` and keeps `weak`
+/// text readable (`inactive.rs`).
 pub fn selected_inactive(p: &Palette) -> Color32 {
-    use super::contrast::{brownish, from_oklch, oklch, ratio};
-    let (l, c, h) = oklch(p.selected);
-    let c = c.min(INACTIVE_AIM);
-    let at = |l: f64| {
-        let fill = from_oklch(l, c, h);
-        if brownish(fill) { from_oklch(l, 0.0, h) } else { fill }
-    };
-    // Weak text is lighter than the fill on a dark palette, darker on a light one.
-    let away = if oklch(p.weak).0 > l { -INACTIVE_STEP } else { INACTIVE_STEP };
-    let mut l = l;
-    let mut fill = at(l);
-    while ratio(p.weak, fill) < 4.5 && (0.0..=1.0).contains(&(l + away)) {
-        l += away;
-        fill = at(l);
-    }
-    fill
+    super::inactive::selected_inactive(p)
 }
 
 /// Motion: how long things take, the one easing curve, and Reduce motion.

@@ -35,6 +35,7 @@ pub mod controls;
 pub mod custom;
 pub mod families;
 pub mod fonts;
+mod inactive;
 pub mod missing_glyphs;
 pub mod sizes;
 pub mod spacing;
