@@ -224,3 +224,36 @@ fn retry_keeps_the_direction() {
     assert!(compared(&st).swapped && compared(&st).changes.is_none());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
+
+fn listed_loads(fx: &[Effect]) -> Vec<Option<FileEntry>> {
+    fx.iter().filter_map(|e| if let Effect::LoadDiff { listed, .. } = e { Some(listed.clone()) } else { None }).collect()
+}
+
+#[test]
+fn a_diff_load_carries_its_row_and_a_changed_row_reads_it_again() {
+    let (mut st, f) = fixture("wip-compare-listed");
+    up(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(f.c(3))));
+    let added = FileEntry::new("new.txt", 'A');
+    let list = |files: Vec<FileEntry>| Ok(Comparison { files, absent: Default::default() });
+    let generation = compared(&st).generation;
+    up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation, result: list(vec![added.clone()]) }));
+    let target = DiffTarget::ToWorkdir(f.c(3), "new.txt".into());
+    let fx = up(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
+    assert_eq!(listed_loads(&fx), [Some(added.clone())], "only the file is read, going by its row");
+    st.session.diff.view = Some((target, empty_diff().into()));
+
+    // The same row again: nothing more to read.
+    let fx = up(&mut st, Msg::Repo(RepoMsg::WindowFocused));
+    let generation = compared(&st).generation;
+    let read = |files| Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation, result: list(files) });
+    assert!(listed_loads(&up(&mut st, read(vec![added.clone()]))).is_empty(), "{fx:?}");
+    // The file now pairs with a deletion: read again, with the rename's row.
+    let renamed = FileEntry { renamed_from: Some("old.txt".into()), ..FileEntry::new("new.txt", 'R') };
+    assert_eq!(listed_loads(&up(&mut st, read(vec![renamed.clone()]))), [Some(renamed)]);
+
+    // A commit's diff opened from a file history goes without a row (its lists are one folder's).
+    st.session.history.view = Some(FileHistoryView::loading("f.txt".into(), None));
+    let fx = up(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(f.c(3), "f.txt".into()))));
+    assert_eq!(listed_loads(&fx), [None]);
+    let _ = std::fs::remove_dir_all(&f.dir);
+}

@@ -82,6 +82,7 @@ pub const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "load_diff",
             "load_diff_with",
             "load_diff_for_view",
+            "load_listed_diff",
             "binary_sides",
             "apply_hunk",
             "apply_lines",

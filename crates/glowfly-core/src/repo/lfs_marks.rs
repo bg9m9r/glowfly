@@ -130,7 +130,7 @@ fn regular_blob(file: &DiffFile<'_>) -> Option<Oid> {
 /// The sides of `target`'s file in `diff` when either one is an LFS pointer.
 pub(super) fn diff_change(repo: &Repository, target: &DiffTarget, diff: &Diff) -> Option<LfsChange> {
     let path = target.path();
-    let d = diff.deltas().find(|d| rpath::touches(d, path))?;
+    let d = rpath::find_delta(diff, path)?;
     if d.old_file().mode() == FileMode::Commit || d.new_file().mode() == FileMode::Commit {
         return None;
     }

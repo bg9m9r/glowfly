@@ -9,7 +9,7 @@
 //! history, `walk_reuse` takes what an earlier load read, `load_more` goes on from where a cut
 //! walk stopped, `branch_merged` which local branches HEAD contains), `branch_colours` (laying the graph out with each lane's owner and colour), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up) and `fsmonitor`
-//! (git's built-in file system monitor), `diff` (and `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
+//! (git's built-in file system monitor), `diff` (and `diff_view`, a file's diff for the viewer, narrowed to it by `diff_scope`; `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
 //! file of a commit or of the working tree),
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit) and `file_bytes` (its bytes, binary or not, for the image preview), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
@@ -42,7 +42,9 @@ mod conflict;
 mod conflict_saved;
 mod diff;
 mod diff_gaps;
+mod diff_scope;
 mod diff_types;
+mod diff_view;
 mod divergence;
 mod entry;
 mod exact;
@@ -124,12 +126,13 @@ pub use conflict::{
 pub(crate) use conflict::parse_merged;
 pub use conflict_saved::{RESTORE_MAX, saved_picks};
 pub use diff::{
-    BranchChanges, Comparison, ViewDiff, branch_changes, commit_stats, commit_stats_until, compare, compare_files, compare_from_workdir,
-    compare_workdir, load_diff, load_diff_for_view, load_diff_with,
+    BranchChanges, Comparison, branch_changes, commit_stats, commit_stats_until, compare, compare_files, compare_from_workdir,
+    compare_workdir, load_diff, load_diff_with,
 };
 use diff::{head_tree, path_opts, workdir_opts};
 pub use diff_gaps::load_gap_text;
 pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions, empty_tree, is_empty_tree};
+pub use diff_view::{ViewDiff, load_diff_for_view, load_listed_diff};
 pub use divergence::Divergence;
 pub use entry::{FileEntry, Hazard};
 pub use file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, LfsState, file_at, file_at_with};
@@ -279,10 +282,6 @@ mod collide_tests;
 mod common_dir_tests;
 #[cfg(test)]
 mod compare_root_tests;
-#[cfg(test)]
-mod compare_tests;
-#[cfg(test)]
-mod compare_workdir_tests;
 #[cfg(test)]
 mod conflict_saved_tests;
 #[cfg(test)]

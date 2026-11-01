@@ -5,7 +5,7 @@ pub use crate::file_op::{DeleteMode, FileOp, SeenLines, WorkFileOk};
 use git2::Oid;
 use glowfly_core::askpass::Reply;
 use glowfly_core::forge::{Auth, Target};
-use glowfly_core::repo::{DiffTarget, FileDiff, HistoryStart, LoadOptions};
+use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry, HistoryStart, LoadOptions};
 use glowfly_core::settings::Settings;
 use glowfly_core::undo::{Action, UndoKind};
 use std::path::PathBuf;
@@ -145,6 +145,9 @@ effect_areas! { effect_enum! {
         ignore_whitespace: bool,
         /// Also load the whole file (the diff_mode setting when the request was made).
         whole_file: bool,
+        /// `target`'s row in the list loaded with its whole commit or comparison
+        /// (`diff_nav::file_order::listed`), so only the file and its rename partner are read.
+        listed: Option<FileEntry>,
     },
     /// Finishes the syntax highlighting `diff` arrived with (pending in its hunks or its whole
     /// file) for the diff shown at `generation` (DiffSlot::shown_gen). Started by

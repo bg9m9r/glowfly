@@ -71,7 +71,7 @@ pub fn diff_sides(workdir: &Path, target: &DiffTarget) -> Result<DiffSides> {
     let repo = Repository::open(workdir)?;
     let diff = super::diff::target_diff(&repo, target, LoadDiffOptions::default(), None)?;
     let path = target.path();
-    let delta = diff.deltas().find(|d| rpath::touches(d, path)).ok_or_else(|| Error::NotFound(format!("no changes in {path}")))?;
+    let delta = rpath::find_delta(&diff, path).ok_or_else(|| Error::NotFound(format!("no changes in {path}")))?;
     let (old_commit, new_commit) = side_commits(&repo, target);
     let mut old = side(&delta.old_file(), path, old_commit)?;
     let mut new = side(&delta.new_file(), path, new_commit)?;

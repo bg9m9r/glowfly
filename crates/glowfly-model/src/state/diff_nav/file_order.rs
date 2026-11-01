@@ -221,3 +221,19 @@ fn detail_status(st: &AppState, target: &DiffTarget) -> Option<char> {
     let DiffTarget::Commit(oid, path) = target else { return None };
     st.session.detail.as_ref().filter(|d| d.oid == *oid)?.files.iter().find(|f| f.path == *path).map(|f| f.status)
 }
+
+/// `target`'s row in the list loaded with its whole commit or comparison (a commit's details, a
+/// stacked list, a pull request's or a comparison's files), for `repo::load_listed_diff`. `None`
+/// in a file history, whose folder lists are read for one folder only, and for the working-tree
+/// lists, whose diffs are one path's anyway.
+pub fn listed<'a>(st: &'a AppState, target: &DiffTarget) -> Option<&'a FileEntry> {
+    let files: &[FileEntry] = match list_source(st, target)? {
+        ListSource::Commit(_, f) | ListSource::PullRequest(_, _, f) | ListSource::Compare(_, _, f) | ListSource::Workdir(_, f) => f,
+        ListSource::Stacked(stack) => {
+            let DiffTarget::Commit(oid, _) = target else { return None };
+            &stack.iter().find(|c| c.oid == *oid)?.files
+        }
+        ListSource::History(..) | ListSource::Wip(..) => return None,
+    };
+    files.iter().find(|f| f.path == target.path())
+}

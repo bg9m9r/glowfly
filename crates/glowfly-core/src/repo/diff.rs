@@ -2,11 +2,9 @@
 
 use super::*;
 use crate::error::{Error, Result};
-use crate::highlight::{self, OldText};
-use git2::{Delta, Diff, DiffOptions, Oid, Patch, Repository, Tree};
+use git2::{Delta, Diff, DiffDelta, DiffOptions, Oid, Patch, Repository, Tree};
 use std::collections::HashSet;
 use std::path::Path;
-use std::sync::Arc;
 
 /// Lines added and removed, and files changed, for each commit (against its first parent).
 pub fn commit_stats(workdir: &Path, oids: &[Oid]) -> Vec<(Oid, usize, usize, usize)> {
@@ -73,7 +71,7 @@ fn commit_plain<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOption
 /// `diff` with renames detected. Detection compares the deleted and added files' contents, which
 /// a partial clone may not have: there the deletes and adds stay as they are (the diff pane asks
 /// for those contents instead, `partial::find_renames`).
-fn renamed<'r>(repo: &Repository, mut diff: Diff<'r>) -> Result<Diff<'r>> {
+pub(super) fn renamed<'r>(repo: &Repository, mut diff: Diff<'r>) -> Result<Diff<'r>> {
     match diff.find_similar(None) {
         Err(e) if e.code() == git2::ErrorCode::NotFound && crate::partial::looks_partial(repo) => Ok(diff),
         found => found.map(|()| diff).map_err(Into::into),
@@ -114,11 +112,21 @@ fn workdir_plain<'r>(repo: &'r Repository, oid: Oid, reversed: bool, opts: Optio
     Ok(repo.diff_tree_to_workdir_with_index(Some(&tree), Some(o))?)
 }
 
-/// One entry per delta, named by its new path (the old one for a deletion). In a `reversed`
-/// working-tree diff an untracked file is on the old side only, so it is 'D'.
+/// One entry per delta (`delta_entry`).
 pub(super) fn file_entries(diff: &Diff, reversed: bool) -> Vec<FileEntry> {
-    let status = |d: Delta| if reversed && d == Delta::Untracked { 'D' } else { delta_char(d) };
-    diff.deltas().map(|d| super::rpath::entry(super::rpath::delta_bytes(&d), status(d.status()))).collect()
+    diff.deltas().map(|d| delta_entry(&d, reversed)).collect()
+}
+
+/// A delta's row, named by its new path (the old one for a deletion), with a rename's or a
+/// copy's old path in `renamed_from`. In a `reversed` working-tree diff an untracked file is on
+/// the old side only, so it is 'D'.
+pub(super) fn delta_entry(d: &DiffDelta<'_>, reversed: bool) -> FileEntry {
+    let status = if reversed && d.status() == Delta::Untracked { 'D' } else { delta_char(d.status()) };
+    let mut row = super::rpath::entry(super::rpath::delta_bytes(d), status);
+    if matches!(d.status(), Delta::Renamed | Delta::Copied) {
+        row.renamed_from = d.old_file().path_bytes().and_then(super::rpath::text);
+    }
+    row
 }
 
 /// The files that differ from commit `from` to commit `to`: a file only in `to` is 'A', only in
@@ -241,11 +249,6 @@ pub fn load_diff(workdir: &Path, target: &DiffTarget) -> Result<FileDiff> {
     load_diff_with(workdir, target, LoadDiffOptions::default())
 }
 
-/// Context for the whole-file load: more lines than any real file has, so libgit2 returns one
-/// hunk covering the whole file. Not u32::MAX: xdiff keeps the context in a C long (32 bits on
-/// Windows) and doubles it.
-const WHOLE_FILE_CONTEXT: u32 = 1 << 24;
-
 /// `load_diff` with options. With whitespace ignored, a modified file whose changes are all
 /// whitespace comes back with `hunks` empty rather than an error: the delta stays (deltas compare
 /// blob ids) and only the patch loses its hunks. Hunk indexes from such a diff don't match
@@ -257,107 +260,39 @@ const WHOLE_FILE_CONTEXT: u32 = 1 << 24;
 /// same edit script as the normal hunks (xdiff's context doesn't change which lines are
 /// changed), which is what lets `WholeFile::new` map each hunk onto it.
 pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<FileDiff> {
-    load(workdir, target, opts, false).map(|v| v.diff)
-}
-
-/// A diff loaded for the viewer, with what highlighting it needs.
-#[derive(Debug)]
-pub struct ViewDiff {
-    pub diff: FileDiff,
-    /// The old file's text, for highlighting the hunks in context (see `old_text`).
-    pub old: Option<Arc<OldText>>,
-    /// The path's `linguist-language` gitattribute, raw (resolved by `highlight::SyntaxHint`).
-    pub language: Option<String>,
-    /// The two sides when either is a Git LFS pointer (`lfs_marks::diff_change`).
-    pub lfs: Option<crate::lfs::pointer::LfsChange>,
-    /// For an unstaged diff of one hunk: its lines' exact bytes and the working file's own
-    /// bytes, hashed (`index::raw_id`), which the hunk's text (decoded, line ends trimmed) and git's
-    /// converted content (`core.autocrlf`) can't tell apart.
-    pub raw: Option<Oid>,
-}
-
-/// `load_diff_with` plus the old file's text, for highlighting the hunks in context
-/// (`highlight::highlight_in_context`), and the path's `linguist-language` gitattribute (`None`
-/// for binary files). Attributes, binary detection's included, come from the version shown
-/// (`AttrSource::of_target`): the commit's own `.gitattributes` files for commit and comparison
-/// diffs, the index's for staged changes, the working tree's then the index's for the rest. The
-/// text is `None` for added, untracked or binary files, a whole-file load (its one hunk is the
-/// whole file), an old blob over `highlight::OLD_TEXT_MAX_BYTES`, or one that doesn't match
-/// the hunks.
-pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<ViewDiff> {
-    load(workdir, target, opts, true)
-}
-
-fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bool) -> Result<ViewDiff> {
-    let pooled = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
-    // The diff runs on a handle reading the shown version's gitattributes, so libgit2's binary
-    // detection follows them too.
-    let repo = super::attr_source::for_target(&pooled, target);
-    let path = target.path();
-    let mut diff = plain_target_diff(&repo, target, opts, None)?;
-    // A partial clone may not have the blobs yet; libgit2 can't fetch them.
-    if finds_renames(target) {
-        crate::partial::find_renames(&repo, workdir, target, &mut diff, |d| super::rpath::touches(d, path))?;
-    }
-    if let Some(delta) = diff.deltas().find(|d| super::rpath::touches(d, path)) {
-        crate::partial::require(&repo, workdir, path, crate::partial::delta_blobs(target, &delta))?;
-    }
-    let lfs = with_old.then(|| super::lfs_marks::diff_change(&repo, target, &diff)).flatten();
-    let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    let Some(patch) = file_patch(&diff, path)? else {
-        out.binary = true;
-        return Ok(ViewDiff { diff: out, old: None, language: None, lfs, raw: None });
-    };
-    out.binary = patch.delta().flags().is_binary();
-    for h in 0..patch.num_hunks() {
-        out.hunks.push(hunk_of(&patch, h)?);
-    }
-    if opts.whole_file && !out.binary && !out.hunks.is_empty() {
-        let diff = target_diff(&repo, target, opts, Some(WHOLE_FILE_CONTEXT))?;
-        if let Some(patch) = file_patch(&diff, path)?
-            && patch.num_hunks() == 1
-        {
-            let whole = hunk_of(&patch, 0)?;
-            out.whole = crate::whole_file::WholeFile::new(&out.hunks, whole).map(Box::new);
-        }
-    }
-    // `patch` is still the first load's (the whole-file block's is scoped to it).
-    let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
-    let language = if with_old && !out.binary { super::attrs::linguist_language(&repo, path) } else { None };
-    Ok(ViewDiff { diff: out, old, language, lfs, raw: super::index::shown_raw_id(workdir, target, path, &patch)? })
-}
-
-/// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the
-/// first parent or `from` for commits, the commit for a working-tree comparison, at the old
-/// path for renames), checked against `hunks`.
-fn old_text(repo: &Repository, patch: &Patch<'_>, hunks: &[Hunk]) -> Option<Arc<OldText>> {
-    let id = patch.delta().old_file().id();
-    if id.is_zero() || hunks.is_empty() {
-        return None;
-    }
-    let blob = repo.find_blob(id).ok()?;
-    if blob.is_binary() || blob.size() > highlight::OLD_TEXT_MAX_BYTES {
-        return None;
-    }
-    OldText::new(blob.content(), hunks).map(Arc::new)
+    super::diff_view::load(workdir, target, opts, false, None).map(|v| v.diff)
 }
 
 /// The diff behind `target`, with `context` lines around each change when set (and hunks
 /// never merged because of nearby changes, so one hunk spans the file).
 pub(super) fn target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: LoadDiffOptions, context: Option<u32>) -> Result<Diff<'r>> {
-    let diff = plain_target_diff(repo, target, opts, context)?;
+    let diff = plain_target_diff(repo, target, opts, context, None)?;
     if finds_renames(target) { renamed(repo, diff) } else { Ok(diff) }
 }
 
 /// Whether `target`'s diff detects renames (the staged and unstaged ones are one path's).
-fn finds_renames(target: &DiffTarget) -> bool {
+pub(super) fn finds_renames(target: &DiffTarget) -> bool {
     !matches!(target, DiffTarget::Unstaged(_) | DiffTarget::Staged(_))
 }
 
-/// `target_diff` without rename detection.
-fn plain_target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: LoadDiffOptions, context: Option<u32>) -> Result<Diff<'r>> {
+/// `target_diff` without rename detection. With `scope`, a commit's or a comparison's diff covers
+/// only those paths (literally: no globbing, and a folder's files are under it); the staged and
+/// unstaged diffs are always only their own path's.
+pub(super) fn plain_target_diff<'r>(
+    repo: &'r Repository,
+    target: &DiffTarget,
+    opts: LoadDiffOptions,
+    context: Option<u32>,
+    scope: Option<&[&str]>,
+) -> Result<Diff<'r>> {
     let mut o = match target {
-        DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) | DiffTarget::FromWorkdir(..) => DiffOptions::new(),
+        DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) | DiffTarget::FromWorkdir(..) => {
+            let mut o = DiffOptions::new();
+            for p in scope.unwrap_or_default() {
+                o.pathspec(*p).disable_pathspec_match(true);
+            }
+            o
+        }
         DiffTarget::Unstaged(p) => workdir_opts(p),
         DiffTarget::Staged(p) => path_opts(p),
     };
@@ -394,7 +329,13 @@ pub(super) fn hunk_of(patch: &Patch<'_>, h: usize) -> Result<Hunk> {
 /// The patch for `path` in `diff`: `NotFound` when the file has no changes, `None` when it is
 /// binary. Shared by `load_diff` and line staging, so both see the same hunks and lines.
 pub(super) fn file_patch<'b>(diff: &Diff<'b>, path: &str) -> Result<Option<Patch<'b>>> {
-    let idx =
-        diff.deltas().position(|d| super::rpath::touches(&d, path)).ok_or_else(|| Error::NotFound(format!("no changes in {path}")))?;
+    let idx = super::rpath::delta_of(diff, path).ok_or_else(|| Error::NotFound(format!("no changes in {path}")))?;
     Ok(Patch::from_diff(diff, idx)?)
 }
+
+#[cfg(test)]
+#[path = "compare_tests.rs"]
+mod compare_tests;
+#[cfg(test)]
+#[path = "compare_workdir_tests.rs"]
+mod compare_workdir_tests;

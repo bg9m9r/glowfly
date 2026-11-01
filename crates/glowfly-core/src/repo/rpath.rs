@@ -7,7 +7,7 @@
 //! another file.
 
 use super::{FileEntry, Hazard};
-use git2::{DiffDelta, DiffFile};
+use git2::{Diff, DiffDelta, DiffFile};
 
 /// The row for the path `bytes` with `status`.
 pub(super) fn entry(bytes: &[u8], status: char) -> FileEntry {
@@ -44,6 +44,18 @@ pub(super) fn touches(delta: &DiffDelta<'_>, path: &str) -> bool {
     is(&delta.new_file(), path) || is(&delta.old_file(), path)
 }
 
+/// The index of `path`'s delta in `diff`: the one listed under it (`delta_bytes`), else one with
+/// `path` on its other side (a rename asked for by its old name). A copy's source is listed
+/// under its own name, so it is never taken for the copy.
+pub(super) fn delta_of(diff: &Diff<'_>, path: &str) -> Option<usize> {
+    diff.deltas().position(|d| delta_bytes(&d) == path.as_bytes()).or_else(|| diff.deltas().position(|d| touches(&d, path)))
+}
+
+/// `path`'s delta in `diff` (`delta_of`).
+pub(super) fn find_delta<'d>(diff: &'d Diff<'_>, path: &str) -> Option<DiffDelta<'d>> {
+    diff.get_delta(delta_of(diff, path)?)
+}
+
 /// The path a delta is listed under: its new path, or the old one for a deletion.
 pub(super) fn delta_bytes<'a>(delta: &DiffDelta<'a>) -> &'a [u8] {
     delta.new_file().path_bytes().or(delta.old_file().path_bytes()).unwrap_or_default()
@@ -53,3 +65,7 @@ pub(super) fn delta_bytes<'a>(delta: &DiffDelta<'a>) -> &'a [u8] {
 pub(super) fn under(bytes: &[u8], folder: &str) -> bool {
     bytes.strip_prefix(folder.as_bytes()).is_some_and(|rest| rest.first() == Some(&b'/'))
 }
+
+#[cfg(test)]
+#[path = "copy_source_tests.rs"]
+mod copy_source_tests;

@@ -9,26 +9,27 @@ use crate::msg::PartialMsg;
 use crate::msg::RepoMsg;
 use glowfly_core::highlight::{self, DiffHighlight, OldText, SyntaxHint};
 use glowfly_core::intraline;
-use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadDiffOptions};
+use glowfly_core::repo::{self, DiffTarget, FileDiff, FileEntry, LoadDiffOptions};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-/// Loads a diff for the viewer (`Effect::LoadDiff`) and decorates it, with the language its
-/// gitattributes name, if any.
+/// Loads a diff for the viewer (`Effect::LoadDiff`, narrowed by its list row `listed`) and
+/// decorates it, with the language its gitattributes name, if any.
 pub(super) fn load_job(
     workdir: PathBuf,
     target: DiffTarget,
+    listed: Option<FileEntry>,
     reload: bool,
     generation: u64,
     previous: Option<std::sync::Arc<FileDiff>>,
     opts: LoadDiffOptions,
 ) -> Msg {
-    let loaded = match repo::load_diff_for_view(&workdir, &target, opts) {
+    let loaded = match repo::load_listed_diff(&workdir, &target, opts, listed.as_ref()) {
         // A partial clone hasn't downloaded a side: read again once it has.
         Err(glowfly_core::error::Error::MissingContent(missing)) => {
             let LoadDiffOptions { ignore_whitespace, whole_file } = opts;
-            let retry = Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file };
+            let retry = Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed };
             return Msg::Partial(PartialMsg::ContentMissing { missing, retry: Box::new(retry) });
         }
         r => r,

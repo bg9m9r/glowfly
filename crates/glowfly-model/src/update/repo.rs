@@ -9,7 +9,6 @@ use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
 use glowfly_core::diff_rows::row_of_file_line;
 use glowfly_core::repo::{DiffTarget, Snapshot};
-use glowfly_core::settings::DiffMode;
 use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -218,9 +217,7 @@ fn request_diff(st: &mut AppState, fx: &mut Vec<Effect>, reload: bool) {
         let highlighted = diff.highlight.is_some() || diff.whole.as_ref().is_some_and(|w| w.diff.highlight.is_some());
         let previous = highlighted.then(|| std::sync::Arc::clone(diff));
         let generation = st.session.diff.next();
-        let ignore_whitespace = st.settings.diff_ignore_whitespace;
-        let whole_file = st.settings.diff_mode == DiffMode::WholeFile;
-        fx.push(Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file });
+        fx.push(super::diff::load_effect(st, workdir, target, reload, generation, previous));
     }
 }
 
@@ -245,11 +242,9 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
     st.view.diff_cursor = None;
     if let Some(workdir) = st.workdir() {
         let generation = st.session.diff.next();
-        let ignore_whitespace = st.settings.diff_ignore_whitespace;
-        let whole_file = st.settings.diff_mode == DiffMode::WholeFile;
         st.view.diff_opening = Some(target.clone());
         super::wip_list::opened(st, &target);
-        fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None, ignore_whitespace, whole_file });
+        fx.push(super::diff::load_effect(st, workdir, target, false, generation, None));
     }
 }
 
