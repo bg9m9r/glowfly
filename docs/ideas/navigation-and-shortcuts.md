@@ -108,6 +108,6 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 ### Pane focus keys
 
 - Give the diff its own focus target, so Alt+4 differs from Alt+2 while a diff is open
-- Alt+3 on the WIP panel could pick the list with rows (an empty Unstaged list takes the focus today)
+- On macOS, Control+1 to 5 are Mission Control's Switch to Desktop keys when the user turns those on: note it in the shortcut sheet or Preferences > Keyboard
 - Page Up/Down, Home and End in file history's list, which the Lists row names but only the graph matches yet
 - Rebindable Enter for Show the details panel (plain Enter is reserved, so the row is fixed)

@@ -200,6 +200,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `chord.rs`: chords and their text ("Cmd" and "Option" on macOS, through `KeyLabels`) and file forms.
 - `active.rs`: the effective keymap with the user's overrides.
 - `rebind.rs`: the rebinding rules.
+- `tests.rs`, `override_tests.rs`: the table's rows, ids, chord text, clashes and filtering; loading, applying and saving the user's changes from settings.
 - `pane_tests.rs`: the pane keys (Alt+1 to 5, Control on macOS, F6) clash with nothing, the menus' mnemonics included, and `When::Graph` never overlaps a diff's contexts; their update side in `flows/pane_focus_tests.rs`.
 - Shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard.
 - The Repository commands group binds palette commands and has no default keys; `state/palette_bindings.rs` maps commands and bindings both ways, and a press sends `PaletteMsg::RunBoundCommand`, which `update/palette_keys.rs` runs when the palette would list the entry.

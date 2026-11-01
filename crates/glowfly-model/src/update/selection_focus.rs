@@ -33,10 +33,7 @@ pub(super) fn copy_ids(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
         Selection::VsWorkdir(w) => vec![w.oid],
         Selection::None | Selection::Wip => return,
     };
-    let text = oids.iter().map(|o| o.to_string()).collect::<Vec<_>>().join(
-        "
-",
-    );
+    let text = oids.iter().map(|o| o.to_string()).collect::<Vec<_>>().join("\n");
     fx.push(Effect::Ui(UiEffect::CopyText(text)));
     let t = st.settings.lang();
     st.toast(true, t.trn("graph.copy_ids.toast", oids.len(), &[]), now);
