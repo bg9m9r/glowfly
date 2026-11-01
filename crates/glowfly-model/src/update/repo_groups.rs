@@ -1,6 +1,7 @@
 //! Repository groups: the New group and Rename group dialogs, colouring, ordering and removing
 //! groups, and moving favorites between them. Every change saves the settings; a message that
-//! names a group that is gone (the list changed under a menu) does nothing.
+//! names a group that is gone (the list changed under a menu) does nothing. A Create or Rename
+//! whose name is usable closes the dialog; a refused one leaves it open.
 
 use crate::effect::Effect;
 use crate::msg::GroupMsg;
@@ -23,10 +24,19 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
             }
             false
         }
-        GroupMsg::Create { name, repo } => create(st, &name, repo.as_deref()),
+        GroupMsg::Create { name, repo } => {
+            let made = create(st, &name, repo.as_deref());
+            if made {
+                close_dialog(st);
+            }
+            made
+        }
         GroupMsg::Rename { group, name } => {
             let name = clean_group_name(&name);
             let usable = !name_taken(st, &name, Some(group));
+            if usable {
+                close_dialog(st);
+            }
             match st.settings.repo_groups.get_mut(group) {
                 Some(g) if usable && g.name != name => {
                     g.name = name;
@@ -50,6 +60,14 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
     };
     if changed {
         fx.extend(super::prefs::save_settings(st));
+    }
+}
+
+/// Closes the New group or Rename group dialog once its name is taken up; a refused name
+/// leaves it open with its message.
+fn close_dialog(st: &mut AppState) {
+    if matches!(st.modal, Some(Modal::RepoGroup(_))) {
+        st.modal = None;
     }
 }
 

@@ -81,6 +81,26 @@ fn the_dialogs_open_with_the_right_form() {
 }
 
 #[test]
+fn create_and_rename_close_the_dialog_and_a_taken_name_keeps_it_open() {
+    let mut st = grouped();
+    let open = |st: &AppState| matches!(st.modal, Some(Modal::RepoGroup(_)));
+    run(&mut st, GroupMsg::NewDialog { repo: None });
+    run(&mut st, GroupMsg::Create { name: "work".into(), repo: None });
+    assert!(open(&st), "a taken name keeps the New group dialog open");
+    run(&mut st, GroupMsg::Create { name: "Clients".into(), repo: None });
+    assert!(st.modal.is_none(), "Create closes it");
+    run(&mut st, GroupMsg::RenameDialog(1));
+    run(&mut st, GroupMsg::Rename { group: 1, name: "WORK".into() });
+    assert!(open(&st), "a taken name keeps the Rename group dialog open");
+    run(&mut st, GroupMsg::Rename { group: 1, name: "Personal".into() });
+    assert!(st.modal.is_none(), "Rename closes it");
+    assert_eq!(st.settings.repo_groups[1].name, "Personal");
+    run(&mut st, GroupMsg::RenameDialog(1));
+    run(&mut st, GroupMsg::Rename { group: 1, name: "Personal".into() });
+    assert!(st.modal.is_none(), "keeping the name closes it too");
+}
+
+#[test]
 fn rename_recolour_and_reorder_save_only_changes() {
     let mut st = grouped();
     assert_eq!(saves(&run(&mut st, GroupMsg::Rename { group: 1, name: " Personal ".into() })), 1);

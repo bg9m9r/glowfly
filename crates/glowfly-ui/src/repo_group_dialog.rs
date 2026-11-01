@@ -12,7 +12,8 @@ use crate::state::repo_groups::GroupForm;
 use eframe::egui;
 use glowfly_core::settings::MAX_GROUP_NAME;
 
-/// Draws the dialog; returns true when it should close.
+/// Draws the dialog; returns true when Cancel or Esc closes it. `update` closes it after a
+/// Create or Rename it takes, so a refused name keeps it open with its message.
 pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut GroupForm, msgs: &mut Vec<Msg>) -> bool {
     let t = cx.t;
     let title = if form.group.is_some() { t.tr("repo_group.rename.title") } else { t.tr("repo_group.new.title") };
