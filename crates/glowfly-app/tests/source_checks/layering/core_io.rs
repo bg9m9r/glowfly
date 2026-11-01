@@ -4,9 +4,11 @@
 //! work directly (a `DENIED` family or the repository, in its signature too) or calls a core
 //! function that does, until nothing changes. Calls are followed by path, bare name and
 //! `Type::`/`Self::` associated function; a method call `.f(` counts when `f` does I/O on a core
-//! trait, on the type the method is on, or on a core type the function names. A call from a
-//! checked crate that resolves to no core function counts as I/O when its module has any, unless
-//! `PURE_FUNCTIONS` (`rules.rs`) clears it.
+//! trait, on the type the method is on, or on a core type the function names. A function that
+//! returns a `dyn` or `impl` of a core trait with an I/O method counts too (`forge::service`
+//! hands out the service a caller then asks the network through), since the checked crates'
+//! own method calls aren't followed. A call from a checked crate that resolves to no core function
+//! counts as I/O when its module has any, unless `PURE_FUNCTIONS` (`rules.rs`) clears it.
 
 #[path = "core_fns.rs"]
 mod core_fns;
@@ -29,6 +31,8 @@ enum Target {
     Method(String, String),
     /// `.f(`, with the types it could be on: the method's own type and the types the body names.
     Dot(String, BTreeSet<String>),
+    /// A `dyn` or `impl` of this trait handed back to the caller.
+    Returns(String),
 }
 
 /// glowfly-core's functions and which of them do I/O.
@@ -37,13 +41,14 @@ pub struct Core {
     modules: BTreeSet<ModPath>,
     fns: BTreeMap<ModPath, bool>,
     methods: BTreeMap<(String, String), bool>,
-    /// Methods by the core trait they implement or define.
-    trait_methods: BTreeMap<(String, String), bool>,
+    /// The core traits with a method of each name that does I/O.
+    io_traits: BTreeMap<String, BTreeSet<String>>,
     /// The names of inherent methods (in an `impl Type` block).
     inherent: BTreeSet<String>,
     /// Why each function that does I/O does: the outside work it reaches, or the call that does.
     reasons: BTreeMap<String, String>,
-    /// What each module re-exports (`pub use`): (name bound, or `*` for a glob; target path).
+    /// What each module's `use`s bind: (name, or `*` for a glob; target path). Private ones too,
+    /// since child modules reach them through `super::` and `use super::*;`.
     exports: BTreeMap<ModPath, Vec<(String, ModPath)>>,
 }
 
@@ -101,7 +106,7 @@ impl Core {
             modules: BTreeSet::new(),
             fns: BTreeMap::new(),
             methods: BTreeMap::new(),
-            trait_methods: BTreeMap::new(),
+            io_traits: BTreeMap::new(),
             inherent: BTreeSet::new(),
             reasons: BTreeMap::new(),
             exports: BTreeMap::new(),
@@ -120,9 +125,7 @@ impl Core {
             let mut aliases: BTreeMap<String, ModPath> = BTreeMap::new();
             for import in imports(&bare) {
                 let Some(path) = core.absolute(&import.path, &module) else { continue };
-                if import.public {
-                    core.exports.entry(module.clone()).or_default().push((import.name.clone(), path.clone()));
-                }
+                core.exports.entry(module.clone()).or_default().push((import.name.clone(), path.clone()));
                 aliases.insert(import.name, path);
             }
             for body in bodies {
@@ -137,6 +140,7 @@ impl Core {
                     body.text.lines().flat_map(call_paths).filter_map(|p| core.target(&p, &body, &aliases)).collect();
                 targets.extend(method_calls(&body.text).into_iter().map(|m| Target::Dot(m, types.clone())));
                 let direct = direct_hits(&body.text).into_iter().next().map(|f| format!("`{}` ({})", f.pattern, f.what));
+                targets.extend(returned_traits(&body.text).into_iter().map(Target::Returns));
                 read.push((body, direct, targets));
             }
         }
@@ -169,7 +173,10 @@ impl Core {
             None => *self.fns.entry(b.path()).or_default() |= io,
         }
         match &b.of_trait {
-            Some(tr) => *self.trait_methods.entry((tr.clone(), b.name.clone())).or_default() |= io,
+            Some(tr) if io => {
+                self.io_traits.entry(b.name.clone()).or_default().insert(tr.clone());
+            }
+            Some(_) => {}
             None if b.owner.is_some() => {
                 self.inherent.insert(b.name.clone());
             }
@@ -244,13 +251,16 @@ impl Core {
                 let ty = types.iter().find(|t| on(&self.methods, t, name));
                 // Through a core trait: one the body names, or any when no inherent method has
                 // the name (`service(p).pull_requests(…)` on a `&dyn Forge`).
-                let tr = self
-                    .trait_methods
-                    .keys()
-                    .map(|(t, _)| t)
-                    .filter(|t| types.contains(*t) || !self.inherent.contains(name))
-                    .find(|t| on(&self.trait_methods, t, name));
+                let tr =
+                    self.io_traits.get(name).and_then(|traits| traits.iter().find(|t| types.contains(*t) || !self.inherent.contains(name)));
                 ty.or(tr).map(|t| format!("{t}::{name}"))
+            }
+            Target::Returns(tr) => {
+                let m = self.io_traits.iter().find(|(_, traits)| traits.contains(tr)).map(|(m, _)| m)?;
+                return Some(format!(
+                    "returns `dyn {tr}`, whose {tr}::{m} -> {}",
+                    self.reasons.get(&format!("{tr}::{m}")).cloned().unwrap_or_default()
+                ));
             }
         }?;
         let why = self.reasons.get(&shown).cloned().unwrap_or_default();
@@ -291,11 +301,14 @@ impl Core {
         let mut out = Vec::new();
         for import in imports(&code.join("\n")) {
             let Some(rest) = import.path.strip_prefix(&["glowfly_core".to_owned()][..]).filter(|r| !r.is_empty()) else { continue };
+            // A name can be a module and a function at once (`repo::load` beside `repo/load.rs`).
             if self.modules.contains(rest) {
                 aliases.insert(import.name, rest.to_vec());
-            } else if let Some(call) = self.function(rest, import.line) {
-                out.push(call);
+                if self.resolve_path(rest, 0).is_none() {
+                    continue;
+                }
             }
+            out.extend(self.function(rest, import.line));
         }
         for (i, l) in code.iter().enumerate() {
             for path in call_paths(l).into_iter().filter(|p| p.len() > 1) {
@@ -315,7 +328,7 @@ impl Core {
     fn function(&self, rest: &[String], line: usize) -> Option<CoreCall> {
         let (name, module) = rest.split_last()?;
         let in_core = self.top.contains(module.first()?) && self.modules.contains(module);
-        if !in_core || !name.starts_with(|c: char| c.is_ascii_lowercase()) || self.modules.contains(rest) {
+        if !in_core || !name.starts_with(|c: char| c.is_ascii_lowercase()) {
             return None;
         }
         let path = rest.join("::");
@@ -326,6 +339,15 @@ impl Core {
             None => (self.fns.iter().any(|(p, io)| *io && p.starts_with(module)), "not found in core; its module does I/O".to_owned()),
         };
         Some(CoreCall { line, io: io && !PURE_FUNCTIONS.contains(&path.as_str()), path, why })
+    }
+
+    /// The path of the core module named `seg`: a top-level one, else the first submodule with
+    /// that last segment (`server` is `askpass::server`).
+    pub fn module_named(&self, seg: &str) -> Option<String> {
+        if self.top.contains(seg) {
+            return Some(seg.to_owned());
+        }
+        self.modules.iter().find(|m| m.last().is_some_and(|l| l == seg)).map(|m| m.join("::"))
     }
 
     /// Whether the free function at `path` (`repo::load_diff`) does I/O, if core has it.
@@ -345,4 +367,12 @@ fn method_calls(text: &str) -> Vec<String> {
         }
     }
     out
+}
+
+/// The core traits a function's signature hands back as `dyn Trait` or `impl Trait`.
+fn returned_traits(text: &str) -> Vec<String> {
+    let header = text.split('{').next().unwrap_or("");
+    let Some((_, ret)) = header.split_once("->") else { return Vec::new() };
+    let words: Vec<&str> = ret.split(|c: char| !(c.is_alphanumeric() || c == '_')).filter(|w| !w.is_empty()).collect();
+    words.windows(2).filter(|w| w[0] == "dyn" || w[0] == "impl").map(|w| w[1].to_owned()).collect()
 }

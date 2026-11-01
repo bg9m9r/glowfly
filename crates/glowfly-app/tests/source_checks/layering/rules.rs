@@ -63,6 +63,8 @@ pub const DENIED: &[(&str, &str)] = &[
     ("platform::native_menu", "the OS menu bar (only the shell talks to it)"),
     ("platform::primary_selection", "the PRIMARY selection (only the shell talks to it)"),
     ("windows::Win32", "the OS (Win32 calls belong in platform/)"),
+    ("git_program::set(", "process-wide state (the git program every later call runs); only the shell and runner set it"),
+    ("gitcli::observe_runs(", "process-wide state (the observer of every git run); only the shell and runner set it"),
     ("ActivityFile::open", "core I/O"),
     ("FolderId::of", "core I/O"),
     ("CommonDir::at", "core I/O"),

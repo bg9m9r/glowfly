@@ -18,6 +18,8 @@
 
 #[path = "layering/core_io.rs"]
 mod core_io;
+#[path = "layering/old_io.rs"]
+mod old_io;
 #[path = "layering/paths.rs"]
 mod paths;
 #[path = "layering/rules.rs"]
@@ -28,6 +30,7 @@ use crate::views::crate_sources;
 use core_io::Core;
 use rules::{ALLOWED, CHECKED, DENIED, GIT2_PURE_CALLS, GIT2_TYPES, NOT_DENIED, PURE_FUNCTIONS};
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 /// One problem found: the line (1-based), the matched pattern and what it reaches.
 #[derive(Debug, PartialEq)]
@@ -99,10 +102,16 @@ fn crates_dir() -> PathBuf {
     manifest.parent().expect("the app crate sits in crates/").to_path_buf()
 }
 
+/// Core's functions, read once for all the tests.
+fn core() -> &'static Core {
+    static CORE: OnceLock<Core> = OnceLock::new();
+    CORE.get_or_init(|| Core::read(&crates_dir().join("glowfly-core/src")))
+}
+
 #[test]
 fn views_update_and_state_do_no_io() {
     let crates = crates_dir();
-    let core = Core::read(&crates.join("glowfly-core/src"));
+    let core = core();
     let mut report = Vec::new();
     let mut used = vec![false; ALLOWED.len()];
     for (krate, skipped) in CHECKED {
@@ -113,7 +122,7 @@ fn views_update_and_state_do_no_io() {
                 continue;
             }
             let rel = format!("{krate}/src/{rel}");
-            let mut found = violations(text, &core);
+            let mut found = violations(text, core);
             found.dedup_by(|a, b| a.line == b.line && a.pattern == b.pattern);
             for v in found {
                 match ALLOWED.iter().position(|(f, p, _)| *f == rel && *p == v.pattern) {
@@ -138,14 +147,13 @@ fn views_update_and_state_do_no_io() {
 
 #[test]
 fn pure_functions_are_core_functions_that_need_the_entry() {
-    let core = Core::read(&crates_dir().join("glowfly-core/src"));
-    let stale: Vec<&str> = PURE_FUNCTIONS.iter().copied().filter(|f| core.is_io(f) == Some(false)).collect();
-    assert!(stale.is_empty(), "PURE_FUNCTIONS entries core already shows to do no I/O; remove them: {stale:?}");
+    let stale: Vec<&str> = PURE_FUNCTIONS.iter().copied().filter(|f| core().is_io(f) != Some(true)).collect();
+    assert!(stale.is_empty(), "PURE_FUNCTIONS entries that name no core I/O function (pure already, or gone); remove them: {stale:?}");
 }
 
 #[test]
 fn the_check_catches_io() {
-    let core = Core::read(&crates_dir().join("glowfly-core/src"));
+    let core = core();
     let io = [
         "repo::load",
         "repo::load_diff",
@@ -154,11 +162,12 @@ fn the_check_catches_io() {
         "askpass::server::start_with",
         "persist::append",
         "terminal::pty::spawn",
+        "forge::service",
     ];
     let found: Vec<(&str, Option<bool>)> = io.iter().map(|f| (*f, core.is_io(f))).collect();
     assert!(found.iter().all(|(_, io)| *io == Some(true)), "derived from core's sources: {found:?}");
     assert_eq!(core.is_io("gitcli::args"), Some(false));
-    let n = |s: &str| violations(s, &core).len();
+    let n = |s: &str| violations(s, core).len();
     assert_eq!(n("use glowfly_core::repo;\nlet d = repo::load_diff(&w, &t);"), 1);
     assert_eq!(n("use glowfly_core::repo::{DiffTarget,\n    load_diff};"), 1);
     assert_eq!(n("let d = glowfly_core::repo::load_diff(&w, &t);"), 1);
@@ -192,14 +201,22 @@ fn the_check_catches_io() {
     assert_eq!(n("use crate::lfs;\nlfs::status(st);"), 0);
     // A new function of an I/O module is I/O until PURE_FUNCTIONS says otherwise.
     assert_eq!(n("use glowfly_core::repo;\nrepo::a_function_added_later(w);"), 1);
+    // A function named like a module beside it (`repo/load.rs`).
+    assert_eq!(n("use glowfly_core::repo;\nlet s = repo::load(&w, kind);"), 1);
+    assert_eq!(n("use glowfly_core::repo::load;\nlet s = load(&w, kind);"), 1);
+    // A pure function that hands out a trait object whose methods do I/O.
+    assert_eq!(n("let s = glowfly_core::forge::service(p).verify(&a, &auth);"), 1);
+    // Process-wide state.
+    assert_eq!(n("use glowfly_core::git_program;\ngit_program::set(p);"), 1);
+    assert_eq!(n("use glowfly_core::gitcli;\ngitcli::observe_runs(o);"), 1);
 }
 
 #[test]
 fn reports_name_the_line_and_skip_test_code() {
-    let core = Core::read(&crates_dir().join("glowfly-core/src"));
+    let core = core();
     let src = "fn a() {}\nfn b() { let _ = p.is_file(); }\n#[cfg(test)]\nmod tests {\n    fn c() { std::fs::write(p, \"\"); }\n}\nfn d() { p.exists(); }\n";
-    let lines: Vec<(usize, String)> = violations(src, &core).into_iter().map(|f| (f.line, f.pattern)).collect();
+    let lines: Vec<(usize, String)> = violations(src, core).into_iter().map(|f| (f.line, f.pattern)).collect();
     assert_eq!(lines, [(2, ".is_file()".to_owned()), (7, ".exists()".to_owned())]);
-    let v = violations("use std::path::Path;\n\nuse glowfly_core::repo::{\n    load_diff,\n};\n", &core);
+    let v = violations("use std::path::Path;\n\nuse glowfly_core::repo::{\n    load_diff,\n};\n", core);
     assert_eq!(v.iter().map(|f| (f.line, f.pattern.as_str())).collect::<Vec<_>>(), [(3, "repo::load_diff")]);
 }
