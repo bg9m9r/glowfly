@@ -33,6 +33,7 @@ second one next to it.
 | Window frame | Drawn by Glowfly (or the system's, by choice): no system decorations; its own title bar, window buttons, resize edges and border with DWM's shadow and rounded corners, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
 | Menus | The drawn title bar's menu button | The system menu bar (the app menu, then File, Edit, View, Window and Help) and the title bar's menu button | The in-window menu bar, which can be hidden |
 | Terminal keys and selection | Alt with a letter, digit or punctuation key sends ESC and the character; no PRIMARY selection | Option composes characters unless Option as Meta is on (Preferences > Terminal); no PRIMARY selection | Alt as on Windows; a mouse selection sets PRIMARY and a middle click pastes it (X11 and Wayland) |
+| Pane keys | Alt+1 to 5 on the main row; Alt with the keypad's digits stays an Alt code (`platform/numpad_keys.rs`) | Control+1 to 5 (Mission Control's Switch to Desktop keys take them first when turned on) | Alt+1 to 5 |
 
 ## Rules
 

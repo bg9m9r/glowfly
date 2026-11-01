@@ -35,6 +35,9 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter", "chrono"] }
 # Maximize button, the system menu and the Mica backdrop.
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_System_Registry", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+# Tells the keypad's digits apart for Alt codes (src/platform/numpad_keys.rs); eframe already
+# builds it.
+winit = { version = "0.30", default-features = false }
 raw-window-handle = "0.6"
 
 # Folders and links macOS hands Glowfly.app as Apple events (src/platform/macos_events.rs), and

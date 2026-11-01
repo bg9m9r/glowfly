@@ -189,6 +189,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `runner/platform/open_events.rs` until the runner attaches (`platform::install_open_events`).
 - `platform/native_menu.rs`: the macOS system menu bar showing Glowfly's menus: the facade, the queue of clicked items' tags and the hook that turns winit's default app menu off.
 - `platform/macos_menu.rs`: the AppKit menus, built and updated from the plan, with the delegate that leaves every key to the window but Cmd+H and Option+Cmd+H.
+- `platform/numpad_keys.rs`: Windows Alt codes kept from the pane keys: a winit message hook counts the keypad's digit presses (egui names them like the main row's) and the shell's `raw_input_hook` drops those Alt+digit presses; `platform::event_loop_hook` installs it beside macOS's menu hook.
 - `platform/primary_selection.rs`: the Linux PRIMARY selection the terminal sets and middle-click pastes (smithay-clipboard on Wayland, arboard on X11).
 - `platform/system_fonts.rs`: the system's Chinese, Japanese and Korean fonts, searched once on a startup thread and kept while each adds a script: mapped from a system font folder, read into memory from anywhere else.
 - `platform/system_fonts/candidates.rs`: the known font files of each system, in the order the system language prefers, the Linux font folders searched for them (the system's first), and the system font folders that may be mapped: only those root or TrustedInstaller alone can write, so not macOS's `/Library/Fonts`.
@@ -217,7 +218,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `journey/find.rs`: driving it by clicking and typing on widgets found by accessible name: a region of the window, the open command palette among them, and a pick among equal names.
 - `journey/harness.rs`: waiting until the app is idle after each step.
 - `journey/fixture.rs`: checking the screen and the repository on disk.
-- `journey/graph_keys.rs`: the graph keeps its keys after a real click on Stage all, and gets them back from its pane key.
+- `journey/graph_keys.rs`: the graph gets its keys back from Esc on a button or WIP list Tab reached (and that Esc does nothing else), from Tab, and from its pane key.
 - `journey/` is in the crate because the package has no library target `tests/` could reach.
 - `glyph_check/` (tests only): every non-ASCII character in every crate's string literals and in the translation files has a glyph in the fonts egui draws with.
 - `glyph_check/scan.rs` finds the characters with the source checks' shared lexer (glowfly-ui's `tests/view_checks/support/lexer.rs`), skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.
