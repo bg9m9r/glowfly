@@ -1,6 +1,9 @@
-//! How a changed line shows that it is selected, or can be: the bar on its left edge, and in
-//! the sign column a check box that stands in for the `+`/`-` while the gutter is hovered
-//! (hollow) or the line is selected (filled, with a check mark).
+//! How a changed line shows that it is selected, or can be: the bar on its left edge (the
+//! accent when selected, faint only while its gutter is hovered), and in the sign column a check
+//! box that stands in for the `+`/`-`: hollow while the line's gutter is hovered and on every
+//! changed line of a hunk that holds selected lines, filled with a check mark when the line is
+//! selected. At rest, with nothing selected in the hunk, the signs show and no box does;
+//! hovering the line's text shows nothing.
 
 use super::LineHover;
 use crate::ui::theme::color;
@@ -17,9 +20,10 @@ const CHECK_STROKE: f32 = 1.8;
 /// The selected line's bar width.
 const BAR: f32 = 3.0;
 
-/// The bar on a line's left edge: the accent when selected, faint when hovered.
-pub(crate) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
-    let c = match (selected, hovered) {
+/// The bar on a line's left edge: the accent when selected, faint when its gutter is hovered
+/// (`gutter`).
+pub(crate) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, gutter: bool) {
+    let c = match (selected, gutter) {
         (true, _) => color::accent(),
         (false, true) => color::faint(),
         _ => return,
@@ -29,10 +33,10 @@ pub(crate) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
 }
 
 /// The sign column of a line whose sign glyph starts at `at` (left, vertical centre): the glyph
-/// `sign` in `fg`, or, on a selected line or one whose gutter is hovered, the check box in its
-/// place.
+/// `sign` in `fg`, or, on a selected line, one whose gutter is hovered or one in a hunk with
+/// selected lines, the check box in its place.
 pub(crate) fn gutter_sign(p: &Painter, at: Pos2, sign: char, fg: Color32, font: &FontId, selected: bool, hover: LineHover) {
-    if !selected && !hover.gutter {
+    if !selected && !hover.gutter && !hover.hunk {
         p.text(at, Align2::LEFT_CENTER, sign, font.clone(), fg);
         return;
     }

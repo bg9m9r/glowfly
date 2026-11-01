@@ -1,6 +1,9 @@
 //! The diff line selection: `+`/`-` lines of one hunk of a diff (staging on working-tree diffs,
-//! Revert lines on commit and comparison diffs), picked with click, Shift-click (range),
-//! Ctrl/Cmd-click (toggle), or a press-and-drag across lines (kept to the hunk it starts in).
+//! Revert lines on commit and comparison diffs, Comment on N lines on a pull request's), picked
+//! in the lines' gutter (their numbers and sign, never their text) with click, Shift-click
+//! (range), Ctrl/Cmd-click (toggle), or a press-and-drag across lines (kept to the hunk it starts
+//! in). Nothing is ever selected by default: the selection is cleared whenever another diff
+//! opens.
 
 use glowfly_core::repo::{DiffTarget, FileDiff, Hunk};
 use std::collections::BTreeSet;

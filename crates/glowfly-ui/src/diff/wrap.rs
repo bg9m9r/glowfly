@@ -117,7 +117,10 @@ impl RowMetrics<'_> {
     }
 }
 
-/// The rows in a scroll area named `id_salt` (the diff's both layouts share "diff", so switching
+/// The scroll area of the diff's rows, in both layouts.
+pub(crate) const DIFF: &str = "diff";
+
+/// The rows in a scroll area named `id_salt` (the diff's both layouts share `DIFF`, so switching
 /// layout doesn't leave a stale second scroll state), drawing only those in view; `add_row`
 /// gets each row's index and height. Scrolls `scroll_to` to the top if set, and returns the
 /// first visible row and how many rows fit in the viewport.
@@ -130,7 +133,9 @@ pub(crate) fn scroll(
     mut add_row: impl FnMut(&mut Ui, usize, f32),
 ) -> (usize, usize) {
     ui.spacing_mut().item_spacing.y = 0.0;
-    let mut area = egui::ScrollArea::both().id_salt(id_salt).auto_shrink([false, false]);
+    // A drag on the diff's code never scrolls it (the code is for selecting text); the wheel,
+    // the scroll bars and a line drag in the gutter still do.
+    let mut area = egui::ScrollArea::both().id_salt(id_salt).auto_shrink([false, false]).drag_to_scroll(id_salt != DIFF);
     if let Some(row) = scroll_to {
         area = area.vertical_scroll_offset(m.top(row.min(rows)));
     }

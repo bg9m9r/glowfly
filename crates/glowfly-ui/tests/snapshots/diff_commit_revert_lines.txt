@@ -110,5 +110,4 @@ painted:
   "2"
   "fix the build"
   "3"
-  "+"
   "on Windows"

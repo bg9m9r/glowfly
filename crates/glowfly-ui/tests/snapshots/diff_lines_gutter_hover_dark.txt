@@ -115,7 +115,6 @@ painted:
   "1"
   "app"
   "2"
-  "-"
   "fix"
   "2"
   "fixed build"

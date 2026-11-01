@@ -1,7 +1,7 @@
 //! Revert Hunk and Revert lines on a commit diff: the button on the hunk header (Revert N lines
-//! with lines selected), selecting lines with a click, enabled with whitespace hidden, disabled
-//! while a reload is pending, and the message a click sends. Shares the fixture repository
-//! and renderer with `snapshot_tests`.
+//! with lines selected), selecting lines with a click in their gutter, enabled with whitespace
+//! hidden, disabled while a reload is pending, and the message a click sends. Shares the
+//! fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
@@ -84,7 +84,7 @@ fn revert_button_sends_msg() {
 
 /// The commit diff of app.txt replaced by a hunk with three changed lines (` app`, `-fix`,
 /// `+fix the build`, `+on Windows`), with `selected` of its lines selected.
-fn with_line_diff(name: &str, theme: ThemeChoice, layout: DiffLayout, selected: &[usize]) -> (AppState, PathBuf) {
+pub(crate) fn with_line_diff(name: &str, theme: ThemeChoice, layout: DiffLayout, selected: &[usize]) -> (AppState, PathBuf) {
     use crate::msg::DiffMsg;
     use crate::state::lines::LineClick;
     use glowfly_core::repo::{DiffLine, FileDiff, Hunk};
@@ -124,31 +124,60 @@ fn diff_commit_revert_lines() {
     remove_fixture(&dir);
 }
 
+/// Whether any label in `h` names a working-tree action.
+fn stage_verbs(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>) -> Vec<&'static str> {
+    ["Stage", "Unstage", "Discard"].into_iter().filter(|v| h.query_by_label_contains(v).is_some()).collect()
+}
+
+#[test]
+fn diff_commit_readonly_dark() {
+    // At rest: the signs, no check boxes or bars, and only Revert on the header.
+    let (st, dir) = with_line_diff("readonly", ThemeChoice::Dark, DiffLayout::Inline, &[]);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Revert hunk").is_some());
+    assert_eq!(stage_verbs(&h), Vec::<&str>::new(), "a read-only diff offers no working-tree action");
+    drop(h);
+    let (st, _) = with_line_diff("readonly", ThemeChoice::Dark, DiffLayout::Inline, &[]);
+    render("diff_commit_readonly_dark", st, true);
+    // With lines selected it reverts them, still with no stage verb.
+    let (st, _) = with_line_diff("readonly", ThemeChoice::Dark, DiffLayout::Split, &[1, 2]);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Revert 2 lines").is_some());
+    assert_eq!(stage_verbs(&h), Vec::<&str>::new());
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn commit_diff_lines_click_and_revert() {
     use crate::msg::DiffMsg;
     use crate::state::lines::LineClick;
     use eframe::egui::{Event, Modifiers, PointerButton, pos2};
-    // A click on a `+` line selects it: line i is i + 1 rows below the hunk header.
+    // A click in a `+` line's gutter selects it, one on its text doesn't: line i is i + 1 rows
+    // below the hunk header, and the rows start at the sidebar's edge.
     let (st, dir) = with_line_diff("revert-lines-click", ThemeChoice::Dark, DiffLayout::Inline, &[]);
     let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
     let mut h = harness(st, true);
     h.run();
     let b = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");
-    let at = pos2(b.x0 as f32 - 300.0, (b.y0 + b.y1) as f32 / 2.0 + 4.0 * row_h);
-    let events = &mut h.input_mut().events;
-    events.push(Event::PointerMoved(at));
-    for pressed in [true, false] {
-        events.push(Event::PointerButton { pos: at, button: PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
+    let y = (b.y0 + b.y1) as f32 / 2.0 + 4.0 * row_h;
+    for x in [b.x0 as f32 - 300.0, 261.0 + 100.0] {
+        let events = &mut h.input_mut().events;
+        events.push(Event::PointerMoved(pos2(x, y)));
+        for pressed in [true, false] {
+            events.push(Event::PointerButton { pos: pos2(x, y), button: PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
+        }
+        h.run();
     }
-    h.run();
     let clicked: Vec<_> = h
         .state()
         .1
         .iter()
         .filter_map(|m| if let Msg::Diff(DiffMsg::SelectDiffLine { hunk, line, how }) = m { Some((*hunk, *line, *how)) } else { None })
         .collect();
-    assert_eq!(clicked, [(0, 3, LineClick::Only)]);
+    assert_eq!(clicked, [(0, 3, LineClick::Toggle)], "only the gutter click");
     drop(h);
 
     // With lines selected the button reverts just those.

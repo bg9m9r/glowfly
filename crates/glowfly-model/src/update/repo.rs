@@ -231,9 +231,12 @@ pub(super) fn open_file_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec
     open_diff(st, target, fx);
 }
 
-/// Opens `target` in the diff viewer (closing a conflict view).
+/// Opens `target` in the diff viewer (closing a conflict view), with no lines selected.
 pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
     super::conflict::close(st);
+    // Nothing is selected by default: lines picked in the diff on screen don't carry over, not
+    // even while the new one loads.
+    st.view.diff_lines.clear();
     // A different file opens: a hunk kept through a view mode switch or a pending step is moot.
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;
