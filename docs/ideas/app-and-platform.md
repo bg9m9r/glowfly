@@ -62,6 +62,13 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
   successful Try again, so the repository asks again.
 - `carry_records` adds `status_tip_shown` entries with a plain insert rather than
   `repo_keys::set`, so two spellings of one path can both be kept.
+- A recent/tabs file whose lines are all undecodable reads as empty and is overwritten on the
+  next save: keep a copy when lines are skipped.
+- A blocked recent/tabs save should try one read, merge with what's on disk and clear the block,
+  and tell the user; while blocked, Clear recent is silently ignored.
+- Strip a UTF-8 BOM when reading recent.txt and tabs.txt.
+- On Windows a private write drops a read-only attribute on settings.json; fix the
+  WriteOptions::private doc ('Elsewhere nothing changes').
 
 ### Notifications
 
