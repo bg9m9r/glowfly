@@ -87,10 +87,21 @@ fn body_id() -> Id {
     Id::new("diff-text")
 }
 
-/// Whether the diff has the keyboard: a press in it came last, and no text field or list has
-/// taken the focus since.
+/// Whether the diff has the keyboard: a press in it came last, no text field or list has taken
+/// the focus since, and the diff was drawn in the last frame (one gone from the screen let go).
 pub(super) fn focused(ctx: &Context) -> bool {
-    ctx.data(|d| d.get_temp::<bool>(body_id().with("focus"))).unwrap_or(false) && ctx.memory(|m| m.focused().is_none())
+    let (on, pass) = ctx.data(|d| d.get_temp::<(bool, u64)>(body_id().with("focus"))).unwrap_or_default();
+    on && pass + 1 >= ctx.cumulative_pass_nr() && ctx.memory(|m| m.focused().is_none())
+}
+
+/// Keeps the diff's focus flag fresh in a frame it is drawn: what `focused` says, or what a
+/// press now says (`Some(inside)`), stamped with this frame.
+fn stamp_focus(ctx: &Context, press: Option<bool>) {
+    // Read outside the data lock: the context can't be asked from inside it.
+    let now = ctx.cumulative_pass_nr();
+    let kept = ctx.data(|d| d.get_temp::<(bool, u64)>(body_id().with("focus")));
+    let on = press.unwrap_or(kept.is_some_and(|(on, pass)| on && pass + 1 >= now));
+    ctx.data_mut(|d| d.insert_temp(body_id().with("focus"), (on, now)));
 }
 
 /// The code's pointer sense, under the rows: added before them, so whatever a row draws on top
@@ -109,7 +120,9 @@ pub(super) fn handle(ui: &Ui, bg: &Response, hits: &[Hit], v: &DiffView, t: &mut
     // Pressing anywhere in the diff gives it the keyboard; pressing anywhere else takes it away.
     if ui.input(|i| i.pointer.any_pressed()) {
         let inside = ui.rect_contains_pointer(view);
-        ctx.data_mut(|d| d.insert_temp(body_id().with("focus"), inside));
+        stamp_focus(ctx, Some(inside));
+    } else {
+        stamp_focus(ctx, None);
     }
     // An I-beam over code; the gutters show their own pointer.
     if bg.hover_pos().is_some_and(|p| hits.iter().any(|h| h.cell.contains(p) && p.x >= h.text_x)) {
@@ -156,16 +169,21 @@ pub(super) fn handle(ui: &Ui, bg: &Response, hits: &[Hit], v: &DiffView, t: &mut
 /// lines (one, two or three presses), or with Shift the head moved there. Returns whether it
 /// was on code (a header or a gutter is not).
 fn press(ui: &Ui, at: Pos2, shift: bool, hits: &[Hit], v: &DiffView, t: &mut TextMut) -> bool {
-    let count = clicks(ui, at);
-    let Some(h) = hits.iter().find(|h| h.cell.contains(at) && at.x >= h.text_x) else { return false };
-    let pos = TextPos { line: h.line, col: col_at(h, at, v.style.tab) };
-    match t.sel.as_mut() {
-        Some(s) if shift && count == 1 && s.side == h.side => s.head = pos,
-        _ => {
-            let unit = [Unit::Char, Unit::Word, Unit::Line][count - 1];
-            t.sel = Some(TextSel::at(pos, unit, h.side, (v.target.clone(), v.text.shown_gen)));
-        }
+    let hit = hits.iter().find(|h| h.cell.contains(at) && at.x >= h.text_x);
+    // Shift-click always extends: it never counts toward a double-click, nor starts one.
+    if shift
+        && let (Some(h), Some(s)) = (hit, t.sel.as_mut())
+        && s.side == h.side
+    {
+        s.head = TextPos { line: h.line, col: col_at(h, at, v.style.tab) };
+        ui.ctx().data_mut(|d| d.remove_temp::<(f64, Pos2, usize)>(body_id().with("clicks")));
+        return true;
     }
+    let count = clicks(ui, at);
+    let Some(h) = hit else { return false };
+    let pos = TextPos { line: h.line, col: col_at(h, at, v.style.tab) };
+    let unit = [Unit::Char, Unit::Word, Unit::Line][count - 1];
+    t.sel = Some(TextSel::at(pos, unit, h.side, (v.target.clone(), v.text.shown_gen)));
     true
 }
 

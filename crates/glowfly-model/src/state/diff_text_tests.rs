@@ -113,3 +113,16 @@ fn word_at_follows_the_kind_of_character() {
     assert_eq!(word_at("", 0), (0, 0));
     assert_eq!(word_at("été", 1), (0, 3), "letters beyond ASCII");
 }
+
+#[test]
+fn a_word_drag_ending_at_a_word_end_stops_there() {
+    // `	let a = 2;`: col 4 is the end of `let`, before the space.
+    let at = pos(hunk(0, 1), 2);
+    assert_eq!(
+        copy(&lines(), &sel(at, pos(hunk(0, 2), 4), Unit::Word), false),
+        "let a = 1;
+	let"
+    );
+    // Back toward the start, an end at a word's end is the anchor's own word.
+    assert_eq!(copy(&lines(), &sel(pos(hunk(0, 2), 4), pos(hunk(0, 2), 4), Unit::Word), false), " ");
+}

@@ -101,7 +101,8 @@ impl TextSel {
             Unit::Char => (start.col.min(len(start)), end.col.min(len(end))),
             Unit::Word => {
                 let (s, _) = text(start.line).map_or((0, 0), |t| word_at(t, start.col));
-                let (_, e) = text(end.line).map_or((0, 0), |t| word_at(t, end.col));
+                let (_, e) =
+                    text(end.line).map_or((0, 0), |t| word_at(t, end_word_col(t, end.col, (end_at, end.col) > (start_at, start.col))));
                 (s, e)
             }
             Unit::Line => (0, len(end)),
@@ -120,6 +121,15 @@ fn class(c: char) -> (u8, Option<char>) {
     } else {
         (2, Some(c))
     }
+}
+
+/// The character whose word a selection's far end `col` grows to: with the ends apart, an end
+/// exactly at a word's end (after a word character, before anything else) takes that word, not
+/// the run after it.
+fn end_word_col(text: &str, col: usize, apart: bool) -> usize {
+    let word = |c: Option<char>| c.is_some_and(|c| class(c).0 == 0);
+    let at_end = col > 0 && word(text.chars().nth(col - 1)) && !word(text.chars().nth(col));
+    if apart && at_end { col - 1 } else { col }
 }
 
 /// The word around character `col` of `text`, as character indexes `(start, end)`: a run of

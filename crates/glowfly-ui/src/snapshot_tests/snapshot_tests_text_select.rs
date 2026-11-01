@@ -91,18 +91,23 @@ fn drag(h: &mut H, from: Pos2, to: Pos2) {
 /// on a hundredth of a second, starting ten seconds after the frames before (so the clicks
 /// start a new count).
 fn clicks(h: &mut H, at: Pos2, n: usize, modifiers: Modifiers) {
+    clicks_with(h, at, &vec![modifiers; n]);
+}
+
+/// Quick clicks at `at` as `clicks` makes them, each with its own modifiers.
+fn clicks_with(h: &mut H, at: Pos2, each: &[Modifiers]) {
     let mut now = h.ctx.input(|i| i.time) + 10.0;
-    let mut send = |h: &mut H, e: Event| {
+    let mut send = |h: &mut H, e: Event, modifiers: Modifiers| {
         now += 0.01;
         h.input_mut().time = Some(now);
         h.input_mut().modifiers = modifiers;
         h.input_mut().events.push(e);
         h.step();
     };
-    send(h, Event::PointerMoved(at));
-    for _ in 0..n {
-        send(h, Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: true, modifiers });
-        send(h, Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: false, modifiers });
+    send(h, Event::PointerMoved(at), Modifiers::NONE);
+    for &modifiers in each {
+        send(h, Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: true, modifiers }, modifiers);
+        send(h, Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: false, modifiers }, modifiers);
     }
     h.input_mut().modifiers = Modifiers::NONE;
     h.run();
@@ -178,6 +183,36 @@ fn shift_click_extends_and_a_plain_click_drops_the_text_only() {
     assert_eq!(copied(&mut h), Vec::<String>::new());
     assert!(!picked_lines(&h));
     assert_eq!(h.state().0.view.diff_lines.lines.iter().copied().collect::<Vec<_>>(), [1], "and keeps the lines");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn a_shift_click_right_after_a_double_click_extends_and_never_counts() {
+    let (mut h, dir) = open("text-shift-quick", ThemeChoice::Dark, DiffLayout::Inline, &[], None);
+    let g = Grid::of(&h, DiffLayout::Inline);
+    // A double-click on `build`, then at once a Shift-click on the same spot: not a third click
+    // taking the whole line, only the head moved there.
+    clicks_with(&mut h, g.at(2, 10), &[Modifiers::NONE, Modifiers::NONE, Modifiers::SHIFT]);
+    assert_eq!(copied(&mut h), ["build"]);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn a_diff_gone_from_the_screen_lets_the_keyboard_go() {
+    let (mut h, dir) = open("text-stale-focus", ThemeChoice::Dark, DiffLayout::Inline, &[], None);
+    let g = Grid::of(&h, DiffLayout::Inline);
+    drag(&mut h, g.at(0, 1), g.at(3, 2));
+    let p = crate::ui::theme::GARDEN_DARK;
+    assert!(painted(&h, p.code_sel));
+    // The diff isn't drawn for a while (another view in front), then comes back.
+    let shown = h.state_mut().0.session.diff.view.take();
+    h.run();
+    h.state_mut().0.session.diff.view = shown;
+    h.run();
+    assert!(h.state().0.view.diff_text.is_some());
+    assert!(painted(&h, p.code_sel_dim) && !painted(&h, p.code_sel), "it waits for a press in it again");
     drop(h);
     remove_fixture(&dir);
 }
