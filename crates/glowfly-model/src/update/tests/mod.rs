@@ -8,6 +8,7 @@ use super::*;
 pub(in crate::update) use crate::testing::*;
 
 pub(super) mod avatars_tests;
+pub(super) mod diff_lines_tests;
 pub(super) mod diff_pairs_tests;
 pub(super) mod editor_tests;
 pub(super) mod git_program_tests;

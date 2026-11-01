@@ -6,7 +6,8 @@ use super::style::DiffStyle;
 use super::syntax::paint_line;
 use super::wrap::{RowMetrics, Wrap};
 use super::{
-    DiffView, LineHover, comment_add, drag_over, fold, gutter_sign, hunk_header, line_click, line_sense, paint_mark, thread_marks,
+    DiffView, LineHover, comment_add, drag_over, fold, gutter_rect, gutter_sign, hunk_header, line_click, line_sense, paint_mark,
+    thread_marks,
 };
 use crate::msg::Msg;
 use crate::ui::theme::color;
@@ -117,16 +118,15 @@ pub(super) fn show(
                     let selected = origin != ' ' && v.is_selected(hunk, idx);
                     let hover = match v.sel {
                         Some(_) => {
-                            let resp = ui.interact(r, ui.id().with(("diff-cell", hunk, idx, side)), line_sense(origin));
-                            // The number and the sign, up to the text.
-                            let gutter = Rect::from_min_max(r.min, pos2(r.left() + st.split_cols().text - 2.0, r.bottom()));
-                            line_click(ui, &resp, gutter, hunk, idx, origin, msgs)
+                            let gutter = gutter_rect(r, st.split_cols().text);
+                            let resp = line_sense(ui, gutter, ui.id().with(("diff-cell", hunk, idx, side)), origin);
+                            line_click(ui, &resp, hunk, idx, origin, v.gutter_tip(), msgs)
                         }
                         None => LineHover::default(),
                     };
                     let mark = Mark { selected, hover };
                     cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, v.wrap, mark);
-                    paint_mark(ui, r, selected, hover.row);
+                    paint_mark(ui, r, selected, hover.gutter);
                     let key = if side == Side::Old { LineSide::Old } else { LineSide::New };
                     let edge = ui.clip_rect().right().min(r.right());
                     let mut taken = match v.marks.and_then(|m| thread_marks::find(m, dl, Some(key))) {

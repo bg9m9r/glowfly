@@ -732,6 +732,7 @@
   "diff.discard_lines.body.one": "Discard the selected line in {path}? You can bring it back with Undo.",
   "diff.discard_lines.body.other": "Discard the {count} selected lines in {path}? You can bring them back with Undo.",
   "diff.discard_lines.title": "Discard lines",
+  "diff.gutter.revert.tip": "Select line for Revert lines · Shift for a range",
   "diff.header.arrow": "to",
   "diff.header.close.name": "Close diff",
   "diff.header.counter.changes.tip": "Change {index} of {total}",

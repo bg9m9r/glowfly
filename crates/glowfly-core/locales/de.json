@@ -732,6 +732,7 @@
   "diff.discard_lines.body.one": "Die ausgewählte Zeile in {path} verwerfen? Mit Rückgängig holst du sie zurück.",
   "diff.discard_lines.body.other": "Die {count} ausgewählten Zeilen in {path} verwerfen? Mit Rückgängig holst du sie zurück.",
   "diff.discard_lines.title": "Zeilen verwerfen",
+  "diff.gutter.revert.tip": "Zeile zum Reverten auswählen · Umschalt für einen Bereich",
   "diff.header.arrow": "zu",
   "diff.header.close.name": "Diff schließen",
   "diff.header.counter.changes.tip": "Änderung {index} von {total}",

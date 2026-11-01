@@ -1,7 +1,9 @@
-//! Selecting diff lines by press-and-drag, driven through the real view with pointer events:
-//! the messages the rows send, and the selection they lead to, inline and split.
+//! Selecting diff lines by press-and-drag in their gutter, driven through the real view with
+//! pointer events: the messages the rows send, and the selection they lead to, inline and split;
+//! and a drag across the code, which picks no lines.
 
 use super::super::snapshot_tests::{harness, remove_fixture};
+use super::super::snapshot_tests_revert::with_line_diff;
 use super::with_diff;
 use crate::msg::{DiffMsg, Msg};
 use crate::state::AppState;
@@ -9,7 +11,7 @@ use crate::state::lines::LineClick;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use glowfly_core::settings::DiffLayout;
+use glowfly_core::settings::{DiffLayout, ThemeChoice};
 use std::time::Instant;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -26,6 +28,8 @@ fn frame(h: &mut H) -> Vec<DiffMsg> {
                 DiffMsg::StartLineDrag { hunk, line, how } => DiffMsg::StartLineDrag { hunk: *hunk, line: *line, how: *how },
                 DiffMsg::DragDiffLine { hunk, line } => DiffMsg::DragDiffLine { hunk: *hunk, line: *line },
                 DiffMsg::EndLineDrag => DiffMsg::EndLineDrag,
+                DiffMsg::SelectDiffLine { hunk, line, how } => DiffMsg::SelectDiffLine { hunk: *hunk, line: *line, how: *how },
+                DiffMsg::ClearLineSelection => DiffMsg::ClearLineSelection,
                 _ => continue,
             };
             assert!(crate::update::update(st, Msg::Diff(d), Instant::now()).is_empty());
@@ -52,9 +56,12 @@ fn drag(h: &mut H, from: Pos2, to: Pos2) -> Vec<DiffMsg> {
     sent
 }
 
-/// Drags in `layout` from the `-fix` row (at x `from_x` left of the hunk's right end) down to
-/// the `+new line` row (at `to_x`), checks the messages and selection (what the gutter tests'
-/// snapshots show), and releases.
+/// The left edge of the diff's rows: the sidebar's edge (the rows have no widget of their own).
+const ROWS_LEFT: f32 = 261.0;
+
+/// Drags in `layout` from the `-fix` row's gutter (at x `from_x` right of the rows' left edge)
+/// down to the `+new line` row (at `to_x` left of the hunk's right end), checks the messages and
+/// selection (what the gutter tests' snapshots show), and releases.
 fn drag_test(layout: DiffLayout, from_x: f32, to_x: f32) {
     let (st, dir) = with_diff(layout, "diff-drag");
     let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
@@ -67,20 +74,23 @@ fn drag_test(layout: DiffLayout, from_x: f32, to_x: f32) {
     // Split, `-fix` pairs with `+fixed build`, so `+new line` is a row higher.
     let b = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
     let header_y = (b.y0 + b.y1) as f32 / 2.0;
-    let from = pos2(b.x1 as f32 - from_x, header_y + (fix + 1) as f32 * row_h);
+    let from = pos2(ROWS_LEFT + from_x, header_y + (fix + 1) as f32 * row_h);
     let new_row = if layout == DiffLayout::Split { new_line } else { new_line + 1 };
     let to = pos2(b.x1 as f32 - to_x, header_y + new_row as f32 * row_h);
     let mut sent = drag(&mut h, from, to);
     // One more frame draws the last selection (the button still down).
     sent.extend(frame(&mut h));
+    // A drag from the gutter adds to the selection, as a gutter click does.
     assert!(
-        sent.iter().any(|m| matches!(m, DiffMsg::StartLineDrag { hunk: 0, line, how: LineClick::Only } if *line == fix)),
+        sent.iter().any(|m| matches!(m, DiffMsg::StartLineDrag { hunk: 0, line, how: LineClick::Toggle } if *line == fix)),
         "the drag starts on -fix"
     );
     assert!(sent.iter().any(|m| matches!(m, DiffMsg::DragDiffLine { hunk: 0, line } if *line == new_line)), "and reaches +new line");
     let sel = &h.state().0.view.diff_lines;
     let lines = &h.state().0.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let changed: Vec<usize> = (fix..=new_line).filter(|&i| matches!(lines[i].origin, '+' | '-')).collect();
+    // The hunk's lines 2 to 4: `-fix`, `+fixed build` and `+new line`.
+    assert_eq!(changed, [1, 2, 3]);
     assert_eq!(sel.lines.iter().copied().collect::<Vec<_>>(), changed);
     assert!(sel.dragging().is_some());
 
@@ -95,12 +105,47 @@ fn drag_test(layout: DiffLayout, from_x: f32, to_x: f32) {
 }
 
 #[test]
-fn diff_drag_selects_lines() {
-    drag_test(DiffLayout::Inline, 300.0, 300.0);
+fn diff_gutter_drag_selects_lines() {
+    drag_test(DiffLayout::Inline, 100.0, 300.0);
 }
 
 #[test]
-fn diff_drag_selects_lines_split() {
-    // Split: from the left `-fix` cell to the right `+new line` cell, the row below it.
-    drag_test(DiffLayout::Split, 600.0, 200.0);
+fn diff_gutter_drag_selects_lines_split() {
+    // Split: from the left `-fix` cell's gutter to the right `+new line` cell, the row below it.
+    drag_test(DiffLayout::Split, 54.0, 200.0);
+}
+
+/// Drags in `layout` across the code of a commit diff, from its first changed line's text to
+/// its last one's (in split, the row below holds the last), and checks that no line is picked on the way or at the release.
+fn code_drag_test(layout: DiffLayout, name: &str) {
+    // ` app`, `-fix`, `+fix the build`, `+on Windows`, none selected.
+    let (st, dir) = with_line_diff(name, ThemeChoice::Dark, layout, &[]);
+    let (first, last) = (1, 3);
+    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
+    let mut h = harness(st, true);
+    h.run();
+    let b = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");
+    let header_y = (b.y0 + b.y1) as f32 / 2.0;
+    // Inline the text starts 110 px into the row, split 62 px into each cell; 200 px in is
+    // well inside it either way.
+    let (from, to) =
+        (pos2(ROWS_LEFT + 200.0, header_y + (first + 1) as f32 * row_h), pos2(ROWS_LEFT + 260.0, header_y + (last + 1) as f32 * row_h));
+    let mut sent = drag(&mut h, from, to);
+    button(&mut h, to, false);
+    sent.extend(frame(&mut h));
+    let picked = sent.iter().filter(|m| matches!(m, DiffMsg::StartLineDrag { .. } | DiffMsg::SelectDiffLine { .. })).count();
+    assert_eq!(picked, 0, "a drag across the code picks no lines");
+    assert!(h.state().0.view.diff_lines.is_empty());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn diff_code_drag_selects_no_lines() {
+    code_drag_test(DiffLayout::Inline, "code-drag");
+}
+
+#[test]
+fn diff_code_drag_selects_no_lines_split() {
+    code_drag_test(DiffLayout::Split, "code-drag-split");
 }

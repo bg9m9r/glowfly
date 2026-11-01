@@ -1,6 +1,7 @@
-//! How a changed line shows that it is selected, or can be: the bar on its left edge, and in
-//! the sign column a check box that stands in for the `+`/`-` while the gutter is hovered
-//! (hollow) or the line is selected (filled, with a check mark).
+//! How a changed line shows that it is selected, or can be: the bar on its left edge (faint
+//! only while its gutter is hovered), and in the sign column a check box that stands in for the
+//! `+`/`-` while the gutter is hovered (hollow) or the line is selected (filled, with a check
+//! mark). Hovering the line's text shows neither.
 
 use super::LineHover;
 use crate::ui::theme::color;
@@ -17,9 +18,10 @@ const CHECK_STROKE: f32 = 1.8;
 /// The selected line's bar width.
 const BAR: f32 = 3.0;
 
-/// The bar on a line's left edge: the accent when selected, faint when hovered.
-pub(crate) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
-    let c = match (selected, hovered) {
+/// The bar on a line's left edge: the accent when selected, faint when its gutter is hovered
+/// (`gutter`).
+pub(crate) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, gutter: bool) {
+    let c = match (selected, gutter) {
         (true, _) => color::accent(),
         (false, true) => color::faint(),
         _ => return,

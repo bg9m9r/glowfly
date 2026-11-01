@@ -732,6 +732,7 @@
   "diff.discard_lines.body.one": "¿Descartar la línea seleccionada en {path}? Puedes recuperarla con Deshacer.",
   "diff.discard_lines.body.other": "¿Descartar las {count} líneas seleccionadas en {path}? Puedes recuperarlas con Deshacer.",
   "diff.discard_lines.title": "Descartar líneas",
+  "diff.gutter.revert.tip": "Seleccionar la línea para revertir líneas · Mayús para un rango",
   "diff.header.arrow": "a",
   "diff.header.close.name": "Cerrar diff",
   "diff.header.counter.changes.tip": "Cambio {index} de {total}",

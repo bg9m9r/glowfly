@@ -5,11 +5,12 @@
 use super::syntax::paint_line;
 use super::wrap::RowMetrics;
 use super::{
-    DiffView, LineHover, comment_add, drag_over, fold, gutter_sign, hunk_header, line_click, line_sense, paint_mark, thread_marks,
+    DiffView, LineHover, comment_add, drag_over, fold, gutter_rect, gutter_sign, hunk_header, line_click, line_sense, paint_mark,
+    thread_marks,
 };
 use crate::msg::Msg;
 use crate::ui::theme::color;
-use eframe::egui::{Align2, Color32, Rect, Sense, Ui, pos2, vec2};
+use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::DiffRow;
 use glowfly_core::highlight::Span;
 
@@ -35,7 +36,7 @@ pub(super) fn show(
     let width = if v.wrap.is_some() { ui.available_width() } else { ui.available_width().max(cols.text + widest as f32 * char_w + 40.0) };
 
     super::wrap::scroll(ui, "diff", rows.len(), m, scroll_to, |ui, i, h| {
-        // Lines sense clicks and drags by their own stable ids (auto ids shift as rows scroll).
+        // Line gutters sense clicks and drags by their own stable ids (auto ids shift as rows scroll).
         let (rect, _) = ui.allocate_exact_size(vec2(width, h), Sense::hover());
         match rows[i] {
             // During a line drag the header counts as the line before the hunk's first.
@@ -77,11 +78,9 @@ pub(super) fn show(
                 let selected = v.is_selected(hunk, line);
                 let hover = match v.sel {
                     Some(_) => {
-                        let resp = ui.interact(rect, ui.id().with(("diff-line", hunk, line)), line_sense(dl.origin));
+                        let resp = line_sense(ui, gutter_rect(rect, cols.text), ui.id().with(("diff-line", hunk, line)), dl.origin);
                         drag_over(ui, v, rect, hunk, line, msgs);
-                        // The numbers and the sign, up to the text.
-                        let gutter = Rect::from_min_max(rect.min, pos2(rect.left() + cols.text - 2.0, rect.bottom()));
-                        line_click(ui, &resp, gutter, hunk, line, dl.origin, msgs)
+                        line_click(ui, &resp, hunk, line, dl.origin, v.gutter_tip(), msgs)
                     }
                     None => LineHover::default(),
                 };
@@ -115,7 +114,7 @@ pub(super) fn show(
                     _ => None,
                 };
                 paint_line(p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab, v.wrap);
-                paint_mark(ui, rect, selected, hover.row);
+                paint_mark(ui, rect, selected, hover.gutter);
                 let right = ui.clip_rect().right().min(rect.right());
                 let mut taken = match v.marks.and_then(|m| thread_marks::find(m, dl, None)) {
                     Some(mark) => thread_marks::paint(ui, rect, right, st.row_h, mark, msgs),

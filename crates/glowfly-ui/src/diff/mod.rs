@@ -8,9 +8,11 @@
 //! whole-file view's folds, open in both views), folded back from their first line. The fold
 //! keys (E and Shift+E by default) open the first closed run at or below the top and fold back
 //! the opened one at the top. With wrapping on, long lines continue on the next line and their
-//! rows grow to fit. Changed lines are selected by click, Shift-click and Ctrl/Cmd-click, or by
-//! pressing on one and dragging across the lines of its hunk; a click in a changed line's gutter
-//! adds it to the selection or takes it out (`line_check`). A changed PNG or JPEG shows its
+//! rows grow to fit. Changed lines are selected from their gutter (the line numbers and the
+//! sign) only: a click adds a line to the selection or takes it out, Shift-click selects a range,
+//! and a press-and-drag adds the lines of its hunk it crosses; the gutter shows a hollow check
+//! box and a faint bar while hovered (`line_check`), and on a commit or comparison diff says
+//! what the lines are for. The code beside it picks no lines. A changed PNG or JPEG shows its
 //! before and after images (`preview`). On a pull request's file, a hovered line offers a
 //! button that starts a code comment on it (`comment_add`), and the unposted one is marked.
 
@@ -37,7 +39,7 @@ use crate::state::AppState;
 use crate::state::lines::{LineClick, LineSelection};
 use crate::state::pull_request_line_comment::{self, DiffComments};
 use crate::state::pull_request_threads::{self, Marks};
-use eframe::egui::{CursorIcon, FontId, Pos2, Rect, Response, Sense, Ui};
+use eframe::egui::{CursorIcon, FontId, Id, Rect, Response, Sense, Ui, pos2};
 use glowfly_core::diff_rows::{GapLines, GapSpan};
 use glowfly_core::highlight::DiffHighlight;
 use glowfly_core::i18n::Lang;
@@ -105,6 +107,12 @@ impl DiffView<'_> {
 
     pub fn is_selected(&self, hunk: usize, line: usize) -> bool {
         self.sel.is_some_and(|s| s.contains(self.target, hunk, line))
+    }
+
+    /// The hover text of a changed line's gutter on a diff whose lines are picked for Revert
+    /// lines (a commit's or a comparison's), so the selection there can be found.
+    pub fn gutter_tip(&self) -> Option<&'static str> {
+        self.target.reverts_hunks().then(|| self.t.tr("diff.gutter.revert.tip"))
     }
 }
 
@@ -186,58 +194,76 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     })
 }
 
-/// What a click or a drag on a line does: Shift for a range; Ctrl/Cmd, or a press in the
-/// line's gutter (`gutter`), to toggle (or, for a drag, to add); otherwise just this line.
-fn how(ui: &Ui, gutter: bool) -> LineClick {
+/// What a click or a drag in a line's gutter does: Shift for a range; on a `+`/`-` line
+/// (`changed`) or with Ctrl/Cmd, to toggle (or, for a drag, to add); otherwise just this line,
+/// which on any other line clears the selection.
+fn how(ui: &Ui, changed: bool) -> LineClick {
     let m = ui.input(|i| i.modifiers);
     if m.shift {
         LineClick::Range
-    } else if m.command || gutter {
+    } else if m.command || changed {
         LineClick::Toggle
     } else {
         LineClick::Only
     }
 }
 
-/// Where the pointer is over a selectable (`+`/`-`) line: anywhere on it, and over its gutter
-/// (the line numbers and the sign).
+/// Whether the pointer is over a selectable (`+`/`-`) line's gutter (the line numbers and the
+/// sign): what shows its hollow check box and the faint bar.
 #[derive(Clone, Copy, Default)]
 pub(super) struct LineHover {
-    pub row: bool,
     pub gutter: bool,
 }
 
-/// Click handling for a diff line (a row in inline, a cell in split) whose gutter is `gutter`:
-/// a click on a `+`/`-` line's text selects just that line, a click in its gutter adds it to the
-/// selection or takes it out (as Ctrl/Cmd-click does), Shift-click selects a range; a plain
-/// click on any other line clears the selection. A press on a `+`/`-` line that moves becomes a
-/// drag (`StartLineDrag`), which adds to the selection when it starts in the gutter.
-pub(super) fn line_click(ui: &Ui, resp: &Response, gutter: Rect, hunk: usize, line: usize, origin: char, msgs: &mut Vec<Msg>) -> LineHover {
+/// The gutter of a line (a row in inline, a cell in split) whose text starts `text` from the
+/// left of `rect`: the numbers and the sign, up to just before the text. Only it picks lines;
+/// the code beside it never does.
+pub(super) fn gutter_rect(rect: Rect, text: f32) -> Rect {
+    Rect::from_min_max(rect.min, pos2(rect.left() + text - 2.0, rect.bottom()))
+}
+
+/// How a line's gutter `gutter` senses the pointer, by its stable id `id` (auto ids shift as
+/// rows scroll): a changed line's can also be dragged across; other lines' leave a drag to the
+/// scroll area. The text beside it senses nothing.
+pub(super) fn line_sense(ui: &Ui, gutter: Rect, id: Id, origin: char) -> Response {
+    let sense = if matches!(origin, '+' | '-') { Sense::click_and_drag() } else { Sense::click() };
+    ui.interact(gutter, id, sense)
+}
+
+/// Click handling for a diff line's gutter (`resp`, from `line_sense`): a click on a `+`/`-`
+/// line's gutter adds it to the selection or takes it out (as Ctrl/Cmd-click does), Shift-click
+/// selects a range; a plain click in any other line's gutter clears the selection. A press on a
+/// `+`/`-` line's gutter that moves becomes a drag (`StartLineDrag`), which adds to the
+/// selection. On a diff that reverts lines (`revert`), a hovered changed line's gutter says how.
+pub(super) fn line_click(
+    ui: &Ui,
+    resp: &Response,
+    hunk: usize,
+    line: usize,
+    origin: char,
+    revert: Option<&str>,
+    msgs: &mut Vec<Msg>,
+) -> LineHover {
     let changed = matches!(origin, '+' | '-');
-    let in_gutter = |p: Option<Pos2>| changed && p.is_some_and(|p| gutter.contains(p));
-    let row = changed && resp.hovered();
-    if row {
+    let gutter = changed && resp.hovered();
+    if gutter {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        if let Some(tip) = revert {
+            resp.clone().on_hover_text(tip);
+        }
     }
     if changed && resp.drag_started() {
-        let how = how(ui, in_gutter(ui.input(|i| i.pointer.press_origin())));
-        msgs.push(Msg::Diff(DiffMsg::StartLineDrag { hunk, line, how }));
+        msgs.push(Msg::Diff(DiffMsg::StartLineDrag { hunk, line, how: how(ui, changed) }));
     }
     if resp.clicked() {
-        let how = how(ui, in_gutter(resp.interact_pointer_pos()));
+        let how = how(ui, changed);
         if changed {
             msgs.push(Msg::Diff(DiffMsg::SelectDiffLine { hunk, line, how }));
         } else if how == LineClick::Only {
             msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));
         }
     }
-    LineHover { row, gutter: row && in_gutter(resp.hover_pos()) }
-}
-
-/// How a selectable line senses the pointer: changed lines can also be dragged across; other
-/// lines leave a drag to the scroll area.
-pub(super) fn line_sense(origin: char) -> Sense {
-    if matches!(origin, '+' | '-') { Sense::click_and_drag() } else { Sense::click() }
+    LineHover { gutter }
 }
 
 /// During a line drag, reports the row at `rect` (line `line` of hunk `hunk`; 0 for a hunk
