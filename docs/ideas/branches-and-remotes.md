@@ -33,6 +33,10 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   queries after the walk, and give them a handle of their own where it shows
 - Reading each local branch's upstream costs about 1 ms per branch even with every answer cached
   (config lookups); read the `branch.*` settings once per load
+- Cold first load is ~0.2-0.5 s slower since the merged flag moved out of the load: try one
+  bounded walk from HEAD for all tips when no earlier HEAD applies, or measure the separate
+  handle's empty object cache
+- No test covers the 50k-commit cap or a shallow repository through the merged-flag mark
 
 ### Force push with lease from any branch, and push to all remotes
 

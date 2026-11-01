@@ -95,6 +95,10 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Show which file of how many (e.g. 3 of 12) in the diff header
 - The header's Open action still looks the file up in the Unstaged list every frame
   (`diff_header::working_file_on_disk`); keep that in the header cache too
+- Key the stacked list's file order by a stamp on the stacked result, closing the same-frame
+  buffer-reuse gap
+- Enforce that every write of the status lists goes through `status_set` (private fields or a
+  source check)
 - Keep a wrapped line's indentation on its continuation lines
 - A marker in the gutter on continuation lines of a wrapped row
 - Wrap by display width so wide (CJK, emoji) characters count as two columns
