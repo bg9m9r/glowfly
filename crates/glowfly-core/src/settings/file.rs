@@ -41,8 +41,9 @@ impl LoadProblem {
     }
 }
 
-/// How long to wait before each new try at reading the settings file after one fails: a virus
-/// scanner or sync client holding it (a Windows sharing violation) lets go within moments.
+/// How long to wait before each new try at reading a file in the config folder (settings, recent
+/// repositories, tabs) after one fails: a virus scanner or sync client holding it (a Windows
+/// sharing violation) lets go within moments.
 pub const READ_WAITS: [Duration; 3] = [Duration::from_millis(40), Duration::from_millis(120), Duration::from_millis(350)];
 
 pub fn settings_file() -> Option<PathBuf> {
@@ -142,7 +143,8 @@ impl Settings {
 
     pub fn save_to(&self, path: &Path) -> std::io::Result<()> {
         let text = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
-        crate::persist::atomic_write(path, text.as_bytes())
+        // It names repositories, profiles, emails and trust decisions: for this user only.
+        crate::persist::write_file(path, text.as_bytes(), crate::persist::WriteOptions { private: true, ..Default::default() })
     }
 }
 

@@ -176,7 +176,8 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 
 ## `runner/platform.rs` and `platform/`: OS integration
 
-- `runner/platform.rs`: recent repositories and which listed folders are missing, open tabs, the file manager; `runner/platform/terminal.rs`: terminals.
+- `runner/platform.rs`: which listed folders are missing, the file manager; `runner/platform/terminal.rs`: terminals.
+- `runner/platform/state_files.rs`: the recent-repositories and open-tabs files (a bad line costs only itself, a failed read stops saves over the file, private on Unix); its tests in `state_files_tests.rs`.
 - `runner/platform/open_events.rs`: the inbox where the folders and links the OS hands over wait until the runner attaches.
 - `platform/mod.rs`: the window's glue with the OS, only for the shell and `main.rs` (the files below).
 - `platform/app_id.rs`: the installed Windows copy's app id, taken before the window opens.
