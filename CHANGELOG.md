@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.4.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.3.0-rc.1...v0.4.0-rc.1) (2026-11-01)
+
+
+### Features
+
+* an eight-theme lineup in four twin pairs, with Porcelain as the light default ([#460](https://github.com/bg9m9r/glowfly/issues/460)) ([10b1220](https://github.com/bg9m9r/glowfly/commit/10b12208054fdcfbcd6c4ac375d294515e77e94d)), closes [#434](https://github.com/bg9m9r/glowfly/issues/434)
+* group favorite repositories in the repository menu and welcome screen ([1339e99](https://github.com/bg9m9r/glowfly/commit/1339e990428369f8f2b2ca4a3363a6bdf8bf6c03)), closes [#239](https://github.com/bg9m9r/glowfly/issues/239)
+* move through commit, comparison and conflict file lists with the arrow keys ([52d0baf](https://github.com/bg9m9r/glowfly/commit/52d0baf4ee756ef6a4dfb30a726db76a6d992c41)), closes [#221](https://github.com/bg9m9r/glowfly/issues/221)
+* one shared state painter, segment bar and control sizes for the toolbar ([#459](https://github.com/bg9m9r/glowfly/issues/459)) ([c9b2302](https://github.com/bg9m9r/glowfly/commit/c9b230269ddd444938d8a0285b5025a8b09c2125)), closes [#408](https://github.com/bg9m9r/glowfly/issues/408)
+* select and copy code in diffs ([#461](https://github.com/bg9m9r/glowfly/issues/461)) ([ba22ab5](https://github.com/bg9m9r/glowfly/commit/ba22ab501009d3f89dd66f25171c4d35d9927aa0)), closes [#432](https://github.com/bg9m9r/glowfly/issues/432)
+* stage, unstage, open and discard files from the keyboard in the WIP lists ([a5ef54d](https://github.com/bg9m9r/glowfly/commit/a5ef54d41b5a3043f818ba5f91b8707ca70d3c95)), closes [#218](https://github.com/bg9m9r/glowfly/issues/218)
+
+
+### Bug fixes
+
+* ask about git-lfs programs and TLS/proxy settings, and re-check the patch export ([#390](https://github.com/bg9m9r/glowfly/issues/390)) ([911b6c1](https://github.com/bg9m9r/glowfly/commit/911b6c108f49bf3e1d5e194db229a91e45afd537)), closes [#363](https://github.com/bg9m9r/glowfly/issues/363)
+* base the date locale on LC_ALL, LC_TIME and LANG and the spell-check language on gettext's order on Linux ([69aba48](https://github.com/bg9m9r/glowfly/commit/69aba48eeae3e4d6d51da93674b7d9bd734a05eb)), closes [#233](https://github.com/bg9m9r/glowfly/issues/233)
+* close the New group and Rename group dialog after Create or Rename ([535ed01](https://github.com/bg9m9r/glowfly/commit/535ed019ca33b2d58fa86170393f60df3577ee57)), closes [#407](https://github.com/bg9m9r/glowfly/issues/407)
+* don't overwrite settings with defaults when the settings file can't be read ([#392](https://github.com/bg9m9r/glowfly/issues/392)) ([43214e0](https://github.com/bg9m9r/glowfly/commit/43214e08b99f53a1008d9605938d5fe8bb645633)), closes [#387](https://github.com/bg9m9r/glowfly/issues/387)
+* follow config programs that run tracked scripts, and re-check submodules before jobs ([77a71e1](https://github.com/bg9m9r/glowfly/commit/77a71e12b694fd664f74f96432a0b4b21f5f19e2)), closes [#277](https://github.com/bg9m9r/glowfly/issues/277)
+* keep recent repositories and saved tabs on a bad or unreadable file; write state files private on Unix ([a789a52](https://github.com/bg9m9r/glowfly/commit/a789a52e0621b6d81d14ef9b0a34310fc046f4d6)), closes [#388](https://github.com/bg9m9r/glowfly/issues/388)
+* keep the gap after italic text and beside inline code in rendered Markdown ([85c57b4](https://github.com/bg9m9r/glowfly/commit/85c57b4fa20aeede5ad0a18e056aaf871388f992)), closes [#230](https://github.com/bg9m9r/glowfly/issues/230)
+* make the drawn Windows title bar resize, drag, round and shadow like the system one ([40a3e9e](https://github.com/bg9m9r/glowfly/commit/40a3e9ee51e25e9b8755a36da3754c66ae61e57f)), closes [#229](https://github.com/bg9m9r/glowfly/issues/229)
+* open every Preferences page through one path ([563cb9a](https://github.com/bg9m9r/glowfly/commit/563cb9ace6c15f24e869005a354733adfc65c206)), closes [#369](https://github.com/bg9m9r/glowfly/issues/369)
+* refuse glowfly:// links whose URL is a file or network path ([e709174](https://github.com/bg9m9r/glowfly/commit/e709174bc73530c55a1bedff18f91555aefa7cf2)), closes [#364](https://github.com/bg9m9r/glowfly/issues/364)
+* replace the dead expired-key link with Extend by 2 years, and open links in-process on Windows ([#458](https://github.com/bg9m9r/glowfly/issues/458)) ([274290e](https://github.com/bg9m9r/glowfly/commit/274290e5991dd91229bdc5e363ac69c7d4dd5a90)), closes [#420](https://github.com/bg9m9r/glowfly/issues/420)
+* select diff lines from the gutter only, and nothing by default ([#451](https://github.com/bg9m9r/glowfly/issues/451)) ([73ac49f](https://github.com/bg9m9r/glowfly/commit/73ac49f305679c47419a77472bd2ed1c48791481)), closes [#431](https://github.com/bg9m9r/glowfly/issues/431)
+* validate repository-supplied remote and ref names before passing them to git ([#391](https://github.com/bg9m9r/glowfly/issues/391)) ([820ea2d](https://github.com/bg9m9r/glowfly/commit/820ea2d7bd2155699ed84b30f1121e4a88e2666d)), closes [#362](https://github.com/bg9m9r/glowfly/issues/362)
+
+
+### Performance
+
+* build the diff header's change rows, counts and file order once per change ([#396](https://github.com/bg9m9r/glowfly/issues/396)) ([27b409c](https://github.com/bg9m9r/glowfly/commit/27b409c5df8a23692244787077d788f633ca2e12)), closes [#379](https://github.com/bg9m9r/glowfly/issues/379)
+* diff only the selected file and its rename partner in commit and comparison views ([#398](https://github.com/bg9m9r/glowfly/issues/398)) ([caea4f1](https://github.com/bg9m9r/glowfly/commit/caea4f1c201a7867e8b8e55f478200ef69885f66)), closes [#382](https://github.com/bg9m9r/glowfly/issues/382)
+* keep the command palette's list between frames instead of rebuilding it ([992b5e8](https://github.com/bg9m9r/glowfly/commit/992b5e8438947e79723b58489226f0f6fa4d993c)), closes [#381](https://github.com/bg9m9r/glowfly/issues/381)
+* match pull request heads to loaded commits without a history scan per PR ([4703f38](https://github.com/bg9m9r/glowfly/commit/4703f383d0e3422212244df06508d509aab9e961)), closes [#380](https://github.com/bg9m9r/glowfly/issues/380)
+* space network-volume status polls from the end of the last read ([cd1e56f](https://github.com/bg9m9r/glowfly/commit/cd1e56f5cb64739ad171eedb7dde7225790ffc1e)), closes [#383](https://github.com/bg9m9r/glowfly/issues/383)
+* stop walking history per local branch on every load after HEAD moves ([819fb4c](https://github.com/bg9m9r/glowfly/commit/819fb4c0d957e57ba0182e56e9a3ee4a0ab5e998)), closes [#378](https://github.com/bg9m9r/glowfly/issues/378)
+* take submodule dirtiness from the whole status read instead of scanning each again ([#401](https://github.com/bg9m9r/glowfly/issues/401)) ([8971585](https://github.com/bg9m9r/glowfly/commit/8971585e47fbc6f522441cbe5f36ee6087793572)), closes [#384](https://github.com/bg9m9r/glowfly/issues/384)
+
 ## [0.3.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.2.0-rc.1...v0.3.0-rc.1) (2026-10-30)
 
 
