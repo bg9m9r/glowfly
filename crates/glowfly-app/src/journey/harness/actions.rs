@@ -4,36 +4,33 @@
 use super::super::find::{self, Pick, Region};
 use super::Journey;
 use eframe::egui;
+use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 
 impl Journey {
-    /// Clicks the widget labelled `label` in `region` with the mouse (a press and release at
-    /// its centre, as a user would, rather than an accessibility action) and waits until the
-    /// app is idle.
-    #[track_caller]
-    pub fn mouse_click(&mut self, label: &str, region: Region, pick: Pick<'_>) {
-        self.toasts.clear();
-        let pos = {
-            let Some(node) = find::find(&self.h, label, true, region, pick) else {
-                panic!("{}", self.missing("widget", label, region, pick))
-            };
-            node.hover();
-            find::centre(&node).expect("a widget on screen has bounds")
-        };
-        self.step();
-        for pressed in [true, false] {
-            let button = egui::PointerButton::Primary;
-            self.h.input_mut().events.push(egui::Event::PointerButton { pos, button, pressed, modifiers: egui::Modifiers::NONE });
-            self.step();
-        }
-        self.settle();
-    }
-
     /// Presses `key` with `modifiers` and waits until the app is idle.
     pub fn press_with(&mut self, modifiers: egui::Modifiers, key: egui::Key) {
         self.toasts.clear();
         self.h.press_key_modifiers(modifiers, key);
         self.settle();
+    }
+
+    /// The accessible name of the widget with the keyboard focus, if one has it.
+    pub fn focused_name(&self) -> Option<String> {
+        let node = self.h.query_by(|n| n.is_focused())?;
+        Some(node.label().or_else(|| node.value()).unwrap_or_default())
+    }
+
+    /// Presses Tab until the widget named `name` has the keyboard focus.
+    #[track_caller]
+    pub fn tab_to(&mut self, name: &str) {
+        for _ in 0..120 {
+            if self.focused_name().as_deref() == Some(name) {
+                return;
+            }
+            self.press(egui::Key::Tab);
+        }
+        panic!("Tab never reached {name:?} (last: {:?})", self.focused_name());
     }
 
     /// Runs a command from the palette: opens it, types `query` and clicks the row `row`.

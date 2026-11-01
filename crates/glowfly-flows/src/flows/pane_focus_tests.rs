@@ -3,12 +3,12 @@
 //! message as Go to the commit message does; Enter in the graph shows the details panel's file
 //! list; F6 goes round the panes that are drawn; Ctrl+C copies the selected commits' full IDs
 //! newest first; and the Cherry-pick and Revert command rows run the palette's entries for the
-//! selected commits.
+//! selected commits, which cherry-pick them oldest first or revert them newest first.
 
 use super::selection_tests::{fixture, up};
 use crate::effect::{Effect, UiEffect};
 use crate::keymap::{BindingId, KeyAction};
-use crate::msg::{LayoutMsg, Msg, RepoMsg, SelectionMsg};
+use crate::msg::{LayoutMsg, Msg, PaletteMsg, RepoMsg, SelectionMsg};
 use crate::state::layout::{Pane, Panel};
 use crate::state::palette::{PaletteCommand as C, entries};
 use crate::state::palette_bindings::command_for;
@@ -123,5 +123,31 @@ fn cherry_pick_and_revert_rows_run_the_palette_entries() {
     assert_eq!(listed(&st), ["Revert the selected commit"]);
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
     assert_eq!(listed(&st), ["Cherry-pick the 2 selected commits", "Revert the 2 selected commits"]);
+    let _ = std::fs::remove_dir_all(&f.dir);
+}
+
+/// The git command of the cherry-pick or revert job `fx` starts, if it starts one.
+fn pick_cmd(fx: &[Effect]) -> Option<Vec<String>> {
+    fx.iter().find_map(|e| match e {
+        Effect::Pick(j) => j.cmds.first().cloned(),
+        _ => None,
+    })
+}
+
+#[test]
+fn running_the_cherry_pick_and_revert_rows_sends_their_message() {
+    let (mut st, f) = fixture("pane-keys-pick-run");
+    // The side branch's commit, onto main: a cherry-pick.
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.side)));
+    let fx = up(&mut st, Msg::Palette(PaletteMsg::RunBoundCommand(C::PickSelected { revert: false })));
+    assert_eq!(pick_cmd(&fx), Some(vec!["cherry-pick".to_owned(), f.side.to_string()]));
+    st.job = None;
+    // Two of main's commits, newest first: a revert.
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(2))));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
+    let fx = up(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::PickSelected { revert: true })));
+    let cmd = pick_cmd(&fx).expect("a revert job");
+    assert_eq!(cmd[0], "revert");
+    assert!(cmd.ends_with(&[f.c(4).to_string(), f.c(2).to_string()]), "{cmd:?}");
     let _ = std::fs::remove_dir_all(&f.dir);
 }

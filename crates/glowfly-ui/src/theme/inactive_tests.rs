@@ -73,7 +73,7 @@ fn the_worked_out_value_keeps_the_rules() {
     // A palette that isn't a built-in (a theme file's) gets the worked-out value.
     let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {
-        let mut p = builtin(t).clone();
+        let mut p = *builtin(t);
         p.hover = Color32::from_rgb(p.hover.r() ^ 1, p.hover.g(), p.hover.b());
         assert_eq!(pinned(&p), None);
         let fill = selected_inactive(&p);
