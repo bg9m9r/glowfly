@@ -298,8 +298,8 @@ release notes dialog keeps working without it.
 
 ## Checking the installers
 
-The `Installers` workflow (`.github/workflows/installers.yml`) runs on every push and pull
-request (except ones that only touch `docs/`, `TODO.md` or `ROADMAP.md`). It builds the release
+The `Installers` workflow (`.github/workflows/installers.yml`) runs on pushes to main and on
+pull requests (except ones that only touch `docs/`, `TODO.md` or `ROADMAP.md`). It builds the release
 program, packages it twice with the scripts above (once as `v0.0.1`, once as the current
 version), and on a clean runner:
 

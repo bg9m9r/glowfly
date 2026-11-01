@@ -92,26 +92,57 @@ fn same_as_git_by(name: &str, a: &[&str], setup: &dyn Fn(&Path), split: bool) ->
     let [seed, bare, real, pinned] = twins(name, setup);
     remote_commit(&bare, "main", "r.txt", "r\n");
     let said = pull_both(&real, &pinned, a, split);
-    for d in [&seed, &bare, &real, &pinned] {
-        let _ = std::fs::remove_dir_all(d);
-    }
+    remove_twins(&[seed, bare, real, pinned]);
     said
 }
 
 /// An origin (with the repository it was pushed from) and two clones of it set up alike by
-/// `setup`: seed, origin, the clone git pull runs in, the one the split runs in.
+/// `setup`: seed, origin, the clone git pull runs in, the one the split runs in. They are a copy
+/// of `TWINS` in a folder of their own, the clones pointed at the copy's origin.
 fn twins(name: &str, setup: &dyn Fn(&Path)) -> [std::path::PathBuf; 4] {
-    let (seed, bare) = with_origin(name);
-    let clone = |n: &str| {
-        let dir = seed.with_file_name(format!("{}-{n}", seed.file_name().unwrap().to_string_lossy()));
-        let _ = std::fs::remove_dir_all(&dir);
-        git(dir.parent().unwrap(), &["-c", "core.autocrlf=false", "clone", "-q", &bare.display().to_string(), &dir.display().to_string()]);
-        set_config(&dir, TEST_CONFIG);
-        setup(&dir);
-        dir
-    };
-    let (real, pinned) = (clone("real"), clone("pinned"));
+    let group = scratch_copy(name, &TWINS);
+    let [seed, bare, real, pinned] = ["seed", "origin.git", "real", "pinned"].map(|d| group.join(d));
+    for d in [&seed, &real, &pinned] {
+        git(d, &["update-index", "-q", "--refresh"]);
+        set_config(d, &[("remote.origin.url", &bare.display().to_string())]);
+    }
+    setup(&real);
+    setup(&pinned);
     [seed, bare, real, pinned]
+}
+
+/// Removes what `twins` made, and the folder that held it.
+pub(super) fn remove_twins(dirs: &[std::path::PathBuf]) {
+    for d in dirs {
+        let _ = std::fs::remove_dir_all(d);
+    }
+    // Empty only when the folders were `twins`' (else the temporary folder, left alone).
+    if let Some(group) = dirs.first().and_then(|d| d.parent()) {
+        let _ = std::fs::remove_dir(group);
+    }
+}
+
+/// `twins`' repositories before `setup`, built once per test run (two clones by the CLI and a
+/// push) and copied for each comparison.
+static TWINS: crate::testkit::Template = crate::testkit::Template::new("pull-twins", build_twins);
+
+fn build_twins(group: &Path) {
+    let (seed, bare) = (group.join("seed"), group.join("origin.git"));
+    for d in [&seed, &bare] {
+        std::fs::create_dir_all(d).unwrap();
+    }
+    init_repo(&seed);
+    write(&seed, "a.txt", "one\n");
+    git(&seed, &["add", "."]);
+    git(&seed, &["commit", "-q", "-m", "first"]);
+    git(&bare, &["init", "-q", "--bare", "-b", "main"]);
+    git(&seed, &["remote", "add", "origin", &bare.display().to_string()]);
+    git(&seed, &["push", "-q", "-u", "origin", "main"]);
+    for n in ["real", "pinned"] {
+        let dir = group.join(n);
+        git(group, &["-c", "core.autocrlf=false", "clone", "-q", &bare.display().to_string(), &dir.display().to_string()]);
+        set_config(&dir, TEST_CONFIG);
+    }
 }
 
 /// The config both repositories of a comparison get.
@@ -227,31 +258,60 @@ fn local_commit(d: &Path) {
     git(d, &["commit", "-q", "-m", "local"]);
 }
 
+// A pinned pull ends as git pull does: one test per case, so they run side by side.
+
 #[test]
-fn a_pinned_pull_ends_as_git_pull_does() {
+fn a_pinned_merging_pull_ends_as_git_pull_does() {
     same_as_git("pull-same-log", &["pull"], &|d| {
         set_config(d, &[("pull.rebase", "false"), ("merge.log", "true")]);
         local_commit(d);
     });
+}
+
+#[test]
+fn a_pinned_no_ff_pull_ends_as_git_pull_does() {
     same_as_git("pull-same-noff", &["pull", "--no-ff", "--no-log"], &|d| set_config(d, &[("merge.log", "true")]));
+}
+
+#[test]
+fn a_pinned_rebasing_pull_that_fast_forwards_ends_as_git_pull_does() {
     same_as_git("pull-same-rebase-ff", &["pull"], &|d| set_config(d, &[("pull.rebase", "true")]));
+}
+
+#[test]
+fn a_pinned_rebasing_pull_ends_as_git_pull_does() {
     same_as_git("pull-same-rebase", &["pull", "--rebase"], &|d| {
         set_config(d, &[("pull.ff", "only")]);
         local_commit(d);
     });
-    same_as_git("pull-same-dirty", &["pull", "--rebase"], &|d| {
-        write(
-            d, "a.txt", "edited
-",
-        )
-    });
+}
+
+#[test]
+fn a_pinned_pull_into_a_dirty_tree_ends_as_git_pull_does() {
+    same_as_git("pull-same-dirty", &["pull", "--rebase"], &|d| write(d, "a.txt", "edited\n"));
+}
+
+#[test]
+fn a_pinned_ff_only_pull_ends_as_git_pull_does() {
     same_as_git("pull-same-ff-only", &["pull", "--ff-only"], &|d| {
         set_config(d, &[("pull.rebase", "true")]);
         local_commit(d);
     });
+}
+
+#[test]
+fn a_pinned_pull_with_invalid_config_ends_as_git_pull_does() {
     same_as_git("pull-same-invalid", &["pull"], &|d| set_config(d, &[("pull.rebase", "sometimes")]));
     same_as_git("pull-same-invalid-ff", &["pull"], &|d| set_config(d, &[("pull.ff", "maybe")]));
+}
+
+#[test]
+fn a_pinned_pull_of_a_named_branch_ends_as_git_pull_does() {
     same_as_git("pull-same-named", &["pull", "--rebase", "origin", "main"], &local_commit);
+}
+
+#[test]
+fn a_pinned_autostash_pull_ends_as_git_pull_does() {
     same_as_git("pull-same-autostash", &["pull", "--rebase", "--autostash"], &|d| write(d, "a.txt", "edited\n"));
 }
 
