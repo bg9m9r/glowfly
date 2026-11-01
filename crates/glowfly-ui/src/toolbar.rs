@@ -1,7 +1,7 @@
 //! Top toolbar, on the side panels' surface so the active tab runs into it: the repository ›
-//! branch pickers (`toolbar_pickers.rs`, in fixed slots so the bar never moves when the names
-//! change), then the git actions and app buttons, each group on its own recessed surface
-//! (`widgets::tool_group`) with even gaps between them (`widgets::tool_gap`). The middle groups
+//! branch pickers (`toolbar_pickers.rs`, one framed segment bar in fixed slots so the bar never
+//! moves when the names change), then the git actions and app buttons in borderless groups of
+//! quiet buttons (`widgets::tool_group`), each set apart by a divider (`widgets::tool_gap`). The middle groups
 //! (`toolbar_groups.rs`) follow the pickers, the pull request group shows only with a hosting
 //! service, and the right-hand group is anchored to the window's edge with the untrusted and
 //! conflict chips before it, so a chip appearing moves nothing else. In a narrow window the
@@ -169,7 +169,9 @@ fn widths(ui: &egui::Ui, st: &AppState, host: bool, room: f32, chips: f32) -> fo
     let slot = |key: &'static str, split: bool| groups::slot(ui, st, t.tr(key), split);
     let plain = |keys: &[&'static str]| groups::group_width(&keys.iter().map(|k| slot(k, false)).collect::<Vec<_>>());
     let gap = widgets::GROUP_GAP;
-    let sync = groups::group_width(&[slot("toolbar.pull.button", true), slot("toolbar.push.button", true)]);
+    // Pull's caret is followed by Push: `SPLIT_GAP` between them, not the group's spacing.
+    let split_gap = widgets::SPLIT_GAP - widgets::TOOL_SPACING;
+    let sync = groups::group_width(&[slot("toolbar.pull.button", true), slot("toolbar.push.button", true)]) + split_gap;
     let right = plain(&["toolbar.search.button", "toolbar.activity.button", "toolbar.refresh.button"]);
     let pr = if host { gap + groups::group_width(&[slot("toolbar.pr.button", true)]) } else { 0.0 };
     let in_right = |key| slot(key, false) + widgets::TOOL_SPACING;

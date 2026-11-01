@@ -5,6 +5,7 @@ use super::{help, row};
 use crate::msg::{ForgeMsg, Msg};
 use crate::state::trello::BoardList;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::form_message::{self, Message};
@@ -65,7 +66,7 @@ pub(super) fn board_row(ui: &mut Ui, account: &Account, board: &str, board_name:
             });
         } else if let Some(e) = &list.error {
             form_message::line(ui, Message::error(e.as_str()));
-            if ui.add(buttons::secondary("Try again").small()).clicked() {
+            if ui.add(buttons::secondary("Try again").size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::Forge(ForgeMsg::LoadTrelloBoards(account.clone())));
             }
         } else if !board.is_empty() && list.account.as_ref() == Some(account) && !list.has(board) {

@@ -8,6 +8,7 @@ use super::widgets::{self, Icon, TextField, buttons};
 use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
 use crate::state::repo_lists::favorite_label;
 use crate::state::repo_scan::{FinderRow, RepoScan, matches};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, Response, RichText, Sense, vec2};
 use glowfly_core::i18n::Lang;
@@ -39,7 +40,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, filter: &mut String, lists: FinderLists, 
         ui.label(RichText::new(t.tr("finder.no_folders")).color(color::weak()));
     }
     ui.horizontal(|ui| {
-        if ui.add(buttons::secondary(t.tr("finder.add_folder.button")).small()).clicked() {
+        if ui.add(buttons::secondary(t.tr("finder.add_folder.button")).size(ControlSize::Small)).clicked() {
             msgs.push(Msg::Repos(ReposMsg::AddFolder));
         }
         if !folders.is_empty() && look_again(ui, t).clicked() {

@@ -1,4 +1,5 @@
-//! The design tokens that aren't colours: the corner scale (`radius`), the state-layer amounts,
+//! The design tokens that aren't colours: the corner scale (`radius`, with a segment's corners),
+//! the border width, the least hit area and a split's caret width, the state-layer amounts,
 //! the two elevations (`Elevation`, `shadow`), the focus ring and the text field's halo, and the
 //! motion timings (`motion`). Every theme reads the same tokens; the colour tokens worked out
 //! from the palette (surfaces, layers, tones) are in `surfaces.rs`.
@@ -8,7 +9,7 @@
 //! hand-made accent focus ring in its place.
 
 use super::color::{self, Palette};
-use eframe::egui::{Color32, Painter, Rect, Shadow, Stroke, StrokeKind};
+use eframe::egui::{Color32, CornerRadius, Painter, Rect, Shadow, Stroke, StrokeKind};
 
 /// The corner scale, in px. Containers use nested radii: the outer corner is the inner one
 /// plus the padding between them (`around`), so a group's corners and its contents' stay
@@ -56,7 +57,25 @@ pub mod radius {
     pub const fn right(r: u8) -> CornerRadius {
         CornerRadius { nw: 0, sw: 0, ne: r, se: r }
     }
+
+    /// The corners of one segment of a bar with `outer` corners: the left ones on the `first`
+    /// segment, the right ones on the `last`, square where segments meet.
+    pub const fn segment(outer: u8, first: bool, last: bool) -> CornerRadius {
+        let (l, r) = (if first { outer } else { 0 }, if last { outer } else { 0 });
+        CornerRadius { nw: l, sw: l, ne: r, se: r }
+    }
 }
+
+/// A control's or container's border width.
+pub const BORDER_W: f32 = 1.0;
+/// The least hit area's side: a target is never smaller than this square, and never smaller
+/// than what it paints.
+pub const HIT_MIN: f32 = 24.0;
+/// A split control's caret half: never narrower than the least hit area.
+pub const CARET_HIT_W: f32 = HIT_MIN;
+/// How far a full-height divider between segments stops short of its bar's outer edge: it
+/// meets the border.
+pub const DIVIDER_INSET: f32 = BORDER_W;
 
 /// State layers: how far a hovered, pressed or latched (a toggle that stays on, an open menu's
 /// caret) control moves from its surface toward `text`.
@@ -102,14 +121,19 @@ const HALO_W: f32 = 3.0;
 const HALO_ALPHA: f32 = 0.22;
 
 /// The focus ring of a standalone control at `rect` with `r` corners: 2 px of accent, 2 px
-/// outside it, its corners following the control's.
-pub fn focus_ring(p: &Painter, rect: Rect, r: u8) {
+/// outside it, each corner following the control's.
+pub fn focus_ring(p: &Painter, rect: Rect, r: impl Into<CornerRadius>) {
+    let r = r.into();
+    let g = FOCUS_GAP as u8;
+    let around =
+        CornerRadius { nw: radius::around(r.nw, g), ne: radius::around(r.ne, g), sw: radius::around(r.sw, g), se: radius::around(r.se, g) };
     let stroke = Stroke::new(FOCUS_W, color::accent());
-    p.rect_stroke(rect.expand(FOCUS_GAP), radius::around(r, FOCUS_GAP as u8), stroke, StrokeKind::Outside);
+    p.rect_stroke(rect.expand(FOCUS_GAP), around, stroke, StrokeKind::Outside);
 }
 
-/// The focus ring of a control packed in a row or group: 1.5 px of accent inside its edge.
-pub fn focus_ring_inset(p: &Painter, rect: Rect, r: u8) {
+/// The focus ring of a control packed in a row or group: 1.5 px of accent inside its edge, on
+/// its exact corners (a segment's own, square where it meets its neighbour).
+pub fn focus_ring_inset(p: &Painter, rect: Rect, r: impl Into<CornerRadius>) {
     p.rect_stroke(rect, r, Stroke::new(FOCUS_INSET_W, color::accent()), StrokeKind::Inside);
 }
 

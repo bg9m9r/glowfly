@@ -11,6 +11,7 @@ use crate::state::rebase::{Editing, RebasePanel};
 use crate::ui::spell_edit::spell_text_edit;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
@@ -60,11 +61,11 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
                         }
                         ui.horizontal(|ui| {
                             let save = match editing {
-                                Editing::Message(_) | Editing::Combined(_) => buttons::primary("Update message").small(),
+                                Editing::Message(_) | Editing::Combined(_) => buttons::primary("Update message").size(ControlSize::Small),
                                 Editing::Command(_) => {
                                     let typed = !panel.draft.trim().is_empty();
                                     let why = (!typed).then_some(t.tr("rebase.editor.command_empty.why"));
-                                    buttons::primary(t.tr("rebase.editor.save.button")).small().enabled(typed).why(why)
+                                    buttons::primary(t.tr("rebase.editor.save.button")).size(ControlSize::Small).enabled(typed).why(why)
                                 }
                             };
                             if ui.add(save).clicked() {
@@ -72,13 +73,13 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
                             }
                             if matches!(editing, Editing::Combined(_))
                                 && ui
-                                    .add(buttons::secondary("Use git's message").small())
+                                    .add(buttons::secondary("Use git's message").size(ControlSize::Small))
                                     .on_hover_text("Forget the typed message")
                                     .clicked()
                             {
                                 send(msgs, RebaseMsg::RebaseResetCombined);
                             }
-                            if ui.add(buttons::secondary(t.tr("common.cancel.button")).small()).clicked() {
+                            if ui.add(buttons::secondary(t.tr("common.cancel.button")).size(ControlSize::Small)).clicked() {
                                 send(msgs, RebaseMsg::RebaseCancelMessage);
                             }
                         });

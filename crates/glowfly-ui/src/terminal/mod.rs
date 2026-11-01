@@ -20,6 +20,7 @@ use crate::state::terminal::{SessionStatus, TermSession, maximized_shown};
 use crate::state::{AppState, PrefPage};
 use crate::ui::common::menu_item_if;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, RichText};
 use glowfly_core::i18n::Lang;
@@ -143,7 +144,7 @@ fn exit_strip(ui: &mut egui::Ui, code: Option<u32>, msgs: &mut Vec<Msg>) {
                 None => "Process exited".to_owned(),
             };
             ui.label(RichText::new(text).color(color::text()));
-            if ui.add(buttons::secondary("Restart").small()).clicked() {
+            if ui.add(buttons::secondary("Restart").size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::Terminal(TerminalMsg::Restart));
             }
         });

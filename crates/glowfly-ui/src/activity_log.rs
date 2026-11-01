@@ -14,6 +14,7 @@ use crate::state::AppState;
 use crate::state::activity_copy::copy_log_blocked;
 use crate::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
 use crate::state::tip::Tip;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::Icon;
 use crate::ui::widgets::ghost::{self, divider, ghost, icon_tip};
 use crate::ui::widgets::menu::popup_below;
@@ -25,7 +26,7 @@ pub(super) const HEADER_H: f32 = 40.0;
 /// The panel's side margin, which the hairline runs through.
 pub(super) const SIDE: f32 = 8.0;
 /// The right cluster: four buttons, the gaps between its five items and the divider.
-const RIGHT_W: f32 = 4.0 * ghost::HEIGHT + 4.0 * ghost::SPACE + ghost::DIVIDER_W;
+const RIGHT_W: f32 = 4.0 * ControlSize::Regular.metrics().h + 4.0 * ghost::SPACE + ghost::DIVIDER_W;
 
 /// The panel's frame: its surface, 8 px at the sides and 6 px under the list; the header starts
 /// at the top edge.
@@ -66,7 +67,7 @@ fn header(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let mut l = ui.new_child(UiBuilder::new().max_rect(left).layout(Layout::left_to_right(Align::Center)));
     let t = st.settings.lang();
     let tabs: Vec<(LogKind, &str, &str)> = LogKind::ALL.iter().map(|&k| (k, k.name(t), k.tip(t))).collect();
-    if let Some(kind) = segmented(&mut l, st.logs.tab, &tabs) {
+    if let Some(kind) = segmented(&mut l, ControlSize::Regular, st.logs.tab, &tabs) {
         msgs.push(Msg::Logs(LogsMsg::Show(kind)));
     }
     let x = rect.x_range().expand(SIDE);
@@ -79,7 +80,8 @@ fn buttons(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let keys = &st.keymap;
     let hide = t.tr("logs.header.hide");
-    let hide_clicked = icon_tip(ghost(ui, Some(Icon::ChevronDown), None, hide, true), keys, t, Tip::new(hide)).clicked();
+    let hide_clicked =
+        icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::ChevronDown), None, hide, true), keys, t, Tip::new(hide)).clicked();
     divider(ui);
     more(ui, st, msgs);
     let open = t.tr("logs.header.open_folder");
@@ -87,14 +89,14 @@ fn buttons(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         Some(dir) => glowfly_core::native_path::shown(dir),
         None => t.tr("logs.header.open_folder.tip").to_owned(),
     };
-    if icon_tip(ghost(ui, Some(Icon::Folder), None, open, true), keys, t, Tip::new(open).body(body)).clicked() {
+    if icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::Folder), None, open, true), keys, t, Tip::new(open).body(body)).clicked() {
         msgs.push(Msg::Logs(LogsMsg::OpenFolder));
     }
     let (icon, name, tip, msg) = match st.logs.tab {
         LogKind::Activity => (Icon::Eraser, t.tr("logs.header.clear"), t.tr("logs.header.clear.tip"), Msg::ClearLog),
         kind => (Icon::Refresh, t.tr("logs.header.reload"), t.tr("logs.header.reload.tip"), Msg::Logs(LogsMsg::Show(kind))),
     };
-    if icon_tip(ghost(ui, Some(icon), None, name, true), keys, t, Tip::new(name).body(tip)).clicked() {
+    if icon_tip(ghost(ui, ControlSize::Regular, Some(icon), None, name, true), keys, t, Tip::new(name).body(tip)).clicked() {
         msgs.push(msg);
     }
     if hide_clicked {
@@ -107,7 +109,7 @@ fn more(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let name = t.tr("logs.header.more");
     let id = ui.make_persistent_id("logs-more");
-    let r = icon_tip(ghost(ui, Some(Icon::More), None, name, true), &st.keymap, t, Tip::new(name));
+    let r = icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::More), None, name, true), &st.keymap, t, Tip::new(name));
     if r.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }

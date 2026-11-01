@@ -8,6 +8,7 @@ use crate::state::diff_header::HeaderModel;
 use crate::state::diff_nav::{Counter, StepKind};
 use crate::state::tip::Tip;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::Icon;
 use eframe::egui::{Label, RichText, Ui};
 use glowfly_core::i18n::Lang;
@@ -61,7 +62,7 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, counter: bool, keys: &Keymap, t
             ui.add_space(SPACE);
         }
         let (id, text) = step_text(t, forward, kind);
-        let resp = ghost(ui, Some(icon), None, name, kind != StepKind::End);
+        let resp = ghost(ui, ControlSize::Regular, Some(icon), None, name, kind != StepKind::End);
         let resp = icon_tip(resp, keys, t, Tip::new(text).keys(id));
         if resp.clicked() {
             msgs.push(Msg::Diff(DiffMsg::JumpToChange(if forward { 1 } else { -1 })));

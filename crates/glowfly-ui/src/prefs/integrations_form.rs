@@ -5,6 +5,7 @@
 use super::{field_left, field_width, help, primary_button, row, text_field, trello};
 use crate::msg::{ForgeMsg, Msg, PrefsMsg};
 use crate::state::PrefsState;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, controls, type_scale};
 use crate::ui::widgets::form_message::{self, Message};
@@ -35,7 +36,7 @@ pub fn account_card(ui: &mut Ui, c: &Connection, msgs: &mut Vec<Msg>) {
     egui::Frame::new().fill(color::raised()).corner_radius(radius::SM).inner_margin(egui::Margin::symmetric(16, 12)).show(ui, |ui| {
         ui.set_width((w - 32.0).max(0.0));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.add(buttons::secondary("Disconnect").small()).clicked() {
+            if ui.add(buttons::secondary("Disconnect").size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {

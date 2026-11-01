@@ -11,6 +11,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::activity_rows::output_of;
 use crate::state::logs::LogEntry;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Color32, CornerRadius, Margin, RichText, Stroke, Ui};
@@ -36,16 +37,16 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>
             }
             ui.horizontal(|ui| {
                 if let Some(label) = st.logs.fix_label(e.id)
-                    && ui.add(buttons::primary(label).small()).clicked()
+                    && ui.add(buttons::primary(label).size(ControlSize::Small)).clicked()
                 {
                     msgs.push(Msg::Logs(LogsMsg::Fix(e.id)));
                 }
                 if let Some(alt) = st.logs.alt_fix(e.id)
-                    && ui.add(buttons::secondary(&alt.label).small()).clicked()
+                    && ui.add(buttons::secondary(&alt.label).size(ControlSize::Small)).clicked()
                 {
                     msgs.push(Msg::Logs(LogsMsg::AltFix(e.id)));
                 }
-                if ui.add(buttons::secondary(t.tr("logs.activity.copy.button")).small()).clicked() {
+                if ui.add(buttons::secondary(t.tr("logs.activity.copy.button")).size(ControlSize::Small)).clicked() {
                     msgs.push(Msg::Logs(LogsMsg::CopyEntry(e.id)));
                 }
             });

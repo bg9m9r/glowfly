@@ -19,6 +19,7 @@ use crate::state::AppState;
 use crate::state::file_folds::FileListId;
 use crate::state::lfs::TrackContext;
 use crate::state::list_keys::FileList;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
@@ -95,8 +96,9 @@ pub(super) fn panel(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut 
     // Only graph rows are compared (a stash selected in the sidebar isn't one).
     if st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&d.oid)) {
         gap(ui, CHIPS_GAP);
-        let compare =
-            buttons::secondary(t.tr("details.commit.compare_workdir.button")).small().tip(t.tr("details.commit.compare_workdir.tip"));
+        let compare = buttons::secondary(t.tr("details.commit.compare_workdir.button"))
+            .size(ControlSize::Small)
+            .tip(t.tr("details.commit.compare_workdir.tip"));
         if ui.add(compare).clicked() {
             msgs.push(Msg::Selection(SelectionMsg::CompareWithWorkdir(d.oid)));
         }

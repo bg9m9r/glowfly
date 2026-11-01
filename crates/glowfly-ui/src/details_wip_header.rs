@@ -10,6 +10,7 @@ use crate::msg::{Msg, StageMsg, WorkFileMsg};
 use crate::ui::access;
 use crate::ui::common::{menu_danger, menu_item};
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons::{self, StyledButton};
 use crate::ui::widgets::menu::separator;
@@ -55,7 +56,7 @@ impl HeaderAction {
 
     /// The button: quiet and small, as every action in a list header.
     fn button<'a>(self, t: Lang, tip: Option<&'a str>) -> StyledButton<'a> {
-        let b = buttons::quiet(self.label(t)).small();
+        let b = buttons::quiet(self.label(t)).size(ControlSize::Small);
         match tip {
             Some(tip) => b.tip(tip),
             None => b,

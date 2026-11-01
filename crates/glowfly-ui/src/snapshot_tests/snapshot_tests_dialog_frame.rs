@@ -7,6 +7,7 @@ use super::snapshot_check::CheckSnapshot;
 use super::theme::color::{self, Palette};
 use super::theme::{self, apply_style, egui_theme};
 use super::widgets::buttons;
+use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{self, Id, Vec2, vec2};
 use egui_kittest::Harness;
@@ -37,7 +38,7 @@ fn render_buttons(name: &str, p: Palette) {
                 r.request_focus();
                 first = false;
             }
-            ui.add(buttons::secondary("Browse…").small());
+            ui.add(buttons::secondary("Browse…").size(ControlSize::Small));
         });
     });
     h.run();

@@ -12,6 +12,7 @@ use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::changes::{SaveChangesForm, blocked, rows, untracked_count};
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Sense};
@@ -78,10 +79,10 @@ fn checklist(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: &Snapshot) {
     let files = rows(snap, form.scope);
     let ticked = files.iter().filter(|f| form.chosen.contains(&f.path)).count();
     ui.horizontal(|ui| {
-        if ui.add(buttons::secondary("Select all").small()).clicked() {
+        if ui.add(buttons::secondary("Select all").size(ControlSize::Small)).clicked() {
             form.chosen.extend(files.iter().map(|f| f.path.clone()));
         }
-        if ui.add(buttons::secondary("Select none").small()).clicked() {
+        if ui.add(buttons::secondary("Select none").size(ControlSize::Small)).clicked() {
             form.chosen.clear();
         }
         let noun = if files.len() == 1 { "file" } else { "files" };

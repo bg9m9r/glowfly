@@ -2,6 +2,7 @@ window 1400x820
 Label "Glowfly 0.1.0"
 Button "New tab"
 Button "demo"
+Button "main"
 Heading "Favorites"
 Button "C:\\work\\web-app"
 Button "Remove from favorites"
@@ -22,7 +23,6 @@ Button "Pull all listed repositories"
 Button "Add this repository to favorites"
 Button "Remove missing entry (1)…"
 Button "Clear recent…"
-Button "main"
 Button "Undo the last action" [disabled]
 Button "Redo the undone action" [disabled]
 Button "Pull the current branch" [disabled]

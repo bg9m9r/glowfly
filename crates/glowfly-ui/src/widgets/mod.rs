@@ -9,8 +9,9 @@
 //! menu items marked with an info icon whose reason shows on hover or focus (or that open a
 //! setting first) in `menu_reason.rs`, and a submenu's open delay, close grace and placement in
 //! `menu_submenu.rs` (opened from the keyboard: `menu_submenu_keyed.rs`), and opening menus from
-//! a button with the keyboard too in `menu_open.rs`. The toolbar's buttons, toggles, split buttons, caret and
-//! group surfaces are in `tool.rs`. The tab bars' painted close × and new-tab + are in
+//! a button with the keyboard too in `menu_open.rs`. The toolbar's buttons, toggles, split buttons, caret,
+//! borderless groups and the dividers between them are in `tool.rs`, and the flush segments of a
+//! segment bar (the pickers, a split) in `segment_bar.rs`. The tab bars' painted close × and new-tab + are in
 //! `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
 //! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
@@ -46,6 +47,7 @@ pub mod row_fill;
 pub mod row_menu;
 pub mod scroll_cue;
 pub mod section_header;
+pub mod segment_bar;
 pub mod segmented;
 pub mod severity;
 pub mod tab_glyph;
@@ -71,6 +73,7 @@ pub use tool::*;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 
@@ -152,7 +155,7 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> R
 /// tipped `tooltip`.
 pub fn icon_button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
     // Disabled (e.g. inside `add_enabled_ui`): faint, inert, and still explained on hover.
-    ui.add(buttons::icon_only(icon, tooltip).small().enabled(ui.is_enabled()).why(Some(tooltip)))
+    ui.add(buttons::icon_only(icon, tooltip).size(ControlSize::Small).enabled(ui.is_enabled()).why(Some(tooltip)))
 }
 
 /// A small clickable painted icon with a tooltip, for icons the fonts lack (star, cross).

@@ -44,6 +44,7 @@ use crate::state::build_status::MAX_SEEN;
 use crate::state::graph_rows::{DisplayRow, GraphRows};
 use crate::state::tip::Tip;
 use crate::state::worktrees::{open_blocked, wip_tooltip};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::{Icon, ghost, tooltip};
 use crate::worktree::WorktreeMsg;
@@ -157,7 +158,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let anchor = select::anchor(selection);
         let keymap = &st.keymap;
         let ghost_text = t.tr("graph.ghost_branch.button");
-        let ghost_w = ghost::small_width(ui, true, ghost_text);
+        let ghost_w = ghost::ghost_width(ui, ControlSize::Compact, true, Some(ghost_text), 0.0);
         let out = area.show_rows(ui, ROW_H, shown_rows, |ui, range| {
             let last = range.end.min(total);
             for row in range {
@@ -270,7 +271,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         let id = ui.id().with(("ghost-branch", c.oid));
                         let clip = cols.rect(cols.cell.refs, rect);
                         let label = labelled.then_some(ghost_text);
-                        let g = ghost::small_ghost_at(ui, id, r, clip, Icon::Plus, label, ghost_text);
+                        let g = ghost::ghost_at(ui, id, r, clip, ControlSize::Compact, Icon::Plus, label, ghost_text);
                         let tip = || Tip::new(t.tr("graph.ghost_branch.tip")).keys(BindingId::CreateBranch);
                         if tooltip::attach(g, keymap, t, tip).clicked() {
                             msgs.push(Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }));

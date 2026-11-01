@@ -203,3 +203,24 @@ fn apply_style_installs_the_tokens() {
         assert_eq!(modal_frame(&ctx, &p).fill, p.panel);
     }
 }
+
+#[test]
+fn a_framed_tool_bar_edge_reads_on_the_backing() {
+    for (name, p, _) in palettes() {
+        if p.dark {
+            assert_eq!(p.tool_edge(), p.border, "{name}: dark palettes keep the border");
+        } else {
+            let (edge, border) = (ratio(p.tool_edge(), p.tool_backing()), ratio(p.border, p.tool_backing()));
+            assert!(edge > border, "{name}: the edge reads more than the border ({edge:.2} against {border:.2})");
+        }
+    }
+    // Every built-in light palette: the picker edge reads at least 1.5:1 on its fill.
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        if !p.dark {
+            let r = ratio(p.tool_edge(), p.tool_backing());
+            assert!(r >= 1.5, "{t:?}: the picker edge on the tool backing {r:.2}");
+        }
+    }
+    assert_eq!(GARDEN_LIGHT.tool_edge(), mix(GARDEN_LIGHT.border, GARDEN_LIGHT.text, 0.22));
+}

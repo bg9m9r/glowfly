@@ -3,12 +3,17 @@
 
 use super::*;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::surfaces::Tone;
 use crate::ui::theme::tokens::FOCUS_GAP;
 use crate::ui::widgets::button_look::{Look, Press, look, look_for};
 use crate::ui::widgets::button_split::CARET_W;
 use eframe::egui::{Color32, Rect, Shape, Stroke};
 use egui_kittest::kittest::Queryable;
+
+/// The Regular and Small heights.
+const HEIGHT: f32 = ControlSize::Regular.metrics().h;
+const SMALL_HEIGHT: f32 = ControlSize::Small.metrics().h;
 
 /// Makes a button of one kind.
 type Make = fn(&'static str) -> StyledButton<'static>;
@@ -83,20 +88,27 @@ fn sizes_meet_the_minimums() {
             let r = ui.add(make(name));
             assert_eq!(r.rect.height(), HEIGHT, "{name}: default height at body size");
             assert_eq!(r.rect.width(), make(name).desired_width(ui), "{name}: the width it said");
-            let r = ui.add(make(name).small());
+            let r = ui.add(make(name).size(ControlSize::Small));
             assert_eq!(r.rect.height(), SMALL_HEIGHT, "{name}: small height at the small step");
-            assert!(make(name).small().desired_width(ui) < make(name).desired_width(ui), "{name}: small text is narrower");
+            assert!(make(name).size(ControlSize::Small).desired_width(ui) < make(name).desired_width(ui), "{name}: small text is narrower");
         }
         let text_h = |b: StyledButton| b.galley(ui).size().y;
         let room = |h: f32, b: StyledButton| (h - text_h(b)) / 2.0;
-        assert!(room(SMALL_HEIGHT, secondary("Retry").small()) >= 3.5, "a small button's text has room inside its edge");
+        assert!(room(SMALL_HEIGHT, secondary("Retry").size(ControlSize::Small)) >= 3.5, "a small button's text has room inside its edge");
         assert!(
-            (room(SMALL_HEIGHT, secondary("Retry").small()) - room(HEIGHT, secondary("Retry"))).abs() <= 1.0,
+            (room(SMALL_HEIGHT, secondary("Retry").size(ControlSize::Small)) - room(HEIGHT, secondary("Retry"))).abs() <= 1.0,
             "small and default buttons give their text about the same room"
         );
         let r = ui.add(secondary("Stage hunk").height(17.0).min_width(120.0));
         assert_eq!(r.rect.height(), 17.0, "an exact height");
         assert_eq!(r.rect.width(), 120.0, "the least width still applies");
+        assert_eq!(quiet("Fetch").desired_width(ui), secondary("Fetch").desired_width(ui), "quiet and framed: 12 px beside the text");
+        let small_quiet = quiet("Fetch").size(ControlSize::Compact);
+        assert_eq!(small_quiet.desired_width(ui) - small_quiet.galley(ui).size().x, 16.0, "Compact quiet: 8 px each side");
+        let r = ui.add(quiet("Fetch").size(ControlSize::Compact));
+        assert_eq!(r.rect.height(), 22.0, "Compact is 22 px");
+        let r = ui.add(secondary("Commit").size(ControlSize::Large));
+        assert_eq!(r.rect.height(), 36.0, "Large is 36 px");
         let plain = secondary("Fetch").desired_width(ui);
         assert_eq!(secondary("Fetch").icon(Icon::Refresh).desired_width(ui), plain + icon::SIZE_MD + 6.0, "an icon widens it");
     });
@@ -109,8 +121,9 @@ fn icon_only_is_square_and_named() {
         let r = ui.add(icon_only(Icon::Refresh, "Refresh"));
         assert_eq!(r.rect.size(), vec2(HEIGHT, HEIGHT));
         assert_eq!(icon_only(Icon::Refresh, "Refresh").desired_width(ui), HEIGHT);
-        let r = ui.add(icon_only(Icon::Close, "Close").small());
+        let r = ui.add(icon_only(Icon::Close, "Close").size(ControlSize::Small));
         assert_eq!(r.rect.size(), vec2(SMALL_HEIGHT, SMALL_HEIGHT));
+        assert_eq!(icon_only(Icon::Close, "Close").size(ControlSize::Small).icon_size(), icon::SIZE_MD, "the size's icon");
     });
     h.run();
     h.get_by_label("Refresh").hover();
@@ -152,6 +165,11 @@ fn looks_follow_the_kind_and_state() {
     for kind in [Kind::Primary, Kind::Tonal, Kind::Secondary, Kind::Danger] {
         assert_eq!(look_for(&p, kind, false, Press::Hover), Look { fill: p.raised, ink: p.weak, edge: Stroke::NONE }, "{kind:?}");
     }
+    let dq = |press| look_for(&p, Kind::DangerQuiet, true, press);
+    assert_eq!(dq(Press::Rest), Look { fill: Color32::TRANSPARENT, ink: p.danger, edge: Stroke::NONE }, "quiet danger has no fill at rest");
+    assert_eq!(dq(Press::Hover).fill, p.wash(p.danger, 0.12));
+    assert_eq!(dq(Press::Pressed).fill, p.wash(p.danger, 0.18));
+    assert_eq!(look_for(&p, Kind::DangerQuiet, false, Press::Hover).ink, p.faint);
     let tonal = look_for(&p, Kind::Tonal, true, Press::Rest);
     assert_eq!((tonal.fill, tonal.ink), (p.tonal_fill(), p.tonal_ink(p.tonal_fill())));
     color::set_palette(&p);
@@ -226,4 +244,20 @@ fn the_split_halves_click_apart() {
         h.run();
         assert_eq!((h.state().main, h.state().caret), (u32::from(main_on), 1), "the action alone");
     }
+}
+
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "can't be Compact")]
+fn a_framed_compact_button_panics_in_debug_builds() {
+    let _ = secondary("Fetch").size(ControlSize::Compact);
+}
+
+#[test]
+fn quiet_kinds_take_compact() {
+    let _ = quiet("Fetch").size(ControlSize::Compact);
+    let _ = danger_quiet("Discard").size(ControlSize::Compact);
+    let _ = icon_only(Icon::Close, "Close").size(ControlSize::Compact);
+    assert!(!Kind::Quiet.framed() && !Kind::DangerQuiet.framed());
+    assert!(Kind::Primary.framed() && Kind::Secondary.framed() && Kind::Danger.framed() && Kind::Tonal.framed());
 }

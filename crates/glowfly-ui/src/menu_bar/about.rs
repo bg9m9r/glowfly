@@ -6,6 +6,7 @@ use crate::msg::{AppMsg, Msg};
 use crate::state::git_env::GitState;
 use crate::state::menu_bar::{LICENSE, PRIVACY, WEBSITE, git_line, version_info};
 use crate::ui::dialog_frame::{Cx, Dialog, Footer};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::buttons;
 use eframe::egui;
 
@@ -24,10 +25,10 @@ pub(crate) fn about(ui: &mut egui::Ui, cx: Cx, git: &GitState, version: &str, ms
         }
         ui.add_space(8.0);
         ui.horizontal(|ui| {
-            if ui.add(buttons::secondary(t.tr("about.notices.button")).small()).clicked() {
+            if ui.add(buttons::secondary(t.tr("about.notices.button")).size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::App(AppMsg::ShowNotices));
             }
-            if ui.add(buttons::secondary(t.tr("about.privacy.button")).small()).clicked() {
+            if ui.add(buttons::secondary(t.tr("about.privacy.button")).size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::OpenUrl(PRIVACY.to_owned()));
             }
         });

@@ -101,6 +101,7 @@ pub(super) fn sync(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Opti
         if attach(r, keys, t, || tips::pull(st)).clicked() {
             msgs.push(Msg::git("Pull", &["pull", "--ff"]));
         }
+        widgets::split_gap(ui);
         let push = (Icon::Push, t.tr("toolbar.push.button"), t.tr("toolbar.push.name"));
         let menu = (t.tr("toolbar.push_menu"), if host.is_some() { 260.0 } else { 200.0 }, rules::busy_blocked(st).is_none());
         let r = split(ui, "push-menu", push, rules::push_blocked(st).is_none(), labels, menu, |ui| push_items(ui, st, snap, host, msgs));
@@ -169,10 +170,10 @@ pub(super) fn files(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, msgs: &mu
     });
 }
 
-/// A group's width around buttons `slots` wide: their spacing, the group's padding and stroke.
+/// A borderless group's width around buttons `slots` wide: the buttons and their spacing.
 pub(super) fn group_width(slots: &[f32]) -> f32 {
     let n = slots.len() as f32;
-    slots.iter().sum::<f32>() + widgets::TOOL_SPACING * (n - 1.0).max(0.0) + 2.0 * (widgets::GROUP_PAD as f32 + 1.0)
+    slots.iter().sum::<f32>() + widgets::TOOL_SPACING * (n - 1.0).max(0.0)
 }
 
 /// A tool button's width for its caption `label`; a split button's adds its caret.

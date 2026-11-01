@@ -10,6 +10,7 @@ use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::{KeysPage, Pending};
 use crate::ui::shortcuts::Caps;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets;
@@ -47,14 +48,14 @@ pub fn row(ui: &mut Ui, t: Lang, b: &'static Binding, keys: &Keymap, page: &Keys
             }
             let chords = keys.chords(b.id);
             let back = if b.defaults.is_empty() { "Back to no key".to_owned() } else { format!("Back to {}", keys.defaults_text(b.id)) };
-            let reset = |ui: &mut Ui| ui.add(buttons::secondary("Reset").small()).on_hover_text(&back);
+            let reset = |ui: &mut Ui| ui.add(buttons::secondary("Reset").size(ControlSize::Small)).on_hover_text(&back);
             if !keys.is_default(b.id) && reset(ui).clicked() {
                 push(msgs, KeysMsg::Reset(b.id));
             }
             if recording == Some(Slot::Add) {
                 pill(ui);
             } else if chords.len() < MAX_KEYS
-                && ui.add(buttons::secondary("Add").small()).on_hover_text("Give this action another key").clicked()
+                && ui.add(buttons::secondary("Add").size(ControlSize::Small)).on_hover_text("Give this action another key").clicked()
             {
                 push(msgs, KeysMsg::Record { id: b.id, slot: Slot::Add });
             }

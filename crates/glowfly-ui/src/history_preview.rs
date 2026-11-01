@@ -10,6 +10,7 @@ use super::widgets::segmented::{Segment, segmented_opts};
 use crate::msg::{HistoryMsg, Msg};
 use crate::state::AppState;
 use crate::state::history::{FileTextData, Preview};
+use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Color32, Layout, Rect, RichText, Sense, Ui, pos2, vec2};
 use git2::Oid;
 use glowfly_core::lfs::pointer::size_text;
@@ -24,7 +25,7 @@ const IMAGE_MARGIN: f32 = 12.0;
 /// the preview is shown.
 pub(super) fn toggle(ui: &mut Ui, toggle: Result<(), &str>, on: bool, msgs: &mut Vec<Msg>) {
     let options = [Segment::new(false, TEXT, TEXT_TIP), Segment::new(true, PREVIEW, PREVIEW_TIP).why(toggle.err())];
-    if let Some(v) = segmented_opts(ui, on, &options) {
+    if let Some(v) = segmented_opts(ui, ControlSize::Regular, on, &options) {
         msgs.push(Msg::History(HistoryMsg::SetFilePreview(v)));
     }
 }

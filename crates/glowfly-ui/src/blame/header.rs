@@ -13,6 +13,7 @@ use crate::ui::common::{caret_after, short};
 use crate::ui::file_view_switch::{self, FileShow};
 use crate::ui::find_bar::FindIntent;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::submenu;
 use crate::ui::widgets::{self, buttons};
@@ -184,7 +185,7 @@ fn skipped_chip(ui: &mut Ui, t: Lang, view: &BlameView, snap: Option<&Snapshot>,
         .collect();
     let text = t.trn("blame.header.skipping", view.skipped.len(), &[]);
     ui.label(RichText::new(text).color(color::warn())).on_hover_text(tip.join("\n"));
-    let show_all = buttons::secondary(t.tr("blame.header.show_all.button")).small();
+    let show_all = buttons::secondary(t.tr("blame.header.show_all.button")).size(ControlSize::Small);
     if ui.add(show_all).on_hover_text(t.tr("blame.header.show_all.tip")).clicked() {
         msgs.push(Msg::Blame(BlameMsg::ClearSkipped));
     }

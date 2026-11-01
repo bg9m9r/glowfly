@@ -5,6 +5,7 @@
 use super::file_menu;
 use super::widgets::segmented::{Segment, segmented_opts};
 use crate::state::history::HistoryPane;
+use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::Ui;
 
 /// Which of the three views of the file is shown.
@@ -43,5 +44,5 @@ pub(crate) fn show(ui: &mut Ui, current: FileShow, all_off: Option<&str>, blame_
         Segment::new(FileShow::File, FILE, FILE_TIP).why(all_off),
         Segment::new(FileShow::Blame, file_menu::BLAME, BLAME_TIP).why(all_off.or(blame_off)),
     ];
-    segmented_opts(ui, current, &options)
+    segmented_opts(ui, ControlSize::Regular, current, &options)
 }

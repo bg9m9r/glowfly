@@ -9,6 +9,7 @@ use super::widgets::buttons;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict_check::{self as cc, ConflictReport};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::popover_below;
@@ -84,12 +85,13 @@ fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String]
     ui.horizontal_wrapped(|ui| {
         // The chip shows only a result for the inputs on screen.
         for (label, m) in actions(t, report) {
-            if ui.add(buttons::secondary(label).small().enabled(idle).why(Some(crate::state::blocked::busy(t)))).clicked() {
+            if ui.add(buttons::secondary(label).size(ControlSize::Small).enabled(idle).why(Some(crate::state::blocked::busy(t)))).clicked()
+            {
                 ui.memory_mut(|mem| mem.close_popup());
                 msgs.push(m);
             }
         }
-        if ui.add(buttons::secondary(t.tr("conflict_check.check_again.button")).small()).clicked() {
+        if ui.add(buttons::secondary(t.tr("conflict_check.check_again.button")).size(ControlSize::Small)).clicked() {
             ui.memory_mut(|mem| mem.close_popup());
             msgs.push(Msg::ConflictCheck(ConflictCheckMsg::CheckNow));
         }

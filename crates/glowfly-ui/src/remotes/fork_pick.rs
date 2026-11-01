@@ -14,6 +14,7 @@ use crate::remote::RemoteMsg;
 use crate::state::blocked::BUSY;
 use crate::state::forks::{ForkPicker, added_as, error_text, visible};
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::{self, Id, Layout, RichText};
 use glowfly_core::forge::Connection;
 use glowfly_core::remote_ops::{RemoteNameProblem, check_remote_name};
@@ -83,7 +84,9 @@ pub fn show(
         pane_status::failed_line(ui, cx.t, f, msgs);
     } else if p.list.forks.is_empty() {
         ui.label(format!("Nobody has forked {repo} yet."));
-        if p.target.provider.creates_forks() && ui.add(buttons::secondary(format!("Fork it on {service}…")).small()).clicked() {
+        if p.target.provider.creates_forks()
+            && ui.add(buttons::secondary(format!("Fork it on {service}…")).size(ControlSize::Small)).clicked()
+        {
             msgs.push(Msg::Remote(RemoteMsg::ForkOnService(p.remote.clone())));
         }
     } else {

@@ -49,7 +49,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Toasts are anchored to `ToastBounds`, where the top chrome and the status bar end, measured while `frame_layout` draws them (`ui/toasts.rs`), all one width.
 - The toolbar's repository and branch pickers (`ui/toolbar_pickers.rs`) are sized to their names up to a cap.
 - In a window too narrow for everything, the pure `name_widths` shrinks the pickers (the longer first, then both, down to a floor) against the rest of the bar measured last frame.
-- Every toolbar group sits on its own surface (`widgets::tool_group`); the middle groups follow the pickers, the pull request group shows only with a hosting service, and the right-hand group is anchored to the window's right edge.
+- Every toolbar group is a borderless row of quiet buttons (`widgets::tool_group`), set apart by a divider; the middle groups follow the pickers, the pull request group shows only with a hosting service, and the right-hand group is anchored to the window's right edge.
 
 ## Window chrome
 

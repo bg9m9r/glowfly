@@ -10,6 +10,7 @@ use super::theme::tokens::{self, Elevation, radius};
 use super::widgets::{self, buttons};
 use crate::msg::{Msg, NotifyMsg};
 use crate::state::AppState;
+use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Stroke, Vec2, vec2};
 use glowfly_core::settings::Corner;
 
@@ -110,7 +111,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                                 ];
                                 for (a, msg) in buttons {
                                     let Some(a) = a else { continue };
-                                    if ui.add(buttons::secondary(&a.label).small()).clicked() {
+                                    if ui.add(buttons::secondary(&a.label).size(ControlSize::Small)).clicked() {
                                         msgs.push(msg);
                                     }
                                 }

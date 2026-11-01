@@ -23,6 +23,7 @@ use crate::state::list_keys::FileList;
 use crate::state::selection::MultiSelection;
 use crate::state::selection_span::Span;
 use crate::state::{AppState, Selection};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align, RichText, Sense, vec2};
@@ -128,7 +129,7 @@ fn direction(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, from: git2::Oid, to
         let (r, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
         widgets::paint_icon_sized(ui.painter(), r.center(), Icon::Into, color::weak(), icon::SIZE_SM);
         end(ui, to);
-        if ui.add(buttons::icon_only(Icon::Swap, t.tr("details.multi.swap.button")).small().tip(&tip)).clicked() {
+        if ui.add(buttons::icon_only(Icon::Swap, t.tr("details.multi.swap.button")).size(ControlSize::Small).tip(&tip)).clicked() {
             msgs.push(Msg::Selection(SelectionMsg::SwapCompare));
         }
     });

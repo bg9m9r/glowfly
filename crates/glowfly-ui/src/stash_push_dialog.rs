@@ -15,6 +15,7 @@ use crate::msg::{Msg, StashMsg};
 use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
 use crate::state::touched::Touched;
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Sense};
 use glowfly_core::repo::Snapshot;
@@ -97,10 +98,10 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
     let files = wip_files(snap);
     let ticked = files.iter().filter(|f| stashable(f) && form.chosen.contains(&f.path)).count();
     ui.horizontal(|ui| {
-        if ui.add(buttons::secondary("Select all").small()).clicked() {
+        if ui.add(buttons::secondary("Select all").size(ControlSize::Small)).clicked() {
             form.chosen.extend(files.iter().filter(|f| stashable(f)).map(|f| f.path.clone()));
         }
-        if ui.add(buttons::secondary("Select none").small()).clicked() {
+        if ui.add(buttons::secondary("Select none").size(ControlSize::Small)).clicked() {
             form.chosen.clear();
         }
         let total = files.iter().filter(|f| stashable(f)).count();

@@ -21,6 +21,7 @@ use crate::state::AppState;
 use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
 use crate::state::tool_compare::{OPEN_IN_DIFF_TOOL, ToolSetup};
 use crate::tools::ToolsMsg;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::row_menu::RowMenuExt;
@@ -243,7 +244,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
             if link.clicked() {
                 msgs.push(Msg::History(HistoryMsg::ShowInGraph(e.oid)));
             }
-            if ui.add(buttons::secondary("Copy SHA").small()).clicked() {
+            if ui.add(buttons::secondary("Copy SHA").size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::Copy(e.oid.to_string()));
             }
         });

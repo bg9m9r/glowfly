@@ -11,6 +11,7 @@ use crate::state::tip::Tip;
 use crate::state::{AppState, PrefPage};
 use crate::ui::common::{menu_danger, menu_item_if};
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::Icon;
 use crate::ui::widgets::ghost::{self, divider, ghost, icon_tip};
 use crate::ui::widgets::menu::{popup_below, separator};
@@ -22,7 +23,7 @@ pub(super) const HEADER_H: f32 = 40.0;
 /// The panel's side margin, which the hairline runs through.
 pub(super) const SIDE: f32 = 8.0;
 /// The right cluster: six buttons, the gaps between its seven items and the divider.
-const RIGHT_W: f32 = 6.0 * ghost::HEIGHT + 6.0 * ghost::SPACE + ghost::DIVIDER_W;
+const RIGHT_W: f32 = 6.0 * ControlSize::Regular.metrics().h + 6.0 * ghost::SPACE + ghost::DIVIDER_W;
 
 /// Draws the header across the top of `ui`.
 pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -46,7 +47,14 @@ fn buttons(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let push = |msgs: &mut Vec<Msg>, m| msgs.push(Msg::Terminal(m));
 
     let hide = t.tr("terminal.header.hide");
-    if icon_tip(ghost(ui, Some(Icon::ChevronDown), None, hide, true), keys, t, Tip::new(hide).keys(BindingId::ToggleTerminal)).clicked() {
+    if icon_tip(
+        ghost(ui, ControlSize::Regular, Some(Icon::ChevronDown), None, hide, true),
+        keys,
+        t,
+        Tip::new(hide).keys(BindingId::ToggleTerminal),
+    )
+    .clicked()
+    {
         push(msgs, TerminalMsg::Hide);
     }
     let (icon, max) = if st.terminal.maximized {
@@ -54,12 +62,12 @@ fn buttons(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     } else {
         (Icon::PanelMaximize, t.tr("terminal.header.maximize"))
     };
-    if icon_tip(ghost(ui, Some(icon), None, max, true), keys, t, Tip::new(max)).clicked() {
+    if icon_tip(ghost(ui, ControlSize::Regular, Some(icon), None, max, true), keys, t, Tip::new(max)).clicked() {
         push(msgs, TerminalMsg::ToggleMaximize);
     }
     let settings = t.tr("terminal.header.settings");
     let tip = Tip::new(settings).body(t.tr("terminal.header.settings.tip"));
-    if icon_tip(ghost(ui, Some(Icon::Gear), None, settings, true), keys, t, tip).clicked() {
+    if icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::Gear), None, settings, true), keys, t, tip).clicked() {
         msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Terminal)));
     }
     divider(ui);
@@ -89,7 +97,7 @@ fn buttons(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 /// A ghost icon button named `name`, explaining itself with `body`, or with `blocked` (and
 /// disabled) when it can't act.
 fn button(ui: &mut Ui, keys: &crate::keymap::Keymap, t: Lang, icon: Icon, name: &str, body: &str, blocked: Option<&str>) -> egui::Response {
-    let resp = ghost(ui, Some(icon), None, name, blocked.is_none());
+    let resp = ghost(ui, ControlSize::Regular, Some(icon), None, name, blocked.is_none());
     icon_tip(resp, keys, t, Tip::new(name).body(blocked.unwrap_or(body)))
 }
 
@@ -97,7 +105,7 @@ fn button(ui: &mut Ui, keys: &crate::keymap::Keymap, t: Lang, icon: Icon, name: 
 fn more(ui: &mut Ui, st: &AppState, session: Option<&TermSession>, t: Lang, msgs: &mut Vec<Msg>) {
     let name = t.tr("terminal.header.more");
     let id = ui.make_persistent_id("terminal-more");
-    let r = icon_tip(ghost(ui, Some(Icon::More), None, name, true), &st.keymap, t, Tip::new(name));
+    let r = icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::More), None, name, true), &st.keymap, t, Tip::new(name));
     if r.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }

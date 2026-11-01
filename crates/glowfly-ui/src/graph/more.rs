@@ -10,6 +10,7 @@ use crate::state::refresh::can_load_more;
 use crate::state::shallow::header_tooltip;
 use crate::ui::pane_status::plain_error;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::severity::{self, Severity};
@@ -64,11 +65,11 @@ fn notes_row(ui: &mut egui::Ui, t: Lang, (row_h, text_x): (f32, f32), n: &Histor
     let right =
         Rect::from_min_max(pos2(text_x.min(rect.right() - RIGHT_INSET), rect.top()), pos2(rect.right() - RIGHT_INSET, rect.bottom()));
     let mut side = ui.new_child(UiBuilder::new().max_rect(right).layout(Layout::right_to_left(Align::Center)));
-    if n.load_more && side.add(buttons::secondary(t.tr("graph.end.load_more.button")).small()).clicked() {
+    if n.load_more && side.add(buttons::secondary(t.tr("graph.end.load_more.button")).size(ControlSize::Small)).clicked() {
         msgs.push(Msg::Load(LoadMsg::LoadMoreCommits));
     }
     if let Some(tip) = tooltip.as_deref().filter(|_| n.fetch_full)
-        && side.add(buttons::secondary(t.tr("graph.end.fetch_full.button")).small().tip(tip)).clicked()
+        && side.add(buttons::secondary(t.tr("graph.end.fetch_full.button")).size(ControlSize::Small).tip(tip)).clicked()
     {
         msgs.push(Msg::Job(JobMsg::Deepen(Deepen::Full)));
     }
@@ -125,7 +126,7 @@ fn failed_row(ui: &mut egui::Ui, t: Lang, row_h: f32, text_x: f32, error: &str, 
     let right =
         Rect::from_min_max(pos2(reason_x.min(rect.right() - RIGHT_INSET), rect.top()), pos2(rect.right() - RIGHT_INSET, rect.bottom()));
     let mut side = ui.new_child(UiBuilder::new().max_rect(right).layout(Layout::right_to_left(Align::Center)));
-    if side.add(buttons::secondary(t.tr("common.try_again.button")).small()).clicked() {
+    if side.add(buttons::secondary(t.tr("common.try_again.button")).size(ControlSize::Small)).clicked() {
         msgs.push(Msg::Load(LoadMsg::RetryLoadMore));
     }
     if retrying {
