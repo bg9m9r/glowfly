@@ -15,6 +15,8 @@ mod snapshot_tests_lines_drag;
 mod snapshot_tests_lines_gutter;
 #[path = "snapshot_tests_reveal.rs"]
 mod snapshot_tests_reveal;
+#[path = "snapshot_tests_text_select.rs"]
+mod snapshot_tests_text_select;
 use crate::msg::DiffMsg;
 use crate::state::AppState;
 use glowfly_core::highlight;

@@ -132,6 +132,32 @@ pub(crate) fn scroll(
     scroll_to: Option<usize>,
     mut add_row: impl FnMut(&mut Ui, usize, f32),
 ) -> (usize, usize) {
+    scroll_framed(ui, id_salt, rows, m, scroll_to, |ui, pass| {
+        if let Pass::Row(i, h) = pass {
+            add_row(ui, i, h);
+        }
+    })
+}
+
+/// A step of `scroll_framed`'s drawing: the content's start (before any row, so what is added
+/// there sits under the rows), a row with its index and height, and the content's end.
+pub(crate) enum Pass {
+    Begin,
+    Row(usize, f32),
+    End,
+}
+
+/// `scroll`, whose `pass` also sees the content's start and end, with the content's `Ui`
+/// (its clip rect is the viewport): the diff's text selection senses the pointer under the
+/// rows and handles it once they are drawn.
+pub(crate) fn scroll_framed(
+    ui: &mut Ui,
+    id_salt: &str,
+    rows: usize,
+    m: RowMetrics,
+    scroll_to: Option<usize>,
+    mut pass: impl FnMut(&mut Ui, Pass),
+) -> (usize, usize) {
     ui.spacing_mut().item_spacing.y = 0.0;
     // A drag on the diff's code never scrolls it (the code is for selecting text); the wheel,
     // the scroll bars and a line drag in the gutter still do.
@@ -141,19 +167,20 @@ pub(crate) fn scroll(
     }
     let out = area.show_viewport(ui, |ui, vp| {
         ui.set_height(m.total(rows));
-        if rows == 0 {
-            return;
+        pass(ui, Pass::Begin);
+        if rows > 0 {
+            let first = m.row_containing(vp.min.y, rows);
+            let end = (m.row_containing(vp.max.y, rows) + 2).min(rows);
+            let top = ui.max_rect().top();
+            let rect = Rect::from_x_y_ranges(ui.max_rect().x_range(), top + m.top(first)..=top + m.top(end));
+            ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+                ui.skip_ahead_auto_ids(first); // consistent ids, as `show_rows` does
+                for i in first..end {
+                    pass(ui, Pass::Row(i, m.height(i)));
+                }
+            });
         }
-        let first = m.row_containing(vp.min.y, rows);
-        let end = (m.row_containing(vp.max.y, rows) + 2).min(rows);
-        let top = ui.max_rect().top();
-        let rect = Rect::from_x_y_ranges(ui.max_rect().x_range(), top + m.top(first)..=top + m.top(end));
-        ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
-            ui.skip_ahead_auto_ids(first); // consistent ids, as `show_rows` does
-            for i in first..end {
-                add_row(ui, i, m.height(i));
-            }
-        });
+        pass(ui, Pass::End);
     });
     let top = m.row_at(out.state.offset.y, rows);
     (top, m.visible_from(top, out.inner_rect.height(), rows))

@@ -200,7 +200,7 @@ pub use prefs::{PrefPage, PrefsState, host_text};
 pub use running_job::RunningJob;
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};
-pub use view::{ColumnDrag, ViewState, file_folds, file_lists, file_tree, frame_times, list_keys, wip_lists};
+pub use view::{ColumnDrag, ViewState, diff_text, file_folds, file_lists, file_tree, frame_times, list_keys, wip_lists};
 
 use crate::msg::Msg;
 use git2::Oid;

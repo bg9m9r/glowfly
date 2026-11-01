@@ -106,12 +106,14 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     {
                         return;
                     }
-                    // The line selection survives only a reload that brings back the same diff.
+                    // The line and text selections survive only a reload bringing back the same diff.
                     // Only the text counts: a provisional or pending highlight doesn't make it differ.
                     let shown = st.session.diff.view.as_ref();
                     let same = reload && shown.is_some_and(|(t, old)| *t == target && old.binary == d.binary && old.hunks == d.hunks);
                     if !same {
-                        st.view.diff_lines.clear();
+                        st.view.clear_diff_selection();
+                    } else if let Some(sel) = st.view.diff_text.as_mut() {
+                        sel.key.1 = generation; // keyed to the load it shows
                     }
                     // Folds opened in another file don't apply to this one.
                     if !matches!(shown, Some((t, _)) if *t == target) {
@@ -234,9 +236,9 @@ pub(super) fn open_file_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec
 /// Opens `target` in the diff viewer (closing a conflict view), with no lines selected.
 pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
     super::conflict::close(st);
-    // Nothing is selected by default: lines picked in the diff on screen don't carry over, not
-    // even while the new one loads.
-    st.view.diff_lines.clear();
+    // Nothing is selected by default: lines or text picked in the diff on screen don't carry
+    // over, not even while the new one loads.
+    st.view.clear_diff_selection();
     // A different file opens: a hunk kept through a view mode switch or a pending step is moot.
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;
@@ -254,7 +256,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
 /// Closes the diff; a load still in flight must not reopen it.
 pub(super) fn close_diff(st: &mut AppState) {
     st.session.diff.view = None;
-    st.view.diff_lines.clear();
+    st.view.clear_diff_selection();
     st.session.tab_view.diff_expanded.clear();
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;

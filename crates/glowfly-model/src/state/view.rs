@@ -10,6 +10,8 @@ use glowfly_core::settings::{ResizableColumn, SizedPanel};
 use std::collections::HashSet;
 use std::time::Instant;
 
+#[path = "diff_text.rs"]
+pub mod diff_text;
 #[path = "file_folds.rs"]
 pub mod file_folds;
 #[path = "file_lists.rs"]
@@ -165,6 +167,12 @@ pub struct ViewState {
     pub avatars_loaded: Vec<(String, Option<glowfly_core::avatars::Image>)>,
     /// Lines selected in the open diff for line-level staging (changed only by `update`).
     pub diff_lines: lines::LineSelection,
+    /// Text selected in the open diff's code: written by the view as the pointer drags,
+    /// cleared by update when another diff (or load of it) shows or the layout switches.
+    pub diff_text: Option<diff_text::TextSel>,
+    /// Rows and columns short of a whole one that dragging a text selection past the diff's
+    /// edge has scrolled, carried to the next frame; view state.
+    pub diff_text_edge: [f32; 2],
     /// Scroll the conflict panes and output to this chunk on the next frame (set by `update`).
     pub conflict_scroll_to: Option<usize>,
     /// Scroll the file history list to this entry on the next frame (set by `update`).
@@ -214,6 +222,14 @@ pub struct ViewState {
     pub op_steps: super::op_steps::StepFolds,
 }
 
+impl ViewState {
+    /// Drops what is selected in the diff: its lines and its text.
+    pub fn clear_diff_selection(&mut self) {
+        self.diff_lines.clear();
+        self.diff_text = None;
+    }
+}
+
 impl Default for ViewState {
     fn default() -> Self {
         Self {
@@ -255,6 +271,8 @@ impl Default for ViewState {
             frame_times: Default::default(),
             avatars_loaded: Vec::new(),
             diff_lines: lines::LineSelection::default(),
+            diff_text: None,
+            diff_text_edge: [0.0; 2],
             conflict_scroll_to: None,
             history_scroll_to: None,
             history_file_scroll: None,

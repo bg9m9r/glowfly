@@ -2,8 +2,11 @@
 //! (`glowfly_core::highlight`); this only lays them out in the palette's token colors, after
 //! expanding tabs to the tab stops. Hunk headers get the same treatment for their function
 //! context (`paint_header`). A wrapped line paints one visual line under another, each with
-//! its slice of the spans and changed-word marks.
+//! its slice of the spans and changed-word marks. Each returns how it laid the text out
+//! (`Laid`), which the diff's text selection hit-tests, and paints a selected stretch's
+//! highlight (`text_sel::Highlight`) under the glyphs.
 
+use super::text_sel::{self, Highlight};
 use super::wrap::Wrap;
 use crate::ui::theme::color;
 use eframe::egui::text::{CCursor, LayoutJob, TextFormat};
@@ -12,6 +15,21 @@ use glowfly_core::highlight::{Span, TokenKind};
 use glowfly_core::tabs::{self, Expanded};
 use glowfly_core::wrap::segments;
 use std::ops::Range;
+use std::sync::Arc;
+
+/// A painted line's text, one part per visual line: where its galley was painted (top-left),
+/// the galley, and the character of the tab-expanded line its slice starts at.
+pub(crate) struct Laid {
+    pub parts: Vec<(Pos2, Arc<Galley>, usize)>,
+}
+
+/// A selected stretch of one visual line: its characters (of the slice) and whether the nub
+/// follows it, in `color`.
+pub(super) struct SegSel {
+    pub chars: Range<usize>,
+    pub nub: bool,
+    pub color: Color32,
+}
 
 /// `paint_code` for a raw diff line: tabs expand to stops every `tab` columns, and the byte
 /// ranges of `spans` and `marks` (into the raw text) move with them. With `wrap`, a line too
@@ -27,20 +45,40 @@ pub(crate) fn paint_line(
     fg: Color32,
     tab: usize,
     wrap: Option<Wrap>,
-) {
+) -> Laid {
+    paint_line_sel(p, left_center, text, spans, marks, font, fg, tab, wrap, None)
+}
+
+/// `paint_line` with the highlight of text selected in it (`sel`, in characters of `text`)
+/// painted under the glyphs.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_line_sel(
+    p: &Painter,
+    left_center: Pos2,
+    text: &str,
+    spans: &[Span],
+    marks: Option<(&[Range<u32>], Color32)>,
+    font: &FontId,
+    fg: Color32,
+    tab: usize,
+    wrap: Option<Wrap>,
+    sel: Option<&Highlight>,
+) -> Laid {
+    let sel = sel.map(|h| (text_sel::expanded_col(text, tab, h.chars.start)..text_sel::expanded_col(text, tab, h.chars.end), h));
     let e = tabs::expand(text, tab);
     if matches!(e.text, std::borrow::Cow::Borrowed(_)) {
-        return paint_wrapped(p, left_center, text, spans, marks, font, fg, wrap);
+        return paint_wrapped(p, left_center, text, spans, marks, font, fg, wrap, sel);
     }
     let spans = remap(spans, &e);
     let ranges = marks.map(|(m, c)| (m.iter().map(|r| e.map(r.start)..e.map(r.end)).collect::<Vec<_>>(), c));
     let marks = ranges.as_ref().map(|(m, c)| (m.as_slice(), *c));
-    paint_wrapped(p, left_center, &e.text, &spans, marks, font, fg, wrap);
+    paint_wrapped(p, left_center, &e.text, &spans, marks, font, fg, wrap, sel)
 }
 
 /// `paint_code`, or with `wrap` and a line that needs more than one visual line, `paint_code`
-/// per visual line, `wrap.line_h` apart, each with its slice of `spans` and `marks`. Spans that
-/// don't fit the text are dropped (the line paints plain, as unwrapped), and so are bad marks.
+/// per visual line, `wrap.line_h` apart, each with its slice of `spans`, `marks` and the
+/// selected characters `sel` (the nub on the last). Spans that don't fit the text are dropped
+/// (the line paints plain, as unwrapped), and so are bad marks.
 #[allow(clippy::too_many_arguments)]
 fn paint_wrapped(
     p: &Painter,
@@ -51,23 +89,41 @@ fn paint_wrapped(
     font: &FontId,
     fg: Color32,
     wrap: Option<Wrap>,
-) {
+    sel: Option<(Range<usize>, &Highlight)>,
+) -> Laid {
     let segs: Vec<Range<usize>> = match wrap {
         Some(w) => segments(text, w.cols).collect(),
         None => Vec::new(),
     };
+    // The selected characters of the slice `chars` of the line.
+    let seg_sel = |chars: Range<usize>, last: bool| {
+        let (r, h) = sel.as_ref()?;
+        let (a, b) = (r.start.max(chars.start), r.end.min(chars.end));
+        let nub = last && h.nub;
+        (a < b || nub).then(|| SegSel { chars: a.min(b) - chars.start..b.max(a) - chars.start, nub, color: h.color })
+    };
     let (Some(w), true) = (wrap, segs.len() > 1) else {
-        return paint_code(p, left_center, text, spans, marks, font, fg);
+        let all = seg_sel(0..text.chars().count(), true);
+        return Laid { parts: vec![paint_code(p, left_center, text, spans, marks, font, fg, all.as_ref())] };
     };
     let spans = if spans_fit(text, spans) { spans } else { &[] };
     let marks = marks.map(|(m, c)| (m.iter().filter(|r| r.start <= r.end && r.end as usize <= text.len()).cloned().collect::<Vec<_>>(), c));
+    let mut parts = Vec::with_capacity(segs.len());
+    let mut start = 0;
     for (k, seg) in segs.iter().enumerate() {
         let seg_spans: Vec<Span> =
             spans.iter().filter_map(|s| clip(s.start..s.end, seg).map(|r| Span { start: r.start, end: r.end, kind: s.kind })).collect();
         let seg_marks = marks.as_ref().map(|(m, c)| (m.iter().filter_map(|r| clip(r.clone(), seg)).collect::<Vec<_>>(), *c));
         let at = pos2(left_center.x, left_center.y + k as f32 * w.line_h);
-        paint_code(p, at, &text[seg.clone()], &seg_spans, seg_marks.as_ref().map(|(m, c)| (m.as_slice(), *c)), font, fg);
+        let piece = &text[seg.clone()];
+        let n = piece.chars().count();
+        let s = seg_sel(start..start + n, k + 1 == segs.len());
+        let marks = seg_marks.as_ref().map(|(m, c)| (m.as_slice(), *c));
+        let (origin, galley, _) = paint_code(p, at, piece, &seg_spans, marks, font, fg, s.as_ref());
+        parts.push((origin, galley, start));
+        start += n;
     }
+    Laid { parts }
 }
 
 /// The part of byte range `r` inside `seg`, relative to the segment's start; `None` when they
@@ -101,7 +157,10 @@ fn remap(spans: &[Span], e: &Expanded) -> Vec<Span> {
 /// token color, everything else `fg`. With no colored spans (or ranges that don't fit the
 /// text) this is the plain single-color call, so plain diffs draw exactly as before.
 ///
-/// `marks` are changed-word byte ranges, filled with their color under the text.
+/// `marks` are changed-word byte ranges, filled with their color under the text, and `sel`
+/// the selected characters, filled over the marks and under the glyphs. Returns where the
+/// galley was painted, the galley, and 0 (the first character of the text).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn paint_code(
     p: &Painter,
     left_center: Pos2,
@@ -110,27 +169,20 @@ pub(super) fn paint_code(
     marks: Option<(&[Range<u32>], Color32)>,
     font: &FontId,
     fg: Color32,
-) {
-    let plain = || {
-        p.text(left_center, Align2::LEFT_CENTER, text, font.clone(), fg);
-    };
+    sel: Option<&SegSel>,
+) -> (Pos2, Arc<Galley>, usize) {
     let colored = !spans.iter().all(|s| s.kind == TokenKind::Plain);
     let job = colored.then(|| layout_job(text, spans, font, fg)).flatten();
-    match marks.filter(|(m, _)| !m.is_empty()) {
-        None => {
-            let Some(job) = job else { return plain() };
-            let galley = p.layout_job(job);
-            let top = left_center.y - galley.size().y / 2.0;
-            p.galley(pos2(left_center.x, top), galley, fg);
-        }
-        Some((marks, mark_color)) => {
-            let job = job.unwrap_or_else(|| LayoutJob::simple_singleline(text.to_owned(), font.clone(), fg));
-            let galley = p.layout_job(job);
-            let origin = pos2(left_center.x, left_center.y - galley.size().y / 2.0);
-            paint_marks(p, origin, &galley, text, marks, mark_color);
-            p.galley(origin, galley, fg);
-        }
+    let galley = p.layout_job(job.unwrap_or_else(|| LayoutJob::simple_singleline(text.to_owned(), font.clone(), fg)));
+    let origin = pos2(left_center.x, left_center.y - galley.size().y / 2.0);
+    if let Some((marks, mark_color)) = marks.filter(|(m, _)| !m.is_empty()) {
+        paint_marks(p, origin, &galley, text, marks, mark_color);
     }
+    if let Some(s) = sel {
+        text_sel::paint_under(p, origin, &galley, s, font);
+    }
+    p.galley(origin, galley.clone(), fg);
+    (origin, galley, 0)
 }
 
 /// Fills each mark's extent in `galley` (laid out at `origin`); invalid ranges are skipped.

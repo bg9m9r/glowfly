@@ -13,7 +13,8 @@
 //! and a press-and-drag adds the lines of its hunk it crosses; the gutter shows a hollow check
 //! box and a faint bar while hovered (`line_check`) and says what picking the line is for on
 //! that diff; once a hunk has a selection, all its changed lines show their boxes. The code
-//! beside it picks no lines, and a drag on it doesn't scroll. A changed PNG or JPEG shows its
+//! beside it picks no lines, and a drag on it doesn't scroll: it selects text, as in an editor
+//! (`text_sel`), which Ctrl+C copies. A changed PNG or JPEG shows its
 //! before and after images (`preview`). On a pull request's file, a hovered line offers a
 //! button that starts a code comment on it (`comment_add`), and the unposted one is marked.
 
@@ -29,6 +30,7 @@ pub(super) mod rows_cache;
 mod split;
 mod style;
 mod syntax;
+mod text_sel;
 mod thread_marks;
 pub(crate) mod wrap;
 
@@ -37,6 +39,7 @@ use super::empty_state;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
+use crate::state::diff_text::LineRef;
 use crate::state::lines::{LineClick, LineSelection};
 use crate::state::pull_request_line_comment::{self, DiffComments};
 use crate::state::pull_request_threads::{self, Marks};
@@ -98,6 +101,8 @@ pub(super) struct DiffView<'a> {
     pub comments: Option<&'a DiffComments>,
     /// The language of the hunk buttons and their confirmations.
     pub t: Lang,
+    /// The text selected in the code, as the rows paint it.
+    pub text: text_sel::TextView<'a>,
 }
 
 impl DiffView<'_> {
@@ -125,6 +130,11 @@ impl DiffView<'_> {
         })
     }
 
+    /// How the text selection names line `line` of hunk `hunk` of the drawn lines.
+    fn line_ref(&self, hunk: usize, line: usize) -> LineRef {
+        if self.whole.is_some() { LineRef::Whole { line } } else { LineRef::Hunk { hunk, line } }
+    }
+
     /// Whether hunk `hunk` holds selected lines: then every changed line of it shows its box.
     fn hunk_picked(&self, hunk: usize) -> bool {
         self.sel.is_some_and(|s| s.count_in(self.target, hunk) > 0)
@@ -148,9 +158,13 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     body(ui, st, cache, msgs);
 }
 
-/// Draws the open diff's rows and records the first visible row and how many rows fit.
+/// Draws the open diff's rows and records the first visible row and how many rows fit. The
+/// text selection comes out of the state for the frame, as the rows change it.
 fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
-    if let Some((top, visible)) = rows(ui, st, cache, scroll_to, msgs) {
+    let mut text = text_sel::TextMut { sel: st.view.diff_text.take(), edge: st.view.diff_text_edge };
+    let shown = rows(ui, st, cache, scroll_to, &mut text, msgs);
+    (st.view.diff_text, st.view.diff_text_edge) = (text.sel, text.edge);
+    if let Some((top, visible)) = shown {
         st.session.tab_view.diff_top_row = top;
         st.view.diff_visible_rows = visible;
     }
@@ -159,8 +173,20 @@ fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll
 /// Draws the open diff's rows in the current layout and view mode (hunks, or the whole file
 /// when it loaded) and returns the first visible row and how many rows fit. Lines are
 /// selectable in every diff unless line operations are blocked.
-fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> Option<(usize, usize)> {
+fn rows(
+    ui: &mut Ui,
+    st: &AppState,
+    cache: &mut DiffRowsCache,
+    scroll_to: Option<usize>,
+    text: &mut text_sel::TextMut,
+    msgs: &mut Vec<Msg>,
+) -> Option<(usize, usize)> {
     let (target, diff) = st.session.diff.view.as_ref()?;
+    // A selection made in another diff, or an earlier load of this one, is gone.
+    let shown_gen = st.session.diff.shown_gen;
+    if text.sel.as_ref().is_some_and(|s| s.key.0 != *target || s.key.1 != shown_gen) {
+        text.sel = None;
+    }
     let whole = whole_file::shown(diff, st.settings.diff_mode);
     // Highlighting always comes with the diff; the setting only decides whether to paint it.
     let hl = whole.map_or(diff.highlight.as_ref(), |w| w.diff.highlight.as_ref()).filter(|_| st.settings.syntax_highlighting);
@@ -202,10 +228,29 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     let comments = comments.as_ref();
     let hunk_gen = st.hunk_ops_gen();
     let t = st.settings.lang();
-    let view = DiffView { target, diff, whole, opened, gaps, gap_lines, hl, header_hl, hunk_gen, sel, style, wrap, marks, comments, t };
+    let text_view = text_sel::TextView { index: &cache.index, shown_gen, span: None, focused: text_sel::focused(ui.ctx()) };
+    let mut view = DiffView {
+        target,
+        diff,
+        whole,
+        opened,
+        gaps,
+        gap_lines,
+        hl,
+        header_hl,
+        hunk_gen,
+        sel,
+        style,
+        wrap,
+        marks,
+        comments,
+        t,
+        text: text_view,
+    };
+    view.text.span = text.sel.as_ref().and_then(|s| text_sel::span(&view, s));
     Some(match layout {
-        DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, m, scroll_to, msgs),
-        DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, m, scroll_to, msgs),
+        DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, m, scroll_to, text, msgs),
+        DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, m, scroll_to, text, msgs),
     })
 }
 

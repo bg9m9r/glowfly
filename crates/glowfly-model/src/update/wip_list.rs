@@ -93,7 +93,7 @@ pub(super) fn opened(st: &mut AppState, t: &DiffTarget) {
 /// its untracked view.
 pub(super) fn emptied(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
     st.session.diff.view = None;
-    st.view.diff_lines.clear();
+    st.view.clear_diff_selection();
     st.session.tab_view.diff_expanded.clear();
     st.view.diff_open_hunk = None;
     let untracked = |p: &str| st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.path == p && f.status == '?'));

@@ -68,6 +68,11 @@ pub struct Palette {
     pub diff_del_word: Color32,
     pub hunk_bg: Color32,
     pub hunk_fg: Color32,
+    /// Text selected in a diff's code, painted opaque behind the selected glyphs while the diff
+    /// has the keyboard: a blue or iris kept out of the diff's hues and the accent's.
+    pub code_sel: Color32,
+    /// `code_sel` while the diff doesn't have the keyboard: quieter, still visible.
+    pub code_sel_dim: Color32,
     // Syntax colors for diff text.
     pub syn_comment: Color32,
     pub syn_string: Color32,
@@ -207,6 +212,8 @@ palette_fields!(
     diff_del_word => diff_del_word,
     hunk_bg => hunk_bg,
     hunk_fg => hunk_fg,
+    code_sel => code_sel,
+    code_sel_dim => code_sel_dim,
     warn => attention.warn,
     banner => attention.banner,
     primary => primary,

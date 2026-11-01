@@ -306,6 +306,21 @@ fn custom_files_inherit_the_new_tokens() {
 }
 
 #[test]
+fn custom_files_get_the_default_selected_code_fills() {
+    let hex = |v: u32| Color32::from_rgb((v >> 16) as u8, (v >> 8) as u8, v as u8);
+    // A file on Dusk takes the dark defaults, not Dusk's indigo.
+    let p = custom::build(&ocean(BuiltinTheme::Dark, &[("bg", ColorValue::Rgb([9, 9, 9]))]));
+    assert_eq!((p.code_sel, p.code_sel_dim), (hex(0x1d4f82), hex(0x474e56)));
+    assert_ne!(p.code_sel, DARK.code_sel);
+    // A file on a light base takes the light ones.
+    let p = custom::build(&ocean(BuiltinTheme::Light, &[]));
+    assert_eq!((p.code_sel, p.code_sel_dim), (hex(0xb9d5fe), hex(0xd8dfe9)));
+    // A file's own code_sel stays; the quiet one it leaves out still defaults.
+    let p = custom::build(&ocean(BuiltinTheme::Dark, &[("code_sel", ColorValue::Rgb([1, 2, 3]))]));
+    assert_eq!((p.code_sel, p.code_sel_dim), (Color32::from_rgb(1, 2, 3), hex(0x474e56)));
+}
+
+#[test]
 fn resolve_each_choice() {
     let file = ocean(BuiltinTheme::Light, &[("bg", ColorValue::Rgb([9, 9, 9]))]);
     let themes = ThemeState { catalog: ThemeCatalog { files: vec![file], ..ThemeCatalog::default() }, ..ThemeState::default() };
