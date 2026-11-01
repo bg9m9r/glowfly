@@ -12,7 +12,7 @@ use eframe::egui::Color32;
 /// channels can't carry it over.
 const AIM: f64 = 0.018;
 /// How far the worked-out value moves in OKLCH lightness per step while it makes `weak` readable.
-const STEP: f64 = 0.005;
+const COARSE: f64 = 0.005;
 /// How far it then moves per step while it stands apart from `selected` and `hover`.
 const FINE: f64 = 0.0005;
 /// The least OKLab distance from `selected` and from `hover`.
@@ -57,7 +57,7 @@ pub(super) fn worked_out(p: &Palette) -> Color32 {
     };
     let inside = |l: f64| (0.0..=1.0).contains(&l);
     // Weak text is lighter than the fill on a dark palette, darker on a light one.
-    let away = if oklch(p.weak).0 > l0 { -STEP } else { STEP };
+    let away = if oklch(p.weak).0 > l0 { -COARSE } else { COARSE };
     let (mut l, mut fill) = (l0, at(l0));
     while ratio(p.weak, fill) < 4.5 && inside(l + away) {
         l += away;
