@@ -27,6 +27,7 @@ Label "1 conflicted file left"
 Button "Expand the commit panel"
 Button "2 changed files"
 Button "Go to the commit message"
+Unknown "Left panel contents"
 TextInput
 Button "New branch" [disabled]
 Button "Local actions"
@@ -50,6 +51,7 @@ Button "Submodules actions"
 Label "No submodules"
 Label " · "
 Label "Add submodule…"
+Unknown "Central view"
 Button "Close  (Esc)"
 Button "More conflict actions"
 Button "Save and mark resolved" [disabled]

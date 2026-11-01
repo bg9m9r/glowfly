@@ -106,12 +106,14 @@ fn ids_are_stable() {
     assert_eq!(BindingId::from_key("New-Tab"), None);
     assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
     assert_eq!(
-        BindingId::ALL[BindingId::ALL.len() - 15..BindingId::ALL.len() - 11],
+        BindingId::ALL[BindingId::ALL.len() - 31..BindingId::ALL.len() - 27],
         [BindingId::SendPrText, BindingId::Quit, BindingId::PrefsSave, BindingId::PrefsRevert]
     );
     assert_eq!(BindingId::from_key("wip-other-list"), Some(BindingId::WipOtherList));
     assert_eq!(BindingId::from_key("file-list-step-file"), Some(BindingId::FileStepFile));
-    assert_eq!(BindingId::ALL.last(), Some(&BindingId::FileEdgeFile));
+    assert_eq!(BindingId::from_key("focus-sidebar"), Some(BindingId::FocusSidebar));
+    assert_eq!(BindingId::from_key("copy-commit-ids"), Some(BindingId::CopyCommitIds));
+    assert_eq!(BindingId::ALL.last(), Some(&BindingId::RevertCommit));
     assert_eq!(BindingId::from_key("save-preferences-page"), Some(BindingId::PrefsSave));
 }
 
@@ -173,6 +175,17 @@ fn rebindable_set() {
         I::ToggleFullscreen,
         I::Quit,
         I::PrefsSave,
+        I::FocusSidebar,
+        I::FocusCentral,
+        I::FocusFiles,
+        I::FocusDiff,
+        I::FocusCommitMessage,
+        I::NextPane,
+        I::PrevPane,
+        I::SelectHead,
+        I::PrevRefCommit,
+        I::NextRefCommit,
+        I::CopyCommitIds,
     ];
     assert_eq!(rebindable, want);
 }

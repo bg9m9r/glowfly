@@ -107,6 +107,10 @@ pub enum PaletteCommand {
     RenameBranch(String),
     /// Compare this commit with the working directory (palette_selected.rs).
     CompareWithWorkdir(git2::Oid),
+    /// Cherry-pick or revert (`revert`) the commits selected when it runs (palette_selected.rs).
+    PickSelected {
+        revert: bool,
+    },
     SearchCommits,
     /// Open the Git LFS page and set LFS up once its status shows that it can.
     InitializeLfs,

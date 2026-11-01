@@ -59,6 +59,9 @@ pub(super) struct BoxStyle {
 
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, style: BoxStyle, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
+    // The commit message pane: from here to the bottom of the panel (`pane_focus.rs`).
+    let pane = egui::Rect::from_min_max(ui.cursor().min, ui.max_rect().max);
+    super::pane_focus::drawn_at(ui.ctx(), crate::state::layout::Pane::Message, pane);
     let t = st.settings.lang();
     if style.titled {
         ui.add_space(8.0);

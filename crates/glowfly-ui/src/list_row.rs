@@ -257,8 +257,11 @@ fn file_row_in<R>(
         // Wider than the list, but no taller, so rows scrolled out of view stay hidden.
         let clip = ui.clip_rect().expand2(vec2(FILE_ROW_BLEED, 0.0));
         let p = Painter::new(ui.ctx().clone(), ui.layer_id(), clip);
+        // A list that takes the focus as a whole (its rows are no Tab stops) shows its selection
+        // as focused only while it has the focus.
+        let active = sense.is_focusable() || super::list_focus::rows_active(ui.ctx());
         // `contains_pointer` stays true while the pointer is over the row's buttons.
-        row_fill::paint(&p, rect.expand2(vec2(FILE_ROW_BLEED, 0.0)), selected, resp.contains_pointer());
+        row_fill::paint_in(&p, rect.expand2(vec2(FILE_ROW_BLEED, 0.0)), selected, active, resp.contains_pointer());
     }
     let mut child = ui.new_child(UiBuilder::new().max_rect(rect).layout(layout));
     // Labels only sense hover then, so their clicks reach the row; their tooltips still show.

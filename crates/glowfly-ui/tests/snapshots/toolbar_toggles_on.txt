@@ -27,6 +27,7 @@ Button "Activity" [on]
 Button "Errors" [off]
 Button "Performance" [off]
 Label "Nothing has happened in this tab yet."
+Unknown "Left panel contents"
 TextInput
 Button "New branch"
 Button "Local actions"
@@ -91,6 +92,7 @@ Button "Close"
 Button "Resize branch / tag column"
 Button "Resize commit column"
 Button "Resize date column"
+Unknown "Commit graph"
 Button "Uncommitted changes"
 Button "Search results page"
 Button "Merge branch 'login-page'"

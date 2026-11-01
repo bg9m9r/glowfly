@@ -104,3 +104,10 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 - Preferences > Keyboard warns on macOS that Cmd+H and Option+Cmd+H hide Glowfly instead of running a binding
 - Section headers (macOS 14's `NSMenuItem.sectionHeader`) instead of disabled title items for Diff layout, Diff shows, Favorites and Recent
 - A Dock menu listing the open tabs and recent repositories
+
+### Pane focus keys
+
+- Give the diff its own focus target, so Alt+4 differs from Alt+2 while a diff is open
+- Alt+3 on the WIP panel could pick the list with rows (an empty Unstaged list takes the focus today)
+- Page Up/Down, Home and End in file history's list, which the Lists row names but only the graph matches yet
+- Rebindable Enter for Show the details panel (plain Enter is reserved, so the row is fixed)

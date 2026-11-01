@@ -107,12 +107,28 @@ pub enum BindingId {
     FileStepFile,
     FilePageFile,
     FileEdgeFile,
+    FocusSidebar,
+    FocusCentral,
+    FocusFiles,
+    FocusDiff,
+    FocusCommitMessage,
+    NextPane,
+    PrevPane,
+    GraphPageRow,
+    GraphEdgeRow,
+    OpenCommitDetails,
+    SelectHead,
+    PrevRefCommit,
+    NextRefCommit,
+    CopyCommitIds,
+    CherryPick,
+    RevertCommit,
 }
 
 use BindingId as I;
 
 /// How many ids there are.
-const COUNT: usize = 105;
+const COUNT: usize = 121;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
 const KEYS: [(BindingId, &str); COUNT] = [
@@ -221,6 +237,22 @@ const KEYS: [(BindingId, &str); COUNT] = [
     (I::FileStepFile, "file-list-step-file"),
     (I::FilePageFile, "file-list-page-file"),
     (I::FileEdgeFile, "file-list-edge-file"),
+    (I::FocusSidebar, "focus-sidebar"),
+    (I::FocusCentral, "focus-central-view"),
+    (I::FocusFiles, "focus-file-list"),
+    (I::FocusDiff, "focus-diff"),
+    (I::FocusCommitMessage, "focus-commit-message-pane"),
+    (I::NextPane, "next-pane"),
+    (I::PrevPane, "prev-pane"),
+    (I::GraphPageRow, "graph-page-row"),
+    (I::GraphEdgeRow, "graph-edge-row"),
+    (I::OpenCommitDetails, "open-commit-details"),
+    (I::SelectHead, "select-head"),
+    (I::PrevRefCommit, "prev-ref-commit"),
+    (I::NextRefCommit, "next-ref-commit"),
+    (I::CopyCommitIds, "copy-commit-ids"),
+    (I::CherryPick, "cherry-pick"),
+    (I::RevertCommit, "revert-commit"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.
@@ -237,7 +269,8 @@ pub const FAVORITE_BINDINGS: [BindingId; 9] = [
 ];
 
 /// The Repository commands rows: each runs a palette command (`state/palette_bindings.rs`).
-pub const COMMAND_BINDINGS: [BindingId; 14] = [
+/// Cherry-pick and Revert came after the first fourteen, so their ids follow the pane and graph keys'.
+pub const COMMAND_BINDINGS: [BindingId; 16] = [
     I::Fetch,
     I::Pull,
     I::Push,
@@ -252,6 +285,8 @@ pub const COMMAND_BINDINGS: [BindingId; 14] = [
     I::OpenJournal,
     I::OpenTerminal,
     I::ShowRepoFolder,
+    I::CherryPick,
+    I::RevertCommit,
 ];
 
 impl BindingId {

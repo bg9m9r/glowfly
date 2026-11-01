@@ -1,13 +1,16 @@
 //! Selection input on the graph: what a click with modifiers means (on a commit row or the WIP
-//! row), and arrow-key navigation (Shift+arrows extend the commit selection).
+//! row), the graph's keyboard focus target, and its keys: the arrows (Shift+arrows extend the
+//! commit selection), Page Up/Down, Home/End, H and [ ].
 
 use super::ROW_H;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
-use crate::state::graph_rows::{DisplayRow, GraphRows};
+use crate::state::graph_rows::{DisplayRow, GraphKey, GraphRows};
+use crate::state::list_keys::{KeySet, ListKey, ListMove};
 use crate::state::{Selection, ViewState};
-use eframe::egui::{self, Key};
+use crate::ui::{list_focus, pane_focus};
+use eframe::egui;
 use git2::Oid;
 use glowfly_core::repo::Snapshot;
 
@@ -51,10 +54,33 @@ pub(super) fn current_row(sel: &Selection, rows: &GraphRows) -> Option<usize> {
     }
 }
 
-/// Arrow Up/Down: select the shown row above or below (skipping other worktrees' rows) and keep
-/// it in view. Shift+Up/Down extend the commit selection from its moving end instead, as a
-/// Shift-click on that row would, stopping at the WIP row; without a selected commit they act
-/// as plain arrows.
+/// The graph's keys: plain moves (and Shift+Up/Down) of the list keys and Enter, while the graph
+/// has the keyboard focus or nothing has.
+const KEYS: KeySet = KeySet { extend: true, toggle: false, open: true, delete: false, across: false };
+
+/// The graph's focus target over `rect` (its rows), with `page` rows in view: a click on a row,
+/// or the central view's pane key, gives it the focus; it keeps the arrows from egui's focus
+/// moves. Registered before the rows, so their clicks still go to them.
+pub(super) fn target(ui: &mut egui::Ui, rect: egui::Rect, name: &str, page: usize, focus: bool) {
+    let id = pane_focus::graph_id();
+    list_focus::target(ui, id, rect, name, page);
+    if focus {
+        list_focus::request(ui.ctx(), id);
+    }
+}
+
+/// Gives the graph the keyboard focus (a click on a row).
+pub(super) fn focus(ctx: &egui::Context) {
+    list_focus::request(ctx, pane_focus::graph_id());
+}
+
+/// The graph's keys, while it has the keyboard focus or nothing has: Up/Down select the shown
+/// row above or below (skipping other worktrees' rows), Page Up/Down a page away, Home/End the
+/// first or last row, Enter the details panel's file list, and H, [ and ]
+/// (`ViewState::graph_key`, set by their bindings) HEAD's
+/// commit or the nearest commit with a branch or tag; the new row is kept in view.
+/// Shift+Up/Down extend the commit selection from its moving end instead, as a Shift-click on
+/// that row would, stopping at the WIP row; without a selected commit they act as plain arrows.
 pub(super) fn keyboard_nav(
     ui: &egui::Ui,
     sel: &Selection,
@@ -64,42 +90,64 @@ pub(super) fn keyboard_nav(
     view: &mut ViewState,
     msgs: &mut Vec<Msg>,
 ) {
-    let typing = ui.ctx().memory(|m| m.focused().is_some());
-    if typing || rows.is_empty() {
+    let ctx = ui.ctx();
+    let id = pane_focus::graph_id();
+    let focused = ctx.memory(|m| m.focused());
+    let graph_key = view.graph_key.take();
+    if focused.is_some_and(|f| f != id) || rows.is_empty() {
         return;
     }
-    let (step, mods) = ui.input(|i| {
-        let step = if i.key_pressed(Key::ArrowDown) {
-            1i64
-        } else if i.key_pressed(Key::ArrowUp) {
-            -1
-        } else {
-            0
+    let (offset, height) = scroll;
+    let page = ((height / ROW_H).floor() as usize).saturating_sub(1).max(1);
+    let keys = if focused == Some(id) { list_focus::take(ctx, id, KEYS) } else { list_focus::take_unfocused(ctx, page, KEYS) };
+    let len = rows.len();
+    // The commit a Shift move extends from (the selection's moving end), when there is one.
+    let anchor = crate::state::selection::extend_from(sel);
+    let mut cursor = current_row(sel, rows);
+    let (mut extending, mut moved, mut on_end) = (false, false, false);
+    for key in keys {
+        let (mv, extend) = match key {
+            // Enter: the details panel's file list (`update/shortcuts.rs`).
+            ListKey::Open => {
+                msgs.push(Msg::Shortcut(crate::keymap::KeyAction::OpenDetails));
+                continue;
+            }
+            ListKey::Move(mv) => (mv, false),
+            ListKey::Extend(mv @ ListMove::Step { .. }) => (mv, anchor.is_some()),
+            _ => continue,
         };
-        (step, i.modifiers)
-    });
-    if step == 0 {
-        return;
+        if extend && !on_end {
+            // Extending moves the selection's moving end, not its focus row.
+            cursor = anchor.and_then(|c| rows.row_of(c)).or(cursor);
+            on_end = true;
+        }
+        let next = match mv {
+            ListMove::Step { down } => rows.step(cursor, if down { 1 } else { -1 }),
+            ListMove::Page { down, rows: n } => rows.step(cursor.or(Some(0)), if down { n as i64 } else { -(n as i64) }),
+            ListMove::Edge { end } => rows.step(Some(if end { len - 1 } else { 0 }), 0),
+        };
+        // Extending stops at the WIP row and at either end.
+        let Some(next) = next.filter(|&n| !(extend && (rows.at(n) == Some(DisplayRow::Wip) || Some(n) == cursor))) else { continue };
+        (cursor, extending, moved) = (Some(next), extend, true);
     }
-    let extend = (mods.shift && !mods.command && !mods.alt).then(|| crate::state::selection::extend_from(sel)).flatten();
-    let from = extend.and_then(|cursor| rows.row_of(cursor)).or_else(|| current_row(sel, rows));
-    // Other worktrees' WIP rows are skipped: they can't be selected.
-    let Some(next) = rows.step(from, step) else { return };
-    if extend.is_some() && Some(next) == from {
-        return; // at either end
+    let target = match graph_key {
+        Some(GraphKey::Head) => snap.head_oid.and_then(|h| rows.row_of(h)),
+        Some(GraphKey::Ref { up }) => rows.ref_row(snap, cursor, up),
+        None => None,
+    };
+    if let Some(row) = target {
+        (cursor, extending, moved) = (Some(row), false, true);
     }
-    msgs.push(match (rows.at(next), extend) {
-        (Some(DisplayRow::Commit(i)), _) => match snap.commits.get(i) {
-            Some(c) if extend.is_some() => Msg::Selection(SelectionMsg::SelectCommitRange(c.oid)),
+    let Some(next) = cursor.filter(|_| moved) else { return };
+    msgs.push(match rows.at(next) {
+        Some(DisplayRow::Commit(i)) => match snap.commits.get(i) {
+            Some(c) if extending => Msg::Selection(SelectionMsg::SelectCommitRange(c.oid)),
             Some(c) => Msg::Repo(RepoMsg::SelectCommit(c.oid)),
             None => return,
         },
-        // Extending stops at the WIP row.
-        (Some(DisplayRow::Wip), Some(_)) => return,
-        (Some(DisplayRow::Wip), None) => Msg::Repo(RepoMsg::SelectWip),
-        (Some(DisplayRow::Worktree(_)) | None, _) => return,
+        Some(DisplayRow::Wip) if !extending => Msg::Repo(RepoMsg::SelectWip),
+        Some(DisplayRow::Wip | DisplayRow::Worktree(_)) | None => return,
     });
-    let (offset, height) = scroll;
     let top = next as f32 * ROW_H;
     if top < offset {
         view.scroll_offset = Some(top);

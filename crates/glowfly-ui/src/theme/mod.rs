@@ -255,6 +255,8 @@ mod diff_select_tests;
 #[cfg(test)]
 mod family_tests;
 #[cfg(test)]
+mod inactive_tests;
+#[cfg(test)]
 mod lineup_contrast_tests;
 #[cfg(test)]
 mod more_themes_tests;

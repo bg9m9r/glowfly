@@ -1,6 +1,7 @@
 //! The design tokens that aren't colours: the corner scale (`radius`, with a segment's corners),
 //! the border width, the least hit area and a split's caret width, the state-layer amounts,
-//! the two elevations (`Elevation`, `shadow`), the focus ring and the text field's halo, and the
+//! the two elevations (`Elevation`, `shadow`), the focus ring and the text field's halo, the
+//! selection of a pane without the keyboard focus (`selected_inactive`), and the
 //! motion timings (`motion`). Every theme reads the same tokens; the colour tokens worked out
 //! from the palette (surfaces, layers, tones) are in `surfaces.rs`.
 //!
@@ -141,6 +142,35 @@ pub fn focus_ring_inset(p: &Painter, rect: Rect, r: impl Into<CornerRadius>) {
 pub fn focus_halo(p: &Painter, rect: Rect, r: u8) {
     let stroke = Stroke::new(HALO_W, color::accent().gamma_multiply(HALO_ALPHA));
     p.rect_stroke(rect.expand(1.0), radius::around(r, 1), stroke, StrokeKind::Outside);
+}
+
+/// The OKLCH chroma `selected_inactive` keeps: a neutral (the spec allows at most 0.02,
+/// `inactive_tests.rs`), a little under so rounding to 8-bit channels can't carry it over; only
+/// the focused pane's selection carries the palette's selection colour.
+const INACTIVE_AIM: f64 = 0.018;
+/// How far `selected_inactive` moves in OKLCH lightness per step while it makes `weak` readable.
+const INACTIVE_STEP: f64 = 0.005;
+
+/// The selected row's fill in a pane without the keyboard focus (the graph, the file lists):
+/// `selected` with its chroma cut to `INACTIVE_AIM` (a grey where that would read brown),
+/// moved away from `weak` until `weak` text on it reaches 4.5:1.
+pub fn selected_inactive(p: &Palette) -> Color32 {
+    use super::contrast::{brownish, from_oklch, oklch, ratio};
+    let (l, c, h) = oklch(p.selected);
+    let c = c.min(INACTIVE_AIM);
+    let at = |l: f64| {
+        let fill = from_oklch(l, c, h);
+        if brownish(fill) { from_oklch(l, 0.0, h) } else { fill }
+    };
+    // Weak text is lighter than the fill on a dark palette, darker on a light one.
+    let away = if oklch(p.weak).0 > l { -INACTIVE_STEP } else { INACTIVE_STEP };
+    let mut l = l;
+    let mut fill = at(l);
+    while ratio(p.weak, fill) < 4.5 && (0.0..=1.0).contains(&(l + away)) {
+        l += away;
+        fill = at(l);
+    }
+    fill
 }
 
 /// Motion: how long things take, the one easing curve, and Reduce motion.

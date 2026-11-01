@@ -8,6 +8,7 @@ mod caps;
 mod chords;
 mod custom_keys;
 mod global;
+mod live;
 mod record;
 mod sheet;
 mod sheet_menus;

@@ -99,7 +99,7 @@ fn palette_patch_entries() {
     st.session.selection = MultiSelection::build([second, third], third, st.snap.as_ref().unwrap());
     assert!(labels(&st).iter().any(|l| l == "Create patch from 2 selected commits…"));
     st.session.selection = MultiSelection::build([second, merge], merge, st.snap.as_ref().unwrap());
-    assert!(!labels(&st).iter().any(|l| l.contains("selected commits")), "not with a merge");
+    assert!(!labels(&st).iter().any(|l| l.starts_with("Create patch from") && l.contains("selected commits")), "not with a merge");
 
     st.session.selection = Selection::Commit(third);
     let short = &third.to_string()[..7];

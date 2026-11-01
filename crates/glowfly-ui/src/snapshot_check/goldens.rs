@@ -97,6 +97,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("graph_shallow", Window),
     ("graph_two_commits_selected", Window),
     ("graph_search_dim", Window),
+    ("graph_focus_inactive_dark", Window),
     ("history_table_dark", Window),
     ("history_table_light", Window),
     ("history_table_high_contrast_light", Window),

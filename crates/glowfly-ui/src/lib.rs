@@ -117,6 +117,7 @@ mod op_preview_rows;
 mod op_steps;
 mod op_strip;
 mod palette;
+mod pane_focus;
 mod pane_status;
 mod panel_header;
 mod panel_rails;
@@ -268,5 +269,9 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     // Last, above every dialog: the drawn frame's window buttons and resize edges.
     window_frame::overlay(ctx, st, msgs);
     st.view.was_typing = shortcuts::text_field_focused(ctx);
+    pane_focus::end_frame(ctx);
+    // Asked for a pane that wasn't drawn, or a graph key with no graph: nothing to do later.
+    st.view.pane_focus = None;
+    st.view.graph_key = None;
     widgets::tooltip_motion::animate(ctx, st.settings.reduce_motion);
 }

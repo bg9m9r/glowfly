@@ -6,7 +6,8 @@
 //! of a frame, before the list can lock them, so on the first frame after the list took the
 //! focus an arrow would also carry the focus away: the list takes it back on the next frame
 //! (`restore`). For the WIP lists (`wip_keys.rs`), the lists that only move the open file
-//! (`file_list_keys.rs`) and any other list built the same way.
+//! (`file_list_keys.rs`) and any other list built the same way, and the graph (`graph/select.rs`).
+//! A list's rows show their selection as focused only while it has the focus (`rows_active`).
 
 use crate::state::list_keys::{KeySet, ListKey, ListMove};
 use eframe::egui::{self, Event, EventFilter, Id, Key, Modifiers, WidgetInfo, WidgetType};
@@ -22,6 +23,13 @@ pub(crate) fn target(ui: &mut egui::Ui, id: Id, rect: egui::Rect, name: &str, pa
     let r = ui.interact(rect, id, egui::Sense::focusable_noninteractive());
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, name));
     let ctx = ui.ctx();
+    // The first list the details panel draws after the file list's pane key.
+    if super::pane_focus::list_wanted(ctx) {
+        request(ctx, id);
+    }
+    // Its rows show their selection as focused only while the list has the focus.
+    let active = r.has_focus();
+    ctx.data_mut(|d| d.insert_temp(rows_active_id(), active));
     if r.has_focus() {
         ctx.memory_mut(|m| m.set_focus_lock_filter(id, FILTER));
         // egui keeps the filter only from a list's second frame with the focus on.
@@ -37,6 +45,17 @@ pub(crate) fn target(ui: &mut egui::Ui, id: Id, rect: egui::Rect, name: &str, pa
 /// Gives the list `id` the keyboard focus (a click on one of its rows, or a key that goes to it).
 pub(crate) fn request(ctx: &egui::Context, id: Id) {
     ctx.memory_mut(|m| m.request_focus(id));
+}
+
+fn rows_active_id() -> Id {
+    Id::new("list-focus-rows-active")
+}
+
+/// Whether the rows being drawn belong to a list with the keyboard focus (the last list target
+/// registered): their selection shows as focused (`selected`) only then, else as
+/// `selected_inactive`.
+pub(crate) fn rows_active(ctx: &egui::Context) -> bool {
+    ctx.data(|d| d.get_temp::<bool>(rows_active_id())).unwrap_or(false)
 }
 
 fn restore_id() -> Id {
@@ -66,6 +85,23 @@ pub(crate) fn take(ctx: &egui::Context, id: Id, keys: KeySet) -> Vec<ListKey> {
     let page = ctx.data(|d| d.get_temp::<usize>(id.with("page"))).unwrap_or(1);
     let pass = ctx.cumulative_pass_nr();
     let locked = ctx.data(|d| d.get_temp::<u64>(id.with("locked"))).is_some_and(|p| p + 1 == pass);
+    let (taken, arrow) = drain(ctx, page, keys);
+    if arrow && !locked {
+        ctx.data_mut(|d| d.insert_temp(restore_id(), Some(id)));
+        ctx.request_repaint();
+    }
+    taken
+}
+
+/// `take` for a list that also answers while nothing has the focus (the graph): this frame's
+/// keys of `keys`, with `page` rows in view, whoever would get them.
+pub(crate) fn take_unfocused(ctx: &egui::Context, page: usize, keys: KeySet) -> Vec<ListKey> {
+    drain(ctx, page.max(1), keys).0
+}
+
+/// Takes this frame's presses of `keys` out of the input, in the order pressed, and says
+/// whether any arrow was pressed.
+fn drain(ctx: &egui::Context, page: usize, keys: KeySet) -> (Vec<ListKey>, bool) {
     let mut taken = Vec::new();
     let mut arrow = false;
     ctx.input_mut(|i| {
@@ -84,11 +120,7 @@ pub(crate) fn take(ctx: &egui::Context, id: Id, keys: KeySet) -> Vec<ListKey> {
             false
         });
     });
-    if arrow && !locked {
-        ctx.data_mut(|d| d.insert_temp(restore_id(), Some(id)));
-        ctx.request_repaint();
-    }
-    taken
+    (taken, arrow)
 }
 
 /// What `key` with `m` does in a focused list, if it is one of its keys.

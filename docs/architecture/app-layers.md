@@ -200,6 +200,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `chord.rs`: chords and their text ("Cmd" and "Option" on macOS, through `KeyLabels`) and file forms.
 - `active.rs`: the effective keymap with the user's overrides.
 - `rebind.rs`: the rebinding rules.
+- `pane_tests.rs`: the pane keys (Alt+1 to 5, Control on macOS, F6) clash with nothing, the menus' mnemonics included, and `When::Graph` never overlaps a diff's contexts; their update side in `flows/pane_focus_tests.rs`.
 - Shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard.
 - The Repository commands group binds palette commands and has no default keys; `state/palette_bindings.rs` maps commands and bindings both ways, and a press sends `PaletteMsg::RunBoundCommand`, which `update/palette_keys.rs` runs when the palette would list the entry.
 
@@ -215,6 +216,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `journey/find.rs`: driving it by clicking and typing on widgets found by accessible name: a region of the window, the open command palette among them, and a pick among equal names.
 - `journey/harness.rs`: waiting until the app is idle after each step.
 - `journey/fixture.rs`: checking the screen and the repository on disk.
+- `journey/graph_keys.rs`: the graph keeps its keys after a real click on Stage all, and gets them back from its pane key.
 - `journey/` is in the crate because the package has no library target `tests/` could reach.
 - `glyph_check/` (tests only): every non-ASCII character in every crate's string literals and in the translation files has a glyph in the fonts egui draws with.
 - `glyph_check/scan.rs` finds the characters with the source checks' shared lexer (glowfly-ui's `tests/view_checks/support/lexer.rs`), skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.

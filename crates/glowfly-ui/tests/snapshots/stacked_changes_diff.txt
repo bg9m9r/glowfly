@@ -19,6 +19,7 @@ Button "Search and run commands"
 Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
+Unknown "Left panel contents"
 TextInput
 Button "New branch"
 Button "Local actions"
@@ -66,6 +67,7 @@ Button "app.txt" [on]
 Label "1 file"
 Label "dcc73f3"
 Button "README.md" [off]
+Unknown "Central view"
 Label "app.txt"
 Label "M +1 −0"
 Label "275189b"

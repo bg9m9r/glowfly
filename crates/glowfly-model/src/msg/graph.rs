@@ -58,6 +58,8 @@ pub enum SelectionMsg {
     /// Try again after the comparison's file list (of a commit range or with the working
     /// directory) couldn't be read.
     RetryCompare,
+    /// Ctrl+C in the graph: copy the selected commits' full IDs, newest first.
+    CopyIds,
 }
 
 impl SelectionMsg {
@@ -79,6 +81,7 @@ impl SelectionMsg {
             | Self::SwapCompare
             | Self::SelectAll
             | Self::BackToFocus
+            | Self::CopyIds
             | Self::RetryCompare => None,
             // Dropped like CompareLoaded: the tab asks again when it is refreshed.
             Self::StackedLoaded { .. } => None,

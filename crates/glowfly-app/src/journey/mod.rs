@@ -10,6 +10,8 @@
 //! - `stash_undo`: stash and pop; undo and redo a commit and a merge.
 //! - `journal_restore`: hard reset a branch, restore it from the operation journal, undo that.
 //! - `range_diff`: compare an amended branch with its version before, from its menu.
+//! - `graph_keys`: Down still moves the graph's selection after a click on Stage all, and
+//!   each pane key lands the focus in its pane.
 //! - `settings_unreadable`: a settings file that couldn't be read is never written over.
 //!
 //! The app is built by `GlowflyApp::for_test`: its saves go to the fixture's config folder,
@@ -24,6 +26,7 @@ mod harness;
 
 mod branches;
 mod clone_commit;
+mod graph_keys;
 mod harness_tests;
 mod journal_restore;
 mod op_preview;
