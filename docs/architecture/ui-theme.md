@@ -13,6 +13,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 - `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the graph's ref chip colours (neutral, edged chips).
 - `theme/no_brown_tests.rs`: every built-in's (and the Garden pair's) surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets, stay out of the brown zone, with no exception.
+- `theme/code_sel_tests.rs`: the selected-code fills (`code_sel`, `code_sel_dim`) in every built-in: text and syntax contrast on them, their OKLab distance from the row colours and each other, and the designer's measured values.
 - `theme/no_brown_text_tests.rs`: every built-in's coloured text (status, syntax, terminal colours) stays out of the text brown zone, and the light themes' amber text reads at 4.5:1 on its surfaces (High contrast light's amber excepted).
 - `theme/more_themes_tests.rs`: the lineup's pinned values (Porcelain, and the Midnight, Dusk and Dawn retunes) and the six sleekness rules: one accent, a quiet selection, the accent's chroma, the border on the panel, the surface ladder and distinct themes of a kind.
 - `theme/lineup_contrast_tests.rs`: the lineup's measured contrast, as the Themes v2 spec gives it, within 0.02.

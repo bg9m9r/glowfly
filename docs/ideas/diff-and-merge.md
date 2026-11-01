@@ -116,6 +116,10 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - The gutter tooltip opens below the row and covers the next line, the one a Shift-click range
   usually targets: anchor it left of the pointer, or show it once per diff
 
+### Diff text selection
+
+- No caret and no Shift+arrow extension of a text selection in v1; the keyboard only copies it.
+
 ### Merge conflict tool
 
 - Syntax highlighting in the conflict panes

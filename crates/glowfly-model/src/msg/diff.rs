@@ -66,6 +66,8 @@ pub enum DiffMsg {
     /// The button was released, so the selection stays and the drag ends.
     EndLineDrag,
     ClearLineSelection,
+    /// Drop the text selected in the diff's code (the line selection stays).
+    ClearTextSelection,
     /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
     /// at `generation`, each only where it was pending. Applied only while that diff is still on
     /// screen.
@@ -115,6 +117,7 @@ impl DiffMsg {
             | Self::DragDiffLine { .. }
             | Self::EndLineDrag
             | Self::ClearLineSelection
+            | Self::ClearTextSelection
             | Self::DiffHighlighted { .. } => None,
         }
     }

@@ -247,6 +247,8 @@ mod branch_colour_cb_tests;
 #[cfg(test)]
 mod branch_colour_tests;
 #[cfg(test)]
+mod code_sel_tests;
+#[cfg(test)]
 mod controls_tests;
 #[cfg(test)]
 mod diff_select_tests;

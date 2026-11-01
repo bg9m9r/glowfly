@@ -105,7 +105,9 @@ fn rows(ui: &mut Ui, st: &AppState, diff: &FileDiff, widest: usize) {
                         let rest = &dl.text[1..];
                         paint_line(p, pos2(x + char_w, y), rest, &[], None, &font, color::text(), style.tab, None);
                     }
-                    None => paint_line(p, pos2(x, y), &dl.text, &[], None, &font, color::text(), style.tab, None),
+                    None => {
+                        paint_line(p, pos2(x, y), &dl.text, &[], None, &font, color::text(), style.tab, None);
+                    }
                 }
             }
             DiffRow::Block(_) | DiffRow::Fold(_) | DiffRow::GapLine { .. } => {}

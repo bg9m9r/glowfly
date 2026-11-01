@@ -28,6 +28,8 @@ pub const COLOR_KEYS: &[&str] = &[
     "text", "strong", "weak", "faint",
     "added", "removed", "modified", "info", "progress",
     "diff_add", "diff_del", "diff_add_sel", "diff_del_sel", "diff_add_word", "diff_del_word", "hunk_bg", "hunk_fg",
+    "code_sel",
+    "code_sel_dim",
     "warn", "banner", "primary", "on_primary", "primary_off", "primary_border", "danger", "danger_off", "tag_bg", "tag_fg",
     "syn_comment", "syn_string", "syn_number", "syn_constant", "syn_keyword", "syn_type", "syn_function", "syn_attr",
     // The terminal's (`terminal_schemes::TERMINAL_KEYS`).

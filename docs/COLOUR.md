@@ -286,6 +286,21 @@ empty files, other formats and schemes without a usable colour are refused with 
 `diff_*`, `hunk_*` and `syn_*` colour diff lines, hunk headers and syntax tokens. They are
 outside the families and unchanged by the brand colour.
 
+`code_sel` is text selected in a diff's code while the diff has the keyboard, `code_sel_dim`
+the same without it. Each is painted opaque behind the selected glyphs only (and a nub one space
+wide where the selection runs on to the next line), over whatever row is under it, with no wash
+or blend; the glyphs keep their colours. They are a blue or iris kept out of the diff's hues and
+the accent's: Graphite, Porcelain and Dawn use their accent's hue, already blue or iris; Dusk
+indigo (hue 275, its gold's complement); the rest hue 255. A theme file that sets neither gets
+`#1d4f82` / `#474e56` on a dark base and `#b9d5fe` / `#d8dfe9` on a light one.
+`theme/code_sel_tests.rs` holds every built-in to four rules:
+
+1. `text` on both: at least 4.5:1, 7:1 in high contrast.
+2. Every `syn_*` on both: at least 3:1, 4.5:1 in high contrast.
+3. `code_sel` at least 0.08 (OKLab ΔE) from each row colour: `bg`, `diff_add`, `diff_del`,
+   `diff_add_sel`, `diff_del_sel`, `diff_add_word`, `diff_del_word`.
+4. `code_sel_dim` at least 0.05 from each row colour and 0.055 from `code_sel`.
+
 ## 2. Rules
 
 - One job per colour: each colour means one thing (with the related uses listed above), and
@@ -739,7 +754,7 @@ order, to `#rrggbb` or to another key's name; `glowfly-core`'s `COLOR_KEYS` and
 `bg`, `panel`, `toolbar`, `raised`, `input`, `border`, `input_border`, `dialog_border`,
 `hover`, `selected`, `accent`, `text`, `strong`, `weak`, `faint`, `added`, `removed`,
 `modified`, `info`, `progress`, `diff_add`, `diff_del`, `diff_add_sel`, `diff_del_sel`,
-`diff_add_word`, `diff_del_word`, `hunk_bg`, `hunk_fg`, `warn`, `banner`, `primary`,
+`diff_add_word`, `diff_del_word`, `hunk_bg`, `hunk_fg`, `code_sel`, `code_sel_dim`, `warn`, `banner`, `primary`,
 `on_primary`, `primary_off`, `primary_border`, `danger`, `danger_off`, `tag_bg`, `tag_fg`,
 `syn_comment`, `syn_string`, `syn_number`, `syn_constant`, `syn_keyword`, `syn_type`,
 `syn_function`, `syn_attr`, then the terminal's: `terminal_background`, `terminal_foreground`,

@@ -1,16 +1,18 @@
 //! The open diff's row list, widest line and gaps between hunks, built when the diff, the layout,
 //! the open folds or gaps or the tab width change instead of on every frame: they walk every line
 //! of the file. With long lines wrapped, also the rows' heights, rebuilt when the rows, the wrap
-//! width or the font change.
+//! width or the font change. With the rows, which lines each row shows and the row each line
+//! is on (`LineIndex`), for the text selection.
 
 use super::wrap::{RowMetrics, Wrap};
-
+use crate::state::diff_text::{LineRef, TextSide};
 use glowfly_core::diff_rows::{self, DiffRow, GapLines, GapSpan, SplitRow};
 use glowfly_core::repo::FileDiff;
 use glowfly_core::settings::DiffLayout;
 use glowfly_core::tabs;
 use glowfly_core::whole_file::{self, Expanded, WholeFile};
 use glowfly_core::wrap;
+use std::collections::HashMap;
 
 /// What the rows were built from. A loaded, reloaded or restored diff always comes with a new
 /// `DiffSlot::generation` or `shown_gen`; the addresses also catch the whole file being dropped in
@@ -56,6 +58,60 @@ pub struct DiffRowsCache {
     metrics_key: Option<MetricsKey>,
     /// How many times the row heights were built (for tests).
     pub height_builds: usize,
+    /// The lines the rows show, for the text selection.
+    pub index: LineIndex,
+}
+
+/// Each row's lines (inline: one, in the first place; split: the old side's, then the new
+/// side's), and the row each line is on. Only lines with text to select are in it: not the
+/// "No newline at end of file" notes.
+#[derive(Default)]
+pub struct LineIndex {
+    cells: Vec<[Option<LineRef>; 2]>,
+    row_of: HashMap<LineRef, usize>,
+}
+
+impl LineIndex {
+    fn build(inline: &[DiffRow], split: &[SplitRow], lines: &FileDiff, whole: bool) -> Self {
+        let text = |hunk: usize, line: usize| {
+            let l = lines.hunks.get(hunk)?.lines.get(line)?;
+            let r = if whole { LineRef::Whole { line } } else { LineRef::Hunk { hunk, line } };
+            (!matches!(l.origin, '<' | '>' | '=')).then_some(r)
+        };
+        let gap = |hunk, line| Some(LineRef::Gap { hunk, line });
+        let cells: Vec<[Option<LineRef>; 2]> = if inline.is_empty() {
+            split
+                .iter()
+                .map(|r| match *r {
+                    SplitRow::Pair { hunk, old, new } => [old.and_then(|l| text(hunk, l)), new.and_then(|l| text(hunk, l))],
+                    SplitRow::GapLine { hunk, line } => [gap(hunk, line), gap(hunk, line)],
+                    _ => [None, None],
+                })
+                .collect()
+        } else {
+            inline
+                .iter()
+                .map(|r| match *r {
+                    DiffRow::Line { hunk, line } => [text(hunk, line), None],
+                    DiffRow::GapLine { hunk, line } => [gap(hunk, line), None],
+                    _ => [None, None],
+                })
+                .collect()
+        };
+        let row_of = cells.iter().enumerate().flat_map(|(i, c)| c.iter().flatten().map(move |r| (*r, i))).collect();
+        Self { cells, row_of }
+    }
+
+    /// The row line `r` is on, if shown.
+    pub fn row(&self, r: LineRef) -> Option<usize> {
+        self.row_of.get(&r).copied()
+    }
+
+    /// The lines of `side`, in the order shown.
+    pub fn lines(&self, side: TextSide) -> impl Iterator<Item = LineRef> + '_ {
+        let k = usize::from(side == TextSide::New);
+        self.cells.iter().filter_map(move |c| c[k])
+    }
 }
 
 /// What the rows are built from: the diff and, in the whole-file view, its whole file.
@@ -98,6 +154,7 @@ impl DiffRowsCache {
         self.gaps = if s.whole.is_none() && s.gaps { diff_rows::gaps(s.diff) } else { Vec::new() };
         let lines = s.whole.map_or(s.diff, |w| &w.diff);
         self.widest = lines.hunks.iter().flat_map(|h| &h.lines).map(|l| tabs::columns(&l.text, s.tab)).max().unwrap_or(0);
+        self.index = LineIndex::build(&inline, &split, lines, s.whole.is_some());
         self.inline = inline;
         self.split = split;
         self.builds += 1;
@@ -213,6 +270,23 @@ mod tests {
         cache.refresh(src(&reloaded, (2, 2), DiffLayout::Split, 8, &expanded));
         assert_eq!(cache.builds, 4);
         assert_eq!(cache.split, diff_rows::split_rows(&reloaded));
+    }
+
+    #[test]
+    fn the_index_follows_the_rows_and_sides() {
+        let mut cache = DiffRowsCache::default();
+        let expanded = Expanded::default();
+        let d = diff(&[(' ', "same"), ('-', "old"), ('+', "new"), ('>', "No newline")]);
+        let at = |line| LineRef::Hunk { hunk: 0, line };
+        cache.refresh(src(&d, (1, 1), DiffLayout::Inline, 4, &expanded));
+        // Rows: header, then a line each; the no-newline note has no text to select.
+        assert_eq!((cache.index.row(at(0)), cache.index.row(at(2)), cache.index.row(at(3))), (Some(1), Some(3), None));
+        assert_eq!(cache.index.lines(TextSide::Inline).collect::<Vec<_>>(), [at(0), at(1), at(2)]);
+        cache.refresh(src(&d, (1, 1), DiffLayout::Split, 4, &expanded));
+        // `-old` and `+new` pair on one row; each side lists only its own lines.
+        assert_eq!(cache.index.row(at(1)), cache.index.row(at(2)));
+        assert_eq!(cache.index.lines(TextSide::Old).collect::<Vec<_>>(), [at(0), at(1)]);
+        assert_eq!(cache.index.lines(TextSide::New).collect::<Vec<_>>(), [at(0), at(2)]);
     }
 
     #[test]

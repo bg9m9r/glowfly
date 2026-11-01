@@ -113,6 +113,8 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
                 st.session.tab_view.diff_top_row = row;
                 st.view.diff_cursor = None; // the rows are numbered differently now
             }
+            // The text selected was on the other layout's rows, or side.
+            st.view.diff_text = None;
             st.settings.diff_layout = layout;
             fx.extend(super::prefs::save_settings(st));
         }
@@ -152,6 +154,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
         | DiffMsg::DragDiffLine { .. }
         | DiffMsg::EndLineDrag
         | DiffMsg::ClearLineSelection => lines(st, msg),
+        DiffMsg::ClearTextSelection => st.view.diff_text = None,
         DiffMsg::JumpToChange(step) => {
             if st.view.diff_landing.is_some() {
                 return; // a stepped-to file is loading: key repeat waits for it
@@ -224,7 +227,8 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
         .as_ref()
         .and_then(|(_, d)| hunk_at_top(d, old, layout, st.session.tab_view.diff_top_row, &st.session.tab_view.diff_expanded));
     st.settings.diff_mode = mode;
-    st.view.diff_lines.clear();
+    // The hunk view and the whole file name their lines differently.
+    st.view.clear_diff_selection();
     fx.extend(super::prefs::save_settings(st));
     match mode {
         DiffMode::WholeFile => {

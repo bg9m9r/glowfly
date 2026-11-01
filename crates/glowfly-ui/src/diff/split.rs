@@ -1,15 +1,18 @@
 //! The split layout: the old side on the left, the new side on the right, with removed and
 //! added lines paired by similarity (see `glowfly_core::line_pairs`) and a divider between the
-//! columns.
+//! columns. Text selected in the code stays on the side the press landed on: the other side
+//! paints no highlight (`text_sel`).
 
 use super::style::DiffStyle;
-use super::syntax::paint_line;
-use super::wrap::{RowMetrics, Wrap};
+use super::syntax::{Laid, paint_line_sel};
+use super::text_sel::{self, Hit, TextMut, TextView};
+use super::wrap::{Pass, RowMetrics, Wrap};
 use super::{
     DiffView, LineHover, comment_add, drag_over, fold, gutter_rect, gutter_sign, hunk_header, line_click, line_sense, paint_mark,
     thread_marks,
 };
 use crate::msg::Msg;
+use crate::state::diff_text::{LineRef, TextSide};
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::diff_rows::{LineSide, SplitRow};
@@ -33,8 +36,19 @@ enum Side {
     New,
 }
 
+impl Side {
+    fn text(self) -> TextSide {
+        match self {
+            Side::Old => TextSide::Old,
+            Side::New => TextSide::New,
+        }
+    }
+}
+
 /// Draws the rows and returns the first visible one and how many rows fit.
-/// `rows`, `widest` (in columns) and the rows' heights `m` come from the rows cache.
+/// `rows`, `widest` (in columns) and the rows' heights `m` come from the rows cache; `t` is the
+/// text selection, which a press or drag on the code changes.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn show(
     ui: &mut Ui,
     v: &DiffView,
@@ -42,6 +56,7 @@ pub(super) fn show(
     widest: usize,
     m: RowMetrics,
     scroll_to: Option<usize>,
+    t: &mut TextMut,
     msgs: &mut Vec<Msg>,
 ) -> (usize, usize) {
     let diff = v.lines();
@@ -55,8 +70,23 @@ pub(super) fn show(
         ui.available_width().max(2.0 * (st.split_cols().text + widest as f32 * char_w + 20.0))
     };
     let half = (width / 2.0).round();
+    let text_x = st.split_cols().text;
+    let (mut code, mut hits) = (None, Vec::new());
 
-    super::wrap::scroll(ui, super::wrap::DIFF, rows.len(), m, scroll_to, |ui, i, h| {
+    super::wrap::scroll_framed(ui, super::wrap::DIFF, rows.len(), m, scroll_to, |ui, pass| {
+        let (i, h) = match pass {
+            Pass::Row(i, h) => (i, h),
+            Pass::Begin => {
+                code = Some(text_sel::sense(ui));
+                return;
+            }
+            Pass::End => {
+                if let Some(code) = &code {
+                    text_sel::handle(ui, code, &hits, v, t, msgs);
+                }
+                return;
+            }
+        };
         let (rect, _) = ui.allocate_exact_size(vec2(width, h), Sense::hover());
         match rows[i] {
             // During a line drag the header counts as the line before the hunk's first.
@@ -81,8 +111,12 @@ pub(super) fn show(
                 let spans: &[Span] = if v.hl.is_some() { text.spans.get(line).map_or(&[], Vec::as_slice) } else { &[] };
                 let left = Rect::from_min_max(rect.min, pos2(rect.left() + half, rect.bottom()));
                 let right = Rect::from_min_max(pos2(left.right(), rect.top()), rect.max);
-                cell(ui, left, Some((&dl, spans, &[])), Side::Old, st, v.wrap, Mark::default());
-                cell(ui, right, Some((&dl, spans, &[])), Side::New, st, v.wrap, Mark::default());
+                let r = LineRef::Gap { hunk, line };
+                for (c, side) in [(left, Side::Old), (right, Side::New)] {
+                    if let Some(laid) = cell(ui, c, Some((&dl, spans, &[])), side, st, v.wrap, Mark::default(), Some((&v.text, r))) {
+                        hits.push(Hit { side: side.text(), line: r, raw, cell: c, text_x: c.left() + text_x, laid });
+                    }
+                }
                 ui.painter().vline(left.right(), rect.y_range(), Stroke::new(1.0_f32, color::border()));
                 if line == 0 {
                     fold::fold_back_key(ui, left, v, g.key, g.len, st.split_cols().sign, msgs);
@@ -106,7 +140,7 @@ pub(super) fn show(
                 };
                 for (side, r, idx) in [(Side::Old, left, old), (Side::New, right, new)] {
                     let Some(idx) = idx else {
-                        cell(ui, r, None, side, st, v.wrap, Mark::default());
+                        cell(ui, r, None, side, st, v.wrap, Mark::default(), None);
                         continue;
                     };
                     let dl = &lines[idx];
@@ -125,7 +159,13 @@ pub(super) fn show(
                         None => LineHover::default(),
                     };
                     let mark = Mark { selected, hover };
-                    cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, v.wrap, mark);
+                    // "No newline at end of file" notes have no text to select.
+                    let line = (!matches!(dl.origin, '<' | '>' | '=')).then(|| v.line_ref(hunk, idx));
+                    let words = diff.intraline.line(hunk, idx);
+                    let laid = cell(ui, r, Some((dl, spans(idx), words)), side, st, v.wrap, mark, line.map(|l| (&v.text, l)));
+                    if let (Some(line), Some(laid)) = (line, laid) {
+                        hits.push(Hit { side: side.text(), line, raw: &dl.text, cell: r, text_x: r.left() + text_x, laid });
+                    }
                     paint_mark(ui, r, selected, hover.gutter);
                     let key = if side == Side::Old { LineSide::Old } else { LineSide::New };
                     let edge = ui.clip_rect().right().min(r.right());
@@ -164,13 +204,24 @@ fn dragged_side(ui: &Ui, left: Rect, right: Rect, old: Option<usize>, new: Optio
 /// ranges; `None` is an empty cell. Selected cells (`mark`) get the stronger background, and selected
 /// or gutter-hovered ones the check box in place of the sign. `st` gives the
 /// font, the gutter and whether numbers and changed words are drawn; `wrap` how long lines
-/// continue below the first visual line, which holds the number and sign.
-fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle, wrap: Option<Wrap>, mark: Mark) {
+/// continue below the first visual line, which holds the number and sign; `text` the text
+/// selection and the line's place in it. Returns how the line's text was laid out.
+#[allow(clippy::too_many_arguments)]
+fn cell(
+    ui: &Ui,
+    rect: Rect,
+    line: Option<CellLine>,
+    side: Side,
+    st: &DiffStyle,
+    wrap: Option<Wrap>,
+    mark: Mark,
+    text: Option<(&TextView, LineRef)>,
+) -> Option<Laid> {
     let selected = mark.selected;
     let p = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
     let Some((dl, spans, words)) = line else {
         p.rect_filled(rect, 0.0, color::panel());
-        return;
+        return None;
     };
     let (bg, fg, sign) = match (dl.origin, side) {
         ('-', Side::Old) if selected => (st.sel_del, color::text(), '-'),
@@ -198,5 +249,6 @@ fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle,
         ('+', Side::New) => Some((words, color::diff_add_word())),
         _ => None,
     };
-    paint_line(&p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab, wrap);
+    let sel = text.and_then(|(t, r)| t.highlight(side.text(), r, &dl.text));
+    Some(paint_line_sel(&p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab, wrap, sel.as_ref()))
 }

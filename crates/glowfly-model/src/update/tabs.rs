@@ -246,7 +246,7 @@ pub(super) fn forget_repo_reads(st: &mut AppState) {
 
 pub fn park(st: &mut AppState) -> Parked {
     // Not kept: another tab may show the same path, and its diff reloads on return anyway.
-    st.view.diff_lines.clear();
+    st.view.clear_diff_selection();
     // The parked tab's diff results are dropped, so a pending step can't land.
     st.view.diff_landing = None;
     st.view.diff_opening = None;

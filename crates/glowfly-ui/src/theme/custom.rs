@@ -8,6 +8,13 @@ use crate::themes::ThemeState;
 use eframe::egui::Color32;
 use glowfly_core::settings::{ColorValue, ThemeChoice, ThemeFile};
 
+/// The selected-code fills a theme file gets when it sets none: focused and unfocused, dark and
+/// light.
+const CODE_SEL_DARK: Color32 = Color32::from_rgb(0x1d, 0x4f, 0x82);
+const CODE_SEL_DIM_DARK: Color32 = Color32::from_rgb(0x47, 0x4e, 0x56);
+const CODE_SEL_LIGHT: Color32 = Color32::from_rgb(0xb9, 0xd5, 0xfe);
+const CODE_SEL_DIM_LIGHT: Color32 = Color32::from_rgb(0xd8, 0xdf, 0xe9);
+
 /// The terminal's body keys and the colours they follow when a file leaves them out: a built-in
 /// terminal draws on `input` in `text` with the accent's cursor and selection.
 const TERMINAL_BODY: [(&str, &str); 4] =
@@ -41,6 +48,14 @@ pub fn build(file: &ThemeFile) -> Palette {
         if !file.colors.contains_key(key) {
             let c = p.get(from).expect("a palette key");
             *p.get_mut(key).expect("a terminal key") = c;
+        }
+    }
+    // Selected diff text is a selection blue of the file's own unless it sets one: the dark or
+    // light default, whatever the base's is.
+    let (sel, dim) = if p.dark { (CODE_SEL_DARK, CODE_SEL_DIM_DARK) } else { (CODE_SEL_LIGHT, CODE_SEL_DIM_LIGHT) };
+    for (key, c) in [("code_sel", sel), ("code_sel_dim", dim)] {
+        if !file.colors.contains_key(key) {
+            *p.get_mut(key).expect("a palette key") = c;
         }
     }
     if let Some(g) = garden_twin(file.base).filter(|_| p.accent != base.accent) {

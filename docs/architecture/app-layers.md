@@ -105,6 +105,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `list_keys.rs`: the keys of a file list with the keyboard focus (`ListKey`), which of them each list takes (`KeySet`), the lists that only open files (`FileList`) and where a step, page or edge move lands in its visible order (`ListMove::target`), for any list built on `ui/list_focus.rs`.
 - `file_lists.rs`: the lists that only open files as their keys see them: what each row opens (a diff, a conflict, a folder history file), in on-screen order, and the current row.
 - `wip_lists.rs`: the Unstaged and Staged Files lists as their keys see them: their files in on-screen order, the file the keys act on, the Shift-selected files (`WipSpan`) and the move-on after a stage (`MoveOn`).
+- `diff_text.rs`: the text selected in the open diff's code (`TextSel`: anchor, head, unit and side, keyed to the diff shown), its line places (`LineRef`), word bounds and `copy`, the text a selection copies.
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
