@@ -168,6 +168,13 @@ fn existing_defaults() -> Settings {
 /// first one read is kept for the toast.
 fn migrate(mut s: Settings) -> Settings {
     s.retired_theme = super::theme_choice::take_retired();
+    // Terminal colours saved by a built-in's id: the old `dark` / `light` and removed themes'
+    // ids take the current id, so the Colors menu ticks the theme they open in.
+    if let super::TerminalColours::Theme(id) = &mut s.terminal.colours
+        && let Some(b) = super::themes::BuiltinTheme::from_id(id)
+    {
+        *id = b.id().to_owned();
+    }
     if matches!(s.date_format.as_str(), "Iso" | "Long" | "Relative") {
         s.relative_dates = s.date_format == "Relative";
         s.date_format = Settings::default().date_format;

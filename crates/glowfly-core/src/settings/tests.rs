@@ -578,6 +578,20 @@ fn a_profiles_retired_theme_is_mapped_too() {
 }
 
 #[test]
+fn terminal_colours_take_the_current_theme_ids() {
+    use super::TerminalColours;
+    for (saved, now) in [("dark", "dusk"), ("light", "dawn"), ("ember", "graphite"), ("garden-light", "mist"), ("graphite", "graphite")] {
+        let mut text = serde_json::to_value(Settings::default()).unwrap();
+        text["terminal"]["colours"] = serde_json::json!({ "Theme": saved });
+        let (dir, file) = scratch_settings(&format!("terminal-ids-{saved}"), text.to_string().as_bytes());
+        let (s, problem) = Settings::load_from(&file);
+        assert_eq!(problem, None, "{saved}");
+        assert_eq!(s.terminal.colours, TerminalColours::Theme(now.into()), "{saved}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
 fn theme_choice_builtin_mapping() {
     use super::themes::BuiltinTheme as B;
     assert_eq!(ThemeChoice::System.builtin(true), Some(B::Graphite));
