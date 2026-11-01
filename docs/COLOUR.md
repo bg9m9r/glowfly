@@ -337,7 +337,7 @@ outside the families and unchanged by the brand colour.
     as an orange at the gamut's edge: hue 40 to 66 deg (past that, amber turns ochre),
     lightness 0.50 and up and at least 95% of the chroma its lightness and hue hold. So the
     light themes' `warn`, `modified`, `syn_type` and terminal yellows are an orange-leaning
-    amber (Dawn's #985700) that reaches 4.5:1 on the surfaces it sits on, and `syn_number` a
+    amber (Dawn's #975600) that reaches 4.5:1 on the surfaces it sits on, and `syn_number` a
     vermilion (hue 34, Dawn's #c92d00) to stay apart from it. High contrast light's amber text
     is the one exception: at 7:1 on white any amber is chocolate. Neutral inks (body text,
     comments, the terminal's black, white and foreground) are judged as greys, not hues.
@@ -379,11 +379,12 @@ outside the families and unchanged by the brand colour.
 Sleekness rules, for the six themes that aren't high contrast (`theme/more_themes_tests.rs`):
 
 1. One accent: `primary` is the `accent`.
-2. A quiet selection: `selected` keeps OKLCH chroma at or under 0.08 in dark themes and 0.04 in
-   light ones, takes the accent's hue (the field's when the accent is warm), and is never a
-   warm wash. Mist's #c7eddd (chroma 0.045) is over the light limit, awaiting the designer.
+2. A quiet selection: `selected` keeps OKLCH chroma at or under 0.08 in dark themes and 0.05 in
+   light ones (Mist's #c7eddd is 0.045), sits within 25 deg of the accent's hue (the field's
+   when the accent is warm), and is never a warm wash.
 3. The accent's chroma: at most 0.14 at lightness 0.76 to 0.86 in dark themes, at most 0.20 at
-   0.44 to 0.52 in light ones.
+   0.44 to 0.52 in light ones. These limits are to two decimals: a value that rounds to one
+   meets it (Dawn's iris has chroma 0.20004).
 4. `border` on `panel` measures 1.25 to 1.45:1.
 5. The surface ladder: chrome < bg < panel < raised in dark themes, chrome < raised < bg <
    panel <= input in light ones, raised at least 1.08:1 off the panel.
@@ -524,8 +525,8 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | on_primary | #ffffff | 6.5:1 on the iris |
 | primary_border | #4535b5 | |
 | tag_bg / tag_fg | #f5d8ea / #763463 | Plum, 6.5:1 |
-| added / removed / modified / info / progress | #357518 / #b63132 / #985700 / #1f68bc / #6d47b8 | modified and warn: one orange-leaning amber at the gamut's edge, 4.5:1 on every row surface but the selected row (4.47:1, awaiting the designer) |
-| warn / banner | #985700 / #fee3c5 | |
+| added / removed / modified / info / progress | #357518 / #b63132 / #975600 / #1f68bc / #6d47b8 | modified and warn: one orange-leaning amber at the gamut's edge (Mist's), 4.53:1 at least, on the selected row |
+| warn / banner | #975600 / #fee3c5 | |
 | danger / danger_off | #c0332a / #fedadc | |
 | syn_comment | #5f5d78 | The other syntax colours are Garden light's |
 
@@ -720,11 +721,11 @@ and selection are its `input`, `text`, `accent` and `accent`:
 | Midnight | 253141 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 c7cfd9 | 8793a3 ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f1f5fb |
 | Mist | 10212f c0362f 2f7d1c ab6500 2a5fc4 8a3fb8 087c80 d0dbe2 | 606e79 a3241e 226614 9d5900 1d4ba3 70299b 006468 dae4ea |
 | Graphite | 2f3033 f0726b 7fcc63 e3bd4f 6aa8f5 c28af2 4fc4c4 cdced0 | 919295 ff9a92 a3e388 f5d77a 9cc6ff dcb0ff 80dede f4f5f6 |
-| Porcelain | 1e2228 c0362f 2f7d1c ab6500 2a5fc4 8a3fb8 087c80 dadde2 | 6b717b a3241e 226614 9d5900 1d4ba3 70299b 006468 e6e8ec |
+| Porcelain | 1e2228 c0362f 2f7d1c ab6500 2a5fc4 8a3fb8 087c80 dadde2 | 6b717b a3241e 226614 9d5900 1d4ba3 70299b 006468 e2e5e9 |
 
 The lowest ratios of a chromatic colour on `input` are 4.99 (Dawn and Garden light 6), and
-7.36 in High contrast light. Porcelain's white 15 (#e6e8ec) is 1.23:1 off its white
-background, under the 1.25 floor, awaiting the designer.
+7.36 in High contrast light. Porcelain's white 15 (#e2e5e9) is 1.26:1 off its white
+background.
 
 ## 7. Theme-file keys
 

@@ -15,10 +15,6 @@ use std::ops::RangeInclusive;
 const BANDS: [&[RangeInclusive<f64>]; 6] =
     [&[0.0..=45.0, 345.0..=360.0], &[115.0..=165.0], &[60.0..=115.0], &[225.0..=285.0], &[290.0..=345.0], &[165.0..=225.0]];
 
-/// Floors the Themes v2 spec's values miss, awaiting the designer: Porcelain's white 15
-/// (#e6e8ec) is 1.23:1 off its white background, under 1.25.
-const PENDING: [&str; 1] = ["Porcelain 15 as a background"];
-
 #[test]
 fn basic_colours_read_on_the_terminal_background() {
     let mut failures = Vec::new();
@@ -54,9 +50,6 @@ fn basic_colours_read_on_the_terminal_background() {
             }
         }
     }
-    let met: Vec<_> = PENDING.iter().filter(|p| !failures.iter().any(|f| f.starts_with(*p))).collect();
-    assert!(met.is_empty(), "pending floors that now pass: drop them: {met:?}");
-    failures.retain(|f| !PENDING.iter().any(|p| f.starts_with(p)));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

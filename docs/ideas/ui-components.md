@@ -43,13 +43,11 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Glowfly themes (Dusk and Dawn): redraw the view snapshots in Dusk and Dawn once the pair is
   settled (they draw in the Garden pair for now); theme-file keys for the colour-blind branch set; a gold distance test
   for custom theme files whose accent lands near Orange or Gold
-- Glowfly themes (six more built-ins): a light twin for Ember and a dark twin for Linen if
-  owners ask; theme files as cards in the picker (drawn from the file's own colours); repository
-  colour hues tuned per theme (the new six reuse the standard repo set); a picker filter once
+- Glowfly themes (more built-ins): theme files as cards in the picker (drawn from the file's own colours); repository
+  colour hues tuned per theme (Midnight, Mist, Graphite and Porcelain reuse the standard repo set); a picker filter once
   there are more than ~16 themes; base-theme hints in the theme file help as a list, not a sentence;
-  Graphite became the default dark theme (old "Dark" settings follow it): a light partner
-  for it if Dawn reads mismatched beside it under Match system, and theme-file `base` falling
-  back to Graphite rather than Dusk if owners want files to follow the default
+  theme-file `base` "dark" falling back to Graphite rather than Dusk if owners want files to
+  follow the default
 
 ### Dialogs keep what was typed
 

@@ -72,10 +72,6 @@ fn no_theme_writes_brown_text() {
     assert!(failures.is_empty(), "{} brown texts:\n{}", failures.len(), failures.join("\n"));
 }
 
-/// Floors the Themes v2 spec's values miss, awaiting the designer: Dawn's amber (#985700) is
-/// 4.47:1 on its new selected row (#e6e1fa), under 4.5.
-const PENDING: [&str; 2] = ["Light modified on selected", "Light warn on selected"];
-
 #[test]
 fn light_amber_text_reads_on_its_surfaces() {
     let mut failures = Vec::new();
@@ -90,9 +86,6 @@ fn light_amber_text_reads_on_its_surfaces() {
             }
         }
     }
-    let met: Vec<_> = PENDING.iter().filter(|p| !failures.iter().any(|f| f.starts_with(*p))).collect();
-    assert!(met.is_empty(), "pending floors that now pass: drop them: {met:?}");
-    failures.retain(|f| !PENDING.iter().any(|p| f.starts_with(p)));
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

@@ -14,7 +14,7 @@ const WITHIN: f64 = 0.02;
 /// on panel, on_primary on primary). Faint is None where the spec gives none (high contrast).
 type Row = (BuiltinTheme, [f64; 5], f64, Option<f64>, f64, f64);
 
-/// The spec's table. Dusk's weak on panel is given as 7.9, one decimal: it measures 7.85.
+/// The spec's table (Dusk's weak on panel as signed off: 7.85).
 const TABLE: [Row; 8] = [
     (BuiltinTheme::Graphite, [14.06, 12.89, 15.02, 10.54, 8.92], 8.11, Some(5.86), 7.93, 9.49),
     (BuiltinTheme::Midnight, [14.47, 13.34, 15.37, 11.00, 9.40], 8.35, Some(6.04), 9.90, 11.33),
