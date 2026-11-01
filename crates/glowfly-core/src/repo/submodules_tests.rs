@@ -49,7 +49,7 @@ fn lib_stem(parent: &Path) -> String {
     file.strip_suffix(&pid).unwrap_or(&file).to_owned()
 }
 
-fn lib_dir(parent: &Path) -> std::path::PathBuf {
+pub(super) fn lib_dir(parent: &Path) -> std::path::PathBuf {
     parent.with_file_name(format!("{}-lib-{}", lib_stem(parent), std::process::id()))
 }
 

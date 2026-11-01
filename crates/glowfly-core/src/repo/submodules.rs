@@ -117,7 +117,13 @@ pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<
             // One component at a time, so the folder uses the platform's separators.
             let folder_exists =
                 workdir.as_ref().is_some_and(|w| path.split('/').fold(w.clone(), |p, c| p.join(c)).symlink_metadata().is_ok());
-            let known = Known { recorded, checked_out, folder_exists, ignore: ignore_of(sm, &name, config.as_ref()) };
+            let known = Known {
+                recorded,
+                checked_out,
+                folder_exists,
+                ignore: ignore_of(sm, &name, config.as_ref()),
+                read_ignore: sm.ignore_rule(),
+            };
             let flags = flags(repo, &name, &path, cheap, &known, whole.as_ref(), memo);
             let state = classify(flags, recorded, checked_out, folder_exists);
             let left_behind = left_behind(sm, recorded, checked_out, memo);
@@ -149,24 +155,49 @@ struct Known {
     recorded: Oid,
     checked_out: Option<Oid>,
     folder_exists: bool,
-    /// Its `submodule.<name>.ignore` (`ignore_of`).
+    /// Its `submodule.<name>.ignore` as git reads it (`ignore_of`).
     ignore: SubmoduleIgnore,
+    /// The rule libgit2's read used: .gitmodules' value only (`Submodule::ignore_rule`).
+    read_ignore: SubmoduleIgnore,
+}
+
+impl Known {
+    /// Whether both reads saw everything: then no row means clean.
+    fn sees_all(&self) -> bool {
+        self.ignore == SubmoduleIgnore::None && self.read_ignore == SubmoduleIgnore::None
+    }
+
+    /// Whether both reads saw modified content: then a modified row in sync means dirty.
+    fn sees_modified(&self) -> bool {
+        let sees = |i| matches!(i, SubmoduleIgnore::None | SubmoduleIgnore::Untracked);
+        sees(self.ignore) && sees(self.read_ignore)
+    }
 }
 
 /// A whole status read's unstaged rows by path, trusted for the submodules' dirtiness. That
 /// read hid what each submodule's `ignore` hides, and what `diff.ignoreSubmodules` hides when
 /// git read it (libgit2 doesn't read that key), so with that key set it isn't trusted at all.
 /// Nor is it when a submodule's status can't be read: libgit2's read then leaves every
-/// submodule out (`status::libgit2_lists`).
-struct Whole<'a>(HashMap<&'a str, char>);
+/// submodule out (`status::libgit2_lists`). With `core.ignorecase` paths match folded.
+struct Whole<'a> {
+    rows: HashMap<std::borrow::Cow<'a, str>, char>,
+    fold: bool,
+}
 
 impl<'a> Whole<'a> {
     fn of(rows: &'a [FileEntry], config: Option<&git2::Config>, found: &[Found<'_>]) -> Option<Self> {
-        let diff_ignore = config?.get_string("diff.ignoreSubmodules").ok();
+        let config = config?;
+        let diff_ignore = config.get_string("diff.ignoreSubmodules").ok();
         if diff_ignore.is_some_and(|v| !v.trim().eq_ignore_ascii_case("none")) || found.iter().any(|f| f.cheap.is_none()) {
             return None;
         }
-        Some(Self(rows.iter().map(|f| (f.path.as_str(), f.status)).collect()))
+        let fold = config.get_bool("core.ignorecase").unwrap_or(false);
+        let key = |p: &'a str| if fold { p.to_lowercase().into() } else { p.into() };
+        Some(Self { rows: rows.iter().map(|f| (key(f.path.as_str()), f.status)).collect(), fold })
+    }
+
+    fn get(&self, path: &str) -> Option<char> {
+        if self.fold { self.rows.get(path.to_lowercase().as_str()) } else { self.rows.get(path) }.copied()
     }
 }
 
@@ -190,9 +221,9 @@ fn flags(
         }
         if let Some(whole) = whole {
             let in_sync = k.checked_out == Some(k.recorded);
-            match whole.0.get(path) {
-                None if k.ignore == SubmoduleIgnore::None => return cheap,
-                Some('M') if in_sync && matches!(k.ignore, SubmoduleIgnore::None | SubmoduleIgnore::Untracked) => {
+            match whole.get(path) {
+                None if k.sees_all() => return cheap,
+                Some('M') if in_sync && k.sees_modified() => {
                     return cheap | SubmoduleStatus::WD_WD_MODIFIED;
                 }
                 _ => {}
@@ -278,10 +309,15 @@ fn classify(flags: SubmoduleStatus, recorded: Oid, checked_out: Option<Oid>, fol
 fn left_behind(sm: &Submodule, recorded: Oid, checked_out: Option<Oid>, memo: Option<&SubmoduleMemo>) -> Vec<(Oid, String)> {
     let Some(head) = checked_out.filter(|&c| c != recorded) else { return Vec::new() };
     let Ok(repo) = sm.open() else { return Vec::new() };
-    let walk = || walk_unreferenced(&repo, head, recorded).unwrap_or_default();
+    // Kept only when whole: a failed walk, a recorded commit not fetched yet, or a shallow
+    // history can change without any ref changing.
+    let walk = || match walk_unreferenced(&repo, head, recorded) {
+        Ok(c) => (c, !repo.is_shallow() && repo.find_commit(recorded).is_ok()),
+        Err(_) => (Vec::new(), false),
+    };
     match memo {
         Some(m) => m.left_behind(&repo, recorded, head, walk),
-        None => walk(),
+        None => walk().0,
     }
 }
 

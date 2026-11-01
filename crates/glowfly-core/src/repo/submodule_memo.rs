@@ -53,21 +53,25 @@ impl SubmoduleMemo {
     }
 
     /// The left-behind commits of the submodule `repo` checked out at `head` with `recorded`
-    /// in the parent's index: the answer kept for the same commits and refs, else `walk`'s.
-    pub(super) fn left_behind(&self, repo: &Repository, recorded: Oid, head: Oid, walk: impl FnOnce() -> Commits) -> Commits {
+    /// in the parent's index: the answer kept for the same commits and refs, else `walk`'s,
+    /// kept only when `walk` says it may be (a whole walk that only a ref change can change).
+    pub(super) fn left_behind(&self, repo: &Repository, recorded: Oid, head: Oid, walk: impl FnOnce() -> (Commits, bool)) -> Commits {
         let Some(refs) = refs_print(repo) else {
             self.walks.fetch_add(1, Ordering::Relaxed);
-            return walk();
+            return walk().0;
         };
         let key = Key { git_dir: repo.path().to_path_buf(), recorded, head, refs };
         if let Some((_, c)) = self.kept().iter().find(|(k, _)| *k == key) {
             return c.clone();
         }
         self.walks.fetch_add(1, Ordering::Relaxed);
-        let commits = walk();
+        let (commits, keep) = walk();
         let mut kept = self.kept();
         // One answer per submodule: an older one for other commits or refs won't be asked again soon.
         kept.retain(|(k, _)| k.git_dir != key.git_dir);
+        if !keep {
+            return commits;
+        }
         if kept.len() >= MAX_KEPT {
             kept.pop_front();
         }

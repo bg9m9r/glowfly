@@ -2,11 +2,11 @@
 //! itself: the same for every state (in sync, untracked or modified content, a staged change
 //! inside, new commits with commits left behind, uninitialized, missing), read by libgit2 and by
 //! git, under each `ignore` setting and `diff.ignoreSubmodules`; and how many scans and walks
-//! the list makes on its own.
+//! the list makes on its own (none kept from a walk that can change without a ref moving).
 
 use super::*;
 use crate::repo::status_and_index;
-use crate::repo::submodules_tests::cleanup;
+use crate::repo::submodules_tests::{cleanup, lib_dir};
 use crate::testutil::*;
 use std::path::Path;
 
@@ -140,5 +140,40 @@ fn left_behind_is_walked_again_only_when_commits_or_refs_change() {
     assert_eq!((left(&memo), memo.walks()), (2, 4));
     git(&parent, &["add", "libs/lib"]);
     assert_eq!((left(&memo), memo.walks()), (0, 4), "recorded: in sync");
+    cleanup(&parent);
+}
+
+/// libgit2's read uses .gitmodules' rule only, so the config's `none` over it doesn't make that
+/// read see everything.
+#[test]
+fn whole_read_list_matches_with_none_in_the_config_over_all() {
+    every_state("smw-over-all", |p| {
+        git(p, &["config", "-f", ".gitmodules", "submodule.libs/lib.ignore", "all"]);
+        set_config(p, &[("submodule.libs/lib.ignore", "none")]);
+    });
+}
+
+#[test]
+fn whole_read_list_matches_with_none_in_the_config_over_untracked() {
+    every_state("smw-over-untracked", |p| {
+        git(p, &["config", "-f", ".gitmodules", "submodule.libs/lib.ignore", "untracked"]);
+        set_config(p, &[("submodule.libs/lib.ignore", "none")]);
+    });
+}
+
+#[test]
+fn a_walk_without_the_recorded_commit_is_not_kept() {
+    let (parent, _sub) = with_submodule("smw-unfetched");
+    let lib = lib_dir(&parent);
+    write(&lib, "lib.txt", "upstream\n");
+    git(&lib, &["commit", "-q", "-am", "not fetched"]);
+    let unfetched = git2::Repository::open(&lib).unwrap().head().unwrap().target().unwrap();
+    git(&parent, &["update-index", "--cacheinfo", &format!("160000,{unfetched},libs/lib")]);
+    let memo = SubmoduleMemo::default();
+    for walks in 1..=2 {
+        let sm = &after_whole(&parent, false, &memo)[0];
+        assert_eq!((sm.state, sm.recorded), (SubmoduleState::OutOfSync, unfetched));
+        assert_eq!(memo.walks(), walks, "walked again: the commit may arrive without a ref moving");
+    }
     cleanup(&parent);
 }
