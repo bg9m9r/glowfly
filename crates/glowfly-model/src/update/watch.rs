@@ -126,6 +126,9 @@ pub fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
         }
         st.watch.target = workdir;
         st.watch.quiet_until = None;
+        // Another repository reads at its own speed.
+        st.watch.poll_read = None;
+        st.watch.last_read = None;
         fx.push(Effect::Watch(want));
     }
 }
@@ -143,22 +146,46 @@ pub(super) fn remote_text(workdir: &std::path::Path, kind: &str, keys: &Keymap) 
 /// On the timer `poll_every` sets (a network or virtual file system, or Windows), checks for
 /// missed changes while the window is focused and nothing else is reading or changing the
 /// repository: a local Windows repository's watcher sweeps its tree (`Effect::SweepWatch`), the
-/// others read the whole status.
+/// others read the whole status. A status read is due `WatchState::poll_gap` after the end of
+/// the last one, and never queued behind a read already running.
 pub(super) fn poll(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let Some(every) = st.watch.poll_interval() else { return };
     if !st.view.was_focused || st.snap.is_none() || st.job.is_some() || st.loading {
         return;
     }
-    match st.watch.last_poll {
-        Some(last) if now.saturating_duration_since(last) < every => {}
-        Some(_) => {
+    let Some(last) = st.watch.last_poll else {
+        st.watch.last_poll = Some(now);
+        return;
+    };
+    if now.saturating_duration_since(last) < st.watch.poll_gap(every) {
+        return;
+    }
+    match st.watch.target.clone().filter(|_| st.watch.sweeps()) {
+        Some(workdir) => {
             st.watch.last_poll = Some(now);
-            match st.watch.target.clone().filter(|_| st.watch.sweeps()) {
-                Some(workdir) => fx.push(Effect::SweepWatch { workdir }),
-                None => super::repo::refresh_status(st, fx),
-            }
+            fx.push(Effect::SweepWatch { workdir });
         }
-        None => st.watch.last_poll = Some(now),
+        // Not queued behind the running read: a whole read's end starts the clock again, and
+        // after a read of some paths the next tick reads.
+        None if st.refresh.status_busy => {}
+        None => {
+            st.watch.last_poll = Some(now);
+            st.watch.poll_read = Some((st.load_gen, now));
+            super::repo::refresh_status(st, fx);
+        }
+    }
+}
+
+/// A status read of the current load generation ended at `now`: the timer's own read notes how
+/// long it took (`WatchState::last_read`), and the timer's clock starts again at the end of that
+/// read or of any other read of the whole status (not for a sweep, which checks more than it).
+pub(super) fn status_read(st: &mut AppState, whole: bool, now: Instant) {
+    let timed = st.watch.poll_read.take().filter(|(generation, _)| *generation == st.load_gen);
+    if let Some((_, started)) = timed {
+        st.watch.last_read = Some(now.saturating_duration_since(started));
+    }
+    if timed.is_some() || (whole && !st.watch.sweeps()) {
+        st.watch.last_poll = Some(now);
     }
 }
 

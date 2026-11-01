@@ -54,6 +54,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 return;
             }
             st.refresh.status_busy = false;
+            super::watch::status_read(st, matches!(result, Ok(StatusRead::Whole(..))), now);
             // A read of some paths keeps the index it was merged into.
             if !matches!(result, Ok(StatusRead::Paths(_))) {
                 remember_index(st, result.is_ok(), index);

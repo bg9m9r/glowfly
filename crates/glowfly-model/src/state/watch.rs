@@ -21,8 +21,14 @@ pub struct WatchState {
     pub failed: HashSet<PathBuf>,
     /// Repositories on a network or virtual file system, with its kind (said once each).
     pub remote: HashMap<PathBuf, &'static str>,
-    /// When the status was last re-read on the timer (see `poll_every`).
+    /// When the timer's clock last started: its first tick, a poll's sweep, or the end of the
+    /// last whole status read (see `poll_every`, `poll_gap`).
     pub last_poll: Option<Instant>,
+    /// The timer's own status read while it runs: the load generation it belongs to and when it
+    /// started.
+    pub poll_read: Option<(u64, Instant)>,
+    /// How long the timer's last status read of the watched repository took.
+    pub last_read: Option<Duration>,
     /// What each repository's current watcher probe found (cleared when its watcher restarts
     /// or fails).
     pub probes: HashMap<PathBuf, Probe>,
@@ -61,6 +67,8 @@ pub enum LiveUpdates {
 
 /// How often a repository on a network or virtual file system is re-read.
 pub const REMOTE_POLL: Duration = Duration::from_secs(10);
+/// The longest a slow read stretches the wait between timed status reads (`poll_gap`).
+pub const POLL_GAP_CAP: Duration = Duration::from_secs(60);
 /// How often a Windows repository is re-read anyway: notify drops events without saying so when
 /// its buffer overflows, and stops watching on other errors with only a log line.
 pub const WINDOWS_POLL: Duration = Duration::from_secs(30);
@@ -90,6 +98,14 @@ impl WatchState {
         let target = self.target.as_ref()?;
         let silent = self.probes.get(target) == Some(&Probe::Silent);
         poll_every(true, cfg!(windows), self.remote.contains_key(target) || silent)
+    }
+
+    /// How long after the timer's clock started (`last_poll`) the next poll is due: `every`, or
+    /// three times the last timed read's duration when that is longer, at most `POLL_GAP_CAP`.
+    /// A share that takes 15 s to read is read for at most a quarter of the time.
+    pub fn poll_gap(&self, every: Duration) -> Duration {
+        let stretched = self.last_read.map_or(Duration::ZERO, |d| d.saturating_mul(3));
+        every.max(stretched.min(POLL_GAP_CAP))
     }
 
     /// The live-updates dot for the watched repository; None while nothing is watched.
@@ -138,6 +154,19 @@ mod tests {
         assert_eq!(w.live_updates(), Some(LiveUpdates::Failed));
         w.target = None;
         assert_eq!(w.live_updates(), None, "nothing watched: no dot");
+    }
+
+    #[test]
+    fn a_slow_read_stretches_the_gap_up_to_the_cap() {
+        let mut w = WatchState::default();
+        assert_eq!(w.poll_gap(REMOTE_POLL), REMOTE_POLL, "no read timed yet");
+        w.last_read = Some(Duration::from_secs(2));
+        assert_eq!(w.poll_gap(REMOTE_POLL), REMOTE_POLL, "a quick read keeps the interval");
+        w.last_read = Some(Duration::from_secs(15));
+        assert_eq!(w.poll_gap(REMOTE_POLL), Duration::from_secs(45));
+        w.last_read = Some(Duration::from_secs(600));
+        assert_eq!(w.poll_gap(REMOTE_POLL), POLL_GAP_CAP);
+        assert_eq!(w.poll_gap(POLL_GAP_CAP * 2), POLL_GAP_CAP * 2, "the cap never shortens the interval");
     }
 
     #[test]
