@@ -145,6 +145,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 - Right after it starts, the watcher places a probe file in the git dir (`glowfly_core::watch_probe`, `watcher/probe.rs`) and reports `WatchMsg::Probed`: `Live` once its event arrives, `Silent` after `PROBE_TIMEOUT` (5 s) without one, `Unknown` when the git dir can't be written.
 - `update/watch.rs` keeps the answer per repository in `WatchState::probes`; a silent watcher is warned about once per repository and session (not on a network volume, whose notice already said why) and polled like a network volume (`WatchState::poll_interval`) until any later event sends `Live`.
+- A timed status read is due `WatchState::poll_gap` after the end of the last whole status read (three times a slow read's length, at most `POLL_GAP_CAP`), and skipped while one runs; tests in `flows/watch_poll_spacing_tests.rs`.
 - The status bar's dot (`ui/live_updates.rs`) shows `WatchState::live_updates`; tests in `flows/watch_poll_tests.rs` and `ui/snapshot_tests/snapshot_tests_live_updates.rs`.
 
 ## Incremental status

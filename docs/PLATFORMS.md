@@ -627,8 +627,9 @@ second one next to it.
    follow the includes again after every full reload.
 3. **Assume the watcher can be silent.** Detect remote and virtual file systems with
    `volume::remote_kind` (statfs magic on Linux, `MNT_LOCAL` on macOS, `DRIVE_REMOTE` on
-   Windows), tell the user once, and read the whole status every `REMOTE_POLL` (10 s) while
-   focused. On Windows poll every `WINDOWS_POLL` (30 s) while focused (`state/watch.rs`,
+   Windows), tell the user once, and read the whole status `REMOTE_POLL` (10 s) after the end of
+   the last read while focused, stretched to three times a slow read's length (at most
+   `POLL_GAP_CAP`, 60 s) and never queued behind a read already running. On Windows poll every `WINDOWS_POLL` (30 s) while focused (`state/watch.rs`,
    `poll_every`): a local repository's watcher sweeps its tree (`watch_sweep`: every folder
    stat'd, the changed and racy ones and a rotating tenth listed again, the git dir's refs, index,
    exclude and attributes files and the config files with those they include compared, and

@@ -53,6 +53,8 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - `read_file_bounded` opens a file before checking its type; check before the open, or open with `O_NOCTTY`
 - Tell a probe file deleted from another machine (an SMB share, or from WSL) apart from a watcher that went quiet
 - Drop a Probed result that arrives from a watcher already replaced
+- Start the network-volume timer's clock again at the end of a full reload too (focus regained), so an overdue poll doesn't read the share right after it
+- Say in the network-volume notice that a slow share is re-read less often than every 10 seconds
 
 ### Commit panel extras
 

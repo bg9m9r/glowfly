@@ -320,6 +320,7 @@ mod updates_notes_tests;
 mod updates_recheck_tests;
 mod updates_restart_tests;
 mod updates_tests;
+mod watch_poll_spacing_tests;
 mod watch_poll_tests;
 mod watch_tests;
 mod whitespace_ops_tests;
