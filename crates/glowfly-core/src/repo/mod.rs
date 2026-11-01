@@ -183,7 +183,7 @@ pub use status_speed::{
     untracked_cache_works,
 };
 pub use submodule_add::check_submodule_path;
-pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
+pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleMemo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
 pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_bytes, diff_sides, is_conflicted, merge_sides};
 pub use touching::{Touching, commits_touching};

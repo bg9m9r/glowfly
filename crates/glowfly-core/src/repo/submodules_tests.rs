@@ -11,12 +11,12 @@ use std::path::Path;
 #[test]
 fn status_reload_reads_submodules_only_when_there_are_any() {
     let plain = scratch_repo("sm-if-any-plain");
-    assert_eq!(submodules_if_any(&plain, false).unwrap(), None);
-    assert_eq!(submodules_if_any(&plain, true).unwrap(), Some(Vec::new()));
+    assert_eq!(submodules_if_any(&plain, false, None, None).unwrap(), None);
+    assert_eq!(submodules_if_any(&plain, true, None, None).unwrap(), Some(Vec::new()));
     let _ = std::fs::remove_dir_all(&plain);
 
     let (parent, _sub) = with_submodule("sm-if-any");
-    let list = submodules_if_any(&parent, false).unwrap().expect("a .gitmodules is there");
+    let list = submodules_if_any(&parent, false, None, None).unwrap().expect("a .gitmodules is there");
     assert_eq!(list, subs(&parent));
     cleanup(&parent);
 }
@@ -36,7 +36,7 @@ fn only(parent: &Path) -> SubmoduleInfo {
 }
 
 /// Removes a `with_submodule` fixture: the parent and its sibling library repository.
-fn cleanup(parent: &Path) {
+pub(super) fn cleanup(parent: &Path) {
     let _ = std::fs::remove_dir_all(lib_dir(parent));
     let _ = std::fs::remove_dir_all(parent);
 }
@@ -49,7 +49,7 @@ fn lib_stem(parent: &Path) -> String {
     file.strip_suffix(&pid).unwrap_or(&file).to_owned()
 }
 
-fn lib_dir(parent: &Path) -> std::path::PathBuf {
+pub(super) fn lib_dir(parent: &Path) -> std::path::PathBuf {
     parent.with_file_name(format!("{}-lib-{}", lib_stem(parent), std::process::id()))
 }
 

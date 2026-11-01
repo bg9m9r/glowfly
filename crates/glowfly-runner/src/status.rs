@@ -17,14 +17,18 @@ pub(super) fn load(
     open: Option<String>,
     git_status: bool,
     paths: Option<Vec<String>>,
-    records: &repo::RecordMemo,
+    cache: &repo::GraphCache,
 ) -> Msg {
     let open_stamp = open.and_then(|p| repo::open_file_stamp(workdir, &p));
     if let Some(paths) = paths {
         match repo::status_of_paths(workdir, &paths, git_status) {
             Ok(Some(ps)) => {
                 // Only a covered submodule's row can have changed.
-                let submodules = if ps.submodule_touched { repo::submodules_if_any(workdir, submodules).ok().flatten() } else { None };
+                let submodules = if ps.submodule_touched {
+                    repo::submodules_if_any(workdir, submodules, None, Some(cache.submodules())).ok().flatten()
+                } else {
+                    None
+                };
                 let result = Ok(StatusRead::Paths(ps));
                 return loaded(generation, result, submodules, open_stamp, None);
             }
@@ -32,7 +36,7 @@ pub(super) fn load(
             Err(e) => return loaded(generation, Err(e.to_string()), None, open_stamp, None),
         }
     }
-    whole(workdir, generation, submodules, open_stamp, git_status, records)
+    whole(workdir, generation, submodules, open_stamp, git_status, cache)
 }
 
 /// An index read (`Effect::LoadIndexStatus`), or the whole status when it can't be read so.
@@ -43,16 +47,20 @@ pub(super) fn load_index(
     open: Option<String>,
     git_status: bool,
     read: IndexRequest,
-    records: &repo::RecordMemo,
+    cache: &repo::GraphCache,
 ) -> Msg {
     let open_stamp = open.and_then(|p| repo::open_file_stamp(workdir, &p));
     match repo::status_after_index_change(workdir, &read.old, &read.partners, &read.paths, git_status) {
         Ok(Some(r)) => {
-            let submodules = if r.paths.submodule_touched { repo::submodules_if_any(workdir, submodules).ok().flatten() } else { None };
+            let submodules = if r.paths.submodule_touched {
+                repo::submodules_if_any(workdir, submodules, None, Some(cache.submodules())).ok().flatten()
+            } else {
+                None
+            };
             let result = Ok(StatusRead::Index { paths: r.paths, staged: r.staged });
             loaded(generation, result, submodules, open_stamp, Some(Arc::new(r.memo)))
         }
-        Ok(None) => whole(workdir, generation, submodules, open_stamp, git_status, records),
+        Ok(None) => whole(workdir, generation, submodules, open_stamp, git_status, cache),
         Err(e) => loaded(generation, Err(e.to_string()), None, open_stamp, None),
     }
 }
@@ -68,16 +76,21 @@ fn loaded(
     Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow: None, lfs_patterns: None, index })
 }
 
-/// The whole status; `records` (the runner's, in its graph cache) lets git record speed-ups an
-/// index write dropped, once per index state.
-fn whole(workdir: &Path, generation: u64, submodules: bool, open_stamp: Option<u64>, git_status: bool, records: &repo::RecordMemo) -> Msg {
+/// The whole status; the runner's graph cache lets git record speed-ups an index write
+/// dropped, once per index state, and keeps the submodule list's walks. The submodules take
+/// their dirtiness from this read rather than scanning each again.
+fn whole(workdir: &Path, generation: u64, submodules: bool, open_stamp: Option<u64>, git_status: bool, cache: &repo::GraphCache) -> Msg {
     let started = Instant::now();
-    let (result, index) = match repo::status_and_index_with(workdir, git_status, Some(records)) {
+    let (result, index) = match repo::status_and_index_with(workdir, git_status, Some(cache.records())) {
         Ok((u, s, state, memo)) => (Ok(StatusRead::Whole(u, s, state)), memo.map(Arc::new)),
         Err(e) => (Err(e.to_string()), None),
     };
     let slow = repo::slow(started.elapsed(), workdir);
-    let submodules = repo::submodules_if_any(workdir, submodules).ok().flatten();
+    let rows = match &result {
+        Ok(StatusRead::Whole(u, _, _)) => Some(u.as_slice()),
+        _ => None,
+    };
+    let submodules = repo::submodules_if_any(workdir, submodules, rows, Some(cache.submodules())).ok().flatten();
     let lfs_patterns = Some(glowfly_core::lfs::repo_patterns(workdir));
     Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow, lfs_patterns, index })
 }
