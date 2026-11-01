@@ -154,12 +154,7 @@ fn esc_on_a_focused_control_during_the_tour_closes_the_tour() {
 fn file_list_key(name: &str, staged: bool) -> (Option<eframe::egui::Id>, Option<String>) {
     const D: &str = "2026-01-12T10:00:00+00:00";
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
-    std::fs::write(
-        dir.join("new.txt"),
-        "new
-",
-    )
-    .unwrap();
+    std::fs::write(dir.join("new.txt"), "new\n").unwrap();
     git(&dir, &["add", "-A"], D);
     if !staged {
         git(&dir, &["commit", "-q", "-m", "Everything"], D);

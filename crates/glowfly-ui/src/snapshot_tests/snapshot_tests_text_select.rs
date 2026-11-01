@@ -328,13 +328,7 @@ fn ctrl_c_copies_the_selected_code_with_the_shortcuts_running() {
     h.run();
     let msgs = std::mem::take(&mut h.state_mut().1);
     let copied: Vec<&str> = msgs.iter().filter_map(|m| if let Msg::Copy(t) = m { Some(t.as_str()) } else { None }).collect();
-    assert_eq!(
-        copied,
-        ["pp
-fix
-fix the build
-on"]
-    );
+    assert_eq!(copied, ["pp\nfix\nfix the build\non"]);
     assert!(!msgs.iter().any(|m| matches!(m, Msg::Selection(SelectionMsg::CopyIds))), "no commit IDs");
     drop(h);
     remove_fixture(&dir);

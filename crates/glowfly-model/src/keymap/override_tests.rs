@@ -2,6 +2,7 @@
 //! changes the keys, hint and tip, bad entries are ignored one line each, an override takes a
 //! default key from the binding that had it, and the changes round-trip.
 
+#[cfg(not(target_os = "macos"))]
 use super::tests::ids;
 use super::*;
 use std::collections::BTreeMap;

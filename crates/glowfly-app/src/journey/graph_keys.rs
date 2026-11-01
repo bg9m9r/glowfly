@@ -73,7 +73,7 @@ fn the_graphs_pane_key_gives_it_its_keys_back() {
 
 #[test]
 fn esc_on_a_focused_button_only_gives_the_graph_its_keys() {
-    let (mut j, head) = start("graph-keys-esc-only");
+    let (mut j, _head) = start("graph-keys-esc-only");
     j.press(Key::ArrowDown);
     j.press_with(Modifiers::SHIFT, Key::ArrowDown);
     assert!(matches!(&j.state().session.selection, Selection::Commits(m) if m.oids.len() == 2), "Shift+Down selected two commits");
@@ -89,5 +89,4 @@ fn esc_on_a_focused_button_only_gives_the_graph_its_keys() {
     assert_eq!(j.focused_name().as_deref(), Some("Commit graph"));
     j.press(Key::ArrowUp);
     assert_eq!(j.state().session.selection, Selection::Wip, "the graph's Up, from HEAD");
-    let _ = head;
 }
