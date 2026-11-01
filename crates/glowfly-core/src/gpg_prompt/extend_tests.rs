@@ -14,11 +14,11 @@ fpr:::::::::11112222333344445555666677778888AAAABBBB:\n\
 ssb:r:4096:1:5555666677778888:1600000000::::::s:::+:::23:\n\
 fpr:::::::::5555666677778888999900001111222233334444:\n\
 ssb:u:4096:1:AAAA000011112222:1600000000:::::::a:::+:::23:\n\
-fpr:::::::::AAAA0000111122223333444455556666777788889:\n\
+fpr:::::::::AAAA000011112222333344445555666677778888:\n\
 ssb:u:4096:1:BBBB000011112222:1600000000:1907680000:::::s:::+:::23:\n\
-fpr:::::::::BBBB0000111122223333444455556666777788889:\n\
+fpr:::::::::BBBB000011112222333344445555666677778888:\n\
 ssb:u:4096:1:CCCC000011112222:1600000000:1781536000:::::s:::+:::23:\n\
-fpr:::::::::CCCC0000111122223333444455556666777788889:\n";
+fpr:::::::::CCCC000011112222333344445555666677778888:\n";
 
 /// When the tests run: CCCC's subkey expires in about a year, BBBB's in five, AAAA's never.
 const NOW: i64 = 1_750_000_000;
@@ -85,7 +85,7 @@ fn the_listing_names_the_primary_key_and_its_live_subkeys() {
     assert_eq!(p.primary, "0123456789ABCDEF0123456789ABCDEF01234567");
     assert_eq!(
         p.subkeys,
-        ["11112222333344445555666677778888AAAABBBB", "CCCC0000111122223333444455556666777788889"],
+        ["11112222333344445555666677778888AAAABBBB", "CCCC000011112222333344445555666677778888"],
         "the expired subkey and the one ending within two years; not the revoked one, the one that never expires or the one that ends later"
     );
     assert_eq!(p.user.as_deref(), Some("Ada Lovelace <ada@example.com>"));

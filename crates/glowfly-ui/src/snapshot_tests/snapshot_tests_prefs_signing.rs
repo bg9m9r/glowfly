@@ -67,12 +67,15 @@ fn prefs_signing_extend_failed() {
 }
 
 #[test]
-fn a_revoked_key_gets_the_warning_but_no_extend() {
+fn prefs_signing_revoked_key() {
     let mut revoked = expired();
     revoked.revoked = true;
     let mut h = harness(page("ABCDEF0123456789", vec![revoked]), true);
     h.run();
-    assert!(h.query_by_label("This key has expired, so git can't sign new commits with it.").is_some());
+    h.check_snapshot("prefs_signing_revoked");
+    let text = "This key has been revoked, so git can't sign new commits with it. Generate a new key below.";
+    assert!(h.query_by_label(text).is_some());
+    assert!(h.query_by_label("This key has expired, so git can't sign new commits with it.").is_none());
     assert!(h.query_by_label("Extend by 2 years").is_none());
 }
 

@@ -113,8 +113,10 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
             warn(ui, e);
         }
         let selected = signing.keys.as_ref().and_then(|ks| ks.iter().find(|k| k.id == git.signing_key));
-        if selected.is_some_and(|k| k.expired) {
-            warn(ui, t.tr("prefs.signing.expired.warn"));
+        match selected {
+            Some(k) if k.revoked => warn(ui, t.tr("prefs.signing.revoked.warn")),
+            Some(k) if k.expired => warn(ui, t.tr("prefs.signing.expired.warn")),
+            _ => {}
         }
         // A revoked key can't be brought back by a new date.
         if format == SigningFormat::OpenPgp {

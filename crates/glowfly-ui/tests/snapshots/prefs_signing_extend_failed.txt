@@ -12,7 +12,7 @@ Button "Reload keys"
 Button "Copy public key"
 Label "This key has expired, so git can't sign new commits with it."
 Button "Extend by 2 years"
-Label "Couldn't extend the key: gpg: agent refused the operation"
+Label "Couldn't extend the key: gpg: agent refused the operation."
 Label "How to extend it by hand"
 CheckBox "Ask for the key's passphrase in Glowfly" [on]
 Label "Off: GnuPG shows its own passphrase window, for example one that reads the passphrase from your system keychain. Needs git 2.31 or newer and GnuPG 2.1.12 or newer; with older versions GnuPG's own window is used."
