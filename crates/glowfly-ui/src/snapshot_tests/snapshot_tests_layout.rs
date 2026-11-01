@@ -77,6 +77,7 @@ fn layout_prefs_interface() {
 /// width at its default for the window.
 #[test]
 fn layout_wide_window_details_drawer() {
+    use crate::state::panel_layout::DETAILS;
     use glowfly_core::repo;
     use glowfly_core::settings::SizedPanel;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "layout-wide");
@@ -88,9 +89,15 @@ fn layout_wide_window_details_drawer() {
     let mut h = harness_sized(st, true, wide);
     h.run();
     h.check_snapshot("layout_wide_window_details_default");
+    let drawer = |h: &Harness<'_, (AppState, Vec<Msg>)>| {
+        egui::containers::panel::PanelState::load(&h.ctx, egui::Id::new("detail")).expect("the drawer").rect.width()
+    };
+    let default = drawer(&h);
+    assert!((DETAILS.default_lo..=DETAILS.default_hi).contains(&default), "the window's default width: {default}");
     h.state_mut().0.settings.panel_sizes.set(SizedPanel::Details, 120.0);
     h.run();
-    h.check_snapshot("layout_wide_window_details_too_small_saved");
+    let narrow = drawer(&h);
+    assert!((narrow - DETAILS.min).abs() < 1.0, "drawn at its minimum, not the saved 120: {narrow}");
     drop(h);
     remove_fixture(&dir);
 }

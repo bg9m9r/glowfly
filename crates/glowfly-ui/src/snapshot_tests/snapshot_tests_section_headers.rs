@@ -9,10 +9,11 @@ use crate::remote::RemoteMsg;
 use crate::submodule::SubmoduleMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::snapshot_tests_gitflow::initialized;
+use crate::ui::snapshot_tests::snapshot_tests_painted::{bounds, shapes_inside};
 use crate::ui::snapshot_tests::snapshot_tests_pr_no_host::rest_on;
 use crate::ui::snapshot_tests::snapshot_tests_select::click;
 use crate::ui::snapshot_tests::snapshot_tests_worktrees::{H, center, pushed};
-use crate::ui::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{Event, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
@@ -34,7 +35,9 @@ fn section_header_hover() {
     let mut h = harness(st, true);
     h.run();
     hover_header(&mut h, "New branch");
-    h.check_snapshot("section_header_hover");
+    for button in ["New branch", "Local actions"] {
+        assert!(shapes_inside(&h, bounds(&h.get_by_label(button))) > 0, "{button} is painted while the header is hovered");
+    }
     let at = center(&h, "New branch");
     click(&mut h, at, PointerButton::Primary);
     assert!(pushed(&h, &|m| matches!(m, Msg::Branch(BranchMsg::NewBranch { start: None, .. }))));
@@ -52,8 +55,9 @@ fn section_header_hidden() {
     let mut h = harness(st, true);
     h.run();
     // Not painted, but reachable by name.
-    h.check_snapshot("section_header_hidden");
-    assert!(h.query_by_label("New branch").is_some() && h.query_by_label("Local actions").is_some());
+    for button in ["New branch", "Local actions"] {
+        assert_eq!(shapes_inside(&h, bounds(&h.get_by_label(button))), 0, "{button} is not painted");
+    }
     h.get_by_label("New branch").focus();
     h.run();
     h.check_snapshot("section_header_focus");
@@ -124,7 +128,6 @@ fn worktrees_submodules_empty() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Add worktree…").is_some() && h.query_by_label("Add submodule…").is_some());
-    h.check_snapshot("worktrees_submodules_empty");
     h.get_by_label("Add worktree…").click();
     h.run();
     let base = WorktreeBase::Branch("main".into());
@@ -133,8 +136,6 @@ fn worktrees_submodules_empty() {
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::AddDialog))));
     drop(h);
-    let (st, _) = with_repo(ThemeChoice::Light, "header-empty");
-    render("worktrees_submodules_empty_light", st, false);
     remove_fixture(&dir);
 }
 

@@ -148,7 +148,6 @@ fn title_bar_windows_full_screen() {
     st.view.window.fullscreen = true;
     let mut h = open(st, true);
     settle(&mut h);
-    h.check_snapshot("title_bar_windows_full_screen");
     let t = h.state().0.settings.lang();
     assert!(h.query_by_label(t.tr("title_bar.maximize")).is_none(), "the middle button is Restore");
     h.get_by_label(t.tr("title_bar.restore")).click();

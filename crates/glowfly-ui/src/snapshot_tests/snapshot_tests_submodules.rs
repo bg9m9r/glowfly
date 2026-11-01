@@ -2,7 +2,7 @@
 //! the left-panel filter, and the row menu with its disabled items. The submodules are injected
 //! into the shared fixture's snapshot, which keeps the images deterministic and needs no clones.
 
-use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -74,8 +74,6 @@ fn submodules_section() {
     assert!(h.query_by_label("libs/core").is_some());
     h.check_snapshot("submodules_section");
     drop(h);
-    let (st, _) = with_submodules(ThemeChoice::Light, "submodules");
-    render("submodules_section_light", st, false);
     remove_fixture(&dir);
 }
 

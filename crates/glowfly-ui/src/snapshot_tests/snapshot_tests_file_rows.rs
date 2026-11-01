@@ -1,6 +1,6 @@
 //! File rows as one click target: a click on a row's empty area or status letter opens the file
 //! (WIP, commit and folder history rows), a click on its Stage button only stages, a right-click
-//! on its empty area opens its menu, and the selected and hovered rows' look (dark and light).
+//! on its empty area opens its menu, and the selected and hovered rows' fills.
 //! Shares the fixture repository with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, remove_fixture, with_repo};
@@ -10,6 +10,8 @@ use super::snapshot_tests_select::click;
 use crate::msg::{HistoryMsg, Msg, RepoMsg, StageMsg};
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::snapshot_tests::snapshot_tests_painted::fills_at;
+use crate::ui::theme::color;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
@@ -125,29 +127,25 @@ fn folder_history_file_row_click_on_empty_area_selects_it() {
 
 /// The working tree with line counts, app.txt's unstaged diff open and the pointer over the
 /// Staged Files row of search.txt.
-fn selected_and_hovered(theme: ThemeChoice, dark: bool, name: &str) {
-    let (mut st, dir) = with_wip(theme, "file-rows-look");
+#[test]
+fn file_rows_selected_and_hovered() {
+    let (mut st, dir) = with_wip(ThemeChoice::Dark, "file-rows-look");
     let target = DiffTarget::Unstaged("app.txt".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
     st.session.diff.view = Some((target, diff.into()));
-    let mut h = harness(st, dark);
+    let mut h = harness(st, true);
     h.run();
     let (_, x1, y) = row(&h, "search.txt");
-    h.input_mut().events.push(Event::PointerMoved(pos2(x1 - 40.0, y)));
+    let search = pos2(x1 - 40.0, y);
+    assert!(!fills_at(&h, search).contains(&color::hover()), "no hover fill before the pointer comes");
+    h.input_mut().events.push(Event::PointerMoved(search));
     for _ in 0..4 {
         h.step();
     }
-    h.check_snapshot(name);
+    assert!(fills_at(&h, search).contains(&color::hover()), "the hovered row is filled");
+    h.check_snapshot("file_rows_selected_and_hovered");
     drop(h);
-    if !dark {
-        remove_fixture(&dir);
-    }
-}
-
-#[test]
-fn file_rows_selected_and_hovered() {
-    selected_and_hovered(ThemeChoice::Dark, true, "file_rows_selected_and_hovered");
-    selected_and_hovered(ThemeChoice::Light, false, "file_rows_selected_and_hovered_light");
+    remove_fixture(&dir);
 }
 
 #[path = "snapshot_tests_file_tree.rs"]

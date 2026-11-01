@@ -57,18 +57,15 @@ fn wip_tree(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 
 #[test]
 fn details_commit_tree() {
-    for (theme, name, dark) in [(ThemeChoice::Dark, "details_commit_tree", true), (ThemeChoice::Light, "details_commit_tree_light", false)]
-    {
-        let (st, dir, _) = with_commit(theme, "tree-commit", MESSAGE);
-        let mut h = harness(tree(st), dark);
-        h.run();
-        assert!(h.query_by_label("docs/").is_some() && h.query_by_label("src/search/").is_some(), "the folder rows");
-        assert!(h.query_by_label("src/search/index.rs").is_some(), "a file row keeps its whole path as its name");
-        assert!(h.query_by_label(Lang::En.tr("files.tree.show_list.tip")).is_some(), "the toggle");
-        h.check_snapshot(name);
-        drop(h);
-        remove_fixture(&dir);
-    }
+    let (st, dir, _) = with_commit(ThemeChoice::Dark, "tree-commit", MESSAGE);
+    let mut h = harness(tree(st), true);
+    h.run();
+    assert!(h.query_by_label("docs/").is_some() && h.query_by_label("src/search/").is_some(), "the folder rows");
+    assert!(h.query_by_label("src/search/index.rs").is_some(), "a file row keeps its whole path as its name");
+    assert!(h.query_by_label(Lang::En.tr("files.tree.show_list.tip")).is_some(), "the toggle");
+    h.check_snapshot("details_commit_tree");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 #[test]
@@ -86,16 +83,14 @@ fn details_commit_tree_closed() {
 
 #[test]
 fn details_wip_tree() {
-    for (theme, name, dark) in [(ThemeChoice::Dark, "details_wip_tree", true), (ThemeChoice::Light, "details_wip_tree_light", false)] {
-        let (st, dir) = wip_tree(theme, "tree-wip");
-        let mut h = harness(st, dark);
-        h.run();
-        assert!(h.query_by_label("src/ui/").is_some() && h.query_by_label("notes/").is_some() && h.query_by_label("lib/").is_some());
-        assert_eq!(h.query_all_by_label(Lang::En.tr("files.tree.show_list.tip")).count(), 2, "a toggle in each header");
-        h.check_snapshot(name);
-        drop(h);
-        remove_fixture(&dir);
-    }
+    let (st, dir) = wip_tree(ThemeChoice::Dark, "tree-wip");
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("src/ui/").is_some() && h.query_by_label("notes/").is_some() && h.query_by_label("lib/").is_some());
+    assert_eq!(h.query_all_by_label(Lang::En.tr("files.tree.show_list.tip")).count(), 2, "a toggle in each header");
+    h.check_snapshot("details_wip_tree");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 #[test]

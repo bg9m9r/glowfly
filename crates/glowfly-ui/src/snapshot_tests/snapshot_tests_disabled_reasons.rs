@@ -52,16 +52,14 @@ fn bounds<S>(h: &Harness<'_, S>, label: &str) -> egui::Rect {
 
 #[test]
 fn dialog_reason_beside_cancel() {
-    for (dark, name) in [(true, "dialog_reason_beside_cancel"), (false, "dialog_reason_beside_cancel_light")] {
-        let mut h = dialog(dark, create_footer);
-        h.run();
-        h.check_snapshot(name);
-        assert!(h.get_by_label("Create branch").is_disabled());
-        assert!(h.query_by_label(NO_NAME).is_some(), "the reason is on screen");
-        let (why, cancel) = (bounds(&h, NO_NAME), bounds(&h, "Cancel"));
-        assert!(why.right() < cancel.left(), "{why:?} ends left of {cancel:?}");
-        assert!(why.top() < cancel.bottom() && why.bottom() > cancel.top(), "on Cancel's row");
-    }
+    let mut h = dialog(true, create_footer);
+    h.run();
+    h.check_snapshot("dialog_reason_beside_cancel");
+    assert!(h.get_by_label("Create branch").is_disabled());
+    assert!(h.query_by_label(NO_NAME).is_some(), "the reason is on screen");
+    let (why, cancel) = (bounds(&h, NO_NAME), bounds(&h, "Cancel"));
+    assert!(why.right() < cancel.left(), "{why:?} ends left of {cancel:?}");
+    assert!(why.top() < cancel.bottom() && why.bottom() > cancel.top(), "on Cancel's row");
 }
 
 #[test]
@@ -151,28 +149,26 @@ fn menu_disabled_info() {
     let mut short = menu_in(true, true, "No", egui::vec2(480.0, 220.0));
     short.run();
     let short_w = short.state().1;
-    for (dark, name) in [(true, "menu_disabled_info"), (false, "menu_disabled_info_light")] {
-        let mut h = menu(dark, true);
-        h.run();
-        h.check_snapshot(name);
-        let w = h.state().1;
-        assert_eq!(w, short_w, "a long reason doesn't widen the menu");
-        assert!(w > plain_w, "the info marks and Set up… take room: {w} vs {plain_w}");
-        assert!(h.get_by_label("Unlock").is_disabled(), "found by its exact label");
-        assert!(h.get_by_label(PR).is_disabled());
-        assert!(!h.get_by_label("Copy path").is_disabled());
-        h.get_by_label("Unlock").click();
-        h.run();
-        assert!(h.state().0.is_empty(), "a disabled item sends nothing");
-        h.get_by_label("Unlock").hover();
-        h.run();
-        h.run();
-        assert!(h.query_by_label(UNLOCK_WHY).is_some(), "the whole reason on hover");
-        assert!(!h.get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
-        h.get_by_label(OPEN_IN_DIFF_TOOL).click();
-        h.run();
-        assert!(matches!(&h.state().0[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
-    }
+    let mut h = menu(true, true);
+    h.run();
+    h.check_snapshot("menu_disabled_info");
+    let w = h.state().1;
+    assert_eq!(w, short_w, "a long reason doesn't widen the menu");
+    assert!(w > plain_w, "the info marks and Set up… take room: {w} vs {plain_w}");
+    assert!(h.get_by_label("Unlock").is_disabled(), "found by its exact label");
+    assert!(h.get_by_label(PR).is_disabled());
+    assert!(!h.get_by_label("Copy path").is_disabled());
+    h.get_by_label("Unlock").click();
+    h.run();
+    assert!(h.state().0.is_empty(), "a disabled item sends nothing");
+    h.get_by_label("Unlock").hover();
+    h.run();
+    h.run();
+    assert!(h.query_by_label(UNLOCK_WHY).is_some(), "the whole reason on hover");
+    assert!(!h.get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
+    h.get_by_label(OPEN_IN_DIFF_TOOL).click();
+    h.run();
+    assert!(matches!(&h.state().0[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
 }
 
 #[test]

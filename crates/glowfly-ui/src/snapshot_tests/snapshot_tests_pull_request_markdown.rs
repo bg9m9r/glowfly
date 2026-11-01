@@ -75,8 +75,3 @@ fn render(theme: ThemeChoice, name: &str) {
 fn pull_request_markdown_dark() {
     render(ThemeChoice::Dark, "pull_request_markdown_dark");
 }
-
-#[test]
-fn pull_request_markdown_light() {
-    render(ThemeChoice::Light, "pull_request_markdown_light");
-}

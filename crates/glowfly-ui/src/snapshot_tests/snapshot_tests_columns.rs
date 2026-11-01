@@ -2,10 +2,9 @@
 //! on release), double-clicking to reset, and grips only for shown columns. Shares the fixture
 //! repository with `snapshot_tests`.
 
-use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::{GraphMsg, Msg};
 use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -28,13 +27,30 @@ pub(crate) fn grip(h: &H, label: &str) -> Pos2 {
     pos2((b.x0 + b.x1) as f32 / 2.0, (b.y0 + b.y1) as f32 / 2.0)
 }
 
+/// Where the default columns' grips sit with `widths`: BRANCH / TAG's right edge, then the left
+/// edges of the commit and date columns.
+fn grip_xs(name: &str, widths: ColumnWidths) -> [f32; 3] {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
+    st.settings.column_widths = widths;
+    let mut h = harness(st, true);
+    h.run();
+    let xs = ["branch / tag", "commit", "date"].map(|c| grip(&h, &format!("Resize {c} column")).x);
+    drop(h);
+    remove_fixture(&dir);
+    xs
+}
+
 #[test]
 fn graph_columns_resized() {
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, "columns-resized");
+    let default = ColumnWidths::default();
+    let [refs0, .., date0] = grip_xs("columns-default", default);
     // Wider BRANCH / TAG, narrower commit and date, all still leaving a message column.
-    st.settings.column_widths = ColumnWidths { refs: 220.0, commit: 110.0, date: 100.0, ..ColumnWidths::default() };
-    render("graph_columns_resized", st, true);
-    remove_fixture(&dir);
+    let resized = ColumnWidths { refs: 220.0, commit: 110.0, date: 100.0, ..default };
+    let [refs, commit, date] = grip_xs("columns-resized", resized);
+    let close = |got: f32, want: f32, what: &str| assert!((got - want).abs() < 0.5, "{what}: {got} for {want}");
+    close(refs - refs0, 220.0 - default.refs, "BRANCH / TAG ends further right by what it grew");
+    close(date - commit, 110.0, "the commit column's width");
+    close(date0 - date, 100.0 - default.date, "the date column starts where its width puts it");
 }
 
 #[test]
@@ -68,7 +84,9 @@ fn graph_column_drag() {
     let expected = 170.0 + drag.room.round();
     assert_eq!(drag.width, expected);
     assert!(h.state().1.iter().all(|m| !matches!(m, Msg::Graph(GraphMsg::ResizeColumn { .. }))), "nothing is sent while dragging");
-    h.check_snapshot("graph_column_drag_light");
+    // The preview moves the divider: the commit column's left edge sits where it is dragged to.
+    let now = grip(&h, "Resize commit column").x;
+    assert!((now - (start.x - (expected - 170.0))).abs() < 0.5, "the divider at {now}, dragged from {}", start.x);
 
     pointer(&mut h, start - egui::vec2(60.0, 0.0), Some(false));
     h.run();

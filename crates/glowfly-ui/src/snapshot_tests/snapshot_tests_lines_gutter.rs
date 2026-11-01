@@ -130,7 +130,8 @@ fn diff_gutter_toggles_lines_inline_dark() {
 
 #[test]
 fn diff_gutter_toggles_lines_inline_light() {
-    gutter_test(DiffLayout::Inline, false, Some("diff_lines_gutter_hover_light"), "diff_lines_gutter_selected_light");
+    // The hover's text is the dark test's; the selection's look is the light golden's.
+    gutter_test(DiffLayout::Inline, false, None, "diff_lines_gutter_selected_light");
 }
 
 #[test]

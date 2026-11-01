@@ -105,16 +105,13 @@ pub(crate) fn sent(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, m: &Upda
 }
 
 #[test]
-fn release_notes_dark_and_light() {
+fn release_notes() {
     let mut h = harness(notes(ThemeChoice::Dark, None, NOTES), true);
     h.run();
     h.check_snapshot("release_notes_dark");
     h.get_by_label("Close").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)));
-    let mut h = harness(notes(ThemeChoice::Light, None, NOTES), false);
-    h.run();
-    h.check_snapshot("release_notes_light");
 }
 
 #[test]

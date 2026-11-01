@@ -6,7 +6,8 @@
 //!
 //! Add a name here only for a view a text snapshot can't judge (colour, drawing, alignment);
 //! `UPDATE_SNAPSHOTS=1` then writes its PNG. The test below keeps this list and the PNGs in
-//! `tests/snapshots/` the same.
+//! `tests/snapshots/` the same. A golden whose text is another snapshot's (the same view in
+//! another theme) is listed in `IMAGE_ONLY` too: it keeps only its image.
 
 /// How much of the window a golden keeps.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -163,14 +164,87 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("credential_prompt_sign_in", Dialog),
 ];
 
+/// The goldens compared only as images: their text would be the same as another snapshot's
+/// (most are one view in several themes, whose text the first theme's snapshot keeps).
+const IMAGE_ONLY: &[&str] = &[
+    "main_light",
+    "main_sand",
+    "main_high_contrast_dark",
+    "history_table_dark",
+    "history_table_light",
+    "history_table_high_contrast_light",
+    "toolbar_restyled_dark",
+    "toolbar_restyled_light",
+    "theme_graphite",
+    "theme_linen",
+    "theme_midnight",
+    "theme_mist",
+    "theme_pine",
+    "vivid_light",
+    "vivid_sand",
+    "vivid_garden_dark",
+    "vivid_garden_light",
+    "vivid_high_contrast_dark",
+    "vivid_high_contrast_light",
+    "lineup_dawn",
+    "lineup_dusk",
+    "lineup_garden_dark",
+    "lineup_garden_light",
+    "lineup_high_contrast_dark",
+    "lineup_high_contrast_light",
+    "lineup_sand",
+    "diff_high_contrast_light",
+    "lineup_welcome_dawn",
+    "lineup_welcome_dusk",
+    "mica_dark",
+    "mica_light",
+    "title_bar_windows_light",
+    "welcome_start_light",
+    "welcome_start_high_contrast_dark",
+    "graph_bands_dusk",
+    "branch_colours_graph_light",
+    "branch_colours_colour_blind_dark",
+    "branch_colours_colour_blind_light",
+    "person_colours_graph_light",
+    "graph_wip_row_light",
+    "graph_wip_row_high_contrast",
+    "repo_menu_light",
+    "diff_lines_gutter_selected_light",
+    "diff_image_before_after_light",
+    "blame_view_light",
+    "controls_light",
+    "controls_high_contrast_dark",
+    "controls_high_contrast_light",
+    "controls_sand",
+    "design_buttons_light",
+    "design_buttons_high_contrast_dark",
+    "design_buttons_sand",
+    "design_surfaces_light",
+    "button_styles_light",
+    "fonts_light",
+    "type_scale_specimen_light",
+    "terminal_ansi_light",
+    "terminal_ansi_high_contrast_dark",
+    "modal_backdrop_light",
+    "dialog_look_high_contrast_light",
+    "dialog_look_sand",
+];
+
+/// Whether golden `name` keeps no text snapshot.
+pub(crate) fn image_only(name: &str) -> bool {
+    IMAGE_ONLY.contains(&name)
+}
+
 /// How snapshot `name` is compared as an image, if it is a golden.
 pub(crate) fn crop(name: &str) -> Option<Crop> {
     GOLDENS.iter().find(|(n, _)| *n == name).map(|(_, c)| *c)
 }
 
+#[cfg(test)]
+use std::collections::BTreeSet;
+
 #[test]
 fn goldens_match_the_approved_images() {
-    use std::collections::BTreeSet;
     let dir = std::path::Path::new(super::compare::DIR);
     let images: BTreeSet<String> = std::fs::read_dir(dir)
         .unwrap()
@@ -184,4 +258,15 @@ fn goldens_match_the_approved_images() {
     assert!(stray.is_empty(), "images in {} that are not goldens (delete them, or list them in GOLDENS): {stray:?}", dir.display());
     let missing: Vec<_> = goldens.difference(&images).collect();
     assert!(missing.is_empty(), "goldens without an image (run UPDATE_SNAPSHOTS=1 cargo test -p glowfly-ui -p glowfly): {missing:?}");
+}
+
+#[test]
+fn image_only_goldens_have_no_text() {
+    let dir = std::path::Path::new(super::compare::DIR);
+    let only: BTreeSet<&str> = IMAGE_ONLY.iter().copied().collect();
+    assert_eq!(only.len(), IMAGE_ONLY.len(), "a name is listed twice in IMAGE_ONLY");
+    let not_goldens: Vec<_> = IMAGE_ONLY.iter().filter(|n| crop(n).is_none()).collect();
+    assert!(not_goldens.is_empty(), "IMAGE_ONLY names that are not goldens: {not_goldens:?}");
+    let with_text: Vec<_> = IMAGE_ONLY.iter().filter(|n| dir.join(format!("{n}.txt")).exists()).collect();
+    assert!(with_text.is_empty(), "image-only goldens with a text snapshot (delete the .txt): {with_text:?}");
 }

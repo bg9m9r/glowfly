@@ -53,9 +53,16 @@ fn pick(name: &str, resolved: bool) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn shot(st: AppState, p: Palette, name: &str) -> H {
+/// The window drawn in `p`, for a test whose text another test's snapshot already holds (the
+/// banners' tests have the same states; the main window's, the plain panel).
+fn shown(st: AppState, p: Palette) -> H {
     let mut h = harness_palette_sized(st, p, SIZE);
     h.run();
+    h
+}
+
+fn shot(st: AppState, p: Palette, name: &str) -> H {
+    let mut h = shown(st, p);
     h.check_snapshot(name);
     h
 }
@@ -64,7 +71,7 @@ fn shot(st: AppState, p: Palette, name: &str) -> H {
 fn op_steps_merge() {
     for (theme_name, p) in [("dusk", theme::DUSK), ("dawn", theme::DAWN)] {
         let (st, dir) = merge(&format!("op-steps-merge-{theme_name}"), false);
-        let mut h = shot(st, p, &format!("op_steps_merge_conflicted_{theme_name}"));
+        let mut h = shown(st, p);
         for text in ["Merge in progress", "Resolve conflicts", "Check what goes in", "Commit the merge", "2 left"] {
             assert!(h.get_all_by_label(text).next().is_some(), "{text}");
         }
@@ -78,7 +85,7 @@ fn op_steps_merge() {
         remove_fixture(&dir);
 
         let (st, dir) = merge(&format!("op-steps-merge-ready-{theme_name}"), true);
-        let h = shot(st, p, &format!("op_steps_merge_ready_{theme_name}"));
+        let h = shown(st, p);
         assert_eq!(h.get_all_by_label("Commit merge").count(), 1, "one Commit merge: step 3's");
         assert!(!h.get_by_label("Commit merge").is_disabled());
         assert!(h.query_by_label("Conflicts resolved").is_some());
@@ -90,7 +97,7 @@ fn op_steps_merge() {
 #[test]
 fn op_steps_rebase() {
     let (st, dir) = rebasing(ThemeChoice::Dark, "op-steps-rebase", StopKind::Conflict, true);
-    let mut h = shot(st, theme::DUSK, "op_steps_rebase_conflicted");
+    let mut h = shown(st, theme::DUSK);
     assert!(h.get_by_label("Continue").is_disabled(), "Continue waits while a file is conflicted");
     assert!(h.query_by_label("Continue rebase \u{b7} step 2 of 4").is_some());
     // Skip stays at hand, in Continue's menu, which opens above the button.
@@ -111,7 +118,7 @@ fn op_steps_rebase() {
     remove_fixture(&dir);
 
     let (st, dir) = rebasing(ThemeChoice::Dark, "op-steps-rebase-edit", StopKind::Edit, false);
-    let h = shot(st, theme::DUSK, "op_steps_rebase_edit");
+    let h = shown(st, theme::DUSK);
     assert!(h.query_by_label("Amend").is_some(), "a stop to edit opens the commit form");
     drop(h);
     remove_fixture(&dir);
@@ -120,7 +127,7 @@ fn op_steps_rebase() {
 #[test]
 fn op_steps_pick_and_revert() {
     let (st, dir) = pick("op-steps-pick", false);
-    let h = shot(st, theme::DUSK, "op_steps_pick_conflicted");
+    let h = shown(st, theme::DUSK);
     assert!(h.query_by_label("Continue the cherry-pick").is_some());
     drop(h);
     remove_fixture(&dir);
@@ -144,9 +151,13 @@ fn op_steps_pick_and_revert() {
 
 #[test]
 fn op_steps_patches() {
-    for (conflicted, name) in [(true, "op_steps_am_conflicted"), (false, "op_steps_am_ready")] {
+    // Ready, the steps are the stopped banner's (`am_banner_stopped`).
+    for (conflicted, name) in [(true, Some("op_steps_am_conflicted")), (false, None)] {
         let (st, dir) = applying(ThemeChoice::Dark, &format!("op-steps-am-{conflicted}"), conflicted);
-        let h = shot(st, theme::DUSK, name);
+        let mut h = shown(st, theme::DUSK);
+        if let Some(name) = name {
+            h.check_snapshot(name);
+        }
         assert!(h.query_by_label("Continue applying \u{b7} patch 2 of 3").is_some());
         drop(h);
         remove_fixture(&dir);
@@ -157,7 +168,7 @@ fn op_steps_patches() {
 fn wip_panel_plain() {
     for (theme_name, p) in [("dusk", theme::DUSK), ("dawn", theme::DAWN)] {
         let (st, dir) = with_repo(ThemeChoice::Dark, &format!("wip-plain-{theme_name}"));
-        let h = shot(st, p, &format!("wip_plain_{theme_name}"));
+        let h = shown(st, p);
         assert!(h.query_by_label("Amend").is_some());
         assert!(h.query_by_label("Stage").is_none(), "row actions wait for a hover or the current row");
         drop(h);

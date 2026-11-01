@@ -72,7 +72,7 @@ A failing input lands in `fuzz/artifacts/<target>/`; `cargo +nightly fuzz run <t
 
 - `crates/glowfly-app/tests/packaging/main.rs`: one binary for the packaging checks: the app icon, the Linux packages, the Flatpak manifest and the Release workflow.
 - `crates/glowfly-app/tests/packaging/app_icon.rs`: the app icon: draws it (`app_icon/draw.rs`) and checks every PNG in `assets/icon/` and inside `glowfly.ico` and `glowfly.icns` (`app_icon/containers.rs`); `UPDATE_ICONS=1` rewrites them.
-- `crates/glowfly-ui/tests/snapshots/`: approved view snapshots: a `<name>.txt` text snapshot for every view test (glowfly-ui's, and the app's `runner_snapshots/`), and a `<name>.png` for the pixel goldens (`crates/glowfly-ui/src/snapshot_check/goldens.rs`).
+- `crates/glowfly-ui/tests/snapshots/`: approved view snapshots: a `<name>.txt` text snapshot for every view test (glowfly-ui's, and the app's `runner_snapshots/`), no two alike (`snapshot_check/identical.rs`), and a `<name>.png` for the pixel goldens (`crates/glowfly-ui/src/snapshot_check/goldens.rs`; the image-only ones have no `.txt`).
 - `scripts/rerender-conflicted.ps1`: after a merge or rebase stops on snapshot conflicts, re-renders only the conflicted snapshots (the tests that name them, in glowfly-ui's library or the app's binary) and stages them; `-DryRun` lists them.
 
 ## Installers

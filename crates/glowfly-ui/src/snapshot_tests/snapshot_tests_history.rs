@@ -1,6 +1,6 @@
 //! The history's File view (a file renamed after the commit it was opened at, in syntax colors
 //! with line numbers, and a binary file's note), the Diff | File | Blame switch waiting for a
-//! commit, and the folder history (dark and light). Shares the fixture repository and renderer
+//! commit, and the folder history. Shares the fixture repository and renderer
 //! with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, remove_fixture, with_history, with_repo};
@@ -165,16 +165,6 @@ fn folder_history() {
     h.get_by_label("lexer.rs").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::History(HistoryMsg::SelectHistoryFile(0)))));
-    drop(h);
-    remove_fixture(&dir);
-}
-
-#[test]
-fn folder_history_light() {
-    let (st, dir) = with_folder("history-folder-light", ThemeChoice::Light);
-    let mut h = harness(st, false);
-    h.run();
-    h.check_snapshot("folder_history_light");
     drop(h);
     remove_fixture(&dir);
 }

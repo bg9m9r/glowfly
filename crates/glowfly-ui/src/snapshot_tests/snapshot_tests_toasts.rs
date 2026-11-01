@@ -64,7 +64,6 @@ fn toast_behind_alert_light() {
     add_toasts(&mut st, &dir);
     let mut h = harness(st, false);
     h.run();
-    h.check_snapshot("toast_behind_alert_light");
     lined_up(&h);
     remove_fixture(&dir);
 }
@@ -76,11 +75,11 @@ fn toast_stacked_bottom_left() {
     add_toasts(&mut st, &dir);
     let mut h = harness(st, true);
     h.run();
-    h.check_snapshot("toast_stacked_bottom_left");
     lined_up(&h);
     let status = PanelState::load(&h.ctx, egui::Id::new("status")).expect("the status bar").rect.top();
     let alert = h.get_by_label(ALERT).bounding_box().unwrap();
     assert!(alert.y1 < f64::from(status) - 12.0, "above the status bar");
+    assert!(alert.x1 < f64::from(h.ctx.screen_rect().center().x), "in the left half");
     remove_fixture(&dir);
 }
 

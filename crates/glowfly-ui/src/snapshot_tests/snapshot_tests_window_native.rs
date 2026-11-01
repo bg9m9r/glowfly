@@ -6,11 +6,13 @@ use crate::msg::{AppMsg, Msg};
 use crate::state::window_chrome::{Chrome, WindowCmd};
 use crate::state::window_native::CaptionButton;
 use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::snapshot_tests::snapshot_tests_painted::{bounds, fills_inside};
 use crate::ui::snapshot_tests::{harness_sized, remove_fixture, with_repo};
 use crate::ui::tabs_tests::pointer;
-use eframe::egui::{PointerButton, Pos2, pos2, vec2};
+use crate::ui::theme::color;
+use eframe::egui::{Color32, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::Harness;
+use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -29,21 +31,27 @@ fn open(name: &str, chrome: Chrome, theme: ThemeChoice, change: impl FnOnce(&mut
     (h, dir)
 }
 
-fn native_snapshot(name: &str, theme: ThemeChoice, button: CaptionButton) {
+/// The fills drawn under the Maximize button with the OS tracking it as `button`.
+fn native_fills(name: &str, theme: ThemeChoice, button: CaptionButton) -> Vec<Color32> {
     let (mut h, dir) = open(name, Chrome::Windows, theme, |st| st.view.window.max_button = button);
     for _ in 0..4 {
         h.step();
     }
     h.run();
-    h.check_snapshot(name);
+    let fills = fills_inside(&h, bounds(&h.get_by_label("Maximize window")));
     drop(h);
     remove_fixture(&dir);
+    fills
 }
 
 #[test]
 fn the_os_tracked_maximize_button_draws_hover_and_press() {
-    native_snapshot("title_bar_max_hover_native", ThemeChoice::Dark, CaptionButton { hovered: true, pressed: false });
-    native_snapshot("title_bar_max_pressed_native", ThemeChoice::Light, CaptionButton { hovered: true, pressed: true });
+    let idle = native_fills("title-bar-max-idle-native", ThemeChoice::Dark, CaptionButton { hovered: false, pressed: false });
+    assert!(idle.is_empty(), "no fill while the OS reports no pointer: {idle:?}");
+    let hover = native_fills("title-bar-max-hover-native", ThemeChoice::Dark, CaptionButton { hovered: true, pressed: false });
+    assert_eq!(hover, [color::hover()], "the hover fill, though egui sees no pointer");
+    let pressed = native_fills("title-bar-max-pressed-native", ThemeChoice::Light, CaptionButton { hovered: true, pressed: true });
+    assert_eq!(pressed, [color::selected()], "the pressed fill");
 }
 
 /// The system menu requests sent so far.

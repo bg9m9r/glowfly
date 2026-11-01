@@ -147,11 +147,6 @@ fn submodule_remove_confirm() {
     remove_confirm(ThemeChoice::Dark, "submodule-remove-confirm", true);
 }
 
-#[test]
-fn submodule_remove_confirm_light() {
-    remove_confirm(ThemeChoice::Light, "submodule-remove-confirm-light", false);
-}
-
 /// The fixture with the Edit dialog open for a submodule named `lib` at libs/lib, its URL
 /// changed to an invalid one so the problem line shows.
 fn edit_dialog(theme: ThemeChoice, name: &str, dark: bool) {
@@ -187,11 +182,6 @@ fn edit_dialog(theme: ThemeChoice, name: &str, dark: bool) {
 #[test]
 fn submodule_edit_dialog() {
     edit_dialog(ThemeChoice::Dark, "submodule-edit-dialog", true);
-}
-
-#[test]
-fn submodule_edit_dialog_light() {
-    edit_dialog(ThemeChoice::Light, "submodule-edit-dialog-light", false);
 }
 
 #[test]

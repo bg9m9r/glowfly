@@ -82,7 +82,7 @@ fn stopped_cherry_pick_banner() {
     st.git.banner_dismissed = true;
     let mut h = harness(st, true);
     h.run();
-    h.check_snapshot("cherry_pick_banner_old_git");
+    // The banner reads the same; only Skip in its menu differs.
     h.get_by_label("More ways to go on").click();
     h.run();
     assert!(h.get_by_label("Skip commit…").is_disabled(), "too old a git: a disabled item with its reason");

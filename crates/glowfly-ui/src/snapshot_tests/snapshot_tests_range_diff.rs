@@ -1,4 +1,4 @@
-//! Range-diff snapshots: the pairs with a changed pair's interdiff (Dark and Light), the
+//! Range-diff snapshots: the pairs with a changed pair's interdiff, the
 //! stacked layout of a narrow window, an unchanged pair's pane, and the loading, failed and
 //! empty views; and what its rows, Close and Esc send. The pairs are built by hand on the
 //! fixture's commits, with the interdiff read from a captured sample, so the image never depends
@@ -135,16 +135,6 @@ fn esc_closes_it_even_over_the_journal() {
         drop(h);
         remove_fixture(&dir);
     }
-}
-
-#[test]
-fn range_diff_changed_light() {
-    let (st, dir) = ready(ThemeChoice::Light, "range-diff-light", Some(0));
-    let mut h = harness(st, false);
-    h.run();
-    h.check_snapshot("range_diff_changed_light");
-    drop(h);
-    remove_fixture(&dir);
 }
 
 #[test]

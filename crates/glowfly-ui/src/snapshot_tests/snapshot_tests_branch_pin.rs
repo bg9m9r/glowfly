@@ -109,9 +109,9 @@ fn branch_colour_pinned_graph() {
     assert_eq!(snap.branch_swatch("topic"), Swatch::Slot(9));
     assert_eq!(snap.ref_swatch("refs/remotes/origin/topic"), Some(Swatch::Slot(9)));
     assert_ne!(snap.branch_swatch("fix-1"), Swatch::Slot(9));
+    // The colours themselves are the goldens' (`branch_colours_graph_dark`); the text is theirs.
     let mut h = harness(st, true);
     h.run();
-    h.check_snapshot("branch_colour_pinned_graph");
     drop(h);
     remove_fixture(&dir);
 }

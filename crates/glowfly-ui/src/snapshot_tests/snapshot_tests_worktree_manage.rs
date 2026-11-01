@@ -128,7 +128,7 @@ fn worktree_lock_dialog() {
     st.modal = Some(Modal::LockWorktree(LockForm::new(&wt)));
     let mut h = harness(st, true);
     h.run();
-    h.check_snapshot("worktree_lock_dialog");
+    // The dialog's look is `dialog_guide_beside`'s.
     assert!(h.query_by_label("Lock worktree feature-login").is_some());
     h.get_by_label("Lock").click();
     h.run();

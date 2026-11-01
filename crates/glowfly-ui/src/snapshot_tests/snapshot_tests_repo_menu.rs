@@ -198,7 +198,6 @@ fn repo_menu_actions() {
     {
         assert!(h.query_by_label(label).is_some(), "{label} is in the menu");
     }
-    h.check_snapshot("repo_menu_actions");
     h.get_by_label("Remove missing entry (1)…").click();
     h.run();
     assert!(matches!(last(&h), Msg::Confirm { then, .. } if matches!(**then, Msg::Recent(RecentMsg::RemoveMissing))));

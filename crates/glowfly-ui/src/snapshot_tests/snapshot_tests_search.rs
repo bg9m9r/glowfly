@@ -68,21 +68,17 @@ fn graph_search_dim() {
 
 #[test]
 fn graph_search_filtered() {
-    for (theme, name, dark) in
-        [(ThemeChoice::Dark, "graph_search_filtered", true), (ThemeChoice::Light, "graph_search_filtered_light", false)]
-    {
-        let (mut st, dir) = with_two_authors(theme, name);
-        searching(&mut st, "page");
-        send(&mut st, SearchMsg::ToggleFilter);
-        assert!(st.session.search.filter);
-        assert_eq!(st.session.search.matches.len(), 3);
-        let mut h = harness(st, dark);
-        h.run();
-        assert_eq!(h.get_by_label("Filter").toggled(), Some(Toggled::True), "the Filter mode is raised");
-        h.check_snapshot(name);
-        drop(h);
-        remove_fixture(&dir);
-    }
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "graph_search_filtered");
+    searching(&mut st, "page");
+    send(&mut st, SearchMsg::ToggleFilter);
+    assert!(st.session.search.filter);
+    assert_eq!(st.session.search.matches.len(), 3);
+    let mut h = harness(st, true);
+    h.run();
+    assert_eq!(h.get_by_label("Filter").toggled(), Some(Toggled::True), "the Filter mode is raised");
+    h.check_snapshot("graph_search_filtered");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 #[test]
