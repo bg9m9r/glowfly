@@ -70,6 +70,7 @@ source file, update its line here.
 ## Submodules, worktrees, remotes
 
 - Submodules: their state, including a missing folder and one added but not committed, the .gitmodules branch and the URL git clones from, a relative one resolved.
+- `repo/submodules.rs`: after a whole status read, each submodule's dirtiness comes from that read where its `ignore` and `diff.ignoreSubmodules` let it see it, so only an out-of-sync or ignored one is scanned again; `repo/submodule_memo.rs` keeps left-behind walks until the gitlink, the submodule's HEAD or its refs change. Tests: `submodules_tests.rs`, `submodules_whole_tests.rs`.
 - Whether a new submodule can go in a folder: the index, the disk, .gitignore, a leftover stored module.
 - Worktrees, with the branch each is rebasing or bisecting (`WorktreeInfo::held`, `uses`): `worktrees.rs`.
 - Other worktrees' changes, counted within the load's limits or in the background: `worktree_counts.rs`.

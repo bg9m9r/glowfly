@@ -148,6 +148,7 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 ### Performance
 
 - Re-read only the submodules a path read touched instead of the whole submodule list
+- Tell an out-of-sync submodule's dirtiness from git's own status (porcelain v2 reports it per submodule) instead of scanning it again
 - A Preferences control to show the slow-status note again or turn it off
 - Report status read timings in the activity log (debug)
 - Refresh `Snapshot.collisions` on status reads so twins can be marked without scanning the index in the worker

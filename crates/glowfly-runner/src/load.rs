@@ -39,7 +39,8 @@ pub(super) fn load_repo(
         let started = std::time::Instant::now();
         let read = repo::status_and_index_with(&path, k.git_status, Some(graph_cache.records())).map_err(err);
         let slow = repo::slow(started.elapsed(), &path);
-        let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
+        let rows = read.as_ref().ok().map(|(u, ..)| u.as_slice());
+        let submodules = repo::submodules_if_any(&path, k.submodules, rows, Some(graph_cache.submodules())).ok().flatten();
         let lfs_patterns = Some(glowfly_core::lfs::repo_patterns(&path));
         let (result, index) = match read {
             Ok((u, s, state, memo)) => (Ok((u, s, state)), memo.map(std::sync::Arc::new)),

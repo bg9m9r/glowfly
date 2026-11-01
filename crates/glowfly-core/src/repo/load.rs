@@ -214,7 +214,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let changes = ChangeCounts::of(&staged, &unstaged);
     let folding = super::collide::folding(repo.path());
     let ignorecase = super::collide::ignorecase(&repo);
-    let submodules = submodules::list(&repo);
+    let submodules = submodules::list(&repo, Some(&unstaged), Some(cache.submodules()));
     let mut worktrees = worktrees::list(&repo);
     if opts.worktree_wips {
         super::worktree_counts::count_in_load(&mut worktrees, &super::worktree_counts::LoadLimits::DEFAULT);

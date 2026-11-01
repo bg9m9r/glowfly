@@ -6,7 +6,7 @@
 //! longest ago go. The recent HEADs are kept too, so a load after HEAD moved on from one of
 //! them can start from that one's answers (`branch_merged`). The app keeps one cache for its
 //! loads, which also carries the memo of index files its status reads let git record speed-ups
-//! in (`index_ext::RecordMemo`).
+//! in (`index_ext::RecordMemo`) and the submodule list's left-behind walks (`SubmoduleMemo`).
 
 use git2::{Oid, Repository};
 use std::collections::{HashMap, VecDeque};
@@ -63,14 +63,19 @@ impl Answers {
 }
 
 /// Answers by question, shared by the loads of one app (`repo::load_cached`), and the index
-/// record memo its loads and status reads share.
+/// record memo and submodule memo its loads and status reads share.
 #[derive(Default)]
-pub struct GraphCache(Mutex<Answers>, super::RecordMemo);
+pub struct GraphCache(Mutex<Answers>, super::RecordMemo, super::SubmoduleMemo);
 
 impl GraphCache {
     /// Which index states a status read already let git record speed-ups in.
     pub fn records(&self) -> &super::RecordMemo {
         &self.1
+    }
+
+    /// The submodule list's left-behind walks, kept between status reads.
+    pub fn submodules(&self) -> &super::SubmoduleMemo {
+        &self.2
     }
 
     fn lock(&self) -> MutexGuard<'_, Answers> {
