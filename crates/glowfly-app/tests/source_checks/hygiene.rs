@@ -13,12 +13,12 @@
 //!   the same folder name (tests run in parallel and would share the folder).
 //! - View tests build their harnesses with glowfly-ui's `snapshot_check::builder()`, which lends
 //!   them pooled wgpu devices, not with `Harness::builder()` or `Harness::new*` (`HARNESS_MAKERS`).
-//! - The app's non-test code doesn't behave differently under test: no `cfg!(test)`, no
+//! - No crate's non-test code behaves differently under test: no `cfg!(test)`, no
 //!   `cfg(not(test))`, no `#[cfg(test)]` on a statement or a field (test-only items are fine).
-//!   A dependency is never built with `cfg(test)`, so once the app is split into crates such a
-//!   switch silently stops switching in the other crates' tests; tests pass their stand-ins in
-//!   instead (`runner::testing`). Only the shell (`TEST_SWITCH_FILES`), whose tests are its own
-//!   crate's, may keep one.
+//!   A dependency is never built with `cfg(test)`, so such a switch silently stops switching in
+//!   the other crates' tests; tests pass their stand-ins in instead (`runner::testing`). Only the
+//!   shell (`TEST_SWITCH_FILES`), whose tests are its own crate's, may keep one; glowfly-core's
+//!   older ones are counted in `CORE_SWITCHES`, which only shrinks.
 //!
 //! Test code is what glowfly-ui's `tests/view_checks/support/views.rs` calls test code: files
 //! named `tests.rs`, `*_tests.rs` or `snapshot_tests*.rs`, modules declared under `#[cfg(test)]`,

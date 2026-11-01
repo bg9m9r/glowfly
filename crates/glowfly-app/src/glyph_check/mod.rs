@@ -9,6 +9,8 @@
 //! `cjk_dates` also asks the machine's own CJK fonts, where it has them.
 
 mod cjk_dates;
+#[path = "../../../glowfly-ui/tests/view_checks/support/lexer.rs"]
+mod lexer;
 mod scan;
 
 use eframe::egui;

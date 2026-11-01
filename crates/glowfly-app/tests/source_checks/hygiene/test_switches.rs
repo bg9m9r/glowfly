@@ -1,11 +1,26 @@
-//! The hygiene ratchet on `cfg(test)` behaviour switches in the non-test code of every crate but
-//! glowfly-core (see hygiene.rs).
+//! The hygiene ratchet on `cfg(test)` behaviour switches in the non-test code of every crate
+//! (see hygiene.rs). glowfly-core's own switches from before the check covered it are counted in
+//! `CORE_SWITCHES`; no other crate's tests reach them.
 
-use super::{all_sources, code_lines};
+use super::all_sources;
+use crate::lexer::bare_lines;
 
 /// The files whose non-test code may switch on `cfg(test)`: the shell, which stays in the
 /// binary, whose own unit tests (the journeys) are what it switches for. Only shrinks.
 const TEST_SWITCH_FILES: &[&str] = &["crates/glowfly-app/src/shell/app.rs"];
+
+/// glowfly-core's files that still switch on `cfg(test)`, with how many switch lines each has.
+/// They switch only for core's own unit tests (the forge mock server, the real trash, the repo
+/// pool's counters and limits, Bitbucket's poll pause). Only shrinks: replace a switch with a
+/// stand-in passed in, then lower its count or drop the entry.
+const CORE_SWITCHES: &[(&str, usize)] = &[
+    ("crates/glowfly-core/src/forge/http.rs", 8),
+    ("crates/glowfly-core/src/forge/review/bitbucket_merge.rs", 1),
+    ("crates/glowfly-core/src/repo/collide_scan.rs", 1),
+    ("crates/glowfly-core/src/repo/trash.rs", 2),
+    ("crates/glowfly-core/src/repo/trash/untrash.rs", 1),
+    ("crates/glowfly-core/src/repo_pool.rs", 5),
+];
 
 /// The lines (1-based) of `src`'s code that switch on `cfg(test)`: a `cfg!` naming `test`, a
 /// `cfg` with `not(…)` around `test` (`cfg(not(test))`, `cfg(all(not(test), …))`; lint
@@ -13,7 +28,7 @@ const TEST_SWITCH_FILES: &[&str] = &["crates/glowfly-app/src/shell/app.rs"];
 /// anything but an item.
 fn test_switches(src: &str) -> Vec<usize> {
     const ITEMS: &[&str] = &["fn ", "mod ", "use ", "impl", "struct ", "enum ", "const ", "static ", "type ", "trait ", "macro_rules!"];
-    let code = code_lines(src);
+    let code = bare_lines(src);
     let item = |line: &str| {
         let l = line.trim_start();
         // `pub`, `pub(crate)`, `pub(in crate::ui)` and the like.
@@ -23,7 +38,6 @@ fn test_switches(src: &str) -> Vec<usize> {
     };
     let mut found = Vec::new();
     for (i, line) in code.iter().enumerate() {
-        let line = &without_strings(line);
         if let Some(at) = line.find("cfg!(")
             && names_test(&inside(line, at + 4))
         {
@@ -75,27 +89,6 @@ fn inside(line: &str, open: usize) -> String {
     pred.split('"').step_by(2).collect::<Vec<_>>().join("\"\"")
 }
 
-/// `line` with the text of its string literals taken out (a `cfg` in a string is not code).
-fn without_strings(line: &str) -> String {
-    let (mut out, mut in_string, mut escaped) = (String::new(), false, false);
-    for c in line.chars() {
-        if in_string {
-            if escaped {
-                escaped = false;
-            } else if c == '\\' {
-                escaped = true;
-            } else if c == '"' {
-                in_string = false;
-                out.push(c);
-            }
-        } else {
-            in_string = c == '"';
-            out.push(c);
-        }
-    }
-    out
-}
-
 /// Whether the predicate names `test` (as a word).
 fn names_test(pred: &str) -> bool {
     pred.split(|c: char| !(c.is_alphanumeric() || c == '_')).any(|w| w == "test")
@@ -110,7 +103,7 @@ fn negates_test(pred: &str) -> bool {
 fn non_test_code_does_not_switch_on_cfg_test() {
     let sources = all_sources();
     let mut problems = Vec::new();
-    for s in sources.iter().filter(|s| !s.test && !s.path.starts_with("crates/glowfly-core/src/")) {
+    for s in sources.iter().filter(|s| !s.test) {
         let lines = test_switches(&s.text);
         if TEST_SWITCH_FILES.contains(&s.path.as_str()) {
             if lines.is_empty() {
@@ -118,13 +111,25 @@ fn non_test_code_does_not_switch_on_cfg_test() {
             }
             continue;
         }
+        if let Some((_, ceiling)) = CORE_SWITCHES.iter().find(|(p, _)| *p == s.path) {
+            match lines.len() {
+                n if n > *ceiling => problems.push(format!(
+                    "{}:{}: {n} cfg(test) switches, over its count of {ceiling} in CORE_SWITCHES; pass the test's stand-in in instead",
+                    s.path, lines[0]
+                )),
+                n if n < *ceiling => problems
+                    .push(format!("{}: {n} cfg(test) switches now; lower its count in CORE_SWITCHES to {n} (or drop it at 0)", s.path)),
+                _ => {}
+            }
+            continue;
+        }
         problems.extend(lines.iter().map(|l| {
             format!("{}:{l}: behaves differently under cfg(test); pass the test's stand-in in instead (runner::testing)", s.path)
         }));
     }
-    for path in TEST_SWITCH_FILES {
+    for path in TEST_SWITCH_FILES.iter().chain(CORE_SWITCHES.iter().map(|(p, _)| p)) {
         if !sources.iter().any(|s| s.path == *path) {
-            problems.push(format!("{path}: in TEST_SWITCH_FILES but no longer a source file; remove the entry"));
+            problems.push(format!("{path}: in TEST_SWITCH_FILES or CORE_SWITCHES but no longer a source file; remove the entry"));
         }
     }
     assert!(problems.is_empty(), "cfg(test) behaviour switches:\n{}", problems.join("\n"));

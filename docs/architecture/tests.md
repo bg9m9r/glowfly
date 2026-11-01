@@ -6,20 +6,24 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 
 ## Source checks (`crates/glowfly-app/tests/source_checks/`, one binary)
 
-- `source_checks/main.rs`: the binary; includes glowfly-ui's `tests/view_checks/support/views.rs` once for the checks that read sources.
-- `crates/glowfly-app/tests/source_checks/layering.rs`: no I/O in glowfly-ui's `src/` or the model's `update/` or `state/` (see Rules; its `ALLOWED` table is in `tests/source_checks/layering/rules.rs`).
+- `source_checks/main.rs`: the binary; includes glowfly-ui's `tests/view_checks/support/views.rs` and `lexer.rs` once for the checks that read sources.
+- `crates/glowfly-app/tests/source_checks/layering.rs`: no I/O in glowfly-ui's `src/` or the model's `src/` (bar `testing.rs`) (see Rules; its `ALLOWED` table is in `tests/source_checks/layering/rules.rs`).
+- `layering/core_io.rs`: which glowfly-core functions do I/O, derived from core's function bodies (direct outside work, or a call to a core function that does), and the core calls a checked file makes; `PURE_FUNCTIONS` clears the few it can't see through.
+- `layering/old_io.rs`: the hand-kept core I/O list from before #365, as a test that each entry is still denied (`NO_LONGER_IO` gives the reason for any that isn't).
+- `layering/core_fns.rs`: finds a core file's function bodies (free functions and methods, inline modules); `layering/paths.rs` reads `use` trees and the calls on a line.
 - `crates/glowfly-app/tests/source_checks/hygiene.rs`: ratchets across every crate: non-test files stay under 400 lines (`LONG_FILES` holds today's longer files at their length as a ceiling) and open with a `//!` doc.
 - `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).
 - `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, the kit's `git`, …) are not redefined or handed one folder name twice.
 - `hygiene.rs`: view tests build their harnesses with glowfly-ui's `snapshot_check::builder()` (`HARNESS_MAKERS` names the exceptions).
-- `hygiene/test_switches.rs`: the non-test code of every crate but glowfly-core has no `cfg(test)` behaviour switch (`cfg!(test)`, `cfg(not(test))`, `#[cfg(test)]` on a statement or field); only the shell (`TEST_SWITCH_FILES`) may keep one.
+- `hygiene/test_switches.rs`: the non-test code of every crate has no `cfg(test)` behaviour switch (`cfg!(test)`, `cfg(not(test))`, `#[cfg(test)]` on a statement or field); only the shell (`TEST_SWITCH_FILES`) may keep one, and glowfly-core's older ones are counted in `CORE_SWITCHES`, which only shrinks.
 - `crates/glowfly-app/tests/source_checks/i18n_keys.rs`: every translation key the code of any crate looks up exists in English, and every English key is used.
 - `source_checks/dependencies.rs`: the crate graph points one way, read from `cargo tree` for the host: the model and the runner have no egui, eframe, winit or wgpu (normal, build or dev), glowfly-ui has no glowfly-runner (not even as a dev-dependency), glowfly-flows has no egui, and `-p glowfly`'s normal and build edges turn on no `test-support` or `testkit` and pull in no egui_kittest; each check first asserts crates its tree must name, so unreadable output fails; skipped when cargo can't be started.
-- `source_checks/dead_pub.rs`: the `pub fn`, `const`, `static`, `type`, `struct` and `enum` items of glowfly-model, glowfly-runner and glowfly-ui are named in some other file of the workspace (a type may instead be named by a `pub` line of its own file); `DEAD_PUB` holds the exceptions and only shrinks.
+- `source_checks/dead_pub.rs`: the `pub fn`, `const`, `static`, `type`, `struct` and `enum` items of glowfly-model, glowfly-runner and glowfly-ui are named in the non-test code of some other file (a type may instead be named by a `pub` line of its own file); `DEAD_PUB` holds the exceptions and only shrinks.
 
 ## View checks (`crates/glowfly-ui/tests/view_checks/`, one binary)
 
 - `view_checks/main.rs`: the binary; `support/` holds what the checks share (the dialog files, reading the sources).
+- `view_checks/support/lexer.rs`: the string-aware Rust lexer every source check reads code with (code, comments and literals; `code_lines`, `bare_lines`, `literals`, `is_test_file`); the app's `source_checks` and `glyph_check` include it too.
 - `crates/glowfly-ui/tests/view_checks/controls.rs`: views draw text fields, checkboxes, radio buttons and modals with `theme/controls.rs` and `theme::modal`, not egui's own.
 - `controls.rs`: dialogs (and the first-run welcome) draw their title and buttons through `dialog_frame` (no headings, egui buttons or English Cancel / Close) and their text fields as `widgets::TextField` (no `controls::field(` or `TextEdit::`).
 - `controls.rs`: the dialogs for less familiar operations each have a guide side pane, and no other dialog has one.

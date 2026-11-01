@@ -1,6 +1,9 @@
 //! Finding the characters a source file can show: the non-ASCII characters in Rust string and
 //! char literals outside comments and test-only code, and every non-ASCII character in a JSON
-//! translation file. Plain text scanning, no fonts.
+//! translation file. Plain text scanning, no fonts; the Rust sources are cut up by the source
+//! checks' shared lexer (glowfly-ui's `tests/view_checks/support/lexer.rs`).
+
+use super::lexer;
 
 /// A non-ASCII character and the 1-based line it is on.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -12,7 +15,45 @@ pub(super) struct Found {
 /// Every non-ASCII character inside a string or char literal of `src`, skipping comments
 /// (doc comments too), byte strings and `#[cfg(test)]` items.
 pub(super) fn rust_literal_chars(src: &str) -> Vec<Found> {
-    Lexer { cs: blank_test_items(src).chars().collect(), i: 0, line: 1, out: Vec::new() }.run()
+    let src = blank_test_items(src);
+    let mut out = Vec::new();
+    for lit in lexer::literals(&src).into_iter().filter(|l| !l.piece.byte) {
+        let mut line = lit.line;
+        let mut keep = |c: char, line: usize| {
+            if !c.is_ascii() {
+                out.push(Found { line, ch: c });
+            }
+        };
+        if lit.piece.raw {
+            for c in lit.text.chars() {
+                line += usize::from(c == '\n');
+                keep(c, line);
+            }
+            continue;
+        }
+        let mut cs = lit.text.chars().peekable();
+        while let Some(c) = cs.next() {
+            match c {
+                '\\' if cs.peek() == Some(&'u') => {
+                    cs.next();
+                    let hex: String = cs.by_ref().skip_while(|&h| h == '{').take_while(|&h| h != '}').collect();
+                    if let Some(c) = u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
+                        keep(c, line);
+                    }
+                }
+                '\\' => {
+                    if cs.next() == Some('\n') {
+                        line += 1;
+                    }
+                }
+                _ => {
+                    line += usize::from(c == '\n');
+                    keep(c, line);
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Every non-ASCII character in a JSON file, with `\uXXXX` escapes decoded.
@@ -41,14 +82,8 @@ pub(super) fn json_chars(src: &str) -> Vec<Found> {
     out
 }
 
-/// Whether a source path (relative to `src/`, `/`-separated) is test code by its name: a
-/// component (without `.rs`) that is `tests`, ends with `_tests` or starts with
-/// `snapshot_tests`. A name that merely starts with `tests_` is not.
-pub(super) fn is_test_path(rel: &str) -> bool {
-    rel.split('/')
-        .map(|c| c.strip_suffix(".rs").unwrap_or(c))
-        .any(|c| c == "tests" || c.ends_with("_tests") || c.starts_with("snapshot_tests"))
-}
+/// Whether a source path (relative to `src/`, `/`-separated) is test code by its name.
+pub(super) use lexer::is_test_file as is_test_path;
 
 /// The module files `rel` declares under `#[cfg(test)]` (`mod name;`), as paths relative to
 /// `src/` without `.rs` (and without a trailing `/mod`), honouring `#[path = "..."]`.
@@ -98,10 +133,12 @@ fn join(dir: &str, name: &str) -> String {
 }
 
 /// `src` with each `#[cfg(test)]` item (its attributes, and a braced body or the lines up to a
-/// `;` or `,`) replaced by empty lines, so line numbers stay put. Braces are counted per line, as
-/// `tests/source_checks/layering.rs` does.
+/// `;` or `,`) replaced by empty lines, so line numbers stay put. Braces are counted per line
+/// outside comments and literals.
 fn blank_test_items(src: &str) -> String {
+    let bare_text = lexer::blanked(src, false);
     let lines: Vec<&str> = src.lines().collect();
+    let bare: Vec<&str> = bare_text.lines().collect();
     let mut out: Vec<&str> = Vec::with_capacity(lines.len());
     let mut i = 0;
     while i < lines.len() {
@@ -118,10 +155,10 @@ fn blank_test_items(src: &str) -> String {
             }
         }
         let mut end = j;
-        if lines.get(j).is_some_and(|l| l.contains('{')) {
+        if bare.get(j).is_some_and(|l| l.contains('{')) {
             let mut depth = 0i64;
             while end < lines.len() {
-                depth += lines[end].matches('{').count() as i64 - lines[end].matches('}').count() as i64;
+                depth += bare[end].matches('{').count() as i64 - bare[end].matches('}').count() as i64;
                 if depth <= 0 {
                     break;
                 }
@@ -137,185 +174,6 @@ fn blank_test_items(src: &str) -> String {
         i = end + 1;
     }
     out.join("\n")
-}
-
-struct Lexer {
-    cs: Vec<char>,
-    i: usize,
-    line: usize,
-    out: Vec<Found>,
-}
-
-impl Lexer {
-    fn at(&self, k: usize) -> Option<char> {
-        self.cs.get(self.i + k).copied()
-    }
-
-    fn keep(&mut self, c: char, collect: bool) {
-        if collect && !c.is_ascii() {
-            self.out.push(Found { line: self.line, ch: c });
-        }
-    }
-
-    fn run(mut self) -> Vec<Found> {
-        while let Some(c) = self.at(0) {
-            let after_ident = self.i > 0 && is_ident(self.cs[self.i - 1]);
-            match (c, self.at(1)) {
-                ('\n', _) => {
-                    self.line += 1;
-                    self.i += 1;
-                }
-                ('/', Some('/')) => {
-                    while self.at(0).is_some_and(|c| c != '\n') {
-                        self.i += 1;
-                    }
-                }
-                ('/', Some('*')) => self.block_comment(),
-                ('r', Some('"' | '#')) if !after_ident => {
-                    self.i += 1;
-                    self.raw_string(true);
-                }
-                ('b', Some('r')) if !after_ident => {
-                    self.i += 2;
-                    self.raw_string(false);
-                }
-                ('b', Some('"')) if !after_ident => {
-                    self.i += 2;
-                    self.string(false);
-                }
-                ('b', Some('\'')) if !after_ident => {
-                    self.i += 1;
-                    self.char_literal(false);
-                }
-                ('"', _) => {
-                    self.i += 1;
-                    self.string(true);
-                }
-                ('\'', _) => self.char_literal(true),
-                _ => self.i += 1,
-            }
-        }
-        self.out
-    }
-
-    fn block_comment(&mut self) {
-        let mut depth = 0;
-        while let Some(c) = self.at(0) {
-            match (c, self.at(1)) {
-                ('/', Some('*')) => {
-                    depth += 1;
-                    self.i += 2;
-                }
-                ('*', Some('/')) => {
-                    depth -= 1;
-                    self.i += 2;
-                    if depth == 0 {
-                        return;
-                    }
-                }
-                ('\n', _) => {
-                    self.line += 1;
-                    self.i += 1;
-                }
-                _ => self.i += 1,
-            }
-        }
-    }
-
-    /// At the hashes or quote after `r`: reads a raw string to its end. Reads nothing when this
-    /// is not one, e.g. the raw identifier `r#type`.
-    fn raw_string(&mut self, collect: bool) {
-        let hashes = (0..).take_while(|&k| self.at(k) == Some('#')).count();
-        if self.at(hashes) != Some('"') {
-            return;
-        }
-        self.i += hashes + 1;
-        while let Some(c) = self.at(0) {
-            if c == '"' && (1..=hashes).all(|k| self.at(k) == Some('#')) {
-                self.i += hashes + 1;
-                return;
-            }
-            if c == '\n' {
-                self.line += 1;
-            }
-            self.keep(c, collect);
-            self.i += 1;
-        }
-    }
-
-    /// After the opening quote: reads a string to its closing quote, decoding `\u{..}`.
-    fn string(&mut self, collect: bool) {
-        while let Some(c) = self.at(0) {
-            match c {
-                '"' => {
-                    self.i += 1;
-                    return;
-                }
-                '\\' if self.at(1) == Some('u') && self.at(2) == Some('{') => {
-                    self.i += 3;
-                    let mut hex = String::new();
-                    while let Some(h) = self.at(0).filter(|&h| h != '}' && h != '"') {
-                        hex.push(h);
-                        self.i += 1;
-                    }
-                    self.i += 1;
-                    if let Some(c) = u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
-                        self.keep(c, collect);
-                    }
-                }
-                '\\' => {
-                    if self.at(1) == Some('\n') {
-                        self.line += 1;
-                    }
-                    self.i += 2;
-                }
-                _ => {
-                    if c == '\n' {
-                        self.line += 1;
-                    }
-                    self.keep(c, collect);
-                    self.i += 1;
-                }
-            }
-        }
-    }
-
-    /// At a `'`: reads a char literal (`'c'`, `'\n'`, `'\x41'`, `'\u{..}'`), or steps over the
-    /// quote of a lifetime or label.
-    fn char_literal(&mut self, collect: bool) {
-        match (self.at(1), self.at(2)) {
-            (Some('\\'), Some('u')) if self.at(3) == Some('{') => {
-                let close = (4..12).find(|&k| self.at(k) == Some('}'));
-                if let Some(k) = close.filter(|&k| self.at(k + 1) == Some('\'')) {
-                    let hex: String = (4..k).filter_map(|n| self.at(n)).collect();
-                    if let Some(c) = u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
-                        self.keep(c, collect);
-                    }
-                    self.i += k + 2;
-                    return;
-                }
-            }
-            (Some('\\'), Some('x')) if self.at(5) == Some('\'') => {
-                self.i += 6;
-                return;
-            }
-            (Some('\\'), Some(_)) if self.at(3) == Some('\'') => {
-                self.i += 4;
-                return;
-            }
-            (Some(c), Some('\'')) if c != '\n' && c != '\\' => {
-                self.keep(c, collect);
-                self.i += 3;
-                return;
-            }
-            _ => {}
-        }
-        self.i += 1;
-    }
-}
-
-fn is_ident(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
 }
 
 #[cfg(test)]

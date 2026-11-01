@@ -111,3 +111,15 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Minimize the cached corpus now and then (`cargo fuzz cmin`) so the scheduled run doesn't spend its minutes reloading near-duplicates
 - Turn the fuzz checks' seeds into a dictionary per target (`-dict=`) for the marker and URL tokens the stable mutation test already splices in
 - Check `remote_url`'s host against `url::Url::parse(..).host_str()` in its fuzz check, which now uses the same character set as `host_char`
+
+### Source checks (string-aware lexer, derived core I/O rule)
+
+- Skip `#[cfg(any(test, feature = "test-support"))]` items (not only modules) in the layering check, so `state/trust.rs`'s `record_as_found` needs no `ALLOWED` entry
+- Follow method calls on values whose type the function doesn't name (`x.load()` on a returned core type) when deriving which core functions do I/O, from the return types of the core functions it calls
+- Move the system date locale and the home folder into view state (read once by the shell), dropping the three environment-read `ALLOWED` entries the derived rule found in `prefs/language.rs` and `repo_menu_list.rs`
+- Shrink `DEAD_PUB` (items only tests name): make each private or move it into the test code that uses it
+- Turn `CORE_SWITCHES` into seams: the forge mock redirect as an injected base URL, the trash refusal as a passed-in `Trasher`, the repo pool's limits as parameters
+- Count a core function that returns a core type whose methods do I/O (not only a `dyn`/`impl` of a core trait) as I/O, or follow the checked crates' own `.method(` calls on core values
+- Treat an unresolved bare call inside core as I/O when its parent module has any, as the checked crates' calls already are
+- Follow `use glowfly_core::repo::*;`, `use glowfly_core as core;`, functions passed as values (`.map(repo::load_diff)`) and I/O inside `static` initialisers in the derived rule
+- Skip glowfly-flows explicitly in `dead_pub` (it is test-only; today its modules are read as test code only through their `cfg(test)` declarations)

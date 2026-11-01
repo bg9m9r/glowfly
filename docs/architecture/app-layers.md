@@ -216,6 +216,6 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `journey/fixture.rs`: checking the screen and the repository on disk.
 - `journey/` is in the crate because the package has no library target `tests/` could reach.
 - `glyph_check/` (tests only): every non-ASCII character in every crate's string literals and in the translation files has a glyph in the fonts egui draws with.
-- `glyph_check/scan.rs` finds the characters, skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.
+- `glyph_check/scan.rs` finds the characters with the source checks' shared lexer (glowfly-ui's `tests/view_checks/support/lexer.rs`), skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.
 - `glyph_check/` installs the app's bundled fonts through `ui::theme::fonts::install`, as the app does.
 - `glyph_check/cjk_dates.rs`: every month, weekday and half-day word of the ja_JP, zh_CN and ko_KR dates has a glyph, in the tests' CJK font and in the machine's own where it has them.

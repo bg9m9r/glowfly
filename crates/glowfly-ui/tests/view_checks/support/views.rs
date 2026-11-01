@@ -1,45 +1,14 @@
 //! Reading the sources for the source checks (glowfly-ui's view checks, and the app crate's
-//! `source_checks` binary, which includes this file too): every file of a crate marked
-//! test or not, the non-test files of glowfly-ui (the views), and each file's code with comments
-//! and inline test modules blanked out.
+//! `source_checks` binary, which includes this file and `lexer.rs` beside it): every file of a
+//! crate marked test or not, and the non-test files of glowfly-ui (the views). Each file's code,
+//! with comments and inline test modules blanked out, comes from `lexer.rs`.
 
 // Each check uses only some of these.
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
 
-/// The source with comments and inline `#[cfg(test)] mod … { … }` blocks blanked out, line for
-/// line, so line numbers still match the file.
-pub fn code_lines(src: &str) -> Vec<String> {
-    let lines: Vec<&str> = src.lines().collect();
-    let mut out = Vec::with_capacity(lines.len());
-    let mut i = 0;
-    while i < lines.len() {
-        let next = lines.get(i + 1).map(|l| l.trim()).unwrap_or("");
-        if lines[i].trim() == "#[cfg(test)]" && next.starts_with("mod ") && next.ends_with('{') {
-            out.push(String::new());
-            i += 1;
-            let mut depth = 0i64;
-            while i < lines.len() {
-                depth += lines[i].matches('{').count() as i64 - lines[i].matches('}').count() as i64;
-                out.push(String::new());
-                i += 1;
-                if depth <= 0 {
-                    break;
-                }
-            }
-            continue;
-        }
-        out.push(lines[i].split("//").next().unwrap_or("").to_owned());
-        i += 1;
-    }
-    out
-}
-
-pub fn is_test_file(rel: &str) -> bool {
-    let stem = rel.rsplit('/').next().unwrap_or(rel).trim_end_matches(".rs");
-    stem == "tests" || stem.ends_with("_tests") || stem.starts_with("snapshot_tests")
-}
+pub use super::lexer::{code_lines, is_test_file};
 
 /// The modules `src` declares only for tests: `#[cfg(test)]`, or the `test-support` feature's
 /// `#[cfg(any(test, feature = "test-support"))]`, then any other attributes, then `mod name;`.
