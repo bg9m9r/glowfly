@@ -24,30 +24,38 @@ pub(super) fn commit_at(dir: &Path, msg: &str, time: i64) {
     dated(dir, &["commit", "-q", "-m", msg, "-m", &format!("The body of {msg}.")], time);
 }
 
-/// Two branches merged, an octopus merge, equal timestamps and a child older than its parent.
+/// Two branches merged, an octopus merge, equal timestamps and a child older than its parent: a
+/// copy of `BRANCHY` in a scratch folder of its own.
 pub(super) fn branchy(name: &str) -> std::path::PathBuf {
-    let dir = scratch_repo(name);
-    commit_at(&dir, "base", 100);
-    commit_at(&dir, "m1", 200);
+    scratch_copy(name, &BRANCHY)
+}
+
+/// `branchy`'s history, built once per test run (about 25 git commands, several of them by the
+/// CLI) and copied for each test. The fixed dates make every build alike anyway.
+static BRANCHY: crate::testkit::Template = crate::testkit::Template::new("index-branchy", build_branchy);
+
+fn build_branchy(dir: &Path) {
+    init_repo(dir);
+    commit_at(dir, "base", 100);
+    commit_at(dir, "m1", 200);
     for b in ["b1", "b2", "b3"] {
-        git(&dir, &["branch", b]);
+        git(dir, &["branch", b]);
     }
-    git(&dir, &["checkout", "-q", "b1"]);
-    commit_at(&dir, "b1a", 300);
-    commit_at(&dir, "b1b", 300);
-    git(&dir, &["checkout", "-q", "b2"]);
-    commit_at(&dir, "b2a", 300);
-    git(&dir, &["checkout", "-q", "b3"]);
+    git(dir, &["checkout", "-q", "b1"]);
+    commit_at(dir, "b1a", 300);
+    commit_at(dir, "b1b", 300);
+    git(dir, &["checkout", "-q", "b2"]);
+    commit_at(dir, "b2a", 300);
+    git(dir, &["checkout", "-q", "b3"]);
     // The clock went back.
-    commit_at(&dir, "b3a", 50);
-    git(&dir, &["checkout", "-q", "main"]);
-    commit_at(&dir, "m2", 400);
-    dated(&dir, &["merge", "-q", "--no-ff", "-m", "merge b1", "b1"], 500);
-    dated(&dir, &["merge", "-q", "--no-ff", "-m", "octopus", "b2", "b3"], 600);
-    git(&dir, &["checkout", "-q", "-b", "skew"]);
-    commit_at(&dir, "skewed", 10);
-    git(&dir, &["checkout", "-q", "main"]);
-    dir
+    commit_at(dir, "b3a", 50);
+    git(dir, &["checkout", "-q", "main"]);
+    commit_at(dir, "m2", 400);
+    dated(dir, &["merge", "-q", "--no-ff", "-m", "merge b1", "b1"], 500);
+    dated(dir, &["merge", "-q", "--no-ff", "-m", "octopus", "b2", "b3"], 600);
+    git(dir, &["checkout", "-q", "-b", "skew"]);
+    commit_at(dir, "skewed", 10);
+    git(dir, &["checkout", "-q", "main"]);
 }
 
 pub(super) fn snapshot(dir: &Path, opts: LoadOptions) -> Snapshot {

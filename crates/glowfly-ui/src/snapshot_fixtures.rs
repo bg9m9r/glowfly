@@ -44,9 +44,7 @@ pub fn try_git(dir: &Path, a: &[&str], date: &str) -> (bool, String) {
 /// Each test passes its own `name`: tests run in parallel and must not share a folder.
 fn fixture_repo(name: &str) -> PathBuf {
     let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-snap-{}-{name}", std::process::id())).join("demo");
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    copy_dir(fixture_template(), &dir);
+    FIXTURE.copy_to(&dir);
     // The copies' file times no longer match the index; refresh it so the repository is in the
     // state the build left it (otherwise a test that changes core.autocrlf, say, would see
     // checked-out files as modified). It exits 1 for the modified README, as intended.
@@ -56,29 +54,7 @@ fn fixture_repo(name: &str) -> PathBuf {
 
 /// The fixture, built once per test run (its ~25 git commands were most of a view test's time)
 /// and copied for each test. The fixed dates make every build identical anyway.
-fn fixture_template() -> &'static Path {
-    static TEMPLATE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
-    TEMPLATE.get_or_init(|| {
-        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-snap-{}-template", std::process::id())).join("demo");
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        build_fixture(&dir);
-        dir
-    })
-}
-
-fn copy_dir(from: &Path, to: &Path) {
-    for entry in std::fs::read_dir(from).unwrap() {
-        let entry = entry.unwrap();
-        let dest = to.join(entry.file_name());
-        if entry.file_type().unwrap().is_dir() {
-            std::fs::create_dir_all(&dest).unwrap();
-            copy_dir(&entry.path(), &dest);
-        } else {
-            std::fs::copy(entry.path(), &dest).unwrap();
-        }
-    }
-}
+static FIXTURE: glowfly_core::testkit::Template = glowfly_core::testkit::Template::new("snap-demo", build_fixture);
 
 fn build_fixture(dir: &Path) {
     let d = "2026-01-05T10:00:00+00:00";

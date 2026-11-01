@@ -6,9 +6,15 @@ name: zizmor
 # higher; a deliberate exception is suppressed where it is, with `# zizmor: ignore[<rule>]` and
 # the reason.
 
+# Pushes to main, and pull requests (a branch with a pull request runs once, not twice).
 on:
   push:
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # A read-only token: zizmor only reads the workflows (and, for its online audits, the public
 # refs of the actions they use).

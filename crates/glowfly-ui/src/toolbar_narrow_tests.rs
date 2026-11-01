@@ -37,29 +37,58 @@ fn narrow(test: &str, case: usize, labels: bool, lang: &str, width: f32) -> (H, 
     (h, dir)
 }
 
-#[test]
-fn narrow_windows_fold_the_toolbar_without_overlap() {
+/// At `width`, in English and German: no two buttons overlap, none leaves the window, and
+/// Pull, Push, Search and Refresh never fold. One test per width, so they run side by side.
+fn no_overlap_at(width: f32) {
     for lang in ["en", "de"] {
-        for width in [900.0, 1000.0, 1100.0, 1200.0, 1300.0, 1400.0] {
-            // Plain, the 80-character branch with the conflict chip, and a hosting service.
-            for (case, labels) in [(0, true), (4, true), (5, true), (5, false)] {
-                let (h, dir) = narrow("overlap", case, labels, lang, width);
-                let at = format!("{lang} {width} case {case} labels {labels}");
-                let buttons = toolbar_buttons(&h);
-                for pair in buttons.windows(2) {
-                    assert!(pair[1].1 >= pair[0].2, "{at}: {:?} overlaps {:?}", pair[0], pair[1]);
-                }
-                let last = buttons.last().expect("buttons");
-                assert!(last.2 <= f64::from(width), "{at}: {last:?} leaves the window");
-                let t = h.state().0.settings.lang();
-                for key in ["toolbar.pull.name", "toolbar.push.name", "toolbar.search.name", "toolbar.refresh.name"] {
-                    assert!(buttons.iter().any(|b| b.0 == t.tr(key)), "{at}: {key} never folds");
-                }
-                drop(h);
-                remove_fixture(&dir);
+        // Plain, the 80-character branch with the conflict chip, and a hosting service.
+        for (case, labels) in [(0, true), (4, true), (5, true), (5, false)] {
+            let (h, dir) = narrow("overlap", case, labels, lang, width);
+            let at = format!("{lang} {width} case {case} labels {labels}");
+            let buttons = toolbar_buttons(&h);
+            for pair in buttons.windows(2) {
+                assert!(pair[1].1 >= pair[0].2, "{at}: {:?} overlaps {:?}", pair[0], pair[1]);
             }
+            let last = buttons.last().expect("buttons");
+            assert!(last.2 <= f64::from(width), "{at}: {last:?} leaves the window");
+            let t = h.state().0.settings.lang();
+            for key in ["toolbar.pull.name", "toolbar.push.name", "toolbar.search.name", "toolbar.refresh.name"] {
+                assert!(buttons.iter().any(|b| b.0 == t.tr(key)), "{at}: {key} never folds");
+            }
+            drop(h);
+            remove_fixture(&dir);
         }
     }
+}
+
+#[test]
+fn a_900_px_window_folds_the_toolbar_without_overlap() {
+    no_overlap_at(900.0);
+}
+
+#[test]
+fn a_1000_px_window_folds_the_toolbar_without_overlap() {
+    no_overlap_at(1000.0);
+}
+
+#[test]
+fn a_1100_px_window_folds_the_toolbar_without_overlap() {
+    no_overlap_at(1100.0);
+}
+
+#[test]
+fn a_1200_px_window_folds_the_toolbar_without_overlap() {
+    no_overlap_at(1200.0);
+}
+
+#[test]
+fn a_1300_px_window_folds_the_toolbar_without_overlap() {
+    no_overlap_at(1300.0);
+}
+
+#[test]
+fn a_1400_px_window_folds_the_toolbar_without_overlap() {
+    no_overlap_at(1400.0);
 }
 
 #[test]

@@ -13,8 +13,10 @@ name: Installers
 # Flatpak checks themselves), the Flatpak for git's licences and source as well; the macOS job
 # packages the app and checks the .app, the dmg and the tar.gz.
 
+# Pushes to main, and pull requests (a branch with a pull request runs once, not twice).
 on:
   push:
+    branches: [main]
     paths-ignore: ['docs/**', 'TODO.md', 'ROADMAP.md']
   pull_request:
     paths-ignore: ['docs/**', 'TODO.md', 'ROADMAP.md']
