@@ -8448,7 +8448,7 @@ THE SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: arboard 3.6.1</summary>
+<summary>MIT: arboard 3.7.0</summary>
 
 ````text
 MIT License
@@ -10996,7 +10996,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: memmap2 0.9.11</summary>
+<summary>MIT: memmap2 0.9.12</summary>
 
 ````text
 Copyright (c) 2020 Yevhenii Reizner
@@ -13473,7 +13473,7 @@ DEALINGS IN THE SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: zip 9.1.0</summary>
+<summary>MIT: zip 9.1.3</summary>
 
 ````text
 The MIT License (MIT)
