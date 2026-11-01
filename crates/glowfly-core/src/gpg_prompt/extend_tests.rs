@@ -12,7 +12,16 @@ uid:e::::1600000000::HASH::Ada Lovelace <ada@example.com>::::::::::0:\n\
 ssb:e:4096:1:1111222233334444:1600000000:1700000000:::::e:::+:::23:\n\
 fpr:::::::::11112222333344445555666677778888AAAABBBB:\n\
 ssb:r:4096:1:5555666677778888:1600000000::::::s:::+:::23:\n\
-fpr:::::::::5555666677778888999900001111222233334444:\n";
+fpr:::::::::5555666677778888999900001111222233334444:\n\
+ssb:u:4096:1:AAAA000011112222:1600000000:::::::a:::+:::23:\n\
+fpr:::::::::AAAA0000111122223333444455556666777788889:\n\
+ssb:u:4096:1:BBBB000011112222:1600000000:1907680000:::::s:::+:::23:\n\
+fpr:::::::::BBBB0000111122223333444455556666777788889:\n\
+ssb:u:4096:1:CCCC000011112222:1600000000:1781536000:::::s:::+:::23:\n\
+fpr:::::::::CCCC0000111122223333444455556666777788889:\n";
+
+/// When the tests run: CCCC's subkey expires in about a year, BBBB's in five, AAAA's never.
+const NOW: i64 = 1_750_000_000;
 
 /// Scripted runs of gpg, each call's arguments and input kept.
 #[derive(Default)]
@@ -55,7 +64,7 @@ fn ended(ok: bool, stderr: &str) -> GpgRun {
 }
 
 fn prints() -> KeyPrints {
-    key_prints(LISTED).expect("the key is listed")
+    key_prints(LISTED, NOW).expect("the key is listed")
 }
 
 fn needs_pin() -> GpgRun {
@@ -74,9 +83,13 @@ fn script(runs: Vec<GpgRun>, replies: Vec<AskResult>) -> (Script, Prompt) {
 fn the_listing_names_the_primary_key_and_its_live_subkeys() {
     let p = prints();
     assert_eq!(p.primary, "0123456789ABCDEF0123456789ABCDEF01234567");
-    assert_eq!(p.subkeys, ["11112222333344445555666677778888AAAABBBB"], "the revoked subkey is left alone");
+    assert_eq!(
+        p.subkeys,
+        ["11112222333344445555666677778888AAAABBBB", "CCCC0000111122223333444455556666777788889"],
+        "the expired subkey and the one ending within two years; not the revoked one, the one that never expires or the one that ends later"
+    );
     assert_eq!(p.user.as_deref(), Some("Ada Lovelace <ada@example.com>"));
-    assert_eq!(key_prints("uid:u::::1::H::Nobody::::\n"), None, "no secret key, no fingerprint");
+    assert_eq!(key_prints("uid:u::::1::H::Nobody::::\n", NOW), None, "no secret key, no fingerprint");
 }
 
 #[test]
@@ -86,7 +99,8 @@ fn the_arguments_set_two_years_on_the_key_then_its_subkeys() {
     assert_eq!(probe, ["--batch", "--pinentry-mode", "error", "--status-fd", "2", "--quick-set-expire", &p.primary, "2y"]);
     let subs = set_expire_args(&p, true, Mode::Loopback);
     assert!(subs.starts_with(&["--batch", "--pinentry-mode", "loopback", "--passphrase-fd", "0"].map(OsString::from)));
-    assert_eq!(subs.last().map(|a| a.to_string_lossy().into_owned()), Some(p.subkeys[0].clone()));
+    let tail: Vec<String> = subs[subs.len() - 2..].iter().map(|a| a.to_string_lossy().into_owned()).collect();
+    assert_eq!(tail, p.subkeys);
     assert_eq!(set_expire_args(&p, false, Mode::System)[0], "--status-fd", "GnuPG's own pinentry: no mode");
 }
 

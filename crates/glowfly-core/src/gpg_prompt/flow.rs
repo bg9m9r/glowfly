@@ -77,7 +77,7 @@ pub fn sign(call: &SignCall, payload: &[u8], gpg: &mut impl Gpg, asker: &mut imp
     let (key, user) = gpg.describe(call.key.as_deref());
     let mut last = probe;
     for attempt_no in 1..=MAX_TRIES {
-        let secret = match asker.ask(&GpgAsk { key: key.clone(), user: user.clone(), retry: attempt_no > 1 }) {
+        let secret = match asker.ask(&GpgAsk { key: key.clone(), user: user.clone(), retry: attempt_no > 1, extend: false }) {
             AskResult::Answer(secret) => secret,
             AskResult::Cancelled => return Finish::Cancelled,
             AskResult::TimedOut => return Finish::TimedOut,

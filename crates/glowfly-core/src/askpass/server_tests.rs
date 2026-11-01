@@ -56,7 +56,7 @@ fn answers_reach_the_client() {
 #[test]
 fn signing_requests_become_gpg_prompts() {
     let (s, events) = server(Duration::from_secs(60));
-    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada <ada@example.com>".into()), retry: true };
+    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada <ada@example.com>".into()), retry: true, extend: false };
     for (reply, want_secret) in [(Reply::UseSystem, None), (Reply::Answer(Secret::new("right")), Some("right"))] {
         let (tx, result) = mpsc::channel();
         let (addr, token, a) = (s.addr(), s.token().to_owned(), ask.clone());
@@ -64,7 +64,12 @@ fn signing_requests_become_gpg_prompts() {
             let _ = tx.send(ask_gpg(&addr, &token, &a, WAIT));
         });
         let (id, prompt) = asked(&events);
-        let kind = PromptKind::GpgPassphrase { key: "ABCDEF0123456789".into(), user: Some("Ada <ada@example.com>".into()), retry: true };
+        let kind = PromptKind::GpgPassphrase {
+            key: "ABCDEF0123456789".into(),
+            user: Some("Ada <ada@example.com>".into()),
+            retry: true,
+            extend: false,
+        };
         assert_eq!(prompt.kind, kind);
         assert_eq!(super::host(&prompt.kind), None);
         assert!(s.answer(id, reply));

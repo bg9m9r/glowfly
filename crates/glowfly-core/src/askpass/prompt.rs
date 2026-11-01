@@ -14,7 +14,8 @@ pub enum PromptKind {
     /// The signing wrapper asks for the passphrase of OpenPGP key `key` (long id or git's key
     /// spec), owned by `user`; `retry` when the last answer didn't unlock it. Only built from a
     /// structured request ([`super::Prompt::gpg`]), never by [`classify`].
-    GpgPassphrase { key: String, user: Option<String>, retry: bool },
+    /// `extend`: asked by Preferences' Extend by 2 years, outside any git job.
+    GpgPassphrase { key: String, user: Option<String>, retry: bool, extend: bool },
     /// ssh-keygen asks, while git signs with an SSH key, for the passphrase of the private key
     /// `key`. Only built from a structured request ([`super::Prompt::ssh_sign`]), never by
     /// [`classify`].
@@ -33,6 +34,12 @@ impl PromptKind {
     /// A signing key's passphrase (OpenPGP or SSH), rather than a credential for a host.
     pub fn is_signing(&self) -> bool {
         matches!(self, PromptKind::GpgPassphrase { .. } | PromptKind::SshSigningPassphrase { .. })
+    }
+
+    /// Preferences' own passphrase prompt (Extend by 2 years): it belongs to no git job, so a
+    /// job's prompt bookkeeping neither records nor cancels it.
+    pub fn is_app_own(&self) -> bool {
+        matches!(self, PromptKind::GpgPassphrase { extend: true, .. })
     }
 }
 

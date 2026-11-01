@@ -25,7 +25,7 @@ fn prompt(st: &mut AppState, text: &str, retry: bool, rejected_before: bool) {
 }
 
 fn gpg_prompt(st: &mut AppState, retry: bool) {
-    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry };
+    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry, extend: false };
     st.askpass.queue.push_back(PendingPrompt { id: 1, prompt: Prompt::gpg(ask), retry, rejected_before: false });
     st.askpass.focus_pending = true;
 }

@@ -13,7 +13,7 @@ use std::time::Instant;
 const KEY: &str = "ABCDEF0123456789";
 
 fn gpg(st: &mut AppState, id: u64, retry: bool) -> Vec<Effect> {
-    let ask = GpgAsk { key: KEY.into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry };
+    let ask = GpgAsk { key: KEY.into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry, extend: false };
     send(st, Msg::Credentials(CredentialMsg::CredentialPrompt { id, prompt: Prompt::gpg(ask) }))
 }
 

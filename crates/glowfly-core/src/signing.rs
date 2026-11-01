@@ -68,13 +68,18 @@ pub struct SigningKey {
     pub label: String,
     /// Unix time the key expires, if it does.
     pub expires: Option<i64>,
+    /// It can't sign any more: expired, or revoked.
     pub expired: bool,
+    /// Revoked by its owner: a new expiry won't bring it back.
+    pub revoked: bool,
 }
 
 impl SigningKey {
     pub fn describe(&self) -> String {
         let mut s = if self.label.is_empty() { self.id.clone() } else { format!("{}  {}", self.id, self.label) };
-        if self.expired {
+        if self.revoked {
+            s.push_str("  (revoked)");
+        } else if self.expired {
             s.push_str("  (expired)");
         }
         s
@@ -123,6 +128,7 @@ pub fn parse_gpg_colons(text: &str, now: i64) -> Vec<SigningKey> {
                     label: String::new(),
                     expires,
                     expired: f[1] == "e" || revoked || expires.is_some_and(|t| t <= now),
+                    revoked,
                 });
             }
             Some("uid") if f.len() > 9 => {
@@ -152,7 +158,7 @@ pub fn list_ssh_keys(home: &Path) -> Vec<SigningKey> {
         .filter(|p| p.extension().is_some_and(|x| x == "pub"))
         .map(|p| {
             let comment = std::fs::read_to_string(&p).ok().and_then(|t| t.split_whitespace().nth(2).map(str::to_owned)).unwrap_or_default();
-            SigningKey { id: p.display().to_string(), label: comment, expires: None, expired: false }
+            SigningKey { id: p.display().to_string(), label: comment, expires: None, expired: false, revoked: false }
         })
         .collect();
     keys.sort_by(|a, b| a.id.cmp(&b.id));
@@ -234,6 +240,17 @@ uid:u::::1700000000::HASH::Encrypt Only <enc@example.com>::::::::::0:\n";
         assert!(keys[1].describe().ends_with("(expired)"));
         // Expiry is judged against the given time.
         assert!(parse_gpg_colons(SAMPLE, 1_900_000_000)[0].expired);
+        assert!(!keys[0].revoked && !keys[1].revoked, "expired isn't revoked");
+    }
+
+    #[test]
+    fn a_revoked_key_is_told_apart_from_an_expired_one() {
+        let revoked = "sec:r:4096:1:9999888877776666:1500000000:1600000000::u:::scESC:::+:::23::0:
+uid:r::::1500000000::HASH::Gone <gone@example.com>::::::::::0:
+";
+        let keys = parse_gpg_colons(revoked, 1_750_000_000);
+        assert!(keys[0].revoked && keys[0].expired, "it can't sign either way");
+        assert!(keys[0].describe().ends_with("(revoked)"));
     }
 
     #[test]

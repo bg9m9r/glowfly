@@ -2,7 +2,7 @@
 //! where the key's passphrase is asked, key generation, and signing defaults. The switches and
 //! lists write at once; the program and the allowed signers file wait for the Save / Revert bar.
 
-use super::{check_row, help, primary_button, row, text_field, warn};
+use super::{check_row, help, primary_button, row, text_field, warn, warn_then};
 use crate::msg::PrefsMsg;
 use crate::msg::{FilePurpose, Msg};
 use crate::state::PrefsState;
@@ -115,9 +115,10 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         let selected = signing.keys.as_ref().and_then(|ks| ks.iter().find(|k| k.id == git.signing_key));
         if selected.is_some_and(|k| k.expired) {
             warn(ui, t.tr("prefs.signing.expired.warn"));
-            if format == SigningFormat::OpenPgp {
-                extend_row(ui, t, signing, msgs);
-            }
+        }
+        // A revoked key can't be brought back by a new date.
+        if format == SigningFormat::OpenPgp {
+            extend_row(ui, t, selected.is_some_and(|k| k.expired && !k.revoked), signing, msgs);
         }
         if format == SigningFormat::Ssh {
             help(ui, "Public keys found in your .ssh folder. Git signs with the matching private key or your SSH agent.");
@@ -181,26 +182,28 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
     }
 }
 
-/// Extend by 2 years under the expired-key warning; after a failure, gpg's message and a quiet
-/// link to the help page.
-fn extend_row(ui: &mut Ui, t: Lang, signing: &SigningState, msgs: &mut Vec<Msg>) {
-    ui.horizontal(|ui| {
-        let button = buttons::secondary(t.tr("prefs.signing.extend.button")).enabled(!signing.extending);
-        if ui.add(button).clicked() {
-            msgs.push(Msg::Prefs(PrefsMsg::ExtendKey));
-        }
-        if signing.extending {
-            ui.add(egui::Spinner::new().size(14.0));
-        }
-    });
+/// Extend by 2 years under the expired-key warning (`offer`); after a failure (which may have
+/// extended the key but not a subkey, so it shows whether or not the key still reads expired),
+/// what went wrong with a link to doing it by hand at its end.
+fn extend_row(ui: &mut Ui, t: Lang, offer: bool, signing: &SigningState, msgs: &mut Vec<Msg>) {
+    if offer {
+        ui.horizontal(|ui| {
+            let button = buttons::secondary(t.tr("prefs.signing.extend.button")).enabled(!signing.extending);
+            if ui.add(button).clicked() {
+                msgs.push(Msg::Prefs(PrefsMsg::ExtendKey));
+            }
+            if signing.extending {
+                ui.add(egui::Spinner::new().size(16.0));
+            }
+        });
+    }
     if let Some(e) = &signing.extend_error {
-        warn(ui, e);
-        let learn = egui::Label::new(
-            RichText::new(t.tr("prefs.signing.extend.learn_how")).size(type_scale::SMALL).color(color::weak()).underline(),
-        )
-        .sense(egui::Sense::click());
-        if ui.add(learn).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
-            msgs.push(Msg::OpenUrl(RENEW_HELP.into()));
-        }
+        warn_then(ui, &t.trf("prefs.signing.extend.failed.warn", &[("error", e)]), |ui| {
+            // Whole, on the next row when it doesn't fit after the message.
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+            if ui.link(RichText::new(t.tr("prefs.signing.extend.by_hand.link")).size(type_scale::SMALL)).clicked() {
+                msgs.push(Msg::OpenUrl(RENEW_HELP.into()));
+            }
+        });
     }
 }

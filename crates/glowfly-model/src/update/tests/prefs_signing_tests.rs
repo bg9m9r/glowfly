@@ -18,7 +18,7 @@ fn signing_page() -> AppState {
     let mut st = state();
     let mut prefs = PrefsState::new(PrefPage::Signing);
     prefs.git = Some(GitConfigValues { signing_format: "openpgp".into(), signing_key: KEY.into(), ..Default::default() });
-    prefs.signing.keys = Some(vec![SigningKey { id: KEY.into(), label: "Ada".into(), expires: Some(1), expired: true }]);
+    prefs.signing.keys = Some(vec![SigningKey { id: KEY.into(), label: "Ada".into(), expires: Some(1), expired: true, revoked: false }]);
     st.prefs = Some(prefs);
     st
 }
@@ -66,22 +66,24 @@ fn an_extended_key_is_announced_and_the_keys_reload() {
     assert!(matches!(&fx[..], [Effect::Prefs(PrefsEffect::ListSigningKeys { .. })]));
     assert!(!signing(&st).extending);
     assert!(signing(&st).keys.is_none(), "the list reloads");
-    assert!(st.toasts.iter().any(|t| t.ok && t.text == format!("Extended {KEY} by 2 years")));
+    let done = format!("Extended {KEY} by 2 years. Copy the public key to your Git host again so it sees the new date.");
+    assert!(st.toasts.iter().any(|t| t.ok && t.text == done));
 }
 
 #[test]
-fn a_failure_stays_on_the_page_with_gpgs_message() {
+fn a_failure_reloads_the_keys_and_stays_on_the_page_with_gpgs_message() {
     let mut st = signing_page();
     run(&mut st, PrefsMsg::ExtendKey);
     let fx = run(&mut st, PrefsMsg::KeyExtended(Err(ExtendFailed::Gpg("gpg: agent refused".into()))));
-    assert!(fx.iter().all(|e| !matches!(e, Effect::Prefs(PrefsEffect::ListSigningKeys { .. }))), "nothing changed to reload");
+    // The key may be extended already, with only a subkey's run failing.
+    assert!(fx.iter().any(|e| matches!(e, Effect::Prefs(PrefsEffect::ListSigningKeys { .. }))), "the list shows what changed");
     assert_eq!(signing(&st).extend_error.as_deref(), Some("gpg: agent refused"));
-    assert!(st.log.iter().any(|l| !l.ok && l.text == format!("Could not extend {KEY}: gpg: agent refused")));
+    assert!(st.log.iter().any(|l| !l.ok && l.text == format!("Couldn't extend {KEY}: gpg: agent refused")));
     // Trying again clears it until the new result.
     run(&mut st, PrefsMsg::ExtendKey);
     assert_eq!(signing(&st).extend_error, None);
     run(&mut st, PrefsMsg::KeyExtended(Err(ExtendFailed::TimedOut)));
-    assert_eq!(signing(&st).extend_error.as_deref(), Some("The passphrase prompt timed out."));
+    assert_eq!(signing(&st).extend_error.as_deref(), Some("the passphrase prompt timed out"));
 }
 
 #[test]

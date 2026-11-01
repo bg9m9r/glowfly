@@ -118,8 +118,9 @@ impl Prompt {
 
     /// The signing wrapper's request for an OpenPGP key's passphrase.
     pub fn gpg(ask: GpgAsk) -> Self {
-        let GpgAsk { key, user, retry } = ask;
-        Prompt { text: format!("Passphrase for OpenPGP key {key}"), hint: None, kind: PromptKind::GpgPassphrase { key, user, retry } }
+        let GpgAsk { key, user, retry, extend } = ask;
+        let kind = PromptKind::GpgPassphrase { key: key.clone(), user, retry, extend };
+        Prompt { text: format!("Passphrase for OpenPGP key {key}"), hint: None, kind }
     }
 
     /// The askpass helper's request for an SSH signing key's passphrase (ssh-keygen asks while

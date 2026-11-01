@@ -84,8 +84,9 @@ pub(super) fn extend_key(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::Prefs(PrefsEffect::ExtendGpgKey { program, key: git.signing_key.clone() }));
 }
 
-/// Says how extending went; a change shows in the reloaded list. A failure stays on the page,
-/// with the help link, until the next try or reload.
+/// Says how extending went, and reloads the keys unless the prompt was cancelled: a failure can
+/// come after the primary key was already extended (a subkey's run failed). A failure stays on
+/// the page, with the help link, until the next try or reload.
 pub(super) fn key_extended(st: &mut AppState, result: Result<(), ExtendFailed>, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     let Some(p) = st.prefs.as_mut() else { return };
@@ -96,12 +97,15 @@ pub(super) fn key_extended(st: &mut AppState, result: Result<(), ExtendFailed>, 
             st.toast(true, t.trf("prefs.signing.extend.done", &[("key", &key)]), now);
             return load_keys(st, fx);
         }
-        // The user chose to stop: nothing to explain.
+        // The user chose to stop before gpg changed anything: nothing to explain or reload.
         Err(ExtendFailed::Cancelled) => return,
         Err(ExtendFailed::TimedOut) => t.tr("prefs.signing.extend.timed_out").to_owned(),
         Err(ExtendFailed::Gpg(e)) => e,
     };
-    p.signing.extend_error = Some(error.clone());
+    load_keys(st, fx);
+    if let Some(p) = st.prefs.as_mut() {
+        p.signing.extend_error = Some(error.clone());
+    }
     st.log(false, t.trf("prefs.signing.extend.failed", &[("key", &key), ("error", &error)]));
 }
 

@@ -19,7 +19,7 @@ fn requests_and_responses_round_trip_on_one_line() {
 
 #[test]
 fn signing_requests_round_trip_and_old_requests_still_decode() {
-    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry: true };
+    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry: true, extend: false };
     let line = encode_gpg_request("abc", &ask);
     assert_eq!(line.matches('\n').count(), 1);
     let req = decode_request(&line).unwrap();

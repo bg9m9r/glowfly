@@ -128,8 +128,8 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 - Check that Windows' own OpenSSH ssh-keygen (System32) honours SSH_ASKPASS when set as
   gpg.ssh.program
 - SSH signing passphrase marker for push --signed (push certificates)
-- Extend by 2 years asks with the signing dialog's wording ("Git is signing..."); give `GpgAsk`
-  a purpose so it says the key is being extended
+- Extend by 2 years asks with the signing dialog's wording ("Git is signing..."); word it from
+  `GpgPassphrase { extend: true }` so it says the key is being extended
 - Offer Extend on a key that expires soon, not only one that has expired
 - Map MSYS-style gpg.ssh.program and gpg.x509.program values on Windows (git runs those itself,
   not the wrapper)

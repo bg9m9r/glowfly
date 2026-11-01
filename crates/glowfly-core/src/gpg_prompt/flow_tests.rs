@@ -92,7 +92,7 @@ fn the_right_passphrase_signs_with_loopback() {
     assert_eq!(gpg.calls[0].0, args::probe(&call()));
     assert_eq!(gpg.calls[1], (args::loopback(&call()), with_payload(b"right\n")));
     let user = Some("Ada Lovelace <ada@example.com>".to_owned());
-    assert_eq!(asker.asks, [GpgAsk { key: "ABCDEF0123456789".into(), user, retry: false }]);
+    assert_eq!(asker.asks, [GpgAsk { key: "ABCDEF0123456789".into(), user, retry: false, extend: false }]);
 }
 
 #[test]

@@ -1,6 +1,8 @@
 //! Preferences > Commit signing around an expired key: Extend by 2 years under the warning, the
-//! Learn how link only after extending failed, and neither when gpg wasn't found. Clicks are
-//! real pointer presses at the widget, so a widget drawn over the link would show here.
+//! link to extending it by hand only after extending failed, no Extend for a revoked key, and
+//! neither when gpg wasn't found. Clicks use `simulate_click`: the pointer moves to the widget's
+//! centre and presses there (kittest's `click` would be an AccessKit action, which skips
+//! hit-testing), so a widget whose rect covers the link would take the click.
 
 use super::snapshot_tests::{harness, settings};
 use crate::msg::{Msg, PrefsMsg};
@@ -36,6 +38,7 @@ fn expired() -> SigningKey {
         label: "Ada Lovelace <ada@example.com>".into(),
         expires: Some(1_700_000_000),
         expired: true,
+        revoked: false,
     }
 }
 
@@ -44,7 +47,7 @@ fn prefs_signing_expired_key() {
     let mut h = harness(page("ABCDEF0123456789", vec![expired()]), true);
     h.run();
     h.check_snapshot("prefs_signing_expired");
-    assert!(h.query_by_label("Learn how").is_none(), "no help link before a try failed");
+    assert!(h.query_by_label("How to extend it by hand").is_none(), "no help link before a try failed");
     h.get_by_label("Extend by 2 years").simulate_click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::ExtendKey))));
@@ -58,9 +61,19 @@ fn prefs_signing_extend_failed() {
     h.run();
     h.check_snapshot("prefs_signing_extend_failed");
     h.state_mut().1.clear();
-    h.get_by_label("Learn how").simulate_click();
+    h.get_by_label("How to extend it by hand").simulate_click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u == HELP)));
+}
+
+#[test]
+fn a_revoked_key_gets_the_warning_but_no_extend() {
+    let mut revoked = expired();
+    revoked.revoked = true;
+    let mut h = harness(page("ABCDEF0123456789", vec![revoked]), true);
+    h.run();
+    assert!(h.query_by_label("This key has expired, so git can't sign new commits with it.").is_some());
+    assert!(h.query_by_label("Extend by 2 years").is_none());
 }
 
 #[test]
@@ -70,7 +83,7 @@ fn prefs_signing_without_gpg() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("prefs_signing_no_gpg");
-    for absent in ["Extend by 2 years", "Learn how", "How to extend an expired key"] {
+    for absent in ["Extend by 2 years", "How to extend it by hand", "How to extend an expired key"] {
         assert!(h.query_by_label(absent).is_none(), "{absent}");
     }
 }

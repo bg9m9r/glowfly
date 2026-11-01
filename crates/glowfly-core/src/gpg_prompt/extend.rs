@@ -1,5 +1,6 @@
 //! Extending an expired OpenPGP key from Preferences > Commit signing: `gpg --quick-set-expire`
-//! on the primary key and on each of its subkeys that isn't revoked, two years from now.
+//! on the primary key, and on those of its subkeys that would end sooner and aren't revoked,
+//! two years from now.
 //!
 //! The passphrase is asked the way the signing wrapper asks it ([`super::flow`]): a first run
 //! with `--pinentry-mode error`, so an unprotected or cached key needs nothing; on "No
@@ -29,8 +30,11 @@ pub enum ExtendFailed {
     Gpg(String),
 }
 
+/// How far [`EXTEND_BY`] reaches, in seconds (GnuPG counts a year as 365 days).
+const EXTEND_SECS: i64 = 2 * 365 * 24 * 60 * 60;
+
 /// The fingerprints `--quick-set-expire` takes: the first secret key's, and those of its
-/// subkeys that aren't revoked.
+/// subkeys that would otherwise end before the new date (see [`key_prints`]).
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyPrints {
     pub primary: String,
@@ -39,9 +43,11 @@ pub struct KeyPrints {
     pub user: Option<String>,
 }
 
-/// Reads [`KeyPrints`] from `gpg --list-secret-keys --with-colons` output for one key. Each
-/// `fpr` line follows the `sec` or `ssb` line it belongs to.
-pub fn key_prints(colons: &str) -> Option<KeyPrints> {
+/// Reads [`KeyPrints`] from `gpg --list-secret-keys --with-colons` output for one key, at Unix
+/// time `now`. Each `fpr` line follows the `sec` or `ssb` line it belongs to. A subkey is
+/// extended only when it has expired or expires before the new date: one that never expires,
+/// or expires later, keeps its date, and a revoked one is left alone.
+pub fn key_prints(colons: &str, now: i64) -> Option<KeyPrints> {
     let (mut primary, mut subkeys, mut user) = (None::<String>, Vec::new(), None);
     // What the next `fpr` line is for: the primary key, a subkey to extend, or neither.
     let mut next: Option<bool> = None;
@@ -50,7 +56,7 @@ pub fn key_prints(colons: &str) -> Option<KeyPrints> {
         match f.first().copied() {
             Some("sec") if primary.is_some() => break,
             Some("sec") => next = Some(true),
-            Some("ssb") => next = (f.get(1) != Some(&"r")).then_some(false),
+            Some("ssb") => next = subkey_ends_sooner(&f, now).then_some(false),
             Some("fpr") => {
                 let print = f.get(9).filter(|p| !p.is_empty()).map(|p| (*p).to_owned());
                 match (next.take(), print) {
@@ -64,6 +70,14 @@ pub fn key_prints(colons: &str) -> Option<KeyPrints> {
         }
     }
     Some(KeyPrints { primary: primary?, subkeys, user })
+}
+
+/// Whether the `ssb` line `f` is a subkey to extend: not revoked, and expired or expiring
+/// before `now` + [`EXTEND_BY`].
+fn subkey_ends_sooner(f: &[&str], now: i64) -> bool {
+    let validity = f.get(1).copied().unwrap_or_default();
+    let expires = f.get(6).and_then(|e| e.parse::<i64>().ok()).filter(|t| *t > 0);
+    validity != "r" && (validity == "e" || expires.is_some_and(|t| t < now + EXTEND_SECS))
 }
 
 /// How a run asks for the passphrase.
@@ -152,7 +166,7 @@ pub fn extend(prints: &KeyPrints, gpg: &mut impl Gpg, asker: &mut impl Asker) ->
     }
     let mut last = probe;
     for attempt_no in 1..=MAX_TRIES {
-        let ask = GpgAsk { key: prints.primary.clone(), user: prints.user.clone(), retry: attempt_no > 1 };
+        let ask = GpgAsk { key: prints.primary.clone(), user: prints.user.clone(), retry: attempt_no > 1, extend: true };
         let secret = match asker.ask(&ask) {
             AskResult::Answer(secret) => secret,
             AskResult::Cancelled => return Err(ExtendFailed::Cancelled),
@@ -222,7 +236,8 @@ pub fn extend_gpg_key(program: &str, key: &str) -> Result<(), ExtendFailed> {
     if !listed.ok {
         return Err(ExtendFailed::Gpg(message(&listed)));
     }
-    let Some(prints) = key_prints(&String::from_utf8_lossy(&listed.stdout)) else {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
+    let Some(prints) = key_prints(&String::from_utf8_lossy(&listed.stdout), now) else {
         return Err(ExtendFailed::Gpg(format!("no secret key {key}")));
     };
     extend(&prints, &mut gpg, &mut InApp)

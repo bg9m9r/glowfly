@@ -157,7 +157,12 @@ esac
     }
 
     fn gpg_kind(retry: bool) -> PromptKind {
-        PromptKind::GpgPassphrase { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry }
+        PromptKind::GpgPassphrase {
+            key: "ABCDEF0123456789".into(),
+            user: Some("Ada Lovelace <ada@example.com>".into()),
+            retry,
+            extend: false,
+        }
     }
 
     #[test]
