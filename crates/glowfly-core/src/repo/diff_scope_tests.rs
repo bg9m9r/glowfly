@@ -255,7 +255,7 @@ fn names_a_pathspec_reads_otherwise_still_show_their_own_file() {
     // backslash (so it may miss the file): either way the file's own diff is shown.
     let mut names = vec!["#hash.txt", "hash.txt"];
     if cfg!(unix) {
-        names.extend([r"a.txt", "ab.txt", r"back\", "back"]);
+        names.extend([r"a\b.txt", "ab.txt", r"back\", "back"]);
     }
     let dir = scratch_repo("scope-odd-names");
     let repo = Repository::open(&dir).unwrap();
