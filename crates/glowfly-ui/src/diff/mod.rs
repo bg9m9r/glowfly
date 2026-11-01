@@ -114,19 +114,19 @@ impl DiffView<'_> {
     /// diff, as its hunk header offers: stage or discard, unstage, revert, or (on a pull
     /// request's file where code comments can start) comment on or revert. `None` where lines
     /// have no action (a commit compared from the working tree).
-    pub fn line_pick_tip(&self) -> Option<&'static str> {
-        let key = match self.target {
+    fn line_pick_tip(&self) -> Option<&'static str> {
+        let t = self.t;
+        Some(match self.target {
             DiffTarget::FromWorkdir(..) => return None,
-            _ if self.comments.is_some_and(|c| c.blocked.is_none()) => "diff.gutter.comment.tip",
-            DiffTarget::Unstaged(_) => "diff.gutter.stage.tip",
-            DiffTarget::Staged(_) => "diff.gutter.unstage.tip",
-            DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => "diff.gutter.revert.tip",
-        };
-        Some(self.t.tr(key))
+            _ if self.comments.is_some_and(|c| c.blocked.is_none()) => t.tr("diff.gutter.comment.tip"),
+            DiffTarget::Unstaged(_) => t.tr("diff.gutter.stage.tip"),
+            DiffTarget::Staged(_) => t.tr("diff.gutter.unstage.tip"),
+            DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => t.tr("diff.gutter.revert.tip"),
+        })
     }
 
     /// Whether hunk `hunk` holds selected lines: then every changed line of it shows its box.
-    pub fn hunk_picked(&self, hunk: usize) -> bool {
+    fn hunk_picked(&self, hunk: usize) -> bool {
         self.sel.is_some_and(|s| s.count_in(self.target, hunk) > 0)
     }
 }
