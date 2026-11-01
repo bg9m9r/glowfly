@@ -105,6 +105,7 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Name the commit in a revert's undo label ("revert of a hunk of 1a2b3c4 in a.txt")
 - Narrow the other one-file diffs to the file as the viewer's are (hunk and line revert, external tool sides, binary sides, the hunk view's gaps for an added file): they still read the whole commit or comparison
 - Pass the list row to the hunk view's gap read too, so a renamed file's gaps don't read the whole comparison
+- When a working-tree comparison's list is re-read while a file's diff is still opening and its row changed, open it again with the new row (today only a diff on screen is re-read)
 
 ### Merge conflict tool
 

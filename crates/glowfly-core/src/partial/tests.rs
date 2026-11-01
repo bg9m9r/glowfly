@@ -211,7 +211,10 @@ fn rename_detection_without_the_contents_lists_and_downloads_what_it_compares() 
     assert!(repo::compare_files(&clone, rev(&clone, "HEAD~2"), second).is_ok());
 
     let target = DiffTarget::Commit(second, "b.txt".into());
-    let m = missing_of(repo::load_diff_for_view(&clone, &target, LoadDiffOptions::default()).unwrap_err());
+    // The viewer goes by the list's row, an unpaired 'A' here: it still reads the whole diff.
+    let files = repo::commit_detail(&clone, second).unwrap().files;
+    let row = files.iter().find(|f| f.path == "b.txt");
+    let m = missing_of(repo::load_listed_diff(&clone, &target, LoadDiffOptions::default(), row).unwrap_err());
     let mut want = vec![blob(&src, "HEAD~2:a.txt"), blob(&src, "HEAD~2:x.txt"), blob(&src, "HEAD~1:b.txt"), blob(&src, "HEAD~1:y.txt")];
     let mut got = m.oids.clone();
     want.sort();
@@ -220,9 +223,13 @@ fn rename_detection_without_the_contents_lists_and_downloads_what_it_compares() 
     assert_eq!(m.path, "b.txt");
     download(&clone, &m);
 
-    let v = repo::load_diff_for_view(&clone, &target, LoadDiffOptions::default()).expect("reads once downloaded");
+    let v = repo::load_listed_diff(&clone, &target, LoadDiffOptions::default(), row).expect("reads once downloaded");
     let added: Vec<&str> = v.diff.hunks.iter().flat_map(|h| h.lines.iter()).filter(|l| l.origin == '+').map(|l| l.text.as_str()).collect();
     assert_eq!(added, ["epsilon"], "shown as the rename it is");
+    let old = DiffTarget::Commit(second, "a.txt".into());
+    let gone = files.iter().find(|f| f.path == "a.txt");
+    let by_row = repo::load_listed_diff(&clone, &old, LoadDiffOptions::default(), gone).unwrap().diff;
+    assert_eq!(by_row, repo::load_diff_for_view(&clone, &old, LoadDiffOptions::default()).unwrap().diff, "a 'D' row: the rename too");
     assert_eq!(statuses(&clone), statuses(&src), "the list finds the rename too");
     cleanup(&[&src, &clone]);
 }

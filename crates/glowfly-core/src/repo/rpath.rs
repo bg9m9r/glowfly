@@ -65,3 +65,7 @@ pub(super) fn delta_bytes<'a>(delta: &DiffDelta<'a>) -> &'a [u8] {
 pub(super) fn under(bytes: &[u8], folder: &str) -> bool {
     bytes.strip_prefix(folder.as_bytes()).is_some_and(|rest| rest.first() == Some(&b'/'))
 }
+
+#[cfg(test)]
+#[path = "copy_source_tests.rs"]
+mod copy_source_tests;

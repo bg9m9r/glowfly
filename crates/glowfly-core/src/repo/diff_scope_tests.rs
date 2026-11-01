@@ -248,3 +248,37 @@ fn binary_lfs_and_submodule_files_read_as_before() {
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&lib);
 }
+
+#[test]
+fn names_a_pathspec_reads_otherwise_still_show_their_own_file() {
+    // libgit2 drops a pathspec starting with '#' (so it reads everything) and unescapes a
+    // backslash (so it may miss the file): either way the file's own diff is shown.
+    let mut names = vec!["#hash.txt", "hash.txt"];
+    if cfg!(unix) {
+        names.extend([r"a.txt", "ab.txt", r"back\", "back"]);
+    }
+    let dir = scratch_repo("scope-odd-names");
+    let repo = Repository::open(&dir).unwrap();
+    let c1 = tree_commit(&repo, &names.iter().map(|n| (*n, format!("{n}\n"))).collect::<Vec<_>>(), None);
+    let c2 = tree_commit(&repo, &names.iter().map(|n| (*n, format!("{n}\nchanged\n"))).collect::<Vec<_>>(), Some(c1));
+    let rows = compare(&dir, c1, c2).unwrap().files;
+    for name in &names {
+        for target in [DiffTarget::Commit(c2, (*name).into()), DiffTarget::Between(c1, c2, (*name).into())] {
+            same_as_before(&dir, &target, &rows);
+        }
+    }
+    let work = scratch_repo("scope-odd-names-workdir");
+    for n in &names {
+        write(&work, n, "one\n");
+    }
+    let c1 = commit_all(&work, "c1");
+    for n in &names {
+        write(&work, n, "one\ntwo\n");
+    }
+    let rows = compare_workdir(&work, c1).unwrap().files;
+    for n in &names {
+        same_as_before(&work, &DiffTarget::ToWorkdir(c1, (*n).into()), &rows);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_dir_all(&work);
+}

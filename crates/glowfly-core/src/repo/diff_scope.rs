@@ -8,7 +8,9 @@
 //! - a modified or type-changed file: rename detection never touches it (nor its patch);
 //! - a file whose row in the list loaded with the whole diff (`load_listed_diff`) says the same
 //!   as the narrowed diff: its status, and its rename or copy source, which is the only path it
-//!   can pair with (an added or deleted row names none, so it paired with nothing).
+//!   can pair with (an added or deleted row names none, so it paired with nothing). Not in a
+//!   partial clone, though: its lists skip rename detection where blobs are missing
+//!   (`diff::renamed`), so an added or deleted row there may be half of a rename.
 //!
 //! Anything else (an added or deleted file with no row to go by, a row the working tree no
 //! longer matches, a path the literal pathspec misses) reads the whole diff, as before.
@@ -62,9 +64,12 @@ fn narrowed<'r>(
     let reversed = matches!(target, DiffTarget::FromWorkdir(..));
     let Some(d) = find_delta(&diff, path) else { return Ok(None) };
     let shown = delta_entry(&d, reversed);
+    let unpairable = matches!(d.status(), Delta::Modified | Delta::Typechange);
     let same = match listed {
+        // A partial clone's lists may have left a rename unpaired (see the module doc).
+        Some(_) if partner.is_none() && !unpairable && crate::partial::looks_partial(repo) => false,
         Some(f) => shown.path == path && shown.status == f.status && shown.renamed_from == f.renamed_from,
-        None => matches!(d.status(), Delta::Modified | Delta::Typechange),
+        None => unpairable,
     };
     Ok(same.then_some(diff))
 }
