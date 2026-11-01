@@ -36,16 +36,14 @@ fn lineup_dawn() {
 }
 
 #[test]
-fn lineup_garden() {
-    diff_in(BuiltinTheme::GardenDark);
-    diff_in(BuiltinTheme::GardenLight);
+fn lineup_porcelain() {
+    diff_in(BuiltinTheme::Porcelain);
 }
 
 #[test]
-fn lineup_high_contrast_and_sand() {
+fn lineup_high_contrast() {
     diff_in(BuiltinTheme::HighContrastDark);
     diff_in(BuiltinTheme::HighContrastLight);
-    diff_in(BuiltinTheme::Sand);
 }
 
 #[test]

@@ -8,8 +8,9 @@
 use super::bands::{ATTENTION_BAND, GOLD_BAND, GREEN_BAND};
 use super::branch_palette::{BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, CB_DARK_TONES, CB_LIGHT_LINES, CB_LIGHT_TEXT, DARK_TONES, pad};
 use super::branch_palette_gold::{BRANCH_CB_DAWN, BRANCH_CB_DUSK, GOLD_CB_DARK_TONES};
-use super::branch_palette_more::{BRANCH_CB_EMBER, BRANCH_CB_GRAPHITE, BRANCH_CB_LINEN};
+use super::branch_palette_more::{BRANCH_CB_GRAPHITE, BRANCH_CB_LINEN};
 use super::contrast::{oklch, ratio};
+use super::tests::palettes;
 use super::*;
 use eframe::egui::Color32;
 use glowfly_core::settings::{BranchPalette, BuiltinTheme};
@@ -134,13 +135,13 @@ fn cb_tones_share_one_hue_per_slot() {
 #[test]
 fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = applied(*builtin(t), BranchPalette::ColourBlind);
+    for (t, p) in palettes() {
+        let p = applied(*p, BranchPalette::ColourBlind);
         for (i, c) in p.branch.lanes.iter().copied().chain([p.accent]).enumerate() {
             for (name, bg) in [("bg", p.bg), ("panel", p.panel)] {
                 let r = ratio(c, bg);
                 if r < 3.0 {
-                    failures.push(format!("{t:?} line {i} on {name}: {r:.2}:1"));
+                    failures.push(format!("{t} line {i} on {name}: {r:.2}:1"));
                 }
             }
         }
@@ -153,7 +154,7 @@ fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
             for (name, bg) in surfaces {
                 let r = ratio(*c, bg);
                 if r < 4.5 {
-                    failures.push(format!("{t:?} chip {i} on {name}: {r:.2}:1"));
+                    failures.push(format!("{t} chip {i} on {name}: {r:.2}:1"));
                 }
             }
         }
@@ -165,10 +166,9 @@ fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
 fn cb_tones_stay_apart_in_every_vision() {
     // Each built-in's colour-blind lines against each other and its own accent (main's line).
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         let floor = if p.dark { DARK_FLOOR } else { LIGHT_FLOOR };
-        failures.extend(too_close(&format!("{t:?}"), &p.colour_blind.lanes[..8], &[p.accent], floor));
+        failures.extend(too_close(&t, &p.colour_blind.lanes[..8], &[p.accent], floor));
     }
     report(&failures);
 }
@@ -207,18 +207,19 @@ fn applied_picks_the_family_by_kind() {
         assert_eq!(applied(base, BranchPalette::Standard), base, "{t:?} keeps its own");
         let p = applied(base, BranchPalette::ColourBlind);
         let want = match t {
-            BuiltinTheme::Dark | BuiltinTheme::Pine => BRANCH_CB_DUSK,
+            BuiltinTheme::Dark => BRANCH_CB_DUSK,
             BuiltinTheme::Light => BRANCH_CB_DAWN,
-            BuiltinTheme::GardenDark | BuiltinTheme::HighContrastDark | BuiltinTheme::Midnight => BRANCH_CB_DARK,
-            BuiltinTheme::Ember => BRANCH_CB_EMBER,
+            BuiltinTheme::HighContrastDark | BuiltinTheme::Midnight => BRANCH_CB_DARK,
             BuiltinTheme::Graphite => BRANCH_CB_GRAPHITE,
-            BuiltinTheme::Linen => BRANCH_CB_LINEN,
-            _ => BRANCH_CB_LIGHT,
+            BuiltinTheme::Porcelain => BRANCH_CB_LINEN,
+            BuiltinTheme::Mist | BuiltinTheme::HighContrastLight => BRANCH_CB_LIGHT,
         };
         assert_eq!(p.branch, want, "{t:?}");
         assert_eq!(p.branch.preset.slots(), 8);
         assert_eq!(Palette { branch: base.branch, ..p }, base, "only the branch family changes");
     }
     assert_eq!(GARDEN_DARK.branch, BRANCH_DARK);
+    assert_eq!(applied(GARDEN_DARK, BranchPalette::ColourBlind).branch, BRANCH_CB_DARK);
+    assert_eq!(applied(GARDEN_LIGHT, BranchPalette::ColourBlind).branch, BRANCH_CB_LIGHT);
     assert_eq!(BRANCH_DARK.preset, BranchPalette::Standard);
 }

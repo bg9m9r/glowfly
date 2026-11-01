@@ -90,18 +90,8 @@ fn vivid_high_contrast_light() {
 }
 
 #[test]
-fn vivid_garden_dark() {
-    whole("vivid_garden_dark", theme::GARDEN_DARK);
-}
-
-#[test]
-fn vivid_garden_light() {
-    whole("vivid_garden_light", theme::GARDEN_LIGHT);
-}
-
-#[test]
-fn vivid_sand() {
-    whole("vivid_sand", theme::SAND);
+fn vivid_porcelain() {
+    whole("vivid_porcelain", theme::PORCELAIN);
 }
 
 #[test]

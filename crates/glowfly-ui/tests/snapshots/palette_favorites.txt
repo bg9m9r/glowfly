@@ -20,6 +20,7 @@ Dialog
   Button "Configure external tools"
   Button "Initialize Git LFS"
   Button "Ignore whitespace changes"
+  Button "Theme: Porcelain"
   Button "Theme: Follow system"
   Button "Keyboard shortcuts"
   Button "Theme: High contrast dark"

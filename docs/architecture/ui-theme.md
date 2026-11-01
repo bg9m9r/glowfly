@@ -12,8 +12,10 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 ## Colours
 
 - `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the graph's ref chip colours (neutral, edged chips).
-- `theme/no_brown_tests.rs`: every built-in's surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets, stay out of the brown zone (Dusk's bronze selection excepted).
+- `theme/no_brown_tests.rs`: every built-in's (and the Garden pair's) surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets, stay out of the brown zone, with no exception.
 - `theme/no_brown_text_tests.rs`: every built-in's coloured text (status, syntax, terminal colours) stays out of the text brown zone, and the light themes' amber text reads at 4.5:1 on its surfaces (High contrast light's amber excepted).
+- `theme/more_themes_tests.rs`: the lineup's pinned values (Porcelain, and the Midnight, Dusk and Dawn retunes) and the six sleekness rules: one accent, a quiet selection, the accent's chroma, the border on the panel, the surface ladder and distinct themes of a kind.
+- `theme/lineup_contrast_tests.rs`: the lineup's measured contrast, as the Themes v2 spec gives it, within 0.02.
 - `snapshot_tests/snapshot_tests_colour_sheet.rs`: an ignored test that renders every built-in's main window and chip strip into `GLOWFLY_SHEET_DIR`, for judging colour by eye.
 - `theme/families.rs`: the token families: status, branch, repository, attention, and the terminal's colours.
 - `theme/ansi.rs`: the terminal's colours, one table per built-in, with the readability check Preferences warns from.
@@ -21,7 +23,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `prefs/terminal_colours.rs`: Preferences > Terminal's Colors row.
 - `prefs/theme_picker.rs`: the built-in themes drawn as grouped preview cards with one-line descriptions on Preferences' Theme row.
 - `theme/branch_palette.rs`: the branch hues in two presets, standard and colour-blind friendly (the light tones trading Olive, Gold and a yellow for Wine, Navy and a clear amber), put into a palette by `applied`.
-- `theme/branch_palette_gold.rs`, `theme/branch_palette_more.rs`: the families that make room beside a gold, iris (Dawn), flame or cobalt accent.
+- `theme/branch_palette_gold.rs`, `theme/branch_palette_more.rs`: the families that make room beside a gold, iris (Dawn) or cobalt accent.
 - `theme/branch_names.rs`: the branch hues' names in the language.
 - `theme/branch_colours.rs`: a branch swatch's line and chip tones, with a person's initials colours.
 - The branch colours are read by the graph's per-row colours (`graph/lane_colours.rs`) and the branch dots (`branch_dot.rs`).

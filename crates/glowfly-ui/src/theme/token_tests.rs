@@ -11,15 +11,11 @@ use super::*;
 use eframe::egui::{self, Color32, CornerRadius, Shadow};
 use glowfly_core::settings::{BuiltinTheme, ColorValue};
 
-/// (name, palette, high contrast) for every built-in and two custom palettes with odd colours.
+/// (name, palette, high contrast) for every built-in, the Garden pair and two custom palettes
+/// with odd colours.
 fn palettes() -> Vec<(String, Palette, bool)> {
-    let mut all: Vec<(String, Palette, bool)> = BuiltinTheme::ALL
-        .iter()
-        .map(|&t| {
-            let hc = matches!(t, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight);
-            (format!("{t:?}"), *builtin(t), hc)
-        })
-        .collect();
+    let mut all: Vec<(String, Palette, bool)> =
+        super::tests::palettes().into_iter().map(|(name, p)| (name, *p, super::tests::high_contrast(p))).collect();
     let magenta = ColorValue::Rgb([0xff, 0x00, 0xff]);
     let dark = ocean(BuiltinTheme::Dark, &[("primary", magenta), ("accent", magenta), ("text", ColorValue::Rgb([0xc0, 0xc0, 0xc0]))]);
     let light = ocean(BuiltinTheme::Light, &[("accent", ColorValue::Rgb([0x00, 0xa0, 0xff]))]);
@@ -136,12 +132,11 @@ fn tones_map_to_the_palette_and_their_tints_read() {
 #[test]
 fn the_focus_ring_shows_on_every_surface() {
     // Built-ins only: a theme file picks its own accent.
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in super::tests::palettes() {
         for (s, what) in [(p.bg, "bg"), (p.panel, "panel"), (p.input, "input"), (p.raised, "raised"), (p.overlay(), "overlay")] {
-            assert!(ratio(p.accent, s) >= 3.0, "{t:?}: accent on {what} {:.2}", ratio(p.accent, s));
+            assert!(ratio(p.accent, s) >= 3.0, "{t}: accent on {what} {:.2}", ratio(p.accent, s));
         }
-        assert!(ratio(p.accent, p.tool_backing()) >= 3.0, "{t:?}: accent on the tool backing");
+        assert!(ratio(p.accent, p.tool_backing()) >= 3.0, "{t}: accent on the tool backing");
     }
 }
 

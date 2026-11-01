@@ -178,8 +178,3 @@ fn dialog_look_high_contrast_dark() {
 fn dialog_look_high_contrast_light() {
     look("high_contrast_light", theme::HIGH_CONTRAST_LIGHT);
 }
-
-#[test]
-fn dialog_look_sand() {
-    look("sand", theme::SAND);
-}

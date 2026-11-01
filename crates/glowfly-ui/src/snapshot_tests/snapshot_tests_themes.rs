@@ -1,4 +1,4 @@
-//! Snapshots of the high-contrast and Sand themes, and of Preferences with a theme file
+//! Snapshots of the high-contrast themes, and of Preferences with a theme file
 //! selected (its problems listed) or missing.
 
 use super::snapshot_tests::{harness_palette, remove_fixture, settings, with_repo};
@@ -21,13 +21,6 @@ fn render(name: &str, st: AppState, p: Palette) {
 fn main_high_contrast_dark() {
     let (st, dir) = with_repo(ThemeChoice::HighContrastDark, "theme-hc-dark");
     render("main_high_contrast_dark", st, theme::HIGH_CONTRAST_DARK);
-    remove_fixture(&dir);
-}
-
-#[test]
-fn main_sand() {
-    let (st, dir) = with_repo(ThemeChoice::Sand, "theme-sand");
-    render("main_sand", st, theme::SAND);
     remove_fixture(&dir);
 }
 

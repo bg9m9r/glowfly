@@ -28,7 +28,6 @@ mod builtin_dusk;
 mod builtin_extra;
 mod builtin_garden;
 mod builtin_sea;
-mod builtin_warm;
 pub mod color;
 pub mod contrast;
 pub mod controls;
@@ -45,7 +44,7 @@ pub mod type_scale;
 #[cfg(test)]
 pub use branch_palette::applied;
 #[cfg(test)]
-pub use builtin::{DARK, DAWN, DUSK, EMBER, GRAPHITE, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, LINEN, MIDNIGHT, MIST, PINE, SAND};
+pub use builtin::{DARK, DAWN, DUSK, GRAPHITE, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, MIDNIGHT, MIST, PORCELAIN};
 // The view tests' palettes, for the app crate's tests too.
 pub use builtin::{DEFAULT_DARK, LIGHT, builtin};
 #[cfg(any(test, feature = "test-support"))]
@@ -251,6 +250,8 @@ mod controls_tests;
 mod diff_select_tests;
 #[cfg(test)]
 mod family_tests;
+#[cfg(test)]
+mod lineup_contrast_tests;
 #[cfg(test)]
 mod more_themes_tests;
 #[cfg(test)]

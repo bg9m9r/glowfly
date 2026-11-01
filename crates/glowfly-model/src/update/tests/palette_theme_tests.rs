@@ -35,22 +35,17 @@ fn theme_entries_list_built_ins_and_files() {
         "Theme: Dusk",
         "Theme: Dawn",
         "Theme: Follow system",
-        "Theme: Garden dark",
-        "Theme: Garden light",
         "Theme: High contrast dark",
         "Theme: High contrast light",
-        "Theme: Sand",
         "Theme: Midnight",
         "Theme: Mist",
-        "Theme: Ember",
-        "Theme: Pine",
         "Theme: Graphite",
-        "Theme: Linen",
+        "Theme: Porcelain",
         "Theme: Ocean",
     ] {
         assert!(labels.contains(&want), "{want} in {labels:?}");
     }
-    assert_eq!(labels.len(), 15);
+    assert_eq!(labels.len(), 10);
     let current: Vec<&str> = themes.iter().filter(|(_, d)| d.as_deref() == Some("current")).map(|(l, _)| l.as_str()).collect();
     assert_eq!(current, ["Theme: Ocean"]);
     assert!(shown(&st, "custom").iter().any(|s| s.entry.label == "Theme: Ocean"), "files match \"custom\"");
@@ -67,7 +62,7 @@ fn running_a_file_theme_sets_and_saves_it() {
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::SetTheme(ocean.clone()))).is_empty(), "saved only when it changes");
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SetTheme(ThemeChoice::Custom("forest".into()))));
     assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
-    assert_eq!(st.palette_recent.position("theme-sand"), None);
+    assert_eq!(st.palette_recent.position("theme-porcelain"), None);
     assert!(st.palette_recent.keys().iter().all(|k| !k.contains("ocean")), "files aren't remembered");
 }
 
@@ -75,11 +70,11 @@ fn running_a_file_theme_sets_and_saves_it() {
 fn recents_remember_built_in_themes_only() {
     let mut st = with_ocean();
     run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
-    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Theme(ThemeChoice::Sand))));
-    assert_eq!(st.palette_recent.keys(), ["theme-sand"]);
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Theme(ThemeChoice::Porcelain))));
+    assert_eq!(st.palette_recent.keys(), ["theme-porcelain"]);
     run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Theme(ThemeChoice::Custom("ocean".into())))));
-    assert_eq!(st.palette_recent.keys(), ["theme-sand"]);
+    assert_eq!(st.palette_recent.keys(), ["theme-porcelain"]);
     assert_eq!(PaletteCommand::Theme(ThemeChoice::HighContrastDark).recall_key(), Some("theme-high-contrast-dark"));
     assert_eq!(PaletteCommand::Theme(ThemeChoice::HighContrastLight).recall_key(), Some("theme-high-contrast-light"));
 }

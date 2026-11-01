@@ -3,21 +3,16 @@ Label "Glowfly 0.1.0"
 Button "Volver"
 Label "Preferencias"
 Label "Apariencia"
-CheckBox "Según el sistema (Grafito en modo oscuro, Amanecer en modo claro)" [off]
+CheckBox "Seguir el modo oscuro o claro del sistema" [off]
 Label "Oscuros"
 RadioButton "Grafito" [off]
-RadioButton "Anochecer" [on]
 RadioButton "Medianoche" [off]
-RadioButton "Brasa" [off]
-RadioButton "Pino" [off]
-RadioButton "Jardín oscuro" [off]
+RadioButton "Anochecer" [on]
 RadioButton "Alto contraste oscuro" [off]
 Label "Claros"
-RadioButton "Amanecer" [off]
+RadioButton "Porcelana" [off]
 RadioButton "Niebla" [off]
-RadioButton "Lino" [off]
-RadioButton "Arena" [off]
-RadioButton "Jardín claro" [off]
+RadioButton "Amanecer" [off]
 RadioButton "Alto contraste claro" [off]
 Label "Anochecer: Anochecer índigo bajo un acento dorado de farol, del icono de la app."
 Label "Archivo de tema"
@@ -25,7 +20,7 @@ ComboBox
 Button "Abrir la carpeta de temas"
 Button "Recargar"
 Button "Crear a partir del actual"
-Label "Los archivos de tema son archivos JSON en la carpeta de temas. Cada uno nombra un tema base (dark para Anochecer, light para Amanecer, o midnight, mist, graphite, ember, pine, linen, sand, garden-dark, garden-light, high-contrast-dark o high-contrast-light) y define los colores que cambia, como #rrggbb o como el nombre de otro color; cada color que omite viene de la base. Crear a partir del actual escribe un archivo con todos los colores del tema en uso. Pulsa Recargar después de editar un archivo."
+Label "Un archivo de tema es un archivo JSON en la carpeta de temas. Nombra un tema base (graphite, midnight, dusk, high-contrast-dark, porcelain, mist, dawn o high-contrast-light) y cambia cualquiera de sus colores. Crear a partir del actual escribe uno para empezar."
 ComboBox
 CheckBox "Avisar cuando la rama se queda por detrás de su upstream" [on]
 Label "Tras una obtención en segundo plano, avisa cuando la rama activa se ha quedado por detrás de su upstream, con un botón para traer."
@@ -109,3 +104,7 @@ painted:
   "Todas las ramas"
   "Archivos cambiados"
   "Columnas del grafo"
+  "Descripción del commit"
+  "Siempre"
+  "Colores de ramas"
+  "Estándar"

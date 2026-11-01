@@ -10,9 +10,9 @@ use super::branch_palette_gold::{
     BRANCH_DAWN, BRANCH_DUSK, DAWN_FOREST_SLOT, DAWN_LIGHT_LINES, DAWN_LIGHT_TEXT, GOLD_DARK_TONES, JADE_SLOT,
 };
 use super::contrast::{brownish, oklch, ratio};
+use super::tests::palettes;
 use super::*;
 use eframe::egui::Color32;
-use glowfly_core::settings::BuiltinTheme;
 
 fn report(failures: &[String]) {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -126,14 +126,13 @@ fn hues_alternate_tiers() {
 #[test]
 fn lines_reach_3_to_1() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         let lines = p.branch.lanes.iter().copied().chain([p.accent]);
         for (i, c) in lines.enumerate() {
             for (name, bg) in [("bg", p.bg), ("panel", p.panel)] {
                 let r = ratio(c, bg);
                 if r < 3.0 {
-                    failures.push(format!("{t:?} line {i} on {name}: {r:.2}:1"));
+                    failures.push(format!("{t} line {i} on {name}: {r:.2}:1"));
                 }
             }
         }
@@ -172,7 +171,6 @@ fn builtins_use_their_family() {
     assert_eq!(HIGH_CONTRAST_DARK.branch, BRANCH_DARK);
     assert_eq!(GARDEN_LIGHT.branch, BRANCH_LIGHT);
     assert_eq!(HIGH_CONTRAST_LIGHT.branch, BRANCH_LIGHT_STRONG);
-    assert_eq!(SAND.branch, BRANCH_LIGHT_STRONG);
 }
 
 #[test]

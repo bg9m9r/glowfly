@@ -1,8 +1,9 @@
-//! Graphite and Linen, the cobalt pair: near-neutral graphite greys (chroma under 0.01, a hair
-//! cool) and clean warm-white paper with soft charcoal ink, both under a cobalt accent in its
-//! own band (243 to 259 deg) with the cobalt branch families (`branch_palette_more.rs`). `info`
-//! moves to hue about 224 to make room. The values and the rules they meet are in
-//! docs/COLOUR.md.
+//! Graphite and Porcelain, the cobalt pair and the defaults: near-neutral graphite greys (chroma
+//! under 0.01, a hair cool) and neutral white paper with grey-black ink, both under a cobalt
+//! accent in its own band (243 to 259 deg) with the cobalt branch families
+//! (`branch_palette_more.rs`). `info` moves to hue about 224 to make room. Porcelain keeps
+//! Linen's (the theme it replaced) status, diff, syntax and branch colours. The values and the
+//! rules they meet are in docs/COLOUR.md.
 
 use super::branch_palette_more::{BRANCH_CB_GRAPHITE, BRANCH_CB_LINEN, BRANCH_GRAPHITE, BRANCH_LINEN};
 use super::builtin_extra::{REPO_DARK, REPO_LIGHT};
@@ -64,28 +65,28 @@ pub const GRAPHITE: Palette = Palette {
     ansi: super::ansi::GRAPHITE,
 };
 
-/// Clean warm-white paper, soft charcoal ink and deep cobalt.
-pub const LINEN: Palette = Palette {
+/// Neutral white paper, grey-black ink and cobalt: Graphite's light twin.
+pub const PORCELAIN: Palette = Palette {
     dark: false,
-    bg: hex(0xf9f7f3),
-    panel: hex(0xfcfbf9),
-    toolbar: hex(0xebe7e0),
-    raised: hex(0xf0ede7),
+    bg: hex(0xf6f7f9),
+    panel: hex(0xfbfbfc),
+    toolbar: hex(0xe9ebee),
+    raised: hex(0xeef0f3),
     input: hex(0xffffff),
-    border: hex(0xdcd7d1),
-    input_border: hex(0x7a736f),
-    dialog_border: hex(0x7a736f),
-    hover: hex(0xefebe3),
-    selected: hex(0xd6e8fe),
-    text: hex(0x28211c),
-    strong: hex(0x17100c),
-    weak: hex(0x5c544f),
-    faint: hex(0x726b66),
-    accent: hex(0x004da8),
-    primary: hex(0x004da8),
+    border: hex(0xdadde2),
+    input_border: hex(0x737882),
+    dialog_border: hex(0x737882),
+    hover: hex(0xeceef2),
+    selected: hex(0xdbe8fc),
+    text: hex(0x1e2228),
+    strong: hex(0x0c0f13),
+    weak: hex(0x525862),
+    faint: hex(0x676d77),
+    accent: hex(0x1a5bb5),
+    primary: hex(0x1a5bb5),
     on_primary: hex(0xffffff),
-    primary_off: hex(0xe9e6e0),
-    primary_border: hex(0x003a7f),
+    primary_off: hex(0xe8eaed),
+    primary_border: hex(0x134894),
     danger: hex(0xc0332a),
     danger_off: hex(0xfbdcdc),
     tag_bg: hex(0xf8dae2),
@@ -100,7 +101,7 @@ pub const LINEN: Palette = Palette {
     diff_del_word: hex(0xf2b4b4),
     hunk_bg: hex(0xe6edfb),
     hunk_fg: hex(0x2d4d8b),
-    syn_comment: hex(0x6e6762),
+    syn_comment: hex(0x686e78),
     syn_string: hex(0x1a6f30),
     syn_number: hex(0xc92d00),
     syn_constant: hex(0x006f7e),
@@ -111,5 +112,5 @@ pub const LINEN: Palette = Palette {
     repository: REPO_LIGHT,
     branch: BRANCH_LINEN,
     colour_blind: BRANCH_CB_LINEN,
-    ansi: super::ansi::LINEN,
+    ansi: super::ansi::PORCELAIN,
 };

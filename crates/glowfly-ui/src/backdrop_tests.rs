@@ -2,19 +2,20 @@ use super::*;
 use crate::state::window_native::Backdrop;
 use crate::themes::ThemeState;
 use crate::ui::theme::contrast::lightness;
-use crate::ui::theme::{DARK, GARDEN_DARK, GARDEN_LIGHT, LIGHT, SAND, ThemeCache};
+use crate::ui::theme::{DARK, GARDEN_DARK, GARDEN_LIGHT, GRAPHITE, LIGHT, PORCELAIN, ThemeCache};
 use eframe::egui;
 use glowfly_core::settings::ThemeChoice;
 
 /// The built-in palettes that can sit on Mica, with the tints the ladder picks for them. Garden
 /// dark's `faint` misses 4.5 over the lightest dark bands at every step, so its sidebar stays
 /// opaque.
-const PINNED: [(&str, Palette, MicaTint); 5] = [
+const PINNED: [(&str, Palette, MicaTint); 6] = [
     ("Dusk", DARK, MicaTint { chrome: 153, side: 153 }),
     ("Dawn", LIGHT, MicaTint { chrome: 153, side: 166 }),
     ("Garden dark", GARDEN_DARK, MicaTint { chrome: 153, side: OPAQUE }),
     ("Garden light", GARDEN_LIGHT, MicaTint { chrome: 153, side: 191 }),
-    ("Sand", SAND, MicaTint { chrome: 153, side: 153 }),
+    ("Graphite", GRAPHITE, MicaTint { chrome: 153, side: 153 }),
+    ("Porcelain", PORCELAIN, MicaTint { chrome: 153, side: 179 }),
 ];
 
 fn alpha(t: MicaTint, s: Surface) -> u8 {
@@ -87,7 +88,7 @@ fn high_contrast_and_unreadable_palettes_stay_solid() {
     assert_eq!(cached_tint(ThemeChoice::HighContrastDark), None);
     assert_eq!(cached_tint(ThemeChoice::HighContrastLight), None);
     assert_eq!(cached_tint(ThemeChoice::Dark), mica_tint(&DARK));
-    assert_eq!(cached_tint(ThemeChoice::Sand), mica_tint(&SAND));
+    assert_eq!(cached_tint(ThemeChoice::Porcelain), mica_tint(&PORCELAIN));
     let unreadable = Palette { weak: DARK.toolbar, ..DARK };
     assert_eq!(mica_tint(&unreadable), None, "weak can't be read on the toolbar or the panel");
 }

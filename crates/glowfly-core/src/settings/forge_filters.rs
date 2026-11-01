@@ -2,7 +2,7 @@
 //! the filter each sidebar section shows. Saved per repository through `repo_keys`.
 
 use super::{Settings, repo_keys};
-use crate::forge::{Builtin, Conditions, FilterChoice, FilterKind, SavedFilter};
+use crate::forge::{Account, Builtin, Conditions, Connection, FilterChoice, FilterKind, SavedFilter};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -121,6 +121,11 @@ impl RepoForgeFilters {
 }
 
 impl Settings {
+    /// The saved connection of `account`.
+    pub fn connection(&self, account: &Account) -> Option<&Connection> {
+        self.connections.iter().find(|c| &c.account == account)
+    }
+
     /// The pull request and issue filters of the repository at `real`.
     pub fn forge_filters_for(&self, real: &Path) -> RepoForgeFilters {
         repo_keys::get(&self.repo_forge_filters, real).cloned().unwrap_or_default()

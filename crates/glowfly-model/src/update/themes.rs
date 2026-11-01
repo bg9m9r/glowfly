@@ -4,7 +4,9 @@
 
 use crate::effect::Effect;
 use crate::effect::OsEffect;
-use crate::state::AppState;
+use crate::msg::{Msg, PrefsMsg};
+use crate::state::toasts::ToastAction;
+use crate::state::{AppState, PrefPage, theme_names};
 use crate::themes::{ThemeEffect, ThemeMsg};
 use glowfly_core::settings::themes::{BuiltinTheme, starter_json};
 use glowfly_core::settings::{ThemeCatalog, ThemeChoice, ThemeProblem};
@@ -31,7 +33,10 @@ pub(super) fn handle(st: &mut AppState, msg: ThemeMsg, now: Instant, fx: &mut Ve
             let json = starter_json(&format!("{label} (copy)"), base, &colors);
             fx.push(Effect::Theme(ThemeEffect::Create { json }));
         }
-        ThemeMsg::Loaded(cat) => loaded(st, cat),
+        ThemeMsg::Loaded(cat) => {
+            loaded(st, cat);
+            announce_retired(st, now, fx);
+        }
         ThemeMsg::Created(Ok((id, path))) => {
             let file = format!("{id}.json");
             st.settings.theme = ThemeChoice::Custom(id);
@@ -46,6 +51,19 @@ pub(super) fn handle(st: &mut AppState, msg: ThemeMsg, now: Instant, fx: &mut Ve
         ThemeMsg::SchemePicked(Some(path)) => fx.push(Effect::Theme(ThemeEffect::ImportScheme { path })),
         ThemeMsg::SchemesImported { file, result } => super::terminal_schemes::imported(st, &file, result, now, fx),
     }
+}
+
+/// The settings named a theme no longer included (`Settings::retired_theme`, already loaded as
+/// its successor): a toast says so once, with Choose a theme (Preferences > Appearance), and the
+/// settings are saved under the new name, so the next start says nothing.
+fn announce_retired(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    let Some((old, new)) = st.settings.retired_theme.take() else { return };
+    let t = st.settings.lang();
+    let text = t.trf("prefs.ui.theme.retired.toast", &[("old", &old), ("new", &theme_names::builtin(t, new))]);
+    let open = Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ui));
+    let action = ToastAction { label: t.tr("prefs.ui.theme.retired.button").to_owned(), msg: Box::new(open), workdir: None };
+    st.toast_action(true, text, action, now);
+    fx.extend(super::prefs::save_settings(st));
 }
 
 /// Stands for "the file is gone" in `ThemeState::reported`.

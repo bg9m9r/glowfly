@@ -1,13 +1,9 @@
-//! The branch families beside the flame accent (Ember) and the cobalt one (Graphite and Linen).
-//! As beside Dusk's gold, the hue that would pass for the accent makes room for Jade, in the
-//! green these accents leave free, at that hue's own tiers:
-//!
-//! - Flame: Jade takes the Orange slot. In the colour-blind set, Yellow falls within 0.04
-//!   OKLab of the flame under deutan vision, so a light Jade takes its slot.
-//! - Cobalt: Jade takes the Azure slot. In the colour-blind sets Periwinkle falls within 0.05
-//!   of the cobalt under protan and deutan vision, so a light Rose (dark) and a deep Wine
-//!   (light) take its slot. On Linen, Forest takes the light tones' Navy slot (Navy would pass
-//!   for the cobalt).
+//! The branch families beside the cobalt accent (Graphite, and Porcelain, which keeps the
+//! families of Linen, the theme it replaced). As beside Dusk's gold, the hue that would pass for
+//! the accent makes room for Jade, in the green the cobalt leaves free, at that hue's own tiers:
+//! Jade takes the Azure slot. In the colour-blind sets Periwinkle falls within 0.05 of the
+//! cobalt under protan and deutan vision, so a light Rose (dark) and a deep Wine (light) take
+//! its slot. On the light tones Forest takes the Navy slot (Navy would pass for the cobalt).
 //!
 //! See `branch_palette.rs` for the families these start from and docs/COLOUR.md for the rules.
 
@@ -27,20 +23,10 @@ const fn hex(c: u32) -> Color32 {
 
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
 
-/// The standard slot Jade takes beside the flame: Orange.
-pub const FLAME_JADE_SLOT: usize = 3;
-/// The colour-blind slot that makes room beside the flame: Yellow.
-pub const FLAME_CB_SLOT: usize = 2;
 /// The standard slot Jade takes beside the cobalt: Azure.
 pub const COBALT_JADE_SLOT: usize = 7;
 /// The colour-blind slot that makes room beside the cobalt: Periwinkle.
 pub const COBALT_CB_SLOT: usize = 7;
-
-pub const FLAME_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, FLAME_JADE_SLOT, JADE_DARK);
-const FLAME_NAMES: [Hue; LANE_COUNT] = with(NAMES, FLAME_JADE_SLOT, Hue::Jade);
-/// A light Jade (OKLCH hue 170) for the colour-blind set's Yellow.
-pub const FLAME_CB_DARK_TONES: [Color32; CB] = with(CB_DARK_TONES, FLAME_CB_SLOT, hex(0x57dcb4));
-const FLAME_CB_NAMES: [Hue; CB] = with(CB_NAMES, FLAME_CB_SLOT, Hue::Jade);
 
 pub const COBALT_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, COBALT_JADE_SLOT, JADE_DARK);
 pub const COBALT_LIGHT_TEXT: [Color32; LANE_COUNT] =
@@ -49,7 +35,7 @@ pub const COBALT_LIGHT_LINES: [Color32; LANE_COUNT] =
     with(with(LIGHT_LINES, COBALT_JADE_SLOT, JADE_LIGHT_LINE), LIGHT_NAVY_SLOT, FOREST_LINE);
 const COBALT_NAMES: [Hue; LANE_COUNT] = with(NAMES, COBALT_JADE_SLOT, Hue::Jade);
 const LINEN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, COBALT_JADE_SLOT, Hue::Jade), LIGHT_NAVY_SLOT, Hue::Forest);
-/// A light Rose (hue 18) for Periwinkle on Graphite; a deep Wine (hue 350) on Linen, as line and
+/// A light Rose (hue 18) for Periwinkle on Graphite; a deep Wine (hue 350) on the light tones, as line and
 /// chip tone both.
 pub const COBALT_CB_DARK_TONES: [Color32; CB] = with(CB_DARK_TONES, COBALT_CB_SLOT, hex(0xf49194));
 const COBALT_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, COBALT_CB_SLOT, Hue::Rose);
@@ -58,16 +44,6 @@ pub const COBALT_CB_LIGHT_LINES: [Color32; CB] = with(CB_LIGHT_LINES, COBALT_CB_
 pub const COBALT_CB_LIGHT_TEXT: [Color32; CB] = with(CB_LIGHT_TEXT, COBALT_CB_SLOT, WINE);
 pub const COBALT_CB_LIGHT_NAMES: [Hue; CB] = with(CB_LIGHT_NAMES, COBALT_CB_SLOT, Hue::Wine);
 
-/// Ember.
-pub const BRANCH_EMBER: Branch =
-    Branch { lanes: FLAME_DARK_TONES, chips: FLAME_DARK_TONES, preset: BranchPalette::Standard, names: FLAME_NAMES };
-/// Colour-blind friendly, on Ember.
-pub const BRANCH_CB_EMBER: Branch = Branch {
-    lanes: pad(FLAME_CB_DARK_TONES),
-    chips: pad(FLAME_CB_DARK_TONES),
-    preset: BranchPalette::ColourBlind,
-    names: pad(FLAME_CB_NAMES),
-};
 /// Graphite.
 pub const BRANCH_GRAPHITE: Branch =
     Branch { lanes: COBALT_DARK_TONES, chips: COBALT_DARK_TONES, preset: BranchPalette::Standard, names: COBALT_NAMES };
@@ -78,10 +54,10 @@ pub const BRANCH_CB_GRAPHITE: Branch = Branch {
     preset: BranchPalette::ColourBlind,
     names: pad(COBALT_CB_DARK_NAMES),
 };
-/// Linen.
+/// Linen's, which Porcelain keeps.
 pub const BRANCH_LINEN: Branch =
     Branch { lanes: COBALT_LIGHT_LINES, chips: COBALT_LIGHT_TEXT, preset: BranchPalette::Standard, names: LINEN_NAMES };
-/// Colour-blind friendly, on Linen.
+/// Colour-blind friendly, on Linen (Porcelain keeps it).
 pub const BRANCH_CB_LINEN: Branch = Branch {
     lanes: pad(COBALT_CB_LIGHT_LINES),
     chips: pad(COBALT_CB_LIGHT_TEXT),

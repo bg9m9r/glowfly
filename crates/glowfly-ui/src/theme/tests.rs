@@ -33,12 +33,25 @@ fn builtins() {
     assert_eq!((DUSK.bg, DUSK.panel, DUSK.accent, DUSK.text), (rgb(0x1b1829), rgb(0x221f31), rgb(0xf6c159), rgb(0xe6e5ef)));
     assert_eq!(
         (DAWN.bg, DAWN.panel, DAWN.accent, DAWN.primary, DAWN.text),
-        (rgb(0xf7f6fc), rgb(0xfbfafe), rgb(0x5a47cf), rgb(0xefb146), rgb(0x211f38))
+        (rgb(0xf7f6fc), rgb(0xfbfafe), rgb(0x5a47cf), rgb(0x5a47cf), rgb(0x211f38))
     );
-    assert_eq!((DARK, LIGHT, DEFAULT_DARK), (DUSK, DAWN, GRAPHITE), "Graphite is the default dark theme, Dawn the light");
+    assert_eq!((DARK, LIGHT, DEFAULT_DARK), (DUSK, DAWN, GRAPHITE), "Graphite is the default dark theme");
+    assert_eq!(builtin(BuiltinTheme::DEFAULT_LIGHT), &PORCELAIN, "and Porcelain the light");
     let g = (&GARDEN_DARK, &GARDEN_LIGHT);
     assert_eq!((g.0.bg, g.0.text, g.0.syn_attr, g.0.diff_del_word), (rgb(0x151b18), rgb(0xe0e6e3), rgb(0x8ac6d0), rgb(0x76303a)));
     assert_eq!((g.1.bg, g.1.text, g.1.syn_attr, g.1.diff_del_word), (rgb(0xf9f7f1), rgb(0x161c19), rgb(0x006b75), rgb(0xf2b4b4)));
+}
+
+/// The palettes the theme tests hold to the rules: the eight built-ins, then the Garden pair,
+/// which is no longer a theme but is what the view snapshots draw in.
+pub(super) fn palettes() -> Vec<(String, &'static Palette)> {
+    let built_in = BuiltinTheme::ALL.into_iter().map(|t| (format!("{t:?}"), builtin(t)));
+    built_in.chain([("GardenDark".to_owned(), &GARDEN_DARK), ("GardenLight".to_owned(), &GARDEN_LIGHT)]).collect()
+}
+
+/// Whether `p` is one of the high-contrast palettes, which meet the higher floors.
+pub(super) fn high_contrast(p: &Palette) -> bool {
+    *p == HIGH_CONTRAST_DARK || *p == HIGH_CONTRAST_LIGHT
 }
 
 pub(super) fn rgb(c: u32) -> Color32 {
@@ -66,14 +79,13 @@ fn builtins_meet_the_contrast_rules() {
     let syn_bgs = ["panel", "diff_add", "diff_del", "diff_add_word", "diff_del_word"];
     let syn = Palette::KEYS.iter().filter(|k| k.starts_with("syn_"));
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
-        let high = matches!(t, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight);
+    for (t, p) in palettes() {
+        let high = high_contrast(p);
         let (text_min, border_min) = if high { (7.0, 4.5) } else { (4.5, 3.0) };
         let mut check = |fg: &str, bg: &str, min: f64| {
             let r = ratio(p.get(fg).unwrap(), p.get(bg).unwrap());
             if r < min {
-                failures.push(format!("{t:?}: {fg} on {bg} is {r:.2}:1, below {min}:1"));
+                failures.push(format!("{t}: {fg} on {bg} is {r:.2}:1, below {min}:1"));
             }
         };
         for bg in text_bgs {
@@ -101,7 +113,7 @@ fn builtins_meet_the_contrast_rules() {
         check("on_primary", "primary", text_min);
         let (text, weak, faint) = (ratio(p.text, p.panel), ratio(p.weak, p.panel), ratio(p.faint, p.panel));
         if weak < faint + 1.0 || text <= weak {
-            failures.push(format!("{t:?}: on panel text {text:.2}, weak {weak:.2} and faint {faint:.2} are too close"));
+            failures.push(format!("{t}: on panel text {text:.2}, weak {weak:.2} and faint {faint:.2} are too close"));
         }
     }
     assert!(
@@ -117,14 +129,13 @@ fn builtins_meet_the_contrast_rules() {
 #[test]
 fn ref_chips_are_readable() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         for lane in super::branch_colours::swatches() {
             for style in ChipStyle::ALL {
                 let contrast::ChipLook { fill, text: fg, .. } = contrast::ref_chip(style, super::branch_colours::chip_in(lane, p), p);
                 let r = ratio(fg, fill);
                 if fill.a() != 255 || r < 4.5 {
-                    failures.push(format!("{t:?} {lane:?} {style:?}: {r:.2}:1, fill alpha {}", fill.a()));
+                    failures.push(format!("{t} {lane:?} {style:?}: {r:.2}:1, fill alpha {}", fill.a()));
                 }
             }
         }
@@ -142,9 +153,8 @@ fn ref_chips_are_readable() {
 #[test]
 fn change_colors_are_readable() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
-        let min = if matches!(t, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight) { 4.5 } else { 3.0 };
+    for (t, p) in palettes() {
+        let min = if high_contrast(p) { 4.5 } else { 3.0 };
         let lanes = super::branch_colours::swatches()
             .map(|l| (format!("{l:?}"), crate::ui::graph::band_color(super::branch_colours::line_in(l, p), p)));
         let bgs: Vec<(String, Color32)> = [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)]
@@ -157,7 +167,7 @@ fn change_colors_are_readable() {
             for (bg_name, bg) in &bgs {
                 let r = ratio(fg, *bg);
                 if r < min {
-                    failures.push(format!("{t:?}: {name} on {bg_name} is {r:.2}:1, below {min}:1"));
+                    failures.push(format!("{t}: {name} on {bg_name} is {r:.2}:1, below {min}:1"));
                 }
             }
         }
@@ -175,8 +185,7 @@ fn change_colors_are_readable() {
 #[test]
 fn ref_chips_are_soft() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         for lane in super::branch_colours::swatches() {
             let lane_col = super::branch_colours::chip_in(lane, p);
             let fill = |style| contrast::ref_chip(style, lane_col, p).fill;
@@ -184,11 +193,11 @@ fn ref_chips_are_soft() {
             for style in [ChipStyle::Branch, ChipStyle::Remote] {
                 let r = ratio(fill(style), p.bg);
                 if r >= 3.0 {
-                    failures.push(format!("{t:?} {lane:?} {style:?}: {r:.2}:1 against the background"));
+                    failures.push(format!("{t} {lane:?} {style:?}: {r:.2}:1 against the background"));
                 }
             }
             if fill(ChipStyle::Branch) == fill(ChipStyle::CurrentBranch) {
-                failures.push(format!("{t:?} {lane:?}: the checked-out branch looks like any other"));
+                failures.push(format!("{t} {lane:?}: the checked-out branch looks like any other"));
             }
         }
     }
@@ -212,14 +221,11 @@ fn backdrop_dims_light_and_dark_alike() {
         ("dawn", DAWN),
         ("garden dark", GARDEN_DARK),
         ("garden light", GARDEN_LIGHT),
-        ("sand", SAND),
         ("high contrast light", HIGH_CONTRAST_LIGHT),
         ("midnight", MIDNIGHT),
         ("mist", MIST),
-        ("ember", EMBER),
-        ("pine", PINE),
         ("graphite", GRAPHITE),
-        ("linen", LINEN),
+        ("porcelain", PORCELAIN),
     ] {
         let dimmed = contrast::dimmed(p.panel, backdrop(&p));
         let drop = contrast::lightness(p.panel) - contrast::lightness(dimmed);
@@ -232,15 +238,14 @@ fn backdrop_dims_light_and_dark_alike() {
 
 #[test]
 fn panels_are_lifted() {
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         let l = contrast::lightness;
-        assert!(l(p.panel) > l(p.bg), "{t:?}: panel is lighter than the canvas");
-        if matches!(t, BuiltinTheme::Dark | BuiltinTheme::Light | BuiltinTheme::GardenDark | BuiltinTheme::GardenLight) {
-            assert!(l(p.toolbar) < l(p.bg), "{t:?}: the chrome is darker than the canvas");
+        assert!(l(p.panel) > l(p.bg), "{t}: panel is lighter than the canvas");
+        if !high_contrast(p) {
+            assert!(l(p.toolbar) < l(p.bg), "{t}: the chrome is darker than the canvas");
         }
         let r = ratio(p.raised, p.panel);
-        assert!(r >= 1.08, "{t:?}: raised is only {r:.3}:1 off the panel");
+        assert!(r >= 1.08, "{t}: raised is only {r:.3}:1 off the panel");
     }
 }
 
@@ -258,19 +263,18 @@ fn spacing_is_on_the_grid() {
 #[test]
 fn egui_style_follows_the_palette() {
     let plain = egui::Context::default();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
+    for (t, p) in palettes() {
         let ctx = egui::Context::default();
         apply_style(&ctx, p);
         let style = ctx.style_of(egui_theme(p));
         let v = &style.visuals;
-        assert_eq!(v.selection.stroke.color, p.strong, "{t:?}");
-        assert_eq!(v.widgets.noninteractive.weak_bg_fill, p.panel, "{t:?}");
-        assert_eq!(v.widgets.inactive.bg_stroke, plain.style_of(egui_theme(p)).visuals.widgets.inactive.bg_stroke, "{t:?}: buttons");
+        assert_eq!(v.selection.stroke.color, p.strong, "{t}");
+        assert_eq!(v.widgets.noninteractive.weak_bg_fill, p.panel, "{t}");
+        assert_eq!(v.widgets.inactive.bg_stroke, plain.style_of(egui_theme(p)).visuals.widgets.inactive.bg_stroke, "{t}: buttons");
         let hint = ratio(v.weak_text_color(), p.input);
-        assert!(hint >= 3.0, "{t:?}: hint text is {hint:.2}:1 on input");
-        assert_eq!(style.spacing.item_spacing, spacing::ITEM_SPACING, "{t:?}");
-        assert_eq!(style.spacing.button_padding, spacing::BUTTON_PADDING, "{t:?}");
+        assert!(hint >= 3.0, "{t}: hint text is {hint:.2}:1 on input");
+        assert_eq!(style.spacing.item_spacing, spacing::ITEM_SPACING, "{t}");
+        assert_eq!(style.spacing.button_padding, spacing::BUTTON_PADDING, "{t}");
     }
 }
 
@@ -308,14 +312,11 @@ fn resolve_each_choice() {
     let r = |c: ThemeChoice, sys| custom::resolve(&c, &themes, sys);
     assert_eq!(r(ThemeChoice::Dark, false), DARK);
     assert_eq!(r(ThemeChoice::Light, true), LIGHT);
-    assert_eq!((r(ThemeChoice::System, true), r(ThemeChoice::System, false)), (GRAPHITE, LIGHT));
+    assert_eq!((r(ThemeChoice::System, true), r(ThemeChoice::System, false)), (GRAPHITE, PORCELAIN));
     assert_eq!(r(ThemeChoice::HighContrastDark, false), HIGH_CONTRAST_DARK);
     assert_eq!(r(ThemeChoice::HighContrastLight, true), HIGH_CONTRAST_LIGHT);
-    assert_eq!(r(ThemeChoice::Sand, true), SAND);
-    assert_eq!((r(ThemeChoice::GardenDark, false), r(ThemeChoice::GardenLight, true)), (GARDEN_DARK, GARDEN_LIGHT));
     assert_eq!((r(ThemeChoice::Midnight, false), r(ThemeChoice::Mist, true)), (MIDNIGHT, MIST));
-    assert_eq!((r(ThemeChoice::Ember, false), r(ThemeChoice::Pine, true)), (EMBER, PINE));
-    assert_eq!((r(ThemeChoice::Graphite, false), r(ThemeChoice::Linen, true)), (GRAPHITE, LINEN));
+    assert_eq!((r(ThemeChoice::Graphite, false), r(ThemeChoice::Porcelain, true)), (GRAPHITE, PORCELAIN));
     let found = r(ThemeChoice::Custom("ocean".into()), true);
     assert_eq!((found.bg, found.text, found.dark), (Color32::from_rgb(9, 9, 9), LIGHT.text, false));
     assert_eq!(r(ThemeChoice::Custom("gone".into()), false), GRAPHITE, "a missing file shows the default dark theme");
@@ -332,9 +333,9 @@ fn the_palette_is_per_thread() {
     .unwrap();
     assert_eq!(other, (LIGHT, false, LIGHT.bg));
     assert_eq!((color::current(), color::is_dark(), color::bg()), (DARK, true, DARK.bg));
-    color::set_palette(&SAND);
+    color::set_palette(&PORCELAIN);
     assert!(!color::is_dark());
-    assert_eq!(color::accent(), SAND.accent);
+    assert_eq!(color::accent(), PORCELAIN.accent);
     color::set_palette(&HIGH_CONTRAST_DARK);
     assert!(color::is_dark());
 }
@@ -342,13 +343,12 @@ fn the_palette_is_per_thread() {
 #[test]
 fn field_and_guide_fills_stay_readable() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        let p = builtin(t);
-        let high = matches!(t, BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight);
+    for (t, p) in palettes() {
+        let high = high_contrast(p);
         let mut check = |what: &str, fg: Color32, bg: Color32, min: f64| {
             let r = ratio(fg, bg);
             if r < min {
-                failures.push(format!("{t:?}: {what} is {r:.2}:1, below {min}:1"));
+                failures.push(format!("{t}: {what} is {r:.2}:1, below {min}:1"));
             }
         };
         let (field, guide) = (p.field_fill(), p.guide_fill());

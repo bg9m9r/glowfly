@@ -520,31 +520,88 @@ fn unreadable_theme_resets_only_theme() {
 #[test]
 fn old_theme_choices_load_as_the_default_pair() {
     // "Dark" was always the default dark theme (green, then Dusk), so it opens in today's default,
-    // Graphite; "Light" stays Dawn. The Garden pair has its own names.
+    // Graphite; "Light" stays Dawn.
     let s: Settings = serde_json::from_str(r#"{"theme": "Dark"}"#).unwrap();
-    assert_eq!(s.theme, ThemeChoice::Graphite);
+    assert_eq!((s.theme, s.retired_theme), (ThemeChoice::Graphite, None));
     let s: Settings = serde_json::from_str(r#"{"theme": "Light"}"#).unwrap();
     assert_eq!(s.theme, ThemeChoice::Light);
-    let json = serde_json::to_string(&ThemeChoice::GardenDark).unwrap();
-    assert_eq!(json, r#""GardenDark""#);
-    assert_eq!(serde_json::from_str::<ThemeChoice>(&json).unwrap(), ThemeChoice::GardenDark);
+    let json = serde_json::to_string(&ThemeChoice::Porcelain).unwrap();
+    assert_eq!(json, r#""Porcelain""#);
+    assert_eq!(serde_json::from_str::<ThemeChoice>(&json).unwrap(), ThemeChoice::Porcelain);
+}
+
+/// The six retired themes as settings saved them, the name the toast gives each, and the theme
+/// each opens in now.
+const RETIRED: [(&str, &str, ThemeChoice); 6] = [
+    ("Pine", "Pine", ThemeChoice::Dark),
+    ("GardenDark", "Garden Dark", ThemeChoice::Midnight),
+    ("GardenLight", "Garden Light", ThemeChoice::Mist),
+    ("Ember", "Ember", ThemeChoice::Graphite),
+    ("Sand", "Sand", ThemeChoice::Porcelain),
+    ("Linen", "Linen", ThemeChoice::Porcelain),
+];
+
+#[test]
+fn a_retired_theme_opens_in_its_successor_once() {
+    for (saved, shown, next) in RETIRED {
+        let (dir, file) = scratch_settings(&format!("retired-{saved}"), format!(r#"{{"theme": "{saved}", "tab_size": 3}}"#).as_bytes());
+        let (s, problem) = Settings::load_from(&file);
+        assert_eq!((&s.theme, s.tab_size, problem), (&next, 3, None), "{saved}");
+        let want = next.builtin(true).map(|b| (shown.to_owned(), b));
+        assert_eq!(s.retired_theme, want, "{saved} is noted for the toast");
+        // Saved, the file holds the successor: the next start has nothing to say.
+        s.save_to(&file).unwrap();
+        let (again, _) = Settings::load_from(&file);
+        assert_eq!((again.theme, again.retired_theme), (next, None), "{saved}, second start");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
+fn a_profiles_retired_theme_is_mapped_too() {
+    let profile = Profile { name: "Work".into(), prefs: Some(ProfilePrefs::from_settings(&Settings::default())), ..Profile::default() };
+    let mut text = serde_json::to_value(Settings { profiles: vec![profile], ..Settings::default() }).unwrap();
+    text["profiles"][0]["prefs"]["theme"] = "Ember".into();
+    let (dir, file) = scratch_settings("retired-profile", text.to_string().as_bytes());
+    let (s, problem) = Settings::load_from(&file);
+    assert_eq!(problem, None);
+    assert_eq!(s.profiles[0].prefs.as_ref().map(|p| p.theme.clone()), Some(ThemeChoice::Graphite));
+    assert_eq!(s.retired_theme, Some(("Ember".to_owned(), super::themes::BuiltinTheme::Graphite)));
+    // With the main theme retired too, both are mapped and the toast names one of them.
+    text["theme"] = "Sand".into();
+    std::fs::write(&file, text.to_string()).unwrap();
+    let (s, _) = Settings::load_from(&file);
+    assert_eq!(s.theme, ThemeChoice::Porcelain);
+    let named = s.retired_theme.map(|(name, _)| name);
+    assert!(matches!(named.as_deref(), Some("Sand" | "Ember")), "{named:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn terminal_colours_take_the_current_theme_ids() {
+    use super::TerminalColours;
+    for (saved, now) in [("dark", "dusk"), ("light", "dawn"), ("ember", "graphite"), ("garden-light", "mist"), ("graphite", "graphite")] {
+        let mut text = serde_json::to_value(Settings::default()).unwrap();
+        text["terminal"]["colours"] = serde_json::json!({ "Theme": saved });
+        let (dir, file) = scratch_settings(&format!("terminal-ids-{saved}"), text.to_string().as_bytes());
+        let (s, problem) = Settings::load_from(&file);
+        assert_eq!(problem, None, "{saved}");
+        assert_eq!(s.terminal.colours, TerminalColours::Theme(now.into()), "{saved}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
 
 #[test]
 fn theme_choice_builtin_mapping() {
     use super::themes::BuiltinTheme as B;
     assert_eq!(ThemeChoice::System.builtin(true), Some(B::Graphite));
-    assert_eq!(ThemeChoice::System.builtin(false), Some(B::Light));
+    assert_eq!(ThemeChoice::System.builtin(false), Some(B::Porcelain));
     assert_eq!(ThemeChoice::Dark.builtin(false), Some(B::Dark));
     assert_eq!(ThemeChoice::Light.builtin(true), Some(B::Light));
     assert_eq!(ThemeChoice::HighContrastDark.builtin(false), Some(B::HighContrastDark));
     assert_eq!(ThemeChoice::HighContrastLight.builtin(true), Some(B::HighContrastLight));
-    assert_eq!(ThemeChoice::Sand.builtin(true), Some(B::Sand));
-    assert_eq!(
-        (ThemeChoice::GardenDark.builtin(false), ThemeChoice::GardenLight.builtin(true)),
-        (Some(B::GardenDark), Some(B::GardenLight))
-    );
-    assert!(B::GardenDark.is_dark() && !B::GardenLight.is_dark());
+    assert_eq!((ThemeChoice::Graphite.builtin(false), ThemeChoice::Porcelain.builtin(true)), (Some(B::Graphite), Some(B::Porcelain)));
+    assert!(B::Graphite.is_dark() && !B::Porcelain.is_dark());
     assert_eq!(ThemeChoice::Custom("ocean".into()).builtin(true), None);
 }
 
@@ -592,7 +649,7 @@ fn old_graph_columns_load_without_resets() {
 fn graphite_is_the_default_dark_theme_and_dusk_keeps_its_own_name() {
     use super::themes::BuiltinTheme as B;
     assert_eq!(Settings::default().theme, ThemeChoice::Graphite);
-    assert_eq!((B::DEFAULT_DARK, B::DEFAULT_LIGHT), (B::Graphite, B::Light));
+    assert_eq!((B::DEFAULT_DARK, B::DEFAULT_LIGHT), (B::Graphite, B::Porcelain));
     assert_eq!(ThemeChoice::BUILT_IN[0], ThemeChoice::Graphite, "the default dark theme leads the menus");
     // Dusk, picked on purpose, saves under its own name and comes back as Dusk.
     let json = serde_json::to_string(&ThemeChoice::Dark).unwrap();

@@ -25,7 +25,7 @@ pub const MIDNIGHT: Palette = Palette {
     input_border: hex(0x798ba2),
     dialog_border: hex(0x798ba2),
     hover: hex(0x213044),
-    selected: hex(0x174a39),
+    selected: hex(0x173f3c),
     text: hex(0xe2e8f0),
     strong: hex(0xffffff),
     weak: hex(0xadbacc),

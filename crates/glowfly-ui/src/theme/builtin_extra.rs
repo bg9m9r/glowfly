@@ -1,5 +1,6 @@
-//! The high-contrast and Sand palettes (see docs/COLOUR.md for the rules they meet). They keep
-//! their own surfaces; their accent family sits in the green accent band at their own contrast.
+//! The high-contrast palettes, and the repository hues every palette takes (see docs/COLOUR.md
+//! for the rules they meet). They keep their own surfaces; their accent family sits in the
+//! green accent band at their own contrast.
 
 use super::branch_palette::{BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, BRANCH_LIGHT_STRONG};
 use super::color::Palette;
@@ -26,7 +27,6 @@ pub(super) const REPO_DARK: Repository = hues([0xcb8a93, 0x90a872, 0x65af9d, 0x5
 pub(super) const REPO_LIGHT: Repository = hues([0xa0636d, 0x6a814c, 0x3a8776, 0x2e8590, 0x477ea0, 0x6376a7, 0x7d6da1, 0x95658a]);
 const REPO_HC_DARK: Repository = hues([0xe5a2ac, 0xa9c28a, 0x7cc8b5, 0x76c6d1, 0x86bfe4, 0xa1b6ea, 0xbdade5, 0xd8a4cc]);
 const REPO_HC_LIGHT: Repository = hues([0x814750, 0x4e6330, 0x156a5a, 0x0a6771, 0x286182, 0x475988, 0x605182, 0x76496d]);
-const REPO_SAND: Repository = hues([0x9d606a, 0x677e49, 0x368473, 0x2a828d, 0x447b9d, 0x6073a4, 0x7a6a9e, 0x926287]);
 
 /// White text on black, with brighter hues and syntax colors.
 pub const HIGH_CONTRAST_DARK: Palette = Palette {
@@ -127,54 +127,4 @@ pub const HIGH_CONTRAST_LIGHT: Palette = Palette {
     branch: BRANCH_LIGHT_STRONG,
     colour_blind: BRANCH_CB_LIGHT,
     ansi: super::ansi::HIGH_CONTRAST_LIGHT,
-};
-
-/// A warm light theme: warm charcoal text on cream sand-coloured paper.
-pub const SAND: Palette = Palette {
-    dark: false,
-    bg: hex(0xf1e9d8),
-    panel: hex(0xfaf6ec),
-    toolbar: hex(0xe5dfd1),
-    raised: hex(0xe5dfd1),
-    input: hex(0xfffcf5),
-    border: hex(0xccc6ba),
-    input_border: hex(0x7c786e),
-    dialog_border: hex(0x7c786e),
-    hover: hex(0xe9e2d4),
-    selected: hex(0xd3e6d6),
-    text: hex(0x292620),
-    strong: hex(0x181611),
-    weak: hex(0x57534c),
-    faint: hex(0x6a6760),
-    accent: hex(0x2a7550),
-    primary: hex(0x236a48),
-    on_primary: hex(0xffffff),
-    primary_off: hex(0xdfe6da),
-    primary_border: hex(0x1a5236),
-    danger: hex(0xb23a2a),
-    danger_off: hex(0xf0d4c8),
-    tag_bg: hex(0xf5d8ea),
-    tag_fg: hex(0x763463),
-    status: Status { added: hex(0x4f7f1e), removed: hex(0xb23a2a), modified: hex(0x925300), info: hex(0x2d65a8), progress: hex(0x7d4a9e) },
-    attention: Attention { warn: hex(0x925300), banner: hex(0xf3dfa8), needs_you: hex(0xbf4306), on_needs_you: hex(0xffffff) },
-    diff_add: hex(0xe2ecd0),
-    diff_del: hex(0xf5dccf),
-    diff_add_sel: hex(0xc3e2b9),
-    diff_del_sel: hex(0xeec4b2),
-    diff_add_word: hex(0xc3d9a3),
-    diff_del_word: hex(0xe9b6a2),
-    hunk_bg: hex(0xe5e3d6),
-    hunk_fg: hex(0x4a5a7a),
-    syn_comment: hex(0x7a6f5c),
-    syn_string: hex(0x4d6e14),
-    syn_number: hex(0xbe2a00),
-    syn_constant: hex(0x1f7068),
-    syn_keyword: hex(0x8a3f7a),
-    syn_type: hex(0x915500),
-    syn_function: hex(0x2a5f9e),
-    syn_attr: hex(0x2f6f6a),
-    repository: REPO_SAND,
-    branch: BRANCH_LIGHT_STRONG,
-    colour_blind: BRANCH_CB_LIGHT,
-    ansi: super::ansi::SAND,
 };

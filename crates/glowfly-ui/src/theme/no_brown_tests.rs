@@ -1,17 +1,17 @@
 //! No built-in theme paints brown, tan, khaki or olive (docs/COLOUR.md, "No brown"): every
 //! surface, row band, chip, tint and wash, as composited on the surface it is drawn over, and
 //! every line and edge (the accent, the button and field edges, each branch lane, chip edges
-//! and letters, initials) stays out of `contrast::brownish`'s zone, in both branch presets.
-//! Dusk's selected row (its bronze wash) is the one exception.
+//! and letters, initials) stays out of `contrast::brownish`'s zone, in both branch presets,
+//! with no exception.
 
 use super::branch_colours::{chip_in, initials_fill, line_in, swatches};
 use super::branch_palette::applied;
-use super::builtin;
 use super::color::Palette;
 use super::contrast::{self, ChipStyle, brownish, oklch};
 use super::surfaces::Tone;
+use super::tests::palettes;
 use eframe::egui::Color32;
-use glowfly_core::settings::{BranchPalette, BuiltinTheme};
+use glowfly_core::settings::BranchPalette;
 
 /// The alphas the views wash a colour over a surface at (`Palette::wash`).
 const WASHES: [f32; 10] = [0.03, 0.08, 0.12, 0.16, 0.18, 0.25, 0.28, 0.35, 0.6, 0.8];
@@ -123,25 +123,19 @@ pub(super) fn lines(p: &Palette) -> Vec<(String, Color32)> {
     v
 }
 
-/// `t`'s palette in each branch preset.
-fn presets(t: BuiltinTheme) -> [(&'static str, Palette); 2] {
-    [("standard", *builtin(t)), ("colour-blind", applied(*builtin(t), BranchPalette::ColourBlind))]
-}
-
-/// Whether `what` in theme `t` may sit in the zone: Dusk's bronze selected row (the owner's
-/// call on #25).
-fn allowed(t: BuiltinTheme, what: &str) -> bool {
-    t == BuiltinTheme::Dark && what == "selected"
+/// `p` in each branch preset.
+fn presets(p: &Palette) -> [(&'static str, Palette); 2] {
+    [("standard", *p), ("colour-blind", applied(*p, BranchPalette::ColourBlind))]
 }
 
 #[test]
 fn no_theme_paints_brown() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        for (preset, p) in presets(t) {
+    for (t, palette) in palettes() {
+        for (preset, p) in presets(palette) {
             for (what, c) in fills(&p) {
-                if brownish(c) && !allowed(t, &what) {
-                    failures.push(describe(t, preset, &what, c));
+                if brownish(c) {
+                    failures.push(describe(&t, preset, &what, c));
                 }
             }
         }
@@ -152,26 +146,20 @@ fn no_theme_paints_brown() {
 #[test]
 fn no_theme_draws_brown_lines() {
     let mut failures = Vec::new();
-    for t in BuiltinTheme::ALL {
-        for (preset, p) in presets(t) {
-            // The body ink (near black, warm on Sand and Linen) letters a chip the branch's
+    for (t, palette) in palettes() {
+        for (preset, p) in presets(palette) {
+            // The body ink (near black, warm on Garden light) letters a chip the branch's
             // own tone can't; it is text, not a coloured line.
             let brown = |c: Color32| brownish(c) && c != p.text;
-            failures.extend(lines(&p).into_iter().filter(|(_, c)| brown(*c)).map(|(what, c)| describe(t, preset, &what, c)));
+            failures.extend(lines(&p).into_iter().filter(|(_, c)| brown(*c)).map(|(what, c)| describe(&t, preset, &what, c)));
         }
     }
     assert!(failures.is_empty(), "{} brown lines:\n{}", failures.len(), failures.join("\n"));
 }
 
-fn describe(t: BuiltinTheme, preset: &str, what: &str, c: Color32) -> String {
+fn describe(t: &str, preset: &str, what: &str, c: Color32) -> String {
     let (l, ch, h) = oklch(c);
-    format!("{t:?} ({preset}) {what}: #{:02x}{:02x}{:02x} (L {l:.2} C {ch:.3} h {h:.0})", c.r(), c.g(), c.b())
-}
-
-#[test]
-fn dusk_keeps_its_bronze_selection() {
-    // The exception is real: if Dusk's selection ever leaves the zone, drop the allowance.
-    assert!(brownish(builtin(BuiltinTheme::Dark).selected));
+    format!("{t} ({preset}) {what}: #{:02x}{:02x}{:02x} (L {l:.2} C {ch:.3} h {h:.0})", c.r(), c.g(), c.b())
 }
 
 #[test]
