@@ -1,6 +1,7 @@
 window 1400x820
 Label "Glowfly 0.1.0"
-Tab "empty" [selected]
+TabList
+  Tab "empty" [selected]
 Button "Close tab empty"
 Button "New tab"
 Button "empty"

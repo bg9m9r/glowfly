@@ -3,9 +3,10 @@ Label "Bitbucket"
 Label "acme/demo"
 Label "· 1 open pull request"
 Label "Glowfly 0.1.0"
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
 Button "Close tab demo"
-Tab "api-server"
 Button "Close tab api-server"
 Button "New tab"
 Button "demo"

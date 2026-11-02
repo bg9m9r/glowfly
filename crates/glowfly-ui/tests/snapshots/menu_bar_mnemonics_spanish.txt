@@ -5,9 +5,10 @@ Button "Editar"
 Button "Ver"
 Button "Ventana"
 Button "Ayuda"
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
 Button "Cerrar la pestaña demo"
-Tab "api-server"
 Button "Cerrar la pestaña api-server"
 Button "Nueva pestaña"
 Button "demo"

@@ -21,6 +21,7 @@ use crate::state::repo_lists::{
     clear_recent_msg, favorite_keys_note, favorite_label, favorites, is_favorite, is_missing, is_open, missing_counts, recent_rows,
     remove_missing_msg,
 };
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::{self, separator};
 use crate::ui::widgets::row_menu::RowMenuExt;
@@ -216,7 +217,10 @@ fn row(
     let favorite = || Msg::Recent(RecentMsg::SetFavorite { path: path.to_path_buf(), favorite: !fav });
     let remove = || Msg::Recent(RecentMsg::Remove(path.to_path_buf()));
     let mut grip = None;
-    let r = ui.horizontal(|ui| {
+    // One centre line for the whole row: its height is fixed up front (the star's and ×'s Small
+    // square), so the grip, drawn before them, centres on the same line as everything after it.
+    let row_h = ControlSize::Small.metrics().h;
+    let r = ui.allocate_ui_with_layout(egui::vec2(ui.available_width(), row_h), Layout::left_to_right(Align::Center), |ui| {
         if draggable {
             grip = Some(super::repo_list_drag::grip(ui, t.tr("repos.drag.grip")));
         }

@@ -4,9 +4,10 @@ Button "Cancel"
 Label "Sending 45% · 1.2 MB · 300.0 KB/s"
 Label "Push…"
 ProgressIndicator
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
 Button "Close tab demo"
-Tab "api-server"
 Button "Close tab api-server"
 Button "New tab"
 Button "demo"

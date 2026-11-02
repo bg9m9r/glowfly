@@ -1,8 +1,9 @@
 window 900x820
 Label "Glowfly 0.1.0"
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
 Button "Tab demo schließen"
-Tab "api-server"
 Button "Tab api-server schließen"
 Button "Neuer Tab"
 Button "demo"

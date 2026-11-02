@@ -1,11 +1,12 @@
 window 1440x880
 Label "Glowfly 0.1.0"
 Button "Menu"
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+  Tab "docs"
 Button "Close tab demo"
-Tab "api-server"
 Button "Close tab api-server"
-Tab "docs"
 Button "Close tab docs"
 Button "New tab"
 Button "demo"

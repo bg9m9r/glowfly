@@ -1,14 +1,15 @@
 window 1400x820
 Label "Glowfly 0.1.0"
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+  Tab "docs"
+  Tab "a-repository-whose-folder-name-runs-on-past-what-a-tab-holds"
+  Tab "web"
 Button "Close tab demo"
-Tab "api-server"
 Button "Close tab api-server"
-Tab "docs"
 Button "Close tab docs"
-Tab "a-repository-whose-folder-name-runs-on-past-what-a-tab-holds"
 Button "Close tab a-repository-whose-folder-name-runs-on-past-what-a-tab-holds"
-Tab "web"
 Button "Close tab web"
 Label "C:\\work\\api-server"
 Button "New tab"

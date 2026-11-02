@@ -137,7 +137,9 @@ pub const STROKE: f32 = 1.6;
 pub const SIZE_SM: f32 = 14.0;
 pub const SIZE_MD: f32 = 16.0;
 const SIZE_LG: f32 = 20.0;
-/// The plus's arms either side of its centre, at `SIZE_LG`.
+/// The plus's arms either side of its centre, at `SIZE_LG`; scaled with the icon, then rounded
+/// half up to whole pixels (`icon_snap`): at 100 % the plus is 8 px across at 14 px (a 3.5 px arm
+/// rounds to 4), 8 px at 16 and 10 px at 20.
 const PLUS_ARM: f32 = 5.0;
 
 /// `icon` drawn `SIZE_LG` across, centred on `c` moved onto the pixel grid (`icon_snap`).

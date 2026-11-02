@@ -80,6 +80,15 @@ mod tests {
     }
 
     #[test]
+    fn the_plus_is_8_px_at_14_and_16_and_10_at_20() {
+        // `paint_icon_sized`'s arms (5 px at 20, scaled), on 1.6 px lines at 100 %.
+        for (size, across) in [(14.0, 8.0), (16.0, 8.0), (20.0, 10.0)] {
+            let [h, _] = plus_segments(pos2(50.0, 50.0), 5.0 * size / 20.0, 1.6, 1.0);
+            assert_eq!(h[1].x - h[0].x, across, "at {size}");
+        }
+    }
+
+    #[test]
     fn odd_lines_centre_on_a_pixel_and_even_ones_between() {
         // 1.6 px at 100 % covers 2 pixels: the centre on an edge; 3.2 at 200 % covers 3.
         assert_eq!(snap_centre(pos2(10.3, 10.6), 1.6, 1.0), pos2(10.0, 11.0));

@@ -1,9 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
 Button "Symbolleiste zeigen"
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
 Button "Tab demo schließen"
-Tab "api-server"
 Button "Tab api-server schließen"
 Button "Neuer Tab"
 Unknown "Inhalt der linken Leiste"

@@ -19,9 +19,10 @@ Button "Report an issue"
 Button "Release notes"
 Button "Check for updates"
 Button "About Glowfly…"
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
 Button "Close tab demo"
-Tab "api-server"
 Button "Close tab api-server"
 Button "New tab"
 Button "demo"

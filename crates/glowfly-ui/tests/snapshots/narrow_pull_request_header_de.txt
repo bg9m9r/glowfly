@@ -3,9 +3,10 @@ Label "GitHub"
 Label "acme/demo"
 Label "· 1 offener Pull Request"
 Label "Glowfly 0.1.0"
-Tab "demo" [selected]
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
 Button "Tab demo schließen"
-Tab "api-server"
 Button "Tab api-server schließen"
 Button "Neuer Tab"
 Button "demo"

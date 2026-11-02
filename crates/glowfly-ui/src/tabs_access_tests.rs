@@ -1,14 +1,19 @@
 //! The tab bar to the keyboard and to screen readers: every repository tab is a Tab node named
 //! after it and selected while active, its close × is named "Close tab {name}" and takes clicks
 //! on a 24 x 24 area, and Tab walks the drawn title bar's menu button, the tabs, their × and
-//! the + and the tab list button. Preferences' navigation rows take the focus too.
+//! the + and the tab list button (`tabs_close_focus`: the ring on an inactive tab's ×). A
+//! middle-click on the × closes its tab and a right-click opens the tab's menu. Preferences'
+//! navigation rows take the focus too.
 
 use super::snapshot_tests::{harness_sized, remove_fixture, with_repo};
+use super::tabs_tests::pointer;
+use crate::msg::{Msg, TabsMsg};
 use crate::state::menu_bar::tab_name;
 use crate::state::tabs::ClosedTab;
 use crate::state::window_chrome::Chrome;
 use crate::state::{PrefPage, PrefsState};
-use eframe::egui::{Key, accesskit::Role, vec2};
+use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::{Key, PointerButton, accesskit::Role, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use std::path::PathBuf;
@@ -22,6 +27,8 @@ fn tabs_are_tab_nodes_and_each_close_names_its_tab() {
     h.run();
     let tabs: Vec<_> = h.query_all_by_role(Role::Tab).collect();
     assert_eq!(tabs.len(), names.len(), "one Tab node per tab");
+    let list = h.get_by_role(Role::TabList);
+    assert_eq!(list.query_all_by_role(Role::Tab).count(), names.len(), "every tab in the one tab list");
     for (i, name) in names.iter().enumerate() {
         let tab = h.query_all_by_role(Role::Tab).find(|n| n.label().as_deref() == Some(name)).expect("named after the tab");
         assert_eq!(tab.is_selected(), Some(i == active), "{name}: selected only while active");
@@ -79,6 +86,52 @@ fn tab_walks_the_preferences_navigation_rows() {
     }
     rows.dedup();
     assert!(rows.len() >= 4, "Tab moves down the navigation rows: {rows:?}");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn tabs_close_focus() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "tabs-close-focus");
+    st.settings.reduce_motion = true;
+    let mut h = harness_sized(st, true, vec2(1400.0, 820.0));
+    h.run();
+    let want = "Close tab api-server";
+    let mut on = false;
+    for _ in 0..12 {
+        h.press_key(Key::Tab);
+        h.run();
+        if h.query_all_by_label(want).any(|n| n.is_focused()) {
+            on = true;
+            break;
+        }
+    }
+    assert!(on, "Tab reaches {want}");
+    h.check_snapshot("tabs_close_focus");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn the_close_cross_middle_closes_and_right_clicks_the_tab_menu() {
+    let (st, dir) = with_repo(ThemeChoice::Dark, "tabs-close-clicks");
+    let mut h = harness_sized(st, true, vec2(1400.0, 820.0));
+    h.run();
+    let b = h.get_by_label("Close tab api-server").bounding_box().expect("bounds");
+    let at = pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32);
+    pointer(&mut h, at, Some((PointerButton::Middle, true)));
+    h.step();
+    pointer(&mut h, at, Some((PointerButton::Middle, false)));
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::CloseTab(1)))), "a middle-click closes its tab");
+    h.state_mut().1.clear();
+    pointer(&mut h, at, Some((PointerButton::Secondary, true)));
+    h.step();
+    pointer(&mut h, at, Some((PointerButton::Secondary, false)));
+    h.run();
+    h.get_by_label("Close other tabs").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::CloseOtherTabs(1)))), "a right-click opens its tab's menu");
     drop(h);
     remove_fixture(&dir);
 }

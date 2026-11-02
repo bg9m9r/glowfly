@@ -48,7 +48,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `tabs.rs` lays the repository tabs out: the system frame's tab bar, or the strip a drawn title bar holds.
 - `tab_paint.rs` paints them, with the repository's swatch.
 - `tab_drag.rs` drags them.
-- Each tab is a Tab node named after it (selected while active) and its × is "Close tab {name}"; `tabs_access_tests.rs` checks that and that Tab walks the bar's buttons.
+- Each tab is a Tab node in one TabList, named after it (selected while active); its × is "Close tab {name}" and closes on a middle-click or opens the tab menu on a right-click; `tabs_access_tests.rs` checks these and that Tab walks the bar's buttons.
 
 ## Terminal panel
 

@@ -112,12 +112,18 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
             Rect::from_min_size(pos2(slot.left(), slot.center().y - CHIP_H / 2.0), vec2((chips[i] - CHIP_GAP).max(0.0), CHIP_H))
         };
         let strip_left = ui.cursor().left();
+        // The tabs sit in one tab list, so a screen reader can say "tab 1 of 3".
+        let list_id = ui.id().with("tab-list-node");
+        ui.ctx().accesskit_node_builder(list_id, |n| n.set_role(egui::accesskit::Role::TabList));
         let slots: Vec<Slot> = widths
             .iter()
             .enumerate()
             .map(|(i, &w)| {
-                let (rect, _) = ui.allocate_exact_size(vec2(w, height), Sense::hover());
-                let r = ui.interact(rect, ui.id().with(("tab", i)), Sense::click_and_drag());
+                let ctx = ui.ctx().clone();
+                let (rect, r) = ctx.with_accessibility_parent(list_id, || {
+                    let (rect, _) = ui.allocate_exact_size(vec2(w, height), Sense::hover());
+                    (rect, ui.interact(rect, ui.id().with(("tab", i)), Sense::click_and_drag()))
+                });
                 name_tab(&r, name(i), i == st.active_tab);
                 let close = ui.interact(close_hit(rect), r.id.with("close"), Sense::click());
                 let close_name = t.trf("tabs.close.name", &[("name", &name(i))]);
@@ -207,12 +213,15 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                         Some(tip) => r.on_hover_text(tip),
                         None => r,
                     };
-                    if close.clicked() || r.middle_clicked() {
+                    // The × is part of its tab: a middle-click there closes it and a right-click
+                    // opens the tab's menu, as anywhere else on the tab.
+                    if close.clicked() || close.middle_clicked() || r.middle_clicked() {
                         msgs.push(Msg::Tabs(TabsMsg::CloseTab(i)));
                     } else if r.clicked() {
                         msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
                     }
                     r.row_menu(|ui| tab_menu(ui, t, i, st, msgs));
+                    close.row_menu(|ui| tab_menu(ui, t, i, st, msgs));
                 }
             }
         }
