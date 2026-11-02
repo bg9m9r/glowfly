@@ -6,8 +6,6 @@ use eframe::egui::{Color32, CornerRadius, Painter, Pos2, Rect, pos2, vec2};
 
 /// The swatch's size in lists and menus.
 pub const SIZE: f32 = 10.0;
-/// The room a swatch takes before a label or path.
-pub const ROOM: f32 = 16.0;
 
 /// Paints a swatch `size` across in `c`, its left edge's middle at `left_centre`.
 pub fn paint(p: &Painter, left_centre: Pos2, size: f32, c: Color32) {

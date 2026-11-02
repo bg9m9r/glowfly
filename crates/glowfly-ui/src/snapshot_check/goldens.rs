@@ -80,6 +80,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("repo_menu_light", TopLeft(640.0, 620.0)),
     ("repo_menu_groups", TopLeft(640.0, 620.0)),
     ("welcome_repo_groups", Window),
+    ("welcome_repo_row_hover", Window),
     ("live_updates_states", Window),
     // Narrow windows: the toolbar folded into More, the graph's columns given way.
     ("narrow_900_en", Window),

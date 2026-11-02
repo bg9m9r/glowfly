@@ -17,7 +17,7 @@ start with `state/`, `update/` or `ui/`.
 - `welcome.rs`, `welcome_steps.rs`: the first-run welcome.
 - `welcome_header.rs`: the welcome's header band and progress bar.
 - `welcome_art.rs`: the band's lattice drawing per theme.
-- `welcome_cards.rs`: the Start step's choice cards.
+- `welcome_cards.rs`: the action cards: the Start step's three choices and the start page's row of four.
 - `tour.rs`: the tour of the main window.
 
 ## Blame and the file history's File view
@@ -97,11 +97,13 @@ start with `state/`, `update/` or `ui/`.
 - `create_pr_dialog.rs`: the create dialog's step line and Skip during a stack's run.
 - `stack_rows.rs`: the LOCAL rows' stack indentation and painted elbows.
 - `repo_colour_menu.rs`: the tab menu's, the welcome rows' and the group headers' Color submenu, with the square swatches in `repo_swatch.rs`.
-- `repo_list_groups.rs`: the welcome screen's repository group headers (swatch, name, New group, Open all, ⋯) and the group menu; `repo_list_drag.rs` drags favorites between groups.
+- `repo_list.rs`: the start page's repository area: Favorites with + New group, the groups nested under it, the other favorites, and Recent.
+- `repo_list_row.rs`: one start-page repository row: what its click, star and × send, and its menu (right-click or ⋯) with Move to group.
+- `repo_list_groups.rs`: the start page's group headers (swatch, name, count, Open all, ⋯), the bar down a group's rows, an empty group's dashed placeholder, and the group menu; `repo_list_drag.rs` drags favorites by their grip between groups.
 - `repo_group_menu.rs`: a welcome favorite's Move to group submenu, the way to group without dragging.
 - `repo_group_dialog.rs`: the New group and Rename group dialog.
 - `repo_menu_list.rs`: the repository menu's and File > Open recent's repository groups, Favorites and Recent, the filter field of a long list, and Remove missing / Clear recent.
-- `repo_menu_row.rs`: one repository row of those menus: name, parent path, status, and the star and × on hover or focus; Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
+- `repo_row.rs`: one repository row, shared by those menus and the start page: name, parent path, status, and the star and × on hover or focus (on the start page also the grip, a status pill, the key cap and ⋯); in a menu Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
 
 ## Snapshot tests
 

@@ -1,12 +1,14 @@
 //! Keys drawn as key caps: each chord's parts as caps joined by "+", alternatives joined by
-//! "or". Used by the shortcut sheet and Preferences > Keyboard.
+//! "or". Used by the shortcut sheet and Preferences > Keyboard; a single cap of weak text marks a
+//! favorite's key on the start page's repository rows.
 
 use crate::keymap::Chord;
 use crate::ui::theme::color;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{
-    self, Color32, CornerRadius, FontId, Galley, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2,
+    self, Color32, CornerRadius, FontId, Galley, Painter, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType,
+    pos2, vec2,
 };
 use std::sync::Arc;
 
@@ -51,6 +53,13 @@ impl Caps {
         Self { pieces, size: vec2(width, height), dim }
     }
 
+    /// One cap holding `text` (a whole key, "Ctrl+Alt+1") in `ink`.
+    pub fn single(ui: &Ui, text: &str, ink: Color32) -> Self {
+        let g = ui.painter().layout_no_wrap(text.to_owned(), FontId::proportional(CAP_FONT), ink);
+        let size = vec2(piece_width(true, &g), g.size().y + CAP_PAD.y);
+        Self { pieces: vec![(true, g)], size, dim: false }
+    }
+
     /// Paints the caps as one widget, labelled `label` for screen readers and tests.
     pub fn paint(self, ui: &mut Ui, label: &str, sense: Sense) -> Response {
         let (rect, resp) = ui.allocate_exact_size(self.size, sense);
@@ -60,7 +69,17 @@ impl Caps {
             return resp;
         }
         let hovered = sense.senses_click() && resp.hovered();
-        let painter = ui.painter();
+        self.draw(ui.painter(), rect.min, hovered);
+        if sense.senses_click() { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
+    }
+
+    /// Paints the caps at rest with their top left at `at`, taking no input.
+    pub fn paint_at(self, painter: &Painter, at: Pos2) {
+        self.draw(painter, at, false);
+    }
+
+    fn draw(self, painter: &Painter, at: Pos2, hovered: bool) {
+        let rect = Rect::from_min_size(at, self.size);
         let border = if hovered { color::primary_border() } else { color::faint() };
         let fill = if hovered { color::hover() } else { color::raised() };
         let fg = if self.dim { color::faint() } else { color::text() };
@@ -75,7 +94,6 @@ impl Caps {
             painter.galley(at, g, fg);
             x += w + GAP;
         }
-        if sense.senses_click() { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
     }
 }
 
