@@ -11750,7 +11750,7 @@ SOFTWARE.
 </details>
 
 <details>
-<summary>MIT: pulldown-cmark 0.13.5</summary>
+<summary>MIT: pulldown-cmark 0.13.6</summary>
 
 ````text
 The MIT License
