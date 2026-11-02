@@ -121,12 +121,29 @@ fn effects_reaching_outside_the_test_are_refused() {
     for effect in &inside {
         assert!(!refused(effect), "{} runs", effect.name());
     }
+    // A trust re-check around an effect doesn't change whether it runs.
+    let checked = |effect: Effect| {
+        let check = TrustCheck {
+            workdir: here.clone(),
+            real: here.clone(),
+            saved: None,
+            sealed: crate::effect::Sealed::Read,
+            accepted: None,
+            lang: Default::default(),
+        };
+        Effect::Checked(Box::new(Checked { effect, check }))
+    };
+    let allowed = checked(Effect::Ssh(SshEffect::ReadChoice { generation: 1, repo: None }));
+    assert!(!refused(&allowed), "a checked {} runs", allowed.name());
+    let global =
+        checked(Effect::Prefs(PrefsEffect::SetGitConfig { cwd: here.clone(), global: true, key: "user.name".into(), value: None }));
+    assert!(refused(&global), "a checked {} is refused", global.name());
 }
 
+/// Proven with an effect that only reads Glowfly's theme folder, so nothing changes even if the
+/// refusal ever stopped working.
 #[test]
 #[should_panic(expected = "reaches outside the test")]
-fn running_a_global_identity_write_fails_the_test() {
-    let identity = glowfly_core::identity::Identity { name: "Ada".into(), email: "ada@example.invalid".into(), signing_key: None };
-    let cwd = glowfly_core::paths::temp_dir();
-    execute(Effect::Onboarding(glowfly_model::onboarding::OnboardingEffect::WriteIdentity { cwd, identity }));
+fn running_an_effect_that_reaches_outside_fails_the_test() {
+    execute(Effect::Theme(glowfly_model::themes::ThemeEffect::Load));
 }

@@ -1,10 +1,11 @@
 //! What the runner's work reaches outside the repositories with, which tests replace: the trash
 //! a delete moves files to (and Undo takes them back out of), the sequence editor an
 //! interactive rebase installs its todo with, how long a path search works before it reports a
-//! chunk, and where saves of Glowfly's own files (settings, recent repositories, open tabs) go. The app runs with `Seams::REAL`; `runner::testing` runs everything with
-//! stand-ins (`testing::SEAMS`), so tests never touch the real Recycle Bin or Trash, never
-//! start the test binary as git's editor and never write over the developer's own settings. Passed explicitly rather than chosen by `cfg(test)`,
-//! which a dependency is never built with.
+//! chunk, and where saves of Glowfly's own files (settings, recent repositories, open tabs) go.
+//! The app runs with `Seams::REAL`; `runner::testing` runs everything with stand-ins
+//! (`testing::SEAMS`), so tests never touch the real Recycle Bin or Trash, never start the test
+//! binary as git's editor and never write over the developer's own settings. Passed explicitly
+//! rather than chosen by `cfg(test)`, which a dependency is never built with.
 
 use crate::effect::Effect;
 use crate::msg::Msg;
