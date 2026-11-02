@@ -1,6 +1,7 @@
 //! The commit graph: a table with configurable, resizable columns (branch / tag, graph, message,
-//! changes, commit, date) that give way in a narrow graph (`fit`), rows banded in their branch's colour (`lane_colours`), author nodes, ref chips
-//! (double-click a branch chip to check it out), ghost refs, branch highlighting, this tab's WIP
+//! changes, author, commit, date) that give way in a narrow graph (`fit`), single-line rows as
+//! tall as the row density (`row_h`) banded in their branch's colour (`lane_colours`), author
+//! nodes, ref chips (double-click a branch chip to check it out), ghost refs, branch highlighting, this tab's WIP
 //! row (`wip_row`: its label, change chips and line total), other worktrees' WIP rows, the New
 //! branch… ghost button on the checked-out commit, and the end row below the last commit
 //! (`more`).
@@ -18,6 +19,7 @@ mod paint;
 mod ref_checkout;
 mod ref_group;
 mod ref_menu;
+mod refs_fit;
 mod resize;
 mod row_look;
 mod search_bar;
@@ -51,7 +53,7 @@ use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Rect, Sense, pos2, vec2};
 use git2::Oid;
 use glowfly_core::repo::RefKind;
-use glowfly_core::settings::DescriptionMode;
+use glowfly_core::settings::{Density, DescriptionMode};
 use labels::Tip as ChipTip;
 use lane_colours::RowColours;
 use layout::Columns;
@@ -59,10 +61,21 @@ use nodes::NodeKind;
 use paint::{draw_lanes, lane_x};
 use std::collections::HashMap;
 
-/// The height of a graph row.
-pub(crate) const ROW_H: f32 = 40.0;
+/// The height of a graph row at `density`.
+pub(crate) fn row_h(density: Density) -> f32 {
+    match density {
+        Density::Comfortable => 36.0,
+        Density::Compact => 28.0,
+    }
+}
+
+/// A date whose absolute form is about the widest (September 28, 2026 22:58 UTC), to fit DATE to.
+const WIDE_DATE: i64 = 1_790_636_280;
 const LANE_W: f32 = 24.0;
 const MAX_VISIBLE_LANES: usize = 12;
+/// The most of the message's room chips leading it take, and the gap after them.
+const INLINE_SHARE: f32 = 0.4;
+const INLINE_GAP: f32 = 8.0;
 
 /// The commit graph with its column header.
 pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -89,38 +102,31 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let lanes = if filtered { 1 } else { snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES) };
         let t = st.settings.lang();
         let graph_w = header::graph_width(ui, t, lanes);
+        let (row_h, node_r) = (row_h(st.settings.graph_density), nodes::node_r(st.settings.graph_density));
 
         // Not under a dialog, the palette or a credential prompt, which keep their keys.
         if st.modal.is_none() && st.palette.is_none() && !st.askpass.showing() {
-            select::keyboard_nav(ui, &st.session.selection, snap, &rows, st.session.tab_view.graph_scroll, &mut st.view, msgs);
-        }
-
-        // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
-        let fitted = header::column_header(ui, t, graph_w, &st.settings.columns, st.settings.column_widths, &mut st.view.column_drag, msgs);
-        let (cols_cfg, widths, graph_w) = (fitted.cfg, fitted.widths, fitted.graph_w);
-        // How many matches fill the graph, for a filtering search loading further back.
-        st.view.graph_fit_rows = (ui.available_height() / ROW_H).floor() as usize;
-        if filtered && total == 0 {
-            return super::graph_empty::no_matches(ui, st, msgs);
+            let (offset, height) = st.session.tab_view.graph_scroll;
+            let port = select::Viewport { offset, height, row_h };
+            select::keyboard_nav(ui, &st.session.selection, snap, &rows, port, &mut st.view, msgs);
         }
 
         // What grouping a row's ref labels into chips needs, once per frame.
         let ref_cx = ref_group::RefContext::of(snap);
+        // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
+        let s = &st.settings;
+        let date = (!s.relative_dates).then(|| s.format_graph_time(WIDE_DATE, st.view.now, 0));
+        let chips_w = refs_fit::chips_w(ui.painter(), snap, &ref_cx);
+        let input = header::HeaderIn { graph_w, cfg: &s.columns, saved: s.column_widths, chips_w, date: date.as_deref() };
+        let fitted = header::column_header(ui, t, input, &mut st.view.column_drag, msgs);
+        let (cols_cfg, widths, graph_w, inline) = (fitted.cfg, fitted.widths, fitted.graph_w, fitted.refs_inline);
+        // How many matches fill the graph, for a filtering search loading further back.
+        st.view.graph_fit_rows = (ui.available_height() / row_h).floor() as usize;
+        if filtered && total == 0 {
+            return super::graph_empty::no_matches(ui, st, msgs);
+        }
         // Pull requests by head commit, for graph badges.
-        let pr_at: HashMap<Oid, (String, bool)> = st
-            .session
-            .forge
-            .as_ref()
-            .map(|f| {
-                let word = if f.pr_noun() == "merge request" { "MR" } else { "PR" };
-                f.prs
-                    .iter()
-                    .filter_map(|p| {
-                        Some((*f.pr_heads.get(&p.id)?, (format!("{} {}", if p.draft { "Draft" } else { word }, f.pr_label(p.id)), p.draft)))
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
+        let pr_at: HashMap<Oid, (String, bool)> = st.session.forge.as_ref().map(cells::pr_badges).unwrap_or_default();
 
         // Rows belonging to the hovered branch: update works them out, then the next frame shows them.
         if st.settings.highlight_ref_rows && st.view.highlight.as_ref().map(|(t, _)| *t) != st.view.hover_tip {
@@ -131,13 +137,13 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         ui.spacing_mut().item_spacing.y = 0.0;
         let rows_rect = ui.available_rect_before_wrap();
-        let page = ((rows_rect.height() / ROW_H).floor() as usize).saturating_sub(1);
+        let page = ((rows_rect.height() / row_h).floor() as usize).saturating_sub(1);
         select::target(ui, rows_rect, t.tr("graph.focus.name"), page, want_focus);
         // The selection shows as focused while the graph has the keyboard focus or nothing has.
         let active = crate::ui::pane_focus::graph_active(ui.ctx());
         let mut area = egui::ScrollArea::vertical().auto_shrink([false, false]);
         if let Some(row) = st.view.scroll_to_row.take() {
-            area = area.vertical_scroll_offset(row as f32 * ROW_H);
+            area = area.vertical_scroll_offset(row as f32 * row_h);
         } else if let Some(off) = st.view.scroll_offset.take() {
             area = area.vertical_scroll_offset(off);
         }
@@ -169,17 +175,17 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let keymap = &st.keymap;
         let ghost_text = t.tr("graph.ghost_branch.button");
         let ghost_w = ghost::ghost_width(ui, ControlSize::Compact, true, Some(ghost_text), 0.0);
-        let out = area.show_rows(ui, ROW_H, shown_rows, |ui, range| {
+        let out = area.show_rows(ui, row_h, shown_rows, |ui, range| {
             let last = range.end.min(total);
             for row in range {
                 if row == total
                     && let Some(r) = &end
                 {
-                    let line = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), ROW_H));
-                    more::row(ui, t, ROW_H, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0, r, snap, msgs);
+                    let line = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), row_h));
+                    more::row(ui, t, row_h, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0, r, snap, msgs);
                     continue;
                 }
-                let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
+                let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), row_h), Sense::click());
                 let painter = ui.painter_at(rect);
                 let cols = Columns::new(rect, graph_w, &cols_cfg, &widths);
                 // A layout that doesn't match the history or the worktrees draws nothing.
@@ -227,7 +233,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // menu is the WORKTREES row's.
                 if let Some((w, wt)) = worktree {
                     let label = crate::state::worktrees::wip_label(t, wt);
-                    worktree_wip::draw(&painter, cols_cfg.tree.then_some(&gp), &cols, rect, (w, wt, &colours), &label);
+                    worktree_wip::draw(&painter, cols_cfg.tree.then_some(&gp), &cols, rect, (w, wt, &colours), &label, node_r);
                     let resp = resp.on_hover_text(wip_tooltip(wt));
                     if resp.clicked() && open_blocked(wt).is_none() {
                         msgs.push(Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
@@ -241,7 +247,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 let Some(c) = commit else {
                     if cols_cfg.tree {
-                        nodes::wip_ring(&gp, pos2(node_x, mid), lane_col);
+                        nodes::wip_ring(&gp, pos2(node_x, mid), node_r, lane_col);
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.wip_span(), rect));
                     wip_row::draw(&mp, &cols, mid, wip_label, snap.changes, wip_total);
@@ -259,25 +265,34 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         nodes::merge_dot(&gp, pos2(node_x, mid), lane_col);
                     } else {
                         let av = if show_avatars { Some(&mut *avatars) } else { None };
-                        nodes::commit(&gp, pos2(node_x, mid), c.author.name(), c.author.email(), lane_col, av);
+                        nodes::commit(&gp, (pos2(node_x, mid), node_r), c.author.name(), c.author.email(), lane_col, av);
                     }
                 }
 
-                // BRANCH / TAG column, joined to the node.
+                // BRANCH / TAG column, joined to the node; in a narrow table, the chips lead the message.
                 let chips = snap.refs.get(&c.oid).map(|l| ref_group::chips(l, &ref_cx)).unwrap_or_default();
                 let tones = lane_colours::chip_tones(snap, &chips, lane_col);
                 let mut refs = labels::RefsCell::default();
-                if cols_cfg.refs {
+                let (span, clip) = match inline {
+                    false => (cols.refs, cols.cell.refs),
+                    true => {
+                        let room = refs_fit::row_w(&painter, &chips).min((cols.msg.1 - cols.msg.0) * INLINE_SHARE);
+                        let span = (cols.msg.0, cols.msg.0 + room);
+                        (span, span)
+                    }
+                };
+                if cols_cfg.refs || inline {
                     let labels = snap.refs.get(&c.oid).map_or(&[][..], |l| l.as_slice());
                     let mut build = None;
                     if tips.is_some() && labels.iter().any(|l| matches!(l.kind, RefKind::Local | RefKind::Remote)) {
                         tips_seen.push(c.oid);
                         build = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
                     }
-                    let ghost = settings.ghost_refs && !menu_open && snap.head_oid == Some(c.oid) && (hovered || anchor == Some(c.oid));
-                    let node_edge_x = cols_cfg.tree.then(|| node_x - nodes::radius(kind));
+                    let ghost =
+                        !inline && settings.ghost_refs && !menu_open && snap.head_oid == Some(c.oid) && (hovered || anchor == Some(c.oid));
+                    let node_edge_x = (cols_cfg.tree && !inline).then(|| node_x - nodes::radius(kind, node_r));
                     let row = labels::RefsRow { chips: &chips, tones: &tones, lane: lane_col, build, node_edge_x, pointer, ghost, ghost_w };
-                    refs = labels::refs_cell(&painter, &cols, rect, row);
+                    refs = labels::refs_cell(&painter, span, clip, rect, row);
                     if let Some((r, labelled)) = refs.ghost_at {
                         let id = ui.id().with(("ghost-branch", c.oid));
                         let clip = cols.rect(cols.cell.refs, rect);
@@ -310,11 +325,12 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     cols: &cols,
                     rect,
                     cfg: &cols_cfg,
+                    msg_x: refs.labels_hit.filter(|_| inline).map_or(cols.msg.0, |r| r.right() + INLINE_GAP),
                     commit: c,
                     pr: pr_at.get(&c.oid),
                     show_body,
                     colors: (fg, weak),
-                    date: cols_cfg.date.then(|| settings.format_time(c.time, now, offset)),
+                    date: cols_cfg.date.then(|| settings.format_graph_time(c.time, now, offset)),
                     stats: stat,
                 };
                 let text = cells::draw(&painter, &cells);

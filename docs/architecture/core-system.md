@@ -75,7 +75,7 @@ source file, update its line here.
 - `terminal_schemes.rs`: terminal color schemes: the `terminal_*` keys and the stored scheme files.
 - `terminal_schemes/wt.rs` and `iterm.rs` read Windows Terminal JSON and iTerm2 `.itermcolors` files to import, and `io.rs` reads and writes the themes folder's `terminal` folder.
 - `terminal.rs`: the terminal's Colors choice (`TerminalColours`).
-- `graph_columns.rs`: which graph columns show (mapping an old file's separate author and SHA toggles onto the COMMIT column) and their widths.
+- `graph_columns.rs`: which graph columns show (mapping an older file's combined COMMIT column onto AUTHOR and COMMIT).
 - Per-repository graph filters.
 - `branch_colours.rs`: the branch colour preset and per-repository pinned branch colours.
 - `repo_colours.rs`: repository colours per working folder, saved as stable names (a retired name loads as its replacement).
@@ -87,7 +87,7 @@ source file, update its line here.
 - Saved connected accounts and app preferences.
 - `profiles_prefs.rs`: what switches with a profile, and every setting classified as per-profile or global.
 - `file_lists.rs`: how the changed-file lists show their files (List or Tree).
-- `ui_choices.rs`: the notification corner, descriptions, branch visibility and the diff viewer's layout and mode; `tracker.rs`: where a repository's issues come from.
+- `ui_choices.rs`: the notification corner, descriptions, branch visibility, the history table's row density and the diff viewer's layout and mode; `tracker.rs`: where a repository's issues come from.
 - `welcome_done`: whether the first-run welcome was seen (true for any file written before it existed).
 - `avatar_lookups`: author pictures looked up online, off unless chosen (it replaced `use_initials`, which a file no longer opts into).
 - `updates.rs`: the update check and the release notes seen.
@@ -114,7 +114,7 @@ source file, update its line here.
 - `output.rs`: reading a job's output: its lines as a terminal shows them, their kinds and the last meaningful one.
 - `bundle.rs`: the bug-report bundle: every log file verbatim under a short header, written in one go.
 - `i18n.rs`, `i18n/`, `locales/`: the UI's translations: languages, the bundled catalogs (English base, per-language JSON), lookups with {name} placeholders and English fallback, the OS language read once at startup (gettext's order and C rule on Linux).
-- `dates.rs`: dates: moment.js-style patterns, localized month and weekday words, relative ages.
+- `dates.rs`: dates: moment.js-style patterns, localized month and weekday words, relative ages and the history table's short ones.
 - `dates/locale_patterns.rs`: each language's usual patterns for the date locale (ISO 8601 otherwise), keyed by a normalised locale tag with the OS locale read once per run (Linux: LC_ALL, LC_TIME, LANG).
 - `spell.rs`: spell checking, and the OS's spell-check language order (gettext's on Linux).
 - `avatars.rs`: avatar fetching, and when it may happen (`lookups_allowed`: turned on, and a remote on github.com, gitlab.com, bitbucket.org or codeberg.org).

@@ -9,7 +9,8 @@
 //! the live values into the outgoing profile and loads the incoming one's.
 
 use super::{
-    BranchPalette, BranchVisibility, ColumnWidths, Corner, GraphColumns, ProfileId, Settings, SubmodulePrefs, SystemPair, ThemeChoice,
+    BranchPalette, BranchVisibility, ColumnWidths, Corner, Density, GraphColumns, ProfileId, Settings, SubmodulePrefs, SystemPair,
+    ThemeChoice,
 };
 use crate::forge::Account;
 use serde::{Deserialize, Serialize};
@@ -82,6 +83,7 @@ profile_prefs! {
     branch_palette: BranchPalette,
     columns: GraphColumns,
     column_widths: ColumnWidths,
+    graph_density: Density,
     // Diff viewer
     diff_font_size: f32,
     tab_size: u8,

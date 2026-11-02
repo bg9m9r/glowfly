@@ -99,12 +99,13 @@ pub(super) fn draw(
     rect: Rect,
     row: (&WorktreeWipRow, &WorktreeInfo, &RowColours),
     label: &str,
+    node_r: f32,
 ) {
     let (w, wt, colours) = row;
     let mid = rect.center().y;
     if let Some(gp) = gp {
         draw_lanes(gp, cols.graph.0, rect, &w.row, colours);
-        nodes::wip_ring(gp, pos2(lane_x(cols.graph.0, w.row.col), mid), colours.node());
+        nodes::wip_ring(gp, pos2(lane_x(cols.graph.0, w.row.col), mid), node_r, colours.node());
     }
     let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
     let counts = counts(&mp, wt.changes);

@@ -11,8 +11,6 @@ use glowfly_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
 pub(super) const EDGE_INSET: f32 = 16.0;
 /// Each cell's content from the divider beside it.
 pub(super) const CELL_PAD: f32 = 12.0;
-/// The narrowest a drag leaves the message column's content.
-const MIN_MSG_W: f32 = 120.0;
 
 /// Each column's cell, divider to divider (empty ranges for hidden columns).
 pub struct Edges {
@@ -20,18 +18,20 @@ pub struct Edges {
     pub graph: (f32, f32),
     pub msg: (f32, f32),
     pub changes: (f32, f32),
+    pub author: (f32, f32),
     pub commit: (f32, f32),
     pub date: (f32, f32),
 }
 
 /// Horizontal extent of each column's content for one row (empty ranges for hidden columns),
-/// left to right: BRANCH / TAG, GRAPH, MESSAGE, CHANGES, COMMIT, DATE; with each column's cell
-/// and the table's inner extent.
+/// left to right: BRANCH / TAG, GRAPH, MESSAGE, CHANGES, AUTHOR, COMMIT, DATE; with each
+/// column's cell and the table's inner extent.
 pub struct Columns {
     pub refs: (f32, f32),
     pub graph: (f32, f32),
     pub msg: (f32, f32),
     pub changes: (f32, f32),
+    pub author: (f32, f32),
     pub commit: (f32, f32),
     pub date: (f32, f32),
     pub cell: Edges,
@@ -41,8 +41,8 @@ pub struct Columns {
 
 impl Edges {
     /// The cells left to right.
-    pub fn all(&self) -> [(f32, f32); 6] {
-        [self.refs, self.graph, self.msg, self.changes, self.commit, self.date]
+    pub fn all(&self) -> [(f32, f32); 7] {
+        [self.refs, self.graph, self.msg, self.changes, self.author, self.commit, self.date]
     }
 }
 
@@ -63,12 +63,13 @@ impl Columns {
         let graph = if c.tree { (refs.1, refs.1 + lead + graph_w + CELL_PAD) } else { (refs.1, refs.1) };
         let date = if c.date { (r - w.get(Date), r) } else { (r, r) };
         let commit = if c.commit { (date.0 - w.get(Commit), date.0) } else { (date.0, date.0) };
-        let changes = if c.changes { (commit.0 - w.get(Changes), commit.0) } else { (commit.0, commit.0) };
+        let author = if c.author { (commit.0 - w.get(Author), commit.0) } else { (commit.0, commit.0) };
+        let changes = if c.changes { (author.0 - w.get(Changes), author.0) } else { (author.0, author.0) };
         let msg = (graph.1, changes.0);
-        let cell = Edges { refs, graph, msg, changes, commit, date };
+        let cell = Edges { refs, graph, msg, changes, author, commit, date };
         // Which column is the first shown from the left and the last from the right; the
         // message column always takes part.
-        let shown = [c.refs, c.tree, true, c.changes, c.commit, c.date];
+        let shown = [c.refs, c.tree, true, c.changes, c.author, c.commit, c.date];
         let first = shown.iter().position(|&s| s).unwrap_or(2);
         let last = shown.iter().rposition(|&s| s).unwrap_or(2);
         let inset = |i: usize, cell: (f32, f32)| if shown[i] { content(cell, i == first, i == last) } else { (cell.0, cell.0) };
@@ -77,16 +78,17 @@ impl Columns {
             graph: inset(1, graph),
             msg: inset(2, msg),
             changes: inset(3, changes),
-            commit: inset(4, commit),
-            date: inset(5, date),
+            author: inset(4, author),
+            commit: inset(5, commit),
+            date: inset(6, date),
             cell,
             inner: (l + EDGE_INSET, r - EDGE_INSET),
         }
     }
 
     /// The columns' content left to right.
-    pub fn content(&self) -> [(f32, f32); 6] {
-        [self.refs, self.graph, self.msg, self.changes, self.commit, self.date]
+    pub fn content(&self) -> [(f32, f32); 7] {
+        [self.refs, self.graph, self.msg, self.changes, self.author, self.commit, self.date]
     }
 
     /// Each shown resizable column with the x of the divider that resizes it: the one on the
@@ -95,6 +97,7 @@ impl Columns {
         [
             (c.refs, ResizableColumn::Refs, self.cell.refs.1),
             (c.changes, ResizableColumn::Changes, self.cell.changes.0),
+            (c.author, ResizableColumn::Author, self.cell.author.0),
             (c.commit, ResizableColumn::Commit, self.cell.commit.0),
             (c.date, ResizableColumn::Date, self.cell.date.0),
         ]
@@ -103,9 +106,10 @@ impl Columns {
         .map(|(_, col, x)| (col, x))
     }
 
-    /// How much wider the columns may grow before the message column drops below `MIN_MSG_W`.
+    /// How much wider the columns may grow before the message cell drops below `fit::MSG_MIN`,
+    /// so a drag never makes another column give way.
     pub fn msg_room(&self) -> f32 {
-        (self.msg.1 - self.msg.0 - MIN_MSG_W).max(0.0)
+        (self.cell.msg.1 - self.cell.msg.0 - super::fit::MSG_MIN).max(0.0)
     }
 
     /// This tab's WIP row's cell: from the message column's content to the table's inset right
@@ -140,9 +144,14 @@ mod tests {
         assert_eq!(c.date.1, rect.right() - EDGE_INSET);
         let e = &c.cell;
         assert_eq!(e.refs.0, rect.left());
-        assert_eq!((e.refs.1, e.graph.1, e.msg.1, e.commit.1, e.date.1), (e.graph.0, e.msg.0, e.commit.0, e.date.0, rect.right()));
+        assert_eq!(
+            (e.refs.1, e.graph.1, e.msg.1, e.author.1, e.commit.1, e.date.1),
+            (e.graph.0, e.msg.0, e.author.0, e.commit.0, e.date.0, rect.right())
+        );
         assert_eq!(c.graph.1 - c.graph.0, GRAPH_W);
-        for (content, cell) in [(c.refs, e.refs), (c.graph, e.graph), (c.msg, e.msg), (c.commit, e.commit), (c.date, e.date)] {
+        for (content, cell) in
+            [(c.refs, e.refs), (c.graph, e.graph), (c.msg, e.msg), (c.author, e.author), (c.commit, e.commit), (c.date, e.date)]
+        {
             if cell.0 > rect.left() {
                 assert_eq!(content.0 - cell.0, CELL_PAD, "{content:?} in {cell:?}");
             }
@@ -161,7 +170,7 @@ mod tests {
 
     #[test]
     fn the_message_takes_the_inset_when_it_is_first_or_last() {
-        let (rect, c) = cols(GraphColumns { changes: false, commit: false, date: false, ..GraphColumns::default() });
+        let (rect, c) = cols(GraphColumns { changes: false, author: false, commit: false, date: false, ..GraphColumns::default() });
         assert_eq!(c.msg.1, rect.right() - EDGE_INSET);
         let (rect, c) = cols(GraphColumns { refs: false, tree: false, ..GraphColumns::default() });
         assert_eq!(c.msg.0, rect.left() + EDGE_INSET);
@@ -175,6 +184,7 @@ mod tests {
             let want: Vec<_> = [
                 (cfg.refs, ResizableColumn::Refs, c.cell.refs.1),
                 (cfg.changes, ResizableColumn::Changes, c.cell.changes.0),
+                (cfg.author, ResizableColumn::Author, c.cell.author.0),
                 (cfg.commit, ResizableColumn::Commit, c.cell.commit.0),
                 (cfg.date, ResizableColumn::Date, c.cell.date.0),
             ]

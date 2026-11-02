@@ -115,6 +115,7 @@ fn graph_wip_row() {
 fn graph_wip_row_narrow() {
     for (refs, name) in [(370.0, "graph_wip_row_narrow"), (450.0, "graph_wip_row_narrower")] {
         let (mut st, dir) = with_wip(ThemeChoice::Dark, "lines-graph-narrow");
+        st.settings.columns.author = false;
         st.settings.columns.commit = false;
         st.settings.columns.date = false;
         st.settings.column_widths = st.settings.column_widths.with(Refs, refs);

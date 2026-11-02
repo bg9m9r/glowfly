@@ -63,8 +63,10 @@ CheckBox "Message" [on]
 CheckBox "Changes" [off]
 Label "Lines added and removed per commit, computed in the background."
 CheckBox "Author" [on]
-CheckBox "Short SHA under the author" [on]
+CheckBox "Commit (short SHA)" [on]
 CheckBox "Date and time" [on]
+Button "Comfortable" [on]
+Button "Compact" [off]
 ComboBox
 ComboBox
 Label "Color-blind friendly uses 8 hues picked to stay apart with red-green or blue-yellow color blindness. Branch names always appear beside their color. The main branch is gray unless you pick a color for it."

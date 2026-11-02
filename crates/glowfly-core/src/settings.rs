@@ -68,7 +68,7 @@ pub use themes::{BuiltinTheme, ColorValue, SystemPair, ThemeCatalog, ThemeFile, 
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use tracker::TrackerChoice;
 pub use trust::{RepoTrust, SavedTrust};
-pub use ui_choices::{BranchVisibility, Corner, DescriptionMode, DiffLayout, DiffMode};
+pub use ui_choices::{BranchVisibility, Corner, Density, DescriptionMode, DiffLayout, DiffMode};
 pub use updates::UpdatePrefs;
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
 
@@ -115,7 +115,8 @@ pub struct Settings {
     pub date_word_format: String,
     pub date_time_format: String,
     pub date_verbose_format: String,
-    /// Show "3 hours ago" in the graph instead of the Date and time format.
+    /// Show ages ("3 h", "Yesterday") in the graph and "3 hours ago" in lists instead of the
+    /// Date and time format; on for new settings files.
     pub relative_dates: bool,
     pub toolbar_labels: bool,
     /// Tooltips and popups appear without fading or sliding in (egui's animations off).
@@ -149,17 +150,16 @@ pub struct Settings {
     pub branch_palette: BranchPalette,
     pub columns: GraphColumns,
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
-    #[serde(default)]
     pub column_widths: ColumnWidths,
+    /// The history table's row height (Preferences > Appearance).
+    pub graph_density: Density,
     /// Changed files in one list or grouped in folders (list header toggle, Preferences > UI Customization).
     #[serde(default)]
     pub file_list_mode: FileListMode,
 
     // Diff viewer
-    #[serde(default)]
     pub diff_layout: DiffLayout,
     /// Hunks only or the whole file (diff header toggle).
-    #[serde(default)]
     pub diff_mode: DiffMode,
     /// Color diff text by language (Preferences > Diff viewer).
     pub syntax_highlighting: bool,
@@ -187,7 +187,6 @@ pub struct Settings {
     /// Rename tracked files with git mv so the rename is staged (rename dialog checkbox).
     pub stage_renames: bool,
     /// Push a new tag to a remote right after creating it (New tag dialog checkbox).
-    #[serde(default)]
     pub push_new_tags: bool,
     /// The one-time detached-HEAD notice after a tag checkout has been shown.
     #[serde(default)]
@@ -316,7 +315,7 @@ impl Default for Settings {
             date_word_format: String::new(),
             date_time_format: String::new(),
             date_verbose_format: String::new(),
-            relative_dates: false,
+            relative_dates: true,
             toolbar_labels: true,
             reduce_motion: false,
             zoom_percent: DEFAULT_ZOOM_PERCENT,
@@ -335,6 +334,7 @@ impl Default for Settings {
             branch_palette: BranchPalette::Standard,
             columns: GraphColumns::default(),
             column_widths: ColumnWidths::default(),
+            graph_density: Density::Comfortable,
             file_list_mode: FileListMode::List,
             diff_layout: DiffLayout::Inline,
             diff_mode: DiffMode::Hunks,

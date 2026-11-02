@@ -27,6 +27,15 @@ impl Settings {
         self.fmt(secs, &self.date_time_format, DateKind::DateTime, utc_offset)
     }
 
+    /// The history table's dates: short ages (`dates::short_relative`), or the Date and time
+    /// format.
+    pub fn format_graph_time(&self, secs: i64, now: i64, utc_offset: i32) -> String {
+        if self.relative_dates {
+            return crate::dates::short_relative(self.lang(), secs, now, &self.date_locale, utc_offset);
+        }
+        self.fmt(secs, &self.date_time_format, DateKind::DateTime, utc_offset)
+    }
+
     /// Commit details and tooltips: the Full date and time format.
     pub fn format_verbose(&self, secs: i64, utc_offset: i32) -> String {
         self.fmt(secs, &self.date_verbose_format, DateKind::Full, utc_offset)

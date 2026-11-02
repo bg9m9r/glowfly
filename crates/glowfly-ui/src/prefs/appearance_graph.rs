@@ -1,13 +1,15 @@
 //! Preferences > Appearance > Commit graph: which columns the graph shows (one labelled
-//! checkbox each, in one row), how commit descriptions show, the branch colour preset, and the
-//! two layout resets.
+//! checkbox each, in one row), the row density, how commit descriptions show, the branch colour
+//! preset, and the two layout resets.
 
 use super::{combo, help, row, section};
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::segmented::segmented;
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{BranchPalette, ColumnWidths, DescriptionMode as DM, GraphColumns, Settings};
+use glowfly_core::settings::{BranchPalette, ColumnWidths, Density, DescriptionMode as DM, GraphColumns, Settings};
 
 pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     section(ui, t.tr("prefs.ui.graph.section"));
@@ -22,12 +24,18 @@ pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
             ui.add_space(26.0);
             help(ui, t.tr("prefs.ui.graph.changes.help"));
         });
-        controls::checkbox(ui, &mut c.commit, t.tr("prefs.ui.graph.author.check"));
-        ui.horizontal(|ui| {
-            ui.add_space(26.0);
-            ui.add_enabled_ui(c.commit, |ui| controls::checkbox(ui, &mut c.commit_sha, t.tr("prefs.ui.graph.sha.check")));
-        });
+        controls::checkbox(ui, &mut c.author, t.tr("prefs.ui.graph.author.check"));
+        controls::checkbox(ui, &mut c.commit, t.tr("prefs.ui.graph.commit.check"));
         controls::checkbox(ui, &mut c.date, t.tr("prefs.ui.graph.date.check"));
+    });
+    row(ui, t.tr("prefs.ui.graph.density.label"), |ui| {
+        let options = [
+            (Density::Comfortable, t.tr("prefs.ui.graph.density.comfortable"), t.tr("prefs.ui.graph.density.comfortable.tip")),
+            (Density::Compact, t.tr("prefs.ui.graph.density.compact"), t.tr("prefs.ui.graph.density.compact.tip")),
+        ];
+        if let Some(d) = segmented(ui, ControlSize::Regular, s.graph_density, &options) {
+            s.graph_density = d;
+        }
     });
     row(ui, t.tr("prefs.ui.graph.description.label"), |ui| {
         let options = [

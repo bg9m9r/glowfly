@@ -37,7 +37,8 @@ fn tip_text(h: &H, verbose: &str) -> Option<String> {
 
 #[test]
 fn graph_date_tooltip() {
-    let (st, dir) = with_repo(ThemeChoice::Dark, "date-tip");
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "date-tip");
+    st.settings.relative_dates = false;
     let expected = first_commit_verbose(&st);
     let mut h = harness(st, true);
     h.run();

@@ -6,7 +6,7 @@ Label "Preferences"
 Label "General"
 Label "Updates"
 CheckBox "Check for updates once a day" [on]
-Label "Glowfly 0.2.0 · Last checked 02/01/2026 11:00 AM"
+Label "Glowfly 0.2.0 · Last checked 1 hour ago"
 Button "Check now"
 Label "Glowfly 0.3.0 is available."
 Label "This copy was installed with Flatpak, so Flatpak updates it: run flatpak update or use your software centre, then start Glowfly again. A copy installed from a downloaded .flatpak file updates by installing the new release's .flatpak file the same way."

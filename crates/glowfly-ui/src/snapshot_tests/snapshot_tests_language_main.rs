@@ -231,7 +231,6 @@ fn the_check_catches_the_english_window() {
     for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "No worktrees", "New branch"] {
         assert!(found.iter().any(|f| f == text), "{text} is caught: {found:?}");
     }
-    assert!(found.iter().any(|f| f.ends_with(" days ago")), "relative dates are caught: {found:?}");
     drop(h);
     remove_fixture(&dir);
 }
@@ -240,12 +239,12 @@ fn the_check_catches_the_english_window() {
 fn panels_german() {
     let (mut st, dir) = panels("lang-main-panels");
     st.settings.relative_dates = true;
-    st.settings.columns.changes = true;
     let newest = st.snap.as_ref().unwrap().commits.iter().map(|c| c.time).max().unwrap();
+    let short_date = glowfly_core::dates::short_relative(Lang::De, newest, NOW, &st.settings.date_locale, 0);
     let mut h = harness(st, true);
     h.run();
     let de = Lang::De;
-    for key in ["graph.header.refs", "graph.header.message", "graph.header.changes", "graph.header.commit", "graph.header.date"] {
+    for key in ["graph.header.refs", "graph.header.message", "graph.header.author", "graph.header.commit", "graph.header.date"] {
         assert!(shows(&h, de.tr(key)), "the {key} title is shown whole");
     }
     for key in [
@@ -265,8 +264,7 @@ fn panels_german() {
     assert!(check::shown_texts(&h).iter().any(|t| t.starts_with(cut)), "the filter field's hint");
     assert!(shows(&h, de.tr("graph.wip.label")), "the WIP row");
     assert!(h.query_by_label(de.tr("details.wip.stage_all.button")).is_some(), "the WIP lists");
-    let days = usize::try_from((NOW - newest) / 86_400).unwrap();
-    assert!(shows(&h, &de.trn("dates.days_ago", days, &[])), "a German relative date");
+    assert!(shows(&h, &short_date), "a German short date: {short_date}");
     let more = de.trf("sidebar.section.more.name", &[("section", &de.tr("sidebar.local.header"))]);
     assert!(h.query_by_label(&more).is_some(), "the ⋯ is named in German");
     assert!(h.query_by_label(de.tr("sidebar.action.new_branch")).is_some(), "the + is named in German");

@@ -7,7 +7,7 @@ Label "Einstellungen"
 Label "Allgemein"
 Label "Updates"
 CheckBox "Einmal täglich nach Updates suchen" [on]
-Label "Glowfly 0.2.0 · Zuletzt geprüft 02/01/2026 11:00 AM"
+Label "Glowfly 0.2.0 · Zuletzt geprüft vor 1 Stunde"
 Button "Jetzt prüfen" [disabled]
 Label "Wird heruntergeladen… 40 % (4.0 MB von 10.0 MB)"
 ProgressIndicator = 40

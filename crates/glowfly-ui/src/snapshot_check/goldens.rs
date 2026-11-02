@@ -112,6 +112,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("history_table_dark", Window),
     ("history_table_light", Window),
     ("history_table_high_contrast_light", Window),
+    ("history_table_compact_dark", Window),
     ("rebase_dragging", Window),
     // Diffs, blame, conflicts and the pull request's line comments.
     ("diff_inline", Window),
@@ -193,6 +194,8 @@ const IMAGE_ONLY: &[&str] = &[
     "history_table_dark",
     "history_table_light",
     "history_table_high_contrast_light",
+    // The same rows as `main_dark`'s text, 28 px tall.
+    "history_table_compact_dark",
     "toolbar_restyled_dark",
     "toolbar_restyled_light",
     "theme_graphite",

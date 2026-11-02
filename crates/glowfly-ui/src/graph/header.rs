@@ -1,7 +1,8 @@
 //! The graph's column header: the column titles with their draggable dividers (resize.rs), the
-//! least width each column gets so its title fits (for the rows as well), the columns fitted to
-//! the graph's width (`fit.rs`) and, when that hid some, a ⋯ mark at the message column's end
-//! naming them. The history's notes (Load more, a shallow clone's Fetch full history) are in the
+//! least width each column gets so its title fits (for the rows as well: COMMIT its SHA, DATE an
+//! absolute date), BRANCH / TAG fitted to its widest chips while it has its default width, the
+//! columns fitted to the graph's width (`fit.rs`) and, when that hid some, a ⋯ mark at the
+//! message column's end naming them. The history's notes (Load more, a shallow clone's Fetch full history) are in the
 //! end row (`more.rs`).
 
 use super::LANE_W;
@@ -32,12 +33,16 @@ enum Title {
     Graph,
     Msg,
     Changes,
+    Author,
     Commit,
     Date,
 }
 
 /// The columns, left to right.
-const ORDER: [Title; 6] = [Title::Refs, Title::Graph, Title::Msg, Title::Changes, Title::Commit, Title::Date];
+const ORDER: [Title; 7] = [Title::Refs, Title::Graph, Title::Msg, Title::Changes, Title::Author, Title::Commit, Title::Date];
+
+/// The widest BRANCH / TAG fits itself to its chips (while it has its default width).
+const REFS_FIT_MAX: f32 = 200.0;
 
 impl Title {
     /// The column's title in `t`.
@@ -47,6 +52,7 @@ impl Title {
             Self::Graph => t.tr("graph.header.graph"),
             Self::Msg => t.tr("graph.header.message"),
             Self::Changes => t.tr("graph.header.changes"),
+            Self::Author => t.tr("graph.header.author"),
             Self::Commit => t.tr("graph.header.commit"),
             Self::Date => t.tr("graph.header.date"),
         }
@@ -58,6 +64,7 @@ impl Title {
             Self::Graph => c.tree,
             Self::Msg => c.message,
             Self::Changes => c.changes,
+            Self::Author => c.author,
             Self::Commit => c.commit,
             Self::Date => c.date,
         }
@@ -77,6 +84,7 @@ impl Title {
         match self {
             Self::Refs => Some(ResizableColumn::Refs),
             Self::Changes => Some(ResizableColumn::Changes),
+            Self::Author => Some(ResizableColumn::Author),
             Self::Commit => Some(ResizableColumn::Commit),
             Self::Date => Some(ResizableColumn::Date),
             Self::Graph | Self::Msg => None,
@@ -95,11 +103,12 @@ pub(super) fn graph_width(ui: &egui::Ui, t: Lang, lanes: usize) -> f32 {
     graph_width_for(lanes, text_w(ui, Title::Graph.text(t), &FontId::proportional(TITLE_FONT)))
 }
 
-/// The least width of each resizable column: its title with the cell padding on one side and
-/// the edge inset on the other (the most either side takes). COMMIT also fits a seven-character
-/// SHA.
-fn floors(ui: &egui::Ui, t: Lang, font: &FontId) -> [(ResizableColumn, f32); 4] {
+/// The least width of each resizable column: its title with its padding (the edge inset on the
+/// side at the table's edge: BRANCH / TAG's left, the last shown column's right). COMMIT also
+/// fits a seven-character SHA, and DATE `date`, an absolute date in the Date and time format.
+fn floors(ui: &egui::Ui, t: Lang, font: &FontId, cfg: &GraphColumns, date: Option<&str>) -> [(ResizableColumn, f32); 5] {
     let sha_w = text_w(ui, "0000000", &type_scale::mono(type_scale::SMALL));
+    let last = ORDER.into_iter().rev().find(|c| c.shown(cfg));
     let mut out = ResizableColumn::ALL.map(|c| (c, 0.0));
     for title in ORDER {
         let Some(col) = title.resizable() else { continue };
@@ -107,7 +116,11 @@ fn floors(ui: &egui::Ui, t: Lang, font: &FontId) -> [(ResizableColumn, f32); 4] 
         if col == ResizableColumn::Commit {
             content = content.max(sha_w);
         }
-        let floor = content + CELL_PAD + EDGE_INSET;
+        if let Some(date) = date.filter(|_| col == ResizableColumn::Date) {
+            content = content.max(text_w(ui, date, &type_scale::font(type_scale::SMALL)));
+        }
+        let edge = col == ResizableColumn::Refs || last == Some(title);
+        let floor = content + CELL_PAD + if edge { EDGE_INSET } else { CELL_PAD };
         if let Some(slot) = out.iter_mut().find(|(c, _)| *c == col) {
             // Whole pixels, as stored widths are.
             slot.1 = floor.ceil();
@@ -121,22 +134,38 @@ fn floored(w: ColumnWidths, floors: &[(ResizableColumn, f32)]) -> ColumnWidths {
     floors.iter().fold(w, |w, &(col, f)| if w.get(col) < f { w.with(col, f) } else { w })
 }
 
+/// What the header lays the columns out from.
+pub(super) struct HeaderIn<'a> {
+    /// The GRAPH column's content width for its lanes.
+    pub graph_w: f32,
+    pub cfg: &'a GraphColumns,
+    pub saved: ColumnWidths,
+    /// The widest row's chips in BRANCH / TAG (`refs_fit::chips_w`).
+    pub chips_w: f32,
+    /// An absolute date as the DATE column shows it, when dates aren't ages.
+    pub date: Option<&'a str>,
+}
+
+/// `saved`, with BRANCH / TAG fitted to `chips_w` (its padding added, `REFS_FIT_MAX` at most)
+/// while it has its default width.
+fn refs_fitted(saved: ColumnWidths, chips_w: f32) -> ColumnWidths {
+    let col = ResizableColumn::Refs;
+    if saved.get(col) != col.default_width() {
+        return saved;
+    }
+    let want = (chips_w + EDGE_INSET + CELL_PAD).ceil().min(REFS_FIT_MAX);
+    if want > saved.get(col) { saved.with(col, want) } else { saved }
+}
+
 /// Draws the header row (the titles and dividers only) and returns the columns to lay the rows
-/// out with this frame: the saved widths, or the preview of a divider being dragged, fitted to
-/// the header's width, so header and rows line up.
-pub(super) fn column_header(
-    ui: &mut egui::Ui,
-    t: Lang,
-    graph_w: f32,
-    cols_cfg: &GraphColumns,
-    saved: ColumnWidths,
-    drag: &mut Option<ColumnDrag>,
-    msgs: &mut Vec<Msg>,
-) -> Fitted {
+/// out with this frame: the saved widths (BRANCH / TAG fitted to its chips), or the preview of a
+/// divider being dragged, fitted to the header's width, so header and rows line up.
+pub(super) fn column_header(ui: &mut egui::Ui, t: Lang, input: HeaderIn, drag: &mut Option<ColumnDrag>, msgs: &mut Vec<Msg>) -> Fitted {
+    let (cols_cfg, saved) = (input.cfg, refs_fitted(input.saved, input.chips_w));
     let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
     let font = FontId::proportional(TITLE_FONT);
-    let floors = floors(ui, t, &font);
-    let graph = (graph_w, text_w(ui, Title::Graph.text(t), &font));
+    let floors = floors(ui, t, &font, cols_cfg, input.date);
+    let graph = (input.graph_w, text_w(ui, Title::Graph.text(t), &font));
     let fitted = |d: &Option<ColumnDrag>| {
         let w = floored(d.as_ref().map_or(saved, |d| saved.with(d.col, d.width)), &floors);
         fit::fit(hdr.width(), graph, cols_cfg, w, &floors)
@@ -210,14 +239,24 @@ mod tests {
     use super::*;
     use ResizableColumn::*;
 
-    const NARROW: ColumnWidths = ColumnWidths { refs: 100.0, changes: 60.0, commit: 80.0, date: 80.0 };
+    const NARROW: ColumnWidths = ColumnWidths { refs: 100.0, changes: 60.0, author: 80.0, commit: 70.0, date: 80.0, layout: 2 };
 
     #[test]
     fn floors_widen_narrow_columns_only() {
-        let floors = [(Refs, 90.0), (Changes, 66.0), (Commit, 84.0), (Date, 40.0)];
+        let floors = [(Refs, 90.0), (Changes, 66.0), (Author, 70.0), (Commit, 84.0), (Date, 40.0)];
         let w = floored(NARROW, &floors);
-        assert_eq!((w.get(Refs), w.get(Date)), (100.0, 80.0), "wider columns are unchanged");
+        assert_eq!((w.get(Refs), w.get(Author), w.get(Date)), (100.0, 80.0, 80.0), "wider columns are unchanged");
         assert_eq!((w.get(Changes), w.get(Commit)), (66.0, 84.0));
+    }
+
+    #[test]
+    fn branch_tag_fits_its_chips_while_it_has_its_default_width() {
+        let d = ColumnWidths::default();
+        assert_eq!(refs_fitted(d, 60.0).get(Refs), 130.0, "narrow chips keep the default");
+        assert_eq!(refs_fitted(d, 140.0).get(Refs), 168.0, "wider chips widen it");
+        assert_eq!(refs_fitted(d, 400.0).get(Refs), REFS_FIT_MAX, "up to its cap");
+        let dragged = d.with(Refs, 110.0);
+        assert_eq!(refs_fitted(dragged, 400.0), dragged, "a width the user set stays");
     }
 
     #[test]
@@ -226,13 +265,21 @@ mod tests {
         let _ = ctx.run(egui::RawInput::default(), |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let font = FontId::proportional(TITLE_FONT);
-                let floors = floors(ui, Lang::En, &font);
+                let cfg = GraphColumns::default();
+                let floors = floors(ui, Lang::En, &font, &cfg, None);
                 let floor = |c: ResizableColumn| floors.iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
-                let pads = CELL_PAD + EDGE_INSET;
+                let pads = 2.0 * CELL_PAD;
                 for title in ORDER.into_iter().filter(|t| t.resizable().is_some()) {
                     assert!(floor(title.resizable().unwrap_or(Refs)) >= text_w(ui, title.text(Lang::En), &font) + pads);
                 }
-                assert!(floor(Commit) >= text_w(ui, "0000000", &type_scale::mono(type_scale::SMALL)) + pads);
+                let sha_w = text_w(ui, "0000000", &type_scale::mono(type_scale::SMALL));
+                assert!(floor(Commit) >= sha_w + pads);
+                assert!(floor(Commit) <= ColumnWidths::default().get(Commit), "the SHA fits COMMIT's default width");
+                assert!(floor(Date) >= text_w(ui, "Date", &font) + CELL_PAD + EDGE_INSET, "DATE is last: the edge inset");
+                let date = "12/28/2026 10:58 PM";
+                let wide = super::floors(ui, Lang::En, &font, &cfg, Some(date));
+                let date_w = text_w(ui, date, &type_scale::font(type_scale::SMALL));
+                assert!(wide.iter().any(|&(c, f)| c == Date && f >= date_w + CELL_PAD + EDGE_INSET), "absolute dates fit");
                 let w = floored(NARROW, &floors);
                 for (col, f) in floors {
                     assert!(w.get(col) >= f && w.get(col) >= NARROW.get(col), "{col:?}");
@@ -250,10 +297,12 @@ mod tests {
         let _ = ctx.run(egui::RawInput::default(), |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let font = FontId::proportional(TITLE_FONT);
-                let floor = |t: Lang, c: ResizableColumn| floors(ui, t, &font).iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
+                let cfg = GraphColumns::default();
+                let floor =
+                    |t: Lang, c: ResizableColumn| floors(ui, t, &font, &cfg, None).iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
                 let changes = Lang::De.tr("graph.header.changes");
                 assert_eq!(changes, "Änderungen");
-                assert!(floor(Lang::De, Changes) >= text_w(ui, changes, &font) + CELL_PAD + EDGE_INSET);
+                assert!(floor(Lang::De, Changes) >= text_w(ui, changes, &font) + 2.0 * CELL_PAD);
                 assert!(floor(Lang::De, Changes) > floor(Lang::En, Changes), "the longer German title widens the floor");
                 let graph = Lang::De.tr("graph.header.graph");
                 assert!(graph_width(ui, Lang::De, 1) >= text_w(ui, graph, &font));

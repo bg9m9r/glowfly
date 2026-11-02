@@ -2,7 +2,6 @@
 //! row), the graph's keyboard focus target, and its keys: the arrows (Shift+arrows extend the
 //! commit selection), Page Up/Down, Home/End, H and [ ].
 
-use super::ROW_H;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
@@ -13,6 +12,14 @@ use crate::ui::{list_focus, pane_focus};
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::repo::Snapshot;
+
+/// The graph's scroll offset and visible height, and its rows' height.
+#[derive(Clone, Copy)]
+pub(super) struct Viewport {
+    pub offset: f32,
+    pub height: f32,
+    pub row_h: f32,
+}
 
 /// The message for a click on commit row `oid`: Shift selects a range (it wins over Ctrl),
 /// Ctrl (Cmd on macOS) toggles the commit, and a plain click selects only it.
@@ -86,7 +93,7 @@ pub(super) fn keyboard_nav(
     sel: &Selection,
     snap: &Snapshot,
     rows: &GraphRows,
-    scroll: (f32, f32),
+    scroll: Viewport,
     view: &mut ViewState,
     msgs: &mut Vec<Msg>,
 ) {
@@ -97,8 +104,8 @@ pub(super) fn keyboard_nav(
     if focused.is_some_and(|f| f != id) || rows.is_empty() {
         return;
     }
-    let (offset, height) = scroll;
-    let page = ((height / ROW_H).floor() as usize).saturating_sub(1).max(1);
+    let Viewport { offset, height, row_h } = scroll;
+    let page = ((height / row_h).floor() as usize).saturating_sub(1).max(1);
     let keys = if focused == Some(id) { list_focus::take(ctx, id, KEYS) } else { list_focus::take_unfocused(ctx, page, KEYS) };
     let len = rows.len();
     // The commit a Shift move extends from (the selection's moving end), when there is one.
@@ -148,11 +155,11 @@ pub(super) fn keyboard_nav(
         Some(DisplayRow::Wip) if !extending => Msg::Repo(RepoMsg::SelectWip),
         Some(DisplayRow::Wip | DisplayRow::Worktree(_)) | None => return,
     });
-    let top = next as f32 * ROW_H;
+    let top = next as f32 * row_h;
     if top < offset {
         view.scroll_offset = Some(top);
-    } else if top + ROW_H > offset + height {
-        view.scroll_offset = Some(top + ROW_H - height);
+    } else if top + row_h > offset + height {
+        view.scroll_offset = Some(top + row_h - height);
     }
 }
 

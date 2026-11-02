@@ -98,7 +98,7 @@ Button "Hide"
 Label "on"
 Label "line 1"
 Label "linus"
-Label "01/13/2026 10:00 AM"
+Label "19 days ago"
 Label "Should this be case-insensitive?"
 MultilineTextInput "Reply"
 Button "Reply" [disabled]

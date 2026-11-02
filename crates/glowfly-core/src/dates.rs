@@ -1,5 +1,6 @@
 //! Date formatting with moment.js-style patterns such as `YYYY-MM-DD HH:mm`, localized month
-//! and weekday names, relative times, and each locale's usual patterns (`default_pattern`).
+//! and weekday names, relative times (and the history table's short ones, `short_relative`),
+//! and each locale's usual patterns (`default_pattern`).
 
 use crate::i18n::Lang;
 use chrono::{DateTime, FixedOffset, Locale};
@@ -105,6 +106,29 @@ pub fn relative(t: Lang, delta: i64) -> String {
     }
 }
 
+/// The history table's short age of `secs` at `now`, in `t`: "now", "5 min", "3 h",
+/// "Yesterday", "4 d", then the day ("Jan 10") within `now`'s year, else with the year
+/// ("Jan 10, 2025"); month words follow the date locale, in the zone `utc_offset` from UTC.
+pub fn short_relative(t: Lang, secs: i64, now: i64, locale_setting: &str, utc_offset: i32) -> String {
+    use chrono::Datelike;
+    let n = |d: i64| usize::try_from(d).unwrap_or(0);
+    let year = |s: i64| {
+        let zone = FixedOffset::east_opt(utc_offset).unwrap_or_else(|| FixedOffset::east_opt(0).expect("zero offset is valid"));
+        DateTime::from_timestamp(s, 0).map(|d| d.with_timezone(&zone).year())
+    };
+    match now - secs {
+        d if d < 60 => t.tr("dates.short.now").to_owned(),
+        d if d < 3600 => t.trn("dates.short.minutes", n(d / 60), &[]),
+        d if d < 86_400 => t.trn("dates.short.hours", n(d / 3600), &[]),
+        d if d < 86_400 * 2 => t.tr("dates.short.yesterday").to_owned(),
+        d if d < 86_400 * 7 => t.trn("dates.short.days", n(d / 86_400), &[]),
+        _ => {
+            let pattern = if year(secs) == year(now) { t.tr("dates.short.this_year") } else { t.tr("dates.short.other_year") };
+            format(secs, pattern, locale_setting, utc_offset)
+        }
+    }
+}
+
 /// Common locales offered in Preferences.
 pub const LOCALES: [(&str, &str); 14] = [
     ("system", "System"),
@@ -161,6 +185,38 @@ mod tests {
         assert_eq!(en(45 * 86_400), "1 month ago");
         assert_eq!(en(400 * 86_400), "1 year ago");
         assert_eq!(en(-5), "just now");
+    }
+
+    #[test]
+    fn short_relative_boundaries() {
+        // 2026-02-01 12:00 UTC.
+        let now = 1_769_947_200;
+        let en = |ago: i64| short_relative(Lang::En, now - ago, now, "en_US", 0);
+        assert_eq!([en(-5), en(0), en(59)], ["now", "now", "now"]);
+        assert_eq!([en(60), en(5 * 60), en(3599)], ["1 min", "5 min", "59 min"]);
+        assert_eq!([en(3600), en(3 * 3600), en(86_399)], ["1 h", "3 h", "23 h"]);
+        assert_eq!([en(86_400), en(2 * 86_400 - 1)], ["Yesterday", "Yesterday"]);
+        assert_eq!([en(2 * 86_400), en(4 * 86_400), en(7 * 86_400 - 1)], ["2 d", "4 d", "6 d"]);
+        // A week or more: the day, with the year once it is another year's.
+        assert_eq!(en(7 * 86_400), "Jan 25");
+        assert_eq!(en(22 * 86_400), "Jan 10");
+        assert_eq!(en(32 * 86_400), "Dec 31, 2025");
+        // The year is the shown zone's: 2026-01-01 03:00 UTC is still 2025 at UTC-5.
+        let new_year = 1_767_236_400;
+        assert_eq!(short_relative(Lang::En, new_year, now, "en_US", 0), "Jan 1");
+        assert_eq!(short_relative(Lang::En, new_year, now, "en_US", -5 * 3600), "Dec 31, 2025");
+    }
+
+    #[test]
+    fn short_relative_follows_the_language() {
+        let now = 1_769_947_200;
+        let at = |t: Lang, ago: i64| short_relative(t, now - ago, now, "de_DE", 0);
+        assert_eq!(
+            [at(Lang::De, 0), at(Lang::De, 300), at(Lang::De, 7200), at(Lang::De, 90_000), at(Lang::De, 4 * 86_400)],
+            ["jetzt", "5 Min.", "2 Std.", "Gestern", "4 Tg."]
+        );
+        assert_eq!([at(Lang::Es, 0), at(Lang::Es, 7200), at(Lang::Es, 90_000)], ["ahora", "2 h", "Ayer"]);
+        assert!(at(Lang::De, 22 * 86_400).starts_with("10. Jan"), "{}", at(Lang::De, 22 * 86_400));
     }
 
     #[test]

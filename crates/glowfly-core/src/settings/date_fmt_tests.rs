@@ -6,8 +6,9 @@ use super::{DateKind, Settings};
 /// 2026-10-13 12:00 UTC.
 const SECS: i64 = 1_791_892_800;
 
+/// Absolute dates in `locale` (new settings show ages).
 fn with_locale(locale: &str) -> Settings {
-    Settings { date_locale: locale.into(), ..Settings::default() }
+    Settings { date_locale: locale.into(), relative_dates: false, ..Settings::default() }
 }
 
 fn en() -> Settings {
@@ -82,6 +83,19 @@ fn offset_moves_the_day() {
     // 23:30 UTC is already the next day an hour east.
     assert_eq!(en().format_date(1_791_934_200, 3600), "10/14/2026");
     assert_eq!(en().format_date(1_791_934_200, 0), "10/13/2026");
+}
+
+#[test]
+fn new_settings_show_short_ages_in_the_graph() {
+    let s = Settings { date_locale: "en_US".into(), ..Settings::default() };
+    assert!(s.relative_dates);
+    assert_eq!(s.format_graph_time(SECS, SECS + 3 * 3600, 0), "3 h");
+    assert_eq!(s.format_time(SECS, SECS + 3 * 3600, 0), "3 hours ago", "lists keep the long ages");
+    assert_eq!(s.date_tooltip(SECS, SECS + 3 * 3600, 0), "October 13, 2026 12:00 PM", "the hover has the full timestamp");
+    assert_eq!(en().format_graph_time(SECS, SECS + 3 * 3600, 0), "10/13/2026 12:00 PM");
+    // A saved file keeps its choice.
+    let saved: Settings = serde_json::from_str(r#"{"relative_dates": false}"#).unwrap();
+    assert!(!saved.relative_dates);
 }
 
 #[test]

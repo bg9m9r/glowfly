@@ -4,7 +4,7 @@
 
 use crate::msg::Msg;
 use crate::state::{AppState, Selection};
-use crate::ui::graph::ROW_H;
+use crate::ui::graph::row_h;
 use crate::ui::snapshot_tests::snapshot_tests_line_counts::with_wip;
 use crate::ui::snapshot_tests::snapshot_tests_select::{click, row_y};
 use crate::ui::snapshot_tests::snapshot_tests_stash::with_stashes;
@@ -15,6 +15,7 @@ use eframe::egui::{Event, Key, Modifiers, Order, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget};
+use glowfly_core::settings::Density;
 use glowfly_core::settings::ThemeChoice;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -50,7 +51,7 @@ fn shift_f10_opens_the_selected_commits_menu_below_its_row() {
     shift_f10(&mut h);
     assert!(h.query_by_label("Checkout (detached)").is_some(), "the selected commit's menu opened");
     let top = focus_in_menu(&h).expect("its first item has the focus");
-    assert!(top >= row_y(0) + ROW_H / 2.0, "below the row");
+    assert!(top >= row_y(0) + row_h(Density::Comfortable) / 2.0, "below the row");
     h.press_key(Key::Escape);
     h.run_ok();
     assert!(h.query_by_label("Checkout (detached)").is_none(), "Esc closed it");

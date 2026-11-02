@@ -126,7 +126,7 @@ Label "Adds a page that lists search results."
 Label "Paging and filters come in a later change."
 Label "grace"
 Label "requested changes"
-Label "01/13/2026 10:00 AM"
+Label "19 days ago"
 painted:
   "Repository"
   "Branch"

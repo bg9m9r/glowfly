@@ -41,11 +41,12 @@ start with `state/`, `update/` or `ui/`.
 ## The graph (history table)
 
 - `graph/layout.rs`: the history table's column layout: each column a cell, divider to divider, whose stored width is the whole cell, with its content 12 px in from a divider and 16 px in from the table's edges.
-- `graph/fit.rs`: how the columns give way in a narrow graph (narrowed, then hidden, MESSAGE keeping room), never saved.
-- `graph/cells.rs`: the graph row's text cells.
+- `graph/fit.rs`: how the columns give way in a narrow graph (CHANGES, COMMIT, AUTHOR, DATE hide, then BRANCH / TAG narrows and its chips move inline, MESSAGE keeping 240 px), never saved.
+- `graph/cells.rs`: the graph row's single-line text cells, and the pull request chips by head commit.
+- `graph/refs_fit.rs`: how wide BRANCH / TAG's chips want to be (each row folded to its first chip and "+N"), for the column's auto-fit and inline chips.
 - `graph/wip_row.rs`: this tab's WIP row with its label, change chips and line total, spanning the columns it leaves empty and keeping the label whole longest.
 - `graph/labels.rs`: the row's ref chips with their marks, fitting and "+N" chip.
-- `graph/nodes.rs`: the row's nodes.
+- `graph/nodes.rs`: the row's nodes, sized by the row density.
 - `graph/marks.rs`: the painted local, remote and tag marks.
 - `graph/row_look.rs`: the row's background: the lane band and the highlight; the selection and hover come from `widgets/row_fill.rs`.
 - `graph/lane_colours.rs`: the graph's per-row colours.
