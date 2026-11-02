@@ -1,13 +1,15 @@
 //! The left-panel section headers' + and ⋯: shown while the header is hovered or focused, still
 //! reachable by name while hidden, the ⋯ menu, a disabled + with its reason, the Git Flow +'s
-//! Start menu, the WORKTREES and SUBMODULES empty states (hidden while filtering), and the
-//! REMOTE count of remotes.
+//! Start menu, the WORKTREES and SUBMODULES empty states once expanded (hidden while
+//! filtering), and the REMOTE count of remotes.
 
 use crate::gitflow::GitFlowMsg;
 use crate::msg::{BranchMsg, Msg};
 use crate::remote::RemoteMsg;
+use crate::state::session_view::empty_sections::Folding;
 use crate::submodule::SubmoduleMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::snapshot_tests::snapshot_tests_empty_states::expand;
 use crate::ui::snapshot_tests::snapshot_tests_gitflow::initialized;
 use crate::ui::snapshot_tests::snapshot_tests_painted::{bounds, shapes_inside};
 use crate::ui::snapshot_tests::snapshot_tests_pr_no_host::rest_on;
@@ -124,7 +126,10 @@ fn gitflow_header_start_menu() {
 
 #[test]
 fn worktrees_submodules_empty() {
-    let (st, dir) = with_repo(ThemeChoice::Dark, "header-empty");
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "header-empty");
+    for which in [Folding::Worktrees, Folding::Submodules] {
+        expand(&mut st, which);
+    }
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Add worktree…").is_some() && h.query_by_label("Add submodule…").is_some());
@@ -143,6 +148,9 @@ fn worktrees_submodules_empty() {
 fn empty_sections_filtered() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "header-empty-filtered");
     st.session.tab_view.ref_filter = "zzz".into();
+    for which in [Folding::Worktrees, Folding::Submodules] {
+        expand(&mut st, which);
+    }
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Worktrees actions").is_some() && h.query_by_label("Submodules actions").is_some(), "the headers stay");
@@ -187,7 +195,15 @@ fn blocked_add_without_menu_keeps_section() {
             let add = HeaderAdd { name: "Probe add".into(), tip: None, blocked: Some("Not now".into()), action: AddAction::Menu(&items) };
             show(
                 ui,
-                Header { key: "probe", title: "Probe", count: Some(1), add: Some(add), menu: None, t: glowfly_core::i18n::Lang::En },
+                Header {
+                    key: "probe",
+                    title: "Probe",
+                    count: Some(1),
+                    folds: false,
+                    add: Some(add),
+                    menu: None,
+                    t: glowfly_core::i18n::Lang::En,
+                },
                 open,
                 msgs,
             );

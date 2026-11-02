@@ -57,8 +57,8 @@ mod user_repos;
 mod web;
 
 pub use auth::{
-    Auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact, resolve_auth,
-    save_token,
+    Auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact, not_connected_text,
+    resolve_auth, save_token, says_not_connected,
 };
 pub use check_detail::{CheckList, CheckQuery, CheckRun, MAX_CHECKS, RunState, check_list, checks_in_app, duration_text};
 pub use checks::{CHECKED_PRS, CheckState, Checks, TipQuery};

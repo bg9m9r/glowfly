@@ -31,17 +31,18 @@ pub(super) struct Picker<'a> {
 
 /// The section header (with its + and ⋯) and the filter chip just left of them. A click on
 /// the chip, the + or the ⋯ leaves the section as it is.
-/// `key` is the section's stable id, `title` its header and `chip_tip` the chip's hover, in `t`.
+/// `key` is the section's stable id, `title` its header and `chip_tip` the chip's hover, in `t`;
+/// `count` is None while nothing could be loaded to count.
 pub(super) fn header(
     ui: &mut egui::Ui,
     t: Lang,
-    (key, title, chip_tip, count): (&'static str, &str, &str, usize),
+    (key, title, chip_tip, count): (&'static str, &str, &str, Option<usize>),
     open: &mut bool,
     p: Picker,
     (add, menu): (Option<HeaderAdd>, MenuFn),
     msgs: &mut Vec<Msg>,
 ) -> Response {
-    let h = section_header::Header { key, title, count: Some(count), add, menu: Some(menu), t };
+    let h = section_header::Header { key, title, count, folds: false, add, menu: Some(menu), t };
     let HeaderResponse { header: resp, free_right: right } = section_header::show(ui, h, open, msgs);
     let painter = ui.painter().clone();
     let (title_font, _) = widgets::section_fonts(ui);
@@ -181,9 +182,9 @@ fn saved_row(ui: &mut egui::Ui, s: &SavedFilter, checked: bool, (up, down): (boo
 }
 
 /// The line above a section's rows: faint text, or an error with the sign-in buttons.
-pub(super) fn hint(ui: &mut egui::Ui, h: &Hint, msgs: &mut Vec<Msg>) {
+pub(super) fn hint(ui: &mut egui::Ui, t: Lang, h: &Hint, msgs: &mut Vec<Msg>) {
     match h {
         Hint::Faint(text) => hint_row(ui, text.clone()),
-        Hint::Error(e) => forge_error_rows(ui, e, msgs),
+        Hint::Error(e) => forge_error_rows(ui, t, e, msgs),
     }
 }

@@ -10,6 +10,7 @@ use crate::state::{AppState, ForgeState, Status};
 use glowfly_core::forge::{
     Auth, Builtin, Connection, FilterChoice, FilterKind, Issue, IssueFacets, Me, PrFacets, Provider, PullRequest, Target,
 };
+use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{RepoTrust, Settings};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -120,16 +121,16 @@ fn choosing_mine_saves_it_and_asks_who_i_am_once() {
 
     st.session.forge.as_mut().unwrap().prs = vec![pr(1, "ada"), pr(2, "grace"), pr(3, "Ada")];
     let filters = st.settings.forge_filters_for(&real);
-    assert!(matches!(pr_view(fs(&st), &filters).hint, Some(Hint::Faint(h)) if h == "Finding your GitHub account…"));
+    assert!(matches!(pr_view(Lang::En, fs(&st), &filters).hint, Some(Hint::Faint(h)) if h == "Finding your GitHub account…"));
     let h = host(&st);
     reply(&mut st, h, FilterResult::Me { epoch: 0, result: Ok(ada()) });
-    let view = pr_view(fs(&st), &filters);
+    let view = pr_view(Lang::En, fs(&st), &filters);
     assert!(view.rows.is_empty(), "nobody asked Ada for a review");
     assert_eq!(view.empty.as_deref(), Some("No open pull requests match \u{201c}Needs my review\u{201d}"));
     let fx = send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs));
     assert!(filter_calls(&fx).is_empty(), "known");
     let filters = st.settings.forge_filters_for(&real);
-    let view = pr_view(fs(&st), &filters);
+    let view = pr_view(Lang::En, fs(&st), &filters);
     assert_eq!(view.rows.iter().map(|p| p.id).collect::<Vec<_>>(), [1, 3]);
     assert_eq!(view.hint, Some(Hint::Faint("Mine · 2 of 3".into())));
     let _ = std::fs::remove_dir_all(dir);
@@ -149,7 +150,7 @@ fn team_review_requests_count_as_needs_my_review() {
     let h = host(&st);
     reply(&mut st, h, FilterResult::Me { epoch: 0, result: Ok(Me { teams: vec!["O/Core".into()], ..ada() }) });
     let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
-    let view = pr_view(fs(&st), &filters);
+    let view = pr_view(Lang::En, fs(&st), &filters);
     assert_eq!(view.rows.iter().map(|p| p.id).collect::<Vec<_>>(), [1, 3]);
     assert_eq!(view.hint, Some(Hint::Faint("Needs my review · 2 of 3".into())));
     // Signing in again forgets the teams with the user.
@@ -165,7 +166,7 @@ fn a_failed_lookup_shows_the_error_and_the_next_refresh_asks_again() {
     let h = host(&st);
     reply(&mut st, h, FilterResult::Me { epoch: 0, result: Err(error(false)) });
     let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
-    assert_eq!(pr_view(fs(&st), &filters).hint, Some(Hint::Error("boom".into())));
+    assert_eq!(pr_view(Lang::En, fs(&st), &filters).hint, Some(Hint::Error("boom".into())));
     let fx = update(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false }), Instant::now());
     assert!(filter_calls(&fx).iter().any(|(_, c)| matches!(c, FilterCall::Me { .. })));
     let _ = std::fs::remove_dir_all(dir);

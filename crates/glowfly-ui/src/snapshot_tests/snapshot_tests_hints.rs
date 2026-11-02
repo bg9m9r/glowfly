@@ -1,6 +1,7 @@
 //! The tip row (widgets/hint_row.rs): the Undo tip under the graph's header in Graphite and
-//! Porcelain, the Connect tip in a 240 px left panel (its button under the text), the Tidy tip in
-//! German, its × menu, and Preferences > General's Help and tips.
+//! Porcelain, the Connect tip in a 240 px left panel (its button under the text) above a
+//! collapsed PULL REQUESTS section, the Tidy tip in German, its × menu, and Preferences >
+//! General's Help and tips.
 
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
 use super::snapshot_tests_forge_filters::target;
@@ -13,6 +14,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::vec2;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::Provider;
+use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
 use std::time::Instant;
 
@@ -52,6 +54,14 @@ fn hint_row_undo_light() {
 fn hint_row_connect() {
     let (mut st, dir) = with_repo(ThemeChoice::Graphite, "hint-row-connect");
     st.settings.panel_sizes.sidebar = Some(240.0);
+    // As the tip really shows: PULL REQUESTS collapsed (an open one shows its own Connect…), and
+    // the repository's `origin` on GitHub.
+    st.view.sections.prs = false;
+    let snap = st.snap.as_mut().unwrap();
+    let main = snap.locals.iter().find(|b| b.name == "main").and_then(|b| b.oid).unwrap();
+    snap.remotes = vec![("origin".into(), vec![("main".into(), main)])];
+    let url = "https://github.com/o/r.git".to_owned();
+    snap.remote_info = vec![RemoteInfo { name: "origin".into(), urls: vec![url], push_urls: Vec::new(), skip_fetch_all: false }];
     let mut f = ForgeState::new(Some(target(Provider::GitHub, "github.com")), "origin".into(), None);
     f.host_status = Status::Ok;
     st.session.forge = Some(f);

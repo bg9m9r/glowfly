@@ -198,6 +198,11 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Let the PULL REQUESTS and ISSUES filter chip use the + and ⋯ room while they are hidden; the
   reserved room cuts the filter name short at the default panel width
 
+### Empty sections say what the feature is for
+
+- A short "Learn more" link in each empty state, to a page on the feature
+- In the narrowest left panel (under about 240 px) a German Remote hinzufügen… is cut with "…"
+
 ### Activity panel opens only when asked
 
 - Name the tab in a failure toast raised for a tab that isn't active ("In web-app: ...")

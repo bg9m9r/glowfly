@@ -239,22 +239,10 @@ pub fn hint_row(ui: &mut egui::Ui, text: String) {
     );
 }
 
-pub fn forge_error_rows(ui: &mut egui::Ui, error: &str, msgs: &mut Vec<Msg>) {
-    ui.add_space(4.0);
-    ui.horizontal(|ui| {
-        ui.add_space(widgets::ROW_INDENT);
-        ui.label(RichText::new(error).color(color::removed()).size(type_scale::SMALL));
-    });
-    ui.horizontal(|ui| {
-        ui.add_space(widgets::ROW_INDENT);
-        if ui.small_button("Sign in").clicked() {
-            msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
-        }
-        if ui.small_button("Connect…").clicked() {
-            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
-        }
-    });
-    ui.add_space(4.0);
+/// A hosting service that failed though credentials were found (an expired token, a network
+/// failure): `widgets::empty_state::failure` with its Sign in.
+pub fn forge_error_rows(ui: &mut egui::Ui, t: Lang, error: &str, msgs: &mut Vec<Msg>) {
+    widgets::empty_state::failure(ui, t, error, true, msgs);
 }
 
 /// A service's state in the status bar: "· <ok_text>" when it answered (nothing without a text),

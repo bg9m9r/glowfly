@@ -39,7 +39,8 @@ source file, update its line here.
 - `widgets/menu_open.rs`: opens egui's dropdown menus from their button with the keyboard too (Alt+Down, Right in a popup's menu; egui's Enter and Space), names the button for Esc's focus return, and keeps a press in a keyboard-opened submenu from closing the menu.
 - `widgets/menu_submenu_keyed.rs`: a submenu opened from the keyboard (Right, Enter or Space on its row), drawn as its own menu where egui's would be, since egui opens its own only under the pointer.
 - `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover, and names and paths cut in the middle.
-- `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), and the empty state line under an empty section; each + is described by `state/section_actions.rs`.
+- `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), muted at count 0 for a section that folds away while empty; each + is described by `state/section_actions.rs`.
+- `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…).
 - `line_counts.rs`: line counts drawn one way everywhere: a file row's `+N −M` and proportional bar, a total, the WIP row's chips.
 - Added, removed and modified share `common::added_color`, `removed_color` and `modified_color` with the status letters.
 - `date_tip.rs`: date labels with their full date on hover.

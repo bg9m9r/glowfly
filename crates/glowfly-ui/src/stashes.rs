@@ -1,10 +1,12 @@
 //! The STASHES section of the left panel: one row per stash (a click selects its commit) with a
-//! menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right. The header's + opens the Stash dialog, and its menu
-//! stashes every change or only the staged ones.
+//! menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right.
+//! Without stashes, once expanded, a sentence on what a stash is and Stash changes…. The
+//! header's + opens the Stash dialog, and its menu stashes every change or only the staged ones.
 
 use super::common::{menu_danger, menu_item, menu_item_if};
 use super::theme::color;
 use super::widgets;
+use super::widgets::empty_state::{self, Action};
 use super::widgets::menu::separator;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::msg::{Msg, RepoMsg, StashMsg};
@@ -17,14 +19,17 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stash_ops;
 
-/// Draws the section; `all` and `staged` are the header's Stash changes and Stash staged
-/// changes.
+/// The selection, the left-panel filter, and whether it has text.
+type Filtered<'a> = (&'a Selection, &'a dyn Fn(&str) -> bool, bool);
+
+/// Draws the section under the left-panel filter (and whether it has text); `all` and `staged`
+/// are the header's Stash changes and Stash staged changes.
 pub(super) fn section(
     ui: &mut egui::Ui,
     t: Lang,
     snap: &Snapshot,
     open: &mut bool,
-    (sel, shown): (&Selection, &dyn Fn(&str) -> bool),
+    (sel, shown, filtering): Filtered,
     (all, staged): (&SectionAction, &SectionAction),
     msgs: &mut Vec<Msg>,
 ) {
@@ -33,10 +38,21 @@ pub(super) fn section(
         action_item(ui, msgs, staged);
     };
     let title = t.tr("sidebar.stashes.header");
-    let h = Header { key: "stashes", title, count: Some(snap.stashes.len()), add: Some(HeaderAdd::send(all)), menu: Some(&menu), t };
+    let h = Header {
+        key: "stashes",
+        title,
+        count: Some(snap.stashes.len()),
+        folds: true,
+        add: Some(HeaderAdd::send(all)),
+        menu: Some(&menu),
+        t,
+    };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;
+    }
+    if snap.stashes.is_empty() && !filtering {
+        empty_state::show(ui, t.tr("sidebar.empty.stashes"), vec![Action::of(all)], msgs);
     }
     for s in snap.stashes.iter().filter(|s| shown(&s.message)) {
         if widgets::list_row_hidden(ui) {

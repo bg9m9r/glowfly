@@ -5,11 +5,13 @@ use super::forge_filters_tests::{filter_calls, open, pr, reply, send};
 use super::update;
 use crate::effect::{FilterCall, FilterResult};
 use crate::msg::{FilterMsg, ForgeMsg, Msg};
-use crate::state::forge_filters::{MeState, OptionsState, pr_view};
+use crate::state::forge_filters::{MeState, OptionsState, connect_issues_prompt, connect_prompt, issues_sign_in, pr_view};
 use crate::state::{AppState, Status};
 use glowfly_core::forge::{
-    Account, Auth, Builtin, FilterChoice, FilterKind, FilterOptions, Issue, IssueFacets, Me, PrFacets, Provider, PullRequest, Target,
+    Account, Auth, Builtin, Connection, FilterChoice, FilterKind, FilterOptions, Issue, IssueFacets, Me, PrFacets, Provider, PullRequest,
+    Target,
 };
+use glowfly_core::i18n::Lang;
 use glowfly_core::settings::TrackerChoice;
 use std::time::Instant;
 
@@ -125,6 +127,52 @@ fn a_user_without_teams_keeps_the_sign_in_and_personal_requests() {
     assert_eq!(fs.filters.me, MeState::Known(user("ada")));
     assert!(fs.auth.contains_key(&key), "still signed in");
     let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
-    assert_eq!(pr_view(fs, &filters).rows.iter().map(|p| p.id).collect::<Vec<_>>(), [2], "the team-only request isn't listed");
+    assert_eq!(pr_view(Lang::En, fs, &filters).rows.iter().map(|p| p.id).collect::<Vec<_>>(), [2], "the team-only request isn't listed");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn an_account_not_connected_is_offered_a_connection() {
+    let (mut st, dir) = open("ffa-connect");
+    let fs = st.session.forge.as_mut().unwrap();
+    // As the runner reports `resolve_auth` finding no credentials at all.
+    fs.host_status = Status::Error("authentication failed: not connected to GitHub".into());
+    fs.tracker_status = Status::Error("authentication failed: not connected to GitHub".into());
+    let fs = st.session.forge.as_ref().unwrap();
+    assert_eq!(connect_prompt(Lang::En, fs, &[]).as_deref(), Some("Connect GitHub to see its pull requests here."));
+    let issues = connect_issues_prompt(Lang::En, fs, &[], true);
+    assert_eq!(issues, Some(("Connect GitHub to see its issues here.".to_owned(), false)), "the PR section's Connect… covers it");
+    let collapsed = connect_issues_prompt(Lang::En, fs, &[], false);
+    assert_eq!(collapsed.map(|c| c.1), Some(true), "with PULL REQUESTS collapsed, its own Connect…");
+    // Connected but failing (an expired token): the error and Sign in show instead.
+    let connected = [Connection { account: host(&st).account(), user: "ada".into(), method: "access token".into() }];
+    assert_eq!(connect_prompt(Lang::En, fs, &connected), None);
+    assert_eq!(connect_issues_prompt(Lang::En, fs, &connected, true), None);
+    assert!(!issues_sign_in(fs, true), "one Sign in for the account, in PULL REQUESTS");
+    assert!(issues_sign_in(fs, false), "its own while PULL REQUESTS is collapsed");
+    st.session.forge.as_mut().unwrap().host_status = Status::Ok;
+    assert_eq!(connect_prompt(Lang::En, st.session.forge.as_ref().unwrap(), &[]), None, "it answered");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn the_empty_pull_request_list_speaks_the_language() {
+    let (st, dir) = open("ffa-empty-de");
+    let fs = st.session.forge.as_ref().unwrap();
+    let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
+    assert_eq!(pr_view(Lang::En, fs, &filters).empty.as_deref(), Some("No open pull requests"));
+    assert_eq!(pr_view(Lang::De, fs, &filters).empty.as_deref(), Some("Keine offenen Pull Requests"));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Credentials from Git Credential Manager or `GITHUB_TOKEN` (no connection in Preferences) that
+/// fail offline or on a rate limit keep their cause and Sign in rather than asking to connect.
+#[test]
+fn a_failure_with_credentials_is_not_a_missing_connection() {
+    let (mut st, dir) = open("ffa-offline");
+    for cause in ["network error: offline", "HTTP 403: API rate limit exceeded"] {
+        st.session.forge.as_mut().unwrap().host_status = Status::Error(cause.into());
+        assert_eq!(connect_prompt(Lang::En, st.session.forge.as_ref().unwrap(), &[]), None, "{cause}");
+    }
     let _ = std::fs::remove_dir_all(dir);
 }

@@ -69,6 +69,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("tabs_new_tab_hover", Top(40.0)),
     ("tabs_close_focus", Top(40.0)),
     ("section_header_focus", TopLeft(280.0, 200.0)),
+    // The left panel's empty states: an expanded empty Worktrees, and pull requests not connected.
+    ("sidebar_empty_worktrees", TopLeft(300.0, 820.0)),
+    ("sidebar_prs_connect", TopLeft(300.0, 820.0)),
     ("toolbar_restyled_dark", Window),
     ("toolbar_restyled_light", Window),
     ("menu_bar_file", Window),
