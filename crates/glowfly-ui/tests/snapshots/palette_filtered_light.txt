@@ -1,40 +1,40 @@
 Dialog
   TextInput = "ch" [focused]
-  Button "Checkout search"
-  Button "Check for updates"
-  Button "Checkout login-page"
-  Button "Checkout tag v0.1.0"
-  Button "Stash changes"
-  Button "Stash staged changes…"
-  Button "Ignore whitespace changes"
-  Button "Configure sparse checkout…"
-  Button "Create patch from uncommitted changes…"
-  Button "Switch branch…"
-  Button "Search commits"
-  Button "Create tag at HEAD…"
-  Button "Create branch at HEAD…"
-  Button "Apply patch…"
-  Button "Rename branch main…"
-  Button "Copy link to branch main"
-  Button "Create annotated tag at HEAD…"
-  Button "Blame file…"
-  Button "View release notes"
-  Button "Stash selected files…"
-  Button "Create worktree from main…"
-  Button "Theme: High contrast light"
-  Button "Export logs…"
-  Button "Hide left panel"
-  Button "Configure Git LFS…"
-  Button "Configure Git Flow…"
-  Button "Find repositories in folders…"
-  Button "View error log"
-  Button "Configure terminal"
-  Button "View activity log"
-  Button "Keyboard shortcuts"
-  Button "Stash with message…"
-  Button "Copy link to repository"
-  Button "Reload custom commands"
-  Button "Enter full screen"
+  Button "Checkout search" [off]
+  Button "Check for updates" [on]
+  Button "Checkout login-page" [off]
+  Button "Checkout tag v0.1.0" [off]
+  Button "Stash changes" [off]
+  Button "Stash staged changes…" [off]
+  Button "Ignore whitespace changes" [off]
+  Button "Configure sparse checkout…" [off]
+  Button "Create patch from uncommitted changes…" [off]
+  Button "Switch branch…" [off]
+  Button "Search commits" [off]
+  Button "Create tag at HEAD…" [off]
+  Button "Create branch at HEAD…" [off]
+  Button "Apply patch…" [off]
+  Button "Rename branch main…" [off]
+  Button "Copy link to branch main" [off]
+  Button "Create annotated tag at HEAD…" [off]
+  Button "Blame file…" [off]
+  Button "View release notes" [off]
+  Button "Stash selected files…" [off]
+  Button "Create worktree from main…" [off]
+  Button "Theme: High contrast light" [off]
+  Button "Export logs…" [off]
+  Button "Hide left panel" [off]
+  Button "Configure Git LFS…" [off]
+  Button "Configure Git Flow…" [off]
+  Button "Find repositories in folders…" [off]
+  Button "View error log" [off]
+  Button "Configure terminal" [off]
+  Button "View activity log" [off]
+  Button "Keyboard shortcuts" [off]
+  Button "Stash with message…" [off]
+  Button "Copy link to repository" [off]
+  Button "Reload custom commands" [off]
+  Button "Enter full screen" [off]
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "detached at f0d635c"

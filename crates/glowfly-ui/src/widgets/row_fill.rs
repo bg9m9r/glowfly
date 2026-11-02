@@ -8,7 +8,7 @@
 //! and the neutral `tokens::selected_inactive` otherwise.
 
 use crate::ui::theme::{color, tokens};
-use eframe::egui::{Color32, Painter, Rect, Response, pos2, vec2};
+use eframe::egui::{Color32, CornerRadius, Painter, Rect, Response, pos2, vec2};
 
 /// The width of a selected row's accent bar.
 pub const ACCENT_BAR_W: f32 = 3.0;
@@ -71,6 +71,16 @@ pub fn paint_state(p: &Painter, rect: Rect, s: RowState) {
     if s.focused {
         tokens::focus_ring_inset(p, rect, 0);
     }
+}
+
+/// Paints the selection of a row inset in a list (the palette's current item) at `rect` with
+/// corner radius `r`: the selection fill on the rounded shape, and the accent bar along its left
+/// edge, following the left corners. No hover, press or focus goes over it.
+pub fn paint_inset_selection(p: &Painter, rect: Rect, r: u8) {
+    let pal = color::current();
+    p.rect_filled(rect, CornerRadius::same(r), pal.selected);
+    let bar = Rect::from_min_size(rect.left_top(), vec2(ACCENT_BAR_W, rect.height()));
+    p.rect_filled(bar, CornerRadius { nw: r, sw: r, ne: 0, se: 0 }, pal.accent);
 }
 
 #[cfg(test)]
@@ -157,5 +167,28 @@ mod tests {
         assert_eq!(down[1].1, pal.hover_layer(), "one layer over the hover fill");
         let selected = shapes(RowState { selected: true, active: true, hovered: true, down: true, ..Default::default() });
         assert!(selected.iter().all(|(_, f, _)| *f != pal.hover_layer() && *f != pal.hover), "the selection beats the press");
+    }
+
+    #[test]
+    fn an_inset_selection_is_the_rounded_fill_with_a_bar_on_its_left_curve() {
+        color::set_dark(true);
+        let ctx = egui::Context::default();
+        let out = ctx.run(egui::RawInput::default(), |ctx| {
+            let p = Painter::new(ctx.clone(), LayerId::new(Order::Background, Id::new("inset")), Rect::EVERYTHING);
+            paint_inset_selection(&p, ROW, 4);
+        });
+        let rects: Vec<_> = out
+            .shapes
+            .iter()
+            .filter_map(|c| match &c.shape {
+                Shape::Rect(r) => Some((r.rect, r.fill, r.corner_radius)),
+                _ => None,
+            })
+            .collect();
+        let pal = color::current();
+        assert_eq!(rects[0], (ROW, pal.selected, CornerRadius::same(4)));
+        let bar = Rect::from_min_size(ROW.left_top(), vec2(ACCENT_BAR_W, ROW.height()));
+        assert_eq!(rects[1], (bar, pal.accent, CornerRadius { nw: 4, sw: 4, ne: 0, se: 0 }));
+        assert_eq!(rects.len(), 2);
     }
 }

@@ -1,35 +1,35 @@
 Dialog
   TextInput = "tab" [focused]
-  Button "New tab"
-  Button "Move tab right"
-  Button "Close tab"
-  Button "Rename tab…"
-  Button "Reopen closed tab"
-  Button "Reopen closed tab: old-repo"
-  Button "Hide toolbar labels"
-  Button "Enter full screen"
-  Button "Add this repository to favorites"
-  Button "Initialize Git LFS"
-  Button "Hide commit details panel"
-  Button "Hide toolbar"
-  Button "Show terminal panel"
-  Button "Open operation journal"
-  Button "Configure Git LFS…"
-  Button "Create tag at HEAD…"
-  Button "Create branch at HEAD…"
-  Button "Show tips again"
-  Button "Export logs…"
-  Button "Configure terminal"
-  Button "Configure sparse checkout…"
-  Button "Checkout search"
-  Button "Stash with message…"
-  Button "Switch branch…"
-  Button "Hide left panel"
-  Button "Keyboard shortcuts"
-  Button "Checkout login-page"
-  Button "Use split diff layout"
-  Button "Apply patch…"
-  Button "Open dashboard"
+  Button "New tab" [on]
+  Button "Move tab right" [off]
+  Button "Close tab" [off]
+  Button "Rename tab…" [off]
+  Button "Reopen closed tab" [off]
+  Button "Reopen closed tab: old-repo" [off]
+  Button "Hide toolbar labels" [off]
+  Button "Enter full screen" [off]
+  Button "Add this repository to favorites" [off]
+  Button "Initialize Git LFS" [off]
+  Button "Hide commit details panel" [off]
+  Button "Hide toolbar" [off]
+  Button "Show terminal panel" [off]
+  Button "Open operation journal" [off]
+  Button "Configure Git LFS…" [off]
+  Button "Create tag at HEAD…" [off]
+  Button "Create branch at HEAD…" [off]
+  Button "Show tips again" [off]
+  Button "Export logs…" [off]
+  Button "Configure terminal" [off]
+  Button "Configure sparse checkout…" [off]
+  Button "Checkout search" [off]
+  Button "Stash with message…" [off]
+  Button "Switch branch…" [off]
+  Button "Hide left panel" [off]
+  Button "Keyboard shortcuts" [off]
+  Button "Checkout login-page" [off]
+  Button "Use split diff layout" [off]
+  Button "Apply patch…" [off]
+  Button "Open dashboard" [off]
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "Ctrl+T"

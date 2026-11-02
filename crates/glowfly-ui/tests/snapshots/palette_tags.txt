@@ -1,47 +1,47 @@
 Dialog
   TextInput = "tag" [focused]
-  Button "Create tag at HEAD…"
-  Button "Checkout tag v0.1.0"
-  Button "Create annotated tag at HEAD…"
-  Button "Stage all files"
-  Button "Show tips again"
-  Button "Stash staged changes…"
-  Button "Move tab right"
-  Button "Switch branch…"
-  Button "Stash changes"
-  Button "Stash with message…"
-  Button "Checkout login-page"
-  Button "Hide commit details panel"
-  Button "Initialize Git LFS"
-  Button "Theme: High contrast light"
-  Button "Turn on extended logging"
-  Button "View performance log"
-  Button "Create patch from uncommitted changes…"
-  Button "Configure Git LFS…"
-  Button "Export logs…"
-  Button "Open logs folder"
-  Button "Open operation journal"
-  Button "Ignore whitespace changes"
-  Button "View activity log"
-  Button "Search commits"
-  Button "Stash selected files…"
-  Button "Blame file…"
-  Button "Hide toolbar"
-  Button "Copy link to repository"
-  Button "Copy link to branch main"
-  Button "Open dashboard"
-  Button "Show terminal panel"
-  Button "Turn off tips"
-  Button "View release notes"
-  Button "Hide left panel"
-  Button "Check for updates"
-  Button "Apply patch…"
-  Button "Configure Git Flow…"
-  Button "Configure terminal"
-  Button "Keyboard shortcuts"
-  Button "File history…"
-  Button "Configure external tools"
-  Button "Configure sparse checkout…"
+  Button "Create tag at HEAD…" [on]
+  Button "Checkout tag v0.1.0" [off]
+  Button "Create annotated tag at HEAD…" [off]
+  Button "Stage all files" [off]
+  Button "Show tips again" [off]
+  Button "Stash staged changes…" [off]
+  Button "Move tab right" [off]
+  Button "Switch branch…" [off]
+  Button "Stash changes" [off]
+  Button "Stash with message…" [off]
+  Button "Checkout login-page" [off]
+  Button "Hide commit details panel" [off]
+  Button "Initialize Git LFS" [off]
+  Button "Theme: High contrast light" [off]
+  Button "Turn on extended logging" [off]
+  Button "View performance log" [off]
+  Button "Create patch from uncommitted changes…" [off]
+  Button "Configure Git LFS…" [off]
+  Button "Export logs…" [off]
+  Button "Open logs folder" [off]
+  Button "Open operation journal" [off]
+  Button "Ignore whitespace changes" [off]
+  Button "View activity log" [off]
+  Button "Search commits" [off]
+  Button "Stash selected files…" [off]
+  Button "Blame file…" [off]
+  Button "Hide toolbar" [off]
+  Button "Copy link to repository" [off]
+  Button "Copy link to branch main" [off]
+  Button "Open dashboard" [off]
+  Button "Show terminal panel" [off]
+  Button "Turn off tips" [off]
+  Button "View release notes" [off]
+  Button "Hide left panel" [off]
+  Button "Check for updates" [off]
+  Button "Apply patch…" [off]
+  Button "Configure Git Flow…" [off]
+  Button "Configure terminal" [off]
+  Button "Keyboard shortcuts" [off]
+  Button "File history…" [off]
+  Button "Configure external tools" [off]
+  Button "Configure sparse checkout…" [off]
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "detached at f0d635c"

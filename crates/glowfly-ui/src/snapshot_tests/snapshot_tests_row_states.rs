@@ -3,11 +3,12 @@
 //! hovered and a focused sidebar section header, a Git Flow group row hovered and its '+'
 //! hovered (the row then unlit), a pressed remote group, a Git Flow panel row lit under its
 //! Finish button, the pull request's Checks header and a run hovered, the Preferences page list
-//! with the current page and another one focused, the palette's keyboard row beside a hovered
-//! one, and the diff's comment button and draft marker. Each is a pixel golden only: the text
-//! of a hover is the same as the view's own snapshot.
+//! with the current page and another one focused, the palette's keyboard row (its current item,
+//! a selection; also in high contrast) beside a hovered one, and the diff's comment button and
+//! draft marker. Each is a pixel golden only: the text of a hover is the same as the view's own
+//! snapshot.
 
-use super::snapshot_tests::{harness, remove_fixture, with_repo};
+use super::snapshot_tests::{harness, harness_palette, remove_fixture, with_repo};
 use super::snapshot_tests_dashboard::state as dashboard_state;
 use super::snapshot_tests_gitflow::with_flow_branches;
 use super::snapshot_tests_pr_check_list::{every_state, with_checks};
@@ -210,16 +211,26 @@ fn prefs_nav_selected_focused_other() {
     });
 }
 
+/// The palette over a repository in `theme` drawn in `p`, its keyboard row on the first command
+/// and the pointer on Push, as golden `name`.
+fn palette_scene(theme: ThemeChoice, p: crate::ui::theme::color::Palette, name: &str) {
+    let (mut st, dir) = with_repo(theme, &format!("rows-{name}"));
+    st.palette = Some(crate::state::palette::Palette::default());
+    let mut h = harness_palette(st, p);
+    h.run();
+    let at = center(&h, "Push");
+    point(&mut h, at);
+    // egui reports a button's `WidgetInfo::selected` as its toggled state.
+    let on = Some(eframe::egui::accesskit::Toggled::True);
+    let current: Vec<_> = h.get_all_by_role(Role::Button).filter(|n| n.toggled() == on).filter_map(|n| n.label()).collect();
+    assert_eq!(current, ["Stage all files"], "only the keyboard row is announced as selected");
+    finish(h, name, Some(dir));
+}
+
 #[test]
 fn palette_cursor_and_hover() {
-    both("palette_cursor_and_hover", |theme, dark, name| {
-        let (mut st, dir) = with_repo(theme, &format!("rows-{name}"));
-        st.palette = Some(crate::state::palette::Palette::default());
-        let mut h = open(st, dark);
-        let at = center(&h, "Push");
-        point(&mut h, at);
-        finish(h, name, Some(dir));
-    });
+    both("palette_cursor_and_hover", |theme, dark, name| palette_scene(theme, crate::ui::theme::view_palette(dark), name));
+    palette_scene(ThemeChoice::HighContrastDark, crate::ui::theme::HIGH_CONTRAST_DARK, "palette_cursor_and_hover_high_contrast_dark");
 }
 
 #[test]

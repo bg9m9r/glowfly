@@ -1,9 +1,9 @@
 Dialog
   Label "Apply stash"
   TextInput [focused]
-  Button "On main: login form tweaks"
-  Button "WIP on main: 1a2b3c4 Add search"
-  Button "On login-page: half-done validation"
+  Button "On main: login form tweaks" [off]
+  Button "WIP on main: 1a2b3c4 Add search" [on]
+  Button "On login-page: half-done validation" [off]
   Label "Up/Down to choose, Enter to apply, Backspace or Esc to go back"
 painted:
   "Find a stash to apply"

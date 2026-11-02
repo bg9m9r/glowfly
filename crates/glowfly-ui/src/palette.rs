@@ -6,6 +6,7 @@
 
 use super::theme::color;
 use super::widgets::quiet_target::{self, State};
+use super::widgets::row_fill;
 use super::widgets::{self, Icon};
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
@@ -294,12 +295,19 @@ fn row(
 ) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
+    // The current item is announced as selected.
+    resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, label));
     let p = ui.painter_at(rect);
-    // A command list, not a selection: the keyboard's row is latched, the pointer's hovered, on
-    // the menu pill's corners. The keyboard stays in the search field, so no focus ring.
-    let state = State { hovered: resp.hovered(), down: resp.is_pointer_button_down_on(), latched: selected, focused: false };
-    quiet_target::paint(&p, rect.shrink2(vec2(4.0, 1.0)), CornerRadius::same(radius::SM), ControlSize::Compact, state);
+    // On the menu pill's corners: the keyboard's row (the list's current item, which Enter runs)
+    // takes the selection with its accent bar, and wins over the pointer; every other row lights
+    // as a quiet target. The keyboard stays in the search field, so no focus ring.
+    let face = rect.shrink2(vec2(4.0, 1.0));
+    if selected {
+        row_fill::paint_inset_selection(&p, face, radius::SM);
+    } else {
+        let state = State { hovered: resp.hovered(), down: resp.is_pointer_button_down_on(), latched: false, focused: false };
+        quiet_target::paint(&p, face, CornerRadius::same(radius::SM), ControlSize::Compact, state);
+    }
     let mut right_w = 0.0;
     if let Some(keys) = shortcut {
         let g = p.layout_no_wrap(keys.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
