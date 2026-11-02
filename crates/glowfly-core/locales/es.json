@@ -1016,6 +1016,7 @@
   "graph.load_more_failed.title": "No se pudieron cargar más commits",
   "graph.loading_more": "Cargando más commits…",
   "graph.refs.in_sync.tip": "{name}, al día con {others}",
+  "graph.reload_failed.title": "No se pudo cargar el historial",
   "graph.searching_older": "Buscando commits más antiguos…",
   "graph.wip.label": "Cambios sin confirmar",
   "graph.wip.worktree_label": "Cambios sin confirmar · {folder}",

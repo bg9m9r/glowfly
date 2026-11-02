@@ -43,4 +43,7 @@ pub struct TabView {
     /// (`update/parked_free.rs`): how many commits it had been loaded with, which the reload on
     /// return asks for again. Cleared when a load's snapshot is shown.
     pub history_freed: Option<usize>,
+    /// Why the last reload of a freed history failed, for the graph's pane (with Try again);
+    /// cleared with `history_freed`.
+    pub history_reload_error: Option<String>,
 }

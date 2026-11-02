@@ -7,7 +7,8 @@
 //! Shown again, the stub's tab reloads its history in full, as deep as it had been loaded
 //! (`refresh`), and a refresh asked for meanwhile stays a full one (`refresh::request`). Until it
 //! lands the graph shows a spinner and keeps the scroll to restore; the reload is a refresh, so a
-//! selected commit still in the history stays selected. The search index has its own freeing
+//! selected commit still in the history stays selected. A reload that fails leaves its error for
+//! the graph's pane, which offers Try again (`load_failed`). The search index has its own freeing
 //! (`history_index::tick`).
 
 use crate::effect::Effect;
@@ -50,4 +51,13 @@ pub(super) fn refresh(st: &mut AppState, fx: &mut Vec<Effect>) {
         }
         None => super::repo::refresh(st, fx),
     }
+}
+
+/// A load of the active tab failed with `error`: logged, and kept for the graph's pane while
+/// its history is freed, which offers to try again instead of loading forever.
+pub(super) fn load_failed(st: &mut AppState, error: String) {
+    if st.session.tab_view.history_freed.is_some() {
+        st.session.tab_view.history_reload_error = Some(error.clone());
+    }
+    st.log(false, error);
 }

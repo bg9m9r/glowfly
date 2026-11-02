@@ -1,6 +1,7 @@
 //! Headless tests for freeing a long-parked tab's history (`update/parked_free.rs`): only a
 //! large history parked `HISTORY_FREE_AFTER` is freed, on a worker; shown again, the tab reloads
-//! it in full and as deep, keeping the selection and the scroll; and a small history stays.
+//! it in full and as deep, keeping the selection and the scroll, or shows why it couldn't with
+//! Try again; and a small history stays.
 
 use super::tests::{long_repo, scratch_repo, state};
 use super::update;
@@ -122,5 +123,35 @@ fn a_park_cut_short_starts_counting_again() {
     tick(&mut st, t1);
     assert!(!frees_on_a_worker(&tick(&mut st, t0 + HISTORY_FREE_AFTER)));
     assert!(frees_on_a_worker(&tick(&mut st, t1 + HISTORY_FREE_AFTER)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_failed_reload_of_a_freed_history_is_shown_and_tried_again() {
+    let n = HISTORY_FREE_MIN_COMMITS;
+    let dir = long_repo("parked-free-failed", n);
+    let mut st = parked_behind_new_tab(&dir, n, 0, 0.0);
+    let t0 = Instant::now();
+    tick(&mut st, t0);
+    tick(&mut st, t0 + HISTORY_FREE_AFTER);
+    update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
+    assert!(st.loading);
+
+    // The folder went away while the tab was parked.
+    let (generation, result) = (st.load_gen, Err("not found: could not find repository".to_owned()));
+    update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Refresh, result }), Instant::now());
+    assert!(!st.loading, "nothing loads, so the graph shows the failure rather than a spinner");
+    assert_eq!(st.session.tab_view.history_freed, Some(n), "still a stub");
+    assert_eq!(st.session.tab_view.history_reload_error.as_deref(), Some("not found: could not find repository"));
+    assert_eq!(st.tabs.len(), 2, "the tab stays open");
+
+    // Try again (F5) reloads in full; once it lands the error is gone.
+    let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { known: None, prior: None, kind: LoadKind::Refresh, .. })), "{fx:?}");
+    assert!(st.loading);
+    let (generation, result) = (st.load_gen, Ok(Box::new(load(&dir, n))));
+    update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Refresh, result }), Instant::now());
+    assert_eq!(st.snap.as_ref().unwrap().commits.len(), n);
+    assert_eq!((st.session.tab_view.history_freed, st.session.tab_view.history_reload_error.as_deref()), (None, None));
     let _ = std::fs::remove_dir_all(&dir);
 }
