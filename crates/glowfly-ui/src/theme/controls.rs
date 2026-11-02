@@ -89,6 +89,12 @@ impl egui::Widget for Check<'_> {
     }
 }
 
+/// Paints a checkbox's box at the left of `rect`, vertically centred, with no widget of its own:
+/// for a row whose one response is the checkbox and carries its widget info.
+pub fn paint_check(ui: &Ui, rect: Rect, checked: bool, hovered: bool) {
+    paint_box(ui, rect, checked, false, hovered);
+}
+
 /// Paints the box (with a check mark when `checked`, a dash when `indeterminate`); returns it.
 fn paint_box(ui: &Ui, rect: Rect, checked: bool, indeterminate: bool, hovered: bool) -> Rect {
     let p = color::current();

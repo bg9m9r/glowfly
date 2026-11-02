@@ -5,24 +5,14 @@ Dialog
   Label "Recent"
   Label "Starred when added"
   CheckBox "tool-0" [off]
-  CheckBox [off]
-  Label "tool-0"
   Label "C:\\work"
   CheckBox "tool-1" [off]
-  CheckBox [off]
-  Label "tool-1"
   Label "C:\\work"
   CheckBox "tool-2" [off]
-  CheckBox [off]
-  Label "tool-2"
   Label "C:\\work"
   CheckBox "tool-3" [on]
-  CheckBox [on]
-  Label "tool-3"
   Label "C:\\work"
   CheckBox "tool-4" [off]
-  CheckBox [off]
-  Label "tool-4"
   Label "C:\\work"
   Button "Cancel"
   Button "Add 2"

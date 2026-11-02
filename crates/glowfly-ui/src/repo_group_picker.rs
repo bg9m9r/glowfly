@@ -110,7 +110,7 @@ fn heading(ui: &mut egui::Ui, title: &str, note: Option<&str>) {
 }
 
 /// One row: box, name, parent folder and, for a favorite in another group, "In {group}" with
-/// its swatch. Returns whether it was clicked (on the box or anywhere else on it).
+/// its swatch. Returns whether it was clicked (anywhere on it).
 fn row(ui: &mut egui::Ui, t: Lang, r: &PickRow, ticked: bool, groups: &[RepoGroup]) -> bool {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     row_fill::paint(ui.painter(), rect, false, resp.hovered());
@@ -118,13 +118,18 @@ fn row(ui: &mut egui::Ui, t: Lang, r: &PickRow, ticked: bool, groups: &[RepoGrou
     let name = r.path.file_name().map_or_else(|| full.clone(), |n| n.to_string_lossy().into_owned());
     resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, ticked, &name));
     let folder = r.path.parent().map(shown).unwrap_or_default();
-    let mut child = ui.new_child(UiBuilder::new().max_rect(rect.shrink2(vec2(4.0, 0.0))).layout(Layout::left_to_right(Align::Center)));
+    // Inset on the left only, so a tag at the right ends on the body's edge with the note.
+    let inner = egui::Rect::from_min_max(rect.min + vec2(4.0, 0.0), rect.max);
+    let mut child = ui.new_child(UiBuilder::new().max_rect(inner).layout(Layout::left_to_right(Align::Center)));
     let ui = &mut child;
     ui.spacing_mut().item_spacing.x = 0.0;
-    let mut on = ticked;
-    let boxed = ui.add(controls::Check::without_text(&mut on)).changed();
-    ui.add_space(BOX_GAP);
-    ui.add(egui::Label::new(RichText::new(&name).size(type_scale::BODY).color(color::text())).selectable(false));
+    // The box and the name are painted: the row's response is the one checkbox, named.
+    let w = ui.spacing().icon_width;
+    controls::paint_check(ui, egui::Rect::from_min_size(inner.min, vec2(w, ROW_H)), ticked, resp.hovered());
+    ui.add_space(w + BOX_GAP);
+    let galley = ui.painter().layout_no_wrap(name, type_scale::font(type_scale::BODY), color::text());
+    let (at, _) = ui.allocate_exact_size(galley.size(), Sense::hover());
+    ui.painter().galley(at.min, galley, color::text());
     ui.add_space(NAME_GAP);
     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
         if let Some(g) = r.other_group.and_then(|g| groups.get(g)) {
@@ -141,5 +146,5 @@ fn row(ui: &mut egui::Ui, t: Lang, r: &PickRow, ticked: bool, groups: &[RepoGrou
             ui.add(label);
         });
     });
-    boxed || resp.on_hover_text(full).clicked()
+    resp.on_hover_text(full).clicked()
 }

@@ -433,8 +433,7 @@ pub struct AppState {
     pub toasts: Vec<Toast>,
     /// Last toast id handed out (state/toasts.rs).
     pub toast_seq: u64,
-    /// How far behind the checked-out branch was when the active tab's auto-fetch ended, until
-    /// the reload after it lands (update/notify.rs).
+    /// How far behind the checked-out branch was at the end of the auto-fetch, until its reload lands (update/notify.rs).
     pub behind_watch: Option<notify::BehindWatch>,
     pub modal: Option<Modal>,
     pub dialog: dialog_guard::DialogGuard,
@@ -477,8 +476,7 @@ pub struct AppState {
     pub deep_link: deep_link::DeepLinkState,
     /// The profile a switch is writing to the global git config (app-wide: the config is global).
     pub profile_switch: Option<glowfly_core::settings::ProfileId>,
-    /// The profiles (the current one or the switch's target) whose fields were edited while a
-    /// switch ran: their git writes wait until it ends.
+    /// The profiles (current or the switch's target) edited while a switch ran: their git writes wait until it ends.
     pub profile_switch_edits: Vec<glowfly_core::settings::ProfileId>,
     /// The repositories' effective identities as git last reported them, by `Snapshot::git_dir` as spelled (global, kept across tabs).
     pub identities: HashMap<PathBuf, glowfly_core::repo_identity::RepoIdentity>,
