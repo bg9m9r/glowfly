@@ -3,7 +3,6 @@
 //! (update/recent.rs).
 
 use super::AppState;
-use crate::keymap::{FAVORITE_BINDINGS, Keymap};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 use std::path::{Path, PathBuf};
@@ -99,16 +98,6 @@ pub fn forget_confirm(t: Lang, st: &AppState, p: &Path) -> (String, String) {
         _ => t.trf("repos.forget.body_recent", args),
     };
     (t.tr("repos.forget.title").to_owned(), body)
-}
-
-/// The keys part of the note under the Favorites header ("The first nine open with … to …."),
-/// read from `keys` so a rebound key shows; None when the first favorite has no key.
-pub fn favorite_keys_note(t: Lang, keys: &Keymap) -> Option<String> {
-    let first = keys.hint(FAVORITE_BINDINGS[0])?;
-    Some(match keys.hint(FAVORITE_BINDINGS[8]) {
-        Some(last) => t.trf("repos.favorite_keys.range", &[("first", &first), ("last", &last)]),
-        None => t.trf("repos.favorite_keys.single", &[("first", &first)]),
-    })
 }
 
 /// The label of the favorite toggle for a row that is (`fav`) or isn't a favorite.
@@ -213,18 +202,6 @@ mod tests {
         assert!(forget_confirm(Lang::En, &st, Path::new("/w/b")).1.ends_with("your Favorites and Recent lists?"));
     }
 
-    #[cfg(not(target_os = "macos"))]
-    #[test]
-    fn keys_note_follows_the_keymap() {
-        let keys = Keymap::default();
-        assert_eq!(favorite_keys_note(Lang::En, &keys).as_deref(), Some("The first nine open with Ctrl+Alt+1 to Ctrl+Alt+9."));
-        let mut keys = keys;
-        keys.set(FAVORITE_BINDINGS[8], Vec::new());
-        assert_eq!(favorite_keys_note(Lang::En, &keys).as_deref(), Some("The first opens with Ctrl+Alt+1."));
-        keys.set(FAVORITE_BINDINGS[0], Vec::new());
-        assert_eq!(favorite_keys_note(Lang::En, &keys), None);
-    }
-
     #[test]
     fn has_entries_needs_a_favorite_or_a_recent_row() {
         assert!(!has_entries(&state(&[], &[])));
@@ -256,7 +233,6 @@ mod tests {
     #[test]
     fn questions_in_other_languages_fill_every_placeholder() {
         let st = state(&["/w/a", "/w/b"], &["/w/b"]);
-        let keys = Keymap::default();
         for t in [Lang::De, Lang::Es] {
             for (r, f) in [(1, 0), (0, 2), (2, 1)] {
                 let (title, body) = remove_missing_confirm(t, r, f);
@@ -272,9 +248,6 @@ mod tests {
                 let (title, body) = forget_confirm(t, &st, Path::new(p));
                 assert_eq!(title, t.tr("repos.forget.title"));
                 assert!(!body.contains('{'), "{body}");
-            }
-            if let Some(note) = favorite_keys_note(t, &keys) {
-                assert!(!note.contains('{'), "{note}");
             }
         }
     }

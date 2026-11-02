@@ -1,5 +1,5 @@
-//! The welcome screen's Favorites and Recent sections (rows, icons, the row menus, "open" tags,
-//! dragging favorites); the toolbar's repository menu is `snapshot_tests_repo_menu.rs`. Shares the renderer and fixture
+//! The start page's Favorites and Recent sections (rows, their statuses and icons, the row
+//! menus, dragging favorites); the toolbar's repository menu is `snapshot_tests_repo_menu.rs`. Shares the renderer and fixture
 //! repository with `snapshot_tests`. The listed paths are labels only, never opened.
 
 use super::snapshot_tests::{harness, settings};
@@ -50,9 +50,10 @@ pub(crate) fn welcome_state(theme: ThemeChoice) -> AppState {
 pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The bounds of the node labelled `label` that is `small` (a painted icon, 24 px wide) or not,
-/// on the same row as the `row` link.
+/// on the same row as the `row` row.
 fn bounds(h: &H, label: &str, row: &str, small: bool) -> Rect {
-    let link = h.get_by_label(row).bounding_box().expect("the row's link");
+    // The first node: a hovered row's tooltip repeats its path.
+    let link = h.get_all_by_label(row).next().and_then(|n| n.bounding_box()).expect("the row");
     let b = h
         .get_all_by_label(label)
         .filter_map(|n| n.bounding_box())
@@ -65,6 +66,13 @@ pub(super) fn last(h: &H) -> &Msg {
     h.state().1.last().expect("a message")
 }
 
+/// Rests the pointer on the row labelled `label`, which shows its hollow star, ⋯ and ×.
+pub(super) fn hover_row(h: &mut H, label: &str) {
+    let b = h.get_all_by_label(label).next().and_then(|n| n.bounding_box()).expect("the row");
+    h.input_mut().events.push(Event::PointerMoved(pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32)));
+    h.run();
+}
+
 fn right_click(h: &mut H, label: &str) {
     let link = h.get_by_label(label).bounding_box().expect("the link");
     click(h, pos2(((link.x0 + link.x1) / 2.0) as f32, ((link.y0 + link.y1) / 2.0) as f32), PointerButton::Secondary);
@@ -75,8 +83,12 @@ fn welcome_repos() {
     let mut h = harness(welcome_state(ThemeChoice::Dark), true);
     h.run();
     assert_eq!(h.query_all_by_label(&shown(&web())).count(), 1, "a favorite is listed once");
-    for label in ["Favorites", "Recent", "not found", "Open all", "Remove missing", &shown(&api()), &shown(&old())] {
+    for label in ["Favorites", "Recent", "Open all", "Remove missing", "New group", &shown(&api()), &shown(&old())] {
         assert!(h.query_by_label(label).is_some(), "{label} is shown");
+    }
+    assert_eq!(h.get_by_label(&shown(&old())).description().as_deref(), Some("Not found"));
+    if cfg!(not(target_os = "macos")) {
+        assert!(h.query_by_label("Ctrl+Alt+1").is_none(), "the key cap is painted, not a widget");
     }
     assert!(h.query_by_label("Drag to reorder").is_none(), "one favorite has no grip");
     h.check_snapshot("welcome_repos");
@@ -150,9 +162,6 @@ fn pointer(h: &mut H, pos: Pos2, button: Option<bool>) {
 fn welcome_favorites_drag() {
     let mut h = harness(three_favorites(), true);
     h.run();
-    if cfg!(not(target_os = "macos")) {
-        assert!(h.query_by_label("Drag to reorder. The first nine open with Ctrl+Alt+1 to Ctrl+Alt+9.").is_some());
-    }
     let grips: Vec<Rect> = h
         .get_all_by_label("Drag to reorder")
         .filter_map(|n| n.bounding_box())
@@ -184,10 +193,11 @@ fn welcome_repos_open_marker() {
     st.tabs = vec![Tab::empty(), Tab::unloaded(PathBuf::from(web()))];
     let mut h = harness(st, true);
     h.run();
-    assert_eq!(h.query_all_by_label("open").count(), 1, "web-app is open");
+    let said = h.get_by_label(&shown(&web())).description().unwrap_or_default();
+    assert!(said.starts_with("In a tab"), "web-app is open: {said}");
     assert!(h.query_by_label("Open all").is_some(), "api-server isn't");
     h.check_snapshot("welcome_repos_open_marker");
-    h.get_by_label("open").click();
+    h.get_by_label(&shown(&web())).click();
     h.run();
     assert!(matches!(last(&h), Msg::Repo(crate::msg::RepoMsg::Open(p)) if p.as_path() == std::path::Path::new(&web())));
 }
@@ -196,13 +206,18 @@ fn welcome_repos_open_marker() {
 fn welcome_icons_push_messages() {
     let mut h = harness(welcome_state(ThemeChoice::Dark), true);
     h.run();
-    assert_eq!(h.query_all_by_label("Remove from recent").count(), 2, "only Recent rows have ×");
+    assert!(h.query_by_label("Remove from recent").is_none(), "× shows on hover");
+    hover_row(&mut h, &shown(&web()));
+    assert!(h.query_by_label("Remove from recent").is_none(), "only Recent rows have ×");
+    assert!(h.query_by_label("Repository actions").is_some(), "⋯ shows on hover");
+    hover_row(&mut h, &shown(&api()));
     let star = bounds(&h, "Add to favorites", &shown(&api()), true);
     click(&mut h, star.center(), PointerButton::Primary);
     assert!(matches!(last(&h), Msg::Recent(RecentMsg::SetFavorite { path, favorite: true }) if path == &PathBuf::from(api())));
     let star = bounds(&h, "Remove from favorites", &shown(&web()), true);
     click(&mut h, star.center(), PointerButton::Primary);
     assert!(matches!(last(&h), Msg::Recent(RecentMsg::SetFavorite { path, favorite: false }) if path == &PathBuf::from(web())));
+    hover_row(&mut h, &shown(&old()));
     let cross = bounds(&h, "Remove from recent", &shown(&old()), true);
     click(&mut h, cross.center(), PointerButton::Primary);
     assert!(matches!(last(&h), Msg::Recent(RecentMsg::Remove(p)) if p == &PathBuf::from(old())));

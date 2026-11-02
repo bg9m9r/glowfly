@@ -1,10 +1,13 @@
-//! Repository groups on the welcome screen and in the toolbar's repository menu: the group
-//! headers with their swatch, links and ⋯ menu, an empty group's line, a favorite's Move to group
-//! submenu, dragging a favorite into a group, the groups in the menu, and the New group dialog.
-//! The listed paths are labels only, never opened.
+//! Repository groups on the start page and in the toolbar's repository menu: the groups nested
+//! under Favorites with their headers (swatch, count, links and ⋯ menu), an empty group's
+//! outlined placeholder, the line about groups while none has a member, a favorite's Move to
+//! group submenu (from a right-click or ⋯), dragging a favorite into a group or out of the groups,
+//! the groups in the menu, and the New group dialog. The listed paths are labels only, never
+//! opened.
 
-use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use super::snapshot_tests_repo_list::{H, abs, api, last, shown, web, welcome_state};
+use super::menu_testing::open_submenu;
+use super::snapshot_tests::{harness, harness_sized, remove_fixture, with_repo};
+use super::snapshot_tests_repo_list::{H, abs, api, hover_row, last, shown, web, welcome_state};
 use super::snapshot_tests_repo_menu::open_repo_menu;
 use super::snapshot_tests_select::click;
 use crate::msg::{GroupMsg, Msg, RecentMsg};
@@ -35,6 +38,11 @@ fn welcome() -> AppState {
     st
 }
 
+/// The start page in a window tall enough to show every row of `welcome`, Recent's included.
+fn tall(st: AppState) -> H {
+    harness_sized(st, true, vec2(1400.0, 1040.0))
+}
+
 fn centre(h: &H, label: &str) -> Pos2 {
     let b = h.get_by_label(label).bounding_box().expect(label);
     pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32)
@@ -42,17 +50,18 @@ fn centre(h: &H, label: &str) -> Pos2 {
 
 #[test]
 fn welcome_repo_groups() {
-    let mut h = harness(welcome(), true);
+    let mut h = tall(welcome());
     h.run();
-    for label in ["Work", "Home", "Favorites", "Recent", "New group", "Drag a favorite here, or choose Move to group in its menu."] {
+    for label in ["Work", "Home", "Favorites", "Other favorites", "Recent", "New group", "No repositories yet"] {
         assert!(h.query_by_label(label).is_some(), "{label} is shown");
     }
     assert_eq!(h.query_all_by_label("Group actions").count(), 2, "a ⋯ per group");
     assert_eq!(h.query_all_by_label("Drag to reorder").count(), 3, "a grip per favorite");
-    if cfg!(not(target_os = "macos")) {
-        let note = "Drag to reorder or to move between groups. The first nine open with Ctrl+Alt+1 to Ctrl+Alt+9.";
-        assert!(h.query_by_label(note).is_some(), "the note says groups take drops");
-    }
+    assert!(h.query_by_label("Groups color their repositories' tabs and open together.").is_none(), "Work has members");
+    let top = |h: &H, label: &str| h.get_by_label(label).bounding_box().expect(label).y0;
+    assert!(top(&h, "Favorites") < top(&h, "Work") && top(&h, "Home") < top(&h, "Other favorites"), "the groups sit under Favorites");
+    let left = |h: &H, label: &str| h.get_by_label(label).bounding_box().expect(label).x0;
+    assert!(left(&h, &shown(&web())) > left(&h, &shown(&abs("old-site"))), "grouped rows are indented");
     h.check_snapshot("welcome_repo_groups");
     h.get_by_label("New group").click();
     h.run();
@@ -64,8 +73,20 @@ fn welcome_repo_groups() {
 }
 
 #[test]
+fn welcome_repo_row_hover() {
+    let mut h = tall(welcome());
+    h.run();
+    // One frame on the row: its grip, ⋯ and hover layer, before the path's tooltip comes up.
+    let row = centre(&h, &shown(&web()));
+    h.input_mut().events.push(Event::PointerMoved(row));
+    h.step();
+    assert!(h.query_by_label("Repository actions").is_some(), "⋯ shows on the hovered row");
+    h.check_snapshot("welcome_repo_row_hover");
+}
+
+#[test]
 fn welcome_repo_group_menu() {
-    let mut h = harness(welcome(), true);
+    let mut h = tall(welcome());
     h.run();
     let more = h.get_all_by_label("Group actions").next().unwrap().bounding_box().unwrap();
     click(&mut h, pos2(((more.x0 + more.x1) / 2.0) as f32, ((more.y0 + more.y1) / 2.0) as f32), PointerButton::Primary);
@@ -82,12 +103,13 @@ fn welcome_repo_group_menu() {
 
 #[test]
 fn welcome_move_to_group() {
-    let mut h = harness(welcome(), true);
+    let mut h = tall(welcome());
     h.run();
-    let row = centre(&h, &shown(&docs()));
-    click(&mut h, row, PointerButton::Secondary);
-    h.get_by_label("Move to group").hover();
-    h.run();
+    // ⋯ on the row opens the same menu as a right-click.
+    hover_row(&mut h, &shown(&docs()));
+    let more = centre(&h, "Repository actions");
+    click(&mut h, more, PointerButton::Primary);
+    open_submenu(&mut h, "Move to group");
     for label in ["Not in a group", "New group…"] {
         assert!(h.query_by_label(label).is_some(), "the submenu has {label}");
     }
@@ -108,11 +130,11 @@ fn pointer(h: &mut H, pos: Pos2, button: Option<bool>) {
 
 #[test]
 fn welcome_drag_into_an_empty_group() {
-    let mut h = harness(welcome(), true);
+    let mut h = tall(welcome());
     h.run();
     let grip = h.get_all_by_label("Drag to reorder").last().unwrap().bounding_box().unwrap();
     let start = pos2(((grip.x0 + grip.x1) / 2.0) as f32, ((grip.y0 + grip.y1) / 2.0) as f32);
-    let over = centre(&h, "Drag a favorite here, or choose Move to group in its menu.");
+    let over = centre(&h, "No repositories yet");
     pointer(&mut h, start, Some(true));
     h.step();
     pointer(&mut h, start + vec2(0.0, -6.0), None);
@@ -173,4 +195,38 @@ fn repo_group_dialog() {
     assert!(h.state().0.modal.is_none(), "Create closes the dialog");
     assert!(h.query_by_label("Create").is_none(), "its Create button is gone");
     assert!(h.query_by_label("Clients").is_some(), "the start page lists the new group");
+}
+
+#[test]
+fn welcome_groups_intro_and_drop_out() {
+    let mut st = welcome_state(ThemeChoice::Dark);
+    st.settings.favorite_repos = vec![web(), api()];
+    let mut work = RepoGroup::new("Work", Some(RepoColour::Rose));
+    work.repos = vec![web(), api()];
+    st.settings.repo_groups = vec![work];
+    let mut h = tall(st);
+    h.run();
+    assert!(h.query_by_label("Other favorites").is_none(), "every favorite is in a group");
+    let grip = h.get_all_by_label("Drag to reorder").next().unwrap().bounding_box().unwrap();
+    let start = pos2(((grip.x0 + grip.x1) / 2.0) as f32, ((grip.y0 + grip.y1) / 2.0) as f32);
+    pointer(&mut h, start, Some(true));
+    h.step();
+    pointer(&mut h, start + vec2(0.0, 12.0), None);
+    h.step();
+    h.run();
+    assert!(h.query_by_label("Drop here to take it out of its group.").is_some(), "a drag shows where the others go");
+    let over = centre(&h, "Drop here to take it out of its group.");
+    pointer(&mut h, over, None);
+    h.step();
+    pointer(&mut h, over, Some(false));
+    h.run();
+    let web_moved = |p: &PathBuf| p == &PathBuf::from(web());
+    assert!(matches!(last(&h), Msg::Groups(GroupMsg::MoveRepo { path, group: None, index: 0 }) if web_moved(path)), "out of Work");
+    // A group without members: the line says what groups do.
+    let mut st = welcome_state(ThemeChoice::Dark);
+    st.settings.repo_groups = vec![RepoGroup::new("Home", None)];
+    let mut h = tall(st);
+    h.run();
+    assert!(h.query_by_label("Groups color their repositories' tabs and open together.").is_some());
+    h.check_snapshot("welcome_groups_intro");
 }

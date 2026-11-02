@@ -46,7 +46,7 @@ fn welcome_screen_german() {
     st.settings.language = "de".into();
     let mut h = harness(st, true);
     h.run();
-    for key in ["common.open_repo.button", "repos.favorites.header", "repos.recent.header", "repos.not_found.label"] {
+    for key in ["common.open_repo.button", "repos.favorites.header", "repos.recent.header", "welcome_screen.find.button"] {
         assert!(h.query_by_label(Lang::De.tr(key)).is_some(), "{key} is shown in German");
     }
     assert!(h.query_by_label("Open repository…").is_none(), "no English button is left");
@@ -87,7 +87,7 @@ fn welcome_start_german() {
     assert!(h.query_by_label(&link).is_some(), "{link} is shown");
     assert!(h.query_by_label(Lang::De.tr("welcome.done.button")).is_some());
     for key in ["welcome.start.open.hint", "welcome.start.clone.hint", "welcome.start.init.hint"] {
-        assert!(h.query_by_label(Lang::De.tr(key)).is_some(), "{key} is shown in German");
+        assert!(h.query_all_by_label(Lang::De.tr(key)).count() > 0, "{key} is shown in German");
         assert!(h.query_by_label(Lang::En.tr(key)).is_none(), "{key}: no English hint is left");
     }
     assert!(h.query_by_label(Lang::De.tr("welcome.start.tour_after.check")).is_some());

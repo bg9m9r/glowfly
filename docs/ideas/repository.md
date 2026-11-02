@@ -283,10 +283,12 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Move to group on Recent rows, starring the repository in the same step
 - Fetch or pull one group's repositories from Fetch or pull repositories
 - The group's name in its repositories' tab tooltips
-- A group's repository count on its header
 - Select the whole name when Rename group opens
 - Worktree tab group hues that skip the hues repositories and groups already use
 - Group headings in the macOS native File > Open recent menu (it lists every favorite under one Favorites heading)
+- Rename the tab strip's worktree groups, so "group" means one thing
+- Highlight a favorite's key cap for a moment when its number changes (after a move or a new favorite)
+- Up and Down between the start page's repository rows, as in the repository menu
 
 ### Git engine choice
 

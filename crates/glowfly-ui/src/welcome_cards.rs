@@ -1,11 +1,13 @@
-//! The welcome's Start step: three large cards (open, clone, start a repository), each one
-//! button with a painted icon on a tinted tile, its title and a line of description. Side by
-//! side when each card gets `CARD_MIN_W`, else stacked as full-width rows.
+//! Large action cards, each one button with a painted icon on a tinted tile, its title and a
+//! line of description: the welcome's Start step has three (open, clone, start a repository),
+//! the start page four in one row (the same three, then find repositories in folders, in a row
+//! at most `START_W` wide). Side by side when each card gets `CARD_MIN_W`, else stacked as
+//! full-width rows.
 
 use super::theme::color;
 use super::theme::contrast;
 use super::welcome_art;
-use crate::msg::Msg;
+use crate::msg::{CloneMsg, Msg, RepoMsg, ReposMsg};
 use crate::onboarding::{OnboardingMsg, StartChoice};
 use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::type_scale;
@@ -29,40 +31,91 @@ const TITLE_GAP: f32 = 4.0;
 const MIN_H: f32 = 132.0;
 const ROW_MIN_H: f32 = 64.0;
 const RADIUS: u8 = radius::LG;
+/// The start page's row of cards at most (four cards of `CARD_MIN_W` and their gaps fit).
+pub(super) const START_W: f32 = 760.0;
 
-/// The three cards; a click (or Enter or Space on a focused card) finishes with its choice.
+/// What a card's icon shows.
+#[derive(Clone, Copy)]
+enum CardIcon {
+    Open,
+    Clone,
+    Init,
+    Find,
+}
+
+/// One card: its icon, title and description.
+type Card<'a> = (CardIcon, &'a str, &'a str);
+
+/// The Start step's three cards; a click (or Enter or Space on a focused card) finishes with
+/// its choice.
 pub(super) fn choices(ui: &mut Ui, t: Lang, msgs: &mut Vec<Msg>) {
     let cards = [
-        (StartChoice::Open, t.tr("common.open_repo.button"), t.tr("welcome.start.open.hint")),
-        (StartChoice::Clone, t.tr("common.clone_repo.button"), t.tr("welcome.start.clone.hint")),
-        (StartChoice::Init, t.tr("common.init_repo.button"), t.tr("welcome.start.init.hint")),
+        (CardIcon::Open, t.tr("common.open_repo.button"), t.tr("welcome.start.open.hint")),
+        (CardIcon::Clone, t.tr("common.clone_repo.button"), t.tr("welcome.start.clone.hint")),
+        (CardIcon::Init, t.tr("common.init_repo.button"), t.tr("welcome.start.init.hint")),
     ];
+    let choice = [StartChoice::Open, StartChoice::Clone, StartChoice::Init];
+    if let Some(i) = row(ui, &cards) {
+        msgs.push(Msg::Onboarding(OnboardingMsg::Finish(Some(choice[i]))));
+    }
+}
+
+/// The start page's four cards in one row, centred and at most `START_W` wide: open, clone or
+/// start a repository, or find repositories in folders.
+pub(super) fn start_page(ui: &mut Ui, t: Lang, msgs: &mut Vec<Msg>) {
+    let cards = [
+        (CardIcon::Open, t.tr("common.open_repo.button"), t.tr("welcome.start.open.hint")),
+        (CardIcon::Clone, t.tr("common.clone_repo.button"), t.tr("welcome.start.clone.hint")),
+        (CardIcon::Init, t.tr("common.init_repo.button"), t.tr("welcome.start.init.hint")),
+        (CardIcon::Find, t.tr("welcome_screen.find.button"), t.tr("welcome_screen.find.hint")),
+    ];
+    let w = ui.available_width().min(START_W);
+    let picked = ui.allocate_ui_with_layout(vec2(w, 0.0), Layout::top_down(Align::Min), |ui| row(ui, &cards)).inner;
+    let msg = match picked {
+        Some(0) => Msg::Repo(RepoMsg::PickRepo),
+        Some(1) => Msg::Clone(CloneMsg::Dialog),
+        Some(2) => Msg::Repo(RepoMsg::InitRepo),
+        Some(_) => Msg::Repos(ReposMsg::ShowFinder),
+        None => return,
+    };
+    msgs.push(msg);
+}
+
+/// `cards` side by side, or stacked when the row is too narrow; returns the one clicked.
+fn row(ui: &mut Ui, cards: &[Card<'_>]) -> Option<usize> {
+    let n = cards.len() as f32;
     let avail = ui.available_width();
-    let side = (avail - 2.0 * GAP) / 3.0;
+    let side = (avail - (n - 1.0) * GAP) / n;
     let wide = side >= CARD_MIN_W;
     let title_font = type_scale::strong(ui, type_scale::BODY);
     let text_w = if wide { side - 2.0 * PAD } else { avail - 2.0 * PAD - TILE - TILE_GAP };
     let height = |text: &str, font: &FontId| ui.painter().layout(text.to_owned(), font.clone(), Color32::PLACEHOLDER, text_w).size().y;
     let hint_font = type_scale::font(type_scale::SMALL);
-    let texts = cards.map(|(_, title, hint)| height(title, &title_font) + TITLE_GAP + height(hint, &hint_font));
+    let texts: Vec<f32> = cards.iter().map(|(_, title, hint)| height(title, &title_font) + TITLE_GAP + height(hint, &hint_font)).collect();
     let tallest = texts.iter().copied().fold(0.0_f32, f32::max);
+    let mut picked = None;
     if wide {
         let h = (PAD + TILE + TILE_GAP + tallest + PAD).max(MIN_H);
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = GAP;
-            for (entry, text_h) in cards.into_iter().zip(texts) {
-                card(ui, Fit { size: vec2(side, h), wide: true, text_h }, entry, &title_font, msgs);
+            for (i, (&entry, &text_h)) in cards.iter().zip(&texts).enumerate() {
+                if card(ui, Fit { size: vec2(side, h), wide: true, text_h }, entry, &title_font) {
+                    picked = Some(i);
+                }
             }
         });
     } else {
         let h = (PAD + TILE.max(tallest) + PAD).max(ROW_MIN_H);
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = ROW_GAP;
-            for (entry, text_h) in cards.into_iter().zip(texts) {
-                card(ui, Fit { size: vec2(avail, h), wide: false, text_h }, entry, &title_font, msgs);
+            for (i, (&entry, &text_h)) in cards.iter().zip(&texts).enumerate() {
+                if card(ui, Fit { size: vec2(avail, h), wide: false, text_h }, entry, &title_font) {
+                    picked = Some(i);
+                }
             }
         });
     }
+    picked
 }
 
 /// How one card is laid out: its size, side by side (`wide`) or stacked, and its texts' height.
@@ -72,8 +125,9 @@ struct Fit {
     text_h: f32,
 }
 
-/// One card: the tile on top (side by side) or on the left (stacked), the title and the hint.
-fn card(ui: &mut Ui, fit: Fit, (choice, title, hint): (StartChoice, &str, &str), title_font: &FontId, msgs: &mut Vec<Msg>) {
+/// One card: the tile on top (side by side) or on the left (stacked), the title and the hint;
+/// returns whether it was clicked.
+fn card(ui: &mut Ui, fit: Fit, (icon, title, hint): Card<'_>, title_font: &FontId) -> bool {
     let (rect, resp) = ui.allocate_exact_size(fit.size, Sense::click());
     paint_card(ui.painter(), rect, &resp);
     let (tile_rect, text_rect) = if fit.wide {
@@ -86,7 +140,7 @@ fn card(ui: &mut Ui, fit: Fit, (choice, title, hint): (StartChoice, &str, &str),
         (tile, Rect::from_min_max(pos2(tile.right() + TILE_GAP, top), rect.max - vec2(PAD, PAD)))
     };
     tile(ui.painter(), tile_rect, welcome_art::high_contrast(&color::current()));
-    paint_choice_icon(ui.painter(), tile_rect.center(), choice, color::accent());
+    paint_card_icon(ui.painter(), tile_rect.center(), icon, color::accent());
     // The texts are drawn over the card but don't take its clicks.
     let mut col = ui.new_child(UiBuilder::new().max_rect(text_rect).layout(Layout::top_down(Align::Min)));
     col.spacing_mut().item_spacing.y = TITLE_GAP;
@@ -96,9 +150,7 @@ fn card(ui: &mut Ui, fit: Fit, (choice, title, hint): (StartChoice, &str, &str),
     let hint_text = RichText::new(hint).size(type_scale::SMALL).color(color::weak());
     col.add(egui::Label::new(hint_text).wrap().selectable(false));
     crate::ui::access::name_button(&resp, true, title);
-    if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
-        msgs.push(Msg::Onboarding(OnboardingMsg::Finish(Some(choice))));
-    }
+    resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked()
 }
 
 /// The card's fill and edge for its state, and the focus ring.
@@ -128,30 +180,38 @@ fn tile(p: &Painter, rect: Rect, hc: bool) {
     }
 }
 
-/// A 24 px outline for `choice`, centred on `c`: a folder opened, one with an arrow coming down
-/// into it, and one with a plus inside.
-fn paint_choice_icon(p: &Painter, c: Pos2, choice: StartChoice, col: Color32) {
+/// A 24 px outline for `icon`, centred on `c`: a folder opened, one with an arrow coming down
+/// into it, one with a plus inside, and one under a magnifying glass.
+fn paint_card_icon(p: &Painter, c: Pos2, icon: CardIcon, col: Color32) {
     let s = Stroke::new(1.6_f32, col);
     let line = |pts: Vec<Pos2>| p.add(Shape::line(pts, s));
-    match choice {
-        StartChoice::Open => {
+    match icon {
+        CardIcon::Open => {
             let (l, r, t, b) = (c.x - 11.0, c.x + 10.0, c.y - 8.0, c.y + 8.0);
             // The back with its tab, then the front flap tipped forward.
             line(vec![pos2(l, b), pos2(l, t), pos2(l + 7.0, t), pos2(l + 9.5, t + 3.0), pos2(r - 2.0, t + 3.0), pos2(r - 2.0, t + 7.0)]);
             p.add(Shape::closed_line(vec![pos2(l, b), pos2(l + 4.0, t + 7.0), pos2(r + 2.0, t + 7.0), pos2(r - 2.0, b)], s));
         }
-        StartChoice::Clone => {
+        CardIcon::Clone => {
             let (l, r, t, b) = (c.x - 11.0, c.x + 11.0, c.y - 4.0, c.y + 10.0);
             folder(p, l, r, t, b, s);
             p.line_segment([pos2(c.x, c.y - 12.0), pos2(c.x, c.y + 5.0)], s);
             line(vec![pos2(c.x - 4.0, c.y + 1.0), pos2(c.x, c.y + 5.0), pos2(c.x + 4.0, c.y + 1.0)]);
         }
-        StartChoice::Init => {
+        CardIcon::Init => {
             let (l, r, t, b) = (c.x - 11.0, c.x + 11.0, c.y - 8.0, c.y + 9.0);
             folder(p, l, r, t, b, s);
             let mid = pos2(c.x, (t + 3.0 + b) / 2.0);
             p.line_segment([mid - vec2(4.5, 0.0), mid + vec2(4.5, 0.0)], s);
             p.line_segment([mid - vec2(0.0, 4.5), mid + vec2(0.0, 4.5)], s);
+        }
+        CardIcon::Find => {
+            // The folder behind, the glass over its lower right with the handle going out.
+            let (l, r, t, b) = (c.x - 11.0, c.x + 3.0, c.y - 9.0, c.y + 3.0);
+            folder(p, l, r, t, b, s);
+            let lens = pos2(c.x + 5.0, c.y + 5.0);
+            p.circle(lens, 4.5, Color32::TRANSPARENT, s);
+            p.line_segment([lens + vec2(3.2, 3.2), lens + vec2(6.5, 6.5)], s);
         }
     }
 }

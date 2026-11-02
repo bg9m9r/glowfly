@@ -245,9 +245,10 @@ fn welcome_start() {
     h.run();
     h.check_snapshot("welcome_start");
     for key in ["welcome.start.open.hint", "welcome.start.clone.hint", "welcome.start.init.hint"] {
-        assert!(h.query_by_label(Lang::En.tr(key)).is_some(), "{key} is shown");
+        // The start page's cards behind the dialog say the same.
+        assert!(h.query_all_by_label(Lang::En.tr(key)).count() > 0, "{key} is shown");
     }
-    // The welcome screen's own buttons are behind the dialog; the dialog's cards are drawn last.
+    // The start page's own cards are behind the dialog; the dialog's cards are drawn last.
     for label in ["Open repository…", "Clone repository…", "New repository…"] {
         h.get_all_by_label(label).last().unwrap().click();
         h.run();

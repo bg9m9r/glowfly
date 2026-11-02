@@ -1,4 +1,5 @@
-//! Dragging the welcome screen's favorites by a row's grip: into another order, into a group,
+//! Dragging the start page's favorites by a row's grip (shown while the row is hovered or
+//! focused): into another order, into a group,
 //! from one group to another, or out of the groups into Favorites. While a drag runs an accent
 //! line marks the gap the favorite would drop into (the nearest gap of any section; an empty
 //! section's gap is its placeholder line), and the release pushes `GroupMsg::MoveRepo`. Only
@@ -8,7 +9,7 @@
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
 use crate::msg::{GroupMsg, Msg};
-use eframe::egui::{CursorIcon, Id, PointerButton, Rect, Response, Sense, Stroke, Ui, WidgetInfo, WidgetType, vec2};
+use eframe::egui::{CursorIcon, Id, PointerButton, Rect, Response, Sense, Stroke, Ui, WidgetInfo, WidgetType};
 use std::path::PathBuf;
 
 /// One section's rows as drawn: the group (None: the ungrouped Favorites), and each favorite's
@@ -19,6 +20,9 @@ pub(super) struct DropSection {
     pub empty: Option<Rect>,
 }
 
+/// Where the drag's start is kept.
+const DRAG_ID: &str = "favorite-drag";
+
 /// The favorite being dragged: its section (in the list `track` was given) and index there,
 /// from the frame the drag started.
 #[derive(Clone, Copy)]
@@ -27,13 +31,16 @@ struct FavDrag {
     from: usize,
 }
 
-/// The grip at the start of a favorite row (`label` is its accessible name): Grab cursor on
-/// hover, Grabbing while dragged.
-pub(super) fn grip(ui: &mut Ui, label: &str) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(14.0, 18.0), Sense::drag());
+/// The grip at the start of a favorite row, in `rect` (`label` is its accessible name): drawn
+/// while `shown` (the row is hovered or focused) or dragged, Grab cursor on hover, Grabbing while
+/// dragged. A click on it does nothing, so it never opens the row.
+pub(super) fn grip_at(ui: &Ui, id: Id, rect: Rect, label: &str, shown: bool) -> Response {
+    let resp = ui.interact(rect, id, Sense::click_and_drag());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, label));
     let active = resp.hovered() || resp.dragged();
-    paint_icon(ui.painter(), rect.center(), Icon::Grip, if active { color::text() } else { color::faint() });
+    if shown || active {
+        paint_icon(ui.painter(), rect.center(), Icon::Grip, if active { color::text() } else { color::weak() });
+    }
     if resp.dragged() {
         ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
     } else if resp.hovered() {
@@ -42,10 +49,16 @@ pub(super) fn grip(ui: &mut Ui, label: &str) -> Response {
     resp
 }
 
+/// Whether a favorite is being dragged (the ungrouped favorites then show their drop place even
+/// while every favorite is in a group).
+pub(super) fn dragging(ui: &Ui) -> bool {
+    ui.data(|d| d.get_temp::<FavDrag>(Id::new(DRAG_ID)).is_some())
+}
+
 /// Tracks a drag among the `sections`: paints the drop line while one runs and pushes the move
 /// when it ends somewhere else.
 pub(super) fn track(ui: &Ui, sections: &[DropSection], msgs: &mut Vec<Msg>) {
-    let id = Id::new("favorite-drag");
+    let id = Id::new(DRAG_ID);
     for (section, s) in sections.iter().enumerate() {
         if let Some(from) = s.rows.iter().position(|(_, g, _)| g.drag_started_by(PointerButton::Primary)) {
             ui.data_mut(|d| d.insert_temp(id, FavDrag { section, from }));

@@ -1,13 +1,13 @@
 //! The repository lists of the toolbar's repository menu and File > Open recent: each
 //! repository group (its swatch in the header's icon column), the ungrouped Favorites and Recent
-//! under group headers (a header shows only while it has rows), one `repo_menu_row` per
+//! under group headers (a header shows only while it has rows), one `repo_row` per
 //! repository with shared columns, a
 //! filter field above them once there are more than `FILTER_FROM` (focused when the menu
 //! opens; Enter opens the first match, Down moves to it), and the closing group, Remove
 //! missing entries… and Clear recent…, both of which ask first.
 
 use super::common::{menu_danger, menu_item};
-use super::repo_menu_row::{self, Act, Columns, Row, Status, Words};
+use super::repo_row::{self, Act, Columns, Row, Status, Words};
 use super::repo_swatch;
 use super::theme::color;
 use super::widgets::menu;
@@ -52,7 +52,7 @@ pub fn lists(ui: &mut egui::Ui, st: &AppState, filter: bool, msgs: &mut Vec<Msg>
     sections.push((t.tr("repos.recent.header"), None, rows_of(&recent, true)));
     let words = words(st);
     let all: Vec<&Row> = sections.iter().flat_map(|(_, _, rows)| rows).collect();
-    let cols = Columns::measure(ui, &all, &words, any_colour(s));
+    let cols = Columns::measure(ui, &all, &words, any_colour(s), false);
     if let Some((_, field)) = &query {
         if let Some(first) = all.first() {
             if super::widgets::text_field::entered(ui, field) {
@@ -60,7 +60,7 @@ pub fn lists(ui: &mut egui::Ui, st: &AppState, filter: bool, msgs: &mut Vec<Msg>
                 ui.close_menu();
             }
             if field.has_focus() && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::ArrowDown)) {
-                ui.memory_mut(|m| m.request_focus(repo_menu_row::row_id(&first.full)));
+                ui.memory_mut(|m| m.request_focus(repo_row::row_id(&first.full)));
             }
         } else {
             menu::inset(ui, |ui| ui.label(RichText::new(t.tr("repos.menu.no_match")).color(color::weak())));
@@ -72,7 +72,7 @@ pub fn lists(ui: &mut egui::Ui, st: &AppState, filter: bool, msgs: &mut Vec<Msg>
         }
         menu::group_header_with(ui, title, hue.map(|c| (repo_swatch::paint_slot as PaintIcon, color::repo_hue(c))));
         for r in rows {
-            let done = repo_menu_row::show(ui, r, cols, &words);
+            let done = repo_row::show(ui, r, cols, &words, None).act;
             act(ui, r, done, msgs);
         }
     }
@@ -137,8 +137,9 @@ fn act(ui: &mut egui::Ui, r: &Row, done: Option<Act>, msgs: &mut Vec<Msg>) {
     }
 }
 
-/// The row for `path`, a favorite unless `removable` (a Recent row).
-fn row(st: &AppState, path: &Path, removable: bool) -> Row {
+/// The row for `path`, a favorite unless `removable` (a Recent row); the start page adds its key
+/// and grip.
+pub(super) fn row(st: &AppState, path: &Path, removable: bool) -> Row {
     let (name, parent) = glowfly_core::native_path::name_and_parent(path);
     let current = st.snap.as_ref().is_some_and(|s| st.same_folder(&s.workdir, path));
     let status = if is_missing(st, path) {
@@ -150,19 +151,24 @@ fn row(st: &AppState, path: &Path, removable: bool) -> Row {
     } else {
         None
     };
+    let full = glowfly_core::native_path::shown(path);
     Row {
+        id: repo_row::row_id(&full),
         path: path.to_path_buf(),
         name,
         parent,
-        full: glowfly_core::native_path::shown(path),
+        full,
         status,
         favorite: !removable,
         removable,
         swatch: listed_colour(st, path).map(color::repo_hue),
+        key: None,
+        draggable: false,
     }
 }
 
-fn words(st: &AppState) -> Words<'static> {
+/// The rows' texts in the language of `st`.
+pub(super) fn words(st: &AppState) -> Words<'static> {
     let t = st.settings.lang();
     Words {
         current: t.tr("repos.menu.status.current"),
@@ -172,5 +178,7 @@ fn words(st: &AppState) -> Words<'static> {
         favorite_add: t.tr("repos.favorite.add"),
         favorite_remove: t.tr("repos.favorite.remove"),
         remove: t.tr("repos.remove_recent"),
+        more: t.tr("repos.row_actions.tip"),
+        grip: t.tr("repos.drag.grip"),
     }
 }

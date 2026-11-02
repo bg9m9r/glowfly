@@ -3,11 +3,9 @@
 use super::theme::color;
 use super::widgets;
 use super::widgets::reason::{self, ItemState};
-use crate::msg::CloneMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::{self, separator};
@@ -318,19 +316,7 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             ui.add(egui::Spinner::new());
             return;
         }
-        let size = vec2(260.0, 34.0);
-        if ui.add(egui::Button::new(t.tr("common.open_repo.button")).min_size(size)).clicked() {
-            msgs.push(Msg::Repo(RepoMsg::PickRepo));
-        }
-        if ui.add(egui::Button::new(t.tr("common.clone_repo.button")).min_size(size)).clicked() {
-            msgs.push(Msg::Clone(CloneMsg::Dialog));
-        }
-        if ui.add(egui::Button::new(t.tr("common.init_repo.button")).min_size(size)).clicked() {
-            msgs.push(Msg::Repo(RepoMsg::InitRepo));
-        }
-        if ui.add(egui::Button::new(t.tr("welcome_screen.find.button")).min_size(size)).clicked() {
-            msgs.push(Msg::Repos(crate::msg::ReposMsg::ShowFinder));
-        }
+        super::welcome_cards::start_page(ui, t, msgs);
         super::repo_list::welcome_sections(ui, st, msgs);
     });
 }
