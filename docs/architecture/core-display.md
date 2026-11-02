@@ -31,7 +31,8 @@ source file, update its line here.
 
 - `highlight.rs`, `highlight/`: syntax highlighting of diff lines (syntect), as token kinds; whole files too (`highlight_file`, for blame).
 - `memo.rs`: parse checkpoints a reload of the same file resumes from: content-defined chunks with their start and end states.
-- `highlight/syntaxes.rs`: the syntax definitions, loaded once (immutable, see Rules).
+- `highlight/syntaxes.rs`: the syntax definitions for detection, loaded once (immutable, see Rules).
+- `highlight/grammars.rs`: the copy of the syntax set parsing runs on, dropped with its compiled regexes after 3 idle minutes (`Holder`).
 
 ## Previews
 
