@@ -75,6 +75,7 @@ ComboBox
 Label "Searching files…"
 Button "Close"
 Button "Resize branch / tag column"
+Button "Resize author column"
 Button "Resize commit column"
 Button "Resize date column"
 Label "Searching changed files…"
@@ -112,4 +113,5 @@ painted:
   "Branch / tag"
   "Graph"
   "Message"
+  "Author"
   "Date"

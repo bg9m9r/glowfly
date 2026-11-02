@@ -6,7 +6,7 @@ Label "Preferences"
 Label "General"
 Label "Updates"
 CheckBox "Check for updates once a day" [on]
-Label "Glowfly 0.2.0 · Last checked 02/01/2026 11:00 AM"
+Label "Glowfly 0.2.0 · Last checked 1 hour ago"
 Button "Check now"
 Label "Downloaded to Downloads\\glowfly-v0.3.0-x86_64-pc-windows-msvc.zip"
 Button "Show file"

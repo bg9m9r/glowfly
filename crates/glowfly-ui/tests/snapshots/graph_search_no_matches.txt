@@ -75,6 +75,7 @@ ComboBox
 Label "No matches"
 Button "Close"
 Button "Resize branch / tag column"
+Button "Resize author column"
 Button "Resize commit column"
 Button "Resize date column"
 Label "No commits match"
@@ -114,4 +115,5 @@ painted:
   "Branch / tag"
   "Graph"
   "Message"
+  "Author"
   "Date"

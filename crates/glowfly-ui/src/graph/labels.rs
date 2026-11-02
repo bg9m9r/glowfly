@@ -1,9 +1,9 @@
 //! A commit row's BRANCH / TAG cell: one soft chip per label (`ref_group::chips`) with its
 //! painted marks, as many as fit whole, then a "+N" chip for the rest; the line joining them to
 //! the node; which tip the pointer over them asks for; where each chip is, for a double-click;
-//! and where the New branch… ghost button goes.
+//! and where the New branch… ghost button goes. In a narrow table the same chips lead the
+//! message instead (`fit::Fitted::refs_inline`).
 
-use super::layout::Columns;
 use super::marks::{MARK_W, paint_cloud, paint_local, paint_tag};
 use super::ref_group::Chip;
 use crate::ui::build_status;
@@ -20,7 +20,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::RefKind;
 
 /// Space between two chips.
-const GAP: f32 = 4.0;
+pub(super) const GAP: f32 = 4.0;
 const CHIP_H: f32 = 22.0;
 /// Space between a chip's edges and its text.
 const TEXT_PAD: f32 = 7.0;
@@ -49,7 +49,7 @@ pub(super) struct ChipSpec {
 }
 
 impl ChipSpec {
-    fn of(chip: &Chip, build: Option<CheckState>) -> Self {
+    pub(super) fn of(chip: &Chip, build: Option<CheckState>) -> Self {
         let l = chip.label;
         let plain = |style, text: String| Self { text, style, lead_tag: false, local: false, remote: false, build };
         match l.kind {
@@ -79,6 +79,20 @@ fn check(is_head: bool, name: &str) -> String {
 fn chip_w(spec: &ChipSpec, text_w: f32) -> f32 {
     let lead = if spec.lead_tag { TAG_LEAD } else { 0.0 };
     text_w + 2.0 * TEXT_PAD + lead + MARK_W * spec.trailing() as f32
+}
+
+fn text_w(p: &Painter, text: &str, size: f32) -> f32 {
+    p.layout_no_wrap(text.to_owned(), FontId::proportional(size), color::weak()).size().x
+}
+
+/// A chip's whole width for `spec`.
+pub(super) fn spec_w(p: &Painter, spec: &ChipSpec) -> f32 {
+    chip_w(spec, text_w(p, &spec.text, FONT))
+}
+
+/// The "+n" chip's width.
+pub(super) fn plus_w(p: &Painter, n: usize) -> f32 {
+    text_w(p, &format!("+{n}"), PLUS_FONT) + PLUS_PAD
 }
 
 /// Which chips fit in a row.
@@ -214,20 +228,19 @@ impl RefsCell {
     }
 }
 
-/// Draws a commit row's BRANCH / TAG cell in `rect` (see the module notes).
-pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: RefsRow) -> RefsCell {
-    let rp = painter.with_clip_rect(cols.rect(cols.cell.refs, rect));
+/// Draws a commit row's chips in `rect` (see the module notes): from `span.0` to `span.1` at
+/// most, clipped to `clip` (BRANCH / TAG's content and cell, or a span leading the message).
+pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), rect: Rect, row: RefsRow) -> RefsCell {
+    let rp = painter.with_clip_rect(Rect::from_x_y_ranges(clip.0..=clip.1.max(clip.0), rect.y_range()));
     let mid = rect.center().y;
-    let x0 = cols.refs.0;
+    let x0 = span.0;
     let mut out = RefsCell::default();
-    let mut end = cols.refs.0;
+    let mut end = span.0;
     if !row.chips.is_empty() {
         let specs: Vec<ChipSpec> =
             row.chips.iter().enumerate().map(|(i, c)| ChipSpec::of(c, if i == 0 { row.build } else { None })).collect();
-        let text_w = |t: &str, size: f32| rp.layout_no_wrap(t.to_owned(), FontId::proportional(size), color::weak()).size().x;
-        let widths: Vec<f32> = specs.iter().map(|s| chip_w(s, text_w(&s.text, FONT))).collect();
-        let plus_w = |k: usize| text_w(&format!("+{k}"), PLUS_FONT) + PLUS_PAD;
-        let f = fit(&widths, cols.refs.1 - x0, plus_w, GAP);
+        let widths: Vec<f32> = specs.iter().map(|s| spec_w(&rp, s)).collect();
+        let f = fit(&widths, span.1 - x0, |k| plus_w(&rp, k), GAP);
         let mut drawn = Vec::with_capacity(f.shown);
         let mut x = x0;
         for (i, spec) in specs.iter().take(f.shown).enumerate() {
@@ -259,10 +272,8 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
     // alone where the label doesn't fit.
     if row.ghost {
         let at = |w: f32| Rect::from_min_size(pos2(end + GAP, mid - ghost_h() / 2.0), vec2(w, ghost_h()));
-        out.ghost_at = [(row.ghost_w, true), (ghost_h(), false)]
-            .into_iter()
-            .map(|(w, labelled)| (at(w), labelled))
-            .find(|(r, _)| r.right() <= cols.refs.1);
+        out.ghost_at =
+            [(row.ghost_w, true), (ghost_h(), false)].into_iter().map(|(w, labelled)| (at(w), labelled)).find(|(r, _)| r.right() <= span.1);
     }
     // The line joining the labels (and the ghost button after them) to the node.
     if let (Some(edge), false) = (row.node_edge_x, row.chips.is_empty()) {

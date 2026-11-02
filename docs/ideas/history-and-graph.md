@@ -121,6 +121,10 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Measure the walk with libgit2's strict hash verification off on read-only paths (not benchmarked with the slimmer commits)
 - Share one `Authors` table between a tab's reloads and its search index, so an author is stored once per tab rather than once per load
 - Graph edge lanes as `u32` (or `u16`) pairs would take a row from 104 to about 72 bytes
+- Inline ref chips (narrow table): a line joining them to the node, and the New branch… ghost button after them
+- BRANCH / TAG auto-fit: count the build marker's room on chips that show one
+- Cache BRANCH / TAG's widest chips (`refs_fit::chips_w`) per snapshot instead of measuring every labelled commit each frame
+- Let a divider drag widen a column past the message's 240 px by hiding the next column to give way, instead of stopping
 
 ### Resumed history loads
 

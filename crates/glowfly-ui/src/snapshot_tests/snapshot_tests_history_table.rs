@@ -1,20 +1,20 @@
-//! The history table: 40 px rows banded in their lane's colour, the COMMIT column (author over
-//! the short SHA), the right-aligned date, author and merge nodes, soft ref chips with their
-//! marks and the "+N" chip with its list of every label, and the selected and hovered rows.
-//! Shares the fixture repository with `snapshot_tests`.
+//! The history table: single-line rows (36 px, or 28 in Compact) banded in their lane's colour,
+//! the AUTHOR and COMMIT (short SHA) columns, the right-aligned short ages, author and merge
+//! nodes, soft ref chips with their marks and the "+N" chip with its list of every label, and
+//! the selected and hovered rows. Shares the fixture repository with `snapshot_tests`.
 
-use super::snapshot_tests::{harness, harness_palette, remove_fixture, render, with_repo};
+use super::snapshot_tests::{harness, harness_palette, harness_sized, remove_fixture, render, with_repo};
 use super::snapshot_tests_ref_sync::with_upstream;
 use super::snapshot_tests_select::{click, row_y};
 use crate::state::AppState;
-use crate::ui::graph::ROW_H;
+use crate::ui::graph::row_h;
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::snapshot_tests_painted::fills_at;
 use crate::ui::theme::{self, color};
 use eframe::egui::{Event, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{RefKind, RefLabel};
-use glowfly_core::settings::{ColumnWidths, ThemeChoice};
+use glowfly_core::settings::{ColumnWidths, Density, ThemeChoice};
 use std::time::Instant;
 
 /// The fixture's search branch's tip (the WIP row is 0).
@@ -28,7 +28,7 @@ const EXTRA: [&str; 5] = ["feature-a", "feature-b", "origin/feature-c", "v0.2.0"
 #[test]
 fn history_table_dark() {
     let (st, dir) = with_repo(ThemeChoice::Dark, "history-table");
-    assert_eq!(ROW_H, 40.0);
+    assert_eq!((row_h(Density::Comfortable), row_h(Density::Compact)), (36.0, 28.0));
     render("history_table_dark", st, true);
     remove_fixture(&dir);
 }
@@ -51,11 +51,34 @@ fn history_table_high_contrast_light() {
 }
 
 #[test]
-fn history_commit_without_sha() {
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, "history-no-sha");
-    st.settings.columns.commit_sha = false;
-    render("history_commit_without_sha", st, true);
+fn history_table_compact_dark() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "history-compact");
+    st.settings.graph_density = Density::Compact;
+    render("history_table_compact_dark", st, true);
     remove_fixture(&dir);
+}
+
+/// How many rows fit a 1920 x 1080 window's graph at `density`: whole ones, and with the one
+/// cut at the bottom.
+fn rows_at_1080p(density: Density, name: &str) -> (usize, usize) {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
+    st.settings.graph_density = density;
+    let mut h = harness_sized(st, true, eframe::egui::vec2(1920.0, 1080.0));
+    h.run();
+    let (st, _): &mut (AppState, _) = h.state_mut();
+    let whole = st.view.graph_fit_rows;
+    let (_, height) = st.session.tab_view.graph_scroll;
+    drop(h);
+    remove_fixture(&dir);
+    (whole, (height / row_h(density)).ceil() as usize)
+}
+
+#[test]
+fn compact_rows_fill_a_1080p_window() {
+    let (whole, shown) = rows_at_1080p(Density::Compact, "history-compact-1080");
+    assert!(shown >= 34, "{whole} whole rows, {shown} shown");
+    let (comfortable, _) = rows_at_1080p(Density::Comfortable, "history-comfortable-1080");
+    assert!(whole > comfortable, "{whole} compact rows, {comfortable} comfortable");
 }
 
 fn label(full: &str, kind: RefKind) -> RefLabel {

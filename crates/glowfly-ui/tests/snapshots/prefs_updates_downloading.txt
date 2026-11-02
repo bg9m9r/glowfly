@@ -7,7 +7,7 @@ Label "Preferences"
 Label "General"
 Label "Updates"
 CheckBox "Check for updates once a day" [on]
-Label "Glowfly 0.2.0 · Last checked 02/01/2026 11:00 AM"
+Label "Glowfly 0.2.0 · Last checked 1 hour ago"
 Button "Check now" [disabled]
 Label "Downloading… 40% (4.0 MB of 10.0 MB)"
 ProgressIndicator = 40

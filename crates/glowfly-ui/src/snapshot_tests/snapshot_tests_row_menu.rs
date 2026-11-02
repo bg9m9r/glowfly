@@ -8,11 +8,12 @@ use super::snapshot_tests_stash::with_stashes;
 use super::snapshot_tests_submodules::with_submodules;
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::ui::graph::ROW_H;
+use crate::ui::graph::row_h;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
+use glowfly_core::settings::Density;
 use glowfly_core::settings::ThemeChoice;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -72,7 +73,7 @@ fn graph_row_menu_opens_below_the_row() {
     h.run();
     click(&mut h, pos2(700.0, row_y(1)), PointerButton::Secondary);
     h.run();
-    let row_bottom = row_y(1) + ROW_H / 2.0;
+    let row_bottom = row_y(1) + row_h(Density::Comfortable) / 2.0;
     assert!(top_of(&h, "Checkout (detached)") >= row_bottom, "the commit menu starts below the row");
     let menu_left = h.get_by_label("Checkout (detached)").bounding_box().unwrap().x0 as f32;
     assert!((menu_left - 700.0).abs() < 24.0, "the menu's left edge is near the pointer: {menu_left}");

@@ -97,17 +97,17 @@ const LONG_AUTHOR: &str = "Augusta Ada King-Noel";
 #[test]
 fn graph_columns_narrow() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "truncate-columns");
-    st.settings.column_widths = ColumnWidths { refs: 100.0, changes: 60.0, commit: 80.0, date: 80.0 };
-    // A name longer than the narrowest commit column.
+    st.settings.column_widths =
+        ColumnWidths { refs: 100.0, changes: 60.0, author: 80.0, commit: 80.0, date: 80.0, ..ColumnWidths::default() };
+    // A name longer than the narrowest author column.
     let snap = st.snap.as_mut().unwrap();
     let c = std::sync::Arc::get_mut(&mut snap.commits).unwrap().iter_mut().find(|c| c.summary == "Search results page").unwrap();
     c.author = glowfly_core::repo::Author::new(LONG_AUTHOR, c.author.email());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("graph_columns_narrow");
-    // The author line sits above the row's middle, over the short SHA.
-    let x = grip(&h, "Resize commit column").x + 20.0;
-    let y = center(&h, "Search results page").y - 7.0;
+    let x = grip(&h, "Resize author column").x + 20.0;
+    let y = center(&h, "Search results page").y;
     pointer(&mut h, pos2(x, y), None);
     settle(&mut h);
     assert!(h.query_by_label(LONG_AUTHOR).is_some(), "the cut author's hover has the whole name");

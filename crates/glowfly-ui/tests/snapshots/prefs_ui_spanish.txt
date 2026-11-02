@@ -55,8 +55,10 @@ CheckBox "Mensaje" [on]
 CheckBox "Cambios" [off]
 Label "Líneas añadidas y eliminadas por commit, calculadas en segundo plano."
 CheckBox "Autor" [on]
-CheckBox "SHA corto bajo el autor" [on]
+CheckBox "Commit (SHA corto)" [on]
 CheckBox "Fecha y hora" [on]
+Button "Cómoda" [on]
+Button "Compacta" [off]
 ComboBox
 ComboBox
 Label "Pensado para daltonismo usa 8 tonos elegidos para distinguirse con daltonismo rojo-verde o azul-amarillo. Los nombres de las ramas siempre aparecen junto a su color. La rama principal es gris salvo que elijas un color para ella."
@@ -98,8 +100,8 @@ painted:
   "Todas las ramas"
   "Archivos cambiados"
   "Columnas del grafo"
+  "Densidad de filas"
   "Descripción del commit"
   "Siempre"
   "Colores de ramas"
   "Estándar"
-  "Diseño de columnas"

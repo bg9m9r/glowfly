@@ -55,8 +55,10 @@ CheckBox "Nachricht" [on]
 CheckBox "Änderungen" [off]
 Label "Hinzugefügte und entfernte Zeilen pro Commit, im Hintergrund berechnet."
 CheckBox "Autor" [on]
-CheckBox "Kurze SHA unter dem Autor" [on]
+CheckBox "Commit (kurzer SHA)" [on]
 CheckBox "Datum und Uhrzeit" [on]
+Button "Komfortabel" [on]
+Button "Kompakt" [off]
 ComboBox
 ComboBox
 Label "Farbenblind-freundlich verwendet 8 Farbtöne, die bei Rot-Grün- oder Blau-Gelb-Farbenblindheit unterscheidbar bleiben. Branch-Namen stehen immer neben ihrer Farbe. Der Haupt-Branch ist grau, solange du ihm keine Farbe gibst."

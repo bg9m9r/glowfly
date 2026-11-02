@@ -27,8 +27,15 @@ const ENGLISH: &[&str] = &[
     "Graph",
     "Message",
     "Changes",
+    "Author",
     "Commit",
     "Date",
+    // The graph's short ages.
+    "now",
+    "* min",
+    "* h",
+    "Yesterday",
+    "* d",
     "Load more",
     "Fetch full history",
     "Showing the newest * commits.",
@@ -225,13 +232,16 @@ fn the_check_catches_the_english_window() {
     let (mut st, dir) = panels("lang-main-english");
     st.settings.language = "en".into();
     st.settings.relative_dates = true;
+    // The newest commit three days old, so its date is a short age.
+    let commits = std::sync::Arc::get_mut(&mut st.snap.as_mut().unwrap().commits).unwrap();
+    commits.iter_mut().max_by_key(|c| c.time).unwrap().time = NOW - 3 * 86_400;
     let mut h = harness(st, true);
     h.run();
     let found = english_shown(&h);
     for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "No worktrees", "New branch"] {
         assert!(found.iter().any(|f| f == text), "{text} is caught: {found:?}");
     }
-    assert!(found.iter().any(|f| f.ends_with(" days ago")), "relative dates are caught: {found:?}");
+    assert!(found.iter().any(|f| f == "3 d"), "short ages are caught: {found:?}");
     drop(h);
     remove_fixture(&dir);
 }
@@ -242,10 +252,19 @@ fn panels_german() {
     st.settings.relative_dates = true;
     st.settings.columns.changes = true;
     let newest = st.snap.as_ref().unwrap().commits.iter().map(|c| c.time).max().unwrap();
-    let mut h = harness(st, true);
+    let short_date = glowfly_core::dates::short_relative(Lang::De, newest, NOW, &st.settings.date_locale, 0);
+    // Wide enough for every column, CHANGES too, to keep the message its 240 px.
+    let mut h = super::snapshot_tests::harness_sized(st, true, eframe::egui::vec2(1800.0, 820.0));
     h.run();
     let de = Lang::De;
-    for key in ["graph.header.refs", "graph.header.message", "graph.header.changes", "graph.header.commit", "graph.header.date"] {
+    for key in [
+        "graph.header.refs",
+        "graph.header.message",
+        "graph.header.changes",
+        "graph.header.author",
+        "graph.header.commit",
+        "graph.header.date",
+    ] {
         assert!(shows(&h, de.tr(key)), "the {key} title is shown whole");
     }
     for key in [
@@ -265,8 +284,7 @@ fn panels_german() {
     assert!(check::shown_texts(&h).iter().any(|t| t.starts_with(cut)), "the filter field's hint");
     assert!(shows(&h, de.tr("graph.wip.label")), "the WIP row");
     assert!(h.query_by_label(de.tr("details.wip.stage_all.button")).is_some(), "the WIP lists");
-    let days = usize::try_from((NOW - newest) / 86_400).unwrap();
-    assert!(shows(&h, &de.trn("dates.days_ago", days, &[])), "a German relative date");
+    assert!(shows(&h, &short_date), "a German short date: {short_date}");
     let more = de.trf("sidebar.section.more.name", &[("section", &de.tr("sidebar.local.header"))]);
     assert!(h.query_by_label(&more).is_some(), "the ⋯ is named in German");
     assert!(h.query_by_label(de.tr("sidebar.action.new_branch")).is_some(), "the + is named in German");

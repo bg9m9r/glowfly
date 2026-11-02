@@ -1,6 +1,7 @@
-//! Which parts of the commit graph are shown (Preferences > Appearance > Commit Graph).
-//! Files written before the COMMIT column had separate author and SHA toggles; either one on
-//! shows the COMMIT column, which holds the author with the short SHA under it.
+//! Which parts of the commit graph are shown (Preferences > Appearance > Commit Graph). The
+//! AUTHOR and COMMIT (short SHA) columns have their own toggles, as the oldest files did. Files
+//! from between those had one COMMIT column for both (the author over the SHA): it now shows
+//! AUTHOR, and COMMIT unless its SHA line was off.
 
 use super::DescriptionMode;
 use serde::{Deserialize, Serialize};
@@ -14,10 +15,10 @@ pub struct GraphColumns {
     pub message: bool,
     pub description: DescriptionMode,
     pub changes: bool,
-    /// The COMMIT column (the author, with the short SHA under it).
+    /// The AUTHOR column: the author's name.
+    pub author: bool,
+    /// The COMMIT column: the short SHA.
     pub commit: bool,
-    /// The short SHA line under the author in the COMMIT column.
-    pub commit_sha: bool,
     pub date: bool,
 }
 
@@ -29,8 +30,8 @@ impl Default for GraphColumns {
             message: true,
             description: DescriptionMode::Always,
             changes: false,
+            author: true,
             commit: true,
-            commit_sha: true,
             date: true,
         }
     }
@@ -44,8 +45,8 @@ impl GraphColumns {
             message: true,
             description: DescriptionMode::OnHover,
             changes: false,
+            author: false,
             commit: false,
-            commit_sha: true,
             date: false,
         }
     }
@@ -62,11 +63,11 @@ struct StoredColumns {
     description: Option<DescriptionMode>,
     changes: Option<bool>,
     commit: Option<bool>,
+    /// The SHA line of the COMMIT column that held the author too.
     commit_sha: Option<bool>,
     date: Option<bool>,
-    /// The old AUTHOR column toggle.
     author: Option<bool>,
-    /// The old SHA column toggle.
+    /// The oldest files' SHA column toggle.
     sha: Option<bool>,
 }
 
@@ -79,8 +80,13 @@ impl From<StoredColumns> for GraphColumns {
             message: s.message.unwrap_or(d.message),
             description: s.description.unwrap_or(d.description),
             changes: s.changes.unwrap_or(d.changes),
-            commit: s.commit.unwrap_or(s.author.unwrap_or(true) || s.sha.unwrap_or(false)),
-            commit_sha: s.commit_sha.unwrap_or(true),
+            // The combined COMMIT column (no `author` key): AUTHOR follows it, COMMIT too
+            // unless its SHA line was off.
+            author: s.author.or(s.commit).unwrap_or(d.author),
+            commit: match (s.author, s.commit) {
+                (None, Some(both)) => both && s.commit_sha.unwrap_or(true),
+                _ => s.commit.or(s.sha).unwrap_or(d.commit),
+            },
             date: s.date.unwrap_or(d.date),
         }
     }
@@ -95,18 +101,21 @@ mod tests {
     }
 
     #[test]
-    fn old_author_and_sha_toggles_map_to_the_commit_column() {
+    fn old_toggles_map_to_the_author_and_commit_columns() {
+        // The oldest files: AUTHOR and SHA toggles of their own.
         let old = load(
             r#"{"refs":true,"tree":true,"sha":false,"message":true,"description":"Always","changes":false,"author":true,"date":true}"#,
         );
-        assert_eq!((old.commit, old.commit_sha), (true, true));
-        assert_eq!(old, GraphColumns::default());
-        assert!(!load(r#"{"author":false,"sha":false}"#).commit, "both off hides the column");
-        assert!(load(r#"{"author":false,"sha":true}"#).commit, "the SHA alone shows it");
-        assert!(load(r#"{"sha":false}"#).commit, "the old author default was on");
+        assert_eq!((old.author, old.commit), (true, false));
+        assert_eq!((load(r#"{"author":false,"sha":true}"#).author, load(r#"{"author":false,"sha":true}"#).commit), (false, true));
+        // The combined COMMIT column: AUTHOR follows it, COMMIT unless its SHA line was off.
+        let both = load(r#"{"commit":true,"commit_sha":true}"#);
+        assert_eq!((both.author, both.commit), (true, true));
+        let no_sha = load(r#"{"commit":true,"commit_sha":false}"#);
+        assert_eq!((no_sha.author, no_sha.commit), (true, false));
+        let off = load(r#"{"description":"Never","date":false,"commit":false}"#);
+        assert_eq!((off.description, off.date, off.author, off.commit), (DescriptionMode::Never, false, false, false));
         assert_eq!(load("{}"), GraphColumns::default());
-        let off = load(r#"{"description":"Never","date":false,"commit":true,"commit_sha":false}"#);
-        assert_eq!((off.description, off.date, off.commit_sha), (DescriptionMode::Never, false, false));
     }
 
     #[test]
@@ -114,7 +123,7 @@ mod tests {
         for c in [GraphColumns::default(), GraphColumns::compact()] {
             let json = serde_json::to_value(c).unwrap();
             let keys = json.as_object().unwrap();
-            assert!(!keys.contains_key("author") && !keys.contains_key("sha"), "{json}");
+            assert!(!keys.contains_key("commit_sha") && !keys.contains_key("sha"), "{json}");
             assert_eq!(serde_json::from_value::<GraphColumns>(json).unwrap(), c);
         }
     }

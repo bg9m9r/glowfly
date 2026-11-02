@@ -34,7 +34,7 @@ fn resize_column_saves_once() {
     let fx = resize(&mut st, Commit, 220.0);
     let [Effect::SaveSettings(s)] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
     assert_eq!(s.column_widths.get(Commit), 220.0);
-    for col in [Refs, Changes, Date] {
+    for col in [Refs, Changes, Author, Date] {
         assert_eq!(s.column_widths.get(col), col.default_width(), "{col:?}");
     }
     assert!(resize(&mut st, Commit, 220.0).is_empty(), "the same width saves nothing");
@@ -48,9 +48,9 @@ fn resize_column_clamps() {
     assert!(matches!(fx.as_slice(), [Effect::SaveSettings(_)]), "{fx:?}");
     assert_eq!(st.settings.column_widths.get(Refs), 480.0);
     assert!(resize(&mut st, Commit, f32::NAN).is_empty());
-    assert_eq!(st.settings.column_widths.get(Commit), 170.0);
+    assert_eq!(st.settings.column_widths.get(Commit), 76.0);
     resize(&mut st, Commit, 10.0);
-    assert_eq!(st.settings.column_widths.get(Commit), 80.0);
+    assert_eq!(st.settings.column_widths.get(Commit), 64.0);
     resize(&mut st, Commit, 900.0);
     assert_eq!(st.settings.column_widths.get(Commit), 360.0);
 }
@@ -61,7 +61,7 @@ fn reset_column_width() {
     resize(&mut st, Commit, 220.0);
     let fx = reset(&mut st, Commit);
     let [Effect::SaveSettings(s)] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
-    assert_eq!(s.column_widths.get(Commit), 170.0);
+    assert_eq!(s.column_widths.get(Commit), 76.0);
     assert!(reset(&mut st, Commit).is_empty());
     assert!(reset(&mut st, Date).is_empty(), "an untouched column is already at its default");
 }

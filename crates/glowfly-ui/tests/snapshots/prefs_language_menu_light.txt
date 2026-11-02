@@ -21,7 +21,7 @@ TextInput
 Label "02/01/2026 12:00 PM"
 TextInput
 Label "February 1, 2026 12:00 PM"
-CheckBox "Show \"3 hours ago\" instead of the date and time format" [off]
+CheckBox "Show \"3 hours ago\" instead of the date and time format" [on]
 painted:
   "General"
   "Git"

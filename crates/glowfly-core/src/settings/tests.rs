@@ -448,6 +448,9 @@ fn column_widths_old_files() {
     let s: Settings = serde_json::from_str(r#"{"column_widths":{"author":200}}"#).unwrap();
     assert_eq!(s.column_widths.get(ResizableColumn::Commit), 200.0);
     assert_eq!(s.column_widths, ColumnWidths { commit: 200.0, ..ColumnWidths::default() });
+    // The old default widths load as the new ones.
+    let s: Settings = serde_json::from_str(r#"{"column_widths":{"refs":190,"commit":170,"date":160}}"#).unwrap();
+    assert_eq!(s.column_widths, ColumnWidths::default());
     let wide = Settings { column_widths: ColumnWidths::default().with(ResizableColumn::Refs, 300.0), ..Settings::default() };
     let back: Settings = serde_json::from_str(&serde_json::to_string(&wide).unwrap()).unwrap();
     assert_eq!(back.column_widths, wide.column_widths);
@@ -633,7 +636,7 @@ fn old_graph_columns_load_without_resets() {
     let (dir, file) = scratch_settings("old-columns", text.as_bytes());
     let (s, problem) = Settings::load_from(&file);
     assert_eq!(problem, None);
-    assert!(s.columns.commit && s.columns.commit_sha, "the old SHA column shows the commit column");
+    assert!(s.columns.commit && !s.columns.author, "the old SHA column shows the commit column; the old AUTHOR one was off");
     assert_eq!(s.columns.description, DescriptionMode::OnHover);
     assert_eq!((s.column_widths.get(ResizableColumn::Commit), s.column_widths.get(ResizableColumn::Refs)), (210.0, 200.0));
     let _ = std::fs::remove_dir_all(&dir);
