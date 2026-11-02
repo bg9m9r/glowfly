@@ -101,8 +101,9 @@ start with `state/`, `update/` or `ui/`.
 - `repo_list.rs`: the start page's repository area: Favorites with + New group, the groups nested under it, the other favorites, and Recent.
 - `repo_list_row.rs`: one start-page repository row: what its click, star and × send, and its menu (right-click or ⋯) with Move to group.
 - `repo_list_groups.rs`: the start page's group headers (swatch, name, count, Open all, ⋯), the bar down a group's rows, an empty group's dashed placeholder, and the group menu; `repo_list_drag.rs` drags favorites by their grip between groups.
-- `repo_group_menu.rs`: a welcome favorite's Move to group submenu, the way to group without dragging.
+- `repo_group_menu.rs`: a welcome favorite's Move to group submenu and a Recent row's Add to group submenu, ways to group without dragging.
 - `repo_group_dialog.rs`: the New group and Rename group dialog.
+- `repo_group_picker.rs`: a group's Add repositories dialog, a checklist of favorites and Recent repositories.
 - `repo_menu_list.rs`: the repository menu's and File > Open recent's repository groups, Favorites and Recent, the filter field of a long list, and Remove missing / Clear recent.
 - `repo_row.rs`: one repository row, shared by those menus and the start page: name, parent path, status, and the star and × on hover or focus (on the start page also the grip, a status pill, the key cap and ⋯); in a menu Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
 

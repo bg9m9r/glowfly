@@ -74,7 +74,7 @@ source file, update its line here.
 ## Dialogs
 
 - `dialog_frame.rs`: the frame every dialog is drawn in.
-- `dialog_header.rs`: a header with the title, an optional icon and subtitle and a painted close button that acts as Esc.
+- `dialog_header.rs`: a header with the title, an optional icon (or colour swatch) and subtitle and a painted close button that acts as Esc.
 - `dialog_size.rs`: a size class, Small 400–480, Medium 480–560 or Wide 640–760 px, following a long title up to its most and capped by the window.
 - The dialog body scrolls or resizes.
 - `dialog_guide.rs`: for a less familiar operation, a tinted side pane that explains it in numbered steps under "How it works", beside the form or, in a narrow window, stacked above it; the steps are in `dialog_guides.rs`.

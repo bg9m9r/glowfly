@@ -134,6 +134,7 @@ pub mod release_notes;
 pub mod remote_branch;
 pub mod remotes;
 pub mod repo_colours;
+pub mod repo_group_picker;
 pub mod repo_groups;
 pub mod repo_identity;
 pub mod repo_lists;
@@ -370,6 +371,8 @@ pub enum Modal {
     RenameTab(tabs::RenameTabForm),
     /// New group and Rename group (`ui/repo_group_dialog.rs`).
     RepoGroup(repo_groups::GroupForm),
+    /// A group's Add repositories picker (`ui/repo_group_picker.rs`).
+    AddToGroup(repo_group_picker::AddPicker),
     /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
     Mainline(pick::MainlineForm),
     /// Uncommitted changes in the way of an operation: stash them and carry on (`ui/auto_stash_dialog.rs`).
@@ -392,8 +395,7 @@ pub struct AppState {
     pub recent: Vec<PathBuf>,
     /// Recent or favorite repository folders found missing by the last check (`RecentMsg::FoldersChecked`).
     pub missing_repos: Vec<PathBuf>,
-    /// A listed folder that failed to open, waiting for the folder check to say whether it is
-    /// gone (then Glowfly offers to remove it from the lists; update/recent.rs).
+    /// A listed folder that failed to open, until the folder check says if it's gone, to offer removing it (update/recent.rs).
     pub missing_offer: Option<PathBuf>,
     /// The Find repositories dialog's scan of the project folders: global, never parked.
     pub repo_scan: repo_scan::RepoScan,
