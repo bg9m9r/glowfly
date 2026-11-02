@@ -79,7 +79,7 @@ impl Runner {
 }
 
 /// `saves::save_now`, writing into `folder`.
-fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
+pub(super) fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
     let (what, result) = match effect {
         Effect::SaveSettings(settings) => ("settings", settings.save_to(&folder.join("settings.json"))),
         Effect::SaveRecent(list) => ("the recent repositories", super::platform::save_recent_to(&folder.join("recent.txt"), &list)),

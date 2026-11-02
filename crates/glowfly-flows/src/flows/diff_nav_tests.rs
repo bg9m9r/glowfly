@@ -3,7 +3,7 @@
 //! cancels a pending step.
 
 use super::diff_tests::three_hunks;
-use super::tests::{drive, git, state};
+use super::tests::{drive, git, skipped, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::DiffMsg;
@@ -78,9 +78,10 @@ pub(super) fn diff(st: &AppState) -> &FileDiff {
     &st.session.diff.view.as_ref().expect("a diff is open").1
 }
 
-/// Runs every effect in `fx` and the messages they lead to, as the app would.
+/// Runs the effects in `fx` and the messages they lead to, as the app would, minus those
+/// `helpers::finish` skips (saves, dialogs, the network).
 pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
-    for e in fx {
+    for e in fx.into_iter().filter(|e| !skipped(e)) {
         if let Some(m) = runner::testing::execute(e) {
             drive(st, m);
         }
