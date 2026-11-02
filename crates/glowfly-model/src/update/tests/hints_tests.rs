@@ -219,6 +219,7 @@ fn with_remote(st: &mut AppState, name: &str, url: &str) -> PathBuf {
 #[test]
 fn a_github_remote_without_an_account_offers_connect() {
     let mut st = state();
+    st.view.sections.prs = false;
     with_remote(&mut st, "hint-connect-github", "https://github.com/acme/widgets.git");
     assert_eq!(shown(&st), Some(HintId::Connect));
     let v = hints::view(&st).unwrap();
@@ -246,4 +247,30 @@ fn a_hidden_left_panel_keeps_connect_away() {
     st.settings.show_left_panel = false;
     with_remote(&mut st, "hint-connect-no-panel", "https://github.com/acme/widgets.git");
     assert_eq!(shown(&st), None);
+}
+
+/// An open PULL REQUESTS section shows its own Connect… while no account is connected: the
+/// tip is not offered over it.
+#[test]
+fn an_open_pull_requests_section_keeps_connect_away() {
+    let mut st = state();
+    with_remote(&mut st, "hint-connect-prs-open", "https://github.com/acme/widgets.git");
+    assert!(st.view.sections.prs);
+    assert_eq!(shown(&st), None);
+    assert!(hints::view(&st).is_none());
+}
+
+/// Opening PULL REQUESTS while the tip shows hides it without counting it as ignored.
+#[test]
+fn opening_pull_requests_hides_connect_unignored() {
+    let mut st = state();
+    st.view.sections.prs = false;
+    with_remote(&mut st, "hint-connect-prs-opened", "https://github.com/acme/widgets.git");
+    assert_eq!(shown(&st), Some(HintId::Connect));
+    st.view.sections.prs = true;
+    assert!(hints::view(&st).is_none(), "not drawn under the open section");
+    update(&mut st, Msg::Tick(Instant::now()), Instant::now());
+    assert_eq!(shown(&st), None, "hidden");
+    assert!(!st.settings.hints_ignored.contains(HintId::Connect.id()), "not ignored");
+    assert!(!st.settings.hints_seen.contains(HintId::Connect.id()), "may show again later");
 }

@@ -86,14 +86,16 @@ pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
     }
 }
 
-/// After every message: tips turned off hide the one showing, and one whose place is gone (its
-/// tab left or closed, its repository closed, the left panel hidden) or that the app quits with
-/// counts as ignored.
+/// After every message: tips turned off, or the Connect tip under an opened PULL REQUESTS
+/// section, hide the one showing; one whose place is gone (its tab left or closed, its
+/// repository closed, the left panel hidden) or that the app quits with counts as ignored.
 pub(super) fn settle(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.onboarding.hint.is_none() {
         return;
     }
-    if !st.settings.hints {
+    let covered = st.onboarding.hint.is_some_and(|h| h.id == HintId::Connect) && hints::connect_covered(st);
+    if !st.settings.hints || covered {
+        // Off, or the PULL REQUESTS section opened over the Connect tip: hidden, not ignored.
         st.onboarding.hint = None;
     } else if hints::place_gone(st) || st.view.quitting {
         let changed = hints::ignore(st);
