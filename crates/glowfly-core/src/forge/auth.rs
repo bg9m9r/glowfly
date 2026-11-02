@@ -112,6 +112,25 @@ pub fn is_connected(account: &Account, connections: &[Connection]) -> bool {
     connections.iter().any(|c| c.account == *account)
 }
 
+/// The words every "no credentials at all" failure starts with (none found, the server not
+/// connected, the connection removed), so the sidebar can offer Connect… for exactly that.
+const NOT_CONNECTED: &str = "not connected to ";
+
+/// "not connected to GitHub", or with `at` ("not connected to GitLab at git.example.com").
+pub fn not_connected_text(provider: Provider, at: Option<&str>) -> String {
+    match at {
+        Some(at) => format!("{NOT_CONNECTED}{} at {at}", provider.name()),
+        None => format!("{NOT_CONNECTED}{}", provider.name()),
+    }
+}
+
+/// Whether a failure's `message` is `not_connected_text`'s, alone or after the error's prefix
+/// ("authentication failed: not connected to GitHub"), rather than a failure of credentials
+/// that were found (an expired token, a network error, a rate limit).
+pub fn says_not_connected(message: &str) -> bool {
+    message.strip_prefix("authentication failed: ").unwrap_or(message).starts_with(NOT_CONNECTED)
+}
+
 /// The provider's environment-variable token, for public hosts only: a token meant for
 /// github.com must never reach a server that merely calls itself `github.<something>`.
 fn env_token(account: &Account, var: impl Fn(&str) -> Option<String>) -> Option<(String, &'static str)> {
@@ -147,7 +166,7 @@ pub fn resolve_auth(account: &Account, cwd: &Path, interactive: bool, connected:
     if may_ask_gcm(account, connected) {
         return from_credential_manager(account, cwd, interactive);
     }
-    Err(Error::Auth(format!("not connected to {}", account.provider.name())))
+    Err(Error::Auth(not_connected_text(account.provider, None)))
 }
 
 pub(super) fn credential_host(account: &Account) -> String {
@@ -280,5 +299,20 @@ mod tests {
         assert!(!may_contact(&acct(Provider::GitLabSelfManaged, "github.acme.io"), &[conn]));
         assert!(may_contact(&acct(Provider::Bitbucket, "bitbucket.org"), &[]));
         assert!(!may_contact(&acct(Provider::BitbucketDataCenter, "bitbucket.acme.io"), &[]));
+    }
+
+    #[test]
+    fn only_missing_credentials_say_not_connected() {
+        let none = resolve_error_text();
+        assert!(says_not_connected(&none), "{none}");
+        assert!(says_not_connected(&not_connected_text(Provider::GitLabSelfManaged, Some("git.acme.io"))));
+        assert!(!says_not_connected("network error: offline"));
+        assert!(!says_not_connected("HTTP 403: API rate limit exceeded"));
+        assert!(!says_not_connected("authentication failed: bad credentials"));
+    }
+
+    /// What `resolve_auth` fails with when nothing is found, as the runner reports it.
+    fn resolve_error_text() -> String {
+        Error::Auth(not_connected_text(Provider::GitHub, None)).to_string()
     }
 }

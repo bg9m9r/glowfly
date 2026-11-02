@@ -239,23 +239,10 @@ pub fn hint_row(ui: &mut egui::Ui, text: String) {
     );
 }
 
-/// A hosting service that failed though its account is connected (an expired token, a network
-/// failure): the needs-you badge and the cause in `text`, then a Small secondary Sign in.
+/// A hosting service that failed though credentials were found (an expired token, a network
+/// failure): `widgets::empty_state::failure` with its Sign in.
 pub fn forge_error_rows(ui: &mut egui::Ui, t: Lang, error: &str, msgs: &mut Vec<Msg>) {
-    let margin = egui::Margin { left: widgets::ROW_INDENT as i8, right: widgets::PAD_X as i8, top: 6, bottom: 8 };
-    egui::Frame::new().inner_margin(margin).show(ui, |ui| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 6.0;
-            let (rect, _) = ui.allocate_exact_size(vec2(12.0, 12.0), egui::Sense::hover());
-            super::needs_you::badge(ui.painter(), rect);
-            ui.add(egui::Label::new(RichText::new(error).color(color::text()).size(type_scale::SMALL)).wrap());
-        });
-        ui.add_space(6.0);
-        let sign_in = widgets::buttons::secondary(t.tr("status.sign_in")).size(crate::ui::theme::sizes::ControlSize::Small);
-        if ui.add(sign_in).clicked() {
-            msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
-        }
-    });
+    widgets::empty_state::failure(ui, t, error, true, msgs);
 }
 
 /// A service's state in the status bar: "· <ok_text>" when it answered (nothing without a text),

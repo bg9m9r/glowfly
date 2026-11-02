@@ -111,7 +111,7 @@ pub(super) fn request(st: &mut AppState, target: Target, interactive: bool, call
     let connected = forge::is_connected(&account, &st.settings.connections);
     let Some(fs) = st.session.forge.as_mut() else { return };
     if !forge::may_contact(&account, &st.settings.connections) {
-        let msg = format!("not connected to {} at {}", account.provider.name(), account.display());
+        let msg = forge::not_connected_text(account.provider, Some(&account.display()));
         if fs.host.as_ref() == Some(&target) {
             fs.host_status = Status::Error(msg.clone());
         }
@@ -361,7 +361,7 @@ fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
     super::dashboard::account_changed(st, account, fx);
     if let Some(fs) = st.session.forge.as_mut() {
         fs.auth.remove(&account.key());
-        let msg = format!("not connected to {}", account.provider.name());
+        let msg = forge::not_connected_text(account.provider, None);
         let (host, tracker) = fs.uses_account(account);
         fs.filters.account_changed(host, tracker);
         if host {

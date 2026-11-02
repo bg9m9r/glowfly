@@ -155,10 +155,11 @@ pub fn pr_view<'a>(t: Lang, fs: &'a ForgeState, f: &RepoForgeFilters) -> PrView<
     PrView { rows, label, hint, empty }
 }
 
-/// Whether `target` failed to answer (`status`) with no connection for its account in
-/// Preferences: the user hasn't connected it yet.
+/// Whether `target` failed (`status`) because no credentials were found for it at all, and
+/// Preferences has no connection for its account: the user hasn't connected it yet. Any other
+/// failure (offline, a rate limit, a refused token) keeps its cause and Sign in.
 fn not_connected(target: &Target, status: &Status, connections: &[Connection]) -> bool {
-    matches!(status, Status::Error(_)) && !forge::is_connected(&target.account(), connections)
+    matches!(status, Status::Error(e) if forge::says_not_connected(e)) && !forge::is_connected(&target.account(), connections)
 }
 
 /// The PULL REQUESTS section's empty state while its account isn't connected (`not_connected`):
@@ -174,9 +175,9 @@ pub fn connect_prompt(t: Lang, fs: &ForgeState, connections: &[Connection]) -> O
 }
 
 /// The ISSUES section's empty state while its tracker's account isn't connected, and whether
-/// it needs its own Connect… button: not when the PULL REQUESTS section just above already
-/// offers one for the same account.
-pub fn connect_issues_prompt(t: Lang, fs: &ForgeState, connections: &[Connection]) -> Option<(String, bool)> {
+/// it needs its own Connect… button: not when the PULL REQUESTS section just above is open
+/// (`prs_open`) and already offers one for the same account.
+pub fn connect_issues_prompt(t: Lang, fs: &ForgeState, connections: &[Connection], prs_open: bool) -> Option<(String, bool)> {
     let tracker = fs.tracker.as_ref().filter(|tr| not_connected(tr, &fs.tracker_status, connections))?;
     let host: [(&str, &dyn std::fmt::Display); 1] = [("host", &tracker.provider.name())];
     let text = match fs.issue_noun() {
@@ -184,8 +185,28 @@ pub fn connect_issues_prompt(t: Lang, fs: &ForgeState, connections: &[Connection
         "card" => t.trf("sidebar.empty.connect_cards", &host),
         _ => t.trf("sidebar.empty.connect_issues", &host),
     };
-    let above = connect_prompt(t, fs, connections).is_some() && fs.host.as_ref().map(Target::account) == Some(tracker.account());
+    let above = prs_open && connect_prompt(t, fs, connections).is_some() && same_account(fs);
     Some((text, !above))
+}
+
+/// Whether the ISSUES section's failure needs its own Sign in: not when the PULL REQUESTS
+/// section just above is open (`prs_open`) and shows one for the same failing account.
+pub fn issues_sign_in(fs: &ForgeState, prs_open: bool) -> bool {
+    !(prs_open && matches!(fs.host_status, Status::Error(_)) && same_account(fs))
+}
+
+/// The code host and the tracker are one account (GitHub for both).
+fn same_account(fs: &ForgeState) -> bool {
+    match (&fs.host, &fs.tracker) {
+        (Some(h), Some(tr)) => h.account() == tr.account(),
+        _ => false,
+    }
+}
+
+/// A section's header count: none while its service failed or isn't connected (`status`), as
+/// nothing could be loaded to count.
+pub fn shown_count(status: &Status, n: usize) -> Option<usize> {
+    (!matches!(status, Status::Error(_))).then_some(n)
 }
 
 pub struct IssueView<'a> {

@@ -1,7 +1,8 @@
 //! The left panel's empty sections: collapsed and muted at first, expanded by their own header
 //! into a sentence and an action (Worktrees, Submodules, Stashes, Remote with Publish… and a quiet
 //! Add remote…, wrapping in a narrow German panel), and the PULL REQUESTS section while its
-//! account isn't connected (Connect…) or is connected but failing (Sign in).
+//! account isn't connected (Connect…) or is connected but failing (Sign in), shared with ISSUES
+//! only while PULL REQUESTS is open.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_forge_filters::target;
@@ -151,11 +152,26 @@ fn prs_connected_but_failing() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Connect GitHub to see its pull requests here.").is_none(), "already connected");
-    assert_eq!(h.query_all_by_label("Sign in").count(), 3, "the pull requests', the issues' and the status bar's");
+    assert_eq!(h.query_all_by_label("Sign in").count(), 2, "one for the account (the issues share it), and the status bar's");
     h.check_snapshot("sidebar_prs_sign_in");
     h.get_all_by_label("Sign in").next().unwrap().click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// With PULL REQUESTS collapsed, ISSUES offers its own Connect….
+#[test]
+fn prs_collapsed_issues_connect() {
+    let (mut st, dir) = failing("empty-prs-collapsed", "not connected to GitHub");
+    st.view.sections.prs = false;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Connect GitHub to see its pull requests here.").is_none(), "collapsed");
+    assert!(h.query_by_label("Connect GitHub to see its issues here.").is_some());
+    assert_eq!(h.query_all_by_label("Connect…").count(), 2, "the issues' own, and the status bar's");
+    h.check_snapshot("sidebar_prs_collapsed_connect");
     drop(h);
     remove_fixture(&dir);
 }

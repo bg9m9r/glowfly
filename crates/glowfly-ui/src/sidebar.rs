@@ -92,7 +92,6 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let sub_cx = crate::state::submodules::section_cx(st);
     let publish_blocked = crate::state::toolbar_tips::busy_blocked(st);
     let sections = &mut st.view.sections;
-    // Remote, Tags, Stashes, Worktrees and Submodules fold away while empty.
     let empty = &mut st.session.tab_view.empty_sections;
     let repo = snap.real_workdir.as_path();
     let hover_next = &mut st.view.hover_tip_next;
@@ -217,7 +216,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             menu_item(msgs, ui, t.tr("sidebar.new_filter"), Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Prs)));
         };
         let add = actions.pr.as_ref().map(HeaderAdd::send);
-        let section = ("prs", title, chip_tip, view.rows.len());
+        let section = ("prs", title, chip_tip, forge_filters::shown_count(&f.host_status, view.rows.len()));
         forge_filter_menu::header(ui, t, section, &mut sections.prs, picker, (add, &menu), msgs);
         if sections.prs {
             let connect = forge_filters::connect_prompt(t, f, connections);
@@ -236,12 +235,16 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             menu_item(msgs, ui, t.tr("sidebar.new_filter"), Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Issues)));
         };
         let add = actions.issue.as_ref().map(HeaderAdd::send);
-        let section = ("issues", t.tr("sidebar.issues.header"), t.tr("sidebar.issues.filter_chip.tip"), view.rows.len());
+        let count = forge_filters::shown_count(&f.tracker_status, view.rows.len());
+        let section = ("issues", t.tr("sidebar.issues.header"), t.tr("sidebar.issues.filter_chip.tip"), count);
         forge_filter_menu::header(ui, t, section, &mut sections.issues, picker, (add, &menu), msgs);
         if sections.issues {
             let in_app = provider.is_some_and(forge::issues_in_app);
-            let connect = forge_filters::connect_issues_prompt(t, f, connections);
-            issues(ui, (t, snap), f, &view, &shown, (open_issue.as_deref(), in_app, connect), msgs);
+            // The PULL REQUESTS section's Connect… or Sign in serves both while it is open.
+            let prs_open = f.host.is_some() && sections.prs;
+            let connect = forge_filters::connect_issues_prompt(t, f, connections, prs_open);
+            let sign_in = forge_filters::issues_sign_in(f, prs_open);
+            issues(ui, (t, snap), f, &view, &shown, (open_issue.as_deref(), in_app, connect, sign_in), msgs);
         }
     }
     if let Some(s) = snap.gitflow.settings() {
@@ -340,21 +343,22 @@ fn pull_requests(
 /// The ISSUES rows. Where the tracker has issue details in Glowfly (`in_app`), a click opens
 /// the issue panel (and its row shows selected while `open`); elsewhere a double-click opens
 /// the issue's page. While the tracker's account isn't connected, `connect`'s sentence (with a
-/// Connect… button unless the PULL REQUESTS section above has one).
+/// Connect… button unless the PULL REQUESTS section above has one); while it fails, the cause
+/// (with Sign in when `sign_in`).
 fn issues(
     ui: &mut egui::Ui,
     (t, snap): (Lang, &Snapshot),
     f: &ForgeState,
     view: &IssueView,
     shown: &Shown,
-    (open, in_app, connect): (Option<&str>, bool, Option<(String, bool)>),
+    (open, in_app, connect, sign_in): (Option<&str>, bool, Option<(String, bool)>, bool),
     msgs: &mut Vec<Msg>,
 ) {
     forge_filter_menu::hint(ui, t, &view.hint, msgs);
     if let Some((text, button)) = connect {
         empty_state::show(ui, &text, if button { vec![Action::connect(t)] } else { Vec::new() }, msgs);
     } else if let Status::Error(e) = &f.tracker_status {
-        forge_error_rows(ui, t, e, msgs);
+        empty_state::failure(ui, t, e, sign_in, msgs);
     }
     for issue in view.rows.iter().filter(|i| shown(&i.title) || shown(&i.key)) {
         if widgets::list_row_hidden(ui) {

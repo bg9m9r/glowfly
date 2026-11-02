@@ -2,11 +2,12 @@
 //! is for (`weak`, small, wrapping to the panel) and its action as a Regular button below it
 //! ("Add worktree…"), or two side by side that wrap in a narrow panel (Publish… and a quiet
 //! Add remote…). A blocked action keeps the disabled look with its reason on hover. A button is
-//! never wider than the panel's room.
+//! never wider than the panel's room. A hosting service that failed (`failure`) is laid out the
+//! same way: the needs-you badge and the cause, then Sign in.
 
 use super::buttons;
 use super::{PAD_X, ROW_INDENT};
-use crate::msg::{Msg, PrefsMsg};
+use crate::msg::{ForgeMsg, Msg, PrefsMsg};
 use crate::state::PrefPage;
 use crate::state::section_actions::SectionAction;
 use crate::ui::theme::{color, type_scale};
@@ -50,11 +51,35 @@ impl<'a> Action<'a> {
     }
 }
 
+/// The block's frame, ending `BOTTOM` below its last button (`TOP` without one).
+fn frame(buttons: bool) -> egui::Frame {
+    let bottom = if buttons { BOTTOM } else { TOP };
+    egui::Frame::new().inner_margin(egui::Margin { left: ROW_INDENT as i8, right: PAD_X as i8, top: TOP, bottom })
+}
+
+/// A service that failed with `cause` although credentials were found: the needs-you badge and
+/// the cause in `text`, then, with `sign_in`, a Sign in that asks again interactively (left out
+/// where the section above already offers one for the same account).
+pub fn failure(ui: &mut egui::Ui, t: Lang, cause: &str, sign_in: bool, msgs: &mut Vec<Msg>) {
+    frame(sign_in).show(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 6.0;
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+            crate::ui::needs_you::badge(ui.painter(), rect);
+            ui.add(egui::Label::new(RichText::new(cause).color(color::text()).size(type_scale::SMALL)).wrap());
+        });
+        if sign_in {
+            ui.add_space(ABOVE_BUTTONS);
+            if ui.add(buttons::secondary(t.tr("status.sign_in"))).clicked() {
+                msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
+            }
+        }
+    });
+}
+
 /// Draws `text` and its `actions` (see the module doc).
 pub fn show(ui: &mut egui::Ui, text: &str, actions: Vec<Action>, msgs: &mut Vec<Msg>) {
-    let bottom = if actions.is_empty() { TOP } else { BOTTOM };
-    let margin = egui::Margin { left: ROW_INDENT as i8, right: PAD_X as i8, top: TOP, bottom };
-    egui::Frame::new().inner_margin(margin).show(ui, |ui| {
+    frame(!actions.is_empty()).show(ui, |ui| {
         ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap().selectable(false));
         if actions.is_empty() {
             return;
