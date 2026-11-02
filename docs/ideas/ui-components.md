@@ -334,3 +334,10 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   grid at each)
 - `welcome_repo_groups` at 820 px hides the Recent "not found" row under the status bar: use a
   taller window or a Recent-only golden
+
+### Buttons and split buttons follow the shared state painter
+- S1: add the HIT_MIN debug assertion to `paint_button` once the hunk buttons drop `.height(17)`
+- S3: quiet chips get a hit area of at least 24 px, with a check
+- S4: fold `tab_glyph` into `paint_target`, then delete `paint_quiet`
+- S5: the segmented thumb's "Graph" sits low (7 px above the caps, 5 px below the baseline)
+- A Small segmented control would trip `paint_target`'s hit assert (20 px options)

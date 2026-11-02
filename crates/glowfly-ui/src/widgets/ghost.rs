@@ -4,16 +4,15 @@
 //! button placed over a row (the graph's Compact New branch… on the checked-out commit). Each
 //! takes a `ControlSize` for its height, padding, text, icon, gap and corners.
 
-use super::button_look::{self, Press};
+use super::button_look::{Press, Target, paint_target};
 use super::{Icon, paint_icon_sized, tooltip};
 use crate::keymap::{BindingId, Keymap};
 use crate::state::tip::Tip;
 use crate::ui::access;
 use crate::ui::theme::color;
 use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens;
 use crate::ui::theme::type_scale;
-use eframe::egui::{Align2, Color32, CursorIcon, FontId, Id, Painter, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Painter, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
 /// Icons in a Regular ghost control (the diff header's identity marks match them).
@@ -108,16 +107,13 @@ struct Look {
     focused: bool,
 }
 
-/// Paints a ghost control of `size` in `rect`: the quiet layer for its press state (none when
-/// disabled), the inset focus ring, then its icon and label, centred when the icon is alone.
+/// Paints a ghost control of `size` in `rect`: its quiet target (the layer for its press state,
+/// none when disabled, and the inset focus ring, through `button_look::paint_target`), then its
+/// icon and label, centred when the icon is alone.
 fn paint(p: &Painter, rect: Rect, size: ControlSize, icon: Option<Icon>, label: Option<&str>, look: Look) {
     let m = size.metrics();
-    if look.enabled {
-        button_look::paint_quiet(p, rect, m.radius, look.press);
-    }
-    if look.focused {
-        tokens::focus_ring_inset(p, rect, m.radius);
-    }
+    let press = if look.enabled { look.press } else { Press::Rest };
+    paint_target(p, Target { rect, corners: CornerRadius::same(m.radius), edge: None }, size, press, look.focused);
     let fg = if !look.enabled {
         color::faint()
     } else if look.press != Press::Rest {
@@ -178,7 +174,7 @@ mod tests {
         assert_eq!((hit.size(), hit.center()), (vec2(28.0, 28.0), square.center()), "grown about its centre");
         let at_edge = square.translate(vec2(89.0, 0.0));
         assert_eq!(hit_area(at_edge, clip, 28.0).right(), 200.0, "kept inside its cell");
-        assert!(hit_area(at_edge, clip, 28.0).width() >= tokens::HIT_MIN);
+        assert!(hit_area(at_edge, clip, 28.0).width() >= crate::ui::theme::tokens::HIT_MIN);
         let wide = Rect::from_center_size(pos2(100.0, 20.0), vec2(120.0, 22.0));
         assert_eq!(hit_area(wide, clip, 28.0).width(), 120.0, "never narrower than it paints");
     }

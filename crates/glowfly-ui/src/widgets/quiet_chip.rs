@@ -1,12 +1,15 @@
 //! A quiet chip: a pill of small text on a soft toolbar fill, with no outline, that can be
-//! clicked (a commit's SHA, its parents, its committer). It darkens on hover and while pressed,
-//! shows the inset accent ring when it has the keyboard focus, and shows the pointing hand. Callers attach the
-//! tooltip and any menu.
+//! clicked (a commit's SHA, its parents, its committer). It is a quiet target over that fill
+//! (`button_look::paint_target`): the hover layer, the pressed layer while held, and the inset
+//! accent ring on its pill when it has the keyboard focus; and it shows the pointing hand.
+//! Callers attach the tooltip and any menu.
 
+use super::button_look::{Press, Target, paint_target};
 use crate::ui::theme::color;
-use crate::ui::theme::tokens::{self, radius};
+use crate::ui::theme::sizes::ControlSize;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, Response, Sense, Ui, WidgetText, pos2, vec2};
+use eframe::egui::{self, CornerRadius, Response, Sense, Ui, WidgetText, pos2, vec2};
 
 /// The chip's height.
 const CHIP_H: f32 = 22.0;
@@ -20,18 +23,11 @@ pub fn quiet_chip(ui: &mut Ui, text: impl Into<WidgetText>, name: &str) -> Respo
     let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 2.0 * TEXT_PAD, CHIP_H), Sense::click());
     if ui.is_rect_visible(rect) {
         let p = ui.painter();
-        let radius = radius::pill(CHIP_H);
-        let fill = if resp.is_pointer_button_down_on() {
-            color::selected()
-        } else if resp.hovered() {
-            color::hover()
-        } else {
-            color::toolbar()
-        };
-        p.rect_filled(rect, radius, fill);
-        if resp.has_focus() {
-            tokens::focus_ring_inset(p, rect, radius);
-        }
+        let corners = CornerRadius::same(radius::pill(CHIP_H));
+        p.rect_filled(rect, corners, color::toolbar());
+        let press = Press::of(resp.hovered(), resp.is_pointer_button_down_on(), false);
+        // A chip's size: 22 px of small text, quiet, its focus ring inset.
+        paint_target(p, Target { rect, corners, edge: None }, ControlSize::Compact, press, resp.has_focus());
         let pos = pos2(rect.left() + TEXT_PAD, rect.center().y - galley.size().y / 2.0);
         p.galley(pos, galley, color::text());
     }

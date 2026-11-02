@@ -3,13 +3,17 @@
 //! their fill toward white on dark palettes and black on light ones, the tonal kind moves its
 //! accent tint toward the accent and recomputes its ink, the quiet kind lays the translucent
 //! state layers over whatever is under it (the ghost controls share that look through
-//! `paint_quiet`), and the quiet danger kind has danger text over a danger wash.
+//! `paint_target`), and the quiet danger kind has danger text over a danger wash. `paint_quiet`
+//! is left only for the tab glyphs' small squares (`tab_glyph.rs`).
 //!
-//! `paint_target` is where a target's state becomes pixels for the toolbar's buttons, splits
-//! and segment bars (`tool.rs`, `segment_bar.rs`): the hover, pressed or latched layer over the
-//! target's own shape, a single framed control's border going `weak` while lit, and the focus
-//! ring on the same corners (inset for quiet and packed targets and Compact ones, outside for a
-//! framed one).
+//! Every target's state becomes pixels here. `paint_target` paints a quiet target (the
+//! toolbar's buttons, splits and segment bars, ghost controls, quiet chips, segmented options):
+//! the hover, pressed or latched layer over the target's own shape, a single framed control's
+//! border going `weak` while lit, and the focus ring on the same corners. `paint_button` paints a
+//! button of any kind (`buttons.rs`, either half of `button_split.rs`): its look's fill on its
+//! own shape and, when it stands alone, its edge. The focus ring (`paint_focus`) is inset for a
+//! quiet or packed target (a split's half) and every Compact one, on the target's exact
+//! corners, and outside the edge of a framed one that stands alone.
 
 use super::buttons::Kind;
 use crate::ui::theme::color::{self, Palette};
@@ -112,8 +116,20 @@ fn quiet(p: &Palette, press: Press) -> (Color32, Color32) {
     }
 }
 
-/// Paints the quiet look's fill for `press` at `rect` (nothing at rest), for controls that draw
-/// their own content (the ghost controls).
+/// `fill` with the state layer for `press` over it: a control that keeps its own fill in every
+/// state (a split's caret while its action is disabled, or tinted with a tone).
+pub(super) fn layer_on(fill: Color32, press: Press) -> Color32 {
+    let p = color::current();
+    match press {
+        Press::Rest => fill,
+        Press::Hover => p.hover_on(fill),
+        Press::Pressed => p.pressed_on(fill),
+        Press::Latched => p.latched_on(fill),
+    }
+}
+
+/// Paints the quiet look's fill for `press` at `rect` (nothing at rest), for a glyph that paints
+/// its own small square (`tab_glyph.rs`).
 pub(super) fn paint_quiet(p: &Painter, rect: Rect, r: impl Into<CornerRadius>, press: Press) {
     let (fill, _) = quiet(&color::current(), press);
     if fill != Color32::TRANSPARENT {
@@ -121,9 +137,11 @@ pub(super) fn paint_quiet(p: &Painter, rect: Rect, r: impl Into<CornerRadius>, p
     }
 }
 
-/// A target's shape: its rect (its hit area too), its own corners (a segment's square where it
-/// meets a neighbour) and, for a single framed control, the border `paint_target` paints over
-/// its layer.
+/// A target's shape: its rect (its hit area too, except a Compact one's: `ghost::ghost_at` grows
+/// its own hit area, while a quiet chip still hits on its 22 px until chips take a size), its own
+/// corners (a segment's square where it meets a neighbour) and, for a single
+/// framed control, its border: `paint_target` paints that stroke, `paint_button` the look's edge.
+/// A target without one is quiet or packed (a split's half, framed as a whole by its caller).
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Target {
     pub rect: Rect,
@@ -133,27 +151,66 @@ pub(super) struct Target {
 
 /// Paints target `t` of size `size` in state `press`, `focus`ed or not: the quiet state layer
 /// over its whole shape (nothing at rest), its border (`weak` while lit) when it is framed, and
-/// the focus ring on its corners: inset for a quiet or packed target and every Compact one,
-/// outside its edge for a framed one. The size only picks the focus style and checks the hit
-/// area; it never paints.
+/// the focus ring on its corners (`paint_focus`). The size only picks the focus style and checks
+/// the hit area; it never paints.
 pub(super) fn paint_target(p: &Painter, t: Target, size: ControlSize, press: Press, focus: bool) {
     debug_assert!(t.edge.is_none() || size.allows_frame(), "a Compact control is quiet only");
-    debug_assert!(t.rect.width() >= HIT_MIN - 0.5 && t.rect.height() >= HIT_MIN - 0.5, "a target smaller than the hit area: {:?}", t.rect);
+    // A Compact control paints less than its hit area: `ghost::ghost_at` grows its own, and a
+    // quiet chip still hits on its 22 px until chips take a size.
+    debug_assert!(
+        size == ControlSize::Compact || (t.rect.width() >= HIT_MIN - 0.5 && t.rect.height() >= HIT_MIN - 0.5),
+        "a target smaller than the hit area: {:?}",
+        t.rect
+    );
     let pal = color::current();
     let (fill, _) = quiet(&pal, press);
-    if fill != Color32::TRANSPARENT {
-        p.rect_filled(t.rect, t.corners, fill);
-    }
-    if let Some(edge) = t.edge {
-        let edge = if press == Press::Rest { edge } else { Stroke::new(edge.width, pal.weak) };
-        p.rect_stroke(t.rect, t.corners, edge, StrokeKind::Inside);
-    }
-    if focus {
-        if t.edge.is_some() && size.allows_frame() {
-            tokens::focus_ring(p, t.rect, t.corners);
-        } else {
-            tokens::focus_ring_inset(p, t.rect, t.corners);
+    let edge = t.edge.map(|edge| if press == Press::Rest { edge } else { Stroke::new(edge.width, pal.weak) });
+    paint_face(p, t.rect, t.corners, fill, edge);
+    paint_focus(p, t, size, focus, pal.accent);
+}
+
+/// Paints target `t`, a button of size `size`, in `look` (`look` for its state, or a look the
+/// caller adjusted from it), `focus`ed or not: the fill over its own shape, the look's edge when
+/// `t` stands alone (`t.edge` is `Some`), and the focus ring on its corners.
+pub(super) fn paint_button(p: &Painter, t: Target, size: ControlSize, look: Look, focus: bool) {
+    match t.edge {
+        // One shape, so the fill and its edge share their anti-aliased corners.
+        Some(_) => {
+            p.rect(t.rect, t.corners, look.fill, look.edge, StrokeKind::Inside);
         }
+        None => paint_face(p, t.rect, t.corners, look.fill, None),
+    }
+    paint_focus(p, t, size, focus, color::current().accent);
+}
+
+/// The colour of a packed button's inset focus ring: the primary ink on an enabled primary
+/// fill (the accent is the primary fill in most palettes), the accent on every other fill.
+pub(super) fn inset_ring(on_primary_fill: bool) -> Color32 {
+    let p = color::current();
+    if on_primary_fill { p.on_primary } else { p.accent }
+}
+
+/// Paints `fill` (none when transparent) and `edge` inside `rect` on `corners`.
+fn paint_face(p: &Painter, rect: Rect, corners: CornerRadius, fill: Color32, edge: Option<Stroke>) {
+    if fill != Color32::TRANSPARENT {
+        p.rect_filled(rect, corners, fill);
+    }
+    if let Some(edge) = edge.filter(|e| e.width > 0.0) {
+        p.rect_stroke(rect, corners, edge, StrokeKind::Inside);
+    }
+}
+
+/// Paints target `t`'s focus ring when it is `focus`ed: 2 px outside the edge of a framed target
+/// that stands alone, else inset on its exact corners in `inset` (the accent, or a primary
+/// fill's ink), so a packed target's ring never reaches its neighbour.
+pub(super) fn paint_focus(p: &Painter, t: Target, size: ControlSize, focus: bool, inset: Color32) {
+    if !focus {
+        return;
+    }
+    if t.edge.is_some() && size.allows_frame() {
+        tokens::focus_ring(p, t.rect, t.corners);
+    } else {
+        tokens::focus_ring_inset_in(p, t.rect, t.corners, inset);
     }
 }
 

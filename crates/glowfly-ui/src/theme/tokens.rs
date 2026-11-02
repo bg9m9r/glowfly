@@ -135,7 +135,13 @@ pub fn focus_ring(p: &Painter, rect: Rect, r: impl Into<CornerRadius>) {
 /// The focus ring of a control packed in a row or group: 1.5 px of accent inside its edge, on
 /// its exact corners (a segment's own, square where it meets its neighbour).
 pub fn focus_ring_inset(p: &Painter, rect: Rect, r: impl Into<CornerRadius>) {
-    p.rect_stroke(rect, r, Stroke::new(FOCUS_INSET_W, color::accent()), StrokeKind::Inside);
+    focus_ring_inset_in(p, rect, r, color::accent());
+}
+
+/// `focus_ring_inset` in `col`: a filled control whose fill is the accent (a primary split's
+/// half) takes its ink instead.
+pub fn focus_ring_inset_in(p: &Painter, rect: Rect, r: impl Into<CornerRadius>, col: Color32) {
+    p.rect_stroke(rect, r, Stroke::new(FOCUS_INSET_W, col), StrokeKind::Inside);
 }
 
 /// A focused text field's halo: a soft accent ring just outside its 2 px accent edge.
