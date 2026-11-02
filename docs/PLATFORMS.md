@@ -731,8 +731,10 @@ second one next to it.
 
 ## Testing on every OS
 
-CI runs the same lint and tests on Windows, macOS and Linux. Most platform bugs are caught by
-making the decision a pure function and testing it for every OS on every machine.
+CI runs the same lint and tests on Windows and Linux on every push and pull request. macOS has no
+CI run there (its runners are often unavailable); the Release workflow builds and packages it at
+each release. Most platform bugs are caught by making the decision a pure function and testing it
+for every OS on every machine.
 
 - **Pure `_for(..., os)` table tests.** Put each platform decision in a pure function that takes
   the OS, a `windows: bool`, error codes or volume facts as parameters
@@ -755,17 +757,19 @@ making the decision a pure function and testing it for every OS on every machine
   relative path, which resolves against the cwd; this broke CI twice. Build paths from
   `paths::temp_dir()`; a `C:/` string is fine only as a label a view shows.
 - **Case-sensitive volumes.** Tests that need one read `GLOWFLY_TEST_CS_DIR` and skip with a
-  note when it's unset. CI provides it: a case-sensitive APFS image (`hdiutil create -fs
-  "Case-sensitive APFS"`) on macOS, and `fsutil file setCaseSensitiveInfo <dir> enable` on
-  Windows; both run the `case_twins` tests. Gate real-volume tests by a live probe, not by
-  `cfg!`.
+  note when it's unset. CI provides it on Windows (`fsutil file setCaseSensitiveInfo <dir>
+  enable`) and runs the `case_twins` tests there. The case-sensitive APFS check runs locally on a
+  Mac: `hdiutil create -size 200m -fs "Case-sensitive APFS" -volname cs cs.dmg`, `hdiutil attach
+  cs.dmg -mountpoint <dir>`, then `GLOWFLY_TEST_CS_DIR=<dir> cargo test --workspace case_twins`.
+  Gate real-volume tests by a live probe, not by `cfg!`.
 - **cfg-gated tests skip cleanly.** Tests that need real OS features (symlinks, which Windows may
   deny; `sudo chown`; read-only files; network file systems) check what they need and return
   with a note when it's missing, never fail.
 - **`#[cfg(unix)]` code isn't compiled on the Windows dev machine,** so `scripts/check.ps1`
   doesn't lint it. Read it twice before committing (unused imports, a moved helper's name); the
-  macOS and Linux CI runs catch the rest.
-- **Snapshot images** are rendered on Windows; the other runners skip only the image comparison.
+  Linux CI run catches the rest. macOS-only code is first compiled in CI by the Release workflow,
+  so build a change to it on a Mac before landing it.
+- **Snapshot images** are rendered on Windows; the Linux runner skips only the image comparison.
 - **Installers** are tested by the `Installers` workflow (`.github/workflows/installers.yml`) on
   every push and pull request: the MSI on Windows (`scripts/installer-check-windows.ps1`) and the
   .deb on Linux (`scripts/installer-check-linux.sh`) are installed over an older package,

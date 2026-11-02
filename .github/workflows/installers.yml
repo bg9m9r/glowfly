@@ -10,8 +10,9 @@ name: Installers
 # bundle in the Flathub builder image and installs, update-checks and uninstalls it with
 # `flatpak --user` (scripts/installer-check-flatpak.sh). Every archive and installer is checked
 # for the licence and notice files (scripts/package-check-licences.sh, and the Windows and
-# Flatpak checks themselves), the Flatpak for git's licences and source as well; the macOS job
-# packages the app and checks the .app, the dmg and the tar.gz.
+# Flatpak checks themselves), the Flatpak for git's licences and source as well. Nothing here
+# runs on macOS: its runners are often unavailable and slow every landing, so the Release
+# workflow alone builds, packages and licence-checks the .app, the dmg and the tar.gz.
 
 on:
   push:
@@ -226,29 +227,3 @@ jobs:
           path: ${{ runner.temp }}/installers-flatpak
           if-no-files-found: ignore
           retention-days: 14
-
-  # No install check on macOS: the job packages the app the way the Release workflow does
-  # (ad-hoc signed) and checks the licence and notice files in the .app, the dmg and the tar.gz.
-  macos:
-    name: Packages (macOS)
-    runs-on: macos-15
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
-      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
-        with:
-          toolchain: stable
-          targets: aarch64-apple-darwin
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          key: installers-macos
-      - name: Build (release)
-        run: cargo build --release --locked -p glowfly --target aarch64-apple-darwin
-      - name: Package the .app, dmg and tar.gz
-        run: |
-          version="$(cargo metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | select(.name=="glowfly") | .version')"
-          bash scripts/package-macos.sh aarch64-apple-darwin "v$version"
-      - name: Check the licence files
-        run: bash scripts/package-check-licences.sh dist/Glowfly.app dist/*.dmg dist/*.tar.gz

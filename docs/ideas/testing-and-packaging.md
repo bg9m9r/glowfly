@@ -104,7 +104,7 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Crop the text snapshots of menus, tooltips and popovers to the popup, as dialogs already are, so a toolbar label change doesn't touch them
 - Find text snapshots no test writes any more (a `.txt` with no `.new.txt` after a full run) and delete them
 - Give icon-only widgets and painted rows accessible names, so more of a view shows in its accessibility tree than in the painted-text list
-- Run the text snapshots on the macOS and Linux CI runners too, with per-platform files where labels differ (shortcut names, title bar)
+- Run the text snapshots on the Linux CI runner too, with per-platform files where labels differ (shortcut names, title bar)
 
 ### Fuzzing the parsers of untrusted text
 

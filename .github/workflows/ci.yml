@@ -48,15 +48,17 @@ jobs:
           cargo test --workspace case_twins -- --nocapture
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
-  # Glowfly is developed on Windows. These run the same lint and tests on macOS and Linux;
-  # only the image comparisons in the view tests are skipped (the approved images are rendered
-  # on Windows), and the rest of each view test still runs.
+  # Glowfly is developed on Windows. This runs the same lint and tests on Linux; only the image
+  # comparisons in the view tests are skipped (the approved images are rendered on Windows), and
+  # the rest of each view test still runs. No macOS job on pushes and pull requests: GitHub's
+  # macOS runners are often unavailable and slow every landing, so the Release workflow is what
+  # builds and packages macOS. Keep the matrix: `Test (ubuntu-22.04)` is a required check.
   build:
     name: Test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-15]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     env:
       GLOWFLY_SKIP_SNAPSHOTS: "1"
@@ -70,7 +72,6 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
         run: ./scripts/linux-deps.sh
       - name: Configure git for tests
         run: |
@@ -83,14 +84,6 @@ jobs:
       - name: Large test repository script
         shell: pwsh
         run: ./scripts/make-perf-repos-test.ps1
-      # Folder identity on a case-sensitive APFS volume (the runner's own is case-insensitive):
-      # `App` and `app` must stay two folders.
-      - name: Case-sensitive volume tests
-        if: runner.os == 'macOS'
-        run: |
-          hdiutil create -size 200m -fs "Case-sensitive APFS" -volname cs "$RUNNER_TEMP/cs.dmg"
-          hdiutil attach "$RUNNER_TEMP/cs.dmg" -mountpoint "$RUNNER_TEMP/cs"
-          GLOWFLY_TEST_CS_DIR="$RUNNER_TEMP/cs" cargo test --workspace --locked case_twins -- --nocapture
 
   # Known vulnerabilities, unmaintained crates and licenses of every dependency (deny.toml).
   deny:

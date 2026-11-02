@@ -335,8 +335,9 @@ version), and on a clean runner:
   `GIT-NOTICE.md` and git's licences from the installed app.
 - **The licence files** (`scripts/package-check-licences.sh`): the Linux job checks the tar.gz,
   .deb, .rpm and AppImage; the Windows check unpacks the zip and compares the installed MSI's
-  files; the **macOS** job builds and packages the app (ad-hoc signed, no install) only to check
-  the .app, the dmg and the tar.gz.
+  files. Nothing runs on macOS here: its runners are often unavailable and slow every landing, so
+  the Release workflow's build job is what packages macOS and checks the .app, the dmg and the
+  tar.gz.
 
 The Linux checks share `scripts/installer-lib-linux.sh`. MSI logs, every run's output and the
 probe are uploaded when a job fails. The scripts refuse to run outside GitHub Actions unless
