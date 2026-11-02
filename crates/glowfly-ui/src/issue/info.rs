@@ -1,6 +1,7 @@
 //! The issue panel's side: the details (state or status as a chip, type, assignees, labels as
 //! chips, milestone or fix version, epic, who opened it and when), the local branches named
-//! after it with a Checkout each, and the actions (Create branch…, the Git Flow starts, Copy).
+//! after it with a Checkout each (Open worktree for one another worktree has), and the actions
+//! (Create branch…, the Git Flow starts, Copy).
 
 use super::super::common::state_color;
 use super::super::pull_request::{heading, note};
@@ -12,6 +13,7 @@ use crate::state::AppState;
 use crate::state::gitflow::start_blocked;
 use crate::state::issue::{IssueView, linked_branches, meta_rows, state_label};
 use crate::state::issue_words::labels_label;
+use crate::state::worktree_branches::Elsewhere;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Ui, vec2};
@@ -37,23 +39,26 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             }
             for b in linked {
                 ui.horizontal(|ui| {
-                    let elsewhere = crate::state::worktree_branches::checkout_blocked(st.settings.lang(), snap, &b.name);
+                    // One another worktree has: Open worktree (or Prune and check out a missing one).
+                    let t = st.settings.lang();
+                    let elsewhere = crate::state::worktree_branches::checkout_elsewhere(t, snap, &b.name);
                     let blocked = if b.is_head {
                         Some("Checked out")
-                    } else if let Some(why) = elsewhere.as_deref() {
-                        Some(why)
-                    } else if !idle {
+                    } else if !idle && elsewhere.is_none() {
                         Some("Another operation is running")
                     } else {
                         None
                     };
-                    let r = ui.add(buttons::secondary("Checkout").enabled(blocked.is_none()));
-                    let r = match blocked {
-                        Some(why) => r.on_hover_text(why),
-                        None => r,
+                    let label = elsewhere.as_ref().map_or("Checkout", |e| e.button(t));
+                    let r = ui.add(buttons::secondary(label).enabled(blocked.is_none()));
+                    let r = match (blocked, &elsewhere) {
+                        (Some(why), _) => r.on_hover_text(why),
+                        (None, Some(e)) => r.on_hover_text(e.tip()),
+                        (None, None) => r,
                     };
                     if r.clicked() {
-                        msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
+                        let checkout = BranchMsg::Checkout(b.name.clone());
+                        msgs.push(Msg::Branch(Elsewhere::msg(elsewhere.as_ref(), checkout)));
                     }
                     ui.add(egui::Label::new(RichText::new(printable(&b.name)).color(color::text())).truncate());
                 });

@@ -307,16 +307,7 @@ fn pull_requests(
             menu_item(msgs, ui, format!("Show {}", f.pr_noun()), Msg::PullRequest(PullRequestMsg::Open(pr.id)));
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));
             super::build_status::pr_menu_item(ui, pr, msgs);
-            // A local source branch is checked out like any other (refused when another worktree
-            // has it); otherwise a new branch tracking the remote one is made.
-            let local = snap.locals.iter().any(|b| b.name == pr.source);
-            let blocked = match crate::state::branches::pr_checkout(snap, &f.remote, &pr.source) {
-                Ok(_) if local => crate::state::worktree_branches::checkout_blocked(t, snap, &pr.source),
-                Ok(_) => None,
-                Err(why) => Some(why),
-            };
-            let m = Msg::Branch(BranchMsg::CheckoutPullRequest { id: pr.id });
-            menu_item_if(msgs, ui, format!("Checkout {}", pr.source), blocked.as_deref(), m);
+            super::pr_menu_items::checkout_item(ui, t, snap, f, pr, msgs);
             let base = crate::state::worktree_branches::pr_base(snap, &f.remote, &pr.source).err();
             let create = Msg::Worktree(crate::worktree::WorktreeMsg::CreateForPr { id: pr.id, source: pr.source.clone() });
             menu_item_if(msgs, ui, "Create worktree…", base.as_deref(), create);

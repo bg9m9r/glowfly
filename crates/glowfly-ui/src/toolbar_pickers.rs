@@ -16,6 +16,7 @@ use super::fit;
 use super::menus::repo_menu;
 use crate::msg::{BranchMsg, Msg};
 use crate::state::AppState;
+use crate::state::worktree_branches::Elsewhere;
 use crate::ui::branch_dot;
 use crate::ui::common::{menu_item, short};
 use crate::ui::menu_anchor;
@@ -142,11 +143,17 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
 fn branch_menu(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     ui.set_min_width(220.0);
     for b in &snap.locals {
-        // The current branch is checked and stays enabled: a click just closes the menu.
-        let why = (!b.is_head).then(|| crate::state::worktree_branches::checkout_blocked(t, snap, &b.name)).flatten();
+        // The current branch is checked and stays enabled: a click just closes the menu. One
+        // another worktree has opens that worktree (or offers to prune a missing one), saying so
+        // on hover.
         let dot = Some(line(snap.branch_swatch(&b.name)));
-        let r = menu::item(b.name.as_str()).current(b.is_head).icon(branch_dot::paint_slot, dot).blocked(why.as_deref()).show(ui);
-        let r = if b.is_head { r.on_hover_text(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)])) } else { r };
+        let r = menu::item(b.name.as_str()).current(b.is_head).icon(branch_dot::paint_slot, dot).show(ui);
+        let elsewhere = (!b.is_head).then(|| crate::state::worktree_branches::checkout_elsewhere(t, snap, &b.name)).flatten();
+        let r = match elsewhere {
+            _ if b.is_head => r.on_hover_text(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)])),
+            Some(Elsewhere::Open { tip } | Elsewhere::Prune { tip }) => r.on_hover_text(tip),
+            None => r,
+        };
         if r.clicked() {
             if !b.is_head {
                 msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));

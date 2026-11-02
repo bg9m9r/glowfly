@@ -32,8 +32,7 @@ Button "login-page"
 Button "✔  main"
 Button "search"
 Label "search"
-Button "Checkout" [disabled]
-Button "Open worktree"
+Button "Open in its worktree"
 Button "Push" [disabled]
 Button "Merge into main"
 Button "Preview merge"

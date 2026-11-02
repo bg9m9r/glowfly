@@ -180,10 +180,11 @@ impl Pick {
     }
 
     /// The Switch branch sub-list: the main list's checkout entries for `snap` (local branches,
-    /// then remote branches and tags), labelled without their leading "Checkout ".
+    /// those another worktree has, then remote branches and tags), labelled without their
+    /// leading "Checkout ".
     pub fn checkouts(snap: &glowfly_core::repo::Snapshot) -> Self {
         let refs = super::palette_commands::ref_entries(Some(snap));
-        let checkouts: Vec<Entry> = refs.locals.into_iter().chain(refs.others).collect();
+        let checkouts: Vec<Entry> = refs.locals.into_iter().chain(refs.held).chain(refs.others).collect();
         let labels = checkouts.iter().map(|e| e.label.strip_prefix("Checkout ").unwrap_or(&e.label).to_owned()).collect();
         Self { items: Items::Ready(labels), checkouts, ..Self::new(PickKind::SwitchBranch) }
     }

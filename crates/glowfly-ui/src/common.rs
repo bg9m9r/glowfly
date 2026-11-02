@@ -153,6 +153,14 @@ pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::
     menu_item_state(msgs, ui, label, ItemState::Ready, m);
 }
 
+/// A menu item saying on hover what it will do (`tip`), such as which worktree it opens.
+pub fn menu_item_tip(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, tip: &str, m: Msg) {
+    if menu::item(label).show(ui).on_hover_text(tip).clicked() {
+        msgs.push(m);
+        ui.close_menu();
+    }
+}
+
 /// A menu item that is disabled while `blocked` is set: greyed with a painted info mark, the
 /// whole reason in a tooltip on hover or keyboard focus.
 pub fn menu_item_if(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<&str>, m: Msg) {

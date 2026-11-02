@@ -1,6 +1,6 @@
 //! Headless tests for checking out a remote branch through a local branch tracking it: the
 //! fast-forward in the same job, the diverged branch left where it is, a chosen one of several
-//! trackers, the refusals, the palette's route, and a tracking branch under another name from
+//! trackers, the refusals (a tracker another worktree has opens that worktree), the palette's route, and a tracking branch under another name from
 //! the New branch dialog. Commands are checked as emitted, and end to end against a repository
 //! with a bare `origin`.
 
@@ -136,9 +136,14 @@ fn checkout_tracking_refusals() {
     git(&work, &["worktree", "add", "-q", &wt.display().to_string(), "feature"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let before = tip(&work, "refs/heads/feature");
-    assert!(run_git(&mut st, tracking("feature")).0.is_empty(), "another worktree has feature");
-    assert!(last_log(&st).starts_with("feature is checked out in the worktree at "), "{}", last_log(&st));
+    // Another worktree has feature: that worktree opens, and feature isn't moved.
+    drive(&mut st, tracking("feature"));
+    assert_eq!((st.tabs.len(), st.active_tab), (2, 1), "{:?}", st.tabs[0].log.last().map(|l| &l.text));
+    assert!(super::tests::same_place(&st.snap.as_ref().unwrap().workdir, &wt));
+    let note = st.tabs[0].log.last().map(|l| l.text.clone()).unwrap_or_default();
+    assert!(note.starts_with("Opened the worktree at ") && note.ends_with(", where feature is checked out."), "{note}");
     assert_eq!(tip(&work, "refs/heads/feature"), before, "not moved");
+    drive(&mut st, Msg::Tabs(crate::msg::TabsMsg::SelectTab(0)));
     assert!(run_git(&mut st, tracking("main")).0.is_empty());
     assert_eq!(last_log(&st), "main no longer tracks origin/feature.");
     git(&work, &["worktree", "remove", "--force", &wt.display().to_string()]);

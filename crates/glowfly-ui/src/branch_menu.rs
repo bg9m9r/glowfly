@@ -16,7 +16,7 @@
 //! can unblock, and say why on hover, with the same text `update` logs when it refuses a late
 //! message.
 
-use super::common::{menu_danger, menu_item, menu_item_if, menu_row, menu_row_preview};
+use super::common::{menu_danger, menu_item, menu_item_if, menu_item_tip, menu_row, menu_row_preview};
 use super::ref_visibility;
 use super::theme::color;
 use crate::custom_commands::Target;
@@ -30,8 +30,7 @@ use crate::state::branches::push as branch_push;
 use crate::state::commit_menu::menu_trim;
 use crate::state::custom_commands::MenuCommands;
 use crate::state::gitflow_base::{Deleting, guard};
-use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere, fast_forward_blocked, held_blocked};
-use crate::state::worktrees::open_blocked;
+use crate::state::worktree_branches::{Elsewhere, checkout_elsewhere, delete_blocked, fast_forward_blocked, held_blocked};
 use crate::state::{ForgeState, Selection};
 use crate::ui::widgets::menu::{item, item_named, named, separator, submenu};
 use crate::ui::widgets::reason::ItemState;
@@ -118,16 +117,20 @@ fn force_push_item(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, upstream: &str, s
     }
 }
 
-/// Checkout (or open the worktree that has it), Push, the "Push to" submenu (one entry per
+/// Checkout (or Open in its worktree for one another worktree has, Prune and check out when
+/// that worktree's folder is missing), Push, the "Push to" submenu (one entry per
 /// remote, when that offers more than Push) and fast-forward (with an upstream).
 fn primary_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     if !b.is_head {
-        let checkout = Msg::Branch(BranchMsg::Checkout(name.to_owned()));
-        menu_item_if(msgs, ui, t.tr("branch.menu.checkout"), checkout_blocked(t, snap, name).as_deref(), checkout);
-        if let Some(wt) = elsewhere(snap, name) {
-            let open = Msg::Worktree(WorktreeMsg::Open(wt.path.clone()));
-            menu_item_if(msgs, ui, t.tr("branch.menu.open_worktree"), open_blocked(wt), open);
+        let checkout = BranchMsg::Checkout(name.to_owned());
+        match checkout_elsewhere(t, snap, name) {
+            None => menu_item(msgs, ui, t.tr("branch.menu.checkout"), Msg::Branch(checkout)),
+            Some(Elsewhere::Open { tip }) => menu_item_tip(msgs, ui, t.tr("branch.menu.open_in_worktree"), &tip, Msg::Branch(checkout)),
+            Some(Elsewhere::Prune { tip }) => {
+                let prune = Msg::Branch(BranchMsg::PruneThen(Box::new(checkout)));
+                menu_item_tip(msgs, ui, t.tr("worktree_branch.missing.button"), &tip, prune);
+            }
         }
     }
     push_items(ui, t, b, snap, msgs);
