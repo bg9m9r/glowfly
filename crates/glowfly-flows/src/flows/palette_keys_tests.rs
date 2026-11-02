@@ -65,7 +65,7 @@ fn bound_command_shows_the_bound_key_in_the_palette() {
         let e = list.iter().find(|s| s.entry.label == "Fetch all remotes").expect("listed");
         e.entry.shortcut(&st.keymap).map(str::to_owned)
     };
-    assert_eq!(hint(&st), None, "no key by default");
+    assert_eq!(hint(&st), Some(Chord::shift(KeyName::F(5)).text()), "Shift+F5 by default");
     st.keymap.set(BindingId::Fetch, vec![Chord::plain(KeyName::F(8))]);
     assert_eq!(hint(&st).as_deref(), Some("F8"));
     remove(&dirs);
@@ -149,21 +149,21 @@ fn saves(fx: &[Effect]) -> usize {
 fn assigning_a_command_key_saves_and_reloads() {
     let mut st = page();
     let f8 = Chord::plain(KeyName::F(8));
-    assert!(keys(&mut st, KeysMsg::Record { id: BindingId::Fetch, slot: Slot::Add }).is_empty());
+    assert!(keys(&mut st, KeysMsg::Record { id: BindingId::OpenJournal, slot: Slot::Add }).is_empty());
     let fx = keys(&mut st, KeysMsg::Recorded(f8));
     assert_eq!(saves(&fx), 1);
-    let want: BTreeMap<String, Vec<String>> = [("fetch".to_owned(), vec!["F8".to_owned()])].into();
+    let want: BTreeMap<String, Vec<String>> = [("open-journal".to_owned(), vec!["F8".to_owned()])].into();
     assert_eq!(st.settings.keybindings, want);
     assert_eq!(Keymap::from_overrides(&st.settings.keybindings), (st.keymap.clone(), Vec::new()));
 
-    keys(&mut st, KeysMsg::Remove { id: BindingId::Fetch, index: 0 });
+    keys(&mut st, KeysMsg::Remove { id: BindingId::OpenJournal, index: 0 });
     assert!(st.settings.keybindings.is_empty(), "no key is the default");
-    assert!(st.keymap.is_default(BindingId::Fetch));
+    assert!(st.keymap.is_default(BindingId::OpenJournal));
 
-    keys(&mut st, KeysMsg::Record { id: BindingId::Fetch, slot: Slot::Add });
+    keys(&mut st, KeysMsg::Record { id: BindingId::OpenJournal, slot: Slot::Add });
     keys(&mut st, KeysMsg::Recorded(f8));
     assert_eq!(st.settings.keybindings, want);
-    keys(&mut st, KeysMsg::Reset(BindingId::Fetch));
+    keys(&mut st, KeysMsg::Reset(BindingId::OpenJournal));
     assert!(st.settings.keybindings.is_empty());
-    assert_eq!(st.keymap.hint(BindingId::Fetch), None);
+    assert_eq!(st.keymap.hint(BindingId::OpenJournal), None);
 }

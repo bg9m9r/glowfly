@@ -147,7 +147,9 @@ pub(super) fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         | I::OpenTerminal
         | I::ShowRepoFolder
         | I::CherryPick
-        | I::RevertCommit => !covered && !l.sheet && !l.typing && !(l.terminal && shell),
+        | I::RevertCommit
+        | I::SwitchBranch
+        | I::OpenDashboard => !covered && !l.sheet && !l.typing && !(l.terminal && shell),
         I::Refresh => true,
         I::Search | I::SearchFilter => !l.palette && !l.prefs,
         I::Prefs => !l.prefs && !l.palette,

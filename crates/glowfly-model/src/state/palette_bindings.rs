@@ -54,6 +54,8 @@ impl PaletteCommand {
             C::ShowInFileManager => I::ShowRepoFolder,
             C::PickSelected { revert: false } => I::CherryPick,
             C::PickSelected { revert: true } => I::RevertCommit,
+            C::ChooseCheckout => I::SwitchBranch,
+            C::Dashboard => I::OpenDashboard,
             _ => return None,
         })
     }
@@ -80,6 +82,8 @@ pub fn command_for(id: BindingId) -> Option<PaletteCommand> {
         I::ShowRepoFolder => C::ShowInFileManager,
         I::CherryPick => C::PickSelected { revert: false },
         I::RevertCommit => C::PickSelected { revert: true },
+        I::SwitchBranch => C::ChooseCheckout,
+        I::OpenDashboard => C::Dashboard,
         _ => return None,
     })
 }

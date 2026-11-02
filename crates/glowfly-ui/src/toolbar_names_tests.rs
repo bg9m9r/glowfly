@@ -44,7 +44,7 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
     assert!(disabled(&h, UNDO) && disabled(&h, REDO), "nothing to undo or redo yet");
     assert!(disabled(&h, PULL), "no remote to pull from");
     assert_eq!(disabled(&h, "Stash all changes"), !dirty);
-    assert_eq!(disabled(&h, "Pop the latest stash"), !stashed);
+    assert_eq!(disabled(&h, "Unstash the latest stash"), !stashed);
     drop(h);
 
     // With something to undo, Undo works.

@@ -109,7 +109,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
-- `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Pop previews.
+- `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Unstash previews.
 - `section_actions.rs`: what each left-panel section header's + does (its name, why it is off and the message it sends).
 - `session.rs`: `RepoSession`, the per-tab views paired with their generation counters (`Gen`, `PrSlot`), the open diff as `DiffSlot` with its counter, the commit detail and draft, the repository reads, the selection, forge data, undo history and commit search, and the issue comment drafts kept after their panel closed (`issue_drafts`, `state/issue_comment.rs::KeptDrafts`), parked whole with the tab; `counters()` lists every counter (the reads' included) and `resume_after` keeps them rising across tabs and drops the forge replies in flight (`replies_dropped`); the diff's `shown_gen` is carried rather than counted. Tests in `session_tests.rs`; the switch itself in `flows/tabs_session_tests.rs`.
 - `session_reads.rs`: `RepoReads`, what was read from the tab's repository (commit stats, line counts, signatures, conflict check): `parked` splits the results (which go with the tab, requests in flight dropped) from the counters (which stay behind), `clear` forgets them when another repository opens. Tests in `session_reads_tests.rs`.
@@ -204,7 +204,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `tests.rs`, `override_tests.rs`: the table's rows, ids, chord text, clashes and filtering; loading, applying and saving the user's changes from settings.
 - `pane_tests.rs`: the pane keys (Alt+1 to 5, Control on macOS, F6) clash with nothing, the menus' mnemonics included, and `When::Graph` never overlaps a diff's contexts; their update side in `flows/pane_focus_tests.rs`.
 - Shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard.
-- The Repository commands group binds palette commands and has no default keys; `state/palette_bindings.rs` maps commands and bindings both ways, and a press sends `PaletteMsg::RunBoundCommand`, which `update/palette_keys.rs` runs when the palette would list the entry.
+- The Repository commands group binds palette commands; Fetch, Pull, Push, New branch, Stash changes, Unstash and Switch branch have default keys; `state/palette_bindings.rs` maps commands and bindings both ways, and a press sends `PaletteMsg::RunBoundCommand`, which `update/palette_keys.rs` runs when the palette would list the entry.
 
 ## Test-only modules
 

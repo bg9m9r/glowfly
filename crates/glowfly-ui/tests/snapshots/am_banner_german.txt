@@ -11,7 +11,7 @@ Button "Push für den aktuellen Branch"
 Button "Weitere Push-Aktionen"
 Button "Branch erstellen"
 Button "Alle Änderungen in einen Stash legen"
-Button "Neuesten Stash per Pop anwenden" [disabled]
+Button "Neuesten Stash per Unstash zurückholen" [disabled]
 Button "Terminal-Bereich einblenden"
 Button "Repository-Ordner öffnen"
 Button "Einstellungen öffnen"
@@ -98,7 +98,7 @@ painted:
   "Push"
   "Branch"
   "Stash"
-  "Pop"
+  "Unstash"
   "Terminal"
   "Ordner"
   "Einstellungen"

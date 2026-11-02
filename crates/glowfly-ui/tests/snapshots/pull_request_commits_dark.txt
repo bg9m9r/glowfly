@@ -14,7 +14,7 @@ Button "Push the current branch"
 Button "More push actions"
 Button "Create a branch"
 Button "Stash all changes"
-Button "Pop the latest stash" [disabled]
+Button "Unstash the latest stash" [disabled]
 Button "PR: create a pull request on GitHub for this branch"
 Button "More pull request actions"
 Button "Show the terminal panel"
@@ -91,7 +91,7 @@ painted:
   "Push"
   "Branch"
   "Stash"
-  "Pop"
+  "Unstash"
   "PR"
   "Terminal"
   "Folder"

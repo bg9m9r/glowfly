@@ -1,6 +1,7 @@
 //! Custom commands: loading both commands files with each full load and when `.glowfly/`
-//! changes (older answers dropped), announcing their problems once, and their keys. Running
-//! them is in custom_commands_run_tests.rs, the palette in custom_commands_palette_tests.rs.
+//! changes (older answers dropped), announcing their problems once, and their keys (a built-in
+//! default key always wins). Running them is in custom_commands_run_tests.rs, the palette in
+//! custom_commands_palette_tests.rs.
 
 use super::tests::{finish_keeping, scratch_repo, state};
 use super::update;
@@ -139,5 +140,19 @@ fn keys_are_claimed_once_and_checked() {
     assert!(has(&format!("line 15: {new_tab} is already used by New tab, so it was ignored.")), "{lines:?}");
     assert!(has(&format!("line 20: {} is already used by Log, so it was ignored.", mod_alt_l.text())), "{lines:?}");
     assert!(has("line 25: Mod+Banana isn't a key Glowfly knows"), "{lines:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A command on a key that is now a built-in default (Stash changes' Mod+Shift+H) is refused
+/// like any built-in key: the built-in default wins, and the load says why.
+#[test]
+fn a_command_on_a_new_default_key_is_refused() {
+    let (mut st, dir) = opened("cc-default-key");
+    load(&mut st, file(&command("Hold", "git", "stash", "key = \"Mod+Shift+H\"")), FileRead::default());
+    assert!(st.custom_commands.keys.is_empty(), "the command gets no key");
+    let shown = Chord::parse("Mod+Shift+H").unwrap().text();
+    let want = format!("{shown} is already used by Stash changes, so it was ignored.");
+    assert!(st.log.iter().any(|l| l.text.contains(&want)), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
+    assert_eq!(st.keymap.chords(BindingId::StashChanges), [Chord::parse("Mod+Shift+H").unwrap()]);
     let _ = std::fs::remove_dir_all(&dir);
 }

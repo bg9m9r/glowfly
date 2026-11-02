@@ -11,7 +11,7 @@ Button "Push the current branch"
 Button "More push actions"
 Button "Create a branch"
 Button "Stash all changes"
-Button "Pop the latest stash" [disabled]
+Button "Unstash the latest stash" [disabled]
 Button "Show the terminal panel"
 Button "Open the repository folder"
 Button "Open settings"
@@ -80,7 +80,7 @@ painted:
   "Push"
   "Branch"
   "Stash"
-  "Pop"
+  "Unstash"
   "Terminal"
   "Folder"
   "Settings"

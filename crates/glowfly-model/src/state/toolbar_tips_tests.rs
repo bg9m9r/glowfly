@@ -113,7 +113,7 @@ fn blocked_rules_give_their_reasons() {
     assert_eq!(fetch_blocked(&st).as_deref(), Some("This repository has no remote to fetch from."));
     assert_eq!(push_blocked(&st), None, "Push opens Publish");
     assert_eq!(stash_blocked(&st).as_deref(), Some("No changes to stash"));
-    assert_eq!(pop_blocked(&st).as_deref(), Some("No stashes to pop"));
+    assert_eq!(pop_blocked(&st).as_deref(), Some("No stashes"));
     assert_eq!(branch_blocked(&st), None);
 
     // A remote, but main tracks nothing on it.
@@ -240,5 +240,5 @@ fn stash_and_pop_previews() {
     snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: fake(9) }];
     let p = pop_preview(Lang::En, snap).unwrap();
     assert_eq!((p.heading.as_str(), &p.rows[..]), ("Applies", &[TipRow::Line("On main: wip".into())][..]));
-    assert_eq!(p.note.as_deref(), Some("You have local changes: Pop asks before applying."));
+    assert_eq!(p.note.as_deref(), Some("You have local changes: Unstash asks before applying."));
 }

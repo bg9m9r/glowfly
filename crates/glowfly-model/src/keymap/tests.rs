@@ -106,14 +106,14 @@ fn ids_are_stable() {
     assert_eq!(BindingId::from_key("New-Tab"), None);
     assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
     assert_eq!(
-        BindingId::ALL[BindingId::ALL.len() - 31..BindingId::ALL.len() - 27],
+        BindingId::ALL[BindingId::ALL.len() - 33..BindingId::ALL.len() - 29],
         [BindingId::SendPrText, BindingId::Quit, BindingId::PrefsSave, BindingId::PrefsRevert]
     );
     assert_eq!(BindingId::from_key("wip-other-list"), Some(BindingId::WipOtherList));
     assert_eq!(BindingId::from_key("file-list-step-file"), Some(BindingId::FileStepFile));
     assert_eq!(BindingId::from_key("focus-sidebar"), Some(BindingId::FocusSidebar));
     assert_eq!(BindingId::from_key("copy-commit-ids"), Some(BindingId::CopyCommitIds));
-    assert_eq!(BindingId::ALL.last(), Some(&BindingId::RevertCommit));
+    assert_eq!(BindingId::ALL.last(), Some(&BindingId::OpenDashboard));
     assert_eq!(BindingId::from_key("save-preferences-page"), Some(BindingId::PrefsSave));
 }
 

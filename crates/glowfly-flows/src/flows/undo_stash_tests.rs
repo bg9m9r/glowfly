@@ -87,7 +87,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid }));
     assert!(st.session.undo.undo.is_empty());
     let (_, why) = st.session.undo.undo_entry(st.settings.lang(), true);
-    assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Pop stash")), "{why:?}");
+    assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Unstash")), "{why:?}");
     cleanup(&[&dir]);
 }
 

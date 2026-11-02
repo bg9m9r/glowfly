@@ -62,7 +62,7 @@ fn a_dirty_tree_asks_after_reading_the_stash() {
     let paths = strings(&["a.txt", "b.txt"]);
     let m = ask_confirm(&dirty, EN, &ask, Some(&paths));
     assert!(matches!(&m, Msg::Confirm { title, button, body, then }
-        if title == "Pop stash" && button == "Pop" && body.contains("a.txt") && !body.contains("b.txt")
+        if title == "Unstash" && button == "Unstash" && body.contains("a.txt") && !body.contains("b.txt")
         && matches!(**then, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, .. }))));
 }
 

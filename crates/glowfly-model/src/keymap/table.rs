@@ -12,7 +12,8 @@ pub enum Group {
     History,
     Tabs,
     Repositories,
-    /// Palette commands the user gave a key (none has one by default).
+    /// Palette commands: Fetch, Pull, Push, New branch, Stash, Unstash and Switch branch have
+    /// keys by default; the others only the keys the user gives them.
     Commands,
     Palette,
     View,
@@ -164,7 +165,12 @@ const fn fixed(id: BindingId, group: Group, label: &'static str, defaults: &'sta
 /// A palette command's row: no key until the user adds one on Preferences > Keyboard, and only
 /// while no text field has focus.
 const fn command(id: BindingId, label: &'static str) -> Binding {
-    b(id, Group::Commands, label, &[], When::NotTyping)
+    keyed(id, label, &[])
+}
+
+/// A palette command's row with default keys, also only while no text field has focus.
+const fn keyed(id: BindingId, label: &'static str, defaults: &'static [Chord]) -> Binding {
+    b(id, Group::Commands, label, defaults, When::NotTyping)
 }
 
 use Chord as C;
@@ -186,8 +192,8 @@ const fn pane(n: u8) -> Chord {
 /// match themselves (dialogs, the palette, lists, the commit box, a pull request's text boxes, Esc in `ui/central.rs`
 /// (Preferences' Revert included), the
 /// rebase panel's keys in `ui/rebase/keys.rs`), except Go to tab 1 to 8, matched with the
-/// rebindable rows. Change a fixed key there, change it here. The Repository commands rows have
-/// no default keys; each runs a palette command (`state/palette_bindings.rs`).
+/// rebindable rows. Change a fixed key there, change it here. Each Repository commands row runs a
+/// palette command (`state/palette_bindings.rs`); seven of them have default keys.
 pub const BINDINGS: &[Binding] = &[
     b(I::Stage, G::Staging, "Stage the file or the selected lines", &[C::plain(K::Letter('S'))], W::WorkingDiff),
     b(I::Unstage, G::Staging, "Unstage the file or the selected lines", &[C::plain(K::Letter('U'))], W::WorkingDiff),
@@ -313,15 +319,15 @@ pub const BINDINGS: &[Binding] = &[
     b(I::OpenFavorite7, G::Repositories, "Open favorite repository 7", &[C::cmd_alt(K::Digit(7))], W::NotTyping),
     b(I::OpenFavorite8, G::Repositories, "Open favorite repository 8", &[C::cmd_alt(K::Digit(8))], W::NotTyping),
     b(I::OpenFavorite9, G::Repositories, "Open favorite repository 9", &[C::cmd_alt(K::Digit(9))], W::NotTyping),
-    command(I::Fetch, "Fetch all remotes"),
-    command(I::Pull, "Pull"),
-    command(I::Push, "Push"),
-    command(I::CreateBranch, "Create a branch at the selected commit or HEAD"),
-    command(I::CreateTag, "Create a tag at the selected commit or HEAD"),
-    command(I::CreateAnnotatedTag, "Create an annotated tag at the selected commit or HEAD"),
-    command(I::StashChanges, "Stash changes"),
+    keyed(I::Fetch, "Fetch all remotes", &[C::shift(K::F(5))]),
+    keyed(I::Pull, "Pull", &[C::cmd_shift(K::Down)]),
+    keyed(I::Push, "Push", &[C::cmd_shift(K::Up)]),
+    keyed(I::CreateBranch, "New branch…", &[C::cmd(K::Letter('B'))]),
+    command(I::CreateTag, "New tag…"),
+    command(I::CreateAnnotatedTag, "New annotated tag…"),
+    keyed(I::StashChanges, "Stash changes", &[C::cmd_shift(K::Letter('H'))]),
     command(I::StashWithMessage, "Stash with a message"),
-    command(I::PopStash, "Pop the latest stash"),
+    keyed(I::PopStash, "Unstash the latest stash", &[C::cmd_alt_shift(K::Letter('H'))]),
     command(I::FileHistory, "Show a file's history (pick the file)"),
     command(I::BlameFile, "Blame a file (pick the file)"),
     command(I::OpenJournal, "Open the operation journal"),
@@ -329,6 +335,8 @@ pub const BINDINGS: &[Binding] = &[
     command(I::ShowRepoFolder, "Show the repository folder in the file manager"),
     command(I::CherryPick, "Cherry-pick the selected commits"),
     command(I::RevertCommit, "Revert the selected commits"),
+    keyed(I::SwitchBranch, "Switch branch…", &[C::cmd_shift(K::Letter('O'))]),
+    command(I::OpenDashboard, "Open dashboard"),
     b(I::Palette, G::Palette, "Open or close the command palette", &[C::cmd(K::Letter('P')), C::cmd_shift(K::Letter('P'))], W::Anywhere),
     fixed(I::PaletteMove, G::Palette, "Move the selection", &[C::plain(K::Up), C::plain(K::Down)], W::InPalette),
     fixed(I::PaletteRun, G::Palette, "Run the selected command", &[C::plain(K::Enter)], W::InPalette),

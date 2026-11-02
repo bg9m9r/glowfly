@@ -98,7 +98,7 @@ fn overrides_round_trip() {
 fn filter_follows_rebinding() {
     let (keys, _) = Keymap::from_overrides(&map(&[("refresh", &["Mod+R"])]));
     assert_eq!(ids(&keys.filter("ctrl+r")), [I::Refresh]);
-    assert!(ids(&keys.filter("f5")).is_empty());
+    assert_eq!(ids(&keys.filter("f5")), [I::Fetch], "only Fetch's Shift+F5 is left");
 }
 
 #[test]

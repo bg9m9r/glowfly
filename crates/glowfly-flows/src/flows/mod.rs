@@ -168,6 +168,7 @@ mod palette_recent_tests;
 mod palette_repos_tests;
 mod palette_stash_tests;
 mod palette_submodule_tests;
+mod palette_switch_branch_tests;
 mod palette_tests;
 mod palette_worktree_tests;
 mod pane_focus_tests;

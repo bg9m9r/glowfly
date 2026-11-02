@@ -368,11 +368,14 @@ fn shortcut_hints() {
     assert_eq!(hint("New tab"), Some(keys("Ctrl+T").as_str()));
     assert_eq!(hint("Stage all files"), Some(keys("Ctrl+Shift+S").as_str()));
     assert_eq!(hint("Keyboard shortcuts"), Some(keys("Ctrl+/").as_str()));
-    for label in ["Push", "Stash changes", "Create tag at HEAD…", "Checkout topic"] {
+    assert_eq!(hint("Push"), Some(keys("Ctrl+Shift+Up").as_str()));
+    assert_eq!(hint("Stash changes"), Some(keys("Ctrl+Shift+H").as_str()));
+    assert_eq!(hint("Switch branch…"), Some(keys("Ctrl+Shift+O").as_str()));
+    for label in ["Create tag at HEAD…", "Checkout topic", "Open dashboard"] {
         assert_eq!(hint(label), None, "{label}");
     }
-    // F5 refreshes; Fetch has no key until one is assigned.
+    // F5 refreshes; Shift+F5 fetches.
     assert_eq!(PaletteCommand::Fetch.binding(), Some(crate::keymap::BindingId::Fetch));
-    assert_eq!(st.keymap.hint(crate::keymap::BindingId::Fetch), None);
+    assert_eq!(st.keymap.hint(crate::keymap::BindingId::Fetch), Some("Shift+F5"));
     let _ = std::fs::remove_dir_all(&dir);
 }

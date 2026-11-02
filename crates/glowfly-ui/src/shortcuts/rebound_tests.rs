@@ -70,6 +70,7 @@ fn name(m: &Msg) -> String {
         Msg::Diff(DiffMsg::JumpToChange(d)) => format!("jump {d}"),
         Msg::Conflict(ConflictMsg::ConflictStep(d)) => format!("conflict {d}"),
         Msg::Job(crate::msg::JobMsg::Undo) => "undo".into(),
+        Msg::Palette(PaletteMsg::RunBoundCommand(c)) => format!("run {c:?}"),
         _ => "other".into(),
     }
 }
@@ -108,6 +109,9 @@ fn exact_beats_shift_stripped() {
     let mut h = harness(with_diff(state()), false);
     assert_eq!(press(&mut h, CMD_SHIFT, Key::S), ["StageAll"]);
     assert_eq!(press(&mut h, Modifiers::SHIFT, Key::S), ["Stage"], "Shift+S still stages");
+    // Shift+F5 is Fetch's own key; without it, Shift+F5 falls back to F5's Refresh.
+    assert_eq!(press(&mut h, Modifiers::SHIFT, Key::F5), ["run Fetch"]);
+    h.state_mut().st.keymap.set(I::Fetch, Vec::new());
     assert_eq!(press(&mut h, Modifiers::SHIFT, Key::F5), ["refresh"]);
 }
 

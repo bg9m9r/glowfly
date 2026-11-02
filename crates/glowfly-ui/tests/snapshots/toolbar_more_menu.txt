@@ -14,7 +14,7 @@ Button "Undo" [disabled]
 Button "Redo" [disabled]
 Button "Branch"
 Button "Stash"
-Button "Pop" [disabled]
+Button "Unstash" [disabled]
 Button "Create a pull request on GitHub for this branch"
 Button "Pull request options"
 CheckBox "Terminal" [off]
@@ -121,4 +121,5 @@ painted:
   "AL"
   "Ctrl+Z"
   "Ctrl+Y"
+  "Ctrl+B"
   "Ctrl+`"

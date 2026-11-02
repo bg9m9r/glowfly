@@ -198,7 +198,7 @@ impl Keymap {
     }
 
     /// `filter(query)` for the shortcut sheet: Repository commands rows without a key are left
-    /// out (they have none by default), and groups left empty are dropped.
+    /// out (most have none by default), and groups left empty are dropped.
     pub fn filter_for_sheet(&self, query: &str) -> Vec<(Group, Vec<&'static Binding>)> {
         self.filter(query)
             .into_iter()

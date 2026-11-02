@@ -145,8 +145,8 @@ fn open_step(st: &mut AppState, mode: Mode) -> bool {
 }
 
 /// Switches the palette to the sub-list for `kind` (opening it if closed) and fills it: the
-/// tracked files load in the background, the stashes come from the snapshot, the profiles from
-/// settings.
+/// tracked files load in the background, the stashes and checkouts come from the snapshot, the
+/// profiles from settings.
 pub(super) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
     match kind {
         PickKind::FileHistory | PickKind::Blame => {
@@ -193,6 +193,11 @@ pub(super) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>
             }
             let Some(f) = st.session.forge.as_ref() else { return };
             let pick = Pick::issues_to_view(f);
+            open_step(st, Mode::Pick(pick));
+        }
+        PickKind::SwitchBranch => {
+            let Some(snap) = st.snap.as_ref() else { return };
+            let pick = Pick::checkouts(snap);
             open_step(st, Mode::Pick(pick));
         }
     }
@@ -355,6 +360,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         | C::ChooseStash(_)
         | C::ChooseStashToRename
         | C::ChooseProfile
+        | C::ChooseCheckout
         | C::ChooseGitFlowIssue(_)
         | C::ChooseIssueToView
         | C::StashMessage

@@ -180,6 +180,9 @@ pub enum PaletteCommand {
     },
     /// `TagMsg::Checkout`: the tagged commit, detached.
     CheckoutTag(String),
+    /// Enter the Switch branch sub-list; choosing a row runs its `Checkout`, `CheckoutRemote` or
+    /// `CheckoutTag`.
+    ChooseCheckout,
     OpenRecent(PathBuf),
     /// Copy a glowfly:// link to the repository or a branch.
     CopyLink(crate::deep_link::LinkTarget),
@@ -318,6 +321,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(with_detail(entry(C::Redo, "Redo", "again forward step history"), Some(a.describe())));
     }
     super::palette_selected::entries(st, snap, out);
+    out.push(entry(C::ChooseCheckout, "Switch branch…", "checkout branch tag remote switch"));
     if let Some(b) = snap.head_info() {
         out.push(entry(C::RenameBranch(b.name.clone()), format!("Rename branch {}…", b.name), "rename move branch"));
     }

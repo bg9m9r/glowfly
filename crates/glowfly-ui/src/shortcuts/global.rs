@@ -193,7 +193,9 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         | I::OpenTerminal
         | I::ShowRepoFolder
         | I::CherryPick
-        | I::RevertCommit => match crate::state::palette_bindings::command_for(id) {
+        | I::RevertCommit
+        | I::SwitchBranch
+        | I::OpenDashboard => match crate::state::palette_bindings::command_for(id) {
             Some(cmd) => Msg::Palette(PaletteMsg::RunBoundCommand(cmd)),
             None => return,
         },

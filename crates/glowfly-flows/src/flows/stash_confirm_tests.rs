@@ -1,8 +1,8 @@
 //! Headless tests for the question before applying or popping a stash on top of uncommitted
 //! changes: none on a clean tree, the Confirm on a dirty one once the stash's files are read
-//! (sub-list and Pop stash entries alike) with the files both change, the job once it is
-//! accepted, Pop stash naming the newest stash by position and commit, the refusal over
-//! conflicts, and Delete's own question.
+//! (sub-list and Unstash the latest stash entries alike) with the files both change, the job
+//! once it is accepted, Unstash naming the newest stash by position and commit, the refusal
+//! over conflicts, and Delete's own question.
 
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, finish, git};
@@ -83,7 +83,7 @@ fn clean_tree_runs_straight_away() {
     let (cmds, _) = git_job(&palette(&mut st, C::StashOp { action: StashAction::Pop, oid }));
     assert_eq!(cmds, argv(&["stash", "pop", "stash@{0}"]));
     st.job = None;
-    // Pop stash names the stash the snapshot shows, so a stash pushed meanwhile isn't popped.
+    // Unstash names the stash the snapshot shows, so a stash pushed meanwhile isn't popped.
     let (cmds, expect) = git_job(&palette(&mut st, C::PopStash));
     assert_eq!((cmds, expect), (argv(&["stash", "pop", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
     let _ = std::fs::remove_dir_all(&dir);
@@ -108,13 +108,13 @@ fn dirty_tree_asks_first() {
 
     ask(&mut st, C::StashOp { action: StashAction::Pop, oid });
     let (title, body, button) = confirm(&st);
-    assert_eq!((title.as_str(), button.as_str()), ("Pop stash", "Pop"));
+    assert_eq!((title.as_str(), button.as_str()), ("Unstash", "Unstash"));
     assert!(body.contains(&message) && body.contains("the stash is kept"), "{body}");
     assert_eq!(git_job(&run(&mut st, Msg::ConfirmAccepted)).0, argv(&["stash", "pop", "stash@{0}"]));
     st.job = None;
 
     ask(&mut st, C::PopStash);
-    assert_eq!(confirm(&st).0, "Pop stash", "the Pop stash entry asks too");
+    assert_eq!(confirm(&st).0, "Unstash", "the Unstash the latest stash entry asks too");
     let (cmds, expect) = git_job(&run(&mut st, Msg::ConfirmAccepted));
     assert_eq!((cmds, expect), (argv(&["stash", "pop", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
     st.job = None;

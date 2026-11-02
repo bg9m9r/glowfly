@@ -1,5 +1,5 @@
-//! The rich tooltip's content, as plain data: a title, a weak subline (a shortcut or a state
-//! line), a body sentence, an inset preview of commits, files or lines, and a footer. State
+//! The rich tooltip's content, as plain data: a title, the action's key caps, a weak state
+//! line, a body sentence, an inset preview of commits, files or lines, and a footer. State
 //! rules build it and tests read it; `ui/widgets/tooltip.rs` draws it.
 
 use crate::keymap::BindingId;
@@ -12,20 +12,14 @@ pub const PREVIEW_ROWS: usize = 5;
 pub struct Tip {
     /// The action's name.
     pub title: String,
-    pub sub: Option<TipSub>,
+    /// The binding whose first key shows as key caps under the title (left out when it has none).
+    pub keys: Option<BindingId>,
+    /// A short state line under the keys ("main is 2 ahead, 3 behind origin/main").
+    pub state: Option<String>,
     /// One sentence; on a disabled button, why it can't be used.
     pub body: Option<String>,
     pub preview: Option<TipPreview>,
     pub footer: Option<String>,
-}
-
-/// The line under the title.
-#[derive(Clone, Debug, PartialEq)]
-pub enum TipSub {
-    /// The binding's first key, drawn as key caps (left out when it has none).
-    Keys(BindingId),
-    /// A short state line ("main is 2 ahead, 3 behind origin/main").
-    State(String),
 }
 
 /// An inset list of what the action would touch.
@@ -56,16 +50,16 @@ pub enum TipRow {
 
 impl Tip {
     pub fn new(title: impl Into<String>) -> Self {
-        Self { title: title.into(), sub: None, body: None, preview: None, footer: None }
+        Self { title: title.into(), keys: None, state: None, body: None, preview: None, footer: None }
     }
 
     pub fn keys(mut self, id: BindingId) -> Self {
-        self.sub = Some(TipSub::Keys(id));
+        self.keys = Some(id);
         self
     }
 
     pub fn state(mut self, line: impl Into<String>) -> Self {
-        self.sub = Some(TipSub::State(line.into()));
+        self.state = Some(line.into());
         self
     }
 

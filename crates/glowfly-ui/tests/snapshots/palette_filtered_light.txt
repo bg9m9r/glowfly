@@ -9,6 +9,7 @@ Dialog
   Button "Ignore whitespace changes"
   Button "Configure sparse checkout…"
   Button "Create patch from uncommitted changes…"
+  Button "Switch branch…"
   Button "Search commits"
   Button "Create tag at HEAD…"
   Button "Create branch at HEAD…"
@@ -37,5 +38,8 @@ Dialog
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "detached at f0d635c"
+  "Ctrl+Shift+H"
   "nothing staged"
+  "Ctrl+Shift+O"
   "Ctrl+F"
+  "Ctrl+B"

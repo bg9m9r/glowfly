@@ -10,6 +10,7 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 - Offer a tab's custom label again when its repository is opened later from Recent or the
   dashboard
 - Show the tab list button always, not only when there are closed tabs or the tabs had to shrink
+- A Go to tab… palette step that lists the open and recently closed tabs, with a key
 
 ### Command palette (fuzzy finder)
 

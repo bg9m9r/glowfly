@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 const WITH_MESSAGE: &str = "Stash with message…";
-const CHOOSERS: [&str; 3] = ["Apply stash…", "Pop stash…", "Delete stash…"];
+const CHOOSERS: [&str; 3] = ["Apply stash…", "Unstash…", "Delete stash…"];
 
 use crate::state::palette::PaletteCommand as C;
 
@@ -103,7 +103,7 @@ fn stash_entries_availability() {
     let (mut st, dir) = two_stashes("stash-entries-two");
     let entries = shown(&st, "");
     assert!(!entries.iter().any(|s| s.entry.label == WITH_MESSAGE), "clean tree");
-    let at = entries.iter().position(|s| s.entry.label == "Pop stash").unwrap();
+    let at = entries.iter().position(|s| s.entry.label == "Unstash the latest stash").unwrap();
     for (i, want) in CHOOSERS.iter().enumerate() {
         let e = &entries[at + 1 + i].entry;
         assert_eq!(e.label, *want);
@@ -136,7 +136,7 @@ fn choose_stash_enters_sub_list() {
 
     let texts = |a| (PickKind::Stash(a).title(), PickKind::Stash(a).prompt());
     assert_eq!(texts(StashAction::Apply), ("Apply stash", "Find a stash to apply"));
-    assert_eq!(texts(StashAction::Pop), ("Pop stash", "Find a stash to pop"));
+    assert_eq!(texts(StashAction::Pop), ("Unstash", "Find a stash to unstash"));
     assert_eq!(texts(StashAction::Drop), ("Delete stash", "Find a stash to delete"));
 
     // Closed: entering opens the palette.
