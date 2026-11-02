@@ -27,11 +27,10 @@
 //! inside a framed button's edge and 3 px inside a quiet one's. Taller with `min_height`, or an
 //! exact `height` and `text_size` inside a fixed-height row, until those rows take a size.
 
-use super::button_look::{self, Press};
+use super::button_look::{self, Press, Target};
 use super::icon::{self, Icon};
 use crate::ui::theme::sizes::{ControlSize, Metrics};
-use crate::ui::theme::tokens;
-use eframe::egui::{self, Color32, CornerRadius, Response, Sense, StrokeKind, TextStyle, Ui, Widget, WidgetText, pos2, vec2};
+use eframe::egui::{self, Color32, CornerRadius, Rect, Response, Sense, TextStyle, Ui, Widget, WidgetText, pos2, vec2};
 use std::borrow::Cow;
 
 pub use super::button_split::split;
@@ -219,6 +218,11 @@ impl<'a> StyledButton<'a> {
         self.kind
     }
 
+    /// Its size.
+    pub(super) fn control_size(&self) -> ControlSize {
+        self.size
+    }
+
     /// Its size's corners.
     pub(super) fn radius(&self) -> u8 {
         self.metrics().radius
@@ -286,41 +290,44 @@ impl<'a> StyledButton<'a> {
         self.measure(&self.galley(ui)).x
     }
 
-    /// Adds it with `corners` (a split button's half takes its outer ones), `latched` while a
-    /// menu it opens is open.
-    pub(super) fn show_shaped(self, ui: &mut Ui, corners: CornerRadius, latched: bool) -> Response {
-        let enabled = self.enabled && ui.is_enabled();
+    /// Its text and its size around it.
+    pub(super) fn layout(&self, ui: &Ui) -> (std::sync::Arc<egui::Galley>, egui::Vec2) {
         let galley = self.galley(ui);
         let size = self.measure(&galley);
-        let (rect, resp) = ui.allocate_exact_size(size, if enabled { Sense::click() } else { Sense::hover() });
+        (galley, size)
+    }
+
+    /// Whether it can be clicked in `ui`.
+    pub(super) fn live(&self, ui: &Ui) -> bool {
+        self.enabled && ui.is_enabled()
+    }
+
+    /// Names `resp` for screen readers.
+    pub(super) fn name(&self, resp: &Response, enabled: bool) {
         let text = self.text.as_ref();
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, text));
-        if ui.is_rect_visible(rect) {
-            let press = if enabled { Press::of(resp.hovered(), resp.is_pointer_button_down_on(), latched) } else { Press::Rest };
-            let look = button_look::look(self.kind, enabled, press);
-            let p = ui.painter();
-            p.rect(rect, corners, look.fill, look.edge, StrokeKind::Inside);
-            let left = rect.center().x - (galley.size().x + self.icon_w()) / 2.0;
-            match self.icon {
-                Some(i) if self.icon_only => icon::paint_icon_sized(p, rect.center(), i, look.ink, self.icon_size()),
-                Some(i) => {
-                    let side = self.icon_size();
-                    icon::paint_icon_sized(p, pos2(left + side / 2.0, rect.center().y), i, look.ink, side);
-                }
-                None => {}
+    }
+
+    /// Paints its icon and text in `ink`, centred in `rect`.
+    pub(super) fn paint_content(&self, p: &egui::Painter, rect: Rect, galley: std::sync::Arc<egui::Galley>, ink: Color32) {
+        let left = rect.center().x - (galley.size().x + self.icon_w()) / 2.0;
+        match self.icon {
+            Some(i) if self.icon_only => icon::paint_icon_sized(p, rect.center(), i, ink, self.icon_size()),
+            Some(i) => {
+                let side = self.icon_size();
+                icon::paint_icon_sized(p, pos2(left + side / 2.0, rect.center().y), i, ink, side);
             }
-            if !self.icon_only {
-                p.galley(pos2(left + self.icon_w(), rect.center().y - galley.size().y / 2.0), galley, look.ink);
-            }
-            if resp.has_focus() {
-                if self.kind.framed() {
-                    tokens::focus_ring(p, rect, self.metrics().radius);
-                } else {
-                    tokens::focus_ring_inset(p, rect, self.metrics().radius);
-                }
-            }
+            None => {}
         }
-        let tip = if self.icon_only { self.tip.or(Some(text)) } else { self.tip };
+        if !self.icon_only {
+            p.galley(pos2(left + self.icon_w(), rect.center().y - galley.size().y / 2.0), galley, ink);
+        }
+    }
+
+    /// `resp` with the pointing hand and its tooltip while `enabled`, or its reason on hover
+    /// while disabled.
+    pub(super) fn explain(&self, resp: Response, enabled: bool) -> Response {
+        let tip = if self.icon_only { self.tip.or(Some(self.text.as_ref())) } else { self.tip };
         if enabled {
             let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
             match tip {
@@ -338,9 +345,23 @@ impl<'a> StyledButton<'a> {
 }
 
 impl Widget for StyledButton<'_> {
+    /// Adds it standing alone: its look over its whole shape through `button_look::paint_button`,
+    /// a framed kind's edge, and the focus ring (outside a framed kind's edge, inset in a quiet
+    /// one).
     fn ui(self, ui: &mut Ui) -> Response {
-        let corners = CornerRadius::same(self.metrics().radius);
-        self.show_shaped(ui, corners, false)
+        let enabled = self.live(ui);
+        let (galley, size) = self.layout(ui);
+        let (rect, resp) = ui.allocate_exact_size(size, if enabled { Sense::click() } else { Sense::hover() });
+        self.name(&resp, enabled);
+        if ui.is_rect_visible(rect) {
+            let press = if enabled { Press::of(resp.hovered(), resp.is_pointer_button_down_on(), false) } else { Press::Rest };
+            let look = button_look::look(self.kind, enabled, press);
+            let corners = CornerRadius::same(self.radius());
+            let target = Target { rect, corners, edge: self.kind.framed().then_some(look.edge) };
+            button_look::paint_button(ui.painter(), target, self.size, look, resp.has_focus());
+            self.paint_content(ui.painter(), rect, galley, look.ink);
+        }
+        self.explain(resp, enabled)
     }
 }
 

@@ -7,6 +7,9 @@
 //! divider always shows, and only the hovered segment lights. A disabled segment never lights.
 //! Every state is painted by `button_look::paint_target`.
 //!
+//! The layout (`lay_out`) is shared with the filled split button (`button_split.rs`), which
+//! paints its halves in its kind's look.
+//!
 //! The bar is laid out first (`segment_bar`), so the caller can open a menu from a segment's
 //! response and learn which segment is latched, then painted (`Bar::paint`) before the caller
 //! draws each segment's content over it.
@@ -48,22 +51,29 @@ pub struct Bar {
 /// `size` (which picks the focus style; the bar's own corners shape the segments).
 pub fn segment_bar(ui: &mut Ui, size: ControlSize, h: f32, outer: u8, style: BarStyle, segs: &[Seg]) -> Bar {
     let border = if matches!(style, BarStyle::Framed { .. }) { BORDER_W } else { 0.0 };
+    // A framed bar of one segment lights its whole frame, so its whole frame is the target.
+    let (rect, responses) = lay_out(ui, h, border, segs, border > 0.0 && segs.len() == 1);
+    Bar { responses, rect, outer, style, size, enabled: segs.iter().map(|s| s.enabled).collect() }
+}
+
+/// Lays out `segs` flush, left to right, inside a `border` around them, `h` tall in all: the
+/// whole rect and one response per segment (the whole rect's when `whole`). A segment bar's
+/// layout, shared with the filled split button, which paints its own halves.
+pub(super) fn lay_out(ui: &mut Ui, h: f32, border: f32, segs: &[Seg], whole: bool) -> (Rect, Vec<Response>) {
     let w = segs.iter().map(|s| s.w).sum::<f32>() + 2.0 * border;
     let (rect, bar) = ui.allocate_exact_size(vec2(w, h), Sense::hover());
     let mut x = rect.left() + border;
-    // A framed bar of one segment lights its whole frame, so its whole frame is the target.
-    let single_frame = border > 0.0 && segs.len() == 1;
     let responses = segs
         .iter()
         .enumerate()
         .map(|(i, s)| {
-            let r = if single_frame { rect } else { Rect::from_min_size(pos2(x, rect.top() + border), vec2(s.w, h - 2.0 * border)) };
+            let r = if whole { rect } else { Rect::from_min_size(pos2(x, rect.top() + border), vec2(s.w, h - 2.0 * border)) };
             x += s.w;
             let sense = if s.enabled { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE };
             ui.interact(r, segment_id(bar.id, i), sense)
         })
         .collect();
-    Bar { responses, rect, outer, style, size, enabled: segs.iter().map(|s| s.enabled).collect() }
+    (rect, responses)
 }
 
 /// Segment `i`'s id, from the bar's: stable while a segment's content changes.

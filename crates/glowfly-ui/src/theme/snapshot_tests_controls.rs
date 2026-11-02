@@ -1,5 +1,6 @@
-//! Snapshots of the form controls and ref chips in every built-in theme, and of a modal over a
-//! window in a dark and a light theme (the backdrop and the dialog border).
+//! Snapshots of the form controls (with a segmented control and quiet chips) and ref chips in
+//! every built-in theme, and of a modal over a window in a dark and a light theme (the backdrop
+//! and the dialog border).
 
 use super::color::{self, Palette};
 use super::contrast::{self, ChipStyle};
@@ -7,7 +8,9 @@ use super::controls::{self, Check};
 use super::{apply_style, egui_theme};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::theme::branch_colours::{chip_in, swatches};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets;
+use crate::ui::widgets::segmented::{Segment, segmented_opts};
 use eframe::egui::{self, vec2};
 use glowfly_core::branch_colour::Swatch;
 
@@ -51,6 +54,18 @@ fn render_controls(name: &str, p: Palette) {
                 ui.add_space(12.0);
                 let _ = ui.selectable_label(true, "Hunks");
                 let _ = ui.selectable_label(false, "Whole file");
+            });
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                let options = [
+                    Segment::new(0u8, "Graph", "The graph"),
+                    Segment::new(1, "List", "The list"),
+                    Segment::new(2, "Tree", "The tree").why(Some("Not here")),
+                ];
+                segmented_opts(ui, ControlSize::Regular, 0, &options);
+                ui.add_space(12.0);
+                let _ = widgets::quiet_chip(ui, "a1b2c3d", "Copy the SHA");
+                let _ = widgets::quiet_chip(ui, "Grace Hopper", "The committer");
             });
             ui.add_space(10.0);
             let (_, rect) = ui.allocate_space(vec2(ui.available_width(), 60.0));

@@ -10,8 +10,15 @@ RadioButton "Merge" [off]
 RadioButton "Rebase" [on]
 Button "Hunks" [on]
 Button "Whole file" [off]
+Button "Graph" [on]
+Button "List" [off]
+Button "Tree" [disabled, off]
+Button "Copy the SHA"
+Button "The committer"
 painted:
   "Filter branches"
+  "a1b2c3d"
+  "Grace Hopper"
   "HEAD"
   "✔ main"
   "topic"

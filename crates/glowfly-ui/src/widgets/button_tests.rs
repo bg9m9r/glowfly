@@ -261,3 +261,80 @@ fn quiet_kinds_take_compact() {
     assert!(!Kind::Quiet.framed() && !Kind::DangerQuiet.framed());
     assert!(Kind::Primary.framed() && Kind::Secondary.framed() && Kind::Danger.framed() && Kind::Tonal.framed());
 }
+
+/// What a split of a primary "Commit" and its "More" caret paints on the last of three frames,
+/// with the pointer at `at` and the half `focus` (0 the action, 1 the caret) focused after the
+/// first: the halves' rects, the rects painted and the lines painted.
+fn painted_split(at: egui::Pos2, focus: Option<usize>) -> ([Rect; 2], Vec<egui::epaint::RectShape>, Vec<[egui::Pos2; 2]>) {
+    color::set_dark(true);
+    let ctx = egui::Context::default();
+    let mut halves = [Rect::NOTHING; 2];
+    let (mut rects, mut lines) = (Vec::new(), Vec::new());
+    for frame in 0..3 {
+        let input = egui::RawInput { events: vec![egui::Event::PointerMoved(at)], ..Default::default() };
+        let out = ctx.run(input, |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let (main, caret) = split(primary("Commit"), "More").show(ui);
+                if frame == 0
+                    && let Some(i) = focus
+                {
+                    [&main, &caret][i].request_focus();
+                }
+                halves = [main.rect, caret.rect];
+            });
+        });
+        rects.clear();
+        lines.clear();
+        for c in out.shapes {
+            match c.shape {
+                Shape::Rect(r) if r.rect.width() < 1000.0 => rects.push(r),
+                Shape::LineSegment { points, .. } => lines.push(points),
+                _ => {}
+            }
+        }
+    }
+    (halves, rects, lines)
+}
+
+#[test]
+fn a_split_has_one_edge_and_one_divider() {
+    let (halves, rects, lines) = painted_split(egui::Pos2::ZERO, None);
+    let whole = halves[0].union(halves[1]);
+    assert_eq!(halves[0].right(), halves[1].left(), "flush");
+    let edges: Vec<_> = rects.iter().filter(|s| s.stroke.width > 0.0).collect();
+    assert_eq!(edges.len(), 1, "only the whole shape has an edge: {edges:?}");
+    assert_eq!(edges[0].rect, whole);
+    let dividers: Vec<_> = lines.iter().filter(|l| l[0].x == l[1].x).collect();
+    assert_eq!(dividers.len(), 1, "one divider: {lines:?}");
+    assert_eq!(dividers[0][0].x, halves[1].left().round() + 0.5, "on the seam, 1 px wide");
+}
+
+#[test]
+fn only_the_hovered_half_of_a_split_lights() {
+    let fill_at =
+        |rects: &[egui::epaint::RectShape], r: Rect| rects.iter().find(|s| s.rect == r && s.fill != Color32::TRANSPARENT).map(|s| s.fill);
+    let (halves, rects, _) = painted_split(egui::Pos2::ZERO, None);
+    let rest = fill_at(&rects, halves[0]).expect("the primary fill");
+    assert_eq!(fill_at(&rects, halves[1]), Some(rest), "both halves at rest");
+    let (_, rects, _) = painted_split(halves[0].center(), None);
+    let (main, caret) = (fill_at(&rects, halves[0]), fill_at(&rects, halves[1]));
+    assert!(main.is_some_and(|f| f != rest) && caret == Some(rest), "the action alone: {main:?} {caret:?}");
+    let (_, rects, _) = painted_split(halves[1].center(), None);
+    let (main, caret) = (fill_at(&rects, halves[0]), fill_at(&rects, halves[1]));
+    assert!(main == Some(rest) && caret.is_some_and(|f| f != rest), "the caret alone: {main:?} {caret:?}");
+}
+
+#[test]
+fn a_split_half_rings_its_own_shape() {
+    let r = ControlSize::Regular.metrics().radius;
+    for (i, corners) in
+        [(0, crate::ui::theme::tokens::radius::segment(r, true, false)), (1, crate::ui::theme::tokens::radius::segment(r, false, true))]
+    {
+        let (halves, rects, _) = painted_split(egui::Pos2::ZERO, Some(i));
+        let on_primary = color::current().on_primary;
+        let rings: Vec<_> = rects.iter().filter(|s| s.stroke.color == on_primary && s.fill == Color32::TRANSPARENT).collect();
+        assert_eq!(rings.len(), 1, "half {i}: {rects:?}");
+        assert_eq!((rings[0].rect, rings[0].corner_radius), (halves[i], corners), "half {i}: inset, on its own corners");
+        assert_eq!(rings[0].stroke_kind, egui::StrokeKind::Inside);
+    }
+}

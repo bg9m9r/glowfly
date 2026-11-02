@@ -1,0 +1,15 @@
+window 520x140
+Label "Pressed"
+Button "Push"
+Button "Push options"
+Label "Focus"
+Button "Commit"
+Button "Commit options" [focused]
+Label "Disabled"
+Button "Commit 2 files" [disabled]
+Button "More"
+Label "Kinds"
+Button "Discard"
+Button "Discard options"
+Button "Stage all"
+Button "Stage options"

@@ -1,10 +1,10 @@
 //! The design sheets: the button family in a dark, a light, a high-contrast and the Sand theme
-//! (every kind at rest, focused and disabled, with each kind's hover and pressed look), and the
-//! foundations in a dark and a light theme (the surface ladder with the overlay's Float shadow,
-//! a Dialog-elevation card, the corner scale, the tone tints and the state layers on the panel
-//! and the overlay). Declared under `widgets` so it can paint each state's look.
+//! (every kind at rest, focused and disabled, with each kind's hover and pressed look), the split
+//! buttons' states in a dark and a light theme, and the foundations in a dark and a light theme
+//! (the surface ladder with the overlay's Float shadow, a Dialog-elevation card, the corner
+//! scale, the tone tints and the state layers on the panel and the overlay). Declared under `widgets` so it can paint each state's look.
 
-use super::button_look::{Press, look};
+use super::button_look::{Press, Target, look, paint_button};
 use super::button_split::split;
 use super::buttons::{self, Kind, StyledButton};
 use super::{Icon, paint_icon_sized};
@@ -15,6 +15,7 @@ use crate::ui::theme::surfaces::Tone;
 use crate::ui::theme::tokens::{Elevation, radius, shadow};
 use crate::ui::theme::{self, type_scale};
 use eframe::egui::{self, Align2, CornerRadius, Rect, Shape, StrokeKind, Ui, pos2, vec2};
+use egui_kittest::kittest::Queryable;
 
 /// The kinds that carry text, with a label each.
 const KINDS: [(Kind, &str); 5] = [
@@ -63,22 +64,24 @@ fn live_row(ui: &mut Ui, enabled: bool, focus: Option<&str>, first: bool) {
     });
 }
 
-/// One row of each kind's look in state `press`, painted.
+/// One row of each kind's look in state `press`, painted by the buttons' own painter.
 fn painted_row(ui: &mut Ui, label: &str, press: Press) {
     ui.horizontal(|ui| {
         caption(ui, label);
+        let size = ControlSize::Regular;
         for (kind, text) in KINDS {
             let w = button(kind, text).desired_width(ui);
-            let (rect, _) = ui.allocate_exact_size(vec2(w, 28.0), egui::Sense::hover());
+            let (rect, _) = ui.allocate_exact_size(vec2(w, size.metrics().h), egui::Sense::hover());
             let l = look(kind, true, press);
-            let p = ui.painter();
-            p.rect(rect, radius::MD, l.fill, l.edge, StrokeKind::Inside);
-            p.text(rect.center(), Align2::CENTER_CENTER, text, type_scale::font(type_scale::BODY), l.ink);
+            let target = Target { rect, corners: CornerRadius::same(size.metrics().radius), edge: kind.framed().then_some(l.edge) };
+            paint_button(ui.painter(), target, size, l, false);
+            ui.painter().text(rect.center(), Align2::CENTER_CENTER, text, type_scale::font(size.metrics().text), l.ink);
         }
-        let (rect, _) = ui.allocate_exact_size(vec2(28.0, 28.0), egui::Sense::hover());
+        let side = size.metrics().h;
+        let (rect, _) = ui.allocate_exact_size(vec2(side, side), egui::Sense::hover());
         let l = look(Kind::Quiet, true, press);
-        ui.painter().rect_filled(rect, radius::MD, l.fill);
-        paint_icon_sized(ui.painter(), rect.center(), Icon::Refresh, l.ink, crate::ui::widgets::icon::SIZE_MD);
+        paint_button(ui.painter(), Target { rect, corners: CornerRadius::same(size.metrics().radius), edge: None }, size, l, false);
+        paint_icon_sized(ui.painter(), rect.center(), Icon::Refresh, l.ink, size.metrics().icon);
     });
 }
 
@@ -109,6 +112,9 @@ fn render_buttons(name: &str, p: Palette) {
         true,
     );
     h.run();
+    // The pointer on the small split's action: only that half lights.
+    h.get_by_label("Fetch").hover();
+    h.run();
     h.run();
     h.check_snapshot(name);
 }
@@ -126,6 +132,54 @@ fn design_buttons_light() {
 #[test]
 fn design_buttons_high_contrast_dark() {
     render_buttons("design_buttons_high_contrast_dark", theme::HIGH_CONTRAST_DARK);
+}
+
+/// The split buttons' states, live: the pointer held on a secondary split's action, a primary
+/// split's caret focused, a disabled action beside a caret that still works, and the danger and
+/// tonal kinds, whose divider is a shade of their fill.
+fn render_splits(name: &str, p: Palette) {
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(520.0, 140.0)).build_ui_state(
+        move |ui, _: &mut ()| {
+            frame(ui, &p);
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                caption(ui, "Pressed");
+                let _ = split(buttons::secondary("Push"), "Push options").show(ui);
+                caption(ui, "Focus");
+                // Every frame: the press on Push would take the focus.
+                split(buttons::primary("Commit"), "Commit options").show(ui).1.request_focus();
+            });
+            ui.horizontal(|ui| {
+                caption(ui, "Disabled");
+                let _ = split(buttons::primary("Commit 2 files").enabled(false), "More").show(ui);
+            });
+            ui.horizontal(|ui| {
+                caption(ui, "Kinds");
+                let _ = split(buttons::danger("Discard"), "Discard options").show(ui);
+                let _ = split(buttons::tonal("Stage all"), "Stage options").show(ui);
+            });
+        },
+        (),
+    );
+    h.run();
+    let push = h.get_by_label("Push").bounding_box().expect("the Push action");
+    let at = egui::pos2(((push.x0 + push.x1) / 2.0) as f32, ((push.y0 + push.y1) / 2.0) as f32);
+    h.input_mut().events.push(egui::Event::PointerMoved(at));
+    let press = egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() };
+    h.input_mut().events.push(press);
+    h.run();
+    h.run();
+    h.check_snapshot(name);
+}
+
+#[test]
+fn design_split_states_dark() {
+    render_splits("design_split_states_dark", theme::DARK);
+}
+
+#[test]
+fn design_split_states_light() {
+    render_splits("design_split_states_light", theme::LIGHT);
 }
 
 /// A labelled swatch at `rect` in `fill`, with `ink` text (the label under it when `ink` is

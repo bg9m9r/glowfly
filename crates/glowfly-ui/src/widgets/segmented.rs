@@ -1,12 +1,15 @@
 //! A segmented control: a track of options side by side at a `ControlSize` (its height, text,
-//! side padding and corners), the chosen one raised on the panel fill. Each option is named by its label and marked selected for screen readers and
-//! tests. A segment can be disabled with a reason (`Segment::why`): it senses hover only, never
+//! side padding and corners), the chosen one raised on the panel fill, its corners concentric
+//! with the track's. Each option is a quiet target (`button_look::paint_target`): the hover and
+//! pressed layers over its own shape, and the inset focus ring on its corners. Each option is
+//! named by its label and marked selected for screen readers and tests. A segment can be disabled with a reason (`Segment::why`): it senses hover only, never
 //! takes a click or shows the pointing hand, paints its text `faint` (`weak` when it is the
 //! raised one) instead of egui's fade, and shows the reason on hover. A segment's id comes from
 //! the track and its index, so a label that changes (a count) keeps its id.
 
 use super::super::theme::color;
-use super::super::theme::tokens::{self, radius};
+use super::super::theme::tokens::radius;
+use super::button_look::{Press, Target, paint_target};
 use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::{self, CornerRadius, CursorIcon, FontId, Rect, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
@@ -68,22 +71,22 @@ pub fn segmented_opts<T: Copy + PartialEq>(ui: &mut Ui, size: ControlSize, curre
         let label = o.label;
         resp.widget_info(|| WidgetInfo::selected(WidgetType::SelectableLabel, enabled, selected, label));
         let p = ui.painter();
-        let inner = radius::inside(m.radius, 1);
+        // Concentric with the track: its corners less the inset.
+        let inner = CornerRadius::same(radius::inside(m.radius, INSET as u8));
+        if selected {
+            p.rect(rect, inner, color::panel(), Stroke::new(1.0_f32, color::input_border()), StrokeKind::Inside);
+        }
+        // The raised option is chosen, not pressed: it takes no state layer, only the focus ring.
+        let live = enabled && !selected;
+        let press = if live { Press::of(resp.hovered(), resp.is_pointer_button_down_on(), false) } else { Press::Rest };
+        paint_target(p, Target { rect, corners: inner, edge: None }, size, press, resp.has_focus());
         let fg = match (selected, enabled) {
-            (true, _) => {
-                p.rect(rect, inner, color::panel(), Stroke::new(1.0_f32, color::input_border()), StrokeKind::Inside);
-                if enabled { color::strong() } else { color::weak() }
-            }
+            (true, true) => color::strong(),
+            (true, false) => color::weak(),
             (false, false) => color::faint(),
-            (false, true) if resp.hovered() => {
-                p.rect_filled(rect, inner, color::hover());
-                color::text()
-            }
+            (false, true) if press != Press::Rest => color::text(),
             (false, true) => color::weak(),
         };
-        if resp.has_focus() {
-            tokens::focus_ring_inset(p, rect, inner);
-        }
         p.text(rect.center(), egui::Align2::CENTER_CENTER, label, font.clone(), fg);
         let hover = if enabled { o.tip } else { o.why.unwrap_or(o.tip) };
         let resp = resp.on_hover_text(hover).on_disabled_hover_text(hover);
@@ -174,5 +177,27 @@ mod tests {
         h.get_by_label("Two").click();
         h.run();
         assert!(h.state().is_empty());
+    }
+
+    #[test]
+    fn the_raised_option_is_concentric_with_the_track() {
+        color::set_dark(true);
+        let ctx = egui::Context::default();
+        let mut shapes = Vec::new();
+        for _ in 0..2 {
+            let out = ctx.run(egui::RawInput::default(), |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    segmented(ui, ControlSize::Regular, 1u8, &[(1, "One", "The first"), (2, "Two", "The second")]);
+                });
+            });
+            shapes = out.shapes.into_iter().filter_map(|c| if let egui::Shape::Rect(r) = c.shape { Some(r) } else { None }).collect();
+        }
+        let m = ControlSize::Regular.metrics();
+        let track = shapes.iter().find(|s| s.fill == color::raised()).expect("the track");
+        let thumb = shapes.iter().find(|s| s.fill == color::panel() && s.rect.width() < 1000.0).expect("the raised option");
+        assert_eq!(track.corner_radius, CornerRadius::same(m.radius));
+        let inner = track.rect.shrink(INSET);
+        assert_eq!((thumb.rect.left_top(), thumb.rect.height()), (inner.left_top(), inner.height()), "2 px inside the track");
+        assert_eq!(thumb.corner_radius, CornerRadius::same(m.radius - INSET as u8), "its corners less the inset");
     }
 }
