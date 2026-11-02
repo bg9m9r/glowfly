@@ -63,8 +63,8 @@ fn stash_menu() {
     open_menu(&mut h, "On main: login form tweaks");
     // The menu's header names the stash; the row's own label is still found.
     assert_eq!(h.query_all_by_label("On main: login form tweaks").count(), 2, "the row and the menu header");
-    for item in ["Apply", "Pop", "Rename…", "Delete…"] {
-        // The toolbar's Pop is "Pop the latest stash".
+    for item in ["Apply", "Unstash", "Rename…", "Delete…"] {
+        // The toolbar's Unstash is "Unstash the latest stash".
         assert_eq!(h.query_all_by_label(item).count(), 1, "{item}");
     }
     h.check_snapshot("stash_menu");
@@ -83,7 +83,7 @@ fn stash_menu_asks_on_a_dirty_tree() {
     let oid = st.snap.as_ref().unwrap().stashes[0].oid;
     let mut h = harness(st, true);
     h.run();
-    for (item, action) in [("Apply", StashAction::Apply), ("Pop", StashAction::Pop)] {
+    for (item, action) in [("Apply", StashAction::Apply), ("Unstash", StashAction::Pop)] {
         open_menu(&mut h, &row);
         h.get_by_label(item).click();
         h.run();
@@ -115,7 +115,7 @@ fn stash_menu_greys_apply_and_pop_over_conflicts() {
     let row = st.snap.as_ref().unwrap().stashes[0].message.clone();
     let mut h = harness(st, true);
     h.run();
-    for item in ["Apply", "Pop"] {
+    for item in ["Apply", "Unstash"] {
         open_menu(&mut h, &row);
         h.get_by_label(item).click();
         h.run();

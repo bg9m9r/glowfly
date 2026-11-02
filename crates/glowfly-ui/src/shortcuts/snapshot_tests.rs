@@ -130,7 +130,8 @@ fn shortcut_sheet_history() {
     remove_fixture(&dir);
 }
 
-/// Repository commands have no key by default, so the sheet leaves them out until one has.
+/// The sheet lists the Repository commands that have a key: the seven with default keys, and
+/// the others once one is given a key.
 #[test]
 fn sheet_shows_command_keys_once_bound() {
     use crate::keymap::{BindingId, Chord, KeyName};
@@ -138,17 +139,19 @@ fn sheet_shows_command_keys_once_bound() {
     st.modal = Some(Modal::Shortcuts { filter: String::new() });
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("Fetch all remotes").is_none());
-    assert!(h.query_by_label("Repository commands").is_none());
+    // Pull, Push, Stash changes and Unstash share their names with toolbar or sidebar buttons.
+    for label in ["Repository commands", "Fetch all remotes", "New branch…", "Switch branch…"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_by_label("Open the operation journal").is_none(), "no key by default");
     drop(h);
 
     let (mut st, _) = with_repo(ThemeChoice::Dark, "shortcut-sheet-commands");
-    st.keymap.set(BindingId::Fetch, vec![Chord::plain(KeyName::F(8))]);
+    st.keymap.set(BindingId::OpenJournal, vec![Chord::plain(KeyName::F(8))]);
     st.modal = Some(Modal::Shortcuts { filter: String::new() });
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("Fetch all remotes").is_some());
-    assert!(h.query_by_label("Repository commands").is_some());
+    assert!(h.query_by_label("Open the operation journal").is_some());
     assert!(h.query_by_label("Show a file's history (pick the file)").is_none(), "only the commands with a key");
     drop(h);
     remove_fixture(&dir);

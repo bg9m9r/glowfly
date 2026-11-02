@@ -98,6 +98,7 @@ pub(super) mod snapshot_tests_palette;
 pub(super) mod snapshot_tests_palette_nav;
 pub(super) mod snapshot_tests_palette_recent;
 pub(super) mod snapshot_tests_palette_stash;
+mod snapshot_tests_palette_switch;
 pub(super) mod snapshot_tests_pane_focus;
 mod snapshot_tests_pane_focus_esc;
 pub(super) mod snapshot_tests_pane_status;

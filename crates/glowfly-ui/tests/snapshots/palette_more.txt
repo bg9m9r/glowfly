@@ -22,6 +22,7 @@ Dialog
   Button "Configure sparse checkout…"
   Button "Checkout search"
   Button "Stash with message…"
+  Button "Switch branch…"
   Button "Hide left panel"
   Button "Keyboard shortcuts"
   Button "Checkout login-page"

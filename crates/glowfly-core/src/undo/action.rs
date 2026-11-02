@@ -271,9 +271,8 @@ impl Action {
             Action::CreateTag { name, .. } => format!("creation of tag {name}"),
             Action::Moved { op, detail, .. } => moved(*op, detail.as_deref()),
             Action::StashPush { message, .. } => format!("stash '{}'", cut50(message)),
-            Action::StashApply { pop, message, .. } => {
-                format!("{} of stash '{}'", if *pop { "pop" } else { "apply" }, cut50(message))
-            }
+            Action::StashApply { pop: true, message, .. } => format!("unstash of '{}'", cut50(message)),
+            Action::StashApply { pop: false, message, .. } => format!("apply of stash '{}'", cut50(message)),
             Action::StashDrop { message, .. } => format!("drop of stash '{}'", cut50(message)),
             Action::Resolve { path, staged: Some(_), .. } => format!("resolution of {path}"),
             Action::Resolve { path, staged: None, .. } => format!("save of {path} with markers"),

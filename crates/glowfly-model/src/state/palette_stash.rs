@@ -1,6 +1,6 @@
 //! The palette's stash entries: Stash changes, Stash with message…, the Stash dialog's Stash
-//! staged changes… and Stash selected files… (while the tree is dirty), then Pop stash and the
-//! apply, pop, delete and rename sub-lists (while there are stashes).
+//! staged changes… and Stash selected files… (while the tree is dirty), then Unstash the latest
+//! stash and the apply, unstash, delete and rename sub-lists (while there are stashes).
 
 use super::{Entry, PaletteCommand as C, entry, with_detail};
 use crate::state::palette_kinds::StashAction;
@@ -32,14 +32,14 @@ pub(super) fn stash_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(with_detail(e, Some(files)));
     }
     if let Some(top) = snap.stashes.first() {
-        out.push(with_detail(entry(C::PopStash, "Pop stash", "unstash apply restore stash"), Some(top.message.clone())));
+        out.push(with_detail(entry(C::PopStash, "Unstash the latest stash", "unstash pop apply restore stash"), Some(top.message.clone())));
     }
     if !snap.stashes.is_empty() {
         let len = snap.stashes.len();
         let n = format!("{len} stash{}", if len == 1 { "" } else { "es" });
         let choose = [
             (StashAction::Apply, "Apply stash…", "unstash restore keep stash"),
-            (StashAction::Pop, "Pop stash…", "unstash apply restore remove stash"),
+            (StashAction::Pop, "Unstash…", "unstash pop apply restore remove stash"),
             (StashAction::Drop, "Delete stash…", "drop remove discard clear stash"),
         ];
         for (action, label, keywords) in choose {

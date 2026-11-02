@@ -133,6 +133,7 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Keycaps show a binding's first chord only; list a second chord when one is set
 - Undo's preview of a rebase or history edit lists the rewritten commits side by side with the
   ones it brings back
+- Code-font runs in tooltip bodies, so a body can show a command such as `git stash pop`
 
 ### Dialog frame and button styles
 

@@ -58,7 +58,7 @@ impl TourStep {
     /// The card's sentences; the last step names the current keys from `keys`.
     pub fn body(self, keys: &Keymap) -> String {
         match self {
-            TourStep::Toolbar => "The everyday actions live along the top: undo and redo, pull, push, a new branch, stash and pop, \
+            TourStep::Toolbar => "The everyday actions live along the top: undo and redo, pull, push, a new branch, stash and unstash, \
                                   pull requests and the terminal. At the right end are the command palette, search and Preferences."
                 .into(),
             TourStep::LeftPanel => "Local and remote branches come first, then pull requests, issues, tags, stashes, submodules and \

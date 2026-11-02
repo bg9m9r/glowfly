@@ -73,7 +73,7 @@ fn describe_names_the_action() {
     let push = Action::StashPush { stash: o, head: o, message: "On main: wip".into(), replay: None };
     assert_eq!(push.describe(), "stash 'On main: wip'");
     let apply = |pop| Action::StashApply { pop, stash: o, head: o, message: long.clone(), left: Changes(vec![]) };
-    assert_eq!(apply(true).describe(), format!("pop of stash '{}…'", "x".repeat(50)));
+    assert_eq!(apply(true).describe(), format!("unstash of '{}…'", "x".repeat(50)));
     assert_eq!(apply(false).describe(), format!("apply of stash '{}…'", "x".repeat(50)));
     let discard = |what| Action::Discard { path: "a.txt".into(), what, before: None, after: None };
     assert_eq!(discard(Discarded::File).describe(), "discard in a.txt");

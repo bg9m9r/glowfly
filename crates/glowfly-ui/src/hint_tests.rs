@@ -19,13 +19,12 @@ fn conflict_steps_name_the_current_key() {
 
 #[test]
 fn terminal_button_names_the_current_key() {
-    use crate::state::tip::TipSub;
     let mut st = crate::state::AppState::new(Default::default(), Vec::new(), std::time::Instant::now());
     st.keymap.set(I::ToggleTerminal, f8());
     let tip = super::toolbar::tips::terminal(&st);
     assert_eq!(tip.title, "Show the terminal panel");
     // The caps are drawn from the keymap's first chord when the tooltip shows.
-    assert_eq!(tip.sub, Some(TipSub::Keys(I::ToggleTerminal)));
+    assert_eq!(tip.keys, Some(I::ToggleTerminal));
     assert_eq!(st.keymap.chords(I::ToggleTerminal), &f8()[..]);
     assert_eq!(tip.body.as_deref(), Some("Right-click to open an external terminal."));
     st.settings.terminal.open_in_panel = true;

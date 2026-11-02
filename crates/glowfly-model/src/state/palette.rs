@@ -79,8 +79,11 @@ pub struct Pick {
     profiles: Vec<ProfileRow>,
     /// The issues behind the items of an issue sub-list (empty for other kinds).
     issues: Vec<IssuePickRow>,
-    /// The ranking for the last query, kept until the query or the items change.
-    ranked: Option<Ranked>,
+    /// The checkout entries behind the items of the Switch branch sub-list (empty for others).
+    checkouts: Vec<Entry>,
+    /// The ranking for the last query, kept until the query or the items change (boxed, so a
+    /// sub-list keeps `Mode` small).
+    ranked: Option<Box<Ranked>>,
 }
 
 /// The items matching one query.
@@ -127,7 +130,15 @@ pub fn issues_to_view(f: &ForgeState) -> Vec<&glowfly_core::forge::Issue> {
 
 impl Pick {
     pub fn new(kind: PickKind) -> Self {
-        Self { kind, items: Items::Loading, stashes: Vec::new(), profiles: Vec::new(), issues: Vec::new(), ranked: None }
+        Self {
+            kind,
+            items: Items::Loading,
+            stashes: Vec::new(),
+            profiles: Vec::new(),
+            issues: Vec::new(),
+            checkouts: Vec::new(),
+            ranked: None,
+        }
     }
 
     /// A stash sub-list over `list`, labelled by the stash messages.
@@ -142,13 +153,13 @@ impl Pick {
 
     fn over_stashes(kind: PickKind, list: &[StashInfo]) -> Self {
         let items = Items::Ready(list.iter().map(|s| s.message.clone()).collect());
-        Self { kind, items, stashes: list.to_vec(), profiles: Vec::new(), issues: Vec::new(), ranked: None }
+        Self { items, stashes: list.to_vec(), ..Self::new(kind) }
     }
 
     /// The profile sub-list, labelled by the profile names in settings order.
     pub fn profiles(settings: &Settings) -> Self {
         let (names, profiles) = profile_rows(settings);
-        Self { kind: PickKind::Profile, items: Items::Ready(names), stashes: Vec::new(), profiles, issues: Vec::new(), ranked: None }
+        Self { items: Items::Ready(names), profiles, ..Self::new(PickKind::Profile) }
     }
 
     /// The issue sub-list for starting a `kind` flow branch, over the issues assigned to the
@@ -156,8 +167,7 @@ impl Pick {
     pub fn issues(kind: glowfly_core::gitflow::FlowKind, f: &ForgeState) -> Self {
         let labels = f.my_issues.iter().map(|i| format!("{}  {}", f.mention(&i.key), i.title)).collect();
         let issues = f.my_issues.iter().map(IssuePickRow::of).collect();
-        let kind = PickKind::GitFlowIssue(kind);
-        Self { kind, items: Items::Ready(labels), stashes: Vec::new(), profiles: Vec::new(), issues, ranked: None }
+        Self { items: Items::Ready(labels), issues, ..Self::new(PickKind::GitFlowIssue(kind)) }
     }
 
     /// The issue sub-list for opening the issue panel, over the listed issues (`issues_to_view`),
@@ -166,15 +176,26 @@ impl Pick {
         let listed = issues_to_view(f);
         let labels = listed.iter().map(|i| format!("{}  {}", f.mention(&i.key), i.title)).collect();
         let issues = listed.into_iter().map(IssuePickRow::of).collect();
-        Self { kind: PickKind::ViewIssue, items: Items::Ready(labels), stashes: Vec::new(), profiles: Vec::new(), issues, ranked: None }
+        Self { items: Items::Ready(labels), issues, ..Self::new(PickKind::ViewIssue) }
     }
 
-    /// The dim text at the right of item `index`: a stash's ref, or a profile's email.
+    /// The Switch branch sub-list: the main list's checkout entries for `snap` (local branches,
+    /// then remote branches and tags), labelled without their leading "Checkout ".
+    pub fn checkouts(snap: &glowfly_core::repo::Snapshot) -> Self {
+        let refs = super::palette_commands::ref_entries(Some(snap));
+        let checkouts: Vec<Entry> = refs.locals.into_iter().chain(refs.others).collect();
+        let labels = checkouts.iter().map(|e| e.label.strip_prefix("Checkout ").unwrap_or(&e.label).to_owned()).collect();
+        Self { items: Items::Ready(labels), checkouts, ..Self::new(PickKind::SwitchBranch) }
+    }
+
+    /// The dim text at the right of item `index`: a stash's ref, a profile's email, or what a
+    /// checkout does.
     pub fn detail(&self, index: usize) -> Option<String> {
         match self.kind {
             PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
             PickKind::Profile => self.profiles.get(index).map(|r| r.detail.clone()),
             PickKind::GitFlowIssue(_) | PickKind::ViewIssue => self.issues.get(index).map(|r| r.detail.clone()),
+            PickKind::SwitchBranch => self.checkouts.get(index).and_then(|e| e.detail.clone()),
             PickKind::FileHistory | PickKind::Blame => None,
         }
     }
@@ -194,6 +215,7 @@ impl Pick {
                 self.issues.get(index).map(|r| PaletteCommand::StartGitFlowFromIssue { kind, name: r.name.clone() })
             }
             PickKind::ViewIssue => self.issues.get(index).map(|r| PaletteCommand::ViewIssue(r.key.clone())),
+            PickKind::SwitchBranch => self.checkouts.get(index).map(|e| e.command.clone()),
         }
     }
 
@@ -204,7 +226,7 @@ impl Pick {
 
     /// The ranking from the last `refresh`; None while the items aren't ready.
     pub fn ranked(&self) -> Option<&Ranked> {
-        self.ranked.as_ref()
+        self.ranked.as_deref()
     }
 
     /// The text of item `index`.
@@ -257,7 +279,7 @@ impl Pick {
             }
             Ranked { query: query.to_owned(), matches, hits, total }
         };
-        self.ranked = Some(ranked);
+        self.ranked = Some(Box::new(ranked));
     }
 }
 

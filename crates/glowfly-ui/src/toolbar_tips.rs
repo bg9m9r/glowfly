@@ -48,14 +48,14 @@ pub fn redo(st: &AppState) -> Tip {
 /// the repository last fetched.
 pub fn pull(st: &AppState) -> Tip {
     let t = lang(st);
-    let Some(snap) = &st.snap else { return Tip::new(t.tr("toolbar.pull.name")) };
+    let Some(snap) = &st.snap else { return Tip::new(t.tr("toolbar.pull.name")).keys(BindingId::Pull) };
     let head = snap.head_branch.as_ref().and_then(|_| snap.head_info());
     let upstream = head.and_then(|b| Some((b, b.upstream.as_ref()?)));
     let title = match upstream {
         Some((b, up)) => t.trf("toolbar.tip.pull_title", &[("upstream", up), ("branch", &b.name)]),
         None => t.tr("toolbar.pull.name").to_owned(),
     };
-    let tip = Tip::new(title).state_opt(rules::sync_line(t, snap)).footer(fetched(st));
+    let tip = Tip::new(title).keys(BindingId::Pull).state_opt(rules::sync_line(t, snap)).footer(fetched(st));
     if let Some(why) = rules::pull_blocked(st) {
         return tip.body(why);
     }
@@ -69,7 +69,7 @@ pub fn pull(st: &AppState) -> Tip {
 /// The pull menu's Fetch all: when the repository last fetched, and what fetching does.
 pub fn fetch_all(st: &AppState) -> Tip {
     let t = lang(st);
-    let tip = Tip::new(t.tr("toolbar.fetch_all")).state(fetched(st));
+    let tip = Tip::new(t.tr("toolbar.fetch_all")).keys(BindingId::Fetch).state(fetched(st));
     tip.body(rules::fetch_blocked(st).unwrap_or_else(|| t.tr("toolbar.tip.fetch_all_body").to_owned()))
 }
 
@@ -86,11 +86,11 @@ pub fn pull_variant(st: &AppState, text: &str) -> Tip {
 /// the ahead/behind line and the commits it sends.
 pub fn push(st: &AppState) -> Tip {
     let t = lang(st);
-    let Some(snap) = &st.snap else { return Tip::new(t.tr("toolbar.push.name")) };
+    let Some(snap) = &st.snap else { return Tip::new(t.tr("toolbar.push.name")).keys(BindingId::Push) };
     let head = snap.head_branch.as_ref().and_then(|_| snap.head_info());
     let blocked = rules::push_blocked(st);
     if snap.remotes.is_empty() {
-        let tip = Tip::new(t.tr("toolbar.tip.publish_title")).state_opt(rules::sync_line(t, snap));
+        let tip = Tip::new(t.tr("toolbar.tip.publish_title")).keys(BindingId::Push).state_opt(rules::sync_line(t, snap));
         return tip.body(blocked.unwrap_or_else(|| t.tr("toolbar.tip.publish_body").to_owned()));
     }
     let title = match head {
@@ -103,7 +103,7 @@ pub fn push(st: &AppState) -> Tip {
         },
         None => t.tr("toolbar.push.name").to_owned(),
     };
-    let tip = Tip::new(title).state_opt(rules::sync_line(t, snap));
+    let tip = Tip::new(title).keys(BindingId::Push).state_opt(rules::sync_line(t, snap));
     if let Some(why) = blocked {
         return tip.body(why);
     }
@@ -117,10 +117,10 @@ pub fn push(st: &AppState) -> Tip {
     tip.preview(rules::push_preview(t, snap))
 }
 
-/// Branch: where a new branch starts.
+/// Branch: its keys and where a new branch starts.
 pub fn branch(st: &AppState) -> Tip {
     let t = lang(st);
-    let tip = Tip::new(t.tr("toolbar.branch.name"));
+    let tip = Tip::new(t.tr("toolbar.branch.name")).keys(BindingId::CreateBranch);
     if let Some(why) = rules::branch_blocked(st) {
         return tip.body(why);
     }
@@ -130,10 +130,10 @@ pub fn branch(st: &AppState) -> Tip {
     }
 }
 
-/// Stash: how many files changed, which ones it saves, and what stashing does.
+/// Stash: its keys, how many files changed, which ones it saves, and what stashing does.
 pub fn stash(st: &AppState) -> Tip {
     let t = lang(st);
-    let tip = Tip::new(t.tr("toolbar.stash.name"));
+    let tip = Tip::new(t.tr("toolbar.stash.name")).keys(BindingId::StashChanges);
     let Some(snap) = &st.snap else { return tip };
     let files = rules::changed_files(snap).len();
     let tip = if files > 0 { tip.state(t.trn("toolbar.tip.files_changed", files, &[])) } else { tip };
@@ -143,10 +143,10 @@ pub fn stash(st: &AppState) -> Tip {
     }
 }
 
-/// Pop: how many stashes there are, the one it applies, and what popping does.
+/// Unstash: its keys, how many stashes there are, the one it applies, and what unstashing does.
 pub fn pop(st: &AppState) -> Tip {
     let t = lang(st);
-    let tip = Tip::new(t.tr("toolbar.pop.name"));
+    let tip = Tip::new(t.tr("toolbar.pop.name")).keys(BindingId::PopStash);
     let Some(snap) = &st.snap else { return tip };
     let n = snap.stashes.len();
     let tip = if n > 0 { tip.state(t.trn("toolbar.tip.stashes", n, &[])) } else { tip };

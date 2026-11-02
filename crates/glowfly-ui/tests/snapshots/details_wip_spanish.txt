@@ -11,7 +11,7 @@ Button "Enviar la rama actual"
 Button "Más acciones de envío"
 Button "Crear una rama"
 Button "Hacer stash de todos los cambios"
-Button "Hacer pop del stash más reciente" [disabled]
+Button "Recuperar el stash más reciente" [disabled]
 Button "Mostrar el panel del terminal"
 Button "Abrir la carpeta del repositorio"
 Button "Abrir los ajustes"
@@ -83,7 +83,7 @@ painted:
   "Enviar"
   "Rama"
   "Stash"
-  "Pop"
+  "Recuperar"
   "Terminal"
   "Carpeta"
   "Ajustes"

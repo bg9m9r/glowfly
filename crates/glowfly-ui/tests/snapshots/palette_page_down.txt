@@ -12,6 +12,7 @@ Dialog
   Button "Stash selected files…"
   Button "Create tag at HEAD…"
   Button "Create annotated tag at HEAD…"
+  Button "Switch branch…"
   Button "Rename branch main…"
   Button "Search commits"
   Button "File history…"
@@ -80,6 +81,10 @@ Dialog
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "Type a command, branch or tag name"
+  "Ctrl+B"
+  "Ctrl+Shift+Up"
+  "Ctrl+Shift+H"
   "nothing staged"
   "1 file"
+  "Ctrl+Shift+O"
   "Ctrl+F"

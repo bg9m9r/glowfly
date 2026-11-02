@@ -122,7 +122,7 @@ pub fn dirty_body(t: Lang, action: StashAction, message: &str, both: Option<&[St
 /// The question for `ask`, given the stash's files (`paths`, or None when they couldn't be read).
 pub fn ask_confirm(snap: &Snapshot, t: Lang, ask: &StashAsk, paths: Option<&[String]>) -> Msg {
     let both = paths.map(|p| overlap(p, snap));
-    let button = if ask.action == StashAction::Pop { "Pop" } else { "Apply" };
+    let button = if ask.action == StashAction::Pop { "Unstash" } else { "Apply" };
     Msg::confirm(ask.action.job_label(), dirty_body(t, ask.action, &ask.message, both.as_deref()), button, ask.job())
 }
 

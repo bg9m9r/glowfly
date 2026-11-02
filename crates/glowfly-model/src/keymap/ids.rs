@@ -123,12 +123,14 @@ pub enum BindingId {
     CopyCommitIds,
     CherryPick,
     RevertCommit,
+    SwitchBranch,
+    OpenDashboard,
 }
 
 use BindingId as I;
 
 /// How many ids there are.
-const COUNT: usize = 121;
+const COUNT: usize = 123;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
 const KEYS: [(BindingId, &str); COUNT] = [
@@ -253,6 +255,8 @@ const KEYS: [(BindingId, &str); COUNT] = [
     (I::CopyCommitIds, "copy-commit-ids"),
     (I::CherryPick, "cherry-pick"),
     (I::RevertCommit, "revert-commit"),
+    (I::SwitchBranch, "switch-branch"),
+    (I::OpenDashboard, "open-dashboard"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.
@@ -269,8 +273,9 @@ pub const FAVORITE_BINDINGS: [BindingId; 9] = [
 ];
 
 /// The Repository commands rows: each runs a palette command (`state/palette_bindings.rs`).
-/// Cherry-pick and Revert came after the first fourteen, so their ids follow the pane and graph keys'.
-pub const COMMAND_BINDINGS: [BindingId; 16] = [
+/// Cherry-pick and Revert came after the first fourteen, so their ids follow the pane and graph
+/// keys'; Switch branch and Open dashboard came after them, so theirs are the last.
+pub const COMMAND_BINDINGS: [BindingId; 18] = [
     I::Fetch,
     I::Pull,
     I::Push,
@@ -287,6 +292,8 @@ pub const COMMAND_BINDINGS: [BindingId; 16] = [
     I::ShowRepoFolder,
     I::CherryPick,
     I::RevertCommit,
+    I::SwitchBranch,
+    I::OpenDashboard,
 ];
 
 impl BindingId {

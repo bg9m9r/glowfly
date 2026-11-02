@@ -80,7 +80,7 @@ fn groups_are_spaced_evenly() {
     );
     assert_eq!(gap(&h, "Create a branch", "Stash all changes"), 2.0);
     assert_eq!(
-        gap(&h, "Pop the latest stash", "Show the terminal panel"),
+        gap(&h, "Unstash the latest stash", "Show the terminal panel"),
         f64::from(crate::ui::widgets::GROUP_GAP),
         "between groups: the divider and its margins"
     );
@@ -98,9 +98,9 @@ fn a_focused_button_shows_its_tooltip() {
     h.get_by_label("Undo the last action").focus();
     settle(&mut h);
     assert!(h.query_by_label("Nothing to undo").is_some(), "Undo's tooltip");
-    h.get_by_label("Pop the latest stash").focus();
+    h.get_by_label("Unstash the latest stash").focus();
     settle(&mut h);
-    assert!(h.query_by_label("No stashes to pop").is_some(), "Pop's tooltip");
+    assert!(h.query_by_label("No stashes").is_some(), "Unstash's tooltip");
     assert!(h.query_by_label("Nothing to undo").is_none(), "one tooltip at a time");
     drop(h);
     remove_fixture(&dir);
@@ -201,11 +201,23 @@ fn tip_pop() {
         }
         let mut h = harness(st, true);
         h.run();
-        hover(&mut h, "Pop the latest stash");
+        hover(&mut h, "Unstash the latest stash");
         h.check_snapshot(name);
         drop(h);
         remove_fixture(&dir);
     }
+}
+
+/// Branch's tooltip shows its key (Ctrl+B) under the title.
+#[test]
+fn tip_branch() {
+    let (st, dir) = plain(ThemeChoice::Dark, "tip-branch");
+    let mut h = harness(st, true);
+    h.run();
+    hover(&mut h, "Create a branch");
+    h.check_snapshot("tip_branch");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 #[test]

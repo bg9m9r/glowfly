@@ -9,7 +9,7 @@ Button "Push the current branch"
 Button "More push actions"
 Button "Create a branch"
 Button "Stash all changes"
-Button "Pop the latest stash" [disabled]
+Button "Unstash the latest stash" [disabled]
 Button "More toolbar actions"
 Button "Open settings"
 Button "Search and run commands"
@@ -78,7 +78,7 @@ painted:
   "Push"
   "Branch"
   "Stash"
-  "Pop"
+  "Unstash"
   "More"
   "Settings"
   "Commands"

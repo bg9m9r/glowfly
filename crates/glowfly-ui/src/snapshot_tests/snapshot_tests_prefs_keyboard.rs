@@ -30,7 +30,7 @@ fn prefs_keyboard() {
     render("prefs_keyboard", page(ThemeChoice::Dark, ""), true);
 }
 
-/// The Repository commands rows read "No key" with Add until one gets a key.
+/// The Repository commands rows without a default key read "No key" with Add until one gets a key.
 #[test]
 fn prefs_keyboard_commands() {
     let mut st = page(ThemeChoice::Dark, "repository commands");
@@ -42,7 +42,7 @@ fn prefs_keyboard_commands() {
     }
     assert!(h.query_all_by_label("Push").next().is_some());
     assert_eq!(h.query_all_by_label("Reset").count(), 1, "only Fetch differs from its default");
-    assert_eq!(h.query_all_by_label("No key").count(), 15);
+    assert_eq!(h.query_all_by_label("No key").count(), 11, "seven have default keys; Fetch has F8");
     h.check_snapshot("prefs_keyboard_commands");
 }
 
@@ -166,16 +166,16 @@ fn typing_in_the_filter_narrows_the_rows() {
 
 #[test]
 fn command_rows_only_ask() {
-    let msgs = click(page(ThemeChoice::Dark, "push"), "Add");
-    assert!(matches!(keys_msgs(&msgs)[..], [KeysMsg::Record { id: I::Push, slot: Slot::Add }]));
+    let msgs = click(page(ThemeChoice::Dark, "operation journal"), "Add");
+    assert!(matches!(keys_msgs(&msgs)[..], [KeysMsg::Record { id: I::OpenJournal, slot: Slot::Add }]));
 
-    let mut st = page(ThemeChoice::Dark, "push");
-    st.keymap.set(I::Push, vec![Chord::plain(K::F(8))]);
+    let mut st = page(ThemeChoice::Dark, "operation journal");
+    st.keymap.set(I::OpenJournal, vec![Chord::plain(K::F(8))]);
     let msgs = click(st, "Reset");
-    assert!(matches!(keys_msgs(&msgs)[..], [KeysMsg::Reset(I::Push)]));
+    assert!(matches!(keys_msgs(&msgs)[..], [KeysMsg::Reset(I::OpenJournal)]));
 
-    let mut st = page(ThemeChoice::Dark, "push");
-    st.keymap.set(I::Push, vec![Chord::plain(K::F(8))]);
+    let mut st = page(ThemeChoice::Dark, "operation journal");
+    st.keymap.set(I::OpenJournal, vec![Chord::plain(K::F(8))]);
     let mut h = harness(st, true);
     h.run();
     h.get_by_label("Reset").hover();

@@ -1,6 +1,6 @@
 //! The shared tooltip: egui's tooltip frame and timing for every tooltip in the app (`style`,
 //! `configure`), and the rich layout the toolbar's buttons use (`show`, `attach`): a title, a
-//! weak subline of key caps or state, a sentence, an inset preview and a footer. Its reason
+//! line of key caps, a weak state line, a sentence, an inset preview and a footer. Its reason
 //! form (`show_text`, `attach_text`) is that frame with one sentence: why a menu item is
 //! disabled, or what a setup item opens.
 //!
@@ -11,7 +11,7 @@
 use super::tooltip_motion;
 use super::truncate::{cut_left, truncate_label};
 use crate::keymap::Keymap;
-use crate::state::tip::{Tip, TipPreview, TipRow, TipSub};
+use crate::state::tip::{Tip, TipPreview, TipRow};
 use crate::ui::common::{status_color, status_label};
 use crate::ui::shortcuts::Caps;
 use crate::ui::theme::color;
@@ -61,15 +61,14 @@ pub fn configure(ctx: &egui::Context, reduce_motion: bool) {
 pub fn show(ui: &mut Ui, tip: &Tip, keys: &Keymap, t: Lang) {
     begin(ui);
     ui.add(Label::new(RichText::new(&tip.title).size(type_scale::BODY).color(color::strong())).wrap());
-    match &tip.sub {
-        Some(TipSub::Keys(id)) => {
-            if let Some(first) = keys.chords(*id).first() {
-                let caps = Caps::new(ui, std::slice::from_ref(first), false);
-                caps.paint(ui, keys.hint(*id).unwrap_or_default(), Sense::hover());
-            }
-        }
-        Some(TipSub::State(line)) => weak(ui, line),
-        None => {}
+    if let Some(id) = tip.keys
+        && let Some(first) = keys.chords(id).first()
+    {
+        let caps = Caps::new(ui, std::slice::from_ref(first), false);
+        caps.paint(ui, keys.hint(id).unwrap_or_default(), Sense::hover());
+    }
+    if let Some(line) = &tip.state {
+        weak(ui, line);
     }
     if let Some(body) = &tip.body {
         ui.add(Label::new(RichText::new(body).size(type_scale::BODY).color(color::text())).wrap());

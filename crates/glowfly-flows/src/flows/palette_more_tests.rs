@@ -41,7 +41,7 @@ fn open_palette(st: &mut AppState) {
 fn stash_and_pop_entries() {
     let (mut st, dir) = repo_with_topic("palette-more-stash");
     assert!(has(&st, "Stash changes"));
-    assert!(!has(&st, "Pop stash"));
+    assert!(!has(&st, "Unstash the latest stash"));
 
     open_palette(&mut st);
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Stash)));
@@ -50,7 +50,7 @@ fn stash_and_pop_entries() {
     assert_eq!(snap.stashes.len(), 1);
     assert!(!snap.is_dirty());
     assert!(!has(&st, "Stash changes"));
-    let pop = find(&st, "Pop stash").expect("Pop stash");
+    let pop = find(&st, "Unstash the latest stash").expect("Unstash the latest stash");
     assert!(pop.detail.as_deref().is_some_and(|d| d.contains("main")), "{:?}", pop.detail);
 
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::PopStash)));
@@ -234,7 +234,7 @@ fn keywords_match_synonyms() {
 
     assert!(matches(&st, "shelve", "Stash changes"));
     assert!(matches(&st, "describe", "Stash with message…"));
-    assert!(matches(&st, "unstash", "Pop stash"));
+    assert!(matches(&st, "unstash", "Unstash the latest stash"));
     assert!(matches(&st, "console", "Open in terminal"));
     assert!(matches(&st, "finder", SHOW_REPO_FOLDER));
     assert!(matches(&st, "reload", "Refresh"));

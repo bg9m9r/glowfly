@@ -2,7 +2,6 @@
 //! stash, the terminal button for both right-click choices, and Push and Pull over an upstream.
 
 use super::*;
-use crate::state::tip::TipSub;
 use crate::state::toolbar_tips::tests::state;
 
 #[test]
@@ -10,7 +9,7 @@ fn undo_with_nothing_recorded_says_so() {
     let st = state("tip-undo");
     let tip = undo(&st);
     assert_eq!(tip.title, "Undo");
-    assert_eq!(tip.sub, Some(TipSub::Keys(BindingId::Undo)));
+    assert_eq!(tip.keys, Some(BindingId::Undo));
     assert_eq!(tip.body.as_deref(), Some("Nothing to undo"));
     assert_eq!(tip.preview, None);
     assert_eq!(redo(&st).body.as_deref(), Some("Nothing to redo"));
@@ -20,7 +19,7 @@ fn undo_with_nothing_recorded_says_so() {
 fn pop_without_a_stash_says_why() {
     let st = state("tip-pop");
     let tip = pop(&st);
-    assert_eq!((tip.title.as_str(), tip.body.as_deref()), ("Pop the latest stash", Some("No stashes to pop")));
+    assert_eq!((tip.title.as_str(), tip.body.as_deref()), ("Unstash the latest stash", Some("No stashes")));
     assert_eq!(tip.preview, None);
 }
 
@@ -29,7 +28,7 @@ fn terminal_follows_the_right_click_setting() {
     let mut st = state("tip-terminal");
     let tip = terminal(&st);
     assert_eq!(tip.title, "Show the terminal panel");
-    assert_eq!(tip.sub, Some(TipSub::Keys(BindingId::ToggleTerminal)));
+    assert_eq!(tip.keys, Some(BindingId::ToggleTerminal));
     assert_eq!(tip.body.as_deref(), Some("Right-click to open an external terminal."));
     st.settings.terminal.open_in_panel = true;
     st.terminal.open = true;
@@ -46,7 +45,7 @@ fn push_and_pull_name_the_upstream() {
     crate::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 2, 0, true);
     let tip = push(&st);
     assert_eq!(tip.title, "Push main to origin/main");
-    assert_eq!(tip.sub, Some(TipSub::State("main is 2 ahead, 0 behind origin/main".into())));
+    assert_eq!(tip.state.as_deref(), Some("main is 2 ahead, 0 behind origin/main"));
     assert_eq!(tip.preview.map(|p| p.heading).as_deref(), Some("Sends 2 commits"));
     let tip = pull(&st);
     assert_eq!(tip.title, "Pull origin/main into main");

@@ -73,6 +73,7 @@ impl PaletteCommand {
             C::ChooseStash(StashAction::Drop) => "stash-drop",
             C::StashOp { .. } => return None,
             C::ChooseProfile => "profile-switch",
+            C::ChooseCheckout => "switch-branch",
             C::SwitchProfile(_) => return None,
             C::ChooseStashToRename => "stash-rename",
             C::RenameStash { .. } => return None,

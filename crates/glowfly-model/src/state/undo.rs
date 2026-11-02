@@ -356,7 +356,7 @@ mod tests {
         let tip = h.undo_entry(Lang::En, true).1.unwrap();
         assert_eq!(tip, Lang::En.trf("menu.edit.cant_undo", &[("label", &"Rename branch")]));
         assert!(tip.starts_with("Can't undo Rename branch: only checkout, commit"), "{tip}");
-        assert!(tip.contains("merge, pull, rebase, cherry-pick, revert") && tip.contains("stash, pop, apply, drop"));
+        assert!(tip.contains("merge, pull, rebase, cherry-pick, revert") && tip.contains("stash, unstash, apply, drop"));
         assert!(Lang::En.tr("menu.edit.cant_undo").contains("drop"));
     }
 

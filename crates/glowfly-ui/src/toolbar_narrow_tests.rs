@@ -97,10 +97,10 @@ fn the_more_menu_runs_the_folded_buttons() {
     assert!(h.query_by_label("Show the terminal panel").is_none(), "Terminal folded");
     h.get_by_label("More toolbar actions").click();
     h.run();
-    for label in ["Terminal", "Folder", "Branch", "Stash", "Pop", "Pull request options"] {
+    for label in ["Terminal", "Folder", "Branch", "Stash", "Unstash", "Pull request options"] {
         assert!(h.query_by_label(label).is_some(), "{label} in the menu");
     }
-    assert!(h.get_by_label("Pop").is_disabled(), "no stash to pop");
+    assert!(h.get_by_label("Unstash").is_disabled(), "no stash to unstash");
     h.check_snapshot("toolbar_more_menu");
     h.get_by_label("Terminal").click();
     h.run();
