@@ -69,7 +69,8 @@ if (-not $Out) {
     else { Join-Path $HOME '.cache' }
     $Out = Join-Path $cache 'glowfly-perf-repos'
 }
-$Out = [IO.Path]::GetFullPath($Out)
+# Relative to PowerShell's current folder, not the process's.
+$Out = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Out)
 $checkout = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd([IO.Path]::DirectorySeparatorChar)
 $sep = [IO.Path]::DirectorySeparatorChar
 if (($Out + $sep).StartsWith($checkout + $sep, [StringComparison]::OrdinalIgnoreCase)) {
@@ -81,13 +82,15 @@ $stateDir = Join-Path $Out '.state'
 # -Download) or foreign (a folder this script didn't make).
 function Get-RepoState([string]$name) {
     $dir = Join-Path $Out $name
-    $done = Test-Path -LiteralPath (Join-Path $stateDir "$name.done")
+    $exists = Test-Path -LiteralPath $dir
+    # A finished repository whose folder was removed is built again.
+    $done = $exists -and (Test-Path -LiteralPath (Join-Path $stateDir "$name.done"))
     $building = Test-Path -LiteralPath (Join-Path $stateDir "$name.building")
     $clone = [bool]$repos[$name].Url
     if ($done) { if ($Rebuild -contains $name) { 'rebuild' } else { 'done' } }
     elseif ($clone -and -not $Download) { 'download' }
     elseif ($building) { if ($clone) { 'resume' } else { 'rebuild' } }
-    elseif (Test-Path -LiteralPath $dir) { 'foreign' }
+    elseif ($exists) { 'foreign' }
     else { 'build' }
 }
 
@@ -103,7 +106,7 @@ foreach ($name in $names) {
     $note = if ($r.Url) { "from $($r.Url)" } else { $r.Size + ' at scale 1' }
     Write-Host ('  {0,-13} {1,-26} {2} ({3})' -f $name, $what[$state], $r.About, $note)
     if ($state -eq 'done') {
-        $built = Get-Content -Raw (Join-Path $stateDir "$name.done") | ConvertFrom-Json
+        $built = Get-Content -Raw -LiteralPath (Join-Path $stateDir "$name.done") | ConvertFrom-Json
         if (-not $r.Url -and [double]$built.scale -ne $Scale) {
             Write-Host "                built at scale $($built.scale); -Rebuild $name builds it at $Scale"
         }
@@ -112,6 +115,7 @@ foreach ($name in $names) {
 if ($DryRun) { exit 0 }
 
 New-Item -ItemType Directory -Force $stateDir | Out-Null
+Initialize-Git (Join-Path $stateDir 'no-hooks')
 $failed = @()
 foreach ($name in $names) {
     $state = Get-RepoState $name
@@ -124,10 +128,9 @@ foreach ($name in $names) {
     $timer = [Diagnostics.Stopwatch]::StartNew()
     try {
         [IO.File]::WriteAllText($marker, "$Scale`n")
-        if ($state -eq 'rebuild') {
-            if (Test-Path -LiteralPath $doneFile) { Remove-Item -LiteralPath $doneFile }
-            if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
-        }
+        # A stale marker of a removed folder goes too, so a failed build isn't taken as done.
+        if (Test-Path -LiteralPath $doneFile) { Remove-Item -LiteralPath $doneFile }
+        if ($state -eq 'rebuild' -and (Test-Path -LiteralPath $dir)) { Remove-Item -LiteralPath $dir -Recurse -Force }
         if ($r.Url) {
             Build-Clone $dir $r.Url (Join-Path $stateDir "$name.skipped.txt")
         } else {
@@ -148,8 +151,8 @@ foreach ($name in $names) {
 Write-Host "`nPoint GLOWFLY_PERF_REPO (or Glowfly) at:"
 foreach ($name in $names) {
     $doneFile = Join-Path $stateDir "$name.done"
-    if (Test-Path -LiteralPath $doneFile) {
-        Write-Host ('  {0,-13} {1}' -f $name, (Get-Content -Raw $doneFile | ConvertFrom-Json).open)
+    if ((Test-Path -LiteralPath $doneFile) -and (Test-Path -LiteralPath (Join-Path $Out $name))) {
+        Write-Host ('  {0,-13} {1}' -f $name, (Get-Content -Raw -LiteralPath $doneFile | ConvertFrom-Json).open)
     }
 }
 if ($failed.Count -gt 0) {

@@ -10,7 +10,7 @@ function Build-Clone([string]$Dir, [string]$Url, [string]$SkippedList) {
     if (-not (Test-Path -LiteralPath (Join-Path $Dir '.git'))) {
         Invoke-Git init -q $Dir
     }
-    $origin = & git -C $Dir config --get remote.origin.url
+    $origin = Invoke-GitRaw -C $Dir config --get remote.origin.url
     if (-not $origin) {
         Invoke-Git -C $Dir remote add origin $Url
     } elseif ($origin -ne $Url) {
@@ -18,13 +18,13 @@ function Build-Clone([string]$Dir, [string]$Url, [string]$SkippedList) {
     }
     if ($IsWindows) { Invoke-Git -C $Dir config core.longpaths true }
     for ($try = 1; ; $try++) {
-        & git -C $Dir fetch --progress --tags origin
+        Invoke-GitRaw -C $Dir fetch --progress --tags origin
         if ($LASTEXITCODE -eq 0) { break }
         if ($try -ge 3) { throw "fetching $Url failed $try times; run the script again to carry on" }
         Write-Host "Fetching $Url failed; trying again ($($try + 1) of 3)."
     }
     Invoke-Git -C $Dir remote set-head origin --auto
-    $head = (& git -C $Dir symbolic-ref --short refs/remotes/origin/HEAD)
+    $head = (Invoke-GitRaw -C $Dir symbolic-ref --short refs/remotes/origin/HEAD)
     if ($LASTEXITCODE -ne 0 -or -not $head) { throw "$Url names no default branch" }
     $branch = $head.Substring('origin/'.Length)
 
@@ -36,13 +36,15 @@ function Build-Clone([string]$Dir, [string]$Url, [string]$SkippedList) {
         Write-Host "Leaving $($skipped.Count) paths this file system can't hold out of the checkout (listed in $SkippedList)."
         [IO.File]::WriteAllText($SkippedList, ($skipped -join "`n") + "`n")
         $patterns = @('/*') + @($skipped | ForEach-Object { '!/' + (ConvertTo-SparsePattern $_) })
-        $sparse = (& git -C $Dir rev-parse --git-path info/sparse-checkout)
+        $sparse = (Invoke-GitRaw -C $Dir rev-parse --git-path info/sparse-checkout)
         if (-not [IO.Path]::IsPathRooted($sparse)) { $sparse = Join-Path $Dir $sparse }
-        New-Item -ItemType Directory -Force (Split-Path $sparse) | Out-Null
+        New-Item -ItemType Directory -Force (Split-Path -LiteralPath $sparse) | Out-Null
         [IO.File]::WriteAllText($sparse, ($patterns -join "`n") + "`n")
         Invoke-Git -C $Dir config core.sparseCheckout true
         # Git for Windows refuses a reserved name even in the index unless this is off; the
-        # sparse checkout still keeps such a path out of the folder.
+        # sparse checkout still keeps such a path out of the folder. It stays off: with it on
+        # again, checking out any other revision holding the name fails ("invalid path"). The
+        # names it guards against (.git and its short name git~1) are left out above instead.
         if ($reserved.Count -gt 0) { Invoke-Git -C $Dir config core.protectNTFS false }
     }
     Invoke-Git -C $Dir checkout -q -B $branch $head
@@ -58,7 +60,7 @@ function Get-TreePath([string]$Dir, [string]$Rev) {
     $encoding = [Console]::OutputEncoding
     try {
         [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-        $raw = (& git -C $Dir ls-tree -r -z --name-only $Rev) -join "`n"
+        $raw = (Invoke-GitRaw -C $Dir ls-tree -r -z --name-only $Rev) -join "`n"
         if ($LASTEXITCODE -ne 0) { throw "git ls-tree $Rev failed" }
     } finally {
         [Console]::OutputEncoding = $encoding
@@ -78,6 +80,8 @@ function Test-WindowsPath([string]$Path) {
     foreach ($name in $Path -split '/') {
         if ($name -match '[<>:"|?*\\\x00-\x1f]' -or $name -match '[. ]$') { return $false }
         if ($name -match '^(con|prn|aux|nul|com[0-9]|lpt[0-9])\s*(\..*)?$') { return $false }
+        # What NTFS reads as the .git folder, which core.protectNTFS would otherwise refuse.
+        if ($name -match '^(\.git|git~[0-9]+)$') { return $false }
     }
     $true
 }

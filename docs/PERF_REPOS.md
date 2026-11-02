@@ -19,7 +19,8 @@ pwsh scripts/make-perf-repos.ps1 -Only linear,octopus
 - **Running again** builds only what is missing. A finished repository is never touched. An
   unfinished synthetic one is built again from the start, and an unfinished clone carries on
   fetching. Progress is kept in `<out>/.state/`.
-- **Deleting:** the script deletes nothing it didn't make. `-Rebuild <names>` builds finished
+- **Deleting:** the script deletes nothing it didn't make. Its git calls run hooks from an
+  empty folder it makes in `<out>/.state`, never the user's. `-Rebuild <names>` builds finished
   synthetic repositories again; remove a clone's folder yourself to clone it again.
 - **Smaller copies:** `-Scale 0.01` multiplies every count and size of the synthetic
   repositories, for a quick look. A dry run notes any repository built at another scale.
@@ -54,8 +55,10 @@ messages "parser" and "über", which the queries in `perf_timing_tests` look for
 
 **Windows and macOS:** the kernel has file names Windows reserves (`aux.c`) and paths differing
 only in case. The clone leaves those out of its checkout with a sparse checkout and lists them in
-`<out>/.state/linux.skipped.txt`; on Windows it also turns off `core.protectNTFS` in that clone,
-which git needs to keep a reserved name in the index.
+`<out>/.state/linux.skipped.txt`. On Windows it also turns off `core.protectNTFS` in that clone,
+which git needs to keep a reserved name in the index. The setting stays off, because checking out
+any other revision that holds the name fails with it on. To make up for it, the clone also leaves
+out any `.git` or `git~1` path, the names that setting guards against.
 
 ## Timing tests
 

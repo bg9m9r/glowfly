@@ -2,18 +2,36 @@
 # git fast-import from the streams in Streams.cs, and the git helper both builders use.
 # Each Build-* function makes its repository in an empty or missing folder $Dir.
 
-# Git settings for every git call while building: no user hooks, signing or prompts, a fixed
-# identity for the few commits made with git itself, and local submodule clones allowed.
+# Git settings for every git call the script makes: no signing or prompts, a fixed identity for
+# the few commits made with git itself, and no user hooks (Initialize-Git adds core.hooksPath).
 $script:BuildGitConfig = @(
     '-c', 'user.name=Glowfly Perf', '-c', 'user.email=perf@example.com',
     '-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false',
-    '-c', 'protocol.file.allow=always', '-c', 'advice.detachedHead=false', '-c', 'core.autocrlf=false'
+    '-c', 'advice.detachedHead=false', '-c', 'core.autocrlf=false'
 )
+# Only the submodule calls clone from local folders.
+$script:FileProtocol = @('-c', 'protocol.file.allow=always')
+
+# Finds git on PATH (by full path: on Windows a bare name would also find one in the current
+# folder) and points every call's hooks at $HooksDir, made empty here. It sits in the output's
+# .state folder, which only this user writes, not in the shared temp folder.
+function Initialize-Git([string]$HooksDir) {
+    $script:Git = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    if (Test-Path -LiteralPath $HooksDir) { Remove-Item -LiteralPath $HooksDir -Recurse -Force }
+    New-Item -ItemType Directory -Force $HooksDir | Out-Null
+    if (Get-ChildItem -Force -LiteralPath $HooksDir | Select-Object -First 1) { throw "$HooksDir isn't empty" }
+    $script:GitConfig = $script:BuildGitConfig + @('-c', "core.hooksPath=$HooksDir")
+}
+
+# Runs git with the build settings, returning its output; the caller checks $LASTEXITCODE.
+function Invoke-GitRaw {
+    if (-not $script:GitConfig) { throw 'Initialize-Git was not called' }
+    & $script:Git @script:GitConfig @args
+}
 
 # Runs git with the build settings; throws when it fails.
 function Invoke-Git {
-    $hooks = Join-Path ([IO.Path]::GetTempPath()) 'glowfly-perf-no-hooks'
-    & git @script:BuildGitConfig -c "core.hooksPath=$hooks" @args
+    Invoke-GitRaw @args
     if ($LASTEXITCODE -ne 0) { throw "git $($args -join ' ') failed (exit $LASTEXITCODE)" }
 }
 
@@ -33,8 +51,9 @@ function Invoke-FastImport([string]$Repo, [scriptblock]$Write) {
     if (-not ('GlowflyPerfRepos.FastImport' -as [type])) {
         Add-Type -Path (Join-Path $PSScriptRoot 'Streams.cs')
     }
-    $psi = [Diagnostics.ProcessStartInfo]::new('git')
-    foreach ($a in @('-C', $Repo, 'fast-import', '--quiet')) { $psi.ArgumentList.Add($a) }
+    if (-not $script:GitConfig) { throw 'Initialize-Git was not called' }
+    $psi = [Diagnostics.ProcessStartInfo]::new($script:Git)
+    foreach ($a in $script:GitConfig + @('-C', $Repo, 'fast-import', '--quiet')) { $psi.ArgumentList.Add($a) }
     $psi.UseShellExecute = $false
     $psi.RedirectStandardInput = $true
     $process = [Diagnostics.Process]::Start($psi)
@@ -113,21 +132,21 @@ function Build-SubmoduleRepo([string]$Dir) {
     # Relative URLs resolve against the folder of a repository without a remote.
     foreach ($pair in @(@('b', '../c', 'deep/c'), @('a', '../b', 'vendor/b'))) {
         $repo = Join-Path $up $pair[0]
-        Invoke-Git -C $repo submodule --quiet add $pair[1] $pair[2]
+        Invoke-Git @script:FileProtocol -C $repo submodule --quiet add $pair[1] $pair[2]
         Invoke-Git -C $repo commit -q --no-verify -m "Add $($pair[2]) as a submodule"
     }
     $super = Join-Path $Dir 'super'
     New-ImportedRepo $super { param($s) [GlowflyPerfRepos.FastImport]::Linear($s, $commits, 5) }
-    Invoke-Git -C $super submodule --quiet add ../upstream/a libs/a
-    Invoke-Git -C $super submodule --quiet add ../upstream/d libs/d
+    Invoke-Git @script:FileProtocol -C $super submodule --quiet add ../upstream/a libs/a
+    Invoke-Git @script:FileProtocol -C $super submodule --quiet add ../upstream/d libs/d
     Invoke-Git -C $super commit -q --no-verify -m 'Add libs/a and libs/d as submodules'
-    Invoke-Git -C $super submodule --quiet update --init --recursive
+    Invoke-Git @script:FileProtocol -C $super submodule --quiet update --init --recursive
     $a = Join-Path $up 'a'
     Invoke-Git -C $a commit -q --no-verify --allow-empty -m 'Move a forward'
-    Invoke-Git -C $super submodule --quiet update --remote libs/a
+    Invoke-Git @script:FileProtocol -C $super submodule --quiet update --remote libs/a
     Invoke-Git -C $super commit -q --no-verify -am 'Move libs/a forward'
     Invoke-Git -C $a commit -q --no-verify --allow-empty -m 'Move a forward again'
-    Invoke-Git -C $super submodule --quiet update --remote libs/a
+    Invoke-Git @script:FileProtocol -C $super submodule --quiet update --remote libs/a
     $deep = Join-Path $super 'libs/a/vendor/b/deep/c/untracked.txt'
     [IO.File]::WriteAllText($deep, "an untracked file three submodules down`n")
 }
