@@ -6,7 +6,7 @@
 
 use super::diff::{file_patch, hunk_of, target_diff};
 use super::shown_ws::{changed, exact_context, raw_lines, side_lines};
-use super::{DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions};
+use super::{DiffTarget, Hunk, HunkOp, LoadDiffOptions};
 use crate::error::{Error, Result};
 use git2::{ApplyLocation, Delta, Diff, Repository};
 use std::collections::BTreeSet;
@@ -133,7 +133,7 @@ struct Line<'a> {
     fallback: &'a [u8],
 }
 
-fn split_eol(content: &[u8]) -> (&[u8], &[u8]) {
+pub(super) fn split_eol(content: &[u8]) -> (&[u8], &[u8]) {
     if let Some(text) = content.strip_suffix(b"\r\n") {
         (text, &content[text.len()..])
     } else if let Some(text) = content.strip_suffix(b"\n") {
@@ -158,32 +158,6 @@ pub(crate) fn build_patch(
 ) -> Option<Vec<u8>> {
     let (pre, post) = images(lines, selected, reverse);
     (pre != post).then(|| emit(path, target, pre_start, &pre, &post))
-}
-
-/// Hunk `hunk` of `diff`, the diff of `path` as shown, as patch text `git apply` takes on the
-/// old side (the diff viewer's Copy hunk as patch): through `build_patch`'s writer, the hunk's
-/// own `@@` line and its lines with their context, so it applies where it was cut (a patch of
-/// only the changed region, as `build_patch` makes, has no context for `git apply` to place it
-/// by). Lines end in `\n`; a "No newline at end of file" note is kept. Empty when there is no
-/// such hunk.
-pub fn hunk_patch_text(path: &str, diff: &FileDiff, hunk: usize) -> String {
-    let Some(h) = diff.hunks.get(hunk) else { return String::new() };
-    let note = |i: usize| h.lines.get(i).is_some_and(|l| matches!(l.origin, '=' | '<' | '>'));
-    let body = h.lines.iter().enumerate().filter(|(_, l)| !matches!(l.origin, '=' | '<' | '>')).map(|(i, l)| {
-        let sign = if matches!(l.origin, '+' | '-') { l.origin as u8 } else { b' ' };
-        let eol: &[u8] = if note(i + 1) { b"" } else { b"\n" };
-        (sign, (l.text.as_bytes(), eol))
-    });
-    let created = old_range(&h.header) == Some((0, 0));
-    let target = if created { Patched::Create(0o100644) } else { Patched::Existing(0o100644) };
-    String::from_utf8_lossy(&write_patch(path, target, h.header.trim_end(), body)).into_owned()
-}
-
-/// The old side's start and length in a hunk header (`@@ -start[,len] +… @@`).
-fn old_range(header: &str) -> Option<(u32, u32)> {
-    let old = header.strip_prefix("@@ -")?.split(' ').next()?;
-    let (start, len) = old.split_once(',').unwrap_or((old, "1"));
-    Some((start.parse().ok()?, len.parse().ok()?))
 }
 
 /// One line of a patch image: its text and its line ending (empty for a last line without one).
@@ -251,15 +225,33 @@ fn emit(path: &str, target: Patched, pre_start: u32, pre: &[ImageLine], post: &[
     let (n, m) = (pre.len() as u32, post.len() as u32);
     let post_start = if n == 0 { pre_start + 1 } else { pre_start };
     let body = pre.iter().map(|l| (b'-', *l)).chain(post.iter().map(|l| (b'+', *l)));
-    write_patch(path, target, &format!("@@ -{pre_start},{n} +{post_start},{m} @@"), body)
+    write_patch(Names::same(path), target, &format!("@@ -{pre_start},{n} +{post_start},{m} @@"), body)
 }
 
-/// The patch text of one hunk of `path`: the file header, the hunk's `@@` line `at`, and each
+/// The file a patch names: its path on the side patched (`a/`) and after (`b/`), the same
+/// unless it was renamed or copied (`moved`: git's "rename" or "copy" header).
+#[derive(Clone, Copy)]
+pub(super) struct Names<'a> {
+    pub old: &'a str,
+    pub new: &'a str,
+    pub moved: Option<&'static str>,
+}
+
+impl<'a> Names<'a> {
+    pub(super) fn same(path: &'a str) -> Self {
+        Names { old: path, new: path, moved: None }
+    }
+}
+
+/// The patch text of one hunk of `names`: the file header, the hunk's `@@` line `at`, and each
 /// line of `body` behind its sign (`-`, `+` or a space), a last line without a newline noted.
-fn write_patch<'a>(path: &str, target: Patched, at: &str, body: impl IntoIterator<Item = (u8, ImageLine<'a>)>) -> Vec<u8> {
-    let a = quote_path(&format!("a/{path}"));
-    let b = quote_path(&format!("b/{path}"));
+pub(super) fn write_patch<'a>(names: Names<'_>, target: Patched, at: &str, body: impl IntoIterator<Item = (u8, ImageLine<'a>)>) -> Vec<u8> {
+    let a = quote_path(&format!("a/{}", names.old));
+    let b = quote_path(&format!("b/{}", names.new));
     let mut out = format!("diff --git {a} {b}\n").into_bytes();
+    if let Some(how) = names.moved {
+        out.extend(format!("{how} from {}\n{how} to {}\n", quote_path(names.old), quote_path(names.new)).bytes());
+    }
     match target {
         Patched::Create(mode) => out.extend(format!("new file mode {mode:o}\n--- /dev/null\n").bytes()),
         Patched::Existing(mode) => out.extend(format!("index 0000000..0000000 {:o}\n--- {a}\n", nonzero(mode)).bytes()),

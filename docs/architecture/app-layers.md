@@ -45,7 +45,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `Effect`: everything slow or outside the process (`mod.rs`): one variant per effect area, from the table in `areas.rs`, and the older flat variants.
 - `meta.rs`: `EffectMeta`, what each area decides for its effects beside its type (name, scope, timing, queue, pool hold, stop key, the tests' sandbox rule); tests in `meta_tests.rs`.
 - `areas.rs`: the table of effect areas; `effect_match!` runs one body for every area in `Effect`'s metadata, the sandbox's rule and the runner's dispatch.
-- The data some effects carry: `repo.rs` (with `LoadKind`: opening, a refresh, or a load for more that goes on from the walk), `forge.rs`, `forge_filters.rs` (PR and issue filter calls), `issue.rs` (the issue panel's and the Create issue dialog's tracker calls and posting a comment), `blame.rs`, `notify.rs` (desktop notifications).
+- The data some effects carry: `repo.rs` (with `LoadKind`: opening, a refresh, or a load for more that goes on from the walk), `forge.rs`, `forge_filters.rs` (PR and issue filter calls), `issue.rs` (the issue panel's and the Create issue dialog's tracker calls and posting a comment), `blame.rs`, `hunk_patch.rs` (Copy hunk as patch's read, run by `runner/hunk_patch.rs`), `notify.rs` (desktop notifications).
 - Grouped effects: the Clone dialog (`clone.rs`), the Init dialog (`init.rs`), the SUBMODULES section (`submodule.rs`), interactive rebase (`rebase.rs`), connected accounts (`account.rs`) and the stash list (`stash.rs`).
 - `ui.rs`: the effects the UI shell carries out.
 - `os.rs`: `OsEffect`, what is handed to the operating system: links, terminals, the file manager, file pickers.
@@ -105,7 +105,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `list_keys.rs`: the keys of a file list with the keyboard focus (`ListKey`), which of them each list takes (`KeySet`), the lists that only open files (`FileList`) and where a step, page or edge move lands in its visible order (`ListMove::target`), for any list built on `ui/list_focus.rs`.
 - `file_lists.rs`: the lists that only open files as their keys see them: what each row opens (a diff, a conflict, a folder history file), in on-screen order, and the current row.
 - `wip_lists.rs`: the Unstaged and Staged Files lists as their keys see them: their files in on-screen order, the file the keys act on, the Shift-selected files (`WipSpan`) and the move-on after a stage (`MoveOn`).
-- `diff_text.rs`: the text selected in the open diff's code (`TextSel`: anchor, head, unit and side, keyed to the diff shown), its line places (`LineRef`), word bounds and `copy`, the text a selection copies; `copy_lines` (the row menu's whole lines) and `select_all` (Ctrl+A).
+- `diff_text.rs`: the text selected in the open diff's code (`TextSel`: anchor, head, unit and side, keyed to the diff shown), its line places (`LineRef`), word bounds and `copy`, the text a selection copies (`copy_at_most` for the screen reader's value); `copy_lines` (the row menu's whole lines) and `select_all` (Ctrl+A).
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
@@ -128,6 +128,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `prefs_nav.rs`: `enter_page`, the one way a Preferences page is shown (opening on it, its navigation row, its area's `ShowPage`) and what it reads as it opens; tests in `flows/prefs_pages_tests.rs`.
 - `prefs_signing.rs`: Commit Signing's key list, Generate GPG key, Extend by 2 years and copying a public key (tests in `update/tests/prefs_signing_tests.rs`).
 - `prefs_pick.rs`: the file and folder pickers and where each picked path goes.
+- `diff_copy.rs`: Copy hunk as patch: the hunk read again from the repository (`Effect::CopyHunkPatch`) and copied when it is UTF-8 text, else a toast. Tests in `flows/diff_copy_tests.rs`.
 - `terminal_schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
 - `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip; a stop whose rebase ended another way ends as the quiet `EndRestack` job (back to the branch checked out before, stash put back, finished part recorded for undo).
 - `auto_stash_restack.rs`: a restack's auto-stash as a pending entry while its stop waits (held from the ordinary put-back, saved for a restart), and telling how the restack's own put-back went.

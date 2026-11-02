@@ -78,6 +78,16 @@ fn split_copies_one_side_only() {
 }
 
 #[test]
+fn a_copy_at_most_n_characters_stops_there() {
+    let s = sel(pos(hunk(0, 0), 3), pos(hunk(0, 2), 4), Unit::Char);
+    let all = copy(&lines(), &s, false);
+    for max in [0, 1, 8, 9, 12, all.chars().count()] {
+        assert_eq!(copy_at_most(&lines(), &s, false, max), all.chars().take(max).collect::<String>(), "{max}");
+    }
+    assert_eq!(copy_at_most(&lines(), &s, true, 2), " m", "the sign counts");
+}
+
+#[test]
 fn signs_come_first_when_asked_for() {
     let s = sel(pos(hunk(0, 0), 0), pos(hunk(0, 2), 99), Unit::Char);
     assert_eq!(copy(&lines(), &s, true), " fn main() {\n-\tlet a = 1;\n+\tlet a = 2;");

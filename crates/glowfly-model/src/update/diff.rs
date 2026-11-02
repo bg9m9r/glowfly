@@ -101,7 +101,7 @@ pub(super) fn skip_past(st: &mut AppState, target: &DiffTarget, d: &FileDiff, l:
     }
 }
 
-pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, fx: &mut Vec<Effect>) {
     match msg {
         DiffMsg::SetDiffLayout(layout) => {
             if layout == st.settings.diff_layout {
@@ -157,6 +157,8 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
         | DiffMsg::ClearLineSelection => lines(st, msg),
         DiffMsg::ClearTextSelection => st.view.diff_text = None,
         DiffMsg::SelectAllText { side } => select_all_text(st, side),
+        DiffMsg::CopyHunkPatch { index, generation } => super::diff_copy::read(st, index, generation, fx),
+        DiffMsg::HunkPatchRead { result } => super::diff_copy::copied(st, result, now, fx),
         DiffMsg::JumpToChange(step) => {
             if st.view.diff_landing.is_some() {
                 return; // a stepped-to file is loading: key repeat waits for it

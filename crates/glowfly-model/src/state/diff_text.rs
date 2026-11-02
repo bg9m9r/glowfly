@@ -160,6 +160,12 @@ pub fn word_at(text: &str, col: usize) -> (usize, usize) {
 /// or hunk headers. With `signs`, each line starts with its origin (`+`, `-` or a space).
 /// Empty when an end isn't shown or nothing is selected.
 pub fn copy(shown: &[ShownLine], sel: &TextSel, signs: bool) -> String {
+    copy_at_most(shown, sel, signs, usize::MAX)
+}
+
+/// `copy` cut at `max` characters, reading no further than that: the screen reader's value,
+/// built every frame, stays cheap after Ctrl+A on a long file.
+pub fn copy_at_most(shown: &[ShownLine], sel: &TextSel, signs: bool, max: usize) -> String {
     let order = |r: LineRef| shown.iter().position(|l| l.line == r);
     let text = |r: LineRef| shown.iter().find(|l| l.line == r).map(|l| l.text);
     let Some(span) = sel.span(order, text) else { return String::new() };
@@ -167,15 +173,22 @@ pub fn copy(shown: &[ShownLine], sel: &TextSel, signs: bool) -> String {
         return String::new();
     }
     let mut out = String::new();
+    let mut n = 0;
+    let mut push = |out: &mut String, c: char| {
+        if n < max {
+            out.push(c);
+            n += 1;
+        }
+        n < max
+    };
     for (i, l) in shown.iter().enumerate().take(span.end_at + 1).skip(span.start_at) {
         let from = if i == span.start_at { span.start.col } else { 0 };
         let to = if i == span.end_at { span.end.col } else { usize::MAX };
-        if signs {
-            out.push(if matches!(l.origin, '+' | '-') { l.origin } else { ' ' });
-        }
-        out.extend(l.text.chars().skip(from).take(to.saturating_sub(from)));
-        if i < span.end_at {
-            out.push('\n');
+        let sign = signs.then_some(if matches!(l.origin, '+' | '-') { l.origin } else { ' ' });
+        let newline = (i < span.end_at).then_some('\n');
+        let mut chars = sign.into_iter().chain(l.text.chars().skip(from).take(to.saturating_sub(from))).chain(newline);
+        if !chars.all(|c| push(&mut out, c)) {
+            break;
         }
     }
     out

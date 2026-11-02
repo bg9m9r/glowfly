@@ -101,6 +101,8 @@ macro_rules! effect_areas {
             Ui($crate::effect::UiEffect),
             /// Blames one file (`git blame`), reported as `BlameMsg::Loaded`.
             LoadBlame($crate::effect::BlameRequest),
+            /// One hunk of the open diff as patch text, for Copy hunk as patch (hunk_patch.rs); reads only.
+            CopyHunkPatch($crate::effect::HunkPatchRequest),
             /// A file as of a commit, with syntax spans, for the history's File view (`FileTextLoaded`).
             LoadFileText($crate::effect::FileTextRequest),
             /// The worktree dialogs' folder check, removing and moving a worktree, and counting other

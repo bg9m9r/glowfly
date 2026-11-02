@@ -70,11 +70,10 @@ fn each_copy_item_sends_what_it_names() {
     // Whole lines, each ending in a newline.
     assert_eq!(copied(&choose(&mut h, "Copy lines")), ["app\nfix\nfix the build\n"]);
     right_click(&mut h, inside);
+    // Read again from the repository, so the patch has the file's own bytes.
     let msgs = choose(&mut h, "Copy hunk as patch");
-    let (target, diff) = h.state().0.session.diff.view.clone().expect("the diff");
-    let want = glowfly_core::repo::hunk_patch_text(target.path(), &diff, 0);
-    assert!(want.contains("\n app\n-fix\n+fix the build\n+on Windows\n"), "{want}");
-    assert_eq!(copied(&msgs), [want.as_str()]);
+    let generation = h.state().0.hunk_ops_gen().expect("the diff on screen");
+    assert!(matches!(msgs[..], [Msg::Diff(DiffMsg::CopyHunkPatch { index: 0, generation: g })] if g == generation));
     drop(h);
     remove_fixture(&dir);
 }

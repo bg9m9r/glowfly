@@ -72,6 +72,7 @@ mod deep_link_tests;
 mod desktop_click_tests;
 mod desktop_notify_tests;
 mod dialog_tests;
+mod diff_copy_tests;
 mod diff_gaps_tests;
 mod diff_header_tests;
 mod diff_nav_refresh_tests;

@@ -190,7 +190,7 @@ fn access(bg: &Response, v: &DiffView, sel: Option<&TextSel>) {
         n.set_role(eframe::egui::accesskit::Role::Document);
         n.set_label(v.t.trf("diff.body.name", &[("path", &v.target.path())]));
         if let Some(s) = sel {
-            n.set_value(copy(v, s, false).chars().take(ACCESS_MAX).collect::<String>());
+            n.set_value(diff_text::copy_at_most(&shown(v, s.side), s, false, ACCESS_MAX));
         }
         if lines > 0 {
             n.set_description(v.t.trn("diff.body.lines_selected", lines, &[]));

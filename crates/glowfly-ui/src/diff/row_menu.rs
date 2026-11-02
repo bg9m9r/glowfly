@@ -1,6 +1,6 @@
 //! The diff's right-click menu over a line's code: Copy (its key beside it; only with text
 //! selected), Copy with diff signs, Copy lines (the whole lines under the selection, or the line
-//! clicked), Copy hunk as patch (`repo::hunk_patch_text`), then, behind a separator, the hunk
+//! clicked), Copy hunk as patch (`DiffMsg::CopyHunkPatch`), then, behind a separator, the hunk
 //! header's line actions (Stage, Unstage, Discard, Revert or Comment on N lines): on the selected
 //! lines, or with none on the changed line clicked. On an unchanged line they don't show. A
 //! right-click inside the selected text keeps it and anywhere else drops it; Shift+F10 opens the
@@ -81,11 +81,30 @@ fn items(ui: &mut Ui, v: &DiffView, sel: Option<&TextSel>, at: (TextSide, LineRe
     copy(ui, menu::item(t.tr("diff.row_menu.copy")).shortcut(copy_key).blocked(no_text), &|| copied(false));
     copy(ui, menu::item(t.tr("diff.row_menu.copy_signs")).blocked(no_text), &|| copied(true));
     copy(ui, menu::item(t.tr("diff.row_menu.copy_lines")), &|| diff_text::copy_lines(&text_sel::shown(v, side), sel, Some(at.1)));
-    let hunk = hunk_of(v, at.1);
-    let no_hunk = hunk.is_none().then(|| t.tr("diff.row_menu.no_hunk"));
-    let patch = || hunk.map(|h| glowfly_core::repo::hunk_patch_text(v.target.path(), v.diff, h)).unwrap_or_default();
-    copy(ui, menu::item(t.tr("diff.row_menu.copy_hunk")).blocked(no_hunk), &patch);
+    copy_hunk(ui, v, at.1, msgs);
     line_actions(ui, v, at.1, msgs);
+}
+
+/// Copy hunk as patch for the hunk line `r` is in, read again from the repository
+/// (`DiffMsg::CopyHunkPatch`) so the patch has the file's own bytes. Disabled off a hunk, while
+/// a reload is on its way, and for a hunk whose text isn't UTF-8 (shown with U+FFFD), which
+/// can't go to the clipboard as text.
+fn copy_hunk(ui: &mut Ui, v: &DiffView, r: LineRef, msgs: &mut Vec<Msg>) {
+    let t = v.t;
+    let hunk = hunk_of(v, r);
+    let not_text = |h: usize| v.diff.hunks.get(h).is_some_and(|h| h.lines.iter().any(|l| l.text.contains(char::REPLACEMENT_CHARACTER)));
+    let why = match (hunk, v.hunk_gen) {
+        (None, _) => Some(t.tr("diff.row_menu.no_hunk")),
+        (Some(_), None) => Some(t.tr("diff.hunk.updating")),
+        (Some(h), Some(_)) if not_text(h) => Some(t.tr("diff.row_menu.not_text")),
+        _ => None,
+    };
+    if menu::item(t.tr("diff.row_menu.copy_hunk")).blocked(why).show(ui).clicked()
+        && let (Some(index), Some(generation)) = (hunk, v.hunk_gen)
+    {
+        msgs.push(Msg::Diff(DiffMsg::CopyHunkPatch { index, generation }));
+        ui.close_menu();
+    }
 }
 
 /// The normal hunk line `r` is in: its own, or in the whole-file view the hunk holding the same

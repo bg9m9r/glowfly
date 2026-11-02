@@ -32,6 +32,7 @@ mod deep_link;
 mod deep_link_open;
 mod dialog;
 pub mod diff;
+mod diff_copy;
 mod diff_gaps;
 pub mod diff_preview;
 mod file_list_keys;
