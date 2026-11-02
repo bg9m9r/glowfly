@@ -15,6 +15,8 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).
 - `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, the kit's `git`, …) are not redefined or handed one folder name twice.
 - `hygiene.rs`: view tests build their harnesses with glowfly-ui's `snapshot_check::builder()` (`HARNESS_MAKERS` names the exceptions).
+- `hygiene/english_text.rs`: glowfly-ui and glowfly-runner add no English text for the user: string literals outside logs, panics, ids and process arguments, other than paths and flags, are counted per file.
+- `hygiene/english_allow.rs`: those counts (`ENGLISH_TEXT`), which only go down.
 - `hygiene/test_switches.rs`: the non-test code of every crate has no `cfg(test)` behaviour switch (`cfg!(test)`, `cfg(not(test))`, `#[cfg(test)]` on a statement or field); only the shell (`TEST_SWITCH_FILES`) may keep one, and glowfly-core's older ones are counted in `CORE_SWITCHES`, which only shrinks.
 - `crates/glowfly-app/tests/source_checks/i18n_keys.rs`: every translation key the code of any crate looks up exists in English, and every English key is used.
 - `source_checks/dependencies.rs`: the crate graph points one way, read from `cargo tree` for the host: the model and the runner have no egui, eframe, winit or wgpu (normal, build or dev), glowfly-ui has no glowfly-runner (not even as a dev-dependency), glowfly-flows has no egui, and `-p glowfly`'s normal and build edges turn on no `test-support` or `testkit` and pull in no egui_kittest; each check first asserts crates its tree must name, so unreadable output fails; skipped when cargo can't be started.
