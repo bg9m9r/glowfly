@@ -225,7 +225,13 @@ fn trailing(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeTo
             t.trf("conflict.header.save.pick_side.tip", &[("number", &first)])
         };
         let save = ui.add(buttons::primary(t.tr("conflict.header.save.button")).enabled(can).why(Some(&why)));
-        let save = if can { save.on_hover_text(t.tr("conflict.header.save.tip")) } else { save };
+        // Screen readers hear why it is disabled too.
+        let save = if can {
+            save.on_hover_text(t.tr("conflict.header.save.tip"))
+        } else {
+            access::describe(&save, &why);
+            save
+        };
         if save.clicked() {
             msgs.push(Msg::Conflict(ConflictMsg::SaveConflict));
         }

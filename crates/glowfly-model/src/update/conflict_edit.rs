@@ -1,5 +1,5 @@
 //! Picking in the conflict view: whole sides and single lines per chunk (in the band's order,
-//! which Swap turns round), Take all and Reset,
+//! which Swap turns round), the conflict keys' whole sides for the current chunk, Take all and Reset,
 //! and editing the output as text (one conflict or one clean run between conflicts at a time; a
 //! change spanning both is undone). A chunk edited by hand keeps its typed text through every
 //! pick until Discard edit; edited clean runs stay until Discard edits outside conflicts.
@@ -28,6 +28,12 @@ pub(super) fn toggle_line(st: &mut AppState, chunk: usize, side: Side, line: usi
 
 pub(super) fn toggle_side(st: &mut AppState, chunk: usize, side: Side) {
     change(st, chunk, |p, c| p.toggle_side(c, side));
+}
+
+/// Chunk `chunk` takes whole sides, in `choice`'s order (`Unresolved` clears it): the conflict
+/// keys, on the current chunk.
+pub(super) fn pick(st: &mut AppState, chunk: usize, choice: Choice) {
+    change(st, chunk, |_, _| ChunkPick::Sides(choice));
 }
 
 /// The band's Swap: the other side first.

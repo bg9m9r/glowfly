@@ -63,16 +63,16 @@ Button "Edit" [off]
 Button "Wrap lines" [on]
 Label "Ours"
 Label "main"
-Button "Take all"
+Button "Take every conflict from ours (main)"
 Label "Theirs"
 Label "theme-tweaks"
-Button "Take all"
+Button "Take every conflict from theirs (theme-tweaks)"
 Label "Ours, then theirs"
 Button "Swap"
-CheckBox "Take" [on]
-CheckBox "Take" [on]
-CheckBox [on]
-CheckBox [on]
+CheckBox "Take all of conflict 1 from ours (main)" [on]
+CheckBox "Take all of conflict 1 from theirs (theme-tweaks)" [on]
+CheckBox "Take line 6 from ours (main), conflict 1" [on]
+CheckBox "Take line 6 from theirs (theme-tweaks), conflict 1" [on]
 painted:
   "Repository"
   "Branch"
@@ -130,6 +130,8 @@ painted:
   "setting_10 = 10"
   "12"
   "setting_11 = 11"
+  "Take all"
+  "Take all"
   "1"
   "setting_1 = 1"
   "1"
@@ -157,7 +159,9 @@ painted:
   "5"
   "setting_5 = 5"
   "Conflict 1"
+  "Take"
   "Conflict 1"
+  "Take"
   "6"
   "theme = \"dark\""
   "6"

@@ -199,7 +199,17 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
             Some(cmd) => Msg::Palette(PaletteMsg::RunBoundCommand(cmd)),
             None => return,
         },
-        I::RebaseContinue => Msg::Rebase(RebaseMsg::Resume(Resume::Continue)),
+        // Continue and the conflict keys act on the open conflict view and the operation.
+        I::RebaseContinue
+        | I::ConflictTakeOurs
+        | I::ConflictTakeTheirs
+        | I::ConflictTakeBoth
+        | I::ConflictTakeBothTheirsFirst
+        | I::ConflictClear
+        | I::ConflictMarkResolved => match crate::state::conflict::keys::conflict_key(st, id) {
+            Some(m) => m,
+            None => return,
+        },
         I::RebaseSkip => Msg::Rebase(RebaseMsg::Resume(Resume::Skip)),
         // In the blame view it finds in the file.
         I::Search if st.session.blame.view.is_some() => Msg::Blame(BlameMsg::FocusFind),

@@ -108,6 +108,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `diff_text.rs`: the text selected in the open diff's code (`TextSel`: anchor, head, unit and side, keyed to the diff shown), its line places (`LineRef`), word bounds and `copy`, the text a selection copies (`copy_at_most` for the screen reader's value); `copy_lines` (the row menu's whole lines) and `select_all` (Ctrl+A).
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
+- `conflict_keys.rs` (`state::conflict::keys`): what the conflict keys send: take ours, theirs or both for the current conflict, clear it, Mark resolved once enabled, and Continue (the strip's Commit merge or Continue, else the rebase's). Tests in `conflict_keys_tests.rs`; end to end in `flows/conflict_keys_tests.rs`.
 - `conflict_strip.rs`: the strip while the conflict view is open: the operation in words, the files left, Abort and Commit merge or Continue with why it waits. Tests in `conflict_strip_tests.rs`.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
 - `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Unstash previews.
@@ -208,6 +209,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `active.rs`: the effective keymap with the user's overrides.
 - `rebind.rs`: the rebinding rules.
 - `tests.rs`, `override_tests.rs`: the table's rows, ids, chord text, clashes and filtering; loading, applying and saving the user's changes from settings.
+- `conflict_tests.rs`: `When::Conflict` overlaps the browsing places but not the graph or a text field, and the conflict keys' rows.
 - `pane_tests.rs`: the pane keys (Alt+1 to 5, Control on macOS, F6) clash with nothing, the menus' mnemonics included, and `When::Graph` never overlaps a diff's contexts; their update side in `flows/pane_focus_tests.rs`.
 - Shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard.
 - The Repository commands group binds palette commands; Fetch, Pull, Push, New branch, Stash changes, Unstash and Switch branch have default keys; `state/palette_bindings.rs` maps commands and bindings both ways, and a press sends `PaletteMsg::RunBoundCommand`, which `update/palette_keys.rs` runs when the palette would list the entry.

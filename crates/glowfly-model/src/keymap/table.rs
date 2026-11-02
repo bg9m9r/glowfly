@@ -67,6 +67,8 @@ pub enum When {
     /// A diff of a commit or comparison (pull requests and File history included).
     CommitDiff,
     DiffOrConflict,
+    /// The conflict view, on its current conflict (the one Next and Previous conflict move to).
+    Conflict,
     /// A diff (not the conflict view or blame).
     Diff,
     Message,
@@ -96,6 +98,7 @@ impl When {
             When::FileLists => Some("in a commit's, comparison's, pull request's, folder history's or conflict's file list"),
             When::CommitDiff => Some("in a diff of a commit or comparison"),
             When::DiffOrConflict => Some("in a diff or the conflict view"),
+            When::Conflict => Some("in the conflict view"),
             When::Diff => Some("in a diff"),
             When::Message => Some("in the commit message"),
             When::Lists => Some("in the graph and file history"),
@@ -119,16 +122,19 @@ impl When {
     /// overlaps only itself, `Anywhere` and `NotTyping`; so do the file lists' keys (the WIP
     /// lists' and the others'), which a focused list takes before any other binding sees them.
     /// The graph is the central view only while no diff, conflict or blame view is, so `Graph`
-    /// doesn't overlap the diff places (`WorkingDiff`, `CommitDiff`, `DiffOrConflict`, `Diff`)
-    /// or `Blame`: a graph key such as Ctrl+C can be a diff's key too.
+    /// doesn't overlap the diff places (`WorkingDiff`, `CommitDiff`, `DiffOrConflict`, `Diff`),
+    /// `Conflict` or `Blame`: a graph key such as Ctrl+C can be a diff's key too.
     pub fn overlaps(self, other: When) -> bool {
         use When as W;
         let browsing = |w: When| {
-            matches!(w, W::NotTyping | W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Diff | W::Lists | W::Blame | W::Graph)
+            matches!(
+                w,
+                W::NotTyping | W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Conflict | W::Diff | W::Lists | W::Blame | W::Graph
+            )
         };
         let palette = |w: When| matches!(w, W::InPalette | W::PaletteStep);
         let panel = |a: When, b: When| matches!(a, W::RebasePanel | W::WipLists | W::FileLists) && b == W::NotTyping;
-        let viewing = |w: When| matches!(w, W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Diff | W::Blame);
+        let viewing = |w: When| matches!(w, W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Conflict | W::Diff | W::Blame);
         let apart = |a: When, b: When| a == W::Graph && viewing(b);
         self == other
             || self == W::Anywhere
@@ -265,6 +271,18 @@ pub const BINDINGS: &[Binding] = &[
     b(I::RevertHunk, G::Diff, "Revert the hunk or the selected lines", &[C::plain(K::Letter('R'))], W::CommitDiff),
     b(I::OpenFold, G::Diff, "Show the folded unchanged lines at or below the top", &[C::plain(K::Letter('E'))], W::Diff),
     b(I::CloseFold, G::Diff, "Fold back the opened unchanged lines at the top", &[C::shift(K::Letter('E'))], W::Diff),
+    b(I::ConflictTakeOurs, G::Diff, "Take ours for the current conflict", &[C::plain(K::Letter('O'))], W::Conflict),
+    b(I::ConflictTakeTheirs, G::Diff, "Take theirs for the current conflict", &[C::plain(K::Letter('T'))], W::Conflict),
+    b(I::ConflictTakeBoth, G::Diff, "Take both for the current conflict, ours first", &[C::plain(K::Letter('B'))], W::Conflict),
+    b(
+        I::ConflictTakeBothTheirsFirst,
+        G::Diff,
+        "Take both for the current conflict, theirs first",
+        &[C::shift(K::Letter('B'))],
+        W::Conflict,
+    ),
+    b(I::ConflictClear, G::Diff, "Clear the current conflict's picks", &[C::plain(K::Backspace)], W::Conflict),
+    b(I::ConflictMarkResolved, G::Diff, "Mark the file resolved, once every conflict is picked", &[C::cmd(K::Enter)], W::Conflict),
     fixed(
         I::CloseView,
         G::Diff,
@@ -281,7 +299,7 @@ pub const BINDINGS: &[Binding] = &[
         W::Graph,
     ),
     b(I::DropCommit, G::History, "Drop the selected commits", &[C::plain(K::Delete), C::cmd(K::Backspace)], W::Graph),
-    b(I::RebaseContinue, G::History, "Continue the rebase", &[C::alt(K::Letter('C'))], W::NotTyping),
+    b(I::RebaseContinue, G::History, "Continue the merge, rebase or cherry-pick", &[C::alt(K::Letter('C'))], W::NotTyping),
     b(I::RebaseSkip, G::History, "Skip the commit and continue the rebase", &[C::alt(K::Letter('K'))], W::NotTyping),
     fixed(I::RebaseStepSelect, G::History, "Select the step above or below", &[C::plain(K::Up), C::plain(K::Down)], W::RebasePanel),
     fixed(I::RebaseStepMove, G::History, "Move the selected step up or down", &[C::alt(K::Up), C::alt(K::Down)], W::RebasePanel),
