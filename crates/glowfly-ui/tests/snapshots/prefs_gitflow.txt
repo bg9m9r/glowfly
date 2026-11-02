@@ -21,7 +21,7 @@ Button "Identity"
 Button "Git hooks"
 Button "Issue tracker"
 Button "Git LFS"
-Button "Git Flow" [on]
+Button "Git Flow" [selected]
 Button "Sparse checkout"
 Label "Git Flow"
 Label "Set up in demo"

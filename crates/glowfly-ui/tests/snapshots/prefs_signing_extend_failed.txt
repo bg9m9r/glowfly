@@ -13,7 +13,7 @@ Button "Diff viewer"
 Button "Keyboard"
 Button "External tools"
 Button "Terminal"
-Button "Commit signing" [on]
+Button "Commit signing" [selected]
 Button "SSH"
 Label "Commit signing"
 ComboBox

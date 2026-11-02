@@ -1,10 +1,10 @@
 Dialog
   Label "Switch branch"
   TextInput [focused]
-  Button "login-page" [on]
-  Button "search" [off]
-  Button "origin/feature/sidebar" [off]
-  Button "tag v0.1.0" [off]
+  Button "login-page" [selected]
+  Button "search"
+  Button "origin/feature/sidebar"
+  Button "tag v0.1.0"
   Label "Up/Down to choose, Enter to switch, Backspace or Esc to go back"
 painted:
   "Find a branch or tag to switch to"

@@ -14,7 +14,7 @@ Button "Keyboard"
 Button "External tools"
 Button "Terminal"
 Button "Commit signing"
-Button "SSH" [on]
+Button "SSH" [selected]
 Label "SSH"
 Label "Keys"
 Button "Reload keys"

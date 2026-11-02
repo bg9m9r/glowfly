@@ -5,7 +5,7 @@ Label "Preferences"
 Button "General"
 Button "Git"
 Button "Profile"
-Button "Integrations" [on]
+Button "Integrations" [selected]
 Button "Appearance"
 Button "Accessibility"
 Button "Language & region"
@@ -18,7 +18,7 @@ Button "SSH"
 Button "GitHub"
 Button "GitHub Enterprise Server"
 Button "GitLab"
-Button "GitLab Self-Managed  ✔" [on]
+Button "GitLab Self-Managed  ✔" [selected]
 Button "Bitbucket"
 Button "Bitbucket Data Center"
 Button "Azure DevOps"

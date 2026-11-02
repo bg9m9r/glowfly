@@ -1,9 +1,9 @@
 Dialog
   Label "Rename stash"
   TextInput [focused]
-  Button "On main: login form tweaks" [off]
-  Button "WIP on main: 1a2b3c4 Add search" [on]
-  Button "On login-page: half-done validation" [off]
+  Button "On main: login form tweaks"
+  Button "WIP on main: 1a2b3c4 Add search" [selected]
+  Button "On login-page: half-done validation"
   Label "Up/Down to choose, Enter to rename, Backspace or Esc to go back"
 painted:
   "Find a stash to rename"

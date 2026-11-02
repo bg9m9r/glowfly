@@ -8,7 +8,7 @@ Button "General"
 Button "Git"
 Button "Profile"
 Button "Integrations"
-Button "Appearance" [on]
+Button "Appearance" [selected]
 Button "Accessibility"
 Button "Language & region"
 Button "Diff viewer"

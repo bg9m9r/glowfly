@@ -295,8 +295,11 @@ fn row(
 ) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
-    // The current item is announced as selected.
-    resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, label));
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
+    // The current item is announced as selected (not as a toggle).
+    if selected {
+        crate::ui::access::mark_selected(&resp);
+    }
     let p = ui.painter_at(rect);
     // On the menu pill's corners: the keyboard's row (the list's current item, which Enter runs)
     // takes the selection with its accent bar, and wins over the pointer; every other row lights

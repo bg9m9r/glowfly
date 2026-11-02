@@ -7,7 +7,7 @@ Button "Git"
 Button "Profil"
 Button "Integrationen"
 Button "Darstellung"
-Button "Barrierefreiheit" [on]
+Button "Barrierefreiheit" [selected]
 Button "Sprache und Region"
 Button "Diff-Ansicht"
 Button "Tastatur"

@@ -3,7 +3,7 @@ Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
 Button "General"
-Button "Git" [on]
+Button "Git" [selected]
 Button "Profile"
 Button "Integrations"
 Button "Appearance"

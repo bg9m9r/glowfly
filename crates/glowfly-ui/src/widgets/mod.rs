@@ -139,10 +139,10 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> R
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), type_scale::BODY + 20.0), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests), and
     // say which is the current page.
-    resp.widget_info(|| match selected {
-        true => egui::WidgetInfo::selected(egui::WidgetType::Button, true, true, text),
-        false => egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text),
-    });
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
+    if selected {
+        crate::ui::access::mark_selected(&resp);
+    }
     let p = ui.painter();
     // The selected page takes the accent bar; the focused row the inset ring on its square
     // corners, painted by `row_fill` with the rest of its state.

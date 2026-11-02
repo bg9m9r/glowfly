@@ -5,7 +5,7 @@ Label "Preferences"
 Button "General"
 Button "Git"
 Button "Profile"
-Button "Integrations" [on]
+Button "Integrations" [selected]
 Button "Appearance"
 Button "Accessibility"
 Button "Language & region"
@@ -15,7 +15,7 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
-Button "GitHub" [on]
+Button "GitHub" [selected]
 Button "GitHub Enterprise Server"
 Button "GitLab"
 Button "GitLab Self-Managed"

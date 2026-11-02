@@ -12,7 +12,7 @@ Button "Language & region"
 Button "Diff viewer"
 Button "Keyboard"
 Button "External tools"
-Button "Terminal" [on]
+Button "Terminal" [selected]
 Button "Commit signing"
 Button "SSH"
 Label "Terminal"

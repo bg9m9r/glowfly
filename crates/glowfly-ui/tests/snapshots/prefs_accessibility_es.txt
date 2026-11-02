@@ -7,7 +7,7 @@ Button "Git"
 Button "Perfil"
 Button "Integraciones"
 Button "Apariencia"
-Button "Accesibilidad" [on]
+Button "Accesibilidad" [selected]
 Button "Idioma y región"
 Button "Visor de diferencias"
 Button "Teclado"

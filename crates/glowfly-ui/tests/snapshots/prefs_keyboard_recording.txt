@@ -10,7 +10,7 @@ Button "Appearance"
 Button "Accessibility"
 Button "Language & region"
 Button "Diff viewer"
-Button "Keyboard" [on]
+Button "Keyboard" [selected]
 Button "External tools"
 Button "Terminal"
 Button "Commit signing"

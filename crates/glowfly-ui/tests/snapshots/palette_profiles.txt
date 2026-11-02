@@ -1,9 +1,9 @@
 Dialog
   Label "Switch profile"
   TextInput [focused]
-  Button "Work" [on]
-  Button "Personal" [off]
-  Button "Open source" [off]
+  Button "Work" [selected]
+  Button "Personal"
+  Button "Open source"
   Label "Up/Down to choose, Enter to switch, Backspace or Esc to go back"
 painted:
   "Find a profile to switch to"

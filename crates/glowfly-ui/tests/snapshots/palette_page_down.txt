@@ -1,85 +1,85 @@
 Dialog
   TextInput [focused]
   Label "Suggested"
-  Button "Stage all files" [off]
-  Button "Create branch at HEAD…" [off]
+  Button "Stage all files"
+  Button "Create branch at HEAD…"
   Label "All commands"
-  Button "Add remote…" [off]
-  Button "Push" [off]
-  Button "Stash changes" [off]
-  Button "Stash with message…" [off]
-  Button "Stash staged changes…" [off]
-  Button "Stash selected files…" [off]
-  Button "Create tag at HEAD…" [off]
-  Button "Create annotated tag at HEAD…" [off]
-  Button "Switch branch…" [off]
-  Button "Rename branch main…" [off]
-  Button "Search commits" [on]
-  Button "File history…" [off]
-  Button "Blame file…" [off]
-  Button "Apply patch…" [off]
-  Button "Create patch from uncommitted changes…" [off]
-  Button "Initialize Git LFS" [off]
-  Button "Configure Git LFS…" [off]
-  Button "Configure sparse checkout…" [off]
-  Button "Configure Git Flow…" [off]
-  Button "Open operation journal" [off]
-  Button "Create worktree from main…" [off]
-  Button "Add submodule…" [off]
-  Button "Reload custom commands" [off]
-  Button "Refresh" [off]
-  Button "Open in terminal" [off]
-  Button "Show terminal panel" [off]
-  Button "Show repository in Explorer" [off]
-  Button "Copy link to repository" [off]
-  Button "Copy link to branch main" [off]
-  Button "Use split diff layout" [off]
-  Button "Ignore whitespace changes" [off]
-  Button "Open repository…" [off]
-  Button "New tab" [off]
-  Button "Close tab" [off]
-  Button "Rename tab…" [off]
-  Button "Move tab right" [off]
-  Button "Open dashboard" [off]
-  Button "Open preferences" [off]
-  Button "Keyboard shortcuts" [off]
-  Button "Show the welcome" [off]
-  Button "Turn off tips" [off]
-  Button "Show tips again" [off]
-  Button "Take the tour" [off]
-  Button "View release notes" [off]
-  Button "Check for updates" [off]
-  Button "Hide toolbar labels" [off]
-  Button "Zoom in" [off]
-  Button "Zoom out" [off]
-  Button "Enter full screen" [off]
-  Button "Hide left panel" [off]
-  Button "Hide commit details panel" [off]
-  Button "Hide toolbar" [off]
-  Button "Show menu bar" [off]
-  Button "Theme: Graphite" [off]
-  Button "Theme: Porcelain" [off]
-  Button "Theme: Follow system" [off]
-  Button "Theme: Midnight" [off]
-  Button "Theme: Dusk" [off]
-  Button "Theme: High contrast dark" [off]
-  Button "Theme: Mist" [off]
-  Button "Theme: Dawn" [off]
-  Button "Theme: High contrast light" [off]
-  Button "Open repository in external editor" [off]
-  Button "Configure external tools" [off]
-  Button "Configure terminal" [off]
-  Button "View activity log" [off]
-  Button "View error log" [off]
-  Button "View performance log" [off]
-  Button "Open logs folder" [off]
-  Button "Export logs…" [off]
-  Button "Turn on extended logging" [off]
-  Button "Add this repository to favorites" [off]
-  Button "Find repositories in folders…" [off]
-  Button "Checkout login-page" [off]
-  Button "Checkout search" [off]
-  Button "Checkout tag v0.1.0" [off]
+  Button "Add remote…"
+  Button "Push"
+  Button "Stash changes"
+  Button "Stash with message…"
+  Button "Stash staged changes…"
+  Button "Stash selected files…"
+  Button "Create tag at HEAD…"
+  Button "Create annotated tag at HEAD…"
+  Button "Switch branch…"
+  Button "Rename branch main…"
+  Button "Search commits" [selected]
+  Button "File history…"
+  Button "Blame file…"
+  Button "Apply patch…"
+  Button "Create patch from uncommitted changes…"
+  Button "Initialize Git LFS"
+  Button "Configure Git LFS…"
+  Button "Configure sparse checkout…"
+  Button "Configure Git Flow…"
+  Button "Open operation journal"
+  Button "Create worktree from main…"
+  Button "Add submodule…"
+  Button "Reload custom commands"
+  Button "Refresh"
+  Button "Open in terminal"
+  Button "Show terminal panel"
+  Button "Show repository in Explorer"
+  Button "Copy link to repository"
+  Button "Copy link to branch main"
+  Button "Use split diff layout"
+  Button "Ignore whitespace changes"
+  Button "Open repository…"
+  Button "New tab"
+  Button "Close tab"
+  Button "Rename tab…"
+  Button "Move tab right"
+  Button "Open dashboard"
+  Button "Open preferences"
+  Button "Keyboard shortcuts"
+  Button "Show the welcome"
+  Button "Turn off tips"
+  Button "Show tips again"
+  Button "Take the tour"
+  Button "View release notes"
+  Button "Check for updates"
+  Button "Hide toolbar labels"
+  Button "Zoom in"
+  Button "Zoom out"
+  Button "Enter full screen"
+  Button "Hide left panel"
+  Button "Hide commit details panel"
+  Button "Hide toolbar"
+  Button "Show menu bar"
+  Button "Theme: Graphite"
+  Button "Theme: Porcelain"
+  Button "Theme: Follow system"
+  Button "Theme: Midnight"
+  Button "Theme: Dusk"
+  Button "Theme: High contrast dark"
+  Button "Theme: Mist"
+  Button "Theme: Dawn"
+  Button "Theme: High contrast light"
+  Button "Open repository in external editor"
+  Button "Configure external tools"
+  Button "Configure terminal"
+  Button "View activity log"
+  Button "View error log"
+  Button "View performance log"
+  Button "Open logs folder"
+  Button "Export logs…"
+  Button "Turn on extended logging"
+  Button "Add this repository to favorites"
+  Button "Find repositories in folders…"
+  Button "Checkout login-page"
+  Button "Checkout search"
+  Button "Checkout tag v0.1.0"
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "Type a command, branch or tag name"

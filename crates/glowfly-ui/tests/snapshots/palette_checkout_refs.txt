@@ -1,14 +1,14 @@
 Dialog
   TextInput = "checkout" [focused]
-  Button "Checkout search" [on]
-  Button "Checkout login-page" [off]
-  Button "Checkout tag v0.1.0" [off]
-  Button "Checkout upstream/release-2.0" [off]
-  Button "Checkout origin/feature/sidebar" [off]
-  Button "Configure sparse checkout…" [off]
-  Button "Switch branch…" [off]
-  Button "Create worktree from main…" [off]
-  Button "Check for updates" [off]
+  Button "Checkout search" [selected]
+  Button "Checkout login-page"
+  Button "Checkout tag v0.1.0"
+  Button "Checkout upstream/release-2.0"
+  Button "Checkout origin/feature/sidebar"
+  Button "Configure sparse checkout…"
+  Button "Switch branch…"
+  Button "Create worktree from main…"
+  Button "Check for updates"
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "detached at f0d635c"

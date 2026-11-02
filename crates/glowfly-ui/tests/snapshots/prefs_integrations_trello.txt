@@ -5,7 +5,7 @@ Label "Preferences"
 Button "General"
 Button "Git"
 Button "Profile"
-Button "Integrations" [on]
+Button "Integrations" [selected]
 Button "Appearance"
 Button "Accessibility"
 Button "Language & region"
@@ -24,7 +24,7 @@ Button "Bitbucket Data Center"
 Button "Azure DevOps"
 Button "Jira Cloud"
 Button "Jira Data Center"
-Button "Trello" [on]
+Button "Trello" [selected]
 Label "Trello"
 TextInput = "0123456789abcdef0123456789abcdef"
 Label "Get your API key"

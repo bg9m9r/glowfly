@@ -4,7 +4,7 @@ Button "Back to repository"
 Label "Preferences"
 Button "General"
 Button "Git"
-Button "Profile" [on]
+Button "Profile" [selected]
 Button "Integrations"
 Button "Appearance"
 Button "Accessibility"

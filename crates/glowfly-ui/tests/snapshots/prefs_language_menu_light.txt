@@ -8,7 +8,7 @@ Button "Profile"
 Button "Integrations"
 Button "Appearance"
 Button "Accessibility"
-Button "Language & region" [on]
+Button "Language & region" [selected]
 Button "Diff viewer"
 Button "Keyboard"
 Button "External tools"

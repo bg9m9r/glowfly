@@ -22,7 +22,7 @@ Button "Git hooks"
 Button "Issue tracker"
 Button "Git LFS"
 Button "Git Flow"
-Button "Sparse checkout" [on]
+Button "Sparse checkout" [selected]
 Label "Sparse checkout"
 Label "On, folders (cone) mode. 12 of 340 tracked files are checked out."
 Label "Sparse checkout leaves files outside the chosen paths out of the working tree only. They stay in commits, the history and the index, and the setting belongs to this worktree alone."

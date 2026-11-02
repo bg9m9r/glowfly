@@ -9,7 +9,7 @@ Button "Integrations"
 Button "Appearance"
 Button "Accessibility"
 Button "Language & region"
-Button "Diff viewer" [on]
+Button "Diff viewer" [selected]
 Button "Keyboard"
 Button "External tools"
 Button "Terminal"

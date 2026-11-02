@@ -22,7 +22,7 @@ Button "Git hooks"
 Button "Issue tracker"
 Button "Git LFS"
 Button "Git Flow"
-Button "Sparse checkout" [on]
+Button "Sparse checkout" [selected]
 Label "Unsaved changes"
 Button "Save"
 Button "Revert"

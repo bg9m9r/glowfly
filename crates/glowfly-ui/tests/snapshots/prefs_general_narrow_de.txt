@@ -2,7 +2,7 @@ window 960x2400
 Label "Glowfly 0.1.0"
 Button "Zurück"
 Label "Einstellungen"
-Button "Allgemein" [on]
+Button "Allgemein" [selected]
 Button "Git"
 Button "Profil"
 Button "Integrationen"

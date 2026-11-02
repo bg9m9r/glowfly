@@ -4,7 +4,7 @@ ProgressIndicator
 Button "Downloading Glowfly 0.3.0…"
 Button "Back"
 Label "Preferences"
-Button "General" [on]
+Button "General" [selected]
 Button "Git"
 Button "Profile"
 Button "Integrations"

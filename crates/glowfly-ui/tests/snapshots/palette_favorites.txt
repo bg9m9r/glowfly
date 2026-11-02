@@ -1,53 +1,53 @@
 Dialog
   TextInput = "open" [focused]
-  Button "Open docs" [on]
-  Button "Open web-app" [off]
-  Button "Open dashboard" [off]
-  Button "Open api-server" [off]
-  Button "Open in terminal" [off]
-  Button "Open repository…" [off]
-  Button "Open preferences" [off]
-  Button "Open logs folder" [off]
-  Button "Open operation journal" [off]
-  Button "Open all favorites in tabs" [off]
-  Button "Open repository in external editor" [off]
-  Button "New tab" [off]
-  Button "File history…" [off]
-  Button "Add submodule…" [off]
-  Button "Enter full screen" [off]
-  Button "View performance log" [off]
-  Button "Configure sparse checkout…" [off]
-  Button "Configure external tools" [off]
-  Button "Initialize Git LFS" [off]
-  Button "Ignore whitespace changes" [off]
-  Button "Theme: Porcelain" [off]
-  Button "Theme: Follow system" [off]
-  Button "Keyboard shortcuts" [off]
-  Button "Theme: High contrast dark" [off]
-  Button "Copy link to repository" [off]
-  Button "Theme: High contrast light" [off]
-  Button "Configure terminal" [off]
-  Button "Copy link to branch main" [off]
-  Button "Configure Git Flow…" [off]
-  Button "Turn off tips" [off]
-  Button "Show terminal panel" [off]
-  Button "Configure Git LFS…" [off]
-  Button "Checkout login-page" [off]
-  Button "Check for updates" [off]
-  Button "Hide commit details panel" [off]
-  Button "View activity log" [off]
-  Button "Create patch from uncommitted changes…" [off]
-  Button "Show repository in Explorer" [off]
-  Button "Pull all favorites" [off]
-  Button "Fetch all favorites" [off]
-  Button "Pull all listed repositories" [off]
-  Button "Fetch all listed repositories" [off]
-  Button "Export logs…" [off]
-  Button "Show tips again" [off]
-  Button "Take the tour" [off]
-  Button "Show the welcome" [off]
-  Button "View error log" [off]
-  Button "View release notes" [off]
+  Button "Open docs" [selected]
+  Button "Open web-app"
+  Button "Open dashboard"
+  Button "Open api-server"
+  Button "Open in terminal"
+  Button "Open repository…"
+  Button "Open preferences"
+  Button "Open logs folder"
+  Button "Open operation journal"
+  Button "Open all favorites in tabs"
+  Button "Open repository in external editor"
+  Button "New tab"
+  Button "File history…"
+  Button "Add submodule…"
+  Button "Enter full screen"
+  Button "View performance log"
+  Button "Configure sparse checkout…"
+  Button "Configure external tools"
+  Button "Initialize Git LFS"
+  Button "Ignore whitespace changes"
+  Button "Theme: Porcelain"
+  Button "Theme: Follow system"
+  Button "Keyboard shortcuts"
+  Button "Theme: High contrast dark"
+  Button "Copy link to repository"
+  Button "Theme: High contrast light"
+  Button "Configure terminal"
+  Button "Copy link to branch main"
+  Button "Configure Git Flow…"
+  Button "Turn off tips"
+  Button "Show terminal panel"
+  Button "Configure Git LFS…"
+  Button "Checkout login-page"
+  Button "Check for updates"
+  Button "Hide commit details panel"
+  Button "View activity log"
+  Button "Create patch from uncommitted changes…"
+  Button "Show repository in Explorer"
+  Button "Pull all favorites"
+  Button "Fetch all favorites"
+  Button "Pull all listed repositories"
+  Button "Fetch all listed repositories"
+  Button "Export logs…"
+  Button "Show tips again"
+  Button "Take the tour"
+  Button "Show the welcome"
+  Button "View error log"
+  Button "View release notes"
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "Ctrl+Alt+2"

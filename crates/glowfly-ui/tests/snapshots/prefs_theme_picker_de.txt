@@ -6,7 +6,7 @@ Button "Allgemein"
 Button "Git"
 Button "Profil"
 Button "Integrationen"
-Button "Darstellung" [on]
+Button "Darstellung" [selected]
 Button "Barrierefreiheit"
 Button "Sprache und Region"
 Button "Diff-Ansicht"

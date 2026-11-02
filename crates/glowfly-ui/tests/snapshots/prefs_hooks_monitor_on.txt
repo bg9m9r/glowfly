@@ -18,7 +18,7 @@ Button "SSH"
 Label "This repository"
 Label "Repo: demo"
 Button "Identity"
-Button "Git hooks" [on]
+Button "Git hooks" [selected]
 Button "Issue tracker"
 Button "Git LFS"
 Button "Git Flow"

@@ -220,10 +220,12 @@ fn palette_scene(theme: ThemeChoice, p: crate::ui::theme::color::Palette, name: 
     h.run();
     let at = center(&h, "Push");
     point(&mut h, at);
-    // egui reports a button's `WidgetInfo::selected` as its toggled state.
-    let on = Some(eframe::egui::accesskit::Toggled::True);
-    let current: Vec<_> = h.get_all_by_role(Role::Button).filter(|n| n.toggled() == on).filter_map(|n| n.label()).collect();
+    let rows: Vec<_> = h.get_all_by_role(Role::Button).collect();
+    let current: Vec<_> = rows.iter().filter(|n| n.is_selected() == Some(true)).filter_map(|n| n.label()).collect();
     assert_eq!(current, ["Stage all files"], "only the keyboard row is announced as selected");
+    for row in ["Stage all files", "Push"] {
+        assert!(h.get_by_role_and_label(Role::Button, row).toggled().is_none(), "{row} doesn't read as a toggle");
+    }
     finish(h, name, Some(dir));
 }
 

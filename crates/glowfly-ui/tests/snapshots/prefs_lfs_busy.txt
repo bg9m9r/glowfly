@@ -22,7 +22,7 @@ Label "Repo: demo"
 Button "Identity"
 Button "Git hooks"
 Button "Issue tracker"
-Button "Git LFS" [on]
+Button "Git LFS" [selected]
 Button "Git Flow"
 Button "Sparse checkout"
 Label "Git LFS"

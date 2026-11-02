@@ -1,12 +1,12 @@
 Dialog
   TextInput = "deploy" [focused]
-  Button "Deploy commit" [on]
-  Button "Deploy preview" [off]
-  Button "Deploy with project script" [off]
-  Button "Copy link to repository" [off]
-  Button "Copy link to branch main" [off]
-  Button "File history…" [off]
-  Button "Find repositories in folders…" [off]
+  Button "Deploy commit" [selected]
+  Button "Deploy preview"
+  Button "Deploy with project script"
+  Button "Copy link to repository"
+  Button "Copy link to branch main"
+  Button "File history…"
+  Button "Find repositories in folders…"
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
   "Your command"

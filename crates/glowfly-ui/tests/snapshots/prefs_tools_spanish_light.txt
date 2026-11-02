@@ -11,7 +11,7 @@ Button "Accesibilidad"
 Button "Idioma y región"
 Button "Visor de diferencias"
 Button "Teclado"
-Button "Herramientas externas" [on]
+Button "Herramientas externas" [selected]
 Button "Terminal"
 Button "Firma de commits"
 Button "SSH"

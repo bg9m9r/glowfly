@@ -11,7 +11,7 @@ Button "Accessibility"
 Button "Language & region"
 Button "Diff viewer"
 Button "Keyboard"
-Button "External tools" [on]
+Button "External tools" [selected]
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
