@@ -1,6 +1,6 @@
 //! Preferences > Diff viewer: how the diff viewer draws text. Edits apply at once (views edit the
 //! settings in place and the shell saves them); nothing reloads, since these only decide how
-//! lines are painted.
+//! lines are painted. Its text size row is on Accessibility too (`font_size_row`).
 
 use super::{check_row, help, row};
 use crate::ui::theme::controls;
@@ -10,11 +10,7 @@ use glowfly_core::settings::{DIFF_FONT_SIZES, HistoryPane, Settings, TAB_SIZES};
 
 pub fn diff_viewer_page(ui: &mut Ui, s: &mut Settings) {
     let t = s.lang();
-    row(ui, t.tr("prefs.editor.font_size.label"), |ui| {
-        let size = egui::DragValue::new(&mut s.diff_font_size).range(DIFF_FONT_SIZES).speed(0.25).max_decimals(1);
-        ui.add(size.suffix(t.tr("prefs.editor.font_size.suffix")));
-        help(ui, t.tr("prefs.editor.font_size.help"));
-    });
+    font_size_row(ui, s, t.tr("prefs.editor.font_size.label"));
     row(ui, t.tr("prefs.editor.tab_size.label"), |ui| {
         ui.add(egui::DragValue::new(&mut s.tab_size).range(TAB_SIZES));
         help(ui, t.tr("prefs.editor.tab_size.help"));
@@ -43,6 +39,18 @@ pub fn diff_viewer_page(ui: &mut Ui, s: &mut Settings) {
         if ui.add(buttons::secondary(t.tr("prefs.editor.reset.button"))).clicked() {
             reset(s);
         }
+    });
+}
+
+/// The diff text size, labelled `label`: the same row on Diff viewer and Accessibility.
+pub fn font_size_row(ui: &mut Ui, s: &mut Settings, label: &str) {
+    let t = s.lang();
+    let text = t.tr("prefs.editor.font_size.help");
+    row(ui, label, |ui| {
+        let size = egui::DragValue::new(&mut s.diff_font_size).range(DIFF_FONT_SIZES).speed(0.25).max_decimals(1);
+        let r = ui.add(size.suffix(t.tr("prefs.editor.font_size.suffix")));
+        super::accessibility::name(&r, label, text);
+        help(ui, text);
     });
 }
 

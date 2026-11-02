@@ -259,7 +259,7 @@ pub struct UiCache {
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     // An open menu's keys are its own (done by the shortcuts already when they ran).
     menu_keys::capture(ctx);
-    widgets::tooltip::configure(ctx, st.settings.reduce_motion);
+    theme::a11y::configure(ctx, &st.settings);
     let bounds = frame_layout::show(ctx, st, cache, msgs);
     // Frees the File view's image texture once a frame draws no image.
     cache.history_preview.end_frame();

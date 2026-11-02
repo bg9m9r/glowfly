@@ -79,7 +79,9 @@ fn shortcut_refusals_toast() {
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty());
     assert_eq!(last_toast(&st), (false, "Write a summary for the commit.".into()));
     assert!(!st.view.show_log, "a refused shortcut doesn't open the log");
-    assert_eq!(st.log.len(), log_before);
+    // Like every toast, it leaves a quiet line there.
+    assert_eq!(st.log.len(), log_before + 1);
+    assert_eq!(st.log.last().map(|e| e.text.as_str()), Some("Write a summary for the commit."));
 
     st.session.draft.summary = "Work".into();
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty(), "nothing staged");

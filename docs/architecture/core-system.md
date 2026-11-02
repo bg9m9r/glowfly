@@ -86,6 +86,7 @@ source file, update its line here.
 - `profile_rules.rs`: profile folder rules: adding and removing them, a folder belonging to one profile at most, and which rule git applies to a git dir, mirrored from git's `includeIf.gitdir` matching with the deepest folder winning.
 - Saved connected accounts and app preferences.
 - `profiles_prefs.rs`: what switches with a profile, and every setting classified as per-profile or global.
+- `a11y.rs`: Preferences > Accessibility's own settings (cursor blink, how long toasts stay, the tooltip delay, the theme High contrast brings back), flat in the file and global.
 - `file_lists.rs`: how the changed-file lists show their files (List or Tree).
 - `ui_choices.rs`: the notification corner, descriptions, branch visibility, the history table's row density and the diff viewer's layout and mode; `tracker.rs`: where a repository's issues come from.
 - `welcome_done`: whether the first-run welcome was seen (true for any file written before it existed).

@@ -36,6 +36,17 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 fx.extend(save_settings(st));
             }
         }
+        PrefsMsg::SetHighContrast { on, dark } => {
+            if st.settings.set_high_contrast(on, dark) {
+                fx.extend(save_settings(st));
+            }
+        }
+        PrefsMsg::ShowShortcutSheet => {
+            if st.modal.is_none() {
+                st.palette = None;
+                st.modal = Some(crate::state::Modal::Shortcuts { filter: String::new() });
+            }
+        }
         PrefsMsg::SetDesktopNotifications(on) => super::notify::set_desktop(st, on, fx),
         PrefsMsg::DesktopNotificationFailed { text, confirm } => super::notify::desktop_failed(st, text, confirm, now),
         PrefsMsg::SettingsUnreadable(problem) => super::settings_file::at_start(st, problem, now),
@@ -137,6 +148,8 @@ pub(super) fn save_settings(st: &mut AppState) -> Option<Effect> {
     if !st.settings_file.writable() {
         return None;
     }
+    // Another theme than a high-contrast one was picked: High contrast has nothing to bring back.
+    st.settings.settle_contrast();
     st.settings_file.saved = serde_json::to_string(&st.settings).unwrap_or_default();
     if let Some(p) = st.prefs.as_mut() {
         p.saved.mark();

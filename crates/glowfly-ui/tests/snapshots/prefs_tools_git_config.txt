@@ -36,6 +36,7 @@ painted:
   "Profile"
   "Integrations"
   "Appearance"
+  "Accessibility"
   "Language & region"
   "Diff viewer"
   "Keyboard"

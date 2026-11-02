@@ -57,6 +57,14 @@ pub enum PrefsMsg {
     SetTheme(ThemeChoice),
     /// Show or hide the text under toolbar buttons (saved in settings).
     SetToolbarLabels(bool),
+    /// Accessibility's High contrast check: on switches to the high-contrast theme as dark as
+    /// the palette in effect (`dark`), off brings back the theme it replaced.
+    SetHighContrast {
+        on: bool,
+        dark: bool,
+    },
+    /// Accessibility's Show all shortcuts: the shortcut sheet over Preferences.
+    ShowShortcutSheet,
     /// The Desktop notifications checkbox (the view only asks; update saves).
     SetDesktopNotifications(bool),
     /// The OS refused a desktop notification; `confirm` when it was the one sent on turning them on.
@@ -125,6 +133,8 @@ impl PrefsMsg {
             | Self::PickFile(..)
             | Self::SetTheme(..)
             | Self::SetToolbarLabels(..)
+            | Self::SetHighContrast { .. }
+            | Self::ShowShortcutSheet
             | Self::SetDesktopNotifications(..)
             | Self::DesktopNotificationFailed { .. }
             | Self::GitConfigLoaded(..)

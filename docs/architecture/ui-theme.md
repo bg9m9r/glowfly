@@ -24,6 +24,8 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/ansi.rs`: the terminal's colours, one table per built-in, with the readability check Preferences warns from.
 - `theme/terminal_scheme.rs`: which colours the terminal draws in (the app theme's, another built-in's or an imported scheme over the app theme's), read through `color::term()`.
 - `prefs/terminal_colours.rs`: Preferences > Terminal's Colors row.
+- `prefs/accessibility.rs`: Preferences > Accessibility: the zoom and text size rows of their own pages, High contrast, the branch colours, motion, the cursor blink, the shortcut links and the toast and tooltip timings, each control named for screen readers; tests and goldens in `prefs/accessibility_tests.rs`.
+- `theme/a11y.rs`: the style Accessibility sets each frame: animation time, tooltip timing and the text cursor's blink.
 - `prefs/theme_picker.rs`: the built-in themes drawn as grouped preview cards with one-line descriptions on Preferences' Theme row; with Match the system on, the group headings say when each is used and both of the pair's cards are ringed.
 - `prefs/theme_row.rs`: the Theme row: the picker, then the Custom theme files disclosure (the theme file dropdown, the folder's buttons, the help and the file's problems).
 - `prefs/theme_files.rs`: the Custom theme files disclosure's header, a quiet target that stays open while a theme file is in use.

@@ -171,6 +171,7 @@ mod terminal_schemes;
 mod terminal_tabs;
 mod terminal_view;
 mod themes;
+mod toast_log;
 mod tool_compare;
 mod tool_git;
 mod tools;
@@ -241,6 +242,8 @@ fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     // A failure logged from here on is announced by a toast; one pushed by now isn't this one's.
     let toast_mark = st.toast_seq;
     let undo_mark = undo::record_mark(st);
+    // So is every toast, unless this update logged its text already (update/toast_log.rs).
+    let entry_mark = crate::state::logs::EntryId::next();
     route(st, msg, now, &mut fx);
     undo::recorded_since(st, undo_mark);
     prefs_leave::settle(st);
@@ -255,6 +258,7 @@ fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     crate::state::layout::drop_stale_expansion(st);
     logs_runs::stamp(st, now);
     logs_tabs::announce(st, toast_mark, now);
+    toast_log::record(st, toast_mark, entry_mark);
     logs::flush(st, &mut fx);
     large_graph::settle(st, &mut fx);
     fx

@@ -35,6 +35,7 @@ painted:
   "Perfil"
   "Integraciones"
   "Apariencia"
+  "Accesibilidad"
   "Idioma y región"
   "Visor de diferencias"
   "Teclado"

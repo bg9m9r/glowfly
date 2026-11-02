@@ -4,17 +4,17 @@
 //! `Msg::ToastDetails`, and may carry a second fix between them (`Msg::ToastAlt`). Every toast
 //! has an x that closes it (`NotifyMsg::CloseToast`).
 //!
-//! The pointer over a toast holds it (`hold_toast`): its clock stops, so it neither fades nor
-//! expires, and when the pointer leaves at least `HOLD_GRACE` is left.
+//! How long a toast stays is Preferences > Accessibility's `toast_time`; a failure that offers a
+//! fix or Details stays until it is closed. The pointer over a toast, or the keyboard focus in
+//! it, holds it (`hold_toast`): its clock stops, so it neither fades nor expires, and when it is
+//! let go at least `HOLD_GRACE` is left.
 
 use super::AppState;
 use crate::msg::Msg;
+use glowfly_core::settings::ToastTime;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-const TOAST_LIFETIME: Duration = Duration::from_secs(5);
-/// How long a toast with an action button stays up, so there is time to click it.
-pub const ACTION_TOAST_LIFETIME: Duration = Duration::from_secs(10);
 /// The most toasts shown at once; a new one drops the oldest that isn't held.
 const TOAST_LIMIT: usize = 4;
 /// The least time a toast has left once the pointer leaves it.
@@ -50,8 +50,11 @@ pub struct ToastAction {
 }
 
 impl Toast {
-    pub fn lifetime(&self) -> Duration {
-        if self.action.is_some() || self.details.is_some() { ACTION_TOAST_LIFETIME } else { TOAST_LIFETIME }
+    /// How long it stays up with `time` chosen: longer with a button, so there is time to click
+    /// it. None never expires: "Until I close them", or a failure offering a fix or Details.
+    pub fn lifetime(&self, time: ToastTime) -> Option<Duration> {
+        let button = self.action.is_some() || self.details.is_some();
+        if button && !self.ok { None } else { time.lifetime(button) }
     }
 
     /// How long it has been up at `now`, not counting the time it was held.
@@ -60,13 +63,14 @@ impl Toast {
     }
 
     /// 1 until its last second, then down to 0.
-    pub fn opacity(&self, now: Instant) -> f32 {
-        let fading = self.age(now).as_secs_f32() - self.lifetime().saturating_sub(FADE).as_secs_f32();
+    pub fn opacity(&self, now: Instant, time: ToastTime) -> f32 {
+        let Some(life) = self.lifetime(time) else { return 1.0 };
+        let fading = self.age(now).as_secs_f32() - life.saturating_sub(FADE).as_secs_f32();
         1.0 - fading.clamp(0.0, 1.0)
     }
 
-    pub fn expired(&self, now: Instant) -> bool {
-        !self.held && self.age(now) >= self.lifetime()
+    pub fn expired(&self, now: Instant, time: ToastTime) -> bool {
+        !self.held && self.lifetime(time).is_some_and(|life| self.age(now) >= life)
     }
 }
 
@@ -113,14 +117,17 @@ impl AppState {
         self.toast_seq
     }
 
-    /// The pointer is over toast `id`, or over none: holds that one and lets any other go. A
-    /// fading toast comes back to full strength; one let go has at least `HOLD_GRACE` left.
+    /// The pointer is over toast `id` or the keyboard focus is in it, or neither is in any: holds
+    /// that one and lets any other go. A fading toast comes back to full strength; one let go has
+    /// at least `HOLD_GRACE` left.
     pub fn hold_toast(&mut self, id: Option<u64>, now: Instant) {
+        let time = self.settings.a11y.toast_time;
         for t in self.toasts.iter_mut().filter(|t| Some(t.id) != id && t.held) {
             (t.at, t.held) = (now, false);
         }
         if let Some(t) = self.toasts.iter_mut().find(|t| Some(t.id) == id && !t.held) {
-            t.counted = t.age(now).min(t.lifetime().saturating_sub(HOLD_GRACE));
+            let age = t.age(now);
+            t.counted = t.lifetime(time).map_or(age, |life| age.min(life.saturating_sub(HOLD_GRACE)));
             t.held = true;
         }
     }
@@ -132,7 +139,8 @@ impl AppState {
 
     /// Drops the toasts whose time is up at `now`.
     pub fn expire_toasts(&mut self, now: Instant) {
-        self.toasts.retain(|t| !t.expired(now));
+        let time = self.settings.a11y.toast_time;
+        self.toasts.retain(|t| !t.expired(now, time));
     }
 }
 
@@ -140,6 +148,8 @@ impl AppState {
 mod tests {
     use super::*;
     use glowfly_core::settings::Settings;
+
+    const T: ToastTime = ToastTime::Standard;
 
     fn secs(s: f32) -> Duration {
         Duration::from_secs_f32(s)
@@ -161,12 +171,12 @@ mod tests {
         st.toast_action(true, "with a button", action(), t0);
         let (plain, act) = (&st.toasts[0], &st.toasts[1]);
         assert_eq!(plain.age(t0 + secs(3.9)), secs(3.9));
-        assert_eq!(plain.opacity(t0 + secs(3.9)), 1.0);
-        assert!((plain.opacity(t0 + secs(4.5)) - 0.5).abs() < 0.01);
-        assert!(!plain.expired(t0 + secs(4.9)));
-        assert!(plain.expired(t0 + secs(5.0)));
-        assert!(!act.expired(t0 + secs(9.9)), "ten seconds with a button");
-        assert!(act.expired(t0 + secs(10.0)));
+        assert_eq!(plain.opacity(t0 + secs(3.9), T), 1.0);
+        assert!((plain.opacity(t0 + secs(4.5), T) - 0.5).abs() < 0.01);
+        assert!(!plain.expired(t0 + secs(4.9), T));
+        assert!(plain.expired(t0 + secs(5.0), T));
+        assert!(!act.expired(t0 + secs(9.9), T), "ten seconds with a button");
+        assert!(act.expired(t0 + secs(10.0), T));
         st.expire_toasts(t0 + secs(5.0));
         assert_eq!(st.toasts.len(), 1);
     }
@@ -179,7 +189,7 @@ mod tests {
         st.hold_toast(Some(id), t0 + secs(3.0));
         assert_eq!(st.held_toast(), Some(id));
         let t = &st.toasts[0];
-        assert!(!t.expired(t0 + secs(600.0)));
+        assert!(!t.expired(t0 + secs(600.0), T));
         assert_eq!(t.age(t0 + secs(600.0)), secs(3.0));
         st.expire_toasts(t0 + secs(600.0));
         assert_eq!(st.toasts.len(), 1, "a held toast stays");
@@ -187,8 +197,8 @@ mod tests {
         st.hold_toast(None, out);
         assert_eq!(st.held_toast(), None);
         let t = &st.toasts[0];
-        assert!(!t.expired(out + secs(1.9)));
-        assert!(t.expired(out + secs(2.0)), "five seconds less the three used");
+        assert!(!t.expired(out + secs(1.9), T));
+        assert!(t.expired(out + secs(2.0), T), "five seconds less the three used");
     }
 
     #[test]
@@ -196,18 +206,18 @@ mod tests {
         let (mut st, t0) = state();
         st.toast(true, "plain", t0);
         let id = st.toasts[0].id;
-        assert!(st.toasts[0].opacity(t0 + secs(4.6)) < 1.0);
+        assert!(st.toasts[0].opacity(t0 + secs(4.6), T) < 1.0);
         st.hold_toast(Some(id), t0 + secs(4.6));
         let t = &st.toasts[0];
-        assert_eq!(t.opacity(t0 + secs(4.6)), 1.0);
-        assert_eq!(t.age(t0 + secs(4.6)), t.lifetime() - HOLD_GRACE);
+        assert_eq!(t.opacity(t0 + secs(4.6), T), 1.0);
+        assert_eq!(t.age(t0 + secs(4.6)), t.lifetime(ToastTime::Standard).unwrap() - HOLD_GRACE);
         let out = t0 + secs(10.0);
         st.hold_toast(None, out);
         let t = &st.toasts[0];
-        assert_eq!(t.opacity(out + secs(0.9)), 1.0);
-        let half = t.opacity(out + secs(1.5));
+        assert_eq!(t.opacity(out + secs(0.9), T), 1.0);
+        let half = t.opacity(out + secs(1.5), T);
         assert!(half > 0.0 && half < 1.0, "{half}");
-        assert!(t.expired(out + secs(2.0)));
+        assert!(t.expired(out + secs(2.0), T));
     }
 
     #[test]

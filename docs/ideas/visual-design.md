@@ -86,6 +86,7 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - Check the Spanish labels for sentence case too (German capitalises its nouns)
 - A text-size preference that scales the five steps, apart from zoom
 - A semibold monospace face for status letters and emphasised code
+- A font choice on Preferences > Accessibility (an easier-to-read face, such as Atkinson Hyperlegible), left out of #426
 - Check that long context menus still fit small windows at 14 px items; scroll or regroup where they don't
 - Tune the Preferences label column for the longest translated labels at 14 px
 - The commit details' "ISSUES" / "CARDS" heading and its German and Spanish values are still all caps

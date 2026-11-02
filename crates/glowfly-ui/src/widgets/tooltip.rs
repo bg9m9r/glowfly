@@ -1,12 +1,12 @@
-//! The shared tooltip: egui's tooltip frame and timing for every tooltip in the app (`style`,
-//! `configure`), and the rich layout the toolbar's buttons use (`show`, `attach`): a title, a
-//! line of key caps, a weak state line, a sentence, an inset preview and a footer. Its reason
+//! The shared tooltip: egui's tooltip frame for every tooltip in the app (`style`; the timing
+//! is `theme::a11y::configure`'s), and the rich layout the toolbar's buttons use (`show`,
+//! `attach`): a title, a line of key caps, a weak state line, a sentence, an inset preview and a footer. Its reason
 //! form (`show_text`, `attach_text`) is that frame with one sentence: why a menu item is
 //! disabled, or what a setup item opens.
 //!
 //! Every `on_hover_text` gets the frame (rounded, softly shadowed, no pointer), the 360 px wrap
-//! width and the timing (400 ms of stillness; at once when another tooltip was just showing)
-//! without changes at its call site.
+//! width and the timing (Preferences > Accessibility's Tooltip delay of stillness; at once when
+//! another tooltip was just showing) without changes at its call site.
 
 use super::tooltip_motion;
 use super::truncate::{cut_left, truncate_label};
@@ -15,7 +15,7 @@ use crate::state::tip::{Tip, TipPreview, TipRow};
 use crate::ui::common::{status_color, status_label};
 use crate::ui::shortcuts::Caps;
 use crate::ui::theme::color;
-use crate::ui::theme::tokens::{motion, radius};
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, CornerRadius, Frame, Label, Margin, Response, RichText, Sense, Ui};
 use glowfly_core::i18n::Lang;
@@ -30,30 +30,6 @@ const TEXT_W: f32 = 360.0;
 /// overlay with `LG` corners and the Float shadow).
 pub fn style(style: &mut egui::Style) {
     style.spacing.tooltip_width = TEXT_W;
-}
-
-/// The tooltip timing, in both egui themes: shown after 400 ms of stillness, at once within
-/// 300 ms of another, fading in over `motion::STANDARD` (no animations at all with
-/// `reduce_motion`).
-/// Writes the style only when a value differs.
-pub fn configure(ctx: &egui::Context, reduce_motion: bool) {
-    let animation = motion::animation_time(reduce_motion);
-    for theme in [egui::Theme::Dark, egui::Theme::Light] {
-        let s = ctx.style_of(theme);
-        let i = &s.interaction;
-        let same = i.tooltip_delay == 0.4
-            && i.tooltip_grace_time == tooltip_motion::GRACE
-            && i.show_tooltips_only_when_still
-            && s.animation_time == animation;
-        if !same {
-            ctx.style_mut_of(theme, |s| {
-                s.interaction.tooltip_delay = 0.4;
-                s.interaction.tooltip_grace_time = tooltip_motion::GRACE;
-                s.interaction.show_tooltips_only_when_still = true;
-                s.animation_time = animation;
-            });
-        }
-    }
 }
 
 /// Draws `tip` in a tooltip's `ui`, 220 to 340 px wide; its key caps follow `keys`, and "and N
@@ -166,21 +142,6 @@ fn attach_ui(resp: Response, add: impl FnOnce(&mut Ui)) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn configure_sets_the_timing_in_both_themes() {
-        let ctx = egui::Context::default();
-        configure(&ctx, false);
-        for theme in [egui::Theme::Dark, egui::Theme::Light] {
-            let s = ctx.style_of(theme);
-            assert_eq!((s.interaction.tooltip_delay, s.interaction.tooltip_grace_time, s.animation_time), (0.4, 0.3, motion::STANDARD));
-            assert!(s.interaction.show_tooltips_only_when_still);
-        }
-        configure(&ctx, true);
-        for theme in [egui::Theme::Dark, egui::Theme::Light] {
-            assert_eq!(ctx.style_of(theme).animation_time, 0.0, "reduced motion");
-        }
-    }
 
     #[test]
     fn attach_text_shows_on_focus_and_hover() {
