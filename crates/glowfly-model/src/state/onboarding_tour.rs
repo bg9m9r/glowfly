@@ -62,12 +62,12 @@ impl TourStep {
             TourStep::Details => t.tr("tour.step.details.body").into(),
             TourStep::Palette => {
                 let open = match keys.hint(BindingId::Palette) {
-                    Some(k) => t.trf("tour.step.palette.open.key", &[("key", &k)]),
-                    None => t.tr("tour.step.palette.open.click").to_owned(),
+                    Some(k) => t.trf("tour.step.palette.body_open_key", &[("key", &k)]),
+                    None => t.tr("tour.step.palette.body_open_click").to_owned(),
                 };
                 let sheet = match keys.hint(BindingId::Sheet) {
-                    Some(k) => t.trf("tour.step.palette.sheet.key", &[("key", &k)]),
-                    None => t.tr("tour.step.palette.sheet.palette").to_owned(),
+                    Some(k) => t.trf("tour.step.palette.sheet_body_key", &[("key", &k)]),
+                    None => t.tr("tour.step.palette.sheet_body_palette").to_owned(),
                 };
                 format!("{open} {sheet}")
             }
@@ -100,7 +100,7 @@ mod tests {
         let body = TourStep::Palette.body(&keys, Lang::En);
         assert!(body.starts_with("Click Commands") && body.contains("Its Keyboard shortcuts entry"), "{body}");
         let german = TourStep::Palette.body(&keys, Lang::De);
-        assert!(german.starts_with(Lang::De.tr("tour.step.palette.open.click")), "{german}");
+        assert!(german.starts_with(Lang::De.tr("tour.step.palette.body_open_click")), "{german}");
     }
 
     #[test]

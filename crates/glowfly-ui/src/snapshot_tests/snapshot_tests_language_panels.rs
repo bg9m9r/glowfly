@@ -1,9 +1,9 @@
-//! Language snapshots of the welcome, the repository lists, Find repositories and the details
-//! panel: the welcome screen and its lists in German, the first-run welcome's identity step in
-//! Spanish (its captions must fit their slots) and its Start step in German, Find repositories
-//! in German, and the commit details, several commits (German), the WIP lists and a commit
-//! compared with the working directory (Spanish). Buttons found by their translated text still
-//! send their messages.
+//! Language snapshots of the welcome, the repository lists, Find repositories, the tour and the
+//! details panel: the welcome screen and its lists in German, the first-run welcome's identity
+//! step in Spanish (its captions must fit their slots) and its Start step in German, the tour's
+//! last card in German, Find repositories in German, and the commit details, several commits
+//! (German), the WIP lists and a commit compared with the working directory (Spanish). Buttons
+//! found by their translated text still send their messages.
 
 use super::common::short;
 use super::details_wip::discard_all_text;
@@ -95,7 +95,8 @@ fn welcome_start_german() {
     h.check_snapshot("welcome_start_german");
 }
 
-/// The tour's last card in German: its two buttons, Back and Done fit the card.
+/// The tour's last card in German: its title, sentences, buttons, counter and close tip are the
+/// German texts (the text snapshot keeps them for review; it does not measure their fit).
 #[test]
 fn tour_palette_german() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "tour-palette-german");
