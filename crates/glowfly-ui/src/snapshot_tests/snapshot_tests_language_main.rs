@@ -27,8 +27,15 @@ const ENGLISH: &[&str] = &[
     "Graph",
     "Message",
     "Changes",
+    "Author",
     "Commit",
     "Date",
+    // The graph's short ages.
+    "now",
+    "* min",
+    "* h",
+    "Yesterday",
+    "* d",
     "Load more",
     "Fetch full history",
     "Showing the newest * commits.",
@@ -225,12 +232,16 @@ fn the_check_catches_the_english_window() {
     let (mut st, dir) = panels("lang-main-english");
     st.settings.language = "en".into();
     st.settings.relative_dates = true;
+    // The newest commit three days old, so its date is a short age.
+    let commits = std::sync::Arc::get_mut(&mut st.snap.as_mut().unwrap().commits).unwrap();
+    commits.iter_mut().max_by_key(|c| c.time).unwrap().time = NOW - 3 * 86_400;
     let mut h = harness(st, true);
     h.run();
     let found = english_shown(&h);
     for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "No worktrees", "New branch"] {
         assert!(found.iter().any(|f| f == text), "{text} is caught: {found:?}");
     }
+    assert!(found.iter().any(|f| f == "3 d"), "short ages are caught: {found:?}");
     drop(h);
     remove_fixture(&dir);
 }
@@ -239,12 +250,21 @@ fn the_check_catches_the_english_window() {
 fn panels_german() {
     let (mut st, dir) = panels("lang-main-panels");
     st.settings.relative_dates = true;
+    st.settings.columns.changes = true;
     let newest = st.snap.as_ref().unwrap().commits.iter().map(|c| c.time).max().unwrap();
     let short_date = glowfly_core::dates::short_relative(Lang::De, newest, NOW, &st.settings.date_locale, 0);
-    let mut h = harness(st, true);
+    // Wide enough for every column, CHANGES too, to keep the message its 240 px.
+    let mut h = super::snapshot_tests::harness_sized(st, true, eframe::egui::vec2(1800.0, 820.0));
     h.run();
     let de = Lang::De;
-    for key in ["graph.header.refs", "graph.header.message", "graph.header.author", "graph.header.commit", "graph.header.date"] {
+    for key in [
+        "graph.header.refs",
+        "graph.header.message",
+        "graph.header.changes",
+        "graph.header.author",
+        "graph.header.commit",
+        "graph.header.date",
+    ] {
         assert!(shows(&h, de.tr(key)), "the {key} title is shown whole");
     }
     for key in [

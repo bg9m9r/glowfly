@@ -1,4 +1,4 @@
-window 1400x820
+window 1800x820
 Label "Glowfly 0.1.0"
 TabList
   Tab "demo" [selected]
@@ -47,12 +47,12 @@ Button "Worktree hinzufügen"
 Button "Aktionen für Worktrees"
 Label "Keine Worktrees"
 Label " · "
-Label "Worktree hinzufügen…" = "Worktree hinzufüg…"
+Label "Worktree hinzufügen…" = "Worktree hinzufüge…"
 Button "Submodul hinzufügen"
 Button "Aktionen für Submodule"
 Label "Keine Submodule"
 Label " · "
-Label "Submodul hinzufügen…" = "Submodul hinzuf…"
+Label "Submodul hinzufügen…" = "Submodul hinzufüg…"
 Button "Als Baum anzeigen"
 Button "Weitere Aktionen"
 Button "Alle bereitstellen"
@@ -74,6 +74,7 @@ Button "Erst etwas zum Committen bereitstellen" [disabled]
 Button "Weitere Commit-Optionen"
 Label "Schreibe eine Zusammenfassung für den Commit."
 Button "Resize branch / tag column"
+Button "Resize changes column"
 Button "Resize author column"
 Button "Resize commit column"
 Button "Resize date column"
@@ -118,6 +119,7 @@ painted:
   "Branch / Tag"
   "Graph"
   "Nachricht"
+  "Änderungen"
   "Autor"
   "Datum"
   "M 1"
