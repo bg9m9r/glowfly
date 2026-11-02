@@ -41,8 +41,7 @@ Why Dusk and Dawn look as they do:
 
 - The app icon is a dusk tile (indigo into plum) with a gold lantern-glowfly and branch lanes in
   gold, magenta and azure, the branch palette's own Gold, Magenta and Azure. Dusk takes the
-  tile for its neutrals and the lantern for its accent, so the main branch runs in gold as the
-  icon's first lane does, and the other lanes keep their colours.
+  tile for its neutrals and the lantern for its accent, and the lanes keep their colours.
 - One accent, not gold plus a second colour for links and focus: a second accent hue would be a
   fourth hue family on the chrome (see Rules) and would take one more slot from the branch hues.
   The magenta and azure of the icon appear as branch lanes, where the icon shows them.
@@ -110,7 +109,7 @@ Views never name a hex value: they read the active palette through `color::text(
 
 | Token | Theme key | What it is for |
 |---|---|---|
-| accent | `accent` | The theme's own colour: the lantern gold in Dusk, the iris in Dawn, the cobalt in Graphite and Porcelain, the sea glass in Midnight and Mist, the lattice green in the Garden pair and high contrast. Focus rings, links, checked controls, the selected row's bar, the active tab's line, the main branch's line, column-resize lines, header highlights. |
+| accent | `accent` | The theme's own colour: the lantern gold in Dusk, the iris in Dawn, the cobalt in Graphite and Porcelain, the sea glass in Midnight and Mist, the lattice green in the Garden pair and high contrast. Focus rings, links, checked controls, the selected row's bar, the active tab's line, column-resize lines, header highlights. |
 | primary | `primary`, `primary_border`, `primary_off` | The fill and edge of primary buttons. |
 | primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and on the dark themes' accents, white on the light ones'). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
@@ -171,7 +170,8 @@ its sidebar dot, the Branch picker's dot, the line under the active tab and the 
 branch row. Branch colours appear only as lines, dots and name pills: the Branch picker shows a
 4 px dot in the branch's line tone (a 1.5 px `weak` ring while HEAD is detached), never a tinted
 icon. The repository's main branch (the home remote's recorded HEAD, else `main`, then
-`master`) takes `accent`; every other branch takes one of 14 hues (P1), in slot order Rose,
+`master`) takes the trunk tone (`weak` ink; `text` in high contrast) unless pinned. Every other
+branch takes one of 14 hues (P1), in slot order Rose,
 Lime, Violet, Orange, Cyan, Magenta, Olive, Azure, Red, Teal, Orchid, Gold, Sky, Indigo. They
 keep out of the theme's accent band and the attention band, and neighbouring hues alternate
 between two lightness tiers (OKLCH L 0.70 / 0.80 in the dark tones). Beside Dusk's gold
@@ -212,8 +212,8 @@ Pins: a branch menu's Color submenu (local and remote branches, in the sidebar a
 pins a branch to a hue, or with Automatic lets it pick its own again. A pin is saved per
 repository (`Settings.branch_pins`, by branch key, so it colours the remote copies too) and
 recolours every surface at once. A pinned branch keeps its hue whatever its neighbours; an
-automatic neighbour moves off it, and two pinned neighbours may share a hue. Main has no pin:
-its Color item is disabled. A pin keeps its slot number, so under the colour-blind preset it
+automatic neighbour moves off it, and two pinned neighbours may share a hue. Main can be pinned
+like any branch. Automatic returns it to the trunk. A pin keeps its slot number, so under the colour-blind preset it
 shows as that number modulo 8.
 
 People: the initials in graph nodes and the commit details avatar take a person's own slot,
@@ -232,7 +232,7 @@ vision Yellow and Lime pass for Dusk's gold, so Dusk's set (`Palette::colour_bli
 light set's Yellow is the clear amber (named Orange) and its Lime the deeper #4d7002, which stays
 apart from the amber under protan vision; Dawn takes Porcelain's Wine for Periwinkle, which would pass
 for the iris. Theme files take their base's set. The preset switches with the profile.
-Branch names always appear beside their colour, and main keeps the accent.
+Branch names always appear beside their colour, and main is gray unless pinned.
 
 ### Terminal
 

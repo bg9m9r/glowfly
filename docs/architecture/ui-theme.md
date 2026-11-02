@@ -28,7 +28,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/branch_palette.rs`: the branch hues in two presets, standard and colour-blind friendly (the light tones trading Olive, Gold and a yellow for Wine, Navy and a clear amber), put into a palette by `applied`.
 - `theme/branch_palette_gold.rs`, `theme/branch_palette_more.rs`: the families that make room beside a gold, iris (Dawn) or cobalt accent.
 - `theme/branch_names.rs`: the branch hues' names in the language.
-- `theme/branch_colours.rs`: a branch swatch's line and chip tones, with a person's initials colours.
+- `theme/branch_colours.rs`: a branch swatch's line and chip tones (main's trunk tone among them), with a person's initials colours.
 - The branch colours are read by the graph's per-row colours (`graph/lane_colours.rs`) and the branch dots (`branch_dot.rs`).
 - `theme/surfaces.rs`: the colour tokens worked out from a palette, so theme files get them with no keys of their own: the field, guide and toolbar-group fills, the framed toolbar bar's edge (`tool_edge`), the overlay surface with its edge and inset, the hover, pressed and latched layers, a destructive menu item's text and hover pill (`menu_danger`, `danger_hover`), the semantic tones with their tints, the tonal fill and ink, and the brown-safe wash (`color::wash`) views use for translucent colour fills.
 - `ui::theme::color` holds the active palette (a thread-local, see Rules); `ThemeCache` owns palettes built from theme files.

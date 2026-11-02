@@ -5,19 +5,14 @@
 
 use crate::effect::Effect;
 use crate::state::AppState;
-use crate::state::branches::MAIN_USES_ACCENT;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
 
 /// Pins the branch key `key` to hue `slot` in the active repository, or with None lets it pick
-/// its own again. The main branch is refused (the menu disables it; a late message logs why),
-/// and so is a slot past the active palette's hues.
+/// its own again (for the main branch, the trunk tone). A slot past the active palette's hues is
+/// refused.
 pub(super) fn pin(st: &mut AppState, key: &str, slot: Option<u8>, fx: &mut Vec<Effect>) {
     let Some(snap) = st.snap.as_ref() else { return };
-    if snap.graph.owners.mainline.as_deref() == Some(key) {
-        st.log(false, MAIN_USES_ACCENT);
-        return;
-    }
     if slot.is_some_and(|s| s >= st.settings.branch_palette.slots()) {
         return;
     }

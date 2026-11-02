@@ -137,7 +137,7 @@ fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
     let mut failures = Vec::new();
     for (t, p) in palettes() {
         let p = applied(*p, BranchPalette::ColourBlind);
-        for (i, c) in p.branch.lanes.iter().copied().chain([p.accent]).enumerate() {
+        for (i, c) in p.branch.lanes.iter().copied().chain([super::branch_colours::trunk(&p)]).enumerate() {
             for (name, bg) in [("bg", p.bg), ("panel", p.panel)] {
                 let r = ratio(c, bg);
                 if r < 3.0 {
@@ -164,7 +164,8 @@ fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
 
 #[test]
 fn cb_tones_stay_apart_in_every_vision() {
-    // Each built-in's colour-blind lines against each other and its own accent (main's line).
+    // Each built-in's colour-blind lines against each other and its own accent (the selection
+    // bar).
     let mut failures = Vec::new();
     for (t, p) in palettes() {
         let floor = if p.dark { DARK_FLOOR } else { LIGHT_FLOOR };

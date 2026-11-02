@@ -15,6 +15,7 @@ const fn rgb(r: u8, g: u8, b: u8) -> Color32 {
 /// The earlier standard dark theme: green-tinted neutrals and the lattice green accent.
 pub const GARDEN_DARK: Palette = Palette {
     dark: true,
+    high_contrast: false,
     bg: rgb(0x15, 0x1b, 0x18),
     panel: rgb(0x1b, 0x22, 0x1e),
     toolbar: rgb(0x0f, 0x16, 0x12),
@@ -79,6 +80,7 @@ pub const GARDEN_DARK: Palette = Palette {
 /// The earlier standard light theme: warm paper and a deep green accent.
 pub const GARDEN_LIGHT: Palette = Palette {
     dark: false,
+    high_contrast: false,
     bg: rgb(0xf9, 0xf7, 0xf1),
     panel: rgb(0xfd, 0xfc, 0xf9),
     toolbar: rgb(0xec, 0xe9, 0xe1),

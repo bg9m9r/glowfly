@@ -2,14 +2,12 @@
 //! one row per hue of the active preset with its dot and name, the current choice checked in the
 //! state column (the dots in the icon column, so every label lines up). The
 //! key is the branch's colour key, so a pin on a local branch colours its remote copies too. The
-//! main branch always takes the accent: its item is disabled and says so on hover.
+//! main branch has the same submenu: its Automatic is the gray trunk tone, with its own tooltip.
 
 use super::branch_dot;
-use super::common::menu_item_if;
 use super::theme::branch_colours::line;
 use super::theme::{branch_names, color};
 use crate::msg::{GraphMsg, Msg};
-use crate::state::branches::MAIN_USES_ACCENT;
 use crate::ui::widgets::menu::{self, separator, submenu};
 use eframe::egui;
 use glowfly_core::branch_colour::Swatch;
@@ -22,19 +20,21 @@ fn pin(key: &str, slot: Option<u8>) -> Msg {
 
 /// The Color item for the branch key `key`.
 pub fn items(ui: &mut egui::Ui, t: Lang, key: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    if snap.graph.owners.mainline.as_deref() == Some(key) {
-        menu_item_if(msgs, ui, t.tr("branch.menu.color"), Some(MAIN_USES_ACCENT), pin(key, None));
-        return;
-    }
+    let main = snap.graph.owners.mainline.as_deref() == Some(key);
+    let (auto_dot, auto_tip) = if main {
+        (Some(line(Swatch::Trunk)), t.tr("branch.color.automatic.main.tip"))
+    } else {
+        (None, t.tr("branch.color.automatic.tip"))
+    };
     let branch = color::current().branch;
     let n = branch.preset.slots();
     let current = snap.graph.colouring.pins.get(key).map(|p| p % n);
     submenu(ui, t.tr("branch.menu.color"), |ui| {
         let auto = menu::item(t.tr("branch.color.automatic"))
             .current(current.is_none())
-            .icon(branch_dot::paint_slot, None)
+            .icon(branch_dot::paint_slot, auto_dot)
             .show(ui)
-            .on_hover_text(t.tr("branch.color.automatic.tip"));
+            .on_hover_text(auto_tip);
         if auto.clicked() {
             msgs.push(pin(key, None));
             ui.close_menu();

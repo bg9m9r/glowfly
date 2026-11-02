@@ -18,6 +18,7 @@ const fn hex(c: u32) -> Color32 {
 /// Near-neutral graphite greys with a cobalt accent.
 pub const GRAPHITE: Palette = Palette {
     dark: true,
+    high_contrast: false,
     bg: hex(0x191a1d),
     panel: hex(0x202225),
     toolbar: hex(0x121315),
@@ -70,6 +71,7 @@ pub const GRAPHITE: Palette = Palette {
 /// Neutral white paper, grey-black ink and cobalt: Graphite's light twin.
 pub const PORCELAIN: Palette = Palette {
     dark: false,
+    high_contrast: false,
     bg: hex(0xf6f7f9),
     panel: hex(0xfbfbfc),
     toolbar: hex(0xe9ebee),

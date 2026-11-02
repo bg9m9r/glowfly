@@ -127,7 +127,7 @@ fn hues_alternate_tiers() {
 fn lines_reach_3_to_1() {
     let mut failures = Vec::new();
     for (t, p) in palettes() {
-        let lines = p.branch.lanes.iter().copied().chain([p.accent]);
+        let lines = p.branch.lanes.iter().copied().chain([super::branch_colours::trunk(p)]);
         for (i, c) in lines.enumerate() {
             for (name, bg) in [("bg", p.bg), ("panel", p.panel)] {
                 let r = ratio(c, bg);
@@ -174,11 +174,39 @@ fn builtins_use_their_family() {
 }
 
 #[test]
-fn main_is_the_accent_and_slots_read_their_tones() {
+fn main_takes_the_trunk_and_slots_read_their_tones() {
     use super::branch_colours::{chip_in, line_in};
     use glowfly_core::branch_colour::Swatch;
-    assert_eq!((line_in(Swatch::Main, &LIGHT), chip_in(Swatch::Main, &LIGHT)), (LIGHT.accent, LIGHT.accent));
+    assert_eq!((line_in(Swatch::Trunk, &LIGHT), chip_in(Swatch::Trunk, &LIGHT)), (LIGHT.weak, LIGHT.weak));
+    let hc = &HIGH_CONTRAST_DARK;
+    assert_eq!((line_in(Swatch::Trunk, hc), chip_in(Swatch::Trunk, hc)), (hc.text, hc.text));
     assert_eq!((line_in(Swatch::Slot(4), &GARDEN_LIGHT), chip_in(Swatch::Slot(4), &GARDEN_LIGHT)), (LIGHT_LINES[4], LIGHT_TEXT[4]));
     assert_eq!(line_in(Swatch::Slot(13), &GARDEN_DARK), DARK_TONES[13]);
     assert_eq!(line_in(Swatch::Slot(11), &DUSK), GOLD_DARK_TONES[11]);
+}
+
+#[test]
+fn the_trunk_reaches_3_to_1_and_is_never_the_accent() {
+    use super::branch_colours::{chip_in, line_in};
+    use super::contrast::{ChipStyle, ref_chip};
+    use glowfly_core::branch_colour::Swatch;
+    let mut failures = Vec::new();
+    for (t, p) in palettes() {
+        let (line, chip) = (line_in(Swatch::Trunk, p), chip_in(Swatch::Trunk, p));
+        let edge = ref_chip(ChipStyle::Branch, chip, p).edge;
+        assert_eq!(edge, Some(chip), "{t}: main's chip is edged in the trunk tone");
+        assert_eq!(ref_chip(ChipStyle::Branch, chip, p).text, p.text, "{t}: and lettered in text");
+        for (what, c) in [("line", line), ("chip", chip)] {
+            if c == p.accent {
+                failures.push(format!("{t}: the trunk {what} is the accent"));
+            }
+            for (name, bg) in [("bg", p.bg), ("panel", p.panel)] {
+                let r = ratio(c, bg);
+                if r < 3.0 {
+                    failures.push(format!("{t} trunk {what} on {name}: {r:.2}:1"));
+                }
+            }
+        }
+    }
+    report(&failures);
 }

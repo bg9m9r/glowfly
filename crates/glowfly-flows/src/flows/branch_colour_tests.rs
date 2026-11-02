@@ -1,6 +1,6 @@
 //! Branch colours through the app: worked out by the load, kept when a status read turns the
 //! work tree dirty and the graph is laid out again with its WIP row, pinned from the branch menus
-//! (saved per repository, recoloured at once, refused for main), and the colour-blind preset's
+//! (saved per repository and recoloured at once, main too), and the colour-blind preset's
 //! hue count reaching the snapshot from Preferences and on a tab's return.
 
 use super::tests::{drive, git, scratch_repo, state};
@@ -9,7 +9,6 @@ use crate::effect::Effect;
 use crate::msg::{GraphMsg, Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
 use crate::runner;
 use crate::state::AppState;
-use crate::state::branches::MAIN_USES_ACCENT;
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::settings::BranchPalette;
 use std::path::PathBuf;
@@ -46,7 +45,7 @@ fn colours_survive_the_clean_to_dirty_relayout() {
     assert!(snap.graph.wip.is_none(), "clean");
     let keys = ["main", "topic", "fix-1"];
     let before: Vec<Swatch> = keys.iter().map(|k| snap.branch_swatch(k)).collect();
-    assert_eq!(before[0], Swatch::Main);
+    assert_eq!(before[0], Swatch::Trunk);
     assert_ne!(before[1], before[2], "side by side, never one hue");
 
     std::fs::write(dir.join("a.txt"), "changed\n").unwrap();
@@ -93,16 +92,34 @@ fn a_pin_recolours_at_once_is_saved_and_survives_a_reopen() {
 }
 
 #[test]
-fn main_and_slots_past_the_palette_are_refused() {
+fn pinning_main_is_saved_and_recolours_it() {
     let (mut st, dir) = opened("branch-pin-main");
+    assert_eq!(swatch(&st, "main"), Swatch::Trunk);
     let fx = pin(&mut st, "main", Some(3));
-    assert!(fx.is_empty(), "nothing saved");
-    assert_eq!(swatch(&st, "main"), Swatch::Main);
-    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(MAIN_USES_ACCENT));
-    assert!(st.settings.branch_pins.is_empty());
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved");
+    assert_eq!(swatch(&st, "main"), Swatch::Slot(3));
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    assert_eq!(st.settings.branch_pins_for(&real).get("main"), Some(&3));
+    let _ = std::fs::remove_dir_all(&dir);
+}
 
+#[test]
+fn automatic_returns_main_to_the_trunk() {
+    let (mut st, dir) = opened("branch-unpin-main");
+    let _ = pin(&mut st, "main", Some(3));
+    let fx = pin(&mut st, "main", None);
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved");
+    assert_eq!(swatch(&st, "main"), Swatch::Trunk);
+    assert!(st.settings.branch_pins.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn slots_past_the_palette_are_refused() {
+    let (mut st, dir) = opened("branch-pin-past");
     st.settings.branch_palette = BranchPalette::ColourBlind;
     assert!(pin(&mut st, "topic", Some(10)).is_empty(), "past the 8 colour-blind hues");
+    assert!(pin(&mut st, "main", Some(8)).is_empty(), "main too");
     assert!(st.settings.branch_pins.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -117,7 +134,7 @@ fn the_colour_blind_preset_reaches_the_snapshot_and_a_parked_tab() {
     drive(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.graph.colouring.n(), 8);
-    assert!(snap.graph.swatches.iter().all(|s| matches!(s, Swatch::Main) || matches!(s, Swatch::Slot(n) if *n < 8)));
+    assert!(snap.graph.swatches.iter().all(|s| matches!(s, Swatch::Trunk) || matches!(s, Swatch::Slot(n) if *n < 8)));
 
     // The first tab was parked while the preset changed: it is recoloured when it comes back,
     // before its refresh lands.
@@ -125,7 +142,7 @@ fn the_colour_blind_preset_reaches_the_snapshot_and_a_parked_tab() {
     let snap = st.snap.as_ref().unwrap();
     assert!(glowfly_core::paths::same_folder(&snap.workdir, &dir), "back on the first repository");
     assert_eq!(snap.graph.colouring.n(), 8);
-    assert!(snap.graph.swatches.iter().all(|s| matches!(s, Swatch::Main) || matches!(s, Swatch::Slot(n) if *n < 8)));
+    assert!(snap.graph.swatches.iter().all(|s| matches!(s, Swatch::Trunk) || matches!(s, Swatch::Slot(n) if *n < 8)));
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&other);
 }

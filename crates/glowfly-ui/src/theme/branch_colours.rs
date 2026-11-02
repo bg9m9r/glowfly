@@ -1,6 +1,7 @@
-//! A branch swatch's colours in a palette: the accent for the main branch, else its slot's line
-//! tone (lines, dots, bands) or chip tone (ref chips). Also a person's colours: the initials in
-//! the graph and the commit details take a slot from the author's email (never the accent).
+//! A branch swatch's colours in a palette: the trunk tone for the main branch without a pin (the
+//! `weak` ink, `text` in high contrast; never the accent), else its slot's line tone (lines,
+//! dots, bands) or chip tone (ref chips). Also a person's colours: the initials in the graph and
+//! the commit details take a slot from the author's email.
 
 use super::color::{self, Palette};
 use super::contrast::{clean_ink, mix, unbrown};
@@ -14,9 +15,15 @@ const INITIALS_FILL: f32 = 0.30;
 /// `s`'s line tone in the active palette.
 pub fn line(s: Swatch) -> Color32 {
     match s {
-        Swatch::Main => color::accent(),
+        Swatch::Trunk => trunk(&color::current()),
         Swatch::Slot(i) => color::lane(usize::from(i)),
     }
+}
+
+/// The trunk tone in `p`, for the main branch's line and its chip's edge: `weak`, or `text` in
+/// the high-contrast themes.
+pub fn trunk(p: &Palette) -> Color32 {
+    if p.high_contrast { p.text } else { p.weak }
 }
 
 /// `s`'s chip tone in the active palette.
@@ -47,21 +54,21 @@ pub fn initials_fill(lane: Color32, p: &Palette) -> Color32 {
 #[cfg(test)]
 pub fn line_in(s: Swatch, p: &Palette) -> Color32 {
     match s {
-        Swatch::Main => p.accent,
+        Swatch::Trunk => trunk(p),
         Swatch::Slot(i) => p.branch.lanes[usize::from(i) % LANE_COUNT],
     }
 }
 
-/// `s`'s chip tone in `p`.
+/// `s`'s chip tone in `p` (for the trunk, `contrast::ref_chip` letters the chip in `text`).
 pub fn chip_in(s: Swatch, p: &Palette) -> Color32 {
     match s {
-        Swatch::Main => p.accent,
+        Swatch::Trunk => trunk(p),
         Swatch::Slot(i) => p.branch.chips[usize::from(i) % LANE_COUNT],
     }
 }
 
-/// Every swatch: Main, then the slots in palette order (for tests).
+/// Every swatch: Trunk, then the slots in palette order (for tests).
 #[cfg(test)]
 pub fn swatches() -> impl Iterator<Item = Swatch> {
-    std::iter::once(Swatch::Main).chain((0..glowfly_core::branch_colour::SLOTS).map(Swatch::Slot))
+    std::iter::once(Swatch::Trunk).chain((0..glowfly_core::branch_colour::SLOTS).map(Swatch::Slot))
 }

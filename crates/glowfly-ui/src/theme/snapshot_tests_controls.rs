@@ -72,9 +72,9 @@ fn render_controls(name: &str, p: Palette) {
             let painter = ui.painter();
             let mut x = rect.left();
             let mut y = rect.top() + 12.0;
-            let mut chips = vec![(ChipStyle::Head, Swatch::Main, "HEAD"), (ChipStyle::CurrentBranch, Swatch::Main, "✔ main")];
+            let mut chips = vec![(ChipStyle::Head, Swatch::Trunk, "HEAD"), (ChipStyle::CurrentBranch, Swatch::Trunk, "✔ main")];
             chips.extend(swatches().skip(1).map(|lane| (ChipStyle::Branch, lane, "topic")));
-            chips.extend([(ChipStyle::Remote, Swatch::Main, "origin/main"), (ChipStyle::Tag, Swatch::Main, "v1.2.0")]);
+            chips.extend([(ChipStyle::Remote, Swatch::Trunk, "origin/main"), (ChipStyle::Tag, Swatch::Trunk, "v1.2.0")]);
             for (style, lane, text) in chips {
                 let look = contrast::ref_chip(style, chip_in(lane, &p), &p);
                 if x > rect.right() - 90.0 {

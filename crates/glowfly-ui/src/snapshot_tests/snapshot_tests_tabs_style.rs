@@ -81,7 +81,7 @@ fn on_topic(st: &mut AppState, dir: &std::path::Path) {
 fn active_tab_branch_line() {
     let (mut st, dir) = five_tabs("tabs-branch-line");
     on_topic(&mut st, &dir);
-    assert!(st.snap.as_ref().unwrap().head_swatch().is_some_and(|s| s != glowfly_core::branch_colour::Swatch::Main));
+    assert!(st.snap.as_ref().unwrap().head_swatch().is_some_and(|s| s != glowfly_core::branch_colour::Swatch::Trunk));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("active_tab_branch_line");

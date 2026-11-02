@@ -1,5 +1,6 @@
 //! Pull request items in a repository with no remote on a code host: the LOCAL and REMOTE row
-//! menus and a graph label's remote submenu keep one disabled item whose hover says why. Shares
+//! menus and a graph label's remote submenu keep one disabled item whose hover says why; with no
+//! remotes at all the item is left out, as are the others that can't apply there. Shares
 //! the fixture repository and renderer with `snapshot_tests`.
 
 use super::menu_testing::{open_submenu, submenu_item};
@@ -20,7 +21,6 @@ use std::path::PathBuf;
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 const ORIGIN_OFF_HOST: &str = "origin isn't on a code host such as GitHub or GitLab, so it can't take pull requests.";
-const NO_REMOTES: &str = "Add a remote on a code host such as GitHub or GitLab to create pull requests.";
 
 fn tip(st: &AppState, name: &str) -> Oid {
     st.snap.as_ref().unwrap().locals.iter().find(|b| b.name == name).and_then(|b| b.oid).unwrap()
@@ -115,8 +115,34 @@ fn branch_menu_pr_no_remotes() {
     let mut h = harness(st, true);
     h.run();
     open_row_menu(&mut h, true);
-    assert!(h.get_by_label("Create pull request…").is_disabled());
-    assert!(hover_shows(&mut h, "Create pull request…", NO_REMOTES));
+    assert!(h.query_by_label("Create pull request…").is_none(), "nothing to unblock here: left out");
+    assert!(h.query_by_label("Set upstream…").is_none());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The checked-out main branch with no remotes: only rows that can apply, one of them disabled
+/// (Push, whose reason says how to unblock it).
+#[test]
+fn branch_menu_head_no_remotes() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "branch-menu-head-no-remotes");
+    let snap = st.snap.as_mut().unwrap();
+    snap.remotes.clear();
+    snap.remote_urls.clear();
+    for b in snap.locals.iter_mut() {
+        (b.upstream, b.tracking, b.upstream_ref) = (None, None, None);
+    }
+    assert_eq!(snap.graph.owners.mainline.as_deref(), Some("main"));
+    let mut h = harness(st, true);
+    h.run();
+    let rect = h.get_by_label("✔  main").bounding_box().expect("the sidebar row");
+    click(&mut h, egui::pos2(rect.x0 as f32 + 40.0, ((rect.y0 + rect.y1) / 2.0) as f32), PointerButton::Secondary);
+    for gone in ["Hide in graph", "Check for conflicts", "Set upstream…", "Create pull request…"] {
+        assert!(h.query_by_label(gone).is_none(), "{gone} can't apply");
+    }
+    assert!(h.get_by_label("Push").is_disabled());
+    assert!(!h.get_by_label("Color").is_disabled());
+    h.check_snapshot("branch_menu_head_no_remotes");
     drop(h);
     remove_fixture(&dir);
 }

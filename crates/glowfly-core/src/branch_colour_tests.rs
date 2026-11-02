@@ -41,9 +41,27 @@ fn owners(names: &[&str], neighbours: &[(u32, u32)], mainline: Option<&str>) -> 
 }
 
 #[test]
-fn the_mainline_takes_the_accent() {
+fn the_mainline_takes_the_trunk() {
     let o = owners(&["main", "topic"], &[(0, 1)], Some("main"));
-    assert_eq!(resolve(&o, &Colouring::default()), [Swatch::Main, Swatch::Slot(4)]);
+    assert_eq!(resolve(&o, &Colouring::default()), [Swatch::Trunk, Swatch::Slot(4)]);
+}
+
+#[test]
+fn a_pinned_mainline_takes_its_slot() {
+    let o = owners(&["main", "topic"], &[(0, 1)], Some("main"));
+    let c = Colouring { pins: [("main".to_owned(), 4)].into_iter().collect(), ..Colouring::default() };
+    assert_eq!(resolve(&o, &c), [Swatch::Slot(4), Swatch::Slot(5)], "topic moves off main's pinned slot");
+}
+
+#[test]
+fn the_trunks_neighbours_keep_their_preferred_slots() {
+    let names = ["main", "topic", "fix-1", "b3", "b9"];
+    let o = owners(&names, &[(0, 1), (0, 2), (0, 3), (0, 4)], Some("main"));
+    let swatches = resolve(&o, &Colouring::default());
+    assert_eq!(swatches[0], Swatch::Trunk);
+    for (i, name) in names.iter().enumerate().skip(1) {
+        assert_eq!(swatches[i], Swatch::Slot(slot_of(name.as_bytes(), SLOTS)), "{name}");
+    }
 }
 
 #[test]
@@ -104,7 +122,7 @@ fn the_colour_blind_count_stays_below_eight_and_pins_wrap() {
     let o = owners(&refs, &pairs, Some("b0"));
     let c = Colouring { slots: COLOUR_BLIND_SLOTS, pins: [("b5".to_owned(), 11)].into_iter().collect() };
     let swatches = resolve(&o, &c);
-    assert!(swatches.iter().all(|s| matches!(s, Swatch::Main) || matches!(s, Swatch::Slot(n) if *n < 8)), "{swatches:?}");
+    assert!(swatches.iter().all(|s| matches!(s, Swatch::Trunk) || matches!(s, Swatch::Slot(n) if *n < 8)), "{swatches:?}");
     assert_eq!(swatches[5], Swatch::Slot(3), "a pin of 11 shows as 11 % 8");
     assert_eq!(c.slot_for("b5"), 3);
 }

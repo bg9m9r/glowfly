@@ -20,6 +20,8 @@ pub use super::surfaces::{
 pub struct Palette {
     /// Dark background: picks egui's dark style and dims graph lanes.
     pub dark: bool,
+    /// The high-contrast themes (and theme files built on them): the trunk is drawn in `text`.
+    pub high_contrast: bool,
     // Neutrals.
     /// The base surface (content behind panels).
     pub bg: Color32,

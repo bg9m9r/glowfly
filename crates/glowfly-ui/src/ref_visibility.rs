@@ -2,11 +2,10 @@
 //! and tag menu items, the markers on hidden and shown-only rows, and the banner above the
 //! lists. Views only push `GraphMsg::GraphFilter`; `update` saves the filter and reloads.
 
-use super::common::{menu_item, menu_item_if};
+use super::common::menu_item;
 use super::theme::color;
 use crate::msg::GraphMsg;
 use crate::msg::Msg;
-use crate::state::branches::HEAD_ALWAYS_SHOWN;
 use crate::ui::theme::type_scale;
 use eframe::egui::{
     self, Align, Color32, CursorIcon, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Shape, Stroke, UiBuilder, pos2, vec2,
@@ -19,14 +18,14 @@ fn filter_msg(op: FilterOp) -> Msg {
 }
 
 /// "Hide/Show in graph" and "Show only this/Stop showing only this" for the ref `full`, in a
-/// menu headed by its name. Hiding is disabled with the reason on hover for the checked-out branch (`head`).
+/// menu headed by its name. Hiding is left out for the checked-out branch (`head`): HEAD is always
+/// in the graph.
 pub fn menu_items(ui: &mut egui::Ui, t: Lang, full: &str, filter: &GraphFilter, head: bool, msgs: &mut Vec<Msg>) {
     let r = full.to_owned();
     if filter.is_hidden(full) {
         menu_item(msgs, ui, t.tr("refs.menu.show_in_graph"), filter_msg(FilterOp::Show(r.clone())));
-    } else {
-        let blocked = head.then_some(HEAD_ALWAYS_SHOWN);
-        menu_item_if(msgs, ui, t.tr("refs.menu.hide_in_graph"), blocked, filter_msg(FilterOp::Hide(r.clone())));
+    } else if !head {
+        menu_item(msgs, ui, t.tr("refs.menu.hide_in_graph"), filter_msg(FilterOp::Hide(r.clone())));
     }
     if filter.is_soloed(full) {
         menu_item(msgs, ui, t.tr("refs.menu.stop_soloing"), filter_msg(FilterOp::Unsolo(r)));

@@ -92,7 +92,7 @@ start with `state/`, `update/` or `ui/`.
 - `menus.rs`, `branch_menu.rs`, `remote_branch_menu.rs`, `tags.rs`, `remotes/mod.rs`: the object menus (commit, multi-commit, local and remote branch, tag, remote).
 - Each object menu is headed once by its object (`common::menu_header`, `common::commit_menu_header`), with its items in the review's intent groups (spec §10), previews as split rows (`common::menu_row_preview`), app keys in the shortcut column, and a Copy submenu only for three or more copy items; the commit menus' wording is in `state/commit_menu.rs`, what they leave out or fold together in `state/menu_trim.rs`.
 - `remote_branch_menu.rs`: a remote branch's menu, shared by the REMOTE rows and the graph's remote labels, with its reasons in `state/remote_branch.rs`.
-- `branch_colour_menu.rs`: the branch menus' Color submenu.
+- `branch_colour_menu.rs`: the branch menus' Color submenu, main's included (its Automatic is the trunk tone).
 - `stack_menu.rs`: the local branch menu's stack header note and its restack, Push stack and Create pull requests for the stack items.
 - `create_pr_dialog.rs`: the create dialog's step line and Skip during a stack's run.
 - `stack_rows.rs`: the LOCAL rows' stack indentation and painted elbows.

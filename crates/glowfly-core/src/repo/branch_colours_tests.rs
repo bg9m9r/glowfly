@@ -1,7 +1,7 @@
 //! Branch colours on loaded repositories: which branch is main, every owner coloured, and the
 //! colours kept when the work tree turns dirty and the graph is laid out again.
 
-use crate::branch_colour::Swatch;
+use crate::branch_colour::{Colouring, Swatch};
 use crate::repo::*;
 use crate::testutil::*;
 use git2::Repository;
@@ -44,9 +44,26 @@ fn mainline_from_remote_head() {
     git(&dir, &["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/trunk"]);
     let s = open(&dir);
     assert_eq!(s.mainline().as_deref(), Some("trunk"));
-    assert_eq!(s.branch_swatch("trunk"), Swatch::Main);
-    assert_eq!(s.ref_swatch("refs/remotes/origin/trunk"), Some(Swatch::Main), "every copy of main");
-    assert_ne!(s.branch_swatch("main"), Swatch::Main);
+    assert_eq!(s.branch_swatch("trunk"), Swatch::Trunk);
+    assert_eq!(s.ref_swatch("refs/remotes/origin/trunk"), Some(Swatch::Trunk), "every copy of main");
+    assert_ne!(s.branch_swatch("main"), Swatch::Trunk);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_pinned_mainline_takes_its_slot_on_every_copy() {
+    let dir = scratch_repo("colour-pinned-trunk");
+    commit(&dir, "a.txt", "base");
+    git(&dir, &["branch", "-m", "trunk"]);
+    git(&dir, &["remote", "add", "origin", "https://example.invalid/r.git"]);
+    git(&dir, &["update-ref", "refs/remotes/origin/trunk", "HEAD"]);
+    git(&dir, &["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/trunk"]);
+    let mut s = open(&dir);
+    assert_eq!(s.branch_swatch("trunk"), Swatch::Trunk);
+    s.set_colouring(Colouring { pins: [("trunk".to_owned(), 3)].into_iter().collect(), ..Colouring::default() });
+    assert_eq!(s.branch_swatch("trunk"), Swatch::Slot(3));
+    assert_eq!(s.ref_swatch("refs/remotes/origin/trunk"), Some(Swatch::Slot(3)), "every copy of main");
+    assert_eq!(s.head_swatch(), Some(Swatch::Slot(3)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -60,7 +77,7 @@ fn mainline_falls_back_to_main_then_master() {
     git(&dir, &["branch", "-D", "main"]);
     let s = open(&dir);
     assert_eq!(s.mainline().as_deref(), Some("master"));
-    assert_eq!(s.head_swatch(), Some(Swatch::Main));
+    assert_eq!(s.head_swatch(), Some(Swatch::Trunk));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -72,7 +89,7 @@ fn no_mainline_without_main_or_master() {
     let s = open(&dir);
     assert_eq!(s.mainline(), None);
     assert!(matches!(s.branch_swatch("trunk"), Swatch::Slot(_)));
-    assert!(s.graph.swatches.iter().all(|w| *w != Swatch::Main));
+    assert!(s.graph.swatches.iter().all(|w| *w != Swatch::Trunk));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -85,7 +102,7 @@ fn load_colours_every_owner() {
     for b in ["main", "topic", "fix-1"] {
         assert_eq!(Some(s.branch_swatch(b)), tip_swatch(&s, b), "{b}");
     }
-    assert_eq!(s.branch_swatch("main"), Swatch::Main);
+    assert_eq!(s.branch_swatch("main"), Swatch::Trunk);
     assert_ne!(s.branch_swatch("topic"), s.branch_swatch("fix-1"), "side by side, though their names share a slot");
     let topic = Repository::open(&dir).unwrap().refname_to_id("refs/heads/topic").unwrap();
     assert_eq!(s.commit_branch(topic).map(|(k, _)| k), Some("topic"));
