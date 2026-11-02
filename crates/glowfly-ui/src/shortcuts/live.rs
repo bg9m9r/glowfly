@@ -77,27 +77,10 @@ impl Live {
 }
 
 /// The actions whose keys a focused terminal keeps for its shell when pressed without Shift,
-/// Alt or Cmd (Ctrl+W, Ctrl+P, Ctrl+Q, F5, and macOS's Control+digit pane keys); their shifted
-/// keys still act.
+/// Alt or Cmd (Ctrl+W, Ctrl+P, Ctrl+Q, F5…); their shifted keys still act.
 fn terminal_keeps(id: BindingId) -> bool {
     use BindingId as I;
-    matches!(
-        id,
-        I::NewTab
-            | I::CloseTab
-            | I::NextTab
-            | I::GoToTab
-            | I::LastTab
-            | I::Palette
-            | I::Search
-            | I::Refresh
-            | I::Quit
-            | I::FocusSidebar
-            | I::FocusCentral
-            | I::FocusFiles
-            | I::FocusDiff
-            | I::FocusCommitMessage
-    )
+    matches!(id, I::NewTab | I::CloseTab | I::NextTab | I::GoToTab | I::LastTab | I::Palette | I::Search | I::Refresh | I::Quit)
 }
 
 /// Whether `id` applies with what is open; `shell` says whether the press would reach a focused
@@ -129,9 +112,10 @@ pub(super) fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         I::OpenFold | I::CloseFold => !covered && !l.sheet && !l.typing && l.diff,
         I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
         I::SelectAllCommits | I::SelectFocusedCommit => !covered && !l.sheet && !l.typing && l.graph && !l.terminal,
-        // The pane keys work from a text field too; a focused terminal keeps its plain F6.
-        I::FocusSidebar | I::FocusCentral | I::FocusFiles | I::FocusDiff | I::FocusCommitMessage => !covered && !l.sheet,
-        I::NextPane | I::PrevPane => !covered && !l.sheet && !(l.terminal && shell),
+        // The pane keys work from a text field too. A focused terminal keeps them on every
+        // system (shells use Alt+digit and Control+digit); F6 and Shift+F6 are the way out of it.
+        I::FocusSidebar | I::FocusCentral | I::FocusFiles | I::FocusDiff | I::FocusCommitMessage => !covered && !l.sheet && !l.terminal,
+        I::NextPane | I::PrevPane => !covered && !l.sheet,
         I::SelectHead | I::PrevRefCommit | I::NextRefCommit | I::CopyCommitIds => {
             !covered && !l.sheet && !l.typing && l.graph && !l.terminal
         }
