@@ -36,11 +36,12 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
 
     row(ui, "Signing format", |ui| {
         let mut chosen = format;
-        egui::ComboBox::from_id_salt("gpg-format").selected_text(format.label()).width(230.0).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("gpg-format").selected_text(format.label()).width(230.0).show_ui(ui, |ui| {
             for f in SigningFormat::ALL {
                 ui.selectable_value(&mut chosen, f, f.label());
             }
         });
+        crate::ui::access::from_label(&combo.response);
         if chosen != format {
             git.signing_format = chosen.config_value().to_owned();
             set(msgs, "gpg.format", chosen.config_value());
@@ -80,7 +81,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         ui.horizontal(|ui| {
             let current = if git.signing_key.is_empty() { "<None>".to_owned() } else { git.signing_key.clone() };
             let mut chosen: Option<String> = None;
-            egui::ComboBox::from_id_salt("signing-key").selected_text(current).width(300.0).show_ui(ui, |ui| {
+            let combo = egui::ComboBox::from_id_salt("signing-key").selected_text(current).width(300.0).show_ui(ui, |ui| {
                 if ui.selectable_label(git.signing_key.is_empty(), "<None>").clicked() {
                     chosen = Some(String::new());
                 }
@@ -97,6 +98,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                     }
                 }
             });
+            crate::ui::access::from_label(&combo.response);
             if let Some(id) = chosen {
                 git.signing_key = id.clone();
                 set(msgs, "user.signingkey", &id);

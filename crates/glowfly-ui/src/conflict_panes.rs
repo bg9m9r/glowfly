@@ -162,6 +162,7 @@ fn line_check(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, c: &Chunk, (k,
     let mut child = ui.new_child(builder);
     let tip = if taken { t.tr("conflict.panes.leave_line.tip") } else { t.tr("conflict.panes.take_line.tip") };
     let check = child.add(controls::Check::without_text(&mut taken));
+    crate::ui::access::name_if_unnamed(&check, tip);
     let resp = check.on_hover_text(tip).on_disabled_hover_text(t.tr("conflict.panes.edited.tip"));
     if resp.changed() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictToggleLine { chunk: k, side, line }));

@@ -8,9 +8,9 @@ Dialog
   Label "Optional"
   MultilineTextInput "Description" = "Starting without ~/.config/demo panics."
   Label "Labels"
-  TextInput
+  TextInput "Search labels"
   Label "Assignees"
-  TextInput
+  TextInput "Search people"
   CheckBox "Create a branch for it afterwards" [on]
   Label "Couldn't create the issue: the server said “Validation Failed: assignees is invalid”"
   Button "Cancel"
@@ -18,6 +18,4 @@ Dialog
 painted:
   "bug"
   "ui"
-  "Search labels"
   "ada"
-  "Search people"

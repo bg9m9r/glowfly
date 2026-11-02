@@ -3,6 +3,7 @@
 //! sections, labelled checkbox rows, text fields and combos that fit the column, help and
 //! warning lines, and the page's primary button.
 
+use crate::ui::access;
 use crate::ui::theme::{color, controls, type_scale};
 use crate::ui::widgets::{self, buttons};
 use eframe::egui::{self, Align2, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
@@ -31,20 +32,20 @@ fn row_layout(avail: f32) -> RowLayout {
 }
 
 /// One form row: right-aligned label, then the control(s) and help text underneath. With too
-/// little room beside the label, the label goes on its own line above the controls.
+/// little room beside the label, the label goes on its own line above the controls. The label
+/// names the fields, combos and boxes in the row that have no name of their own.
 pub fn row(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui)) {
     let lay = row_layout(ui.available_width());
     if lay.stacked {
-        if !label.is_empty() {
-            ui.label(RichText::new(label).font(type_scale::font(type_scale::BODY)).color(color::text()));
-        }
+        let named =
+            (!label.is_empty()).then(|| ui.label(RichText::new(label).font(type_scale::font(type_scale::BODY)).color(color::text())).id);
         ui.vertical(|ui| {
             ui.set_max_width(lay.field_w);
-            add(ui);
+            access::with_label(&ui.ctx().clone(), named, || add(ui));
         });
     } else {
         ui.horizontal_top(|ui| {
-            let (r, _) = ui.allocate_exact_size(vec2(LABEL_W, 24.0), Sense::hover());
+            let (r, resp) = ui.allocate_exact_size(vec2(LABEL_W, 24.0), Sense::hover());
             ui.painter().text(
                 pos2(r.right(), r.center().y),
                 Align2::RIGHT_CENTER,
@@ -52,11 +53,15 @@ pub fn row(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui)) {
                 type_scale::font(type_scale::BODY),
                 color::text(),
             );
+            let named = (!label.is_empty()).then(|| {
+                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, label));
+                resp.id
+            });
             // The field column starts GAP after the label, item spacing included.
             ui.add_space((GAP - ui.spacing().item_spacing.x).max(0.0));
             ui.vertical(|ui| {
                 ui.set_max_width(lay.field_w);
-                add(ui);
+                access::with_label(&ui.ctx().clone(), named, || add(ui));
             });
         });
     }
@@ -101,6 +106,7 @@ pub fn check_row(ui: &mut Ui, label: &str, value: &mut bool, check: &str, help_t
     out.expect("the row draws its contents")
 }
 
+/// A combo of `options`, named by its row's label unless named after.
 pub fn combo<T: PartialEq + Copy>(ui: &mut Ui, id: &str, value: &mut T, options: &[(T, &str)]) {
     combo_response(ui, id, value, options);
 }
@@ -108,7 +114,7 @@ pub fn combo<T: PartialEq + Copy>(ui: &mut Ui, id: &str, value: &mut T, options:
 /// `combo`, returning the closed combo's response (to name it for screen readers).
 pub fn combo_response<T: PartialEq + Copy>(ui: &mut Ui, id: &str, value: &mut T, options: &[(T, &str)]) -> egui::Response {
     let current = options.iter().find(|(v, _)| v == value).map(|(_, l)| *l).unwrap_or("");
-    egui::ComboBox::from_id_salt(id)
+    let r = egui::ComboBox::from_id_salt(id)
         .selected_text(current)
         .width(fit(ui, 230.0))
         .show_ui(ui, |ui| {
@@ -116,7 +122,9 @@ pub fn combo_response<T: PartialEq + Copy>(ui: &mut Ui, id: &str, value: &mut T,
                 ui.selectable_value(value, *v, *label);
             }
         })
-        .response
+        .response;
+    access::from_label(&r);
+    r
 }
 
 pub fn help(ui: &mut Ui, text: &str) {

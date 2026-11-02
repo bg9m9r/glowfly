@@ -178,6 +178,8 @@ pub(super) fn part_w(slot: f32, dot: bool) -> f32 {
 fn part(ui: &egui::Ui, r: Response, caption: &str, (name, dot): (Arc<Galley>, Option<Option<Color32>>), full: &str, cut: bool) -> Response {
     let rect = r.rect;
     let icon_w = if dot.is_some() { ICON_ROOM } else { 0.0 };
+    // Named with its caption ("Branch: main"), as the picker reads on screen.
+    let named = format!("{caption}: {full}");
     // In a very narrow window the caption is cut too.
     let caption = cut_galley(ui.ctx(), cut_job(caption.to_owned(), type_scale::font(CAPTION), color::weak()), rect.width() - 2.0 * PAD_X);
     let p = ui.painter();
@@ -197,7 +199,7 @@ fn part(ui: &egui::Ui, r: Response, caption: &str, (name, dot): (Arc<Galley>, Op
     }
     p.galley(pos2(x + icon_w, row_y - name.size().y / 2.0), name, color::text());
     widgets::caret(p, pos2(rect.right() - PAD_X - 6.0, row_y + 1.0), color::weak());
-    r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, full));
+    r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &named));
     if cut { r.on_hover_text(full) } else { r }
 }
 

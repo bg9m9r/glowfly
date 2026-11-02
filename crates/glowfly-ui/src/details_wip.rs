@@ -215,9 +215,10 @@ pub(super) fn wip_file_row(
             let (rect, _) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
             super::needs_you::badge(ui.painter(), rect);
         } else {
-            ui.label(
+            let letter = ui.label(
                 RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)),
             );
+            super::file_status::name_status(&letter, ctx.lang, f.status);
         }
         super::list_row::file_tree::file_text(ui, &f.path, ctx.depth, selected, 0.0);
         super::path_warnings::mark(ui, ctx.lang, f);

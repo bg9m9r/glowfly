@@ -29,7 +29,8 @@ pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, m
             .hint_text("Filter by action or key")
             .desired_width(320.0)
             .margin(vec2(8.0, 5.0));
-        controls::field(ui, field);
+        let field = controls::field(ui, field);
+        crate::ui::access::name_if_unnamed(&field, "Filter by action or key");
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let why = (!keys.customized()).then_some("Every shortcut has its default key");
             let reset = buttons::secondary("Reset all to defaults").enabled(keys.customized() && !page.confirm_reset_all).why(why);

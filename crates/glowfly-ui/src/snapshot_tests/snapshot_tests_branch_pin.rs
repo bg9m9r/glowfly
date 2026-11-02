@@ -73,7 +73,7 @@ fn branch_colour_main_submenu() {
     let mut h = harness(st, true);
     h.run();
     // The checked-out branch's row carries the check glyph.
-    open_row_menu(&mut h, "✔  main", true);
+    open_row_menu(&mut h, "main, checked out", true);
     open_submenu(&mut h, "Color");
     assert_eq!(submenu_item(&h, "Color", "Automatic").toggled(), Some(eframe::egui::accesskit::Toggled::True), "the trunk");
     h.check_snapshot("branch_colour_main_submenu");

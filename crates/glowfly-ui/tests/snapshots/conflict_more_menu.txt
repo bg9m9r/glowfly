@@ -6,8 +6,8 @@ TabList
 Button "Close tab demo"
 Button "Close tab api-server"
 Button "New tab"
-Button "demo"
-Button "main"
+Button "Repository: demo"
+Button "Branch: main"
 Button "Undo the last action" [disabled]
 Button "Redo the undone action" [disabled]
 Button "Pull the current branch" [disabled]
@@ -28,21 +28,27 @@ Button "Show work in progress"
 Label "Merge in progress"
 Label "1 conflicted file left"
 Unknown "Left panel contents"
-TextInput
+TextInput "Filter branches, pull requests and issues"
+Button "Local, 4 branches"
 Button "New branch"
 Button "Local actions"
 Button "login-page"
-Button "✔  main"
+Button "main, checked out"
 Button "search"
 Button "theme-tweaks"
+Button "Remote, 0 remotes"
 Button "Add remote"
 Button "Remote actions"
+Button "Tags, 1 tag"
 Button "New tag"
 Button "Tags actions"
+Button "Stashes, 0 stashes"
 Button "Stash changes"
 Button "Stashes actions"
+Button "Worktrees, 0 worktrees"
 Button "Add worktree"
 Button "Worktrees actions"
+Button "Submodules, 0 submodules"
 Button "Add submodule"
 Button "Submodules actions"
 Button "Abort merge"
@@ -59,18 +65,18 @@ Button "View conflicts"
 Button "Hide: Check what goes in"
 Label "Check what goes in"
 Label "Staged: 0 · Left out: 1"
-Button "Show as tree"
+Button "Show staged files as tree"
 Label "Staged files (0)"
 Unknown "Staged files (0)"
 Label "None"
 Label "Other changes aren't part of the merge; they stay out unless you stage them."
-Button "Show as tree"
+Button "Show unstaged files as tree"
 Button "More actions"
 Button "Stage all"
 Label "Unstaged files (1)"
 Unknown "Unstaged files (1)"
 Button "README.md" [off]
-Label "M"
+Label "Modified"
 Button "Show: Commit the merge"
 Label "Commit the merge"
 Label "Opens once the conflicts are resolved."
@@ -101,12 +107,12 @@ Label "theme-tweaks"
 Button "Take all"
 CheckBox "Take" [on]
 CheckBox "Take" [off]
-CheckBox [on]
-CheckBox [off]
+CheckBox "Leave this line out" [on]
+CheckBox "Take this line" [off]
 CheckBox "Take" [off]
 CheckBox "Take" [off]
-CheckBox [off]
-CheckBox [off]
+CheckBox "Take this line" [off]
+CheckBox "Take this line" [off]
 painted:
   "Repository"
   "Branch"
@@ -127,6 +133,7 @@ painted:
   "Filter (branches, PRs, issues)"
   "Local"
   "4"
+  "✔  main"
   "Remote"
   "0"
   "Tags"
@@ -139,6 +146,7 @@ painted:
   "0"
   "1"
   "2"
+  "M"
   "3"
   "1"
   "setting_1 = 1"

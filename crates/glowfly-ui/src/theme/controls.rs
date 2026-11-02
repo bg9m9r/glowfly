@@ -29,6 +29,7 @@ impl egui::Widget for Field<'_> {
         // No child ui or scope: auto ids and layout stay those of an unwrapped TextEdit.
         let r = ui.add(self.0);
         ui.set_style(saved);
+        crate::ui::access::from_label(&r);
         r
     }
 }
@@ -78,6 +79,7 @@ impl egui::Widget for Check<'_> {
                 WidgetInfo::selected(WidgetType::Checkbox, ui.is_enabled(), *checked, label)
             }
         });
+        crate::ui::access::from_label(&response);
         if ui.is_rect_visible(rect) {
             let big = paint_box(ui, rect, *checked, indeterminate, response.hovered());
             if response.has_focus() {

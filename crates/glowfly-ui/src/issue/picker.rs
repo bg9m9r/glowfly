@@ -48,6 +48,7 @@ pub(super) fn multi(ui: &mut Ui, p: &Picker, query: &mut String, chosen: &mut Ve
         }
     }
     let field = controls::field(ui, egui::TextEdit::singleline(query).hint_text(p.hint).desired_width(f32::INFINITY));
+    crate::ui::access::name_if_unnamed(&field, p.hint);
     let list_id = ui.make_persistent_id((p.id_salt, "matches"));
     let last: Option<Rect> = ui.data(|d| d.get_temp(list_id));
     // Still shown while the pointer is over it, so a click that takes the focus off the field lands.

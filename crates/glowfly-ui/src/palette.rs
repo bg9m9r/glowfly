@@ -129,6 +129,7 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 .desired_width(f32::INFINITY)
                 .font(type_scale::font(type_scale::SUBHEAD)),
         );
+        crate::ui::access::name_if_unnamed(&r, hint);
         if !prompting {
             r.request_focus();
         }

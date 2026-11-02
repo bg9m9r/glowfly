@@ -87,6 +87,8 @@ impl egui::Widget for TextField<'_> {
         if let Some(id) = id {
             edit = edit.id(id);
         }
+        // With no label naming it, the hint does (a screen reader reads no hint otherwise).
+        let hint_name = hint.as_ref().map(|h| h.text().to_owned());
         if let Some(hint) = hint {
             edit = edit.hint_text(hint);
         }
@@ -94,6 +96,7 @@ impl egui::Widget for TextField<'_> {
             edit = edit.char_limit(n);
         }
         let mut r = ui.add(controls::Field(edit));
+        crate::ui::access::name_if_unnamed(&r, hint_name.as_deref().unwrap_or(""));
         // egui reports the text's rect; the field is the whole box.
         r.rect += margin;
         if r.has_focus() {

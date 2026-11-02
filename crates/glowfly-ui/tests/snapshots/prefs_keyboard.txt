@@ -4,7 +4,7 @@ Button "Back"
 Label "Preferences"
 Label "Keyboard shortcuts"
 Label "Click a key to change it, or Add to give an action another key. Fixed keys work in one place only and can't be changed."
-TextInput
+TextInput "Filter by action or key"
 Button "Reset all to defaults" [disabled]
 Label "Staging and committing"
 Label "Stage the file or the selected lines"
@@ -539,7 +539,6 @@ painted:
   "Terminal"
   "Commit signing"
   "SSH"
-  "Filter by action or key"
   "U"
   "Ctrl"
   "+"

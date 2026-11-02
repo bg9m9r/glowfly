@@ -1,5 +1,5 @@
 Dialog
-  TextInput [focused]
+  TextInput "Type a command, branch or tag name" [focused]
   Label "Zuletzt verwendet"
   Button "Refresh"
   Label "Vorschläge"
@@ -83,7 +83,6 @@ Dialog
   Button "Checkout tag v0.1.0"
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
-  "Type a command, branch or tag name"
   "F5"
   "Ctrl+Shift+S"
   "Ctrl+B"

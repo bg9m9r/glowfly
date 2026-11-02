@@ -118,7 +118,7 @@ fn diff_image_before_after() {
 fn diff_image_added() {
     let (st, dir) = with_image("diff-image-added", ThemeChoice::Dark, None, &png(true));
     let h = render("diff_image_added", st, true);
-    assert!(h.query_by_label("Added").is_some(), "the missing side's placeholder");
+    assert!(h.query_all_by_label("Added").count() >= 2, "the file's status and the missing side's placeholder");
     drop(h);
     remove_fixture(&dir);
 }

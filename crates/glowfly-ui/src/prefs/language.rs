@@ -27,12 +27,13 @@ fn language_row(ui: &mut Ui, s: &mut Settings) {
             None => system_label.clone(),
         };
         // A fixed id: the label changes with the language, the widget's state must not.
-        egui::ComboBox::from_id_salt("language").width(super::fit(ui, 320.0)).selected_text(selected).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("language").width(super::fit(ui, 320.0)).selected_text(selected).show_ui(ui, |ui| {
             ui.selectable_value(&mut s.language, SYSTEM.to_owned(), system_label);
             for lang in Lang::ALL {
                 ui.selectable_value(&mut s.language, lang.code().to_owned(), lang.native_name());
             }
         });
+        crate::ui::access::from_label(&combo.response);
         help(ui, t.tr("prefs.general.language.help"));
     });
 }
@@ -55,11 +56,12 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
         } else {
             current
         };
-        egui::ComboBox::from_id_salt("locale").selected_text(shown).width(super::fit(ui, 230.0)).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("locale").selected_text(shown).width(super::fit(ui, 230.0)).show_ui(ui, |ui| {
             for (k, label) in glowfly_core::dates::LOCALES {
                 ui.selectable_value(&mut s.date_locale, k.to_owned(), label);
             }
         });
+        crate::ui::access::from_label(&combo.response);
     });
     // After the locale picker, so a new locale's hints and previews show on the same frame.
     let [date, long, date_time, full] = [DateKind::Date, DateKind::LongDate, DateKind::DateTime, DateKind::Full].map(|k| s.date_default(k));

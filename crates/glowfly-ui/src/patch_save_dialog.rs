@@ -97,7 +97,9 @@ fn checklist(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: &Snapshot) {
             for f in &files[range] {
                 ui.horizontal(|ui| {
                     let mut on = form.chosen.contains(&f.path);
-                    let boxed = ui.add(controls::Check::without_text(&mut on)).changed();
+                    let check = ui.add(controls::Check::without_text(&mut on));
+                    crate::ui::access::name_if_unnamed(&check, &f.path);
+                    let boxed = check.changed();
                     ui.label(
                         RichText::new(status_label(f.status).to_string())
                             .font(type_scale::mono(type_scale::BODY))
