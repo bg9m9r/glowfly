@@ -14,7 +14,7 @@ mod info;
 mod line_comment;
 mod merge;
 mod review;
-mod threads;
+pub(crate) mod threads;
 
 use super::UiCache;
 use super::theme::color;
@@ -26,6 +26,7 @@ use crate::state::pull_request::{Files, PrTab, PrView, Tone};
 use crate::state::pull_request_commits::tab_label;
 use crate::state::pull_request_line_map::on_local_file;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::DiffTarget;
@@ -176,11 +177,8 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &PrView, msgs: &mut Vec<Msg>) 
                 msgs.push(Msg::PullRequest(PullRequestMsg::Close));
             }
             const DRAFT: &str = "Draft";
-            let chip_w = if pr.draft {
-                ui.painter().layout_no_wrap(DRAFT.to_owned(), type_scale::font(type_scale::CAPTION), color::weak()).size().x + 12.0
-            } else {
-                0.0
-            };
+            let draft = Chip::new(ChipSize::Badge, DRAFT).look(Look::new(color::raised(), color::weak()));
+            let chip_w = if pr.draft { draft.width(ui.ctx()) } else { 0.0 };
             let no_link = format!("The service sent no link for this {}.", v.noun);
             let lead_w = crate::ui::panel_header::text_w(ui, &v.label) + chip_w;
             let open_label = t.tr("panel.header.open_in_browser");
@@ -197,8 +195,7 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &PrView, msgs: &mut Vec<Msg>) 
                     ui.add(egui::Label::new(title).truncate());
                 });
                 if pr.draft {
-                    let (rect, _) = ui.allocate_exact_size(vec2(chip_w, 20.0), Sense::hover());
-                    widgets::chip(ui.painter(), rect.left(), rect.center().y, DRAFT, color::raised(), color::weak());
+                    draft.show(ui);
                 }
             });
         });

@@ -1,4 +1,4 @@
-//! Predicted merge conflicts: the toolbar chip (the coral needs-you pill: the warning mark and
+//! Predicted merge conflicts: the toolbar chip (a coral needs-you Small control: the warning mark and
 //! the number of conflicting files in its ink) with its popover, and the report dialog for checks the branch menus ask
 //! for. Texts come from state/conflict_check.rs; the buttons send the same Merge and Rebase
 //! jobs as the branch menus.
@@ -13,14 +13,12 @@ use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::popover_below;
-use eframe::egui::{self, Id, RichText, Sense, pos2, vec2};
+use eframe::egui::{self, Id, RichText, Sense};
 use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
 use glowfly_core::conflict_check::Prediction;
 use glowfly_core::i18n::Lang;
 use glowfly_model::conflict_check::ConflictCheckMsg;
 
-/// The chip's height; the toolbar row is 48px.
-const HEIGHT: f32 = 24.0;
 /// The chip's click target and its popover (one of each per window).
 const CHIP_ID: &str = "conflict-chip";
 const POPOVER_ID: &str = "conflict-popover";
@@ -47,11 +45,9 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let count = if paths.is_empty() { "!".to_owned() } else { paths.len().to_string() };
     let galley = ui.painter().layout_no_wrap(count, type_scale::font(type_scale::SMALL), super::needs_you::ink());
-    let (rect, _) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, HEIGHT), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(super::needs_you::control_size(galley.size().x), Sense::hover());
     let resp = ui.interact(rect, Id::new(CHIP_ID), Sense::click());
-    let p = ui.painter();
-    super::needs_you::paint_pill(p, rect, resp.hovered());
-    p.galley(pos2(rect.left() + 27.0, rect.center().y - galley.size().y / 2.0), galley, super::needs_you::ink());
+    super::needs_you::paint_control(ui.painter(), rect, resp.hovered(), galley);
     let target = report.request.target.name.clone();
     let label = t.trf("conflict_check.chip.name", &[("target", &target)]);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &label));

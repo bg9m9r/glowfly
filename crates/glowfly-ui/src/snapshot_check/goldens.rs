@@ -71,6 +71,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("title_bar_mac_dark", Top(108.0)),
     ("tabs_restyled", Window),
     ("tabs_hover", Top(40.0)),
+    // The trust chip waiting beside the conflict chip, then at rest.
+    ("toolbar_trust_waiting_dark", Top(108.0)),
+    ("toolbar_trust_rest_dark", Top(108.0)),
     ("tabs_new_tab_hover", Top(40.0)),
     ("tabs_close_focus", Top(40.0)),
     ("section_header_focus", TopLeft(280.0, 200.0)),
@@ -166,6 +169,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("pull_request_line_comment_dark", Window),
     // The design sheets, fonts, colours and icons.
     ("controls_dark", Window),
+    // Every chip and badge kind: only the two chip heights.
+    ("chips_catalog_dark", Window),
     ("controls_light", Window),
     ("controls_high_contrast_dark", Window),
     ("controls_high_contrast_light", Window),
@@ -206,6 +211,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 const IMAGE_ONLY: &[&str] = &[
     // `conflict_line_picks` in Porcelain: the check marks' contrast on the light tints.
     "conflict_line_picks_light",
+    // The trust chip at rest: the same names as `toolbar_trust_waiting_dark`; only its look differs.
+    "toolbar_trust_rest_dark",
     // `hint_row_undo` in Porcelain.
     "hint_row_undo_light",
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.

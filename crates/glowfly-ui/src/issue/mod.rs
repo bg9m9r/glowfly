@@ -7,8 +7,8 @@
 mod comment_box;
 mod conversation;
 pub mod create_dialog;
-mod info;
-mod picker;
+pub(crate) mod info;
+pub(crate) mod picker;
 
 use super::markdown_cache::MarkdownCache;
 use super::theme::color;

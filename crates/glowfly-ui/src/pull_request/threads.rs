@@ -23,6 +23,7 @@ use crate::ui::theme::controls;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::forge::ReviewThread;
 use glowfly_core::settings::Settings;
@@ -83,11 +84,9 @@ pub(super) fn filter_bar(ui: &mut Ui, v: &PrView, path: Option<&str>, msgs: &mut
     ui.add_space(4.0);
 }
 
-fn chip(ui: &mut Ui, text: &str, fg: Color32) {
-    let w = ui.painter().layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg).size().x + 12.0;
-    let (rect, resp) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, text));
-    widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::raised(), fg);
+/// A thread's state badge, `text` in `fg` on the raised fill.
+pub(crate) fn chip(ui: &mut Ui, text: &str, fg: Color32) {
+    Chip::new(ChipSize::Badge, text).look(Look::new(color::raised(), fg)).show(ui);
 }
 
 /// A link that goes to the thread's line, or says why it can't.

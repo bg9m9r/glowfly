@@ -6,14 +6,14 @@ use super::theme::color;
 use crate::msg::{Msg, PrefsMsg, RepoMsg};
 use crate::state::signatures::{BadgeState, badge};
 use crate::state::{AppState, PrefPage};
-use crate::ui::theme::type_scale;
+use crate::ui::widgets::chip::{Chip, ChipSize, Lead, Look};
 use crate::ui::widgets::menu::context_menu;
-use eframe::egui::{self, Color32, CornerRadius, Painter, Pos2, Sense, Stroke, StrokeKind, pos2, vec2};
+use eframe::egui::{self, Color32, Painter, Pos2, Stroke, vec2};
 use glowfly_core::repo::CommitDetail;
 use glowfly_core::signature_check::Verdict;
 
-/// The pill's height.
-const HEIGHT: f32 = 20.0;
+/// The glyph's size inside the chip's glyph slot.
+const GLYPH: f32 = 8.0;
 
 /// The mark drawn before the label.
 #[derive(Clone, Copy)]
@@ -48,18 +48,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
         Verdict::Revoked | Verdict::Bad => (color::removed(), Glyph::Cross),
     };
 
-    let galley = ui.painter().layout_no_wrap(b.label.into(), type_scale::font(type_scale::SMALL), color::text());
-    let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 30.0, HEIGHT), Sense::click());
-    let p = ui.painter();
-    let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
-    p.rect_filled(rect, radius, color::wash(tint, if resp.hovered() { 0.28 } else { 0.16 }));
-    p.rect_stroke(rect, radius, Stroke::new(1.0_f32, tint), StrokeKind::Inside);
-    paint_glyph(p, pos2(rect.left() + 12.0, rect.center().y), glyph, tint);
-    p.galley(pos2(rect.left() + 21.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
-
-    let label = b.label;
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
-    let resp = resp.on_hover_text(b.tooltip);
+    let mark = move |p: &Painter, c: Pos2, _slot: f32| paint_glyph(p, c, glyph, tint);
+    let look = Look::new(color::wash(tint, 0.16), color::text()).edged(tint);
+    let resp = Chip::new(ChipSize::Chip, b.label).look(look).lead(Lead::Paint(&mark)).button(ui).on_hover_text(b.tooltip);
     let key = b.checked.map(|c| c.key).unwrap_or_default();
     let oid = d.oid;
     context_menu(&resp, |ui| {
@@ -73,11 +64,13 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
     });
 }
 
-/// Paints `glyph` about 7px wide around `c`, as shapes (the bundled fonts lack check marks and
+/// Paints `glyph` `GLYPH` px wide around `c`, as shapes (the bundled fonts lack check marks and
 /// crosses).
 fn paint_glyph(p: &Painter, c: Pos2, glyph: Glyph, tint: Color32) {
     let stroke = Stroke::new(1.6_f32, tint);
-    let at = |x: f32, y: f32| c + vec2(x, y);
+    // Drawn on a 7 px grid, scaled to the glyph's size.
+    let k = GLYPH / 7.0;
+    let at = |x: f32, y: f32| c + vec2(x * k, y * k);
     match glyph {
         Glyph::Check => {
             p.line_segment([at(-3.5, 0.0), at(-1.0, 2.5)], stroke);
@@ -88,7 +81,7 @@ fn paint_glyph(p: &Painter, c: Pos2, glyph: Glyph, tint: Color32) {
             p.line_segment([at(-3.0, 3.0), at(3.0, -3.0)], stroke);
         }
         Glyph::Ring => {
-            p.circle_stroke(c, 3.5, Stroke::new(1.4_f32, tint));
+            p.circle_stroke(c, 3.5 * k, Stroke::new(1.4_f32, tint));
         }
     }
 }
