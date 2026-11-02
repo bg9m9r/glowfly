@@ -125,6 +125,26 @@ fn slots_past_the_palette_are_refused() {
 }
 
 #[test]
+fn switching_to_the_colour_blind_preset_moves_a_trunk_neighbour_off_a_near_slot() {
+    let (mut st, dir) = opened("branch-trunk-near");
+    // A commit on main after the others forked, so fix-1's line runs beside main's.
+    std::fs::write(dir.join("main.txt"), "main").unwrap();
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "main moves on"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    st.settings.branch_palette = BranchPalette::ColourBlind;
+    drive(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let Swatch::Slot(k) = swatch(&st, "fix-1") else { panic!("fix-1 is automatic") };
+    // The shell reports the new palette's slots that pass for the trunk; say fix-1's is one.
+    let fx = update(&mut st, Msg::Graph(GraphMsg::TrunkNear(1 << k)), Instant::now());
+    assert!(fx.is_empty(), "nothing to save or reload");
+    assert_eq!(swatch(&st, "main"), Swatch::Trunk);
+    assert!(matches!(swatch(&st, "fix-1"), Swatch::Slot(s) if s != k && s < 8), "fix-1 moves off the near slot");
+    assert_eq!(st.snap.as_ref().unwrap().graph.colouring.trunk_near, 1 << k);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn the_colour_blind_preset_reaches_the_snapshot_and_a_parked_tab() {
     let (mut st, dir) = opened("branch-preset");
     let other = scratch_repo("branch-preset-other");

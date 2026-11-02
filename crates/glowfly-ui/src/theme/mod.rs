@@ -43,6 +43,7 @@ pub mod surfaces;
 pub mod terminal_scheme;
 pub mod tokens;
 pub mod type_scale;
+pub mod vision;
 
 #[cfg(test)]
 pub use branch_palette::applied;
@@ -189,6 +190,8 @@ pub struct ThemeCache {
     /// worked out for, and those colours (None: the palette's own).
     terminal_key: Option<(TerminalColours, u64, Palette)>,
     terminal: Option<families::Ansi>,
+    /// The palette's slots near the trunk (`branch_colours::trunk_near`).
+    trunk_near: u16,
 }
 
 impl ThemeCache {
@@ -220,6 +223,7 @@ impl ThemeCache {
             let high_contrast =
                 matches!(choice.builtin(system_dark), Some(BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight));
             self.mica = if high_contrast { None } else { super::backdrop::mica_tint(&palette) };
+            self.trunk_near = branch_colours::trunk_near(&palette);
             self.palette = Some(palette);
             self.key = Some((choice.clone(), themes.generation, system_dark, branches));
         }
@@ -233,6 +237,12 @@ impl ThemeCache {
         if ctx.options(|o| o.theme_preference) != theme.into() {
             ctx.set_theme(theme);
         }
+    }
+
+    /// The hue slots that pass for the trunk in the selected palette, for the model
+    /// (`GraphMsg::TrunkNear`).
+    pub fn trunk_near(&self) -> u16 {
+        self.trunk_near
     }
 
     /// The selected palette's Mica tints: None when it must stay solid.

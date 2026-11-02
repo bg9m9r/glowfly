@@ -10,7 +10,7 @@ source file, update its line here.
 - `owners.rs`: which branch owns each node and lane, naming a merge's other parents from its message: `merge_names.rs`. `Owners::extend` goes on from the last row's lane owners for more rows.
 - `Snapshot::lay_out_graph` (`repo/branch_colours.rs`) lays the graph out with its owners and colours, at load and when the work tree turns clean or dirty; `Snapshot::layout_job` hands the same work to a worker (`LayoutJob`, `LayoutFit`) for a large history.
 - `branch_colour.rs`: branch colours: a branch's key (its name, without the remote), its hue slot from an FNV-1a hash of the key (main takes the trunk unless pinned), and a person's slot from their email (`person_slot`).
-- `resolve` gives main the accent, holds pinned branches and keeps side-by-side branches on different hues.
+- `resolve` gives main the trunk unless pinned, holds pinned branches, keeps side-by-side branches on different hues and moves the trunk's automatic neighbours off the hues that pass for it (`Colouring::trunk_near`).
 - `Snapshot::set_colouring` recolours a loaded graph after a pin or preset change.
 
 ## Diff, whole-file and conflict rows

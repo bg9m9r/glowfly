@@ -53,6 +53,40 @@ fn a_pinned_mainline_takes_its_slot() {
     assert_eq!(resolve(&o, &c), [Swatch::Slot(4), Swatch::Slot(5)], "topic moves off main's pinned slot");
 }
 
+/// main beside topic (whose name prefers slot 4), with slot 4 passing for the trunk.
+fn near_four() -> Colouring {
+    Colouring { trunk_near: 1 << 4, ..Colouring::default() }
+}
+
+#[test]
+fn a_trunk_neighbour_skips_the_slots_near_the_trunk() {
+    let o = owners(&["main", "topic"], &[(0, 1)], Some("main"));
+    assert_eq!(resolve(&o, &near_four()), [Swatch::Trunk, Swatch::Slot(5)]);
+}
+
+#[test]
+fn a_pinned_neighbour_keeps_a_slot_near_the_trunk() {
+    let o = owners(&["main", "topic"], &[(0, 1)], Some("main"));
+    let c = Colouring { pins: [("topic".to_owned(), 4)].into_iter().collect(), ..near_four() };
+    assert_eq!(resolve(&o, &c), [Swatch::Trunk, Swatch::Slot(4)]);
+}
+
+#[test]
+fn owners_not_beside_the_trunk_ignore_trunk_near() {
+    let o = owners(&["main", "topic"], &[], Some("main"));
+    assert_eq!(resolve(&o, &near_four()), [Swatch::Trunk, Swatch::Slot(4)]);
+    let pinned_main = Colouring { pins: [("main".to_owned(), 9)].into_iter().collect(), ..near_four() };
+    let beside = owners(&["main", "topic"], &[(0, 1)], Some("main"));
+    assert_eq!(resolve(&beside, &pinned_main), [Swatch::Slot(9), Swatch::Slot(4)], "a pinned main is no trunk");
+}
+
+#[test]
+fn with_every_slot_near_the_trunk_a_neighbour_keeps_its_own() {
+    let o = owners(&["main", "topic"], &[(0, 1)], Some("main"));
+    let c = Colouring { slots: 2, trunk_near: 0b11, ..Colouring::default() };
+    assert_eq!(resolve(&o, &c), [Swatch::Trunk, Swatch::Slot(slot_of(b"topic", 2))]);
+}
+
 #[test]
 fn the_trunks_neighbours_keep_their_preferred_slots() {
     let names = ["main", "topic", "fix-1", "b3", "b9"];
@@ -120,7 +154,7 @@ fn the_colour_blind_count_stays_below_eight_and_pins_wrap() {
     let refs: Vec<&str> = names.iter().map(String::as_str).collect();
     let pairs: Vec<(u32, u32)> = (0..29).map(|i| (i, i + 1)).collect();
     let o = owners(&refs, &pairs, Some("b0"));
-    let c = Colouring { slots: COLOUR_BLIND_SLOTS, pins: [("b5".to_owned(), 11)].into_iter().collect() };
+    let c = Colouring { slots: COLOUR_BLIND_SLOTS, pins: [("b5".to_owned(), 11)].into_iter().collect(), ..Colouring::default() };
     let swatches = resolve(&o, &c);
     assert!(swatches.iter().all(|s| matches!(s, Swatch::Trunk) || matches!(s, Swatch::Slot(n) if *n < 8)), "{swatches:?}");
     assert_eq!(swatches[5], Swatch::Slot(3), "a pin of 11 shows as 11 % 8");

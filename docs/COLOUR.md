@@ -170,8 +170,9 @@ its sidebar dot, the Branch picker's dot, the line under the active tab and the 
 branch row. Branch colours appear only as lines, dots and name pills: the Branch picker shows a
 4 px dot in the branch's line tone (a 1.5 px `weak` ring while HEAD is detached), never a tinted
 icon. The repository's main branch (the home remote's recorded HEAD, else `main`, then
-`master`) takes the trunk tone (`weak` ink; `text` in high contrast) unless pinned. Every other
-branch takes one of 14 hues (P1), in slot order Rose,
+`master`) takes the trunk tone (`weak` ink; `text` in high contrast) unless pinned. An automatic
+branch beside the trunk skips any hue that passes for the trunk in a vision its preset is built
+for. Every other branch takes one of 14 hues (P1), in slot order Rose,
 Lime, Violet, Orange, Cyan, Magenta, Olive, Azure, Red, Teal, Orchid, Gold, Sky, Indigo. They
 keep out of the theme's accent band and the attention band, and neighbouring hues alternate
 between two lightness tiers (OKLCH L 0.70 / 0.80 in the dark tones). Beside Dusk's gold

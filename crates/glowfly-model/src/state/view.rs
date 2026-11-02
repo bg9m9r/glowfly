@@ -166,6 +166,9 @@ pub struct ViewState {
     pub frame_at: Option<Instant>,
     /// UTC offset (seconds) used to display times; the local zone in the app, fixed in tests.
     pub utc_offset: i32,
+    /// The slots that pass for the trunk tone in the active palette (a bitmask), as the shell
+    /// reported them (`GraphMsg::TrunkNear`); `update` folds them into each repository's colouring.
+    pub trunk_near: u16,
     /// The recent frames' times, set by the shell after each frame, for the frame-time overlay.
     pub frame_times: crate::state::frame_times::FrameSummary,
     /// Fetched avatars waiting for the shell to turn them into textures.
@@ -275,6 +278,7 @@ impl Default for ViewState {
             now: 0,
             frame_at: None,
             utc_offset: 0,
+            trunk_near: 0,
             frame_times: Default::default(),
             avatars_loaded: Vec::new(),
             diff_lines: lines::LineSelection::default(),
