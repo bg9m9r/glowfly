@@ -67,7 +67,8 @@ jobs:
         shell: pwsh
         run: |
           Install-Module PSScriptAnalyzer -RequiredVersion 1.23.0 -Scope CurrentUser -Force
-          $found = foreach ($f in 'scripts/installer-check-windows.ps1', 'scripts/update-feed-check.ps1', 'scripts/package-windows.ps1') {
+          $found = foreach ($f in 'scripts/installer-check-windows.ps1', 'scripts/update-feed-check.ps1', 'scripts/package-windows.ps1',
+                                  'scripts/make-perf-repos.ps1', 'scripts/make-perf-repos-test.ps1', 'scripts/perf-repos/build.ps1', 'scripts/perf-repos/clone.ps1') {
             Invoke-ScriptAnalyzer -Path $f -Settings scripts/PSScriptAnalyzerSettings.psd1
           }
           $found | Format-Table -AutoSize ScriptName, Line, RuleName, Message | Out-String -Width 200 | Write-Host

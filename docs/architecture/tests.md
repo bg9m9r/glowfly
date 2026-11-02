@@ -79,6 +79,13 @@ A failing input lands in `fuzz/artifacts/<target>/`; `cargo +nightly fuzz run <t
 - `crates/glowfly-ui/tests/snapshots/`: approved view snapshots: a `<name>.txt` text snapshot for every view test (glowfly-ui's, and the app's `runner_snapshots/`), no two alike (`snapshot_check/identical.rs`), and a `<name>.png` for the pixel goldens (`crates/glowfly-ui/src/snapshot_check/goldens.rs`; the image-only ones have no `.txt`).
 - `scripts/rerender-conflicted.ps1`: after a merge or rebase stops on snapshot conflicts, re-renders only the conflicted snapshots (the tests that name them, in glowfly-ui's library or the app's binary) and stages them; `-DryRun` lists them.
 
+## Large test repositories
+
+- `scripts/make-perf-repos.ps1`: builds the large repositories of [PERF_REPOS.md](../PERF_REPOS.md) into a folder outside the checkout (clones only with `-Download`, `-DryRun` writes nothing); runs again build only what is missing.
+- `scripts/perf-repos/build.ps1`: the synthetic repositories (linear, many refs, wide tree, octopus, big files, LFS pointers, submodules) and the git helper; `scripts/perf-repos/clone.ps1`: the resumable full clones, leaving out paths the file system can't hold.
+- `scripts/perf-repos/Streams.cs`: the deterministic git fast-import streams and the wide tree's working-tree changes, compiled by the script with Add-Type.
+- `scripts/make-perf-repos-test.ps1`: the script on small local fixtures (dry run, every repository at a thousandth, clones from a fixture with a reserved name and a case pair, resuming and rebuilding); run by CI on every OS, linted by Installers.
+
 ## Installers
 
 - `.github/workflows/installers.yml`: `scripts/installer-check-windows.ps1`, `scripts/installer-check-linux.sh`, `scripts/update-feed-check.ps1`: the packaged builds on clean runners.

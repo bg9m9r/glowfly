@@ -125,3 +125,9 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Treat an unresolved bare call inside core as I/O when its parent module has any, as the checked crates' calls already are
 - Follow `use glowfly_core::repo::*;`, `use glowfly_core as core;`, functions passed as values (`.map(repo::load_diff)`) and I/O inside `static` initialisers in the derived rule
 - Skip glowfly-flows explicitly in `dead_pub` (it is test-only; today its modules are read as test code only through their `cfg(test)` declarations)
+
+### Large test repositories (make-perf-repos.ps1)
+
+- A variant of the kernel and `linear` after `git gc` (one pack, a commit-graph and bitmaps), to time loading against what a long-used clone has
+- A blobless partial clone of the kernel (`--filter=blob:none`), the shape many large clones take, to time diffs that fetch on demand
+- Run `perf_timing_tests` on each repository in one command and print a table ready to paste into the issue comment
