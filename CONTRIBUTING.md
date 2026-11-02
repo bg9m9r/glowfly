@@ -66,6 +66,10 @@ RUST_LOG=glowfly=debug cargo run -- <repo path>                   # log backgrou
 GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture   # read-only check against a real host
 ```
 
+For performance work, `pwsh scripts/make-perf-repos.ps1` builds a set of large repositories
+(`-Download` adds git/git and the Linux kernel); [docs/PERF_REPOS.md](docs/PERF_REPOS.md) lists
+them, how to time Glowfly on them and where to record the timings.
+
 ## How the code is organized
 
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before structural changes; what each file holds

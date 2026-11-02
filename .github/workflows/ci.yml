@@ -28,6 +28,10 @@ jobs:
       - name: Check
         shell: pwsh
         run: ./scripts/check.ps1
+      # make-perf-repos.ps1 on small local fixtures (docs/PERF_REPOS.md); downloads nothing.
+      - name: Large test repository script
+        shell: pwsh
+        run: ./scripts/make-perf-repos-test.ps1
       # Folder identity on a case-sensitive folder: `App` and `app` must stay two folders. Making
       # one may need the WSL feature; without it the tests print a note and skip.
       - name: Case-sensitive folder tests
@@ -76,6 +80,9 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
         run: cargo test --workspace --locked
+      - name: Large test repository script
+        shell: pwsh
+        run: ./scripts/make-perf-repos-test.ps1
       # Folder identity on a case-sensitive APFS volume (the runner's own is case-insensitive):
       # `App` and `app` must stay two folders.
       - name: Case-sensitive volume tests

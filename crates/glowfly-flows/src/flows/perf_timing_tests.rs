@@ -2,6 +2,7 @@
 //! relayout, branch hover, swapping snapshots), against a large repository named by
 //! `GLOWFLY_PERF_REPO`. Ignored; run by hand in release:
 //! `GLOWFLY_PERF_REPO=<repo> cargo test -p glowfly-flows --release perf_timing -- --ignored --nocapture`.
+//! `scripts/make-perf-repos.ps1` builds large repositories to run it on (docs/PERF_REPOS.md).
 
 use super::tests::state;
 use crate::msg::{GraphMsg, Msg, SearchMsg};
