@@ -6,6 +6,32 @@ pub fn is_bidi_control(c: char) -> bool {
     matches!(c, '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}')
 }
 
+/// Characters drawn as nothing at all (zero-width spaces and joiners, word joiners, invisible
+/// operators, the byte order mark, soft hyphens, Hangul fillers and the other default-ignorable
+/// format characters): they can hide inside a name or an address without showing.
+pub fn is_invisible(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00AD}'
+            | '\u{034F}'
+            | '\u{115F}'
+            | '\u{1160}'
+            | '\u{17B4}'
+            | '\u{17B5}'
+            | '\u{180B}'..='\u{180F}'
+            | '\u{200B}'..='\u{200D}'
+            | '\u{2060}'..='\u{2065}'
+            | '\u{206A}'..='\u{206F}'
+            | '\u{3164}'
+            | '\u{FEFF}'
+            | '\u{FFA0}'
+            | '\u{FFF0}'..='\u{FFF8}'
+            | '\u{1BCA0}'..='\u{1BCA3}'
+            | '\u{1D173}'..='\u{1D17A}'
+            | '\u{E0000}'..='\u{E0FFF}'
+    )
+}
+
 /// `s` with control and bidi characters removed and runs of whitespace collapsed to one space.
 pub fn printable(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -15,7 +41,7 @@ pub fn printable(s: &str) -> String {
             space = !out.is_empty();
             continue;
         }
-        if c.is_control() || is_bidi_control(c) {
+        if c.is_control() || is_bidi_control(c) || is_invisible(c) {
             continue;
         }
         if space {
@@ -28,11 +54,11 @@ pub fn printable(s: &str) -> String {
 }
 
 /// `s` with its lines kept (`\r\n` and a lone `\r` read as `\n`) and tabs kept, but every other
-/// control character and every bidi character removed: for multi-line text such as a
-/// description.
+/// control character, every bidi character and every invisible one (`is_invisible`) removed: for
+/// multi-line text such as a description.
 pub fn printable_lines(s: &str) -> String {
     let s = s.replace("\r\n", "\n").replace('\r', "\n");
-    s.chars().filter(|&c| matches!(c, '\n' | '\t') || !(c.is_control() || is_bidi_control(c))).collect()
+    s.chars().filter(|&c| matches!(c, '\n' | '\t') || !(c.is_control() || is_bidi_control(c) || is_invisible(c))).collect()
 }
 
 /// `text` with the user/password part of every URL in it replaced by `***`
@@ -79,6 +105,16 @@ mod tests {
     fn printable_lines_keeps_lines_and_tabs_only() {
         assert_eq!(printable_lines("a\r\nb\rc\n\tcode\x1b[0m\u{202e}gpj.exe\u{7}"), "a\nb\nc\n\tcode[0mgpj.exe");
         assert_eq!(printable_lines("  keeps  spaces "), "  keeps  spaces ");
+    }
+
+    #[test]
+    fn invisible_characters_are_dropped() {
+        for c in ['\u{200B}', '\u{200C}', '\u{200D}', '\u{2060}', '\u{2061}', '\u{2064}', '\u{FEFF}', '\u{00AD}', '\u{E0041}'] {
+            let s = format!("github{c}.com");
+            assert_eq!(printable(&s), "github.com", "{:04X}", c as u32);
+            assert_eq!(printable_lines(&format!("a\n{s}")), "a\ngithub.com", "{:04X}", c as u32);
+        }
+        assert!(!is_invisible('a') && !is_invisible(' ') && !is_invisible('\u{FF0E}'));
     }
 
     #[test]
