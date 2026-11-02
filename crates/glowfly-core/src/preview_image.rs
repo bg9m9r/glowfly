@@ -1,8 +1,9 @@
 //! Decoding an image (PNG, JPEG, GIF, WebP or BMP) for the diff viewer's before/after preview
 //! and the file history's File view: the image's own size, its format and its RGBA pixels,
 //! downscaled when large so a texture of it stays small. Decoding is bounded (`MAX_SIDE`,
-//! `MAX_ALLOC`) so a hostile or huge file is refused instead of eating memory; `decode_sized`
-//! says why. An animation gives its first frame. CPU-only work: call it from a worker thread.
+//! `MAX_PIXELS`, `MAX_ALLOC`) so a hostile or huge file is refused instead of eating memory, and
+//! the decoded image is scaled straight from its own buffer, never copied whole; `decode_sized`
+//! says why it refused. An animation gives its first frame. CPU-only work: call it from a worker thread.
 
 use image::{ImageError, ImageFormat, ImageReader, Limits};
 use std::io::Cursor;
@@ -10,6 +11,9 @@ use std::sync::Arc;
 
 /// The longest side a preview decodes; anything larger is refused.
 pub const MAX_SIDE: u32 = 8192;
+/// The most pixels a preview decodes (64 million, under 8192 × 8192): the decoded image is held
+/// whole while it is scaled, and each side of a diff may hold one.
+const MAX_PIXELS: u64 = 64_000_000;
 /// The most memory the decoder may allocate.
 const MAX_ALLOC: u64 = 256 << 20;
 /// The longest side of the pixels the diff keeps for drawing; larger images are scaled down.
@@ -74,7 +78,7 @@ pub fn decode_sized(bytes: &[u8], shown_max: u32) -> Result<PreviewImage, String
     let first = reader()?;
     let format = first.format().and_then(format_name).ok_or("this image format can't be previewed")?;
     let (width, height) = first.into_dimensions().map_err(|e| e.to_string())?;
-    if width > MAX_SIDE || height > MAX_SIDE {
+    if width > MAX_SIDE || height > MAX_SIDE || u64::from(width) * u64::from(height) > MAX_PIXELS {
         return Err(too_large(width, height));
     }
     if width == 0 || height == 0 {
@@ -100,9 +104,15 @@ pub fn decode_sized(bytes: &[u8], shown_max: u32) -> Result<PreviewImage, String
         let scale = shown_max as f64 / width.max(height) as f64;
         let w = ((width as f64 * scale).round() as u32).max(1);
         let h = ((height as f64 * scale).round() as u32).max(1);
-        image::imageops::thumbnail(&img.to_rgba8(), w, h)
+        // Scaled from the decoded buffer as it is: a whole RGBA copy of it first could double
+        // the memory the decoder was held to.
+        match img.as_rgba8() {
+            Some(buf) => image::imageops::thumbnail(buf, w, h),
+            None => image::imageops::thumbnail(&img, w, h),
+        }
     } else {
-        img.to_rgba8()
+        // At most `shown_max` a side, so small; `into_rgba8` reuses an RGBA buffer as it is.
+        img.into_rgba8()
     };
     let shown = [rgba.width() as usize, rgba.height() as usize];
     Ok(PreviewImage { width, height, format, shown, rgba: Arc::new(rgba.into_raw()) })
@@ -183,6 +193,31 @@ mod tests {
         let wide = encode(RgbaImage::from_pixel(MAX_SIDE + 1, 1, Rgba([0, 0, 0, 255])), ImageFormat::Png);
         assert_eq!(decode_sized(&wide, FILE_VIEW_SHOWN_MAX).unwrap_err(), "This image is too large to preview (8193 × 1)");
         assert!(decode(&wide).is_none());
+    }
+
+    /// A BMP header saying `w` × `h` with no pixel data behind it.
+    fn bmp_header(w: i32, h: i32) -> Vec<u8> {
+        let mut b = encode(RgbImage::new(1, 1), ImageFormat::Bmp);
+        b[18..22].copy_from_slice(&w.to_le_bytes());
+        b[22..26].copy_from_slice(&h.to_le_bytes());
+        b
+    }
+
+    #[test]
+    fn too_many_pixels_are_refused_before_decoding() {
+        // Each side is within MAX_SIDE, but 8192 × 8192 is over MAX_PIXELS: refused from the
+        // header alone, where decoding would have failed on the missing pixels instead.
+        let err = decode_sized(&bmp_header(8192, 8192), FILE_VIEW_SHOWN_MAX).unwrap_err();
+        assert_eq!(err, "This image is too large to preview (8192 × 8192)");
+    }
+
+    #[test]
+    fn images_not_stored_as_rgba_scale_down_too() {
+        let p = decode_sized(&encode(RgbImage::from_pixel(3000, 1000, Rgb([10, 200, 30])), ImageFormat::Png), FILE_VIEW_SHOWN_MAX).unwrap();
+        assert_eq!(p.shown, [2048, 683]);
+        assert_eq!(&p.rgba[..4], &[10, 200, 30, 255]);
+        let small = decode_sized(&encode(RgbImage::from_pixel(4, 3, Rgb([1, 2, 3])), ImageFormat::Png), FILE_VIEW_SHOWN_MAX).unwrap();
+        assert_eq!(&small.rgba[..4], &[1, 2, 3, 255]);
     }
 
     /// A GIF whose screen and only frame are `w` × `h` and interlaced, its pixel data empty.
