@@ -51,7 +51,7 @@ source file, update its line here.
 
 ## Tooltips
 
-- `widgets/tooltip.rs`: every rich tooltip shares one frame, timing and layout: title, keycaps or a state line, body, an inset preview and a footer.
+- `widgets/tooltip.rs`: every rich tooltip shares one frame, timing and layout: title, key caps, a state line, body, an inset preview and a footer.
 - `widgets/tooltip_motion.rs`: the tooltip's fade and rise, off with Reduce motion.
 
 ## Empty, loading, failed and banner states

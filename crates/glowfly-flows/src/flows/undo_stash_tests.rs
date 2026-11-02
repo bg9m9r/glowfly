@@ -74,7 +74,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == want), "start_job recognises it: {fx:?}");
     super::tests::finish(&mut st, fx);
     assert!(dirty(&st));
-    assert!(st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo pop of stash 'On main: wip'"));
+    assert!(st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo unstash of 'On main: wip'"));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let snap = st.snap.as_ref().unwrap();

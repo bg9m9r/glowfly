@@ -225,7 +225,7 @@ fn pop_undo_and_redo() {
     let action = action.expect("recorded");
     let Action::StashApply { pop: true, stash, head: h, message: m, .. } = &action else { panic!("{action:?}") };
     assert_eq!((*stash, *h, m.as_str()), (oid, head, "On main: wip"));
-    assert_eq!(action.describe(), "pop of stash 'On main: wip'");
+    assert_eq!(action.describe(), "unstash of 'On main: wip'");
 
     let Plan::Run(undo) = plan(&dir, &action, false).unwrap() else { panic!() };
     assert_eq!(undo[0], args(&["stash", "store", "-m", "On main: wip", &oid.to_string()]));
@@ -244,7 +244,7 @@ fn pop_undo_and_redo() {
     // Edited since: the pop's result is no longer what undo would clear.
     write(&dir, "a.txt", "edited after the pop\n");
     let r = refused(plan(&dir, &action, false).unwrap());
-    assert!(r.is_stale() && r.message().starts_with("The working tree has changed since the pop of stash"), "{r:?}");
+    assert!(r.is_stale() && r.message().starts_with("The working tree has changed since the unstash of"), "{r:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
