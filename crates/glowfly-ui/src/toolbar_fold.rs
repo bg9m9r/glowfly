@@ -1,5 +1,5 @@
 //! Which toolbar parts fold into the ⋯ More menu in a narrow window. The pickers first narrow
-//! to a comfortable width (`toolbar_pickers::COMFORT`), then the parts fold in `ORDER`: the
+//! to a comfortable width (`toolbar_pickers::comfort`), then the parts fold in `ORDER`: the
 //! Terminal and Folder group, Undo and Redo, Branch, Stash and Pop, the pull request group,
 //! then Commands and Settings out of the right-hand group. The pickers, Pull and Push, Search,
 //! Activity, Refresh and the chips never fold; once everything that can has folded, the pickers

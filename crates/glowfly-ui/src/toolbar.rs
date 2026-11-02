@@ -1,6 +1,6 @@
 //! Top toolbar, on the side panels' surface so the active tab runs into it: the repository ›
-//! branch pickers (`toolbar_pickers.rs`, one framed segment bar in fixed slots so the bar never
-//! moves when the names change), then the git actions and app buttons in borderless groups of
+//! branch pickers (`toolbar_pickers.rs`, one framed segment bar fitted to the names, steady
+//! across checkouts: `toolbar_fit.rs`), then the git actions and app buttons in borderless groups of
 //! quiet buttons (`widgets::tool_group`), each set apart by a divider (`widgets::tool_gap`). The middle groups
 //! (`toolbar_groups.rs`) follow the pickers, the pull request group shows only with a hosting
 //! service, and the right-hand group is anchored to the window's edge with the untrusted and
@@ -18,6 +18,8 @@ use crate::state::{AppState, PrefPage};
 use eframe::egui::{self, Align, Id, Layout};
 use fold::{ORDER, Part, is_folded};
 
+#[path = "toolbar_fit.rs"]
+mod fit;
 #[path = "toolbar_fold.rs"]
 mod fold;
 #[path = "toolbar_groups.rs"]
@@ -66,11 +68,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.set_height(widgets::GROUP_H);
                 let room = ui.available_width();
                 // [repository › branch]
-                pickers::pickers(ui, st, msgs);
+                let slots = pickers::pickers(ui, st, msgs);
                 let Some(snap) = &st.snap else { return };
                 let host = st.session.forge.as_ref().filter(|f| f.host.is_some());
                 let chips = ui.ctx().data(|d| d.get_temp::<f32>(Id::new(CHIPS))).unwrap_or(0.0);
-                let k = fold::folded(&widths(ui, st, host.is_some(), room, chips));
+                let k = fold::folded(&widths(ui, st, (host.is_some(), slots), room, chips));
                 let shown = |part| !is_folded(part, k);
                 let after_pickers = ui.cursor().min.x;
                 let keys = &st.keymap;
@@ -163,8 +165,9 @@ fn remember(ctx: &egui::Context, key: &str, value: f32) {
 }
 
 /// The widths the fold decision needs (`toolbar_fold::Widths`), in a toolbar row `room` wide
-/// with the chips and their gaps taking `chips`.
-fn widths(ui: &egui::Ui, st: &AppState, host: bool, room: f32, chips: f32) -> fold::Widths {
+/// with the chips and their gaps taking `chips`, `host` telling whether the pull request group
+/// shows and `slots` the pickers' fitted name slots.
+fn widths(ui: &egui::Ui, st: &AppState, (host, slots): (bool, (f32, f32)), room: f32, chips: f32) -> fold::Widths {
     let t = st.settings.lang();
     let slot = |key: &'static str, split: bool| groups::slot(ui, st, t.tr(key), split);
     let plain = |keys: &[&'static str]| groups::group_width(&keys.iter().map(|k| slot(k, false)).collect::<Vec<_>>());
@@ -185,6 +188,6 @@ fn widths(ui: &egui::Ui, st: &AppState, host: bool, room: f32, chips: f32) -> fo
     ];
     let more = gap + groups::group_width(&[groups::slot(ui, st, more::caption(st), false)]);
     // The pickers' room counts the spacing after their group, as `toolbar_pickers` does.
-    let pickers = pickers::COMFORT + ui.spacing().item_spacing.x;
+    let pickers = pickers::comfort(slots) + ui.spacing().item_spacing.x;
     fold::Widths { room, pickers, fixed: 2.0 * gap + sync + right + chips, more, parts }
 }

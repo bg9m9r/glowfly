@@ -47,7 +47,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Full screen is the window's own state, never saved: `LayoutMsg::ToggleFullscreen` asks the shell for `WindowCmd::SetFullscreen` from `view.window.fullscreen` (read each frame).
 - `WindowCmd::in_window` narrows what the drawn bar's window actions do while full screen (docs/PLATFORMS.md, Window frame).
 - Toasts are anchored to `ToastBounds`, where the top chrome and the status bar end, measured while `frame_layout` draws them (`ui/toasts.rs`), all one width.
-- The toolbar's repository and branch pickers (`ui/toolbar_pickers.rs`) are sized to their names up to a cap.
+- The toolbar's repository and branch pickers (`ui/toolbar_pickers.rs`) are sized to their names up to a cap: the branch part to the widest local branch, so checking out a branch moves nothing (`ui/toolbar_fit.rs`).
 - In a window too narrow for everything, the pure `name_widths` shrinks the pickers (the longer first, then both, down to a floor) against the rest of the bar measured last frame.
 - Every toolbar group is a borderless row of quiet buttons (`widgets::tool_group`), set apart by a divider; the middle groups follow the pickers, the pull request group shows only with a hosting service, and the right-hand group is anchored to the window's right edge.
 
