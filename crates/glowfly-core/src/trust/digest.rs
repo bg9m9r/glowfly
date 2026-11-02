@@ -30,10 +30,30 @@ pub enum Reading {
 /// [`Reading`] for large files and the module docs for unreadable ones. Files no larger than
 /// [`MAX_BYTES`] get the same digest either way.
 pub fn of_file(path: &Path, reading: Reading) -> String {
-    read(path, reading).unwrap_or_else(|| UNREADABLE.to_owned())
+    of_file_keeping(path, reading, 0).0
 }
 
-fn read(path: &Path, reading: Reading) -> Option<String> {
+/// [`of_file`], with the file's bytes too when it was read and holds no more than `keep` of
+/// them: one read gives both the digest and a small script's text (`known::hook`).
+pub(crate) fn of_file_keeping(path: &Path, reading: Reading, keep: usize) -> (String, Option<Vec<u8>>) {
+    let mut kept = Some(Vec::new());
+    match read(path, reading, keep, &mut kept) {
+        Some(digest) => (digest, kept),
+        None => (UNREADABLE.to_owned(), None),
+    }
+}
+
+/// Adds `bytes` to `kept` while it stays within `keep` bytes; past that, keeps nothing.
+fn keep_bytes(kept: &mut Option<Vec<u8>>, bytes: &[u8], keep: usize) {
+    if kept.as_ref().is_some_and(|k| k.len() + bytes.len() > keep) {
+        *kept = None;
+    }
+    if let Some(k) = kept {
+        k.extend_from_slice(bytes);
+    }
+}
+
+fn read(path: &Path, reading: Reading, keep: usize, kept: &mut Option<Vec<u8>>) -> Option<String> {
     // Checked before opening: opening a FIFO blocks until something writes to it.
     if !std::fs::metadata(path).ok()?.is_file() {
         return None;
@@ -49,7 +69,10 @@ fn read(path: &Path, reading: Reading) -> Option<String> {
         loop {
             match file.read(&mut buf) {
                 Ok(0) => return Some(hex(&h.finalize())),
-                Ok(n) => h.update(&buf[..n]),
+                Ok(n) => {
+                    h.update(&buf[..n]);
+                    keep_bytes(kept, &buf[..n], keep);
+                }
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
                 Err(_) => return None,
             }
@@ -61,7 +84,9 @@ fn read(path: &Path, reading: Reading) -> Option<String> {
         bytes.truncate(MAX_BYTES as usize);
         let modified = meta.modified().ok()?.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or_default();
         h.update(format!("{}\0{modified}\0", meta.len()).as_bytes());
+        *kept = None;
     }
+    keep_bytes(kept, &bytes, keep);
     h.update(&bytes);
     Some(hex(&h.finalize()))
 }

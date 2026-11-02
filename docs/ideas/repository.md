@@ -88,6 +88,14 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - `programs::ca_file` doesn't skip the working-tree root the way `path_of` does, so
   `http.sslCAPath=.` follows the whole tree (noisy, but safe).
 - The bare `remote.<n>.fetch` guard in `trust/pull.rs` has no test.
+- Trust prompt: a one-line summary when every finding is recognised (all Git LFS's standard setup).
+- Trust prompt: short glosses for common hooks ("after a checkout" for post-checkout).
+- Trust prompt: recognise more tools (pre-commit, Husky) once each has a matcher as strict as
+  the Git LFS one in `trust/known.rs`.
+- Trust prompt: the Git LFS tag becomes a Badge-size neutral chip once `widgets/chip.rs` lands (#423).
+- The `git-lfs.exe` path branch in `known::setting` never fires in a real scan (`programs::path_of`
+  only records the word as written); decide whether to drop it or have the scan record Windows
+  extensions (`.exe`, `.bat`, `.cmd`).
 
 ### Submodules
 

@@ -182,6 +182,7 @@ mod tour;
 mod trash_offer_dialog;
 mod trust_chip;
 mod trust_dialog;
+mod trust_dialog_rows;
 mod undo_dialog;
 mod update_notice;
 mod welcome;

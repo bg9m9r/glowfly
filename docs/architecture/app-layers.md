@@ -119,6 +119,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `op_preview.rs`: the operation preview's dialog data, its title and headline, why Apply is off (busy, loading, nothing to do or stale) and the message Apply sends, the same as the direct menu item's.
 - `refresh/recount.rs`: when other worktrees' changes are counted again after a reload that kept the snapshot (at most once per `RECOUNT_EVERY`).
 - `load_more.rs`: a failed load for more history, the graph's row under the last commit (Load more, or the end row's sentence with Fetch full history and Load more) and how far a filtering search has looked.
+- `trust_rows.rs` (`trust::rows`): the trust prompt's rows: a setting value's program word (`value_parts`) and the working-tree places a row's Git LFS recognition is checked against (`row_follows`); `trust.rs`'s tests are in `trust_tests.rs`.
 - `AppState` holds no egui types; textures and fonts live in a `UiCache` owned by the UI layer.
 
 ## `update/`: state changes
