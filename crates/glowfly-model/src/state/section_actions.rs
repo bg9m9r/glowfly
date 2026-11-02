@@ -3,7 +3,7 @@
 //! the palette. Pure; shared by the sidebar and the update tests.
 
 use super::{AppState, ForgeState, issue_form, push_pr, toolbar_tips};
-use crate::msg::{BranchMsg, ForgeMsg, IssueMsg, Msg, StashMsg};
+use crate::msg::{BranchMsg, ForgeMsg, IssueMsg, Msg, PublishMsg, StashMsg};
 use crate::remote::RemoteMsg;
 use crate::submodule::SubmoduleMsg;
 use crate::tag::TagMsg;
@@ -47,6 +47,8 @@ impl SectionAction {
 pub struct SectionActions {
     pub local: SectionAction,
     pub remote: SectionAction,
+    /// Publish… in the empty REMOTE section: off while a job runs.
+    pub publish: SectionAction,
     /// None without a code host (there is no PULL REQUESTS section then).
     pub pr: Option<SectionAction>,
     /// None without an issue tracker (no ISSUES section).
@@ -65,6 +67,9 @@ pub fn all(st: &AppState) -> SectionActions {
     SectionActions {
         local: new_branch(st, t),
         remote: add_remote(t),
+        publish: SectionAction::new(t.tr("sidebar.action.publish"), toolbar_tips::busy_blocked(st), || {
+            Msg::Publish(PublishMsg::PublishDialog)
+        }),
         pr: fs.and_then(|f| create_pr(st, t, f)),
         issue: fs.and_then(|f| create_issue(st, t, f)),
         tag: new_tag(st, t, false),
@@ -83,7 +88,7 @@ pub fn new_branch(st: &AppState, t: Lang) -> SectionAction {
     })
 }
 
-pub fn add_remote(t: Lang) -> SectionAction {
+fn add_remote(t: Lang) -> SectionAction {
     SectionAction::new(t.tr("sidebar.action.add_remote"), None, || Msg::Remote(RemoteMsg::AddDialog))
 }
 

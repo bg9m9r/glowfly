@@ -1,6 +1,6 @@
 //! The left-panel section headers' + actions: each one's message opens its dialog, and each is
 //! disabled with its reason (a running job, a clean tree, no commit yet, a detached HEAD, a
-//! branch that already has a pull request).
+//! branch that already has a pull request), and the empty REMOTE section's Publish….
 
 use super::push_pr_tests::{cleanup as cleanup_host, with_host};
 use super::rebase_tests::running_job;
@@ -8,7 +8,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::msg::{BranchMsg, ForgeMsg, Msg, RepoMsg, StashMsg};
 use crate::state::section_actions::{
-    self, NO_COMMIT_TAG, NO_COMMIT_WORKTREE, SectionAction, add_remote, add_submodule, add_worktree, create_pr, new_branch, new_tag, stash,
+    self, NO_COMMIT_TAG, NO_COMMIT_WORKTREE, SectionAction, add_submodule, add_worktree, create_pr, new_branch, new_tag, stash,
 };
 use crate::state::{AppState, Modal};
 use crate::tag::TagMsg;
@@ -54,8 +54,9 @@ fn new_branch_opens_from_head() {
 #[test]
 fn add_remote_and_submodule_open_their_dialogs() {
     let (mut st, dir) = opened("sa-remote");
-    assert!(add_remote(Lang::En).blocked.is_none() && add_submodule(Lang::En).blocked.is_none());
-    run(&mut st, &add_remote(Lang::En));
+    let add_remote = section_actions::all(&st).remote;
+    assert!(add_remote.blocked.is_none() && add_submodule(Lang::En).blocked.is_none());
+    run(&mut st, &add_remote);
     assert!(matches!(&st.modal, Some(Modal::Remote(f)) if f.original.is_none()), "the add form");
     st.modal = None;
     run(&mut st, &add_submodule(Lang::En));
@@ -163,4 +164,16 @@ fn create_pr_needs_a_host_a_branch_and_no_open_pr() {
     st.session.forge.as_mut().unwrap().host = None;
     assert!(pr(&st).is_none(), "no code host");
     cleanup_host(&work, &bare);
+}
+
+#[test]
+fn publish_opens_its_dialog_unless_a_job_runs() {
+    let (mut st, dir) = opened("sa-publish");
+    let publish = section_actions::all(&st).publish;
+    assert_eq!(publish.label(), "Publish…");
+    assert!(publish.blocked.is_none());
+    assert!(matches!(publish.msg(), Msg::Publish(crate::msg::PublishMsg::PublishDialog)));
+    st.job = Some(running_job(&dir));
+    assert!(section_actions::all(&st).publish.blocked.is_some(), "off while a job runs");
+    let _ = std::fs::remove_dir_all(&dir);
 }

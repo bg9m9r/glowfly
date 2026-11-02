@@ -18,12 +18,12 @@ use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
+use crate::msg::Msg;
 use crate::msg::RepoMsg;
-use crate::msg::{Msg, PublishMsg};
 use crate::remote::RemoteMsg;
 use crate::state::forks::{ADD_FORK_ITEM, ForkAction, fork_applies, fork_menu_label, fork_target, view_item};
 use crate::state::remotes::{fetch_blocked, find, tooltip};
-use crate::state::section_actions::SectionAction;
+use crate::state::section_actions::SectionActions;
 use crate::state::{ForgeState, Selection};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::{separator, submenu};
@@ -54,10 +54,8 @@ pub(super) struct Ctx<'a> {
     pub filtering: bool,
     /// Saved connections, to recognize self-hosted services.
     pub connections: &'a [Connection],
-    /// The header's Add remote.
-    pub add_remote: &'a SectionAction,
-    /// Why Publish… can't run (a job is running).
-    pub publish_blocked: Option<&'a str>,
+    /// The header's Add remote, and Publish… for a repository without remotes.
+    pub actions: &'a SectionActions,
     pub t: Lang,
 }
 
@@ -71,13 +69,13 @@ pub(crate) fn section(
     msgs: &mut Vec<Msg>,
 ) {
     let slot = super::build_status::tip_slot(c.fs);
-    let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, c.add_remote);
+    let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, &c.actions.remote);
     let h = Header {
         key: "remote",
         title: c.t.tr("sidebar.remote.header"),
         count: Some(snap.remotes.len()),
         folds: true,
-        add: Some(HeaderAdd::send(c.add_remote)),
+        add: Some(HeaderAdd::send(&c.actions.remote)),
         menu: Some(&menu),
         t: c.t,
     };
@@ -86,13 +84,8 @@ pub(crate) fn section(
         return;
     }
     if snap.remotes.is_empty() && !c.filtering {
-        let publish = Action {
-            label: c.t.tr("sidebar.empty.publish").to_owned(),
-            blocked: c.publish_blocked,
-            msg: Msg::Publish(PublishMsg::PublishDialog),
-            quiet: false,
-        };
-        empty_state::show(ui, c.t.tr("sidebar.empty.remote"), vec![publish, Action::of(c.add_remote).quiet()], msgs);
+        let actions = vec![Action::of(&c.actions.publish), Action::of(&c.actions.remote).quiet()];
+        empty_state::show(ui, c.t.tr("sidebar.empty.remote"), actions, msgs);
     }
     for (remote, branches) in &snap.remotes {
         let fallback;

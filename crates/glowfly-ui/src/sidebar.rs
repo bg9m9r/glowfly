@@ -90,7 +90,6 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let fs = st.session.forge.as_ref();
     let idle = st.job.is_none();
     let sub_cx = crate::state::submodules::section_cx(st);
-    let publish_blocked = crate::state::toolbar_tips::busy_blocked(st);
     let sections = &mut st.view.sections;
     let empty = &mut st.session.tab_view.empty_sections;
     let repo = snap.real_workdir.as_path();
@@ -182,21 +181,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
 
     let connections = &st.settings.connections;
     let filtering = !filter.is_empty();
-    let add_remote = &actions.remote;
-    let publish_blocked = publish_blocked.as_deref();
-    let ctx = super::remotes::Ctx {
-        shown: &shown,
-        sel,
-        current: &current,
-        fs,
-        graph,
-        idle,
-        filtering,
-        connections,
-        add_remote,
-        publish_blocked,
-        t,
-    };
+    let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering, connections, actions: &actions, t };
     let open = empty.open_mut(repo, Folding::Remote, snap.remotes.len(), &mut sections.remote);
     super::remotes::section(ui, snap, open, ctx, hover_next, tips_seen, msgs);
     // The Connect tip, where the pull requests appear once an account is connected.
