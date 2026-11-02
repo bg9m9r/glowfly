@@ -49,6 +49,7 @@ start with `state/`, `update/` or `ui/`.
 - `graph/nodes.rs`: the row's nodes, sized by the row density.
 - `graph/marks.rs`: the painted local, remote and tag marks.
 - `graph/row_look.rs`: the row's background: the lane band, the highlight and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
+- `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
 - `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA), inked and on the find fill.
 - `graph/lane_colours.rs`: the graph's per-row colours.
 - `graph/more.rs`: the row for a failed load for more history.

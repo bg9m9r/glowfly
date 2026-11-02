@@ -9,6 +9,7 @@
 mod cells;
 mod find_marks;
 mod fit;
+mod frame_asks;
 mod header;
 mod labels;
 mod lane_colours;
@@ -41,9 +42,7 @@ use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
-use crate::msg::RepoMsg;
 use crate::state::AppState;
-use crate::state::build_status::MAX_SEEN;
 use crate::state::graph_rows::{DisplayRow, GraphRows};
 use crate::state::tip::Tip;
 use crate::state::worktrees::{open_blocked, wip_tooltip};
@@ -166,10 +165,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let stats = &st.session.reads.stats;
         let wip_label = t.tr("graph.wip.label");
         let wip_total = st.session.reads.line_counts.wip().and_then(|w| w.total());
-        let mut want_stats: Vec<Oid> = Vec::new();
-        let mut hover_tip_next = None;
+        let mut asks = frame_asks::Asks::default();
         let tips = st.session.forge.as_ref().map(|f| &f.tips);
-        let mut tips_seen: Vec<Oid> = Vec::new();
         let pointer = ui.ctx().pointer_hover_pos();
         // One more row below the last commit: more history loading, loading it failed, or the
         // history's end notes (Load more, a shallow clone's Fetch full history).
@@ -294,7 +291,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     let labels = snap.refs.get(&c.oid).map_or(&[][..], |l| l.as_slice());
                     let mut build = None;
                     if tips.is_some() && labels.iter().any(|l| matches!(l.kind, RefKind::Local | RefKind::Remote)) {
-                        tips_seen.push(c.oid);
+                        asks.tips_seen.push(c.oid);
                         build = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
                     }
                     let ghost =
@@ -313,7 +310,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         }
                     }
                     if refs.on_chip {
-                        hover_tip_next = Some(c.oid);
+                        asks.hover_tip_next = Some(c.oid);
                     }
                 }
 
@@ -326,7 +323,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let found = matched.then(|| find_marks::RowRuns::of(&st.session.search.query, c, show_body.then(|| c.body_preview().0)));
                 let stat = stats.get(&c.oid).copied().filter(|_| cols_cfg.changes);
                 if cols_cfg.changes && stat.is_none() {
-                    want_stats.push(c.oid);
+                    asks.want_stats.push(c.oid);
                 }
                 let cells = cells::Cells {
                     cols: &cols,
@@ -386,17 +383,6 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         if more::wants_more(st, out.inner, total, filtered) {
             msgs.push(Msg::Load(LoadMsg::NearHistoryEnd));
         }
-        if hover_tip_next.is_some() {
-            st.view.hover_tip_next = hover_tip_next;
-        }
-        let seen = &mut st.view.tips_seen;
-        for o in tips_seen {
-            if seen.len() < MAX_SEEN && !seen.contains(&o) {
-                seen.push(o);
-            }
-        }
-        if !want_stats.is_empty() {
-            msgs.push(Msg::Repo(RepoMsg::WantStats(want_stats)));
-        }
+        asks.apply(st, msgs);
     }
 }
