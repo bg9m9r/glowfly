@@ -40,6 +40,7 @@ pub(super) mod snapshot_tests_dialog_look;
 pub(super) mod snapshot_tests_diff;
 pub(super) mod snapshot_tests_editor;
 pub(super) mod snapshot_tests_empty_panes;
+pub(super) mod snapshot_tests_empty_states;
 pub(super) mod snapshot_tests_esc;
 pub(super) mod snapshot_tests_file_actions;
 pub(super) mod snapshot_tests_file_dialogs;

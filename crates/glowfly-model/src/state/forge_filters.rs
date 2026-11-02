@@ -4,7 +4,10 @@
 
 use super::{ForgeState, Status};
 use glowfly_core::forge::filters::{Named, matching};
-use glowfly_core::forge::{Conditions, FilterChoice, FilterKind, FilterOptions, Issue, IssueFacets, Me, Provider, PullRequest, Target};
+use glowfly_core::forge::{
+    self, Conditions, Connection, FilterChoice, FilterKind, FilterOptions, Issue, IssueFacets, Me, Provider, PullRequest, Target,
+};
+use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoForgeFilters;
 
 #[derive(Default)]
@@ -119,11 +122,16 @@ pub struct PrView<'a> {
 }
 
 /// The pull requests the PULL REQUESTS section shows: the loaded open ones under the chosen
-/// filter's conditions (before the sidebar's text filter).
-pub fn pr_view<'a>(fs: &'a ForgeState, f: &RepoForgeFilters) -> PrView<'a> {
+/// filter's conditions (before the sidebar's text filter), with its empty texts in `t`.
+pub fn pr_view<'a>(t: Lang, fs: &'a ForgeState, f: &RepoForgeFilters) -> PrView<'a> {
     let (choice, c, label) = f.conditions(FilterKind::Prs);
-    let (noun, total) = (fs.pr_noun(), fs.prs.len());
-    let nothing_loaded = || if fs.loading > 0 { "Loading…".to_owned() } else { format!("No open {noun}s") };
+    let total = fs.prs.len();
+    let mrs = fs.pr_noun() == "merge request";
+    let nothing_loaded = || match (fs.loading > 0, mrs) {
+        (true, _) => t.tr("common.loading").to_owned(),
+        (false, true) => t.tr("sidebar.empty.mrs").to_owned(),
+        (false, false) => t.tr("sidebar.empty.prs").to_owned(),
+    };
     if choice == FilterChoice::default_for(FilterKind::Prs) {
         return PrView { rows: fs.prs.iter().collect(), label, hint: None, empty: (total == 0).then(nothing_loaded) };
     }
@@ -140,10 +148,44 @@ pub fn pr_view<'a>(fs: &'a ForgeState, f: &RepoForgeFilters) -> PrView<'a> {
     let hint = Some(Hint::Faint(format!("{label} · {} of {total}", rows.len())));
     let empty = match (total, rows.len()) {
         (0, _) => Some(nothing_loaded()),
-        (_, 0) => Some(format!("No open {noun}s match \u{201c}{label}\u{201d}")),
+        (_, 0) if mrs => Some(t.trf("sidebar.empty.mrs_filtered", &[("filter", &label)])),
+        (_, 0) => Some(t.trf("sidebar.empty.prs_filtered", &[("filter", &label)])),
         _ => None,
     };
     PrView { rows, label, hint, empty }
+}
+
+/// Whether `target` failed to answer (`status`) with no connection for its account in
+/// Preferences: the user hasn't connected it yet.
+fn not_connected(target: &Target, status: &Status, connections: &[Connection]) -> bool {
+    matches!(status, Status::Error(_)) && !forge::is_connected(&target.account(), connections)
+}
+
+/// The PULL REQUESTS section's empty state while its account isn't connected (`not_connected`):
+/// "Connect GitHub to see its pull requests here."
+pub fn connect_prompt(t: Lang, fs: &ForgeState, connections: &[Connection]) -> Option<String> {
+    let host = fs.host.as_ref().filter(|h| not_connected(h, &fs.host_status, connections))?;
+    let host: [(&str, &dyn std::fmt::Display); 1] = [("host", &host.provider.name())];
+    Some(if fs.pr_noun() == "merge request" {
+        t.trf("sidebar.empty.connect_mrs", &host)
+    } else {
+        t.trf("sidebar.empty.connect_prs", &host)
+    })
+}
+
+/// The ISSUES section's empty state while its tracker's account isn't connected, and whether
+/// it needs its own Connect… button: not when the PULL REQUESTS section just above already
+/// offers one for the same account.
+pub fn connect_issues_prompt(t: Lang, fs: &ForgeState, connections: &[Connection]) -> Option<(String, bool)> {
+    let tracker = fs.tracker.as_ref().filter(|tr| not_connected(tr, &fs.tracker_status, connections))?;
+    let host: [(&str, &dyn std::fmt::Display); 1] = [("host", &tracker.provider.name())];
+    let text = match fs.issue_noun() {
+        "work item" => t.trf("sidebar.empty.connect_work_items", &host),
+        "card" => t.trf("sidebar.empty.connect_cards", &host),
+        _ => t.trf("sidebar.empty.connect_issues", &host),
+    };
+    let above = connect_prompt(t, fs, connections).is_some() && fs.host.as_ref().map(Target::account) == Some(tracker.account());
+    Some((text, !above))
 }
 
 pub struct IssueView<'a> {

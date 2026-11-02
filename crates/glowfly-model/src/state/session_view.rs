@@ -1,12 +1,17 @@
 //! The per-tab view state that parks with its tab inside `RepoSession::tab_view`: the search
 //! bar's text, the sidebar's ref filter, the graph's scroll, the folders collapsed in the
-//! changed-file lists, and the open diff's opened folds and top row with the mode and layout that
-//! row was counted in. Views edit the text fields in place and the graph view records its scroll;
-//! `update/tabs.rs` restores the scroll and recounts the top row on return.
+//! changed-file lists, which empty left-panel sections are expanded, and the open diff's opened
+//! folds and top row with the mode and layout that row was counted in. Views edit the text
+//! fields in place and the graph view records its scroll; `update/tabs.rs` restores the scroll
+//! and recounts the top row on return.
 
 use super::file_folds::FileFolds;
+use empty_sections::EmptySections;
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::Expanded;
+
+#[path = "empty_sections.rs"]
+pub mod empty_sections;
 
 /// A tab's view state (`RepoSession::tab_view`).
 #[derive(Default)]
@@ -32,4 +37,6 @@ pub struct TabView {
     /// (both settings are shared by all tabs). Set by `update/tabs.rs::park`, taken on return;
     /// None while active.
     pub parked_in: Option<(DiffMode, DiffLayout)>,
+    /// The left-panel sections expanded while empty (`empty_sections.rs`).
+    pub empty_sections: EmptySections,
 }

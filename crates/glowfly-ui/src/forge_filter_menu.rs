@@ -41,7 +41,7 @@ pub(super) fn header(
     (add, menu): (Option<HeaderAdd>, MenuFn),
     msgs: &mut Vec<Msg>,
 ) -> Response {
-    let h = section_header::Header { key, title, count: Some(count), add, menu: Some(menu), t };
+    let h = section_header::Header { key, title, count: Some(count), folds: false, add, menu: Some(menu), t };
     let HeaderResponse { header: resp, free_right: right } = section_header::show(ui, h, open, msgs);
     let painter = ui.painter().clone();
     let (title_font, _) = widgets::section_fonts(ui);
@@ -181,9 +181,9 @@ fn saved_row(ui: &mut egui::Ui, s: &SavedFilter, checked: bool, (up, down): (boo
 }
 
 /// The line above a section's rows: faint text, or an error with the sign-in buttons.
-pub(super) fn hint(ui: &mut egui::Ui, h: &Hint, msgs: &mut Vec<Msg>) {
+pub(super) fn hint(ui: &mut egui::Ui, t: Lang, h: &Hint, msgs: &mut Vec<Msg>) {
     match h {
         Hint::Faint(text) => hint_row(ui, text.clone()),
-        Hint::Error(e) => forge_error_rows(ui, e, msgs),
+        Hint::Error(e) => forge_error_rows(ui, t, e, msgs),
     }
 }

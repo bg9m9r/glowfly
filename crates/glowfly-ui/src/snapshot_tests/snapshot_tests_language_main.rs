@@ -203,11 +203,17 @@ pub(crate) fn german(st: &mut AppState) {
     st.settings.language = "de".into();
 }
 
-/// The fixture with remotes in German, every left-panel section open.
+/// The fixture with remotes in German, every left-panel section open (the empty Worktrees and
+/// Submodules expanded).
 pub(crate) fn panels(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_remotes(ThemeChoice::Dark, name);
     german(&mut st);
     st.view.sections.tags = true;
+    for which in
+        [crate::state::session_view::empty_sections::Folding::Worktrees, crate::state::session_view::empty_sections::Folding::Submodules]
+    {
+        super::snapshot_tests_empty_states::expand(&mut st, which);
+    }
     (st, dir)
 }
 
@@ -238,7 +244,7 @@ fn the_check_catches_the_english_window() {
     let mut h = harness(st, true);
     h.run();
     let found = english_shown(&h);
-    for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "No worktrees", "New branch"] {
+    for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "Add worktree…", "New branch"] {
         assert!(found.iter().any(|f| f == text), "{text} is caught: {found:?}");
     }
     assert!(found.iter().any(|f| f == "3 d"), "short ages are caught: {found:?}");
@@ -277,7 +283,7 @@ fn panels_german() {
     ] {
         assert!(shows(&h, de.tr(key)), "the {key} header");
     }
-    assert!(shows(&h, de.tr("sidebar.worktrees.empty")) && shows(&h, de.tr("sidebar.submodules.empty")));
+    assert!(shows(&h, de.tr("sidebar.empty.worktrees")) && shows(&h, de.tr("sidebar.empty.submodules")));
     assert!(shows(&h, de.tr("sidebar.remote.no_branches.hint")), "backup has no branches yet");
     let hint = de.tr("sidebar.filter.hint");
     let cut = hint.split(' ').next().unwrap();

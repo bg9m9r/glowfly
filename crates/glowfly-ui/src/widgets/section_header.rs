@@ -3,18 +3,18 @@
 //! just left of the count. Their room is always kept, so a filter chip and the count never move;
 //! they are painted only while the header is hovered or focused or one of its menus is open, but
 //! are interacted every frame, so Tab and screen readers reach them. A click on either leaves the
-//! section open or closed. Also the empty state line under a section with no rows
-//! ("No worktrees · Add worktree…").
+//! section open or closed. A section that folds away while empty (`Header::folds`) draws its
+//! header muted at count 0: a `weak` title and a `faint` 0.
 
 use super::quiet_target::{self, State};
-use super::{Icon, PAD_X, ROW_INDENT, SECTION_H, TITLE_X, chevron, paint_icon_sized};
+use super::{Icon, PAD_X, SECTION_H, TITLE_X, chevron, paint_icon_sized};
 use crate::msg::Msg;
 use crate::state::section_actions::SectionAction;
 use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::menu;
 use crate::ui::widgets::row_menu::RowMenuExt;
-use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, Response, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, Response, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
 /// The + and ⋯: Regular quiet icon-only targets, a header's least hit area.
@@ -32,12 +32,13 @@ pub fn section_fonts(ui: &Ui) -> (FontId, FontId) {
 /// Sidebar section header: chevron, title in the section-header style, and the count on the
 /// right in weak body text. Toggles `open`.
 pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool) -> Response {
-    header_row(ui, title, count, open, false)
+    header_row(ui, title, count, open, (false, false))
 }
 
 /// `section_header`; with `whole_row`, the hover fill stays while the pointer is over a button
-/// drawn on top of the row.
-fn header_row(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool, whole_row: bool) -> Response {
+/// drawn on top of the row; `muted` draws the title `weak` and the count `faint` (an empty
+/// section that folds away).
+fn header_row(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool, (whole_row, muted): (bool, bool)) -> Response {
     let (title_font, count_font) = section_fonts(ui);
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SECTION_H), Sense::click());
     let p = ui.painter();
@@ -46,9 +47,10 @@ fn header_row(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool, w
     }
     p.line_segment([rect.left_top(), rect.right_top()], Stroke::new(1.0_f32, color::border()));
     chevron(p, pos2(rect.left() + PAD_X, rect.center().y), *open, color::weak());
-    p.text(pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, title_font, color::text());
+    let (title_col, count_col) = if muted { (color::weak(), color::faint()) } else { (color::text(), color::weak()) };
+    p.text(pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, title_font, title_col);
     if let Some(n) = count {
-        p.text(pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), count_font, color::weak());
+        p.text(pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), count_font, count_col);
     }
     if resp.clicked() {
         *open = !*open;
@@ -92,6 +94,8 @@ pub struct Header<'a> {
     pub key: &'static str,
     pub title: &'a str,
     pub count: Option<usize>,
+    /// It folds away while empty (`state::empty_sections`): muted at count 0.
+    pub folds: bool,
     pub add: Option<HeaderAdd<'a>>,
     /// The ⋯'s menu, also on a right-click anywhere on the header.
     pub menu: Option<MenuFn<'a>>,
@@ -109,7 +113,8 @@ pub struct HeaderResponse {
 /// anywhere else on the row.
 pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> HeaderResponse {
     let buttons = h.add.is_some() || h.menu.is_some();
-    let header = if buttons { header_row(ui, h.title, h.count, open, true) } else { section_header(ui, h.title, h.count, open) };
+    let muted = h.folds && h.count == Some(0);
+    let header = header_row(ui, h.title, h.count, open, (buttons, muted));
     let rect = header.rect;
     let count_w = h.count.map_or(0.0, |n| {
         let font = section_fonts(ui).1;
@@ -195,31 +200,6 @@ fn paint_button(ui: &Ui, r: &Response, icon: Icon, enabled: bool, open: bool) {
         color::weak()
     };
     paint_icon_sized(p, r.rect.center(), icon, col, m.icon);
-}
-
-/// The line under an empty section: faint `text`, then the action as a link ("No worktrees ·
-/// Add worktree…"), or faint with its reason on hover while it is blocked.
-pub fn empty_row(ui: &mut Ui, text: &str, action: &SectionAction, msgs: &mut Vec<Msg>) {
-    let margin = egui::Margin { left: ROW_INDENT as i8, right: PAD_X as i8, top: 4, bottom: 4 };
-    egui::Frame::new().inner_margin(margin).show(ui, |ui| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 0.0;
-            let faint = |s: &str| RichText::new(s).size(type_scale::CAPTION).color(color::faint());
-            ui.label(faint(text));
-            ui.label(faint(" · "));
-            let label = action.label();
-            match &action.blocked {
-                None => {
-                    if ui.link(RichText::new(label).size(type_scale::CAPTION)).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
-                        msgs.push(action.msg());
-                    }
-                }
-                Some(why) => {
-                    ui.add(egui::Label::new(faint(&label)).sense(Sense::hover())).on_hover_text(why.as_str());
-                }
-            }
-        });
-    });
 }
 
 /// `a` as a menu item ("New branch…"), disabled with its reason while blocked.

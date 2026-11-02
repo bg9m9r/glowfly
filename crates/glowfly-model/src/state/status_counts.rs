@@ -16,7 +16,7 @@ pub fn open_requests_text(t: Lang, noun: &str, n: usize) -> String {
 /// "N open pull requests" under the default filter, else "N in <filter>" for the rows the
 /// PULL REQUESTS section shows.
 pub fn prs_text(t: Lang, fs: &ForgeState, f: &RepoForgeFilters) -> Option<String> {
-    let view = forge_filters::pr_view(fs, f);
+    let view = forge_filters::pr_view(t, fs, f);
     let (choice, _, label) = f.conditions(FilterKind::Prs);
     if choice == FilterChoice::default_for(FilterKind::Prs) {
         return Some(open_requests_text(t, fs.pr_noun(), view.rows.len()));

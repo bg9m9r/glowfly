@@ -11,6 +11,7 @@ use super::ref_visibility;
 use super::stack_rows;
 use super::theme::branch_colours::line;
 use super::theme::color;
+use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use super::widgets::{self, Part};
 use crate::msg::BranchMsg;
@@ -21,6 +22,7 @@ use crate::msg::RepoMsg;
 use crate::state::forge_filters::{self, IssueView, PrView};
 use crate::state::layout::Pane;
 use crate::state::panel_layout::Fit;
+use crate::state::session_view::empty_sections::Folding;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use crate::ui::theme::controls;
 use crate::ui::widgets::menu::separator;
@@ -88,7 +90,11 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let fs = st.session.forge.as_ref();
     let idle = st.job.is_none();
     let sub_cx = crate::state::submodules::section_cx(st);
+    let publish_blocked = crate::state::toolbar_tips::busy_blocked(st);
     let sections = &mut st.view.sections;
+    // Remote, Tags, Stashes, Worktrees and Submodules fold away while empty.
+    let empty = &mut st.session.tab_view.empty_sections;
+    let repo = snap.real_workdir.as_path();
     let hover_next = &mut st.view.hover_tip_next;
     let tips_seen = &mut st.view.tips_seen;
     let slot = super::build_status::tip_slot(fs);
@@ -98,6 +104,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         key: "local",
         title: t.tr("sidebar.local.header"),
         count: Some(snap.locals.len()),
+        folds: false,
         add: Some(HeaderAdd::send(&actions.local)),
         menu: Some(&local_menu),
         t,
@@ -177,8 +184,22 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let connections = &st.settings.connections;
     let filtering = !filter.is_empty();
     let add_remote = &actions.remote;
-    let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering, connections, add_remote, t };
-    super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, tips_seen, msgs);
+    let publish_blocked = publish_blocked.as_deref();
+    let ctx = super::remotes::Ctx {
+        shown: &shown,
+        sel,
+        current: &current,
+        fs,
+        graph,
+        idle,
+        filtering,
+        connections,
+        add_remote,
+        publish_blocked,
+        t,
+    };
+    let open = empty.open_mut(repo, Folding::Remote, snap.remotes.len(), &mut sections.remote);
+    super::remotes::section(ui, snap, open, ctx, hover_next, tips_seen, msgs);
     // The Connect tip, where the pull requests appear once an account is connected.
     if let Some(h) = &hint {
         widgets::hint_row::show(ui, t, h, msgs);
@@ -188,7 +209,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let title = f.prs_header(t);
         let chip_tip =
             if f.pr_noun() == "merge request" { t.tr("sidebar.mrs.filter_chip.tip") } else { t.tr("sidebar.prs.filter_chip.tip") };
-        let view = forge_filters::pr_view(f, &repo_filters);
+        let view = forge_filters::pr_view(t, f, &repo_filters);
         let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
         let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
             super::pr_menu_items::pr_menu(ui, t, snap, f, idle, msgs);
@@ -199,7 +220,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let section = ("prs", title, chip_tip, view.rows.len());
         forge_filter_menu::header(ui, t, section, &mut sections.prs, picker, (add, &menu), msgs);
         if sections.prs {
-            pull_requests(ui, (t, snap), f, &view, sel, &shown, msgs);
+            let connect = forge_filters::connect_prompt(t, f, connections);
+            pull_requests(ui, (t, snap, connect.as_deref()), f, &view, sel, &shown, msgs);
         }
     }
     if let Some(f) = fs.filter(|f| f.tracker.is_some()) {
@@ -218,7 +240,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         forge_filter_menu::header(ui, t, section, &mut sections.issues, picker, (add, &menu), msgs);
         if sections.issues {
             let in_app = provider.is_some_and(forge::issues_in_app);
-            issues(ui, snap, f, &view, &shown, (open_issue.as_deref(), in_app), msgs);
+            let connect = forge_filters::connect_issues_prompt(t, f, connections);
+            issues(ui, (t, snap), f, &view, &shown, (open_issue.as_deref(), in_app, connect), msgs);
         }
     }
     if let Some(s) = snap.gitflow.settings() {
@@ -227,19 +250,24 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     }
 
     let rows = super::tags::Rows { shown: &shown, sel, idle, graph, new_tag: &actions.tag, annotated: &actions.annotated_tag, t };
-    super::tags::section(ui, snap, &mut sections.tags, rows, msgs);
+    super::tags::section(ui, snap, empty.open_mut(repo, Folding::Tags, snap.tags.len(), &mut sections.tags), rows, msgs);
 
     let stash = (&actions.stash, &actions.stash_staged);
-    super::stashes::section(ui, t, snap, &mut sections.stashes, (sel, &shown), stash, msgs);
+    let open = empty.open_mut(repo, Folding::Stashes, snap.stashes.len(), &mut sections.stashes);
+    super::stashes::section(ui, t, snap, open, (sel, &shown, filtering), stash, msgs);
     let rows = super::worktrees::Rows { shown: &shown, sel, open_tabs: &open_tabs, add: &actions.worktree, filtering, t };
-    super::worktrees::section(ui, snap, &mut sections.worktrees, rows, hover_next, msgs);
-    super::submodules::section(ui, t, snap, &sub_cx, &mut sections.submodules, (&shown, filtering, &actions.submodule), msgs);
+    let open = empty.open_mut(repo, Folding::Worktrees, crate::state::worktrees::listed(snap).len(), &mut sections.worktrees);
+    super::worktrees::section(ui, snap, open, rows, hover_next, msgs);
+    let open = empty.open_mut(repo, Folding::Submodules, snap.submodules.len(), &mut sections.submodules);
+    super::submodules::section(ui, t, snap, &sub_cx, open, (&shown, filtering, &actions.submodule), msgs);
     ui.add_space(12.0);
 }
 
+/// The PULL REQUESTS rows; `connect` is the sentence shown instead while the account isn't
+/// connected.
 fn pull_requests(
     ui: &mut egui::Ui,
-    (t, snap): (Lang, &Snapshot),
+    (t, snap, connect): (Lang, &Snapshot, Option<&str>),
     f: &ForgeState,
     view: &PrView,
     sel: &Selection,
@@ -247,10 +275,12 @@ fn pull_requests(
     msgs: &mut Vec<Msg>,
 ) {
     if let Some(h) = &view.hint {
-        forge_filter_menu::hint(ui, h, msgs);
+        forge_filter_menu::hint(ui, t, h, msgs);
     }
-    if let Status::Error(e) = &f.host_status {
-        forge_error_rows(ui, e, msgs);
+    if let Some(text) = connect {
+        empty_state::show(ui, text, vec![Action::connect(t)], msgs);
+    } else if let Status::Error(e) = &f.host_status {
+        forge_error_rows(ui, t, e, msgs);
     } else if let Some(text) = &view.empty {
         hint_row(ui, text.clone());
     }
@@ -309,19 +339,22 @@ fn pull_requests(
 
 /// The ISSUES rows. Where the tracker has issue details in Glowfly (`in_app`), a click opens
 /// the issue panel (and its row shows selected while `open`); elsewhere a double-click opens
-/// the issue's page.
+/// the issue's page. While the tracker's account isn't connected, `connect`'s sentence (with a
+/// Connect… button unless the PULL REQUESTS section above has one).
 fn issues(
     ui: &mut egui::Ui,
-    snap: &Snapshot,
+    (t, snap): (Lang, &Snapshot),
     f: &ForgeState,
     view: &IssueView,
     shown: &Shown,
-    (open, in_app): (Option<&str>, bool),
+    (open, in_app, connect): (Option<&str>, bool, Option<(String, bool)>),
     msgs: &mut Vec<Msg>,
 ) {
-    forge_filter_menu::hint(ui, &view.hint, msgs);
-    if let Status::Error(e) = &f.tracker_status {
-        forge_error_rows(ui, e, msgs);
+    forge_filter_menu::hint(ui, t, &view.hint, msgs);
+    if let Some((text, button)) = connect {
+        empty_state::show(ui, &text, if button { vec![Action::connect(t)] } else { Vec::new() }, msgs);
+    } else if let Status::Error(e) = &f.tracker_status {
+        forge_error_rows(ui, t, e, msgs);
     }
     for issue in view.rows.iter().filter(|i| shown(&i.title) || shown(&i.key)) {
         if widgets::list_row_hidden(ui) {

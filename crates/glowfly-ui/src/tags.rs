@@ -43,7 +43,8 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         action_item(ui, msgs, annotated);
     };
     let title = t.tr("sidebar.tags.header");
-    let h = Header { key: "tags", title, count: Some(snap.tags.len()), add: Some(HeaderAdd::send(new_tag)), menu: Some(&menu), t };
+    let h =
+        Header { key: "tags", title, count: Some(snap.tags.len()), folds: true, add: Some(HeaderAdd::send(new_tag)), menu: Some(&menu), t };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;

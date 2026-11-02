@@ -3,11 +3,12 @@
 //! opens, initializes, updates or restores it, copies its URL, edits or removes it. The header's
 //! menu adds one, initializes or updates them all, and chooses whether this repository updates
 //! them after checkouts and pulls; its + adds one too. The section always shows: without
-//! submodules, an empty state line offers Add submodule….
+//! submodules, once expanded, a sentence on what they are for and Add submodule….
 
 use super::common::{menu_danger, menu_item_if};
 use super::theme::color;
 use super::widgets;
+use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd};
 use crate::msg::Msg;
 use crate::state::section_actions::SectionAction;
@@ -38,13 +39,21 @@ pub(super) fn section(
 ) {
     let items = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| header_menu(ui, snap, cx, add, msgs);
     let title = t.tr("sidebar.submodules.header");
-    let h = Header { key: "submodules", title, count: Some(snap.submodules.len()), add: Some(HeaderAdd::send(add)), menu: Some(&items), t };
+    let h = Header {
+        key: "submodules",
+        title,
+        count: Some(snap.submodules.len()),
+        folds: true,
+        add: Some(HeaderAdd::send(add)),
+        menu: Some(&items),
+        t,
+    };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;
     }
     if snap.submodules.is_empty() && !filtering {
-        section_header::empty_row(ui, t.tr("sidebar.submodules.empty"), add, msgs);
+        empty_state::show(ui, t.tr("sidebar.empty.submodules"), vec![Action::of(add)], msgs);
     }
     for sm in snap.submodules.iter().filter(|s| shown(&s.path) || shown(&s.name)) {
         let col = match sm.state {

@@ -68,7 +68,7 @@ pub(super) fn section(
     };
     let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| header_menu(ui, snap, msgs);
     let title = t.tr("sidebar.gitflow.header");
-    let h = Header { key: "gitflow", title, count: Some(total(&groups)), add: Some(add), menu: Some(&menu), t };
+    let h = Header { key: "gitflow", title, count: Some(total(&groups)), folds: false, add: Some(add), menu: Some(&menu), t };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;

@@ -1,6 +1,6 @@
 //! The WORKTREES section of the left panel: once a worktree is linked, one row per worktree (the
 //! main one first) with what it has checked out, whether it is locked or missing, and a tooltip;
-//! before that, an empty state line offering Add worktree…. A click jumps to its HEAD commit, a
+//! before that, once expanded, a sentence on what worktrees are for and Add worktree…. A click jumps to its HEAD commit, a
 //! double-click opens it in a tab, and the row menu (also on the worktree's WIP row in the graph)
 //! opens it, shows its folder, copies its path, locks or unlocks it, moves it, removes it, and
 //! prunes missing records. The header's + adds a worktree from HEAD, and its menu adds one or
@@ -9,6 +9,7 @@
 use super::common::{menu_danger, menu_item, menu_item_if};
 use super::theme::color;
 use super::widgets;
+use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -45,13 +46,13 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         menu_item_if(msgs, ui, t.tr("sidebar.worktrees.prune"), prune_blocked(snap), Msg::Worktree(WorktreeMsg::Prune));
     };
     let title = t.tr("sidebar.worktrees.header");
-    let h = Header { key: "worktrees", title, count: Some(list.len()), add: Some(HeaderAdd::send(add)), menu: Some(&menu), t };
+    let h = Header { key: "worktrees", title, count: Some(list.len()), folds: true, add: Some(HeaderAdd::send(add)), menu: Some(&menu), t };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;
     }
     if list.is_empty() && !filtering {
-        section_header::empty_row(ui, t.tr("sidebar.worktrees.empty"), add, msgs);
+        empty_state::show(ui, t.tr("sidebar.empty.worktrees"), vec![Action::of(add)], msgs);
     }
     let matches = |w: &WorktreeInfo| {
         shown(&w.folder_name()) || w.branch.as_deref().is_some_and(shown) || shown(&glowfly_core::native_path::shown(&w.path))

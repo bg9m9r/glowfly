@@ -3,8 +3,9 @@
 //! view it on its hosting service, add a teammate's fork of it, fork it into the user's account,
 //! edit it, copy its URLs or a link (a Copy submenu for all three, else in the menu) or remove
 //! it (fork items only where its hosting service could fork it), and under it the
-//! remote-tracking branch rows. The header's + and menu add a remote; its count is the number of
-//! remotes.
+//! remote-tracking branch rows. Without remotes, once expanded, a sentence saying the repository
+//! is only on this computer, with Publish… and a quiet Add remote…. The header's + and menu add a
+//! remote; its count is the number of remotes.
 
 use super::branch_dot::{self, DOT_ROOM};
 use super::common::{hint_row, menu_danger, menu_header, menu_item, menu_item_if};
@@ -13,11 +14,12 @@ use super::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets;
+use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
-use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::{Msg, PublishMsg};
 use crate::remote::RemoteMsg;
 use crate::state::forks::{ADD_FORK_ITEM, ForkAction, fork_applies, fork_menu_label, fork_target, view_item};
 use crate::state::remotes::{fetch_blocked, find, tooltip};
@@ -54,6 +56,8 @@ pub(super) struct Ctx<'a> {
     pub connections: &'a [Connection],
     /// The header's Add remote.
     pub add_remote: &'a SectionAction,
+    /// Why Publish… can't run (a job is running).
+    pub publish_blocked: Option<&'a str>,
     pub t: Lang,
 }
 
@@ -72,6 +76,7 @@ pub(crate) fn section(
         key: "remote",
         title: c.t.tr("sidebar.remote.header"),
         count: Some(snap.remotes.len()),
+        folds: true,
         add: Some(HeaderAdd::send(c.add_remote)),
         menu: Some(&menu),
         t: c.t,
@@ -79,6 +84,15 @@ pub(crate) fn section(
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;
+    }
+    if snap.remotes.is_empty() && !c.filtering {
+        let publish = Action {
+            label: c.t.tr("sidebar.empty.publish").to_owned(),
+            blocked: c.publish_blocked,
+            msg: Msg::Publish(PublishMsg::PublishDialog),
+            quiet: false,
+        };
+        empty_state::show(ui, c.t.tr("sidebar.empty.remote"), vec![publish, Action::of(c.add_remote).quiet()], msgs);
     }
     for (remote, branches) in &snap.remotes {
         let fallback;

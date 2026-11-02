@@ -30,6 +30,7 @@ mod button_look;
 pub mod button_split;
 pub mod buttons;
 pub mod details;
+pub mod empty_state;
 pub mod field_group;
 pub mod form_message;
 pub mod ghost;
