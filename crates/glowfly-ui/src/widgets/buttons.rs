@@ -96,7 +96,7 @@ pub fn secondary<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
 }
 
 /// An action in a toolbar, header or row: no fill until hovered (the ghost controls share its
-/// look through `button_look::paint_quiet`).
+/// look through `button_look::paint_target`).
 pub fn quiet<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::Quiet)
 }

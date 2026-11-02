@@ -2,7 +2,8 @@
 //! (every kind at rest, focused and disabled, with each kind's hover and pressed look), the split
 //! buttons' states in a dark and a light theme, and the foundations in a dark and a light theme
 //! (the surface ladder with the overlay's Float shadow, a Dialog-elevation card, the corner
-//! scale, the tone tints and the state layers on the panel and the overlay). Declared under `widgets` so it can paint each state's look.
+//! scale, the tone tints and the state layers on the panel and the overlay). Declared under
+//! `widgets` so it can paint each state's look.
 
 use super::button_look::{Press, Target, look, paint_button};
 use super::button_split::split;

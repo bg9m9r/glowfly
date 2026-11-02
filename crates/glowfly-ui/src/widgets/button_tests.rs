@@ -338,3 +338,38 @@ fn a_split_half_rings_its_own_shape() {
         assert_eq!(rings[0].stroke_kind, egui::StrokeKind::Inside);
     }
 }
+
+#[test]
+fn a_focused_disabled_split_action_ignores_keys_and_access_clicks() {
+    #[derive(Default)]
+    struct Seen {
+        actions: u32,
+        menu_open: bool,
+        focused: bool,
+    }
+    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+        |ui, s: &mut Seen| {
+            let (main, caret) = split(primary("Commit").enabled(false).why(Some("Nothing staged")), "More").open(s.menu_open).show(ui);
+            s.actions += u32::from(main.clicked());
+            // The caller opens the menu from the caret, as the commit box does.
+            if caret.clicked() {
+                s.menu_open = !s.menu_open;
+            }
+            s.focused = main.has_focus();
+        },
+        Seen::default(),
+    );
+    h.run();
+    h.get_by_label("Commit").focus();
+    h.run();
+    assert!(h.state().focused, "a disabled action still takes the focus, to explain itself");
+    for key in [egui::Key::Enter, egui::Key::Space] {
+        h.press_key(key);
+        h.run();
+        assert_eq!((h.state().actions, h.state().menu_open), (0, false), "{key:?}");
+    }
+    h.get_by_label("Commit").click();
+    h.run();
+    assert_eq!((h.state().actions, h.state().menu_open), (0, false), "an AccessKit click");
+    assert!(h.state().focused, "the focus stays on the action");
+}

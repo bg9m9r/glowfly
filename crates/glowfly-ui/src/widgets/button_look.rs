@@ -3,7 +3,8 @@
 //! their fill toward white on dark palettes and black on light ones, the tonal kind moves its
 //! accent tint toward the accent and recomputes its ink, the quiet kind lays the translucent
 //! state layers over whatever is under it (the ghost controls share that look through
-//! `paint_quiet`), and the quiet danger kind has danger text over a danger wash.
+//! `paint_target`), and the quiet danger kind has danger text over a danger wash. `paint_quiet`
+//! is left only for the tab glyphs' small squares (`tab_glyph.rs`).
 //!
 //! Every target's state becomes pixels here. `paint_target` paints a quiet target (the
 //! toolbar's buttons, splits and segment bars, ghost controls, quiet chips, segmented options):
@@ -136,8 +137,9 @@ pub(super) fn paint_quiet(p: &Painter, rect: Rect, r: impl Into<CornerRadius>, p
     }
 }
 
-/// A target's shape: its rect (its hit area too, except a Compact one's, whose caller grows its
-/// hit area), its own corners (a segment's square where it meets a neighbour) and, for a single
+/// A target's shape: its rect (its hit area too, except a Compact one's: `ghost::ghost_at` grows
+/// its own hit area, while a quiet chip still hits on its 22 px until chips take a size), its own
+/// corners (a segment's square where it meets a neighbour) and, for a single
 /// framed control, its border: `paint_target` paints that stroke, `paint_button` the look's edge.
 /// A target without one is quiet or packed (a split's half, framed as a whole by its caller).
 #[derive(Clone, Copy, Debug)]
@@ -153,7 +155,8 @@ pub(super) struct Target {
 /// the hit area; it never paints.
 pub(super) fn paint_target(p: &Painter, t: Target, size: ControlSize, press: Press, focus: bool) {
     debug_assert!(t.edge.is_none() || size.allows_frame(), "a Compact control is quiet only");
-    // A Compact control paints less than its hit area, which its caller grows (`ghost::ghost_at`).
+    // A Compact control paints less than its hit area: `ghost::ghost_at` grows its own, and a
+    // quiet chip still hits on its 22 px until chips take a size.
     debug_assert!(
         size == ControlSize::Compact || (t.rect.width() >= HIT_MIN - 0.5 && t.rect.height() >= HIT_MIN - 0.5),
         "a target smaller than the hit area: {:?}",
