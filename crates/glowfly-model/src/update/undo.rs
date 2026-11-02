@@ -1,9 +1,13 @@
 //! Undo and redo: starting them as the single active job (after asking whether to delete a
 //! branch that the checkout being undone created), and keeping each tab's history in step with
 //! the git jobs that finish in it, offering to stash local changes when they block an undo.
+//! What a message newly recorded (`recorded_since`) offers the Undo tip and counts amends for
+//! the Tidy tip (state/hints.rs).
 
 use crate::effect::{Effect, StashHow, UndoOpts, UndoResult};
 use crate::msg::{JobMsg, Msg};
+use crate::state::hints::{self, HintId};
+use crate::state::tabs::TabId;
 use crate::state::toasts::ToastAction;
 use crate::state::undo::{UndoCreatedForm, UndoHistory};
 use crate::state::{AppState, CommitDraft, Modal, RunningJob};
@@ -73,6 +77,10 @@ fn start(st: &mut AppState, redo: bool, action: Action, opts: UndoOpts, fx: &mut
     let started = super::ops::begin_job(st, &label, true, move |cwd| Effect::UndoRedo { cwd, action, redo, opts }, fx);
     if started != super::ops::Started::No {
         super::submodule_batch::job_started(st, &label, moves);
+        // Running Undo by any route retires the Undo tip: its feature is known.
+        if !redo {
+            super::hints::retire(st, HintId::Undo, fx);
+        }
     }
 }
 
@@ -234,5 +242,32 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
             let msg = Box::new(Msg::Job(JobMsg::UndoWith { redo, action: Box::new(top), opts }));
             st.set_last_toast_action(ToastAction { label: STASH_AND_UNDO.into(), msg, workdir: job.workdir.clone() });
         }
+    }
+}
+
+/// The active tab and how many actions its history has recorded, before a message.
+pub(super) fn record_mark(st: &AppState) -> Option<(TabId, u64)> {
+    st.tabs.get(st.active_tab).map(|t| (t.id, st.session.undo.recorded))
+}
+
+/// After a message, in the tab that was active before it: an action it recorded is the Undo
+/// tip's moment when it threw work or a branch away (a discard, a reset, a branch delete; a
+/// push is never recorded, as Undo can't reverse one), and a commit moves the tab's run of
+/// amends on and asks for the Tidy check once the snapshot after it loads.
+pub(super) fn recorded_since(st: &mut AppState, mark: Option<(TabId, u64)>) {
+    let Some((tab, before)) = mark else { return };
+    if record_mark(st).is_none_or(|(now_tab, n)| now_tab != tab || n <= before) {
+        return;
+    }
+    match st.session.undo.undo.last() {
+        Some(Action::Discard { .. } | Action::DiscardAll { .. } | Action::Reset { .. } | Action::DeleteBranch { .. }) => {
+            hints::offer(st, HintId::Undo);
+        }
+        Some(Action::Commit { amend, .. }) => {
+            let run = &mut st.session.hint_commits;
+            run.amends_in_row = if *amend { run.amends_in_row.saturating_add(1) } else { 0 };
+            run.tidy_check = true;
+        }
+        _ => {}
     }
 }

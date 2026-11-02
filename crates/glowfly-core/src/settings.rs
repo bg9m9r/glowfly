@@ -2,13 +2,14 @@
 
 use crate::forge::Connection;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
 
 mod blame;
 mod branch_colours;
 mod builtin_themes;
 mod column_widths;
+pub mod commit_limit;
 mod date_fmt;
 mod downloads;
 mod editor;
@@ -282,6 +283,10 @@ pub struct Settings {
     /// read as true, so only a new install shows the welcome.
     #[serde(default = "file::seen")]
     pub welcome_done: bool,
+    /// Tips while I work (Preferences > General); the tips retired and ignored once, by `HintId::id`.
+    pub hints: bool,
+    pub hints_seen: BTreeSet<String>,
+    pub hints_ignored: BTreeSet<String>,
     /// The daily update check and the release notes last shown (Preferences > General > Updates).
     pub updates: UpdatePrefs,
     /// Preferences > Terminal, and the panel's remembered state.
@@ -381,18 +386,13 @@ impl Default for Settings {
             git_program: None,
             git_banner_hidden_for: None,
             welcome_done: false,
+            hints: true,
+            hints_seen: BTreeSet::new(),
+            hints_ignored: BTreeSet::new(),
             updates: UpdatePrefs::default(),
             terminal: TerminalPrefs::default(),
             panel_sizes: PanelSizes::default(),
         }
-    }
-}
-
-pub const MIN_INITIAL_COMMITS: usize = 500;
-
-impl Settings {
-    pub fn commit_limit(&self) -> usize {
-        self.initial_commits.max(MIN_INITIAL_COMMITS)
     }
 }
 

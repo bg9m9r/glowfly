@@ -1,6 +1,6 @@
 //! The first-run welcome (its steps and the identity form) and where the tour of the main window
-//! is (`onboarding_tour.rs`). Plain data and the pure rules of the identity step; only
-//! `settings.welcome_done` is ever saved.
+//! is (`onboarding_tour.rs`), and the tip showing (`hints.rs`). Plain data and the pure rules of
+//! the identity step; only `settings.welcome_done` is ever saved here.
 
 use super::onboarding_tour::TourStep;
 use super::touched::Touched;
@@ -23,6 +23,12 @@ pub struct Onboarding {
     pub tour_resume: Option<TourStep>,
     /// Start the tour when the next repository finishes opening (the welcome's checkbox).
     pub tour_after_open: bool,
+    /// The tip showing (state/hints.rs), if any.
+    pub hint: Option<super::hints::ShownHint>,
+    /// Tips shown since the app started: at most one per session.
+    pub hints_shown_this_session: u32,
+    /// The welcome ran this launch: no tips until the next one.
+    pub quiet_session: bool,
 }
 
 /// The welcome's steps, in order.

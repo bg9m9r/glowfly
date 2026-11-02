@@ -50,6 +50,7 @@ mod gitflow_resume;
 mod graph_columns;
 mod graph_filter;
 mod highlight;
+mod hints;
 pub mod history;
 mod history_find;
 mod history_index;
@@ -239,9 +240,12 @@ fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     };
     // A failure logged from here on is announced by a toast; one pushed by now isn't this one's.
     let toast_mark = st.toast_seq;
+    let undo_mark = undo::record_mark(st);
     route(st, msg, now, &mut fx);
+    undo::recorded_since(st, undo_mark);
     prefs_leave::settle(st);
     app::settle(st, &mut fx);
+    hints::settle(st, &mut fx);
     // A form kept under a question that has closed comes back (state/dialog_guard.rs).
     crate::state::dialog_guard::restore(&mut st.modal, &mut st.dialog);
     // Records a dialog that just opened (to tell later whether it was edited) and forgets a

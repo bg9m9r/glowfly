@@ -89,6 +89,8 @@ source file, update its line here.
 - `file_lists.rs`: how the changed-file lists show their files (List or Tree).
 - `ui_choices.rs`: the notification corner, descriptions, branch visibility, the history table's row density and the diff viewer's layout and mode; `tracker.rs`: where a repository's issues come from.
 - `welcome_done`: whether the first-run welcome was seen (true for any file written before it existed).
+- `hints`, `hints_seen`, `hints_ignored`: tips in context on or off, and the tips retired or ignored once, by id (strings, so a newer version's ids survive).
+- `commit_limit.rs`: the least number of commits a load reads.
 - `avatar_lookups`: author pictures looked up online, off unless chosen (it replaced `use_initials`, which a file no longer opts into).
 - `updates.rs`: the update check and the release notes seen.
 - `downloads.rs`: the Downloads folder updates are saved to.

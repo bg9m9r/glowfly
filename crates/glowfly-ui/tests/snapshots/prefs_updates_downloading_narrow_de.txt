@@ -55,6 +55,11 @@ Label "Sobald Git einen in Glowfly eingegebenen Benutzernamen und ein Passwort o
 Button "Gespeicherte Tokens löschen" [disabled]
 Button "Auch von Git Credential Manager abmelden" [disabled]
 Label "Glowfly hat keine gespeicherten Verbindungen, die sich entfernen ließen."
+Label "Hilfe und Tipps"
+CheckBox "Beim Arbeiten Tipps zeigen" [on]
+Label "Immer nur ein kurzer Tipp, an der Stelle, um die es geht. Es wird nichts gesammelt oder gesendet."
+Button "Tipps wieder zeigen"
+Label "Weggeklickte Tipps und die einmaligen Hinweise erscheinen wieder."
 Label "Diagnose"
 CheckBox "Die Git-Befehle, die Glowfly ausführt, mit ihrer Dauer ins Aktivitätsprotokoll schreiben" [off]
 Label "Schreibt außerdem die Informations- und Debug-Meldungen von Glowfly ins Fehlerprotokoll. Lass es aus, solange du kein Problem untersuchst: Es fügt für jeden Git-Befehl eine Zeile hinzu, auch für Aktualisierungen im Hintergrund."

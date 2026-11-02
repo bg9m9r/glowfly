@@ -73,6 +73,9 @@ pub struct Snapshot {
     pub starts: Vec<Oid>,
     pub refs: HashMap<Oid, Vec<RefLabel>>,
     pub locals: Vec<BranchInfo>,
+    /// HEAD's first-parent commits its upstream lacks, newest first (`head_ahead`); None
+    /// without an upstream, or when unknown.
+    pub head_ahead: Option<Vec<Oid>>,
     pub remotes: Vec<(String, Vec<(String, Oid)>)>,
     /// Every configured remote with its raw fetch and push URLs, in `remotes` order (also remotes
     /// without branches). `remote_urls` keeps libgit2's rewritten fetch URLs for forge detection.

@@ -9,6 +9,9 @@ use git2::{BranchType, Oid, Repository};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+#[path = "head_ahead.rs"]
+mod head_ahead;
+
 /// Loads the repository at (or above) `path`.
 pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
     load_cached(path, opts, &GraphCache::default())
@@ -258,6 +261,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let (commits, truncated) = (walked.commits, walked.truncated);
     let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
     super::branch_merged::mark(&repo, cache, head_oid, &commits, &row_of, &mut locals);
+    let head_ahead = head_ahead::first_parent(&repo, head_oid, &locals);
 
     let mut snap = Snapshot {
         workdir,
@@ -286,6 +290,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         starts,
         refs,
         locals,
+        head_ahead,
         remotes,
         remote_info,
         remote_heads,

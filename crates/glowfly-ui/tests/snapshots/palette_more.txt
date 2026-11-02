@@ -17,6 +17,7 @@ Dialog
   Button "Configure Git LFS…"
   Button "Create tag at HEAD…"
   Button "Create branch at HEAD…"
+  Button "Show tips again"
   Button "Export logs…"
   Button "Configure terminal"
   Button "Configure sparse checkout…"

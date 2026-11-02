@@ -22,7 +22,8 @@
 //! `button_split.rs`. The always-visible thin scroll bar and the edge fades of dialog bodies,
 //! Preferences and the File view are `scroll_cue.rs`. Right-click menus that open below the row
 //! they belong to are `row_menu.rs`, and the collapsed Details disclosure under a plain-words
-//! message `details.rs`.
+//! message `details.rs`. The tip row (an accent wash with a sentence, its button and a × menu)
+//! is `hint_row.rs`.
 
 pub mod banner;
 mod button_look;
@@ -32,6 +33,7 @@ pub mod details;
 pub mod field_group;
 pub mod form_message;
 pub mod ghost;
+pub mod hint_row;
 pub mod icon;
 mod icon_snap;
 pub mod menu;

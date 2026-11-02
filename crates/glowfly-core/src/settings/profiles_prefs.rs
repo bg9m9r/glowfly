@@ -153,6 +153,10 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "git_banner_hidden_for",
     // Whether this install has shown the first-run welcome.
     "welcome_done",
+    // Tips while you work, and the tips retired or ignored: the person at the machine has seen them.
+    "hints",
+    "hints_seen",
+    "hints_ignored",
     // The machine's update check and the release notes seen.
     "updates",
     // The person at the machine reads one language whichever profile commits.

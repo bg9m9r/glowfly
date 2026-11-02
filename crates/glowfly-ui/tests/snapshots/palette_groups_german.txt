@@ -45,6 +45,8 @@ Dialog
   Button "Open preferences"
   Button "Keyboard shortcuts"
   Button "Show the welcome"
+  Button "Tipps ausschalten"
+  Button "Tipps wieder zeigen"
   Button "Take the tour"
   Button "View release notes"
   Button "Check for updates"
