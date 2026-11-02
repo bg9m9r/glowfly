@@ -4,7 +4,7 @@
 
 use super::color::Palette;
 use super::contrast::{lightness, mix, ratio};
-use super::surfaces::Tone;
+use super::surfaces::{Tone, over};
 use super::tests::ocean;
 use super::tokens::{Elevation, motion, radius, shadow};
 use super::*;
@@ -27,13 +27,6 @@ fn palettes() -> Vec<(String, Palette, bool)> {
 /// The text floor: 7:1 in the high-contrast palettes, 4.5:1 elsewhere.
 fn floor(hc: bool) -> f64 {
     if hc { 7.0 } else { 4.5 }
-}
-
-/// Premultiplied `top` laid over `under`, byte by byte in gamma space as egui blends.
-fn over(top: Color32, under: Color32) -> Color32 {
-    let a = f32::from(top.a()) / 255.0;
-    let ch = |t: u8, u: u8| (f32::from(t) + f32::from(u) * (1.0 - a)).round() as u8;
-    Color32::from_rgb(ch(top.r(), under.r()), ch(top.g(), under.g()), ch(top.b(), under.b()))
 }
 
 /// How far apart two colours are, summed over the channels.
@@ -66,6 +59,21 @@ fn destructive_menu_items_read_on_the_overlay() {
         }
         assert!(ratio(p.overlay(), hover) > 1.03, "{name}: the danger hover shows ({:.3})", ratio(p.overlay(), hover));
         assert_ne!(hover, p.hover_on(p.overlay()), "{name}: the danger hover is tinted");
+    }
+}
+
+#[test]
+fn quiet_danger_text_reads_at_rest_and_lit() {
+    use super::tokens::{DANGER_QUIET_HOVER, DANGER_QUIET_PRESSED};
+    for (name, p, hc) in palettes() {
+        let ink = p.danger_ink();
+        for (s, what) in [(p.panel, "panel"), (p.hunk_bg, "hunk band")] {
+            let hover = over(p.wash(p.danger, DANGER_QUIET_HOVER), s);
+            let pressed = over(p.wash(p.danger, DANGER_QUIET_PRESSED), s);
+            for (c, state) in [(s, "rest"), (hover, "hover"), (pressed, "pressed")] {
+                assert!(ratio(ink, c) >= floor(hc), "{name}: quiet danger on {what} at {state} {:.2}", ratio(ink, c));
+            }
+        }
     }
 }
 

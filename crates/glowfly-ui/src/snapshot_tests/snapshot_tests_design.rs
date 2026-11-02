@@ -88,7 +88,7 @@ fn painted_row(ui: &mut Ui, label: &str, press: Press) {
 }
 
 fn render_buttons(name: &str, p: Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(720.0, 290.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(820.0, 290.0)).build_ui_state(
         move |ui, first: &mut bool| {
             frame(ui, &p);
             ui.add_space(8.0);

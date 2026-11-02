@@ -1,4 +1,4 @@
-window 720x290
+window 820x290
 Label "Rest"
 Button "Commit"
 Button "Stage all"

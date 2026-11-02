@@ -18,12 +18,8 @@
 use super::buttons::Kind;
 use crate::ui::theme::color::{self, Palette};
 use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::{self, FILL_HOVER, FILL_PRESSED, HIT_MIN};
+use crate::ui::theme::tokens::{self, DANGER_QUIET_HOVER, DANGER_QUIET_PRESSED, FILL_HOVER, FILL_PRESSED, HIT_MIN};
 use eframe::egui::{Color32, CornerRadius, Painter, Rect, Stroke, StrokeKind};
-
-/// How far the quiet danger kind's fill moves toward the danger colour on hover and while held.
-const DANGER_QUIET_HOVER: f32 = 0.12;
-const DANGER_QUIET_PRESSED: f32 = 0.18;
 
 /// A button's interaction state.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,7 +96,7 @@ fn look_in(p: &Palette, kind: Kind, enabled: bool, press: Press) -> Look {
                 Press::Hover => p.wash(p.danger, DANGER_QUIET_HOVER),
                 Press::Pressed | Press::Latched => p.wash(p.danger, DANGER_QUIET_PRESSED),
             };
-            Look { fill, ink: p.danger, edge: Stroke::NONE }
+            Look { fill, ink: p.danger_ink(), edge: Stroke::NONE }
         }
     }
 }

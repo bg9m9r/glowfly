@@ -166,7 +166,14 @@ fn looks_follow_the_kind_and_state() {
         assert_eq!(look_for(&p, kind, false, Press::Hover), Look { fill: p.raised, ink: p.weak, edge: Stroke::NONE }, "{kind:?}");
     }
     let dq = |press| look_for(&p, Kind::DangerQuiet, true, press);
-    assert_eq!(dq(Press::Rest), Look { fill: Color32::TRANSPARENT, ink: p.danger, edge: Stroke::NONE }, "quiet danger has no fill at rest");
+    assert_eq!(
+        dq(Press::Rest),
+        Look { fill: Color32::TRANSPARENT, ink: p.danger_ink(), edge: Stroke::NONE },
+        "quiet danger has no fill at rest"
+    );
+    for press in [Press::Hover, Press::Pressed] {
+        assert_eq!(dq(press).ink, p.danger_ink(), "the readable danger ink when lit");
+    }
     assert_eq!(dq(Press::Hover).fill, p.wash(p.danger, 0.12));
     assert_eq!(dq(Press::Pressed).fill, p.wash(p.danger, 0.18));
     assert_eq!(look_for(&p, Kind::DangerQuiet, false, Press::Hover).ink, p.faint);

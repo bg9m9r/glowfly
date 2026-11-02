@@ -156,6 +156,43 @@ fn diff_hunk_context() {
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
+/// A narrow split diff in Dusk whose hunk header names a long function: the `@@` text ends
+/// in "…" before Stage hunk, and Discard hunk keeps the trailing edge.
+#[test]
+fn diff_hunk_header_narrow() {
+    use super::snapshot_tests::{harness_palette_sized, remove_fixture};
+    use crate::ui::snapshot_check::CheckSnapshot;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "diff-hunk-header-narrow");
+    let before = "/// Greets everyone who signs in.
+fn greet_every_returning_visitor_by_name(visitor_name: &str, unread_count: u32) -> String {
+    let greeting = \"Hello\";
+    let punctuation = '!';
+    let width = 12;
+    let shout = false;
+    let count = 1;
+    format!(\"{greeting}, {visitor_name}{punctuation} {width} {shout} {count} {unread_count}\")
+}
+";
+    std::fs::write(dir.join("greet.rs"), before).unwrap();
+    let d = "2026-01-11T10:00:00+00:00";
+    git(&dir, &["add", "greet.rs"], d);
+    git(&dir, &["commit", "-q", "-m", "Add greet.rs"], d);
+    std::fs::write(dir.join("greet.rs"), before.replace("let count = 1;", "let count = 2;")).unwrap();
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    let target = DiffTarget::Unstaged("greet.rs".into());
+    let mut diff = repo::load_diff(&dir, &target).unwrap();
+    diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
+    diff.intraline = intraline::intraline(&diff);
+    assert!(diff.hunks[0].header.contains("fn greet_every"), "{}", diff.hunks[0].header);
+    st.session.diff.view = Some((target, diff.into()));
+    st.settings.diff_layout = DiffLayout::Split;
+    let mut h = harness_palette_sized(st, crate::ui::theme::DUSK, eframe::egui::vec2(1100.0, 600.0));
+    h.run();
+    h.check_snapshot("diff_hunk_header_narrow");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 /// A one-word edit in a Rust file, highlighted and word-marked as the runner does.
 fn with_word_diff(layout: DiffLayout, theme: ThemeChoice) -> (AppState, PathBuf) {
     with_word_diff_in(layout, theme, &format!("diff-words-{layout:?}"))
