@@ -228,7 +228,7 @@ Dialog
   Button "MIT: powerfmt 0.2.1"
   Button "MIT: ppv-lite86 0.2.21"
   Button "MIT: profiling 1.0.18"
-  Button "MIT: pulldown-cmark 0.13.5"
+  Button "MIT: pulldown-cmark 0.13.6"
   Button "MIT: pure-rust-locales 0.8.2"
   Button "MIT: quick-error 2.0.1"
   Button "MIT: quick-xml 0.30.0, quick-xml 0.41.0"
