@@ -61,7 +61,7 @@ source file, update its line here.
 
 - One style for every empty, loading, failed and banner state.
 - `empty_state.rs`: an empty pane's icon, title, hint and buttons; its painted icons in `empty_state_icons.rs`.
-- `graph_empty.rs`: the graph's empty state.
+- `graph_empty.rs`: the graph's empty states, and its spinner while a history freed in a parked tab loads again.
 - `history_footer.rs`: the file history list's empty state and its footer's.
 - `pane_status.rs`: a pane that is loading or failed, with Try again and Copy details; shows an error without its kind prefix (`error::plain_message`).
 - `widgets/banner.rs`: the banner in five kinds, Info, Warning, Error, Progress and NeedsYou, with a mark and a coloured stripe.

@@ -3,7 +3,8 @@
 //! the snapshot and the Create issue dialog) and restores the other's, and swaps their activity
 //! logs (`Tab::log`, outside `Parked`); reordering moves parked data and logs with its tab. Where
 //! a tab opens and how a drop or a keyboard move moves it follow the worktree groups
-//! (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in `tab_label.rs`.
+//! (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in `tab_label.rs`,
+//! freeing a long-parked tab's history in `parked_free.rs`.
 
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::{CloseRequest, TabsMsg};
@@ -218,7 +219,8 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     st.refresh = Default::default();
     fx.push(Effect::Ui(UiEffect::SetTitle(title(st, i))));
     if st.snap.is_some() {
-        super::repo::refresh(st, fx);
+        // A history freed while parked loads again in full (`parked_free.rs`).
+        super::parked_free::refresh(st, fx);
         super::conflict::reload_pending(st, fx);
         super::conflict_files::want(st, fx);
         super::history::reload_pending(st, fx);
@@ -259,7 +261,7 @@ pub fn park(st: &mut AppState) -> Parked {
     super::stack_prs::parked(st);
     // The settings are shared by all tabs and may change while this one is parked.
     st.session.tab_view.parked_in = Some((st.settings.diff_mode, st.settings.diff_layout));
-    Parked { session: st.session.park(), snap: st.snap.take(), issue_form: super::issue_create::park(st) }
+    Parked { session: st.session.park(), snap: st.snap.take(), issue_form: super::issue_create::park(st), since: None }
 }
 
 fn unpark(st: &mut AppState, p: Parked) {

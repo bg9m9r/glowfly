@@ -1,5 +1,6 @@
-//! The graph's empty states (`graph/mod.rs`): a repository with no commits, and a filtered
-//! search with no matches. That pane says how far the search has looked: changed files or
+//! The graph's empty states (`graph/mod.rs`): a repository with no commits, a history freed
+//! while its tab was parked loading again (`update/parked_free.rs`), and a filtered search with
+//! no matches. That pane says how far the search has looked: changed files or
 //! older history still being searched, a failed load for more (Try again, Copy details), the
 //! whole history searched (by the whole-history index too, or as far as it reached), matches
 //! only past what the graph can load, or only the newest commits, with Keep searching (or Load
@@ -20,6 +21,12 @@ const SEARCHING_FILES: &str = "Searching changed files…";
 /// A repository without commits.
 pub(super) fn no_commits(ui: &mut Ui) {
     empty_state(ui, EmptyIcon::Commits, NO_COMMITS_TITLE, NO_COMMITS_HINT, &[]);
+}
+
+/// The tab's history was freed while it was parked and is loading again; the graph's scroll
+/// waits for it.
+pub(super) fn reloading(ui: &mut Ui, st: &AppState) {
+    pane_status::loading(ui, st.settings.lang().tr("common.loading"));
 }
 
 /// The search filters the graph and nothing matches (or it is still being searched).

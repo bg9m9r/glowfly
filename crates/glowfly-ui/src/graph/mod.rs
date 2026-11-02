@@ -88,6 +88,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
     }
     {
         let Some(snap) = &st.snap else { return };
+        if st.session.tab_view.history_freed.is_some() {
+            return super::graph_empty::reloading(ui, st);
+        }
         if snap.commits.is_empty() && snap.graph.wip.is_none() {
             return super::graph_empty::no_commits(ui);
         }

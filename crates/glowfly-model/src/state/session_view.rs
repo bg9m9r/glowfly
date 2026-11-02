@@ -3,7 +3,7 @@
 //! changed-file lists, which empty left-panel sections are expanded, and the open diff's opened
 //! folds and top row with the mode and layout that row was counted in. Views edit the text
 //! fields in place and the graph view records its scroll; `update/tabs.rs` restores the scroll
-//! and recounts the top row on return.
+//! and recounts the top row on return. Also whether the tab's history was freed while parked.
 
 use super::file_folds::FileFolds;
 use empty_sections::EmptySections;
@@ -39,4 +39,8 @@ pub struct TabView {
     pub parked_in: Option<(DiffMode, DiffLayout)>,
     /// The left-panel sections expanded while empty (`empty_sections.rs`).
     pub empty_sections: EmptySections,
+    /// Set while the snapshot is a stub whose commits and graph were freed after a long park
+    /// (`update/parked_free.rs`): how many commits it had been loaded with, which the reload on
+    /// return asks for again. Cleared when a load's snapshot is shown.
+    pub history_freed: Option<usize>,
 }

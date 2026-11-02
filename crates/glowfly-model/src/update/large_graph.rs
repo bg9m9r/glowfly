@@ -48,6 +48,8 @@ pub fn laid_out(st: &mut AppState, request: u64, fit: &LayoutFit, layout: Layout
 
 /// Shows the snapshot a load made; the one it replaces is freed on a worker when large.
 pub fn show(st: &mut AppState, snap: glowfly_core::repo::Snapshot, fx: &mut Vec<Effect>) {
+    // A history freed while parked is back (`parked_free.rs`).
+    st.session.tab_view.history_freed = None;
     match st.snap.replace(snap) {
         Some(old) if large(&old) => free(fx, "snapshot", Box::new(old)),
         _ => {}

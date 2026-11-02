@@ -1,14 +1,24 @@
 //! Open repository tabs. The active tab's data lives in `AppState` (where views read it), its
 //! per-tab state in `AppState::session`; every other tab keeps its data parked here (its
-//! `RepoSession`, snapshot and Create issue dialog) until it is selected again.
+//! `RepoSession`, snapshot and Create issue dialog) until it is selected again. A tab parked
+//! `HISTORY_FREE_AFTER` with `HISTORY_FREE_MIN_COMMITS` or more loaded lets its commits and graph
+//! go (`update/parked_free.rs`).
 
 use glowfly_core::paths::{FolderId, same_spelling};
 use glowfly_core::repo::{CommonDir, Snapshot};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
 /// Closed tabs remembered for "Reopen closed tab".
 pub const MAX_CLOSED_TABS: usize = 10;
+
+/// How long a tab stays parked before its loaded history is freed.
+pub(crate) const HISTORY_FREE_AFTER: Duration = Duration::from_secs(10 * 60);
+
+/// The fewest loaded commits whose history is worth freeing: more than the default commit limit
+/// loads, so a tab only scrolled or loaded deeper (or with a raised limit) lets go of it.
+pub(crate) const HISTORY_FREE_MIN_COMMITS: usize = 5_000;
 
 /// The longest name a tab can be given (characters).
 pub const MAX_TAB_LABEL: usize = 64;
@@ -201,6 +211,24 @@ pub struct Parked {
     /// The Create issue dialog, unless an issue was being created (its choices load again on
     /// return).
     pub issue_form: Option<Box<super::issue_form::IssueForm>>,
+    /// When the first tick after parking came: what `HISTORY_FREE_AFTER` counts from.
+    pub since: Option<Instant>,
+}
+
+impl Parked {
+    /// When this tab's loaded history is to be freed: parked a while with a large one loaded,
+    /// not freed yet (`RepoSession::tab_view.history_freed`). None until a tick dates the park.
+    pub fn history_free_at(&self) -> Option<Instant> {
+        let large = self.snap.as_ref().is_some_and(|s| s.commits.len() >= HISTORY_FREE_MIN_COMMITS);
+        self.since.filter(|_| large && self.session.tab_view.history_freed.is_none()).map(|s| s + HISTORY_FREE_AFTER)
+    }
+}
+
+/// When a tick must come to free a long-parked tab's history (`Parked::history_free_at`), or
+/// to date a park no tick has seen yet (now).
+pub fn history_free_wake(tabs: &[Tab], now: Instant) -> Option<Instant> {
+    let parked = tabs.iter().filter_map(|t| t.parked.as_deref());
+    parked.filter_map(|p| if p.since.is_none() && p.snap.is_some() { Some(now) } else { p.history_free_at() }).min()
 }
 
 /// Where the tab at index `i` ends up after moving the tab at `from` to `to`: what
