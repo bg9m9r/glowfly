@@ -11,6 +11,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked};
 use crate::state::gitflow_resume::{ready_text, waiting_text};
+use crate::state::worktree_branches::Elsewhere;
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::banner::{self, Banner, BannerKind};
@@ -193,23 +194,26 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
         if ui.add(buttons::secondary("Finish…")).on_hover_text(format!("Finish {} {}", g.kind.noun(), b.short)).clicked() {
             msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
         }
-        let elsewhere = st.snap.as_ref().and_then(|s| crate::state::worktree_branches::checkout_blocked(st.settings.lang(), s, b.name));
+        // One another worktree has: Open worktree (or Prune and check out a missing one).
+        let t = st.settings.lang();
+        let elsewhere = st.snap.as_ref().and_then(|s| crate::state::worktree_branches::checkout_elsewhere(t, s, b.name));
         let why = if b.head {
             Some("It is checked out.")
-        } else if let Some(w) = elsewhere.as_deref() {
-            Some(w)
-        } else if st.job.is_some() {
+        } else if st.job.is_some() && elsewhere.is_none() {
             Some("Wait for the running job to finish.")
         } else {
             None
         };
-        let r = ui.add(buttons::secondary("Checkout").enabled(why.is_none()));
-        let r = match why {
-            Some(w) => r.on_hover_text(w),
-            None => r,
+        let label = elsewhere.as_ref().map_or("Checkout", |e| e.button(t));
+        let r = ui.add(buttons::secondary(label).enabled(why.is_none()));
+        let r = match (why, &elsewhere) {
+            (Some(w), _) => r.on_hover_text(w),
+            (None, Some(e)) => r.on_hover_text(e.tip()),
+            (None, None) => r,
         };
         if r.clicked() {
-            msgs.push(Msg::Branch(crate::msg::BranchMsg::Checkout(b.name.to_owned())));
+            let checkout = crate::msg::BranchMsg::Checkout(b.name.to_owned());
+            msgs.push(Msg::Branch(Elsewhere::msg(elsewhere.as_ref(), checkout)));
         }
     });
     let resp = resp.on_hover_text(row_tooltip(s, g.kind, b.name));

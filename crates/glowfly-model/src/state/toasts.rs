@@ -88,6 +88,21 @@ impl AppState {
         }
     }
 
+    /// `toast_action`, unless a toast with the same words is up: that one is shown again in its
+    /// place (a new id, its timer restarted, this action), so a refusal clicked again doesn't
+    /// stack copies. Returns its id.
+    pub fn toast_action_once(&mut self, ok: bool, text: impl Into<String>, action: ToastAction, now: Instant) -> u64 {
+        let text = super::logs::redacted(text.into());
+        let Some(at) = self.toasts.iter().position(|t| t.ok == ok && t.text == text) else {
+            return self.push_toast(ok, text, Some(action), now);
+        };
+        self.toast_seq += 1;
+        let t = &mut self.toasts[at];
+        // A held toast stays held, its clock started again.
+        (t.id, t.at, t.counted, t.action) = (self.toast_seq, now, Duration::ZERO, Some(action));
+        t.id
+    }
+
     /// Updates the toast `previous` in place (its text, colour and timer) while it is still up,
     /// else shows a new one. Returns the toast's id, for the next call.
     pub fn toast_replacing(&mut self, previous: Option<u64>, ok: bool, text: impl Into<String>, now: Instant) -> u64 {
@@ -148,6 +163,19 @@ mod tests {
     fn state() -> (AppState, Instant) {
         let t0 = Instant::now();
         (AppState::new(Settings::default(), Vec::new(), t0), t0)
+    }
+
+    #[test]
+    fn a_toast_shown_once_restarts_instead_of_stacking() {
+        let (mut st, t0) = state();
+        let action = || ToastAction { label: "Fix".into(), msg: Box::new(Msg::Tick(t0)), workdir: None };
+        let first = st.toast_action_once(true, "Refused", action(), t0);
+        let again = st.toast_action_once(true, "Refused", action(), t0 + secs(3.0));
+        assert_eq!(st.toasts.len(), 1);
+        assert!(again > first, "a new id, as a toast shown again");
+        assert_eq!((st.toasts[0].id, st.toasts[0].at), (again, t0 + secs(3.0)));
+        st.toast_action_once(false, "Refused", action(), t0);
+        assert_eq!(st.toasts.len(), 2, "a failure with the same words is its own toast");
     }
 
     fn action() -> ToastAction {

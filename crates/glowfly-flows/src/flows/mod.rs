@@ -345,6 +345,7 @@ mod worktree_counts_tests;
 mod worktree_manage_tests;
 mod worktree_monitor_tests;
 mod worktree_move_tests;
+mod worktree_prune_checkout_tests;
 mod worktree_remote_tests;
 mod worktree_remove_remote_tests;
 mod worktree_tests;

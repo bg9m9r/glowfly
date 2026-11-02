@@ -1,6 +1,7 @@
 //! Local branches and worktrees together: which branches another worktree has checked out, or is
 //! rebasing or bisecting with HEAD detached (git refuses to check them out, delete or
-//! fast-forward them here, and to rename one being rebased or bisected), the words for that, and
+//! fast-forward them here, and to rename one being rebased or bisected; a checkout opens that
+//! worktree instead, or offers to prune a missing one, `checkout_elsewhere`), the words for that, and
 //! the bases a worktree is created from for a remote branch or a pull request, with the rules
 //! for the new local branch's name. Shared by the views and `update`, so a disabled item and a
 //! refused request say the same thing. Pure: a branch is matched to a worktree by its exact name
@@ -8,6 +9,7 @@
 //! (`WorktreeInfo::current`, by identity).
 
 use super::branches::{pr_source_missing, pr_source_refused};
+use crate::msg::BranchMsg;
 use glowfly_core::branch_ops::check_branch_name;
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
@@ -22,7 +24,7 @@ pub fn elsewhere<'a>(snap: &'a Snapshot, branch: &str) -> Option<&'a WorktreeInf
 }
 
 /// `elsewhere`, with how that worktree has the branch.
-fn used_elsewhere<'a>(snap: &'a Snapshot, branch: &str) -> Option<(&'a WorktreeInfo, BranchUse)> {
+pub fn used_elsewhere<'a>(snap: &'a Snapshot, branch: &str) -> Option<(&'a WorktreeInfo, BranchUse)> {
     elsewhere(snap, branch).and_then(|w| Some((w, w.uses(branch)?)))
 }
 
@@ -38,12 +40,59 @@ fn held_text(t: Lang, branch: &str, wt: &WorktreeInfo, by: BranchUse) -> Option<
     })
 }
 
-/// Why local branch `branch` can't be checked out (or fast-forwarded) here: another worktree has
-/// it.
-pub fn checkout_blocked(t: Lang, snap: &Snapshot, branch: &str) -> Option<String> {
+/// What checking out local branch `branch` does instead, when another worktree has it.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Elsewhere {
+    /// Opens that worktree (in its tab, else a new one); `tip` says so, for the item's hover.
+    Open { tip: String },
+    /// Its folder is missing: the checkout offers to prune it first; `tip` says so.
+    Prune { tip: String },
+}
+
+impl Elsewhere {
+    /// What the checkout does, for its item's or button's hover.
+    pub fn tip(&self) -> &str {
+        match self {
+            Self::Open { tip } | Self::Prune { tip } => tip,
+        }
+    }
+
+    /// The label of a checkout button for it: Open worktree, or Prune and check out.
+    pub fn button(&self, t: Lang) -> &'static str {
+        match self {
+            Self::Open { .. } => t.tr("branch.menu.open_worktree"),
+            Self::Prune { .. } => t.tr("worktree_branch.missing.button"),
+        }
+    }
+
+    /// Checkout `m` as sent for it: pruning first for a missing worktree.
+    pub fn msg(e: Option<&Self>, m: BranchMsg) -> BranchMsg {
+        match e {
+            Some(Self::Prune { .. }) => BranchMsg::PruneThen(Box::new(m)),
+            _ => m,
+        }
+    }
+}
+
+/// What a checkout of local branch `branch` does when another worktree has it (None when none
+/// has): open that worktree, or prune it first when its folder is missing.
+pub fn checkout_elsewhere(t: Lang, snap: &Snapshot, branch: &str) -> Option<Elsewhere> {
+    let (wt, by) = used_elsewhere(snap, branch)?;
+    let path = shown(&wt.path);
+    let args = [("branch", &branch as &dyn std::fmt::Display), ("path", &path)];
+    Some(match by {
+        _ if wt.missing => Elsewhere::Prune { tip: t.trf("worktree_branch.missing.tip", &args) },
+        BranchUse::Rebasing => Elsewhere::Open { tip: t.trf("worktree_branch.open.tip.rebasing", &args) },
+        BranchUse::Bisecting => Elsewhere::Open { tip: t.trf("worktree_branch.open.tip.bisecting", &args) },
+        BranchUse::CheckedOut => Elsewhere::Open { tip: t.trf("worktree_branch.open.tip.checked_out", &args) },
+    })
+}
+
+/// Why local branch `branch` can't be fast-forwarded here: another worktree has it.
+fn fast_forward_elsewhere(t: Lang, snap: &Snapshot, branch: &str) -> Option<String> {
     let (wt, by) = used_elsewhere(snap, branch)?;
     held_text(t, branch, wt, by)
-        .or_else(|| Some(t.trf("worktree_branch.blocked.checkout", &[("branch", &branch), ("path", &shown(&wt.path))])))
+        .or_else(|| Some(t.trf("worktree_branch.blocked.fast_forward", &[("branch", &branch), ("path", &shown(&wt.path))])))
 }
 
 /// Why local branch `branch` can't be deleted: another worktree has it.
@@ -63,7 +112,7 @@ pub fn held_blocked(t: Lang, snap: &Snapshot, branch: &str) -> Option<String> {
 /// Why `b` can't be fast-forwarded to its upstream: when it isn't checked out here, another
 /// worktree has it (git won't move it under that worktree); else `branches::fast_forward_blocked`.
 pub fn fast_forward_blocked(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Option<String> {
-    let elsewhere = (!b.is_head).then(|| checkout_blocked(t, snap, &b.name)).flatten();
+    let elsewhere = (!b.is_head).then(|| fast_forward_elsewhere(t, snap, &b.name)).flatten();
     elsewhere.or_else(|| super::branches::fast_forward_blocked(b, snap.state))
 }
 

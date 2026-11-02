@@ -88,7 +88,7 @@ fn git_flow_start_on_a_clean_tree_runs_plainly() {
     cleanup(&dir);
 }
 
-fn pull_request(id: u64, source: &str) -> PullRequest {
+pub(super) fn pull_request(id: u64, source: &str) -> PullRequest {
     PullRequest {
         id,
         title: "Feature work".into(),

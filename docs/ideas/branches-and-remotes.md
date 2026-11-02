@@ -82,8 +82,10 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Double-click a tag (graph chip and TAGS row) to check it out detached, through the existing
   tag checkout and its detached-HEAD warning
 - Double-click the "+N" chip to choose which hidden branch to check out
-- Double-clicking a branch that another worktree has checked out opens that worktree's tab
-  instead of logging the refusal
+- Delete and Rename of a branch whose worktree folder is missing still say "Prune it first";
+  offer Prune and delete there, as checkout offers Prune and check out
+- Any refusal clicked again could restart its toast and skip the repeated log line, as the
+  missing-worktree checkout does (`toast_action_once`); several flows tests expect repeats today
 - Branch chip and row tooltips mention that a double-click checks the branch out
 - Double-clicking the checked-out branch does nothing instead of logging that it is already
   checked out

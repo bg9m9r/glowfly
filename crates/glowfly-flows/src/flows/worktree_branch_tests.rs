@@ -1,19 +1,22 @@
-//! Headless tests for local branches checked out in another worktree: Checkout and Delete
-//! refused with the words the menus show (also once the worktree's folder is missing), a free
-//! branch checked out as an undoable job, the current worktree's own branch never counted, the
-//! palette offering no checkout of such a branch, and one that worktree is rebasing or bisecting
-//! with HEAD detached held as checked out there: checkout, delete, rename, fast-forward and
-//! force push refused, saying so.
+//! Headless tests for local branches checked out in another worktree: a checkout opens that
+//! worktree instead (switching to its tab when one is open, noted in the activity log), also
+//! when it is rebasing or bisecting the branch there with HEAD detached; Delete refused with the
+//! words the menus show; a free branch checked out as an undoable job; the current worktree's own
+//! branch never counted; the palette's Switch branch listing such a branch; and one whose
+//! worktree folder is missing refused once (however often it is clicked) with Prune and check
+//! out, which prunes and checks it out in one job. A branch held by a rebase or bisect there is
+//! still refused for delete, rename, fast-forward and force push.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{clean_tree, drive, finish, git, same_place, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
-use crate::msg::{BranchMsg, Msg, RepoMsg};
+use crate::msg::{BranchMsg, Msg, RepoMsg, TabsMsg};
 use crate::state::AppState;
 use crate::state::branches::push::force_blocked;
-use crate::state::palette::entries;
-use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere, held_blocked, local_tip_line};
+use crate::state::palette::{Pick, entries};
+use crate::state::worktree_branches::{Elsewhere, checkout_elsewhere, delete_blocked, elsewhere, held_blocked, local_tip_line};
 use glowfly_core::i18n::Lang;
+use glowfly_core::native_path::shown;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -44,20 +47,38 @@ fn branch(m: BranchMsg) -> Msg {
     Msg::Branch(m)
 }
 
+/// The listed folder of the worktree that has `side`, as the words show it.
+fn side_path(st: &AppState) -> String {
+    shown(&elsewhere(st.snap.as_ref().unwrap(), "side").expect("side is elsewhere").path)
+}
+
+/// Checks out `side` from the first tab: the worktree opens in the second, and the first tab's
+/// log ends with `note`. Then back to the first tab.
+fn opens_side(st: &mut AppState, side: &Path, note: &str) {
+    drive(st, branch(BranchMsg::Checkout("side".into())));
+    assert_eq!((st.tabs.len(), st.active_tab), (2, 1), "opened in a second tab");
+    assert!(same_place(&st.snap.as_ref().unwrap().workdir, side));
+    let first = &st.tabs[0].log;
+    assert_eq!(first.last().map(|l| (l.ok, l.text.as_str())), Some((true, note)));
+    drive(st, Msg::Tabs(TabsMsg::SelectTab(0)));
+}
+
 #[test]
-fn checkout_and_delete_refused_for_a_branch_in_another_worktree() {
-    let (mut st, dir, side) = with_side("wtb-refused");
+fn checkout_opens_the_worktree_that_has_the_branch() {
+    let (mut st, dir, side) = with_side("wtb-opens");
     let snap = st.snap.as_ref().unwrap();
-    let why = checkout_blocked(Lang::En, snap, "side").expect("side is checked out elsewhere");
-    assert!(why.starts_with("side is checked out in the worktree at ") && why.ends_with(". Open that worktree instead."), "{why}");
+    let path = side_path(&st);
+    assert_eq!(checkout_elsewhere(Lang::En, snap, "side"), Some(Elsewhere::Open { tip: format!("Opens the worktree at {path}") }));
+    assert_eq!(checkout_elsewhere(Lang::En, snap, "free"), None);
     let delete = delete_blocked(Lang::En, snap, "side").unwrap();
     assert!(delete.ends_with("Remove that worktree or check out another branch there first."), "{delete}");
     assert!(local_tip_line(Lang::En, elsewhere(snap, "side").unwrap(), "side").starts_with("Checked out in the worktree at "));
 
-    let fx = update(&mut st, branch(BranchMsg::Checkout("side".into())), Instant::now());
-    assert!(fx.iter().all(|e| !matches!(e, Effect::RunGit { .. })), "{fx:?}");
-    assert!(st.job.is_none());
-    assert_eq!(last_log(&st), (false, why));
+    let note = format!("Opened the worktree at {path}, where side is checked out.");
+    opens_side(&mut st, &side, &note);
+    // Again: its tab is switched to, not opened twice (`opens_side` checks there are two).
+    opens_side(&mut st, &side, &note);
+    assert!(st.toasts.iter().all(|t| t.ok), "no error toast: {:?}", st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>());
 
     let fx = update(&mut st, branch(BranchMsg::DeleteBranchAndRemote("side".into())), Instant::now());
     assert!(fx.is_empty() && st.job.is_none());
@@ -89,29 +110,67 @@ fn a_free_branch_is_checked_out_as_an_undoable_job() {
 }
 
 #[test]
-fn only_other_worktrees_count_and_a_missing_one_says_prune() {
-    let (mut st, dir, side) = with_side("wtb-missing");
+fn only_other_worktrees_count_and_switch_branch_lists_the_branch() {
+    let (st, dir, side) = with_side("wtb-palette");
     let snap = st.snap.as_ref().unwrap();
     assert!(elsewhere(snap, "main").is_none(), "this worktree's own branch");
     assert!(elsewhere(snap, "free").is_none());
 
     let labels: Vec<String> = entries(&st).into_iter().map(|e| e.label).collect();
     assert!(labels.iter().any(|l| l == "Checkout free"), "{labels:?}");
-    assert!(!labels.iter().any(|l| l == "Checkout side"), "{labels:?}");
+    assert!(!labels.iter().any(|l| l == "Checkout side"), "the main list offers Open worktree: {labels:?}");
     assert!(labels.iter().any(|l| l == "Open worktree side (side)"), "{labels:?}");
 
+    let pick = Pick::checkouts(snap);
+    assert_eq!((pick.label(0), pick.label(1)), ("free", "side"), "after the plain local checkouts");
+    assert_eq!(pick.detail(1).as_deref(), Some("opens its worktree"));
+    cleanup(&dir, &side);
+}
+
+#[test]
+fn a_missing_worktree_is_refused_once_then_pruned_and_checked_out() {
+    let (mut st, dir, side) = with_side("wtb-missing");
+    let path = side_path(&st);
     std::fs::remove_dir_all(&side).unwrap();
+    clean_tree(&dir);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let snap = st.snap.as_ref().unwrap();
     assert!(elsewhere(snap, "side").is_some_and(|w| w.missing), "a missing worktree still counts");
-    let why = checkout_blocked(Lang::En, snap, "side").unwrap();
-    assert!(why.ends_with(", whose folder is missing. Prune it first."), "{why}");
-    assert_eq!(delete_blocked(Lang::En, snap, "side").unwrap(), why);
-    assert!(local_tip_line(Lang::En, elsewhere(snap, "side").unwrap(), "side").ends_with(" (folder missing; prune it first)"));
-    update(&mut st, branch(BranchMsg::Checkout("side".into())), Instant::now());
-    assert_eq!(last_log(&st), (false, why));
-    let labels: Vec<String> = entries(&st).into_iter().map(|e| e.label).collect();
-    assert!(!labels.iter().any(|l| l.starts_with("Open worktree side")), "{labels:?}");
+    let tip = format!("The worktree at {path} is gone. Prunes it, then checks out side.");
+    assert_eq!(checkout_elsewhere(Lang::En, snap, "side"), Some(Elsewhere::Prune { tip }));
+    assert!(delete_blocked(Lang::En, snap, "side").unwrap().ends_with(", whose folder is missing. Prune it first."));
+    assert!(local_tip_line(Lang::En, elsewhere(snap, "side").unwrap(), "side").ends_with(" (folder missing)"));
+    assert!(!entries(&st).into_iter().any(|e| e.label.starts_with("Open worktree side")));
+    assert!(Pick::checkouts(snap).command(1).is_none(), "only free: nothing to open");
+
+    // Refused, offering Prune and check out: twice adds no second line or toast.
+    for _ in 0..2 {
+        let fx = update(&mut st, branch(BranchMsg::Checkout("side".into())), Instant::now());
+        assert!(fx.is_empty() && st.job.is_none(), "{fx:?}");
+    }
+    assert_eq!(last_log(&st), (false, format!("side is still checked out in a missing worktree ({path}).")));
+    assert_eq!(st.log.iter().filter(|l| l.text.contains("missing worktree")).count(), 1);
+    let toasts: Vec<_> = st.toasts.iter().filter(|t| t.text.contains("whose folder is gone")).collect();
+    assert_eq!(toasts.len(), 1, "one toast, restarted");
+    assert!(toasts[0].ok, "informational, not an error");
+    assert_eq!(toasts[0].text, format!("side is still checked out in a worktree whose folder is gone ({path})."));
+    let action = toasts[0].action.as_ref().expect("Prune and check out");
+    assert_eq!(action.label, "Prune and check out");
+    let Msg::Branch(BranchMsg::PruneThen(m)) = &*action.msg else { panic!("PruneThen") };
+    assert!(matches!(&**m, BranchMsg::Checkout(b) if b == "side"));
+
+    let fx = update(&mut st, branch(BranchMsg::PruneThen(Box::new(BranchMsg::Checkout("side".into())))), Instant::now());
+    match &fx[..] {
+        [Effect::RunGit { cmds, record, .. }] => {
+            assert_eq!(cmds, &[glowfly_core::worktree_ops::prune_cmd(), crate::state::branches::checkout_local("side")]);
+            assert!(record.is_some(), "recorded for undo as the checkout");
+        }
+        other => panic!("expected one RunGit, got {other:?}"),
+    }
+    finish(&mut st, fx);
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!(snap.head_branch.as_deref(), Some("side"));
+    assert!(elsewhere(snap, "side").is_none(), "pruned");
     cleanup(&dir, &side);
 }
 
@@ -141,17 +200,20 @@ fn a_branch_mid_rebase_in_another_worktree_is_held_there() {
     let wt = elsewhere(snap, "side").expect("the LOCAL mark: held by the rebasing worktree");
     assert_eq!(wt.branch, None, "its HEAD is detached");
     assert!(local_tip_line(Lang::En, wt, "side").starts_with("Mid-rebase in the worktree at "));
-    let why = checkout_blocked(Lang::En, snap, "side").unwrap();
+    let path = side_path(&st);
+    let tip = format!("Opens the worktree at {path}, where side is mid-rebase");
+    assert_eq!(checkout_elsewhere(Lang::En, snap, "side"), Some(Elsewhere::Open { tip }));
+    let why = delete_blocked(Lang::En, snap, "side").unwrap();
     assert!(
         why.starts_with("side is mid-rebase in the worktree at ") && why.ends_with(". Continue or abort the rebase there first."),
         "{why}"
     );
-    assert_eq!(delete_blocked(Lang::En, snap, "side").as_deref(), Some(why.as_str()));
     let b = snap.locals.iter().find(|b| b.name == "side").unwrap().clone();
     assert_eq!(force_blocked(Lang::En, snap, &b).as_deref(), Some(why.as_str()), "force push");
     assert!(held_blocked(Lang::En, snap, "free").is_none());
 
-    refused(&mut st, "checkout", BranchMsg::Checkout("side".into()), &why);
+    // Opened where the rebase is continued or aborted.
+    opens_side(&mut st, &side, &format!("Opened the worktree at {path}, where side is mid-rebase."));
     refused(&mut st, "delete", BranchMsg::DeleteBranchAndRemote("side".into()), &why);
     refused(&mut st, "rename", BranchMsg::RenameBranch { old: "side".into(), new: "other".into(), remote: false }, &why);
     refused(&mut st, "fast-forward", BranchMsg::FastForwardBranch("side".into()), &why);
@@ -177,7 +239,11 @@ fn a_branch_mid_bisect_in_another_worktree_is_held_but_one_merely_checked_out_re
     assert!(local_tip_line(Lang::En, wt, "side").starts_with("Mid-bisect in the worktree at "));
     let why = held_blocked(Lang::En, snap, "side").expect("rename refused");
     assert!(why.starts_with("side is mid-bisect in the worktree at ") && why.ends_with(". End the bisect there first."), "{why}");
-    assert_eq!(checkout_blocked(Lang::En, snap, "side").as_deref(), Some(why.as_str()));
+    assert_eq!(delete_blocked(Lang::En, snap, "side").as_deref(), Some(why.as_str()));
+    let path = side_path(&st);
+    let tip = format!("Opens the worktree at {path}, where side is mid-bisect");
+    assert_eq!(checkout_elsewhere(Lang::En, snap, "side"), Some(Elsewhere::Open { tip }));
+    opens_side(&mut st, &side, &format!("Opened the worktree at {path}, where side is mid-bisect."));
     refused(&mut st, "rename", BranchMsg::RenameBranch { old: "side".into(), new: "other".into(), remote: false }, &why);
     git(&side, &["bisect", "reset"]);
     cleanup(&dir, &side);

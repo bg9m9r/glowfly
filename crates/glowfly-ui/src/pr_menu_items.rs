@@ -3,12 +3,12 @@
 //! and push the branch first when the code host lacks it or some of its commits. A branch that
 //! can't be pushed plainly gets a disabled item saying why; nothing is ever force-pushed.
 //! Without a code host, a row menu keeps one disabled item saying why. Also the pull request
-//! tooltip the sidebar and the dashboard share.
+//! tooltip the sidebar and the dashboard share, and the PULL REQUESTS row's checkout item.
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_item, menu_item_if, menu_item_tip};
 use super::widgets::reason::{self, ItemState};
-use crate::msg::ForgeMsg;
 use crate::msg::Msg;
+use crate::msg::{BranchMsg, ForgeMsg};
 use crate::state::blocked::BUSY;
 use crate::state::push_pr::{self, HostBranch};
 use crate::state::{ForgeState, Selection};
@@ -17,6 +17,31 @@ use git2::Oid;
 use glowfly_core::forge::PullRequest;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
+
+/// The PULL REQUESTS row's checkout of the source branch: its local branch like any other (Open
+/// <source> in its worktree when another worktree has it, Prune and check out when that
+/// worktree's folder is missing); otherwise a new branch tracking the remote one. Disabled with
+/// the reason for a name git refuses or a branch this repository lacks.
+pub(super) fn checkout_item(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, f: &ForgeState, pr: &PullRequest, msgs: &mut Vec<Msg>) {
+    use crate::state::worktree_branches::{Elsewhere, checkout_elsewhere};
+    use crate::ui::widgets::menu::named;
+    let m = BranchMsg::CheckoutPullRequest { id: pr.id };
+    let blocked = crate::state::branches::pr_checkout(snap, &f.remote, &pr.source).err();
+    let local = snap.locals.iter().any(|b| b.name == pr.source);
+    let elsewhere = (local && blocked.is_none()).then(|| checkout_elsewhere(t, snap, &pr.source)).flatten();
+    let source = [("branch", pr.source.as_str())];
+    match elsewhere {
+        Some(Elsewhere::Open { tip }) => {
+            let label = named(t.tr("remote_branch.menu.open_in_worktree"), &source).full;
+            menu_item_tip(msgs, ui, label, &tip, Msg::Branch(m));
+        }
+        Some(Elsewhere::Prune { tip }) => {
+            let label = named(t.tr("remote_branch.menu.prune_checkout"), &source).full;
+            menu_item_tip(msgs, ui, label, &tip, Msg::Branch(BranchMsg::PruneThen(Box::new(m))));
+        }
+        None => menu_item_if(msgs, ui, format!("Checkout {}", pr.source), blocked.as_deref(), Msg::Branch(m)),
+    }
+}
 
 /// A pull request row's tooltip (the sidebar's and the dashboard's): branches and author, the
 /// reviewers' votes, the merge status, the checks and the start of the description.

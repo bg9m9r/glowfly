@@ -1,4 +1,5 @@
-//! The palette's checkout entries: local, remote and tag checkouts. They are the entries that
+//! The palette's checkout entries: local, remote and tag checkouts, and for Switch branch alone
+//! the local branches another worktree has (opening it). They are the entries that
 //! grow with the repository (one per ref), built from the refs alone so the palette's cache
 //! (`palette_cache.rs`) can keep them until the refs change.
 
@@ -12,6 +13,9 @@ use std::collections::HashSet;
 pub(crate) struct RefEntries {
     pub(crate) locals: Vec<Entry>,
     pub(crate) others: Vec<Entry>,
+    /// Local branches another worktree has: the Switch branch step lists them after `locals`
+    /// (the main list offers Open worktree for them instead).
+    pub(crate) held: Vec<Entry>,
 }
 
 /// The checkout entries for `snap` (none without a repository). They read only the snapshot's
@@ -20,6 +24,7 @@ pub(crate) fn ref_entries(snap: Option<&Snapshot>) -> RefEntries {
     let mut refs = RefEntries::default();
     if let Some(snap) = snap {
         checkout_entries(snap, &mut refs.locals);
+        held_entries(snap, &mut refs.held);
         remote_checkout_entries(snap, &mut refs.others);
         tag_checkout_entries(snap, &mut refs.others);
     }
@@ -33,6 +38,17 @@ fn checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
     for b in snap.locals.iter().filter(|b| !b.is_head && !elsewhere(&b.name)) {
         let e = entry(PaletteCommand::Checkout(b.name.clone()), format!("Checkout {}", b.name), "switch branch");
         out.push(with_detail(e, b.upstream.clone()));
+    }
+}
+
+/// A checkout entry for each local branch another worktree has, unless its folder is missing:
+/// the checkout opens that worktree.
+fn held_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
+    for b in snap.locals.iter().filter(|b| !b.is_head) {
+        if crate::state::worktree_branches::elsewhere(snap, &b.name).is_some_and(|w| !w.missing) {
+            let e = entry(PaletteCommand::Checkout(b.name.clone()), format!("Checkout {}", b.name), "switch branch worktree open");
+            out.push(with_detail(e, Some("opens its worktree".to_owned())));
+        }
     }
 }
 
