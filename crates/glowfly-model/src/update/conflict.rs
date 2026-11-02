@@ -45,6 +45,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
         ConflictMsg::CloseConflict => close(st),
         ConflictMsg::ConflictToggle { chunk, side } => edit::toggle_side(st, chunk, side),
         ConflictMsg::ConflictToggleLine { chunk, side, line } => edit::toggle_line(st, chunk, side, line),
+        ConflictMsg::ConflictSwap(chunk) => edit::swap(st, chunk),
         ConflictMsg::ConflictTakeAll(side) => edit::set_all(st, Choice::only(side)),
         ConflictMsg::ConflictReset => edit::set_all(st, Choice::Unresolved),
         ConflictMsg::ConflictEditOutput(on) => edit::set_edit(st, on),

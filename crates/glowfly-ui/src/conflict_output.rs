@@ -3,7 +3,7 @@
 //! folded), or, with Edit on, the whole file as text to change by hand, conflicts not picked
 //! yet shown as markers.
 
-use super::conflict_cells::{cell, conflict_wrap, content_width, current_bar, display, offsets, tint, visual_lines, widest};
+use super::conflict_cells::{cell, conflict_wrap, content_width, display, offsets, tint, unresolved_mark, visual_lines, widest};
 use super::conflict_fold::fold_row;
 use super::diff::wrap::RowMetrics;
 use super::diff::{ROW_H, mono};
@@ -27,7 +27,6 @@ fn typed() -> Color32 {
 /// clean run is edited), the note after an undone edit, and the output itself. `wrap` is the
 /// Wrap long lines setting.
 pub(super) fn output(ui: &mut Ui, t: Lang, view: &mut ConflictView, scroll_to: Option<usize>, wrap: bool, msgs: &mut Vec<Msg>) {
-    let (n, resolved) = (view.chunk_count(), view.chunk_count() - view.unresolved());
     if view.segments().is_none() {
         return;
     }
@@ -37,7 +36,6 @@ pub(super) fn output(ui: &mut Ui, t: Lang, view: &mut ConflictView, scroll_to: O
     let builder = UiBuilder::new().max_rect(strip.shrink2(vec2(8.0, 2.0))).layout(Layout::left_to_right(Align::Center));
     ui.allocate_new_ui(builder, |ui| {
         ui.label(type_scale::section_text(ui, t.tr("conflict.output.title")));
-        ui.label(RichText::new(t.trf("conflict.output.progress", &[("done", &resolved), ("total", &n)])).color(color::weak()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let on = view.edit.is_some();
             let (label, tip) = if on {
@@ -75,12 +73,12 @@ pub(super) fn output(ui: &mut Ui, t: Lang, view: &mut ConflictView, scroll_to: O
     }
 }
 
-/// The painted output: clean lines (long runs folded), taken lines tinted by side in pick
+/// The painted output: clean lines (long runs folded), taken lines tinted by side in band
 /// order, typed lines (in a conflict or between them) in green, and a placeholder for each
-/// chunk still to pick.
+/// chunk still to pick, with the amber mark.
 fn painted(ui: &mut Ui, t: Lang, view: &ConflictView, scroll_to: Option<usize>, wrap_on: bool, msgs: &mut Vec<Msg>) {
     let (Some(file), Some(segs)) = (view.file.as_ref(), view.segments()) else { return };
-    let (picks, cleans, current) = (&view.picks, &view.cleans, view.current);
+    let (picks, cleans) = (&view.picks, &view.cleans);
     let (rows, firsts) = output_rows(segs, picks, cleans, &view.opened);
     let chunks: Vec<&Chunk> = file.chunks().collect();
     // Output line numbers: placeholders have none, folds count the lines they hide.
@@ -136,9 +134,6 @@ fn painted(ui: &mut Ui, t: Lang, view: &ConflictView, scroll_to: Option<usize>, 
             OutRow::Taken { side, .. } => cell(ui, rect, 0.0, numbers[i], &text, (tint(side), color::text()), wrap),
             OutRow::Edited { chunk, .. } => {
                 cell(ui, rect, 0.0, numbers[i], &text, (typed(), color::text()), wrap);
-                if chunk == current && firsts.get(chunk) == Some(&i) {
-                    current_bar(ui, rect);
-                }
                 if resp.clicked() {
                     msgs.push(Msg::Conflict(ConflictMsg::ConflictSelect(chunk)));
                 }
@@ -146,9 +141,7 @@ fn painted(ui: &mut Ui, t: Lang, view: &ConflictView, scroll_to: Option<usize>, 
             OutRow::Unresolved(k) => {
                 let text = t.trf("conflict.output.placeholder", &[("number", &(k + 1))]);
                 cell(ui, rect, 0.0, None, &text, (color::wash(color::warn(), 0.18), color::warn()), None);
-                if k == current {
-                    current_bar(ui, rect);
-                }
+                unresolved_mark(ui, rect);
                 if resp.clicked() {
                     msgs.push(Msg::Conflict(ConflictMsg::ConflictSelect(k)));
                 }

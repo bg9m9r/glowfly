@@ -156,6 +156,10 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("diff_gap_filled_split_light", Window),
     ("conflict_view", Window),
     ("conflict_line_picks", Window),
+    ("conflict_line_picks_light", Window),
+    ("conflict_both_sides_dark", Window),
+    ("conflict_all_resolved_dark", Window),
+    ("conflict_narrow_1100_de", Window),
     ("blame_view", Window),
     ("blame_view_light", Window),
     ("range_diff_changed", Window),
@@ -200,6 +204,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `conflict_line_picks` in Porcelain: the check marks' contrast on the light tints.
+    "conflict_line_picks_light",
     // `hint_row_undo` in Porcelain.
     "hint_row_undo_light",
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.

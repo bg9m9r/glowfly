@@ -152,7 +152,7 @@ fn toggling_taking_all_resetting_and_stepping() {
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs }));
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 1, side: Side::Ours }));
     let c = st.session.conflict.view.as_ref().unwrap();
-    assert_eq!((&c.picks[1], c.current), (&Choice::TheirsThenOurs.into(), 1));
+    assert_eq!((&c.picks[1], c.current), (&Choice::OursThenTheirs.into(), 1), "ours first, whichever was ticked first");
     assert_eq!(st.view.conflict_scroll_to, None, "picking doesn't scroll");
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictTakeAll(Side::Ours)));
     assert_eq!(st.session.conflict.view.as_ref().unwrap().picks, vec![ChunkPick::Sides(Choice::Ours); 3]);
@@ -305,14 +305,14 @@ fn trivial_chunks_are_picked_when_the_file_loads() {
     view.set_file(f);
     assert_eq!((&view.picks[0], view.auto[0]), (&Choice::Theirs.into(), Some(Trivial::Unchanged)));
     assert_eq!((&view.picks[1], view.auto[1]), (&ChunkPick::default(), None));
-    assert_eq!((view.current, view.auto_count()), (1, 1), "on the first chunk still to pick");
+    assert_eq!((view.current, view.auto.iter().flatten().count()), (1, 1), "on the first chunk still to pick");
     assert!(view.output().is_none(), "nothing is saved until every chunk is picked");
 
     let mut st = state();
     st.session.conflict.view = Some(view);
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
     let c = st.session.conflict.view.as_ref().unwrap();
-    assert_eq!((&c.picks[0], c.auto[0]), (&Choice::TheirsThenOurs.into(), None), "a change clears the tag");
+    assert_eq!((&c.picks[0], c.auto[0]), (&Choice::OursThenTheirs.into(), None), "a change clears the tag");
     st.session.conflict.view.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictReset), Instant::now());
     let c = st.session.conflict.view.as_ref().unwrap();

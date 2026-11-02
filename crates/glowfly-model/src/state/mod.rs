@@ -22,6 +22,7 @@ pub mod confirm;
 pub mod conflict;
 pub mod conflict_check;
 pub mod conflict_files;
+pub mod conflict_strip;
 pub mod custom_commands;
 pub mod dashboard;
 pub mod dashboard_plan;
@@ -207,8 +208,7 @@ use crate::msg::Msg;
 use git2::Oid;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
-use std::time::{Duration, Instant};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, time::Duration, time::Instant};
 
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);

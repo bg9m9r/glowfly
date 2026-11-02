@@ -26,9 +26,10 @@ Button "Search and run commands"
 Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
-Button "Show work in progress"
-Label "Merge in progress"
-Label "1 conflicted file left"
+Button "Commit merge" [disabled]
+Button "Abort merge"
+Label "Merging theme-tweaks into main"
+Label "· 1 conflicted file left"
 Button "Expand the commit panel"
 Button "2 changed files"
 Button "Go to the commit message"
@@ -51,18 +52,15 @@ Button "Worktrees actions"
 Button "Add submodule"
 Button "Submodules actions"
 Unknown "Central view"
-Button "Close  (Esc)"
+Button "Close (Esc)"
+Button "Mark resolved" [disabled]
 Button "More conflict actions"
-Button "Save and mark resolved" [disabled]
-Label "Pick every conflict first (1 left), or use Save with markers"
-Label "0 of 1 conflict resolved"
-Button "Next conflict (F7)" [disabled]
 Label "1 conflict"
-Button "Previous conflict (Shift+F7)" [disabled]
+Label "0 of 1 resolved"
 Label "notes.txt"
-Label "Merging theme-tweaks into main"
+Label "main"
+Label "theme-tweaks"
 Label "Output"
-Label "0 of 1 conflicts resolved"
 Button "Edit" [off]
 Button "Wrap lines" [off]
 Label "Ours"

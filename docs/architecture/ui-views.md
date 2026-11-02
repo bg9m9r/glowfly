@@ -71,7 +71,7 @@ start with `state/`, `update/` or `ui/`.
 - `shortcuts/live.rs`: what the frame's state allows each global binding (`allowed`): covered by a dialog, typing, the graph or a diff shown, the focused pane.
 - `graph/select.rs`: the graph's clicks and keys: its focus target, and with it or nothing focused its arrows, Page, Home, End, Enter and the H, [ and ] bindings; a row shows `selected` while the graph is active, else `tokens::selected_inactive`, as the file lists do (`list_focus::rows_active`).
 - The keyed lists' rows are `keyed_file_row`s or `keyed_file_row_with_end`s with no Tab stops of their own, and the focused list's current row gets `file_row_focus`'s ring.
-- `op_strip.rs`: the strip under the toolbar while an operation is in progress.
+- `op_strip.rs`: the strip under the toolbar while an operation is in progress; in the conflict view, the operation as a sentence with Abort and Commit merge or Continue.
 - `op_steps.rs`: the WIP panel's numbered steps while an operation is in progress: the heading with a quiet Abort, Resolve conflicts, Check what goes in, and Commit or Continue pinned at the bottom.
 
 ## Diff
@@ -86,7 +86,8 @@ start with `state/`, `update/` or `ui/`.
 - `diff/text_sel.rs`: text selection in the diff's code: the press, double- and triple-click, Shift-click and drag with auto-scroll past the edge, the opaque `code_sel` (`code_sel_dim` without the keyboard) behind the glyphs with its nub, the diff's own keyboard focus, Ctrl+C through `state/diff_text.rs`'s `copy`, Ctrl+A (`DiffMsg::SelectAllText`) and the code's screen-reader document node.
 - `diff/row_menu.rs`: the diff's right-click menu over a line's code (Copy, Copy with diff signs, Copy lines, Copy hunk as patch, then the hunk header's line actions on the selected or clicked line), kept or dropping the text selection by where the click lands, and Shift+F10 at the topmost selected line.
 - `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary.
-- `conflict_header.rs`: the conflict view's header with its more-actions menu.
+- `conflict_header.rs`: the conflict view's file bar (path and sides, the centred counter and progress meter, Mark resolved, the more-actions menu and ×).
+- `conflict_band.rs`: a conflict's band in the panes: amber mark while unresolved, the side-coloured Take checkboxes, and the order with Swap when both sides are taken.
 
 ## Object menus
 

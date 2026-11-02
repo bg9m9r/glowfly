@@ -35,6 +35,7 @@ mod clone_service;
 mod commit_box;
 pub(crate) mod common;
 mod conflict;
+mod conflict_band;
 mod conflict_cells;
 mod conflict_check;
 mod conflict_files;
