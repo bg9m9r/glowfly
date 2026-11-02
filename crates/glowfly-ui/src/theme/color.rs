@@ -94,8 +94,8 @@ pub struct Palette {
 }
 
 /// The palette a thread starts with, before the shell sets one: the default dark (Graphite). The
-/// view tests' harness sets Garden dark, the palette their snapshots draw in
-/// (`snapshot_check::builder`).
+/// view tests' harness sets the dark view palette, the one their snapshots draw in
+/// (`view_palette`, `snapshot_check::builder`).
 const START: Palette = super::builtin::DEFAULT_DARK;
 
 thread_local! {

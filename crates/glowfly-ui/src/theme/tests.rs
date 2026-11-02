@@ -43,7 +43,7 @@ fn builtins() {
 }
 
 /// The palettes the theme tests hold to the rules: the eight built-ins, then the Garden pair,
-/// which is no longer a theme but is what the view snapshots draw in.
+/// which is no longer a theme but still supplies colour families.
 pub(super) fn palettes() -> Vec<(String, &'static Palette)> {
     let built_in = BuiltinTheme::ALL.into_iter().map(|t| (format!("{t:?}"), builtin(t)));
     built_in.chain([("GardenDark".to_owned(), &GARDEN_DARK), ("GardenLight".to_owned(), &GARDEN_LIGHT)]).collect()

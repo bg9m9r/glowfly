@@ -15,8 +15,8 @@ use std::time::Instant;
 
 const SHOWN: &str = "Frame 3.2 ms · average 2.1 ms · slowest 12.0 ms";
 
-/// A small window drawing only the overlay for `st`, in the dark Garden palette like the other
-/// view snapshots.
+/// A small window drawing only the overlay for `st`, in the dark view palette (`view_palette(true)`)
+/// like the other view snapshots.
 fn harness(on: bool) -> Harness<'static, AppState> {
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     st.settings.show_frame_times = on;

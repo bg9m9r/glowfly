@@ -22,7 +22,7 @@ use glowfly_core::spell::Speller;
 
 pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
-/// The app's frame in the Garden dark palette at `size`: the shortcut input, then the window.
+/// The app's frame in the dark view palette at `size`: the shortcut input, then the window.
 pub(crate) fn keys_harness(mut st: AppState, size: egui::Vec2) -> H {
     st.view.now = NOW;
     st.view.utc_offset = 0;
