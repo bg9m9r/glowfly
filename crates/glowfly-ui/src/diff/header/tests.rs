@@ -296,9 +296,9 @@ fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>>
     let keys = Keymap::default();
     let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(width, height)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
-            color::set_palette(&theme::GARDEN_DARK);
-            theme::apply_style(ui.ctx(), &theme::GARDEN_DARK);
-            ui.ctx().set_theme(theme::egui_theme(&theme::GARDEN_DARK));
+            color::set_palette(&theme::view_palette(true));
+            theme::apply_style(ui.ctx(), &theme::view_palette(true));
+            ui.ctx().set_theme(theme::egui_theme(&theme::view_palette(true)));
             ui.painter().rect_filled(ui.max_rect(), 0.0, color::bg());
             show(ui, &m, &keys, Lang::En, msgs);
         },

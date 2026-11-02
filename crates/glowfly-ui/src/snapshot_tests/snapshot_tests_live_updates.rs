@@ -38,7 +38,7 @@ fn watching(probe: Option<Probe>, failed: bool) -> AppState {
 
 /// A harness of `size` drawing `draw` in the Garden dark palette, as the views' snapshots do.
 fn harness(st: AppState, size: egui::Vec2, draw: impl FnMut(&egui::Context, &mut AppState, &mut Vec<Msg>) + 'static) -> H {
-    let p = theme::GARDEN_DARK;
+    let p = theme::view_palette(true);
     let mut draw = draw;
     crate::ui::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {

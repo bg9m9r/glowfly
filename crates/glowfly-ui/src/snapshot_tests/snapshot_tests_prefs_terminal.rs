@@ -65,9 +65,9 @@ fn page_on(os: Os) -> egui_kittest::Harness<'static, glowfly_core::settings::Set
     s.terminal = TerminalPrefs::default();
     crate::ui::snapshot_check::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
         move |ctx, s: &mut glowfly_core::settings::Settings| {
-            color::set_palette(&theme::GARDEN_DARK);
-            theme::apply_style(ctx, &theme::GARDEN_DARK);
-            ctx.set_theme(theme::egui_theme(&theme::GARDEN_DARK));
+            color::set_palette(&theme::view_palette(true));
+            theme::apply_style(ctx, &theme::view_palette(true));
+            ctx.set_theme(theme::egui_theme(&theme::view_palette(true)));
             egui::CentralPanel::default().show(ctx, |ui| page_for(ui, s, &crate::themes::ThemeState::default(), os, &mut Vec::new()));
         },
         s,
