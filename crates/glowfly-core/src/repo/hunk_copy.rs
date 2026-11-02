@@ -1,6 +1,7 @@
 //! Copy hunk as patch: one hunk of a diff, read again from the repository, as a patch `git
 //! apply` takes on the diff's old side, byte for byte (line endings, encoding, the file's mode
-//! and, for a renamed or copied file, both its names).
+//! and, for a renamed or copied file, both its names; a new file is created and a deleted one
+//! deleted).
 
 use super::diff::{file_patch, hunk_of, target_diff};
 use super::lines::{Names, Patched, split_eol, write_patch};
@@ -50,11 +51,12 @@ pub fn hunk_patch(workdir: &Path, target: &DiffTarget, hunk_index: usize, expect
 
     let delta = patch.delta();
     let mode = |new: bool| i32::from(if new { delta.new_file() } else { delta.old_file() }.mode()) as u32;
-    // An intent-to-add file's old side is empty too: its patch creates it.
-    let empty = hunk.old_start() == 0 && hunk.old_lines() == 0;
     let to = match delta.status() {
         Delta::Added | Delta::Untracked => Patched::Create(mode(true)),
-        _ if empty => Patched::Create(mode(true)),
+        // An intent-to-add file (`git add -N`) is in the index without contents: its patch
+        // creates it. Any other empty old side is a file that exists.
+        _ if matches!(target, DiffTarget::Unstaged(_)) && intent_to_add(&repo, path)? => Patched::Create(mode(true)),
+        Delta::Deleted => Patched::Delete(mode(false)),
         _ => Patched::Existing(mode(false)),
     };
     let old = delta.old_file().path_bytes().and_then(|b| std::str::from_utf8(b).ok());
@@ -68,6 +70,13 @@ pub fn hunk_patch(workdir: &Path, target: &DiffTarget, hunk_index: usize, expect
         _ => Names::same(path),
     };
     Ok(write_patch(names, to, &at, body))
+}
+
+/// Whether `path`'s index entry is marked intent-to-add (`git add -N`).
+fn intent_to_add(repo: &Repository, path: &str) -> Result<bool> {
+    let intent = git2::IndexEntryExtendedFlag::INTENT_TO_ADD.bits();
+    let index = repo.index()?;
+    Ok(index.get_path(Path::new(path), 0).is_some_and(|e| e.flags_extended & intent != 0))
 }
 
 #[cfg(test)]

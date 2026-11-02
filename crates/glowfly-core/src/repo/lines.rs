@@ -109,11 +109,13 @@ fn apply_in(
     Ok(())
 }
 
-/// Whether the file being patched exists, with the mode it has (or gets, when created).
+/// Whether the file being patched exists, with the mode it has (or gets, when created), and
+/// whether the patch deletes it (Copy hunk as patch of a deleted file's one hunk).
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub(crate) enum Patched {
     Create(u32),
     Existing(u32),
+    Delete(u32),
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -253,10 +255,11 @@ pub(super) fn write_patch<'a>(names: Names<'_>, target: Patched, at: &str, body:
         out.extend(format!("{how} from {}\n{how} to {}\n", quote_path(names.old), quote_path(names.new)).bytes());
     }
     match target {
-        Patched::Create(mode) => out.extend(format!("new file mode {mode:o}\n--- /dev/null\n").bytes()),
-        Patched::Existing(mode) => out.extend(format!("index 0000000..0000000 {:o}\n--- {a}\n", nonzero(mode)).bytes()),
+        Patched::Create(mode) => out.extend(format!("new file mode {mode:o}\n--- /dev/null\n+++ {b}\n").bytes()),
+        Patched::Existing(mode) => out.extend(format!("index 0000000..0000000 {:o}\n--- {a}\n+++ {b}\n", nonzero(mode)).bytes()),
+        Patched::Delete(mode) => out.extend(format!("deleted file mode {:o}\n--- {a}\n+++ /dev/null\n", nonzero(mode)).bytes()),
     }
-    out.extend(format!("+++ {b}\n{at}\n").bytes());
+    out.extend(format!("{at}\n").bytes());
     for (sign, (text, eol)) in body {
         out.push(sign);
         out.extend_from_slice(text);

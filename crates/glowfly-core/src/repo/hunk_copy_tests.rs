@@ -144,3 +144,26 @@ fn a_hunk_that_changed_since_it_was_shown_is_refused() {
     assert!(hunk_patch(&dir, &target, 1, &shown.hunks[0], false).is_err(), "no such hunk");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_first_edit_to_an_empty_file_patches_the_file_that_exists() {
+    let dir = edited("hunk-copy-empty", "f.txt", b"", b"one\ntwo\n");
+    let patch = String::from_utf8(patch_of(&dir, &unstaged("f.txt"), false)).unwrap();
+    assert!(patch.contains("\n--- a/f.txt\n+++ b/f.txt\n@@ -0,0 +1,2 @@\n"), "not a new file: {patch}");
+    git(&dir, &["checkout", "--", "f.txt"]);
+    apply(&dir, patch.as_bytes());
+    assert_eq!(std::fs::read(dir.join("f.txt")).unwrap(), b"one\ntwo\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_deleted_files_hunk_deletes_it() {
+    let dir = edited("hunk-copy-deleted", "f.txt", b"a\nb\n", b"a\nb\n");
+    std::fs::remove_file(dir.join("f.txt")).unwrap();
+    let patch = String::from_utf8(patch_of(&dir, &unstaged("f.txt"), false)).unwrap();
+    assert!(patch.contains("deleted file mode 100644\n--- a/f.txt\n+++ /dev/null\n"), "{patch}");
+    git(&dir, &["checkout", "--", "f.txt"]);
+    apply(&dir, patch.as_bytes());
+    assert!(!dir.join("f.txt").exists(), "deleted, not emptied");
+    let _ = std::fs::remove_dir_all(&dir);
+}
