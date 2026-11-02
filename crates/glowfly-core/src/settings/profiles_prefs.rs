@@ -1,5 +1,6 @@
 //! What switches with a profile besides its identity: the app preferences (General except the
-//! language, Appearance and Diff viewer except word wrap) and the connected hosting-service accounts.
+//! language, Appearance and Diff viewer except word wrap; of Accessibility, only the theme High
+//! contrast brings back, which goes with the theme) and the connected hosting-service accounts.
 //! Everything else in `Settings` (repository-specific settings, trust, favorites, tools, diff
 //! header toggles, window and dialog state) stays global; a test makes every new setting pick
 //! a side.
@@ -8,10 +9,7 @@
 //! live values are `Settings.connections` and the `Settings` fields themselves. A switch saves
 //! the live values into the outgoing profile and loads the incoming one's.
 
-use super::{
-    BranchPalette, BranchVisibility, ColumnWidths, Corner, Density, GraphColumns, ProfileId, Settings, SubmodulePrefs, SystemPair,
-    ThemeChoice,
-};
+use super::{BranchVisibility, ColumnWidths, Corner, Density, GraphColumns, ProfileId, Settings, SubmodulePrefs, SystemPair, ThemeChoice};
 use crate::forge::Account;
 use serde::{Deserialize, Serialize};
 
@@ -56,6 +54,8 @@ profile_prefs! {
     auto_stash: bool,
     // Appearance
     theme: ThemeChoice,
+    // Travels with `theme`: High contrast in one profile brings back that profile's theme.
+    theme_before_contrast: Option<ThemeChoice>,
     system_pair: SystemPair,
     notification_location: Corner,
     behind_alerts: bool,
@@ -67,7 +67,6 @@ profile_prefs! {
     date_verbose_format: String,
     relative_dates: bool,
     toolbar_labels: bool,
-    reduce_motion: bool,
     zoom_percent: u16,
     show_left_panel: bool,
     show_details_panel: bool,
@@ -80,7 +79,6 @@ profile_prefs! {
     worktree_wips: bool,
     group_worktree_tabs: bool,
     branch_visibility: BranchVisibility,
-    branch_palette: BranchPalette,
     columns: GraphColumns,
     column_widths: ColumnWidths,
     graph_density: Density,
@@ -165,6 +163,12 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "terminal",
     // Window layout, like the terminal panel's: drawer sizes stay put when the profile changes.
     "panel_sizes",
+    // Preferences > Accessibility: what the person at the machine needs, whoever commits.
+    "reduce_motion",
+    "branch_palette",
+    "cursor_blink",
+    "toast_time",
+    "tooltip_delay",
 ];
 
 /// What a profile switch changed in the settings in use.

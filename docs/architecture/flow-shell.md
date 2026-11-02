@@ -29,6 +29,8 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - The conflict view's Resolved and Saved-with-markers toasts carry Undo while the entry that did it is the newest (`update/conflict.rs::undo_button`, run as `JobMsg::UndoWith`, which refuses once the history moved).
 - The pointer over a toast holds it: `ui/toasts.rs` sends `NotifyMsg::HoldToast` when the toast under the pointer changes, and a held toast's clock stops (`Toast::counted` and `held`), so it neither fades nor expires.
 - Let go, a held toast has at least `HOLD_GRACE` left, and the toast limit drops the oldest toast that isn't held.
+- The keyboard focus on a toast's button holds it as the pointer does; how long toasts stay is Accessibility's `toast_time`, and a failure with a fix or Details stays until closed.
+- Every toast leaves an activity line (`update/toast_log.rs`), so a dropped or expired one can still be read.
 - Toasts fade and expire by `view.frame_at`, the shell's time stamp for the frame (None in snapshot tests, so they draw at full strength).
 
 ## Zoom and panels

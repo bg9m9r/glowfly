@@ -13,6 +13,8 @@ pub enum PrefPage {
     Profile,
     Integrations,
     Ui,
+    /// Every accessibility option: text size, contrast, colours, motion, keys and timing.
+    Accessibility,
     /// The interface language and how dates and times are written.
     Language,
     /// Diff text: font size, tab size, line numbers, syntax and word highlights.
@@ -51,6 +53,7 @@ impl PrefPage {
             PrefPage::Profile => t.tr("prefs.nav.profile"),
             PrefPage::Integrations => t.tr("prefs.nav.integrations"),
             PrefPage::Ui => t.tr("prefs.nav.ui"),
+            PrefPage::Accessibility => t.tr("prefs.nav.accessibility"),
             PrefPage::Language => t.tr("prefs.nav.language"),
             PrefPage::DiffViewer => t.tr("prefs.nav.diff_viewer"),
             PrefPage::Keyboard => t.tr("prefs.nav.keyboard"),

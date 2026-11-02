@@ -22,7 +22,8 @@ Label "Meldet nach einem Abruf im Hintergrund, wenn der ausgecheckte Branch hint
 CheckBox "Systembenachrichtigungen zeigen, während Glowfly im Hintergrund ist" [off]
 Label "Abgeschlossene Vorgänge und Hinweise bei Rückstand erscheinen auch als Desktop-Benachrichtigungen, wenn das Fenster von Glowfly nicht im Fokus ist. Abrufe im Hintergrund bleiben still. Beim Einschalten kommt eine Benachrichtigung, damit du prüfen kannst, ob sie dich erreichen."
 Label "Oberfläche"
-ComboBox
+ComboBox "Oberflächengröße"
+Label "Skaliert alle Texte und Bedienelemente. Auch Ctrl+= und Ctrl+- ändern sie."
 CheckBox "Linke Leiste zeigen" [on]
 CheckBox "Commit-Details zeigen" [on]
 CheckBox "Symbolleiste zeigen" [on]
@@ -30,8 +31,6 @@ Label "Solange die Symbolleiste ausgeblendet ist, hat die Statusleiste eine Scha
 CheckBox "Menüleiste zeigen" [off]
 Label "Solange die Menüleiste ausgeblendet ist, erreichst du über Befehlspalette und Tastenkürzel weiterhin alles, und Show menu bar in der Palette blendet sie wieder ein."
 CheckBox "Text unter den Symbolen zeigen" [on]
-CheckBox "Ein- und Ausblenden abschalten" [off]
-Label "Tooltips und Popups erscheinen ohne Ein- oder Überblenden"
 CheckBox "Rechtschreibung in Commit-Nachrichten prüfen" [on]
 Label "Unterstreicht Tippfehler in Zusammenfassung und Beschreibung des Commits; ein Rechtsklick zeigt Vorschläge. Verwendet die Rechtschreibprüfung von Windows in deiner Systemsprache."
 CheckBox "Avatare online nachschlagen" [off]
@@ -60,8 +59,6 @@ CheckBox "Datum und Uhrzeit" [on]
 Button "Komfortabel" [on]
 Button "Kompakt" [off]
 ComboBox
-ComboBox
-Label "Farbenblind-freundlich verwendet 8 Farbtöne, die bei Rot-Grün- oder Blau-Gelb-Farbenblindheit unterscheidbar bleiben. Branch-Namen stehen immer neben ihrer Farbe. Der Haupt-Branch ist grau, solange du ihm keine Farbe gibst."
 Button "Standardlayout wiederherstellen"
 Button "Kompaktes Layout wiederherstellen"
 Label "Beide setzen auch jede Spalte auf ihre Standardbreite zurück. Um eine Spalte anzupassen, ziehe den Trenner neben ihrem Titel im Kopf des Graphen; ein Doppelklick auf einen Trenner setzt nur diese Spalte zurück."
@@ -70,6 +67,7 @@ painted:
   "Git"
   "Profil"
   "Integrationen"
+  "Barrierefreiheit"
   "Sprache und Region"
   "Diff-Ansicht"
   "Tastatur"
@@ -82,7 +80,6 @@ painted:
   "Unten links"
   "Hinweis bei Rückstand"
   "Desktop-Benachrichtigungen"
-  "Zoom"
   "100%"
   "Linke Leiste"
   "Commit-Details"

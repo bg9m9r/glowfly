@@ -17,6 +17,7 @@ use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
 use glowfly_core::settings::{BranchPalette, BuiltinTheme, SystemPair, TerminalColours, ThemeChoice};
 
+pub mod a11y;
 pub mod ansi;
 pub mod branch_colours;
 pub mod branch_names;

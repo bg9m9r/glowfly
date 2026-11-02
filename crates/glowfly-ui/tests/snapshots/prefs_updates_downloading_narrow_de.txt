@@ -71,6 +71,7 @@ painted:
   "Profil"
   "Integrationen"
   "Darstellung"
+  "Barrierefreiheit"
   "Sprache und Region"
   "Diff-Ansicht"
   "Tastatur"

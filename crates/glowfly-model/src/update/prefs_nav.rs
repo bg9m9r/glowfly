@@ -53,6 +53,7 @@ pub(super) fn enter_page(st: &mut AppState, page: PrefPage, fx: &mut Vec<Effect>
         PrefPage::General
         | PrefPage::Integrations
         | PrefPage::Ui
+        | PrefPage::Accessibility
         | PrefPage::Language
         | PrefPage::DiffViewer
         | PrefPage::Keyboard

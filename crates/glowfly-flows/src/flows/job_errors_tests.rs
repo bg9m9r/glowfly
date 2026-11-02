@@ -274,7 +274,7 @@ fn details_beside_fix() {
     done(&mut st, "fatal: You are not currently on a branch.");
     let t = last_toast(&st);
     assert_eq!(labels(t), (Some("Create branch…"), Some("Details")));
-    assert_eq!(t.lifetime(), crate::state::toasts::ACTION_TOAST_LIFETIME);
+    assert_eq!(t.lifetime(glowfly_core::settings::ToastTime::Standard), None, "a failure with a fix stays until closed");
     let id = t.id;
     up(&mut st, Msg::ToastDetails(id));
     assert!(st.toasts.iter().all(|t| t.id != id), "the toast is gone");

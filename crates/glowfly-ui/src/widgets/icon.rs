@@ -68,6 +68,8 @@ pub enum Icon {
     Warning,
     /// A keyboard: Preferences > Keyboard.
     Keyboard,
+    /// A figure with outstretched arms in a ring: Preferences > Accessibility.
+    Access,
     /// Two pages side by side with an arrow out of the corner: open in the external diff tool.
     ExternalDiff,
     /// A small arrow pointing right: one branch merging into another (the pull request panel).
@@ -348,7 +350,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
         Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info | Icon::Repo | Icon::Swap => {} // icons.rs
         Icon::Eraser | Icon::Stop | Icon::PanelMaximize | Icon::PanelRestore | Icon::ChevronDown => {} // icons_panel.rs
-        Icon::ListView | Icon::TreeView => {}                                                          // icons_lists.rs
+        Icon::ListView | Icon::TreeView | Icon::Access => {}                                           // icons_lists.rs
     }
 }
 

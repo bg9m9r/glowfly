@@ -43,6 +43,7 @@ painted:
   "Git"
   "Integrations"
   "Appearance"
+  "Accessibility"
   "Language & region"
   "Diff viewer"
   "Keyboard"

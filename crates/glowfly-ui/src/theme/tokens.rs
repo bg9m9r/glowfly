@@ -202,7 +202,7 @@ pub mod motion {
         bezier((lo + hi) / 2.0, Y1, Y2).clamp(0.0, 1.0)
     }
 
-    /// Whether Reduce motion is on: `tooltip::configure` sets egui's animation time to 0 then.
+    /// Whether Reduce motion is on: `theme::a11y::configure` sets egui's animation time to 0 then.
     pub fn reduced(ctx: &Context) -> bool {
         ctx.style().animation_time == 0.0
     }

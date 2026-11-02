@@ -1,0 +1,149 @@
+//! Preferences > Accessibility: every accessibility option in one place. Vision: the interface,
+//! diff and terminal text sizes (the rows their own pages draw, `appearance::zoom_row`,
+//! `diff_viewer::font_size_row` and `terminal::font_size_row`), High contrast and the branch
+//! colours. Motion: reduce motion and the blinking cursor. Keyboard: links to Preferences >
+//! Keyboard and the shortcut sheet. Timing: how long notifications stay and the tooltip delay.
+//!
+//! Every control is named for screen readers by its row's label (and a checkbox's text too),
+//! with the row's help as its description (`name`). The High contrast check only asks (update
+//! saves and restores the theme); the rest edit the settings in place.
+
+use super::{combo_response, help, row, section};
+use crate::keymap::Keymap;
+use crate::msg::{Msg, PrefsMsg};
+use crate::state::PrefPage;
+use crate::ui::access;
+use crate::ui::theme::{color, controls};
+use crate::ui::widgets::buttons;
+use eframe::egui::{Response, Ui};
+use glowfly_core::i18n::Lang;
+use glowfly_core::settings::{BranchPalette, Settings, ToastTime, TooltipDelay};
+
+/// What the page shows besides the settings.
+pub struct A11yView<'a> {
+    pub keys: &'a Keymap,
+    /// The shortcut sheet is open (over Preferences).
+    pub sheet_open: bool,
+}
+
+pub fn accessibility_page(ui: &mut Ui, s: &mut Settings, view: &A11yView, msgs: &mut Vec<Msg>) {
+    let t = s.lang();
+    section(ui, t.tr("prefs.a11y.vision.section"));
+    super::appearance::zoom_row(ui, t, s, view.keys);
+    super::diff_viewer::font_size_row(ui, s, t.tr("prefs.a11y.diff_size.label"));
+    super::terminal::font_size_row(ui, t, &mut s.terminal, t.tr("prefs.a11y.terminal_size.label"));
+    let on = s.theme.is_high_contrast();
+    let (label, check, text) = (t.tr("prefs.a11y.contrast.label"), t.tr("prefs.a11y.contrast.check"), t.tr("prefs.a11y.contrast.help"));
+    let mut wanted = on;
+    if checked_row(ui, label, &mut wanted, check, text).changed() {
+        msgs.push(Msg::Prefs(PrefsMsg::SetHighContrast { on: wanted, dark: color::current().dark }));
+    }
+    let label = t.tr("prefs.a11y.colors.label");
+    row(ui, label, |ui| {
+        let options = [
+            (BranchPalette::Standard, t.tr("prefs.a11y.colors.standard")),
+            (BranchPalette::ColourBlind, t.tr("prefs.a11y.colors.color_blind")),
+        ];
+        let text = t.tr("prefs.a11y.colors.help");
+        name(&combo_response(ui, "branch_palette", &mut s.branch_palette, &options), label, text);
+        help(ui, text);
+    });
+
+    section(ui, t.tr("prefs.a11y.motion.section"));
+    let (label, check, text) =
+        (t.tr("prefs.a11y.reduce_motion.label"), t.tr("prefs.a11y.reduce_motion.check"), t.tr("prefs.a11y.reduce_motion.help"));
+    checked_row(ui, label, &mut s.reduce_motion, check, text);
+    let (label, check, text) = (t.tr("prefs.a11y.blink.label"), t.tr("prefs.a11y.blink.check"), t.tr("prefs.a11y.blink.help"));
+    checked_row(ui, label, &mut s.a11y.cursor_blink, check, text);
+
+    section(ui, t.tr("prefs.a11y.keyboard.section"));
+    shortcuts_row(ui, t, view.sheet_open, msgs);
+
+    section(ui, t.tr("prefs.a11y.timing.section"));
+    let label = t.tr("prefs.a11y.toast_time.label");
+    row(ui, label, |ui| {
+        let options = [
+            (ToastTime::Standard, t.tr("prefs.a11y.toast_time.standard")),
+            (ToastTime::Longer, t.tr("prefs.a11y.toast_time.longer")),
+            (ToastTime::UntilClosed, t.tr("prefs.a11y.toast_time.until_closed")),
+        ];
+        let text = t.tr("prefs.a11y.toast_time.help");
+        name(&combo_response(ui, "toast_time", &mut s.a11y.toast_time, &options), label, text);
+        help(ui, text);
+    });
+    let label = t.tr("prefs.a11y.tooltip_delay.label");
+    row(ui, label, |ui| {
+        let options = [
+            (TooltipDelay::Quick, t.tr("prefs.a11y.tooltip_delay.quick")),
+            (TooltipDelay::Slow, t.tr("prefs.a11y.tooltip_delay.slow")),
+            (TooltipDelay::Instant, t.tr("prefs.a11y.tooltip_delay.instant")),
+        ];
+        name(&combo_response(ui, "tooltip_delay", &mut s.a11y.tooltip_delay, &options), label, "");
+    });
+}
+
+/// Names `resp` `label` for screen readers, described by `text` (the row's help) when there is
+/// one.
+pub fn name(resp: &Response, label: &str, text: &str) {
+    access::name_field(resp, label);
+    if !text.is_empty() {
+        access::describe(resp, text);
+    }
+}
+
+/// A row with one checkbox and its help, the checkbox named by the row's label and its text.
+fn checked_row(ui: &mut Ui, label: &str, value: &mut bool, check: &str, text: &str) -> Response {
+    let mut out = None;
+    row(ui, label, |ui| {
+        let r = controls::checkbox(ui, value, check);
+        name(&r, &format!("{label}, {check}"), text);
+        out = Some(r);
+        help(ui, text);
+    });
+    out.expect("the row draws its contents")
+}
+
+/// Where Show all shortcuts is in sending the keyboard focus back: asked (the sheet opens next
+/// frame), then the sheet seen open; once it closes the button takes the focus again.
+#[derive(Clone, Copy, PartialEq)]
+enum SheetTrip {
+    Asked,
+    Open,
+}
+
+/// Shortcuts: Change shortcuts… (Preferences > Keyboard) and Show all shortcuts (the sheet over
+/// Preferences, which gives the focus back to the button when it closes).
+fn shortcuts_row(ui: &mut Ui, t: Lang, sheet_open: bool, msgs: &mut Vec<Msg>) {
+    let text = t.tr("prefs.a11y.shortcuts.help");
+    row(ui, t.tr("prefs.a11y.shortcuts.label"), |ui| {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 8.0;
+            let change = ui.add(buttons::secondary(t.tr("prefs.a11y.shortcuts.change.button")));
+            access::describe(&change, text);
+            if change.clicked() {
+                msgs.push(Msg::Prefs(PrefsMsg::Navigate(PrefPage::Keyboard)));
+            }
+            let show = ui.add(buttons::secondary(t.tr("prefs.a11y.shortcuts.show.button")));
+            access::describe(&show, text);
+            let key = show.id.with("sheet-trip");
+            let trip = ui.data(|d| d.get_temp::<SheetTrip>(key));
+            match trip {
+                Some(SheetTrip::Asked) if sheet_open => ui.data_mut(|d| d.insert_temp(key, SheetTrip::Open)),
+                Some(SheetTrip::Open) if !sheet_open => {
+                    show.request_focus();
+                    ui.data_mut(|d| d.remove::<SheetTrip>(key));
+                }
+                _ => {}
+            }
+            if show.clicked() {
+                ui.data_mut(|d| d.insert_temp(key, SheetTrip::Asked));
+                msgs.push(Msg::Prefs(PrefsMsg::ShowShortcutSheet));
+            }
+        });
+        help(ui, text);
+    });
+}
+
+#[cfg(test)]
+#[path = "accessibility_tests.rs"]
+mod tests;

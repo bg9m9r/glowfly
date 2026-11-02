@@ -19,12 +19,13 @@ use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::settings::{RepoTrust, Settings, TrackerChoice};
 use std::time::Instant;
 
-const PAGES: [PrefPage; 18] = [
+const PAGES: [PrefPage; 19] = [
     General,
     Git,
     Profile,
     Integrations,
     Ui,
+    Accessibility,
     Language,
     DiffViewer,
     Keyboard,
@@ -51,7 +52,9 @@ fn show_page(page: PrefPage) -> Option<Msg> {
         RepoGitFlow => Msg::GitFlow(GitFlowMsg::ShowPage),
         RepoSparse => Msg::Sparse(SparseMsg::ShowPage),
         Tools => Msg::Tools(ToolsMsg::ShowPage),
-        General | Integrations | Ui | Language | DiffViewer | Keyboard | Terminal | Signing | RepoIdentity | RepoHooks => return None,
+        General | Integrations | Ui | Accessibility | Language | DiffViewer | Keyboard | Terminal | Signing | RepoIdentity | RepoHooks => {
+            return None;
+        }
     })
 }
 

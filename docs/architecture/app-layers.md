@@ -126,7 +126,8 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 ## `update/`: state changes
 
 - `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests: those that need no runner in `update/tests/` (`mod.rs` lists them), the ones that run effects (and those sharing helpers with them) in `flows/`; the shared fixtures are in `testing.rs`.
-- `prefs.rs`: opening and closing Preferences, the settings file and the settings that apply at once, and the routing of the window's other messages.
+- `prefs.rs`: opening and closing Preferences, the settings file and the settings that apply at once, and the routing of the window's other messages; Accessibility's High contrast check and Show all shortcuts (tests in `update/tests/accessibility_tests.rs`, with the toast lifetimes).
+- `toast_log.rs`: every toast leaves an activity line, unless the same update logged a line of its outcome already (the toast is then that line's).
 - `prefs_nav.rs`: `enter_page`, the one way a Preferences page is shown (opening on it, its navigation row, its area's `ShowPage`) and what it reads as it opens; tests in `flows/prefs_pages_tests.rs`.
 - `prefs_signing.rs`: Commit Signing's key list, Generate GPG key, Extend by 2 years and copying a public key (tests in `update/tests/prefs_signing_tests.rs`).
 - `prefs_pick.rs`: the file and folder pickers and where each picked path goes.

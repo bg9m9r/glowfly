@@ -47,7 +47,9 @@ fn files(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, msgs: &mut
                 ui.label(RichText::new(t.tr("prefs.ui.theme.no_files")).color(color::weak()));
             }
             for f in &themes.catalog.files {
-                ui.selectable_value(&mut s.theme, ThemeChoice::Custom(f.id.clone()), theme_names::file_entry(t, f));
+                if ui.selectable_value(&mut s.theme, ThemeChoice::Custom(f.id.clone()), theme_names::file_entry(t, f)).changed() {
+                    s.settle_contrast();
+                }
             }
         });
     });

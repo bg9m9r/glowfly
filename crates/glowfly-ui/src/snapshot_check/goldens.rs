@@ -59,6 +59,11 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("prefs_theme_picker_system", TopLeft(1240.0, 520.0)),
     ("prefs_theme_custom_open", TopLeft(1240.0, 720.0)),
     ("prefs_theme_picker_de", TopLeft(1240.0, 520.0)),
+    // Preferences > Accessibility in both default themes, and German and Spanish at 760 px.
+    ("prefs_accessibility", Window),
+    ("prefs_accessibility_light", Window),
+    ("prefs_accessibility_de", Window),
+    ("prefs_accessibility_es", Window),
     // The window chrome: title bars, tabs, toolbar and menus.
     ("vivid_title_bar", Window),
     ("title_bar_windows_dark", Top(108.0)),
@@ -200,6 +205,8 @@ const IMAGE_ONLY: &[&str] = &[
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.
     "graph_ghost_branch_narrow",
     "main_light",
+    // Preferences > Accessibility's text is `prefs_accessibility`'s.
+    "prefs_accessibility_light",
     "main_high_contrast_dark",
     "history_table_dark",
     "history_table_light",

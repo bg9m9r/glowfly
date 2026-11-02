@@ -4,7 +4,8 @@
 //! and whether Open in terminal opens a tab there. External terminal: the
 //! program Open in terminal starts otherwise, with its arguments. Edits apply at once (the view
 //! edits the settings in place and the shell saves them); a new shell choice applies to
-//! terminals started afterwards, and Browse… asks update to show a file dialog.
+//! terminals started afterwards, and Browse… asks update to show a file dialog. The text size
+//! row is on Accessibility too (`font_size_row`).
 
 use super::terminal_colours::colours_row;
 use super::tools::{program_field, warnings};
@@ -18,7 +19,7 @@ use eframe::egui::{self, Ui};
 use glowfly_core::external_tools::{self, EDITOR_PLACEHOLDERS};
 use glowfly_core::i18n::Lang;
 use glowfly_core::opens::Os;
-use glowfly_core::settings::{CursorStyle, Settings, ShellChoice, TERMINAL_FONT_SIZES};
+use glowfly_core::settings::{CursorStyle, Settings, ShellChoice, TERMINAL_FONT_SIZES, TerminalPrefs};
 
 pub fn terminal_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut Vec<Msg>) {
     page_for(ui, s, themes, Os::current(), msgs);
@@ -62,11 +63,7 @@ fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, os: Os,
             }
         });
     }
-    row(ui, t.tr("prefs.terminal.font_size.label"), |ui| {
-        let size = egui::DragValue::new(&mut p.font_size).range(TERMINAL_FONT_SIZES).speed(0.25).max_decimals(1);
-        ui.add(size.suffix(t.tr("prefs.terminal.font_size.suffix")));
-        help(ui, t.tr("prefs.terminal.font_size.help"));
-    });
+    font_size_row(ui, t, p, t.tr("prefs.terminal.font_size.label"));
     colours_row(ui, t, &mut p.colours, themes, msgs);
     row(ui, t.tr("prefs.terminal.cursor.label"), |ui| {
         ui.horizontal(|ui| {
@@ -104,6 +101,17 @@ fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, os: Os,
         if ui.add(buttons::secondary(t.tr("prefs.terminal.reset.button"))).clicked() {
             p.reset_page();
         }
+    });
+}
+
+/// The terminal's text size, labelled `label`: the same row on Terminal and Accessibility.
+pub fn font_size_row(ui: &mut Ui, t: Lang, p: &mut TerminalPrefs, label: &str) {
+    let text = t.tr("prefs.terminal.font_size.help");
+    row(ui, label, |ui| {
+        let size = egui::DragValue::new(&mut p.font_size).range(TERMINAL_FONT_SIZES).speed(0.25).max_decimals(1);
+        let r = ui.add(size.suffix(t.tr("prefs.terminal.font_size.suffix")));
+        super::accessibility::name(&r, label, text);
+        help(ui, text);
     });
 }
 

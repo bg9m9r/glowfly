@@ -24,7 +24,8 @@ Label "After a background fetch, say when the checked-out branch has fallen behi
 CheckBox "Show system notifications while Glowfly is in the background" [off]
 Label "Finished jobs and behind alerts also appear as desktop notifications when Glowfly's window isn't focused. Background fetches stay quiet. Turning this on sends one notification so you can check that they reach you."
 Label "Interface"
-ComboBox
+ComboBox "Interface size"
+Label "Scales all text and controls. Ctrl+= and Ctrl+- also change it."
 CheckBox "Show the left panel" [on]
 CheckBox "Show the commit details panel" [on]
 CheckBox "Show the toolbar" [off]
@@ -32,8 +33,6 @@ Label "While the toolbar is hidden, the status bar has a Show toolbar button, an
 CheckBox "Show the menu bar" [off]
 Label "While the menu bar is hidden, the command palette and keyboard shortcuts still reach everything, and Show menu bar in the palette brings it back."
 CheckBox "Show text under toolbar icons" [on]
-CheckBox "Turn off fades and slides" [off]
-Label "Tooltips and popups appear without fading or sliding in"
 CheckBox "Check spelling in commit messages" [on]
 Label "Underlines misspellings in the commit summary and description; right-click for suggestions. Uses the Windows spell checker in your system language."
 CheckBox "Look up avatars online" [off]
@@ -62,8 +61,6 @@ CheckBox "Date and time" [on]
 Button "Comfortable" [on]
 Button "Compact" [off]
 ComboBox
-ComboBox
-Label "Color-blind friendly uses 8 hues picked to stay apart with red-green or blue-yellow color blindness. Branch names always appear beside their color. The main branch is gray unless you pick a color for it."
 Button "Reset to default layout"
 Button "Reset to compact layout"
 Label "Either reset also puts every column back to its standard width. To resize a column, drag the divider beside its title in the graph header; double-click a divider to reset just that column."
@@ -72,6 +69,7 @@ painted:
   "Git"
   "Profile"
   "Integrations"
+  "Accessibility"
   "Language & region"
   "Diff viewer"
   "Keyboard"
@@ -84,13 +82,11 @@ painted:
   "Bottom left"
   "Behind alerts"
   "Desktop notifications"
-  "Zoom"
   "125%"
   "Left panel"
   "Commit details panel"
   "Toolbar"
   "Menu bar"
   "Toolbar labels"
-  "Reduce motion"
   "Spell checking"
   "Author pictures"

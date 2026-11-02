@@ -1,6 +1,6 @@
 //! Preferences > Appearance > Commit graph: which columns the graph shows (one labelled
-//! checkbox each, in one row), the row density, how commit descriptions show, the branch colour
-//! preset, and the two layout resets.
+//! checkbox each, in one row), the row density, how commit descriptions show, and the two
+//! layout resets. The branch colour preset is on Accessibility (Colors).
 
 use super::{combo, help, row, section};
 use crate::ui::theme::controls;
@@ -9,7 +9,7 @@ use crate::ui::widgets::buttons;
 use crate::ui::widgets::segmented::segmented;
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{BranchPalette, ColumnWidths, Density, DescriptionMode as DM, GraphColumns, Settings};
+use glowfly_core::settings::{ColumnWidths, Density, DescriptionMode as DM, GraphColumns, Settings};
 
 pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     section(ui, t.tr("prefs.ui.graph.section"));
@@ -44,14 +44,6 @@ pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
             (DM::Never, t.tr("prefs.ui.graph.description.never")),
         ];
         combo(ui, "description", &mut c.description, &options)
-    });
-    row(ui, t.tr("prefs.ui.branch_palette.label"), |ui| {
-        let options = [
-            (BranchPalette::Standard, t.tr("prefs.ui.branch_palette.standard")),
-            (BranchPalette::ColourBlind, t.tr("prefs.ui.branch_palette.color_blind")),
-        ];
-        combo(ui, "branch_palette", &mut s.branch_palette, &options);
-        help(ui, t.tr("prefs.ui.branch_palette.help"));
     });
     row(ui, t.tr("prefs.ui.columns.label"), |ui| {
         ui.horizontal(|ui| {

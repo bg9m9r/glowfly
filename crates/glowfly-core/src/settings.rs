@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
 
+mod a11y;
 mod blame;
 mod branch_colours;
 mod builtin_themes;
@@ -42,6 +43,7 @@ mod ui_choices;
 mod updates;
 mod zoom;
 pub use crate::dates::DateKind;
+pub use a11y::{A11yPrefs, ToastTime, TooltipDelay};
 pub use blame::{BlameMoves, BlamePrefs};
 pub use branch_colours::BranchPalette;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
@@ -97,6 +99,8 @@ pub struct Settings {
 
     // Appearance
     pub theme: ThemeChoice,
+    /// The theme High contrast replaced, which turning it off brings back (Preferences > Accessibility; per profile, like `theme`).
+    pub theme_before_contrast: Option<ThemeChoice>,
     pub system_pair: SystemPair,
     /// A retired theme the file named (as shown, and its successor), for the one-time toast.
     #[serde(skip)]
@@ -120,7 +124,7 @@ pub struct Settings {
     /// Date and time format; on for new settings files.
     pub relative_dates: bool,
     pub toolbar_labels: bool,
-    /// Tooltips and popups appear without fading or sliding in (egui's animations off).
+    /// Tooltips and popups appear without fading or sliding in (Preferences > Accessibility).
     pub reduce_motion: bool,
     /// Window zoom in percent (keys, palette, Preferences > Appearance); read through
     /// `zoom_level()`/`zoom_factor()`.
@@ -147,7 +151,7 @@ pub struct Settings {
     /// Keep tabs of one repository's worktrees side by side (Preferences > Appearance).
     pub group_worktree_tabs: bool,
     pub branch_visibility: BranchVisibility,
-    /// The branch hues: standard or colour-blind friendly (Preferences > Appearance).
+    /// The branch hues: standard or colour-blind friendly (Preferences > Accessibility).
     pub branch_palette: BranchPalette,
     pub columns: GraphColumns,
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
@@ -203,31 +207,22 @@ pub struct Settings {
     /// Issue tracker per repository, keyed by its resolved working directory (`repo_keys`).
     pub repo_trackers: HashMap<String, TrackerChoice>,
     /// Hidden and soloed refs per repository, keyed by its resolved working directory (`repo_keys`).
-    #[serde(default)]
     pub graph_filters: HashMap<String, GraphFilter>,
     /// Hues pinned to branches (by branch key) per repository, keyed by `repo_keys`.
-    #[serde(default)]
     pub branch_pins: HashMap<String, BTreeMap<String, u8>>,
     /// Repository colours (Vivid colour) by `repo_keys`, as `RepoColour::id` names; unknown names read as none.
-    #[serde(default)]
     pub repo_colours: HashMap<String, String>,
     /// Saved pull request and issue filters and the ones shown, per repository, keyed by `repo_keys`.
-    #[serde(default)]
     pub repo_forge_filters: HashMap<String, RepoForgeFilters>,
     /// Trust decisions per repository, keyed by `repo_keys`; a repository with no entry is undecided.
-    #[serde(default)]
     pub repo_trust: HashMap<String, RepoTrust>,
     /// What each Trusted decision was made on (`trust::TrustPrint`), keyed like `repo_trust`; none for older decisions.
-    #[serde(default)]
     pub repo_trust_prints: HashMap<String, crate::trust::TrustPrint>,
     /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
-    #[serde(default)]
     pub status_tip_shown: HashMap<String, bool>,
     /// Per-repository override of `submodules.keep_updated`, keyed by `repo_keys`; no entry follows it.
-    #[serde(default)]
     pub repo_submodule_updates: HashMap<String, bool>,
     /// Repositories (by `repo_keys`) whose branch names like `2024-cleanup` name issue 2024 (This repository > Issue tracker).
-    #[serde(default)]
     pub repo_year_branches: HashMap<String, bool>,
     /// The merge method last used in each repository's pull request panel (`MergeMethod::api_name`), by `repo_keys`.
     #[serde(default)]
@@ -293,6 +288,9 @@ pub struct Settings {
     pub terminal: TerminalPrefs,
     /// The sizes the left, details and logs drawers were dragged to (the app clamps them).
     pub panel_sizes: PanelSizes,
+    /// Preferences > Accessibility's own settings, flat in the file.
+    #[serde(flatten)]
+    pub a11y: A11yPrefs,
 }
 
 impl Default for Settings {
@@ -310,6 +308,7 @@ impl Default for Settings {
             submodules: SubmodulePrefs::default(),
             language: crate::i18n::SYSTEM.into(),
             theme: ThemeChoice::Graphite,
+            theme_before_contrast: None,
             system_pair: SystemPair::default(),
             retired_theme: None,
             notification_location: Corner::BottomLeft,
@@ -392,6 +391,7 @@ impl Default for Settings {
             updates: UpdatePrefs::default(),
             terminal: TerminalPrefs::default(),
             panel_sizes: PanelSizes::default(),
+            a11y: A11yPrefs::default(),
         }
     }
 }

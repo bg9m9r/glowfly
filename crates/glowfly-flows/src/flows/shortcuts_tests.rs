@@ -156,7 +156,9 @@ fn stage_all_refuses_while_files_are_conflicted() {
     assert!(update(&mut st, Msg::Stage(StageMsg::StageAll), Instant::now()).is_empty(), "nor does the button");
     let toast = st.toasts.last().expect("a toast says why");
     assert!(!toast.ok && toast.text.contains("conflict view"), "{}", toast.text);
-    assert!(st.log.is_empty(), "a keypress doesn't open the log");
+    assert!(!st.view.show_log, "a keypress doesn't open the log");
+    // Like every toast, the refusal leaves a quiet line there.
+    assert!(st.log.iter().all(|e| e.text == toast.text), "{:?}", st.log.iter().map(|e| &e.text).collect::<Vec<_>>());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -2,6 +2,7 @@
 //! form with right-aligned labels and help text (form.rs), the page title with its "Saved" tick,
 //! and the Save / Revert bar under a page with unsaved edits (save_bar.rs).
 
+mod accessibility;
 mod appearance;
 mod appearance_graph;
 mod diff_viewer;
@@ -122,6 +123,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
     let now = (st.view.now, st.view.utc_offset);
     let themes = &st.themes;
+    let a11y = accessibility::A11yView { keys: keymap, sheet_open: matches!(st.modal, Some(crate::state::Modal::Shortcuts { .. })) };
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
         .show(ctx, |ui| {
@@ -161,7 +163,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
-                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, frame_rows, msgs),
+                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, keymap, frame_rows, msgs),
+                    PrefPage::Accessibility => accessibility::accessibility_page(ui, settings, &a11y, msgs),
                     PrefPage::Language => language::language_page(ui, settings, now),
                     PrefPage::DiffViewer => diff_viewer::diff_viewer_page(ui, settings),
                     PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &mut prefs.keys, keymap, msgs),
@@ -211,6 +214,7 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, t: Lang, ms
         go(ui, PrefPage::Profile, Icon::User);
         go(ui, PrefPage::Integrations, Icon::Plug);
         go(ui, PrefPage::Ui, Icon::Brush);
+        go(ui, PrefPage::Accessibility, Icon::Access);
         go(ui, PrefPage::Language, Icon::Globe);
         go(ui, PrefPage::DiffViewer, Icon::Code);
         go(ui, PrefPage::Keyboard, Icon::Keyboard);

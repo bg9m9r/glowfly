@@ -69,8 +69,6 @@ const DEAD_PUB: &[&str] = &[
     "crates/glowfly-model/src/state/status_counts.rs: open_requests_text",
     "crates/glowfly-model/src/state/terminal.rs: for_workdir",
     "crates/glowfly-model/src/state/terminal_names.rs: program_hint",
-    "crates/glowfly-model/src/state/toasts.rs: ACTION_TOAST_LIFETIME",
-    "crates/glowfly-model/src/state/toasts.rs: lifetime",
     "crates/glowfly-model/src/state/trust.rs: record_as_found",
     "crates/glowfly-model/src/state/undo.rs: MAX_UNDO",
     "crates/glowfly-model/src/state/watch.rs: POLL_GAP_CAP",
