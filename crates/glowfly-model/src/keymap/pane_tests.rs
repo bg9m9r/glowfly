@@ -1,6 +1,7 @@
 //! The pane keys (Alt+1 to 5, Control+1 to 5 on macOS, F6 and Shift+F6) and the graph's keys:
 //! their rows and defaults, that they clash with no other key (the menus' Alt+letter mnemonics
-//! included), and that the graph's keys may be a diff's too.
+//! included), that macOS's Control+digit pane keys never take Cmd+digit from Go to tab (checked
+//! on every system), and that the graph's keys may be a diff's too.
 
 use super::rebind::Refusal;
 use super::*;
@@ -92,4 +93,22 @@ fn the_graph_is_never_shown_with_a_diff() {
     assert_eq!(check(&keys, I::SelectAllCommits, h, fold), Check::Clash { other: I::SelectHead, fixed: false });
     // Ctrl+C stays copy everywhere else.
     assert_eq!(check(&keys, I::RevertHunk, Chord::cmd(K::Letter('C')), fold), Check::Refused(Refusal::ClipboardKey));
+}
+
+/// macOS's pane keys (Control+1 to 5), on every system: a Cmd+digit press is still Go to tab,
+/// matched as macOS matches it and as a Ctrl press is matched elsewhere (Mod and Ctrl folded),
+/// and Control+digit is the pane key.
+#[test]
+fn control_digit_pane_keys_leave_cmd_digits_to_the_tabs() {
+    let mut keys = Keymap::default();
+    for (n, id) in PANES.into_iter().enumerate() {
+        keys.set(id, vec![Chord::ctrl(K::Digit(n as u8 + 1))]);
+    }
+    for (n, id) in PANES.into_iter().enumerate() {
+        let digit = K::Digit(n as u8 + 1);
+        for fold in [false, true] {
+            assert_eq!(keys.lookup(Chord::cmd(digit), fold), Some(I::GoToTab), "Cmd+{} folded {fold}", n + 1);
+        }
+        assert_eq!(keys.lookup(Chord::ctrl(digit), false), Some(id), "Control+{}", n + 1);
+    }
 }

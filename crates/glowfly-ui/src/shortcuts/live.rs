@@ -77,10 +77,27 @@ impl Live {
 }
 
 /// The actions whose keys a focused terminal keeps for its shell when pressed without Shift,
-/// Alt or Cmd (Ctrl+W, Ctrl+P, Ctrl+Q, F5…); their shifted keys still act.
+/// Alt or Cmd (Ctrl+W, Ctrl+P, Ctrl+Q, F5, and macOS's Control+digit pane keys); their shifted
+/// keys still act.
 fn terminal_keeps(id: BindingId) -> bool {
     use BindingId as I;
-    matches!(id, I::NewTab | I::CloseTab | I::NextTab | I::GoToTab | I::LastTab | I::Palette | I::Search | I::Refresh | I::Quit)
+    matches!(
+        id,
+        I::NewTab
+            | I::CloseTab
+            | I::NextTab
+            | I::GoToTab
+            | I::LastTab
+            | I::Palette
+            | I::Search
+            | I::Refresh
+            | I::Quit
+            | I::FocusSidebar
+            | I::FocusCentral
+            | I::FocusFiles
+            | I::FocusDiff
+            | I::FocusCommitMessage
+    )
 }
 
 /// Whether `id` applies with what is open; `shell` says whether the press would reach a focused
