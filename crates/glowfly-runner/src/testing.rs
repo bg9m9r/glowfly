@@ -5,14 +5,14 @@
 //! trash (`test_bin`), `cp` as the sequence editor, long path-search chunks and a folder in the
 //! temp dir for saves of Glowfly's own files (`own_files`), so a test never touches the real
 //! Recycle Bin or Trash, never runs the test binary as git's editor and never writes over the
-//! developer's settings, recent repositories or tabs. `execute` refuses the effects that read or
-//! write the rest of Glowfly's own folders (re-reading settings.json, themes, custom commands,
-//! profile includes, the avatar cache, the update log), which no stand-in redirects.
+//! developer's settings, recent repositories or tabs. `execute` refuses the effects that reach
+//! outside the test (those the whole-app sandbox drops: the user's global git config, the
+//! credential store, Glowfly's own folders, the network, the desktop), bar a few that only read.
 
 use super::execute::{Cx, Execute, execute_with};
 use super::seams::{Seams, SeamsKind};
 use super::{Runner, Waker};
-use crate::effect::{Checked, Effect, FileOp, TrustCheck};
+use crate::effect::{Checked, Effect, FileOp, SandboxRule, TrustCheck};
 use crate::msg::Msg;
 use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
@@ -35,37 +35,54 @@ pub const SEAMS: Seams = Seams {
 /// Runs one effect to completion (blocking) and returns the message to send back, if any.
 /// Results that belong to one repository come back as `Msg::Scoped`.
 pub fn execute(effect: Effect) -> Option<Msg> {
-    refuse_own_folders(&effect);
+    refuse_outside(&effect);
     let graph_cache = repo::GraphCache::default();
     execute_with(effect, &cx(&graph_cache))
 }
 
 /// `execute` with the trust re-check `c` first.
 pub fn execute_checked(c: TrustCheck, effect: Effect) -> Option<Msg> {
-    refuse_own_folders(&effect);
+    refuse_outside(&effect);
     let graph_cache = repo::GraphCache::default();
     Execute::execute(Box::new(Checked { effect, check: c }), &cx(&graph_cache))
 }
 
-/// Fails the test if `effect` would read or write one of Glowfly's own folders on this machine
-/// (the config, cache or log folder) other than through a save, which `SEAMS` redirects. An
-/// identity read (`ProfileEffect::ReadIdentity`) still runs, as in the whole-app tests: it only
-/// reads the profiles' include files, and a test's repository config comes before them.
+/// Fails the test if `effect` reaches outside the test's own repositories and folders: every
+/// effect the whole-app tests' sandbox drops (the network, the OS shell, the desktop, file
+/// pickers, the credential store, the global git config, Glowfly's own folders; see
+/// `Effect::sandbox`), with `ALLOWED`'s exceptions. Saves are not refused: `SEAMS` redirects them.
 #[track_caller]
-fn refuse_own_folders(effect: &Effect) {
-    use crate::effect::PrefsEffect;
-    use glowfly_model::custom_commands::CustomCommandEffect;
-    use glowfly_model::profile::ProfileEffect;
-    let own = matches!(
-        effect,
-        Effect::Theme(_)
-            | Effect::CustomCommand(CustomCommandEffect::Load { .. })
-            | Effect::Profile(ProfileEffect::SyncIncludes { .. })
-            | Effect::FetchAvatars(_)
-            | Effect::Prefs(PrefsEffect::ReadSettings)
-            | Effect::Updates(_)
+fn refuse_outside(effect: &Effect) {
+    assert!(
+        !refused(effect),
+        "{} reaches outside the test (the user's git config, Glowfly's own folders, the network or the desktop); tests must not run it",
+        effect.name()
     );
-    assert!(!own, "{} would use Glowfly's own folders on this machine; tests must not run it", effect.name());
+}
+
+/// Whether `refuse_outside` fails a test that runs `effect`.
+fn refused(effect: &Effect) -> bool {
+    effect.sandbox() == SandboxRule::Drop && !allowed(effect)
+}
+
+/// The effects the sandbox drops that a test may still run: they only read the test's
+/// repositories and folders, write a test repository's own config, fetch from a test
+/// repository's (local) remote, or read the user's git config and signing keys without changing
+/// them.
+fn allowed(effect: &Effect) -> bool {
+    use crate::effect::partial::PartialEffect;
+    use crate::effect::{PrefsEffect, ReposEffect};
+    use glowfly_model::deep_link::DeepLinkEffect;
+    use glowfly_model::pull_request::PrEffect;
+    use glowfly_model::ssh::SshEffect;
+    matches!(
+        effect,
+        Effect::DeepLink(DeepLinkEffect::Build { .. } | DeepLinkEffect::Find { .. })
+            | Effect::PullRequest(PrEffect::Files(_) | PrEffect::LineMaps(_) | PrEffect::FetchHead(_))
+            | Effect::Repos(ReposEffect::Scan { .. } | ReposEffect::Sync { .. })
+            | Effect::Ssh(SshEffect::ReadChoice { .. } | SshEffect::SetKeyChoice { repo: Some(_), .. })
+            | Effect::Prefs(PrefsEffect::ListSigningKeys { .. })
+    ) || matches!(effect, Effect::Partial(PartialEffect::SizeHistory(r)) if r.service.is_none())
 }
 
 /// The `Cx` of an effect run on its own: never cancelled, no stop, no gate, other messages

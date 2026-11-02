@@ -85,7 +85,48 @@ fn saves_run_by_a_test_land_in_the_test_folder_not_the_config_folder() {
 }
 
 #[test]
-#[should_panic(expected = "Glowfly's own folders")]
-fn effects_that_use_the_own_folders_are_refused() {
-    execute(Effect::Theme(glowfly_model::themes::ThemeEffect::Load));
+fn effects_reaching_outside_the_test_are_refused() {
+    use crate::effect::{ConfigWrite, PrefsEffect, UpdateEffect};
+    use glowfly_model::git_env::GitEnvEffect;
+    use glowfly_model::onboarding::OnboardingEffect;
+    use glowfly_model::profile::ProfileEffect;
+    use glowfly_model::ssh::SshEffect;
+    let here = glowfly_core::paths::temp_dir();
+    let identity = glowfly_core::identity::Identity { name: "Ada".into(), email: "ada@example.invalid".into(), signing_key: None };
+    let global = |key: &str| ConfigWrite { global: true, key: key.into(), value: Some("x".into()) };
+    let plan = glowfly_core::profile_includes::IncludePlan { files: Vec::new(), entries: Vec::new() };
+    let outside = [
+        // The user's global git config.
+        Effect::Onboarding(OnboardingEffect::WriteIdentity { cwd: here.clone(), identity }),
+        Effect::Prefs(PrefsEffect::SetGitConfig { cwd: here.clone(), global: true, key: "user.name".into(), value: None }),
+        Effect::Prefs(PrefsEffect::WriteGitConfig { cwd: here.clone(), ticket: 1, writes: vec![global("user.email")] }),
+        Effect::GitEnv(GitEnvEffect::AddSafeDirectory(here.clone())),
+        Effect::Ssh(SshEffect::SetKeyChoice { repo: None, key: None }),
+        Effect::Profile(ProfileEffect::SyncIncludes { cwd: here.clone(), plan, place: true }),
+        // Glowfly's own folders.
+        Effect::Theme(glowfly_model::themes::ThemeEffect::Load),
+        Effect::Prefs(PrefsEffect::ReadSettings),
+        Effect::Updates(UpdateEffect::Tidy),
+        Effect::FetchAvatars(vec!["ada@example.invalid".into()]),
+    ];
+    for effect in &outside {
+        assert!(refused(effect), "{} is refused", effect.name());
+    }
+    let inside = [
+        Effect::Prefs(PrefsEffect::SetGitConfig { cwd: here.clone(), global: false, key: "user.name".into(), value: None }),
+        Effect::Ssh(SshEffect::ReadChoice { generation: 1, repo: None }),
+        Effect::Ssh(SshEffect::SetKeyChoice { repo: Some(here.clone()), key: None }),
+        Effect::SaveSettings(Box::default()),
+    ];
+    for effect in &inside {
+        assert!(!refused(effect), "{} runs", effect.name());
+    }
+}
+
+#[test]
+#[should_panic(expected = "reaches outside the test")]
+fn running_a_global_identity_write_fails_the_test() {
+    let identity = glowfly_core::identity::Identity { name: "Ada".into(), email: "ada@example.invalid".into(), signing_key: None };
+    let cwd = glowfly_core::paths::temp_dir();
+    execute(Effect::Onboarding(glowfly_model::onboarding::OnboardingEffect::WriteIdentity { cwd, identity }));
 }
