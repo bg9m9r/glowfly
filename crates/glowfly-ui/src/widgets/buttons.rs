@@ -25,7 +25,7 @@
 //! room beside the text (`pad_x` framed, `quiet_pad_x` quiet), the icon and its gap, and the
 //! corners. Compact is for quiet buttons only. The text keeps at least 4 px above and below
 //! inside a framed button's edge and 3 px inside a quiet one's. Taller with `min_height`, or an
-//! exact `height` and `text_size` inside a fixed-height row, until those rows take a size.
+//! exact `height` beside a field (`text_field::with_button`), until fields take a size.
 
 use super::button_look::{self, Press, Target};
 use super::icon::{self, Icon};
@@ -48,7 +48,6 @@ pub enum Kind {
     Quiet,
     Danger,
     /// Danger text with no fill until hovered.
-    #[allow(dead_code)]
     DangerQuiet,
 }
 
@@ -69,9 +68,8 @@ pub struct StyledButton<'a> {
     tip: Option<&'a str>,
     min_width: f32,
     min_height: f32,
-    size: ControlSize,
-    text_size: Option<f32>,
     height: Option<f32>,
+    size: ControlSize,
     max_width: Option<f32>,
     /// A leading icon, or the whole content of an icon-only button.
     icon: Option<Icon>,
@@ -107,8 +105,7 @@ pub fn danger<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
 }
 
 /// A step that loses work among quiet actions (a hunk's Discard): danger text, no fill until
-/// hovered. Part of the family before a view needs it.
-#[allow(dead_code)]
+/// hovered.
 pub(crate) fn danger_quiet<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::DangerQuiet)
 }
@@ -129,9 +126,8 @@ impl<'a> StyledButton<'a> {
             tip: None,
             min_width: 0.0,
             min_height: 0.0,
-            size: ControlSize::Regular,
-            text_size: None,
             height: None,
+            size: ControlSize::Regular,
             max_width: None,
             icon: None,
             icon_only: false,
@@ -186,13 +182,7 @@ impl<'a> StyledButton<'a> {
         self
     }
 
-    /// Text of `px` instead of the button text style's size.
-    pub fn text_size(mut self, px: f32) -> Self {
-        self.text_size = Some(px);
-        self
-    }
-
-    /// An exact height, for a button inside a fixed-height row (the diff's hunk headers).
+    /// An exact height: as tall as the field it sits beside (`text_field::with_button`).
     pub fn height(mut self, h: f32) -> Self {
         self.height = Some(h);
         self
@@ -252,7 +242,7 @@ impl<'a> StyledButton<'a> {
     fn galley(&self, ui: &Ui) -> std::sync::Arc<egui::Galley> {
         let shown = if self.icon_only { "" } else { self.text.as_ref() };
         let mut text = egui::RichText::new(shown).color(Color32::PLACEHOLDER);
-        text = text.size(self.text_size.unwrap_or(self.metrics().text));
+        text = text.size(self.metrics().text);
         match self.max_width {
             Some(max) => {
                 let room = (max - 2.0 * self.pad_x() - self.icon_w()).max(0.0);
@@ -262,9 +252,9 @@ impl<'a> StyledButton<'a> {
         }
     }
 
-    /// Its size around `galley`. Where the size sets the height (no `height` or `text_size`),
-    /// debug builds check the inset against the real text: at least `galley_h + 8` for a
-    /// framed button and `+ 6` for a quiet one.
+    /// Its size around `galley`. Where the size sets the height (no `height`), debug builds
+    /// check the inset against the real text: at least `galley_h + 8` for a framed button and
+    /// `+ 6` for a quiet one.
     fn measure(&self, galley: &egui::Galley) -> egui::Vec2 {
         let h_min = self.metrics().h.max(self.min_height);
         if self.icon_only {
@@ -276,7 +266,7 @@ impl<'a> StyledButton<'a> {
             return vec2(w, h);
         }
         debug_assert!(
-            self.text_size.is_some() || h_min + 0.5 >= galley.size().y + ControlSize::inset(self.kind.framed()),
+            h_min + 0.5 >= galley.size().y + ControlSize::inset(self.kind.framed()),
             "{:?} text {} px tall doesn't keep its inset in a {h_min} px {:?} button",
             self.size,
             galley.size().y,

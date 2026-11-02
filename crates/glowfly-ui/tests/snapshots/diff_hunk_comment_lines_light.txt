@@ -99,8 +99,8 @@ Button "Next change" [disabled]
 Button "View"
 Button "Open in external diff tool"
 Button "Close diff"
-Button "Revert 1 line"
 Button "Comment on 1 line"
+Button "Revert 1 line"
 Document "Diff of search.txt"
 painted:
   "Repository"

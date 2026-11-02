@@ -26,11 +26,13 @@ pub(super) const ROWS_LEFT: f32 = 261.0;
 const BUTTON_GAP: f32 = 8.0;
 
 /// Where character boundary `col` of line `line` of the hunk sits on screen (` app`, `-fix`,
-/// `+fix the build`, `+on Windows`): inline, line i is i + 1 rows below the header; split,
+/// `+fix the build`, `+on Windows`): inline, line i is i rows below the first line row; split,
 /// `-fix` pairs with `+fix the build`, so `+on Windows` is on the row after, and the new
 /// side's text starts past the middle.
 pub(super) struct Grid {
     pub(super) header_y: f32,
+    /// The middle of the first line row, under the taller header row.
+    pub(super) first_y: f32,
     pub(super) row_h: f32,
     pub(super) char_w: f32,
     pub(super) text_x: [f32; 2],
@@ -52,7 +54,9 @@ impl Grid {
         } else {
             [ROWS_LEFT + style.inline_cols().text; 2]
         };
-        Self { header_y: (b.y0 + b.y1) as f32 / 2.0, row_h: style.row_h, char_w, text_x, split }
+        let header_y = (b.y0 + b.y1) as f32 / 2.0;
+        let first_y = header_y + (style.header_h + style.row_h) / 2.0;
+        Self { header_y, first_y, row_h: style.row_h, char_w, text_x, split }
     }
 
     /// Character boundary `col` of line `line`, on the new side in split view.
@@ -65,7 +69,7 @@ impl Grid {
             line
         };
         let side = usize::from(self.split);
-        pos2(self.text_x[side] + (col as f32 + 0.2) * self.char_w, self.header_y + (row + 1) as f32 * self.row_h)
+        pos2(self.text_x[side] + (col as f32 + 0.2) * self.char_w, self.first_y + row as f32 * self.row_h)
     }
 }
 

@@ -12,7 +12,7 @@ use crate::ui::diff::wrap::{self, RowMetrics};
 use crate::ui::diff::{DiffStyle, LineHover, gutter_sign, paint_header, paint_line};
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::paint_cut_text;
-use eframe::egui::{self, Align2, Color32, RichText, Sense, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, Color32, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::{DiffRow, inline_rows};
 use glowfly_core::i18n::Lang;
 use glowfly_core::range_diff::{Pair, Side, Status};
@@ -85,7 +85,8 @@ fn rows(ui: &mut Ui, st: &AppState, diff: &FileDiff, widest: usize) {
         match rows[i] {
             DiffRow::Header(hunk) => {
                 p.rect_filled(rect, 0.0, color::hunk_bg());
-                paint_header(p, pos2(rect.left() + cols.sign, y), &diff.hunks[hunk].header, None, &font, style.tab);
+                let band = Rect::from_min_max(pos2(rect.left() + cols.sign, rect.top()), rect.max);
+                paint_header(p, band, &diff.hunks[hunk].header, None, &font, style.tab);
             }
             DiffRow::Line { hunk, line } => {
                 let dl = &diff.hunks[hunk].lines[line];

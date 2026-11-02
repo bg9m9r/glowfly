@@ -3,7 +3,8 @@
 
 use super::{DiffView, fold, syntax};
 use crate::msg::{Msg, StageMsg};
-use crate::ui::theme::{color, type_scale};
+use crate::ui::theme::color;
+use crate::ui::theme::sizes::{self, ControlSize};
 use crate::ui::widgets::buttons;
 use eframe::egui::{Rect, Stroke, Ui, pos2, vec2};
 use glowfly_core::highlight;
@@ -12,11 +13,18 @@ use glowfly_core::repo::{DiffTarget, HunkOp};
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
 
-/// The space between buttons, the wider one that sets Discard apart (with a divider in it), and
-/// a button's least width.
+/// The space between buttons, the wider one that sets Discard apart (with a divider in its
+/// middle), the divider's height, a button's least width, and the room the `@@` text keeps
+/// before the first button.
 const GAP: f32 = 6.0;
 const APART: f32 = 20.0;
-const MIN_W: f32 = 96.0;
+const DIVIDER: f32 = 16.0;
+const MIN_W: f32 = 80.0;
+const TEXT_ROOM: f32 = 12.0;
+
+/// The buttons' size: Small, which the header row (`DiffStyle::header_h`) hosts with 4 px clear
+/// above and below.
+const SIZE: ControlSize = ControlSize::Small;
 
 /// A hunk's action button.
 #[derive(Clone, Copy)]
@@ -29,19 +37,14 @@ enum HunkButton {
     Comment,
 }
 
-/// The buttons' text size in a `row_h` tall row: body size, smaller only where the smallest diff
-/// fonts make the row too short for it, and never under the type scale's floor.
-fn text_px(row_h: f32) -> f32 {
-    type_scale::fit(type_scale::BODY, row_h - 4.0)
-}
-
-/// A hunk header row: the `@@` line (its function context in syntax colors), plus its buttons
-/// in body-size text (`text_px`), pinned to the visible right edge so they stay in view when
-/// scrolled sideways: on working-tree diffs Stage hunk at the edge and Discard hunk (in the
-/// danger style) to its left behind a wider gap with a divider, Unstage hunk on staged diffs
-/// (each "N lines" when the hunk has selected lines), Revert hunk (or Revert N lines) on commit and
-/// comparison diffs and on a commit compared with the working tree (none the other way round),
-/// and left of it Comment on N lines on a pull request's file with selected lines.
+/// A hunk header row: the `@@` line (its function context in syntax colors), cut with "…"
+/// before the buttons, plus the buttons, Small and pinned to the visible right edge so they
+/// stay in view when scrolled sideways. Left to right: Comment on N lines (quiet) on a pull
+/// request's file with selected lines; then Stage hunk on working-tree diffs, Unstage hunk on
+/// staged ones (each "N lines" when the hunk has selected lines), or Revert hunk (or Revert N
+/// lines) on commit and comparison diffs and on a commit compared with the working tree (none
+/// the other way round), all secondary; and last, on working-tree diffs, Discard hunk in the
+/// quiet danger style, set apart by a wider gap with a divider.
 /// The buttons are disabled while a reload is on its way (`hunk_gen` is
 /// `None`), since the hunk indexes may no longer match the file. With whitespace changes hidden
 /// they apply only the changes shown.
@@ -49,19 +52,16 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     ui.painter().rect_filled(rect, 0.0, color::hunk_bg());
     // In the hunk view, the closed gap above this hunk opens from a control before the text.
     let gap = v.whole.is_none().then(|| v.gaps.iter().find(|g| g.hunk == h)).flatten();
-    let mut x = rect.left() + 8.0;
+    let mut text_x = rect.left() + 8.0;
     if let Some(&g) = gap {
         fold::gap_control(ui, rect, v, g, msgs);
-        x += 18.0 * v.style.k;
+        text_x += 18.0 * v.style.k;
     }
-    let raw = &v.diff.hunks[h].header;
-    let ctx = v.header_hl.map(|hl| hl.header(h)).filter(|s| !s.is_empty()).and_then(|s| highlight::context_start(raw).map(|at| (at, s)));
-    syntax::paint_header(ui.painter(), pos2(x, rect.center().y), raw, ctx, &v.style.font, v.style.tab);
     let path = v.target.path();
     let selected = v.sel.map_or(0, |s| s.count_in(v.target, h));
-    // Laid out right to left: Stage at the edge, then Discard set apart.
+    // Laid out right to left: Discard at the edge, then the hunk's main action set apart.
     let mut list: Vec<HunkButton> = match v.target {
-        DiffTarget::Unstaged(_) => vec![HunkButton::Op(HunkOp::Stage), HunkButton::Op(HunkOp::Discard)],
+        DiffTarget::Unstaged(_) => vec![HunkButton::Op(HunkOp::Discard), HunkButton::Op(HunkOp::Stage)],
         DiffTarget::Staged(_) => vec![HunkButton::Op(HunkOp::Unstage)],
         DiffTarget::Commit(..) | DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => vec![HunkButton::Revert],
         // From the working tree to a commit: nothing to stage or revert per hunk.
@@ -71,8 +71,6 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     if commentable > 0 {
         list.push(HunkButton::Comment);
     }
-    let (row_h, mid_y) = (v.style.row_h, rect.top() + v.style.row_h / 2.0);
-    let body = text_px(row_h);
     let t = v.t;
     let revert_tip = match v.target {
         DiffTarget::ToWorkdir(oid, _) => {
@@ -87,30 +85,41 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         _ => t.trf("diff.hunk.revert.tip", &[("path", &path)]),
     };
     let updating = t.tr("diff.hunk.updating");
+    let comment_tip = t.tr("diff.hunk.comment_lines.tip");
+    let top = sizes::centred_top(rect, SIZE.metrics().h);
     let mut x = ui.clip_rect().right() - 8.0;
+    let mut placed = Vec::with_capacity(list.len());
     for (i, &b) in list.iter().enumerate() {
         let label =
             if let HunkButton::Comment = b { t.trn("diff.hunk.comment_lines", commentable, &[]) } else { button_label(t, b, selected) };
-        let discard = matches!(b, HunkButton::Op(HunkOp::Discard));
-        let styled = if discard { buttons::danger(label) } else { buttons::secondary(label) };
-        let mut styled = styled.text_size(body).height(row_h - 2.0).min_width(MIN_W).enabled(v.hunk_gen.is_some()).why(Some(updating));
-        let comment_tip = t.tr("diff.hunk.comment_lines.tip");
-        match b {
-            HunkButton::Revert => styled = styled.tip(&revert_tip),
-            HunkButton::Comment => styled = styled.tip(comment_tip),
-            HunkButton::Op(_) => {}
-        }
-        if discard && i > 0 {
-            // Set apart from Stage: a wider gap with a divider in its middle.
+        let styled = match b {
+            HunkButton::Op(HunkOp::Discard) => buttons::danger_quiet(label),
+            HunkButton::Comment => buttons::quiet(label).tip(comment_tip),
+            HunkButton::Revert => buttons::secondary(label).tip(&revert_tip),
+            HunkButton::Op(_) => buttons::secondary(label),
+        };
+        let styled = styled.size(SIZE).min_width(MIN_W).enabled(v.hunk_gen.is_some()).why(Some(updating));
+        if i > 0 && matches!(list[i - 1], HunkButton::Op(HunkOp::Discard)) {
+            // Set apart from Discard: a wider gap with a divider in its middle.
             x -= APART - GAP;
-            let line_x = x + APART / 2.0;
-            let half = (row_h - 6.0) / 2.0;
-            ui.painter().vline(line_x, (mid_y - half)..=(mid_y + half), Stroke::new(1.0_f32, color::border()));
+            let mid_y = rect.center().y;
+            let line = (mid_y - DIVIDER / 2.0)..=(mid_y + DIVIDER / 2.0);
+            ui.painter().vline(x + APART / 2.0, line, Stroke::new(1.0_f32, color::border()));
         }
         let w = styled.desired_width(ui);
-        let r = Rect::from_min_size(pos2(x - w, rect.top() + 1.0), vec2(w, row_h - 2.0));
-        let button = ui.put(r, styled);
+        let r = Rect::from_min_size(pos2(x - w, top), vec2(w, SIZE.metrics().h));
         x -= w + GAP;
+        placed.push((b, styled, r));
+    }
+    // The `@@` text stops short of the first button, never running under it.
+    let first = placed.last().map_or(ui.clip_rect().right(), |(_, _, r)| r.left() - TEXT_ROOM);
+    let raw = &v.diff.hunks[h].header;
+    let ctx = v.header_hl.map(|hl| hl.header(h)).filter(|s| !s.is_empty()).and_then(|s| highlight::context_start(raw).map(|at| (at, s)));
+    let band = Rect::from_x_y_ranges(text_x..=first.max(text_x), rect.y_range());
+    syntax::paint_header(ui.painter(), band, raw, ctx, &v.style.font, v.style.tab);
+    // Added left to right, so keyboard focus and screen readers meet them in reading order.
+    for (b, styled, r) in placed.into_iter().rev() {
+        let button = ui.put(r, styled);
         let (true, Some(generation)) = (button.clicked(), v.hunk_gen) else { continue };
         let op = match b {
             HunkButton::Comment => {
@@ -171,19 +180,5 @@ fn button_label(t: Lang, b: HunkButton, selected: usize) -> String {
         HunkButton::Op(HunkOp::Stage) => t.trn("diff.hunk.stage_lines", selected, &[]),
         HunkButton::Op(HunkOp::Unstage) => t.trn("diff.hunk.unstage_lines", selected, &[]),
         HunkButton::Op(HunkOp::Discard) => t.trn("diff.hunk.discard_lines", selected, &[]),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ui::diff::DiffStyle;
-    use glowfly_core::settings::Settings;
-
-    #[test]
-    fn button_text_is_body_size_and_never_under_the_floor() {
-        let smallest = DiffStyle::new(&Settings { diff_font_size: 8.0, ..Settings::default() });
-        assert!(text_px(smallest.row_h) >= type_scale::CAPTION, "at {} px rows", smallest.row_h);
-        assert_eq!(text_px(DiffStyle::new(&Settings::default()).row_h), type_scale::BODY);
     }
 }

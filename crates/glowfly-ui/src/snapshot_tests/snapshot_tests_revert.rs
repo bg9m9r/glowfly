@@ -155,14 +155,14 @@ fn commit_diff_lines_click_and_revert() {
     use crate::msg::DiffMsg;
     use crate::state::lines::LineClick;
     use eframe::egui::{Event, Modifiers, PointerButton, pos2};
-    // A click in a `+` line's gutter selects it, one on its text doesn't: line i is i + 1 rows
-    // below the hunk header, and the rows start at the sidebar's edge.
+    // A click in a `+` line's gutter selects it, one on its text doesn't: line i is i rows
+    // below the first line row, under the hunk header, and the rows start at the sidebar's edge.
     let (st, dir) = with_line_diff("revert-lines-click", ThemeChoice::Dark, DiffLayout::Inline, &[]);
-    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
+    let style = crate::ui::diff::DiffStyle::new(&st.settings);
     let mut h = harness(st, true);
     h.run();
     let b = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");
-    let y = (b.y0 + b.y1) as f32 / 2.0 + 4.0 * row_h;
+    let y = (b.y0 + b.y1) as f32 / 2.0 + (style.header_h + style.row_h) / 2.0 + 3.0 * style.row_h;
     for x in [b.x0 as f32 - 300.0, 261.0 + 100.0] {
         let events = &mut h.input_mut().events;
         events.push(Event::PointerMoved(pos2(x, y)));

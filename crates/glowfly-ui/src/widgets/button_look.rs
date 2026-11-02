@@ -171,8 +171,15 @@ pub(super) fn paint_target(p: &Painter, t: Target, size: ControlSize, press: Pre
 
 /// Paints target `t`, a button of size `size`, in `look` (`look` for its state, or a look the
 /// caller adjusted from it), `focus`ed or not: the fill over its own shape, the look's edge when
-/// `t` stands alone (`t.edge` is `Some`), and the focus ring on its corners.
+/// `t` stands alone (`t.edge` is `Some`), and the focus ring on its corners. Debug builds check
+/// that a button of any size but Compact is at least `HIT_MIN` on each side.
 pub(super) fn paint_button(p: &Painter, t: Target, size: ControlSize, look: Look, focus: bool) {
+    // As in `paint_target`: a Compact button paints less than its hit area.
+    debug_assert!(
+        size == ControlSize::Compact || (t.rect.width() >= HIT_MIN - 0.5 && t.rect.height() >= HIT_MIN - 0.5),
+        "a button smaller than the hit area: {:?}",
+        t.rect
+    );
     match t.edge {
         // One shape, so the fill and its edge share their anti-aliased corners.
         Some(_) => {

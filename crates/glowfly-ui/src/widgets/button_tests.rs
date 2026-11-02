@@ -99,8 +99,8 @@ fn sizes_meet_the_minimums() {
             (room(SMALL_HEIGHT, secondary("Retry").size(ControlSize::Small)) - room(HEIGHT, secondary("Retry"))).abs() <= 1.0,
             "small and default buttons give their text about the same room"
         );
-        let r = ui.add(secondary("Stage hunk").height(17.0).min_width(120.0));
-        assert_eq!(r.rect.height(), 17.0, "an exact height");
+        let r = ui.add(secondary("Stage hunk").size(ControlSize::Small).min_width(120.0));
+        assert_eq!(r.rect.height(), SMALL_HEIGHT, "a hunk header's Small button");
         assert_eq!(r.rect.width(), 120.0, "the least width still applies");
         assert_eq!(quiet("Fetch").desired_width(ui), secondary("Fetch").desired_width(ui), "quiet and framed: 12 px beside the text");
         let small_quiet = quiet("Fetch").size(ControlSize::Compact);

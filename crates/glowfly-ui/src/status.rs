@@ -5,6 +5,7 @@
 
 use super::common::status_label_ui;
 use super::theme::color;
+use super::theme::sizes::ControlSize;
 use super::widgets::buttons;
 use crate::msg::{JobMsg, Msg};
 use crate::state::AppState;
@@ -79,13 +80,13 @@ fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     if st.job_cancellable() {
         let step = st.job_stop.as_ref().map(|s| s.step).unwrap_or_default();
         let tip = cancel_tip(t, step, &named);
-        let cancel = buttons::quiet(t.tr("common.cancel.button")).height(20.0).tip(&tip);
+        let cancel = buttons::quiet(t.tr("common.cancel.button")).size(ControlSize::Compact).tip(&tip);
         if ui.add(cancel).clicked() {
             msgs.push(Msg::Job(JobMsg::Cancel));
         }
     } else if let Some(step) = st.job_cancel_blocked() {
         let why = cancel_tip(t, step, &named);
-        ui.add(buttons::quiet(t.tr("common.cancel.button")).height(20.0).enabled(false).why(Some(&why)));
+        ui.add(buttons::quiet(t.tr("common.cancel.button")).size(ControlSize::Compact).enabled(false).why(Some(&why)));
     }
     if let Some(p) = st.job_progress() {
         ui.label(RichText::new(crate::state::job_stop::progress_text(t, p)).color(color::faint()));

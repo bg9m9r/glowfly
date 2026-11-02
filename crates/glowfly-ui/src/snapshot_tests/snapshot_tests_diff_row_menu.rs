@@ -159,7 +159,7 @@ fn ctrl_a_selects_the_side_last_pressed_in_and_the_new_side_first() {
     let sel = h.state().0.view.diff_text.clone().expect("everything on the new side");
     assert_eq!(sel.side, TextSide::New);
     // A press on the old side's code: Ctrl+A selects that side.
-    click(&mut h, pos2(g.text_x[0] + g.char_w, g.header_y + 2.0 * g.row_h), PointerButton::Primary);
+    click(&mut h, pos2(g.text_x[0] + g.char_w, g.first_y + g.row_h), PointerButton::Primary);
     key(&mut h, Key::A, Modifiers::COMMAND);
     assert!(matches!(h.state().1[..], [Msg::Diff(DiffMsg::SelectAllText { side: TextSide::Old })]));
     apply(&mut h);

@@ -87,7 +87,6 @@ Button "Discard hunk"
 Button "Fold 6 unchanged lines"
 Button "Stage hunk"
 Button "Discard hunk"
-Button "7 unchanged lines"
 Document "Diff of wrap.rs"
 painted:
   "Repository"

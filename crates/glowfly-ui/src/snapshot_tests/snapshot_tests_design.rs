@@ -19,12 +19,13 @@ use eframe::egui::{self, Align2, CornerRadius, Rect, Shape, StrokeKind, Ui, pos2
 use egui_kittest::kittest::Queryable;
 
 /// The kinds that carry text, with a label each.
-const KINDS: [(Kind, &str); 5] = [
+const KINDS: [(Kind, &str); 6] = [
     (Kind::Primary, "Commit"),
     (Kind::Tonal, "Stage all"),
     (Kind::Secondary, "Cancel"),
     (Kind::Quiet, "Details"),
     (Kind::Danger, "Discard"),
+    (Kind::DangerQuiet, "Discard hunk"),
 ];
 
 fn button(kind: Kind, label: &'static str) -> StyledButton<'static> {

@@ -301,31 +301,33 @@ fn diff_similar_pairs() {
 fn diff_hunk_buttons() {
     use super::snapshot_tests::{harness, remove_fixture};
     use egui_kittest::kittest::Queryable;
-    // Working tree: Stage Hunk at the right edge, Discard Hunk set apart to its left.
+    // Working tree: Discard hunk at the right edge, Stage hunk set apart to its left.
     let (st, dir) = with_diff(DiffLayout::Inline, "diff-hunk-buttons");
-    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
     let mut h = harness(st, true);
     h.run();
     let stage = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
     let discard = h.get_by_label("Discard hunk").bounding_box().expect("the button has bounds");
-    assert!(stage.x0 > discard.x1, "Stage sits at the edge, right of Discard");
-    assert!(stage.x0 - discard.x1 >= 16.0, "a wider gap sets Discard apart");
+    assert!(discard.x0 > stage.x1, "Discard sits at the edge, right of Stage");
+    assert!((discard.x0 - stage.x1 - 20.0).abs() < 0.5, "a 20 px gap sets Discard apart");
     for b in [stage, discard] {
-        assert!(((b.y1 - b.y0) as f32 - (row_h - 2.0)).abs() < 0.5, "the buttons fill the row");
+        assert!(((b.y1 - b.y0) - 24.0).abs() < 0.5, "Small buttons, 24 px tall");
+        assert!(b.x1 - b.x0 >= 79.5, "at least 80 px wide");
     }
+    assert_eq!((stage.y0, stage.y1), (discard.y0, discard.y1), "one height and line");
     drop(h);
     remove_fixture(&dir);
 
-    // The smallest diff font: the buttons still fit the shorter row.
-    let (mut st, dir) = with_diff(DiffLayout::Inline, "diff-hunk-buttons-small");
-    st.settings.diff_font_size = *glowfly_core::settings::DIFF_FONT_SIZES.start();
-    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
-    let mut h = harness(st, true);
-    h.run();
-    let stage = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
-    assert!(((stage.y1 - stage.y0) as f32 - (row_h - 2.0)).abs() < 0.5);
-    drop(h);
-    remove_fixture(&dir);
+    // The smallest and largest diff fonts: the buttons keep their size, the row grows round them.
+    for size in [*glowfly_core::settings::DIFF_FONT_SIZES.start(), *glowfly_core::settings::DIFF_FONT_SIZES.end()] {
+        let (mut st, dir) = with_diff(DiffLayout::Inline, &format!("diff-hunk-buttons-{size}"));
+        st.settings.diff_font_size = size;
+        let mut h = harness(st, true);
+        h.run();
+        let stage = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
+        assert!(((stage.y1 - stage.y0) - 24.0).abs() < 0.5, "at diff font {size}");
+        drop(h);
+        remove_fixture(&dir);
+    }
 
     // A reload on its way disables both, saying why.
     let (mut st, dir) = with_diff(DiffLayout::Inline, "diff-hunk-buttons-reload");
