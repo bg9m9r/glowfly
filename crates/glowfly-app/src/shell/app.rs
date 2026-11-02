@@ -284,9 +284,11 @@ impl eframe::App for GlowflyApp {
     }
 
     /// The keypad's Alt+digit presses (a Windows Alt code) are taken out before egui sees them,
-    /// so they never reach the pane keys (`platform::numpad_keys`).
+    /// so they never reach the pane keys (`platform::numpad_keys`), and the texture side egui
+    /// may use is capped, so the font atlas grows in smaller steps (`texture_side`).
     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         crate::platform::numpad_keys::filter(&mut raw_input.events);
+        super::texture_side::cap(raw_input);
     }
 
     /// The PRIMARY selection's Wayland connection is let go while the window still exists.
