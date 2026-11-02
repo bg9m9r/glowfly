@@ -1017,6 +1017,7 @@
   "graph.load_more_failed.title": "Weitere Commits konnten nicht geladen werden",
   "graph.loading_more": "Weitere Commits werden geladen…",
   "graph.refs.in_sync.tip": "{name}, auf dem Stand von {others}",
+  "graph.reload_failed.title": "Der Verlauf konnte nicht geladen werden",
   "graph.searching_older": "Ältere Commits werden durchsucht…",
   "graph.wip.label": "Nicht committete Änderungen",
   "graph.wip.worktree_label": "Nicht committete Änderungen · {folder}",

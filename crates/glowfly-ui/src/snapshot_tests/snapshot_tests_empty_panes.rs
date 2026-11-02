@@ -1,6 +1,7 @@
 //! Empty panes in the shared empty-state style: the dashboard without repositories and with a
 //! filter that matches nothing, a filtered graph search without matches (also with only part
-//! of the history loaded), and a repository without commits.
+//! of the history loaded), a repository without commits, and a history freed in a parked tab
+//! loading again or failing to.
 
 use super::snapshot_tests::{harness, remove_fixture, settings, try_git};
 use super::snapshot_tests_search::{searching, send, with_two_authors};
@@ -109,6 +110,36 @@ fn graph_no_commits() {
     h.run();
     assert!(h.query_by_label(super::graph_empty::NO_COMMITS_TITLE).is_some());
     h.check_snapshot("graph_no_commits");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn graph_history_freed() {
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-snap-{}-history-freed", std::process::id())).join("freed");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let (ok, out) = try_git(&dir, &["init", "-q", "-b", "main"], "2026-01-05T10:00:00+00:00");
+    assert!(ok, "{out}");
+    // A stub whose history was freed while its tab was parked, loading again.
+    let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    st.session.tab_view.history_freed = Some(6_000);
+    st.loading = true;
+    let mut h = harness(st, true);
+    h.run_steps(2);
+    assert!(h.query_all_by_label("Loading…").count() >= 1, "the graph's pane (the status bar says so too)");
+    assert!(h.query_by_label(super::graph_empty::NO_COMMITS_TITLE).is_none());
+
+    // The reload failed: why, with Try again instead of a spinner.
+    h.state_mut().0.loading = false;
+    h.state_mut().0.session.tab_view.history_reload_error = Some("not found: could not find repository".into());
+    h.run();
+    assert_eq!(h.query_all_by_label("Loading…").count(), 0);
+    assert!(h.query_by_label("Couldn't load the history").is_some());
+    assert!(h.query_by_label("Could not find repository").is_some(), "the error without its kind");
+    h.check_snapshot("graph_history_reload_failed");
+    assert!(matches!(&click(&mut h, "Try again")[..], [Msg::Repo(RepoMsg::Refresh)]));
     drop(h);
     remove_fixture(&dir);
 }

@@ -185,6 +185,8 @@ pub(super) fn reload_after(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 fn request(st: &mut AppState, depth: Depth, fx: &mut Vec<Effect>) {
     let Some(path) = st.workdir() else { return };
+    // A stub whose history was freed while parked has no walk to check or go on from.
+    let depth = if st.session.tab_view.history_freed.is_some() { Depth::Full } else { depth };
     if st.loading {
         st.refresh.queued = st.refresh.queued.max(Some(depth));
         return;

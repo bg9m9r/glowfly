@@ -86,6 +86,7 @@ mod op_progress;
 pub mod ops;
 mod palette;
 mod palette_keys;
+mod parked_free;
 mod partial;
 mod partial_content;
 mod partial_size;
@@ -313,6 +314,7 @@ crate::msg::msg_areas! { area_router! {
             load_more::tick(st, t, fx);
             search_loaded::tick(st, t, fx);
             history_index::tick(st, t, fx);
+            parked_free::tick(st, t, fx);
             worktree_counts::tick(st, t, fx);
         }
         Msg::Scoped { workdir, msg } => {

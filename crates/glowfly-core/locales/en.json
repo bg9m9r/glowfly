@@ -1017,6 +1017,7 @@
   "graph.load_more_failed.title": "Couldn't load more commits",
   "graph.loading_more": "Loading more commits…",
   "graph.refs.in_sync.tip": "{name}, in sync with {others}",
+  "graph.reload_failed.title": "Couldn't load the history",
   "graph.searching_older": "Searching older commits…",
   "graph.wip.label": "Uncommitted changes",
   "graph.wip.worktree_label": "Uncommitted changes · {folder}",

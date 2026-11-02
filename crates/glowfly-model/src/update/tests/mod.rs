@@ -24,6 +24,7 @@ pub(super) mod onboarding_tests;
 pub(super) mod op_steps_tests;
 pub(super) mod palette_profile_tests;
 pub(super) mod palette_theme_tests;
+pub(super) mod parked_free_tests;
 pub(super) mod pr_details_tests;
 pub(super) mod pr_heads_tests;
 pub(super) mod prefs_signing_tests;
