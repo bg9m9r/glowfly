@@ -53,3 +53,4 @@ painted:
   "Hotfix"
   "Version tag"
   "Start"
+  "Finish"

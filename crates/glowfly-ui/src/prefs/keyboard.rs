@@ -8,9 +8,10 @@ use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::KeysPage;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{Align, Id, Layout, RichText, TextEdit, Ui, vec2};
+use eframe::egui::{Align, Id, Layout, RichText, TextEdit, Ui};
 use glowfly_core::i18n::Lang;
 
 /// The widest the list gets, so a row's keys stay near its label.
@@ -24,12 +25,8 @@ pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, m
     help(ui, HELP);
     ui.add_space(8.0);
     ui.horizontal(|ui| {
-        let field = TextEdit::singleline(&mut page.filter)
-            .id(Id::new("glowfly-keys-filter"))
-            .hint_text("Filter by action or key")
-            .desired_width(320.0)
-            .margin(vec2(8.0, 5.0));
-        controls::field(ui, field);
+        let field = TextEdit::singleline(&mut page.filter).id(Id::new("glowfly-keys-filter")).hint_text("Filter by action or key");
+        ui.add(controls::SizedField::new(ControlSize::Regular, field).width(super::FIELD_W));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let why = (!keys.customized()).then_some("Every shortcut has its default key");
             let reset = buttons::secondary("Reset all to defaults").enabled(keys.customized() && !page.confirm_reset_all).why(why);

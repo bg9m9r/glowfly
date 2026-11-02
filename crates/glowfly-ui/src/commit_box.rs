@@ -134,14 +134,17 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
                     spell_text_edit(ui, &mut st.session.draft.summary, t.tr("commit.summary_hint"), 1, &mut cache.speller, spell)
                 })
                 .inner;
-            // Counted after the edit, so the number keeps up with typing.
+            // Counted after the edit, so the number keeps up with typing; centred on the field
+            // (its rect is the whole field).
             let (len, text) = (st.session.draft.summary.chars().count(), counter(&st.session.draft.summary));
             let tone = match summary_length(len) {
                 SummaryLength::Fine => color::weak(),
                 SummaryLength::Long => color::warn(),
                 SummaryLength::TooLong => color::removed(),
             };
-            ui.allocate_ui_with_layout(vec2(reserve, s.rect.height()), Layout::right_to_left(Align::Center), |ui| {
+            // In a slot as tall as the field and level with it, so the count centres on it.
+            let slot = egui::Rect::from_min_size(egui::pos2(s.rect.right() + COUNTER_GAP, s.rect.top()), vec2(reserve, s.rect.height()));
+            ui.scope_builder(egui::UiBuilder::new().max_rect(slot).layout(Layout::right_to_left(Align::Center)), |ui| {
                 ui.label(RichText::new(text).font(font).color(tone)).on_hover_text(t.tr("commit.summary_count.tip"));
             });
             s
@@ -197,8 +200,6 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     }
 }
 
-/// The commit button's height.
-const BUTTON_H: f32 = 34.0;
 /// The least width of the caret's menu.
 const MENU_W: f32 = 160.0;
 
@@ -219,7 +220,7 @@ fn commit_split(
     let skip = draft.skip_hooks;
     let w = ui.available_width() - CARET_W;
     let button = if primary { buttons::primary(label) } else { buttons::secondary(label) };
-    let button = button.enabled(enabled).why(blocked).tip(tip).min_width(w).max_width(w).min_height(BUTTON_H);
+    let button = button.enabled(enabled).why(blocked).tip(tip).min_width(w).max_width(w).size(ControlSize::Large);
     // The caret's name stays the same either way, so it is always found by it.
     let (commit, caret) = buttons::split(button, t.tr("commit.more.tip")).open(open).menu_tone(skip.then_some(Tone::Warning)).show(ui);
     let caret = caret.on_hover_text(if skip { t.tr("commit.more.skipping_tip") } else { t.tr("commit.more.tip") });
