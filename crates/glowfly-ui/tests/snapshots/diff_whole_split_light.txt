@@ -82,6 +82,7 @@ Button "Discard hunk"
 Button "Fold 5 unchanged lines"
 Button "Stage hunk"
 Button "Discard hunk"
+Document "Diff of shapes.rs"
 painted:
   "api-server"
   "Repository"

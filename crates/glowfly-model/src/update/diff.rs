@@ -5,6 +5,7 @@ use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::state::AppState;
 use crate::state::diff_nav::{self, Landing, Step};
+use crate::state::diff_text::{self, TextSide};
 use glowfly_core::diff_rows::{header_rows_filled, hunk_at};
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::{DiffLayout, DiffMode, Settings};
@@ -155,6 +156,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
         | DiffMsg::EndLineDrag
         | DiffMsg::ClearLineSelection => lines(st, msg),
         DiffMsg::ClearTextSelection => st.view.diff_text = None,
+        DiffMsg::SelectAllText { side } => select_all_text(st, side),
         DiffMsg::JumpToChange(step) => {
             if st.view.diff_landing.is_some() {
                 return; // a stepped-to file is loading: key repeat waits for it
@@ -301,4 +303,18 @@ pub(super) fn load_effect(
     let (ignore_whitespace, whole_file) = (st.settings.diff_ignore_whitespace, st.settings.diff_mode == DiffMode::WholeFile);
     let listed = diff_nav::file_order::listed(st, &target).cloned();
     Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed }
+}
+
+/// Selects every line `side` of the open diff shows, as the view shows it now (the hunks or
+/// the whole file, with its closed folds hiding lines); a layout that has no such side selects
+/// nothing.
+fn select_all_text(st: &mut AppState, side: TextSide) {
+    let Some((target, d)) = st.session.diff.view.as_ref() else { return };
+    let inline = st.settings.diff_layout == DiffLayout::Inline;
+    if inline != (side == TextSide::Inline) {
+        return;
+    }
+    let whole = shown(d, st.settings.diff_mode);
+    let key = (target.clone(), st.session.diff.shown_gen);
+    st.view.diff_text = diff_text::select_all(d, whole, &st.session.tab_view.diff_expanded, side, key);
 }

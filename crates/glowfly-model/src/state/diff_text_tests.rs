@@ -126,3 +126,42 @@ fn a_word_drag_ending_at_a_word_end_stops_there() {
     // Back toward the start, an end at a word's end is the anchor's own word.
     assert_eq!(copy(&lines(), &sel(pos(hunk(0, 2), 4), pos(hunk(0, 2), 4), Unit::Word), false), " ");
 }
+
+#[test]
+fn copy_lines_takes_whole_lines_each_ending_in_a_newline() {
+    // From inside `let` to inside the next line: both lines whole.
+    let s = sel(pos(hunk(0, 1), 2), pos(hunk(0, 2), 3), Unit::Char);
+    assert_eq!(copy_lines(&lines(), Some(&s), Some(hunk(1, 0))), "\tlet a = 1;\n\tlet a = 2;\n");
+    // With nothing selected, the line clicked; an empty selection counts as none.
+    assert_eq!(copy_lines(&lines(), None, Some(hunk(1, 0))), "}\n");
+    let at = pos(hunk(0, 0), 1);
+    assert_eq!(copy_lines(&lines(), Some(&sel(at, at, Unit::Char)), Some(hunk(1, 0))), "}\n");
+    assert_eq!(copy_lines(&lines(), None, None), "");
+}
+
+/// Two hunks of the hunk view: ` a`, `-b`, `+c` and ` d`, `+e!` with no newline at its end.
+fn two_hunks() -> FileDiff {
+    use glowfly_core::repo::{DiffLine, Hunk};
+    let l = |origin: char, text: &str| DiffLine { origin, old: None, new: None, text: text.into() };
+    let hunk = |lines: Vec<DiffLine>| Hunk { header: "@@ -1 +1 @@".into(), lines };
+    FileDiff {
+        binary: false,
+        hunks: vec![hunk(vec![l(' ', "a"), l('-', "b"), l('+', "c")]), hunk(vec![l(' ', "d"), l('+', "e!"), l('>', "")])],
+        highlight: None,
+        intraline: Default::default(),
+        whole: None,
+    }
+}
+
+#[test]
+fn select_all_runs_from_the_first_line_to_the_end_of_the_last_on_its_side() {
+    let d = two_hunks();
+    let ends = |side| select_all(&d, None, &Expanded::default(), side, key()).map(|s| (s.anchor, s.head, s.side));
+    // The note after `+e!` isn't a line; the head is past `e!`'s two characters.
+    assert_eq!(ends(TextSide::Inline), Some((pos(hunk(0, 0), 0), pos(hunk(1, 1), 2), TextSide::Inline)));
+    assert_eq!(ends(TextSide::New), Some((pos(hunk(0, 0), 0), pos(hunk(1, 1), 2), TextSide::New)));
+    // The old side ends at ` d`, its last line.
+    assert_eq!(ends(TextSide::Old), Some((pos(hunk(0, 0), 0), pos(hunk(1, 0), 1), TextSide::Old)));
+    let empty = FileDiff { hunks: Vec::new(), ..two_hunks() };
+    assert!(select_all(&empty, None, &Expanded::default(), TextSide::Inline, key()).is_none());
+}

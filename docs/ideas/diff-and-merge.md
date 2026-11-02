@@ -119,6 +119,7 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 ### Diff text selection
 
 - No caret and no Shift+arrow extension of a text selection in v1; the keyboard only copies it.
+- The row menu opens over a line's code only: a right-click in the gutter, on a hunk header or on a fold opens nothing, and Shift+F10 does nothing while no line is selected.
 
 ### Merge conflict tool
 

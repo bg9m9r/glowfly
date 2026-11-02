@@ -260,3 +260,38 @@ fn staging_a_tab_indented_line_still_matches() {
     assert_eq!(index_text(&dir, "f.rs"), "fn f() {\n\tx();\n\t\ty();\n}\n");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_hunk_copied_as_a_patch_applies_to_the_old_file() {
+    let dir = ten_lines("lines-hunk-patch");
+    let d = load_diff(&dir, &DiffTarget::Unstaged("f.txt".into())).unwrap();
+    let patch = hunk_patch_text("f.txt", &d, 0);
+    assert!(patch.starts_with("diff --git a/f.txt b/f.txt\n"), "{patch}");
+    assert!(patch.contains("\n 4\n-5\n+five\n 6\n+6a\n+6b\n 7\n"), "the hunk with its context: {patch}");
+    // Checked against the file as committed, then applied: the edit comes back.
+    git(&dir, &["checkout", "--", "f.txt"]);
+    std::fs::write(dir.join("hunk.patch"), &patch).unwrap();
+    git(&dir, &["apply", "--check", "hunk.patch"]);
+    git(&dir, &["apply", "hunk.patch"]);
+    assert_eq!(read(&dir, "f.txt"), EDITED.as_bytes());
+    assert_eq!(hunk_patch_text("f.txt", &d, 1), "", "no such hunk");
+}
+
+#[test]
+fn a_new_files_hunk_copied_as_a_patch_creates_it() {
+    let dir = scratch_repo("lines-hunk-patch-new");
+    write(&dir, "base.txt", "x\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-m", "base"]);
+    write(&dir, "new.txt", "one\ntwo");
+    git(&dir, &["add", "-N", "new.txt"]);
+    let d = load_diff(&dir, &DiffTarget::Unstaged("new.txt".into())).unwrap();
+    let patch = hunk_patch_text("new.txt", &d, 0);
+    assert!(patch.contains("\\ No newline at end of file\n"), "{patch}");
+    std::fs::remove_file(dir.join("new.txt")).unwrap();
+    git(&dir, &["reset", "-q"]);
+    std::fs::write(dir.join("hunk.patch"), &patch).unwrap();
+    git(&dir, &["apply", "--check", "hunk.patch"]);
+    git(&dir, &["apply", "hunk.patch"]);
+    assert_eq!(read(&dir, "new.txt"), b"one\ntwo");
+}

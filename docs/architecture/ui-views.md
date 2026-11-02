@@ -80,7 +80,8 @@ start with `state/`, `update/` or `ui/`.
 - `diff/header/actions.rs`: the file actions, their More menu, the primary Stage or Unstage and Close.
 - `diff/header/controls.rs`: the ghost buttons and dividers, re-exported from `widgets/ghost.rs`, which the terminal panel's header shares.
 - `diff/header/fit.rs`: which groups fit, in narrowing order.
-- `diff/text_sel.rs`: text selection in the diff's code: the press, double- and triple-click, Shift-click and drag with auto-scroll past the edge, the opaque `code_sel` (`code_sel_dim` without the keyboard) behind the glyphs with its nub, the diff's own keyboard focus and Ctrl+C through `state/diff_text.rs`'s `copy`.
+- `diff/text_sel.rs`: text selection in the diff's code: the press, double- and triple-click, Shift-click and drag with auto-scroll past the edge, the opaque `code_sel` (`code_sel_dim` without the keyboard) behind the glyphs with its nub, the diff's own keyboard focus, Ctrl+C through `state/diff_text.rs`'s `copy`, Ctrl+A (`DiffMsg::SelectAllText`) and the code's screen-reader document node.
+- `diff/row_menu.rs`: the diff's right-click menu over a line's code (Copy, Copy with diff signs, Copy lines, Copy hunk as patch, then the hunk header's line actions on the selected or clicked line), kept or dropping the text selection by where the click lands, and Shift+F10 at the topmost selected line.
 - `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary.
 - `conflict_header.rs`: the conflict view's header with its more-actions menu.
 

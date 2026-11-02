@@ -66,6 +66,7 @@ Button "More file actions"
 Button "Open in external diff tool"
 Button "Close diff"
 Button "Revert 1 line"
+Document "Diff of app.txt" = "pp\nfix\nfix the build\non"
 painted:
   "api-server"
   "Repository"

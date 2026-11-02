@@ -68,6 +68,11 @@ pub enum DiffMsg {
     ClearLineSelection,
     /// Drop the text selected in the diff's code (the line selection stays).
     ClearTextSelection,
+    /// Ctrl+A in the diff: select every line `side` shows (`diff_text::select_all`); in split
+    /// view the side last pressed in, the new side until then.
+    SelectAllText {
+        side: crate::state::diff_text::TextSide,
+    },
     /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
     /// at `generation`, each only where it was pending. Applied only while that diff is still on
     /// screen.
@@ -118,6 +123,7 @@ impl DiffMsg {
             | Self::EndLineDrag
             | Self::ClearLineSelection
             | Self::ClearTextSelection
+            | Self::SelectAllText { .. }
             | Self::DiffHighlighted { .. } => None,
         }
     }

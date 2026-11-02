@@ -153,7 +153,7 @@ pub use index_ext::RecordMemo;
 pub use index_memo::{IndexDelta, IndexMemo, MAX_INDEX_MEMO};
 pub use line_counts::{FileLineCounts, LineCount, MAX_COUNTED_FILES, WipLineCounts, commit_line_counts, wip_line_counts};
 pub use line_map::{LineChange, LineMap, PrLineMaps, line_maps, pr_line_maps};
-pub use lines::{apply_lines, apply_shown};
+pub use lines::{apply_lines, apply_shown, hunk_patch_text};
 pub use load::{load, load_cached, load_reusing, messages_between};
 pub use load_more::{HistoryPage, MoreLoaded, load_more};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};

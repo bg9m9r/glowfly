@@ -7,16 +7,22 @@
 //! over them. The selection paints behind the selected glyphs only, with a nub one space wide
 //! where it goes on past a line's end (`paint_under`); a drag past the view's edge scrolls it
 //! (`edge_step`), and Ctrl+C (Cmd+C) copies the selected code (`state::diff_text::copy`) while a
-//! press in the diff last gave it the keyboard.
+//! press in the diff last gave it the keyboard; Ctrl+A (Cmd+A) then selects every line shown, in
+//! split view on the side last pressed in (the new side until then). The right-click menu is
+//! `row_menu`. To screen readers the code is one document, "Diff of {path}", whose value is the
+//! selected text (`access`).
 
 use super::DiffView;
 use super::rows_cache::LineIndex;
 use super::syntax::{Laid, SegSel};
-use crate::msg::Msg;
+use crate::msg::{DiffMsg, Msg};
 use crate::state::diff_text::{self, LineRef, ShownLine, Span, TextPos, TextSel, TextSide, Unit};
 use crate::ui::theme::color;
 use eframe::egui::text::CCursor;
-use eframe::egui::{Color32, Context, CursorIcon, Event, FontId, Galley, Id, Painter, Pos2, Rangef, Rect, Response, Sense, Ui, pos2, vec2};
+use eframe::egui::{
+    Color32, Context, CursorIcon, Event, FontId, Galley, Id, Key, KeyboardShortcut, Modifiers, Painter, Pos2, Rangef, Rect, Response,
+    Sense, Ui, pos2, vec2,
+};
 use std::ops::Range;
 
 /// How far past the view's edge a drag scrolls fastest, in points.
@@ -82,8 +88,11 @@ pub(super) struct Hit<'a> {
     pub laid: Laid,
 }
 
+/// The most characters of the selected text screen readers are given.
+const ACCESS_MAX: usize = 2000;
+
 /// The id the diff's code senses the pointer by, and keeps its keyboard and click count under.
-fn body_id() -> Id {
+pub(super) fn body_id() -> Id {
     Id::new("diff-text")
 }
 
@@ -158,11 +167,35 @@ pub(super) fn handle(ui: &Ui, bg: &Response, hits: &[Hit], v: &DiffView, t: &mut
     }
     let copy_key = ui.input(|i| i.events.iter().any(|e| matches!(e, Event::Copy)));
     if copy_key && focused(ctx) {
-        let text = t.sel.as_ref().map(|s| copy(v, s)).unwrap_or_default();
+        let text = t.sel.as_ref().map(|s| copy(v, s, false)).unwrap_or_default();
         if !text.is_empty() {
             msgs.push(Msg::Copy(text));
         }
     }
+    let all = KeyboardShortcut::new(Modifiers::COMMAND, Key::A);
+    if focused(ctx) && !hits.is_empty() && ui.input_mut(|i| i.consume_shortcut(&all)) {
+        let split = hits.iter().any(|h| h.side != TextSide::Inline);
+        let side = if split { ctx.data(|d| d.get_temp(body_id().with("side"))).unwrap_or(TextSide::New) } else { TextSide::Inline };
+        msgs.push(Msg::Diff(DiffMsg::SelectAllText { side }));
+    }
+    super::row_menu::handle(ui, bg, hits, v, t, msgs);
+    access(bg, v, t.sel.as_ref());
+}
+
+/// The code as screen readers see it: a document named "Diff of {path}", its value the selected
+/// text (at most `ACCESS_MAX` characters), described as "{n} lines selected" while lines are.
+fn access(bg: &Response, v: &DiffView, sel: Option<&TextSel>) {
+    let lines = v.sel.filter(|s| s.target.as_ref() == Some(v.target)).map_or(0, |s| s.lines.len());
+    bg.ctx.accesskit_node_builder(bg.id, |n| {
+        n.set_role(eframe::egui::accesskit::Role::Document);
+        n.set_label(v.t.trf("diff.body.name", &[("path", &v.target.path())]));
+        if let Some(s) = sel {
+            n.set_value(copy(v, s, false).chars().take(ACCESS_MAX).collect::<String>());
+        }
+        if lines > 0 {
+            n.set_description(v.t.trn("diff.body.lines_selected", lines, &[]));
+        }
+    });
 }
 
 /// A press at `at`: on code, a selection of nothing there growing by characters, words or
@@ -181,6 +214,8 @@ fn press(ui: &Ui, at: Pos2, shift: bool, hits: &[Hit], v: &DiffView, t: &mut Tex
     }
     let count = clicks(ui, at);
     let Some(h) = hit else { return false };
+    // Ctrl+A in split view selects the side pressed in last.
+    ui.ctx().data_mut(|d| d.insert_temp(body_id().with("side"), h.side));
     let pos = TextPos { line: h.line, col: col_at(h, at, v.style.tab) };
     let unit = [Unit::Char, Unit::Word, Unit::Line][count - 1];
     t.sel = Some(TextSel::at(pos, unit, h.side, (v.target.clone(), v.text.shown_gen)));
@@ -249,17 +284,21 @@ pub(super) fn edge_step(d: f32, rem: &mut f32) -> i32 {
 }
 
 /// The character of `h`'s line nearest `at`, hit-tested on the visual line under it.
-fn col_at(h: &Hit, at: Pos2, tab: usize) -> usize {
+pub(super) fn col_at(h: &Hit, at: Pos2, tab: usize) -> usize {
     let parts = &h.laid.parts;
     let Some((origin, galley, start)) = parts.iter().rev().find(|(o, _, _)| o.y <= at.y).or(parts.first()) else { return 0 };
     raw_col(h.raw, tab, start + galley.cursor_from_pos(at - *origin).ccursor.index)
 }
 
-/// The text `sel` selects, as Ctrl+C copies it: the lines of its side as shown.
-pub(super) fn copy(v: &DiffView, sel: &TextSel) -> String {
-    let shown: Vec<ShownLine> =
-        v.text.index.lines(sel.side).filter_map(|line| line_text(v, line).map(|(origin, text)| ShownLine { line, origin, text })).collect();
-    diff_text::copy(&shown, sel, false)
+/// The text `sel` selects, as Ctrl+C copies it (with `signs`, each line behind its origin): the
+/// lines of its side as shown.
+pub(super) fn copy(v: &DiffView, sel: &TextSel, signs: bool) -> String {
+    diff_text::copy(&shown(v, sel.side), sel, signs)
+}
+
+/// The lines `side` shows, in order.
+pub(super) fn shown<'a>(v: &'a DiffView, side: TextSide) -> Vec<ShownLine<'a>> {
+    v.text.index.lines(side).filter_map(|line| line_text(v, line).map(|(origin, text)| ShownLine { line, origin, text })).collect()
 }
 
 /// The selected stretch of `sel` in `v`'s rows, with its side; `None` when an end isn't shown.

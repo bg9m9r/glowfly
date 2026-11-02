@@ -66,6 +66,7 @@ Button "More file actions"
 Button "Open in external diff tool"
 Button "Close diff"
 Button "Revert 2 lines"
+Document "Diff of app.txt"
 painted:
   "api-server"
   "Repository"

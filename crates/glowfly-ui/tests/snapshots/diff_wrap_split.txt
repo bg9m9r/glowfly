@@ -82,6 +82,7 @@ Button "Discard hunk"
 Button "Show the 6 unchanged lines above"
 Button "Stage hunk"
 Button "Discard hunk"
+Document "Diff of wrap.rs"
 painted:
   "api-server"
   "Repository"
