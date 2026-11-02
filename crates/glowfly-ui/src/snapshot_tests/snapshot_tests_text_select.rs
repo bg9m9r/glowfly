@@ -4,11 +4,11 @@
 //! click drops the text and keeps the lines; in split view the drag stays on its side; a press
 //! in a text field keeps the selection, painted quieter. The goldens show text and line
 //! selection together, inline in dark, light and high contrast, split, and without the
-//! keyboard.
+//! keyboard. With the app's shortcuts running, Ctrl+C still copies the code, not commit IDs.
 
-use super::super::snapshot_tests::{harness, harness_palette, remove_fixture};
+use super::super::snapshot_tests::{harness, harness_palette, keys_harness, remove_fixture};
 use super::super::snapshot_tests_revert::with_line_diff;
-use crate::msg::{DiffMsg, Msg};
+use crate::msg::{DiffMsg, Msg, SelectionMsg};
 use crate::state::AppState;
 use crate::state::diff_text::TextSide;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -312,4 +312,24 @@ fn diff_split_text_selection() {
 #[test]
 fn diff_text_selection_unfocused_dark() {
     golden("diff_text_selection_unfocused_dark", ThemeChoice::Dark, DiffLayout::Inline, None, true);
+}
+
+/// With the app's shortcuts running too (the graph's Ctrl+C copies commit IDs), Ctrl+C in a
+/// diff still copies the selected code.
+#[test]
+fn ctrl_c_copies_the_selected_code_with_the_shortcuts_running() {
+    let (st, dir) = with_line_diff("text-drag-keys", ThemeChoice::Dark, DiffLayout::Inline, &[]);
+    let mut h = keys_harness(st, true);
+    h.run();
+    let g = Grid::of(&h, DiffLayout::Inline);
+    drag(&mut h, g.at(0, 1), g.at(3, 2));
+    h.state_mut().1.clear();
+    h.input_mut().events.push(Event::Copy);
+    h.run();
+    let msgs = std::mem::take(&mut h.state_mut().1);
+    let copied: Vec<&str> = msgs.iter().filter_map(|m| if let Msg::Copy(t) = m { Some(t.as_str()) } else { None }).collect();
+    assert_eq!(copied, ["pp\nfix\nfix the build\non"]);
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Selection(SelectionMsg::CopyIds))), "no commit IDs");
+    drop(h);
+    remove_fixture(&dir);
 }

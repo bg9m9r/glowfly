@@ -69,6 +69,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
     if st.snap.is_none() {
         return;
     }
+    // The central view's pane key: the graph takes the keyboard focus.
+    let want_focus = crate::ui::pane_focus::take(st, &[crate::state::layout::Pane::Central]);
     if st.view.show_search {
         search_bar::show(ui, st, msgs);
         ui.add_space(4.0);
@@ -88,7 +90,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let t = st.settings.lang();
         let graph_w = header::graph_width(ui, t, lanes);
 
-        select::keyboard_nav(ui, &st.session.selection, snap, &rows, st.session.tab_view.graph_scroll, &mut st.view, msgs);
+        // Not under a dialog, the palette or a credential prompt, which keep their keys.
+        if st.modal.is_none() && st.palette.is_none() && !st.askpass.showing() {
+            select::keyboard_nav(ui, &st.session.selection, snap, &rows, st.session.tab_view.graph_scroll, &mut st.view, msgs);
+        }
 
         // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
         let fitted = header::column_header(ui, t, graph_w, &st.settings.columns, st.settings.column_widths, &mut st.view.column_drag, msgs);
@@ -125,6 +130,11 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let highlight = st.view.highlight.as_ref().filter(|_| st.settings.highlight_ref_rows).map(|(_, s)| s);
 
         ui.spacing_mut().item_spacing.y = 0.0;
+        let rows_rect = ui.available_rect_before_wrap();
+        let page = ((rows_rect.height() / ROW_H).floor() as usize).saturating_sub(1);
+        select::target(ui, rows_rect, t.tr("graph.focus.name"), page, want_focus);
+        // The selection shows as focused while the graph has the keyboard focus or nothing has.
+        let active = crate::ui::pane_focus::graph_active(ui.ctx());
         let mut area = egui::ScrollArea::vertical().auto_shrink([false, false]);
         if let Some(row) = st.view.scroll_to_row.take() {
             area = area.vertical_scroll_offset(row as f32 * ROW_H);
@@ -208,7 +218,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let hovered = resp.hovered() || ui.rect_contains_pointer(rect);
                 let lane_col = colours.node();
                 let highlighted = commit.is_some_and(|c| highlight.is_some_and(|h| h.contains(&c.oid)));
-                row_look::paint(&painter, rect, row_look::RowLook { lane: lane_col, highlighted, selected, hovered });
+                row_look::paint(&painter, rect, row_look::RowLook { lane: lane_col, highlighted, selected, active, hovered });
 
                 let gp = painter.with_clip_rect(cols.rect(cols.cell.graph, rect));
                 let node_x = lane_x(cols.graph.0, if filtered { 0 } else { g.col });
@@ -236,6 +246,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     let mp = painter.with_clip_rect(cols.rect(cols.wip_span(), rect));
                     wip_row::draw(&mp, &cols, mid, wip_label, snap.changes, wip_total);
                     if resp.clicked() {
+                        select::focus(ui.ctx());
                         msgs.push(select::wip_click(ui.input(|i| i.modifiers)));
                     }
                     continue;
@@ -329,6 +340,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 if let Some(m) = checkout {
                     msgs.push(m);
                 } else if resp.clicked() {
+                    select::focus(ui.ctx());
                     msgs.push(select::row_click(c.oid, mods));
                 }
                 let menu = ref_menu::RowMenu {

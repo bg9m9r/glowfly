@@ -19,6 +19,7 @@ Button "Search and run commands"
 Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
+Unknown "Left panel contents"
 TextInput
 Button "New branch"
 Button "Local actions"
@@ -67,6 +68,7 @@ Label "−1"
 Button "logo.png" [off]
 Button "src/search/index.rs" [off]
 Label "+9"
+Unknown "Central view"
 Label "app.txt"
 Label "M +3 −1"
 Label "8eb16b0"

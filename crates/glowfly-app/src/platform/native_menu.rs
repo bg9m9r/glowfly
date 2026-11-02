@@ -127,18 +127,12 @@ impl NativeMenu {
 
 /// Turns winit's default app menu off on macOS: its Quit would end the app through AppKit's
 /// `terminate:`, without a close request (`NativeMenu` shows Glowfly's own).
-pub fn event_loop_hook() -> Option<eframe::EventLoopBuilderHook> {
-    #[cfg(target_os = "macos")]
-    {
-        use winit::platform::macos::EventLoopBuilderExtMacOS;
-        Some(Box::new(|b| {
-            b.with_default_menu(false);
-        }))
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        None
-    }
+#[cfg(target_os = "macos")]
+pub fn event_loop_hook() -> eframe::EventLoopBuilderHook {
+    use winit::platform::macos::EventLoopBuilderExtMacOS;
+    Box::new(|b| {
+        b.with_default_menu(false);
+    })
 }
 
 #[cfg(test)]
@@ -167,7 +161,10 @@ mod tests {
     #[cfg(not(target_os = "macos"))]
     #[test]
     fn no_hook_and_no_menu_off_macos() {
-        assert!(event_loop_hook().is_none());
+        // Off macOS the event loop has no menu hook (`platform::event_loop_hook`: Windows has
+        // only its keypad hook).
+        #[cfg(not(windows))]
+        assert!(crate::platform::event_loop_hook().is_none());
         assert!(NativeMenu::install(Chrome::MacOs, egui::Context::default()).is_none());
     }
 }

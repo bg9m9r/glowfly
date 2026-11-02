@@ -37,7 +37,10 @@ fn command_ids_are_stable() {
     for id in COMMAND_BINDINGS {
         assert_eq!(BindingId::from_key(id.key()), Some(id));
     }
-    assert_eq!(COMMAND_BINDINGS[..], *commands);
+    // Cherry-pick and Revert came later: they are the last ids.
+    assert_eq!(COMMAND_BINDINGS[..FROZEN.len()], *commands);
+    assert_eq!(COMMAND_BINDINGS[FROZEN.len()..], BindingId::ALL[BindingId::ALL.len() - 2..]);
+    assert_eq!((I::CherryPick.key(), I::RevertCommit.key()), ("cherry-pick", "revert-commit"));
 }
 
 #[test]

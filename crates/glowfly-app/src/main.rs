@@ -121,8 +121,9 @@ fn main() -> eframe::Result {
                 // Flatpak's io.github.bg9m9r.glowfly.desktop.
                 .with_app_id(glowfly_core::app_identity::desktop_entry()),
         ),
-        // On macOS, no default app menu: Glowfly's own replaces it (`platform::native_menu`).
-        event_loop_builder: platform::native_menu::event_loop_hook(),
+        // On macOS, no default app menu: Glowfly's own replaces it (`platform::native_menu`); on
+        // Windows, the keypad's digits told apart for its Alt codes (`platform::numpad_keys`).
+        event_loop_builder: platform::event_loop_hook(),
         ..Default::default()
     };
     let ran = eframe::run_native(

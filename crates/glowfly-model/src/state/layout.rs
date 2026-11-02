@@ -57,6 +57,43 @@ impl Panel {
     }
 }
 
+/// A pane the pane keys (Alt+1 to 5, Control+1 to 5 on macOS) and F6 move the keyboard focus
+/// to. `update` asks for one (`ViewState::pane_focus`); the view drawing it gives it the focus.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Pane {
+    /// The left panel.
+    Sidebar,
+    /// The central view: the graph, or the diff, pull request, rebase panel or conflict view
+    /// drawn in its place.
+    Central,
+    /// The details panel's file list (the first one it shows).
+    Files,
+    /// The diff, when one is open (it is drawn as the central view).
+    Diff,
+    /// The commit message.
+    Message,
+}
+
+impl Pane {
+    /// The panes F6 goes through, in order (Shift+F6 backwards). The diff is left out: when
+    /// one is open it is the central view, so F6 reaches it as that.
+    const CYCLE: [Pane; 4] = [Pane::Sidebar, Pane::Central, Pane::Files, Pane::Message];
+
+    /// The pane `step` (1 or -1) places from `from` in `CYCLE`, skipping those `shown` says
+    /// aren't drawn; from no pane, the central view. The central view is always drawn.
+    pub fn cycle(from: Option<Pane>, step: isize, shown: impl Fn(Pane) -> bool) -> Pane {
+        let n = Self::CYCLE.len() as isize;
+        let from = match from {
+            Some(Pane::Diff) | None => return Pane::Central,
+            Some(p) => Self::CYCLE.iter().position(|&c| c == p).unwrap_or(1) as isize,
+        };
+        (1..n)
+            .map(|k| Self::CYCLE[(from + step.signum() * k).rem_euclid(n) as usize])
+            .find(|&p| p == Pane::Central || shown(p))
+            .unwrap_or(Pane::Central)
+    }
+}
+
 /// Whether `p` is drawn.
 pub fn shown(s: &Settings, p: Panel) -> bool {
     match p {

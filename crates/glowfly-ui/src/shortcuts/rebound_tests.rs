@@ -186,7 +186,10 @@ fn tab_digits() {
         assert_eq!(press(&mut h, CMD, key), [format!("tab {n}")], "{key:?}");
     }
     assert_eq!(press(&mut h, CMD, Key::Num9), ["tab 3"], "the last tab");
-    assert_eq!(press(&mut h, Modifiers::ALT, Key::Num2), quiet());
+    // Alt+2 is the central view's pane key; on macOS that is Control+2, and Option+2 is quiet.
+    let alt =
+        if cfg!(target_os = "macos") { quiet() } else { vec![format!("{:?}", KeyAction::FocusPane(crate::state::layout::Pane::Central))] };
+    assert_eq!(press(&mut h, Modifiers::ALT, Key::Num2), alt);
 }
 
 #[test]

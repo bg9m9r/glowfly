@@ -46,7 +46,7 @@ pub(super) fn target(ui: &mut egui::Ui, list: FileList, rows: usize, max_h: f32,
     let rect = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), h));
     // A page keeps one row of the last in view.
     let page = ((max_h / pitch).floor() as usize).saturating_sub(1);
-    let r = super::list_focus::target(ui, list_id(list), rect, name, page);
+    let r = super::list_focus::target(ui, list_id(list), rect, name, page, rows > 0);
     Focus { list, focused: r.has_focus() }
 }
 

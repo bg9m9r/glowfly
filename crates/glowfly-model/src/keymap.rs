@@ -18,6 +18,10 @@ mod chord_tests;
 #[cfg(test)]
 mod command_tests;
 #[cfg(test)]
+mod override_tests;
+#[cfg(test)]
+mod pane_tests;
+#[cfg(test)]
 mod quit_tests;
 #[cfg(test)]
 mod rebind_tests;
@@ -46,6 +50,10 @@ pub enum KeyAction {
     ToggleSheet,
     /// Revert the selected lines, or the current hunk, of a commit or comparison diff.
     RevertHunk,
+    /// A pane key or F6: give that pane the keyboard focus (showing its panel if hidden).
+    FocusPane(crate::state::layout::Pane),
+    /// Enter in the graph: show the details panel and give its file list the focus.
+    OpenDetails,
     /// A key of the focused Unstaged (`staged: false`) or Staged Files list.
     WipList {
         staged: bool,

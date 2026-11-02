@@ -21,9 +21,9 @@ pub(crate) fn focused_list(ctx: &egui::Context) -> Option<bool> {
 }
 
 /// Registers the list's focus target over `rect` (its rows, or its "none" line), named `name`,
-/// with `page` rows in view.
-pub(super) fn target(ui: &mut egui::Ui, staged: bool, rect: egui::Rect, name: &str, page: usize) -> egui::Response {
-    super::list_focus::target(ui, list_id(staged), rect, name, page)
+/// with `page` rows in view; `has_rows` says whether it has any.
+pub(super) fn target(ui: &mut egui::Ui, staged: bool, rect: egui::Rect, name: &str, page: usize, has_rows: bool) -> egui::Response {
+    super::list_focus::target(ui, list_id(staged), rect, name, page, has_rows)
 }
 
 /// This frame's keys of the focused list as messages, before the bindings see them; nothing

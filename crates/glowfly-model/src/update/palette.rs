@@ -279,6 +279,10 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         }
         C::RenameBranch(name) => Msg::Branch(BranchMsg::RenameBranchDialog(name)),
         C::CompareWithWorkdir(oid) => Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)),
+        C::PickSelected { revert } => {
+            let Some(oids) = crate::state::palette_selected::selected_commits(st) else { return };
+            Msg::Selection(if revert { SelectionMsg::Revert(oids) } else { SelectionMsg::CherryPick(oids) })
+        }
         C::CreatePr(b) => Msg::Forge(ForgeMsg::CreatePrDialog { source: b, target: None }),
         C::PushAndCreatePr(b) => Msg::Forge(ForgeMsg::PushAndStartPr { branch: b, target: None }),
         C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),

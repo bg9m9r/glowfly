@@ -48,6 +48,23 @@ pub(crate) fn reaches_shell(m: Modifiers) -> bool {
     !m.shift && !m.alt && !m.mac_cmd
 }
 
+/// Turns this frame's Copy events (egui's name for a Ctrl+C or Cmd+C press) back into that key
+/// press when a binding `allowed` lets through has it, so the binding gets it; otherwise they stay
+/// Copy events for the views (a text selection, the terminal).
+pub(crate) fn copy_as_key(i: &mut InputState, keys: &Keymap, allowed: impl Fn(BindingId, bool) -> bool) {
+    let mac = cfg!(target_os = "macos");
+    let modifiers = Modifiers { ctrl: !mac, mac_cmd: mac, command: true, ..Modifiers::NONE };
+    let Some(chord) = chord_from_press(Key::C, modifiers, mac) else { return };
+    if !matched(keys, chord, !mac).is_some_and(|id| allowed(id, false)) {
+        return;
+    }
+    for e in &mut i.events {
+        if matches!(e, Event::Copy) {
+            *e = Event::Key { key: Key::C, physical_key: None, pressed: true, repeat: false, modifiers };
+        }
+    }
+}
+
 /// Takes the first key press (repeats too) whose binding `allowed` lets through out of `i`'s
 /// events, returning the binding, the pressed chord and whether the press is a key repeat.
 /// `allowed` also gets whether the press would reach a focused terminal's shell

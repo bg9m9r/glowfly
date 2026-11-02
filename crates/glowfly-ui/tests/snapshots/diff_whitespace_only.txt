@@ -19,6 +19,7 @@ Button "Search and run commands"
 Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
+Unknown "Left panel contents"
 TextInput
 Button "New branch"
 Button "Local actions"
@@ -64,6 +65,7 @@ CheckBox "Push after committing" [off]
 Button "Stage something to commit" [disabled]
 Button "More commit options"
 Label "Write a summary for the commit."
+Unknown "Central view"
 Label "notes.txt"
 Label "M"
 Label "Unstaged"

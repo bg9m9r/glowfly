@@ -54,7 +54,7 @@ pub(crate) fn file_list(
     let pitch = row_h + ui.spacing().item_spacing.y;
     // A page keeps one row of the last in view.
     let page = ((max_h / pitch).floor() as usize).saturating_sub(1);
-    let focus = crate::ui::wip_keys::target(ui, staged, area_rect, &title, page);
+    let focus = crate::ui::wip_keys::target(ui, staged, area_rect, &title, page, count > 0);
     let focused = focus.has_focus();
     let area = egui::ScrollArea::vertical().id_salt(id).max_height(max_h).auto_shrink([false, true]);
     if count == 0 {

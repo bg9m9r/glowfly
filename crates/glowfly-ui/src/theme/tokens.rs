@@ -1,6 +1,7 @@
 //! The design tokens that aren't colours: the corner scale (`radius`, with a segment's corners),
 //! the border width, the least hit area and a split's caret width, the state-layer amounts,
-//! the two elevations (`Elevation`, `shadow`), the focus ring and the text field's halo, and the
+//! the two elevations (`Elevation`, `shadow`), the focus ring and the text field's halo, the
+//! selection of a pane without the keyboard focus (`selected_inactive`), and the
 //! motion timings (`motion`). Every theme reads the same tokens; the colour tokens worked out
 //! from the palette (surfaces, layers, tones) are in `surfaces.rs`.
 //!
@@ -141,6 +142,13 @@ pub fn focus_ring_inset(p: &Painter, rect: Rect, r: impl Into<CornerRadius>) {
 pub fn focus_halo(p: &Painter, rect: Rect, r: u8) {
     let stroke = Stroke::new(HALO_W, color::accent().gamma_multiply(HALO_ALPHA));
     p.rect_stroke(rect.expand(1.0), radius::around(r, 1), stroke, StrokeKind::Outside);
+}
+
+/// The selected row's fill in a pane without the keyboard focus (the graph, the file lists):
+/// a neutral in `selected`'s hue that stands apart from `selected` and `hover` and keeps `weak`
+/// text readable (`inactive.rs`).
+pub fn selected_inactive(p: &Palette) -> Color32 {
+    super::inactive::selected_inactive(p)
 }
 
 /// Motion: how long things take, the one easing curve, and Reduce motion.

@@ -16,6 +16,7 @@ Button "Befehle suchen und ausführen"
 Button "Leiste zum Durchsuchen der Commits ein- oder ausblenden"
 Button "Aktivitätsprotokoll ein- oder ausblenden"
 Button "Repository aktualisieren"
+Unknown "Inhalt der linken Leiste"
 TextInput
 Button "Neuer Branch"
 Button "Aktionen für Lokal"
@@ -65,6 +66,7 @@ CheckBox "Nach dem Commit pushen" [off]
 Button "Erst etwas zum Committen bereitstellen" [disabled]
 Button "Weitere Commit-Optionen"
 Label "Schreibe eine Zusammenfassung für den Commit."
+Unknown "Mittlere Ansicht"
 Button "Bereich schließen"
 Button "Weitere Link-Aktionen"
 Button "Im Browser öffnen"

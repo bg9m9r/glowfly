@@ -74,9 +74,11 @@ pub fn refusal(id: BindingId, c: Chord) -> Option<Refusal> {
         return Some(Refusal::Reserved);
     }
     let primary = c.mods.command || (fold_ctrl() && c.mods.ctrl);
-    // Selecting every commit is select all, in the graph, where no text field has the keys.
-    let select_all = id == BindingId::SelectAllCommits && c.key == K::Letter('A');
-    if primary && !c.mods.shift && !c.mods.alt && matches!(c.key, K::Letter('C' | 'X' | 'V' | 'A')) && !select_all {
+    // Selecting every commit is select all, and copying their IDs is copy, in the graph, where
+    // no text field has the keys.
+    let graph_clip =
+        (id == BindingId::SelectAllCommits && c.key == K::Letter('A')) || (id == BindingId::CopyCommitIds && c.key == K::Letter('C'));
+    if primary && !c.mods.shift && !c.mods.alt && matches!(c.key, K::Letter('C' | 'X' | 'V' | 'A')) && !graph_clip {
         return Some(Refusal::ClipboardKey);
     }
     // Delete edits text in every field and the terminal; F-keys and Insert don't.

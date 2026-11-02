@@ -1,5 +1,6 @@
 //! Command palette entries for the selected commit: Create branch and Create tag at it (or at
-//! HEAD with no commit selected), and comparing it with the working directory.
+//! HEAD with no commit selected), comparing it with the working directory, and cherry-picking
+//! or reverting the selected commits.
 
 use super::palette_commands::{Entry, PaletteCommand, entry};
 use super::{AppState, Selection};
@@ -25,6 +26,16 @@ fn selected_row(st: &AppState, snap: &Snapshot) -> Option<git2::Oid> {
     }
 }
 
+/// The selected commits, as the graph's menu cherry-picks or reverts them: the one selected
+/// commit, or a multi-selection's.
+pub(crate) fn selected_commits(st: &AppState) -> Option<Vec<git2::Oid>> {
+    match &st.session.selection {
+        Selection::Commit(oid) => Some(vec![*oid]),
+        Selection::Commits(m) => Some(m.oids.clone()),
+        Selection::VsWorkdir(_) | Selection::Wip | Selection::None => None,
+    }
+}
+
 pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     use PaletteCommand as C;
     if snap.head_oid.is_some() {
@@ -40,5 +51,17 @@ pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if let Some(oid) = selected_row(st, snap) {
         let label = format!("Compare {} with working directory", short(oid));
         out.push(entry(C::CompareWithWorkdir(oid), label, "diff working tree directory uncommitted changes since compare commit"));
+    }
+    if let Some(oids) = selected_commits(st) {
+        let t = st.settings.lang();
+        let picks = super::selection::cherry_pick_blocker(snap, &oids) != Some(super::selection::CommitBlock::PickOneOnHead);
+        if picks {
+            out.push(entry(
+                C::PickSelected { revert: false },
+                t.trn("palette.pick_selected", oids.len(), &[]),
+                "cherry-pick copy apply commit",
+            ));
+        }
+        out.push(entry(C::PickSelected { revert: true }, t.trn("palette.revert_selected", oids.len(), &[]), "revert undo inverse commit"));
     }
 }

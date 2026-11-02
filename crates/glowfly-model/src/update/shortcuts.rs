@@ -6,13 +6,15 @@
 //! Ctrl+/ opens or closes the shortcut sheet (the default keys). The keys of a focused Unstaged
 //! or Staged Files list go to `wip_keys.rs`, the moves of the other file lists to
 //! `file_list_keys.rs`; after the whole open file was staged or unstaged the view moves on to
-//! its neighbour (`wip_list.rs`).
+//! its neighbour (`wip_list.rs`). The pane keys, F6 and Enter in the graph ask the view to
+//! move the keyboard focus to a pane (`focus_pane`), showing its panel first.
 
 use crate::effect::Effect;
 use crate::keymap::KeyAction;
-use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
+use crate::msg::{LayoutMsg, Msg};
+use crate::state::layout::{Pane, Panel};
 use crate::state::{AppState, Modal, Selection};
 use glowfly_core::repo::{DiffTarget, HunkOp};
 use std::time::Instant;
@@ -35,6 +37,16 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
         }
         KeyAction::ToggleSheet => {
             toggle_sheet(st);
+            None
+        }
+        KeyAction::FocusPane(pane) => {
+            focus_pane(st, pane, now, fx);
+            None
+        }
+        KeyAction::OpenDetails => {
+            if st.session.selection != Selection::None {
+                focus_pane(st, Pane::Files, now, fx);
+            }
             None
         }
         KeyAction::WipList { staged, key } => {
@@ -113,6 +125,22 @@ fn focus_message(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
         fx.extend(super::update_sealed(st, Msg::Repo(RepoMsg::SelectWip), now));
     }
     st.view.focus_message = true;
+}
+
+/// Asks the view to give `pane` the keyboard focus, showing the left or details panel first
+/// when it is hidden; the commit message goes as Go to the commit message does. The diff only
+/// while one is open.
+fn focus_pane(st: &mut AppState, pane: Pane, now: Instant, fx: &mut Vec<Effect>) {
+    match pane {
+        Pane::Message => return focus_message(st, now, fx),
+        Pane::Sidebar if !crate::state::layout::shown(&st.settings, Panel::Left) => {
+            fx.extend(super::update_sealed(st, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::Left, shown: true }), now));
+        }
+        Pane::Files => super::layout::reveal_details(st, fx),
+        Pane::Diff if !st.diff_or_download() => return,
+        _ => {}
+    }
+    st.view.pane_focus = Some(pane);
 }
 
 /// Closes the open sheet, or opens it (closing the palette) unless a dialog, Preferences or a

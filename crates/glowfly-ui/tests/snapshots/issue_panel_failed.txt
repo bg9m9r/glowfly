@@ -27,6 +27,7 @@ Button "Refresh the repository"
 Button "Expand the commit panel"
 Button "1 changed file"
 Button "Go to the commit message"
+Unknown "Left panel contents"
 TextInput
 Button "New branch"
 Button "Local actions"
@@ -61,6 +62,7 @@ Button "Submodules actions"
 Label "No submodules"
 Label " · "
 Label "Add submodule…"
+Unknown "Central view"
 Button "Close panel"
 Button "Copy link" [disabled]
 Button "Open in browser" [disabled]

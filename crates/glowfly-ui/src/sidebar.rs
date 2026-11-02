@@ -19,6 +19,7 @@ use crate::msg::IssueMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::forge_filters::{self, IssueView, PrView};
+use crate::state::layout::Pane;
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use crate::ui::theme::controls;
@@ -42,6 +43,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
     let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
     let resp = panel_size::side(egui::SidePanel::left(id), fit).frame(egui::Frame::new().fill(fill)).show(ctx, |ui| {
         panel_size::fill(ui);
+        // The left panel's pane key focuses the panel; Tab goes on into it.
+        let pane = ui.max_rect();
+        super::pane_focus::drawn_at(ui.ctx(), Pane::Sidebar, pane);
+        let name = st.settings.lang().tr("sidebar.focus.name");
+        let target = super::pane_focus::sidebar(ui, st, pane, name);
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         ui.spacing_mut().item_spacing.y = 0.0;
         ui.add_space(widgets::PAD_X);
@@ -60,6 +66,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
         ref_visibility::banner(ui, st.settings.lang(), &filter, msgs);
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));
+        target.ring(ui);
     });
     panel_size::track(ctx, st, SizedPanel::Sidebar, id, resp.response.rect.width(), msgs);
 }

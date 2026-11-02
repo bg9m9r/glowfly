@@ -35,6 +35,7 @@ pub mod controls;
 pub mod custom;
 pub mod families;
 pub mod fonts;
+mod inactive;
 pub mod missing_glyphs;
 pub mod sizes;
 pub mod spacing;
@@ -254,6 +255,8 @@ mod controls_tests;
 mod diff_select_tests;
 #[cfg(test)]
 mod family_tests;
+#[cfg(test)]
+mod inactive_tests;
 #[cfg(test)]
 mod lineup_contrast_tests;
 #[cfg(test)]

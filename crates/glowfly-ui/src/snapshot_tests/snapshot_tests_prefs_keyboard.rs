@@ -42,7 +42,7 @@ fn prefs_keyboard_commands() {
     }
     assert!(h.query_all_by_label("Push").next().is_some());
     assert_eq!(h.query_all_by_label("Reset").count(), 1, "only Fetch differs from its default");
-    assert_eq!(h.query_all_by_label("No key").count(), 13);
+    assert_eq!(h.query_all_by_label("No key").count(), 15);
     h.check_snapshot("prefs_keyboard_commands");
 }
 
