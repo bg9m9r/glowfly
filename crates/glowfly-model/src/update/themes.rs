@@ -40,6 +40,7 @@ pub(super) fn handle(st: &mut AppState, msg: ThemeMsg, now: Instant, fx: &mut Ve
         ThemeMsg::Created(Ok((id, path))) => {
             let file = format!("{id}.json");
             st.settings.theme = ThemeChoice::Custom(id);
+            st.settings.settle_contrast();
             fx.extend(super::prefs::save_settings(st));
             fx.push(Effect::Theme(ThemeEffect::Load));
             fx.push(Effect::Os(OsEffect::RevealPath(path)));

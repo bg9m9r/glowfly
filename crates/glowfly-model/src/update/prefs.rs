@@ -27,6 +27,8 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {
                 st.settings.theme = t;
+                // A picked theme: High contrast has nothing to bring back unless it is one.
+                st.settings.settle_contrast();
                 fx.extend(save_settings(st));
             }
         }
@@ -148,8 +150,6 @@ pub(super) fn save_settings(st: &mut AppState) -> Option<Effect> {
     if !st.settings_file.writable() {
         return None;
     }
-    // Another theme than a high-contrast one was picked: High contrast has nothing to bring back.
-    st.settings.settle_contrast();
     st.settings_file.saved = serde_json::to_string(&st.settings).unwrap_or_default();
     if let Some(p) = st.prefs.as_mut() {
         p.saved.mark();

@@ -51,7 +51,10 @@ impl Settings {
         match (&self.theme, b.is_dark()) {
             (ThemeChoice::System, true) => self.system_pair.dark = b,
             (ThemeChoice::System, false) => self.system_pair.light = b,
-            _ => self.theme = b.choice(),
+            _ => {
+                self.theme = b.choice();
+                self.settle_contrast();
+            }
         }
     }
 
@@ -67,6 +70,7 @@ impl Settings {
         } else if self.theme == ThemeChoice::System {
             self.theme = self.system_pair.pick(os_dark).choice();
         }
+        self.settle_contrast();
     }
 }
 

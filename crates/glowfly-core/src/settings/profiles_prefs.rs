@@ -1,5 +1,6 @@
 //! What switches with a profile besides its identity: the app preferences (General except the
-//! language, Appearance and Diff viewer except word wrap; nothing on Accessibility) and the connected hosting-service accounts.
+//! language, Appearance and Diff viewer except word wrap; of Accessibility, only the theme High
+//! contrast brings back, which goes with the theme) and the connected hosting-service accounts.
 //! Everything else in `Settings` (repository-specific settings, trust, favorites, tools, diff
 //! header toggles, window and dialog state) stays global; a test makes every new setting pick
 //! a side.
@@ -55,6 +56,8 @@ profile_prefs! {
     auto_stash: bool,
     // Appearance
     theme: ThemeChoice,
+    // Travels with `theme`: High contrast in one profile brings back that profile's theme.
+    theme_before_contrast: Option<ThemeChoice>,
     system_pair: SystemPair,
     notification_location: Corner,
     behind_alerts: bool,
@@ -168,7 +171,6 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "cursor_blink",
     "toast_time",
     "tooltip_delay",
-    "theme_before_contrast",
 ];
 
 /// What a profile switch changed in the settings in use.

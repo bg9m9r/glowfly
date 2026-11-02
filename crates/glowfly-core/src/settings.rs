@@ -99,6 +99,8 @@ pub struct Settings {
 
     // Appearance
     pub theme: ThemeChoice,
+    /// The theme High contrast replaced, which turning it off brings back (Preferences > Accessibility; per profile, like `theme`).
+    pub theme_before_contrast: Option<ThemeChoice>,
     pub system_pair: SystemPair,
     /// A retired theme the file named (as shown, and its successor), for the one-time toast.
     #[serde(skip)]
@@ -217,13 +219,10 @@ pub struct Settings {
     /// What each Trusted decision was made on (`trust::TrustPrint`), keyed like `repo_trust`; none for older decisions.
     pub repo_trust_prints: HashMap<String, crate::trust::TrustPrint>,
     /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
-    #[serde(default)]
     pub status_tip_shown: HashMap<String, bool>,
     /// Per-repository override of `submodules.keep_updated`, keyed by `repo_keys`; no entry follows it.
-    #[serde(default)]
     pub repo_submodule_updates: HashMap<String, bool>,
     /// Repositories (by `repo_keys`) whose branch names like `2024-cleanup` name issue 2024 (This repository > Issue tracker).
-    #[serde(default)]
     pub repo_year_branches: HashMap<String, bool>,
     /// The merge method last used in each repository's pull request panel (`MergeMethod::api_name`), by `repo_keys`.
     #[serde(default)]
@@ -309,6 +308,7 @@ impl Default for Settings {
             submodules: SubmodulePrefs::default(),
             language: crate::i18n::SYSTEM.into(),
             theme: ThemeChoice::Graphite,
+            theme_before_contrast: None,
             system_pair: SystemPair::default(),
             retired_theme: None,
             notification_location: Corner::BottomLeft,

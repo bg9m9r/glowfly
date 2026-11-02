@@ -1,7 +1,8 @@
 //! The settings Preferences > Accessibility owns besides the ones it moved there (reduce motion,
-//! the branch palette): the text cursor's blink, how long notifications stay, the tooltip delay,
-//! and the theme the High contrast check turns back to. They sit flat in the settings file
-//! (`Settings::a11y` is flattened) and stay the same whatever profile is current.
+//! the branch palette): the text cursor's blink, how long notifications stay and the tooltip
+//! delay. They sit flat in the settings file (`Settings::a11y` is flattened) and stay the same
+//! whatever profile is current. The High contrast check's rules are here too; the theme it
+//! brings back (`Settings::theme_before_contrast`) belongs to the profile, as `theme` does.
 
 use super::{BuiltinTheme, Settings, ThemeChoice};
 use serde::{Deserialize, Serialize};
@@ -17,13 +18,11 @@ pub struct A11yPrefs {
     pub toast_time: ToastTime,
     /// How long the pointer rests before a tooltip shows.
     pub tooltip_delay: TooltipDelay,
-    /// The theme in use when High contrast was turned on, which turning it off brings back.
-    pub theme_before_contrast: Option<ThemeChoice>,
 }
 
 impl Default for A11yPrefs {
     fn default() -> Self {
-        Self { cursor_blink: true, toast_time: ToastTime::default(), tooltip_delay: TooltipDelay::default(), theme_before_contrast: None }
+        Self { cursor_blink: true, toast_time: ToastTime::default(), tooltip_delay: TooltipDelay::default() }
     }
 }
 
@@ -95,18 +94,19 @@ impl Settings {
         if on {
             let hc = if dark { BuiltinTheme::HighContrastDark } else { BuiltinTheme::HighContrastLight };
             let before = std::mem::replace(&mut self.theme, hc.choice());
-            self.a11y.theme_before_contrast = Some(before);
+            self.theme_before_contrast = Some(before);
         } else {
             let house = if self.theme == ThemeChoice::HighContrastDark { BuiltinTheme::DEFAULT_DARK } else { BuiltinTheme::DEFAULT_LIGHT };
-            self.theme = self.a11y.theme_before_contrast.take().unwrap_or(house.choice());
+            self.theme = self.theme_before_contrast.take().unwrap_or(house.choice());
         }
         true
     }
 
     /// Forgets the theme High contrast would bring back once another theme than a
-    /// high-contrast one is picked. Returns whether it forgot one.
+    /// high-contrast one is picked (only a pick calls this: a profile switch or any other save
+    /// keeps it). Returns whether it forgot one.
     pub fn settle_contrast(&mut self) -> bool {
-        !self.theme.is_high_contrast() && self.a11y.theme_before_contrast.take().is_some()
+        !self.theme.is_high_contrast() && self.theme_before_contrast.take().is_some()
     }
 }
 
@@ -119,18 +119,13 @@ mod tests {
         let old: Settings = serde_json::from_str(r#"{"theme": "Mist"}"#).unwrap();
         assert_eq!(old.a11y, A11yPrefs::default());
         assert!(old.a11y.cursor_blink);
-        let a11y = A11yPrefs {
-            cursor_blink: false,
-            toast_time: ToastTime::Longer,
-            tooltip_delay: TooltipDelay::Instant,
-            theme_before_contrast: Some(ThemeChoice::Custom("ocean".into())),
-        };
-        let s = Settings { a11y, ..Settings::default() };
+        let a11y = A11yPrefs { cursor_blink: false, toast_time: ToastTime::Longer, tooltip_delay: TooltipDelay::Instant };
+        let s = Settings { a11y, theme_before_contrast: Some(ThemeChoice::Custom("ocean".into())), ..Settings::default() };
         let text = serde_json::to_string(&s).unwrap();
         // Flat in the file, beside the other settings.
         assert!(text.contains(r#""toast_time":"Longer""#), "{text}");
         let back: Settings = serde_json::from_str(&text).unwrap();
-        assert_eq!(back.a11y, s.a11y);
+        assert_eq!((back.a11y, back.theme_before_contrast), (s.a11y, s.theme_before_contrast));
     }
 
     #[test]
@@ -146,10 +141,10 @@ mod tests {
     fn high_contrast_saves_and_brings_back_the_theme() {
         let mut s = Settings { theme: ThemeChoice::Mist, ..Settings::default() };
         assert!(s.set_high_contrast(true, false));
-        assert_eq!((s.theme.clone(), s.a11y.theme_before_contrast.clone()), (ThemeChoice::HighContrastLight, Some(ThemeChoice::Mist)));
+        assert_eq!((s.theme.clone(), s.theme_before_contrast.clone()), (ThemeChoice::HighContrastLight, Some(ThemeChoice::Mist)));
         assert!(!s.set_high_contrast(true, true), "already on");
         assert!(s.set_high_contrast(false, false));
-        assert_eq!((s.theme.clone(), s.a11y.theme_before_contrast.clone()), (ThemeChoice::Mist, None));
+        assert_eq!((s.theme.clone(), s.theme_before_contrast.clone()), (ThemeChoice::Mist, None));
         // Nothing saved: the default theme as dark as the high-contrast one.
         for (hc, house) in
             [(ThemeChoice::HighContrastDark, ThemeChoice::Graphite), (ThemeChoice::HighContrastLight, ThemeChoice::Porcelain)]
@@ -167,7 +162,7 @@ mod tests {
         assert!(!s.settle_contrast(), "still high contrast");
         s.theme = ThemeChoice::Porcelain;
         assert!(s.settle_contrast());
-        assert_eq!(s.a11y.theme_before_contrast, None);
+        assert_eq!(s.theme_before_contrast, None);
         assert!(!s.settle_contrast());
     }
 }

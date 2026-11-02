@@ -8,7 +8,7 @@ use crate::msg::{Msg, NotifyMsg, PrefsMsg};
 use crate::state::toasts::ToastAction;
 use crate::state::{AppState, Modal};
 use crate::themes::ThemeMsg;
-use glowfly_core::settings::{ThemeChoice, ToastTime};
+use glowfly_core::settings::{Profile, ProfileId, ProfilePrefs, ThemeChoice, ToastTime};
 use std::time::{Duration, Instant};
 
 fn prefs(st: &mut AppState, msg: PrefsMsg, now: Instant) {
@@ -30,7 +30,7 @@ fn high_contrast_off_restores_the_exact_previous_theme() {
     prefs(&mut st, PrefsMsg::SettingsEdited, now);
     prefs(&mut st, PrefsMsg::SetHighContrast { on: false, dark: false }, now);
     assert_eq!(st.settings.theme, ThemeChoice::Custom("ocean".into()));
-    assert_eq!(st.settings.a11y.theme_before_contrast, None);
+    assert_eq!(st.settings.theme_before_contrast, None);
 }
 
 #[test]
@@ -40,10 +40,39 @@ fn picking_another_theme_forgets_the_saved_one() {
     prefs(&mut st, PrefsMsg::SetHighContrast { on: true, dark: true }, now);
     assert_eq!(st.settings.theme, ThemeChoice::HighContrastDark);
     prefs(&mut st, PrefsMsg::SetTheme(ThemeChoice::Porcelain), now);
-    assert_eq!(st.settings.a11y.theme_before_contrast, None, "Mist is no longer the theme to bring back");
+    assert_eq!(st.settings.theme_before_contrast, None, "Mist is no longer the theme to bring back");
     prefs(&mut st, PrefsMsg::SetTheme(ThemeChoice::HighContrastLight), now);
     prefs(&mut st, PrefsMsg::SetHighContrast { on: false, dark: false }, now);
     assert_eq!(st.settings.theme, ThemeChoice::Porcelain, "nothing saved: the default light theme");
+}
+
+/// A finished switch to profile `id`, as the runner reports it.
+fn switched_to(st: &mut AppState, id: u32, now: Instant) {
+    let result = Ok(crate::state::prefs::GitConfigValues::default());
+    update(st, Msg::Profile(crate::profile::ProfileMsg::Applied { id: ProfileId(id), result }), now);
+}
+
+#[test]
+fn a_profile_switch_keeps_each_profiles_theme_to_bring_back() {
+    let (mut st, now) = (state(), Instant::now());
+    for (id, name) in [(1, "A"), (2, "B")] {
+        st.settings.profiles.push(Profile { id: ProfileId(id), name: name.into(), ..Profile::default() });
+    }
+    st.settings.active_profile = Some(ProfileId(1));
+    st.settings.profiles[1].prefs = Some(ProfilePrefs { theme: ThemeChoice::Porcelain, ..ProfilePrefs::default() });
+    st.settings.theme = ThemeChoice::Mist;
+    prefs(&mut st, PrefsMsg::SetHighContrast { on: true, dark: true }, now);
+    switched_to(&mut st, 2, now);
+    assert_eq!((st.settings.theme.clone(), st.settings.theme_before_contrast.clone()), (ThemeChoice::Porcelain, None), "B's own");
+    // B turns High contrast on and off: B's theme comes back, not A's.
+    prefs(&mut st, PrefsMsg::SetHighContrast { on: true, dark: false }, now);
+    prefs(&mut st, PrefsMsg::SetHighContrast { on: false, dark: false }, now);
+    assert_eq!(st.settings.theme, ThemeChoice::Porcelain);
+    prefs(&mut st, PrefsMsg::SettingsEdited, now);
+    switched_to(&mut st, 1, now);
+    assert_eq!(st.settings.theme, ThemeChoice::HighContrastDark, "A's theme, still high contrast");
+    prefs(&mut st, PrefsMsg::SetHighContrast { on: false, dark: true }, now);
+    assert_eq!(st.settings.theme, ThemeChoice::Mist, "what A's High contrast replaced");
 }
 
 #[test]
