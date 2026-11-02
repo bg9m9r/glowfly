@@ -33,6 +33,9 @@ pub struct Toast {
     pub held: bool,
     /// Unique for the session, so a click names the toast it was on.
     pub id: u64,
+    /// Its id when it first showed: a toast shown again in place keeps it, so the activity log
+    /// has one line for it.
+    pub first: u64,
     pub action: Option<ToastAction>,
     /// A second fix beside `action` (Try again beside Delete lock file).
     pub alt: Option<ToastAction>,
@@ -122,7 +125,18 @@ impl AppState {
     fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, now: Instant) -> u64 {
         self.toast_seq += 1;
         let text = super::logs::redacted(text);
-        let t = Toast { ok, text, at: now, counted: Duration::ZERO, held: false, id: self.toast_seq, action, alt: None, details: None };
+        let t = Toast {
+            ok,
+            text,
+            at: now,
+            counted: Duration::ZERO,
+            held: false,
+            id: self.toast_seq,
+            first: self.toast_seq,
+            action,
+            alt: None,
+            details: None,
+        };
         self.toasts.push(t);
         if self.toasts.len() > TOAST_LIMIT {
             // The toast being read stays.
