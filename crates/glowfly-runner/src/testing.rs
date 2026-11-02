@@ -2,8 +2,12 @@
 //! `execute_checked` with a trust re-check first), the sandboxed runner of the whole-app tests
 //! (`sandboxed`, `sandbox.rs`), the diff decoration a loaded diff gets, and the working-file
 //! helpers. Everything here runs with the stand-ins of `SEAMS`: a folder in the temp dir as the
-//! trash (`test_bin`), `cp` as the sequence editor and long path-search chunks, so a test never
-//! touches the real Recycle Bin or Trash and never runs the test binary as git's editor.
+//! trash (`test_bin`), `cp` as the sequence editor, long path-search chunks and a folder in the
+//! temp dir for saves of Glowfly's own files (`own_files`), so a test never touches the real
+//! Recycle Bin or Trash, never runs the test binary as git's editor and never writes over the
+//! developer's settings, recent repositories or tabs. `execute` refuses the effects that read or
+//! write the rest of Glowfly's own folders (re-reading settings.json, themes, custom commands,
+//! profile includes, the avatar cache, the update log), which no stand-in redirects.
 
 use super::execute::{Cx, Execute, execute_with};
 use super::seams::{Seams, SeamsKind};
@@ -25,19 +29,43 @@ pub const SEAMS: Seams = Seams {
     trashers: undo::Trashers { system: test_trash, home: test_trash, restore: test_untrash },
     sequence_editor: copy_editor,
     chunk: Duration::from_secs(30),
+    save: save_for_test,
 };
 
 /// Runs one effect to completion (blocking) and returns the message to send back, if any.
 /// Results that belong to one repository come back as `Msg::Scoped`.
 pub fn execute(effect: Effect) -> Option<Msg> {
+    refuse_own_folders(&effect);
     let graph_cache = repo::GraphCache::default();
     execute_with(effect, &cx(&graph_cache))
 }
 
 /// `execute` with the trust re-check `c` first.
 pub fn execute_checked(c: TrustCheck, effect: Effect) -> Option<Msg> {
+    refuse_own_folders(&effect);
     let graph_cache = repo::GraphCache::default();
     Execute::execute(Box::new(Checked { effect, check: c }), &cx(&graph_cache))
+}
+
+/// Fails the test if `effect` would read or write one of Glowfly's own folders on this machine
+/// (the config, cache or log folder) other than through a save, which `SEAMS` redirects. An
+/// identity read (`ProfileEffect::ReadIdentity`) still runs, as in the whole-app tests: it only
+/// reads the profiles' include files, and a test's repository config comes before them.
+#[track_caller]
+fn refuse_own_folders(effect: &Effect) {
+    use crate::effect::PrefsEffect;
+    use glowfly_model::custom_commands::CustomCommandEffect;
+    use glowfly_model::profile::ProfileEffect;
+    let own = matches!(
+        effect,
+        Effect::Theme(_)
+            | Effect::CustomCommand(CustomCommandEffect::Load { .. })
+            | Effect::Profile(ProfileEffect::SyncIncludes { .. })
+            | Effect::FetchAvatars(_)
+            | Effect::Prefs(PrefsEffect::ReadSettings)
+            | Effect::Updates(_)
+    );
+    assert!(!own, "{} would use Glowfly's own folders on this machine; tests must not run it", effect.name());
 }
 
 /// The `Cx` of an effect run on its own: never cancelled, no stop, no gate, other messages
@@ -70,6 +98,21 @@ impl Runner {
     pub fn dropped(&self) -> Vec<&'static str> {
         self.sandbox.as_ref().map(|s| super::sandbox::lock(&s.dropped).clone()).unwrap_or_default()
     }
+}
+
+/// Where `SEAMS` writes saves of Glowfly's own files (settings.json, recent.txt, tabs.txt): a
+/// folder in the temp dir, one per process, emptied on its first use. Never the config folder.
+pub fn own_files() -> PathBuf {
+    glowfly_core::testkit::bin::own("glowfly-test-files")
+}
+
+/// `saves::save_now` into `own_files()`.
+fn save_for_test(effect: Effect) -> Option<Msg> {
+    let dir = own_files();
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        return Some(Msg::Logged { ok: false, text: format!("Could not create {}: {e}", dir.display()) });
+    }
+    super::sandbox::save_into(&dir, effect)
 }
 
 /// The stand-in trash: a folder in the temp dir, one per process.

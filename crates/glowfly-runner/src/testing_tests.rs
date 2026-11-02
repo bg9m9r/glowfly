@@ -1,5 +1,6 @@
 //! The sandbox's own checks: whatever a test runs through `runner::testing` (one effect, or the
-//! whole-app tests' runner) uses the stand-ins, never the real trash or sequence editor.
+//! whole-app tests' runner) uses the stand-ins, never the real trash, sequence editor or config
+//! folder.
 
 use super::*;
 use crate::effect::DeleteMode;
@@ -44,4 +45,47 @@ fn a_delete_run_by_a_test_goes_to_the_stand_in_bin() {
     let binned = std::fs::read_dir(test_bin()).unwrap().flatten().any(|e| std::fs::read_to_string(e.path()).is_ok_and(|t| t == contents));
     assert!(binned, "the file is in the stand-in bin");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Whether `dir` is inside the user's config folder (as the environment names it now).
+fn in_config_folder(dir: &Path) -> bool {
+    glowfly_core::settings::config_dir().is_some_and(|c| dir.starts_with(c))
+}
+
+#[test]
+fn saves_run_by_a_test_land_in_the_test_folder_not_the_config_folder() {
+    let marker = 4_000_000 + std::process::id();
+    let settings = glowfly_core::settings::Settings { auto_fetch_minutes: marker, ..Default::default() };
+    assert!(execute(Effect::SaveSettings(Box::new(settings))).is_none(), "the save worked");
+    let repo = glowfly_core::paths::temp_dir().join(format!("glowfly-own-files-{marker}"));
+    assert!(execute(Effect::SaveRecent(vec![repo.clone()])).is_none());
+    assert!(execute(Effect::SaveTabs { paths: vec![repo.clone()], labels: vec![None], active: 0 }).is_none());
+    let dir = own_files();
+    assert!(!in_config_folder(&dir), "{} is in the config folder", dir.display());
+    let saved = std::fs::read_to_string(dir.join("settings.json")).unwrap();
+    assert!(saved.contains(&format!("\"auto_fetch_minutes\": {marker}")), "{saved}");
+    for file in ["recent.txt", "tabs.txt"] {
+        let text = std::fs::read_to_string(dir.join(file)).unwrap();
+        assert!(text.contains(&format!("glowfly-own-files-{marker}")), "{file}: {text}");
+    }
+    // A runner given the stand-ins saves there too, on its save thread. (One test, since both
+    // write the same files.)
+    let (tx, _rx) = std::sync::mpsc::channel();
+    let mut runner = Runner::new(tx, Waker::none());
+    runner.seams = SEAMS;
+    let repo = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-own-files-{}", std::process::id()));
+    runner.run(Effect::SaveRecent(vec![repo.clone()]));
+    let file = own_files().join("recent.txt");
+    let wanted = repo.display().to_string();
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while !std::fs::read_to_string(&file).is_ok_and(|t| t.contains(&wanted)) {
+        assert!(std::time::Instant::now() < deadline, "recent.txt was not written into {}", own_files().display());
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+#[test]
+#[should_panic(expected = "Glowfly's own folders")]
+fn effects_that_use_the_own_folders_are_refused() {
+    execute(Effect::Theme(glowfly_model::themes::ThemeEffect::Load));
 }

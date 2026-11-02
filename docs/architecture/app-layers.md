@@ -160,8 +160,8 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
 - `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate and seams among them), with the flat variants' arms.
-- `seams.rs`: `Seams`, what the work reaches outside the repositories with: the trash, the sequence editor and the path search's chunk time; `Seams::REAL` in the app, the stand-ins of `testing::SEAMS` in tests.
-- `testing.rs` (tests only, and other crates' tests through glowfly-runner's `test-support` feature): the entry points tests run the runner through (`execute`, `execute_checked`, `sandboxed`, the stand-in trash `test_bin`, the diff decoration), always with the stand-ins; `testing_tests.rs` checks they never reach the real trash or editor.
+- `seams.rs`: `Seams`, what the work reaches outside the repositories with: the trash, the sequence editor, the path search's chunk time and where saves of settings, recent repositories and tabs go; `Seams::REAL` in the app, the stand-ins of `testing::SEAMS` in tests.
+- `testing.rs` (tests only, and other crates' tests through glowfly-runner's `test-support` feature): the entry points tests run the runner through (`execute`, `execute_checked`, `sandboxed`, the stand-in trash `test_bin`, the saves folder `own_files`, the diff decoration), always with the stand-ins, refusing effects that use Glowfly's own folders; `testing_tests.rs` checks they never reach the real trash, editor or config folder.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
 - `branches.rs`: the `Execute` impl of `BranchEffect` (the count, and each push of Push to all remotes in turn).
 - `lock.rs`: the `Execute` impl of `LockEffect` (`glowfly_core::lock_file`).

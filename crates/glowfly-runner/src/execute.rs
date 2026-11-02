@@ -2,7 +2,7 @@
 //! `<area>.rs`) and the arms of the flat variants, with the result message each sends back.
 
 use super::{
-    diff_gaps, expect, files, forge_calls, git_ops, highlight, history, job_steps, journal, load, op_stops, path_search, revert, saves,
+    diff_gaps, expect, files, forge_calls, git_ops, highlight, history, job_steps, journal, load, op_stops, path_search, revert,
     signatures, status, undo_run,
 };
 use crate::effect::areas::{effect_areas, effect_match};
@@ -202,7 +202,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
                 })
                 .collect(),
         ))),
-        save @ (Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. }) => saves::save_now(save),
+        save @ (Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. }) => (cx.seams.save)(save),
         Effect::CheckRepoFolders(paths) => Some(Msg::Recent(RecentMsg::FoldersChecked(super::platform::check_folders(&paths)))),
         Effect::ReadTabGroups(paths) => {
             let read = paths

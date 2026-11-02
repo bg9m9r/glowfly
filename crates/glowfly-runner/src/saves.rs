@@ -31,11 +31,11 @@ impl Runner {
     pub(super) fn save(&self, effect: Effect) -> Option<Effect> {
         let Some(order) = self.saves.order(&effect) else { return Some(effect) };
         let (order, ticket) = (order.clone(), order.ticket());
-        let (tx, waker) = (self.tx.clone(), self.waker.clone());
+        let (tx, waker, save) = (self.tx.clone(), self.waker.clone(), self.seams.save);
         let name = effect.name();
         let busy = self.tally.begin(name);
         let spawned = std::thread::Builder::new().name(format!("glowfly-{name}")).spawn(move || {
-            if let Some(msg) = order.write(ticket, || save_now(effect)).flatten()
+            if let Some(msg) = order.write(ticket, || save(effect)).flatten()
                 && tx.send(msg).is_ok()
             {
                 waker.wake();
@@ -49,7 +49,8 @@ impl Runner {
     }
 }
 
-/// Writes one save effect; a failure comes back as a line for the activity log.
+/// Writes one save effect into the user's config folder (`Seams::REAL`'s `save`); a failure
+/// comes back as a line for the activity log.
 pub(super) fn save_now(effect: Effect) -> Option<Msg> {
     let (what, result) = match effect {
         Effect::SaveSettings(settings) => ("settings", settings.save()),
