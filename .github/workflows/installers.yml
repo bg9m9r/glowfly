@@ -15,6 +15,7 @@ name: Installers
 
 on:
   push:
+    branches: [main]
     paths-ignore: ['docs/**', 'TODO.md', 'ROADMAP.md']
   pull_request:
     paths-ignore: ['docs/**', 'TODO.md', 'ROADMAP.md']
