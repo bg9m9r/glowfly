@@ -204,7 +204,7 @@ fn a_diff_gone_from_the_screen_lets_the_keyboard_go() {
     let (mut h, dir) = open("text-stale-focus", ThemeChoice::Dark, DiffLayout::Inline, &[], None);
     let g = Grid::of(&h, DiffLayout::Inline);
     drag(&mut h, g.at(0, 1), g.at(3, 2));
-    let p = crate::ui::theme::GARDEN_DARK;
+    let p = crate::ui::theme::view_palette(true);
     assert!(painted(&h, p.code_sel));
     // The diff isn't drawn for a while (another view in front), then comes back.
     let shown = h.state_mut().0.session.diff.view.take();
@@ -254,7 +254,7 @@ fn a_press_in_a_text_field_keeps_the_selection_painted_quieter() {
     let g = Grid::of(&h, DiffLayout::Inline);
     drag(&mut h, g.at(0, 1), g.at(3, 2));
     // The harness's dark palette.
-    let p = crate::ui::theme::GARDEN_DARK;
+    let p = crate::ui::theme::view_palette(true);
     assert!(painted(&h, p.code_sel) && !painted(&h, p.code_sel_dim), "the diff has the keyboard");
     let before = h.state().0.view.diff_text.clone();
     press_in_a_text_field(&mut h);

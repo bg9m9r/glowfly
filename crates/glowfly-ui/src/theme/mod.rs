@@ -49,6 +49,8 @@ pub use branch_palette::applied;
 #[cfg(test)]
 pub use builtin::{DARK, DAWN, DUSK, GRAPHITE, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, MIDNIGHT, MIST, PORCELAIN};
 // The view tests' palettes, for the app crate's tests too.
+#[cfg(any(test, feature = "test-support"))]
+pub use builtin::view_palette;
 pub use builtin::{DEFAULT_DARK, LIGHT, builtin};
 #[cfg(any(test, feature = "test-support"))]
 #[doc(hidden)]

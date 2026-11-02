@@ -94,8 +94,8 @@ pub struct Palette {
 }
 
 /// The palette a thread starts with, before the shell sets one: the default dark (Graphite). The
-/// view tests' harness sets Garden dark, the palette their snapshots draw in
-/// (`snapshot_check::builder`).
+/// view tests' harness sets the dark view palette, the one their snapshots draw in
+/// (`view_palette`, `snapshot_check::builder`).
 const START: Palette = super::builtin::DEFAULT_DARK;
 
 thread_local! {
@@ -143,11 +143,11 @@ pub fn is_dark() -> bool {
     ACTIVE.with_borrow(|p| p.dark)
 }
 
-/// Selects the Garden dark or light palette, the one view snapshots draw in (tests that draw
-/// without the shell).
+/// Selects the dark or light view palette (`view_palette`), the one view snapshots draw in (tests
+/// that draw without the shell).
 #[cfg(test)]
 pub fn set_dark(dark: bool) {
-    set_palette(if dark { &super::builtin::GARDEN_DARK } else { &super::builtin::GARDEN_LIGHT });
+    set_palette(&super::builtin::view_palette(dark));
 }
 
 /// Declares an accessor per color and `Palette`'s by-name access, from one list of

@@ -47,10 +47,10 @@ pub(crate) fn skip_requested(value: Option<&str>) -> bool {
 /// wgpu device it borrows from a pool rather than one of its own. Making a device (an instance,
 /// the adapters, the software rasterizer kittest prefers) took about a sixth of a view test's
 /// time. Each device serves one harness at a time: sharing one between the test threads made
-/// rendering crawl. The test's thread starts in Garden dark, the palette view snapshots draw
-/// in unless a test picks another.
+/// rendering crawl. The test's thread starts in the dark view palette (`view_palette`), the one
+/// view snapshots draw in unless a test picks another.
 pub fn builder<S>() -> HarnessBuilder<S> {
-    crate::ui::theme::color::set_palette(&crate::ui::theme::GARDEN_DARK);
+    crate::ui::theme::color::set_palette(&crate::ui::theme::view_palette(true));
     crate::ui::theme::fonts::use_test_cjk();
     Harness::builder().renderer(LazyRenderer::new(Pooled::take))
 }

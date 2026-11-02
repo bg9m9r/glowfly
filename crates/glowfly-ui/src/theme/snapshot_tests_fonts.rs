@@ -35,12 +35,12 @@ fn render(name: &str, p: Palette) {
 
 #[test]
 fn fonts_dark() {
-    render("fonts_dark", super::GARDEN_DARK);
+    render("fonts_dark", super::view_palette(true));
 }
 
 #[test]
 fn fonts_light() {
-    render("fonts_light", super::GARDEN_LIGHT);
+    render("fonts_light", super::view_palette(false));
 }
 
 fn render_scale(name: &str, p: Palette) {
@@ -70,18 +70,18 @@ fn render_scale(name: &str, p: Palette) {
 
 #[test]
 fn type_scale_specimen_dark() {
-    render_scale("type_scale_specimen_dark", super::GARDEN_DARK);
+    render_scale("type_scale_specimen_dark", super::view_palette(true));
 }
 
 #[test]
 fn type_scale_specimen_light() {
-    render_scale("type_scale_specimen_light", super::GARDEN_LIGHT);
+    render_scale("type_scale_specimen_light", super::view_palette(false));
 }
 
 /// Author names with their commit subjects, branch rows, paths and a date in each CJK locale.
 #[test]
 fn fonts_cjk() {
-    let p = super::GARDEN_DARK;
+    let p = super::view_palette(true);
     // 2026-10-13 18:30 UTC, a Tuesday afternoon.
     let date = |locale: &str| glowfly_core::dates::format(1_791_916_200, "YYYY/MM/DD dddd A h:mm", locale, 0);
     let dates: Vec<String> = ["ja_JP", "zh_CN", "ko_KR"].map(date).to_vec();

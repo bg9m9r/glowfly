@@ -15,13 +15,13 @@ use std::time::Instant;
 
 const SHOWN: &str = "Frame 3.2 ms · average 2.1 ms · slowest 12.0 ms";
 
-/// A small window drawing only the overlay for `st`, in the dark Garden palette like the other
-/// view snapshots.
+/// A small window drawing only the overlay for `st`, in the dark view palette (`view_palette(true)`)
+/// like the other view snapshots.
 fn harness(on: bool) -> Harness<'static, AppState> {
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     st.settings.show_frame_times = on;
     st.view.frame_times = FrameSummary { last_ms: 3.2, avg_ms: 2.1, max_ms: 12.0 };
-    let p = theme::GARDEN_DARK;
+    let p = theme::view_palette(true);
     crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 90.0)).build_state(
         move |ctx, st: &mut AppState| {
             color::set_palette(&p);

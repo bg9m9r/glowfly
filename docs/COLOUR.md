@@ -32,11 +32,10 @@ them, and theme files in a dropdown below (`ui/prefs/theme_picker.rs`). View > T
 same groups under small Dark and Light labels.
 
 Garden dark and Garden light (the earlier green pair) are no longer built-in themes: they stay
-in code as the palettes view snapshots draw in and the source of the colour families. Ember,
-Pine, Sand and Linen were removed too. A settings file that names a removed theme opens in its
-successor (Pine in Dusk, Garden dark in Midnight, Garden light in Mist, Ember in Graphite, Sand
-and Linen in Porcelain) with one toast saying so; a theme file built on a removed base takes
-the same successor, with no toast.
+in code as the source of the colour families. Ember, Pine, Sand and Linen were removed too. A
+settings file that names a removed theme opens in its successor (Pine in Dusk, Garden dark in
+Midnight, Garden light in Mist, Ember in Graphite, Sand and Linen in Porcelain) with one toast
+saying so; a theme file built on a removed base takes the same successor, with no toast.
 
 Why Dusk and Dawn look as they do:
 
@@ -68,9 +67,9 @@ Why Dusk and Dawn look as they do:
   `dawn`). A theme file on Dusk or Dawn whose accent isn't the base's (a
   file written from the green Dark, say) takes the Garden branch families, which leave a green
   accent's band free.
-- View snapshots draw in the Garden pair (so a palette change doesn't redraw every image); the
-  theme snapshots (`lineup_*`, `vivid_*`, `theme_*`, the design and controls sheets) show each
-  palette.
+- View snapshots draw in Graphite and Porcelain, the shipped default pair (so a change to another
+  theme doesn't redraw every image); the theme snapshots (`lineup_*`, `vivid_*`, `theme_*`, the
+  design and controls sheets) show each palette.
 
 Why the other themes look as they do (each follows the same recipe as Dusk: one quiet hue
 for every surface, stepped in lightness, and one accent across the wheel from it):

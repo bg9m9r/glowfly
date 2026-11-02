@@ -40,8 +40,7 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Status bar: name the filter with its section ("2 issues in Current sprint") once tracker nouns
   have plural keys
 - Update-failed chip: open Preferences scrolled to the Updates row
-- Glowfly themes (Dusk and Dawn): redraw the view snapshots in Dusk and Dawn once the pair is
-  settled (they draw in the Garden pair for now); theme-file keys for the colour-blind branch set; a gold distance test
+- Glowfly themes (Dusk and Dawn): theme-file keys for the colour-blind branch set; a gold distance test
   for custom theme files whose accent lands near Orange or Gold
 - Glowfly themes (more built-ins): theme files as cards in the picker (drawn from the file's own colours); repository
   colour hues tuned per theme (Midnight, Mist, Graphite and Porcelain reuse the standard repo set); a picker filter once

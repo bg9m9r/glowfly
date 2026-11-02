@@ -6,7 +6,7 @@ use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{git, harness, harness_palette, reload, remove_fixture};
 use super::snapshot_tests_branch_colour::with_branches;
 use super::snapshot_tests_select::click;
-use super::theme::{self, branch_colours::initials_tones, color};
+use super::theme::{self, branch_colours::initials_tones, branch_names, color};
 use crate::msg::{GraphMsg, Msg};
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -14,14 +14,12 @@ use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::branch_colour::Swatch;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::{BranchPalette, ThemeChoice};
 use std::path::Path;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
-
-const STANDARD: [&str; 14] =
-    ["Rose", "Lime", "Violet", "Orange", "Cyan", "Magenta", "Olive", "Azure", "Red", "Teal", "Orchid", "Gold", "Sky", "Indigo"];
 
 /// Right-clicks the left panel's row named `label`: the LOCAL one (`local`) or the REMOTE one.
 fn open_row_menu(h: &mut H, label: &str, local: bool) {
@@ -57,11 +55,12 @@ fn branch_colour_submenu() {
     open_row_menu(&mut h, "topic", true);
     open_submenu(&mut h, "Color");
     assert_eq!(submenu_item(&h, "Color", "Automatic").toggled(), Some(eframe::egui::accesskit::Toggled::True));
-    for hue in STANDARD {
-        submenu_item(&h, "Color", hue);
+    let (t, b) = (Lang::En, theme::view_palette(true).branch);
+    for slot in 0..b.preset.slots() {
+        submenu_item(&h, "Color", branch_names::hue(t, &b, slot));
     }
     h.check_snapshot("branch_colour_submenu");
-    submenu_item(&h, "Color", "Teal").click();
+    submenu_item(&h, "Color", branch_names::hue(t, &b, 9)).click();
     h.run();
     assert_eq!(pinned(&h), Some(("topic".into(), Some(9))));
     drop(h);
@@ -121,8 +120,8 @@ fn colour_blind(theme: ThemeChoice, name: &str) {
     st.settings.branch_palette = BranchPalette::ColourBlind;
     let snap = st.snap.as_mut().unwrap();
     snap.set_colouring(st.settings.colouring_for(&snap.real_workdir));
-    let base = if theme == ThemeChoice::Dark { theme::GARDEN_DARK } else { theme::GARDEN_LIGHT };
-    let mut h = harness_palette(st, theme::applied(base, BranchPalette::ColourBlind));
+    let dark = theme == ThemeChoice::Dark;
+    let mut h = harness_palette(st, theme::applied(theme::view_palette(dark), BranchPalette::ColourBlind));
     h.run();
     h.check_snapshot(name);
     drop(h);
@@ -158,7 +157,7 @@ fn tip(dir: &Path, branch: &str) -> git2::Oid {
 
 fn person_colours(theme: ThemeChoice, name: &str, dark: bool) {
     let (st, dir) = with_grace(theme, name);
-    color::set_palette(if dark { &theme::GARDEN_DARK } else { &theme::GARDEN_LIGHT });
+    color::set_palette(&theme::view_palette(dark));
     let ada = initials_tones("ada@example.com", "Ada Lovelace");
     let grace = initials_tones("grace@example.com", "Grace Hopper");
     assert_ne!(ada.0, grace.0, "two people, two fills");

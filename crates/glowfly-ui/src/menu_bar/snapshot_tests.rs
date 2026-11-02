@@ -300,9 +300,9 @@ type DrawDialog = fn(&mut egui::Ui, crate::ui::dialog_frame::Cx, &GitState, &mut
 fn dialog_harness(git: GitState, draw: DrawDialog) -> Harness<'static, (GitState, Vec<Msg>)> {
     crate::ui::snapshot_check::builder().with_size(egui::vec2(1024.0, 700.0)).build_state(
         move |ctx, (git, msgs): &mut (GitState, Vec<Msg>)| {
-            color::set_palette(&theme::GARDEN_DARK);
-            theme::apply_style(ctx, &theme::GARDEN_DARK);
-            ctx.set_theme(theme::egui_theme(&theme::GARDEN_DARK));
+            color::set_palette(&theme::view_palette(true));
+            theme::apply_style(ctx, &theme::view_palette(true));
+            ctx.set_theme(theme::egui_theme(&theme::view_palette(true)));
             egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |_| {});
             let id = egui::Id::new("glowfly-modal");
             let cx = crate::ui::dialog_frame::Cx { t: glowfly_core::i18n::Lang::En, keyboard: true, key: id.with("about") };

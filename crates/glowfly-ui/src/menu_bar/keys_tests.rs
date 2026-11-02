@@ -22,16 +22,16 @@ use glowfly_core::spell::Speller;
 
 pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
-/// The app's frame in the Garden dark palette at `size`: the shortcut input, then the window.
+/// The app's frame in the dark view palette at `size`: the shortcut input, then the window.
 pub(crate) fn keys_harness(mut st: AppState, size: egui::Vec2) -> H {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
     let mut h = crate::ui::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
-            color::set_palette(&theme::GARDEN_DARK);
-            theme::apply_style(ctx, &theme::GARDEN_DARK);
-            ctx.set_theme(theme::egui_theme(&theme::GARDEN_DARK));
+            color::set_palette(&theme::view_palette(true));
+            theme::apply_style(ctx, &theme::view_palette(true));
+            ctx.set_theme(theme::egui_theme(&theme::view_palette(true)));
             let cache = cache.get_or_insert_with(|| UiCache {
                 avatars: Avatars::default(),
                 speller: Speller::new(),

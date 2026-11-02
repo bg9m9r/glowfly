@@ -56,9 +56,9 @@ fn button_styles() {
 fn own_header(size: Vec2) -> Harness<'static, u32> {
     crate::ui::snapshot_check::builder().with_size(size).build_state(
         |ctx, closes: &mut u32| {
-            color::set_palette(&theme::GARDEN_DARK);
-            apply_style(ctx, &theme::GARDEN_DARK);
-            ctx.set_theme(egui_theme(&theme::GARDEN_DARK));
+            color::set_palette(&theme::view_palette(true));
+            apply_style(ctx, &theme::view_palette(true));
+            ctx.set_theme(egui_theme(&theme::view_palette(true)));
             let id = Id::new("own-header");
             let cx = Cx { t: Lang::En, keyboard: true, key: id.with("dialog") };
             let resp = theme::show_modal(ctx, theme::dialog(ctx, id), |ui| {
