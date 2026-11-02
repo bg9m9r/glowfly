@@ -1,8 +1,10 @@
-//! The tour of the main window: its five steps, the panel each one points at, and their texts.
+//! The tour of the main window: its five steps, the panel each one points at, and their texts
+//! (`tour.*` keys).
 //! The tour's place lives in `Onboarding` (this session only, never saved).
 
 use super::layout::Panel;
 use crate::keymap::{BindingId, Keymap};
+use glowfly_core::i18n::Lang;
 
 /// The tour's steps, in order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -13,11 +15,6 @@ pub enum TourStep {
     Details,
     Palette,
 }
-
-/// The card's text for a step whose panel is hidden.
-pub const PANEL_HIDDEN: &str = "This panel is hidden.";
-/// The card's text while the active tab has no repository.
-pub const NO_REPOSITORY: &str = "Open a repository to see this part of the window.";
 
 impl TourStep {
     pub const ALL: [TourStep; 5] = [TourStep::Toolbar, TourStep::LeftPanel, TourStep::Graph, TourStep::Details, TourStep::Palette];
@@ -45,42 +42,34 @@ impl TourStep {
         }
     }
 
-    pub fn title(self) -> &'static str {
+    /// The card's heading.
+    pub fn title(self, t: Lang) -> &'static str {
         match self {
-            TourStep::Toolbar => "The toolbar",
-            TourStep::LeftPanel => "Branches and more",
-            TourStep::Graph => "The commit graph",
-            TourStep::Details => "Commit details",
-            TourStep::Palette => "Commands and shortcuts",
+            TourStep::Toolbar => t.tr("tour.step.toolbar.title"),
+            TourStep::LeftPanel => t.tr("tour.step.left.title"),
+            TourStep::Graph => t.tr("tour.step.graph.title"),
+            TourStep::Details => t.tr("tour.step.details.title"),
+            TourStep::Palette => t.tr("tour.step.palette.title"),
         }
     }
 
     /// The card's sentences; the last step names the current keys from `keys`.
-    pub fn body(self, keys: &Keymap) -> String {
+    pub fn body(self, keys: &Keymap, t: Lang) -> String {
         match self {
-            TourStep::Toolbar => "The everyday actions live along the top: undo and redo, pull, push, a new branch, stash and unstash, \
-                                  pull requests and the terminal. At the right end are the command palette, search and Preferences."
-                .into(),
-            TourStep::LeftPanel => "Local and remote branches come first, then pull requests, issues, tags, stashes, submodules and \
-                                    worktrees. Click a branch to find it in the graph, double-click to check it out, and right-click \
-                                    any row for its actions."
-                .into(),
-            TourStep::Graph => "Every commit, with branches and tags drawn where they point. The WIP row at the top holds the \
-                                changes you haven't committed yet. Click a commit to see what it changed, and right-click it for more."
-                .into(),
-            TourStep::Details => "The selected commit's message, author and files; click a file to see its diff. On the WIP row this \
-                                  is where you stage changes, write a message and commit."
-                .into(),
+            TourStep::Toolbar => t.tr("tour.step.toolbar.body").into(),
+            TourStep::LeftPanel => t.tr("tour.step.left.body").into(),
+            TourStep::Graph => t.tr("tour.step.graph.body").into(),
+            TourStep::Details => t.tr("tour.step.details.body").into(),
             TourStep::Palette => {
-                let palette = match keys.hint(BindingId::Palette) {
-                    Some(k) => format!("Press {k} to open the command palette"),
-                    None => "Click Commands at the right of the toolbar to open the command palette".to_owned(),
+                let open = match keys.hint(BindingId::Palette) {
+                    Some(k) => t.trf("tour.step.palette.open.key", &[("key", &k)]),
+                    None => t.tr("tour.step.palette.open.click").to_owned(),
                 };
                 let sheet = match keys.hint(BindingId::Sheet) {
-                    Some(k) => format!("{k} lists every keyboard shortcut"),
-                    None => "its Keyboard shortcuts entry lists every keyboard shortcut".to_owned(),
+                    Some(k) => t.trf("tour.step.palette.sheet.key", &[("key", &k)]),
+                    None => t.tr("tour.step.palette.sheet.palette").to_owned(),
                 };
-                format!("{palette}: type a few letters of any command, branch or recent repository and press Enter. {sheet}.")
+                format!("{open} {sheet}")
             }
         }
     }
@@ -103,12 +92,23 @@ mod tests {
     #[test]
     fn the_last_step_names_the_current_keys() {
         let (keys, _) = Keymap::from_overrides(&BTreeMap::new());
-        let body = TourStep::Palette.body(&keys);
+        let body = TourStep::Palette.body(&keys, Lang::En);
         let (palette, sheet) = (keys.hint(BindingId::Palette).unwrap(), keys.hint(BindingId::Sheet).unwrap());
         assert!(body.contains(&format!("Press {palette}")) && body.contains(&format!("{sheet} lists")), "{body}");
         let unbound = BTreeMap::from([("palette".to_owned(), Vec::new()), ("shortcut-sheet".to_owned(), Vec::new())]);
         let (keys, _) = Keymap::from_overrides(&unbound);
-        let body = TourStep::Palette.body(&keys);
-        assert!(body.starts_with("Click Commands") && body.contains("Keyboard shortcuts entry"), "{body}");
+        let body = TourStep::Palette.body(&keys, Lang::En);
+        assert!(body.starts_with("Click Commands") && body.contains("Its Keyboard shortcuts entry"), "{body}");
+        let german = TourStep::Palette.body(&keys, Lang::De);
+        assert!(german.starts_with(Lang::De.tr("tour.step.palette.open.click")), "{german}");
+    }
+
+    #[test]
+    fn every_step_follows_the_language() {
+        let (keys, _) = Keymap::from_overrides(&BTreeMap::new());
+        for step in TourStep::ALL {
+            assert_ne!(step.title(Lang::En), step.title(Lang::De), "{step:?}");
+            assert_ne!(step.body(&keys, Lang::En), step.body(&keys, Lang::Es), "{step:?}");
+        }
     }
 }
