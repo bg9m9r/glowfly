@@ -22,7 +22,8 @@ Label "Tras una obtención en segundo plano, avisa cuando la rama activa se ha q
 CheckBox "Mostrar notificaciones del sistema mientras Glowfly está en segundo plano" [off]
 Label "Las operaciones terminadas y los avisos de retraso también aparecen como notificaciones de escritorio cuando la ventana de Glowfly no tiene el foco. Las obtenciones en segundo plano no avisan. Al activarlo se envía una notificación para que compruebes que te llegan."
 Label "Interfaz"
-ComboBox
+ComboBox "Tamaño de la interfaz"
+Label "Escala todo el texto y los controles. Ctrl+= y Ctrl+- también lo cambian."
 CheckBox "Mostrar el panel izquierdo" [on]
 CheckBox "Mostrar los detalles del commit" [on]
 CheckBox "Mostrar la barra de herramientas" [on]
@@ -30,8 +31,6 @@ Label "Mientras la barra de herramientas está oculta, la barra de estado tiene 
 CheckBox "Mostrar la barra de menús" [off]
 Label "Mientras la barra de menús está oculta, la paleta de comandos y los atajos de teclado siguen llegando a todo, y Show menu bar en la paleta la vuelve a mostrar."
 CheckBox "Mostrar texto bajo los iconos" [on]
-CheckBox "Desactivar fundidos y deslizamientos" [off]
-Label "Las descripciones y ventanas emergentes aparecen sin fundidos ni deslizamientos"
 CheckBox "Revisar la ortografía de los mensajes de commit" [on]
 Label "Subraya las faltas de ortografía en el resumen y la descripción del commit; haz clic derecho para ver sugerencias. Usa el corrector ortográfico de Windows en el idioma del sistema."
 CheckBox "Buscar avatares en línea" [off]
@@ -60,8 +59,6 @@ CheckBox "Fecha y hora" [on]
 Button "Cómoda" [on]
 Button "Compacta" [off]
 ComboBox
-ComboBox
-Label "Pensado para daltonismo usa 8 tonos elegidos para distinguirse con daltonismo rojo-verde o azul-amarillo. Los nombres de las ramas siempre aparecen junto a su color. La rama principal es gris salvo que elijas un color para ella."
 Button "Restablecer la disposición estándar"
 Button "Restablecer la disposición compacta"
 Label "Ambos restablecen también el ancho estándar de cada columna. Para cambiar el tamaño de una columna, arrastra el separador junto a su título en la cabecera del grafo; haz doble clic en un separador para restablecer solo esa columna."
@@ -70,6 +67,7 @@ painted:
   "Git"
   "Perfil"
   "Integraciones"
+  "Accesibilidad"
   "Idioma y región"
   "Visor de diferencias"
   "Teclado"
@@ -82,14 +80,12 @@ painted:
   "Abajo a la izquierda"
   "Avisos de retraso"
   "Notificaciones de escritorio"
-  "Zoom"
   "100%"
   "Panel izquierdo"
   "Detalles del commit"
   "Barra de herramientas"
   "Barra de menús"
   "Etiquetas de la barra"
-  "Reducir movimiento"
   "Corrector ortográfico"
   "Imágenes de autor"
   "Botón de rama rápida"
@@ -103,5 +99,4 @@ painted:
   "Densidad de filas"
   "Descripción del commit"
   "Siempre"
-  "Colores de ramas"
-  "Estándar"
+  "Diseño de columnas"

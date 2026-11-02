@@ -242,7 +242,8 @@ fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     // A failure logged from here on is announced by a toast; one pushed by now isn't this one's.
     let toast_mark = st.toast_seq;
     let undo_mark = undo::record_mark(st);
-    // So is every toast, unless this update logged its text already (update/toast_log.rs).
+    // Every toast also leaves an activity line, unless one this update logged stands for it
+    // (update/toast_log.rs).
     let entry_mark = crate::state::logs::EntryId::next();
     route(st, msg, now, &mut fx);
     undo::recorded_since(st, undo_mark);
