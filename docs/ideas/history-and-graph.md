@@ -123,6 +123,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Graph edge lanes as `u32` (or `u16`) pairs would take a row from 104 to about 72 bytes
 - Inline ref chips (narrow table): a line joining them to the node, and the New branch… ghost button after them
 - BRANCH / TAG auto-fit: count the build marker's room on chips that show one
+- Cache BRANCH / TAG's widest chips (`refs_fit::chips_w`) per snapshot instead of measuring every labelled commit each frame
 - Let a divider drag widen a column past the message's 240 px by hiding the next column to give way, instead of stopping
 
 ### Resumed history loads
