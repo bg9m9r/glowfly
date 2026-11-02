@@ -172,6 +172,41 @@ fn a_branch_without_an_upstream_never_offers_tidy() {
     assert_eq!(shown(&st), None);
 }
 
+#[test]
+fn a_local_merge_in_the_ahead_commits_never_reaches_pushed_ones() {
+    // Pushed: two WIP commits up to U. Local: A, then M merging F1..F3 forked from U. `ahead` is
+    // 5, but only M and A are first parents ahead, so the pushed WIPs neither count nor get
+    // rebased.
+    let dir = scratch_repo("hint-tidy-merge");
+    for s in ["wip pushed one", "wip pushed two"] {
+        git(&dir, &["commit", "-q", "--allow-empty", "-m", s]);
+    }
+    git(&dir, &["remote", "add", "origin", "https://example.invalid/r.git"]);
+    git(&dir, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(&dir, &["config", "branch.main.remote", "origin"]);
+    git(&dir, &["config", "branch.main.merge", "refs/heads/main"]);
+    git(&dir, &["checkout", "-q", "-b", "side"]);
+    for s in ["F1", "F2", "F3"] {
+        git(&dir, &["commit", "-q", "--allow-empty", "-m", s]);
+    }
+    git(&dir, &["checkout", "-q", "main"]);
+    git(&dir, &["commit", "-q", "--allow-empty", "-m", "wip local"]);
+    git(&dir, &["merge", "-q", "--no-ff", "-m", "Merge side", "side"]);
+    let mut st = state();
+    st.settings.welcome_done = true;
+    load_kind(&mut st, &dir, LoadKind::Open);
+    committed(&mut st, &dir, false);
+    assert_eq!(shown(&st), None, "the pushed WIP commits don't count");
+
+    committed(&mut st, &dir, true);
+    committed(&mut st, &dir, true);
+    assert_eq!(shown(&st), Some(HintId::TidyCommits));
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!(snap.locals.iter().find(|b| b.is_head).unwrap().ahead, 5);
+    let local = snap.commits.iter().find(|c| &*c.summary == "wip local").unwrap().oid;
+    assert_eq!(hints::tidy_base(snap), Some(local), "the rebase starts at the oldest commit ahead");
+}
+
 /// The scratch repository `name` with an `origin` at `url`, opened by `st`.
 fn with_remote(st: &mut AppState, name: &str, url: &str) -> PathBuf {
     let dir = scratch_repo(name);

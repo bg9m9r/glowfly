@@ -151,6 +151,7 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Keep tour progress across restarts
 - Highlight the toolbar's Commands button on the tour's palette step
 - First-use tips in context (first diff, first conflict, first pull request panel)
+- Show tips again should win over another profile's records: a reset made while the settings file is held is undone by the union merge in `carry_records`
 
 ### Performance
 

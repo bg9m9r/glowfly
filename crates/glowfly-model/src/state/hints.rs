@@ -140,22 +140,17 @@ fn wip_summary(summary: &str) -> bool {
     lower.strip_prefix("wip").is_some_and(|rest| !rest.starts_with(|c: char| c.is_alphanumeric() || c == '_'))
 }
 
-/// The current branch's commits ahead of its upstream, newest first (along first parents, as
-/// far as the loaded history goes); None when it has no upstream.
+/// The current branch's commits strictly ahead of its upstream along first parents, newest
+/// first, with their summaries (`Snapshot::head_ahead`, which stops at the first pushed commit).
+/// None when the branch has no upstream, the answer is unknown, or one of those commits isn't in
+/// the loaded history: no tip then.
 fn ahead_commits(snap: &Snapshot) -> Option<Vec<(Oid, &str)>> {
-    let b = snap.locals.iter().find(|b| b.is_head)?;
-    b.upstream.as_ref()?;
-    let mut out = Vec::new();
-    let mut at = snap.head_oid;
-    while let Some(oid) = at.filter(|_| out.len() < b.ahead) {
-        let c = snap.row_of.get(&oid).and_then(|&i| snap.commits.get(i))?;
-        out.push((oid, &*c.summary));
-        at = c.parents.first().copied();
-    }
-    Some(out)
+    let ahead = snap.head_ahead.as_ref()?;
+    ahead.iter().map(|&oid| snap.row_of.get(&oid).and_then(|&i| snap.commits.get(i)).map(|c| (oid, &*c.summary))).collect()
 }
 
-/// The oldest commit ahead of the upstream: the Tidy hint's rebase starts there.
+/// The oldest first-parent commit strictly ahead of the upstream: the Tidy hint's rebase
+/// starts there, so it never reaches a pushed commit.
 pub fn tidy_base(snap: &Snapshot) -> Option<Oid> {
     ahead_commits(snap)?.last().map(|(oid, _)| *oid)
 }

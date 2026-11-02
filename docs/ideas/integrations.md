@@ -48,6 +48,7 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - A choice to count only personal review requests in Needs my review
 - A quiet hint when the token can't read teams or groups, naming the scope to add (read:org or Members for GitHub fine-grained tokens, Identity (Read) on Azure DevOps)
 - Azure DevOps memberships past 200 groups, and Azure DevOps Server (on-premises) identity lookups
+- At a 240 px sidebar the "All" filter overlaps the "Pull requests" title; the filter should give way first (truncate the title or collapse the filter to its caret)
 
 ### Create and view issues
 
