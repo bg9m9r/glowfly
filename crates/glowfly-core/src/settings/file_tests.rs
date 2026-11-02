@@ -162,3 +162,10 @@ fn the_settings_file_and_its_copy_are_private_on_unix() {
     assert_eq!((mode(&nested), mode(nested.parent().unwrap())), (0o600, 0o700));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn an_empty_file_loads_the_defaults_of_fields_without_their_own_serde_default() {
+    let s: Settings = serde_json::from_str("{}").unwrap();
+    let d = Settings::default();
+    assert_eq!((s.terminal, s.panel_sizes, s.updates), (d.terminal, d.panel_sizes, d.updates));
+}

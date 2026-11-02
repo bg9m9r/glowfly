@@ -54,7 +54,8 @@ pub fn picker(ui: &mut Ui, t: Lang, s: &mut Settings) {
         if let Some(b) = cards(ui, t, &group(dark), ringed) {
             s.pick_card(b);
         }
-        gap(ui, 8.0);
+        // The two groups stand apart; the description follows the light one closely.
+        gap(ui, if dark { 16.0 } else { 8.0 });
     }
     if let Some(b) = shown {
         let line = format!("{}: {}", theme_names::builtin(t, b), theme_names::hint(t, b));

@@ -92,4 +92,3 @@ painted:
   "Zoom"
   "100%"
   "Left panel"
-  "Commit details panel"
