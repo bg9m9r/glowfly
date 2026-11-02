@@ -82,9 +82,12 @@ fn cmd_or_ctrl_chords_follow_the_platform() {
         assert_eq!(press(&mut h, m, Key::Slash), ["ToggleSheet"], "{m:?}");
     }
     // macOS Ctrl is not Cmd: none of those answer to it.
-    for (m, key) in [(MAC_CTRL, Key::T), (MAC_CTRL, Key::W), (MAC_CTRL, Key::Num2), (MAC_CTRL, Key::Z), (shift(MAC_CTRL), Key::S)] {
+    for (m, key) in [(MAC_CTRL, Key::T), (MAC_CTRL, Key::W), (MAC_CTRL, Key::Z), (shift(MAC_CTRL), Key::S)] {
         assert_eq!(press(&mut h, m, key), Vec::<String>::new(), "{m:?} {key:?}");
     }
+    // Control+digit is the pane key on macOS (elsewhere the pane keys are Alt+digit).
+    let pane: Vec<String> = if cfg!(target_os = "macos") { vec!["FocusPane(Central)".into()] } else { Vec::new() };
+    assert_eq!(press(&mut h, MAC_CTRL, Key::Num2), pane);
 }
 
 #[test]
