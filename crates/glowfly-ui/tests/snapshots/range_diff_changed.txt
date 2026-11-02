@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -55,7 +59,6 @@ Button "Dropped: Fix build on Windows"
 Button "New: Add app skeleton"
 Button "Same: Tidy the login form"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

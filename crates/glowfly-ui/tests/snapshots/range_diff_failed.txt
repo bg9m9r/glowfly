@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -54,7 +58,6 @@ Label "There is no earlier version of login-page to compare with: its reflog sho
 Button "Try again"
 Button "Copy details"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

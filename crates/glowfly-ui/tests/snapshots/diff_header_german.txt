@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Tab demo schließen"
+Tab "api-server"
+Button "Tab api-server schließen"
 Button "Neuer Tab"
 Button "demo"
 Button "main"
@@ -87,7 +91,6 @@ Button "Hunk bereitstellen"
 Button "Hunk verwerfen"
 Document "Diff von app.txt"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Rückgängig"

@@ -35,7 +35,9 @@ fn open_list(h: &mut Harness<'_, (AppState, Vec<Msg>)>) {
 
 /// Clicks the row labelled `label` with the mouse, as the popup's close-on-click expects.
 fn click_row(h: &mut Harness<'_, (AppState, Vec<Msg>)>, label: &str) {
-    let r = h.get_by_label(label).bounding_box().expect("the row");
+    // The popup's row, not the tab of the same name.
+    let row = h.get_all_by_label(label).find(|n| n.role() != eframe::egui::accesskit::Role::Tab).expect("the row");
+    let r = row.bounding_box().expect("the row");
     let at = pos2(((r.x0 + r.x1) / 2.0) as f32, ((r.y0 + r.y1) / 2.0) as f32);
     super::snapshot_tests::snapshot_tests_select::click(h, at, PointerButton::Primary);
 }

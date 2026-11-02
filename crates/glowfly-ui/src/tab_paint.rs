@@ -1,16 +1,21 @@
 //! How a repository tab looks (`tabs.rs` lays the strip out): the repository's colour swatch
-//! (when it has one), the repository icon, the name and the close ×, in a shape with rounded top corners. A quiet tab has no fill (the chrome shows
-//! through), a hovered one the hover fill and a pressed one the pressed fill. The active tab
-//! stands 2 px taller on the toolbar's own fill, so it runs into the toolbar below, with one
-//! 2 px band in its checked-out branch's colour along its rounded top. The × fades in on the
-//! active and hovered tabs without ever changing the layout. Neighbouring quiet tabs are parted
+//! (when it has one), the repository icon, the name and the close ×, in a shape with rounded top corners. Every tab has the
+//! one shape, 2 px taller than its slot: a quiet tab has no fill (the chrome shows through), a
+//! hovered one the hover layer and a pressed one the pressed layer over that whole shape, and a
+//! focused one the inset focus ring on its corners. The active tab stands on the toolbar's own
+//! fill, so it runs into the toolbar below, with one 2 px band in its checked-out branch's colour
+//! along its rounded top. The × fades in on the active, hovered and focused tabs without ever
+//! changing the layout; it is a quiet target of its own (`tab_glyph::paint_quiet`) that takes
+//! clicks on the least hit area around its box. Neighbouring quiet tabs are parted
 //! by a short line, and a worktree group's tabs share a strip along their bottom, after a
 //! rounded chip naming the group when there is room for it.
 
 use super::repo_swatch;
 use super::theme::color;
+use super::theme::sizes::ControlSize;
 use super::theme::tokens::radius;
 use super::theme::type_scale;
+use super::widgets::quiet_target::{self, State};
 use super::widgets::tab_glyph::{self, TabGlyph};
 use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized};
 use eframe::egui::{self, Color32, FontId, Rect, Stroke, StrokeKind, pos2, vec2};
@@ -49,7 +54,10 @@ pub(super) struct TabLook {
     pub floating: bool,
     /// How visible the close × is, 0 to 1.
     pub close_alpha: f32,
-    pub close_hovered: bool,
+    /// The close ×'s own state.
+    pub close: State,
+    /// The tab has the keyboard focus.
+    pub focused: bool,
     /// The toolbar's fill, which the active and the dragged tab stand on.
     pub fill: Color32,
     /// The active tab's band: its checked-out branch's line tone.
@@ -67,7 +75,8 @@ impl TabLook {
             pressed: false,
             floating: false,
             close_alpha: 0.0,
-            close_hovered: false,
+            close: State::default(),
+            focused: false,
             fill,
             band: color::accent(),
             repo: None,
@@ -81,11 +90,10 @@ pub(super) fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, font: FontId,
     let lifted = rect.with_min_y(rect.top() - LIFT);
     if look.active || look.floating {
         p.rect_filled(lifted, ROUNDING, look.fill);
-    } else if look.pressed {
-        p.rect_filled(rect, ROUNDING, color::selected());
-    } else if look.hovered {
-        p.rect_filled(rect, ROUNDING, color::hover());
     }
+    let lit = !(look.active || look.floating);
+    let state = State { hovered: lit && look.hovered, down: lit && look.pressed, latched: false, focused: look.focused };
+    quiet_target::paint(p, lifted, ROUNDING, ControlSize::Regular, state);
     if look.active {
         paint_band(p, lifted, look.band);
     }
@@ -111,8 +119,7 @@ pub(super) fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, font: FontId,
     let left = left + ICON + ICON_GAP;
     let cut = paint_cut_text(p, pos2(left, cy), name, font, text_col, close_rect.left() - CLOSE_GAP - left);
     if look.close_alpha > 0.0 {
-        let hover = look.close_hovered.then(|| color::selected().gamma_multiply(look.close_alpha));
-        tab_glyph::paint(p, close_rect.center(), TabGlyph::Close, text_col.gamma_multiply(look.close_alpha), hover);
+        tab_glyph::paint_quiet(p, close_rect.center(), TabGlyph::Close, text_col.gamma_multiply(look.close_alpha), look.close);
     }
     cut
 }
@@ -190,6 +197,11 @@ pub(super) fn close_rect(tab: Rect) -> Rect {
     Rect::from_center_size(pos2(x, tab.center().y), vec2(tab_glyph::BOX, tab_glyph::BOX))
 }
 
+/// Where a tab's close × takes clicks: the least hit area around its box.
+pub(super) fn close_hit(tab: Rect) -> Rect {
+    Rect::from_center_size(close_rect(tab).center(), vec2(tab_glyph::HIT, tab_glyph::HIT))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,5 +226,8 @@ mod tests {
         let close = close_rect(tab);
         assert_eq!((close.left(), close.right()), (160.0 - 26.0, 150.0));
         assert_eq!(close.center().y, 17.0);
+        let hit = close_hit(tab);
+        assert_eq!((hit.width(), hit.height(), hit.center()), (24.0, 24.0, close.center()), "a 24 x 24 hit area");
+        assert!(hit.right() <= tab.right(), "inside its tab");
     }
 }

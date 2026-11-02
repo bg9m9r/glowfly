@@ -1,6 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
 Button "Show toolbar"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Unknown "Left panel contents"
 TextInput
@@ -62,8 +66,6 @@ Label "main is 2 commits behind origin/main"
 Button "Dismiss"
 Button "Pull"
 painted:
-  "demo"
-  "api-server"
   "Filter (branches, PRs, issues)"
   "Local"
   "3"

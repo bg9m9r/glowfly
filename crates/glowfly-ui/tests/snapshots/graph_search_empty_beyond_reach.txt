@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -76,7 +80,6 @@ Label "No commits match"
 Label "Words match messages, authors and commit ids; author:name and path:folder/ narrow the search. 3 older commits match, past the newest 200000 the graph can show."
 Button "Clear search"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

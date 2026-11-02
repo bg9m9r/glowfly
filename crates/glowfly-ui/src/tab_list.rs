@@ -8,10 +8,15 @@ use super::widgets;
 use crate::msg::{Msg, TabsMsg};
 use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::menu::{self, popup_below};
-use eframe::egui::{self, Align, Layout, PopupCloseBehavior, RichText, Sense, vec2};
+use crate::ui::widgets::quiet_target::{self, State};
+use eframe::egui::{self, Align, CornerRadius, Layout, PopupCloseBehavior, Rect, RichText, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
+
+/// The tab list button's size: a Regular icon-only square.
+const SIZE: ControlSize = ControlSize::Regular;
 
 /// Whether the tab list button shows: when there are closed tabs, or the tabs at their own
 /// widths (`needed`, with the gaps between them) are wider than the `room` the strip has for them.
@@ -19,18 +24,21 @@ pub(super) fn wanted(st: &AppState, needed: f32, room: f32) -> bool {
     !st.closed_tabs.is_empty() || needed > room
 }
 
-/// The tab list button, `slot` square, and its popup.
+/// The tab list button in a `slot` square, and its popup. The button is a Regular quiet
+/// icon-only target centred in the slot: its hit area is the square it lights (hovered, held,
+/// or latched while the popup is open), and it rings that square while focused.
 pub(super) fn button(ui: &mut egui::Ui, t: Lang, st: &AppState, slot: f32, msgs: &mut Vec<Msg>) {
     let tip = t.tr("tabs.list.tip");
-    let (rect, r) = ui.allocate_exact_size(vec2(slot, slot), Sense::click());
+    let (slot_rect, _) = ui.allocate_exact_size(vec2(slot, slot), Sense::hover());
+    let m = SIZE.metrics();
+    let rect = Rect::from_center_size(slot_rect.center(), vec2(m.h, m.h));
+    let r = ui.interact(rect, ui.id().with("tab-list-button"), Sense::click());
     r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tip));
     let popup = ui.make_persistent_id("tab-list");
     let open = ui.memory(|m| m.is_popup_open(popup));
-    let lit = r.hovered() || open;
-    if lit {
-        ui.painter().rect_filled(rect.shrink(3.0), 4.0, color::hover());
-    }
-    widgets::caret(ui.painter(), rect.center(), if lit { color::text() } else { color::weak() });
+    let state = State::of(&r, open);
+    quiet_target::paint(ui.painter(), rect, CornerRadius::same(m.radius), SIZE, state);
+    widgets::caret(ui.painter(), rect.center(), if state.lit() { color::strong() } else { color::weak() });
     let r = r.on_hover_text(tip);
     if r.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));

@@ -7,7 +7,9 @@ source file, update its line here.
 
 - `widgets/mod.rs`: the shared painted controls.
 - `icon.rs`: the `Icon` set.
-- `tab_glyph.rs`: the tab bars' painted close × and new-tab + (one stroke and hover box for both).
+- `widgets/icon_snap.rs`: painted glyphs on the pixel grid: an icon's centre and the plus's ends snapped for the line width at any pixel ratio.
+- `tab_glyph.rs`: the tab bars' painted close × and new-tab + (one stroke and hover box for both, at least a 24 px hit area).
+- `widgets/quiet_target.rs`: a quiet target a view lays out itself (a tab, the tab list and title-bar menu buttons, a section header's + and ⋯), lit and ringed through `paint_target`.
 - `scroll_cue.rs`: the always-visible thin scroll bar and the edge fades of dialog bodies, Preferences and the File view.
 - `ghost::close_view`: the × that closes a view (the diff, blame, a history, an issue or pull request), with Close and its Esc cap in the tooltip.
 - `widgets::remove_icon`: the weak × that removes a key in Preferences > Keyboard and closes a toast.

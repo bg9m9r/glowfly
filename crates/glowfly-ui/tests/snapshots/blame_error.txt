@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -57,7 +61,6 @@ Label "Logo.png is a binary file; blame shows text files only"
 Button "Try again"
 Button "Copy details"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

@@ -223,7 +223,8 @@ fn menu_bar_window() {
     let (st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-window");
     let mut h = opened(st, true, "Window");
     h.check_snapshot("menu_bar_window");
-    h.get_by_label("api-server").click();
+    // The menu's item, not the tab of the same name.
+    h.get_all_by_label("api-server").find(|n| n.role() != eframe::egui::accesskit::Role::Tab).expect("the menu item").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, Msg::Tabs(TabsMsg::SelectTab(1)))));
     drop(h);

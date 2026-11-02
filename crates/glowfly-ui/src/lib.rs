@@ -211,6 +211,8 @@ pub mod snapshot_fixtures;
 #[cfg(test)]
 mod snapshot_tests;
 #[cfg(test)]
+mod tabs_access_tests;
+#[cfg(test)]
 mod tabs_dialog_tests;
 #[cfg(test)]
 mod tabs_list_tests;

@@ -1,6 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
 Button "Show toolbar"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "Show left panel"
 Button "Show commit details panel"
@@ -16,8 +20,6 @@ Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
 painted:
-  "demo"
-  "api-server"
   "Branch / tag"
   "Graph"
   "Message"

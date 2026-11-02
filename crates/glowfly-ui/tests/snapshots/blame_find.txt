@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -69,7 +73,6 @@ Button "Select 35b5b87 on the graph"
 Button "Select ed01c34 on the graph"
 Button "Select 35b5b87 on the graph"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

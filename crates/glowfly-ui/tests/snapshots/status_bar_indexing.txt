@@ -2,6 +2,10 @@ window 1400x820
 Label "Glowfly 0.1.0"
 Label "Indexing history: 1200 of about 5000 commits"
 ProgressIndicator
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -79,7 +83,6 @@ Button "Initial commit"
 Button "Load more"
 Label "Showing the newest 7 commits."
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

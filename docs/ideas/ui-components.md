@@ -325,3 +325,10 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Translate the safe.directory dialog and the Publish dialog strings
 - A Copy button inside Details disclosures
 - Use the shared Details disclosure in the SSH host-key prompt
+
+### Icon buttons and focus
+- Name the Preferences navigation rows for screen readers (only Back is named; the others take
+  the focus and its ring but read as unnamed)
+- The terminal strip's + and × on the quiet state layers (they still pass their own hover fill)
+- Pixel goldens of the painted icons at 125 %, 150 % and 200 % (a unit test checks the plus's
+  grid at each)

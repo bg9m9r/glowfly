@@ -7,6 +7,7 @@ use crate::msg::{Msg, RepoMsg, ReposMsg};
 use crate::state::repo_scan::FoundRepo;
 use crate::state::{AppState, Modal, Tab};
 use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
@@ -58,7 +59,7 @@ fn repo_finder() {
     for label in
         ["Find repositories", "Project folders", "Add folder…", "Look again", "api-server", "billing", "docs", "scripts", "web-app"]
     {
-        assert!(h.query_by_label(label).is_some(), "{label} is shown");
+        assert!(h.query_all_by_label(label).any(|n| n.role() != Role::Tab), "{label} is shown");
     }
     assert_eq!(h.query_all_by_label("open").count(), 1, "api-server is in a tab");
     // The welcome screen under the dialog lists web-app too, starred.
@@ -90,7 +91,7 @@ fn repo_finder_folder_buttons() {
 fn repo_finder_filtered_light() {
     let mut h = harness(finder(ThemeChoice::Light, "api"), false);
     h.run();
-    assert!(h.query_by_label("api-server").is_some());
+    assert!(h.query_all_by_label("api-server").any(|n| n.role() != Role::Tab), "the row, not its tab");
     assert!(h.query_by_label("docs").is_none() && h.query_by_label("web-app").is_none());
     assert!(h.query_by_label(&format!("{} (1)", shown(&abs("src")))).is_some());
     h.check_snapshot("repo_finder_filtered_light");
@@ -120,7 +121,7 @@ fn repo_finder_scanning() {
     let mut h = harness(st, true);
     h.step();
     for label in ["Looking for repositories…", "can't be read: Access is denied."] {
-        assert!(h.query_by_label(label).is_some(), "{label} is shown");
+        assert!(h.query_all_by_label(label).any(|n| n.role() != Role::Tab), "{label} is shown");
     }
     assert!(h.query_by_label("Stopped after looking in 20000 folders. Add a folder closer to your repositories.").is_some());
     h.check_snapshot("repo_finder_scanning");

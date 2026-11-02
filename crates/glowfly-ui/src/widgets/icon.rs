@@ -6,6 +6,7 @@
 //! the bundled fonts lack (a pencil, refresh) are icons here, never text. The 40 px empty-state
 //! illustrations (`ui/empty_state_icons.rs`) are a separate set.
 
+use super::icon_snap;
 use eframe::egui::emath::TSTransform;
 use eframe::egui::layers::ShapeIdx;
 use eframe::egui::{self, Color32, Painter, Pos2, Stroke, pos2, vec2};
@@ -136,15 +137,29 @@ pub const STROKE: f32 = 1.6;
 pub const SIZE_SM: f32 = 14.0;
 pub const SIZE_MD: f32 = 16.0;
 const SIZE_LG: f32 = 20.0;
+/// The plus's arms either side of its centre, at `SIZE_LG`.
+const PLUS_ARM: f32 = 5.0;
 
+/// `icon` drawn `SIZE_LG` across, centred on `c` moved onto the pixel grid (`icon_snap`).
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
-    paint_icon_stroke(p, c, icon, Stroke::new(STROKE, col));
+    paint_icon_sized(p, c, icon, col, SIZE_LG);
 }
 
 /// `icon` drawn `size` px across instead of the usual 20, its lines still `STROKE` wide: drawn
-/// at 20 px with thicker lines, then the shapes it added are scaled about `c`.
+/// at 20 px with thicker lines, then the shapes it added are scaled about `c`. `c` is first
+/// moved onto the pixel grid for the line width, and the plus is drawn at its size with its
+/// ends on whole pixels too, so it never looks off-centre in its button.
 pub fn paint_icon_sized(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f32) {
+    let c = icon_snap::snap_centre(c, STROKE, p.ctx().pixels_per_point());
     let scale = size / SIZE_LG;
+    if icon == Icon::Plus {
+        icon_snap::paint_plus(p, c, PLUS_ARM * scale, Stroke::new(STROKE, col));
+        return;
+    }
+    if scale == 1.0 {
+        paint_icon_stroke(p, c, icon, Stroke::new(STROKE, col));
+        return;
+    }
     let layer = p.layer_id();
     let start = p.ctx().graphics(|g| g.get(layer).map_or(ShapeIdx(0), |l| l.next_idx()));
     paint_icon_stroke(p, c, icon, Stroke::new(STROKE / scale, col));

@@ -1,5 +1,9 @@
 window 1800x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -84,7 +88,6 @@ Label "After"
 Label "Can't preview this image"
 Label "17 bytes"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

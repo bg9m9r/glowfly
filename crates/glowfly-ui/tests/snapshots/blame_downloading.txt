@@ -3,6 +3,10 @@ Label "Glowfly 0.1.0"
 Button "Cancel"
 Label "Download file contents…"
 ProgressIndicator
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -59,7 +63,6 @@ Label "Downloading the contents of src/main.rs…"
 Label "This repository is a partial clone: file contents come from origin when they are first needed."
 Button "Cancel"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

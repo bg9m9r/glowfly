@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -71,7 +75,6 @@ Label "3 lines"
 Label "·"
 Label "Deleted by this commit; this is its last version"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

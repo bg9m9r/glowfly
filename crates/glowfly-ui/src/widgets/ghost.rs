@@ -83,14 +83,22 @@ pub fn ghost_with(
 
 /// A ghost button of `size` (an icon and a label, or the icon alone) at `rect`, painted clipped
 /// to `clip`, over whatever was laid out there (a graph row): created after that, it takes the
-/// clicks there. `name` is for screen readers.
+/// clicks there, on at least its size's hit area around `rect` (a Compact one paints less than
+/// that), kept inside `clip`. `name` is for screen readers.
 #[allow(clippy::too_many_arguments)]
 pub fn ghost_at(ui: &Ui, id: Id, rect: Rect, clip: Rect, size: ControlSize, icon: Icon, label: Option<&str>, name: &str) -> Response {
-    let resp = ui.interact(rect, id, Sense::click());
+    let resp = ui.interact(hit_area(rect, clip, size.metrics().hit), id, Sense::click());
     let look = Look { enabled: true, press: Press::of(resp.hovered(), resp.is_pointer_button_down_on(), false), focused: resp.has_focus() };
     paint(&ui.painter().with_clip_rect(clip), rect, size, Some(icon), label, look);
     access::name_button(&resp, true, name);
     resp.on_hover_cursor(CursorIcon::PointingHand)
+}
+
+/// The hit area of a target painted at `rect`: grown to at least `hit` square about its centre,
+/// then kept inside `clip`.
+fn hit_area(rect: Rect, clip: Rect, hit: f32) -> Rect {
+    let grow = ((vec2(hit, hit) - rect.size()) / 2.0).max(vec2(0.0, 0.0));
+    rect.expand2(grow).intersect(clip)
 }
 
 /// What state a ghost control is drawn in.
@@ -156,4 +164,22 @@ pub fn close_view(ui: &mut Ui, keys: &Keymap, t: Lang, name: &str) -> Response {
         t,
         Tip::new(t.tr("common.close.button")).keys(BindingId::CloseView),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_compact_ghost_takes_clicks_on_its_whole_hit_area() {
+        let clip = Rect::from_min_max(pos2(0.0, 0.0), pos2(200.0, 40.0));
+        let square = Rect::from_center_size(pos2(100.0, 20.0), vec2(22.0, 22.0));
+        let hit = hit_area(square, clip, ControlSize::Compact.metrics().hit);
+        assert_eq!((hit.size(), hit.center()), (vec2(28.0, 28.0), square.center()), "grown about its centre");
+        let at_edge = square.translate(vec2(89.0, 0.0));
+        assert_eq!(hit_area(at_edge, clip, 28.0).right(), 200.0, "kept inside its cell");
+        assert!(hit_area(at_edge, clip, 28.0).width() >= tokens::HIT_MIN);
+        let wide = Rect::from_center_size(pos2(100.0, 20.0), vec2(120.0, 22.0));
+        assert_eq!(hit_area(wide, clip, 28.0).width(), 120.0, "never narrower than it paints");
+    }
 }

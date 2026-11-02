@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -63,7 +67,6 @@ Label "1 match"
 TextInput "Find in file" = "reading_20"
 Button "Select 07ddc36 on the graph"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

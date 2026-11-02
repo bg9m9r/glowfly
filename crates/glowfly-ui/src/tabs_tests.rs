@@ -26,6 +26,18 @@ pub(super) fn tab_centre(h: &Harness<'_, (AppState, Vec<Msg>)>, i: usize) -> Pos
     super::tabs::tab_rects(&h.ctx)[i].center()
 }
 
+/// How many times `text` is painted in `h`'s last frame.
+fn painted(h: &Harness<'_, (AppState, Vec<Msg>)>, text: &str) -> usize {
+    fn count(shape: &egui::Shape, text: &str) -> usize {
+        match shape {
+            egui::Shape::Text(t) => usize::from(t.galley.text() == text),
+            egui::Shape::Vec(v) => v.iter().map(|s| count(s, text)).sum(),
+            _ => 0,
+        }
+    }
+    h.output().shapes.iter().map(|c| count(&c.shape, text)).sum()
+}
+
 pub(super) fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<(PointerButton, bool)>) {
     let events = &mut h.input_mut().events;
     events.push(Event::PointerMoved(pos));
@@ -144,6 +156,7 @@ fn grouped_tabs_have_a_strip() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("tabs_grouped");
+    assert_eq!(painted(&h, "api"), 2, "group B's chip and its first tab");
     // The chip before the first group's first tab names the group on hover.
     let slot = super::tabs::tab_rects(&h.ctx)[0];
     pointer(&mut h, pos2(slot.left() + 10.0, slot.center().y), None);
@@ -178,7 +191,9 @@ fn dragging_a_grouped_tab_out_moves_its_group() {
     let over = tab_centre(&h, 3);
     drag_to(&mut h, 3, false);
     assert!(h.state().1.is_empty(), "nothing is sent while dragging");
-    h.check_snapshot("tabs_group_dragging");
+    // The tabs are named in the tree either way: the chips aren't painted while dragging, so
+    // "api" is painted once (its tab), not twice (its tab and group B's chip).
+    assert_eq!(painted(&h, "api"), 1, "no group chips while dragging");
     pointer(&mut h, over, Some((PointerButton::Primary, false)));
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 3 }))), "the raw slot is sent");
@@ -203,7 +218,8 @@ fn a_grouped_tab_names_its_repository_on_hover() {
             h.run();
         }
         let name = if grouped { "demo-hotfix" } else { "notes" };
-        assert!(h.query_by_label_contains(name).is_some(), "tab {i} shows its path");
+        let tip = h.query_all_by_label_contains(name).any(|n| n.role() != egui::accesskit::Role::Tab);
+        assert!(tip, "tab {i} shows its path");
         assert_eq!(h.query_by_label_contains("Repository: demo").is_some(), grouped, "tab {i}");
         drop(h);
         remove_fixture(&dir);

@@ -1,5 +1,9 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+Tab "demo" [selected]
+Button "Close tab demo"
+Tab "api-server"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -64,7 +68,6 @@ Button "Show in Explorer"
 Button "Open in external diff tool"
 Label "PNG image · 160 × 100 · 961 bytes"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

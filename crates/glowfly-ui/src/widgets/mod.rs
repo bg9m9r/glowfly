@@ -12,7 +12,8 @@
 //! a button with the keyboard too in `menu_open.rs`. The toolbar's buttons, toggles, split buttons, caret,
 //! borderless groups and the dividers between them are in `tool.rs`, and the flush segments of a
 //! segment bar (the pickers, a split) in `segment_bar.rs`. The tab bars' painted close × and new-tab + are in
-//! `tab_glyph.rs`, and the quiet, clickable chips of the commit details (its
+//! `tab_glyph.rs`, glyphs moved onto the pixel grid in `icon_snap.rs`, a quiet target a view
+//! lays out itself (a tab, the title bar's menu button) in `quiet_target.rs`, and the quiet, clickable chips of the commit details (its
 //! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
 //! text field is `text_field.rs`, and its label-field-help group `field_group.rs`. The button
@@ -32,6 +33,7 @@ pub mod field_group;
 pub mod form_message;
 pub mod ghost;
 pub mod icon;
+mod icon_snap;
 pub mod menu;
 pub mod menu_columns;
 pub mod menu_name;
@@ -42,6 +44,7 @@ pub mod menu_split;
 pub mod menu_submenu;
 mod menu_submenu_keyed;
 pub mod quiet_chip;
+pub mod quiet_target;
 pub mod reason;
 pub mod row_fill;
 pub mod row_menu;
@@ -127,7 +130,8 @@ pub fn initials(name: &str) -> String {
     }
 }
 
-/// Preferences navigation row: icon + label in body text, highlighted when selected.
+/// Preferences navigation row: icon + label in body text, highlighted when selected, with the
+/// inset focus ring while it has the keyboard focus.
 pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), type_scale::BODY + 20.0), Sense::click());
     let p = ui.painter();
@@ -148,6 +152,10 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> R
         type_scale::font(type_scale::BODY),
         if selected { color::strong() } else { color::text() },
     );
+    // Tab reaches every row: the ring follows the row's square fill.
+    if resp.has_focus() {
+        crate::ui::theme::tokens::focus_ring_inset(p, rect, 0);
+    }
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
@@ -158,33 +166,31 @@ pub fn icon_button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
     ui.add(buttons::icon_only(icon, tooltip).size(ControlSize::Small).enabled(ui.is_enabled()).why(Some(tooltip)))
 }
 
-/// A small clickable painted icon with a tooltip, for icons the fonts lack (star, cross).
+/// A small clickable painted icon with a tooltip, for icons the fonts lack (star, cross): a
+/// Small quiet icon-only target (`ControlSize::Small`, 24 x 24, its size's icon in `col`), lit
+/// over its whole square on hover and ringed while focused, named and tipped `tooltip`.
 pub fn small_icon(ui: &mut Ui, icon: Icon, tooltip: &str, col: Color32) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::click());
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tooltip));
-    if resp.hovered() {
-        ui.painter().rect_filled(rect, CornerRadius::same(radius::SM), color::hover_layer());
-    }
-    paint_icon(ui.painter(), rect.center(), icon, col);
-    resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(tooltip)
+    quiet_icon(ui, icon, tooltip, |_| col)
 }
 
-/// A small weak cross that removes something (a key in Preferences > Keyboard): a 14 px icon in
-/// a 20 px box, weak at rest, strong on the hover layer when hovered or focused, named and
-/// tipped `name`.
+/// A small weak cross that removes something (a key in Preferences > Keyboard, a toast): a
+/// Small quiet icon-only target, weak at rest and strong on the hover layer when hovered or
+/// focused, named and tipped `name`.
 pub fn remove_icon(ui: &mut Ui, name: &str) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(20.0, 20.0), Sense::click());
+    quiet_icon(ui, Icon::Close, name, |lit| if lit { color::strong() } else { color::weak() })
+}
+
+/// A Small quiet icon-only target showing `icon` in `ink(lit)` (lit: hovered, held or focused),
+/// named and tipped `name`.
+fn quiet_icon(ui: &mut Ui, icon: Icon, name: &str, ink: impl Fn(bool) -> Color32) -> Response {
+    let size = ControlSize::Small;
+    let m = size.metrics();
+    let (rect, resp) = ui.allocate_exact_size(vec2(m.h, m.h), Sense::click());
     super::access::name_button(&resp, true, name);
+    let state = quiet_target::State::of(&resp, false);
     let p = ui.painter();
-    let lit = resp.hovered() || resp.has_focus();
-    if lit {
-        p.rect_filled(rect, CornerRadius::same(radius::SM), color::hover_layer());
-    }
-    let ink = if lit { color::strong() } else { color::weak() };
-    paint_icon_sized(p, rect.center(), Icon::Close, ink, icon::SIZE_SM);
-    if resp.has_focus() {
-        crate::ui::theme::tokens::focus_ring_inset(p, rect, radius::SM);
-    }
+    quiet_target::paint(p, rect, CornerRadius::same(m.radius), size, state);
+    paint_icon_sized(p, rect.center(), icon, ink(state.lit() || state.focused), m.icon);
     resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(name)
 }
 
