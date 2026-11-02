@@ -77,6 +77,7 @@ Button "Datei bereitstellen"
 Button "Diff schließen"
 Button "Hunk bereitstellen"
 Button "Hunk verwerfen"
+Document "Diff von app.txt"
 painted:
   "api-server"
   "Repository"

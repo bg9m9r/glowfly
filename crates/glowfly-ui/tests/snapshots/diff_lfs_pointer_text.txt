@@ -76,6 +76,7 @@ Button "Close diff"
 Label "Showing the Git LFS pointer text."
 Button "Show summary"
 Button "Revert hunk"
+Document "Diff of art/hero.psd"
 painted:
   "api-server"
   "Repository"

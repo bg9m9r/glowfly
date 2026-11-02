@@ -56,6 +56,7 @@ mod fsmonitor;
 mod graph_cache;
 mod history;
 mod history_forward;
+mod hunk_copy;
 mod index;
 mod index_ext;
 mod index_memo;
@@ -146,6 +147,7 @@ pub use fsmonitor::{
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use history_forward::name_at_head;
+pub use hunk_copy::hunk_patch;
 pub use index::{
     WholeDiscard, apply_hunk, discard_file, discard_untracked, stage_all, stage_file, stage_paths, unstage_paths, whole_discard,
 };

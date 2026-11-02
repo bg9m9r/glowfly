@@ -138,3 +138,30 @@ fn lines_picked_in_the_gutter_keep_the_text() {
     run(&mut st, Msg::Diff(DiffMsg::ClearLineSelection));
     assert_eq!(st.view.diff_text, kept);
 }
+
+#[test]
+fn select_all_takes_every_line_of_the_side_asked_for() {
+    let target = commit_file("app.txt");
+    let mut st = with_text(&target);
+    st.settings.diff_layout = DiffLayout::Split;
+    run(&mut st, Msg::Diff(DiffMsg::SelectAllText { side: TextSide::New }));
+    let sel = st.view.diff_text.clone().expect("everything on the new side");
+    let at = |line, col| TextPos { line: LineRef::Hunk { hunk: 0, line }, col };
+    // ` a` to the end of `+d`, the new side's last line, keyed to the load shown.
+    assert_eq!((sel.anchor, sel.head, sel.side), (at(0, 0), at(3, 1), TextSide::New));
+    assert_eq!(sel.key, (target, st.session.diff.shown_gen));
+    // The old side ends at `-b`.
+    run(&mut st, Msg::Diff(DiffMsg::SelectAllText { side: TextSide::Old }));
+    assert_eq!(st.view.diff_text.as_ref().map(|s| s.head), Some(at(1, 1)));
+}
+
+#[test]
+fn select_all_needs_a_side_the_layout_has() {
+    let mut st = with_text(&commit_file("app.txt"));
+    let kept = st.view.diff_text.clone();
+    // The inline layout has no new side: nothing changes.
+    run(&mut st, Msg::Diff(DiffMsg::SelectAllText { side: TextSide::New }));
+    assert_eq!(st.view.diff_text, kept);
+    run(&mut st, Msg::Diff(DiffMsg::SelectAllText { side: TextSide::Inline }));
+    assert_eq!(st.view.diff_text.as_ref().map(|s| s.head.line), Some(LineRef::Hunk { hunk: 0, line: 3 }));
+}

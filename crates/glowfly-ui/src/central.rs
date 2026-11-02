@@ -22,8 +22,8 @@ use glowfly_model::pull_request::PullRequestMsg;
 
 /// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
 /// keyboard is outside the shell), Preferences (on the Save / Revert bar's buttons, the
-/// page's unsaved edits instead), the tour, the dashboard, the conflict view, the blame view, a
-/// pull request's unposted code comment (cancelled, with a confirmation once edited), the
+/// page's unsaved edits instead), the tour, the dashboard, the conflict view, the blame view, the
+/// text selected in a diff's code, a pull request's unposted code comment (cancelled, with a confirmation once edited), the
 /// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Range-diff view, the operation journal, the Git
 /// Flow panel, then a multi-selection or a
@@ -78,6 +78,9 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.session.blame.view.is_some() {
         msgs.push(Msg::Blame(BlameMsg::Close));
+    } else if st.view.diff_text.is_some() && (st.diff_or_download() || st.session.history.view.is_some()) {
+        // In a diff, Esc first drops the text selected in its code, then its lines, then the rest.
+        msgs.push(Msg::Diff(DiffMsg::ClearTextSelection));
     } else if crate::state::pull_request_line_comment::esc_cancels(st) {
         msgs.push(Msg::PullRequest(PullRequestMsg::LineComment(glowfly_model::pull_request::line_comment::LineCommentMsg::Cancel)));
     } else if st.session.history.view.is_some() && !st.view.diff_lines.is_empty() {

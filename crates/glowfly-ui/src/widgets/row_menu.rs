@@ -2,11 +2,12 @@
 //! right end) stays in view while the menu is open, in the shared menu style (`menu.rs`).
 //! Shift+F10 opens one from the keyboard, below its row, on the focused row or the row its view
 //! has selected (`row_menu_for`), its first item focused (`menu_keys`; egui reports no Menu
-//! key). `menu::context_menu` shares the code, at the pointer.
+//! key). `menu::context_menu` shares the code, at the pointer, and so does
+//! `menu::context_menu_at` for a view drawing its rows under one response (`Opens`).
 
 use crate::ui::menu_keys;
 use eframe::egui::menu::{BarState, MenuRoot};
-use eframe::egui::{Id, InnerResponse, Rect, Response, Ui, Vec2, pos2};
+use eframe::egui::{Context, Id, InnerResponse, Rect, Response, Ui, Vec2, pos2};
 
 /// Space between the row's edge and the menu.
 const GAP: f32 = 2.0;
@@ -42,18 +43,44 @@ impl RowMenuExt for Response {
 /// drawn at `rect.min`, so rewriting it moves the menu. Shift+F10 opens it while `resp` has the
 /// focus or is the `target`.
 pub(super) fn show(resp: &Response, target: bool, row: bool, add_contents: impl FnOnce(&mut Ui)) -> Option<InnerResponse<()>> {
+    show_at(resp, Opens { target, row, pointer: true, keyed_at: None }, add_contents)
+}
+
+/// Where and how a menu opens: Shift+F10 opens it while its response has the focus or is the
+/// keyboard's `target`, below `keyed_at` (or the response); it stays below its row with `row`;
+/// a right-click opens it only where `pointer` says (elsewhere it closes it).
+pub(super) struct Opens {
+    pub target: bool,
+    pub row: bool,
+    pub pointer: bool,
+    pub keyed_at: Option<Rect>,
+}
+
+/// Whether the right-click menu open now is the one `id` opened.
+pub(super) fn open_for(ctx: &Context, id: Id) -> bool {
+    BarState::load(ctx, Id::new(CONTEXT_MENU_ID)).as_ref().is_some_and(|r| r.id == id)
+}
+
+/// `show`, opening as `o` says.
+pub(super) fn show_at(resp: &Response, o: Opens, add_contents: impl FnOnce(&mut Ui)) -> Option<InnerResponse<()>> {
+    let Opens { target, row, pointer, keyed_at } = o;
     let ctx = &resp.ctx;
     menu_keys::capture(ctx);
     let id = Id::new(CONTEXT_MENU_ID);
     let mut bar = BarState::load(ctx, id);
     let was_ours = bar.as_ref().is_some_and(|r| r.id == resp.id);
-    let rect = ctx.layer_transform_to_global(resp.layer_id).map_or(resp.rect, |t| t * resp.rect);
+    let global = |r: Rect| ctx.layer_transform_to_global(resp.layer_id).map_or(r, |t| t * r);
+    let rect = global(resp.rect);
     let keyed = !was_ours && (target || resp.has_focus()) && menu_keys::take_menu_key(ctx);
     if keyed {
-        **bar = Some(MenuRoot::new(pos2(rect.left(), rect.bottom() + GAP), resp.id));
+        let at = keyed_at.map_or(rect, global);
+        **bar = Some(MenuRoot::new(pos2(at.left(), at.bottom() + GAP), resp.id));
     }
     menu_keys::opener(ctx, resp.has_focus().then_some(resp.id));
     super::menu_open::guarded(ctx, &mut bar, |bar| MenuRoot::context_click_interaction(resp, bar));
+    if !pointer && resp.secondary_clicked() && bar.as_ref().is_some_and(|r| r.id == resp.id) {
+        **bar = None;
+    }
     if let Some(root) = bar.as_ref().filter(|r| r.id == resp.id && row) {
         let screen = ctx.screen_rect();
         let mut ms = root.menu_state.write();

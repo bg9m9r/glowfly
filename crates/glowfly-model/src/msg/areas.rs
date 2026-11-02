@@ -33,7 +33,7 @@ macro_rules! msg_areas {
             /// Author avatars (update/avatars.rs).
             Avatars(crate::msg::AvatarMsg) "avatars" => avatars::handle(fx);
             /// The open diff's layout, folds, line selection and highlighting (update/diff.rs).
-            Diff(crate::msg::DiffMsg) "diff" => diff::handle(fx);
+            Diff(crate::msg::DiffMsg) "diff" => diff::handle(now, fx);
             /// The conflict view (update/conflict.rs).
             Conflict(crate::msg::ConflictMsg) "conflict" => conflict::handle(fx);
             /// A file's history (update/history.rs).

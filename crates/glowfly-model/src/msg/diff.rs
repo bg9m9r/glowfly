@@ -68,6 +68,23 @@ pub enum DiffMsg {
     ClearLineSelection,
     /// Drop the text selected in the diff's code (the line selection stays).
     ClearTextSelection,
+    /// Ctrl+A in the diff: select every line `side` shows (`diff_text::select_all`); in split
+    /// view the side last pressed in, the new side until then.
+    SelectAllText {
+        side: crate::state::diff_text::TextSide,
+    },
+    /// Copy hunk as patch on hunk `index` of the diff shown at `generation` (`hunk_ops_gen`):
+    /// read again from the repository (`Effect::CopyHunkPatch`), so the patch has the file's own
+    /// bytes.
+    CopyHunkPatch {
+        index: usize,
+        generation: u64,
+    },
+    /// The patch text of a Copy hunk as patch, or why it couldn't be read; copied when it is
+    /// UTF-8 text.
+    HunkPatchRead {
+        result: Result<Vec<u8>, String>,
+    },
     /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
     /// at `generation`, each only where it was pending. Applied only while that diff is still on
     /// screen.
@@ -118,6 +135,9 @@ impl DiffMsg {
             | Self::EndLineDrag
             | Self::ClearLineSelection
             | Self::ClearTextSelection
+            | Self::SelectAllText { .. }
+            | Self::CopyHunkPatch { .. }
+            | Self::HunkPatchRead { .. }
             | Self::DiffHighlighted { .. } => None,
         }
     }

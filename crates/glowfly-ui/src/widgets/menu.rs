@@ -79,6 +79,25 @@ pub fn context_menu(resp: &Response, add_contents: impl FnOnce(&mut Ui)) -> Opti
     super::row_menu::show(resp, false, false, add_contents)
 }
 
+/// `context_menu` for a view that draws its rows under the one response `resp` (the diff's
+/// code): a right-click opens it at the pointer only where `on_row` says (over a line; a
+/// right-click elsewhere closes it), and Shift+F10, while `keyed_at` names a row and the view
+/// has the keyboard, opens it below that row.
+pub fn context_menu_at(
+    resp: &Response,
+    on_row: bool,
+    keyed_at: Option<Rect>,
+    add_contents: impl FnOnce(&mut Ui),
+) -> Option<InnerResponse<()>> {
+    let o = super::row_menu::Opens { target: keyed_at.is_some(), row: false, pointer: on_row, keyed_at };
+    super::row_menu::show_at(resp, o, add_contents)
+}
+
+/// Whether the right-click menu open now is the one `resp` opened.
+pub fn context_menu_open(resp: &Response) -> bool {
+    super::row_menu::open_for(&resp.ctx, resp.id)
+}
+
 /// A submenu row inside a menu (or, outside one, a button with its dropdown), its contents in
 /// the menu style. Inside a menu its title starts at the label column and its painted chevron
 /// sits in the chevron slot (`menu_columns`), which every row of the menu then keeps. It opens

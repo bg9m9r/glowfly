@@ -4,8 +4,10 @@
 //! the pointer drags, as the terminal's selection is written; update clears it when another
 //! diff, or another load of it, is shown and when the layout switches. Copying is `copy`, a
 //! pure function of the lines shown: no line numbers or signs, tabs kept, `\n` between lines.
+//! The row menu's Copy lines is `copy_lines`, and Ctrl+A's selection `select_all`.
 
-use glowfly_core::repo::DiffTarget;
+use glowfly_core::repo::{DiffTarget, FileDiff};
+use glowfly_core::whole_file::{self, Expanded, WholeFile};
 
 /// A line of the diff as the view shows it: line `line` of hunk `hunk`, an unchanged line
 /// filled in between hunks in the hunk view (`line` of the gap above hunk `hunk`), or line
@@ -158,6 +160,12 @@ pub fn word_at(text: &str, col: usize) -> (usize, usize) {
 /// or hunk headers. With `signs`, each line starts with its origin (`+`, `-` or a space).
 /// Empty when an end isn't shown or nothing is selected.
 pub fn copy(shown: &[ShownLine], sel: &TextSel, signs: bool) -> String {
+    copy_at_most(shown, sel, signs, usize::MAX)
+}
+
+/// `copy` cut at `max` characters, reading no further than that: the screen reader's value,
+/// built every frame, stays cheap after Ctrl+A on a long file.
+pub fn copy_at_most(shown: &[ShownLine], sel: &TextSel, signs: bool, max: usize) -> String {
     let order = |r: LineRef| shown.iter().position(|l| l.line == r);
     let text = |r: LineRef| shown.iter().find(|l| l.line == r).map(|l| l.text);
     let Some(span) = sel.span(order, text) else { return String::new() };
@@ -165,18 +173,76 @@ pub fn copy(shown: &[ShownLine], sel: &TextSel, signs: bool) -> String {
         return String::new();
     }
     let mut out = String::new();
+    let mut n = 0;
+    let mut push = |out: &mut String, c: char| {
+        if n < max {
+            out.push(c);
+            n += 1;
+        }
+        n < max
+    };
     for (i, l) in shown.iter().enumerate().take(span.end_at + 1).skip(span.start_at) {
         let from = if i == span.start_at { span.start.col } else { 0 };
         let to = if i == span.end_at { span.end.col } else { usize::MAX };
-        if signs {
-            out.push(if matches!(l.origin, '+' | '-') { l.origin } else { ' ' });
-        }
-        out.extend(l.text.chars().skip(from).take(to.saturating_sub(from)));
-        if i < span.end_at {
-            out.push('\n');
+        let sign = signs.then_some(if matches!(l.origin, '+' | '-') { l.origin } else { ' ' });
+        let newline = (i < span.end_at).then_some('\n');
+        let mut chars = sign.into_iter().chain(l.text.chars().skip(from).take(to.saturating_sub(from))).chain(newline);
+        if !chars.all(|c| push(&mut out, c)) {
+            break;
         }
     }
     out
+}
+
+/// The whole lines under `sel` among `shown` (with no selection, or an empty one, the line
+/// `at`), each ending in `\n`, the last too: the row menu's Copy lines. Empty when neither is
+/// shown.
+pub fn copy_lines(shown: &[ShownLine], sel: Option<&TextSel>, at: Option<LineRef>) -> String {
+    let order = |r: LineRef| shown.iter().position(|l| l.line == r);
+    let text = |r: LineRef| shown.iter().find(|l| l.line == r).map(|l| l.text);
+    let range = match sel.and_then(|s| s.span(order, text)).filter(|s| !s.is_empty()) {
+        Some(s) => s.start_at..=s.end_at,
+        None => match at.and_then(order) {
+            Some(i) => i..=i,
+            None => return String::new(),
+        },
+    };
+    shown[range].iter().map(|l| format!("{}\n", l.text)).collect()
+}
+
+/// Every line `side` shows of `diff`, selected (Ctrl+A): from the start of its first to the end
+/// of its last. In the whole-file view (`whole`) lines come from its one hunk and the folds `ex`
+/// leaves closed hide theirs; the hunk view's gaps lie between hunks, never at either end. Notes
+/// such as "No newline at end of file" aren't lines. `None` when the side shows none.
+pub fn select_all(diff: &FileDiff, whole: Option<&WholeFile>, ex: &Expanded, side: TextSide, key: (DiffTarget, u64)) -> Option<TextSel> {
+    let on_side = |o: char| match side {
+        TextSide::Inline => !matches!(o, '<' | '>' | '='),
+        TextSide::Old => matches!(o, ' ' | '-'),
+        TextSide::New => matches!(o, ' ' | '+'),
+    };
+    let lines: Vec<(LineRef, &str)> = match whole {
+        Some(w) => {
+            let closed = whole_file::collapsed(w, ex);
+            let hidden = |i: usize| closed.iter().any(|f| (f.start..f.end).contains(&i));
+            let all = w.diff.hunks.first().map_or(&[][..], |h| h.lines.as_slice());
+            all.iter()
+                .enumerate()
+                .filter(|(i, l)| on_side(l.origin) && !hidden(*i))
+                .map(|(i, l)| (LineRef::Whole { line: i }, l.text.as_str()))
+                .collect()
+        }
+        None => diff
+            .hunks
+            .iter()
+            .enumerate()
+            .flat_map(|(h, hunk)| hunk.lines.iter().enumerate().map(move |(i, l)| (h, i, l)))
+            .filter(|(_, _, l)| on_side(l.origin))
+            .map(|(hunk, line, l)| (LineRef::Hunk { hunk, line }, l.text.as_str()))
+            .collect(),
+    };
+    let (&(first, _), &(last, text)) = (lines.first()?, lines.last()?);
+    let head = TextPos { line: last, col: text.chars().count() };
+    Some(TextSel { head, ..TextSel::at(TextPos { line: first, col: 0 }, Unit::Char, side, key) })
 }
 
 #[cfg(test)]

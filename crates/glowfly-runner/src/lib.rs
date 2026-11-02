@@ -51,6 +51,7 @@ mod git_ops;
 mod guard;
 mod highlight;
 mod history;
+mod hunk_patch;
 mod index;
 mod index_disk;
 mod index_query;

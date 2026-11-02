@@ -69,6 +69,7 @@ Button "Open with default app" [disabled]
 Button "Show in Explorer" [disabled]
 Button "Open in external diff tool"
 Button "Revert hunk"
+Document "Diff of src/lib.rs"
 painted:
   "api-server"
   "Repository"

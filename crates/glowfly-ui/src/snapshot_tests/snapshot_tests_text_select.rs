@@ -18,10 +18,10 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
 
-type H = Harness<'static, (AppState, Vec<Msg>)>;
+pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The left edge of the diff's rows: the sidebar's edge.
-const ROWS_LEFT: f32 = 261.0;
+pub(super) const ROWS_LEFT: f32 = 261.0;
 /// The header buttons' gap to the view's right edge (`hunk_header`).
 const BUTTON_GAP: f32 = 8.0;
 
@@ -29,16 +29,16 @@ const BUTTON_GAP: f32 = 8.0;
 /// `+fix the build`, `+on Windows`): inline, line i is i + 1 rows below the header; split,
 /// `-fix` pairs with `+fix the build`, so `+on Windows` is on the row after, and the new
 /// side's text starts past the middle.
-struct Grid {
-    header_y: f32,
-    row_h: f32,
-    char_w: f32,
-    text_x: [f32; 2],
+pub(super) struct Grid {
+    pub(super) header_y: f32,
+    pub(super) row_h: f32,
+    pub(super) char_w: f32,
+    pub(super) text_x: [f32; 2],
     split: bool,
 }
 
 impl Grid {
-    fn of(h: &H, layout: DiffLayout) -> Self {
+    pub(super) fn of(h: &H, layout: DiffLayout) -> Self {
         let st = &h.state().0;
         let style = crate::ui::diff::DiffStyle::new(&st.settings);
         // The hunk's action at the row's right end, which names the lines once some are picked.
@@ -56,7 +56,7 @@ impl Grid {
     }
 
     /// Character boundary `col` of line `line`, on the new side in split view.
-    fn at(&self, line: usize, col: usize) -> Pos2 {
+    pub(super) fn at(&self, line: usize, col: usize) -> Pos2 {
         let row = if self.split && line == 3 {
             2
         } else if self.split && line == 2 {
@@ -74,7 +74,7 @@ fn button(h: &mut H, pos: Pos2, pressed: bool, modifiers: Modifiers) {
 }
 
 /// Presses at `from`, drags to `to` in a few steps and releases there.
-fn drag(h: &mut H, from: Pos2, to: Pos2) {
+pub(super) fn drag(h: &mut H, from: Pos2, to: Pos2) {
     h.input_mut().events.push(Event::PointerMoved(from));
     button(h, from, true, Modifiers::NONE);
     h.run();
@@ -90,7 +90,7 @@ fn drag(h: &mut H, from: Pos2, to: Pos2) {
 /// frame, longer than a double-click takes, so each event's frame is given a clock that moves
 /// on a hundredth of a second, starting ten seconds after the frames before (so the clicks
 /// start a new count).
-fn clicks(h: &mut H, at: Pos2, n: usize, modifiers: Modifiers) {
+pub(super) fn clicks(h: &mut H, at: Pos2, n: usize, modifiers: Modifiers) {
     clicks_with(h, at, &vec![modifiers; n]);
 }
 
@@ -126,7 +126,7 @@ fn picked_lines(h: &H) -> bool {
     h.state().1.iter().any(|m| matches!(m, Msg::Diff(DiffMsg::StartLineDrag { .. } | DiffMsg::SelectDiffLine { .. })))
 }
 
-fn open(
+pub(super) fn open(
     name: &str,
     theme: ThemeChoice,
     layout: DiffLayout,

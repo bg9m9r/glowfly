@@ -85,6 +85,7 @@ Button "Discard hunk"
 Button "Show the 3 unchanged lines above"
 Button "Stage hunk"
 Button "Discard hunk"
+Document "Diff of gaps.rs"
 painted:
   "api-server"
   "Repository"

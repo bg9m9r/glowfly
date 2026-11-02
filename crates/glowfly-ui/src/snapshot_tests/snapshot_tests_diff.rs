@@ -5,6 +5,8 @@
 use super::snapshot_tests::{git, render, with_repo};
 
 // Declared here to keep them beside the diff snapshots they extend.
+#[path = "snapshot_tests_diff_row_menu.rs"]
+mod snapshot_tests_diff_row_menu;
 #[path = "snapshot_tests_empty_state.rs"]
 mod snapshot_tests_empty_state;
 #[path = "snapshot_tests_gaps.rs"]

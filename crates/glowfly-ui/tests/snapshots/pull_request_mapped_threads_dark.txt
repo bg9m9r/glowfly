@@ -117,6 +117,7 @@ Button "Open in external diff tool"
 Button "Close diff"
 Button "Revert hunk"
 Button "1 comment on this line"
+Document "Diff of search.txt"
 painted:
   "api-server"
   "Repository"

@@ -68,6 +68,7 @@ Button "Show in Explorer"
 Button "Open in external diff tool"
 Button "Close diff"
 Button "Revert hunk"
+Document "Diff of app.txt"
 painted:
   "api-server"
   "Repository"

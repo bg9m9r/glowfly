@@ -65,6 +65,7 @@ Button "Open in external diff tool"
 Button "Revert hunk"
 Button "Show the 6 unchanged lines above"
 Button "Revert hunk"
+Document "Diff of wrap.rs"
 painted:
   "api-server"
   "Repository"

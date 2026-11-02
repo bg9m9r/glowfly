@@ -144,7 +144,7 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
 
 /// How many lines Comment on N lines covers in hunk `h`: the commentable lines from the first
 /// selected one to the last; 0 when comments can't start here or nothing is selected.
-fn comment_lines(v: &DiffView, h: usize) -> usize {
+pub(super) fn comment_lines(v: &DiffView, h: usize) -> usize {
     if !v.comments.is_some_and(|c| c.blocked.is_none()) {
         return 0;
     }

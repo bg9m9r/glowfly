@@ -73,6 +73,7 @@ Button "Close diff"
 Button "Revert hunk"
 Button "Fold 5 unchanged lines"
 Button "Revert hunk"
+Document "Diff of shapes.rs"
 painted:
   "api-server"
   "Repository"

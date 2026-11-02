@@ -79,6 +79,7 @@ Button "Stage file"
 Button "Close diff"
 Button "Stage hunk"
 Button "Discard hunk"
+Document "Diff of ws.rs"
 painted:
   "api-server"
   "Repository"

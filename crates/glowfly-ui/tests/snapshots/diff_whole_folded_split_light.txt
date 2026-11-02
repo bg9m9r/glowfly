@@ -84,6 +84,7 @@ Button "Fold 11 unchanged lines"
 Button "Stage hunk"
 Button "Discard hunk"
 Button "7 unchanged lines"
+Document "Diff of notes.txt"
 painted:
   "api-server"
   "Repository"
