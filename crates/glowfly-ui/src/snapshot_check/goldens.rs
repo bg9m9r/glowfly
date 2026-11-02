@@ -211,6 +211,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 const IMAGE_ONLY: &[&str] = &[
     // `conflict_line_picks` in Porcelain: the check marks' contrast on the light tints.
     "conflict_line_picks_light",
+    // The trust chip at rest: the same names as `toolbar_trust_waiting_dark`; only its look differs.
+    "toolbar_trust_rest_dark",
     // `hint_row_undo` in Porcelain.
     "hint_row_undo_light",
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.
