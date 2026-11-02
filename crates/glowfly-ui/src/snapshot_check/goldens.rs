@@ -121,6 +121,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("graph_shallow", Window),
     ("graph_two_commits_selected", Window),
     ("graph_search_dim", Window),
+    ("graph_search_dim_light", Window),
+    ("graph_search_dim_high_contrast_light", Window),
     ("graph_focus_inactive_dark", Window),
     ("history_table_dark", Window),
     ("history_table_light", Window),
@@ -206,6 +208,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 const IMAGE_ONLY: &[&str] = &[
     // `conflict_line_picks` in Porcelain: the check marks' contrast on the light tints.
     "conflict_line_picks_light",
+    // `graph_search_dim` in Dawn and High contrast light, for the search marks' sign-off.
+    "graph_search_dim_light",
+    "graph_search_dim_high_contrast_light",
     // `hint_row_undo` in Porcelain.
     "hint_row_undo_light",
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.

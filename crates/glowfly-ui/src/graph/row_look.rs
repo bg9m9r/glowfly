@@ -1,15 +1,18 @@
-//! A graph row's background: a faint band in its node's lane colour and the hovered branch's
-//! highlight. The selection (a fill with an accent bar along the left edge) and the lifted look
-//! of a hovered row come from `widgets::row_fill`.
+//! A graph row's background: a faint band in its node's lane colour, the hovered branch's
+//! highlight, and a search match's accent bar along the left edge (the selection's bar, when
+//! selected). The selection (a fill with that bar) and the lifted look of a hovered row come
+//! from `widgets::row_fill`. Also the inks of a row a search dims.
 
 use crate::ui::theme::color::{self, Palette};
 use crate::ui::theme::contrast::{mix, ratio, tint, unbrown};
-use eframe::egui::{Color32, Painter, Rect};
+use crate::ui::widgets::row_fill::ACCENT_BAR_W;
+use eframe::egui::{Color32, Painter, Rect, vec2};
 
 /// How far the band moves from the background toward the lane colour, at most.
 const BAND_T: f32 = 0.07;
 
 /// How one row looks.
+#[derive(Clone, Copy)]
 pub(super) struct RowLook {
     /// The node's lane colour.
     pub lane: Color32,
@@ -19,6 +22,8 @@ pub(super) struct RowLook {
     /// The graph has the keyboard focus (or nothing has): the selection shows as focused.
     pub active: bool,
     pub hovered: bool,
+    /// The row matches a search that highlights (rather than filters) the matches.
+    pub marked: bool,
 }
 
 /// Paints the row's background in `rect`, under everything else in the row.
@@ -30,6 +35,40 @@ pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
         p.rect_filled(rect, 0.0, highlight_color(band, look.lane));
     }
     crate::ui::widgets::row_fill::paint_in(p, rect, look.selected, look.active, look.hovered);
+    if look.marked && !look.selected {
+        p.rect_filled(Rect::from_min_size(rect.left_top(), vec2(ACCENT_BAR_W, rect.height())), 0.0, pal.accent);
+    }
+}
+
+/// The row's top fill, under its text: the selection's, the hover's, the branch highlight's or
+/// the band (the surface a search's find fill is worked out on).
+pub(super) fn top_fill(look: RowLook) -> Color32 {
+    let pal = color::current();
+    let band = band_color(look.lane, &pal);
+    match look {
+        RowLook { selected: true, active: true, .. } => pal.selected,
+        RowLook { selected: true, .. } => crate::ui::theme::tokens::selected_inactive(&pal),
+        RowLook { hovered: true, .. } => pal.hover,
+        RowLook { highlighted: true, .. } => highlight_color(band, look.lane),
+        _ => band,
+    }
+}
+
+/// Whether a commit row matches the search (`searching`: there is one, and this is a commit
+/// row; `at`: where it is among the matches) and whether the search dims it: a row that doesn't
+/// match while the search highlights, unless it is selected.
+pub(super) fn found(searching: bool, filtered: bool, selected: bool, at: impl FnOnce() -> Option<usize>) -> (bool, bool) {
+    let matched = searching && at().is_some();
+    (matched, searching && !filtered && !selected && !matched)
+}
+
+/// How opaque a row a search dims draws its lane lines and node.
+pub(super) const DIM_ALPHA: f32 = 0.35;
+
+/// The message and metadata colours of a row a search dims: `weak` and `faint`, opaque, so both
+/// still read at 4.5:1 (checked in `theme/text_floor_tests.rs`).
+pub(crate) fn dim_inks(pal: &Palette) -> (Color32, Color32) {
+    (pal.weak, pal.faint)
 }
 
 /// How far a highlighted row (its branch hovered) moves from its band toward the lane colour.

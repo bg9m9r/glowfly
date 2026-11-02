@@ -13,8 +13,9 @@ use eframe::egui::{
 };
 use std::sync::Arc;
 
-/// A text field with a 1 px `input_border` frame (weak on hover) and a 2 px accent focus ring.
-/// Only the frame strokes change: sizes, ids and focus behave as the plain `TextEdit`.
+/// A text field with a 1 px `input_border` frame (weak on hover), a 2 px accent focus ring and
+/// its placeholder in `faint`. Only those colours change: sizes, ids and focus behave as the
+/// plain `TextEdit`.
 pub struct Field<'t>(pub egui::TextEdit<'t>);
 
 impl egui::Widget for Field<'_> {
@@ -26,11 +27,22 @@ impl egui::Widget for Field<'_> {
         v.widgets.hovered.bg_stroke = Stroke::new(1.0_f32, p.weak);
         v.widgets.active.bg_stroke = Stroke::new(1.0_f32, p.weak);
         v.selection.stroke = Stroke::new(2.0_f32, p.accent);
+        placeholder_in(v, p.faint);
         // No child ui or scope: auto ids and layout stay those of an unwrapped TextEdit.
         let r = ui.add(self.0);
         ui.set_style(saved);
         r
     }
+}
+
+/// Makes egui paint a field's placeholder (its hint text, `Visuals::weak_text_color`) in exactly
+/// `tone`, never egui's lighter mix: egui averages the label colour and the fade-out colour,
+/// halving each channel first, so both become `tone`, an odd channel of the fade-out one higher.
+/// The typed text keeps its own colour (`widgets.inactive`).
+pub(super) fn placeholder_in(v: &mut egui::Visuals, tone: egui::Color32) {
+    v.widgets.noninteractive.fg_stroke.color = tone;
+    let up = |c: u8| if c % 2 == 1 { c.saturating_add(1) } else { c };
+    v.widgets.noninteractive.weak_bg_fill = egui::Color32::from_rgb(up(tone.r()), up(tone.g()), up(tone.b()));
 }
 
 /// Adds `edit` as a themed [`Field`].

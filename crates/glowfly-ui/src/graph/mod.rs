@@ -7,6 +7,7 @@
 //! (`more`).
 
 mod cells;
+mod find_marks;
 mod fit;
 mod header;
 mod labels;
@@ -31,7 +32,7 @@ mod worktree_wip;
 pub(crate) use labels::paint_box;
 pub use paint::draw_avatar;
 #[cfg(test)]
-pub(crate) use row_look::{band_color, highlight_color};
+pub(crate) use row_look::{band_color, dim_inks, highlight_color};
 
 use super::UiCache;
 use super::theme::color;
@@ -230,9 +231,13 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let hovered = resp.hovered() || ui.rect_contains_pointer(rect);
                 let lane_col = colours.node();
                 let highlighted = commit.is_some_and(|c| highlight.is_some_and(|h| h.contains(&c.oid)));
-                row_look::paint(&painter, rect, row_look::RowLook { lane: lane_col, highlighted, selected, active, hovered });
+                let (matched, dim) =
+                    row_look::found(searching && commit.is_some(), filtered, selected, || st.session.search.position(index));
+                let look = row_look::RowLook { lane: lane_col, highlighted, selected, active, hovered, marked: matched && !filtered };
+                row_look::paint(&painter, rect, look);
 
-                let gp = painter.with_clip_rect(cols.rect(cols.cell.graph, rect));
+                let mut gp = painter.with_clip_rect(cols.rect(cols.cell.graph, rect));
+                gp.set_opacity(if dim { row_look::DIM_ALPHA } else { 1.0 });
                 let node_x = lane_x(cols.graph.0, if filtered { 0 } else { g.col });
                 let mid = rect.center().y;
                 // Another worktree's row: a click opens (or switches to) that worktree's tab; its
@@ -263,8 +268,6 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     }
                     continue;
                 };
-
-                let dim = searching && !filtered && st.session.search.position(index).is_none();
                 let kind = if c.parents.len() > 1 { NodeKind::Merge } else { NodeKind::Commit };
                 if cols_cfg.tree {
                     if kind == NodeKind::Merge {
@@ -314,15 +317,13 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     }
                 }
 
-                // A selected row's message is in `strong`, as the sidebar's selected rows are.
-                let ink = if selected { color::strong() } else { color::text() };
-                let fg = if dim { ink.gamma_multiply(0.35) } else { ink };
-                let weak = if dim { color::weak().gamma_multiply(0.35) } else { color::weak() };
+                let ink = if selected { color::strong() } else { color::text() }; // As the sidebar's selected rows.
                 let show_body = match cols_cfg.description {
                     DescriptionMode::Always => true,
                     DescriptionMode::OnHover => hovered || selected,
                     DescriptionMode::Never => false,
                 };
+                let found = matched.then(|| find_marks::RowRuns::of(&st.session.search.query, c, show_body.then(|| c.body_preview().0)));
                 let stat = stats.get(&c.oid).copied().filter(|_| cols_cfg.changes);
                 if cols_cfg.changes && stat.is_none() {
                     want_stats.push(c.oid);
@@ -335,7 +336,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     commit: c,
                     pr: pr_at.get(&c.oid),
                     show_body,
-                    colors: (fg, weak),
+                    inks: cells::Inks::new(ink, dim),
+                    found: found.as_ref().map(|r| (r, find_marks::Mark { fill: color::find_fill(row_look::top_fill(look)), ink })),
                     date: cols_cfg.date.then(|| settings.format_graph_time(c.time, now, offset)),
                     stats: stat,
                 };

@@ -83,7 +83,7 @@ pub const MIST: Palette = Palette {
     text: hex(0x142533),
     strong: hex(0x041320),
     weak: hex(0x475867),
-    faint: hex(0x5e6f7d),
+    faint: hex(0x566673),
     accent: hex(0x007258),
     primary: hex(0x007258),
     on_primary: hex(0xffffff),

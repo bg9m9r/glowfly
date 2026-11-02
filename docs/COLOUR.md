@@ -362,8 +362,9 @@ indigo (hue 275, its gold's complement); the rest hue 255. A theme file that set
   - `snapshot_tests/snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
     (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly-ui --lib colour_sheet -- --ignored`).
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
-  lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7% and text fields
-  4%) go through `contrast::tint`. It is a plain mix, except on a dark palette whose surface is
+  lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7%, text fields
+  4%, and a search's find fill behind matched text 24% (dark) or 18% (light) toward the accent,
+  backed off to 10% until `text` and `strong` read on it) go through `contrast::tint`. It is a plain mix, except on a dark palette whose surface is
   a coloured field (OKLCH chroma 0.012 or more: Dusk's indigo, Midnight's blue). There a tint toward a far hue would cancel the field's colour into mud or
   an olive-green, so the tint keeps the mix's lightness, moves the field's chroma the same
   fraction toward the tint colour's, and turns the field's hue at most 20 deg toward the
@@ -422,7 +423,10 @@ given, the second is for the high-contrast themes.
 | `text` | bg, panel, toolbar, raised, input, hover, selected, hunk_bg, every diff background | 4.5 / 7 |
 | `strong` | selected | 4.5 / 7 |
 | `weak` | bg, panel, toolbar, raised, input, hover, selected | 4.5 |
-| `faint` | bg, panel, input (never text on the toolbar) | 4.5, and 1.0 below weak on panel |
+| `faint` | bg, panel, input, toolbar, the text-field fill, every lane band | 4.5, and 1.0 below weak on panel |
+| `weak` | `selected_inactive` | 4.5 |
+| `text`, `strong` | the find fill (`find_fill`, a search's matched text) on bg, every lane band and its highlight, hover, selected, `selected_inactive` | 4.5 / 7, and the fill 1.25:1 from its surface |
+| Live-updates marks (`added`, `warn`, `weak`) | toolbar | 3 |
 | `input_border` | bg, panel, input, toolbar | 3 / 4.5 |
 | `dialog_border` | panel | 3 / 4.5 |
 | `accent` | bg, panel, input | 3 |
@@ -538,7 +542,7 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | hover | #ece9f5 | |
 | selected | #e6e1fa | A pale iris wash; branch chips keep 4.54:1 on it |
 | text / strong | #211f38 / #100d26 | text 15.3:1 on panel |
-| weak / faint | #54526d / #6b6882 | 7.2 and 5.1:1 on panel |
+| weak / faint | #54526d / #636079 | 7.2 and 5.8:1 on panel |
 | accent, primary | #5a47cf | Iris, OKLCH 0.50 0.20 283; 6.2:1 on panel, 5.1:1 on selected |
 | on_primary | #ffffff | 6.5:1 on the iris |
 | primary_border | #4535b5 | |
@@ -613,7 +617,7 @@ Linen's diff, syntax and danger colours.
 | hover | #213044 | #e2eef5 | #303236 | #eceef2 |
 | selected | #173f3c | #c7eddd | #1f3d62 | #dbe8fc |
 | text / strong | #e2e8f0 | #142533 | #e6e7e9 | #1e2228 / #0c0f13 |
-| weak / faint | #adbacc / #8f9eb3 | #475867 / #5e6f7d | #b7b9bc / #9a9da2 | #525862 / #676d77 |
+| weak / faint | #adbacc / #8f9eb3 | #475867 / #566673 | #b7b9bc / #9a9da2 | #525862 / #616670 |
 | accent, primary | #6eddb2 | #007258 | #7ebbff | #1a5bb5 |
 | on_primary | #08121f | #ffffff | #0a1018 | #ffffff |
 | primary_border | #4eb891 | #005641 | #5695e0 | #134894 |

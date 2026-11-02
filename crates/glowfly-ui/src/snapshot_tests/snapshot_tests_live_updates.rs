@@ -1,4 +1,4 @@
-//! The status bar's live-updates dot: a sheet of its five states (a pixel golden), the status
+//! The status bar's live-updates state: a sheet of its five marks and labels (a pixel golden), the status
 //! bar with a silent watcher (Slow updates refreshes on a click), and no dot while nothing is
 //! watched.
 
@@ -76,13 +76,7 @@ fn live_updates_states() {
     });
     h.run();
     h.check_snapshot("live_updates_states");
-    for name in [
-        "Checking that changes on disk show up live.",
-        "Live: changes to files show up as they happen.",
-        "Glowfly can't write to this repository, so it can't check that changes show up live.",
-        "Slow updates",
-        "Not live",
-    ] {
+    for name in ["Checking…", "Live", "Unconfirmed", "Slow updates", "Not watching"] {
         assert!(h.query_by_label(name).is_some(), "{name}");
     }
 }
@@ -105,12 +99,12 @@ fn status_bar_live_updates_silent() {
 fn a_live_dot_takes_no_click_and_nothing_watched_shows_none() {
     let mut h = bar(watching(Some(Probe::Live), false));
     h.run();
-    h.get_by_label("Live: changes to files show up as they happen.").click();
+    h.get_by_label("Live").click();
     h.run();
     assert!(h.state().1.is_empty(), "the quiet states are hover-only");
     let mut st = watching(Some(Probe::Live), false);
     st.watch.target = None;
     let mut h = bar(st);
     h.run();
-    assert!(h.query_by_label_contains("show up").is_none(), "no dot while nothing is watched");
+    assert!(h.query_by_label("Live").is_none(), "no dot while nothing is watched");
 }

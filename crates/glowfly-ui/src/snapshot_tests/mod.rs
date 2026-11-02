@@ -151,6 +151,7 @@ pub(super) mod snapshot_tests_revert;
 pub(super) mod snapshot_tests_row_menu;
 pub(super) mod snapshot_tests_search;
 pub(super) mod snapshot_tests_search_further;
+pub(super) mod snapshot_tests_search_marks;
 pub(super) mod snapshot_tests_select;
 pub(super) mod snapshot_tests_shallow;
 pub(super) mod snapshot_tests_sign_in;

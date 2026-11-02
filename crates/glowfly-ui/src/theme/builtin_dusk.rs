@@ -87,7 +87,7 @@ pub const DAWN: Palette = Palette {
     text: hex(0x211f38),
     strong: hex(0x100d26),
     weak: hex(0x54526d),
-    faint: hex(0x6b6882),
+    faint: hex(0x636079),
     accent: hex(0x5a47cf),
     primary: hex(0x5a47cf),
     on_primary: hex(0xffffff),
