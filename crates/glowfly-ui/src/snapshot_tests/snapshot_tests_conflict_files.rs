@@ -80,6 +80,17 @@ fn conflict_line_picks() {
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
+/// `conflict_line_picks` in the light theme: theirs' lighter violet keeps a dark check mark
+/// that stands out on it.
+#[test]
+fn conflict_line_picks_light() {
+    let (mut st, dir) = with_conflict("conflict-line-picks-light", "settings.txt", theme_settings);
+    send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 0, side: Side::Theirs, line: 1 });
+    send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 0, side: Side::Ours, line: 0 });
+    render("conflict_line_picks_light", st, false);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
 /// Both sides of the first conflict taken, theirs ticked first: the band says "Ours, then
 /// theirs" with Swap, and the output follows the band, not the clicks.
 #[test]

@@ -156,6 +156,7 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Keep a copy of a file over 64 MB, so Take ours/theirs or Mark conflicted can write over it (both refuse today)
 - Take a side or mark conflicted over a symbolic link no index entry holds (refused today, as the link couldn't be put back)
 - Ignore the executable bit in a conflict undo's file check when `core.fileMode` is false (an undo there can leave a file the next redo calls changed)
+- A band restored with its sides' lines interleaved (saved under the old click order, or edited by hand) is sorted into band order by its first tick or Swap; let a second Swap bring the original order back
 
 ### Blame gutter
 

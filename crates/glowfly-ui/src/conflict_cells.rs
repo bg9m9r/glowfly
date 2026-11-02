@@ -146,12 +146,15 @@ pub(super) fn offsets(n: usize, wrap: Wrap, lines_of: impl Fn(usize) -> usize) -
 mod tests {
     use super::*;
     use crate::ui::theme::builtin;
+    use crate::ui::theme::contrast::ratio;
+    use crate::ui::theme::controls::mark_on;
     use crate::ui::theme::surfaces::over;
     use crate::ui::theme::vision::{DEUTAN, lightness_seen};
     use glowfly_core::settings::BuiltinTheme;
 
     /// Under deutan vision ours and theirs stay apart by lightness: theirs' checkbox fill at
-    /// least 0.12 OKLab L above ours, its rows (washed over the background) at least 0.04.
+    /// least 0.12 OKLab L above ours, its rows (washed over the background) at least 0.04. And
+    /// each side's check mark stands out on its fill at 3:1 (WCAG 1.4.11).
     #[test]
     fn sides_stay_apart_under_deutan_vision() {
         let mut failures = Vec::new();
@@ -163,6 +166,12 @@ mod tests {
             let (check, rows) = (l(th) - l(o), l(row(Side::Theirs)) - l(row(Side::Ours)));
             if check < 0.12 || rows < 0.04 {
                 failures.push(format!("{t:?}: checkbox {check:.3}, rows {rows:.3}"));
+            }
+            for (side, fill) in [("ours", o), ("theirs", th)] {
+                let r = ratio(mark_on(p, fill), fill);
+                if r < 3.0 {
+                    failures.push(format!("{t:?}: the {side} check mark is {r:.2}:1 on its fill"));
+                }
             }
         }
         assert!(failures.is_empty(), "{}", failures.join("; "));

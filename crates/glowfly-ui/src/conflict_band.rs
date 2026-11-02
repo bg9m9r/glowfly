@@ -162,6 +162,9 @@ impl Order {
             p.rect_filled(rect, 4.0, color::hover());
         }
         p.text(rect.center(), Align2::CENTER_CENTER, self.swap, FontId::proportional(type_scale::SMALL), color::text());
+        if resp.has_focus() {
+            crate::ui::theme::tokens::focus_ring(ui.painter(), rect, 4);
+        }
         if resp.on_hover_text(self.tip).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
             msgs.push(Msg::Conflict(ConflictMsg::ConflictSwap(k)));
         }

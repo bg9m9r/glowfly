@@ -106,7 +106,9 @@ fn paint_box(ui: &Ui, rect: Rect, (checked, indeterminate, tint): (bool, bool, O
         _ => icon_colors(&p, checked || indeterminate, hovered),
     };
     ui.painter().rect(big, CornerRadius::same(radius::SM), fill, stroke, StrokeKind::Inside);
-    let mark = Stroke::new(2.0_f32, p.input);
+    // A tinted fill can be light (the conflict view's theirs): its mark takes whichever of the
+    // input and text colours stands out more on it.
+    let mark = Stroke::new(2.0_f32, if tint.is_some() { mark_on(&p, fill) } else { p.input });
     let (l, r, t, b, w) = (big.left(), big.right(), big.top(), big.bottom(), big.width());
     if indeterminate {
         ui.painter().add(Shape::hline((l + 0.25 * w)..=(r - 0.25 * w), big.center().y, mark));
@@ -115,6 +117,13 @@ fn paint_box(ui: &Ui, rect: Rect, (checked, indeterminate, tint): (bool, bool, O
         ui.painter().add(Shape::line(points, mark));
     }
     big
+}
+
+/// The check mark's colour on `fill`: the input colour or the text colour, whichever contrasts
+/// more with it.
+pub(crate) fn mark_on(p: &color::Palette, fill: egui::Color32) -> egui::Color32 {
+    use super::contrast::ratio;
+    if ratio(p.input, fill) >= ratio(p.text, fill) { p.input } else { p.text }
 }
 
 /// A radio button: an input-coloured circle with an `input_border` edge, or an accent circle
