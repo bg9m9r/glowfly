@@ -16,7 +16,7 @@
 use super::backdrop::{self, Surface};
 use super::tab_drag::{SLIDE, Slot, drag, lefts_after};
 use super::tab_paint::{
-    CHIP_GAP, CHIP_H, LIFT, SWATCH_ROOM, TabLook, chip_room, close_hit, group_color, group_tint, paint_group_chip, paint_group_strip,
+    CHIP_GAP, CHIP_TEXT, LIFT, SWATCH_ROOM, TabLook, chip_room, close_hit, group_color, group_tint, paint_group_chip, paint_group_strip,
     paint_separator, paint_tab, tab_width,
 };
 use super::theme::branch_colours::line;
@@ -31,11 +31,12 @@ use crate::state::menu_bar::tab_name;
 use crate::state::repo_colours;
 use crate::state::tab_groups::{self, chip_rooms, new_index, shown_at};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::chip::ChipSize;
 use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::quiet_target::State;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
-use eframe::egui::{self, Align, Color32, Layout, Rect, Response, Sense, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{self, Align, Color32, Layout, Rect, Response, Sense, WidgetInfo, WidgetType, vec2};
 use glowfly_core::i18n::Lang;
 
 pub(crate) use super::tab_drag::dragging;
@@ -101,7 +102,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let shown = tab_groups::shown_groups(&st.tabs, on);
         // Each shown group's name, and the chip before its first tab when everything fits.
         let group_name = |i: usize| st.tabs[i].group.as_ref().map_or("", |g| g.name.as_str());
-        let chip_font = type_scale::font(type_scale::SMALL);
+        let chip_font = type_scale::font(CHIP_TEXT);
         let measure_chip = |s: &str| ui.painter().layout_no_wrap(s.to_owned(), chip_font.clone(), Color32::PLACEHOLDER).size().x;
         let chip_widths: Vec<f32> = shown.iter().map(|(m, _)| chip_room(measure_chip(group_name(m.start)))).collect();
         let chips = chip_rooms(natural.len(), &shown, &chip_widths, needed(&natural), room);
@@ -109,7 +110,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         // A slot's tab: what is right of its chip.
         let tab_rect = |i: usize, slot: Rect| slot.with_min_x(slot.left() + chips[i]);
         let chip_rect = |i: usize, slot: Rect| {
-            Rect::from_min_size(pos2(slot.left(), slot.center().y - CHIP_H / 2.0), vec2((chips[i] - CHIP_GAP).max(0.0), CHIP_H))
+            crate::ui::widgets::chip::rect_at(ChipSize::Badge, slot.left(), slot.center().y, (chips[i] - CHIP_GAP).max(0.0))
         };
         let strip_left = ui.cursor().left();
         // The tabs sit in one tab list, so a screen reader can say "tab 1 of 3".

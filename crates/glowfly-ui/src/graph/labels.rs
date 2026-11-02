@@ -9,29 +9,25 @@ use super::ref_group::Chip;
 use crate::ui::build_status;
 use crate::ui::theme::color;
 use crate::ui::theme::contrast::{self, ChipStyle, readable_on};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets;
+use crate::ui::theme::sizes::{ChipSize, ControlSize, text_pos};
+use crate::ui::widgets::chip;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use eframe::egui::{Color32, CornerRadius, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
+use eframe::egui::{Color32, FontId, Painter, Pos2, Rect, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::forge::CheckState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::RefKind;
 
 /// Space between two chips.
 pub(super) const GAP: f32 = 4.0;
-const CHIP_H: f32 = 22.0;
+/// A ref chip's size: its height, text padding and text step.
+const CHIP: ChipSize = ChipSize::Chip;
 /// Space between a chip's edges and its text.
-const TEXT_PAD: f32 = 7.0;
+const TEXT_PAD: f32 = CHIP.metrics().pad_x;
 /// Room a tag mark takes before a tag's name.
 const TAG_LEAD: f32 = 12.0;
 /// The least room the first chip keeps beside a "+N" chip; with less, the "+N" chip is dropped.
 const MIN_FIRST_W: f32 = 24.0;
-const FONT: f32 = type_scale::SMALL;
-/// The "+N" chip's font size and text padding (`widgets::chip`).
-const PLUS_FONT: f32 = type_scale::CAPTION;
-const PLUS_PAD: f32 = 12.0;
+const FONT: f32 = CHIP.metrics().text;
 
 /// What one chip shows.
 pub(super) struct ChipSpec {
@@ -90,9 +86,14 @@ pub(super) fn spec_w(p: &Painter, spec: &ChipSpec) -> f32 {
     chip_w(spec, text_w(p, &spec.text, FONT))
 }
 
-/// The "+n" chip's width.
+/// The "+n" badge.
+fn plus_chip(n: usize) -> chip::Chip<'static> {
+    chip::Chip::new(ChipSize::Badge, format!("+{n}")).look(chip::Look::new(color::raised(), color::weak()))
+}
+
+/// The "+n" badge's width.
 pub(super) fn plus_w(p: &Painter, n: usize) -> f32 {
-    text_w(p, &format!("+{n}"), PLUS_FONT) + PLUS_PAD
+    plus_chip(n).width(p.ctx())
 }
 
 /// Which chips fit in a row.
@@ -137,11 +138,8 @@ pub(super) fn fit(widths: &[f32], room: f32, plus_w: impl Fn(usize) -> f32, gap:
 }
 
 /// A ref chip's box in `r`: its fill, and its edge 1 px inside it.
-pub(crate) fn paint_box(p: &Painter, r: Rect, look: contrast::ChipLook) {
-    p.rect_filled(r, CornerRadius::same(radius::SM), look.fill);
-    if let Some(edge) = look.edge {
-        p.rect_stroke(r, CornerRadius::same(radius::SM), Stroke::new(1.0_f32, edge), StrokeKind::Inside);
-    }
+fn paint_box(p: &Painter, r: Rect, look: contrast::ChipLook) {
+    chip::frame(p, r, CHIP, look.into());
 }
 
 /// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: its box
@@ -150,7 +148,7 @@ pub(crate) fn paint_box(p: &Painter, r: Rect, look: contrast::ChipLook) {
 fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: Color32, w: f32) -> Rect {
     let look = contrast::ref_chip(spec.style, tone, &color::current());
     let fg = look.text;
-    let r = Rect::from_min_size(pos2(x, y - CHIP_H / 2.0), vec2(w, CHIP_H));
+    let r = chip::rect_at(CHIP, x, y, w);
     paint_box(p, r, look);
     let cp = p.with_clip_rect(r.intersect(p.clip_rect()));
     let mut text_x = x + TEXT_PAD;
@@ -161,7 +159,7 @@ fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: Color32, w: f32
     let marks_left = r.right() - TEXT_PAD - MARK_W * spec.trailing() as f32;
     // The name, ending in "…" when the chip is narrower than it (the half pixel absorbs rounding).
     let g = cut_galley(p.ctx(), cut_job(spec.text.as_str(), FontId::proportional(FONT), fg), marks_left - text_x + 0.5);
-    cp.galley(pos2(text_x, y - g.size().y / 2.0), g, fg);
+    cp.galley(pos2(text_x, text_pos(r, &g).y), g, fg);
     // Each mark centred a little right of its slot's middle, clear of the name.
     let mut slot = marks_left + MARK_W / 2.0 + 2.0;
     if spec.local {
@@ -252,7 +250,7 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
         let mut hit = Rect::from_min_max(drawn[0].min, pos2(end, drawn[0].max.y));
         if f.plus {
             let hidden = row.chips.len() - f.shown;
-            end += GAP + widgets::chip(&rp, end + GAP, mid, &format!("+{hidden}"), color::raised(), color::weak());
+            end = plus_chip(hidden).paint(&rp, end + GAP, mid).right();
             hit.max.x = end;
         }
         out.labels_hit = Some(hit);
@@ -368,11 +366,13 @@ mod tests {
 
     #[test]
     fn chip_width_counts_its_marks() {
-        assert_eq!(chip_w(&spec(false, false, false), 50.0), 64.0, "a name alone");
-        assert_eq!(chip_w(&spec(true, false, false), 50.0), 64.0 + MARK_W, "a local branch");
-        assert_eq!(chip_w(&spec(true, true, true), 50.0), 64.0 + 3.0 * MARK_W, "in sync, with a build state");
+        // A 50 px name and the Chip size's padding either side.
+        const BASE: f32 = 50.0 + 2.0 * TEXT_PAD;
+        assert_eq!(chip_w(&spec(false, false, false), 50.0), BASE, "a name alone");
+        assert_eq!(chip_w(&spec(true, false, false), 50.0), BASE + MARK_W, "a local branch");
+        assert_eq!(chip_w(&spec(true, true, true), 50.0), BASE + 3.0 * MARK_W, "in sync, with a build state");
         let tag = ChipSpec { lead_tag: true, ..spec(false, false, false) };
-        assert_eq!(chip_w(&tag, 50.0), 64.0 + TAG_LEAD);
+        assert_eq!(chip_w(&tag, 50.0), BASE + TAG_LEAD);
         // In a room narrower than the chip the name is cut and the marks keep their room.
         let f = fit(&[chip_w(&spec(true, true, false), 90.0)], 100.0, plus, 4.0);
         assert!(f.first_cut && f.first_w == 100.0, "{f:?}");

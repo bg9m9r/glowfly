@@ -27,8 +27,6 @@ mod select;
 mod wip_row;
 mod worktree_wip;
 
-#[cfg(test)]
-pub(crate) use labels::paint_box;
 pub use paint::draw_avatar;
 #[cfg(test)]
 pub(crate) use row_look::{band_color, highlight_color};
