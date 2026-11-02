@@ -77,9 +77,32 @@ fn text_host(text: &str) -> Option<String> {
     }
     match idna::domain_to_ascii(host).ok().filter(|a| named(a)) {
         Some(ascii) => Some(ascii.trim_end_matches('.').to_owned()),
-        None if sure || !host.is_ascii() => Some(host.to_lowercase()),
+        None if sure || (!host.is_ascii() && dotted(host)) => Some(host.to_lowercase()),
         None => None,
     }
+}
+
+/// Characters that read as a dot but that some tables class as letters or punctuation IDNA
+/// refuses: the Lisu tone marks, middle dots, leaders, Syriac and full-width or ideographic stops.
+const DOT_LIKE: [char; 11] =
+    ['\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}', '\u{2027}', '\u{0701}', '\u{0702}', '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}'];
+
+/// Whether a non-ASCII host candidate from path-only text (`xxx/…`) has something in it that
+/// could pass for a separator: a look-alike dot, a combining mark on an ASCII letter or digit
+/// (`github` + U+0323), or any other character that is neither a letter, a digit nor `-`. A run of
+/// letters (`Übersicht`, `文档`, Indic words with their vowel signs) is a word, not a host.
+fn dotted(host: &str) -> bool {
+    let marks = icu_normalizer::properties::CanonicalCombiningClassMapBorrowed::new();
+    let mut prev: Option<char> = None;
+    let mut found = false;
+    for c in host.chars() {
+        let mark = marks.get_u8(c) != 0;
+        found |= DOT_LIKE.contains(&c)
+            || (mark && prev.is_some_and(|p| p.is_ascii_alphanumeric()))
+            || (!mark && !c.is_alphanumeric() && c != '-');
+        prev = Some(c);
+    }
+    found
 }
 
 /// Whether `host` (ASCII, from IDNA) is two or more letter-digit-hyphen labels ending in a
@@ -148,12 +171,26 @@ mod tests {
             ("github\u{A4F8}com/acme", "github\u{a4f8}com"),
             ("https://github.com\u{FFFD}/x", "github.com\u{fffd}"),
             ("www.github\u{2024}com", "www.github\u{2024}com"),
+            ("github\u{A4F9}com/acme", "github\u{a4f9}com"),
+            ("github\u{2027}com/acme", "github\u{2027}com"),
+            ("github\u{30FB}com/acme", "github\u{30fb}com"),
+            ("github\u{0323}com/acme", "github\u{0323}com"),
         ] {
             let (got, real) = mismatch(text, evil).unwrap_or_else(|| panic!("{text:?} opened without asking"));
             assert_eq!((got.as_str(), real.as_str()), (shown, "evil.example"), "{text:?}");
         }
         // Plain words and paths without a host stay quiet.
-        for text in ["docs/readme", "src/main.rs", "v1.2/notes", "caf\u{e9}"] {
+        for text in [
+            "docs/readme",
+            "src/main.rs",
+            "v1.2/notes",
+            "caf\u{e9}",
+            "caf\u{e9}/menu",
+            "\u{dc}bersicht/Details",
+            "\u{6587}\u{6863}/\u{5b89}\u{88c5}",
+            "\u{412}\u{43e}\u{437}\u{43c}\u{43e}\u{436}\u{43d}\u{43e}\u{441}\u{442}\u{438}/API",
+            "\u{926}\u{938}\u{94d}\u{924}\u{93e}\u{935}\u{947}\u{91c}\u{93c}/\u{938}\u{94d}\u{925}\u{93e}\u{92a}\u{928}\u{93e}",
+        ] {
             assert_eq!(mismatch(text, evil), None, "{text}");
         }
         assert_eq!(mismatch("https://localhost/x", "https://localhost/x"), None, "the same single-label host");
