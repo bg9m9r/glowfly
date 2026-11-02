@@ -1,8 +1,8 @@
 //! The open diff's row list, widest line and gaps between hunks, built when the diff, the layout,
 //! the open folds or gaps or the tab width change instead of on every frame: they walk every line
-//! of the file. With long lines wrapped, also the rows' heights, rebuilt when the rows, the wrap
-//! width or the font change. With the rows, which lines each row shows and the row each line
-//! is on (`LineIndex`), for the text selection.
+//! of the file. Also the rows' heights (hunk headers are taller than lines, and long lines grow
+//! when wrapped), rebuilt when the rows, the wrap width or the font change. With the rows, which
+//! lines each row shows and the row each line is on (`LineIndex`), for the text selection.
 
 use super::wrap::{RowMetrics, Wrap};
 use crate::state::diff_text::{LineRef, TextSide};
@@ -29,14 +29,23 @@ struct Key {
 }
 
 /// What the row heights were built from: the rows build, the wrap columns and line height
-/// (`None` unwrapped), the row height and the tab size (bit patterns, so the key compares
-/// exactly).
+/// (`None` unwrapped), the line and header row heights and the tab size (bit patterns, so the
+/// key compares exactly).
 #[derive(PartialEq, Clone, Copy)]
 struct MetricsKey {
     rows: usize,
     wrap: Option<(usize, u32)>,
     row_h: u32,
+    header_h: u32,
     tab: usize,
+}
+
+/// The rows' heights: a line row's (`row_h`, plus a line for each wrapped one) and a hunk
+/// header's or change block's action row's (`header_h`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct Heights {
+    pub row_h: f32,
+    pub header_h: f32,
 }
 
 #[derive(Default)]
@@ -52,8 +61,8 @@ pub struct DiffRowsCache {
     pub gaps: Vec<GapSpan>,
     /// How many times the rows were built (for tests).
     pub builds: usize,
-    /// With wrapping on, the top of each row and, last, the bottom of the last row; empty
-    /// when the rows are all one height.
+    /// The top of each row and, last, the bottom of the last row; empty until the heights are
+    /// built.
     pub offsets: Vec<f32>,
     metrics_key: Option<MetricsKey>,
     /// How many times the row heights were built (for tests).
@@ -162,31 +171,46 @@ impl DiffRowsCache {
         self.key = Some(Key { generation: s.generation, hunks, whole, layout: s.layout, expanded, gaps: s.gaps, tab: s.tab });
     }
 
-    /// Rebuilds the row heights for `wrap` (clears them for `None`) unless they were built
-    /// for the same rows, wrap, row height and tab size. `lines` is the diff the rows draw
-    /// from (`DiffView::lines()`), `gaps` the filled-in gaps' text. Returns whether the same rows
+    /// Rebuilds the row heights at `h` and `wrap` (`None` unwrapped) unless they were built for
+    /// the same rows, heights, wrap and tab size. `lines` is the diff the rows draw from
+    /// (`DiffView::lines()`), `gaps` the filled-in gaps' text. Returns whether the same rows
     /// changed height, so the view should keep its top row in place.
     pub(super) fn refresh_heights(
         &mut self,
         lines: &FileDiff,
         gaps: &[(GapSpan, &GapLines)],
-        row_h: f32,
+        h: Heights,
         tab: usize,
         wrap: Option<Wrap>,
     ) -> bool {
-        let key = MetricsKey { rows: self.builds, wrap: wrap.map(|w| (w.cols, w.line_h.to_bits())), row_h: row_h.to_bits(), tab };
+        let key = MetricsKey {
+            rows: self.builds,
+            wrap: wrap.map(|w| (w.cols, w.line_h.to_bits())),
+            row_h: h.row_h.to_bits(),
+            header_h: h.header_h.to_bits(),
+            tab,
+        };
         let old = self.metrics_key.replace(key);
         if old == Some(key) {
             return false;
         }
         let anchor = old.is_some_and(|o| o.rows == key.rows);
         self.offsets.clear();
-        let Some(w) = wrap else { return anchor };
-        let height = |n: usize| row_h + n.saturating_sub(1) as f32 * w.line_h;
-        let count = |hunk: usize, line: usize| wrap::line_count(&lines.hunks[hunk].lines[line].text, tab, w.cols);
+        let row_h = h.row_h;
+        let height = |n: usize| match wrap {
+            Some(w) => row_h + n.saturating_sub(1) as f32 * w.line_h,
+            None => row_h,
+        };
+        let count = |hunk: usize, line: usize| match wrap {
+            Some(w) => wrap::line_count(&lines.hunks[hunk].lines[line].text, tab, w.cols),
+            None => 1,
+        };
         let gap_count = |hunk: usize, line: usize| {
             let text = gaps.iter().find(|(g, _)| g.hunk == hunk).and_then(|(_, t)| t.lines.get(line));
-            text.map_or(1, |t| wrap::line_count(t, tab, w.cols))
+            match (wrap, text) {
+                (Some(w), Some(t)) => wrap::line_count(t, tab, w.cols),
+                _ => 1,
+            }
         };
         let heights: Vec<f32> = if self.inline.is_empty() {
             self.split
@@ -196,6 +220,7 @@ impl DiffRowsCache {
                         height([old, new].into_iter().flatten().map(|l| count(hunk, l)).max().unwrap_or(1))
                     }
                     SplitRow::GapLine { hunk, line } => height(gap_count(hunk, line)),
+                    SplitRow::Header(_) | SplitRow::Block(_) => h.header_h,
                     _ => row_h,
                 })
                 .collect()
@@ -205,6 +230,7 @@ impl DiffRowsCache {
                 .map(|r| match *r {
                     DiffRow::Line { hunk, line } => height(count(hunk, line)),
                     DiffRow::GapLine { hunk, line } => height(gap_count(hunk, line)),
+                    DiffRow::Header(_) | DiffRow::Block(_) => h.header_h,
                     _ => row_h,
                 })
                 .collect()
@@ -220,7 +246,7 @@ impl DiffRowsCache {
         anchor
     }
 
-    /// Where the rows sit: varied heights when wrapped, else all `row_h` high.
+    /// Where the rows sit: at the built heights, or all `row_h` high before they are built.
     pub(super) fn row_metrics(&self, row_h: f32) -> RowMetrics<'_> {
         if self.offsets.is_empty() { RowMetrics::Uniform(row_h) } else { RowMetrics::Varied(&self.offsets) }
     }
@@ -289,6 +315,9 @@ mod tests {
         assert_eq!(cache.index.lines(TextSide::New).collect::<Vec<_>>(), [at(0), at(2)]);
     }
 
+    /// Default-font heights: 19 px lines under a 32 px header.
+    const H: Heights = Heights { row_h: 19.0, header_h: 32.0 };
+
     #[test]
     fn heights_follow_cols_font_and_rows() {
         let mut cache = DiffRowsCache::default();
@@ -297,36 +326,38 @@ mod tests {
         let d = diff(&[(' ', "same"), ('-', long), ('+', "abcdefghij klmnop")]);
         cache.refresh(src(&d, (1, 1), DiffLayout::Inline, 4, &expanded));
         let wrap = |cols: usize, line_h: f32| Some(Wrap { cols, line_h });
-        assert!(!cache.refresh_heights(&d, &[], 19.0, 4, wrap(10, 15.0)), "first build: nothing to keep");
+        assert!(!cache.refresh_heights(&d, &[], H, 4, wrap(10, 15.0)), "first build: nothing to keep");
         // Rows: header, same, long, short.
         let m = cache.row_metrics(19.0);
         let heights: Vec<f32> = (0..4).map(|i| m.height(i)).collect();
-        assert_eq!(heights, [19.0, 19.0, 19.0 + 2.0 * 15.0, 19.0 + 15.0]);
+        assert_eq!(heights, [32.0, 19.0, 19.0 + 2.0 * 15.0, 19.0 + 15.0]);
         for _ in 0..3 {
-            assert!(!cache.refresh_heights(&d, &[], 19.0, 4, wrap(10, 15.0)));
+            assert!(!cache.refresh_heights(&d, &[], H, 4, wrap(10, 15.0)));
         }
         assert_eq!(cache.height_builds, 1, "same key, no rebuild");
 
-        assert!(cache.refresh_heights(&d, &[], 19.0, 4, wrap(30, 15.0)), "a new width keeps the top row");
+        assert!(cache.refresh_heights(&d, &[], H, 4, wrap(30, 15.0)), "a new width keeps the top row");
         assert_eq!((cache.height_builds, cache.row_metrics(19.0).height(2)), (2, 19.0));
-        assert!(cache.refresh_heights(&d, &[], 19.0, 4, wrap(30, 16.0)), "a new font keeps the top row");
+        assert!(cache.refresh_heights(&d, &[], H, 4, wrap(30, 16.0)), "a new font keeps the top row");
         assert_eq!(cache.height_builds, 3);
 
         // New rows (a reload) rebuild without anchoring.
         cache.refresh(src(&d, (2, 2), DiffLayout::Inline, 4, &expanded));
-        assert!(!cache.refresh_heights(&d, &[], 19.0, 4, wrap(30, 16.0)));
+        assert!(!cache.refresh_heights(&d, &[], H, 4, wrap(30, 16.0)));
         assert_eq!(cache.height_builds, 4);
 
-        // Unwrapped: one height for all.
-        assert!(cache.refresh_heights(&d, &[], 19.0, 4, None));
-        assert!(cache.offsets.is_empty());
-        assert!(matches!(cache.row_metrics(19.0), RowMetrics::Uniform(h) if h == 19.0));
+        // Unwrapped: one height for every line, the header's for the header.
+        assert!(cache.refresh_heights(&d, &[], H, 4, None));
+        let m = cache.row_metrics(19.0);
+        assert_eq!((0..4).map(|i| m.height(i)).collect::<Vec<_>>(), [32.0, 19.0, 19.0, 19.0]);
+        assert!(cache.refresh_heights(&d, &[], Heights { row_h: 31.0, header_h: 39.0 }, 4, None), "a new font keeps the top row");
+        assert_eq!(cache.row_metrics(31.0).height(0), 39.0);
 
         // Split: the pair takes the taller side's height.
         cache.refresh(src(&d, (2, 2), DiffLayout::Split, 4, &expanded));
-        cache.refresh_heights(&d, &[], 19.0, 4, wrap(10, 15.0));
+        cache.refresh_heights(&d, &[], H, 4, wrap(10, 15.0));
         let pair = cache.split.iter().position(|r| matches!(r, SplitRow::Pair { old: Some(1), new: Some(2), .. })).unwrap();
         assert_eq!(cache.row_metrics(19.0).height(pair), 49.0);
-        assert_eq!(cache.row_metrics(19.0).total(cache.split.len()), 19.0 * (cache.split.len() - 1) as f32 + 49.0);
+        assert_eq!(cache.row_metrics(19.0).total(cache.split.len()), 32.0 + 19.0 * (cache.split.len() - 2) as f32 + 49.0);
     }
 }

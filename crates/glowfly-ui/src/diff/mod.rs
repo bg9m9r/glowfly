@@ -53,7 +53,7 @@ use glowfly_core::settings::DiffLayout;
 use glowfly_core::whole_file::{self, Fold, WholeFile};
 use hunk_header::hunk_header;
 pub(super) use line_check::{gutter_sign, paint_mark};
-use rows_cache::{DiffRowsCache, Source};
+use rows_cache::{DiffRowsCache, Heights, Source};
 pub(super) use style::DiffStyle;
 pub(super) use syntax::paint_header;
 pub(super) use syntax::paint_line;
@@ -217,9 +217,10 @@ fn rows(
     let gaps = cache.gaps.iter().filter(|g| !gap_lines.iter().any(|(o, _)| o.key == g.key)).copied().collect();
     let wrap = wrap::wrap_for(ui, &style, layout);
     let lines: &FileDiff = whole.map_or(diff, |w| &w.diff);
-    // The same rows at new heights (a resize, or a font, number or tab change while wrapped)
-    // keep the row at the top in place.
-    let anchor = cache.refresh_heights(lines, &gap_lines, style.row_h, style.tab, wrap);
+    // The same rows at new heights (a font change, or a resize, number or tab change while
+    // wrapped) keep the row at the top in place.
+    let heights = Heights { row_h: style.row_h, header_h: style.header_h };
+    let anchor = cache.refresh_heights(lines, &gap_lines, heights, style.tab, wrap);
     let scroll_to = scroll_to.or(anchor.then_some(st.session.tab_view.diff_top_row));
     let m = cache.row_metrics(style.row_h);
     let marks =

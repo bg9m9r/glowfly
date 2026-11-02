@@ -9,8 +9,10 @@
 use super::text_sel::{self, Highlight};
 use super::wrap::Wrap;
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::text_pos;
+use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use eframe::egui::text::{CCursor, LayoutJob, TextFormat};
-use eframe::egui::{Align2, Color32, FontId, Galley, Painter, Pos2, Rect, pos2};
+use eframe::egui::{Color32, FontId, Galley, Painter, Pos2, Rect, pos2};
 use glowfly_core::highlight::{Span, TokenKind};
 use glowfly_core::tabs::{self, Expanded};
 use glowfly_core::wrap::segments;
@@ -237,19 +239,21 @@ fn append_spans(job: &mut LayoutJob, text: &str, spans: &[Span], font: &FontId, 
     Some(())
 }
 
-/// Paints a hunk header left-aligned and vertically centred on `left_center`, tabs expanded.
+/// Paints a hunk header from the left of `band`, centred in it by `sizes::text_pos`, tabs
+/// expanded, and cut with "…" to the band's width so it never runs under what follows it.
 /// With `ctx` (the function context's byte offset in `header` and its spans, relative to it),
 /// the range part keeps the header color and the context takes the token colors, like code.
 /// Without it, or when the spans don't fit, the whole header is drawn plain, as before.
-pub(crate) fn paint_header(p: &Painter, left_center: Pos2, header: &str, ctx: Option<(usize, &[Span])>, font: &FontId, tab: usize) {
+pub(crate) fn paint_header(p: &Painter, band: Rect, header: &str, ctx: Option<(usize, &[Span])>, font: &FontId, tab: usize) {
     let e = tabs::expand(header, tab);
-    let Some(job) = ctx.and_then(|(at, spans)| header_job(&e, at, spans, font, color::hunk_fg(), color::text())) else {
-        p.text(left_center, Align2::LEFT_CENTER, e.text, font.clone(), color::hunk_fg());
+    let job = ctx.and_then(|(at, spans)| header_job(&e, at, spans, font, color::hunk_fg(), color::text()));
+    let job = job.unwrap_or_else(|| cut_job(e.text, font.clone(), color::hunk_fg()));
+    let ellipsis_w = p.ctx().fonts(|f| f.glyph_width(font, '…'));
+    if band.width().is_nan() || band.width() < ellipsis_w {
         return;
-    };
-    let galley = p.layout_job(job);
-    let top = left_center.y - galley.size().y / 2.0;
-    p.galley(pos2(left_center.x, top), galley, color::hunk_fg());
+    }
+    let galley = cut_galley(p.ctx(), job, band.width());
+    p.galley(text_pos(band, &galley), galley, color::hunk_fg());
 }
 
 /// The expanded header `e` with its range (up to the context at raw byte `at`) in `range_fg`

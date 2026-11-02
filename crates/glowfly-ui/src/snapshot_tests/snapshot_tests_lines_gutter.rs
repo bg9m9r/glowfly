@@ -67,26 +67,28 @@ struct Spots {
     text: Box<dyn Fn(usize) -> Pos2>,
 }
 
-/// The spots of `layout`, measured from the hunk header's Stage hunk button (the row's right
+/// The spots of `layout`, measured from the hunk header's Discard hunk button (the row's right
 /// end) since the rows' left edge has no widget of its own. Split: the removed line is in the
 /// left column, the added ones in the right; `-fix` pairs with `+fixed build`.
 fn spots(h: &H, layout: DiffLayout) -> Spots {
-    let b = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
-    let header_y = (b.y0 + b.y1) as f32 / 2.0;
-    let row_h = crate::ui::diff::DiffStyle::new(&h.state().0.settings).row_h;
+    let b = h.get_by_label("Discard hunk").bounding_box().expect("the button has bounds");
+    let style = crate::ui::diff::DiffStyle::new(&h.state().0.settings);
+    let row_h = style.row_h;
+    // The buttons centre in the header row; the first line row starts below it.
+    let first_y = (b.y0 + b.y1) as f32 / 2.0 + (style.header_h + row_h) / 2.0;
     // The rows run from the sidebar's edge to just right of the button.
     let left = 261.0;
     let right = b.x1 as f32 + 8.0;
     match layout {
         DiffLayout::Inline => {
-            let y = move |i: usize| header_y + (i + 1) as f32 * row_h;
+            let y = move |i: usize| first_y + i as f32 * row_h;
             Spots { gutter: Box::new(move |i| pos2(left + 100.0, y(i))), text: Box::new(move |i| pos2(left + 200.0, y(i))) }
         }
         DiffLayout::Split => {
             let half = ((right - left) / 2.0).round();
-            let row = |i: usize| if i == NEW { 3 } else { 2 };
+            let row = |i: usize| if i == NEW { 2 } else { 1 };
             let col = move |i: usize| if i == FIX { left } else { left + half };
-            let y = move |i: usize| header_y + row(i) as f32 * row_h;
+            let y = move |i: usize| first_y + row(i) as f32 * row_h;
             Spots { gutter: Box::new(move |i| pos2(col(i) + 54.0, y(i))), text: Box::new(move |i| pos2(col(i) + 150.0, y(i))) }
         }
     }
@@ -160,13 +162,14 @@ fn hover_long(h: &mut H, at: Pos2) {
 fn diff_commit_gutter_hover_says_how_to_select() {
     use super::super::snapshot_tests_revert::with_line_diff;
     use glowfly_core::settings::ThemeChoice;
-    // ` app`, `-fix`, `+fix the build`, `+on Windows`: line i is i + 1 rows below the header.
+    // ` app`, `-fix`, `+fix the build`, `+on Windows`: line i is i rows below the first line
+    // row, under the header.
     let (st, dir) = with_line_diff("gutter-tip", ThemeChoice::Dark, DiffLayout::Inline, &[]);
-    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
+    let style = crate::ui::diff::DiffStyle::new(&st.settings);
     let mut h = harness(st, true);
     h.run();
     let b = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");
-    let y = (b.y0 + b.y1) as f32 / 2.0 + 3.0 * row_h;
+    let y = (b.y0 + b.y1) as f32 / 2.0 + (style.header_h + style.row_h) / 2.0 + 2.0 * style.row_h;
     // Over the code: no hover text (and no check box or bar).
     hover_long(&mut h, pos2(261.0 + 200.0, y));
     assert!(h.query_by_label_contains(REVERT_TIP).is_none(), "the code says nothing about lines");

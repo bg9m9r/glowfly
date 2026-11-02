@@ -1,4 +1,4 @@
-window 1400x820
+window 1400x960
 Label "Glowfly 0.1.0"
 TabList
   Tab "demo" [selected]

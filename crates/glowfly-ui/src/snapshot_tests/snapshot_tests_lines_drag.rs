@@ -67,16 +67,18 @@ fn drag_test(layout: DiffLayout, from_x: f32, to_x: f32) {
     let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
     let (fix, new_line) = (at('-', "fix"), at('+', "new line"));
-    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
+    let style = crate::ui::diff::DiffStyle::new(&st.settings);
+    let row_h = style.row_h;
     let mut h = harness(st, true);
     h.run();
-    // Inline, line i of the hunk is i + 1 rows below the header, which holds the hunk buttons.
-    // Split, `-fix` pairs with `+fixed build`, so `+new line` is a row higher.
-    let b = h.get_by_label("Stage hunk").bounding_box().expect("the button has bounds");
-    let header_y = (b.y0 + b.y1) as f32 / 2.0;
-    let from = pos2(ROWS_LEFT + from_x, header_y + (fix + 1) as f32 * row_h);
-    let new_row = if layout == DiffLayout::Split { new_line } else { new_line + 1 };
-    let to = pos2(b.x1 as f32 - to_x, header_y + new_row as f32 * row_h);
+    // Inline, line i of the hunk is i rows below the first line row, under the header, which
+    // holds the hunk buttons (centred in it, Discard hunk at the right end). Split, `-fix` pairs
+    // with `+fixed build`, so `+new line` is a row higher.
+    let b = h.get_by_label("Discard hunk").bounding_box().expect("the button has bounds");
+    let first_y = (b.y0 + b.y1) as f32 / 2.0 + (style.header_h + row_h) / 2.0;
+    let from = pos2(ROWS_LEFT + from_x, first_y + fix as f32 * row_h);
+    let new_row = if layout == DiffLayout::Split { new_line - 1 } else { new_line };
+    let to = pos2(b.x1 as f32 - to_x, first_y + new_row as f32 * row_h);
     let mut sent = drag(&mut h, from, to);
     // One more frame draws the last selection (the button still down).
     sent.extend(frame(&mut h));
@@ -130,15 +132,15 @@ fn code_drag_test(layout: DiffLayout, name: &str) {
     d.intraline = Default::default();
     st.session.diff.view = Some((target.clone(), d.into()));
     let (first, last) = (1, 3);
-    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
+    let style = crate::ui::diff::DiffStyle::new(&st.settings);
+    let row_h = style.row_h;
     let mut h = harness(st, true);
     h.run();
     let b = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");
-    let header_y = (b.y0 + b.y1) as f32 / 2.0;
+    let first_y = (b.y0 + b.y1) as f32 / 2.0 + (style.header_h + row_h) / 2.0;
     // Inline the text starts 110 px into the row, split 62 px into each cell; 200 px in is
     // well inside it either way.
-    let (from, to) =
-        (pos2(ROWS_LEFT + 200.0, header_y + (first + 1) as f32 * row_h), pos2(ROWS_LEFT + 260.0, header_y + (last + 1) as f32 * row_h));
+    let (from, to) = (pos2(ROWS_LEFT + 200.0, first_y + first as f32 * row_h), pos2(ROWS_LEFT + 260.0, first_y + last as f32 * row_h));
     let mut sent = drag(&mut h, to, from);
     button(&mut h, from, false);
     sent.extend(frame(&mut h));

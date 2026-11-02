@@ -9,7 +9,7 @@
 
 use super::color::{self, Palette};
 use super::contrast::{self, mix};
-use super::tokens::{DANGER_HOVER, FILL_HOVER, FILL_PRESSED, HOVER, LATCHED, PRESSED};
+use super::tokens::{DANGER_HOVER, DANGER_QUIET_HOVER, DANGER_QUIET_PRESSED, FILL_HOVER, FILL_PRESSED, HOVER, LATCHED, PRESSED};
 use eframe::egui::Color32;
 
 /// How far a text field's fill moves from `input` toward the accent.
@@ -161,6 +161,35 @@ impl Palette {
         contrast::readable_on(on_hover, self.overlay(), self.dark, min)
     }
 
+    /// A quiet danger button's text (a hunk's Discard): the danger tone, pushed until it reads
+    /// at 4.5:1 (7:1 in a high-contrast palette) on the panel and the hunk band, at rest and
+    /// under its hover and pressed washes. (`danger` is a fill, too dark or light to be text.)
+    pub fn danger_ink(&self) -> Color32 {
+        let min = if contrast::ratio(self.text, self.panel) >= HIGH_CONTRAST_TEXT { INK_MIN_HC } else { INK_MIN };
+        let mut ink = self.tone(Tone::Danger);
+        // Every field is on the same side of the pole, so pushing for one never undoes another;
+        // a second pass settles any that an earlier push left short.
+        for _ in 0..2 {
+            for s in self.danger_quiet_fields() {
+                ink = contrast::readable_on(ink, s, self.dark, min);
+            }
+        }
+        ink
+    }
+
+    /// What a quiet danger button's text sits on: the panel and the hunk band, bare and under
+    /// its hover and pressed washes (blended as egui paints them).
+    fn danger_quiet_fields(&self) -> Vec<Color32> {
+        let mut fields = Vec::new();
+        for s in [self.panel, self.hunk_bg] {
+            fields.push(s);
+            for t in [DANGER_QUIET_HOVER, DANGER_QUIET_PRESSED] {
+                fields.push(over(self.wash(self.danger, t), s));
+            }
+        }
+        fields
+    }
+
     /// Tone `t`'s tint: (a soft opaque fill of it, its colour pushed to read at 4.5:1 there).
     pub fn tone_tint(&self, t: Tone) -> (Color32, Color32) {
         contrast::change_chip(self.tone(t), self)
@@ -255,4 +284,11 @@ active!(
 /// [`Palette::wash`] in the active palette.
 pub fn wash(c: Color32, t: f32) -> Color32 {
     color::with(|p| p.wash(c, t))
+}
+
+/// Premultiplied `top` laid over the opaque `under`, byte by byte in gamma space as egui blends.
+pub(crate) fn over(top: Color32, under: Color32) -> Color32 {
+    let a = f32::from(top.a()) / 255.0;
+    let ch = |t: u8, u: u8| (f32::from(t) + f32::from(u) * (1.0 - a)).round() as u8;
+    Color32::from_rgb(ch(top.r(), under.r()), ch(top.g(), under.g()), ch(top.b(), under.b()))
 }

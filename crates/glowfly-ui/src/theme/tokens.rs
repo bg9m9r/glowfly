@@ -86,6 +86,10 @@ pub const LATCHED: f32 = 0.16;
 /// How far a destructive menu item's hover pill moves from the plain hover pill toward the
 /// danger colour.
 pub const DANGER_HOVER: f32 = 0.12;
+/// How far a quiet danger button's fill (`wash`) moves toward the danger colour on hover and
+/// while held.
+pub const DANGER_QUIET_HOVER: f32 = 0.12;
+pub const DANGER_QUIET_PRESSED: f32 = 0.18;
 /// How far a filled button's fill is shaded toward white (dark palettes) or black (light ones)
 /// on hover and while pressed.
 pub const FILL_HOVER: f32 = 0.10;

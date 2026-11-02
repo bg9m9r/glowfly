@@ -25,7 +25,8 @@ fn confirm_danger(h: &H) -> Option<(String, String, String)> {
 #[test]
 fn diff_hunks_german() {
     let de = Lang::De;
-    let (mut st, dir) = with_diff(DiffLayout::Inline, "lang-main-hunks");
+    // Split, the narrower layout: the golden shows the German hunk buttons whole.
+    let (mut st, dir) = with_diff(DiffLayout::Split, "lang-main-hunks");
     german(&mut st);
     let mut h = harness(st, true);
     h.run();

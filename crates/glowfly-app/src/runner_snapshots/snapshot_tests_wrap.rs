@@ -2,11 +2,12 @@
 //! layouts, in the whole-file view with folds, and in the file history's embedded diff.
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
-use super::snapshot_tests::{git, remove_fixture, render, with_repo};
+use super::snapshot_tests::{git, harness_sized, remove_fixture, render, with_repo};
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::lines::LineClick;
+use crate::ui::snapshot_check::CheckSnapshot;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadDiffOptions, LoadOptions};
 use glowfly_core::settings::{DiffLayout, DiffMode, ThemeChoice};
 use glowfly_core::whole_file::folds;
@@ -108,7 +109,12 @@ fn diff_wrap_whole_file_light() {
     st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = DiffLayout::Split;
     st.settings.diff_mode = DiffMode::WholeFile;
-    render("diff_wrap_whole_file_light", st, false);
+    // Taller than the default window, so the folded run's row still shows under the taller
+    // hunk header rows.
+    let mut h = harness_sized(st, false, eframe::egui::vec2(1400.0, 960.0));
+    h.run();
+    h.check_snapshot("diff_wrap_whole_file_light");
+    drop(h);
     remove_fixture(&dir);
 }
 

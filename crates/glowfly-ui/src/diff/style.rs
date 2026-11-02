@@ -2,6 +2,7 @@
 //! row height and the gutter positions, which scale with the font size so the default size
 //! draws exactly as the fixed layout did.
 
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::{color, contrast};
 use eframe::egui::{Color32, FontId};
 use glowfly_core::settings::{DEFAULT_DIFF_FONT_SIZE, Settings};
@@ -9,6 +10,9 @@ use glowfly_core::settings::{DEFAULT_DIFF_FONT_SIZE, Settings};
 pub(crate) struct DiffStyle {
     pub font: FontId,
     pub row_h: f32,
+    /// A hunk header row's height: tall enough for its Small buttons with 4 px clear above and
+    /// below (32 px), and a line row's height plus 8 at large diff fonts.
+    pub header_h: f32,
     /// Scale of the gutter positions: the font size over the default size.
     pub k: f32,
     /// Columns per tab stop.
@@ -44,13 +48,21 @@ pub(crate) struct SplitCols {
     pub text: f32,
 }
 
+/// The hunk header's height over `row_h` tall lines: `max(32, row_h + 8)`, so a Small button
+/// keeps 4 px above and below.
+fn header_h(row_h: f32) -> f32 {
+    (row_h + 8.0).max(ControlSize::Small.metrics().h + ControlSize::inset(true))
+}
+
 impl DiffStyle {
     pub fn new(s: &Settings) -> Self {
         let size = s.diff_font_px();
         let p = color::current();
+        let row_h = (size + 6.5).round();
         Self {
             font: FontId::monospace(size),
-            row_h: (size + 6.5).round(),
+            row_h,
+            header_h: header_h(row_h),
             k: size / DEFAULT_DIFF_FONT_SIZE,
             tab: s.tab_columns(),
             numbers: s.diff_line_numbers,
@@ -87,7 +99,7 @@ mod tests {
     #[test]
     fn default_size_keeps_the_fixed_layout() {
         let st = DiffStyle::new(&Settings::default());
-        assert_eq!((st.row_h, st.k, st.tab), (19.0, 1.0, 4));
+        assert_eq!((st.row_h, st.header_h, st.k, st.tab), (19.0, 32.0, 1.0, 4));
         assert_eq!(st.font, FontId::monospace(12.5));
         assert_eq!(st.inline_cols(), InlineCols { old: Some(40.0), new: Some(84.0), sign: 94.0, text: 110.0 });
         assert_eq!(st.split_cols().text, 62.0);
@@ -107,7 +119,9 @@ mod tests {
     #[test]
     fn larger_font_scales_rows_and_gutters() {
         let st = DiffStyle::new(&Settings { diff_font_size: 16.0, ..Settings::default() });
-        assert_eq!(st.row_h, 23.0);
+        assert_eq!((st.row_h, st.header_h), (23.0, 32.0));
+        let large = DiffStyle::new(&Settings { diff_font_size: 24.0, ..Settings::default() });
+        assert_eq!((large.row_h, large.header_h), (31.0, 39.0), "row_h + 8 once that passes 32");
         assert!((st.inline_cols().text - 140.8).abs() < 1e-4);
         let clamped = DiffStyle::new(&Settings { diff_font_size: f32::NAN, tab_size: 0, ..Settings::default() });
         assert_eq!((clamped.row_h, clamped.tab), (19.0, 1));

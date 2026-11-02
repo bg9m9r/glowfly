@@ -137,8 +137,8 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 
 ### Dialog frame and button styles
 
-- Draw the menu items, the issue picker's list and the remaining small inline buttons (diff hunk
-  actions, file-row Stage) with the shared styles, or give them a documented style of their own
+- Draw the menu items, the issue picker's list and the remaining small inline buttons (file-row
+  Stage) with the shared styles, or give them a documented style of their own
 - Keep the trust prompt's footer the same between held and not-held prompts (Don't trust vs
   Cancel as the dismiss button)
 - Show the primary button's text in a strong weight once the bundled font has one
@@ -336,7 +336,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   taller window or a Recent-only golden
 
 ### Buttons and split buttons follow the shared state painter
-- S1: add the HIT_MIN debug assertion to `paint_button` once the hunk buttons drop `.height(17)`
 - S3: quiet chips get a hit area of at least 24 px, with a check
 - S4: fold `tab_glyph` into `paint_target`, then delete `paint_quiet`
 - S5: the segmented thumb's "Graph" sits low (7 px above the caps, 5 px below the baseline)

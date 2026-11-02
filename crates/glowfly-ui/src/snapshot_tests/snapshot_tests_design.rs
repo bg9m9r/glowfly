@@ -19,12 +19,13 @@ use eframe::egui::{self, Align2, CornerRadius, Rect, Shape, StrokeKind, Ui, pos2
 use egui_kittest::kittest::Queryable;
 
 /// The kinds that carry text, with a label each.
-const KINDS: [(Kind, &str); 5] = [
+const KINDS: [(Kind, &str); 6] = [
     (Kind::Primary, "Commit"),
     (Kind::Tonal, "Stage all"),
     (Kind::Secondary, "Cancel"),
     (Kind::Quiet, "Details"),
     (Kind::Danger, "Discard"),
+    (Kind::DangerQuiet, "Discard hunk"),
 ];
 
 fn button(kind: Kind, label: &'static str) -> StyledButton<'static> {
@@ -87,7 +88,7 @@ fn painted_row(ui: &mut Ui, label: &str, press: Press) {
 }
 
 fn render_buttons(name: &str, p: Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(720.0, 290.0)).build_ui_state(
+    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(820.0, 290.0)).build_ui_state(
         move |ui, first: &mut bool| {
             frame(ui, &p);
             ui.add_space(8.0);

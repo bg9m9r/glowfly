@@ -99,8 +99,8 @@ fn sizes_meet_the_minimums() {
             (room(SMALL_HEIGHT, secondary("Retry").size(ControlSize::Small)) - room(HEIGHT, secondary("Retry"))).abs() <= 1.0,
             "small and default buttons give their text about the same room"
         );
-        let r = ui.add(secondary("Stage hunk").height(17.0).min_width(120.0));
-        assert_eq!(r.rect.height(), 17.0, "an exact height");
+        let r = ui.add(secondary("Stage hunk").size(ControlSize::Small).min_width(120.0));
+        assert_eq!(r.rect.height(), SMALL_HEIGHT, "a hunk header's Small button");
         assert_eq!(r.rect.width(), 120.0, "the least width still applies");
         assert_eq!(quiet("Fetch").desired_width(ui), secondary("Fetch").desired_width(ui), "quiet and framed: 12 px beside the text");
         let small_quiet = quiet("Fetch").size(ControlSize::Compact);
@@ -166,7 +166,14 @@ fn looks_follow_the_kind_and_state() {
         assert_eq!(look_for(&p, kind, false, Press::Hover), Look { fill: p.raised, ink: p.weak, edge: Stroke::NONE }, "{kind:?}");
     }
     let dq = |press| look_for(&p, Kind::DangerQuiet, true, press);
-    assert_eq!(dq(Press::Rest), Look { fill: Color32::TRANSPARENT, ink: p.danger, edge: Stroke::NONE }, "quiet danger has no fill at rest");
+    assert_eq!(
+        dq(Press::Rest),
+        Look { fill: Color32::TRANSPARENT, ink: p.danger_ink(), edge: Stroke::NONE },
+        "quiet danger has no fill at rest"
+    );
+    for press in [Press::Hover, Press::Pressed] {
+        assert_eq!(dq(press).ink, p.danger_ink(), "the readable danger ink when lit");
+    }
     assert_eq!(dq(Press::Hover).fill, p.wash(p.danger, 0.12));
     assert_eq!(dq(Press::Pressed).fill, p.wash(p.danger, 0.18));
     assert_eq!(look_for(&p, Kind::DangerQuiet, false, Press::Hover).ink, p.faint);

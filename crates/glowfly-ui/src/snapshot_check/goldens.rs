@@ -116,6 +116,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     // Diffs, blame, conflicts and the pull request's line comments.
     ("diff_inline", Window),
     ("diff_split", Window),
+    ("diff_hunks_german", Window),
+    ("diff_hunk_header_narrow", Window),
     ("diff_syntax_inline", Window),
     ("diff_syntax_split_light", Window),
     ("diff_words_inline", Window),
