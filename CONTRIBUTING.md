@@ -22,7 +22,9 @@ cargo run --release -- <repo path>     # run the app
 pwsh scripts/check.ps1                 # fmt, clippy (-D warnings) and all tests
 ```
 
-`scripts/check.ps1` must pass before a pull request is merged; CI runs the same script.
+`scripts/check.ps1` must pass before a pull request is merged. CI runs the same script in four
+parts side by side on Windows (`-Only lint`, `core`, `flows` and `rest`; together they are the
+whole check), and the required `Check (Windows)` check passes only when all four do.
 CodeQL (`.github/workflows/codeql.yml`) also scans each pull request's Rust code and workflows;
 its config (`.github/codeql/codeql-config.yml`) leaves test code out. zizmor
 (`.github/workflows/zizmor.yml`) lints the workflows and fails on findings of medium severity or
