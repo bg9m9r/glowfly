@@ -7,8 +7,10 @@ Dialog
   Label "The commit this brings in has other versions of the hooks, scripts or settings files that change with the branch, and git would run or read them during the command. So far Glowfly has only read them."
   Label "Hooks"
   Label "in .githooks"
+  Label "Not recognised"
   Label "post-merge"
   Label "What these hooks and settings run changes with the branch (.githooks is in the working tree): Glowfly asks again before a checkout, merge, pull or rebase brings in other versions of it."
-  Label "Trust it only if you know where it came from. Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
+  Label "Trust it only if you know where it came from."
+  Label "Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
   Button "Cancel" [focused]
   Button "Trust and run"

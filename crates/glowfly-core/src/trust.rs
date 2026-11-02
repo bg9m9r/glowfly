@@ -19,6 +19,7 @@ mod keys;
 use keys::command_key;
 pub use keys::is_network_setting;
 pub mod incoming;
+pub mod known;
 pub mod merged;
 pub mod plumbing;
 mod programs;
@@ -51,6 +52,10 @@ pub struct TrustScan {
     /// The digest of each of `hooks`' script contents, by name (`digest::of_file`): an edited
     /// script asks again. A hook missing here counts as unreadable.
     pub hook_digests: BTreeMap<String, String>,
+    /// The hooks whose scripts Glowfly recognises (`known::hook`), read with `hook_digests`;
+    /// for the prompt's marks only, never in the print. Empty (every hook unrecognised) in a
+    /// scan of incoming commits.
+    pub known_hooks: BTreeMap<String, known::Known>,
     /// The folder `hooks` were found in; None when hooks come from the user's own (global or
     /// system) core.hooksPath, or from a path that can't be resolved without the shell.
     pub hooks_dir: Option<PathBuf>,
@@ -191,7 +196,11 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
     let mut paths = Vec::new();
     if let Some(dir) = &out.hooks_dir {
         for (name, path) in active_hooks(dir) {
-            out.hook_digests.insert(name.clone(), digest::of_file(&path, reading));
+            let (digest, bytes) = digest::of_file_keeping(&path, reading, known::MAX_HOOK_BYTES);
+            out.hook_digests.insert(name.clone(), digest);
+            if let Some(k) = bytes.and_then(|b| known::hook(&name, &b)) {
+                out.known_hooks.insert(name.clone(), k);
+            }
             out.hooks.push(name);
             paths.push(path);
         }

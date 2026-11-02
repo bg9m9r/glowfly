@@ -182,6 +182,7 @@ pub(super) mod snapshot_tests_tools;
 pub(super) mod snapshot_tests_trello;
 pub(super) mod snapshot_tests_trust;
 pub(super) mod snapshot_tests_trust_held;
+pub(super) mod snapshot_tests_trust_lfs;
 pub(super) mod snapshot_tests_trust_network;
 pub(super) mod snapshot_tests_undo;
 pub(super) mod snapshot_tests_update_download;

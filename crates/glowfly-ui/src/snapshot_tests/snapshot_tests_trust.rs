@@ -102,7 +102,7 @@ fn trust_prompt_incoming() {
     };
     let mut st = prompt_state(ThemeChoice::Dark, scan, false, Some("Pull"));
     if let Some(Modal::Trust(p)) = &mut st.modal {
-        p.incoming = Some(incoming);
+        p.incoming = Some(Box::new(incoming));
     }
     let mut h = harness(st, true);
     h.run();

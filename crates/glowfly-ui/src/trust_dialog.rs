@@ -10,19 +10,23 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::trust_dialog_rows::{self as rows, Mark};
 use super::widgets::{self, Icon, buttons, icon};
 use crate::msg::{Msg, TrustMsg};
+use crate::state::trust::rows::row_follows;
 use crate::state::trust::{TrustPrompt, hooks_label, shown_value};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
-use glowfly_core::trust::{ConfigCommand, TrustScan, is_network_setting};
+use glowfly_core::trust::known::{self, Known};
+use glowfly_core::trust::{ConfigCommand, Follow, TrustScan, is_network_setting};
 use std::path::Path;
 
 /// Draws the prompt; returns true when Cancel was clicked (the dialog closes without a
 /// decision). The other buttons send a decision and update closes it. Enter never trusts: the
-/// footer's tone makes Cancel the default (and with no Cancel there is no default).
+/// footer's tone makes Cancel the default (and with no Cancel there is no default). Neither
+/// answer is filled: this is a safety decision, so no button is styled as the expected one.
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     let title = match (&p.incoming, &p.gained) {
         _ if p.unchecked.is_some() => cx.t.tr("trust.incoming.title"),
@@ -33,9 +37,9 @@ pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     let mut d = Dialog::new(cx, title).begin(ui);
     d.body(ui, |ui| body(ui, cx.t, p));
     let footer = if p.held.is_some() || p.terminal {
-        Footer::new().cancel().danger(buttons::primary("Trust and run"))
+        Footer::new().cancel().danger(buttons::secondary("Trust and run"))
     } else {
-        Footer::new().alt(buttons::secondary("Don't trust")).danger(buttons::primary("Trust"))
+        Footer::new().alt(buttons::secondary("Don't trust")).danger(buttons::secondary("Trust"))
     };
     let out = d.finish(ui, footer);
     if out.primary || out.alt.is_some() {
@@ -47,7 +51,7 @@ pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
 /// Where the repository is, the job waiting, and what in it runs programs.
 fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
     ui.label(RichText::new(printable(&p.name)).font(type_scale::strong(ui, type_scale::BODY)));
-    ui.add(egui::Label::new(RichText::new(glowfly_core::native_path::shown(&p.workdir)).color(color::weak())).wrap());
+    rows::path_line(ui, &glowfly_core::native_path::shown(&p.workdir));
     if p.held.is_some() || p.terminal || p.refused {
         ui.add_space(8.0);
     }
@@ -72,7 +76,7 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
         ui.label(RichText::new("You chose not to trust it before.").color(color::weak()));
     }
     ui.add_space(8.0);
-    let shown = p.incoming.as_ref().or(p.gained.as_ref()).unwrap_or(&p.scan);
+    let shown = p.incoming.as_deref().or(p.gained.as_ref()).unwrap_or(&p.scan);
     // A commands file alone runs nothing by itself: listed below, after "nothing runs", unless
     // it is what changed since the repository was trusted.
     if shown.is_empty() && p.incoming.is_none() && (p.gained.is_none() || shown.commands.is_none()) {
@@ -88,11 +92,12 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
         ui.add(egui::Label::new(intro).wrap());
         ui.add_space(8.0);
         egui::ScrollArea::vertical().id_salt("trust-findings").max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
-            findings(ui, t, shown, &p.workdir);
+            findings(ui, t, shown, &p.workdir, &row_follows(p, None));
             for m in &shown.submodules {
                 ui.add_space(4.0);
                 ui.label(RichText::new(format!("In submodule {}", printable(&m.path))).font(type_scale::strong(ui, type_scale::BODY)));
-                ui.indent(("trust-submodule", &m.path), |ui| findings(ui, t, &m.scan, &p.workdir));
+                let follows = row_follows(p, Some(&m.path));
+                ui.indent(("trust-submodule", &m.path), |ui| findings(ui, t, &m.scan, &p.workdir, &follows));
             }
         });
     }
@@ -100,14 +105,14 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
         commands(ui, t);
     }
     ui.add_space(8.0);
-    ui.add(
-        egui::Label::new(
-            "Trust it only if you know where it came from. Until then, Glowfly won't fetch in the background, \
-             ask its credential helper for sign-ins or let git read its status, and it asks before running git \
-             commands you start.",
-        )
-        .wrap(),
-    );
+    // Two labels with no gap: the advice in strong text, then what holds until then.
+    let gap = std::mem::replace(&mut ui.spacing_mut().item_spacing.y, 0.0);
+    let advice = RichText::new("Trust it only if you know where it came from.").font(type_scale::strong(ui, type_scale::BODY));
+    ui.add(egui::Label::new(advice.color(color::text())).wrap());
+    let until = "Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read \
+                 its status, and it asks before running git commands you start.";
+    ui.add(egui::Label::new(RichText::new(until).color(color::weak())).wrap());
+    ui.spacing_mut().item_spacing.y = gap;
 }
 
 /// The repository's own commands file, new or changed: its commands run only when picked.
@@ -119,12 +124,16 @@ fn commands(ui: &mut Ui, t: Lang) {
     ui.add(egui::Label::new(RichText::new(t.tr("trust.commands.note")).color(color::weak())).wrap());
 }
 
-/// The settings and hooks of one repository (the top one or a submodule).
-fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path) {
+/// The settings and hooks of one repository (the top one or a submodule); `places` are the
+/// places in its working tree its settings may name, which Git LFS's must not.
+fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path, places: &[Follow]) {
     let (network, commands): (Vec<_>, Vec<_>) = scan.config.iter().partition(|c| is_network_setting(&c.key));
-    settings(ui, "Settings that run commands", &commands);
+    settings(ui, t, "Settings that run commands", &commands, |c| match known::setting(c, places) {
+        Some(Known::GitLfs) => Mark::GitLfs,
+        None => Mark::Unknown { tip: t.tr("trust.unknown.tip") },
+    });
     if !network.is_empty() {
-        settings(ui, t.tr("trust.network.title"), &network);
+        settings(ui, t, t.tr("trust.network.title"), &network, |_| Mark::Unknown { tip: t.tr("trust.network.note") });
         ui.add(egui::Label::new(RichText::new(t.tr("trust.network.note")).color(color::weak())).wrap());
         ui.add_space(6.0);
     }
@@ -140,21 +149,25 @@ fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path) {
             }
         });
         for h in &scan.hooks {
-            ui.label(RichText::new(printable(h)).monospace());
+            let mark = match scan.known_hooks.get(h) {
+                Some(Known::GitLfs) => Mark::GitLfs,
+                None => Mark::Unknown { tip: t.tr("trust.unknown.tip") },
+            };
+            rows::hook(ui, t, &printable(h), mark);
         }
     }
     follows(ui, t, scan);
 }
 
-/// One group of settings under `title`, one `key = value` row each; nothing when empty.
-fn settings(ui: &mut Ui, title: &str, rows: &[&ConfigCommand]) {
-    if rows.is_empty() {
+/// One group of settings under `title`, one `key = value` row each with its `mark`; nothing
+/// when empty.
+fn settings(ui: &mut Ui, t: Lang, title: &str, list: &[&ConfigCommand], mark: impl Fn(&ConfigCommand) -> Mark) {
+    if list.is_empty() {
         return;
     }
     ui.label(type_scale::section_text(ui, title));
-    for c in rows {
-        let row = format!("{} = {}", printable(&c.key), shown_value(&c.value));
-        ui.add(egui::Label::new(RichText::new(row).monospace()).wrap());
+    for c in list {
+        rows::setting(ui, t, &printable(&c.key), &shown_value(&c.value), mark(c));
     }
     ui.add_space(6.0);
 }

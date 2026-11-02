@@ -12,6 +12,8 @@ start with `state/`, `update/` or `ui/`.
 - `remote_branch_delete_dialog.rs`: Delete remote branch (`Modal::DeleteRemoteBranch`): the question, the local branches tracking it with Unset upstream, and the Git Flow warning.
 - `op_preview_dialog.rs`: the operation preview (`Modal::OpPreview`): the dialog with its headline, conflicted paths, lost commits and Apply buttons.
 - `op_preview_rows.rs`: the operation preview's history-afterwards lane and the lost commits' rows.
+- `trust_dialog.rs`: the "Trust this repository?" dialog (`Modal::Trust`): the path, what runs, the advice, and Don't trust / Trust (or Cancel / Trust and run), neither filled.
+- `trust_dialog_rows.rs`: its path line cut to one line and its setting and hook rows: a warning triangle or Git LFS tick, the program word emphasised, and the "Git LFS" tag.
 - `welcome.rs`, `welcome_steps.rs`: the first-run welcome.
 - `welcome_header.rs`: the welcome's header band and progress bar.
 - `welcome_art.rs`: the band's lattice drawing per theme.

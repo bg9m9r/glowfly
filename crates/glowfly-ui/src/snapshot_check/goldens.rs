@@ -169,6 +169,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("confirm_dialog_danger", Dialog),
     ("quit_confirm_unsaved", Dialog),
     ("credential_prompt_sign_in", Dialog),
+    ("trust_prompt_lfs", Dialog),
+    ("trust_prompt_lfs_light", Dialog),
 ];
 
 /// The goldens compared only as images: their text would be the same as another snapshot's
@@ -230,6 +232,7 @@ const IMAGE_ONLY: &[&str] = &[
     "terminal_ansi_high_contrast_dark",
     "modal_backdrop_light",
     "dialog_look_high_contrast_light",
+    "trust_prompt_lfs_light",
 ];
 
 /// Whether golden `name` keeps no text snapshot.
