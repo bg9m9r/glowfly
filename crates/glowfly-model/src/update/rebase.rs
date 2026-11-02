@@ -32,6 +32,8 @@ pub(super) fn handle(st: &mut AppState, msg: RebaseMsg, now: Instant, fx: &mut V
             }
             close_views(st);
             st.session.rebase.view = Some(RebasePanel::loading(base));
+            // Starting an interactive rebase by any route retires the Tidy tip.
+            super::hints::retire(st, crate::state::hints::HintId::TidyCommits, fx);
             request(st, fx);
         }
         RebaseMsg::RebasePlanLoaded { generation, result } => {

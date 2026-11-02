@@ -4,7 +4,7 @@
 //!
 //! Some settings Glowfly records by itself, never as a choice the user makes (`user_view`
 //! leaves them out): which release notes were seen, when the update check last worked, and
-//! which one-time notices were shown. A read after a hold keeps the newer of those
+//! which one-time notices and tips were shown. A read after a hold keeps the newer of those
 //! (`carry_records`) and doesn't count them as edits the read drops.
 
 use glowfly_core::app_update::Version;
@@ -56,6 +56,8 @@ pub fn user_view(s: &Settings) -> String {
     s.updates.last_checked = None;
     s.detached_head_warned = false;
     s.status_tip_shown.clear();
+    s.hints_seen.clear();
+    s.hints_ignored.clear();
     serde_json::to_string(&s).unwrap_or_default()
 }
 
@@ -85,6 +87,12 @@ pub fn carry_records(ours: &Settings, file: &mut Settings) -> bool {
         if *shown && file.status_tip_shown.get(repo) != Some(&true) {
             file.status_tip_shown.insert(repo.clone(), true);
             carried = true;
+        }
+    }
+    // Tips retired or ignored on either side stay so.
+    for (mine, theirs) in [(&ours.hints_seen, &mut file.hints_seen), (&ours.hints_ignored, &mut file.hints_ignored)] {
+        for id in mine {
+            carried |= theirs.insert(id.clone());
         }
     }
     carried

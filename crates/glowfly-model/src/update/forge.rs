@@ -319,6 +319,8 @@ fn connected(
             }
             st.settings.connections.retain(|c| c.account != account);
             st.settings.connections.push(Connection { account: account.clone(), user: user.clone(), method });
+            // Adding a connection retires the Connect tip; the save below records it.
+            crate::state::hints::retire(st, crate::state::hints::HintId::Connect);
             fx.extend(super::prefs::save_settings(st));
             if let Some(p) = st.prefs.as_mut() {
                 p.int_token.clear();

@@ -159,6 +159,8 @@ pub struct RepoSession {
     /// The search bar's text, the ref filter, the graph's scroll, the file lists' folds and the
     /// open diff's folds and top row.
     pub tab_view: super::session_view::TabView,
+    /// This tab's commits this session, for the Tidy tip (state/hints.rs).
+    pub hint_commits: super::hints::CommitRun,
 }
 
 impl RepoSession {

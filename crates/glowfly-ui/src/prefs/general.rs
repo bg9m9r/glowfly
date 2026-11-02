@@ -1,12 +1,13 @@
 //! Preferences > General, in titled sections: Updates, Git (general_git.rs), Fetching, Graph,
-//! Repositories, Sign-ins and Diagnostics.
+//! Repositories, Sign-ins, Help and tips, and Diagnostics.
 
 use super::updates_row::UpdatesView;
-use super::{help, row, section, warn};
+use super::{check_row, help, row, section, warn};
 use crate::keymap::{BindingId, Keymap};
 use crate::logs::LogsMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
+use crate::onboarding::OnboardingMsg;
 use crate::state::deep_link::SchemeView;
 use crate::state::prefs::GitConfigValues;
 use crate::ui::theme::controls;
@@ -42,7 +43,11 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     fetching(ui, t, s);
     section(ui, t.tr("prefs.general.section.graph"));
     row(ui, t.tr("prefs.general.initial_commits.label"), |ui| {
-        ui.add(egui::DragValue::new(&mut s.initial_commits).range(glowfly_core::settings::MIN_INITIAL_COMMITS..=200_000).speed(50));
+        ui.add(
+            egui::DragValue::new(&mut s.initial_commits)
+                .range(glowfly_core::settings::commit_limit::MIN_INITIAL_COMMITS..=200_000)
+                .speed(50),
+        );
         help(ui, t.tr("prefs.general.initial_commits.help"));
         warn(ui, t.tr("prefs.general.initial_commits.warn"));
     });
@@ -63,6 +68,8 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         help(ui, t.tr("prefs.general.remember_sign_ins.help"));
     });
     forget_row(ui, t, s, msgs);
+    section(ui, t.tr("prefs.general.section.tips"));
+    tips(ui, t, s, msgs);
     section(ui, t.tr("prefs.general.section.diagnostics"));
     diagnostics(ui, t, s, msgs);
 }
@@ -109,6 +116,18 @@ fn repositories(ui: &mut Ui, t: Lang, s: &mut Settings, cx: &GeneralContext) {
     row(ui, t.tr("prefs.general.auto_stash.label"), |ui| {
         controls::checkbox(ui, &mut s.auto_stash, t.tr("prefs.general.auto_stash.check"));
         help(ui, t.tr("prefs.general.auto_stash.help"));
+    });
+}
+
+/// Tips while you work, and showing the dismissed tips and one-time notes again (also while tips
+/// are off).
+fn tips(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
+    check_row(ui, t.tr("prefs.general.tips.label"), &mut s.hints, t.tr("prefs.general.tips.check"), Some(t.tr("prefs.general.tips.help")));
+    row(ui, t.tr("prefs.general.tips_again.label"), |ui| {
+        if ui.add(buttons::secondary(t.tr("prefs.general.tips_again.button"))).clicked() {
+            msgs.push(Msg::Onboarding(OnboardingMsg::ResetHints));
+        }
+        help(ui, t.tr("prefs.general.tips_again.help"));
     });
 }
 

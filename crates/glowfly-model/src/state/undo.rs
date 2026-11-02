@@ -37,6 +37,8 @@ pub struct UndoHistory {
     pub blocked: Option<String>,
     /// The operation in progress that a Glowfly job started and that stopped for conflicts.
     pub stopped: Option<Stopped>,
+    /// How many actions `record` took, ever: what tells a new one apart (update/undo.rs).
+    pub recorded: u64,
 }
 
 /// Where a stopped operation started (`undo::op_start`), and how many undo entries were older.
@@ -72,6 +74,7 @@ impl UndoHistory {
             self.stopped = None;
         }
         self.push_undo(a);
+        self.recorded += 1;
         self.redo.clear();
         self.blocked = None;
     }

@@ -9,7 +9,7 @@ fn settings_roundtrip_and_defaults() {
     assert_eq!(s.auto_fetch_minutes, 5);
     assert_eq!(s.default_branch, "main");
     assert_eq!(s.columns, GraphColumns::default());
-    assert_eq!(Settings { initial_commits: 10, ..Settings::default() }.commit_limit(), MIN_INITIAL_COMMITS);
+    assert_eq!(Settings { initial_commits: 10, ..Settings::default() }.commit_limit(), commit_limit::MIN_INITIAL_COMMITS);
 }
 
 #[test]
@@ -669,3 +669,6 @@ fn graphite_is_the_default_dark_theme_and_dusk_keeps_its_own_name() {
         "a missing file shows the default"
     );
 }
+
+#[path = "hints_tests.rs"]
+mod hints_tests;

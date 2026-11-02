@@ -97,7 +97,8 @@ fn rebase_onto_the_selected_commit() {
     let Msg::Job(JobMsg::Git { label, cmds }) = plain else { panic!("expected a git job") };
     assert_eq!((label.as_str(), cmds), ("Rebase", vec![glowfly_core::gitcli::args(&["rebase", &other.to_string()])]));
     let msg = Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Rebase(RebaseCommand::Onto { oid: other, interactive: true })));
-    let fx = update(&mut st, msg, Instant::now());
+    // The first interactive rebase also retires the Tidy tip, which saves the settings.
+    let fx: Vec<Effect> = update(&mut st, msg, Instant::now()).into_iter().filter(|e| !matches!(e, Effect::SaveSettings(_))).collect();
     let planned = matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadPlan { base: RebaseBase::OntoCommit(o), .. })] if *o == other);
     assert!(planned, "{fx:?}");
 

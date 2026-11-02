@@ -52,6 +52,11 @@ Label "Once git accepts a username and password or token typed in Glowfly, it is
 Button "Remove saved tokens" [disabled]
 Button "Also sign out of Git Credential Manager" [disabled]
 Label "Glowfly has no stored connections to remove."
+Label "Help and tips"
+CheckBox "Show tips while I work" [on]
+Label "One short tip at a time, in the place it's about. Nothing is collected or sent."
+Button "Show tips again"
+Label "Tips you dismissed, and the one-time notes, show again."
 Label "Diagnostics"
 CheckBox "Add the git commands Glowfly runs, with their timings, to the activity log" [off]
 Label "Also writes Glowfly's informational and debug messages to the error log. Leave it off unless you're tracking down a problem: it adds a line for every git command, background refreshes included."

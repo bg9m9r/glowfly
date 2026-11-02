@@ -54,6 +54,11 @@ Label "Cuando git acepta un nombre de usuario y una contraseña o un token escri
 Button "Borrar tokens guardados" [disabled]
 Button "También cerrar sesión en Git Credential Manager" [disabled]
 Label "Glowfly no tiene conexiones guardadas que quitar."
+Label "Ayuda y consejos"
+CheckBox "Mostrar consejos mientras trabajo" [on]
+Label "Un consejo breve cada vez, en el lugar del que trata. No se recopila ni se envía nada."
+Button "Volver a mostrar los consejos"
+Label "Los consejos que descartaste y los avisos de una sola vez vuelven a aparecer."
 Label "Diagnóstico"
 CheckBox "Añadir al registro de actividad los comandos git que ejecuta Glowfly, con su duración" [off]
 Label "También escribe los mensajes informativos y de depuración de Glowfly en el registro de errores. Déjalo desactivado salvo que estés investigando un problema: añade una línea por cada comando git, incluidas las actualizaciones en segundo plano."

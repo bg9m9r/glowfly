@@ -86,6 +86,11 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("welcome_repo_groups", Window),
     ("welcome_repo_row_hover", Window),
     ("live_updates_states", Window),
+    // The tips in context: under the graph's header, and in a narrow left panel.
+    ("hint_row_undo", Top(280.0)),
+    ("hint_row_undo_light", Top(280.0)),
+    ("hint_row_connect", TopLeft(320.0, 560.0)),
+    ("hint_row_tidy_de", Top(280.0)),
     // Narrow windows: the toolbar folded into More, the graph's columns given way.
     ("narrow_900_en", Window),
     ("narrow_900_de", Window),
@@ -187,6 +192,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `hint_row_undo` in Porcelain.
+    "hint_row_undo_light",
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.
     "graph_ghost_branch_narrow",
     "main_light",

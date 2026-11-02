@@ -119,6 +119,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let input = header::HeaderIn { graph_w, cfg: &s.columns, saved: s.column_widths, chips_w, dates: &dates };
         let fitted = header::column_header(ui, t, input, &mut st.view.column_drag, msgs);
         let (cols_cfg, widths, graph_w, inline) = (fitted.cfg, fitted.widths, fitted.graph_w, fitted.refs_inline);
+        // A tip about the graph sits pinned under the header, pushing the rows down.
+        if let Some(h) = crate::state::hints::view(st).filter(|h| h.place == crate::state::hints::Place::Graph) {
+            crate::ui::widgets::hint_row::show(ui, t, &h, msgs);
+        }
         // How many matches fill the graph, for a filtering search loading further back.
         st.view.graph_fit_rows = (ui.available_height() / row_h).floor() as usize;
         if filtered && total == 0 {

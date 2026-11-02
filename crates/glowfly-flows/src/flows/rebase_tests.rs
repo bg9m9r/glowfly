@@ -122,7 +122,9 @@ fn opening_requests_the_list_and_closes_other_views() {
     st.session.diff.view = Some((DiffTarget::Commit(c[0], "c1.txt".into()), diff.into()));
     st.session.history.view = Some(FileHistoryView::loading("c1.txt".into(), None));
     st.session.conflict.view = Some(ConflictView::loading("c1.txt".into()));
+    // The first interactive rebase also retires the Tidy tip, which saves the settings.
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[1]))));
+    let fx: Vec<Effect> = fx.into_iter().filter(|e| !matches!(e, Effect::SaveSettings(_))).collect();
     match &fx[..] {
         [e @ Effect::Rebase(RebaseEffect::LoadPlan { base, generation, .. })] => {
             assert_eq!((base, *generation), (&RebaseBase::FromCommit(c[1]), st.session.rebase.generation));

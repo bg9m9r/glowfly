@@ -145,6 +145,12 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - File rows marked `lfs` get a badge.
 - A diff whose `RepoMsg::DiffLoaded` brings an `LfsChange` shows a summary instead of the pointer text (`LfsDiffNote`, keyed by target, in `RepoSession::diff.lfs`, parked with its tab) until "Show pointer text".
 
+## Tips in context
+
+- One short tip at a time in the pane its feature lives in: Undo after a recorded discard, reset or branch delete (never a push), Tidy commits after WIP commits or two amends on a branch with an upstream, Connect when an opened repository's hosting service has no account.
+- Files: `state/hints.rs` (ids, the rules, the triggers' tests, the row's words), `update/hints.rs` (button, × menu, off, Show tips again, load triggers, `settle` after every message), `update/undo.rs` (`recorded_since`: the Undo trigger and the run of amends), `ui/widgets/hint_row.rs`.
+- None in the session the welcome ran in, at most one per session, none while a dialog, Preferences, a job or a conflict is open. A tip that loses its place unanswered is ignored once, then retired; acting, dismissing or using its feature retires it. Records are machine-wide and merged by `carry_records`.
+
 ## Signing passphrases (`gpg_prompt/`)
 
 - gpg-agent's pinentry is fixed when the long-running agent starts and is shared by all its clients, so there is no Glowfly pinentry; swapping it would mean editing gpg-agent.conf and restarting the agent.

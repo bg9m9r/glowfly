@@ -66,6 +66,7 @@ source file, update its line here.
 - `widgets/banner.rs`: the banner in five kinds, Info, Warning, Error, Progress and NeedsYou, with a mark and a coloured stripe.
 - `needs_you.rs`: the coral "needs you" badge and pill, always with the warning mark and the only reader of the coral.
 - `widgets/severity.rs`: the error, warning and information marks.
+- `widgets/hint_row.rs`: the tip row, a quiet accent wash with the info mark, one sentence, the tip's button and a × menu (Don't show this again, Turn off tips).
 - `widgets/form_message.rs`: a form's messages, under a field once it was edited or a submit was tried (`state/touched.rs`), or for the whole form in a tinted box.
 - `tests/view_checks/message_styles.rs` checks banners and every dialog's messages.
 

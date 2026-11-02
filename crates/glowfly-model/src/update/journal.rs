@@ -54,6 +54,8 @@ fn open(st: &mut AppState, fx: &mut Vec<Effect>) {
     super::issue::close(st);
     super::range_diff::close(st);
     st.session.gitflow_panel = false;
+    // Opening the journal by any route retires the Undo tip: its feature is known.
+    super::hints::retire(st, crate::state::hints::HintId::Undo, fx);
     if st.session.journal.view.is_none() {
         st.session.journal.view = Some(JournalView::default());
     }

@@ -43,6 +43,7 @@ pub mod gitflow;
 pub mod gitflow_base;
 pub mod gitflow_resume;
 pub mod graph_rows;
+pub mod hints;
 pub mod history;
 pub mod history_index;
 pub mod history_text;
@@ -206,9 +207,8 @@ use crate::msg::Msg;
 use git2::Oid;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
-use std::collections::HashMap;
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use std::{collections::HashMap, path::PathBuf};
 
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);

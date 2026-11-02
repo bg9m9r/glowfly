@@ -57,6 +57,7 @@ pub(super) mod snapshot_tests_gitflow_resume;
 pub(super) mod snapshot_tests_graph_bands;
 pub(super) mod snapshot_tests_graph_double_click;
 pub(super) mod snapshot_tests_graph_ref_menu;
+pub(super) mod snapshot_tests_hints;
 pub(super) mod snapshot_tests_history;
 pub(super) mod snapshot_tests_history_edges;
 pub(super) mod snapshot_tests_history_file;

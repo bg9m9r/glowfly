@@ -14,6 +14,8 @@ pub(super) mod diff_text_tests;
 pub(super) mod editor_tests;
 pub(super) mod git_program_tests;
 pub(super) mod graph_columns_tests;
+pub(super) mod hints_rules_tests;
+pub(super) mod hints_tests;
 pub(super) mod keys_tests;
 pub(super) mod layout_tests;
 pub(super) mod layout_window_tests;

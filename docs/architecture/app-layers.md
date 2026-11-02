@@ -32,7 +32,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `init.rs`: `InitMsg`.
 - `forge_filters.rs`: `FilterMsg`.
 - `issue.rs`: `IssueMsg`, for the issue panel and the Create issue dialog.
-- `onboarding.rs`: `OnboardingMsg`, carried by the first-run welcome and the tour.
+- `onboarding.rs`: `OnboardingMsg`, carried by the first-run welcome, the tour and the tips in context.
 - `dialog.rs`: `DialogMsg`, carried by a dialog's backdrop click, Esc or close button and the discard question.
 - `op_preview.rs`: `OpPreviewMsg`, carried by the operation preview's open, result, Preview again and Apply.
 - `notify.rs`: `NotifyMsg`, carried by holding and closing toasts and clicks on desktop notifications.

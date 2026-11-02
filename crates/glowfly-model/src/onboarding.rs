@@ -1,10 +1,12 @@
-//! Messages and effects of the first-run welcome and the tour of the main window
-//! (state/onboarding.rs, state/onboarding_tour.rs, update/onboarding.rs, runner/onboarding.rs,
-//! ui/welcome.rs, ui/welcome_steps.rs, ui/tour.rs).
+//! Messages and effects of the first-run welcome, the tour of the main window and the tips in
+//! context (state/onboarding.rs, state/onboarding_tour.rs, state/hints.rs, update/onboarding.rs,
+//! update/hints.rs, runner/onboarding.rs, ui/welcome.rs, ui/welcome_steps.rs, ui/tour.rs,
+//! ui/widgets/hint_row.rs).
 
 use crate::effect::EffectMeta;
 use crate::effect::SandboxRule;
 use crate::msg::{CloneMsg, Inactive, Msg, RepoMsg};
+use crate::state::hints::HintId;
 use glowfly_core::identity::Identity;
 use std::path::{Path, PathBuf};
 
@@ -31,6 +33,16 @@ pub enum OnboardingMsg {
     TourNext,
     TourBack,
     CloseTour,
+    /// A tip's button: retires the tip, then does what the button says.
+    HintAct(HintId),
+    /// A tip's "Don't show this again": retires it.
+    DismissHint(HintId),
+    /// A tip's "Turn off tips": no more tips until they are turned on again.
+    HintsOff,
+    /// The palette's Turn tips on / Turn tips off.
+    SetHints(bool),
+    /// Show tips again: forgets the tips and one-time notes already seen.
+    ResetHints,
     // ---- from the runner
     /// The global git identity, read when the welcome opens.
     IdentityRead(Result<Identity, String>),
@@ -77,6 +89,11 @@ impl OnboardingMsg {
             | Self::TourNext
             | Self::TourBack
             | Self::CloseTour
+            | Self::HintAct(_)
+            | Self::DismissHint(_)
+            | Self::HintsOff
+            | Self::SetHints(_)
+            | Self::ResetHints
             | Self::IdentityRead(_)
             | Self::IdentityWritten { .. } => None,
         }

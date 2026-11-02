@@ -73,6 +73,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
 
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
     let actions = crate::state::section_actions::all(st);
+    let hint = crate::state::hints::view(st).filter(|h| h.place == crate::state::hints::Place::LeftPanel);
     let t = st.settings.lang();
     let open_tabs = crate::state::tabs::open_places(&st.tabs);
     let open_issue = st.session.issue.view.as_ref().map(|v| v.key.clone());
@@ -178,6 +179,10 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let add_remote = &actions.remote;
     let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering, connections, add_remote, t };
     super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, tips_seen, msgs);
+    // The Connect tip, where the pull requests appear once an account is connected.
+    if let Some(h) = &hint {
+        widgets::hint_row::show(ui, t, h, msgs);
+    }
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {
         let title = f.prs_header(t);

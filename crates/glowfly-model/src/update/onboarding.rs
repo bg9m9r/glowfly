@@ -1,5 +1,5 @@
-//! The first-run welcome (identity, hosting service, git check, start) and the tour of the main
-//! window. The welcome reads and writes only user.name and user.email in the global git config;
+//! The first-run welcome (identity, hosting service, git check, start), the tour of the main
+//! window, and the tips' messages (handled in update/hints.rs). The welcome reads and writes only user.name and user.email in the global git config;
 //! closing or finishing it sets `settings.welcome_done` and the Start step's avatar choice
 //! (`settings.avatar_lookups`), the only things saved.
 
@@ -15,6 +15,8 @@ pub(super) fn handle(st: &mut AppState, msg: OnboardingMsg, now: Instant, fx: &m
     match msg {
         OnboardingMsg::Startup => {
             if !st.settings.welcome_done {
+                // The welcome is enough for a first launch: tips wait for the next one.
+                st.onboarding.quiet_session = true;
                 open(st, fx);
             }
         }
@@ -83,11 +85,18 @@ pub(super) fn handle(st: &mut AppState, msg: OnboardingMsg, now: Instant, fx: &m
             }
         }
         OnboardingMsg::CloseTour => close_tour(st),
+        OnboardingMsg::HintAct(id) => super::hints::act(st, id, now, fx),
+        OnboardingMsg::DismissHint(id) => super::hints::retire(st, id, fx),
+        OnboardingMsg::HintsOff => super::hints::set(st, false, fx),
+        OnboardingMsg::SetHints(on) => super::hints::set(st, on, fx),
+        OnboardingMsg::ResetHints => super::hints::reset(st, now, fx),
     }
 }
 
-/// A repository finished loading: start the tour the welcome armed, once.
-pub(super) fn loaded(st: &mut AppState, kind: LoadKind) {
+/// A repository finished loading: start the tour the welcome armed, once, and offer the tips
+/// that a load can bring (update/hints.rs).
+pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
+    super::hints::loaded(st, kind, fx);
     if kind == LoadKind::Open && st.onboarding.tour_after_open {
         st.onboarding.tour_after_open = false;
         st.onboarding.tour = Some(TourStep::Toolbar);
