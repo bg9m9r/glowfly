@@ -983,6 +983,7 @@
   "gitflow.finish.stash_failed": "{label} didn't start: your changes couldn't be stashed: {why}",
   "gitflow.finish.stash_note.one": "Your {count} changed file is stashed first and put back on {branch} once Finish is done.",
   "gitflow.finish.stash_note.other": "Your {count} changed files are stashed first and put back on {branch} once Finish is done.",
+  "gitflow.finish.steps.label": "Steps:",
   "gitflow.palette.continue": "Continue finishing {branch}",
   "gitflow.palette.steps_left.one": "{count} step left",
   "gitflow.palette.steps_left.other": "{count} steps left",

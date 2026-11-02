@@ -61,9 +61,15 @@ fn english_text(src: &str) -> Vec<usize> {
 }
 
 /// Each English literal of `src` (as `english_text`), with its line.
+///
+/// The open brackets are a stack of frames: each `(` the name it calls, each `[` itself, each
+/// `{` a barrier. A `DEV_ONLY` frame covers the text inside it up to the next barrier, and only
+/// until a closure starts in it (its `|`): the body of `ui.push_id(i, |ui| ui.label("…"))` or
+/// `x.with(|v| { … })` is the user's text again.
 fn english_literals(src: &str) -> Vec<(usize, String)> {
     let code = code_lines(src).join("\n");
-    let mut stack: Vec<String> = Vec::new();
+    // (name, a closure started in it)
+    let mut stack: Vec<(String, bool)> = Vec::new();
     let mut found = Vec::new();
     for p in pieces(&code) {
         match p.kind {
@@ -71,10 +77,17 @@ fn english_literals(src: &str) -> Vec<(usize, String)> {
                 for (k, c) in code[p.span.clone()].char_indices() {
                     let before = &code[..p.span.start + k];
                     match c {
-                        '[' if before.trim_end().trim_end_matches('!').ends_with('#') => stack.push("#[".into()),
-                        '[' => stack.push("[".into()),
-                        '(' => stack.push(callee(before)),
-                        ')' | ']' => {
+                        '[' if before.trim_end().trim_end_matches('!').ends_with('#') => stack.push(("#[".into(), false)),
+                        '[' => stack.push(("[".into(), false)),
+                        '(' => stack.push((callee(before), false)),
+                        '{' => stack.push(("{".into(), false)),
+                        // A closure's `|` follows `(`, `,`, `=` or `move`; `a || b` is no closure.
+                        '|' if closure_starts(before) => {
+                            if let Some(top) = stack.last_mut() {
+                                top.1 = true;
+                            }
+                        }
+                        ')' | ']' | '}' => {
                             stack.pop();
                         }
                         _ => {}
@@ -83,7 +96,12 @@ fn english_literals(src: &str) -> Vec<(usize, String)> {
             }
             Kind::Str if !p.byte => {
                 let lit = &code[p.inner.clone()];
-                if is_english(lit) && !token_like(lit) && !stack.iter().any(|f| DEV_ONLY.contains(&f.as_str())) {
+                let dev = stack
+                    .iter()
+                    .rev()
+                    .take_while(|(name, _)| name != "{")
+                    .any(|(name, closure)| !closure && DEV_ONLY.contains(&name.as_str()));
+                if is_english(lit) && !token_like(lit) && !dev {
                     found.push((code[..p.span.start].matches('\n').count() + 1, lit.to_owned()));
                 }
             }
@@ -93,12 +111,21 @@ fn english_literals(src: &str) -> Vec<(usize, String)> {
     found
 }
 
+/// Whether a `|` after `before` opens a closure's parameters: it follows `(`, `,`, `=` or `move`.
+fn closure_starts(before: &str) -> bool {
+    let b = before.trim_end();
+    b.ends_with(['(', ',', '=']) || b.ends_with("move") && !b[..b.len() - 4].ends_with(|c: char| c.is_alphanumeric() || c == '_')
+}
+
 /// Whether a literal is a token rather than text: a command-line flag (`-NoLogo …`), or one word
 /// that is a path, file name, URL or name (`.gitattributes`, `https://git-lfs.com`, `--type={k}`,
-/// `glowfly-{name}`): with a `.`, `/`, `\`, `@`, `=` or `:` in it, or no capital letter.
+/// `glowfly-{name}`): with a `/`, `\`, `@` or `=` in it, a `.` or `:` before its end, or no
+/// capital letter. A word that only ends in `.` or `:` (`Steps:`, `Done.`) is text.
 fn token_like(lit: &str) -> bool {
     let one_word = !lit.contains(char::is_whitespace);
-    lit.starts_with('-') || one_word && (lit.contains(['.', '/', '\\', '@', '=', ':']) || !lit.contains(char::is_uppercase))
+    let inside = lit.trim_end_matches(['.', ':']);
+    lit.starts_with('-')
+        || one_word && (lit.contains(['/', '\\', '@', '=']) || inside.contains(['.', ':']) || !lit.contains(char::is_uppercase))
 }
 
 /// The name called by a `(` that follows `before`: the name and `!` just before it, with its
@@ -159,6 +186,11 @@ fn the_english_text_check_catches_what_it_should() {
     assert_eq!(english_text("#[doc = \"Some words\"]\nconst A: &str = \"Some words\";\n"), [2], "not in attributes");
     assert!(["--type={k}", "glowfly-{name}", "stash@{{{n}}}", ".gitattributes", "-NoLogo -NoExit"].into_iter().all(token_like));
     assert!(!token_like("Status") && !token_like("Open a file.") && !token_like("{n} files"));
+    assert!(["Steps:", "Done.", "Error:"].into_iter().all(|w| !token_like(w)), "a word ending in . or : is text");
+    let closures = "fn c(ui: &mut Ui) {\n    ui.push_id(i, |ui| {\n        ui.label(\"Delete everything\");\n    });\n    \
+                    x.with(|v| ui.label(\"Keep it\"));\n    ui.push_id(\"row id\", |ui| ui.label(t.tr(\"k\")));\n    \
+                    v.expect(\"Not a closure\");\n    debug_assert!(a || b, \"Nor is a || b\");\n}\n";
+    assert_eq!(english_text(closures), [3, 5], "a closure's body passed to a DEV_ONLY call is text; the call's own argument isn't");
     assert_eq!(callee("    egui::Id::new"), "Id::new");
     assert_eq!(callee("x.label "), "label");
     assert_eq!(callee("std::fs::read"), "read");

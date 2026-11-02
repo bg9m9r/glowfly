@@ -983,6 +983,7 @@
   "gitflow.finish.stash_failed": "{label} no empezó: no se pudieron guardar tus cambios en un stash: {why}",
   "gitflow.finish.stash_note.one": "Tu {count} archivo modificado se guarda primero en un stash y se recupera en {branch} cuando termine la finalización.",
   "gitflow.finish.stash_note.other": "Tus {count} archivos modificados se guardan primero en un stash y se recuperan en {branch} cuando termine la finalización.",
+  "gitflow.finish.steps.label": "Pasos:",
   "gitflow.palette.continue": "Continuar el Finish de {branch}",
   "gitflow.palette.steps_left.one": "{count} paso restante",
   "gitflow.palette.steps_left.other": "{count} pasos restantes",
