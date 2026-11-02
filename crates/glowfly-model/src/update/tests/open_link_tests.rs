@@ -31,7 +31,7 @@ fn a_link_whose_text_names_another_host_asks_first() {
     let url = "https://evil.example/login";
     let fx = update(&mut st, Msg::OpenLink { text: "https://github.com/acme/app".into(), url: url.into() }, Instant::now());
     assert!(fx.is_empty(), "nothing opens before the user answers");
-    let Some(Modal::Confirm { title, body, button, .. }) = &st.modal else { panic!("no confirmation: {:?}", st.modal.is_some()) };
+    let Some(Modal::ConfirmDanger { title, body, button, ack: None, .. }) = &st.modal else { panic!("no danger confirmation") };
     assert_eq!(title, "Open a different site?");
     assert_eq!(
         body,
@@ -47,7 +47,7 @@ fn a_look_alike_host_is_named_in_punycode() {
     let mut st = state();
     let fx = update(&mut st, Msg::OpenLink { text: "github.com/acme".into(), url: "https://g\u{456}thub.com/acme".into() }, Instant::now());
     assert!(fx.is_empty());
-    let Some(Modal::Confirm { body, .. }) = &st.modal else { panic!("no confirmation") };
+    let Some(Modal::ConfirmDanger { body, .. }) = &st.modal else { panic!("no confirmation") };
     assert!(body.starts_with("The link text shows github.com, but the link goes to xn--gthub-n2e.com."), "{body}");
     assert!(body.contains("\n\nhttps://xn--gthub-n2e.com/acme\n\n"), "{body}");
     assert!(!body.contains('\u{456}'), "{body}");

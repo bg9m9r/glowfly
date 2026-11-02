@@ -2,5 +2,5 @@ Dialog
   Label "Open a different site?"
   Button "Close this dialog"
   Label "The link text shows github.com, but the link goes to xn--gthub-n2e.com.\n\nhttps://xn--gthub-n2e.com/acme\n\nOnly open it if you trust xn--gthub-n2e.com."
-  Button "Cancel"
-  Button "Open link" [focused]
+  Button "Cancel" [focused]
+  Button "Open link"

@@ -1,5 +1,6 @@
 //! The question a link in a description asks when its text names another host than the one it
-//! goes to (`Msg::OpenLink`): the real host and address in punycode, Open link to go ahead.
+//! goes to (`Msg::OpenLink`): the real host and address in punycode, Open link (a danger
+//! button, Cancel the default) to go ahead.
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -14,7 +15,7 @@ fn prompt(name: &str, lang: &str, text: &str, url: &str) {
     let (mut st, dir) = with_repo(ThemeChoice::Light, &name.replace('_', "-"));
     st.settings.language = lang.into();
     crate::update::update(&mut st, Msg::OpenLink { text: text.into(), url: url.into() }, std::time::Instant::now());
-    assert!(matches!(&st.modal, Some(Modal::Confirm { .. })), "a mismatched link asks first");
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { .. })), "a mismatched link asks first");
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot(name);
@@ -36,7 +37,7 @@ fn link_prompt_look_alike_host() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("link_prompt_look_alike_host");
-    assert!(h.get_by_role_and_label(Role::Button, "Open link").is_focused(), "Open link is the default");
+    assert!(h.get_by_role_and_label(Role::Button, "Cancel").is_focused(), "Cancel is the default, not the other site");
     h.get_by_label("Open link").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmAccepted)), "the button accepts");

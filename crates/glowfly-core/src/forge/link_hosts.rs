@@ -3,7 +3,7 @@
 //! scripts can't pass for a familiar one, and whether a link's visible text names another host
 //! than the one it really goes to (`mismatch`), which the app asks about before opening.
 
-use crate::text::printable;
+use crate::text::{is_bidi_control, is_invisible, printable};
 
 /// The span of `url`'s host (after `scheme://` and any `user@`, before a port or path).
 fn host_span(url: &str) -> Option<(usize, usize)> {
@@ -32,15 +32,32 @@ pub fn shown_url(url: &str) -> String {
     }
 }
 
+/// `text` as it reads: invisible, control and bidi characters dropped, full-width dots, slashes
+/// and colons as their ASCII forms, and surrounding punctuation (`(…)`, `→…`, `…,`) trimmed.
+fn as_read(text: &str) -> String {
+    let read: String = text
+        .chars()
+        .filter(|&c| !(c.is_control() || is_bidi_control(c) || is_invisible(c)))
+        .map(|c| match c {
+            '\u{FF0E}' | '\u{3002}' | '\u{FF61}' => '.',
+            '\u{FF0F}' => '/',
+            '\u{FF1A}' => ':',
+            c => c,
+        })
+        .collect();
+    read.trim_start_matches(|c: char| !c.is_alphanumeric()).trim_end_matches(|c: char| !c.is_alphanumeric() && c != '/').to_owned()
+}
+
 /// The host `text` names when it reads as a web address (`https://host/…`, `www.host`,
 /// `host.tld/…`), in punycode; None for ordinary words. A bare `name.tld` without a path
-/// isn't one: it reads as a file name (`README.md`) as often as a site.
+/// isn't one: it reads as a file name (`README.md`) as often as a site. The host is judged as
+/// IDNA maps it (full-width letters as ASCII, …), so text can't look like a host yet fail the check.
 fn text_host(text: &str) -> Option<String> {
-    let text = text.trim();
+    let text = as_read(text);
     if text.is_empty() || text.chars().any(char::is_whitespace) {
         return None;
     }
-    let host = match host_span(text) {
+    let host = match host_span(&text) {
         Some((a, b)) => &text[a..b],
         None => {
             let end = text.find(['/', '?', '#', ':']).unwrap_or(text.len());
@@ -51,14 +68,15 @@ fn text_host(text: &str) -> Option<String> {
             &text[..end]
         }
     };
+    let host = idna::domain_to_ascii(host.trim_end_matches('.')).ok()?;
     let host = host.trim_end_matches('.');
     let labels: Vec<&str> = host.split('.').collect();
     let tld = labels.last()?;
     let named = labels.len() >= 2
-        && labels.iter().all(|l| !l.is_empty() && l.chars().all(|c| c.is_alphanumeric() || c == '-'))
-        && tld.chars().count() >= 2
-        && tld.chars().all(char::is_alphabetic);
-    named.then(|| ascii_host(host))
+        && labels.iter().all(|l| !l.is_empty() && l.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'))
+        && tld.len() >= 2
+        && (tld.chars().all(|c| c.is_ascii_alphabetic()) || tld.starts_with("xn--"));
+    named.then(|| host.to_owned())
 }
 
 /// When `text`, a link's visible text, reads as a web address on another host than `url`'s:
@@ -92,6 +110,33 @@ mod tests {
         assert_eq!(m("github.com/acme", "https://g\u{456}thub.com/acme"), Some(("github.com".into(), "xn--gthub-n2e.com".into())));
         assert_eq!(m("paypal.com/", "https://paypal.com.evil.example/"), Some(("paypal.com".into(), "paypal.com.evil.example".into())));
         assert_eq!(m("www.paypal.com", "https://evil.example/"), Some(("www.paypal.com".into(), "evil.example".into())));
+    }
+
+    #[test]
+    fn hidden_characters_and_look_alike_dots_dont_hide_the_text_host() {
+        let evil = "https://evil.example/login";
+        for c in ['\u{200B}', '\u{200C}', '\u{200D}', '\u{2060}', '\u{2063}', '\u{FEFF}', '\u{00AD}', '\u{202E}'] {
+            let text = format!("https://github{c}.com/acme/app");
+            assert_eq!(mismatch(&text, evil), Some(("github.com".into(), "evil.example".into())), "{:04X}", c as u32);
+        }
+        for text in ["github\u{FF0E}com/acme", "github\u{3002}com/acme", "https://github\u{FF61}com/x", "\u{FF47}ithub.com/acme"] {
+            assert_eq!(mismatch(text, evil), Some(("github.com".into(), "evil.example".into())), "{text}");
+        }
+    }
+
+    #[test]
+    fn surrounding_punctuation_doesnt_hide_the_text_host() {
+        let evil = "https://evil.example/";
+        for (text, shown) in [
+            ("(github.com/acme)", "github.com"),
+            ("\u{2192}github.com/acme", "github.com"),
+            ("\"www.github.com\",", "www.github.com"),
+            ("<https://github.com/x>.", "github.com"),
+            ("[github.com/acme]!", "github.com"),
+        ] {
+            assert_eq!(mismatch(text, evil), Some((shown.into(), "evil.example".into())), "{text}");
+        }
+        assert_eq!(mismatch("(github.com/acme)", "https://github.com/acme"), None);
     }
 
     #[test]
