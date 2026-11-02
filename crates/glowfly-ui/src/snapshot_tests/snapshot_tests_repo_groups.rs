@@ -14,7 +14,7 @@ use crate::msg::{GroupMsg, Msg, RecentMsg};
 use crate::state::repo_groups::GroupForm;
 use crate::state::{AppState, Modal};
 use crate::ui::snapshot_check::CheckSnapshot;
-use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2, vec2};
+use eframe::egui::{Event, Key, Modifiers, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{RepoColour, RepoGroup, ThemeChoice};
 use std::path::PathBuf;
@@ -229,4 +229,43 @@ fn welcome_groups_intro_and_drop_out() {
     h.run();
     assert!(h.query_by_label("Groups color their repositories' tabs and open together.").is_some());
     h.check_snapshot("welcome_groups_intro");
+}
+
+/// The right edge of the node labelled `label` (the `nth` of them, top first).
+fn right(h: &H, label: &str, nth: usize) -> f32 {
+    h.get_all_by_label(label).nth(nth).and_then(|n| n.bounding_box()).expect(label).x1 as f32
+}
+
+#[test]
+fn welcome_header_actions_end_on_the_rows_more_column() {
+    let mut h = tall(welcome());
+    h.run();
+    hover_row(&mut h, &shown(&web()));
+    let edge = right(&h, "Repository actions", 0);
+    for (label, nth) in [("New group", 0), ("Group actions", 0), ("Group actions", 1), ("Clear", 0)] {
+        assert!((right(&h, label, nth) - edge).abs() < 0.5, "{label} ends on the rows' ⋯ column");
+    }
+    let (work, others) = (right(&h, "Open all", 0), right(&h, "Open all", 1));
+    assert!((work - others).abs() < 0.5, "Work's and the others' Open all line up: {work} {others}");
+}
+
+#[test]
+fn welcome_tab_from_a_row_reaches_a_shown_control_and_the_grip_never_opens() {
+    let mut h = tall(welcome());
+    h.run();
+    h.get_by_label(&shown(&web())).focus();
+    h.run();
+    h.press_key(Key::Tab);
+    h.run();
+    let star = h.get_all_by_label("Remove from favorites").next().expect("web-app's star");
+    assert!(star.is_focused(), "Tab from the row lands on its star, not on the hidden grip");
+    h.press_key(Key::Tab);
+    h.run();
+    assert!(h.get_by_label("Repository actions").is_focused(), "then on its ⋯");
+    // A click on the grip neither opens the repository nor sends anything else.
+    let grip = h.get_all_by_label("Drag to reorder").next().unwrap().bounding_box().unwrap();
+    let at = pos2(((grip.x0 + grip.x1) / 2.0) as f32, ((grip.y0 + grip.y1) / 2.0) as f32);
+    h.state_mut().1.clear();
+    click(&mut h, at, PointerButton::Primary);
+    assert!(h.state().1.is_empty(), "a click on the grip opens nothing");
 }

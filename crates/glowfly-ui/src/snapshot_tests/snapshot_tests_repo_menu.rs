@@ -1,4 +1,4 @@
-//! The toolbar's repository menu and its rows (`repo_menu_list.rs`, `repo_menu_row.rs`): the
+//! The toolbar's repository menu and its rows (`repo_menu_list.rs`, `repo_row.rs`): the
 //! lists first, one row per repository with its name, parent, status, star and ×, then the
 //! commands and the tidying group; the star and × on hover or keyboard focus, Delete on a row,
 //! the filter field of a long list, the arrows and typeahead between the rows, and the pixel

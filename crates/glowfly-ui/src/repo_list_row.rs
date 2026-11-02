@@ -2,6 +2,7 @@
 //! and ⋯): what a click (open or switch to its tab), the star and × send, and the row's menu, on
 //! a right-click or from ⋯: Open, the favorite toggle, a favorite's Move up, Move down and Move
 //! to group, a Recent entry's Remove from recent, Copy path, then Color.
+//! A row inside a coloured group leaves its colour dot to the group's bar (its slot stays).
 
 use super::common::{menu_item, menu_item_if};
 use super::repo_menu_list;
@@ -39,6 +40,10 @@ pub(super) fn favorite_rows(
         let mut row = make(st, p, false);
         row.key = FAVORITE_BINDINGS.get(*key).and_then(|&id| st.keymap.hint(id)).map(str::to_owned);
         row.draggable = draggable;
+        // Inside a coloured group its bar shows the colour; the dot's slot stays, so names line up.
+        if group.is_some_and(|g| st.settings.repo_groups[g].hue().is_some()) {
+            row.swatch = None;
+        }
         *key += 1;
         out.push((row, Section::Favorite { group, index, count }));
     }

@@ -33,9 +33,10 @@ struct FavDrag {
 
 /// The grip at the start of a favorite row, in `rect` (`label` is its accessible name): drawn
 /// while `shown` (the row is hovered or focused) or dragged, Grab cursor on hover, Grabbing while
-/// dragged. A click on it does nothing, so it never opens the row.
+/// dragged. A click on it does nothing, so it never opens the row. It takes no keyboard focus
+/// (the row's menu moves a favorite from the keyboard), so Tab never stops on it unseen.
 pub(super) fn grip_at(ui: &Ui, id: Id, rect: Rect, label: &str, shown: bool) -> Response {
-    let resp = ui.interact(rect, id, Sense::click_and_drag());
+    let resp = ui.interact(rect, id, Sense::CLICK | Sense::DRAG);
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, label));
     let active = resp.hovered() || resp.dragged();
     if shown || active {

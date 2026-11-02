@@ -52,7 +52,8 @@ pub(super) fn header(ui: &mut egui::Ui, st: &AppState, g: usize, cols: Columns, 
     let (icon_x, label_x) = repo_row::lead(ui, cols);
     let mut menu_msgs = Vec::new();
     let left = |ui: &mut egui::Ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
+        // Tight inside the name; the actions on the right keep the usual spacing.
+        let spacing = std::mem::replace(&mut ui.spacing_mut().item_spacing.x, 0.0);
         if cols.swatch {
             let (rect, _) = ui.allocate_exact_size(vec2(label_x - icon_x, repo_swatch::SIZE), Sense::hover());
             if let Some(c) = group.hue() {
@@ -64,6 +65,7 @@ pub(super) fn header(ui: &mut egui::Ui, st: &AppState, g: usize, cols: Columns, 
         ui.add(name).row_menu(|ui| group_menu(ui, st, g, &mut menu_msgs));
         ui.add_space(8.0);
         ui.label(RichText::new(paths.len().to_string()).size(type_scale::SMALL).color(color::faint()));
+        ui.spacing_mut().item_spacing.x = spacing;
     };
     let mut open_all = false;
     let mut more = None;

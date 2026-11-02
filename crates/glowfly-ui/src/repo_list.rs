@@ -86,6 +86,11 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                             ui.label(RichText::new(title).color(color::weak()));
                         };
                         header_row(ui, label_x, left, |ui| {
+                            // An empty ⋯ slot, so its Open all ends where the groups' do.
+                            ui.allocate_exact_size(
+                                egui::vec2(ControlSize::Small.metrics().h, ControlSize::Small.metrics().h),
+                                egui::Sense::hover(),
+                            );
                             open_all_link(ui, st, &loose, msgs);
                         });
                     }
