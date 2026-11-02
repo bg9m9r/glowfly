@@ -138,7 +138,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
 
     if renaming {
         // The field's text starts where the name was, on the name's centre line.
-        debug_assert!(sizes::fits(ROW_H, ControlSize::Regular, false), "a {ROW_H} px row can't host the rename field");
+        debug_assert!(sizes::fits(ROW_H, ControlSize::Regular, true), "a {ROW_H} px row can't host the rename field");
         let h = ControlSize::Regular.metrics().h;
         let field = egui::Rect::from_min_size(pos2(text_x - controls::FIELD_PAD_X, rect.top() + 15.0 - h / 2.0), vec2(240.0, h));
         rename_field(&mut ui.new_child(UiBuilder::new().max_rect(field)), page, msgs);
