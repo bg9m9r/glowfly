@@ -1,12 +1,19 @@
 name: CI
 
 on:
+  # Pull requests run once, on the pull_request event; pushes run only on main.
   push:
+    branches: [main]
   pull_request:
 
 # A read-only token: this workflow only builds and tests.
 permissions:
   contents: read
+
+# A new push to a pull request cancels its older run; runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # `scripts/check.ps1` split into parts that run side by side on their own Windows runners, so

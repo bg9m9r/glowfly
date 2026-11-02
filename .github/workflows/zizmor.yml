@@ -8,6 +8,7 @@ name: zizmor
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 # A read-only token: zizmor only reads the workflows (and, for its online audits, the public
