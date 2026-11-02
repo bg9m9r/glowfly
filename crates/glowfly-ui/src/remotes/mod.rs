@@ -129,15 +129,13 @@ pub(crate) fn section(
     }
 }
 
-/// A remote's name, dim and small, on a clickable row with a hover fill.
+/// A remote's name, dim and small, on a clickable row lit through `row_fill`.
 fn group_row(ui: &mut egui::Ui, name: &str) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), widgets::GROUP_ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
     let p = ui.painter_at(rect);
-    if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    widgets::row_fill::paint_state(&p, rect, widgets::row_fill::RowState::of(&resp, false, resp.hovered()));
     p.text(
         pos2(rect.left() + widgets::ROW_INDENT, rect.center().y),
         Align2::LEFT_CENTER,

@@ -38,7 +38,8 @@ fn prefs_integrations_trello() {
     h.check_snapshot("prefs_integrations_trello");
     // The row labels ("API Key", "Token") are painted, so the image shows them.
     for label in ["Get your API key", "Allow a read-only token", "Allow a token that can create cards", "Trello"] {
-        assert!(h.query_by_label(label).is_some(), "{label}");
+        // "Trello" is also the service's row in the page list.
+        assert!(h.query_all_by_label(label).next().is_some(), "{label}");
     }
     assert!(h.query_by_label("Host domain").is_none() && h.query_by_label("Connect to Trello").is_none());
     h.get_by_label("Allow a read-only token").click();
@@ -124,7 +125,8 @@ fn trello_cards_menu() {
     click(&mut h, at, PointerButton::Secondary);
     h.check_snapshot("trello_cards_menu");
     for label in ["Create branch from card…", "Start Git Flow feature from card…", "View card in Trello", "Copy card link"] {
-        assert!(h.query_by_label(label).is_some(), "{label}");
+        // "Trello" is also the service's row in the page list.
+        assert!(h.query_all_by_label(label).next().is_some(), "{label}");
     }
     assert!(h.query_by_label("Open in browser").is_none());
     h.get_by_label("View card in Trello").click();

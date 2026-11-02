@@ -70,7 +70,7 @@ pub fn list_row_cut(
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     let p = ui.painter_at(rect);
-    row_fill::paint(&p, rect, selected, resp.hovered());
+    row_fill::paint_state(&p, rect, row_fill::RowState::of(&resp, selected, resp.hovered()));
     let mut right_w = if slot > 0.0 { slot + PAD_X + PARTS_GAP } else { 0.0 };
     if let Some((parts, col)) = right {
         let (total, pieces) = layout_parts(&p, parts, col);

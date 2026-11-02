@@ -196,8 +196,6 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, t: Lang, ms
         ui.add_space(6.0);
         let back = if repo_name.is_some() { t.tr("prefs.nav.back_to_repo") } else { t.tr("prefs.nav.back") };
         let r = widgets::nav_row(ui, Some(Icon::Back), back, false);
-        // Its text is painted; name the row for screen readers.
-        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, back));
         if r.on_hover_text("Esc").clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
         }

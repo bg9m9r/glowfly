@@ -122,6 +122,19 @@ fn tonal_ink_reads_in_every_state() {
     }
 }
 
+/// The diff's draft marker (`diff/comment_add.rs`): the tonal ink on the accent tint, at rest and
+/// under the hover and pressed layers, reads as a mark (3:1).
+#[test]
+fn the_draft_markers_icon_reads_on_its_tint_in_every_state() {
+    for (name, p, _) in palettes() {
+        let tint = p.tonal_fill();
+        let ink = p.tonal_ink(tint);
+        for fill in [tint, p.hover_on(tint), p.pressed_on(tint)] {
+            assert!(ratio(ink, fill) >= 3.0, "{name}: {:.2}", ratio(ink, fill));
+        }
+    }
+}
+
 #[test]
 fn tones_map_to_the_palette_and_their_tints_read() {
     for (name, p, _) in palettes() {

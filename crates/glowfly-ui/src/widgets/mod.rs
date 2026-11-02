@@ -133,16 +133,20 @@ pub fn initials(name: &str) -> String {
     }
 }
 
-/// Preferences navigation row: icon + label in body text, highlighted when selected, with the
-/// inset focus ring while it has the keyboard focus.
+/// Preferences navigation row: icon + label in body text, lit through `row_fill` (the selected
+/// page with its accent bar, the focused row with the inset ring).
 pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), type_scale::BODY + 20.0), Sense::click());
+    // Painted text has no accessible name; give the row one (screen readers and UI tests), and
+    // say which is the current page.
+    resp.widget_info(|| match selected {
+        true => egui::WidgetInfo::selected(egui::WidgetType::Button, true, true, text),
+        false => egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text),
+    });
     let p = ui.painter();
-    if selected {
-        p.rect_filled(rect, 0.0, color::selected());
-    } else if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    // The selected page takes the accent bar; the focused row the inset ring on its square
+    // corners, painted by `row_fill` with the rest of its state.
+    row_fill::paint_state(p, rect, row_fill::RowState::of(&resp, selected, resp.hovered()));
     let mut x = rect.left() + 14.0;
     if let Some(icon) = icon {
         paint_icon(p, pos2(x + 9.0, rect.center().y), icon, if selected { color::strong() } else { color::weak() });
@@ -155,10 +159,6 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> R
         type_scale::font(type_scale::BODY),
         if selected { color::strong() } else { color::text() },
     );
-    // Tab reaches every row: the ring follows the row's square fill.
-    if resp.has_focus() {
-        crate::ui::theme::tokens::focus_ring_inset(p, rect, 0);
-    }
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 

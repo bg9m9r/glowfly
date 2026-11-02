@@ -2,6 +2,19 @@ window 1400x820
 Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
+Button "General"
+Button "Git"
+Button "Profile"
+Button "Integrations"
+Button "Appearance"
+Button "Accessibility"
+Button "Language & region"
+Button "Diff viewer"
+Button "Keyboard"
+Button "External tools"
+Button "Terminal"
+Button "Commit signing" [on]
+Button "SSH"
 Label "Commit signing"
 ComboBox
 TextInput
@@ -23,18 +36,6 @@ CheckBox "Sign new commits by default" [off]
 CheckBox "Sign new tags by default" [off]
 Label "Glowfly commits and tags through git, so these settings also apply on the command line."
 painted:
-  "General"
-  "Git"
-  "Profile"
-  "Integrations"
-  "Appearance"
-  "Accessibility"
-  "Language & region"
-  "Diff viewer"
-  "Keyboard"
-  "External tools"
-  "Terminal"
-  "SSH"
   "Signing format"
   "OpenPGP"
   "GPG program"
