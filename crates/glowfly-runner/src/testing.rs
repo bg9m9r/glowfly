@@ -68,9 +68,13 @@ fn refused(effect: &Effect) -> bool {
 /// The effects the sandbox drops that a test may still run: they only read the test's
 /// repositories and folders, write a test repository's own config, fetch from a test
 /// repository's (local) remote, or read the user's git config and signing keys without changing
-/// them.
+/// them. An effect wrapped in a trust re-check (`Effect::Checked`) is allowed when the effect
+/// inside it is.
 fn allowed(effect: &Effect) -> bool {
     use crate::effect::partial::PartialEffect;
+    if let Effect::Checked(c) = effect {
+        return allowed(&c.effect);
+    }
     use crate::effect::{PrefsEffect, ReposEffect};
     use glowfly_model::deep_link::DeepLinkEffect;
     use glowfly_model::pull_request::PrEffect;

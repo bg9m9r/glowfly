@@ -29,10 +29,18 @@ $testArgs = switch ($Only) {
 }
 
 if ($testArgs) {
-    # The tests run with Glowfly's config, cache, state and log folders pointed at a fresh temporary
-    # folder, so no test can read or write the developer's own settings, recent repositories, tabs,
-    # themes, caches or logs, even one that gets past runner::testing's stand-ins.
-    $names = "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"
+    # The tests run with the folders Glowfly keeps its own files in (APPDATA, LOCALAPPDATA and
+    # XDG_* on Windows and Linux; HOME on macOS) and HOME, where git and libgit2 find the global
+    # git config, pointed at a fresh temporary folder, so a test that gets past runner::testing's
+    # stand-ins can't change the developer's settings, recent repositories, tabs, themes, caches,
+    # logs or global git config. HOME is used rather than GIT_CONFIG_GLOBAL because libgit2
+    # ignores that variable (and the fixtures then send every command to the CLI). The system git
+    # config is left as it is: it isn't the developer's, and tests need what it sets up (Git for
+    # Windows' LFS filter). The temporary global config holds only an identity, as CI's does, for
+    # tests that commit without setting one. Cargo and rustup keep their folders under the real HOME.
+    if (-not $env:CARGO_HOME) { $env:CARGO_HOME = Join-Path $HOME ".cargo" }
+    if (-not $env:RUSTUP_HOME) { $env:RUSTUP_HOME = Join-Path $HOME ".rustup" }
+    $names = "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME", "HOME"
     $saved = @{}
     foreach ($n in $names) { $saved[$n] = [Environment]::GetEnvironmentVariable($n) }
     $folders = Join-Path ([IO.Path]::GetTempPath()) "glowfly-check-$PID-$([Guid]::NewGuid().ToString('N').Substring(0, 8))"
@@ -41,6 +49,8 @@ if ($testArgs) {
             $dir = New-Item -ItemType Directory -Force (Join-Path $folders $n.ToLowerInvariant())
             [Environment]::SetEnvironmentVariable($n, $dir.FullName)
         }
+        $identity = "[user]`n`tname = Glowfly Tests`n`temail = tests@example.invalid`n"
+        Set-Content -LiteralPath (Join-Path $env:HOME ".gitconfig") -Encoding utf8NoBOM -NoNewline -Value $identity
         cargo test @testArgs
         $tested = $LASTEXITCODE
     } finally {
