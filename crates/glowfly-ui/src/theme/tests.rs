@@ -324,7 +324,7 @@ fn custom_files_get_the_default_selected_code_fills() {
 fn resolve_each_choice() {
     let file = ocean(BuiltinTheme::Light, &[("bg", ColorValue::Rgb([9, 9, 9]))]);
     let themes = ThemeState { catalog: ThemeCatalog { files: vec![file], ..ThemeCatalog::default() }, ..ThemeState::default() };
-    let r = |c: ThemeChoice, sys| custom::resolve(&c, &themes, sys);
+    let r = |c: ThemeChoice, sys| custom::resolve(&c, &themes, sys, Default::default());
     assert_eq!(r(ThemeChoice::Dark, false), DARK);
     assert_eq!(r(ThemeChoice::Light, true), LIGHT);
     assert_eq!((r(ThemeChoice::System, true), r(ThemeChoice::System, false)), (GRAPHITE, PORCELAIN));
@@ -335,6 +335,19 @@ fn resolve_each_choice() {
     let found = r(ThemeChoice::Custom("ocean".into()), true);
     assert_eq!((found.bg, found.text, found.dark), (Color32::from_rgb(9, 9, 9), LIGHT.text, false));
     assert_eq!(r(ThemeChoice::Custom("gone".into()), false), GRAPHITE, "a missing file shows the default dark theme");
+}
+
+#[test]
+fn the_cache_follows_a_changed_system_pair() {
+    use glowfly_core::settings::SystemPair;
+    let (ctx, themes) = (egui::Context::default(), ThemeState::default());
+    let mut cache = super::ThemeCache::default();
+    let mut pair = SystemPair { dark: BuiltinTheme::Midnight, light: BuiltinTheme::Porcelain };
+    cache.select(&ctx, &ThemeChoice::System, pair, Default::default(), &themes, true);
+    assert_eq!(color::current(), MIDNIGHT);
+    pair.dark = BuiltinTheme::Dark;
+    cache.select(&ctx, &ThemeChoice::System, pair, Default::default(), &themes, true);
+    assert_eq!(color::current(), DARK, "a new pair isn't served from the old key");
 }
 
 #[test]

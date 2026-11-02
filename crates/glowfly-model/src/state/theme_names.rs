@@ -3,7 +3,7 @@
 //! labels from glowfly-core.
 
 use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{BuiltinTheme, ThemeChoice, ThemeFile};
+use glowfly_core::settings::{BuiltinTheme, SystemPair, ThemeChoice, ThemeFile};
 
 /// A built-in theme's name.
 pub fn builtin(t: Lang, b: BuiltinTheme) -> &'static str {
@@ -38,7 +38,7 @@ pub(crate) fn choice(t: Lang, c: &ThemeChoice) -> String {
     match c {
         ThemeChoice::System => t.tr("prefs.ui.theme.name.system").to_owned(),
         ThemeChoice::Custom(id) => id.clone(),
-        other => other.builtin(true).map(|b| builtin(t, b)).unwrap_or_default().to_owned(),
+        other => other.builtin(true, SystemPair::default()).map(|b| builtin(t, b)).unwrap_or_default().to_owned(),
     }
 }
 

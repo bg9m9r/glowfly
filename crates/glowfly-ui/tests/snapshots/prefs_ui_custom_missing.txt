@@ -14,12 +14,13 @@ RadioButton "Porcelain" [off]
 RadioButton "Mist" [off]
 RadioButton "Dawn" [off]
 RadioButton "High Contrast Light" [off]
+Button "Custom theme files"
 Label "Theme file"
 ComboBox
 Button "Open themes folder"
 Button "Reload"
 Button "Create from current"
-Label "A theme file is a JSON file in the themes folder. It names a base theme (graphite, midnight, dusk, high-contrast-dark, porcelain, mist, dawn or high-contrast-light) and changes any of its colors. Create from current writes one to start from."
+Label "A theme file is a JSON file in the themes folder that changes the colors of a built-in theme. Create from current writes one to start from."
 Label "gone.json is not in the themes folder; showing Graphite."
 ComboBox
 CheckBox "Say when the branch falls behind its upstream" [on]

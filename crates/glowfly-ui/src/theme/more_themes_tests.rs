@@ -110,7 +110,7 @@ fn porcelain_keeps_linens_colours_but_its_neutrals() {
 #[test]
 fn every_choice_reaches_its_theme() {
     for t in BuiltinTheme::ALL {
-        assert_eq!(t.choice().builtin(true), Some(t), "{t:?}");
+        assert_eq!(t.choice().builtin(true, Default::default()), Some(t), "{t:?}");
         assert!(ThemeChoice::BUILT_IN.contains(&t.choice()), "{t:?} is listed");
     }
 }

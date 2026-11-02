@@ -17,18 +17,18 @@ pub(super) fn handle(st: &mut AppState, msg: ThemeMsg, now: Instant, fx: &mut Ve
         ThemeMsg::Reload => fx.push(Effect::Theme(ThemeEffect::Load)),
         ThemeMsg::OpenFolder => fx.push(Effect::Theme(ThemeEffect::OpenFolder)),
         ThemeMsg::CreateFromCurrent { colors, dark } => {
-            let theme = &st.settings.theme;
+            let (theme, pair) = (&st.settings.theme, st.settings.system_pair);
             let (label, base) = match theme {
                 ThemeChoice::Custom(id) => {
                     let label = st.themes.catalog.get(id).map_or_else(|| id.clone(), |f| f.name.clone());
-                    (label, st.themes.catalog.base_of(theme, dark))
+                    (label, st.themes.catalog.base_of(theme, dark, pair))
                 }
                 // The view sent the colors in use, so "Match system" copies the theme it shows.
                 ThemeChoice::System => {
-                    let base = if dark { BuiltinTheme::DEFAULT_DARK } else { BuiltinTheme::DEFAULT_LIGHT };
+                    let base = pair.pick(dark);
                     (base.label().to_owned(), base)
                 }
-                other => (other.label(), st.themes.catalog.base_of(other, dark)),
+                other => (other.label(), st.themes.catalog.base_of(other, dark, pair)),
             };
             let json = starter_json(&format!("{label} (copy)"), base, &colors);
             fx.push(Effect::Theme(ThemeEffect::Create { json }));

@@ -1,15 +1,18 @@
 //! Preferences > Appearance > Theme: the built-in themes as cards, grouped dark and light,
 //! each a small picture of the main window in that theme (title bar, sidebar, graph lanes with
 //! main in the accent, a selected row and a primary button) with its name under it and its
-//! description on hover. "Match the system" sits above them.
+//! description on hover. "Match the system" sits above them; while it is on, each group's heading
+//! says when its theme is used and each group rings the pair's member (`Settings::pick_card` and
+//! `set_match_system` say what a click does).
 
 use crate::state::theme_names;
 use crate::ui::theme::color::{self, Palette};
 use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::{builtin, fonts, type_scale};
+use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{BuiltinTheme, ThemeChoice};
+use glowfly_core::settings::{BuiltinTheme, Settings, SystemPair, ThemeChoice};
 
 /// A card's preview height, the name line under it, and the gaps between cards.
 const PREVIEW_H: f32 = 84.0;
@@ -24,33 +27,50 @@ const MAX_W: f32 = 176.0;
 pub fn group(dark: bool) -> Vec<BuiltinTheme> {
     ThemeChoice::BUILT_IN
         .iter()
-        .filter_map(|c| c.builtin(true).filter(|_| *c != ThemeChoice::System))
+        .filter_map(|c| c.builtin(true, SystemPair::default()).filter(|_| *c != ThemeChoice::System))
         .filter(|b| b.is_dark() == dark)
         .collect()
 }
 
-/// The Match system check, then the dark and light cards. Sets `theme` on a click.
-pub fn picker(ui: &mut Ui, t: Lang, theme: &mut ThemeChoice) {
-    let system_dark = ui.ctx().system_theme().is_none_or(|s| s == egui::Theme::Dark);
-    let mut system = *theme == ThemeChoice::System;
+/// The Match system check, then the dark and light cards. A click sets the theme, or the pair's
+/// member while the check is on.
+pub fn picker(ui: &mut Ui, t: Lang, s: &mut Settings) {
+    // As `ThemeCache::apply` reads it: a desktop that doesn't say is dark.
+    let os_dark = ui.ctx().system_theme().is_none_or(|s| s == egui::Theme::Dark);
+    let mut system = s.theme == ThemeChoice::System;
     if crate::ui::theme::controls::checkbox(ui, &mut system, t.tr("prefs.ui.theme.system.check")).changed() {
-        // Unticked, the theme stays the one on screen.
-        *theme = if system { ThemeChoice::System } else { theme.builtin(system_dark).map_or(ThemeChoice::Graphite, BuiltinTheme::choice) };
+        s.set_match_system(system, os_dark);
     }
-    ui.add_space(10.0);
-    let shown = theme.builtin(system_dark);
-    for (dark, key) in [(true, "prefs.ui.theme.group.dark"), (false, "prefs.ui.theme.group.light")] {
-        ui.label(egui::RichText::new(t.tr(key)).font(fonts::semibold(ui, type_scale::SMALL)).color(color::weak()));
-        ui.add_space(6.0);
-        if let Some(b) = cards(ui, t, &group(dark), shown) {
-            *theme = b.choice();
+    gap(ui, 10.0);
+    let shown = s.theme.builtin(os_dark, s.system_pair);
+    for (dark, name, when) in [
+        (true, t.tr("prefs.ui.theme.group.dark"), t.tr("prefs.ui.theme.group.dark.when")),
+        (false, t.tr("prefs.ui.theme.group.light"), t.tr("prefs.ui.theme.group.light.when")),
+    ] {
+        heading(ui, name, system.then_some(when));
+        gap(ui, 6.0);
+        // On, each group rings the pair's member; off, the theme on screen (none for a file).
+        let ringed = if system { Some(s.system_pair.pick(dark)) } else { shown };
+        if let Some(b) = cards(ui, t, &group(dark), ringed) {
+            s.pick_card(b);
         }
-        ui.add_space(8.0);
+        gap(ui, 8.0);
     }
     if let Some(b) = shown {
         let line = format!("{}: {}", theme_names::builtin(t, b), theme_names::hint(t, b));
         ui.add(egui::Label::new(egui::RichText::new(line).size(type_scale::SMALL).color(color::weak())).wrap());
     }
+}
+
+/// A group's heading: its name in semibold, then " · " and when it is used, in regular.
+fn heading(ui: &mut Ui, group: &str, when: Option<&str>) {
+    let format = |font| TextFormat { font_id: font, color: color::weak(), ..TextFormat::default() };
+    let mut job = LayoutJob::default();
+    job.append(group, 0.0, format(fonts::semibold(ui, type_scale::SMALL)));
+    if let Some(when) = when {
+        job.append(&format!(" \u{b7} {when}"), 0.0, format(type_scale::font(type_scale::SMALL)));
+    }
+    ui.add(egui::Label::new(job).wrap());
 }
 
 /// One group's cards, as many to a row as fit; the theme clicked, if any.
@@ -59,7 +79,10 @@ fn cards(ui: &mut Ui, t: Lang, themes: &[BuiltinTheme], shown: Option<BuiltinThe
     let cols = (((avail + GAP_X) / (MIN_W + GAP_X)).floor() as usize).clamp(1, themes.len().max(1));
     let w = ((avail - GAP_X * (cols as f32 - 1.0)) / cols as f32).clamp(MIN_W.min(avail), MAX_W);
     let mut picked = None;
-    for row in themes.chunks(cols) {
+    for (i, row) in themes.chunks(cols).enumerate() {
+        if i > 0 {
+            gap(ui, GAP_Y);
+        }
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = GAP_X;
             for &b in row {
@@ -68,9 +91,13 @@ fn cards(ui: &mut Ui, t: Lang, themes: &[BuiltinTheme], shown: Option<BuiltinThe
                 }
             }
         });
-        ui.add_space(GAP_Y - ui.spacing().item_spacing.y);
     }
     picked
+}
+
+/// `px` of space between the widget above and the next, egui's item spacing included.
+pub(super) fn gap(ui: &mut Ui, px: f32) {
+    ui.add_space((px - ui.spacing().item_spacing.y).max(0.0));
 }
 
 fn card(ui: &mut Ui, t: Lang, b: BuiltinTheme, selected: bool, w: f32) -> Response {

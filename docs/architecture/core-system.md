@@ -71,6 +71,7 @@ source file, update its line here.
 
 - `file.rs`: reading and writing `settings.json`. A read that fails is tried again after short waits (`READ_WAITS`), and one that worked only after a failure keeps a copy as `.bak` first; a damaged file is moved aside to `.bak`; a file that can't be read, copied or moved stays put and its `LoadProblem::locked` says nothing may be saved until `Settings::reload` reads it. Tests in `file_tests.rs`.
 - Preferences, theme choices and theme files: `themes.rs` parses them, aliases and loops included; `themes_io.rs` reads the themes folder and writes new files.
+- `theme_pair.rs`: the pair Match the system switches between (`SystemPair`, saved as ids and loaded leniently), each theme's twin, and what a theme card or the check does to the theme and the pair (`theme_pair_tests.rs`).
 - `terminal_schemes.rs`: terminal color schemes: the `terminal_*` keys and the stored scheme files.
 - `terminal_schemes/wt.rs` and `iterm.rs` read Windows Terminal JSON and iTerm2 `.itermcolors` files to import, and `io.rs` reads and writes the themes folder's `terminal` folder.
 - `terminal.rs`: the terminal's Colors choice (`TerminalColours`).

@@ -16,7 +16,7 @@ use crate::msg::{AppMsg, CloneMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, 
 use crate::onboarding::OnboardingMsg;
 use crate::terminal::TerminalMsg;
 use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{DiffLayout, DiffMode, ThemeChoice};
+use glowfly_core::settings::{DiffLayout, DiffMode, SystemPair, ThemeChoice};
 use std::path::Path;
 
 /// A plain item showing `key`'s first key.
@@ -215,7 +215,11 @@ fn themes(st: &AppState) -> Vec<Entry> {
         let on = *current == choice;
         marked(keys, label, Mark::Radio(on), None, None, MenuAction::send(Msg::Prefs(PrefsMsg::SetTheme(choice))))
     };
-    let first_light = ThemeChoice::BUILT_IN.iter().skip(3).position(|c| c.builtin(true).is_some_and(|b| !b.is_dark())).map(|n| n + 3);
+    let first_light = ThemeChoice::BUILT_IN
+        .iter()
+        .skip(3)
+        .position(|c| c.builtin(true, SystemPair::default()).is_some_and(|b| !b.is_dark()))
+        .map(|n| n + 3);
     let mut out = Vec::new();
     for (i, c) in ThemeChoice::BUILT_IN.into_iter().enumerate() {
         if i == 3 {

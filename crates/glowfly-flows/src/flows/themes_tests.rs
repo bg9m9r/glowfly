@@ -55,8 +55,11 @@ fn create_from_current_names_and_bases_the_copy() {
     assert_eq!((f.name.as_str(), f.base), ("Ocean (copy)", BuiltinTheme::Light));
 
     st.settings.theme = ThemeChoice::System;
-    let f = created(&run(&mut st, ThemeMsg::CreateFromCurrent { colors, dark: false }));
+    let f = created(&run(&mut st, ThemeMsg::CreateFromCurrent { colors: colors.clone(), dark: false }));
     assert_eq!((f.name.as_str(), f.base), ("Porcelain (copy)", BuiltinTheme::Porcelain), "the theme the system picked");
+    st.settings.system_pair.dark = BuiltinTheme::Midnight;
+    let f = created(&run(&mut st, ThemeMsg::CreateFromCurrent { colors, dark: true }));
+    assert_eq!((f.name.as_str(), f.base), ("Midnight (copy)", BuiltinTheme::Midnight), "the pair's member on screen");
 }
 
 /// How many failure toasts are up.

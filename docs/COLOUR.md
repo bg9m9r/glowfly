@@ -775,6 +775,10 @@ keys follow the file's own surfaces when it leaves them out: `terminal_backgroun
 `accent`, as the built-ins' are; the 16 basic colours come from the base. Create from current
 writes every key, the terminal's included.
 
+A file's `base` is one of `graphite`, `midnight`, `dusk`, `high-contrast-dark`, `porcelain`,
+`mist`, `dawn` or `high-contrast-light`; older files' `dark` and `light` load as Dusk and Dawn,
+and a retired theme's id loads as its successor.
+
 ## 8. Adding a colour
 
 1. Add the field to its family in `families.rs`, or to the flat neutrals or brand groups of

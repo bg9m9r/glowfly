@@ -1,7 +1,7 @@
 //! The built-in themes: their ids (a theme file's `base`), names, kinds, the themes that took
 //! the place of the retired ones, and how the settings' `ThemeChoice` maps onto them.
 
-use super::ThemeChoice;
+use super::{SystemPair, ThemeChoice};
 
 /// A palette that ships with Glowfly; theme files start from one. Eight, in four twin pairs:
 /// Graphite and Porcelain (the defaults), Midnight and Mist, Dusk and Dawn (from the app icon),
@@ -145,14 +145,13 @@ impl ThemeChoice {
         ThemeChoice::HighContrastLight,
     ];
 
-    /// The built-in palette this choice shows (`System` follows `system_dark`); None for a
-    /// theme file.
-    pub fn builtin(&self, system_dark: bool) -> Option<BuiltinTheme> {
+    /// The built-in palette this choice shows (`System` shows `pair`'s member for a dark
+    /// (`os_dark`) or light desktop); None for a theme file.
+    pub fn builtin(&self, os_dark: bool, pair: SystemPair) -> Option<BuiltinTheme> {
         Some(match self {
             Self::Dark => BuiltinTheme::Dark,
             Self::Light => BuiltinTheme::Light,
-            Self::System if system_dark => BuiltinTheme::DEFAULT_DARK,
-            Self::System => BuiltinTheme::DEFAULT_LIGHT,
+            Self::System => pair.pick(os_dark),
             Self::HighContrastDark => BuiltinTheme::HighContrastDark,
             Self::HighContrastLight => BuiltinTheme::HighContrastLight,
             Self::Midnight => BuiltinTheme::Midnight,
@@ -168,7 +167,7 @@ impl ThemeChoice {
         match self {
             Self::System => "Match system".to_owned(),
             Self::Custom(id) => id.clone(),
-            other => other.builtin(true).map(BuiltinTheme::label).unwrap_or_default().to_owned(),
+            other => other.builtin(true, SystemPair::default()).map(BuiltinTheme::label).unwrap_or_default().to_owned(),
         }
     }
 
@@ -181,7 +180,7 @@ impl ThemeChoice {
             Self::HighContrastDark => "High contrast dark",
             Self::HighContrastLight => "High contrast light",
             Self::Custom(id) => return id.clone(),
-            other => return other.builtin(true).map(BuiltinTheme::label).unwrap_or_default().to_owned(),
+            other => return other.builtin(true, SystemPair::default()).map(BuiltinTheme::label).unwrap_or_default().to_owned(),
         }
         .to_owned()
     }

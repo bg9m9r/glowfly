@@ -15,12 +15,7 @@ RadioButton "Niebla" [off]
 RadioButton "Amanecer" [off]
 RadioButton "Alto contraste claro" [off]
 Label "Anochecer: Anochecer índigo bajo un acento dorado de farol, del icono de la app."
-Label "Archivo de tema"
-ComboBox
-Button "Abrir la carpeta de temas"
-Button "Recargar"
-Button "Crear a partir del actual"
-Label "Un archivo de tema es un archivo JSON en la carpeta de temas. Nombra un tema base (graphite, midnight, dusk, high-contrast-dark, porcelain, mist, dawn o high-contrast-light) y cambia cualquiera de sus colores. Crear a partir del actual escribe uno para empezar."
+Button "Archivos de tema personalizados"
 ComboBox
 CheckBox "Avisar cuando la rama se queda por detrás de su upstream" [on]
 Label "Tras una obtención en segundo plano, avisa cuando la rama activa se ha quedado por detrás de su upstream, con un botón para traer."
@@ -81,7 +76,6 @@ painted:
   "Firma de commits"
   "SSH"
   "Tema"
-  "Ninguno"
   "Ubicación de los avisos"
   "Abajo a la izquierda"
   "Avisos de retraso"
@@ -108,3 +102,4 @@ painted:
   "Siempre"
   "Colores de ramas"
   "Estándar"
+  "Diseño de columnas"

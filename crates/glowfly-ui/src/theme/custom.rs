@@ -6,7 +6,7 @@ use super::contrast::ratio;
 use super::{DEFAULT_DARK, builtin};
 use crate::themes::ThemeState;
 use eframe::egui::Color32;
-use glowfly_core::settings::{ColorValue, ThemeChoice, ThemeFile};
+use glowfly_core::settings::{ColorValue, SystemPair, ThemeChoice, ThemeFile};
 
 /// The selected-code fills a theme file gets when it sets none: focused and unfocused, dark and
 /// light.
@@ -75,12 +75,12 @@ fn primary_ink(ink: Color32, primary: Color32) -> Color32 {
     if ratio(Color32::WHITE, primary) >= ratio(Color32::BLACK, primary) { Color32::WHITE } else { Color32::BLACK }
 }
 
-/// The palette `choice` shows: a built-in, a loaded theme file, or the default dark theme
-/// (Graphite) for a file that isn't in the folder.
-pub fn resolve(choice: &ThemeChoice, themes: &ThemeState, system_dark: bool) -> Palette {
+/// The palette `choice` shows: a built-in (Match the system's from `pair`), a loaded theme
+/// file, or the default dark theme (Graphite) for a file that isn't in the folder.
+pub fn resolve(choice: &ThemeChoice, themes: &ThemeState, system_dark: bool, pair: SystemPair) -> Palette {
     match choice {
         ThemeChoice::Custom(id) => themes.catalog.get(id).map_or(DEFAULT_DARK, build),
-        other => other.builtin(system_dark).map_or(DEFAULT_DARK, |t| *builtin(t)),
+        other => other.builtin(system_dark, pair).map_or(DEFAULT_DARK, |t| *builtin(t)),
     }
 }
 
