@@ -25,7 +25,9 @@ fn settle(h: &mut H) {
 
 /// The node labelled `label`'s left and right edges.
 pub(super) fn span(h: &H, label: &str) -> (f64, f64) {
-    let b = h.get_by_label(label).bounding_box().expect("bounds");
+    // The toolbar's node, not a tab of the same name.
+    let b =
+        h.get_all_by_label(label).find(|n| n.role() != eframe::egui::accesskit::Role::Tab).and_then(|n| n.bounding_box()).expect("bounds");
     (b.x0, b.x1)
 }
 

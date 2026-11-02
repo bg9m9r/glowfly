@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -81,7 +86,6 @@ Button "Stage 1 line"
 Button "Discard 1 line"
 Document "Diff of app.txt"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

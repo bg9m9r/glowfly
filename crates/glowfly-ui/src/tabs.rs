@@ -16,7 +16,7 @@
 use super::backdrop::{self, Surface};
 use super::tab_drag::{SLIDE, Slot, drag, lefts_after};
 use super::tab_paint::{
-    CHIP_GAP, CHIP_H, LIFT, SWATCH_ROOM, TabLook, chip_room, close_rect, group_color, group_tint, paint_group_chip, paint_group_strip,
+    CHIP_GAP, CHIP_H, LIFT, SWATCH_ROOM, TabLook, chip_room, close_hit, group_color, group_tint, paint_group_chip, paint_group_strip,
     paint_separator, paint_tab, tab_width,
 };
 use super::theme::branch_colours::line;
@@ -32,6 +32,7 @@ use crate::state::repo_colours;
 use crate::state::tab_groups::{self, chip_rooms, new_index, shown_at};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::separator;
+use crate::ui::widgets::quiet_target::State;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::tab_glyph::{self, TabGlyph};
 use eframe::egui::{self, Align, Color32, Layout, Rect, Response, Sense, WidgetInfo, WidgetType, pos2, vec2};
@@ -111,13 +112,22 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
             Rect::from_min_size(pos2(slot.left(), slot.center().y - CHIP_H / 2.0), vec2((chips[i] - CHIP_GAP).max(0.0), CHIP_H))
         };
         let strip_left = ui.cursor().left();
+        // The tabs sit in one tab list, so a screen reader can say "tab 1 of 3".
+        let list_id = ui.id().with("tab-list-node");
+        ui.ctx().accesskit_node_builder(list_id, |n| n.set_role(egui::accesskit::Role::TabList));
         let slots: Vec<Slot> = widths
             .iter()
             .enumerate()
             .map(|(i, &w)| {
-                let (rect, _) = ui.allocate_exact_size(vec2(w, height), Sense::hover());
-                let r = ui.interact(rect, ui.id().with(("tab", i)), Sense::click_and_drag());
-                let close = ui.interact(close_rect(rect), r.id.with("close"), Sense::click());
+                let ctx = ui.ctx().clone();
+                let (rect, r) = ctx.with_accessibility_parent(list_id, || {
+                    let (rect, _) = ui.allocate_exact_size(vec2(w, height), Sense::hover());
+                    (rect, ui.interact(rect, ui.id().with(("tab", i)), Sense::click_and_drag()))
+                });
+                name_tab(&r, name(i), i == st.active_tab);
+                let close = ui.interact(close_hit(rect), r.id.with("close"), Sense::click());
+                let close_name = t.trf("tabs.close.name", &[("name", &name(i))]);
+                close.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &close_name));
                 Slot { rect, r, close }
             })
             .collect();
@@ -150,7 +160,8 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
             let group = shown_at(&shown, i);
             let target = targets.as_ref().map_or(rect.left(), |lefts| lefts[i]);
             let x = ui.ctx().animate_value_with_time(r.id.with("slide"), target, if floating.is_some() { slide } else { 0.0 });
-            let shown_x = ui.ctx().animate_bool_with_time(r.id.with("x"), active || r.hovered() || close.hovered(), fade);
+            let reveal = active || r.hovered() || close.hovered() || r.has_focus() || close.has_focus();
+            let shown_x = ui.ctx().animate_bool_with_time(r.id.with("x"), reveal, fade);
             match &floating {
                 Some(f) if f.from == i => {}
                 Some(f) => {
@@ -167,7 +178,14 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                 None => {
                     let hovered = r.hovered() || close.hovered();
                     let pressed = !active && r.is_pointer_button_down_on() && !close.hovered();
-                    let tab = TabLook { hovered, pressed, close_alpha: shown_x, close_hovered: close.hovered(), ..look(i, active) };
+                    let tab = TabLook {
+                        hovered,
+                        pressed,
+                        close_alpha: shown_x,
+                        close: State::of(&close, false),
+                        focused: r.has_focus(),
+                        ..look(i, active)
+                    };
                     let cut = paint_tab(p, tab_rect(i, rect), name(i), font_of(active), tab);
                     let chip = (chips[i] > 0.0).then(|| chip_rect(i, rect));
                     if let Some((members, n)) = group {
@@ -195,12 +213,15 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                         Some(tip) => r.on_hover_text(tip),
                         None => r,
                     };
-                    if close.clicked() || r.middle_clicked() {
+                    // The × is part of its tab: a middle-click there closes it and a right-click
+                    // opens the tab's menu, as anywhere else on the tab.
+                    if close.clicked() || close.middle_clicked() || r.middle_clicked() {
                         msgs.push(Msg::Tabs(TabsMsg::CloseTab(i)));
                     } else if r.clicked() {
                         msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
                     }
                     r.row_menu(|ui| tab_menu(ui, t, i, st, msgs));
+                    close.row_menu(|ui| tab_menu(ui, t, i, st, msgs));
                 }
             }
         }
@@ -231,13 +252,23 @@ pub(super) fn tab_rects(ctx: &egui::Context) -> Vec<egui::Rect> {
     ctx.data(|d| d.get_temp::<Vec<egui::Rect>>(egui::Id::new(RECTS))).unwrap_or_default()
 }
 
+/// Names tab `r` for screen readers and tests: a tab called `name`, selected while `active`.
+fn name_tab(r: &Response, name: &str, active: bool) {
+    r.ctx.accesskit_node_builder(r.id, |n| {
+        n.set_role(egui::accesskit::Role::Tab);
+        n.set_label(name);
+        n.set_selected(active);
+    });
+}
+
 /// The + after the tabs: drawn like a tab's close × (`tab_glyph`), on the same line, in its
-/// own `PLUS_W` wide, `height` tall slot.
+/// own `PLUS_W` wide, `height` tall slot, which takes the clicks; its box lights on the quiet
+/// layers and takes the focus ring.
 fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, height: f32, msgs: &mut Vec<Msg>) {
     let (rect, r) = ui.allocate_exact_size(vec2(PLUS_W, height), Sense::click());
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, t.tr("tabs.new_tab.tip")));
     let r = r.on_hover_text(keys.tip(t.tr("tabs.new_tab.tip"), crate::keymap::BindingId::NewTab));
-    tab_glyph::paint(ui.painter(), rect.center(), TabGlyph::Plus, color::weak(), r.hovered().then(color::selected));
+    tab_glyph::paint_quiet(ui.painter(), rect.center(), TabGlyph::Plus, color::weak(), State::of(&r, false));
     if r.clicked() {
         msgs.push(Msg::Tabs(TabsMsg::NewTab));
     }

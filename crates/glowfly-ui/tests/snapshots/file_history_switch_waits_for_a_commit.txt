@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -57,7 +62,6 @@ Label "Reached the first commit"
 Label "No commit selected"
 Label "Select a commit to see its changes to the file."
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

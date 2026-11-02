@@ -21,6 +21,7 @@ use std::path::{Path, PathBuf};
 pub(super) fn open_repo_menu(h: &mut H) {
     let name = h
         .get_all_by_label("demo")
+        .filter(|n| n.role() == eframe::egui::accesskit::Role::Button)
         .filter_map(|n| n.bounding_box())
         .filter(|b| b.y1 < 120.0)
         .min_by(|a, b| a.x0.total_cmp(&b.x0))

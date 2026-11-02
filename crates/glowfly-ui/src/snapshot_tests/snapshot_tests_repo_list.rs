@@ -49,14 +49,14 @@ pub(crate) fn welcome_state(theme: ThemeChoice) -> AppState {
 
 pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
-/// The bounds of the node labelled `label` that is `small` (a painted icon, 18 px wide) or not,
+/// The bounds of the node labelled `label` that is `small` (a painted icon, 24 px wide) or not,
 /// on the same row as the `row` link.
 fn bounds(h: &H, label: &str, row: &str, small: bool) -> Rect {
     let link = h.get_by_label(row).bounding_box().expect("the row's link");
     let b = h
         .get_all_by_label(label)
         .filter_map(|n| n.bounding_box())
-        .find(|b| (b.x1 - b.x0 < 24.0) == small && (!small || (b.y0 + b.y1) / 2.0 > link.y0 && (b.y0 + b.y1) / 2.0 < link.y1))
+        .find(|b| (b.x1 - b.x0 <= 24.0) == small && (!small || (b.y0 + b.y1) / 2.0 > link.y0 && (b.y0 + b.y1) / 2.0 < link.y1))
         .unwrap_or_else(|| panic!("{label} for {row}"));
     Rect::from_min_max(pos2(b.x0 as f32, b.y0 as f32), pos2(b.x1 as f32, b.y1 as f32))
 }

@@ -1,5 +1,16 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "demo-hotfix"
+  Tab "notes"
+  Tab "api"
+  Tab "api-review"
+Button "Close tab demo"
+Button "Close tab demo-hotfix"
+Button "Close tab notes"
+Button "Close tab api"
+Button "Close tab api-review"
 Button "New tab"
 Button "demo"
 Button "topic"
@@ -75,11 +86,6 @@ Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
 painted:
-  "demo-hotfix"
-  "notes"
-  "api"
-  "api"
-  "api-review"
   "Repository"
   "Branch"
   "Undo"

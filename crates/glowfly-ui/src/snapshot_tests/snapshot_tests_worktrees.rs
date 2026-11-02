@@ -69,7 +69,9 @@ pub(crate) fn with_worktrees(theme: ThemeChoice, name: &str) -> (AppState, PathB
 }
 
 pub(crate) fn center(h: &H, label: &str) -> Pos2 {
-    let rect = h.get_by_label(label).bounding_box().expect("the row");
+    // The row, not a tab of the same name.
+    let not_tab = |n: &egui_kittest::kittest::Node<'_>| n.role() != eframe::egui::accesskit::Role::Tab;
+    let rect = h.get_all_by_label(label).find(not_tab).and_then(|n| n.bounding_box()).expect("the row");
     pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32)
 }
 

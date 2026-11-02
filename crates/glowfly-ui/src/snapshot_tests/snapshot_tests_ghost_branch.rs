@@ -87,6 +87,10 @@ fn a_narrow_column_keeps_the_plus_alone() {
     h.run_steps(4);
     let b = h.get_by_label(GHOST).bounding_box().expect("still offered, by its name");
     assert!(b.width() < 30.0, "the label doesn't fit, so the plus shows alone: {b:?}");
+    // Lit under the pointer: a 22 px square at the chips' height and centre, 4 px after them.
+    h.get_by_label(GHOST).hover();
+    h.run_steps(2);
+    h.check_snapshot("graph_ghost_branch_narrow");
     drop(h);
     remove_fixture(&dir);
 }

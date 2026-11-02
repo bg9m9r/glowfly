@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Tab demo schließen"
+Button "Tab api-server schließen"
 Button "Neuer Tab"
 Button "demo"
 Button "main"
@@ -58,7 +63,6 @@ Label "Binärdatei: Wähle eine ganze Version."
 Button "Unsere verwenden (main)"
 Button "Ihre verwenden (theme-tweaks)"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Rückgängig"

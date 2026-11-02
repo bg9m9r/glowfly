@@ -1,5 +1,8 @@
 window 1400x1000
 Label "Glowfly 0.1.0"
+TabList
+  Tab "New tab" [selected]
+Button "Close tab New tab"
 Button "New tab"
 Button "Open…"
 Button "Hide panel"

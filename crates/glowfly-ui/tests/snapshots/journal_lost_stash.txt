@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -62,7 +67,6 @@ Label "Stashed on top of"
 Button "Apply stash"
 Button "Put back in stash list"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

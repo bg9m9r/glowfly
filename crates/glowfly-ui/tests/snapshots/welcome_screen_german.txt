@@ -1,5 +1,8 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "Neuer Tab" [selected]
+Button "Tab Neuer Tab schließen"
 Button "Neuer Tab"
 Button "Öffnen…"
 Image

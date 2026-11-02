@@ -6,18 +6,20 @@
 //! section open or closed. Also the empty state line under a section with no rows
 //! ("No worktrees · Add worktree…").
 
-use super::{Icon, PAD_X, ROW_INDENT, SECTION_H, TITLE_X, chevron, paint_icon};
+use super::quiet_target::{self, State};
+use super::{Icon, PAD_X, ROW_INDENT, SECTION_H, TITLE_X, chevron, paint_icon_sized};
 use crate::msg::Msg;
 use crate::state::section_actions::SectionAction;
-use crate::ui::theme::tokens::{self, radius};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::menu;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, Response, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
-/// The + and ⋯ buttons' size.
-const BUTTON: f32 = 20.0;
+/// The + and ⋯: Regular quiet icon-only targets, a header's least hit area.
+const HEADER_SIZE: ControlSize = ControlSize::Regular;
+const BUTTON: f32 = HEADER_SIZE.metrics().h;
 /// Between the + and the ⋯, and between the + and the count.
 const GAP: f32 = 4.0;
 
@@ -168,32 +170,31 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
         || menu::below_open(ui.ctx(), more_id);
     if revealed {
         if let Some(r) = &add {
-            paint_button(ui, r, Icon::Plus, enabled);
+            paint_button(ui, r, Icon::Plus, enabled, menu::below_open(ui.ctx(), add_id));
         }
         if let Some(r) = &more {
-            paint_button(ui, r, Icon::More, true);
+            paint_button(ui, r, Icon::More, true, menu::below_open(ui.ctx(), more_id));
         }
     }
     HeaderResponse { header, free_right: right - 2.0 * BUTTON - 2.0 * GAP }
 }
 
-/// The + or ⋯: a rounded fill on hover, the accent ring while focused, and the icon.
-fn paint_button(ui: &Ui, r: &Response, icon: Icon, enabled: bool) {
+/// The + or ⋯: a Regular quiet icon-only target (`HEADER_SIZE`), lit over its whole square on
+/// hover, held or while its menu is `open` (never while disabled), with the inset ring while
+/// focused, and its size's icon: `faint` when disabled, `strong` while lit, `weak` at rest.
+fn paint_button(ui: &Ui, r: &Response, icon: Icon, enabled: bool, open: bool) {
     let p = ui.painter();
-    if enabled && r.hovered() {
-        p.rect_filled(r.rect, CornerRadius::same(radius::SM), color::selected());
-    }
-    if r.has_focus() {
-        tokens::focus_ring_inset(p, r.rect, radius::SM);
-    }
+    let m = HEADER_SIZE.metrics();
+    let state = if enabled { State::of(r, open) } else { State { focused: r.has_focus(), ..State::default() } };
+    quiet_target::paint(p, r.rect, CornerRadius::same(m.radius), HEADER_SIZE, state);
     let col = if !enabled {
         color::faint()
-    } else if r.hovered() {
-        color::text()
+    } else if state.lit() {
+        color::strong()
     } else {
         color::weak()
     };
-    paint_icon(p, r.rect.center(), icon, col);
+    paint_icon_sized(p, r.rect.center(), icon, col, m.icon);
 }
 
 /// The line under an empty section: faint `text`, then the action as a link ("No worktrees ·

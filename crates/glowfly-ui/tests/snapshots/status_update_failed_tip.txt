@@ -3,6 +3,9 @@ Label "Glowfly 0.1.0"
 Label "Details"
 Button "Update failed · Try again"
 Label "The download failed: offline\nDownload again"
+TabList
+  Tab "New tab" [selected]
+Button "Close tab New tab"
 Button "New tab"
 Button "Open…"
 Image

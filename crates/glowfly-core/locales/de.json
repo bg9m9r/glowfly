@@ -2575,6 +2575,7 @@
   "status.zoom": "Zoom {percent} %",
   "status.zoom_reset_tip": "Zoom auf 100 % zurücksetzen",
   "submodules.log.outside_sparse": "Die Submodule, die der Sparse Checkout auslässt, wurden ausgelassen: {paths}. Füge ihre Ordner unter Einstellungen > Sparse Checkout hinzu, um sie auszuchecken.",
+  "tabs.close.name": "Tab {name} schließen",
   "tabs.close_confirm.button.one": "Tab schließen",
   "tabs.close_confirm.button.other": "{count} Tabs schließen",
   "tabs.close_confirm.title.one": "Tab schließen?",

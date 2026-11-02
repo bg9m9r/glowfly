@@ -3,6 +3,11 @@ Label "GitHub"
 Label "acme/demo"
 Label "· 1 open pull request"
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -90,7 +95,6 @@ Button "Fetch origin"
 Button "Fetch #12's head" [disabled]
 Label "Select a file to see its changes."
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

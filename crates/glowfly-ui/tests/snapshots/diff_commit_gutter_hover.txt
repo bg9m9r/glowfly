@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -69,7 +74,6 @@ Button "Revert hunk"
 Label "Select this line to revert · Shift-click for a range"
 Document "Diff of app.txt"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

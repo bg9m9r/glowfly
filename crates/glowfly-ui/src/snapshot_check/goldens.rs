@@ -61,6 +61,10 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("title_bar_windows_light", Top(108.0)),
     ("title_bar_mac_dark", Top(108.0)),
     ("tabs_restyled", Window),
+    ("tabs_hover", Top(40.0)),
+    ("tabs_new_tab_hover", Top(40.0)),
+    ("tabs_close_focus", Top(40.0)),
+    ("section_header_focus", TopLeft(280.0, 200.0)),
     ("toolbar_restyled_dark", Window),
     ("toolbar_restyled_light", Window),
     ("menu_bar_file", Window),
@@ -94,6 +98,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("graph_wip_row_high_contrast", Window),
     ("graph_worktree_wips", Window),
     ("graph_ghost_branch", Window),
+    ("graph_ghost_branch_narrow", Window),
     ("graph_shallow", Window),
     ("graph_two_commits_selected", Window),
     ("graph_search_dim", Window),
@@ -169,6 +174,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.
+    "graph_ghost_branch_narrow",
     "main_light",
     "main_high_contrast_dark",
     "history_table_dark",

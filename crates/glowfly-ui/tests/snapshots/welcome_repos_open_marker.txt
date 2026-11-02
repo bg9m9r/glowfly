@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "New tab" [selected]
+  Tab "web-app"
+Button "Close tab New tab"
+Button "Close tab web-app"
 Button "New tab"
 Button "Open…"
 Image
@@ -30,5 +35,4 @@ Button "Remove from recent"
 Label "not found"
 Label "C:\\work\\old-site"
 painted:
-  "web-app"
   "Repository"

@@ -14,6 +14,11 @@ Button "Show only matching commits"
 Button "Copy commit SHA" [disabled]
 Button "Copy commit message" [disabled]
 Button "Copy branch name"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -91,7 +96,6 @@ Button "Minimize window"
 Button "Maximize window"
 Button "Close window"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Pull"

@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -53,7 +58,6 @@ Label "Each side's own commits since main · Changed 0 · Dropped 0 · New 0 · 
 Label "No commits to compare"
 Label "Neither version has commits of its own."
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

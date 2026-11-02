@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -68,7 +73,6 @@ Label "Fatal: unable to access 'https://git.example.com/acme/site.git/': Could n
 Button "Try again"
 Button "Copy details"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

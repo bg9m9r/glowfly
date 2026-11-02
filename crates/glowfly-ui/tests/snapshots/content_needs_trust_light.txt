@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Close tab demo"
+Button "Close tab api-server"
 Button "New tab"
 Button "demo"
 Button "main"
@@ -67,7 +72,6 @@ Label "The contents of assets/logo.svg haven't been downloaded"
 Label "This repository is a partial clone and isn't trusted yet. Downloading them from origin runs git in it, so Glowfly asks first."
 Button "Download"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Undo"

@@ -17,7 +17,8 @@ use super::{menu_bar, tabs};
 use crate::msg::{AppMsg, Msg};
 use crate::state::AppState;
 use crate::state::window_chrome::{AltFrame, WindowCmd};
-use crate::ui::theme::tokens::radius;
+use crate::ui::theme::sizes::ControlSize;
+use crate::ui::widgets::quiet_target::{self, State};
 use eframe::egui::{
     self, Align, CornerRadius, Event, Id, Key, LayerId, Layout, PointerButton, Pos2, Rect, Sense, UiBuilder, WidgetInfo, WidgetType, pos2,
     vec2,
@@ -26,9 +27,10 @@ use eframe::egui::{
 /// The bar's height, and its tabs' (along its bottom edge).
 pub(super) const TITLE_H: f32 = 44.0;
 pub(super) const TAB_H: f32 = 34.0;
-/// The menu button.
+/// The menu button: a quiet target with a Regular control's corners and focus style.
 const MENU_W: f32 = 32.0;
 const MENU_H: f32 = 30.0;
+const MENU_SIZE: ControlSize = ControlSize::Regular;
 /// Empty bar always kept before the window buttons, to grab the window by.
 pub(super) const MIN_DRAG: f32 = 56.0;
 /// Where the bar keeps its rect and layer for the overlay (`window_frame::overlay`).
@@ -135,13 +137,11 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
     if !open {
         st.view.menu_keys.closed();
     }
+    // A quiet target: lit over its whole shape (latched while the menu is open), ringed while focused.
     let p = ui.painter();
-    if open {
-        p.rect_filled(rect, CornerRadius::same(radius::MD), color::selected());
-    } else if r.hovered() {
-        p.rect_filled(rect, CornerRadius::same(radius::MD), color::hover());
-    }
-    paint_icon(p, rect.center(), Icon::Menu, color::text());
+    let state = State::of(&r, open);
+    quiet_target::paint(p, rect, CornerRadius::same(MENU_SIZE.metrics().radius), MENU_SIZE, state);
+    paint_icon(p, rect.center(), Icon::Menu, if state.lit() { color::strong() } else { color::text() });
     let name = t.tr("title_bar.menu.tip");
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, name));
     r.on_hover_text(name);
