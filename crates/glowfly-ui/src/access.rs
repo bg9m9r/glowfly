@@ -36,13 +36,19 @@ pub fn with_label<R>(ctx: &Context, label: Option<Id>, f: impl FnOnce() -> R) ->
     out
 }
 
-/// Names the control `resp` by the label `with_label` set, unless it has a name of its own.
+/// Ties the control `resp` to the label `with_label` set: the label names it unless it has a
+/// name of its own (which it keeps).
 pub fn from_label(resp: &Response) {
     let label = resp.ctx.data(|d| d.get_temp::<Option<Id>>(Id::new(LABEL_KEY))).flatten();
-    if let Some(label) = label.filter(|_| unnamed(resp)) {
-        // An empty name would hide the labelling node from screen readers.
-        resp.ctx.accesskit_node_builder(resp.id, |n| n.clear_label());
-        resp.clone().labelled_by(label);
+    if let Some(label) = label {
+        if unnamed(resp) {
+            // An empty name would hide the labelling node from screen readers.
+            resp.ctx.accesskit_node_builder(resp.id, |n| n.clear_label());
+        }
+        let linked = resp.ctx.accesskit_node_builder(resp.id, |n| n.labelled_by().iter().any(|l| l.0 == label.value())).unwrap_or(true);
+        if !linked {
+            resp.clone().labelled_by(label);
+        }
     }
 }
 

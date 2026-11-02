@@ -86,6 +86,7 @@ pub fn accessibility_page(ui: &mut Ui, s: &mut Settings, view: &A11yView, msgs: 
 /// one.
 pub fn name(resp: &Response, label: &str, text: &str) {
     access::name_field(resp, label);
+    access::from_label(resp);
     if !text.is_empty() {
         access::describe(resp, text);
     }
