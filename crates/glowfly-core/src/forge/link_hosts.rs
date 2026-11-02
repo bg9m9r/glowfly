@@ -51,32 +51,46 @@ fn as_read(text: &str) -> String {
 /// The host `text` names when it reads as a web address (`https://host/…`, `www.host`,
 /// `host.tld/…`), in punycode; None for ordinary words. A bare `name.tld` without a path
 /// isn't one: it reads as a file name (`README.md`) as often as a site. The host is judged as
-/// IDNA maps it (full-width letters as ASCII, …), so text can't look like a host yet fail the check.
+/// IDNA maps it (full-width letters as ASCII, …). It fails closed: text that has a scheme or
+/// `www.`, or a path after a host with characters outside ASCII, names its host as read when
+/// that host isn't two or more valid ASCII labels (IDNA refused it, or a look-alike dot such as
+/// U+2024 or U+00B7 left one label), so such a link is asked about rather than opened.
 fn text_host(text: &str) -> Option<String> {
     let text = as_read(text);
     if text.is_empty() || text.chars().any(char::is_whitespace) {
         return None;
     }
-    let host = match host_span(&text) {
-        Some((a, b)) => &text[a..b],
+    let (host, sure) = match host_span(&text) {
+        Some((a, b)) => (&text[a..b], true),
         None => {
             let end = text.find(['/', '?', '#', ':']).unwrap_or(text.len());
             let www = text.get(..4).is_some_and(|w| w.eq_ignore_ascii_case("www."));
             if !www && !text[end..].starts_with('/') {
                 return None;
             }
-            &text[..end]
+            (&text[..end], www)
         }
     };
-    let host = idna::domain_to_ascii(host.trim_end_matches('.')).ok()?;
     let host = host.trim_end_matches('.');
-    let labels: Vec<&str> = host.split('.').collect();
-    let tld = labels.last()?;
-    let named = labels.len() >= 2
+    if host.is_empty() {
+        return None;
+    }
+    match idna::domain_to_ascii(host).ok().filter(|a| named(a)) {
+        Some(ascii) => Some(ascii.trim_end_matches('.').to_owned()),
+        None if sure || !host.is_ascii() => Some(host.to_lowercase()),
+        None => None,
+    }
+}
+
+/// Whether `host` (ASCII, from IDNA) is two or more letter-digit-hyphen labels ending in a
+/// name of two or more letters (or a punycode one).
+fn named(host: &str) -> bool {
+    let labels: Vec<&str> = host.trim_end_matches('.').split('.').collect();
+    let Some(tld) = labels.last() else { return false };
+    labels.len() >= 2
         && labels.iter().all(|l| !l.is_empty() && l.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'))
         && tld.len() >= 2
-        && (tld.chars().all(|c| c.is_ascii_alphabetic()) || tld.starts_with("xn--"));
-    named.then(|| host.to_owned())
+        && (tld.chars().all(|c| c.is_ascii_alphabetic()) || tld.starts_with("xn--"))
 }
 
 /// When `text`, a link's visible text, reads as a web address on another host than `url`'s:
@@ -122,6 +136,27 @@ mod tests {
         for text in ["github\u{FF0E}com/acme", "github\u{3002}com/acme", "https://github\u{FF61}com/x", "\u{FF47}ithub.com/acme"] {
             assert_eq!(mismatch(text, evil), Some(("github.com".into(), "evil.example".into())), "{text}");
         }
+    }
+
+    #[test]
+    fn a_host_idna_refuses_or_a_look_alike_dot_fails_closed() {
+        let evil = "https://evil.example/";
+        for (text, shown) in [
+            ("https://github.\u{0323}com/acme/app", "github.\u{0323}com"),
+            ("github\u{2024}com/acme", "github\u{2024}com"),
+            ("github\u{00B7}com/acme", "github\u{00B7}com"),
+            ("github\u{A4F8}com/acme", "github\u{a4f8}com"),
+            ("https://github.com\u{FFFD}/x", "github.com\u{fffd}"),
+            ("www.github\u{2024}com", "www.github\u{2024}com"),
+        ] {
+            let (got, real) = mismatch(text, evil).unwrap_or_else(|| panic!("{text:?} opened without asking"));
+            assert_eq!((got.as_str(), real.as_str()), (shown, "evil.example"), "{text:?}");
+        }
+        // Plain words and paths without a host stay quiet.
+        for text in ["docs/readme", "src/main.rs", "v1.2/notes", "caf\u{e9}"] {
+            assert_eq!(mismatch(text, evil), None, "{text}");
+        }
+        assert_eq!(mismatch("https://localhost/x", "https://localhost/x"), None, "the same single-label host");
     }
 
     #[test]
