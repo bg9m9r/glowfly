@@ -5,6 +5,9 @@
 //! grammars in `crates/glowfly-core/syntaxes/` (PowerShell). Loading the dump takes under 1 ms;
 //! regexes compile lazily, the first time a language is parsed.
 //!
+//! This set is for detection and the rules only: it is never parsed with, so its regexes stay
+//! uncompiled. Parsing uses a second copy that is dropped when idle (`grammars`).
+//!
 //! Detection: a language override from gitattributes comes first (`linguist`), then the file's
 //! name, then its first line. `.jsx` uses the TSX grammar, as the JavaScript (Babel) grammar
 //! doesn't compile under fancy-regex.
@@ -17,8 +20,8 @@ use syntect::parsing::{Scope, SyntaxReference, SyntaxSet};
 /// The syntax set written by `build.rs`.
 static DUMP: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/syntaxes.packdump"));
 
-/// Immutable data loaded once on first use: the bundled syntax definitions and the
-/// scope-to-kind rules.
+/// Immutable data loaded once on first use: the bundled syntax definitions (for detection) and
+/// the scope-to-kind rules.
 pub(super) struct Syntaxes {
     pub(super) set: SyntaxSet,
     /// Sorted most specific (longest) scope first, so the first rule that is a prefix of a
@@ -59,9 +62,13 @@ pub(super) static SYNTAXES: LazyLock<Syntaxes> = LazyLock::new(|| {
         table.iter().flat_map(|(scopes, kind)| scopes.iter().map(move |s| (Scope::new(s).expect("valid scope"), *kind))).collect();
     // Stable, so equally long scopes keep the table's order.
     rules.sort_by_key(|(s, _)| std::cmp::Reverse(s.len()));
-    let set = syntect::dumps::from_uncompressed_data(DUMP).expect("the syntax dump written by build.rs loads");
-    Syntaxes { set, rules }
+    Syntaxes { set: load_set(), rules }
 });
+
+/// A fresh copy of the bundled set, nothing compiled yet.
+pub(super) fn load_set() -> SyntaxSet {
+    syntect::dumps::from_uncompressed_data(DUMP).expect("the syntax dump written by build.rs loads")
+}
 
 /// See `syntax_name`.
 pub(super) fn find_syntax(file: SyntaxHint<'_>, first_line: Option<&str>) -> Option<&'static SyntaxReference> {
