@@ -37,7 +37,7 @@ repository by that workflow.
 ## Known advisories
 
 Every dependency is checked against published advisories: cargo-deny checks the RustSec database
-on every push and pull request (`deny.toml`, `.github/workflows/ci.yml`), and Scorecard's
+on every pull request and push to main (`deny.toml`, `.github/workflows/ci.yml`), and Scorecard's
 osv-scanner checks `Cargo.lock` against OSV. An advisory that affects Glowfly is fixed by
 updating the dependency. One that can't be fixed that way is listed here only when it doesn't
 reach Glowfly, with the reason, until an update removes it.
