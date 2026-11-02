@@ -1,5 +1,10 @@
 window 1400x820
 Label "Glowfly 0.1.0"
+TabList
+  Tab "demo" [selected]
+  Tab "api-server"
+Button "Tab demo schließen"
+Button "Tab api-server schließen"
 Button "Neuer Tab"
 Button "demo"
 Button "main"
@@ -73,7 +78,6 @@ Button "Zeilen kopieren"
 Button "Hunk als Patch kopieren"
 Button "1 Zeile reverten"
 painted:
-  "api-server"
   "Repository"
   "Branch"
   "Rückgängig"

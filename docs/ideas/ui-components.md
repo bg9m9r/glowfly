@@ -332,3 +332,5 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - The terminal strip's + and × on the quiet state layers (they still pass their own hover fill)
 - Pixel goldens of the painted icons at 125 %, 150 % and 200 % (a unit test checks the plus's
   grid at each)
+- `welcome_repo_groups` at 820 px hides the Recent "not found" row under the status bar: use a
+  taller window or a Recent-only golden
