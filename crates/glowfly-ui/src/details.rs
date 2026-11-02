@@ -12,6 +12,7 @@ use super::widgets;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::custom_commands::MenuCommands;
+use crate::state::layout::Pane;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::panel_layout::Fit;
 use crate::state::{AppState, Selection};
@@ -35,6 +36,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
         .show(ctx, |ui| {
             panel_size::fill(ui);
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+            super::pane_focus::drawn_at(ui.ctx(), Pane::Files, ui.max_rect());
+            super::pane_focus::begin_details(ui.ctx(), st);
             match st.session.selection {
                 Selection::Wip => super::details_wip::wip_panel(ui, st, cache, msgs),
                 Selection::Commit(_) => super::details_commit::panel(ui, st, cache, msgs),
@@ -51,6 +54,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
                     }
                 }
             }
+            super::pane_focus::end_details(ui.ctx());
         });
     panel_size::track(ctx, st, SizedPanel::Details, id, resp.response.rect.width(), msgs);
 }

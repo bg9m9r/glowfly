@@ -170,6 +170,7 @@ mod palette_stash_tests;
 mod palette_submodule_tests;
 mod palette_tests;
 mod palette_worktree_tests;
+mod pane_focus_tests;
 mod partial_content_tests;
 mod partial_size_tests;
 mod patch_apply_tests;

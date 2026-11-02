@@ -117,6 +117,9 @@ impl When {
     /// The rebase panel is drawn only when no diff, list, graph or blame view is, so it
     /// overlaps only itself, `Anywhere` and `NotTyping`; so do the file lists' keys (the WIP
     /// lists' and the others'), which a focused list takes before any other binding sees them.
+    /// The graph is the central view only while no diff, conflict or blame view is, so `Graph`
+    /// doesn't overlap the diff places (`WorkingDiff`, `CommitDiff`, `DiffOrConflict`, `Diff`)
+    /// or `Blame`: a graph key such as Ctrl+C can be a diff's key too.
     pub fn overlaps(self, other: When) -> bool {
         use When as W;
         let browsing = |w: When| {
@@ -124,12 +127,14 @@ impl When {
         };
         let palette = |w: When| matches!(w, W::InPalette | W::PaletteStep);
         let panel = |a: When, b: When| matches!(a, W::RebasePanel | W::WipLists | W::FileLists) && b == W::NotTyping;
+        let viewing = |w: When| matches!(w, W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Diff | W::Blame);
+        let apart = |a: When, b: When| a == W::Graph && viewing(b);
         self == other
             || self == W::Anywhere
             || other == W::Anywhere
             || panel(self, other)
             || panel(other, self)
-            || (browsing(self) && browsing(other))
+            || (browsing(self) && browsing(other) && !apart(self, other) && !apart(other, self))
             || (palette(self) && palette(other))
     }
 }
@@ -170,6 +175,11 @@ use When as W;
 /// Full screen: F11, except on macOS, where F11 shows the desktop and Ctrl+Cmd+F is the
 /// system's key.
 const FULL_SCREEN: &[Chord] = if cfg!(target_os = "macos") { &[C::cmd_ctrl(K::Letter('F'))] } else { &[C::plain(K::F(11))] };
+
+/// Go to pane `n`: Alt+`n`, except on macOS, where Option+digit types a character, so Control+`n`.
+const fn pane(n: u8) -> Chord {
+    if cfg!(target_os = "macos") { C::ctrl(K::Digit(n)) } else { C::alt(K::Digit(n)) }
+}
 
 /// Every binding, in display order within its group. Rebindable rows are matched through the
 /// effective keymap (`ui/shortcuts/global.rs`); fixed rows document context keys their views
@@ -219,11 +229,31 @@ pub const BINDINGS: &[Binding] = &[
         &[C::cmd_shift(K::Letter('A'))],
         W::Graph,
     ),
+    fixed(I::GraphPageRow, G::Navigation, "Select the row a page up or down", &[C::plain(K::PageUp), C::plain(K::PageDown)], W::Lists),
+    fixed(I::GraphEdgeRow, G::Navigation, "Select the first or last row", &[C::plain(K::Home), C::plain(K::End)], W::Lists),
+    fixed(I::OpenCommitDetails, G::Navigation, "Show the details panel and go to its file list", &[C::plain(K::Enter)], W::Graph),
+    b(I::SelectHead, G::Navigation, "Select HEAD and scroll to it", &[C::plain(K::Letter('H'))], W::Graph),
+    b(I::PrevRefCommit, G::Navigation, "Previous commit with a branch or tag", &[C::plain(K::OpenBracket)], W::Graph),
+    b(I::NextRefCommit, G::Navigation, "Next commit with a branch or tag", &[C::plain(K::CloseBracket)], W::Graph),
+    b(I::CopyCommitIds, G::Navigation, "Copy the selected commits' full IDs", &[C::cmd(K::Letter('C'))], W::Graph),
     b(I::Search, G::Navigation, "Show or hide commit search (find in the blame view)", &[C::cmd(K::Letter('F'))], W::Anywhere),
     fixed(I::SearchNext, G::Navigation, "Next search match", &[C::plain(K::Enter)], W::Search),
     b(I::SearchFilter, G::Navigation, "Show only matching commits", &[C::cmd_shift(K::Letter('F'))], W::Anywhere),
     b(I::BlameNextRun, G::Navigation, "Next commit in blame", &[C::plain(K::Letter('N'))], W::Blame),
     b(I::BlamePrevRun, G::Navigation, "Previous commit in blame", &[C::shift(K::Letter('N'))], W::Blame),
+    b(I::FocusSidebar, G::Navigation, "Go to the left panel", &[pane(1)], W::Anywhere),
+    b(
+        I::FocusCentral,
+        G::Navigation,
+        "Go to the central view (the graph, a diff, a pull request, the rebase panel or a conflict)",
+        &[pane(2)],
+        W::Anywhere,
+    ),
+    b(I::FocusFiles, G::Navigation, "Go to the details panel's file list", &[pane(3)], W::Anywhere),
+    b(I::FocusDiff, G::Navigation, "Go to the diff", &[pane(4)], W::Anywhere),
+    b(I::FocusCommitMessage, G::Navigation, "Go to the commit message pane", &[pane(5)], W::Anywhere),
+    b(I::NextPane, G::Navigation, "Go to the next pane", &[C::plain(K::F(6))], W::Anywhere),
+    b(I::PrevPane, G::Navigation, "Go to the previous pane", &[C::shift(K::F(6))], W::Anywhere),
     b(I::NextChange, G::Diff, "Next change or conflict", &[C::plain(K::F(7)), C::alt(K::Down)], W::DiffOrConflict),
     b(I::PrevChange, G::Diff, "Previous change or conflict", &[C::shift(K::F(7)), C::alt(K::Up)], W::DiffOrConflict),
     b(I::RevertHunk, G::Diff, "Revert the hunk or the selected lines", &[C::plain(K::Letter('R'))], W::CommitDiff),
@@ -297,6 +327,8 @@ pub const BINDINGS: &[Binding] = &[
     command(I::OpenJournal, "Open the operation journal"),
     command(I::OpenTerminal, "Open the repository in a terminal"),
     command(I::ShowRepoFolder, "Show the repository folder in the file manager"),
+    command(I::CherryPick, "Cherry-pick the selected commits"),
+    command(I::RevertCommit, "Revert the selected commits"),
     b(I::Palette, G::Palette, "Open or close the command palette", &[C::cmd(K::Letter('P')), C::cmd_shift(K::Letter('P'))], W::Anywhere),
     fixed(I::PaletteMove, G::Palette, "Move the selection", &[C::plain(K::Up), C::plain(K::Down)], W::InPalette),
     fixed(I::PaletteRun, G::Palette, "Run the selected command", &[C::plain(K::Enter)], W::InPalette),

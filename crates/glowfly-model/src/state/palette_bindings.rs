@@ -52,6 +52,8 @@ impl PaletteCommand {
             C::OpenJournal => I::OpenJournal,
             C::OpenTerminal => I::OpenTerminal,
             C::ShowInFileManager => I::ShowRepoFolder,
+            C::PickSelected { revert: false } => I::CherryPick,
+            C::PickSelected { revert: true } => I::RevertCommit,
             _ => return None,
         })
     }
@@ -76,6 +78,8 @@ pub fn command_for(id: BindingId) -> Option<PaletteCommand> {
         I::OpenJournal => C::OpenJournal,
         I::OpenTerminal => C::OpenTerminal,
         I::ShowRepoFolder => C::ShowInFileManager,
+        I::CherryPick => C::PickSelected { revert: false },
+        I::RevertCommit => C::PickSelected { revert: true },
         _ => return None,
     })
 }

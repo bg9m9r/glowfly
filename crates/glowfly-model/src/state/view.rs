@@ -114,6 +114,11 @@ pub struct ViewState {
     /// Give that list (`Some(staged)`) the keyboard focus on the next frame (set by `update`,
     /// taken by the view).
     pub wip_focus: Option<bool>,
+    /// Give that pane the keyboard focus (set by `update` for the pane keys, Enter in the graph
+    /// and F6; taken by the view that draws the pane).
+    pub pane_focus: Option<super::layout::Pane>,
+    /// A graph key for the graph view to apply with its rows at hand (set by the shortcuts).
+    pub graph_key: Option<super::graph_rows::GraphKey>,
     /// A file opened from a pull request's code comment thread, still loading, and the line
     /// (side, number) to land on. Set and cleared only by `update`.
     pub diff_open_line: Option<(DiffTarget, glowfly_core::diff_rows::LineSide, u32)>,
@@ -250,6 +255,8 @@ impl Default for ViewState {
             wip_span: None,
             wip_place: [None, None],
             wip_focus: None,
+            pane_focus: None,
+            graph_key: None,
             diff_open_line: None,
             pr_thread_scroll: None,
             issue_comment_focus: false,

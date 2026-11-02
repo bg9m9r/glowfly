@@ -16,6 +16,8 @@ pub(super) struct RowLook {
     /// The row belongs to the hovered branch.
     pub highlighted: bool,
     pub selected: bool,
+    /// The graph has the keyboard focus (or nothing has): the selection shows as focused.
+    pub active: bool,
     pub hovered: bool,
 }
 
@@ -27,7 +29,7 @@ pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
     if look.highlighted {
         p.rect_filled(rect, 0.0, highlight_color(band, look.lane));
     }
-    crate::ui::widgets::row_fill::paint(p, rect, look.selected, look.hovered);
+    crate::ui::widgets::row_fill::paint_in(p, rect, look.selected, look.active, look.hovered);
 }
 
 /// How far a highlighted row (its branch hovered) moves from its band toward the lane colour.

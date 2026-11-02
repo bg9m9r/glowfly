@@ -166,8 +166,15 @@ impl Keymap {
 
     /// The binding a press of `c` belongs to: the globally matched ones (rebindable and Go to
     /// tab) first, then the fixed context keys. A digit range answers to each digit in it.
-    /// `fold` treats Cmd/Ctrl and Ctrl as one modifier (off macOS).
+    /// `fold` treats Cmd/Ctrl and Ctrl as one modifier (off macOS); a binding with exactly the
+    /// pressed modifiers still comes before one that only answers folded (Cmd+2 is Go to tab,
+    /// never a Control-only key that folding would let answer it).
     pub fn lookup(&self, c: Chord, fold: bool) -> Option<BindingId> {
+        let exact = fold.then(|| self.lookup_in(c, false)).flatten();
+        exact.or_else(|| self.lookup_in(c, fold))
+    }
+
+    fn lookup_in(&self, c: Chord, fold: bool) -> Option<BindingId> {
         let owns = |b: &&Binding| self.chords(b.id).iter().any(|k| answers(*k, c, fold));
         let global = |b: &&Binding| b.rebindable || b.id == BindingId::GoToTab;
         let first = BINDINGS.iter().filter(global).find(owns);

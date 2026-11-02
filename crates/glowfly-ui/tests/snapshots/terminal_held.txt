@@ -20,6 +20,7 @@ Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
 Button "Untrusted"
+Unknown "Left panel contents"
 TextInput
 Button "New branch"
 Button "Local actions"

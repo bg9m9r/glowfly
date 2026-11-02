@@ -4,9 +4,35 @@
 use super::super::find::{self, Pick, Region};
 use super::Journey;
 use eframe::egui;
+use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 
 impl Journey {
+    /// Presses `key` with `modifiers` and waits until the app is idle.
+    pub fn press_with(&mut self, modifiers: egui::Modifiers, key: egui::Key) {
+        self.toasts.clear();
+        self.h.press_key_modifiers(modifiers, key);
+        self.settle();
+    }
+
+    /// The accessible name of the widget with the keyboard focus, if one has it.
+    pub fn focused_name(&self) -> Option<String> {
+        let node = self.h.query_by(|n| n.is_focused())?;
+        Some(node.label().or_else(|| node.value()).unwrap_or_default())
+    }
+
+    /// Presses Tab until the widget named `name` has the keyboard focus.
+    #[track_caller]
+    pub fn tab_to(&mut self, name: &str) {
+        for _ in 0..120 {
+            if self.focused_name().as_deref() == Some(name) {
+                return;
+            }
+            self.press(egui::Key::Tab);
+        }
+        panic!("Tab never reached {name:?} (last: {:?})", self.focused_name());
+    }
+
     /// Runs a command from the palette: opens it, types `query` and clicks the row `row`.
     #[track_caller]
     pub fn run_command(&mut self, query: &str, row: &str) {

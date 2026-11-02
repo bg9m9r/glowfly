@@ -20,6 +20,15 @@ pub enum DisplayRow {
     Commit(usize),
 }
 
+/// A graph key the graph view applies with its rows: H, [ and ].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GraphKey {
+    /// Select HEAD's commit and scroll it into view.
+    Head,
+    /// Select the nearest commit above (`up`) or below with a branch or tag.
+    Ref { up: bool },
+}
+
 /// Which rows the graph lays out: this tab's WIP row (if any), then the commits with each other
 /// worktree's WIP row directly above its HEAD commit; or only the search's matches while it
 /// filters.
@@ -133,6 +142,29 @@ impl<'a> GraphRows<'a> {
             }
         }
         Some(next as usize)
+    }
+
+    /// The nearest commit row above (`up`) or below `current` whose commit has a branch or tag
+    /// in `snap`; from no row, the first such row from the top (or the bottom, going up).
+    pub fn ref_row(&self, snap: &Snapshot, current: Option<usize>, up: bool) -> Option<usize> {
+        let has_ref = |row: usize| match self.at(row) {
+            Some(DisplayRow::Commit(i)) => snap.commits.get(i).and_then(|c| snap.refs.get(&c.oid)).is_some_and(|l| {
+                l.iter().any(|r| {
+                    matches!(
+                        r.kind,
+                        glowfly_core::repo::RefKind::Local | glowfly_core::repo::RefKind::Remote | glowfly_core::repo::RefKind::Tag
+                    )
+                })
+            }),
+            _ => false,
+        };
+        let len = self.len();
+        match (current, up) {
+            (Some(c), true) => (0..c.min(len)).rev().find(|&r| has_ref(r)),
+            (Some(c), false) => (c + 1..len).find(|&r| has_ref(r)),
+            (None, true) => (0..len).rev().find(|&r| has_ref(r)),
+            (None, false) => (0..len).find(|&r| has_ref(r)),
+        }
     }
 }
 

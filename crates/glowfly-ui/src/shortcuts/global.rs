@@ -13,6 +13,7 @@
 //! aside for it first (`ui/menu_keys`), so no binding or view behind it sees them.
 
 use super::chords::take_press;
+use super::live::{Live, allowed};
 use super::record;
 use crate::custom_commands::{CustomCommandMsg, Target};
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName, runs_command};
@@ -20,12 +21,12 @@ use crate::msg::{
     AppMsg, BlameMsg, ConflictMsg, DiffMsg, HistoryMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg,
     SearchMsg, SelectionMsg, TabsMsg,
 };
+use crate::state::graph_rows::GraphKey;
 use crate::state::history::HistoryPane;
-use crate::state::layout::Panel;
-use crate::state::{AppState, Modal, PrefPage, Selection};
+use crate::state::layout::{Pane, Panel};
+use crate::state::{AppState, PrefPage, Selection};
 use crate::ui::central;
 use eframe::egui;
-use git2::RepositoryState;
 use glowfly_core::rebase::{QuickEdit, Resume};
 use glowfly_model::terminal::TerminalMsg;
 
@@ -42,12 +43,17 @@ pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let covered = live.prefs || live.askpass || live.palette || live.dialog || live.sheet;
     crate::ui::wip_keys::input(ctx, covered, msgs);
     crate::ui::file_list_keys::input(ctx, covered, msgs);
+    // Ctrl+C reaches egui as a Copy event: a binding of it (Copy commit IDs) gets it as a key,
+    // while the graph takes the keys and no label text (a commit message) is selected.
+    if copy_is_the_graphs(ctx) {
+        ctx.input_mut(|i| super::chords::copy_as_key(i, &st.keymap, |id, shell| allowed(id, shell, &live)));
+    }
     while let Some((id, chord, repeat)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
         // A held key would queue the same fetch or push again and again.
         if repeat && runs_command(id) {
             continue;
         }
-        fire(id, chord, st, msgs);
+        fire(id, chord, live.pane, st, msgs);
     }
     // Custom commands' keys, only over the main window itself.
     if !(live.prefs || live.askpass || live.palette || live.dialog || live.sheet || live.typing || live.terminal) {
@@ -66,180 +72,9 @@ pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     central::escape_key(ctx, st, msgs);
 }
 
-/// What is open this frame, for deciding which bindings apply.
-struct Live {
-    prefs: bool,
-    palette: bool,
-    askpass: bool,
-    /// The shortcut sheet.
-    sheet: bool,
-    /// A dialog other than the sheet.
-    dialog: bool,
-    /// A text field has the keyboard (a focused file list isn't typing).
-    typing: bool,
-    /// A working-tree diff is open, or a working-tree file is opening.
-    working_diff: bool,
-    /// A commit or comparison diff is open, with no conflict or blame view over it.
-    commit_diff: bool,
-    /// A diff or the conflict view is open (and no blame view over it).
-    stepping: bool,
-    /// A diff is open, with no conflict or blame view over it.
-    diff: bool,
-    /// A loaded blame view is open.
-    blame: bool,
-    /// The commit graph is the central view.
-    graph: bool,
-    /// The terminal has the keyboard.
-    terminal: bool,
-    /// A rebase is in progress.
-    rebasing: bool,
-}
-
-impl Live {
-    fn now(ctx: &egui::Context, st: &AppState) -> Self {
-        let sheet = matches!(st.modal, Some(Modal::Shortcuts { .. }));
-        Self {
-            prefs: st.prefs.is_some(),
-            palette: st.palette.is_some(),
-            askpass: st.askpass.showing(),
-            sheet,
-            // The welcome counts as a dialog, except while Preferences hides it.
-            dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
-            typing: ctx.wants_keyboard_input()
-                && crate::ui::wip_keys::focused_list(ctx).is_none()
-                && crate::ui::file_list_keys::focused(ctx).is_none(),
-            working_diff: st
-                .view
-                .diff_opening
-                .as_ref()
-                .or(st.session.diff.view.as_ref().map(|(t, _)| t))
-                .is_some_and(|t| t.is_working_tree()),
-            commit_diff: st.session.blame.view.is_none()
-                && st.session.conflict.view.is_none()
-                && st.session.diff.view.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
-            stepping: st.session.blame.view.is_none() && (st.session.conflict.view.is_some() || st.session.diff.view.is_some()),
-            diff: st.session.blame.view.is_none() && st.session.conflict.view.is_none() && st.session.diff.view.is_some(),
-            blame: st.session.blame.view.as_ref().is_some_and(|v| v.data.is_some()),
-            graph: st.graph_shown(),
-            terminal: st.terminal.focused,
-            rebasing: st.snap.as_ref().is_some_and(|s| {
-                use RepositoryState::*;
-                matches!(s.state, Rebase | RebaseInteractive | RebaseMerge | ApplyMailboxOrRebase)
-            }),
-        }
-    }
-}
-
-/// The actions whose keys a focused terminal keeps for its shell when pressed without Shift,
-/// Alt or Cmd (Ctrl+W, Ctrl+P, Ctrl+Q, F5…); their shifted keys still act.
-fn terminal_keeps(id: BindingId) -> bool {
-    use BindingId as I;
-    matches!(id, I::NewTab | I::CloseTab | I::NextTab | I::GoToTab | I::LastTab | I::Palette | I::Search | I::Refresh | I::Quit)
-}
-
-/// Whether `id` applies with what is open; `shell` says whether the press would reach a focused
-/// terminal's shell. Nothing reaches the main window's actions under Preferences, a credential
-/// prompt, the palette or a dialog, except where noted; text fields keep plain keys and their
-/// own undo.
-fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
-    use BindingId as I;
-    if l.terminal && shell && terminal_keeps(id) {
-        return false;
-    }
-    let covered = l.prefs || l.askpass || l.palette || l.dialog;
-    match id {
-        I::Palette => !l.prefs && !l.dialog && !l.sheet && !l.askpass,
-        // Closes the sheet too.
-        I::Sheet => !covered,
-        I::FocusMessage => !covered && !l.sheet,
-        I::StageAll | I::UnstageAll => !covered && !l.sheet && !l.typing,
-        I::Stage | I::Unstage => !covered && !l.sheet && !l.typing && l.working_diff,
-        I::RevertHunk => !covered && !l.sheet && !l.typing && l.commit_diff,
-        I::ToggleTerminal | I::ToggleLeftPanel | I::ToggleDetailsPanel | I::ToggleToolbar => !covered && !l.sheet,
-        // Zoom and full screen work over everything (recording a key takes every press before this).
-        I::ZoomIn | I::ZoomOut | I::ZoomReset | I::ToggleFullscreen => true,
-        I::NewTab | I::CloseTab | I::ReopenTab | I::NextTab | I::PrevTab | I::LastTab | I::MoveTabLeft | I::MoveTabRight | I::GoToTab => {
-            !l.prefs && !l.palette
-        }
-        I::Undo | I::Redo => !covered && !l.sheet && !l.typing,
-        I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
-        I::OpenFold | I::CloseFold => !covered && !l.sheet && !l.typing && l.diff,
-        I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
-        I::SelectAllCommits | I::SelectFocusedCommit => !covered && !l.sheet && !l.typing && l.graph && !l.terminal,
-        // Not while typing: AltGr is Ctrl+Alt on Windows, and AltGr+digit types characters.
-        I::OpenFavorite1
-        | I::OpenFavorite2
-        | I::OpenFavorite3
-        | I::OpenFavorite4
-        | I::OpenFavorite5
-        | I::OpenFavorite6
-        | I::OpenFavorite7
-        | I::OpenFavorite8
-        | I::OpenFavorite9 => !covered && !l.sheet && !l.typing,
-        I::RewordCommit | I::SquashCommit | I::DropCommit => !covered && !l.sheet && !l.typing && l.graph,
-        I::RebaseContinue | I::RebaseSkip => !covered && !l.sheet && !l.typing && l.rebasing,
-        // Palette commands; a focused terminal keeps every key of theirs that reaches its shell.
-        I::Fetch
-        | I::Pull
-        | I::Push
-        | I::CreateBranch
-        | I::CreateTag
-        | I::CreateAnnotatedTag
-        | I::StashChanges
-        | I::StashWithMessage
-        | I::PopStash
-        | I::FileHistory
-        | I::BlameFile
-        | I::OpenJournal
-        | I::OpenTerminal
-        | I::ShowRepoFolder => !covered && !l.sheet && !l.typing && !(l.terminal && shell),
-        I::Refresh => true,
-        I::Search | I::SearchFilter => !l.palette && !l.prefs,
-        I::Prefs => !l.prefs && !l.palette,
-        I::Quit => !l.askpass,
-        // Saves the open Preferences page, from its fields too.
-        I::PrefsSave => l.prefs && !l.askpass && !l.dialog,
-        I::Commit
-        | I::StageAllAndCommit
-        | I::SelectRow
-        | I::ExtendSelection
-        | I::CloseView
-        | I::PaletteMove
-        | I::PaletteRun
-        | I::PaletteBack
-        | I::PaletteClose
-        | I::SearchNext
-        | I::DialogSubmit
-        | I::SendPrText
-        | I::RebaseStepSelect
-        | I::RebaseStepMove
-        | I::RebasePick
-        | I::RebaseReword
-        | I::RebaseSquash
-        | I::RebaseFixup
-        | I::RebaseDrop
-        | I::RebaseEdit
-        | I::RebaseAddExec
-        | I::RebaseAddBreak
-        | I::RebaseRemoveStep
-        | I::RebaseEditStep
-        | I::PrefsRevert
-        | I::WipStepFile
-        | I::WipExtendFiles
-        | I::WipEdgeFile
-        | I::WipPageFile
-        | I::WipToggleFiles
-        | I::WipOpenFile
-        | I::WipDiscardFile
-        | I::WipOtherList
-        | I::FileStepFile
-        | I::FilePageFile
-        | I::FileEdgeFile => false,
-    }
-}
-
-/// Does what `id` does; `chord` is the key pressed (its digit picks the tab for Go to tab).
-fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
+/// Does what `id` does; `chord` is the key pressed (its digit picks the tab for Go to tab), and
+/// `pane` the pane with the keyboard focus (F6 goes on from it).
+fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs: &mut Vec<Msg>) {
     use BindingId as I;
     // A history's File pane has no diff on screen: a folder history steps to the entry's next
     // or previous file instead.
@@ -297,6 +132,24 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::BlamePrevRun => Msg::Blame(BlameMsg::StepRun(-1)),
         I::SelectAllCommits => Msg::Selection(SelectionMsg::SelectAll),
         I::SelectFocusedCommit => Msg::Selection(SelectionMsg::BackToFocus),
+        I::FocusSidebar => Msg::Shortcut(KeyAction::FocusPane(Pane::Sidebar)),
+        I::FocusCentral => Msg::Shortcut(KeyAction::FocusPane(Pane::Central)),
+        I::FocusFiles => Msg::Shortcut(KeyAction::FocusPane(Pane::Files)),
+        I::FocusDiff => Msg::Shortcut(KeyAction::FocusPane(Pane::Diff)),
+        I::FocusCommitMessage => Msg::Shortcut(KeyAction::FocusPane(Pane::Message)),
+        I::NextPane | I::PrevPane => {
+            let step = if id == I::NextPane { 1 } else { -1 };
+            Msg::Shortcut(KeyAction::FocusPane(Pane::cycle(pane, step, |p| crate::ui::pane_focus::drawn(st, p))))
+        }
+        I::CopyCommitIds => Msg::Selection(SelectionMsg::CopyIds),
+        // The graph applies these with its rows.
+        I::SelectHead | I::PrevRefCommit | I::NextRefCommit => {
+            st.view.graph_key = Some(match id {
+                I::SelectHead => GraphKey::Head,
+                _ => GraphKey::Ref { up: id == I::PrevRefCommit },
+            });
+            return;
+        }
         I::OpenFavorite1
         | I::OpenFavorite2
         | I::OpenFavorite3
@@ -338,7 +191,9 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         | I::BlameFile
         | I::OpenJournal
         | I::OpenTerminal
-        | I::ShowRepoFolder => match crate::state::palette_bindings::command_for(id) {
+        | I::ShowRepoFolder
+        | I::CherryPick
+        | I::RevertCommit => match crate::state::palette_bindings::command_for(id) {
             Some(cmd) => Msg::Palette(PaletteMsg::RunBoundCommand(cmd)),
             None => return,
         },
@@ -392,7 +247,16 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         | I::WipOtherList
         | I::FileStepFile
         | I::FilePageFile
-        | I::FileEdgeFile => return,
+        | I::FileEdgeFile
+        | I::GraphPageRow
+        | I::GraphEdgeRow
+        | I::OpenCommitDetails => return,
     };
     msgs.push(msg);
+}
+
+/// Whether this frame's Copy is the graph's: it has the keyboard focus or nothing has, and no
+/// label text is selected (that selection copies its own text).
+fn copy_is_the_graphs(ctx: &egui::Context) -> bool {
+    crate::ui::pane_focus::graph_active(ctx) && !egui::text_selection::LabelSelectionState::load(ctx).has_selection()
 }

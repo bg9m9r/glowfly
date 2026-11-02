@@ -1,8 +1,10 @@
 //! The shared look of a selected or hovered row: the selection fill with an accent bar along the
 //! left edge, and the lifted hover (the hover fill with a soft shadow inside the bottom edge).
-//! The graph, the sidebar's rows, the file lists and the file history list all use it.
+//! The graph, the sidebar's rows, the file lists and the file history list all use it. In the
+//! graph and the file lists the fill is `selected` while the row's pane has the keyboard focus,
+//! and the neutral `tokens::selected_inactive` otherwise.
 
-use crate::ui::theme::color;
+use crate::ui::theme::{color, tokens};
 use eframe::egui::{Color32, Painter, Rect, pos2, vec2};
 
 /// The width of a selected row's accent bar.
@@ -10,9 +12,16 @@ pub const ACCENT_BAR_W: f32 = 3.0;
 
 /// Paints a row's selection or hover in `rect`: the selection wins; a plain row paints nothing.
 pub fn paint(p: &Painter, rect: Rect, selected: bool, hovered: bool) {
+    paint_in(p, rect, selected, true, hovered);
+}
+
+/// `paint` for a row of a pane that takes the keyboard focus: its selection is filled with
+/// `selected` while the pane has the focus (`active`), else with `selected_inactive`.
+pub fn paint_in(p: &Painter, rect: Rect, selected: bool, active: bool, hovered: bool) {
     let pal = color::current();
     if selected {
-        p.rect_filled(rect, 0.0, pal.selected);
+        let fill = if active { pal.selected } else { tokens::selected_inactive(&pal) };
+        p.rect_filled(rect, 0.0, fill);
         p.rect_filled(Rect::from_min_size(rect.left_top(), vec2(ACCENT_BAR_W, rect.height())), 0.0, pal.accent);
     } else if hovered {
         // Lifted: the hover fill with a soft shadow inside the bottom edge.

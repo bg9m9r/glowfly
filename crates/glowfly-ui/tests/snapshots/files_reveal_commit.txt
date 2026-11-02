@@ -19,6 +19,7 @@ Button "Search and run commands"
 Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
+Unknown "Left panel contents"
 TextInput
 Button "New branch"
 Button "Local actions"
@@ -65,6 +66,7 @@ Button "f53.txt" [off]
 Button "f54.txt" [off]
 Button "f55.txt" [on]
 Button "f56.txt" [off]
+Unknown "Central view"
 Label "f55.txt"
 Label "A +1 −0"
 Label "28b27c6"

@@ -59,6 +59,7 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, now: Instant, fx: &mu
         SelectionMsg::StackedLoaded { oids, result } => stacked_loaded(st, oids, result),
         SelectionMsg::BackToFocus => super::selection_focus::back(st, now, fx),
         SelectionMsg::RetryCompare => retry_compare(st, fx),
+        SelectionMsg::CopyIds => super::selection_focus::copy_ids(st, now, fx),
     }
 }
 
