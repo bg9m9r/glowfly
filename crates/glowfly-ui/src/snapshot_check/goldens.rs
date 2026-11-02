@@ -174,6 +174,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.
+    "graph_ghost_branch_narrow",
     "main_light",
     "main_high_contrast_dark",
     "history_table_dark",
