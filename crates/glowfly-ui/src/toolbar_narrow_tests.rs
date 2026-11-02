@@ -123,6 +123,8 @@ fn a_chip_folds_a_part_instead_of_squeezing_the_pickers() {
         r - l
     };
     let (plain, chip) = (branch_w(1), branch_w(4));
-    // The branch part at the pickers' comfortable width: its padding, dot and caret around 80 px.
-    assert!(chip >= plain.min(134.0) - 0.5, "the branch picker went from {plain} to {chip}");
+    // The branch part at least at its comfortable width: its padding, dot and caret around the
+    // 96 px of a long branch list's fitted slot that the fold keeps.
+    let comfort = f64::from(super::pickers::part_w(96.0, true));
+    assert!(chip >= plain.min(comfort) - 0.5, "the branch picker went from {plain} to {chip}");
 }

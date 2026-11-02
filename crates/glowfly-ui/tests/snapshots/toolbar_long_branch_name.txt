@@ -81,7 +81,7 @@ Button "Initial commit"
 painted:
   "Repository"
   "Branch"
-  "feature/a-…hat-goes-on"
+  "feature/a-ve…-that-goes-on"
   "Undo"
   "Redo"
   "Pull"
