@@ -157,7 +157,8 @@ fn diff_hunk_context() {
 }
 
 /// A narrow split diff in Dusk whose hunk header names a long function: the `@@` text ends
-/// in "…" before Stage hunk, and Discard hunk keeps the trailing edge.
+/// in "…" before Stage hunk, and Discard hunk keeps the trailing edge. The lines stay short,
+/// so both columns show.
 #[test]
 fn diff_hunk_header_narrow() {
     use super::snapshot_tests::{harness_palette_sized, remove_fixture};
@@ -170,7 +171,7 @@ fn greet_every_returning_visitor_by_name(visitor_name: &str, unread_count: u32) 
     let width = 12;
     let shout = false;
     let count = 1;
-    format!(\"{greeting}, {visitor_name}{punctuation} {width} {shout} {count} {unread_count}\")
+    format!(\"{greeting} {count}\")
 }
 ";
     std::fs::write(dir.join("greet.rs"), before).unwrap();
