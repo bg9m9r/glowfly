@@ -8,6 +8,7 @@ use super::{app_menu, app_native};
 use crate::effect::Effect;
 use crate::msg::AppMsg;
 use crate::msg::AvatarMsg;
+use crate::msg::GraphMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
@@ -230,6 +231,10 @@ impl GlowflyApp {
         self.st.view.frame_at = Some(now);
         let mut msgs = vec![Msg::Tick(now)];
         msgs.append(&mut native_msgs);
+        // The model never sees the palette: tell it which hues pass for the trunk when that changes.
+        if self.theme.trunk_near() != self.st.view.trunk_near {
+            msgs.push(Msg::Graph(GraphMsg::TrunkNear(self.theme.trunk_near())));
+        }
         self.phase("draw", |app| {
             app.input(ctx, &mut msgs);
             crate::ui::draw(ctx, &mut app.st, &mut app.cache, &mut msgs);

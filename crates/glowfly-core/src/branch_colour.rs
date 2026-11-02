@@ -2,7 +2,9 @@
 //!
 //! A branch's hue comes from its name (FNV-1a, so it is the same in every session and on every
 //! machine), with its remote copies sharing it: `origin/feature` and `feature` are one key. The
-//! repository's main branch takes the accent instead (`Swatch::Main`). Branches that ever sit in
+//! repository's main branch takes the neutral trunk tone instead (`Swatch::Trunk`) unless it is
+//! pinned, when it takes its pinned slot like any branch; an automatic branch beside it skips the
+//! hues that pass for it (`Colouring::trunk_near`). Branches that ever sit in
 //! side-by-side lanes never share a hue: `resolve` moves the later one to the next free slot.
 //! Pins (`Colouring::pins`) fix a branch's slot whatever its neighbours; a pin keeps its slot
 //! number, so under a palette with fewer hues it shows as that number modulo the hue count.
@@ -11,16 +13,18 @@
 use crate::graph::owners::{Owner, Owners};
 use std::collections::BTreeMap;
 
-/// How many branch hues the palette has (the accent is not one of them).
+/// How many branch hues the palette has (the trunk tone is not one of them).
 pub const SLOTS: u8 = 14;
 
 /// How many hues the colour-blind friendly palette has.
 pub const COLOUR_BLIND_SLOTS: u8 = 8;
 
-/// The colour a branch is drawn in: the accent for the main branch, else one of the hues.
+/// The colour a branch is drawn in: the trunk tone for the main branch without a pin, else one
+/// of the hues.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Swatch {
-    Main,
+    /// The mainline, not pinned: a neutral tone that is not a slot, so no neighbour moves off it.
+    Trunk,
     Slot(u8),
 }
 
@@ -71,6 +75,9 @@ pub struct Colouring {
     pub slots: u8,
     /// Branch keys with a chosen slot, kept whatever their neighbours.
     pub pins: BTreeMap<String, u8>,
+    /// The slots whose hue passes for the trunk tone in the active palette (bit `i` for slot
+    /// `i`): an automatic owner beside the trunk treats them as taken. Pins ignore it.
+    pub trunk_near: u16,
 }
 
 impl Colouring {
@@ -94,9 +101,10 @@ pub fn preferred(owner: &Owner, n: u8) -> u8 {
     }
 }
 
-/// One swatch per owner in `owners.list`: Main for the main branch, the pinned slot for pinned
-/// branches, and for the others (in order of first appearance) their preferred slot unless an
-/// already-decided neighbour has it, then the next slot in palette order no decided neighbour
+/// One swatch per owner in `owners.list`: the pinned slot for pinned branches (the main branch
+/// too), Trunk for the main branch without a pin, and for the others (in order of first
+/// appearance) their preferred slot unless an already-decided neighbour has it (or, beside the
+/// trunk, it is one of `trunk_near`), then the next slot in palette order no decided neighbour
 /// uses. With every slot taken an owner keeps its preferred one.
 pub fn resolve(owners: &Owners, c: &Colouring) -> Vec<Swatch> {
     let n = c.n();
@@ -111,10 +119,10 @@ pub fn resolve(owners: &Owners, c: &Colouring) -> Vec<Swatch> {
     let mut out: Vec<Option<Swatch>> = vec![None; len];
     for (i, owner) in owners.list.iter().enumerate() {
         if let Owner::Branch(key) = owner {
-            if owners.mainline.as_deref() == Some(key.as_str()) {
-                out[i] = Some(Swatch::Main);
-            } else if let Some(&pin) = c.pins.get(key) {
+            if let Some(&pin) = c.pins.get(key) {
                 out[i] = Some(Swatch::Slot(pin % n));
+            } else if owners.mainline.as_deref() == Some(key.as_str()) {
+                out[i] = Some(Swatch::Trunk);
             }
         }
     }
@@ -123,11 +131,13 @@ pub fn resolve(owners: &Owners, c: &Colouring) -> Vec<Swatch> {
             continue;
         }
         let want = preferred(owner, n);
-        let used = |s: u8| adjacent[i].iter().any(|&j| out[j as usize] == Some(Swatch::Slot(s)));
+        let by_trunk = adjacent[i].iter().any(|&j| out[j as usize] == Some(Swatch::Trunk));
+        let near = |s: u8| by_trunk && s < 16 && c.trunk_near & (1 << s) != 0;
+        let used = |s: u8| near(s) || adjacent[i].iter().any(|&j| out[j as usize] == Some(Swatch::Slot(s)));
         let pick = (0..n).map(|k| (want + k) % n).find(|&s| !used(s)).unwrap_or(want);
         out[i] = Some(Swatch::Slot(pick));
     }
-    out.into_iter().map(|s| s.unwrap_or(Swatch::Main)).collect()
+    out.into_iter().map(|s| s.unwrap_or(Swatch::Trunk)).collect()
 }
 
 #[cfg(test)]

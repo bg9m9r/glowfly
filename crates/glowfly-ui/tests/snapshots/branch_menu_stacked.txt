@@ -45,10 +45,8 @@ Button "Compare with before last rebase"
 Button "Create branch here…"
 Button "Create worktree from this branch…"
 Button "Rename…"
-Button "Set upstream…" [disabled]
 Button "Restack onto search"
 Button "Push stack" [disabled]
-Button "Create pull request…" [disabled]
 Button "Hide in graph"
 Button "Show only this"
 Button "Color"

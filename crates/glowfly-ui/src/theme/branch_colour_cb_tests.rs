@@ -1,9 +1,7 @@
 //! The colour-blind friendly branch hues: out of the reserved bands, one hue per slot across the three
 //! tone sets, contrast on each built-in's surfaces once applied, and distance between every pair
-//! (and from the accent) under normal, protan, deutan and tritan vision.
-//!
-//! Vision is simulated with Machado, Oliveira and Fernandes (2009) at severity 1.0, applied to
-//! linear sRGB and clamped; distance is Euclidean in OKLab.
+//! (and from the accent, with the trunk's near slots) under normal, protan, deutan and tritan vision.
+//! The vision simulation and the floors are `vision.rs`'s.
 
 use super::bands::{ATTENTION_BAND, GOLD_BAND, GREEN_BAND};
 use super::branch_palette::{BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, CB_DARK_TONES, CB_LIGHT_LINES, CB_LIGHT_TEXT, DARK_TONES, pad};
@@ -11,56 +9,13 @@ use super::branch_palette_gold::{BRANCH_CB_DAWN, BRANCH_CB_DUSK, GOLD_CB_DARK_TO
 use super::branch_palette_more::{BRANCH_CB_GRAPHITE, BRANCH_CB_LINEN};
 use super::contrast::{oklch, ratio};
 use super::tests::palettes;
+use super::vision::{DARK_FLOOR, DEUTAN, LIGHT_FLOOR, VISIONS, distance};
 use super::*;
 use eframe::egui::Color32;
 use glowfly_core::settings::{BranchPalette, BuiltinTheme};
 
-/// The least OKLab distance between dark tones, and between light line tones, in every vision.
-const DARK_FLOOR: f64 = 0.08;
-const LIGHT_FLOOR: f64 = 0.05;
-
-type Matrix = [[f64; 3]; 3];
-
-const PROTAN: Matrix = [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]];
-const DEUTAN: Matrix = [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]];
-const TRITAN: Matrix = [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]];
-const NORMAL: Matrix = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-const VISIONS: [(&str, Matrix); 4] = [("normal", NORMAL), ("protan", PROTAN), ("deutan", DEUTAN), ("tritan", TRITAN)];
-
 fn report(failures: &[String]) {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
-}
-
-fn linear(c: Color32) -> [f64; 3] {
-    let lin = |v: u8| {
-        let s = f64::from(v) / 255.0;
-        if s <= 0.04045 { s / 12.92 } else { ((s + 0.055) / 1.055).powf(2.4) }
-    };
-    [lin(c.r()), lin(c.g()), lin(c.b())]
-}
-
-/// OKLab of linear sRGB `rgb`.
-fn oklab([r, g, b]: [f64; 3]) -> [f64; 3] {
-    let l = (0.412_221_470_8 * r + 0.536_332_536_3 * g + 0.051_445_992_9 * b).cbrt();
-    let m = (0.211_903_498_2 * r + 0.680_699_545_1 * g + 0.107_396_956_6 * b).cbrt();
-    let s = (0.088_302_461_9 * r + 0.281_718_837_6 * g + 0.629_978_700_5 * b).cbrt();
-    [
-        0.210_454_255_3 * l + 0.793_617_785_0 * m - 0.004_072_046_8 * s,
-        1.977_998_495_1 * l - 2.428_592_205_0 * m + 0.450_593_709_9 * s,
-        0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766_0 * s,
-    ]
-}
-
-/// `c` as seen through `vision`, in OKLab.
-fn seen(c: Color32, vision: &Matrix) -> [f64; 3] {
-    let v = linear(c);
-    let row = |k: usize| (vision[k][0] * v[0] + vision[k][1] * v[1] + vision[k][2] * v[2]).clamp(0.0, 1.0);
-    oklab([row(0), row(1), row(2)])
-}
-
-fn distance(a: Color32, b: Color32, vision: &Matrix) -> f64 {
-    let (x, y) = (seen(a, vision), seen(b, vision));
-    ((x[0] - y[0]).powi(2) + (x[1] - y[1]).powi(2) + (x[2] - y[2]).powi(2)).sqrt()
 }
 
 /// Every pair of `tones` closer than `floor` in some vision, and every tone that close to an
@@ -137,7 +92,7 @@ fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
     let mut failures = Vec::new();
     for (t, p) in palettes() {
         let p = applied(*p, BranchPalette::ColourBlind);
-        for (i, c) in p.branch.lanes.iter().copied().chain([p.accent]).enumerate() {
+        for (i, c) in p.branch.lanes.iter().copied().chain([super::branch_colours::trunk(&p)]).enumerate() {
             for (name, bg) in [("bg", p.bg), ("panel", p.panel)] {
                 let r = ratio(c, bg);
                 if r < 3.0 {
@@ -164,13 +119,53 @@ fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
 
 #[test]
 fn cb_tones_stay_apart_in_every_vision() {
-    // Each built-in's colour-blind lines against each other and its own accent (main's line).
+    // Each built-in's colour-blind lines against each other and its own accent (the selection
+    // bar). Against main's trunk tone some hues fall under the floor, and no gray or hue retune
+    // fixes that (the #470 ruling); instead an automatic branch beside the trunk skips them
+    // (`trunk_near`), so every hue under the floor from the trunk must be in the mask.
     let mut failures = Vec::new();
     for (t, p) in palettes() {
         let floor = if p.dark { DARK_FLOOR } else { LIGHT_FLOOR };
         failures.extend(too_close(&t, &p.colour_blind.lanes[..8], &[p.accent], floor));
+        let cb = applied(*p, BranchPalette::ColourBlind);
+        let (trunk, mask) = (super::branch_colours::trunk(&cb), super::branch_colours::trunk_near(&cb));
+        for (vision, m) in &VISIONS {
+            for (i, lane) in cb.branch.lanes[..8].iter().enumerate() {
+                let d = distance(*lane, trunk, m);
+                if d < floor && mask & (1 << i) == 0 {
+                    failures.push(format!("{t} {vision}: slot {i} passes for the trunk at {d:.3} but isn't in trunk_near"));
+                }
+            }
+        }
     }
     report(&failures);
+}
+
+/// The designer's table (#470): which slots pass for the trunk in each built-in, with the
+/// standard hues (normal vision only) and the colour-blind ones (every vision).
+#[test]
+fn trunk_near_slots_per_theme() {
+    use super::branch_colours::trunk_near;
+    let bits = |slots: &[u16]| slots.iter().fold(0u16, |m, s| m | 1 << s);
+    let want: [(&str, u16, u16); 10] = [
+        ("Dark", 0, bits(&[7])),
+        ("Light", 0, bits(&[4])),
+        ("Graphite", 0, bits(&[2, 7])),
+        ("Porcelain", 0, bits(&[4])),
+        ("Midnight", bits(&[7]), bits(&[7])),
+        ("Mist", 0, bits(&[4])),
+        ("HighContrastDark", 0, bits(&[1])),
+        ("HighContrastLight", 0, 0),
+        ("GardenDark", 0, bits(&[7])),
+        ("GardenLight", 0, 0),
+    ];
+    let all = palettes();
+    assert_eq!(all.len(), want.len(), "every palette in the table");
+    for (name, standard, colour_blind) in want {
+        let p = all.iter().find(|(t, _)| t == name).map(|(_, p)| **p).unwrap_or_else(|| panic!("{name}"));
+        assert_eq!(trunk_near(&applied(p, BranchPalette::Standard)), standard, "{name} standard");
+        assert_eq!(trunk_near(&applied(p, BranchPalette::ColourBlind)), colour_blind, "{name} colour-blind");
+    }
 }
 
 #[test]

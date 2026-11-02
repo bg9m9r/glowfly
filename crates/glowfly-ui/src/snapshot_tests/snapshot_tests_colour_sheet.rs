@@ -35,14 +35,14 @@ fn chip(p: &Painter, x: f32, y: f32, text: &str, look: contrast::ChipLook) -> f3
 fn chips(p: &Painter, pal: &Palette, y: f32) {
     let mut x = 12.0;
     let mut row: Vec<(ChipStyle, Swatch, String)> =
-        vec![(ChipStyle::Head, Swatch::Main, "HEAD".into()), (ChipStyle::CurrentBranch, Swatch::Main, "✔ main".into())];
+        vec![(ChipStyle::Head, Swatch::Trunk, "HEAD".into()), (ChipStyle::CurrentBranch, Swatch::Trunk, "✔ main".into())];
     for s in swatches().skip(1) {
         let Swatch::Slot(i) = s else { continue };
         row.push((ChipStyle::Branch, s, format!("{:?}", pal.branch.names[usize::from(i)]).to_lowercase()));
     }
     row.push((ChipStyle::CurrentBranch, Swatch::Slot(3), "✔ orange".into()));
-    row.push((ChipStyle::Remote, Swatch::Main, "origin/main".into()));
-    row.push((ChipStyle::Tag, Swatch::Main, "v1.2.0".into()));
+    row.push((ChipStyle::Remote, Swatch::Trunk, "origin/main".into()));
+    row.push((ChipStyle::Tag, Swatch::Trunk, "v1.2.0".into()));
     for (style, s, text) in row {
         x += chip(p, x, y, &text, contrast::ref_chip(style, chip_in(s, pal), pal)) + 5.0;
     }

@@ -249,7 +249,7 @@ fn branch_menu_visibility_items() {
     let mut h = harness(st, true);
     h.run();
     row_menu(&mut h, "✔  main", false);
-    assert!(h.get_by_label("Hide in graph").is_disabled(), "the checked-out branch");
+    assert!(h.query_by_label("Hide in graph").is_none(), "the checked-out branch is always shown: left out");
     assert!(h.query_by_label("Show only this").is_some());
     drop(h);
 

@@ -17,6 +17,7 @@ pub(super) fn handle(st: &mut AppState, msg: GraphMsg, fx: &mut Vec<Effect>) {
         GraphMsg::LaidOut { request, fit, layout } => super::large_graph::laid_out(st, request, &fit, *layout, fx),
         GraphMsg::AncestryFound { request, base } => super::large_graph::ancestry_found(st, request, base),
         GraphMsg::PinColour { key, slot } => super::branch_colour::pin(st, &key, slot, fx),
+        GraphMsg::TrunkNear(mask) => super::branch_colour::trunk_near(st, mask),
         GraphMsg::ResizeColumn { col, width } => super::graph_columns::resize(st, col, width, fx),
         GraphMsg::ResetColumnWidth(col) => super::graph_columns::reset(st, col, fx),
     }

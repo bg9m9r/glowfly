@@ -3,15 +3,17 @@
 //! when that offers more than Push) and fast-forward (only with an upstream); merge and rebase
 //! (split rows whose eye button previews them), interactive rebase, checking for conflicts and
 //! comparing with its version before the last rebase (Range-diff); a new branch or worktree,
-//! rename and upstream; the stack items for a branch in a stack (`stack_menu.rs`); pull requests
-//! (pushing the branch first when the code host lacks it, into the branch selected before;
-//! without a code host, a disabled item saying why); hide or solo in the graph, and its colour;
+//! rename and upstream (with remotes); the stack items for a branch in a stack (`stack_menu.rs`);
+//! pull requests (pushing the branch first when the code host lacks it, into the branch selected
+//! before; with remotes but no code host, a disabled item saying why; with no remotes, none);
+//! hide (not for the checked-out branch) or solo in the graph, and its colour;
 //! copying its name or a link; the custom commands (`custom_menu.rs`); and, destructive so last,
 //! force push with lease to its upstream (asking first, with what the remote would lose) and
 //! delete (one item, whose dialog offers Delete anyway for a branch with commits on no other
 //! branch). "Push to" ends with All remotes when there are several.
 //! The branch's name heads the menu once; other names in labels are cut to fit, in full on hover.
-//! Disabled items say why on hover, with the same text `update` logs when it refuses a late
+//! Items that can't apply in the branch's state are left out; disabled items are ones the user
+//! can unblock, and say why on hover, with the same text `update` logs when it refuses a late
 //! message.
 
 use super::common::{menu_danger, menu_item, menu_item_if, menu_row, menu_row_preview};
@@ -23,8 +25,8 @@ use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use crate::msg::OpPreviewMsg;
 use crate::msg::RebaseMsg;
+use crate::state::branches;
 use crate::state::branches::push as branch_push;
-use crate::state::branches::{self, NO_REMOTES};
 use crate::state::commit_menu::menu_trim;
 use crate::state::custom_commands::MenuCommands;
 use crate::state::gitflow_base::{Deleting, guard};
@@ -66,15 +68,19 @@ pub fn local_branch_menu(
     separator(ui);
     branch_items(ui, t, b, snap, msgs);
     super::stack_menu::items(ui, t, b, snap, fs, msgs);
-    // Always drawn: without a code host, a disabled item says why there are no pull requests.
-    separator(ui);
-    match fs.filter(|fs| fs.host.is_some()) {
-        Some(fs) => super::pr_menu_items::local(ui, t, b, snap, fs, sel, msgs),
-        None => super::pr_menu_items::local_no_host(ui, t, b, snap, msgs),
+    // With remotes but none on a code host, a disabled item says why there are no pull requests;
+    // with no remotes at all it is left out.
+    let host = fs.filter(|fs| fs.host.is_some());
+    let issue = fs.and_then(|fs| fs.branch_issue(name).map(|key| (fs, key)));
+    if host.is_some() || !snap.remotes.is_empty() || issue.is_some() {
+        separator(ui);
     }
-    if let Some(fs) = fs
-        && let Some(key) = fs.branch_issue(name)
-    {
+    match host {
+        Some(fs) => super::pr_menu_items::local(ui, t, b, snap, fs, sel, msgs),
+        None if !snap.remotes.is_empty() => super::pr_menu_items::local_no_host(ui, t, b, snap, msgs),
+        None => {}
+    }
+    if let Some((fs, key)) = issue {
         let label = t.trf("branch.menu.open_issue", &[("noun", &fs.issue_word(t)), ("issue", &fs.mention(&key))]);
         menu_item(msgs, ui, label, Msg::OpenUrl(fs.issue_url(&key)));
     }
@@ -146,8 +152,9 @@ fn branch_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msg
     }
     let rename = Msg::Branch(BranchMsg::RenameBranchDialog(name.to_owned()));
     menu_item_if(msgs, ui, t.tr("branch.menu.rename"), held_blocked(t, snap, name).as_deref(), rename);
-    let no_remotes = snap.remotes.is_empty().then_some(NO_REMOTES);
-    menu_item_if(msgs, ui, t.tr("branch.menu.set_upstream"), no_remotes, Msg::Branch(BranchMsg::SetUpstreamDialog(name.to_owned())));
+    if !snap.remotes.is_empty() {
+        menu_item(msgs, ui, t.tr("branch.menu.set_upstream"), Msg::Branch(BranchMsg::SetUpstreamDialog(name.to_owned())));
+    }
     if b.tracking.is_some() {
         menu_item(msgs, ui, t.tr("branch.menu.unset_upstream"), Msg::Branch(BranchMsg::UnsetUpstream(name.to_owned())));
     }
@@ -165,7 +172,11 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
             Some(target) => {
                 menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &[("branch", &target.name)])), check)
             }
-            None => menu_item_if(msgs, ui, t.tr("branch.menu.check_conflicts"), Some(t.tr("conflict_check.no_target")), check),
+            // A fetch can bring a target only when there is an upstream; without one it is left out.
+            None if b.tracking.is_some() => {
+                menu_item_if(msgs, ui, t.tr("branch.menu.check_conflicts"), Some(t.tr("conflict_check.no_target")), check)
+            }
+            None => {}
         }
     } else if !current.is_empty() {
         let on = [("branch", current)];

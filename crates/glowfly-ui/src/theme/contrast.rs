@@ -253,7 +253,17 @@ pub fn clear(c: Color32) -> Color32 {
 /// it. The checked-out branch: on a dark palette a solid fill of the branch colour with dark
 /// text, on a light one a deeper wash with a full-colour edge. Tags take the palette's tag
 /// colours, a detached HEAD a neutral fill. Every fill is opaque and its text reaches 4.5:1.
+/// The main branch's trunk tone (`branch_colours::trunk`) is a neutral: its edged chips take
+/// the tone itself for the edge and are lettered in `text`.
 pub fn ref_chip(style: ChipStyle, lane: Color32, p: &Palette) -> ChipLook {
+    let look = hued_chip(style, lane, p);
+    if look.edge.is_some() && lane == super::branch_colours::trunk(p) {
+        return ChipLook { edge: Some(lane), text: p.text, ..look };
+    }
+    look
+}
+
+fn hued_chip(style: ChipStyle, lane: Color32, p: &Palette) -> ChipLook {
     let (_, lc, lh) = oklch(lane);
     let pale = |(l, c): (f64, f64)| from_oklch(l, lc.min(c), lh);
     let edged = |fill: Color32, edge: Color32| ChipLook { fill, edge: Some(edge), text: clean_ink(lane, fill, p) };

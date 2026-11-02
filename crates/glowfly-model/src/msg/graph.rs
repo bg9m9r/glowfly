@@ -99,6 +99,9 @@ pub enum GraphMsg {
     /// A branch menu's Color submenu: pin the branch key `key` (a local branch and its remote
     /// copies) to hue `slot`, or with None (Automatic) let it pick its own (saved per repository).
     PinColour { key: String, slot: Option<u8> },
+    /// The shell's palette changed which hue slots pass for the trunk tone (bit `i` for slot
+    /// `i`): automatic branches beside the trunk skip them.
+    TrunkNear(u16),
     /// A header divider drag ended: store this width (clamped) and save settings.
     ResizeColumn { col: ResizableColumn, width: f32 },
     /// A header divider was double-clicked: restore that column's default width.
@@ -118,6 +121,7 @@ impl GraphMsg {
             Self::GraphFilter(..)
             | Self::HoverRef(..)
             | Self::PinColour { .. }
+            | Self::TrunkNear(..)
             | Self::ResizeColumn { .. }
             | Self::ResetColumnWidth(..) => None,
             // A tab is laid out again and walks again when it is shown (its refresh state and

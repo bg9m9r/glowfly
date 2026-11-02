@@ -16,6 +16,7 @@ const fn hex(c: u32) -> Color32 {
 /// Deep blue-black night: blue neutrals under a sea-glass accent.
 pub const MIDNIGHT: Palette = Palette {
     dark: true,
+    high_contrast: false,
     bg: hex(0x0d1827),
     panel: hex(0x14202f),
     toolbar: hex(0x08111d),
@@ -68,6 +69,7 @@ pub const MIDNIGHT: Palette = Palette {
 /// Midnight's light twin: cool fog paper, blue-grey ink and deep sea glass.
 pub const MIST: Palette = Palette {
     dark: false,
+    high_contrast: false,
     bg: hex(0xf2f8fc),
     panel: hex(0xf8fcfe),
     toolbar: hex(0xdee9f0),

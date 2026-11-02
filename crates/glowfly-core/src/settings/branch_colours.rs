@@ -49,9 +49,10 @@ impl Settings {
         changed
     }
 
-    /// How the repository at `real` colours its branches: the preset's slot count and its pins.
+    /// How the repository at `real` colours its branches: the preset's slot count and its pins
+    /// (no slots near the trunk: those come from the palette, which `update` adds).
     pub fn colouring_for(&self, real: &Path) -> Colouring {
-        Colouring { slots: self.branch_palette.slots(), pins: self.branch_pins_for(real) }
+        Colouring { slots: self.branch_palette.slots(), pins: self.branch_pins_for(real), trunk_near: 0 }
     }
 }
 

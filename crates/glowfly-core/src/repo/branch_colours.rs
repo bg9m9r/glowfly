@@ -193,12 +193,13 @@ impl Snapshot {
         recorded.into_iter().chain(["main", "master"]).find(|b| exists(b)).map(str::to_owned)
     }
 
-    /// The colour of the branch with key `key` (`branch_colour::branch_key`): the accent for the
-    /// main branch, its resolved colour when it is in the graph, else its pin or name's slot.
+    /// The colour of the branch with key `key` (`branch_colour::branch_key`): the trunk tone for
+    /// the main branch without a pin, its resolved colour when it is in the graph, else its pin
+    /// or name's slot.
     pub fn branch_swatch(&self, key: &str) -> Swatch {
         let g = &self.graph;
-        if g.owners.mainline.as_deref() == Some(key) {
-            return Swatch::Main;
+        if g.owners.mainline.as_deref() == Some(key) && !g.colouring.pins.contains_key(key) {
+            return Swatch::Trunk;
         }
         match g.owners.owner_of_key(key) {
             Some(o) => g.swatch(o),

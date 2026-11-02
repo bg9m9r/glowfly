@@ -31,6 +31,7 @@ const REPO_HC_LIGHT: Repository = hues([0x814750, 0x4e6330, 0x156a5a, 0x0a6771, 
 /// White text on black, with brighter hues and syntax colors.
 pub const HIGH_CONTRAST_DARK: Palette = Palette {
     dark: true,
+    high_contrast: true,
     bg: hex(0x000000),
     panel: hex(0x0b0b0d),
     toolbar: hex(0x17181b),
@@ -84,6 +85,7 @@ pub const HIGH_CONTRAST_DARK: Palette = Palette {
 /// Black text on white, with deeper hues and syntax colors.
 pub const HIGH_CONTRAST_LIGHT: Palette = Palette {
     dark: false,
+    high_contrast: true,
     bg: hex(0xf3f4f6),
     panel: hex(0xffffff),
     toolbar: hex(0xe9eaed),

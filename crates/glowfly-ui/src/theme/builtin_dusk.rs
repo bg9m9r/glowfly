@@ -20,6 +20,7 @@ const fn hex(c: u32) -> Color32 {
 /// Indigo neutrals under a lantern-gold accent.
 pub const DUSK: Palette = Palette {
     dark: true,
+    high_contrast: false,
     bg: hex(0x1b1829),
     panel: hex(0x221f31),
     toolbar: hex(0x131220),
@@ -72,6 +73,7 @@ pub const DUSK: Palette = Palette {
 /// Faintly lavender paper and indigo ink under an iris accent.
 pub const DAWN: Palette = Palette {
     dark: false,
+    high_contrast: false,
     bg: hex(0xf7f6fc),
     panel: hex(0xfbfafe),
     toolbar: hex(0xe7e5ef),

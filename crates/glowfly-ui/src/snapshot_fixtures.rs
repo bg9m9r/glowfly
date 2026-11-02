@@ -14,6 +14,7 @@ use crate::state::{PrefPage, PrefsState};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
+use glowfly_core::branch_colour::Colouring;
 use glowfly_core::repo::{self, ChangeCounts, LoadOptions};
 use glowfly_core::settings::{Settings, ThemeChoice};
 use glowfly_core::spell::Speller;
@@ -176,9 +177,15 @@ fn build(mut st: AppState, p: Palette, size: egui::Vec2, keys: bool) -> Harness<
                 markdown: Default::default(),
             });
             // Tests inject working-tree files into the lists; count them as a status read would,
-            // so the WIP row's counts match the files shown.
+            // so the WIP row's counts match the files shown. Like the shell and `update`, colour
+            // the graph with the palette's slots near the trunk.
+            st.view.trunk_near = theme::branch_colours::trunk_near(&p);
             if let Some(snap) = st.snap.as_mut() {
                 snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
+                if snap.graph.colouring.trunk_near != st.view.trunk_near {
+                    let c = Colouring { trunk_near: st.view.trunk_near, ..snap.graph.colouring.clone() };
+                    snap.set_colouring(c);
+                }
             }
             if keys {
                 crate::ui::shortcuts::input(ctx, st, msgs);

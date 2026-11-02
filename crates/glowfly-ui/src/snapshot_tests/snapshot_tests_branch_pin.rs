@@ -1,5 +1,5 @@
 //! Pinned branch colours and person colours: the Color submenu of the local and remote branch
-//! menus (main's disabled), a pinned branch in the graph, the colour-blind friendly preset on dark
+//! menus (main's too, whose Automatic is the trunk), a pinned branch in the graph, the colour-blind friendly preset on dark
 //! and light palettes, and the initials of two people in the graph and the commit details.
 
 use super::menu_testing::{open_submenu, submenu_item};
@@ -68,14 +68,18 @@ fn branch_colour_submenu() {
 }
 
 #[test]
-fn branch_colour_main_disabled() {
+fn branch_colour_main_submenu() {
     let (st, dir) = with_branches(ThemeChoice::Dark, "colour-main");
     let mut h = harness(st, true);
     h.run();
     // The checked-out branch's row carries the check glyph.
     open_row_menu(&mut h, "✔  main", true);
-    assert!(h.get_by_label("Color").is_disabled(), "main keeps the accent");
-    h.check_snapshot("branch_colour_main_disabled");
+    open_submenu(&mut h, "Color");
+    assert_eq!(submenu_item(&h, "Color", "Automatic").toggled(), Some(eframe::egui::accesskit::Toggled::True), "the trunk");
+    h.check_snapshot("branch_colour_main_submenu");
+    submenu_item(&h, "Color", "Orange").click();
+    h.run();
+    assert_eq!(pinned(&h), Some(("main".into(), Some(3))));
     drop(h);
     remove_fixture(&dir);
 }

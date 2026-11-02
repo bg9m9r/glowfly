@@ -332,7 +332,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     super::notify::loaded(st, &snap, kind, now, fx);
     // After the filter, which adopts the repository's keys: the pins are found under its own.
-    super::branch_colour::apply(&st.settings, &mut snap);
+    super::branch_colour::apply(&st.settings, st.view.trunk_near, &mut snap);
     super::large_graph::show(st, snap, fx);
     super::line_counts::status_changed(st, fx);
     super::pick::state_changed(st, state_before);
