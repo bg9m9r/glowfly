@@ -27,6 +27,14 @@ pub fn printable(s: &str) -> String {
     out
 }
 
+/// `s` with its lines kept (`\r\n` and a lone `\r` read as `\n`) and tabs kept, but every other
+/// control character and every bidi character removed: for multi-line text such as a
+/// description.
+pub fn printable_lines(s: &str) -> String {
+    let s = s.replace("\r\n", "\n").replace('\r', "\n");
+    s.chars().filter(|&c| matches!(c, '\n' | '\t') || !(c.is_control() || is_bidi_control(c))).collect()
+}
+
 /// `text` with the user/password part of every URL in it replaced by `***`
 /// (`https://user:token@host/x` → `https://***@host/x`), for echoing commands into logs. A
 /// plain `ssh://git@host` user name is kept.
@@ -65,6 +73,12 @@ mod tests {
         assert_eq!(printable("  Bad\tcredentials\r\n\x1b[31mred\u{202e}txt.exe \u{2066}x "), "Bad credentials [31mredtxt.exe x");
         assert_eq!(printable("plain"), "plain");
         assert!(is_bidi_control('\u{202E}') && !is_bidi_control('a'));
+    }
+
+    #[test]
+    fn printable_lines_keeps_lines_and_tabs_only() {
+        assert_eq!(printable_lines("a\r\nb\rc\n\tcode\x1b[0m\u{202e}gpj.exe\u{7}"), "a\nb\nc\n\tcode[0mgpj.exe");
+        assert_eq!(printable_lines("  keeps  spaces "), "  keeps  spaces ");
     }
 
     #[test]

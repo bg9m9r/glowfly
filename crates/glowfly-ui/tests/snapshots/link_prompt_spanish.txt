@@ -1,0 +1,6 @@
+Dialog
+  Label "¿Abrir otro sitio?"
+  Button "Cerrar este diálogo"
+  Label "El texto del enlace muestra github.com, pero el enlace lleva a evil.example.\n\nhttps://evil.example/login\n\nÁbrelo solo si confías en evil.example."
+  Button "Cancelar"
+  Button "Abrir enlace" [focused]

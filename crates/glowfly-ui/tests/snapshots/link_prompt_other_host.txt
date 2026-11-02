@@ -1,0 +1,6 @@
+Dialog
+  Label "Open a different site?"
+  Button "Close this dialog"
+  Label "The link text shows github.com, but the link goes to evil.example.\n\nhttps://evil.example/login\n\nOnly open it if you trust evil.example."
+  Button "Cancel"
+  Button "Open link" [focused]

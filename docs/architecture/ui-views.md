@@ -34,7 +34,7 @@ start with `state/`, `update/` or `ui/`.
 ## Markdown bodies
 
 - `markdown.rs`: draws Markdown bodies (pull request and issue descriptions and comments, and the File view preview).
-- `markdown_inline.rs` (tests in `markdown_inline_tests.rs`): text runs, with room after an italic run's slant and beside a code run's background.
+- `markdown_inline.rs` (tests in `markdown_inline_tests.rs`): text runs, with room after an italic run's slant and beside a code run's background; links' tooltips with the host in punycode, and clicks sent as `Msg::OpenLink` with the link's whole text. The mismatched-link prompt's snapshots are in `snapshot_tests/snapshot_tests_link_prompt.rs`.
 - `markdown_code.rs`: code blocks.
 - `markdown_cache.rs`: parses and highlights each body once (bounded by body count and bytes).
 

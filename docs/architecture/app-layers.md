@@ -132,6 +132,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `prefs_nav.rs`: `enter_page`, the one way a Preferences page is shown (opening on it, its navigation row, its area's `ShowPage`) and what it reads as it opens; tests in `flows/prefs_pages_tests.rs`.
 - `prefs_signing.rs`: Commit Signing's key list, Generate GPG key, Extend by 2 years and copying a public key (tests in `update/tests/prefs_signing_tests.rs`).
 - `prefs_pick.rs`: the file and folder pickers and where each picked path goes.
+- `open_link.rs`: a clicked Markdown link (`Msg::OpenLink`) opened, or first a confirmation naming the real host when its text names another (tests in `update/tests/open_link_tests.rs`).
 - `diff_copy.rs`: Copy hunk as patch: the hunk read again from the repository (`Effect::CopyHunkPatch`) and copied when it is UTF-8 text, else a toast. Tests in `flows/diff_copy_tests.rs`.
 - `terminal_schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
 - `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip; a stop whose rebase ended another way ends as the quiet `EndRestack` job (back to the branch checked out before, stash put back, finished part recorded for undo).
