@@ -108,6 +108,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `diff_text.rs`: the text selected in the open diff's code (`TextSel`: anchor, head, unit and side, keyed to the diff shown), its line places (`LineRef`), word bounds and `copy`, the text a selection copies (`copy_at_most` for the screen reader's value); `copy_lines` (the row menu's whole lines) and `select_all` (Ctrl+A).
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
+- `conflict_strip.rs`: the strip while the conflict view is open: the operation in words, the files left, Abort and Commit merge or Continue with why it waits. Tests in `conflict_strip_tests.rs`.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
 - `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Unstash previews.
 - `section_actions.rs`: what each left-panel section header's + does (its name, why it is off and the message it sends).

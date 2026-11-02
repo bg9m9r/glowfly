@@ -24,9 +24,10 @@ Button "Befehle suchen und ausführen"
 Button "Leiste zum Durchsuchen der Commits ein- oder ausblenden"
 Button "Aktivitätsprotokoll ein- oder ausblenden"
 Button "Repository aktualisieren"
-Button "Laufende Arbeit zeigen"
-Label "Merge läuft"
-Label "Noch 1 Datei mit Konflikt"
+Button "Merge committen" [disabled]
+Button "Merge abbrechen"
+Label "theme-tweaks wird in main gemergt"
+Label "· Noch 1 Datei mit Konflikt"
 Unknown "Inhalt der linken Leiste"
 TextInput
 Button "Neuer Branch"
@@ -75,18 +76,15 @@ Button "Zeigen: Merge committen"
 Label "Merge committen"
 Label "Öffnet sich, sobald die Konflikte gelöst sind."
 Unknown "Mittlere Ansicht"
-Button "Schließen  (Esc)"
+Button "Schließen (Esc)"
+Button "Als gelöst markieren" [disabled]
 Button "Weitere Konfliktaktionen"
-Button "Speichern und als gelöst markieren" [disabled]
-Button "Nächster Konflikt (F7)" [disabled]
-Label "Konflikt 2 von 2"
 Button "Vorheriger Konflikt (Shift+F7)"
-Label "Wähle zuerst jeden Konflikt (noch 1), oder nutze Mit Markern speichern"
+Label "Konflikt 2 von 2"
+Button "Nächster Konflikt (F7)" [disabled]
+Label "1 von 2 gelöst"
 Label "settings.txt"
-Label "theme-tweaks wird in main gemergt"
-Label "1 von 2 Konflikten wurden automatisch gewählt (eine Seite unverändert, oder nur Leerraum unterscheidet sich). Prüfe sie vor dem Speichern."
 Label "Ergebnis"
-Label "1 von 2 Konflikten gelöst"
 Button "Bearbeiten" [off]
 Button "Zeilen umbrechen" [off]
 Label "Unsere"
@@ -168,9 +166,7 @@ painted:
   "2"
   "setting_2 = 2"
   "Konflikt 1"
-  "automatisch gewählt · nur Leerraum"
   "Konflikt 1"
-  "automatisch gewählt · nur Leerraum"
   "3"
   "setting_3 = 3"
   "3"

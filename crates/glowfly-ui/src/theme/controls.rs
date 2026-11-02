@@ -38,21 +38,28 @@ pub fn field(ui: &mut Ui, edit: egui::TextEdit<'_>) -> Response {
     ui.add(Field(edit))
 }
 
-/// A checkbox: an input-coloured box with an `input_border` edge, filled with accent and a
-/// check mark (or a dash when indeterminate) when on.
+/// A checkbox: an input-coloured box with an `input_border` edge, filled with accent (or its
+/// `tint`) and a check mark (or a dash when indeterminate) when on.
 pub struct Check<'a> {
     checked: &'a mut bool,
     text: WidgetText,
     indeterminate: bool,
+    tint: Option<egui::Color32>,
 }
 
 impl<'a> Check<'a> {
     pub fn new(checked: &'a mut bool, text: impl Into<WidgetText>) -> Self {
-        Self { checked, text: text.into(), indeterminate: false }
+        Self { checked, text: text.into(), indeterminate: false, tint: None }
     }
 
     pub fn without_text(checked: &'a mut bool) -> Self {
         Self::new(checked, WidgetText::default())
+    }
+
+    /// Fills with `col` instead of the accent when on (the conflict view's sides).
+    pub fn tint(mut self, col: egui::Color32) -> Self {
+        self.tint = Some(col);
+        self
     }
 
     /// Shows a dash instead of the check mark (partly on).
@@ -64,7 +71,7 @@ impl<'a> Check<'a> {
 
 impl egui::Widget for Check<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let Check { checked, text, indeterminate } = self;
+        let Check { checked, text, indeterminate, tint } = self;
         let (rect, galley, mut response) = layout(ui, text);
         if response.clicked() {
             *checked = !*checked;
@@ -79,7 +86,7 @@ impl egui::Widget for Check<'_> {
             }
         });
         if ui.is_rect_visible(rect) {
-            let big = paint_box(ui, rect, *checked, indeterminate, response.hovered());
+            let big = paint_box(ui, rect, (*checked, indeterminate, tint), response.hovered());
             if response.has_focus() {
                 tokens::focus_ring(ui.painter(), big, radius::SM);
             }
@@ -89,11 +96,15 @@ impl egui::Widget for Check<'_> {
     }
 }
 
-/// Paints the box (with a check mark when `checked`, a dash when `indeterminate`); returns it.
-fn paint_box(ui: &Ui, rect: Rect, checked: bool, indeterminate: bool, hovered: bool) -> Rect {
+/// Paints the box (with a check mark when `checked`, a dash when `indeterminate`, filled with
+/// `tint` or the accent); returns it.
+fn paint_box(ui: &Ui, rect: Rect, (checked, indeterminate, tint): (bool, bool, Option<egui::Color32>), hovered: bool) -> Rect {
     let p = color::current();
     let (_, big) = ui.spacing().icon_rectangles(rect);
-    let (fill, stroke) = icon_colors(&p, checked || indeterminate, hovered);
+    let (fill, stroke) = match tint {
+        Some(c) if checked || indeterminate => (c, Stroke::new(1.0_f32, c)),
+        _ => icon_colors(&p, checked || indeterminate, hovered),
+    };
     ui.painter().rect(big, CornerRadius::same(radius::SM), fill, stroke, StrokeKind::Inside);
     let mark = Stroke::new(2.0_f32, p.input);
     let (l, r, t, b, w) = (big.left(), big.right(), big.top(), big.bottom(), big.width());

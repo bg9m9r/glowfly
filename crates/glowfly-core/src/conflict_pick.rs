@@ -1,5 +1,6 @@
-//! What each conflict chunk resolves to beyond a whole side: single lines ticked in the order
-//! they were ticked, or text typed in the output by hand. Also the file those picks make, with
+//! What each conflict chunk resolves to beyond a whole side: single lines, each side's in file
+//! order and ours first unless swapped (never in the order they were ticked), or text typed in
+//! the output by hand. Also the file those picks make, with
 //! or without conflict markers for the chunks not picked yet, and with the clean runs between
 //! the chunks as typed when they were edited (`render`, `render_picks`).
 
@@ -33,8 +34,9 @@ pub struct LineRef {
 pub enum ChunkPick {
     /// Whole sides; `Choice::Unresolved` means nothing yet.
     Sides(Choice),
-    /// Single lines in the order they were ticked. Never empty, and never exactly whole sides
-    /// (`from_refs` turns those into `Sides`).
+    /// Single lines in output order: after a tick or a swap, one side's lines then the other's,
+    /// each in file order. Never empty, and never exactly whole sides (`from_refs` turns those
+    /// into `Sides`).
     Lines(Vec<LineRef>),
     /// Text typed in the output, each line keeping its terminator. `before` is the pick it
     /// replaced (never `Edited`), brought back by Discard edit.
@@ -118,11 +120,30 @@ impl ChunkPick {
         }
     }
 
-    /// Ticks or unticks one line: a ticked line goes last. Typed text is left as it is.
+    /// Lines of both sides are taken (whole sides or single lines): the band shows their order
+    /// and Swap.
+    pub fn takes_both(&self, c: &Chunk) -> bool {
+        let refs = self.refs(c);
+        [Side::Ours, Side::Theirs].iter().all(|&s| refs.iter().any(|r| r.side == s))
+    }
+
+    /// The side that comes first in the output: theirs when its lines lead with both sides
+    /// taken, else ours.
+    pub fn first_side(&self, c: &Chunk) -> Side {
+        match self.refs(c).first() {
+            Some(r) if r.side == Side::Theirs && self.takes_both(c) => Side::Theirs,
+            _ => Side::Ours,
+        }
+    }
+
+    /// Ticks or unticks one line. The lines stay in the band's order: the side first now first
+    /// (ours when only one side was taken), each side's lines in file order. Typed text is left
+    /// as it is.
     pub fn toggle_line(&self, c: &Chunk, side: Side, line: usize) -> ChunkPick {
         if self.is_edited() || line >= c.side(side).len() {
             return self.clone();
         }
+        let first = self.first_side(c);
         let mut v = self.refs(c);
         let r = LineRef { side, line };
         match v.iter().position(|x| *x == r) {
@@ -131,25 +152,40 @@ impl ChunkPick {
             }
             None => v.push(r),
         }
-        ChunkPick::from_refs(v, c)
+        ChunkPick::from_refs(arrange(v, first), c)
     }
 
-    /// Ticks or unticks a whole side. Whole-side picks follow `Choice::toggle`; with single
-    /// lines, a side wholly taken is left out, otherwise its lines move to the end in file
-    /// order. Typed text is left as it is.
+    /// Ticks or unticks a whole side, keeping the band's order as `toggle_line` does. Typed text
+    /// is left as it is.
     pub fn toggle_side(&self, c: &Chunk, side: Side) -> ChunkPick {
         match self {
             ChunkPick::Sides(choice) => ChunkPick::Sides(choice.toggle(side)),
             ChunkPick::Edited { .. } => self.clone(),
             ChunkPick::Lines(_) if c.side(side).is_empty() => self.clone(),
             ChunkPick::Lines(v) => {
-                let all = self.takes_side(c, side);
+                let (first, all) = (self.first_side(c), self.takes_side(c, side));
                 let mut v: Vec<LineRef> = v.iter().copied().filter(|r| r.side != side).collect();
                 if !all {
                     v.extend((0..c.side(side).len()).map(|line| LineRef { side, line }));
                 }
-                ChunkPick::from_refs(v, c)
+                ChunkPick::from_refs(arrange(v, first), c)
             }
+        }
+    }
+
+    /// With both sides taken, the other side first (each side's lines in file order); anything
+    /// else as it is.
+    pub fn swap(&self, c: &Chunk) -> ChunkPick {
+        match self {
+            ChunkPick::Sides(choice) => ChunkPick::Sides(choice.swap()),
+            ChunkPick::Lines(v) if self.takes_both(c) => {
+                let other = match self.first_side(c) {
+                    Side::Ours => Side::Theirs,
+                    Side::Theirs => Side::Ours,
+                };
+                ChunkPick::from_refs(arrange(v.clone(), other), c)
+            }
+            _ => self.clone(),
         }
     }
 
@@ -160,6 +196,12 @@ impl ChunkPick {
             _ => self.refs(c).iter().map(|r| c.side(r.side)[r.line].as_str()).collect(),
         }
     }
+}
+
+/// `v` in band order: `first`'s lines, then the other side's, each in file order.
+fn arrange(mut v: Vec<LineRef>, first: Side) -> Vec<LineRef> {
+    v.sort_by_key(|r| (r.side != first, r.line));
+    v
 }
 
 /// The file's line ending: CR LF when the first line that has one ends that way, else LF.
