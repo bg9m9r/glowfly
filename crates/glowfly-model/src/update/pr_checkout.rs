@@ -54,7 +54,12 @@ pub(super) fn checkout(st: &mut AppState, id: u64, go: Go, fx: &mut Vec<Effect>)
     let op = AutoStashFor::PullRequestCheckout { pr: label, branch: source };
     let again = move || BranchMsg::CheckoutPullRequest { id };
     let retry = move || Msg::Branch(if go.prune { BranchMsg::PruneThen(Box::new(again())) } else { again() });
-    super::auto_stash::start_guarded_as(st, JobSpec::new("Checkout".into(), with_prune(&how, vec![cmd])), op, retry, fx);
+    let mut spec = JobSpec::new("Checkout".into(), with_prune(&how, vec![cmd]));
+    if how == Route::PruneFirst {
+        // Two commands: `start_job` classifies only one, so name the kind for undo.
+        spec.record = Some(glowfly_core::undo::UndoKind::Checkout);
+    }
+    super::auto_stash::start_guarded_as(st, spec, op, retry, fx);
 }
 
 /// Whether local branch `b` is the fork's branch of the same name: it tracks it or pushes to it

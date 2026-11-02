@@ -1,8 +1,8 @@
 //! Headless tests for checking out a remote branch through a local branch tracking it: the
 //! fast-forward in the same job, the diverged branch left where it is, a chosen one of several
-//! trackers, the refusals (a tracker another worktree has opens that worktree), the palette's route, and a tracking branch under another name from
-//! the New branch dialog. Commands are checked as emitted, and end to end against a repository
-//! with a bare `origin`.
+//! trackers, the refusals (a tracker another worktree has opens that worktree), the palette's
+//! route, and a tracking branch under another name from the New branch dialog. Commands are
+//! checked as emitted, and end to end against a repository with a bare `origin`.
 
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{clean_tree, drive, git};

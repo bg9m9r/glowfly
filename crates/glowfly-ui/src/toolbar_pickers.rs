@@ -149,14 +149,14 @@ fn branch_menu(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, msgs: &mut Vec<Msg>)
         let dot = Some(line(snap.branch_swatch(&b.name)));
         let r = menu::item(b.name.as_str()).current(b.is_head).icon(branch_dot::paint_slot, dot).show(ui);
         let elsewhere = (!b.is_head).then(|| crate::state::worktree_branches::checkout_elsewhere(t, snap, &b.name)).flatten();
-        let r = match elsewhere {
+        let r = match &elsewhere {
             _ if b.is_head => r.on_hover_text(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)])),
-            Some(Elsewhere::Open { tip } | Elsewhere::Prune { tip }) => r.on_hover_text(tip),
+            Some(e) => r.on_hover_text(e.tip()),
             None => r,
         };
         if r.clicked() {
             if !b.is_head {
-                msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
+                msgs.push(Msg::Branch(Elsewhere::msg(elsewhere.as_ref(), BranchMsg::Checkout(b.name.clone()))));
             }
             ui.close_menu();
         }

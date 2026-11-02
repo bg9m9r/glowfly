@@ -39,13 +39,18 @@ pub(super) fn checkout(st: &mut AppState, name: &str, go: Go, fx: &mut Vec<Effec
     if how == Route::Done {
         return;
     }
-    // A single command: `start_job` records it for undo as `JobMsg::Git` would; after a prune,
-    // it is recorded as the checkout.
-    let mut spec = JobSpec::new("Checkout".into(), with_prune(&how, vec![branches::checkout_local(name)]));
-    if how == Route::PruneFirst {
-        spec.record = Some(UndoKind::Checkout);
-    }
     let retry = || Msg::Branch(if go.prune { BranchMsg::PruneThen(Box::new(again())) } else { again() });
+    if how == Route::PruneFirst {
+        // Two commands: recorded for undo as the checkout, and guarded as one (the plain guard
+        // passes a job of several commands straight through).
+        let cmds = with_prune(&how, vec![branches::checkout_local(name)]);
+        let spec = JobSpec { record: Some(UndoKind::Checkout), ..JobSpec::new("Checkout".into(), cmds) };
+        let op = AutoStashFor::Checkout { target: name.to_owned() };
+        super::auto_stash::start_guarded_as(st, spec, op, retry, fx);
+        return;
+    }
+    // A single command: `start_job` records it for undo as `JobMsg::Git` would.
+    let spec = JobSpec::new("Checkout".into(), vec![branches::checkout_local(name)]);
     super::auto_stash::start_guarded(st, spec, retry, fx);
 }
 

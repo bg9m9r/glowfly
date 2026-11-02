@@ -1,15 +1,15 @@
 //! The right-click menu of a remote-tracking branch, shared by the REMOTE rows of the left panel
 //! and the remote-branch labels in the graph, in groups: checkout (each local branch tracking it,
-//! fast-forwarded to it when only behind, or opening the worktree that has it; or a new one), a new branch tracking it and a worktree;
-//! fast-forward of the local branch tracking it, merge, rebase, conflict check, compare and set
-//! upstream against the checked-out branch, and comparing it with its version before the last
-//! force-push (Range-diff), merge and rebase as split rows whose eye button previews them; pull
-//! requests (also from a fork remote into the base repository); hide or solo, and its colour;
-//! copying its name or a link; and delete on the remote (its dialog,
-//! `remote_branch_delete_dialog.rs`, warns of local branches tracking it). The branch's name
-//! heads the menu once; the items leave it out, and other names in labels are cut to fit, in
-//! full on hover. Disabled items say why on hover, with the same text `update` logs when it
-//! refuses a late message.
+//! fast-forwarded to it when only behind, or opening the worktree that has it; or a new one), a new
+//! branch tracking it and a worktree; fast-forward of the local branch tracking it, merge, rebase,
+//! conflict check, compare and set upstream against the checked-out branch, and comparing it with
+//! its version before the last force-push (Range-diff), merge and rebase as split rows whose eye
+//! button previews them; pull requests (also from a fork remote into the base repository); hide or
+//! solo, and its colour; copying its name or a link; and delete on the remote (its dialog,
+//! `remote_branch_delete_dialog.rs`, warns of local branches tracking it). The branch's name heads
+//! the menu once; the items leave it out, and other names in labels are cut to fit, in full on
+//! hover. Disabled items say why on hover, with the same text `update` logs when it refuses a late
+//! message.
 
 use super::common::{menu_danger, menu_header, menu_item, menu_item_if, menu_row, menu_row_preview};
 use super::ref_visibility;
