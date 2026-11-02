@@ -31,6 +31,7 @@ mod submodules;
 mod terminal;
 pub mod terminal_schemes;
 mod theme_choice;
+mod theme_pair;
 pub mod themes;
 mod themes_io;
 mod tools;
@@ -63,7 +64,7 @@ pub use terminal::{
     CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalColours, TerminalPrefs,
 };
 pub use theme_choice::ThemeChoice;
-pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
+pub use themes::{BuiltinTheme, ColorValue, SystemPair, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use tracker::TrackerChoice;
 pub use trust::{RepoTrust, SavedTrust};
@@ -95,6 +96,7 @@ pub struct Settings {
 
     // Appearance
     pub theme: ThemeChoice,
+    pub system_pair: SystemPair,
     /// A retired theme the file named (as shown, and its successor), for the one-time toast.
     #[serde(skip)]
     pub retired_theme: Option<(String, BuiltinTheme)>,
@@ -282,13 +284,10 @@ pub struct Settings {
     #[serde(default = "file::seen")]
     pub welcome_done: bool,
     /// The daily update check and the release notes last shown (Preferences > General > Updates).
-    #[serde(default)]
     pub updates: UpdatePrefs,
     /// Preferences > Terminal, and the panel's remembered state.
-    #[serde(default)]
     pub terminal: TerminalPrefs,
     /// The sizes the left, details and logs drawers were dragged to (the app clamps them).
-    #[serde(default)]
     pub panel_sizes: PanelSizes,
 }
 
@@ -307,6 +306,7 @@ impl Default for Settings {
             submodules: SubmodulePrefs::default(),
             language: crate::i18n::SYSTEM.into(),
             theme: ThemeChoice::Graphite,
+            system_pair: SystemPair::default(),
             retired_theme: None,
             notification_location: Corner::BottomLeft,
             behind_alerts: true,

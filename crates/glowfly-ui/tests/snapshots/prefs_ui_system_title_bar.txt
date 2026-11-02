@@ -15,12 +15,7 @@ RadioButton "Mist" [off]
 RadioButton "Dawn" [off]
 RadioButton "High Contrast Light" [off]
 Label "Dusk: Indigo dusk under a lantern-gold accent, from the app icon."
-Label "Theme file"
-ComboBox
-Button "Open themes folder"
-Button "Reload"
-Button "Create from current"
-Label "A theme file is a JSON file in the themes folder. It names a base theme (graphite, midnight, dusk, high-contrast-dark, porcelain, mist, dawn or high-contrast-light) and changes any of its colors. Create from current writes one to start from."
+Button "Custom theme files"
 ComboBox
 CheckBox "Say when the branch falls behind its upstream" [on]
 Label "After a background fetch, say when the checked-out branch has fallen behind its upstream, with a button to pull."
@@ -84,7 +79,6 @@ painted:
   "Commit signing"
   "SSH"
   "Theme"
-  "None"
   "Notification location"
   "Bottom left"
   "Behind alerts"
@@ -102,3 +96,4 @@ painted:
   "Quick-branch button"
   "Trace a branch on hover"
   "Worktree changes"
+  "Group worktree tabs"

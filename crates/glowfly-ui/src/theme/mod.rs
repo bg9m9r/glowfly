@@ -15,7 +15,7 @@
 use crate::state::window_native::MicaTint;
 use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
-use glowfly_core::settings::{BranchPalette, BuiltinTheme, TerminalColours, ThemeChoice};
+use glowfly_core::settings::{BranchPalette, BuiltinTheme, SystemPair, TerminalColours, ThemeChoice};
 
 pub mod ansi;
 pub mod branch_colours;
@@ -179,8 +179,9 @@ pub fn apply_theme(ctx: &egui::Context) {
 /// input changes.
 #[derive(Default)]
 pub struct ThemeCache {
-    /// (choice, theme files generation, OS is dark, branch preset) the palette was resolved for.
-    key: Option<(ThemeChoice, u64, bool, BranchPalette)>,
+    /// (choice, Match the system's pair, theme files generation, OS is dark, branch preset) the
+    /// palette was resolved for.
+    key: Option<(ThemeChoice, SystemPair, u64, bool, BranchPalette)>,
     palette: Option<Palette>,
     /// The palette egui's style was last set from.
     applied: Option<Palette>,
@@ -198,7 +199,7 @@ impl ThemeCache {
     /// `select` for the theme in the settings, with the OS's light or dark setting from egui.
     pub fn apply(&mut self, ctx: &egui::Context, settings: &glowfly_core::settings::Settings, themes: &ThemeState) {
         let system_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
-        self.select(ctx, &settings.theme, settings.branch_palette, themes, system_dark);
+        self.select(ctx, &settings.theme, settings.system_pair, settings.branch_palette, themes, system_dark);
         self.select_terminal(&settings.terminal.colours, themes);
     }
 
@@ -213,19 +214,26 @@ impl ThemeCache {
         color::set_terminal(self.terminal);
     }
 
-    /// Makes the chosen theme's palette, with the branch preset `branches`, active for this frame
-    /// and styles egui when it changed.
-    pub fn select(&mut self, ctx: &egui::Context, choice: &ThemeChoice, branches: BranchPalette, themes: &ThemeState, system_dark: bool) {
-        let fresh =
-            matches!(&self.key, Some((c, g, s, b)) if c == choice && *g == themes.generation && *s == system_dark && *b == branches);
-        if !fresh {
-            let palette = branch_palette::applied(custom::resolve(choice, themes, system_dark), branches);
+    /// Makes the chosen theme's palette (Match the system shows `pair`'s member), with the branch
+    /// preset `branches`, active for this frame and styles egui when it changed.
+    pub fn select(
+        &mut self,
+        ctx: &egui::Context,
+        choice: &ThemeChoice,
+        pair: SystemPair,
+        branches: BranchPalette,
+        themes: &ThemeState,
+        system_dark: bool,
+    ) {
+        let key = (choice.clone(), pair, themes.generation, system_dark, branches);
+        if self.key.as_ref() != Some(&key) {
+            let palette = branch_palette::applied(custom::resolve(choice, themes, system_dark, pair), branches);
             let high_contrast =
-                matches!(choice.builtin(system_dark), Some(BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight));
+                matches!(choice.builtin(system_dark, pair), Some(BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight));
             self.mica = if high_contrast { None } else { super::backdrop::mica_tint(&palette) };
             self.trunk_near = branch_colours::trunk_near(&palette);
             self.palette = Some(palette);
-            self.key = Some((choice.clone(), themes.generation, system_dark, branches));
+            self.key = Some(key);
         }
         let palette = self.palette.unwrap_or(DEFAULT_DARK);
         color::set_palette(&palette);

@@ -19,6 +19,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 pub use super::builtin_themes::BuiltinTheme;
+pub use super::theme_pair::SystemPair;
 pub use super::themes_io::{MAX_FILE_BYTES, create, load_all, load_dir, themes_dir};
 
 /// Every color a theme sets, in the palette's order.
@@ -152,12 +153,12 @@ impl ThemeCatalog {
         self.files.iter().find(|f| f.id == id)
     }
 
-    /// The built-in palette `choice` starts from: a file's base, or the default dark theme for a
-    /// missing file.
-    pub fn base_of(&self, choice: &ThemeChoice, system_dark: bool) -> BuiltinTheme {
+    /// The built-in palette `choice` starts from: a file's base, `pair`'s member for Match the
+    /// system on a dark (`os_dark`) or light desktop, or the default dark theme for a missing file.
+    pub fn base_of(&self, choice: &ThemeChoice, os_dark: bool, pair: SystemPair) -> BuiltinTheme {
         match choice {
             ThemeChoice::Custom(id) => self.get(id).map_or(BuiltinTheme::DEFAULT_DARK, |f| f.base),
-            other => other.builtin(system_dark).unwrap_or(BuiltinTheme::DEFAULT_DARK),
+            other => other.builtin(os_dark, pair).unwrap_or(BuiltinTheme::DEFAULT_DARK),
         }
     }
 }

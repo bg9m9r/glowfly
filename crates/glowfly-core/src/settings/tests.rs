@@ -547,7 +547,7 @@ fn a_retired_theme_opens_in_its_successor_once() {
         let (dir, file) = scratch_settings(&format!("retired-{saved}"), format!(r#"{{"theme": "{saved}", "tab_size": 3}}"#).as_bytes());
         let (s, problem) = Settings::load_from(&file);
         assert_eq!((&s.theme, s.tab_size, problem), (&next, 3, None), "{saved}");
-        let want = next.builtin(true).map(|b| (shown.to_owned(), b));
+        let want = next.builtin(true, SystemPair::default()).map(|b| (shown.to_owned(), b));
         assert_eq!(s.retired_theme, want, "{saved} is noted for the toast");
         // Saved, the file holds the successor: the next start has nothing to say.
         s.save_to(&file).unwrap();
@@ -594,15 +594,18 @@ fn terminal_colours_take_the_current_theme_ids() {
 #[test]
 fn theme_choice_builtin_mapping() {
     use super::themes::BuiltinTheme as B;
-    assert_eq!(ThemeChoice::System.builtin(true), Some(B::Graphite));
-    assert_eq!(ThemeChoice::System.builtin(false), Some(B::Porcelain));
-    assert_eq!(ThemeChoice::Dark.builtin(false), Some(B::Dark));
-    assert_eq!(ThemeChoice::Light.builtin(true), Some(B::Light));
-    assert_eq!(ThemeChoice::HighContrastDark.builtin(false), Some(B::HighContrastDark));
-    assert_eq!(ThemeChoice::HighContrastLight.builtin(true), Some(B::HighContrastLight));
-    assert_eq!((ThemeChoice::Graphite.builtin(false), ThemeChoice::Porcelain.builtin(true)), (Some(B::Graphite), Some(B::Porcelain)));
+    assert_eq!(ThemeChoice::System.builtin(true, SystemPair::default()), Some(B::Graphite));
+    assert_eq!(ThemeChoice::System.builtin(false, SystemPair::default()), Some(B::Porcelain));
+    assert_eq!(ThemeChoice::Dark.builtin(false, SystemPair::default()), Some(B::Dark));
+    assert_eq!(ThemeChoice::Light.builtin(true, SystemPair::default()), Some(B::Light));
+    assert_eq!(ThemeChoice::HighContrastDark.builtin(false, SystemPair::default()), Some(B::HighContrastDark));
+    assert_eq!(ThemeChoice::HighContrastLight.builtin(true, SystemPair::default()), Some(B::HighContrastLight));
+    assert_eq!(
+        (ThemeChoice::Graphite.builtin(false, SystemPair::default()), ThemeChoice::Porcelain.builtin(true, SystemPair::default())),
+        (Some(B::Graphite), Some(B::Porcelain))
+    );
     assert!(B::Graphite.is_dark() && !B::Porcelain.is_dark());
-    assert_eq!(ThemeChoice::Custom("ocean".into()).builtin(true), None);
+    assert_eq!(ThemeChoice::Custom("ocean".into()).builtin(true, SystemPair::default()), None);
 }
 
 #[test]
@@ -657,5 +660,9 @@ fn graphite_is_the_default_dark_theme_and_dusk_keeps_its_own_name() {
     assert_eq!(serde_json::from_str::<ThemeChoice>(&json).unwrap(), ThemeChoice::Dark);
     assert_eq!(serde_json::to_string(&ThemeChoice::Graphite).unwrap(), r#""Graphite""#);
     let cat = super::ThemeCatalog::default();
-    assert_eq!(cat.base_of(&ThemeChoice::Custom("gone".into()), true), B::Graphite, "a missing file shows the default");
+    assert_eq!(
+        cat.base_of(&ThemeChoice::Custom("gone".into()), true, SystemPair::default()),
+        B::Graphite,
+        "a missing file shows the default"
+    );
 }

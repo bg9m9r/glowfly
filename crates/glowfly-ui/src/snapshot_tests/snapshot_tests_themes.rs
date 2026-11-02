@@ -31,8 +31,8 @@ fn diff_high_contrast_light() {
     remove_fixture(&dir);
 }
 
-#[test]
-fn prefs_ui_custom_theme() {
+/// Preferences > Appearance with the theme file Ocean in use (two problems), and its palette.
+pub(super) fn ocean_prefs() -> (AppState, Palette) {
     let mut st = AppState::new(settings(ThemeChoice::Custom("ocean".into())), Vec::new(), Instant::now());
     let text = br##"{"name": "Ocean", "base": "dark", "colors": {"accent": "#ff8a3d", "selected": "#4a2a12", "hover": "selected"}}"##;
     let mut ocean = parse("ocean", Path::new("ocean.json"), text);
@@ -41,6 +41,12 @@ fn prefs_ui_custom_theme() {
     let palette = custom::build(&ocean);
     st.themes.catalog = ThemeCatalog { files: vec![ocean], ..ThemeCatalog::default() };
     st.prefs = Some(PrefsState::new(PrefPage::Ui));
+    (st, palette)
+}
+
+#[test]
+fn prefs_ui_custom_theme() {
+    let (st, palette) = ocean_prefs();
     render("prefs_ui_custom_theme", st, palette);
 }
 

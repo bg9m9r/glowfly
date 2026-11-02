@@ -8,7 +8,9 @@
 //! live values are `Settings.connections` and the `Settings` fields themselves. A switch saves
 //! the live values into the outgoing profile and loads the incoming one's.
 
-use super::{BranchPalette, BranchVisibility, ColumnWidths, Corner, GraphColumns, ProfileId, Settings, SubmodulePrefs, ThemeChoice};
+use super::{
+    BranchPalette, BranchVisibility, ColumnWidths, Corner, GraphColumns, ProfileId, Settings, SubmodulePrefs, SystemPair, ThemeChoice,
+};
 use crate::forge::Account;
 use serde::{Deserialize, Serialize};
 
@@ -53,6 +55,7 @@ profile_prefs! {
     auto_stash: bool,
     // Appearance
     theme: ThemeChoice,
+    system_pair: SystemPair,
     notification_location: Corner,
     behind_alerts: bool,
     desktop_notifications: bool,

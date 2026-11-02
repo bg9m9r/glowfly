@@ -172,9 +172,9 @@ fn choices_and_builtins() {
     assert_eq!(ThemeChoice::Custom("ocean".into()).label(), "ocean");
     assert_eq!(ThemeChoice::HighContrastDark.palette_label(), "High contrast dark");
     let cat = ThemeCatalog { files: vec![p(r#"{"base": "light"}"#)], ..ThemeCatalog::default() };
-    assert_eq!(cat.base_of(&ThemeChoice::Custom("ocean".into()), true), BuiltinTheme::Light);
-    assert_eq!(cat.base_of(&ThemeChoice::Custom("gone".into()), false), BuiltinTheme::Graphite);
-    assert_eq!(cat.base_of(&ThemeChoice::System, false), BuiltinTheme::Porcelain);
+    assert_eq!(cat.base_of(&ThemeChoice::Custom("ocean".into()), true, SystemPair::default()), BuiltinTheme::Light);
+    assert_eq!(cat.base_of(&ThemeChoice::Custom("gone".into()), false, SystemPair::default()), BuiltinTheme::Graphite);
+    assert_eq!(cat.base_of(&ThemeChoice::System, false, SystemPair::default()), BuiltinTheme::Porcelain);
 }
 
 #[test]

@@ -55,6 +55,10 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("welcome_start_high_contrast_dark", Window),
     // Preferences > Appearance in the default light theme: the theme picker.
     ("prefs_theme_picker_porcelain", Window),
+    // Match the system on (two rings), a theme file in use (the disclosure open), and German.
+    ("prefs_theme_picker_system", TopLeft(1240.0, 520.0)),
+    ("prefs_theme_custom_open", TopLeft(1240.0, 720.0)),
+    ("prefs_theme_picker_de", TopLeft(1240.0, 520.0)),
     // The window chrome: title bars, tabs, toolbar and menus.
     ("vivid_title_bar", Window),
     ("title_bar_windows_dark", Top(108.0)),
