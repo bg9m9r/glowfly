@@ -69,8 +69,6 @@ pub(crate) fn row_h(density: Density) -> f32 {
     }
 }
 
-/// A date whose absolute form is about the widest (September 28, 2026 22:58 UTC), to fit DATE to.
-const WIDE_DATE: i64 = 1_790_636_280;
 const LANE_W: f32 = 24.0;
 const MAX_VISIBLE_LANES: usize = 12;
 /// The most of the message's room chips leading it take, and the gap after them.
@@ -115,9 +113,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let ref_cx = ref_group::RefContext::of(snap);
         // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
         let s = &st.settings;
-        let date = (!s.relative_dates).then(|| s.format_graph_time(WIDE_DATE, st.view.now, 0));
+        let oldest = snap.commits.iter().map(|c| c.time).min();
+        let dates = cells::wide_dates(s, st.view.now, st.view.utc_offset, oldest);
         let chips_w = refs_fit::chips_w(ui.painter(), snap, &ref_cx);
-        let input = header::HeaderIn { graph_w, cfg: &s.columns, saved: s.column_widths, chips_w, date: date.as_deref() };
+        let input = header::HeaderIn { graph_w, cfg: &s.columns, saved: s.column_widths, chips_w, dates: &dates };
         let fitted = header::column_header(ui, t, input, &mut st.view.column_drag, msgs);
         let (cols_cfg, widths, graph_w, inline) = (fitted.cfg, fitted.widths, fitted.graph_w, fitted.refs_inline);
         // How many matches fill the graph, for a filtering search loading further back.

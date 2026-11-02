@@ -14,7 +14,7 @@ use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
 use git2::Oid;
 use glowfly_core::repo::CommitInfo;
-use glowfly_core::settings::GraphColumns;
+use glowfly_core::settings::{GraphColumns, Settings};
 use std::collections::HashMap;
 
 /// The widest the hover with a cut message gets before it wraps.
@@ -53,6 +53,38 @@ pub(super) fn pr_badges(f: &ForgeState) -> HashMap<Oid, (String, bool)> {
     let word = if f.pr_noun() == "merge request" { "MR" } else { "PR" };
     let label = |p: &glowfly_core::forge::PullRequest| format!("{} {}", if p.draft { "Draft" } else { word }, f.pr_label(p.id));
     f.prs.iter().filter_map(|p| Some((*f.pr_heads.get(&p.id)?, (label(p), p.draft)))).collect()
+}
+
+/// Each month's 20th at 22:58 UTC in 2026: two-digit days (the figures are tabular) late in
+/// the day, so each month's dates are about as wide as it shows them.
+const WIDE_DAYS: [i64; 12] = [
+    1_768_949_880,
+    1_771_628_280,
+    1_774_047_480,
+    1_776_725_880,
+    1_779_317_880,
+    1_781_996_280,
+    1_784_588_280,
+    1_787_266_680,
+    1_789_945_080,
+    1_792_537_080,
+    1_795_215_480,
+    1_797_807_480,
+];
+
+/// The widest dates the DATE column shows, for its least width: each month as the graph formats
+/// it at `now` (absolute dates), or, while dates are ages, its short form: with the year ("Dec
+/// 20, 2025") when the `oldest` loaded commit is from before `now`'s year in the zone `offset`
+/// from UTC, else without ("Dec 20").
+pub(super) fn wide_dates(s: &Settings, now: i64, offset: i32, oldest: Option<i64>) -> Vec<String> {
+    let year = |t: i64| chrono::DateTime::from_timestamp(t + i64::from(offset), 0).map(|d| chrono::Datelike::year(&d));
+    let earlier = oldest.is_some_and(|o| year(o) < year(now));
+    let seen_at = |t: i64| match (s.relative_dates, earlier) {
+        (false, _) => now,
+        (true, true) => t + 400 * 86_400,
+        (true, false) => t + 8 * 86_400,
+    };
+    WIDE_DAYS.iter().map(|&t| s.format_graph_time(t, seen_at(t), 0)).collect()
 }
 
 /// The summary in `fg` and, when given, the body preview after it in the smaller `weak` text.

@@ -1,6 +1,6 @@
 //! The graph's column header: the column titles with their draggable dividers (resize.rs), the
-//! least width each column gets so its title fits (for the rows as well: COMMIT its SHA, DATE an
-//! absolute date), BRANCH / TAG fitted to its widest chips while it has its default width, the
+//! least width each column gets so its title fits (for the rows as well: COMMIT its SHA, DATE
+//! its widest date, `cells::wide_dates`), BRANCH / TAG fitted to its widest chips while it has its default width, the
 //! columns fitted to the graph's width (`fit.rs`) and, when that hid some, a ⋯ mark at the
 //! message column's end naming them. The history's notes (Load more, a shallow clone's Fetch full history) are in the
 //! end row (`more.rs`).
@@ -105,8 +105,8 @@ pub(super) fn graph_width(ui: &egui::Ui, t: Lang, lanes: usize) -> f32 {
 
 /// The least width of each resizable column: its title with its padding (the edge inset on the
 /// side at the table's edge: BRANCH / TAG's left, the last shown column's right). COMMIT also
-/// fits a seven-character SHA, and DATE `date`, an absolute date in the Date and time format.
-fn floors(ui: &egui::Ui, t: Lang, font: &FontId, cfg: &GraphColumns, date: Option<&str>) -> [(ResizableColumn, f32); 5] {
+/// fits a seven-character SHA, and DATE the widest of `dates`, dates as the column shows them.
+fn floors(ui: &egui::Ui, t: Lang, font: &FontId, cfg: &GraphColumns, dates: &[String]) -> [(ResizableColumn, f32); 5] {
     let sha_w = text_w(ui, "0000000", &type_scale::mono(type_scale::SMALL));
     let last = ORDER.into_iter().rev().find(|c| c.shown(cfg));
     let mut out = ResizableColumn::ALL.map(|c| (c, 0.0));
@@ -116,8 +116,9 @@ fn floors(ui: &egui::Ui, t: Lang, font: &FontId, cfg: &GraphColumns, date: Optio
         if col == ResizableColumn::Commit {
             content = content.max(sha_w);
         }
-        if let Some(date) = date.filter(|_| col == ResizableColumn::Date) {
-            content = content.max(text_w(ui, date, &type_scale::font(type_scale::SMALL)));
+        if col == ResizableColumn::Date {
+            let font = type_scale::font(type_scale::SMALL);
+            content = dates.iter().fold(content, |w, d| w.max(text_w(ui, d, &font)));
         }
         let edge = col == ResizableColumn::Refs || last == Some(title);
         let floor = content + CELL_PAD + if edge { EDGE_INSET } else { CELL_PAD };
@@ -142,8 +143,8 @@ pub(super) struct HeaderIn<'a> {
     pub saved: ColumnWidths,
     /// The widest row's chips in BRANCH / TAG (`refs_fit::chips_w`).
     pub chips_w: f32,
-    /// An absolute date as the DATE column shows it, when dates aren't ages.
-    pub date: Option<&'a str>,
+    /// The widest dates the DATE column shows (`cells::wide_dates`).
+    pub dates: &'a [String],
 }
 
 /// `saved`, with BRANCH / TAG fitted to `chips_w` (its padding added, `REFS_FIT_MAX` at most)
@@ -164,7 +165,7 @@ pub(super) fn column_header(ui: &mut egui::Ui, t: Lang, input: HeaderIn, drag: &
     let (cols_cfg, saved) = (input.cfg, refs_fitted(input.saved, input.chips_w));
     let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
     let font = FontId::proportional(TITLE_FONT);
-    let floors = floors(ui, t, &font, cols_cfg, input.date);
+    let floors = floors(ui, t, &font, cols_cfg, input.dates);
     let graph = (input.graph_w, text_w(ui, Title::Graph.text(t), &font));
     let fitted = |d: &Option<ColumnDrag>| {
         let w = floored(d.as_ref().map_or(saved, |d| saved.with(d.col, d.width)), &floors);
@@ -266,7 +267,7 @@ mod tests {
             egui::CentralPanel::default().show(ctx, |ui| {
                 let font = FontId::proportional(TITLE_FONT);
                 let cfg = GraphColumns::default();
-                let floors = floors(ui, Lang::En, &font, &cfg, None);
+                let floors = floors(ui, Lang::En, &font, &cfg, &[]);
                 let floor = |c: ResizableColumn| floors.iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
                 let pads = 2.0 * CELL_PAD;
                 for title in ORDER.into_iter().filter(|t| t.resizable().is_some()) {
@@ -276,10 +277,10 @@ mod tests {
                 assert!(floor(Commit) >= sha_w + pads);
                 assert!(floor(Commit) <= ColumnWidths::default().get(Commit), "the SHA fits COMMIT's default width");
                 assert!(floor(Date) >= text_w(ui, "Date", &font) + CELL_PAD + EDGE_INSET, "DATE is last: the edge inset");
-                let date = "12/28/2026 10:58 PM";
-                let wide = super::floors(ui, Lang::En, &font, &cfg, Some(date));
-                let date_w = text_w(ui, date, &type_scale::font(type_scale::SMALL));
-                assert!(wide.iter().any(|&(c, f)| c == Date && f >= date_w + CELL_PAD + EDGE_INSET), "absolute dates fit");
+                let dates = ["12/28/2026 10:58 PM".to_owned(), "Jan 1".to_owned()];
+                let wide = super::floors(ui, Lang::En, &font, &cfg, &dates);
+                let date_w = text_w(ui, &dates[0], &type_scale::font(type_scale::SMALL));
+                assert!(wide.iter().any(|&(c, f)| c == Date && f >= date_w + CELL_PAD + EDGE_INSET), "the widest date fits");
                 let w = floored(NARROW, &floors);
                 for (col, f) in floors {
                     assert!(w.get(col) >= f && w.get(col) >= NARROW.get(col), "{col:?}");
@@ -292,6 +293,39 @@ mod tests {
     }
 
     #[test]
+    fn an_earlier_years_short_date_fits_date_uncut() {
+        use super::super::{cells, fit, layout::Columns};
+        use glowfly_core::settings::Settings;
+        // 2026-02-01 12:00 UTC; the commit is from the last day of 2025.
+        let (now, then) = (1_769_947_200, 1_767_225_600 - 3600);
+        let ctx = egui::Context::default();
+        crate::ui::theme::fonts::install(&ctx);
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                for (lang, locale) in [("en", "en_US"), ("de", "de_DE"), ("es", "es_ES")] {
+                    let s = Settings { language: lang.into(), date_locale: locale.into(), ..Settings::default() };
+                    assert!(s.relative_dates);
+                    let shown = s.format_graph_time(then, now, 0);
+                    assert!(shown.contains("2025"), "{shown}");
+                    let cfg = GraphColumns::default();
+                    let font = FontId::proportional(TITLE_FONT);
+                    let wide = floors(ui, s.lang(), &font, &cfg, &cells::wide_dates(&s, now, 0, Some(then)));
+                    let w = floored(ColumnWidths::default(), &wide);
+                    let f = fit::fit(740.0, (48.0, 30.0), &cfg, w, &wide);
+                    let rect = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(740.0, 36.0));
+                    let c = Columns::new(rect, f.graph_w, &f.cfg, &f.widths);
+                    let need = text_w(ui, &shown, &type_scale::font(type_scale::SMALL));
+                    assert!(f.cfg.date && c.date.1 - c.date.0 >= need, "{lang}: {shown:?} needs {need}, DATE has {:?}", c.date);
+                    // A history all from this year keeps DATE at its 88 px.
+                    let this_year = floors(ui, s.lang(), &font, &cfg, &cells::wide_dates(&s, now, 0, Some(now - 86_400)));
+                    assert!(this_year.iter().any(|&(col, w)| col == Date && w <= 88.0), "{lang}: {this_year:?}");
+                }
+            });
+        });
+    }
+
+    #[test]
     fn german_titles_widen_floors() {
         let ctx = egui::Context::default();
         let _ = ctx.run(egui::RawInput::default(), |ctx| {
@@ -299,7 +333,7 @@ mod tests {
                 let font = FontId::proportional(TITLE_FONT);
                 let cfg = GraphColumns::default();
                 let floor =
-                    |t: Lang, c: ResizableColumn| floors(ui, t, &font, &cfg, None).iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
+                    |t: Lang, c: ResizableColumn| floors(ui, t, &font, &cfg, &[]).iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
                 let changes = Lang::De.tr("graph.header.changes");
                 assert_eq!(changes, "Änderungen");
                 assert!(floor(Lang::De, Changes) >= text_w(ui, changes, &font) + 2.0 * CELL_PAD);
