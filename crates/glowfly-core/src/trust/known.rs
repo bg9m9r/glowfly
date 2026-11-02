@@ -25,6 +25,11 @@ const LFS_FILTERS: &[(&str, &[&str])] = &[
 /// The hooks `git lfs install` writes.
 const LFS_HOOKS: &[&str] = &["pre-push", "post-checkout", "post-commit", "post-merge"];
 
+/// What a hook line may end with, or a blank line hold, and still be read as without it: only
+/// what `sh` itself skips (space, tab, a CR). Other whitespace (VT, FF, NBSP, U+2028) is an
+/// ordinary character to `sh`, so a line of it would run.
+const SH_BLANK: &[char] = &[' ', '\t', '\r'];
+
 /// Whether `c` is one of Git LFS's standard filter settings: `filter.lfs.clean`, `.smudge` or
 /// `.process` (section and name in any case, the subsection exactly `lfs`) with one of its
 /// standard values (surrounding whitespace aside), while no file the settings name in the
@@ -44,7 +49,7 @@ pub fn setting(c: &ConfigCommand, follows: &[Follow]) -> Option<Known> {
 }
 
 /// Whether the hook `name` holding `bytes` is the script `git lfs install` writes for it: one
-/// of its four hooks, valid UTF-8, and (CRLF read as LF, trailing whitespace and blank lines
+/// of its four hooks, valid UTF-8, and (CRLF read as LF, trailing blanks and blank lines
 /// dropped) exactly `#!/bin/sh`, the check that git-lfs is installed with one of its two
 /// message forms, and `git lfs <name> "$@"`.
 pub fn hook(name: &str, bytes: &[u8]) -> Option<Known> {
@@ -52,7 +57,7 @@ pub fn hook(name: &str, bytes: &[u8]) -> Option<Known> {
         return None;
     }
     let text = std::str::from_utf8(bytes).ok()?.replace("\r\n", "\n");
-    let lines: Vec<&str> = text.split('\n').map(str::trim_end).filter(|l| !l.is_empty()).collect();
+    let lines: Vec<&str> = text.split('\n').map(|l| l.trim_end_matches(SH_BLANK)).filter(|l| !l.is_empty()).collect();
     let [shebang, check, run] = lines.as_slice() else { return None };
     let ok = *shebang == "#!/bin/sh" && is_lfs_check(check) && *run == format!("git lfs {name} \"$@\"");
     ok.then_some(Known::GitLfs)

@@ -93,6 +93,9 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Trust prompt: recognise more tools (pre-commit, Husky) once each has a matcher as strict as
   the Git LFS one in `trust/known.rs`.
 - Trust prompt: the Git LFS tag becomes a Badge-size neutral chip once `widgets/chip.rs` lands (#423).
+- The `git-lfs.exe` path branch in `known::setting` never fires in a real scan (`programs::path_of`
+  only records the word as written); decide whether to drop it or have the scan record Windows
+  extensions (`.exe`, `.bat`, `.cmd`).
 
 ### Submodules
 

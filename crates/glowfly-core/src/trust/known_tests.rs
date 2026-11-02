@@ -92,6 +92,11 @@ fn lookalike_hook_scripts_are_not_known() {
     unknown("pre-commit", &script("pre-commit", PRINTF));
     unknown("post-checkout", &good.replace("git lfs", " git lfs"));
     assert_eq!(hook("post-checkout", &[0xff, 0xfe]), None, "not UTF-8");
+    // sh runs other whitespace as ordinary characters: only space, tab and CR are blanks.
+    for odd in ['\u{a0}', '\u{b}', '\u{c}', '\u{2028}'] {
+        unknown("post-checkout", &good.replace("#!/bin/sh\n", &format!("#!/bin/sh\n{odd}\n")));
+        unknown("post-checkout", &good.replace("\"$@\"\n", &format!("\"$@\"{odd}\n")));
+    }
 }
 
 #[test]
