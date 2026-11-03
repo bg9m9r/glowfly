@@ -11,6 +11,7 @@
 use super::style::DiffStyle;
 use crate::state::AppState;
 use crate::ui::theme::color;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Sense, Stroke, Ui, pos2, vec2};
@@ -219,9 +220,9 @@ impl Painter<'_> {
             if kind == HexKind::Changed && byte(other, i) != Some(b) {
                 let top = y - cell_h / 2.0;
                 let cell = Rect::from_min_size(pos2(rect.left() + c.hex_x(j) - 1.0, top), vec2(2.0 * c.ch + 2.0, cell_h));
-                p.rect_filled(cell, CornerRadius::same(2), word_fill);
+                p.rect_filled(cell, CornerRadius::same(radius::XS), word_fill);
                 let glyph = Rect::from_min_size(pos2(rect.left() + c.ascii + j as f32 * c.ch, top), vec2(c.ch, cell_h));
-                p.rect_filled(glyph, CornerRadius::same(2), word_fill);
+                p.rect_filled(glyph, CornerRadius::same(radius::XS), word_fill);
             }
             let gap = match j {
                 0 => "",
