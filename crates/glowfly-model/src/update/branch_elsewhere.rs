@@ -49,14 +49,16 @@ pub(super) fn route(st: &mut AppState, name: &str, go: Go, again: impl FnOnce() 
         if go.prune {
             return Route::PruneFirst;
         }
-        // Clicked again: no second line, and the toast restarts rather than stacking.
-        let line = t.trf("worktree_branch.missing.log", &args);
-        if st.log.last().is_none_or(|l| l.text != line) {
+        // Clicked again while its toast is up: no second line, and the toast restarts rather
+        // than stacking. (The toast logs its own line, so the last line isn't the refusal's.)
+        let (line, toast) = (t.trf("worktree_branch.missing.log", &args), t.trf("worktree_branch.missing.toast", &args));
+        let up = st.toasts.iter().any(|x| x.ok && x.text == toast);
+        if !up && st.log.last().is_none_or(|l| l.text != line) {
             st.log_quiet(false, line);
         }
         let msg = Box::new(Msg::Branch(BranchMsg::PruneThen(Box::new(again()))));
         let action = ToastAction { label: t.tr("worktree_branch.missing.button").to_owned(), msg, workdir: st.workdir() };
-        st.toast_action_once(true, t.trf("worktree_branch.missing.toast", &args), action, go.now);
+        st.toast_action_once(true, toast, action, go.now);
         return Route::Done;
     }
     let note = match by {

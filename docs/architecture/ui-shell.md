@@ -14,6 +14,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `shell/app_effects.rs` carries out the effects that need the window (`Effect::Ui`): the clipboard and the Linux PRIMARY selection, the title, attention, closing and window commands.
 - `shell/app_testing.rs` builds the shell for the journeys, without eframe and with a sandboxed runner.
 - `shell/app_start.rs`: the startup steps in order (a test app leaves out those reaching outside the process), with a settings file the load couldn't read held before the first, since some save.
+- `shell/texture_side.rs` caps the texture side egui may use (the `raw_input_hook`), so the font atlas is narrower and grows in smaller steps.
 - `shell/app_frame.rs` times each frame's phases and each message's handling, kept by `state/frame_times.rs`: frames of 50 ms or more go to the performance log.
 - `shell/app_native.rs` and `shell/app_menu.rs`: the shell's side of the drawn Windows frame's OS glue and of the macOS system menu bar (see [flow-shell.md](flow-shell.md)).
 - `ui/frame_overlay.rs`: the frame-time overlay Preferences > General can show, drawn by the shell.
@@ -57,7 +58,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `terminal/pill.rs`: its pill tabs, named by `state/terminal_names.rs`.
 - `terminal/tabs.rs`: + and the shell picker.
 - `icons_panel.rs`: the header's quiet icon buttons, painted.
-- `icons_lists.rs`: the changed-file lists' List / Tree toggle icons, painted.
+- `icons_lists.rs`: the changed-file lists' List / Tree toggle icons and Accessibility's figure, painted.
 - The panel is drawn under the central area or, maximised, in its place (`terminal::show_in_main`); renaming and maximising are handled in `update/terminal_header.rs`.
 - `terminal/input.rs`: the grid's keys as shell input; Alt with a letter, digit or punctuation key sends ESC and the character (on macOS only with Option as Meta).
 - `terminal/mouse.rs`: the wheel, selecting (a finished selection is reported for PRIMARY and Copy on select) and, on Linux, middle-click paste of PRIMARY.

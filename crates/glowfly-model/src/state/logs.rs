@@ -33,7 +33,7 @@ pub struct Earlier {
 }
 
 /// An activity log entry's name for the session: open rows and fixes are keyed by it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EntryId(u64);
 
 impl EntryId {

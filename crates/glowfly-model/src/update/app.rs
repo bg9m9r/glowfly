@@ -1,6 +1,7 @@
 //! Window-level actions from the menu bar and a drawn title bar: quitting, the About dialog and its notices,
-//! and moving, resizing, minimising or maximising the window, showing its system menu, or
-//! entering or leaving full screen (which narrows what the others do, `WindowCmd::in_window`).
+//! the system's accessibility settings (`state/system_a11y.rs`), and moving, resizing,
+//! minimising or maximising the window, showing its system menu, or entering or leaving full
+//! screen (which narrows what the others do, `WindowCmd::in_window`).
 //! Every way of quitting (File > Quit, the Quit key, the title bar's Close and the OS asking to
 //! close the window) goes through `quit`, which asks first while work exists only in memory
 //! (drafts, conflict choices, an edited dialog, unsaved Preferences edits), work runs or a
@@ -51,6 +52,7 @@ pub(super) fn handle(st: &mut AppState, msg: AppMsg, fx: &mut Vec<Effect>) {
                 st.modal = Some(Modal::About);
             }
         }
+        AppMsg::SystemA11y(system) => st.view.system_a11y = system,
         // Only from About, which it replaces.
         AppMsg::ShowNotices => {
             if matches!(st.modal, Some(Modal::About)) {

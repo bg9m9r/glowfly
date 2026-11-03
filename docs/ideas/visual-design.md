@@ -86,6 +86,9 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - Check the Spanish labels for sentence case too (German capitalises its nouns)
 - A text-size preference that scales the five steps, apart from zoom
 - A semibold monospace face for status letters and emphasised code
+- A font choice on Preferences > Accessibility (an easier-to-read face, such as Atkinson Hyperlegible), left out of #426
+- Accessibility's High contrast check reads unchecked while Match the system's pair puts a high-contrast theme on screen; show it checked, and decide what unchecking it then does
+- Following the system's accessibility settings (#429): read them in Flatpak through the settings portal and on KDE Plasma, and say on the page when the system is what turned high contrast or reduced motion on
 - Check that long context menus still fit small windows at 14 px items; scroll or regroup where they don't
 - Tune the Preferences label column for the longest translated labels at 14 px
 - The commit details' "ISSUES" / "CARDS" heading and its German and Spanish values are still all caps

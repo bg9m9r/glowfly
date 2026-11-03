@@ -17,6 +17,7 @@ use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
 use glowfly_core::settings::{BranchPalette, BuiltinTheme, SystemPair, TerminalColours, ThemeChoice};
 
+pub mod a11y;
 pub mod ansi;
 pub mod branch_colours;
 pub mod branch_names;
@@ -179,9 +180,12 @@ pub fn apply_theme(ctx: &egui::Context) {
 /// input changes.
 #[derive(Default)]
 pub struct ThemeCache {
-    /// (choice, Match the system's pair, theme files generation, OS is dark, branch preset) the
-    /// palette was resolved for.
-    key: Option<(ThemeChoice, SystemPair, u64, bool, BranchPalette)>,
+    /// (choice, Match the system's pair, theme files generation, OS is dark, branch preset, the
+    /// system's high contrast shown in its place) the palette was resolved for.
+    key: Option<(ThemeChoice, SystemPair, u64, bool, BranchPalette, bool)>,
+    /// The system uses high contrast and Preferences follows it (`AppState::system_contrast`):
+    /// the high-contrast theme as dark as the chosen one shows instead.
+    system_contrast: bool,
     palette: Option<Palette>,
     /// The palette egui's style was last set from.
     applied: Option<Palette>,
@@ -196,8 +200,10 @@ pub struct ThemeCache {
 }
 
 impl ThemeCache {
-    /// `select` for the theme in the settings, with the OS's light or dark setting from egui.
-    pub fn apply(&mut self, ctx: &egui::Context, settings: &glowfly_core::settings::Settings, themes: &ThemeState) {
+    /// `select` for the theme in the settings, with the OS's light or dark setting from egui;
+    /// `system_contrast` shows the high-contrast theme as dark as the chosen one in its place.
+    pub fn apply(&mut self, ctx: &egui::Context, settings: &glowfly_core::settings::Settings, themes: &ThemeState, system_contrast: bool) {
+        self.system_contrast = system_contrast;
         let system_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
         self.select(ctx, &settings.theme, settings.system_pair, settings.branch_palette, themes, system_dark);
         self.select_terminal(&settings.terminal.colours, themes);
@@ -225,11 +231,16 @@ impl ThemeCache {
         themes: &ThemeState,
         system_dark: bool,
     ) {
-        let key = (choice.clone(), pair, themes.generation, system_dark, branches);
+        let key = (choice.clone(), pair, themes.generation, system_dark, branches, self.system_contrast);
         if self.key.as_ref() != Some(&key) {
-            let palette = branch_palette::applied(custom::resolve(choice, themes, system_dark, pair), branches);
-            let high_contrast =
+            let mut chosen = custom::resolve(choice, themes, system_dark, pair);
+            let mut high_contrast =
                 matches!(choice.builtin(system_dark, pair), Some(BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight));
+            if self.system_contrast && !high_contrast {
+                chosen = if chosen.dark { builtin::HIGH_CONTRAST_DARK } else { builtin::HIGH_CONTRAST_LIGHT };
+                high_contrast = true;
+            }
+            let palette = branch_palette::applied(chosen, branches);
             self.mica = if high_contrast { None } else { super::backdrop::mica_tint(&palette) };
             self.trunk_near = branch_colours::trunk_near(&palette);
             self.palette = Some(palette);

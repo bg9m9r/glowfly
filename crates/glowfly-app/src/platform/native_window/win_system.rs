@@ -1,6 +1,6 @@
 //! The Windows calls behind the drawn frame: the frame shadow and Windows 11's rounded corners,
-//! the Mica backdrop and its dark or light mode, the settings that turn it off (transparency
-//! effects, high contrast), and the system menu.
+//! the Mica backdrop and its dark or light mode, the setting that turns it off (transparency
+//! effects; high contrast is `platform::a11y_system`'s), and the system menu.
 
 use crate::state::window_native::{SysItem, system_menu_items};
 use std::ffi::c_void;
@@ -11,12 +11,10 @@ use windows::Win32::Graphics::Dwm::{
 };
 use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::System::Registry::HKEY_CURRENT_USER;
-use windows::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
 use windows::Win32::UI::Controls::MARGINS;
 use windows::Win32::UI::WindowsAndMessaging::{
     EnableMenuItem, GetCursorPos, GetSystemMenu, IsZoomed, MF_BYCOMMAND, MF_ENABLED, MF_GRAYED, PostMessageW, SC_CLOSE, SC_MAXIMIZE,
-    SC_MINIMIZE, SC_MOVE, SC_RESTORE, SC_SIZE, SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
-    TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, TPM_TOPALIGN, TrackPopupMenu, WM_SYSCOMMAND,
+    SC_MINIMIZE, SC_MOVE, SC_RESTORE, SC_SIZE, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, TPM_TOPALIGN, TrackPopupMenu, WM_SYSCOMMAND,
 };
 use windows::core::BOOL;
 
@@ -82,18 +80,6 @@ pub(super) fn set_dark(hwnd: isize, dark: bool) {
 pub(super) fn transparency_on() -> bool {
     let key = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     glowfly_core::win_registry::dword(HKEY_CURRENT_USER, key, "EnableTransparency").is_none_or(|v| v != 0)
-}
-
-/// Whether a Windows high-contrast theme is on.
-pub(super) fn high_contrast_on() -> bool {
-    let size = std::mem::size_of::<HIGHCONTRASTW>() as u32;
-    let mut hc = HIGHCONTRASTW { cbSize: size, ..Default::default() };
-    // SAFETY: `hc` is a HIGHCONTRASTW with its size set, writable for the call.
-    let ok = unsafe {
-        SystemParametersInfoW(SPI_GETHIGHCONTRAST, size, Some((&raw mut hc).cast::<c_void>()), SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0))
-    }
-    .is_ok();
-    ok && (hc.dwFlags & HCF_HIGHCONTRASTON) == HCF_HIGHCONTRASTON
 }
 
 /// Where the system menu opens.

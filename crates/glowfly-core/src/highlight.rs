@@ -1,9 +1,11 @@
 //! Syntax highlighting of diff lines with syntect, reduced to a few token kinds that the UI maps
 //! to its own palette (no syntect themes). It runs where diffs are loaded, off the UI thread.
 //! The syntax set is syntect's defaults plus extra bundled definitions (TOML, TypeScript,
-//! PowerShell, Dockerfile, Kotlin, Swift and more), dumped at build time (see `syntaxes`). The
-//! language comes from a `linguist-language` gitattribute override (`SyntaxHint::language`) when
-//! it names a bundled syntax, else it is detected from the path or the first line.
+//! PowerShell, Dockerfile, Kotlin, Swift and more), dumped at build time (see `syntaxes`).
+//! Parsing runs on a copy of it that is dropped, with its compiled regexes, after a few minutes
+//! without a highlight (`grammars`). The language comes from a `linguist-language` gitattribute
+//! override (`SyntaxHint::language`) when it names a bundled syntax, else it is detected from
+//! the path or the first line.
 //!
 //! The old file (context and `-` lines) and the new file (context and `+` lines) are parsed in
 //! separate passes. Hunks are parsed in context: `repo::load_diff_for_view` loads the old file's
@@ -47,6 +49,7 @@ use syntect::parsing::SyntaxReference;
 pub(crate) mod context;
 mod file;
 mod gaps;
+mod grammars;
 mod header;
 mod linguist;
 mod memo;
@@ -368,6 +371,8 @@ pub fn finish(diff: &FileDiff, cancelled: &dyn Fn() -> bool) -> Option<DiffHighl
 mod background_tests;
 #[cfg(test)]
 pub(crate) mod context_tests;
+#[cfg(test)]
+mod grammars_tests;
 #[cfg(test)]
 mod header_tests;
 #[cfg(test)]

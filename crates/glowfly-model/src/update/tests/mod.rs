@@ -7,6 +7,7 @@ use super::*;
 
 pub(in crate::update) use crate::testing::*;
 
+pub(super) mod accessibility_tests;
 pub(super) mod avatars_tests;
 pub(super) mod diff_lines_tests;
 pub(super) mod diff_pairs_tests;
@@ -23,10 +24,12 @@ pub(super) mod onboarding_tests;
 pub(super) mod op_steps_tests;
 pub(super) mod palette_profile_tests;
 pub(super) mod palette_theme_tests;
+pub(super) mod parked_free_tests;
 pub(super) mod pr_details_tests;
 pub(super) mod pr_heads_tests;
 pub(super) mod prefs_signing_tests;
 pub(super) mod repo_colour_tests;
 pub(super) mod repo_groups_tests;
+pub(super) mod system_a11y_tests;
 pub(super) mod terminal_schemes_tests;
 pub(super) mod themes_tests;

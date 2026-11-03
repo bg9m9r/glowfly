@@ -160,6 +160,8 @@ pub enum ConflictMsg {
         line: usize,
     },
     ConflictTakeAll(Side),
+    /// Put the other side first in chunk `k`, which takes lines of both (the band's Swap).
+    ConflictSwap(usize),
     ConflictReset,
     /// Show (true) or hide the output as editable text.
     ConflictEditOutput(bool),
@@ -220,6 +222,7 @@ impl ConflictMsg {
             | Self::CloseConflict
             | Self::ConflictToggle { .. }
             | Self::ConflictToggleLine { .. }
+            | Self::ConflictSwap(..)
             | Self::ConflictEditOutput(..)
             | Self::ConflictOutputEdited
             | Self::ConflictDiscardEdit(..)

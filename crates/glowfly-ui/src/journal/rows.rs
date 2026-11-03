@@ -11,6 +11,7 @@ use crate::state::journal::{row_label, short, subject_name};
 use crate::state::journal_restore;
 use crate::ui::common::{menu_header, menu_item, menu_item_if};
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::chip::ChipSize;
 use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::{paint_cut_text, row_fill};
@@ -83,13 +84,13 @@ fn paint(ui: &Ui, st: &AppState, rect: Rect, row: &Row, label: &str) -> (Rect, O
     paint_cut_text(p, pos2(left, y1), label, body, color::text(), (time.left() - 12.0 - left).max(0.0));
 
     let mut x = left;
-    x += chip(p, x, y2, subject_name(&row.subject), (right - x) * 0.4, color::text()).width() + 6.0;
-    let lost = row.unreachable.then(|| chip(p, x, y2, t.tr("journal.unreachable.chip"), right - x, color::warn()));
+    x += chip(p, ChipSize::Chip, x, y2, subject_name(&row.subject), (right - x) * 0.4, color::text()).width() + 6.0;
+    let lost = row.unreachable.then(|| chip(p, ChipSize::Badge, x, y2, t.tr("journal.unreachable.chip"), right - x, color::warn()));
     if let Some(r) = lost {
         x += r.width() + 6.0;
     }
     if row.current {
-        x += chip(p, x, y2, t.tr("journal.now"), right - x, color::text()).width() + 6.0;
+        x += chip(p, ChipSize::Badge, x, y2, t.tr("journal.now"), right - x, color::text()).width() + 6.0;
     }
     let mono = type_scale::mono(type_scale::SMALL);
     let sha = paint_cut_text(p, pos2(x, y2), &short(row.oid), mono, color::weak(), (right - x).max(0.0));

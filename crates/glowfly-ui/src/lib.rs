@@ -35,6 +35,7 @@ mod clone_service;
 mod commit_box;
 pub(crate) mod common;
 mod conflict;
+mod conflict_band;
 mod conflict_cells;
 mod conflict_check;
 mod conflict_files;
@@ -260,7 +261,7 @@ pub struct UiCache {
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     // An open menu's keys are its own (done by the shortcuts already when they ran).
     menu_keys::capture(ctx);
-    widgets::tooltip::configure(ctx, st.settings.reduce_motion);
+    theme::a11y::configure(ctx, &st.settings, st.motion_reduced());
     let bounds = frame_layout::show(ctx, st, cache, msgs);
     // Frees the File view's image texture once a frame draws no image.
     cache.history_preview.end_frame();
@@ -278,5 +279,5 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     // Asked for a pane that wasn't drawn, or a graph key with no graph: nothing to do later.
     st.view.pane_focus = None;
     st.view.graph_key = None;
-    widgets::tooltip_motion::animate(ctx, st.settings.reduce_motion);
+    widgets::tooltip_motion::animate(ctx, st.motion_reduced());
 }

@@ -27,6 +27,8 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {
                 st.settings.theme = t;
+                // A picked theme: High contrast has nothing to bring back unless it is one.
+                st.settings.settle_contrast();
                 fx.extend(save_settings(st));
             }
         }
@@ -34,6 +36,17 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             if st.settings.toolbar_labels != on {
                 st.settings.toolbar_labels = on;
                 fx.extend(save_settings(st));
+            }
+        }
+        PrefsMsg::SetHighContrast { on, dark } => {
+            if st.settings.set_high_contrast(on, dark) {
+                fx.extend(save_settings(st));
+            }
+        }
+        PrefsMsg::ShowShortcutSheet => {
+            if st.modal.is_none() {
+                st.palette = None;
+                st.modal = Some(crate::state::Modal::Shortcuts { filter: String::new() });
             }
         }
         PrefsMsg::SetDesktopNotifications(on) => super::notify::set_desktop(st, on, fx),

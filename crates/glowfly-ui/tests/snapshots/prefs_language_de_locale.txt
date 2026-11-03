@@ -24,6 +24,7 @@ painted:
   "Profile"
   "Integrations"
   "Appearance"
+  "Accessibility"
   "Diff viewer"
   "Keyboard"
   "External tools"

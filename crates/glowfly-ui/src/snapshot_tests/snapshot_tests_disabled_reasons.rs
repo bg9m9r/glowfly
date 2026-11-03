@@ -11,7 +11,7 @@ use crate::ui::dialog_frame::{Cx, Dialog, Footer, Size};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::snapshot_tests_file_menu::menu_style;
 use crate::ui::theme::{apply_theme, color};
-use crate::ui::widgets::{buttons, tooltip};
+use crate::ui::widgets::buttons;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -120,7 +120,8 @@ fn menu_in(dark: bool, reasons: bool, compare_why: &'static str, size: egui::Vec
     crate::ui::snapshot_check::builder().with_size(size).build_ui_state(
         move |ui, (msgs, width): &mut (Vec<Msg>, f32)| {
             paint_theme(ui, dark);
-            tooltip::configure(ui.ctx(), true);
+            let still = glowfly_core::settings::Settings { reduce_motion: true, ..Default::default() };
+            crate::ui::theme::a11y::configure(ui.ctx(), &still, true);
             let r = egui::Frame::menu(ui.style()).show(ui, |ui| {
                 menu_style(ui.style_mut());
                 let why = |w| reasons.then_some(w);

@@ -16,6 +16,7 @@ use crate::ui::common::{menu_header, menu_item, menu_item_if};
 use crate::ui::empty_state::{EmptyIcon, empty_state};
 use crate::ui::pane_status::{self, Failure};
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::chip::ChipSize;
 use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use crate::ui::widgets::{paint_cut_text, row_fill};
@@ -134,7 +135,7 @@ fn paint(ui: &Ui, st: &AppState, rect: Rect, c: &LostCommit, name: &str) {
 
     let mut x = left;
     if let Some(what) = lost_chip(t, &c.kind) {
-        x += chip(p, x, y2, what, (right - x) * 0.5, color::text()).width() + 6.0;
+        x += chip(p, ChipSize::Badge, x, y2, what, (right - x) * 0.5, color::text()).width() + 6.0;
     }
     if matches!(c.kind, LostKind::Discarded { .. }) {
         return;

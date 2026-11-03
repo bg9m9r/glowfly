@@ -2,7 +2,8 @@
 //! last top panel or above the status bar (`ToastBounds`, measured by `frame_layout`), all one
 //! width so a stack lines up on both edges. Each floats on the overlay with `LG` corners and the
 //! Float shadow, outlined in its outcome's tone, with a small x top right that closes it. The
-//! pointer over a toast holds it (`NotifyMsg::HoldToast`): it neither fades nor expires.
+//! pointer over a toast, or the keyboard focus on one of its buttons, holds it
+//! (`NotifyMsg::HoldToast`): it neither fades nor expires.
 
 use super::theme::color;
 use super::theme::surfaces::Tone;
@@ -60,11 +61,12 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
     }
     let (align, offset) = anchor(st.settings.notification_location, bounds, ctx.screen_rect());
     let p = color::current();
-    let (lang, held) = (st.settings.lang(), st.held_toast());
+    let (lang, held, time) = (st.settings.lang(), st.held_toast(), st.settings.a11y.toast_time);
     let mut over = None;
     egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(true).show(ctx, |ui| {
         for t in &st.toasts {
-            let fade = now.map_or(1.0, |n| t.opacity(n));
+            let fade = now.map_or(1.0, |n| t.opacity(n, time));
+            let mut focused = false;
             // A failure stays red with a button too (Details); other toasts with one are blue.
             let tone = if !t.ok {
                 Tone::Danger
@@ -92,7 +94,9 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                             ui.scope(|ui| {
                                 ui.multiply_opacity(fade);
-                                if widgets::remove_icon(ui, lang.tr("common.dismiss.button")).clicked() {
+                                let close = widgets::remove_icon(ui, lang.tr("common.dismiss.button"));
+                                focused |= close.has_focus();
+                                if close.clicked() {
                                     msgs.push(Msg::Notify(NotifyMsg::CloseToast(t.id)));
                                 }
                             });
@@ -111,7 +115,9 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                                 ];
                                 for (a, msg) in buttons {
                                     let Some(a) = a else { continue };
-                                    if ui.add(buttons::secondary(&a.label).size(ControlSize::Small)).clicked() {
+                                    let b = ui.add(buttons::secondary(&a.label).size(ControlSize::Small));
+                                    focused |= b.has_focus();
+                                    if b.clicked() {
                                         msgs.push(msg);
                                     }
                                 }
@@ -119,7 +125,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                         });
                     }
                 });
-            if frame.response.contains_pointer() {
+            // The pointer over it, or the keyboard focus on one of its buttons, holds it.
+            if frame.response.contains_pointer() || (focused && over.is_none()) {
                 over = Some(t.id);
             }
             ui.add_space(TOAST_GAP);

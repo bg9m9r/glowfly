@@ -10,8 +10,11 @@ Dialog
   Label "Optional"
   MultilineTextInput "Description"
   Label "Tags"
+  Label "ux"
+  Label "sign-in"
   TextInput
   Label "Assigned to"
+  Label "Ada Lovelace"
   TextInput
   Label "Parent"
   ComboBox
@@ -22,9 +25,6 @@ Dialog
 painted:
   "User Story"
   "Describe the work item"
-  "ux"
-  "sign-in"
   "Search tags"
-  "Ada Lovelace"
   "Search people"
   "1  Epic · Accounts"

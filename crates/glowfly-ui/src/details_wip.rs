@@ -188,7 +188,7 @@ pub(super) fn wip_file_row(
     let selected = current || picked;
     // The row's action sits at its end: always on a conflicted row (Mark resolved), else while the
     // row is hovered or current, in place of its line counts. The S and U keys, the conflict
-    // view's Save and mark resolved and the row's menu reach it too.
+    // view's Mark resolved and the row's menu reach it too.
     let at = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), super::widgets::LIST_ROW_H));
     let show_action = conflicted || current || ui.rect_contains_pointer(at);
     // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).

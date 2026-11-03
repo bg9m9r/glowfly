@@ -46,16 +46,25 @@ impl Choice {
         self.sides().contains(&s)
     }
 
-    /// Ticks or unticks side `s`; a side ticked second goes second.
+    /// Ticks or unticks side `s`. Both sides go ours first, whichever was ticked first (`swap`
+    /// puts theirs first).
     pub fn toggle(self, s: Side) -> Choice {
         use Choice::*;
         match (self, s) {
             (Unresolved, _) => Choice::only(s),
             (Ours, Side::Ours) | (Theirs, Side::Theirs) => Unresolved,
-            (Ours, Side::Theirs) => OursThenTheirs,
-            (Theirs, Side::Ours) => TheirsThenOurs,
+            (Ours, Side::Theirs) | (Theirs, Side::Ours) => OursThenTheirs,
             (OursThenTheirs | TheirsThenOurs, Side::Ours) => Theirs,
             (OursThenTheirs | TheirsThenOurs, Side::Theirs) => Ours,
+        }
+    }
+
+    /// Both sides in the other order; any other choice as it is.
+    pub fn swap(self) -> Choice {
+        match self {
+            Choice::OursThenTheirs => Choice::TheirsThenOurs,
+            Choice::TheirsThenOurs => Choice::OursThenTheirs,
+            c => c,
         }
     }
 
@@ -247,7 +256,7 @@ mod tests {
             (Ours, O, Unresolved),
             (Ours, T, OursThenTheirs),
             (Theirs, T, Unresolved),
-            (Theirs, O, TheirsThenOurs),
+            (Theirs, O, OursThenTheirs),
             (OursThenTheirs, O, Theirs),
             (OursThenTheirs, T, Ours),
             (TheirsThenOurs, O, Theirs),
@@ -256,6 +265,7 @@ mod tests {
         for (from, side, to) in table {
             assert_eq!(from.toggle(side), to, "{from:?} toggling {side:?}");
         }
+        assert_eq!((OursThenTheirs.swap(), TheirsThenOurs.swap(), Ours.swap()), (TheirsThenOurs, OursThenTheirs, Ours));
         assert!(!Unresolved.takes(O) && !Unresolved.takes(T));
         assert!(Ours.takes(O) && !Ours.takes(T));
         assert!(Theirs.takes(T) && !Theirs.takes(O));

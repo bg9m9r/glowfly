@@ -1,0 +1,73 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+TabList
+  Tab "freed" [selected]
+Button "Close tab freed"
+Button "New tab"
+Button "freed"
+Button "main"
+Button "Undo the last action" [disabled]
+Button "Redo the undone action" [disabled]
+Button "Pull the current branch" [disabled]
+Button "More pull actions"
+Button "Push the current branch" [disabled]
+Button "More push actions"
+Button "Create a branch"
+Button "Stash all changes" [disabled]
+Button "Unstash the latest stash" [disabled]
+Button "Show the terminal panel"
+Button "Open the repository folder"
+Button "Open settings"
+Button "Search and run commands"
+Button "Show or hide the commit search"
+Button "Show or hide the activity log"
+Button "Refresh the repository"
+Unknown "Left panel contents"
+TextInput
+Button "New branch"
+Button "Local actions"
+Button "Add remote"
+Button "Remote actions"
+Button "New tag" [disabled]
+Button "Tags actions"
+Button "Stash changes" [disabled]
+Button "Stashes actions"
+Button "Add worktree" [disabled]
+Button "Worktrees actions"
+Button "Add submodule"
+Button "Submodules actions"
+Label "Select a commit to see its details."
+Label "Couldn't load the history"
+Label "Could not find repository"
+Button "Try again"
+Button "Copy details"
+painted:
+  "Repository"
+  "Branch"
+  "Undo"
+  "Redo"
+  "Pull"
+  "Push"
+  "Branch"
+  "Stash"
+  "Unstash"
+  "Terminal"
+  "Folder"
+  "Settings"
+  "Commands"
+  "Search"
+  "Activity"
+  "Refresh"
+  "Filter (branches, PRs, issues)"
+  "Local"
+  "0"
+  "Remote"
+  "0"
+  "Tags"
+  "0"
+  "Stashes"
+  "0"
+  "Worktrees"
+  "0"
+  "Submodules"
+  "0"

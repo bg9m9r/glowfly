@@ -59,8 +59,9 @@ fn copy_log_activity_and_file_tabs() {
         push_run(&mut st);
     }
     let toasts = st.toasts.len();
-    let fx = logs(&mut st, LogsMsg::CopyLog);
+    // Before the copy: its toast then adds a line of its own.
     let want = activity_text(&st.log, Lang::En, 0);
+    let fx = logs(&mut st, LogsMsg::CopyLog);
     assert_eq!(copied(&fx), [want.as_str()]);
     assert_eq!(st.toasts.len(), toasts + 1);
     let t = st.toasts.last().unwrap();

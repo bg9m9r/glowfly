@@ -69,8 +69,6 @@ const DEAD_PUB: &[&str] = &[
     "crates/glowfly-model/src/state/status_counts.rs: open_requests_text",
     "crates/glowfly-model/src/state/terminal.rs: for_workdir",
     "crates/glowfly-model/src/state/terminal_names.rs: program_hint",
-    "crates/glowfly-model/src/state/toasts.rs: ACTION_TOAST_LIFETIME",
-    "crates/glowfly-model/src/state/toasts.rs: lifetime",
     "crates/glowfly-model/src/state/trust.rs: record_as_found",
     "crates/glowfly-model/src/state/undo.rs: MAX_UNDO",
     "crates/glowfly-model/src/state/watch.rs: POLL_GAP_CAP",
@@ -127,7 +125,6 @@ const DEAD_PUB: &[&str] = &[
     "crates/glowfly-ui/src/widgets/buttons.rs: tonal",
     "crates/glowfly-ui/src/widgets/menu_submenu.rs: CLOSE_GRACE",
     "crates/glowfly-ui/src/widgets/menu_submenu.rs: OPEN_DELAY",
-    "crates/glowfly-ui/src/widgets/mod.rs: chip_with_edge",
     "crates/glowfly-ui/src/widgets/row_fill.rs: ACCENT_BAR_W",
     "crates/glowfly-ui/src/widgets/tooltip_motion.rs: rise",
 ];

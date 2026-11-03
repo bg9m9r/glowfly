@@ -102,12 +102,21 @@ pub fn check_row(ui: &mut Ui, label: &str, value: &mut bool, check: &str, help_t
 }
 
 pub fn combo<T: PartialEq + Copy>(ui: &mut Ui, id: &str, value: &mut T, options: &[(T, &str)]) {
+    combo_response(ui, id, value, options);
+}
+
+/// `combo`, returning the closed combo's response (to name it for screen readers).
+pub fn combo_response<T: PartialEq + Copy>(ui: &mut Ui, id: &str, value: &mut T, options: &[(T, &str)]) -> egui::Response {
     let current = options.iter().find(|(v, _)| v == value).map(|(_, l)| *l).unwrap_or("");
-    egui::ComboBox::from_id_salt(id).selected_text(current).width(fit(ui, 230.0)).show_ui(ui, |ui| {
-        for (v, label) in options {
-            ui.selectable_value(value, *v, *label);
-        }
-    });
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(current)
+        .width(fit(ui, 230.0))
+        .show_ui(ui, |ui| {
+            for (v, label) in options {
+                ui.selectable_value(value, *v, *label);
+            }
+        })
+        .response
 }
 
 pub fn help(ui: &mut Ui, text: &str) {

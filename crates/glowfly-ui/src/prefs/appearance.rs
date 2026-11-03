@@ -1,6 +1,8 @@
-//! Preferences > Appearance.
+//! Preferences > Appearance, and its Interface size row, which Accessibility shows too
+//! (`zoom_row`).
 
 use super::{check_row, combo, help, row, section};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::{Msg, PrefsMsg};
 use crate::themes::ThemeState;
 use crate::ui::theme::controls;
@@ -17,7 +19,7 @@ pub struct FrameRows {
     pub system_title_bar: bool,
 }
 
-pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, frame: FrameRows, msgs: &mut Vec<Msg>) {
+pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, keys: &Keymap, frame: FrameRows, msgs: &mut Vec<Msg>) {
     use glowfly_core::settings::Corner;
     let t = s.lang();
     super::theme_row::theme_row(ui, s, themes, msgs);
@@ -45,23 +47,40 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, frame: FrameR
         }
         help(ui, t.tr("prefs.ui.desktop_notifications.help"));
     });
-    interface_section(ui, t, s, frame);
+    interface_section(ui, t, s, keys, frame);
     super::appearance_graph::graph_section(ui, t, s);
 }
 
-/// Interface: zoom, the panels and toolbar, the Windows title bar, the menu bar, toolbar labels,
-/// reduced motion, spell checking, the graph's extras and how changed-file lists show their
-/// files.
-fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, frame: FrameRows) {
-    use glowfly_core::settings::BranchVisibility as BV;
-    section(ui, t.tr("prefs.ui.interface.section"));
-    row(ui, t.tr("prefs.ui.zoom.label"), |ui| {
-        egui::ComboBox::from_id_salt("zoom").selected_text(format!("{}%", s.zoom_level())).width(super::fit(ui, 230.0)).show_ui(ui, |ui| {
+/// Interface size: the window zoom, with its keys in the help (only the first sentence when
+/// either has no key). The same row on Appearance and Accessibility; `follow` adds
+/// Accessibility's "Also follow the system's text size" check under the combo.
+pub fn zoom_row(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, follow: bool) {
+    let label = t.tr("prefs.a11y.zoom.label");
+    let text = match (keys.hint(BindingId::ZoomIn), keys.hint(BindingId::ZoomOut)) {
+        (Some(zoom_in), Some(zoom_out)) => t.trf("prefs.a11y.zoom.help", &[("in", &zoom_in), ("out", &zoom_out)]),
+        _ => t.tr("prefs.a11y.zoom.help_no_keys").to_owned(),
+    };
+    row(ui, label, |ui| {
+        let combo = egui::ComboBox::from_id_salt("zoom").selected_text(format!("{}%", s.zoom_level())).width(super::fit(ui, 230.0));
+        let r = combo.show_ui(ui, |ui| {
             for p in glowfly_core::settings::ZOOM_STEPS {
                 ui.selectable_value(&mut s.zoom_percent, p, format!("{p}%"));
             }
         });
+        super::accessibility::name(&r.response, label, &text);
+        if follow {
+            super::accessibility::follow_check(ui, label, &mut s.a11y.follow_system_text_size, t.tr("prefs.a11y.zoom.follow"), &text);
+        }
+        help(ui, &text);
     });
+}
+
+/// Interface: zoom, the panels and toolbar, the Windows title bar, the menu bar, toolbar labels,
+/// spell checking, the graph's extras and how changed-file lists show their files.
+fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, frame: FrameRows) {
+    use glowfly_core::settings::BranchVisibility as BV;
+    section(ui, t.tr("prefs.ui.interface.section"));
+    zoom_row(ui, t, s, keys, false);
     check_row(ui, t.tr("prefs.ui.left_panel.label"), &mut s.show_left_panel, t.tr("prefs.ui.left_panel.check"), None);
     check_row(ui, t.tr("prefs.ui.details_panel.label"), &mut s.show_details_panel, t.tr("prefs.ui.details_panel.check"), None);
     let (label, check, text) = (t.tr("prefs.ui.toolbar.label"), t.tr("prefs.ui.toolbar.check"), t.tr("prefs.ui.toolbar.help"));
@@ -75,9 +94,6 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, frame: FrameRows) {
         check_row(ui, label, &mut s.show_menu_bar, check, Some(text));
     }
     check_row(ui, t.tr("prefs.ui.toolbar_labels.label"), &mut s.toolbar_labels, t.tr("prefs.ui.toolbar_labels.check"), None);
-    let (label, check, text) =
-        (t.tr("prefs.ui.reduce_motion.label"), t.tr("prefs.ui.reduce_motion.check"), t.tr("prefs.ui.reduce_motion.help"));
-    check_row(ui, label, &mut s.reduce_motion, check, Some(text));
     let (label, check, text) = (t.tr("prefs.ui.spellcheck.label"), t.tr("prefs.ui.spellcheck.check"), t.tr("prefs.ui.spellcheck.help"));
     check_row(ui, label, &mut s.spellcheck, check, Some(text));
     let (label, check, text) = (t.tr("prefs.ui.avatars.label"), t.tr("prefs.ui.avatars.check"), t.tr("prefs.ui.avatars.help"));
