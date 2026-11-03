@@ -175,6 +175,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "follow_system_text_size",
     "follow_system_contrast",
     "follow_system_motion",
+    "announce_jobs",
 ];
 
 /// What a profile switch changed in the settings in use.
