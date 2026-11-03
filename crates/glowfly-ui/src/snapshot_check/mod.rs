@@ -37,6 +37,21 @@ pub(crate) fn within_tolerance(diff: i32) -> bool {
     diff <= TOLERATED_PIXELS
 }
 
+/// kittest's per-pixel threshold (`SnapshotOptions::default`), which the comparisons use.
+const PIXEL_THRESHOLD: f32 = 0.6;
+
+/// While snapshots are updated: whether the `approved` image stays rather than being replaced by
+/// `new`, because it is the same size and no more than `TOLERATED_PIXELS` differ under kittest's
+/// own comparison. kittest rewrites an image for any difference past its threshold, so without
+/// this every update would commit the renderer's anti-aliasing noise as a change.
+pub(crate) fn keep_approved(approved: Option<image::RgbaImage>, new: &image::RgbaImage) -> bool {
+    let Some(approved) = approved.filter(|a| a.dimensions() == new.dimensions()) else { return false };
+    match dify::diff::get_results(approved, new.clone(), PIXEL_THRESHOLD, true, None, &None, &None) {
+        None => true,
+        Some((diff, _)) => within_tolerance(diff),
+    }
+}
+
 /// Whether `value` (the variable's) asks for snapshots to be skipped: set to anything but
 /// empty, `0` or `false`.
 pub(crate) fn skip_requested(value: Option<&str>) -> bool {
@@ -113,12 +128,18 @@ impl<S> CheckSnapshot for Harness<'_, S> {
         if let Some(crop) = goldens::crop(name) {
             let image = self.render().unwrap_or_else(|e| panic!("could not render {name}: {e}"));
             let image = crop_image(image, crop_rect(self, crop), self.ctx.pixels_per_point());
-            match egui_kittest::try_image_snapshot_options(&image, name, &SnapshotOptions::default().output_path(dir)) {
-                Ok(()) => {}
-                Err(SnapshotError::Diff { diff, .. }) if within_tolerance(diff) => {
-                    eprintln!("note: snapshot {name} differs in {diff} pixels, within the tolerated {TOLERATED_PIXELS}");
+            let approved = || image::open(dir.join(format!("{name}.png"))).ok().map(|i| i.to_rgba8());
+            if compare::updating() && keep_approved(approved(), &image) {
+                // kittest would rewrite it for renderer noise a normal run tolerates.
+                eprintln!("note: snapshot {name} is within the tolerated {TOLERATED_PIXELS} pixels; left as approved");
+            } else {
+                match egui_kittest::try_image_snapshot_options(&image, name, &SnapshotOptions::default().output_path(dir)) {
+                    Ok(()) => {}
+                    Err(SnapshotError::Diff { diff, .. }) if within_tolerance(diff) => {
+                        eprintln!("note: snapshot {name} differs in {diff} pixels, within the tolerated {TOLERATED_PIXELS}");
+                    }
+                    Err(err) => panic!("{err}"),
                 }
-                Err(err) => panic!("{err}"),
             }
         }
         if let Err(err) = text_result {
@@ -145,13 +166,17 @@ fn crop_rect<S>(h: &Harness<'_, S>, crop: Crop) -> Option<egui::Rect> {
 /// Room kept around a cropped dialog for its shadow.
 const DIALOG_ROOM: f32 = 24.0;
 
-/// `image` cut to `rect` (in points, at `ppp` pixels per point), kept inside the image.
+/// `image` cut to `rect` (in points, at `ppp` pixels per point), kept inside the image. The
+/// corner and the size are rounded each on its own, so a sub-pixel shift of a fractional rect
+/// (a dialog's bounds) never changes the image's size.
 pub(crate) fn crop_image(image: image::RgbaImage, rect: Option<egui::Rect>, ppp: f32) -> image::RgbaImage {
     let Some(rect) = rect else { return image };
     let (w, h) = image.dimensions();
-    let x0 = ((rect.min.x * ppp).floor().max(0.0) as u32).min(w);
-    let y0 = ((rect.min.y * ppp).floor().max(0.0) as u32).min(h);
-    let x1 = ((rect.max.x * ppp).ceil().max(0.0) as u32).clamp(x0, w);
-    let y1 = ((rect.max.y * ppp).ceil().max(0.0) as u32).clamp(y0, h);
+    let (left, top) = ((rect.min.x * ppp).round(), (rect.min.y * ppp).round());
+    let (right, bottom) = (left + (rect.width() * ppp).round(), top + (rect.height() * ppp).round());
+    let x0 = (left.max(0.0) as u32).min(w);
+    let y0 = (top.max(0.0) as u32).min(h);
+    let x1 = (right.max(0.0) as u32).clamp(x0, w);
+    let y1 = (bottom.max(0.0) as u32).clamp(y0, h);
     image::imageops::crop_imm(&image, x0, y0, x1 - x0, y1 - y0).to_image()
 }
