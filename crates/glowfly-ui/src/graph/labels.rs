@@ -26,8 +26,9 @@ const CHIP: ChipSize = ChipSize::Chip;
 const TEXT_PAD: f32 = CHIP.metrics().pad_x;
 /// Room a tag mark takes before a tag's name.
 const TAG_LEAD: f32 = 12.0;
-/// The least room the first chip keeps beside a "+N" chip; with less, the "+N" chip is dropped.
-const MIN_FIRST_W: f32 = 24.0;
+/// The characters of the first chip's name it keeps beside a "+N" chip; with less room, the
+/// "+N" chip is dropped first.
+const NAME_KEEP: usize = 6;
 const FONT: f32 = CHIP.metrics().text;
 /// How far a halo (`ChipLook::halo`) reaches past its chip: its 1.5 px gap and 1.5 px ring. The
 /// halo takes no layout room: it paints into the cell's inset and padding, or the gap after it,
@@ -108,6 +109,22 @@ pub(super) fn spec_w(p: &Painter, spec: &ChipSpec) -> f32 {
     chip_w(spec, text_w(p, &spec.text, FONT))
 }
 
+/// The text a first chip keeps beside a "+N" chip: its check mark (the checked-out branch's),
+/// the first `NAME_KEEP` characters of its name and "…", or the whole text when no longer.
+fn kept_text(spec: &ChipSpec) -> String {
+    let lead = if spec.style == ChipStyle::CurrentBranch { "✔ ".chars().count() } else { 0 };
+    let keep = lead + NAME_KEEP;
+    if spec.text.chars().count() <= keep {
+        return spec.text.clone();
+    }
+    spec.text.chars().take(keep).chain(['…']).collect()
+}
+
+/// The width of `spec`'s chip cut to its `kept_text`.
+fn kept_w(p: &Painter, spec: &ChipSpec) -> f32 {
+    chip_w(spec, text_w(p, &kept_text(spec), FONT))
+}
+
 /// The "+n" badge.
 fn plus_chip(n: usize) -> chip::Chip<'static> {
     chip::Chip::new(ChipSize::Badge, format!("+{n}")).look(chip::Look::new(color::raised(), color::weak()))
@@ -132,15 +149,17 @@ pub(super) struct Fit {
 }
 
 /// Lays out chips `widths` wide, `gap` apart, in `room`; `plus_w(n)` is the width of the "+n"
-/// chip. The first chip always shows, cut if needed, leaving room for a "+N" chip when there are
-/// more (unless the room is too narrow for both). Each later chip shows only whole and only when
-/// a "+N" chip for whatever remains still fits after it; the first that doesn't fit stops.
-pub(super) fn fit(widths: &[f32], room: f32, plus_w: impl Fn(usize) -> f32, gap: f32) -> Fit {
+/// chip and `first_keep` the first chip's width cut to its first `NAME_KEEP` characters
+/// (`kept_w`). The first chip always shows, cut if needed, leaving room for a "+N" chip when
+/// there are more; the "+N" chip is dropped first, before the first chip goes below
+/// `first_keep`. Each later chip shows only whole and only when a "+N" chip for whatever remains
+/// still fits after it; the first that doesn't fit stops.
+pub(super) fn fit(widths: &[f32], first_keep: f32, room: f32, plus_w: impl Fn(usize) -> f32, gap: f32) -> Fit {
     let n = widths.len();
     let Some(&want) = widths.first() else { return Fit { shown: 0, first_w: 0.0, first_cut: false, plus: false } };
     let reserve = if n > 1 { plus_w(n - 1) + gap } else { 0.0 };
-    if n > 1 && room - reserve < MIN_FIRST_W.min(want) {
-        // Too narrow for a "+N" chip beside the first: the first alone, cut to the room.
+    if n > 1 && room - reserve < first_keep.min(want) {
+        // Too narrow for a "+N" chip beside the first kept chip: the first alone, cut to the room.
         return Fit { shown: 1, first_w: want.min(room).max(0.0), first_cut: want > room, plus: false };
     }
     let first_w = want.min(room - reserve);
@@ -211,6 +230,16 @@ pub(super) enum Tip {
     One(usize),
 }
 
+/// What the pointer over a row's chips asks to show, for chips fitted as `f` out of `n`: every
+/// label while any is hidden (with or without a "+N" chip: a dropped "+N" leaves the first chip
+/// to say so), else the chip `on` when it is cut or `folds` copies on remotes in.
+fn hover_tip(f: Fit, n: usize, on_chip: bool, on: Option<usize>, folds: impl Fn(usize) -> bool) -> Option<Tip> {
+    if on_chip && f.shown < n {
+        return Some(Tip::All);
+    }
+    on.filter(|&i| (i == 0 && f.first_cut) || folds(i)).map(Tip::One)
+}
+
 /// What one row's BRANCH / TAG cell draws.
 pub(super) struct RefsRow<'a> {
     pub chips: &'a [Chip<'a>],
@@ -266,7 +295,7 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
             row.chips.iter().enumerate().map(|(i, c)| ChipSpec::of(c, if i == 0 { row.build } else { None })).collect();
         let leads = halo_leads(&specs.iter().map(|s| s.style).collect::<Vec<_>>());
         let widths: Vec<f32> = specs.iter().zip(&leads).map(|(s, lead)| spec_w(&rp, s) + lead).collect();
-        let f = fit(&widths, span.1 - x0, |k| plus_w(&rp, k), GAP);
+        let f = fit(&widths, kept_w(&rp, &specs[0]), span.1 - x0, |k| plus_w(&rp, k), GAP);
         let mut drawn = Vec::with_capacity(f.shown);
         let mut x = x0;
         for (i, spec) in specs.iter().take(f.shown).enumerate() {
@@ -289,12 +318,7 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
         out.chip_rects = drawn;
         if let Some(p) = row.pointer {
             out.on_chip = hit.contains(p);
-            out.hovered_tip = if f.plus && out.on_chip {
-                Some(Tip::All)
-            } else {
-                let on = out.chip_at(p);
-                on.filter(|&i| (i == 0 && f.first_cut) || row.chips[i].folds()).map(Tip::One)
-            };
+            out.hovered_tip = hover_tip(f, row.chips.len(), out.on_chip, out.chip_at(p), |i| row.chips[i].folds());
         }
     }
     // Room for the New branch… ghost button after the checked-out commit's labels (the graph

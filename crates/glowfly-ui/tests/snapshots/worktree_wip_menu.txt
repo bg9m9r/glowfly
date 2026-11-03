@@ -145,7 +145,6 @@ painted:
   "…ommitted changes · old"
   "1"
   "✔ main"
-  "+1"
   "Ada Lovelace"
   "Jan 9"
   "…nges · feature-login"

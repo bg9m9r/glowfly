@@ -78,6 +78,11 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Cut the file history row's date when the panel is narrower than the date
 - Show the whole text of a cut row when it gets keyboard focus, not only on hover
 
+### Middle truncation of long names (D16)
+
+- Cut the conflict popover's Branch and Upstream lines by the D16 rule (they still cut half and half)
+- Cut graph ref chips in their middle after the "+N" overflow (waits on #534 and #424)
+
 ### Menus name their object once
 
 - Palette entries name commits by summary instead of a short SHA ("Rebase main onto 1a2b3c4",
@@ -240,7 +245,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Follow macOS's title-bar double-click setting (zoom or minimize) instead of always maximizing
 - F10 opens the title bar's menu, like an Alt tap
 - Dim the window buttons under a dialog's backdrop
-- Cut long repository names in the middle on tabs, like the branch picker
 - Vibrancy behind the macOS title bar, toolbar and sidebar
 - Mica on Windows 11 21H2 (build 22000), which lacks the documented backdrop attribute
 - A dark system menu under a dark theme

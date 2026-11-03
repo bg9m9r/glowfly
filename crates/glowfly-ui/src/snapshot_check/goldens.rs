@@ -108,6 +108,11 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     // The left panel's empty states: an expanded empty Worktrees, and pull requests not connected.
     ("sidebar_empty_worktrees", TopLeft(300.0, 820.0)),
     ("sidebar_prs_connect", TopLeft(300.0, 820.0)),
+    // D16: branches and worktrees that share a long start, each cut in its middle.
+    ("sidebar_shared_prefix_dark", TopLeft(300.0, 820.0)),
+    ("sidebar_shared_prefix_light", TopLeft(300.0, 820.0)),
+    // D16 in the palette: a cut ref with its matches lit at both ends.
+    ("palette_switch_long_name", Window),
     ("toolbar_restyled_dark", Window),
     ("toolbar_restyled_light", Window),
     ("menu_bar_file", Window),
@@ -413,6 +418,8 @@ const IMAGE_ONLY: &[&str] = &[
     "sidebar_gitflow_group_hovered_light",
     "sidebar_remote_group_pressed_dark",
     "sidebar_remote_group_pressed_light",
+    // `sidebar_shared_prefix_dark` in Dawn.
+    "sidebar_shared_prefix_light",
     "gitflow_panel_row_hovered_over_finish_dark",
     "gitflow_panel_row_hovered_over_finish_light",
     "pr_checks_header_hovered_dark",

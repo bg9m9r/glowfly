@@ -10,17 +10,15 @@ use std::fmt::Display;
 /// The most characters a name inside a menu label keeps.
 pub const NAME_MAX: usize = 28;
 
-/// `name`, cut in its middle behind "…" to `NAME_MAX` characters when it is longer: its start
-/// and end both matter (a prefix like `feature/`, a ticket number at the end).
+/// `name`, cut in its middle behind "…" to `NAME_MAX` characters when it is longer, by the rule
+/// every name follows (`truncate::middle_cut`): a short head ending before a separator, and a
+/// tail that fills the rest, so names that share a long start stay apart.
 pub fn cut(name: &str) -> String {
-    let chars: Vec<char> = name.chars().collect();
-    if chars.len() <= NAME_MAX {
-        return name.to_owned();
+    let units = |s: &str| s.chars().count() as f32;
+    match super::truncate::middle_cut(name, NAME_MAX as f32, units) {
+        None => name.to_owned(),
+        Some((head, tail)) => format!("{}…{}", &name[..head], &name[tail..]),
     }
-    let keep = NAME_MAX - 1;
-    let head = keep.div_ceil(2);
-    let tail = keep - head;
-    chars[..head].iter().chain(&['…']).chain(&chars[chars.len() - tail..]).collect()
 }
 
 /// A label as shown (its names cut) and in full.
@@ -50,7 +48,7 @@ mod tests {
         let long = "feature/very-long-branch-name-for-ticket-1234";
         let c = cut(long);
         assert_eq!(c.chars().count(), NAME_MAX);
-        assert!(c.starts_with("feature/very-") && c.ends_with("ticket-1234") && c.contains('…'), "{c}");
+        assert_eq!(c, "feature…name-for-ticket-1234", "the head ends before its separator");
         assert_eq!(cut(&"x".repeat(NAME_MAX)), "x".repeat(NAME_MAX));
     }
 

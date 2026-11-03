@@ -97,6 +97,7 @@ Button "Minimize window"
 Button "Maximize window"
 Button "Close window"
 painted:
+  "a-reposit…folder-name"
   "Repository"
   "Branch"
   "main"

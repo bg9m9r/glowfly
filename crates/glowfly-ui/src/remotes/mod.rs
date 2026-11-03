@@ -106,7 +106,7 @@ pub(crate) fn section(
                 continue;
             }
             let (r, marker, cut) =
-                widgets::list_row_cut(ui, widgets::NESTED_INDENT + DOT_ROOM, name, None, slot, c.sel.includes(*oid), false);
+                widgets::name_row_cut(ui, widgets::NESTED_INDENT + DOT_ROOM, name, None, slot, c.sel.includes(*oid), false);
             branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(name)));
             if r.hovered() {
                 *hover_next = Some(*oid);
