@@ -94,6 +94,11 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("title_bar_mac_dark", Top(108.0)),
     ("tabs_restyled", Window),
     ("tabs_hover", Top(40.0)),
+    // The status bar's What's new chip after an upgrade, in both default themes, and beside an
+    // update's chip.
+    ("status_whats_new_dark", Window),
+    ("status_whats_new_light", Window),
+    ("status_whats_new_beside_update", Window),
     // The trust chip waiting beside the conflict chip, then at rest.
     ("toolbar_trust_waiting_dark", Top(108.0)),
     ("toolbar_trust_rest_dark", Top(108.0)),
@@ -302,6 +307,8 @@ const IMAGE_ONLY: &[&str] = &[
     "graph_search_dim_high_contrast_light",
     // The trust chip at rest: the same names as `toolbar_trust_waiting_dark`; only its look differs.
     "toolbar_trust_rest_dark",
+    // `status_whats_new_dark` in Porcelain.
+    "status_whats_new_light",
     // `hint_row_undo` in Porcelain.
     "hint_row_undo_light",
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.

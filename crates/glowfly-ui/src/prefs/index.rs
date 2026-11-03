@@ -29,6 +29,7 @@ const INDEX: &[(PrefPage, &str, Option<&str>)] = &[
     (PrefPage::General, "prefs.general.tips.label", Some("prefs.general.tips.help")),
     (PrefPage::General, "prefs.general.tips_again.label", Some("prefs.general.tips_again.help")),
     (PrefPage::General, "prefs.general.updates.label", Some("prefs.general.updates.help")),
+    (PrefPage::General, "prefs.general.updates.whats_new.label", None),
     (PrefPage::General, "prefs.general.watch_files.label", None),
     (PrefPage::General, "prefs.links.label", Some("prefs.links.help")),
     (PrefPage::General, "prefs.ui.behind_alerts.label", Some("prefs.ui.behind_alerts.help")),

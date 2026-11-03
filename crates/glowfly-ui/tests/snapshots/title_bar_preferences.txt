@@ -31,6 +31,10 @@ Label "Glowfly 0.1.0 · Never checked"
 Button "Check now"
 Label "Glowfly asks GitHub's releases API for the newest…"
 Link "Learn more"
+Label "After an update:"
+RadioButton "Show “What's new” in the status bar" [on]
+RadioButton "Open the release notes" [off]
+RadioButton "Don't show anything" [off]
 Label "Notifications"
 Label "Desktop notifications"
 CheckBox "Show system notifications while Glowfly is in the background" [off]
@@ -136,5 +140,3 @@ Button "Close window"
 painted:
   "Bottom left"
   "After a background fetch, say when the checked-out branch has\nfallen behind its upstream, with a button to pull."
-  "The git program Glowfly runs for commits, fetches, pushes and\nhooks (Preferences > Git)."
-  "Suggested as the first branch's name when you create a\nrepository. You can still change it each time."

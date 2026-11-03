@@ -29,6 +29,10 @@ ProgressIndicator = 40
 Button "Abbrechen"
 Label "Glowfly fragt einmal täglich die Releases-API von…"
 Link "Mehr erfahren"
+Label "Nach einem Update:"
+RadioButton "In der Statusleiste auf Neuerungen hinweisen" [on]
+RadioButton "Versionshinweise öffnen" [off]
+RadioButton "Nichts anzeigen" [off]
 Label "Benachrichtigungen"
 Label "Desktop-Benachrichtigungen"
 CheckBox "Systembenachrichtigungen zeigen, während Glowfly im Hintergrund ist" [off]

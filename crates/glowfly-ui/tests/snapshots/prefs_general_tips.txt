@@ -24,6 +24,10 @@ Label "Glowfly 0.1.0 · Never checked"
 Button "Check now"
 Label "Glowfly asks GitHub's releases API for the newest…"
 Link "Learn more"
+Label "After an update:"
+RadioButton "Show “What's new” in the status bar" [on]
+RadioButton "Open the release notes" [off]
+RadioButton "Don't show anything" [off]
 Label "Notifications"
 Label "Desktop notifications"
 CheckBox "Show system notifications while Glowfly is in the background" [off]
@@ -130,4 +134,3 @@ painted:
   "Suggested as the first branch's name when you create a\nrepository. You can still change it each time."
   "In repositories that store files in Git LFS, it also downloads\nthe LFS files of the checked-out commit."
   "Each fetch contacts every remote, so short intervals add up when\nthere are many."
-  "When off, only the graph's Load more link adds commits past the\nlimit."

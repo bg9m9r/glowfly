@@ -29,6 +29,10 @@ Button "Show file"
 Label "Glowfly opens the disk image and quits. Drag Glowfly to Applications to replace this copy, then open it again."
 Label "Glowfly asks GitHub's releases API for the newest…"
 Link "Learn more"
+Label "After an update:"
+RadioButton "Show “What's new” in the status bar" [on]
+RadioButton "Open the release notes" [off]
+RadioButton "Don't show anything" [off]
 Label "Notifications"
 Label "Desktop notifications"
 CheckBox "Show system notifications while Glowfly is in the background" [off]

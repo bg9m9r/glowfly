@@ -24,6 +24,10 @@ Label "Glowfly 0.1.0 · Nunca comprobado"
 Button "Comprobar ahora"
 Label "Glowfly consulta una vez al día la API de…"
 Link "Más información"
+Label "Tras una actualización:"
+RadioButton "Mostrar «Novedades» en la barra de estado" [on]
+RadioButton "Abrir las notas de la versión" [off]
+RadioButton "No mostrar nada" [off]
 Label "Notificaciones"
 Label "Notificaciones de escritorio"
 CheckBox "Mostrar notificaciones del sistema mientras Glowfly está en segundo plano" [off]
