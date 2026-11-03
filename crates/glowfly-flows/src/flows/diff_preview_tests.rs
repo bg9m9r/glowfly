@@ -1,4 +1,5 @@
-//! Headless tests for the binary diff's sides: asked for once per shown binary diff, stale
+//! Headless tests for the binary diff's sides: asked for once per shown binary diff (a small
+//! one's bytes coming with them for the hex view), stale
 //! results ignored, kept through a reload of the same file, cleared on close, none for text or
 //! LFS-summary diffs, and asked for again when a tab comes back still loading.
 
@@ -60,7 +61,7 @@ fn requests(fx: &[Effect]) -> Vec<(DiffTarget, u64)> {
 }
 
 fn sides(size: u64) -> Arc<BinarySides> {
-    Arc::new(BinarySides { old: Some(BinarySide { size, image: None }), new: None })
+    Arc::new(BinarySides { old: Some(BinarySide { size, image: None, bytes: None }), new: None })
 }
 
 fn loaded(target: DiffTarget, generation: u64, result: Result<Arc<BinarySides>, String>) -> Msg {
@@ -86,6 +87,9 @@ fn a_binary_diff_asks_for_its_sides_once() {
     }
     let s = diff_preview::shown(&st).expect("loaded");
     assert_eq!((s.old.as_ref().map(|s| s.size), s.new.as_ref().map(|s| s.size)), (Some(6), Some(8)));
+    // A small binary brings both sides' bytes for the hex view.
+    let (old, new): (&[u8], &[u8]) = (b"\0\x01old\0", b"\0\x02newer\0");
+    assert_eq!(s.hex(), Some((Some(old), Some(new))));
 
     let fx = open(&mut st, DiffTarget::Unstaged("a.txt".into()));
     assert!(requests(&fx).is_empty(), "a text diff asks for nothing");
