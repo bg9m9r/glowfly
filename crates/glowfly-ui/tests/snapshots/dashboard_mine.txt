@@ -4,7 +4,7 @@ TabList
   Tab "New tab" [selected]
 Button "Close tab New tab"
 Button "New tab"
-Button "Open…"
+Button "Repository: Open…"
 Label "Dashboard"
 Label "Pull requests and issues across your repositories"
 Button "Close"
@@ -33,6 +33,7 @@ Button "2 repositories have no hosting-service remote"
 Label "old-site: missing"
 painted:
   "Repository"
+  "Open…"
   "Filter by title, number, author or repository"
   "widgets, widgets-fork"
   "#42 ✔2"

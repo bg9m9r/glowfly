@@ -38,7 +38,7 @@ fn saves_land_in_the_test_folder() {
     fx.init(&repo, &[("a.txt", "one\n")]);
     git(&repo, &["status", "--short"]);
     let j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
-    j.see("app", super::find::Region::Toolbar);
+    j.see("Repository: app", super::find::Region::Toolbar);
     let recent = std::fs::read_to_string(j.config_file("recent.txt")).expect("recent.txt is saved in the test's folder");
     let listed = crate::runner::platform::parse_recent(&recent);
     assert!(listed.iter().any(|p| Journey::same(p, &repo)), "{listed:?}");

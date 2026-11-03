@@ -48,6 +48,7 @@ Button "Use existing…"
 Label "work_key has no work_key.pub next to it. Recreate it with ssh-keygen -y -f work_key > work_key.pub, then add the key again."
 Label "Which key"
 Label "Glowfly writes the chosen key into core.sshCommand. Let ssh decide leaves it unset, so ssh uses its config, the agent or its default key names."
+Label "All repositories"
 ComboBox "All repositories: deploy_key"
 Label "Agent"
 Label "Off"
@@ -55,5 +56,3 @@ Button "Check the agent again"
 CheckBox "Use local SSH agent" [off]
 Label "ssh gets keys from your running agent. Glowfly doesn't choose a key in core.sshCommand while this is on."
 Label "The OpenSSH Authentication Agent service is stopped"
-painted:
-  "All repositories"

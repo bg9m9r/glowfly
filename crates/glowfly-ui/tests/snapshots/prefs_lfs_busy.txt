@@ -26,7 +26,9 @@ Button "Git LFS" [selected]
 Button "Git Flow"
 Button "Sparse checkout"
 Label "Git LFS"
+Label "Status"
 Label "Enabled · git-lfs 3.7.1"
+Label "Tracked patterns"
 Label "*.psd"
 Button "Untrack" [disabled]
 Label "*.blend"
@@ -35,9 +37,12 @@ Button "Untrack" [disabled]
 Label "my dir/*.bin"
 Button "Untrack" [disabled]
 Label "Files that match a pattern are stored in LFS from their next commit. Files already committed stay in history as they are."
-TextInput
+Label "New pattern"
+TextInput "New pattern"
 Button "Track" [disabled]
+Label ".gitattributes"
 Button "Open .gitattributes"
+Label "Commands"
 Button "Fetch" [disabled]
 Button "Pull" [disabled]
 Button "Push" [disabled]
@@ -45,9 +50,4 @@ Button "Prune" [disabled]
 Button "Checkout" [disabled]
 Label "LFS pull…"
 painted:
-  "Status"
-  "Tracked patterns"
-  "New pattern"
   "*.psd, *.zip or assets/video/**"
-  ".gitattributes"
-  "Commands"

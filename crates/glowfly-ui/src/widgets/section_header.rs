@@ -32,14 +32,40 @@ pub fn section_fonts(ui: &Ui) -> (FontId, FontId) {
 /// Sidebar section header: chevron, title in the section-header style, and the count on the
 /// right in weak body text. Toggles `open`.
 pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool) -> Response {
-    header_row(ui, title, count, open, ((false, false), false))
+    let name = count.map_or_else(|| title.to_owned(), |n| format!("{title}, {n}"));
+    header_row(ui, title, count, open, ((false, false), false), &name)
+}
+
+/// What a screen reader calls a section's header: its title and what its count counts
+/// ("Local, 3 branches").
+fn header_name(t: Lang, key: &str, title: &str, count: Option<usize>) -> String {
+    let Some(n) = count else { return title.to_owned() };
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("title", &title)];
+    // Literal keys, so the key check finds them.
+    match key {
+        "local" | "gitflow" => t.trn("access.section.branches", n, args),
+        "remote" => t.trn("access.section.remotes", n, args),
+        "tags" => t.trn("access.section.tags", n, args),
+        "stashes" => t.trn("access.section.stashes", n, args),
+        "worktrees" => t.trn("access.section.worktrees", n, args),
+        "submodules" => t.trn("access.section.submodules", n, args),
+        _ => t.trn("access.section.items", n, args),
+    }
 }
 
 /// `section_header`; `buttons` says which of the + and ⋯ are drawn on top of the row (the hover
 /// fill then stays while the pointer is anywhere on the row, but not while it is on one of
 /// them, which lights itself); `muted` draws the title `weak` and the count `faint` (an empty
-/// section that folds away). The row is lit through `row_fill`, the top border over it.
-fn header_row(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool, (buttons, muted): ((bool, bool), bool)) -> Response {
+/// section that folds away). The row is lit through `row_fill`, the top border over it. Screen
+/// readers read it as the button `name`, expanded or not.
+fn header_row(
+    ui: &mut Ui,
+    title: &str,
+    count: Option<usize>,
+    open: &mut bool,
+    (buttons, muted): ((bool, bool), bool),
+    name: &str,
+) -> Response {
     let (title_font, count_font) = section_fonts(ui);
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SECTION_H), Sense::click());
     let (add_rect, more_rect) = button_rects(ui, rect, count);
@@ -60,6 +86,9 @@ fn header_row(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool, (
     if resp.clicked() {
         *open = !*open;
     }
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, name));
+    let expanded = *open;
+    ui.ctx().accesskit_node_builder(resp.id, |n| n.set_expanded(expanded));
     resp
 }
 
@@ -136,7 +165,8 @@ pub struct HeaderResponse {
 pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> HeaderResponse {
     let shown = (h.add.is_some(), h.menu.is_some());
     let muted = h.folds && h.count == Some(0);
-    let header = header_row(ui, h.title, h.count, open, (shown, muted));
+    let name = header_name(h.t, h.key, h.title, h.count);
+    let header = header_row(ui, h.title, h.count, open, (shown, muted), &name);
     let rect = header.rect;
     let right = right_of_buttons(ui, rect, h.count);
     if !(shown.0 || shown.1) {

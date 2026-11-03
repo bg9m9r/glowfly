@@ -70,6 +70,9 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         let right = right_text(wt);
         let parts = [widgets::Part::Text(&right)];
         let (r, _, cut) = widgets::list_row_cut(ui, widgets::ROW_INDENT, &label, Some((&parts[..], col)), 0.0, selected, wt.current);
+        if wt.current {
+            crate::ui::access::name_button(&r, true, &t.trf("access.current_worktree", &[("name", &wt.folder_name())]));
+        }
         if r.hovered() {
             *hover_next = wt.head;
         }

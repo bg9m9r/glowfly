@@ -24,11 +24,10 @@ Button "Git LFS" [selected]
 Button "Git Flow"
 Button "Sparse checkout"
 Label "Git LFS"
+Label "Status"
 Label "Paused until you trust this repository."
 Label "Glowfly reads the LFS setup with git, and git would run the programs this repository's own settings and hooks name. LFS commands wait for your decision too."
 Button "Review trust…"
+Label "Tracked patterns"
 Label "*.psd"
 Label "Read from .gitattributes."
-painted:
-  "Status"
-  "Tracked patterns"

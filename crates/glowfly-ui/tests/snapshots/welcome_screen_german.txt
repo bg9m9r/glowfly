@@ -4,7 +4,7 @@ TabList
   Tab "Neuer Tab" [selected]
 Button "Tab Neuer Tab schließen"
 Button "Neuer Tab"
-Button "Öffnen…"
+Button "Repository: Öffnen…"
 Image
 Label "Glowfly"
 Label "Ein schneller, nativer Git-Client"
@@ -28,6 +28,7 @@ Button "C:\\work\\api-server"
 Button "C:\\work\\old-site"
 painted:
   "Repository"
+  "Öffnen…"
   "web-app"
   "Ctrl+Alt+1"
   "C:\\work"

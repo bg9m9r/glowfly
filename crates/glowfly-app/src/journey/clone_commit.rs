@@ -25,8 +25,8 @@ fn clone_stage_commit_push_pull() {
     j.type_into("Clone into folder", &shown(&work));
     j.click("Clone", Region::Anywhere, Pick::Only);
     j.toast(true, "Clone succeeded");
-    j.see("shop", Region::Toolbar);
-    j.see("✔  main", Region::Sidebar);
+    j.see("Repository: shop", Region::Toolbar);
+    j.see("main, checked out", Region::Sidebar);
     assert!(clone.is_dir());
     assert_eq!(disk::head_branch(&clone).as_deref(), Some("main"));
     assert_eq!(Some(disk::head_oid(&clone)), disk::remote_oid(&bare, "main"));

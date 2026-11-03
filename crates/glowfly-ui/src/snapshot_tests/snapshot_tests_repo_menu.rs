@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 /// Opens the toolbar's repository menu: the button named by the repository, in the toolbar.
 pub(super) fn open_repo_menu(h: &mut H) {
     let name = h
-        .get_all_by_label("demo")
+        .get_all_by_label("Repository: demo")
         .filter(|n| n.role() == eframe::egui::accesskit::Role::Button)
         .filter_map(|n| n.bounding_box())
         .filter(|b| b.y1 < 120.0)

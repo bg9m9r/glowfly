@@ -114,7 +114,7 @@ pub(super) fn controls(ui: &mut Ui, rect: Rect, at: Place, item: &TodoItem, kind
         child.disable();
     }
     let mut action = item.action;
-    egui::ComboBox::from_id_salt(("rebase-action", item.oid)).width(COMBO_W - 8.0).selected_text(action_text(action)).show_ui(
+    let combo = egui::ComboBox::from_id_salt(("rebase-action", item.oid)).width(COMBO_W - 8.0).selected_text(action_text(action)).show_ui(
         &mut child,
         |ui| {
             for &a in actions {
@@ -122,6 +122,7 @@ pub(super) fn controls(ui: &mut Ui, rect: Rect, at: Place, item: &TodoItem, kind
             }
         },
     );
+    crate::ui::access::name_if_unnamed(&combo.response, &format!("Action for {}", item.summary));
     if action != item.action {
         msgs.push(Msg::Rebase(RebaseMsg::RebaseSetAction { index: i, action }));
     }

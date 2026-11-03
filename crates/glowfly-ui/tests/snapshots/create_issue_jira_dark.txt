@@ -13,9 +13,9 @@ Dialog
   Label "Optional"
   MultilineTextInput "Description"
   Label "Labels"
-  TextInput
+  TextInput "Search labels"
   Label "Assignees"
-  TextInput
+  TextInput "Search people"
   Label "Epic"
   ComboBox
   CheckBox "Create a branch for it afterwards" [off]
@@ -25,6 +25,4 @@ painted:
   "PROJ"
   "Task"
   "Describe the issue"
-  "Search labels"
-  "Search people"
   "PROJ-1  Accounts and sign-in"

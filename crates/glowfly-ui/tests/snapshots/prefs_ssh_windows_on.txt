@@ -38,6 +38,7 @@ Button "Generate…"
 Button "Use existing…"
 Label "Which key"
 Label "Glowfly writes the chosen key into core.sshCommand. Let ssh decide leaves it unset, so ssh uses its config, the agent or its default key names."
+Label "All repositories"
 ComboBox "All repositories: Windows' OpenSSH"
 Label "Agent"
 Label "Running, no keys"
@@ -49,5 +50,4 @@ Label "git runs Windows' OpenSSH (C:\\Windows\\System32\\OpenSSH\\ssh.exe) for a
 Button "Use Git's own ssh"
 Label "Windows' OpenSSH 7.7 is older than 8.4: passphrase and host-key prompts may not reach Glowfly."
 painted:
-  "All repositories"
   "Windows' OpenSSH"

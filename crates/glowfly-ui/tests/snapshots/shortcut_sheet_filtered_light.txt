@@ -1,7 +1,7 @@
 Dialog
   Label "Keyboard shortcuts"
   Button "Close this dialog"
-  TextInput = "stage" [focused]
+  TextInput "Filter by action or key" = "stage" [focused]
   Label "Staging and committing"
   Label "Stage the file or the selected lines"
   Label "in a diff of uncommitted changes or the Unstaged and Staged Files lists"

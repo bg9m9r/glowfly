@@ -16,6 +16,7 @@ Button "Terminal"
 Button "Commit signing"
 Button "SSH"
 Label "Git"
+Label "Git program"
 RadioButton "Use git from your PATH" [off]
 Label "Not found on your PATH"
 RadioButton "D:\\PortableGit\\cmd\\git.exe" [on]
@@ -23,7 +24,5 @@ Label "git 2.47.0"
 Button "Browse…"
 Button "Look again"
 Label "Glowfly runs this git for commits, fetches, pushes, hooks and signing. The built-in terminal and external tools still use whatever git your PATH finds."
+Label "Version"
 Label "git 2.47.0 at D:\\PortableGit\\cmd\\git.exe"
-painted:
-  "Git program"
-  "Version"

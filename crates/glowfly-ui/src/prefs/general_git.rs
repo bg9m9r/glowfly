@@ -33,11 +33,13 @@ pub fn git_section(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValu
         (t.tr("prefs.general.longpaths.label"), t.tr("prefs.general.longpaths.check"), t.tr("prefs.general.longpaths.help"));
     check_row(ui, label, &mut git.longpaths, check, Some(text));
     row(ui, t.tr("prefs.general.autocrlf.label"), |ui| {
-        egui::ComboBox::from_id_salt("autocrlf").width(super::fit(ui, 320.0)).selected_text(git.autocrlf.label(t)).show_ui(ui, |ui| {
-            for (choice, label) in Autocrlf::choices(t) {
-                ui.selectable_value(&mut git.autocrlf, choice, label);
-            }
-        });
+        let combo =
+            egui::ComboBox::from_id_salt("autocrlf").width(super::fit(ui, 320.0)).selected_text(git.autocrlf.label(t)).show_ui(ui, |ui| {
+                for (choice, label) in Autocrlf::choices(t) {
+                    ui.selectable_value(&mut git.autocrlf, choice, label);
+                }
+            });
+        crate::ui::access::from_label(&combo.response);
         help(ui, t.tr("prefs.general.autocrlf.help"));
     });
 }

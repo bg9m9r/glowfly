@@ -132,6 +132,7 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
             .hint_text(hint)
             .font(type_scale::font(type_scale::SUBHEAD));
         let r = ui.add(controls::SizedField::new(ControlSize::Large, edit));
+        crate::ui::access::name_if_unnamed(&r, hint);
         if !prompting {
             r.request_focus();
         }

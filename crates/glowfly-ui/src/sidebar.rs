@@ -61,6 +61,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
             let empty = st.session.tab_view.ref_filter.is_empty();
             let edit = egui::TextEdit::singleline(&mut st.session.tab_view.ref_filter).hint_text(hint);
             let r = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(width));
+            crate::ui::access::name_field(&r, st.settings.lang().tr("sidebar.filter.name"));
             if empty && cut {
                 r.on_hover_text(filter_hint);
             }
@@ -141,6 +142,9 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
             let (r, marker, cut) =
                 widgets::list_row_cut(ui, widgets::ROW_INDENT + DOT_ROOM + dent, &label, right, slot, selected, b.is_head);
+            if b.is_head {
+                crate::ui::access::name_button(&r, true, &t.trf("access.checked_out", &[("name", &b.name)]));
+            }
             branch_dot::paint(ui.painter(), r.rect, widgets::ROW_INDENT + dent, line(snap.branch_swatch(&b.name)));
             elbows.paint(ui.painter(), r.rect, row.depth, row.link.map(|l| l.on.as_str()), color::weak());
             if r.hovered() {

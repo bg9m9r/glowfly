@@ -207,9 +207,10 @@ fn push_buttons(
 
 /// The target branch picker; the view edits the target directly.
 pub(super) fn target_combo(ui: &mut egui::Ui, f: &mut PrForm) {
-    egui::ComboBox::from_id_salt("pr-target").selected_text(f.target.as_str()).width(200.0).show_ui(ui, |ui| {
+    let combo = egui::ComboBox::from_id_salt("pr-target").selected_text(f.target.as_str()).width(200.0).show_ui(ui, |ui| {
         for t in f.targets.iter() {
             ui.selectable_value(f.target, t.clone(), t);
         }
     });
+    crate::ui::access::name_if_unnamed(&combo.response, "Target branch");
 }

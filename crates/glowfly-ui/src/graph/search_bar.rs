@@ -48,6 +48,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let (hint, hint_cut) = widgets::truncate::hint(ui, HINT, text_w);
         let edit = egui::TextEdit::singleline(&mut st.session.tab_view.search).hint_text(hint);
         let r = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(width).trailing_room(CLEAR_ROOM));
+        access::name_if_unnamed(&r, HINT);
         let r = if empty && hint_cut { r.on_hover_text(HINT) } else { r };
         if !st.session.tab_view.search.is_empty() {
             clear_button(ui, r.rect, st.settings.lang().tr("search.clear.button"), msgs);
@@ -164,7 +165,8 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.memory_mut(|m| m.close_popup());
             }
             let edit = egui::TextEdit::singleline(filter).hint_text("Filter authors");
-            ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(220.0));
+            let field = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(220.0));
+            access::name_if_unnamed(&field, "Filter authors");
             let Some(list) = &search.authors else {
                 ui.label(RichText::new("Reading authors…").color(color::weak()));
                 return;
@@ -190,6 +192,7 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
         });
     ui.spacing_mut().interact_size.y = saved;
+    access::name_if_unnamed(&open.response, "Author");
     if open.inner.is_some() && st.session.search.authors.is_none() {
         msgs.push(Msg::Search(SearchMsg::WantAuthors));
     }

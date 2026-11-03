@@ -165,12 +165,12 @@ fn worktree_menu_manage() {
     assert!(!h.get_by_label("Remove…").is_disabled(), "a missing worktree can be removed");
     escape(&mut h);
 
-    menu_at(&mut h, "✔  app");
+    menu_at(&mut h, "app, current");
     assert!(h.query_by_label("Remove…").is_none() && h.query_by_label("Lock…").is_none(), "nothing for the main worktree");
     escape(&mut h);
 
     // The header's menu, 12 + 15 px above the first row's center.
-    let row = center(&h, "✔  app");
+    let row = center(&h, "app, current");
     let header = pos2(row.x, row.y - 27.0);
     click(&mut h, header, PointerButton::Secondary);
     h.check_snapshot("worktree_header_menu");
@@ -185,7 +185,7 @@ fn worktree_menu_manage() {
     st.tabs.push(crate::state::tabs::Tab::unloaded(p("C:/work/app-worktrees/feature-login")));
     let mut h = harness(st, true);
     h.run();
-    let row = center(&h, "✔  app");
+    let row = center(&h, "app, current");
     click(&mut h, pos2(row.x, row.y - 27.0), PointerButton::Secondary);
     assert!(h.get_by_label("Prune missing worktrees").is_disabled());
     escape(&mut h);

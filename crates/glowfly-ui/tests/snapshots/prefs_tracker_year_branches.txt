@@ -26,11 +26,10 @@ Button "Git LFS"
 Button "Git Flow"
 Button "Sparse checkout"
 Label "Issue tracker"
+Label "Issues come from"
 RadioButton "GitHub issues (from the remote)" [on]
 RadioButton "None" [off]
 Label "Connect Jira Cloud, Jira Data Center or Trello under Integrations to use it here."
+Label "Branch names"
 CheckBox "Read a year at the start of a branch name as an issue number" [off]
 Label "Off: a branch like 2024-cleanup links no issue, while 123-fix still links #123. Names like issue-2024, gh-2024 or #2024 link the issue either way."
-painted:
-  "Issues come from"
-  "Branch names"

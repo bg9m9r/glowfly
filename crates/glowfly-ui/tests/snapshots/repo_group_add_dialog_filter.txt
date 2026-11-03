@@ -1,7 +1,7 @@
 Dialog
   Label "Add to Work"
   Button "Close this dialog"
-  TextInput = "tool" [focused]
+  TextInput "Filter by name or path" = "tool" [focused]
   Label "Recent"
   Label "Starred when added"
   CheckBox "tool-0" [off]

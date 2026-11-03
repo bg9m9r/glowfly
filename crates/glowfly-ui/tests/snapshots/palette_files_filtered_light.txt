@@ -1,6 +1,6 @@
 Dialog
   Label "File history"
-  TextInput = "pan" [focused]
+  TextInput "Find a file or folder to show its history" = "pan" [focused]
   Button "src/ui/panel0.rs" [selected]
   Button "src/ui/panel1.rs"
   Button "src/ui/panel2.rs"

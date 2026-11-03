@@ -38,6 +38,7 @@ Button "Generate…"
 Button "Use existing…"
 Label "Which key"
 Label "Glowfly writes the chosen key into core.sshCommand. Let ssh decide leaves it unset, so ssh uses its config, the agent or its default key names."
+Label "All repositories"
 ComboBox "All repositories: Let ssh decide"
 Label "Agent"
 Label "Checking…"
@@ -45,5 +46,4 @@ Button "Check the agent again"
 CheckBox "Use local SSH agent" [off]
 Label "ssh gets keys from your running agent. Glowfly doesn't choose a key in core.sshCommand while this is on."
 painted:
-  "All repositories"
   "Let ssh decide"

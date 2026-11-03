@@ -1,5 +1,5 @@
 Dialog
-  TextInput = "ch" [focused]
+  TextInput "Type a command, branch or tag name" = "ch" [focused]
   Button "Checkout search"
   Button "Check for updates" [selected]
   Button "Checkout login-page"

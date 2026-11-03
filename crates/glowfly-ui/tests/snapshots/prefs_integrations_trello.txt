@@ -26,14 +26,13 @@ Button "Jira Cloud"
 Button "Jira Data Center"
 Button "Trello" [selected]
 Label "Trello"
-TextInput = "0123456789abcdef0123456789abcdef"
+Label "API Key"
+TextInput "API Key" = "0123456789abcdef0123456789abcdef"
 Label "Get your API key"
-PasswordInput
+Label "Token"
+PasswordInput "Token"
 Label "Your Trello API key and a token allowed for it: read access lists cards; creating cards needs a token allowed to read and write. Stored in the Windows Credential Manager, never in Glowfly's settings file."
 Label "Allow a read-only token"
 Label "Allow a token that can create cards"
 Button "Connect" [disabled]
 Label "Trello is an issue tracker. Once connected, choose it and a board for a repository under Preferences > This repository > Issue tracker."
-painted:
-  "API Key"
-  "Token"

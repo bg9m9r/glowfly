@@ -33,9 +33,9 @@ Label "ada-lovelace via Git Credential Manager"
 Button "Connect to GitLab Self-Managed"
 Label "or"
 Label "Host domain"
-TextInput = "gitlab.example.com"
+TextInput "Host domain" = "gitlab.example.com"
 Label "Personal access token"
-PasswordInput
+PasswordInput "Personal access token"
 Label "A personal access token with the api scope. Stored in the Windows Credential Manager, never in Glowfly's settings file."
 Label "Create a token"
 Button "Connect" [disabled]

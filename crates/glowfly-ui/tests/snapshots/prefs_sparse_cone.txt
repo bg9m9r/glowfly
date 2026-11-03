@@ -24,17 +24,16 @@ Button "Git LFS"
 Button "Git Flow"
 Button "Sparse checkout" [selected]
 Label "Sparse checkout"
+Label "Status"
 Label "On, folders (cone) mode. 12 of 340 tracked files are checked out."
 Label "Sparse checkout leaves files outside the chosen paths out of the working tree only. They stay in commits, the history and the index, and the setting belongs to this worktree alone."
+Label "Mode"
 RadioButton "Folders (cone mode)" [on]
 RadioButton "Patterns" [off]
 Label "Fast: whole folders are checked out, and files at the root of the repository always are."
-MultilineTextInput = "src\ndocs/guide"
+Label "Folders"
+MultilineTextInput "Folders" = "src\ndocs/guide"
 Label "One folder per line, relative to the repository root. Each folder brings everything inside it. Files at the root are always checked out, so an empty list leaves only those."
+Label "Actions"
 Button "Reapply"
 Button "Turn off"
-painted:
-  "Status"
-  "Mode"
-  "Folders"
-  "Actions"
