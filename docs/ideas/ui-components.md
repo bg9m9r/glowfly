@@ -303,6 +303,11 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   resized
 - The create issue dialog's label and people pickers at the 36 px field height inside field
   groups, like its text fields
+- Sizing S5: single-line fields place their text at floor((h - row height) / 2) from the top
+  (Align::Min), so Regular fields read 8/8 above the caps and below the baseline (9/7 today), in
+  the same re-render as the drop-downs and buttons that share the graph search row's baseline
+- Sizing S2 follow-ups: the sparse paths field and terminal pill still set `.margin(...)`, and
+  the PR/issue comment fields keep egui's padding
 
 ### UI review polish
 
