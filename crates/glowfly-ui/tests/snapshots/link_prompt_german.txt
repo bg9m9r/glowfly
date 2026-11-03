@@ -1,0 +1,6 @@
+Dialog
+  Label "Eine andere Seite öffnen?"
+  Button "Diesen Dialog schließen"
+  Label "Der Linktext zeigt github.com, aber der Link führt zu evil.example.\n\nhttps://evil.example/login\n\nÖffne ihn nur, wenn du evil.example vertraust."
+  Button "Abbrechen" [focused]
+  Button "Link öffnen"

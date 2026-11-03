@@ -165,6 +165,8 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Previous / next code comment thread in the diff
 - Markdown bodies: show remote images (fetched in the background, size-capped, opt-in per
   repository) instead of their alt text as a link
+- Markdown links: a bare-domain link text such as "paypal.com" pointing at another host doesn't prompt
+  yet (it reads as a file name as often); it could prompt when its last label isn't a common file extension
 - Markdown bodies: emoji shortcodes (`:robot:`), `#123` / `!12` references and `@mentions` as
   links to the service, and relative links resolved against the repository's web address
 - Markdown bodies: a few safe HTML tags (`<details>`, `<br>`, `<sub>`, `<kbd>`) instead of

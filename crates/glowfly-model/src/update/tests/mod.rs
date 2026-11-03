@@ -22,6 +22,7 @@ pub(super) mod layout_tests;
 pub(super) mod layout_window_tests;
 pub(super) mod onboarding_tests;
 pub(super) mod op_steps_tests;
+pub(super) mod open_link_tests;
 pub(super) mod palette_profile_tests;
 pub(super) mod palette_theme_tests;
 pub(super) mod parked_free_tests;
