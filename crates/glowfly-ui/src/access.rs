@@ -20,14 +20,22 @@ pub fn name_button(resp: &Response, enabled: bool, name: &str) {
 /// Makes the label `resp` a live region: screen readers announce its text when it appears and
 /// whenever it changes, after what they are reading (`Live::Polite`) or at once
 /// (`Live::Assertive`, for failures). Its node moves to `key`: egui's own id for it shifts when
-/// widgets drawn before it come and go, and a node under a new id is announced again. The node
-/// left at `resp.id` is hidden, so no platform shows it as an unnamed element. Does nothing
-/// while AccessKit is off.
+/// widgets drawn before it come and go, and a node under a new id is announced again. Does
+/// nothing while AccessKit is off.
+///
+/// Only the node's own properties move. Its text runs (and the text selection pointing into
+/// them) stay with the node left at `resp.id`, which is hidden so no platform shows it: their
+/// ids derive from `resp.id`, so under `key` they would change parent as soon as that id passes
+/// to another label, and AccessKit's consumer can drop a node that changes parent and then
+/// fail on a tree that still lists it.
 pub fn announce(resp: &Response, key: Id, live: Live) {
     let take = |n: &mut eframe::egui::accesskit::Node| {
-        let node = std::mem::take(n);
+        let mut moved = std::mem::take(n);
+        n.set_children(moved.children().to_vec());
         n.set_hidden();
-        node
+        moved.clear_children();
+        moved.clear_text_selection();
+        moved
     };
     let Some(node) = resp.ctx.accesskit_node_builder(resp.id, take) else { return };
     resp.ctx.accesskit_node_builder(key, |n| {
@@ -75,5 +83,33 @@ mod tests {
         let left = egui::accesskit::NodeId(left.get().expect("drawn").value());
         let old = h.get_by(move |n| n.id() == left);
         assert!(old.is_hidden(), "the node left behind is hidden, not an unnamed element");
+        assert!(old.children().count() > 0, "egui gave the label text runs; they stay with it");
+        assert_eq!(done.children().count(), 0, "the live node takes none of them");
+    }
+
+    /// A label is announced while another label takes its old id from frame to frame: the tree
+    /// AccessKit's consumer (the one the harness and the platform adapters run) builds from the
+    /// updates stays whole. Moving the text runs along with the node broke it: a run whose
+    /// parent changed was dropped while its new parent still listed it.
+    #[test]
+    fn an_announced_label_whose_id_passes_to_another_keeps_the_tree_whole() {
+        let shifted = std::cell::Cell::new(false);
+        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+            if shifted.get() {
+                ui.label("Plain");
+            }
+            let live = ui.label("Live text");
+            announce(&live, Id::new("live"), Live::Polite);
+            if !shifted.get() {
+                ui.label("Plain");
+            }
+        });
+        for i in 0..24 {
+            shifted.set(i % 2 == 1);
+            h.run();
+            assert_eq!(h.get_by_label("Live text").live(), Live::Polite);
+            // Walk every node: a listed child the consumer dropped panics here.
+            assert!(h.query_all(egui_kittest::kittest::by()).count() > 3);
+        }
     }
 }
