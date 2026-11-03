@@ -256,7 +256,9 @@ fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport) -> Vec<Action> {
         }
     };
     let action = |(label, name): (String, Option<String>), says: String, verb: &str, cmd: Vec<String>| {
-        let tip = format!("{says}\ngit {}", cmd.join(" "));
+        // The command line as typed: the program's name, then its arguments.
+        let line = std::iter::once("git").chain(cmd.iter().map(String::as_str)).collect::<Vec<_>>().join(" ");
+        let tip = format!("{says}\n{line}");
         let name = name.unwrap_or_else(|| label.clone());
         Action { label, name, tip, msg: Msg::git_cmd(verb, cmd) }
     };
