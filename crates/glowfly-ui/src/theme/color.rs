@@ -5,7 +5,7 @@
 use super::families::{Ansi, Attention, Branch, LANE_COUNT, REPO_HUES, Repository, Status};
 use eframe::egui::Color32;
 use glowfly_core::highlight::TokenKind;
-use glowfly_core::settings::{BranchPalette, RepoColour};
+use glowfly_core::settings::{ColourPalette, RepoColour};
 use std::cell::RefCell;
 
 pub use super::surfaces::{
@@ -257,8 +257,14 @@ palette_fields!(
 );
 
 /// The active palette's branch preset (how many hues branches and people pick from).
-pub fn branch_preset() -> BranchPalette {
+pub fn branch_preset() -> ColourPalette {
     ACTIVE.with_borrow(|p| p.branch.preset)
+}
+
+/// Whether the active palette has the colour-blind safe diff and status colours
+/// (`colour_safe::applied`): views that pair a colour with another status pick another then.
+pub fn colour_safe() -> bool {
+    branch_preset() == ColourPalette::ColourBlind
 }
 
 /// Graph lane `i`'s colour in the active palette (they repeat after `LANE_COUNT`).

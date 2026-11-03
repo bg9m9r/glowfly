@@ -15,7 +15,7 @@ use super::branch_palette::{
 use super::branch_palette_gold::{JADE_DARK, JADE_LIGHT_LINE, JADE_LIGHT_TEXT, with};
 use super::families::{Branch, LANE_COUNT};
 use eframe::egui::Color32;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
@@ -46,21 +46,21 @@ pub const COBALT_CB_LIGHT_NAMES: [Hue; CB] = with(CB_LIGHT_NAMES, COBALT_CB_SLOT
 
 /// Graphite.
 pub const BRANCH_GRAPHITE: Branch =
-    Branch { lanes: COBALT_DARK_TONES, chips: COBALT_DARK_TONES, preset: BranchPalette::Standard, names: COBALT_NAMES };
+    Branch { lanes: COBALT_DARK_TONES, chips: COBALT_DARK_TONES, preset: ColourPalette::Standard, names: COBALT_NAMES };
 /// Colour-blind friendly, on Graphite.
 pub const BRANCH_CB_GRAPHITE: Branch = Branch {
     lanes: pad(COBALT_CB_DARK_TONES),
     chips: pad(COBALT_CB_DARK_TONES),
-    preset: BranchPalette::ColourBlind,
+    preset: ColourPalette::ColourBlind,
     names: pad(COBALT_CB_DARK_NAMES),
 };
 /// Linen's, which Porcelain keeps.
 pub const BRANCH_LINEN: Branch =
-    Branch { lanes: COBALT_LIGHT_LINES, chips: COBALT_LIGHT_TEXT, preset: BranchPalette::Standard, names: LINEN_NAMES };
+    Branch { lanes: COBALT_LIGHT_LINES, chips: COBALT_LIGHT_TEXT, preset: ColourPalette::Standard, names: LINEN_NAMES };
 /// Colour-blind friendly, on Linen (Porcelain keeps it).
 pub const BRANCH_CB_LINEN: Branch = Branch {
     lanes: pad(COBALT_CB_LIGHT_LINES),
     chips: pad(COBALT_CB_LIGHT_TEXT),
-    preset: BranchPalette::ColourBlind,
+    preset: ColourPalette::ColourBlind,
     names: pad(COBALT_CB_LIGHT_NAMES),
 };

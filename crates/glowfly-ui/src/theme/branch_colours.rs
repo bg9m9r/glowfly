@@ -9,7 +9,7 @@ use super::families::LANE_COUNT;
 use super::vision::{self, VISIONS};
 use eframe::egui::Color32;
 use glowfly_core::branch_colour::{Swatch, person_slot};
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 /// How far the fill behind initials moves from the background toward the person's line tone.
 const INITIALS_FILL: f32 = 0.30;
@@ -34,7 +34,7 @@ pub fn trunk(p: &Palette) -> Color32 {
 /// beside the trunk skips them (`Colouring::trunk_near`).
 pub fn trunk_near(p: &Palette) -> u16 {
     let trunk = trunk(p);
-    let visions = if p.branch.preset == BranchPalette::ColourBlind { &VISIONS[..] } else { &VISIONS[..1] };
+    let visions = if p.branch.preset == ColourPalette::ColourBlind { &VISIONS[..] } else { &VISIONS[..1] };
     let floor = vision::floor(p.dark);
     let near = |i: usize| visions.iter().any(|(_, m)| vision::distance(p.branch.lanes[i], trunk, m) < floor);
     (0..usize::from(p.branch.preset.slots())).filter(|&i| near(i)).fold(0, |mask, i| mask | 1 << i)

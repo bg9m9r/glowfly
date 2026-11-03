@@ -185,3 +185,9 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 
 - Does the tonal accent chip of the diff's "Your unposted comment" marker (#408) fit the accent rule (selection, focus, one primary), or should it go neutral?
 - Disabled secondary buttons draw no frame, so they can read as plain text (the PR comment box's Add single comment); keep a faint frame on them app-wide
+
+### Colour-blind safe diff and status colours
+
+- Onboarding: add a Look step (theme + Colours); the welcome flow has no theme choice today
+- In the colour-safe colours, open issues (`added`, blue) and closed ones (`progress`, violet)
+  are only 0.022 apart under deutan on light themes (`issue/mod.rs`); give them a shape or label cue

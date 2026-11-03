@@ -34,7 +34,7 @@ CheckBox "High contrast, Also when the system uses high contrast" [on]
 Label "Switches to High contrast dark or light; turning it off brings back your theme."
 Label "Colors"
 ComboBox "Colors"
-Label "Branch colors in the graph."
+Label "Branches, diffs and file status use colors that stay apart with color blindness."
 Label "Motion"
 Label "Reduce motion"
 CheckBox "Reduce motion, Turn off fades and slides" [off]
@@ -69,6 +69,7 @@ painted:
   "Also when the system uses high contrast"
   "Switches to High contrast dark or light; turning it off brings\nback your theme."
   "Standard"
+  "Branches, diffs and file status use colors that stay apart with\ncolor blindness."
   "Turn off fades and slides"
   "Also when the system asks for less motion"
   "Blink the text cursor"
@@ -77,4 +78,3 @@ painted:
   "Announce when background work finishes or fails"
   "Standard (5 s)"
   "A notification you point at or focus stays open. Failures with\nFix or Details stay until you close them."
-  "Quick (0.4 s)"
