@@ -8,6 +8,7 @@ use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::{Icon, icon_button, paint_cut_text, paint_icon};
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, Layout, Rect, RichText, Stroke, StrokeKind, Ui, UiBuilder, pos2, vec2};
+use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{RebaseAction, TodoItem};
 
 pub(super) fn action_color(a: RebaseAction) -> Color32 {
@@ -105,7 +106,7 @@ pub(super) struct RowKind<'a> {
 
 /// The action combo box, Edit message (the combined one on a group head) and the move buttons
 /// of the row at `at`.
-pub(super) fn controls(ui: &mut Ui, rect: Rect, at: Place, item: &TodoItem, kind: RowKind, msgs: &mut Vec<Msg>) {
+pub(super) fn controls(ui: &mut Ui, t: Lang, rect: Rect, at: Place, item: &TodoItem, kind: RowKind, msgs: &mut Vec<Msg>) {
     let RowKind { head, actions, fixed } = kind;
     let Place { i, enabled, .. } = at;
     let combo_rect = Rect::from_min_size(pos2(rect.left() + COMBO_X, rect.top()), vec2(COMBO_W, ROW_H));
@@ -122,7 +123,7 @@ pub(super) fn controls(ui: &mut Ui, rect: Rect, at: Place, item: &TodoItem, kind
             }
         },
     );
-    crate::ui::access::name_if_unnamed(&combo.response, &format!("Action for {}", item.summary));
+    crate::ui::access::name_if_unnamed(&combo.response, &t.trf("rebase.row.action.name", &[("summary", &item.summary)]));
     if action != item.action {
         msgs.push(Msg::Rebase(RebaseMsg::RebaseSetAction { index: i, action }));
     }

@@ -176,11 +176,11 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                     match step {
                         TodoStep::Commit(item) => {
                             let kind = RowKind { head: panel.heads_group(i), actions: &RebaseAction::ALL, fixed: false };
-                            commit_row::controls(ui, *rect, at, item, kind, msgs)
+                            commit_row::controls(ui, t, *rect, at, item, kind, msgs)
                         }
                         TodoStep::Merge(m) => {
                             let kind = RowKind { head: false, actions: panel.actions(i), fixed: true };
-                            commit_row::controls(ui, *rect, at, &m.item, kind, msgs)
+                            commit_row::controls(ui, t, *rect, at, &m.item, kind, msgs)
                         }
                         TodoStep::Label { .. } | TodoStep::Reset(_) | TodoStep::UpdateRef(_) => {}
                         _ => step_row::step_controls(ui, *rect, at, step, msgs),

@@ -55,7 +55,7 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
     let result = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &work);
     match &result {
         Ok(plan) => {
-            ui.label(RichText::new("Steps:").color(color::weak()));
+            ui.label(RichText::new(cx.t.tr("gitflow.finish.steps.label")).color(color::weak()));
             for (i, step) in plan.steps.iter().enumerate() {
                 ui.label(RichText::new(format!("{}. {}", i + 1, capitalize(&step.what))).color(color::weak()));
             }
