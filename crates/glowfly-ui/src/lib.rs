@@ -143,6 +143,7 @@ mod repo_colour_menu;
 mod repo_finder;
 mod repo_group_dialog;
 mod repo_group_menu;
+mod repo_group_picker;
 mod repo_line;
 mod repo_list;
 mod repo_list_drag;
@@ -205,6 +206,8 @@ mod worktrees;
 mod hint_tests;
 #[cfg(test)]
 mod menu_testing;
+#[cfg(test)]
+mod readme_screenshots;
 #[cfg(any(test, feature = "test-support"))]
 #[doc(hidden)]
 pub mod snapshot_check;

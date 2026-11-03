@@ -61,7 +61,9 @@ pub use profile_rules::{RuleProblem, profile_for_git_dir, rule_for_git_dir, rule
 pub use profiles::{DEFAULT_PROFILE_NAME, FolderRule, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
 pub use repo_colours::RepoColour;
-pub use repo_groups::{GROUP_ORDER, MAX_GROUP_NAME, RepoGroup, clean_name as clean_group_name, new_group_colour};
+pub use repo_groups::{
+    GROUP_ORDER, GroupColourDefault, MAX_GROUP_NAME, RepoGroup, clean_name as clean_group_name, default_colours, new_group_colour,
+};
 pub use submodules::{SubmodulePrefs, SubmoduleUpdates};
 pub use terminal::{
     CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalColours, TerminalPrefs,
@@ -225,23 +227,20 @@ pub struct Settings {
     /// Repositories (by `repo_keys`) whose branch names like `2024-cleanup` name issue 2024 (This repository > Issue tracker).
     pub repo_year_branches: HashMap<String, bool>,
     /// The merge method last used in each repository's pull request panel (`MergeMethod::api_name`), by `repo_keys`.
-    #[serde(default)]
     pub repo_merge_methods: HashMap<String, String>,
     /// Favorite repositories (welcome screen and repository menu), as working-directory paths in the order added.
-    #[serde(default)]
     pub favorite_repos: Vec<String>,
     /// Named groups of favorites with their colours (`repo_groups`), in the order shown.
-    #[serde(default)]
     pub repo_groups: Vec<RepoGroup>,
+    /// The colour new groups take, and Reset all group colors gives (Preferences > UI Customization).
+    pub new_group_colour: GroupColourDefault,
     /// Folders the Find repositories dialog looks for repositories in (`paths::encode`d), in the order they were added.
-    #[serde(default)]
     pub project_folders: Vec<String>,
     /// Preferences > External tools.
     #[serde(default)]
     pub external_tools: ExternalTools,
     /// Named profiles (Preferences > Profile): identities, and the accounts and preferences of
     /// the ones not current; seeded from the global git identity when the page first opens.
-    #[serde(default)]
     pub profiles: Vec<Profile>,
     /// The profile whose identity is in the global git config.
     #[serde(default)]
@@ -250,7 +249,6 @@ pub struct Settings {
     #[serde(default)]
     pub use_ssh_agent: bool,
     /// Key pairs outside ~/.ssh that Preferences > SSH lists (Use existing).
-    #[serde(default)]
     pub ssh_extra_keys: Vec<PathBuf>,
     /// Ask for OpenPGP signing passphrases in Glowfly rather than GnuPG's own window (Preferences > Commit Signing).
     pub gpg_prompts_in_app: bool,
@@ -266,7 +264,6 @@ pub struct Settings {
     /// ("new-tab") -> its keys as text ("Mod+Shift+N"; Mod is Ctrl, or Cmd on macOS). An empty list
     /// leaves the action without a key; ids not listed keep their defaults. The app's keymap
     /// ignores what it can't use.
-    #[serde(default)]
     pub keybindings: BTreeMap<String, Vec<String>>,
     /// The git program Glowfly runs (Preferences > Git): an absolute path, or None for git from PATH.
     pub git_program: Option<String>,
@@ -371,6 +368,7 @@ impl Default for Settings {
             repo_merge_methods: HashMap::new(),
             favorite_repos: Vec::new(),
             repo_groups: Vec::new(),
+            new_group_colour: GroupColourDefault::Next,
             project_folders: Vec::new(),
             external_tools: ExternalTools::default(),
             profiles: Vec::new(),

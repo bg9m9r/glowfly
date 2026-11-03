@@ -12,6 +12,7 @@ mod general_git;
 mod git;
 mod git_program;
 mod gitflow;
+mod group_colour_row;
 mod integrations;
 mod integrations_form;
 mod keyboard;

@@ -83,7 +83,7 @@ pub struct Dialog<'a> {
     cx: Cx,
     title: Cow<'a, str>,
     subtitle: Option<Cow<'a, str>>,
-    icon: Option<Icon>,
+    icon: Option<header::Lead>,
     size: Size,
     guide: Option<Guide>,
     resize: Option<&'static str>,
@@ -130,7 +130,13 @@ impl<'a> Dialog<'a> {
 
     /// A painted icon before the title.
     pub fn icon(mut self, icon: Icon) -> Self {
-        self.icon = Some(icon);
+        self.icon = Some(header::Lead::Icon(icon));
+        self
+    }
+
+    /// A colour swatch before the title (a repository group's colour).
+    pub fn swatch(mut self, c: egui::Color32) -> Self {
+        self.icon = Some(header::Lead::Swatch(c));
         self
     }
 

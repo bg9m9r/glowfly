@@ -132,3 +132,28 @@ fn a_fields_placeholder_is_faint_in_every_builtin() {
         assert_eq!(hint, Some(p.faint), "{t:?}: the placeholder is faint");
     }
 }
+
+#[test]
+fn sized_fields_take_the_height_width_and_padding_of_their_size() {
+    use super::sizes::ControlSize;
+    let mut seen = Vec::new();
+    let (mut a, mut b, mut c, mut d) = (String::new(), String::new(), String::new(), String::new());
+    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(400.0, 300.0)).build_ui(|ui| {
+        super::apply_theme(ui.ctx());
+        let regular = ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::singleline(&mut a)).width(200.0));
+        let large = ui.add(controls::SizedField::new(ControlSize::Large, egui::TextEdit::singleline(&mut b)));
+        let multi = ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::multiline(&mut c).desired_rows(4)).multiline());
+        let room =
+            ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::singleline(&mut d)).width(200.0).trailing_room(26.0));
+        seen = vec![regular.rect, large.rect, multi.rect, room.rect];
+    });
+    h.run();
+    drop(h);
+    let [regular, large, multi, room] = seen[..] else { panic!("{seen:?}") };
+    assert_eq!((regular.height(), regular.width()), (28.0, 200.0), "inline: 28 px, the width given is the whole field's");
+    assert_eq!(large.height(), 36.0, "dialog: 36 px");
+    assert!(multi.height() > 4.0 * 14.0 + 2.0 * controls::field_pad_y(ControlSize::Regular, true), "{multi:?}");
+    assert_eq!(room.width(), 200.0, "the clear button's room stays inside the given width");
+    assert_eq!(controls::field_margin(ControlSize::Regular, false, Some(26.0)).left, 10);
+    assert_eq!(controls::field_text_width(200.0), 180.0);
+}

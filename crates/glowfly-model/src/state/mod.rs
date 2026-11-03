@@ -135,6 +135,7 @@ pub mod release_notes;
 pub mod remote_branch;
 pub mod remotes;
 pub mod repo_colours;
+pub mod repo_group_picker;
 pub mod repo_groups;
 pub mod repo_identity;
 pub mod repo_lists;
@@ -370,6 +371,8 @@ pub enum Modal {
     RenameTab(tabs::RenameTabForm),
     /// New group and Rename group (`ui/repo_group_dialog.rs`).
     RepoGroup(repo_groups::GroupForm),
+    /// A group's Add repositories picker (`ui/repo_group_picker.rs`).
+    AddToGroup(repo_group_picker::AddPicker),
     /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
     Mainline(pick::MainlineForm),
     /// Uncommitted changes in the way of an operation: stash them and carry on (`ui/auto_stash_dialog.rs`).
@@ -392,8 +395,7 @@ pub struct AppState {
     pub recent: Vec<PathBuf>,
     /// Recent or favorite repository folders found missing by the last check (`RecentMsg::FoldersChecked`).
     pub missing_repos: Vec<PathBuf>,
-    /// A listed folder that failed to open, waiting for the folder check to say whether it is
-    /// gone (then Glowfly offers to remove it from the lists; update/recent.rs).
+    /// A listed folder that failed to open, until the folder check says if it's gone, to offer removing it (update/recent.rs).
     pub missing_offer: Option<PathBuf>,
     /// The Find repositories dialog's scan of the project folders: global, never parked.
     pub repo_scan: repo_scan::RepoScan,
@@ -431,8 +433,7 @@ pub struct AppState {
     pub toasts: Vec<Toast>,
     /// Last toast id handed out (state/toasts.rs).
     pub toast_seq: u64,
-    /// How far behind the checked-out branch was when the active tab's auto-fetch ended, until
-    /// the reload after it lands (update/notify.rs).
+    /// How far behind the checked-out branch was at the end of the auto-fetch, until its reload lands (update/notify.rs).
     pub behind_watch: Option<notify::BehindWatch>,
     pub modal: Option<Modal>,
     pub dialog: dialog_guard::DialogGuard,
@@ -475,8 +476,7 @@ pub struct AppState {
     pub deep_link: deep_link::DeepLinkState,
     /// The profile a switch is writing to the global git config (app-wide: the config is global).
     pub profile_switch: Option<glowfly_core::settings::ProfileId>,
-    /// The profiles (the current one or the switch's target) whose fields were edited while a
-    /// switch ran: their git writes wait until it ends.
+    /// The profiles (current or the switch's target) edited while a switch ran: their git writes wait until it ends.
     pub profile_switch_edits: Vec<glowfly_core::settings::ProfileId>,
     /// The repositories' effective identities as git last reported them, by `Snapshot::git_dir` as spelled (global, kept across tabs).
     pub identities: HashMap<PathBuf, glowfly_core::repo_identity::RepoIdentity>,

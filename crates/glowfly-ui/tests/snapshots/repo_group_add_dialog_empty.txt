@@ -1,0 +1,5 @@
+Dialog
+  Label "Add to Work"
+  Button "Close this dialog"
+  Label "Nothing to add: every favorite is already in this group and Recent is empty."
+  Button "Close" [focused]

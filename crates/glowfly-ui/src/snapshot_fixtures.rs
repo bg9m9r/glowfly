@@ -146,20 +146,26 @@ pub fn harness_sized(st: AppState, dark: bool, size: egui::Vec2) -> Harness<'sta
 }
 
 pub fn harness_palette_sized(st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
-    build(st, p, size, false)
+    build(st, p, size, 1.0, false)
+}
+
+/// `harness_palette_sized` at `ppp` pixels per point (the README screenshots draw at 2).
+#[cfg(test)]
+pub(crate) fn harness_scaled(st: AppState, p: Palette, size: egui::Vec2, ppp: f32) -> Harness<'static, (AppState, Vec<Msg>)> {
+    build(st, p, size, ppp, false)
 }
 
 /// `harness` that also runs the shortcuts before each frame's drawing, as the app's input
 /// handling does (the keys a focused list takes first among them).
 pub fn keys_harness(st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
-    build(st, theme::view_palette(dark), SIZE, true)
+    build(st, theme::view_palette(dark), SIZE, 1.0, true)
 }
 
-fn build(mut st: AppState, p: Palette, size: egui::Vec2, keys: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
+fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder().with_size(size).build_state(
+    crate::ui::snapshot_check::builder().with_size(size).with_pixels_per_point(ppp).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             // Like the app, pick the palette at the start of every frame.
             color::set_palette(&p);

@@ -150,7 +150,7 @@ fn allowed_entries_let_their_line_through() {
 
 /// How many hand-set sizes the size check finds today. Lower it as call sites take a
 /// `ControlSize`; never raise it.
-const SIZE_LITERALS: usize = 121;
+const SIZE_LITERALS: usize = 113;
 
 /// The folders that define sizes, which the size check skips.
 const SIZE_HOMES: &[&str] = &["widgets/", "theme/"];
