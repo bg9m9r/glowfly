@@ -23,6 +23,8 @@ pub mod file_tree;
 pub mod frame_times;
 #[path = "list_keys.rs"]
 pub mod list_keys;
+#[path = "system_a11y.rs"]
+pub mod system_a11y;
 #[path = "wip_lists.rs"]
 pub mod wip_lists;
 
@@ -228,6 +230,9 @@ pub struct ViewState {
     /// The WIP panel's steps opened or folded by hand while an operation is in progress (set
     /// only by update, `LayoutMsg::ToggleOpStep`).
     pub op_steps: super::op_steps::StepFolds,
+    /// The system's accessibility settings as last read (set only by update,
+    /// `AppMsg::SystemA11y`).
+    pub system_a11y: system_a11y::SystemA11y,
 }
 
 impl ViewState {
@@ -303,6 +308,7 @@ impl Default for ViewState {
             quit_after_stop: false,
             backdrop: Backdrop::Solid,
             op_steps: Default::default(),
+            system_a11y: Default::default(),
         }
     }
 }

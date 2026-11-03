@@ -121,7 +121,7 @@ fn menu_in(dark: bool, reasons: bool, compare_why: &'static str, size: egui::Vec
         move |ui, (msgs, width): &mut (Vec<Msg>, f32)| {
             paint_theme(ui, dark);
             let still = glowfly_core::settings::Settings { reduce_motion: true, ..Default::default() };
-            crate::ui::theme::a11y::configure(ui.ctx(), &still);
+            crate::ui::theme::a11y::configure(ui.ctx(), &still, true);
             let r = egui::Frame::menu(ui.style()).show(ui, |ui| {
                 menu_style(ui.style_mut());
                 let why = |w| reasons.then_some(w);
