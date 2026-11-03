@@ -10,6 +10,7 @@ pub(in crate::update) use crate::testing::*;
 pub(super) mod accessibility_tests;
 pub(super) mod avatars_tests;
 pub(super) mod branch_checkout_tests;
+pub(super) mod commit_box_tests;
 pub(super) mod diff_lines_tests;
 pub(super) mod diff_pairs_tests;
 pub(super) mod diff_text_tests;

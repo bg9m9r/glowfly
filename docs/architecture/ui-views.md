@@ -66,6 +66,7 @@ start with `state/`, `update/` or `ui/`.
 - `file_status.rs`: the changed-file rows' status badge (an 18 px circle).
 - `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`.
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode.
+- `commit_box.rs`: the commit box, top to bottom: header with the identity, summary with its length inside, description, the Amend and Push options, the button and its caption; `commit_button.rs`: its split button and caret menu (Stage all and commit, Commit and push, Amend last commit, Skip hooks).
 - `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames), a folder row, the header's List / Tree toggle and a file row's indent.
 - `folder_menu.rs`: a folder row's menu: Folder history, Copy path, and Stage or Unstage folder in the WIP lists.
 - `list_focus.rs`: a file list that takes the keyboard focus as one Tab stop: its focus target, the keys it takes before any binding (`state/list_keys.rs`; each list names which beyond its moves, `KeySet`), and its arrows kept from egui's focus moves from its first frame on (`restore`). Reuse it for any other file list.

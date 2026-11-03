@@ -59,14 +59,13 @@ Unknown "Bereitgestellt (1)"
 Button "README.md" [off]
 Label "Geändert"
 Label "Commit"
-CheckBox "Nachbessern" [off]
 TextInput "Commit-Zusammenfassung"
-Label "0/72"
-MultilineTextInput "Beschreibung"
+MultilineTextInput "Commit-Beschreibung"
+CheckBox "Letzten Commit nachbessern" [off]
 CheckBox "Nach dem Commit pushen" [off]
-Button "1 Datei committen" [disabled]
+Button "Committen" [disabled]
 Button "Weitere Commit-Optionen"
-Label "Schreibe eine Zusammenfassung für den Commit."
+Label "Schreibe eine Zusammenfassung, um zu committen."
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
@@ -112,6 +111,8 @@ painted:
   "Submodule"
   "0"
   "M"
+  "Zusammenfassung"
+  "Beschreibung"
   "Branch / Tag"
   "Graph"
   "Nachricht"
