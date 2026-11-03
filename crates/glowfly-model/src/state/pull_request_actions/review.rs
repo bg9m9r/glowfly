@@ -1,9 +1,9 @@
 //! The review form's rules: its choices per service style, their labels, why each is
-//! unavailable, and when a summary is needed.
+//! unavailable, and when a summary is needed (the placeholder and Submit's reason say so).
 
 use super::{MAX_BODY, not_open, ready, too_long};
 use crate::state::pull_request::PrView;
-use glowfly_core::forge::{PrDetail, ReviewEvent, ReviewStyle, Vote};
+use glowfly_core::forge::{PrDetail, PrState, ReviewEvent, ReviewStyle, Vote};
 
 /// The review form's choices: GitHub's verdicts, GitLab's comment and approval (taken back
 /// once given), or Bitbucket's comment, approval and change request (either taken back once
@@ -35,8 +35,48 @@ pub fn review_choice_text(ev: ReviewEvent) -> (&'static str, &'static str) {
 /// once, and only an open pull request is reviewed.
 pub fn review_choice_blocked(v: &PrView, ev: ReviewEvent) -> Option<String> {
     let d = &v.loaded()?.detail;
-    let own = || format!("You opened this {}, so you can't approve it.", v.noun);
-    let own_changes = || format!("You opened this {}, so you can't request changes on it.", v.noun);
+    choice_rule(v, d, ev).or_else(|| not_open(v, d))
+}
+
+/// The line under review choice `ev`: why that choice is unavailable, or its help when it is
+/// available or only unavailable for a reason every choice shares (a closed pull request, said
+/// once under the Submit button).
+pub fn review_choice_line(v: &PrView, ev: ReviewEvent) -> String {
+    match v.loaded().and_then(|p| choice_rule(v, &p.detail, ev)) {
+        Some(why) => why,
+        None => review_choice_text(ev).1.to_owned(),
+    }
+}
+
+/// The review summary's placeholder, which says whether the selected choice needs one; just
+/// "Summary" on a closed or merged pull request, which takes no review.
+pub fn review_placeholder(v: &PrView) -> &'static str {
+    if v.loaded().is_some_and(|p| p.detail.state != PrState::Open) {
+        return "Summary";
+    }
+    match v.forms.review_event {
+        ReviewEvent::Approve => "Summary (optional when approving)",
+        ev if summary_optional(v, ev) => "Summary (optional)",
+        ReviewEvent::RequestChanges => "Summary (required when requesting changes)",
+        _ => "Summary (required for a comment)",
+    }
+}
+
+/// Whether choice `ev` may be sent without a summary: approvals and taking a vote back,
+/// Bitbucket's change request, and a comment that finishes a review already started.
+fn summary_optional(v: &PrView, ev: ReviewEvent) -> bool {
+    let Some(page) = v.loaded() else { return false };
+    let finishing = page.detail.pending_review.is_some() && ev == ReviewEvent::Comment;
+    let votes = matches!(page.detail.style, ReviewStyle::Votes { .. });
+    matches!(ev, ReviewEvent::Approve | ReviewEvent::Unapprove | ReviewEvent::UnrequestChanges)
+        || (ev == ReviewEvent::RequestChanges && votes)
+        || finishing
+}
+
+/// Why choice `ev` itself is unavailable, leaving out the reasons every choice shares.
+fn choice_rule(v: &PrView, d: &PrDetail, ev: ReviewEvent) -> Option<String> {
+    let own = || format!("You opened this {}, so you can't approve it", v.noun);
+    let own_changes = || format!("You opened this {}, so you can't request changes on it", v.noun);
     match d.style {
         ReviewStyle::Verdicts => match ev {
             ReviewEvent::Approve if d.is_author() => return Some(own()),
@@ -69,26 +109,20 @@ pub fn review_choice_blocked(v: &PrView, ev: ReviewEvent) -> Option<String> {
             _ => {}
         },
     }
-    not_open(v, d)
+    None
 }
 
 /// Why the Submit review (Finish review) button is disabled.
 pub fn review_blocked(v: &PrView) -> Option<String> {
-    let page = match ready(v) {
-        Ok(p) => p,
-        Err(why) => return Some(why),
-    };
+    if let Err(why) = ready(v) {
+        return Some(why);
+    }
     let ev = v.forms.review_event;
     if let Some(why) = review_choice_blocked(v, ev) {
         return Some(why);
     }
-    let finishing = page.detail.pending_review.is_some() && ev == ReviewEvent::Comment;
-    let votes = matches!(page.detail.style, ReviewStyle::Votes { .. });
-    let optional = matches!(ev, ReviewEvent::Approve | ReviewEvent::Unapprove | ReviewEvent::UnrequestChanges)
-        || (ev == ReviewEvent::RequestChanges && votes)
-        || finishing;
-    if v.forms.review_body.trim().is_empty() && !optional {
-        Some("Write a summary for this choice".to_owned())
+    if v.forms.review_body.trim().is_empty() && !summary_optional(v, ev) {
+        Some(if ev == ReviewEvent::RequestChanges { "A change request needs a summary" } else { "A comment needs a summary" }.to_owned())
     } else if too_long(&v.forms.review_body, MAX_BODY) {
         Some("A summary can have at most 65,536 characters".to_owned())
     } else {

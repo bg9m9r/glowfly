@@ -106,12 +106,12 @@ Label "Your review"
 RadioButton "Comment" [on]
 Label "General feedback, without approving."
 RadioButton "Approve" [disabled, off]
-Label "Approve these changes for merging."
+Label "You opened this pull request, so you can't approve it"
 RadioButton "Request changes" [disabled, off]
-Label "Feedback that must be addressed before this can merge."
+Label "You opened this pull request, so you can't request changes on it"
 MultilineTextInput "Review summary"
 Button "Submit review" [disabled]
-Label "Write a summary for this choice"
+Label "A comment needs a summary"
 Label "Merge"
 Label "Conflicts with main must be resolved first"
 RadioButton "Merge commit" [on]
@@ -174,4 +174,4 @@ painted:
   "Submodules"
   "0"
   "M"
-  "Summary (optional when approving)"
+  "Summary (required for a comment)"
