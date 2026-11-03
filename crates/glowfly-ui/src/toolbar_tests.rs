@@ -23,11 +23,16 @@ pub(super) fn settle(h: &mut H) {
     h.run();
 }
 
-/// The node labelled `label`'s left and right edges.
+/// The left and right edges of the node labelled `label`, or of the picker showing it ("Branch: main").
 pub(super) fn span(h: &H, label: &str) -> (f64, f64) {
     // The toolbar's node, not a tab of the same name.
-    let b =
-        h.get_all_by_label(label).find(|n| n.role() != eframe::egui::accesskit::Role::Tab).and_then(|n| n.bounding_box()).expect("bounds");
+    let picker = format!(": {label}");
+    let b = h
+        .query_all_by_label_contains(label)
+        .filter(|n| n.label().is_some_and(|l| l == label || l.ends_with(&picker)))
+        .find(|n| n.role() != eframe::egui::accesskit::Role::Tab)
+        .and_then(|n| n.bounding_box())
+        .expect("bounds");
     (b.x0, b.x1)
 }
 

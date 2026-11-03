@@ -15,20 +15,20 @@ Dialog
   Button "Select all"
   Button "Select none"
   Label "4 of 4 files"
-  CheckBox [on]
+  CheckBox "a.txt" [on]
   Label "M"
   Label "a.txt"
-  CheckBox [on]
+  CheckBox "b.txt" [on]
   Label "M"
   Label "b.txt"
-  CheckBox [on]
+  CheckBox "c.txt" [on]
   Label "A"
   Label "c.txt"
-  CheckBox [disabled, off]
+  CheckBox "docs/notes.md" [disabled, off]
   Label "M"
   Label "docs/notes.md"
   Label "(same file as another path)"
-  CheckBox [on]
+  CheckBox "src/lib.rs" [on]
   Label "A"
   Label "src/lib.rs"
   CheckBox "Keep staged changes" [off]

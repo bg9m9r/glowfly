@@ -11,7 +11,7 @@ Dialog
   Button "Look again"
   ProgressIndicator
   Label "Looking for repositories…"
-  TextInput [focused]
+  TextInput "Filter by name or path" [focused]
   Label "C:\\src (3)"
   Button "Add to favorites"
   Label "api-server"
@@ -32,5 +32,3 @@ Dialog
   Label "C:\\work\\tools\\scripts"
   Label "Stopped after looking in 20000 folders. Add a folder closer to your repositories."
   Button "Close"
-painted:
-  "Filter by name or path"

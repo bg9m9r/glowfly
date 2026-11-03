@@ -211,7 +211,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 };
                 // The row's accessible name: its summary, or the text of its WIP box.
                 match (commit, worktree) {
-                    (Some(c), _) => super::access::name_button(&resp, true, &c.summary),
+                    (Some(c), _) => cells::name_row(&resp, c, snap.refs.get(&c.oid), settings.format_graph_time(c.time, now, offset)),
                     (None, Some((_, wt))) => super::access::name_button(&resp, true, &crate::state::worktrees::wip_label(t, wt)),
                     (None, None) => super::access::name_button(&resp, true, wip_label),
                 }

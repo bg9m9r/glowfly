@@ -40,6 +40,7 @@ impl egui::Widget for Field<'_> {
             tokens::focus_ring(ui.painter(), frame, CornerRadius::same(radius::around(corners.nw, 1)));
         }
         ui.set_style(saved);
+        crate::ui::access::from_label(&r);
         r
     }
 }
@@ -211,6 +212,7 @@ impl egui::Widget for Check<'_> {
                 WidgetInfo::selected(WidgetType::Checkbox, ui.is_enabled(), *checked, label)
             }
         });
+        crate::ui::access::from_label(&response);
         if ui.is_rect_visible(rect) {
             let at = centre.map_or(rect, |c| Rect::from_center_size(c, Vec2::splat(ui.spacing().icon_width)));
             let big = paint_box(ui, at, (*checked, indeterminate, tint), response.hovered());
@@ -282,17 +284,46 @@ impl egui::Widget for Radio {
             let p = color::current();
             let (_, big) = ui.spacing().icon_rectangles(rect);
             let (c, w) = (big.center(), big.width());
-            let (fill, stroke) = icon_colors(&p, selected, response.hovered());
-            ui.painter().circle(c, w / 2.0, fill, stroke);
-            if selected {
-                ui.painter().circle_filled(c, w / 5.0, p.input);
+            if ui.is_enabled() {
+                let (fill, stroke) = icon_colors(&p, selected, response.hovered());
+                ui.painter().circle(c, w / 2.0, fill, stroke);
+                if selected {
+                    ui.painter().circle_filled(c, w / 5.0, p.input);
+                }
+                if response.has_focus() {
+                    ui.painter().circle_stroke(c, w / 2.0 + 2.0, Stroke::new(2.0_f32, p.accent));
+                }
+                paint_label(ui, rect, galley, &response);
+            } else {
+                paint_disabled_radio(ui, rect, galley, selected);
             }
-            if response.has_focus() {
-                ui.painter().circle_stroke(c, w / 2.0 + 2.0, Stroke::new(2.0_f32, p.accent));
-            }
-            paint_label(ui, rect, galley, &response);
         }
         response
+    }
+}
+
+/// A disabled radio button at full strength, not tinted toward the background as egui tints a
+/// disabled widget (which takes the ring below 3:1): the unselected ring as when enabled, the
+/// selected one `weak` with an `input` dot, and the label `weak`, even one with its own colour.
+fn paint_disabled_radio(ui: &Ui, rect: Rect, galley: Option<Arc<Galley>>, selected: bool) {
+    let p = color::current();
+    let mut painter = ui.painter().clone();
+    if !painter.is_visible() {
+        return;
+    }
+    painter.set_fade_to_color(None);
+    let (_, big) = ui.spacing().icon_rectangles(rect);
+    let (c, w) = (big.center(), big.width());
+    if selected {
+        painter.circle(c, w / 2.0, p.weak, Stroke::new(1.0_f32, p.weak));
+        painter.circle_filled(c, w / 5.0, p.input);
+    } else {
+        painter.circle(c, w / 2.0, p.input, Stroke::new(1.0_f32, p.input_border));
+    }
+    if let Some(galley) = galley {
+        let s = ui.spacing();
+        let pos = pos2(rect.min.x + s.icon_width + s.icon_spacing, rect.center().y - 0.5 * galley.size().y);
+        painter.galley_with_override_text_color(pos, galley, p.weak);
     }
 }
 

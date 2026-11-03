@@ -19,7 +19,7 @@ fn rebase_conflict_resolved_in_merge_view() {
     let main_tip = disk::head_oid(&repo);
     git(&repo, &["checkout", "-q", "topic"]);
     let mut j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
-    j.see("✔  topic", Region::Sidebar);
+    j.see("topic, checked out", Region::Sidebar);
 
     // step 1: the rebase stops on f.txt, with the conflict markers in the working file.
     j.branch_menu("main", "Rebase topic onto this branch");
@@ -72,5 +72,5 @@ fn rebase_conflict_resolved_in_merge_view() {
     assert!(disk::is_clean(&repo));
     j.absent("Continue", Region::Details);
     j.absent("Abort rebase", Region::Details);
-    j.see("topic", Region::Toolbar);
+    j.see("Branch: topic", Region::Toolbar);
 }

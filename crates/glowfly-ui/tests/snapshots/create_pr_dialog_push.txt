@@ -4,7 +4,7 @@ Dialog
   Button "Close this dialog"
   Label "search"
   Label "into"
-  ComboBox
+  ComboBox "Target branch"
   Label "search has 2 commits that aren't on origin."
   Button "Push search"
   Label "Title"

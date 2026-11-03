@@ -49,7 +49,7 @@ pub(super) fn board_row(ui: &mut Ui, account: &Account, board: &str, board_name:
             }))
         };
         let selected = if board.is_empty() { "All boards" } else { board_name };
-        egui::ComboBox::from_id_salt("trello-board").selected_text(selected).width(320.0).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("trello-board").selected_text(selected).width(320.0).show_ui(ui, |ui| {
             if ui.selectable_label(board.is_empty(), "All boards").clicked() && !board.is_empty() {
                 msgs.push(choose("", ""));
             }
@@ -59,6 +59,7 @@ pub(super) fn board_row(ui: &mut Ui, account: &Account, board: &str, board_name:
                 }
             }
         });
+        crate::ui::access::from_label(&combo.response);
         if list.loading {
             ui.horizontal(|ui| {
                 ui.add(egui::Spinner::new().size(14.0));

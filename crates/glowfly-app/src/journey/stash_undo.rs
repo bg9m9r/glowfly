@@ -16,7 +16,7 @@ fn stash_pop_and_undo_redo_commit_and_merge() {
     git(&repo, &["checkout", "-q", "main"]);
     commit_files(&repo, &[("b.txt", "b\n")], "Main moves on");
     let mut j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
-    j.see("✔  main", Region::Sidebar);
+    j.see("main, checked out", Region::Sidebar);
     j.disabled("Unstash the latest stash", Region::Toolbar);
 
     // step 1: stash a local edit.
@@ -68,5 +68,5 @@ fn stash_pop_and_undo_redo_commit_and_merge() {
     assert_eq!(disk::head_oid(&repo), merge);
     assert_eq!(disk::work_text(&repo, "side.txt").as_deref(), Some("side\n"));
     assert!(disk::is_clean(&repo));
-    j.see("main", Region::Toolbar);
+    j.see("Branch: main", Region::Toolbar);
 }

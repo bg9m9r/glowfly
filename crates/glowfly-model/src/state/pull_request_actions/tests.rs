@@ -96,10 +96,10 @@ fn comment_blocked_reasons() {
 #[test]
 fn the_author_cannot_judge_their_own_changes() {
     let v = with(|d| d.me = "ADA".into());
-    assert_eq!(review_choice_blocked(&v, ReviewEvent::Approve).as_deref(), Some("You opened this pull request, so you can't approve it."));
+    assert_eq!(review_choice_blocked(&v, ReviewEvent::Approve).as_deref(), Some("You opened this pull request, so you can't approve it"));
     assert_eq!(
         review_choice_blocked(&v, ReviewEvent::RequestChanges).as_deref(),
-        Some("You opened this pull request, so you can't request changes on it.")
+        Some("You opened this pull request, so you can't request changes on it")
     );
     assert_eq!(review_choice_blocked(&v, ReviewEvent::Comment), None);
     let v = view(Some(detail()));
@@ -108,12 +108,45 @@ fn the_author_cannot_judge_their_own_changes() {
     assert_eq!(review_choice_blocked(&v, ReviewEvent::Comment).as_deref(), Some("This pull request is merged"));
 }
 
+/// A choice the author can't make says why in place of its help line; a closed pull request
+/// keeps the help lines, its reason said once under the Submit button.
+#[test]
+fn a_blocked_choice_shows_its_reason_as_its_line() {
+    let v = with(|d| d.me = "ada".into());
+    assert_eq!(review_choice_line(&v, ReviewEvent::Comment), "General feedback, without approving.");
+    assert_eq!(review_choice_line(&v, ReviewEvent::Approve), "You opened this pull request, so you can't approve it");
+    assert_eq!(review_choice_line(&v, ReviewEvent::RequestChanges), "You opened this pull request, so you can't request changes on it");
+    let v = view(Some(detail()));
+    assert_eq!(review_choice_line(&v, ReviewEvent::Approve), "Approve these changes for merging.");
+    let v = with(|d| d.state = PrState::Closed);
+    assert_eq!(review_choice_blocked(&v, ReviewEvent::Approve).as_deref(), Some("This pull request is closed"));
+    assert_eq!(review_choice_line(&v, ReviewEvent::Approve), "Approve these changes for merging.");
+}
+
+/// The summary's placeholder follows the selected choice: required for a comment or a change
+/// request, optional when approving or finishing a review already started.
+#[test]
+fn the_summary_placeholder_follows_the_choice() {
+    let mut v = view(Some(detail()));
+    assert_eq!(review_placeholder(&v), "Summary (required for a comment)");
+    v.forms.review_event = ReviewEvent::Approve;
+    assert_eq!(review_placeholder(&v), "Summary (optional when approving)");
+    v.forms.review_event = ReviewEvent::RequestChanges;
+    assert_eq!(review_placeholder(&v), "Summary (required when requesting changes)");
+    let v = with(|d| d.pending_review = Some(99));
+    assert_eq!(review_placeholder(&v), "Summary (optional)", "an empty comment finishes a pending review");
+    let v = with(|d| d.me = "ada".into());
+    assert_eq!(review_placeholder(&v), "Summary (required for a comment)", "the author's only choice is a comment");
+    let v = with(|d| d.state = PrState::Merged);
+    assert_eq!(review_placeholder(&v), "Summary", "a merged pull request takes no review");
+}
+
 #[test]
 fn reviews_need_a_summary_except_approvals_and_finishing() {
     let mut v = view(Some(detail()));
-    assert_eq!(review_blocked(&v).as_deref(), Some("Write a summary for this choice"));
+    assert_eq!(review_blocked(&v).as_deref(), Some("A comment needs a summary"));
     v.forms.review_event = ReviewEvent::RequestChanges;
-    assert_eq!(review_blocked(&v).as_deref(), Some("Write a summary for this choice"));
+    assert_eq!(review_blocked(&v).as_deref(), Some("A change request needs a summary"));
     v.forms.review_event = ReviewEvent::Approve;
     assert_eq!(review_blocked(&v), None);
     v.forms.review_event = ReviewEvent::RequestChanges;
@@ -125,7 +158,7 @@ fn reviews_need_a_summary_except_approvals_and_finishing() {
     assert_eq!(review_blocked(&v), None, "an empty comment finishes a pending review");
     assert_eq!(review_button(&v), "Finish review");
     v.forms.review_event = ReviewEvent::RequestChanges;
-    assert_eq!(review_blocked(&v).as_deref(), Some("Write a summary for this choice"));
+    assert_eq!(review_blocked(&v).as_deref(), Some("A change request needs a summary"));
     let mut v = with(|d| d.state = PrState::Closed);
     v.forms.review_event = ReviewEvent::Approve;
     assert_eq!(review_blocked(&v).as_deref(), Some("This pull request is closed"));

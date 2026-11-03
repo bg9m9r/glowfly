@@ -19,7 +19,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `shell/app_native.rs` and `shell/app_menu.rs`: the shell's side of the drawn Windows frame's OS glue and of the macOS system menu bar (see [flow-shell.md](flow-shell.md)).
 - `ui/frame_overlay.rs`: the frame-time overlay Preferences > General can show, drawn by the shell.
 - `ui/app_icon.rs`: the app icon, for the window (`main.rs`) and the welcome screen's mark (`ui/app_mark.rs`).
-- `ui/access.rs` gives painted buttons and hint-only text fields their accessible names (a toolbar button's name describes it and differs from the palette's rows), and makes a label a live region under a stable key (`announce`).
+- `ui/access.rs` gives painted buttons and hint-only text fields their accessible names (a toolbar button's name describes it and differs from the palette's rows), lets a form row's label name the unnamed fields, combos and boxes drawn under it (`with_label`, `from_label`), and makes a label a live region under a stable key (`announce`).
 - `snapshot_tests/snapshot_tests_announce.rs`: the toasts' and the status bar job's live regions, and none with Announcements off.
 - `central.rs` holds the central-area routing (which view fills it: the pull request panel and the issue panel (`issue/`) share one place) and the Esc chain.
 - `panel_header.rs`: the pull request and issue panels' header links (Copy link, Open in browser), folded into a ⋯ menu when they would squeeze the title.

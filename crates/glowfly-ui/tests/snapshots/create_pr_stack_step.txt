@@ -5,7 +5,7 @@ Dialog
   Label "Branch 2 of 2 in the stack. Its base is the branch below it."
   Label "login-page"
   Label "into"
-  ComboBox
+  ComboBox "Target branch"
   Label "Title"
   TextInput "Title" = "Login page"
   Label "Description"

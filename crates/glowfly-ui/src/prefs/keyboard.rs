@@ -26,7 +26,8 @@ pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, m
     ui.add_space(8.0);
     ui.horizontal(|ui| {
         let field = TextEdit::singleline(&mut page.filter).id(Id::new("glowfly-keys-filter")).hint_text("Filter by action or key");
-        ui.add(controls::SizedField::new(ControlSize::Regular, field).width(super::FIELD_W));
+        let field = ui.add(controls::SizedField::new(ControlSize::Regular, field).width(super::FIELD_W));
+        crate::ui::access::name_if_unnamed(&field, "Filter by action or key");
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let why = (!keys.customized()).then_some("Every shortcut has its default key");
             let reset = buttons::secondary("Reset all to defaults").enabled(keys.customized() && !page.confirm_reset_all).why(why);
