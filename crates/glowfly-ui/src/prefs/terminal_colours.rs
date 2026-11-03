@@ -18,7 +18,7 @@ pub(super) fn colours_row(ui: &mut Ui, t: Lang, choice: &mut TerminalColours, th
     let schemes = &themes.catalog.terminal;
     row(ui, t.tr("prefs.terminal.colours.label"), |ui| {
         ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt("terminal-colours")
+            let combo = egui::ComboBox::from_id_salt("terminal-colours")
                 .selected_text(selected_text(t, choice, schemes))
                 .width(fit(ui, 240.0))
                 .show_ui(ui, |ui| {
@@ -35,6 +35,7 @@ pub(super) fn colours_row(ui: &mut Ui, t: Lang, choice: &mut TerminalColours, th
                         ui.selectable_value(choice, TerminalColours::Scheme(f.id.clone()), f.name.as_str());
                     }
                 });
+            crate::ui::access::from_label(&combo.response);
             if ui.add(buttons::secondary(t.tr("prefs.terminal.colours.import.button"))).clicked() {
                 msgs.push(Msg::Theme(ThemeMsg::PickScheme));
             }

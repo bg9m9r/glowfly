@@ -39,6 +39,7 @@ impl egui::Widget for Field<'_> {
             tokens::focus_ring(ui.painter(), frame, CornerRadius::same(radius::around(corners.nw, 1)));
         }
         ui.set_style(saved);
+        crate::ui::access::from_label(&r);
         r
     }
 }
@@ -200,6 +201,7 @@ impl egui::Widget for Check<'_> {
                 WidgetInfo::selected(WidgetType::Checkbox, ui.is_enabled(), *checked, label)
             }
         });
+        crate::ui::access::from_label(&response);
         if ui.is_rect_visible(rect) {
             let at = centre.map_or(rect, |c| Rect::from_center_size(c, Vec2::splat(ui.spacing().icon_width)));
             let big = paint_box(ui, at, (*checked, indeterminate, tint), response.hovered());

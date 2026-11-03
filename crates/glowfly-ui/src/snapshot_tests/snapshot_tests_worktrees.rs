@@ -95,7 +95,7 @@ fn worktrees_section() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Worktrees").is_some() || h.query_by_label("feature-login").is_some());
-    assert!(h.query_by_label("✔  app").is_some(), "the current worktree is marked");
+    assert!(h.query_by_label("app, current").is_some(), "the current worktree is marked");
     h.check_snapshot("worktrees_section");
     drop(h);
 
@@ -104,7 +104,7 @@ fn worktrees_section() {
     st.snap.as_mut().unwrap().worktrees.truncate(1);
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("✔  app").is_none() && h.query_by_label("feature-login").is_none());
+    assert!(h.query_by_label("app, current").is_none() && h.query_by_label("feature-login").is_none());
     drop(h);
     remove_fixture(&dir);
 }
@@ -131,7 +131,7 @@ fn worktrees_filtered() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("hotfix").is_some());
-    for other in ["✔  app", "feature-login", "old", "gone"] {
+    for other in ["app, current", "feature-login", "old", "gone"] {
         assert!(h.query_by_label(other).is_none(), "{other}");
     }
     h.check_snapshot("worktrees_filtered");
@@ -157,7 +157,7 @@ fn worktree_menu() {
     let want = p("C:/work/app-worktrees/feature-login").display().to_string();
     assert!(pushed(&h, &|m| matches!(m, Msg::Copy(x) if *x == want)));
 
-    let at = center(&h, "✔  app");
+    let at = center(&h, "app, current");
     click(&mut h, at, PointerButton::Secondary);
     assert!(h.get_by_label("Open in new tab").is_disabled());
     assert!(!h.get_by_label("Open folder").is_disabled());

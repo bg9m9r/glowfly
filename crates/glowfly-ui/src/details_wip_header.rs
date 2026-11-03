@@ -17,6 +17,7 @@ use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::{self, Icon, truncate};
 use eframe::egui::{self, Align, Color32, Layout, Response, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_core::settings::FileListMode;
 use glowfly_core::undo::DISCARD_STASH_MESSAGE;
 
 /// The width of the more-actions button.
@@ -118,7 +119,15 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
     let scope = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
         frame(ui, |ui| {
             // Rightmost; the buttons measure the room left after it.
-            crate::ui::list_row::file_tree::mode_toggle(ui, ctx.lang, ctx.mode, msgs);
+            let toggle = crate::ui::list_row::file_tree::mode_toggle(ui, ctx.lang, ctx.mode, msgs);
+            // Two lists show the toggle: the name says which one it changes.
+            let name = match (staged, ctx.mode) {
+                (false, FileListMode::List) => ctx.lang.tr("files.tree.unstaged.show_tree.name"),
+                (false, FileListMode::Tree) => ctx.lang.tr("files.tree.unstaged.show_list.name"),
+                (true, FileListMode::List) => ctx.lang.tr("files.tree.staged.show_tree.name"),
+                (true, FileListMode::Tree) => ctx.lang.tr("files.tree.staged.show_list.name"),
+            };
+            access::name_button(&toggle, true, name);
             buttons(ui, &title, staged, count, ctx, msgs);
             // Drawn after the buttons, so a long title is cut short (whole on hover) instead of
             // running under them. Not selectable, so a right-click on the title reaches the

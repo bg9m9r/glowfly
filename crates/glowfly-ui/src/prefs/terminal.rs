@@ -41,14 +41,15 @@ fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, os: Os,
     row(ui, t.tr("prefs.terminal.shell.label"), |ui| {
         // A Windows-only choice in a settings file from elsewhere acts as, and shows as, Automatic.
         let shown = if ShellChoice::offered(windows).contains(&p.shell.choice) { p.shell.choice } else { ShellChoice::Auto };
-        egui::ComboBox::from_id_salt("terminal-shell").selected_text(choice_label(t, shown, windows)).width(super::fit(ui, 240.0)).show_ui(
-            ui,
-            |ui| {
+        let combo = egui::ComboBox::from_id_salt("terminal-shell")
+            .selected_text(choice_label(t, shown, windows))
+            .width(super::fit(ui, 240.0))
+            .show_ui(ui, |ui| {
                 for c in ShellChoice::offered(windows) {
                     ui.selectable_value(&mut p.shell.choice, *c, choice_label(t, *c, windows));
                 }
-            },
-        );
+            });
+        crate::ui::access::from_label(&combo.response);
         help(ui, if windows { t.tr("prefs.terminal.shell.help_windows") } else { t.tr("prefs.terminal.shell.help_unix") });
     });
     if p.shell.choice == ShellChoice::Custom {

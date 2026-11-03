@@ -42,7 +42,7 @@ fn files(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, msgs: &mut
         ui.spacing_mut().item_spacing.x = 8.0;
         ui.label(RichText::new(t.tr("prefs.ui.theme.files.label")).size(type_scale::BODY).color(color::text()));
         let shown = selected_text(t, &s.theme, &themes.catalog);
-        egui::ComboBox::from_id_salt("theme").selected_text(shown).width(COMBO_W).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("theme").selected_text(shown).width(COMBO_W).show_ui(ui, |ui| {
             if themes.catalog.files.is_empty() {
                 ui.label(RichText::new(t.tr("prefs.ui.theme.no_files")).color(color::weak()));
             }
@@ -52,6 +52,7 @@ fn files(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, msgs: &mut
                 }
             }
         });
+        crate::ui::access::from_label(&combo.response);
     });
     gap(ui, 8.0);
     ui.horizontal_wrapped(|ui| {

@@ -5,10 +5,12 @@ Label "Preferences"
 Label "This repository"
 Label "Repo: demo"
 Label "Issue tracker"
+Label "Issues come from"
 RadioButton "Automatic (remote not recognized)" [off]
 RadioButton "Trello · trello.com" [on]
 RadioButton "None" [off]
-ComboBox
+Label "Board"
+ComboBox "Board"
 Label "Trello's API rate limit was exceeded; wait a few seconds, then refresh"
 Button "Try again"
 Label "The ISSUES list shows open cards assigned to you on this board. Card links (trello.com/c/…) in commit messages, and branch names that start with a card id, link to Trello either way."
@@ -31,6 +33,4 @@ painted:
   "Git LFS"
   "Git Flow"
   "Sparse checkout"
-  "Issues come from"
-  "Board"
   "Website"

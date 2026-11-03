@@ -215,7 +215,7 @@ pub(super) fn part_w(slot: f32, dot: bool) -> f32 {
 
 /// Paints one picker over its segment `r`: `caption` over the name galley (with its dot before
 /// it: a branch dot, or a ring for None, and its `counts` after it), and the caret pinned at the
-/// segment's right. Named by `access`; `full`, the whole name, shows on hover when it was `cut`.
+/// segment's right. Named by `caption` and `access`; `full`, the whole name, shows on hover when cut.
 fn part(
     ui: &egui::Ui,
     r: Response,
@@ -226,6 +226,8 @@ fn part(
 ) -> Response {
     let rect = r.rect;
     let icon_w = if dot.is_some() { ICON_ROOM } else { 0.0 };
+    // Named with its caption and counts ("Branch: main, 2 ahead, 3 behind"), as it reads on screen.
+    let named = format!("{caption}: {access}");
     // In a very narrow window the caption is cut too.
     let caption = cut_galley(ui.ctx(), cut_job(caption.to_owned(), type_scale::font(CAPTION), color::weak()), rect.width() - 2.0 * PAD_X);
     let p = ui.painter();
@@ -249,7 +251,7 @@ fn part(
         paint_parts(p, pos2(x + icon_w + name_w + COUNTS_GAP, row_y), counts, color::weak());
     }
     widgets::caret(p, pos2(rect.right() - PAD_X - 6.0, row_y + 1.0), color::weak());
-    r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, access));
+    r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &named));
     if cut { r.on_hover_text(full) } else { r }
 }
 

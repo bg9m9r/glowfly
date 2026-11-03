@@ -220,7 +220,8 @@ fn a_grouped_tab_names_its_repository_on_hover() {
         let name = if grouped { "demo-hotfix" } else { "notes" };
         let tip = h.query_all_by_label_contains(name).any(|n| n.role() != egui::accesskit::Role::Tab);
         assert!(tip, "tab {i} shows its path");
-        assert_eq!(h.query_by_label_contains("Repository: demo").is_some(), grouped, "tab {i}");
+        let tip = h.query_all_by_label_contains("Repository: demo").any(|n| n.role() != egui::accesskit::Role::Button);
+        assert_eq!(tip, grouped, "tab {i}");
         drop(h);
         remove_fixture(&dir);
     }

@@ -11,9 +11,9 @@ use crate::ui::theme::type_scale;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use crate::ui::widgets::{Cut, chip, paint_cut, paint_cut_text};
 use eframe::egui::text::{LayoutJob, TextFormat};
-use eframe::egui::{Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
+use eframe::egui::{self, Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
 use git2::Oid;
-use glowfly_core::repo::CommitInfo;
+use glowfly_core::repo::{CommitInfo, RefLabel};
 use glowfly_core::settings::{GraphColumns, Settings};
 use std::collections::HashMap;
 
@@ -45,6 +45,15 @@ pub(super) struct Cells<'a> {
     pub date: Option<String>,
     /// Files changed, lines added and lines deleted, once read.
     pub stats: Option<(usize, usize, usize)>,
+}
+
+/// Names commit row `resp` by `c`'s summary, and describes it by what the row shows after it:
+/// "Ada Lovelace, 222c0ad, Jan 10, main" (author, short SHA, `date`, then its refs).
+pub(super) fn name_row(resp: &egui::Response, c: &CommitInfo, refs: Option<&Vec<RefLabel>>, date: String) {
+    crate::ui::access::name_button(resp, true, &c.summary);
+    let mut parts = vec![c.author.name().to_owned(), crate::ui::common::short(c.oid), date];
+    parts.extend(refs.into_iter().flatten().map(|r| r.name.clone()));
+    crate::ui::access::describe(resp, &parts.join(", "));
 }
 
 /// Each open pull request's chip label ("PR #12", "Draft #3") and whether it is a draft, by

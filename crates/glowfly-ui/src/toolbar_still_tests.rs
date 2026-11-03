@@ -94,15 +94,15 @@ fn an_80_character_name_gets_the_cap_cut_in_the_middle() {
     let mut h = harness_sized(st, true, egui::vec2(1600.0, 820.0));
     h.run();
     assert_eq!(branch_part(&h), f64::from(part_w(BRANCH_FIT.1, true)));
-    // Cut on screen, so the whole name shows on hover; still found by it.
+    // Cut on screen, so the whole name shows on hover; still found by it, after its caption.
     let name = h.state().0.snap.as_ref().and_then(|s| s.head_branch.clone()).unwrap();
     assert!(name.len() >= 80, "{name}");
-    h.get_by_label(&name).hover();
+    h.get_by_label(&format!("Branch: {name}")).hover();
     for _ in 0..4 {
         h.step();
     }
     h.run();
-    assert!(h.query_all_by_label(&name).count() >= 2, "the whole name in a tooltip");
+    assert!(h.query_by_label(&name).is_some(), "the whole name in a tooltip (the picker reads \"Branch: …\")");
     drop(h);
     remove_fixture(&dir);
 }

@@ -17,9 +17,9 @@ const UPSTREAM: &str = "Add app skeleton";
 fn the_names_say_the_counts() {
     let cases = [
         (0, 0, "Pull the current branch", "Push the current branch", "main"),
-        (2, 0, "Pull the current branch", "Push, 2 ahead of origin/main", "main, 2 ahead"),
-        (0, 3, "Pull, 3 behind origin/main", "Push the current branch", "main, 3 behind"),
-        (2, 3, "Pull, 3 behind origin/main", "Push, 2 ahead of origin/main", "main, 2 ahead, 3 behind"),
+        (2, 0, "Pull the current branch", "Push, 2 ahead of origin/main", "Branch: main, 2 ahead"),
+        (0, 3, "Pull, 3 behind origin/main", "Push the current branch", "Branch: main, 3 behind"),
+        (2, 3, "Pull, 3 behind origin/main", "Push, 2 ahead of origin/main", "Branch: main, 2 ahead, 3 behind"),
     ];
     for (ahead, behind, pull, push, branch) in cases {
         let (st, dir) = tracking(ThemeChoice::Dark, &format!("toolbar-sync-{ahead}-{behind}"), UPSTREAM, ahead, behind);
@@ -29,7 +29,7 @@ fn the_names_say_the_counts() {
             assert!(h.query_all_by_label(label).next().is_some(), "{ahead}/{behind}: {label}");
         }
         if (ahead, behind) == (0, 0) {
-            assert!(h.query_by_label("main, 0 ahead").is_none() && h.query_by_label("Pull, 0 behind origin/main").is_none());
+            assert!(h.query_by_label("Branch: main, 0 ahead").is_none() && h.query_by_label("Pull, 0 behind origin/main").is_none());
         }
         drop(h);
         remove_fixture(&dir);
@@ -42,7 +42,7 @@ fn the_names_say_the_counts() {
     for label in ["Pull the current branch", "Push the current branch", "main"] {
         assert!(h.query_all_by_label(label).next().is_some(), "no upstream: {label}");
     }
-    for label in ["Pull, 3 behind origin/main", "Push, 2 ahead of origin/main", "main, 2 ahead, 3 behind"] {
+    for label in ["Pull, 3 behind origin/main", "Push, 2 ahead of origin/main", "Branch: main, 2 ahead, 3 behind"] {
         assert!(h.query_by_label(label).is_none(), "no upstream: {label}");
     }
     drop(h);
@@ -96,7 +96,7 @@ fn the_picker_names_counts_it_has_no_room_to_show() {
     let (st, dir) = tracking(ThemeChoice::Dark, "toolbar-sync-hidden-counts", UPSTREAM, 12, 13);
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("main, 12 ahead, 13 behind").is_some());
+    assert!(h.query_by_label("Branch: main, 12 ahead, 13 behind").is_some());
     drop(h);
     remove_fixture(&dir);
 }

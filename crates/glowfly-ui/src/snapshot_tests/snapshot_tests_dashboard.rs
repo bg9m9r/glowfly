@@ -287,7 +287,7 @@ fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
     // With no repository open, the repository menu still offers the dashboard.
     let mut h = harness(AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now()), true);
     h.run();
-    h.get_by_label("Open…").click();
+    h.get_by_label("Repository: Open…").click();
     h.run();
     h.get_by_label("Dashboard").click();
     h.run();

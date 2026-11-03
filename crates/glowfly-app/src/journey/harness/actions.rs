@@ -88,7 +88,7 @@ impl Journey {
     /// The sidebar row of local branch `name` (checked out or not); local rows come before the
     /// remotes' rows of the same name.
     pub fn local_branch(&self, name: &str) -> String {
-        let head = format!("✔  {name}");
+        let head = format!("{name}, checked out");
         if find::count(&self.h, &head, true, Region::Sidebar) > 0 { head } else { name.to_owned() }
     }
 

@@ -8,7 +8,7 @@ Dialog
   Label "C:\\work"
   Button "Add folder…"
   Button "Look again"
-  TextInput = "api" [focused]
+  TextInput "Filter by name or path" = "api" [focused]
   Label "C:\\src (1)"
   Button "Add to favorites"
   Label "api-server"

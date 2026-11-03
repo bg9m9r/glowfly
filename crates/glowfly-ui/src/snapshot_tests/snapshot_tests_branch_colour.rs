@@ -69,7 +69,7 @@ fn branch_picker_menu_dots() {
     let (st, dir) = with_branches(ThemeChoice::Dark, "colour-picker");
     let mut h = harness(st, true);
     h.run();
-    let picker = h.get_all_by_label("main").filter_map(|n| n.bounding_box()).find(|r| r.y1 < 100.0).expect("the Branch picker");
+    let picker = h.get_all_by_label("Branch: main").filter_map(|n| n.bounding_box()).find(|r| r.y1 < 100.0).expect("the Branch picker");
     click(&mut h, pos2(((picker.x0 + picker.x1) / 2.0) as f32, ((picker.y0 + picker.y1) / 2.0) as f32), PointerButton::Primary);
     assert_eq!(h.query_all_by_label("fix-1").count(), 2, "the sidebar's row and the menu's");
     let main = h.get_all_by_label("main").find(|n| n.role() == eframe::egui::accesskit::Role::RadioButton).expect("the menu's row");

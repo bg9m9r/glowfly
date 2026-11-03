@@ -4,7 +4,7 @@ Dialog
   Button "URL" [off]
   Button "Your repositories" [on]
   ComboBox
-  TextInput = "a" [focused]
+  TextInput "Filter repositories" = "a" [focused]
   Button "ada/app" [off]
   Button "team/api" [on]
   Label "private"

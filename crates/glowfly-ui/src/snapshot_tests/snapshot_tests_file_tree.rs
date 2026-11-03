@@ -87,7 +87,9 @@ fn details_wip_tree() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("src/ui/").is_some() && h.query_by_label("notes/").is_some() && h.query_by_label("lib/").is_some());
-    assert_eq!(h.query_all_by_label(Lang::En.tr("files.tree.show_list.tip")).count(), 2, "a toggle in each header");
+    for list in ["files.tree.unstaged.show_list.name", "files.tree.staged.show_list.name"] {
+        assert!(h.query_by_label(Lang::En.tr(list)).is_some(), "a toggle in each header, named for its list");
+    }
     h.check_snapshot("details_wip_tree");
     drop(h);
     remove_fixture(&dir);

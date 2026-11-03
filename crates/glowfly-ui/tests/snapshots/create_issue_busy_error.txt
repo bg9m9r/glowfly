@@ -10,14 +10,11 @@ Dialog
   Label "Labels"
   Label "bug"
   Label "ui"
-  TextInput
+  TextInput "Search labels"
   Label "Assignees"
   Label "ada"
-  TextInput
+  TextInput "Search people"
   CheckBox "Create a branch for it afterwards" [on]
   Label "Couldn't create the issue: the server said “Validation Failed: assignees is invalid”"
   Button "Cancel"
   Button "Create issue"
-painted:
-  "Search labels"
-  "Search people"
