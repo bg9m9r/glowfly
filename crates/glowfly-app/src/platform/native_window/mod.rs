@@ -26,6 +26,9 @@ pub struct NativeFrame {
     pub max_clicked: bool,
     /// The system menu was shown (it took the Alt press of Alt+Space).
     pub system_menu_shown: bool,
+    /// The system reported a settings change (WM_SETTINGCHANGE): its accessibility settings
+    /// are read again.
+    pub settings_changed: bool,
     pub support: BackdropSupport,
 }
 
