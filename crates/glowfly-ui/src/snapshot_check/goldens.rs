@@ -111,6 +111,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     // D16: branches and worktrees that share a long start, each cut in its middle.
     ("sidebar_shared_prefix_dark", TopLeft(300.0, 820.0)),
     ("sidebar_shared_prefix_light", TopLeft(300.0, 820.0)),
+    // D16 in the palette: a cut ref with its matches lit at both ends.
+    ("palette_switch_long_name", Window),
     ("toolbar_restyled_dark", Window),
     ("toolbar_restyled_light", Window),
     ("menu_bar_file", Window),
