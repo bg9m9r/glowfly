@@ -68,6 +68,7 @@ impl AppState {
     pub fn graph_shown(&self) -> bool {
         !self.dashboard.open
             && self.snap.is_some()
+            && self.onboarding.getting_started.is_none()
             && self.session.conflict.view.is_none()
             && self.session.blame.view.is_none()
             && self.session.history.view.is_none()

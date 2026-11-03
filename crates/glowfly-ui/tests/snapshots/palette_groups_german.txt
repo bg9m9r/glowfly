@@ -47,6 +47,7 @@ Dialog
   Button "Show the welcome"
   Button "Tipps ausschalten"
   Button "Tipps wieder zeigen"
+  Button "Erste Schritte"
   Button "Take the tour"
   Button "View release notes"
   Button "Check for updates"
