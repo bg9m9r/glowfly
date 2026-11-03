@@ -53,6 +53,6 @@ fn headline_names_the_local_step_that_stopped() {
     );
     assert_eq!(
         j.stopped(t, &delete).as_deref(),
-        Some("Kept local branch feature: git didn't delete it. error: the branch 'feature' is not fully merged")
+        Some("Kept local branch feature: Git didn't delete it. error: the branch 'feature' is not fully merged")
     );
 }

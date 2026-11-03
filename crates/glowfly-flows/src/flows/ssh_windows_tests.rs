@@ -60,7 +60,7 @@ fn switching_writes_once_and_reads_the_choice_again() {
 
     let fx = ssh(&mut st, SshMsg::WindowsSshSet { on: true, result: Ok(()) });
     assert!(!page(&st).choice_busy);
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("git now runs Windows' OpenSSH for SSH remotes"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Git now runs Windows' OpenSSH for SSH remotes"));
     assert!(fx.iter().any(|e| matches!(e, Effect::Ssh(SshEffect::ReadChoice { .. }))));
     assert!(page(&st).choice.is_none(), "read again");
 }
@@ -95,7 +95,7 @@ fn undo_unsets_the_global_value() {
     let fx = ssh(&mut st, SshMsg::UseWindowsSsh(false));
     assert_eq!(windows_sets(&fx), [None]);
     ssh(&mut st, SshMsg::WindowsSshSet { on: false, result: Ok(()) });
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("git runs Git for Windows' own ssh again"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Git runs Git for Windows' own ssh again"));
 }
 
 #[test]

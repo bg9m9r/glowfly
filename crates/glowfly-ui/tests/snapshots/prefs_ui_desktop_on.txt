@@ -38,6 +38,9 @@ ComboBox "Notification location"
 Label "Behind alerts"
 CheckBox "Say when the branch falls behind its upstream" [on]
 Label "After a background fetch, say when the checked-out branch has fallen behind its upstream, with a button to pull."
+Label "Push and pull"
+CheckBox "Confirm pushes and pulls" [on]
+Label "A short notification says what each push or pull did, such as “Pushed 2 commits to origin/main.”"
 Label "Commit messages"
 Label "Spell checking"
 CheckBox "Check spelling in commit messages" [on]
@@ -47,7 +50,7 @@ Label "Git"
 Label "Git program"
 Label "Checking…"
 Button "Choose…"
-Label "The git program Glowfly runs for commits, fetches, pushes and hooks (Preferences > Git)."
+Label "The Git program Glowfly runs for commits, fetches, pushes and hooks (Preferences > Git)."
 Label "Default branch name"
 TextInput "Default branch name" = "main"
 Label "Suggested as the first branch's name when you create a repository. You can still change it each time."
@@ -101,7 +104,7 @@ Label "Lets links from a browser or chat open a repository, branch, commit or ta
 Label "Sign-ins"
 Label "Remember sign-ins"
 CheckBox "Remember HTTPS sign-ins typed in Glowfly" [on]
-Label "Once git accepts a username and password or token…"
+Label "Once Git accepts a username and password or token…"
 Link "Learn more"
 Label "Saved connections"
 Button "Remove saved tokens" [disabled]
@@ -116,7 +119,7 @@ Button "Show tips again"
 Label "Tips you dismissed, and the one-time notes, show again."
 Label "Diagnostics"
 Label "Extended logging"
-CheckBox "Add the git commands Glowfly runs, with their timings, to the activity log" [off]
+CheckBox "Add the Git commands Glowfly runs, with their timings, to the activity log" [off]
 Label "Also writes Glowfly's informational and debug…"
 Link "Learn more"
 Label "Frame times"
@@ -130,3 +133,4 @@ Link "Learn more"
 painted:
   "Bottom left"
   "After a background fetch, say when the checked-out branch has\nfallen behind its upstream, with a button to pull."
+  "A short notification says what each push or pull did, such as\n“Pushed 2 commits to origin/main.”"

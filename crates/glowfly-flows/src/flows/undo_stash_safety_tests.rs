@@ -86,7 +86,7 @@ fn intent_to_add_files_are_named_and_nothing_is_stashed() {
     let merged = head_summary(&st);
     stash_and_undo(&mut st);
     let t = st.toasts.last().unwrap();
-    assert!(!t.ok && t.text.starts_with("Nothing was stashed or undone: git can't stash n.txt"), "{}", t.text);
+    assert!(!t.ok && t.text.starts_with("Nothing was stashed or undone: Git can't stash n.txt"), "{}", t.text);
     assert_eq!(head_summary(&st), merged);
     assert!(!has_undo_stash(&st));
     cleanup(&[&dir]);

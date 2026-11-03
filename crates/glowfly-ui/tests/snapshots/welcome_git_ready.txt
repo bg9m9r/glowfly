@@ -3,8 +3,8 @@ Dialog
   Label "Nice to meet you, Ada Lovelace."
   Button "Close the welcome"
   ProgressIndicator "Step 3 of 4: Git"
-  Label "Checking git"
-  Label "Glowfly runs the git installed on this computer, so your git settings, hooks and credentials apply."
+  Label "Checking Git"
+  Label "Glowfly runs the Git installed on this computer, so your Git settings, hooks and credentials apply."
   Label "Git 2.45.1 is ready"
   Button "Back"
   Button "Continue" [focused]

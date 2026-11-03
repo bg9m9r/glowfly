@@ -49,6 +49,7 @@ pub mod gitcli;
 pub mod gitflow;
 pub mod gpg_prompt;
 pub mod graph;
+pub mod hex_rows;
 pub mod highlight;
 pub mod history_size;
 pub mod i18n;

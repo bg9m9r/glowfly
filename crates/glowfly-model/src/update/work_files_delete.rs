@@ -46,7 +46,7 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
     let t = st.settings.lang();
     let body = match unstaged {
         Some(f) if f.status == '?' && trash => {
-            format!("{path} isn't tracked by git. It goes to the {TRASH}, so you can restore it from there.")
+            format!("{path} isn't tracked by Git. It goes to the {TRASH}, so you can restore it from there.")
         }
         Some(f) if f.status == '?' => t.trf("files.delete.permanent_untracked", &[("path", &path), ("hint", &hint)]),
         Some(_) if trash => format!(
@@ -74,7 +74,7 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
     }
     let (body, button) = if mode == DeleteMode::Trash {
         (
-            format!("{path} isn't tracked by git. Discarding it moves it to the {TRASH}, so you can restore it from there."),
+            format!("{path} isn't tracked by Git. Discarding it moves it to the {TRASH}, so you can restore it from there."),
             format!("Move to {TRASH}"),
         )
     } else {

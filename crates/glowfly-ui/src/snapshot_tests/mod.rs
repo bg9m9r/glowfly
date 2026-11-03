@@ -43,6 +43,7 @@ pub(super) mod snapshot_tests_dialog_frame;
 pub(super) mod snapshot_tests_dialog_keys;
 pub(super) mod snapshot_tests_dialog_look;
 pub(super) mod snapshot_tests_diff;
+mod snapshot_tests_diff_hex;
 pub(super) mod snapshot_tests_editor;
 pub(super) mod snapshot_tests_empty_panes;
 pub(super) mod snapshot_tests_empty_states;

@@ -116,8 +116,10 @@ fn a_silent_watcher_is_warned_about_once_and_polled_until_events_arrive() {
     let toast = &st.toasts.last().unwrap();
     assert!(!toast.ok);
     let shown = glowfly_core::native_path::shown(&workdir).to_string();
-    assert!(toast.text.contains(&shown) && toast.text.contains("10 seconds") && toast.text.contains("Restarting"), "{}", toast.text);
-    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == toast.text), "logged quietly");
+    assert!(toast.text.contains(&shown) && toast.text.contains("10 seconds"), "{}", toast.text);
+    assert!(toast.text.split_whitespace().count() <= 16, "a short toast: {}", toast.text);
+    let logged = st.log.last().expect("logged quietly");
+    assert!(!logged.ok && logged.text.contains(&shown) && logged.text.contains("Restarting"), "the log has the rest: {}", logged.text);
     assert!(!st.view.show_log);
     assert_eq!(st.watch.live_updates(), Some(LiveUpdates::Silent));
     assert_eq!(st.watch.poll_interval(), Some(REMOTE_POLL), "polled like a network volume");

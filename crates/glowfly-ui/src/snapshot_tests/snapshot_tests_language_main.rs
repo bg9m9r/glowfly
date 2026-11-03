@@ -73,7 +73,7 @@ const ENGLISH: &[&str] = &[
     "Choose which merge requests to show",
     "Choose which issues to show",
     "New filter…",
-    "New branch",
+    "New branch…",
     "Add remote",
     "Create pull request",
     "Create merge request",
@@ -101,7 +101,7 @@ const ENGLISH: &[&str] = &[
     "Open * in its worktree",
     "Prune and check out",
     "Prune and check out *",
-    "Create branch here…",
+    "New branch here…",
     "Create worktree from this branch…",
     "Rename…",
     "Set upstream…",
@@ -144,7 +144,7 @@ const ENGLISH: &[&str] = &[
     "Branch *",
     "Tag *",
     // Commit menu.
-    "Create tag here…",
+    "New tag here…",
     "Create worktree from this commit…",
     "Cherry-pick",
     "Cherry-pick merge commit…",
@@ -248,7 +248,7 @@ fn the_check_catches_the_english_window() {
     let mut h = harness(st, true);
     h.run();
     let found = english_shown(&h);
-    for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "Add worktree…", "New branch"] {
+    for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "Add worktree…", "New branch…"] {
         assert!(found.iter().any(|f| f == text), "{text} is caught: {found:?}");
     }
     assert!(found.iter().any(|f| f == "3 d"), "short ages are caught: {found:?}");

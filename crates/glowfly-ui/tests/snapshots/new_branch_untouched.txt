@@ -5,4 +5,4 @@ Dialog
   TextInput "Branch name" = "bad..name" [focused]
   CheckBox "Check out after creating" [on]
   Button "Cancel"
-  Button "Create" [disabled]
+  Button "Create branch" [disabled]

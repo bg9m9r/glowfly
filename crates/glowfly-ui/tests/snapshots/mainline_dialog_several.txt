@@ -4,7 +4,7 @@ Dialog
   Label "Cherry-pick 2 commits, including 1 merge commit. Count its changes against:"
   RadioButton "Parent 1" [on]
   Label "f0d635c: 275189b Fix build on Windows"
-  Label "7e24110 isn't a merge, so git can only use parent 1 for these commits."
+  Label "7e24110 isn't a merge, so Git can only use parent 1 for these commits."
   Button "Cancel"
   Button "Cherry-pick" [focused]
   Label "How it works"

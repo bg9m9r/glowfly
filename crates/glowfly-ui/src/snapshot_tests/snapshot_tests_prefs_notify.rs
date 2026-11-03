@@ -1,7 +1,7 @@
 //! Preferences rows: General's Desktop notifications, whose checkbox only asks update to change
-//! the setting (which saves it and sends the confirming notification), and Appearance's Group
-//! worktree tabs, bound to the setting directly, and the Windows system title bar switch, shown
-//! only where Windows' frame is offered.
+//! the setting (which saves it and sends the confirming notification), and Confirm pushes and
+//! pulls; Appearance's Group worktree tabs, bound to the setting directly, and the Windows system
+//! title bar switch, shown only where Windows' frame is offered.
 
 use super::snapshot_tests::{harness, harness_sized, render, settings};
 use crate::msg::{Msg, PrefsMsg};
@@ -36,6 +36,16 @@ fn desktop_notifications_checkbox_only_asks() {
     let (st, msgs) = h.state();
     assert!(msgs.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::SetDesktopNotifications(true)))));
     assert!(!st.settings.desktop_notifications, "update owns the change");
+}
+
+#[test]
+fn confirm_pushes_and_pulls_is_on_and_turns_off() {
+    let mut h = harness(on_page(false, PrefPage::General), true);
+    h.run();
+    assert!(h.state().0.settings.confirm_push_pull, "on by default");
+    h.get_by_label("Confirm pushes and pulls").click();
+    h.run();
+    assert!(!h.state().0.settings.confirm_push_pull);
 }
 
 #[test]

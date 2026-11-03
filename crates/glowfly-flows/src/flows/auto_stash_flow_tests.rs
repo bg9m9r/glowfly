@@ -274,7 +274,11 @@ fn conflicting_put_back_says_so_and_keeps_stash() {
     assert!(std::fs::read_to_string(dir.join("a.txt")).unwrap().contains("<<<<<<<"));
     let toast = st.toasts.last().expect("a toast");
     assert!(!toast.ok);
-    assert!(toast.text.starts_with("Putting back \"Auto-stash before checking out feature\" conflicted in 1 file."), "{}", toast.text);
+    assert!(
+        toast.text.starts_with("Putting back \"Auto-stash before checking out feature\" conflicted in 1 file; the stash is kept."),
+        "{}",
+        toast.text
+    );
     assert!(toast.action.is_some(), "with Show stash");
     assert!(st.auto_stash.pending.is_empty(), "nothing more to put back");
     let snap = st.snap.as_ref().unwrap();

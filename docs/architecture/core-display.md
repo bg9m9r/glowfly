@@ -46,6 +46,7 @@ source file, update its line here.
 - `preview_image.rs`: decoding a PNG, JPEG, GIF, WebP or BMP (an animation's first frame), shared by the binary diff's preview and the file history's File view.
 - `preview_image.rs` bounds dimensions, pixel count (64 Mpx) and allocation, scales from the decoded buffer without a whole copy, reads the format from the content, and scales down to at most 1024 px a side for the diff (`decode`) or 2048 for the File view (`decode_sized`, which says why an image can't be shown); it also says which paths count as images.
 - `markdown.rs`: Markdown parsed with pulldown-cmark into blocks and styled runs, for pull request and issue bodies and the file history's File view preview: HTML dropped, images as alt-text links, bare https links, nesting capped, nothing over 512 KB. Pure.
+- `hex_rows.rs` (tests in `hex_rows_tests.rs`): a binary diff's hex rows: bytes compared by position, rows same, changed or one-sided, unchanged runs folded. Pure.
 - `preview.rs`: what the File view previews, by extension (`kind`: Markdown or an image). Pure.
 
 ## Search

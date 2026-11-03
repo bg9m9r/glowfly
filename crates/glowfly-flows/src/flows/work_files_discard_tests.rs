@@ -43,7 +43,7 @@ fn discard_confirm_trash() {
     let (mut st, dir) = with_untracked("wfd-trash");
     assert!(st.settings.delete_to_trash);
     let (body, button, op) = ask(&mut st, "u.txt");
-    assert_eq!(body, format!("u.txt isn't tracked by git. Discarding it moves it to the {TRASH}, so you can restore it from there."));
+    assert_eq!(body, format!("u.txt isn't tracked by Git. Discarding it moves it to the {TRASH}, so you can restore it from there."));
     assert_eq!(button, format!("Move to {TRASH}"));
     assert_eq!(op, discard("u.txt", DeleteMode::Trash));
     assert!(matches!(st.modal, Some(Modal::ConfirmDanger { .. })));
@@ -63,7 +63,7 @@ fn discard_confirm_trash_off() {
     assert_eq!(
         body,
         format!(
-            "u.txt isn't tracked by git. Discarding it deletes it; Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so Glowfly asks again before deleting one.",
+            "u.txt isn't tracked by Git. Discarding it deletes it; Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so Glowfly asks again before deleting one.",
             keys("Ctrl+Z")
         )
     );

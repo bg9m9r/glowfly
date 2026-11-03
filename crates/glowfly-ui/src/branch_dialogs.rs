@@ -72,7 +72,10 @@ pub fn new_branch(ui: &mut egui::Ui, cx: Cx, f: NewBranchForm, snap: Option<&Sna
     let new = f.name.trim();
     let problem = check_branch_name(new, &locals, None).err();
     controls::checkbox(ui, f.checkout, "Check out after creating");
-    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create").enabled(problem.is_none())).submit(submit));
+    let out = d.finish(
+        ui,
+        Footer::new().cancel().primary(buttons::primary(t.tr("branch.new.create.button")).enabled(problem.is_none())).submit(submit),
+    );
     if out.attempted {
         f.touched.attempt();
     }

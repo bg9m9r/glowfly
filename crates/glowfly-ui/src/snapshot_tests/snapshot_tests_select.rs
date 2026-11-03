@@ -278,7 +278,7 @@ fn graph_commit_menu() {
     // view, copy.
     let order = [
         "Checkout (detached)",
-        "Create tag here…",
+        "New tag here…",
         "Cherry-pick",
         "Revert",
         "Rebase main onto this commit",

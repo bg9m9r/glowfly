@@ -88,9 +88,9 @@ fn probed(st: &mut AppState, workdir: PathBuf, probe: Probe, now: Instant) {
     }
     let t = st.settings.lang();
     let shown = glowfly_core::native_path::shown(&workdir);
-    let text = t.trf("watch.silent.toast", &[("repo", &shown), ("secs", &REMOTE_POLL.as_secs())]);
-    st.toast(false, text.clone(), now);
-    st.log_quiet(false, text);
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("repo", &shown), ("secs", &REMOTE_POLL.as_secs())];
+    st.toast(false, t.trf("watch.silent.toast", args), now);
+    st.log_quiet(false, t.trf("watch.silent.log", args));
 }
 
 /// Whether a burst whose last event came at `last_event` should refresh the active tab: watching

@@ -112,7 +112,7 @@ fn the_unreachable_line_and_the_chip() {
     let t = Lang::En;
     assert_eq!(
         unreachable_line(t),
-        "No branch, tag, remote branch or stash reaches this commit any more. Git keeps it only while this reflog entry lasts; Restore or Create branch here keeps it."
+        "No branch, tag, remote branch or stash reaches this commit any more. Git keeps it only while this reflog entry lasts; Restore or New branch here keeps it."
     );
     assert_eq!(t.tr("journal.unreachable.chip"), "Lost");
     // A marked row keeps its label.

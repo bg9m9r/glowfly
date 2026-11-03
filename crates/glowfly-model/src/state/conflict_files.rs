@@ -153,13 +153,13 @@ mod tests {
         let one = ["a.txt".to_owned()];
         assert_eq!(
             mark_conflicted_body(Lang::En, &one),
-            "Mark a.txt conflicted again? git rewrites the file with conflict markers from both sides. The staged resolution and \
+            "Mark a.txt conflicted again? Git rewrites the file with conflict markers from both sides. The staged resolution and \
              any edits to the file are lost."
         );
         let three: Vec<String> = ["a", "b", "c"].map(String::from).into();
         assert_eq!(
             mark_conflicted_body(Lang::En, &three),
-            "Mark 3 files conflicted again? git rewrites each with conflict markers from both sides. Their staged resolutions and \
+            "Mark 3 files conflicted again? Git rewrites each with conflict markers from both sides. Their staged resolutions and \
              any edits to them are lost."
         );
         let de = mark_conflicted_body(Lang::De, &one);
