@@ -102,6 +102,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `op_actions.rs`: the operation in progress: its banner commands.
 - `op_steps.rs`: the WIP panel's steps (which operation, each step's state, which are open and their words).
 - `commit_stop.rs` (`commit::stop`): what a stopped rebase means for the commit form: no push after committing, Amend and continue at a stop to edit, and Amend offered only where git would amend HEAD.
+- `commit_ready.rs` (`commit::ready`): whether the commit box can commit, the first missing step its caption names (staging, then the summary), and the commit button's label.
 - `diff_header/cache.rs`: `HeaderCache`, kept in `UiCache::diff_header`: the diff header's change rows, line counts and file order, built again only when the diff, view mode, layout, folds, list (the WIP lists by `Snapshot::status_stamp`) or list mode change. Tests in `diff_header/cache_tests.rs`.
 - `file_tree.rs`: a changed-file list grouped in folders: the tree's rows in order (compacted folder chains, folders first), and its file order with which files collapsed folders hide.
 - `list_keys.rs`: the keys of a file list with the keyboard focus (`ListKey`), which of them each list takes (`KeySet`), the lists that only open files (`FileList`) and where a step, page or edge move lands in its visible order (`ListMove::target`), for any list built on `ui/list_focus.rs`.
