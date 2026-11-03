@@ -26,8 +26,8 @@ mod save_bar;
 mod signing;
 mod sparse;
 mod ssh;
-pub(crate) mod ssh_agent;
-pub(crate) mod ssh_card;
+mod ssh_agent;
+mod ssh_card;
 mod ssh_git;
 mod ssh_service;
 mod ssh_sources;
@@ -40,6 +40,11 @@ mod theme_row;
 mod tools;
 mod trello;
 mod updates_row;
+// For the chip catalog golden (`snapshot_tests_chips.rs`).
+#[cfg(test)]
+pub(crate) use ssh_agent::pill_widget as ssh_agent_pill;
+#[cfg(test)]
+pub(crate) use ssh_card::chip as ssh_card_chip;
 
 pub(super) use form::*;
 

@@ -43,6 +43,8 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 - A narrow conflict view cuts the panes' "picked automatically · whitespace only" tag in German; wrap it or drop the reason part when it doesn't fit
 - The automatic-pick notes ("The conflict in this file was picked automatically…") are separate one / all texts; fold them into one plural text
 - Translate the palette's rebase entries (Restore original order, Reload rebase steps)
+- Translate the toolbar's "Untrusted" chip label (`trust_chip.rs`), still hard-coded English
+- The German commit button's blocked label ("Erst etwas zum Committen bereit…") is cut in a narrow window; shorter copy (D11, #447)
 
 ### Glowfly's own wording
 

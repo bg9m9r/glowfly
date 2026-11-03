@@ -14,7 +14,10 @@ mod info;
 mod line_comment;
 mod merge;
 mod review;
-pub(crate) mod threads;
+mod threads;
+// For the chip catalog golden (`snapshot_tests_chips.rs`).
+#[cfg(test)]
+pub(crate) use threads::chip as thread_chip;
 
 use super::UiCache;
 use super::theme::color;

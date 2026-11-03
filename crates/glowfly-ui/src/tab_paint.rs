@@ -31,7 +31,7 @@ const BAND: f32 = 2.0;
 /// slot, the close slot and the padding after it.
 const PAD_L: f32 = 12.0;
 const ICON: f32 = icon::SIZE_SM;
-const ICON_GAP: f32 = 8.0;
+const ICON_GAP: f32 = ControlSize::Regular.metrics().icon_gap;
 const CLOSE_GAP: f32 = 8.0;
 const PAD_R: f32 = 10.0;
 pub(super) const CHROME_W: f32 = PAD_L + ICON + ICON_GAP + CLOSE_GAP + tab_glyph::BOX + PAD_R;
@@ -43,8 +43,13 @@ pub(super) const SWATCH_ROOM: f32 = 14.0;
 const CHIP: ChipSize = ChipSize::Badge;
 const CHIP_PAD: f32 = CHIP.metrics().pad_x;
 pub(super) const CHIP_TEXT: f32 = CHIP.metrics().text;
-const CHIP_MAX: f32 = 96.0;
-pub(super) const CHIP_GAP: f32 = 6.0;
+/// A group chip is never wider than the narrowest tab, and leads its group as an icon leads
+/// its label.
+const CHIP_MAX: f32 = TAB_MIN_W;
+pub(super) const CHIP_GAP: f32 = ControlSize::Regular.metrics().icon_gap;
+/// A tab's narrowest and widest.
+const TAB_MIN_W: f32 = 96.0;
+const TAB_MAX_W: f32 = 220.0;
 
 /// What a tab shows this frame.
 #[derive(Clone, Copy)]
@@ -147,9 +152,9 @@ fn paint_band(p: &egui::Painter, rect: Rect, band: Color32) {
 }
 
 /// A tab's width for a name `text_w` wide (in the active tab's font, so a tab never changes
-/// width when it is selected): its chrome around the name, between 96 and 220.
+/// width when it is selected): its chrome around the name, between `TAB_MIN_W` and `TAB_MAX_W`.
 pub(super) fn tab_width(text_w: f32) -> f32 {
-    (text_w + CHROME_W).clamp(96.0, 220.0)
+    (text_w + CHROME_W).clamp(TAB_MIN_W, TAB_MAX_W)
 }
 
 /// The short line between two tabs that are neither active nor hovered, `gap` wide after `left`.
@@ -208,8 +213,8 @@ mod tests {
 
     #[test]
     fn a_tab_is_its_name_and_its_chrome() {
-        assert_eq!(CHROME_W, 68.0);
-        assert_eq!(tab_width(100.0), 168.0);
+        assert_eq!(CHROME_W, 66.0);
+        assert_eq!(tab_width(100.0), 166.0);
         assert_eq!(tab_width(10.0), 96.0, "the narrowest");
         assert_eq!(tab_width(400.0), 220.0, "the widest");
     }

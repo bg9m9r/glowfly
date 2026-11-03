@@ -99,13 +99,14 @@ pub struct Chip<'a> {
     lead: Option<Lead<'a>>,
     max_w: f32,
     trail: f32,
+    latched: bool,
 }
 
 impl<'a> Chip<'a> {
     /// `text` as a chip of `size`, in the text colour on the raised fill.
     pub fn new(size: ChipSize, text: impl Into<String>) -> Self {
         let look = Look::new(color::raised(), color::text());
-        Self { size, text: text.into(), look, lead: None, max_w: f32::INFINITY, trail: 0.0 }
+        Self { size, text: text.into(), look, lead: None, max_w: f32::INFINITY, trail: 0.0, latched: false }
     }
 
     pub fn look(mut self, look: impl Into<Look>) -> Self {
@@ -128,6 +129,12 @@ impl<'a> Chip<'a> {
     /// there (a picker chip's ×).
     pub fn trail(mut self, w: f32) -> Self {
         self.trail = w;
+        self
+    }
+
+    /// A `button` chip holds the latched layer while its menu is open.
+    pub fn latched(mut self, latched: bool) -> Self {
+        self.latched = latched;
         self
     }
 
@@ -180,10 +187,23 @@ impl<'a> Chip<'a> {
         let galley = self.galley(ui.ctx());
         let w = width(self.size, self.lead_w() + galley.size().x + self.trail);
         let (rect, resp) = ui.allocate_exact_size(vec2(w, self.size.metrics().h), Sense::click());
+        self.button_look(ui, rect, galley, resp)
+    }
+
+    /// `button` at `rect`, a place the caller fixed (a section header's filter chip), under
+    /// `id`; the text is cut to the rect's width.
+    pub fn button_at(&self, ui: &mut Ui, id: egui::Id, rect: Rect) -> Response {
+        let resp = ui.interact(rect, id, Sense::click());
+        let fitted = Chip { lead: self.lead, text: self.text.clone(), max_w: rect.width(), ..*self };
+        let galley = fitted.galley(ui.ctx());
+        self.button_look(ui, rect, galley, resp)
+    }
+
+    fn button_look(&self, ui: &Ui, rect: Rect, galley: Arc<Galley>, resp: Response) -> Response {
         if ui.is_rect_visible(rect) {
             let p = ui.painter();
             self.paint_in(p, rect, galley);
-            let press = Press::of(resp.hovered(), resp.is_pointer_button_down_on(), false);
+            let press = Press::of(resp.hovered(), resp.is_pointer_button_down_on(), self.latched);
             // Smaller than the hit area, as a Compact control is: quiet layers, the ring inset.
             let target = Target { rect, corners: corners(self.size), edge: None };
             paint_target(p, target, ControlSize::Compact, press, resp.has_focus());
