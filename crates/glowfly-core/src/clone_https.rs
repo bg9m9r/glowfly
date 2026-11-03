@@ -52,12 +52,12 @@ mod tests {
 
     #[test]
     fn https_url_of_an_ssh_url() {
-        let gh = Some(("github.com".to_owned(), "https://github.com/bg9m9r/majik.git".to_owned()));
-        assert_eq!(https_for_ssh("git@github.com:bg9m9r/majik.git"), gh);
-        assert_eq!(https_for_ssh("ssh://git@github.com/bg9m9r/majik"), gh);
-        assert_eq!(https_for_ssh("git@ssh.github.com:bg9m9r/majik.git"), gh, "the port-443 alias is github.com");
+        let gh = Some(("github.com".to_owned(), "https://github.com/ada/lib.git".to_owned()));
+        assert_eq!(https_for_ssh("git@github.com:ada/lib.git"), gh);
+        assert_eq!(https_for_ssh("ssh://git@github.com/ada/lib"), gh);
+        assert_eq!(https_for_ssh("git@ssh.github.com:ada/lib.git"), gh, "the port-443 alias is github.com");
         assert_eq!(https_for_ssh("git@gitlab.com:g/sub/app.git").unwrap().1, "https://gitlab.com/g/sub/app.git");
-        assert_eq!(https_for_ssh("https://github.com/bg9m9r/majik.git"), None, "already https");
+        assert_eq!(https_for_ssh("https://github.com/ada/lib.git"), None, "already https");
         assert_eq!(https_for_ssh("C:/repos/app"), None);
         assert_eq!(https_for_ssh("git@github.com:a/b c.git"), None);
         assert_eq!(https_for_ssh("git@github.com:"), None);
