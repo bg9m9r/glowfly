@@ -42,8 +42,8 @@ fn check_now_after_a_download_keeps_the_file() {
     assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { file: f, method: InstallMethod::RunMsi, .. } if *f == file));
     assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
     assert!(has_install(&st));
-    assert_eq!(st.toasts.len(), toasts + 1);
-    let toast = st.toasts.last().unwrap();
+    assert_eq!(st.toasts.len(), toasts, "the download's toast is shown again, not copied");
+    let toast = st.newest_toast().unwrap();
     assert_eq!(
         (toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())),
         ("Downloaded Glowfly 0.3.0.", Some("Install and restart"))

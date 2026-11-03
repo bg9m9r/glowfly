@@ -102,6 +102,11 @@ impl AppState {
     }
 
     /// The toast shown last: the one just pushed, or shown again in place (`push_toast`).
+    pub fn newest_toast(&self) -> Option<&Toast> {
+        self.toasts.iter().max_by_key(|t| t.shown)
+    }
+
+    /// `newest_toast`, to change.
     pub fn newest_toast_mut(&mut self) -> Option<&mut Toast> {
         self.toasts.iter_mut().max_by_key(|t| t.shown)
     }

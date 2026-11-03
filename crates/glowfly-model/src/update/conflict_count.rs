@@ -16,7 +16,7 @@ use glowfly_core::paths::same_spelling;
 /// The conflicts toast just shown (the newest) and run `entry` of `job` wait for the status;
 /// `named` and `unsure` are the paths git's lines gave.
 pub(super) fn expect(st: &mut AppState, job: &RunningJob, entry: EntryId, named: Vec<String>, unsure: Vec<Vec<String>>) {
-    let (Some(workdir), Some(toast)) = (job.workdir.clone(), st.newest_toast_mut().map(|t| t.id)) else { return };
+    let (Some(workdir), Some(toast)) = (job.workdir.clone(), st.newest_toast().map(|t| t.id)) else { return };
     st.logs.recount = Some(Recount { toast, entry, workdir, generation: st.load_gen, named, unsure });
 }
 
