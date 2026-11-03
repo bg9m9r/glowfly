@@ -158,7 +158,9 @@ pub(super) fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         | I::SwitchBranch
         | I::OpenDashboard => !covered && !l.sheet && !l.typing && !(l.terminal && shell),
         I::Refresh => true,
-        I::Search | I::SearchFilter => !l.palette && !l.prefs,
+        // Under Preferences, Search focuses its search field.
+        I::Search => !l.palette,
+        I::SearchFilter => !l.palette && !l.prefs,
         I::Prefs => !l.prefs && !l.palette,
         I::Quit => !l.askpass,
         // Saves the open Preferences page, from its fields too.

@@ -147,6 +147,12 @@ fn layout_resets_restore_column_widths() {
         st.prefs = Some(PrefsState::new(PrefPage::Ui));
         let mut h = harness(st, true);
         h.run();
+        // Open every help text that sits behind "Learn more".
+        loop {
+            let Some(more) = h.query_all_by_label("Learn more").next() else { break };
+            more.click();
+            h.run();
+        }
         assert!(h.query_by_label_contains("double-click a divider").is_some(), "the help explains resizing");
         h.get_by_label(button).click();
         h.run();

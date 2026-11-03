@@ -94,7 +94,7 @@ fn ctrl_c_on_selected_details_text_copies_the_text() {
     remove_fixture(&dir);
 }
 
-/// A repository with Preferences open on the Identity page, its name edited.
+/// A repository with Preferences open on the Commit identity page, its name edited.
 fn prefs_open(name: &str) -> (AppState, std::path::PathBuf) {
     let (mut st, dir, _) = with_commit(ThemeChoice::Dark, name, "Tidy the app");
     let mut p = PrefsState::new(PrefPage::RepoIdentity);

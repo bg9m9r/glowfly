@@ -121,7 +121,7 @@ fn quitting_with_an_unsaved_preferences_page_asks() {
     assert!(!closes(&quit(&mut st)));
     let body = question(&st).1;
     assert!(body.starts_with(HEADER), "{body}");
-    assert!(body.ends_with("\n- Preferences: the changes on the Identity page that aren't saved yet"), "{body}");
+    assert!(body.ends_with("\n- Preferences: the changes on the Commit identity page that aren't saved yet"), "{body}");
 }
 
 #[test]
