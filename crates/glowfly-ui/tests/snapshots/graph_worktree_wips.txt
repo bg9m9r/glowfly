@@ -150,6 +150,7 @@ painted:
   "Ada Lovelace"
   "Jan 8"
   "AL"
+  "login-p…"
   "Ada Lovelace"
   "Jan 7"
   "AL"

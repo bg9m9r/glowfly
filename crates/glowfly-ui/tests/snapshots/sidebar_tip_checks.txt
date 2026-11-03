@@ -146,6 +146,7 @@ painted:
   "275189b"
   "Jan 8"
   "AL"
+  "login-pa…"
   "Ada Lovelace"
   "7e24110"
   "Jan 7"

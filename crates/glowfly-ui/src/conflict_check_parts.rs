@@ -1,13 +1,13 @@
 //! The parts the conflict check's popover and report dialog share (issue #523's design): the
-//! names block (the branch and what it was compared with, each name cut in its middle with the
-//! whole name on hover), the file list (24 px rows of a file mark and a path cut on its left, no
+//! names block (the branch and what it was compared with, each name cut in its middle by the
+//! rule every name follows, `truncate::middle`, with the whole name on hover), the file list (24 px rows of a file mark and a path cut on its left, no
 //! box), and the popover's header row and footer divider. Every part sets its own heights, on
 //! the 8 px grid; the caller spaces them.
 
 use super::theme::color;
 use super::theme::type_scale;
 use super::widgets::icon::{Icon, paint_icon_sized};
-use super::widgets::truncate::{cut_left_in, cut_middle_in};
+use super::widgets::truncate::{cut_left_in, middle};
 use crate::state::conflict_check::{self as cc, ConflictReport};
 use eframe::egui::{self, Align2, FontId, Rect, Response, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::conflict_check::TargetKind;
@@ -66,7 +66,7 @@ pub(super) fn names(ui: &mut Ui, t: Lang, report: &ConflictReport, remote: bool)
         ui.painter().text(pos2(rect.left(), bottom), Align2::LEFT_BOTTOM, label, small.clone(), color::weak());
         let value = Rect::from_min_max(pos2(rect.left() + label_w, rect.top()), rect.max);
         let read = t.trf("conflict_check.names.access", &[("role", &label), ("name", &name)]);
-        cut_row_named(ui, value, name, &read, body.clone(), color::text(), cut_middle_in);
+        cut_row_named(ui, value, name, &read, body.clone(), color::text(), middle);
     }
     if remote {
         ui.add_space(4.0);

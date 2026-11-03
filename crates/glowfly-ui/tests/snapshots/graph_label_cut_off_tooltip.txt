@@ -122,6 +122,7 @@ painted:
   "Date"
   "M 1"
   "AL"
+  "todo/git…esh-a-missing-g"
   "Ada Lovelace"
   "Jan 10"
   "✔ main"
