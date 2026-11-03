@@ -84,6 +84,7 @@ TextInput "Commit-Zusammenfassung"
 Label "0/72"
 MultilineTextInput "Beschreibung"
 Button "Committen und fortsetzen" [disabled]
+Button "Weitere Commit-Optionen"
 Label "Schreibe eine Zusammenfassung für den Commit."
 Button "Fortsetzen"
 Button "Weitere Möglichkeiten"

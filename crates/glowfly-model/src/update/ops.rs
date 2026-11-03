@@ -329,6 +329,10 @@ pub fn finish_job(
         if ok && job.then_push {
             st.log(true, "Push after committing was skipped: that repository's tab is no longer active.");
         }
+        if ok && job.then_continue {
+            let text = st.settings.lang().tr("commit.continue_skipped.log");
+            st.log(true, text);
+        }
         super::push_pr::job_finished(st, then_pr, ok, false);
         return; // that tab refreshes when it is selected again
     }

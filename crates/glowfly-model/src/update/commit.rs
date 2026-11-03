@@ -7,7 +7,8 @@ use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::msg::CommitMsg;
 use crate::state::AppState;
-use crate::state::commit::{commit_blocked, commit_merge_blocked, edit_stop, pushes_after, unencodable_text};
+use crate::state::commit::stop::{amends_at_stop, edit_stop};
+use crate::state::commit::{commit_blocked, commit_merge_blocked, pushes_after, unencodable_text};
 use glowfly_core::undo::UndoKind;
 use std::time::Instant;
 
@@ -19,7 +20,11 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
                 start_commit(st, false, true, now, fx);
             }
         }
-        CommitMsg::StageAllAndCommit => commit(st, true, now, fx),
+        // At a stop to edit it continues the rebase too, as the button does.
+        CommitMsg::StageAllAndCommit => {
+            let continues = st.snap.as_ref().and_then(edit_stop).is_some();
+            start_commit(st, true, continues, now, fx);
+        }
         CommitMsg::PrefillAmend => {
             // Pre-fill from HEAD's message, when the user hasn't written anything yet.
             if st.session.draft.is_blank()
@@ -106,15 +111,16 @@ pub(super) fn prefill(st: &mut AppState) {
     apply_template(st);
 }
 
-/// Ticks Amend once per rebase stop to edit, filling a blank draft from the commit's message;
-/// unticks it again once the rebase is no longer stopped to edit. Not while a job runs: the
+/// Ticks Amend once per rebase stop to edit where git would amend HEAD, filling a blank draft
+/// from the commit's message; unticks it again once that no longer holds (the stop ended, or
+/// HEAD was reset off the commit to split it). An `edit` step that conflicted never ticks it. Not while a job runs: the
 /// load after Amend and continue's commit still shows the stop it is leaving.
 fn edit_stop_amend(st: &mut AppState) {
     let Some(snap) = &st.snap else { return };
     if st.job.is_some() {
         return;
     }
-    let stop = edit_stop(snap);
+    let stop = edit_stop(snap).filter(|_| amends_at_stop(snap));
     let d = &mut st.session.draft;
     match stop {
         Some(s) if d.amend_stop != Some(s) => {

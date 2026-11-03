@@ -186,7 +186,7 @@ pub fn details_shape(st: &AppState) -> DetailsShape {
     }
     match tool_view(st) {
         // A stopped rebase is continued from the panel's steps, so it stays in full.
-        Some(_) if st.snap.as_ref().is_some_and(super::commit::rebase_stopped) => DetailsShape::Full,
+        Some(_) if st.snap.as_ref().is_some_and(super::commit::stop::rebase_stopped) => DetailsShape::Full,
         Some(v) if st.view.details_expanded_for != Some(v) => DetailsShape::Rail,
         _ => DetailsShape::Full,
     }

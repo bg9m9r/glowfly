@@ -49,6 +49,7 @@ fn a_finished_rebase_is_one_undoable_action() {
         autostash: false,
         interactive: true,
         command: None,
+        amends: false,
     };
     finished(&mut st, Ok(Outcome::Stopped { ok: true, output: String::new(), progress }), Some(UndoResult::Recorded(None)));
     assert_eq!(st.session.undo.undo.last(), Some(&moved), "the earlier action stays");

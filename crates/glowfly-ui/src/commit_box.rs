@@ -8,7 +8,10 @@
 //! Amend and "Push after committing" options, the commit button with why it is disabled centred
 //! under it (that line's height is always kept, so the box doesn't change height), the button's
 //! menu caret (one split button) opening a menu with "Skip hooks" (the caret tinted with the
-//! warning tone while hooks are skipped), and the Ctrl+Enter shortcuts. The summary takes the
+//! warning tone while hooks are skipped), and the Ctrl+Enter shortcuts. While a rebase is
+//! stopped "Push after committing" isn't offered; at a stop to edit the button is Amend and
+//! continue (Commit and continue with Amend off), and Amend is off, with its reason, where git
+//! wouldn't amend the commit being edited. The summary takes the
 //! keyboard when `view.focus_message` is set (Ctrl+Shift+M).
 
 use super::UiCache;
@@ -22,7 +25,8 @@ use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::CommitDraft;
-use crate::state::commit::{SUMMARY_HARD, SummaryLength, amend_blocked, commit_blocked, pushes_after, summary_length};
+use crate::state::commit::stop::amend_blocked_in;
+use crate::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, pushes_after, summary_length};
 use crate::state::repo_identity::{commit_identity_line, env_tip};
 use crate::ui::theme::controls;
 use crate::ui::theme::sizes::ControlSize;
@@ -71,7 +75,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     let identity = st.identities.get(&snap.git_dir).map(|id| (commit_identity_line(t, id, &st.settings), env_tip(t, id)));
     // Off while a merge, cherry-pick or revert is stopped; still on (so it can be turned off)
     // when it was checked before the operation stopped.
-    let amend_why = amend_blocked(t, snap.state);
+    let amend_why = amend_blocked_in(t, snap);
     ui.horizontal(|ui| {
         if style.titled {
             ui.label(type_scale::section_text(ui, t.tr("commit.title")));
@@ -162,7 +166,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     }
 
     // Halfway through a rebase there is nothing to push: the option isn't offered.
-    let rebasing = crate::state::commit::rebase_stopped(snap);
+    let rebasing = crate::state::commit::stop::rebase_stopped(snap);
     ui.horizontal_wrapped(|ui| {
         if rebasing {
             return;
@@ -180,7 +184,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
 
     let merging = snap.state == git2::RepositoryState::Merge;
     // At a rebase stopped to edit, the button commits and continues the rebase.
-    let continues = crate::state::commit::edit_stop(snap).is_some();
+    let continues = crate::state::commit::stop::edit_stop(snap).is_some();
     let label = if continues {
         st.session.draft.continue_label(t)
     } else {
@@ -190,15 +194,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     let enabled = blocked.is_none();
     let tip = shortcuts_tip(t, &st.keymap);
     ui.horizontal(|ui| {
-        // At a rebase stop the button stands alone: its stop's other choices are on Continue's caret.
-        let clicked = if rebasing {
-            let w = ui.available_width();
-            let button = if style.primary { buttons::primary(label) } else { buttons::secondary(label) };
-            ui.add(button.enabled(enabled).why(blocked).tip(&tip).min_width(w).max_width(w).size(ControlSize::Large)).clicked()
-        } else {
-            commit_split(ui, label, (enabled, style.primary), blocked, &tip, &mut st.session.draft, t).clicked()
-        };
-        if clicked {
+        if commit_split(ui, label, (enabled, style.primary), blocked, &tip, &mut st.session.draft, t).clicked() {
             // A merge commits through Commit merge, which fills a blank message with git's.
             msgs.push(Msg::Commit(if merging {
                 CommitMsg::CommitMerge

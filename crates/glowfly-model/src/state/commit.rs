@@ -2,6 +2,10 @@
 //! committing can start, the commit button's label and the git commands that commit it.
 
 use super::AppState;
+use stop::{EditStop, amend_blocked_in, edit_stop, rebase_stopped};
+
+#[path = "commit_stop.rs"]
+pub mod stop;
 use git2::RepositoryState;
 use glowfly_core::commit_encoding::Unencodable;
 use glowfly_core::gitcli::args;
@@ -149,15 +153,6 @@ fn without_template_comments(description: &str, t: &CommitTemplate) -> String {
     description.lines().filter(|l| !(comment(l) && template.contains(&l.trim_end()))).collect::<Vec<_>>().join("\n")
 }
 
-/// Where a rebase stopped to edit a commit, if it did: there the commit form amends it and
-/// continues the rebase in one go. Which stop it is: the step and the commit.
-pub fn edit_stop(snap: &glowfly_core::repo::Snapshot) -> Option<EditStop> {
-    snap.rebase.as_ref().filter(|p| p.stop.kind == glowfly_core::rebase::StopKind::Edit).map(|p| (p.step, p.stop.oid))
-}
-
-/// A rebase's stop to edit: its step and the commit (`edit_stop`).
-pub type EditStop = (usize, Option<git2::Oid>);
-
 /// Why Amend can't be used in `state`: a merge, cherry-pick or revert is stopped, and amending
 /// would rewrite HEAD under it. None otherwise (a rebase stopped to edit a commit amends it).
 pub fn amend_blocked(t: Lang, state: RepositoryState) -> Option<&'static str> {
@@ -181,7 +176,7 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     let conflicted = snap.unstaged.iter().any(|f| f.status == '!');
     if st.job.is_some() {
         Some(t.tr("commit.blocked.job_running"))
-    } else if let Some(why) = amend_blocked(t, snap.state).filter(|_| d.amend) {
+    } else if let Some(why) = amend_blocked_in(t, snap).filter(|_| d.amend) {
         Some(why)
     } else if merging && conflicted {
         Some(t.tr("commit.blocked.merge_conflicts"))
@@ -189,7 +184,12 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
         Some(t.tr("commit.blocked.untouched_template"))
     } else if d.summary.trim().is_empty() {
         Some(t.tr("commit.blocked.no_summary"))
-    } else if !stage_all && d.amend && snap.staged.is_empty() && edit_stop(snap).is_some() && same_as_head(d, snap) {
+    } else if d.amend
+        && edit_stop(snap).is_some()
+        && snap.staged.is_empty()
+        && (!stage_all || snap.unstaged.is_empty())
+        && same_as_head(d, snap)
+    {
         // Amend and continue would change nothing: Continue does that.
         Some(t.tr("commit.blocked.nothing_to_amend"))
     } else if stage_all && conflicted {
@@ -237,12 +237,6 @@ pub fn commit_merge_blocked(st: &AppState) -> Option<String> {
 /// rebase stopped: pushing halfway through one is never right).
 pub fn pushes_after(st: &AppState) -> bool {
     st.settings.push_after_commit && st.snap.as_ref().is_some_and(|s| s.head_branch.is_some() && !rebase_stopped(s))
-}
-
-/// A rebase is stopped (to edit, at a break, on a conflict or a failed command).
-pub fn rebase_stopped(snap: &glowfly_core::repo::Snapshot) -> bool {
-    use RepositoryState::*;
-    snap.rebase.is_some() || matches!(snap.state, Rebase | RebaseMerge | RebaseInteractive)
 }
 
 /// A summary's length up to here reads well (git-commit(1): ideally under 50 characters).

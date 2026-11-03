@@ -112,7 +112,16 @@ mod tests {
             assert!(state_actions(state).is_some(), "{state:?}");
         }
         let stop = Stop { kind: StopKind::Other, oid: None };
-        let p = RebaseProgress { step: 2, total: 4, stop, summary: String::new(), autostash: false, interactive: true, command: None };
+        let p = RebaseProgress {
+            step: 2,
+            total: 4,
+            stop,
+            summary: String::new(),
+            autostash: false,
+            interactive: true,
+            command: None,
+            amends: false,
+        };
         snap.rebase = Some(p);
         assert_eq!(title(&mut snap, RebaseInteractive).as_deref(), Some("Interactive rebase in progress \u{b7} step 2 of 4"));
         assert_eq!(title(&mut snap, Rebase).as_deref(), Some("Rebase in progress \u{b7} step 2 of 4"));

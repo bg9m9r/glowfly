@@ -107,7 +107,7 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
     };
     let repo_state = snap.state;
     // At a stop to edit, the form's Amend and continue leads and Continue steps back.
-    let editing = crate::state::commit::edit_stop(snap).is_some();
+    let editing = crate::state::commit::stop::edit_stop(snap).is_some();
     let skip_blocked = st.git.blocked(Feature::SequencerSkip);
     ui.add_space(8.0);
     ui.separator();
