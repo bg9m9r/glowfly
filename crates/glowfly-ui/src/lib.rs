@@ -206,6 +206,8 @@ mod worktrees;
 mod hint_tests;
 #[cfg(test)]
 mod menu_testing;
+#[cfg(test)]
+mod readme_screenshots;
 #[cfg(any(test, feature = "test-support"))]
 #[doc(hidden)]
 pub mod snapshot_check;
