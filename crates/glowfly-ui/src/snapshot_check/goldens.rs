@@ -92,6 +92,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("graph_multi_menu", Window),
     ("graph_commit_menu_copy_flipped", Window),
     ("toolbar_push_menu", Window),
+    // Pull and Push with their count badges, the branch picker's counts, in both default themes.
+    ("toolbar_ahead_behind_dark", Top(108.0)),
+    ("toolbar_ahead_behind_light", Top(108.0)),
     ("wip_file_menu_danger_light", Window),
     ("repo_menu_dark", TopLeft(640.0, 620.0)),
     ("repo_menu_light", TopLeft(640.0, 620.0)),
@@ -252,6 +255,8 @@ const IMAGE_ONLY: &[&str] = &[
     "history_table_compact_dark",
     "toolbar_restyled_dark",
     "toolbar_restyled_light",
+    // `toolbar_ahead_behind_dark` in Light.
+    "toolbar_ahead_behind_light",
     "theme_graphite",
     "theme_midnight",
     "theme_mist",
