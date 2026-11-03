@@ -128,7 +128,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
     let now = (st.view.now, st.view.utc_offset);
     let themes = &st.themes;
-    let a11y = accessibility::A11yView { keys: keymap, sheet_open: matches!(st.modal, Some(crate::state::Modal::Shortcuts { .. })) };
+    let a11y = accessibility::A11yView {
+        keys: keymap,
+        sheet_open: matches!(st.modal, Some(crate::state::Modal::Shortcuts { .. })),
+        text_size_followable: st.view.system_a11y.text_size_followable,
+    };
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
         .show(ctx, |ui| {
