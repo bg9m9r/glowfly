@@ -260,3 +260,5 @@ fn an_offer_without_files_opens_its_page() {
 
 #[path = "snapshot_tests_update_flatpak.rs"]
 mod flatpak;
+#[path = "snapshot_tests_whats_new.rs"]
+mod whats_new;

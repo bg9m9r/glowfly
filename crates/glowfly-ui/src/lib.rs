@@ -194,6 +194,7 @@ mod welcome_art;
 mod welcome_cards;
 mod welcome_header;
 mod welcome_steps;
+mod whats_new_chip;
 pub mod widgets;
 mod window_buttons;
 pub mod window_frame;
