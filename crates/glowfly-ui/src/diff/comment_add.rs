@@ -79,7 +79,7 @@ pub(super) fn button(
         quiet_target::paint(&p, r, CornerRadius::same(radius::SM), SIZE, state);
         if state.lit() {
             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-            color::accent()
+            color::text()
         } else {
             color::weak()
         }

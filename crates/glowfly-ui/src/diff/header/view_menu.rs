@@ -1,4 +1,4 @@
-//! The header's View button and its menu: the layout (Inline or Split) and what is shown (Hunks
+//! The header's View button and its menu: the layout (Inline or Split) and what is shown (Changes only
 //! or Whole file) as radio groups under their headers, Ignore whitespace and Wrap long lines as
 //! check items, and Expand all / Collapse all for the whole file's folds. The menu stays open
 //! while its settings change and closes on a click outside it or Esc.

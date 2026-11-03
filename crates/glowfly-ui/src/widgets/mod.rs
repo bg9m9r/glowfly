@@ -23,7 +23,7 @@
 //! Preferences and the File view are `scroll_cue.rs`. Right-click menus that open below the row
 //! they belong to are `row_menu.rs`, and the collapsed Details disclosure under a plain-words
 //! message `details.rs`. The tip row (an accent wash with a sentence, its button and a × menu)
-//! is `hint_row.rs`.
+//! is `hint_row.rs`, and a row of underline tabs `underline_tab.rs`.
 
 pub mod banner;
 mod button_look;
@@ -62,6 +62,7 @@ mod tool;
 pub mod tooltip;
 pub mod tooltip_motion;
 pub mod truncate;
+pub mod underline_tab;
 
 pub use super::list_row::{
     GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
