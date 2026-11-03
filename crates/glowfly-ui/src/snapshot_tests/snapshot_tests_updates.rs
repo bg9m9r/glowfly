@@ -181,6 +181,23 @@ fn status_update_available() {
     assert!(sent(&h, &UpdateMsg::ShowNotes));
 }
 
+/// The update chip paints an 18 px badge, but its click spans the status bar's whole height:
+/// a click 2 px below the bar's top, above the painted badge, still opens the notes.
+#[test]
+fn the_update_chip_clicks_across_the_bar_height() {
+    use crate::ui::status::BAR_H;
+    let mut h = harness(status_bar(UpdateStatus::Available(Box::new(the_offer()))), true);
+    h.run();
+    let chip = h.get_by_label("Update available (0.3.0)").bounding_box().expect("the chip's rect");
+    let badge = crate::ui::theme::sizes::ChipSize::Badge.metrics().h;
+    assert_eq!((chip.y1 - chip.y0) as f32, BAR_H, "the hit area is the bar's height, taller than the badge");
+    let bar_top = h.ctx.screen_rect().bottom() - BAR_H;
+    let at = eframe::egui::pos2(((chip.x0 + chip.x1) / 2.0) as f32, bar_top + 2.0);
+    assert!(at.y < bar_top + (BAR_H - badge) / 2.0, "the click lands above the painted badge");
+    super::snapshot_tests_select::click(&mut h, at, eframe::egui::PointerButton::Primary);
+    assert!(sent(&h, &UpdateMsg::ShowNotes));
+}
+
 #[test]
 fn status_update_downloaded() {
     let file = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");

@@ -1,5 +1,6 @@
-//! The graph's empty states (`graph/mod.rs`): a repository with no commits, and a filtered
-//! search with no matches. That pane says how far the search has looked: changed files or
+//! The graph's empty states (`graph/mod.rs`): a repository with no commits, a history freed
+//! while its tab was parked loading again or failing to (`update/parked_free.rs`), and a filtered search with
+//! no matches. That pane says how far the search has looked: changed files or
 //! older history still being searched, a failed load for more (Try again, Copy details), the
 //! whole history searched (by the whole-history index too, or as far as it reached), matches
 //! only past what the graph can load, or only the newest commits, with Keep searching (or Load
@@ -8,7 +9,7 @@
 
 use super::empty_state::{EmptyIcon, PaneButton, empty_state};
 use super::pane_status::{self, Failure};
-use crate::msg::{LoadMsg, Msg, SearchMsg};
+use crate::msg::{LoadMsg, Msg, RepoMsg, SearchMsg};
 use crate::state::load_more::{Further, Reach};
 use crate::state::{AppState, MAX_COMMITS};
 use eframe::egui::Ui;
@@ -20,6 +21,18 @@ const SEARCHING_FILES: &str = "Searching changed files…";
 /// A repository without commits.
 pub(super) fn no_commits(ui: &mut Ui) {
     empty_state(ui, EmptyIcon::Commits, NO_COMMITS_TITLE, NO_COMMITS_HINT, &[]);
+}
+
+/// The tab's history was freed while it was parked and is loading again (the graph's scroll
+/// waits for it), or its reload failed: the error, with Try again.
+pub(super) fn reloading(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    if st.loading {
+        return pane_status::loading(ui, t.tr("common.loading"));
+    }
+    let error = st.session.tab_view.history_reload_error.as_deref().unwrap_or_default();
+    let retry = Some(Msg::Repo(RepoMsg::Refresh));
+    pane_status::failed(ui, t, Failure { title: t.tr("graph.reload_failed.title"), error, retry }, msgs);
 }
 
 /// The search filters the graph and nothing matches (or it is still being searched).

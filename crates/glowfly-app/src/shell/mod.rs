@@ -6,6 +6,7 @@
 mod app;
 mod app_menu;
 mod app_native;
+mod texture_side;
 pub use app::GlowflyApp;
 #[cfg(test)]
 pub(crate) use app::TestStart;

@@ -15,6 +15,7 @@ use super::theme::color;
 use super::theme::sizes::ControlSize;
 use super::theme::tokens::radius;
 use super::theme::type_scale;
+use super::widgets::chip::{self, ChipSize, Look};
 use super::widgets::quiet_target::{self, State};
 use super::widgets::tab_glyph::{self, TabGlyph};
 use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized};
@@ -30,19 +31,25 @@ const BAND: f32 = 2.0;
 /// slot, the close slot and the padding after it.
 const PAD_L: f32 = 12.0;
 const ICON: f32 = icon::SIZE_SM;
-const ICON_GAP: f32 = 8.0;
+const ICON_GAP: f32 = ControlSize::Regular.metrics().icon_gap;
 const CLOSE_GAP: f32 = 8.0;
 const PAD_R: f32 = 10.0;
 pub(super) const CHROME_W: f32 = PAD_L + ICON + ICON_GAP + CLOSE_GAP + tab_glyph::BOX + PAD_R;
 /// The repository swatch's size, and the room it adds before the icon.
 const SWATCH: f32 = 8.0;
 pub(super) const SWATCH_ROOM: f32 = 14.0;
-/// A group chip: its height, the padding either side of its name, its widest and the gap
-/// between it and the group's first tab.
-pub(super) const CHIP_H: f32 = 18.0;
-const CHIP_PAD: f32 = 8.0;
-const CHIP_MAX: f32 = 96.0;
-pub(super) const CHIP_GAP: f32 = 6.0;
+/// A group chip (a Badge, `widgets::chip`): its size, the padding either side of its name,
+/// its text step, its widest and the gap between it and the group's first tab.
+const CHIP: ChipSize = ChipSize::Badge;
+const CHIP_PAD: f32 = CHIP.metrics().pad_x;
+pub(super) const CHIP_TEXT: f32 = CHIP.metrics().text;
+/// A group chip is never wider than the narrowest tab, and leads its group as an icon leads
+/// its label.
+const CHIP_MAX: f32 = TAB_MIN_W;
+pub(super) const CHIP_GAP: f32 = ControlSize::Regular.metrics().icon_gap;
+/// A tab's narrowest and widest.
+const TAB_MIN_W: f32 = 96.0;
+const TAB_MAX_W: f32 = 220.0;
 
 /// What a tab shows this frame.
 #[derive(Clone, Copy)]
@@ -145,9 +152,9 @@ fn paint_band(p: &egui::Painter, rect: Rect, band: Color32) {
 }
 
 /// A tab's width for a name `text_w` wide (in the active tab's font, so a tab never changes
-/// width when it is selected): its chrome around the name, between 96 and 220.
+/// width when it is selected): its chrome around the name, between `TAB_MIN_W` and `TAB_MAX_W`.
 pub(super) fn tab_width(text_w: f32) -> f32 {
-    (text_w + CHROME_W).clamp(96.0, 220.0)
+    (text_w + CHROME_W).clamp(TAB_MIN_W, TAB_MAX_W)
 }
 
 /// The short line between two tabs that are neither active nor hovered, `gap` wide after `left`.
@@ -184,10 +191,8 @@ pub(super) fn chip_room(text_w: f32) -> f32 {
 /// A group chip in `rect`: a pill of the group's colour `col`, with its outline, holding the
 /// group's `name` (cut with an ellipsis when long).
 pub(super) fn paint_group_chip(p: &egui::Painter, rect: Rect, name: &str, col: Color32) -> Cut {
-    let r = CHIP_H / 2.0;
-    p.rect_filled(rect, r, color::wash(col, 0.2));
-    p.rect_stroke(rect, r, Stroke::new(1.0_f32, col), StrokeKind::Inside);
-    let font = type_scale::font(type_scale::SMALL);
+    chip::frame(p, rect, CHIP, Look::new(color::wash(col, 0.2), color::text()).edged(col));
+    let font = type_scale::font(CHIP_TEXT);
     paint_cut_text(p, pos2(rect.left() + CHIP_PAD, rect.center().y), name, font, color::text(), rect.width() - 2.0 * CHIP_PAD)
 }
 
@@ -208,15 +213,15 @@ mod tests {
 
     #[test]
     fn a_tab_is_its_name_and_its_chrome() {
-        assert_eq!(CHROME_W, 68.0);
-        assert_eq!(tab_width(100.0), 168.0);
+        assert_eq!(CHROME_W, 66.0);
+        assert_eq!(tab_width(100.0), 166.0);
         assert_eq!(tab_width(10.0), 96.0, "the narrowest");
         assert_eq!(tab_width(400.0), 220.0, "the widest");
     }
 
     #[test]
     fn a_chip_is_its_name_padded_up_to_its_widest() {
-        assert_eq!(chip_room(30.0), 30.0 + 16.0 + CHIP_GAP);
+        assert_eq!(chip_room(30.0), 30.0 + 2.0 * CHIP_PAD + CHIP_GAP);
         assert_eq!(chip_room(300.0), CHIP_MAX + CHIP_GAP);
     }
 

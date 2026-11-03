@@ -1,8 +1,8 @@
 //! Every toast leaves a line in the activity log, so one that expired, was closed or was dropped
 //! by the toast limit can still be read there. A line the same update logged stands for one
 //! toast of its outcome (a finished job's run, a failure the toast announces), the one with its
-//! text first; every other toast is logged. A toast updated in place (zoom's) was logged when it
-//! first showed.
+//! text first; every other toast is logged. A toast updated or shown again in place (zoom's, a
+//! refusal clicked twice) was logged when it first showed.
 
 use crate::state::AppState;
 use crate::state::logs::{EntryId, headline};
@@ -16,7 +16,7 @@ pub(super) fn record(st: &mut AppState, toast_mark: u64, entry_mark: EntryId) {
         .filter(|e| e.id > entry_mark && e.earlier.is_none())
         .map(|e| (e.ok, e.text.clone()))
         .collect();
-    let fresh: Vec<(bool, String)> = st.toasts.iter().filter(|t| t.id > toast_mark).map(|t| (t.ok, t.text.clone())).collect();
+    let fresh: Vec<(bool, String)> = st.toasts.iter().filter(|t| t.first > toast_mark).map(|t| (t.ok, t.text.clone())).collect();
     // Lines whose text a toast shows go to that toast first.
     let mut unpaired = Vec::new();
     for (ok, text) in fresh {
@@ -74,5 +74,22 @@ mod tests {
         st.toast(true, "Push succeeded", now);
         record(&mut st, toasts, entries);
         assert_eq!(texts(&st), [(true, "Everything up-to-date")]);
+    }
+
+    #[test]
+    fn a_toast_shown_again_in_place_keeps_its_one_line() {
+        use crate::msg::Msg;
+        use crate::state::toasts::ToastAction;
+        let (mut st, now) = (state(), Instant::now());
+        st.log.clear();
+        let action = || ToastAction { label: "Prune".into(), msg: Box::new(Msg::ClearLog), workdir: None };
+        let (toasts, entries) = (st.toast_seq, EntryId::next());
+        st.toast_action_once(true, "Refused", action(), now);
+        record(&mut st, toasts, entries);
+        // Clicked again while it is up: the same toast restarts, and is not logged a second time.
+        let (toasts, entries) = (st.toast_seq, EntryId::next());
+        st.toast_action_once(true, "Refused", action(), now);
+        record(&mut st, toasts, entries);
+        assert_eq!(texts(&st), [(true, "Refused")]);
     }
 }

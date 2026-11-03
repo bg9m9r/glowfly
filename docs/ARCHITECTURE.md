@@ -111,7 +111,8 @@ source file, update its line in the matching file.
    setting change. The colour families, what each colour is for, the reserved hue bands and the
    contrast floors are in [COLOUR.md](COLOUR.md). Immutable
    data loaded once (the syntax definitions in `highlight/syntaxes.rs`) is not mutable state,
-   and neither are the askpass environment in `gitcli` (`enable_askpass`) and gitcli's run
+   nor is a cache that never changes a result (the parse copy of that set in
+   `highlight/grammars.rs`, dropped when idle and loaded again from the same dump), and neither are the askpass environment in `gitcli` (`enable_askpass`) and gitcli's run
    observer (`observe_runs`, which hands timings to the log worker): each set once by the app
    shell at startup, never changed afterwards and never set in tests. The PATH children get
    (`env_path`) is likewise computed once, on first use, and never changed. The git program

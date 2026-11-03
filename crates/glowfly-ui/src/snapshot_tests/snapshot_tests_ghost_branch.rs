@@ -82,7 +82,7 @@ fn ghost_button_hides_off_the_anchor_under_a_menu_and_when_off() {
 #[test]
 fn a_narrow_column_keeps_the_plus_alone() {
     let (mut st, dir) = head_selected("ghost-narrow");
-    st.settings.column_widths = ColumnWidths { refs: 190.0, ..Default::default() };
+    st.settings.column_widths = ColumnWidths { refs: 194.0, ..Default::default() };
     let mut h = harness(st, true);
     h.run_steps(4);
     let b = h.get_by_label(GHOST).bounding_box().expect("still offered, by its name");

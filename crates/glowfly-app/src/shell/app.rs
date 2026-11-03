@@ -1,6 +1,8 @@
 //! The shell: owns the state, the UI-thread caches and the runner, feeds the views' messages and
 //! the runner's results through `update`, runs the resulting effects, and handles the few
-//! effects that need the window (`app_effects.rs`). On the drawn Windows frame it also trades
+//! effects that need the window (`app_effects.rs`). It reads the system's accessibility settings
+//! at start, when the window regains the focus and when the system reports a change
+//! (`platform::a11y_system`), and hands them to update. On the drawn Windows frame it also trades
 //! state with the OS glue each frame (`app_native.rs`), and on macOS it runs the system menu
 //! bar's picks and hands it the menus (`app_menu.rs`).
 
@@ -13,6 +15,7 @@ use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
+use crate::platform::a11y_system;
 use crate::platform::native_menu::NativeMenu;
 use crate::platform::native_window::NativeWindow;
 use crate::platform::primary_selection::PrimarySelection;
@@ -50,6 +53,9 @@ pub struct GlowflyApp {
     native: Option<NativeWindow>,
     /// The macOS system menu bar showing Glowfly's menus; None elsewhere and in tests.
     menu: Option<NativeMenu>,
+    /// Reads the system's reduce-motion, high-contrast and text-size settings; tests read the
+    /// defaults, never the machine's.
+    a11y: a11y_system::Watch,
     /// The Linux PRIMARY selection the terminal sets and middle-click pastes; none elsewhere
     /// and in tests.
     primary: PrimarySelection,
@@ -107,6 +113,8 @@ impl GlowflyApp {
         app.native = NativeWindow::install(cc, app.st.view.chrome, mica, ctx.clone());
         app.menu = NativeMenu::install(app.st.view.chrome, ctx.clone());
         app.primary = PrimarySelection::install(cc);
+        app.a11y = a11y_system::Watch::new(a11y_system::read_system);
+        app.a11y.refresh(ctx);
         if probe.is_some() {
             // Before the first frame, so the probe sees named widgets from the start.
             crate::ui::probe::enable(ctx);
@@ -155,6 +163,7 @@ impl GlowflyApp {
             theme: theme::ThemeCache::default(),
             native: None,
             menu: None,
+            a11y: a11y_system::Watch::new(crate::state::system_a11y::SystemA11y::default),
             primary: PrimarySelection::default(),
             probe: None,
             frames: Default::default(),
@@ -182,6 +191,7 @@ impl GlowflyApp {
         let focused = self.st.view.focused;
         if focused && !self.st.view.was_focused {
             msgs.push(Msg::Repo(RepoMsg::WindowFocused));
+            self.a11y.refresh(ctx);
         }
         self.st.view.was_focused = focused;
         if ctx.input(|i| i.viewport().close_requested()) {
@@ -196,7 +206,11 @@ impl GlowflyApp {
         let started = Instant::now();
         let span = tracing::trace_span!("frame").entered();
         self.frames.begin();
-        self.theme.apply(ctx, &self.st.settings, &self.st.themes);
+        // Before the theme and zoom are applied, so a change shows in this frame.
+        if let Some(system) = self.a11y.take().filter(|s| *s != self.st.view.system_a11y) {
+            self.dispatch(ctx, Msg::App(AppMsg::SystemA11y(system)));
+        }
+        self.theme.apply(ctx, &self.st.settings, &self.st.themes, self.st.system_contrast());
         layout::apply_zoom(ctx, &self.st);
         self.st.view.focused = ctx.input(|i| i.focused);
         self.st.view.window = ctx.input(|i| crate::state::window_chrome::WindowInfo {
@@ -205,8 +219,10 @@ impl GlowflyApp {
             ..Default::default()
         });
         let mut native_msgs = Vec::new();
-        if let Some(native) = &mut self.native {
-            app_native::before_draw(native, &mut self.st, self.theme.mica_tint(), &mut native_msgs);
+        if let Some(native) = &mut self.native
+            && app_native::before_draw(native, &mut self.st, self.theme.mica_tint(), &mut native_msgs)
+        {
+            self.a11y.refresh(ctx);
         }
         if let Some(menu) = &mut self.menu {
             app_menu::picked(menu, &mut self.st, &mut native_msgs);
@@ -284,9 +300,11 @@ impl eframe::App for GlowflyApp {
     }
 
     /// The keypad's Alt+digit presses (a Windows Alt code) are taken out before egui sees them,
-    /// so they never reach the pane keys (`platform::numpad_keys`).
+    /// so they never reach the pane keys (`platform::numpad_keys`), and the texture side egui
+    /// may use is capped, so the font atlas grows in smaller steps (`texture_side`).
     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         crate::platform::numpad_keys::filter(&mut raw_input.events);
+        super::texture_side::cap(raw_input);
     }
 
     /// The PRIMARY selection's Wayland connection is let go while the window still exists.
