@@ -14,7 +14,7 @@
 //! After the branch name, its counts against its upstream ("2↑ 3↓", the sidebar's painted
 //! arrows, `list_row::paint_parts`) take room inside the slot, cutting the name rather than
 //! widening the bar, and hide when they would leave the name less than its floor; they show
-//! only when out of sync, and the accessible name says them.
+//! only when out of sync, and the accessible name always says them, hidden or not.
 
 use super::fit;
 use super::menus::repo_menu;
@@ -118,6 +118,8 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
     let repo_g = cut_galley(ui.ctx(), cut_job(repo.clone(), font.clone(), color::text()), repo_w);
     let branch = st.snap.as_ref().zip(head.as_ref()).map(|(snap, head)| {
         let mut counts = counts(snap);
+        // The accessible name says the counts even when there is no room to show them.
+        let name = access_name(t, head, &counts);
         let mut counts_w = if counts.is_empty() { 0.0 } else { parts_width(ui.painter(), &counts) + COUNTS_GAP };
         // Counts that would cut the name below its floor (a shorter name, its own width) hide;
         // the badges and tips still say them.
@@ -129,7 +131,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
         let cut = shown != *head;
         let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());
         // A dot in the checked-out branch's colour; a ring while HEAD is detached.
-        (snap, head, g, cut, snap.head_swatch().map(line), counts)
+        (snap, head, g, cut, snap.head_swatch().map(line), counts, name)
     });
     let mut segs = vec![Seg { w: part_w(repo_w, false), enabled: true }];
     if branch.is_some() {
@@ -147,8 +149,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
     let mut responses = bar.responses.into_iter();
     let cut = repo_g.elided;
     part(ui, responses.next().expect("the repository segment"), t.tr("toolbar.repository"), (repo_g, None, &[]), (&repo, &repo), cut);
-    if let (Some((_, head, g, cut, tone, counts)), Some(r)) = (branch, responses.next()) {
-        let name = access_name(t, head, &counts);
+    if let (Some((_, head, g, cut, tone, counts, name)), Some(r)) = (branch, responses.next()) {
         part(ui, r, t.tr("toolbar.branch"), (g, Some(tone), &counts), (head, &name), cut);
     }
     slots

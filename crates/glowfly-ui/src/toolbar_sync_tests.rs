@@ -1,7 +1,8 @@
 //! Pull and Push against the head's upstream (`toolbar_tests::tracking`) at 0/0, 2/0, 0/3, 2/3
 //! and without an upstream: the accessible names that say the counts (Pull's, Push's and the
-//! branch picker's), the push menu's first item naming where Push goes with the "Push to"
-//! submenu for the fixture's two remotes, and the toolbar with its badges in both default themes.
+//! branch picker's, which says counts too long to show), the push menu's first item naming
+//! where Push goes with the "Push to" submenu for the fixture's two remotes, and the toolbar
+//! with its badges in both default themes.
 
 use super::tests::{settle, tracking};
 use crate::msg::{JobMsg, Msg};
@@ -87,4 +88,15 @@ fn toolbar_ahead_behind() {
         drop(h);
         remove_fixture(&dir);
     }
+}
+
+#[test]
+fn the_picker_names_counts_it_has_no_room_to_show() {
+    // 12 and 13 leave "main" no room in the fixture's slot, so the picker hides them.
+    let (st, dir) = tracking(ThemeChoice::Dark, "toolbar-sync-hidden-counts", UPSTREAM, 12, 13);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("main, 12 ahead, 13 behind").is_some());
+    drop(h);
+    remove_fixture(&dir);
 }
