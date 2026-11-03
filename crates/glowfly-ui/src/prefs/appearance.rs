@@ -52,8 +52,9 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, keys: &Keymap
 }
 
 /// Interface size: the window zoom, with its keys in the help (only the first sentence when
-/// either has no key). The same row on Appearance and Accessibility.
-pub fn zoom_row(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap) {
+/// either has no key). The same row on Appearance and Accessibility; `follow` adds
+/// Accessibility's "Also follow the system's text size" check under the combo.
+pub fn zoom_row(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, follow: bool) {
     let label = t.tr("prefs.a11y.zoom.label");
     let text = match (keys.hint(BindingId::ZoomIn), keys.hint(BindingId::ZoomOut)) {
         (Some(zoom_in), Some(zoom_out)) => t.trf("prefs.a11y.zoom.help", &[("in", &zoom_in), ("out", &zoom_out)]),
@@ -67,6 +68,9 @@ pub fn zoom_row(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap) {
             }
         });
         super::accessibility::name(&r.response, label, &text);
+        if follow {
+            super::accessibility::follow_check(ui, label, &mut s.a11y.follow_system_text_size, t.tr("prefs.a11y.zoom.follow"), &text);
+        }
         help(ui, &text);
     });
 }
@@ -76,7 +80,7 @@ pub fn zoom_row(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap) {
 fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, frame: FrameRows) {
     use glowfly_core::settings::BranchVisibility as BV;
     section(ui, t.tr("prefs.ui.interface.section"));
-    zoom_row(ui, t, s, keys);
+    zoom_row(ui, t, s, keys, false);
     check_row(ui, t.tr("prefs.ui.left_panel.label"), &mut s.show_left_panel, t.tr("prefs.ui.left_panel.check"), None);
     check_row(ui, t.tr("prefs.ui.details_panel.label"), &mut s.show_details_panel, t.tr("prefs.ui.details_panel.check"), None);
     let (label, check, text) = (t.tr("prefs.ui.toolbar.label"), t.tr("prefs.ui.toolbar.check"), t.tr("prefs.ui.toolbar.help"));

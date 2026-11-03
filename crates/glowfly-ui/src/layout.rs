@@ -17,10 +17,11 @@ pub fn start(ctx: &egui::Context, st: &AppState) {
     apply_zoom(ctx, st);
 }
 
-/// Makes egui's zoom the settings' (it takes effect from the next pass). The exact compare is
-/// safe: both come from the same integer percent.
+/// Makes egui's zoom the one in effect, the interface size times the system's text size while
+/// it is followed (`AppState::zoom_factor`; it takes effect from the next pass). The exact
+/// compare is safe: both come from the same integer percent.
 pub fn apply_zoom(ctx: &egui::Context, st: &AppState) {
-    let z = st.settings.zoom_factor();
+    let z = st.zoom_factor();
     if ctx.zoom_factor() != z {
         ctx.set_zoom_factor(z);
     }
@@ -69,6 +70,20 @@ mod tests {
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         assert_eq!(ctx.zoom_factor(), 1.25);
         apply_zoom(&ctx, &state(100));
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        assert_eq!(ctx.zoom_factor(), 1.0);
+    }
+
+    #[test]
+    fn the_followed_system_text_size_scales_the_zoom() {
+        let ctx = egui::Context::default();
+        let mut st = state(100);
+        st.view.system_a11y.text_scale = 1.5;
+        apply_zoom(&ctx, &st);
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        assert_eq!(ctx.zoom_factor(), 1.5);
+        st.settings.a11y.follow_system_text_size = false;
+        apply_zoom(&ctx, &st);
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         assert_eq!(ctx.zoom_factor(), 1.0);
     }
