@@ -77,7 +77,7 @@ fn strip(pal: Palette, name: &str) -> image::RgbaImage {
             p.rect_filled(
                 Rect::from_min_size(pos2(x, r4.top() + 16.0), vec2(40.0, 13.0)),
                 0.0,
-                crate::ui::graph::highlight_color(band, lane),
+                crate::ui::theme::surfaces::highlight_color(band, lane),
             );
             p.circle_filled(pos2(x + 46.0, r4.center().y), 4.0, lane);
             x += 58.0;

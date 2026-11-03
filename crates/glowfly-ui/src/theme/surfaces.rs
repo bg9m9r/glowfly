@@ -341,28 +341,43 @@ pub(crate) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
     (1..=steps).rev().map(|i| contrast::tint(pal.bg, lane, i as f32 / 100.0, pal.dark)).find(|&b| keeps(b)).unwrap_or(pal.bg)
 }
 
+/// How far a highlighted row (its branch hovered) moves from its band toward the lane colour.
+const HIGHLIGHT_T: f32 = 0.16;
+
+/// The opaque fill of a highlighted row on `band`, a row of a `lane`: the band moved toward the
+/// lane colour, `contrast::unbrown`ed (a warm lane on a dark palette lifts the band instead).
+pub(crate) fn highlight_color(band: Color32, lane: Color32) -> Color32 {
+    contrast::unbrown(band, mix(band, lane, HIGHLIGHT_T))
+}
+
 thread_local! {
     /// The last palette's row surfaces: worked out once, not for every chip drawn.
     static ROW_SURFACES: std::cell::RefCell<Option<(Palette, Vec<Color32>)>> = const { std::cell::RefCell::new(None) };
 }
 
-/// Every surface a graph row's ref chip can sit on in `p`: the background, the hover, the
-/// selection with and without the focus, and the band of every lane in both branch presets and
-/// the trunk's (docs/COLOUR.md, "Ref chips").
-pub fn row_surfaces(p: &Palette) -> Vec<Color32> {
+/// Calls `f` with every surface a graph row's ref chip can sit on in `p`: the background, the
+/// hover, the selection with and without the focus, and the band of every lane in both branch
+/// presets and the trunk's, plain and highlighted (its branch hovered) (docs/COLOUR.md, "Ref
+/// chips"). Worked out once per palette.
+pub fn with_row_surfaces<R>(p: &Palette, f: impl FnOnce(&[Color32]) -> R) -> R {
     ROW_SURFACES.with(|cache| {
-        if let Some((_, rows)) = cache.borrow().as_ref().filter(|(c, _)| c == p) {
-            return rows.clone();
+        if cache.borrow().as_ref().is_none_or(|(c, _)| c != p) {
+            *cache.borrow_mut() = Some((*p, row_surfaces(p)));
         }
-        let mut rows = vec![p.bg, p.hover, p.selected, super::tokens::selected_inactive(p)];
-        let lanes = p.branch.lanes.iter().chain(&p.colour_blind.lanes).copied().chain([super::branch_colours::trunk(p)]);
-        for lane in lanes {
-            let band = band_color(lane, p);
-            if !rows.contains(&band) {
-                rows.push(band);
+        f(&cache.borrow().as_ref().expect("just filled").1)
+    })
+}
+
+fn row_surfaces(p: &Palette) -> Vec<Color32> {
+    let mut rows = vec![p.bg, p.hover, p.selected, super::tokens::selected_inactive(p)];
+    let lanes = p.branch.lanes.iter().chain(&p.colour_blind.lanes).copied().chain([super::branch_colours::trunk(p)]);
+    for lane in lanes {
+        let band = band_color(lane, p);
+        for c in [band, highlight_color(band, lane)] {
+            if !rows.contains(&c) {
+                rows.push(c);
             }
         }
-        *cache.borrow_mut() = Some((*p, rows.clone()));
-        rows
-    })
+    }
+    rows
 }

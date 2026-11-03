@@ -92,7 +92,7 @@ pub(super) fn fills(p: &Palette) -> Vec<(String, Color32)> {
         let lane = line_in(s, p);
         let band = crate::ui::theme::surfaces::band_color(lane, p);
         add(&format!("{s:?} band"), band);
-        add(&format!("{s:?} band highlighted"), crate::ui::graph::highlight_color(band, lane));
+        add(&format!("{s:?} band highlighted"), crate::ui::theme::surfaces::highlight_color(band, lane));
         add(&format!("{s:?} initials"), super::branch_colours::initials_fill(lane, p));
         for style in ChipStyle::ALL {
             let look = ref_chip(style, BranchTone::of(s, p), p);

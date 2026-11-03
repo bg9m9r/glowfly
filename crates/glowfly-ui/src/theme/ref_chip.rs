@@ -1,12 +1,12 @@
 //! The colours of the graph's ref chips (docs/COLOUR.md, "Ref chips"): filled for a local
 //! branch, outlined for a remote branch or a tag, and a halo round the checked-out branch or a
 //! detached HEAD, each worked out so the chip stands apart from every row surface it can sit
-//! on (`surfaces::row_surfaces`) and its text stays readable.
+//! on (`surfaces::with_row_surfaces`) and its text stays readable.
 
 use super::branch_colours::{chip_in, line_in, trunk};
 use super::color::Palette;
 use super::contrast::{brownish, clear, from_oklch, mix, oklch, ratio, readable_on};
-use super::surfaces::row_surfaces;
+use super::surfaces::with_row_surfaces;
 use eframe::egui::Color32;
 use glowfly_core::branch_colour::Swatch;
 
@@ -86,15 +86,19 @@ pub(crate) fn text_target(p: &Palette) -> f64 {
 /// branch takes the trunk tone; a detached HEAD looks like a local branch of the trunk. The
 /// checked-out branch and HEAD add a halo in the fill (dark) or edge (light) colour.
 pub fn ref_chip(style: ChipStyle, tone: BranchTone, p: &Palette) -> ChipLook {
-    let rows = row_surfaces(p);
+    with_row_surfaces(p, |rows| look_on(style, tone, p, rows))
+}
+
+/// [`ref_chip`] on `rows`, the palette's row surfaces.
+fn look_on(style: ChipStyle, tone: BranchTone, p: &Palette, rows: &[Color32]) -> ChipLook {
     let trunk_tone = trunk(p);
     let tone = if style == ChipStyle::Head || tone.chip == trunk_tone { BranchTone::plain(trunk_tone) } else { tone };
     let on_trunk = tone.chip == trunk_tone;
     let look = match style {
-        ChipStyle::Head | ChipStyle::CurrentBranch | ChipStyle::Branch if p.dark => dark_local(tone, p, &rows),
-        ChipStyle::Head | ChipStyle::CurrentBranch | ChipStyle::Branch => light_local(style, tone, on_trunk, p, &rows),
-        ChipStyle::Remote => remote(tone, on_trunk, p, &rows),
-        ChipStyle::Tag => ChipLook { fill: None, edge: Some(readable_on(p.tag_fg, p.bg, p.dark, APART)), text: p.tag_fg, halo: None },
+        ChipStyle::Head | ChipStyle::CurrentBranch | ChipStyle::Branch if p.dark => dark_local(tone, p, rows),
+        ChipStyle::Head | ChipStyle::CurrentBranch | ChipStyle::Branch => light_local(style, tone, on_trunk, p, rows),
+        ChipStyle::Remote => remote(tone, on_trunk, p, rows),
+        ChipStyle::Tag => outlined(p.tag_fg, p.tag_fg, p, rows),
     };
     let halo = style.halo().then_some(if p.dark { look.fill } else { look.edge }).flatten();
     ChipLook { halo, ..look }
@@ -137,13 +141,19 @@ fn light_local(style: ChipStyle, tone: BranchTone, on_trunk: bool, p: &Palette, 
     ChipLook { fill: Some(fill), edge: Some(edge), text, halo: None }
 }
 
-/// A remote branch's chip: no fill; the edge in the line tone (the trunk's own for main) and
-/// the text in the chip tone (`text` for main), each pushed apart from every row surface. Text
-/// that reads brown or can't reach the target is `text`; a brown edge takes the text's colour.
+/// A remote branch's chip: outlined, the edge in the line tone (the trunk's own for main) and
+/// the text in the chip tone (`text` for main).
 fn remote(tone: BranchTone, on_trunk: bool, p: &Palette, rows: &[Color32]) -> ChipLook {
+    if on_trunk { outlined(tone.line, p.text, p, rows) } else { outlined(clear(tone.line), tone.chip, p, rows) }
+}
+
+/// An outlined chip: no fill; `edge` and `text` each pushed toward white (dark) or black until
+/// they reach 3:1 and the text target against every row surface. Text that reads brown or can't
+/// reach it is `text`; a brown edge takes the text's colour.
+fn outlined(edge: Color32, text: Color32, p: &Palette, rows: &[Color32]) -> ChipLook {
     let target = text_target(p);
-    let edge = if on_trunk { tone.line } else { apart(clear(tone.line), rows, p.dark) };
-    let mut text = if on_trunk { p.text } else { tone.chip };
+    let edge = apart(edge, rows, p.dark);
+    let mut text = text;
     let pole = if p.dark { Color32::WHITE } else { Color32::BLACK };
     for _ in 0..MAX_STEPS {
         if worst(text, rows) >= target {

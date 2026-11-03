@@ -157,6 +157,12 @@ fn graph_message_cut() {
     let mut h = harness_sized(st, true, vec2(1400.0, 700.0));
     h.run();
     h.check_snapshot("graph_message_cut");
+    // Near the message column's right end, where the cut text ends in "…".
+    let x = grip(&h, "Resize commit column").x - 30.0;
+    let y = center(&h, LONG_SUMMARY).y;
+    pointer(&mut h, pos2(x, y), None);
+    settle(&mut h);
+    h.check_snapshot("graph_message_cut_tip");
     drop(h);
     remove_fixture(&dir);
 }

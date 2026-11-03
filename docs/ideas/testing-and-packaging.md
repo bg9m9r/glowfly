@@ -105,8 +105,6 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Find text snapshots no test writes any more (a `.txt` with no `.new.txt` after a full run) and delete them
 - Give icon-only widgets and painted rows accessible names, so more of a view shows in its accessibility tree than in the painted-text list
 - Run the text snapshots on the macOS and Linux CI runners too, with per-platform files where labels differ (shortcut names, title bar)
-- `graph_message_cut` lost its hover check (`graph_message_cut_tip` differed from it only by the
-  New branch… ghost, never by a tooltip): check the cut message's tooltip by name
 
 ### Fuzzing the parsers of untrusted text
 

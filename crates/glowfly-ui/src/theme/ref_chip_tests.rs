@@ -6,7 +6,12 @@
 use super::branch_colours::swatches;
 use super::color::Palette;
 use super::ref_chip::{BranchTone, ChipLook, ChipStyle, ref_chip, text_target, worst};
-use super::surfaces::row_surfaces;
+use super::surfaces::with_row_surfaces;
+
+/// `p`'s row surfaces, owned.
+fn row_surfaces(p: &Palette) -> Vec<Color32> {
+    with_row_surfaces(p, <[Color32]>::to_vec)
+}
 use super::{applied, builtin};
 use eframe::egui::Color32;
 use glowfly_core::branch_colour::Swatch;
@@ -93,12 +98,14 @@ fn local_branches_are_filled_and_remotes_and_tags_outlined() {
 }
 
 #[test]
-fn row_surfaces_hold_the_selection_hover_and_every_band() {
+fn row_surfaces_hold_the_selection_hover_and_every_band_plain_and_highlighted() {
     let p = *builtin(BuiltinTheme::Dark);
     let rows = row_surfaces(&p);
     for c in [p.bg, p.hover, p.selected, super::tokens::selected_inactive(&p)] {
         assert!(rows.contains(&c), "{c:?}");
     }
-    let band = super::surfaces::band_color(super::branch_colours::line_in(Swatch::Slot(3), &p), &p);
+    let lane = super::branch_colours::line_in(Swatch::Slot(3), &p);
+    let band = super::surfaces::band_color(lane, &p);
     assert!(rows.contains(&band), "slot 3's band");
+    assert!(rows.contains(&super::surfaces::highlight_color(band, lane)), "slot 3's band highlighted");
 }

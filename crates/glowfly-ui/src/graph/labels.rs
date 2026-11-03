@@ -29,8 +29,9 @@ const TAG_LEAD: f32 = 12.0;
 /// The least room the first chip keeps beside a "+N" chip; with less, the "+N" chip is dropped.
 const MIN_FIRST_W: f32 = 24.0;
 const FONT: f32 = CHIP.metrics().text;
-/// Room a chip with a halo (`ChipLook::halo`) keeps either side of its box: the halo's 1.5 px
-/// gap and 1.5 px ring.
+/// How far a halo (`ChipLook::halo`) reaches past its chip: its 1.5 px gap and 1.5 px ring. The
+/// halo takes no layout room: it paints into the cell's inset and padding, or the gap after it,
+/// and a ref chip after a halo chip moves this much further away (a "+N" badge doesn't).
 const HALO_ROOM: f32 = chip::HALO_ROOM;
 
 /// What one chip shows.
@@ -75,16 +76,16 @@ fn check(is_head: bool, name: &str) -> String {
     if is_head { format!("✔ {name}") } else { name.to_owned() }
 }
 
-/// A chip's width for its text `text_w` wide: padding, the marks and the build marker, and the
-/// halo's room either side for the checked-out branch or HEAD.
+/// A chip's width for its text `text_w` wide: padding, the marks and the build marker.
 fn chip_w(spec: &ChipSpec, text_w: f32) -> f32 {
     let lead = if spec.lead_tag { TAG_LEAD } else { 0.0 };
-    text_w + 2.0 * TEXT_PAD + lead + MARK_W * spec.trailing() as f32 + 2.0 * halo_room(spec.style)
+    text_w + 2.0 * TEXT_PAD + lead + MARK_W * spec.trailing() as f32
 }
 
-/// The room `style`'s halo keeps either side of the chip's box.
-fn halo_room(style: ChipStyle) -> f32 {
-    if style.halo() { HALO_ROOM } else { 0.0 }
+/// The extra room before each chip: `HALO_ROOM` after a chip with a halo, so its ring doesn't
+/// touch the next chip's edge (it reads as a double line), else none.
+fn halo_leads(styles: &[ChipStyle]) -> Vec<f32> {
+    (0..styles.len()).map(|i| if i > 0 && styles[i - 1].halo() { HALO_ROOM } else { 0.0 }).collect()
 }
 
 fn text_w(p: &Painter, text: &str, size: f32) -> f32 {
@@ -155,16 +156,14 @@ fn paint_box(p: &Painter, r: Rect, look: ChipLook) {
     chip::frame(p, r, CHIP, look.into());
 }
 
-/// Draws a chip of width `w` (its halo's room included) from `x`, centred on `y`, and returns
-/// its rect, the halo's room included: its box (`ref_chip::ref_chip`), the tag mark, the name
-/// (cut to leave its marks room), then the local mark, the remote mark and the build marker,
-/// coloured from its branch's `tone`.
+/// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: its box and halo
+/// (`ref_chip::ref_chip`; the halo reaches outside the rect), the tag mark, the name (cut to
+/// leave its marks room), then the local mark, the remote mark and the build marker, coloured
+/// from its branch's `tone`.
 fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: BranchTone, w: f32) -> Rect {
     let look = ref_chip::ref_chip(spec.style, tone, &color::current());
     let fg = look.text;
-    let room = halo_room(spec.style);
-    let (x, w) = (x + room, w - 2.0 * room);
-    let r = chip::rect_at(CHIP, x, y, w);
+    let r = chip::rect_at(CHIP, x, y, w.max(0.0));
     paint_box(p, r, look);
     let cp = p.with_clip_rect(r.intersect(p.clip_rect()));
     let mut text_x = x + TEXT_PAD;
@@ -189,7 +188,7 @@ fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: BranchTone, w: 
     if let Some(state) = spec.build {
         build_status::paint_marker_on(&cp, pos2(slot, y), state);
     }
-    r.expand2(vec2(room, 0.0))
+    r
 }
 
 /// What the pointer over a row's chips asks to show.
@@ -253,13 +252,15 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
     if !row.chips.is_empty() {
         let specs: Vec<ChipSpec> =
             row.chips.iter().enumerate().map(|(i, c)| ChipSpec::of(c, if i == 0 { row.build } else { None })).collect();
-        let widths: Vec<f32> = specs.iter().map(|s| spec_w(&rp, s)).collect();
+        let leads = halo_leads(&specs.iter().map(|s| s.style).collect::<Vec<_>>());
+        let widths: Vec<f32> = specs.iter().zip(&leads).map(|(s, lead)| spec_w(&rp, s) + lead).collect();
         let f = fit(&widths, span.1 - x0, |k| plus_w(&rp, k), GAP);
         let mut drawn = Vec::with_capacity(f.shown);
         let mut x = x0;
         for (i, spec) in specs.iter().take(f.shown).enumerate() {
             let w = if i == 0 { f.first_w } else { widths[i] };
-            drawn.push(draw_chip(&rp, x, mid, spec, row.tones.get(i).copied().unwrap_or(BranchTone::plain(row.lane)), w));
+            let tone = row.tones.get(i).copied().unwrap_or(BranchTone::plain(row.lane));
+            drawn.push(draw_chip(&rp, x + leads[i], mid, spec, tone, w - leads[i]));
             x += w + GAP;
         }
         end = drawn.last().map_or(x0, |r| r.right());

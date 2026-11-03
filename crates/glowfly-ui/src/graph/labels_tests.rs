@@ -73,12 +73,12 @@ fn chip_at_finds_the_chip_under_the_pointer() {
 }
 
 #[test]
-fn the_checked_out_branch_and_head_keep_their_halos_room() {
+fn a_halo_takes_no_room_but_keeps_the_next_chip_clear() {
     let with = |style| chip_w(&ChipSpec { style, ..spec(true, false, false) }, 50.0);
-    let plain = with(ChipStyle::Branch);
-    assert_eq!(with(ChipStyle::CurrentBranch), plain + 2.0 * HALO_ROOM, "3 px either side");
-    assert_eq!(with(ChipStyle::Head), plain + 2.0 * HALO_ROOM);
-    for style in [ChipStyle::Remote, ChipStyle::Tag] {
-        assert_eq!(with(style), plain, "{style:?} has no halo");
+    for style in ChipStyle::ALL {
+        assert_eq!(with(style), with(ChipStyle::Branch), "{style:?}: the halo paints into the inset, padding or gap");
     }
+    let leads = halo_leads(&[ChipStyle::CurrentBranch, ChipStyle::Remote, ChipStyle::Tag]);
+    assert_eq!(leads, vec![0.0, HALO_ROOM, 0.0], "only the chip after the halo moves, by the halo's reach");
+    assert_eq!(halo_leads(&[ChipStyle::Branch, ChipStyle::Head]), vec![0.0, 0.0]);
 }

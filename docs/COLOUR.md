@@ -486,9 +486,10 @@ built-in and two custom palettes with odd colours.
 
 Ref chips in the graph (`ref_chip::ref_chip`, painted by `graph/labels.rs`'s `paint_box`):
 filled = a local branch, outlined = a reference (a remote branch or a tag), a halo = you are
-here. Every chip stands apart from every row surface it can sit on (`surfaces::row_surfaces`:
+here. Every chip stands apart from every row surface it can sit on (`surfaces::with_row_surfaces`:
 the background, hover, the selection with and without the focus, and every lane's band in both
-presets): its fill or its edge reaches 3:1 against each. Its text reaches 4.5:1 (7:1 in the
+presets, plain and highlighted while its branch is hovered): its fill or its edge reaches 3:1
+against each. Its text reaches 4.5:1 (7:1 in the
 high-contrast themes) on its fill, or, outlined, on every row surface. Nothing is brown.
 
 - A local branch on a dark palette: a solid fill of its clear chip tone (`clear`ed, so a warm
@@ -504,12 +505,15 @@ high-contrast themes) on its fill, or, outlined, on every row surface. Nothing i
 - The checked-out branch and a detached HEAD: the local look (HEAD as the trunk's, on a light
   palette a neutral step 12% toward `text` edged in the trunk tone) plus a 1.5 px halo 1.5 px
   outside the chip, its corners the chip's plus 3, in the fill colour (dark) or the edge colour
-  (light). The halo box is 28 px tall and the row keeps 3 px either side for it. The ✔ stays.
+  (light). The halo box is 28 px tall and takes no layout room: the chip lines up with every
+  other row's, and the ring paints into the cell's inset, its padding or the gap after it. A
+  ref chip after it moves 3 px further away (so the ring doesn't double its edge); a "+N"
+  badge keeps the 4 px gap. The ✔ stays.
 - A remote branch: no fill; the edge in its line tone and the text in its chip tone, pushed
   until they reach 3:1 and the text target against every row surface; text that reads brown or
   can't reach it is `text`. Main's remote chip is edged in the trunk tone and lettered in `text`.
-- A tag: outlined like a remote, in `tag_fg` (plum in most themes), its edge `tag_fg` pushed to
-  3:1 on the background.
+- A tag: outlined like a remote, its edge and text in `tag_fg` (plum in most themes), pushed the
+  same way.
 
 The values are a designer's study (issue #522); `theme/ref_chip_tests.rs` holds every built-in
 in both presets to them. The "+N" badge keeps the `raised` fill.

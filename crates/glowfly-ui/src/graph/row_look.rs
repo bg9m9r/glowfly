@@ -4,8 +4,7 @@
 //! from `widgets::row_fill`. Also the inks of a row a search dims.
 
 use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::contrast::{mix, unbrown};
-use crate::ui::theme::surfaces::band_color;
+use crate::ui::theme::surfaces::{band_color, highlight_color};
 use crate::ui::widgets::row_fill::ACCENT_BAR_W;
 use eframe::egui::{Color32, Painter, Rect, vec2};
 
@@ -67,15 +66,6 @@ pub(super) const DIM_ALPHA: f32 = 0.35;
 /// still read at 4.5:1 (checked in `theme/text_floor_tests.rs`).
 pub(crate) fn dim_inks(pal: &Palette) -> (Color32, Color32) {
     (pal.weak, pal.faint)
-}
-
-/// How far a highlighted row (its branch hovered) moves from its band toward the lane colour.
-const HIGHLIGHT_T: f32 = 0.16;
-
-/// The opaque fill of a highlighted row on `band`, a row of a `lane`: the band moved toward the
-/// lane colour, `contrast::unbrown`ed (a warm lane on a dark palette lifts the band instead).
-pub(crate) fn highlight_color(band: Color32, lane: Color32) -> Color32 {
-    unbrown(band, mix(band, lane, HIGHLIGHT_T))
 }
 
 #[cfg(test)]

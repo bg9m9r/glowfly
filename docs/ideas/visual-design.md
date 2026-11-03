@@ -128,8 +128,6 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - Person colours that follow .mailmap (they follow the raw author email today)
 - Pin a branch colour from the command palette
 - Warn when a pin matches a side-by-side branch's pinned hue
-- Auto-fit of BRANCH / TAG should leave room for the New branch… plus on the checked-out row
-  without making the fitter hide another column (after #424 part 2)
 - The graph's "+N" badge sits at about 1.04:1 against its row; give it an edge or fill that
   stands 3:1 from every row surface like the ref chips
 
