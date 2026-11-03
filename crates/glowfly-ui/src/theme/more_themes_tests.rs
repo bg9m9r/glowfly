@@ -58,7 +58,7 @@ fn porcelain_keeps_linens_colours_but_its_neutrals() {
         ("hover", 0xeceef2),
         ("strong", 0x0c0f13),
         ("weak", 0x525862),
-        ("faint", 0x676d77),
+        ("faint", 0x616670),
         ("primary", 0x1a5bb5),
         ("on_primary", 0xffffff),
         ("primary_border", 0x134894),

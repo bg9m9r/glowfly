@@ -303,6 +303,8 @@ mod snapshot_tests_fonts;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod text_floor_tests;
+#[cfg(test)]
 mod tint_tests;
 #[cfg(test)]
 mod token_tests;
