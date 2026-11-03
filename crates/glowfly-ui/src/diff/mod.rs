@@ -14,13 +14,15 @@
 //! box and a faint bar while hovered (`line_check`) and says what picking the line is for on
 //! that diff; once a hunk has a selection, all its changed lines show their boxes. The code
 //! beside it picks no lines, and a drag on it doesn't scroll: it selects text, as in an editor
-//! (`text_sel`), which Ctrl+C copies; a right-click on it opens the row menu (`row_menu`). A changed PNG or JPEG shows its
-//! before and after images (`preview`). On a pull request's file, a hovered line offers a
-//! button that starts a code comment on it (`comment_add`), and the unposted one is marked.
+//! (`text_sel`), which Ctrl+C copies; a right-click on it opens the row menu (`row_menu`). A
+//! changed PNG or JPEG shows its before and after images (`preview`); another small binary file
+//! shows its bytes (`hex`). On a pull request's file, a hovered line offers a button that starts
+//! a code comment on it (`comment_add`), and the unposted one is marked.
 
 mod comment_add;
 pub(crate) mod fold;
 mod header;
+mod hex;
 mod hunk_header;
 mod inline;
 mod lfs_note;

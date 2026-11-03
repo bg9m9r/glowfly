@@ -180,7 +180,10 @@ fn binary_and_lfs_diffs_have_no_view_menu() {
     // While the sides load the chip shows the letter only.
     st.session.diff_preview.as_mut().unwrap().sides = None;
     assert_eq!(model(&st).unwrap().change, ChangeText::Sizes { old: None, new: None });
-    let sides = BinarySides { old: Some(BinarySide { size: 10, image: None }), new: Some(BinarySide { size: 12, image: None }) };
+    let sides = BinarySides {
+        old: Some(BinarySide { size: 10, image: None, bytes: None }),
+        new: Some(BinarySide { size: 12, image: None, bytes: None }),
+    };
     st.session.diff_preview.as_mut().unwrap().sides = Some(Ok(Arc::new(sides)));
     assert_eq!(model(&st).unwrap().change, ChangeText::Sizes { old: Some(10), new: Some(12) });
 

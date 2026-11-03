@@ -100,7 +100,7 @@ fn large_files_are_not_decoded_and_renames_use_the_old_path() {
     let (dir, old) = with_logo("binary-sides-limit");
     let new = png(6, 5);
     put(&dir, "logo.png", &new);
-    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("logo.png".into()), 8).unwrap();
+    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("logo.png".into()), Caps { image: 8, hex: 8 }).unwrap();
     assert_eq!((size(&s.old), size(&s.new)), (Some(old.len() as u64), Some(new.len() as u64)));
     assert!(dims(&s.old).is_none() && dims(&s.new).is_none(), "over the limit");
 
@@ -123,5 +123,47 @@ fn a_gif_side_decodes_too() {
     let s = binary_sides(&dir, &DiffTarget::Unstaged("anim.gif".into())).unwrap();
     let image = s.new.as_ref().and_then(|s| s.image.as_ref()).expect("the GIF decodes");
     assert_eq!((image.width, image.height, image.format), (5, 4, "GIF"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn bytes(s: &Option<BinarySide>) -> Option<&[u8]> {
+    s.as_ref().and_then(|s| s.bytes.as_deref())
+}
+
+#[test]
+fn small_binaries_bring_their_bytes_for_the_hex_view() {
+    let dir = scratch_repo("binary-sides-hex");
+    put(&dir, "data.bin", b"\0\x01old");
+    put(&dir, "logo.png", &png(2, 2));
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    put(&dir, "data.bin", b"\0\x02newer");
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("data.bin".into())).unwrap();
+    assert_eq!((bytes(&s.old), bytes(&s.new)), (Some(&b"\0\x01old"[..]), Some(&b"\0\x02newer"[..])));
+    git(&dir, &["add", "data.bin"]);
+    let s = binary_sides(&dir, &DiffTarget::Staged("data.bin".into())).unwrap();
+    assert_eq!(bytes(&s.new), Some(&b"\0\x02newer"[..]), "the index's blob");
+
+    put(&dir, "logo.png", &png(3, 3));
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("logo.png".into())).unwrap();
+    assert!(bytes(&s.old).is_none() && bytes(&s.new).is_none(), "an image shows its preview instead");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn files_over_the_hex_cap_keep_their_size_only() {
+    let dir = scratch_repo("binary-sides-hex-cap");
+    put(&dir, "data.bin", b"\x00123456789");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    put(&dir, "data.bin", b"\x00123");
+    let caps = Caps { image: PREVIEW_MAX_BYTES, hex: 8 };
+    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("data.bin".into()), caps).unwrap();
+    assert_eq!((size(&s.old), size(&s.new)), (Some(10), Some(4)));
+    assert!(bytes(&s.old).is_none() && bytes(&s.new).is_none(), "10 bytes is over the 8-byte cap, so neither side shows");
+    assert!(s.hex().is_none());
+    git(&dir, &["rm", "-q", "--cached", "data.bin"]);
+    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("data.bin".into()), caps).unwrap();
+    assert_eq!(s.hex(), Some((None, Some(&b"\x00123"[..]))), "untracked: the new side alone");
     let _ = std::fs::remove_dir_all(&dir);
 }
