@@ -11,6 +11,7 @@ pub mod avatars;
 pub mod branch_colour;
 pub mod branch_ops;
 pub mod changelog;
+pub mod clone_https;
 pub mod clone_ops;
 pub mod clone_stop;
 pub mod commit_encoding;

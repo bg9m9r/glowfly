@@ -19,6 +19,7 @@ mod branch_sync;
 mod branches;
 mod build_status;
 pub mod clone;
+mod clone_https;
 mod clone_service;
 mod commit;
 mod compare_wip;
