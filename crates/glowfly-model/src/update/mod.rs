@@ -161,6 +161,7 @@ mod submodule_batch;
 mod submodule_edit;
 mod submodule_remove;
 mod submodules;
+mod sync_voice;
 mod tab_groups;
 mod tab_label;
 pub mod tabs;

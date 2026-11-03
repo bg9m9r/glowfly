@@ -362,7 +362,7 @@ fn a_dialog_that_closes_itself_leaves_the_prompt_for_its_job() {
     let st = submit_held(
         "trust-new-branch",
         Modal::NewBranch { start: None, name: "topic".into(), checkout: false, track: None, touched: Default::default() },
-        "Create",
+        "Create branch",
     );
     assert_eq!(held_prompt(&st), Some("Create branch"), "the prompt names the job");
     assert!(st.trust.held.is_some(), "the job waits for the decision");

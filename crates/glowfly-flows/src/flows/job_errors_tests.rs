@@ -147,7 +147,7 @@ fn causes_get_their_fix() {
             "feat has no upstream yet.",
             "Push",
         ),
-        ("fatal: You are not currently on a branch.", "No branch is checked out (detached HEAD).", "Create branch…"),
+        ("fatal: You are not currently on a branch.", "No branch is checked out (detached HEAD).", "New branch…"),
         (
             "git@example.com: Permission denied (publickey).\nfatal: Could not read from remote repository.",
             "The server didn't accept your SSH key.",
@@ -155,7 +155,7 @@ fn causes_get_their_fix() {
         ),
         (
             "fatal: Unable to create '/tmp/r/.git/index.lock': File exists.",
-            "Another git program is using this repository (index.lock exists).",
+            "Another Git program is using this repository (index.lock exists).",
             "Try again",
         ),
         (
@@ -183,7 +183,7 @@ fn causes_get_their_fix() {
         let ok = match button {
             "View conflicts" => matches!(action_msg(&st, t), Msg::Conflict(ConflictMsg::OpenConflict(p)) if p == "a.txt"),
             "Push" => matches!(action_msg(&st, t), Msg::Job(JobMsg::Push { force: false })),
-            "Create branch…" => matches!(action_msg(&st, t), Msg::Branch(BranchMsg::NewBranch { start: None, name }) if name.is_empty()),
+            "New branch…" => matches!(action_msg(&st, t), Msg::Branch(BranchMsg::NewBranch { start: None, name }) if name.is_empty()),
             "SSH keys" => matches!(action_msg(&st, t), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh))),
             "Try again" => matches!(action_msg(&st, t), Msg::Job(JobMsg::Retry(r)) if r.spec.cmds == vec![args(&["push"])]),
             _ => t.details.is_none(),
@@ -273,7 +273,7 @@ fn details_beside_fix() {
     let (mut st, dir) = busy("je-details", "Push");
     done(&mut st, "fatal: You are not currently on a branch.");
     let t = last_toast(&st);
-    assert_eq!(labels(t), (Some("Create branch…"), Some("Details")));
+    assert_eq!(labels(t), (Some("New branch…"), Some("Details")));
     assert_eq!(t.lifetime(glowfly_core::settings::ToastTime::Standard), None, "a failure with a fix stays until closed");
     let id = t.id;
     up(&mut st, Msg::ToastDetails(id));
@@ -288,7 +288,7 @@ fn details_beside_fix() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(other.clone())));
     up(&mut st, Msg::ToastAction(id));
     assert!(st.modal.is_none(), "no New branch dialog");
-    assert_eq!(last_toast(&st).text, "Create branch… wasn't run: switch back to that repository's tab first.");
+    assert_eq!(last_toast(&st).text, "New branch… wasn't run: switch back to that repository's tab first.");
 
     // A quiet job's failure shows nothing.
     let before = st.toasts.len();

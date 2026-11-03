@@ -123,7 +123,7 @@ fn a_clone_whose_folders_failed_still_opens() {
     let o = CloneOutcome { cloned: true, folders_set: false, ok: false, output: locked.into() };
     update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
     let text = &st.toasts.last().unwrap().text;
-    assert!(text.starts_with("Cloned app, but setting its folders failed: Another git program is using this repository"), "{text}");
+    assert!(text.starts_with("Cloned app, but setting its folders failed: Another Git program is using this repository"), "{text}");
     assert!(text.ends_with("delete that file. Choose them in Preferences > Sparse checkout."), "{text}");
 
     let mut st = state();

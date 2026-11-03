@@ -94,7 +94,7 @@ fn trash_home_offer_without_a_copy_confirms_first() {
     remove_fixture(&dir);
 }
 
-/// The banner while git is older than every feature needs; Choose git… opens Preferences > Git,
+/// The banner while git is older than every feature needs; Choose Git… opens Preferences > Git,
 /// How to update git the download page, Remind me later closes it for now and Don't show again
 /// for good.
 #[test]
@@ -107,7 +107,7 @@ fn git_too_old_banner() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("git_too_old_banner");
-    for label in ["Choose git…", "How to update git", "Remind me later", "Don't show again"] {
+    for label in ["Choose Git…", "How to update Git", "Remind me later", "Don't show again"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     let mut click = |label: &str| {
@@ -116,9 +116,9 @@ fn git_too_old_banner() {
         h.run();
         std::mem::take(&mut h.state_mut().1)
     };
-    assert!(matches!(&click("Choose git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]), "opens Preferences > Git");
+    assert!(matches!(&click("Choose Git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]), "opens Preferences > Git");
     let url = glowfly_core::git_version::download_url();
-    assert!(matches!(&click("How to update git")[..], [Msg::OpenUrl(u)] if u == url), "the download page");
+    assert!(matches!(&click("How to update Git")[..], [Msg::OpenUrl(u)] if u == url), "the download page");
     assert!(matches!(&click("Remind me later")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
     assert!(matches!(&click("Don't show again")[..], [Msg::GitEnv(GitEnvMsg::HideBannerForGood)]));
     drop(h);

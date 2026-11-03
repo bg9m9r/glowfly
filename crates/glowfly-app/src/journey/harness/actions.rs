@@ -82,7 +82,7 @@ impl Journey {
         let n = self.state().snap.as_ref().map_or(0, |s| s.staged.len());
         let label = Lang::En.trn("commit.button.commit", n, &[("push", &""), ("skip", &"")]);
         self.click_containing(&label, Region::Details, Pick::Only);
-        self.toast(true, "Commit succeeded");
+        assert!(self.logged("Commit done"), "the commit ran (it shows in the graph, with no toast)");
     }
 
     /// The sidebar row of local branch `name` (checked out or not); local rows come before the

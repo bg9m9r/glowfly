@@ -140,7 +140,7 @@ mod tests {
         assert!(says("fatal: Need to specify how to reconcile divergent branches.").starts_with("This branch and its upstream"));
         let locked =
             "fatal: Unable to create '/r/.git/index.lock': File exists.\n\nAnother git process seems to be running in this repository";
-        assert_eq!(says(locked), "Another git program is using this repository (index.lock exists). Wait for it to finish, then retry.");
+        assert_eq!(says(locked), "Another Git program is using this repository (index.lock exists). Wait for it to finish, then retry.");
         let tls =
             "fatal: unable to access 'https://git.corp.example/a.git/': SSL certificate problem: unable to get local issuer certificate";
         assert!(says(tls).starts_with("Git couldn't verify the security certificate of git.corp.example."), "{}", says(tls));

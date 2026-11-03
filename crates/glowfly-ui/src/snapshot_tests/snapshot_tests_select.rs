@@ -277,7 +277,7 @@ fn graph_commit_menu() {
     // Groups in order: branch and tag, integrate, rewrite, view, copy.
     let order = [
         "Checkout (detached)",
-        "Create tag here…",
+        "New tag here…",
         "Cherry-pick",
         "Interactive rebase from here…",
         "Compare with working directory",

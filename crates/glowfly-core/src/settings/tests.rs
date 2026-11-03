@@ -477,6 +477,16 @@ fn desktop_notifications_default_off() {
 }
 
 #[test]
+fn confirm_push_pull_default_on() {
+    assert!(Settings::default().confirm_push_pull);
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.confirm_push_pull, "old files load with push and pull confirmations on");
+    let off = Settings { confirm_push_pull: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.confirm_push_pull);
+}
+
+#[test]
 fn keybindings_default_and_roundtrip() {
     // Files written before shortcuts could be changed load with every key at its default.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

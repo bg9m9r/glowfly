@@ -44,6 +44,9 @@ Label "Hinweis bei Rückstand"
 CheckBox "Melden, wenn der Branch hinter seinem Upstream zurückliegt" [on]
 Label "Meldet nach einem Abruf im Hintergrund, wenn der…"
 Link "Mehr erfahren"
+Label "Push und Pull"
+CheckBox "Pushes und Pulls bestätigen" [on]
+Label "Eine kurze Benachrichtigung sagt, was jeder Push oder Pull getan hat, etwa „2 Commits nach origin/main gepusht.“"
 Label "Commit-Nachrichten"
 Label "Rechtschreibprüfung"
 CheckBox "Rechtschreibung in Commit-Nachrichten prüfen" [on]

@@ -11,7 +11,7 @@ use super::harness::Journey;
 fn new_branch(j: &mut Journey, name: &str) {
     j.click("Create a branch", Region::Toolbar, Pick::Only);
     j.type_into("Branch name", name);
-    j.click("Create", Region::Anywhere, Pick::Only);
+    j.click("Create branch", Region::Anywhere, Pick::Only);
     j.toast(true, "Create branch succeeded");
 }
 
@@ -108,7 +108,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     // the stash stays (marked auto) and a.txt holds the conflict.
     j.branch_menu("main", "Checkout");
     j.click("Stash and check out", Region::Anywhere, Pick::Only);
-    j.toast(false, "Putting back \"Auto-stash before checking out main\" conflicted in 1 file.");
+    j.toast(false, "Putting back \"Auto-stash before checking out main\" conflicted in 1 file; the stash is kept.");
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("main"));
     assert!(disk::work_text(&repo, "a.txt").unwrap().contains("<<<<<<<"));
     assert_eq!(disk::work_text(&repo, "b.txt").as_deref(), Some("b edited\n"));

@@ -237,7 +237,7 @@ fn a_refused_delete_puts_the_upstream_back() {
     let merge = glowfly_core::testkit::git_out(&dirs[0], &["config", "branch.feature.merge"]);
     assert_eq!(merge.trim(), "refs/heads/feature", "it tracks the source again, not main");
     let toast = st.toasts.iter().find(|t| !t.ok).map(|t| t.text.as_str()).unwrap_or_default();
-    assert!(toast.starts_with("Kept local branch feature: git didn't delete it."), "{toast}");
+    assert!(toast.starts_with("Kept local branch feature: Git didn't delete it."), "{toast}");
     assert!(st.pr_cleanup.is_none());
     drop(st);
     let _ = std::fs::remove_dir_all(&wt);

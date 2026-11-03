@@ -48,7 +48,7 @@ fn job_becomes_a_run() {
     assert!(st.job.is_some());
     done(&mut st, true, "$ git push\nEverything up-to-date", t0 + Duration::from_millis(1250));
     let e = last(&st);
-    let want = RunInfo { title: "Push".into(), summary: "Everything up-to-date".into(), took_ms: Some(1250), routine: false };
+    let want = RunInfo { title: "Push".into(), summary: "main is already up to date.".into(), took_ms: Some(1250), routine: false };
     assert_eq!(e.run.as_ref(), Some(&want));
     assert_eq!(e.at, 1_800_000_000);
     assert_eq!(e.text, "Push done\n$ git push\nEverything up-to-date", "the text is unchanged");

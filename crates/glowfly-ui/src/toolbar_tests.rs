@@ -145,8 +145,8 @@ fn a_tooltip_at_the_edge_stays_in_the_window() {
     let (st, dir) = plain(ThemeChoice::Dark, "toolbar-edge");
     let mut h = harness_sized(st, true, egui::vec2(1240.0, 600.0));
     h.run();
-    hover(&mut h, "Open settings");
-    let body = h.get_by_label("Themes, accounts, keys and git options.").bounding_box().expect("the tooltip");
+    hover(&mut h, "Show preferences");
+    let body = h.get_by_label("Themes, accounts, keys and Git options.").bounding_box().expect("the tooltip");
     assert!(body.x0 >= 0.0 && body.x1 <= 1240.0 && body.y1 <= 600.0, "{body:?}");
     drop(h);
     remove_fixture(&dir);
@@ -251,7 +251,7 @@ fn tip_settings_keycaps() {
     let (st, dir) = plain(ThemeChoice::Light, "tip-settings-keycaps");
     let mut h = harness(st, false);
     h.run();
-    hover(&mut h, "Open settings");
+    hover(&mut h, "Show preferences");
     h.check_snapshot("tip_settings_keycaps");
     drop(h);
     remove_fixture(&dir);

@@ -60,7 +60,7 @@ fn try_again_runs_the_failed_job_again() {
     let (mut st, dir, lock) = pushing("lr-again");
     let fx = fail(&mut st, &locked_output(&lock));
     let t = last_toast(&st);
-    assert!(t.text.starts_with("Another git program is using this repository"), "{}", t.text);
+    assert!(t.text.starts_with("Another Git program is using this repository"), "{}", t.text);
     assert_eq!(buttons(t), ["Try again", "Details"]);
     assert_eq!(check_of(&fx).1, lock, "the exact path git named is checked");
     let id = t.id;
@@ -76,7 +76,7 @@ fn try_again_runs_the_failed_job_again() {
     // Other failures get no Try again.
     up(&mut st, Msg::git("Push", &["push"]));
     fail(&mut st, "fatal: You are not currently on a branch.");
-    assert_eq!(buttons(last_toast(&st)), ["Create branch…", "Details"]);
+    assert_eq!(buttons(last_toast(&st)), ["New branch…", "Details"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -122,7 +122,7 @@ pub enum AddAction<'a> {
 
 /// A header's + button.
 pub struct HeaderAdd<'a> {
-    /// The accessible name ("New branch"), without an ellipsis.
+    /// The accessible name ("New branch…", "Add remote").
     pub name: String,
     /// The hover text when enabled; the name when None.
     pub tip: Option<String>,

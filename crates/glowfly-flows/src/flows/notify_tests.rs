@@ -153,7 +153,7 @@ fn pull_action_runs_pull() {
     assert!(st.toasts.iter().all(|t| t.id != id));
     finish(&mut st, fx);
     assert_eq!(behind(&st), 0);
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Pull succeeded"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Pulled 1 commit into main."));
     cleanup(&[&work, &bare]);
 }
 

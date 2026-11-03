@@ -124,7 +124,7 @@ fn a_pull_can_be_cancelled_only_while_it_fetches() {
     assert_eq!(st.job_cancel_blocked(), Some(Step::Merge));
     assert!(run(&mut st, Msg::Job(JobMsg::Cancel)).is_empty(), "a merge is never stopped");
     drive(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Pull succeeded"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("main is already up to date."));
     assert_eq!(st.job_cancel_blocked(), None);
     cleanup(&[&dir, &origin]);
 }

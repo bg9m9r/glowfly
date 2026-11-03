@@ -282,6 +282,7 @@ mod submodule_edit_tests;
 mod submodule_remove_tests;
 mod submodule_sparse_tests;
 mod submodule_tests;
+mod sync_voice_tests;
 mod tab_groups_tests;
 mod tab_label_tests;
 mod tabs_close_tests;

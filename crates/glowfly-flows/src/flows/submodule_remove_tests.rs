@@ -209,7 +209,7 @@ fn each_outcome_has_its_message() {
     started(&mut st);
     removed(&mut st, RemoveOutcome::RmFailed, "$ git rm -f -- libs/lib\nfatal: Unable to create '/r/.git/index.lock': File exists.");
     let t = st.toasts.last().unwrap();
-    let says = "but git rm failed: Another git program is using this repository (index.lock exists). Wait for it to finish, then try \
+    let says = "but git rm failed: Another Git program is using this repository (index.lock exists). Wait for it to finish, then try \
                 again. If none is running, delete that file. It is still in .gitmodules";
     assert!(t.text.contains(says), "{}", t.text);
 

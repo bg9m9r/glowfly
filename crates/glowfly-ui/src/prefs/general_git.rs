@@ -44,7 +44,7 @@ pub fn git_section(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValu
     });
 }
 
-/// "git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.
+/// "Git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.
 pub(super) fn git_program_text(t: Lang, info: Option<&GitInfo>) -> String {
     let Some(info) = info else { return t.tr("prefs.general.git_program.checking").to_owned() };
     let at = info.path.as_deref().map(glowfly_core::native_path::shown);

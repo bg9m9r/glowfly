@@ -50,7 +50,7 @@ Label "Your editor and tools"
 Label "Open files in your editor, and compare and merge in your own tools."
 Button "Show me"
 Label "Custom commands"
-Label "Add your own git or shell commands to the palette and the menus."
+Label "Add your own Git or shell commands to the palette and the menus."
 Button "Show me" [disabled]
 Label "Themes"
 Label "Pick light, dark or high contrast, or make a theme of your own."

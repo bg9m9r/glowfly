@@ -24,7 +24,7 @@ fn terminal_held() {
     h.run();
     h.check_snapshot("terminal_held");
     assert!(h.query_by_label("The terminal waits until you trust this repository").is_some());
-    assert!(h.query_by_label_contains("Shell prompts often run git").is_some());
+    assert!(h.query_by_label_contains("Shell prompts often run Git").is_some());
     h.get_by_label("Trust and run…").click();
     h.run();
     let asked = h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::AskForTerminal { real: r }) if *r == real));

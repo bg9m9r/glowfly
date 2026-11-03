@@ -234,7 +234,7 @@ fn welcome_git() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("welcome_git_missing");
-    h.get_by_label("Download git").click();
+    h.get_by_label("Download Git").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u.contains("git-scm.com"))));
 }

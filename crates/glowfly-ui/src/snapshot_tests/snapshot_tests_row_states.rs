@@ -89,7 +89,7 @@ fn sidebar_section_header_hovered() {
     both("sidebar_section_header_hovered", |theme, dark, name| {
         let (st, dir) = with_repo(theme, &format!("rows-{name}"));
         let mut h = open(st, dark);
-        let add = center(&h, "New branch");
+        let add = center(&h, "New branch…");
         point(&mut h, pos2(add.x - 80.0, add.y));
         finish(h, name, Some(dir));
     });
@@ -101,7 +101,7 @@ fn sidebar_section_header_focused() {
         let (st, dir) = with_repo(theme, &format!("rows-{name}"));
         let mut h = open(st, dark);
         // The header row comes just before its + in the Tab order.
-        h.get_by_label("New branch").focus();
+        h.get_by_label("New branch…").focus();
         h.run();
         h.input_mut().events.push(Event::Key {
             key: Key::Tab,
@@ -111,7 +111,7 @@ fn sidebar_section_header_focused() {
             modifiers: Modifiers::SHIFT,
         });
         h.run();
-        assert!(!h.get_by_label("New branch").is_focused(), "the focus moved back to the header");
+        assert!(!h.get_by_label("New branch…").is_focused(), "the focus moved back to the header");
         finish(h, name, Some(dir));
     });
 }
