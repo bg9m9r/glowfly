@@ -23,6 +23,9 @@ source file, update its line here.
 - `widgets/segmented.rs`: a segmented control at a `ControlSize` whose segments are quiet targets (`paint_target`) and can be disabled with a reason on hover; the raised option's corners are concentric with the track.
 - `widgets/chip.rs`: the only chip and badge painter: the two sizes (Badge 18, Chip 22), leads, cutting, clickable chips, the quiet chips (SHA, parents, committer) and a ref chip's halo (`paint_halo`); tests in `chip_tests.rs`.
 - `widgets/details.rs`: a collapsed Details under a confirmation's plain words, also under the Publish dialog's rewritten service errors.
+- `common.rs`: small view helpers shared across regions.
+- `icons.rs`: painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close, lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue, check, more, the file pages, open file, the expand chevrons, commit, globe, menu, info and repository), called from `widgets::paint_icon`.
+- `spell_edit.rs`: a Regular text field that underlines misspellings and offers corrections on right-click.
 
 ## Rows and lists
 

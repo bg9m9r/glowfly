@@ -39,6 +39,14 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `lock.rs`: `LockMsg`, Delete lock file's check after a failed job, the confirmed delete and its result.
 - `repo_groups.rs`: `GroupMsg`, making, renaming, colouring, ordering and removing repository groups, moving favorites between them and adding repositories to one.
 - A few cross-cutting messages live in `Msg` itself (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …).
+- `msg/app.rs`: window-level actions from the menu bar and a drawn title bar, and the system's accessibility settings the shell read (update/app.rs).
+- `msg/diff.rs`: messages of the diff view, the conflict view and the file history (update/diff.rs, update/highlight.rs, update/conflict.rs, update/history.rs).
+- `msg/files.rs`: messages of the file menus: restoring a file from a commit, opening and showing working-tree files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
+- `msg/keys.rs`: messages of Preferences > Keyboard (update/keys.rs).
+- `msg/layout.rs`: messages for the window's zoom, full screen, showing or hiding its panels and how the changed-file lists show their files (update/layout.rs).
+- `msg/recent.rs`: messages for the recent and favorite repository lists (update/recent.rs).
+- `msg/repos.rs`: messages for finding repositories in project folders, and fetching or pulling many listed repositories at once (update/repos.rs).
+- `msg/work.rs`: messages for staging, committing and running git jobs (update/ops.rs, update/commit.rs, update/undo.rs, update/stash.rs).
 
 ## `effect/`: effects
 
@@ -67,20 +75,12 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `sandbox.rs`: `Effect::sandbox`, what the whole-app tests' runner does with each effect (`SandboxRule`; flat variants, areas delegate).
 - `effect/credential.rs`: saving and dropping HTTPS sign-ins typed in the credential prompt (runner/credentials.rs).
 - `effect/repos.rs`: what repositories across folders ask the runner (runner/repos.rs): listing the project folders, and fetching or pulling one listed repository.
-- `msg/app.rs`: window-level actions from the menu bar and a drawn title bar, and the system's accessibility settings the shell read (update/app.rs).
-- `msg/diff.rs`: messages of the diff view, the conflict view and the file history (update/diff.rs, update/highlight.rs, update/conflict.rs, update/history.rs).
-- `msg/files.rs`: messages of the file menus: restoring a file from a commit, opening and showing working-tree files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
-- `msg/keys.rs`: messages of Preferences > Keyboard (update/keys.rs).
-- `msg/layout.rs`: messages for the window's zoom, full screen, showing or hiding its panels and how the changed-file lists show their files (update/layout.rs).
-- `msg/recent.rs`: messages for the recent and favorite repository lists (update/recent.rs).
-- `msg/repos.rs`: messages for finding repositories in project folders, and fetching or pulling many listed repositories at once (update/repos.rs).
-- `msg/work.rs`: messages for staging, committing and running git jobs (update/ops.rs, update/commit.rs, update/undo.rs, update/stash.rs).
-- `pull_request/line_comment.rs`: messages of a new code comment on lines of a pull request file's diff (the comment button on a diff line, the hunk header's Comment on N lines, and the comment box in the Files changed pane).
 
 ## Per-area message and effect types
 
 - `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs`, `logs.rs`, `onboarding.rs`, `deep_link.rs`: per-area message and effect types of areas with their own data types (one `Msg` variant each).
 - `keymap.rs`: the keyboard bindings: every key Glowfly answers to and where it works (`table.rs`), their ids (`ids.rs`), chords with their display and settings-file forms (`chord.rs`), the effective keymap (`active.rs`) and the rules for changing a key (`rebind.rs`).
+- `pull_request/line_comment.rs`: messages of a new code comment on lines of a pull request file's diff (the comment button on a diff line, the hunk header's Comment on N lines, and the comment box in the Files changed pane).
 
 ## `state/`: plain data and pure rules
 

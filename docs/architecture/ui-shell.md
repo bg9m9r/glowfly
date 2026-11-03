@@ -34,6 +34,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `menu_anchor.rs` opens a menu that drops below a custom-drawn button (the title bar's menu button, the pickers).
 - `menu_keys/`: the keyboard in every menu, run on each menu level's contents by `widgets::menu::styled` (menu spec §9): `level.rs` the keys (Up and Down wrapping, Home, End, Right and Left between a row's parts, typeahead, Esc and Left closing one level and giving the focus back), `items.rs` the level's focusable items in rows, `stash.rs` the keys kept from the views while a menu is open, `memory.rs` what is kept between frames; tests in `tests.rs`, `bar_tests.rs` and `view_tests.rs`.
 - `repo_line.rs`: the 2 px line in the active tab's repository colour along the window's top edge; which tab shows which colour is `state/repo_colours.rs`.
+- `panel_size.rs`: hands the drawers' fitted sizes (`state::panel_layout`) to egui.
 
 ## Toolbar
 
@@ -52,6 +53,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `tab_paint.rs` paints them, with the repository's swatch.
 - `tab_drag.rs` drags them.
 - Each tab is a Tab node in one TabList, named after it (selected while active); its × is "Close tab {name}" and closes on a middle-click or opens the tab menu on a right-click; `tabs_access_tests.rs` checks these and that Tab walks the bar's buttons.
+- `tab_list.rs`: the tab list right after the tab bar's + button: a chevron button whose popup lists the open tabs (click one to select it) and the recently closed ones, newest first (click one to reopen it).
 
 ## Terminal panel
 

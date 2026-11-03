@@ -20,6 +20,10 @@ source file, update its line here.
 - `remote_failure.rs`: why git couldn't reach or read a remote (unreachable host, missing repository, no access, a server certificate it couldn't verify).
 - `error.rs`: typed errors; `error/advice.rs` rewrites a hosting service's refusal as one translated sentence that says what to do.
 - `quoted.rs`: decoding git's C-quoted paths (`"caf\303\251.txt"`), for blame's porcelain and sparse checkout lists.
+- `paths.rs`: one folder, many spellings: a Windows short 8.3 name (`C:\Users\RUNNER~1`) and its long form, a link or junction and its target, macOS's `/var` and `/private/var`, `Repo` and `repo` on a volume that ignores case.
+- `paths/encode.rs`: paths saved in Glowfly's own files (recent.txt, tabs.txt, settings keys), without losing any (a Unix name needn't be UTF-8, a Windows one may hold a lone UTF-16 surrogate) and one per line.
+- `paths/file_url.rs`: the local path a `file:` URL names.
+- `win_registry.rs`: reading single values from the Windows registry: a DWORD or a string, None when the key or value is missing (or has another type).
 
 ## Credentials and signing
 
@@ -68,9 +72,7 @@ source file, update its line here.
 - `instance/client.rs`: the second process's side: hands a link or folder to the running window.
 - `instance/foreground.rs`: letting the running window come to the front.
 - `instance/server.rs`: the running window's side: a loopback listener that reports each link or folder it is handed, started once this window holds the claim (`claim.rs`).
-- `stack/porcelain.rs`: the command lines of a stack push and the reading of `git push --porcelain`'s answer.
-- `stack/read.rs`: reading a repository's stacks with libgit2: the base (the main branch, Git Flow's production and development branches, and every remote's branch of those names), the commits of the other local branches outside it, and each branch's former tips from its reflog.
-- `stack/restack.rs`: running a restack through the git CLI, so hooks, signing and config apply: each step is `git rebase --update-refs --onto refs/heads/<onto> <upstream> <top>`, and once every step is done the branch checked out before is checked out again.
+- `app_identity.rs`: Glowfly's identity with the operating system: the id its installers register and the Linux desktop entry's name.
 
 ## Built-in terminal (`terminal/`)
 
@@ -138,8 +140,6 @@ source file, update its line here.
 - `pattern.rs`: the patterns and the include file's quoting.
 - `profile_includes/` also holds the plan (entries shallow-first), the sync (files rewritten when changed; with `place`, Glowfly's own sections removed and added again at the end of the file, sections pointing elsewhere or shared with the user's keys left alone), and checking a picked folder (resolved, valid text, case folding probed).
 - `repo_identity.rs`: a repository's effective identity and where git read it (`git config --show-origin`): a profile's include file, the repository's own config or elsewhere, plus what the rules expect; the identity variables set in the environment (`env_overrides`); removing the repository's own name and email.
-- `paths/encode.rs`: paths saved in Glowfly's own files (recent.txt, tabs.txt, settings keys), without losing any (a Unix name needn't be UTF-8, a Windows one may hold a lone UTF-16 surrogate) and one per line.
-- `paths/file_url.rs`: the local path a `file:` URL names.
 
 ## Files, logs, text and dates
 
@@ -164,6 +164,10 @@ source file, update its line here.
 - `notices/spdx.rs`: tests only: SPDX licence expressions, which option Glowfly takes, and which licence a file's text is.
 - `advisory_ignores_tests.rs`: `deny.toml`'s advisory ignores and `osv-scanner.toml`'s `[[IgnoredVulns]]` list the same ids with the same reasons, each osv-scanner entry with an `ignoreUntil` date, and SECURITY.md's Known advisories table names the same ids.
 - `glowfly_core::app_identity` holds Glowfly's identity with the OS (`APP_ID`, `DESKTOP_ENTRY`).
+- `opens.rs`: whether "open in the default program" would run a working-tree file rather than show it.
+- `persist/replace.rs`: the platform steps of a crash-safe write: permissions, the rename over the old file (with Windows' read-only attribute and brief locks), flushing the folder, and old temporary files.
+- `i18n/catalog.rs`: the bundled catalogs: one flat JSON object of key → text per language, compiled in and parsed on first use.
+- `i18n/system.rs`: the OS's UI language: read once at startup from its ordered list of preferred languages, and never again while Glowfly runs.
 
 ## External tools (`external_tools.rs`, `external_tools/`)
 
@@ -196,7 +200,3 @@ source file, update its line here.
 - `launch.rs`: starting processes detached, and trying whether a copied helper runs (`try_run`: `--version` must print this build's version and exit successfully within 5 s); tests in `launch_tests.rs`.
 - `finish.rs`: the helper itself, behind `glowfly --finish-update` (a backup's record is deleted only after the backup), and the fixed words it logs; tests in `finish_tests.rs`.
 - `report.rs`: the last installer run's failure or cancel, read from `update.log` at the next start and marked shown; tests in `report_tests.rs`.
-- `gitflow/base.rs`: the roles of the configured production and development branches, for warning before one of them is deleted.
-- `gitflow/groups.rs`: the local flow branches by kind, for the Git Flow panel and the left panel's GIT FLOW section.
-- `gitflow/resume.rs`: continuing a Finish that stopped at a merge conflict: the steps still to run once the merge is committed, whether a snapshot shows that commit (or shows the remaining steps can no longer apply), and the checks before the remaining steps run.
-- `gitflow/start.rs`: starting a feature, release or hotfix branch: the checks and the command line.

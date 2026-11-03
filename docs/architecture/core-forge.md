@@ -10,6 +10,10 @@ source file, update its line here.
 - The UI never matches on provider-specific types (Rule 6).
 - `links.rs`: links in API results kept only when safe (https, on the service's host for its pages); every pull request, issue and vote passes through it, where `clean_text.rs` cleans its titles, names, states, description and branch names once.
 - `link_hosts.rs`: a Markdown link's address shown with its host in punycode, and whether its visible text names another host than its target (the app asks before opening such a link).
+- `forge/provider.rs`: what differs between hosting services, in one place: every `Provider` has a `ProviderInfo` with its names, sign-in hints and conventions, and the `Forge` that talks to its API.
+- `forge/http.rs`: HTTP helpers shared by the service implementations.
+- `forge/page.rs`: lists that span several pages.
+- `forge/azure.rs`: Azure DevOps (Azure Repos + Azure Boards), REST api-version 7.1.
 
 ## Pull requests and checks
 
@@ -20,26 +24,13 @@ source file, update its line here.
 - `pr_heads.rs`: each service's head on a fork.
 - `head_repo.rs`: the repository a listed pull request's source is on (`PullRequest::head_repo`: the same one, a fork or a deleted fork, from each service's list, a GitLab fork's path read by its project id, a nameless entry as an unknown fork) and whether a remote's repository is it; fixtures for every service in `api_tests/fork_pr_list.rs`.
 - `repo_size.rs`: the hosting service's reported repository size (see Partial clones in [core-ops.md](core-ops.md)).
-- `forge/auth.rs`: credentials: environment variables, the OS credential store and Git Credential Manager.
-- `forge/azure.rs`: Azure DevOps (Azure Repos + Azure Boards), REST api-version 7.1.
 - `forge/azure_checks.rs`: Azure Pipelines and posted statuses: a pull request's build policies and statuses, and a branch tip's builds and commit statuses.
-- `forge/azure_remote.rs`: Azure DevOps remote URLs and host names: which organization, project and repository a remote names, and the host its credentials are stored under.
-- `forge/filters/azure.rs`: work item searches (WIQL), the signed-in user, their groups and tags on Azure DevOps.
-- `forge/filters/jira.rs`: issue searches (JQL) and picker options (labels, fix versions, sprints) on Jira Cloud and Jira Data Center.
-- `forge/forks.rs`: forks of a repository on its hosting service: listing them, finding the signed-in user's own fork, and forking into the user's account.
 - `forge/github_checks.rs`: a GitHub commit's status (check runs and commit statuses): a pull request's head, read in the same GraphQL call as its reviews, and branch tips, read by commit id in one call.
-- `forge/http.rs`: HTTP helpers shared by the service implementations.
-- `forge/jira.rs`: Jira Cloud (REST v3) and Jira Data Center / Server (REST v2), as issue trackers.
-- `forge/page.rs`: lists that span several pages.
-- `forge/provider.rs`: what differs between hosting services, in one place: every `Provider` has a `ProviderInfo` with its names, sign-in hints and conventions, and the `Forge` that talks to its API.
-- `forge/publish.rs`: creating a repository on a hosting service, for publishing a local repository that has no remote yet.
 - `forge/review.rs`: a pull request's conversation, reviews and merging on its hosting service: the page the pull request panel shows, posting a comment, submitting a review, replying to and resolving threads (`thread.rs`), starting a code comment on diff lines (`line_anchor.rs`, `new_comment.rs`), and merging.
 - `forge/review/github_new_comment.rs`: new code comments on GitHub and GitHub Enterprise Server: a single comment through REST, and a comment in the signed-in user's pending review through GraphQL (REST can't add a thread to a review that is already started), creating that review when there is none.
 - `forge/review/line_anchor.rs`: where a new code comment goes in a file's diff: the file line (and side) it ends on and, for a range, the one it starts on, from a span of a hunk's lines; and the suggested-change block that offers new text for the commented lines.
 - `forge/review/new_comment.rs`: starting a code comment on lines of a pull request's diff, either alone (a single comment) or in the signed-in user's pending review, which is then finished with `submit_review`.
 - `forge/review/thread.rs`: code comment threads of a pull request (review threads): comments made on a line or a whole file of the changes, with replies, read with the page and answered or resolved from the pull request panel.
-- `forge/trello.rs`: Trello, as an issue tracker: the open cards assigned to the signed-in member, optionally on one board, and lookups of cards linked from commits and branch names.
-- `forge/user_repos.rs`: the signed-in user's own repositories on a hosting service (theirs, ones they collaborate on and their organizations' or groups'), newest activity first, for the Clone dialog.
 
 ## Issues
 
@@ -48,6 +39,8 @@ source file, update its line here.
 - `github_issues.rs`, `gitlab_issues.rs`, `bitbucket_issues.rs`, `trello_issues.rs`: each service's issues.
 - `jira_issues.rs`, with `jira_adf.rs` for Jira's rich text.
 - `azure_issues.rs`, with `azure_work_items.rs` for Azure's work item lookups and queries and `html_text.rs` for Azure's HTML as plain text.
+- `forge/jira.rs`: Jira Cloud (REST v3) and Jira Data Center / Server (REST v2), as issue trackers.
+- `forge/trello.rs`: Trello, as an issue tracker: the open cards assigned to the signed-in member, optionally on one board, and lookups of cards linked from commits and branch names.
 
 ## Repositories and accounts
 
@@ -56,8 +49,15 @@ source file, update its line here.
 - `user_repos/`: the signed-in user's own repositories.
 - `ssh_keys.rs`: SSH public keys on the user's account.
 - `releases.rs`: Glowfly's own newest release and its public files (unauthenticated, https only).
+- `forge/auth.rs`: credentials: environment variables, the OS credential store and Git Credential Manager.
+- `forge/azure_remote.rs`: Azure DevOps remote URLs and host names: which organization, project and repository a remote names, and the host its credentials are stored under.
+- `forge/forks.rs`: forks of a repository on its hosting service: listing them, finding the signed-in user's own fork, and forking into the user's account.
+- `forge/publish.rs`: creating a repository on a hosting service, for publishing a local repository that has no remote yet.
+- `forge/user_repos.rs`: the signed-in user's own repositories on a hosting service (theirs, ones they collaborate on and their organizations' or groups'), newest activity first, for the Clone dialog.
 
 ## Filters and the dashboard
 
 - `filters.rs`, `filters/`: PR and issue filters: conditions, the signed-in user with their teams or groups, matching loaded pull requests, issue searches per service.
 - `dashboard.rs`: the dashboard's reading of local repositories' remotes with libgit2 and its bounded calls to several services at once.
+- `forge/filters/azure.rs`: work item searches (WIQL), the signed-in user, their groups and tags on Azure DevOps.
+- `forge/filters/jira.rs`: issue searches (JQL) and picker options (labels, fix versions, sprints) on Jira Cloud and Jira Data Center.

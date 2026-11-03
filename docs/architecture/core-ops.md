@@ -41,11 +41,14 @@ source file, update its line here.
 - `pick_ops.rs`: command lines for cherry-picking and reverting commits from the graph (several at once, a merge against a chosen mainline parent, skipping a stopped commit), run through gitcli so hooks, config and signing apply; which picking is stopped (`Picking`).
 - `pick_empty.rs`: telling a commit that changes nothing from a conflict and skipping it (`skip_empty`, with `--skip` from git 2.23; an older git ends a single pick cleanly) so the rest of the run goes on, counted in a `PickResult`.
 - `init_ops.rs`, `init_ops/`: new repository files and the init job: `.gitignore` templates, license texts, what the chosen folder already holds, and init, write (never overwriting) and commit.
-- `app_identity.rs`: Glowfly's identity with the operating system: the id its installers register and the Linux desktop entry's name.
-- `opens.rs`: whether "open in the default program" would run a working-tree file rather than show it.
-- `paths.rs`: one folder, many spellings: a Windows short 8.3 name (`C:\Users\RUNNER~1`) and its long form, a link or junction and its target, macOS's `/var` and `/private/var`, `Repo` and `repo` on a volume that ignores case.
-- `win_registry.rs`: reading single values from the Windows registry: a DWORD or a string, None when the key or value is missing (or has another type).
 - `worktree_ops/manage.rs`: removing, locking, unlocking and pruning worktrees: the command lines, reading git's refusal to remove one, and `remove`, which checks for a lock and for changes before git runs and then judges the result by listing the worktrees again.
+- `patch_ops/am.rs`: applying a series of emailed patches as commits with `git am`: the command lines, where a stopped series is (read from `rebase-apply/`), and what git said when it stopped.
+- `patch_ops/apply.rs`: applying a patch's changes with `git apply`: the command lines for the chosen options, and reading what it said (the problems that stopped it, the conflicts a three-way fallback left, the hunks saved to `.rej` files).
+- `patch_ops/inspect.rs`: what a patch file holds, read without git: how many emailed commits (a format-patch series) and which files it touches, for the Apply patch dialog.
+- `patch_ops/wip.rs`: saving uncommitted changes as a patch: `git diff` of the chosen scope (every change against HEAD, the staged ones, or the unstaged ones), optionally limited to some paths, plus one `git diff --no-index` per untracked file to include, joined into one file `git apply` reads.
+- `submodule_ops/remove.rs`: removing a submodule: what the confirmation names (its changes, the commits on no remote-tracking branch inside it, its stashes, its stored module), and the removal itself: `git submodule deinit -f`, `git rm -f`, then deleting `<git dir>/modules/<name>`, never through a link and only when it looks like a git dir.
+- `submodule_ops/update.rs`: keeping submodules up to date and editing them: which git commands, undos and redos move the parent's work tree (after which its submodules may need updating), the batch `git submodule update` commands, and the commands that change a submodule's URL and branch.
+- `submodule_ops/url.rs`: relative submodule URLs (`./x`, `../x` in .gitmodules): git resolves them against the parent's default remote URL, or its folder when it has none.
 
 ## Git LFS and Git Flow
 
@@ -54,6 +57,10 @@ source file, update its line here.
 - `lfs/pointer.rs`: pointer files: parsed from bytes, read from a blob without inflating large ones or from a working file, sizes for the screen with `size_text`, and a diff's two sides as `LfsChange`.
 - `gitflow.rs`, `gitflow/`: Git Flow with plain git: config, checks, start and finish plans, continuing a finish stopped at a conflict, the production/development roles, versions, branch groups by kind.
 - `lfs/track.rs`: what a file row can track in Git LFS, and the `.gitattributes` pattern each choice writes.
+- `gitflow/base.rs`: the roles of the configured production and development branches, for warning before one of them is deleted.
+- `gitflow/groups.rs`: the local flow branches by kind, for the Git Flow panel and the left panel's GIT FLOW section.
+- `gitflow/resume.rs`: continuing a Finish that stopped at a merge conflict: the steps still to run once the merge is committed, whether a snapshot shows that commit (or shows the remaining steps can no longer apply), and the checks before the remaining steps run.
+- `gitflow/start.rs`: starting a feature, release or hotfix branch: the checks and the command line.
 
 ## Interactive rebase (`rebase/`)
 
@@ -77,6 +84,9 @@ source file, update its line here.
 - `push`: pushing every layer through gitcli, each classified against the remote tip last seen (new, fast-forward, rewritten here per its reflog and replaced with a ref-specific `--force-with-lease`, or behind, diverged and gone, never pushed), one `git push --porcelain` per (remote, `-u`) group and each layer's outcome read from its ref line.
 - `porcelain`: the push command lines and the porcelain reading.
 - `Snapshot::stacks` holds a full load's stacks.
+- `stack/porcelain.rs`: the command lines of a stack push and the reading of `git push --porcelain`'s answer.
+- `stack/read.rs`: reading a repository's stacks with libgit2: the base (the main branch, Git Flow's production and development branches, and every remote's branch of those names), the commits of the other local branches outside it, and each branch's former tips from its reflog.
+- `stack/restack.rs`: running a restack through the git CLI, so hooks, signing and config apply: each step is `git rebase --update-refs --onto refs/heads/<onto> <upstream> <top>`, and once every step is done the branch checked out before is checked out again.
 
 ## Undo and redo (`undo.rs`, `undo/`)
 
@@ -163,15 +173,3 @@ source file, update its line here.
 - `parse.rs`: strict TOML with each problem's line.
 - `expand.rs`: the placeholders checked and filled in, into git arguments or single-quoted sh text.
 - `shell.rs`: finding POSIX sh (`sh_for`: `/bin/sh`, or Git for Windows' `sh.exe` beside git) and running a shell command with its script in `GLOWFLY_COMMAND`.
-- `i18n/catalog.rs`: the bundled catalogs: one flat JSON object of key → text per language, compiled in and parsed on first use.
-- `i18n/system.rs`: the OS's UI language: read once at startup from its ordered list of preferred languages, and never again while Glowfly runs.
-- `patch_ops/am.rs`: applying a series of emailed patches as commits with `git am`: the command lines, where a stopped series is (read from `rebase-apply/`), and what git said when it stopped.
-- `patch_ops/apply.rs`: applying a patch's changes with `git apply`: the command lines for the chosen options, and reading what it said (the problems that stopped it, the conflicts a three-way fallback left, the hunks saved to `.rej` files).
-- `patch_ops/inspect.rs`: what a patch file holds, read without git: how many emailed commits (a format-patch series) and which files it touches, for the Apply patch dialog.
-- `patch_ops/wip.rs`: saving uncommitted changes as a patch: `git diff` of the chosen scope (every change against HEAD, the staged ones, or the unstaged ones), optionally limited to some paths, plus one `git diff --no-index` per untracked file to include, joined into one file `git apply` reads.
-- `persist/replace.rs`: the platform steps of a crash-safe write: permissions, the rename over the old file (with Windows' read-only attribute and brief locks), flushing the folder, and old temporary files.
-- `submodule_ops/remove.rs`: removing a submodule: what the confirmation names (its changes, the commits on no remote-tracking branch inside it, its stashes, its stored module), and the removal itself: `git submodule deinit -f`, `git rm -f`, then deleting `<git dir>/modules/<name>`, never through a link and only when it looks like a git dir.
-- `submodule_ops/update.rs`: keeping submodules up to date and editing them: which git commands, undos and redos move the parent's work tree (after which its submodules may need updating), the batch `git submodule update` commands, and the commands that change a submodule's URL and branch.
-- `submodule_ops/url.rs`: relative submodule URLs (`./x`, `../x` in .gitmodules): git resolves them against the parent's default remote URL, or its folder when it has none.
-- `whole_file/anchor.rs`: rows of the whole-file view mapped to the file lines they show and back, so a change to the open folds, which adds or removes rows, can keep the same line at the top of the viewport.
-- `whole_file/folds.rs`: folds of the whole-file view: long runs of unchanged lines away from every change, drawn as one "N unchanged lines" row until the user opens them.
