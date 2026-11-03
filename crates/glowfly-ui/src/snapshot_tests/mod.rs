@@ -84,6 +84,7 @@ pub(super) mod snapshot_tests_lfs;
 pub(super) mod snapshot_tests_lfs_notes;
 pub(super) mod snapshot_tests_line_counts;
 pub(super) mod snapshot_tests_lineup;
+mod snapshot_tests_link_prompt;
 pub(super) mod snapshot_tests_load_more;
 pub(super) mod snapshot_tests_logs;
 pub(super) mod snapshot_tests_logs_copy;

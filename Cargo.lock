@@ -1704,6 +1704,7 @@ dependencies = [
  "getrandom 0.3.4",
  "git2",
  "icu_normalizer",
+ "idna",
  "image",
  "keyring",
  "libc",

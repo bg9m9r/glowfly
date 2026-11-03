@@ -19,8 +19,36 @@ use std::path::{Path, PathBuf};
 /// Characters that appear in literals but never reach the screen, each with the reason.
 /// Only for those: other invisible controls (zero-width and bidi marks, U+FEFF) already pass,
 /// since egui gives them an empty glyph.
-const NEVER_DRAWN: &[(char, &str)] =
-    &[('\u{061C}', "Arabic letter mark: text.rs matches it to strip bidi controls from server text; never drawn")];
+const NEVER_DRAWN: &[(char, &str)] = &[
+    ('\u{061C}', "Arabic letter mark: text.rs matches it to strip bidi controls from server text; never drawn"),
+    ('\u{115F}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{1160}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{17B4}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{17B5}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{180B}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{180F}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{2065}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{3164}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{FFA0}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{FFF0}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{FFF8}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{1BCA0}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{1BCA3}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{1D173}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{1D17A}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{E0000}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{E0FFF}', "text.rs is_invisible matches it to strip invisible characters from server text; never drawn"),
+    ('\u{FF0E}', "link_hosts.rs as_read folds it to its ASCII form before judging a link's host; never drawn"),
+    ('\u{3002}', "link_hosts.rs as_read folds it to its ASCII form before judging a link's host; never drawn"),
+    ('\u{FF61}', "link_hosts.rs as_read folds it to its ASCII form before judging a link's host; never drawn"),
+    ('\u{FF0F}', "link_hosts.rs as_read folds it to its ASCII form before judging a link's host; never drawn"),
+    ('\u{FF1A}', "link_hosts.rs as_read folds it to its ASCII form before judging a link's host; never drawn"),
+    ('\u{A4F8}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
+    ('\u{A4F9}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
+    ('\u{0701}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
+    ('\u{0702}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
+    ('\u{30FB}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
+];
 
 /// A context with the fonts the app draws with: the bundled ones, installed as the app does.
 /// They exist only after the first pass.

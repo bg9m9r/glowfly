@@ -4,6 +4,7 @@
 //! parses again instead of showing the wrong body.
 
 use glowfly_core::highlight::{self, Span, SyntaxHint};
+use glowfly_core::i18n::Lang;
 use glowfly_core::markdown::{self, Block, MdDoc};
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
@@ -36,6 +37,8 @@ pub(crate) struct CodeBlock {
 
 #[derive(Default)]
 pub struct MarkdownCache {
+    /// The language of the text the bodies' links add (their tooltips), set each frame by `draw`.
+    pub(crate) lang: Lang,
     bodies: HashMap<u64, (String, Rc<Rendered>)>,
     /// The kept texts' lengths, summed.
     bytes: usize,

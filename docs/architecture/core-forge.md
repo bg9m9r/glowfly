@@ -8,6 +8,8 @@ source file, update its line here.
 - Hosting services sit behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira, Trello), each described once in a `ProviderInfo`.
 - `model.rs`: the one common model they map to: pull requests with their reviewers and CI checks, issues.
 - The UI never matches on provider-specific types (Rule 6).
+- `links.rs`: links in API results kept only when safe (https, on the service's host for its pages); every pull request, issue and vote passes through it, where `clean_text.rs` cleans its titles, names, states, description and branch names once.
+- `link_hosts.rs`: a Markdown link's address shown with its host in punycode, and whether its visible text names another host than its target (the app asks before opening such a link).
 
 ## Pull requests and checks
 

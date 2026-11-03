@@ -83,6 +83,7 @@ mod notify;
 mod onboarding;
 mod op_preview;
 mod op_progress;
+mod open_link;
 pub mod ops;
 mod palette;
 mod palette_keys;
@@ -355,6 +356,7 @@ crate::msg::msg_areas! { area_router! {
         Msg::CloseModal => dialog::close(st),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::Os(OsEffect::OpenUrl(url))),
+        Msg::OpenLink { text, url } => open_link::open(st, &text, url, fx),
         Msg::OpenTerminal => tools::open_terminal(st, now, fx),
         Msg::OpenFolder(p) => fx.push(Effect::Os(OsEffect::OpenFolder(p))),
         Msg::Logged { ok, text } => st.log(ok, text),
