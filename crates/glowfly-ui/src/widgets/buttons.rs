@@ -77,6 +77,8 @@ pub struct StyledButton<'a> {
     /// A leading icon, or the whole content of an icon-only button.
     icon: Option<Icon>,
     icon_only: bool,
+    /// The size an icon is drawn at, when not the size's (a glyph drawn small on its grid).
+    icon_px: Option<f32>,
 }
 
 /// The view's main action.
@@ -135,6 +137,7 @@ impl<'a> StyledButton<'a> {
             max_width: None,
             icon: None,
             icon_only: false,
+            icon_px: None,
         }
     }
 
@@ -188,6 +191,13 @@ impl<'a> StyledButton<'a> {
     /// An icon before the text, at the size's icon size. Part of the family before a view
     /// needs it.
     #[allow(dead_code)]
+    /// Its icon drawn at `px` instead of the size's (for a glyph that fills less or more of its
+    /// grid than the others), keeping the button's size.
+    pub(crate) fn icon_px(mut self, px: f32) -> Self {
+        self.icon_px = Some(px);
+        self
+    }
+
     pub fn icon(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
         self
@@ -241,7 +251,7 @@ impl<'a> StyledButton<'a> {
 
     /// A leading icon's size, or an icon-only button's: the size's icon.
     fn icon_size(&self) -> f32 {
-        self.metrics().icon
+        self.icon_px.unwrap_or(self.metrics().icon)
     }
 
     /// The room a leading icon takes before the text.

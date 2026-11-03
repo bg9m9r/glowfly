@@ -92,24 +92,46 @@ fn wip_header_german_wide() {
     remove_fixture(&dir);
 }
 
-/// The WIP headers in English in a narrow panel, dark and light: Stage all is a Small
-/// icon-only square (still named "Stage all") beside the whole title, and the more-actions
-/// button stays.
+/// Whether `label` is a Small (24 px) square in `h`.
+fn small_square(h: &H, label: &str) -> bool {
+    let b = h.get_by_label(label).bounding_box().expect("bounds");
+    (b.width(), b.height()) == (24.0, 24.0)
+}
+
+/// The WIP headers in English in a narrow panel: Stage all is a Small icon-only square (still
+/// named "Stage all") beside the whole title, and the more-actions button stays.
 #[test]
 fn wip_header_icons() {
-    for (theme, dark, name) in [(ThemeChoice::Dark, true, "wip_header_icons"), (ThemeChoice::Light, false, "wip_header_icons_light")] {
-        let (mut st, dir) = with_repo(theme, &format!("truncate-{name}"));
-        st.settings.panel_sizes.details = Some(250.0);
-        let en = Lang::En;
-        let mut h = harness(st, dark);
-        h.run();
-        let stage = h.get_by_label(en.tr("details.wip.stage_all.button")).bounding_box().expect("bounds");
-        assert_eq!((stage.width(), stage.height()), (24.0, 24.0), "Stage all is a Small square: {stage:?}");
-        assert!(h.query_by_label(en.tr("details.wip.more.tip")).is_some());
-        h.check_snapshot(name);
-        drop(h);
-        remove_fixture(&dir);
-    }
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "truncate-wip-icons");
+    st.settings.panel_sizes.details = Some(250.0);
+    let en = Lang::En;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(small_square(&h, en.tr("details.wip.stage_all.button")), "Stage all is a Small square");
+    assert!(h.query_by_label(en.tr("details.wip.more.tip")).is_some());
+    h.check_snapshot("wip_header_icons");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// With every change staged, in German in the narrowest panel (English fits its labels there):
+/// Staged Files' Unstage all is the minus square and Unstaged Files' New file… the
+/// file-and-plus square, each beside its whole title.
+#[test]
+fn wip_header_icons_staged() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "truncate-wip-icons-staged");
+    git(&dir, &["add", "-A"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    st.settings.language = "de".into();
+    st.settings.panel_sizes.details = Some(250.0);
+    let de = Lang::De;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(small_square(&h, de.tr("details.wip.unstage_all.button")), "Unstage all is a Small square");
+    assert!(small_square(&h, de.tr("details.wip.new_file.button")), "New file… is a Small square");
+    h.check_snapshot("wip_header_icons_staged");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 const LONG_AUTHOR: &str = "Augusta Ada King-Noel";

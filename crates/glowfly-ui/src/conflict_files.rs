@@ -62,7 +62,12 @@ fn header(ui: &mut egui::Ui, t: Lang, title: String, action: Action, msgs: &mut 
     header::frame(ui, |ui| {
         let labelled = buttons::quiet(action.label).size(ControlSize::Small);
         let fit = header::fit(header::room(ui, &title), &[labelled.desired_width(ui)], 1);
-        let b = if fit.icons { buttons::icon_only(action.icon, action.label).size(ControlSize::Small) } else { labelled };
+        if fit.icons && fit.shown == 1 {
+            // The rows' actions are Regular squares at the same right edge: centre this Small one
+            // on their column.
+            ui.add_space((ControlSize::Regular.metrics().h - ControlSize::Small.metrics().h) / 2.0);
+        }
+        let b = if fit.icons { header::square(action.icon, action.label) } else { labelled };
         let b = b.enabled(action.why.is_none());
         let b = if action.why.is_some() { b.why(action.why.as_deref()) } else { b.tip(action.tip) };
         if fit.shown == 1 {

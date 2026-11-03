@@ -71,7 +71,7 @@ impl HeaderAction {
         match self {
             Self::StageAll => Icon::Plus,
             Self::UnstageAll => Icon::Minus,
-            Self::NewFile => Icon::File,
+            Self::NewFile => Icon::FileAdd,
             Self::DiscardAll => Icon::Close,
         }
     }
@@ -81,7 +81,7 @@ impl HeaderAction {
         if !icon {
             return self.button(t, tip);
         }
-        let b = buttons::icon_only(self.icon(), self.label(t)).size(SIZE);
+        let b = square(self.icon(), self.label(t));
         match tip {
             Some(tip) => b.tip(tip),
             None => b,
@@ -152,6 +152,21 @@ pub(crate) fn fit(r: Room, labels: &[f32], most: usize) -> Fit {
     let shown = (0..=want).rev().find(|&k| icons(k) + title <= r.avail).unwrap_or(0);
     Fit { shown, icons: true }
 }
+
+/// A header action's Small icon-only square named `name`. Its glyph spans about 12 of the
+/// square's 14 px icon box, like the check and ⋯ beside it: the plus and minus are drawn with
+/// 6 px arms, and the undo arrow smaller, as it fills more of its grid.
+pub(crate) fn square<'a>(icon: Icon, name: &'a str) -> StyledButton<'a> {
+    let b = buttons::icon_only(icon, name).size(SIZE);
+    match icon {
+        Icon::Plus | Icon::Minus => b.icon_px(GLYPH_SPAN * 2.0),
+        Icon::Undo => b.icon_px(GLYPH_SPAN * 0.875),
+        _ => b,
+    }
+}
+
+/// The extent a header square's glyph spans, inside its size's 14 px icon box.
+const GLYPH_SPAN: f32 = 12.0;
 
 /// The least a header's title is cut to: `TITLE_MIN`, or its count and a few characters more.
 fn title_min(ui: &Ui, title: &str) -> f32 {

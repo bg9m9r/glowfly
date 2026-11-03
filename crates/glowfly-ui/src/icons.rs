@@ -232,6 +232,8 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
                 p.circle_filled(pos2(c.x + dx, c.y), 1.6, s.color);
             }
         }
+        // Drawn to the pixel by `paint_file_add`.
+        Icon::FileAdd => {}
         Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary => {
             page(p, c, s);
             // The marks sit in the page's lower two thirds.
@@ -327,4 +329,18 @@ fn page(p: &Painter, c: Pos2, s: Stroke) {
     let (l, r, t, b, fold) = (c.x - 7.0, c.x + 7.0, c.y - 9.0, c.y + 9.0, 5.0);
     p.add(egui::Shape::closed_line(vec![pos2(l, t), pos2(r - fold, t), pos2(r, t + fold), pos2(r, b), pos2(l, b)], s));
     p.add(egui::Shape::line(vec![pos2(r - fold, t), pos2(r - fold, t + fold), pos2(r, t + fold)], s));
+}
+
+/// The new-file glyph at `k` times its 14 px size, on whole pixels: a plain page 8 × 10 px
+/// outside its stroke, open at its lower-right corner, and a 6 px plus in the same stroke (as
+/// heavy as the minus) centred on that corner; 10 × 12 px in all.
+pub(crate) fn paint_file_add(p: &Painter, c: Pos2, s: Stroke, k: f32) {
+    let ppp = p.ctx().pixels_per_point();
+    let snap = |v: f32| (v * ppp).round() / ppp;
+    let (l, r, t, b) = (snap(c.x - 4.0 * k), snap(c.x + 2.0 * k), snap(c.y - 5.0 * k), snap(c.y + 3.0 * k));
+    let gap = 4.5 * k;
+    p.add(egui::Shape::line(vec![pos2(r, b - gap), pos2(r, t), pos2(l, t), pos2(l, b), pos2(r - gap, b)], s));
+    let arm = snap(3.0 * k);
+    p.line_segment([pos2(r - arm, b), pos2(r + arm, b)], s);
+    p.line_segment([pos2(r, b - arm), pos2(r, b + arm)], s);
 }

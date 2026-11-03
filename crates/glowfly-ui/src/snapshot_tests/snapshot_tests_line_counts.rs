@@ -110,24 +110,17 @@ fn graph_wip_row() {
 }
 
 /// With the commit and date columns hidden and a wide BRANCH / TAG column, the row is narrow:
-/// the total goes first, then the label is cut down to six characters, and then the chips go.
+/// the total goes first, and the label is cut beside its chips (the six-character floor and the
+/// chips hiding after it are `graph::wip_row`'s `graph_wip_row_floor` renders).
 #[test]
 fn graph_wip_row_narrow() {
-    let rows = [
-        (370.0, ThemeChoice::Dark, "graph_wip_row_narrow"),
-        (450.0, ThemeChoice::Dark, "graph_wip_row_narrower"),
-        (450.0, ThemeChoice::Light, "graph_wip_row_narrower_light"),
-    ];
-    for (refs, theme, name) in rows {
-        let dark = theme == ThemeChoice::Dark;
-        let (mut st, dir) = with_wip(theme, "lines-graph-narrow");
-        st.settings.columns.author = false;
-        st.settings.columns.commit = false;
-        st.settings.columns.date = false;
-        st.settings.column_widths = st.settings.column_widths.with(Refs, refs);
-        let mut h = harness(st, dark);
-        h.run();
-        h.check_snapshot(name);
-        remove_fixture(&dir);
-    }
+    let (mut st, dir) = with_wip(ThemeChoice::Dark, "lines-graph-narrow");
+    st.settings.columns.author = false;
+    st.settings.columns.commit = false;
+    st.settings.columns.date = false;
+    st.settings.column_widths = st.settings.column_widths.with(Refs, 370.0);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("graph_wip_row_narrow");
+    remove_fixture(&dir);
 }

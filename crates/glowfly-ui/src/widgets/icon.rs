@@ -92,6 +92,8 @@ pub enum Icon {
     More,
     /// A page with its top-right corner folded: a text file (the diff header).
     File,
+    /// The page with a plus at its lower right: a new file (the Unstaged Files header).
+    FileAdd,
     /// The page with angle brackets: a source file.
     FileCode,
     /// The page with a hill and a sun: an image.
@@ -160,6 +162,10 @@ pub fn paint_icon_sized(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f3
     let scale = size / SIZE_LG;
     if icon == Icon::Plus {
         icon_snap::paint_plus(p, c, PLUS_ARM * scale, Stroke::new(STROKE, col));
+        return;
+    }
+    if icon == Icon::FileAdd {
+        crate::ui::icons::paint_file_add(p, c, Stroke::new(STROKE, col), size / SIZE_SM);
         return;
     }
     if icon == Icon::Minus {
@@ -361,7 +367,7 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         | Icon::Issue
         | Icon::Check
         | Icon::More => {} // icons.rs
-        Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {}                                // icons.rs
+        Icon::File | Icon::FileAdd | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {}                // icons.rs
         Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info | Icon::Repo | Icon::Swap => {} // icons.rs
         Icon::Eraser | Icon::Stop | Icon::PanelMaximize | Icon::PanelRestore | Icon::ChevronDown => {} // icons_panel.rs
         Icon::ListView | Icon::TreeView | Icon::Access => {}                                           // icons_lists.rs

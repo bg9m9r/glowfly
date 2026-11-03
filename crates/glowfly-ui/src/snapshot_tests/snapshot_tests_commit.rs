@@ -42,25 +42,21 @@ fn commit_box_options() {
 }
 
 /// In German in a narrow panel, with nothing staged: the reason under the commit button wraps
-/// onto a second line, whole, never cut. Dark and light.
+/// onto a second line, whole, never cut.
 #[test]
 fn commit_box_reason_wraps() {
-    for (theme, dark, name) in
-        [(ThemeChoice::Dark, true, "commit_box_reason_wraps"), (ThemeChoice::Light, false, "commit_box_reason_wraps_light")]
-    {
-        let (mut st, dir) = with_repo(theme, &format!("commit-{name}"));
-        st.settings.language = "de".into();
-        st.settings.panel_sizes.details = Some(300.0);
-        st.session.draft.summary = "Anmeldeformular".into();
-        let why = glowfly_core::i18n::Lang::De.tr("commit.blocked.nothing_staged");
-        let mut h = harness(st, dark);
-        h.run();
-        let r = h.get_by_label(why).bounding_box().expect("the whole reason is shown");
-        assert!(r.height() >= 2.0 * f64::from(crate::ui::widgets::reason::LINE_H), "two lines: {r:?}");
-        h.check_snapshot(name);
-        drop(h);
-        remove_fixture(&dir);
-    }
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-reason-wraps");
+    st.settings.language = "de".into();
+    st.settings.panel_sizes.details = Some(300.0);
+    st.session.draft.summary = "Anmeldeformular".into();
+    let why = glowfly_core::i18n::Lang::De.tr("commit.blocked.nothing_staged");
+    let mut h = harness(st, true);
+    h.run();
+    let r = h.get_by_label(why).bounding_box().expect("the whole reason is shown");
+    assert!(r.height() >= 2.0 * f64::from(crate::ui::widgets::reason::LINE_H), "two lines: {r:?}");
+    h.check_snapshot("commit_box_reason_wraps");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 #[test]

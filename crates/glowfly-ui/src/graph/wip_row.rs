@@ -145,4 +145,37 @@ mod tests {
         let room = right - left;
         assert_eq!(fit(room, LABEL, CHIPS, Some(TOTAL)), Fit { chips: true, total: true, label_max: room - LABEL_GAP - CHIPS });
     }
+
+    /// The row drawn alone in a strip whose room for it is `room(kept, chips)` px (the label's
+    /// six-character floor and the chips' width), in English: at the floor the label shows
+    /// "Uncomm…" beside its chips; a px less, the chips hide and the label takes the room.
+    #[test]
+    fn graph_wip_row_floor() {
+        use crate::ui::snapshot_check::CheckSnapshot;
+        let label = Lang::En.tr("graph.wip.label");
+        let changes = ChangeCounts { modified: 2, added: 2, deleted: 1 };
+        let total = Some(LineCount { added: 38, removed: 1 });
+        let floor = |kept: f32, chips: f32| kept + LABEL_GAP + chips;
+        for (name, less) in [("graph_wip_row_floor", 0.0), ("graph_wip_row_floor_no_chips", 1.0)] {
+            let mut h = crate::ui::snapshot_check::builder().with_size(vec2(360.0, 40.0)).build_ui(|ui| {
+                crate::ui::theme::apply_theme(ui.ctx());
+                let ctx = ui.ctx().clone();
+                let font = type_scale::font(type_scale::BODY);
+                let measure = |s: String| ctx.fonts(|f| f.layout_no_wrap(s, font.clone(), color::text()).size().x);
+                let room = floor(kept_width(label, measure), line_counts::chips_width(&ctx, changes)) - less;
+                let cols = |w: f32| {
+                    let shown = GraphColumns { refs: false, author: false, commit: false, date: false, ..GraphColumns::default() };
+                    Columns::new(Rect::from_min_size(ui.max_rect().min, vec2(w, 40.0)), 20.0, &shown, &ColumnWidths::default())
+                };
+                let span = |c: &Columns| c.wip_span().1 - c.wip_span().0;
+                let first = cols(300.0);
+                let cols = cols(300.0 + room - span(&first));
+                assert!((span(&cols) - room).abs() < 0.01, "{} for {room}", span(&cols));
+                ui.painter().rect_filled(ui.max_rect(), 0.0, color::bg());
+                draw(ui.painter(), &cols, ui.max_rect().center().y, label, changes, total);
+            });
+            h.run();
+            h.check_snapshot(name);
+        }
+    }
 }

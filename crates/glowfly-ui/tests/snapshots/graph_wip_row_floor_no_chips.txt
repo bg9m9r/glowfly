@@ -1,0 +1,3 @@
+window 360x40
+painted:
+  "Uncommitted changes"
