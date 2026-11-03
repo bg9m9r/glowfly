@@ -24,7 +24,8 @@
 //! `undo_dialog.rs`), applying a patch file (drawn by `patch_apply_dialog.rs`), creating a patch
 //! from uncommitted changes (drawn by `patch_save_dialog.rs`), finding repositories in project
 //! folders (drawn by `repo_finder.rs`), fetching or pulling across repositories (drawn by
-//! `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`), choosing a merge's mainline parent
+//! `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`), adding repositories to a group
+//! (drawn by `repo_group_picker.rs`), choosing a merge's mainline parent
 //! (drawn by `mainline_dialog.rs`), the home Trash offer (drawn by `trash_offer_dialog.rs`),
 //! stashing uncommitted changes before an operation (drawn by `auto_stash_dialog.rs`) and
 //! generating an SSH key (drawn by `ssh_keygen_dialog.rs`). An edited form kept under a question
@@ -98,6 +99,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
     let stage_renames = st.settings.stage_renames;
     let push_tags = st.settings.push_new_tags;
     let connections = &st.settings.connections;
+    let groups = &st.settings.repo_groups;
     let keys = &st.keymap;
     let git = &st.git;
     let version = st.updates.shown;
@@ -195,6 +197,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::SyncRepos => close = super::repo_sync::show(ui, cx, repo_sync, msgs),
             Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, cx, form, msgs),
             Modal::RepoGroup(form) => close = super::repo_group_dialog::show(ui, cx, form, msgs),
+            Modal::AddToGroup(form) => close = super::repo_group_picker::show(ui, cx, form, groups, msgs),
             Modal::Mainline(form) => close = super::mainline_dialog::show(ui, cx, form, idle, msgs),
             Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, cx, o, msgs),
             Modal::AutoStash(ask) => close = super::auto_stash_dialog::show(ui, cx, ask, msgs),

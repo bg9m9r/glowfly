@@ -110,6 +110,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 /// The search field, after a search icon, or in a second step after a back arrow and its title.
 fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
+        // As tall as the field from the start, so the icons before it centre on its centre line.
+        ui.set_min_height(ControlSize::Large.metrics().h);
         let hint = match &p.mode {
             Mode::Commands => {
                 let (rect, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
@@ -125,14 +127,11 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 k.prompt()
             }
         };
-        let r = controls::field(
-            ui,
-            egui::TextEdit::singleline(&mut p.query)
-                .id(Id::new("glowfly-palette-query"))
-                .hint_text(hint)
-                .desired_width(f32::INFINITY)
-                .font(type_scale::font(type_scale::SUBHEAD)),
-        );
+        let edit = egui::TextEdit::singleline(&mut p.query)
+            .id(Id::new("glowfly-palette-query"))
+            .hint_text(hint)
+            .font(type_scale::font(type_scale::SUBHEAD));
+        let r = ui.add(controls::SizedField::new(ControlSize::Large, edit));
         if !prompting {
             r.request_focus();
         }

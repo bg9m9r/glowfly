@@ -1,5 +1,6 @@
 //! The sidebar's list rows: one line of text (cut with "…" when it doesn't fit) with optional dim
-//! text (words, or counts with painted arrows) and a marker slot at the right, plus the
+//! text (words, or counts with painted arrows, `paint_parts`, which the toolbar's branch picker
+//! shares) and a marker slot at the right, plus the
 //! skip-if-scrolled-away helper the long sections use; the file lists' fixed-height rows
 //! (`file_row`, and `file_row_with_end` with a part at the right edge), each one click target
 //! with its selection painted across the row and into the panel padding (`keyed_file_row*` for
@@ -73,22 +74,9 @@ pub fn list_row_cut(
     row_fill::paint_state(&p, rect, row_fill::RowState::of(&resp, selected, resp.hovered()));
     let mut right_w = if slot > 0.0 { slot + PAD_X + PARTS_GAP } else { 0.0 };
     if let Some((parts, col)) = right {
-        let (total, pieces) = layout_parts(&p, parts, col);
+        let total = parts_width(&p, parts);
         right_w = total + PAD_X + PARTS_GAP + slot;
-        let mut x = rect.right() - PAD_X - slot - total;
-        let cy = rect.center().y;
-        for (i, piece) in pieces.into_iter().enumerate() {
-            if i > 0 {
-                x += GAP;
-            }
-            let w = piece.galley.size().x;
-            p.galley(pos2(x, cy - piece.galley.size().y / 2.0), piece.galley, col);
-            x += w;
-            if let Some(up) = piece.arrow {
-                paint_arrow(&p, pos2(x + ARROW_GAP + ARROW_W / 2.0, cy), up, col);
-                x += ARROW_GAP + ARROW_W;
-            }
-        }
+        paint_parts(&p, pos2(rect.right() - PAD_X - slot - total, rect.center().y), parts, col);
     }
     let text_rect = Rect::from_min_max(pos2(rect.left() + indent, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
     let font = if strong { type_scale::strong(ui, type_scale::BODY) } else { type_scale::font(type_scale::BODY) };
@@ -129,6 +117,31 @@ fn layout_parts(p: &Painter, parts: &[Part<'_>], col: Color32) -> (f32, Vec<Piec
     let widths: f32 = pieces.iter().map(|pc| pc.galley.size().x + if pc.arrow.is_some() { ARROW_GAP + ARROW_W } else { 0.0 }).sum();
     let gaps = GAP * pieces.len().saturating_sub(1) as f32;
     (widths + gaps, pieces)
+}
+
+/// The width `paint_parts` gives `parts`, gaps included.
+pub fn parts_width(p: &Painter, parts: &[Part<'_>]) -> f32 {
+    layout_parts(p, parts, Color32::PLACEHOLDER).0
+}
+
+/// Paints `parts` in the 12 px dim font in `col`, from `at` (their left edge, centred on the line
+/// at its height), `GAP` apart, each count followed by its painted arrow: the sidebar's right-hand
+/// parts, and the toolbar's branch picker's counts.
+pub fn paint_parts(p: &Painter, at: Pos2, parts: &[Part<'_>], col: Color32) {
+    let (_, pieces) = layout_parts(p, parts, col);
+    let (mut x, cy) = (at.x, at.y);
+    for (i, piece) in pieces.into_iter().enumerate() {
+        if i > 0 {
+            x += GAP;
+        }
+        let w = piece.galley.size().x;
+        p.galley(pos2(x, cy - piece.galley.size().y / 2.0), piece.galley, col);
+        x += w;
+        if let Some(up) = piece.arrow {
+            paint_arrow(p, pos2(x + ARROW_GAP + ARROW_W / 2.0, cy), up, col);
+            x += ARROW_GAP + ARROW_W;
+        }
+    }
 }
 
 /// A small arrow centred on `c`, pointing up (ahead) or down (behind). Painted because the

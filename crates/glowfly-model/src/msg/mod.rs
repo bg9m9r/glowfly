@@ -131,6 +131,13 @@ msg_areas! { msg_enum! {
         // The outside world, from menus all over the app.
         Copy(String),
         OpenUrl(String),
+        /// A link in Markdown from a hosting service clicked: opened like `OpenUrl`, unless its
+        /// visible `text` reads as an address on another host, which asks first
+        /// (`update/open_link.rs`).
+        OpenLink {
+            text: String,
+            url: String,
+        },
         OpenTerminal,
         OpenFolder(PathBuf),
         /// The activity log's Clear button.
@@ -154,6 +161,7 @@ msg_areas! { msg_enum! {
         | Msg::CloseModal
         | Msg::Copy(_)
         | Msg::OpenUrl(_)
+        | Msg::OpenLink { .. }
         | Msg::OpenTerminal
         | Msg::OpenFolder(_)
         | Msg::Scoped { .. }
@@ -167,7 +175,7 @@ msg_areas! { msg_enum! {
         Msg::Scoped { msg, .. } => msg.area(),
         Msg::Confirm { .. } | Msg::ConfirmDanger { .. } | Msg::ConfirmAccepted | Msg::ConfirmAlt | Msg::CloseModal => "confirm",
         Msg::ToastAction(_) | Msg::ToastAlt(_) | Msg::ToastDetails(_) => "toast",
-        Msg::Copy(_) | Msg::OpenUrl(_) | Msg::OpenTerminal | Msg::OpenFolder(_) => "outside",
+        Msg::Copy(_) | Msg::OpenUrl(_) | Msg::OpenLink { .. } | Msg::OpenTerminal | Msg::OpenFolder(_) => "outside",
         Msg::ClearLog | Msg::Logged { .. } => "log",
     }
 } }

@@ -239,6 +239,14 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
     if !menu_trim::push_to_adds_a_choice(b, snap) {
         return;
     }
+    push_to(ui, t, b, snap, push_blocked.as_deref(), msgs);
+}
+
+/// The "Push to" submenu of local branch `b`: each remote (the upstream's marked, and refused
+/// with `push_blocked` when that applies), then All remotes when there are several. Shared with
+/// the toolbar's push menu.
+pub(crate) fn push_to(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, push_blocked: Option<&str>, msgs: &mut Vec<Msg>) {
+    let name = b.name.as_str();
     // egui draws the submenu arrow; the label has none of its own.
     submenu(ui, t.tr("branch.menu.push_to"), |ui| {
         let tracked = branches::remote_tracking(b).map(|tr| tr.remote.as_str());
@@ -255,7 +263,7 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
                 );
             }
             // Only the upstream's state is known; other remotes are left to git to accept or reject.
-            let blocked = if is_upstream { push_blocked.as_deref() } else { None };
+            let blocked = if is_upstream { push_blocked } else { None };
             menu_item_if(
                 msgs,
                 ui,

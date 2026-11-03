@@ -1,7 +1,8 @@
 //! Where git pushes a branch when no remote is named (`PushRemotes`): `branch.<name>.pushRemote`,
 //! then `remote.pushDefault`. Read with libgit2 from the repository's whole config (system,
 //! global, local and the files they include), the last value of a key winning as in git. Only
-//! remote names are read; whether the remote exists is up to the caller.
+//! remote names are read; whether the remote exists is up to the caller. Also whether a plain
+//! `git pull` rebases (`pull_rebases`), which the Pull button's tooltip names.
 
 use git2::Repository;
 
@@ -58,6 +59,33 @@ pub fn push_remotes(repo: &Repository) -> PushRemotes {
     read().unwrap_or_default()
 }
 
+/// Whether a plain `git pull` on `branch` rebases: `branch.<branch>.rebase`, else
+/// `pull.rebase`. As git reads them: a key with no value (`[pull] rebase`) is true; false, no,
+/// off, an empty value and an integer 0 (`00` too) merge; any other value (true, a non-zero
+/// integer, `merges`, `interactive`) rebases. Unset, or unreadable config, merges.
+pub fn pull_rebases(repo: &Repository, branch: Option<&str>) -> bool {
+    let Ok(cfg) = repo.config().and_then(|mut c| c.snapshot()) else { return false };
+    let keys = branch.map(|b| format!("branch.{b}.rebase")).into_iter().chain(["pull.rebase".to_owned()]);
+    for key in keys {
+        if let Ok(e) = cfg.get_entry(&key) {
+            if !e.has_value() {
+                return true;
+            }
+            return rebase_value(&String::from_utf8_lossy(e.value_bytes()));
+        }
+    }
+    false
+}
+
+/// Whether a `pull.rebase` value that is set rebases (see `pull_rebases`).
+fn rebase_value(v: &str) -> bool {
+    let v = v.trim().to_ascii_lowercase();
+    match v.parse::<i64>() {
+        Ok(n) => n != 0,
+        Err(_) => !matches!(v.as_str(), "false" | "no" | "off" | ""),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,6 +102,53 @@ mod tests {
         assert_eq!(p.of_branch("Topic"), Some("other"), "the name keeps its case");
         assert_eq!(p.for_branch("main"), Some(("remote.pushDefault".to_owned(), "mine")));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pull_rebases_follows_the_branch_then_pull_rebase() {
+        let dir = scratch_repo("pull-rebases");
+        let open = || Repository::open(&dir).unwrap();
+        // Set here, so the user's own global setting can't decide it.
+        set_config(&dir, &[("pull.rebase", "false")]);
+        assert!(!pull_rebases(&open(), Some("main")), "false merges");
+        set_config(&dir, &[("pull.rebase", "true")]);
+        assert!(pull_rebases(&open(), Some("main")));
+        assert!(pull_rebases(&open(), None), "a detached HEAD reads pull.rebase");
+        set_config(&dir, &[("branch.main.rebase", "false")]);
+        assert!(!pull_rebases(&open(), Some("main")), "the branch's own setting wins");
+        set_config(&dir, &[("pull.rebase", "merges")]);
+        assert!(pull_rebases(&open(), Some("other")), "merges rebases");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pull_rebases_reads_values_as_git_does() {
+        let dir = scratch_repo("pull-rebases-values");
+        let open = || Repository::open(&dir).unwrap();
+        for (value, rebases) in [("0", false), ("00", false), ("1", true), ("2", true), ("off", false), ("Yes", true), ("", false)] {
+            set_config(&dir, &[("pull.rebase", value)]);
+            assert_eq!(pull_rebases(&open(), Some("main")), rebases, "pull.rebase = {value:?}");
+        }
+        // A key without a value is true in git: `[pull] rebase` rebases.
+        let local = dir.join(".git/config");
+        let text = std::fs::read_to_string(&local).unwrap();
+        std::fs::write(
+            &local,
+            format!(
+                "{text}
+[branch \"main\"]
+	rebase
+"
+            ),
+        )
+        .unwrap();
+        assert!(pull_rebases(&open(), Some("main")), "a value-less branch.main.rebase");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn rebase_values() {
+        assert!(!rebase_value("00") && !rebase_value(" FALSE ") && rebase_value("interactive") && rebase_value("-1"));
     }
 
     #[test]

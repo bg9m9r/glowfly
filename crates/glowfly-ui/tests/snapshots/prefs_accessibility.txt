@@ -1,4 +1,4 @@
-window 1400x1220
+window 1400x1320
 Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
@@ -41,6 +41,9 @@ Label "Strong draws a thicker ring with an outline that shows on every color."
 Button "Change shortcuts…"
 Button "Show all shortcuts"
 Label "Every command can be given a key."
+Label "Screen readers"
+CheckBox "Announcements, Announce when background work finishes or fails" [on]
+Label "Read by screen readers such as NVDA, Narrator and VoiceOver."
 Label "Timing"
 ComboBox "Notifications stay"
 Label "A notification you point at or focus stays open. Failures with Fix or Details stay until you close them."
@@ -59,5 +62,7 @@ painted:
   "Blink the text cursor"
   "Standard"
   "Shortcuts"
+  "Announcements"
+  "Announce when background work finishes or fails"
   "Standard (5 s)"
   "Quick (0.4 s)"

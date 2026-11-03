@@ -143,6 +143,7 @@ mod repo_colour_menu;
 mod repo_finder;
 mod repo_group_dialog;
 mod repo_group_menu;
+mod repo_group_picker;
 mod repo_line;
 mod repo_list;
 mod repo_list_drag;
@@ -205,6 +206,8 @@ mod worktrees;
 mod hint_tests;
 #[cfg(test)]
 mod menu_testing;
+#[cfg(test)]
+mod readme_screenshots;
 #[cfg(any(test, feature = "test-support"))]
 #[doc(hidden)]
 pub mod snapshot_check;
@@ -261,6 +264,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     // An open menu's keys are its own (done by the shortcuts already when they ran).
     menu_keys::capture(ctx);
     theme::a11y::configure(ctx, &st.settings, st.motion_reduced());
+    cache.markdown.lang = st.settings.lang();
     let bounds = frame_layout::show(ctx, st, cache, msgs);
     // Frees the File view's image texture once a frame draws no image.
     cache.history_preview.end_frame();

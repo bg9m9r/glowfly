@@ -129,6 +129,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "repo_merge_methods",
     "favorite_repos",
     "repo_groups",
+    // Goes with the groups, which are global.
+    "new_group_colour",
     "project_folders",
     "external_tools",
     "profiles",
@@ -173,6 +175,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "follow_system_text_size",
     "follow_system_contrast",
     "follow_system_motion",
+    "announce_jobs",
 ];
 
 /// What a profile switch changed in the settings in use.

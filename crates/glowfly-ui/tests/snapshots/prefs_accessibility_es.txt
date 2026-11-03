@@ -1,4 +1,4 @@
-window 760x1500
+window 760x1640
 Label "Glowfly 0.1.0"
 Button "Volver"
 Label "Preferencias"
@@ -50,6 +50,10 @@ Label "Atajos"
 Button "Cambiar atajos…"
 Button "Ver todos los atajos"
 Label "Cada comando puede tener una tecla."
+Label "Lectores de pantalla"
+Label "Anuncios"
+CheckBox "Anuncios, Anunciar cuando el trabajo en segundo plano termine o falle" [on]
+Label "Lo leen lectores de pantalla como NVDA, Narrador y VoiceOver."
 Label "Tiempos"
 Label "Las notificaciones duran"
 ComboBox "Las notificaciones duran"
@@ -66,5 +70,6 @@ painted:
   "También cuando el sistema pide menos movimiento"
   "Hacer parpadear el cursor de texto"
   "Estándar"
+  "Anunciar cuando el trabajo en segundo plano termine o falle"
   "Estándar (5 s)"
   "Rápido (0,4 s)"

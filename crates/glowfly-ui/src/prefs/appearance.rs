@@ -76,7 +76,8 @@ pub fn zoom_row(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, follow: b
 }
 
 /// Interface: zoom, the panels and toolbar, the Windows title bar, the menu bar, toolbar labels,
-/// spell checking, the graph's extras and how changed-file lists show their files.
+/// spell checking, the graph's extras, new groups' colour and how changed-file lists show their
+/// files.
 fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, frame: FrameRows) {
     use glowfly_core::settings::BranchVisibility as BV;
     section(ui, t.tr("prefs.ui.interface.section"));
@@ -106,6 +107,7 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, fram
     check_row(ui, label, &mut s.worktree_wips, check, Some(text));
     let (label, check, text) = (t.tr("prefs.ui.group_tabs.label"), t.tr("prefs.ui.group_tabs.check"), t.tr("prefs.ui.group_tabs.help"));
     check_row(ui, label, &mut s.group_worktree_tabs, check, Some(text));
+    super::group_colour_row::group_colour_row(ui, t, s);
     row(ui, t.tr("prefs.ui.branch_visibility.label"), |ui| {
         let options = [(BV::All, t.tr("prefs.ui.branch_visibility.all")), (BV::Smart, t.tr("prefs.ui.branch_visibility.smart"))];
         combo(ui, "visibility", &mut s.branch_visibility, &options);

@@ -55,6 +55,8 @@ CheckBox "Mostrar los cambios de otros worktrees en el grafo" [on]
 Label "Añade una fila sobre el commit activo de un worktree mientras tenga cambios sin confirmar, con recuentos. Haz clic en ella para abrir ese worktree. Los recuentos se leen al cargar el repositorio."
 CheckBox "Mantener juntas las pestañas de los worktrees de un repositorio" [on]
 Label "Las pestañas de worktrees del mismo repositorio (su carpeta principal y cada worktree vinculado) quedan juntas, con una línea de color debajo. Arrastra una pestaña dentro de su grupo para reordenarla; suéltala fuera del grupo para mover el grupo entero."
+ComboBox "Color de grupos nuevos"
+Label "Con «Siguiente color libre», cada grupo nuevo recibe un color que ningún otro grupo tiene todavía, hasta agotar los ocho. Para cambiar el color de los grupos que ya tienes, elige «Restablecer los colores de grupo» en el menú de un grupo en la página de inicio."
 ComboBox
 Label "Ramas relevantes limita el grafo a la rama activa, su upstream, la rama predeterminada y las ramas con una pull request abierta."
 RadioButton "Lista" [on]
@@ -93,6 +95,7 @@ painted:
   "Seguir una rama al pasar el puntero"
   "Cambios de worktrees"
   "Agrupar pestañas de worktrees"
+  "Siguiente color libre"
   "Ramas visibles"
   "Todas las ramas"
   "Archivos cambiados"
@@ -100,4 +103,3 @@ painted:
   "Densidad de filas"
   "Descripción del commit"
   "Siempre"
-  "Diseño de columnas"

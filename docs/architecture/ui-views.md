@@ -34,7 +34,7 @@ start with `state/`, `update/` or `ui/`.
 ## Markdown bodies
 
 - `markdown.rs`: draws Markdown bodies (pull request and issue descriptions and comments, and the File view preview).
-- `markdown_inline.rs` (tests in `markdown_inline_tests.rs`): text runs, with room after an italic run's slant and beside a code run's background.
+- `markdown_inline.rs` (tests in `markdown_inline_tests.rs`): text runs, with room after an italic run's slant and beside a code run's background; links' tooltips with the host in punycode, and clicks sent as `Msg::OpenLink` with the link's whole text. The mismatched-link prompt's snapshots are in `snapshot_tests/snapshot_tests_link_prompt.rs`.
 - `markdown_code.rs`: code blocks.
 - `markdown_cache.rs`: parses and highlights each body once (bounded by body count and bytes).
 
@@ -101,9 +101,10 @@ start with `state/`, `update/` or `ui/`.
 - `repo_colour_menu.rs`: the tab menu's, the welcome rows' and the group headers' Color submenu, with the square swatches in `repo_swatch.rs`.
 - `repo_list.rs`: the start page's repository area: Favorites with + New group, the groups nested under it, the other favorites, and Recent.
 - `repo_list_row.rs`: one start-page repository row: what its click, star and × send, and its menu (right-click or ⋯) with Move to group.
-- `repo_list_groups.rs`: the start page's group headers (swatch, name, count, Open all, ⋯), the bar down a group's rows, an empty group's dashed placeholder, and the group menu; `repo_list_drag.rs` drags favorites by their grip between groups.
-- `repo_group_menu.rs`: a welcome favorite's Move to group submenu, the way to group without dragging.
+- `repo_list_groups.rs`: the start page's group headers (swatch, name, count, Open all, ⋯), the bar down a group's rows, an empty group's dashed placeholder, and the group menu (with Reset all group colors); `repo_list_drag.rs` drags favorites by their grip between groups.
+- `repo_group_menu.rs`: a welcome favorite's Move to group submenu and a Recent row's Add to group submenu, ways to group without dragging.
 - `repo_group_dialog.rs`: the New group and Rename group dialog.
+- `repo_group_picker.rs`: a group's Add repositories dialog, a checklist of favorites and Recent repositories.
 - `repo_menu_list.rs`: the repository menu's and File > Open recent's repository groups, Favorites and Recent, the filter field of a long list, and Remove missing / Clear recent.
 - `repo_row.rs`: one repository row, shared by those menus and the start page: name, parent path, status, and the star and × on hover or focus (on the start page also the grip, a status pill, the key cap and ⋯); in a menu Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
 
@@ -112,6 +113,7 @@ start with `state/`, `update/` or `ui/`.
 - `snapshot_tests/`: the views' snapshot tests, one file per view group (`mod.rs` lists them), with the shared fixtures in `snapshot_fixtures.rs`; `snapshot_tests_painted.rs` reads what a frame painted inside a widget (fills, shapes, underlined text) for the hover tests.
 - `snapshot_fixtures.rs` (tests, and the app's tests through glowfly-ui's `test-support` feature): the fixture repository, harnesses and `render`; `snapshot_fixtures/scenes.rs`: the merge stopped on conflicts and the two-author history the tests share.
 - The app's `runner_snapshots/` holds the view snapshot tests that run effects through the runner (the whole-file and wrapped diffs, the conflict markers warning, the path search), on these fixtures and snapshots; glowfly-ui never depends on the runner.
+- `readme_screenshots/` (tests): the README's screenshots in `docs/screenshots/`, rendered at 2x from a made-up demo repository (`demo.rs`, its files in `demo_files.rs`): the main window, a split diff and the conflict resolver (`shots.rs`) and a pull request review (`pull_request.rs`), each in Graphite and Porcelain; `UPDATE_SCREENSHOTS=1` writes them, otherwise the stored sizes are checked.
 - `snapshot_check/mod.rs`: `check_snapshot` (the text snapshot, plus the image for a golden, cropped as listed; skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices; under `test-support` for the app's tests too, always against glowfly-ui's `tests/snapshots/`.
 - `snapshot_check/text.rs`: a frame's text snapshot: the accessibility tree's roles, labels, values and states, then the painted text no widget carries; only the dialogs when one is open.
 - `snapshot_check/compare.rs`: comparing a text snapshot with `tests/snapshots/<name>.txt` (`.new.txt` always, `.diff.txt` on a mismatch, `UPDATE_SNAPSHOTS=1` accepts).

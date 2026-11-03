@@ -10,6 +10,7 @@ use super::theme::{color, type_scale};
 use super::widgets::{self, Icon};
 use crate::msg::Msg;
 use eframe::egui::{self, Align, Align2, Color32, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
+use glowfly_core::i18n::Lang;
 use glowfly_core::markdown::{Block, Inline, Item};
 use std::cell::Cell;
 
@@ -22,6 +23,7 @@ const QUOTE_INDENT: f32 = 14.0;
 /// with the next one to draw.
 #[derive(Clone, Copy)]
 struct Ctx<'a> {
+    t: Lang,
     color: Color32,
     lists: usize,
     code: &'a [CodeBlock],
@@ -33,16 +35,17 @@ struct Ctx<'a> {
 /// drawn plain.
 pub(crate) fn body(ui: &mut Ui, id: impl std::hash::Hash, text: &str, cache: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let r = cache.get(text);
-    ui.push_id(id, |ui| show(ui, &r, text, msgs));
+    let t = cache.lang;
+    ui.push_id(id, |ui| show(ui, t, &r, text, msgs));
 }
 
-fn show(ui: &mut Ui, r: &Rendered, text: &str, msgs: &mut Vec<Msg>) {
+fn show(ui: &mut Ui, t: Lang, r: &Rendered, text: &str, msgs: &mut Vec<Msg>) {
     let Some(doc) = &r.doc else {
         ui.add(egui::Label::new(RichText::new(text).color(color::text())).wrap());
         return;
     };
     let next = Cell::new(0);
-    let cx = Ctx { color: color::text(), lists: 0, code: &r.code, next_code: &next };
+    let cx = Ctx { t, color: color::text(), lists: 0, code: &r.code, next_code: &next };
     ui.vertical(|ui| blocks(ui, &doc.blocks, cx, msgs));
 }
 
@@ -81,7 +84,7 @@ fn block(ui: &mut Ui, b: &Block, cx: Ctx<'_>, msgs: &mut Vec<Msg>) {
 }
 
 fn look(cx: Ctx<'_>) -> Look {
-    Look { size: type_scale::BODY, strong: false, color: cx.color }
+    Look { t: cx.t, size: type_scale::BODY, strong: false, color: cx.color }
 }
 
 /// Level 1 at the title step, 2 at the subhead step, the rest at body size; all SemiBold, and

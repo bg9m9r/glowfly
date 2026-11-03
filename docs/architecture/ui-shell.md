@@ -19,7 +19,8 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `shell/app_native.rs` and `shell/app_menu.rs`: the shell's side of the drawn Windows frame's OS glue and of the macOS system menu bar (see [flow-shell.md](flow-shell.md)).
 - `ui/frame_overlay.rs`: the frame-time overlay Preferences > General can show, drawn by the shell.
 - `ui/app_icon.rs`: the app icon, for the window (`main.rs`) and the welcome screen's mark (`ui/app_mark.rs`).
-- `ui/access.rs` gives painted buttons and hint-only text fields their accessible names (a toolbar button's name describes it and differs from the palette's rows).
+- `ui/access.rs` gives painted buttons and hint-only text fields their accessible names (a toolbar button's name describes it and differs from the palette's rows), and makes a label a live region under a stable key (`announce`).
+- `snapshot_tests/snapshot_tests_announce.rs`: the toasts' and the status bar job's live regions, and none with Announcements off.
 - `central.rs` holds the central-area routing (which view fills it: the pull request panel and the issue panel (`issue/`) share one place) and the Esc chain.
 - `panel_header.rs`: the pull request and issue panels' header links (Copy link, Open in browser), folded into a ⋯ menu when they would squeeze the title.
 - `ui/probe.rs`: the smoke probe's state file (see Test-only modules in [app-layers.md](app-layers.md)).
@@ -38,10 +39,10 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 
 - `toolbar.rs` draws its buttons in borderless groups of quiet buttons set apart by dividers (`widgets::tool_group`, `tool_gap`; the buttons, toggles and split buttons in `widgets/tool.rs`).
 - `toolbar_menus.rs`: the toolbar's menus.
-- `toolbar_groups.rs`: the middle groups' buttons, the split buttons' menus and the groups' widths.
+- `toolbar_groups.rs`: the middle groups' buttons, Pull's and Push's count badges and named counts, the split buttons' menus (the push menu led by where Push goes, with Push to) and the groups' widths; `toolbar_sync_tests.rs` checks them at each ahead/behind.
 - `toolbar_fold.rs`: which parts fold into the More menu in a narrow window, and in what order.
 - `toolbar_more.rs`: the More button and its menu of the folded buttons.
-- `toolbar_pickers.rs`: the repository and branch pickers, one framed segment bar whose segments each light whole, their name slots fitted to the names and shrunk only by a narrow window.
+- `toolbar_pickers.rs`: the repository and branch pickers, one framed segment bar whose segments each light whole, their name slots fitted to the names and shrunk only by a narrow window; the branch's ahead/behind counts sit inside its slot.
 - `toolbar_fit.rs`: the pickers' fitted slots: the repository's name, and the widest local branch name (measured once per branch list) so a checkout never moves the bar.
 - Each toolbar button's tooltip comes from `toolbar_tips.rs`.
 

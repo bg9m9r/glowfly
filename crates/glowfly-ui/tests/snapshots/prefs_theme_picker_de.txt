@@ -55,6 +55,8 @@ CheckBox "Änderungen anderer Worktrees im Graphen zeigen" [on]
 Label "Fügt über dem ausgecheckten Commit eines Worktrees eine Zeile mit Zählern hinzu, solange er nicht committete Änderungen hat. Ein Klick darauf öffnet diesen Worktree. Die Zähler werden beim Laden des Repositorys gelesen."
 CheckBox "Tabs der Worktrees eines Repositorys nebeneinander halten" [on]
 Label "Tabs für Worktrees desselben Repositorys (sein Hauptordner und jeder verknüpfte Worktree) bleiben nebeneinander, mit einer farbigen Linie darunter. Ziehe einen Tab innerhalb seiner Gruppe, um ihn umzusortieren; lege ihn außerhalb der Gruppe ab, um die ganze Gruppe zu verschieben."
+ComboBox "Farbe neuer Gruppen"
+Label "Mit „Nächste freie Farbe“ bekommt jede neue Gruppe eine Farbe, die noch keine andere Gruppe hat, bis alle acht vergeben sind. Um bestehende Gruppen neu einzufärben, wähle auf der Startseite im Menü einer Gruppe „Alle Gruppenfarben zurücksetzen“."
 ComboBox
 Label "Relevante Branches beschränkt den Graphen auf den ausgecheckten Branch, seinen Upstream, den Standard-Branch und Branches mit offenem Pull Request."
 RadioButton "Liste" [on]

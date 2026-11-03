@@ -3,8 +3,11 @@
 //! width so a stack lines up on both edges. Each floats on the overlay with `LG` corners and the
 //! Float shadow, outlined in its outcome's tone, with a small x top right that closes it. The
 //! pointer over a toast, or the keyboard focus on one of its buttons, holds it
-//! (`NotifyMsg::HoldToast`): it neither fades nor expires.
+//! (`NotifyMsg::HoldToast`): it neither fades nor expires. With Announcements on (Preferences >
+//! Accessibility) each toast's text is a live region screen readers read as it appears: politely,
+//! or at once for a failure.
 
+use super::access::{self, Live};
 use super::theme::color;
 use super::theme::surfaces::Tone;
 use super::theme::tokens::{self, Elevation, radius};
@@ -62,6 +65,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
     let (align, offset) = anchor(st.settings.notification_location, bounds, ctx.screen_rect());
     let p = color::current();
     let (lang, held, time) = (st.settings.lang(), st.held_toast(), st.settings.a11y.toast_time);
+    let announce = st.settings.a11y.announce_jobs;
     let mut over = None;
     egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(true).show(ctx, |ui| {
         for t in &st.toasts {
@@ -89,7 +93,10 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                         ui.spacing_mut().item_spacing.x = CLOSE_SLOT - 20.0;
                         ui.vertical(|ui| {
                             ui.set_width(TOAST_W - 2.0 * f32::from(PAD_X) - CLOSE_SLOT);
-                            ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
+                            let text = ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
+                            if announce {
+                                access::announce(&text, text_key(t.id), if t.ok { Live::Polite } else { Live::Assertive });
+                            }
                         });
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                             ui.scope(|ui| {
@@ -135,6 +142,12 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
     if over != held {
         msgs.push(Msg::Notify(NotifyMsg::HoldToast(over)));
     }
+}
+
+/// The accessibility key of toast `id`'s text while it is announced: the toast's own, so it
+/// isn't announced again when a toast above it closes.
+pub(crate) fn text_key(id: u64) -> egui::Id {
+    egui::Id::new(("toast-text", id))
 }
 
 #[cfg(test)]

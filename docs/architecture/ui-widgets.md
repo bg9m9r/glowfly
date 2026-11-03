@@ -17,7 +17,7 @@ source file, update its line here.
 - Buttons have one disabled look: a neutral fill and weak text, never an outline or egui's fade, and a `why` shown on hover.
 - `button_look.rs`: each button kind's colours per state, and where every target's state becomes pixels: `paint_target` (a quiet target's layer over its own shape, a single framed control's border going weak while lit), `paint_button` (a button kind's look over its own shape) and their focus ring on the same corners.
 - `button_split.rs`: the split button (an action and its menu caret as one shape with two targets, laid out as a segment bar): one edge, one divider, only the hovered half lights, each half's focus ring inset on its own corners.
-- `widgets/tool.rs`: the toolbar's buttons, toggles and split buttons, each lighting its whole slot; `widgets::tool_group` a borderless group and `tool_gap` the divider between groups, `split_gap` the room after a split's caret.
+- `widgets/tool.rs`: the toolbar's buttons, toggles and split buttons, each lighting its whole slot, disabled at half alpha, a split's count badge over its icon; `widgets::tool_group` a borderless group and `tool_gap` the divider between groups, `split_gap` the room after a split's caret; tests in `tool_tests.rs`.
 - `widgets/segment_bar.rs`: flush segments in one shape (the toolbar pickers' framed bar, a split button's quiet one), each its own target, with full-height dividers in a framed bar; its layout is shared with `button_split.rs`; tests in `segment_bar_tests.rs`.
 - `widgets/ghost.rs`: ghost buttons (at a `ControlSize`) and dividers, shared by the diff's file header, the terminal panel's header and the graph's New branch… button.
 - `widgets/segmented.rs`: a segmented control at a `ControlSize` whose segments are quiet targets (`paint_target`) and can be disabled with a reason on hover; the raised option's corners are concentric with the track.
@@ -26,7 +26,7 @@ source file, update its line here.
 
 ## Rows and lists
 
-- `list_row.rs`: list rows, whose dim right-hand parts paint ahead/behind arrows, and the side panels' row heights and insets.
+- `list_row.rs`: list rows, whose dim right-hand parts paint ahead/behind arrows (`paint_parts`, shared with the branch picker), and the side panels' row heights and insets.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: an edge-to-edge list row in each state (`RowState`): the selection fill with a left accent bar, the lifted hover, a flat pressed fill and the inset focus ring; shared by the graph, sidebar rows and headers, file rows, the file history list, the dashboard and the Preferences page list.
@@ -74,7 +74,7 @@ source file, update its line here.
 ## Dialogs
 
 - `dialog_frame.rs`: the frame every dialog is drawn in.
-- `dialog_header.rs`: a header with the title, an optional icon and subtitle and a painted close button that acts as Esc.
+- `dialog_header.rs`: a header with the title, an optional icon (or colour swatch) and subtitle and a painted close button that acts as Esc.
 - `dialog_size.rs`: a size class, Small 400–480, Medium 480–560 or Wide 640–760 px, following a long title up to its most and capped by the window.
 - The dialog body scrolls or resizes.
 - `dialog_guide.rs`: for a less familiar operation, a tinted side pane that explains it in numbered steps under "How it works", beside the form or, in a narrow window, stacked above it; the steps are in `dialog_guides.rs`.
@@ -83,7 +83,7 @@ source file, update its line here.
 - `Dialog::header`: a header the caller draws instead of the title row (the welcome's band, which may paint into the padding).
 - `Dialog::width` sets the content width; `Dialog::min_body` a least body height.
 - `close_button` places the shared close box.
-- `widgets/text_field.rs`: a dialog's text fields: 36 px with the text centred, tinted with `color::field_fill`, a Browse… button beside one with `with_button`, and `entered` for a field's Enter.
+- `widgets/text_field.rs`: a dialog's text fields: Large 36 px (or a given `ControlSize`) with the text centred, tinted with `color::field_fill`, a Browse… button beside one with `with_button`, and `entered` for a field's Enter.
 - `widgets/field_group.rs`: the label-field-help group a text field sits in: the label above, a weak Optional marker, then one line under the field, its message or else its help.
 - `confirm_dialog.rs`: the confirmation dialog and its danger form.
 - `dialog_guard.rs`: the "Discard your changes?" question (see Dialogs in [flow-shell.md](flow-shell.md)).
