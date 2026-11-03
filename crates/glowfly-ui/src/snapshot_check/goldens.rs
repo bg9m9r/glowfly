@@ -108,6 +108,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     // The left panel's empty states: an expanded empty Worktrees, and pull requests not connected.
     ("sidebar_empty_worktrees", TopLeft(300.0, 820.0)),
     ("sidebar_prs_connect", TopLeft(300.0, 820.0)),
+    // D16: branches and worktrees that share a long start, each cut in its middle.
+    ("sidebar_shared_prefix_dark", TopLeft(300.0, 820.0)),
+    ("sidebar_shared_prefix_light", TopLeft(300.0, 820.0)),
     ("toolbar_restyled_dark", Window),
     ("toolbar_restyled_light", Window),
     ("menu_bar_file", Window),

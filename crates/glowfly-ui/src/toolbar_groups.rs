@@ -7,7 +7,7 @@ use super::tips;
 use crate::msg::{BranchMsg, ForgeMsg, JobMsg, Msg};
 use crate::state::toolbar_tips as rules;
 use crate::state::{AppState, ForgeState};
-use crate::ui::widgets::menu::separator;
+use crate::ui::widgets::menu::{self, separator};
 use crate::ui::widgets::reason::{self, ItemState};
 use crate::ui::widgets::{self, Icon, tooltip::attach};
 use eframe::egui;
@@ -54,9 +54,12 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
         if reason::menu_button(ui, t.tr("toolbar.publish"), "", ItemState::blocked_by(busy.as_deref())).clicked() {
             msgs.push(Msg::Publish(crate::msg::PublishMsg::PublishDialog));
         }
-    } else if let Some(target) = rules::push_target(t, snap) {
+    } else if let Some((template, names)) = rules::push_target_parts(t, snap) {
         let why = rules::push_blocked(st);
-        if reason::menu_button(ui, &target, "", ItemState::blocked_by(why.as_deref())).clicked() {
+        // A long branch or upstream name is cut in its middle; the whole label is its tooltip.
+        let names = names.each_ref().map(|(slot, name)| (*slot, name.as_str()));
+        let target = menu::item_named(menu::named(template, &names)).state(ItemState::blocked_by(why.as_deref()));
+        if target.show(ui).clicked() {
             msgs.push(Msg::Job(JobMsg::Push { force: false }));
         }
         if let Some(b) = snap.head_info().filter(|_| snap.remotes.len() >= 2) {

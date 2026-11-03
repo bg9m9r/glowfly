@@ -141,7 +141,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             let selected = b.oid.is_some_and(|o| sel.includes(o));
             let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
             let (r, marker, cut) =
-                widgets::list_row_cut(ui, widgets::ROW_INDENT + DOT_ROOM + dent, &label, right, slot, selected, b.is_head);
+                widgets::name_row_cut(ui, widgets::ROW_INDENT + DOT_ROOM + dent, &label, right, slot, selected, b.is_head);
             if b.is_head {
                 crate::ui::access::name_button(&r, true, &t.trf("access.checked_out", &[("name", &b.name)]));
             }

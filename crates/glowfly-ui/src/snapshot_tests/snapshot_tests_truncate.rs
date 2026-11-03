@@ -2,8 +2,8 @@
 //! the more-actions menu, and wide) and in a narrow English panel (icon-only actions), graph columns at their narrowest, the filtered graph's
 //! header, a cut commit message, a long issue title in the sidebar, the status bar's update
 //! chip, the repository sync dialog's names, and the notes that wrap instead (a remote without
-//! branches, a Git LFS pointer in an untrusted repository). Shares the fixtures of the other
-//! snapshot tests.
+//! branches, a Git LFS pointer in an untrusted repository), and names that share a long start
+//! cut in their middle in the left panel. Shares the fixtures of the other snapshot tests.
 
 use crate::msg::{Msg, SearchMsg, UpdateMsg, WorkFileMsg};
 use crate::state::AppState;
@@ -19,13 +19,13 @@ use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
 use crate::ui::snapshot_tests::snapshot_tests_repo_sync::{dialog, row};
 use crate::ui::snapshot_tests::snapshot_tests_search::{searching, send, with_two_authors};
 use crate::ui::snapshot_tests::snapshot_tests_updates::{sent, status_bar, the_offer};
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::center;
+use crate::ui::snapshot_tests::snapshot_tests_worktrees::{center, p, with_worktrees};
 use crate::ui::snapshot_tests::{git, harness, harness_sized, reload, remove_fixture, with_repo};
 use eframe::egui::{pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::Issue;
 use glowfly_core::i18n::Lang;
-use glowfly_core::repo::{LfsState, LoadOptions};
+use glowfly_core::repo::{BranchInfo, LfsState, LoadOptions, WorktreeInfo};
 use glowfly_core::repo_sync::Outcome;
 use glowfly_core::settings::{ColumnWidths, DescriptionMode, ThemeChoice};
 use std::path::PathBuf;
@@ -293,4 +293,48 @@ fn search_hint_cut() {
     h.check_snapshot("search_hint_cut");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// Five local branches and four worktrees whose names share a long start (`worktree-agent-a…`,
+/// `agent-a…`), as agent tools make them.
+const AGENT_IDS: [&str; 5] = ["a3f9c1d2-refresh-rows", "a5d02b8e-tab-titles", "a71e4f0c-picker-cut", "a9c6b3d1-palette", "ab48e2f7-push-menu"];
+
+/// The fixture with `AGENT_IDS` as local branches and the first four as linked worktrees, each
+/// on its branch, in a 260 px left panel.
+fn shared_prefix(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_worktrees(theme, name);
+    st.settings.panel_sizes.sidebar = Some(260.0);
+    let snap = st.snap.as_mut().unwrap();
+    let base = snap.locals.iter().find(|b| !b.is_head).or(snap.locals.first()).cloned().expect("a branch");
+    let linked = snap.worktrees[1].clone();
+    snap.worktrees.truncate(1);
+    for (i, id) in AGENT_IDS.iter().enumerate() {
+        let branch = format!("worktree-agent-{id}");
+        snap.locals.push(BranchInfo { name: branch.clone(), is_head: false, upstream: None, ahead: 0, behind: 0, ..base.clone() });
+        if i < 4 {
+            let path = p(&format!("C:/work/app/.claude/worktrees/agent-{id}"));
+            snap.worktrees.push(WorktreeInfo { name: Some(format!("agent-{id}")), path, branch: Some(branch), ..linked.clone() });
+        }
+    }
+    (st, dir)
+}
+
+/// D16: in a 260 px left panel every one of those names is cut in its middle, so each row can
+/// be told apart without hovering; each is still named in full (pixel goldens, dark and light).
+#[test]
+fn sidebar_shared_prefix() {
+    for (theme, golden) in [(ThemeChoice::Dark, "sidebar_shared_prefix_dark"), (ThemeChoice::Light, "sidebar_shared_prefix_light")] {
+        let (st, dir) = shared_prefix(theme, golden);
+        let mut h = harness(st, true);
+        h.run();
+        for id in AGENT_IDS {
+            assert!(h.query_by_label(&format!("worktree-agent-{id}")).is_some(), "{id}'s branch row is named in full");
+        }
+        for id in &AGENT_IDS[..4] {
+            assert!(h.query_by_label(&format!("agent-{id}")).is_some(), "{id}'s worktree row is named in full");
+        }
+        h.check_snapshot(golden);
+        drop(h);
+        remove_fixture(&dir);
+    }
 }

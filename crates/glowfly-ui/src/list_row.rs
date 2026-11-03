@@ -1,4 +1,5 @@
-//! The sidebar's list rows: one line of text (cut with "…" when it doesn't fit) with optional dim
+//! The sidebar's list rows: one line of text (cut with "…" when it doesn't fit, a name in its
+//! middle: `name_row`) with optional dim
 //! text (words, or counts with painted arrows, `paint_parts`, which the toolbar's branch picker
 //! shares) and a marker slot at the right, plus the
 //! skip-if-scrolled-away helper the long sections use; the file lists' fixed-height rows
@@ -67,6 +68,38 @@ pub fn list_row_cut(
     selected: bool,
     strong: bool,
 ) -> (Response, Rect, bool) {
+    row_cut(ui, (indent, text, false), right, slot, selected, strong)
+}
+
+/// `list_row_cut` for a name (a branch, a tag, a worktree): one too long is cut in its middle
+/// (`truncate::middle`), so names that share a long start stay apart.
+pub fn name_row_cut(
+    ui: &mut Ui,
+    indent: f32,
+    name: &str,
+    right: Option<(&[Part<'_>], Color32)>,
+    slot: f32,
+    selected: bool,
+    strong: bool,
+) -> (Response, Rect, bool) {
+    row_cut(ui, (indent, name, true), right, slot, selected, strong)
+}
+
+/// `list_row` for a name, cut in its middle (`name_row_cut`), whole on hover when cut.
+pub fn name_row(ui: &mut Ui, indent: f32, name: &str, selected: bool) -> Response {
+    let (r, _, cut) = name_row_cut(ui, indent, name, None, 0.0, selected, false);
+    if cut { r.on_hover_text(name) } else { r }
+}
+
+/// The rows' drawing: `text` from `indent`, cut at its end or (`middle`) in its middle.
+fn row_cut(
+    ui: &mut Ui,
+    (indent, text, middle): (f32, &str, bool),
+    right: Option<(&[Part<'_>], Color32)>,
+    slot: f32,
+    selected: bool,
+    strong: bool,
+) -> (Response, Rect, bool) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), LIST_ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
@@ -81,7 +114,12 @@ pub fn list_row_cut(
     let text_rect = Rect::from_min_max(pos2(rect.left() + indent, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
     let font = if strong { type_scale::strong(ui, type_scale::BODY) } else { type_scale::font(type_scale::BODY) };
     let col = if strong { color::strong() } else { color::text() };
-    let cut = truncate::paint_cut(&p, pos2(text_rect.left(), rect.center().y), truncate::cut_job(text, font, col), text_rect.width());
+    let at = pos2(text_rect.left(), rect.center().y);
+    let cut = if middle {
+        truncate::paint_middle(&p, at, text, font, col, text_rect.width())
+    } else {
+        truncate::paint_cut(&p, at, truncate::cut_job(text, font, col), text_rect.width())
+    };
     let marker = Rect::from_min_max(pos2(rect.right() - PAD_X - slot, rect.top()), pos2(rect.right() - PAD_X, rect.bottom()));
     (resp, marker, cut.cut)
 }

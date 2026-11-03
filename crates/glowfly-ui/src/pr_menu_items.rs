@@ -6,6 +6,7 @@
 //! tooltip the sidebar and the dashboard share, and the PULL REQUESTS row's checkout item.
 
 use super::common::{menu_item, menu_item_if, menu_item_tip};
+use super::widgets::menu;
 use super::widgets::reason::{self, ItemState};
 use crate::msg::Msg;
 use crate::msg::{BranchMsg, ForgeMsg};
@@ -191,12 +192,13 @@ pub(super) fn pr_menu_live(t: Lang, snap: &Snapshot, fs: &ForgeState, idle: bool
 pub(super) fn push_pr_item(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, fs: &ForgeState, idle: bool, msgs: &mut Vec<Msg>) {
     let noun = fs.pr_word(t);
     let item = push_pr::push_item(t, snap, fs);
+    // A long branch name is cut in its middle; the whole label is its tooltip.
     let label = match snap.head_info() {
-        Some(b) => t.trf("pr.menu.push_head_create", &[("noun", &noun), ("branch", &b.name)]),
-        None => t.trf("pr.menu.push_create", &[("noun", &noun)]),
+        Some(b) => menu::named(t.tr("pr.menu.push_head_create"), &[("noun", noun), ("branch", &b.name)]),
+        None => menu::named(t.tr("pr.menu.push_create"), &[("noun", noun)]),
     };
     let why = if !idle { Some(BUSY) } else { item.as_ref().err().map(String::as_str) };
-    let r = reason::menu_button(ui, label, "", ItemState::blocked_by(why));
+    let r = menu::item_named(label).state(ItemState::blocked_by(why)).show(ui);
     if r.clicked()
         && let Ok(branch) = item
     {

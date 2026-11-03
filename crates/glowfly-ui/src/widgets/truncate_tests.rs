@@ -1,4 +1,4 @@
-//! The truncate helpers' tests: cut galleys, middle, left and path cuts, and counted labels.
+//! The truncate helpers' tests: cut galleys, middle (both kinds), left and path cuts, and counted labels.
 
 use super::*;
 use crate::ui::theme::type_scale;
@@ -210,4 +210,84 @@ fn a_counted_label_is_cut_before_its_count() {
     assert!(g.size().x <= 100.0, "{}", g.size().x);
     let (whole, cut) = counted_galley(&ctx, text, font(), Color32::WHITE, 400.0);
     assert!(!cut && drawn(&whole) == text && whole.text() == text);
+}
+
+/// One unit per character, so a name's cut is easy to count (a cluster of several characters
+/// costs several units, as a wide glyph would).
+fn units(s: &str) -> f32 {
+    s.chars().count() as f32
+}
+
+/// `text` cut in its middle to `max` units.
+fn cut_units(text: &str, max: f32) -> String {
+    match middle_cut(text, max, units) {
+        None => text.to_owned(),
+        Some((head, tail)) => format!("{}{ELLIPSIS}{}", &text[..head], &text[tail..]),
+    }
+}
+
+#[test]
+fn a_name_that_fits_is_not_cut() {
+    assert_eq!(middle_cut("main", 4.0, units), None, "exactly as wide as the room");
+    assert_eq!(middle_cut("", 0.0, units), None);
+    assert_eq!(cut_units("feature/login", 40.0), "feature/login");
+}
+
+#[test]
+fn the_head_ends_before_the_last_separator_in_its_share() {
+    // 30 units: the head's share is 12 ("worktree-age"), whose last separator is the '-' at 8;
+    // the tail fills the other 21.
+    let cut = cut_units("worktree-agent-a1b2c3d4e5f6g7h8i9", 30.0);
+    assert_eq!(cut, "worktree…nt-a1b2c3d4e5f6g7h8i9");
+    // A separator at the very start makes no head; the share's own end does.
+    assert_eq!(cut_units("_abcdefghijklmnopqrstuvwxyz", 20.0), "_abcdefg…pqrstuvwxyz");
+}
+
+#[test]
+fn without_a_separator_the_head_ends_at_its_share() {
+    assert_eq!(cut_units("abcdefghijklmnopqrstuvwxyz0123456789", 20.0), "abcdefgh…z0123456789");
+}
+
+#[test]
+fn the_tail_keeps_eight_characters_and_the_head_gives_way() {
+    // The share's 4 characters, "…" and 8 would be 13: the head shrinks to 3.
+    assert_eq!(cut_units("feature/very-long-name-123", 12.0), "fea…name-123");
+    // Too little room for even that: no head, and the tail shrinks.
+    assert_eq!(cut_units("feature/very-long-name-123", 5.0), "…-123");
+    assert_eq!(cut_units("feature/very-long-name-123", 0.5), "…");
+}
+
+#[test]
+fn a_cjk_name_is_cut_between_its_characters() {
+    let name = "機能/ログイン画面の改善と長い名前のブランチ";
+    assert_eq!(cut_units(name, 15.0), "機能…改善と長い名前のブランチ");
+}
+
+#[test]
+fn an_emoji_name_is_cut_between_whole_graphemes() {
+    // Each thumb has a skin-tone modifier: two characters, one grapheme.
+    let name = format!("feature-{}", "👍🏽".repeat(12));
+    assert_eq!(cut_units(&name, 24.0), format!("feature…{}", "👍🏽".repeat(8)));
+    // One unit less: 7½ thumbs would split one, so the head gives way instead.
+    assert_eq!(cut_units(&name, 23.0), format!("featur…{}", "👍🏽".repeat(8)));
+}
+
+#[test]
+fn a_painted_middle_cut_fits_and_says_it_was_cut() {
+    let ctx = ctx();
+    let p = Painter::new(ctx.clone(), LayerId::background(), Rect::EVERYTHING);
+    let f = font();
+    assert_eq!(middle(&p, "main", &f, 200.0), "main");
+    let name = "worktree-agent-a1b2c3d4e5f6";
+    for w in [100.0, 140.0, 170.0] {
+        let cut = middle(&p, name, &f, w);
+        let shown = p.layout_no_wrap(cut.clone(), f.clone(), Color32::WHITE).size().x;
+        assert!(shown <= w, "{cut:?} is {shown} wide in {w}");
+        let (head, tail) = cut.split_once(ELLIPSIS).expect("cut");
+        assert!(name.starts_with(head) && name.ends_with(tail) && tail.chars().count() >= MIN_TAIL, "{w}: {cut:?}");
+    }
+    let at = pos2(0.0, 10.0);
+    assert!(paint_middle(&p, at, name, f.clone(), Color32::WHITE, 100.0).cut);
+    assert!(!paint_middle(&p, at, "main", f.clone(), Color32::WHITE, 100.0).cut);
+    assert!(paint_middle(&p, at, name, f, Color32::WHITE, f32::NAN).cut, "no room paints nothing");
 }
