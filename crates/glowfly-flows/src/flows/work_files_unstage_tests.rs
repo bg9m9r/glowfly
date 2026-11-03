@@ -85,7 +85,7 @@ fn unstage_gone_results() {
     let op = || FileOp::UnstageGone("s.txt".into());
     st.session.diff.view = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Unstaged { undo: None }) }));
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Removed s.txt from the staging area."));
+    assert_eq!(st.newest_toast().map(|t| t.text.as_str()), Some("Removed s.txt from the staging area."));
     assert!(st.session.diff.view.is_none(), "the staged diff of the unstaged file is closed");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
 
@@ -99,7 +99,7 @@ fn unstage_gone_results() {
         let ok = result.is_ok();
         let msg = Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result });
         assert!(run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) }).is_empty());
-        let text = if ok { st.toasts.last().map(|t| t.text.as_str()) } else { st.log.last().map(|l| l.text.as_str()) };
+        let text = if ok { st.newest_toast().map(|t| t.text.as_str()) } else { st.log.last().map(|l| l.text.as_str()) };
         assert_eq!(text, Some(want));
     }
     let _ = std::fs::remove_dir_all(&dir);

@@ -130,9 +130,10 @@ fn pull_request_checkout_asks_with_its_own_op() {
     assert_eq!(text(&work, "a.txt"), "one\ntwo\n", "the changes are back");
     assert_eq!(stash_count(&work), 0);
 
-    // Already checked out, or no longer listed: said in the log, nothing runs.
+    // Already checked out: nothing runs and nothing is said. No longer listed: said in the log.
+    let toasts = st.toasts.len();
     assert!(nothing_ran(&up(&mut st, checkout_pr(12))));
-    assert_eq!(last_log(&st), "feature is already checked out.");
+    assert_eq!(st.toasts.len(), toasts, "no toast for the branch already checked out");
     assert!(nothing_ran(&up(&mut st, checkout_pr(99))));
     assert_eq!(last_log(&st), Lang::En.tr("pr_checkout.gone"));
 
