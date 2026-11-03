@@ -7,7 +7,7 @@
 use super::AppState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::paths;
-use glowfly_core::settings::{RepoColour, Settings, clean_group_name};
+use glowfly_core::settings::{RepoColour, Settings, clean_group_name, default_colours};
 use std::path::{Path, PathBuf};
 
 /// Whether the saved entry `f` is in some group.
@@ -64,6 +64,12 @@ pub fn group_hue(st: &AppState, p: &Path) -> Option<RepoColour> {
 /// Whether any repository or group has a colour (rows keep a swatch's room then).
 pub fn any_colour(s: &Settings) -> bool {
     !s.repo_colours.is_empty() || s.repo_groups.iter().any(|g| g.hue().is_some())
+}
+
+/// Whether every group already has the colour Reset all group colors would give it.
+pub fn colours_at_default(s: &Settings) -> bool {
+    let hues: Vec<Option<RepoColour>> = s.repo_groups.iter().map(|g| g.hue()).collect();
+    default_colours(s.new_group_colour, hues.len()) == hues
 }
 
 /// The saved favorite entry for `p` (its spelling in `favorite_repos`), if it is a favorite.
