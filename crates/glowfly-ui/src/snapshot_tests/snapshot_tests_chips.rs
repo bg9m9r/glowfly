@@ -58,14 +58,14 @@ fn draw(ui: &mut Ui, c: &mut Catalog) {
         }
     });
     row(ui, "SSH", |ui| {
-        prefs::ssh_agent::pill_widget(ui, t, AgentPill::Running(2));
-        prefs::ssh_agent::pill_widget(ui, t, AgentPill::Unreachable);
-        prefs::ssh_card::chip(ui, "agent only", "Only in the agent", color::weak());
+        prefs::ssh_agent_pill(ui, t, AgentPill::Running(2));
+        prefs::ssh_agent_pill(ui, t, AgentPill::Unreachable);
+        prefs::ssh_card_chip(ui, "agent only", "Only in the agent", color::weak());
     });
     row(ui, "Status words", |ui| {
-        pull_request::threads::chip(ui, "Outdated", color::warn());
-        pull_request::threads::chip(ui, "Resolved", color::added());
-        pull_request::threads::chip(ui, "Pending", color::weak());
+        pull_request::thread_chip(ui, "Outdated", color::warn());
+        pull_request::thread_chip(ui, "Resolved", color::added());
+        pull_request::thread_chip(ui, "Pending", color::weak());
         // As the pull request header, its checks, the release notes and Profiles draw them.
         Chip::new(ChipSize::Badge, "Draft").look(Look::new(color::raised(), color::weak())).show(ui);
         Chip::new(ChipSize::Badge, "Required").look(Look::new(color::raised(), color::weak())).show(ui);
@@ -100,12 +100,12 @@ fn draw(ui: &mut Ui, c: &mut Catalog) {
     });
     // Last, so the hovered ×'s tooltip covers no other row.
     row(ui, "Issue labels", |ui| {
-        issue::info::chip(ui, ChipSize::Badge, "open", color::added());
-        issue::info::chip(ui, ChipSize::Chip, "bug", color::text());
-        issue::info::chip(ui, ChipSize::Chip, "good first issue", color::text());
-        let _ = issue::picker::chip(ui, "enhancement");
+        issue::info_chip(ui, ChipSize::Badge, "open", color::added());
+        issue::info_chip(ui, ChipSize::Chip, "bug", color::text());
+        issue::info_chip(ui, ChipSize::Chip, "good first issue", color::text());
+        let _ = issue::picker_chip(ui, "enhancement");
         let at = ui.cursor().left();
-        let _ = issue::picker::chip(ui, "ui");
+        let _ = issue::picker_chip(ui, "ui");
         c.picker = Some(Rect::from_min_max(pos2(at, ui.min_rect().top()), ui.min_rect().max));
     });
 }

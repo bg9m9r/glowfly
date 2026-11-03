@@ -7,6 +7,7 @@
 pub use super::empty_state_icons::EmptyIcon;
 pub(super) use super::empty_state_icons::paint;
 use super::theme::color;
+use super::theme::sizes::ControlSize;
 use super::widgets::buttons::{self, StyledButton};
 use super::widgets::severity::{self, Severity};
 use crate::ui::theme::type_scale;
@@ -21,8 +22,8 @@ const ICON: f32 = 40.0;
 const SPINNER: f32 = 24.0;
 /// The least space above the block, on a short pane (and in a scroll area).
 const MIN_TOP: f32 = 24.0;
-/// The height of a row of buttons.
-const BUTTON_H: f32 = 28.0;
+/// The height of a row of buttons: a Regular button's.
+const BUTTON_H: f32 = ControlSize::Regular.metrics().h;
 
 pub(super) const BINARY_TITLE: &str = "Binary file";
 pub(super) const BINARY_HINT: &str = "Changes inside binary files aren't shown.";
