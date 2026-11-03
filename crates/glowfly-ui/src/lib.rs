@@ -76,6 +76,7 @@ mod forge_filter_dialog;
 mod forge_filter_menu;
 mod frame_layout;
 pub mod frame_overlay;
+mod getting_started;
 mod git_banner;
 mod gitflow_dialog;
 mod gitflow_finish_dialog;

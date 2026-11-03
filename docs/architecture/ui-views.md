@@ -20,6 +20,7 @@ start with `state/`, `update/` or `ui/`.
 - `welcome_art.rs`: the band's lattice drawing per theme.
 - `welcome_cards.rs`: the action cards: the Start step's three choices and the start page's row of four.
 - `tour.rs`: the tour of the main window.
+- `getting_started.rs`: Help > Getting started: the feature cards by group, each with Show me.
 
 ## Blame and the file history's File view
 

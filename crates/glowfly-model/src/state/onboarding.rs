@@ -7,6 +7,9 @@ use super::touched::Touched;
 use glowfly_core::i18n::Lang;
 use glowfly_core::identity::Identity;
 
+#[path = "getting_started.rs"]
+pub mod getting_started;
+
 /// The activity log line after the identity step wrote the name and email.
 pub const SAVED_LOG: &str = "Saved your name and email to the global git config";
 
@@ -27,6 +30,8 @@ pub struct Onboarding {
     pub hints_shown_this_session: u32,
     /// The welcome ran this launch: no tips until the next one.
     pub quiet_session: bool,
+    /// Help > Getting started, while its page is open.
+    pub getting_started: Option<getting_started::GettingStarted>,
 }
 
 /// The welcome's steps, in order.
