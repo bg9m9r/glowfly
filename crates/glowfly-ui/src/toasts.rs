@@ -5,7 +5,7 @@
 //! pointer over a toast, or the keyboard focus on one of its buttons, holds it
 //! (`NotifyMsg::HoldToast`): it neither fades nor expires. With Announcements on (Preferences >
 //! Accessibility) each toast's text is a live region screen readers read as it appears: politely,
-//! or at once for a failure.
+//! or at once for a failure, and again when a failure is shown again (`text_key`).
 
 use super::access::{self, Live};
 use super::theme::color;
@@ -13,7 +13,7 @@ use super::theme::surfaces::Tone;
 use super::theme::tokens::{self, Elevation, radius};
 use super::widgets::{self, buttons};
 use crate::msg::{Msg, NotifyMsg};
-use crate::state::AppState;
+use crate::state::{AppState, Toast};
 use crate::ui::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Stroke, Vec2, vec2};
 use glowfly_core::settings::Corner;
@@ -95,7 +95,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                             ui.set_width(TOAST_W - 2.0 * f32::from(PAD_X) - CLOSE_SLOT);
                             let text = ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
                             if announce {
-                                access::announce(&text, text_key(t.id), if t.ok { Live::Polite } else { Live::Assertive });
+                                access::announce(&text, text_key(t), if t.ok { Live::Polite } else { Live::Assertive });
                             }
                         });
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
@@ -144,10 +144,12 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
     }
 }
 
-/// The accessibility key of toast `id`'s text while it is announced: the toast's own, so it
-/// isn't announced again when a toast above it closes.
-pub(crate) fn text_key(id: u64) -> egui::Id {
-    egui::Id::new(("toast-text", id))
+/// The accessibility key of toast `t`'s text while it is announced: the toast's own, so it isn't
+/// announced again when a toast above it closes. A failure shown again in place
+/// (`Toast::shown`) gets a new key, so it is announced again for a retry that failed the same
+/// way; a success shown again stays quiet.
+pub(crate) fn text_key(t: &Toast) -> egui::Id {
+    if t.ok { egui::Id::new(("toast-text", t.id)) } else { egui::Id::new(("toast-text", t.id, t.shown)) }
 }
 
 #[cfg(test)]

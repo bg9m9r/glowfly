@@ -1,6 +1,6 @@
 //! Screen-reader announcements (Preferences > Accessibility > Announcements): each toast's text
 //! and the status bar's job are AccessKit live regions, polite but assertive for a failure, under
-//! keys that stay put while other toasts close or the same toast is shown again; a quiet job (auto-fetch) never is; with Announcements off they are plain labels.
+//! keys that stay put while other toasts close or a success is shown again (a failure shown again is read again); a quiet job (auto-fetch) never is; with Announcements off they are plain labels.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_partial::job;
@@ -44,19 +44,31 @@ fn toasts_and_the_job_are_live_regions() {
     assert_eq!(h.get_by_label(DONE).live(), Live::Polite, "a success waits its turn");
     assert_eq!(h.get_by_label(FAILED).live(), Live::Assertive, "a failure interrupts");
     assert_eq!(h.get_by_label(JOB).live(), Live::Polite);
-    let failure = h.state().0.toasts[1].id;
-    assert_eq!(h.get_by_label(FAILED).id(), node(toasts::text_key(failure)));
+    let failure = toasts::text_key(&h.state().0.toasts[1]);
+    assert_eq!(h.get_by_label(FAILED).id(), node(failure));
     assert_eq!(h.get_by_label(JOB).id(), node(status::job_key()));
     // The toast above closes: the failure keeps its node, so it isn't announced again.
     h.state_mut().0.toasts.remove(0);
     h.run_steps(2);
     assert!(h.query_by_label(DONE).is_none());
-    assert_eq!(h.get_by_label(FAILED).id(), node(toasts::text_key(failure)), "the same node");
-    // The same failure again restarts that toast: one node, still its own, not announced twice.
+    assert_eq!(h.get_by_label(FAILED).id(), node(failure), "the same node");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn a_failure_shown_again_is_announced_again_and_a_success_is_not() {
+    let (mut h, dir) = busy("announce-again", true);
+    let (done, failure) = (toasts::text_key(&h.state().0.toasts[0]), toasts::text_key(&h.state().0.toasts[1]));
+    // A retry that fails the same way, and a success said again: one toast each still.
     h.state_mut().0.toast(false, FAILED, Instant::now());
+    h.state_mut().0.toast(true, DONE, Instant::now());
     h.run_steps(2);
-    assert_eq!(h.state().0.toasts.len(), 1);
-    assert_eq!(h.get_by_label(FAILED).id(), node(toasts::text_key(failure)), "shown again, the same node");
+    assert_eq!(h.state().0.toasts.len(), 2, "shown again, not copied");
+    let again = h.get_by_label(FAILED);
+    assert_ne!(again.id(), node(failure), "a new node: the failure is read out again");
+    assert_eq!(again.live(), Live::Assertive);
+    assert_eq!(h.get_by_label(DONE).id(), node(done), "the success keeps its node, so it stays quiet");
     drop(h);
     remove_fixture(&dir);
 }
