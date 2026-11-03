@@ -186,7 +186,8 @@ mod tests {
         std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
         let start = Instant::now();
         assert_eq!(read_login_path(&shell, Duration::from_millis(300)), None);
-        assert!(start.elapsed() < Duration::from_secs(5), "{:?}", start.elapsed());
+        // Well short of the shell's 30 s: given up on, with a margin for a loaded machine.
+        assert!(start.elapsed() < Duration::from_secs(20), "{:?}", start.elapsed());
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

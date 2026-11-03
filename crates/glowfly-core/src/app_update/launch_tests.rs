@@ -47,7 +47,8 @@ fn a_probe_that_hangs_is_killed() {
     let started = Instant::now();
     let err = probe(shell(script), "glowfly 1.2.3", Duration::from_millis(300)).unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
-    assert!(started.elapsed() < Duration::from_secs(10), "{:?}", started.elapsed());
+    // Well short of the script's 30 s: killed, with a margin for a loaded machine.
+    assert!(started.elapsed() < Duration::from_secs(20), "{:?}", started.elapsed());
 }
 
 /// The real try on Unix: a script that answers like this build runs, and one that doesn't, or

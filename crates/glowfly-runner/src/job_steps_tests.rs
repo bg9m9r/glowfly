@@ -4,6 +4,7 @@
 
 use super::*;
 use glowfly_core::gitcli::args;
+use glowfly_core::testkit::procs::{pid_in, wait_for, wait_gone_or, write_pid};
 use std::cell::RefCell;
 use std::path::PathBuf;
 
@@ -33,19 +34,36 @@ fn sh_path(p: &Path) -> String {
     p.display().to_string().replace('\\', "/")
 }
 
-/// A remote program that hangs: it writes `marker` after 3 s unless it was stopped first.
-fn hanging(marker: &Path) -> String {
-    format!("sleep 3; echo late > '{}'; sleep 20; :", sh_path(marker))
+/// The file a remote program from `hanging` writes its process id to once it runs.
+fn pid_file(marker: &Path) -> PathBuf {
+    marker.with_extension("pid")
 }
 
-/// Stops `stop` once `ready` holds (or after 20 s).
+/// A remote program that hangs: it writes its process id to `pid_file(marker)` as it starts,
+/// and `marker` 3 s later unless it was stopped first.
+fn hanging(marker: &Path) -> String {
+    format!("{}; sleep 3; echo late > '{}'; sleep 20; :", write_pid(&pid_file(marker)), sh_path(marker))
+}
+
+/// Whether the remote program from `hanging` runs (has run) yet.
+fn started(marker: &Path) -> impl Fn() -> bool + Send + 'static {
+    let file = pid_file(marker);
+    move || file.exists()
+}
+
+/// Waits for the remote program from `hanging` to be gone after the stop, then checks it never
+/// got as far as writing `marker`.
+fn assert_ended(marker: &Path) {
+    let pid = pid_in(&pid_file(marker)).expect("the remote program ran");
+    wait_gone_or(pid, Duration::from_secs(30), || marker.exists());
+    assert!(!marker.exists(), "the remote program git started outlived the stop");
+}
+
+/// Stops `stop` once `ready` holds (or after a minute, when the test's checks fail).
 fn stop_when(stop: &Stop, ready: impl Fn() -> bool + Send + 'static) {
     let asker = stop.clone();
     std::thread::spawn(move || {
-        let until = Instant::now() + Duration::from_secs(20);
-        while !ready() && Instant::now() < until {
-            std::thread::sleep(Duration::from_millis(20));
-        }
+        wait_for(Duration::from_secs(60), ready);
         asker.stop();
     });
 }
@@ -57,6 +75,7 @@ fn run_stopped(cwd: &Path, cmds: &[Vec<String>], ready: impl Fn() -> bool + Send
     let sent = RefCell::new(Vec::new());
     let started = Instant::now();
     let ran = run(cwd, cmds, false, &stop, &|m| sent.borrow_mut().push(m), false);
+    // A remote program runs 23 s: well under that means it was stopped.
     assert!(started.elapsed() < Duration::from_secs(15), "took {:?}: {}", started.elapsed(), ran.output);
     (ran, sent.into_inner())
 }
@@ -75,16 +94,15 @@ fn a_stopped_fetch_ends_what_it_started_and_removes_what_it_left_behind() {
     let url = format!("file://{}", sh_path(&origin));
     let upload = format!("--upload-pack=echo x > '{}'; {}", sh_path(&lock), hanging(&marker));
     let cmds = [args(&["fetch", &upload, &url]), args(&["status"])];
-    let watched = lock.clone();
-    let (ran, sent) = run_stopped(&work, &cmds, move || watched.exists());
+    // The remote program writes the lock before it hangs.
+    let (ran, sent) = run_stopped(&work, &cmds, started(&marker));
     assert!(ran.stopped && !ran.ok, "{}", ran.output);
     assert!(ran.output.contains("Cancelled.") && ran.output.contains("Removed 1 file the stopped command left behind."), "{}", ran.output);
     assert!(!ran.output.contains("$ git status"), "nothing after the stopped command runs");
     assert!(!lock.exists());
     assert_eq!(steps(&sent), [Step::Fetch]);
     // The remote program git started was stopped with it.
-    std::thread::sleep(Duration::from_secs(4));
-    assert!(!marker.exists(), "the upload-pack git started outlived the stop");
+    assert_ended(&marker);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -97,18 +115,13 @@ fn a_stopped_push_is_reported_stopped() {
     let url = format!("file://{}", sh_path(&origin));
     let receive = format!("--receive-pack={}", hanging(&marker));
     let cmds = [args(&["push", &receive, &url, "main:refs/heads/new"])];
-    let (ran, sent) = run_stopped(&work, &cmds, || waited(Duration::from_millis(1500)));
+    let (ran, sent) = run_stopped(&work, &cmds, started(&marker));
     assert!(ran.stopped && !ran.ok, "{}", ran.output);
     assert_eq!(steps(&sent), [Step::Push]);
+    assert_ended(&marker);
     let (_, refs) = gitcli::run(&origin, &args(&["branch", "--list", "new"]));
     assert!(refs.trim().is_empty(), "the remote is as it was: {refs}");
     let _ = std::fs::remove_dir_all(&dir);
-}
-
-/// A condition that holds once `d` has passed since the first time it is asked.
-fn waited(d: Duration) -> bool {
-    std::thread::sleep(d);
-    true
 }
 
 #[test]
@@ -120,8 +133,8 @@ fn a_stopped_clone_removes_the_folder_it_made() {
     let upload = format!("--upload-pack={}", hanging(&marker));
     let dest = dir.join("copy");
     let cmds = [args(&["clone", &upload, "--", &url, "copy"])];
-    let made = dest.join(".git");
-    let (ran, sent) = run_stopped(&dir, &cmds, move || made.exists() || waited(Duration::from_millis(1500)));
+    // The remote program starts after clone made the folder.
+    let (ran, sent) = run_stopped(&dir, &cmds, started(&marker));
     assert!(ran.stopped, "{}", ran.output);
     assert_eq!(steps(&sent), [Step::Clone]);
     assert!(!dest.exists(), "{}", ran.output);
@@ -139,8 +152,7 @@ fn a_stopped_clone_keeps_an_empty_folder_that_was_there() {
     let url = format!("file://{}", sh_path(&origin));
     let upload = format!("--upload-pack={}", hanging(&marker));
     let cmds = [args(&["clone", &upload, "--", &url, "picked"])];
-    let made = dest.join(".git");
-    let (ran, _) = run_stopped(&dir, &cmds, move || made.exists() || waited(Duration::from_millis(1500)));
+    let (ran, _) = run_stopped(&dir, &cmds, started(&marker));
     assert!(ran.stopped, "{}", ran.output);
     assert!(dest.is_dir(), "the folder the user picked is kept: {}", ran.output);
     assert_eq!(std::fs::read_dir(&dest).unwrap().count(), 0, "{}", ran.output);
@@ -160,7 +172,7 @@ fn a_stopped_pull_stops_in_its_fetch_and_never_merges() {
     let before = head();
     let upload = format!("--upload-pack={}", hanging(&marker));
     let cmds = [args(&["pull", "--ff-only", &upload])];
-    let (ran, sent) = run_stopped(&work, &cmds, || waited(Duration::from_millis(1500)));
+    let (ran, sent) = run_stopped(&work, &cmds, started(&marker));
     assert!(ran.stopped, "{}", ran.output);
     assert_eq!(steps(&sent), [Step::Fetch], "{}", ran.output);
     assert_eq!(head(), before, "nothing was merged");
@@ -171,10 +183,11 @@ fn a_stopped_pull_stops_in_its_fetch_and_never_merges() {
 fn a_local_command_runs_to_its_end_and_the_stop_comes_before_the_next() {
     let dir = temp("local");
     repo(&dir);
-    let done = dir.join("done");
-    let alias = format!("alias.slow=!sleep 2 && echo x > '{}'", sh_path(&done));
+    let (done, began) = (dir.join("done"), dir.join("slow.pid"));
+    let alias = format!("alias.slow=!{} && sleep 2 && echo x > '{}'", write_pid(&began), sh_path(&done));
     let cmds = [args(&["-c", &alias, "slow"]), args(&["fetch", "--all"])];
-    let (ran, sent) = run_stopped(&dir, &cmds, || waited(Duration::from_millis(300)));
+    // The stop comes while the local command runs.
+    let (ran, sent) = run_stopped(&dir, &cmds, move || began.exists());
     assert!(ran.stopped && !ran.ok, "{}", ran.output);
     assert!(done.exists(), "the local command wasn't killed: {}", ran.output);
     assert_eq!(steps(&sent), [Step::Local], "the fetch never started");
