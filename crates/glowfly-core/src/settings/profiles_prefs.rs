@@ -167,6 +167,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "reduce_motion",
     "branch_palette",
     "cursor_blink",
+    "focus_style",
     "toast_time",
     "tooltip_delay",
     "follow_system_text_size",

@@ -123,7 +123,7 @@ fn shortcut_sheet_history() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("shortcut_sheet_history");
-    for label in ["Editing history", "Reword the selected commit", "Continue the rebase"] {
+    for label in ["Editing history", "Reword the selected commit", "Continue the merge, rebase or cherry-pick"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     drop(h);

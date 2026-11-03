@@ -1,7 +1,8 @@
-//! A text field that underlines misspellings and offers corrections on right-click.
+//! A Regular text field that underlines misspellings and offers corrections on right-click.
 
 use super::theme::color;
-use crate::ui::theme::controls;
+use crate::ui::theme::controls::SizedField;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::menu::{context_menu, separator, submenu};
 use eframe::egui::{self, Stroke, TextFormat, text::LayoutJob};
@@ -26,7 +27,8 @@ pub fn spell_text_edit(
         ui.fonts(|f| f.layout_job(job))
     };
     let edit = if rows <= 1 { egui::TextEdit::singleline(text) } else { egui::TextEdit::multiline(text).desired_rows(rows) };
-    let resp = controls::field(ui, edit.hint_text(hint).desired_width(f32::INFINITY).layouter(&mut layouter));
+    let field = SizedField::new(ControlSize::Regular, edit.hint_text(hint).layouter(&mut layouter));
+    let resp = ui.add(if rows <= 1 { field } else { field.multiline() });
     if enabled {
         let misses = speller.check(text);
         if !misses.is_empty() {

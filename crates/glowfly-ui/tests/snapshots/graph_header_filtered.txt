@@ -98,8 +98,6 @@ painted:
   "3"
   "Remote"
   "0"
-  "Tags"
-  "1"
   "Any author"
   "Branch / tag"
   "Graph"

@@ -1,21 +1,19 @@
-//! A dialog's text field: 36 px tall with single-line text centred, 10 px of side padding, the
+//! A dialog's text field: Large (36 px) unless given a `ControlSize`, with single-line text
+//! centred, the field padding of `theme::controls::field_margin` (10 px at the sides), the
 //! faint accent-tinted `color::field_fill()`, and `theme::controls::Field`'s edge and focus ring
 //! (the only code that draws them), with a soft accent halo outside the ring while focused
-//! (`tokens::focus_halo`). A multiline field gets the same fill, edge and padding, and
+//! (`tokens::focus_halo`; the field's Strong focus ring in its place under Strong). A multiline field gets the same fill, edge and padding, and
 //! keeps its rows. Ids, hints, focus, masking and char limits behave as the plain `TextEdit`.
 //! Labels, help and messages around a field are `field_group`'s.
 
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::{self, radius};
 use crate::ui::theme::{color, controls};
 use crate::ui::widgets::buttons::StyledButton;
-use eframe::egui::{self, Align, Id, Key, Margin, Response, Ui, WidgetText, vec2};
+use eframe::egui::{self, Align, Id, Key, Response, Ui, WidgetText, vec2};
 
-/// A field's height, and a multiline field's least height.
-pub const HEIGHT: f32 = 36.0;
-/// The padding at the text's left and right.
-const PAD_X: i8 = 10;
-/// The padding above and below a multiline field's text (a single-line field is centred).
-const PAD_Y: i8 = 8;
+/// A dialog field's height, and a multiline field's least height.
+pub const HEIGHT: f32 = ControlSize::Large.metrics().h;
 
 /// A text field to add with `ui.add`; fills the row unless given a `width`.
 pub struct TextField<'t> {
@@ -26,12 +24,13 @@ pub struct TextField<'t> {
     width: Option<f32>,
     password: bool,
     char_limit: Option<usize>,
+    size: ControlSize,
 }
 
 impl<'t> TextField<'t> {
     /// A single-line field.
     pub fn new(text: &'t mut dyn egui::TextBuffer) -> Self {
-        Self { text, multiline: None, id: None, hint: None, width: None, password: false, char_limit: None }
+        Self { text, multiline: None, id: None, hint: None, width: None, password: false, char_limit: None, size: ControlSize::Large }
     }
 
     /// A multiline field `rows` lines tall (at least `HEIGHT`).
@@ -62,6 +61,12 @@ impl<'t> TextField<'t> {
         self
     }
 
+    /// Its size: Large (the default, in dialogs) or Regular (inline, as in Preferences).
+    pub fn size(mut self, size: ControlSize) -> Self {
+        self.size = size;
+        self
+    }
+
     pub fn char_limit(mut self, limit: usize) -> Self {
         self.char_limit = Some(limit);
         self
@@ -70,15 +75,15 @@ impl<'t> TextField<'t> {
 
 impl egui::Widget for TextField<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let TextField { text, multiline, id, hint, width, password, char_limit } = self;
+        let TextField { text, multiline, id, hint, width, password, char_limit, size } = self;
         let rows = multiline.unwrap_or(1);
         let edit = if multiline.is_some() { egui::TextEdit::multiline(text) } else { egui::TextEdit::singleline(text) };
-        let margin = Margin::symmetric(PAD_X, PAD_Y);
+        let margin = controls::field_margin(size, multiline.is_some(), None);
         let inner_w = width.map_or(f32::INFINITY, |w| (w - margin.sum().x).max(0.0));
         let align = if multiline.is_some() { Align::Min } else { Align::Center };
         let mut edit = edit
             .margin(margin)
-            .min_size(vec2(0.0, HEIGHT))
+            .min_size(vec2(0.0, size.metrics().h))
             .vertical_align(align)
             .background_color(color::field_fill())
             .desired_width(inner_w)

@@ -89,3 +89,4 @@ painted:
   "Default branch name"
   "Auto-fetch interval"
   "Auto-prune"
+  "Submodules"

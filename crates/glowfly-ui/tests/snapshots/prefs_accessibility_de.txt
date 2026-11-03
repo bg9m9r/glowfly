@@ -1,4 +1,4 @@
-window 760x1400
+window 760x1500
 Label "Glowfly 0.1.0"
 Button "Zurück"
 Label "Einstellungen"
@@ -25,11 +25,14 @@ Label "Bewegung"
 Label "Bewegung reduzieren"
 CheckBox "Bewegung reduzieren, Ein- und Ausblenden abschalten" [off]
 CheckBox "Bewegung reduzieren, Auch wenn das System weniger Bewegung wünscht" [on]
-Label "Tooltips und Popups erscheinen ohne Ein- oder Überblenden"
+Label "Tooltips und Popups erscheinen ohne Ein- oder Überblenden."
 Label "Blinkender Cursor"
 CheckBox "Blinkender Cursor, Textcursor blinken lassen" [on]
 Label "Der Cursor in Textfeldern. Der im Terminal blinkt nie."
 Label "Tastatur"
+Label "Fokusanzeige"
+ComboBox "Fokusanzeige"
+Label "Deutlich zeichnet einen dickeren Rahmen mit einer Kontur, die auf jeder Farbe sichtbar ist."
 Label "Tastenkürzel"
 Button "Tastenkürzel ändern…"
 Button "Alle Tastenkürzel zeigen"
@@ -60,5 +63,6 @@ painted:
   "Ein- und Ausblenden abschalten"
   "Auch wenn das System weniger Bewegung wünscht"
   "Textcursor blinken lassen"
+  "Standard"
   "Standard (5 s)"
   "Kurz (0,4 s)"

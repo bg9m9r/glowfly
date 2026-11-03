@@ -7,6 +7,11 @@ branch/remote/tag/stash sidebar, and a right-hand panel for commit details or st
 committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps, Jira and Trello for pull
 requests and issues.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png">
+  <img src="docs/screenshots/overview-light.png" width="880" alt="Glowfly's main window: commit graph with branches and tags, sidebar, and the staging and commit panel">
+</picture>
+
 Glowfly is an independent project. It is not affiliated with or endorsed by any other Git client,
 hosting service, issue tracker or operating system vendor; product names are used only to
 describe compatibility. All trademarks are the property of their owners.
@@ -69,6 +74,11 @@ goal and scope, and [docs/ideas](docs/ideas/README.md) holds untriaged ideas.
 
 ## What it does
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/diff-dark.png">
+  <img src="docs/screenshots/diff-light.png" width="880" alt="Split diff of a Rust file with syntax highlighting and word-level changes">
+</picture>
+
 - **Commit graph**: lane layout with merge/fork curves, branch, remote and tag badges, a
   "Uncommitted changes" row above HEAD when the tree is dirty, ↑/↓ keyboard navigation, and commit search
   (Enter jumps to the next match).
@@ -94,6 +104,11 @@ goal and scope, and [docs/ideas](docs/ideas/README.md) holds untriaged ideas.
   Commands submenu of the commit, branch and file menus, and on keys you choose. A repository's
   own commands run only once you trust it. See [docs/CUSTOM_COMMANDS.md](docs/CUSTOM_COMMANDS.md).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/conflicts-dark.png">
+  <img src="docs/screenshots/conflicts-light.png" width="880" alt="Conflict resolver with ours, theirs and the merged output, picking lines from each side">
+</picture>
+
 ## Hosting services and issue trackers
 
 | Service | Pull/merge requests | Issues | Sign-in |
@@ -113,6 +128,11 @@ connect it. The `*_TOKEN` environment variables are used only for github.com, gi
 Azure DevOps, never for self-hosted servers. The issue tracker defaults to the host's own issues, and can be switched
 to a connected Jira site (optionally one project) or a connected Trello account (optionally one
 board) under Preferences > This repository > Issue tracker.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/pull-request-dark.png">
+  <img src="docs/screenshots/pull-request-light.png" width="880" alt="Pull request review: changed files and a new comment on a line">
+</picture>
 
 - **Pull requests**: a PULL REQUESTS (or MERGE REQUESTS) sidebar section with drafts, approval
   counts and a reviewer tooltip, plus badges on the head commit in the graph. You can open,

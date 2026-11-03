@@ -192,3 +192,59 @@ fn a_repository_without_a_colour_takes_its_groups() {
     run(&mut st, GroupMsg::SetColour { group: 0, colour: None });
     assert_eq!(tab_colour(&st, 0), None);
 }
+
+#[test]
+fn adding_repositories_stars_moves_and_appends_them_with_one_save() {
+    let mut st = grouped();
+    move_to(&mut st, "/w/b", Some(1), 0);
+    let add = paths(&["/w/x", "/w/b", "/w/c", "/w/a"]);
+    let fx = run(&mut st, GroupMsg::AddRepos { group: 0, paths: add });
+    assert_eq!(saves(&fx), 1, "one save for them all: {fx:?}");
+    assert_eq!(members(&st.settings, 0), paths(&["/w/c", "/w/x", "/w/b", "/w/a"]), "c stays put; the rest follow in order");
+    assert!(members(&st.settings, 1).is_empty(), "b moved out of Home");
+    assert!(st.settings.favorite_repos.contains(&"/w/x".to_owned()), "a Recent repository is starred");
+    assert!(run(&mut st, GroupMsg::AddRepos { group: 0, paths: paths(&["/w/c/", "/w/a"]) }).is_empty(), "all there already");
+    assert!(run(&mut st, GroupMsg::AddRepos { group: 4, paths: paths(&["/w/d"]) }).is_empty(), "no such group");
+    assert!(!st.settings.repo_groups.iter().any(|g| g.repos.contains(&"/w/d".to_owned())));
+}
+
+#[test]
+fn the_add_picker_lists_what_can_join_and_adds_in_list_order() {
+    let mut st = grouped();
+    move_to(&mut st, "/w/d", Some(1), 0);
+    st.recent = paths(&["/w/r", "/w/a", "/w/gone", "/w/s"]);
+    st.missing_repos = paths(&["/w/gone"]);
+    run(&mut st, GroupMsg::AddDialog(0));
+    let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
+    let rows: Vec<(PathBuf, Option<usize>, bool)> = p.rows.iter().map(|r| (r.path.clone(), r.other_group, r.recent)).collect();
+    let want = [("/w/a", None, false), ("/w/b", None, false), ("/w/d", Some(1), false), ("/w/r", None, true), ("/w/s", None, true)];
+    let want: Vec<_> = want.iter().map(|(p, g, r)| (PathBuf::from(p), *g, *r)).collect();
+    assert_eq!(rows, want, "ungrouped favorites, other groups' members, then Recent without favorites or missing ones");
+    assert!(!p.filtered(), "five rows need no filter");
+    let (d, a) = (p.rows[2].clone(), p.rows[0].clone());
+    p.toggle(&d);
+    p.toggle(&a);
+    p.toggle(&p.rows[3].clone());
+    p.toggle(&p.rows[3].clone());
+    let picked = p.picked();
+    assert_eq!(picked, paths(&["/w/a", "/w/d"]), "list order, not tick order; untick works");
+    let fx = run(&mut st, GroupMsg::AddRepos { group: 0, paths: picked });
+    assert_eq!(saves(&fx), 1);
+    assert!(st.modal.is_none(), "Add closes the picker");
+    assert_eq!(members(&st.settings, 0), paths(&["/w/c", "/w/a", "/w/d"]));
+    run(&mut st, GroupMsg::AddDialog(7));
+    assert!(st.modal.is_none(), "no such group");
+}
+
+#[test]
+fn a_long_picker_filters_and_keeps_hidden_ticks() {
+    let mut st = grouped();
+    st.recent = (0..8).map(|i| PathBuf::from(format!("/r/repo{i}"))).collect();
+    run(&mut st, GroupMsg::AddDialog(1));
+    let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
+    assert!(p.filtered(), "{} rows", p.rows.len());
+    p.toggle(&p.rows[0].clone());
+    p.filter = "repo3".into();
+    assert_eq!(p.shown().map(|r| r.path.clone()).collect::<Vec<_>>(), paths(&["/r/repo3"]));
+    assert_eq!(p.picked(), paths(&["/w/a"]), "the hidden tick stays");
+}

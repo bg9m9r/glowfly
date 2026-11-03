@@ -145,6 +145,7 @@ pub(super) mod snapshot_tests_ref_sync;
 pub(super) mod snapshot_tests_remote_branch;
 pub(super) mod snapshot_tests_remotes;
 pub(super) mod snapshot_tests_repo_finder;
+pub(super) mod snapshot_tests_repo_group_picker;
 pub(super) mod snapshot_tests_repo_groups;
 pub(super) mod snapshot_tests_repo_list;
 pub(super) mod snapshot_tests_repo_menu;

@@ -1,0 +1,19 @@
+Dialog
+  Label "Zu Work hinzufügen"
+  Button "Diesen Dialog schließen"
+  Label "Favoriten"
+  CheckBox "docs" [on]
+  Label "C:\\work"
+  CheckBox "notes" [off]
+  Label "C:\\work"
+  CheckBox "api-server" [off]
+  Label "In Home"
+  Label "C:\\work"
+  Label "Zuletzt verwendet"
+  Label "Wird beim Hinzufügen favorisiert"
+  CheckBox "cli" [on]
+  Label "C:\\work"
+  CheckBox "site" [off]
+  Label "C:\\work"
+  Button "Abbrechen"
+  Button "2 hinzufügen" [focused]

@@ -56,8 +56,6 @@ Button "src/module_04.rs" [off]
 Label "M"
 Button "src/module_05.rs" [off]
 Label "M"
-Button "src/module_06.rs" [off]
-Label "M"
 Button "Show as tree"
 Button "Unstage all"
 Label "Staged files (25)"
@@ -71,8 +69,6 @@ Label "A"
 Button "src/module_04.rs" [off]
 Label "A"
 Button "src/module_05.rs" [off]
-Label "A"
-Button "src/module_06.rs" [off]
 Label "A"
 Label "Commit"
 CheckBox "Amend" [off]

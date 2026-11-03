@@ -106,14 +106,15 @@ fn ids_are_stable() {
     assert_eq!(BindingId::from_key("New-Tab"), None);
     assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
     assert_eq!(
-        BindingId::ALL[BindingId::ALL.len() - 33..BindingId::ALL.len() - 29],
+        BindingId::ALL[BindingId::ALL.len() - 39..BindingId::ALL.len() - 35],
         [BindingId::SendPrText, BindingId::Quit, BindingId::PrefsSave, BindingId::PrefsRevert]
     );
     assert_eq!(BindingId::from_key("wip-other-list"), Some(BindingId::WipOtherList));
     assert_eq!(BindingId::from_key("file-list-step-file"), Some(BindingId::FileStepFile));
     assert_eq!(BindingId::from_key("focus-sidebar"), Some(BindingId::FocusSidebar));
     assert_eq!(BindingId::from_key("copy-commit-ids"), Some(BindingId::CopyCommitIds));
-    assert_eq!(BindingId::ALL.last(), Some(&BindingId::OpenDashboard));
+    assert_eq!(BindingId::ALL.last(), Some(&BindingId::ConflictMarkResolved));
+    assert_eq!(BindingId::from_key("conflict-clear-picks"), Some(BindingId::ConflictClear));
     assert_eq!(BindingId::from_key("save-preferences-page"), Some(BindingId::PrefsSave));
 }
 
@@ -186,6 +187,12 @@ fn rebindable_set() {
         I::PrevRefCommit,
         I::NextRefCommit,
         I::CopyCommitIds,
+        I::ConflictTakeOurs,
+        I::ConflictTakeTheirs,
+        I::ConflictTakeBoth,
+        I::ConflictTakeBothTheirsFirst,
+        I::ConflictClear,
+        I::ConflictMarkResolved,
     ];
     assert_eq!(rebindable, want);
 }

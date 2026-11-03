@@ -25,6 +25,7 @@ use crate::state::panel_layout::Fit;
 use crate::state::session_view::empty_sections::Folding;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::widgets::menu::separator;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui;
@@ -56,10 +57,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         ui.horizontal(|ui| {
             ui.add_space(widgets::PAD_X);
             let width = ui.available_width() - widgets::PAD_X;
-            let (hint, cut) = widgets::truncate::hint(ui, filter_hint, width);
+            let (hint, cut) = widgets::truncate::hint(ui, filter_hint, controls::field_text_width(width));
             let empty = st.session.tab_view.ref_filter.is_empty();
-            let r =
-                controls::field(ui, egui::TextEdit::singleline(&mut st.session.tab_view.ref_filter).hint_text(hint).desired_width(width));
+            let edit = egui::TextEdit::singleline(&mut st.session.tab_view.ref_filter).hint_text(hint);
+            let r = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(width));
             if empty && cut {
                 r.on_hover_text(filter_hint);
             }

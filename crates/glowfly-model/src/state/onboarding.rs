@@ -9,8 +9,6 @@ use glowfly_core::identity::Identity;
 
 /// The activity log line after the identity step wrote the name and email.
 pub const SAVED_LOG: &str = "Saved your name and email to the global git config";
-/// The toast after the tour's last step.
-pub const TOUR_DONE: &str = "That's the tour. The command palette can run it again.";
 
 /// The welcome and the tour (global, not per tab).
 #[derive(Default)]
@@ -81,7 +79,8 @@ impl WelcomeStep {
 pub struct Welcome {
     pub step: WelcomeStep,
     pub identity: IdentityForm,
-    /// "Show me around once it opens" (edited in place by the view).
+    /// "Show me around once it opens" (edited in place by the view): off until ticked; the tour
+    /// stays a click away from Help, the palette and this step.
     pub tour_after: bool,
     /// "Show authors' pictures from Gravatar" (edited in place by the view): seeded from
     /// `settings.avatar_lookups` and written back when the welcome closes.
@@ -94,7 +93,7 @@ impl Welcome {
         Welcome {
             step: WelcomeStep::Identity,
             identity: IdentityForm { reading: true, ..IdentityForm::default() },
-            tour_after: true,
+            tour_after: false,
             avatars: false,
         }
     }
