@@ -66,7 +66,7 @@ fn render(theme: ThemeChoice, name: &str) {
     h.get_by_label("1a2b3c4").click();
     h.run();
     let url = "https://github.com/acme/demo/commit/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b";
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u == url)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenLink { url: u, .. } if u == url)));
     drop(h);
     remove_fixture(&dir);
 }

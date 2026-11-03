@@ -111,6 +111,27 @@ fn matches_loaded_pull_requests() {
 }
 
 #[test]
+fn labels_cleaned_at_ingest_still_match_the_choices_as_the_service_names_them() {
+    // The list's labels went through `clean_text` (ZWJ dropped, spaces collapsed); the filter's
+    // choices and saved conditions keep the service's own text.
+    let mut p = pr(
+        1,
+        PrFacets {
+            labels: vec!["\u{1f9d1}\u{200d}\u{1f4bb} frontend".into(), "needs  review".into()],
+            milestone: Some("v1\u{200b}".into()),
+            ..Default::default()
+        },
+    );
+    crate::forge::clean_text::pr(&mut p);
+    let prs = [p];
+    let find = |c: Conditions| ids(matching_prs(&prs, &c, None));
+    let labels = vec!["\u{1f9d1}\u{200d}\u{1f4bb} Frontend".into(), "needs  review".into()];
+    assert_eq!(find(Conditions { labels, ..Default::default() }), [1]);
+    let v1 = Milestone::Named { key: "1".into(), title: "v1\u{200b}".into() };
+    assert_eq!(find(Conditions { milestone: v1, ..Default::default() }), [1]);
+}
+
+#[test]
 fn team_requests_wait_for_members() {
     let team = |t: &str| vec![t.to_owned()];
     let facets = [

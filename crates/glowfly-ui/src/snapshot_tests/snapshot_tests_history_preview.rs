@@ -97,11 +97,11 @@ fn file_history_markdown_preview() {
     assert!(h.query_by_label(WRAP_LINES).is_none());
     h.get_by_label("the docs").click();
     h.run();
-    assert!(sent(&h, |m| matches!(m, Msg::OpenUrl(u) if u == "https://example.com/docs")));
+    assert!(sent(&h, |m| matches!(m, Msg::OpenLink { url: u, .. } if u == "https://example.com/docs")));
     h.state_mut().1.clear();
     h.get_by_label("the changelog").click();
     h.run();
-    assert!(!sent(&h, |m| matches!(m, Msg::OpenUrl(_))), "relative links don't open");
+    assert!(!sent(&h, |m| matches!(m, Msg::OpenUrl(_) | Msg::OpenLink { .. })), "relative links don't open");
     h.get_by_label(TEXT).click();
     h.run();
     assert!(sent(&h, |m| matches!(m, Msg::History(HistoryMsg::SetFilePreview(false)))));
