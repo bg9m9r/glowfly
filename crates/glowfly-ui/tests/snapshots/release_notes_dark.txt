@@ -4,6 +4,7 @@ Dialog
   Button "Close this dialog"
   Label "0.2.0"
   Label "2026-01-20"
+  Label "New"
   Label "Breaking changes"
   Label "settings:"
   Label " themes saved by 0.1 load as Dark ("
@@ -30,5 +31,3 @@ Dialog
   Label "first release: the commit graph, diffs and staging"
   Label "Esc to close"
   Button "Close" [focused]
-painted:
-  "New"

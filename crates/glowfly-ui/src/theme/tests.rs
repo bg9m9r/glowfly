@@ -351,6 +351,21 @@ fn the_cache_follows_a_changed_system_pair() {
 }
 
 #[test]
+fn the_system_contrast_shows_the_high_contrast_theme_as_dark_as_the_chosen_one() {
+    use glowfly_core::settings::Settings;
+    let (ctx, themes) = (egui::Context::default(), ThemeState::default());
+    let mut cache = super::ThemeCache::default();
+    for (choice, hc) in [(ThemeChoice::Midnight, HIGH_CONTRAST_DARK), (ThemeChoice::Porcelain, HIGH_CONTRAST_LIGHT)] {
+        let s = Settings { theme: choice, ..Settings::default() };
+        cache.apply(&ctx, &s, &themes, true);
+        assert_eq!(color::current(), branch_palette::applied(hc, s.branch_palette));
+        assert_eq!(cache.mica_tint(), None, "solid, as a chosen high-contrast theme is");
+        cache.apply(&ctx, &s, &themes, false);
+        assert_ne!(color::current().bg, hc.bg, "the chosen theme again once the system turns it off");
+    }
+}
+
+#[test]
 fn the_palette_is_per_thread() {
     color::set_palette(&DARK);
     let other = std::thread::spawn(|| {

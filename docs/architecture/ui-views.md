@@ -58,8 +58,8 @@ start with `state/`, `update/` or `ui/`.
 ## Commit details and the WIP panel
 
 - `details_commit.rs`: the selected commit's details, title first: the title as git splits it, the author's row, the body block, the files.
-- `details_chips.rs`: the details' row of quiet chips for the SHA, parents and committer, drawn by `widgets/quiet_chip.rs`.
-- `file_status.rs`: the changed-file rows' status chip.
+- `details_chips.rs`: the details' row of quiet chips for the SHA, parents and committer, drawn by `widgets/chip.rs`.
+- `file_status.rs`: the changed-file rows' status badge (an 18 px circle).
 - `details_wip_header.rs`: the WIP lists' headers with their more-actions menu.
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode.
 - `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames), a folder row, the header's List / Tree toggle and a file row's indent.

@@ -169,6 +169,9 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "cursor_blink",
     "toast_time",
     "tooltip_delay",
+    "follow_system_text_size",
+    "follow_system_contrast",
+    "follow_system_motion",
 ];
 
 /// What a profile switch changed in the settings in use.
