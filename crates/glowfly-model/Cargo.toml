@@ -23,7 +23,7 @@ glowfly-core.workspace = true
 chrono.workspace = true
 git2.workspace = true
 serde_json.workspace = true
-tracing = "0.1.44"
+tracing.workspace = true
 
 [dev-dependencies]
 glowfly-core = { workspace = true, features = ["testkit"] }

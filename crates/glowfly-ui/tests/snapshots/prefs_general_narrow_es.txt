@@ -1,10 +1,11 @@
 window 960x2400
 Label "Glowfly 0.1.0"
 Button "Volver"
+TextInput "Buscar en preferencias"
 Label "Preferencias"
 Button "General" [selected]
 Button "Git"
-Button "Perfil"
+Button "Perfiles"
 Button "Integraciones"
 Button "Apariencia"
 Button "Accesibilidad"
@@ -21,11 +22,28 @@ Label "Actualizaciones"
 CheckBox "Buscar actualizaciones una vez al día" [on]
 Label "Glowfly 0.1.0 · Nunca comprobado"
 Button "Comprobar ahora"
-Label "Glowfly consulta una vez al día la API de versiones de GitHub para conocer la versión más reciente de su repositorio. GitHub ve tu dirección IP y la versión de Glowfly, pero nada sobre tus repositorios. Las descargas se verifican con las sumas de comprobación SHA-256 publicadas en la versión. Las compilaciones de Glowfly aún no tienen firma de código, así que esto confirma que una descarga coincide con lo que publicó la versión, no quién la publicó."
+Label "Glowfly consulta una vez al día la API de…"
+Link "Más información"
 Label "Tras una actualización:"
 RadioButton "Mostrar «Novedades» en la barra de estado" [on]
 RadioButton "Abrir las notas de la versión" [off]
 RadioButton "No mostrar nada" [off]
+Label "Notificaciones"
+Label "Notificaciones de escritorio"
+CheckBox "Mostrar notificaciones del sistema mientras Glowfly está en segundo plano" [off]
+Label "Las operaciones terminadas y los avisos de…"
+Link "Más información"
+Label "Ubicación de los avisos"
+ComboBox "Ubicación de los avisos"
+Label "Avisos de retraso"
+CheckBox "Avisar cuando la rama se queda por detrás de su upstream" [on]
+Label "Tras una obtención en segundo plano, avisa…"
+Link "Más información"
+Label "Mensajes de commit"
+Label "Corrector ortográfico"
+CheckBox "Revisar la ortografía de los mensajes de commit" [on]
+Label "Subraya las faltas de ortografía en el resumen…"
+Link "Más información"
 Label "Git"
 Label "Programa git"
 Label "git 2.45.1 en C:\\Program Files\\Git\\cmd\\git.exe"
@@ -36,21 +54,25 @@ TextInput "Nombre de la rama por defecto" = "main"
 Label "Se propone como nombre de la primera rama al crear un repositorio. Puedes cambiarlo cada vez."
 Label "Rutas largas"
 CheckBox "Permitir rutas de más de 260 caracteres" [off]
-Label "Activa core.longpaths en tu configuración global de Git. Git para Windows lo necesita para archivos cuya ruta completa supera los 260 caracteres; macOS y Linux no tienen ese límite."
+Label "Activa core.longpaths en tu configuración…"
+Link "Más información"
 Label "Finales de línea"
 ComboBox "Finales de línea"
-Label "Define core.autocrlf en tu configuración global de Git: cómo se convierten los finales de línea entre tus archivos y los commits."
+Label "Define core.autocrlf en tu configuración global…"
+Link "Más información"
 Label "Obtención"
 Label "Obtención automática"
 SpinButton = "0 min" = 0
-Label "Cuántos minutos espera Glowfly entre dos obtenciones en segundo plano de todos los remotos del repositorio abierto, de 1 a 60. 0 desactiva la obtención en segundo plano."
+Label "Cuántos minutos espera Glowfly entre dos…"
+Link "Más información"
 Label "En los repositorios que guardan archivos en Git LFS, también descarga los archivos LFS del commit actual."
 Label "Cada obtención contacta con todos los remotos, así que los intervalos cortos pesan cuando hay muchos."
 Label "Poda automática"
 CheckBox "Al obtener, quitar las ramas de seguimiento remoto que ya no existen en el remoto" [on]
 Label "Submódulos"
 CheckBox "Actualizar los submódulos tras checkout, pull, merge, rebase y reset" [off]
-Label "Ejecuta git submodule update --init --recursive cuando una de estas operaciones termina bien, salvo en los submódulos donde eso dejaría atrás commits que ninguna rama ni etiqueta contiene. Cada repositorio puede cambiarlo desde el menú de su sección SUBMODULES."
+Label "Ejecuta git submodule update --init --recursive…"
+Link "Más información"
 Label "Grafo"
 Label "Commits iniciales en el grafo"
 SpinButton = "2000" = 2000
@@ -61,7 +83,8 @@ CheckBox "Cargar más commits al desplazarte cerca del final del grafo" [on]
 Label "Si está desactivado, solo el enlace para cargar más del grafo añade commits más allá del límite."
 Label "Buscar en todo el historial"
 CheckBox "Indexar los repositorios grandes en segundo plano para que la búsqueda y el filtro abarquen todos los commits" [on]
-Label "Usa unos 300 bytes de memoria por commit mientras el repositorio está abierto. Desactivado, la búsqueda abarca los commits cargados y carga los más antiguos cuando los necesita."
+Label "Usa unos 300 bytes de memoria por commit…"
+Link "Más información"
 Label "Repositorios"
 Label "Reabrir el último repositorio"
 CheckBox "Reabrir las pestañas de la última vez al iniciar Glowfly" [on]
@@ -70,22 +93,27 @@ CheckBox "Actualizar el árbol de trabajo en cuanto cambien archivos fuera de Gl
 Label "Si está desactivado, Glowfly actualiza cuando su ventana recupera el foco o cuando pulsas F5."
 Label "Comprobación de conflictos"
 CheckBox "Comprobar si la rama actual choca con su upstream o con la rama por defecto" [on]
-Label "Se ejecuta tras cada actualización y obtención con git merge-tree, sin tocar tus archivos. Requiere git 2.38 o posterior. Los menús de ramas pueden comprobarlo a demanda aunque esto esté desactivado."
+Label "Se ejecuta tras cada actualización y obtención…"
+Link "Más información"
 Label "Eliminar archivos"
 CheckBox "Mover los archivos eliminados a la Papelera de reciclaje" [on]
-Label "Si está desactivado, Eliminar… y descartar un archivo sin seguimiento lo borran del disco al instante, y no se puede recuperar."
+Label "Si está desactivado, Eliminar… y descartar un…"
+Link "Más información"
 Label "Cambios sin confirmar"
 CheckBox "Guardar siempre en un stash antes de checkout, pull, merge, rebase, cherry-pick y revert" [off]
-Label "Glowfly guarda tus cambios en un stash, ejecuta la operación y los recupera cuando termina. Si está desactivado, pregunta cada vez. Un reset hard siempre pregunta."
+Label "Glowfly guarda tus cambios en un stash, ejecuta…"
+Link "Más información"
 Label "Enlaces de Glowfly"
 Label "Comprobando…"
 Button "Registrar" [disabled]
 Button "Anular el registro" [disabled]
-Label "Permite que los enlaces de un navegador o un chat abran en Glowfly un repositorio, una rama, un commit o una etiqueta. Solo afecta a tu cuenta de usuario."
+Label "Permite que los enlaces de un navegador o un…"
+Link "Más información"
 Label "Inicios de sesión"
 Label "Recordar inicios de sesión"
 CheckBox "Recordar los inicios de sesión HTTPS escritos en Glowfly" [on]
-Label "Cuando git acepta un nombre de usuario y una contraseña o un token escritos en Glowfly, se guardan con el asistente de credenciales de git. Si no hay ningún asistente configurado, Glowfly configura el almacén de credenciales del sistema para git. En Linux sin un asistente de llavero, la caché en memoria de git los guarda en su lugar durante 15 minutos tras cada uso."
+Label "Cuando git acepta un nombre de usuario y una…"
+Link "Más información"
 Label "Conexiones guardadas"
 Button "Borrar tokens guardados" [disabled]
 Button "También cerrar sesión en Git Credential Manager" [disabled]
@@ -100,12 +128,23 @@ Label "Los consejos que descartaste y los avisos de una sola vez vuelven a apare
 Label "Diagnóstico"
 Label "Registro ampliado"
 CheckBox "Añadir al registro de actividad los comandos git que ejecuta Glowfly, con su duración" [off]
-Label "También escribe los mensajes informativos y de depuración de Glowfly en el registro de errores. Déjalo desactivado salvo que estés investigando un problema: añade una línea por cada comando git, incluidas las actualizaciones en segundo plano."
+Label "También escribe los mensajes informativos y de…"
+Link "Más información"
 Label "Tiempos de fotograma"
 CheckBox "Mostrar en una esquina de la ventana cuánto tarda cada fotograma" [off]
-Label "El último, la media y el más lento de los fotogramas recientes, en milisegundos, para localizar una ventana lenta. Los fotogramas de 50 ms o más van al registro de rendimiento en cualquier caso."
+Label "El último, la media y el más lento de los…"
+Link "Más información"
 Label "Registros"
 Button "Abrir la carpeta de registros"
-Label "activity.jsonl conserva el registro de actividad entre sesiones, errors.log guarda advertencias, errores y fallos, y performance.log lista las operaciones que tardaron medio segundo o más."
+Label "activity.jsonl conserva el registro de…"
+Link "Más información"
 painted:
+  "Abajo a la izquierda"
+  "El programa git que Glowfly ejecuta para commits, obtener,\nenviar y hooks (Preferencias > Git)."
+  "Se propone como nombre de la primera rama al crear un\nrepositorio. Puedes cambiarlo cada vez."
   "Sin definir (por defecto en git: false)"
+  "En los repositorios que guardan archivos en Git LFS, también\ndescarga los archivos LFS del commit actual."
+  "Cada obtención contacta con todos los remotos, así que los\nintervalos cortos pesan cuando hay muchos."
+  "Mínimo 500. El grafo carga esta cantidad la próxima vez que se\nactualiza."
+  "Si está desactivado, solo el enlace para cargar más del grafo\nañade commits más allá del límite."
+  "Si está desactivado, Glowfly actualiza cuando su ventana\nrecupera el foco o cuando pulsas F5."

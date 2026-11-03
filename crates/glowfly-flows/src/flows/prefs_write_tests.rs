@@ -68,7 +68,7 @@ fn a_failed_write_shows_its_error_and_keeps_the_page_edited() {
     assert_eq!(error(&st).as_deref(), Some("error: could not lock config file .git/config"));
     assert!(edited(&st), "the edits are still there to save again");
     assert_eq!(git_mut(&mut st).repo_name, "Grace");
-    assert_eq!(quit_lines(&st), ["- Preferences: the changes on the Identity page that aren't saved yet"], "quitting still asks");
+    assert_eq!(quit_lines(&st), ["- Preferences: the changes on the Commit identity page that aren't saved yet"], "quitting still asks");
     assert!(st.log.iter().any(|l| !l.ok && l.text.contains("could not lock")), "in the activity log too");
 
     // Saving again clears the error; success shows the tick.

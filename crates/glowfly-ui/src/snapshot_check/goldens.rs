@@ -62,6 +62,15 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("prefs_theme_picker_system", TopLeft(1240.0, 520.0)),
     ("prefs_theme_custom_open", TopLeft(1240.0, 720.0)),
     ("prefs_theme_picker_de", TopLeft(1240.0, 520.0)),
+    // Preferences after D18 (#455): General in both default themes and German, the search, Appearance
+    // and Commit identity (with the repository's nav line) in light, and Profiles' add form.
+    ("prefs_general", Window),
+    ("prefs_general_light", Window),
+    ("prefs_general_german", Window),
+    ("prefs_search_dark", Window),
+    ("prefs_ui_light", Window),
+    ("prefs_identity_light", Window),
+    ("prefs_profiles_add_light", Window),
     // Preferences > Accessibility in both default themes, and German and Spanish at 760 px.
     ("prefs_accessibility", Window),
     ("prefs_accessibility_light", Window),
@@ -288,6 +297,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `prefs_general` in Porcelain.
+    "prefs_general_light",
     // `conflict_popover_long_dark` and `conflict_report_long_dark` in Porcelain.
     "conflict_popover_long_light",
     "conflict_report_long_light",

@@ -1,10 +1,11 @@
 window 1400x900
 Label "Glowfly 0.1.0"
 Button "Back"
+TextInput "Search preferences"
 Label "Preferences"
 Button "General"
 Button "Git" [selected]
-Button "Profile"
+Button "Profiles"
 Button "Integrations"
 Button "Appearance"
 Button "Accessibility"
@@ -23,6 +24,7 @@ RadioButton "D:\\PortableGit\\cmd\\git.exe" [on]
 Label "git 2.47.0"
 Button "Browse…"
 Button "Look again"
-Label "Glowfly runs this git for commits, fetches, pushes, hooks and signing. The built-in terminal and external tools still use whatever git your PATH finds."
+Label "Glowfly runs this git for commits, fetches, pushes…"
+Link "Learn more"
 Label "Version"
 Label "git 2.47.0 at D:\\PortableGit\\cmd\\git.exe"

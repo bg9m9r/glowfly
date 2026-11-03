@@ -35,7 +35,7 @@ pub(super) fn on_page(page: PrefPage, git: GitConfigValues) -> AppState {
     st
 }
 
-/// The repository's Identity page, its local name "Ada".
+/// The repository's Commit identity page, its local name "Ada".
 pub(super) fn identity() -> AppState {
     on_page(PrefPage::RepoIdentity, GitConfigValues { repo_name: "Ada".into(), ..Default::default() })
 }

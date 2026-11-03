@@ -1,10 +1,11 @@
 window 960x700
 Label "Glowfly 0.1.0"
 Button "Back"
+TextInput "Search preferences"
 Label "Preferences"
 Button "General"
 Button "Git"
-Button "Profile"
+Button "Profiles"
 Button "Integrations" [selected]
 Button "Appearance"
 Button "Accessibility"
@@ -41,3 +42,6 @@ Label "Create a token"
 Button "Connect" [disabled]
 Button "Cancel"
 Label "If the GITLAB_TOKEN environment variable is set, Glowfly uses it ahead of connections made here."
+painted:
+  "A personal access token with the api scope. Stored in the\nWindows Credential Manager, never in Glowfly's settings file."
+  "If the GITLAB_TOKEN environment variable is set, Glowfly uses it\nahead of connections made here."

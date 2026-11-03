@@ -198,6 +198,15 @@ start with `state/`, `update/` or `ui/`.
 - `worktree_manage_dialog.rs`: the Remove worktree dialog (what goes, why force is needed, whether the branch and its copy on the remote are deleted too, and that another tab showing it closes) and the Lock worktree dialog (an optional reason), each with a side pane that explains the step.
 - `worktree_move_dialog.rs`: the Move worktree dialog: the new folder (typed, or a parent picked with Browse…), checked as the user types with the pure rules in `state::worktree_move`; the runner checks the disk and reports a taken folder under the field.
 
+## Preferences (`prefs/`)
+
+- `prefs/nav.rs`: the navigation column: Back, "Search preferences" (Ctrl+F), the pages filtered by the query with their match counts, and the "This repository · name" line.
+- `prefs/index.rs`: the search index, (page, label key, help key) for every row, and the query match; a test fails on a row label missing from it.
+- `prefs/reveal.rs`: the row Enter in the search opened: scrolled to and tinted for 1.2 s (solid under reduce motion).
+- `prefs/form_help.rs`: help lines: 13 px, at most 64 characters a line, long help behind "Learn more".
+- `prefs/general_notify.rs`: General's Notifications and Commit messages groups.
+- `snapshot_tests/snapshot_tests_prefs_search.rs`: the search, the 760 px page in a wide window, Learn more, and D18's light goldens.
+
 ## Snapshot tests
 
 - `snapshot_tests/`: the views' snapshot tests, one file per view group (`mod.rs` lists them), with the shared fixtures in `snapshot_fixtures.rs`; `snapshot_tests_painted.rs` reads what a frame painted inside a widget (fills, shapes, underlined text) for the hover tests.

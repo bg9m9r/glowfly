@@ -1,5 +1,5 @@
-//! Preferences > Appearance rows: Desktop notifications, whose checkbox only asks update
-//! to change the setting (which saves it and sends the confirming notification), Group
+//! Preferences rows: General's Desktop notifications, whose checkbox only asks update to change
+//! the setting (which saves it and sends the confirming notification), and Appearance's Group
 //! worktree tabs, bound to the setting directly, and the Windows system title bar switch, shown
 //! only where Windows' frame is offered.
 
@@ -16,16 +16,20 @@ use std::time::Instant;
 const LABEL: &str = "Show system notifications while Glowfly is in the background";
 
 fn page(on: bool) -> AppState {
+    on_page(on, PrefPage::Ui)
+}
+
+fn on_page(on: bool, page: PrefPage) -> AppState {
     let mut s = settings(ThemeChoice::Dark);
     s.desktop_notifications = on;
     let mut st = AppState::new(s, Vec::new(), Instant::now());
-    st.prefs = Some(PrefsState::new(PrefPage::Ui));
+    st.prefs = Some(PrefsState::new(page));
     st
 }
 
 #[test]
 fn desktop_notifications_checkbox_only_asks() {
-    let mut h = harness(page(false), true);
+    let mut h = harness(on_page(false, PrefPage::General), true);
     h.run();
     h.get_by_label(LABEL).click();
     h.run();
@@ -36,7 +40,7 @@ fn desktop_notifications_checkbox_only_asks() {
 
 #[test]
 fn preferences_ui_desktop_on() {
-    render("prefs_ui_desktop_on", page(true), true);
+    render("prefs_ui_desktop_on", on_page(true, PrefPage::General), true);
 }
 
 const TITLE_BAR: &str = "Use the Windows title bar";

@@ -1,9 +1,10 @@
-//! Preferences > Appearance, and its Interface size row, which Accessibility shows too
-//! (`zoom_row`).
+//! Preferences > Appearance: the theme, Interface (with its Interface size row, which
+//! Accessibility shows too: `zoom_row`) and the commit graph's look (appearance_graph.rs).
+//! Notifications and spell checking are on General.
 
-use super::{check_row, combo, help, row, section};
+use super::{check_row, help, row, section};
 use crate::keymap::{BindingId, Keymap};
-use crate::msg::{Msg, PrefsMsg};
+use crate::msg::Msg;
 use crate::themes::ThemeState;
 use crate::ui::theme::controls;
 use eframe::egui::{self, Ui};
@@ -20,33 +21,8 @@ pub struct FrameRows {
 }
 
 pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, keys: &Keymap, frame: FrameRows, msgs: &mut Vec<Msg>) {
-    use glowfly_core::settings::Corner;
     let t = s.lang();
     super::theme_row::theme_row(ui, s, themes, msgs);
-    row(ui, t.tr("prefs.ui.notifications.label"), |ui| {
-        combo(
-            ui,
-            "toasts",
-            &mut s.notification_location,
-            &[
-                (Corner::BottomLeft, t.tr("prefs.ui.corner.bottom_left")),
-                (Corner::BottomRight, t.tr("prefs.ui.corner.bottom_right")),
-                (Corner::TopLeft, t.tr("prefs.ui.corner.top_left")),
-                (Corner::TopRight, t.tr("prefs.ui.corner.top_right")),
-            ],
-        )
-    });
-    let (label, check, text) =
-        (t.tr("prefs.ui.behind_alerts.label"), t.tr("prefs.ui.behind_alerts.check"), t.tr("prefs.ui.behind_alerts.help"));
-    check_row(ui, label, &mut s.behind_alerts, check, Some(text));
-    row(ui, t.tr("prefs.ui.desktop_notifications.label"), |ui| {
-        // Not bound to the setting: update saves it and sends the confirming notification.
-        let mut on = s.desktop_notifications;
-        if controls::checkbox(ui, &mut on, t.tr("prefs.ui.desktop_notifications.check")).changed() {
-            msgs.push(Msg::Prefs(PrefsMsg::SetDesktopNotifications(on)));
-        }
-        help(ui, t.tr("prefs.ui.desktop_notifications.help"));
-    });
     interface_section(ui, t, s, keys, frame);
     super::appearance_graph::graph_section(ui, t, s);
 }
@@ -76,10 +52,8 @@ pub fn zoom_row(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, follow: b
 }
 
 /// Interface: zoom, the panels and toolbar, the Windows title bar, the menu bar, toolbar labels,
-/// spell checking, the graph's extras, new groups' colour and how changed-file lists show their
-/// files.
+/// avatars, worktree tabs, new groups' colour and how changed-file lists show their files.
 fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, frame: FrameRows) {
-    use glowfly_core::settings::BranchVisibility as BV;
     section(ui, t.tr("prefs.ui.interface.section"));
     zoom_row(ui, t, s, keys, false);
     check_row(ui, t.tr("prefs.ui.left_panel.label"), &mut s.show_left_panel, t.tr("prefs.ui.left_panel.check"), None);
@@ -95,24 +69,11 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings, keys: &Keymap, fram
         check_row(ui, label, &mut s.show_menu_bar, check, Some(text));
     }
     check_row(ui, t.tr("prefs.ui.toolbar_labels.label"), &mut s.toolbar_labels, t.tr("prefs.ui.toolbar_labels.check"), None);
-    let (label, check, text) = (t.tr("prefs.ui.spellcheck.label"), t.tr("prefs.ui.spellcheck.check"), t.tr("prefs.ui.spellcheck.help"));
-    check_row(ui, label, &mut s.spellcheck, check, Some(text));
     let (label, check, text) = (t.tr("prefs.ui.avatars.label"), t.tr("prefs.ui.avatars.check"), t.tr("prefs.ui.avatars.help"));
     check_row(ui, label, &mut s.avatar_lookups, check, Some(text));
-    let (label, check, text) = (t.tr("prefs.ui.ghost.label"), t.tr("prefs.ui.ghost.check"), t.tr("prefs.ui.ghost.help"));
-    check_row(ui, label, &mut s.ghost_refs, check, Some(text));
-    check_row(ui, t.tr("prefs.ui.highlight_rows.label"), &mut s.highlight_ref_rows, t.tr("prefs.ui.highlight_rows.check"), None);
-    let (label, check, text) =
-        (t.tr("prefs.ui.worktree_wips.label"), t.tr("prefs.ui.worktree_wips.check"), t.tr("prefs.ui.worktree_wips.help"));
-    check_row(ui, label, &mut s.worktree_wips, check, Some(text));
     let (label, check, text) = (t.tr("prefs.ui.group_tabs.label"), t.tr("prefs.ui.group_tabs.check"), t.tr("prefs.ui.group_tabs.help"));
     check_row(ui, label, &mut s.group_worktree_tabs, check, Some(text));
     super::group_colour_row::group_colour_row(ui, t, s);
-    row(ui, t.tr("prefs.ui.branch_visibility.label"), |ui| {
-        let options = [(BV::All, t.tr("prefs.ui.branch_visibility.all")), (BV::Smart, t.tr("prefs.ui.branch_visibility.smart"))];
-        combo(ui, "visibility", &mut s.branch_visibility, &options);
-        help(ui, t.tr("prefs.ui.branch_visibility.help"));
-    });
     row(ui, t.tr("prefs.ui.file_lists.label"), |ui| {
         use glowfly_core::settings::FileListMode as FL;
         ui.horizontal(|ui| {
