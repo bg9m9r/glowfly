@@ -110,8 +110,6 @@ const DEAD_PUB: &[&str] = &[
     "crates/glowfly-ui/src/theme/branch_palette_more.rs: COBALT_LIGHT_TEXT",
     "crates/glowfly-ui/src/theme/contrast.rs: brownish_text",
     "crates/glowfly-ui/src/theme/contrast.rs: lightness",
-    "crates/glowfly-ui/src/theme/contrast.rs: luminance",
-    "crates/glowfly-ui/src/theme/contrast.rs: max_chroma",
     "crates/glowfly-ui/src/theme/fonts.rs: SEMIBOLD",
     "crates/glowfly-ui/src/theme/fonts.rs: use_test_cjk",
     "crates/glowfly-ui/src/theme/mod.rs: apply_style",

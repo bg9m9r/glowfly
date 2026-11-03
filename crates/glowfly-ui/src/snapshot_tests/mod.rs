@@ -23,6 +23,7 @@ pub(super) mod snapshot_tests_branch_pin;
 pub(super) mod snapshot_tests_chips;
 pub(super) mod snapshot_tests_clone;
 pub(super) mod snapshot_tests_clone_service;
+pub(super) mod snapshot_tests_colour_safe;
 pub(super) mod snapshot_tests_columns;
 pub(super) mod snapshot_tests_commit;
 pub(super) mod snapshot_tests_compare;

@@ -1707,7 +1707,7 @@
   "prefs.a11y.blink.help": "El cursor de los campos de texto. El de la terminal nunca parpadea.",
   "prefs.a11y.blink.label": "Cursor parpadeante",
   "prefs.a11y.colors.color_blind": "Seguro para daltonismo",
-  "prefs.a11y.colors.help": "Colores de las ramas en el grafo.",
+  "prefs.a11y.colors.help": "Las ramas, los diffs y el estado de los archivos usan colores que se distinguen también con daltonismo.",
   "prefs.a11y.colors.label": "Colores",
   "prefs.a11y.colors.standard": "Estándar",
   "prefs.a11y.contrast.check": "Usar un tema de alto contraste",

@@ -1,8 +1,8 @@
 //! No built-in theme paints brown, tan, khaki or olive (docs/COLOUR.md, "No brown"): every
 //! surface, row band, chip, tint and wash, as composited on the surface it is drawn over, and
 //! every line and edge (the accent, the button and field edges, each branch lane, chip edges
-//! and letters, initials) stays out of `contrast::brownish`'s zone, in both branch presets,
-//! with no exception.
+//! and letters, initials) stays out of `contrast::brownish`'s zone, in both colour presets
+//! (the colour-blind safe one with its diff and status colours too), with no exception.
 
 use super::branch_colours::{chip_in, initials_fill, line_in, swatches};
 use super::branch_palette::applied;
@@ -11,7 +11,7 @@ use super::contrast::{self, ChipStyle, brownish, oklch};
 use super::surfaces::Tone;
 use super::tests::palettes;
 use eframe::egui::Color32;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 /// The alphas the views wash a colour over a surface at (`Palette::wash`).
 const WASHES: [f32; 10] = [0.03, 0.08, 0.12, 0.16, 0.18, 0.25, 0.28, 0.35, 0.6, 0.8];
@@ -123,9 +123,10 @@ pub(super) fn lines(p: &Palette) -> Vec<(String, Color32)> {
     v
 }
 
-/// `p` in each branch preset.
+/// `p` in each colour preset.
 fn presets(p: &Palette) -> [(&'static str, Palette); 2] {
-    [("standard", *p), ("colour-blind", applied(*p, BranchPalette::ColourBlind))]
+    let safe = ColourPalette::ColourBlind;
+    [("standard", *p), ("colour-blind", super::colour_safe::applied(applied(*p, safe), safe))]
 }
 
 #[test]

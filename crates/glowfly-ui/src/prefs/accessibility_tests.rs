@@ -116,7 +116,7 @@ fn every_control_is_named_and_described() {
         (CONTROLS[1], zoom_help.as_str()),
         (CONTROLS[4], "Switches to High contrast dark or light; turning it off brings back your theme."),
         (CONTROLS[5], "Switches to High contrast dark or light; turning it off brings back your theme."),
-        (CONTROLS[6], "Branch colors in the graph."),
+        (CONTROLS[6], "Branches, diffs and file status use colors that stay apart with color blindness."),
         (CONTROLS[9], "The cursor in text fields. The terminal's never blinks."),
         (CONTROLS[10], "Strong draws a thicker ring with an outline that shows on every color."),
         (CONTROLS[12], "Every command can be given a key."),

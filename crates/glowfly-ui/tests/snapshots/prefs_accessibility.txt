@@ -33,7 +33,7 @@ CheckBox "High contrast, Also when the system uses high contrast" [on]
 Label "Switches to High contrast dark or light; turning it off brings back your theme."
 Label "Colors"
 ComboBox "Colors"
-Label "Branch colors in the graph."
+Label "Branches, diffs and file status use colors that stay apart with color blindness."
 Label "Motion"
 Label "Reduce motion"
 CheckBox "Reduce motion, Turn off fades and slides" [off]

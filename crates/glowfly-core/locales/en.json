@@ -1707,7 +1707,7 @@
   "prefs.a11y.blink.help": "The cursor in text fields. The terminal's never blinks.",
   "prefs.a11y.blink.label": "Blinking cursor",
   "prefs.a11y.colors.color_blind": "Color-blind safe",
-  "prefs.a11y.colors.help": "Branch colors in the graph.",
+  "prefs.a11y.colors.help": "Branches, diffs and file status use colors that stay apart with color blindness.",
   "prefs.a11y.colors.label": "Colors",
   "prefs.a11y.colors.standard": "Standard",
   "prefs.a11y.contrast.check": "Use a high-contrast theme",

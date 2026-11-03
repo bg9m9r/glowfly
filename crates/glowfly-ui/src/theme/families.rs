@@ -2,7 +2,7 @@
 //! diff and syntax colours (see docs/COLOUR.md for what each colour is for and the rules).
 
 use eframe::egui::Color32;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 /// The change and state colours: status letters, line counts, bars and change chips.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -55,7 +55,7 @@ pub struct Branch {
     /// The tone ref chips are tinted with and their text is pushed from.
     pub chips: [Color32; LANE_COUNT],
     /// The preset these tones come from; its `slots()` is how many distinct hues there are.
-    pub preset: BranchPalette,
+    pub preset: ColourPalette,
     /// Each slot's hue name (`branch_names`), repeating like the tones.
     pub names: [super::branch_names::Hue; LANE_COUNT],
 }

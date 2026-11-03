@@ -167,3 +167,9 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
   but judge the tab swatch beside Mist's accent
 - The branch hue Olive (#9ea827) is vivid and passes the zone, but its name sits oddly with the
   no-olive rule; consider renaming it (Lime is taken; Chartreuse?)
+
+### Colour-blind safe diff and status colours
+
+- Onboarding: add a Look step (theme + Colours); the welcome flow has no theme choice today
+- In the colour-safe colours, open issues (`added`, blue) and closed ones (`progress`, violet)
+  are only 0.022 apart under deutan on light themes (`issue/mod.rs`); give them a shape or label cue

@@ -358,7 +358,7 @@ fn the_system_contrast_shows_the_high_contrast_theme_as_dark_as_the_chosen_one()
     for (choice, hc) in [(ThemeChoice::Midnight, HIGH_CONTRAST_DARK), (ThemeChoice::Porcelain, HIGH_CONTRAST_LIGHT)] {
         let s = Settings { theme: choice, ..Settings::default() };
         cache.apply(&ctx, &s, &themes, true);
-        assert_eq!(color::current(), branch_palette::applied(hc, s.branch_palette));
+        assert_eq!(color::current(), super::applied(hc, s.colour_palette));
         assert_eq!(cache.mica_tint(), None, "solid, as a chosen high-contrast theme is");
         cache.apply(&ctx, &s, &themes, false);
         assert_ne!(color::current().bg, hc.bg, "the chosen theme again once the system turns it off");

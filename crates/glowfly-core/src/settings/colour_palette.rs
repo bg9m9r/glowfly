@@ -1,7 +1,10 @@
-//! Branch colours in the settings: the palette preset (Preferences > Appearance > Commit
-//! graph > Branch colors, switched with the profile) and the hues pinned to branches, saved per
+//! Colours in the settings: the palette preset (Preferences > Accessibility > Colours: standard
+//! or colour-blind safe branch, diff and file status colours, one for the whole machine) and the
+//! hues pinned to branches, saved per
 //! repository under `repo_keys` like the graph filters. A pin is keyed by the branch's colour key
-//! (`branch_colour::branch_key`), so a local branch and its remote copies share it.
+//! (`branch_colour::branch_key`), so a local branch and its remote copies share it. The preset
+//! is `Settings::colour_palette`, saved as `branch_palette` before it covered diffs and status
+//! (an alias keeps those files loading).
 
 use super::{Settings, repo_keys};
 use crate::branch_colour::{COLOUR_BLIND_SLOTS, Colouring, SLOTS};
@@ -9,17 +12,18 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Which branch hues the graph and every branch colour use.
+/// Which colours branches, diffs and file status use.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum BranchPalette {
+pub enum ColourPalette {
     /// The 14 standard hues.
     #[default]
     Standard,
-    /// 8 hues that stay apart under red-green and blue-yellow colour blindness.
+    /// Colours that stay apart under red-green and blue-yellow colour blindness: 8 branch hues,
+    /// and blue, orange and violet for added, removed and modified (`theme/colour_safe.rs`).
     ColourBlind,
 }
 
-impl BranchPalette {
+impl ColourPalette {
     /// How many hues the preset has.
     pub fn slots(self) -> u8 {
         match self {
@@ -52,7 +56,7 @@ impl Settings {
     /// How the repository at `real` colours its branches: the preset's slot count and its pins
     /// (no slots near the trunk: those come from the palette, which `update` adds).
     pub fn colouring_for(&self, real: &Path) -> Colouring {
-        Colouring { slots: self.branch_palette.slots(), pins: self.branch_pins_for(real), trunk_near: 0 }
+        Colouring { slots: self.colour_palette.slots(), pins: self.branch_pins_for(real), trunk_near: 0 }
     }
 }
 
@@ -64,10 +68,19 @@ mod tests {
     #[test]
     fn old_files_load_standard_without_pins() {
         let old: Settings = serde_json::from_str(r#"{"auto_fetch_minutes":5}"#).unwrap();
-        assert_eq!(old.branch_palette, BranchPalette::Standard);
+        assert_eq!(old.colour_palette, ColourPalette::Standard);
         assert!(old.branch_pins.is_empty());
-        let back: BranchPalette = serde_json::from_str(&serde_json::to_string(&BranchPalette::ColourBlind).unwrap()).unwrap();
-        assert_eq!(back, BranchPalette::ColourBlind);
+        let back: ColourPalette = serde_json::from_str(&serde_json::to_string(&ColourPalette::ColourBlind).unwrap()).unwrap();
+        assert_eq!(back, ColourPalette::ColourBlind);
+    }
+
+    #[test]
+    fn files_naming_the_old_field_keep_their_choice() {
+        let old: Settings = serde_json::from_str(r#"{"branch_palette":"ColourBlind"}"#).unwrap();
+        assert_eq!(old.colour_palette, ColourPalette::ColourBlind);
+        let saved = serde_json::to_value(&old).unwrap();
+        assert_eq!(saved["colour_palette"], "ColourBlind", "saved under the new name");
+        assert!(saved.get("branch_palette").is_none());
     }
 
     #[test]
@@ -75,7 +88,7 @@ mod tests {
         let mut s = Settings::default();
         let repo = PathBuf::from("/w/repo");
         assert!(s.set_branch_pin(&repo, "topic", Some(9)));
-        s.branch_palette = BranchPalette::ColourBlind;
+        s.colour_palette = ColourPalette::ColourBlind;
         let dir = crate::paths::temp_dir().join(format!("glowfly-settings-pins-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -84,7 +97,7 @@ mod tests {
         let (back, problem) = Settings::load_from(&file);
         assert!(problem.is_none(), "{problem:?}");
         assert_eq!(back.branch_pins_for(&repo), BTreeMap::from([("topic".to_owned(), 9)]));
-        assert_eq!(back.branch_palette, BranchPalette::ColourBlind);
+        assert_eq!(back.colour_palette, ColourPalette::ColourBlind);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -110,7 +123,7 @@ mod tests {
         s.set_branch_pin(&repo, "topic", Some(11));
         let c = s.colouring_for(&repo);
         assert_eq!((c.n(), c.pins.get("topic")), (14, Some(&11)));
-        s.branch_palette = BranchPalette::ColourBlind;
+        s.colour_palette = ColourPalette::ColourBlind;
         let c = s.colouring_for(&repo);
         assert_eq!((c.n(), c.slot_for("topic")), (8, 3), "the pin keeps its number, shown modulo 8");
         assert!(s.colouring_for(Path::new("/w/other")).pins.is_empty());

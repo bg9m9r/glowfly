@@ -33,7 +33,7 @@ CheckBox "Alto contraste, También cuando el sistema usa alto contraste" [on]
 Label "Cambia a Alto contraste oscuro o claro; al desactivarlo vuelve tu tema."
 Label "Colores"
 ComboBox "Colores"
-Label "Colores de las ramas en el grafo."
+Label "Las ramas, los diffs y el estado de los archivos usan colores que se distinguen también con daltonismo."
 Label "Movimiento"
 Label "Reducir movimiento"
 CheckBox "Reducir movimiento, Desactivar fundidos y deslizamientos" [off]
