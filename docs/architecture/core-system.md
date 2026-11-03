@@ -9,7 +9,9 @@ source file, update its line here.
 - `env_path.rs`: that PATH, which on macOS merges in the login shell's.
 - `flatpak.rs`: running inside a Flatpak sandbox: detecting it (`/.flatpak-info`, or a valid `FLATPAK_ID` with the program under `/app`), the host's XDG folders (`host_var`, `child_config_home`) for what Glowfly shares with the host (git's XDG config, the home Trash), and pointing libgit2's XDG config search path at the host's at start (`init`).
 - `git_program.rs`: the git program every git child runs (chosen in Preferences > Git, else `git` from PATH), checking a program before it is used, and finding the installed gits.
-- `safe_directory.rs`: repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling.
+- `safe_directory.rs`: repositories git refuses because another user owns them: opening one git opens, the typed error for a real refusal, and listing a folder in `safe.directory` in git's spelling.
+- `safe_directory/verdict.rs`: asking git whether it opens a folder libgit2 refused for its owner, and whom git names as the owner.
+- `safe_directory/allowed.rs`: the folders git opens, allowed for libgit2 for this process only (a `safe.directory` list in its own ProgramData config).
 - `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`), and a folder's name and parent for list rows.
 - `volume.rs`: whether a folder is on a network or virtual file system.
 - `conflict_lines.rs`: the paths git's CONFLICT lines name (rename, delete and directory conflicts included), each once, for `git_errors`; a path that reads more than one way is counted but not named until `ordered` matches it to the status's unmerged paths (pure).

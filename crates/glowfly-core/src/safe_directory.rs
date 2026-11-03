@@ -1,17 +1,79 @@
 //! Repositories git refuses because another user owns them: a folder on a Windows share or
 //! under `\\wsl$`, a FAT/exFAT drive, another account's folder, a Docker volume or an NFS mount
 //! with another uid. libgit2 and git both refuse to open these (CVE-2022-24765) until the folder
-//! is listed in the global `safe.directory` setting. Glowfly says so, instead of "not a
-//! repository", and can add the folder there in git's own spelling.
+//! is listed in the global `safe.directory` setting. libgit2's owner check is stricter than
+//! git's in places (an Administrators-owned folder on Windows), so a refusal is checked with git
+//! (`verdict`): a folder git opens is opened (`allowed`, for this process only), and only a real
+//! refusal comes back as [`Error::NotOwned`], never "not a repository". Glowfly can then add
+//! the folder to `safe.directory` in git's own spelling.
 
 use crate::error::{Error, Result};
 use crate::gitcli;
+use git2::Repository;
 use std::path::{Path, PathBuf};
 
-/// The error for a failed `Repository::discover`/`open` of `path`: [`Error::NotOwned`] with the
-/// repository's folder when git refused it for its owner, else [`Error::NotARepository`].
-pub fn open_error(path: &Path, e: &git2::Error) -> Error {
-    if e.code() == git2::ErrorCode::Owner { Error::NotOwned(repo_root(path)) } else { Error::NotARepository(path.display().to_string()) }
+pub mod allowed;
+pub mod verdict;
+
+/// A repository git refuses because another user owns it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Refusal {
+    /// The repository's folder (`repo_root`).
+    pub root: PathBuf,
+    /// Its owner as git names it, when it does (Git for Windows).
+    pub owner: Option<String>,
+    /// The owner is the Administrators group (a folder made from a program run as administrator).
+    pub admins: bool,
+}
+
+/// `Repository::discover(path)`, opening a folder libgit2 refuses for its owner when git opens
+/// it; a real refusal is [`Error::NotOwned`], anything else [`Error::NotARepository`].
+pub fn discover(path: &Path) -> Result<Repository> {
+    opened(path, || Repository::discover(path))
+}
+
+/// [`discover`] for `Repository::open(path)` (no search above `path`).
+pub fn open(path: &Path) -> Result<Repository> {
+    opened(path, || Repository::open(path))
+}
+
+fn opened(path: &Path, open: impl Fn() -> std::result::Result<Repository, git2::Error>) -> Result<Repository> {
+    match open() {
+        Ok(r) => Ok(r),
+        Err(e) if e.code() == git2::ErrorCode::Owner => {
+            let root = repo_root(path);
+            let v = verdict::ask(path, &root, gitcli::NO_PROMPTS);
+            if v.opens && allowed::allow(&allow_values(path, &root)) {
+                match open() {
+                    Ok(r) => {
+                        tracing::debug!(root = %root.display(), "git opens a folder libgit2 refused for its owner");
+                        // libgit2's own spelling of the folder, for the opens that follow.
+                        if let Some(w) = r.workdir() {
+                            allowed::allow(&[config_value(w, cfg!(windows))]);
+                        }
+                        return Ok(r);
+                    }
+                    Err(e) => tracing::warn!("libgit2 still refuses {}: {e}", root.display()),
+                }
+            }
+            Err(Error::NotOwned(Refusal { root, owner: v.owner, admins: v.admins }))
+        }
+        Err(_) => Err(Error::NotARepository(path.display().to_string())),
+    }
+}
+
+/// The `safe.directory` values that let libgit2 open the repository at `root`, found from
+/// `path`: its folder as spelled (made absolute, as libgit2 compares it) and as resolved.
+fn allow_values(path: &Path, root: &Path) -> Vec<String> {
+    let spelled = std::path::absolute(path)
+        .ok()
+        .and_then(|p| p.ancestors().find(|a| a.join(".git").symlink_metadata().is_ok()).map(Path::to_path_buf));
+    let mut values: Vec<String> = spelled.iter().map(|p| config_value(p, cfg!(windows))).collect();
+    let resolved = config_value(root, cfg!(windows));
+    if !values.contains(&resolved) {
+        values.push(resolved);
+    }
+    values
 }
 
 /// The repository folder at or above `path`: the nearest one holding `.git` (a folder, or a
@@ -52,16 +114,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn an_owner_refusal_is_not_called_not_a_repository() {
-        let dir = crate::testutil::scratch_repo("owner-error");
+    fn a_folder_that_is_no_repository_is_called_so() {
+        let dir = crate::paths::temp_dir().join(format!("glowfly-owner-none-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(matches!(open(&dir), Err(Error::NotARepository(_))));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_values_allowed_name_the_folder_both_ways() {
+        let dir = crate::testutil::scratch_repo("owner-values");
         std::fs::create_dir_all(dir.join("src")).unwrap();
-        let refused = git2::Error::new(git2::ErrorCode::Owner, git2::ErrorClass::Config, "repository path is not owned by current user");
-        match open_error(&dir.join("src"), &refused) {
-            Error::NotOwned(root) => assert_eq!(root, crate::paths::resolve(&dir)),
-            other => panic!("expected NotOwned, got {other:?}"),
-        }
-        let other = git2::Error::new(git2::ErrorCode::NotFound, git2::ErrorClass::Repository, "could not find repository");
-        assert!(matches!(open_error(&dir, &other), Error::NotARepository(_)));
+        let root = repo_root(&dir.join("src"));
+        let values = allow_values(&dir.join("src"), &root);
+        assert!(values.contains(&config_value(&dir, cfg!(windows))), "{values:?}");
+        assert!(values.contains(&config_value(&root, cfg!(windows))), "{values:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -97,6 +164,6 @@ mod tests {
         }
         let e = crate::repo::load(&dir, &crate::repo::LoadOptions::default()).err().expect("refused");
         let _ = sudo(&["rm", "-rf", &dir.display().to_string()]);
-        assert!(matches!(e, Error::NotOwned(ref root) if *root == dir), "{e:?}");
+        assert!(matches!(e, Error::NotOwned(ref r) if r.root == dir), "{e:?}");
     }
 }

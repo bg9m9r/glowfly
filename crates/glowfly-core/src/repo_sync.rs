@@ -54,9 +54,9 @@ pub fn sync(path: &Path, op: SyncOp, trust: Option<&crate::settings::SavedTrust>
     if !path.is_dir() {
         return Outcome::Failed { reason: "The folder can't be found.".into(), detail: String::new() };
     }
-    let repo = match Repository::open(path) {
+    let repo = match crate::safe_directory::open(path) {
         Ok(r) => r,
-        Err(e) => return Outcome::Failed { reason: crate::safe_directory::open_error(path, &e).to_string(), detail: String::new() },
+        Err(e) => return Outcome::Failed { reason: e.to_string(), detail: String::new() },
     };
     if !crate::trust::allows(trust, &crate::trust::scan(&repo)) {
         return Outcome::Untrusted;
