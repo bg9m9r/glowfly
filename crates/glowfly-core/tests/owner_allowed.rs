@@ -11,6 +11,20 @@ fn git(dir: &Path, args: &[&str]) -> bool {
     Command::new("git").arg("-C").arg(dir).args(args).status().is_ok_and(|s| s.success())
 }
 
+/// The levels at which libgit2 finds a `safe.directory` of `*` outside any repository.
+fn levels_allowing_all() -> Vec<git2::ConfigLevel> {
+    let config = git2::Config::open_default().unwrap().snapshot().unwrap();
+    let mut out = Vec::new();
+    let mut entries = config.entries(Some("safe.directory")).unwrap();
+    while let Some(e) = entries.next() {
+        let e = e.unwrap();
+        if e.value() == Some("*") {
+            out.push(e.level());
+        }
+    }
+    out
+}
+
 /// The `safe.directory` values libgit2 reads outside any repository.
 fn listed() -> Vec<String> {
     let config = git2::Config::open_default().unwrap().snapshot().unwrap();
@@ -29,12 +43,29 @@ fn only_folders_git_opens_reach_libgit2() {
     std::fs::create_dir_all(&home).unwrap();
     // The user's own global config: still read, and still at the global level, through the list.
     std::fs::write(home.join(".gitconfig"), "[user]\n\tname = Ada\n[core]\n\tsshCommand = ssh -v\n").unwrap();
-    // SAFETY: the only test in this binary, before libgit2 or any other thread starts.
+    let elsewhere = scratch.join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    // SAFETY: the only test in this binary, before any other thread starts.
     unsafe {
         std::env::set_var("HOME", &home);
         std::env::set_var("USERPROFILE", &home);
         std::env::set_var(if cfg!(windows) { "LOCALAPPDATA" } else { "XDG_CACHE_HOME" }, scratch.join("cache"));
     }
+    // Only this test's home counts, for git and libgit2 alike: the machine's system, XDG and
+    // ProgramData configs (a CI runner's system config allows `*`) are left out of both.
+    let machine = levels_allowing_all();
+    if !machine.is_empty() {
+        eprintln!("this machine's config allows every folder at {machine:?}; the test leaves it out");
+    }
+    // SAFETY: as above.
+    unsafe {
+        std::env::set_var("GIT_CONFIG_NOSYSTEM", "1");
+        std::env::set_var("XDG_CONFIG_HOME", &elsewhere);
+        for level in [git2::ConfigLevel::System, git2::ConfigLevel::XDG, git2::ConfigLevel::ProgramData] {
+            git2::opts::set_search_path(level, elsewhere.as_path()).unwrap();
+        }
+    }
+    assert!(levels_allowing_all().is_empty(), "nothing outside the test allows every folder");
     let before = listed();
     allowed::init().unwrap();
     assert!(listed() == before, "nothing is allowed until a folder is");
@@ -56,7 +87,8 @@ fn only_folders_git_opens_reach_libgit2() {
 
     // A name that would end its line never reaches the list.
     assert!(!allowed::allow(&["/srv/x\n[safe]\n\tdirectory = *".to_owned()]));
-    assert!(!listed().iter().any(|v| v == "*" || v.contains('\n')));
+    assert!(levels_allowing_all().is_empty(), "{:?}", levels_allowing_all());
+    assert!(!listed().iter().any(|v| v.contains('\n')));
 
     // On a Linux runner with passwordless sudo: a repository root owns.
     #[cfg(target_os = "linux")]
