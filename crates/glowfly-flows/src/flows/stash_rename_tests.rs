@@ -128,6 +128,7 @@ fn refusals_leave_or_close_the_dialog() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

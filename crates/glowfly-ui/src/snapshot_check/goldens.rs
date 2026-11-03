@@ -126,6 +126,10 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("hint_row_tidy_de", Top(280.0)),
     // Narrow windows: the toolbar folded into More, the graph's columns given way.
     ("narrow_900_en", Window),
+    ("graph_wip_row_floor", Window),
+    ("graph_wip_row_floor_no_chips", Window),
+    ("wip_header_icons", Top(220.0)),
+    ("wip_header_icons_staged", Top(220.0)),
     ("narrow_900_de", Window),
     ("narrow_1100_de", Window),
     // The graph and the history table.
@@ -154,6 +158,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("history_table_high_contrast_light", Window),
     ("history_table_compact_dark", Window),
     ("rebase_dragging", Window),
+    // A commit body kept as written: hard line breaks, long lines soft-wrapped.
+    ("details_hard_wrapped_body", Window),
     // Diffs, blame, conflicts and the pull request's line comments.
     ("diff_inline", Window),
     ("diff_split", Window),
@@ -333,6 +339,8 @@ const IMAGE_ONLY: &[&str] = &[
     "person_colours_graph_light",
     "graph_wip_row_light",
     "graph_wip_row_high_contrast",
+    // `main_dark`'s text in a narrow details panel: the icon-only actions show only in the image.
+    "wip_header_icons",
     "repo_menu_light",
     "diff_lines_gutter_selected_light",
     "diff_text_selection_light",

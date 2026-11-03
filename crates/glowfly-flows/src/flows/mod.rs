@@ -211,6 +211,7 @@ mod quit_unsaved_tests;
 mod range_diff_flow_tests;
 mod range_diff_tests;
 mod rebase_e2e_tests;
+mod rebase_edit_commit_tests;
 mod rebase_merges_tests;
 mod rebase_quick_squash_tests;
 mod rebase_quick_tests;

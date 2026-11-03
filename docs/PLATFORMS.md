@@ -106,8 +106,11 @@ second one next to it.
 10. **Turn libgit2's `C:/x/y/` into the OS spelling** before it reaches the OS, another program
     or the screen: `native_path::native` for arguments, `native_path::shown` for text. Keep the
     raw form only as a matching key.
-11. **Report git's owner refusal as `Error::NotOwned`**, never "not a repository"
-    (`safe_directory::open_error`). Offer `safe_directory::add` after confirmation, in git's
+11. **Open a repository from outside through `safe_directory::discover` or `open`.** libgit2's
+    owner check is stricter than git's (on Windows it refuses an Administrators-owned folder
+    unless Glowfly runs elevated), so a refusal is put to git first: a folder git opens is
+    allowed for this process only (`safe_directory::allowed`, never the user's settings). Only
+    git's own refusal becomes `Error::NotOwned`, never "not a repository". Offer `safe_directory::add` after confirmation, in git's
     spelling (`safe_directory::config_value`: forward slashes, `%(prefix)///server/share` for a
     share).
 12. **Write commit messages in the repository's `i18n.commitEncoding`** (`commit_encoding`):

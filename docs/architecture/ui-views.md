@@ -46,11 +46,12 @@ start with `state/`, `update/` or `ui/`.
 - `graph/fit.rs`: how the columns give way in a narrow graph (CHANGES, COMMIT, AUTHOR, DATE hide, then BRANCH / TAG narrows and its chips move inline, MESSAGE keeping 240 px), never saved.
 - `graph/cells.rs`: the graph row's single-line text cells, and the pull request chips by head commit.
 - `graph/refs_fit.rs`: how wide BRANCH / TAG's chips want to be (each row folded to its first chip and "+N"), for the column's auto-fit and inline chips.
-- `graph/wip_row.rs`: this tab's WIP row with its label, change chips and line total, spanning the columns it leaves empty and keeping the label whole longest.
-- `graph/labels.rs`: the row's ref chips with their marks, fitting and "+N" chip.
+- `graph/wip_row.rs`: this tab's WIP row with its label, change chips and line total, spanning the columns it leaves empty; short of room the total hides, then the label is cut to 6 characters, then the chips hide.
+- `graph/labels.rs`: the row's ref chips with their marks, fitting and "+N" chip, the halo round the checked-out branch and HEAD (no layout room; a ref chip after it moves 3 px).
+- `graph/labels_tests.rs`: the chips' fitting, widths (marks; the halo takes none) and hit testing.
 - `graph/nodes.rs`: the row's nodes, sized by the row density.
 - `graph/marks.rs`: the painted local, remote and tag marks.
-- `graph/row_look.rs`: the row's background: the lane band, the highlight and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
+- `graph/row_look.rs`: the row's background: the lane band and the highlight (`surfaces::band_color`, `highlight_color`) and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
 - `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
 - `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA), inked and on the find fill.
 - `graph/lane_colours.rs`: the graph's per-row colours.
@@ -64,7 +65,7 @@ start with `state/`, `update/` or `ui/`.
 - `details_commit.rs`: the selected commit's details, title first: the title as git splits it, the author's row, the body block, the files.
 - `details_chips.rs`: the details' row of quiet chips for the SHA, parents and committer, drawn by `widgets/chip.rs`.
 - `file_status.rs`: the changed-file rows' status badge (an 18 px circle).
-- `details_wip_header.rs`: the WIP lists' headers with their more-actions menu.
+- `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`.
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode.
 - `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames), a folder row, the header's List / Tree toggle and a file row's indent.
 - `folder_menu.rs`: a folder row's menu: Folder history, Copy path, and Stage or Unstage folder in the WIP lists.

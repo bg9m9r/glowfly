@@ -3,7 +3,8 @@
 
 use super::bands::{accent_band, hue, in_reserved_band};
 use super::color::Palette;
-use super::contrast::{self, ChipStyle, oklch, ratio};
+use super::contrast::{self, oklch, ratio};
+use super::ref_chip::{BranchTone, ChipStyle, ref_chip};
 use super::tests::{high_contrast, palettes};
 use super::tests::{ocean, rgb};
 use super::*;
@@ -204,8 +205,11 @@ fn tags_are_plum() {
     for (name, p, band) in
         [("Garden dark", &GARDEN_DARK, &plum), ("Garden light", &GARDEN_LIGHT, &plum), ("Dusk", &DUSK, &plum), ("Dawn", &DAWN, &plum)]
     {
-        let tag = contrast::ref_chip(ChipStyle::Tag, p.branch.chips[0], p);
-        assert_eq!((tag.fill, tag.text), (p.tag_bg, p.tag_fg), "{name}");
+        let tag = ref_chip(ChipStyle::Tag, BranchTone::plain(p.branch.chips[0]), p);
+        assert_eq!((tag.fill, tag.text), (None, p.tag_fg), "{name}: outlined, lettered in tag_fg");
+        let edge = tag.edge.expect("a tag chip has an edge");
+        let turn = (hue(edge) - hue(p.tag_fg) + 540.0).rem_euclid(360.0) - 180.0;
+        assert!(turn.abs() <= 15.0, "{name}: the edge keeps tag_fg's plum, {turn:.1} deg off");
         let r = ratio(p.tag_fg, p.tag_bg);
         assert!(r >= 4.5, "{name}: tag text is {r:.2}:1");
         let h = hue(p.tag_bg);

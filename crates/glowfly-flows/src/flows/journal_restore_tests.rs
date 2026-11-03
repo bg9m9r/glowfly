@@ -197,6 +197,7 @@ fn refusals_say_why_and_open_nothing() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

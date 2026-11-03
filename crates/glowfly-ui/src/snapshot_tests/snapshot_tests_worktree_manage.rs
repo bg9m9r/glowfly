@@ -110,6 +110,7 @@ fn worktree_remove_locked() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

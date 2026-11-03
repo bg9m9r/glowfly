@@ -4,12 +4,9 @@
 //! from `widgets::row_fill`. Also the inks of a row a search dims.
 
 use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::contrast::{mix, ratio, tint, unbrown};
+use crate::ui::theme::surfaces::{band_color, highlight_color};
 use crate::ui::widgets::row_fill::ACCENT_BAR_W;
 use eframe::egui::{Color32, Painter, Rect, vec2};
-
-/// How far the band moves from the background toward the lane colour, at most.
-const BAND_T: f32 = 0.07;
 
 /// How one row looks.
 #[derive(Clone, Copy)]
@@ -71,33 +68,11 @@ pub(crate) fn dim_inks(pal: &Palette) -> (Color32, Color32) {
     (pal.weak, pal.faint)
 }
 
-/// How far a highlighted row (its branch hovered) moves from its band toward the lane colour.
-const HIGHLIGHT_T: f32 = 0.16;
-
-/// The opaque fill of a highlighted row on `band`, a row of a `lane`: the band moved toward the
-/// lane colour, `contrast::unbrown`ed (a warm lane on a dark palette lifts the band instead).
-pub(crate) fn highlight_color(band: Color32, lane: Color32) -> Color32 {
-    unbrown(band, mix(band, lane, HIGHLIGHT_T))
-}
-
-/// The opaque band for a row on a `lane`: the strongest tint (`contrast::tint`, so on Dusk a warm
-/// lane gives a plum-violet step, never a grey-brown) up to `BAND_T` that keeps `weak`
-/// text at 4.5:1, `text` as readable as on the background (up to 7:1) and `faint` text as
-/// readable as on the background (up to 4.5:1). The background itself when no tint does.
-pub(crate) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
-    let steps = (BAND_T * 100.0).round() as u32;
-    let keeps = |band: Color32| {
-        ratio(pal.weak, band) >= 4.5
-            && ratio(pal.text, band) >= ratio(pal.text, pal.bg).min(7.0)
-            && ratio(pal.faint, band) >= ratio(pal.faint, pal.bg).min(4.5)
-    };
-    (1..=steps).rev().map(|i| tint(pal.bg, lane, i as f32 / 100.0, pal.dark)).find(|&b| keeps(b)).unwrap_or(pal.bg)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::ui::theme::branch_colours::{line_in, swatches};
+    use crate::ui::theme::contrast::ratio;
     use crate::ui::theme::{DARK, LIGHT, builtin};
     use glowfly_core::settings::BuiltinTheme;
 

@@ -100,6 +100,10 @@ fn main() -> eframe::Result {
     if let Err(e) = glowfly_core::flatpak::init() {
         tracing::warn!("{e}");
     }
+    // libgit2 opens a folder it refuses for its owner when git opens it (`safe_directory`).
+    if let Err(e) = glowfly_core::safe_directory::allowed::init() {
+        tracing::warn!("{e}");
+    }
     // Before any window exists: an installed Windows copy takes the id its shortcuts carry.
     platform::claim_app_id();
     // Read before the window is made: it picks the Windows frame (Preferences > UI).
