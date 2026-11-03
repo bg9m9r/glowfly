@@ -108,7 +108,7 @@ fn marks_keep_their_contrast() {
         let p = super::applied(*builtin(t), ColourPalette::ColourBlind);
         let min = if p.high_contrast { 4.5 } else { 3.0 };
         let surfaces = [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)].map(|(n, c)| (n.to_owned(), c));
-        let bands = swatches().map(|l| (format!("{l:?} band"), crate::ui::graph::band_color(line_in(l, &p), &p)));
+        let bands = swatches().map(|l| (format!("{l:?} band"), crate::ui::theme::surfaces::band_color(line_in(l, &p), &p)));
         let on: Vec<(String, Color32)> = surfaces.into_iter().chain(bands).collect();
         for (name, c) in [("added", p.status.added), ("removed", p.status.removed), ("modified", p.status.modified)] {
             for (sname, s) in &on {
