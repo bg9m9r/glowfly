@@ -104,6 +104,36 @@ fn the_kept_text_is_six_characters_of_the_name() {
     assert_eq!(of(ChipStyle::Branch, "main"), "main", "a short name whole");
     assert_eq!(of(ChipStyle::Tag, "v1.2.3"), "v1.2.3", "exactly six, whole");
     assert_eq!(of(ChipStyle::Remote, "origin/main"), "origin…");
+    assert_eq!(of(ChipStyle::Branch, "feature"), "feature", "seven graphemes, as wide as six and an ellipsis, whole");
+    // Graphemes, not chars: an accent built from two chars, a family emoji from five.
+    let accented = "e\u{301}".repeat(9);
+    assert_eq!(of(ChipStyle::Branch, &accented), format!("{}…", "e\u{301}".repeat(6)));
+    let family = "👨\u{200d}👩\u{200d}👧";
+    assert_eq!(of(ChipStyle::Tag, &format!("{family}{}", "x".repeat(8))), format!("{family}xxxxx…"));
+    assert_eq!(of(ChipStyle::Branch, "機能ブランチの名前です"), "機能ブランチ…");
+}
+
+fn ctx() -> eframe::egui::Context {
+    let ctx = eframe::egui::Context::default();
+    let _ = ctx.run(eframe::egui::RawInput::default(), |_| {});
+    ctx
+}
+
+#[test]
+fn a_cut_chip_keeps_both_ends_of_its_name() {
+    let ctx = ctx();
+    let p = Painter::new(ctx.clone(), eframe::egui::LayerId::background(), Rect::EVERYTHING);
+    let named = |style, text: &str| ChipSpec { style, text: text.to_owned(), ..spec(true, false, false) };
+    let (a, b) = ("worktree-agent-a1b2c3d4e5f6", "worktree-agent-a1b2c3d4e9z7");
+    let room = 0.8 * text_w(&p, a, FONT);
+    let (cut_a, cut_b) = (chip_text(&p, &named(ChipStyle::Branch, a), room), chip_text(&p, &named(ChipStyle::Branch, b), room));
+    assert!(cut_a.starts_with("worktree") && cut_a.ends_with("d4e5f6") && cut_a.contains('…'), "{cut_a}");
+    assert!(text_w(&p, &cut_a, FONT) <= room, "{cut_a} fits {room}");
+    assert_ne!(cut_a, cut_b, "names that share a long start stay apart");
+    // The checked-out branch's check mark stays whole, before its cut name.
+    let head = chip_text(&p, &named(ChipStyle::CurrentBranch, &format!("{CHECK}{a}")), room + text_w(&p, CHECK, FONT));
+    assert_eq!(head, format!("{CHECK}{cut_a}"));
+    assert_eq!(chip_text(&p, &named(ChipStyle::Branch, "main"), room), "main", "a name that fits is whole");
 }
 
 fn spec(local: bool, remote: bool, build: bool) -> ChipSpec {

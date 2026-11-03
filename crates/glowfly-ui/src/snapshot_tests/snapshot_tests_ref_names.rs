@@ -1,6 +1,7 @@
 //! Long ref names: a ref menu names its ref once, in a header, and its items leave the name
 //! out; a graph label cut off by the BRANCH / TAG column shows its whole name on hover, and one
-//! that fits shows none. Shares the fixture repository with `snapshot_tests`.
+//! that fits shows none; chips whose names share a long start are cut in their middle and stay
+//! apart. Shares the fixture repository with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
@@ -22,14 +23,48 @@ const LONG: &str = "todo/git-lfs-live-pattern-refresh-a-missing-g";
 
 /// The fixture with its `search` branch renamed to `LONG`, in the left panel and the graph.
 fn long_branch(name: &str) -> (AppState, std::path::PathBuf) {
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
+    renamed(ThemeChoice::Dark, name, &[("search", LONG)])
+}
+
+/// The fixture in `theme` with local branches renamed (`(old, new)`), in the left panel and the
+/// graph.
+fn renamed(theme: ThemeChoice, name: &str, names: &[(&str, &str)]) -> (AppState, std::path::PathBuf) {
+    let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_mut().unwrap();
-    snap.locals.iter_mut().find(|b| b.name == "search").unwrap().name = LONG.into();
-    for l in snap.refs.values_mut().flatten().filter(|l| l.name == "search") {
-        l.name = LONG.into();
-        l.full = format!("refs/heads/{LONG}");
+    for &(old, new) in names {
+        snap.locals.iter_mut().find(|b| b.name == old).unwrap().name = new.into();
+        for l in snap.refs.values_mut().flatten().filter(|l| l.name == old) {
+            l.name = new.into();
+            l.full = format!("refs/heads/{new}");
+        }
     }
     (st, dir)
+}
+
+/// Two branches whose names share a long start, as agents' worktrees name them.
+const SHARED: [(&str, &str); 2] =
+    [("login-page", "worktree-agent-a1b2c3d4-login-page"), ("search", "worktree-agent-a1b2c3d4-search-index")];
+
+/// The graph with `SHARED`'s chips, cut in their middle by the BRANCH / TAG column: each keeps
+/// its start and its own end.
+fn chips_shared_prefix(theme: ThemeChoice, dark: bool, name: &str) {
+    let (st, dir) = renamed(theme, name, &SHARED);
+    let mut h = harness(st, dark);
+    h.run();
+    // The text snapshot lists each chip's cut name as painted.
+    h.check_snapshot(name);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn graph_chips_shared_prefix_dark() {
+    chips_shared_prefix(ThemeChoice::Dark, true, "graph_chips_shared_prefix_dark");
+}
+
+#[test]
+fn graph_chips_shared_prefix_light() {
+    chips_shared_prefix(ThemeChoice::Light, false, "graph_chips_shared_prefix_light");
 }
 
 /// Rests the pointer on the first chip of the search branch's row.
