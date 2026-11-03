@@ -25,6 +25,23 @@ git2 = { version = "0.20", default-features = false }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sys-locale = "0.3.2"
+# Versions more than one manifest (or one manifest twice) names. Features stay with the crates
+# that need them; these entries set only the version and whether default features are on.
+eframe = "0.31"
+egui-wgpu = { version = "0.31", default-features = false }
+egui_kittest = "0.31"
+dify = { version = "0.7", default-features = false }
+image = { version = "0.25", default-features = false }
+keyring = "3"
+pulldown-cmark = { version = "0.13", default-features = false }
+raw-window-handle = "0.6"
+syntect = { version = "5.3", default-features = false }
+toml = "1.1"
+tracing = "0.1.44"
+two-face = { version = "0.5.2", default-features = false }
+# Also what trash and tauri-winrt-notification build, so the tree has one copy on Windows.
+windows = "0.62"
+winit = { version = "0.30", default-features = false }
 glowfly-core = { path = "crates/glowfly-core" }
 glowfly-model = { path = "crates/glowfly-model" }
 glowfly-runner = { path = "crates/glowfly-runner" }

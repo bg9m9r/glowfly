@@ -20,6 +20,10 @@ source file, update its line here.
 - `remote_failure.rs`: why git couldn't reach or read a remote (unreachable host, missing repository, no access, a server certificate it couldn't verify).
 - `error.rs`: typed errors; `error/advice.rs` rewrites a hosting service's refusal as one translated sentence that says what to do.
 - `quoted.rs`: decoding git's C-quoted paths (`"caf\303\251.txt"`), for blame's porcelain and sparse checkout lists.
+- `paths.rs`: one folder, many spellings: a Windows short 8.3 name (`C:\Users\RUNNER~1`) and its long form, a link or junction and its target, macOS's `/var` and `/private/var`, `Repo` and `repo` on a volume that ignores case.
+- `paths/encode.rs`: paths saved in Glowfly's own files (recent.txt, tabs.txt, settings keys), without losing any (a Unix name needn't be UTF-8, a Windows one may hold a lone UTF-16 surrogate) and one per line.
+- `paths/file_url.rs`: the local path a `file:` URL names.
+- `win_registry.rs`: reading single values from the Windows registry: a DWORD or a string, None when the key or value is missing (or has another type).
 
 ## Credentials and signing
 
@@ -30,6 +34,15 @@ source file, update its line here.
 - `ssh_version.rs`: the ssh git runs in a repository (the environment, then `core.sshCommand`, read from config) and its OpenSSH version (a `DISPLAY` placeholder before 8.4; only an environment program is run with `-V`, a command line gets the placeholder unrun), and the new session every git child starts in on Unix.
 - `gpg_prompt/`: signing passphrases: Glowfly as git's gpg.program, running the user's gpg with loopback pinentry and asking through the askpass listener; extending an expired key from Preferences the same way (`gpg_prompt/extend.rs`); for SSH-format keys, the env that marks ssh-keygen's prompt as a signing prompt (`gpg_prompt/ssh_env.rs`).
 - `signing.rs`: signing keys.
+- `askpass/client.rs`: the helper's side: sends one prompt to the app and waits for the answer.
+- `askpass/prompt.rs`: what a git or ssh prompt asks for, decided from its text.
+- `askpass/protocol.rs`: the line protocol between the helper process and the app's listener: one JSON request line from the helper, one JSON response line back.
+- `askpass/server.rs`: the app's side: a loopback listener that turns each helper connection into an `Event::Asked` and waits for the app to `Server::answer` it.
+- `gpg_prompt/args.rs`: reading git's arguments for gpg and building the wrapper's own.
+- `gpg_prompt/env.rs`: the environment that makes git run Glowfly as its gpg.program (pure, `vars`), and the signing environment gitcli adds to each command (`for_command`).
+- `gpg_prompt/flow.rs`: the wrapper's steps: probe, ask, sign with loopback, or fall back to the program's own pinentry.
+- `gpg_prompt/program.rs`: which OpenPGP program the user configured, so the wrapper runs that one.
+- `gpg_prompt/real.rs`: the real gpg runs and the real app: `Real` runs the user's program, `EnvAsker` asks through the askpass listener gitcli pointed the wrapper at.
 
 ## SSH keys (`ssh_keys.rs`, `ssh_keys/`)
 
@@ -56,6 +69,10 @@ source file, update its line here.
 - `url_scheme/windows.rs`: the registry class key on Windows.
 - `url_scheme/xdg.rs`: a desktop entry and `xdg-mime` on XDG desktops.
 - macOS needs no registration: Glowfly.app's Info.plist declares the scheme, and links arrive as Get URL Apple events (`glowfly-app` `platform/macos_events.rs`).
+- `instance/client.rs`: the second process's side: hands a link or folder to the running window.
+- `instance/foreground.rs`: letting the running window come to the front.
+- `instance/server.rs`: the running window's side: a loopback listener that reports each link or folder it is handed, started once this window holds the claim (`claim.rs`).
+- `app_identity.rs`: Glowfly's identity with the operating system: the id its installers register and the Linux desktop entry's name.
 
 ## Built-in terminal (`terminal/`)
 
@@ -68,6 +85,10 @@ source file, update its line here.
 - `activity.rs`: whether the shell is running a program, in front or as a background job.
 - `procs.rs`: the process lists `activity.rs` and `git_procs.rs` read: a Windows ToolHelp snapshot, image paths and creation times, Linux `/proc`, macOS libproc; and every process's program file (`program_paths`), for the update's `.bak` cleanup.
 - `title.rs`: the window title a program sets, with what of it names a running command.
+- `terminal/keys.rs`: what typing, named keys and pasting send to the program, as xterm encodes them.
+- `terminal/pty.rs`: shell sessions on a pseudo-terminal: a running session with its output and exit reported through callbacks on their own threads (terminal/shell.rs picks the shell).
+- `terminal/queries.rs`: queries a program sends the terminal and expects an answer to, found in its output.
+- `terminal/screen.rs`: the terminal screen: a VT parser fed with a shell's output, read back as styled rows.
 
 ## Settings (`settings.rs`, `settings/`)
 
@@ -99,6 +120,18 @@ source file, update its line here.
 - `downloads.rs`: the Downloads folder updates are saved to.
 - `date_fmt.rs`: how dates are shown: the four patterns (Date, Long date, Date and time, Full date and time), blank following the date locale, relative ages and date hover text.
 - Settings saved per repository are keyed by `real_workdir` through `settings::repo_keys`.
+- `settings/builtin_themes.rs`: the built-in themes: their ids (a theme file's `base`), names, kinds, the themes that took the place of the retired ones, and how the settings' `ThemeChoice` maps onto them.
+- `settings/column_widths.rs`: widths of the graph's resizable columns (dragged from the header dividers), with the per-column defaults and limits.
+- `settings/editor.rs`: diff text size and tab stops (Preferences > Diff viewer).
+- `settings/graph_filter.rs`: refs hidden from or soloed in a repository's commit graph, saved per working directory.
+- `settings/language.rs`: the UI language setting (Preferences > General): "system" or a language code.
+- `settings/panel_sizes.rs`: the sizes the window's drawers were last dragged to.
+- `settings/paths.rs`: where Glowfly keeps its own files (settings, recent repositories, tabs; the avatar cache is in `cache_dir`, the logs in `log_dir`).
+- `settings/profiles.rs`: named profiles (Preferences > Profile): each keeps an author identity, and the current one's identity is the global git config's; other profiles also keep the connected accounts and app preferences saved when they were last current (`profiles_prefs`), and its folder rules (`profile_rules`).
+- `settings/repo_keys.rs`: settings saved per repository (graph filters, pinned branch colours, pull request and issue filters, the issue tracker, trust decisions and more), keyed by the repository's resolved working directory (`Snapshot::real_workdir`) and saved losslessly (`paths::encode`).
+- `settings/submodules.rs`: keeping submodules up to date: the Preferences > General switch and the three-way choice a repository's SUBMODULES menu makes over it (saved per repository in `Settings::repo_submodule_updates`, read through `repo_keys`).
+- `settings/theme_choice.rs`: the theme chosen in Preferences > Appearance > Theme, as settings.json saves it, and how a retired theme's name loads: as the theme that took its place (`BuiltinTheme::successor`), noted for the one-time toast (`take_retired`).
+- `settings/zoom.rs`: window zoom levels (keys, palette and Preferences > Appearance).
 
 ## Identity and profiles
 
@@ -131,6 +164,10 @@ source file, update its line here.
 - `notices/spdx.rs`: tests only: SPDX licence expressions, which option Glowfly takes, and which licence a file's text is.
 - `advisory_ignores_tests.rs`: `deny.toml`'s advisory ignores and `osv-scanner.toml`'s `[[IgnoredVulns]]` list the same ids with the same reasons, each osv-scanner entry with an `ignoreUntil` date, and SECURITY.md's Known advisories table names the same ids.
 - `glowfly_core::app_identity` holds Glowfly's identity with the OS (`APP_ID`, `DESKTOP_ENTRY`).
+- `opens.rs`: whether "open in the default program" would run a working-tree file rather than show it.
+- `persist/replace.rs`: the platform steps of a crash-safe write: permissions, the rename over the old file (with Windows' read-only attribute and brief locks), flushing the folder, and old temporary files.
+- `i18n/catalog.rs`: the bundled catalogs: one flat JSON object of key → text per language, compiled in and parsed on first use.
+- `i18n/system.rs`: the OS's UI language: read once at startup from its ordered list of preferred languages, and never again while Glowfly runs.
 
 ## External tools (`external_tools.rs`, `external_tools/`)
 

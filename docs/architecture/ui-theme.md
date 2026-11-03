@@ -45,6 +45,14 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/surfaces.rs`: the colour tokens worked out from a palette, so theme files get them with no keys of their own: the graph's row bands and highlights (`band_color`, `highlight_color`) and every surface a row's chip sits on (`with_row_surfaces`), the field, guide and toolbar-group fills, the framed toolbar bar's edge (`tool_edge`), the overlay surface with its edge and inset, the hover, pressed and latched layers, a destructive menu item's text and hover pill (`menu_danger`, `danger_hover`), the semantic tones with their tints, the tonal fill and ink, and the brown-safe wash (`color::wash`) views use for translucent colour fills.
 - `ui::theme::color` holds the active palette (a thread-local, see Rules); `ThemeCache` owns palettes built from theme files, and the slots near the trunk the shell reports to the model.
 - `ui/backdrop.rs`: the Mica tints (see Window chrome in [flow-shell.md](flow-shell.md)).
+- `theme/builtin.rs`: the built-in palettes, by theme: Graphite and Porcelain (the defaults, `builtin_cobalt.rs`), Midnight and Mist (`builtin_sea.rs`), Dusk and Dawn (`builtin_dusk.rs`) and the high-contrast pair (`builtin_extra.rs`).
+- `theme/builtin_cobalt.rs`: Graphite and Porcelain, the cobalt pair and the defaults: near-neutral graphite greys (chroma under 0.01, a hair cool) and neutral white paper with grey-black ink, both under a cobalt accent in its own band (243 to 259 deg) with the cobalt branch families (`branch_palette_more.rs`).
+- `theme/builtin_dusk.rs`: Dusk and Dawn, the pair drawn from the app icon: its dusk tile (indigo into plum) tints the neutrals, and the glowfly's lantern gold is Dusk's accent, so the main branch runs in gold as the icon's first lane does; Dusk's selected row is an indigo step under the gold bar.
+- `theme/builtin_extra.rs`: the high-contrast palettes, and the repository hues every palette takes (see docs/COLOUR.md for the rules they meet).
+- `theme/builtin_garden.rs`: the Garden pair: the standard themes before Dusk and Dawn, kept for those who like the green.
+- `theme/builtin_sea.rs`: Midnight and Mist, the sea-glass pair: a deep blue-black night and its light twin of cool fog paper.
+- `theme/color.rs`: the active color palette.
+- `theme/custom.rs`: palettes from theme files: the base theme with the file's colors on top.
 
 ## Fonts and type
 
