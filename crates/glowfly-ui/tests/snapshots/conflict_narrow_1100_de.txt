@@ -62,19 +62,19 @@ Button "Bearbeiten" [off]
 Button "Zeilen umbrechen" [off]
 Label "Unsere"
 Label "main"
-Button "Alle nehmen"
+Button "Jeden Konflikt von unserer Seite nehmen (main)"
 Label "Ihre"
 Label "theme-tweaks"
-Button "Alle nehmen"
-CheckBox "Nehmen" [on]
-CheckBox "Nehmen" [off]
-CheckBox [on]
-CheckBox [off]
+Button "Jeden Konflikt von ihrer Seite nehmen (theme-tweaks)"
+CheckBox "Konflikt 1 ganz von unserer Seite nehmen (main)" [on]
+CheckBox "Konflikt 1 ganz von ihrer Seite nehmen (theme-tweaks)" [off]
+CheckBox "Zeile 3 von unserer Seite nehmen (main), Konflikt 1" [on]
+CheckBox "Zeile 3 von ihrer Seite nehmen (theme-tweaks), Konflikt 1" [off]
 Button "Tauschen"
-CheckBox "Nehmen" [on]
-CheckBox "Nehmen" [on]
-CheckBox [on]
-CheckBox [on]
+CheckBox "Konflikt 2 ganz von unserer Seite nehmen (main)" [on]
+CheckBox "Konflikt 2 ganz von ihrer Seite nehmen (theme-tweaks)" [on]
+CheckBox "Zeile 9 von unserer Seite nehmen (main), Konflikt 2" [on]
+CheckBox "Zeile 9 von ihrer Seite nehmen (theme-tweaks), Konflikt 2" [on]
 painted:
   "Repository"
   "Branch"
@@ -127,6 +127,8 @@ painted:
   "setting_10 = 10"
   "12"
   "setting_11 = 11"
+  "Alle nehmen"
+  "Alle nehmen"
   "1"
   "setting_1 = 1"
   "1"
@@ -137,8 +139,10 @@ painted:
   "setting_2 = 2"
   "Konflikt 1"
   "automatisch gewählt"
+  "Nehmen"
   "Konflikt 1"
   "automatisch gewählt"
+  "Nehmen"
   "3"
   "setting_3 = 3"
   "3"
@@ -164,7 +168,9 @@ painted:
   "8"
   "setting_8 = 8"
   "Konflikt 2"
+  "Nehmen"
   "Konflikt 2"
+  "Nehmen"
   "9"
   "font_size = 13"
   "9"

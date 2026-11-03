@@ -53,6 +53,7 @@ mod conflict_check_tests;
 mod conflict_count_tests;
 mod conflict_edit_tests;
 mod conflict_files_tests;
+mod conflict_keys_tests;
 mod conflict_layout_tests;
 mod conflict_mark_safety_tests;
 mod conflict_mark_undo_tests;
