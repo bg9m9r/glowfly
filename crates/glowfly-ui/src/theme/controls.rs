@@ -11,11 +11,12 @@ use eframe::egui::{
     self, CornerRadius, Galley, NumExt, Rect, Response, Sense, Shape, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetInfo, WidgetText,
     WidgetType, pos2, vec2,
 };
+use glowfly_core::settings::FocusStyle;
 use std::sync::Arc;
 
 /// A text field with a 1 px `input_border` frame (weak on hover), a 2 px accent focus ring and
-/// its placeholder in `faint`. Only those colours change: sizes, ids and focus behave as the
-/// plain `TextEdit`.
+/// its placeholder in `faint`, with the Strong `tokens::focus_ring` outside it under the Strong
+/// focus style. Only those colours change: sizes, ids and focus behave as the plain `TextEdit`.
 pub struct Field<'t>(pub egui::TextEdit<'t>);
 
 impl egui::Widget for Field<'_> {
@@ -30,6 +31,13 @@ impl egui::Widget for Field<'_> {
         placeholder_in(v, p.faint);
         // No child ui or scope: auto ids and layout stay those of an unwrapped TextEdit.
         let r = ui.add(self.0);
+        if r.has_focus() && tokens::focus_style(ui.ctx()) == FocusStyle::Strong {
+            // egui reports the text's rect; the frame is the whole widget's, and its 2 px focus
+            // edge reaches 1 px outside it.
+            let frame = ui.ctx().read_response(r.id).map_or(r.rect, |w| w.rect).expand(1.0);
+            let corners = saved.visuals.widgets.inactive.corner_radius;
+            tokens::focus_ring(ui.painter(), frame, CornerRadius::same(radius::around(corners.nw, 1)));
+        }
         ui.set_style(saved);
         r
     }

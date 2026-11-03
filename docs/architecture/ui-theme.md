@@ -27,7 +27,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/terminal_scheme.rs`: which colours the terminal draws in (the app theme's, another built-in's or an imported scheme over the app theme's), read through `color::term()`.
 - `prefs/terminal_colours.rs`: Preferences > Terminal's Colors row.
 - `prefs/accessibility.rs`: Preferences > Accessibility: the zoom and text size rows of their own pages, High contrast, the branch colours, motion, the cursor blink, the shortcut links and the toast and tooltip timings, each control named for screen readers; tests and goldens in `prefs/accessibility_tests.rs`.
-- `theme/a11y.rs`: the style Accessibility sets each frame: animation time, tooltip timing and the text cursor's blink.
+- `theme/a11y.rs`: the style Accessibility sets each frame: animation time, tooltip timing, the text cursor's blink and the focus rings' style (Standard or Strong).
 - `prefs/theme_picker.rs`: the built-in themes drawn as grouped preview cards with one-line descriptions on Preferences' Theme row; with Match the system on, the group headings say when each is used and both of the pair's cards are ringed.
 - `prefs/theme_row.rs`: the Theme row: the picker, then the Custom theme files disclosure (the theme file dropdown, the folder's buttons, the help and the file's problems).
 - `prefs/theme_files.rs`: the Custom theme files disclosure's header, a quiet target that stays open while a theme file is in use.
@@ -56,4 +56,4 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 - `theme/spacing.rs`: the spacing grid and panel padding, and the menu row metrics (comfortable and compact) and frame margin.
 - `theme/sizes.rs`: the control sizes (Compact 22, Small 24, Regular 28, Large 36: height, padding, text, icon, gap, corners, hit area), the chip sizes (Badge 18, Chip 22), `text_pos` and `centred_top` (text, or a stack of it, centred on a whole point) and `fits` (which sizes a row can host).
-- `theme/tokens.rs`: the design tokens every theme reads: the radius scale with nested container radii and a segment's corners (`radius::segment`), the border width, the least hit area and a split's caret width, the Float and Dialog elevations, the focus ring, the inset ring for packed controls and a text field's halo, and the motion timings and easing, instant with Reduce motion.
+- `theme/tokens.rs`: the design tokens every theme reads: the radius scale with nested container radii and a segment's corners (`radius::segment`), the border width, the least hit area and a split's caret width, the Float and Dialog elevations, the focus ring, the inset ring for packed controls and a text field's halo (each in the Standard and Strong styles, `focus_style`), and the motion timings and easing, instant with Reduce motion.
