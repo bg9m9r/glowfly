@@ -162,7 +162,7 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-ui/src/toolbar_tips.rs", 1),
     ("crates/glowfly-ui/src/tour.rs", 8),
     ("crates/glowfly-ui/src/trash_offer_dialog.rs", 5),
-    ("crates/glowfly-ui/src/trust_chip.rs", 2),
+    ("crates/glowfly-ui/src/trust_chip.rs", 1),
     ("crates/glowfly-ui/src/trust_dialog.rs", 16),
     ("crates/glowfly-ui/src/undo_dialog.rs", 5),
     ("crates/glowfly-ui/src/welcome_steps.rs", 1),
