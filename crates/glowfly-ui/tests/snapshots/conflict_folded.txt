@@ -66,19 +66,19 @@ Button "Wrap lines" [off]
 Button "38 unchanged lines"
 Label "Ours"
 Label "main"
-Button "Take all"
+Button "Take every conflict from ours (main)"
 Label "Theirs"
 Label "theme-tweaks"
-Button "Take all"
-CheckBox "Take" [on]
-CheckBox "Take" [off]
-CheckBox [on]
-CheckBox [off]
+Button "Take every conflict from theirs (theme-tweaks)"
+CheckBox "Take all of conflict 1 from ours (main)" [on]
+CheckBox "Take all of conflict 1 from theirs (theme-tweaks)" [off]
+CheckBox "Take line 5 from ours (main), conflict 1" [on]
+CheckBox "Take line 5 from theirs (theme-tweaks), conflict 1" [off]
 Button "38 unchanged lines"
-CheckBox "Take" [off]
-CheckBox "Take" [off]
-CheckBox [off]
-CheckBox [off]
+CheckBox "Take all of conflict 2 from ours (main)" [off]
+CheckBox "Take all of conflict 2 from theirs (theme-tweaks)" [off]
+CheckBox "Take line 50 from ours (main), conflict 2" [off]
+CheckBox "Take line 50 from theirs (theme-tweaks), conflict 2" [off]
 painted:
   "Repository"
   "Branch"
@@ -133,6 +133,8 @@ painted:
   "49"
   "setting_49 = 49"
   "Conflict 2: pick a side above"
+  "Take all"
+  "Take all"
   "1"
   "setting_1 = 1"
   "1"
@@ -150,7 +152,9 @@ painted:
   "4"
   "setting_4 = 4"
   "Conflict 1"
+  "Take"
   "Conflict 1"
+  "Take"
   "5"
   "theme = \"dark\""
   "5"
@@ -180,7 +184,9 @@ painted:
   "49"
   "setting_49 = 49"
   "Conflict 2"
+  "Take"
   "Conflict 2"
+  "Take"
   "50"
   "font_size = 13"
   "50"

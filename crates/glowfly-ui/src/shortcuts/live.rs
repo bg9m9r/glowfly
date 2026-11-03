@@ -5,7 +5,6 @@ use crate::keymap::BindingId;
 use crate::state::layout::Pane;
 use crate::state::{AppState, Modal};
 use eframe::egui;
-use git2::RepositoryState;
 
 /// What is open this frame, for deciding which bindings apply.
 pub(super) struct Live {
@@ -26,6 +25,8 @@ pub(super) struct Live {
     pub(super) stepping: bool,
     /// A diff is open, with no conflict or blame view over it.
     pub(super) diff: bool,
+    /// The conflict view is open, with no blame view over it.
+    pub(super) conflict: bool,
     /// A loaded blame view is open.
     pub(super) blame: bool,
     /// The commit graph is the central view.
@@ -64,13 +65,11 @@ impl Live {
                 && st.session.diff.view.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
             stepping: st.session.blame.view.is_none() && (st.session.conflict.view.is_some() || st.session.diff.view.is_some()),
             diff: st.session.blame.view.is_none() && st.session.conflict.view.is_none() && st.session.diff.view.is_some(),
+            conflict: st.session.blame.view.is_none() && st.session.conflict.view.is_some(),
             blame: st.session.blame.view.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
             terminal: st.terminal.focused,
-            rebasing: st.snap.as_ref().is_some_and(|s| {
-                use RepositoryState::*;
-                matches!(s.state, Rebase | RebaseInteractive | RebaseMerge | ApplyMailboxOrRebase)
-            }),
+            rebasing: crate::state::conflict::keys::rebasing(st),
             pane: crate::ui::pane_focus::focused_pane(ctx),
         }
     }
@@ -130,7 +129,15 @@ pub(super) fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         | I::OpenFavorite8
         | I::OpenFavorite9 => !covered && !l.sheet && !l.typing,
         I::RewordCommit | I::SquashCommit | I::DropCommit => !covered && !l.sheet && !l.typing && l.graph,
-        I::RebaseContinue | I::RebaseSkip => !covered && !l.sheet && !l.typing && l.rebasing,
+        I::RebaseSkip => !covered && !l.sheet && !l.typing && l.rebasing,
+        // Also the conflict strip's Commit merge or Continue.
+        I::RebaseContinue => !covered && !l.sheet && !l.typing && (l.rebasing || l.conflict),
+        I::ConflictTakeOurs
+        | I::ConflictTakeTheirs
+        | I::ConflictTakeBoth
+        | I::ConflictTakeBothTheirsFirst
+        | I::ConflictClear
+        | I::ConflictMarkResolved => !covered && !l.sheet && !l.typing && l.conflict,
         // Palette commands; a focused terminal keeps every key of theirs that reaches its shell.
         I::Fetch
         | I::Pull

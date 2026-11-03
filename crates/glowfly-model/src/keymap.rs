@@ -18,6 +18,8 @@ mod chord_tests;
 #[cfg(test)]
 mod command_tests;
 #[cfg(test)]
+mod conflict_tests;
+#[cfg(test)]
 mod override_tests;
 #[cfg(test)]
 mod pane_tests;

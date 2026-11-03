@@ -38,11 +38,13 @@ fn command_ids_are_stable() {
     for id in COMMAND_BINDINGS {
         assert_eq!(BindingId::from_key(id.key()), Some(id));
     }
-    // Cherry-pick and Revert came later, then Switch branch and Open dashboard: the last ids.
+    // Cherry-pick and Revert came later, then Switch branch and Open dashboard, before the six
+    // conflict keys: the last ids.
     let later = [I::CherryPick, I::RevertCommit, I::SwitchBranch, I::OpenDashboard];
     assert_eq!(COMMAND_BINDINGS[..FROZEN.len()], *commands);
     assert_eq!(COMMAND_BINDINGS[FROZEN.len()..], later);
-    assert_eq!(BindingId::ALL[BindingId::ALL.len() - later.len()..], later);
+    let n = BindingId::ALL.len() - 6;
+    assert_eq!(BindingId::ALL[n - later.len()..n], later);
     let names: Vec<&str> = later.iter().map(|id| id.key()).collect();
     assert_eq!(names, ["cherry-pick", "revert-commit", "switch-branch", "open-dashboard"]);
 }

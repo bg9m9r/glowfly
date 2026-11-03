@@ -56,7 +56,7 @@ fn layout_all_hidden_light() {
 #[test]
 fn layout_sheet_view_group() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "layout-sheet");
-    st.modal = Some(Modal::Shortcuts { filter: "view".into() });
+    st.modal = Some(Modal::Shortcuts { filter: "hide".into() });
     render("layout_sheet_view_group", st, true);
     remove_fixture(&dir);
 }
