@@ -38,6 +38,7 @@ source file, update its line here.
 - `widgets/row_menu.rs` (`RowMenuExt::row_menu`): right-click menus that open just below their row (at the pointer's x), or above it when they don't fit, sharing egui's context-menu state; Shift+F10 opens a focused row's menu (or a selected one's, `row_menu_for`) below it.
 - `widgets/menu_open.rs`: opens egui's dropdown menus from their button with the keyboard too (Alt+Down, Right in a popup's menu; egui's Enter and Space), names the button for Esc's focus return, and keeps a press in a keyboard-opened submenu from closing the menu.
 - `widgets/menu_submenu_keyed.rs`: a submenu opened from the keyboard (Right, Enter or Space on its row), drawn as its own menu where egui's would be, since egui opens its own only under the pointer.
+- `widgets/popover.rs` (tests in `popover_tests.rs`): `menu::popover_below`'s popup: a set width, unjustified contents, right-aligned below its anchor and kept 8 px inside the window.
 - `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover, and names and paths cut in the middle.
 - `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), muted at count 0 for a section that folds away while empty; each + is described by `state/section_actions.rs`.
 - `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…).

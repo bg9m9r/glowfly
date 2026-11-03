@@ -1,5 +1,5 @@
 //! The credential prompt over the main window: sign in (with Remember this sign-in), a
-//! passphrase retried, an unknown SSH host (as fields) and a confirmation that isn't read as one,
+//! passphrase retried, an unknown SSH host (as fields, in OpenSSH 10's wording too) and a confirmation that isn't read as one,
 //! a signing key's passphrase (first and retried), and an SSH signing key's passphrase. Shares the fixture repository and
 //! renderer with `snapshot_tests`.
 
@@ -16,6 +16,12 @@ use glowfly_core::settings::ThemeChoice;
 
 const HOST_KEY: &str = "The authenticity of host 'example.com (192.0.2.10)' can't be established.\n\
 ED25519 key fingerprint is SHA256:Xq7fW0dkN3vQ1nYp8tLr2mH5sJc9bGa4eZo6iKu0TwE.\n\
+This key is not known by any other names.\n\
+Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
+
+/// OpenSSH 10's wording (Git for Windows' ssh): a colon after "is" (#524).
+const HOST_KEY_OPENSSH_10: &str = "The authenticity of host 'github.com (140.82.112.4)' can't be established.\n\
+ED25519 key fingerprint is: SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU\n\
 This key is not known by any other names.\n\
 Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
 
@@ -79,6 +85,23 @@ fn credential_prompt_passphrase_retry_light() {
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
     assert!(!pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn credential_prompt_host_key_openssh_10() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "askpass-host-key-10");
+    prompt(&mut st, HOST_KEY_OPENSSH_10, false, false);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("credential_prompt_host_key_openssh_10");
+    // The fields, not the generic confirmation that leads with ssh's text.
+    for label in ["Unknown SSH host", "github.com", "140.82.112.4", "ED25519", "SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_by_label_contains("fingerprint is:").is_none(), "the value alone fills Fingerprint");
+    assert!(h.query_by_label("Confirm SSH connection").is_none());
     drop(h);
     remove_fixture(&dir);
 }

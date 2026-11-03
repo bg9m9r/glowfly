@@ -38,6 +38,7 @@ mod conflict;
 mod conflict_band;
 mod conflict_cells;
 mod conflict_check;
+mod conflict_check_parts;
 mod conflict_files;
 mod conflict_fold;
 mod conflict_output;
