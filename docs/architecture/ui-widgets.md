@@ -29,7 +29,7 @@ source file, update its line here.
 
 ## Rows and lists
 
-- `list_row.rs`: list rows, whose dim right-hand parts paint ahead/behind arrows (`paint_parts`, shared with the branch picker), and the side panels' row heights and insets.
+- `list_row.rs`: list rows (`name_row` for a name, cut in its middle), whose dim right-hand parts paint ahead/behind arrows (`paint_parts`, shared with the branch picker), and the side panels' row heights and insets.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: an edge-to-edge list row in each state (`RowState`): the selection fill with a left accent bar, the lifted hover, a flat pressed fill and the inset focus ring; shared by the graph, sidebar rows and headers, file rows, the file history list, the dashboard and the Preferences page list.
@@ -42,7 +42,7 @@ source file, update its line here.
 - `widgets/menu_open.rs`: opens egui's dropdown menus from their button with the keyboard too (Alt+Down, Right in a popup's menu; egui's Enter and Space), names the button for Esc's focus return, and keeps a press in a keyboard-opened submenu from closing the menu.
 - `widgets/menu_submenu_keyed.rs`: a submenu opened from the keyboard (Right, Enter or Space on its row), drawn as its own menu where egui's would be, since egui opens its own only under the pointer.
 - `widgets/popover.rs` (tests in `popover_tests.rs`): `menu::popover_below`'s popup: a set width, unjustified contents, right-aligned below its anchor and kept 8 px inside the window.
-- `widgets/truncate.rs` (tests in `truncate_tests.rs`): single-line text cut with an ellipsis and its whole text on hover, a counted title cut before its count, and names and paths cut in the middle.
+- `widgets/truncate.rs` (tests in `truncate_tests.rs`): single-line text cut with an ellipsis and its whole text on hover, a counted title cut before its count, paths cut in the middle, and names (branches, tags, worktrees, repositories) cut in the middle by the D16 rule (`middle`: a head ending before a separator, a tail of at least 8 characters).
 - `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), muted at count 0 for a section that folds away while empty; each + is described by `state/section_actions.rs`.
 - `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…), and a failed hosting service's block (`failure`: the cause, then Sign in).
 - `line_counts.rs`: line counts drawn one way everywhere: a file row's `+N −M` and proportional bar, a total, the WIP row's chips.

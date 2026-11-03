@@ -5,9 +5,9 @@
 //! (`toolbar_fit.rs`): the repository's to its own, the branch's to the widest local branch
 //! name and the current label, so checking out a branch never resizes the bar or moves the
 //! groups after it; a re-fit (a tab switch, or a new widest branch) is a single jump. Only a
-//! window too narrow for everything shrinks the fitted slots (`name_widths`). A longer branch
-//! name keeps its start and end around a "…" (`truncate::cut_middle_in`), a longer repository
-//! name is cut at its end; groups after them fold away before the names go below `comfort`.
+//! window too narrow for everything shrinks the fitted slots (`name_widths`). A longer
+//! repository or branch name keeps its start and end around a "…" (`truncate::middle`); groups
+//! after them fold away before the names go below `comfort`.
 //! A cut name shows whole on hover, and the accessible name is always the whole name. The
 //! branch name follows a dot in the checked-out branch's colour (a ring while HEAD is
 //! detached), and each branch in its menu has its colour dot, the checked-out one checked.
@@ -33,7 +33,7 @@ use crate::ui::theme::type_scale::{self, BODY, CAPTION};
 use crate::ui::widgets;
 use crate::ui::widgets::menu::{self, separator};
 use crate::ui::widgets::segment_bar::{BarStyle, Seg, segment_bar};
-use crate::ui::widgets::truncate::{cut_galley, cut_job, cut_middle_in};
+use crate::ui::widgets::truncate::{cut_galley, cut_job, middle};
 use eframe::egui::{self, Color32, Galley, Id, Response, WidgetInfo, WidgetType, pos2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
@@ -115,7 +115,9 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
     let names_room = rest.map_or(f32::INFINITY, |rest| ui.available_width() - rest - FRAMES - ui.spacing().item_spacing.x);
     let slots = fit::slots(ui, st, &repo, head.as_deref(), (CARET_ROOM, ICON_ROOM + CARET_ROOM));
     let (repo_w, branch_w) = name_widths(slots, names_room);
-    let repo_g = cut_galley(ui.ctx(), cut_job(repo.clone(), font.clone(), color::text()), repo_w);
+    let repo_shown = middle(ui.painter(), &repo, &font, repo_w);
+    let repo_cut = repo_shown != repo;
+    let repo_g = ui.painter().layout_no_wrap(repo_shown, font.clone(), color::text());
     let branch = st.snap.as_ref().zip(head.as_ref()).map(|(snap, head)| {
         let mut counts = counts(snap);
         // The accessible name says the counts even when there is no room to show them.
@@ -127,7 +129,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
         if branch_w - counts_w < name_need {
             (counts, counts_w) = (Vec::new(), 0.0);
         }
-        let shown = cut_middle_in(ui.painter(), head, &font, (branch_w - counts_w).max(0.0));
+        let shown = middle(ui.painter(), head, &font, (branch_w - counts_w).max(0.0));
         let cut = shown != *head;
         let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());
         // A dot in the checked-out branch's colour; a ring while HEAD is detached.
@@ -147,7 +149,7 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
     }
     bar.paint(ui, &open);
     let mut responses = bar.responses.into_iter();
-    let cut = repo_g.elided;
+    let cut = repo_cut;
     part(ui, responses.next().expect("the repository segment"), t.tr("toolbar.repository"), (repo_g, None, &[]), (&repo, &repo), cut);
     if let (Some((_, head, g, cut, tone, counts, name)), Some(r)) = (branch, responses.next()) {
         part(ui, r, t.tr("toolbar.branch"), (g, Some(tone), &counts), (head, &name), cut);

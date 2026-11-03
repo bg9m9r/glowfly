@@ -135,12 +135,19 @@ pub fn sync_line(t: Lang, snap: &Snapshot) -> Option<String> {
 /// "Publish search to origin (creates origin/search)" on the remote Push picks. None on a
 /// detached HEAD or without a remote.
 pub fn push_target(t: Lang, snap: &Snapshot) -> Option<String> {
+    let (template, names) = push_target_parts(t, snap)?;
+    let args: Vec<(&str, &dyn std::fmt::Display)> = names.iter().map(|(slot, name)| (*slot, name as &dyn std::fmt::Display)).collect();
+    Some(glowfly_core::i18n::fill(template, &args))
+}
+
+/// `push_target` as its template and the names that fill it, for a menu that cuts long names.
+pub fn push_target_parts(t: Lang, snap: &Snapshot) -> Option<(&'static str, [(&'static str, String); 2])> {
     let b = head(snap)?;
     if let Some((dest, _)) = push_ahead(snap) {
-        return Some(t.trf("toolbar.tip.push_title", &[("branch", &b.name), ("upstream", &dest)]));
+        return Some((t.tr("toolbar.tip.push_title"), [("branch", b.name.clone()), ("upstream", dest)]));
     }
     let remote = super::branches::default_remote(snap)?;
-    Some(t.trf("toolbar.tip.push_publish_title", &[("branch", &b.name), ("remote", &remote)]))
+    Some((t.tr("toolbar.tip.push_publish_title"), [("branch", b.name.clone()), ("remote", remote)]))
 }
 
 /// The remote a plain `git push` of `b` goes to when config names one other than its

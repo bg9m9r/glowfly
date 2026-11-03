@@ -53,7 +53,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         if widgets::list_row_hidden(ui) {
             continue;
         }
-        let r = widgets::list_row(ui, widgets::ROW_INDENT, name, None, *sel == Selection::Commit(*oid), false);
+        let r = widgets::name_row(ui, widgets::ROW_INDENT, name, *sel == Selection::Commit(*oid));
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
         }
