@@ -1,6 +1,6 @@
 //! Preferences > Accessibility: its goldens (Graphite, Porcelain, German and Spanish in a 760 px
 //! window, and the system asking for all three with high contrast showing), the Tab walk through every control in visual order, every control's name and
-//! description, the checks and the High contrast check's message, Show all shortcuts, the
+//! description, the checks (Announcements among them) and the High contrast check's message, Show all shortcuts, the
 //! rows it shares with their own pages, and the keyboard focus holding a toast.
 
 use crate::msg::{Msg, NotifyMsg, PrefsMsg};
@@ -16,9 +16,9 @@ use glowfly_core::settings::{Settings, ThemeChoice};
 use std::time::Instant;
 
 /// Tall enough for the whole page, the Timing section included, without scrolling.
-const TALL: f32 = 1220.0;
+const TALL: f32 = 1320.0;
 /// The same for German and Spanish in a 760 px window, where rows stack.
-const DE_ES_TALL: f32 = 1500.0;
+const DE_ES_TALL: f32 = 1640.0;
 
 fn page(s: Settings, p: Palette, size: Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut st = AppState::new(s, Vec::new(), Instant::now());
@@ -68,7 +68,7 @@ fn prefs_accessibility_es() {
 }
 
 /// Every control on the page, in visual order, by its accessible name.
-const CONTROLS: [&str; 15] = [
+const CONTROLS: [&str; 16] = [
     "Interface size",
     "Interface size, Also follow the system's text size",
     "Diff text size",
@@ -82,6 +82,7 @@ const CONTROLS: [&str; 15] = [
     "Focus indicator",
     "Change shortcuts…",
     "Show all shortcuts",
+    "Announcements, Announce when background work finishes or fails",
     "Notifications stay",
     "Tooltip delay",
 ];
@@ -119,6 +120,7 @@ fn every_control_is_named_and_described() {
         (CONTROLS[9], "The cursor in text fields. The terminal's never blinks."),
         (CONTROLS[10], "Strong draws a thicker ring with an outline that shows on every color."),
         (CONTROLS[12], "Every command can be given a key."),
+        (CONTROLS[13], "Read by screen readers such as NVDA, Narrator and VoiceOver."),
     ];
     for name in CONTROLS {
         assert!(h.query_by_label(name).is_some(), "{name} is named");
@@ -139,6 +141,9 @@ fn checks_edit_in_place_and_high_contrast_asks() {
     h.get_by_label(CONTROLS[9]).click();
     h.run();
     assert!(!h.state().0.settings.a11y.cursor_blink);
+    h.get_by_label(CONTROLS[13]).click();
+    h.run();
+    assert!(!h.state().0.settings.a11y.announce_jobs, "Announcements, on by default, now off");
     h.get_by_label(CONTROLS[4]).click();
     h.run();
     let asked = h.state().1.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::SetHighContrast { on: true, dark: true })));
