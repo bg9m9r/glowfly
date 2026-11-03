@@ -38,10 +38,10 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 
 - `toolbar.rs` draws its buttons in borderless groups of quiet buttons set apart by dividers (`widgets::tool_group`, `tool_gap`; the buttons, toggles and split buttons in `widgets/tool.rs`).
 - `toolbar_menus.rs`: the toolbar's menus.
-- `toolbar_groups.rs`: the middle groups' buttons, the split buttons' menus and the groups' widths.
+- `toolbar_groups.rs`: the middle groups' buttons, Pull's and Push's count badges and named counts, the split buttons' menus (the push menu led by where Push goes, with Push to) and the groups' widths; `toolbar_sync_tests.rs` checks them at each ahead/behind.
 - `toolbar_fold.rs`: which parts fold into the More menu in a narrow window, and in what order.
 - `toolbar_more.rs`: the More button and its menu of the folded buttons.
-- `toolbar_pickers.rs`: the repository and branch pickers, one framed segment bar whose segments each light whole, their name slots fitted to the names and shrunk only by a narrow window.
+- `toolbar_pickers.rs`: the repository and branch pickers, one framed segment bar whose segments each light whole, their name slots fitted to the names and shrunk only by a narrow window; the branch's ahead/behind counts sit inside its slot.
 - `toolbar_fit.rs`: the pickers' fitted slots: the repository's name, and the widest local branch name (measured once per branch list) so a checkout never moves the bar.
 - Each toolbar button's tooltip comes from `toolbar_tips.rs`.
 

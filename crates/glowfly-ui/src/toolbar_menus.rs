@@ -25,21 +25,21 @@ pub(super) fn terminal_button(ui: &mut egui::Ui, st: &AppState, labels: bool, it
 }
 
 /// A tool button with its dropdown caret (`widgets::split_button`): `tool` is its icon, caption
-/// and accessible name; the caret is named `menu.0` and opens a menu `menu.1` wide below it,
-/// whose items `contents` adds. `menu_live` says whether anything in the menu can be used.
-/// Returns the button's response.
+/// and accessible name, `enabled` whether it can be clicked and with what count badge; the caret
+/// is named `menu.0` and opens a menu `menu.1` wide below it, whose items `contents` adds.
+/// `menu_live` says whether anything in the menu can be used. Returns the button's response.
 pub(super) fn split(
     ui: &mut egui::Ui,
     id: &str,
     tool: (Icon, &str, &str),
-    enabled: bool,
+    (enabled, badge): (bool, Option<widgets::Badge>),
     labels: bool,
     (menu, width, menu_live): (&str, f32, bool),
     contents: impl FnOnce(&mut egui::Ui),
 ) -> egui::Response {
     let popup = ui.make_persistent_id(id);
     let open = ui.memory(|m| m.is_popup_open(popup));
-    let (button, caret) = widgets::split_button(ui, tool, enabled, labels, menu_live, open);
+    let (button, caret) = widgets::split_button(ui, tool, enabled, labels, (menu_live, open), badge);
     caret.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, menu));
     if caret.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));

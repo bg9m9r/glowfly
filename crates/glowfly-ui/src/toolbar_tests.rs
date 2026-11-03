@@ -16,7 +16,7 @@ use glowfly_core::settings::ThemeChoice;
 use glowfly_core::undo::Action;
 use std::path::PathBuf;
 
-fn settle(h: &mut H) {
+pub(super) fn settle(h: &mut H) {
     for _ in 0..4 {
         h.step();
     }
@@ -48,13 +48,15 @@ fn plain(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 }
 
 /// The fixture with origin/main at the commit `upstream` (a summary) as main's upstream, main
-/// being `ahead` and `behind` it.
-fn tracking(theme: ThemeChoice, name: &str, upstream: &str, ahead: usize, behind: usize) -> (AppState, PathBuf) {
+/// being `ahead` and `behind` it, pulling by merge.
+pub(super) fn tracking(theme: ThemeChoice, name: &str, upstream: &str, ahead: usize, behind: usize) -> (AppState, PathBuf) {
     let (mut st, dir) = with_remotes(theme, name);
     st.settings.reduce_motion = true;
     let snap = st.snap.as_mut().unwrap();
     let at = snap.commits.iter().find(|c| c.summary == upstream).expect("the commit").oid;
     snap.remotes[0].1[0].1 = at;
+    // Pull's title names the mode; the user's own git config must not decide it.
+    snap.pull_rebase = false;
     let main = snap.locals.iter_mut().find(|b| b.name == "main").unwrap();
     main.upstream = Some("origin/main".into());
     main.tracking = Some(Tracking { remote: "origin".into(), merge: "main".into() });
@@ -178,7 +180,7 @@ fn tip_push_ahead() {
     let (st, dir) = tracking(ThemeChoice::Dark, "tip-push-ahead", "Add app skeleton", 3, 0);
     let mut h = harness(st, true);
     h.run();
-    hover(&mut h, "Push the current branch");
+    hover(&mut h, "Push, 3 ahead of origin/main");
     assert!(h.query_by_label("Sends 3 commits").is_some());
     h.check_snapshot("tip_push_ahead");
     drop(h);
@@ -191,7 +193,7 @@ fn tip_pull_behind() {
     st.snap.as_mut().unwrap().fetched_at = Some(NOW - 120);
     let mut h = harness(st, true);
     h.run();
-    hover(&mut h, "Pull the current branch");
+    hover(&mut h, "Pull, 1 behind origin/main");
     assert!(h.query_by_label("Last fetched 2 minutes ago").is_some());
     h.check_snapshot("tip_pull_behind");
     drop(h);
@@ -259,10 +261,9 @@ fn tip_settings_keycaps() {
 fn tip_push_german() {
     let (mut st, dir) = tracking(ThemeChoice::Dark, "tip-push-german", "Add app skeleton", 3, 0);
     st.settings.language = "de".into();
-    let name = glowfly_core::i18n::Lang::De.tr("toolbar.push.name");
     let mut h = harness(st, true);
     h.run();
-    hover(&mut h, name);
+    hover(&mut h, "Push, 3 vor origin/main");
     h.check_snapshot("tip_push_german");
     drop(h);
     remove_fixture(&dir);

@@ -43,6 +43,9 @@ mod pickers;
 #[path = "toolbar_still_tests.rs"]
 mod still_tests;
 #[cfg(test)]
+#[path = "toolbar_sync_tests.rs"]
+mod sync_tests;
+#[cfg(test)]
 #[path = "toolbar_tests.rs"]
 mod tests;
 #[path = "toolbar_tips.rs"]
@@ -57,13 +60,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let labels = st.settings.toolbar_labels;
     let tool = |ui: &mut egui::Ui, icon, label: &str, name: &str, enabled| widgets::tool_button(ui, icon, label, name, enabled, labels);
-    egui::TopBottomPanel::top("toolbar")
-        .frame(
-            egui::Frame::new()
-                .fill(backdrop::fill(st.view.backdrop, Surface::Side, color::panel()))
-                .inner_margin(egui::Margin::symmetric(12, 4)),
-        )
-        .show(ctx, |ui| {
+    egui::TopBottomPanel::top("toolbar").frame(egui::Frame::new().fill(ground(st)).inner_margin(egui::Margin::symmetric(12, 4))).show(
+        ctx,
+        |ui| {
             ui.horizontal(|ui| {
                 ui.set_height(widgets::GROUP_H);
                 let room = ui.available_width();
@@ -153,7 +152,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     st.view.show_log = !st.view.show_log;
                 }
             });
-        });
+        },
+    );
+}
+
+/// The toolbar's fill: the side panels' surface, which the active tab runs into.
+fn ground(st: &AppState) -> egui::Color32 {
+    backdrop::fill(st.view.backdrop, Surface::Side, color::panel())
 }
 
 /// Keeps `value` under `key` for the next frame, drawing once more when it changed.
@@ -174,7 +179,8 @@ fn widths(ui: &egui::Ui, st: &AppState, (host, slots): (bool, (f32, f32)), room:
     let gap = widgets::GROUP_GAP;
     // Pull's caret is followed by Push: `SPLIT_GAP` between them, not the group's spacing.
     let split_gap = widgets::SPLIT_GAP - widgets::TOOL_SPACING;
-    let sync = groups::group_width(&[slot("toolbar.pull.button", true), slot("toolbar.push.button", true)]) + split_gap;
+    let badged = |key: &'static str| widgets::badged_tool_width(ui, t.tr(key), st.settings.toolbar_labels) + widgets::CARET_W;
+    let sync = groups::group_width(&[badged("toolbar.pull.button"), badged("toolbar.push.button")]) + split_gap;
     let right = plain(&["toolbar.search.button", "toolbar.activity.button", "toolbar.refresh.button"]);
     let pr = if host { gap + groups::group_width(&[slot("toolbar.pr.button", true)]) } else { 0.0 };
     let in_right = |key| slot(key, false) + widgets::TOOL_SPACING;
