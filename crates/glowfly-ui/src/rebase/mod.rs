@@ -75,46 +75,57 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
 fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Vec<Msg>) {
     let (title, primary) =
         if panel.source == PanelSource::Remaining { (REMAINING_TITLE, UPDATE) } else { ("Interactive rebase", "Start rebase") };
-    ui.horizontal(|ui| {
+    let action = if panel.stale {
+        buttons::primary("Reload steps").enabled(panel.editable()).tip("Reload the list from the repository")
+    } else {
+        buttons::primary(primary).enabled(blocker.is_none()).why(blocker)
+    };
+    let cancel = buttons::secondary(t.tr("common.cancel.button")).enabled(!panel.starting).tip("Close without changing anything (Esc)");
+    let more_button = (!panel.stale).then(|| buttons::icon_only(Icon::More, t.tr("rebase.more.name")).enabled(panel.editable()));
+    // Top-aligned: the buttons line up with the title, as before the order changed.
+    ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
         ui.add_space(14.0);
-        // The buttons first, from the right, so the title and subtitle get what is left.
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            ui.add_space(14.0);
-            if panel.stale {
-                let reload = buttons::primary("Reload steps").enabled(panel.editable()).tip("Reload the list from the repository");
-                if ui.add(reload).clicked() {
-                    msgs.push(Msg::Rebase(RebaseMsg::RebaseReset));
-                }
-            } else if ui.add(buttons::primary(primary).enabled(blocker.is_none()).why(blocker)).clicked() {
-                msgs.push(Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
-            }
-            let cancel =
-                buttons::secondary(t.tr("common.cancel.button")).enabled(!panel.starting).tip("Close without changing anything (Esc)");
-            if ui.add(cancel).clicked() {
-                msgs.push(Msg::Rebase(RebaseMsg::CloseRebase));
-            }
-            if !panel.stale {
-                more(ui, t, panel, msgs);
-            }
-            if panel.starting {
-                ui.add(egui::Spinner::new());
-            }
-            ui.add_space(8.0);
-            ui.with_layout(Layout::top_down(Align::Min), |ui| {
-                ui.spacing_mut().item_spacing.y = 2.0;
-                let w = ui.available_width();
-                let font = type_scale::strong(ui, type_scale::SUBHEAD);
-                truncate::truncate_label(ui, RichText::new(title).font(font).color(color::text()), w);
-                truncate::truncate_label(ui, RichText::new(panel.subtitle()).color(color::weak()), w);
-            });
+        // Laid out in reading order (so Tab follows it), the title and subtitle taking the room
+        // the buttons at the trailing edge leave.
+        let gap = ui.spacing().item_spacing.x;
+        let spinner = if panel.starting { SPINNER + gap } else { 0.0 };
+        let more_w = more_button.as_ref().map_or(0.0, |b| b.desired_width(ui) + gap);
+        let trailing = spinner + more_w + cancel.desired_width(ui) + gap + action.desired_width(ui);
+        let title_w = (ui.available_width() - 14.0 - 8.0 - gap - trailing).max(0.0);
+        ui.allocate_ui_with_layout(vec2(title_w, 0.0), Layout::top_down(Align::Min), |ui| {
+            ui.set_width(title_w);
+            ui.spacing_mut().item_spacing.y = 2.0;
+            let font = type_scale::strong(ui, type_scale::SUBHEAD);
+            truncate::truncate_label(ui, RichText::new(title).font(font).color(color::text()), title_w);
+            truncate::truncate_label(ui, RichText::new(panel.subtitle()).color(color::weak()), title_w);
         });
+        ui.add_space(8.0);
+        if panel.starting {
+            ui.add(egui::Spinner::new().size(SPINNER));
+        }
+        if let Some(b) = more_button {
+            more(ui, t, panel, b, msgs);
+        }
+        if ui.add(cancel).clicked() {
+            msgs.push(Msg::Rebase(RebaseMsg::CloseRebase));
+        }
+        if ui.add(action).clicked() {
+            msgs.push(Msg::Rebase(if panel.stale {
+                RebaseMsg::RebaseReset
+            } else {
+                RebaseMsg::StartRebase { confirmed: false, autostash: false }
+            }));
+        }
     });
 }
 
+/// The spinner beside the buttons while the rebase starts.
+const SPINNER: f32 = 16.0;
+
 /// The header's ⋯ and its menu: Restore original order, disabled while nothing has changed.
-fn more(ui: &mut Ui, t: Lang, panel: &RebasePanel, msgs: &mut Vec<Msg>) {
+fn more(ui: &mut Ui, t: Lang, panel: &RebasePanel, button: buttons::StyledButton<'_>, msgs: &mut Vec<Msg>) {
     let id = ui.make_persistent_id("rebase-more");
-    let r = ui.add(buttons::icon_only(Icon::More, t.tr("rebase.more.name")).enabled(panel.editable()));
+    let r = ui.add(button);
     if r.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }

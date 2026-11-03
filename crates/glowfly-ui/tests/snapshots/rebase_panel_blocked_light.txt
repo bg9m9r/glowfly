@@ -66,11 +66,11 @@ Button "Stage something to commit" [disabled]
 Button "More commit options"
 Label "Write a summary for the commit."
 Unknown "Central view"
-Button "Start rebase" [disabled]
-Button "Cancel"
-Button "More rebase actions"
 Label "Interactive rebase"
 Label "Rebasing 6 commits of main from the first commit"
+Button "More rebase actions"
+Button "Cancel"
+Button "Start rebase" [disabled]
 Label "The first commit can't be squashed or fixed up: there is no earlier commit in the list to combine it with."
 Label "Commits are applied from top to bottom."
 Unknown "Initial commit"

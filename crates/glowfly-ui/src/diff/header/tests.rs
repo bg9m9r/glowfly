@@ -107,10 +107,15 @@ fn click(m: HeaderModel, width: f32, label: &str) -> Vec<Msg> {
 
 #[test]
 fn one_row_at_every_width() {
-    for width in [1400.0, 900.0, 700.0, 520.0, 360.0] {
+    for width in [1400.0, 900.0, 700.0, 520.0, 400.0, 360.0] {
         for m in [unstaged(), commit()] {
             let h = harness(m, width);
             let close = middle(&h, CLOSE_NAME);
+            // ⋯ never gives way: whole, inside the header, before Stage file and ×.
+            let more = h.get_by_label(MORE).bounding_box().expect("⋯ laid out");
+            let before = h.query_by_label(STAGE_FILE).unwrap_or_else(|| h.get_by_label(CLOSE_NAME)).bounding_box().unwrap();
+            assert!(more.x0 >= 0.0 && more.x1 <= before.x0, "{width}: ⋯ shows whole before the trailing group: {more:?} {before:?}");
+            assert!((more.x1 - more.x0 - f64::from(controls::HEIGHT)).abs() < 0.5, "{width}: ⋯ is not cut: {more:?}");
             let labels = [PREV_NAME, NEXT_NAME, STAGE_FILE, MORE, "Inline \u{b7} Changes only", "View"];
             for label in labels {
                 if let Some(node) = h.query_by_label(label) {
@@ -126,21 +131,26 @@ fn one_row_at_every_width() {
 #[test]
 fn german_header_fits_in_one_row() {
     let de = Lang::De;
+    let full = view().label(de);
+    assert_eq!(full, "Inline · Nur Änderungen");
+    // Everything the header shows on its row (the file actions are in ⋯).
     let labels = [
         de.tr("diff.header.prev.name"),
         de.tr("diff.header.next.name"),
-        de.tr("tools.open_in_diff_tool"),
-        de.tr("diff.header.stage_file"),
-        de.tr("diff.header.restore"),
-        de.tr("diff.header.open"),
-        de.tr("diff.header.more"),
+        full.as_str(),
         de.tr("diff.header.view.button"),
+        de.tr("diff.header.more"),
+        de.tr("diff.header.stage_file"),
         de.tr("diff.header.close.name"),
     ];
     for width in [1400.0, 900.0, 700.0, 520.0] {
         for m in [unstaged(), commit()] {
             let h = harness_in(m, width, de);
             let close = middle(&h, de.tr("diff.header.close.name"));
+            if width >= 900.0 {
+                assert!(h.query_by_label(&full).is_some(), "{width}: the full View label");
+            }
+            assert!(h.query_by_label(de.tr("diff.header.more")).is_some(), "{width}: ⋯");
             let shown: Vec<_> = labels.iter().filter_map(|l| Some((*l, h.query_by_label(l)?.bounding_box()?))).collect();
             for (label, b) in &shown {
                 let mid = (b.y0 + b.y1) / 2.0;

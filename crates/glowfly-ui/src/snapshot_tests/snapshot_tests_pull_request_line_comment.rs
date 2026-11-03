@@ -75,6 +75,15 @@ fn pull_request_line_comment_dark() {
     assert!(h.query_by_label(&format!("line {line}")).is_some());
     assert!(h.query_by_label("Add single comment").is_some());
     assert!(h.query_by_label("Start a review").is_some());
+    // The buttons come in reading order (Tab follows the tree), left to right on screen.
+    let want = ["Suggest a change", "Cancel", "Start a review", "Add single comment"];
+    let buttons: Vec<(String, f64)> = h
+        .query_all_by_role(Role::Button)
+        .filter_map(|n| Some((n.label()?, n.bounding_box()?.x0)))
+        .filter(|(l, _)| want.contains(&l.as_str()))
+        .collect();
+    assert_eq!(buttons.iter().map(|(l, _)| l.as_str()).collect::<Vec<_>>(), want, "tree order");
+    assert!(buttons.windows(2).all(|w| w[0].1 < w[1].1), "left to right: {buttons:?}");
 
     // Command+Enter posts alone (no review is pending), once and without a newline.
     let field = h.get_all_by_label("New comment").find(|n| n.role() == Role::MultilineTextInput).expect("the comment field");

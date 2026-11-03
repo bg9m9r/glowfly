@@ -15,7 +15,7 @@ use crate::state::pull_request_line_comment::{post_blocked, primary_is_review, r
 use crate::ui::theme::controls;
 use crate::ui::theme::tokens::radius;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Key, Layout, Margin, RichText, Sense, Stroke, Ui, vec2};
+use eframe::egui::{self, Align, Key, Margin, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::DiffLine;
 use glowfly_core::text::printable;
@@ -131,14 +131,15 @@ pub(super) fn card(ui: &mut Ui, t: Lang, v: &mut PrView, r: &Reasons, keys: &Key
         };
         let (main_msg, other_msg) = (LineCommentMsg::Post { review: main.1 }, LineCommentMsg::Post { review: other.1 });
         if fits {
-            // Suggest a change leads; the others sit at the trailing edge, laid out from the right.
+            // Suggest a change leads; the others sit at the trailing edge. All in reading order,
+            // so Tab follows it.
+            let trailing = widths[1] + widths[2] + widths[3] + 2.0 * gap;
             ui.horizontal(|ui| {
                 add_button(ui, suggest, LineCommentMsg::Suggest);
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    add_button(ui, main.0, main_msg);
-                    add_button(ui, other.0, other_msg);
-                    add_button(ui, cancel, LineCommentMsg::Cancel);
-                });
+                ui.add_space((ui.available_width() - trailing).max(0.0));
+                add_button(ui, cancel, LineCommentMsg::Cancel);
+                add_button(ui, other.0, other_msg);
+                add_button(ui, main.0, main_msg);
             });
         } else {
             ui.horizontal_wrapped(|ui| {
