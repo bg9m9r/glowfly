@@ -7,7 +7,7 @@
 //! header muted at count 0: a `weak` title and a `faint` 0.
 
 use super::quiet_target::{self, State};
-use super::{Icon, PAD_X, SECTION_H, TITLE_X, chevron, paint_icon_sized};
+use super::{Icon, PAD_X, SECTION_H, TITLE_X, chevron, paint_icon_sized, row_fill};
 use crate::msg::Msg;
 use crate::state::section_actions::SectionAction;
 use crate::ui::theme::sizes::ControlSize;
@@ -33,7 +33,7 @@ pub fn section_fonts(ui: &Ui) -> (FontId, FontId) {
 /// right in weak body text. Toggles `open`.
 pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool) -> Response {
     let name = count.map_or_else(|| title.to_owned(), |n| format!("{title}, {n}"));
-    header_row(ui, title, count, open, (false, false), &name)
+    header_row(ui, title, count, open, ((false, false), false), &name)
 }
 
 /// What a screen reader calls a section's header: its title and what its count counts
@@ -53,16 +53,29 @@ fn header_name(t: Lang, key: &str, title: &str, count: Option<usize>) -> String 
     }
 }
 
-/// `section_header`; with `whole_row`, the hover fill stays while the pointer is over a button
-/// drawn on top of the row; `muted` draws the title `weak` and the count `faint` (an empty
-/// section that folds away). Screen readers read it as the button `name`, expanded or not.
-fn header_row(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool, (whole_row, muted): (bool, bool), name: &str) -> Response {
+/// `section_header`; `buttons` says which of the + and ⋯ are drawn on top of the row (the hover
+/// fill then stays while the pointer is anywhere on the row, but not while it is on one of
+/// them, which lights itself); `muted` draws the title `weak` and the count `faint` (an empty
+/// section that folds away). The row is lit through `row_fill`, the top border over it. Screen
+/// readers read it as the button `name`, expanded or not.
+fn header_row(
+    ui: &mut Ui,
+    title: &str,
+    count: Option<usize>,
+    open: &mut bool,
+    (buttons, muted): ((bool, bool), bool),
+    name: &str,
+) -> Response {
     let (title_font, count_font) = section_fonts(ui);
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SECTION_H), Sense::click());
+    let (add_rect, more_rect) = button_rects(ui, rect, count);
+    let on_button = |r: Rect, shown: bool| shown && ui.rect_contains_pointer(r);
+    let whole_row = buttons.0 || buttons.1;
+    let hovered = (resp.hovered() || (whole_row && ui.rect_contains_pointer(rect)))
+        && !on_button(add_rect, buttons.0)
+        && !on_button(more_rect, buttons.1);
     let p = ui.painter();
-    if resp.hovered() || (whole_row && ui.rect_contains_pointer(rect)) {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    row_fill::paint_state(p, rect, row_fill::RowState::of(&resp, false, hovered));
     p.line_segment([rect.left_top(), rect.right_top()], Stroke::new(1.0_f32, color::border()));
     chevron(p, pos2(rect.left() + PAD_X, rect.center().y), *open, color::weak());
     let (title_col, count_col) = if muted { (color::weak(), color::faint()) } else { (color::text(), color::weak()) };
@@ -77,6 +90,23 @@ fn header_row(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool, (
     let expanded = *open;
     ui.ctx().accesskit_node_builder(resp.id, |n| n.set_expanded(expanded));
     resp
+}
+
+/// The x left of the count in header `rect` (its right padding when there is none).
+fn right_of_buttons(ui: &Ui, rect: Rect, count: Option<usize>) -> f32 {
+    let count_w = count.map_or(0.0, |n| {
+        let font = section_fonts(ui).1;
+        ui.painter().layout_no_wrap(n.to_string(), font, color::text()).size().x + 6.0
+    });
+    rect.right() - PAD_X - count_w
+}
+
+/// The + and the ⋯'s squares in header `rect`, just left of the count.
+fn button_rects(ui: &Ui, rect: Rect, count: Option<usize>) -> (Rect, Rect) {
+    let right = right_of_buttons(ui, rect, count);
+    let cy = rect.center().y;
+    let add = Rect::from_min_max(pos2(right - BUTTON, cy - BUTTON / 2.0), pos2(right, cy + BUTTON / 2.0));
+    (add, add.translate(vec2(-(BUTTON + GAP), 0.0)))
 }
 
 /// A menu's items, drawn into `ui`.
@@ -133,22 +163,16 @@ pub struct HeaderResponse {
 /// The section header with its + and ⋯ (see the module doc). Toggles `open` on a click
 /// anywhere else on the row.
 pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> HeaderResponse {
-    let buttons = h.add.is_some() || h.menu.is_some();
+    let shown = (h.add.is_some(), h.menu.is_some());
     let muted = h.folds && h.count == Some(0);
     let name = header_name(h.t, h.key, h.title, h.count);
-    let header = header_row(ui, h.title, h.count, open, (buttons, muted), &name);
+    let header = header_row(ui, h.title, h.count, open, (shown, muted), &name);
     let rect = header.rect;
-    let count_w = h.count.map_or(0.0, |n| {
-        let font = section_fonts(ui).1;
-        ui.painter().layout_no_wrap(n.to_string(), font, color::text()).size().x + 6.0
-    });
-    let right = rect.right() - PAD_X - count_w;
-    if !buttons {
+    let right = right_of_buttons(ui, rect, h.count);
+    if !(shown.0 || shown.1) {
         return HeaderResponse { header, free_right: right };
     }
-    let cy = rect.center().y;
-    let add_rect = Rect::from_min_max(pos2(right - BUTTON, cy - BUTTON / 2.0), pos2(right, cy + BUTTON / 2.0));
-    let more_rect = add_rect.translate(vec2(-(BUTTON + GAP), 0.0));
+    let (add_rect, more_rect) = button_rects(ui, rect, h.count);
     let id = |part: &str| ui.make_persistent_id(("section-header", h.key, part));
     let (add_id, more_id) = (id("add"), id("more"));
 

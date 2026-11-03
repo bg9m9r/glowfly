@@ -1,10 +1,10 @@
 //! Accessible names for widgets egui can't name itself: text fields that only show hint text,
-//! and buttons drawn with the painter, plus a longer description (why a menu item is disabled),
-//! and live regions that screen readers announce as they appear or change (`announce`: the
-//! toasts and the status bar's job). Screen readers read these names, and the whole-app tests
-//! (`src/journey/`) find widgets by them. A form row's label names the fields and combos drawn
-//! in it that have no name of their own (`with_label`, `from_label`). Nothing here changes a
-//! pixel.
+//! and buttons drawn with the painter, plus a longer description (why a menu item is disabled)
+//! and a list's current item, and live regions that screen readers announce as they appear or
+//! change (`announce`: the toasts and the status bar's job). Screen readers read these names,
+//! and the whole-app tests (`src/journey/`) find widgets by them. A form row's label names the
+//! fields and combos drawn in it that have no name of their own (`with_label`, `from_label`).
+//! Nothing here changes a pixel.
 
 pub use eframe::egui::accesskit::Live;
 use eframe::egui::{Context, Id, Response, WidgetInfo, WidgetType};
@@ -20,6 +20,13 @@ pub fn name_field(resp: &Response, name: &str) {
 /// Names the painted button `resp`, and says whether it can be clicked.
 pub fn name_button(resp: &Response, enabled: bool, name: &str) {
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name));
+}
+
+/// Marks `resp` as its list's current item (the palette's keyboard row, the Preferences page
+/// shown), so screen readers announce it as selected. egui would report `WidgetInfo::selected`
+/// on a button as a toggle ("on"/"off"), which is the wrong meaning for a row.
+pub fn mark_selected(resp: &Response) {
+    resp.ctx.accesskit_node_builder(resp.id, |n| n.set_selected(true));
 }
 
 /// Makes the label `resp` a live region: screen readers announce its text when it appears and

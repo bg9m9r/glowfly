@@ -31,7 +31,7 @@ const TEXT: &str = "Could this name say what it searches?";
 /// The fixture's panel on Files changed with search.txt's diff open and its page loaded (as `f`
 /// changes the detail, head = the local source tip), plus `threads` on the added line; with
 /// `draft`, a draft with `text` on that line. Returns the state, the folder and the line.
-fn opened(
+pub(crate) fn opened(
     theme: ThemeChoice,
     name: &str,
     f: impl FnOnce(&mut PrDetail),

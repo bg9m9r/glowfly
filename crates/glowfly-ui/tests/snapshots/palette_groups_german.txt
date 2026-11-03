@@ -1,7 +1,7 @@
 Dialog
   TextInput "Type a command, branch or tag name" [focused]
   Label "Zuletzt verwendet"
-  Button "Refresh"
+  Button "Refresh" [selected]
   Label "Vorschläge"
   Button "Stage all files"
   Button "Create branch at HEAD…"

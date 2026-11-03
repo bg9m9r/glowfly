@@ -7,16 +7,22 @@ use super::DiffView;
 use crate::msg::Msg;
 use crate::state::pull_request_line_comment::{ONE_HUNK, OUTSIDE, line_blocked};
 use crate::ui::theme::color;
+use crate::ui::theme::sizes::ControlSize;
+use crate::ui::theme::tokens::{HIT_MIN, radius};
+use crate::ui::widgets::quiet_target::{self, State};
 use crate::ui::widgets::{Icon, paint_icon};
-use eframe::egui::{self, CursorIcon, Id, Rect, Sense, Ui, pos2, vec2};
+use eframe::egui::{self, CornerRadius, CursorIcon, Id, Rect, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::{LineSide, line_index, line_keys};
 use glowfly_core::forge::line_key;
 use glowfly_core::repo::DiffLine;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
 
-/// The width of the button and of the draft marker.
-const W: f32 = 18.0;
+/// The width of the button and of the draft marker: the least hit area's, and as tall as the row
+/// (a Compact quiet target, so it never reaches the next line).
+const W: f32 = HIT_MIN;
+/// Their quiet target's size.
+const SIZE: ControlSize = ControlSize::Compact;
 /// The draft bar's width.
 const BAR: f32 = 3.0;
 
@@ -68,14 +74,17 @@ pub(super) fn button(
     let p = ui.painter().with_clip_rect(row.intersect(ui.clip_rect()));
     let col = if !enabled {
         color::faint()
-    } else if resp.hovered() {
-        p.rect_filled(r, 3.0, color::hover());
-        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-        color::accent()
     } else {
-        color::weak()
+        let state = State::of(&resp, false);
+        quiet_target::paint(&p, r, CornerRadius::same(radius::SM), SIZE, state);
+        if state.lit() {
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+            color::accent()
+        } else {
+            color::weak()
+        }
     };
-    paint_icon(&p, pos2(r.left() + 9.0, r.center().y), Icon::CommentAdd, col);
+    paint_icon(&p, r.center(), Icon::CommentAdd, col);
     let tip = if selected { "Comment on the selected lines" } else { "Comment on this line" };
     let resp = resp.on_hover_text(why.unwrap_or(tip));
     if enabled && resp.clicked() {
@@ -112,11 +121,17 @@ pub(super) fn draft_marks(
     let r = Rect::from_min_size(pos2(right - 6.0 - taken - W, row.top()), vec2(W, row_h));
     let resp = ui.interact(r, Id::new(("draft-mark", cell.is_some())), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Your unposted comment"));
-    p.rect_filled(r.shrink2(vec2(0.0, 1.0)), 3.0, if resp.hovered() { color::hover() } else { color::selected() });
+    // The accent tint says "yours, not posted yet" (not a selection); the state layers go over it.
+    // Its icon is the tonal ink, which reads on the tint and under its layers in every palette.
+    let face = r.shrink2(vec2(0.0, 1.0));
+    let pal = color::current();
+    let tint = pal.tonal_fill();
+    p.rect_filled(face, CornerRadius::same(radius::SM), tint);
+    quiet_target::paint(&p, face, CornerRadius::same(radius::SM), SIZE, State::of(&resp, false));
     if resp.hovered() {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
-    paint_icon(&p, pos2(r.left() + 9.0, r.center().y), Icon::CommentAdd, color::accent());
+    paint_icon(&p, r.center(), Icon::CommentAdd, pal.tonal_ink(tint));
     if resp.on_hover_text("Go to your unposted comment").clicked() {
         msgs.push(Msg::PullRequest(PullRequestMsg::LineComment(LineCommentMsg::Focus)));
     }

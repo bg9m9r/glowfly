@@ -1,6 +1,6 @@
 Dialog
   TextInput "Type a command, branch or tag name" = "checkout" [focused]
-  Button "Checkout search"
+  Button "Checkout search" [selected]
   Button "Checkout login-page"
   Button "Checkout tag v0.1.0"
   Button "Checkout upstream/release-2.0"

@@ -111,7 +111,7 @@ RadioButton "Request changes" [off]
 Label "Feedback that must be addressed before this can merge."
 MultilineTextInput "Review summary"
 Button "Submit review" [disabled]
-Label "Write a summary for this choice"
+Label "A comment needs a summary"
 Label "Merge"
 Label "No conflicts with main"
 CheckBox "Delete search on origin after merging" [off]
@@ -161,4 +161,4 @@ painted:
   "Submodules"
   "0"
   "M"
-  "Summary (optional when approving)"
+  "Summary (required for a comment)"

@@ -15,9 +15,9 @@ use eframe::egui::{
 use glowfly_core::settings::FocusStyle;
 use std::sync::Arc;
 
-/// A text field with a 1 px `input_border` frame (weak on hover) and a 2 px accent focus ring,
-/// with the Strong `tokens::focus_ring` outside it under the Strong focus style. Only the frame
-/// strokes change: sizes, ids and focus behave as the plain `TextEdit`.
+/// A text field with a 1 px `input_border` frame (weak on hover), a 2 px accent focus ring and
+/// its placeholder in `faint`, with the Strong `tokens::focus_ring` outside it under the Strong
+/// focus style. Only those colours change: sizes, ids and focus behave as the plain `TextEdit`.
 pub struct Field<'t>(pub egui::TextEdit<'t>);
 
 impl egui::Widget for Field<'_> {
@@ -29,6 +29,7 @@ impl egui::Widget for Field<'_> {
         v.widgets.hovered.bg_stroke = Stroke::new(1.0_f32, p.weak);
         v.widgets.active.bg_stroke = Stroke::new(1.0_f32, p.weak);
         v.selection.stroke = Stroke::new(2.0_f32, p.accent);
+        placeholder_in(v, p.faint);
         // No child ui or scope: auto ids and layout stay those of an unwrapped TextEdit.
         let r = ui.add(self.0);
         if r.has_focus() && tokens::focus_style(ui.ctx()) == FocusStyle::Strong {
@@ -42,6 +43,16 @@ impl egui::Widget for Field<'_> {
         crate::ui::access::from_label(&r);
         r
     }
+}
+
+/// Makes egui paint a field's placeholder (its hint text, `Visuals::weak_text_color`) in exactly
+/// `tone`, never egui's lighter mix: egui averages the label colour and the fade-out colour,
+/// halving each channel first, so both become `tone`, an odd channel of the fade-out one higher.
+/// The typed text keeps its own colour (`widgets.inactive`).
+pub(super) fn placeholder_in(v: &mut egui::Visuals, tone: egui::Color32) {
+    v.widgets.noninteractive.fg_stroke.color = tone;
+    let up = |c: u8| if c % 2 == 1 { c.saturating_add(1) } else { c };
+    v.widgets.noninteractive.weak_bg_fill = egui::Color32::from_rgb(up(tone.r()), up(tone.g()), up(tone.b()));
 }
 
 /// Adds `edit` as a themed [`Field`] with egui's own padding. Inline and dialog fields take a
@@ -273,17 +284,46 @@ impl egui::Widget for Radio {
             let p = color::current();
             let (_, big) = ui.spacing().icon_rectangles(rect);
             let (c, w) = (big.center(), big.width());
-            let (fill, stroke) = icon_colors(&p, selected, response.hovered());
-            ui.painter().circle(c, w / 2.0, fill, stroke);
-            if selected {
-                ui.painter().circle_filled(c, w / 5.0, p.input);
+            if ui.is_enabled() {
+                let (fill, stroke) = icon_colors(&p, selected, response.hovered());
+                ui.painter().circle(c, w / 2.0, fill, stroke);
+                if selected {
+                    ui.painter().circle_filled(c, w / 5.0, p.input);
+                }
+                if response.has_focus() {
+                    ui.painter().circle_stroke(c, w / 2.0 + 2.0, Stroke::new(2.0_f32, p.accent));
+                }
+                paint_label(ui, rect, galley, &response);
+            } else {
+                paint_disabled_radio(ui, rect, galley, selected);
             }
-            if response.has_focus() {
-                ui.painter().circle_stroke(c, w / 2.0 + 2.0, Stroke::new(2.0_f32, p.accent));
-            }
-            paint_label(ui, rect, galley, &response);
         }
         response
+    }
+}
+
+/// A disabled radio button at full strength, not tinted toward the background as egui tints a
+/// disabled widget (which takes the ring below 3:1): the unselected ring as when enabled, the
+/// selected one `weak` with an `input` dot, and the label `weak`, even one with its own colour.
+fn paint_disabled_radio(ui: &Ui, rect: Rect, galley: Option<Arc<Galley>>, selected: bool) {
+    let p = color::current();
+    let mut painter = ui.painter().clone();
+    if !painter.is_visible() {
+        return;
+    }
+    painter.set_fade_to_color(None);
+    let (_, big) = ui.spacing().icon_rectangles(rect);
+    let (c, w) = (big.center(), big.width());
+    if selected {
+        painter.circle(c, w / 2.0, p.weak, Stroke::new(1.0_f32, p.weak));
+        painter.circle_filled(c, w / 5.0, p.input);
+    } else {
+        painter.circle(c, w / 2.0, p.input, Stroke::new(1.0_f32, p.input_border));
+    }
+    if let Some(galley) = galley {
+        let s = ui.spacing();
+        let pos = pos2(rect.min.x + s.icon_width + s.icon_spacing, rect.center().y - 0.5 * galley.size().y);
+        painter.galley_with_override_text_color(pos, galley, p.weak);
     }
 }
 

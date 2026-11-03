@@ -109,7 +109,7 @@ RadioButton "Approve" [off]
 Label "Approve these changes for merging."
 MultilineTextInput "Review summary"
 Button "Submit review" [disabled]
-Label "Write a summary for this choice"
+Label "A comment needs a summary"
 Label "Merge"
 Label "No conflicts with main"
 RadioButton "Merge commit" [on]
@@ -177,6 +177,6 @@ painted:
   "Submodules"
   "0"
   "M"
-  "Summary (optional when approving)"
+  "Summary (required for a comment)"
   "Empty: the service's default"
   "Empty: the service's default"

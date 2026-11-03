@@ -112,6 +112,28 @@ fn a_field_keeps_its_role_and_name_and_restores_the_style() {
 }
 
 #[test]
+fn a_fields_placeholder_is_faint_in_every_builtin() {
+    use eframe::egui::Shape;
+    use glowfly_core::settings::BuiltinTheme;
+    for t in BuiltinTheme::ALL {
+        let p = *super::builtin(t);
+        let mut text = String::new();
+        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+            super::color::set_palette(&p);
+            super::apply_style(ui.ctx(), &p);
+            ui.ctx().set_theme(super::egui_theme(&p));
+            ui.add(Field(egui::TextEdit::singleline(&mut text).hint_text("Filter")));
+        });
+        h.run();
+        let hint = h.output().shapes.iter().find_map(|s| match &s.shape {
+            Shape::Text(g) if g.galley.text() == "Filter" => Some(g.fallback_color),
+            _ => None,
+        });
+        assert_eq!(hint, Some(p.faint), "{t:?}: the placeholder is faint");
+    }
+}
+
+#[test]
 fn sized_fields_take_the_height_width_and_padding_of_their_size() {
     use super::sizes::ControlSize;
     let mut seen = Vec::new();
@@ -134,4 +156,47 @@ fn sized_fields_take_the_height_width_and_padding_of_their_size() {
     assert_eq!(room.width(), 200.0, "the clear button's room stays inside the given width");
     assert_eq!(controls::field_margin(ControlSize::Regular, false, Some(26.0)).left, 10);
     assert_eq!(controls::field_text_width(200.0), 180.0);
+}
+
+/// A disabled radio is drawn at full strength, so its marks meet 3:1 in every theme: the
+/// unselected ring's edge on the panel, the selected one's `weak` fill on the panel, and its
+/// `input` dot on that fill.
+#[test]
+fn disabled_radio_marks_stay_visible() {
+    use super::contrast::ratio;
+    let mut failures = Vec::new();
+    for (t, p) in super::tests::palettes() {
+        for (what, fg, bg) in [("ring", p.input_border, p.panel), ("selected fill", p.weak, p.panel), ("dot", p.input, p.weak)] {
+            let r = ratio(fg, bg);
+            if r < 3.0 {
+                failures.push(format!("{t}: disabled radio {what} is {r:.2}:1"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// A disabled radio's label is `weak`, even when the label brings its own colour (Preferences >
+/// Git program's labels are `RichText` in `text`), so it never looks enabled.
+#[test]
+fn a_disabled_radio_label_is_weak_even_with_its_own_colour() {
+    use super::color;
+    use eframe::egui::{RichText, Shape};
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        super::apply_theme(ui.ctx());
+        ui.add_enabled(false, Radio::new(false, "Plain"));
+        ui.add_enabled(false, Radio::new(true, RichText::new("Coloured").color(egui::Color32::RED)));
+        ui.add(Radio::new(false, "Enabled"));
+    });
+    h.run();
+    let mut colours = std::collections::BTreeMap::new();
+    for c in &h.output().shapes {
+        if let Shape::Text(t) = &c.shape {
+            colours.insert(t.galley.text().to_owned(), t.override_text_color);
+        }
+    }
+    let weak = Some(color::weak());
+    assert_eq!(colours.get("Plain"), Some(&weak), "{colours:?}");
+    assert_eq!(colours.get("Coloured"), Some(&weak), "{colours:?}");
+    assert_ne!(colours.get("Enabled"), Some(&weak), "an enabled label keeps its colour: {colours:?}");
 }

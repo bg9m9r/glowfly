@@ -214,5 +214,5 @@ painted:
   "Submodules"
   "0"
   "M"
-  "Summary (optional when approving)"
+  "Summary (optional)"
   "Reply…"
