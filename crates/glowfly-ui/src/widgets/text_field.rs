@@ -2,7 +2,7 @@
 //! centred, the field padding of `theme::controls::field_margin` (10 px at the sides), the
 //! faint accent-tinted `color::field_fill()`, and `theme::controls::Field`'s edge and focus ring
 //! (the only code that draws them), with a soft accent halo outside the ring while focused
-//! (`tokens::focus_halo`). A multiline field gets the same fill, edge and padding, and
+//! (`tokens::focus_halo`; the field's Strong focus ring in its place under Strong). A multiline field gets the same fill, edge and padding, and
 //! keeps its rows. Ids, hints, focus, masking and char limits behave as the plain `TextEdit`.
 //! Labels, help and messages around a field are `field_group`'s.
 

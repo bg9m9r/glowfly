@@ -1,9 +1,9 @@
-//! Language snapshots of the welcome, the repository lists, Find repositories and the details
-//! panel: the welcome screen and its lists in German, the first-run welcome's identity step in
-//! Spanish (its captions must fit their slots) and its Start step in German, Find repositories
-//! in German, and the commit details, several commits (German), the WIP lists and a commit
-//! compared with the working directory (Spanish). Buttons found by their translated text still
-//! send their messages.
+//! Language snapshots of the welcome, the repository lists, Find repositories, the tour and the
+//! details panel: the welcome screen and its lists in German, the first-run welcome's identity
+//! step in Spanish (its captions must fit their slots) and its Start step in German, the tour's
+//! last card in German, Find repositories in German, and the commit details, several commits
+//! (German), the WIP lists and a commit compared with the working directory (Spanish). Buttons
+//! found by their translated text still send their messages.
 
 use super::common::short;
 use super::details_wip::discard_all_text;
@@ -14,6 +14,7 @@ use super::snapshot_tests_repo_finder::finder;
 use super::snapshot_tests_repo_list::welcome_state;
 use crate::msg::{Msg, ReposMsg};
 use crate::state::onboarding::{EMAIL_FIELD, WelcomeStep};
+use crate::state::onboarding_tour::TourStep;
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
@@ -92,6 +93,26 @@ fn welcome_start_german() {
     }
     assert!(h.query_by_label(Lang::De.tr("welcome.start.tour_after.check")).is_some());
     h.check_snapshot("welcome_start_german");
+}
+
+/// The tour's last card in German: its title, sentences, buttons, counter and close tip are the
+/// German texts (the text snapshot keeps them for review; it does not measure their fit).
+#[test]
+fn tour_palette_german() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "tour-palette-german");
+    st.settings.language = "de".into();
+    st.onboarding.tour = Some(TourStep::Palette);
+    let mut h = harness(st, true);
+    h.run();
+    let t = Lang::De;
+    for key in ["tour.step.palette.title", "tour.palette.open.button", "tour.palette.shortcuts.button", "tour.done.button"] {
+        assert!(h.query_by_label(t.tr(key)).is_some(), "{key} is shown in German");
+    }
+    assert!(h.query_by_label(&t.trf("tour.progress", &[("step", &5), ("total", &5)])).is_some());
+    assert!(h.query_by_label(t.tr("tour.close.tip")).is_some());
+    h.check_snapshot("tour_palette_german");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 #[test]

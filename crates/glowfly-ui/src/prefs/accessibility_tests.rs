@@ -16,7 +16,9 @@ use glowfly_core::settings::{Settings, ThemeChoice};
 use std::time::Instant;
 
 /// Tall enough for the whole page, the Timing section included, without scrolling.
-const TALL: f32 = 1140.0;
+const TALL: f32 = 1220.0;
+/// The same for German and Spanish in a 760 px window, where rows stack.
+const DE_ES_TALL: f32 = 1500.0;
 
 fn page(s: Settings, p: Palette, size: Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut st = AppState::new(s, Vec::new(), Instant::now());
@@ -56,17 +58,17 @@ fn prefs_accessibility_system_on() {
 #[test]
 fn prefs_accessibility_de() {
     let s = Settings { language: "de".into(), ..settings(ThemeChoice::Graphite) };
-    page(s, theme::GRAPHITE, vec2(760.0, 1400.0)).check_snapshot("prefs_accessibility_de");
+    page(s, theme::GRAPHITE, vec2(760.0, DE_ES_TALL)).check_snapshot("prefs_accessibility_de");
 }
 
 #[test]
 fn prefs_accessibility_es() {
     let s = Settings { language: "es".into(), ..settings(ThemeChoice::Graphite) };
-    page(s, theme::GRAPHITE, vec2(760.0, 1400.0)).check_snapshot("prefs_accessibility_es");
+    page(s, theme::GRAPHITE, vec2(760.0, DE_ES_TALL)).check_snapshot("prefs_accessibility_es");
 }
 
 /// Every control on the page, in visual order, by its accessible name.
-const CONTROLS: [&str; 14] = [
+const CONTROLS: [&str; 15] = [
     "Interface size",
     "Interface size, Also follow the system's text size",
     "Diff text size",
@@ -77,6 +79,7 @@ const CONTROLS: [&str; 14] = [
     "Reduce motion, Turn off fades and slides",
     "Reduce motion, Also when the system asks for less motion",
     "Blinking cursor, Blink the text cursor",
+    "Focus indicator",
     "Change shortcuts…",
     "Show all shortcuts",
     "Notifications stay",
@@ -114,7 +117,8 @@ fn every_control_is_named_and_described() {
         (CONTROLS[5], "Switches to High contrast dark or light; turning it off brings back your theme."),
         (CONTROLS[6], "Branch colors in the graph."),
         (CONTROLS[9], "The cursor in text fields. The terminal's never blinks."),
-        (CONTROLS[11], "Every command can be given a key."),
+        (CONTROLS[10], "Strong draws a thicker ring with an outline that shows on every color."),
+        (CONTROLS[12], "Every command can be given a key."),
     ];
     for name in CONTROLS {
         assert!(h.query_by_label(name).is_some(), "{name} is named");
@@ -169,9 +173,9 @@ fn no_text_size_check_where_the_system_has_no_text_size() {
 #[test]
 fn the_shortcut_buttons_go_to_keyboard_and_the_sheet() {
     let mut h = english();
-    h.get_by_label(CONTROLS[10]).click();
-    h.run();
     h.get_by_label(CONTROLS[11]).click();
+    h.run();
+    h.get_by_label(CONTROLS[12]).click();
     h.run();
     let msgs = &h.state().1;
     assert!(msgs.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::Navigate(PrefPage::Keyboard)))));
@@ -181,14 +185,14 @@ fn the_shortcut_buttons_go_to_keyboard_and_the_sheet() {
 #[test]
 fn closing_the_sheet_gives_the_focus_back_to_show_all_shortcuts() {
     let mut h = english();
-    h.get_by_label(CONTROLS[11]).click();
+    h.get_by_label(CONTROLS[12]).click();
     h.run();
     h.state_mut().0.modal = Some(crate::state::Modal::Shortcuts { filter: String::new() });
     h.run();
     h.state_mut().0.modal = None;
     h.run();
     h.run();
-    assert!(h.get_by_label(CONTROLS[11]).is_focused());
+    assert!(h.get_by_label(CONTROLS[12]).is_focused());
 }
 
 #[test]

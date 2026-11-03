@@ -440,6 +440,9 @@ given, the second is for the high-contrast themes.
 | `text` | hover, pressed and latched layers on panel, raised, overlay and tool backing | 4.5 / 7 |
 | Tonal ink | tonal fill at rest, hovered and pressed | 4.5 / 7 |
 | `accent` (the focus ring) | bg, panel, input, raised, overlay, tool backing | 3 |
+| `accent` (the inset focus ring on rows) | selected, inactive selection, hover | 3 |
+| Strong focus: `accent` | its `bg` outline | 3 |
+| Strong focus on a primary half: `on_primary` | primary at rest, hovered and pressed | 3 |
 | Tone tint ink (accent, success, warning, danger, info) | its tint | 4.5 |
 | Light's chip tones (`branch.chips`) | bg, panel, toolbar, hover, selected, raised | 4.5 |
 | Colour-blind line tones, applied to every built-in | bg, panel | 3 |

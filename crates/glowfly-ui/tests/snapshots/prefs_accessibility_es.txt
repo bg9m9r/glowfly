@@ -1,4 +1,4 @@
-window 760x1400
+window 760x1500
 Label "Glowfly 0.1.0"
 Button "Volver"
 Label "Preferencias"
@@ -25,11 +25,14 @@ Label "Movimiento"
 Label "Reducir movimiento"
 CheckBox "Reducir movimiento, Desactivar fundidos y deslizamientos" [off]
 CheckBox "Reducir movimiento, También cuando el sistema pide menos movimiento" [on]
-Label "Las descripciones y ventanas emergentes aparecen sin fundidos ni deslizamientos"
+Label "Las descripciones y ventanas emergentes aparecen sin fundidos ni deslizamientos."
 Label "Cursor parpadeante"
 CheckBox "Cursor parpadeante, Hacer parpadear el cursor de texto" [on]
 Label "El cursor de los campos de texto. El de la terminal nunca parpadea."
 Label "Teclado"
+Label "Indicador de foco"
+ComboBox "Indicador de foco"
+Label "Reforzado dibuja un anillo más grueso con un contorno visible sobre cualquier color."
 Label "Atajos"
 Button "Cambiar atajos…"
 Button "Ver todos los atajos"
@@ -60,5 +63,6 @@ painted:
   "Desactivar fundidos y deslizamientos"
   "También cuando el sistema pide menos movimiento"
   "Hacer parpadear el cursor de texto"
+  "Estándar"
   "Estándar (5 s)"
   "Rápido (0,4 s)"

@@ -16,6 +16,8 @@ use glowfly_core::settings::{BuiltinTheme, Settings, SystemPair, ThemeChoice};
 
 /// A card's preview height, the name line under it, and the gaps between cards.
 const PREVIEW_H: f32 = 84.0;
+/// The selected card's accent edge, in either focus style.
+const SELECTED_EDGE_W: f32 = 2.0;
 const NAME_H: f32 = 28.0;
 const GAP_X: f32 = 14.0;
 const GAP_Y: f32 = 12.0;
@@ -110,7 +112,7 @@ fn card(ui: &mut Ui, t: Lang, b: BuiltinTheme, selected: bool, w: f32) -> Respon
         let painter = ui.painter();
         paint_preview(painter, preview, builtin(b));
         let edge = if selected {
-            Stroke::new(tokens::FOCUS_W, color::accent())
+            Stroke::new(SELECTED_EDGE_W, color::accent())
         } else if resp.hovered() {
             Stroke::new(1.0_f32, color::input_border())
         } else {
@@ -118,7 +120,7 @@ fn card(ui: &mut Ui, t: Lang, b: BuiltinTheme, selected: bool, w: f32) -> Respon
         };
         painter.rect_stroke(preview, radius::LG, edge, StrokeKind::Outside);
         if resp.has_focus() {
-            tokens::focus_ring(painter, preview.expand(if selected { tokens::FOCUS_W } else { 0.0 }), radius::LG);
+            tokens::focus_ring(painter, preview.expand(if selected { SELECTED_EDGE_W } else { 0.0 }), radius::LG);
         }
         let font = if selected { fonts::semibold(ui, type_scale::BODY) } else { type_scale::font(type_scale::BODY) };
         let ink = if selected { color::strong() } else { color::text() };

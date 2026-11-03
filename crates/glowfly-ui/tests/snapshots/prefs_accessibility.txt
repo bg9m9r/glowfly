@@ -1,4 +1,4 @@
-window 1400x1140
+window 1400x1220
 Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
@@ -19,10 +19,12 @@ Label "Branch colors in the graph."
 Label "Motion"
 CheckBox "Reduce motion, Turn off fades and slides" [off]
 CheckBox "Reduce motion, Also when the system asks for less motion" [on]
-Label "Tooltips and popups appear without fading or sliding in"
+Label "Tooltips and popups appear without fading or sliding in."
 CheckBox "Blinking cursor, Blink the text cursor" [on]
 Label "The cursor in text fields. The terminal's never blinks."
 Label "Keyboard"
+ComboBox "Focus indicator"
+Label "Strong draws a thicker ring with an outline that shows on every color."
 Button "Change shortcuts…"
 Button "Show all shortcuts"
 Label "Every command can be given a key."
@@ -53,6 +55,7 @@ painted:
   "Also when the system asks for less motion"
   "Blinking cursor"
   "Blink the text cursor"
+  "Standard"
   "Shortcuts"
   "Standard (5 s)"
   "Quick (0.4 s)"
