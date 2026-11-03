@@ -52,7 +52,7 @@ Button "Submodules actions"
 Unknown "Central view"
 Button "Start rebase" [disabled]
 Button "Cancel"
-Button "Restore original order"
+Button "More rebase actions"
 Label "Interactive rebase"
 Label "Rebasing 6 commits of main from the first commit"
 Label "Exec steps need a command."

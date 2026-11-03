@@ -1,6 +1,6 @@
-//! The interactive rebase panel, shown in place of the graph: a header with Restore original
-//! order (Reload steps on a stale list), Cancel and
-//! Start rebase (Update steps, on a running rebase's remaining steps), why it is unavailable,
+//! The interactive rebase panel, shown in place of the graph: a header with ⋯ (Restore original
+//! order), Cancel and Start rebase (Update steps, on a running rebase's remaining steps; Reload
+//! steps on a stale list), why it is unavailable,
 //! the list in the order git runs it (`rows`, with `commit_row`, `step_row`, `editor`, `drag`
 //! and `keys`), and buttons that add exec and break steps. Also the graph menus' history edits
 //! (`edit_menu`), the Reword dialog (`reword_dialog`) and the rebase banner on the WIP row
@@ -28,8 +28,9 @@ use crate::state::rebase_remaining::{NO_STEPS, REMAINING_HINT, REMAINING_TITLE, 
 use crate::state::rebase_steps::NewStep;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::menu::{self, popup_below};
 use crate::ui::widgets::{buttons, truncate};
-use eframe::egui::{self, Align, Layout, RichText, Sense, Stroke, Ui, vec2};
+use eframe::egui::{self, Align, Layout, PopupCloseBehavior, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 
 const STASH_HINT: &str = "Uncommitted changes will be stashed first and put back afterwards.";
@@ -67,8 +68,10 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     rows::list(ui, st, cache, msgs);
 }
 
-/// Title and subtitle on the left (the subtitle cut with "…" before the buttons); Restore
-/// original order, Cancel and Start rebase (or Update steps) on the right.
+/// Title and subtitle on the left (the subtitle cut with "…" before the buttons); at the
+/// trailing edge ⋯ (Restore original order), Cancel and the one filled button: Start rebase
+/// (Update steps on a running rebase's remaining steps), or Reload steps on a stale list, which
+/// hides the ⋯.
 fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Vec<Msg>) {
     let (title, primary) =
         if panel.source == PanelSource::Remaining { (REMAINING_TITLE, UPDATE) } else { ("Interactive rebase", "Start rebase") };
@@ -77,7 +80,12 @@ fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs
         // The buttons first, from the right, so the title and subtitle get what is left.
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(14.0);
-            if ui.add(buttons::primary(primary).enabled(blocker.is_none()).why(blocker)).clicked() {
+            if panel.stale {
+                let reload = buttons::primary("Reload steps").enabled(panel.editable()).tip("Reload the list from the repository");
+                if ui.add(reload).clicked() {
+                    msgs.push(Msg::Rebase(RebaseMsg::RebaseReset));
+                }
+            } else if ui.add(buttons::primary(primary).enabled(blocker.is_none()).why(blocker)).clicked() {
                 msgs.push(Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
             }
             let cancel =
@@ -85,13 +93,8 @@ fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs
             if ui.add(cancel).clicked() {
                 msgs.push(Msg::Rebase(RebaseMsg::CloseRebase));
             }
-            let (label, tip) = if panel.stale {
-                ("Reload steps", "Reload the list from the repository")
-            } else {
-                ("Restore original order", "Back to the original order and actions; typed messages and added steps are dropped")
-            };
-            if ui.add(buttons::secondary(label).enabled(panel.editable()).tip(tip)).clicked() {
-                msgs.push(Msg::Rebase(RebaseMsg::RebaseReset));
+            if !panel.stale {
+                more(ui, t, panel, msgs);
             }
             if panel.starting {
                 ui.add(egui::Spinner::new());
@@ -105,6 +108,24 @@ fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs
                 truncate::truncate_label(ui, RichText::new(panel.subtitle()).color(color::weak()), w);
             });
         });
+    });
+}
+
+/// The header's ⋯ and its menu: Restore original order, disabled while nothing has changed.
+fn more(ui: &mut Ui, t: Lang, panel: &RebasePanel, msgs: &mut Vec<Msg>) {
+    let id = ui.make_persistent_id("rebase-more");
+    let r = ui.add(buttons::icon_only(Icon::More, t.tr("rebase.more.name")).enabled(panel.editable()));
+    if r.clicked() {
+        ui.memory_mut(|m| m.toggle_popup(id));
+    }
+    popup_below(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
+        ui.set_min_width(220.0);
+        let why = (panel.items == panel.original).then(|| t.tr("rebase.restore.unchanged"));
+        let item = menu::item(t.tr("rebase.restore.button")).blocked(why).show(ui).on_hover_text(t.tr("rebase.restore.tip"));
+        if item.clicked() && why.is_none() {
+            msgs.push(Msg::Rebase(RebaseMsg::RebaseReset));
+            ui.memory_mut(|m| m.close_popup());
+        }
     });
 }
 
@@ -142,7 +163,14 @@ fn plus_button(ui: &mut Ui, label: &str) -> egui::Response {
     let fill = if enabled && r.hovered() { color::hover() } else { color::raised() };
     p.rect_filled(rect, egui::CornerRadius::same(radius::SM), fill);
     p.rect_stroke(rect, egui::CornerRadius::same(radius::SM), Stroke::new(1.0_f32, color::border()), egui::StrokeKind::Inside);
-    paint_icon(p, egui::pos2(rect.left() + 15.0, rect.center().y), Icon::Plus, if enabled { color::primary() } else { color::faint() });
+    let plus = if !enabled {
+        color::faint()
+    } else if r.hovered() {
+        color::text()
+    } else {
+        color::weak()
+    };
+    paint_icon(p, egui::pos2(rect.left() + 15.0, rect.center().y), Icon::Plus, plus);
     p.galley(egui::pos2(rect.left() + 28.0, rect.center().y - galley.size().y / 2.0), galley, text_color);
     r
 }

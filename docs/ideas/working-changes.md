@@ -56,6 +56,8 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - Start the network-volume timer's clock again at the end of a full reload too (focus regained), so an overdue poll doesn't read the share right after it
 - Say in the network-volume notice that a slow share is re-read less often than every 10 seconds
 - The window still asks for a repaint after the base poll interval (10 s), so a stretched network-volume gap can fire up to one repaint late: request it at last_poll + poll_gap
+- A light-theme row in the live-updates golden
+- A contrast test for the warn badge on its washed fill (3:1 for the mark, 4.5:1 for the label); only the bare toolbar is checked today
 
 ### Commit panel extras
 

@@ -79,8 +79,9 @@ fn footer<'a>(t: Lang, w: &Welcome, no_connections: bool) -> Footer<'a> {
         }
         WelcomeStep::Connect if no_connections => footer.alt(buttons::secondary(t.tr("welcome.skip_step.button"))),
         WelcomeStep::Connect | WelcomeStep::Git => footer.primary(buttons::primary(t.tr("welcome.continue.button"))),
-        // The cards are the step's main actions; Done just ends the welcome.
-        WelcomeStep::Start => footer.close_label(t.tr("welcome.done.button")),
+        // Done is the step's one filled button: it ends the welcome (the cards open, clone or
+        // start a repository as they end it).
+        WelcomeStep::Start => footer.primary(buttons::primary(t.tr("welcome.done.button"))),
     }
 }
 
@@ -115,7 +116,7 @@ fn answer(out: Outcome, step: WelcomeStep, msgs: &mut Vec<Msg>) {
             }
         }
         WelcomeStep::Start => {
-            if out.dismiss {
+            if out.primary {
                 send(OnboardingMsg::Finish(None));
             }
         }

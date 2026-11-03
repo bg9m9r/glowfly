@@ -54,7 +54,8 @@ pub(super) struct Journey {
     pub fx: Fixture,
     /// The toasts shown since the last action.
     toasts: Vec<Seen>,
-    /// Every toast id recorded so far, so one still fading isn't recorded again.
+    /// Every showing recorded so far (a toast's `shown`, which a toast shown again in place
+    /// renews while keeping its id), so one still fading isn't recorded again.
     known: Vec<u64>,
 }
 
@@ -156,8 +157,8 @@ impl Journey {
         self.h.step();
         let st = self.h.state().app().state();
         for t in &st.toasts {
-            if !self.known.contains(&t.id) {
-                self.known.push(t.id);
+            if !self.known.contains(&t.shown) {
+                self.known.push(t.shown);
                 self.toasts.push(Seen { ok: t.ok, text: t.text.clone(), shown: false });
             }
         }

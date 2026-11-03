@@ -83,9 +83,9 @@ Label "line 1"
 Label "+search"
 MultilineTextInput "New comment" = "Maybe:\n\n```suggestion\nsearch\n```"
 Button "Suggest a change"
-Button "Cancel"
-Button "Add single comment" [disabled]
 Button "Add review comment"
+Button "Add single comment" [disabled]
+Button "Cancel"
 Label "the server said “Validation Failed pull_request_review_thread.line must be part of the diff”"
 Label "search.txt"
 Label "A +1 −0"
@@ -93,8 +93,8 @@ Label "f0d635c..222c0ad"
 Button "Previous change" [disabled]
 Button "Next change" [disabled]
 Label "1 / 1"
-Button "Inline · Hunks"
-Button "Open in external diff tool"
+Button "Inline · Changes only"
+Button "More file actions"
 Button "Close diff"
 Button "Revert hunk"
 Button "Your unposted comment"

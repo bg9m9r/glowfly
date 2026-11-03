@@ -96,7 +96,7 @@ fn keep_fixes(st: &mut AppState, id: EntryId, fix: ToastAction, alt: Option<Toas
     st.logs.keep_fix(id, alt);
     if let Some((main, second)) = st.logs.offer_first(id, fix) {
         st.set_last_toast_action(main);
-        if let Some(t) = st.toasts.last_mut() {
+        if let Some(t) = st.newest_toast_mut() {
             t.alt = Some(second);
         }
     }

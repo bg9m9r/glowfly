@@ -66,6 +66,10 @@ pub struct StyledButton<'a> {
     enabled: bool,
     why: Option<&'a str>,
     tip: Option<&'a str>,
+    /// The tooltip's wrap width, when not the app's (`tooltip::style`).
+    tip_width: Option<f32>,
+    /// Its accessible name, when not its text (a label whose names were cut).
+    access_name: Option<&'a str>,
     min_width: f32,
     height: Option<f32>,
     size: ControlSize,
@@ -123,6 +127,8 @@ impl<'a> StyledButton<'a> {
             enabled: true,
             why: None,
             tip: None,
+            tip_width: None,
+            access_name: None,
             min_width: 0.0,
             height: None,
             size: ControlSize::Regular,
@@ -148,6 +154,19 @@ impl<'a> StyledButton<'a> {
     /// dialog keeps).
     pub fn tip(mut self, tip: &'a str) -> Self {
         self.tip = Some(tip);
+        self
+    }
+
+    /// Wraps the tooltip at `w` instead of the app's tooltip width (a git command on one line).
+    pub fn tip_width(mut self, w: f32) -> Self {
+        self.tip_width = Some(w);
+        self
+    }
+
+    /// Names it `name` for screen readers instead of its text: the whole label when the text
+    /// cuts a name, as the branch menus' rows do.
+    pub fn access_name(mut self, name: &'a str) -> Self {
+        self.access_name = Some(name);
         self
     }
 
@@ -286,7 +305,7 @@ impl<'a> StyledButton<'a> {
 
     /// Names `resp` for screen readers.
     pub(super) fn name(&self, resp: &Response, enabled: bool) {
-        let text = self.text.as_ref();
+        let text = self.access_name.unwrap_or(self.text.as_ref());
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, text));
     }
 
@@ -312,9 +331,13 @@ impl<'a> StyledButton<'a> {
         let tip = if self.icon_only { self.tip.or(Some(self.text.as_ref())) } else { self.tip };
         if enabled {
             let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
-            match tip {
-                Some(tip) => resp.on_hover_text(tip),
-                None => resp,
+            match (tip, self.tip_width) {
+                (Some(tip), Some(w)) => resp.on_hover_ui(|ui| {
+                    ui.set_max_width(w);
+                    ui.add(egui::Label::new(tip));
+                }),
+                (Some(tip), None) => resp.on_hover_text(tip),
+                (None, _) => resp,
             }
         } else if let Some(why) = self.why {
             // In a disabled `Ui` (e.g. `add_enabled_ui(false, ..)`) the response is disabled too,

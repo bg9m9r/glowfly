@@ -2,12 +2,13 @@
 //! where the key's passphrase is asked, key generation, and signing defaults. The switches and
 //! lists write at once; the program and the allowed signers file wait for the Save / Revert bar.
 
-use super::{check_row, help, primary_button, row, text_field, warn, warn_then};
+use super::{check_row, help, row, secondary_button, text_field, warn, warn_then};
 use crate::msg::PrefsMsg;
 use crate::msg::{FilePurpose, Msg};
 use crate::state::PrefsState;
 use crate::state::prefs::SigningState;
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
@@ -136,18 +137,14 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         });
         row(ui, "Generate new GPG key", |ui| {
             ui.horizontal(|ui| {
-                controls::field(
-                    ui,
-                    egui::TextEdit::singleline(&mut signing.passphrase)
-                        .password(true)
-                        .hint_text("Passphrase (optional)")
-                        .desired_width(220.0),
-                );
+                let pass = egui::TextEdit::singleline(&mut signing.passphrase).password(true).hint_text("Passphrase (optional)");
+                ui.add(controls::SizedField::new(ControlSize::Regular, pass).width(220.0));
                 let can = !signing.generating && !git.user_name.is_empty() && !git.user_email.is_empty();
                 // While generating, the spinner says why.
                 let unnamed = git.user_name.is_empty() || git.user_email.is_empty();
                 let why = (!signing.generating && unnamed).then_some("Set your name and email on the Git page first");
-                if primary_button(ui, "Generate", can, why).clicked() {
+                // Not the page's main action: secondary, at the field's height.
+                if secondary_button(ui, "Generate", can, why).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::GenerateGpgKey));
                 }
                 if signing.generating {

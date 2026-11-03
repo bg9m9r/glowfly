@@ -79,7 +79,6 @@ Button "Next change" [disabled]
 Label "2 / 2"
 Button "View"
 Button "More file actions"
-Button "Open in external diff tool"
 Button "Stage file"
 Button "Close diff"
 Label "Only whitespace changed"

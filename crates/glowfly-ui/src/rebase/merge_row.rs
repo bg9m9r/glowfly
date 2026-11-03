@@ -25,7 +25,7 @@ pub(super) fn paint_label(ui: &Ui, rect: Rect, text: &str, shade: Shade) {
 
 /// A reset row: "Continue from …".
 pub(super) fn paint_reset(ui: &Ui, rect: Rect, text: &str, shade: Shade) {
-    paint_fixed(ui, rect, "reset", color::primary(), text, shade);
+    paint_fixed(ui, rect, "reset", color::text(), text, shade);
 }
 
 /// An update-ref row: "Moves lower here".

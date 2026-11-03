@@ -1,7 +1,8 @@
 //! The rebase panel's inline editors, drawn under their row: a commit's new message, the
 //! message of the commit a squash group combines into (under the group's last row), and an
-//! exec step's command. Each takes the keyboard focus when it opens, and ends in a small primary
-//! Save or Update message and a small Cancel (the combined message also has Use git's message);
+//! exec step's command. Each takes the keyboard focus when it opens, and ends in a small
+//! secondary Save or Update message (the panel's one filled button stays Start rebase) and a
+//! small Cancel (the combined message also has Use git's message);
 //! Save stays disabled, saying why, while the command is empty.
 
 use super::UiCache;
@@ -61,11 +62,11 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
                         }
                         ui.horizontal(|ui| {
                             let save = match editing {
-                                Editing::Message(_) | Editing::Combined(_) => buttons::primary("Update message").size(ControlSize::Small),
+                                Editing::Message(_) | Editing::Combined(_) => buttons::secondary("Update message").size(ControlSize::Small),
                                 Editing::Command(_) => {
                                     let typed = !panel.draft.trim().is_empty();
                                     let why = (!typed).then_some(t.tr("rebase.editor.command_empty.why"));
-                                    buttons::primary(t.tr("rebase.editor.save.button")).size(ControlSize::Small).enabled(typed).why(why)
+                                    buttons::secondary(t.tr("rebase.editor.save.button")).size(ControlSize::Small).enabled(typed).why(why)
                                 }
                             };
                             if ui.add(save).clicked() {

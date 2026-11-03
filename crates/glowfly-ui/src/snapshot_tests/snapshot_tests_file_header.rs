@@ -46,7 +46,7 @@ fn file_header_wide_dark() {
     std::fs::write(dir.join("src/app.txt"), lines.replace("line 3\n", "line three\nand more\n").replace("line 25\n", "")).unwrap();
     open(&mut st, &dir, DiffTarget::Unstaged("src/app.txt".into()));
     let h = render("file_header_wide_dark", st, true);
-    for label in ["src/", "app.txt", "Unstaged", "Open", super::file_menu::SHOW_IN_FOLDER, "Stage file", "Close diff"] {
+    for label in ["src/", "app.txt", "Unstaged", "More file actions", "Stage file", "Close diff"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(h.query_by_label("M +2 \u{2212}2").is_some(), "the status chip");
@@ -61,7 +61,11 @@ fn file_header_commit_light() {
     // The window is `diff_commit_header_buttons`'s; here, what the header holds.
     let mut h = harness_sized(st, false, WIDE);
     h.run();
-    for label in ["Restore\u{2026}", "Open", super::file_menu::SHOW_IN_FOLDER, short.as_str()] {
+    assert!(h.query_by_label(short.as_str()).is_some(), "the commit chip");
+    // The file actions are in ⋯.
+    h.get_by_label("More file actions").click();
+    h.run();
+    for label in ["Restore\u{2026}", super::file_menu::OPEN_DEFAULT, super::file_menu::SHOW_IN_FOLDER] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(h.query_by_label("Stage file").is_none(), "no primary on a commit");

@@ -36,6 +36,11 @@ const ICON_FILES: &[&str] = &["widgets/icon.rs", "icons.rs", "icons_panel.rs", "
 const ALLOWED: &[(&str, &str, &str)] = &[
     ("tour.rs", "rect_stroke(t.shrink(1.0)", "the tour's spotlight outline, not a focus ring"),
     ("welcome_cards.rs", "CornerRadius::same(2), s, StrokeKind::Middle", "a corner of the painted folder glyph"),
+    (
+        "widgets/popover.rs",
+        "popup_shadow = Shadow::NONE",
+        "the invisible popup that only registers the popover with egui (to hide tooltips): no shadow is drawn",
+    ),
 ];
 
 fn starts_with_digit(s: &str) -> bool {

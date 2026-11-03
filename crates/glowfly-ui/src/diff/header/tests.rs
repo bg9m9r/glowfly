@@ -111,8 +111,7 @@ fn one_row_at_every_width() {
         for m in [unstaged(), commit()] {
             let h = harness(m, width);
             let close = middle(&h, CLOSE_NAME);
-            let labels =
-                [PREV_NAME, NEXT_NAME, OPEN_IN_DIFF_TOOL, STAGE_FILE, RESTORE, OPEN, SHOW_IN_FOLDER, MORE, "Inline \u{b7} Hunks", "View"];
+            let labels = [PREV_NAME, NEXT_NAME, STAGE_FILE, MORE, "Inline \u{b7} Changes only", "View"];
             for label in labels {
                 if let Some(node) = h.query_by_label(label) {
                     let b = node.bounding_box().expect("laid out");
@@ -157,34 +156,52 @@ fn german_header_fits_in_one_row() {
     }
 }
 
-#[test]
-fn file_actions_fold_into_a_menu_when_narrow() {
-    let h = harness(commit(), 1400.0);
-    for label in [RESTORE, OPEN, SHOW_IN_FOLDER, "src/ui/"] {
-        assert!(h.query_by_label(label).is_some(), "{label} at 1400");
-    }
-    assert!(h.query_by_label(MORE).is_none());
-    let name_w = |h: &Harness<'_, Vec<Msg>>| h.get_by_label("app.txt").bounding_box().map(|b| b.x1 - b.x0).unwrap();
-    let wide = name_w(&h);
+/// Opens ⋯ on `m` and clicks `label` in its menu.
+fn in_more(m: HeaderModel, label: &str) -> Vec<Msg> {
+    let mut h = harness(m, 1400.0);
+    h.get_by_label(MORE).click();
+    h.run();
+    h.get_by_label(label).click();
+    h.run();
+    std::mem::take(h.state_mut())
+}
 
-    let h = harness(commit(), 520.0);
-    for label in [RESTORE, OPEN, SHOW_IN_FOLDER, "src/ui/"] {
-        assert!(h.query_by_label(label).is_none(), "{label} gives way at 520");
+#[test]
+fn file_actions_are_in_the_more_menu() {
+    let h = harness(commit(), 1400.0);
+    for label in [RESTORE, OPEN, SHOW_IN_FOLDER, OPEN_IN_DIFF_TOOL] {
+        assert!(h.query_by_label(label).is_none(), "{label} is in ⋯, not on the row");
     }
     assert!(h.query_by_label(MORE).is_some());
+    let name_w = |h: &Harness<'_, Vec<Msg>>| h.get_by_label("app.txt").bounding_box().map(|b| b.x1 - b.x0).unwrap();
+    let wide = name_w(&h);
+    let h = harness(commit(), 520.0);
+    assert!(h.query_by_label(MORE).is_some(), "⋯ never gives way");
     assert!((name_w(&h) - wide).abs() < 0.5, "the name is never cut while the folder can give way");
 
-    let open = |label: &str| {
-        let mut h = harness(commit(), 520.0);
-        h.get_by_label(MORE).click();
-        h.run();
-        h.get_by_label(label).click();
-        h.run();
-        std::mem::take(h.state_mut())
-    };
-    assert!(matches!(&open("Restore…")[..], [Msg::Files(FilesMsg::RestoreFile { path, deleted: false, .. })] if path == "src/ui/app.txt"));
-    assert!(matches!(&open(OPEN_DEFAULT)[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "src/ui/app.txt"));
-    assert!(matches!(&open(SHOW_IN_FOLDER)[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "src/ui/app.txt"));
+    assert!(
+        matches!(&in_more(commit(), "Restore…")[..], [Msg::Files(FilesMsg::RestoreFile { path, deleted: false, .. })] if path == "src/ui/app.txt")
+    );
+    assert!(matches!(&in_more(commit(), OPEN_DEFAULT)[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "src/ui/app.txt"));
+    assert!(matches!(&in_more(commit(), SHOW_IN_FOLDER)[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "src/ui/app.txt"));
+    assert!(matches!(&in_more(unstaged(), OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
+}
+
+#[test]
+fn the_row_runs_file_nav_view_more_then_stage_and_close() {
+    let h = harness(unstaged(), 1400.0);
+    let x = |label: &str| h.get_by_label(label).bounding_box().expect("laid out");
+    let (name, prev, next, view, more, stage, close) =
+        (x("app.txt"), x(PREV_NAME), x(NEXT_NAME), x("Inline \u{b7} Changes only"), x(MORE), x(STAGE_FILE), x(CLOSE_NAME));
+    let chip = x("Unstaged");
+    assert!(name.x1 < chip.x0 && chip.x1 + 15.5 <= prev.x0 && prev.x0 <= chip.x1 + 16.5, "16 px after the file: {chip:?} {prev:?}");
+    assert!(prev.x1 <= next.x0 && next.x1 < view.x0 && view.x1 <= more.x0, "nav, then View and ⋯");
+    assert!(more.x1 + 100.0 < stage.x0, "Stage file sits apart, at the trailing edge");
+    assert!((close.x0 - stage.x1 - 8.0).abs() < 0.5, "8 px between Stage file and ×");
+    // The harness's frame takes 8 px, the header's padding the rest.
+    let edge = f64::from(1400.0 - 8.0 - crate::ui::theme::spacing::PANEL_PAD_F);
+    assert!((edge - close.x1).abs() < 0.5, "× at the edge: {close:?}, edge {edge}");
+    assert_eq!(stage.y1 - stage.y0, f64::from(crate::ui::theme::sizes::ControlSize::Small.metrics().h), "Stage file is Small");
 }
 
 #[test]
@@ -195,13 +212,11 @@ fn controls_send_their_messages() {
     let staged = HeaderModel { primary: Some(Primary::Unstage("src/ui/app.txt".into())), context: Context::Staged, ..unstaged() };
     assert!(matches!(&click(staged, 1400.0, UNSTAGE_FILE)[..], [Msg::Stage(StageMsg::UnstageFile(_))]));
     assert!(matches!(&click(unstaged(), 1400.0, CLOSE_NAME)[..], [Msg::Repo(RepoMsg::CloseDiff)]));
-    assert!(matches!(&click(unstaged(), 1400.0, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
 
-    // With no tool set the icon stays usable: update opens Preferences > External Tools.
+    // With no tool set the item stays usable: update opens Preferences > External Tools.
     let unset =
         HeaderModel { actions: Actions { diff_tool: Some(Some(Lang::En.tr("tools.diff_setup.tip"))), ..unstaged().actions }, ..unstaged() };
-    assert!(!harness(unset.clone(), 1400.0).get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
-    assert!(matches!(&click(unset, 1400.0, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
+    assert!(matches!(&in_more(unset, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
     let end = HeaderModel { next: StepKind::End, ..unstaged() };
     assert!(harness(end.clone(), 1400.0).get_by_label(NEXT_NAME).is_disabled());
     assert!(click(end, 1400.0, NEXT_NAME).is_empty());
@@ -232,20 +247,20 @@ fn the_view_menu_changes_the_settings() {
     assert!(matches!(&in_view_menu(whole, COLLAPSE_ALL)[..], [Msg::Diff(DiffMsg::CollapseAllUnchanged)]));
 
     let mut h = harness(unstaged(), 1400.0);
-    h.get_by_label("Inline \u{b7} Hunks").click();
+    h.get_by_label("Inline \u{b7} Changes only").click();
     h.run();
-    assert!(h.query_by_label(EXPAND_ALL).is_none() && h.query_by_label(COLLAPSE_ALL).is_none(), "no folds in Hunks");
+    assert!(h.query_by_label(EXPAND_ALL).is_none() && h.query_by_label(COLLAPSE_ALL).is_none(), "no folds in Changes only");
     assert!(h.query_by_label("Inline").is_some());
 
     let binary = HeaderModel { view: None, kind: FileKind::Binary, change: ChangeText::Sizes { old: Some(1), new: Some(2) }, ..unstaged() };
     let h = harness(binary, 1400.0);
-    assert!(h.query_by_label("Inline \u{b7} Hunks").is_none() && h.query_by_label("View").is_none(), "no View button");
+    assert!(h.query_by_label("Inline \u{b7} Changes only").is_none() && h.query_by_label("View").is_none(), "no View button");
 }
 
 #[test]
 fn icon_only_controls_are_named() {
     let h = harness(commit(), 520.0);
-    for name in [PREV_NAME, NEXT_NAME, OPEN_IN_DIFF_TOOL, MORE, CLOSE_NAME] {
+    for name in [PREV_NAME, NEXT_NAME, MORE, CLOSE_NAME] {
         let node = h.get_by_label(name);
         assert_eq!(node.role(), egui::accesskit::Role::Button, "{name}");
     }

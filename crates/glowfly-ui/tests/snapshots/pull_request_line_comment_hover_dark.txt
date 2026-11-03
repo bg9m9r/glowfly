@@ -94,8 +94,8 @@ Label "f0d635c..222c0ad"
 Button "Previous change" [disabled]
 Button "Next change" [disabled]
 Label "1 / 1"
-Button "Inline · Hunks"
-Button "Open in external diff tool"
+Button "Inline · Changes only"
+Button "More file actions"
 Button "Close diff"
 Button "Revert hunk"
 Button "1 comment on this line"

@@ -14,7 +14,8 @@ use glowfly_core::repo::BranchInfo;
 use glowfly_core::stash_ops::AutoStashFor;
 
 /// Checks out the source branch of the listed pull request `id`, unless it is gone from the
-/// list, already checked out or its name is refused; opens the worktree that has it instead.
+/// list or its name is refused; opens the worktree that has it instead. One already checked out
+/// is left as it is, without a word (as `branch_checkout::checkout` leaves HEAD).
 pub(super) fn checkout(st: &mut AppState, id: u64, go: Go, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     let (Some(snap), Some(f)) = (st.snap.as_ref(), st.session.forge.as_ref()) else { return };
@@ -35,7 +36,6 @@ pub(super) fn checkout(st: &mut AppState, id: u64, go: Go, fx: &mut Vec<Effect>)
             return;
         }
         if b.is_head {
-            st.log(false, t.trf("toolbar.branch_menu.current_blocked", &[("branch", &source)]));
             return;
         }
         how = route(st, &source, go, || BranchMsg::CheckoutPullRequest { id }, fx);
