@@ -68,14 +68,13 @@ Unknown "Staged files (1)"
 Button "sign-in.txt" [off]
 Label "Renamed"
 Label "Commit"
-CheckBox "Amend" [off]
 TextInput "Commit summary"
-Label "0/72"
-MultilineTextInput "Description"
+MultilineTextInput "Commit description"
+CheckBox "Amend last commit" [off]
 CheckBox "Push after committing" [off]
-Button "Commit 1 file" [disabled]
+Button "Commit" [disabled]
 Button "More commit options"
-Label "Write a summary for the commit."
+Label "Write a summary to commit."
 Unknown "Central view"
 Label "app.txt"
 Label "M +3 −2"
@@ -127,6 +126,8 @@ painted:
   "A"
   "D"
   "R"
+  "Summary"
+  "Description"
   "M"
   "+3"
   "−2"

@@ -71,6 +71,7 @@ painted:
   "Auch wenn das System hohen Kontrast verwendet"
   "Wechselt zu Hoher Kontrast dunkel oder hell; beim Ausschalten\nkommt dein Design zurück."
   "Standard"
+  "Branches, Diffs und Dateistatus nutzen Farben, die auch bei\nFarbenblindheit unterscheidbar bleiben."
   "Ein- und Ausblenden abschalten"
   "Auch wenn das System weniger Bewegung wünscht"
   "Textcursor blinken lassen"
