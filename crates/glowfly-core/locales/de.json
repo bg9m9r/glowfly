@@ -524,6 +524,7 @@
   "conflict_check.merge.tip": "Mergt ihn in den ausgecheckten Branch. Führt aus:",
   "conflict_check.more.one": "und {count} weitere",
   "conflict_check.more.other": "und {count} weitere",
+  "conflict_check.names.access": "{role}: {name}",
   "conflict_check.names.branch": "Branch",
   "conflict_check.names.chosen": "Verglichen mit",
   "conflict_check.names.default": "Standard-Branch",

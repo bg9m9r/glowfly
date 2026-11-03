@@ -50,7 +50,9 @@ fn popover_long(theme: ThemeChoice, dark: bool, name: &str) {
     open(&mut h);
     h.check_snapshot(name);
     // The names show cut, each named by its whole text (which shows on hover).
-    assert!(h.query_all_by_label(BRANCH).next().is_some() && h.query_all_by_label(UPSTREAM).next().is_some());
+    // The names show cut; screen readers hear each whole, with its role.
+    assert!(h.query_by_label(&format!("Branch: {BRANCH}")).is_some());
+    assert!(h.query_by_label(&format!("Upstream: {UPSTREAM}")).is_some());
     assert!(h.query_by_label("Compared with the last fetched state.").is_some());
     assert!(h.query_by_label("CHANGELOG.md").is_some());
     h.get_by_label("Merge upstream").click();
@@ -78,6 +80,23 @@ fn conflict_popover_long_dark() {
 #[test]
 fn conflict_popover_long_light() {
     popover_long(ThemeChoice::Light, false, "conflict_popover_long_light");
+}
+
+#[test]
+fn chosen_long_names_read_whole_on_the_buttons() {
+    // A check the branch menus asked for: the labels cut the names, screen readers hear them whole.
+    let (mut st, dir) = on_long_branch(ThemeChoice::Dark, "conflict-report-chosen", &["CHANGELOG.md"]);
+    let current = current_request(st.snap.as_ref().unwrap());
+    let mut report = st.session.reads.conflict_checks.shown(current.as_ref()).cloned().expect("the check");
+    report.request.target.kind = TargetKind::Chosen;
+    st.modal = Some(Modal::ConflictReport(report));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label(&format!("Merge {UPSTREAM} into {BRANCH}")).is_some(), "Merge's whole name");
+    assert!(h.query_by_label(&format!("Rebase {BRANCH} onto {UPSTREAM}")).is_some(), "Rebase's whole name");
+    assert!(h.query_by_label(&format!("Compared with: {UPSTREAM}")).is_some(), "the target's role");
+    drop(h);
+    remove_fixture(&dir);
 }
 
 /// The report dialog for the long names' check.

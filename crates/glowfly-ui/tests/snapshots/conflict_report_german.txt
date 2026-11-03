@@ -1,8 +1,8 @@
 Dialog
   Label "Konfliktprüfung"
   Button "Diesen Dialog schließen"
-  Label "main"
-  Label "search"
+  Label "Branch: main"
+  Label "Standard-Branch: search"
   Label "Der Merge würde mit Konflikten anhalten."
   Label "14 Dateien auf beiden Seiten geändert:"
   Label "src/module_00.rs"
@@ -25,4 +25,6 @@ Dialog
   Button "Auf search rebasen"
 painted:
   "Branch"
+  "main"
   "Standard-Branch"
+  "search"

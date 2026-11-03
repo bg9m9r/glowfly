@@ -26,10 +26,15 @@ const LABEL_GAP: f32 = 12.0;
 /// One line of `text` in `font`, painted in `rect` (part of a `ROW_H` row) and cut by `cut` to
 /// its width; it is named by the whole text, which shows on hover when it was cut.
 fn cut_row(ui: &mut Ui, rect: Rect, text: &str, font: FontId, colour: egui::Color32, cut: CutFn) -> Response {
+    cut_row_named(ui, rect, text, text, font, colour, cut)
+}
+
+/// `cut_row` named `name` for screen readers (the text with its role).
+fn cut_row_named(ui: &mut Ui, rect: Rect, text: &str, name: &str, font: FontId, colour: egui::Color32, cut: CutFn) -> Response {
     let shown = cut(ui.painter(), text, &font, rect.width().max(0.0));
     ui.painter().text(rect.left_center(), Align2::LEFT_CENTER, &shown, font, colour);
     let resp = ui.interact(rect, ui.id().with(("cut-row", text, rect.top() as i32)), Sense::hover());
-    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, text));
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, name));
     if shown != text { resp.on_hover_text(text) } else { resp }
 }
 
@@ -56,9 +61,12 @@ pub(super) fn names(ui: &mut Ui, t: Lang, report: &ConflictReport, remote: bool)
     let rows = [(labels[0], report.request.branch.as_str()), (labels[1], report.request.target.name.as_str())];
     for (label, name) in rows {
         let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
-        ui.painter().text(pos2(rect.left(), rect.center().y), Align2::LEFT_CENTER, label, small.clone(), color::weak());
+        // The label's bottom on the name's, so their baselines line up.
+        let bottom = rect.center().y + ui.fonts(|f| f.row_height(&body)) / 2.0;
+        ui.painter().text(pos2(rect.left(), bottom), Align2::LEFT_BOTTOM, label, small.clone(), color::weak());
         let value = Rect::from_min_max(pos2(rect.left() + label_w, rect.top()), rect.max);
-        cut_row(ui, value, name, body.clone(), color::text(), cut_middle_in);
+        let read = t.trf("conflict_check.names.access", &[("role", &label), ("name", &name)]);
+        cut_row_named(ui, value, name, &read, body.clone(), color::text(), cut_middle_in);
     }
     if remote {
         ui.add_space(4.0);

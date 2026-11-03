@@ -4,6 +4,7 @@
 use super::*;
 use eframe::egui::{Sense, pos2, vec2};
 use egui_kittest::Harness;
+use egui_kittest::kittest::Queryable;
 
 const SCREEN: egui::Vec2 = vec2(600.0, 400.0);
 const WIDTH: f32 = 420.0;
@@ -64,4 +65,32 @@ fn a_narrow_window_narrows_it() {
     let screen = Rect::from_min_max(pos2(EDGE, EDGE), pos2(300.0 - EDGE, 800.0 - EDGE));
     let anchor = Rect::from_min_size(pos2(250.0, 20.0), vec2(30.0, 24.0));
     assert_eq!(place(anchor, screen.width(), screen).x, EDGE);
+}
+
+/// A harness with an anchor, a button with a tooltip beside it in the same layer (a toolbar's),
+/// and the anchor's popover open when `open`; the pointer rests on the button.
+fn tooltip_shows(open: bool) -> bool {
+    let mut h = crate::ui::snapshot_check::builder().with_size(SCREEN).build_ui(move |ui| {
+        let id = Id::new("test-popover");
+        let anchor = ui.allocate_rect(Rect::from_min_size(pos2(500.0, 10.0), vec2(30.0, 24.0)), Sense::click());
+        let _ = ui.put(Rect::from_min_size(pos2(20.0, 10.0), vec2(80.0, 24.0)), egui::Button::new("Other")).on_hover_text("Other's tip");
+        if open {
+            ui.memory_mut(|m| m.open_popup(id));
+        }
+        below(ui, id, &anchor, WIDTH, PopupCloseBehavior::IgnoreClicks, |ui| {
+            ui.label(LONG);
+        });
+    });
+    h.run();
+    h.get_by_label("Other").hover();
+    for _ in 0..4 {
+        h.run();
+    }
+    h.query_by_label("Other's tip").is_some()
+}
+
+#[test]
+fn an_open_popover_hides_its_layer_s_tooltips() {
+    assert!(tooltip_shows(false), "the tooltip shows while the popover is closed");
+    assert!(!tooltip_shows(true), "and not over the open popover");
 }

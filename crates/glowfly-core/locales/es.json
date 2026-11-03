@@ -524,6 +524,7 @@
   "conflict_check.merge.tip": "La fusiona en la rama extraída. Ejecuta:",
   "conflict_check.more.one": "y {count} más",
   "conflict_check.more.other": "y {count} más",
+  "conflict_check.names.access": "{role}: {name}",
   "conflict_check.names.branch": "Rama",
   "conflict_check.names.chosen": "Comparada con",
   "conflict_check.names.default": "Rama predeterminada",

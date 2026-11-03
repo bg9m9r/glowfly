@@ -524,6 +524,7 @@
   "conflict_check.merge.tip": "Merges it into the checked-out branch. Runs:",
   "conflict_check.more.one": "and {count} more",
   "conflict_check.more.other": "and {count} more",
+  "conflict_check.names.access": "{role}: {name}",
   "conflict_check.names.branch": "Branch",
   "conflict_check.names.chosen": "Compared with",
   "conflict_check.names.default": "Default branch",

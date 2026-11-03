@@ -102,6 +102,7 @@ fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String]
             ui.spacing_mut().item_spacing = egui::vec2(BUTTON_GAP, BUTTON_GAP);
             for a in actions {
                 let b = buttons::secondary(a.label.as_str())
+                    .access_name(&a.name)
                     .tip(&a.tip)
                     .tip_width(TIP_W)
                     .enabled(idle)
@@ -180,8 +181,14 @@ pub fn report_modal(
     let actions = if on_head { actions(ui, t, report) } else { Vec::new() };
     let mut footer = Footer::new().extra(buttons::secondary(t.tr("conflict_check.check_again.button"))).close();
     for a in &actions {
-        footer = footer
-            .alt(buttons::secondary(a.label.as_str()).tip(&a.tip).tip_width(TIP_W).enabled(idle).why(Some(crate::state::blocked::busy(t))));
+        footer = footer.alt(
+            buttons::secondary(a.label.as_str())
+                .access_name(&a.name)
+                .tip(&a.tip)
+                .tip_width(TIP_W)
+                .enabled(idle)
+                .why(Some(crate::state::blocked::busy(t))),
+        );
     }
     let out = d.finish(ui, footer);
     if let Some(i) = out.alt
@@ -200,6 +207,8 @@ pub fn report_modal(
 /// command) and the message it sends.
 struct Action {
     label: String,
+    /// The label with whole names, for screen readers (the label cuts them).
+    name: String,
     tip: String,
     msg: Msg,
 }
@@ -218,16 +227,22 @@ fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport) -> Vec<Action> {
     let (cut_ours, cut_theirs) = (cut_name(ours), cut_name(theirs));
     let cut: [(&str, &dyn std::fmt::Display); 2] = [("ours", &cut_ours), ("theirs", &cut_theirs)];
     let name: [(&str, &dyn std::fmt::Display); 1] = [("name", &named)];
+    let whole: [(&str, &dyn std::fmt::Display); 1] = [("name", &theirs)];
     let kind = report.request.target.kind;
+    // (label, accessible name): the label's names cut, the accessible name's whole.
     let merge = match kind {
-        TargetKind::Upstream => t.tr("conflict_check.merge.short.upstream").to_owned(),
-        TargetKind::DefaultBranch => t.trf("conflict_check.merge.short.named", &name),
-        TargetKind::Chosen => t.trf("conflict_check.merge.button", &cut),
+        TargetKind::Upstream => (t.tr("conflict_check.merge.short.upstream").to_owned(), None),
+        TargetKind::DefaultBranch => {
+            (t.trf("conflict_check.merge.short.named", &name), Some(t.trf("conflict_check.merge.short.named", &whole)))
+        }
+        TargetKind::Chosen => (t.trf("conflict_check.merge.button", &cut), Some(t.trf("conflict_check.merge.button", &names))),
     };
     let rebase = match kind {
-        TargetKind::Upstream => t.tr("conflict_check.rebase.short.upstream").to_owned(),
-        TargetKind::DefaultBranch => t.trf("conflict_check.rebase.short.named", &name),
-        TargetKind::Chosen => t.trf("conflict_check.rebase.button", &cut),
+        TargetKind::Upstream => (t.tr("conflict_check.rebase.short.upstream").to_owned(), None),
+        TargetKind::DefaultBranch => {
+            (t.trf("conflict_check.rebase.short.named", &name), Some(t.trf("conflict_check.rebase.short.named", &whole)))
+        }
+        TargetKind::Chosen => (t.trf("conflict_check.rebase.button", &cut), Some(t.trf("conflict_check.rebase.button", &names))),
     };
     let (merge_says, rebase_says) = match kind {
         TargetKind::Chosen => {
@@ -240,9 +255,10 @@ fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport) -> Vec<Action> {
             (t.tr("conflict_check.merge.tip").to_owned(), t.tr("conflict_check.rebase.tip").to_owned())
         }
     };
-    let action = |label: String, says: String, verb: &str, cmd: Vec<String>| {
+    let action = |(label, name): (String, Option<String>), says: String, verb: &str, cmd: Vec<String>| {
         let tip = format!("{says}\ngit {}", cmd.join(" "));
-        Action { label, tip, msg: Msg::git_cmd(verb, cmd) }
+        let name = name.unwrap_or_else(|| label.clone());
+        Action { label, name, tip, msg: Msg::git_cmd(verb, cmd) }
     };
     vec![action(merge, merge_says, "Merge", merge_cmd(theirs)), action(rebase, rebase_says, "Rebase", rebase_cmd(theirs))]
 }

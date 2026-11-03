@@ -68,6 +68,8 @@ pub struct StyledButton<'a> {
     tip: Option<&'a str>,
     /// The tooltip's wrap width, when not the app's (`tooltip::style`).
     tip_width: Option<f32>,
+    /// Its accessible name, when not its text (a label whose names were cut).
+    access_name: Option<&'a str>,
     min_width: f32,
     height: Option<f32>,
     size: ControlSize,
@@ -126,6 +128,7 @@ impl<'a> StyledButton<'a> {
             why: None,
             tip: None,
             tip_width: None,
+            access_name: None,
             min_width: 0.0,
             height: None,
             size: ControlSize::Regular,
@@ -157,6 +160,13 @@ impl<'a> StyledButton<'a> {
     /// Wraps the tooltip at `w` instead of the app's tooltip width (a git command on one line).
     pub fn tip_width(mut self, w: f32) -> Self {
         self.tip_width = Some(w);
+        self
+    }
+
+    /// Names it `name` for screen readers instead of its text: the whole label when the text
+    /// cuts a name, as the branch menus' rows do.
+    pub fn access_name(mut self, name: &'a str) -> Self {
+        self.access_name = Some(name);
         self
     }
 
@@ -295,7 +305,7 @@ impl<'a> StyledButton<'a> {
 
     /// Names `resp` for screen readers.
     pub(super) fn name(&self, resp: &Response, enabled: bool) {
-        let text = self.text.as_ref();
+        let text = self.access_name.unwrap_or(self.text.as_ref());
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, text));
     }
 

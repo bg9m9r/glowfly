@@ -11,7 +11,10 @@
 //! `menu_submenu::EDGE` inside the window.
 
 use super::menu_submenu::EDGE;
-use eframe::egui::{self, Align, Area, Frame, Id, Key, Layout, Order, PopupCloseBehavior, Pos2, Rect, Response, Ui, UiKind};
+use eframe::egui::{
+    self, Align, Area, Color32, Frame, Id, Key, Layout, Margin, Order, PopupCloseBehavior, Pos2, Rect, Response, Shadow, Stroke, Ui,
+    UiBuilder, UiKind,
+};
 
 /// The gap between the anchor's bottom and the popover's frame.
 const GAP: f32 = 4.0;
@@ -41,14 +44,18 @@ pub(super) fn below<R>(
     let outer_w = width.min(screen.width());
     let inner_w = (outer_w - frame.total_margin().sum().x).max(0.0);
     let pos = place(a, outer_w, screen);
-    let response = Area::new(id).kind(UiKind::Popup).order(Order::Foreground).fixed_pos(pos).constrain_to(screen).show(ui.ctx(), |ui| {
-        frame
-            .show(ui, |ui| {
-                ui.set_width(inner_w);
-                ui.with_layout(Layout::top_down(Align::LEFT), add_contents).inner
-            })
-            .inner
-    });
+    register(ui, id, anchor);
+    let response = Area::new(id.with("popover")).kind(UiKind::Popup).order(Order::Foreground).fixed_pos(pos).constrain_to(screen).show(
+        ui.ctx(),
+        |ui| {
+            frame
+                .show(ui, |ui| {
+                    ui.set_width(inner_w);
+                    ui.with_layout(Layout::top_down(Align::LEFT), add_contents).inner
+                })
+                .inner
+        },
+    );
     let should_close = match close {
         PopupCloseBehavior::CloseOnClick => anchor.clicked_elsewhere(),
         PopupCloseBehavior::CloseOnClickOutside => anchor.clicked_elsewhere() && response.response.clicked_elsewhere(),
@@ -58,6 +65,20 @@ pub(super) fn below<R>(
         ui.memory_mut(|m| m.close_popup());
     }
     Some(response.inner)
+}
+
+/// Registers the popover as an open popup of `ui`'s layer, as egui's own popups do, so that
+/// layer's tooltips (the toolbar's) stay hidden while it is open; egui keeps that set to itself,
+/// so this draws egui's popup for `id` empty and invisible: no fill, edge, shadow or margin, the
+/// anchor's width and no height. It closes on Esc as the popover does, and ignores clicks.
+fn register(ui: &Ui, id: Id, anchor: &Response) {
+    let mut style = (**ui.style()).clone();
+    style.visuals.window_fill = Color32::TRANSPARENT;
+    style.visuals.window_stroke = Stroke::NONE;
+    style.visuals.popup_shadow = Shadow::NONE;
+    style.spacing.menu_margin = Margin::ZERO;
+    let hidden = Ui::new(ui.ctx().clone(), id.with("register"), UiBuilder::new().layer_id(ui.layer_id()).style(style));
+    egui::popup::popup_below_widget(&hidden, id, anchor, PopupCloseBehavior::IgnoreClicks, |_| {});
 }
 
 /// The popover's top-left corner, `outer_w` wide, below `anchor`: right-aligned with it, then
