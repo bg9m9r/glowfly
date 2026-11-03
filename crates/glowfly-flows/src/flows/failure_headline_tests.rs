@@ -15,7 +15,7 @@ use glowfly_core::worktree_ops::{RemoveForce, RemoveOutcome};
 use std::path::{Path, PathBuf};
 
 const LOCKED: &str = "fatal: Unable to create '/r/.git/index.lock': File exists.";
-const LOCKED_SAYS: &str = "Another git program is using this repository (index.lock exists).";
+const LOCKED_SAYS: &str = "Another Git program is using this repository (index.lock exists).";
 
 pub(super) fn opened(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
@@ -47,9 +47,11 @@ fn put_back_failure_says_why() {
     running(&mut st, &dir, "Put back stashed changes");
     let output = format!("$ git stash apply --index {oid}\n{LOCKED}");
     up(&mut st, Msg::AutoStash(AutoStashMsg::PutBack { workdir, oid, outcome: PutBack::Failed, output, undo: None }));
+    assert_eq!(last_toast(&st), format!("Couldn't put back \"{message}\"; the stash is kept."));
+    // The reason is in the activity log, behind Details.
     let says = format!("Couldn't put back \"{message}\": {LOCKED_SAYS}");
-    assert!(last_toast(&st).starts_with(&says), "{}", last_toast(&st));
-    assert!(last_toast(&st).ends_with("The stash stays in the list, so nothing is lost."), "{}", last_toast(&st));
+    let logged = st.log.iter().rev().find(|l| !l.ok).map(|l| l.text.as_str()).unwrap_or_default();
+    assert!(logged.starts_with(&says) && logged.ends_with("The stash stays in the list, so nothing is lost."), "{logged}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

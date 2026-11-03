@@ -131,7 +131,7 @@ fn journal_list_preview() {
     h.get_by_label("Restore…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::Restore(_))), "Restore is enabled");
-    h.get_by_label("Create branch here…").click();
+    h.get_by_label("New branch here…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::CreateBranch(_))));
     h.get_by_label("Range-diff with now").click();
@@ -256,7 +256,7 @@ fn journal_de() {
     for english in [
         "Operation journal",
         "Restore…",
-        "Create branch here…",
+        "New branch here…",
         "History at this state",
         "Git's reflog entry",
         "Now",

@@ -97,7 +97,7 @@ fn journal_lost_stash() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("journal_lost_stash");
-    assert!(h.query_by_label("Create branch here…").is_none(), "a stash offers no branch");
+    assert!(h.query_by_label("New branch here…").is_none(), "a stash offers no branch");
     h.get_by_label("Apply stash").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::Lost(LostMsg::Apply(_)))));
@@ -117,7 +117,7 @@ fn journal_lost_commit_light() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("journal_lost_commit_light");
-    h.get_by_label("Create branch here…").click();
+    h.get_by_label("New branch here…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::Lost(LostMsg::CreateBranch(_)))));
     h.get_by_label("Restore…").click();

@@ -229,9 +229,9 @@ pub fn conflicted(t: Lang, name: &str, files: usize) -> String {
     t.trn("auto_stash.toast.conflict", files, &[("name", &name)])
 }
 
-/// `reason` is the last line of git's output.
-pub fn failed(t: Lang, name: &str, reason: &str) -> String {
-    t.trf("auto_stash.toast.failed", &[("name", &name), ("reason", &reason)])
+/// The toast when the stash couldn't be put back; git's reason goes to the activity log.
+pub fn failed(t: Lang, name: &str) -> String {
+    t.trf("auto_stash.toast.failed", &[("name", &name)])
 }
 
 pub fn gone(t: Lang, name: &str) -> String {

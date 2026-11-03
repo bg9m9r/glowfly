@@ -44,7 +44,7 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-ui/src/askpass.rs", 39),
     ("crates/glowfly-ui/src/askpass_host_key.rs", 7),
     ("crates/glowfly-ui/src/blame/header.rs", 1),
-    ("crates/glowfly-ui/src/branch_dialogs.rs", 19),
+    ("crates/glowfly-ui/src/branch_dialogs.rs", 18),
     ("crates/glowfly-ui/src/branch_menu.rs", 4),
     ("crates/glowfly-ui/src/build_status.rs", 3),
     ("crates/glowfly-ui/src/clone_dialog.rs", 25),

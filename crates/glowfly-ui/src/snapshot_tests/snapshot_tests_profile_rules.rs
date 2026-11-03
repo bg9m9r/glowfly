@@ -208,7 +208,7 @@ fn commit_box_identity_env() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("commit_box_identity_env");
-    assert!(h.query_by_label("GIT_COMMITTER_NAME is empty: git won't commit").is_some(), "an empty name stops commits");
+    assert!(h.query_by_label("GIT_COMMITTER_NAME is empty: Git won't commit").is_some(), "an empty name stops commits");
     drop(h);
     remove_fixture(&dir);
 }

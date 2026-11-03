@@ -70,7 +70,7 @@ fn new_branch_dialog_tracking() {
     h.run();
     h.check_snapshot("new_branch_dialog_tracking");
     assert!(h.query_by_label_contains("The new branch tracks origin/search, also under another name.").is_some());
-    h.get_by_label("Create").click();
+    h.get_by_label("Create branch").click();
     h.run();
     let want = glowfly_core::branch_ops::create_tracking_cmd("mine", "origin", "search", true);
     let sent = h.state().1.iter().any(|m| matches!(m, Msg::Job(crate::msg::JobMsg::Git { cmds, .. }) if *cmds == [want.clone()]));
@@ -90,7 +90,7 @@ fn new_branch_dialog_folder_case() {
     h.run();
     h.check_snapshot("new_branch_dialog_folder_case");
     assert!(h.query_by_label_contains("The folder Feature already exists as feature; use that spelling.").is_some());
-    assert!(h.get_by_label("Create").is_disabled());
+    assert!(h.get_by_label("Create branch").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

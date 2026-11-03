@@ -1,4 +1,4 @@
-//! The trust prompt for a repository whose own config changes how git connects (TLS checks
+//! The trust prompt for a repository whose own config changes how Git connects (TLS checks
 //! and proxies), listed apart from the settings that run commands, and git-lfs's programs
 //! among those.
 
@@ -25,7 +25,7 @@ fn trust_prompt_network() {
     h.check_snapshot("trust_prompt_network");
     assert!(h.query_by_label("Settings that run commands").is_some());
     assert!(h.query_by_label("lfs.customtransfer.agent.path = ./bin/agent").is_some());
-    assert!(h.query_by_label("Settings that change how git connects").is_some());
+    assert!(h.query_by_label("Settings that change how Git connects").is_some());
     assert!(h.query_by_label("http.sslVerify = false").is_some());
     assert!(h.query_by_label_contains("turn off certificate checks").is_some());
 }

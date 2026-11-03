@@ -4,10 +4,10 @@ Dialog
   Button "Close the welcome"
   ProgressIndicator "Step 1 of 4: You"
   Label "Who are you?"
-  Label "Every commit carries a name and an email address. Glowfly saves them in your global git config, so every repository on this computer uses them."
+  Label "Every commit carries a name and an email address. Glowfly saves them in your global Git config, so every repository on this computer uses them."
   ProgressIndicator
-  Label "Reading your git settings…"
-  Label "Reading your git settings…"
+  Label "Reading your Git settings…"
+  Label "Reading your Git settings…"
   Button "Skip for now"
   Button "Continue" [disabled]
 painted:

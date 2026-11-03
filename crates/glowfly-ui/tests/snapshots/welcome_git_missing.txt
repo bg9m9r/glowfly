@@ -3,10 +3,10 @@ Dialog
   Label "Nice to meet you, Ada Lovelace."
   Button "Close the welcome"
   ProgressIndicator "Step 3 of 4: Git"
-  Label "Checking git"
-  Label "Glowfly runs the git installed on this computer, so your git settings, hooks and credentials apply."
+  Label "Checking Git"
+  Label "Glowfly runs the Git installed on this computer, so your Git settings, hooks and credentials apply."
   Label "Glowfly couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then choose it in Preferences > Git or restart Glowfly."
-  Label "Download git"
+  Label "Download Git"
   Button "Back"
   Button "Continue" [focused]
 painted:

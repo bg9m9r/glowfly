@@ -102,7 +102,7 @@ fn an_unreadable_file_holds_every_save_back_until_a_try_reads_it() {
     assert!(st.settings_file.writable());
     assert_eq!(st.settings.auto_fetch_minutes, 17, "the file's settings, not the edits made meanwhile");
     assert_eq!(st.settings_file.saved(), serde_json::to_string(&real).unwrap());
-    assert!(st.toasts.iter().any(|t| t.ok && t.text.contains("were not kept")), "told it worked, and that the edits went");
+    assert!(st.toasts.iter().any(|t| t.ok && t.text.contains("weren't kept")), "told it worked, and that the edits went");
     let fx = toggle_labels(&mut st);
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.auto_fetch_minutes == 17 && !s.toolbar_labels), "{fx:?}");
 }
@@ -139,8 +139,8 @@ fn startup_steps_save_nothing_while_the_file_is_held() {
     run(&mut st, Msg::Prefs(PrefsMsg::RetrySettingsRead));
     let older = Settings { auto_fetch_minutes: 17, ..Settings::default() };
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((older, None)))));
-    assert!(st.toasts.iter().any(|t| t.ok && !t.text.contains("were not kept")), "no edits were dropped");
-    assert!(!st.toasts.iter().any(|t| t.text.contains("were not kept")));
+    assert!(st.toasts.iter().any(|t| t.ok && !t.text.contains("weren't kept")), "no edits were dropped");
+    assert!(!st.toasts.iter().any(|t| t.text.contains("weren't kept")));
     // The file's older notes_seen doesn't reopen the notes next start: the newer one is kept and saved.
     assert_eq!(st.settings.updates.notes_seen, seen);
     assert_eq!(st.settings.auto_fetch_minutes, 17);
@@ -190,7 +190,7 @@ fn a_read_puts_the_files_git_and_terminal_panel_into_effect() {
     // Checked, then put into effect for every git call (`Switched`), as Preferences > Git does.
     assert!(fx.iter().any(|e| matches!(e, Effect::GitEnv(GitEnvEffect::Use { program: Some(p), .. }) if *p == git)), "{fx:?}");
     assert!(st.terminal.open, "the terminal panel as the file left it");
-    assert!(st.toasts.iter().any(|t| t.ok && !t.text.contains("were not kept")), "nothing was edited meanwhile");
+    assert!(st.toasts.iter().any(|t| t.ok && !t.text.contains("weren't kept")), "nothing was edited meanwhile");
 }
 
 #[test]
@@ -228,7 +228,7 @@ fn what_glowfly_records_by_itself_is_no_edit_and_its_newer_records_are_kept() {
     real.status_tip_shown.insert("C:/repo".into(), true);
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((real, None)))));
     assert!(st.toasts.iter().any(|t| t.ok), "told it worked");
-    assert!(!st.toasts.iter().any(|t| t.text.contains("were not kept")), "nothing the user changed was dropped");
+    assert!(!st.toasts.iter().any(|t| t.text.contains("weren't kept")), "nothing the user changed was dropped");
     let s = &st.settings;
     assert_eq!((s.auto_fetch_minutes, s.updates.last_checked, s.detached_head_warned), (17, Some(1_800_000_000), true));
     assert_eq!(s.status_tip_shown.get("C:/repo"), Some(&true), "the file's records stay too");
@@ -248,7 +248,7 @@ fn a_users_edit_while_held_is_said_to_be_dropped() {
     toggle_labels(&mut st);
     run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((Settings::default(), None)))));
     assert!(
-        st.toasts.iter().any(|t| t.ok && t.text.contains("were not kept")),
+        st.toasts.iter().any(|t| t.ok && t.text.contains("weren't kept")),
         "{:?}",
         st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>()
     );

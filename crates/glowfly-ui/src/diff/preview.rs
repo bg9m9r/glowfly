@@ -1,7 +1,9 @@
 //! A binary file's body: a changed image shows Before and After side by side, each image
 //! fitted in its half over a checkerboard (so transparency shows) with its size under it; a
 //! missing side shows a dashed "Added" or "Deleted" card and a side that can't be decoded says
-//! so with its size. Any other binary file shows the binary empty state with both sizes. While
+//! so with its size. Any other binary file shows its bytes in the hex view (`hex`) when both
+//! sides are within the cap, or else the binary empty state with both sizes (and, over the cap,
+//! why). While
 //! the sides load (or when they failed) the plain binary empty state shows.
 
 use super::empty_state::{self, EmptyIcon};
@@ -14,7 +16,7 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Context, CornerRadius, Layout, Rect, RichText, Stroke, TextureHandle, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::lfs::pointer::size_text;
 use glowfly_core::preview_image::{PreviewImage, is_image_path};
-use glowfly_core::repo::{BinarySide, BinarySides};
+use glowfly_core::repo::{BinarySide, BinarySides, HEX_MAX_BYTES};
 use std::sync::Arc;
 
 /// Around the two columns, and between them.
@@ -39,6 +41,8 @@ pub struct PreviewTextures {
     key: Option<Arc<BinarySides>>,
     old: Option<TextureHandle>,
     new: Option<TextureHandle>,
+    /// The hex view's rows, for a binary file that isn't an image.
+    hex: super::hex::HexLines,
 }
 
 impl PreviewTextures {
@@ -54,9 +58,10 @@ impl PreviewTextures {
         self.key = Some(sides.clone());
     }
 
+    /// Drops the textures, keeping the hex rows (the hex view calls this every frame).
     fn clear(&mut self) {
         if self.key.is_some() {
-            *self = Self::default();
+            (self.key, self.old, self.new) = (None, None, None);
         }
     }
 }
@@ -71,7 +76,12 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, tex: &mut PreviewTextures) {
     let any_image = sides.old.iter().chain(&sides.new).any(|s| s.image.is_some());
     if !any_image && !is_image_path(target.path()) {
         tex.clear();
-        empty_state::binary_sizes(ui, sides.old.as_ref().map(|s| s.size), sides.new.as_ref().map(|s| s.size));
+        if sides.hex().is_some() {
+            return super::hex::show(ui, st, sides, &mut tex.hex);
+        }
+        let too_large = sides.old.iter().chain(&sides.new).any(|s| s.size > HEX_MAX_BYTES);
+        let note = too_large.then(|| st.settings.lang().tr("diff.hex.too_large"));
+        empty_state::binary_sizes(ui, sides.old.as_ref().map(|s| s.size), sides.new.as_ref().map(|s| s.size), note);
         return;
     }
     tex.sync(ui.ctx(), sides);

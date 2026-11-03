@@ -262,7 +262,7 @@ fn the_banner_button_switches_to_the_path_git() {
     assert!(st.git.path_offer().is_none() && st.git.path_git.is_none());
     assert_eq!(st.toasts.len(), toasts + 1);
     let toast = st.toasts.last().expect("a toast");
-    assert!(toast.ok && toast.text.starts_with("Glowfly now runs git 2.45.1 from your PATH"), "{}", toast.text);
+    assert!(toast.ok && toast.text.starts_with("Glowfly now runs Git 2.45.1 from your PATH"), "{}", toast.text);
     assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Glowfly now runs git 2.45.1 at ")), "logged as before");
 
     // A switch made on the page isn't toasted.

@@ -65,10 +65,10 @@ mod tests {
     fn hazard_texts_follow_the_language() {
         let bytes = Hazard::NotUtf8(b"n\xffme".to_vec());
         let twins = Hazard::Twins(vec!["A.txt".into(), "a.TXT".into()]);
-        assert_eq!(bytes.reason(Lang::En), "This file's name isn't UTF-8, so Glowfly can't act on it safely; use git on the command line.");
+        assert_eq!(bytes.reason(Lang::En), "This file's name isn't UTF-8, so Glowfly can't act on it safely; use Git on the command line.");
         assert_eq!(
             twins.reason(Lang::En),
-            "This file system can't tell this path from A.txt, a.TXT: they are one file on disk. Rename one of them in git first."
+            "This file system can't tell this path from A.txt, a.TXT: they are one file on disk. Rename one of them in Git first."
         );
         assert_eq!((bytes.label(Lang::En), twins.label(Lang::En)), ("name isn't UTF-8", "same file as another path"));
         let de = twins.reason(Lang::De);

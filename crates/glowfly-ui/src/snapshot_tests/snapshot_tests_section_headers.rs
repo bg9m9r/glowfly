@@ -36,11 +36,11 @@ fn section_header_hover() {
     let (st, dir) = with_repo(ThemeChoice::Dark, "header-hover");
     let mut h = harness(st, true);
     h.run();
-    hover_header(&mut h, "New branch");
-    for button in ["New branch", "Local actions"] {
+    hover_header(&mut h, "New branch…");
+    for button in ["New branch…", "Local actions"] {
         assert!(shapes_inside(&h, bounds(&h.get_by_label(button))) > 0, "{button} is painted while the header is hovered");
     }
-    let at = center(&h, "New branch");
+    let at = center(&h, "New branch…");
     click(&mut h, at, PointerButton::Primary);
     assert!(pushed(&h, &|m| matches!(m, Msg::Branch(BranchMsg::NewBranch { start: None, .. }))));
     assert!(h.state().0.view.sections.local, "the + leaves the section open");
@@ -57,10 +57,10 @@ fn section_header_hidden() {
     let mut h = harness(st, true);
     h.run();
     // Not painted, but reachable by name.
-    for button in ["New branch", "Local actions"] {
+    for button in ["New branch…", "Local actions"] {
         assert_eq!(shapes_inside(&h, bounds(&h.get_by_label(button))), 0, "{button} is not painted");
     }
-    h.get_by_label("New branch").focus();
+    h.get_by_label("New branch…").focus();
     h.run();
     h.check_snapshot("section_header_focus");
     drop(h);
@@ -74,12 +74,13 @@ fn section_header_more_menu() {
     h.run();
     let at = center(&h, "Local actions");
     click(&mut h, at, PointerButton::Primary);
-    assert!(h.query_by_label("New branch…").is_some(), "the menu is open");
+    // The menu's item shares the + button's name; it is the one drawn last.
+    assert_eq!(h.query_all_by_label("New branch…").count(), 2, "the menu is open");
     h.check_snapshot("section_header_more_menu");
-    h.get_by_label("New branch…").click();
+    h.query_all_by_label("New branch…").last().expect("the menu item").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Branch(BranchMsg::NewBranch { start: None, .. }))));
-    assert!(h.query_by_label("New branch…").is_none(), "the menu closed");
+    assert_eq!(h.query_all_by_label("New branch…").count(), 1, "the menu closed; the + stays");
     assert!(h.state().0.view.sections.local);
     drop(h);
     remove_fixture(&dir);
