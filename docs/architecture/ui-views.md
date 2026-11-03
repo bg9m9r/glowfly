@@ -90,7 +90,7 @@ start with `state/`, `update/` or `ui/`.
 - `branch_dot.rs`: the branch dots (in menus, in the row's icon column).
 - `graph/header.rs`: the graph's column header: the column titles with their draggable dividers (`resize.rs`), the least width each column gets so its title fits, the columns fitted to the graph's width (`fit.rs`), and a ⋯ mark naming any columns that didn't fit.
 - `graph/paint.rs`: drawing helpers for the commit graph: lanes and the details panel's avatar.
-- `graph/ref_group.rs`: which of a row's ref labels share a chip.
+- `graph/ref_group.rs`: which of a row's ref labels share a chip, and the local branches' upstreams it looks up (kept per snapshot).
 - `graph/resize.rs`: dragging the graph header's dividers to resize columns, and double-clicking one to reset its column.
 - `graph/search_bar.rs`: the graph's search bar: the query field (with a painted clear button while it has text), the Highlight | Filter mode, the author picker, the match count in a fixed-width slot (so Close doesn't move as it changes) and Close.
 - `graph/worktree_wip.rs`: other worktrees' WIP rows in the graph (a dashed node in its lane's colour joined to the worktree's HEAD commit, an "Uncommitted changes · <folder>" box and the change counts).
@@ -103,7 +103,7 @@ start with `state/`, `update/` or `ui/`.
 - `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`.
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode.
 - `commit_box.rs`: the commit box, top to bottom: header with the identity, summary with its length inside, description, the Amend and Push options, the button and its caption; `commit_button.rs`: its split button and caret menu (Stage all and commit, Commit and push, Amend last commit, Skip hooks).
-- `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames), a folder row, the header's List / Tree toggle and a file row's indent.
+- `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames by which list it is), a folder row, the header's List / Tree toggle and a file row's indent.
 - `folder_menu.rs`: a folder row's menu: Folder history, Copy path, and Stage or Unstage folder in the WIP lists.
 - `list_focus.rs`: a file list that takes the keyboard focus as one Tab stop: its focus target, the keys it takes before any binding (`state/list_keys.rs`; each list names which beyond its moves, `KeySet`), and its arrows kept from egui's focus moves from its first frame on (`restore`). Reuse it for any other file list.
 - `wip_keys.rs`: the Unstaged and Staged Files lists on `list_focus.rs`: one stable focus target per list, their keys as `KeyAction::WipList` messages, and the list `update` asked to focus.

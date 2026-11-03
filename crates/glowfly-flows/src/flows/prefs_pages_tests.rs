@@ -82,7 +82,7 @@ fn outcome(st: &mut AppState, start: &Settings, msgs: Vec<Msg>) -> String {
     st.prefs = None;
     st.git.page = Default::default();
     st.settings = start.clone();
-    st.settings_file.saved = serde_json::to_string(start).unwrap_or_default();
+    st.settings_file.record(start);
     let mut fx: Vec<String> = Vec::new();
     for msg in msgs {
         fx.extend(update(st, msg, Instant::now()).iter().map(|e: &Effect| format!("{e:?}")));

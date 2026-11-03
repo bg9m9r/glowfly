@@ -52,6 +52,7 @@ fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harnes
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
                 markdown: Default::default(),
+                ref_upstreams: Default::default(),
                 history_preview: Default::default(),
             });
             if let Some(snap) = st.snap.as_mut() {

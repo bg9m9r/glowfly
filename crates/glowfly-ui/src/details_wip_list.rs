@@ -7,7 +7,7 @@ use crate::state::file_folds::FileListId;
 use crate::state::file_tree::under;
 use crate::ui::file_menu;
 use crate::ui::file_menu::folder_menu::{self, FolderStage};
-use crate::ui::list_row::file_tree::{ListRows, Shown, folder_row};
+use crate::ui::list_row::file_tree::{FilesKey, ListRows, Shown, folder_row};
 use crate::ui::theme::color;
 use crate::ui::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, RichText};
@@ -46,7 +46,10 @@ pub(crate) fn file_list(
     }
     let entry = |i: usize| kept.as_ref().map_or(&all[i], |k| k[i]);
     let list = if staged { FileListId::Staged } else { FileListId::Unstaged };
-    let rows = ListRows::of(ui, ctx.mode, count, || (0..count).map(|i| entry(i).path.as_str()).collect(), ctx.folds.closed(list));
+    // Which files are kept also follows the stamp: a status read changes them.
+    let paths = || (0..count).map(|i| entry(i).path.as_str()).collect();
+    let files = FilesKey::of(list, all, snap.status_stamp);
+    let rows = ListRows::of(ui, ctx.mode, count, files, &paths, ctx.folds.closed(list));
     let row_h = crate::ui::widgets::LIST_ROW_H;
     // The list's area, for its focus target: registered before the rows, after the header.
     let h = if count == 0 { row_h } else { (rows.len() as f32 * (row_h + ui.spacing().item_spacing.y)).min(max_h) };

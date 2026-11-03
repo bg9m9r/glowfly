@@ -42,6 +42,7 @@ pub(crate) fn keys_harness(mut st: AppState, size: egui::Vec2) -> H {
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
                 markdown: Default::default(),
+                ref_upstreams: Default::default(),
             });
             shortcuts::input(ctx, st, msgs);
             draw(ctx, st, cache, msgs);
