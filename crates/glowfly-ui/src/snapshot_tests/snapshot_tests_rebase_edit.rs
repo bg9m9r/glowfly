@@ -185,6 +185,28 @@ fn rebase_banner_conflict() {
     remove_fixture(&dir);
 }
 
+/// At a stop to edit with Amend ticked and the message changed: Amend and continue leads, and
+/// sends one message that commits and continues.
+fn amend_and_continue(theme: ThemeChoice, name: &str) {
+    let (mut st, dir) = rebasing(theme, name, StopKind::Edit, false);
+    st.session.draft.amend = true;
+    st.session.draft.summary = "Reworded while editing".into();
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot(name);
+    assert!(h.query_by_label("Commit and continue").is_none());
+    h.get_by_label("Amend and continue").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Commit(crate::msg::CommitMsg::CommitAndContinue))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn rebase_edit_amend_and_continue_dark() {
+    amend_and_continue(ThemeChoice::Dark, "rebase_edit_amend_and_continue_dark");
+}
+
 #[test]
 fn rebase_banner_edit_light() {
     let (st, dir) = rebasing(ThemeChoice::Light, "banner-edit", StopKind::Edit, false);

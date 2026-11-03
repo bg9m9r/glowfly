@@ -83,9 +83,7 @@ CheckBox "Nachbessern" [off]
 TextInput "Commit-Zusammenfassung"
 Label "0/72"
 MultilineTextInput "Beschreibung"
-CheckBox "Nach dem Commit pushen" [off]
-Button "Erst etwas zum Committen bereitstellen" [disabled]
-Button "Weitere Commit-Optionen"
+Button "Committen und fortsetzen" [disabled]
 Label "Schreibe eine Zusammenfassung für den Commit."
 Button "Fortsetzen"
 Button "Weitere Möglichkeiten"

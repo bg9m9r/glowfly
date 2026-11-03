@@ -122,6 +122,9 @@ pub fn set_shown(s: &mut Settings, p: Panel, on: bool) -> bool {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ToolView {
     Conflict,
+    PullRequest,
+    /// The interactive rebase editor, while no rebase is stopped.
+    Rebase,
     Blame,
     FileHistory,
     FolderHistory,
@@ -147,12 +150,14 @@ pub fn tool_view(st: &AppState) -> Option<ToolView> {
             HistoryKind::Folder => ToolView::FolderHistory,
         })
     } else if st.session.pull_request.view.is_some() {
-        // The pull request panel covers the issue panel, and keeps the full commit panel.
-        None
+        // The pull request panel covers the issue panel.
+        Some(ToolView::PullRequest)
     } else if st.session.issue.view.is_some() {
         Some(ToolView::Issue)
-    } else if st.diff_or_download() || st.session.rebase.view.is_some() {
+    } else if st.diff_or_download() {
         None
+    } else if st.session.rebase.view.is_some() {
+        Some(ToolView::Rebase)
     } else if st.session.range_diff.view.is_some() {
         Some(ToolView::RangeDiff)
     } else if st.session.journal.view.is_some() {
@@ -180,6 +185,8 @@ pub fn details_shape(st: &AppState) -> DetailsShape {
         return DetailsShape::Hidden;
     }
     match tool_view(st) {
+        // A stopped rebase is continued from the panel's steps, so it stays in full.
+        Some(_) if st.snap.as_ref().is_some_and(super::commit::rebase_stopped) => DetailsShape::Full,
         Some(v) if st.view.details_expanded_for != Some(v) => DetailsShape::Rail,
         _ => DetailsShape::Full,
     }

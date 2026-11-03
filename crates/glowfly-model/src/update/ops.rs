@@ -345,6 +345,11 @@ pub fn finish_job(
     if ok && job.then_push {
         push(st, false, fx);
     }
+    // Amend (or Commit) and continue, at a rebase stopped to edit.
+    if ok && job.then_continue {
+        let resume = crate::msg::Msg::Rebase(crate::msg::RebaseMsg::Resume(glowfly_core::rebase::Resume::Continue));
+        fx.extend(super::update_sealed(st, resume, now));
+    }
 }
 
 /// The last line of a job's output that isn't a command echo.

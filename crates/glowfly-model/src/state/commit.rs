@@ -23,6 +23,9 @@ pub struct CommitDraft {
     /// The MERGE_MSG text the draft was filled with; Some => a merge's, cherry-pick's or
     /// revert's own message, cleared again when the operation ends while it is untouched.
     pub merge_msg: Option<String>,
+    /// The commit a rebase stopped to edit for which Amend was ticked by default, so it is
+    /// ticked once per stop and the person can untick it.
+    pub amend_stop: Option<EditStop>,
 }
 
 impl CommitDraft {
@@ -105,6 +108,14 @@ impl CommitDraft {
         }
     }
 
+    /// The commit button's text at a rebase stopped to edit: "Amend and continue", or with
+    /// Amend unticked "Commit and continue".
+    pub fn continue_label(&self, t: Lang) -> String {
+        let skip_text = if self.skip_hooks { t.tr("commit.button.skip_hooks") } else { "" };
+        let slots: [(&str, &dyn std::fmt::Display); 1] = [("skip", &skip_text)];
+        if self.amend { t.trf("commit.button.amend_continue", &slots) } else { t.trf("commit.button.commit_continue", &slots) }
+    }
+
     /// The git commands that commit this draft with its message in `file`: `add --all` first
     /// when `stage_all`, then `commit -F <file>` with the draft's options.
     pub fn commit_cmds(&self, file: &Path, stage_all: bool) -> Vec<Vec<String>> {
@@ -138,6 +149,15 @@ fn without_template_comments(description: &str, t: &CommitTemplate) -> String {
     description.lines().filter(|l| !(comment(l) && template.contains(&l.trim_end()))).collect::<Vec<_>>().join("\n")
 }
 
+/// Where a rebase stopped to edit a commit, if it did: there the commit form amends it and
+/// continues the rebase in one go. Which stop it is: the step and the commit.
+pub fn edit_stop(snap: &glowfly_core::repo::Snapshot) -> Option<EditStop> {
+    snap.rebase.as_ref().filter(|p| p.stop.kind == glowfly_core::rebase::StopKind::Edit).map(|p| (p.step, p.stop.oid))
+}
+
+/// A rebase's stop to edit: its step and the commit (`edit_stop`).
+pub type EditStop = (usize, Option<git2::Oid>);
+
 /// Why Amend can't be used in `state`: a merge, cherry-pick or revert is stopped, and amending
 /// would rewrite HEAD under it. None otherwise (a rebase stopped to edit a commit amends it).
 pub fn amend_blocked(t: Lang, state: RepositoryState) -> Option<&'static str> {
@@ -169,6 +189,9 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
         Some(t.tr("commit.blocked.untouched_template"))
     } else if d.summary.trim().is_empty() {
         Some(t.tr("commit.blocked.no_summary"))
+    } else if !stage_all && d.amend && snap.staged.is_empty() && edit_stop(snap).is_some() && same_as_head(d, snap) {
+        // Amend and continue would change nothing: Continue does that.
+        Some(t.tr("commit.blocked.nothing_to_amend"))
     } else if stage_all && conflicted {
         // Staging a conflicted file marks it resolved.
         Some(t.tr("commit.blocked.conflicts"))
@@ -181,6 +204,13 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+/// Whether the draft's message is HEAD's (as the commit box splits it).
+fn same_as_head(d: &CommitDraft, snap: &glowfly_core::repo::Snapshot) -> bool {
+    let mut head = CommitDraft::default();
+    head.fill_from(snap.head_message.as_deref().unwrap_or_default());
+    head.message() == d.message()
 }
 
 /// Why a message can't be written: the repository's commit encoding can't hold some characters.
@@ -203,9 +233,16 @@ pub fn commit_merge_blocked(st: &AppState) -> Option<String> {
     }
 }
 
-/// Whether a commit now would be followed by a push (setting on and HEAD on a branch).
+/// Whether a commit now would be followed by a push (setting on, HEAD on a branch and no
+/// rebase stopped: pushing halfway through one is never right).
 pub fn pushes_after(st: &AppState) -> bool {
-    st.settings.push_after_commit && st.snap.as_ref().is_some_and(|s| s.head_branch.is_some())
+    st.settings.push_after_commit && st.snap.as_ref().is_some_and(|s| s.head_branch.is_some() && !rebase_stopped(s))
+}
+
+/// A rebase is stopped (to edit, at a break, on a conflict or a failed command).
+pub fn rebase_stopped(snap: &glowfly_core::repo::Snapshot) -> bool {
+    use RepositoryState::*;
+    snap.rebase.is_some() || matches!(snap.state, Rebase | RebaseMerge | RebaseInteractive)
 }
 
 /// A summary's length up to here reads well (git-commit(1): ideally under 50 characters).

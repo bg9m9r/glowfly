@@ -161,7 +161,12 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
         ui.label(RichText::new(note).size(type_scale::SMALL).color(color::faint()));
     }
 
+    // Halfway through a rebase there is nothing to push: the option isn't offered.
+    let rebasing = crate::state::commit::rebase_stopped(snap);
     ui.horizontal_wrapped(|ui| {
+        if rebasing {
+            return;
+        }
         let mut push = st.settings.push_after_commit;
         let r = ui
             .add_enabled(snap.head_branch.is_some(), controls::Check::new(&mut push, t.tr("commit.push_after.check")))
@@ -174,14 +179,34 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     });
 
     let merging = snap.state == git2::RepositoryState::Merge;
-    let label = st.session.draft.button_label(t, snap.staged.len(), pushes_after(st), merging);
+    // At a rebase stopped to edit, the button commits and continues the rebase.
+    let continues = crate::state::commit::edit_stop(snap).is_some();
+    let label = if continues {
+        st.session.draft.continue_label(t)
+    } else {
+        st.session.draft.button_label(t, snap.staged.len(), pushes_after(st), merging)
+    };
     let blocked = commit_blocked(st, false);
     let enabled = blocked.is_none();
     let tip = shortcuts_tip(t, &st.keymap);
     ui.horizontal(|ui| {
-        if commit_split(ui, label, (enabled, style.primary), blocked, &tip, &mut st.session.draft, t).clicked() {
+        // At a rebase stop the button stands alone: its stop's other choices are on Continue's caret.
+        let clicked = if rebasing {
+            let w = ui.available_width();
+            let button = if style.primary { buttons::primary(label) } else { buttons::secondary(label) };
+            ui.add(button.enabled(enabled).why(blocked).tip(&tip).min_width(w).max_width(w).size(ControlSize::Large)).clicked()
+        } else {
+            commit_split(ui, label, (enabled, style.primary), blocked, &tip, &mut st.session.draft, t).clicked()
+        };
+        if clicked {
             // A merge commits through Commit merge, which fills a blank message with git's.
-            msgs.push(Msg::Commit(if merging { CommitMsg::CommitMerge } else { CommitMsg::Commit }));
+            msgs.push(Msg::Commit(if merging {
+                CommitMsg::CommitMerge
+            } else if continues {
+                CommitMsg::CommitAndContinue
+            } else {
+                CommitMsg::Commit
+            }));
         }
     });
     reason::line(ui, blocked, Align::Center);
@@ -195,7 +220,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
         if all {
             msgs.push(Msg::Commit(CommitMsg::StageAllAndCommit));
         } else if one {
-            msgs.push(Msg::Commit(CommitMsg::Commit));
+            msgs.push(Msg::Commit(if continues { CommitMsg::CommitAndContinue } else { CommitMsg::Commit }));
         }
     }
 }

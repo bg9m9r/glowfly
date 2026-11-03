@@ -106,6 +106,8 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
         _ => "",
     };
     let repo_state = snap.state;
+    // At a stop to edit, the form's Amend and continue leads and Continue steps back.
+    let editing = crate::state::commit::edit_stop(snap).is_some();
     let skip_blocked = st.git.blocked(Feature::SequencerSkip);
     ui.add_space(8.0);
     ui.separator();
@@ -123,21 +125,28 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
                 msgs.push(Msg::Layout(LayoutMsg::ToggleOpStep(OpStep::CommitForm)));
             }
             if form_open {
-                commit_box::show(ui, st, cache, BoxStyle { titled: false, primary: false }, msgs);
+                commit_box::show(ui, st, cache, BoxStyle { titled: false, primary: editing }, msgs);
                 ui.add_space(4.0);
             }
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing = BUTTON_GAP;
-                finish_buttons(ui, st, repo_state, n, skip_blocked.as_deref(), msgs);
+                finish_buttons(ui, st, (repo_state, !(editing && form_open)), n, skip_blocked.as_deref(), msgs);
             });
         }
     });
 }
 
-/// Continue as one primary split button (disabled while files are conflicted: git refuses it
-/// before), whose caret opens a menu above it with Skip and, for an interactive rebase, Edit
+/// Continue as one split button, primary unless the form's Amend and continue leads (disabled
+/// while files are conflicted: git refuses it before), whose caret opens a menu above it with Skip and, for an interactive rebase, Edit
 /// remaining steps…. Without a Continue the other actions are plain buttons.
-fn finish_buttons(ui: &mut Ui, st: &AppState, state: RepositoryState, conflicted: usize, skip_blocked: Option<&str>, msgs: &mut Vec<Msg>) {
+fn finish_buttons(
+    ui: &mut Ui,
+    st: &AppState,
+    (state, primary): (RepositoryState, bool),
+    conflicted: usize,
+    skip_blocked: Option<&str>,
+    msgs: &mut Vec<Msg>,
+) {
     let t = st.settings.lang();
     let Some(steps) = state_actions(state) else { return };
     let mut cont = None;
@@ -160,7 +169,8 @@ fn finish_buttons(ui: &mut Ui, st: &AppState, state: RepositoryState, conflicted
         return;
     };
     let waiting = (conflicted > 0).then(|| t.tr("details.steps.finish.waiting_continue"));
-    let button = buttons::primary(action_text(t, label)).enabled(waiting.is_none()).why(waiting);
+    let text = action_text(t, label);
+    let button = if primary { buttons::primary(text) } else { buttons::secondary(text) }.enabled(waiting.is_none()).why(waiting);
     if others.is_empty() && !edit_steps {
         if ui.add(button).clicked() {
             msgs.push(action_msg(state, label, a));

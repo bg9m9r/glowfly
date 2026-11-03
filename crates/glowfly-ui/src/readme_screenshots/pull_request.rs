@@ -148,9 +148,9 @@ fn readme_screenshots_pull_request() {
         let mut h = harness(st, dark, WINDOW);
         h.run();
         raise_comments(&mut h);
-        // Up to the commit panel on the right.
-        let panel = egui::Id::new(crate::ui::panel_size::DETAILS_ID);
-        let right = egui::containers::panel::PanelState::load(&h.ctx, panel).expect("the commit panel").rect.min.x;
+        // Up to the commit panel's rail on the right.
+        let rail = egui::Id::new("detail-rail");
+        let right = egui::containers::panel::PanelState::load(&h.ctx, rail).expect("the commit panel's rail").rect.min.x;
         shoot(&mut h, &name, Some(egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(right, WINDOW.y))));
         drop(h);
         d.remove();

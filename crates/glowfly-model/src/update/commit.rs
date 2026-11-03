@@ -1,19 +1,24 @@
 //! The commit box: committing (optionally staging everything first and pushing afterwards),
 //! prefilling the draft from HEAD for an amend, from a merge's MERGE_MSG or from the
-//! repository's commit template, the merge banner's Commit merge, and the "Push after
-//! committing" setting.
+//! repository's commit template, the merge banner's Commit merge, Amend and continue at a rebase
+//! stopped to edit (Amend ticked there by default), and the "Push after committing" setting.
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::msg::CommitMsg;
 use crate::state::AppState;
-use crate::state::commit::{commit_blocked, commit_merge_blocked, pushes_after, unencodable_text};
+use crate::state::commit::{commit_blocked, commit_merge_blocked, edit_stop, pushes_after, unencodable_text};
 use glowfly_core::undo::UndoKind;
 use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         CommitMsg::Commit => commit(st, false, now, fx),
+        CommitMsg::CommitAndContinue => {
+            if st.snap.as_ref().and_then(edit_stop).is_some() {
+                start_commit(st, false, true, now, fx);
+            }
+        }
         CommitMsg::StageAllAndCommit => commit(st, true, now, fx),
         CommitMsg::PrefillAmend => {
             // Pre-fill from HEAD's message, when the user hasn't written anything yet.
@@ -53,6 +58,11 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
 /// repository's commit encoding. Refused with a toast (not the log, so a keypress doesn't pop
 /// it open) when the draft or repository isn't ready or the encoding can't hold the message.
 pub(super) fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut Vec<Effect>) {
+    start_commit(st, stage_all, false, now, fx);
+}
+
+/// `commit`, resuming the stopped rebase once it succeeds when `then_continue`.
+fn start_commit(st: &mut AppState, stage_all: bool, then_continue: bool, now: Instant, fx: &mut Vec<Effect>) {
     if let Some(why) = commit_blocked(st, stage_all) {
         st.toast(false, why, now);
         return;
@@ -80,6 +90,7 @@ pub(super) fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut 
     let spec = JobSpec {
         clear_commit: true,
         then_push: pushes_after(st),
+        then_continue,
         write_file: Some((file, bytes)),
         record: Some(UndoKind::Commit { amend }),
         ..JobSpec::new(label.into(), cmds)
@@ -87,10 +98,37 @@ pub(super) fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut 
     start_job(st, spec, fx);
 }
 
-/// After a full load: the merge's message (`merge_message`), then the commit template.
+/// After a full load: Amend at a rebase stopped to edit (`edit_stop_amend`), the merge's message
+/// (`merge_message`), then the commit template.
 pub(super) fn prefill(st: &mut AppState) {
+    edit_stop_amend(st);
     merge_message(st);
     apply_template(st);
+}
+
+/// Ticks Amend once per rebase stop to edit, filling a blank draft from the commit's message;
+/// unticks it again once the rebase is no longer stopped to edit. Not while a job runs: the
+/// load after Amend and continue's commit still shows the stop it is leaving.
+fn edit_stop_amend(st: &mut AppState) {
+    let Some(snap) = &st.snap else { return };
+    if st.job.is_some() {
+        return;
+    }
+    let stop = edit_stop(snap);
+    let d = &mut st.session.draft;
+    match stop {
+        Some(s) if d.amend_stop != Some(s) => {
+            d.amend_stop = Some(s);
+            d.amend = true;
+            if d.is_blank()
+                && let Some(m) = &snap.head_message
+            {
+                d.fill_from(m);
+            }
+        }
+        None if d.amend_stop.take().is_some() => d.amend = false,
+        _ => {}
+    }
 }
 
 /// Fills a blank, non-amend draft from MERGE_MSG when a merge, cherry-pick or revert stops (or
