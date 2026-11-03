@@ -39,12 +39,25 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, t: Lang, msgs: &
     let w = widths(ui, m, t);
     let plan = fit::plan(&w, inner.width());
     let right = Rect::from_min_max(pos2((inner.right() - plan.right_width).max(inner.left()), inner.top()), inner.max);
-    let left = Rect::from_min_max(inner.min, pos2((right.left() - fit::MIN_GAP).max(inner.left()), inner.bottom()));
-    ui.scope_builder(UiBuilder::new().max_rect(left).layout(Layout::left_to_right(Align::Center)), |ui| {
-        ui.set_clip_rect(left.intersect(ui.clip_rect()));
-        identity::show(ui, m, t, &w, &plan);
-        leading_tools(ui, m, &w, &plan, keys, t, msgs);
-    });
+    // ⋯ never gives way: the parts before it are clipped short of the room it keeps.
+    let more_x = (right.left() - fit::MIN_GAP - w.more).max(inner.left());
+    let left = Rect::from_min_max(inner.min, pos2(more_x, inner.bottom()));
+    let end = ui
+        .scope_builder(UiBuilder::new().max_rect(left).layout(Layout::left_to_right(Align::Center)), |ui| {
+            ui.set_clip_rect(left.intersect(ui.clip_rect()));
+            identity::show(ui, m, t, &w, &plan);
+            leading_tools(ui, m, &w, &plan, keys, t, msgs);
+            ui.cursor().left()
+        })
+        .inner;
+    if w.more > 0.0 {
+        // Right after View when there is room, else at the edge of the clipped parts.
+        let x = end.min(more_x);
+        let slot = Rect::from_min_max(pos2(x, inner.top()), pos2(x + w.more, inner.bottom()));
+        ui.scope_builder(UiBuilder::new().max_rect(slot).layout(Layout::left_to_right(Align::Center)), |ui| {
+            actions::more(ui, m, keys, t, msgs);
+        });
+    }
     ui.scope_builder(UiBuilder::new().max_rect(right).layout(Layout::left_to_right(Align::Center)), |ui| {
         ui.spacing_mut().item_spacing.x = 0.0;
         if m.primary.is_some() {
@@ -67,7 +80,8 @@ fn widths(ui: &Ui, m: &HeaderModel, t: Lang) -> Widths {
     w
 }
 
-/// After the file: 16 px and the navigation, then a divider, the View menu and ⋯.
+/// After the file: 16 px and the navigation, then a divider and the View menu, and the space
+/// before ⋯ (which `show` draws, so it is never clipped).
 fn leading_tools(ui: &mut Ui, m: &HeaderModel, w: &Widths, plan: &fit::Plan, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
     ui.spacing_mut().item_spacing.x = 0.0;
     if w.nav_arrows > 0.0 {
@@ -87,9 +101,6 @@ fn leading_tools(ui: &mut Ui, m: &HeaderModel, w: &Widths, plan: &fit::Plan, key
         if w.more > 0.0 {
             ui.add_space(fit::TOOLS_SPACE);
         }
-    }
-    if w.more > 0.0 {
-        actions::more(ui, m, keys, t, msgs);
     }
 }
 
