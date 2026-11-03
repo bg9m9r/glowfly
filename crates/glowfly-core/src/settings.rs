@@ -74,7 +74,7 @@ pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use tracker::TrackerChoice;
 pub use trust::{RepoTrust, SavedTrust};
 pub use ui_choices::{BranchVisibility, Corner, Density, DescriptionMode, DiffLayout, DiffMode};
-pub use updates::UpdatePrefs;
+pub use updates::{NewsChip, UpdatePrefs, WhatsNew};
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

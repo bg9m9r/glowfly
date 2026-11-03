@@ -59,10 +59,10 @@ Unknown "Staged files (1)"
 Button "README.md" [off]
 Label "Modified"
 Label "Commit"
-CheckBox "Amend" [off]
 TextInput "Commit summary" = "Add login form"
 Label "14/72"
-MultilineTextInput "Description"
+MultilineTextInput "Commit description"
+CheckBox "Amend last commit" [off]
 CheckBox "Push after committing" [off]
 Button "Commit 1 file (skip hooks)"
 Button "More commit options"
@@ -112,6 +112,7 @@ painted:
   "Submodules"
   "0"
   "M"
+  "Description"
   "Branch / tag"
   "Graph"
   "Message"

@@ -26,6 +26,7 @@ pub(super) mod snapshot_tests_clone_service;
 pub(super) mod snapshot_tests_colour_safe;
 pub(super) mod snapshot_tests_columns;
 pub(super) mod snapshot_tests_commit;
+pub(super) mod snapshot_tests_commit_states;
 pub(super) mod snapshot_tests_compare;
 pub(super) mod snapshot_tests_conflict_check;
 pub(super) mod snapshot_tests_conflict_files;

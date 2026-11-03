@@ -59,14 +59,13 @@ Label "Staged files (0)"
 Unknown "Staged files (0)"
 Label "None"
 Label "Commit"
-CheckBox "Amend" [off]
 TextInput "Commit summary"
-Label "0/72"
-MultilineTextInput "Description"
+MultilineTextInput "Commit description"
+CheckBox "Amend last commit" [off]
 CheckBox "Push after committing" [off]
-Button "Stage something to commit" [disabled]
+Button "Commit" [disabled]
 Button "More commit options"
-Label "Write a summary for the commit."
+Label "Stage changes to commit, or press Ctrl+Shift+Enter to stage all and commit."
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
@@ -120,6 +119,8 @@ painted:
   "Submodules"
   "0"
   "M"
+  "Summary"
+  "Description"
   "Branch / tag"
   "Graph"
   "Message"

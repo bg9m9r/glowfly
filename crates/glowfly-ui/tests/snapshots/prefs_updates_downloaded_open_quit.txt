@@ -27,6 +27,10 @@ Button "Open installer and quit"
 Button "Show file"
 Label "Glowfly opens the disk image and quits. Drag Glowfly to Applications to replace this copy, then open it again."
 Label "Glowfly asks GitHub's releases API for the newest release of its repository once a day. GitHub sees your IP address and Glowfly's version, nothing about your repositories. Downloads are checked against the release's published SHA-256 checksums. Glowfly's builds aren't code-signed yet, so this confirms a download matches what the release published, not who published it."
+Label "After an update:"
+RadioButton "Show “What's new” in the status bar" [on]
+RadioButton "Open the release notes" [off]
+RadioButton "Don't show anything" [off]
 Label "Git"
 Label "Git program"
 Label "Checking…"

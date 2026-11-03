@@ -17,6 +17,30 @@ pub fn spell_text_edit(
     speller: &mut Speller,
     enabled: bool,
 ) -> egui::Response {
+    spell_field(ui, text, hint, (rows, None), speller, enabled)
+}
+
+/// A single-line `spell_text_edit` keeping `trailing` px right of the text, for something
+/// painted inside the field (the commit summary's length).
+pub fn spell_text_edit_trailing(
+    ui: &mut egui::Ui,
+    text: &mut String,
+    hint: &str,
+    trailing: Option<f32>,
+    speller: &mut Speller,
+    enabled: bool,
+) -> egui::Response {
+    spell_field(ui, text, hint, (1, trailing), speller, enabled)
+}
+
+fn spell_field(
+    ui: &mut egui::Ui,
+    text: &mut String,
+    hint: &str,
+    (rows, trailing): (usize, Option<f32>),
+    speller: &mut Speller,
+    enabled: bool,
+) -> egui::Response {
     let enabled = enabled && speller.available();
     let font = egui::TextStyle::Body.resolve(ui.style());
     let text_color = ui.visuals().text_color();
@@ -28,6 +52,10 @@ pub fn spell_text_edit(
     };
     let edit = if rows <= 1 { egui::TextEdit::singleline(text) } else { egui::TextEdit::multiline(text).desired_rows(rows) };
     let field = SizedField::new(ControlSize::Regular, edit.hint_text(hint).layouter(&mut layouter));
+    let field = match trailing {
+        Some(w) => field.trailing_room(w),
+        None => field,
+    };
     let resp = ui.add(if rows <= 1 { field } else { field.multiline() });
     if enabled {
         let misses = speller.check(text);

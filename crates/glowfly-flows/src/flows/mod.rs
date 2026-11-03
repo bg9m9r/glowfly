@@ -325,6 +325,7 @@ mod undo_stash_tests;
 mod undo_tests;
 mod updates_download_tests;
 mod updates_flatpak_tests;
+mod updates_news_chip_tests;
 mod updates_notes_tests;
 mod updates_recheck_tests;
 mod updates_restart_tests;

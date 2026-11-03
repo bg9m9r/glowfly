@@ -227,7 +227,7 @@ fn not_amending(theme: ThemeChoice, name: &str) {
     h.run();
     h.check_snapshot(name);
     assert!(h.query_by_label("Amend and continue").is_none());
-    assert!(h.get_by_label("Amend").is_disabled(), "Amend can't be ticked");
+    assert!(h.get_by_label("Amend last commit").is_disabled(), "Amend can't be ticked");
     assert!(h.query_by_label("More commit options").is_some(), "Skip hooks stays reachable");
     drop(h);
     remove_fixture(&dir);
