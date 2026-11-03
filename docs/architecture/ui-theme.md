@@ -43,6 +43,36 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/surfaces.rs`: the colour tokens worked out from a palette, so theme files get them with no keys of their own: the graph's row bands and highlights (`band_color`, `highlight_color`) and every surface a row's chip sits on (`with_row_surfaces`), the field, guide and toolbar-group fills, the framed toolbar bar's edge (`tool_edge`), the overlay surface with its edge and inset, the hover, pressed and latched layers, a destructive menu item's text and hover pill (`menu_danger`, `danger_hover`), the semantic tones with their tints, the tonal fill and ink, and the brown-safe wash (`color::wash`) views use for translucent colour fills.
 - `ui::theme::color` holds the active palette (a thread-local, see Rules); `ThemeCache` owns palettes built from theme files, and the slots near the trunk the shell reports to the model.
 - `ui/backdrop.rs`: the Mica tints (see Window chrome in [flow-shell.md](flow-shell.md)).
+- `prefs/appearance.rs`: Preferences > Appearance, and its Interface size row, which Accessibility shows too (`zoom_row`).
+- `prefs/appearance_graph.rs`: Preferences > Appearance > Commit graph: which columns the graph shows (one labelled checkbox each, in one row), the row density, how commit descriptions show, and the two layout resets.
+- `prefs/diff_viewer.rs`: Preferences > Diff viewer: how the diff viewer draws text.
+- `prefs/form.rs`: the pieces every Preferences form is built from: a row (a right-aligned label, then the controls with their help underneath, stacked when the content column is narrow), titled sections, labelled checkbox rows, text fields and combos that fit the column, help and warning lines, and the page's primary button.
+- `prefs/general.rs`: Preferences > General, in titled sections: Updates, Git (general_git.rs), Fetching, Graph, Repositories, Sign-ins, Help and tips, and Diagnostics.
+- `prefs/general_git.rs`: Preferences > General > Git: the git program Glowfly runs (chosen on the Git page), the default branch name for new repositories, and two global git config values, long paths and line endings.
+- `prefs/git.rs`: Repo > Identity and Git hooks.
+- `prefs/integrations.rs`: Preferences > Integrations (one page per hosting service: a card for each connected account, then Add another account or the sign-in form, integrations_form.rs) and Repo > Issue Tracker (with whether year-like branch names name issues).
+- `prefs/integrations_form.rs`: Preferences > Integrations: one card per connected account, and the sign-in form (Git Credential Manager where the service supports it, or a host, user and token), both aligned with the field column.
+- `prefs/keyboard.rs`: Preferences > Keyboard: every binding by group with its keys, a filter, and Reset all (asked for first).
+- `prefs/keyboard_row.rs`: one row of Preferences > Keyboard: the action and where it works on the left; on the right its keys as caps (click one to record a replacement), a weak × after each that strengthens on hover, Add and Reset.
+- `prefs/language.rs`: Preferences > Language & region: the interface language, and how dates and times are written (the locale, four patterns that follow the locale while blank, each with a live preview of the current time, and relative dates).
+- `prefs/profile_setup.rs`: Preferences > Profile: the selected profile's Accounts and Preferences rows, which say what switches with it.
+- `prefs/profiles.rs`: Preferences > Profile: the open repository's identity (profile_rules.rs), the profile list (current marker, switch, inline rename, delete), the New profile form, and the selected profile's identity fields (saved by the Save / Revert bar) and folder rules (profile_rules.rs), then what else switches with it (profile_setup.rs).
+- `prefs/save_bar.rs`: the Save / Revert bar fixed under a Preferences page with unsaved edits (shown only while `state::prefs_save::unsaved` holds), and the "Saved" tick beside the page title.
+- `prefs/ssh_agent.rs`: Preferences > SSH: the section header the page's three sections share (the title, an optional status chip, a Refresh icon button at the right end, and the rule under them), and the Agent section: its status chip (`state::ssh_marks::agent_pill`), the Use local SSH agent setting, what the agent holds and why it may not be reachable, and on Windows the Windows' OpenSSH row (`ssh_windows`).
+- `prefs/ssh_card.rs`: Preferences > SSH: one key pair's card.
+- `prefs/ssh_git.rs`: Preferences > SSH: the Which key section.
+- `prefs/ssh_service.rs`: Preferences > SSH: the inline Add to service form under a key's card.
+- `prefs/ssh_sources.rs`: Preferences > SSH, under the key cards: the `~/.ssh/config` IdentityFile entries that can't be listed as cards (each with where it is and why), and the keys only the agent holds, as compact cards that can only copy their public key.
+- `prefs/ssh_windows.rs`: Preferences > SSH, in the Agent section: the Windows' OpenSSH row.
+- `prefs/trello.rs`: Trello's parts of Preferences: the API key and token links on its Integrations page, and the Board picker under This repository > Issue tracker.
+- `theme/builtin.rs`: the built-in palettes, by theme: Graphite and Porcelain (the defaults, `builtin_cobalt.rs`), Midnight and Mist (`builtin_sea.rs`), Dusk and Dawn (`builtin_dusk.rs`) and the high-contrast pair (`builtin_extra.rs`).
+- `theme/builtin_cobalt.rs`: Graphite and Porcelain, the cobalt pair and the defaults: near-neutral graphite greys (chroma under 0.01, a hair cool) and neutral white paper with grey-black ink, both under a cobalt accent in its own band (243 to 259 deg) with the cobalt branch families (`branch_palette_more.rs`).
+- `theme/builtin_dusk.rs`: Dusk and Dawn, the pair drawn from the app icon: its dusk tile (indigo into plum) tints the neutrals, and the glowfly's lantern gold is Dusk's accent, so the main branch runs in gold as the icon's first lane does; Dusk's selected row is an indigo step under the gold bar.
+- `theme/builtin_extra.rs`: the high-contrast palettes, and the repository hues every palette takes (see docs/COLOUR.md for the rules they meet).
+- `theme/builtin_garden.rs`: the Garden pair: the standard themes before Dusk and Dawn, kept for those who like the green.
+- `theme/builtin_sea.rs`: Midnight and Mist, the sea-glass pair: a deep blue-black night and its light twin of cool fog paper.
+- `theme/color.rs`: the active color palette.
+- `theme/custom.rs`: palettes from theme files: the base theme with the file's colors on top.
 
 ## Fonts and type
 

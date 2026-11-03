@@ -65,3 +65,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `terminal/mouse.rs`: the wheel, selecting (a finished selection is reported for PRIMARY and Copy on select) and, on Linux, middle-click paste of PRIMARY.
 - `terminal/metrics.rs`: the terminal grid's cell size, the monospace advance rounded to whole device pixels where epaint places each glyph, so text, cursor and mouse share one grid.
 - The header's ghost buttons and dividers are shared with the diff header (`widgets/ghost.rs`, see [ui-views.md](ui-views.md)).
+- `terminal/colors.rs`: terminal colours: the background, text and 16 basic colours the terminal draws in (`color::term`: the theme's own or the scheme chosen in Preferences), the xterm 256-colour cube and grey ramp, and truecolour as given.
+- `terminal/grid.rs`: the terminal's screen grid: painting the active tab's cells, selection and cursor, reporting the grid size, the mouse (mouse.rs), the right-click menu, and forwarding the keyboard while it has focus (Shift with Page Up/Down, Home and End scroll the main screen's history).
+- `terminal/held.rs`: the terminal panel's body while the active tab's shell is held (`SessionStatus::Held`): git is held in the repository until the user trusts it, and a shell prompt often runs git, so no shell starts until then.
+- `terminal/paint.rs`: painting over the terminal's cells: the selection, the cursor in its chosen style (both in the terminal's colours, `color::term`), the dim overlay and the history's scroll thumb.

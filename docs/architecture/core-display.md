@@ -33,6 +33,11 @@ source file, update its line here.
 - `memo.rs`: parse checkpoints a reload of the same file resumes from: content-defined chunks with their start and end states.
 - `highlight/syntaxes.rs`: the syntax definitions for detection, loaded once (immutable, see Rules).
 - `highlight/grammars.rs`: the copy of the syntax set parsing runs on, dropped with its compiled regexes after 3 idle minutes (`Holder`).
+- `highlight/context.rs`: the old file's lines before a diff's hunks, so each hunk can be parsed from the state those lines leave (a hunk that starts inside a block comment is then colored as a comment).
+- `highlight/gaps.rs`: syntax spans for the unchanged lines between hunks, when the hunk view fills them in: the old file parsed from its first line, so a run inside a block comment opened earlier is colored as one.
+- `highlight/header.rs`: the function context in hunk headers: the text git adds after the closing `@@` (the nearest line above the hunk that looks like a definition, e.g. `fn greet(name: &str) {`).
+- `highlight/linguist.rs`: language overrides: names from a `.gitattributes` `linguist-language` value mapped to the bundled syntaxes, and the `SyntaxHint` the highlighter takes.
+- `highlight/reuse.rs`: what a reload can take over from the diff shown before: the exact spans of unchanged hunks, provisional spans for lines whose text appeared before, hunk-header spans by their function context's text, and parse checkpoints (`memo`) to resume an in-context parse from.
 
 ## Previews
 

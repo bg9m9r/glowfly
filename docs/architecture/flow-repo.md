@@ -67,6 +67,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - The merge method last used is remembered per repository (`Settings::merge_method_for`) and preselected when the repository still allows it.
 - After a merge, `update/pull_request/cleanup.rs` runs one job: the remote branch's delete when asked, the fetch, then the local branch's delete when asked.
 - The local branch's rules and commands are in `state/pull_request_cleanup.rs`: kept on a fork, after a squash or rebase merge, when checked out in another worktree, or when checked out here with changes. It goes only once the fetched target contains it, after checking out the target if it is checked out here, and through `git branch -d`; a failed job puts the branch's upstream back (its `on_fail_check`). Only a branch tracking `<remote>/<source>` is offered.
+- `update/pull_request/calls.rs`: the pull request panel's calls to its hosting service: loading the page (detail and conversation; the checks are in checks.rs), posting a comment, submitting a review, replying to and resolving code comment threads (threads.rs), starting a code comment on diff lines (line_comment.rs) and merging, remembering the merge method for the repository, then cleaning up (cleanup.rs).
+- `update/pull_request/threads.rs`: the pull request panel's code comment threads: replying and resolving (sent through `calls::act`, one action at a time like the other calls), applying their answers in place, which threads are shown and open, and going from a thread to its line in Files changed.
 
 ## New code comments on diff lines
 

@@ -30,6 +30,15 @@ source file, update its line here.
 - `ssh_version.rs`: the ssh git runs in a repository (the environment, then `core.sshCommand`, read from config) and its OpenSSH version (a `DISPLAY` placeholder before 8.4; only an environment program is run with `-V`, a command line gets the placeholder unrun), and the new session every git child starts in on Unix.
 - `gpg_prompt/`: signing passphrases: Glowfly as git's gpg.program, running the user's gpg with loopback pinentry and asking through the askpass listener; extending an expired key from Preferences the same way (`gpg_prompt/extend.rs`); for SSH-format keys, the env that marks ssh-keygen's prompt as a signing prompt (`gpg_prompt/ssh_env.rs`).
 - `signing.rs`: signing keys.
+- `askpass/client.rs`: the helper's side: sends one prompt to the app and waits for the answer.
+- `askpass/prompt.rs`: what a git or ssh prompt asks for, decided from its text.
+- `askpass/protocol.rs`: the line protocol between the helper process and the app's listener: one JSON request line from the helper, one JSON response line back.
+- `askpass/server.rs`: the app's side: a loopback listener that turns each helper connection into an `Event::Asked` and waits for the app to `Server::answer` it.
+- `gpg_prompt/args.rs`: reading git's arguments for gpg and building the wrapper's own.
+- `gpg_prompt/env.rs`: the environment that makes git run Glowfly as its gpg.program (pure, `vars`), and the signing environment gitcli adds to each command (`for_command`).
+- `gpg_prompt/flow.rs`: the wrapper's steps: probe, ask, sign with loopback, or fall back to the program's own pinentry.
+- `gpg_prompt/program.rs`: which OpenPGP program the user configured, so the wrapper runs that one.
+- `gpg_prompt/real.rs`: the real gpg runs and the real app: `Real` runs the user's program, `EnvAsker` asks through the askpass listener gitcli pointed the wrapper at.
 
 ## SSH keys (`ssh_keys.rs`, `ssh_keys/`)
 
@@ -56,6 +65,12 @@ source file, update its line here.
 - `url_scheme/windows.rs`: the registry class key on Windows.
 - `url_scheme/xdg.rs`: a desktop entry and `xdg-mime` on XDG desktops.
 - macOS needs no registration: Glowfly.app's Info.plist declares the scheme, and links arrive as Get URL Apple events (`glowfly-app` `platform/macos_events.rs`).
+- `instance/client.rs`: the second process's side: hands a link or folder to the running window.
+- `instance/foreground.rs`: letting the running window come to the front.
+- `instance/server.rs`: the running window's side: a loopback listener that reports each link or folder it is handed, started once this window holds the claim (`claim.rs`).
+- `stack/porcelain.rs`: the command lines of a stack push and the reading of `git push --porcelain`'s answer.
+- `stack/read.rs`: reading a repository's stacks with libgit2: the base (the main branch, Git Flow's production and development branches, and every remote's branch of those names), the commits of the other local branches outside it, and each branch's former tips from its reflog.
+- `stack/restack.rs`: running a restack through the git CLI, so hooks, signing and config apply: each step is `git rebase --update-refs --onto refs/heads/<onto> <upstream> <top>`, and once every step is done the branch checked out before is checked out again.
 
 ## Built-in terminal (`terminal/`)
 
@@ -68,6 +83,10 @@ source file, update its line here.
 - `activity.rs`: whether the shell is running a program, in front or as a background job.
 - `procs.rs`: the process lists `activity.rs` and `git_procs.rs` read: a Windows ToolHelp snapshot, image paths and creation times, Linux `/proc`, macOS libproc; and every process's program file (`program_paths`), for the update's `.bak` cleanup.
 - `title.rs`: the window title a program sets, with what of it names a running command.
+- `terminal/keys.rs`: what typing, named keys and pasting send to the program, as xterm encodes them.
+- `terminal/pty.rs`: shell sessions on a pseudo-terminal: a running session with its output and exit reported through callbacks on their own threads (terminal/shell.rs picks the shell).
+- `terminal/queries.rs`: queries a program sends the terminal and expects an answer to, found in its output.
+- `terminal/screen.rs`: the terminal screen: a VT parser fed with a shell's output, read back as styled rows.
 
 ## Settings (`settings.rs`, `settings/`)
 
@@ -99,6 +118,18 @@ source file, update its line here.
 - `downloads.rs`: the Downloads folder updates are saved to.
 - `date_fmt.rs`: how dates are shown: the four patterns (Date, Long date, Date and time, Full date and time), blank following the date locale, relative ages and date hover text.
 - Settings saved per repository are keyed by `real_workdir` through `settings::repo_keys`.
+- `settings/builtin_themes.rs`: the built-in themes: their ids (a theme file's `base`), names, kinds, the themes that took the place of the retired ones, and how the settings' `ThemeChoice` maps onto them.
+- `settings/column_widths.rs`: widths of the graph's resizable columns (dragged from the header dividers), with the per-column defaults and limits.
+- `settings/editor.rs`: diff text size and tab stops (Preferences > Diff viewer).
+- `settings/graph_filter.rs`: refs hidden from or soloed in a repository's commit graph, saved per working directory.
+- `settings/language.rs`: the UI language setting (Preferences > General): "system" or a language code.
+- `settings/panel_sizes.rs`: the sizes the window's drawers were last dragged to.
+- `settings/paths.rs`: where Glowfly keeps its own files (settings, recent repositories, tabs; the avatar cache is in `cache_dir`, the logs in `log_dir`).
+- `settings/profiles.rs`: named profiles (Preferences > Profile): each keeps an author identity, and the current one's identity is the global git config's; other profiles also keep the connected accounts and app preferences saved when they were last current (`profiles_prefs`), and its folder rules (`profile_rules`).
+- `settings/repo_keys.rs`: settings saved per repository (graph filters, pinned branch colours, pull request and issue filters, the issue tracker, trust decisions and more), keyed by the repository's resolved working directory (`Snapshot::real_workdir`) and saved losslessly (`paths::encode`).
+- `settings/submodules.rs`: keeping submodules up to date: the Preferences > General switch and the three-way choice a repository's SUBMODULES menu makes over it (saved per repository in `Settings::repo_submodule_updates`, read through `repo_keys`).
+- `settings/theme_choice.rs`: the theme chosen in Preferences > Appearance > Theme, as settings.json saves it, and how a retired theme's name loads: as the theme that took its place (`BuiltinTheme::successor`), noted for the one-time toast (`take_retired`).
+- `settings/zoom.rs`: window zoom levels (keys, palette and Preferences > Appearance).
 
 ## Identity and profiles
 
@@ -107,6 +138,8 @@ source file, update its line here.
 - `pattern.rs`: the patterns and the include file's quoting.
 - `profile_includes/` also holds the plan (entries shallow-first), the sync (files rewritten when changed; with `place`, Glowfly's own sections removed and added again at the end of the file, sections pointing elsewhere or shared with the user's keys left alone), and checking a picked folder (resolved, valid text, case folding probed).
 - `repo_identity.rs`: a repository's effective identity and where git read it (`git config --show-origin`): a profile's include file, the repository's own config or elsewhere, plus what the rules expect; the identity variables set in the environment (`env_overrides`); removing the repository's own name and email.
+- `paths/encode.rs`: paths saved in Glowfly's own files (recent.txt, tabs.txt, settings keys), without losing any (a Unix name needn't be UTF-8, a Windows one may hold a lone UTF-16 surrogate) and one per line.
+- `paths/file_url.rs`: the local path a `file:` URL names.
 
 ## Files, logs, text and dates
 
@@ -163,3 +196,7 @@ source file, update its line here.
 - `launch.rs`: starting processes detached, and trying whether a copied helper runs (`try_run`: `--version` must print this build's version and exit successfully within 5 s); tests in `launch_tests.rs`.
 - `finish.rs`: the helper itself, behind `glowfly --finish-update` (a backup's record is deleted only after the backup), and the fixed words it logs; tests in `finish_tests.rs`.
 - `report.rs`: the last installer run's failure or cancel, read from `update.log` at the next start and marked shown; tests in `report_tests.rs`.
+- `gitflow/base.rs`: the roles of the configured production and development branches, for warning before one of them is deleted.
+- `gitflow/groups.rs`: the local flow branches by kind, for the Git Flow panel and the left panel's GIT FLOW section.
+- `gitflow/resume.rs`: continuing a Finish that stopped at a merge conflict: the steps still to run once the merge is committed, whether a snapshot shows that commit (or shows the remaining steps can no longer apply), and the checks before the remaining steps run.
+- `gitflow/start.rs`: starting a feature, release or hotfix branch: the checks and the command line.

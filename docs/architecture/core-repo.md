@@ -28,6 +28,37 @@ source file, update its line here.
 - `Snapshot::lay_out_graph` (`repo/branch_colours.rs`) lays the graph out with its owners and colours, at load and when the work tree turns clean or dirty. `Snapshot::commits` is shared (`Arc<[CommitInfo]>`) so workers read it without a copy.
 - Paths go through `repo/rpath.rs` (see `docs/PLATFORMS.md`), which also picks a path's delta in a diff (a copy's source is its own change). Tests: `copy_source_tests.rs`.
 - `repo_pool.rs` (in `src/`): the workers' pool of open repositories, so the refs fingerprint, status, path status, commit detail, diffs and line counts don't open the repository and parse its index each time. Lent to one thread at a time, keyed by the path as given and how it was opened; `repo_pool/fresh.rs` checks a handle before lending it again (config files and the files they include, `.git` link, git dir, alternates, the index file). Idle handles go after 5 s, past 8 (2 per key), on `forget` (a tab closed) and during a `hold` (an effect that changes the repository, or a fetch): on Windows an open handle keeps old packs from being deleted and folders from being removed.
+- `repo/blame_porcelain.rs`: parsing `git blame --porcelain` output, as bytes.
+- `repo/collide.rs`: index paths that a file system can't keep apart: `a.txt` and `A.txt` on a case-insensitive one (NTFS, APFS and HFS+ by default, FAT, exFAT, an ext4 casefold folder), or `café` spelled with a composed and a decomposed é on one that normalizes Unicode (APFS, HFS+).
+- `repo/collide_scan.rs`: finding the index's collisions (`collide.rs`) cheaply, since every status read asks, the watcher's path-limited reads after each save included.
+- `repo/common_dir.rs`: a repository's common git dir: the one its main worktree and every linked worktree share (the main folder's `.git`, or a bare repository's own folder).
+- `repo/diff.rs`: comparisons between two commits, file diffs and per-commit line counts.
+- `repo/diff_types.rs`: what a file diff is made of, which file it is of, and how to load it.
+- `repo/entry.rs`: a row of a file list (status, a commit's or a comparison's files), and why Glowfly may refuse to act on it.
+- `repo/exact.rs`: exact index edits: one path, byte for byte.
+- `repo/noclobber.rs`: moving a file to a new name without ever replacing a file already there.
+- `repo/refs_key.rs`: a cheap fingerprint of everything a full load reads besides the working-tree status: refs, HEAD, stashes, the repository state, config (the shared one and the worktree's own), linked worktrees and every worktree's HEAD and the branch it is rebasing or bisecting, a shallow clone's `shallow` file and the trust print of the repository's own settings, hooks and commands file (`trust::scan_top`).
+- `repo/remotes.rs`: the configured remotes with their raw fetch and push URLs, read from git config (the REMOTE section's tooltips and menus, and the Edit remote dialog's prefill).
+- `repo/removal.rs`: how a deleted working copy leaves the disk: moved to the system trash (the Recycle Bin on Windows, the Trash elsewhere) so it can be restored from there, or removed for good.
+- `repo/resolve.rs`: resolving a conflict: the side(s) picked per chunk, the file they produce, and writing and staging it (which clears the conflict), or writing it with markers left and not staging it (`write_partial_resolution`).
+- `repo/revert.rs`: reverting part of a commit or comparison diff (a hunk, some of its lines, or the whole file) in the working tree only.
+- `repo/shallow.rs`: shallow clones: the commits where the downloaded history stops, read from the repository's `shallow` file.
+- `repo/status_cli.rs`: the working-tree status as git reads it (`git status --porcelain=v2 -z`), for repositories set up so that git is much faster than libgit2: fsmonitor and the untracked cache only help git itself.
+- `repo/submodule_add.rs`: whether git can add a submodule at a repo path: what the index already has there, what is on disk, its parent folders, .gitignore, and a stored module an earlier submodule left.
+- `repo/touching.rs`: which commits changed a path matching the search's path terms (`path_query`), for the graph search.
+- `repo/tracked.rs`: the files git tracks: the paths in the index, for finding a file by name.
+- `repo/trash.rs`: the system trash (the Recycle Bin on Windows, the Trash elsewhere), the home Trash for a Linux drive without a usable trash folder (`home.rs`, checked in `xdg.rs`), and why the trash refused a file.
+- `repo/trash/home.rs`: the Trash in the home folder (freedesktop): where it is, what its `.trashinfo` files hold, which mount a path is on, which trash folder on a drive can be used, and moving a file into the home Trash (copying it when it is on another drive).
+- `repo/trash/mac.rs`: what a refusal from the macOS Trash means.
+- `repo/trash/untrash.rs`: taking a deleted file back out of the system trash for Undo.
+- `repo/trash/win.rs`: the Recycle Bin on Windows: whether a volume has one, the drive's own settings for it, and what a refusal means.
+- `repo/trash/xdg.rs`: Linux and the BSDs: whether the trash folder on a file's drive can be used, checked the way the trash crate picks one before it is called.
+- `repo/workfile.rs`: creating, renaming and deleting one working-tree file, and checking a typed path.
+- `repo/workfile_disk.rs`: what the working-tree file operations ask the disk about names and folders.
+- `repo/workfile_mv.rs`: renaming a tracked working-tree file so the index records the rename too.
+- `repo/workfile_rename.rs`: renaming one working-tree file (working tree only; `workfile_mv` also moves it in the index), and the checks both renames share.
+- `repo/workfile_rm.rs`: deleting a new file that is staged (or the new path of a staged rename): the working copy and its index entries together, and taking one whose working copy is already gone out of the index.
+- `repo/workfile_unrm.rs`: putting a deleted working-tree file back for undo, and the staged entry of a new file Unstage and delete removed.
 
 ## Diffs
 
