@@ -56,6 +56,8 @@ fn the_plus_chip_drops_before_the_first_chip_goes_below_six_characters() {
 
 #[test]
 fn beside_a_plus_chip_the_first_chip_never_goes_below_six_characters() {
+    // Not monotone in the first chip's width by design: just short of room for "+N" the first
+    // chip takes the whole room, a pixel wider it shrinks to the kept width beside "+N".
     for room in 0..=200 {
         let f = fit(&[150.0, 40.0, 40.0], KEEP, room as f32, plus, 4.0);
         assert_eq!(f.shown, 1, "room {room}: the cut first chip stops the row");
@@ -71,6 +73,27 @@ fn beside_a_plus_chip_the_first_chip_never_goes_below_six_characters() {
 fn a_first_chip_shorter_than_six_characters_keeps_the_plus_while_it_fits_whole() {
     assert_eq!(fit(&[40.0, 40.0], KEEP, 74.0, plus, 4.0), Fit { shown: 1, first_w: 40.0, first_cut: false, plus: true });
     assert_eq!(fit(&[40.0, 40.0], KEEP, 73.0, plus, 4.0), Fit { shown: 1, first_w: 40.0, first_cut: false, plus: false });
+}
+
+#[test]
+fn hidden_labels_offer_the_full_list_with_or_without_the_plus_chip() {
+    let no_folds = |_| false;
+    // "+N" dropped beside a whole first chip: hovering it still lists every label.
+    let dropped = fit(&[50.0, 40.0], KEEP, 80.0, plus, 4.0);
+    assert_eq!(dropped, Fit { shown: 1, first_w: 50.0, first_cut: false, plus: false });
+    assert_eq!(hover_tip(dropped, 2, true, Some(0), no_folds), Some(Tip::All));
+    // With the "+N" chip, the same.
+    let with_plus = fit(&[50.0, 40.0], KEEP, 90.0, plus, 4.0);
+    assert!(with_plus.plus, "{with_plus:?}");
+    assert_eq!(hover_tip(with_plus, 2, true, None, no_folds), Some(Tip::All));
+    // Every chip shown: a whole chip asks for nothing, one folding remotes in for itself.
+    let all = fit(&[50.0, 40.0], KEEP, 200.0, plus, 4.0);
+    assert_eq!(hover_tip(all, 2, true, Some(0), no_folds), None);
+    assert_eq!(hover_tip(all, 2, true, Some(1), |i| i == 1), Some(Tip::One(1)));
+    // A lone cut chip with nothing hidden names itself; off the chips, nothing.
+    let cut = fit(&[200.0], KEEP, 100.0, plus, 4.0);
+    assert_eq!(hover_tip(cut, 1, true, Some(0), no_folds), Some(Tip::One(0)));
+    assert_eq!(hover_tip(dropped, 2, false, None, no_folds), None);
 }
 
 #[test]

@@ -230,6 +230,16 @@ pub(super) enum Tip {
     One(usize),
 }
 
+/// What the pointer over a row's chips asks to show, for chips fitted as `f` out of `n`: every
+/// label while any is hidden (with or without a "+N" chip: a dropped "+N" leaves the first chip
+/// to say so), else the chip `on` when it is cut or `folds` copies on remotes in.
+fn hover_tip(f: Fit, n: usize, on_chip: bool, on: Option<usize>, folds: impl Fn(usize) -> bool) -> Option<Tip> {
+    if on_chip && f.shown < n {
+        return Some(Tip::All);
+    }
+    on.filter(|&i| (i == 0 && f.first_cut) || folds(i)).map(Tip::One)
+}
+
 /// What one row's BRANCH / TAG cell draws.
 pub(super) struct RefsRow<'a> {
     pub chips: &'a [Chip<'a>],
@@ -308,12 +318,7 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
         out.chip_rects = drawn;
         if let Some(p) = row.pointer {
             out.on_chip = hit.contains(p);
-            out.hovered_tip = if f.plus && out.on_chip {
-                Some(Tip::All)
-            } else {
-                let on = out.chip_at(p);
-                on.filter(|&i| (i == 0 && f.first_cut) || row.chips[i].folds()).map(Tip::One)
-            };
+            out.hovered_tip = hover_tip(f, row.chips.len(), out.on_chip, out.chip_at(p), |i| row.chips[i].folds());
         }
     }
     // Room for the New branch… ghost button after the checked-out commit's labels (the graph
