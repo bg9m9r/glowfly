@@ -110,7 +110,7 @@ pub(super) fn changed_file_row_at(
     let lines = actions.lines;
     let row = |ui: &mut egui::Ui| {
         super::list_row::file_tree::indent(ui, depth);
-        super::file_status::status_chip(ui, f.status);
+        super::file_status::status_chip(ui, t, f.status);
         // The counts keep their width; the path is cut before them.
         let reserve = lines.map_or(0.0, |(n, _)| super::line_counts::inline_width(ui.ctx(), n) + spacing::GRID);
         super::list_row::file_tree::file_text(ui, &f.path, depth, selected, reserve);

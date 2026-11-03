@@ -6,7 +6,7 @@ TabList
   Tab "Neuer Tab" [selected]
 Button "Tab Neuer Tab schließen"
 Button "Neuer Tab"
-Button "Öffnen…"
+Button "Repository: Öffnen…"
 Image
 Label "Glowfly"
 Label "Ein schneller, nativer Git-Client"
@@ -20,3 +20,4 @@ Button "Repositorys in Ordnern suchen…"
 Label "Durchsuche die Ordner, in denen du Projekte ablegst, nach Repositorys."
 painted:
   "Repository"
+  "Öffnen…"

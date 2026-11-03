@@ -5,7 +5,8 @@ Label "Preferences"
 Label "GitHub"
 Button "Connect to GitHub"
 Label "or"
-PasswordInput
+Label "Personal access token"
+PasswordInput "Personal access token"
 Label "A personal access token with the repo scope (classic), or a fine-grained token with Pull requests and Issues read & write. Stored in the Windows Credential Manager, never in Glowfly's settings file."
 Label "Create a token"
 Button "Connect" [disabled]
@@ -33,4 +34,3 @@ painted:
   "Jira Cloud"
   "Jira Data Center"
   "Trello"
-  "Personal access token"

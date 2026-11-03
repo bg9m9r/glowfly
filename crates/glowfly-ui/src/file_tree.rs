@@ -99,15 +99,18 @@ impl<'a> ComputerMut<TreeKey<'a>, Arc<Vec<TreeRow>>> for TreeComputer {
     }
 }
 
-/// The list header's List / Tree toggle: its icon shows the mode a click switches to.
-pub(crate) fn mode_toggle(ui: &mut Ui, t: Lang, mode: FileListMode, msgs: &mut Vec<Msg>) {
+/// The list header's List / Tree toggle: its icon shows the mode a click switches to. Returns
+/// its response.
+pub(crate) fn mode_toggle(ui: &mut Ui, t: Lang, mode: FileListMode, msgs: &mut Vec<Msg>) -> egui::Response {
     let (icon, tip, other) = match mode {
         FileListMode::List => (Icon::TreeView, t.tr("files.tree.show_tree.tip"), FileListMode::Tree),
         FileListMode::Tree => (Icon::ListView, t.tr("files.tree.show_list.tip"), FileListMode::List),
     };
-    if ui.add(buttons::icon_only(icon, tip).size(ControlSize::Small).tip(tip)).clicked() {
+    let r = ui.add(buttons::icon_only(icon, tip).size(ControlSize::Small).tip(tip));
+    if r.clicked() {
         msgs.push(Msg::Layout(LayoutMsg::SetFileListMode(other)));
     }
+    r
 }
 
 /// A folder row of `list`'s tree: its indent, a chevron (down while open), a folder, its label

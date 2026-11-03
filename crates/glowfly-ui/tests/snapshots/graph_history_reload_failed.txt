@@ -4,8 +4,8 @@ TabList
   Tab "freed" [selected]
 Button "Close tab freed"
 Button "New tab"
-Button "freed"
-Button "main"
+Button "Repository: freed"
+Button "Branch: main"
 Button "Undo the last action" [disabled]
 Button "Redo the undone action" [disabled]
 Button "Pull the current branch" [disabled]
@@ -23,17 +23,23 @@ Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
 Unknown "Left panel contents"
-TextInput
+TextInput "Filter branches, pull requests and issues"
+Button "Local, 0 branches"
 Button "New branch"
 Button "Local actions"
+Button "Remote, 0 remotes"
 Button "Add remote"
 Button "Remote actions"
+Button "Tags, 0 tags"
 Button "New tag" [disabled]
 Button "Tags actions"
+Button "Stashes, 0 stashes"
 Button "Stash changes" [disabled]
 Button "Stashes actions"
+Button "Worktrees, 0 worktrees"
 Button "Add worktree" [disabled]
 Button "Worktrees actions"
+Button "Submodules, 0 submodules"
 Button "Add submodule"
 Button "Submodules actions"
 Label "Select a commit to see its details."
@@ -44,6 +50,7 @@ Button "Copy details"
 painted:
   "Repository"
   "Branch"
+  "main"
   "Undo"
   "Redo"
   "Pull"

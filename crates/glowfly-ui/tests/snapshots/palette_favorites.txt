@@ -1,5 +1,5 @@
 Dialog
-  TextInput = "open" [focused]
+  TextInput "Type a command, branch or tag name" = "open" [focused]
   Button "Open docs"
   Button "Open web-app"
   Button "Open dashboard"

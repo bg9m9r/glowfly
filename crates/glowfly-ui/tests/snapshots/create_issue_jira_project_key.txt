@@ -12,14 +12,12 @@ Dialog
   Label "Optional"
   MultilineTextInput "Description"
   Label "Labels"
-  TextInput
+  TextInput "Search labels"
   Label "Assignees"
-  TextInput
+  TextInput "Search people"
   CheckBox "Create a branch for it afterwards" [off]
   Button "Cancel"
   Button "Create issue" [disabled]
 painted:
   "Project key, e.g. PROJ"
   "Describe the issue"
-  "Search labels"
-  "Search people"

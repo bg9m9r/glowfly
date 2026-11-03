@@ -10,13 +10,10 @@ Dialog
   Label "Labels"
   Label "bug"
   Label "ui"
-  TextInput
+  TextInput "Search labels"
   Label "Assignees"
   Label "ada"
-  TextInput
+  TextInput "Search people"
   CheckBox "Create a branch for it afterwards" [on]
   Button "Cancel"
   Button "Create issue"
-painted:
-  "Search labels"
-  "Search people"

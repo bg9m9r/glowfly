@@ -1,5 +1,5 @@
 Dialog
-  TextInput = "tab" [focused]
+  TextInput "Type a command, branch or tag name" = "tab" [focused]
   Button "New tab"
   Button "Move tab right"
   Button "Close tab"

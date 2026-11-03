@@ -7,6 +7,7 @@ use super::color::{self, Palette};
 use super::contrast::{self, ChipStyle};
 use super::controls::{self, Check};
 use super::{apply_style, egui_theme};
+use crate::ui::access;
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::theme::branch_colours::{chip_in, swatches};
 use crate::ui::theme::sizes::ControlSize;
@@ -47,9 +48,12 @@ fn render_controls_in(name: &str, p: Palette, style: FocusStyle) {
                 ui.add_space(8.0);
             }
             ui.horizontal(|ui| {
-                controls::field(ui, egui::TextEdit::singleline(&mut f.empty).hint_text("Filter branches").desired_width(180.0));
-                controls::field(ui, egui::TextEdit::singleline(&mut f.filled).desired_width(180.0));
+                let empty = controls::field(ui, egui::TextEdit::singleline(&mut f.empty).hint_text("Filter branches").desired_width(180.0));
+                access::name_field(&empty, "Empty field");
+                let filled = controls::field(ui, egui::TextEdit::singleline(&mut f.filled).desired_width(180.0));
+                access::name_field(&filled, "Filled field");
                 let r = controls::field(ui, egui::TextEdit::singleline(&mut f.focused).desired_width(180.0));
+                access::name_field(&r, "Focused field");
                 if f.first_frame {
                     r.request_focus();
                     f.first_frame = false;
