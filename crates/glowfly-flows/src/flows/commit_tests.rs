@@ -144,7 +144,8 @@ fn push_after_commit_sets_upstream() {
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.head_info().and_then(|b| b.upstream.clone()).as_deref(), Some("origin/topic"));
     let toasts: Vec<_> = st.toasts.iter().map(|t| t.text.as_str()).collect();
-    assert!(toasts.ends_with(&["Commit succeeded", "Push succeeded"]), "{toasts:?}");
+    // The commit shows in the graph, so only the push says what it did.
+    assert!(toasts.ends_with(&["Published topic to origin."]) && !toasts.contains(&"Commit succeeded"), "{toasts:?}");
 
     // A branch with an upstream is pushed to it.
     git(&work, &["checkout", "-q", "main"]);

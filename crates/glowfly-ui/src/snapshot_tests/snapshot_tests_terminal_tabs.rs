@@ -23,7 +23,7 @@ use std::path::PathBuf;
 
 /// The header's buttons, left to right after the strip.
 pub(crate) const BUTTONS: [&str; 6] =
-    ["Clear", "Kill terminal", "More terminal actions", "Terminal settings", "Maximize panel", "Hide panel"];
+    ["Clear", "Kill terminal", "More terminal actions", "Terminal preferences", "Maximize panel", "Hide panel"];
 
 /// A session of the fixture repository numbered `id`, showing `output`.
 fn session(st: &AppState, id: u64, output: &[u8], status: SessionStatus) -> TermSession {
@@ -98,7 +98,7 @@ fn terminal_tabs_dark() {
         assert!(pushed(&h, want), "{label}");
     }
     h.state_mut().1.clear();
-    h.get_by_label("Terminal settings").click();
+    h.get_by_label("Terminal preferences").click();
     h.run();
     assert!(pushed_msg(&h, |m| matches!(m, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Terminal)))));
     h.get_by_label("More terminal actions").click();

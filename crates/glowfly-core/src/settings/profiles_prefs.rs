@@ -60,6 +60,7 @@ profile_prefs! {
     notification_location: Corner,
     behind_alerts: bool,
     desktop_notifications: bool,
+    confirm_push_pull: bool,
     date_locale: String,
     date_format: String,
     date_word_format: String,

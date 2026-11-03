@@ -18,13 +18,13 @@ Button "Commit signing"
 Button "SSH"
 Label "Git"
 Label "Git program"
-RadioButton "Use git from your PATH" [off]
+RadioButton "Use Git from your PATH" [off]
 Label "Not found on your PATH"
 RadioButton "D:\\PortableGit\\cmd\\git.exe" [on]
-Label "git 2.47.0"
+Label "Git 2.47.0"
 Button "Browse…"
 Button "Look again"
-Label "Glowfly runs this git for commits, fetches, pushes…"
+Label "Glowfly runs this Git for commits, fetches, pushes…"
 Link "Learn more"
 Label "Version"
-Label "git 2.47.0 at D:\\PortableGit\\cmd\\git.exe"
+Label "Git 2.47.0 at D:\\PortableGit\\cmd\\git.exe"

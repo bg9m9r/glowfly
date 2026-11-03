@@ -46,7 +46,7 @@ fn prefs_search_dark() {
 fn a_search_with_no_match_says_so() {
     let mut h = harness_sized(general(ThemeChoice::Dark, "zzqx"), true, egui::vec2(1400.0, 820.0));
     h.run();
-    assert!(h.query_by_label("No settings match “zzqx”.").is_some());
+    assert!(h.query_by_label("Nothing matches “zzqx”.").is_some());
     assert!(h.query_by_label("General").is_none_or(|n| n.bounding_box().is_some_and(|b| b.x0 > 250.0)), "no page rows in the nav");
 }
 

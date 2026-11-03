@@ -73,9 +73,9 @@ fn prefs_signing_revoked_key() {
     let mut h = harness(page("ABCDEF0123456789", vec![revoked]), true);
     h.run();
     h.check_snapshot("prefs_signing_revoked");
-    let text = "This key has been revoked, so git can't sign new commits with it. Generate a new key below.";
+    let text = "This key has been revoked, so Git can't sign new commits with it. Generate a new key below.";
     assert!(h.query_by_label(text).is_some());
-    assert!(h.query_by_label("This key has expired, so git can't sign new commits with it.").is_none());
+    assert!(h.query_by_label("This key has expired, so Git can't sign new commits with it.").is_none());
     assert!(h.query_by_label("Extend by 2 years").is_none());
 }
 

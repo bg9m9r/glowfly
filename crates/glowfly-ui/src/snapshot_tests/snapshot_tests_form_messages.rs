@@ -34,7 +34,7 @@ fn new_branch_untouched() {
     h.run();
     h.check_snapshot("new_branch_untouched");
     assert!(h.query_by_label(INVALID).is_none(), "nobody typed it yet");
-    assert!(h.get_by_label("Create").is_disabled());
+    assert!(h.get_by_label("Create branch").is_disabled());
     // Enter on the disabled Create shows the problem.
     h.press_key(Key::Enter);
     h.run();
@@ -54,7 +54,7 @@ fn new_branch_invalid_typed() {
     type_text(&mut h, "bad..name");
     h.check_snapshot("new_branch_invalid_typed");
     assert!(h.query_by_label(INVALID).is_some());
-    assert!(h.get_by_label("Create").is_disabled());
+    assert!(h.get_by_label("Create branch").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

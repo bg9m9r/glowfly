@@ -38,9 +38,18 @@ pub(super) fn binary_file(ui: &mut Ui) {
     empty_state(ui, EmptyIcon::Binary, BINARY_TITLE, BINARY_HINT, &[]);
 }
 
-/// A binary file's diff with its sizes known (a file that isn't an image preview).
-pub(super) fn binary_sizes(ui: &mut Ui, old: Option<u64>, new: Option<u64>) {
-    empty_state(ui, EmptyIcon::Binary, BINARY_TITLE, &sizes_hint(old, new), &[]);
+/// A binary file's diff with its sizes known (a file that isn't an image preview), with `note`
+/// on a line of its own under the sizes (why the hex view isn't shown).
+pub(super) fn binary_sizes(ui: &mut Ui, old: Option<u64>, new: Option<u64>, note: Option<&str>) {
+    let hint = match note {
+        Some(note) => format!(
+            "{}
+{note}",
+            sizes_hint(old, new)
+        ),
+        None => sizes_hint(old, new),
+    };
+    empty_state(ui, EmptyIcon::Binary, BINARY_TITLE, &hint, &[]);
 }
 
 /// "12.4 KB before, 14.1 KB after", "Added, 14.1 KB" or "Deleted, 12.4 KB"; the plain hint

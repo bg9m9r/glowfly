@@ -15,6 +15,14 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 const GHOST: &str = "New branch…";
+
+/// The ghost button: the graph's "New branch…", not the sidebar header's + of the same name.
+fn ghost<'h>(h: &'h egui_kittest::Harness<'_, (AppState, Vec<Msg>)>) -> Option<egui_kittest::kittest::Node<'h>> {
+    h.query_all_by_label(GHOST).find(|n| n.bounding_box().is_some_and(|b| b.x0 > SIDEBAR_RIGHT))
+}
+
+/// Right of the sidebar, where the graph's columns start.
+const SIDEBAR_RIGHT: f64 = 300.0;
 /// main's tip, the checked-out commit (the WIP row is 0).
 const HEAD_ROW: usize = 2;
 
@@ -32,11 +40,11 @@ fn ghost_button_opens_new_branch() {
     let (st, dir) = head_selected("ghost-click");
     let mut h = harness(st, true);
     h.run_steps(4);
-    assert!(h.query_by_label(GHOST).is_some(), "the head anchors the selection");
-    h.get_by_label(GHOST).hover();
+    assert!(ghost(&h).is_some(), "the head anchors the selection");
+    ghost(&h).expect("the ghost button").hover();
     h.run_steps(4);
     h.check_snapshot("graph_ghost_branch_tooltip");
-    h.get_by_label(GHOST).click();
+    ghost(&h).expect("the ghost button").click();
     h.run_steps(4);
     let new_branch = |m: &Msg| matches!(m, Msg::Branch(BranchMsg::NewBranch { start: None, .. }));
     assert!(h.state().1.iter().any(new_branch), "a click opens New branch from the current branch");
@@ -55,18 +63,18 @@ fn ghost_button_hides_off_the_anchor_under_a_menu_and_when_off() {
     assert!(m.focus() != st.snap.as_ref().unwrap().head_oid.unwrap(), "focused elsewhere");
     let mut h = harness(st, true);
     h.run_steps(4);
-    assert!(h.query_by_label(GHOST).is_none(), "the head is only one member of the selection");
+    assert!(ghost(&h).is_none(), "the head is only one member of the selection");
     drop(h);
 
     // A menu open on the head's row.
     let (st, _) = head_selected("ghost-hidden");
     let mut h = harness(st, true);
     h.run_steps(4);
-    assert!(h.query_by_label(GHOST).is_some());
+    assert!(ghost(&h).is_some());
     click(&mut h, pos2(700.0, row_y(HEAD_ROW)), PointerButton::Secondary);
     h.run_steps(2);
     assert!(h.ctx.is_context_menu_open());
-    assert!(h.query_by_label(GHOST).is_none(), "gone while the menu is open");
+    assert!(ghost(&h).is_none(), "gone while the menu is open");
     drop(h);
 
     // The preference off.
@@ -74,7 +82,7 @@ fn ghost_button_hides_off_the_anchor_under_a_menu_and_when_off() {
     st.settings.ghost_refs = false;
     let mut h = harness(st, true);
     h.run_steps(4);
-    assert!(h.query_by_label(GHOST).is_none());
+    assert!(ghost(&h).is_none());
     drop(h);
     remove_fixture(&dir);
 }
@@ -85,10 +93,10 @@ fn a_narrow_column_keeps_the_plus_alone() {
     st.settings.column_widths = ColumnWidths { refs: 200.0, ..Default::default() };
     let mut h = harness(st, true);
     h.run_steps(4);
-    let b = h.get_by_label(GHOST).bounding_box().expect("still offered, by its name");
+    let b = ghost(&h).expect("the ghost button").bounding_box().expect("still offered, by its name");
     assert!(b.width() < 30.0, "the label doesn't fit, so the plus shows alone: {b:?}");
     // Lit under the pointer: a 22 px square at the chips' height and centre, 4 px after them.
-    h.get_by_label(GHOST).hover();
+    ghost(&h).expect("the ghost button").hover();
     h.run_steps(2);
     h.check_snapshot("graph_ghost_branch_narrow");
     drop(h);

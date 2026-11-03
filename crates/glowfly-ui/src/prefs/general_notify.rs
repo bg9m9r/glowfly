@@ -1,5 +1,5 @@
-//! Preferences > General > Notifications (desktop notifications, where notifications show, and
-//! behind alerts) and Commit messages (spell checking).
+//! Preferences > General > Notifications (desktop notifications, where notifications show,
+//! behind alerts and the push and pull confirmations) and Commit messages (spell checking).
 
 use super::{check_row, combo, help, row, section};
 use crate::msg::{Msg, PrefsMsg};
@@ -35,6 +35,9 @@ pub fn notifications(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>
     let (label, check, text) =
         (t.tr("prefs.ui.behind_alerts.label"), t.tr("prefs.ui.behind_alerts.check"), t.tr("prefs.ui.behind_alerts.help"));
     check_row(ui, label, &mut s.behind_alerts, check, Some(text));
+    let (label, check, text) =
+        (t.tr("prefs.ui.confirm_push_pull.label"), t.tr("prefs.ui.confirm_push_pull.check"), t.tr("prefs.ui.confirm_push_pull.help"));
+    check_row(ui, label, &mut s.confirm_push_pull, check, Some(text));
 }
 
 /// The Commit messages group.

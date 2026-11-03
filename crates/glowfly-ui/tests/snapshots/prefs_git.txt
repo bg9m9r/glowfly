@@ -18,20 +18,20 @@ Button "Commit signing"
 Button "SSH"
 Label "Git"
 Label "Git program"
-RadioButton "Use git from your PATH" [on]
-Label "git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
+RadioButton "Use Git from your PATH" [on]
+Label "Git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
 RadioButton "C:\\Users\\ada\\scoop\\apps\\git\\current\\cmd\\git.exe" [off]
-Label "git 2.34.1"
+Label "Git 2.34.1"
 Label "Older than 2.38, so these will be off: sparse checkout, predicting merge conflicts, restacking branches."
 RadioButton "C:\\msys64\\usr\\bin\\git.exe" [disabled, off]
 Label "It didn't answer within 10 seconds."
 Button "Browse…"
 Button "Look again"
 Label "Can't use C:\\Downloads\\git-gui.exe: it starts a window, not git; choose cmd/git.exe (Windows) or bin/git"
-Label "Glowfly runs this git for commits, fetches, pushes…"
+Label "Glowfly runs this Git for commits, fetches, pushes…"
 Link "Learn more"
 Label "Version"
-Label "git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
+Label "Git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
 painted:
   "Older than 2.38, so these will be off: sparse checkout,\npredicting merge conflicts, restacking branches."
   "Can't use C:\\Downloads\\git-gui.exe: it starts a window, not git;\nchoose cmd/git.exe (Windows) or bin/git"

@@ -18,9 +18,9 @@ pub const NO_COMMIT_TAG: &str = "There is no commit to tag yet.";
 /// Why Add worktree is off: HEAD has no commit yet.
 pub const NO_COMMIT_WORKTREE: &str = "Make a first commit before adding a worktree.";
 
-/// One create action: "New branch", disabled while `blocked` is set.
+/// One create action: "New branch…", disabled while `blocked` is set.
 pub struct SectionAction {
-    /// The action without an ellipsis: the +'s accessible name and hover text.
+    /// The action, the +'s accessible name and hover text (usually without an ellipsis).
     pub name: String,
     /// Why it can't run, shown on hover.
     pub blocked: Option<String>,
@@ -37,9 +37,10 @@ impl SectionAction {
         (self.make)()
     }
 
-    /// Its menu item's label: the name with an ellipsis, as it opens a dialog.
+    /// Its menu item's label: the name with an ellipsis, as it opens a dialog (once: a name such
+    /// as "New branch…" carries its own).
     pub fn label(&self) -> String {
-        format!("{}…", self.name)
+        if self.name.ends_with('…') { self.name.clone() } else { format!("{}…", self.name) }
     }
 }
 

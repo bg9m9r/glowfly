@@ -182,7 +182,9 @@ fn widths(ui: &egui::Ui, st: &AppState, (host, slots): (bool, (f32, f32)), room:
     let badged = |key: &'static str| widgets::badged_tool_width(ui, t.tr(key), st.settings.toolbar_labels) + widgets::CARET_W;
     let sync = groups::group_width(&[badged("toolbar.pull.button"), badged("toolbar.push.button")]) + split_gap;
     let right = plain(&["toolbar.search.button", "toolbar.activity.button", "toolbar.refresh.button"]);
-    let pr = if host { gap + groups::group_width(&[slot("toolbar.pr.button", true)]) } else { 0.0 };
+    // PR or MR, by the host: room for the wider.
+    let caption = slot("toolbar.pr.button", true).max(slot("toolbar.pr.button_merge_request", true));
+    let pr = if host { gap + groups::group_width(&[caption]) } else { 0.0 };
     let in_right = |key| slot(key, false) + widgets::TOOL_SPACING;
     let parts = [
         gap + plain(&["toolbar.terminal.button", "toolbar.folder.button"]),

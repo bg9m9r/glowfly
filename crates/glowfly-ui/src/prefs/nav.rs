@@ -121,7 +121,7 @@ fn search_field(ui: &mut Ui, v: &NavView, query: &mut String, focus: &mut bool, 
     });
 }
 
-/// "No settings match “query”."
+/// "Nothing matches “query”."
 fn no_match(ui: &mut Ui, t: Lang, query: &str) {
     ui.horizontal_wrapped(|ui| {
         ui.add_space(INSET);

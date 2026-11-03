@@ -375,8 +375,9 @@ pub(super) fn told(
             st.log(false, text);
         }
         PutBack::Failed | PutBack::NotReady => {
-            let text = failed(t, name, &super::job_errors::reason(t, output));
-            st.toast_action(false, text.clone(), show_action(t, oid, workdir), now);
+            // The toast stays short; git's reason is in the activity log.
+            let text = t.trf("auto_stash.log.failed", &[("name", &name), ("reason", &super::job_errors::reason(t, output))]);
+            st.toast_action(false, failed(t, name), show_action(t, oid, workdir), now);
             st.log(false, text);
         }
     }
