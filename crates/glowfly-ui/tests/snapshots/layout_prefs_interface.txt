@@ -60,6 +60,9 @@ Label "Adds a row above a worktree's checked-out commit while it has uncommitted
 Label "Group worktree tabs"
 CheckBox "Keep a repository's worktree tabs side by side" [on]
 Label "Tabs for worktrees of the same repository (its main folder and every linked worktree) stay next to each other, with a colored line under them. Drag a tab inside its group to reorder it; drop it outside the group to move the whole group."
+Label "New group color"
+ComboBox "New group color"
+Label "Next unused color gives each new group a color no other group has yet, until all eight are taken. To recolor the groups you already have, choose Reset all group colors in a group's menu on the start page."
 Label "Branch visibility"
 ComboBox "Branch visibility"
 Label "Relevant branches keeps the graph to the checked-out branch, its upstream, the default branch and branches with an open pull request."

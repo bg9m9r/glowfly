@@ -4,7 +4,8 @@
 //! colour down its rows, and an empty group's outlined dashed placeholder, which dragging drops
 //! onto, with Add repositories… at its right while nothing is dragged. The group menu (from ⋯, a
 //! right-click or Shift+F10 on the name): Open all, Add repositories…, Rename…,
-//! Color, Move up and Move down, and Remove group in the danger style.
+//! Color, Reset all group colors (off while every group has its default), Move up and Move
+//! down, and Remove group in the danger style.
 
 use super::common::{menu_danger, menu_item, menu_item_if};
 use super::repo_list::small_link;
@@ -14,7 +15,7 @@ use super::theme::{color, type_scale};
 use super::widgets::{self, Icon, menu_columns};
 use crate::msg::{GroupMsg, Msg, RecentMsg};
 use crate::state::AppState;
-use crate::state::repo_groups::members;
+use crate::state::repo_groups::{colours_at_default, members};
 use crate::state::repo_lists::{is_missing, is_open};
 use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
@@ -95,6 +96,8 @@ fn group_menu(ui: &mut egui::Ui, st: &AppState, g: usize, msgs: &mut Vec<Msg>) {
     menu_item(msgs, ui, t.tr("repo_group.menu.rename"), Msg::Groups(GroupMsg::RenameDialog(g)));
     let set = |colour| Msg::Groups(GroupMsg::SetColour { group: g, colour });
     super::repo_colour_menu::hues(ui, t, group.hue(), t.tr("repo_colour.none.tip"), set, msgs);
+    let at_default = colours_at_default(&st.settings).then(|| t.tr("repo_group.menu.reset_colours.blocked"));
+    menu_item_if(msgs, ui, t.tr("repo_group.menu.reset_colours"), at_default, Msg::Groups(GroupMsg::ResetColours));
     separator(ui);
     let first = (g == 0).then(|| t.tr("repo_group.menu.move_up.blocked"));
     let last = (g + 1 >= count).then(|| t.tr("repo_group.menu.move_down.blocked"));
