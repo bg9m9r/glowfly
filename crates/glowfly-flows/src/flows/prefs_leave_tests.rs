@@ -19,7 +19,7 @@ fn asking(st: &AppState) -> bool {
     matches!(st.modal, Some(Modal::ConfirmChoice { .. }))
 }
 
-/// The Identity page with the name edited to " Grace " and ClosePrefs held by the question.
+/// The Commit identity page with the name edited to " Grace " and ClosePrefs held by the question.
 fn closing_edited_identity() -> AppState {
     let mut st = identity();
     git_mut(&mut st).repo_name = " Grace ".into();
@@ -36,7 +36,7 @@ fn closing_an_edited_page_asks_first() {
     match &st.modal {
         Some(Modal::ConfirmChoice { title, body, button, alt, .. }) => {
             assert_eq!(title, "Save your changes?");
-            assert_eq!(body, "Identity has changes that aren't saved yet.");
+            assert_eq!(body, "Commit identity has changes that aren't saved yet.");
             assert_eq!((button.as_str(), alt.as_str()), ("Save", "Discard"));
         }
         _ => panic!("expected the question"),

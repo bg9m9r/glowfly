@@ -49,6 +49,11 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 st.modal = Some(crate::state::Modal::Shortcuts { filter: String::new() });
             }
         }
+        PrefsMsg::FocusSearch => {
+            if let Some(p) = st.prefs.as_mut() {
+                p.focus_search = true;
+            }
+        }
         PrefsMsg::SetDesktopNotifications(on) => super::notify::set_desktop(st, on, fx),
         PrefsMsg::DesktopNotificationFailed { text, confirm } => super::notify::desktop_failed(st, text, confirm, now),
         PrefsMsg::SettingsUnreadable(problem) => super::settings_file::at_start(st, problem, now),

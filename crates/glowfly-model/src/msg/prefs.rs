@@ -65,6 +65,8 @@ pub enum PrefsMsg {
     },
     /// Accessibility's Show all shortcuts: the shortcut sheet over Preferences.
     ShowShortcutSheet,
+    /// Ctrl+F under Preferences: the "Search preferences" field takes the keyboard.
+    FocusSearch,
     /// The Desktop notifications checkbox (the view only asks; update saves).
     SetDesktopNotifications(bool),
     /// The OS refused a desktop notification; `confirm` when it was the one sent on turning them on.
@@ -135,6 +137,7 @@ impl PrefsMsg {
             | Self::SetToolbarLabels(..)
             | Self::SetHighContrast { .. }
             | Self::ShowShortcutSheet
+            | Self::FocusSearch
             | Self::SetDesktopNotifications(..)
             | Self::DesktopNotificationFailed { .. }
             | Self::GitConfigLoaded(..)

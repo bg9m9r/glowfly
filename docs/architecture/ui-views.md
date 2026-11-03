@@ -114,6 +114,15 @@ start with `state/`, `update/` or `ui/`.
 - `repo_menu_list.rs`: the repository menu's and File > Open recent's repository groups, Favorites and Recent, the filter field of a long list, and Remove missing / Clear recent.
 - `repo_row.rs`: one repository row, shared by those menus and the start page: name, parent path, status, and the star and × on hover or focus (on the start page also the grip, a status pill, the key cap and ⋯); in a menu Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
 
+## Preferences (`prefs/`)
+
+- `prefs/nav.rs`: the navigation column: Back, "Search preferences" (Ctrl+F), the pages filtered by the query with their match counts, and the "This repository · name" line.
+- `prefs/index.rs`: the search index, (page, label key, help key) for every row, and the query match; a test fails on a row label missing from it.
+- `prefs/reveal.rs`: the row Enter in the search opened: scrolled to and tinted for 1.2 s (solid under reduce motion).
+- `prefs/form_help.rs`: help lines: 13 px, at most 64 characters a line, long help behind "Learn more".
+- `prefs/general_notify.rs`: General's Notifications and Commit messages groups.
+- `snapshot_tests/snapshot_tests_prefs_search.rs`: the search, the 760 px page in a wide window, Learn more, and D18's light goldens.
+
 ## Snapshot tests
 
 - `snapshot_tests/`: the views' snapshot tests, one file per view group (`mod.rs` lists them), with the shared fixtures in `snapshot_fixtures.rs`; `snapshot_tests_painted.rs` reads what a frame painted inside a widget (fills, shapes, underlined text) for the hover tests.

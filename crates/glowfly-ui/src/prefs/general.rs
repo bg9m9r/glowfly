@@ -1,5 +1,6 @@
-//! Preferences > General, in titled sections: Updates, Git (general_git.rs), Fetching, Graph,
-//! Repositories, Sign-ins, Help and tips, and Diagnostics.
+//! Preferences > General, in titled sections: Updates, Notifications and Commit messages
+//! (general_notify.rs), Git (general_git.rs), Fetching, Graph, Repositories, Sign-ins, Help and
+//! tips, and Diagnostics.
 
 use super::updates_row::UpdatesView;
 use super::{check_row, help, row, section, warn};
@@ -37,6 +38,8 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     let t = s.lang();
     section(ui, t.tr("prefs.general.section.updates"));
     super::updates_row::updates_row(ui, s, &cx.updates, msgs);
+    super::general_notify::notifications(ui, t, s, msgs);
+    super::general_notify::commit_messages(ui, t, s);
     section(ui, t.tr("prefs.general.section.git"));
     super::general_git::git_section(ui, s, git, cx.program, msgs);
     section(ui, t.tr("prefs.general.section.fetching"));

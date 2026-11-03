@@ -72,7 +72,7 @@ pub use super::list_row::{
 };
 pub use chip::quiet_chip;
 pub use field_group::FieldGroup;
-pub use icon::{Icon, paint_icon, paint_icon_sized};
+pub use icon::{Icon, paint_icon, paint_icon_sized, paint_icon_stroked};
 pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;
@@ -117,6 +117,16 @@ pub fn initials(name: &str) -> String {
 /// Preferences navigation row: icon + label in body text, lit through `row_fill` (the selected
 /// page with its accent bar, the focused row with the inset ring).
 pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> Response {
+    nav_row_count(ui, icon, text, selected, None)
+}
+
+/// The navigation icons' size and line width.
+const NAV_ICON: f32 = 16.0;
+const NAV_STROKE: f32 = 1.5;
+
+/// `nav_row` with `count` (a search's matches on the page) at its right end, in 12 px `weak`
+/// (`text` on the selected row's fill).
+pub fn nav_row_count(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool, count: Option<usize>) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), type_scale::BODY + 20.0), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests), and
     // say which is the current page.
@@ -130,7 +140,8 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> R
     row_fill::paint_state(p, rect, row_fill::RowState::of(&resp, selected, resp.hovered()));
     let mut x = rect.left() + 14.0;
     if let Some(icon) = icon {
-        paint_icon(p, pos2(x + 9.0, rect.center().y), icon, if selected { color::strong() } else { color::weak() });
+        let col = if selected { color::strong() } else { color::weak() };
+        paint_icon_stroked(p, pos2(x + 9.0, rect.center().y), icon, col, NAV_ICON, NAV_STROKE);
         x += 30.0;
     }
     p.text(
@@ -140,6 +151,10 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> R
         type_scale::font(type_scale::BODY),
         if selected { color::strong() } else { color::text() },
     );
+    if let Some(n) = count {
+        let col = if selected { color::text() } else { color::weak() };
+        p.text(pos2(rect.right() - 14.0, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), type_scale::font(type_scale::SMALL), col);
+    }
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 

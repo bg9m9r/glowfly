@@ -80,7 +80,7 @@ pub fn rules_rows(ui: &mut Ui, p: &Profile, page: &ProfilesPage, here: Option<&R
         ui.set_max_width(width);
         ui.spacing_mut().item_spacing.y = 4.0;
         if p.folders.is_empty() {
-            ui.add(egui::Label::new(RichText::new(NO_RULES).size(type_scale::SMALL).color(color::faint())).wrap());
+            super::help(ui, NO_RULES);
         }
         for rule in &p.folders {
             rule_row(ui, p, rule, msgs);

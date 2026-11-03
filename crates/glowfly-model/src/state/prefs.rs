@@ -50,7 +50,7 @@ impl PrefPage {
         match self {
             PrefPage::General => t.tr("prefs.nav.general"),
             PrefPage::Git => t.tr("prefs.nav.git"),
-            PrefPage::Profile => t.tr("prefs.nav.profile"),
+            PrefPage::Profile => t.tr("prefs.nav.profiles"),
             PrefPage::Integrations => t.tr("prefs.nav.integrations"),
             PrefPage::Ui => t.tr("prefs.nav.ui"),
             PrefPage::Accessibility => t.tr("prefs.nav.accessibility"),
@@ -61,7 +61,7 @@ impl PrefPage {
             PrefPage::Terminal => t.tr("prefs.nav.terminal"),
             PrefPage::Signing => t.tr("prefs.nav.signing"),
             PrefPage::Ssh => t.tr("prefs.nav.ssh"),
-            PrefPage::RepoIdentity => t.tr("prefs.nav.identity"),
+            PrefPage::RepoIdentity => t.tr("prefs.nav.commit_identity"),
             PrefPage::RepoHooks => t.tr("prefs.nav.hooks"),
             PrefPage::RepoTracker => t.tr("prefs.nav.tracker"),
             PrefPage::RepoLfs => t.tr("prefs.nav.lfs"),
@@ -197,6 +197,10 @@ pub struct PrefsState {
     pub int_adding: bool,
     /// git config's diff and merge tools for the External tools page; None until read.
     pub git_tools: Option<glowfly_core::external_tools::git_config::GitTools>,
+    /// The "Search preferences" field's text: the navigation shows only the pages it matches.
+    pub search: String,
+    /// The search field takes the keyboard on the next frame (Ctrl+F).
+    pub focus_search: bool,
 }
 
 impl PrefsState {
@@ -227,6 +231,8 @@ impl PrefsState {
             save_error: None,
             int_adding: false,
             git_tools: None,
+            search: String::new(),
+            focus_search: false,
         }
     }
 }

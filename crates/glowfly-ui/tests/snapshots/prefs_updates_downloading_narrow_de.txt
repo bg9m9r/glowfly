@@ -3,10 +3,11 @@ Label "Glowfly 0.1.0"
 ProgressIndicator
 Button "Glowfly 0.3.0 wird heruntergeladen…"
 Button "Zurück"
+TextInput "Einstellungen durchsuchen"
 Label "Einstellungen"
 Button "Allgemein" [selected]
 Button "Git"
-Button "Profil"
+Button "Profile"
 Button "Integrationen"
 Button "Darstellung"
 Button "Barrierefreiheit"
@@ -26,11 +27,28 @@ Button "Jetzt prüfen" [disabled]
 Label "Wird heruntergeladen… 40 % (4.0 MB von 10.0 MB)"
 ProgressIndicator = 40
 Button "Abbrechen"
-Label "Glowfly fragt einmal täglich die Releases-API von GitHub nach dem neuesten Release seines Repositorys. GitHub sieht dabei deine IP-Adresse und die Version von Glowfly, aber nichts über deine Repositorys. Downloads werden mit den veröffentlichten SHA-256-Prüfsummen des Releases abgeglichen. Die Builds von Glowfly sind noch nicht codesigniert. Das bestätigt also, dass ein Download dem entspricht, was das Release veröffentlicht hat, aber nicht, wer es veröffentlicht hat."
+Label "Glowfly fragt einmal täglich die Releases-API von…"
+Link "Mehr erfahren"
 Label "Nach einem Update:"
 RadioButton "In der Statusleiste auf Neuerungen hinweisen" [on]
 RadioButton "Versionshinweise öffnen" [off]
 RadioButton "Nichts anzeigen" [off]
+Label "Benachrichtigungen"
+Label "Desktop-Benachrichtigungen"
+CheckBox "Systembenachrichtigungen zeigen, während Glowfly im Hintergrund ist" [off]
+Label "Abgeschlossene Vorgänge und Hinweise bei…"
+Link "Mehr erfahren"
+Label "Position der Hinweise"
+ComboBox "Position der Hinweise"
+Label "Hinweis bei Rückstand"
+CheckBox "Melden, wenn der Branch hinter seinem Upstream zurückliegt" [on]
+Label "Meldet nach einem Abruf im Hintergrund, wenn der…"
+Link "Mehr erfahren"
+Label "Commit-Nachrichten"
+Label "Rechtschreibprüfung"
+CheckBox "Rechtschreibung in Commit-Nachrichten prüfen" [on]
+Label "Unterstreicht Tippfehler in Zusammenfassung und…"
+Link "Mehr erfahren"
 Label "Git"
 Label "Git-Programm"
 Label "Wird geprüft…"
@@ -42,14 +60,16 @@ Label "Wird als Name des ersten Branches vorgeschlagen, wenn du ein Repository a
 Label "Abrufen"
 Label "Intervall für Auto-Abruf"
 SpinButton = "0 Min." = 0
-Label "Wie viele Minuten Glowfly zwischen zwei Abrufen aller Remotes des geöffneten Repositorys im Hintergrund wartet, von 1 bis 60. 0 schaltet das Abrufen im Hintergrund aus."
+Label "Wie viele Minuten Glowfly zwischen zwei Abrufen…"
+Link "Mehr erfahren"
 Label "In Repositorys, die Dateien in Git LFS speichern, lädt es auch die LFS-Dateien des ausgecheckten Commits herunter."
 Label "Jeder Abruf kontaktiert alle Remotes; bei vielen Remotes summieren sich kurze Intervalle."
 Label "Automatisch bereinigen"
 CheckBox "Beim Abrufen Remote-Tracking-Branches entfernen, die es auf dem Remote nicht mehr gibt" [on]
 Label "Submodule"
 CheckBox "Submodule nach Checkout, Pull, Merge, Rebase und Reset aktualisieren" [off]
-Label "Führt git submodule update --init --recursive aus, wenn einer dieser Vorgänge gelingt, und lässt jedes Submodul aus, in dem dabei Commits verloren gingen, die kein Branch und kein Tag enthält. Ein Repository kann das im Menü seines Abschnitts SUBMODULES abweichend festlegen."
+Label "Führt git submodule update --init --recursive…"
+Link "Mehr erfahren"
 Label "Graph"
 Label "Anfängliche Commits im Graphen"
 SpinButton = "2000" = 2000
@@ -60,7 +80,8 @@ CheckBox "Weitere Commits laden, wenn du nahe ans Ende des Graphen scrollst" [on
 Label "Wenn aus, fügt nur der Link zum Nachladen im Graphen Commits über das Limit hinaus hinzu."
 Label "Ganzen Verlauf durchsuchen"
 CheckBox "Große Repositorys im Hintergrund indizieren, damit Suche und Filter jeden Commit erfassen" [on]
-Label "Belegt etwa 300 Byte Speicher pro Commit, solange das Repository offen ist. Aus: Die Suche umfasst die geladenen Commits und lädt ältere bei Bedarf nach."
+Label "Belegt etwa 300 Byte Speicher pro Commit, solange…"
+Link "Mehr erfahren"
 Label "Repositorys"
 Label "Letztes Repository öffnen"
 CheckBox "Beim Start von Glowfly die Tabs vom letzten Mal wieder öffnen" [on]
@@ -69,22 +90,27 @@ CheckBox "Das Arbeitsverzeichnis aktualisieren, sobald sich Dateien außerhalb v
 Label "Wenn aus, aktualisiert Glowfly, sobald sein Fenster wieder den Fokus erhält oder du F5 drückst."
 Label "Konfliktprüfung"
 CheckBox "Den aktuellen Branch auf Konflikte mit seinem Upstream oder dem Standard-Branch prüfen" [on]
-Label "Läuft nach jedem Aktualisieren und Abrufen mit git merge-tree, ohne deine Dateien anzufassen. Benötigt git 2.38 oder neuer. Die Branch-Menüs können auch dann bei Bedarf prüfen, wenn dies aus ist."
+Label "Läuft nach jedem Aktualisieren und Abrufen mit…"
+Link "Mehr erfahren"
 Label "Dateien löschen"
 CheckBox "Gelöschte Dateien in den Papierkorb verschieben" [on]
-Label "Wenn aus, entfernen Löschen… und das Verwerfen einer nicht verfolgten Datei sie sofort von der Festplatte, und sie lässt sich nicht wiederherstellen."
+Label "Wenn aus, entfernen Löschen… und das Verwerfen…"
+Link "Mehr erfahren"
 Label "Nicht committete Änderungen"
 CheckBox "Vor Checkout, Pull, Merge, Rebase, Cherry-Pick und Revert immer stashen" [off]
-Label "Glowfly stasht deine Änderungen, führt den Vorgang aus und holt sie zurück, wenn er endet. Wenn aus, fragt es jedes Mal. Ein Hard Reset fragt immer."
+Label "Glowfly stasht deine Änderungen, führt den…"
+Link "Mehr erfahren"
 Label "Glowfly-Links"
 Label "Wird geprüft…"
 Button "Registrieren" [disabled]
 Button "Registrierung aufheben" [disabled]
-Label "Damit öffnen Links aus einem Browser oder Chat ein Repository, einen Branch, einen Commit oder ein Tag in Glowfly. Betrifft nur dein Benutzerkonto."
+Label "Damit öffnen Links aus einem Browser oder Chat…"
+Link "Mehr erfahren"
 Label "Anmeldungen"
 Label "Anmeldungen merken"
 CheckBox "In Glowfly eingegebene HTTPS-Anmeldungen merken" [on]
-Label "Sobald Git einen in Glowfly eingegebenen Benutzernamen und ein Passwort oder Token akzeptiert, wird die Anmeldung mit dem Credential-Helper von Git gespeichert. Ist kein Helper eingerichtet, richtet Glowfly den Anmeldedatenspeicher des Systems für Git ein. Unter Linux ohne Schlüsselbund-Helper behält stattdessen der Cache von Git sie jeweils 15 Minuten nach der letzten Verwendung im Arbeitsspeicher."
+Label "Sobald Git einen in Glowfly eingegebenen…"
+Link "Mehr erfahren"
 Label "Gespeicherte Verbindungen"
 Button "Gespeicherte Tokens löschen" [disabled]
 Button "Auch von Git Credential Manager abmelden" [disabled]
@@ -99,10 +125,15 @@ Label "Weggeklickte Tipps und die einmaligen Hinweise erscheinen wieder."
 Label "Diagnose"
 Label "Erweiterte Protokollierung"
 CheckBox "Die Git-Befehle, die Glowfly ausführt, mit ihrer Dauer ins Aktivitätsprotokoll schreiben" [off]
-Label "Schreibt außerdem die Informations- und Debug-Meldungen von Glowfly ins Fehlerprotokoll. Lass es aus, solange du kein Problem untersuchst: Es fügt für jeden Git-Befehl eine Zeile hinzu, auch für Aktualisierungen im Hintergrund."
+Label "Schreibt außerdem die Informations- und…"
+Link "Mehr erfahren"
 Label "Bildzeiten"
 CheckBox "In einer Ecke des Fensters anzeigen, wie lange jedes Bild dauert" [off]
-Label "Das letzte, das durchschnittliche und das langsamste der letzten Bilder, in Millisekunden, um ein langsames Fenster aufzuspüren. Bilder ab 50 ms kommen in jedem Fall ins Leistungsprotokoll."
+Label "Das letzte, das durchschnittliche und das…"
+Link "Mehr erfahren"
 Label "Protokolle"
 Button "Protokollordner öffnen"
-Label "activity.jsonl bewahrt das Aktivitätsprotokoll über Sitzungen hinweg auf, errors.log enthält Warnungen, Fehler und Abstürze, und performance.log listet Vorgänge, die eine halbe Sekunde oder länger gedauert haben."
+Label "activity.jsonl bewahrt das Aktivitätsprotokoll…"
+Link "Mehr erfahren"
+painted:
+  "Unten links"
