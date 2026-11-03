@@ -130,6 +130,7 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Skip glowfly-flows explicitly in `dead_pub` (it is test-only; today its modules are read as test code only through their `cfg(test)` declarations)
 - The English-text check misses text in closures after `&`, `!` or `*` and inside a constructor (`Some(|v| ..)`), and over-counts code braces in asserts
 - `contrast::dimmed` stays off `DEAD_PUB` only because `Inks::dimmed` shares its name; only tests use it
+- `architecture_docs` counts a bare file name (`blame.rs`, `github.rs`, `mod.rs`) for every file of that name, so about 160 files pass on another file's line; resolve a bare name by the doc's crate (its H1 path) and the nearest `##` folder heading instead
 
 ### Large test repositories (make-perf-repos.ps1)
 

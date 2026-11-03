@@ -22,6 +22,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `source_checks/dependencies.rs`: the crate graph points one way, read from `cargo tree` for the host: the model and the runner have no egui, eframe, winit or wgpu (normal, build or dev), glowfly-ui has no glowfly-runner (not even as a dev-dependency), glowfly-flows has no egui, and `-p glowfly`'s normal and build edges turn on no `test-support` or `testkit` and pull in no egui_kittest; each check first asserts crates its tree must name, so unreadable output fails; skipped when cargo can't be started.
 - `source_checks/access_names.rs`: every text field, combo, checkbox, radio button, slider and button in the text snapshots has a name, not opening with a symbol; `access_names_allow.txt` counts today's exceptions per snapshot and only shrinks.
 - `source_checks/dead_pub.rs`: the `pub fn`, `const`, `static`, `type`, `struct` and `enum` items of glowfly-model, glowfly-runner and glowfly-ui are named in the non-test code of some other file (a type may instead be named by a `pub` line of its own file); `DEAD_PUB` holds the exceptions and only shrinks.
+- `source_checks/architecture_docs.rs`: every non-test source file is named in `docs/architecture/` (a backticked path ending with its path, the `runner/` and `ui/` shorthands, or a `mod.rs`'s folder); `UNDOCUMENTED` lists the exceptions and only shrinks.
 
 ## View checks (`crates/glowfly-ui/tests/view_checks/`, one binary)
 
