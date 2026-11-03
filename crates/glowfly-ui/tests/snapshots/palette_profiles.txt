@@ -1,7 +1,7 @@
 Dialog
   Label "Switch profile"
   TextInput "Find a profile to switch to" [focused]
-  Button "Work"
+  Button "Work" [selected]
   Button "Personal"
   Button "Open source"
   Label "Up/Down to choose, Enter to switch, Backspace or Esc to go back"

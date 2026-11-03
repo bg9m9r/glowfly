@@ -13,10 +13,13 @@ use crate::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked}
 use crate::state::gitflow_resume::{ready_text, waiting_text};
 use crate::state::worktree_branches::Elsewhere;
 use crate::state::{AppState, PrefPage};
+use crate::ui::theme::sizes::ControlSize;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::banner::{self, Banner, BannerKind};
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
+use crate::ui::widgets::quiet_target::{self, State};
+use eframe::egui::{self, Align, Align2, CornerRadius, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use git2::Oid;
 use glowfly_core::gitflow::{Branches, FlowBranch, FlowGroup, GitFlowSettings, grouped};
 use glowfly_core::i18n::Lang;
@@ -110,14 +113,15 @@ fn tip(snap: &Snapshot, name: &str) -> Option<Oid> {
     snap.locals.iter().find(|b| b.name == name).and_then(|b| b.oid)
 }
 
-/// A clickable row with a hover fill; the caller paints into it and adds buttons over it.
+/// A clickable row inset in the panel's margin, a Regular quiet target on `radius::SM`: lit
+/// while the pointer is anywhere on it (over its buttons too), ringed while focused. The caller
+/// paints into it and adds buttons over it.
 fn row(ui: &mut Ui, label: &str) -> (Rect, egui::Response) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 30.0), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
-    if ui.rect_contains_pointer(rect) {
-        ui.painter().rect_filled(rect, 4.0, color::hover());
-    }
+    let state = State { hovered: ui.rect_contains_pointer(rect), ..State::of(&resp, false) };
+    quiet_target::paint(ui.painter(), rect, CornerRadius::same(radius::SM), ControlSize::Regular, state);
     (rect, resp)
 }
 

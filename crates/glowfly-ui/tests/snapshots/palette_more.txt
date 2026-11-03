@@ -1,6 +1,6 @@
 Dialog
   TextInput "Type a command, branch or tag name" = "tab" [focused]
-  Button "New tab"
+  Button "New tab" [selected]
   Button "Move tab right"
   Button "Close tab"
   Button "Rename tab…"

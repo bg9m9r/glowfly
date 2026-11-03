@@ -1,7 +1,7 @@
 Dialog
   Label "Switch branch"
   TextInput "Find a branch or tag to switch to" [focused]
-  Button "login-page"
+  Button "login-page" [selected]
   Button "search"
   Button "origin/feature/sidebar"
   Button "tag v0.1.0"

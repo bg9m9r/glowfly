@@ -1,7 +1,7 @@
 Dialog
   TextInput "Type a command, branch or tag name" [focused]
   Label "Recent"
-  Button "Theme: Dawn"
+  Button "Theme: Dawn" [selected]
   Button "Refresh"
   Label "Suggested"
   Button "Stage all files"

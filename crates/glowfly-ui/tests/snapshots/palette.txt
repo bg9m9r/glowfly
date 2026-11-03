@@ -1,7 +1,7 @@
 Dialog
   TextInput "Type a command, branch or tag name" [focused]
   Label "Suggested"
-  Button "Stage all files"
+  Button "Stage all files" [selected]
   Button "Create branch at HEAD…"
   Label "All commands"
   Button "Add remote…"

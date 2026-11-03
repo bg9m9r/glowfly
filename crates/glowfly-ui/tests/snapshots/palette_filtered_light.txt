@@ -1,7 +1,7 @@
 Dialog
   TextInput "Type a command, branch or tag name" = "ch" [focused]
   Button "Checkout search"
-  Button "Check for updates"
+  Button "Check for updates" [selected]
   Button "Checkout login-page"
   Button "Checkout tag v0.1.0"
   Button "Stash changes"

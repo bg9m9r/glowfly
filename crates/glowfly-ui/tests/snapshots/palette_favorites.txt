@@ -1,6 +1,6 @@
 Dialog
   TextInput "Type a command, branch or tag name" = "open" [focused]
-  Button "Open docs"
+  Button "Open docs" [selected]
   Button "Open web-app"
   Button "Open dashboard"
   Button "Open api-server"

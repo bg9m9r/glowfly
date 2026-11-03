@@ -4,7 +4,7 @@
 
 use super::common::{menu_item, menu_item_if, state_color};
 use super::theme::color;
-use super::widgets::{self, Part, truncate::full_tip};
+use super::widgets::{self, Part, row_fill, truncate::full_tip};
 use crate::msg::{DashboardMsg, Msg};
 use crate::state::AppState;
 use crate::state::dashboard::{Dashboard, TargetData, pr_label, target_name};
@@ -76,9 +76,7 @@ fn two_line_row(ui: &mut Ui, title: &str, sub: &str, right: (&str, Color32), slo
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 40.0), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, title));
     let p = ui.painter_at(rect);
-    if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    row_fill::paint_state(&p, rect, row_fill::RowState::of(&resp, false, resp.hovered()));
     let top = rect.top() + 12.0;
     let g = p.layout_no_wrap(right.0.to_owned(), type_scale::font(type_scale::SMALL), right.1);
     let right_w = g.size().x + widgets::PAD_X + 8.0 + slot;
