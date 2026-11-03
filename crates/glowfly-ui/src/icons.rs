@@ -217,7 +217,7 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.add(egui::Shape::convex_polygon(vec![neck + n, tip, neck - n], s.color, Stroke::NONE));
         }
         // Painted on the pixel grid by `widgets::paint_icon_sized` (`icon_snap::paint_plus`).
-        Icon::Plus => {}
+        Icon::Plus | Icon::Minus => {}
         Icon::Issue => {
             p.circle_stroke(c, 6.0, s);
             p.circle_filled(c, 1.8, s.color);

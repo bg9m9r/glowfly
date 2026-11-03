@@ -1,5 +1,5 @@
 //! Text cut with "…" and its whole text on hover: the WIP lists' headers in German (narrow, with
-//! the more-actions menu, and wide), graph columns at their narrowest, the filtered graph's
+//! the more-actions menu, and wide) and in a narrow English panel (icon-only actions), graph columns at their narrowest, the filtered graph's
 //! header, a cut commit message, a long issue title in the sidebar, the status bar's update
 //! chip, the repository sync dialog's names, and the notes that wrap instead (a remote without
 //! branches, a Git LFS pointer in an untrusted repository). Shares the fixtures of the other
@@ -90,6 +90,26 @@ fn wip_header_german_wide() {
     h.check_snapshot("wip_header_german_wide");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// The WIP headers in English in a narrow panel, dark and light: Stage all is a Small
+/// icon-only square (still named "Stage all") beside the whole title, and the more-actions
+/// button stays.
+#[test]
+fn wip_header_icons() {
+    for (theme, dark, name) in [(ThemeChoice::Dark, true, "wip_header_icons"), (ThemeChoice::Light, false, "wip_header_icons_light")] {
+        let (mut st, dir) = with_repo(theme, &format!("truncate-{name}"));
+        st.settings.panel_sizes.details = Some(250.0);
+        let en = Lang::En;
+        let mut h = harness(st, dark);
+        h.run();
+        let stage = h.get_by_label(en.tr("details.wip.stage_all.button")).bounding_box().expect("bounds");
+        assert_eq!((stage.width(), stage.height()), (24.0, 24.0), "Stage all is a Small square: {stage:?}");
+        assert!(h.query_by_label(en.tr("details.wip.more.tip")).is_some());
+        h.check_snapshot(name);
+        drop(h);
+        remove_fixture(&dir);
+    }
 }
 
 const LONG_AUTHOR: &str = "Augusta Ada King-Noel";
