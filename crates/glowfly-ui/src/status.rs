@@ -1,8 +1,11 @@
 //! The bottom status bar: the hosting service and tracker with the counts their sidebar lists
 //! show (`state::status_counts`), the job running (or a load, or a fresh build of the search's
 //! whole-history index), and the zoom and Show toolbar items (toasts are in `toasts.rs`, the
-//! logs panel in `activity_log.rs`). Its parts are joined by "·" only when present.
+//! logs panel in `activity_log.rs`). Its parts are joined by "·" only when present. With
+//! Announcements on (Preferences > Accessibility) the job's text is a live region, so screen
+//! readers say when a job starts or begins to cancel (its outcome is a toast's).
 
+use super::access::{self, Live};
 use super::common::status_label_ui;
 use super::theme::color;
 use super::theme::sizes::ControlSize;
@@ -12,6 +15,11 @@ use crate::state::AppState;
 use crate::state::status_counts::{issues_text, prs_text};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
+
+/// The job's text's accessibility key while it is announced.
+pub(crate) fn job_key() -> egui::Id {
+    egui::Id::new("status-job")
+}
 
 /// The size of the bar's controls (Cancel): quiet Compact.
 const CONTROL: ControlSize = ControlSize::Compact;
@@ -98,7 +106,10 @@ fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         ui.label(RichText::new(crate::state::job_stop::progress_text(t, p)).color(color::faint()));
     }
     let text = if st.job_cancelling() { t.trf("status.job.cancelling", &named) } else { format!("{label}…") };
-    ui.label(RichText::new(text).color(color::weak()));
+    let line = ui.label(RichText::new(text).color(color::weak()));
+    if st.settings.a11y.announce_jobs {
+        access::announce(&line, job_key(), Live::Polite);
+    }
     ui.add(egui::Spinner::new().size(12.0));
 }
 

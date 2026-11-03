@@ -1,4 +1,4 @@
-window 760x1500
+window 760x1640
 Label "Glowfly 0.1.0"
 Button "Zurück"
 Label "Einstellungen"
@@ -37,6 +37,10 @@ Label "Tastenkürzel"
 Button "Tastenkürzel ändern…"
 Button "Alle Tastenkürzel zeigen"
 Label "Jeder Befehl kann eine Taste bekommen."
+Label "Screenreader"
+Label "Ansagen"
+CheckBox "Ansagen, Melden, wenn Arbeit im Hintergrund fertig ist oder fehlschlägt" [on]
+Label "Wird von Screenreadern wie NVDA, Sprachausgabe und VoiceOver vorgelesen."
 Label "Zeiten"
 Label "Benachrichtigungen bleiben"
 ComboBox "Benachrichtigungen bleiben"
@@ -64,5 +68,6 @@ painted:
   "Auch wenn das System weniger Bewegung wünscht"
   "Textcursor blinken lassen"
   "Standard"
+  "Melden, wenn Arbeit im Hintergrund fertig ist oder fehlschlägt"
   "Standard (5 s)"
   "Kurz (0,4 s)"

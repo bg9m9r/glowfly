@@ -9,6 +9,7 @@ use super::*;
 pub(crate) use crate::snapshot_fixtures::*;
 
 pub(super) mod snapshot_tests_activity;
+pub(super) mod snapshot_tests_announce;
 pub(super) mod snapshot_tests_askpass;
 pub(super) mod snapshot_tests_auto_stash;
 pub(super) mod snapshot_tests_banners;
