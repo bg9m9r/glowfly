@@ -111,7 +111,7 @@ pub struct ViewGroup {
 }
 
 impl ViewGroup {
-    /// The button's label: "Inline · Hunks", or "View" without rows.
+    /// The button's label: "Inline · Changes only", or "View" without rows.
     pub fn label(&self, t: Lang) -> String {
         if !self.rows {
             return t.tr("diff.header.view.button").to_owned();
@@ -153,14 +153,7 @@ pub struct Actions {
     pub diff_tool: Option<Option<&'static str>>,
 }
 
-impl Actions {
-    /// Whether any labelled action (Restore, Open, Show in folder) shows.
-    pub fn labelled(&self) -> bool {
-        self.restore.is_some() || self.open.is_some()
-    }
-}
-
-/// The header's one filled button.
+/// The header's Stage file or Unstage file, at its trailing edge.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Primary {
     Stage(String),

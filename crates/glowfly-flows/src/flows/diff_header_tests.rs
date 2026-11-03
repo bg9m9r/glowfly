@@ -93,7 +93,7 @@ fn an_unstaged_text_diff() {
     assert_eq!(m.primary, Some(Primary::Stage("src/app.txt".into())));
     assert_eq!(m.actions.open, Some(OpenAction { path: "src/app.txt".into(), missing: None }));
     assert!(m.actions.restore.is_none() && m.actions.diff_tool.is_some());
-    assert_eq!(m.view.unwrap().label(Lang::En), "Inline \u{b7} Hunks");
+    assert_eq!(m.view.unwrap().label(Lang::En), "Inline \u{b7} Changes only");
     st.settings.diff_layout = DiffLayout::Split;
     st.settings.diff_mode = DiffMode::WholeFile;
     let v = model(&st).unwrap().view.unwrap();

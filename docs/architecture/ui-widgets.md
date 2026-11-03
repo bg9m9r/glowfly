@@ -69,6 +69,7 @@ source file, update its line here.
 - `needs_you.rs`: the coral "needs you" badges and Small control, always with the warning mark and the only reader of the coral.
 - `widgets/severity.rs`: the error, warning and information marks.
 - `widgets/hint_row.rs`: the tip row, a quiet accent wash with the info mark, one sentence, the tip's button and a × menu (Don't show this again, Turn off tips).
+- `widgets/underline_tab.rs`: a row of underline tabs (the pull request view's): quiet targets, the selected one marked by a 2 px accent line on the row's border line.
 - `widgets/form_message.rs`: a form's messages, under a field once it was edited or a submit was tried (`state/touched.rs`), or for the whole form in a tinted box.
 - `tests/view_checks/message_styles.rs` checks banners and every dialog's messages.
 

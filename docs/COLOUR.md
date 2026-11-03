@@ -109,7 +109,7 @@ Views never name a hex value: they read the active palette through `color::text(
 
 | Token | Theme key | What it is for |
 |---|---|---|
-| accent | `accent` | The theme's own colour: the lantern gold in Dusk, the iris in Dawn, the cobalt in Graphite and Porcelain, the sea glass in Midnight and Mist, the lattice green in the Garden pair and high contrast. Focus rings, links, checked controls, the selected row's bar, the active tab's line, column-resize lines, header highlights. |
+| accent | `accent` | The theme's own colour: the lantern gold in Dusk, the iris in Dawn, the cobalt in Graphite and Porcelain, the sea glass in Midnight and Mist, the lattice green in the Garden pair and high contrast. Selection, focus and the one filled primary of a surface (see "The accent" under Rules): focus rings, checked controls, the selected row's bar, the active tab's line, column-resize lines, header highlights; and links inside prose. |
 | primary | `primary`, `primary_border`, `primary_off` | The fill and edge of primary buttons. |
 | primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and on the dark themes' accents, white on the light ones'). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
@@ -302,6 +302,38 @@ indigo (hue 275, its gold's complement); the rest hue 255. A theme file that set
 4. `code_sel_dim` at least 0.05 from each row colour and 0.055 from `code_sel`.
 
 ## 2. Rules
+
+### The accent
+
+The accent does three jobs and no others:
+
+- **Selection**: the selected row's bar and wash, the selected tab's underline (the pull request
+  view's tabs are an underline, never a filled block), checked controls.
+- **Focus**: the focus ring.
+- **The primary**: the one filled button of a surface (a dialog, a panel's header, a form, a
+  card), placed at its trailing edge, after Cancel and any other choice. A surface has at most
+  one, and many have none (the diff header's Stage file is a small secondary button). Other
+  actions are secondary or quiet, and a surface's rarer actions go behind a ⋯ menu (the rebase
+  editor's Restore original order).
+
+Besides those:
+
+- Links are accent text, underlined on hover, and appear only inside prose (a sentence or a
+  help line). A link that is an action of its own gets its own line (the welcome's Preferences
+  link) or becomes a button.
+- Paths, names and counts are never accent: a file's path, a branch's name and a tab's count
+  take the text colours.
+- Success and "added" use the semantic greens (`added`), never the accent, even where the
+  accent is green.
+- A form's or card's marks are `weak`, not accent (the new code comment's icon), and a card's
+  frame is `border` (its field's focus ring is still the accent).
+- The lantern gold of Dusk and Dawn is reserved for D19 (#456); until then it is Dusk's accent
+  and does only the three jobs above.
+
+The sign-off check for a view's goldens: count the filled accent shapes on each surface. There
+is at most one, and it sits at the surface's trailing edge.
+
+### Everything else
 
 - One job per colour: each colour means one thing (with the related uses listed above), and
   no two families share a colour for different meanings. Each kind keeps to its forms: status

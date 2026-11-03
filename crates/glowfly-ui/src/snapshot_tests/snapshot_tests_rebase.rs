@@ -141,6 +141,17 @@ fn header_buttons_and_esc() {
     h.get_by_label("Start rebase").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }))));
+    // Restore original order is in ⋯, and off while the list is as it was.
+    h.get_by_label("More rebase actions").click();
+    h.run();
+    assert!(h.get_by_label("Restore original order").is_disabled(), "nothing has changed yet");
+    h.press_key(Key::Escape);
+    h.run();
+    h.state_mut().1.clear();
+    h.state_mut().0.session.rebase.view.as_mut().unwrap().items.swap(0, 1);
+    h.run();
+    h.get_by_label("More rebase actions").click();
+    h.run();
     h.get_by_label("Restore original order").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::RebaseReset))));

@@ -67,9 +67,8 @@ Label "275189b"
 Button "Previous change" [disabled]
 Button "Next change" [disabled]
 Label "1 / 1"
-Button "Inline · Hunks"
+Button "Inline · Changes only"
 Button "More file actions"
-Button "Open in external diff tool"
 Button "Close diff"
 Button "Revert 1 line"
 Document "Diff of app.txt" = "pp\nfix\nfix the build\non"

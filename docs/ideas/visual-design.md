@@ -167,3 +167,8 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
   but judge the tab swatch beside Mist's accent
 - The branch hue Olive (#9ea827) is vivid and passes the zone, but its name sits oddly with the
   no-olive rule; consider renaming it (Lime is taken; Chartreuse?)
+
+### Accent discipline (D10)
+
+- Does the tonal accent chip of the diff's "Your unposted comment" marker (#408) fit the accent rule (selection, focus, one primary), or should it go neutral?
+- Disabled secondary buttons draw no frame, so they can read as plain text (the PR comment box's Add single comment); keep a faint frame on them app-wide

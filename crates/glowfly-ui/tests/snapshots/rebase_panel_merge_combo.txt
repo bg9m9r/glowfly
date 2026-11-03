@@ -68,7 +68,7 @@ Label "Write a summary for the commit."
 Unknown "Central view"
 Button "Start rebase" [disabled]
 Button "Cancel"
-Button "Restore original order"
+Button "More rebase actions"
 Label "Interactive rebase"
 Label "Rebasing 3 commits and 1 merge of main onto dcc73f3 Initial commit"
 Label "A squash or fixup must follow the commit it melds into, not a merge, label or reset step."
