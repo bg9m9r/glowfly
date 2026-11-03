@@ -13,7 +13,8 @@ use crate::state::AppState;
 use crate::state::lines::LineClick;
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::theme::color::Palette;
-use glowfly_core::repo::{self, LoadOptions};
+use glowfly_core::intraline;
+use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::{ColourPalette, DiffLayout, ThemeChoice};
 use std::time::Instant;
 
@@ -26,21 +27,29 @@ fn show(name: &str, st: AppState, p: Palette) {
 }
 
 /// `with_diff` with a deleted, a renamed (staged) and a new file besides app.txt and the
-/// README, `-fix` and `+new line` selected.
+/// README; app.txt's edit pairs `-fix the build`/`+fixed the build` and `-log it`/`+logs it`
+/// (the changed words filled) and adds `+new line`, of which `-log it` and `+new line` are
+/// selected, so the diff shows plain, selected and changed-word lines on both sides.
 fn diff(layout: DiffLayout, p: Palette, name: &str) {
     let (mut st, dir) = with_diff(layout, name);
     st.settings.colour_palette = ColourPalette::ColourBlind;
+    std::fs::write(dir.join("app.txt"), "app\nfix the build\nlog it\n").unwrap();
     std::fs::write(dir.join("old-notes.txt"), "old\n").unwrap();
-    git(&dir, &["add", "old-notes.txt"], D);
+    git(&dir, &["add", "app.txt", "old-notes.txt"], D);
     git(&dir, &["commit", "-q", "-m", "Keep old notes"], D);
+    std::fs::write(dir.join("app.txt"), "app\nfixed the build\nlogs it\nnew line\n").unwrap();
     std::fs::remove_file(dir.join("old-notes.txt")).unwrap();
     git(&dir, &["mv", "login.txt", "sign-in.txt"], D);
     std::fs::write(dir.join("notes.txt"), "notes\n").unwrap();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    let target = DiffTarget::Unstaged("app.txt".into());
+    let mut d = repo::load_diff(&dir, &target).unwrap();
+    d.intraline = intraline::intraline(&d);
+    st.session.diff.view = Some((target, d.into()));
     let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
-    let (fix, new_line) = (at('-', "fix"), at('+', "new line"));
-    for (line, how) in [(fix, LineClick::Only), (new_line, LineClick::Toggle)] {
+    let (log, new_line) = (at('-', "log it"), at('+', "new line"));
+    for (line, how) in [(log, LineClick::Only), (new_line, LineClick::Toggle)] {
         crate::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
     }
     show(name, st, p);

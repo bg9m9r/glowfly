@@ -62,31 +62,33 @@ pub struct LaneLine {
 
 fn edge(p: &egui::Painter, a: egui::Pos2, b: egui::Pos2, line: LaneLine) {
     let stroke = Stroke::new(line.width, line.colour);
-    let points = if (a.x - b.x).abs() < 0.5 {
-        vec![a, b]
-    } else {
-        let my = (a.y + b.y) / 2.0;
-        let curve = CubicBezierShape::from_points_stroke([a, pos2(a.x, my), pos2(b.x, my), b], false, Color32::TRANSPARENT, stroke);
-        if line.pattern == Pattern::Solid {
-            p.add(curve);
-            return;
-        }
-        curve.flatten(Some(0.25))
-    };
-    if line.pattern == Pattern::Solid {
-        p.line_segment([a, b], stroke);
-        return;
-    }
+    let straight = (a.x - b.x).abs() < 0.5;
     // The pattern's phase at `a`: how far down the graph's content it is, so a lane's dashes
     // run on across rows.
-    for seg in dashes(&points, line.pattern.steps(), a.y - line.origin) {
+    let phase = a.y - line.origin;
+    let mut draw = |seg: [egui::Pos2; 2]| {
         p.line_segment(seg, stroke);
+    };
+    match (straight, line.pattern) {
+        (true, Pattern::Solid) => {
+            p.line_segment([a, b], stroke);
+        }
+        (true, pattern) => dashes(&[a, b], pattern.steps(), phase, &mut draw),
+        (false, pattern) => {
+            let my = (a.y + b.y) / 2.0;
+            let curve = CubicBezierShape::from_points_stroke([a, pos2(a.x, my), pos2(b.x, my), b], false, Color32::TRANSPARENT, stroke);
+            if pattern == Pattern::Solid {
+                p.add(curve);
+            } else {
+                dashes(&curve.flatten(Some(0.25)), pattern.steps(), phase, &mut draw);
+            }
+        }
     }
 }
 
-/// The "on" pieces of the path through `points` dashed by `steps` (on, off, on, ...), the
-/// pattern already `phase` px along at the first point.
-fn dashes(points: &[egui::Pos2], steps: &[f32], phase: f32) -> Vec<[egui::Pos2; 2]> {
+/// Hands `emit` each "on" piece of the path through `points` dashed by `steps` (on, off, on,
+/// ...), the pattern already `phase` px along at the first point.
+fn dashes(points: &[egui::Pos2], steps: &[f32], phase: f32, emit: &mut impl FnMut([egui::Pos2; 2])) {
     let period: f32 = steps.iter().sum();
     // Where in the pattern the path starts: step `k`, with `left` px of it to go.
     let mut at = phase.rem_euclid(period);
@@ -96,7 +98,6 @@ fn dashes(points: &[egui::Pos2], steps: &[f32], phase: f32) -> Vec<[egui::Pos2; 
         k = (k + 1) % steps.len();
     }
     let mut left = steps[k] - at;
-    let mut out = Vec::new();
     for w in points.windows(2) {
         let (mut from, to) = (w[0], w[1]);
         let mut len = from.distance(to);
@@ -104,7 +105,7 @@ fn dashes(points: &[egui::Pos2], steps: &[f32], phase: f32) -> Vec<[egui::Pos2; 
             let step = left.min(len);
             let next = from + (to - from) * (step / len);
             if k % 2 == 0 && step > 0.0 {
-                out.push([from, next]);
+                emit([from, next]);
             }
             from = next;
             len -= step;
@@ -115,7 +116,6 @@ fn dashes(points: &[egui::Pos2], steps: &[f32], phase: f32) -> Vec<[egui::Pos2; 
             }
         }
     }
-    out
 }
 
 /// Draws row `g`'s lane lines in `rect`, each in the colour of the branch owning it there.
@@ -170,7 +170,11 @@ mod tests {
     #[test]
     fn dashes_run_on_from_the_phase() {
         let line = [pos2(0.0, 0.0), pos2(0.0, 20.0)];
-        let ys = |phase| dashes(&line, Pattern::Dashed.steps(), phase).iter().map(|s| (s[0].y, s[1].y)).collect::<Vec<_>>();
+        let ys = |phase| {
+            let mut out = Vec::new();
+            dashes(&line, Pattern::Dashed.steps(), phase, &mut |s: [egui::Pos2; 2]| out.push((s[0].y, s[1].y)));
+            out
+        };
         assert_eq!(ys(0.0), [(0.0, 6.0), (10.0, 16.0)]);
         // 3 px into the first dash: its last 3 px, then the next dash 4 px after.
         assert_eq!(ys(3.0), [(0.0, 3.0), (7.0, 13.0), (17.0, 20.0)]);

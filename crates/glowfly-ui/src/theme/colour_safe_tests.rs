@@ -1,7 +1,8 @@
 //! The colour-blind safe diff and status colours (`colour_safe.rs`) in every built-in theme:
 //! added, removed and modified stay apart through simulated protan, deutan and tritan vision
 //! (docs/COLOUR.md; #426 §5.5), diff text and syntax stay readable on the new fills, the marks
-//! keep their contrast on the surfaces they sit on, and the standard preset changes nothing.
+//! keep their contrast on the surfaces and graph row bands they sit on, and the standard preset
+//! changes nothing.
 
 use super::builtin;
 use super::color::Palette;
@@ -100,13 +101,18 @@ fn text_stays_readable_on_the_new_fills() {
 
 #[test]
 fn marks_keep_their_contrast() {
+    use super::branch_colours::{line_in, swatches};
     let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {
-        let p = safe(t);
+        // As the shell shows it: the colour-blind branch hues too, whose row bands a mark sits on.
+        let p = super::applied(*builtin(t), ColourPalette::ColourBlind);
         let min = if p.high_contrast { 4.5 } else { 3.0 };
+        let surfaces = [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)].map(|(n, c)| (n.to_owned(), c));
+        let bands = swatches().map(|l| (format!("{l:?} band"), crate::ui::graph::band_color(line_in(l, &p), &p)));
+        let on: Vec<(String, Color32)> = surfaces.into_iter().chain(bands).collect();
         for (name, c) in [("added", p.status.added), ("removed", p.status.removed), ("modified", p.status.modified)] {
-            for (sname, s) in [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)] {
-                let r = ratio(c, s);
+            for (sname, s) in &on {
+                let r = ratio(c, *s);
                 if r < min {
                     failures.push(format!("{t:?}: {name} on {sname} is {r:.2}:1, below {min}:1"));
                 }
