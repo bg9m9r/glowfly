@@ -144,6 +144,8 @@ pub struct ViewState {
     /// Branch tips drawn this frame (LOCAL and REMOTE rows, graph ref labels), filled by the
     /// views and taken by the shell.
     pub tips_seen: Vec<Oid>,
+    /// The LOCAL section's rows, kept between frames.
+    pub local_rows: crate::state::stack_rows::LocalRowsCache,
     /// The hovered ref's tip and the commits on its branch, for row highlighting. Set by
     /// `update` (`GraphMsg::HoverRef`); the graph only reads it.
     pub highlight: Option<(Oid, std::sync::Arc<HashSet<Oid>>)>,
@@ -274,6 +276,7 @@ impl Default for ViewState {
             hover_tip: None,
             hover_tip_next: None,
             tips_seen: Vec::new(),
+            local_rows: Default::default(),
             highlight: None,
             ref_rows: Default::default(),
             was_focused: true,

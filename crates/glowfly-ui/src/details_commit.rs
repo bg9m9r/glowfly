@@ -10,7 +10,7 @@ use super::details::{RowActions, changed_file_row_at, file_reveal};
 use super::file_menu::RowSource;
 use super::file_menu::folder_menu::{self, FolderStage};
 use super::graph::draw_avatar;
-use super::list_row::file_tree::{ListRows, Shown, folder_row, mode_toggle};
+use super::list_row::file_tree::{FilesKey, ListRows, Shown, folder_row, mode_toggle};
 use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets::{self, buttons};
@@ -207,7 +207,8 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
         ui,
         mode,
         n,
-        || d.files.iter().map(|f| f.path.as_str()).collect(),
+        FilesKey::of(FileListId::Commit, &d.files, d.oid),
+        &|| d.files.iter().map(|f| f.path.as_str()).collect(),
         st.session.tab_view.file_folds.closed(FileListId::Commit),
     );
     let lfs = TrackContext::of(st);

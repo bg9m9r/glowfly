@@ -258,6 +258,8 @@ pub struct UiCache {
     pub diff_images: diff::preview::PreviewTextures,
     /// Parsed Markdown bodies (pull request and issue descriptions and comments).
     pub markdown: markdown_cache::MarkdownCache,
+    /// The local branches' upstreams the graph's ref chips group by, per snapshot.
+    pub ref_upstreams: graph::ref_group::UpstreamsCache,
     /// The file history File view's image preview texture.
     pub history_preview: preview_cache::PreviewTexture,
 }
