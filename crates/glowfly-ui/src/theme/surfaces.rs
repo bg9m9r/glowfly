@@ -30,6 +30,15 @@ const OVERLAY_EDGE: f32 = 0.12;
 const INK_MIN: f64 = 4.5;
 const INK_MIN_HC: f64 = 7.0;
 const HIGH_CONTRAST_TEXT: f64 = 18.0;
+/// How far the find fill (a search's matched text) starts from its surface toward the accent, on
+/// dark and light palettes, and the least it backs off to while it keeps text readable.
+const FIND_T_DARK: f32 = 0.24;
+const FIND_T_LIGHT: f32 = 0.18;
+const FIND_T_MIN: f32 = 0.10;
+/// The most the find fill leans in to stand `FIND_APART` from its surface (a light lane's
+/// highlight, already a step toward the accent's hue).
+const FIND_T_MAX: f32 = 0.30;
+const FIND_APART: f64 = 1.25;
 
 /// A semantic tone: the colour of an outcome or an emphasis, with a soft tint of it to fill a
 /// chip, a toast's edge or a menu caret.
@@ -57,6 +66,23 @@ impl Palette {
     /// accent.
     pub fn guide_fill(&self) -> Color32 {
         contrast::tint(self.panel, self.accent, GUIDE_TINT, self.dark)
+    }
+
+    /// The fill behind a search's matched text on surface `under` (the row's top fill): `under`
+    /// tinted toward the accent, backed off 1% at a time (to `FIND_T_MIN`) until `text` and
+    /// `strong` read on it at 4.5:1 (7:1 in a high-contrast palette); where it would then sit
+    /// under `FIND_APART` from `under`, leaned in 1% at a time (to `FIND_T_MAX`) while they still
+    /// read. Opaque, so it never stacks.
+    pub fn find_fill(&self, under: Color32) -> Color32 {
+        let min = if self.high_contrast { INK_MIN_HC } else { INK_MIN };
+        let start = if self.dark { FIND_T_DARK } else { FIND_T_LIGHT };
+        let at = |t: f32| contrast::tint(under, self.accent, t, self.dark);
+        let reads = |f: Color32| contrast::ratio(self.text, f) >= min && contrast::ratio(self.strong, f) >= min;
+        let pct = |t: f32| (t * 100.0).round() as u32;
+        let backed = (pct(FIND_T_MIN)..=pct(start)).rev().find(|&i| reads(at(i as f32 / 100.0))).unwrap_or(pct(FIND_T_MIN));
+        let apart = |i: u32| contrast::ratio(at(i as f32 / 100.0), under) >= FIND_APART;
+        let lean = (backed..=pct(FIND_T_MAX)).take_while(|&i| i == backed || reads(at(i as f32 / 100.0))).find(|&i| apart(i));
+        at(lean.unwrap_or(backed) as f32 / 100.0)
     }
 
     /// The neutral backing of the toolbar's groups: `toolbar` with a quiet accent tint (on Dusk,
@@ -280,6 +306,11 @@ active!(
     danger_hover,
     menu_danger
 );
+
+/// [`Palette::find_fill`] in the active palette.
+pub fn find_fill(under: Color32) -> Color32 {
+    color::with(|p| p.find_fill(under))
+}
 
 /// [`Palette::wash`] in the active palette.
 pub fn wash(c: Color32, t: f32) -> Color32 {

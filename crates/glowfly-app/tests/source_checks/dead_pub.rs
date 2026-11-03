@@ -109,7 +109,6 @@ const DEAD_PUB: &[&str] = &[
     "crates/glowfly-ui/src/theme/branch_palette_more.rs: COBALT_LIGHT_LINES",
     "crates/glowfly-ui/src/theme/branch_palette_more.rs: COBALT_LIGHT_TEXT",
     "crates/glowfly-ui/src/theme/contrast.rs: brownish_text",
-    "crates/glowfly-ui/src/theme/contrast.rs: dimmed",
     "crates/glowfly-ui/src/theme/contrast.rs: lightness",
     "crates/glowfly-ui/src/theme/contrast.rs: luminance",
     "crates/glowfly-ui/src/theme/contrast.rs: max_chroma",
@@ -125,7 +124,6 @@ const DEAD_PUB: &[&str] = &[
     "crates/glowfly-ui/src/widgets/buttons.rs: tonal",
     "crates/glowfly-ui/src/widgets/menu_submenu.rs: CLOSE_GRACE",
     "crates/glowfly-ui/src/widgets/menu_submenu.rs: OPEN_DELAY",
-    "crates/glowfly-ui/src/widgets/row_fill.rs: ACCENT_BAR_W",
     "crates/glowfly-ui/src/widgets/tooltip_motion.rs: rise",
 ];
 

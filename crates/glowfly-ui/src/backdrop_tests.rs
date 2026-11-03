@@ -11,11 +11,11 @@ use glowfly_core::settings::ThemeChoice;
 /// opaque.
 const PINNED: [(&str, Palette, MicaTint); 6] = [
     ("Dusk", DARK, MicaTint { chrome: 153, side: 153 }),
-    ("Dawn", LIGHT, MicaTint { chrome: 153, side: 166 }),
+    ("Dawn", LIGHT, MicaTint { chrome: 153, side: 153 }),
     ("Garden dark", GARDEN_DARK, MicaTint { chrome: 153, side: OPAQUE }),
     ("Garden light", GARDEN_LIGHT, MicaTint { chrome: 153, side: 191 }),
     ("Graphite", GRAPHITE, MicaTint { chrome: 153, side: 153 }),
-    ("Porcelain", PORCELAIN, MicaTint { chrome: 153, side: 179 }),
+    ("Porcelain", PORCELAIN, MicaTint { chrome: 153, side: 153 }),
 ];
 
 fn alpha(t: MicaTint, s: Surface) -> u8 {
