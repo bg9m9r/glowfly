@@ -138,9 +138,29 @@ fn header_buttons_and_esc() {
     let (st, dir) = with_panel(ThemeChoice::Dark, "rebase-buttons", &[Pick, Pick, Drop, Pick, Pick, Pick]);
     let mut h = harness_with_keys(st);
     h.run();
+    // The header's buttons come in reading order (Tab follows the tree), left to right on screen.
+    let want = ["More rebase actions", "Cancel", "Start rebase"];
+    let buttons: Vec<(String, f64)> = h
+        .query_all_by_role(egui::accesskit::Role::Button)
+        .filter_map(|n| Some((n.label()?, n.bounding_box()?.x0)))
+        .filter(|(l, _)| want.contains(&l.as_str()))
+        .collect();
+    assert_eq!(buttons.iter().map(|(l, _)| l.as_str()).collect::<Vec<_>>(), want, "tree order");
+    assert!(buttons.windows(2).all(|w| w[0].1 < w[1].1), "left to right: {buttons:?}");
     h.get_by_label("Start rebase").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }))));
+    // Restore original order is in ⋯, and off while the list is as it was.
+    h.get_by_label("More rebase actions").click();
+    h.run();
+    assert!(h.get_by_label("Restore original order").is_disabled(), "nothing has changed yet");
+    h.press_key(Key::Escape);
+    h.run();
+    h.state_mut().1.clear();
+    h.state_mut().0.session.rebase.view.as_mut().unwrap().items.swap(0, 1);
+    h.run();
+    h.get_by_label("More rebase actions").click();
+    h.run();
     h.get_by_label("Restore original order").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::RebaseReset))));

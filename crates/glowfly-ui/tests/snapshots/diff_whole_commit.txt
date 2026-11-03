@@ -73,7 +73,7 @@ Button "Previous change" [disabled]
 Button "Next change"
 Label "1 / 2"
 Button "Inline · Whole file"
-Button "Open in external diff tool"
+Button "More file actions"
 Button "Close diff"
 Button "Revert hunk"
 Button "Fold 5 unchanged lines"

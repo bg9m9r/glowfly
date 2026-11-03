@@ -8,8 +8,14 @@
 //! fix or Details stays until it is closed. The pointer over a toast, or the keyboard focus in
 //! it, holds it (`hold_toast`): its clock stops, so it neither fades nor expires, and when it is
 //! let go at least `HOLD_GRACE` is left.
+//!
+//! A toast never stacks a copy of itself: one with the same words and kind as a toast that is up
+//! restarts that toast's timer instead (`push_toast`), so clicking a refusal twice leaves one.
+//! A toast carrying a fix is its own, though: two fixes with the same words may be for different
+//! things (a message can't be compared), so both stay.
 
 use super::AppState;
+use crate::logs::LogsMsg;
 use crate::msg::Msg;
 use glowfly_core::settings::ToastTime;
 use std::path::PathBuf;
@@ -36,6 +42,9 @@ pub struct Toast {
     /// Its id when it first showed: a toast shown again in place keeps it, so the activity log
     /// has one line for it.
     pub first: u64,
+    /// `toast_seq` when it last showed or was shown again in place: the newest one is the
+    /// toast an update just raised (update/logs_tabs.rs gives it Details).
+    pub shown: u64,
     pub action: Option<ToastAction>,
     /// A second fix beside `action` (Try again beside Delete lock file).
     pub alt: Option<ToastAction>,
@@ -53,6 +62,12 @@ pub struct ToastAction {
 }
 
 impl Toast {
+    /// It carries a fix: an action other than the activity log's Details, or a second fix.
+    fn has_fix(&self) -> bool {
+        let details = |a: &ToastAction| matches!(*a.msg, Msg::Logs(LogsMsg::Details { .. } | LogsMsg::Show(_)));
+        self.alt.is_some() || self.action.as_ref().is_some_and(|a| !details(a))
+    }
+
     /// How long it stays up with `time` chosen: longer with a button, so there is time to click
     /// it. None never expires: "Until I close them", or a failure offering a fix or Details.
     pub fn lifetime(&self, time: ToastTime) -> Option<Duration> {
@@ -87,12 +102,22 @@ impl AppState {
         self.push_toast(ok, text.into(), Some(action), now)
     }
 
-    /// Gives the newest toast (one just pushed, such as a finished job's) the action `action`,
-    /// so it stays up long enough to click. Nothing happens without a toast.
+    /// Gives the newest toast (one just pushed or shown again, such as a finished job's) the
+    /// action `action`, so it stays up long enough to click. Nothing happens without a toast.
     pub fn set_last_toast_action(&mut self, action: ToastAction) {
-        if let Some(t) = self.toasts.last_mut() {
+        if let Some(t) = self.newest_toast_mut() {
             t.action = Some(action);
         }
+    }
+
+    /// The toast shown last: the one just pushed, or shown again in place (`push_toast`).
+    pub fn newest_toast(&self) -> Option<&Toast> {
+        self.toasts.iter().max_by_key(|t| t.shown)
+    }
+
+    /// `newest_toast`, to change.
+    pub fn newest_toast_mut(&mut self) -> Option<&mut Toast> {
+        self.toasts.iter_mut().max_by_key(|t| t.shown)
     }
 
     /// `toast_action`, unless a toast with the same words is up: that one is shown again in its
@@ -106,7 +131,7 @@ impl AppState {
         self.toast_seq += 1;
         let t = &mut self.toasts[at];
         // A held toast stays held, its clock started again.
-        (t.id, t.at, t.counted, t.action) = (self.toast_seq, now, Duration::ZERO, Some(action));
+        (t.id, t.shown, t.at, t.counted, t.action) = (self.toast_seq, self.toast_seq, now, Duration::ZERO, Some(action));
         t.id
     }
 
@@ -122,9 +147,21 @@ impl AppState {
         self.push_toast(ok, text, None, now)
     }
 
+    /// Shows a toast, unless one with the same words and kind is up and neither carries a fix
+    /// (`Toast::has_fix`; a fix's target can't be compared, so two with the same words both
+    /// stay): that one is shown again in place, its timer restarted (a held one stays held) and
+    /// its Details dropped, for the new announcement to give again. It keeps its id and its one
+    /// activity line; a screen reader reads a failure shown again (`shown`), not a success.
+    /// Returns its id.
     fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, now: Instant) -> u64 {
         self.toast_seq += 1;
         let text = super::logs::redacted(text);
+        let fix = action.as_ref().is_some_and(|a| !matches!(*a.msg, Msg::Logs(LogsMsg::Details { .. } | LogsMsg::Show(_))));
+        if !fix && let Some(t) = self.toasts.iter_mut().find(|t| t.ok == ok && t.text == text && !t.has_fix()) {
+            (t.shown, t.at, t.counted) = (self.toast_seq, now, Duration::ZERO);
+            (t.action, t.details) = (action, None);
+            return t.id;
+        }
         let t = Toast {
             ok,
             text,
@@ -133,14 +170,15 @@ impl AppState {
             held: false,
             id: self.toast_seq,
             first: self.toast_seq,
+            shown: self.toast_seq,
             action,
             alt: None,
             details: None,
         };
         self.toasts.push(t);
         if self.toasts.len() > TOAST_LIMIT {
-            // The toast being read stays.
-            let oldest = self.toasts.iter().position(|t| !t.held).unwrap_or(0);
+            // The toast being read stays; the one shown longest ago goes.
+            let oldest = self.toasts.iter().enumerate().filter(|(_, t)| !t.held).min_by_key(|(_, t)| t.shown).map_or(0, |(i, _)| i);
             self.toasts.remove(oldest);
         }
         self.toast_seq
@@ -200,6 +238,52 @@ mod tests {
         assert_eq!((st.toasts[0].id, st.toasts[0].at), (again, t0 + secs(3.0)));
         st.toast_action_once(false, "Refused", action(), t0);
         assert_eq!(st.toasts.len(), 2, "a failure with the same words is its own toast");
+    }
+
+    #[test]
+    fn the_same_toast_twice_restarts_the_first() {
+        let (mut st, t0) = state();
+        let first = st.toast_action(false, "Push failed", details(), t0);
+        st.toast(true, "Copied", t0);
+        let later = t0 + secs(3.0);
+        st.toast(false, "Push failed", later);
+        st.toast(true, "Push failed", later);
+        let texts: Vec<(bool, &str)> = st.toasts.iter().map(|t| (t.ok, t.text.as_str())).collect();
+        assert_eq!(texts, [(false, "Push failed"), (true, "Copied"), (true, "Push failed")], "a success with the same words is its own");
+        let t = &st.toasts[0];
+        assert_eq!(
+            (t.id, t.first, t.at, t.counted, t.action.is_none()),
+            (first, first, later, Duration::ZERO, true),
+            "its Details dropped for the new one"
+        );
+        // A plain toast lasts five seconds: shown again at 3 s, it is still up at 7 s.
+        st.toast(true, "Copied", later);
+        assert_eq!(st.toasts.len(), 3);
+        assert!(!st.toasts[1].expired(t0 + secs(7.0), T) && st.toasts[1].expired(t0 + secs(8.0), T), "its timer restarted");
+        assert_eq!(st.newest_toast().map(|t| t.text.as_str()), Some("Copied"), "the newest, though not the last");
+    }
+
+    #[test]
+    fn toasts_with_a_fix_never_merge() {
+        let (mut st, t0) = state();
+        let fix = |n: &str| ToastAction {
+            label: "Undo".into(),
+            msg: Box::new(Msg::Branch(crate::msg::BranchMsg::Checkout(n.into()))),
+            workdir: None,
+        };
+        st.toast_action(true, "Checked out", fix("a1"), t0);
+        st.toast_action(true, "Checked out", fix("b2"), t0);
+        assert_eq!(st.toasts.len(), 2, "the same words, maybe for another branch: both stay");
+        st.toast(true, "Checked out", t0);
+        assert_eq!(st.toasts.len(), 3, "nor does a plain one merge into a fix");
+        assert!(st.toasts.iter().take(2).all(Toast::has_fix) && !st.toasts[2].has_fix());
+        st.toast(true, "Checked out", t0);
+        assert_eq!(st.toasts.len(), 3, "two plain ones do");
+    }
+
+    fn details() -> ToastAction {
+        let msg = Msg::Logs(LogsMsg::Show(crate::logs::LogKind::Activity));
+        ToastAction { label: "Details".into(), msg: Box::new(msg), workdir: None }
     }
 
     fn action() -> ToastAction {

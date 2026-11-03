@@ -111,7 +111,8 @@ fn no_job_notification_when_focused_or_off() {
     st.settings.desktop_notifications = false;
     st.view.focused = false;
     assert!(notes(&fetch_ends(&mut st, true, "")).is_empty(), "setting off");
-    assert_eq!(st.toasts.len(), 2, "both still toast");
+    assert_eq!(st.toasts.len(), 1, "both still toast: the second shows the first again");
+    assert_eq!(st.newest_toast().map(|t| t.text.as_str()), Some("Fetch succeeded"));
     cleanup(&[&dir]);
 }
 

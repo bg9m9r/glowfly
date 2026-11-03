@@ -16,6 +16,7 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - The removed-theme toast names the old theme in English ("Ember", "Garden Dark") in every
   language, as its names left the locales; keep translated names for it if people miss them
 - A per-repository theme
+- The theme-file dropdown clears the saved high-contrast theme in the view; send that through the theme message so the rule lives in one place
 
 ### No missing glyphs
 
@@ -29,6 +30,8 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
   3 behind origin/search"), so the painted arrows have words for screen readers
 - Use the painted ahead/behind arrows wherever else counts appear (remote and Git Flow rows, tab
   tooltips, the dashboard)
+- Make the glyph check's never-drawn list per file (character, file, reason) instead of app-wide
+- Look-alike dots in an invalid link host reach the link tooltip and the mismatch question as boxes; show such hosts escaped or as punycode, and reword the never-drawn reasons
 
 ### Readable controls in every theme
 
@@ -42,6 +45,8 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
   release-note chips
 - The text cursor takes its colour from the palette
 - Graph lane colours checked for contrast against bg in the light themes
+- Dimmed faint text on a branch-highlighted Rose lane is about 4.0 to 4.2:1 in the light themes; add the hover and highlight surfaces to the text floor test
+- The placeholder contrast test covers `Field` only; add `SizedField`
 
 ### Comfortable look
 
@@ -92,6 +97,10 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - Check that long context menus still fit small windows at 14 px items; scroll or regroup where they don't
 - Tune the Preferences label column for the longest translated labels at 14 px
 - The commit details' "ISSUES" / "CARDS" heading and its German and Spanish values are still all caps
+- On Linux the gsettings read has no timeout, so a hung gsettings stops the system settings being read again for the session
+- On Linux the first frame draws before the system's accessibility settings are read
+- The followed-system golden doesn't exercise the high-contrast theme swap or the text scale; add both
+- Word the Follow checks alike ("Also follow the system's text size" beside "Also when the system…")
 
 ### Brand colour and tinted neutrals
 
@@ -130,6 +139,8 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - Warn when a pin matches a side-by-side branch's pinned hue
 - The graph's "+N" badge sits at about 1.04:1 against its row; give it an edge or fill that
   stands 3:1 from every row surface like the ref chips
+- `ref_chip::ref_chip` knows the trunk by comparing colours with `trunk(p)`; pass which swatch the lane is, so a theme lane equal to the trunk tone isn't taken for it
+- Report the trunk hues (`GraphMsg::TrunkNear`) right after the theme is applied and before results are handled, so an Auto light/dark switch never draws a frame with the old trunk mask, with a shell test
 
 ### Vivid colour
 
@@ -169,3 +180,8 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
   but judge the tab swatch beside Mist's accent
 - The branch hue Olive (#9ea827) is vivid and passes the zone, but its name sits oddly with the
   no-olive rule; consider renaming it (Lime is taken; Chartreuse?)
+
+### Accent discipline (D10)
+
+- Does the tonal accent chip of the diff's "Your unposted comment" marker (#408) fit the accent rule (selection, focus, one primary), or should it go neutral?
+- Disabled secondary buttons draw no frame, so they can read as plain text (the PR comment box's Add single comment); keep a faint frame on them app-wide

@@ -125,6 +125,7 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - Remember the last target repository per repository and preselect it
 - Say in the push item's tooltip when push config (pushRemote, pushDefault) chose the remote
 - Read push.default and remote.<name>.push refspecs when naming the branch a pull request is pushed to
+- `target_combo`'s loop variable `t` shadows the language `t`; rename it
 
 ### In-app pull request view
 
@@ -272,3 +273,10 @@ Pull requests, issues, CI status, Trello, deep links and the cross-repo dashboar
 - List assignees in the pull request tooltip and mark rows assigned to someone besides the user
 - Mark Assigned rows that are also the user's own or wait for the user's review
 - Find assigned pull requests past the first page of the open list with the services' assignee search
+
+### Links in hosting-service text
+
+- Add U+A78F, U+1427, U+0971 and U+02D1 to the look-alike dots
+- A scheme-less `github.com:443/acme` never asks before opening
+- Non-ASCII words joined by punctuation before a `/` may ask when they needn't
+- A bare `name.tld` in text never asks (accepted for now)

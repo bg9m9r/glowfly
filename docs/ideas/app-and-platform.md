@@ -98,6 +98,13 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
   repository's tab
 - Close a toast with Esc or a shortcut while its x has keyboard focus or the pointer is over it
 - Report macOS notification delivery errors (the synchronous send's error is only logged)
+- The Announcements check says "finishes or fails", but it also covers job starts and other toasts such as zoom; reword it
+- `access::announce`'s doc says the text selection stays on the old node, but the code clears it; restore it there or fix the doc
+- The live announcement node has no text runs, so screen readers can't move through a toast word by word
+- A toast shown again through a plain toast call drops the shown one's Details and gives none back
+- The toast log can pair a fresh toast with the line of a toast shown again, and drop the fresh one's line
+- A toast shown again keeps its place in the stack; consider moving it to the newest place
+- The Details-or-Show test is written twice (`has_fix` and `push_toast`); share it
 
 ### Zoom
 
@@ -111,6 +118,7 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - A distraction-free full screen that also hides the toolbar and side panels, restoring them on leave
 - A Leave full screen button in the status bar or title bar while full screen
 - Show a hidden panel's edge-strip tooltip beside the pointer, not at the window's top-left corner over the toolbar
+- The zoom chip, toast and palette show the saved zoom, not the applied one (at 125% system text, 110% and 125% both apply 150%)
 
 ### Logs
 
@@ -152,6 +160,8 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Highlight the toolbar's Commands button on the tour's palette step
 - First-use tips in context (first diff, first conflict, first pull request panel)
 - Show tips again should win over another profile's records: a reset made while the settings file is held is undone by the union merge in `carry_records`
+- Offer the Connect tip only while the hosting service's fetch hasn't succeeded; once pull requests load without a connection its sentence isn't true
+- Describe each tour step for screen readers
 
 ### Performance
 
@@ -179,6 +189,10 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Find a large index's extensions without walking its entries (from the end-of-index-entries extension, or a memo by the index file's stat), so indexes over 64 MiB are checked too
 - Hold the pool only while git itself (or a program it starts) runs in a terminal, if holding through long programs (an editor, a dev server) turns out to cost noticeable reads
 - Hold the repositories a terminal changes to with `cd`, not only the one it started in
+- A freed tab's graph pane with no load running and no saved error says "Couldn't load" with no reason; show the spinner then
+- `release_idle` drops the idle grammar set (about 65 MB) while holding the lock; take it out and drop it after unlocking
+- `Side::new` decodes its contexts into the kept grammar set (about 0.4 MB that is never freed)
+- A test for the grammar reaper loop
 
 ### Welcome screen
 

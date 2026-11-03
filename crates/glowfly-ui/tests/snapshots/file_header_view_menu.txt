@@ -11,14 +11,13 @@ Heading "Layout"
 RadioButton "Inline" [on]
 RadioButton "Split" [off]
 Heading "Show"
-RadioButton "Hunks" [off]
+RadioButton "Changes only" [off]
 RadioButton "Whole file" [on]
 CheckBox "Ignore whitespace" [off]
 CheckBox "Wrap long lines" [off]
 Button "Expand all"
 Button "Collapse all"
 Button "More file actions"
-Button "Open in external diff tool"
 Button "Stage file"
 Button "Close diff"
 painted:

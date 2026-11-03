@@ -21,7 +21,7 @@ pub(crate) use threads::chip as thread_chip;
 
 use super::UiCache;
 use super::theme::color;
-use super::widgets::{self, Icon};
+use super::widgets::{self, Icon, underline_tab};
 use crate::keymap::Keymap;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -47,8 +47,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let tab = view.tab;
     ui.add_space(6.0);
     header(ui, st.settings.lang(), &st.keymap, view, msgs);
+    // The tabs draw the line under them.
     tabs(ui, view, msgs);
-    ui.separator();
     let room = ui.available_width();
     let side = crate::ui::panel_size::inner_side(egui::SidePanel::left("pull-request-side"), crate::state::panel_layout::PR_SIDE, room)
         .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::same(super::theme::spacing::PANEL_PAD)));
@@ -122,21 +122,21 @@ fn weak_hint(ui: &mut Ui, text: &str) {
 /// page reloads.
 fn tabs(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
     ui.add_space(2.0);
-    ui.horizontal(|ui| {
-        ui.add_space(8.0);
-        let files = match &v.files {
-            Files::Loaded(c) => format!("Files changed  {}", c.comparison.files.len()),
-            _ => "Files changed".to_owned(),
-        };
-        let tabs = [(PrTab::Overview, "Overview".to_owned()), (PrTab::Commits, tab_label(v)), (PrTab::Files, files)];
-        for (tab, label) in tabs {
-            if ui.selectable_label(v.tab == tab, label).clicked() && v.tab != tab {
-                msgs.push(Msg::PullRequest(PullRequestMsg::Tab(tab)));
-            }
-        }
+    let files = match &v.files {
+        Files::Loaded(c) => format!("Files changed  {}", c.comparison.files.len()),
+        _ => "Files changed".to_owned(),
+    };
+    let tabs = [(PrTab::Overview, "Overview".to_owned()), (PrTab::Commits, tab_label(v)), (PrTab::Files, files)];
+    let reloading = |ui: &mut Ui| {
         if v.reloading {
             ui.add_space(8.0);
             ui.label(RichText::new("Updating…").color(color::weak()));
+        }
+    };
+    ui.horizontal(|ui| {
+        ui.add_space(8.0);
+        if let Some(tab) = underline_tab::row(ui, v.tab, &tabs, reloading) {
+            msgs.push(Msg::PullRequest(PullRequestMsg::Tab(tab)));
         }
     });
 }

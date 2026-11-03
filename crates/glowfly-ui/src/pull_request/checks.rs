@@ -17,6 +17,7 @@ use crate::state::pull_request_checks::{
 use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, CornerRadius, CursorIcon, Rect, RichText, Sense, Ui, pos2, vec2};
@@ -95,8 +96,9 @@ fn header(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
 
 /// The build page link, each check, and the note when the list was cut.
 fn loaded(ui: &mut Ui, v: &PrView, list: &CheckList, t: Lang, now: i64, msgs: &mut Vec<Msg>) {
+    // Actions of their own, not prose: small secondary buttons, never accent links.
     if let Some((label, url)) = build_link(v)
-        && ui.link(label).clicked()
+        && ui.add(buttons::secondary(label).size(ControlSize::Small)).clicked()
     {
         msgs.push(Msg::OpenUrl(url));
     }
@@ -107,7 +109,7 @@ fn loaded(ui: &mut Ui, v: &PrView, list: &CheckList, t: Lang, now: i64, msgs: &m
     if !list.complete {
         ui.add_space(4.0);
         note(ui, truncated_text(), color::weak());
-        if !v.pr.url.is_empty() && ui.link("See all on the service").clicked() {
+        if !v.pr.url.is_empty() && ui.add(buttons::secondary("See all on the service").size(ControlSize::Small)).clicked() {
             msgs.push(Msg::OpenUrl(v.pr.url.clone()));
         }
     }
