@@ -2,7 +2,9 @@
 //! diff and terminal text sizes (the rows their own pages draw, `appearance::zoom_row`,
 //! `diff_viewer::font_size_row` and `terminal::font_size_row`), High contrast and the branch
 //! colours. Motion: reduce motion and the blinking cursor. Keyboard: the focus indicator's
-//! strength, and links to Preferences > Keyboard and the shortcut sheet. Timing: how long notifications stay and the tooltip delay.
+//! strength, and links to Preferences > Keyboard and the shortcut sheet. Screen readers: whether
+//! notifications and the running job are announced. Timing: how long notifications stay and the
+//! tooltip delay.
 //!
 //! Interface size, High contrast and Reduce motion each have a second check in their row that
 //! follows the system's setting too (`follow_check`; the shell reads the system's,
@@ -74,6 +76,10 @@ pub fn accessibility_page(ui: &mut Ui, s: &mut Settings, view: &A11yView, msgs: 
         help(ui, text);
     });
     shortcuts_row(ui, t, view.sheet_open, msgs);
+
+    section(ui, t.tr("prefs.a11y.screen_readers.section"));
+    let (label, check, text) = (t.tr("prefs.a11y.announce.label"), t.tr("prefs.a11y.announce.check"), t.tr("prefs.a11y.announce.help"));
+    checked_row(ui, label, &mut s.a11y.announce_jobs, check, text, None);
 
     section(ui, t.tr("prefs.a11y.timing.section"));
     let label = t.tr("prefs.a11y.toast_time.label");

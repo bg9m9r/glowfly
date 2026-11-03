@@ -1,4 +1,4 @@
-window 1400x1220
+window 1400x1320
 Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
@@ -37,6 +37,10 @@ Label "Shortcuts"
 Button "Change shortcuts…"
 Button "Show all shortcuts"
 Label "Every command can be given a key."
+Label "Screen readers"
+Label "Announcements"
+CheckBox "Announcements, Announce when background work finishes or fails" [on]
+Label "Read by screen readers such as NVDA, Narrator and VoiceOver."
 Label "Timing"
 Label "Notifications stay"
 ComboBox "Notifications stay"
@@ -64,5 +68,6 @@ painted:
   "Also when the system asks for less motion"
   "Blink the text cursor"
   "Standard"
+  "Announce when background work finishes or fails"
   "Standard (5 s)"
   "Quick (0.4 s)"
