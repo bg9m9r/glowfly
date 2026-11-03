@@ -162,6 +162,11 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Show tips again should win over another profile's records: a reset made while the settings file is held is undone by the union merge in `carry_records`
 - Offer the Connect tip only while the hosting service's fetch hasn't succeeded; once pull requests load without a connection its sentence isn't true
 - Describe each tour step for screen readers
+- Getting started: more contextual hints (restack, worktrees for stash juggling, Range-diff after a rewrite, the palette for mouse-heavy users, deep links) and a learn-the-key hint
+- Getting started: fold `status_tip_shown` and `detached_head_warned` into the hint registry, as `getting_started_hidden` is
+- Getting started: Show me through the tour's spotlight for features that live in menus (rebase, Range-diff), instead of the palette
+- Getting started: Rebase's Show me stays enabled on a selected commit the palette offers nothing for (Reword, Squash, Drop and Onto all blocked, e.g. the HEAD of a detached checkout); disable it with the blocker's reason
+- Getting started: views opened behind the page (blame, journal, conflict, the tour from a menu or key) stay under it, and opening or switching a tab doesn't close it; close the page there, as the dashboard should too
 
 ### Performance
 
@@ -247,3 +252,11 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 - Build time: split core's libgit2-free parts (settings, forge, i18n) into their own crate so
   model and ui stop rebuilding when only git code changes.
+
+### Duplicate dependency versions (#376)
+
+- egui/eframe 0.31 to the current egui: most of the remaining duplicate versions (windows 0.58,
+  wgpu's tree, accesskit, zbus 4) come in through it; views, snapshots and goldens all move.
+- ureq 2 to ureq 3: the old major; 3 has a new request and error API (forge/, app_update/).
+- base64 (0.22) and sha2 (0.10) are held at the versions ureq 2 and keyring's Linux backend
+  build; move core's copies when those do.

@@ -32,6 +32,12 @@ fn prefs_terminal_dark() {
     h.check_snapshot("prefs_terminal");
     assert!(h.query_all_by_label("Terminal").next().is_some(), "the nav entry and title");
     assert!(h.query_by_label("Open a tab in the built-in terminal").is_some());
+    // Open every help text that sits behind "Learn more".
+    loop {
+        let Some(more) = h.query_all_by_label("Learn more").next() else { break };
+        more.click();
+        h.run();
+    }
     assert!(h.query_by_label_contains("Open in terminal doesn't open a built-in tab").is_some(), "the external terminal moved here");
     assert!(h.query_by_label_contains("Separated by spaces").is_none(), "arguments only for a custom program");
     assert!(h.query_by_label_contains("Selecting text with the mouse").is_some());

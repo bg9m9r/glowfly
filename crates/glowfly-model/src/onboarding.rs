@@ -1,12 +1,14 @@
 //! Messages and effects of the first-run welcome, the tour of the main window and the tips in
 //! context (state/onboarding.rs, state/onboarding_tour.rs, state/hints.rs, update/onboarding.rs,
 //! update/hints.rs, runner/onboarding.rs, ui/welcome.rs, ui/welcome_steps.rs, ui/tour.rs,
-//! ui/widgets/hint_row.rs).
+//! ui/widgets/hint_row.rs), and Help > Getting started (state/getting_started.rs,
+//! update/getting_started.rs, ui/getting_started.rs).
 
 use crate::effect::EffectMeta;
 use crate::effect::SandboxRule;
 use crate::msg::{CloneMsg, Inactive, Msg, RepoMsg};
 use crate::state::hints::HintId;
+use crate::state::onboarding::getting_started::Card;
 use glowfly_core::identity::Identity;
 use std::path::{Path, PathBuf};
 
@@ -43,6 +45,16 @@ pub enum OnboardingMsg {
     SetHints(bool),
     /// Show tips again: forgets the tips and one-time notes already seen.
     ResetHints,
+    /// Help > Getting started (the menu, the palette, the welcome's Start step): open its page.
+    OpenGettingStarted,
+    /// The page's close button or Esc.
+    CloseGettingStarted,
+    /// A card's Show me: close the page, then open the card's feature.
+    ShowMe(Card),
+    /// List the finished cards too (true) or not.
+    ShowFinished(bool),
+    /// Hide the page from the Help menu and the welcome (true), or show it there again.
+    HideGettingStarted(bool),
     // ---- from the runner
     /// The global git identity, read when the welcome opens.
     IdentityRead(Result<Identity, String>),
@@ -94,6 +106,11 @@ impl OnboardingMsg {
             | Self::HintsOff
             | Self::SetHints(_)
             | Self::ResetHints
+            | Self::OpenGettingStarted
+            | Self::CloseGettingStarted
+            | Self::ShowMe(_)
+            | Self::ShowFinished(_)
+            | Self::HideGettingStarted(_)
             | Self::IdentityRead(_)
             | Self::IdentityWritten { .. } => None,
         }

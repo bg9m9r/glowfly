@@ -59,11 +59,11 @@ Label "Check what goes in"
 Label "Staged: 1 · Left out: 0"
 Button "Hide: Commit the merge"
 Label "Commit the merge"
-CheckBox "Amend" [disabled, off]
-Label "Finish the merge before amending."
 TextInput "Commit summary" = "Merge branch 'feature'"
 Label "22/72"
-MultilineTextInput "Description"
+MultilineTextInput "Commit description"
+CheckBox "Amend last commit" [disabled, off]
+Label "Finish the merge before amending."
 CheckBox "Push after committing" [off]
 Button "Commit merge"
 Button "More commit options"
@@ -112,6 +112,7 @@ painted:
   "Submodules"
   "0"
   "3"
+  "Description"
   "Branch / tag"
   "Graph"
   "Message"

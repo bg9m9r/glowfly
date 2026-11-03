@@ -75,7 +75,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let bottom_id = ui.id().with("wip-bottom");
     let bottom_h = ui.data(|d| d.get_temp::<f32>(bottom_id)).unwrap_or_else(|| {
         let why = crate::state::commit::commit_blocked(st, false);
-        super::commit_box::reserved_height(crate::ui::widgets::reason::lines(ui, why, ui.available_width()))
+        super::commit_box::reserved_height(crate::ui::widgets::reason::lines(ui, why.as_deref(), ui.available_width()))
     });
     let top_h = (ui.available_height() - bottom_h).max(TOP_MIN);
     let size = egui::vec2(ui.available_width(), top_h);

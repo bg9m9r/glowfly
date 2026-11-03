@@ -59,14 +59,13 @@ Label "Bereitgestellt (0)"
 Unknown "Bereitgestellt (0)"
 Label "Keine"
 Label "Commit"
-CheckBox "Nachbessern" [off]
 TextInput "Commit-Zusammenfassung"
-Label "0/72"
-MultilineTextInput "Beschreibung"
+MultilineTextInput "Commit-Beschreibung"
+CheckBox "Letzten Commit nachbessern" [off]
 CheckBox "Nach dem Commit pushen" [off]
-Button "Erst etwas zum Committen bereitstellen" [disabled]
+Button "Committen" [disabled]
 Button "Weitere Commit-Optionen"
-Label "Schreibe eine Zusammenfassung für den Commit."
+Label "Stelle Änderungen zum Committen bereit oder drücke Ctrl+Shift+Enter, um alles bereitzustellen und zu committen."
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
@@ -120,6 +119,8 @@ painted:
   "Submodule"
   "0"
   "M"
+  "Zusammenfassung"
+  "Beschreibung"
   "Branch / Tag"
   "Graph"
   "Nachricht"

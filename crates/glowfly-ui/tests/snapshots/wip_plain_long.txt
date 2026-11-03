@@ -62,6 +62,8 @@ Button "src/module_04.rs" [off]
 Label "Modified"
 Button "src/module_05.rs" [off]
 Label "Modified"
+Button "src/module_06.rs" [off]
+Label "Modified"
 Button "Show staged files as tree"
 Button "Unstage all"
 Label "Staged files (25)"
@@ -76,15 +78,16 @@ Button "src/module_04.rs" [off]
 Label "Added"
 Button "src/module_05.rs" [off]
 Label "Added"
+Button "src/module_06.rs" [off]
+Label "Added"
 Label "Commit"
-CheckBox "Amend" [off]
 TextInput "Commit summary"
-Label "0/72"
-MultilineTextInput "Description"
+MultilineTextInput "Commit description"
+CheckBox "Amend last commit" [off]
 CheckBox "Push after committing" [off]
-Button "Commit 25 files" [disabled]
+Button "Commit" [disabled]
 Button "More commit options"
-Label "Write a summary for the commit."
+Label "Write a summary to commit."
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
@@ -137,6 +140,8 @@ painted:
   "A"
   "A"
   "A"
+  "Summary"
+  "Description"
   "Branch / tag"
   "Graph"
   "Message"

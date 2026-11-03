@@ -277,6 +277,6 @@ fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
     st.session.draft.summary.clear();
     let fx = up(&mut st, Msg::ToastAction(id));
     assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })) && st.job.is_none());
-    assert_eq!(last_toast(&st).text, "Write a summary for the commit.");
+    assert_eq!(last_toast(&st).text, "Write a summary to commit.");
     let _ = std::fs::remove_dir_all(&dir);
 }

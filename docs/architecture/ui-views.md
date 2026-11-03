@@ -20,6 +20,7 @@ start with `state/`, `update/` or `ui/`.
 - `welcome_art.rs`: the band's lattice drawing per theme.
 - `welcome_cards.rs`: the action cards: the Start step's three choices and the start page's row of four.
 - `tour.rs`: the tour of the main window.
+- `getting_started.rs`: Help > Getting started: the feature cards by group, each with Show me.
 
 ## Blame and the file history's File view
 
@@ -66,6 +67,7 @@ start with `state/`, `update/` or `ui/`.
 - `file_status.rs`: the changed-file rows' status badge (an 18 px circle).
 - `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`.
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode.
+- `commit_box.rs`: the commit box, top to bottom: header with the identity, summary with its length inside, description, the Amend and Push options, the button and its caption; `commit_button.rs`: its split button and caret menu (Stage all and commit, Commit and push, Amend last commit, Skip hooks).
 - `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames), a folder row, the header's List / Tree toggle and a file row's indent.
 - `folder_menu.rs`: a folder row's menu: Folder history, Copy path, and Stage or Unstage folder in the WIP lists.
 - `list_focus.rs`: a file list that takes the keyboard focus as one Tab stop: its focus target, the keys it takes before any binding (`state/list_keys.rs`; each list names which beyond its moves, `KeySet`), and its arrows kept from egui's focus moves from its first frame on (`restore`). Reuse it for any other file list.
@@ -111,6 +113,15 @@ start with `state/`, `update/` or `ui/`.
 - `repo_group_picker.rs`: a group's Add repositories dialog, a checklist of favorites and Recent repositories.
 - `repo_menu_list.rs`: the repository menu's and File > Open recent's repository groups, Favorites and Recent, the filter field of a long list, and Remove missing / Clear recent.
 - `repo_row.rs`: one repository row, shared by those menus and the start page: name, parent path, status, and the star and × on hover or focus (on the start page also the grip, a status pill, the key cap and ⋯); in a menu Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
+
+## Preferences (`prefs/`)
+
+- `prefs/nav.rs`: the navigation column: Back, "Search preferences" (Ctrl+F), the pages filtered by the query with their match counts, and the "This repository · name" line.
+- `prefs/index.rs`: the search index, (page, label key, help key) for every row, and the query match; a test fails on a row label missing from it.
+- `prefs/reveal.rs`: the row Enter in the search opened: scrolled to and tinted for 1.2 s (solid under reduce motion).
+- `prefs/form_help.rs`: help lines: 13 px, at most 64 characters a line, long help behind "Learn more".
+- `prefs/general_notify.rs`: General's Notifications and Commit messages groups.
+- `snapshot_tests/snapshot_tests_prefs_search.rs`: the search, the 760 px page in a wide window, Learn more, and D18's light goldens.
 
 ## Snapshot tests
 

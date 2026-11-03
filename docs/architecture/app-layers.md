@@ -32,7 +32,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `init.rs`: `InitMsg`.
 - `forge_filters.rs`: `FilterMsg`.
 - `issue.rs`: `IssueMsg`, for the issue panel and the Create issue dialog.
-- `onboarding.rs`: `OnboardingMsg`, carried by the first-run welcome, the tour and the tips in context.
+- `onboarding.rs`: `OnboardingMsg`, carried by the first-run welcome, the tour, the tips in context and Help > Getting started.
 - `dialog.rs`: `DialogMsg`, carried by a dialog's backdrop click, Esc or close button and the discard question.
 - `op_preview.rs`: `OpPreviewMsg`, carried by the operation preview's open, result, Preview again and Apply.
 - `notify.rs`: `NotifyMsg`, carried by holding and closing toasts and clicks on desktop notifications.
@@ -102,6 +102,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `op_actions.rs`: the operation in progress: its banner commands.
 - `op_steps.rs`: the WIP panel's steps (which operation, each step's state, which are open and their words).
 - `commit_stop.rs` (`commit::stop`): what a stopped rebase means for the commit form: no push after committing, Amend and continue at a stop to edit, and Amend offered only where git would amend HEAD.
+- `commit_ready.rs` (`commit::ready`): whether the commit box can commit, the first missing step its caption names (staging, then the summary), and the commit button's label.
 - `diff_header/cache.rs`: `HeaderCache`, kept in `UiCache::diff_header`: the diff header's change rows, line counts and file order, built again only when the diff, view mode, layout, folds, list (the WIP lists by `Snapshot::status_stamp`) or list mode change. Tests in `diff_header/cache_tests.rs`.
 - `file_tree.rs`: a changed-file list grouped in folders: the tree's rows in order (compacted folder chains, folders first), and its file order with which files collapsed folders hide.
 - `list_keys.rs`: the keys of a file list with the keyboard focus (`ListKey`), which of them each list takes (`KeySet`), the lists that only open files (`FileList`) and where a step, page or edge move lands in its visible order (`ListMove::target`), for any list built on `ui/list_focus.rs`.

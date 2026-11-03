@@ -58,6 +58,7 @@ const PROSE_ROLES: &[&str] = &["tip", "help", "warn", "hint", "body", "intro", "
 const EXEMPT_KEYS: &[(&str, &str)] = &[
     ("prefs.ui.theme.name.", "theme names are proper names (Garden Dark, High Contrast Light)"),
     ("prefs.terminal.shell.", "shell names are product names (Command Prompt, Git Bash)"),
+    ("prefs.general.updates.whats_new.chip", "quotes the status bar chip's own text (“What's new”)"),
     ("menu.app.", "the macOS app menu keeps the titles macOS gives those items in every app (Hide Others, Show All)"),
 ];
 

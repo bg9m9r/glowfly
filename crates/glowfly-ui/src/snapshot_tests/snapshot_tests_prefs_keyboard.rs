@@ -155,9 +155,11 @@ fn typing_in_the_filter_narrows_the_rows() {
     let mut h = harness(page(ThemeChoice::Dark, ""), true);
     h.run();
     assert!(h.query_by_label("Refresh").is_some() && h.query_by_label("New tab").is_some());
-    h.get(By::new().role(Role::TextInput)).click();
+    // The page's filter, not the navigation's search.
+    let on_page = |n: &egui_kittest::kittest::Node<'_>| n.bounding_box().is_some_and(|b| b.x0 > 250.0);
+    h.query_all(By::new().role(Role::TextInput)).find(on_page).expect("the filter").click();
     h.run();
-    h.get(By::new().role(Role::TextInput)).type_text("refresh");
+    h.query_all(By::new().role(Role::TextInput)).find(on_page).expect("the filter").type_text("refresh");
     h.run();
     assert_eq!(h.state().0.prefs.as_ref().unwrap().keys.filter, "refresh");
     assert!(h.query_by_label("Refresh").is_some());

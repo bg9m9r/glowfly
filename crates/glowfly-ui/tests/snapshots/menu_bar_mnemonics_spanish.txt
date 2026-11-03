@@ -64,14 +64,13 @@ Label "Preparados (0)"
 Unknown "Preparados (0)"
 Label "Ninguno"
 Label "Commit"
-CheckBox "Enmendar" [off]
 TextInput "Resumen del commit"
-Label "0/72"
-MultilineTextInput "Descripción"
+MultilineTextInput "Descripción del commit"
+CheckBox "Enmendar el último commit" [off]
 CheckBox "Enviar después de confirmar" [off]
-Button "Prepara algo para confirmar" [disabled]
+Button "Confirmar" [disabled]
 Button "Más opciones de commit"
-Label "Escribe un resumen para el commit."
+Label "Prepara cambios para confirmar o pulsa Ctrl+Shift+Enter para prepararlo todo y confirmar."
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
@@ -117,6 +116,8 @@ painted:
   "Submódulos"
   "0"
   "M"
+  "Resumen"
+  "Descripción"
   "Rama / etiqueta"
   "Grafo"
   "Mensaje"

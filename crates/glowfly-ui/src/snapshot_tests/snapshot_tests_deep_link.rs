@@ -154,7 +154,7 @@ fn deep_link_choose() {
 }
 
 /// The height that shows all of Preferences > General, the Glowfly Links row at its end.
-const GENERAL_HEIGHT: f32 = 1800.0;
+const GENERAL_HEIGHT: f32 = 2300.0;
 
 /// Preferences > General, tall enough to show the Glowfly Links row at its end.
 fn general(view: SchemeView) -> egui_kittest::Harness<'static, (AppState, Vec<Msg>)> {

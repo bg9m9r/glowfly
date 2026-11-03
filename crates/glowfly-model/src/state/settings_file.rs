@@ -3,8 +3,8 @@
 //! settings in use are defaults, and writing them would replace the user's real ones.
 //!
 //! Some settings Glowfly records by itself, never as a choice the user makes (`user_view`
-//! leaves them out): which release notes were seen, when the update check last worked, and
-//! which one-time notices and tips were shown. A read after a hold keeps the newer of those
+//! leaves them out): which release notes were seen and the What's new chip, when the update
+//! check last worked, and which one-time notices and tips were shown. A read after a hold keeps the newer of those
 //! (`carry_records`) and doesn't count them as edits the read drops.
 
 use glowfly_core::app_update::Version;
@@ -54,6 +54,7 @@ pub fn user_view(s: &Settings) -> String {
     let mut s = s.clone();
     s.updates.notes_seen = None;
     s.updates.last_checked = None;
+    s.updates.news_chip = None;
     s.detached_head_warned = false;
     s.status_tip_shown.clear();
     s.hints_seen.clear();
@@ -71,6 +72,14 @@ pub fn carry_records(ours: &Settings, file: &mut Settings) -> bool {
         && version(&file.updates.notes_seen).is_none_or(|f| v > f)
     {
         file.updates.notes_seen.clone_from(&ours.updates.notes_seen);
+        carried = true;
+    }
+    // Ours has seen at least the file's notes, so its What's new chip (or that it went) stands.
+    if let Some(v) = version(&ours.updates.notes_seen)
+        && version(&file.updates.notes_seen).is_none_or(|f| v >= f)
+        && file.updates.news_chip != ours.updates.news_chip
+    {
+        file.updates.news_chip.clone_from(&ours.updates.news_chip);
         carried = true;
     }
     if let Some(t) = ours.updates.last_checked

@@ -15,6 +15,7 @@ Dialog
   CheckBox "Autorenbilder von Gravatar zeigen" [off]
   Label "Sendet einen Hash der E-Mail-Adresse jedes Autors an Gravatar, nur bei Repositorys auf github.com, gitlab.com, bitbucket.org oder codeberg.org."
   Label "Design und Layout änderst du unter Einstellungen > Darstellung"
+  Label "Sieh dir an, was Glowfly noch kann"
   Button "Zurück"
   Button "Fertig" [focused]
 painted:

@@ -164,6 +164,9 @@ pub enum CommitMsg {
     /// At a rebase stopped to edit: Amend (or Commit) and continue, which commits the draft and
     /// then resumes the rebase as Continue does.
     CommitAndContinue,
+    /// The commit button menu's Commit and push: commits, then pushes, with "Push after
+    /// committing" off.
+    CommitAndPush,
 }
 
 impl CommitMsg {
@@ -177,7 +180,8 @@ impl CommitMsg {
             | Self::PrefillAmend
             | Self::AppendToDescription(..)
             | Self::CommitMerge
-            | Self::CommitAndContinue => None,
+            | Self::CommitAndContinue
+            | Self::CommitAndPush => None,
         }
     }
 }
