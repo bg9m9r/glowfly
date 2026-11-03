@@ -297,6 +297,12 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Highlight a favorite's key cap for a moment when its number changes (after a move or a new favorite)
 - Up and Down between the start page's repository rows, as in the repository menu
 - An Apply to existing groups button beside Preferences' New group color combo (Reset all group colors is only in a group's menu)
+- The group header's ⋯ paints about 9 px wide against a row's 13 px; draw both at one size
+- Recent's Clear ends about 4 px past the inset the other header actions keep
+- The Add to group picker lists missing favorites (only Recent rows are checked)
+- A missing Recent row still offers Add to group
+- The add picker keeps group positions, so a settings re-read while it is open could add to the wrong group
+- Undo after Reset all group colors can colour a group that took a removed group's name, and overwrites colours set by hand after the reset
 
 ### Git engine choice
 

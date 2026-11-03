@@ -181,3 +181,11 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   prefix
 - Say in the tooltip when a local chip's own upstream is at another commit while a copy on
   another remote is level with it
+
+### Pull and Push name their target
+
+- With push.default=upstream and a pushRemote other than the upstream's remote, Push names fork/main but git refuses the push
+- A pushRemote naming a missing remote is still named; fall back to the upstream when it isn't among the remotes
+- `branches::push_blocked` still judges Push against the upstream, so Push to a fork is disabled while level with origin
+- On a focused Pull or Push with a count, the badge and its knockout cover part of the inset focus ring's top edge
+- The toolbar tests for the 0/0 and no-upstream names look up "main", which now also matches the remote row; look up "Branch: main"

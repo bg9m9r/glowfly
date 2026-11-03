@@ -60,3 +60,8 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
   default sidebar width; give the line more room or move the button under it
 - German unsigned-builds help as one sentence ("Da die Builds von Glowfly noch nicht codesigniert sind, bestätigt dieser Abgleich nur, …")
 - Spanish unsigned-builds help: end with "…, pero no quién la publicó"
+- The High contrast help says "High contrast dark or light"; use the theme picker's names, High Contrast Dark and High Contrast Light
+- German and Spanish size fields show "12.5 pt" while their help says "12,5" (Accessibility, Diff viewer and Terminal); format the field's decimal for the language
+- The Strong focus help says its outline "shows on every color", which overstates the faint outline on panels
+- Spanish Reset all group colors: "Restablecer todos los colores de grupo", with the toast "…restablecidos a los predeterminados"; its Undo can reuse the Edit menu's Undo text
+- German "Zielbranch" should be "Ziel-Branch", as the other Branch compounds are hyphenated
