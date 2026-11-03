@@ -190,7 +190,7 @@ fn paint_box(p: &Painter, r: Rect, look: ChipLook) {
 /// (`ref_chip::ref_chip`; the halo reaches outside the rect), the tag mark, the name (cut to
 /// leave its marks room), then the local mark, the remote mark and the build marker, coloured
 /// from its branch's `tone`.
-fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: BranchTone, w: f32) -> Rect {
+pub(super) fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: BranchTone, w: f32) -> Rect {
     let look = ref_chip::ref_chip(spec.style, tone, &color::current());
     let fg = look.text;
     let r = chip::rect_at(CHIP, x, y, w.max(0.0));

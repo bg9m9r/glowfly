@@ -47,7 +47,7 @@ fn panel_with_merges() {
     assert_eq!(p.items[0], TodoStep::Reset(ResetTo::Onto));
     assert!(matches!(&p.items[2], TodoStep::Label { at, .. } if *at == side));
     assert_eq!(p.items[6].oid(), Some(merge));
-    assert_eq!(p.subtitle(), format!("Rebasing 3 commits and 1 merge of main onto {} c1", short(c[0])));
+    assert_eq!(p.subtitle(Lang::En), format!("Rebasing 3 commits and 1 merge of main onto {}.", short(c[0])));
     assert_eq!(p.step_text(0, None), format!("Continue from the new base ({} c1)", short(c[0])));
     assert_eq!(p.step_text(2, None), format!("at-{}: marks {} side for a later step", short(side), short(side)));
     assert_eq!(p.actions(6), RebaseAction::MERGE_ACTIONS);
@@ -114,7 +114,7 @@ fn open_onto_commit() {
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(other))));
     let p = panel(&st);
     assert_eq!(p.items.len(), 2, "c2 and c3");
-    assert_eq!(p.subtitle(), format!("Rebasing 2 commits of main onto {} other", short(other)));
+    assert_eq!(p.subtitle(Lang::En), format!("Rebasing 2 commits of main onto {}.", short(other)));
     assert_eq!(p.start_blocker(st.snap.as_ref().unwrap(), false), None, "an unchanged list may start: the base moves");
     drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     let log = git(&dir, &["log", "--format=%s"]);

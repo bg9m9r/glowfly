@@ -1,9 +1,10 @@
 //! The rebase panel's rows that recreate merges (label, reset and merge steps): their texts,
-//! the actions a row offers and whether it can move, and the subtitle and drop count, which
-//! count merges too.
+//! the actions a row offers and whether it can move, the drop count, and the header's texts:
+//! the subtitle (which counts merges too), the order line and the tip row after the last step.
 
 use super::rebase::{PanelSource, RebasePanel};
 use git2::Oid;
+use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{RebaseAction, ResetTo, TodoStep, Upstream};
 use glowfly_core::repo::Snapshot;
 
@@ -11,8 +12,10 @@ fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-fn count(n: usize, one: &str, many: &str) -> String {
-    if n == 1 { format!("1 {one}") } else { format!("{n} {many}") }
+/// What a rebase goes onto, for the header: a commit (labelled "1a2b3c4 Summary") by its short
+/// id, a branch by its name (which has no spaces).
+pub(super) fn onto_name(label: &str) -> &str {
+    label.split_once(' ').map_or(label, |(sha, _)| sha)
 }
 
 impl RebasePanel {
@@ -25,23 +28,56 @@ impl RebasePanel {
         self.items.iter().filter(dropped).filter(new).count()
     }
 
-    /// "Rebasing 4 commits of feature onto main" (with "and 1 merge" when the list recreates
-    /// merges), or "… from the first commit" for a rebase of the root; for the remaining steps,
-    /// see `rebase_remaining::subtitle`.
-    pub fn subtitle(&self) -> String {
+    /// The header's second line: "Rebasing 4 commits of feature onto main." (with "and 1 merge"
+    /// when the list recreates merges; a commit to rebase onto by its short id alone), or "… from
+    /// the first commit." for a rebase of the root; for the remaining steps, see
+    /// `rebase_remaining::subtitle`.
+    pub fn subtitle(&self, t: Lang) -> String {
         if self.source == PanelSource::Remaining {
-            return super::rebase_remaining::subtitle(self);
+            return super::rebase_remaining::subtitle(t, self);
         }
         let Some(plan) = &self.plan else { return "Loading commits…".into() };
         let n = self.items.iter().filter(|s| s.commit().is_some()).count();
         let merges = self.items.iter().filter(|s| s.merge().is_some()).count();
-        let mut what = count(n, "commit", "commits");
+        let mut what = t.trn("rebase.subtitle.commits", n, &[]);
         if merges > 0 {
-            what = format!("{what} and {}", count(merges, "merge", "merges"));
+            let m = t.trn("rebase.subtitle.merges", merges, &[]);
+            what = t.trf("rebase.subtitle.and", &[("commits", &what), ("merges", &m)]);
         }
+        let branch = &plan.branch;
         match plan.upstream {
-            Upstream::Root => format!("Rebasing {what} of {} from the first commit", plan.branch),
-            Upstream::Commit(_) => format!("Rebasing {what} of {} onto {}", plan.branch, plan.onto_label),
+            Upstream::Root => t.trf("rebase.subtitle.root", &[("what", &what), ("branch", branch)]),
+            Upstream::Commit(_) => {
+                let onto = onto_name(&plan.onto_label);
+                t.trf("rebase.subtitle.onto", &[("what", &what), ("branch", branch), ("onto", &onto)])
+            }
+        }
+    }
+
+    /// The branch the rebase ends on, or `None` for a detached HEAD.
+    pub fn tip_branch(&self) -> Option<&str> {
+        match self.source {
+            PanelSource::Remaining => self.remaining.as_ref().and_then(|r| r.branch.as_deref()),
+            PanelSource::Start(_) => self.plan.as_ref().map(|p| p.branch.as_str()),
+        }
+    }
+
+    /// The header's third line: the order the list runs in, oldest first, and that its last
+    /// step becomes the tip of the branch.
+    pub fn order_hint(&self, t: Lang) -> String {
+        let remaining = self.source == PanelSource::Remaining;
+        match (self.tip_branch(), remaining) {
+            (Some(b), false) => t.trf("rebase.order.start", &[("branch", &b)]),
+            (Some(b), true) => t.trf("rebase.order.remaining", &[("branch", &b)]),
+            (None, _) => t.tr("rebase.order.remaining_detached").to_owned(),
+        }
+    }
+
+    /// The faint row after the last step: "Tip of main", or "New HEAD" when detached.
+    pub fn tip_text(&self, t: Lang) -> String {
+        match self.tip_branch() {
+            Some(b) => t.trf("rebase.tip.branch", &[("branch", &b)]),
+            None => t.tr("rebase.tip.detached").to_owned(),
         }
     }
 

@@ -1,7 +1,9 @@
 //! The list of the rebase panel: the locked rows of a running rebase above it, one row per step
 //! (commit rows in `commit_row`, exec and break rows and the row menu in `step_row`, label,
 //! reset and merge marks and update-ref rows in `merge_row`), the inline
-//! editor under its row (`editor`), dragging rows (`drag`), and the panel's keys (`keys`).
+//! editor under its row (`editor`), dragging rows (`drag`; the dragged row lifted on its shadow
+//! and the others moving apart), the faint tip row after the last step, and the panel's keys
+//! (`keys`).
 
 use super::UiCache;
 use super::commit_row::{RowKind, paint_action, paint_row};
@@ -13,7 +15,7 @@ use crate::state::rebase::RebasePanel;
 use crate::state::rebase_remaining::LOCKED_NOTE;
 use crate::state::tabs::index_after_move;
 use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
+use crate::ui::theme::tokens::{Elevation, motion, radius, shadow};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Color32, CursorIcon, Rect, Response, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::rebase::{RebaseAction, ResetTo, TodoStep};
@@ -67,7 +69,9 @@ pub(super) enum Shade {
 
 pub(super) fn fill(shade: Shade) -> Color32 {
     match shade {
-        Shade::Plain | Shade::Floating => color::panel(),
+        Shade::Plain => color::panel(),
+        // Lifted off the list: the raised fill, over the `Lift` shadow.
+        Shade::Floating => color::raised(),
         Shade::Hovered => color::hover(),
         Shade::Selected => color::selected(),
     }
@@ -153,16 +157,18 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
             }
         }
         let floating = if can_drag { drag::drag(ui, &slots, list_top, ROW_H + GAP, msgs) } else { None };
+        // While dragging, the others move apart over `motion::SHIFT` (at once with Reduce
+        // motion); they settle at once when the drag ends, as the list then holds the new order.
+        let shift_time = if floating.is_some() { motion::duration(motion::SHIFT, ui.ctx()) } else { 0.0 };
         for (i, Slot { rect, r, movable }) in slots.iter().enumerate() {
             let step = &panel.items[i];
             let text = panel.step_text(i, look.snap);
+            let target = floating.map_or(0.0, |f| (index_after_move(i, f.from, f.to) as f32 - i as f32) * (ROW_H + GAP));
+            let shift = ui.ctx().animate_value_with_time(ui.id().with(("rebase-shift", i)), target, shift_time);
             match floating {
                 Some(f) if f.from == i => {}
                 // While dragging, the others slide to where they would be after the drop.
-                Some(f) => {
-                    let shift = (index_after_move(i, f.from, f.to) as f32 - i as f32) * (ROW_H + GAP);
-                    paint(ui, rect.translate(vec2(0.0, shift)), step, &text, &look, Shade::Plain, true);
-                }
+                Some(_) => paint(ui, rect.translate(vec2(0.0, shift)), step, &text, &look, Shade::Plain, true),
                 None => {
                     let shade = if panel.selected == Some(i) {
                         Shade::Selected
@@ -203,8 +209,11 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                 }
             }
         }
-        // The dragged row, drawn last so it floats above the others.
+        tip_row(ui, panel, &look);
+        // The dragged row, drawn last so it floats above the others, lifted on its shadow.
         if let Some(f) = floating {
+            let lift = shadow(Elevation::Lift, &color::current()).as_shape(f.rect, radius::SM);
+            ui.painter().add(egui::Shape::from(lift));
             paint(ui, f.rect, &panel.items[f.from], &panel.step_text(f.from, look.snap), &look, Shade::Floating, true);
         }
         super::add_buttons(ui, panel, msgs);
@@ -213,11 +222,41 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     });
 }
 
+/// The tip row's height.
+const TIP_H: f32 = 24.0;
+/// The gap between the tip row's text and its chip.
+const TIP_GAP: f32 = 8.0;
+
+/// After the last step, a faint row naming where the list ends: "Tip of main" and the branch's
+/// chip ("New HEAD" when detached). Not a drop target, and left out while the list is empty.
+fn tip_row(ui: &mut Ui, panel: &RebasePanel, look: &Look) {
+    if panel.items.is_empty() {
+        return;
+    }
+    let row = row_rect_h(ui, TIP_H);
+    let text = panel.tip_text(look.settings.lang());
+    let r = ui.interact(row, ui.id().with("rebase-tip"), Sense::hover());
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &text));
+    let p = ui.painter();
+    let g = p.layout_no_wrap(text, egui::FontId::proportional(type_scale::BODY), color::faint());
+    let x = row.left() + SHA_X;
+    let chip_x = x + g.size().x + TIP_GAP;
+    p.galley(pos2(x, row.center().y - g.size().y / 2.0), g, color::faint());
+    if let Some(branch) = panel.tip_branch() {
+        crate::ui::graph::branch_chip::paint(p, chip_x, row.center().y, look.snap, branch, row.right() - chip_x);
+    }
+}
+
 /// The next row's rect, inset by the list's margin.
 fn row_rect(ui: &mut Ui) -> Rect {
+    row_rect_h(ui, ROW_H)
+}
+
+/// `row_rect` for a row `h` high.
+fn row_rect_h(ui: &mut Ui, h: f32) -> Rect {
     let width = ui.available_width() - 2.0 * MARGIN;
-    let (outer, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
-    Rect::from_min_size(pos2(outer.left() + MARGIN, outer.top()), vec2(width, ROW_H))
+    let (outer, _) = ui.allocate_exact_size(vec2(ui.available_width(), h), Sense::hover());
+    Rect::from_min_size(pos2(outer.left() + MARGIN, outer.top()), vec2(width, h))
 }
 
 /// The steps finishing a reword whose pick a running rebase already did: dimmed, without

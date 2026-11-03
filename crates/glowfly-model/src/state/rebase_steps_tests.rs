@@ -195,8 +195,45 @@ fn remaining_drops_count_only_new_ones() {
     assert_eq!(p.drops(), 0, "already dropped in git's list");
     p.set_action(2, Drop);
     assert_eq!(p.drops(), 1);
-    assert_eq!(p.subtitle(), "3 steps left in the rebase of main onto 1a2b3c4 Base · 2 done");
+    assert_eq!(p.subtitle(glowfly_core::i18n::Lang::En), "3 steps left in the rebase of main onto 1a2b3c4, 2 done.");
     assert!(p.first_may_combine());
+}
+
+#[test]
+fn the_header_says_the_order_and_where_the_list_ends() {
+    use glowfly_core::i18n::Lang;
+    let mut p = panel(vec![c(1, Pick), c(2, Pick)]);
+    assert_eq!(p.subtitle(Lang::En), "Rebasing 2 commits of main from the first commit.");
+    assert_eq!(p.order_hint(Lang::En), "Oldest first: commits are applied top to bottom, and the last becomes the tip of main.");
+    assert_eq!(p.tip_text(Lang::En), "Tip of main");
+    let plan = p.plan.as_mut().unwrap();
+    plan.upstream = Upstream::Commit(oid(7));
+    plan.onto_label = "b9eb369 Add app skeleton".into();
+    assert_eq!(p.subtitle(Lang::En), "Rebasing 2 commits of main onto b9eb369.", "a commit by its short id alone");
+    p.plan.as_mut().unwrap().onto_label = "release/2.0".into();
+    assert_eq!(p.subtitle(Lang::En), "Rebasing 2 commits of main onto release/2.0.", "a branch by its name");
+    for lang in [Lang::De, Lang::Es] {
+        assert_ne!(p.subtitle(lang), p.subtitle(Lang::En));
+        assert!(p.order_hint(lang).contains("main") && p.tip_text(lang).contains("main"), "{lang:?}");
+    }
+
+    let mut r = RebasePanel::loading_remaining();
+    r.fill_remaining(Remaining {
+        branch: None,
+        onto_label: "1a2b3c4 Base".into(),
+        done: 1,
+        locked: Vec::new(),
+        locked_text: String::new(),
+        steps: vec![c(3, Pick)],
+        first_may_combine: false,
+        todo: String::new(),
+    });
+    assert_eq!(r.subtitle(Lang::En), "1 step left in the rebase of a detached HEAD onto 1a2b3c4, 1 done.");
+    assert_eq!(r.order_hint(Lang::En), "Oldest first: the remaining steps run top to bottom, and the last becomes the new HEAD.");
+    assert_eq!(r.tip_text(Lang::En), "New HEAD");
+    r.remaining.as_mut().unwrap().branch = Some("feature".into());
+    assert_eq!(r.order_hint(Lang::En), "Oldest first: the remaining steps run top to bottom, and the last becomes the tip of feature.");
+    assert_eq!(r.tip_text(Lang::En), "Tip of feature");
 }
 
 fn ur(branch: &str) -> TodoStep {
