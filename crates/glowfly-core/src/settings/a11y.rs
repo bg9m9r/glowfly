@@ -1,6 +1,6 @@
 //! The settings Preferences > Accessibility owns besides the ones it moved there (reduce motion,
 //! the branch palette): the text cursor's blink, the focus indicator's strength, how long
-//! notifications stay, the tooltip delay, and whether the system's text size, high contrast
+//! notifications stay, the tooltip delay, whether background work is announced to screen readers, and whether the system's text size, high contrast
 //! and reduced motion are followed besides the choices made here. They sit flat in the settings file (`Settings::a11y` is flattened) and stay the same
 //! whatever profile is current. The High contrast check's rules are here too; the theme it
 //! brings back (`Settings::theme_before_contrast`) belongs to the profile, as `theme` does.
@@ -27,6 +27,8 @@ pub struct A11yPrefs {
     pub follow_system_contrast: bool,
     /// Motion is reduced while the system asks for less.
     pub follow_system_motion: bool,
+    /// Screen readers hear the running job and every notification (AccessKit live regions).
+    pub announce_jobs: bool,
 }
 
 impl Default for A11yPrefs {
@@ -39,6 +41,7 @@ impl Default for A11yPrefs {
             follow_system_text_size: true,
             follow_system_contrast: true,
             follow_system_motion: true,
+            announce_jobs: true,
         }
     }
 }
@@ -148,6 +151,7 @@ mod tests {
         assert!(old.a11y.cursor_blink);
         assert_eq!(old.a11y.focus_style, FocusStyle::Standard);
         assert!(old.a11y.follow_system_text_size && old.a11y.follow_system_contrast && old.a11y.follow_system_motion);
+        assert!(old.a11y.announce_jobs, "announced unless turned off");
         let a11y = A11yPrefs {
             cursor_blink: false,
             focus_style: FocusStyle::Strong,
@@ -156,11 +160,13 @@ mod tests {
             follow_system_text_size: false,
             follow_system_contrast: false,
             follow_system_motion: false,
+            announce_jobs: false,
         };
         let s = Settings { a11y, theme_before_contrast: Some(ThemeChoice::Custom("ocean".into())), ..Settings::default() };
         let text = serde_json::to_string(&s).unwrap();
         // Flat in the file, beside the other settings.
         assert!(text.contains(r#""toast_time":"Longer""#) && text.contains(r#""focus_style":"Strong""#), "{text}");
+        assert!(text.contains(r#""announce_jobs":false"#), "{text}");
         let back: Settings = serde_json::from_str(&text).unwrap();
         assert_eq!((back.a11y, back.theme_before_contrast), (s.a11y, s.theme_before_contrast));
     }

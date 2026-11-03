@@ -42,7 +42,7 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
     std::mem::take(&mut h.state_mut().1)
 }
 
-fn job(label: &str) -> RunningJob {
+pub(super) fn job(label: &str) -> RunningJob {
     RunningJob {
         label: label.into(),
         workdir: None,

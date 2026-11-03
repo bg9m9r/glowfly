@@ -48,6 +48,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - A hidden left or details panel leaves a 16 px edge strip that shows it again (`ui/panel_rails.rs`, with the rail).
 - Full screen is the window's own state, never saved: `LayoutMsg::ToggleFullscreen` asks the shell for `WindowCmd::SetFullscreen` from `view.window.fullscreen` (read each frame).
 - `WindowCmd::in_window` narrows what the drawn bar's window actions do while full screen (docs/PLATFORMS.md, Window frame).
+- With `announce_jobs` on (Preferences > Accessibility > Announcements) each toast's text and the status bar's job are AccessKit live regions (`ui/access.rs::announce`): polite, assertive for a failure.
 - Toasts are anchored to `ToastBounds`, where the top chrome and the status bar end, measured while `frame_layout` draws them (`ui/toasts.rs`), all one width.
 - The toolbar's repository and branch pickers (`ui/toolbar_pickers.rs`) are sized to their names up to a cap: the branch part to the widest local branch, so checking out a branch moves nothing (`ui/toolbar_fit.rs`).
 - In a window too narrow for everything, the pure `name_widths` shrinks the pickers (the longer first, then both, down to a floor) against the rest of the bar measured last frame.
