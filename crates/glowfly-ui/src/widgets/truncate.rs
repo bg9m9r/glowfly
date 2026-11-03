@@ -3,12 +3,17 @@
 //!
 //! egui ends a cut line on the last whole glyph that fits followed by "…" and marks the galley
 //! `elided`; `galley.text()` keeps the whole text, for tooltips and accessible names.
+//!
+//! Names that often share a long start (branches, tags, worktrees, repositories) are cut in
+//! their middle instead (`middle`): a short head ending before a separator, "…", and a tail that
+//! fills the rest, so `worktree-agent-a1…` names stay apart.
 
 use eframe::egui::text::{LayoutJob, TextWrapping};
 use eframe::egui::{
     self, Color32, FontId, Galley, Painter, Pos2, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, WidgetText, pos2, vec2,
 };
 use std::sync::Arc;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// The overflow character egui draws at the end of a cut line.
 const ELLIPSIS: char = '…';
@@ -177,6 +182,81 @@ pub fn cut_middle_in(p: &Painter, text: &str, font: &FontId, max_w: f32) -> Stri
         }
     }
     ELLIPSIS.to_string()
+}
+
+/// The characters a middle cut's head ends before (the last one within its share).
+const SEPARATORS: [&str; 4] = ["/", "-", "_", "."];
+/// The share of the room a middle cut's head may take.
+const HEAD_SHARE: f32 = 0.4;
+/// A head ends before a separator only when that keeps at least this much of its share.
+const SNAP_MIN: f32 = 0.5;
+/// The fewest characters a middle cut's tail keeps.
+const MIN_TAIL: usize = 8;
+/// The fewest characters a middle cut's head gives way to before the name is cut at its end.
+const MIN_HEAD: usize = 3;
+
+/// Where a middle cut splits `text` to fit `max_w` as `width` measures it: the byte end of the
+/// head and the byte start of the tail ("…" goes between), or None when `text` fits whole.
+/// The head is the first 40% of the room, ending before its last separator (`/ - _ .`) when
+/// that keeps at least half of it; the tail fills the rest. A tail under 8 characters takes
+/// room from the head, down to 3; when even 3 + "…" + 8 don't fit, the name is cut at its end
+/// instead (the tail is then empty: `text.len()`). Cuts land on grapheme boundaries.
+pub fn middle_cut(text: &str, max_w: f32, width: impl Fn(&str) -> f32) -> Option<(usize, usize)> {
+    if text.is_empty() || width(text) <= max_w {
+        return None;
+    }
+    // bounds[k]: the byte offset after k graphemes.
+    let bounds: Vec<usize> = text.grapheme_indices(true).map(|(i, _)| i).chain([text.len()]).collect();
+    let n = bounds.len() - 1;
+    let fits = |head: usize, tail: usize| width(&format!("{}{ELLIPSIS}{}", &text[..bounds[head]], &text[bounds[n - tail]..])) <= max_w;
+    let share = max_w * HEAD_SHARE;
+    let mut head = 0;
+    while head < n && width(&text[..bounds[head + 1]]) <= share {
+        head += 1;
+    }
+    let snaps = |k: usize| SEPARATORS.contains(&&text[bounds[k]..bounds[k + 1]]) && width(&text[..bounds[k]]) >= share * SNAP_MIN;
+    if let Some(k) = (1..=head.min(n - 1)).rev().find(|&k| snaps(k)) {
+        head = k;
+    }
+    // At least one grapheme always goes (the whole text doesn't fit).
+    let most = |head: usize| n - head - 1;
+    while head > MIN_HEAD && !fits(head, MIN_TAIL.min(most(head))) {
+        head -= 1;
+    }
+    let mut tail = MIN_TAIL.min(most(head));
+    if !fits(head, tail) {
+        let end = (0..n).rev().find(|&h| fits(h, 0)).unwrap_or(0);
+        return Some((bounds[end], text.len()));
+    }
+    while tail < most(head) && fits(head, tail + 1) {
+        tail += 1;
+    }
+    Some((bounds[head], bounds[n - tail]))
+}
+
+/// `text` cut in its middle to fit `max_w` in `font` (`middle_cut`): unchanged when it fits,
+/// just "…" when nothing else does. For names, never prose or file paths.
+pub fn middle(p: &Painter, text: &str, font: &FontId, max_w: f32) -> String {
+    let width = |s: &str| p.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
+    match middle_cut(text, max_w, width) {
+        None => text.to_owned(),
+        Some((head, tail)) => format!("{}{ELLIPSIS}{}", &text[..head], &text[tail..]),
+    }
+}
+
+/// `paint_cut_text` for a name: cut in its middle (`middle`) rather than at its end.
+pub fn paint_middle(p: &Painter, at: Pos2, text: &str, font: FontId, color: Color32, max_w: f32) -> Cut {
+    let ellipsis_w = p.ctx().fonts(|f| f.glyph_width(&font, ELLIPSIS));
+    if max_w.is_nan() || max_w < ellipsis_w {
+        return Cut { rect: Rect::from_min_size(at, vec2(0.0, 0.0)), cut: !text.is_empty() };
+    }
+    let shown = middle(p, text, &font, max_w);
+    let cut = shown != text;
+    let galley = p.layout_no_wrap(shown, font, color);
+    let min = pos2(at.x, at.y - galley.size().y / 2.0);
+    let rect = Rect::from_min_size(min, galley.size());
+    p.galley(min, galley, color);
+    Cut { rect, cut }
 }
 
 /// A folder path cut to `max_w` at whole folders: its first folder (a drive, a share's server,

@@ -66,9 +66,9 @@ pub mod truncate;
 pub mod underline_tab;
 
 pub use super::list_row::{
-    GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
-    file_row_focus, file_row_with_end, keyed_file_row, keyed_file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text,
-    row_text_hover, row_text_reserving,
+    GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NAME_GAP, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
+    file_row_focus, file_row_with_end, keyed_file_row, keyed_file_row_with_end, list_row, list_row_cut, list_row_hidden, name_row,
+    name_row_cut, row_text, row_text_hover, row_text_reserving,
 };
 pub use chip::quiet_chip;
 pub use field_group::FieldGroup;

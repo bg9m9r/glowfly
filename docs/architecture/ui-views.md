@@ -199,6 +199,7 @@ start with `state/`, `update/` or `ui/`.
 ## Command palette and shortcuts
 
 - `palette.rs`: the command palette (Ctrl+P): a search field over the commands available now, ranked by a fuzzy match, or over a two-step command's items (tracked files for File history, stashes to apply, pop or delete), or a free-text step (the message for a new stash).
+- `palette_label.rs`: a palette row's label: its matched characters in the accent colour, a file's folder part dimmed, and a ref or repository that doesn't fit cut in its middle with its matches moved along.
 - `shortcuts.rs`: keyboard shortcuts: every changeable key, and Go to tab 1 to 8, matched through the effective keymap (`global.rs`, with presses turned into chords in `chords.rs`); recording a key for Preferences > Keyboard (`record.rs`); the shortcut sheet (`sheet.rs`) and the key caps it and Preferences draw (`caps.rs`).
 - `shortcuts/caps.rs`: keys drawn as key caps: each chord's parts as caps joined by "+", alternatives joined by "or".
 - `shortcuts/chords.rs`: key presses as chords, and taking a press that one of the keymap's bindings answers to out of egui's input before the views see it.

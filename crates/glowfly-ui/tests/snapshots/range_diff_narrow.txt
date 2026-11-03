@@ -53,6 +53,7 @@ Button "New: Add app skeleton"
 Button "Same: Tidy the login form"
 painted:
   "Repository"
+  "de…"
   "Branch"
   "main"
   "Pull"

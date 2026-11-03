@@ -27,6 +27,8 @@ git2.workspace = true
 serde_json.workspace = true
 eframe.workspace = true
 tracing.workspace = true
+# Middle cuts of long names land on grapheme boundaries (widgets/truncate.rs).
+unicode-segmentation = "1.13"
 egui_kittest = { workspace = true, features = ["snapshot", "wgpu"], optional = true }
 # One wgpu device for all view tests (src/snapshot_check/); the version kittest renders with.
 egui-wgpu = { workspace = true, optional = true }

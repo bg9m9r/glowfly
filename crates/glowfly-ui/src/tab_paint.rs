@@ -18,7 +18,7 @@ use super::theme::type_scale;
 use super::widgets::chip::{self, ChipSize, Look};
 use super::widgets::quiet_target::{self, State};
 use super::widgets::tab_glyph::{self, TabGlyph};
-use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized};
+use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized, truncate};
 use eframe::egui::{self, Color32, FontId, Rect, Stroke, StrokeKind, pos2, vec2};
 
 /// A tab's corners: rounded at the top, square where it meets the bar's bottom.
@@ -122,9 +122,10 @@ pub(super) fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, font: FontId,
     }
     paint_icon_sized(p, pos2(left + ICON / 2.0, cy), Icon::Repo, icon_tone, ICON);
     let text_col = if look.active { color::text() } else { color::weak() };
-    // The name, cut with an ellipsis before the close slot (kept whether or not the × shows).
+    // The name, cut in its middle before the close slot (kept whether or not the × shows):
+    // repositories often share a long start.
     let left = left + ICON + ICON_GAP;
-    let cut = paint_cut_text(p, pos2(left, cy), name, font, text_col, close_rect.left() - CLOSE_GAP - left);
+    let cut = truncate::paint_middle(p, pos2(left, cy), name, font, text_col, close_rect.left() - CLOSE_GAP - left);
     if look.close_alpha > 0.0 {
         tab_glyph::paint_quiet(p, close_rect.center(), TabGlyph::Close, text_col.gamma_multiply(look.close_alpha), look.close);
     }
