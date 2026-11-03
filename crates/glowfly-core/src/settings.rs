@@ -43,7 +43,7 @@ mod ui_choices;
 mod updates;
 mod zoom;
 pub use crate::dates::DateKind;
-pub use a11y::{A11yPrefs, ToastTime, TooltipDelay};
+pub use a11y::{A11yPrefs, FocusStyle, ToastTime, TooltipDelay};
 pub use blame::{BlameMoves, BlamePrefs};
 pub use branch_colours::BranchPalette;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};

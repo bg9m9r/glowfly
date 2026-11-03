@@ -162,7 +162,7 @@ pub(super) fn paint_target(p: &Painter, t: Target, size: ControlSize, press: Pre
     let (fill, _) = quiet(&pal, press);
     let edge = t.edge.map(|edge| if press == Press::Rest { edge } else { Stroke::new(edge.width, pal.weak) });
     paint_face(p, t.rect, t.corners, fill, edge);
-    paint_focus(p, t, size, focus, pal.accent);
+    paint_focus(p, t, size, focus, InsetRing::Accent);
 }
 
 /// Paints target `t`, a button of size `size`, in `look` (`look` for its state, or a look the
@@ -183,14 +183,23 @@ pub(super) fn paint_button(p: &Painter, t: Target, size: ControlSize, look: Look
         }
         None => paint_face(p, t.rect, t.corners, look.fill, None),
     }
-    paint_focus(p, t, size, focus, color::current().accent);
+    paint_focus(p, t, size, focus, InsetRing::Accent);
 }
 
-/// The colour of a packed button's inset focus ring: the primary ink on an enabled primary
-/// fill (the accent is the primary fill in most palettes), the accent on every other fill.
-pub(super) fn inset_ring(on_primary_fill: bool) -> Color32 {
-    let p = color::current();
-    if on_primary_fill { p.on_primary } else { p.accent }
+/// How a packed button's inset focus ring is drawn: in the accent, or on an enabled primary
+/// fill (the accent is the primary fill in most palettes) in the primary ink, edged in Strong
+/// by that `fill` (`tokens::focus_ring_inset_in`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) enum InsetRing {
+    Accent,
+    OnPrimary { fill: Color32 },
+}
+
+impl InsetRing {
+    /// The ring of a half filled with `fill`, `on_primary_fill` or not.
+    pub(super) fn on(on_primary_fill: bool, fill: Color32) -> Self {
+        if on_primary_fill { Self::OnPrimary { fill } } else { Self::Accent }
+    }
 }
 
 /// Paints `fill` (none when transparent) and `edge` inside `rect` on `corners`.
@@ -206,14 +215,17 @@ fn paint_face(p: &Painter, rect: Rect, corners: CornerRadius, fill: Color32, edg
 /// Paints target `t`'s focus ring when it is `focus`ed: 2 px outside the edge of a framed target
 /// that stands alone, else inset on its exact corners in `inset` (the accent, or a primary
 /// fill's ink), so a packed target's ring never reaches its neighbour.
-pub(super) fn paint_focus(p: &Painter, t: Target, size: ControlSize, focus: bool, inset: Color32) {
+pub(super) fn paint_focus(p: &Painter, t: Target, size: ControlSize, focus: bool, inset: InsetRing) {
     if !focus {
         return;
     }
     if t.edge.is_some() && size.allows_frame() {
         tokens::focus_ring(p, t.rect, t.corners);
     } else {
-        tokens::focus_ring_inset_in(p, t.rect, t.corners, inset);
+        match inset {
+            InsetRing::Accent => tokens::focus_ring_inset(p, t.rect, t.corners),
+            InsetRing::OnPrimary { fill } => tokens::focus_ring_inset_in(p, t.rect, t.corners, color::current().on_primary, fill),
+        }
     }
 }
 
