@@ -317,6 +317,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `rebase_dragging` in Porcelain.
+    "rebase_dragging_light",
     // `prefs_general` in Porcelain.
     "prefs_general_light",
     // `conflict_popover_long_dark` and `conflict_report_long_dark` in Porcelain.

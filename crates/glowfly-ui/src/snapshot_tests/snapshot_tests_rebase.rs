@@ -176,7 +176,7 @@ fn header_buttons_and_esc() {
     remove_fixture(&dir);
 }
 
-fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<bool>) {
+pub(super) fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<bool>) {
     let events = &mut h.input_mut().events;
     events.push(Event::PointerMoved(pos));
     if let Some(pressed) = button {

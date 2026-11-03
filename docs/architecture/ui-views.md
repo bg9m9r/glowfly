@@ -246,7 +246,7 @@ start with `state/`, `update/` or `ui/`.
 - `rebase/keys.rs`: the rebase panel's keys, while it can be edited, no editor is open, nothing has the keyboard focus and nothing covers the window: the arrows select a row (with Alt they move it), the action letters set a commit's action, X and B add an exec or break step, Delete or Backspace removes one, and Enter opens the selected row's editor.
 - `rebase/merge_row.rs`: the fixed rows of a list that recreates merges: a label row (a "label" chip and the commit it marks), a reset row (a "reset" chip and where the next line starts), and the merge dot a merge row shows in place of the grip.
 - `rebase/reword_dialog.rs`: the Reword dialog (`Modal::RewordCommit`): a new message for a commit chosen in the graph, or, as the Squash dialog, the message of the commit a squash makes (pre-filled with the joined messages).
-- `snapshot_tests/snapshot_tests_rebase_header.rs`: the rebase panel at 1100 px: the subtitle wrapping, never cut, the order line and the tip row after the last step (none for an empty list).
+- `snapshot_tests/snapshot_tests_rebase_header.rs`: the rebase panel at 1100 px: the subtitle wrapping, never cut, the order line and the tip row after the last step (none for an empty list), and the rows moving apart round a dragged one (at once with Reduce motion).
 - `rebase/step_row.rs`: an exec or break row of the rebase panel: a grip, a chip naming the step, the command (or a note for a break), and Edit command, Remove step, Move up and Move down.
 
 ## Preferences (`prefs/`)
