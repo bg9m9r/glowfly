@@ -297,7 +297,8 @@ fn search_hint_cut() {
 
 /// Five local branches and four worktrees whose names share a long start (`worktree-agent-a…`,
 /// `agent-a…`), as agent tools make them.
-const AGENT_IDS: [&str; 5] = ["a3f9c1d2-refresh-rows", "a5d02b8e-tab-titles", "a71e4f0c-picker-cut", "a9c6b3d1-palette", "ab48e2f7-push-menu"];
+const AGENT_IDS: [&str; 5] =
+    ["a3f9c1d2-refresh-rows", "a5d02b8e-tab-titles", "a71e4f0c-picker-cut", "a9c6b3d1-palette", "ab48e2f7-push-menu"];
 
 /// The fixture with `AGENT_IDS` as local branches and the first four as linked worktrees, each
 /// on its branch, in a 260 px left panel.
@@ -323,7 +324,8 @@ fn shared_prefix(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 /// be told apart without hovering; each is still named in full (pixel goldens, dark and light).
 #[test]
 fn sidebar_shared_prefix() {
-    for (theme, dark, golden) in [(ThemeChoice::Dark, true, "sidebar_shared_prefix_dark"), (ThemeChoice::Light, false, "sidebar_shared_prefix_light")]
+    for (theme, dark, golden) in
+        [(ThemeChoice::Dark, true, "sidebar_shared_prefix_dark"), (ThemeChoice::Light, false, "sidebar_shared_prefix_light")]
     {
         let (st, dir) = shared_prefix(theme, golden);
         let mut h = harness(st, dark);

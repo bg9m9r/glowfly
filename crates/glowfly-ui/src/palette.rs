@@ -19,7 +19,8 @@ use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{
-    self, Align2, Color32, CornerRadius, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2,
+    self, Align2, Color32, CornerRadius, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2,
+    vec2,
 };
 
 const WIDTH: f32 = 560.0;
