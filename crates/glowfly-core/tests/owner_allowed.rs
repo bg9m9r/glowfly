@@ -109,9 +109,12 @@ fn root_owned(base: &Path) {
     let safe = Command::new("git").args(["config", "--get-all", "safe.directory"]).output();
     let all_safe = safe.is_ok_and(|o| String::from_utf8_lossy(&o.stdout).lines().any(|l| l.trim() == "*"));
     if all_safe || !sudo(&["chown", "-R", "root:root", &owned.display().to_string()]) {
+        // The case the owner check exists for: on CI it must run, never pass by skipping.
+        assert!(std::env::var_os("CI").is_none(), "the root-owned case can't run: needs passwordless sudo and no safe.directory=*");
         eprintln!("skipped: needs passwordless sudo and no safe.directory=*");
         return;
     }
+    eprintln!("the root-owned case runs");
     let before = listed();
     match safe_directory::open(&owned) {
         Err(Error::NotOwned(r)) => assert_eq!(r.root, glowfly_core::paths::resolve(&owned)),
