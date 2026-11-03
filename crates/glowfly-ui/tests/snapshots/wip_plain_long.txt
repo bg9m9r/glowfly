@@ -62,8 +62,6 @@ Button "src/module_04.rs" [off]
 Label "Modified"
 Button "src/module_05.rs" [off]
 Label "Modified"
-Button "src/module_06.rs" [off]
-Label "Modified"
 Button "Show staged files as tree"
 Button "Unstage all"
 Label "Staged files (25)"
@@ -77,8 +75,6 @@ Label "Added"
 Button "src/module_04.rs" [off]
 Label "Added"
 Button "src/module_05.rs" [off]
-Label "Added"
-Button "src/module_06.rs" [off]
 Label "Added"
 Label "Commit"
 CheckBox "Amend" [off]
@@ -137,8 +133,6 @@ painted:
   "M"
   "M"
   "M"
-  "M"
-  "A"
   "A"
   "A"
   "A"

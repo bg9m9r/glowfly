@@ -1,0 +1,18 @@
+Dialog
+  Label "Add to Work"
+  Button "Close this dialog"
+  TextInput "Filter by name or path" = "tool" [focused]
+  Label "Recent"
+  Label "Starred when added"
+  CheckBox "tool-0" [off]
+  Label "C:\\work"
+  CheckBox "tool-1" [off]
+  Label "C:\\work"
+  CheckBox "tool-2" [off]
+  Label "C:\\work"
+  CheckBox "tool-3" [on]
+  Label "C:\\work"
+  CheckBox "tool-4" [off]
+  Label "C:\\work"
+  Button "Cancel"
+  Button "Add 2"

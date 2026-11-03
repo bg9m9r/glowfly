@@ -106,8 +106,6 @@ painted:
   "✔  main"
   "Remote"
   "0"
-  "Tags"
-  "1"
   "M"
   "Any author"
   "Branch / tag"

@@ -12,6 +12,7 @@ use crate::state::AppState;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette};
 use crate::state::palette_nav::{Jump, PAGE_ROWS};
 use crate::ui::theme::controls;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
 use eframe::egui::{
     self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2, text::LayoutJob,
@@ -106,6 +107,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 /// The search field, after a search icon, or in a second step after a back arrow and its title.
 fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
+        // As tall as the field from the start, so the icons before it centre on its centre line.
+        ui.set_min_height(ControlSize::Large.metrics().h);
         let hint = match &p.mode {
             Mode::Commands => {
                 let (rect, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
@@ -121,14 +124,11 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 k.prompt()
             }
         };
-        let r = controls::field(
-            ui,
-            egui::TextEdit::singleline(&mut p.query)
-                .id(Id::new("glowfly-palette-query"))
-                .hint_text(hint)
-                .desired_width(f32::INFINITY)
-                .font(type_scale::font(type_scale::SUBHEAD)),
-        );
+        let edit = egui::TextEdit::singleline(&mut p.query)
+            .id(Id::new("glowfly-palette-query"))
+            .hint_text(hint)
+            .font(type_scale::font(type_scale::SUBHEAD));
+        let r = ui.add(controls::SizedField::new(ControlSize::Large, edit));
         crate::ui::access::name_if_unnamed(&r, hint);
         if !prompting {
             r.request_focus();

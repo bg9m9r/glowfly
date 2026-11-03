@@ -24,8 +24,8 @@
 //! Sizes come from `theme::sizes` (`size`, Regular by default): the height, the text step, the
 //! room beside the text (`pad_x` framed, `quiet_pad_x` quiet), the icon and its gap, and the
 //! corners. Compact is for quiet buttons only. The text keeps at least 4 px above and below
-//! inside a framed button's edge and 3 px inside a quiet one's. Taller with `min_height`, or an
-//! exact `height` beside a field (`text_field::with_button`), until fields take a size.
+//! inside a framed button's edge and 3 px inside a quiet one's. An exact `height` beside a
+//! field (`text_field::with_button`), until fields take a size.
 
 use super::button_look::{self, Press, Target};
 use super::icon::{self, Icon};
@@ -67,7 +67,6 @@ pub struct StyledButton<'a> {
     why: Option<&'a str>,
     tip: Option<&'a str>,
     min_width: f32,
-    min_height: f32,
     height: Option<f32>,
     size: ControlSize,
     max_width: Option<f32>,
@@ -125,7 +124,6 @@ impl<'a> StyledButton<'a> {
             why: None,
             tip: None,
             min_width: 0.0,
-            min_height: 0.0,
             height: None,
             size: ControlSize::Regular,
             max_width: None,
@@ -156,12 +154,6 @@ impl<'a> StyledButton<'a> {
     /// The least width (dialog footers use 76 px).
     pub fn min_width(mut self, w: f32) -> Self {
         self.min_width = w;
-        self
-    }
-
-    /// A taller button than the 28 px standard (the commit box's Commit, the welcome choices).
-    pub fn min_height(mut self, h: f32) -> Self {
-        self.min_height = h;
         self
     }
 
@@ -256,7 +248,7 @@ impl<'a> StyledButton<'a> {
     /// check the inset against the real text: at least `galley_h + 8` for a framed button and
     /// `+ 6` for a quiet one.
     fn measure(&self, galley: &egui::Galley) -> egui::Vec2 {
-        let h_min = self.metrics().h.max(self.min_height);
+        let h_min = self.metrics().h;
         if self.icon_only {
             let side = self.height.unwrap_or(h_min);
             return vec2(side.max(self.min_width), side);

@@ -65,9 +65,6 @@ Label "Added"
 Button "README.md" [off]
 Label "+2"
 Label "Modified"
-Button "app.txt" [off]
-Label "+1"
-Label "Modified"
 Button "Show staged files as list"
 Button "Unstage all"
 Label "Staged files (3)"
@@ -141,7 +138,6 @@ painted:
   "src/ui"
   "A"
   "view.rs"
-  "M"
   "lib"
   "A"
   "core.rs"

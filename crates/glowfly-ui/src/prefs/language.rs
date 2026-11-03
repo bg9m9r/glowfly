@@ -5,8 +5,9 @@
 //! saves the change.
 
 use super::{check_row, help, row, section};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::{color, controls, type_scale};
-use eframe::egui::{self, RichText, Ui, vec2};
+use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::{self, Lang, SYSTEM};
 use glowfly_core::settings::{DateKind, Settings};
 
@@ -78,8 +79,8 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
 fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str, locale: &str, now: (i64, i32)) {
     row(ui, label, |ui| {
         ui.horizontal_wrapped(|ui| {
-            let w = super::fit(ui, 230.0);
-            controls::field(ui, egui::TextEdit::singleline(value).hint_text(default).desired_width(w).margin(vec2(8.0, 5.0)));
+            let w = super::fit(ui, 246.0);
+            ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::singleline(value).hint_text(default)).width(w));
             let pattern = if value.trim().is_empty() { default } else { value.as_str() };
             let preview = glowfly_core::dates::format(now.0, pattern, locale, now.1);
             ui.label(RichText::new(preview).size(type_scale::SMALL).color(color::weak()));

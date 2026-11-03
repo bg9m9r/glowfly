@@ -4,6 +4,7 @@
 //! warning lines, and the page's primary button.
 
 use crate::ui::access;
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::{color, controls, type_scale};
 use crate::ui::widgets::{self, buttons};
 use eframe::egui::{self, Align2, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
@@ -168,9 +169,12 @@ pub fn caption(ui: &mut Ui, text: &str) {
     ui.add_space(4.0);
 }
 
+/// A Preferences text field's widest, padding included.
+pub const FIELD_W: f32 = 336.0;
+
 pub fn text_field(ui: &mut Ui, value: &mut String, hint: &str) -> egui::Response {
-    let w = fit(ui, 320.0);
-    controls::field(ui, egui::TextEdit::singleline(value).hint_text(hint).desired_width(w).margin(vec2(8.0, 5.0)))
+    let w = fit(ui, FIELD_W);
+    ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::singleline(value).hint_text(hint)).width(w))
 }
 
 /// The widest a disabled primary's reason gets beside it before it is cut.

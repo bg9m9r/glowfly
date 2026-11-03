@@ -1,15 +1,17 @@
-//! Repository groups: the New group and Rename group dialogs, colouring, ordering and removing
-//! groups, and moving favorites between them. Every change saves the settings; a message that
-//! names a group that is gone (the list changed under a menu) does nothing. A Create or Rename
-//! whose name is usable closes the dialog; a refused one leaves it open.
+//! Repository groups: the New group, Rename group and Add repositories dialogs, colouring,
+//! ordering and removing groups, moving favorites between them and adding repositories to one.
+//! Every change saves the settings; a message that names a group that is gone (the list changed
+//! under a menu) does nothing. A Create or Rename whose name is usable closes the dialog; a
+//! refused one leaves it open.
 
 use crate::effect::Effect;
 use crate::msg::GroupMsg;
-use crate::state::repo_groups::{GroupForm, favorite_entry, member_entries, prune, ungrouped_entries};
+use crate::state::repo_group_picker::AddPicker;
+use crate::state::repo_groups::{GroupForm, favorite_entry, member_entries, members, prune, ungrouped_entries};
 use crate::state::{AppState, Modal};
 use glowfly_core::paths;
 use glowfly_core::settings::{RepoGroup, clean_group_name, new_group_colour};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -57,10 +59,36 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
         }
         GroupMsg::Remove(g) => remove(st, g, now),
         GroupMsg::MoveRepo { path, group, index } => move_repo(st, &path, group, index),
+        GroupMsg::AddDialog(g) => {
+            if g < st.settings.repo_groups.len() {
+                st.modal = Some(Modal::AddToGroup(AddPicker::new(st, g)));
+            }
+            false
+        }
+        GroupMsg::AddRepos { group, paths } => add_repos(st, group, &paths),
     };
     if changed {
         fx.extend(super::prefs::save_settings(st));
     }
+}
+
+/// Puts each of `paths` at the end of `group`, starring it first if need be; one already in
+/// the group stays put. Closes the Add repositories picker. Returns whether anything changed.
+fn add_repos(st: &mut AppState, group: usize, paths: &[PathBuf]) -> bool {
+    if matches!(st.modal, Some(Modal::AddToGroup(_))) {
+        st.modal = None;
+    }
+    if group >= st.settings.repo_groups.len() {
+        return false;
+    }
+    let mut changed = false;
+    for p in paths {
+        let here = members(&st.settings, group).iter().any(|m| st.same_folder(m, p));
+        if !here {
+            changed |= move_repo(st, p, Some(group), usize::MAX);
+        }
+    }
+    changed
 }
 
 /// Closes the New group or Rename group dialog once its name is taken up; a refused name

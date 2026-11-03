@@ -1,7 +1,7 @@
 //! One start-page repository row (`repo_row` draws it, with the start page's grip, pill, key cap
 //! and ⋯): what a click (open or switch to its tab), the star and × send, and the row's menu, on
 //! a right-click or from ⋯: Open, the favorite toggle, a favorite's Move up, Move down and Move
-//! to group, a Recent entry's Remove from recent, Copy path, then Color.
+//! to group, a Recent entry's Add to group and Remove from recent, Copy path, then Color.
 //! A row inside a coloured group leaves its colour dot to the group's bar (its slot stays).
 
 use super::common::{menu_item, menu_item_if};
@@ -99,7 +99,10 @@ fn row_menu(ui: &mut egui::Ui, st: &AppState, path: &Path, section: Section, msg
     menu_item(msgs, ui, t.tr("repos.row_menu.open"), Msg::Repo(RepoMsg::Open(path.to_path_buf())));
     menu_item(msgs, ui, favorite_label(t, fav), Msg::Recent(RecentMsg::SetFavorite { path: path.to_path_buf(), favorite: !fav }));
     match section {
-        Section::Recent => menu_item(msgs, ui, t.tr("repos.remove_recent"), Msg::Recent(RecentMsg::Remove(path.to_path_buf()))),
+        Section::Recent => {
+            super::repo_group_menu::add_items(ui, t, &st.settings.repo_groups, path, msgs);
+            menu_item(msgs, ui, t.tr("repos.remove_recent"), Msg::Recent(RecentMsg::Remove(path.to_path_buf())));
+        }
         Section::Favorite { group, index, count } => {
             let (up, down) = match group {
                 Some(_) => (t.tr("repos.row_menu.move_up.blocked_group"), t.tr("repos.row_menu.move_down.blocked_group")),
