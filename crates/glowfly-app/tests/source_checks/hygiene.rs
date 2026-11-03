@@ -8,6 +8,8 @@
 //! - Every non-test file opens with a `//!` module doc saying what it holds.
 //! - The `update/` and `state/` log and toast calls with an English string literal (rather than a
 //!   `t.tr`/`trf`/`trn` lookup) number at most `ENGLISH_LOG_CALLS`; the number only goes down.
+//!   glowfly-ui's and glowfly-runner's English text for the user is counted per file in
+//!   `hygiene/english_allow.rs` (`english_text.rs`), and those counts only go down too.
 //! - The shared fixture builders are not written again: each helper in `FIXTURE_HELPERS` is
 //!   defined only in the files listed for it, and no two tests pass `scratch_repo` or `long_repo`
 //!   the same folder name (tests run in parallel and would share the folder).
@@ -26,6 +28,8 @@
 
 use crate::views;
 
+#[path = "hygiene/english_text.rs"]
+mod english_text;
 #[path = "hygiene/test_switches.rs"]
 mod test_switches;
 

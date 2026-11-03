@@ -35,17 +35,18 @@ pub struct LfsContext {
 }
 
 pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec<Msg>) {
+    let t = cx.lang;
     let Some(repo) = cx.repo_name.as_deref() else {
-        help(ui, "Open a repository to set up Git LFS.");
+        help(ui, t.tr("lfs.page.no_repo.help"));
         return;
     };
     if let Some(real) = &cx.held {
-        return held(ui, cx.lang, real, &cx.patterns, msgs);
+        return held(ui, t, real, &cx.patterns, msgs);
     }
     if let Some(error) = &page.error {
         warn(ui, error);
         ui.add_space(6.0);
-        if ui.add(buttons::secondary("Check again")).clicked() {
+        if ui.add(buttons::secondary(t.tr("lfs.page.check_again.button"))).clicked() {
             msgs.push(Msg::Lfs(LfsMsg::Reload));
         }
         return;
@@ -53,14 +54,14 @@ pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec
     let Some(status) = page.status.clone() else {
         ui.horizontal(|ui| {
             ui.add(egui::Spinner::new());
-            ui.label(RichText::new("Checking Git LFS…").color(color::weak()));
+            ui.label(RichText::new(t.tr("lfs.page.checking.body")).color(color::weak()));
         });
         return;
     };
     let busy = cx.job.is_some();
     match &status.version {
-        None => missing(ui, cx.lang, &status, msgs),
-        Some(_) if !status.initialized => not_set_up(ui, cx.lang, &status, repo, busy, msgs),
+        None => missing(ui, t, &status, msgs),
+        Some(_) if !status.initialized => not_set_up(ui, t, &status, repo, busy, msgs),
         Some(version) => set_up(ui, page, &status, version, cx, msgs),
     }
 }
@@ -68,54 +69,42 @@ pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec
 /// Git is held in the repository: nothing was read with it, and no command runs until it is
 /// trusted. The patterns come from .gitattributes.
 fn held(ui: &mut Ui, t: Lang, real: &Path, patterns: &[LfsPattern], msgs: &mut Vec<Msg>) {
-    row(ui, "Status", |ui| {
-        ui.label(RichText::new("Paused until you trust this repository.").color(color::text()));
-        help(
-            ui,
-            "Glowfly reads the LFS setup with git, and git would run the programs this repository's own settings and hooks name. \
-             LFS commands wait for your decision too.",
-        );
+    row(ui, t.tr("lfs.page.status.label"), |ui| {
+        ui.label(RichText::new(t.tr("lfs.page.held.body")).color(color::text()));
+        help(ui, t.tr("lfs.page.held.help"));
         ui.add_space(4.0);
-        if ui.add(buttons::secondary("Review trust…")).clicked() {
+        if ui.add(buttons::secondary(t.tr("lfs.page.review_trust.button"))).clicked() {
             msgs.push(Msg::Trust(TrustMsg::Ask { real: real.to_path_buf() }));
         }
     });
-    row(ui, "Tracked patterns", |ui| {
+    row(ui, t.tr("lfs.page.patterns.label"), |ui| {
         if patterns.is_empty() {
-            help(ui, "No patterns in .gitattributes.");
+            help(ui, t.tr("lfs.page.no_root_patterns.help"));
         } else {
             pattern_list(ui, t, patterns, false, true, msgs);
-            help(ui, if all_root(patterns) { "Read from .gitattributes." } else { t.tr("lfs.page.read_from_files") });
+            help(ui, if all_root(patterns) { t.tr("lfs.page.read_from_root.help") } else { t.tr("lfs.page.read_from_files") });
         }
     });
 }
 
 /// git-lfs isn't installed: say so, and warn when the repository already uses LFS.
 fn missing(ui: &mut Ui, t: Lang, status: &LfsStatus, msgs: &mut Vec<Msg>) {
-    row(ui, "Status", |ui| {
-        warn(ui, "Git LFS isn't installed, so Glowfly can't run LFS commands here.");
-        help(ui, "Install it from git-lfs.com, then choose Check again.");
+    row(ui, t.tr("lfs.page.status.label"), |ui| {
+        warn(ui, t.tr("lfs.page.missing.warn"));
+        help(ui, t.tr("lfs.page.missing.help"));
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            if ui.add(buttons::secondary("Get Git LFS")).clicked() {
+            if ui.add(buttons::secondary(t.tr("lfs.page.get.button"))).clicked() {
                 msgs.push(Msg::OpenUrl(INSTALL_URL.into()));
             }
-            if ui.add(buttons::secondary("Check again")).clicked() {
+            if ui.add(buttons::secondary(t.tr("lfs.page.check_again.button"))).clicked() {
                 msgs.push(Msg::Lfs(LfsMsg::Reload));
             }
         });
     });
     if !status.patterns.is_empty() {
-        row(ui, "Tracked patterns", |ui| {
-            let n = status.patterns.len();
-            let count = if n == 1 { "1 pattern".to_owned() } else { format!("{n} patterns") };
-            warn(
-                ui,
-                &format!(
-                    "This repository stores {count} in LFS. Without Git LFS, those files are checked out as small pointer files, and \
-                     changing and committing them can break them for everyone."
-                ),
-            );
+        row(ui, t.tr("lfs.page.patterns.label"), |ui| {
+            warn(ui, &t.trn("lfs.page.missing.patterns.warn", status.patterns.len(), &[]));
             ui.add_space(4.0);
             pattern_list(ui, t, &status.patterns, false, true, msgs);
         });
@@ -124,64 +113,50 @@ fn missing(ui: &mut Ui, t: Lang, status: &LfsStatus, msgs: &mut Vec<Msg>) {
 
 /// git-lfs is installed but this repository isn't set up.
 fn not_set_up(ui: &mut Ui, t: Lang, status: &LfsStatus, repo: &str, busy: bool, msgs: &mut Vec<Msg>) {
-    row(ui, "Status", |ui| {
-        ui.label(RichText::new(format!("Git LFS isn't set up in {repo}.")).color(color::text()));
-        help(
-            ui,
-            "Setting up installs the LFS hooks and filters for this repository only (git lfs install --local). Without the \
-             pre-push hook, pushes don't upload LFS files.",
-        );
+    row(ui, t.tr("lfs.page.status.label"), |ui| {
+        ui.label(RichText::new(t.trf("lfs.page.not_set_up.body", &[("repo", &repo)])).color(color::text()));
+        help(ui, t.tr("lfs.page.not_set_up.help"));
         if !status.foreign_hooks.is_empty() {
-            warn(
-                ui,
-                &format!(
-                    "These hooks already exist and aren't Git LFS hooks: {}. Setting up will stop without changing them; merge them \
-                     by hand (git lfs update --manual explains how).",
-                    status.foreign_hooks.join(", ")
-                ),
-            );
+            warn(ui, &t.trf("lfs.page.foreign_hooks.warn", &[("hooks", &status.foreign_hooks.join(", "))]));
         }
         ui.add_space(4.0);
-        if primary_button(ui, "Initialize LFS", !busy, busy.then_some(BUSY)).clicked() {
+        if primary_button(ui, t.tr("lfs.page.initialize.button"), !busy, busy.then_some(BUSY)).clicked() {
             msgs.push(Msg::Lfs(LfsMsg::Initialize));
         }
     });
     if !status.patterns.is_empty() {
-        row(ui, "Tracked patterns", |ui| {
+        row(ui, t.tr("lfs.page.patterns.label"), |ui| {
             pattern_list(ui, t, &status.patterns, false, true, msgs);
-            help(ui, "Initialize LFS to work with these files.");
+            help(ui, t.tr("lfs.page.initialize.help"));
         });
     }
 }
 
 /// The repository is set up: patterns, the new-pattern field, .gitattributes and commands.
 fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx: &LfsContext, msgs: &mut Vec<Msg>) {
-    let busy = cx.job.is_some();
-    row(ui, "Status", |ui| {
-        ui.label(RichText::new(format!("Enabled · git-lfs {version}")).color(color::text()));
+    let (t, busy) = (cx.lang, cx.job.is_some());
+    row(ui, t.tr("lfs.page.status.label"), |ui| {
+        ui.label(RichText::new(t.trf("lfs.page.enabled.body", &[("version", &version)])).color(color::text()));
     });
-    row(ui, "Tracked patterns", |ui| {
+    row(ui, t.tr("lfs.page.patterns.label"), |ui| {
         if status.patterns.is_empty() {
-            help(ui, "No patterns yet.");
+            help(ui, t.tr("lfs.page.no_patterns.help"));
         } else {
-            pattern_list(ui, cx.lang, &status.patterns, true, busy, msgs);
+            pattern_list(ui, t, &status.patterns, true, busy, msgs);
         }
-        help(
-            ui,
-            "Files that match a pattern are stored in LFS from their next commit. Files already committed stay in history as they are.",
-        );
+        help(ui, t.tr("lfs.page.patterns.help"));
     });
-    row(ui, "New pattern", |ui| {
+    row(ui, t.tr("lfs.page.new_pattern.label"), |ui| {
         let mut submit = false;
         ui.horizontal(|ui| {
             // Always enabled: disabling it while a job (an auto-fetch, say) runs would take the
             // focus away mid-typing. Only Track waits for the job.
-            let r = text_field(ui, &mut page.new_pattern, "*.psd, *.zip or assets/video/**");
+            let r = text_field(ui, &mut page.new_pattern, t.tr("lfs.page.new_pattern.hint"));
             if r.changed() {
                 page.pattern_error = None;
             }
             submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-            submit |= ui.add(buttons::secondary("Track").enabled(!busy)).clicked();
+            submit |= ui.add(buttons::secondary(t.tr("lfs.page.track.button")).enabled(!busy)).clicked();
         });
         if submit && !busy {
             msgs.push(Msg::Lfs(LfsMsg::Track(page.new_pattern.clone())));
@@ -191,14 +166,14 @@ fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx
         }
     });
     row(ui, ".gitattributes", |ui| {
-        if ui.add(buttons::secondary("Open .gitattributes").enabled(status.has_gitattributes)).clicked() {
+        if ui.add(buttons::secondary(t.tr("lfs.page.open_gitattributes.button")).enabled(status.has_gitattributes)).clicked() {
             msgs.push(Msg::Files(FilesMsg::OpenWorkingFile(".gitattributes".into())));
         }
         if !status.has_gitattributes {
-            help(ui, "Created when you track the first pattern.");
+            help(ui, t.tr("lfs.page.gitattributes.help"));
         }
     });
-    row(ui, "Commands", |ui| commands_row(ui, cx, msgs));
+    row(ui, t.tr("lfs.page.commands.label"), |ui| commands_row(ui, cx, msgs));
 }
 
 fn all_root(patterns: &[LfsPattern]) -> bool {
@@ -222,7 +197,7 @@ fn pattern_list(ui: &mut Ui, t: Lang, patterns: &[LfsPattern], editable: bool, b
             ui.set_min_height(22.0);
             ui.label(RichText::new(&p.display).monospace().color(color::text()));
             if p.lockable {
-                ui.label(RichText::new("lockable").size(type_scale::CAPTION).color(color::faint()));
+                ui.label(RichText::new(t.tr("lfs.page.lockable")).size(type_scale::CAPTION).color(color::faint()));
             }
             if name_files {
                 let file = ui.label(RichText::new(p.source.file()).size(type_scale::CAPTION).color(color::weak()));
@@ -232,7 +207,8 @@ fn pattern_list(ui: &mut Ui, t: Lang, patterns: &[LfsPattern], editable: bool, b
             }
             if editable && p.source.is_root() {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.add(buttons::secondary("Untrack").size(ControlSize::Small).enabled(!busy)).clicked() {
+                    let untrack = buttons::secondary(t.tr("lfs.page.untrack.button")).size(ControlSize::Small).enabled(!busy);
+                    if ui.add(untrack).clicked() {
                         msgs.push(Msg::Lfs(LfsMsg::Untrack(p.raw.clone())));
                     }
                 });
@@ -241,27 +217,24 @@ fn pattern_list(ui: &mut Ui, t: Lang, patterns: &[LfsPattern], editable: bool, b
     }
 }
 
-fn hover(command: LfsCommand, remote: Option<&str>) -> String {
-    match command {
-        LfsCommand::Fetch => {
-            "Download the LFS files the checked-out commit needs into the local LFS store. The working tree is not changed.".into()
-        }
-        LfsCommand::Pull => "Fetch, then replace pointer files in the working tree with their contents.".into(),
-        LfsCommand::Push => format!("Upload every LFS file that local branches use to {}.", remote.unwrap_or("the remote")),
-        LfsCommand::Prune => "Delete old local LFS files that recent commits don't use and the remote already has.".into(),
-        LfsCommand::Checkout => {
-            "Replace pointer files in the working tree with contents already in the local store. Nothing is downloaded.".into()
-        }
+fn hover(t: Lang, command: LfsCommand, remote: Option<&str>) -> String {
+    match (command, remote) {
+        (LfsCommand::Fetch, _) => t.tr("lfs.page.fetch.tip").to_owned(),
+        (LfsCommand::Pull, _) => t.tr("lfs.page.pull.tip").to_owned(),
+        (LfsCommand::Push, Some(remote)) => t.trf("lfs.page.push.tip", &[("remote", &remote)]),
+        (LfsCommand::Push, None) => t.tr("lfs.page.push.any_remote.tip").to_owned(),
+        (LfsCommand::Prune, _) => t.tr("lfs.page.prune.tip").to_owned(),
+        (LfsCommand::Checkout, _) => t.tr("lfs.page.checkout.tip").to_owned(),
     }
 }
 
 fn commands_row(ui: &mut Ui, cx: &LfsContext, msgs: &mut Vec<Msg>) {
-    let busy = cx.job.is_some();
+    let (t, busy) = (cx.lang, cx.job.is_some());
     ui.horizontal_wrapped(|ui| {
         for command in LfsCommand::ALL {
             let no_remote = command.needs_remote() && cx.remote.is_none();
             // A disabled button still shows its tip (it senses hover only).
-            let tip = if no_remote { "Add a remote first".to_owned() } else { hover(command, cx.remote.as_deref()) };
+            let tip = if no_remote { t.tr("lfs.page.no_remote.tip").to_owned() } else { hover(t, command, cx.remote.as_deref()) };
             let r = ui.add(buttons::secondary(command.name()).enabled(!busy && !no_remote)).on_hover_text(tip);
             if r.clicked() {
                 msgs.push(Msg::Lfs(LfsMsg::Run { command, confirmed: false }));
