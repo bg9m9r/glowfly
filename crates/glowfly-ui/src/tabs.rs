@@ -139,11 +139,8 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
         let band = st.snap.as_ref().and_then(|s| s.head_swatch()).map_or_else(color::accent, line);
         let look = |i: usize, active: bool| TabLook { active, band, repo: repo_of(i), ..TabLook::quiet(fill) };
-        let (slide, fade) = if st.settings.reduce_motion {
-            (0.0, 0.0)
-        } else {
-            (motion::duration(SLIDE, ui.ctx()), motion::duration(CLOSE_FADE, ui.ctx()))
-        };
+        let (slide, fade) =
+            if st.motion_reduced() { (0.0, 0.0) } else { (motion::duration(SLIDE, ui.ctx()), motion::duration(CLOSE_FADE, ui.ctx())) };
         // Lit tabs (active, hovered or pressed) get no separator beside them, and none while dragging.
         if floating.is_none() {
             let lit = |i: usize, s: &Slot| i == st.active_tab || s.r.hovered() || s.close.hovered() || s.r.is_pointer_button_down_on();

@@ -64,6 +64,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("prefs_accessibility_light", Window),
     ("prefs_accessibility_de", Window),
     ("prefs_accessibility_es", Window),
+    // The system asking for high contrast (shown in High contrast dark), less motion and larger text.
+    ("prefs_accessibility_system_on", Window),
     // The window chrome: title bars, tabs, toolbar and menus.
     ("vivid_title_bar", Window),
     ("title_bar_windows_dark", Top(108.0)),
@@ -222,6 +224,8 @@ const IMAGE_ONLY: &[&str] = &[
     "main_light",
     // Preferences > Accessibility's text is `prefs_accessibility`'s.
     "prefs_accessibility_light",
+    // The same text with the system's settings followed: only the high-contrast look differs.
+    "prefs_accessibility_system_on",
     "main_high_contrast_dark",
     "history_table_dark",
     "history_table_light",

@@ -33,6 +33,7 @@ second one next to it.
 | Window frame | Drawn by Glowfly (or the system's, by choice): no system decorations; its own title bar, window buttons, resize edges and border with DWM's shadow and rounded corners, with Snap Layouts over Maximize, the system menu (Alt+Space or a right-click on the bar) and, on Windows 11 22H2 and later, Mica behind the title bar, toolbar and sidebar | The system frame with a full-size content view: the traffic lights sit over Glowfly's title bar | The system frame, with Glowfly's menu bar and tab bar below it |
 | Menus | The drawn title bar's menu button | The system menu bar (the app menu, then File, Edit, View, Window and Help) and the title bar's menu button | The in-window menu bar, which can be hidden |
 | Terminal keys and selection | Alt with a letter, digit or punctuation key sends ESC and the character, Alt+1 to 5 too (the pane keys don't act in a focused terminal), except the keypad's digits, which are kept for Alt codes (`platform/numpad_keys.rs`); F6 and Shift+F6 still go round the panes; no PRIMARY selection | Option composes characters unless Option as Meta is on (Preferences > Terminal); Control+1 to 5 reach the shell, and F6 and Shift+F6 go round the panes; no PRIMARY selection | Alt as on Windows, F6 too; a mouse selection sets PRIMARY and a middle click pastes it (X11 and Wayland) |
+| Accessibility settings | Animation effects (`SPI_GETCLIENTAREAANIMATION`), contrast themes (`SPI_GETHIGHCONTRAST`) and Text size (`TextScaleFactor`, 100 to 225%) | Reduce motion and Increase contrast (`NSWorkspace`); no text size for apps | GNOME's gsettings: `enable-animations`, `high-contrast` and `text-scaling-factor` (Wayland only; X11 has it in `Xft.dpi` already) |
 | Pane keys | Alt+1 to 5 on the main row, except in a focused terminal (F6 leaves it); Alt with the keypad's digits stays an Alt code (`platform/numpad_keys.rs`) | Control+1 to 5 (Mission Control's Switch to Desktop keys take them first when turned on) | Alt+1 to 5 |
 
 ## Rules
@@ -678,6 +679,42 @@ second one next to it.
    (`repo::daemon_serves`), and once per index state (`repo::RecordMemo`), so a record that
    brings nothing back isn't repeated on every refresh.
 
+### Accessibility settings
+
+1. **Read the system's reduce-motion, high-contrast and text-size settings only in
+   `platform/a11y_system.rs`,** into a `SystemA11y` the shell hands to update
+   (`AppMsg::SystemA11y`, kept in `ViewState::system_a11y`). Views and update never ask the OS:
+   they use the values in effect, `AppState::motion_reduced`, `system_contrast` and
+   `zoom_factor`.
+   - **Windows:** `SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION)` off is less motion
+     (Settings > Accessibility > Visual effects > Animation effects), `SPI_GETHIGHCONTRAST` with
+     `HCF_HIGHCONTRASTON` is a contrast theme (also what keeps Mica off), and the DWORD
+     `TextScaleFactor` under `HKCU\Software\Microsoft\Accessibility` is Text size in percent
+     (100 to 225; missing or out of range is 100). DPI scaling is separate: winit's scale factor
+     has it already.
+   - **macOS:** `NSWorkspace.sharedWorkspace`'s `accessibilityDisplayShouldReduceMotion` and
+     `accessibilityDisplayShouldIncreaseContrast`. macOS has no system text size for apps, so the
+     scale stays 1 and the text-size follow check is hidden (`SystemA11y::text_size_followable`).
+   - **Linux:** `gsettings get` for `org.gnome.desktop.interface enable-animations` (false is
+     less motion) and `text-scaling-factor` (0.5 to 3), and
+     `org.gnome.desktop.a11y.interface high-contrast`, run with `env_path::apply` on the watch's
+     own thread, never the UI thread. A missing gsettings or schema (outside GNOME) reads as
+     nothing asked. The text size counts only on Wayland (`WAYLAND_DISPLAY` set): on X11 GNOME
+     puts it in `Xft.dpi`, which winit's scale factor already includes.
+2. **Read them at start, when the window regains the focus and when the system reports a
+   change** (`WM_SETTINGCHANGE`, `WM_THEMECHANGED`; seen only through the drawn frame's window
+   procedure). Elsewhere a change shows once the window has the focus again.
+3. **A system setting only adds to a choice made in Preferences, and never rewrites it.** Each
+   has its own "Also when the system…" check on Preferences > Accessibility (all on by default,
+   machine-wide): motion is reduced when Reduce motion is checked or the system asks; while the
+   system uses high contrast the high-contrast theme as dark as the chosen one is shown in its
+   place, and the chosen theme and the High contrast check are left alone; the system's text
+   size multiplies the interface size (snapped to a zoom step, at most 200%) and the saved zoom
+   is unchanged.
+4. **Tests inject the values, never read the machine's:** the shell's test apps get a `Watch`
+   that reads the defaults, update tests send `AppMsg::SystemA11y`, and view tests set
+   `view.system_a11y`.
+
 ### Persistence
 
 1. **Persist paths with `paths::encode` and read them with `paths::decode`, never `display()`.**
@@ -779,6 +816,11 @@ making the decision a pure function and testing it for every OS on every machine
 
 Gaps that are accepted for now:
 
+- **Flatpak reads its own gsettings:** inside the sandbox gsettings sees the sandbox's
+  settings, not the desktop's, so the system's accessibility settings read as unset there (the
+  settings portal isn't asked yet). Other desktops than GNOME (KDE Plasma) aren't read either.
+- **Windows with the system title bar sees a settings change only when the window regains the
+  focus:** `WM_SETTINGCHANGE` reaches Glowfly only through the drawn frame's window procedure.
 - **Names that aren't UTF-8 are refused, not carried.** Action APIs still take `&str`, so such
   rows are shown with `\xHH` and every action on them is refused, rather than passing their bytes
   through to git.

@@ -1,6 +1,7 @@
 //! The settings Preferences > Accessibility owns besides the ones it moved there (reduce motion,
 //! the branch palette): the text cursor's blink, the focus indicator's strength, how long
-//! notifications stay and the tooltip delay. They sit flat in the settings file (`Settings::a11y` is flattened) and stay the same
+//! notifications stay, the tooltip delay, and whether the system's text size, high contrast
+//! and reduced motion are followed besides the choices made here. They sit flat in the settings file (`Settings::a11y` is flattened) and stay the same
 //! whatever profile is current. The High contrast check's rules are here too; the theme it
 //! brings back (`Settings::theme_before_contrast`) belongs to the profile, as `theme` does.
 
@@ -20,6 +21,12 @@ pub struct A11yPrefs {
     pub toast_time: ToastTime,
     /// How long the pointer rests before a tooltip shows.
     pub tooltip_delay: TooltipDelay,
+    /// The system's text size scales the interface size too.
+    pub follow_system_text_size: bool,
+    /// A high-contrast theme shows while the system uses high contrast.
+    pub follow_system_contrast: bool,
+    /// Motion is reduced while the system asks for less.
+    pub follow_system_motion: bool,
 }
 
 impl Default for A11yPrefs {
@@ -29,6 +36,9 @@ impl Default for A11yPrefs {
             focus_style: FocusStyle::default(),
             toast_time: ToastTime::default(),
             tooltip_delay: TooltipDelay::default(),
+            follow_system_text_size: true,
+            follow_system_contrast: true,
+            follow_system_motion: true,
         }
     }
 }
@@ -137,11 +147,15 @@ mod tests {
         assert_eq!(old.a11y, A11yPrefs::default());
         assert!(old.a11y.cursor_blink);
         assert_eq!(old.a11y.focus_style, FocusStyle::Standard);
+        assert!(old.a11y.follow_system_text_size && old.a11y.follow_system_contrast && old.a11y.follow_system_motion);
         let a11y = A11yPrefs {
             cursor_blink: false,
             focus_style: FocusStyle::Strong,
             toast_time: ToastTime::Longer,
             tooltip_delay: TooltipDelay::Instant,
+            follow_system_text_size: false,
+            follow_system_contrast: false,
+            follow_system_motion: false,
         };
         let s = Settings { a11y, theme_before_contrast: Some(ThemeChoice::Custom("ocean".into())), ..Settings::default() };
         let text = serde_json::to_string(&s).unwrap();
