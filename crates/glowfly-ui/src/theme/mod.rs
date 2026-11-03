@@ -15,7 +15,7 @@
 use crate::state::window_native::MicaTint;
 use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
-use glowfly_core::settings::{BranchPalette, BuiltinTheme, SystemPair, TerminalColours, ThemeChoice};
+use glowfly_core::settings::{BuiltinTheme, ColourPalette, SystemPair, TerminalColours, ThemeChoice};
 
 pub mod a11y;
 pub mod ansi;
@@ -31,6 +31,7 @@ mod builtin_extra;
 mod builtin_garden;
 mod builtin_sea;
 pub mod color;
+pub mod colour_safe;
 pub mod contrast;
 pub mod controls;
 pub mod custom;
@@ -47,8 +48,11 @@ pub mod tokens;
 pub mod type_scale;
 pub mod vision;
 
-#[cfg(test)]
-pub use branch_palette::applied;
+/// `p` in colour preset `choice`: its branch hues and its diff and status colours, as the shell
+/// shows it (`ThemeCache::select`).
+pub fn applied(p: Palette, choice: ColourPalette) -> Palette {
+    colour_safe::applied(branch_palette::applied(p, choice), choice)
+}
 #[cfg(test)]
 pub use builtin::{DARK, DAWN, DUSK, GRAPHITE, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, MIDNIGHT, MIST, PORCELAIN};
 // The view tests' palettes, for the app crate's tests too.
@@ -177,13 +181,13 @@ pub fn apply_theme(ctx: &egui::Context) {
     apply_style(ctx, &color::current());
 }
 
-/// The shell's palette for the chosen theme and branch preset, worked out again only when an
+/// The shell's palette for the chosen theme and colour preset, worked out again only when an
 /// input changes.
 #[derive(Default)]
 pub struct ThemeCache {
-    /// (choice, Match the system's pair, theme files generation, OS is dark, branch preset, the
+    /// (choice, Match the system's pair, theme files generation, OS is dark, colour preset, the
     /// system's high contrast shown in its place) the palette was resolved for.
-    key: Option<(ThemeChoice, SystemPair, u64, bool, BranchPalette, bool)>,
+    key: Option<(ThemeChoice, SystemPair, u64, bool, ColourPalette, bool)>,
     /// The system uses high contrast and Preferences follows it (`AppState::system_contrast`):
     /// the high-contrast theme as dark as the chosen one shows instead.
     system_contrast: bool,
@@ -206,7 +210,7 @@ impl ThemeCache {
     pub fn apply(&mut self, ctx: &egui::Context, settings: &glowfly_core::settings::Settings, themes: &ThemeState, system_contrast: bool) {
         self.system_contrast = system_contrast;
         let system_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
-        self.select(ctx, &settings.theme, settings.system_pair, settings.branch_palette, themes, system_dark);
+        self.select(ctx, &settings.theme, settings.system_pair, settings.colour_palette, themes, system_dark);
         self.select_terminal(&settings.terminal.colours, themes);
     }
 
@@ -221,14 +225,14 @@ impl ThemeCache {
         color::set_terminal(self.terminal);
     }
 
-    /// Makes the chosen theme's palette (Match the system shows `pair`'s member), with the branch
+    /// Makes the chosen theme's palette (Match the system shows `pair`'s member), with the colour
     /// preset `branches`, active for this frame and styles egui when it changed.
     pub fn select(
         &mut self,
         ctx: &egui::Context,
         choice: &ThemeChoice,
         pair: SystemPair,
-        branches: BranchPalette,
+        branches: ColourPalette,
         themes: &ThemeState,
         system_dark: bool,
     ) {
@@ -241,7 +245,7 @@ impl ThemeCache {
                 chosen = if chosen.dark { builtin::HIGH_CONTRAST_DARK } else { builtin::HIGH_CONTRAST_LIGHT };
                 high_contrast = true;
             }
-            let palette = branch_palette::applied(chosen, branches);
+            let palette = applied(chosen, branches);
             self.mica = if high_contrast { None } else { super::backdrop::mica_tint(&palette) };
             self.trunk_near = branch_colours::trunk_near(&palette);
             self.palette = Some(palette);
@@ -281,6 +285,8 @@ mod branch_colour_cb_tests;
 mod branch_colour_tests;
 #[cfg(test)]
 mod code_sel_tests;
+#[cfg(test)]
+mod colour_safe_tests;
 #[cfg(test)]
 mod controls_tests;
 #[cfg(test)]

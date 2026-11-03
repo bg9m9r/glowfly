@@ -156,6 +156,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("branch_colours_graph_light", Window),
     ("branch_colours_colour_blind_dark", Window),
     ("branch_colours_colour_blind_light", Window),
+    ("graph_colour_safe_dark", Window),
     ("person_colours_graph_dark", Window),
     ("person_colours_graph_light", Window),
     ("graph_wip_row", Window),
@@ -180,6 +181,10 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     // Diffs, blame, conflicts and the pull request's line comments.
     ("diff_inline", Window),
     ("diff_split", Window),
+    ("diff_inline_colour_safe_dark", Window),
+    ("diff_inline_colour_safe_light", Window),
+    ("diff_inline_colour_safe_hc_light", Window),
+    ("diff_split_colour_safe_dark", Window),
     ("diff_hunks_german", Window),
     ("diff_hunk_header_narrow", Window),
     ("diff_syntax_inline", Window),
@@ -365,6 +370,9 @@ const IMAGE_ONLY: &[&str] = &[
     "branch_colours_graph_light",
     "branch_colours_colour_blind_dark",
     "branch_colours_colour_blind_light",
+    // `diff_inline_colour_safe_dark` in Porcelain and high contrast light.
+    "diff_inline_colour_safe_light",
+    "diff_inline_colour_safe_hc_light",
     "person_colours_graph_light",
     "graph_wip_row_light",
     "graph_wip_row_high_contrast",

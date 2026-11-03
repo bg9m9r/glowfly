@@ -4,7 +4,9 @@
 //! The vision simulation and the floors are `vision.rs`'s.
 
 use super::bands::{ATTENTION_BAND, GOLD_BAND, GREEN_BAND};
-use super::branch_palette::{BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, CB_DARK_TONES, CB_LIGHT_LINES, CB_LIGHT_TEXT, DARK_TONES, pad};
+use super::branch_palette::{
+    BRANCH_CB_DARK, BRANCH_CB_LIGHT, BRANCH_DARK, CB_DARK_TONES, CB_LIGHT_LINES, CB_LIGHT_TEXT, DARK_TONES, applied, pad,
+};
 use super::branch_palette_gold::{BRANCH_CB_DAWN, BRANCH_CB_DUSK, GOLD_CB_DARK_TONES};
 use super::branch_palette_more::{BRANCH_CB_GRAPHITE, BRANCH_CB_LINEN};
 use super::contrast::{oklch, ratio};
@@ -12,7 +14,7 @@ use super::tests::palettes;
 use super::vision::{DARK_FLOOR, DEUTAN, LIGHT_FLOOR, VISIONS, distance};
 use super::*;
 use eframe::egui::Color32;
-use glowfly_core::settings::{BranchPalette, BuiltinTheme};
+use glowfly_core::settings::{BuiltinTheme, ColourPalette};
 
 fn report(failures: &[String]) {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
@@ -91,7 +93,7 @@ fn cb_tones_share_one_hue_per_slot() {
 fn applied_cb_lines_reach_3_to_1_and_light_chips_4_5() {
     let mut failures = Vec::new();
     for (t, p) in palettes() {
-        let p = applied(*p, BranchPalette::ColourBlind);
+        let p = applied(*p, ColourPalette::ColourBlind);
         for (i, c) in p.branch.lanes.iter().copied().chain([super::branch_colours::trunk(&p)]).enumerate() {
             for (name, bg) in [("bg", p.bg), ("panel", p.panel)] {
                 let r = ratio(c, bg);
@@ -127,7 +129,7 @@ fn cb_tones_stay_apart_in_every_vision() {
     for (t, p) in palettes() {
         let floor = if p.dark { DARK_FLOOR } else { LIGHT_FLOOR };
         failures.extend(too_close(&t, &p.colour_blind.lanes[..8], &[p.accent], floor));
-        let cb = applied(*p, BranchPalette::ColourBlind);
+        let cb = applied(*p, ColourPalette::ColourBlind);
         let (trunk, mask) = (super::branch_colours::trunk(&cb), super::branch_colours::trunk_near(&cb));
         for (vision, m) in &VISIONS {
             for (i, lane) in cb.branch.lanes[..8].iter().enumerate() {
@@ -163,8 +165,8 @@ fn trunk_near_slots_per_theme() {
     assert_eq!(all.len(), want.len(), "every palette in the table");
     for (name, standard, colour_blind) in want {
         let p = all.iter().find(|(t, _)| t == name).map(|(_, p)| **p).unwrap_or_else(|| panic!("{name}"));
-        assert_eq!(trunk_near(&applied(p, BranchPalette::Standard)), standard, "{name} standard");
-        assert_eq!(trunk_near(&applied(p, BranchPalette::ColourBlind)), colour_blind, "{name} colour-blind");
+        assert_eq!(trunk_near(&applied(p, ColourPalette::Standard)), standard, "{name} standard");
+        assert_eq!(trunk_near(&applied(p, ColourPalette::ColourBlind)), colour_blind, "{name} colour-blind");
     }
 }
 
@@ -199,8 +201,8 @@ fn pad_repeats_every_eight() {
 fn applied_picks_the_family_by_kind() {
     for t in BuiltinTheme::ALL {
         let base = *builtin(t);
-        assert_eq!(applied(base, BranchPalette::Standard), base, "{t:?} keeps its own");
-        let p = applied(base, BranchPalette::ColourBlind);
+        assert_eq!(applied(base, ColourPalette::Standard), base, "{t:?} keeps its own");
+        let p = applied(base, ColourPalette::ColourBlind);
         let want = match t {
             BuiltinTheme::Dark => BRANCH_CB_DUSK,
             BuiltinTheme::Light => BRANCH_CB_DAWN,
@@ -214,7 +216,7 @@ fn applied_picks_the_family_by_kind() {
         assert_eq!(Palette { branch: base.branch, ..p }, base, "only the branch family changes");
     }
     assert_eq!(GARDEN_DARK.branch, BRANCH_DARK);
-    assert_eq!(applied(GARDEN_DARK, BranchPalette::ColourBlind).branch, BRANCH_CB_DARK);
-    assert_eq!(applied(GARDEN_LIGHT, BranchPalette::ColourBlind).branch, BRANCH_CB_LIGHT);
-    assert_eq!(BRANCH_DARK.preset, BranchPalette::Standard);
+    assert_eq!(applied(GARDEN_DARK, ColourPalette::ColourBlind).branch, BRANCH_CB_DARK);
+    assert_eq!(applied(GARDEN_LIGHT, ColourPalette::ColourBlind).branch, BRANCH_CB_LIGHT);
+    assert_eq!(BRANCH_DARK.preset, ColourPalette::Standard);
 }

@@ -209,6 +209,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     },
                     None => continue,
                 };
+                let colours = colours.with_origin(rect.top() - row as f32 * row_h);
                 // The row's accessible name: its summary, or the text of its WIP box.
                 match (commit, worktree) {
                     (Some(c), _) => cells::name_row(&resp, c, snap.refs.get(&c.oid), settings.format_graph_time(c.time, now, offset)),

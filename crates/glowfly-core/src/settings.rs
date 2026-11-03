@@ -7,8 +7,8 @@ use std::path::PathBuf;
 
 mod a11y;
 mod blame;
-mod branch_colours;
 mod builtin_themes;
+mod colour_palette;
 mod column_widths;
 pub mod commit_limit;
 mod date_fmt;
@@ -45,7 +45,7 @@ mod zoom;
 pub use crate::dates::DateKind;
 pub use a11y::{A11yPrefs, FocusStyle, ToastTime, TooltipDelay};
 pub use blame::{BlameMoves, BlamePrefs};
-pub use branch_colours::BranchPalette;
+pub use colour_palette::ColourPalette;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use downloads::downloads_dir;
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
@@ -153,8 +153,8 @@ pub struct Settings {
     /// Keep tabs of one repository's worktrees side by side (Preferences > Appearance).
     pub group_worktree_tabs: bool,
     pub branch_visibility: BranchVisibility,
-    /// The branch hues: standard or colour-blind friendly (Preferences > Accessibility).
-    pub branch_palette: BranchPalette,
+    #[serde(alias = "branch_palette")]
+    pub colour_palette: ColourPalette,
     pub columns: GraphColumns,
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
     pub column_widths: ColumnWidths,
@@ -332,7 +332,7 @@ impl Default for Settings {
             worktree_wips: true,
             group_worktree_tabs: true,
             branch_visibility: BranchVisibility::All,
-            branch_palette: BranchPalette::Standard,
+            colour_palette: ColourPalette::Standard,
             columns: GraphColumns::default(),
             column_widths: ColumnWidths::default(),
             graph_density: Density::Comfortable,

@@ -23,7 +23,7 @@ use crate::ui::theme::{color, controls};
 use crate::ui::widgets::buttons;
 use eframe::egui::{Response, Ui};
 use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{BranchPalette, FocusStyle, Settings, ToastTime, TooltipDelay};
+use glowfly_core::settings::{ColourPalette, FocusStyle, Settings, ToastTime, TooltipDelay};
 
 /// What the page shows besides the settings.
 pub struct A11yView<'a> {
@@ -51,11 +51,11 @@ pub fn accessibility_page(ui: &mut Ui, s: &mut Settings, view: &A11yView, msgs: 
     let label = t.tr("prefs.a11y.colors.label");
     row(ui, label, |ui| {
         let options = [
-            (BranchPalette::Standard, t.tr("prefs.a11y.colors.standard")),
-            (BranchPalette::ColourBlind, t.tr("prefs.a11y.colors.color_blind")),
+            (ColourPalette::Standard, t.tr("prefs.a11y.colors.standard")),
+            (ColourPalette::ColourBlind, t.tr("prefs.a11y.colors.color_blind")),
         ];
         let text = t.tr("prefs.a11y.colors.help");
-        name(&combo_response(ui, "branch_palette", &mut s.branch_palette, &options), label, text);
+        name(&combo_response(ui, "colour_palette", &mut s.colour_palette, &options), label, text);
         help(ui, text);
     });
 

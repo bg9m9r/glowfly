@@ -44,6 +44,8 @@ pub fn status_color(c: char) -> Color32 {
     match c {
         'A' | '?' => added_color(),
         'D' => removed_color(),
+        // Colour-safe mode's blue for added is the rename blue, so a rename takes the change colour.
+        'R' if color::colour_safe() => modified_color(),
         'R' => color::info(),
         'M' | '!' => modified_color(),
         _ => color::weak(),

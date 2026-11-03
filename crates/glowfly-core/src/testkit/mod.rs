@@ -16,6 +16,7 @@ pub mod bin;
 mod commit;
 mod fast;
 mod guard;
+pub mod procs;
 mod push;
 mod refs;
 #[cfg(test)]
