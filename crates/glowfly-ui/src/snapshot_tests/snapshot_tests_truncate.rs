@@ -1,5 +1,5 @@
 //! Text cut with "…" and its whole text on hover: the WIP lists' headers in German (narrow, with
-//! the more-actions menu, and wide), graph columns at their narrowest, the filtered graph's
+//! the more-actions menu, and wide) and in a narrow English panel (icon-only actions), graph columns at their narrowest, the filtered graph's
 //! header, a cut commit message, a long issue title in the sidebar, the status bar's update
 //! chip, the repository sync dialog's names, and the notes that wrap instead (a remote without
 //! branches, a Git LFS pointer in an untrusted repository). Shares the fixtures of the other
@@ -88,6 +88,48 @@ fn wip_header_german_wide() {
     }
     assert!(h.query_by_label(de.tr("details.wip.more.tip")).is_some());
     h.check_snapshot("wip_header_german_wide");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Whether `label` is a Small (24 px) square in `h`.
+fn small_square(h: &H, label: &str) -> bool {
+    let b = h.get_by_label(label).bounding_box().expect("bounds");
+    (b.width(), b.height()) == (24.0, 24.0)
+}
+
+/// The WIP headers in English in a narrow panel: Stage all is a Small icon-only square (still
+/// named "Stage all") beside the whole title, and the more-actions button stays.
+#[test]
+fn wip_header_icons() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "truncate-wip-icons");
+    st.settings.panel_sizes.details = Some(250.0);
+    let en = Lang::En;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(small_square(&h, en.tr("details.wip.stage_all.button")), "Stage all is a Small square");
+    assert!(h.query_by_label(en.tr("details.wip.more.tip")).is_some());
+    h.check_snapshot("wip_header_icons");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// With every change staged, in German in the narrowest panel (English fits its labels there):
+/// Staged Files' Unstage all is the minus square and Unstaged Files' New file… the
+/// file-and-plus square, each beside its whole title.
+#[test]
+fn wip_header_icons_staged() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "truncate-wip-icons-staged");
+    git(&dir, &["add", "-A"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    st.settings.language = "de".into();
+    st.settings.panel_sizes.details = Some(250.0);
+    let de = Lang::De;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(small_square(&h, de.tr("details.wip.unstage_all.button")), "Unstage all is a Small square");
+    assert!(small_square(&h, de.tr("details.wip.new_file.button")), "New file… is a Small square");
+    h.check_snapshot("wip_header_icons_staged");
     drop(h);
     remove_fixture(&dir);
 }

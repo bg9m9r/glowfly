@@ -169,6 +169,7 @@ fn no_push_when_commit_fails_or_tab_changed() {
         quiet: false,
         clear_commit: true,
         then_push: true,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

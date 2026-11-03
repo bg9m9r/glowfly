@@ -65,7 +65,6 @@ pub fn initials_fill(lane: Color32, p: &Palette) -> Color32 {
 }
 
 /// `s`'s line tone in `p` (`line` reads the active palette's).
-#[cfg(test)]
 pub fn line_in(s: Swatch, p: &Palette) -> Color32 {
     match s {
         Swatch::Trunk => trunk(p),
@@ -73,7 +72,7 @@ pub fn line_in(s: Swatch, p: &Palette) -> Color32 {
     }
 }
 
-/// `s`'s chip tone in `p` (for the trunk, `contrast::ref_chip` letters the chip in `text`).
+/// `s`'s chip tone in `p`.
 pub fn chip_in(s: Swatch, p: &Palette) -> Color32 {
     match s {
         Swatch::Trunk => trunk(p),

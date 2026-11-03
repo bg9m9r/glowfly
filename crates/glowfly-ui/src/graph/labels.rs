@@ -8,7 +8,8 @@ use super::marks::{MARK_W, paint_cloud, paint_local, paint_tag};
 use super::ref_group::Chip;
 use crate::ui::build_status;
 use crate::ui::theme::color;
-use crate::ui::theme::contrast::{self, ChipStyle, readable_on};
+use crate::ui::theme::contrast::readable_on;
+use crate::ui::theme::ref_chip::{self, BranchTone, ChipLook, ChipStyle};
 use crate::ui::theme::sizes::{ChipSize, ControlSize, text_pos};
 use crate::ui::widgets::chip;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
@@ -28,6 +29,10 @@ const TAG_LEAD: f32 = 12.0;
 /// The least room the first chip keeps beside a "+N" chip; with less, the "+N" chip is dropped.
 const MIN_FIRST_W: f32 = 24.0;
 const FONT: f32 = CHIP.metrics().text;
+/// How far a halo (`ChipLook::halo`) reaches past its chip: its 1.5 px gap and 1.5 px ring. The
+/// halo takes no layout room: it paints into the cell's inset and padding, or the gap after it,
+/// and a ref chip after a halo chip moves this much further away (a "+N" badge doesn't).
+const HALO_ROOM: f32 = chip::HALO_ROOM;
 
 /// What one chip shows.
 pub(super) struct ChipSpec {
@@ -75,6 +80,23 @@ fn check(is_head: bool, name: &str) -> String {
 fn chip_w(spec: &ChipSpec, text_w: f32) -> f32 {
     let lead = if spec.lead_tag { TAG_LEAD } else { 0.0 };
     text_w + 2.0 * TEXT_PAD + lead + MARK_W * spec.trailing() as f32
+}
+
+/// How far `style`'s halo reaches past its chip's edge (none without a halo).
+fn halo_reach(style: ChipStyle) -> f32 {
+    if style.halo() { HALO_ROOM } else { 0.0 }
+}
+
+/// The clip of chips leading the message in a narrow table, laid out in `span`: the span
+/// widened by a halo's reach either side, so a first or last chip's ring isn't cut.
+pub(super) fn inline_clip(span: (f32, f32)) -> (f32, f32) {
+    (span.0 - HALO_ROOM, span.1 + HALO_ROOM)
+}
+
+/// The extra room before each chip: `HALO_ROOM` after a chip with a halo, so its ring doesn't
+/// touch the next chip's edge (it reads as a double line), else none.
+fn halo_leads(styles: &[ChipStyle]) -> Vec<f32> {
+    (0..styles.len()).map(|i| if i > 0 && styles[i - 1].halo() { HALO_ROOM } else { 0.0 }).collect()
 }
 
 fn text_w(p: &Painter, text: &str, size: f32) -> f32 {
@@ -137,18 +159,22 @@ pub(super) fn fit(widths: &[f32], room: f32, plus_w: impl Fn(usize) -> f32, gap:
     Fit { shown, first_w, first_cut, plus: shown < n }
 }
 
-/// A ref chip's box in `r`: its fill, and its edge 1 px inside it.
-fn paint_box(p: &Painter, r: Rect, look: contrast::ChipLook) {
+/// A ref chip's box in `r`: its halo (if any), its fill (if any) and its edge 1 px inside it.
+fn paint_box(p: &Painter, r: Rect, look: ChipLook) {
+    if let Some(halo) = look.halo {
+        chip::paint_halo(p, r, CHIP, halo);
+    }
     chip::frame(p, r, CHIP, look.into());
 }
 
-/// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: its box
-/// (`contrast::ref_chip`), the tag mark, the name (cut to leave its marks room), then the local mark, the remote
-/// mark and the build marker, tinted from its branch's `tone`.
-fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: Color32, w: f32) -> Rect {
-    let look = contrast::ref_chip(spec.style, tone, &color::current());
+/// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: its box and halo
+/// (`ref_chip::ref_chip`; the halo reaches outside the rect), the tag mark, the name (cut to
+/// leave its marks room), then the local mark, the remote mark and the build marker, coloured
+/// from its branch's `tone`.
+fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: BranchTone, w: f32) -> Rect {
+    let look = ref_chip::ref_chip(spec.style, tone, &color::current());
     let fg = look.text;
-    let r = chip::rect_at(CHIP, x, y, w);
+    let r = chip::rect_at(CHIP, x, y, w.max(0.0));
     paint_box(p, r, look);
     let cp = p.with_clip_rect(r.intersect(p.clip_rect()));
     let mut text_x = x + TEXT_PAD;
@@ -188,8 +214,8 @@ pub(super) enum Tip {
 /// What one row's BRANCH / TAG cell draws.
 pub(super) struct RefsRow<'a> {
     pub chips: &'a [Chip<'a>],
-    /// Each chip's branch tone (`lane_colours::chip_tones`).
-    pub tones: &'a [Color32],
+    /// Each chip's branch tones (`lane_colours::chip_tones`).
+    pub tones: &'a [BranchTone],
     /// The node's colour: the joining line.
     pub lane: Color32,
     /// The tip's build state, shown on the first chip.
@@ -234,23 +260,29 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
     let x0 = span.0;
     let mut out = RefsCell::default();
     let mut end = span.0;
+    let mut reach = span.0;
     if !row.chips.is_empty() {
         let specs: Vec<ChipSpec> =
             row.chips.iter().enumerate().map(|(i, c)| ChipSpec::of(c, if i == 0 { row.build } else { None })).collect();
-        let widths: Vec<f32> = specs.iter().map(|s| spec_w(&rp, s)).collect();
+        let leads = halo_leads(&specs.iter().map(|s| s.style).collect::<Vec<_>>());
+        let widths: Vec<f32> = specs.iter().zip(&leads).map(|(s, lead)| spec_w(&rp, s) + lead).collect();
         let f = fit(&widths, span.1 - x0, |k| plus_w(&rp, k), GAP);
         let mut drawn = Vec::with_capacity(f.shown);
         let mut x = x0;
         for (i, spec) in specs.iter().take(f.shown).enumerate() {
             let w = if i == 0 { f.first_w } else { widths[i] };
-            drawn.push(draw_chip(&rp, x, mid, spec, row.tones.get(i).copied().unwrap_or(row.lane), w));
+            let tone = row.tones.get(i).copied().unwrap_or(BranchTone::plain(row.lane));
+            drawn.push(draw_chip(&rp, x + leads[i], mid, spec, tone, w - leads[i]));
             x += w + GAP;
         }
         end = drawn.last().map_or(x0, |r| r.right());
-        let mut hit = Rect::from_min_max(drawn[0].min, pos2(end, drawn[0].max.y));
+        // How far the drawing reaches: past the last chip's halo, when it has one.
+        reach = end + specs.get(f.shown - 1).map_or(0.0, |s| halo_reach(s.style));
+        let mut hit = Rect::from_min_max(drawn[0].min, pos2(reach, drawn[0].max.y));
         if f.plus {
             let hidden = row.chips.len() - f.shown;
             end = plus_chip(hidden).paint(&rp, end + GAP, mid).right();
+            reach = end;
             hit.max.x = end;
         }
         out.labels_hit = Some(hit);
@@ -275,7 +307,7 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
     }
     // The line joining the labels (and the ghost button after them) to the node.
     if let (Some(edge), false) = (row.node_edge_x, row.chips.is_empty()) {
-        let from = out.ghost_at.map_or(end, |(r, _)| r.right());
+        let from = out.ghost_at.map_or(reach, |(r, _)| r.right());
         painter.line_segment([pos2(from, mid), pos2(edge, mid)], Stroke::new(1.5_f32, row.lane));
     }
     out
@@ -286,10 +318,15 @@ type PaintMark = fn(&Painter, Pos2, Color32);
 
 /// One label in a tooltip: its painted marks, then its name (naming the copies on remotes level
 /// with it), its marks in its branch's `tone`.
-pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, tone: Color32) {
+pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, tone: BranchTone) {
     let spec = ChipSpec::of(chip, None);
     let pal = color::current();
-    let fg = contrast::ref_chip(spec.style, tone, &pal).text;
+    // The branch's colour: a dark palette's filled chip carries it in its fill, not its letters.
+    let look = ref_chip::ref_chip(spec.style, tone, &pal);
+    let fg = match look.fill {
+        Some(fill) if pal.dark => fill,
+        _ => look.text,
+    };
     let ink = readable_on(fg, ui.visuals().window_fill, pal.dark, 3.0);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 2.0;
@@ -304,7 +341,7 @@ pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, tone: Color32) {
 }
 
 /// Every label of a row, one per line, each in its own `tones`.
-pub(super) fn tip_list(ui: &mut Ui, t: Lang, chips: &[Chip], tones: &[Color32]) {
+pub(super) fn tip_list(ui: &mut Ui, t: Lang, chips: &[Chip], tones: &[BranchTone]) {
     for (chip, tone) in chips.iter().zip(tones) {
         tip_row(ui, t, chip, *tone);
     }
@@ -316,76 +353,5 @@ fn ghost_h() -> f32 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// "+n" chips 30 px wide.
-    fn plus(_: usize) -> f32 {
-        30.0
-    }
-
-    #[test]
-    fn every_chip_fits() {
-        let f = fit(&[50.0, 40.0, 30.0], 200.0, plus, 4.0);
-        assert_eq!(f, Fit { shown: 3, first_w: 50.0, first_cut: false, plus: false });
-    }
-
-    #[test]
-    fn a_chip_that_doesnt_fit_hides_the_rest() {
-        // 50 + 4 + 40 = 94; the third (60) would reach 158 and leave no room for "+2".
-        let f = fit(&[50.0, 40.0, 60.0, 20.0], 150.0, plus, 4.0);
-        assert_eq!(f, Fit { shown: 2, first_w: 50.0, first_cut: false, plus: true });
-        // The last chip needs no "+N" after it.
-        assert_eq!(fit(&[50.0, 40.0], 94.0, plus, 4.0).shown, 2);
-        assert_eq!(fit(&[50.0, 40.0], 93.0, plus, 4.0), Fit { shown: 1, first_w: 50.0, first_cut: false, plus: true });
-    }
-
-    #[test]
-    fn a_long_first_chip_is_cut_and_keeps_the_plus() {
-        let f = fit(&[300.0, 40.0], 150.0, plus, 4.0);
-        assert_eq!(f, Fit { shown: 1, first_w: 116.0, first_cut: true, plus: true });
-    }
-
-    #[test]
-    fn a_room_narrower_than_the_plus_chip_shows_the_first_chip_only() {
-        let f = fit(&[100.0, 40.0, 40.0], 25.0, plus, 4.0);
-        assert_eq!(f, Fit { shown: 1, first_w: 25.0, first_cut: true, plus: false });
-    }
-
-    #[test]
-    fn one_chip_reserves_nothing() {
-        assert_eq!(fit(&[140.0], 150.0, plus, 4.0), Fit { shown: 1, first_w: 140.0, first_cut: false, plus: false });
-        assert_eq!(fit(&[200.0], 150.0, plus, 4.0), Fit { shown: 1, first_w: 150.0, first_cut: true, plus: false });
-        assert_eq!(fit(&[], 150.0, plus, 4.0).shown, 0);
-    }
-
-    fn spec(local: bool, remote: bool, build: bool) -> ChipSpec {
-        let build = build.then_some(CheckState::Passed);
-        ChipSpec { text: String::new(), style: ChipStyle::Branch, lead_tag: false, local, remote, build }
-    }
-
-    #[test]
-    fn chip_width_counts_its_marks() {
-        // A 50 px name and the Chip size's padding either side.
-        const BASE: f32 = 50.0 + 2.0 * TEXT_PAD;
-        assert_eq!(chip_w(&spec(false, false, false), 50.0), BASE, "a name alone");
-        assert_eq!(chip_w(&spec(true, false, false), 50.0), BASE + MARK_W, "a local branch");
-        assert_eq!(chip_w(&spec(true, true, true), 50.0), BASE + 3.0 * MARK_W, "in sync, with a build state");
-        let tag = ChipSpec { lead_tag: true, ..spec(false, false, false) };
-        assert_eq!(chip_w(&tag, 50.0), BASE + TAG_LEAD);
-        // In a room narrower than the chip the name is cut and the marks keep their room.
-        let f = fit(&[chip_w(&spec(true, true, false), 90.0)], 100.0, plus, 4.0);
-        assert!(f.first_cut && f.first_w == 100.0, "{f:?}");
-    }
-
-    #[test]
-    fn chip_at_finds_the_chip_under_the_pointer() {
-        let rect = |x0: f32, x1: f32| Rect::from_min_max(pos2(x0, 9.0), pos2(x1, 31.0));
-        let cell = RefsCell { chip_rects: vec![rect(10.0, 60.0), rect(64.0, 120.0)], ..RefsCell::default() };
-        assert_eq!(cell.chip_at(pos2(30.0, 20.0)), Some(0));
-        assert_eq!(cell.chip_at(pos2(90.0, 20.0)), Some(1));
-        assert_eq!(cell.chip_at(pos2(62.0, 20.0)), None, "the gap between chips");
-        assert_eq!(cell.chip_at(pos2(30.0, 35.0)), None, "below the chip, still on the row");
-        assert_eq!(cell.chip_at(pos2(130.0, 20.0)), None, "past the last chip");
-    }
-}
+#[path = "labels_tests.rs"]
+mod tests;

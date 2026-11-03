@@ -1,8 +1,8 @@
 Dialog
-  Label "Repository owned by another user"
+  Label "Trust this folder?"
   Button "Close this dialog"
-  Label "Git won't open \\\\nas\\team\\app because the folder belongs to another user account. This is usual for folders on a network share or in WSL, on a FAT or exFAT drive, or copied from another computer.\n\nGit asks first because a repository's own settings can make it run programs. If you trust this folder, Glowfly will mark it as safe in your git settings and open it."
+  Label "\\\\nas\\team\\app belongs to OTHERPC\\alice, not to your account, so Git won't open it until you trust it.\n\nGit checks this to keep you safe: a repository's own settings can make Git run programs on your computer. Only trust folders you made yourself or got from someone you trust.\n\nIf you trust it, Glowfly tells Git to allow this folder from now on and opens it."
   Button "Details"
-  Label "Glowfly runs:\ngit config --global --add safe.directory %(prefix)///nas/team/app"
+  Label "A folder usually ends up like this when it was:\n- created from a program run as administrator\n- made by another account on this computer\n- on a network share or in WSL\n- on a USB stick or other removable drive, or copied from another computer\n\nGlowfly runs:\ngit config --global --add safe.directory %(prefix)///nas/team/app"
   Button "Cancel"
-  Button "Trust and open" [focused]
+  Button "Trust this folder" [focused]

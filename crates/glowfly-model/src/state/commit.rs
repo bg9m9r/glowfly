@@ -2,6 +2,10 @@
 //! committing can start, the commit button's label and the git commands that commit it.
 
 use super::AppState;
+use stop::{EditStop, amend_blocked_in, edit_stop, rebase_stopped};
+
+#[path = "commit_stop.rs"]
+pub mod stop;
 use git2::RepositoryState;
 use glowfly_core::commit_encoding::Unencodable;
 use glowfly_core::gitcli::args;
@@ -23,6 +27,9 @@ pub struct CommitDraft {
     /// The MERGE_MSG text the draft was filled with; Some => a merge's, cherry-pick's or
     /// revert's own message, cleared again when the operation ends while it is untouched.
     pub merge_msg: Option<String>,
+    /// The commit a rebase stopped to edit for which Amend was ticked by default, so it is
+    /// ticked once per stop and the person can untick it.
+    pub amend_stop: Option<EditStop>,
 }
 
 impl CommitDraft {
@@ -105,6 +112,14 @@ impl CommitDraft {
         }
     }
 
+    /// The commit button's text at a rebase stopped to edit: "Amend and continue", or with
+    /// Amend unticked "Commit and continue".
+    pub fn continue_label(&self, t: Lang) -> String {
+        let skip_text = if self.skip_hooks { t.tr("commit.button.skip_hooks") } else { "" };
+        let slots: [(&str, &dyn std::fmt::Display); 1] = [("skip", &skip_text)];
+        if self.amend { t.trf("commit.button.amend_continue", &slots) } else { t.trf("commit.button.commit_continue", &slots) }
+    }
+
     /// The git commands that commit this draft with its message in `file`: `add --all` first
     /// when `stage_all`, then `commit -F <file>` with the draft's options.
     pub fn commit_cmds(&self, file: &Path, stage_all: bool) -> Vec<Vec<String>> {
@@ -161,7 +176,7 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     let conflicted = snap.unstaged.iter().any(|f| f.status == '!');
     if st.job.is_some() {
         Some(t.tr("commit.blocked.job_running"))
-    } else if let Some(why) = amend_blocked(t, snap.state).filter(|_| d.amend) {
+    } else if let Some(why) = amend_blocked_in(t, snap).filter(|_| d.amend) {
         Some(why)
     } else if merging && conflicted {
         Some(t.tr("commit.blocked.merge_conflicts"))
@@ -169,6 +184,14 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
         Some(t.tr("commit.blocked.untouched_template"))
     } else if d.summary.trim().is_empty() {
         Some(t.tr("commit.blocked.no_summary"))
+    } else if d.amend
+        && edit_stop(snap).is_some()
+        && snap.staged.is_empty()
+        && (!stage_all || snap.unstaged.is_empty())
+        && same_as_head(d, snap)
+    {
+        // Amend and continue would change nothing: Continue does that.
+        Some(t.tr("commit.blocked.nothing_to_amend"))
     } else if stage_all && conflicted {
         // Staging a conflicted file marks it resolved.
         Some(t.tr("commit.blocked.conflicts"))
@@ -181,6 +204,13 @@ pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+/// Whether the draft's message is HEAD's (as the commit box splits it).
+fn same_as_head(d: &CommitDraft, snap: &glowfly_core::repo::Snapshot) -> bool {
+    let mut head = CommitDraft::default();
+    head.fill_from(snap.head_message.as_deref().unwrap_or_default());
+    head.message() == d.message()
 }
 
 /// Why a message can't be written: the repository's commit encoding can't hold some characters.
@@ -203,9 +233,10 @@ pub fn commit_merge_blocked(st: &AppState) -> Option<String> {
     }
 }
 
-/// Whether a commit now would be followed by a push (setting on and HEAD on a branch).
+/// Whether a commit now would be followed by a push (setting on, HEAD on a branch and no
+/// rebase stopped: pushing halfway through one is never right).
 pub fn pushes_after(st: &AppState) -> bool {
-    st.settings.push_after_commit && st.snap.as_ref().is_some_and(|s| s.head_branch.is_some())
+    st.settings.push_after_commit && st.snap.as_ref().is_some_and(|s| s.head_branch.is_some() && !rebase_stopped(s))
 }
 
 /// A summary's length up to here reads well (git-commit(1): ideally under 50 characters).

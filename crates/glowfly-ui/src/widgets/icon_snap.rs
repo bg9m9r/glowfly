@@ -1,6 +1,6 @@
 //! Painted glyphs on the pixel grid: an icon's centre moved so its strokes cover whole pixels
 //! evenly on both sides (`snap_centre`), a straight arm's length kept to whole pixels from that
-//! centre (`snap_arm`), and the plus painted that way (`paint_plus`), at any pixel ratio
+//! centre (`snap_arm`), and the plus (and minus) painted that way (`paint_plus`), at any pixel ratio
 //! (100 %, 125 %, 150 %, 200 %). `widgets::paint_icon` snaps every icon's centre here; the
 //! tab bars' glyphs (`tab_glyph.rs`) too.
 
@@ -45,6 +45,12 @@ pub(super) fn paint_plus(p: &Painter, c: Pos2, arm: f32, s: Stroke) {
     for seg in plus_segments(c, arm, s.width, p.ctx().pixels_per_point()) {
         p.line_segment(seg, s);
     }
+}
+
+/// Paints the plus's level stroke alone (a minus), snapped as the plus is, so the two match.
+pub(super) fn paint_minus(p: &Painter, c: Pos2, arm: f32, s: Stroke) {
+    let [level, _] = plus_segments(c, arm, s.width, p.ctx().pixels_per_point());
+    p.line_segment(level, s);
 }
 
 #[cfg(test)]
