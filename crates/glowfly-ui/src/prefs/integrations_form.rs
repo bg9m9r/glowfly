@@ -108,8 +108,9 @@ pub fn sign_in_form(ui: &mut Ui, t: Lang, prefs: &mut PrefsState, cancel: bool, 
         _ => "Personal access token",
     };
     row(ui, token_label, |ui| {
-        let w = super::fit(ui, 320.0);
-        controls::field(ui, egui::TextEdit::singleline(&mut prefs.int_token).password(true).desired_width(w).margin(vec2(8.0, 5.0)));
+        let w = super::fit(ui, super::FIELD_W);
+        let edit = egui::TextEdit::singleline(&mut prefs.int_token).password(true);
+        ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(w));
         help(ui, &format!("{} Stored in the Windows Credential Manager, never in Glowfly's settings file.", provider.token_help()));
         if is_trello {
             trello::token_link(ui, &prefs.int_user, msgs);

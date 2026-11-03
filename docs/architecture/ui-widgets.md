@@ -74,7 +74,7 @@ source file, update its line here.
 ## Dialogs
 
 - `dialog_frame.rs`: the frame every dialog is drawn in.
-- `dialog_header.rs`: a header with the title, an optional icon and subtitle and a painted close button that acts as Esc.
+- `dialog_header.rs`: a header with the title, an optional icon (or colour swatch) and subtitle and a painted close button that acts as Esc.
 - `dialog_size.rs`: a size class, Small 400–480, Medium 480–560 or Wide 640–760 px, following a long title up to its most and capped by the window.
 - The dialog body scrolls or resizes.
 - `dialog_guide.rs`: for a less familiar operation, a tinted side pane that explains it in numbered steps under "How it works", beside the form or, in a narrow window, stacked above it; the steps are in `dialog_guides.rs`.
@@ -83,7 +83,7 @@ source file, update its line here.
 - `Dialog::header`: a header the caller draws instead of the title row (the welcome's band, which may paint into the padding).
 - `Dialog::width` sets the content width; `Dialog::min_body` a least body height.
 - `close_button` places the shared close box.
-- `widgets/text_field.rs`: a dialog's text fields: 36 px with the text centred, tinted with `color::field_fill`, a Browse… button beside one with `with_button`, and `entered` for a field's Enter.
+- `widgets/text_field.rs`: a dialog's text fields: Large 36 px (or a given `ControlSize`) with the text centred, tinted with `color::field_fill`, a Browse… button beside one with `with_button`, and `entered` for a field's Enter.
 - `widgets/field_group.rs`: the label-field-help group a text field sits in: the label above, a weak Optional marker, then one line under the field, its message or else its help.
 - `confirm_dialog.rs`: the confirmation dialog and its danger form.
 - `dialog_guard.rs`: the "Discard your changes?" question (see Dialogs in [flow-shell.md](flow-shell.md)).

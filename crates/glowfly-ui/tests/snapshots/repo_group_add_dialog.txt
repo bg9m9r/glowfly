@@ -1,0 +1,19 @@
+Dialog
+  Label "Add to Work"
+  Button "Close this dialog"
+  Label "Favorites"
+  CheckBox "docs" [on]
+  Label "C:\\work"
+  CheckBox "notes" [off]
+  Label "C:\\work"
+  CheckBox "api-server" [off]
+  Label "In Home"
+  Label "C:\\work"
+  Label "Recent"
+  Label "Starred when added"
+  CheckBox "cli" [off]
+  Label "C:\\work"
+  CheckBox "site" [off]
+  Label "C:\\work"
+  Button "Cancel"
+  Button "Add 1" [focused]

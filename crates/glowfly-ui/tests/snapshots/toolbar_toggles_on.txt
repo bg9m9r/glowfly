@@ -127,8 +127,6 @@ painted:
   "0"
   "Worktrees"
   "0"
-  "Submodules"
-  "0"
   "Search messages, authors and SHAs; narrow with author: or path:"
   "Any author"
   "Branch / tag"

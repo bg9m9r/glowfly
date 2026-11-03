@@ -37,7 +37,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `op_preview.rs`: `OpPreviewMsg`, carried by the operation preview's open, result, Preview again and Apply.
 - `notify.rs`: `NotifyMsg`, carried by holding and closing toasts and clicks on desktop notifications.
 - `lock.rs`: `LockMsg`, Delete lock file's check after a failed job, the confirmed delete and its result.
-- `repo_groups.rs`: `GroupMsg`, making, renaming, colouring, ordering and removing repository groups and moving favorites between them.
+- `repo_groups.rs`: `GroupMsg`, making, renaming, colouring, ordering and removing repository groups, moving favorites between them and adding repositories to one.
 - A few cross-cutting messages live in `Msg` itself (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …).
 
 ## `effect/`: effects
@@ -84,6 +84,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `stack_prs.rs`: a stack's pull request layers, the bottom layer's base, why Create pull requests for the stack is off and the run of create dialogs.
 - `palette_stack.rs`: the palette's stack entries.
 - `repo_groups.rs`: repository groups' members, the shown order of the favorites (groups first; the favorite keys follow it), a repository's group and colour, and the New group / Rename group form.
+- `repo_group_picker.rs`: a group's Add repositories picker: what it offers (favorites outside the group, then Recent), its filter and the ticked rows.
 - `clone.rs`, `clone_service.rs`: the Clone dialog.
 - `init.rs`: the Init dialog.
 - `issue_words.rs`: the words of the issue panel and Create dialog per tracker.
@@ -143,7 +144,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `op_progress.rs`: the strip's Show work in progress and the banner's confirmed Abort (a kept one runs as `StashEffect::AbortKeeping`).
 - `branch_colour.rs`: pinned branch colours (main's too), the preset's hue count and the slots near the trunk the shell reports (`GraphMsg::TrunkNear`) brought into the snapshot at load, on Preferences edits, on a palette change and on a tab's return.
 - `repo_colour.rs`: repository colours from the Color submenus.
-- `repo_groups.rs`: repository groups: the dialogs, colours, order, Remove group and moving favorites in and out (tests in `update/tests/repo_groups_tests.rs`).
+- `repo_groups.rs`: repository groups: the dialogs, colours, order, Remove group, moving favorites in and out and adding repositories (tests in `update/tests/repo_groups_tests.rs`).
 - `trust_seal.rs`: sealing trust-gated jobs, shells and previews for the runner's re-check (`push`), wrapping them and every read that lets git run (`read_in`) as `Effect::Checked` before update returns (`wrap`, from `update::update_sealed`), and holding work again when the re-check finds the repository no longer covered or what it brings in can't be compared (`TrustMsg::Stale`); tests in `flows/trust_recheck_tests.rs`, `trust_recheck_programs_tests.rs` (a tracked config program, a submodule's hook) and `trust_patch_export_tests.rs` (Create patch's export, sealed in `patch_changes.rs`).
 - `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once and a merge preview in a held repository waiting for the trust prompt (`trust::hold_waiting`), since merge-tree runs the repository's merge drivers.
 - `pr_heads.rs`: mapping pull request heads to loaded commits on every load, load-more page and PR list: a full id by lookup only, the prefixes in one pass over the loaded commits (tests in `update/tests/pr_heads_tests.rs`).

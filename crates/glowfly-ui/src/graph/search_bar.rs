@@ -37,17 +37,17 @@ const HINT: &str = "Search messages, authors and SHAs; narrow with author: or pa
 
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
+        // As tall as the field from the start, so every control centres on its centre line.
+        ui.set_min_height(ControlSize::Regular.metrics().h);
         ui.add_space(super::layout::EDGE_INSET);
         // The field gives up width before the controls after it run out of room.
         let width = (ui.available_width() - CONTROLS_W).clamp(160.0, 420.0);
         let empty = st.session.tab_view.search.is_empty();
-        // The text's width: the field keeps the same outer width with the clear button's room.
-        let inner = width - (CLEAR_ROOM - 4.0);
-        let (hint, hint_cut) = widgets::truncate::hint(ui, HINT, inner);
-        // egui's default margin (4, 2), with room for the clear button at the right.
-        let margin = egui::Margin { left: 4, right: CLEAR_ROOM as i8, top: 2, bottom: 2 };
-        let edit = egui::TextEdit::singleline(&mut st.session.tab_view.search).hint_text(hint).desired_width(inner).margin(margin);
-        let r = controls::field(ui, edit);
+        // The text's width: the clear button's room replaces the right padding.
+        let text_w = width - controls::FIELD_PAD_X - CLEAR_ROOM;
+        let (hint, hint_cut) = widgets::truncate::hint(ui, HINT, text_w);
+        let edit = egui::TextEdit::singleline(&mut st.session.tab_view.search).hint_text(hint);
+        let r = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(width).trailing_room(CLEAR_ROOM));
         let r = if empty && hint_cut { r.on_hover_text(HINT) } else { r };
         if !st.session.tab_view.search.is_empty() {
             clear_button(ui, r.rect, st.settings.lang().tr("search.clear.button"), msgs);
@@ -149,6 +149,9 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     };
     let filter = &mut st.view.author_filter;
     let search = &st.session.search;
+    // As tall as the query field beside it; egui sizes the combo from the interact height.
+    let saved = ui.spacing().interact_size.y;
+    ui.spacing_mut().interact_size.y = ControlSize::Regular.metrics().h;
     let open = egui::ComboBox::from_id_salt("search-author")
         .width(150.0)
         .selected_text(text)
@@ -160,7 +163,8 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 msgs.push(Msg::Search(SearchMsg::PickAuthor(None)));
                 ui.memory_mut(|m| m.close_popup());
             }
-            controls::field(ui, egui::TextEdit::singleline(filter).hint_text("Filter authors").desired_width(220.0));
+            let edit = egui::TextEdit::singleline(filter).hint_text("Filter authors");
+            ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(220.0));
             let Some(list) = &search.authors else {
                 ui.label(RichText::new("Reading authors…").color(color::weak()));
                 return;
@@ -185,6 +189,7 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.label(RichText::new(format!("{more} more, type to narrow")).color(color::weak()));
             }
         });
+    ui.spacing_mut().interact_size.y = saved;
     if open.inner.is_some() && st.session.search.authors.is_none() {
         msgs.push(Msg::Search(SearchMsg::WantAuthors));
     }

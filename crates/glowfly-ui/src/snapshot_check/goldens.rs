@@ -100,6 +100,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("repo_menu_light", TopLeft(640.0, 620.0)),
     ("repo_menu_groups", TopLeft(640.0, 620.0)),
     ("welcome_repo_groups", Window),
+    ("welcome_repo_groups_light", Window),
     ("welcome_repo_row_hover", Window),
     ("live_updates_states", Window),
     // The tips in context: under the graph's header, and in a narrow left panel.
@@ -205,6 +206,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("dialog_look_high_contrast_dark", Dialog),
     ("dialog_look_high_contrast_light", Dialog),
     ("about_dialog", Dialog),
+    ("repo_group_add_dialog", Dialog),
+    ("repo_group_add_dialog_light", Dialog),
     ("dialog_guide_beside", Dialog),
     ("confirm_dialog_danger", Dialog),
     ("quit_confirm_unsaved", Dialog),
@@ -216,6 +219,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `welcome_repo_groups` and `repo_group_add_dialog` in Porcelain.
+    "welcome_repo_groups_light",
+    "repo_group_add_dialog_light",
     // `conflict_line_picks` in Porcelain: the check marks' contrast on the light tints.
     "conflict_line_picks_light",
     // The trust chip at rest: the same names as `toolbar_trust_waiting_dark`; only its look differs.
