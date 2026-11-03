@@ -77,7 +77,7 @@ pub use ui_choices::{BranchVisibility, Corner, Density, DescriptionMode, DiffLay
 pub use updates::{NewsChip, UpdatePrefs, WhatsNew};
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     /// Minutes between background fetches; 0 disables auto-fetch.

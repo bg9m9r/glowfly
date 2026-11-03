@@ -9,7 +9,7 @@ use super::details::file_reveal::reveal;
 use super::details::{RowActions, changed_file_row_at};
 use super::file_menu::RowSource;
 use super::file_menu::folder_menu::{self, FolderStage};
-use super::list_row::file_tree::{ListRows, Shown, folder_row, mode_toggle};
+use super::list_row::file_tree::{FilesKey, ListRows, Shown, folder_row, mode_toggle};
 use super::menus::{cherry_pick_button, copy_shas, patch_button, revert_button};
 use super::theme::color;
 use super::widgets;
@@ -169,7 +169,8 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
                 });
             });
             let paths = || c.files.iter().map(|f| f.path.as_str()).collect();
-            let rows = ListRows::of(ui, mode, c.files.len(), paths, st.session.tab_view.file_folds.closed(FileListId::Compare));
+            let files = FilesKey::of(FileListId::Compare, &c.files, (from, to));
+            let rows = ListRows::of(ui, mode, c.files.len(), files, &paths, st.session.tab_view.file_folds.closed(FileListId::Compare));
             let index = |t: &DiffTarget| {
                 let i = c.files.iter().position(|f| *t == DiffTarget::Between(from, to, f.path.clone()))?;
                 rows.row_of_file(i)

@@ -22,7 +22,7 @@ pub(super) fn at_start(st: &mut AppState, problem: LoadProblem, now: Instant) {
             st.settings_file.hold(Some(&problem));
             // What the startup steps made of the defaults is where the user's edits start: a
             // later read tells whether anything they changed is dropped.
-            st.settings_file.saved = serde_json::to_string(&st.settings).unwrap_or_default();
+            st.settings_file.record(&st.settings);
         }
         None => {
             let text = problem.message();
@@ -64,9 +64,9 @@ pub(super) fn reread(st: &mut AppState, settings: Settings, problem: Option<Load
     let git_changed = settings.git_program != st.settings.git_program;
     // Edits the user made while saving was held back are dropped for the file's settings; what
     // Glowfly recorded by itself meanwhile isn't an edit, and its newer records are kept.
-    let baseline = serde_json::from_str::<Settings>(&st.settings_file.saved).ok();
+    let baseline = serde_json::from_str::<Settings>(st.settings_file.saved()).ok();
     let edited = baseline.is_none_or(|b| user_view(&b) != user_view(&st.settings));
-    st.settings_file.saved = serde_json::to_string(&settings).unwrap_or_default();
+    st.settings_file.record(&settings);
     let mut settings = settings;
     let carried = carry_records(&st.settings, &mut settings);
     st.settings = settings;

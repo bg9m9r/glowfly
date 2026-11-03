@@ -97,6 +97,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let repo = snap.real_workdir.as_path();
     let hover_next = &mut st.view.hover_tip_next;
     let tips_seen = &mut st.view.tips_seen;
+    let local_rows = &mut st.view.local_rows;
     let slot = super::build_status::tip_slot(fs);
 
     let local_menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, &actions.local);
@@ -112,7 +113,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     section_header::show(ui, local, &mut sections.local, msgs);
     if sections.local {
         let mut elbows = stack_rows::Elbows::default();
-        for row in crate::state::stack_rows::local_rows(snap, &shown, !filter.is_empty()) {
+        for row in local_rows.rows(snap, &filter).iter().map(|r| r.of(snap)) {
             let (b, dent) = (row.branch, stack_rows::indent(row.depth));
             // Noted before the hidden check, so rows scrolled out of view still anchor elbows.
             elbows.note(&b.name, ui.cursor().top() + widgets::LIST_ROW_H / 2.0);

@@ -19,7 +19,7 @@ mod more;
 mod nodes;
 mod paint;
 mod ref_checkout;
-mod ref_group;
+pub(crate) mod ref_group;
 mod ref_menu;
 mod refs_fit;
 mod resize;
@@ -111,7 +111,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         }
 
         // What grouping a row's ref labels into chips needs, once per frame.
-        let ref_cx = ref_group::RefContext::of(snap);
+        let ref_cx = ref_group::RefContext::of(snap, cache.ref_upstreams.of(snap.status_stamp, &snap.locals));
         // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
         let s = &st.settings;
         let oldest = snap.commits.iter().map(|c| c.time).min();
