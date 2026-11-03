@@ -15,13 +15,13 @@ fn row_surfaces(p: &Palette) -> Vec<Color32> {
 use super::{applied, builtin};
 use eframe::egui::Color32;
 use glowfly_core::branch_colour::Swatch;
-use glowfly_core::settings::{BranchPalette, BuiltinTheme};
+use glowfly_core::settings::{BuiltinTheme, ColourPalette};
 
 /// Every built-in in both presets, and every chip it draws: (what, the palette, the look).
 fn chips() -> Vec<(String, Palette, ChipLook)> {
     let mut v = Vec::new();
     for t in BuiltinTheme::ALL {
-        for preset in [BranchPalette::Standard, BranchPalette::ColourBlind] {
+        for preset in [ColourPalette::Standard, ColourPalette::ColourBlind] {
             let p = applied(*builtin(t), preset);
             for s in swatches() {
                 for style in ChipStyle::ALL {

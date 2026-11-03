@@ -5,7 +5,7 @@
 //! Push to all remotes.
 
 use super::branch_tests::{remote_commit, with_origin};
-use super::tests::{drive, finish, git};
+use super::tests::{drive, drive_seeing, finish, git};
 use super::update;
 use crate::effect::Effect;
 use crate::logs::LogsMsg;
@@ -340,7 +340,8 @@ fn push_to_all_remotes_pushes_each_in_turn_and_names_the_ones_that_failed() {
     git(&work, &["remote", "add", "backup", &backup.display().to_string()]);
     git(&work, &["commit", "-q", "--allow-empty", "-m", "more"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    drive(&mut st, Msg::Branch(BranchMsg::PushAll("main".into())));
+    let ran = |m: &Msg| matches!(m, Msg::Branch(BranchMsg::PushedAll { branch, total: 3, result }) if branch == "main" && result.failed == ["broken"]);
+    assert!(drive_seeing(&mut st, Msg::Branch(BranchMsg::PushAll("main".into())), ran), "one job, reporting the failed remote");
     let headline = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
     assert_eq!(headline, "Pushing main failed on broken (1 of 3 remotes). The log shows why.");
     assert_eq!(rev(&backup, "main"), rev(&work, "main"), "a remote after the failed one still got it");

@@ -1,6 +1,6 @@
 //! No built-in theme writes brown, tan, khaki or olive text (docs/COLOUR.md, "No brown"): every
 //! coloured text colour (status, `warn`, tag and hunk text, syntax, the terminal's coloured
-//! basics) as it sits on its surfaces stays out of `contrast::brownish_text`'s zone, and the
+//! basics), in both colour presets, as it sits on its surfaces stays out of `contrast::brownish_text`'s zone, and the
 //! light themes' amber text (`warn`, `modified`, `syn_type`, terminal yellow) still reads at
 //! 4.5:1 (7:1 in high contrast) there. Neutral inks (body text, comments, the terminal's
 //! black, white and foreground) are judged as greys and left out. High contrast light's amber
@@ -10,7 +10,7 @@ use super::builtin;
 use super::color::Palette;
 use super::contrast::{brownish_text, max_chroma, oklch, ratio};
 use eframe::egui::Color32;
-use glowfly_core::settings::BuiltinTheme;
+use glowfly_core::settings::{BuiltinTheme, ColourPalette};
 
 /// The terminal basics that are coloured text: red to cyan, normal and bright.
 const ANSI_TEXT: [usize; 12] = [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14];
@@ -63,9 +63,13 @@ fn describe(t: BuiltinTheme, what: &str, c: Color32) -> String {
 fn no_theme_writes_brown_text() {
     let mut failures = Vec::new();
     for t in BuiltinTheme::ALL {
-        for (key, c, _) in texts(builtin(t)) {
-            if brownish_text(c) && !allowed(t, &key) {
-                failures.push(describe(t, &key, c));
+        // The colour-blind safe preset's status colours too (`colour_safe`).
+        let safe = super::colour_safe::applied(*builtin(t), ColourPalette::ColourBlind);
+        for p in [builtin(t), &safe] {
+            for (key, c, _) in texts(p) {
+                if brownish_text(c) && !allowed(t, &key) {
+                    failures.push(describe(t, &key, c));
+                }
             }
         }
     }

@@ -26,6 +26,8 @@ source file, update its line here.
 - `conflict_pick.rs`: what each conflict chunk resolves to (whole sides, single lines in tick order, or text typed by hand) and the file that makes, with conflict markers left for the chunks not picked yet and the clean runs between them as edited (`render`, `render_picks`).
 - `conflict_edit.rs`: the conflict view's output as editable text with each chunk's and clean run's range, and which one an edit of it falls in (`locate_edit`).
 - `conflict_restore.rs`: the picks a saved file holds, read back against the stages.
+- `whole_file/anchor.rs`: rows of the whole-file view mapped to the file lines they show and back, so a change to the open folds, which adds or removes rows, can keep the same line at the top of the viewport.
+- `whole_file/folds.rs`: folds of the whole-file view: long runs of unchanged lines away from every change, drawn as one "N unchanged lines" row until the user opens them.
 
 ## Syntax highlighting
 
@@ -33,6 +35,11 @@ source file, update its line here.
 - `memo.rs`: parse checkpoints a reload of the same file resumes from: content-defined chunks with their start and end states.
 - `highlight/syntaxes.rs`: the syntax definitions for detection, loaded once (immutable, see Rules).
 - `highlight/grammars.rs`: the copy of the syntax set parsing runs on, dropped with its compiled regexes after 3 idle minutes (`Holder`).
+- `highlight/context.rs`: the old file's lines before a diff's hunks, so each hunk can be parsed from the state those lines leave (a hunk that starts inside a block comment is then colored as a comment).
+- `highlight/gaps.rs`: syntax spans for the unchanged lines between hunks, when the hunk view fills them in: the old file parsed from its first line, so a run inside a block comment opened earlier is colored as one.
+- `highlight/header.rs`: the function context in hunk headers: the text git adds after the closing `@@` (the nearest line above the hunk that looks like a definition, e.g. `fn greet(name: &str) {`).
+- `highlight/linguist.rs`: language overrides: names from a `.gitattributes` `linguist-language` value mapped to the bundled syntaxes, and the `SyntaxHint` the highlighter takes.
+- `highlight/reuse.rs`: what a reload can take over from the diff shown before: the exact spans of unchanged hunks, provisional spans for lines whose text appeared before, hunk-header spans by their function context's text, and parse checkpoints (`memo`) to resume an in-context parse from.
 
 ## Previews
 

@@ -47,7 +47,7 @@ impl Default for Settings {
             worktree_wips: true,
             group_worktree_tabs: true,
             branch_visibility: BranchVisibility::All,
-            branch_palette: BranchPalette::Standard,
+            colour_palette: ColourPalette::Standard,
             columns: GraphColumns::default(),
             column_widths: ColumnWidths::default(),
             graph_density: Density::Comfortable,

@@ -41,6 +41,14 @@ source file, update its line here.
 - `pick_ops.rs`: command lines for cherry-picking and reverting commits from the graph (several at once, a merge against a chosen mainline parent, skipping a stopped commit), run through gitcli so hooks, config and signing apply; which picking is stopped (`Picking`).
 - `pick_empty.rs`: telling a commit that changes nothing from a conflict and skipping it (`skip_empty`, with `--skip` from git 2.23; an older git ends a single pick cleanly) so the rest of the run goes on, counted in a `PickResult`.
 - `init_ops.rs`, `init_ops/`: new repository files and the init job: `.gitignore` templates, license texts, what the chosen folder already holds, and init, write (never overwriting) and commit.
+- `worktree_ops/manage.rs`: removing, locking, unlocking and pruning worktrees: the command lines, reading git's refusal to remove one, and `remove`, which checks for a lock and for changes before git runs and then judges the result by listing the worktrees again.
+- `patch_ops/am.rs`: applying a series of emailed patches as commits with `git am`: the command lines, where a stopped series is (read from `rebase-apply/`), and what git said when it stopped.
+- `patch_ops/apply.rs`: applying a patch's changes with `git apply`: the command lines for the chosen options, and reading what it said (the problems that stopped it, the conflicts a three-way fallback left, the hunks saved to `.rej` files).
+- `patch_ops/inspect.rs`: what a patch file holds, read without git: how many emailed commits (a format-patch series) and which files it touches, for the Apply patch dialog.
+- `patch_ops/wip.rs`: saving uncommitted changes as a patch: `git diff` of the chosen scope (every change against HEAD, the staged ones, or the unstaged ones), optionally limited to some paths, plus one `git diff --no-index` per untracked file to include, joined into one file `git apply` reads.
+- `submodule_ops/remove.rs`: removing a submodule: what the confirmation names (its changes, the commits on no remote-tracking branch inside it, its stashes, its stored module), and the removal itself: `git submodule deinit -f`, `git rm -f`, then deleting `<git dir>/modules/<name>`, never through a link and only when it looks like a git dir.
+- `submodule_ops/update.rs`: keeping submodules up to date and editing them: which git commands, undos and redos move the parent's work tree (after which its submodules may need updating), the batch `git submodule update` commands, and the commands that change a submodule's URL and branch.
+- `submodule_ops/url.rs`: relative submodule URLs (`./x`, `../x` in .gitmodules): git resolves them against the parent's default remote URL, or its folder when it has none.
 
 ## Git LFS and Git Flow
 
@@ -48,6 +56,11 @@ source file, update its line here.
 - `lfs/sources.rs`: where the LFS patterns come from: the root `.gitattributes` (working tree), tracked nested ones (index blobs) and the common dir's `info/attributes`, each pattern tagged with its file; capped at `MAX_NESTED_FILES` files and `MAX_BYTES` bytes.
 - `lfs/pointer.rs`: pointer files: parsed from bytes, read from a blob without inflating large ones or from a working file, sizes for the screen with `size_text`, and a diff's two sides as `LfsChange`.
 - `gitflow.rs`, `gitflow/`: Git Flow with plain git: config, checks, start and finish plans, continuing a finish stopped at a conflict, the production/development roles, versions, branch groups by kind.
+- `lfs/track.rs`: what a file row can track in Git LFS, and the `.gitattributes` pattern each choice writes.
+- `gitflow/base.rs`: the roles of the configured production and development branches, for warning before one of them is deleted.
+- `gitflow/groups.rs`: the local flow branches by kind, for the Git Flow panel and the left panel's GIT FLOW section.
+- `gitflow/resume.rs`: continuing a Finish that stopped at a merge conflict: the steps still to run once the merge is committed, whether a snapshot shows that commit (or shows the remaining steps can no longer apply), and the checks before the remaining steps run.
+- `gitflow/start.rs`: starting a feature, release or hotfix branch: the checks and the command line.
 
 ## Interactive rebase (`rebase/`)
 
@@ -59,6 +72,9 @@ source file, update its line here.
 - The remaining steps of a rebase in progress and `--edit-todo`: `remaining.rs`.
 - Message files (`run.rs`, `remaining.rs`) are written in the repository's commit encoding and read back from it (`commit_encoding.rs`).
 - `update_refs.rs`: the `update-ref` steps git adds with `rebase.updateRefs` (predicted for the plan, branch aliases and the branches other worktrees hold included, compared when a list replaces git's); tests in `update_refs_tests.rs` and `update_refs_git_tests.rs`.
+- `rebase/progress.rs`: where a rebase in progress stands: how many of its commits are done, the commit it stopped at and why, and whether git holds an autostash.
+- `rebase/quick.rs`: history edits chosen in the graph (reword, squash, drop), turned into a ready `StartRequest` for the same `git rebase -i` run the panel uses.
+- `rebase/todo.rs`: the todo list: checking a list before it runs, writing it in git's format (with the reword and combined message files), recognising the lines Glowfly adds, and installing it over the list git generated.
 
 ## Stacked branches (`stack/`)
 
@@ -68,6 +84,9 @@ source file, update its line here.
 - `push`: pushing every layer through gitcli, each classified against the remote tip last seen (new, fast-forward, rewritten here per its reflog and replaced with a ref-specific `--force-with-lease`, or behind, diverged and gone, never pushed), one `git push --porcelain` per (remote, `-u`) group and each layer's outcome read from its ref line.
 - `porcelain`: the push command lines and the porcelain reading.
 - `Snapshot::stacks` holds a full load's stacks.
+- `stack/porcelain.rs`: the command lines of a stack push and the reading of `git push --porcelain`'s answer.
+- `stack/read.rs`: reading a repository's stacks with libgit2: the base (the main branch, Git Flow's production and development branches, and every remote's branch of those names), the commits of the other local branches outside it, and each branch's former tips from its reflog.
+- `stack/restack.rs`: running a restack through the git CLI, so hooks, signing and config apply: each step is `git rebase --update-refs --onto refs/heads/<onto> <upstream> <top>`, and once every step is done the branch checked out before is checked out again.
 
 ## Undo and redo (`undo.rs`, `undo/`)
 
@@ -91,6 +110,7 @@ source file, update its line here.
 - `in_the_way.rs`: what an undo or redo would write over without a word: the paths a HEAD move (`reset --keep`, `reset --hard`, a checkout or `checkout -b`) or a stash put back would write that nothing tracks now, where an untracked or ignored file (or a folder holding one, or a file where a folder goes) is on disk; case-folded with `core.ignorecase`, submodule folders left alone; any there refuses it, naming them. Tests in `in_the_way_tests.rs`.
 - `stash_first.rs`: the stash "Stash changes and undo" makes: its message with a nonce per run, the push command (untracked files only for an undo that leaves the stash), the newest stash (an error when the list can't be read), and finding that run's stash by message and id.
 - `aborted_restore.rs`: undoing it puts the operation back in progress with that work (refused while any of its paths or HEAD has changed) and drops the ref; redoing aborts again; tests in `aborted_tests.rs` and `aborted_safety_tests.rs`.
+- `undo/restacked.rs`: recording a restack as one undoable action: every local branch's tip before it ran, and afterwards the branches whose tip changed.
 
 ## Operation journal (`journal.rs`, `journal/`)
 

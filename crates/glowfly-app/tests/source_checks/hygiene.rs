@@ -84,10 +84,10 @@ const HARNESS_MAKERS: &[&str] = &["crates/glowfly-ui/src/snapshot_check/mod.rs",
 
 /// One source file: its path from the repository root (with `/`), its text, and whether it is
 /// test code.
-struct Source {
-    path: String,
+pub(crate) struct Source {
+    pub(crate) path: String,
     text: String,
-    test: bool,
+    pub(crate) test: bool,
 }
 
 /// The folders under `crates/` that hold a crate with sources, sorted.
@@ -104,7 +104,7 @@ fn crate_names() -> Vec<String> {
 }
 
 /// Every `.rs` file under every crate's `src/`.
-fn all_sources() -> Vec<Source> {
+pub(crate) fn all_sources() -> Vec<Source> {
     let crates = app_src().parent().and_then(|app| app.parent()).map(PathBuf::from).expect("the crates folder");
     let mut out = Vec::new();
     for name in crate_names() {

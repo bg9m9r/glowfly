@@ -4,7 +4,8 @@
 //! and the model; `i18n_keys` matches the code's translation keys with the English catalog;
 //! `dependencies` keeps the crate graph pointing one way; `dead_pub` ratchets unused public items
 //! in the library crates; `access_names` ratchets controls the view snapshots show without a
-//! screen-reader name. All of them read the sources through glowfly-ui's string-aware
+//! screen-reader name; `architecture_docs` checks that `docs/architecture/` names every source
+//! file. All of them read the sources through glowfly-ui's string-aware
 //! `view_checks/support/lexer.rs`.
 
 #[path = "../../../glowfly-ui/tests/view_checks/support/lexer.rs"]
@@ -13,6 +14,7 @@ mod lexer;
 mod views;
 
 mod access_names;
+mod architecture_docs;
 mod dead_pub;
 mod dependencies;
 mod hygiene;

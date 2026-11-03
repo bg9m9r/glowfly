@@ -168,7 +168,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "panel_sizes",
     // Preferences > Accessibility: what the person at the machine needs, whoever commits.
     "reduce_motion",
-    "branch_palette",
+    "colour_palette",
     "cursor_blink",
     "focus_style",
     "toast_time",

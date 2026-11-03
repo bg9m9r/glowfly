@@ -26,7 +26,8 @@ git2.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sys-locale.workspace = true
-base64 = "0.23.1"
+# The version ureq 2 builds, so the tree has one copy.
+base64 = "0.22.1"
 # Commit messages and names in the encoding their `encoding` header names (commit_text.rs).
 encoding_rs = "0.8"
 icu_normalizer = "2.3"
@@ -38,21 +39,22 @@ memchr = "2.8"
 # already in the tree. `union` keeps the inline items and the heap pointer in the same bytes.
 smallvec = { version = "1.15", features = ["union"] }
 getrandom = "0.3"
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
-pulldown-cmark = { version = "0.13", default-features = false }
-keyring = { version = "3", features = ["windows-native", "apple-native"] }
-sha2 = "0.11.1"
-syntect = { version = "5.3", default-features = false, features = ["parsing", "dump-load", "regex-fancy"] }
+image = { workspace = true, features = ["png", "jpeg", "gif", "webp", "bmp"] }
+pulldown-cmark.workspace = true
+keyring = { workspace = true, features = ["windows-native", "apple-native"] }
+# The version keyring builds on Linux (dbus-secret-service), so the tree has one copy.
+sha2 = "0.10.9"
+syntect = { workspace = true, features = ["parsing", "dump-load", "regex-fancy"] }
 ureq = { version = "2", features = ["json"] }
 percent-encoding = "2.3"
 same-file = "1"
 thiserror = "2"
 # Spans around the slow phases of a load and an index build (no subscriber here: the app installs it).
-tracing = "0.1.44"
+tracing.workspace = true
 trash = "5.2"
 portable-pty = "0.9"
 vt100 = "0.16"
-toml = "1.1"
+toml.workspace = true
 # Reading a portable update's zip or tar.gz (app_update/archive.rs): decompression only, with
 # flate2's pure-Rust inflate.
 zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
@@ -60,8 +62,8 @@ tar = { version = "0.4", default-features = false }
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 
 [build-dependencies]
-syntect = { version = "5.3", default-features = false, features = ["parsing", "yaml-load", "dump-create", "regex-fancy"] }
-two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
+syntect = { workspace = true, features = ["parsing", "yaml-load", "dump-create", "regex-fancy"] }
+two-face = { workspace = true, features = ["syntect-fancy"] }
 
 [dev-dependencies]
 filetime = "0.2.29"
@@ -69,15 +71,15 @@ filetime = "0.2.29"
 # (testutil::closed_port): std can only bind a TCP socket by listening on it. Also the forge
 # tests' mock server: closing a finished connection without leaving it in TIME_WAIT.
 socket2 = "0.6"
-two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
+two-face = { workspace = true, features = ["syntect-fancy"] }
 
 # Linux: save tokens in the desktop keyring (GNOME Keyring, KWallet) through the Secret Service.
 [target."cfg(target_os = \"linux\")".dependencies]
-pulldown-cmark = { version = "0.13", default-features = false }
-keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+pulldown-cmark.workspace = true
+keyring = { workspace = true, features = ["sync-secret-service", "crypto-rust"] }
 
 [target."cfg(windows)".dependencies]
-windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Diagnostics_ToolHelp", "Win32_System_JobObjects", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Wdk_System_Threading"] }
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Diagnostics_ToolHelp", "Win32_System_JobObjects", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Wdk_System_Threading"] }
 
 # Linux: whether a repository is on a network or virtual file system (statfs). macOS: why the
 # Trash refused a file, and whether a volume is on the network (the volume's flags). Both:

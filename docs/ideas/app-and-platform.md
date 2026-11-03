@@ -252,3 +252,11 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 - Build time: split core's libgit2-free parts (settings, forge, i18n) into their own crate so
   model and ui stop rebuilding when only git code changes.
+
+### Duplicate dependency versions (#376)
+
+- egui/eframe 0.31 to the current egui: most of the remaining duplicate versions (windows 0.58,
+  wgpu's tree, accesskit, zbus 4) come in through it; views, snapshots and goldens all move.
+- ureq 2 to ureq 3: the old major; 3 has a new request and error API (forge/, app_update/).
+- base64 (0.22) and sha2 (0.10) are held at the versions ureq 2 and keyring's Linux backend
+  build; move core's copies when those do.

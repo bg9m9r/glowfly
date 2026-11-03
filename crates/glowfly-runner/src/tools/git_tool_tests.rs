@@ -123,7 +123,15 @@ fn git_diff_tools_report_only_failures() {
         assert_eq!((program.as_str(), target.as_str()), ("t", "a.txt"));
         assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("code 5")), "{f:?}");
     }
-    let (program, _, f) = failure(open(builtin("glowfly-no-such-tool")));
+    // Watched until git ends rather than for its usual window, so a failure a loaded machine
+    // slows down still counts as quick.
+    let req = GitDiffRequest {
+        tool: builtin("glowfly-no-such-tool"),
+        workdir: dir.clone(),
+        target: DiffTarget::Unstaged("a.txt".into()),
+        filters: false,
+    };
+    let (program, _, f) = failure(open_diff_watching(req, Duration::from_secs(600)));
     assert_eq!(program, "glowfly-no-such-tool");
     assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("difftool.glowfly-no-such-tool.cmd not set")), "{f:?}");
     let _ = std::fs::remove_dir_all(&dir);

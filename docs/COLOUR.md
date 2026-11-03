@@ -224,7 +224,7 @@ tone, and the ink their chip tone pushed to 4.5:1 on that fill
 (`theme/branch_colours.rs::initials_tones`). The ring around the initials, or around an avatar
 image, stays the branch's colour.
 
-Colour-blind friendly preset (Preferences > Appearance > Commit graph > Branch colors): 8
+Colour-blind friendly preset (Preferences > Accessibility > Colours > Colour-blind safe): 8
 hues that stay apart under protan, deutan and tritan vision as well as normal vision, and keep
 out of the accent and attention bands. Dark themes use its dark tones for lines and chips;
 light ones use its line tones for lines and its text tones for chips. Under protan or deutan
@@ -232,8 +232,21 @@ vision Yellow and Lime pass for Dusk's gold, so Dusk's set (`Palette::colour_bli
 (#eb8f13) and a paler Lime (#c8feac) in their slots. On paper a yellow line reads olive, so the
 light set's Yellow is the clear amber (named Orange) and its Lime the deeper #4d7002, which stays
 apart from the amber under protan vision; Dawn takes Porcelain's Wine for Periwinkle, which would pass
-for the iris. Theme files take their base's set. The preset switches with the profile.
-Branch names always appear beside their colour, and main is gray unless pinned.
+for the iris. Theme files take their base's set. The preset belongs to the machine, not the
+profile. Branch names always appear beside their colour, and main is gray unless pinned.
+
+The same preset changes the diff and status colours (`theme/colour_safe.rs`), as red and green
+fall together under protan and deutan vision: added and its diff fills turn blue (OKLCH hue 250),
+removed orange (hue 55) and modified violet (hue 300). Each keeps its theme colour's WCAG
+luminance, so every contrast floor below still holds, with two exceptions for "No brown": an
+orange that would read brown (the dark themes' removed fills) is a rust red instead (hue 30,
+chroma at least 0.08), and on light themes removed text and marks are a vermilion (hue 40, chroma
+at least 0.08). Modified sits below added in OKLab lightness (0.11 on dark themes, 0.10 on high
+contrast dark, 0.15 on light ones), as violet and blue at one lightness look alike under protan
+and deutan vision. A rename's letter takes the modified colour, as `info` is a blue too. In the
+graph, lanes then also carry a dash pattern by their distance from HEAD's lane: dashed (6 on, 4
+off), dotted (2 on, 3 off), dash-dot, and again; HEAD's own branch is drawn 2.5 px wide in every
+preset, other lanes 2 px.
 
 ### Terminal
 
@@ -484,6 +497,9 @@ given, the second is for the high-contrast themes.
 | Colour-blind line tones, applied to every built-in | bg, panel | 3 |
 | Colour-blind light text tones (chips on every light built-in) | bg, panel, toolbar, hover, selected, raised | 4.5 |
 | Colour-blind dark tones, light line tones | each other and the accents, in OKLab under normal, protan, deutan and tritan vision | distance 0.08 (dark), 0.05 (light lines) |
+| Colour-safe added, removed, modified | each other, in OKLab under normal, protan, deutan and tritan vision | distance 0.10 |
+| Colour-safe diff fills, selected and changed-word | each other, as above | distance 0.10 (plain fills: 0.09 dark, 0.04 light, which sRGB can't take further; the gutter's +/- carry them) |
+| Colour-safe added, removed, modified | bg, panel, hover, selected | 3 / 4.5 |
 | Change chip text | its chip tint | 4.5 |
 | Every `syn_*` | panel, diff_add, diff_del, diff_add_word, diff_del_word | 2.4 / 4.5 |
 | Terminal text colours (below) and `ansi.foreground` | `ansi.background` (input) | 4.5 / 7 |
