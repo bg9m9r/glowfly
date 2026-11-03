@@ -139,9 +139,10 @@ fn sheet_shows_command_keys_once_bound() {
     st.modal = Some(Modal::Shortcuts { filter: String::new() });
     let mut h = harness(st, true);
     h.run();
-    // Pull, Push, Stash changes and Unstash share their names with toolbar or sidebar buttons.
+    // Pull, Push, Stash changes and Unstash share their names with toolbar or sidebar buttons, and
+    // New branch… with the sidebar's +.
     for label in ["Repository commands", "Fetch all remotes", "New branch…", "Switch branch…"] {
-        assert!(h.query_by_label(label).is_some(), "{label}");
+        assert!(h.query_all_by_label(label).next().is_some(), "{label}");
     }
     assert!(h.query_by_label("Open the operation journal").is_none(), "no key by default");
     drop(h);

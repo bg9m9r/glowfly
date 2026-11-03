@@ -32,7 +32,7 @@ Button "Show commit details panel"
 Unknown "Left panel contents"
 TextInput "Filter branches, pull requests and issues"
 Button "Local, 3 branches"
-Button "New branch" [disabled]
+Button "New branch…" [disabled]
 Button "Local actions"
 Button "login-page"
 Button "main, checked out"

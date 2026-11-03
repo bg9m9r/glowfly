@@ -31,7 +31,7 @@ Label "This repository stores files in Git LFS, but git-lfs isn't installed. Cha
 Unknown "Left panel contents"
 TextInput "Filter branches, pull requests and issues"
 Button "Local, 3 branches"
-Button "New branch"
+Button "New branch…"
 Button "Local actions"
 Button "login-page"
 Button "main, checked out"

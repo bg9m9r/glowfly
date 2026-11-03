@@ -58,12 +58,13 @@ pub(super) fn job_ended(
         st.logs.recount = None;
         return;
     }
-    // A push or pull says what it did, briefly, unless Confirm pushes and pulls is off.
+    // A push or pull says what it did: a brief toast unless Confirm pushes and pulls is off.
     if headline.is_none()
         && let Some(said) = super::sync_voice::headline(st, job, ok, output)
     {
+        // The desktop note has its own setting (Desktop notifications), so it stays either way.
+        super::notify::desktop(st, NoteKind::Job, &said, repo, fx);
         if st.settings.confirm_push_pull {
-            super::notify::desktop(st, NoteKind::Job, &said, repo, fx);
             st.toast_brief(said.clone(), now);
         }
         st.log_run_in(repo, ok, text, run(said), st.settings.confirm_push_pull);

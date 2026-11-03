@@ -30,7 +30,7 @@ Label "Glowfly couldn't find git on your PATH. Commits, fetches and pushes need 
 Unknown "Left panel contents"
 TextInput "Filter branches, pull requests and issues"
 Button "Local, 3 branches"
-Button "New branch"
+Button "New branch…"
 Button "Local actions"
 Button "login-page"
 Button "main, checked out"

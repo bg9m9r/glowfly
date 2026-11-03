@@ -29,7 +29,7 @@ Label "Merging main into search would stop with conflicts in 3 files.\nmain is t
 Unknown "Left panel contents"
 TextInput "Filter branches, pull requests and issues"
 Button "Local, 3 branches"
-Button "New branch"
+Button "New branch…"
 Button "Local actions"
 Button "login-page"
 Button "main"

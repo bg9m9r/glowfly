@@ -2699,7 +2699,7 @@
   "sidebar.action.create_issue": "{noun} erstellen",
   "sidebar.action.create_pr": "{noun} erstellen",
   "sidebar.action.new_annotated_tag": "Neuer annotierter Tag",
-  "sidebar.action.new_branch": "Neuer Branch",
+  "sidebar.action.new_branch": "Neuer Branch…",
   "sidebar.action.new_tag": "Neuer Tag",
   "sidebar.action.publish": "Veröffentlichen",
   "sidebar.action.stash": "Änderungen stashen",

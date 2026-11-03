@@ -45,17 +45,27 @@ fn ref_lines(output: &str) -> impl Iterator<Item = (&str, &str, bool)> {
 
 fn pushed(t: Lang, snap: &Snapshot, remote: Option<&str>, output: &str) -> String {
     let head = snap.head_branch.as_deref().unwrap_or_default();
-    let Some((src, _, updated)) = ref_lines(output).next() else {
+    // The branch's own line: a tag that followed it (push.followTags) isn't what was pushed.
+    let local = |src: &str| src.strip_prefix("refs/heads/").unwrap_or(src).to_owned();
+    let line = ref_lines(output).find(|(src, _, _)| snap.locals.iter().any(|b| b.name == local(src)));
+    let Some((src, dst, updated)) = line else {
         // Nothing was sent: the remote branch already had everything.
         return t.trf("sync.up_to_date", &[("branch", &head)]);
     };
-    let name = src.strip_prefix("refs/heads/").unwrap_or(src);
+    let name = local(src);
     let branch = snap.locals.iter().find(|b| b.name == name);
     let upstream = branch.and_then(crate::state::branches::upstream_label);
-    let remote = remote.map(str::to_owned).or_else(|| upstream.as_deref().and_then(|u| u.split_once('/')).map(|(r, _)| r.to_owned()));
+    let tracked = upstream.as_deref().and_then(|u| u.split_once('/')).map(|(r, _)| r.to_owned());
+    let remote = remote.map(str::to_owned).or_else(|| tracked.clone());
     let remote = remote.or_else(|| crate::state::branches::default_remote(snap)).unwrap_or_default();
     if !updated {
         return t.trf("sync.published", &[("branch", &name), ("remote", &remote)]);
+    }
+    // Pushed to a remote other than the upstream's: name where it went; the ahead count is
+    // measured against the upstream, so it says nothing about this remote.
+    if tracked.as_deref() != Some(remote.as_str()) {
+        let dst = dst.strip_prefix("refs/heads/").unwrap_or(dst);
+        return t.trf("sync.pushed_branch", &[("branch", &name), ("upstream", &format!("{remote}/{dst}"))]);
     }
     let to = upstream.unwrap_or_else(|| format!("{remote}/{name}"));
     match branch.map_or(0, |b| b.ahead) {

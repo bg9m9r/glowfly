@@ -41,7 +41,7 @@ fn job_running() -> Option<String> {
 fn new_branch_opens_from_head() {
     let (mut st, dir) = opened("sa-branch");
     let a = new_branch(&st, Lang::En);
-    assert_eq!((a.name.as_str(), a.label(), a.blocked.clone()), ("New branch", "New branch…".to_owned(), None));
+    assert_eq!((a.name.as_str(), a.label(), a.blocked.clone()), ("New branch…", "New branch…".to_owned(), None));
     assert!(matches!(a.msg(), Msg::Branch(BranchMsg::NewBranch { start: None, ref name }) if name.is_empty()));
     run(&mut st, &a);
     assert!(matches!(st.modal, Some(Modal::NewBranch { start: None, .. })));

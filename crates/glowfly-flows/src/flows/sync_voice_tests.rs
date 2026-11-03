@@ -57,6 +57,37 @@ fn one_commit_is_singular() {
 }
 
 #[test]
+fn a_push_to_another_remote_names_that_remote_and_no_count() {
+    let (mut st, dir) = repo("voice-push-backup", true, 2, 0);
+    st.snap.as_mut().unwrap().remotes.push(("backup".into(), Vec::new()));
+    done(&mut st, &dir, "Push to backup", UPDATED);
+    assert_eq!(said(&st), "Pushed main to backup/main.");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_push_to_the_upstreams_remote_by_name_still_counts() {
+    let (mut st, dir) = repo("voice-push-origin", true, 2, 0);
+    done(&mut st, &dir, "Push to origin", UPDATED);
+    assert_eq!(said(&st), "Pushed 2 commits to origin/main.");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_tag_that_followed_an_up_to_date_branch_isnt_the_headline() {
+    let (mut st, dir) = repo("voice-push-tag", true, 0, 0);
+    done(
+        &mut st,
+        &dir,
+        "Push",
+        "To https://example.com/r.git
+ * [new tag]         v1 -> v1",
+    );
+    assert_eq!(said(&st), "main is already up to date.");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_new_branch_is_published() {
     let (mut st, dir) = repo("voice-publish", false, 0, 0);
     done(&mut st, &dir, "Push", NEW_BRANCH);
