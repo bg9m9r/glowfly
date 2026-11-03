@@ -105,12 +105,18 @@ pub fn split_count(text: &str) -> (&str, &str) {
     (&text[..open], &text[open..])
 }
 
-/// `text`'s label cut to what `max_w` leaves beside its count (`split_count`), and the count.
-pub(crate) fn counted_galleys(ctx: &egui::Context, text: &str, font: FontId, color: Color32, max_w: f32) -> (Arc<Galley>, Arc<Galley>) {
+/// `text` on one line in `max_w`, cut before its count (`split_count`) when it doesn't fit: the
+/// label ends in "…" and the count follows whole. One galley either way, and whether it was cut.
+pub(crate) fn counted_galley(ctx: &egui::Context, text: &str, font: FontId, color: Color32, max_w: f32) -> (Arc<Galley>, bool) {
+    let whole = ctx.fonts(|f| f.layout_no_wrap(text.to_owned(), font.clone(), color));
+    if whole.size().x <= max_w {
+        return (whole, false);
+    }
     let (label, count) = split_count(text);
-    let count_g = ctx.fonts(|f| f.layout_no_wrap(count.to_owned(), font.clone(), color));
-    let label_g = cut_galley(ctx, cut_job(label, font, color), (max_w - count_g.size().x).max(0.0));
-    (label_g, count_g)
+    let count_w = ctx.fonts(|f| f.layout_no_wrap(count.to_owned(), font.clone(), color)).size().x;
+    let cut = cut_galley(ctx, cut_job(label, font.clone(), color), (max_w - count_w).max(0.0));
+    let shown: String = cut.rows.iter().flat_map(|r| r.glyphs.iter().map(|g| g.chr)).collect();
+    (ctx.fonts(|f| f.layout_no_wrap(format!("{shown}{count}"), font, color)), true)
 }
 
 /// A non-selectable one-line label cut to `max_w` (and the room left) whose count is never cut:
@@ -118,15 +124,11 @@ pub(crate) fn counted_galleys(ctx: &egui::Context, text: &str, font: FontId, col
 /// text, which shows on hover when cut.
 pub fn cut_counted_label(ui: &mut Ui, text: &str, font: FontId, color: Color32, max_w: f32) -> Response {
     let width = max_w.min(ui.available_width()).max(0.0);
-    let (label_g, count_g) = counted_galleys(ui.ctx(), text, font, color, width);
-    let size = vec2(label_g.size().x + count_g.size().x, label_g.size().y.max(count_g.size().y));
-    let (rect, resp) = ui.allocate_exact_size(size, Sense::hover());
+    let (galley, cut) = counted_galley(ui.ctx(), text, font, color, width);
+    let (rect, resp) = ui.allocate_exact_size(galley.size(), Sense::hover());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text));
-    let cut = label_g.elided;
     if ui.is_rect_visible(rect) {
-        let count_at = pos2(rect.left() + label_g.size().x, rect.top());
-        ui.painter().galley(rect.min, label_g, color);
-        ui.painter().galley(count_at, count_g, color);
+        ui.painter().galley(rect.min, galley, color);
     }
     if cut { resp.on_hover_text(text) } else { resp }
 }

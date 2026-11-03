@@ -2,7 +2,7 @@
 //! before its count, and last a button moves into the more-actions menu.
 
 use super::*;
-use crate::ui::widgets::truncate::counted_galleys;
+use crate::ui::widgets::truncate::counted_galley;
 
 /// A room `avail` wide for a title `title_w` wide (cut to 72), buttons 8 apart, a 32 px
 /// more-actions button and 24 px icon-only squares.
@@ -105,12 +105,11 @@ fn a_cut_title_keeps_its_count() {
         for lang in [Lang::En, Lang::De] {
             let title = lang.trf("details.wip.unstaged.header", &[("count", &1)]);
             let least = title_min(ui, &title);
-            let (label, count) = counted_galleys(ui.ctx(), &title, font.clone(), color::text(), least);
-            assert!(label.elided, "{lang:?}: {title} is cut at {least}");
-            assert_eq!(count.text(), " (1)", "{lang:?}");
-            let drawn: String = label.rows.iter().flat_map(|r| r.glyphs.iter().map(|g| g.chr)).collect();
-            assert!(drawn.ends_with('…') && drawn.chars().count() > 3, "{lang:?}: {drawn:?}");
-            assert!(label.size().x + count.size().x <= least, "{lang:?}");
+            let (g, cut) = counted_galley(ui.ctx(), &title, font.clone(), color::text(), least);
+            assert!(cut, "{lang:?}: {title} is cut at {least}");
+            let drawn: String = g.rows.iter().flat_map(|r| r.glyphs.iter().map(|g| g.chr)).collect();
+            assert!(drawn.ends_with("… (1)") && drawn.chars().count() > 6, "{lang:?}: {drawn:?}");
+            assert!(g.size().x <= least, "{lang:?}");
         }
     });
 }

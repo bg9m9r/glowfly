@@ -69,8 +69,13 @@ pub fn lines(ui: &Ui, why: Option<&str>, width: f32) -> usize {
 }
 
 /// A whole-width block of `lines` rows `LINE_H` high with `why` wrapped and centred in it, never
-/// cut; just the space when there is no reason, so the caller's height doesn't change.
+/// cut (a one-line reason as `line` draws it); just the space when there is no reason, so the
+/// caller's height doesn't change.
 pub fn wrapped(ui: &mut Ui, why: Option<&str>, lines: usize) {
+    if lines <= 1 {
+        // A reason that fits on one line is drawn as `line` draws it.
+        return line(ui, why, Align::Center);
+    }
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), LINE_H * lines.max(1) as f32), Sense::hover());
     let Some(why) = why else { return };
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), why));

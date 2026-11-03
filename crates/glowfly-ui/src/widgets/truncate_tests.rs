@@ -203,11 +203,11 @@ fn a_count_splits_off_the_end_of_a_title() {
 fn a_counted_label_is_cut_before_its_count() {
     let ctx = ctx();
     let text = "Nicht bereitgestellt (1)";
-    let (label, count) = counted_galleys(&ctx, text, font(), Color32::WHITE, 100.0);
-    assert!(label.elided);
-    assert_eq!(drawn(&count), " (1)");
-    assert!(drawn(&label).starts_with("Nicht") && drawn(&label).ends_with(ELLIPSIS), "{:?}", drawn(&label));
-    assert!(label.size().x + count.size().x <= 100.0);
-    let (whole, _) = counted_galleys(&ctx, text, font(), Color32::WHITE, 400.0);
-    assert!(!whole.elided && drawn(&whole) == "Nicht bereitgestellt");
+    let (g, cut) = counted_galley(&ctx, text, font(), Color32::WHITE, 100.0);
+    assert!(cut);
+    let shown = drawn(&g);
+    assert!(shown.starts_with("Nicht") && shown.ends_with("… (1)"), "{shown:?}");
+    assert!(g.size().x <= 100.0, "{}", g.size().x);
+    let (whole, cut) = counted_galley(&ctx, text, font(), Color32::WHITE, 400.0);
+    assert!(!cut && drawn(&whole) == text && whole.text() == text);
 }
