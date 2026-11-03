@@ -137,7 +137,9 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - Person colours that follow .mailmap (they follow the raw author email today)
 - Pin a branch colour from the command palette
 - Warn when a pin matches a side-by-side branch's pinned hue
-- `contrast::ref_chip` knows the trunk by comparing colours with `trunk(p)`; pass which swatch the lane is, so a theme lane equal to the trunk tone isn't taken for it
+- The graph's "+N" badge sits at about 1.04:1 against its row; give it an edge or fill that
+  stands 3:1 from every row surface like the ref chips
+- `ref_chip::ref_chip` knows the trunk by comparing colours with `trunk(p)`; pass which swatch the lane is, so a theme lane equal to the trunk tone isn't taken for it
 - Report the trunk hues (`GraphMsg::TrunkNear`) right after the theme is applied and before results are handled, so an Auto light/dark switch never draws a frame with the old trunk mask, with a shell test
 
 ### Vivid colour
