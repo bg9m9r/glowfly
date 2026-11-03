@@ -5,7 +5,7 @@
 use super::todo::{listed_oids, own_line};
 use super::{Stop, StopKind};
 use crate::commit_text;
-use git2::{Repository, RepositoryState};
+use git2::{Oid, Repository, RepositoryState};
 use std::path::Path;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -23,6 +23,10 @@ pub struct RebaseProgress {
     pub interactive: bool,
     /// The command of a `Command` stop: the exec step that failed.
     pub command: Option<String>,
+    /// Git would amend HEAD on Continue: it stopped cleanly to edit a commit, which is still
+    /// HEAD (`rebase-merge/amend` names it). False at an `edit` step that conflicted, and once
+    /// HEAD moved off the commit (reset to split it).
+    pub amends: bool,
 }
 
 /// Where the rebase in progress in `workdir` stands; `None` when no rebase is in progress.
@@ -34,6 +38,12 @@ pub fn progress(workdir: &Path) -> Option<RebaseProgress> {
 /// rebase is in progress.
 pub fn stopped_at(workdir: &Path) -> Option<Stop> {
     progress(workdir).map(|p| p.stop)
+}
+
+/// Whether `amend` (the contents of `rebase-merge/amend`) names HEAD.
+fn amends_head(repo: &Repository, amend: &str) -> bool {
+    let head = repo.head().ok().and_then(|h| h.target());
+    Oid::from_str(amend.trim()).ok().is_some_and(|o| Some(o) == head)
 }
 
 pub(crate) fn progress_of(repo: &Repository) -> Option<RebaseProgress> {
@@ -54,6 +64,7 @@ pub(crate) fn progress_of(repo: &Repository) -> Option<RebaseProgress> {
                 autostash: dir.join("autostash").exists(),
                 interactive: state == RepositoryState::RebaseInteractive,
                 command,
+                amends: amends_head(repo, &read(&dir.join("amend"))),
             }
         }
         RepositoryState::Rebase | RepositoryState::ApplyMailboxOrRebase => {
@@ -69,6 +80,7 @@ pub(crate) fn progress_of(repo: &Repository) -> Option<RebaseProgress> {
                 autostash: dir.join("autostash").exists(),
                 interactive: false,
                 command: None,
+                amends: false,
             }
         }
         _ => return None,

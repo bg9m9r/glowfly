@@ -49,6 +49,7 @@ pub(super) fn job(label: &str) -> RunningJob {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

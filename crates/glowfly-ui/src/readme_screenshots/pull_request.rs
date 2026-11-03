@@ -148,10 +148,9 @@ fn readme_screenshots_pull_request() {
         let mut h = harness(st, dark, WINDOW);
         h.run();
         raise_comments(&mut h);
-        // Up to the commit panel on the right.
-        let panel = egui::Id::new(crate::ui::panel_size::DETAILS_ID);
-        let right = egui::containers::panel::PanelState::load(&h.ctx, panel).expect("the commit panel").rect.min.x;
-        shoot(&mut h, &name, Some(egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(right, WINDOW.y))));
+        // The whole window: the commit panel is a narrow rail beside the pull request.
+        assert!(egui::containers::panel::PanelState::load(&h.ctx, egui::Id::new("detail-rail")).is_some(), "the commit panel's rail");
+        shoot(&mut h, &name, None);
         drop(h);
         d.remove();
     }

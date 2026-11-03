@@ -79,8 +79,16 @@ fn rebase_panel_remaining() {
     let snap = st.snap.as_mut().unwrap();
     snap.state = RepositoryState::RebaseInteractive;
     let stop = Stop { kind: StopKind::Edit, oid: items[1].oid() };
-    snap.rebase =
-        Some(RebaseProgress { step: 2, total: 6, stop, summary: String::new(), autostash: false, interactive: true, command: None });
+    snap.rebase = Some(RebaseProgress {
+        step: 2,
+        total: 6,
+        stop,
+        summary: String::new(),
+        autostash: false,
+        interactive: true,
+        command: None,
+        amends: false,
+    });
     let mut p = RebasePanel::loading_remaining();
     p.fill_remaining(Remaining {
         branch: Some("main".into()),

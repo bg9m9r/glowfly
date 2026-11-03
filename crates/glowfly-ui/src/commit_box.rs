@@ -9,7 +9,10 @@
 //! under it, wrapped and never cut (a line's height is always kept, so the box changes height
 //! only for a reason that wraps), the button's
 //! menu caret (one split button) opening a menu with "Skip hooks" (the caret tinted with the
-//! warning tone while hooks are skipped), and the Ctrl+Enter shortcuts. The summary takes the
+//! warning tone while hooks are skipped), and the Ctrl+Enter shortcuts. While a rebase is
+//! stopped "Push after committing" isn't offered; at a stop to edit the button is Amend and
+//! continue (Commit and continue with Amend off), and Amend is off, with its reason, where git
+//! wouldn't amend the commit being edited. The summary takes the
 //! keyboard when `view.focus_message` is set (Ctrl+Shift+M).
 
 use super::UiCache;
@@ -23,7 +26,8 @@ use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::CommitDraft;
-use crate::state::commit::{SUMMARY_HARD, SummaryLength, amend_blocked, commit_blocked, pushes_after, summary_length};
+use crate::state::commit::stop::amend_blocked_in;
+use crate::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, pushes_after, summary_length};
 use crate::state::repo_identity::{commit_identity_line, env_tip};
 use crate::ui::theme::controls;
 use crate::ui::theme::sizes::ControlSize;
@@ -74,7 +78,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     let identity = st.identities.get(&snap.git_dir).map(|id| (commit_identity_line(t, id, &st.settings), env_tip(t, id)));
     // Off while a merge, cherry-pick or revert is stopped; still on (so it can be turned off)
     // when it was checked before the operation stopped.
-    let amend_why = amend_blocked(t, snap.state);
+    let amend_why = amend_blocked_in(t, snap);
     ui.horizontal(|ui| {
         if style.titled {
             ui.label(type_scale::section_text(ui, t.tr("commit.title")));
@@ -164,7 +168,12 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
         ui.label(RichText::new(note).size(type_scale::SMALL).color(color::faint()));
     }
 
+    // Halfway through a rebase there is nothing to push: the option isn't offered.
+    let rebasing = crate::state::commit::stop::rebase_stopped(snap);
     ui.horizontal_wrapped(|ui| {
+        if rebasing {
+            return;
+        }
         let mut push = st.settings.push_after_commit;
         let r = ui
             .add_enabled(snap.head_branch.is_some(), controls::Check::new(&mut push, t.tr("commit.push_after.check")))
@@ -177,14 +186,26 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     });
 
     let merging = snap.state == git2::RepositoryState::Merge;
-    let label = st.session.draft.button_label(t, snap.staged.len(), pushes_after(st), merging);
+    // At a rebase stopped to edit, the button commits and continues the rebase.
+    let continues = crate::state::commit::stop::edit_stop(snap).is_some();
+    let label = if continues {
+        st.session.draft.continue_label(t)
+    } else {
+        st.session.draft.button_label(t, snap.staged.len(), pushes_after(st), merging)
+    };
     let blocked = commit_blocked(st, false);
     let enabled = blocked.is_none();
     let tip = shortcuts_tip(t, &st.keymap);
     ui.horizontal(|ui| {
         if commit_split(ui, label, (enabled, style.primary), blocked, &tip, &mut st.session.draft, t).clicked() {
             // A merge commits through Commit merge, which fills a blank message with git's.
-            msgs.push(Msg::Commit(if merging { CommitMsg::CommitMerge } else { CommitMsg::Commit }));
+            msgs.push(Msg::Commit(if merging {
+                CommitMsg::CommitMerge
+            } else if continues {
+                CommitMsg::CommitAndContinue
+            } else {
+                CommitMsg::Commit
+            }));
         }
     });
     // Wrapped, never cut: a long reason (German, a narrow panel) takes a second line.
@@ -200,7 +221,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
         if all {
             msgs.push(Msg::Commit(CommitMsg::StageAllAndCommit));
         } else if one {
-            msgs.push(Msg::Commit(CommitMsg::Commit));
+            msgs.push(Msg::Commit(if continues { CommitMsg::CommitAndContinue } else { CommitMsg::Commit }));
         }
     }
 }

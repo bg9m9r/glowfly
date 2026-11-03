@@ -42,8 +42,8 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - The top chrome starts with the drawn title bar on Windows and macOS, and with the menu bar and the tab bar under the system frame.
 - `show_left_panel`, `show_details_panel` and `show_toolbar` are checked in `ui/frame_layout.rs`, and `show_menu_bar` by `ui/menu_bar::show` (system frame only).
 - Hiding the menu bar through `LayoutMsg` toasts a Show menu bar button.
-- `state::layout::details_shape` decides whether the commit details panel is drawn Full, as a 44 px Rail or Hidden.
-- The details panel is a rail while a tool view (`state::layout::tool_view`: conflict, blame, file or folder history, issue, Git Flow, in the central area's order) fills the central area, unless `view.details_expanded_for` names that view.
+- `state::layout::details_shape` decides whether the commit details panel is drawn Full, as a 36 px Rail or Hidden; it stays Full whatever the central view while a rebase is stopped (its steps continue it).
+- The details panel is a rail while a tool view (`state::layout::tool_view`: conflict, blame, file or folder history, pull request, issue, the interactive rebase editor, Range-diff, journal, Git Flow, in the central area's order) fills the central area, unless `view.details_expanded_for` names that view.
 - `LayoutMsg::ExpandDetails` and Go to the commit message set `view.details_expanded_for`, and `update` clears it (`drop_stale_expansion`) as soon as the tool view changes or closes; the saved setting never changes.
 - A hidden left or details panel leaves a 16 px edge strip that shows it again (`ui/panel_rails.rs`, with the rail).
 - Full screen is the window's own state, never saved: `LayoutMsg::ToggleFullscreen` asks the shell for `WindowCmd::SetFullscreen` from `view.window.fullscreen` (read each frame).
