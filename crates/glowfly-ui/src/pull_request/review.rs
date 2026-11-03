@@ -1,7 +1,8 @@
 //! The "Your review" section: the verdict (comment, approve, request changes; on GitLab,
 //! comment, approve or remove approval; on Bitbucket, comment, approve or request changes,
 //! either taken back once given), a summary, and the Submit review button, or Finish review for
-//! a review already started on the service, with why it is disabled under it.
+//! a review already started on the service, with why it is disabled under it. A choice that is
+//! unavailable says why in place of its help line.
 
 use super::super::theme::color;
 use super::{heading, note, send_key};
@@ -9,7 +10,8 @@ use crate::keymap::{BindingId, Keymap};
 use crate::msg::Msg;
 use crate::state::pull_request::{PrAction, PrView};
 use crate::state::pull_request_actions::{
-    error_for, review_blocked, review_button, review_choice_blocked, review_choice_text, review_choices,
+    error_for, review_blocked, review_button, review_choice_blocked, review_choice_line, review_choice_text, review_choices,
+    review_placeholder,
 };
 use crate::ui::theme::controls;
 use crate::ui::widgets::{buttons, reason};
@@ -23,26 +25,25 @@ pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Ms
     let detail = page.detail.clone();
     heading(ui, "Your review");
     for ev in review_choices(&detail) {
-        let (label, help) = review_choice_text(ev);
+        let label = review_choice_text(ev).0;
         let blocked = review_choice_blocked(v, ev);
         let checked = v.forms.review_event == ev;
-        let mut r = ui.add_enabled(blocked.is_none(), controls::Radio::new(checked, label));
-        if let Some(why) = &blocked {
-            r = r.on_disabled_hover_text(why);
-        }
-        if r.clicked() {
+        if ui.add_enabled(blocked.is_none(), controls::Radio::new(checked, label)).clicked() {
             v.forms.review_event = ev;
         }
+        // The help, or why this choice is unavailable, starts where the label does (the space
+        // that opens a row takes no item spacing after it).
+        let s = ui.spacing();
+        let indent = s.icon_width + s.icon_spacing;
+        let line = review_choice_line(v, ev);
         ui.horizontal(|ui| {
-            ui.add_space(24.0);
-            note(ui, help, color::weak());
+            ui.add_space(indent);
+            note(ui, line, color::weak());
         });
+        ui.add_space(4.0);
     }
-    ui.add_space(4.0);
-    let summary = egui::TextEdit::multiline(&mut v.forms.review_body)
-        .hint_text("Summary (optional when approving)")
-        .desired_rows(3)
-        .desired_width(f32::INFINITY);
+    let hint = review_placeholder(v);
+    let summary = egui::TextEdit::multiline(&mut v.forms.review_body).hint_text(hint).desired_rows(3).desired_width(f32::INFINITY);
     let field = controls::field(ui, summary);
     crate::ui::access::name_field(&field, "Review summary");
     if send_key(ui, &field) && review_blocked(v).is_none() {

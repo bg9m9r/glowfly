@@ -135,3 +135,21 @@ fn sized_fields_take_the_height_width_and_padding_of_their_size() {
     assert_eq!(controls::field_margin(ControlSize::Regular, false, Some(26.0)).left, 10);
     assert_eq!(controls::field_text_width(200.0), 180.0);
 }
+
+/// A disabled radio is drawn at full strength, so its marks meet 3:1 in every theme: the
+/// unselected ring's edge on the panel, the selected one's `weak` fill on the panel, and its
+/// `input` dot on that fill.
+#[test]
+fn disabled_radio_marks_stay_visible() {
+    use super::contrast::ratio;
+    let mut failures = Vec::new();
+    for (t, p) in super::tests::palettes() {
+        for (what, fg, bg) in [("ring", p.input_border, p.panel), ("selected fill", p.weak, p.panel), ("dot", p.input, p.weak)] {
+            let r = ratio(fg, bg);
+            if r < 3.0 {
+                failures.push(format!("{t}: disabled radio {what} is {r:.2}:1"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
