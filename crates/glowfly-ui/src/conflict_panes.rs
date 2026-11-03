@@ -21,6 +21,20 @@ use glowfly_core::conflict_rows::{PaneRow, pane_rows, scroll_target};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Chunk, ConflictFile, Segment, Side};
 
+/// A line checkbox's hit area's width, from the pane's edge; it is as tall as the row, so a click
+/// always goes to the row under the pointer. Its painted box stays 14 px.
+const HIT_W: f32 = 24.0;
+
+/// The branch (or commit) name of `side`, for the checkboxes' and Take all's spoken names.
+pub(super) fn side_name(t: Lang, side: Side, labels: Option<&glowfly_core::repo::SideLabels>) -> String {
+    match (side, labels) {
+        (Side::Ours, Some(l)) => l.ours.clone(),
+        (Side::Theirs, Some(l)) => l.theirs.clone(),
+        (Side::Ours, None) => t.tr("conflict.panes.ours").to_owned(),
+        (Side::Theirs, None) => t.tr("conflict.panes.theirs").to_owned(),
+    }
+}
+
 /// How many visual lines pane row `row` takes: a chunk row the taller of its two sides; headers
 /// and folds one.
 fn row_lines(row: &PaneRow, segs: &[Segment], chunks: &[&Chunk], wrap: Option<Wrap>) -> usize {
@@ -68,7 +82,13 @@ pub(super) fn panes(
                 ui.label(RichText::new(t.tr("conflict.panes.no_base")).size(type_scale::SMALL).color(color::faint()));
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if ui.small_button(t.tr("conflict.panes.take_all.button")).on_hover_text(take_tip).clicked() {
+                let all = ui.small_button(t.tr("conflict.panes.take_all.button"));
+                let spoken = match side {
+                    Side::Ours => t.trf("conflict.panes.take_all.ours.name", &[("branch", name)]),
+                    Side::Theirs => t.trf("conflict.panes.take_all.theirs.name", &[("branch", name)]),
+                };
+                crate::ui::access::name_button(&all, true, &spoken);
+                if all.on_hover_text(take_tip).clicked() {
                     msgs.push(Msg::Conflict(ConflictMsg::ConflictTakeAll(side)));
                 }
             });
@@ -126,7 +146,7 @@ pub(super) fn panes(
                             let left_out = !pick.is_open() && !pick.is_edited() && !pick.takes_line(c, side, row);
                             let bg = if left_out { tint(side).gamma_multiply(0.5) } else { tint(side) };
                             cell(ui, r, CHECK_W, Some(n), &display(&lines[row]), (bg, color::text()), wrap);
-                            line_check(ui, t, r, view, c, (chunk, side, row), msgs);
+                            line_check(ui, t, r, view, c, (chunk, side, row, n), msgs);
                         }
                         None if lines.is_empty() && row == 0 => {
                             let bg = tint(side).gamma_multiply(0.5);
@@ -145,12 +165,22 @@ pub(super) fn panes(
 }
 
 /// The checkbox at the left of a chunk line's cell `r`, on its first visual line: takes or
-/// leaves out line `line` of `side` in chunk `k`. Off once the chunk's text was typed in the
-/// output.
-fn line_check(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, c: &Chunk, (k, side, line): (usize, Side, usize), msgs: &mut Vec<Msg>) {
+/// leaves out line `line` (numbered `number` in the file) of `side` in chunk `k`. Its 14 px box
+/// sits in a hit area 24 px wide and as tall as the row. Off once the chunk's text was typed in the output.
+fn line_check(
+    ui: &mut Ui,
+    t: Lang,
+    r: Rect,
+    view: &ConflictView,
+    c: &Chunk,
+    (k, side, line, number): (usize, Side, usize, u32),
+    msgs: &mut Vec<Msg>,
+) {
     let pick = &view.picks[k];
     let mut taken = pick.takes_line(c, side, line);
-    let rect = Rect::from_min_max(pos2(r.left() + 2.0, r.top()), pos2(r.left() + CHECK_W, r.top() + ROW_H));
+    let rect = Rect::from_min_max(r.min, pos2(r.left() + HIT_W, r.top() + ROW_H));
+    // The box: centred in the gutter right of its 2 px margin, on whole pixels so it stays crisp.
+    let at = pos2(r.left() + 1.0 + CHECK_W / 2.0, r.top() + ROW_H / 2.0).round();
     let mut builder = UiBuilder::new().max_rect(rect).layout(Layout::centered_and_justified(Direction::TopDown));
     if pick.is_edited() {
         builder = builder.disabled();
@@ -158,8 +188,13 @@ fn line_check(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, c: &Chunk, (k,
     // A child that doesn't move the rows' cursor; added after the row, so it gets the click.
     let mut child = ui.new_child(builder);
     let tip = if taken { t.tr("conflict.panes.leave_line.tip") } else { t.tr("conflict.panes.take_line.tip") };
-    let check = child.add(controls::Check::without_text(&mut taken).tint(side_color(side)));
-    crate::ui::access::name_if_unnamed(&check, tip);
+    let branch = side_name(t, side, view.file.as_ref().map(|f| &f.labels));
+    let args: [(&str, &dyn std::fmt::Display); 3] = [("line", &number), ("branch", &branch), ("number", &(k + 1))];
+    let name = match side {
+        Side::Ours => t.trf("conflict.panes.take_line.ours.name", &args),
+        Side::Theirs => t.trf("conflict.panes.take_line.theirs.name", &args),
+    };
+    let check = child.add(controls::Check::without_text(&mut taken).tint(side_color(side)).hit(rect.size()).box_at(at).name(name));
     let resp = check.on_hover_text(tip).on_disabled_hover_text(t.tr("conflict.panes.edited.tip"));
     if resp.changed() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictToggleLine { chunk: k, side, line }));

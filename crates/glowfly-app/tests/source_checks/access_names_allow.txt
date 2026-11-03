@@ -2,6 +2,7 @@ glowfly-ui/tests/snapshots/clone_service_error.txt: 1
 glowfly-ui/tests/snapshots/clone_service_list.txt: 1
 glowfly-ui/tests/snapshots/conflict_output_editing.txt: 1
 glowfly-ui/tests/snapshots/controls_dark.txt: 3
+glowfly-ui/tests/snapshots/controls_focus_strong_dark.txt: 3
 glowfly-ui/tests/snapshots/create_issue_azure_dark.txt: 2
 glowfly-ui/tests/snapshots/create_issue_jira_dark.txt: 3
 glowfly-ui/tests/snapshots/create_pr_dialog_repositories.txt: 2

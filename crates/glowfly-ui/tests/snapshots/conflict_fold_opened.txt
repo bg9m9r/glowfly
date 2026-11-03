@@ -71,14 +71,14 @@ Button "Edit" [off]
 Button "Wrap lines" [off]
 Label "Ours"
 Label "main"
-Button "Take all"
+Button "Take every conflict from ours (main)"
 Label "Theirs"
 Label "theme-tweaks"
-Button "Take all"
-CheckBox "Take" [off]
-CheckBox "Take" [off]
-CheckBox "Take this line" [off]
-CheckBox "Take this line" [off]
+Button "Take every conflict from theirs (theme-tweaks)"
+CheckBox "Take all of conflict 1 from ours (main)" [off]
+CheckBox "Take all of conflict 1 from theirs (theme-tweaks)" [off]
+CheckBox "Take line 5 from ours (main), conflict 1" [off]
+CheckBox "Take line 5 from theirs (theme-tweaks), conflict 1" [off]
 Button "Fold 38 unchanged lines"
 painted:
   "Repository"
@@ -137,6 +137,8 @@ painted:
   "setting_12 = 12"
   "12"
   "setting_13 = 13"
+  "Take all"
+  "Take all"
   "1"
   "setting_1 = 1"
   "1"
@@ -154,7 +156,9 @@ painted:
   "4"
   "setting_4 = 4"
   "Conflict 1"
+  "Take"
   "Conflict 1"
+  "Take"
   "5"
   "theme = \"dark\""
   "5"

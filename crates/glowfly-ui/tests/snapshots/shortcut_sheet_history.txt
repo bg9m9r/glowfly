@@ -12,7 +12,7 @@ Dialog
   Label "Drop the selected commits"
   Label "in the commit graph"
   Label "Del or Ctrl+Backspace"
-  Label "Continue the rebase"
+  Label "Continue the merge, rebase or cherry-pick"
   Label "Alt+C"
   Label "Skip the commit and continue the rebase"
   Label "Alt+K"

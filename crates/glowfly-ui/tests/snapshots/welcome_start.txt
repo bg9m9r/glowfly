@@ -11,7 +11,7 @@ Dialog
   Label "Copy a repository from a hosting service or a URL into a new folder."
   Button "New repository…"
   Label "Make an empty repository in a new or existing folder."
-  CheckBox "Show me around once it opens" [on]
+  CheckBox "Show me around once it opens" [off]
   Label "Change the theme and layout in Preferences > Appearance"
   CheckBox "Show authors' pictures from Gravatar" [off]
   Label "Sends a hash of each author's email to Gravatar, only for repositories on github.com, gitlab.com, bitbucket.org or codeberg.org."

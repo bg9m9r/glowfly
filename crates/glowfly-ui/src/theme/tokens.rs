@@ -1,6 +1,7 @@
 //! The design tokens that aren't colours: the corner scale (`radius`, with a segment's corners),
 //! the border width, the least hit area and a split's caret width, the state-layer amounts,
-//! the two elevations (`Elevation`, `shadow`), the focus ring and the text field's halo, the
+//! the two elevations (`Elevation`, `shadow`), the focus ring in its two styles (Standard and
+//! Strong, `focus_style`) and the text field's halo, the
 //! selection of a pane without the keyboard focus (`selected_inactive`), and the
 //! motion timings (`motion`). Every theme reads the same tokens; the colour tokens worked out
 //! from the palette (surfaces, layers, tones) are in `surfaces.rs`.
@@ -10,7 +11,8 @@
 //! hand-made accent focus ring in its place.
 
 use super::color::{self, Palette};
-use eframe::egui::{Color32, CornerRadius, Painter, Rect, Shadow, Stroke, StrokeKind};
+use eframe::egui::{Color32, Context, CornerRadius, Id, Painter, Rect, Shadow, Stroke, StrokeKind};
+use glowfly_core::settings::FocusStyle;
 
 /// The corner scale, in px. Containers use nested radii: the outer corner is the inner one
 /// plus the padding between them (`around`), so a group's corners and its contents' stay
@@ -116,40 +118,106 @@ pub fn shadow(e: Elevation, p: &Palette) -> Shadow {
 }
 
 /// The focus ring's width and its gap outside a standalone control.
-pub const FOCUS_W: f32 = 2.0;
+const FOCUS_W: f32 = 2.0;
 pub const FOCUS_GAP: f32 = 2.0;
 /// The inset ring of a control packed tightly in a row or group, where an outside ring would
 /// reach its neighbour.
 const FOCUS_INSET_W: f32 = 1.5;
+/// The Strong focus indicator (Preferences > Accessibility > Focus indicator): a thicker ring
+/// (`FOCUS_STRONG_W` outside, `FOCUS_STRONG_INSET_W` inset) edged by a `FOCUS_OUTLINE_W` line
+/// of `bg` on the side away from the gap, so the accent always meets a colour it stands out on.
+const FOCUS_STRONG_W: f32 = 3.0;
+const FOCUS_STRONG_INSET_W: f32 = 2.5;
+const FOCUS_OUTLINE_W: f32 = 1.0;
 /// A focused text field's soft halo outside its accent edge.
 const HALO_W: f32 = 3.0;
 const HALO_ALPHA: f32 = 0.22;
 
+/// Where the focus style lives in the context's data (`theme::a11y::configure` sets it).
+fn focus_style_id() -> Id {
+    Id::new("glowfly-focus-style")
+}
+
+/// Sets the focus rings' style for `ctx` from now on.
+pub fn set_focus_style(ctx: &Context, style: FocusStyle) {
+    ctx.data_mut(|d| d.insert_temp(focus_style_id(), style));
+}
+
+/// The focus rings' style in `ctx` (Standard until `set_focus_style`).
+pub fn focus_style(ctx: &Context) -> FocusStyle {
+    ctx.data(|d| d.get_temp(focus_style_id())).unwrap_or_default()
+}
+
 /// The focus ring of a standalone control at `rect` with `r` corners: 2 px of accent, 2 px
-/// outside it, each corner following the control's.
+/// outside it, each corner following the control's. Strong: 3 px of accent with a 1 px `bg`
+/// outline around it.
 pub fn focus_ring(p: &Painter, rect: Rect, r: impl Into<CornerRadius>) {
     let r = r.into();
     let g = FOCUS_GAP as u8;
-    let around =
-        CornerRadius { nw: radius::around(r.nw, g), ne: radius::around(r.ne, g), sw: radius::around(r.sw, g), se: radius::around(r.se, g) };
-    let stroke = Stroke::new(FOCUS_W, color::accent());
-    p.rect_stroke(rect.expand(FOCUS_GAP), around, stroke, StrokeKind::Outside);
+    let ring = rect.expand(FOCUS_GAP);
+    let strong = focus_style(p.ctx()) == FocusStyle::Strong;
+    let w = if strong { FOCUS_STRONG_W } else { FOCUS_W };
+    p.rect_stroke(ring, grow(r, g), Stroke::new(w, color::accent()), StrokeKind::Outside);
+    if strong {
+        p.rect_stroke(ring.expand(w), grow(r, g + w as u8), Stroke::new(FOCUS_OUTLINE_W, color::current().bg), StrokeKind::Outside);
+    }
 }
 
 /// The focus ring of a control packed in a row or group: 1.5 px of accent inside its edge, on
-/// its exact corners (a segment's own, square where it meets its neighbour).
+/// its exact corners (a segment's own, square where it meets its neighbour). Strong: 2.5 px
+/// with a 1 px `bg` line inside it.
 pub fn focus_ring_inset(p: &Painter, rect: Rect, r: impl Into<CornerRadius>) {
-    focus_ring_inset_in(p, rect, r, color::accent());
+    let r = r.into();
+    let accent = color::accent();
+    if focus_style(p.ctx()) == FocusStyle::Strong {
+        p.rect_stroke(rect, r, Stroke::new(FOCUS_STRONG_INSET_W, accent), StrokeKind::Inside);
+        let line = Stroke::new(FOCUS_OUTLINE_W, color::current().bg);
+        p.rect_stroke(rect.shrink(FOCUS_STRONG_INSET_W), shrink(r, FOCUS_STRONG_INSET_W.ceil() as u8), line, StrokeKind::Inside);
+    } else {
+        p.rect_stroke(rect, r, Stroke::new(FOCUS_INSET_W, accent), StrokeKind::Inside);
+    }
 }
 
-/// `focus_ring_inset` in `col`: a filled control whose fill is the accent (a primary split's
-/// half) takes its ink instead.
-pub fn focus_ring_inset_in(p: &Painter, rect: Rect, r: impl Into<CornerRadius>, col: Color32) {
-    p.rect_stroke(rect, r, Stroke::new(FOCUS_INSET_W, col), StrokeKind::Inside);
+/// `focus_ring_inset` on a control filled with the accent (a primary split's half), in its
+/// `ink` instead. Strong: a 1 px line of the control's own `fill` along its edge, so it keeps
+/// its outline on the page, then 2.5 px of `ink` inside it.
+pub fn focus_ring_inset_in(p: &Painter, rect: Rect, r: impl Into<CornerRadius>, ink: Color32, fill: Color32) {
+    let r = r.into();
+    if focus_style(p.ctx()) == FocusStyle::Strong {
+        p.rect_stroke(rect, r, Stroke::new(FOCUS_OUTLINE_W, fill), StrokeKind::Inside);
+        let inner = rect.shrink(FOCUS_OUTLINE_W);
+        p.rect_stroke(inner, shrink(r, FOCUS_OUTLINE_W as u8), Stroke::new(FOCUS_STRONG_INSET_W, ink), StrokeKind::Inside);
+    } else {
+        p.rect_stroke(rect, r, Stroke::new(FOCUS_INSET_W, ink), StrokeKind::Inside);
+    }
 }
 
-/// A focused text field's halo: a soft accent ring just outside its 2 px accent edge.
+/// Each corner of `r`, `pad` px further out.
+fn grow(r: CornerRadius, pad: u8) -> CornerRadius {
+    CornerRadius {
+        nw: radius::around(r.nw, pad),
+        ne: radius::around(r.ne, pad),
+        sw: radius::around(r.sw, pad),
+        se: radius::around(r.se, pad),
+    }
+}
+
+/// Each corner of `r`, `pad` px further in.
+fn shrink(r: CornerRadius, pad: u8) -> CornerRadius {
+    CornerRadius {
+        nw: radius::inside(r.nw, pad),
+        ne: radius::inside(r.ne, pad),
+        sw: radius::inside(r.sw, pad),
+        se: radius::inside(r.se, pad),
+    }
+}
+
+/// A focused text field's halo: a soft accent ring just outside its 2 px accent edge. Strong
+/// draws none: the field (`controls::Field`) has the Strong `focus_ring` there instead.
 pub fn focus_halo(p: &Painter, rect: Rect, r: u8) {
+    if focus_style(p.ctx()) == FocusStyle::Strong {
+        return;
+    }
     let stroke = Stroke::new(HALO_W, color::accent().gamma_multiply(HALO_ALPHA));
     p.rect_stroke(rect.expand(1.0), radius::around(r, 1), stroke, StrokeKind::Outside);
 }

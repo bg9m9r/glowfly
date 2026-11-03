@@ -47,7 +47,7 @@ fn rebase_conflict_resolved_in_merge_view() {
     j.see("Ours", Region::Central);
     j.see("Theirs", Region::Central);
     j.disabled("Mark resolved", Region::Central);
-    j.click("Take all", Region::Central, Pick::Rightmost);
+    j.click_containing("Take every conflict from theirs", Region::Central, Pick::Only);
     j.enabled("Mark resolved", Region::Central);
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
     assert!(disk::work_text(&repo, "f.txt").unwrap().contains("<<<<<<<"));

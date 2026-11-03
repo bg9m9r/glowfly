@@ -71,14 +71,14 @@ Button "Edit" [off]
 Button "Wrap lines" [off]
 Label "Ours"
 Label "main"
-Button "Take all"
+Button "Take every conflict from ours (main)"
 Label "Theirs"
 Label "theme-tweaks"
-Button "Take all"
-CheckBox "Take" [off]
-CheckBox "Take" [off]
-CheckBox "Take this line" [off]
-CheckBox "Take this line" [off]
+Button "Take every conflict from theirs (theme-tweaks)"
+CheckBox "Take all of conflict 1 from ours (main)" [off]
+CheckBox "Take all of conflict 1 from theirs (theme-tweaks)" [off]
+CheckBox "Take line 1 from ours (main), conflict 1" [off]
+CheckBox "Take line 1 from theirs (theme-tweaks), conflict 1" [off]
 painted:
   "Repository"
   "Branch"
@@ -112,8 +112,12 @@ painted:
   "Submodules"
   "0"
   "Conflict 1: pick a side above"
+  "Take all"
+  "Take all"
   "Conflict 1"
+  "Take"
   "Conflict 1"
+  "Take"
   "1"
   "ours"
   "1"
