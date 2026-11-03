@@ -1,6 +1,7 @@
 //! Messages for repository groups (update/repo_groups.rs): making, renaming, colouring,
 //! ordering and removing groups, moving favorites into, within and out of them, and adding
-//! repositories to a group (its Add repositories picker, a Recent row's Add to group).
+//! repositories to a group (its Add repositories picker, a Recent row's Add to group), and
+//! resetting every group's colour to the default (and its Undo).
 
 use super::Inactive;
 use glowfly_core::settings::RepoColour;
@@ -33,6 +34,12 @@ pub enum GroupMsg {
     /// a Recent row's Add to group): one that isn't a favorite becomes one, one in another group
     /// moves, and one already in the group stays where it is. One settings save.
     AddRepos { group: usize, paths: Vec<PathBuf> },
+    /// Give every group the colour the New group color setting would give it, made again top
+    /// to bottom (a group menu's Reset all group colors). Toasts with Undo.
+    ResetColours,
+    /// Put back the colours named groups had (the reset toast's Undo): by name, case ignored; a
+    /// group no longer called that is skipped.
+    RestoreColours(Vec<(String, Option<RepoColour>)>),
 }
 
 impl GroupMsg {
@@ -49,7 +56,9 @@ impl GroupMsg {
             | Self::Remove(_)
             | Self::MoveRepo { .. }
             | Self::AddDialog(_)
-            | Self::AddRepos { .. } => None,
+            | Self::AddRepos { .. }
+            | Self::ResetColours
+            | Self::RestoreColours(_) => None,
         }
     }
 }

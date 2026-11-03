@@ -289,6 +289,7 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Rename the tab strip's worktree groups, so "group" means one thing
 - Highlight a favorite's key cap for a moment when its number changes (after a move or a new favorite)
 - Up and Down between the start page's repository rows, as in the repository menu
+- An Apply to existing groups button beside Preferences' New group color combo (Reset all group colors is only in a group's menu)
 
 ### Git engine choice
 

@@ -1,16 +1,17 @@
 //! Repository groups: making, renaming, colouring, ordering and removing groups, moving
 //! favorites into, within and out of them, opening a group, and what un-starring, removing
-//! missing entries and the tab colours do with groups.
+//! missing entries and the tab colours do with groups, the New group color setting, and Reset all
+//! group colors with its Undo.
 
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
 use crate::msg::{GroupMsg, Msg, RecentMsg};
 use crate::state::repo_colours::{listed_colour, tab_colour};
-use crate::state::repo_groups::{members, ungrouped};
+use crate::state::repo_groups::{colours_at_default, members, ungrouped};
 use crate::state::repo_lists::favorites;
 use crate::state::{AppState, Modal, Tab};
-use glowfly_core::settings::RepoColour;
+use glowfly_core::settings::{GroupColourDefault, RepoColour};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -247,4 +248,65 @@ fn a_long_picker_filters_and_keeps_hidden_ticks() {
     p.filter = "repo3".into();
     assert_eq!(p.shown().map(|r| r.path.clone()).collect::<Vec<_>>(), paths(&["/r/repo3"]));
     assert_eq!(p.picked(), paths(&["/w/a"]), "the hidden tick stays");
+}
+
+fn hues(st: &AppState) -> Vec<Option<RepoColour>> {
+    st.settings.repo_groups.iter().map(|g| g.hue()).collect()
+}
+
+#[test]
+fn new_groups_take_the_new_group_colour_setting() {
+    let mut st = grouped();
+    st.settings.new_group_colour = GroupColourDefault::None;
+    run(&mut st, GroupMsg::Create { name: "Plain".into(), repo: None });
+    st.settings.new_group_colour = GroupColourDefault::Hue(RepoColour::Rose);
+    run(&mut st, GroupMsg::Create { name: "Red".into(), repo: None });
+    assert_eq!(hues(&st), [Some(RepoColour::Rose), Some(RepoColour::Teal), None, Some(RepoColour::Rose)], "a fixed hue even in use");
+}
+
+#[test]
+fn reset_colours_gives_the_defaults_and_undo_puts_them_back() {
+    let mut st = grouped();
+    run(&mut st, GroupMsg::Create { name: "Clients".into(), repo: None });
+    run(&mut st, GroupMsg::SetColour { group: 0, colour: Some(RepoColour::Sky) });
+    run(&mut st, GroupMsg::SetColour { group: 2, colour: None });
+    let before = hues(&st);
+    assert!(!colours_at_default(&st.settings));
+    let fx = run(&mut st, GroupMsg::ResetColours);
+    assert_eq!(saves(&fx), 1, "{fx:?}");
+    assert_eq!(hues(&st), [Some(RepoColour::Rose), Some(RepoColour::Teal), Some(RepoColour::Plum)], "made again top to bottom");
+    assert!(colours_at_default(&st.settings));
+    let toast = st.toasts.last().expect("the reset toast");
+    assert_eq!(toast.text, "Group colors reset to the default.");
+    let undo = toast.action.as_ref().expect("Undo");
+    assert_eq!((undo.label.as_str(), undo.workdir.is_none()), ("Undo", true));
+    let Msg::Groups(GroupMsg::RestoreColours(saved)) = &*undo.msg else { panic!("Undo restores the colours") };
+    let saved = saved.clone();
+    assert!(run(&mut st, GroupMsg::ResetColours).is_empty(), "nothing to reset: no save, no toast");
+    assert_eq!(st.toasts.len(), 1);
+    let fx = run(&mut st, GroupMsg::RestoreColours(saved.clone()));
+    assert_eq!((saves(&fx), hues(&st)), (1, before), "Undo is one save");
+    assert_eq!(st.toasts.len(), 1, "Undo has no toast of its own");
+    // Moved, removed and renamed groups between the reset and its Undo.
+    run(&mut st, GroupMsg::ResetColours);
+    run(&mut st, GroupMsg::MoveGroup { from: 2, to: 0 });
+    run(&mut st, GroupMsg::Remove(2));
+    run(&mut st, GroupMsg::Rename { group: 1, name: "Office".into() });
+    let names: Vec<&str> = st.settings.repo_groups.iter().map(|g| g.name.as_str()).collect();
+    assert_eq!(names, ["Clients", "Office"]);
+    run(&mut st, GroupMsg::RestoreColours(saved));
+    assert_eq!(hues(&st), [None, Some(RepoColour::Rose)], "matched by name; a renamed group keeps its colour");
+}
+
+#[test]
+fn reset_colours_follows_the_setting() {
+    for (default, want) in
+        [(GroupColourDefault::None, [None, None]), (GroupColourDefault::Hue(RepoColour::Iris), [Some(RepoColour::Iris); 2])]
+    {
+        let mut st = grouped();
+        st.settings.new_group_colour = default;
+        assert!(!colours_at_default(&st.settings), "{default:?}");
+        assert_eq!(saves(&run(&mut st, GroupMsg::ResetColours)), 1);
+        assert_eq!(hues(&st), want, "{default:?}");
+    }
 }

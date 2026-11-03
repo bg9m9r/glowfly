@@ -26,6 +26,7 @@ Button "Open all"
 Button "Add repositories…"
 Button "Rename…"
 Button "Color"
+Button "Reset all group colors"
 Button "Move up" [disabled]
 Button "Move down"
 Button "Remove group"
