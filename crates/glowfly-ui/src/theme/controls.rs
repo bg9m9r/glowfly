@@ -54,11 +54,17 @@ pub struct Check<'a> {
     text: WidgetText,
     indeterminate: bool,
     tint: Option<egui::Color32>,
+    /// The least hit area; the box stays `icon_width`.
+    hit: Vec2,
+    /// Where the box's centre goes, when it has no text, instead of the hit area's left.
+    box_at: Option<egui::Pos2>,
+    /// What screen readers call it, instead of its text.
+    name: Option<String>,
 }
 
 impl<'a> Check<'a> {
     pub fn new(checked: &'a mut bool, text: impl Into<WidgetText>) -> Self {
-        Self { checked, text: text.into(), indeterminate: false, tint: None }
+        Self { checked, text: text.into(), indeterminate: false, tint: None, hit: Vec2::ZERO, box_at: None, name: None }
     }
 
     pub fn without_text(checked: &'a mut bool) -> Self {
@@ -71,6 +77,24 @@ impl<'a> Check<'a> {
         self
     }
 
+    /// A hit area at least `size` (the conflict view's 24 px), the box keeping its size.
+    pub fn hit(mut self, size: Vec2) -> Self {
+        self.hit = size;
+        self
+    }
+
+    /// Paints the box (of a check without text) centred on `at`, wherever its hit area is.
+    pub fn box_at(mut self, at: egui::Pos2) -> Self {
+        self.box_at = Some(at);
+        self
+    }
+
+    /// Names it for screen readers (the shown text, if any, stays).
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
     /// Shows a dash instead of the check mark (partly on).
     pub fn indeterminate(mut self, indeterminate: bool) -> Self {
         self.indeterminate = indeterminate;
@@ -80,13 +104,14 @@ impl<'a> Check<'a> {
 
 impl egui::Widget for Check<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let Check { checked, text, indeterminate, tint } = self;
-        let (rect, galley, mut response) = layout(ui, text);
+        let Check { checked, text, indeterminate, tint, hit, box_at, name } = self;
+        let centre = box_at.filter(|_| text.is_empty());
+        let (rect, galley, mut response) = layout(ui, text, hit);
         if response.clicked() {
             *checked = !*checked;
             response.mark_changed();
         }
-        let label = galley.as_ref().map_or("", |g| g.text());
+        let label = name.as_deref().unwrap_or_else(|| galley.as_ref().map_or("", |g| g.text()));
         response.widget_info(|| {
             if indeterminate {
                 WidgetInfo::labeled(WidgetType::Checkbox, ui.is_enabled(), label)
@@ -95,7 +120,8 @@ impl egui::Widget for Check<'_> {
             }
         });
         if ui.is_rect_visible(rect) {
-            let big = paint_box(ui, rect, (*checked, indeterminate, tint), response.hovered());
+            let at = centre.map_or(rect, |c| Rect::from_center_size(c, Vec2::splat(ui.spacing().icon_width)));
+            let big = paint_box(ui, at, (*checked, indeterminate, tint), response.hovered());
             if response.has_focus() {
                 tokens::focus_ring(ui.painter(), big, radius::SM);
             }
@@ -151,7 +177,7 @@ impl Radio {
 impl egui::Widget for Radio {
     fn ui(self, ui: &mut Ui) -> Response {
         let Radio { selected, text } = self;
-        let (rect, galley, response) = layout(ui, text);
+        let (rect, galley, response) = layout(ui, text, Vec2::ZERO);
         let label = galley.as_ref().map_or("", |g| g.text());
         response.widget_info(|| WidgetInfo::selected(WidgetType::RadioButton, ui.is_enabled(), selected, label));
         if ui.is_rect_visible(rect) {
@@ -205,7 +231,8 @@ fn icon_colors(p: &color::Palette, on: bool, hovered: bool) -> (egui::Color32, S
 
 /// Lays out and allocates a checkbox or radio button exactly as egui's own do: the icon, the
 /// label in the button text style, and at least the interact size.
-fn layout(ui: &mut Ui, text: WidgetText) -> (Rect, Option<Arc<Galley>>, Response) {
+/// Allocates a check or radio with `text`, at least `hit`.
+fn layout(ui: &mut Ui, text: WidgetText, hit: Vec2) -> (Rect, Option<Arc<Galley>>, Response) {
     let spacing = ui.spacing();
     let (icon_width, icon_spacing, interact) = (spacing.icon_width, spacing.icon_spacing, spacing.interact_size);
     let (galley, mut size) = if text.is_empty() {
@@ -218,6 +245,7 @@ fn layout(ui: &mut Ui, text: WidgetText) -> (Rect, Option<Arc<Galley>>, Response
     };
     size = size.at_least(Vec2::splat(interact.y));
     size.y = size.y.max(icon_width);
+    size = size.at_least(hit);
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     (rect, galley, response)
 }

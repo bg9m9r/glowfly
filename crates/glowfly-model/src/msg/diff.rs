@@ -8,7 +8,7 @@ use git2::Oid;
 use glowfly_core::conflict_restore::SavedPicks;
 use glowfly_core::diff_rows::GapText;
 use glowfly_core::highlight::DiffHighlight;
-use glowfly_core::repo::{BinarySides, ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
+use glowfly_core::repo::{BinarySides, Choice, ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use std::sync::Arc;
 
@@ -160,6 +160,8 @@ pub enum ConflictMsg {
         line: usize,
     },
     ConflictTakeAll(Side),
+    /// Give the current chunk whole sides (`Unresolved` clears its picks): the conflict keys.
+    ConflictPickCurrent(Choice),
     /// Put the other side first in chunk `k`, which takes lines of both (the band's Swap).
     ConflictSwap(usize),
     ConflictReset,
@@ -230,6 +232,7 @@ impl ConflictMsg {
             | Self::ConflictFold { .. }
             | Self::SaveConflictKeepMarkers
             | Self::ConflictTakeAll(..)
+            | Self::ConflictPickCurrent(..)
             | Self::ConflictReset
             | Self::ConflictStep(..)
             | Self::ConflictSelect(..)

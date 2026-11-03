@@ -205,6 +205,10 @@ impl ConflictView {
     }
 }
 
+/// The conflict keys (`state/conflict_keys.rs`).
+#[path = "conflict_keys.rs"]
+pub mod keys;
+
 #[cfg(test)]
 #[path = "conflict_tests.rs"]
 mod tests;
