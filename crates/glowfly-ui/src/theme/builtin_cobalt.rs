@@ -85,7 +85,7 @@ pub const PORCELAIN: Palette = Palette {
     text: hex(0x1e2228),
     strong: hex(0x0c0f13),
     weak: hex(0x525862),
-    faint: hex(0x676d77),
+    faint: hex(0x616670),
     accent: hex(0x1a5bb5),
     primary: hex(0x1a5bb5),
     on_primary: hex(0xffffff),

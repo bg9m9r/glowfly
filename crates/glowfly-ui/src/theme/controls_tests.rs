@@ -112,6 +112,28 @@ fn a_field_keeps_its_role_and_name_and_restores_the_style() {
 }
 
 #[test]
+fn a_fields_placeholder_is_faint_in_every_builtin() {
+    use eframe::egui::Shape;
+    use glowfly_core::settings::BuiltinTheme;
+    for t in BuiltinTheme::ALL {
+        let p = *super::builtin(t);
+        let mut text = String::new();
+        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+            super::color::set_palette(&p);
+            super::apply_style(ui.ctx(), &p);
+            ui.ctx().set_theme(super::egui_theme(&p));
+            ui.add(Field(egui::TextEdit::singleline(&mut text).hint_text("Filter")));
+        });
+        h.run();
+        let hint = h.output().shapes.iter().find_map(|s| match &s.shape {
+            Shape::Text(g) if g.galley.text() == "Filter" => Some(g.fallback_color),
+            _ => None,
+        });
+        assert_eq!(hint, Some(p.faint), "{t:?}: the placeholder is faint");
+    }
+}
+
+#[test]
 fn sized_fields_take_the_height_width_and_padding_of_their_size() {
     use super::sizes::ControlSize;
     let mut seen = Vec::new();

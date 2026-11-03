@@ -134,6 +134,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("graph_shallow", Window),
     ("graph_two_commits_selected", Window),
     ("graph_search_dim", Window),
+    ("graph_search_dim_light", Window),
+    ("graph_search_dim_high_contrast_light", Window),
     ("graph_focus_inactive_dark", Window),
     ("history_table_dark", Window),
     ("history_table_light", Window),
@@ -263,6 +265,9 @@ const IMAGE_ONLY: &[&str] = &[
     "prefs_ui_group_colour_light",
     // `conflict_line_picks` in Porcelain: the check marks' contrast on the light tints.
     "conflict_line_picks_light",
+    // `graph_search_dim` in Dawn and High contrast light, for the search marks' sign-off.
+    "graph_search_dim_light",
+    "graph_search_dim_high_contrast_light",
     // The trust chip at rest: the same names as `toolbar_trust_waiting_dark`; only its look differs.
     "toolbar_trust_rest_dark",
     // `hint_row_undo` in Porcelain.
