@@ -125,9 +125,9 @@ fn git_too_old_banner() {
     remove_fixture(&dir);
 }
 
-/// What opening a repository another user owns asks.
-#[test]
-fn repository_owned_by_another_user() {
+/// Opens `root` and answers it with git's refusal: owned by `owner` (`admins`: the
+/// Administrators group). The toast-free state the dialog is drawn over.
+fn refused_state(owner: Option<&str>, admins: bool) -> crate::state::AppState {
     use crate::effect::LoadKind;
     use crate::git_env::GitEnvMsg;
     use crate::msg::RepoMsg;
@@ -135,19 +135,39 @@ fn repository_owned_by_another_user() {
     let root = std::path::PathBuf::from(if cfg!(windows) { r"\\nas\team\app" } else { "/mnt/nas/team/app" });
     crate::update::update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), std::time::Instant::now());
     let generation = st.load_gen;
-    crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, root }), std::time::Instant::now());
-    // The refusal's toast has a Details button of its own; this checks the dialog's.
-    st.toasts.clear();
+    let refusal = glowfly_core::safe_directory::Refusal { root, owner: owner.map(str::to_owned), admins };
+    crate::update::update(
+        &mut st,
+        Msg::GitEnv(GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, refusal }),
+        std::time::Instant::now(),
+    );
+    st
+}
+
+/// What opening a repository another user owns asks.
+#[test]
+fn repository_owned_by_another_user() {
+    let st = refused_state(Some(r"OTHERPC\alice"), false);
+    assert!(st.toasts.is_empty(), "no toast besides the question");
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("repository_owned_by_another_user");
-    assert!(h.query_by_label_contains("Git asks first because").is_some());
+    assert!(h.query_by_label_contains(r"belongs to OTHERPC\alice").is_some());
     assert!(h.query_by_label_contains("git config --global").is_none(), "the command waits under Details");
     h.get_by_label("Details").click();
     h.run();
     assert!(h.query_by_label_contains("git config --global --add safe.directory").is_some());
     h.check_snapshot("repository_owned_by_another_user_details");
-    h.get_by_label("Trust and open").click();
+    h.get_by_label("Trust this folder").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmAccepted)));
+}
+
+/// A folder the Administrators group owns: made from a program run as administrator.
+#[test]
+fn repository_owned_by_administrators() {
+    let mut h = harness(refused_state(Some(r"BUILTIN\Administrators"), true), false);
+    h.run();
+    h.check_snapshot("repository_owned_by_administrators");
+    assert!(h.query_by_label_contains("belongs to the Administrators group").is_some());
 }

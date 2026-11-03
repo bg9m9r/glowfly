@@ -15,8 +15,8 @@ pub enum Error {
     NotARepository(String),
     /// git refuses the repository in this folder because another user owns it, until it is
     /// listed in `safe.directory` (see `safe_directory`).
-    #[error("git won't open {} because another user owns it", crate::native_path::shown(.0))]
-    NotOwned(std::path::PathBuf),
+    #[error("git won't open {} because another user owns it", crate::native_path::shown(&.0.root))]
+    NotOwned(crate::safe_directory::Refusal),
     /// Missing, rejected or expired credentials.
     #[error("authentication failed: {0}")]
     Auth(String),

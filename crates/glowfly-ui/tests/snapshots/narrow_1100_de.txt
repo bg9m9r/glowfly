@@ -107,6 +107,7 @@ painted:
   "Branch / Tag"
   "Graph"
   "Nachricht"
+  "M 1"
   "AL"
   "✔ main"
   "+1"

@@ -166,7 +166,6 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-ui/src/undo_dialog.rs", 5),
     ("crates/glowfly-ui/src/welcome_steps.rs", 1),
     ("crates/glowfly-ui/src/widgets/menu_columns.rs", 1),
-    ("crates/glowfly-ui/src/widgets/truncate.rs", 9),
     ("crates/glowfly-ui/src/worktree_dialog.rs", 11),
     ("crates/glowfly-ui/src/worktree_manage_dialog.rs", 9),
     ("crates/glowfly-ui/src/worktree_move_dialog.rs", 5),

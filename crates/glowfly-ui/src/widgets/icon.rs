@@ -82,6 +82,8 @@ pub enum Icon {
     Pencil,
     /// A cross of two strokes: add an item (the ISSUES header's Create issue).
     Plus,
+    /// The plus's level stroke alone: take an item away (the Staged Files header's Unstage all).
+    Minus,
     /// A circle with a dot in the middle: an issue (the issue panel).
     Issue,
     /// A tick of two strokes: a resolved file (the font lacks a check mark).
@@ -90,6 +92,8 @@ pub enum Icon {
     More,
     /// A page with its top-right corner folded: a text file (the diff header).
     File,
+    /// The page with a plus at its lower right: a new file (the Unstaged Files header).
+    FileAdd,
     /// The page with angle brackets: a source file.
     FileCode,
     /// The page with a hill and a sun: an image.
@@ -158,6 +162,14 @@ pub fn paint_icon_sized(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f3
     let scale = size / SIZE_LG;
     if icon == Icon::Plus {
         icon_snap::paint_plus(p, c, PLUS_ARM * scale, Stroke::new(STROKE, col));
+        return;
+    }
+    if icon == Icon::FileAdd {
+        crate::ui::icons::paint_file_add(p, c, Stroke::new(STROKE, col), size / SIZE_SM);
+        return;
+    }
+    if icon == Icon::Minus {
+        icon_snap::paint_minus(p, c, PLUS_ARM * scale, Stroke::new(STROKE, col));
         return;
     }
     if scale == 1.0 {
@@ -346,8 +358,16 @@ fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
         Icon::CommentAdd => {}                                                                                                 // icons.rs
-        Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
-        Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
+        Icon::ExternalDiff
+        | Icon::Into
+        | Icon::Comment
+        | Icon::Pencil
+        | Icon::Plus
+        | Icon::Minus
+        | Icon::Issue
+        | Icon::Check
+        | Icon::More => {} // icons.rs
+        Icon::File | Icon::FileAdd | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {}                // icons.rs
         Icon::ExpandLeft | Icon::ExpandRight | Icon::Commit | Icon::Globe | Icon::Menu | Icon::Info | Icon::Repo | Icon::Swap => {} // icons.rs
         Icon::Eraser | Icon::Stop | Icon::PanelMaximize | Icon::PanelRestore | Icon::ChevronDown => {} // icons_panel.rs
         Icon::ListView | Icon::TreeView | Icon::Access => {}                                           // icons_lists.rs

@@ -73,7 +73,10 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     // The commit box (or step 3) is pinned at the bottom at the height it took last frame; the
     // lists scroll in the room above it.
     let bottom_id = ui.id().with("wip-bottom");
-    let bottom_h = ui.data(|d| d.get_temp::<f32>(bottom_id)).unwrap_or(super::commit_box::RESERVED_HEIGHT);
+    let bottom_h = ui.data(|d| d.get_temp::<f32>(bottom_id)).unwrap_or_else(|| {
+        let why = crate::state::commit::commit_blocked(st, false);
+        super::commit_box::reserved_height(crate::ui::widgets::reason::lines(ui, why, ui.available_width()))
+    });
     let top_h = (ui.available_height() - bottom_h).max(TOP_MIN);
     let size = egui::vec2(ui.available_width(), top_h);
     ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Min), |ui| {

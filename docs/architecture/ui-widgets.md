@@ -7,7 +7,7 @@ source file, update its line here.
 
 - `widgets/mod.rs`: the shared painted controls.
 - `icon.rs`: the `Icon` set.
-- `widgets/icon_snap.rs`: painted glyphs on the pixel grid: an icon's centre and the plus's ends snapped for the line width at any pixel ratio.
+- `widgets/icon_snap.rs`: painted glyphs on the pixel grid: an icon's centre and the plus's (and minus's) ends snapped for the line width at any pixel ratio.
 - `tab_glyph.rs`: the tab bars' painted close × and new-tab + (one stroke and hover box for both, at least a 24 px hit area).
 - `widgets/quiet_target.rs`: a quiet target a view lays out itself (a tab, the tab list and title-bar menu buttons, a section header's + and ⋯, a Git Flow group's +, a row inset in a padded pane on `radius::SM`, a palette row, the diff's comment button), lit and ringed through `paint_target`.
 - `scroll_cue.rs`: the always-visible thin scroll bar and the edge fades of dialog bodies, Preferences and the File view.
@@ -39,7 +39,7 @@ source file, update its line here.
 - `widgets/menu_open.rs`: opens egui's dropdown menus from their button with the keyboard too (Alt+Down, Right in a popup's menu; egui's Enter and Space), names the button for Esc's focus return, and keeps a press in a keyboard-opened submenu from closing the menu.
 - `widgets/menu_submenu_keyed.rs`: a submenu opened from the keyboard (Right, Enter or Space on its row), drawn as its own menu where egui's would be, since egui opens its own only under the pointer.
 - `widgets/popover.rs` (tests in `popover_tests.rs`): `menu::popover_below`'s popup: a set width, unjustified contents, right-aligned below its anchor and kept 8 px inside the window.
-- `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover, and names and paths cut in the middle.
+- `widgets/truncate.rs` (tests in `truncate_tests.rs`): single-line text cut with an ellipsis and its whole text on hover, a counted title cut before its count, and names and paths cut in the middle.
 - `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), muted at count 0 for a section that folds away while empty; each + is described by `state/section_actions.rs`.
 - `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…), and a failed hosting service's block (`failure`: the cause, then Sign in).
 - `line_counts.rs`: line counts drawn one way everywhere: a file row's `+N −M` and proportional bar, a total, the WIP row's chips.
@@ -48,7 +48,7 @@ source file, update its line here.
 
 ## Disabled reasons
 
-- `widgets/reason.rs` draws disabled reasons and setup suffixes: a weak line beside or under a disabled button.
+- `widgets/reason.rs` draws disabled reasons and setup suffixes: a weak line beside or under a disabled button, or wrapped and never cut (the commit box).
 - A dialog footer's reason sits in the row before Cancel, or above it when the row is full; laid out by `dialog_footer.rs`.
 - `widgets/menu_reason.rs` (re-exported by `widgets/reason.rs`): a menu item's states (`ItemState`): a greyed label with a painted info mark and its reason in the shared tooltip on hover or focus (described to screen readers too), "Set up…" in the shortcut column, or a destructive (`Danger`) item in the danger style; drawn by `menu_row.rs`.
 - `widgets/menu_submenu.rs` (tests in `menu_submenu_tests.rs`): what `menu::submenu` adds to egui's submenu: a 250 ms open delay on hover (at once on a click, Enter, Space or Right), a 400 ms close grace, and placement right of the menu or flipped left, kept 8 px inside the window; `row_at` maps a submenu row's auto-id slot to its button for `menu_keys`; Right, Enter or Space opens it from the keyboard (`menu_submenu_keyed.rs`), and Left or Esc closes egui's own.
