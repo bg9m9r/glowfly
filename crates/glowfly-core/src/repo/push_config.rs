@@ -60,17 +60,30 @@ pub fn push_remotes(repo: &Repository) -> PushRemotes {
 }
 
 /// Whether a plain `git pull` on `branch` rebases: `branch.<branch>.rebase`, else
-/// `pull.rebase`; any value but a false one (`merges`, `interactive`) rebases. Unset, or
-/// unreadable config, merges, as git does.
+/// `pull.rebase`. As git reads them: a key with no value (`[pull] rebase`) is true; false, no,
+/// off, an empty value and an integer 0 (`00` too) merge; any other value (true, a non-zero
+/// integer, `merges`, `interactive`) rebases. Unset, or unreadable config, merges.
 pub fn pull_rebases(repo: &Repository, branch: Option<&str>) -> bool {
     let Ok(cfg) = repo.config().and_then(|mut c| c.snapshot()) else { return false };
     let keys = branch.map(|b| format!("branch.{b}.rebase")).into_iter().chain(["pull.rebase".to_owned()]);
     for key in keys {
-        if let Ok(v) = cfg.get_string(&key) {
-            return !matches!(v.trim().to_ascii_lowercase().as_str(), "false" | "no" | "off" | "0" | "");
+        if let Ok(e) = cfg.get_entry(&key) {
+            if !e.has_value() {
+                return true;
+            }
+            return rebase_value(&String::from_utf8_lossy(e.value_bytes()));
         }
     }
     false
+}
+
+/// Whether a `pull.rebase` value that is set rebases (see `pull_rebases`).
+fn rebase_value(v: &str) -> bool {
+    let v = v.trim().to_ascii_lowercase();
+    match v.parse::<i64>() {
+        Ok(n) => n != 0,
+        Err(_) => !matches!(v.as_str(), "false" | "no" | "off" | ""),
+    }
 }
 
 #[cfg(test)]
@@ -106,6 +119,36 @@ mod tests {
         set_config(&dir, &[("pull.rebase", "merges")]);
         assert!(pull_rebases(&open(), Some("other")), "merges rebases");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pull_rebases_reads_values_as_git_does() {
+        let dir = scratch_repo("pull-rebases-values");
+        let open = || Repository::open(&dir).unwrap();
+        for (value, rebases) in [("0", false), ("00", false), ("1", true), ("2", true), ("off", false), ("Yes", true), ("", false)] {
+            set_config(&dir, &[("pull.rebase", value)]);
+            assert_eq!(pull_rebases(&open(), Some("main")), rebases, "pull.rebase = {value:?}");
+        }
+        // A key without a value is true in git: `[pull] rebase` rebases.
+        let local = dir.join(".git/config");
+        let text = std::fs::read_to_string(&local).unwrap();
+        std::fs::write(
+            &local,
+            format!(
+                "{text}
+[branch \"main\"]
+	rebase
+"
+            ),
+        )
+        .unwrap();
+        assert!(pull_rebases(&open(), Some("main")), "a value-less branch.main.rebase");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn rebase_values() {
+        assert!(!rebase_value("00") && !rebase_value(" FALSE ") && rebase_value("interactive") && rebase_value("-1"));
     }
 
     #[test]
