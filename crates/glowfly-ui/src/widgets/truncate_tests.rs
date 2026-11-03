@@ -252,15 +252,25 @@ fn without_a_separator_the_head_ends_at_its_share() {
 fn the_tail_keeps_eight_characters_and_the_head_gives_way() {
     // The share's 4 characters, "…" and 8 would be 13: the head shrinks to 3.
     assert_eq!(cut_units("feature/very-long-name-123", 12.0), "fea…name-123");
-    // Too little room for even that: no head, and the tail shrinks.
-    assert_eq!(cut_units("feature/very-long-name-123", 5.0), "…-123");
+}
+
+#[test]
+fn without_room_for_three_and_eight_the_name_is_cut_at_its_end() {
+    assert_eq!(cut_units("feature/very-long-name-123", 11.0), "feature/ve…");
+    assert_eq!(cut_units("feature/very-long-name-123", 5.0), "feat…");
     assert_eq!(cut_units("feature/very-long-name-123", 0.5), "…");
 }
 
 #[test]
+fn a_separator_that_leaves_too_short_a_head_is_passed_over() {
+    // The share is 8; the '-' after "a" would leave a head of 1 (under half of it).
+    assert_eq!(cut_units("a-repository-whose-folder-name", 20.0), "a-reposi…folder-name");
+}
+
+#[test]
 fn a_cjk_name_is_cut_between_its_characters() {
-    let name = "機能/ログイン画面の改善と長い名前のブランチ";
-    assert_eq!(cut_units(name, 15.0), "機能…改善と長い名前のブランチ");
+    let name = "機能改善/ログイン画面の改善と長い名前のブランチ";
+    assert_eq!(cut_units(name, 15.0), "機能改善…と長い名前のブランチ");
 }
 
 #[test]

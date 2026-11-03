@@ -188,14 +188,19 @@ pub fn cut_middle_in(p: &Painter, text: &str, font: &FontId, max_w: f32) -> Stri
 const SEPARATORS: [&str; 4] = ["/", "-", "_", "."];
 /// The share of the room a middle cut's head may take.
 const HEAD_SHARE: f32 = 0.4;
-/// The fewest characters a middle cut's tail keeps, room allowing.
+/// A head ends before a separator only when that keeps at least this much of its share.
+const SNAP_MIN: f32 = 0.5;
+/// The fewest characters a middle cut's tail keeps.
 const MIN_TAIL: usize = 8;
+/// The fewest characters a middle cut's head gives way to before the name is cut at its end.
+const MIN_HEAD: usize = 3;
 
 /// Where a middle cut splits `text` to fit `max_w` as `width` measures it: the byte end of the
 /// head and the byte start of the tail ("…" goes between), or None when `text` fits whole.
-/// The head ends before the last separator (`/ - _ .`) within the first 40% of the room, or at
-/// 40% when there is none; the tail keeps at least 8 characters and fills the rest. Cuts land
-/// on grapheme boundaries. When even that doesn't fit, the head gives way first, then the tail.
+/// The head is the first 40% of the room, ending before its last separator (`/ - _ .`) when
+/// that keeps at least half of it; the tail fills the rest. A tail under 8 characters takes
+/// room from the head, down to 3; when even 3 + "…" + 8 don't fit, the name is cut at its end
+/// instead (the tail is then empty: `text.len()`). Cuts land on grapheme boundaries.
 pub fn middle_cut(text: &str, max_w: f32, width: impl Fn(&str) -> f32) -> Option<(usize, usize)> {
     if text.is_empty() || width(text) <= max_w {
         return None;
@@ -209,20 +214,19 @@ pub fn middle_cut(text: &str, max_w: f32, width: impl Fn(&str) -> f32) -> Option
     while head < n && width(&text[..bounds[head + 1]]) <= share {
         head += 1;
     }
-    if let Some(sep) = (1..head).rev().find(|&k| SEPARATORS.contains(&&text[bounds[k]..bounds[k + 1]])) {
-        head = sep;
+    let snaps = |k: usize| SEPARATORS.contains(&&text[bounds[k]..bounds[k + 1]]) && width(&text[..bounds[k]]) >= share * SNAP_MIN;
+    if let Some(k) = (1..=head.min(n - 1)).rev().find(|&k| snaps(k)) {
+        head = k;
     }
     // At least one grapheme always goes (the whole text doesn't fit).
     let most = |head: usize| n - head - 1;
-    while head > 0 && !fits(head, MIN_TAIL.min(most(head))) {
+    while head > MIN_HEAD && !fits(head, MIN_TAIL.min(most(head))) {
         head -= 1;
     }
     let mut tail = MIN_TAIL.min(most(head));
     if !fits(head, tail) {
-        while tail > 0 && !fits(0, tail) {
-            tail -= 1;
-        }
-        return Some((0, bounds[n - tail]));
+        let end = (0..n).rev().find(|&h| fits(h, 0)).unwrap_or(0);
+        return Some((bounds[end], text.len()));
     }
     while tail < most(head) && fits(head, tail + 1) {
         tail += 1;

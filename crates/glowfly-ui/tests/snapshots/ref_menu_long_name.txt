@@ -118,6 +118,7 @@ painted:
   "Local"
   "3"
   "✔  main"
+  "todo/git-lfs…esh-a-missing-g"
   "Remote"
   "0"
   "Tags"

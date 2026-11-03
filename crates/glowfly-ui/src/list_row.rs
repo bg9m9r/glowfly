@@ -105,10 +105,12 @@ fn row_cut(
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     let p = ui.painter_at(rect);
     row_fill::paint_state(&p, rect, row_fill::RowState::of(&resp, selected, resp.hovered()));
-    let mut right_w = if slot > 0.0 { slot + PAD_X + PARTS_GAP } else { 0.0 };
+    // A name keeps clear of the row's end and of its right-hand parts (D16).
+    let (gap, end) = if middle { (NAME_GAP, NAME_GAP) } else { (PARTS_GAP, 0.0) };
+    let mut right_w = if slot > 0.0 { slot + PAD_X + gap } else { end };
     if let Some((parts, col)) = right {
         let total = parts_width(&p, parts);
-        right_w = total + PAD_X + PARTS_GAP + slot;
+        right_w = total + PAD_X + gap + slot;
         paint_parts(&p, pos2(rect.right() - PAD_X - slot - total, rect.center().y), parts, col);
     }
     let text_rect = Rect::from_min_max(pos2(rect.left() + indent, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
@@ -128,6 +130,8 @@ fn row_cut(
 const GAP: f32 = 6.0;
 /// The least space between a row's (cut) text and its right-hand parts or marker slot.
 const PARTS_GAP: f32 = spacing::GRID;
+/// The least space between a name and its right-hand parts, or the row's end.
+pub const NAME_GAP: f32 = 12.0;
 /// The space between a count and its arrow, and the arrow's width.
 const ARROW_GAP: f32 = 1.5;
 const ARROW_W: f32 = 6.0;

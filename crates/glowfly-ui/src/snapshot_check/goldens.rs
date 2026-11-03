@@ -416,6 +416,8 @@ const IMAGE_ONLY: &[&str] = &[
     "sidebar_gitflow_group_hovered_light",
     "sidebar_remote_group_pressed_dark",
     "sidebar_remote_group_pressed_light",
+    // `sidebar_shared_prefix_dark` in Dawn.
+    "sidebar_shared_prefix_light",
     "gitflow_panel_row_hovered_over_finish_dark",
     "gitflow_panel_row_hovered_over_finish_light",
     "pr_checks_header_hovered_dark",

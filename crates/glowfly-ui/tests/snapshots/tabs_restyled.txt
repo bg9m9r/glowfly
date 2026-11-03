@@ -85,6 +85,7 @@ Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
 painted:
+  "a-reposit…t-a-tab-holds"
   "Repository"
   "Branch"
   "main"

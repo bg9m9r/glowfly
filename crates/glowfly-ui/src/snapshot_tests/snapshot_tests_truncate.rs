@@ -323,9 +323,10 @@ fn shared_prefix(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 /// be told apart without hovering; each is still named in full (pixel goldens, dark and light).
 #[test]
 fn sidebar_shared_prefix() {
-    for (theme, golden) in [(ThemeChoice::Dark, "sidebar_shared_prefix_dark"), (ThemeChoice::Light, "sidebar_shared_prefix_light")] {
+    for (theme, dark, golden) in [(ThemeChoice::Dark, true, "sidebar_shared_prefix_dark"), (ThemeChoice::Light, false, "sidebar_shared_prefix_light")]
+    {
         let (st, dir) = shared_prefix(theme, golden);
-        let mut h = harness(st, true);
+        let mut h = harness(st, dark);
         h.run();
         for id in AGENT_IDS {
             assert!(h.query_by_label(&format!("worktree-agent-{id}")).is_some(), "{id}'s branch row is named in full");
