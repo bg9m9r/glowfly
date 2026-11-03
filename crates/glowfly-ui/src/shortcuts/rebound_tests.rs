@@ -71,6 +71,7 @@ fn name(m: &Msg) -> String {
         Msg::Conflict(ConflictMsg::ConflictStep(d)) => format!("conflict {d}"),
         Msg::Job(crate::msg::JobMsg::Undo) => "undo".into(),
         Msg::Palette(PaletteMsg::RunBoundCommand(c)) => format!("run {c:?}"),
+        Msg::Prefs(PrefsMsg::FocusSearch) => "prefs search".into(),
         _ => "other".into(),
     }
 }
@@ -135,7 +136,8 @@ fn refresh_prefs_search_and_palette() {
     assert_eq!(press(&mut h, NONE, Key::F5), ["refresh"], "F5 works under Preferences");
     assert_eq!(press(&mut h, CMD, Key::Comma), quiet());
     assert_eq!(press(&mut h, CMD, Key::P), quiet());
-    assert_eq!(press(&mut h, CMD, Key::F), quiet());
+    assert_eq!(press(&mut h, CMD, Key::F), ["prefs search"], "Ctrl+F focuses Preferences' search");
+    assert!(!h.state().st.view.show_search, "not the graph's search bar");
 
     let mut st = state();
     st.palette = Some(Default::default());

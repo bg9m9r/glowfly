@@ -145,11 +145,11 @@ fn searching(page: PrefPage, query: &str) -> H {
     h
 }
 
-/// The row labelled `label` (its label, not the control it names) is tinted with the selected
-/// fill.
+/// The row labelled `label` is tinted with the selected fill: at the start of the label column,
+/// level with the row's first node (its label, or the control it names).
 fn tinted(h: &H, label: &str) -> bool {
-    let n = h.query_all_by_label(label).find(|n| n.role() == egui_kittest::kittest::Role::Label).expect("the row's label");
-    let at = super::snapshot_tests_painted::bounds(&n).center();
+    let n = h.query_all_by_label(label).next().expect("the row");
+    let at = egui::pos2(250.0 + 24.0 + 8.0, super::snapshot_tests_painted::bounds(&n).center().y);
     super::snapshot_tests_painted::fills_at(h, at).contains(&crate::ui::theme::color::selected())
 }
 
@@ -160,7 +160,7 @@ fn enter_reveals_a_row_far_down_the_page() {
     let below = |h: &H| h.query_all_by_label("Glowfly links").next().and_then(|n| n.bounding_box()).is_none_or(|b| b.y0 > 790.0);
     assert!(below(&h), "the row starts out of view");
     enter_and_apply(&mut h);
-    h.run();
+    h.run_steps(4);
     let b = h.query_all_by_label("Glowfly links").next().and_then(|n| n.bounding_box()).expect("drawn");
     assert!(b.y0 > 60.0 && b.y1 < 790.0, "scrolled into view: {b:?}");
     assert!(tinted(&h, "Glowfly links"));
@@ -178,6 +178,6 @@ fn a_shared_label_is_revealed_on_the_page_opened() {
         crate::update::update(st, m, Instant::now());
     }
     assert_eq!(h.state().0.prefs.as_ref().unwrap().page, PrefPage::Ui, "Appearance comes first");
-    h.run();
+    h.run_steps(4);
     assert!(tinted(&h, "Interface size"), "the row on Appearance");
 }

@@ -165,9 +165,15 @@ fn esc_in_the_search_clears_then_leaves_then_closes() {
     h.run();
     let field = Id::new("prefs-search");
     assert!(h.ctx.memory(|m| m.has_focus(field)), "Ctrl+F's request gave the field the keyboard");
-    let mut esc = |h: &mut Harness<'static, (AppState, Vec<Msg>)>| {
+    let esc = |h: &mut Harness<'static, (AppState, Vec<Msg>)>| {
         h.state_mut().1.clear();
-        h.input_mut().events.push(Event::Key { key: Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::NONE });
+        h.input_mut().events.push(Event::Key {
+            key: Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        });
         h.run();
         std::mem::take(&mut h.state_mut().1)
     };
