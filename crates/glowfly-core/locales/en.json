@@ -965,6 +965,7 @@
   "git_banner.use_path.button": "Use the git on PATH (version {version})",
   "git_banner.use_path.checking": "Checking the git on PATH…",
   "git_banner.use_path.tip": "Glowfly will run {path} from now on",
+  "git_errors.clone_https.button": "Clone over HTTPS as {user}",
   "git_errors.conflicts.one": "Stopped on conflicts in {count} file. Resolve it, then continue or abort.",
   "git_errors.conflicts.other": "Stopped on conflicts in {count} files. Resolve them, then continue or abort.",
   "git_errors.conflicts.unlisted": "Stopped on conflicts. Resolve them, then continue or abort.",
