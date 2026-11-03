@@ -100,6 +100,7 @@ fn edit_window_and_help_list_their_items_in_order() {
         "---",
         "Show the welcome",
         "Tour of the main window",
+        "Getting started",
         "---",
         "Activity log",
         "Error log",
@@ -115,6 +116,10 @@ fn edit_window_and_help_list_their_items_in_order() {
         "About Glowfly…",
     ];
     assert_eq!(rows(&entries(&st, TopMenu::Help)), help);
+    let mut hidden = state();
+    hidden.settings.hints_seen.insert(crate::state::onboarding::getting_started::HIDDEN_ID.into());
+    let help_hidden: Vec<&str> = help.iter().copied().filter(|r| *r != "Getting started").collect();
+    assert_eq!(rows(&entries(&hidden, TopMenu::Help)), help_hidden, "hidden from Help");
 }
 
 #[test]

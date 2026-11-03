@@ -37,6 +37,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Under a credential prompt or another dialog the welcome reads no keys.
     let cx = Cx { t, keyboard: !prompting && !covered, key: Id::new("glowfly-welcome-dialog") };
     let no_connections = settings.connections.is_empty();
+    let gs_hidden = crate::state::onboarding::getting_started::hidden(settings);
     let resp = theme::show_modal(ctx, theme::dialog(ctx, Id::new("glowfly-welcome")), |ui| {
         let step = w.step;
         let greeting = w.greeting_name().map(str::to_owned);
@@ -50,7 +51,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             WelcomeStep::Identity => welcome_steps::identity(ui, w, settings, !prompting),
             WelcomeStep::Connect => welcome_steps::connect(ui, t, &settings.connections, msgs),
             WelcomeStep::Git => welcome_steps::git(ui, t, git, msgs),
-            WelcomeStep::Start => welcome_steps::start(ui, t, w, has_repo, msgs),
+            WelcomeStep::Start => welcome_steps::start(ui, t, w, has_repo, gs_hidden, msgs),
         });
         let out = d.finish(ui, footer(t, w, no_connections));
         answer(out, step, msgs);

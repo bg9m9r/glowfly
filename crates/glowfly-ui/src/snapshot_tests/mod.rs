@@ -55,6 +55,7 @@ pub(super) mod snapshot_tests_file_rows;
 pub(super) mod snapshot_tests_forge_filters;
 pub(super) mod snapshot_tests_forks;
 pub(super) mod snapshot_tests_form_messages;
+pub(super) mod snapshot_tests_getting_started;
 pub(super) mod snapshot_tests_ghost_branch;
 pub(super) mod snapshot_tests_gitflow;
 pub(super) mod snapshot_tests_gitflow_resume;

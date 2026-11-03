@@ -53,6 +53,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("welcome_start", Window),
     ("welcome_start_light", Window),
     ("welcome_start_high_contrast_dark", Window),
+    // Help > Getting started: the cards, their groups and the in-use marks.
+    ("getting_started_dark", Window),
+    ("getting_started_light", Window),
     // Preferences > Appearance in the default light theme: the theme picker.
     ("prefs_theme_picker_porcelain", Window),
     // Match the system on (two rings), a theme file in use (the disclosure open), and German.
@@ -327,6 +330,8 @@ const IMAGE_ONLY: &[&str] = &[
     "title_bar_windows_light",
     "welcome_start_light",
     "welcome_start_high_contrast_dark",
+    // `getting_started_dark` in Light.
+    "getting_started_light",
     "graph_bands_dusk",
     "branch_colours_graph_light",
     "branch_colours_colour_blind_dark",

@@ -263,8 +263,8 @@ pub(super) fn window(st: &AppState) -> Vec<Entry> {
     out
 }
 
-/// Help: the shortcut sheet, the palette, the welcome and the tour, the logs, the project's links,
-/// the release notes and Check for updates, and About.
+/// Help: the shortcut sheet, the palette, the welcome, the tour and Getting started (unless
+/// hidden), the logs, the project's links, the release notes and Check for updates, and About.
 pub(super) fn help(st: &AppState) -> Vec<Entry> {
     let t = st.settings.lang();
     let keys = &st.keymap;
@@ -274,8 +274,11 @@ pub(super) fn help(st: &AppState) -> Vec<Entry> {
         Entry::Separator,
         send(keys, t.tr("menu.help.welcome"), None, None, Msg::Onboarding(OnboardingMsg::ShowWelcome)),
         send(keys, t.tr("menu.help.tour"), None, None, Msg::Onboarding(OnboardingMsg::StartTour)),
-        Entry::Separator,
     ];
+    if !super::onboarding::getting_started::hidden(&st.settings) {
+        out.push(send(keys, t.tr("menu.help.getting_started"), None, None, Msg::Onboarding(OnboardingMsg::OpenGettingStarted)));
+    }
+    out.push(Entry::Separator);
     let logs = [
         (t.tr("menu.help.activity_log"), LogKind::Activity),
         (t.tr("menu.help.error_log"), LogKind::Errors),

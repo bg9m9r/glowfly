@@ -1,6 +1,6 @@
 //! The palette's onboarding entries: "Show the welcome", the tips' on or off switch (whichever
-//! applies) and "Show tips again" always, and "Take the tour" (or "Resume the tour") while a
-//! repository is open.
+//! applies), "Show tips again" and Getting started always (even when hidden from the Help
+//! menu), and "Take the tour" (or "Resume the tour") while a repository is open.
 
 use super::AppState;
 use super::onboarding_tour::TourStep;
@@ -19,6 +19,8 @@ pub(super) fn entries(st: &AppState, out: &mut Vec<Entry>) {
     let toggle = if on { t.tr("palette.tips.off") } else { t.tr("palette.tips.on") };
     out.push(entry(C::Onboarding(OnboardingMsg::SetHints(!on)), toggle, tips));
     out.push(entry(C::Onboarding(OnboardingMsg::ResetHints), t.tr("palette.tips.again"), tips));
+    let learn = "tips learn features discover cards help";
+    out.push(entry(C::Onboarding(OnboardingMsg::OpenGettingStarted), t.tr("palette.getting_started"), learn));
     if st.snap.is_none() {
         return;
     }

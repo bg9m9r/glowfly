@@ -122,7 +122,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
 }
 
 /// Whether the palette may open now: not over a dialog, Preferences or a credential prompt.
-fn may_open(st: &AppState) -> bool {
+pub(super) fn may_open(st: &AppState) -> bool {
     st.modal.is_none() && st.prefs.is_none() && !st.askpass.showing()
 }
 
