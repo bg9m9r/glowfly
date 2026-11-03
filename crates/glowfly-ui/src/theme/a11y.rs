@@ -1,19 +1,22 @@
 //! What Preferences > Accessibility sets in egui's style, every frame and in both egui themes:
 //! the animation time (none while motion is reduced, by Reduce motion or the system's setting),
 //! the tooltip timing (the Tooltip delay of stillness; at once within `tooltip_motion::GRACE` of
-//! another tooltip) and whether the text cursor in text fields blinks. A value is written only
-//! when it differs; the blink only when the setting changed since the last frame (egui's own
-//! default is to blink, and the view tests' harness turns it off, which a setting left on
-//! keeps).
+//! another tooltip), whether the text cursor in text fields blinks, and the focus rings' style
+//! (`tokens::set_focus_style`). A value is written only when it differs; the blink only when the
+//! setting changed since the last frame (egui's own default is to blink, and the view tests'
+//! harness turns it off, which a setting left on keeps).
 
-use crate::ui::theme::tokens::motion;
+use crate::ui::theme::tokens::{self, motion};
 use crate::ui::widgets::tooltip_motion;
 use eframe::egui;
 use glowfly_core::settings::Settings;
 
 /// Sets the animation time (none when `still`, `AppState::motion_reduced`), the tooltip
-/// timing and the text cursor's blink from `s`.
+/// timing, the text cursor's blink and the focus style from `s`.
 pub fn configure(ctx: &egui::Context, s: &Settings, still: bool) {
+    if tokens::focus_style(ctx) != s.a11y.focus_style {
+        tokens::set_focus_style(ctx, s.a11y.focus_style);
+    }
     let animation = motion::animation_time(still);
     let delay = s.a11y.tooltip_delay.seconds();
     let key = egui::Id::new("glowfly-cursor-blink");
@@ -45,7 +48,7 @@ pub fn configure(ctx: &egui::Context, s: &Settings, still: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use glowfly_core::settings::TooltipDelay;
+    use glowfly_core::settings::{FocusStyle, TooltipDelay};
 
     #[test]
     fn configure_sets_the_timing_and_the_cursor_in_both_themes() {
@@ -72,5 +75,19 @@ mod tests {
         s.a11y.tooltip_delay = TooltipDelay::Instant;
         configure(&ctx, &s, s.reduce_motion);
         assert_eq!(ctx.style_of(egui::Theme::Dark).interaction.tooltip_delay, 0.0);
+    }
+
+    #[test]
+    fn configure_sets_the_focus_style() {
+        let ctx = egui::Context::default();
+        let mut s = Settings::default();
+        configure(&ctx, &s, false);
+        assert_eq!(tokens::focus_style(&ctx), FocusStyle::Standard);
+        s.a11y.focus_style = FocusStyle::Strong;
+        configure(&ctx, &s, false);
+        assert_eq!(tokens::focus_style(&ctx), FocusStyle::Strong);
+        s.a11y.focus_style = FocusStyle::Standard;
+        configure(&ctx, &s, false);
+        assert_eq!(tokens::focus_style(&ctx), FocusStyle::Standard, "and back");
     }
 }

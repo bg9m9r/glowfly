@@ -22,6 +22,8 @@ use glowfly_core::repo::{Chunk, Side};
 /// a longer translation widens them by the difference.
 const TAKE_W: f32 = 64.0;
 const DISCARD_W: f32 = 90.0;
+/// The height of Take's hit area.
+const TAKE_HIT: f32 = 24.0;
 /// The unresolved mark's width at the band's left.
 const MARK_W: f32 = 3.0;
 /// Before the order text, and between it and Swap.
@@ -70,6 +72,8 @@ pub(super) fn band(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, k: usize,
     let grow = (text_w(label, &body) - text_w(english, &body)).max(0.0);
     let w = if edited { DISCARD_W } else { TAKE_W } + grow;
     let check = Rect::from_min_max(pos2(x - w, r.top()), pos2(x, r.bottom()));
+    // Take's hit area is 24 px tall, past the band's row; its box stays 14 px.
+    let take_at = Rect::from_center_size(check.center(), vec2(w, TAKE_HIT));
     // The tag (full, then short, then none) and, in the ours column with both sides taken, the
     // order and Swap: the order text gives way first, Swap never.
     let tag = match view.auto.get(k).copied().flatten() {
@@ -113,8 +117,21 @@ pub(super) fn band(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, k: usize,
         return;
     }
     let mut taken = pick.takes_side(c, side);
-    let check_box = controls::Check::new(&mut taken, label).indeterminate(pick.partly_takes_side(c, side)).tint(side_color(side));
-    if ui.put(check, check_box).changed() {
+    let branch = super::conflict_panes::side_name(t, side, view.file.as_ref().map(|f| &f.labels));
+    let args: [(&str, &dyn std::fmt::Display); 2] = [("number", &(k + 1)), ("branch", &branch)];
+    let name = match side {
+        Side::Ours => t.trf("conflict.panes.take.ours.name", &args),
+        Side::Theirs => t.trf("conflict.panes.take.theirs.name", &args),
+    };
+    let check_box = controls::Check::new(&mut taken, label)
+        .indeterminate(pick.partly_takes_side(c, side))
+        .tint(side_color(side))
+        .hit(vec2(0.0, TAKE_HIT))
+        .name(name);
+    // A child that doesn't grow the band's row to the taller hit area.
+    let mut child =
+        ui.new_child(egui::UiBuilder::new().max_rect(take_at).layout(egui::Layout::centered_and_justified(egui::Direction::TopDown)));
+    if child.add(check_box).changed() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictToggle { chunk: k, side }));
     }
 }
