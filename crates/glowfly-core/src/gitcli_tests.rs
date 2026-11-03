@@ -145,7 +145,8 @@ fn timeout_kills_the_command() {
     let out = output(&dir, &a, "", &[], Some(Duration::from_millis(300)));
     assert!(!out.ok && out.timed_out && out.code.is_none(), "{out:?}");
     assert!(out.stderr.contains("was stopped"), "{out:?}");
-    assert!(start.elapsed() < Duration::from_secs(10), "{:?}", start.elapsed());
+    // Well short of the alias's 30 s: killed, with a margin for a loaded machine.
+    assert!(start.elapsed() < Duration::from_secs(20), "{:?}", start.elapsed());
 }
 
 #[test]
@@ -161,23 +162,29 @@ fn command_carries_gitclis_environment() {
 
 #[test]
 fn a_stopped_command_ends_with_everything_it_started() {
+    use crate::testkit::procs::{pid_in, wait_for, wait_gone_or, write_pid};
     let dir = crate::testutil::scratch_repo("gitcli-stop");
-    let marker = dir.join("late.txt");
+    let (marker, pid_file) = (dir.join("late.txt"), dir.join("nap.pid"));
     let shown = marker.display().to_string().replace('\\', "/");
-    let alias = format!("alias.nap=!sleep 2 && echo late > '{shown}'");
+    let alias = format!("alias.nap=!{} && sleep 2 && echo late > '{shown}'", write_pid(&pid_file));
     let a = args(&["-c", &alias, "nap"]);
     let stop = Stop::new();
     let asker = stop.clone();
+    let watched = pid_file.clone();
+    // Stopped once the shell runs (or after a minute, failing below).
     std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(300));
+        wait_for(Duration::from_secs(60), || watched.exists());
         asker.stop();
     });
     let started = std::time::Instant::now();
     let out = output_until(&dir, &a, "", NO_PROMPTS, &stop);
-    assert!(started.elapsed() < Duration::from_secs(5), "took {:?}", started.elapsed());
+    // Only that the stop didn't hang: the marker below shows the shell was stopped.
+    assert!(started.elapsed() < Duration::from_secs(15), "took {:?}", started.elapsed());
     assert!(out.stopped && !out.ok, "{out:?}");
     assert!(out.stderr.contains("was cancelled"), "{}", out.stderr);
-    std::thread::sleep(Duration::from_secs(3));
+    let pid = pid_in(&pid_file).expect("the shell ran");
+    // A shell that lived on writes the marker 2 s after it started.
+    wait_gone_or(pid, Duration::from_secs(30), || marker.exists());
     assert!(!marker.exists(), "the shell git started was stopped too");
 
     let early = Stop::new();

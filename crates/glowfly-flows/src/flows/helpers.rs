@@ -40,8 +40,22 @@ pub(crate) fn finish(st: &mut AppState, fx: Vec<Effect>) {
     finish_keeping(st, fx);
 }
 
+/// `drive`, returning whether a result message `seen` matches reached `update` on the way: for
+/// a test that names the runner's result it relies on.
+pub(crate) fn drive_seeing(st: &mut AppState, msg: Msg, seen: impl Fn(&Msg) -> bool) -> bool {
+    let fx = update(st, msg, Instant::now());
+    let mut found = false;
+    finish_watching(st, fx, &mut |m| found |= seen(m));
+    found
+}
+
 /// `finish`, returning every effect it skipped (raised anywhere along the way), in order.
 pub(crate) fn finish_keeping(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
+    finish_watching(st, fx, &mut |_| {})
+}
+
+/// `finish_keeping`, showing `watch` each result message before `update` runs it.
+fn finish_watching(st: &mut AppState, fx: Vec<Effect>, watch: &mut dyn FnMut(&Msg)) -> Vec<Effect> {
     let mut queue = Vec::new();
     let mut kept = Vec::new();
     let mut fx = fx;
@@ -54,6 +68,7 @@ pub(crate) fn finish_keeping(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> 
             }
         }
         let Some(m) = queue.pop() else { return kept };
+        watch(&m);
         fx = update(st, m, Instant::now());
     }
 }

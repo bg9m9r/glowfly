@@ -4,7 +4,7 @@
 
 use crate::effect::Effect;
 use crate::flows::patch_tests::{beside, cleanup, commit, last_log, last_toast, run, three_commits};
-use crate::flows::{drive, git};
+use crate::flows::{drive, drive_seeing, git};
 use crate::msg::{JobMsg, Msg, RepoMsg};
 use crate::patch::{ApplyHow, ApplyRequest, PatchEffect, PatchMsg};
 use crate::state::op_actions::state_actions;
@@ -212,8 +212,11 @@ fn apply_end_to_end_success_and_failure() {
     assert_eq!(last_toast(&st), (true, "Applied p.patch to the working tree.".to_owned()));
     assert!(st.job.is_none() && st.patch_apply.is_none());
 
-    // Applied again, it no longer fits because it is already there: nothing changes.
-    apply_now(&mut st, &p, changes(OnFail::Refuse, false, false), 1);
+    // Applied again, it no longer fits because it is already there: nothing changes. The job's
+    // failure check finds it applied.
+    let req = request(&st, &p, changes(OnFail::Refuse, false, false), 1);
+    let check_passed = |m: &Msg| matches!(m, Msg::Job(JobMsg::FailCheckPassed { .. }));
+    assert!(drive_seeing(&mut st, Msg::Patch(PatchMsg::Apply(req)), check_passed));
     let already = "p.patch is already applied: its changes are already in your files. Nothing was changed.";
     assert_eq!(last_toast(&st), (false, already.to_owned()));
     assert!(st.patch_apply.is_none());
