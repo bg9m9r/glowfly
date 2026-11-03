@@ -47,7 +47,7 @@ fn put_back_failure_says_why() {
     running(&mut st, &dir, "Put back stashed changes");
     let output = format!("$ git stash apply --index {oid}\n{LOCKED}");
     up(&mut st, Msg::AutoStash(AutoStashMsg::PutBack { workdir, oid, outcome: PutBack::Failed, output, undo: None }));
-    assert_eq!(last_toast(&st), format!("Couldn't put back \"{message}\"; it stays in your stashes."));
+    assert_eq!(last_toast(&st), format!("Couldn't put back \"{message}\"; the stash is kept."));
     // The reason is in the activity log, behind Details.
     let says = format!("Couldn't put back \"{message}\": {LOCKED_SAYS}");
     let logged = st.log.iter().rev().find(|l| !l.ok).map(|l| l.text.as_str()).unwrap_or_default();

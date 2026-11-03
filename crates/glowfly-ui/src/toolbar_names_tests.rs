@@ -33,7 +33,7 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
         "Create a branch",
         "Show the terminal panel",
         "Open the repository folder",
-        "Open Preferences",
+        "Show preferences",
         "Search and run commands",
         "Show or hide the commit search",
         "Show or hide the activity log",
@@ -148,7 +148,7 @@ fn tool_button_names_hold_their_captions() {
             assert!(name.to_lowercase().contains(&caption.to_lowercase()), "{lang:?}: {name:?} lacks its caption {caption:?}");
         }
         let mr = lang.trf("toolbar.pr.name_merge_request", &[("service", &"GitLab")]);
-        assert!(mr.contains(lang.tr("toolbar.pr.button")), "{lang:?}: {mr:?}");
+        assert!(mr.contains(lang.tr("toolbar.pr.button_merge_request")), "{lang:?}: {mr:?}");
         drop(h);
         remove_fixture(&dir);
     }

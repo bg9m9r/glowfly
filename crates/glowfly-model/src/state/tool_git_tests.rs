@@ -94,18 +94,18 @@ fn page_hints_say_what_runs() {
 
     let h = page_hint(en, ToolMode::Merge, &tool("vimdiff", "merge.tool", GitToolRun::BuiltIn { path: None }), true);
     assert_eq!(h.using, "Empty, so Git config's merge tool is used: vimdiff (from merge.tool).");
-    assert_eq!(h.detail.as_deref(), Some("A tool git knows: Glowfly runs git mergetool --tool=vimdiff."));
-    assert_eq!(h.warn, ["git mergetool runs git in this repository: it runs only once you trust the repository."]);
+    assert_eq!(h.detail.as_deref(), Some("A tool Git knows: Glowfly runs git mergetool --tool=vimdiff."));
+    assert_eq!(h.warn, ["git mergetool runs Git in this repository: it runs only once you trust the repository."]);
     let path = GitToolRun::BuiltIn { path: Some("/opt/kdiff3".into()) };
     let h = page_hint(en, ToolMode::Diff, &tool("kdiff3", "diff.tool", path), false);
-    assert_eq!(h.detail.as_deref(), Some("A tool git knows: Glowfly runs git difftool --tool=kdiff3, which starts /opt/kdiff3."));
+    assert_eq!(h.detail.as_deref(), Some("A tool Git knows: Glowfly runs git difftool --tool=kdiff3, which starts /opt/kdiff3."));
 
     let unknown = tool("compare-tool", "merge.tool", GitToolRun::Unknown);
     let h = page_hint(en, ToolMode::Diff, &unknown, true);
     assert_eq!(h.detail, None);
     assert_eq!(
         h.warn,
-        ["git config sets no difftool.compare-tool.cmd / mergetool.compare-tool.cmd and git has no built-in tool called \
+        ["Git config sets no difftool.compare-tool.cmd / mergetool.compare-tool.cmd and Git has no built-in tool called \
           compare-tool, so it can't be used."]
     );
     assert_ne!(page_hint(Lang::De, ToolMode::Diff, &unknown, true), h);

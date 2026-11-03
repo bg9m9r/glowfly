@@ -169,7 +169,7 @@ mod tests {
         git.page.candidates = Some(Vec::new());
         assert_eq!(path_text(Lang::En, &git).as_deref(), Some("Not found on your PATH"));
         git.page.candidates = Some(vec![candidate("/usr/local/bin/git", true, Ok((2, 45, 1)))]);
-        assert!(path_text(Lang::En, &git).unwrap().starts_with("git 2.45.1 at "));
+        assert!(path_text(Lang::En, &git).unwrap().starts_with("Git 2.45.1 at "));
     }
 
     #[test]

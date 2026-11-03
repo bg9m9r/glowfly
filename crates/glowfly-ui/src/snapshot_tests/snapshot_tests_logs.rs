@@ -76,7 +76,7 @@ fn preferences_general_logging() {
     let mut h = super::snapshot_tests::harness_sized(st, true, eframe::egui::vec2(1400.0, 1340.0));
     h.run();
     h.check_snapshot("prefs_general_logging");
-    h.get_by_label("Add the git commands Glowfly runs, with their timings, to the activity log").click();
+    h.get_by_label("Add the Git commands Glowfly runs, with their timings, to the activity log").click();
     h.run();
     h.get_by_label("Open logs folder").click();
     h.run();

@@ -234,12 +234,12 @@ mod tests {
 
     #[test]
     fn keywords_match_below_label_matches() {
-        assert_eq!(order("theme", &[("Open Preferences", "appearance theme"), ("Theme: Dark", "")]), vec![1, 0]);
-        let ranked = rank("settings", &[("Open Preferences", "settings options")]);
+        assert_eq!(order("theme", &[("Open preferences", "appearance theme"), ("Theme: Dark", "")]), vec![1, 0]);
+        let ranked = rank("settings", &[("Open preferences", "settings options")]);
         assert_eq!(ranked.len(), 1);
-        let len = "Open Preferences".chars().count();
+        let len = "Open preferences".chars().count();
         assert!(ranked[0].1.positions.iter().all(|&p| p < len));
-        assert!(rank("zebra", &[("Open Preferences", "settings options")]).is_empty());
+        assert!(rank("zebra", &[("Open preferences", "settings options")]).is_empty());
     }
 
     #[test]
@@ -285,10 +285,10 @@ mod tests {
             ("pushup", "Push", "upload publish"),
             ("tagdet", "Checkout tag v1.0", "switch tag release version detached"),
             ("v1 rel", "Checkout tag v1.0", "switch tag release version detached"),
-            ("zebra", "Open Preferences", "settings options"),
-            ("settings", "Open Preferences", ""),
-            ("Prefs", "Open Preferences", ""),
-            ("   ", "Open Preferences", "settings"),
+            ("zebra", "Open preferences", "settings options"),
+            ("settings", "Open preferences", ""),
+            ("Prefs", "Open preferences", ""),
+            ("   ", "Open preferences", "settings"),
             ("hsup", "Push", "upload"),
             ("öfopt", "Öffnen", "options"),
         ];
@@ -304,7 +304,7 @@ mod tests {
         // The cases cover a label hit, a keyword-only hit, a hit across both and a miss.
         assert!(fuzzy_match("upload", "Push").is_none() && rank_unchecked("upload", "Push", "upload publish").is_some());
         assert!(fuzzy_match("pushup", "Push").is_none() && rank_unchecked("pushup", "Push", "upload publish").is_some());
-        assert!(rank_unchecked("zebra", "Open Preferences", "settings options").is_none());
+        assert!(rank_unchecked("zebra", "Open preferences", "settings options").is_none());
     }
 
     #[test]

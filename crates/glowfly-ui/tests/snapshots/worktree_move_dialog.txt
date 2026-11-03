@@ -9,7 +9,7 @@ Dialog
   Button "Move"
   Label "How it works"
   Label "The worktree's folder moves to the new place, with all its files."
-  Label "git updates its records, so the worktree keeps its branch and history."
+  Label "Git updates its records, so the worktree keeps its branch and history."
   Label "The main worktree, and worktrees that contain submodules, can't be moved this way."
 painted:
   "1"

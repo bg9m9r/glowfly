@@ -6,4 +6,4 @@ Dialog
   Label "Not a valid branch name."
   CheckBox "Check out after creating" [on]
   Button "Cancel"
-  Button "Create" [disabled]
+  Button "Create branch" [disabled]

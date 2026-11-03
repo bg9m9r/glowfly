@@ -72,7 +72,7 @@
   "auto_stash.toast.back_unstaged": "Deine Änderungen aus \"{name}\" sind zurück, aber nicht vorgemerkt: das Vorgemerkte passte nicht mehr in den Index.",
   "auto_stash.toast.conflict.one": "Beim Zurückholen von \"{name}\" gab es in {count} Datei Konflikte; der Stash bleibt erhalten.",
   "auto_stash.toast.conflict.other": "Beim Zurückholen von \"{name}\" gab es in {count} Dateien Konflikte; der Stash bleibt erhalten.",
-  "auto_stash.toast.failed": "\"{name}\" ließ sich nicht zurückholen; er bleibt bei deinen Stashes.",
+  "auto_stash.toast.failed": "\"{name}\" ließ sich nicht zurückholen; der Stash bleibt erhalten.",
   "auto_stash.toast.gone": "Der Stash \"{name}\" ist nicht mehr in der Liste, es gab also nichts zurückzuholen.",
   "auto_stash.toast.made": "Deine Änderungen sind im Stash \"{name}\". Sie kommen zurück, sobald du fortsetzt oder abbrichst.",
   "blame.failed.title": "Blame für diese Datei fehlgeschlagen",

@@ -5,7 +5,7 @@ Dialog
   TextInput "Branch name" = "feature/login"
   CheckBox "Check out after creating" [on]
   Button "Cancel"
-  Button "Create"
+  Button "Create branch"
 Dialog
   Label "Discard your changes?"
   Button "Close this dialog"

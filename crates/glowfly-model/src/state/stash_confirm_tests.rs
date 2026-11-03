@@ -113,7 +113,7 @@ fn dirty_body_lists_the_overlap_and_leaves_the_warning_out_without_one() {
     assert_eq!(
         listed,
         format!(
-            "{start} It changes 2 files you have changed too, so git may stop with conflicts or refuse to apply:\n    a.txt\n    b.txt\n\nIf it conflicts, the stash is kept."
+            "{start} It changes 2 files you have changed too, so Git may stop with conflicts or refuse to apply:\n    a.txt\n    b.txt\n\nIf it conflicts, the stash is kept."
         )
     );
     let one = dirty_body(EN, StashAction::Apply, "w", Some(&both[..1]));

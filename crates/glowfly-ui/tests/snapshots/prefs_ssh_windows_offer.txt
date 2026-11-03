@@ -49,7 +49,7 @@ Button "Check the agent again"
 CheckBox "Use local SSH agent" [off]
 Label "ssh gets keys from your running agent. Glowfly doesn't choose a key in core.sshCommand while this is on."
 Label "The OpenSSH Authentication Agent service is running"
-Label "git runs Git for Windows' own ssh (C:\\Program…"
+Label "Git runs Git for Windows' own ssh (C:\\Program…"
 Link "Learn more"
 Button "Use Windows' OpenSSH"
 painted:

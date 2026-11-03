@@ -27,7 +27,7 @@ Label "Signing key"
 ComboBox "Signing key"
 Button "Reload keys"
 Button "Copy public key"
-Label "This key has expired, so git can't sign new commits with it."
+Label "This key has expired, so Git can't sign new commits with it."
 Button "Extend by 2 years"
 Label "Passphrase prompt"
 CheckBox "Ask for the key's passphrase in Glowfly" [on]
