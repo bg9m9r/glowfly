@@ -165,6 +165,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("graph_wip_row_light", Window),
     ("graph_wip_row_high_contrast", Window),
     ("graph_worktree_wips", Window),
+    ("graph_chips_shared_prefix_dark", Window),
+    ("graph_chips_shared_prefix_light", Window),
     ("graph_ghost_branch", Window),
     ("graph_ghost_branch_narrow", Window),
     ("graph_shallow", Window),
@@ -314,6 +316,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `graph_chips_shared_prefix_dark` in Porcelain.
+    "graph_chips_shared_prefix_light",
     // `prefs_general` in Porcelain.
     "prefs_general_light",
     // `conflict_popover_long_dark` and `conflict_report_long_dark` in Porcelain.

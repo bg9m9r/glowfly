@@ -197,8 +197,8 @@ const MIN_HEAD: usize = 3;
 
 /// Where a middle cut splits `text` to fit `max_w` as `width` measures it: the byte end of the
 /// head and the byte start of the tail ("…" goes between), or None when `text` fits whole.
-/// The head is the first 40% of the room, ending before its last separator (`/ - _ .`) when
-/// that keeps at least half of it; the tail fills the rest. A tail under 8 characters takes
+/// The head is the first 40% of the room, ending before its last separator (`/ - _ .`, or the
+/// run of them it ends) when that keeps at least half of it; the tail fills the rest. A tail under 8 characters takes
 /// room from the head, down to 3; when even 3 + "…" + 8 don't fit, the name is cut at its end
 /// instead (the tail is then empty: `text.len()`). Cuts land on grapheme boundaries.
 pub fn middle_cut(text: &str, max_w: f32, width: impl Fn(&str) -> f32) -> Option<(usize, usize)> {
@@ -215,7 +215,11 @@ pub fn middle_cut(text: &str, max_w: f32, width: impl Fn(&str) -> f32) -> Option
         head += 1;
     }
     let snaps = |k: usize| SEPARATORS.contains(&&text[bounds[k]..bounds[k + 1]]) && width(&text[..bounds[k]]) >= share * SNAP_MIN;
-    if let Some(k) = (1..=head.min(n - 1)).rev().find(|&k| snaps(k)) {
+    if let Some(mut k) = (1..=head.min(n - 1)).rev().find(|&k| snaps(k)) {
+        // Before a whole run of separators ("please--branches"), not inside it.
+        while k > 1 && snaps(k - 1) {
+            k -= 1;
+        }
         head = k;
     }
     // At least one grapheme always goes (the whole text doesn't fit).
