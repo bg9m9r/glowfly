@@ -51,7 +51,7 @@ pub(super) fn load_repo(
     // A load for more that can't go on from the walk is a refresh at the larger count.
     let kind = if kind == LoadKind::More { LoadKind::Refresh } else { kind };
     let result = match repo::load_reusing(&path, &opts, graph_cache, prior.as_ref()) {
-        Err(glowfly_core::error::Error::NotOwned(root)) => return git_env::not_owned(generation, kind, root),
+        Err(glowfly_core::error::Error::NotOwned(refusal)) => return git_env::not_owned(generation, kind, refusal),
         r => r.map(Box::new).map_err(|e| format!("Could not open {}: {e}", glowfly_core::native_path::shown(&path))),
     };
     Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result })

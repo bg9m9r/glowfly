@@ -28,7 +28,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let _span = tracing::debug_span!("load", path = %path.display(), max = opts.max_commits).entered();
     let loaded_with = opts.clone();
     let max_commits = opts.max_commits.max(1);
-    let mut repo = Repository::discover(path).map_err(|e| crate::safe_directory::open_error(path, &e))?;
+    let mut repo = crate::safe_directory::discover(path)?;
     if repo.is_bare() {
         return Err(Error::Unsupported("bare repositories are not supported".into()));
     }

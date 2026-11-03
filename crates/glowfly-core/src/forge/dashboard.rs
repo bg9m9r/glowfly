@@ -40,7 +40,7 @@ pub struct ScannedRepo {
 
 /// Opens the repository at (or above) `path` with libgit2 and reads its hosting targets.
 pub fn read_repo(path: &Path, connections: &[Connection]) -> Result<ScannedRepo> {
-    let repo = git2::Repository::discover(path).map_err(|e| crate::safe_directory::open_error(path, &e))?;
+    let repo = crate::safe_directory::discover(path)?;
     if repo.is_bare() {
         return Err(Error::Unsupported("bare repositories are not supported".into()));
     }
