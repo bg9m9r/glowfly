@@ -180,7 +180,7 @@ fn op_name(t: Lang, op: RepositoryState) -> &'static str {
 
 /// The last failure in `log`: its newest run of this session, when that run failed and its
 /// failure wasn't dismissed.
-pub fn last_failure(log: &[LogEntry], dismissed: &std::collections::HashSet<EntryId>) -> Option<Failure> {
+fn last_failure(log: &[LogEntry], dismissed: &std::collections::HashSet<EntryId>) -> Option<Failure> {
     let run = log.iter().rev().find(|e| e.run.is_some() && e.earlier.is_none())?;
     let title = run.run.as_ref().map(|r| r.title.clone())?;
     (!run.ok && !dismissed.contains(&run.id)).then_some(Failure { label: title, entry: run.id })

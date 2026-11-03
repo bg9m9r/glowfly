@@ -169,6 +169,7 @@ mod stash_dialog;
 mod stash_push_dialog;
 mod stashes;
 mod status;
+mod status_glance;
 mod submodule_dialogs;
 mod submodules;
 mod tab_dialog;

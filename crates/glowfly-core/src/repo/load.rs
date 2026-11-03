@@ -180,7 +180,8 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let remote_heads = super::remotes::remote_heads(&repo, &names);
     let push_remotes = super::push_config::push_remotes(&repo);
     let pull_rebase = super::push_config::pull_rebases(&repo, head_branch.as_deref());
-    let remote_urls: Vec<(String, String)> = remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
+    let remote_urls: Vec<(String, String)> =
+        remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
 
     let (mut tags, mut other_tags, mut lightweight_tags) = (Vec::new(), Vec::new(), HashSet::new());
     for t in repo.tag_names(None)?.iter().flatten().filter(|t| super::is_safe_ref_name(t)) {

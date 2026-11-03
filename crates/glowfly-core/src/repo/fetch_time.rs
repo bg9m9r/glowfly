@@ -18,7 +18,8 @@ pub(super) fn fetched_at(git_dir: &Path, common: &Path) -> Option<i64> {
 /// whose fetch URL (raw, or as libgit2 rewrote it in `rewritten`) a line of it ends in. Empty
 /// when there is no file or it names none of them.
 pub(super) fn fetched_remotes(git_dir: &Path, common: &Path, remotes: &[RemoteInfo], rewritten: &[(String, String)]) -> Vec<String> {
-    let newest = [git_dir, common].into_iter().map(|d| d.join("FETCH_HEAD")).filter_map(|f| Some((modified(&f)?, f))).max_by_key(|(t, _)| *t);
+    let newest =
+        [git_dir, common].into_iter().map(|d| d.join("FETCH_HEAD")).filter_map(|f| Some((modified(&f)?, f))).max_by_key(|(t, _)| *t);
     let Some((_, file)): Option<(i64, PathBuf)> = newest else { return Vec::new() };
     let text = std::fs::read_to_string(file).unwrap_or_default();
     let urls: Vec<String> = text.lines().filter_map(line_url).map(|u| bare_url(&u)).collect();

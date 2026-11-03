@@ -61,6 +61,11 @@ pub fn tip(t: Lang, settings: &Settings, snap: &Snapshot, now: i64, utc_offset: 
     lines.join("\n")
 }
 
+/// What a click on the item runs: the toolbar's Fetch, from every remote.
+pub fn fetch_all() -> crate::msg::Msg {
+    crate::msg::Msg::git("Fetch all", &["fetch", "--all", "--prune"])
+}
+
 /// How many seconds until `label` next changes: at the next whole minute of the fetch's age
 /// (at least 1). None with no fetch time, whose label never changes by itself.
 pub fn changes_in(fetched_at: Option<i64>, now: i64) -> Option<u64> {
@@ -113,9 +118,6 @@ mod tests {
         );
         snap.fetched_at = Some(NOW - 2 * HOUR);
         snap.fetched_remotes = vec!["origin".into()];
-        assert_eq!(
-            tip_now(&snap),
-            "origin: Last fetched 2 hours ago\nupstream: not in the last fetch\nClick to fetch from every remote.",
-        );
+        assert_eq!(tip_now(&snap), "origin: Last fetched 2 hours ago\nupstream: not in the last fetch\nClick to fetch from every remote.",);
     }
 }

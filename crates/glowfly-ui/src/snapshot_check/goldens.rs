@@ -93,9 +93,16 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("title_bar_windows_light", Top(108.0)),
     ("title_bar_mac_dark", Top(108.0)),
     ("tabs_restyled", Window),
+    // The tabs' state slot, one tab per state (D15).
+    ("tabs_states_dark", Top(90.0)),
+    ("tabs_states_light", Top(90.0)),
     ("tabs_hover", Top(40.0)),
     // The status bar's What's new chip after an upgrade, in both default themes, and beside an
     // update's chip.
+    // The status bar's last failure and fetch item, and a running job (D15).
+    ("status_bar_failure_dark", Window),
+    ("status_bar_failure_light", Window),
+    ("status_bar_job", Window),
     ("status_whats_new_dark", Window),
     ("status_whats_new_light", Window),
     ("status_whats_new_beside_update", Window),

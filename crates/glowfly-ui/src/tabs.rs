@@ -11,7 +11,8 @@
 //! repository's worktrees form a group (`state/tab_groups.rs`) marked by a colored strip along
 //! their bottom and, when everything fits at its own width, a chip naming the repository before
 //! the group's first tab (part of that tab's slot, hidden while a tab is dragged); a tab dropped
-//! outside its group takes the group.
+//! outside its group takes the group. Each tab's state slot, tooltip and accessible name come
+//! from its glance (`state::tabs::glance`): "api-server: 3 changed files, 2 behind origin/main".
 
 use super::backdrop::{self, Surface};
 use super::tab_drag::{SLIDE, Slot, drag, lefts_after};
@@ -30,6 +31,7 @@ use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
 use crate::state::repo_colours;
 use crate::state::tab_groups::{self, chip_rooms, new_index, shown_at};
+use crate::state::tabs::glance::Mark;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::chip::ChipSize;
 use crate::ui::widgets::menu::separator;
@@ -89,6 +91,14 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let font_of = |active: bool| if active { active_font.clone() } else { font.clone() };
         let measure = |i: usize| ui.painter().layout_no_wrap(name(i).to_owned(), active_font.clone(), Color32::PLACEHOLDER).size().x;
         let repo_of = |i: usize| repo_colours::tab_colour(st, i).map(color::repo_hue);
+        let glances: Vec<_> = (0..st.tabs.len()).map(|i| st.tab_glance(i)).collect();
+        let marks: Vec<_> = glances.iter().map(|g| g.mark()).collect();
+        // Only a running job's dots move; under reduce motion they stand still.
+        let pulse = (marks.contains(&Some(Mark::Running)) && !st.motion_reduced()).then(|| ui.input(|i| i.time));
+        if pulse.is_some() {
+            ui.ctx().request_repaint();
+        }
+        let described = |i: usize| glances[i].describe(t, name(i));
         let swatch_room = |i: usize| if repo_of(i).is_some() { SWATCH_ROOM } else { 0.0 };
         // A worktree group's strip and chip take its repository's colour when it has one.
         let strip_of = |first: usize, n: usize| repo_of(first).map_or_else(|| group_color(n), group_tint);
@@ -125,7 +135,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                     let (rect, _) = ui.allocate_exact_size(vec2(w, height), Sense::hover());
                     (rect, ui.interact(rect, ui.id().with(("tab", i)), Sense::click_and_drag()))
                 });
-                name_tab(&r, name(i), i == st.active_tab);
+                name_tab(&r, &described(i), i == st.active_tab);
                 let close = ui.interact(close_hit(rect), r.id.with("close"), Sense::click());
                 let close_name = t.trf("tabs.close.name", &[("name", &name(i))]);
                 close.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &close_name));
@@ -138,7 +148,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         // branch's colour (the accent when detached or without a repository).
         let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
         let band = st.snap.as_ref().and_then(|s| s.head_swatch()).map_or_else(color::accent, line);
-        let look = |i: usize, active: bool| TabLook { active, band, repo: repo_of(i), ..TabLook::quiet(fill) };
+        let look = |i: usize, active: bool| TabLook { active, band, repo: repo_of(i), mark: marks[i], pulse, ..TabLook::quiet(fill) };
         let (slide, fade) =
             if st.motion_reduced() { (0.0, 0.0) } else { (motion::duration(SLIDE, ui.ctx()), motion::duration(CLOSE_FADE, ui.ctx())) };
         // Lit tabs (active, hovered or pressed) get no separator beside them, and none while dragging.
@@ -202,9 +212,12 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                         (Some(path), None) => Some(glowfly_core::native_path::shown(path)),
                         (None, _) => None,
                     };
-                    // A cut name puts the whole name first. Over the chip, the group.
+                    // A cut name puts the whole name first, and the tab's states put it with them.
+                    // Over the chip, the group.
+                    let states = !glances[i].states(t).is_empty();
                     let tip = match group {
                         Some((members, _)) if on_chip => Some(t.trn("tabs.group_chip.tip", members.len(), &[("group", &group_name(i))])),
+                        _ if states => Some(tip.map_or_else(|| described(i), |tip| format!("{}\n{tip}", described(i)))),
                         _ => full_tip(cut.cut, name(i), tip),
                     };
                     let r = match tip {

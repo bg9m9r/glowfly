@@ -1,0 +1,6 @@
+window 900x28
+Label "Fetch all failed"
+Label "·"
+Button "Details"
+Button "Dismiss"
+Button "Fetched 4 min ago" [disabled]

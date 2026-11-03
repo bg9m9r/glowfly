@@ -30,7 +30,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `frame_layout.rs` draws the window's panels in order.
 - `panel_rails.rs` draws the side panels' rails.
 - `toasts.rs` draws the toasts.
-- `status.rs` draws the status bar (a running job's label, its transfer's progress and its Cancel, disabled with the reason while it merges); `live_updates.rs` its live-updates mark and label beside the version (a click refreshes only when updates are slow or off).
+- `status.rs` draws the status bar: left, a running job's dots, label, progress and Cancel (disabled with the reason while it merges), or the last failure, then the forge part; right, the chips, the fetch item, the live state and the zoom; `status_glance.rs` its last failure (Details, ×) and "Fetched 4 min ago" (a click fetches); `live_updates.rs` its live-updates mark and label (a click refreshes only when updates are slow or off).
 - `menu_anchor.rs` opens a menu that drops below a custom-drawn button (the title bar's menu button, the pickers).
 - `menu_keys/`: the keyboard in every menu, run on each menu level's contents by `widgets::menu::styled` (menu spec §9): `level.rs` the keys (Up and Down wrapping, Home, End, Right and Left between a row's parts, typeahead, Esc and Left closing one level and giving the focus back), `items.rs` the level's focusable items in rows, `stash.rs` the keys kept from the views while a menu is open, `memory.rs` what is kept between frames; tests in `tests.rs`, `bar_tests.rs` and `view_tests.rs`.
 - `repo_line.rs`: the 2 px line in the active tab's repository colour along the window's top edge; which tab shows which colour is `state/repo_colours.rs`.
@@ -50,7 +50,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 ## Repository tabs
 
 - `tabs.rs` lays the repository tabs out: the system frame's tab bar, or the strip a drawn title bar holds.
-- `tab_paint.rs` paints them, with the repository's swatch.
+- `tab_paint.rs` paints them, with the repository's swatch and the state slot before the × (D15).
 - `tab_drag.rs` drags them.
 - Each tab is a Tab node in one TabList, named after it (selected while active); its × is "Close tab {name}" and closes on a middle-click or opens the tab menu on a right-click; `tabs_access_tests.rs` checks these and that Tab walks the bar's buttons.
 - `tab_list.rs`: the tab list right after the tab bar's + button: a chevron button whose popup lists the open tabs (click one to select it) and the recently closed ones, newest first (click one to reopen it).

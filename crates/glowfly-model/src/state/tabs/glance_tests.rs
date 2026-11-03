@@ -6,7 +6,10 @@ use glowfly_core::logs::RunInfo;
 use std::collections::HashSet;
 
 fn run(ok: bool, title: &str) -> LogEntry {
-    LogEntry { run: Some(RunInfo { title: title.into(), summary: String::new(), took_ms: None, routine: false }), ..LogEntry::new(ok, title) }
+    LogEntry {
+        run: Some(RunInfo { title: title.into(), summary: String::new(), took_ms: None, routine: false }),
+        ..LogEntry::new(ok, title)
+    }
 }
 
 fn counts(changed: usize, behind: usize) -> Glance {

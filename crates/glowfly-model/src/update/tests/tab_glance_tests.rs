@@ -104,7 +104,18 @@ fn a_whole_status_read_for_a_parked_tab_moves_its_changes_and_keeps_its_branch_c
     assert_eq!(st.tab_glance(0).mark(), Some(Mark::InProgress));
 
     // A read of some paths can't say how many files changed: the counts stay.
-    send(&mut st, scoped(&dir, status_loaded(StatusRead::Paths(PathsStatus { covered: vec!["a.txt".into()], unstaged: Vec::new(), state: RepositoryState::Clean, submodule_touched: false }))));
+    send(
+        &mut st,
+        scoped(
+            &dir,
+            status_loaded(StatusRead::Paths(PathsStatus {
+                covered: vec!["a.txt".into()],
+                unstaged: Vec::new(),
+                state: RepositoryState::Clean,
+                submodule_touched: false,
+            })),
+        ),
+    );
     assert_eq!(st.tab_glance(0).counts.unwrap().changed, 2);
 
     // An unchanged repository's status read moves them too.
