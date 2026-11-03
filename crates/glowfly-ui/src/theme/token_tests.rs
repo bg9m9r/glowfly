@@ -1,15 +1,16 @@
 //! The design tokens: the colour tokens worked out from every built-in palette and two custom
 //! ones (their contrast floors and relationships), the corner scale, the elevations, the motion
-//! curve and Reduce motion, and what `apply_style` installs.
+//! curve and Reduce motion, the focus rings in both styles (and the Strong ring's contrast on
+//! every built-in), and what `apply_style` installs.
 
 use super::color::Palette;
 use super::contrast::{lightness, mix, ratio};
 use super::surfaces::{Tone, over};
 use super::tests::ocean;
-use super::tokens::{Elevation, motion, radius, shadow};
+use super::tokens::{self, Elevation, motion, radius, shadow};
 use super::*;
-use eframe::egui::{self, Color32, CornerRadius, Shadow};
-use glowfly_core::settings::{BuiltinTheme, ColorValue};
+use eframe::egui::{self, Color32, CornerRadius, Rect, Shadow, StrokeKind};
+use glowfly_core::settings::{BuiltinTheme, ColorValue, FocusStyle};
 
 /// (name, palette, high contrast) for every built-in, the Garden pair and two custom palettes
 /// with odd colours.
@@ -159,6 +160,95 @@ fn the_focus_ring_shows_on_every_surface() {
         }
         assert!(ratio(p.accent, p.tool_backing()) >= 3.0, "{t}: accent on the tool backing");
     }
+}
+
+/// Strong focus (Preferences > Accessibility > Focus indicator), in every built-in: the accent
+/// ring reads against the `bg` outline around it, so it always meets a colour it stands out on
+/// whatever is drawn beside it (the ring against each surface is
+/// `the_focus_ring_shows_on_every_surface`).
+#[test]
+fn the_strong_ring_reads_on_its_bg_outline() {
+    for (t, p) in super::tests::palettes() {
+        assert!(ratio(p.accent, p.bg) >= 3.0, "{t}: accent on its bg outline {:.2}", ratio(p.accent, p.bg));
+    }
+}
+
+/// The inset ring on a row (`row_fill`) reads on the selection, the inactive selection and the
+/// hover fill, in either style; the Strong one's inner `bg` line sits against the accent.
+#[test]
+fn the_inset_ring_reads_on_every_row_fill() {
+    for (t, p) in super::tests::palettes() {
+        for (fill, what) in [(p.selected, "selected"), (tokens::selected_inactive(p), "selected inactive"), (p.hover, "hover")] {
+            assert!(ratio(p.accent, fill) >= 3.0, "{t}: accent on {what} {:.2}", ratio(p.accent, fill));
+        }
+    }
+}
+
+/// A primary half's inset ring (`focus_ring_inset_in`) is the primary ink edged by the half's
+/// own fill, so it only has to read on that fill: at rest, hovered and pressed.
+#[test]
+fn the_primary_inset_ring_reads_on_its_fill_in_every_state() {
+    for (t, p) in super::tests::palettes() {
+        for fill in [p.primary, p.shade_fill(p.primary, tokens::FILL_HOVER), p.shade_fill(p.primary, tokens::FILL_PRESSED)] {
+            assert!(ratio(p.on_primary, fill) >= 3.0, "{t}: primary ink on {fill:?} {:.2}", ratio(p.on_primary, fill));
+        }
+    }
+}
+
+/// The rect strokes `draw` paints with `style` on, as (rect, width, colour, kind).
+fn strokes(style: FocusStyle, draw: impl Fn(&egui::Painter)) -> Vec<(Rect, f32, Color32, StrokeKind)> {
+    color::set_palette(&DARK);
+    let ctx = egui::Context::default();
+    tokens::set_focus_style(&ctx, style);
+    let out = ctx.run(egui::RawInput::default(), |ctx| {
+        draw(&egui::Painter::new(ctx.clone(), egui::LayerId::background(), Rect::EVERYTHING));
+    });
+    out.shapes
+        .iter()
+        .filter_map(|c| match &c.shape {
+            egui::Shape::Rect(r) => Some((r.rect, r.stroke.width, r.stroke.color, r.stroke_kind)),
+            _ => None,
+        })
+        .collect()
+}
+
+const FOCUSED: Rect = Rect { min: egui::Pos2 { x: 10.0, y: 10.0 }, max: egui::Pos2 { x: 110.0, y: 38.0 } };
+
+#[test]
+fn strong_rings_are_thicker_and_outlined_in_bg() {
+    let ring = |style| strokes(style, |p| tokens::focus_ring(p, FOCUSED, radius::MD));
+    let gap = FOCUSED.expand(tokens::FOCUS_GAP);
+    assert_eq!(ring(FocusStyle::Standard), [(gap, 2.0, DARK.accent, StrokeKind::Outside)]);
+    assert_eq!(
+        ring(FocusStyle::Strong),
+        [(gap, 3.0, DARK.accent, StrokeKind::Outside), (gap.expand(3.0), 1.0, DARK.bg, StrokeKind::Outside)]
+    );
+    let inset = |style| strokes(style, |p| tokens::focus_ring_inset(p, FOCUSED, 0));
+    assert_eq!(inset(FocusStyle::Standard), [(FOCUSED, 1.5, DARK.accent, StrokeKind::Inside)]);
+    assert_eq!(
+        inset(FocusStyle::Strong),
+        [(FOCUSED, 2.5, DARK.accent, StrokeKind::Inside), (FOCUSED.shrink(2.5), 1.0, DARK.bg, StrokeKind::Inside)]
+    );
+}
+
+#[test]
+fn a_strong_ring_on_a_primary_fill_is_edged_by_that_fill() {
+    let fill = Color32::from_rgb(1, 2, 3);
+    let ring = |style| strokes(style, |p| tokens::focus_ring_inset_in(p, FOCUSED, 0, DARK.on_primary, fill));
+    assert_eq!(ring(FocusStyle::Standard), [(FOCUSED, 1.5, DARK.on_primary, StrokeKind::Inside)]);
+    assert_eq!(
+        ring(FocusStyle::Strong),
+        [(FOCUSED, 1.0, fill, StrokeKind::Inside), (FOCUSED.shrink(1.0), 2.5, DARK.on_primary, StrokeKind::Inside)]
+    );
+}
+
+#[test]
+fn a_strong_text_field_takes_the_strong_ring_instead_of_its_halo() {
+    let halo = |style| strokes(style, |p| tokens::focus_halo(p, FOCUSED, radius::MD));
+    let soft = halo(FocusStyle::Standard);
+    assert_eq!(soft.len(), 1);
+    assert_eq!((soft[0].1, soft[0].2), (3.0, DARK.accent.gamma_multiply(0.22)), "the soft halo");
+    assert!(halo(FocusStyle::Strong).is_empty(), "the field draws the Strong ring instead");
 }
 
 #[test]

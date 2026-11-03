@@ -276,6 +276,7 @@ fn accessibility_fields_stay_through_a_switch() {
     s.a11y.cursor_blink = false;
     s.a11y.toast_time = ToastTime::UntilClosed;
     s.a11y.tooltip_delay = TooltipDelay::Slow;
+    s.a11y.focus_style = crate::settings::FocusStyle::Strong;
     s.set_branch_pin(std::path::Path::new("/w/r"), "topic", Some(4));
     let before = s.a11y.clone();
     s.swap_profile_setup(B);
