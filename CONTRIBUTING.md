@@ -64,6 +64,7 @@ A few other commands regenerate checked-in files or help with debugging:
 ```
 UPDATE_ICONS=1 cargo test -p glowfly --test packaging app_icon   # redraw assets/icon/ after changing tests/packaging/app_icon/draw.rs
 UPDATE_NOTICES=1 cargo test -p glowfly-core notice                # regenerate THIRD-PARTY-NOTICES.md after a dependency change
+UPDATE_SCREENSHOTS=1 cargo test -p glowfly-ui readme_screenshots   # re-render the README's screenshots in docs/screenshots/
 RUST_LOG=glowfly=debug cargo run -- <repo path>                   # log background work as it runs
 GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture   # read-only check against a real host
 ```
