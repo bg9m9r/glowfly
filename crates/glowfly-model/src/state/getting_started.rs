@@ -10,7 +10,6 @@ use crate::onboarding::OnboardingMsg;
 use crate::state::AppState;
 use crate::state::PrefPage;
 use crate::state::Selection;
-use crate::state::palette::PaletteCommand;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 
@@ -78,8 +77,16 @@ pub enum ShowMe {
     Send(Box<Msg>),
     /// Open the command palette with this text typed, listing the feature's commands.
     Search(&'static str),
+    /// Open the palette's file pick for Blame (not counted among its recent commands).
+    PickFile,
     /// Nothing more: the feature is already in view.
     Nothing,
+}
+
+/// Ok when the open repository has a commit (an unborn branch has nothing to blame or branch
+/// a worktree from).
+fn first_commit(st: &AppState, t: Lang) -> Result<(), &'static str> {
+    st.snap.as_ref().is_some_and(|s| s.head_oid.is_some()).then_some(()).ok_or(t.tr("getting_started.needs_first_commit"))
 }
 
 fn send(m: Msg) -> ShowMe {
@@ -161,7 +168,12 @@ impl Card {
         match self {
             Card::Tour => repo().map(|_| send(Msg::Onboarding(OnboardingMsg::StartTour))),
             Card::Palette => Ok(send(Msg::Palette(PaletteMsg::TogglePalette))),
-            Card::Blame => repo().map(|_| send(Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Blame)))),
+            Card::Blame => {
+                repo()?;
+                first_commit(st, t)?;
+                // The file pick also needs no conflict, rebase, history or blame view behind the page.
+                crate::state::palette::can_pick_file(st).then_some(ShowMe::PickFile).ok_or(t.tr("getting_started.needs_view_closed"))
+            }
             Card::Rebase => {
                 repo()?;
                 match st.session.selection {
@@ -170,8 +182,16 @@ impl Card {
                 }
             }
             Card::Journal => repo().map(|_| send(Msg::Journal(crate::journal::JournalMsg::Open))),
-            Card::Worktrees => repo().map(|_| ShowMe::Search("worktree")),
-            Card::Stash => repo().map(|_| ShowMe::Search("stash")),
+            Card::Worktrees => {
+                repo()?;
+                first_commit(st, t).map(|_| ShowMe::Search("worktree"))
+            }
+            Card::Stash => {
+                repo()?;
+                // The palette lists stash commands only with changes to stash or stashes to apply.
+                let something = st.snap.as_ref().is_some_and(|s| s.is_dirty() || !s.stashes.is_empty());
+                something.then_some(ShowMe::Search("stash")).ok_or(t.tr("getting_started.needs_changes"))
+            }
             Card::Connect => prefs(PrefPage::Integrations),
             Card::Dashboard => Ok(send(Msg::Dashboard(DashboardMsg::Open))),
             Card::Terminal => {

@@ -8,9 +8,9 @@ use crate::effect::{Effect, LoadKind};
 use crate::msg::{Msg, RepoMsg};
 use crate::onboarding::OnboardingMsg as O;
 use crate::state::layout::{ToolView, tool_view};
-use crate::state::onboarding::getting_started::{Card, Group, HIDDEN_ID, groups, hidden, progress};
+use crate::state::onboarding::getting_started::{Card, Group, HIDDEN_ID, ShowMe, groups, hidden, progress};
 use crate::state::palette::PaletteCommand as C;
-use crate::state::palette::entries;
+use crate::state::palette::{Mode, entries};
 use crate::state::{AppState, PrefPage, Selection};
 use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::repo::{self, LoadOptions};
@@ -169,5 +169,45 @@ fn show_me_in_a_repository() {
     run(&mut st, O::OpenGettingStarted);
     run(&mut st, O::ShowMe(Card::Journal));
     assert!(st.session.journal.view.is_some() && st.onboarding.getting_started.is_none());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn stash_needs_something_to_stash_or_apply() {
+    let (mut st, dir) = opened("gs-stash-clean", |d| git(d, &["checkout", "-q", "--", "a.txt"]));
+    assert!(!st.snap.as_ref().unwrap().is_dirty());
+    let t = st.settings.lang();
+    assert_eq!(Card::Stash.show_me(&st).err(), Some(t.tr("getting_started.needs_changes")), "the palette would list no stash command");
+    run(&mut st, O::OpenGettingStarted);
+    run(&mut st, O::ShowMe(Card::Stash));
+    assert!(st.onboarding.getting_started.is_some() && st.palette.is_none(), "the page stays");
+    let _ = std::fs::remove_dir_all(dir);
+
+    let (st, dir) = opened("gs-stash-dirty", |_| {});
+    assert!(matches!(Card::Stash.show_me(&st), Ok(ShowMe::Search("stash"))), "changes to stash");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn blame_and_worktrees_need_a_first_commit() {
+    let (mut st, dir) = opened("gs-unborn", |d| git(d, &["checkout", "-q", "--orphan", "fresh"]));
+    assert!(st.snap.as_ref().unwrap().head_oid.is_none(), "an unborn branch");
+    let first = Some(st.settings.lang().tr("getting_started.needs_first_commit"));
+    assert_eq!(Card::Blame.show_me(&st).err(), first);
+    assert_eq!(Card::Worktrees.show_me(&st).err(), first);
+    run(&mut st, O::OpenGettingStarted);
+    run(&mut st, O::ShowMe(Card::Blame));
+    assert!(st.onboarding.getting_started.is_some() && st.palette.is_none(), "the page stays");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn blame_opens_the_file_pick_without_counting_as_palette_use() {
+    let (mut st, dir) = opened("gs-blame", |_| {});
+    run(&mut st, O::OpenGettingStarted);
+    let fx = run(&mut st, O::ShowMe(Card::Blame));
+    assert!(matches!(st.palette.as_ref().map(|p| &p.mode), Some(Mode::Pick(_))), "the file pick opens");
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadTrackedPaths { .. })));
+    assert!(st.palette_recent.is_empty(), "not recorded among the palette's recent commands");
     let _ = std::fs::remove_dir_all(dir);
 }

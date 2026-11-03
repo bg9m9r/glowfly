@@ -4,7 +4,7 @@
 use crate::effect::Effect;
 use crate::state::AppState;
 use crate::state::onboarding::getting_started::{Card, GettingStarted, HIDDEN_ID, ShowMe};
-use crate::state::palette::Palette;
+use crate::state::palette::{Palette, PickKind};
 use std::time::Instant;
 
 /// Opens the page over whatever the central area shows; the welcome, when open, is finished
@@ -28,10 +28,11 @@ pub(super) fn show_me(st: &mut AppState, card: Card, now: Instant, fx: &mut Vec<
     match action {
         ShowMe::Send(msg) => fx.extend(super::super::update_sealed(st, *msg, now)),
         ShowMe::Search(text) => {
-            if st.modal.is_none() && st.prefs.is_none() && !st.askpass.showing() {
+            if super::super::palette::may_open(st) {
                 st.palette = Some(Palette { query: text.to_owned(), ..Palette::default() });
             }
         }
+        ShowMe::PickFile => super::super::palette::enter_pick(st, PickKind::Blame, fx),
         ShowMe::Nothing => {}
     }
 }
