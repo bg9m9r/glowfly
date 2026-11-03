@@ -227,6 +227,7 @@ fn mark_all_conflicted_sends_every_restorable_path() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

@@ -159,8 +159,16 @@ pub(crate) fn rebasing(theme: ThemeChoice, name: &str, kind: StopKind, conflicte
     snap.state = RepositoryState::RebaseInteractive;
     let stop = Stop { kind, oid: Some(skeleton) };
     let autostash = kind == StopKind::Conflict;
-    snap.rebase =
-        Some(RebaseProgress { step: 2, total: 4, stop, summary: "Add app skeleton".into(), autostash, interactive: true, command: None });
+    snap.rebase = Some(RebaseProgress {
+        step: 2,
+        total: 4,
+        stop,
+        summary: "Add app skeleton".into(),
+        autostash,
+        interactive: true,
+        command: None,
+        amends: kind == StopKind::Edit,
+    });
     if conflicted {
         snap.unstaged.push(FileEntry::new("app.txt", '!'));
     }
@@ -183,6 +191,51 @@ fn rebase_banner_conflict() {
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { .. })), "Skip asks first, as before");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// At a stop to edit with Amend ticked and the message changed: Amend and continue leads, and
+/// sends one message that commits and continues.
+fn amend_and_continue(theme: ThemeChoice, name: &str) {
+    let dark = theme == ThemeChoice::Dark;
+    let (mut st, dir) = rebasing(theme, name, StopKind::Edit, false);
+    st.session.draft.amend = true;
+    st.session.draft.summary = "Reworded while editing".into();
+    let mut h = harness(st, dark);
+    h.run();
+    h.check_snapshot(name);
+    assert!(h.query_by_label("Commit and continue").is_none());
+    h.get_by_label("Amend and continue").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Commit(crate::msg::CommitMsg::CommitAndContinue))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn rebase_edit_amend_and_continue_dark() {
+    amend_and_continue(ThemeChoice::Dark, "rebase_edit_amend_and_continue_dark");
+}
+
+/// At a stop to edit where HEAD isn't the commit being edited (its step conflicted, or HEAD was
+/// reset): Amend is off and can't be ticked, and the button is Commit and continue.
+fn not_amending(theme: ThemeChoice, name: &str) {
+    let dark = theme == ThemeChoice::Dark;
+    let (mut st, dir) = rebasing(theme, name, StopKind::Edit, false);
+    st.snap.as_mut().unwrap().rebase.as_mut().unwrap().amends = false;
+    st.session.draft.summary = "Split out the layout".into();
+    let mut h = harness(st, dark);
+    h.run();
+    h.check_snapshot(name);
+    assert!(h.query_by_label("Amend and continue").is_none());
+    assert!(h.get_by_label("Amend").is_disabled(), "Amend can't be ticked");
+    assert!(h.query_by_label("More commit options").is_some(), "Skip hooks stays reachable");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn rebase_edit_not_amending_dark() {
+    not_amending(ThemeChoice::Dark, "rebase_edit_not_amending_dark");
 }
 
 #[test]

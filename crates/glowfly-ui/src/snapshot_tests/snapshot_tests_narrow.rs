@@ -53,14 +53,17 @@ fn narrow_pull_request_header_folds_its_links() {
         let (mut st, dir) = with_pr(ThemeChoice::Dark, &format!("narrow-pr-{lang}"), true);
         st.settings.language = lang.into();
         let t = st.settings.lang();
-        let mut h = harness_sized(st, true, egui::vec2(900.0, HEIGHT));
-        h.run();
+        // The commit panel is a rail beside the pull request, so it takes a narrower window to
+        // fold the links; there the conversation's loading spinner shows and keeps repainting:
+        // step rather than run to rest.
+        let mut h = harness_sized(st, true, egui::vec2(720.0, HEIGHT));
+        h.run_steps(4);
         assert!(h.query_by_label(t.tr("panel.header.copy_link")).is_none(), "{lang}: Copy link folded");
         h.get_by_label(t.tr("panel.header.more.name")).click();
-        h.run();
+        h.run_steps(4);
         h.check_snapshot(&format!("narrow_pull_request_header_{lang}"));
         h.get_by_label(t.tr("panel.header.copy_link")).click();
-        h.run();
+        h.run_steps(4);
         assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(u) if u.ends_with("/pull/12"))), "{lang}");
         drop(h);
         remove_fixture(&dir);

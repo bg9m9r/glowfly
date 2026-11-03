@@ -161,6 +161,9 @@ pub enum CommitMsg {
     AppendToDescription(String),
     /// The merge banner's Commit merge: fills a blank draft from MERGE_MSG, then commits.
     CommitMerge,
+    /// At a rebase stopped to edit: Amend (or Commit) and continue, which commits the draft and
+    /// then resumes the rebase as Continue does.
+    CommitAndContinue,
 }
 
 impl CommitMsg {
@@ -173,7 +176,8 @@ impl CommitMsg {
             | Self::SetPushAfterCommit(..)
             | Self::PrefillAmend
             | Self::AppendToDescription(..)
-            | Self::CommitMerge => None,
+            | Self::CommitMerge
+            | Self::CommitAndContinue => None,
         }
     }
 }

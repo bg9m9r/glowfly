@@ -61,7 +61,7 @@ mod tests {
 
     fn progress(step: usize, total: usize) -> RebaseProgress {
         let stop = Stop { kind: StopKind::Conflict, oid: None };
-        RebaseProgress { step, total, stop, summary: String::new(), autostash: false, interactive: true, command: None }
+        RebaseProgress { step, total, stop, summary: String::new(), autostash: false, interactive: true, command: None, amends: false }
     }
 
     fn text(title: &str, detail: Option<(&str, bool)>, conflicts: bool) -> Option<StripText> {

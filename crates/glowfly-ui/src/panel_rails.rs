@@ -1,23 +1,26 @@
 //! The narrow rails that stand in for side panels: the 16 px edge strip a hidden left or details
-//! panel leaves (a click shows it again, saved like the menu's item), and the 44 px commit rail
-//! the details panel collapses to while a tool view fills the central area (expanding it lasts
+//! panel leaves (a click shows it again, saved like the menu's item), and the 36 px commit rail
+//! the details panel collapses to while a tool view, the pull request panel or the rebase editor
+//! fills the central area (expanding it lasts
 //! for that tool view only; `state::layout::details_shape` decides which is drawn).
 
 use super::access;
 use super::backdrop::{self, Surface};
-use super::theme::{color, spacing, type_scale};
+use super::theme::color;
+use super::theme::sizes::ChipSize;
+use super::widgets::chip::{Chip, Look};
 use super::widgets::{self, Icon};
 use crate::keymap::{BindingId, KeyAction};
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
 use crate::state::layout::{Panel, wip_change_count};
-use crate::ui::theme::tokens::radius;
-use eframe::egui::{self, CornerRadius, Sense, Stroke, StrokeKind, pos2, vec2};
+use eframe::egui::{self, Sense, Stroke, pos2};
 
 /// The edge strip's width.
 const EDGE_W: f32 = 16.0;
-/// The collapsed commit panel's width.
-const RAIL_W: f32 = 44.0;
+/// The collapsed commit panel's width, and the room above and between its entries.
+const RAIL_W: f32 = 36.0;
+const RAIL_GAP: f32 = 8.0;
 
 /// The strip a hidden `panel` (Left or Details) leaves at its edge of the window.
 pub(super) fn edge(ctx: &egui::Context, st: &AppState, panel: Panel, msgs: &mut Vec<Msg>) {
@@ -53,32 +56,32 @@ pub(super) fn edge(ctx: &egui::Context, st: &AppState, panel: Panel, msgs: &mut 
     });
 }
 
-/// The commit panel collapsed beside a tool view: expand, the working tree's change count (when
-/// there are changes) and Go to the commit message.
+/// The commit panel collapsed beside a tool view, the pull request panel or the rebase editor:
+/// Show changes and commit (it expands), the working tree's change count as a badge (when there
+/// are changes; it expands too) and Commit… (it expands and focuses the summary). Centred, 8 px
+/// from the top and apart.
 pub(super) fn details_rail(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let count = st.snap.as_ref().map_or(0, wip_change_count);
     egui::SidePanel::right("detail-rail")
         .exact_width(RAIL_W)
         .resizable(false)
-        .frame(egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin::symmetric(0, spacing::PANEL_PAD)))
+        .frame(egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin::symmetric(0, RAIL_GAP as i8)))
         .show(ctx, |ui| {
+            ui.spacing_mut().item_spacing.y = RAIL_GAP;
             ui.vertical_centered(|ui| {
-                let expand_tip = t.tr("details.rail.expand.tip");
-                let r = widgets::icon_button(ui, Icon::ExpandLeft, expand_tip);
-                access::name_button(&r, true, expand_tip);
+                let expand = t.tr("details.rail.expand.tip");
+                let r = widgets::icon_button(ui, Icon::ExpandLeft, &st.keymap.tip(expand, BindingId::FocusCommitMessage));
+                access::name_button(&r, true, expand);
                 if r.clicked() {
                     msgs.push(Msg::Layout(LayoutMsg::ExpandDetails));
                 }
-                if count > 0 {
-                    ui.add_space(8.0);
-                    if change_pill(ui, count, &t.trn("details.rail.changes", count, &[])).clicked() {
-                        msgs.push(Msg::Layout(LayoutMsg::ExpandDetails));
-                    }
+                if count > 0 && count_badge(ui, count, &t.trn("details.rail.changes", count, &[])).clicked() {
+                    msgs.push(Msg::Layout(LayoutMsg::ExpandDetails));
                 }
-                ui.add_space(8.0);
-                let r = widgets::icon_button(ui, Icon::Commit, &st.keymap.tip(t.tr("details.rail.commit.tip"), BindingId::FocusMessage));
-                access::name_button(&r, true, t.tr("details.rail.commit.tip"));
+                let commit = t.tr("details.rail.commit.tip");
+                let r = widgets::icon_button(ui, Icon::Commit, commit);
+                access::name_button(&r, true, commit);
                 if r.clicked() {
                     msgs.push(Msg::Shortcut(KeyAction::FocusMessage));
                 }
@@ -86,19 +89,11 @@ pub(super) fn details_rail(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Ms
         });
 }
 
-/// A small accent pill with `count`, named and tipped `name`.
-fn change_pill(ui: &mut egui::Ui, count: usize, name: &str) -> egui::Response {
-    let accent = color::accent();
-    let galley = ui.painter().layout_no_wrap(count.to_string(), type_scale::font(type_scale::SMALL), color::text());
-    let size = vec2((galley.size().x + 12.0).max(22.0), 20.0);
-    let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
-    let p = ui.painter();
-    let radius = CornerRadius::same(radius::pill(rect.height()));
-    let fill = color::wash(accent, if resp.hovered() { 0.3 } else { 0.18 });
-    p.rect(rect, radius, fill, Stroke::new(1.0_f32, accent), StrokeKind::Inside);
-    p.galley(rect.center() - galley.size() / 2.0, galley, color::text());
+/// The change count as an 18 px neutral badge, named and tipped `name`.
+fn count_badge(ui: &mut egui::Ui, count: usize, name: &str) -> egui::Response {
+    let resp = Chip::new(ChipSize::Badge, count.to_string()).look(Look::new(color::raised(), color::text())).button(ui);
     access::name_button(&resp, true, name);
-    resp.on_hover_text(name).on_hover_cursor(egui::CursorIcon::PointingHand)
+    resp.on_hover_text(name)
 }
 
 #[cfg(test)]

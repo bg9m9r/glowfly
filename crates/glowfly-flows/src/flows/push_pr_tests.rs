@@ -182,6 +182,7 @@ fn push_in_another_tab_only_logs() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: Some(PrStart { source: "topic".into(), target: None, remote: None }),
         then_link: false,
         then_open: None,
