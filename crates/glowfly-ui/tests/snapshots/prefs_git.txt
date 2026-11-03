@@ -3,6 +3,7 @@ Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
 Label "Git"
+Label "Git program"
 RadioButton "Use git from your PATH" [on]
 Label "git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
 RadioButton "C:\\Users\\ada\\scoop\\apps\\git\\current\\cmd\\git.exe" [off]
@@ -14,6 +15,7 @@ Button "Browse…"
 Button "Look again"
 Label "Can't use C:\\Downloads\\git-gui.exe: it starts a window, not git; choose cmd/git.exe (Windows) or bin/git"
 Label "Glowfly runs this git for commits, fetches, pushes, hooks and signing. The built-in terminal and external tools still use whatever git your PATH finds."
+Label "Version"
 Label "git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
 painted:
   "General"
@@ -28,5 +30,3 @@ painted:
   "Terminal"
   "Commit signing"
   "SSH"
-  "Git program"
-  "Version"

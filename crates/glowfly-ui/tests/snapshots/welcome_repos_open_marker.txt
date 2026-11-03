@@ -6,7 +6,7 @@ TabList
 Button "Close tab New tab"
 Button "Close tab web-app"
 Button "New tab"
-Button "Open…"
+Button "Repository: Open…"
 Image
 Label "Glowfly"
 Label "A fast, native Git client"
@@ -33,6 +33,7 @@ Label "Remove missing"
 Button "C:\\work\\old-site"
 painted:
   "Repository"
+  "Open…"
   "Ctrl+Alt+1"
   "In a tab"
   "C:\\work"

@@ -4,7 +4,7 @@ TabList
   Tab "New tab" [selected]
 Button "Close tab New tab"
 Button "New tab"
-Button "Open…"
+Button "Repository: Open…"
 Button "Hide panel"
 Button "More"
 Button "Copy log" [disabled]
@@ -29,3 +29,4 @@ Button "Find repositories in folders…"
 Label "Look through the folders you keep projects in for repositories."
 painted:
   "Repository"
+  "Open…"

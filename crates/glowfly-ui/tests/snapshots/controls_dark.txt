@@ -1,7 +1,7 @@
 window 620x300
-TextInput
-TextInput = "feature/login"
-TextInput = "Focused" [focused]
+TextInput "Empty field"
+TextInput "Filled field" = "feature/login"
+TextInput "Focused field" = "Focused" [focused]
 CheckBox "Unchecked" [off]
 CheckBox "Checked" [on]
 CheckBox "Indeterminate" [mixed]

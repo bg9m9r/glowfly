@@ -13,19 +13,19 @@ Dialog
   Button "Select all"
   Button "Select none"
   Label "1 of 5 files"
-  CheckBox [off]
+  CheckBox "a.txt" [off]
   Label "M"
   Label "a.txt"
-  CheckBox [on]
+  CheckBox "b.txt" [on]
   Label "M"
   Label "b.txt"
-  CheckBox [off]
+  CheckBox "c.txt" [off]
   Label "A"
   Label "c.txt"
-  CheckBox [off]
+  CheckBox "docs/notes.md" [off]
   Label "M"
   Label "docs/notes.md"
-  CheckBox [off]
+  CheckBox "src/lib.rs" [off]
   Label "A"
   Label "src/lib.rs"
   Button "Cancel"

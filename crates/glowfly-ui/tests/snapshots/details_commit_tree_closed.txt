@@ -6,8 +6,8 @@ TabList
 Button "Close tab demo"
 Button "Close tab api-server"
 Button "New tab"
-Button "demo"
-Button "main"
+Button "Repository: demo"
+Button "Branch: main"
 Button "Undo the last action" [disabled]
 Button "Redo the undone action" [disabled]
 Button "Pull the current branch" [disabled]
@@ -25,20 +25,26 @@ Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
 Unknown "Left panel contents"
-TextInput
+TextInput "Filter branches, pull requests and issues"
+Button "Local, 3 branches"
 Button "New branch"
 Button "Local actions"
 Button "login-page"
-Button "✔  main"
+Button "main, checked out"
 Button "search"
+Button "Remote, 0 remotes"
 Button "Add remote"
 Button "Remote actions"
+Button "Tags, 1 tag"
 Button "New tag"
 Button "Tags actions"
+Button "Stashes, 0 stashes"
 Button "Stash changes" [disabled]
 Button "Stashes actions"
+Button "Worktrees, 0 worktrees"
 Button "Add worktree"
 Button "Worktrees actions"
+Button "Submodules, 0 submodules"
 Button "Add submodule"
 Button "Submodules actions"
 Label "main"
@@ -59,17 +65,22 @@ Unknown "6 changed files"
 Button "docs/" [off]
 Label "1"
 Button "docs/guide.md" [off]
+Label "Added"
 Label "+24"
 Button "src/search/" [off]
 Label "1"
 Button "README.md" [off]
+Label "Modified"
 Label "+2"
 Button "app.txt" [off]
+Label "Modified"
 Label "+3"
 Label "−1"
 Button "login.txt" [off]
+Label "Deleted"
 Label "−1"
 Button "logo.png" [off]
+Label "Added"
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
@@ -103,6 +114,7 @@ painted:
   "Filter (branches, PRs, issues)"
   "Local"
   "3"
+  "✔  main"
   "Remote"
   "0"
   "Tags"

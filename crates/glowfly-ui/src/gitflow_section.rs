@@ -97,6 +97,9 @@ pub(super) fn section(
                 selected,
                 b.head,
             );
+            if b.head {
+                crate::ui::access::name_button(&r, true, &t.trf("access.checked_out", &[("name", &b.short)]));
+            }
             branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(b.name)));
             if r.hovered() {
                 *hover_next = info.oid;
