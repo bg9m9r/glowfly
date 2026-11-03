@@ -123,6 +123,10 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - The row menu opens over a line's code only: a right-click in the gutter, on a hunk header or on a fold opens nothing, and Shift+F10 does nothing while no line is selected.
 - Copy hunk as patch is disabled for a hunk whose shown text holds U+FFFD, so a UTF-8 file that really contains U+FFFD can't be copied; a per-line "decoded lossily" flag from `hunk_of` would tell the two apart.
 
+### Binary diff
+
+- The shared size text (`lfs::pointer::size_text`) says "bytes" and "KB" in English under German and Spanish, in the hex view's caption and the size-only page
+
 ### Merge conflict tool
 
 - Syntax highlighting in the conflict panes

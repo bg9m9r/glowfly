@@ -867,7 +867,7 @@
   "diff.hex.caption.other": "{old} before, {new} after · {count} bytes differ",
   "diff.hex.fold.one": "{count} unchanged row",
   "diff.hex.fold.other": "{count} unchanged rows",
-  "diff.hex.too_large": "Too large for the byte view (over 64 KiB).",
+  "diff.hex.too_large": "Too large for the byte view (over 64 KB).",
   "diff.hunk.comment_lines.one": "Comment on {count} line",
   "diff.hunk.comment_lines.other": "Comment on {count} lines",
   "diff.hunk.comment_lines.tip": "Start a comment on the service on these lines",

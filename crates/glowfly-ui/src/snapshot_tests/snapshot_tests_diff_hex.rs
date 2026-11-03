@@ -110,9 +110,10 @@ fn diff_hex_added_dark() {
     remove_fixture(&dir);
 }
 
-/// A file one byte over the cap on its new side: neither side shows its bytes.
+/// A 70 KiB file on its new side, over the cap: neither side shows its bytes.
 fn too_large(name: &str) -> (AppState, PathBuf) {
-    let mut big = vec![0u8; HEX_MAX_BYTES as usize + 1];
+    let mut big = vec![0u8; 70 << 10];
+    assert!(big.len() as u64 > HEX_MAX_BYTES);
     big[100] = 1;
     with_hex(name, ThemeChoice::Dark, Some(&[0u8; 64]), &big)
 }
@@ -120,7 +121,7 @@ fn too_large(name: &str) -> (AppState, PathBuf) {
 #[test]
 fn diff_hex_too_large_dark() {
     let (st, dir) = too_large("diff-hex-too-large");
-    render(st, true, "diff_hex_too_large_dark", &[BINARY_TITLE, "Too large for the byte view (over 64 KiB)."]);
+    render(st, true, "diff_hex_too_large_dark", &[BINARY_TITLE, "Too large for the byte view (over 64 KB)."]);
     remove_fixture(&dir);
 }
 

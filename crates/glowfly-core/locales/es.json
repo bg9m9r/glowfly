@@ -867,7 +867,7 @@
   "diff.hex.caption.other": "{old} antes, {new} después · {count} bytes distintos",
   "diff.hex.fold.one": "{count} fila sin cambios",
   "diff.hex.fold.other": "{count} filas sin cambios",
-  "diff.hex.too_large": "Demasiado grande para la vista de bytes (más de 64 KiB).",
+  "diff.hex.too_large": "Demasiado grande para la vista de bytes (más de 64 KB).",
   "diff.hunk.comment_lines.one": "Comentar {count} línea",
   "diff.hunk.comment_lines.other": "Comentar {count} líneas",
   "diff.hunk.comment_lines.tip": "Empezar un comentario en el servicio sobre estas líneas",
