@@ -4,12 +4,16 @@
 //! divider between groups. Every slot is a quiet target that lights its whole shape through
 //! `button_look::paint_target`: the hover layer, the pressed layer while held (a darker fill,
 //! never a move), the latched layer while on or open, and the inset focus ring on its corners.
-//! The caret glyph here is the one every toolbar dropdown shares, the pickers' too.
+//! The caret glyph here is the one every toolbar dropdown shares, the pickers' too. A disabled
+//! slot paints its enabled colours at half alpha, and a split button may carry a count badge
+//! (Badge 18) at its icon's top right, cut out of the icon by a ring in the ground under it.
 
 use super::super::theme::color;
-use super::button_look::{Press, Target, paint_target};
+use super::button_look::{Press, Target, layer_on, paint_target};
+use super::chip::{Chip, ChipSize, Look, rect_at};
 use super::segment_bar::{BarStyle, Seg, segment_bar};
 use super::{Icon, paint_icon};
+use crate::ui::theme::color::Palette;
 use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::{BORDER_W, CARET_HIT_W};
 use crate::ui::theme::type_scale;
@@ -20,6 +24,9 @@ use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Res
 const TOOL_W: f32 = 56.0;
 /// A tool slot's width with captions hidden.
 const TOOL_W_BARE: f32 = 40.0;
+/// A split button's slot with captions hidden when it can carry a badge (Pull, Push), badge
+/// or not, so the bar never moves when one appears.
+const TOOL_W_BADGED_BARE: f32 = 52.0;
 /// A tool slot's height, the toolbar row's whole height.
 pub(crate) const TOOL_H: f32 = 48.0;
 /// Room beside a caption inside its slot, both sides together: 5 px a side, so a hover tile
@@ -52,6 +59,25 @@ const DIVIDER_H: f32 = TOOL_SIZE.metrics().icon;
 /// After a split button's caret, before the next slot of its group: more than `TOOL_SPACING`,
 /// so the caret sits closer to its own action than to the next one.
 pub const SPLIT_GAP: f32 = 8.0;
+/// A disabled slot's alpha: its enabled colours at half strength.
+const DISABLED_ALPHA: f32 = 0.5;
+/// A badge's top below the slot's top, its left edge right of the icon's centre, its least room
+/// to the slot's right edge (`badged_min`), and the knockout ring around it.
+const BADGE_TOP: f32 = 2.0;
+const BADGE_X: f32 = 4.0;
+const BADGE_EDGE: f32 = 2.0;
+const BADGE_RING: f32 = 2.0;
+/// The largest count a badge shows as it is; above it, "9+" (the exact count is in the branch
+/// picker, the tooltip and the accessible name).
+const BADGE_MAX: usize = 9;
+
+/// A split button's count badge: `count` (hidden at 0) over a slot whose resting ground is
+/// `ground` (the toolbar's fill), which the badge's knockout ring is painted in.
+#[derive(Clone, Copy, Debug)]
+pub struct Badge {
+    pub count: usize,
+    pub ground: Color32,
+}
 
 /// Toolbar button: the icon with its caption under it (captions optional). `name` is its
 /// accessible name, which includes the caption; the caller attaches the tooltip
@@ -78,13 +104,19 @@ fn tool_slot(ui: &mut Ui, (icon, label, name): (Icon, &str, &str), enabled: bool
     if enabled { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
 }
 
-/// Paints a tool slot's icon and, with `labels`, its caption under it: `faint` when disabled,
-/// the caption in full text colour while `lit` (hovered or on) and `weak` otherwise.
+/// A disabled slot's colour for `c`, its enabled colour.
+fn disabled(c: Color32) -> Color32 {
+    c.gamma_multiply(DISABLED_ALPHA)
+}
+
+/// Paints a tool slot's icon and, with `labels`, its caption under it: the icon in text colour,
+/// the caption in full text colour while `lit` (hovered or on) and `weak` otherwise; disabled,
+/// the icon's and the caption's enabled colours at half alpha.
 fn paint_tool(p: &Painter, rect: Rect, (icon, label): (Icon, &str), enabled: bool, lit: bool, labels: bool) {
-    let col = if enabled { color::text() } else { color::faint() };
+    let col = if enabled { color::text() } else { disabled(color::text()) };
     if labels {
         let caption = if !enabled {
-            color::faint()
+            disabled(color::weak())
         } else if lit {
             color::text()
         } else {
@@ -107,31 +139,88 @@ pub fn tool_width(ui: &Ui, label: &str, labels: bool) -> f32 {
     }
 }
 
+/// The width `split_button` gives a button captioned `label` that can carry a badge: wider
+/// with captions hidden (`TOOL_W_BADGED_BARE`), and never narrower than a "9+" badge needs
+/// (`badged_min`), so the badge clears the icon.
+pub fn badged_tool_width(ui: &Ui, label: &str, labels: bool) -> f32 {
+    let w = if labels { tool_width(ui, label, labels) } else { TOOL_W_BADGED_BARE };
+    w.max(badged_min(Chip::new(ChipSize::Badge, badge_text(BADGE_MAX + 1)).width(ui.ctx())))
+}
+
+/// The least slot that keeps a badge `widest` wide (the "9+" one, whatever the count shown, so
+/// the bar never moves) at its place right of the centred icon, `BADGE_EDGE` inside the slot.
+fn badged_min(widest: f32) -> f32 {
+    2.0 * (BADGE_X + widest + BADGE_EDGE)
+}
+
 /// A tool button with its dropdown caret right against it: one shape with two targets, parted
 /// by a line that always shows. Only the hovered half lights, a disabled button never does, the
 /// half being held takes the pressed layer and the caret stays latched while its menu is
-/// `open`. The caret is faint when neither the button nor anything in its menu can be used
-/// (`menu_live`). Returns the button's and the caret's responses.
+/// `open`. The caret takes the disabled look when neither the button nor anything in its menu
+/// can be used (`menu_live`). A `badge` shows its count over the button's icon. Returns the
+/// button's and the caret's responses.
 pub fn split_button(
     ui: &mut Ui,
     tool: (Icon, &str, &str),
     enabled: bool,
     labels: bool,
-    menu_live: bool,
-    open: bool,
+    (menu_live, open): (bool, bool),
+    badge: Option<Badge>,
 ) -> (Response, Response) {
     let (icon, label, name) = tool;
-    let segs = [Seg { w: tool_width(ui, label, labels), enabled }, Seg { w: CARET_W, enabled: true }];
+    let w = if badge.is_some() { badged_tool_width(ui, label, labels) } else { tool_width(ui, label, labels) };
+    let segs = [Seg { w, enabled }, Seg { w: CARET_W, enabled: true }];
     let bar = segment_bar(ui, TOOL_SIZE, TOOL_H, TOOL_SIZE.metrics().radius, BarStyle::Quiet { divider: DIVIDER_H }, &segs);
     bar.paint(ui, &[false, open]);
     let mut responses = bar.responses.into_iter();
     let (button, menu) = (responses.next().expect("the button"), responses.next().expect("the caret"));
     paint_tool(ui.painter(), button.rect, (icon, label), enabled, enabled && button.hovered(), labels);
+    if let Some(b) = badge {
+        let press = if enabled { Press::of(button.hovered(), button.is_pointer_button_down_on(), false) } else { Press::Rest };
+        paint_badge(ui.painter(), button.rect, b, press);
+    }
     super::super::access::name_button(&button, enabled, name);
-    let tone = if enabled || menu_live { color::weak() } else { color::faint() };
+    let tone = if enabled || menu_live { color::weak() } else { disabled(color::weak()) };
     caret(ui.painter(), menu.rect.center(), tone);
     let button = if enabled { button.on_hover_cursor(egui::CursorIcon::PointingHand) } else { button };
     (button, menu.on_hover_cursor(egui::CursorIcon::PointingHand))
+}
+
+/// A badge's text for `count`: the count, or "9+" above 9.
+fn badge_text(count: usize) -> String {
+    if count > BADGE_MAX { format!("{BADGE_MAX}+") } else { count.to_string() }
+}
+
+/// The rect of a badge `w` wide over the icon of the tool slot `slot`: its top `BADGE_TOP`
+/// below the slot's, its left always `BADGE_X` right of the icon's centre (never over the
+/// arrowhead; `badged_tool_width` leaves the room). The same with captions shown or hidden.
+fn badge_rect(slot: Rect, w: f32) -> Rect {
+    let x = slot.center().x + BADGE_X;
+    let h = ChipSize::Badge.metrics().h;
+    rect_at(ChipSize::Badge, x, slot.top() + BADGE_TOP + h / 2.0, w)
+}
+
+/// Paints `badge` over the icon of the tool slot `slot` in state `press`: nothing at 0, else
+/// the count as a Badge with a ring in the colour the slot shows under it. Lit (hovered,
+/// pressed or latched), the badge's fill is the ground, since the lit layer matches `raised`;
+/// in the light and high-contrast themes it has a 1 px edge in the input border colour (the
+/// plain border is too faint on the hover layer), which is what sets it apart there.
+fn paint_badge(p: &Painter, slot: Rect, badge: Badge, press: Press) {
+    if badge.count == 0 {
+        return;
+    }
+    let chip = Chip::new(ChipSize::Badge, badge_text(badge.count)).look(badge_look(&color::current(), badge.ground, press));
+    let rect = badge_rect(slot, chip.width(p.ctx()));
+    let ring = CornerRadius::same(ChipSize::Badge.metrics().radius.saturating_add(BADGE_RING as u8));
+    p.rect_filled(rect.expand(BADGE_RING), ring, layer_on(badge.ground, press));
+    chip.paint_in_rect(p, rect);
+}
+
+/// A badge's look in palette `pal` over `ground` in state `press`.
+fn badge_look(pal: &Palette, ground: Color32, press: Press) -> Look {
+    let fill = if press == Press::Rest { pal.raised } else { ground };
+    let look = Look::new(fill, pal.text);
+    if pal.high_contrast || !pal.dark { look.edged(pal.input_border) } else { look }
 }
 
 /// The dropdown caret: a stroked chevron pointing down, centred on `c`.
@@ -167,3 +256,7 @@ pub fn tool_gap(ui: &mut Ui) {
     super::ghost::divider(ui);
     ui.add_space(-spacing);
 }
+
+#[cfg(test)]
+#[path = "tool_tests.rs"]
+mod tests;

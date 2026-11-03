@@ -85,6 +85,8 @@ pub struct Snapshot {
     pub remote_heads: Vec<(String, String)>,
     /// `branch.<name>.pushRemote` and `remote.pushDefault` (`push_config`).
     pub push_remotes: PushRemotes,
+    /// Whether a plain `git pull` on the head branch rebases (`push_config::pull_rebases`).
+    pub pull_rebase: bool,
     pub tags: Vec<(String, Oid)>,
     /// Tags that point at a tree or blob instead of a commit: not shown, but their names are taken.
     pub other_tags: Vec<String>,
