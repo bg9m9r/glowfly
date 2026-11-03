@@ -1626,7 +1626,7 @@
   "prefs.a11y.motion.section": "Bewegung",
   "prefs.a11y.reduce_motion.check": "Ein- und Ausblenden abschalten",
   "prefs.a11y.reduce_motion.follow": "Auch wenn das System weniger Bewegung wünscht",
-  "prefs.a11y.reduce_motion.help": "Tooltips und Popups erscheinen ohne Ein- oder Überblenden",
+  "prefs.a11y.reduce_motion.help": "Tooltips und Popups erscheinen ohne Ein- oder Überblenden.",
   "prefs.a11y.reduce_motion.label": "Bewegung reduzieren",
   "prefs.a11y.shortcuts.change.button": "Tastenkürzel ändern…",
   "prefs.a11y.shortcuts.help": "Jeder Befehl kann eine Taste bekommen.",

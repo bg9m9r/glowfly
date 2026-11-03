@@ -1626,7 +1626,7 @@
   "prefs.a11y.motion.section": "Movimiento",
   "prefs.a11y.reduce_motion.check": "Desactivar fundidos y deslizamientos",
   "prefs.a11y.reduce_motion.follow": "También cuando el sistema pide menos movimiento",
-  "prefs.a11y.reduce_motion.help": "Las descripciones y ventanas emergentes aparecen sin fundidos ni deslizamientos",
+  "prefs.a11y.reduce_motion.help": "Las descripciones y ventanas emergentes aparecen sin fundidos ni deslizamientos.",
   "prefs.a11y.reduce_motion.label": "Reducir movimiento",
   "prefs.a11y.shortcuts.change.button": "Cambiar atajos…",
   "prefs.a11y.shortcuts.help": "Cada comando puede tener una tecla.",

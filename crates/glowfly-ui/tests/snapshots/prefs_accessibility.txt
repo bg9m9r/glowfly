@@ -19,7 +19,7 @@ Label "Branch colors in the graph."
 Label "Motion"
 CheckBox "Reduce motion, Turn off fades and slides" [off]
 CheckBox "Reduce motion, Also when the system asks for less motion" [on]
-Label "Tooltips and popups appear without fading or sliding in"
+Label "Tooltips and popups appear without fading or sliding in."
 CheckBox "Blinking cursor, Blink the text cursor" [on]
 Label "The cursor in text fields. The terminal's never blinks."
 Label "Keyboard"

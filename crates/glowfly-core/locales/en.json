@@ -1626,7 +1626,7 @@
   "prefs.a11y.motion.section": "Motion",
   "prefs.a11y.reduce_motion.check": "Turn off fades and slides",
   "prefs.a11y.reduce_motion.follow": "Also when the system asks for less motion",
-  "prefs.a11y.reduce_motion.help": "Tooltips and popups appear without fading or sliding in",
+  "prefs.a11y.reduce_motion.help": "Tooltips and popups appear without fading or sliding in.",
   "prefs.a11y.reduce_motion.label": "Reduce motion",
   "prefs.a11y.shortcuts.change.button": "Change shortcuts…",
   "prefs.a11y.shortcuts.help": "Every command can be given a key.",
