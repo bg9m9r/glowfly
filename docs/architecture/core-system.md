@@ -11,7 +11,7 @@ source file, update its line here.
 - `git_program.rs`: the git program every git child runs (chosen in Preferences > Git, else `git` from PATH), checking a program before it is used, and finding the installed gits.
 - `safe_directory.rs`: repositories git refuses because another user owns them: opening one git opens, the typed error for a real refusal, and listing a folder in `safe.directory` in git's spelling.
 - `safe_directory/verdict.rs`: asking git whether it opens a folder libgit2 refused for its owner, and whom git names as the owner.
-- `safe_directory/allowed.rs`: the folders git opens, allowed for libgit2 for this process only (a `safe.directory` list in its own ProgramData config).
+- `safe_directory/allowed.rs`: the folders git opens, allowed for libgit2 for this process only (a `safe.directory` list in a global config of its own that includes the user's `~/.gitconfig`).
 - `native_path.rs`: the spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`), and a folder's name and parent for list rows.
 - `volume.rs`: whether a folder is on a network or virtual file system.
 - `conflict_lines.rs`: the paths git's CONFLICT lines name (rename, delete and directory conflicts included), each once, for `git_errors`; a path that reads more than one way is counted but not named until `ordered` matches it to the status's unmerged paths (pure).

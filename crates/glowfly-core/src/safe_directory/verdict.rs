@@ -17,6 +17,17 @@ pub struct Verdict {
     pub admins: bool,
 }
 
+/// The environment the question is asked in: no prompts, and none of the variables that name a
+/// repository outright, with which git skips its search and its owner check.
+pub const ENV: &[(&str, &str)] = &[
+    ("GIT_ASKPASS", ""),
+    ("SSH_ASKPASS", ""),
+    ("SSH_ASKPASS_REQUIRE", "never"),
+    ("GIT_DIR", gitcli::UNSET),
+    ("GIT_WORK_TREE", gitcli::UNSET),
+    ("GIT_COMMON_DIR", gitcli::UNSET),
+];
+
 /// Runs `git rev-parse --show-toplevel` in `path` with `env` and reads the answer: git opens
 /// it when it succeeds and finds the repository at `root` (not one above or beside it).
 pub fn ask(path: &Path, root: &Path, env: &[(&str, &str)]) -> Verdict {
@@ -93,10 +104,13 @@ mod tests {
         let dir = crate::testutil::scratch_repo("owner-verdict");
         std::fs::create_dir_all(dir.join("src")).unwrap();
         let root = crate::paths::resolve(&dir);
-        assert_eq!(ask(&dir.join("src"), &root, gitcli::NO_PROMPTS), Verdict { opens: true, owner: None, admins: false });
+        assert_eq!(ask(&dir.join("src"), &root, ENV), Verdict { opens: true, owner: None, admins: false });
         // Found, but not at the folder libgit2 refused: not git's word for that one.
         let inner = dir.join("src");
-        assert!(!ask(&inner, &crate::paths::resolve(&inner), gitcli::NO_PROMPTS).opens);
+        assert!(!ask(&inner, &crate::paths::resolve(&inner), ENV).opens);
+        // A GIT_DIR Glowfly was started with would skip git's search and its owner check.
+        let unset = gitcli::output(&dir, &gitcli::args(&["rev-parse", "--absolute-git-dir"]), "", &[("GIT_DIR", gitcli::UNSET)], None);
+        assert!(unset.ok, "{}", unset.stderr);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

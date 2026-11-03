@@ -42,16 +42,19 @@ fn opened(path: &Path, open: impl Fn() -> std::result::Result<Repository, git2::
         Ok(r) => Ok(r),
         Err(e) if e.code() == git2::ErrorCode::Owner => {
             let root = repo_root(path);
-            let v = verdict::ask(path, &root, gitcli::NO_PROMPTS);
-            if v.opens && allowed::allow(&allow_values(path, &root)) {
+            let v = verdict::ask(path, &root, verdict::ENV);
+            let values = allow_values(path, &root);
+            if v.opens && allowed::allow(&values) {
                 match open() {
-                    Ok(r) => {
+                    // Still the folder git vetted (a link in the path may have been retargeted
+                    // since): its own spelling is listed too, for the opens that follow.
+                    Ok(r) if r.workdir().is_some_and(|w| is_folder(w, &root) && allowed::allow(&[config_value(w, cfg!(windows))])) => {
                         tracing::debug!(root = %root.display(), "git opens a folder libgit2 refused for its owner");
-                        // libgit2's own spelling of the folder, for the opens that follow.
-                        if let Some(w) = r.workdir() {
-                            allowed::allow(&[config_value(w, cfg!(windows))]);
-                        }
                         return Ok(r);
+                    }
+                    Ok(_) => {
+                        tracing::warn!("{} changed while git was asked about it", root.display());
+                        allowed::forget(&values);
                     }
                     Err(e) => tracing::warn!("libgit2 still refuses {}: {e}", root.display()),
                 }
@@ -59,6 +62,14 @@ fn opened(path: &Path, open: impl Fn() -> std::result::Result<Repository, git2::
             Err(Error::NotOwned(Refusal { root, owner: v.owner, admins: v.admins }))
         }
         Err(_) => Err(Error::NotARepository(path.display().to_string())),
+    }
+}
+
+/// Whether `dir` is the folder `root`, by identity when the disk gives both.
+fn is_folder(dir: &Path, root: &Path) -> bool {
+    match (crate::paths::FolderId::of(dir), crate::paths::FolderId::of(root)) {
+        (Some(a), Some(b)) => a == b,
+        _ => crate::paths::same_spelling(&crate::paths::resolve(dir), root),
     }
 }
 

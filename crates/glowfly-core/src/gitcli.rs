@@ -78,6 +78,9 @@ pub fn observe_runs(f: Observer) -> bool {
 /// Caller environment for a command that must fail rather than prompt (background jobs,
 /// hosting-service sign-in). An empty `GIT_ASKPASS` also stops git from falling back to
 /// `core.askpass` or `SSH_ASKPASS`.
+/// A value in a caller environment that removes the variable instead of setting it.
+pub const UNSET: &str = "\0";
+
 pub const NO_PROMPTS: &[(&str, &str)] = &[("GIT_ASKPASS", ""), ("SSH_ASKPASS", ""), ("SSH_ASKPASS_REQUIRE", "never")];
 
 /// [`NO_PROMPTS`] for background jobs, which also keeps Git Credential Manager from opening its
@@ -278,7 +281,10 @@ fn base_command(program: &OsStr, cwd: &Path, args: &[String], env: &[(&str, &str
         .env("LC_MESSAGES", "C")
         .envs(askpass_env_in(cwd, env))
         .envs(crate::gpg_prompt::env::for_command(cwd, args, env, ASKPASS.get()))
-        .envs(env.iter().copied());
+        .envs(env.iter().copied().filter(|(_, v)| *v != UNSET));
+    for (k, _) in env.iter().filter(|(_, v)| *v == UNSET) {
+        cmd.env_remove(k);
+    }
     crate::env_path::apply(&mut cmd);
     if stoppable {
         crate::process_tree::prepare(&mut cmd);
