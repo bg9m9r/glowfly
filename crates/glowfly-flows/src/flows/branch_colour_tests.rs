@@ -10,7 +10,7 @@ use crate::msg::{GraphMsg, Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
 use crate::runner;
 use crate::state::AppState;
 use glowfly_core::branch_colour::Swatch;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -117,7 +117,7 @@ fn automatic_returns_main_to_the_trunk() {
 #[test]
 fn slots_past_the_palette_are_refused() {
     let (mut st, dir) = opened("branch-pin-past");
-    st.settings.branch_palette = BranchPalette::ColourBlind;
+    st.settings.colour_palette = ColourPalette::ColourBlind;
     assert!(pin(&mut st, "topic", Some(10)).is_empty(), "past the 8 colour-blind hues");
     assert!(pin(&mut st, "main", Some(8)).is_empty(), "main too");
     assert!(st.settings.branch_pins.is_empty());
@@ -132,7 +132,7 @@ fn switching_to_the_colour_blind_preset_moves_a_trunk_neighbour_off_a_near_slot(
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "main moves on"]);
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    st.settings.branch_palette = BranchPalette::ColourBlind;
+    st.settings.colour_palette = ColourPalette::ColourBlind;
     drive(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     let Swatch::Slot(k) = swatch(&st, "fix-1") else { panic!("fix-1 is automatic") };
     // The shell reports the new palette's slots that pass for the trunk; say fix-1's is one.
@@ -150,7 +150,7 @@ fn the_colour_blind_preset_reaches_the_snapshot_and_a_parked_tab() {
     let other = scratch_repo("branch-preset-other");
     drive(&mut st, Msg::Repo(RepoMsg::Open(other.clone())));
     assert_eq!(st.tabs.len(), 2);
-    st.settings.branch_palette = BranchPalette::ColourBlind;
+    st.settings.colour_palette = ColourPalette::ColourBlind;
     drive(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.graph.colouring.n(), 8);

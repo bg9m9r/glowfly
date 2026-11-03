@@ -34,10 +34,13 @@ fn closing_an_edited_page_asks_first() {
     assert_eq!(page(&st), PrefPage::RepoIdentity, "held");
     assert!(st.prefs.as_ref().unwrap().leaving.is_some());
     match &st.modal {
-        Some(Modal::ConfirmChoice { title, body, button, alt, .. }) => {
+        Some(Modal::ConfirmChoice { title, body, button, alt, then, alt_then }) => {
             assert_eq!(title, "Save your changes?");
             assert_eq!(body, "Commit identity has changes that aren't saved yet.");
             assert_eq!((button.as_str(), alt.as_str()), ("Save", "Discard"));
+            // What Save and Discard send (save_writes_then_leaves, discard_reverts_then_leaves).
+            assert!(matches!(**then, Msg::Prefs(PrefsMsg::LeaveSave)), "Save sends LeaveSave");
+            assert!(matches!(**alt_then, Msg::Prefs(PrefsMsg::LeaveDiscard)), "Discard sends LeaveDiscard");
         }
         _ => panic!("expected the question"),
     }

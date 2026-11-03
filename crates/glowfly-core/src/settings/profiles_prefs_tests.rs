@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::forge::{Connection, Provider};
-use crate::settings::{BranchPalette, DiffLayout, DiffMode, Profile, RepoTrust, ResizableColumn};
+use crate::settings::{ColourPalette, DiffLayout, DiffMode, Profile, RepoTrust, ResizableColumn};
 
 const A: ProfileId = ProfileId(1);
 const B: ProfileId = ProfileId(2);
@@ -283,7 +283,7 @@ fn accessibility_fields_stay_through_a_switch() {
     s.swap_profile_setup(B);
     assert_eq!(s.tab_size, 2, "B's preferences came in");
     assert!(!s.reduce_motion, "the profile's old copy is ignored");
-    assert_eq!(s.branch_palette, BranchPalette::Standard);
+    assert_eq!(s.colour_palette, ColourPalette::Standard);
     assert_eq!(s.a11y, before);
     assert_eq!(s.branch_pins_for(std::path::Path::new("/w/r")).get("topic"), Some(&4), "the pins stay");
 }

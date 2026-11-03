@@ -19,7 +19,7 @@ use super::branch_palette::{
 use super::branch_palette_more::{COBALT_CB_LIGHT_LINES, COBALT_CB_LIGHT_NAMES, COBALT_CB_LIGHT_TEXT};
 use super::families::{Branch, LANE_COUNT};
 use eframe::egui::Color32;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
@@ -63,21 +63,21 @@ const GOLD_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, CB_YELLOW_SLOT, Hue::Orange
 
 /// Dusk.
 pub const BRANCH_DUSK: Branch =
-    Branch { lanes: GOLD_DARK_TONES, chips: GOLD_DARK_TONES, preset: BranchPalette::Standard, names: GOLD_NAMES };
+    Branch { lanes: GOLD_DARK_TONES, chips: GOLD_DARK_TONES, preset: ColourPalette::Standard, names: GOLD_NAMES };
 /// Dawn.
 pub const BRANCH_DAWN: Branch =
-    Branch { lanes: DAWN_LIGHT_LINES, chips: DAWN_LIGHT_TEXT, preset: BranchPalette::Standard, names: DAWN_NAMES };
+    Branch { lanes: DAWN_LIGHT_LINES, chips: DAWN_LIGHT_TEXT, preset: ColourPalette::Standard, names: DAWN_NAMES };
 /// Colour-blind friendly, on Dusk.
 pub const BRANCH_CB_DUSK: Branch = Branch {
     lanes: pad(GOLD_CB_DARK_TONES),
     chips: pad(GOLD_CB_DARK_TONES),
-    preset: BranchPalette::ColourBlind,
+    preset: ColourPalette::ColourBlind,
     names: pad(GOLD_CB_DARK_NAMES),
 };
 /// Colour-blind friendly, on Dawn.
 pub const BRANCH_CB_DAWN: Branch = Branch {
     lanes: pad(COBALT_CB_LIGHT_LINES),
     chips: pad(COBALT_CB_LIGHT_TEXT),
-    preset: BranchPalette::ColourBlind,
+    preset: ColourPalette::ColourBlind,
     names: pad(COBALT_CB_LIGHT_NAMES),
 };

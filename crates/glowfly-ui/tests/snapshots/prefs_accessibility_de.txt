@@ -34,7 +34,7 @@ CheckBox "Hoher Kontrast, Auch wenn das System hohen Kontrast verwendet" [on]
 Label "Wechselt zu Hoher Kontrast dunkel oder hell; beim Ausschalten kommt dein Design zurück."
 Label "Farben"
 ComboBox "Farben"
-Label "Branch-Farben im Graphen."
+Label "Branches, Diffs und Dateistatus nutzen Farben, die auch bei Farbenblindheit unterscheidbar bleiben."
 Label "Bewegung"
 Label "Bewegung reduzieren"
 CheckBox "Bewegung reduzieren, Ein- und Ausblenden abschalten" [off]
@@ -71,6 +71,7 @@ painted:
   "Auch wenn das System hohen Kontrast verwendet"
   "Wechselt zu Hoher Kontrast dunkel oder hell; beim Ausschalten\nkommt dein Design zurück."
   "Standard"
+  "Branches, Diffs und Dateistatus nutzen Farben, die auch bei\nFarbenblindheit unterscheidbar bleiben."
   "Ein- und Ausblenden abschalten"
   "Auch wenn das System weniger Bewegung wünscht"
   "Textcursor blinken lassen"

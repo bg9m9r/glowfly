@@ -14,7 +14,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the change and selected-diff-line fills.
 - `theme/ref_chip.rs`: the graph's ref chip colours: filled local branches, outlined remotes and tags, the halo on the checked-out branch and HEAD, each standing 3:1 from every row surface.
 - `theme/ref_chip_tests.rs`: the ref chips in every built-in and both presets: text on the fill or every row surface, fill or edge 3:1 from every row surface, the halo only where you are.
-- `theme/no_brown_tests.rs`: every built-in's (and the Garden pair's) surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets, stay out of the brown zone, with no exception.
+- `theme/no_brown_tests.rs`: every built-in's (and the Garden pair's) surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets (the colour-safe one with its diff and status colours), stay out of the brown zone, with no exception.
 - `theme/code_sel_tests.rs`: the selected-code fills (`code_sel`, `code_sel_dim`) in every built-in: text and syntax contrast on them, their OKLab distance from the row colours and each other, and the designer's measured values.
 - `theme/inactive.rs`: `selected_inactive`, the selection of a pane without the keyboard focus: the designer's values for the built-ins, and for other palettes a neutral in `selected`'s hue worked out by the same rules.
 - `theme/text_floor_tests.rs`: placeholders, the status bar's `faint`, `weak` on `selected_inactive` and a search-dimmed row's text at 4.5:1 in every built-in; the find fill readable and visible on every row surface; the live-updates marks at 3:1 on `toolbar`.
@@ -23,6 +23,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/more_themes_tests.rs`: the lineup's pinned values (Porcelain, and the Midnight, Dusk and Dawn retunes) and the six sleekness rules: one accent, a quiet selection, the accent's chroma, the border on the panel, the surface ladder and distinct themes of a kind.
 - `theme/lineup_contrast_tests.rs`: the lineup's measured contrast, as the Themes v2 spec gives it, within 0.02.
 - `snapshot_tests/snapshot_tests_colour_sheet.rs`: an ignored test that renders every built-in's main window and chip strip into `GLOWFLY_SHEET_DIR`, for judging colour by eye.
+- `snapshot_tests/snapshot_tests_colour_safe.rs`: the colour-blind safe goldens: a diff with selected and changed-word lines beside A/M/D/R files (Graphite, Porcelain, high contrast light; split in Graphite) and the graph's dashed lanes.
 - `snapshot_tests/snapshot_tests_chips.rs`: the chip catalog golden: every chip and badge kind from its real painter, the standing check of the two chip heights.
 - `theme/families.rs`: the token families: status, branch, repository, attention, and the terminal's colours.
 - `theme/ansi.rs`: the terminal's colours, one table per built-in, with the readability check Preferences warns from.
@@ -38,6 +39,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/branch_palette_gold.rs`, `theme/branch_palette_more.rs`: the families that make room beside a gold, iris (Dawn) or cobalt accent.
 - `theme/branch_names.rs`: the branch hues' names in the language.
 - `theme/branch_colours.rs`: a branch swatch's line and chip tones (main's trunk tone among them, and the slots that pass for it, `trunk_near`), with a person's initials colours.
+- `theme/colour_safe.rs`: the colour-blind safe preset's diff and status colours (blue added, orange removed, violet modified), each at its theme colour's luminance; `colour_safe_tests.rs` holds them apart under simulated colour vision and at the contrast floors in every built-in.
 - `theme/vision.rs`: simulated colour vision (normal, protan, deutan, tritan), the OKLab distance and the floors under which two lines pass for each other.
 - The branch colours are read by the graph's per-row colours (`graph/lane_colours.rs`) and the branch dots (`branch_dot.rs`).
 - `theme/surfaces.rs`: the colour tokens worked out from a palette, so theme files get them with no keys of their own: the graph's row bands and highlights (`band_color`, `highlight_color`) and every surface a row's chip sits on (`with_row_surfaces`), the field, guide and toolbar-group fills, the framed toolbar bar's edge (`tool_edge`), the overlay surface with its edge and inset, the hover, pressed and latched layers, a destructive menu item's text and hover pill (`menu_danger`, `danger_hover`), the semantic tones with their tints, the tonal fill and ink, and the brown-safe wash (`color::wash`) views use for translucent colour fills.

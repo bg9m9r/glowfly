@@ -16,7 +16,7 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, LoadOptions};
-use glowfly_core::settings::{BranchPalette, ThemeChoice};
+use glowfly_core::settings::{ColourPalette, ThemeChoice};
 use std::path::Path;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -121,11 +121,11 @@ fn branch_colour_pinned_graph() {
 
 fn colour_blind(theme: ThemeChoice, name: &str) {
     let (mut st, dir) = with_branches(theme.clone(), name);
-    st.settings.branch_palette = BranchPalette::ColourBlind;
+    st.settings.colour_palette = ColourPalette::ColourBlind;
     let snap = st.snap.as_mut().unwrap();
     snap.set_colouring(st.settings.colouring_for(&snap.real_workdir));
     let dark = theme == ThemeChoice::Dark;
-    let mut h = harness_palette(st, theme::applied(theme::view_palette(dark), BranchPalette::ColourBlind));
+    let mut h = harness_palette(st, theme::applied(theme::view_palette(dark), ColourPalette::ColourBlind));
     h.run();
     h.check_snapshot(name);
     drop(h);

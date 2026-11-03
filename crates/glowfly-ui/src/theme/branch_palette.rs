@@ -24,7 +24,7 @@ use super::branch_names::Hue;
 use super::color::Palette;
 use super::families::{Branch, LANE_COUNT};
 use eframe::egui::Color32;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
@@ -137,12 +137,12 @@ pub const LIGHT_STRONG_LINES: [Color32; LANE_COUNT] = {
 };
 
 /// Garden dark and High contrast dark.
-pub const BRANCH_DARK: Branch = Branch { lanes: DARK_TONES, chips: DARK_TONES, preset: BranchPalette::Standard, names: NAMES };
+pub const BRANCH_DARK: Branch = Branch { lanes: DARK_TONES, chips: DARK_TONES, preset: ColourPalette::Standard, names: NAMES };
 /// Garden light.
-pub const BRANCH_LIGHT: Branch = Branch { lanes: LIGHT_LINES, chips: LIGHT_TEXT, preset: BranchPalette::Standard, names: LIGHT_NAMES };
+pub const BRANCH_LIGHT: Branch = Branch { lanes: LIGHT_LINES, chips: LIGHT_TEXT, preset: ColourPalette::Standard, names: LIGHT_NAMES };
 /// High contrast light and Sand, whose surfaces need the stronger text tones for lines too.
 pub const BRANCH_LIGHT_STRONG: Branch =
-    Branch { lanes: LIGHT_STRONG_LINES, chips: LIGHT_TEXT, preset: BranchPalette::Standard, names: LIGHT_NAMES };
+    Branch { lanes: LIGHT_STRONG_LINES, chips: LIGHT_TEXT, preset: ColourPalette::Standard, names: LIGHT_NAMES };
 
 /// How many hues the colour-blind friendly preset has.
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
@@ -205,15 +205,15 @@ pub const fn pad<T: Copy>(t: [T; CB]) -> [T; LANE_COUNT] {
 
 /// Colour-blind friendly, on Garden dark and High contrast dark.
 pub const BRANCH_CB_DARK: Branch =
-    Branch { lanes: pad(CB_DARK_TONES), chips: pad(CB_DARK_TONES), preset: BranchPalette::ColourBlind, names: pad(CB_NAMES) };
+    Branch { lanes: pad(CB_DARK_TONES), chips: pad(CB_DARK_TONES), preset: ColourPalette::ColourBlind, names: pad(CB_NAMES) };
 /// Colour-blind friendly, on Garden light, High contrast light and Sand.
 pub const BRANCH_CB_LIGHT: Branch =
-    Branch { lanes: pad(CB_LIGHT_LINES), chips: pad(CB_LIGHT_TEXT), preset: BranchPalette::ColourBlind, names: pad(CB_LIGHT_NAMES) };
+    Branch { lanes: pad(CB_LIGHT_LINES), chips: pad(CB_LIGHT_TEXT), preset: ColourPalette::ColourBlind, names: pad(CB_LIGHT_NAMES) };
 
 /// `p` with the branch preset `b`: Standard keeps its own family; the colour-blind friendly preset
 /// takes the palette's own colour-blind family (a theme file's from its base).
-pub fn applied(mut p: Palette, b: BranchPalette) -> Palette {
-    if b == BranchPalette::ColourBlind {
+pub fn applied(mut p: Palette, b: ColourPalette) -> Palette {
+    if b == ColourPalette::ColourBlind {
         p.branch = p.colour_blind;
     }
     p
