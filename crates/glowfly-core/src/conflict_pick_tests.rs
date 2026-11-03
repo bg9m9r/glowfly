@@ -20,11 +20,12 @@ fn ticks(c: &Chunk, from: ChunkPick, seq: &[(Side, usize)]) -> ChunkPick {
 }
 
 #[test]
-fn toggle_line_follows_tick_order() {
+fn toggle_line_keeps_band_order_not_tick_order() {
     let c = chunk();
     let p = ticks(&c, ChunkPick::default(), &[(Theirs, 1), (Ours, 0)]);
-    assert_eq!(p, ChunkPick::Lines(vec![r(Theirs, 1), r(Ours, 0)]));
-    assert_eq!(p.out_lines(&c), ["t1\n", "o0\n"]);
+    assert_eq!(p, ChunkPick::Lines(vec![r(Ours, 0), r(Theirs, 1)]), "ours first, whichever was ticked first");
+    assert_eq!(p.out_lines(&c), ["o0\n", "t1\n"]);
+    assert!(p.takes_both(&c) && p.first_side(&c) == Ours);
     assert!(p.takes_line(&c, Theirs, 1) && !p.takes_line(&c, Theirs, 0));
     assert!(p.partly_takes_side(&c, Ours) && !p.takes_side(&c, Ours));
     assert!(!p.is_open());
@@ -34,7 +35,7 @@ fn toggle_line_follows_tick_order() {
 fn normalize_back_to_sides() {
     let c = chunk();
     assert_eq!(ticks(&c, ChunkPick::default(), &[(Ours, 0), (Ours, 1)]), ChunkPick::Sides(Choice::Ours));
-    assert_eq!(ticks(&c, ChunkPick::default(), &[(Ours, 1), (Ours, 0)]), ChunkPick::Lines(vec![r(Ours, 1), r(Ours, 0)]));
+    assert_eq!(ticks(&c, ChunkPick::default(), &[(Ours, 1), (Ours, 0)]), ChunkPick::Sides(Choice::Ours), "file order");
     let back = ticks(&c, ChunkPick::default(), &[(Theirs, 2), (Theirs, 2)]);
     assert!(back == ChunkPick::Sides(Choice::Unresolved) && back.is_open(), "unticking the only line");
     assert_eq!(
@@ -44,7 +45,12 @@ fn normalize_back_to_sides() {
     let all = ticks(&c, ChunkPick::default(), &[(Ours, 0), (Ours, 1), (Theirs, 0), (Theirs, 1), (Theirs, 2)]);
     assert_eq!(all, ChunkPick::Sides(Choice::OursThenTheirs));
     let all = ticks(&c, ChunkPick::default(), &[(Theirs, 0), (Theirs, 1), (Theirs, 2), (Ours, 0), (Ours, 1)]);
-    assert_eq!(all, ChunkPick::Sides(Choice::TheirsThenOurs));
+    assert_eq!(all, ChunkPick::Sides(Choice::OursThenTheirs), "the order of clicks doesn't count");
+    assert_eq!(
+        ChunkPick::Sides(Choice::TheirsThenOurs).toggle_line(&c, Ours, 0),
+        ChunkPick::Lines(vec![r(Theirs, 0), r(Theirs, 1), r(Theirs, 2), r(Ours, 1)]),
+        "a swapped band stays swapped"
+    );
     // A line past the side's end changes nothing.
     assert_eq!(ChunkPick::default().toggle_line(&c, Ours, 5), ChunkPick::default());
 }
@@ -54,13 +60,30 @@ fn toggle_side_on_lines() {
     let c = chunk();
     let p = ChunkPick::Lines(vec![r(Theirs, 1), r(Ours, 0)]);
     let taken = p.toggle_side(&c, Ours);
-    assert_eq!(taken, ChunkPick::Lines(vec![r(Theirs, 1), r(Ours, 0), r(Ours, 1)]));
+    assert_eq!(taken, ChunkPick::Lines(vec![r(Theirs, 1), r(Ours, 0), r(Ours, 1)]), "theirs led: it stays first");
     assert!(taken.takes_side(&c, Ours));
-    // Theirs is only partly taken: ticking it takes all of it, at the end.
+    // Theirs is only partly taken: ticking it takes all of it, still first.
     let both = taken.toggle_side(&c, Theirs);
+    assert_eq!(both, ChunkPick::Sides(Choice::TheirsThenOurs));
+    let both = both.swap(&c);
     assert_eq!(both, ChunkPick::Sides(Choice::OursThenTheirs));
     assert_eq!(both.toggle_side(&c, Theirs), ChunkPick::Sides(Choice::Ours), "untaking theirs leaves all of ours");
     assert_eq!(taken.toggle_side(&c, Ours), ChunkPick::Lines(vec![r(Theirs, 1)]), "a whole side is left out");
+}
+
+#[test]
+fn swap_puts_the_other_side_first() {
+    let c = chunk();
+    let p = ChunkPick::Lines(vec![r(Ours, 1), r(Theirs, 0), r(Theirs, 2)]);
+    let swapped = p.swap(&c);
+    assert_eq!(swapped, ChunkPick::Lines(vec![r(Theirs, 0), r(Theirs, 2), r(Ours, 1)]));
+    assert_eq!(swapped.first_side(&c), Theirs);
+    assert_eq!(swapped.swap(&c), p);
+    assert_eq!(ChunkPick::Sides(Choice::OursThenTheirs).swap(&c), ChunkPick::Sides(Choice::TheirsThenOurs));
+    for one in [ChunkPick::Sides(Choice::Ours), ChunkPick::Lines(vec![r(Theirs, 1)]), ChunkPick::default()] {
+        assert!(!one.takes_both(&c));
+        assert_eq!(one.swap(&c), one, "one side has no order to swap");
+    }
 }
 
 #[test]

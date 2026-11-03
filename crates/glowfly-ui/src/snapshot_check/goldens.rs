@@ -64,6 +64,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("prefs_accessibility_light", Window),
     ("prefs_accessibility_de", Window),
     ("prefs_accessibility_es", Window),
+    // The system asking for high contrast (shown in High contrast dark), less motion and larger text.
+    ("prefs_accessibility_system_on", Window),
     // The window chrome: title bars, tabs, toolbar and menus.
     ("vivid_title_bar", Window),
     ("title_bar_windows_dark", Top(108.0)),
@@ -71,6 +73,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("title_bar_mac_dark", Top(108.0)),
     ("tabs_restyled", Window),
     ("tabs_hover", Top(40.0)),
+    // The trust chip waiting beside the conflict chip, then at rest.
+    ("toolbar_trust_waiting_dark", Top(108.0)),
+    ("toolbar_trust_rest_dark", Top(108.0)),
     ("tabs_new_tab_hover", Top(40.0)),
     ("tabs_close_focus", Top(40.0)),
     ("section_header_focus", TopLeft(280.0, 200.0)),
@@ -156,12 +161,18 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("diff_gap_filled_split_light", Window),
     ("conflict_view", Window),
     ("conflict_line_picks", Window),
+    ("conflict_line_picks_light", Window),
+    ("conflict_both_sides_dark", Window),
+    ("conflict_all_resolved_dark", Window),
+    ("conflict_narrow_1100_de", Window),
     ("blame_view", Window),
     ("blame_view_light", Window),
     ("range_diff_changed", Window),
     ("pull_request_line_comment_dark", Window),
     // The design sheets, fonts, colours and icons.
     ("controls_dark", Window),
+    // Every chip and badge kind: only the two chip heights.
+    ("chips_catalog_dark", Window),
     ("controls_light", Window),
     ("controls_high_contrast_dark", Window),
     ("controls_high_contrast_light", Window),
@@ -200,6 +211,10 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `conflict_line_picks` in Porcelain: the check marks' contrast on the light tints.
+    "conflict_line_picks_light",
+    // The trust chip at rest: the same names as `toolbar_trust_waiting_dark`; only its look differs.
+    "toolbar_trust_rest_dark",
     // `hint_row_undo` in Porcelain.
     "hint_row_undo_light",
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.
@@ -207,6 +222,8 @@ const IMAGE_ONLY: &[&str] = &[
     "main_light",
     // Preferences > Accessibility's text is `prefs_accessibility`'s.
     "prefs_accessibility_light",
+    // The same text with the system's settings followed: only the high-contrast look differs.
+    "prefs_accessibility_system_on",
     "main_high_contrast_dark",
     "history_table_dark",
     "history_table_light",

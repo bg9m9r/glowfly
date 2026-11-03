@@ -43,20 +43,27 @@ fn type_in_chunk(st: &mut AppState, k: usize, text: &str) {
 }
 
 #[test]
-fn line_toggles_build_the_output_in_tick_order() {
+fn line_toggles_build_the_output_in_band_order() {
     let mut st = with_two_lines(3, 1);
     st.session.conflict.view.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
     send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Theirs, line: 1 });
     send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Ours, line: 0 });
     let c = view(&st);
-    let want = ChunkPick::Lines(vec![LineRef { side: Side::Theirs, line: 1 }, LineRef { side: Side::Ours, line: 0 }]);
-    assert_eq!((&c.picks[1], c.auto[1], c.current), (&want, None, 1), "the automatic tag goes");
+    let want = ChunkPick::Lines(vec![LineRef { side: Side::Ours, line: 0 }, LineRef { side: Side::Theirs, line: 1 }]);
+    assert_eq!((&c.picks[1], c.auto[1], c.current), (&want, None, 1), "ours first, and the automatic tag goes");
     assert_eq!(c.output(), None, "the other chunks are still open");
     for k in [0, 2] {
         send(&mut st, ConflictMsg::ConflictToggle { chunk: k, side: Side::Ours });
     }
     let out = view(&st).output().expect("every chunk picked");
-    assert_eq!(out, "top\nours 0\nbetween\ntheirs 1 more\nours 1\nbetween\nours 2\nbetween\n");
+    assert_eq!(out, "top\nours 0\nbetween\nours 1\ntheirs 1 more\nbetween\nours 2\nbetween\n");
+    // Swap puts theirs first, and a later tick keeps that order.
+    send(&mut st, ConflictMsg::ConflictSwap(1));
+    assert_eq!(view(&st).output().unwrap(), "top\nours 0\nbetween\ntheirs 1 more\nours 1\nbetween\nours 2\nbetween\n");
+    send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Theirs, line: 0 });
+    assert!(view(&st).output().unwrap().contains("between\ntheirs 1\ntheirs 1 more\nours 1\n"), "still theirs first");
+    send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Theirs, line: 0 });
+    send(&mut st, ConflictMsg::ConflictSwap(1));
     // The header's Take finishes a partly taken side, then leaves it out.
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs });
     let line = |side, line| LineRef { side, line };

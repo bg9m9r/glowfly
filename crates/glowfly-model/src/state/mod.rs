@@ -22,6 +22,7 @@ pub mod confirm;
 pub mod conflict;
 pub mod conflict_check;
 pub mod conflict_files;
+pub mod conflict_strip;
 pub mod custom_commands;
 pub mod dashboard;
 pub mod dashboard_plan;
@@ -201,14 +202,13 @@ pub use prefs::{PrefPage, PrefsState, host_text};
 pub use running_job::RunningJob;
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};
-pub use view::{ColumnDrag, ViewState, diff_text, file_folds, file_lists, file_tree, frame_times, list_keys, wip_lists};
+pub use view::{ColumnDrag, ViewState, diff_text, file_folds, file_lists, file_tree, frame_times, list_keys, system_a11y, wip_lists};
 
 use crate::msg::Msg;
 use git2::Oid;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
-use std::time::{Duration, Instant};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, time::Duration, time::Instant};
 
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);

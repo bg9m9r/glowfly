@@ -4,7 +4,7 @@
 //! as one. It edits the form's choice and query in place, like the dialog's other fields.
 
 use super::super::theme::color;
-use super::super::widgets::{self, Icon};
+use super::super::widgets::chip::{Chip, ChipSize};
 use crate::state::issue_form::too_many;
 use crate::ui::theme::controls;
 use crate::ui::theme::tokens::radius;
@@ -15,6 +15,8 @@ use glowfly_core::text::printable;
 
 /// The most matches listed under the search field.
 const MAX_ROWS: usize = 6;
+/// A picker chip's × square: a badge's side, the least it takes to hit.
+const CROSS: f32 = ChipSize::Badge.metrics().h;
 
 /// What a picker offers.
 pub(super) struct Picker<'a> {
@@ -96,20 +98,28 @@ pub(super) fn multi(ui: &mut Ui, p: &Picker, query: &mut String, chosen: &mut Ve
 }
 
 /// A chosen item's chip; returns true when its cross was clicked.
-fn chip(ui: &mut Ui, text: &str) -> bool {
-    let text = printable(text);
-    let galley = ui.painter().layout_no_wrap(text, type_scale::font(type_scale::CAPTION), color::text());
-    let size = vec2(galley.size().x + 30.0, 20.0);
-    let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
-    let p = ui.painter();
-    p.rect_filled(rect, CornerRadius::same(radius::SM), color::raised());
-    p.galley(pos2(rect.left() + 6.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
-    let cross = Rect::from_center_size(pos2(rect.right() - 11.0, rect.center().y), vec2(18.0, 18.0));
+pub(crate) fn chip(ui: &mut Ui, text: &str) -> bool {
+    let size = ChipSize::Chip;
+    let m = size.metrics();
+    // The × square sits as far in from the chip's right edge as from its top and bottom.
+    let inset = (m.h - CROSS) / 2.0;
+    let rect = Chip::new(size, printable(text)).trail(m.gap + CROSS + inset - m.pad_x).show(ui).rect;
+    let cross = Rect::from_center_size(pos2(rect.right() - inset - CROSS / 2.0, rect.center().y), vec2(CROSS, CROSS));
     let r = ui.interact(cross, ui.id().with(("remove", rect.left().to_bits(), rect.top().to_bits())), Sense::click());
     if r.hovered() {
-        ui.painter().rect_filled(cross, CornerRadius::same(radius::SM), color::hover());
+        // The quiet hover layer (the row hover is too faint on the chip's fill), concentric with
+        // the chip's corners.
+        let layer = color::current().hover_layer();
+        ui.painter().rect_filled(cross, CornerRadius::same(radius::inside(m.radius, inset as u8)), layer);
     }
-    // Painted: the bundled fonts have no cross glyph to rely on.
-    widgets::paint_icon(ui.painter(), cross.center(), Icon::Close, color::weak());
+    paint_cross(ui.painter(), cross.center(), if r.hovered() { color::text() } else { color::weak() });
     r.on_hover_text("Remove").clicked()
+}
+
+/// The × of a picker chip: 8 px, a 1.5 px stroke (the bundled fonts have no cross glyph).
+fn paint_cross(p: &egui::Painter, c: egui::Pos2, col: egui::Color32) {
+    let s = egui::Stroke::new(1.5_f32, col);
+    let d = 4.0;
+    p.line_segment([c + vec2(-d, -d), c + vec2(d, d)], s);
+    p.line_segment([c + vec2(-d, d), c + vec2(d, -d)], s);
 }

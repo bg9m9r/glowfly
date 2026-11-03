@@ -50,7 +50,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     if st.loading_more() {
                         super::load_more::failed(st, e, now);
                     } else {
-                        st.log(false, e);
+                        super::parked_free::load_failed(st, e);
                     }
                     if kind == LoadKind::Open {
                         let path = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());

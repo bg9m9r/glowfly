@@ -13,10 +13,16 @@ use crate::state::status_counts::{issues_text, prs_text};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
 
+/// The size of the bar's controls (Cancel): quiet Compact.
+const CONTROL: ControlSize = ControlSize::Compact;
+/// The bar's height: the row that hosts a quiet `CONTROL` with its clearance (`sizes::fits`).
+pub(crate) const BAR_H: f32 = CONTROL.metrics().h + ControlSize::inset(false);
+
 pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
+    debug_assert!(super::theme::sizes::fits(BAR_H, CONTROL, false), "the status bar hosts its Cancel");
     egui::TopBottomPanel::bottom("status")
-        .exact_height(26.0)
+        .exact_height(BAR_H)
         .frame(egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(10, 0)))
         .show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
@@ -80,13 +86,13 @@ fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     if st.job_cancellable() {
         let step = st.job_stop.as_ref().map(|s| s.step).unwrap_or_default();
         let tip = cancel_tip(t, step, &named);
-        let cancel = buttons::quiet(t.tr("common.cancel.button")).size(ControlSize::Compact).tip(&tip);
+        let cancel = buttons::quiet(t.tr("common.cancel.button")).size(CONTROL).tip(&tip);
         if ui.add(cancel).clicked() {
             msgs.push(Msg::Job(JobMsg::Cancel));
         }
     } else if let Some(step) = st.job_cancel_blocked() {
         let why = cancel_tip(t, step, &named);
-        ui.add(buttons::quiet(t.tr("common.cancel.button")).size(ControlSize::Compact).enabled(false).why(Some(&why)));
+        ui.add(buttons::quiet(t.tr("common.cancel.button")).size(CONTROL).enabled(false).why(Some(&why)));
     }
     if let Some(p) = st.job_progress() {
         ui.label(RichText::new(crate::state::job_stop::progress_text(t, p)).color(color::faint()));

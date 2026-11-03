@@ -149,11 +149,6 @@ impl ConflictView {
         }
     }
 
-    /// Chunks whose pick was made automatically and not changed since.
-    pub fn auto_count(&self) -> usize {
-        self.auto.iter().filter(|a| a.is_some()).count()
-    }
-
     /// The user's decisions that aren't saved: chunks decided (a side, lines or typed text),
     /// not picked automatically and not as the working file holds them, plus clean runs edited
     /// differently from it. What closing the view would lose.

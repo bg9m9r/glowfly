@@ -126,8 +126,6 @@ painted:
   "0"
   "Tags"
   "1"
-  "Stashes"
-  "0"
   "3"
   "Branch / tag"
   "Graph"

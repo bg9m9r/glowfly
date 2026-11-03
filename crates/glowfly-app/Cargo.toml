@@ -41,11 +41,12 @@ winit = { version = "0.30", default-features = false }
 raw-window-handle = "0.6"
 
 # Folders and links macOS hands Glowfly.app as Apple events (src/platform/macos_events.rs), and
-# the system menu bar showing Glowfly's menus (src/platform/macos_menu.rs).
+# the system menu bar showing Glowfly's menus (src/platform/macos_menu.rs), and the
+# accessibility display settings (src/platform/a11y_system.rs).
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSAppleEventDescriptor", "NSAppleEventManager", "NSNotification", "NSString", "NSURL"] }
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSMenu", "NSMenuItem", "NSEvent", "NSCell"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSMenu", "NSMenuItem", "NSEvent", "NSCell", "NSWorkspace", "NSAccessibility"] }
 # Turns off winit's default app menu (src/platform/native_menu.rs).
 winit = { version = "0.30", default-features = false }
 

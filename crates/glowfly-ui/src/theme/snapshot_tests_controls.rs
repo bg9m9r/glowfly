@@ -81,7 +81,7 @@ fn render_controls(name: &str, p: Palette) {
                     x = rect.left();
                     y += 26.0;
                 }
-                x += widgets::chip_with_edge(painter, x, y, text, look.fill, look.edge, look.text) + 6.0;
+                x = widgets::chip::Chip::new(widgets::chip::ChipSize::Chip, text).look(look).paint(painter, x, y).right() + 6.0;
             }
         },
         form,

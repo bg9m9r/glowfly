@@ -41,9 +41,9 @@ const BRANCH_MIN: f32 = 40.0;
 /// (`toolbar_fold.rs`): a repository of 64 px and a branch of 96, so a 1400 px window with a
 /// hosting service still shows every group in English.
 const COMFORT_NAMES: (f32, f32) = (64.0, 96.0);
-/// A part's side padding, and the room between its caption and its name (the two centred as one
-/// block in the segment).
-const PAD_X: f32 = 10.0;
+/// A part's side padding (a ghost's: the parts are borderless targets inside one frame), and the
+/// room between its caption and its name (the two centred as one block in the segment).
+const PAD_X: f32 = PICKER_SIZE.metrics().ghost_pad_x;
 const CAPTION_GAP: f32 = 2.0;
 /// The size whose focus style the segments take (their corners are the frame's).
 const PICKER_SIZE: ControlSize = ControlSize::Large;

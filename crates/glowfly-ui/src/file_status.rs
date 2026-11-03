@@ -1,18 +1,16 @@
-//! A changed file's status chip: its letter (M, A, D, R, …) centred on a small square in the
-//! status colour, with the same fill and ink as the graph WIP row's change chips. A conflicted
-//! file ('!') takes the coral needs-you badge instead. Screen readers read the status as a word
-//! (`status_word`), never the letter.
+//! A changed file's status badge: its letter (M, A, D, R, …) centred on a one-letter badge
+//! (`widgets::chip`, an 18 px circle) in the status colour, with the same fill and ink as the
+//! graph WIP row's change badges. A conflicted file ('!') takes the coral needs-you badge of the
+//! same size instead. Screen readers read the status as a word (`status_word`), never the letter.
 
 use super::common::{status_color, status_label};
 use super::theme::{color, contrast};
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use eframe::egui::{Align2, CornerRadius, Response, Sense, Ui, WidgetInfo, WidgetType, vec2};
+use super::widgets::chip::{Chip, ChipSize, Look};
+use eframe::egui::{Response, Sense, Ui, WidgetInfo, WidgetType, vec2};
 use glowfly_core::i18n::Lang;
 
-/// The chip's width and height, the same for every letter so the paths line up.
-pub(super) const STATUS_CHIP_W: f32 = 20.0;
-const RADIUS: u8 = radius::SM;
+/// The badge's width and height, the same for every letter so the paths line up.
+pub(super) const STATUS_CHIP_W: f32 = ChipSize::Badge.metrics().min_w;
 
 /// The word a screen reader says for the status letter `status` ("Modified" for 'M').
 pub(super) fn status_word(t: Lang, status: char) -> &'static str {
@@ -28,25 +26,24 @@ pub(super) fn status_word(t: Lang, status: char) -> &'static str {
     }
 }
 
-/// Names `resp` (a status letter or chip) by its status's word.
+/// Names `resp` (a status letter or badge) by its status's word.
 pub(super) fn name_status(resp: &Response, t: Lang, status: char) {
     let word = status_word(t, status);
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, word));
 }
 
-/// Draws the chip for `status`; returns its (hover) response, named by the status's word.
+/// Draws the badge for `status`; returns its (hover) response, named by the status's word.
 pub(super) fn status_chip(ui: &mut Ui, t: Lang, status: char) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(STATUS_CHIP_W, STATUS_CHIP_W), Sense::hover());
     name_status(&resp, t, status);
     if ui.is_rect_visible(rect) {
         let p = ui.painter();
         if status == '!' {
-            super::needs_you::badge(p, rect);
+            super::needs_you::status_badge(p, rect);
             return resp;
         }
         let (fill, ink) = contrast::change_chip(status_color(status), &color::current());
-        p.rect_filled(rect, CornerRadius::same(RADIUS), fill);
-        p.text(rect.center(), Align2::CENTER_CENTER, status_label(status), type_scale::mono(type_scale::SMALL), ink);
+        Chip::new(ChipSize::Badge, status_label(status).to_string()).look(Look::new(fill, ink)).paint_in_rect(p, rect);
     }
     resp
 }

@@ -6,14 +6,17 @@
 
 use super::theme::color::{self, Palette};
 use super::theme::contrast;
+use super::theme::sizes::{self, ControlSize};
 use super::widgets::severity::{self, Severity};
-use eframe::egui::{Color32, CornerRadius, Painter, Rect, pos2, vec2};
+use eframe::egui::{Color32, CornerRadius, Galley, Painter, Rect, Vec2, pos2, vec2};
+use std::sync::Arc;
 
-/// How far a hovered pill's fill moves toward white (dark palettes) or black (light ones).
+/// How far a hovered coral control's fill moves toward white (dark palettes) or black (light ones).
 const HOVER_SHADE: f32 = 0.10;
-/// The warning mark's size on a pill, and its centre's distance from the pill's left edge.
-const PILL_MARK: f32 = 13.0;
-const PILL_MARK_X: f32 = 14.0;
+/// The warning mark's size in a control's icon slot.
+const MARK: f32 = 13.0;
+/// The coral controls' size (the toolbar's trust and conflict chips).
+const CONTROL: ControlSize = ControlSize::Small;
 
 /// The coral fill.
 pub(crate) fn fill() -> Color32 {
@@ -39,14 +42,33 @@ pub(crate) fn badge(p: &Painter, rect: Rect) {
     severity::paint(p, c, rect.height() * 0.72, Severity::Warning, ink());
 }
 
-/// A coral pill filling `rect` (shaded while `hovered`) with the warning mark near its left
-/// edge; the caller paints its text in [`ink`] after the mark.
-pub(crate) fn paint_pill(p: &Painter, rect: Rect, hovered: bool) {
+/// A conflicted file's status badge: a coral circle filling the square `rect` (a one-letter
+/// badge's shape, `widgets::chip`) with the warning mark in the ink.
+pub(crate) fn status_badge(p: &Painter, rect: Rect) {
+    p.circle_filled(rect.center(), rect.height() / 2.0, fill());
+    let c = rect.center() + vec2(0.0, -rect.height() * 0.03);
+    severity::paint(p, c, rect.height() * 0.6, Severity::Warning, ink());
+}
+
+/// The size of a coral control (a Small filled control, no outline) showing text `text_w`
+/// wide after the warning mark.
+pub(crate) fn control_size(text_w: f32) -> Vec2 {
+    let m = CONTROL.metrics();
+    vec2(m.pad_x + m.icon + m.icon_gap + text_w + m.pad_x, m.h)
+}
+
+/// A coral control filling `rect` (shaded while `hovered`): the warning mark in its icon slot,
+/// then `galley` in [`ink`].
+pub(crate) fn paint_control(p: &Painter, rect: Rect, hovered: bool, galley: Arc<Galley>) {
+    let m = CONTROL.metrics();
     let base = fill();
     let pole = if color::is_dark() { Color32::WHITE } else { Color32::BLACK };
     let fill = if hovered { contrast::mix(base, pole, HOVER_SHADE) } else { base };
-    p.rect_filled(rect, CornerRadius::same((rect.height() / 2.0).round() as u8), fill);
-    severity::paint(p, pos2(rect.left() + PILL_MARK_X, rect.center().y - 0.5), PILL_MARK, Severity::Warning, ink());
+    p.rect_filled(rect, CornerRadius::same(m.radius), fill);
+    let text = sizes::text_pos(rect, &galley).y;
+    let line = text + galley.size().y / 2.0;
+    severity::paint(p, pos2(rect.left() + m.pad_x + m.icon / 2.0, line - 0.5), MARK, Severity::Warning, ink());
+    p.galley(pos2(rect.left() + m.pad_x + m.icon + m.icon_gap, text), galley, ink());
 }
 
 #[cfg(test)]

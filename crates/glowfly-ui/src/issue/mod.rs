@@ -9,6 +9,11 @@ mod conversation;
 pub mod create_dialog;
 mod info;
 mod picker;
+// For the chip catalog golden (`snapshot_tests_chips.rs`).
+#[cfg(test)]
+pub(crate) use info::chip as info_chip;
+#[cfg(test)]
+pub(crate) use picker::chip as picker_chip;
 
 use super::markdown_cache::MarkdownCache;
 use super::theme::color;
