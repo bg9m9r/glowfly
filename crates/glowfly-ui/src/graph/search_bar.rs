@@ -142,6 +142,7 @@ fn clear_button(ui: &mut egui::Ui, field: Rect, name: &str, msgs: &mut Vec<Msg>)
 
 /// The author picker: "Any author", a filter field, then the history's authors.
 fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     let chosen = st.session.search.query.authors();
     let text = match chosen {
         [] => "Any author".to_owned(),
@@ -164,9 +165,9 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 msgs.push(Msg::Search(SearchMsg::PickAuthor(None)));
                 ui.memory_mut(|m| m.close_popup());
             }
-            let edit = egui::TextEdit::singleline(filter).hint_text("Filter authors");
+            let edit = egui::TextEdit::singleline(filter).hint_text(t.tr("search.authors.filter"));
             let field = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(220.0));
-            access::name_if_unnamed(&field, "Filter authors");
+            access::name_if_unnamed(&field, t.tr("search.authors.filter"));
             let Some(list) = &search.authors else {
                 ui.label(RichText::new("Reading authors…").color(color::weak()));
                 return;
@@ -192,7 +193,7 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
         });
     ui.spacing_mut().interact_size.y = saved;
-    access::name_if_unnamed(&open.response, "Author");
+    access::name_if_unnamed(&open.response, t.tr("search.author.name"));
     if open.inner.is_some() && st.session.search.authors.is_none() {
         msgs.push(Msg::Search(SearchMsg::WantAuthors));
     }
