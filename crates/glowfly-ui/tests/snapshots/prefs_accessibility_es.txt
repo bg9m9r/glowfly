@@ -1,4 +1,4 @@
-window 760x1280
+window 760x1500
 Label "Glowfly 0.1.0"
 Button "Volver"
 Label "Preferencias"
@@ -6,6 +6,7 @@ Label "Accesibilidad"
 Label "Visión"
 Label "Tamaño de la interfaz"
 ComboBox "Tamaño de la interfaz"
+CheckBox "Tamaño de la interfaz, Seguir también el tamaño de texto del sistema" [on]
 Label "Escala todo el texto y los controles. Ctrl+= y Ctrl+- también lo cambian."
 Label "Tamaño del texto del diff"
 SpinButton "Tamaño del texto del diff" = "12.5 pt" = 12.5
@@ -15,6 +16,7 @@ SpinButton "Tamaño del texto de la terminal" = "12.5 pt" = 12.5
 Label "El tamaño del texto de la terminal. El valor por defecto es 12,5."
 Label "Alto contraste"
 CheckBox "Alto contraste, Usar un tema de alto contraste" [off]
+CheckBox "Alto contraste, También cuando el sistema usa alto contraste" [on]
 Label "Cambia a Alto contraste oscuro o claro; al desactivarlo vuelve tu tema."
 Label "Colores"
 ComboBox "Colores"
@@ -22,11 +24,15 @@ Label "Colores de las ramas en el grafo."
 Label "Movimiento"
 Label "Reducir movimiento"
 CheckBox "Reducir movimiento, Desactivar fundidos y deslizamientos" [off]
-Label "Las descripciones y ventanas emergentes aparecen sin fundidos ni deslizamientos"
+CheckBox "Reducir movimiento, También cuando el sistema pide menos movimiento" [on]
+Label "Las descripciones y ventanas emergentes aparecen sin fundidos ni deslizamientos."
 Label "Cursor parpadeante"
 CheckBox "Cursor parpadeante, Hacer parpadear el cursor de texto" [on]
 Label "El cursor de los campos de texto. El de la terminal nunca parpadea."
 Label "Teclado"
+Label "Indicador de foco"
+ComboBox "Indicador de foco"
+Label "Reforzado dibuja un anillo más grueso con un contorno visible sobre cualquier color."
 Label "Atajos"
 Button "Cambiar atajos…"
 Button "Ver todos los atajos"
@@ -50,9 +56,13 @@ painted:
   "Firma de commits"
   "SSH"
   "100%"
+  "Seguir también el tamaño de texto del sistema"
   "Usar un tema de alto contraste"
+  "También cuando el sistema usa alto contraste"
   "Estándar"
   "Desactivar fundidos y deslizamientos"
+  "También cuando el sistema pide menos movimiento"
   "Hacer parpadear el cursor de texto"
+  "Estándar"
   "Estándar (5 s)"
   "Rápido (0,4 s)"

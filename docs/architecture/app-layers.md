@@ -108,6 +108,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `diff_text.rs`: the text selected in the open diff's code (`TextSel`: anchor, head, unit and side, keyed to the diff shown), its line places (`LineRef`), word bounds and `copy`, the text a selection copies (`copy_at_most` for the screen reader's value); `copy_lines` (the row menu's whole lines) and `select_all` (Ctrl+A).
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
+- `conflict_keys.rs` (`state::conflict::keys`): what the conflict keys send: take ours, theirs or both for the current conflict, clear it, Mark resolved once enabled, and Continue (the strip's Commit merge or Continue, else the rebase's). Tests in `conflict_keys_tests.rs`; end to end in `flows/conflict_keys_tests.rs`.
 - `conflict_strip.rs`: the strip while the conflict view is open: the operation in words, the files left, Abort and Commit merge or Continue with why it waits. Tests in `conflict_strip_tests.rs`.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
 - `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Unstash previews.
@@ -117,6 +118,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `session_view.rs`: `TabView`, the per-tab view state in `RepoSession::tab_view` (search text, ref filter, graph scroll, file-list folds, expanded empty sections, the diff's opened folds and top row with the mode and layout it was counted in, whether its history was freed while parked).
 - `empty_sections.rs`: the left-panel sections that start collapsed while empty, and the flag each one's header toggles then.
 - `tip.rs`: the rich tooltip's data.
+- `system_a11y.rs` (`view::system_a11y`): the system's reduce-motion, high-contrast and text-size settings as the shell read them (`ViewState::system_a11y`, set by `AppMsg::SystemA11y`), and the values in effect with Preferences > Accessibility's choices: `motion_reduced`, `system_contrast`, `zoom_factor`. Tests in `update/tests/system_a11y_tests.rs`.
 - `undo_preview.rs`: what Undo and Redo would change.
 - `op_preview.rs`: the operation preview's dialog data, its title and headline, why Apply is off (busy, loading, nothing to do or stale) and the message Apply sends, the same as the direct menu item's.
 - `refresh/recount.rs`: when other worktrees' changes are counted again after a reload that kept the snapshot (at most once per `RECOUNT_EVERY`).
@@ -191,6 +193,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `runner/platform/state_files.rs`: the recent-repositories and open-tabs files (a bad line costs only itself, a failed read stops saves over the file, private on Unix); its tests in `state_files_tests.rs`.
 - `runner/platform/open_events.rs`: the inbox where the folders and links the OS hands over wait until the runner attaches.
 - `platform/mod.rs`: the window's glue with the OS, only for the shell and `main.rs` (the files below).
+- `platform/a11y_system.rs`: the system's reduce-motion, high-contrast and text-size settings, read for the shell (Windows system parameters and registry, AppKit's `NSWorkspace`, GNOME's gsettings on a thread) through a `Watch` whose reader tests replace.
 - `platform/app_id.rs`: the installed Windows copy's app id, taken before the window opens.
 - `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `runner/platform/open_events.rs` until the runner attaches (`platform::install_open_events`).
 - `platform/native_menu.rs`: the macOS system menu bar showing Glowfly's menus: the facade, the queue of clicked items' tags and the hook that turns winit's default app menu off.
@@ -208,6 +211,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `active.rs`: the effective keymap with the user's overrides.
 - `rebind.rs`: the rebinding rules.
 - `tests.rs`, `override_tests.rs`: the table's rows, ids, chord text, clashes and filtering; loading, applying and saving the user's changes from settings.
+- `conflict_tests.rs`: `When::Conflict` overlaps the browsing places but not the graph or a text field, and the conflict keys' rows.
 - `pane_tests.rs`: the pane keys (Alt+1 to 5, Control on macOS, F6) clash with nothing, the menus' mnemonics included, and `When::Graph` never overlaps a diff's contexts; their update side in `flows/pane_focus_tests.rs`.
 - Shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard.
 - The Repository commands group binds palette commands; Fetch, Pull, Push, New branch, Stash changes, Unstash and Switch branch have default keys; `state/palette_bindings.rs` maps commands and bindings both ways, and a press sends `PaletteMsg::RunBoundCommand`, which `update/palette_keys.rs` runs when the palette would list the entry.

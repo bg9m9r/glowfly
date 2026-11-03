@@ -66,10 +66,10 @@ impl Refusal {
 pub fn refusal(id: BindingId, c: Chord) -> Option<Refusal> {
     use KeyName as K;
     let plain = !c.has_command_mod();
-    let moving = matches!(
-        c.key,
-        K::Enter | K::Tab | K::Backspace | K::Space | K::Up | K::Down | K::Left | K::Right | K::Home | K::End | K::PageUp | K::PageDown
-    );
+    // Backspace edits text as Delete does: a place without a text field (the conflict view's
+    // Clear picks) can take it plain, an action that works while typing can't (below).
+    let moving =
+        matches!(c.key, K::Enter | K::Tab | K::Space | K::Up | K::Down | K::Left | K::Right | K::Home | K::End | K::PageUp | K::PageDown);
     if c.key == K::Escape || matches!(c.key, K::DigitRange(..)) || (plain && moving) {
         return Some(Refusal::Reserved);
     }

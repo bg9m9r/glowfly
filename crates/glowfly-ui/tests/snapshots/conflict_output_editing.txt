@@ -66,18 +66,18 @@ Button "Wrap lines" [off]
 MultilineTextInput = "setting_1 = 1\nsetting_2 = 2\n<<<<<<< main\ntheme = \"dark\"\n=======\ntheme = \"solarized\"\naccent = \"teal\"\n>>>>>>> theme-tweaks\nsetting_4 = 4\nsetting_5 = 5\nsetting_6 = 6\nsetting_7 = 7\nsetting_8 = 8\nfont_size = 15\nsetting_10 = 10\nsetting_11 = 11\nsetting_12 = 12\n"
 Label "Ours"
 Label "main"
-Button "Take all"
+Button "Take every conflict from ours (main)"
 Label "Theirs"
 Label "theme-tweaks"
-Button "Take all"
-CheckBox "Take" [off]
-CheckBox "Take" [off]
-CheckBox [off]
-CheckBox [off]
-CheckBox [off]
+Button "Take every conflict from theirs (theme-tweaks)"
+CheckBox "Take all of conflict 1 from ours (main)" [off]
+CheckBox "Take all of conflict 1 from theirs (theme-tweaks)" [off]
+CheckBox "Take line 3 from ours (main), conflict 1" [off]
+CheckBox "Take line 3 from theirs (theme-tweaks), conflict 1" [off]
+CheckBox "Take line 4 from theirs (theme-tweaks), conflict 1" [off]
 Button "Discard edit"
-CheckBox [disabled, off]
-CheckBox [disabled, off]
+CheckBox "Take line 9 from ours (main), conflict 2" [disabled, off]
+CheckBox "Take line 10 from theirs (theme-tweaks), conflict 2" [disabled, off]
 painted:
   "Repository"
   "Branch"
@@ -109,6 +109,8 @@ painted:
   "0"
   "Submodules"
   "0"
+  "Take all"
+  "Take all"
   "1"
   "setting_1 = 1"
   "1"
@@ -118,7 +120,9 @@ painted:
   "2"
   "setting_2 = 2"
   "Conflict 1"
+  "Take"
   "Conflict 1"
+  "Take"
   "3"
   "theme = \"dark\""
   "3"

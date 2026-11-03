@@ -98,7 +98,13 @@ fn check_clashes() {
     let k = keys();
     assert_eq!(check(&k, I::Refresh, Chord::cmd(K::Digit(3)), true), Check::Clash { other: I::GoToTab, fixed: true });
     assert_eq!(check(&k, I::Palette, Chord::cmd(K::Enter), true), Check::Clash { other: I::Commit, fixed: true });
-    assert_eq!(check(&k, I::Undo, Chord::cmd(K::Enter), true), Check::Ok, "the commit message is a text field");
+    assert_eq!(check(&k, I::SelectHead, Chord::cmd(K::Enter), true), Check::Ok, "the commit message is a text field");
+    let mark = Check::Clash { other: I::ConflictMarkResolved, fixed: false };
+    assert_eq!(check(&k, I::Undo, Chord::cmd(K::Enter), true), mark, "the conflict view's Mark resolved");
+    // Backspace edits text as Delete does: plain only where no text field takes it.
+    assert_eq!(check(&k, I::CloseTab, Chord::plain(K::Backspace), true), Check::Refused(Refusal::NeedsModifier));
+    let clear = Check::Clash { other: I::ConflictClear, fixed: false };
+    assert_eq!(check(&k, I::OpenFold, Chord::plain(K::Backspace), true), clear);
     assert_eq!(check(&k, I::Refresh, Chord::cmd(K::Letter('T')), true), Check::Clash { other: I::NewTab, fixed: false });
     assert_eq!(check(&k, I::Stage, Chord::cmd(K::Letter('Z')), true), Check::Clash { other: I::Undo, fixed: false });
 }

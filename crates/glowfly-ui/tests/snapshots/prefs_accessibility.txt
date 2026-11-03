@@ -1,25 +1,30 @@
-window 1400x1060
+window 1400x1220
 Label "Glowfly 0.1.0"
 Button "Back"
 Label "Preferences"
 Label "Accessibility"
 Label "Vision"
 ComboBox "Interface size"
+CheckBox "Interface size, Also follow the system's text size" [on]
 Label "Scales all text and controls. Ctrl+= and Ctrl+- also change it."
 SpinButton "Diff text size" = "12.5 pt" = 12.5
 Label "The size of the text in the diff viewer: hunks, the whole-file view and file history. The default is 12.5."
 SpinButton "Terminal text size" = "12.5 pt" = 12.5
 Label "The size of the terminal's text. The default is 12.5."
 CheckBox "High contrast, Use a high-contrast theme" [off]
+CheckBox "High contrast, Also when the system uses high contrast" [on]
 Label "Switches to High contrast dark or light; turning it off brings back your theme."
 ComboBox "Colors"
 Label "Branch colors in the graph."
 Label "Motion"
 CheckBox "Reduce motion, Turn off fades and slides" [off]
-Label "Tooltips and popups appear without fading or sliding in"
+CheckBox "Reduce motion, Also when the system asks for less motion" [on]
+Label "Tooltips and popups appear without fading or sliding in."
 CheckBox "Blinking cursor, Blink the text cursor" [on]
 Label "The cursor in text fields. The terminal's never blinks."
 Label "Keyboard"
+ComboBox "Focus indicator"
+Label "Strong draws a thicker ring with an outline that shows on every color."
 Button "Change shortcuts…"
 Button "Show all shortcuts"
 Label "Every command can be given a key."
@@ -40,13 +45,17 @@ painted:
   "Commit signing"
   "SSH"
   "100%"
+  "Also follow the system's text size"
   "High contrast"
   "Use a high-contrast theme"
+  "Also when the system uses high contrast"
   "Standard"
   "Reduce motion"
   "Turn off fades and slides"
+  "Also when the system asks for less motion"
   "Blinking cursor"
   "Blink the text cursor"
+  "Standard"
   "Shortcuts"
   "Standard (5 s)"
   "Quick (0.4 s)"

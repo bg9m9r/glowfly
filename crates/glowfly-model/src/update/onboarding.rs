@@ -6,7 +6,7 @@
 use crate::effect::{Effect, LoadKind};
 use crate::onboarding::{OnboardingEffect, OnboardingMsg, StartChoice};
 use crate::state::AppState;
-use crate::state::onboarding::{SAVED_LOG, TOUR_DONE, Welcome, WelcomeStep, identity_problem};
+use crate::state::onboarding::{SAVED_LOG, Welcome, WelcomeStep, identity_problem};
 use crate::state::onboarding_tour::TourStep;
 use glowfly_core::identity::Identity;
 use std::time::Instant;
@@ -75,7 +75,8 @@ pub(super) fn handle(st: &mut AppState, msg: OnboardingMsg, now: Instant, fx: &m
             Some(None) => {
                 st.onboarding.tour = None;
                 st.onboarding.tour_resume = None;
-                st.toast(true, TOUR_DONE, now);
+                let done = st.settings.lang().tr("tour.done.toast");
+                st.toast(true, done, now);
             }
             None => {}
         },
