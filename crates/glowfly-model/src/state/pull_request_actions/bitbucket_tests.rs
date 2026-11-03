@@ -43,10 +43,10 @@ fn vote_choice_reasons() {
     assert_eq!(blocked(&v, ReviewEvent::Unapprove).as_deref(), Some("You haven't approved this"));
     assert_eq!(blocked(&v, ReviewEvent::UnrequestChanges).as_deref(), Some("You haven't requested changes on this"));
     let v = bb(|d| d.me = "ada".into());
-    assert_eq!(blocked(&v, ReviewEvent::Approve).as_deref(), Some("You opened this pull request, so you can't approve it."));
+    assert_eq!(blocked(&v, ReviewEvent::Approve).as_deref(), Some("You opened this pull request, so you can't approve it"));
     assert_eq!(
         blocked(&v, ReviewEvent::RequestChanges).as_deref(),
-        Some("You opened this pull request, so you can't request changes on it.")
+        Some("You opened this pull request, so you can't request changes on it")
     );
     assert_eq!(blocked(&v, ReviewEvent::Comment), None, "the author can still comment");
     let v = bb(|d| d.style = votes(Vote::Approved));
@@ -67,13 +67,24 @@ fn request_changes_needs_no_summary_on_bitbucket() {
     v.forms.review_event = ReviewEvent::RequestChanges;
     assert_eq!(review_blocked(&v), None);
     v.forms.review_event = ReviewEvent::Comment;
-    assert_eq!(review_blocked(&v).as_deref(), Some("Write a summary for this choice"));
+    assert_eq!(review_blocked(&v).as_deref(), Some("A comment needs a summary"));
     let mut v = bb(|d| d.style = votes(Vote::ChangesRequested));
     v.forms.review_event = ReviewEvent::UnrequestChanges;
     assert_eq!(review_blocked(&v), None);
     let mut github = view(Some(detail()));
     github.forms.review_event = ReviewEvent::RequestChanges;
-    assert_eq!(review_blocked(&github).as_deref(), Some("Write a summary for this choice"), "GitHub still asks for one");
+    assert_eq!(review_blocked(&github).as_deref(), Some("A change request needs a summary"), "GitHub still asks for one");
+}
+
+#[test]
+fn the_placeholder_says_bitbucket_summaries_are_optional_but_a_comments() {
+    let mut v = bb(|_| {});
+    assert_eq!(review_placeholder(&v), "Summary (required for a comment)");
+    v.forms.review_event = ReviewEvent::RequestChanges;
+    assert_eq!(review_placeholder(&v), "Summary (optional)");
+    let mut v = bb(|d| d.style = votes(Vote::Approved));
+    v.forms.review_event = ReviewEvent::Unapprove;
+    assert_eq!(review_placeholder(&v), "Summary (optional)");
 }
 
 #[test]

@@ -82,7 +82,7 @@ fn draw(ui: &mut Ui, c: &mut Catalog) {
     });
     row(ui, "File status", |ui| {
         for s in ['M', 'A', 'D', 'R', '!'] {
-            file_status::status_chip(ui, s);
+            file_status::status_chip(ui, Lang::En, s);
         }
     });
     row(ui, "Tab group", |ui| {

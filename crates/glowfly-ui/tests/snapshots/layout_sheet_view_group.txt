@@ -1,7 +1,7 @@
 Dialog
   Label "Keyboard shortcuts"
   Button "Close this dialog"
-  TextInput = "hide" [focused]
+  TextInput "Filter by action or key" = "hide" [focused]
   Label "Navigation"
   Label "Show or hide commit search (find in the blame view)"
   Label "Ctrl+F"

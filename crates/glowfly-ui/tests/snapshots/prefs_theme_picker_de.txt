@@ -2,7 +2,21 @@ window 1400x1040
 Label "Glowfly 0.1.0"
 Button "Zurück"
 Label "Einstellungen"
+Button "Allgemein"
+Button "Git"
+Button "Profil"
+Button "Integrationen"
+Button "Darstellung" [selected]
+Button "Barrierefreiheit"
+Button "Sprache und Region"
+Button "Diff-Ansicht"
+Button "Tastatur"
+Button "Externe Programme"
+Button "Terminal"
+Button "Commit-Signatur"
+Button "SSH"
 Label "Darstellung"
+Label "Design"
 CheckBox "Dem dunklen oder hellen Modus des Systems folgen" [on]
 Label "Dunkel · verwendet, wenn das System dunkel ist"
 RadioButton "Graphit" [on]
@@ -16,40 +30,59 @@ RadioButton "Morgenrot" [off]
 RadioButton "Hoher Kontrast hell" [off]
 Label "Graphit: Fast neutrale Graphittöne mit Kobaltakzent. Das dunkle Standarddesign."
 Button "Eigene Designdateien"
-ComboBox
+Label "Position der Hinweise"
+ComboBox "Position der Hinweise"
+Label "Hinweis bei Rückstand"
 CheckBox "Melden, wenn der Branch hinter seinem Upstream zurückliegt" [on]
 Label "Meldet nach einem Abruf im Hintergrund, wenn der ausgecheckte Branch hinter seinen Upstream zurückgefallen ist, mit einer Schaltfläche zum Pullen."
+Label "Desktop-Benachrichtigungen"
 CheckBox "Systembenachrichtigungen zeigen, während Glowfly im Hintergrund ist" [off]
 Label "Abgeschlossene Vorgänge und Hinweise bei Rückstand erscheinen auch als Desktop-Benachrichtigungen, wenn das Fenster von Glowfly nicht im Fokus ist. Abrufe im Hintergrund bleiben still. Beim Einschalten kommt eine Benachrichtigung, damit du prüfen kannst, ob sie dich erreichen."
 Label "Oberfläche"
+Label "Oberflächengröße"
 ComboBox "Oberflächengröße"
 Label "Skaliert alle Texte und Bedienelemente. Auch Ctrl+= und Ctrl+- ändern sie."
+Label "Linke Leiste"
 CheckBox "Linke Leiste zeigen" [on]
+Label "Commit-Details"
 CheckBox "Commit-Details zeigen" [on]
+Label "Symbolleiste"
 CheckBox "Symbolleiste zeigen" [on]
 Label "Solange die Symbolleiste ausgeblendet ist, hat die Statusleiste eine Schaltfläche Symbolleiste zeigen, und Befehlspalette und Tastenkürzel funktionieren weiter."
+Label "Menüleiste"
 CheckBox "Menüleiste zeigen" [off]
 Label "Solange die Menüleiste ausgeblendet ist, erreichst du über Befehlspalette und Tastenkürzel weiterhin alles, und Show menu bar in der Palette blendet sie wieder ein."
+Label "Beschriftung der Symbolleiste"
 CheckBox "Text unter den Symbolen zeigen" [on]
+Label "Rechtschreibprüfung"
 CheckBox "Rechtschreibung in Commit-Nachrichten prüfen" [on]
 Label "Unterstreicht Tippfehler in Zusammenfassung und Beschreibung des Commits; ein Rechtsklick zeigt Vorschläge. Verwendet die Rechtschreibprüfung von Windows in deiner Systemsprache."
+Label "Autorenbilder"
 CheckBox "Avatare online nachschlagen" [off]
 Label "Sendet einen Hash der E-Mail-Adresse jedes Autors an Gravatar, nur bei Repositorys auf github.com, gitlab.com, bitbucket.org oder codeberg.org."
+Label "Schnell-Branch-Schaltfläche"
 CheckBox "Schaltfläche „Neuer Branch…“ am ausgecheckten Commit zeigen" [on]
 Label "Solange du auf den ausgecheckten Commit zeigst oder er der ausgewählte Commit ist, steht hinter seinen Branch-Labels eine dezente Schaltfläche „Neuer Branch…“; ein Klick darauf startet einen Branch vom aktuellen aus. Für jeden anderen Commit nimm „Branch hier erstellen…“ aus seinem Rechtsklickmenü."
+Label "Branch beim Zeigen nachverfolgen"
 CheckBox "Die Commits eines Branches hervorheben, solange der Zeiger auf seinem Label im Graphen ist" [on]
+Label "Worktree-Änderungen"
 CheckBox "Änderungen anderer Worktrees im Graphen zeigen" [on]
 Label "Fügt über dem ausgecheckten Commit eines Worktrees eine Zeile mit Zählern hinzu, solange er nicht committete Änderungen hat. Ein Klick darauf öffnet diesen Worktree. Die Zähler werden beim Laden des Repositorys gelesen."
+Label "Worktree-Tabs gruppieren"
 CheckBox "Tabs der Worktrees eines Repositorys nebeneinander halten" [on]
 Label "Tabs für Worktrees desselben Repositorys (sein Hauptordner und jeder verknüpfte Worktree) bleiben nebeneinander, mit einer farbigen Linie darunter. Ziehe einen Tab innerhalb seiner Gruppe, um ihn umzusortieren; lege ihn außerhalb der Gruppe ab, um die ganze Gruppe zu verschieben."
+Label "Farbe neuer Gruppen"
 ComboBox "Farbe neuer Gruppen"
 Label "Mit „Nächste freie Farbe“ bekommt jede neue Gruppe eine Farbe, die noch keine andere Gruppe hat, bis alle acht vergeben sind. Um bestehende Gruppen neu einzufärben, wähle auf der Startseite im Menü einer Gruppe „Alle Gruppenfarben zurücksetzen“."
-ComboBox
+Label "Sichtbare Branches"
+ComboBox "Sichtbare Branches"
 Label "Relevante Branches beschränkt den Graphen auf den ausgecheckten Branch, seinen Upstream, den Standard-Branch und Branches mit offenem Pull Request."
+Label "Geänderte Dateien"
 RadioButton "Liste" [on]
 RadioButton "Baum" [off]
 Label "Ob Listen geänderter Dateien jeden Pfad in einer eigenen Zeile oder nach Ordnern gruppiert zeigen. Der Schalter im Kopf einer Liste ändert das ebenfalls."
 Label "Commit-Graph"
+Label "Spalten des Graphen"
 CheckBox "Branches und Tags" [on]
 CheckBox "Baum" [on]
 CheckBox "Nachricht" [on]
@@ -58,31 +91,15 @@ Label "Hinzugefügte und entfernte Zeilen pro Commit, im Hintergrund berechnet."
 CheckBox "Autor" [on]
 CheckBox "Commit (kurzer SHA)" [on]
 CheckBox "Datum und Uhrzeit" [on]
+Label "Zeilendichte"
 Button "Komfortabel" [on]
 Button "Kompakt" [off]
-ComboBox
+Label "Commit-Beschreibung"
+ComboBox "Commit-Beschreibung"
+Label "Spaltenlayout"
 Button "Standardlayout wiederherstellen"
 Button "Kompaktes Layout wiederherstellen"
 Label "Beide setzen auch jede Spalte auf ihre Standardbreite zurück. Um eine Spalte anzupassen, ziehe den Trenner neben ihrem Titel im Kopf des Graphen; ein Doppelklick auf einen Trenner setzt nur diese Spalte zurück."
 painted:
-  "Allgemein"
-  "Git"
-  "Profil"
-  "Integrationen"
-  "Barrierefreiheit"
-  "Sprache und Region"
-  "Diff-Ansicht"
-  "Tastatur"
-  "Externe Programme"
-  "Terminal"
-  "Commit-Signatur"
-  "SSH"
-  "Design"
-  "Position der Hinweise"
   "Unten links"
-  "Hinweis bei Rückstand"
-  "Desktop-Benachrichtigungen"
   "100%"
-  "Linke Leiste"
-  "Commit-Details"
-  "Symbolleiste"

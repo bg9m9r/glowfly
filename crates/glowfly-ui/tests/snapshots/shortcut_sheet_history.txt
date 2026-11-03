@@ -1,7 +1,7 @@
 Dialog
   Label "Keyboard shortcuts"
   Button "Close this dialog"
-  TextInput = "editing history" [focused]
+  TextInput "Filter by action or key" = "editing history" [focused]
   Label "Editing history"
   Label "Reword the selected commit"
   Label "in the commit graph"

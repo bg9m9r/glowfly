@@ -33,7 +33,7 @@ fn check(name: &str, group: Option<&str>, state: RunState) -> CheckRun {
 }
 
 /// One check of every state, in list order.
-fn every_state() -> CheckList {
+pub(crate) fn every_state() -> CheckList {
     let mut build = check("build", Some("CI"), RunState::Failed);
     (build.required, build.started, build.finished) = (Some(true), Some(NOW - 3600), Some(NOW - 3600 + 134));
     build.url = BUILD_URL.into();
@@ -57,7 +57,7 @@ fn every_state() -> CheckList {
 }
 
 /// `with_pr` on the Overview tab with its page loaded, the checks set by `f`.
-fn with_checks(theme: ThemeChoice, name: &str, f: impl FnOnce(&mut PrView)) -> (AppState, PathBuf) {
+pub(crate) fn with_checks(theme: ThemeChoice, name: &str, f: impl FnOnce(&mut PrView)) -> (AppState, PathBuf) {
     let (mut st, dir) = with_pr(theme, name, true);
     load(&mut st, detail(), Vec::new());
     f(st.session.pull_request.view.as_mut().unwrap());

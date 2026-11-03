@@ -222,11 +222,13 @@ fn finish_row(ui: &mut Ui, choice: &mut String, s: &GitFlowSettings, b: &Branche
             *choice = (*first).to_owned();
         }
         ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt("gitflow-finish-branch").selected_text(choice.as_str()).width(220.0).show_ui(ui, |ui| {
-                for (_, n) in &open {
-                    ui.selectable_value(choice, (*n).to_owned(), *n);
-                }
-            });
+            let combo =
+                egui::ComboBox::from_id_salt("gitflow-finish-branch").selected_text(choice.as_str()).width(220.0).show_ui(ui, |ui| {
+                    for (_, n) in &open {
+                        ui.selectable_value(choice, (*n).to_owned(), *n);
+                    }
+                });
+            crate::ui::access::from_label(&combo.response);
             if ui.add(buttons::secondary("Finish…").enabled(!wait.blocked()).why(wait.edited)).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(choice.clone())));
             }

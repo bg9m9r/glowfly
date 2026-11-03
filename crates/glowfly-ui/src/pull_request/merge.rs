@@ -65,16 +65,16 @@ fn open(ui: &mut Ui, t: Lang, v: &mut PrView, snap: Option<&Snapshot>, default_b
     }
     if matches!(v.forms.merge_method, Some(MergeMethod::Merge | MergeMethod::Squash)) {
         ui.add_space(4.0);
-        ui.label(RichText::new("Commit title").color(color::text()));
+        let label = ui.label(RichText::new("Commit title").color(color::text())).id;
         let title =
             egui::TextEdit::singleline(&mut v.forms.merge_title).hint_text("Empty: the service's default").desired_width(f32::INFINITY);
-        controls::field(ui, title);
-        ui.label(RichText::new("Commit message").color(color::text()));
+        crate::ui::access::with_label(&ui.ctx().clone(), Some(label), || controls::field(ui, title));
+        let label = ui.label(RichText::new("Commit message").color(color::text())).id;
         let message = egui::TextEdit::multiline(&mut v.forms.merge_message)
             .hint_text("Empty: the service's default")
             .desired_rows(3)
             .desired_width(f32::INFINITY);
-        controls::field(ui, message);
+        crate::ui::access::with_label(&ui.ctx().clone(), Some(label), || controls::field(ui, message));
     }
     ui.add_space(4.0);
     let source = printable(&v.pr.source);

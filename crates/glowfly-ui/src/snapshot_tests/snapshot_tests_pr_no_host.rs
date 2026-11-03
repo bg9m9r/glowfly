@@ -135,7 +135,7 @@ fn branch_menu_head_no_remotes() {
     assert_eq!(snap.graph.owners.mainline.as_deref(), Some("main"));
     let mut h = harness(st, true);
     h.run();
-    let rect = h.get_by_label("✔  main").bounding_box().expect("the sidebar row");
+    let rect = h.get_by_label("main, checked out").bounding_box().expect("the sidebar row");
     click(&mut h, egui::pos2(rect.x0 as f32 + 40.0, ((rect.y0 + rect.y1) / 2.0) as f32), PointerButton::Secondary);
     for gone in ["Hide in graph", "Check for conflicts", "Set upstream…", "Create pull request…"] {
         assert!(h.query_by_label(gone).is_none(), "{gone} can't apply");

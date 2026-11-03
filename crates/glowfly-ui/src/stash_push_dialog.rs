@@ -118,7 +118,9 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
                 ui.horizontal(|ui| {
                     let usable = stashable(f);
                     let mut on = usable && form.chosen.contains(&f.path);
-                    let boxed = ui.add_enabled(usable, controls::Check::without_text(&mut on)).changed();
+                    let check = ui.add_enabled(usable, controls::Check::without_text(&mut on));
+                    crate::ui::access::name_if_unnamed(&check, &f.path);
+                    let boxed = check.changed();
                     ui.label(
                         RichText::new(status_label(f.status).to_string())
                             .font(type_scale::mono(type_scale::BODY))

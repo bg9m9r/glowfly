@@ -5,6 +5,8 @@
 //! turns keys and clicks into messages.
 
 use super::theme::color;
+use super::widgets::quiet_target::{self, State};
+use super::widgets::row_fill;
 use super::widgets::{self, Icon};
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
@@ -13,10 +15,11 @@ use crate::state::palette::{self, InputKind, Items, Mode, Palette};
 use crate::state::palette_nav::{Jump, PAGE_ROWS};
 use crate::ui::theme::controls;
 use crate::ui::theme::sizes::ControlSize;
+use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 use eframe::egui::{
-    self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2, text::LayoutJob,
-    vec2,
+    self, Align2, Color32, CornerRadius, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2,
+    text::LayoutJob, vec2,
 };
 
 const WIDTH: f32 = 560.0;
@@ -129,6 +132,7 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
             .hint_text(hint)
             .font(type_scale::font(type_scale::SUBHEAD));
         let r = ui.add(controls::SizedField::new(ControlSize::Large, edit));
+        crate::ui::access::name_if_unnamed(&r, hint);
         if !prompting {
             r.request_focus();
         }
@@ -292,11 +296,20 @@ fn row(
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
-    let p = ui.painter_at(rect);
+    // The current item is announced as selected (not as a toggle).
     if selected {
-        p.rect_filled(rect, 3.0, color::selected());
-    } else if resp.hovered() {
-        p.rect_filled(rect, 3.0, color::hover());
+        crate::ui::access::mark_selected(&resp);
+    }
+    let p = ui.painter_at(rect);
+    // On the menu pill's corners: the keyboard's row (the list's current item, which Enter runs)
+    // takes the selection with its accent bar, and wins over the pointer; every other row lights
+    // as a quiet target. The keyboard stays in the search field, so no focus ring.
+    let face = rect.shrink2(vec2(4.0, 1.0));
+    if selected {
+        row_fill::paint_inset_selection(&p, face, radius::SM);
+    } else {
+        let state = State { hovered: resp.hovered(), down: resp.is_pointer_button_down_on(), latched: false, focused: false };
+        quiet_target::paint(&p, face, CornerRadius::same(radius::SM), ControlSize::Compact, state);
     }
     let mut right_w = 0.0;
     if let Some(keys) = shortcut {

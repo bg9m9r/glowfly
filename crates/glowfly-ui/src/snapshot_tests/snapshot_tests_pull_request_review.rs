@@ -106,6 +106,11 @@ fn pull_request_author_light() {
     h.check_snapshot("pull_request_author_light");
     assert!(h.get_by_label("Approve").is_disabled());
     assert!(h.get_by_label("Request changes").is_disabled());
+    // Why on screen, not only on hover: in place of each choice's help, and under Submit.
+    assert!(h.query_by_label("You opened this pull request, so you can't approve it").is_some());
+    assert!(h.query_by_label("You opened this pull request, so you can't request changes on it").is_some());
+    assert!(h.query_by_label("Approve these changes for merging.").is_none());
+    assert!(h.query_by_label("A comment needs a summary").is_some());
     assert!(h.get_by_label("Merge pull request").is_disabled());
     assert!(h.query_by_label("Conflicts with main must be resolved first").is_some());
     assert!(h.query_by_label("Left comments on the code.").is_some());

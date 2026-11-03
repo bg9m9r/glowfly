@@ -9,7 +9,7 @@ source file, update its line here.
 - `icon.rs`: the `Icon` set.
 - `widgets/icon_snap.rs`: painted glyphs on the pixel grid: an icon's centre and the plus's ends snapped for the line width at any pixel ratio.
 - `tab_glyph.rs`: the tab bars' painted close × and new-tab + (one stroke and hover box for both, at least a 24 px hit area).
-- `widgets/quiet_target.rs`: a quiet target a view lays out itself (a tab, the tab list and title-bar menu buttons, a section header's + and ⋯), lit and ringed through `paint_target`.
+- `widgets/quiet_target.rs`: a quiet target a view lays out itself (a tab, the tab list and title-bar menu buttons, a section header's + and ⋯, a Git Flow group's +, a row inset in a padded pane on `radius::SM`, a palette row, the diff's comment button), lit and ringed through `paint_target`.
 - `scroll_cue.rs`: the always-visible thin scroll bar and the edge fades of dialog bodies, Preferences and the File view.
 - `ghost::close_view`: the × that closes a view (the diff, blame, a history, an issue or pull request), with Close and its Esc cap in the tooltip.
 - `widgets::remove_icon`: the weak × that removes a key in Preferences > Keyboard and closes a toast.
@@ -29,7 +29,7 @@ source file, update its line here.
 - `list_row.rs`: list rows, whose dim right-hand parts paint ahead/behind arrows (`paint_parts`, shared with the branch picker), and the side panels' row heights and insets.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
-- `widgets/row_fill.rs`: one selection fill with a left accent bar and lifted hover, shared by the graph, sidebar rows, file rows and the file history list.
+- `widgets/row_fill.rs`: an edge-to-edge list row in each state (`RowState`): the selection fill with a left accent bar, the lifted hover, a flat pressed fill and the inset focus ring; shared by the graph, sidebar rows and headers, file rows, the file history list, the dashboard and the Preferences page list.
 - `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu` (and `context_menu_at`, for a view drawing its rows under one response), `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `group_header` (the one group-header style, in place of its separator), `inset` for plain lines at the label column, and `danger_style` / `danger_submenu` for destructive items; `tests/view_checks/menus.rs` checks.
 - `widgets/menu_columns.rs`: a menu's shared columns (state, icon, label, reason slot, shortcut, end slot for a chevron or a trailing button), learned from its rows each pass so every row lines up.
 - `widgets/menu_row.rs`: the menu row (`menu::item`): a ✓, radio dot or current-choice ✓ in the state column, a dot or swatch in the icon column, the label, the info mark and the shortcut on the menu's columns; `item_named` for a label with cut names, `trailing_button` + `show_split` for a split row.
