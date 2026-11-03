@@ -22,6 +22,10 @@ CheckBox "Check for updates once a day" [on]
 Label "Glowfly 0.1.0 · Never checked"
 Button "Check now"
 Label "Glowfly asks GitHub's releases API for the newest release of its repository once a day. GitHub sees your IP address and Glowfly's version, nothing about your repositories. Downloads are checked against the release's published SHA-256 checksums. Glowfly's builds aren't code-signed yet, so this confirms a download matches what the release published, not who published it."
+Label "After an update:"
+RadioButton "Show “What's new” in the status bar" [on]
+RadioButton "Open the release notes" [off]
+RadioButton "Don't show anything" [off]
 Label "Git"
 Label "Git program"
 Label "git 2.45.1 at C:\\Program Files\\Git\\cmd\\git.exe"
@@ -103,5 +107,3 @@ Label "The last, average and slowest of the recent frames, in milliseconds, for 
 Label "Logs"
 Button "Open logs folder"
 Label "activity.jsonl keeps the activity log across sessions, errors.log holds warnings, errors and crashes, and performance.log lists operations that took half a second or more."
-painted:
-  "Not set (git's default: false)"

@@ -61,10 +61,10 @@ Label "Check what goes in"
 Label "Staged: 3 · Left out: 1"
 Button "Hide: Commit the merge"
 Label "Commit the merge"
-CheckBox "Amend" [disabled, off]
 TextInput "Commit summary" = "Merge branch 'list-side'"
 Label "24/72"
-MultilineTextInput "Description"
+MultilineTextInput "Commit description"
+CheckBox "Amend last commit" [disabled, off]
 CheckBox "Push after committing" [off]
 Button "Commit merge"
 Button "More commit options"
@@ -116,6 +116,7 @@ painted:
   "Submodules"
   "0"
   "3"
+  "Description"
   "Branch / tag"
   "Graph"
   "Message"

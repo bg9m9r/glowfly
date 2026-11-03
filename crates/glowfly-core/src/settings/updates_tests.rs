@@ -1,14 +1,17 @@
-//! The update preferences: on by default, and kept across a save and load.
+//! The update preferences: on by default (with the What's new chip), and kept across a save and
+//! load.
 
 use super::tests::{json, scratch_settings};
-use super::{Settings, UpdatePrefs};
+use super::{NewsChip, Settings, UpdatePrefs, WhatsNew};
 
 #[test]
 fn update_prefs_default_on() {
     let (dir, file) = scratch_settings("updates-old", br#"{"auto_fetch_minutes": 5}"#);
     let (s, problem) = Settings::load_from(&file);
     assert!(problem.is_none());
-    assert_eq!(s.updates, UpdatePrefs { check: true, last_checked: None, notes_seen: None });
+    assert_eq!(s.updates, UpdatePrefs::default());
+    assert_eq!(s.updates.whats_new, WhatsNew::Chip, "a file from before the choice gets the chip");
+    assert!(s.updates.check && s.updates.notes_seen.is_none() && s.updates.news_chip.is_none());
     assert!(s.welcome_done, "an older file counts as an upgrade for the release notes");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -17,7 +20,13 @@ fn update_prefs_default_on() {
 fn update_prefs_round_trip() {
     let (dir, file) = scratch_settings("updates-trip", b"{}");
     let s = Settings {
-        updates: UpdatePrefs { check: false, last_checked: Some(1_769_947_200), notes_seen: Some("0.2.0".into()) },
+        updates: UpdatePrefs {
+            check: false,
+            last_checked: Some(1_769_947_200),
+            notes_seen: Some("0.2.0".into()),
+            whats_new: WhatsNew::Off,
+            news_chip: Some(NewsChip { version: "0.2.0".into(), since: Some("0.1.0".into()), until: Some(1_770_000_000) }),
+        },
         ..Settings::default()
     };
     s.save_to(&file).unwrap();
@@ -27,6 +36,6 @@ fn update_prefs_round_trip() {
     // A partial object keeps the other defaults.
     std::fs::write(&file, br#"{"updates": {"last_checked": 5}}"#).unwrap();
     let (s, _) = Settings::load_from(&file);
-    assert_eq!(s.updates, UpdatePrefs { check: true, last_checked: Some(5), notes_seen: None });
+    assert_eq!(s.updates, UpdatePrefs { last_checked: Some(5), ..UpdatePrefs::default() });
     let _ = std::fs::remove_dir_all(&dir);
 }

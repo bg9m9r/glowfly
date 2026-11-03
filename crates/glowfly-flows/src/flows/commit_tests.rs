@@ -77,15 +77,18 @@ fn shortcut_refusals_toast() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let log_before = st.log.len();
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty());
-    assert_eq!(last_toast(&st), (false, "Write a summary for the commit.".into()));
+    // Only the first missing step: staging, before the summary.
+    let key = st.keymap.hint(crate::keymap::BindingId::StageAllAndCommit).expect("a default key").to_owned();
+    let stage = format!("Stage changes to commit, or press {key} to stage all and commit.");
+    assert_eq!(last_toast(&st), (false, stage.clone()));
     assert!(!st.view.show_log, "a refused shortcut doesn't open the log");
     // Like every toast, it leaves a quiet line there.
     assert_eq!(st.log.len(), log_before + 1);
-    assert_eq!(st.log.last().map(|e| e.text.as_str()), Some("Write a summary for the commit."));
+    assert_eq!(st.log.last().map(|e| e.text.as_str()), Some(stage.as_str()));
 
     st.session.draft.summary = "Work".into();
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty(), "nothing staged");
-    assert_eq!(last_toast(&st), (false, "Nothing is staged yet. Stage a file or a hunk first.".into()));
+    assert_eq!(last_toast(&st), (false, stage));
     assert!(!update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now()).is_empty(), "stage-all has changes to stage");
     st.job = None;
 

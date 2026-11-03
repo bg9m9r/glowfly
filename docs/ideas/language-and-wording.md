@@ -18,6 +18,7 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 
 - Say in Preferences > Language which OS setting or variable the System choice came from
 - Spell checking on Linux (e.g. through Enchant or Hunspell) in `spell::system_languages`' order; today only Windows checks
+- Spell check the commit message in the app's language (a German summary is underlined by an English dictionary)
 - Key names in shortcut hints follow the language (e.g. "Strg" on German keyboards)
 - Plural rules beyond one/other (needed if a language with other forms is added)
 - Wrap or shrink right-aligned Preferences labels that are too long in a translation

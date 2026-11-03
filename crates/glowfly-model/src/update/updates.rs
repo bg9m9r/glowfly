@@ -4,7 +4,7 @@
 //! quietly and wait `RETRY_AFTER`. A Flatpak copy is only told about a release (Flatpak installs
 //! it) and never downloads one. Only `settings.updates` is saved.
 
-use super::release_notes::{open_notes, startup_notes};
+use super::release_notes::{news_chip_tick, open_notes, show_notes, startup_notes};
 use super::updates_download as dl;
 use crate::effect::OsEffect;
 use crate::effect::{Effect, UpdateEffect};
@@ -53,13 +53,14 @@ pub(super) fn handle(st: &mut AppState, msg: UpdateMsg, now: Instant, fx: &mut V
                 fx.push(Effect::Os(OsEffect::OpenUrl(url)));
             }
         }
-        UpdateMsg::ShowNotes => open_notes(st, None),
+        UpdateMsg::ShowNotes => show_notes(st, fx),
     }
 }
 
-/// Once per frame: opens release notes that were waiting, and starts the automatic check when
-/// it is due.
+/// Once per frame: opens release notes that were waiting, keeps the What's new chip's time,
+/// and starts the automatic check when it is due.
 pub(super) fn tick(st: &mut AppState, t: Instant, fx: &mut Vec<Effect>) {
+    news_chip_tick(st, fx);
     if st.updates.notes_pending.is_some()
         && st.modal.is_none()
         && st.onboarding.welcome.is_none()

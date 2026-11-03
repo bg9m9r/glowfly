@@ -102,9 +102,9 @@ fn amend_is_refused_while_a_merge_cherry_pick_or_revert_is_stopped() {
     std::fs::write(dir.join("a.txt"), "one\nours\ntheirs\n").unwrap();
     git(&dir, &["add", "a.txt"]);
     refresh(&mut st);
-    assert_eq!(commit_blocked(&st, false), None, "resolved: the pick commits");
+    assert_eq!(commit_blocked(&st, false).as_deref(), None, "resolved: the pick commits");
     st.session.draft.amend = true;
-    assert_eq!(commit_blocked(&st, false), Some("Finish the cherry-pick before amending."));
+    assert_eq!(commit_blocked(&st, false).as_deref(), Some("Finish the cherry-pick before amending."));
     let head = st.snap.as_ref().unwrap().head_oid;
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(st.snap.as_ref().unwrap().head_oid, head, "nothing was amended");

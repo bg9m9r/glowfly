@@ -1,13 +1,14 @@
 //! The commit box: committing (optionally staging everything first and pushing afterwards),
 //! prefilling the draft from HEAD for an amend, from a merge's MERGE_MSG or from the
 //! repository's commit template, the merge banner's Commit merge, Amend and continue at a rebase
-//! stopped to edit (Amend ticked there by default), and the "Push after committing" setting.
+//! stopped to edit (Amend ticked there by default), the button menu's Commit and push, and the
+//! "Push after committing" setting.
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::msg::CommitMsg;
 use crate::state::AppState;
-use crate::state::commit::stop::{amends_at_stop, edit_stop};
+use crate::state::commit::stop::{amends_at_stop, edit_stop, rebase_stopped};
 use crate::state::commit::{commit_blocked, commit_merge_blocked, pushes_after, unencodable_text};
 use glowfly_core::undo::UndoKind;
 use std::time::Instant;
@@ -17,13 +18,19 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
         CommitMsg::Commit => commit(st, false, now, fx),
         CommitMsg::CommitAndContinue => {
             if st.snap.as_ref().and_then(edit_stop).is_some() {
-                start_commit(st, false, true, now, fx);
+                start_commit(st, Commit { continues: true, ..Commit::default() }, now, fx);
+            }
+        }
+        // Never halfway through a rebase, nor from a detached HEAD: nothing to push there.
+        CommitMsg::CommitAndPush => {
+            if st.snap.as_ref().is_some_and(|s| s.head_branch.is_some() && !rebase_stopped(s)) {
+                start_commit(st, Commit { push: true, ..Commit::default() }, now, fx);
             }
         }
         // At a stop to edit it continues the rebase too, as the button does.
         CommitMsg::StageAllAndCommit => {
             let continues = st.snap.as_ref().and_then(edit_stop).is_some();
-            start_commit(st, true, continues, now, fx);
+            start_commit(st, Commit { stage_all: true, continues, push: false }, now, fx);
         }
         CommitMsg::PrefillAmend => {
             // Pre-fill from HEAD's message, when the user hasn't written anything yet.
@@ -63,11 +70,21 @@ pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut V
 /// repository's commit encoding. Refused with a toast (not the log, so a keypress doesn't pop
 /// it open) when the draft or repository isn't ready or the encoding can't hold the message.
 pub(super) fn commit(st: &mut AppState, stage_all: bool, now: Instant, fx: &mut Vec<Effect>) {
-    start_commit(st, stage_all, false, now, fx);
+    start_commit(st, Commit { stage_all, ..Commit::default() }, now, fx);
 }
 
-/// `commit`, resuming the stopped rebase once it succeeds when `then_continue`.
-fn start_commit(st: &mut AppState, stage_all: bool, then_continue: bool, now: Instant, fx: &mut Vec<Effect>) {
+/// How a commit runs: after `git add --all` (`stage_all`), resuming the stopped rebase once it
+/// succeeds (`continues`), and pushing afterwards even with "Push after committing" off (`push`).
+#[derive(Default, Clone, Copy)]
+struct Commit {
+    stage_all: bool,
+    continues: bool,
+    push: bool,
+}
+
+/// `commit` with its options.
+fn start_commit(st: &mut AppState, how: Commit, now: Instant, fx: &mut Vec<Effect>) {
+    let Commit { stage_all, continues: then_continue, push } = how;
     if let Some(why) = commit_blocked(st, stage_all) {
         st.toast(false, why, now);
         return;
@@ -94,7 +111,7 @@ fn start_commit(st: &mut AppState, stage_all: bool, then_continue: bool, now: In
     };
     let spec = JobSpec {
         clear_commit: true,
-        then_push: pushes_after(st),
+        then_push: push || pushes_after(st),
         then_continue,
         write_file: Some((file, bytes)),
         record: Some(UndoKind::Commit { amend }),

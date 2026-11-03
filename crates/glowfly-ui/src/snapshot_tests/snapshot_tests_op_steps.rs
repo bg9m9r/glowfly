@@ -119,7 +119,7 @@ fn op_steps_rebase() {
 
     let (st, dir) = rebasing(ThemeChoice::Dark, "op-steps-rebase-edit", StopKind::Edit, false);
     let h = shown(st, theme::DUSK);
-    assert!(h.query_by_label("Amend").is_some(), "a stop to edit opens the commit form");
+    assert!(h.query_by_label("Amend last commit").is_some(), "a stop to edit opens the commit form");
     drop(h);
     remove_fixture(&dir);
 }
@@ -169,7 +169,7 @@ fn wip_panel_plain() {
     for (theme_name, p) in [("dusk", theme::DUSK), ("dawn", theme::DAWN)] {
         let (st, dir) = with_repo(ThemeChoice::Dark, &format!("wip-plain-{theme_name}"));
         let h = shown(st, p);
-        assert!(h.query_by_label("Amend").is_some());
+        assert!(h.query_by_label("Amend last commit").is_some());
         assert!(h.query_by_label("Stage").is_none(), "row actions wait for a hover or the current row");
         drop(h);
         remove_fixture(&dir);
