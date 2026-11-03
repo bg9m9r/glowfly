@@ -9,6 +9,7 @@ use crate::git_env::{GitEnvEffect, GitEnvMsg};
 use crate::msg::{JobMsg, Msg, RepoMsg, StageMsg};
 use crate::state::{AppState, Modal};
 use glowfly_core::git_version::GitInfo;
+use glowfly_core::safe_directory::Refusal;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -142,6 +143,11 @@ fn force_push_leaves_out_force_if_includes_for_an_old_git() {
     let _ = std::fs::remove_dir_all(&bare);
 }
 
+/// A refusal of `root`, owned by `owner` (`admins`: the Administrators group).
+fn refusal(root: &std::path::Path, owner: Option<&str>, admins: bool) -> Refusal {
+    Refusal { root: root.to_path_buf(), owner: owner.map(str::to_owned), admins }
+}
+
 #[test]
 fn a_repository_owned_by_another_user_is_explained_and_can_be_trusted() {
     let mut st = state();
@@ -149,19 +155,22 @@ fn a_repository_owned_by_another_user_is_explained_and_can_be_trusted() {
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
     let generation = st.load_gen;
-    run(&mut st, GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, root: root.clone() });
+    run(&mut st, GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, refusal: refusal(&root, Some(r"OTHERPC\alice"), false) });
     assert!(!st.loading);
     let log = st.log.last().expect("a log line");
-    assert!(!log.ok && log.text.contains("safe.directory") && !log.text.contains("not a git repository"), "{}", log.text);
+    assert!(!log.ok && log.text.contains(r"OTHERPC\alice") && !log.text.contains("safe.directory"), "{}", log.text);
+    assert!(st.logs.announce.is_none() && st.toasts.is_empty(), "the dialog explains; no toast repeats it");
     let value = glowfly_core::safe_directory::config_value(&root, cfg!(windows));
-    let Some(Modal::ConfirmDetails { body, details, then, .. }) = &st.modal else { panic!("expected the question") };
-    assert!(body.contains("another user account") && body.contains("mark it as safe"), "{body}");
+    let Some(Modal::ConfirmDetails { title, body, details, button, then }) = &st.modal else { panic!("expected the question") };
+    assert_eq!((title.as_str(), button.as_str()), ("Trust this folder?", "Trust this folder"));
+    assert!(body.contains(r"belongs to OTHERPC\alice, not to your account") && body.contains("until you trust it"), "{body}");
     assert!(!body.contains("safe.directory") && !body.contains("git config"), "plain words only: {body}");
     // On Windows the config value uses forward slashes while the body shows the folder the
     // native way; elsewhere the two spellings are the same, so only Windows can tell them apart.
     if cfg!(windows) {
         assert!(!body.contains(&value), "the body names the folder, not the config value: {body}");
     }
+    assert!(details.contains("network share") && details.contains("removable drive"), "the common causes: {details}");
     assert!(details.contains("git config --global --add safe.directory") && details.contains(&value), "{details}");
     assert!(matches!(&**then, Msg::GitEnv(GitEnvMsg::AddSafeDirectory(p)) if *p == root));
     let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
@@ -172,9 +181,29 @@ fn a_repository_owned_by_another_user_is_explained_and_can_be_trusted() {
     assert!(matches!(&fx[..], [Effect::GitEnv(GitEnvEffect::AddSafeDirectory(p))] if *p == root), "{fx:?}");
     let fx = run(&mut st, GitEnvMsg::SafeDirectoryAdded { root: root.clone(), result: Ok(()) });
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if *path == root)), "opens again: {fx:?}");
-    assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Marked ") && l.text.contains("safe.directory")), "logged");
-    run(&mut st, GitEnvMsg::SafeDirectoryAdded { root: root.clone(), result: Err("locked".into()) });
-    assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text.contains("locked")));
+    assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Trusted ")), "logged");
+    run(&mut st, GitEnvMsg::SafeDirectoryAdded { root: root.clone(), result: Err("locked\n".into()) });
+    assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text.ends_with("Git said: locked")), "{:?}", st.toasts.last().map(|t| &t.text));
+}
+
+#[test]
+fn the_question_names_the_owner_as_plainly_as_it_can() {
+    let root = PathBuf::from("/srv/shared/app");
+    let body = |r: Refusal| {
+        let mut st = state();
+        update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), Instant::now());
+        let generation = st.load_gen;
+        run(&mut st, GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, refusal: r });
+        let Some(Modal::ConfirmDetails { body, .. }) = st.modal else { panic!("expected the question") };
+        (body, st.log.last().map(|l| l.text.clone()).unwrap_or_default())
+    };
+    let (admins, log) = body(refusal(&root, Some(r"BUILTIN\Administrators"), true));
+    assert!(admins.contains("belongs to the Administrators group") && admins.contains("run as administrator"), "{admins}");
+    assert!(!admins.contains("BUILTIN"), "{admins}");
+    assert!(log.contains("the Administrators group"), "{log}");
+    let (unknown, log) = body(refusal(&root, None, false));
+    assert!(unknown.contains("belongs to another user account, not to yours"), "{unknown}");
+    assert!(log.contains("another user account"), "{log}");
 }
 
 #[test]
@@ -183,11 +212,12 @@ fn a_stale_owner_refusal_asks_nothing() {
     let root = PathBuf::from("/srv/shared/app");
     update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), Instant::now());
     let stale = st.load_gen.wrapping_sub(1);
-    run(&mut st, GitEnvMsg::NotOwned { generation: stale, kind: LoadKind::Open, root: root.clone() });
+    run(&mut st, GitEnvMsg::NotOwned { generation: stale, kind: LoadKind::Open, refusal: refusal(&root, None, false) });
     assert!(st.modal.is_none());
     // For a tab that is no longer active, only the log line is kept.
-    let inactive = GitEnvMsg::NotOwned { generation: 1, kind: LoadKind::Open, root }.on_inactive();
-    assert!(matches!(inactive, Some(crate::msg::Inactive::Log(t)) if t.contains("safe.directory")));
+    let inactive = GitEnvMsg::NotOwned { generation: 1, kind: LoadKind::Open, refusal: refusal(&root, None, false) }.on_inactive();
+    let shown = glowfly_core::native_path::shown(&root);
+    assert!(matches!(inactive, Some(crate::msg::Inactive::Log(t)) if t.contains(&shown)));
 }
 
 #[test]

@@ -57,7 +57,7 @@ Label "Löse die Dateien mit Konflikten, dann Fortsetzen."
 Button "Ausblenden: Konflikte lösen"
 Label "Konflikte lösen"
 Label "noch 1"
-Button "Weitere Aktionen"
+Button "Alle als gelöst markieren"
 Label "Dateien mit Konflikten (1)"
 Unknown "Dateien mit Konflikten (1)"
 Button "src/login.rs" [off]

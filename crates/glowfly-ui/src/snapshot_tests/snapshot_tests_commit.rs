@@ -1,4 +1,4 @@
-//! The commit box: its options row and button suffixes, Amend off mid-merge with its reason on
+//! The commit box: its options row and button suffixes, a long reason wrapping whole, Amend off mid-merge with its reason on
 //! hover, the more-actions menu with Skip hooks,
 //! the commit template note, and the
 //! Ctrl+Enter / Ctrl+Shift+Enter shortcuts. Shares the fixture repository and renderer with
@@ -37,6 +37,24 @@ fn commit_box_options() {
     assert!(h.query_by_label("Skip hooks").is_none(), "Skip hooks is in the more-actions menu");
     let more = h.get_by_label("More commit options");
     assert_eq!(more.role(), Role::Button);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// In German in a narrow panel, with nothing staged: the reason under the commit button wraps
+/// onto a second line, whole, never cut.
+#[test]
+fn commit_box_reason_wraps() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-reason-wraps");
+    st.settings.language = "de".into();
+    st.settings.panel_sizes.details = Some(300.0);
+    st.session.draft.summary = "Anmeldeformular".into();
+    let why = glowfly_core::i18n::Lang::De.tr("commit.blocked.nothing_staged");
+    let mut h = harness(st, true);
+    h.run();
+    let r = h.get_by_label(why).bounding_box().expect("the whole reason is shown");
+    assert!(r.height() >= 2.0 * f64::from(crate::ui::widgets::reason::LINE_H), "two lines: {r:?}");
+    h.check_snapshot("commit_box_reason_wraps");
     drop(h);
     remove_fixture(&dir);
 }

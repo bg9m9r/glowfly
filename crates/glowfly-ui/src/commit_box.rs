@@ -6,7 +6,8 @@
 //! with its length to its right (weak up to 50 characters, amber to 72, red past it:
 //! `state::commit::summary_length`), the description, the
 //! Amend and "Push after committing" options, the commit button with why it is disabled centred
-//! under it (that line's height is always kept, so the box doesn't change height), the button's
+//! under it, wrapped and never cut (a line's height is always kept, so the box changes height
+//! only for a reason that wraps), the button's
 //! menu caret (one split button) opening a menu with "Skip hooks" (the caret tinted with the
 //! warning tone while hooks are skipped), and the Ctrl+Enter shortcuts. While a rebase is
 //! stopped "Push after committing" isn't offered; at a stop to edit the button is Amend and
@@ -36,9 +37,11 @@ use crate::ui::widgets::{buttons, reason, truncate_label};
 use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText, vec2};
 use glowfly_core::i18n::Lang;
 
-/// Height the commit box needs below the file lists (the lists share what is left), its reason
-/// line included.
-pub(super) const RESERVED_HEIGHT: f32 = 340.0 + reason::LINE_H;
+/// Height the commit box needs below the file lists (the lists share what is left), with its
+/// reason taking `lines` lines.
+pub(super) fn reserved_height(lines: usize) -> f32 {
+    340.0 + reason::LINE_H * lines as f32
+}
 /// Between the summary field and its length.
 const COUNTER_GAP: f32 = 8.0;
 
@@ -205,7 +208,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
             }));
         }
     });
-    reason::line(ui, blocked, Align::Center);
+    // Wrapped, never cut: a long reason (German, a narrow panel) takes a second line.
+    let lines = reason::lines(ui, blocked, ui.available_width());
+    reason::wrapped(ui, blocked, lines);
 
     if s.has_focus() || d.has_focus() {
         let (all, one) = ui.input_mut(|i| {
