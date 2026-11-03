@@ -111,7 +111,7 @@ fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 if ui.add(buttons::secondary("Restart")).clicked() {
                     msgs.push(Msg::Terminal(TerminalMsg::Restart));
                 }
-                if ui.add(buttons::secondary("Show preferences")).clicked() {
+                if ui.add(buttons::secondary("Open preferences")).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Terminal)));
                 }
             });

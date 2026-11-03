@@ -1,6 +1,6 @@
 //! The LOCAL section's rows as a tree of stacks (pure): each branch that isn't stacked where
 //! it is in the branch list, with the branches stacked on it right under it, indented one step
-//! per layer. Flat while the filter field has text.
+//! per layer. Flat while the filter field has text. Kept between frames (`LocalRowsCache`).
 
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
@@ -17,41 +17,80 @@ pub struct LocalRow<'a> {
     pub link: Option<&'a StackLink>,
 }
 
+/// A `LocalRow` by position: its branch's index in `Snapshot::locals` and its link's in
+/// `Snapshot::stacks`, so the rows can be kept between frames.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RowAt {
+    branch: usize,
+    depth: usize,
+    link: Option<usize>,
+}
+
+impl RowAt {
+    /// The row in `snap`, the snapshot it was worked out from.
+    pub fn of(self, snap: &Snapshot) -> LocalRow<'_> {
+        LocalRow { branch: &snap.locals[self.branch], depth: self.depth, link: self.link.map(|l| &snap.stacks.links[l]) }
+    }
+}
+
 /// The rows of the branches `shown` keeps, in `snap.locals` order: a tree unless `filtering`.
-/// Linear in the number of branches: it runs every frame the section is drawn.
-pub fn local_rows<'a>(snap: &'a Snapshot, shown: &dyn Fn(&str) -> bool, filtering: bool) -> Vec<LocalRow<'a>> {
-    let visible: Vec<&BranchInfo> = snap.locals.iter().filter(|b| shown(&b.name)).collect();
-    let links: HashMap<&str, &StackLink> = snap.stacks.links.iter().map(|l| (l.branch.as_str(), l)).collect();
-    let row = |branch: &'a BranchInfo, depth: usize| LocalRow { branch, depth, link: links.get(branch.name.as_str()).copied() };
+/// Linear in the number of branches.
+fn rows_at(snap: &Snapshot, shown: &dyn Fn(&str) -> bool, filtering: bool) -> Vec<RowAt> {
+    let visible: Vec<usize> = (0..snap.locals.len()).filter(|&i| shown(&snap.locals[i].name)).collect();
+    let name = |i: usize| snap.locals[i].name.as_str();
+    let links: HashMap<&str, usize> = snap.stacks.links.iter().enumerate().map(|(k, l)| (l.branch.as_str(), k)).collect();
+    let row = |branch: usize, depth: usize| RowAt { branch, depth, link: links.get(name(branch)).copied() };
     if filtering || links.is_empty() {
         return visible.into_iter().map(|b| row(b, 0)).collect();
     }
-    let listed: HashSet<&str> = visible.iter().map(|b| b.name.as_str()).collect();
+    let listed: HashSet<&str> = visible.iter().map(|&b| name(b)).collect();
     // Each listed branch's children, in list order; a lower branch that isn't listed makes a root.
-    let mut children: HashMap<&str, Vec<&BranchInfo>> = HashMap::new();
-    let mut roots: Vec<&BranchInfo> = Vec::new();
-    for b in &visible {
-        match links.get(b.name.as_str()).map(|l| l.on.as_str()).filter(|on| listed.contains(on)) {
+    let mut children: HashMap<&str, Vec<usize>> = HashMap::new();
+    let mut roots: Vec<usize> = Vec::new();
+    for &b in &visible {
+        match links.get(name(b)).map(|&k| snap.stacks.links[k].on.as_str()).filter(|on| listed.contains(on)) {
             Some(on) => children.entry(on).or_default().push(b),
             None => roots.push(b),
         }
     }
-    let mut out: Vec<LocalRow<'a>> = Vec::with_capacity(visible.len());
+    let mut out: Vec<RowAt> = Vec::with_capacity(visible.len());
     let mut seen: HashSet<&str> = HashSet::with_capacity(visible.len());
     // Roots first; branches only a cycle reaches come last, unindented.
     for root in roots.into_iter().chain(visible.iter().copied()) {
         let mut todo = vec![(root, 0)];
         while let Some((b, depth)) = todo.pop() {
-            if !seen.insert(b.name.as_str()) {
+            if !seen.insert(name(b)) {
                 continue;
             }
             out.push(row(b, depth.min(MAX_DEPTH)));
             // Reversed, so the first child (in list order) is drawn first.
-            let kids = children.get(b.name.as_str()).map(Vec::as_slice).unwrap_or_default();
-            todo.extend(kids.iter().rev().map(|c| (*c, depth + 1)));
+            let kids = children.get(name(b)).map(Vec::as_slice).unwrap_or_default();
+            todo.extend(kids.iter().rev().map(|&c| (c, depth + 1)));
         }
     }
     out
+}
+
+/// The LOCAL rows kept between frames, worked out again only for another snapshot (a new
+/// `Snapshot::status_stamp`: every load makes a new snapshot, and its branches and stacks are
+/// never edited in place) or another filter.
+#[derive(Debug, Default)]
+pub struct LocalRowsCache {
+    key: Option<(u64, String)>,
+    rows: Vec<RowAt>,
+}
+
+impl LocalRowsCache {
+    /// The rows of `snap`'s branches whose names contain `filter` (lowercase; flat while it has
+    /// text).
+    pub fn rows(&mut self, snap: &Snapshot, filter: &str) -> &[RowAt] {
+        if self.key.as_ref().is_none_or(|(stamp, f)| *stamp != snap.status_stamp || f != filter) {
+            let shown = |name: &str| glowfly_core::matching::contains_lower(name, filter);
+            self.rows = rows_at(snap, &shown, !filter.is_empty());
+            self.key = Some((snap.status_stamp, filter.to_owned()));
+        }
+        &self.rows
+    }
 }
 
 /// The row tooltip's line for a stacked branch: "Stacked on search", or that it has moved on.
@@ -66,6 +105,10 @@ mod tests {
     use super::*;
     use git2::Oid;
     use glowfly_core::stack::Stacks;
+
+    fn local_rows<'a>(snap: &'a Snapshot, shown: &dyn Fn(&str) -> bool, filtering: bool) -> Vec<LocalRow<'a>> {
+        rows_at(snap, shown, filtering).into_iter().map(|r| r.of(snap)).collect()
+    }
 
     fn branch(name: &str) -> BranchInfo {
         BranchInfo {
@@ -150,5 +193,27 @@ mod tests {
         let line = tip_line(Lang::En, s.stacks.below("b")).unwrap();
         assert_eq!(line, "Stacked on a, which has moved on. Restack to bring it up to date.");
         assert_ne!(tip_line(Lang::De, s.stacks.below("b")).unwrap(), line);
+    }
+
+    fn cached(cache: &mut LocalRowsCache, s: &Snapshot, filter: &str) -> Vec<(String, usize)> {
+        shape(&cache.rows(s, filter).iter().map(|r| r.of(s)).collect::<Vec<_>>())
+    }
+
+    #[test]
+    fn the_cache_keeps_rows_until_the_snapshot_or_filter_changes() {
+        let mut s = snap("rows-cache", &["a", "b", "c"], &[("b", "a")]);
+        let mut cache = LocalRowsCache::default();
+        assert_eq!(cached(&mut cache, &s, ""), owned(&[("a", 0), ("b", 1), ("c", 0)]));
+        // Kept: the same snapshot and filter work nothing out again.
+        let before = cache.rows(&s, "").as_ptr();
+        assert_eq!(cache.rows(&s, "").as_ptr(), before);
+        // Another filter: flat, only the matches.
+        assert_eq!(cached(&mut cache, &s, "b"), owned(&[("b", 0)]));
+        assert_eq!(cached(&mut cache, &s, ""), owned(&[("a", 0), ("b", 1), ("c", 0)]));
+        // A new snapshot (a load stamps it anew): its branches and stacks.
+        s.locals.push(branch("d"));
+        s.stacks.links.push(StackLink { branch: "d".into(), on: "c".into(), base: Oid::zero(), behind: false });
+        s.status_stamp = glowfly_core::repo::next_status_stamp();
+        assert_eq!(cached(&mut cache, &s, ""), owned(&[("a", 0), ("b", 1), ("c", 0), ("d", 1)]));
     }
 }

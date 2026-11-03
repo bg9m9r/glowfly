@@ -66,14 +66,14 @@ fn an_unreadable_file_holds_every_save_back_until_a_try_reads_it() {
     assert!(!st.settings_file.writable());
     assert!(st.log.iter().any(|l| !l.ok && l.text.contains("access is denied")), "logged");
     assert!(st.toasts.is_empty(), "the banner says it, not a toast");
-    let before = st.settings_file.saved.clone();
+    let before = st.settings_file.saved().to_owned();
 
     // Changes apply but aren't written over the real file.
     let labels = st.settings.toolbar_labels;
     let fx = toggle_labels(&mut st);
     assert_eq!(saves(&fx), 0, "{fx:?}");
     assert_ne!(st.settings.toolbar_labels, labels, "the change still applies");
-    assert_eq!(st.settings_file.saved, before, "not recorded as saved");
+    assert_eq!(st.settings_file.saved(), before, "not recorded as saved");
     run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(crate::state::PrefPage::General)));
     st.settings.auto_fetch_minutes = 42;
     assert_eq!(saves(&run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited))), 0, "Preferences doesn't save either");
@@ -101,7 +101,7 @@ fn an_unreadable_file_holds_every_save_back_until_a_try_reads_it() {
     run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((real.clone(), None)))));
     assert!(st.settings_file.writable());
     assert_eq!(st.settings.auto_fetch_minutes, 17, "the file's settings, not the edits made meanwhile");
-    assert_eq!(st.settings_file.saved, serde_json::to_string(&real).unwrap());
+    assert_eq!(st.settings_file.saved(), serde_json::to_string(&real).unwrap());
     assert!(st.toasts.iter().any(|t| t.ok && t.text.contains("weren't kept")), "told it worked, and that the edits went");
     let fx = toggle_labels(&mut st);
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.auto_fetch_minutes == 17 && !s.toolbar_labels), "{fx:?}");

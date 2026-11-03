@@ -19,7 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::ShowAccountForm(on) => show_account_form(st, on),
         // The settings file and the settings that apply at once.
         PrefsMsg::SettingsEdited => {
-            if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.settings_file.saved.as_str()) {
+            if st.settings_file.edited(&st.settings) {
                 fx.extend(save_settings(st));
             }
             sync_live_settings(st, fx);
@@ -155,7 +155,7 @@ pub(super) fn save_settings(st: &mut AppState) -> Option<Effect> {
     if !st.settings_file.writable() {
         return None;
     }
-    st.settings_file.saved = serde_json::to_string(&st.settings).unwrap_or_default();
+    st.settings_file.record(&st.settings);
     if let Some(p) = st.prefs.as_mut() {
         p.saved.mark();
     }
