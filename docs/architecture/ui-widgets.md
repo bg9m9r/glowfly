@@ -41,7 +41,7 @@ source file, update its line here.
 - `widgets/popover.rs` (tests in `popover_tests.rs`): `menu::popover_below`'s popup: a set width, unjustified contents, right-aligned below its anchor and kept 8 px inside the window.
 - `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover, and names and paths cut in the middle.
 - `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), muted at count 0 for a section that folds away while empty; each + is described by `state/section_actions.rs`.
-- `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…).
+- `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…), and a failed hosting service's block (`failure`: the cause, then Sign in).
 - `line_counts.rs`: line counts drawn one way everywhere: a file row's `+N −M` and proportional bar, a total, the WIP row's chips.
 - Added, removed and modified share `common::added_color`, `removed_color` and `modified_color` with the status letters.
 - `date_tip.rs`: date labels with their full date on hover.
