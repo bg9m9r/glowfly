@@ -143,13 +143,16 @@ fn a_sparse_clone_whose_submodules_failed_says_so() {
     let sparse = Some(Sparse { folders: vec!["libs".into()], partial: false });
     let (st, dirs) = clone_with_a_submodule("clone-subs-refused", CloneOptions { sparse, submodules: true, shallow: None }, false);
     // Keeping submodules updated, the open doesn't try them again: one toast says what failed.
-    let start = "Cloned copy and set its folders, but cloning its submodules failed: ";
     let texts: Vec<&str> = st.toasts.iter().map(|t| t.text.as_str()).collect();
-    let toast = st.toasts.iter().find(|t| t.text.starts_with(start)).unwrap_or_else(|| panic!("{texts:?}"));
+    let toast = st.toasts.iter().find(|t| t.text.starts_with("Cloned, but ")).unwrap_or_else(|| panic!("{texts:?}"));
     assert!(!toast.ok);
     assert_eq!(st.toasts.iter().filter(|t| !t.ok).count(), 1, "{texts:?}");
     assert!(!log_texts(&st).iter().any(|l| l.contains("Initialize submodules")), "{:?}", log_texts(&st));
-    assert!(toast.text.ends_with("Try again with Update all submodules in the SUBMODULES section."), "{}", toast.text);
+    assert!(toast.text.ends_with("didn't download."), "{}", toast.text);
+    assert_eq!(toast.action.as_ref().map(|a| a.label.as_str()), Some("Retry"), "Retry updates the submodules");
+    assert!(toast.details.is_some(), "Details beside it");
+    let start = "Cloned copy and set its folders, but cloning its submodules failed: ";
+    assert!(log_texts(&st).iter().any(|l| l.starts_with(start) && l.ends_with("the SUBMODULES section.")), "{:?}", log_texts(&st));
     assert!(st.snap.as_ref().is_some_and(|s| s.workdir.ends_with("copy")), "the clone still opens");
     remove(&dirs);
 }
@@ -165,7 +168,10 @@ fn a_submodule_failure_names_the_submodules_not_the_folders() {
     let output = "$ git clone x\n$ git sparse-checkout set\n$ git submodule update --init\nfatal: repository 'https://example.com/lib.git/' not found";
     let o = CloneOutcome { cloned: true, folders_set: true, ok: false, output: output.into() };
     update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
-    let text = &st.toasts.last().unwrap().text;
-    assert!(text.starts_with("Cloned app and set its folders, but cloning its submodules failed: "), "{text}");
-    assert!(!text.contains("Sparse checkout"), "{text}");
+    let toast = st.toasts.last().unwrap();
+    assert_eq!(toast.text, "Cloned, but its submodules didn't download.");
+    let retry = toast.action.as_ref().expect("Retry");
+    assert!(matches!(*retry.msg, Msg::Submodule(crate::submodule::SubmoduleMsg::Batch { batch: crate::submodule::Batch::UpdateAll, .. })));
+    let logged = log_texts(&st).into_iter().find(|l| l.starts_with("Cloned app and set its folders, but cloning its submodules failed: "));
+    assert!(logged.is_some_and(|l| !l.contains("Sparse checkout")), "{:?}", log_texts(&st));
 }

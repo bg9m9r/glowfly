@@ -249,9 +249,9 @@ mod tests {
     #[test]
     fn autocrlf_labels_follow_the_language_and_keep_raw_values() {
         assert_eq!(Autocrlf::Input.label(Lang::En), "input: commit LF, check out as is");
-        assert_eq!(Autocrlf::Other("weird".into()).label(Lang::En), "weird (not a value git knows)");
+        assert_eq!(Autocrlf::Other("weird".into()).label(Lang::En), "weird (not a value Git knows)");
         let de = Autocrlf::Other("weird".into()).label(Lang::De);
-        assert!(de.starts_with("weird ") && de != "weird (not a value git knows)", "{de}");
+        assert!(de.starts_with("weird ") && de != "weird (not a value Git knows)", "{de}");
         assert_eq!(PrefPage::Keyboard.title(Lang::En), "Keyboard shortcuts");
         assert_eq!(PrefPage::Keyboard.nav_label(Lang::En), "Keyboard");
         assert_eq!(PrefPage::General.title(Lang::De), PrefPage::General.nav_label(Lang::De));

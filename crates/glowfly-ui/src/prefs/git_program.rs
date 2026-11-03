@@ -163,7 +163,7 @@ mod tests {
         let mut git = GitState::default();
         assert_eq!(path_text(Lang::En, &git), None, "nothing known yet");
         git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 39, 3)), chosen: false });
-        assert!(path_text(Lang::En, &git).unwrap().starts_with("git 2.39.3 at "));
+        assert!(path_text(Lang::En, &git).unwrap().starts_with("Git 2.39.3 at "));
         git.info = Some(GitInfo { path: Some("/opt/git".into()), version: Some((2, 45, 1)), chosen: true });
         assert_eq!(path_text(Lang::En, &git), None, "the chosen git isn't the PATH one");
         git.page.candidates = Some(Vec::new());

@@ -51,6 +51,25 @@ pub(super) fn job_ended(
         st.log_run_in(repo, ok, text, run(summary), false);
         return;
     }
+    // A commit shows in the graph: no toast for it.
+    if ok && headline.is_none() && super::sync_voice::shown_in_graph(&job.label) {
+        let summary = last_message(&shown);
+        st.log_run_in(repo, ok, text, run(summary), false);
+        st.logs.recount = None;
+        return;
+    }
+    // A push or pull says what it did, briefly, unless Confirm pushes and pulls is off.
+    if headline.is_none()
+        && let Some(said) = super::sync_voice::headline(st, job, ok, output)
+    {
+        if st.settings.confirm_push_pull {
+            super::notify::desktop(st, NoteKind::Job, &said, repo, fx);
+            st.toast_brief(said.clone(), now);
+        }
+        st.log_run_in(repo, ok, text, run(said), st.settings.confirm_push_pull);
+        st.logs.recount = None;
+        return;
+    }
     let explained = (!ok && headline.is_none()).then(|| job_errors::explain(st, job, stash_retry, again.as_ref(), output)).flatten();
     let summary = match (&headline, &explained) {
         (Some(h), _) => h.clone(),

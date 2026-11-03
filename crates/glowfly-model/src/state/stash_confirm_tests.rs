@@ -107,7 +107,7 @@ fn dirty_body_lists_the_overlap_and_leaves_the_warning_out_without_one() {
     assert_eq!(apart, format!("{start} It changes none of the files you have changed."));
     assert!(!apart.contains("conflict"), "{apart}");
     let unknown = dirty_body(EN, StashAction::Apply, "wip on main", None);
-    assert_eq!(unknown, format!("{start} If they change the same files, git may stop with conflicts or refuse to apply."));
+    assert_eq!(unknown, format!("{start} If they change the same files, Git may stop with conflicts or refuse to apply."));
     let both = strings(&["a.txt", "b.txt"]);
     let listed = dirty_body(EN, StashAction::Pop, "wip on main", Some(&both));
     assert_eq!(

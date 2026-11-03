@@ -221,7 +221,7 @@ fn headlines_skip_the_stash_command() {
     let locked = "$ git stash push -m x\nfatal: Unable to create '/r/.git/index.lock': File exists.";
     let says = headline(&mut st, false, locked).unwrap_or_default();
     assert!(
-        says.starts_with("Finish feature login didn't start: your changes couldn't be stashed: Another git program is using"),
+        says.starts_with("Finish feature login didn't start: your changes couldn't be stashed: Another Git program is using"),
         "{says}"
     );
     pending(&mut st, &dir);

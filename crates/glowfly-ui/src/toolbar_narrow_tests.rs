@@ -75,7 +75,7 @@ fn parts_fold_in_order() {
             "Create a branch",
             "PR: create a pull request",
             "Search and run commands",
-            "Open settings",
+            "Open Preferences",
         ];
         order.map(|name| !shown.iter().any(|s| s.starts_with(name)))
     };

@@ -327,7 +327,7 @@ fn an_empty_name_variable_says_git_wont_commit_and_values_are_made_printable() {
         let id = RepoIdentity { overrides: vec![env("GIT_AUTHOR_EMAIL", ""), env(var, "")], ..identity(IdentitySource::Elsewhere, None) };
         profile(&mut st, ProfileMsg::IdentityRead { git_dir: gd.clone(), result: Ok(id) });
         let read = &st.identities[&gd];
-        assert_eq!(commit_identity_line(t, read, &st.settings), (format!("{var} is empty: git won't commit"), true));
+        assert_eq!(commit_identity_line(t, read, &st.settings), (format!("{var} is empty: Git won't commit"), true));
         let warned = env_warnings(t, read);
         assert!(warned[0].contains("the author email \"\" from it"), "an empty email is allowed: {warned:?}");
         assert!(warned[1].starts_with(&format!("{var} is set but empty")) && warned[1].contains("won't commit"), "{warned:?}");

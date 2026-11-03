@@ -65,7 +65,7 @@ fn remote_branch_menu_tracked() {
         "Check for conflicts with main",
         "Compare with main",
         "Set as upstream of main",
-        "Create branch here…",
+        "New branch here…",
     ] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
@@ -130,7 +130,7 @@ fn remote_branch_menu_several_trackers() {
     assert!(sent(&h, want));
 
     open_remote_row(&mut h, "search");
-    h.get_by_label("Create branch here…").click();
+    h.get_by_label("New branch here…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, BranchMsg::NewTrackingBranch { remote, name } if remote == "origin" && name == "search")));
     drop(h);

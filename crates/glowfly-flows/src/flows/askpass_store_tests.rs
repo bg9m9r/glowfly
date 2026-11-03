@@ -244,7 +244,7 @@ fn reports_what_became_of_the_sign_in() {
     assert!(!st.view.show_log);
 
     remembered(&mut st, Ok(Remembered::SetUp("libsecret".into())));
-    let text = "Git now saves sign-ins with libsecret (credential.helper in your global git config). Saved the sign-in for github.com.";
+    let text = "Git now saves sign-ins with libsecret (credential.helper in your global Git config). Saved the sign-in for github.com.";
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == text));
     assert!(st.log.last().is_some_and(|l| l.text == text));
 

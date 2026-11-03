@@ -101,7 +101,8 @@ fn results_for_other_tabs_are_dropped() {
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }), Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })));
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Commit succeeded"));
+    assert!(st.toasts.iter().all(|t| t.text != "Commit succeeded"), "a commit shows in the graph, not in a toast");
+    assert!(st.tabs[0].log.iter().any(|l| l.text.starts_with("Commit done")), "it is logged");
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
     assert!(parked.session.draft.summary.is_empty());
     cleanup(&[&a, &b]);

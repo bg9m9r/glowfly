@@ -12,6 +12,7 @@ mod builtin_themes;
 mod column_widths;
 pub mod commit_limit;
 mod date_fmt;
+mod defaults;
 mod downloads;
 mod editor;
 mod file;
@@ -112,6 +113,8 @@ pub struct Settings {
     pub behind_alerts: bool,
     /// While the window is unfocused, also show behind alerts and finished jobs as OS notifications (Preferences > Appearance).
     pub desktop_notifications: bool,
+    /// A short toast after each push and pull says what it did (Preferences > General > Notifications).
+    pub confirm_push_pull: bool,
     /// "system" or a locale such as "de_DE".
     pub date_locale: String,
     /// moment.js-style patterns; blank follows the date locale (`dates::default_pattern`).
@@ -288,110 +291,6 @@ pub struct Settings {
     /// Preferences > Accessibility's own settings, flat in the file.
     #[serde(flatten)]
     pub a11y: A11yPrefs,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            auto_fetch_minutes: 1,
-            auto_prune: true,
-            default_branch: "main".into(),
-            initial_commits: 2000,
-            load_more_on_scroll: true,
-            index_history: true,
-            reopen_last_repo: true,
-            watch_files: true,
-            conflict_check: true,
-            submodules: SubmodulePrefs::default(),
-            language: crate::i18n::SYSTEM.into(),
-            theme: ThemeChoice::Graphite,
-            theme_before_contrast: None,
-            system_pair: SystemPair::default(),
-            retired_theme: None,
-            notification_location: Corner::BottomLeft,
-            behind_alerts: true,
-            desktop_notifications: false,
-            date_locale: "system".into(),
-            date_format: String::new(),
-            date_word_format: String::new(),
-            date_time_format: String::new(),
-            date_verbose_format: String::new(),
-            relative_dates: true,
-            toolbar_labels: true,
-            reduce_motion: false,
-            zoom_percent: DEFAULT_ZOOM_PERCENT,
-            show_left_panel: true,
-            show_details_panel: true,
-            show_toolbar: true,
-            show_menu_bar: true,
-            system_title_bar: false,
-            spellcheck: true,
-            avatar_lookups: false,
-            ghost_refs: true,
-            highlight_ref_rows: true,
-            worktree_wips: true,
-            group_worktree_tabs: true,
-            branch_visibility: BranchVisibility::All,
-            branch_palette: BranchPalette::Standard,
-            columns: GraphColumns::default(),
-            column_widths: ColumnWidths::default(),
-            graph_density: Density::Comfortable,
-            file_list_mode: FileListMode::List,
-            diff_layout: DiffLayout::Inline,
-            diff_mode: DiffMode::Hunks,
-            syntax_highlighting: true,
-            diff_ignore_whitespace: false,
-            diff_font_size: DEFAULT_DIFF_FONT_SIZE,
-            tab_size: 4,
-            diff_line_numbers: true,
-            diff_word_highlights: true,
-            diff_word_wrap: false,
-            blame: BlamePrefs::default(),
-            history: HistoryPrefs::default(),
-            push_after_commit: false,
-            stage_renames: true,
-            push_new_tags: false,
-            detached_head_warned: false,
-            delete_to_trash: true,
-            auto_stash: false,
-            connections: Vec::new(),
-            repo_trackers: HashMap::new(),
-            graph_filters: HashMap::new(),
-            branch_pins: HashMap::new(),
-            repo_colours: HashMap::new(),
-            repo_forge_filters: HashMap::new(),
-            repo_trust: HashMap::new(),
-            repo_trust_prints: HashMap::new(),
-            status_tip_shown: HashMap::new(),
-            repo_submodule_updates: HashMap::new(),
-            repo_year_branches: HashMap::new(),
-            repo_merge_methods: HashMap::new(),
-            favorite_repos: Vec::new(),
-            repo_groups: Vec::new(),
-            new_group_colour: GroupColourDefault::Next,
-            project_folders: Vec::new(),
-            external_tools: ExternalTools::default(),
-            profiles: Vec::new(),
-            active_profile: None,
-            use_ssh_agent: false,
-            ssh_extra_keys: Vec::new(),
-            gpg_prompts_in_app: true,
-            remember_https_credentials: true,
-            extended_logging: false,
-            show_frame_times: false,
-            keybindings: BTreeMap::new(),
-            git_program: None,
-            git_banner_hidden_for: None,
-            welcome_done: false,
-            hints: true,
-            hints_seen: BTreeSet::new(),
-            hints_ignored: BTreeSet::new(),
-            updates: UpdatePrefs::default(),
-            terminal: TerminalPrefs::default(),
-            panel_sizes: PanelSizes::default(),
-            a11y: A11yPrefs::default(),
-        }
-    }
 }
 
 #[cfg(test)]

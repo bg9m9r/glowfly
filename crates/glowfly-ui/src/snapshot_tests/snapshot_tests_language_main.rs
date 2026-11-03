@@ -101,7 +101,7 @@ const ENGLISH: &[&str] = &[
     "Open * in its worktree",
     "Prune and check out",
     "Prune and check out *",
-    "Create branch here…",
+    "New branch here…",
     "Create worktree from this branch…",
     "Rename…",
     "Set upstream…",
@@ -144,7 +144,7 @@ const ENGLISH: &[&str] = &[
     "Branch *",
     "Tag *",
     // Commit menu.
-    "Create tag here…",
+    "New tag here…",
     "Create worktree from this commit…",
     "Cherry-pick",
     "Cherry-pick merge commit…",

@@ -130,7 +130,7 @@ fn prefs_ssh_windows_offer() {
     let st = windows_page(ThemeChoice::Dark, KeyChoice::Unset, (9, 5));
     let mut h = taller(st, true);
     assert!(!h.get_by_label("Use Windows' OpenSSH").is_disabled(), "offered");
-    assert!(h.query_by_label_contains("git runs Git for Windows' own ssh").is_some());
+    assert!(h.query_by_label_contains("Git runs Git for Windows' own ssh").is_some());
     assert!(h.query_by_label_contains("older than 8.4").is_none());
     h.check_snapshot("prefs_ssh_windows_offer");
 }

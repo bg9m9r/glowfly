@@ -33,7 +33,7 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
         "Create a branch",
         "Show the terminal panel",
         "Open the repository folder",
-        "Open settings",
+        "Open Preferences",
         "Search and run commands",
         "Show or hide the commit search",
         "Show or hide the activity log",

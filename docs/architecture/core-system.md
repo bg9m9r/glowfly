@@ -71,6 +71,7 @@ source file, update its line here.
 
 ## Settings (`settings.rs`, `settings/`)
 
+- `defaults.rs`: `Settings`' defaults, for a new file and for fields an older file lacks.
 - `file.rs`: reading and writing `settings.json`. A read that fails is tried again after short waits (`READ_WAITS`), and one that worked only after a failure keeps a copy as `.bak` first; a damaged file is moved aside to `.bak`; a file that can't be read, copied or moved stays put and its `LoadProblem::locked` says nothing may be saved until `Settings::reload` reads it. Tests in `file_tests.rs`.
 - Preferences, theme choices and theme files: `themes.rs` parses them, aliases and loops included; `themes_io.rs` reads the themes folder and writes new files.
 - `theme_pair.rs`: the pair Match the system switches between (`SystemPair`, saved as ids and loaded leniently), each theme's twin, and what a theme card or the check does to the theme and the pair (`theme_pair_tests.rs`).
@@ -119,6 +120,7 @@ source file, update its line here.
 - `output.rs`: reading a job's output: its lines as a terminal shows them, their kinds and the last meaningful one.
 - `bundle.rs`: the bug-report bundle: every log file verbatim under a short header, written in one go.
 - `i18n.rs`, `i18n/`, `locales/`: the UI's translations: languages, the bundled catalogs (English base, per-language JSON), lookups with {name} placeholders and English fallback, the OS language read once at startup (gettext's order and C rule on Linux).
+- `i18n/toast_length_tests.rs`: every English text under a `toast` key is at most 140 characters (an allowlist that only shrinks).
 - `dates.rs`: dates: moment.js-style patterns, localized month and weekday words, relative ages and the history table's short ones.
 - `dates/locale_patterns.rs`: each language's usual patterns for the date locale (ISO 8601 otherwise), keyed by a normalised locale tag with the OS locale read once per run (Linux: LC_ALL, LC_TIME, LANG).
 - `spell.rs`: spell checking, and the OS's spell-check language order (gettext's on Linux).

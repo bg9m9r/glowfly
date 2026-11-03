@@ -81,7 +81,7 @@ fn page_hints_say_what_runs() {
     let en = Lang::En;
     let long = format!("meld\t\"$LOCAL\" \"$REMOTE\" {}", "x".repeat(400));
     let h = page_hint(en, ToolMode::Diff, &tool("meld", "diff.tool", command(&long, false)), true);
-    assert_eq!(h.using, "Empty, so git config's diff tool is used: meld (from diff.tool).");
+    assert_eq!(h.using, "Empty, so Git config's diff tool is used: meld (from diff.tool).");
     let detail = h.detail.unwrap();
     assert!(detail.starts_with("It runs difftool.meld.cmd in sh: meld \"$LOCAL\" \"$REMOTE\" xx"), "{detail}");
     assert!(detail.ends_with('…') && detail.chars().count() == "It runs difftool.meld.cmd in sh: ".len() + 301, "{detail}");
@@ -93,7 +93,7 @@ fn page_hints_say_what_runs() {
     assert!(h.warn.is_empty());
 
     let h = page_hint(en, ToolMode::Merge, &tool("vimdiff", "merge.tool", GitToolRun::BuiltIn { path: None }), true);
-    assert_eq!(h.using, "Empty, so git config's merge tool is used: vimdiff (from merge.tool).");
+    assert_eq!(h.using, "Empty, so Git config's merge tool is used: vimdiff (from merge.tool).");
     assert_eq!(h.detail.as_deref(), Some("A tool git knows: Glowfly runs git mergetool --tool=vimdiff."));
     assert_eq!(h.warn, ["git mergetool runs git in this repository: it runs only once you trust the repository."]);
     let path = GitToolRun::BuiltIn { path: Some("/opt/kdiff3".into()) };
