@@ -79,8 +79,9 @@ pub fn pull_variant(st: &AppState, text: &str) -> Tip {
     }
 }
 
-/// Push: "Push main to origin/main · 2 commits" (or Publish to the remote it will track, or
-/// Publish this repository without a remote), the ahead/behind line and the commits it sends.
+/// Push: "Push main to origin/main · 2 commits" (or to the remote config pushes to instead, or
+/// Publish to the remote it will track, or Publish this repository without a remote), the
+/// ahead/behind line and, when it pushes to the upstream, the commits it sends.
 pub fn push(st: &AppState) -> Tip {
     let t = lang(st);
     let Some(snap) = &st.snap else { return Tip::new(t.tr("toolbar.push.name")).keys(BindingId::Push) };
@@ -90,16 +91,19 @@ pub fn push(st: &AppState) -> Tip {
         let tip = Tip::new(t.tr("toolbar.tip.publish_title")).keys(BindingId::Push).state_opt(rules::sync_line(t, snap));
         return tip.body(blocked.unwrap_or_else(|| t.tr("toolbar.tip.publish_body").to_owned()));
     }
-    let title = match (rules::push_target(t, snap), head) {
-        (Some(title), Some(b)) if b.upstream.is_some() && b.ahead > 0 => {
-            t.trn("toolbar.tip.push_title_commits", b.ahead, &[("title", &title)])
-        }
+    let title = match (rules::push_target(t, snap), rules::push_ahead(snap)) {
+        (Some(title), Some((_, Some(n)))) if n > 0 => t.trn("toolbar.tip.push_title_commits", n, &[("title", &title)]),
         (Some(title), _) => title,
         (None, _) => t.tr("toolbar.push.name").to_owned(),
     };
     let tip = Tip::new(title).keys(BindingId::Push).state_opt(rules::sync_line(t, snap));
     if let Some(why) = blocked {
         return tip.body(why);
+    }
+    // The ahead/behind line and the preview are against the upstream: only Push's when it
+    // pushes there, not to a remote that config prefers.
+    if head.is_some_and(|b| b.upstream.is_some()) && !rules::pushes_to_upstream(snap) {
+        return tip;
     }
     let tip = match head {
         Some(b) if b.ahead == 0 && b.upstream.is_some() => {

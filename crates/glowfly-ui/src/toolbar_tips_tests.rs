@@ -67,3 +67,31 @@ fn pull_names_the_configured_mode_and_push_drops_a_zero_count() {
     crate::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 1, 0, true);
     assert_eq!(push(&st).title, "Push main to origin/main · 1 commit");
 }
+
+#[test]
+fn push_names_the_remote_config_pushes_to() {
+    let mut st = state("tip-push-fork");
+    let snap = st.snap.as_mut().unwrap();
+    crate::state::toolbar_tips::tests::diverge(snap, 2, 0, true);
+    let upstream = snap.remotes[0].1[0].1;
+    // remote.pushDefault=fork, which has no main yet: named, without origin's count.
+    snap.push_remotes.default = Some("fork".into());
+    snap.remotes.push(("fork".into(), Vec::new()));
+    let tip = push(&st);
+    assert_eq!(tip.title, "Push main to fork/main");
+    assert_eq!((tip.body, tip.preview), (None, None), "origin's preview isn't what a push to fork sends");
+    assert_eq!(crate::state::toolbar_tips::push_ahead(st.snap.as_ref().unwrap()), Some(("fork/main".into(), None)));
+    // fork/main known: counted against it.
+    let snap = st.snap.as_mut().unwrap();
+    snap.remotes[1].1 = vec![("main".into(), upstream)];
+    assert_eq!(push(&st).title, "Push main to fork/main · 2 commits");
+    // branch.main.pushRemote wins over remote.pushDefault: back to the upstream's remote.
+    let snap = st.snap.as_mut().unwrap();
+    snap.push_remotes.branches = vec![("main".into(), "origin".into())];
+    assert_eq!(push(&st).title, "Push main to origin/main · 2 commits");
+    assert!(push(&st).preview.is_some());
+    // branch.main.pushRemote naming the fork, with no pushDefault.
+    let snap = st.snap.as_mut().unwrap();
+    (snap.push_remotes.default, snap.push_remotes.branches) = (None, vec![("main".into(), "fork".into())]);
+    assert_eq!(push(&st).title, "Push main to fork/main · 2 commits");
+}

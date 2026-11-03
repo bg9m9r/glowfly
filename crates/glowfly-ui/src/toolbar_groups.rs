@@ -109,12 +109,17 @@ pub(super) fn undo(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// Pull and Push, each with its menu, a count badge (behind on Pull, ahead on Push) and an
-/// accessible name that says the count.
+/// Pull and Push, each with its menu, a count badge (behind its upstream on Pull, ahead of
+/// where it pushes on Push, hidden when unknown) and an accessible name that says the count.
 pub(super) fn sync(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
     let (t, keys, labels) = (st.settings.lang(), &st.keymap, st.settings.toolbar_labels);
     let ground = super::ground(st);
-    let (ahead, behind, upstream) = tracking(snap).unwrap_or((0, 0, ""));
+    let (_, behind, upstream) = tracking(snap).unwrap_or((0, 0, ""));
+    // Push's count is against where a plain push goes, which config may make another remote.
+    let (push_dest, ahead) = match rules::push_ahead(snap) {
+        Some((dest, n)) => (dest, n.unwrap_or(0)),
+        None => (String::new(), 0),
+    };
     let badge = |count| Some(widgets::Badge { count, ground });
     widgets::tool_group(ui, |ui| {
         let name = if behind > 0 {
@@ -132,7 +137,7 @@ pub(super) fn sync(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Opti
         }
         widgets::split_gap(ui);
         let name = if ahead > 0 {
-            t.trf("toolbar.push.name_ahead", &[("count", &ahead), ("upstream", &upstream)])
+            t.trf("toolbar.push.name_ahead", &[("count", &ahead), ("upstream", &push_dest)])
         } else {
             t.tr("toolbar.push.name").to_owned()
         };
