@@ -188,14 +188,17 @@ fn main_takes_the_trunk_and_slots_read_their_tones() {
 #[test]
 fn the_trunk_reaches_3_to_1_and_is_never_the_accent() {
     use super::branch_colours::{chip_in, line_in};
-    use super::contrast::{ChipStyle, ref_chip};
+    use super::ref_chip::{BranchTone, ChipStyle, ref_chip};
     use glowfly_core::branch_colour::Swatch;
     let mut failures = Vec::new();
     for (t, p) in palettes() {
         let (line, chip) = (line_in(Swatch::Trunk, p), chip_in(Swatch::Trunk, p));
-        let edge = ref_chip(ChipStyle::Branch, chip, p).edge;
-        assert_eq!(edge, Some(chip), "{t}: main's chip is edged in the trunk tone");
-        assert_eq!(ref_chip(ChipStyle::Branch, chip, p).text, p.text, "{t}: and lettered in text");
+        let remote = ref_chip(ChipStyle::Remote, BranchTone::of(Swatch::Trunk, p), p);
+        assert_eq!(remote.edge, Some(chip), "{t}: main's remote chip is edged in the trunk tone");
+        assert_eq!(remote.text, p.text, "{t}: and lettered in text");
+        let local = ref_chip(ChipStyle::Branch, BranchTone::of(Swatch::Trunk, p), p);
+        let (fill, tone) = (local.fill.map(|f| super::contrast::oklch(f).1), super::contrast::oklch(chip).1);
+        assert!(fill.is_some_and(|c| c <= tone + 0.01), "{t}: main's local chip is filled in the trunk's own tone, chroma {fill:?}");
         for (what, c) in [("line", line), ("chip", chip)] {
             if c == p.accent {
                 failures.push(format!("{t}: the trunk {what} is the accent"));

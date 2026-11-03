@@ -7,7 +7,8 @@
 use super::branch_colours::{chip_in, initials_fill, line_in, swatches};
 use super::branch_palette::applied;
 use super::color::Palette;
-use super::contrast::{self, ChipStyle, brownish, oklch};
+use super::contrast::{self, brownish, oklch};
+use super::ref_chip::{BranchTone, ChipStyle, ref_chip};
 use super::surfaces::Tone;
 use super::tests::palettes;
 use eframe::egui::Color32;
@@ -89,13 +90,15 @@ pub(super) fn fills(p: &Palette) -> Vec<(String, Color32)> {
     // The graph: each lane's band, highlighted (its branch hovered), its initials and its chips.
     for s in swatches() {
         let lane = line_in(s, p);
-        let band = crate::ui::graph::band_color(lane, p);
+        let band = crate::ui::theme::surfaces::band_color(lane, p);
         add(&format!("{s:?} band"), band);
-        add(&format!("{s:?} band highlighted"), crate::ui::graph::highlight_color(band, lane));
+        add(&format!("{s:?} band highlighted"), crate::ui::theme::surfaces::highlight_color(band, lane));
         add(&format!("{s:?} initials"), super::branch_colours::initials_fill(lane, p));
         for style in ChipStyle::ALL {
-            let look = contrast::ref_chip(style, chip_in(s, p), p);
-            add(&format!("{s:?} {style:?} chip"), look.fill);
+            let look = ref_chip(style, BranchTone::of(s, p), p);
+            if let Some(fill) = look.fill {
+                add(&format!("{s:?} {style:?} chip"), fill);
+            }
             if let Some(edge) = look.edge {
                 add(&format!("{s:?} {style:?} chip edge"), edge);
             }
@@ -117,7 +120,7 @@ pub(super) fn lines(p: &Palette) -> Vec<(String, Color32)> {
         v.push((format!("{s:?} lane"), lane));
         v.push((format!("{s:?} initials ink"), contrast::clean_ink(chip_in(s, p), initials_fill(lane, p), p)));
         for style in ChipStyle::ALL {
-            v.push((format!("{s:?} {style:?} chip text"), contrast::ref_chip(style, chip_in(s, p), p).text));
+            v.push((format!("{s:?} {style:?} chip text"), ref_chip(style, BranchTone::of(s, p), p).text));
         }
     }
     v

@@ -51,8 +51,16 @@ fn op_strip_rebase_step() {
     let snap = st.snap.as_mut().unwrap();
     snap.state = RepositoryState::RebaseInteractive;
     let stop = Stop { kind: StopKind::Edit, oid: None };
-    snap.rebase =
-        Some(RebaseProgress { step: 2, total: 4, stop, summary: String::new(), autostash: false, interactive: true, command: None });
+    snap.rebase = Some(RebaseProgress {
+        step: 2,
+        total: 4,
+        stop,
+        summary: String::new(),
+        autostash: false,
+        interactive: true,
+        command: None,
+        amends: false,
+    });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("op_strip_rebase_step");

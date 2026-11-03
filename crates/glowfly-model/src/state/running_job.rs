@@ -15,6 +15,8 @@ pub struct RunningJob {
     pub then_open: Option<(PathBuf, trust::Created)>,
     /// Run the push flow when this (commit) job succeeds.
     pub then_push: bool,
+    /// Resume the stopped rebase when this (commit) job succeeds.
+    pub then_continue: bool,
     /// Open the create pull request dialog for this branch once this (push) job succeeds.
     pub then_pr: Option<push_pr::PrStart>,
     /// Check the repository again for a pending link's target once this (fetch) job succeeds (update/deep_link_open.rs).

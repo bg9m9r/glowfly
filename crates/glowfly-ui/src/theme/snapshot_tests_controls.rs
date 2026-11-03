@@ -4,12 +4,12 @@
 //! and the dialog border).
 
 use super::color::{self, Palette};
-use super::contrast::{self, ChipStyle};
 use super::controls::{self, Check};
 use super::{apply_style, egui_theme};
 use crate::ui::access;
 use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::branch_colours::{chip_in, swatches};
+use crate::ui::theme::branch_colours::swatches;
+use crate::ui::theme::ref_chip::{self, BranchTone, ChipStyle};
 use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::{self, radius};
 use crate::ui::widgets::button_split::split;
@@ -90,17 +90,23 @@ fn render_controls_in(name: &str, p: Palette, style: FocusStyle) {
             let (_, rect) = ui.allocate_space(vec2(ui.available_width(), 60.0));
             let painter = ui.painter();
             let mut x = rect.left();
-            let mut y = rect.top() + 12.0;
+            // The first row's halos reach 14 px above its middle.
+            let mut y = rect.top() + 14.0;
             let mut chips = vec![(ChipStyle::Head, Swatch::Trunk, "HEAD"), (ChipStyle::CurrentBranch, Swatch::Trunk, "✔ main")];
             chips.extend(swatches().skip(1).map(|lane| (ChipStyle::Branch, lane, "topic")));
             chips.extend([(ChipStyle::Remote, Swatch::Trunk, "origin/main"), (ChipStyle::Tag, Swatch::Trunk, "v1.2.0")]);
             for (style, lane, text) in chips {
-                let look = contrast::ref_chip(style, chip_in(lane, &p), &p);
+                let look = ref_chip::ref_chip(style, BranchTone::of(lane, &p), &p);
                 if x > rect.right() - 90.0 {
                     x = rect.left();
                     y += 26.0;
                 }
-                x = widgets::chip::Chip::new(widgets::chip::ChipSize::Chip, text).look(look).paint(painter, x, y).right() + 6.0;
+                let room = if look.halo.is_some() { widgets::chip::HALO_ROOM } else { 0.0 };
+                let r = widgets::chip::Chip::new(widgets::chip::ChipSize::Chip, text).look(look).paint(painter, x + room, y);
+                if let Some(halo) = look.halo {
+                    widgets::chip::paint_halo(painter, r, widgets::chip::ChipSize::Chip, halo);
+                }
+                x = r.right() + room + 6.0;
             }
             if strong {
                 focus_targets(ui, &p);
