@@ -15,7 +15,7 @@ pwsh scripts/make-perf-repos.ps1 -Only linear,octopus
   (`%LOCALAPPDATA%`, `~/Library/Caches` or `$XDG_CACHE_HOME`, else `~/.cache`). It refuses a
   folder inside the Glowfly checkout. Never commit these repositories.
 - **Downloads are opt-in:** the two clones are made only with `-Download`. They fetch about
-  6 GB, nearly all of it the kernel.
+  4 GB, nearly all of it the kernel.
 - **Running again** builds only what is missing. A finished repository is never touched. An
   unfinished synthetic one is built again from the start, and an unfinished clone carries on
   fetching. Progress is kept in `<out>/.state/`.
@@ -28,11 +28,12 @@ pwsh scripts/make-perf-repos.ps1 -Only linear,octopus
 
 ## The repositories
 
-Sizes are rough, at scale 1. Point Glowfly or `GLOWFLY_PERF_REPO` at `<out>/<name>`, or at
-`<out>/submodules/super` for the submodules; the script prints each path at the end.
+Sizes are rough, at scale 1; the table below has measured ones. Point Glowfly or
+`GLOWFLY_PERF_REPO` at `<out>/<name>`, or at `<out>/submodules/super` for the submodules; the
+script prints each path at the end.
 
-- `git`: git/git's real history (~75k commits, ~300 MB).
-- `linux`: the Linux kernel, a full clone, not shallow (~1.3M commits, ~90k files, ~7 GB with
+- `git`: git/git's real history (~85k commits, ~0.4 GB).
+- `linux`: the Linux kernel, a full clone, not shallow (~1.5M commits, ~97k files, ~6 GB with
   the checkout).
 - `linear`: 1M commits in a line, each changing one of 2,000 files (~0.6 GB).
 - `many-refs`: 100k tags (a tenth annotated) and 20k branches in 50 folders, on 100k commits
@@ -47,6 +48,25 @@ Sizes are rough, at scale 1. Point Glowfly or `GLOWFLY_PERF_REPO` at `<out>/<nam
   (~10 MB).
 - `submodules`: a superproject with submodules three deep and one beside them; `libs/a` is
   checked out ahead of the commit it records and the deepest has an untracked file.
+
+Measured on the first full build (November 2026: Windows 11, Ryzen 7 9850X3D, 32 GB, NVMe SSD,
+git 2.54; scale 1, nothing scaled down). "On disk" includes the checkout.
+
+| Repository     | On disk | `.git`  | Built in |
+| -------------- | ------- | ------- | -------- |
+| `git`          | 386 MB  | 329 MB  | 26 s     |
+| `linux`        | 5.8 GB  | 4.0 GB  | 5 min    |
+| `linear`       | 565 MB  | 563 MB  | 74 s     |
+| `many-refs`    | 84 MB   | 84 MB   | 6 min    |
+| `wide-tree`    | 651 MB  | 80 MB   | 164 s    |
+| `octopus`      | 10 MB   | 10 MB   | 5 s      |
+| `big-files`    | 727 MB  | 357 MB  | 16 s     |
+| `lfs-pointers` | 7 MB    | 1.4 MB  | 3 s      |
+| `submodules`   | 1.5 MB  | -       | 131 s    |
+
+The whole set takes about 8.2 GB. Built one after another it takes about 18 minutes; running
+`-Download -Only git,linux` in one shell and the synthetic repositories in another took 13. On
+Windows the kernel's checkout leaves out 26 paths (see below).
 
 The synthetic repositories are made with `git fast-import` from deterministic streams
 (`scripts/perf-repos/Streams.cs`): names, dates, messages and file contents follow from the
@@ -69,7 +89,8 @@ thread: search keystrokes, relayout, branch hover and swapping snapshots.
 GLOWFLY_PERF_REPO=<out>/linux cargo test -p glowfly-flows --release perf_timing -- --ignored --nocapture
 ```
 
-In PowerShell, set `$env:GLOWFLY_PERF_REPO = '<out>/linux'` first. Run it against `git` and
+In PowerShell, set `$env:GLOWFLY_PERF_REPO = '<out>/linux'` first. The test loads at most the
+newest 200,000 commits, so on the kernel it times a fifth of the history. Run it against `git` and
 `linux` at least, and against `linear` and `many-refs` when a change touches the history or refs.
 
 ## Manual checklist
