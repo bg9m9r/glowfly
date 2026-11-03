@@ -22,6 +22,7 @@ Dialog
   Button "Stash selected files…"
   Button "Create worktree from main…"
   Button "Theme: High contrast light"
+  Button "Getting started"
   Button "Export logs…"
   Button "Hide left panel"
   Button "Configure Git LFS…"

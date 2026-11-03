@@ -1,10 +1,10 @@
 //! The bottom status bar: the hosting service and tracker with the counts their sidebar lists
 //! show (`state::status_counts`), the job running (or a load, or a fresh build of the search's
-//! whole-history index), and the zoom and Show toolbar items (toasts are in `toasts.rs`, the
-//! logs panel in `activity_log.rs`). Its parts are joined by "·" only when present. With
-//! Announcements on (Preferences > Accessibility) the job's text is a live region, so screen
-//! readers say when a job starts or begins to cancel (its outcome is a toast's); a quiet job
-//! (auto-fetch) is never announced.
+//! whole-history index), the update and What's new chips, and the zoom and Show toolbar items
+//! (toasts are in `toasts.rs`, the logs panel in `activity_log.rs`). Its parts are joined by "·"
+//! only when present. With Announcements on (Preferences > Accessibility) the job's text is a
+//! live region, so screen readers say when a job starts or begins to cancel (its outcome is a
+//! toast's); a quiet job (auto-fetch) is never announced.
 
 use super::access::{self, Live};
 use super::common::status_label_ui;
@@ -63,6 +63,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     ui.label(RichText::new(format!("Glowfly {}", st.updates.shown)).color(color::faint()));
                     super::live_updates::status_item(ui, st, msgs);
                     super::update_notice::status_item(ui, st, msgs);
+                    super::whats_new_chip::status_item(ui, st, msgs);
                     super::layout::status_items(ui, st, msgs);
                     if st.job.is_some() {
                         job_item(ui, st, msgs);

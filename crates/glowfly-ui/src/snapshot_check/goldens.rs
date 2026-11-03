@@ -53,6 +53,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("welcome_start", Window),
     ("welcome_start_light", Window),
     ("welcome_start_high_contrast_dark", Window),
+    // Help > Getting started: the cards, their groups and the in-use marks.
+    ("getting_started_dark", Window),
+    ("getting_started_light", Window),
     // Preferences > Appearance in the default light theme: the theme picker.
     ("prefs_theme_picker_porcelain", Window),
     // Match the system on (two rings), a theme file in use (the disclosure open), and German.
@@ -82,6 +85,11 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("title_bar_mac_dark", Top(108.0)),
     ("tabs_restyled", Window),
     ("tabs_hover", Top(40.0)),
+    // The status bar's What's new chip after an upgrade, in both default themes, and beside an
+    // update's chip.
+    ("status_whats_new_dark", Window),
+    ("status_whats_new_light", Window),
+    ("status_whats_new_beside_update", Window),
     // The trust chip waiting beside the conflict chip, then at rest.
     ("toolbar_trust_waiting_dark", Top(108.0)),
     ("toolbar_trust_rest_dark", Top(108.0)),
@@ -296,6 +304,8 @@ const IMAGE_ONLY: &[&str] = &[
     "graph_search_dim_high_contrast_light",
     // The trust chip at rest: the same names as `toolbar_trust_waiting_dark`; only its look differs.
     "toolbar_trust_rest_dark",
+    // `status_whats_new_dark` in Porcelain.
+    "status_whats_new_light",
     // `hint_row_undo` in Porcelain.
     "hint_row_undo_light",
     // The same hovered ghost as `graph_ghost_branch_tooltip`'s text, icon-only in a narrow column.
@@ -335,6 +345,8 @@ const IMAGE_ONLY: &[&str] = &[
     "title_bar_windows_light",
     "welcome_start_light",
     "welcome_start_high_contrast_dark",
+    // `getting_started_dark` in Light.
+    "getting_started_light",
     "graph_bands_dusk",
     "branch_colours_graph_light",
     "branch_colours_colour_blind_dark",

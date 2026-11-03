@@ -1,0 +1,65 @@
+window 1400x820
+Label "Glowfly 0.1.0"
+TabList
+  Tab "New tab" [selected]
+Button "Close tab New tab"
+Button "New tab"
+Button "Repository: Open…"
+Label "Getting started"
+Label "A few things Glowfly can do for you. Each card opens its feature so you can try it."
+Button "Close"
+Label "2 of 14 in use"
+CheckBox "Show the cards already in use (2)" [on]
+Label "Everyday"
+Label "Take the tour"
+Label "Five stops around the main window, from the toolbar to the command palette."
+Button "Show me" [disabled]
+Label "Command palette"
+Label "Type a few letters of any command to find it and run it."
+Button "Show me"
+Label "Who changed this line"
+Label "Blame shows the commit behind every line of a file."
+Button "Show me" [disabled]
+Label "Tidy history"
+Label "Reword, squash or drop commits"
+Label "Select a commit in the graph to rewrite it, or to rebase onto it."
+Button "Show me" [disabled]
+Label "Undo with the journal"
+Label "Glowfly records every change it makes, and the operation journal can undo most of them."
+Button "Show me" [disabled]
+Label "Work in parallel"
+Label "Worktrees"
+Label "Check out another branch in a folder of its own and keep both open as tabs."
+Button "Show me" [disabled]
+Label "Stash"
+Label "Put unfinished changes aside, switch tasks, and bring them back later."
+Button "Show me" [disabled]
+Label "Hosting & issues"
+Label "Connect a hosting service"
+Label "Sign in to see pull requests, checks and issues next to your branches."
+Button "Show me"
+Label "In use"
+Label "Dashboard"
+Label "Pull requests and issues from all your repositories on one page."
+Button "Show me"
+Label "Make it yours"
+Label "Built-in terminal"
+Label "A shell in the repository's folder, right under the graph."
+Button "Show me" [disabled]
+Label "Your editor and tools"
+Label "Open files in your editor, and compare and merge in your own tools."
+Button "Show me"
+Label "Custom commands"
+Label "Add your own git or shell commands to the palette and the menus."
+Button "Show me" [disabled]
+Label "Themes"
+Label "Pick light, dark or high contrast, or make a theme of your own."
+Button "Show me"
+Label "In use"
+Label "Keyboard shortcuts"
+Label "Change any shortcut, or add keys for the commands you use most."
+Button "Show me"
+Button "Hide from the menu"
+painted:
+  "Repository"
+  "Open…"
