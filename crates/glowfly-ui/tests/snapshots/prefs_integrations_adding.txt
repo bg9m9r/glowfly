@@ -1,10 +1,11 @@
 window 1400x1000
 Label "Glowfly 0.1.0"
 Button "Back"
+TextInput "Search preferences"
 Label "Preferences"
 Button "General"
 Button "Git"
-Button "Profile"
+Button "Profiles"
 Button "Integrations" [selected]
 Button "Appearance"
 Button "Accessibility"
@@ -34,8 +35,11 @@ Button "Connect to GitHub"
 Label "or"
 Label "Personal access token"
 PasswordInput "Personal access token"
-Label "A personal access token with the repo scope (classic), or a fine-grained token with Pull requests and Issues read & write. Stored in the Windows Credential Manager, never in Glowfly's settings file."
+Label "A personal access token with the repo scope…"
+Link "Learn more"
 Label "Create a token"
 Button "Connect" [disabled]
 Button "Cancel"
 Label "If the GITHUB_TOKEN environment variable is set, Glowfly uses it ahead of connections made here."
+painted:
+  "If the GITHUB_TOKEN environment variable is set, Glowfly uses it\nahead of connections made here."

@@ -154,19 +154,25 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
 /// moved onto the pixel grid for the line width, and the plus is drawn at its size with its
 /// ends on whole pixels too, so it never looks off-centre in its button.
 pub fn paint_icon_sized(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f32) {
-    let c = icon_snap::snap_centre(c, STROKE, p.ctx().pixels_per_point());
+    paint_icon_stroked(p, c, icon, col, size, STROKE);
+}
+
+/// `paint_icon_sized` with lines `stroke` wide instead of `STROKE` (Preferences' navigation
+/// draws its icons at 16 px with 1.5 px lines).
+pub fn paint_icon_stroked(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f32, stroke: f32) {
+    let c = icon_snap::snap_centre(c, stroke, p.ctx().pixels_per_point());
     let scale = size / SIZE_LG;
     if icon == Icon::Plus {
-        icon_snap::paint_plus(p, c, PLUS_ARM * scale, Stroke::new(STROKE, col));
+        icon_snap::paint_plus(p, c, PLUS_ARM * scale, Stroke::new(stroke, col));
         return;
     }
     if scale == 1.0 {
-        paint_icon_stroke(p, c, icon, Stroke::new(STROKE, col));
+        paint_icon_stroke(p, c, icon, Stroke::new(stroke, col));
         return;
     }
     let layer = p.layer_id();
     let start = p.ctx().graphics(|g| g.get(layer).map_or(ShapeIdx(0), |l| l.next_idx()));
-    paint_icon_stroke(p, c, icon, Stroke::new(STROKE / scale, col));
+    paint_icon_stroke(p, c, icon, Stroke::new(stroke / scale, col));
     let end = p.ctx().graphics(|g| g.get(layer).map_or(ShapeIdx(0), |l| l.next_idx()));
     let transform = TSTransform { scaling: scale, translation: c.to_vec2() * (1.0 - scale) };
     p.ctx().graphics_mut(|g| g.entry(layer).transform_range(start, end, transform));

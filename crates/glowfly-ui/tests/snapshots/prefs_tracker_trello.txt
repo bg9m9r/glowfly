@@ -1,10 +1,11 @@
 window 1400x820
 Label "Glowfly 0.1.0"
 Button "Back to repository"
+TextInput "Search preferences"
 Label "Preferences"
 Button "General"
 Button "Git"
-Button "Profile"
+Button "Profiles"
 Button "Integrations"
 Button "Appearance"
 Button "Accessibility"
@@ -15,9 +16,8 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
-Label "This repository"
-Label "Repo: demo"
-Button "Identity"
+Label "This repository · demo"
+Button "Commit identity"
 Button "Git hooks"
 Button "Issue tracker" [selected]
 Button "Git LFS"
@@ -33,4 +33,5 @@ ComboBox "Board"
 Button "All boards" [off]
 Button "Ops" [off]
 Button "Website" [on]
-Label "The ISSUES list shows open cards assigned to you on this board. Card links (trello.com/c/…) in commit messages, and branch names that start with a card id, link to Trello either way."
+Label "The ISSUES list shows open cards assigned to you on…"
+Link "Learn more"

@@ -98,7 +98,7 @@ fn prefs_unsaved_question() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("prefs_unsaved_question");
-    assert!(h.query_by_label("Identity has changes that aren't saved yet.").is_some());
+    assert!(h.query_by_label("Commit identity has changes that aren't saved yet.").is_some());
     h.get_by_label("Discard").click();
     h.run();
     assert!(pushed(&h.state().1, |m| matches!(m, Msg::ConfirmAlt)));

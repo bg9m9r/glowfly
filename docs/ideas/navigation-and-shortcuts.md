@@ -112,3 +112,11 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 - On macOS, Control+1 to 5 are Mission Control's Switch to Desktop keys when the user turns those on: note it in the shortcut sheet or Preferences > Keyboard
 - Page Up/Down, Home and End in file history's list, which the Lists row names but only the graph matches yet
 - Rebindable Enter for Show the details panel (plain Enter is reserved, so the row is fixed)
+
+### Preferences search
+
+- Rows whose labels are still English literals (Commit signing, Git Flow, Sparse checkout, Git hooks, Integrations, Profiles' fields) aren't in the search index until they get locale keys
+- Search the checkbox texts and combo choices too, not only labels and help
+- Reveal the matching row when a page is opened by clicking a filtered nav row, not only by Enter
+- A "Theme" section caption at the top of Appearance, matching General's captions
+- Profiles' "Editing <name>" heading as a full-width caption with a rule

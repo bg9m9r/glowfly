@@ -1,10 +1,11 @@
 window 1400x820
 Label "Glowfly 0.1.0"
 Button "Back"
+TextInput "Search preferences"
 Label "Preferences"
 Button "General"
 Button "Git"
-Button "Profile"
+Button "Profiles"
 Button "Integrations"
 Button "Appearance"
 Button "Accessibility"

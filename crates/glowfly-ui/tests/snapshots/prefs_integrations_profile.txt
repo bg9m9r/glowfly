@@ -1,10 +1,11 @@
 window 1400x820
 Label "Glowfly 0.1.0"
 Button "Back"
+TextInput "Search preferences"
 Label "Preferences"
 Button "General"
 Button "Git"
-Button "Profile"
+Button "Profiles"
 Button "Integrations" [selected]
 Button "Appearance"
 Button "Accessibility"
@@ -33,3 +34,5 @@ Label "github.com"
 Label "ada-work via access token"
 Button "Add another account"
 Label "If the GITHUB_TOKEN environment variable is set, Glowfly uses it ahead of connections made here."
+painted:
+  "If the GITHUB_TOKEN environment variable is set, Glowfly uses it\nahead of connections made here."

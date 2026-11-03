@@ -214,7 +214,8 @@ impl egui::Widget for Check<'_> {
         });
         crate::ui::access::from_label(&response);
         if ui.is_rect_visible(rect) {
-            let at = centre.map_or(rect, |c| Rect::from_center_size(c, Vec2::splat(ui.spacing().icon_width)));
+            let at = centre
+                .map_or_else(|| first_line(rect, galley.as_deref()), |c| Rect::from_center_size(c, Vec2::splat(ui.spacing().icon_width)));
             let big = paint_box(ui, at, (*checked, indeterminate, tint), response.hovered());
             if response.has_focus() {
                 tokens::focus_ring(ui.painter(), big, radius::SM);
@@ -282,7 +283,7 @@ impl egui::Widget for Radio {
         response.widget_info(|| WidgetInfo::selected(WidgetType::RadioButton, ui.is_enabled(), selected, label));
         if ui.is_rect_visible(rect) {
             let p = color::current();
-            let (_, big) = ui.spacing().icon_rectangles(rect);
+            let (_, big) = ui.spacing().icon_rectangles(first_line(rect, galley.as_deref()));
             let (c, w) = (big.center(), big.width());
             if ui.is_enabled() {
                 let (fill, stroke) = icon_colors(&p, selected, response.hovered());
@@ -312,7 +313,7 @@ fn paint_disabled_radio(ui: &Ui, rect: Rect, galley: Option<Arc<Galley>>, select
         return;
     }
     painter.set_fade_to_color(None);
-    let (_, big) = ui.spacing().icon_rectangles(rect);
+    let (_, big) = ui.spacing().icon_rectangles(first_line(rect, galley.as_deref()));
     let (c, w) = (big.center(), big.width());
     if selected {
         painter.circle(c, w / 2.0, p.weak, Stroke::new(1.0_f32, p.weak));
@@ -377,6 +378,12 @@ fn layout(ui: &mut Ui, text: WidgetText, hit: Vec2) -> (Rect, Option<Arc<Galley>
     size = size.at_least(hit);
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     (rect, galley, response)
+}
+
+/// Where the icon centres: `rect`, or beside a label's first line when it has several.
+fn first_line(rect: Rect, galley: Option<&Galley>) -> Rect {
+    let Some(g) = galley.filter(|g| g.rows.len() > 1) else { return rect };
+    Rect::from_min_size(rect.min, vec2(rect.width(), rect.height() - g.size().y + g.rows[0].height()))
 }
 
 /// The label right of the icon, in the colour egui gives a widget in this interaction state.

@@ -1,4 +1,4 @@
-//! Preferences' keys: Ctrl/Cmd+S saves the open page (from one of its fields too). Esc on the
+//! Preferences' keys: Ctrl/Cmd+S saves the open page (from one of its fields too), and Ctrl/Cmd+F focuses the search. Esc on the
 //! Save / Revert bar's buttons reverts the page; anywhere else it closes Preferences, which asks
 //! "Save your changes?" about an edited page (update/prefs_leave.rs). Esc leaves a dialog and a
 //! save still being written alone.
@@ -136,4 +136,13 @@ fn the_sheet_lists_both_keys() {
     assert_eq!(save.when.note(), Some("in Preferences"));
     let revert = crate::keymap::binding(crate::keymap::BindingId::PrefsRevert);
     assert!(!revert.rebindable, "Esc is the views' own key");
+}
+
+#[test]
+fn ctrl_f_focuses_the_preferences_search() {
+    let mut h = harness(identity(false));
+    assert!(!h.state().st.prefs.as_ref().unwrap().focus_search);
+    press(&mut h, Key::F, PC_CTRL);
+    assert!(h.state().st.prefs.as_ref().unwrap().focus_search, "Ctrl+F asks for the search field");
+    assert!(!h.state().st.view.show_search, "not the graph's search bar");
 }

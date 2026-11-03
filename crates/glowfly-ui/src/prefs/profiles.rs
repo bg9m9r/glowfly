@@ -1,4 +1,4 @@
-//! Preferences > Profile: the open repository's identity (profile_rules.rs), the profile list
+//! Preferences > Profiles: an opening sentence, the open repository's identity (profile_rules.rs), the profile list
 //! (current marker, switch, inline rename, delete), the New profile form, and the selected
 //! profile's identity fields (saved by the Save / Revert bar) and folder rules
 //! (profile_rules.rs), then what else switches with it (profile_setup.rs). The view edits only text buffers
@@ -39,6 +39,7 @@ pub fn profile_page(
     here: Option<RepoHere<'_>>,
     msgs: &mut Vec<Msg>,
 ) {
+    super::intro(ui, settings.lang().tr("prefs.profiles.intro"));
     if let Some(here) = &here {
         here_row(ui, settings, here, list_width(ui), msgs);
     }

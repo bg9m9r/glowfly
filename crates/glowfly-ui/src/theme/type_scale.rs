@@ -26,6 +26,10 @@ pub const BODY: f32 = 14.0;
 pub const SUBHEAD: f32 = 16.0;
 /// Page titles.
 pub const TITLE: f32 = 20.0;
+/// Preferences help lines: between SMALL and BODY, set in `HELP_LINE` high lines.
+pub const HELP: f32 = 13.0;
+/// The line height of Preferences help: 1.45 times `HELP`.
+pub const HELP_LINE: f32 = HELP * 1.45;
 /// The five steps, smallest first.
 pub const STEPS: [f32; 5] = [CAPTION, SMALL, BODY, SUBHEAD, TITLE];
 /// No text is drawn smaller.
