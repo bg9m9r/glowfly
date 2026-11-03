@@ -1,6 +1,6 @@
-//! Preferences save-model snapshots: the Save / Revert bar under an edited Identity page (and
-//! what its buttons push, Save waiting while a save is written, telling Esc when it has the
-//! keyboard), a refused save's error on the page, the "Save your changes?" question, the
+//! Preferences save-model snapshots: the Save / Revert bar under an edited Commit identity page
+//! (and what its buttons push, Save waiting while a save is written, telling Esc when it has
+//! the keyboard), a refused save's error on the page, the "Save your changes?" question, the
 //! "Saved" tick beside a title, Git Flow's actions waiting while its form is edited, and the
 //! Integrations page with an account connected, adding another, and with nothing connected.
 
@@ -16,7 +16,7 @@ use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::settings::ThemeChoice;
 use std::time::Instant;
 
-/// The repository's Identity page with its config read and the name edited.
+/// The repository's Commit identity page with its config read and the name edited.
 fn identity_edited(name: &str) -> (AppState, std::path::PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let mut prefs = PrefsState::new(PrefPage::RepoIdentity);

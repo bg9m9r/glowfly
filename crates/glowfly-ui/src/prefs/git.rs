@@ -1,6 +1,7 @@
-//! Repo > Commit identity (opening with whom the repository commits as) and Git hooks. The fields edit the loaded git config in place; the Save /
-//! Revert bar writes them to the repository's config. The hooks page also turns git's built-in
-//! file system monitor on or off for the repository, each a job of its own.
+//! Repo > Commit identity (opening with whom the repository commits as) and Git hooks. The
+//! fields edit the loaded git config in place; the Save / Revert bar writes them to the
+//! repository's config. The hooks page also turns git's built-in file system monitor on or off
+//! for the repository, each a job of its own.
 
 use super::{help, row, text_field};
 use crate::msg::PrefsMsg;

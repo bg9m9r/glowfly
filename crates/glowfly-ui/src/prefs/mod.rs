@@ -69,6 +69,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(page) = st.prefs.as_ref().map(|p| p.page) else { return };
     let t = st.settings.lang();
     let repo_name = st.snap.as_ref().map(|s| s.name.clone());
+    // Before the nav, which may set a new target this frame.
+    reveal::sync(ctx, page, st.prefs.as_ref().is_some_and(|p| p.leaving.is_some()));
     if let Some(p) = st.prefs.as_mut() {
         let view = nav::NavView { page, repo_name: repo_name.as_deref(), t };
         nav::show(ctx, &view, &mut p.search, &mut p.focus_search, msgs);

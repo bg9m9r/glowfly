@@ -113,3 +113,71 @@ fn prefs_identity_light() {
     render("prefs_identity_light", st, false);
     super::snapshot_tests::remove_fixture(&dir);
 }
+
+type H = egui_kittest::Harness<'static, (AppState, Vec<Msg>)>;
+
+/// Types Enter in the focused search field (one frame).
+fn enter(h: &mut H) {
+    h.state_mut().1.clear();
+    let modifiers = Modifiers::NONE;
+    h.input_mut().events.push(Event::Key { key: Key::Enter, physical_key: None, pressed: true, repeat: false, modifiers });
+    h.step();
+}
+
+/// `enter`, then applies the messages that frame sent.
+fn enter_and_apply(h: &mut H) {
+    enter(h);
+    let (st, msgs) = h.state_mut();
+    for m in std::mem::take(msgs) {
+        crate::update::update(st, m, Instant::now());
+    }
+}
+
+/// Preferences on `page` with `query` typed in the focused search, motion reduced so the tint
+/// stays solid.
+fn searching(page: PrefPage, query: &str) -> H {
+    let mut st = general(ThemeChoice::Dark, query);
+    st.settings.reduce_motion = true;
+    let p = st.prefs.as_mut().unwrap();
+    (p.page, p.focus_search) = (page, true);
+    let mut h = harness_sized(st, true, egui::vec2(1400.0, 820.0));
+    h.run();
+    h
+}
+
+/// The row labelled `label` (its label, not the control it names) is tinted with the selected
+/// fill.
+fn tinted(h: &H, label: &str) -> bool {
+    let n = h.query_all_by_label(label).find(|n| n.role() == egui_kittest::kittest::Role::Label).expect("the row's label");
+    let at = super::snapshot_tests_painted::bounds(&n).center();
+    super::snapshot_tests_painted::fills_at(h, at).contains(&crate::ui::theme::color::selected())
+}
+
+/// Enter on a row far down a long page scrolls it into view and tints it.
+#[test]
+fn enter_reveals_a_row_far_down_the_page() {
+    let mut h = searching(PrefPage::General, "Glowfly links");
+    let below = |h: &H| h.query_all_by_label("Glowfly links").next().and_then(|n| n.bounding_box()).is_none_or(|b| b.y0 > 790.0);
+    assert!(below(&h), "the row starts out of view");
+    enter_and_apply(&mut h);
+    h.run();
+    let b = h.query_all_by_label("Glowfly links").next().and_then(|n| n.bounding_box()).expect("drawn");
+    assert!(b.y0 > 60.0 && b.y1 < 790.0, "scrolled into view: {b:?}");
+    assert!(tinted(&h, "Glowfly links"));
+}
+
+/// "Interface size" labels a row on Appearance and on Accessibility: from Accessibility, Enter
+/// opens Appearance's (first in the nav) and tints that one, never the row on the page left.
+#[test]
+fn a_shared_label_is_revealed_on_the_page_opened() {
+    let mut h = searching(PrefPage::Accessibility, "interface size");
+    enter(&mut h);
+    assert!(!tinted(&h, "Interface size"), "not the row on Accessibility, the page being left");
+    let (st, msgs) = h.state_mut();
+    for m in std::mem::take(msgs) {
+        crate::update::update(st, m, Instant::now());
+    }
+    assert_eq!(h.state().0.prefs.as_ref().unwrap().page, PrefPage::Ui, "Appearance comes first");
+    h.run();
+    assert!(tinted(&h, "Interface size"), "the row on Appearance");
+}

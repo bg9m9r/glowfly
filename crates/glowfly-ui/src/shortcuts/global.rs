@@ -212,12 +212,7 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         },
         I::RebaseSkip => Msg::Rebase(RebaseMsg::Resume(Resume::Skip)),
         // Under Preferences it focuses the "Search preferences" field.
-        I::Search if st.prefs.is_some() => {
-            if let Some(p) = st.prefs.as_mut() {
-                p.focus_search = true;
-            }
-            return;
-        }
+        I::Search if st.prefs.is_some() => Msg::Prefs(PrefsMsg::FocusSearch),
         // In the blame view it finds in the file.
         I::Search if st.session.blame.view.is_some() => Msg::Blame(BlameMsg::FocusFind),
         // In a history's File pane it finds in the file shown.

@@ -62,7 +62,7 @@ pub fn show(ctx: &egui::Context, v: &NavView, query: &mut String, focus: &mut bo
         ui.add_space(10.0);
         let pages: Vec<PrefPage> = PAGES.iter().chain(if v.repo_name.is_some() { REPO_PAGES } else { &[] }).map(|(p, _)| *p).collect();
         let found = index::search(t, query, &pages);
-        search_field(ui, t, query, focus, found.first(), msgs);
+        search_field(ui, v, query, focus, found.first(), msgs);
         ui.add_space(12.0);
         caption(ui, t.tr("prefs.nav.caption"));
         let searching = !query.trim().is_empty();
@@ -93,7 +93,8 @@ pub fn show(ctx: &egui::Context, v: &NavView, query: &mut String, focus: &mut bo
 }
 
 /// The field; Enter opens `first` and reveals its first matching row.
-fn search_field(ui: &mut Ui, t: Lang, query: &mut String, focus: &mut bool, first: Option<&PageMatch>, msgs: &mut Vec<Msg>) {
+fn search_field(ui: &mut Ui, v: &NavView, query: &mut String, focus: &mut bool, first: Option<&PageMatch>, msgs: &mut Vec<Msg>) {
+    let (t, current) = (v.t, v.page);
     ui.horizontal(|ui| {
         ui.add_space(INSET);
         let edit = egui::TextEdit::singleline(query).id(Id::new("prefs-search")).hint_text(t.tr("prefs.search.hint"));
@@ -114,7 +115,7 @@ fn search_field(ui: &mut Ui, t: Lang, query: &mut String, focus: &mut bool, firs
         {
             msgs.push(Msg::Prefs(PrefsMsg::Navigate(m.page)));
             if let Some(label) = m.first {
-                super::reveal::set(ui.ctx(), t.tr(label));
+                super::reveal::set(ui.ctx(), t.tr(label), m.page, current);
             }
         }
     });

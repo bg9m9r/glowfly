@@ -1,8 +1,8 @@
-//! Preferences > Profiles: an opening sentence, the open repository's identity (profile_rules.rs), the profile list
-//! (current marker, switch, inline rename, delete), the New profile form, and the selected
-//! profile's identity fields (saved by the Save / Revert bar) and folder rules
-//! (profile_rules.rs), then what else switches with it (profile_setup.rs). The view edits only text buffers
-//! and which form is open; everything else is a `Msg`.
+//! Preferences > Profiles: an opening sentence, the open repository's identity
+//! (profile_rules.rs), the profile list (current marker, switch, inline rename, delete), the New
+//! profile form, and the selected profile's identity fields (saved by the Save / Revert bar) and
+//! folder rules (profile_rules.rs), then what else switches with it (profile_setup.rs). The view
+//! edits only text buffers and which form is open; everything else is a `Msg`.
 
 use super::profile_rules::{RepoHere, here_row, rules_rows};
 use super::{help, primary_button, row, text_field};
