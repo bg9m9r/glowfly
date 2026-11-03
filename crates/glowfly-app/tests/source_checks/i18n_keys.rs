@@ -1,6 +1,7 @@
 //! Every translation key the code looks up exists in the English catalog, and every English key
 //! is looked up somewhere, so a typo shows up here rather than as a raw key on screen and the
-//! catalogs don't collect dead text. Keys are found as string literals right after `.tr(`,
+//! catalogs don't collect dead text. Test code is held to the first half too: a test that reads a
+//! removed key gets the key back and checks nothing. Keys are found as string literals right after `.tr(`,
 //! `.trf(` or `.trn(` (for `trn`, the `.one` and `.other` forms are what exists). Also: no view
 //! brings back an English "Cancel" or "Close" button (or the old "Close  (Esc)"); they come from
 //! `common.cancel.button` and `common.close.button`, and a view's close × is
@@ -69,6 +70,34 @@ fn every_key_in_code_exists_and_every_english_key_is_used() {
     assert!(missing.is_empty(), "keys missing from en.json:\n{}", missing.join("\n"));
     let unused: Vec<&str> = Lang::En.keys().map(|(k, _)| k).filter(|k| !used.contains(*k)).collect::<BTreeSet<_>>().into_iter().collect();
     assert!(unused.is_empty(), "en.json keys no code looks up: {unused:?}");
+}
+
+/// Keys tests look up on purpose that the catalog doesn't have (a missing key shows as itself).
+const MISSING_ON_PURPOSE: &[&str] = &["no.such.key", "no.such.one"];
+
+/// Every key test code looks up exists too: a test reading a removed key gets the raw key back
+/// and quietly checks nothing (`.tr` falls back to the key).
+#[test]
+fn every_key_in_tests_exists() {
+    let crates = views::app_src().parent().and_then(|app| app.parent()).map(PathBuf::from).expect("the crates folder");
+    let mut missing = Vec::new();
+    for entry in std::fs::read_dir(&crates).expect("the crates folder").flatten() {
+        let src = entry.path().join("src");
+        if !src.is_dir() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().into_owned();
+        for (rel, text, _) in views::crate_sources(&src) {
+            let code: Vec<&str> = text.lines().filter(|l| !l.trim_start().starts_with("//")).collect();
+            for (key, plural) in keys_in(&code.join("\n")) {
+                let form = if plural { format!("{key}.one") } else { key };
+                if !Lang::En.has(&form) && !MISSING_ON_PURPOSE.contains(&form.as_str()) {
+                    missing.push(format!("crates/{name}/src/{rel}: {form}"));
+                }
+            }
+        }
+    }
+    assert!(missing.is_empty(), "keys missing from en.json:\n{}", missing.join("\n"));
 }
 
 #[test]

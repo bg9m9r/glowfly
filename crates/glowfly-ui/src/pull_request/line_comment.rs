@@ -1,7 +1,8 @@
 //! The new code comment's box, the first card of the Files changed pane under its file's diff:
-//! where it goes (a link back to the lines), the lines it is on, the text, and Suggest a change,
-//! Cancel, Add single comment and Start a review (or Add review comment), each disabled with
-//! its reason. Command+Enter posts with the main action; Esc leaves the field and cancels.
+//! where it goes (a link back to the lines), the lines it is on, the text, and Suggest a change
+//! (quiet, leading), then at the trailing edge Cancel, Start a review and Add single comment
+//! (filled, last; while a review is pending Add single comment, then Add review comment
+//! filled), each disabled with its reason. Command+Enter posts with the main action; Esc leaves the field and cancels.
 
 use super::super::theme::color;
 use super::super::widgets::{self, Icon};
@@ -22,6 +23,9 @@ use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
 
 const WAITING: &str = "Waiting for the service…";
+
+/// The least room between Suggest a change and the buttons at the trailing edge.
+const LEAD_GAP: f32 = 16.0;
 
 /// The lines of the snippet.
 const SNIPPET_LINES: usize = 4;
@@ -67,7 +71,7 @@ pub(super) fn card(ui: &mut Ui, t: Lang, v: &mut PrView, r: &Reasons, keys: &Key
     let posting = d.posting.is_some();
     let frame = egui::Frame::new()
         .fill(color::panel())
-        .stroke(Stroke::new(1.0_f32, color::accent()))
+        .stroke(Stroke::new(1.0_f32, color::border()))
         .corner_radius(radius::SM)
         .inner_margin(Margin::symmetric(10, 6));
     frame.show(ui, |ui| {
@@ -75,7 +79,7 @@ pub(super) fn card(ui: &mut Ui, t: Lang, v: &mut PrView, r: &Reasons, keys: &Key
         ui.horizontal_wrapped(|ui| {
             let (rect, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
             // Painted: the bundled fonts have no speech-bubble glyph.
-            widgets::paint_icon(ui.painter(), rect.center(), Icon::CommentAdd, color::accent());
+            widgets::paint_icon(ui.painter(), rect.center(), Icon::CommentAdd, color::weak());
             ui.label(RichText::new("New comment on").color(color::weak()));
             if ui.link(where_text(&d.anchor)).on_hover_text("Show these lines in the diff").clicked() {
                 send(msgs, LineCommentMsg::Show);
@@ -105,26 +109,49 @@ pub(super) fn card(ui: &mut Ui, t: Lang, v: &mut PrView, r: &Reasons, keys: &Key
         }
         let single_tip = keys.tip("Add single comment", BindingId::SendPrText);
         let review_tip = keys.tip(review_text, BindingId::SendPrText);
-        ui.horizontal_wrapped(|ui| {
-            let suggest = if posting { Some(WAITING) } else { r.suggest };
-            if ui.add(buttons::secondary("Suggest a change").enabled(suggest.is_none()).why(suggest)).clicked() {
-                send(msgs, LineCommentMsg::Suggest);
+        let waiting = posting.then_some(WAITING);
+        let suggest = buttons::quiet("Suggest a change").enabled(!posting && r.suggest.is_none()).why(waiting.or(r.suggest));
+        let cancel = buttons::secondary(t.tr("common.cancel.button")).enabled(!posting).why(waiting);
+        let style = |filled: bool, text: &'static str| if filled { buttons::primary(text) } else { buttons::secondary(text) };
+        let single = style(!review, "Add single comment").enabled(r.single.is_none()).why(r.single.as_deref());
+        let single = if review { single } else { single.tip(&single_tip) };
+        let add = style(review, review_text).enabled(r.review.is_none()).why(r.review.as_deref());
+        let add = if review { add.tip(&review_tip) } else { add };
+        // The one filled button is last: Add single comment, or Add review comment while a review
+        // is pending (Add single comment is then the other choice).
+        let (main, other) = if review { ((add, true), (single, false)) } else { ((single, false), (add, true)) };
+        let gap = ui.spacing().item_spacing.x;
+        let widths = [&suggest, &cancel, &other.0, &main.0].map(|b| b.desired_width(ui));
+        let fits = widths.iter().sum::<f32>() + 3.0 * gap + LEAD_GAP <= ui.available_width();
+        let mut clicked = Vec::new();
+        let mut add_button = |ui: &mut Ui, b: buttons::StyledButton<'_>, m: LineCommentMsg| {
+            if ui.add(b).clicked() {
+                clicked.push(m);
             }
-            if ui.add(buttons::secondary(t.tr("common.cancel.button")).enabled(!posting).why(posting.then_some(WAITING))).clicked() {
-                send(msgs, LineCommentMsg::Cancel);
-            }
-            let style = |primary: bool, text: &'static str| if primary { buttons::primary(text) } else { buttons::secondary(text) };
-            let single = style(!review, "Add single comment").enabled(r.single.is_none()).why(r.single.as_deref());
-            let single = if review { single } else { single.tip(&single_tip) };
-            if ui.add(single).clicked() {
-                send(msgs, LineCommentMsg::Post { review: false });
-            }
-            let add = style(review, review_text).enabled(r.review.is_none()).why(r.review.as_deref());
-            let add = if review { add.tip(&review_tip) } else { add };
-            if ui.add(add).clicked() {
-                send(msgs, LineCommentMsg::Post { review: true });
-            }
-        });
+        };
+        let (main_msg, other_msg) = (LineCommentMsg::Post { review: main.1 }, LineCommentMsg::Post { review: other.1 });
+        if fits {
+            // Suggest a change leads; the others sit at the trailing edge. All in reading order,
+            // so Tab follows it.
+            let trailing = widths[1] + widths[2] + widths[3] + 2.0 * gap;
+            ui.horizontal(|ui| {
+                add_button(ui, suggest, LineCommentMsg::Suggest);
+                ui.add_space((ui.available_width() - trailing).max(0.0));
+                add_button(ui, cancel, LineCommentMsg::Cancel);
+                add_button(ui, other.0, other_msg);
+                add_button(ui, main.0, main_msg);
+            });
+        } else {
+            ui.horizontal_wrapped(|ui| {
+                add_button(ui, suggest, LineCommentMsg::Suggest);
+                add_button(ui, cancel, LineCommentMsg::Cancel);
+                add_button(ui, other.0, other_msg);
+                add_button(ui, main.0, main_msg);
+            });
+        }
+        for m in clicked {
+            send(msgs, m);
+        }
         if let Some(e) = &d.error {
             note(ui, e.clone(), color::removed());
         }

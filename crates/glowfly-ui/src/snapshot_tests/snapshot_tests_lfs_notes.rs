@@ -139,7 +139,7 @@ fn diff_lfs_summary() {
     h.check_snapshot("diff_lfs_summary");
     assert!(h.query_by_label("Stored in Git LFS").is_some());
     assert!(h.query_by_label("Size: 13.0 MB, was 12.4 MB").is_some());
-    assert!(h.query_by_label("Inline \u{b7} Hunks").is_none() && h.query_by_label("View").is_none(), "no View button");
+    assert!(h.query_by_label("Inline \u{b7} Changes only").is_none() && h.query_by_label("View").is_none(), "no View button");
     h.get_by_label("Show pointer text").click();
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Lfs(LfsMsg::ShowPointer(true)))));
