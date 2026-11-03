@@ -153,4 +153,4 @@ painted:
   "0"
   "Submodules"
   "0"
-  "Summary (required for a comment)"
+  "Summary"

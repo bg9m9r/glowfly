@@ -137,6 +137,8 @@ fn the_summary_placeholder_follows_the_choice() {
     assert_eq!(review_placeholder(&v), "Summary (optional)", "an empty comment finishes a pending review");
     let v = with(|d| d.me = "ada".into());
     assert_eq!(review_placeholder(&v), "Summary (required for a comment)", "the author's only choice is a comment");
+    let v = with(|d| d.state = PrState::Merged);
+    assert_eq!(review_placeholder(&v), "Summary", "a merged pull request takes no review");
 }
 
 #[test]

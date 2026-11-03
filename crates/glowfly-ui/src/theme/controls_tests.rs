@@ -153,3 +153,28 @@ fn disabled_radio_marks_stay_visible() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// A disabled radio's label is `weak`, even when the label brings its own colour (Preferences >
+/// Git program's labels are `RichText` in `text`), so it never looks enabled.
+#[test]
+fn a_disabled_radio_label_is_weak_even_with_its_own_colour() {
+    use super::color;
+    use eframe::egui::{RichText, Shape};
+    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        super::apply_theme(ui.ctx());
+        ui.add_enabled(false, Radio::new(false, "Plain"));
+        ui.add_enabled(false, Radio::new(true, RichText::new("Coloured").color(egui::Color32::RED)));
+        ui.add(Radio::new(false, "Enabled"));
+    });
+    h.run();
+    let mut colours = std::collections::BTreeMap::new();
+    for c in &h.output().shapes {
+        if let Shape::Text(t) = &c.shape {
+            colours.insert(t.galley.text().to_owned(), t.override_text_color);
+        }
+    }
+    let weak = Some(color::weak());
+    assert_eq!(colours.get("Plain"), Some(&weak), "{colours:?}");
+    assert_eq!(colours.get("Coloured"), Some(&weak), "{colours:?}");
+    assert_ne!(colours.get("Enabled"), Some(&weak), "an enabled label keeps its colour: {colours:?}");
+}

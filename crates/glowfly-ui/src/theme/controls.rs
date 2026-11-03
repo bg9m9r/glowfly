@@ -290,8 +290,8 @@ impl egui::Widget for Radio {
 }
 
 /// A disabled radio button at full strength, not tinted toward the background as egui tints a
-/// disabled widget (which takes the ring below 3:1): the unselected ring as when enabled, the selected one `weak` with an
-/// `input` dot, and the label `weak`.
+/// disabled widget (which takes the ring below 3:1): the unselected ring as when enabled, the
+/// selected one `weak` with an `input` dot, and the label `weak`, even one with its own colour.
 fn paint_disabled_radio(ui: &Ui, rect: Rect, galley: Option<Arc<Galley>>, selected: bool) {
     let p = color::current();
     let mut painter = ui.painter().clone();
@@ -310,7 +310,7 @@ fn paint_disabled_radio(ui: &Ui, rect: Rect, galley: Option<Arc<Galley>>, select
     if let Some(galley) = galley {
         let s = ui.spacing();
         let pos = pos2(rect.min.x + s.icon_width + s.icon_spacing, rect.center().y - 0.5 * galley.size().y);
-        painter.galley(pos, galley, p.weak);
+        painter.galley_with_override_text_color(pos, galley, p.weak);
     }
 }
 

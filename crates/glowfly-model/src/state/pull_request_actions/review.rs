@@ -3,7 +3,7 @@
 
 use super::{MAX_BODY, not_open, ready, too_long};
 use crate::state::pull_request::PrView;
-use glowfly_core::forge::{PrDetail, ReviewEvent, ReviewStyle, Vote};
+use glowfly_core::forge::{PrDetail, PrState, ReviewEvent, ReviewStyle, Vote};
 
 /// The review form's choices: GitHub's verdicts, GitLab's comment and approval (taken back
 /// once given), or Bitbucket's comment, approval and change request (either taken back once
@@ -48,8 +48,12 @@ pub fn review_choice_line(v: &PrView, ev: ReviewEvent) -> String {
     }
 }
 
-/// The review summary's placeholder, which says whether the selected choice needs one.
+/// The review summary's placeholder, which says whether the selected choice needs one; just
+/// "Summary" on a closed or merged pull request, which takes no review.
 pub fn review_placeholder(v: &PrView) -> &'static str {
+    if v.loaded().is_some_and(|p| p.detail.state != PrState::Open) {
+        return "Summary";
+    }
     match v.forms.review_event {
         ReviewEvent::Approve => "Summary (optional when approving)",
         ev if summary_optional(v, ev) => "Summary (optional)",
