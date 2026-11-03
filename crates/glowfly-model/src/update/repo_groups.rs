@@ -1,16 +1,17 @@
 //! Repository groups: the New group, Rename group and Add repositories dialogs, colouring,
-//! ordering and removing groups, moving favorites between them and adding repositories to one.
+//! ordering and removing groups, moving favorites between them, adding repositories to one, and
+//! resetting every group's colour to the default (with Undo).
 //! Every change saves the settings; a message that names a group that is gone (the list changed
 //! under a menu) does nothing. A Create or Rename whose name is usable closes the dialog; a
 //! refused one leaves it open.
 
 use crate::effect::Effect;
-use crate::msg::GroupMsg;
+use crate::msg::{GroupMsg, Msg};
 use crate::state::repo_group_picker::AddPicker;
 use crate::state::repo_groups::{GroupForm, favorite_entry, member_entries, members, prune, ungrouped_entries};
-use crate::state::{AppState, Modal};
+use crate::state::{AppState, Modal, ToastAction};
 use glowfly_core::paths;
-use glowfly_core::settings::{RepoGroup, clean_group_name, new_group_colour};
+use glowfly_core::settings::{RepoColour, RepoGroup, clean_group_name, default_colours, new_group_colour};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -66,6 +67,8 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
             false
         }
         GroupMsg::AddRepos { group, paths } => add_repos(st, group, &paths),
+        GroupMsg::ResetColours => reset_colours(st, now),
+        GroupMsg::RestoreColours(saved) => restore_colours(st, &saved),
     };
     if changed {
         fx.extend(super::prefs::save_settings(st));
@@ -99,14 +102,14 @@ fn close_dialog(st: &mut AppState) {
     }
 }
 
-/// Makes the group (with the next free colour) and moves `repo` into it. A blank name makes
+/// Makes the group (in the New group color setting's colour) and moves `repo` into it. A blank name makes
 /// nothing.
 fn create(st: &mut AppState, name: &str, repo: Option<&Path>) -> bool {
     let name = clean_group_name(name);
     if name_taken(st, &name, None) {
         return false;
     }
-    let colour = new_group_colour(&st.settings.repo_groups);
+    let colour = new_group_colour(st.settings.new_group_colour, &st.settings.repo_groups);
     st.settings.repo_groups.push(RepoGroup::new(&name, colour));
     if let Some(p) = repo {
         move_repo(st, p, Some(st.settings.repo_groups.len() - 1), usize::MAX);
@@ -172,4 +175,34 @@ fn move_repo(st: &mut AppState, p: &Path, group: Option<usize>, index: usize) ->
         }
     }
     (st.settings.favorite_repos.clone(), st.settings.repo_groups.clone()) != before
+}
+
+/// Gives every group its default colour (`default_colours`) and toasts with an Undo that puts
+/// the old ones back. Returns whether anything changed: nothing does when all are at default.
+fn reset_colours(st: &mut AppState, now: Instant) -> bool {
+    let groups = &mut st.settings.repo_groups;
+    let before: Vec<(String, Option<RepoColour>)> = groups.iter().map(|g| (g.name.clone(), g.hue())).collect();
+    let mut changed = false;
+    for (g, c) in groups.iter_mut().zip(default_colours(st.settings.new_group_colour, before.len())) {
+        changed |= g.set_hue(c);
+    }
+    if changed {
+        let t = st.settings.lang();
+        let msg = Box::new(Msg::Groups(GroupMsg::RestoreColours(before)));
+        let action = ToastAction { label: t.tr("repo_group.colours_reset.undo").to_owned(), msg, workdir: None };
+        st.toast_action(true, t.tr("repo_group.colours_reset.toast"), action, now);
+    }
+    changed
+}
+
+/// Puts back the colours in `saved` on the groups still called those names (case ignored).
+fn restore_colours(st: &mut AppState, saved: &[(String, Option<RepoColour>)]) -> bool {
+    let mut changed = false;
+    for g in &mut st.settings.repo_groups {
+        let low = g.name.to_lowercase();
+        if let Some((_, c)) = saved.iter().find(|(name, _)| name.to_lowercase() == low) {
+            changed |= g.set_hue(*c);
+        }
+    }
+    changed
 }

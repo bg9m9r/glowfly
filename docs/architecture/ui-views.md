@@ -101,7 +101,7 @@ start with `state/`, `update/` or `ui/`.
 - `repo_colour_menu.rs`: the tab menu's, the welcome rows' and the group headers' Color submenu, with the square swatches in `repo_swatch.rs`.
 - `repo_list.rs`: the start page's repository area: Favorites with + New group, the groups nested under it, the other favorites, and Recent.
 - `repo_list_row.rs`: one start-page repository row: what its click, star and × send, and its menu (right-click or ⋯) with Move to group.
-- `repo_list_groups.rs`: the start page's group headers (swatch, name, count, Open all, ⋯), the bar down a group's rows, an empty group's dashed placeholder, and the group menu; `repo_list_drag.rs` drags favorites by their grip between groups.
+- `repo_list_groups.rs`: the start page's group headers (swatch, name, count, Open all, ⋯), the bar down a group's rows, an empty group's dashed placeholder, and the group menu (with Reset all group colors); `repo_list_drag.rs` drags favorites by their grip between groups.
 - `repo_group_menu.rs`: a welcome favorite's Move to group submenu and a Recent row's Add to group submenu, ways to group without dragging.
 - `repo_group_dialog.rs`: the New group and Rename group dialog.
 - `repo_group_picker.rs`: a group's Add repositories dialog, a checklist of favorites and Recent repositories.
