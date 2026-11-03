@@ -59,10 +59,10 @@ Unknown "Staged files (1)"
 Button "README.md" [off]
 Label "Modified"
 Label "Commit"
-CheckBox "Amend" [off]
 TextInput "Commit summary" = "Rewrite the café menu search so typing filters dishes, drinks and desserts as yo"
 Label "80/72"
-MultilineTextInput "Description"
+MultilineTextInput "Commit description"
+CheckBox "Amend last commit" [off]
 CheckBox "Push after committing" [off]
 Button "Commit 1 file"
 Button "More commit options"
@@ -111,6 +111,7 @@ painted:
   "Submodules"
   "0"
   "M"
+  "Description"
   "Branch / tag"
   "Graph"
   "Message"

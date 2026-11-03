@@ -104,7 +104,7 @@ fn graph_rows_and_commit_fields_are_named() {
     field.type_text("Name the fields");
     h.run();
     assert_eq!(h.state().0.session.draft.summary, "Name the fields");
-    assert!(h.query_by_label("Description").is_some());
+    assert!(h.query_by_label("Commit description").is_some());
     drop(h);
     remove_fixture(&dir);
 }
