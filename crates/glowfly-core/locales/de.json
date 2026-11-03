@@ -2426,7 +2426,6 @@
   "release_notes.open_releases.button": "Releases-Seite öffnen",
   "release_notes.running": "Du verwendest Glowfly {version}",
   "release_notes.title": "Versionshinweise",
-  "remote_branch.checkout.already": "{branch} ist bereits ausgecheckt.",
   "remote_branch.checkout.diverged": "{branch} und {upstream} sind auseinandergelaufen ({ahead} voraus, {behind} zurück), daher wird {branch} ausgecheckt, ohne ihn zu verschieben. Führe sie mit Merge oder Rebase zusammen.",
   "remote_branch.checkout.gone": "{upstream} gibt es nicht mehr.",
   "remote_branch.checkout.not_tracking": "{branch} folgt {upstream} nicht mehr.",

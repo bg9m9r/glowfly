@@ -94,8 +94,10 @@ fn problems_are_announced_once() {
     assert_eq!((st.log.len(), st.toasts.len()), (logged, 1), "the same problems aren't announced again");
     load(&mut st, file(""), FileRead::default());
     assert!(st.custom_commands.reported.is_empty(), "fixed files clear them");
+    let shown = st.toasts[0].shown;
     load(&mut st, user(), repo());
-    assert_eq!(st.toasts.len(), 2, "problems that come back are announced again");
+    assert_eq!(st.toasts.len(), 1, "the toast still up is shown again, not copied");
+    assert!(st.toasts[0].shown > shown, "problems that come back are announced again");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

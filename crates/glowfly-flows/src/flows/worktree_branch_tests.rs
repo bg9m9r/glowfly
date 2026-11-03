@@ -84,9 +84,10 @@ fn checkout_opens_the_worktree_that_has_the_branch() {
     assert!(fx.is_empty() && st.job.is_none());
     assert_eq!(last_log(&st), (false, delete));
 
+    let before = st.log.len();
     let fx = update(&mut st, branch(BranchMsg::Checkout("main".into())), Instant::now());
     assert!(fx.is_empty());
-    assert_eq!(last_log(&st).1, "main is already checked out.");
+    assert_eq!(st.log.len(), before, "nothing said for the branch already checked out");
     cleanup(&dir, &side);
 }
 

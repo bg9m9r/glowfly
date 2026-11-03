@@ -239,7 +239,8 @@ fn watch_failure_is_reported_once_per_repository() {
     assert!(!st.log[0].ok && st.log[0].text.contains("too many watches"));
     assert!(!st.view.show_log, "the activity log doesn't pop open");
     assert!(update(&mut st, failed("C:/other"), Instant::now()).is_empty());
-    assert_eq!(st.toasts.len(), 2);
+    assert_eq!(st.toasts.len(), 1, "the same words: the toast up is shown again");
+    assert_eq!(st.log.len(), 2, "the log names each repository");
 }
 
 /// Delivers a full watcher report for `workdir` and runs what follows. Returns whether the

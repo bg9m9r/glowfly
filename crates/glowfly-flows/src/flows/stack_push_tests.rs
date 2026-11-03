@@ -50,7 +50,7 @@ fn push_stack(branch: &str) -> Msg {
 }
 
 fn last_toast(st: &AppState) -> (bool, String) {
-    st.toasts.last().map(|t| (t.ok, t.text.clone())).expect("a toast")
+    st.newest_toast().map(|t| (t.ok, t.text.clone())).expect("a toast")
 }
 
 fn logged(st: &AppState, text: &str) -> bool {

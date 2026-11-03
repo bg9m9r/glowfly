@@ -19,7 +19,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 
 ## Toasts
 
-- Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`.
+- Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`. A toast with the same words and kind as one already up restarts that one's timer instead of stacking a copy; it keeps its id, so screen readers don't announce it again.
 - A click sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only while the toast's repository is the active tab.
 - A failed job's toast says git's cause in plain words and can carry a fix (`update/job_errors.rs`, from `git_errors::classify`), with Details beside it in `Toast::details` (`Msg::ToastDetails`, which works from any tab), and a second fix between them in `Toast::alt` (`Msg::ToastAlt`): Delete lock file comes first with Try again beside it (`update/lock_file.rs`, `update/job_retry.rs`), and a push rejected as behind offers Pull (for the checked-out branch) with Force push with lease beside it, only when the job's push command and git's rejection line show it was that branch, pushed to its upstream (`state/branches/rejected_push.rs`). The buttons wrap inside the toast's width.
 - Every cause's sentence comes from `state/error_words.rs` (`cause`, `explained`), which the auto-stash put-back, clone, submodule, Git Flow and worktree headlines and the Fetch/Pull repositories rows share; a toast that stopped on conflicts takes its count from the status read after the job (`update/conflict_count.rs`). The fallback "<label> failed: …" names the job in the UI language (`state/job_spec/labels.rs`).
