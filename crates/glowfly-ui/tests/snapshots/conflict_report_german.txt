@@ -1,8 +1,10 @@
 Dialog
   Label "Konfliktprüfung"
   Button "Diesen Dialog schließen"
-  Label "search ist der Standard-Branch dieses Repositorys."
-  Label "Das Mergen von search in main würde mit Konflikten in 14 Dateien anhalten:"
+  Label "main"
+  Label "search"
+  Label "Der Merge würde mit Konflikten anhalten."
+  Label "14 Dateien auf beiden Seiten geändert:"
   Label "src/module_00.rs"
   Label "src/module_01.rs"
   Label "src/module_02.rs"
@@ -19,5 +21,8 @@ Dialog
   Label "src/module_13.rs"
   Button "Erneut prüfen"
   Button "Schließen" [focused]
-  Button "search in main mergen"
-  Button "main auf search rebasen"
+  Button "search mergen"
+  Button "Auf search rebasen"
+painted:
+  "Branch"
+  "Standard-Branch"

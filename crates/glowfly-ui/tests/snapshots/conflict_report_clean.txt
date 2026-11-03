@@ -1,8 +1,13 @@
 Dialog
   Label "Conflict check"
   Button "Close this dialog"
+  Label "main"
+  Label "search"
   Label "search merges into main without conflicts."
   Button "Check again"
   Button "Close" [focused]
   Button "Merge search into main"
   Button "Rebase main onto search"
+painted:
+  "Branch"
+  "Compared with"

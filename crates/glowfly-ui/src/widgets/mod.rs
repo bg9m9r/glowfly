@@ -47,6 +47,7 @@ pub mod menu_row;
 pub mod menu_split;
 pub mod menu_submenu;
 mod menu_submenu_keyed;
+pub(crate) mod popover;
 pub mod quiet_target;
 pub mod reason;
 pub mod row_fill;

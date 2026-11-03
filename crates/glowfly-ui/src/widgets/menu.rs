@@ -215,16 +215,18 @@ pub fn popup_above_or_below<R>(
     egui::popup::popup_above_or_below_widget(ui, id, anchor, side, close, |ui| styled_as(ui, kind, add_contents))
 }
 
-/// A popover below `anchor`: egui's popup frame around contents that are not a menu's rows (a
-/// report, a form), so it keeps the ordinary widget style.
+/// A popover `width` wide below `anchor`: a popup frame around contents that are not a menu's
+/// rows (a report, a form), in the ordinary widget style and a left-aligned, unjustified layout,
+/// kept inside the window (`widgets/popover.rs`).
 pub fn popover_below<R>(
     ui: &Ui,
     id: Id,
     anchor: &Response,
+    width: f32,
     close: PopupCloseBehavior,
     add_contents: impl FnOnce(&mut Ui) -> R,
 ) -> Option<R> {
-    egui::popup::popup_below_widget(ui, id, anchor, close, add_contents)
+    super::popover::below(ui, id, anchor, width, close, add_contents)
 }
 
 /// Runs `add_contents` in the menu style, its rows on shared columns (`menu_columns`), with the

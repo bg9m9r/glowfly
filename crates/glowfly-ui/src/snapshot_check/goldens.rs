@@ -68,6 +68,15 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("prefs_accessibility_system_on", Window),
     // The window chrome: title bars, tabs, toolbar and menus.
     ("vivid_title_bar", Window),
+    // The conflict check's popover below its toolbar chip with a release bot's long names (#523),
+    // in the app's least window, with its Merge tooltip, and with 12 files; its report dialog.
+    ("conflict_popover_long_dark", Top(420.0)),
+    ("conflict_popover_long_light", Top(420.0)),
+    ("conflict_popover_narrow_dark", Window),
+    ("conflict_popover_merge_tip_dark", Top(480.0)),
+    ("conflict_popover_many_dark", Top(600.0)),
+    ("conflict_report_long_dark", Dialog),
+    ("conflict_report_long_light", Dialog),
     ("title_bar_windows_dark", Top(108.0)),
     ("title_bar_windows_light", Top(108.0)),
     ("title_bar_mac_dark", Top(108.0)),
@@ -223,6 +232,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `conflict_popover_long_dark` and `conflict_report_long_dark` in Porcelain.
+    "conflict_popover_long_light",
+    "conflict_report_long_light",
     // `welcome_repo_groups` and `repo_group_add_dialog` in Porcelain.
     "welcome_repo_groups_light",
     "repo_group_add_dialog_light",

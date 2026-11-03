@@ -29,6 +29,7 @@ pub(super) mod snapshot_tests_compare;
 pub(super) mod snapshot_tests_conflict_check;
 pub(super) mod snapshot_tests_conflict_files;
 pub(super) mod snapshot_tests_conflict_layout;
+pub(super) mod snapshot_tests_conflict_long;
 pub(super) mod snapshot_tests_custom_commands;
 pub(super) mod snapshot_tests_dashboard;
 pub(super) mod snapshot_tests_dates;
