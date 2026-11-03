@@ -17,6 +17,7 @@ use crate::state::pull_request_checks::{
 use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, CornerRadius, CursorIcon, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::forge::{CheckList, CheckRun};
@@ -154,8 +155,9 @@ fn paint_row(ui: &Ui, rect: Rect, r: &CheckRun, now: i64, state: State) {
         right = shown.left() - GAP;
     }
     if r.required == Some(true) {
-        let w = p.layout_no_wrap(REQUIRED.to_owned(), type_scale::font(type_scale::CAPTION), color::weak()).size().x + 12.0;
-        widgets::chip(&p, right - w, y, REQUIRED, color::raised(), color::weak());
+        let required = Chip::new(ChipSize::Badge, REQUIRED).look(Look::new(color::raised(), color::weak()));
+        let w = required.width(p.ctx());
+        required.paint(&p, right - w, y);
         right -= w + GAP;
     }
     let x = rect.left() + TEXT_X;

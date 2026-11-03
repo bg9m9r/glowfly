@@ -85,4 +85,3 @@ painted:
   "Left panel"
   "Commit details panel"
   "Toolbar"
-  "Menu bar"

@@ -4,6 +4,10 @@
 //! colours. Motion: reduce motion and the blinking cursor. Keyboard: links to Preferences >
 //! Keyboard and the shortcut sheet. Timing: how long notifications stay and the tooltip delay.
 //!
+//! Interface size, High contrast and Reduce motion each have a second check in their row that
+//! follows the system's setting too (`follow_check`; the shell reads the system's,
+//! `state/system_a11y.rs`).
+//!
 //! Every control is named for screen readers by its row's label (and a checkbox's text too),
 //! with the row's help as its description (`name`). The High contrast check only asks (update
 //! saves and restores the theme); the rest edit the settings in place.
@@ -24,18 +28,22 @@ pub struct A11yView<'a> {
     pub keys: &'a Keymap,
     /// The shortcut sheet is open (over Preferences).
     pub sheet_open: bool,
+    /// The system has a text size to follow (not macOS): the Interface size row shows its
+    /// follow check.
+    pub text_size_followable: bool,
 }
 
 pub fn accessibility_page(ui: &mut Ui, s: &mut Settings, view: &A11yView, msgs: &mut Vec<Msg>) {
     let t = s.lang();
     section(ui, t.tr("prefs.a11y.vision.section"));
-    super::appearance::zoom_row(ui, t, s, view.keys);
+    super::appearance::zoom_row(ui, t, s, view.keys, view.text_size_followable);
     super::diff_viewer::font_size_row(ui, s, t.tr("prefs.a11y.diff_size.label"));
     super::terminal::font_size_row(ui, t, &mut s.terminal, t.tr("prefs.a11y.terminal_size.label"));
     let on = s.theme.is_high_contrast();
     let (label, check, text) = (t.tr("prefs.a11y.contrast.label"), t.tr("prefs.a11y.contrast.check"), t.tr("prefs.a11y.contrast.help"));
     let mut wanted = on;
-    if checked_row(ui, label, &mut wanted, check, text).changed() {
+    let follow = (&mut s.a11y.follow_system_contrast, t.tr("prefs.a11y.contrast.follow"));
+    if checked_row(ui, label, &mut wanted, check, text, Some(follow)).changed() {
         msgs.push(Msg::Prefs(PrefsMsg::SetHighContrast { on: wanted, dark: color::current().dark }));
     }
     let label = t.tr("prefs.a11y.colors.label");
@@ -52,9 +60,10 @@ pub fn accessibility_page(ui: &mut Ui, s: &mut Settings, view: &A11yView, msgs: 
     section(ui, t.tr("prefs.a11y.motion.section"));
     let (label, check, text) =
         (t.tr("prefs.a11y.reduce_motion.label"), t.tr("prefs.a11y.reduce_motion.check"), t.tr("prefs.a11y.reduce_motion.help"));
-    checked_row(ui, label, &mut s.reduce_motion, check, text);
+    let follow = (&mut s.a11y.follow_system_motion, t.tr("prefs.a11y.reduce_motion.follow"));
+    checked_row(ui, label, &mut s.reduce_motion, check, text, Some(follow));
     let (label, check, text) = (t.tr("prefs.a11y.blink.label"), t.tr("prefs.a11y.blink.check"), t.tr("prefs.a11y.blink.help"));
-    checked_row(ui, label, &mut s.a11y.cursor_blink, check, text);
+    checked_row(ui, label, &mut s.a11y.cursor_blink, check, text, None);
 
     section(ui, t.tr("prefs.a11y.keyboard.section"));
     shortcuts_row(ui, t, view.sheet_open, msgs);
@@ -91,16 +100,28 @@ pub fn name(resp: &Response, label: &str, text: &str) {
     }
 }
 
-/// A row with one checkbox and its help, the checkbox named by the row's label and its text.
-fn checked_row(ui: &mut Ui, label: &str, value: &mut bool, check: &str, text: &str) -> Response {
+/// A row with a checkbox, then `follow`'s "Also when the system…" check when given, and its
+/// help; each checkbox is named by the row's label and its text. Returns the first checkbox's
+/// response.
+fn checked_row(ui: &mut Ui, label: &str, value: &mut bool, check: &str, text: &str, follow: Option<(&mut bool, &str)>) -> Response {
     let mut out = None;
     row(ui, label, |ui| {
         let r = controls::checkbox(ui, value, check);
         name(&r, &format!("{label}, {check}"), text);
         out = Some(r);
+        if let Some((on, check)) = follow {
+            follow_check(ui, label, on, check, text);
+        }
         help(ui, text);
     });
     out.expect("the row draws its contents")
+}
+
+/// A row's second check, which follows the system's setting too, named by the row's `label`
+/// and its text `check` and described by the row's help `text`.
+pub fn follow_check(ui: &mut Ui, label: &str, on: &mut bool, check: &str, text: &str) {
+    let r = controls::checkbox(ui, on, check);
+    name(&r, &format!("{label}, {check}"), text);
 }
 
 /// Where Show all shortcuts is in sending the keyboard focus back: asked (the sheet opens next

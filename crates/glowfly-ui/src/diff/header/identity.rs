@@ -6,24 +6,23 @@ use super::controls::ICON;
 use super::fit::{Plan, Widths};
 use crate::state::diff_header::{ChangeText, Context, FileKind, HeaderModel};
 use crate::ui::common::{added_color, removed_color, status_color};
-use crate::ui::theme::tokens::radius;
+use crate::ui::theme::sizes::text_pos;
 use crate::ui::theme::type_scale;
 use crate::ui::theme::{color, fonts};
+use crate::ui::widgets::chip::{self, ChipSize};
 use crate::ui::widgets::truncate::cut_left;
 use crate::ui::widgets::{Icon, paint_icon_sized};
-use eframe::egui::{self, Color32, CornerRadius, FontId, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{self, Color32, FontId, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::pointer::size_text;
 
 /// The gap between the left-hand parts.
 pub(super) const GAP: f32 = 8.0;
 const PATH_PX: f32 = type_scale::BODY;
-/// A chip's height, corners, side padding and the gap between its parts.
-const CHIP_H: f32 = 22.0;
-const CHIP_RADIUS: u8 = radius::MD;
-const CHIP_PAD: f32 = 8.0;
-const CHIP_GAP: f32 = 6.0;
-const CHIP_PX: f32 = type_scale::SMALL;
+/// The chips' size (`widgets::chip`), and the gap between a chip's parts.
+const CHIP: ChipSize = ChipSize::Chip;
+const PART_GAP: f32 = 6.0;
+const CHIP_PX: f32 = CHIP.metrics().text;
 /// The painted arrow between two sizes.
 const ARROW_W: f32 = 8.0;
 
@@ -102,7 +101,7 @@ fn chip_width(ui: &Ui, parts: &[Part]) -> f32 {
             Part::Arrow => ARROW_W,
         })
         .sum();
-    2.0 * CHIP_PAD + inner + (parts.len() - 1) as f32 * CHIP_GAP
+    chip::width(CHIP, inner + (parts.len() - 1) as f32 * PART_GAP)
 }
 
 /// Fills in the left-hand widths of `w`.
@@ -160,19 +159,19 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, t: Lang, w: &Widths, plan: &Pla
 /// A pill of `parts` on the toolbar fill, named by its text.
 fn chip(ui: &mut Ui, t: Lang, parts: &[Part]) -> egui::Response {
     let width = chip_width(ui, parts);
-    let (rect, resp) = ui.allocate_exact_size(vec2(width, CHIP_H), Sense::hover());
+    let (rect, resp) = ui.allocate_exact_size(vec2(width, CHIP.metrics().h), Sense::hover());
     let text = parts_text(parts, t);
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &text));
     let p = ui.painter();
-    p.rect_filled(rect, CornerRadius::same(CHIP_RADIUS), color::raised());
-    let mut x = rect.left() + CHIP_PAD;
+    chip::frame(p, rect, CHIP, chip::Look::new(color::raised(), color::text()));
+    let mut x = rect.left() + CHIP.metrics().pad_x;
     let y = rect.center().y;
     for part in parts {
         match part {
             Part::Text(t, f, c) => {
                 let g = p.layout_no_wrap(t.clone(), f.clone(), *c);
                 let size = g.size();
-                p.galley(pos2(x, y - size.y / 2.0), g, *c);
+                p.galley(pos2(x, text_pos(rect, &g).y), g, *c);
                 x += size.x;
             }
             Part::Arrow => {
@@ -180,7 +179,7 @@ fn chip(ui: &mut Ui, t: Lang, parts: &[Part]) -> egui::Response {
                 x += ARROW_W;
             }
         }
-        x += CHIP_GAP;
+        x += PART_GAP;
     }
     resp
 }

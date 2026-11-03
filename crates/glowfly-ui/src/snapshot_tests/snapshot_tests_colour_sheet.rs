@@ -6,12 +6,11 @@
 
 use super::with_bands;
 use crate::state::Selection;
-use crate::ui::graph::paint_box;
 use crate::ui::snapshot_tests::{harness_palette_sized, remove_fixture};
 use crate::ui::theme::branch_colours::{chip_in, line_in, swatches};
 use crate::ui::theme::contrast::{self, ChipStyle};
 use crate::ui::theme::surfaces::Tone;
-use crate::ui::theme::{self, apply_style, builtin, color, color::Palette, egui_theme};
+use crate::ui::theme::{apply_style, builtin, color, color::Palette, egui_theme};
 use eframe::egui::{self, Color32, FontId, Painter, Rect, pos2, vec2};
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::repo;
@@ -24,11 +23,7 @@ const ROW_H: f32 = 34.0;
 
 /// Draws one ref chip from `x` centred on `y` as the graph does; returns its width.
 fn chip(p: &Painter, x: f32, y: f32, text: &str, look: contrast::ChipLook) -> f32 {
-    let g = p.layout_no_wrap(text.to_owned(), FontId::proportional(theme::type_scale::SMALL), look.text);
-    let w = g.size().x + 14.0;
-    paint_box(p, Rect::from_min_size(pos2(x, y - 11.0), vec2(w, 22.0)), look);
-    p.galley(pos2(x + 7.0, y - g.size().y / 2.0), g, look.text);
-    w
+    crate::ui::widgets::chip::Chip::new(crate::ui::widgets::chip::ChipSize::Chip, text).look(look).paint(p, x, y).width()
 }
 
 /// A row of every chip a palette draws, centred on `y`.

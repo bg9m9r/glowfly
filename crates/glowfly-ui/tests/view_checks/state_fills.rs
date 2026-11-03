@@ -24,13 +24,11 @@ const LEFT: &[(&str, usize, &str)] = &[
     ("conflict_fold.rs", 2, "the conflict view's fold bar and its button"),
     ("diff/fold.rs", 3, "the diff's fold bar and its two buttons"),
     ("diff/thread_marks.rs", 1, "a hovered comment-thread marker"),
-    ("forge_filter_menu.rs", 2, "a facet chip and a hovered menu row"),
+    ("forge_filter_menu.rs", 1, "a hovered menu row"),
     ("history_file.rs", 1, "the file history's selected row"),
-    ("issue/picker.rs", 1, "the issue picker's clear cross"),
     ("panel_rails.rs", 1, "a folded panel's edge strip"),
     ("repo_row.rs", 1, "a repository row in a menu, which keeps the menu's own hover"),
     ("terminal/tabs.rs", 1, "a terminal tab's hover"),
-    ("trust_chip.rs", 1, "the trust chip's hover"),
 ];
 
 /// The state colours a view may not fill with itself.

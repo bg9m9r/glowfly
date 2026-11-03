@@ -40,6 +40,11 @@ mod theme_row;
 mod tools;
 mod trello;
 mod updates_row;
+// For the chip catalog golden (`snapshot_tests_chips.rs`).
+#[cfg(test)]
+pub(crate) use ssh_agent::pill_widget as ssh_agent_pill;
+#[cfg(test)]
+pub(crate) use ssh_card::chip as ssh_card_chip;
 
 pub(super) use form::*;
 
@@ -123,7 +128,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
     let now = (st.view.now, st.view.utc_offset);
     let themes = &st.themes;
-    let a11y = accessibility::A11yView { keys: keymap, sheet_open: matches!(st.modal, Some(crate::state::Modal::Shortcuts { .. })) };
+    let a11y = accessibility::A11yView {
+        keys: keymap,
+        sheet_open: matches!(st.modal, Some(crate::state::Modal::Shortcuts { .. })),
+        text_size_followable: st.view.system_a11y.text_size_followable,
+    };
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
         .show(ctx, |ui| {

@@ -13,8 +13,8 @@
 //! borderless groups and the dividers between them are in `tool.rs`, and the flush segments of a
 //! segment bar (the pickers, a split) in `segment_bar.rs`. The tab bars' painted close × and new-tab + are in
 //! `tab_glyph.rs`, glyphs moved onto the pixel grid in `icon_snap.rs`, a quiet target a view
-//! lays out itself (a tab, the title bar's menu button) in `quiet_target.rs`, and the quiet, clickable chips of the commit details (its
-//! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
+//! lays out itself (a tab, the title bar's menu button) in `quiet_target.rs`, and every chip and
+//! badge (the two chip sizes, and the quiet, clickable chips of the commit details) in `chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
 //! text field is `text_field.rs`, and its label-field-help group `field_group.rs`. The button
 //! family (primary, tonal, secondary, quiet, danger, icon-only) is `buttons.rs`, each state's
@@ -29,6 +29,7 @@ pub mod banner;
 mod button_look;
 pub mod button_split;
 pub mod buttons;
+pub mod chip;
 pub mod details;
 pub mod empty_state;
 pub mod field_group;
@@ -46,7 +47,6 @@ pub mod menu_row;
 pub mod menu_split;
 pub mod menu_submenu;
 mod menu_submenu_keyed;
-pub mod quiet_chip;
 pub mod quiet_target;
 pub mod reason;
 pub mod row_fill;
@@ -68,9 +68,9 @@ pub use super::list_row::{
     file_row_focus, file_row_with_end, keyed_file_row, keyed_file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text,
     row_text_hover, row_text_reserving,
 };
+pub use chip::quiet_chip;
 pub use field_group::FieldGroup;
 pub use icon::{Icon, paint_icon, paint_icon_sized};
-pub use quiet_chip::quiet_chip;
 pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;
@@ -80,10 +80,9 @@ pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
 use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
 
-use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Response, Sense, Stroke, Ui, pos2, vec2};
 
 pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
     let pts = if open {
@@ -92,26 +91,6 @@ pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
         vec![pos2(c.x - 2.0, c.y - 4.0), pos2(c.x + 3.0, c.y), pos2(c.x - 2.0, c.y + 4.0)]
     };
     p.add(egui::Shape::convex_polygon(pts, col, Stroke::NONE));
-}
-
-/// A pill-shaped label chip drawn with the painter; returns its width.
-pub fn chip(p: &Painter, x: f32, y: f32, text: &str, fill: Color32, fg: Color32) -> f32 {
-    chip_with_edge(p, x, y, text, fill, None, fg)
-}
-
-/// `chip` with a 1 px `edge` inside its outline, when there is one.
-pub fn chip_with_edge(p: &Painter, x: f32, y: f32, text: &str, fill: Color32, edge: Option<Color32>, fg: Color32) -> f32 {
-    let g = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg);
-    let w = g.size().x + 12.0;
-    let r = Rect::from_min_size(pos2(x, y - 10.0), vec2(w, 20.0));
-    let radius = CornerRadius::same(radius::pill(r.height()));
-    p.rect_filled(r, radius, fill);
-    if let Some(edge) = edge {
-        p.rect_stroke(r, radius, Stroke::new(1.0_f32, edge), egui::StrokeKind::Inside);
-    }
-    let gh = g.size().y;
-    p.galley(pos2(x + 6.0, y - gh / 2.0), g, fg);
-    w
 }
 
 /// Dashed circle (used for the WIP node).
