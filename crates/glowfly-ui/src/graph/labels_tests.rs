@@ -82,3 +82,14 @@ fn a_halo_takes_no_room_but_keeps_the_next_chip_clear() {
     assert_eq!(leads, vec![0.0, HALO_ROOM, 0.0], "only the chip after the halo moves, by the halo's reach");
     assert_eq!(halo_leads(&[ChipStyle::Branch, ChipStyle::Head]), vec![0.0, 0.0]);
 }
+
+#[test]
+fn a_narrow_tables_clip_holds_the_halo() {
+    let span = (300.0, 380.0);
+    let clip = inline_clip(span);
+    // A halo chip filling the span, its ring reaching past both ends.
+    let chip = chip::rect_at(CHIP, span.0, 20.0, span.1 - span.0).expand(HALO_ROOM);
+    assert!(clip.0 <= chip.left() && chip.right() <= clip.1, "{clip:?} holds {chip:?}");
+    assert_eq!(halo_reach(ChipStyle::CurrentBranch), HALO_ROOM);
+    assert_eq!(halo_reach(ChipStyle::Remote), 0.0, "the line to the node starts at a plain chip's edge");
+}

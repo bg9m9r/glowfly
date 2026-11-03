@@ -82,6 +82,17 @@ fn chip_w(spec: &ChipSpec, text_w: f32) -> f32 {
     text_w + 2.0 * TEXT_PAD + lead + MARK_W * spec.trailing() as f32
 }
 
+/// How far `style`'s halo reaches past its chip's edge (none without a halo).
+fn halo_reach(style: ChipStyle) -> f32 {
+    if style.halo() { HALO_ROOM } else { 0.0 }
+}
+
+/// The clip of chips leading the message in a narrow table, laid out in `span`: the span
+/// widened by a halo's reach either side, so a first or last chip's ring isn't cut.
+pub(super) fn inline_clip(span: (f32, f32)) -> (f32, f32) {
+    (span.0 - HALO_ROOM, span.1 + HALO_ROOM)
+}
+
 /// The extra room before each chip: `HALO_ROOM` after a chip with a halo, so its ring doesn't
 /// touch the next chip's edge (it reads as a double line), else none.
 fn halo_leads(styles: &[ChipStyle]) -> Vec<f32> {
@@ -249,6 +260,7 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
     let x0 = span.0;
     let mut out = RefsCell::default();
     let mut end = span.0;
+    let mut reach = span.0;
     if !row.chips.is_empty() {
         let specs: Vec<ChipSpec> =
             row.chips.iter().enumerate().map(|(i, c)| ChipSpec::of(c, if i == 0 { row.build } else { None })).collect();
@@ -264,10 +276,13 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
             x += w + GAP;
         }
         end = drawn.last().map_or(x0, |r| r.right());
-        let mut hit = Rect::from_min_max(drawn[0].min, pos2(end, drawn[0].max.y));
+        // How far the drawing reaches: past the last chip's halo, when it has one.
+        reach = end + specs.get(f.shown - 1).map_or(0.0, |s| halo_reach(s.style));
+        let mut hit = Rect::from_min_max(drawn[0].min, pos2(reach, drawn[0].max.y));
         if f.plus {
             let hidden = row.chips.len() - f.shown;
             end = plus_chip(hidden).paint(&rp, end + GAP, mid).right();
+            reach = end;
             hit.max.x = end;
         }
         out.labels_hit = Some(hit);
@@ -292,7 +307,7 @@ pub(super) fn refs_cell(painter: &Painter, span: (f32, f32), clip: (f32, f32), r
     }
     // The line joining the labels (and the ghost button after them) to the node.
     if let (Some(edge), false) = (row.node_edge_x, row.chips.is_empty()) {
-        let from = out.ghost_at.map_or(end, |(r, _)| r.right());
+        let from = out.ghost_at.map_or(reach, |(r, _)| r.right());
         painter.line_segment([pos2(from, mid), pos2(edge, mid)], Stroke::new(1.5_f32, row.lane));
     }
     out

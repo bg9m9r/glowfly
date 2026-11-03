@@ -282,7 +282,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     true => {
                         let room = refs_fit::row_w(&painter, &chips).min((cols.msg.1 - cols.msg.0) * INLINE_SHARE);
                         let span = (cols.msg.0, cols.msg.0 + room);
-                        (span, span)
+                        (span, labels::inline_clip(span))
                     }
                 };
                 if cols_cfg.refs || inline {
