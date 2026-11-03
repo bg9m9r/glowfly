@@ -20,6 +20,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/more_themes_tests.rs`: the lineup's pinned values (Porcelain, and the Midnight, Dusk and Dawn retunes) and the six sleekness rules: one accent, a quiet selection, the accent's chroma, the border on the panel, the surface ladder and distinct themes of a kind.
 - `theme/lineup_contrast_tests.rs`: the lineup's measured contrast, as the Themes v2 spec gives it, within 0.02.
 - `snapshot_tests/snapshot_tests_colour_sheet.rs`: an ignored test that renders every built-in's main window and chip strip into `GLOWFLY_SHEET_DIR`, for judging colour by eye.
+- `snapshot_tests/snapshot_tests_chips.rs`: the chip catalog golden: every chip and badge kind from its real painter, the standing check of the two chip heights.
 - `theme/families.rs`: the token families: status, branch, repository, attention, and the terminal's colours.
 - `theme/ansi.rs`: the terminal's colours, one table per built-in, with the readability check Preferences warns from.
 - `theme/terminal_scheme.rs`: which colours the terminal draws in (the app theme's, another built-in's or an imported scheme over the app theme's), read through `color::term()`.

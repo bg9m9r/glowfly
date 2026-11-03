@@ -57,7 +57,8 @@ source file, update its line here. Each section lists one feature's files in eve
 
 ## Large histories off the UI thread (`BackgroundEffect`, `GraphMsg::LaidOut`, `GraphMsg::AncestryFound`)
 
-- Files: `effect/background.rs`, `runner/background.rs`, `update/large_graph.rs`, `state/ref_rows.rs`.
+- Files: `effect/background.rs`, `runner/background.rs`, `update/large_graph.rs`, `update/parked_free.rs`, `state/ref_rows.rs`.
+- `update/parked_free.rs`: freeing a long-parked tab's commits and graph on a worker, the full reload when it is shown again, and the error with Try again when that reload fails.
 - `update/large_graph.rs`: a large history's relayout when its WIP rows change (`LayoutJob` on a worker, swapped in when it still fits), the default branch's ancestry for hover highlighting (each hovered tip's rows kept per snapshot in `RefRows`), and freeing replaced snapshots, layouts and closed tabs on a worker.
 
 ## Range-diff view (`RangeDiffMsg`, `RangeDiffJob`)

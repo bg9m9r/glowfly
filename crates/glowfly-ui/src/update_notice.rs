@@ -13,12 +13,12 @@ use crate::msg::{Msg, PrefsMsg, UpdateMsg};
 use crate::state::updates::{ChipKind, UpdateStatus, download_failed_text, stale_text};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, CornerRadius, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
+use crate::ui::widgets::chip::{self, ChipSize, Look};
+use eframe::egui::{self, RichText, Sense, pos2, vec2};
 use glowfly_core::app_update::InstallMethod;
 
-const HEIGHT: f32 = 20.0;
-/// The chip's width beside its text: the icon before it (26 px) and the space after (8 px).
-const PAD: f32 = 34.0;
+/// The chip's size: a Badge, its icon in the glyph slot.
+const CHIP: ChipSize = ChipSize::Badge;
 
 pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
@@ -34,31 +34,36 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         ui.add_space(4.0);
     }
     let accent = if failed { color::weak() } else { color::accent() };
-    let font = type_scale::font(type_scale::SMALL);
+    let m = CHIP.metrics();
+    let font = type_scale::font(m.text);
     let text_w = ui.painter().layout_no_wrap(text.clone(), font.clone(), color::text()).size().x;
     let ellipsis_w = ui.fonts(|f| f.glyph_width(&font, '…'));
     let working = matches!(kind, ChipKind::Downloading | ChipKind::Installing);
     let sense = if working { Sense::hover() } else { Sense::click() };
-    let w = (text_w + PAD).min(ui.available_width()).max(PAD + ellipsis_w);
-    let (rect, resp) = ui.allocate_exact_size(vec2(w, HEIGHT), sense);
+    // Beside the text: the padding either side, the icon and its gap.
+    let lead = m.glyph + m.gap;
+    let w = chip::width(CHIP, lead + text_w).min(ui.available_width()).max(chip::width(CHIP, lead + ellipsis_w));
+    // The click takes the bar's whole height; the badge is painted at its own.
+    let (hit, resp) = ui.allocate_exact_size(vec2(w, ui.available_height().max(m.h)), sense);
+    let rect = chip::rect_at(CHIP, hit.left(), hit.center().y, w);
     let p = ui.painter();
-    let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
-    let (fill, stroke) = if failed {
+    let (fill, edge) = if failed {
         (if resp.hovered() { color::hover() } else { color::raised() }, color::border())
     } else {
         (color::wash(accent, if resp.hovered() { 0.26 } else { 0.14 }), accent)
     };
-    p.rect_filled(rect, radius, fill);
-    p.rect_stroke(rect, radius, Stroke::new(1.0_f32, stroke), StrokeKind::Inside);
-    let icon_at = pos2(rect.left() + 14.0, rect.center().y);
+    chip::frame(p, rect, CHIP, Look::new(fill, color::text()).edged(edge));
+    let icon_at = pos2(rect.left() + m.pad_x + m.glyph / 2.0, rect.center().y);
     if working {
-        let spin = egui::Rect::from_center_size(icon_at, vec2(12.0, 12.0));
-        ui.put(spin, egui::Spinner::new().size(12.0).color(accent));
+        let spin = egui::Rect::from_center_size(icon_at, vec2(m.glyph, m.glyph));
+        ui.put(spin, egui::Spinner::new().size(m.glyph).color(accent));
     } else {
-        // A down arrow onto a line: the glyph fonts lack, painted (16 px, inside the chip).
-        widgets::paint_icon(ui.painter(), icon_at, Icon::Pull, accent);
+        // A down arrow onto a line: the glyph fonts lack, painted in the badge's glyph slot.
+        widgets::paint_icon_sized(ui.painter(), icon_at, Icon::Pull, accent, m.glyph);
     }
-    let cut = paint_cut(ui.painter(), pos2(rect.left() + 26.0, rect.center().y), cut_job(text.clone(), font, color::text()), w - PAD);
+    let room = w - 2.0 * m.pad_x - lead;
+    let cut =
+        paint_cut(ui.painter(), pos2(rect.left() + m.pad_x + lead, rect.center().y), cut_job(text.clone(), font, color::text()), room);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text.clone()));
     if working {
         if cut.cut {

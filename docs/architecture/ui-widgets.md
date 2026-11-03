@@ -21,7 +21,7 @@ source file, update its line here.
 - `widgets/segment_bar.rs`: flush segments in one shape (the toolbar pickers' framed bar, a split button's quiet one), each its own target, with full-height dividers in a framed bar; its layout is shared with `button_split.rs`; tests in `segment_bar_tests.rs`.
 - `widgets/ghost.rs`: ghost buttons (at a `ControlSize`) and dividers, shared by the diff's file header, the terminal panel's header and the graph's New branch… button.
 - `widgets/segmented.rs`: a segmented control at a `ControlSize` whose segments are quiet targets (`paint_target`) and can be disabled with a reason on hover; the raised option's corners are concentric with the track.
-- `widgets/quiet_chip.rs`: quiet chips (the commit details' SHA, parents and committer), a quiet target over their soft fill.
+- `widgets/chip.rs`: the only chip and badge painter: the two sizes (Badge 18, Chip 22), leads, cutting, clickable chips and the quiet chips (SHA, parents, committer); tests in `chip_tests.rs`.
 - `widgets/details.rs`: a collapsed Details under a confirmation's plain words, also under the Publish dialog's rewritten service errors.
 
 ## Rows and lists
@@ -61,11 +61,11 @@ source file, update its line here.
 
 - One style for every empty, loading, failed and banner state.
 - `empty_state.rs`: an empty pane's icon, title, hint and buttons; its painted icons in `empty_state_icons.rs`.
-- `graph_empty.rs`: the graph's empty state.
+- `graph_empty.rs`: the graph's empty states, and its spinner while a history freed in a parked tab loads again.
 - `history_footer.rs`: the file history list's empty state and its footer's.
 - `pane_status.rs`: a pane that is loading or failed, with Try again and Copy details; shows an error without its kind prefix (`error::plain_message`).
 - `widgets/banner.rs`: the banner in five kinds, Info, Warning, Error, Progress and NeedsYou, with a mark and a coloured stripe.
-- `needs_you.rs`: the coral "needs you" badge and pill, always with the warning mark and the only reader of the coral.
+- `needs_you.rs`: the coral "needs you" badges and Small control, always with the warning mark and the only reader of the coral.
 - `widgets/severity.rs`: the error, warning and information marks.
 - `widgets/hint_row.rs`: the tip row, a quiet accent wash with the info mark, one sentence, the tip's button and a × menu (Don't show this again, Turn off tips).
 - `widgets/form_message.rs`: a form's messages, under a field once it was edited or a submit was tried (`state/touched.rs`), or for the whole form in a tinted box.

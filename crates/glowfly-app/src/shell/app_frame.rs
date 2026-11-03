@@ -67,5 +67,9 @@ impl GlowflyApp {
         if let Some(at) = self.st.index_wake(now) {
             ctx.request_repaint_after(at.saturating_duration_since(now));
         }
+        // A long-parked tab's loaded history is freed on a tick too.
+        if let Some(at) = glowfly_model::state::tabs::history_free_wake(&self.st.tabs, now) {
+            ctx.request_repaint_after(at.saturating_duration_since(now));
+        }
     }
 }

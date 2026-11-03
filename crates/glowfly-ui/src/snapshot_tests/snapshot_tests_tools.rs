@@ -156,11 +156,10 @@ fn conflict_view_while_the_merge_tool_has_the_file() {
     let mut h = super::snapshot_tests::harness(st, true);
     h.run_steps(4);
     h.check_snapshot("conflict_view_in_merge_tool");
-    assert!(h.get_by_label("Save and mark resolved").is_disabled());
+    assert!(h.get_all_by_label("Mark resolved").any(|n| n.is_disabled()), "the bar's");
     // The header menu's (the file row's is refused when it arrives: update/tool_compare_tests.rs).
     h.get_by_label("More conflict actions").click();
     h.run_steps(4);
-    let disabled = h.get_all_by_label("Mark resolved").filter(|n| n.is_disabled()).count();
-    assert_eq!(disabled, 1, "staging now would stage the markers");
+    assert!(h.get_by_label("Mark resolved as is").is_disabled(), "staging now would stage the markers");
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }

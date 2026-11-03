@@ -108,14 +108,16 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `diff_text.rs`: the text selected in the open diff's code (`TextSel`: anchor, head, unit and side, keyed to the diff shown), its line places (`LineRef`), word bounds and `copy`, the text a selection copies (`copy_at_most` for the screen reader's value); `copy_lines` (the row menu's whole lines) and `select_all` (Ctrl+A).
 - `file_folds.rs`: the folders collapsed in each changed-file list's tree (in `RepoSession::tab_view`, parked with the tab), and which list a diff was opened from.
 - `op_strip.rs`: the strip's text.
+- `conflict_strip.rs`: the strip while the conflict view is open: the operation in words, the files left, Abort and Commit merge or Continue with why it waits. Tests in `conflict_strip_tests.rs`.
 - `op_confirm.rs`: the danger confirmations of Abort, Skip and Reset bisect, with when an abort keeps the operation's work for Undo.
 - `toolbar_tips.rs`: the toolbar's rules: why each button is off, the ahead/behind and last-fetched lines and the Push, Pull, Stash and Unstash previews.
 - `section_actions.rs`: what each left-panel section header's + does (its name, why it is off and the message it sends).
 - `session.rs`: `RepoSession`, the per-tab views paired with their generation counters (`Gen`, `PrSlot`), the open diff as `DiffSlot` with its counter, the commit detail and draft, the repository reads, the selection, forge data, undo history and commit search, and the issue comment drafts kept after their panel closed (`issue_drafts`, `state/issue_comment.rs::KeptDrafts`), parked whole with the tab; `counters()` lists every counter (the reads' included) and `resume_after` keeps them rising across tabs and drops the forge replies in flight (`replies_dropped`); the diff's `shown_gen` is carried rather than counted. Tests in `session_tests.rs`; the switch itself in `flows/tabs_session_tests.rs`.
 - `session_reads.rs`: `RepoReads`, what was read from the tab's repository (commit stats, line counts, signatures, conflict check): `parked` splits the results (which go with the tab, requests in flight dropped) from the counters (which stay behind), `clear` forgets them when another repository opens. Tests in `session_reads_tests.rs`.
-- `session_view.rs`: `TabView`, the per-tab view state in `RepoSession::tab_view` (search text, ref filter, graph scroll, file-list folds, expanded empty sections, the diff's opened folds and top row with the mode and layout it was counted in).
+- `session_view.rs`: `TabView`, the per-tab view state in `RepoSession::tab_view` (search text, ref filter, graph scroll, file-list folds, expanded empty sections, the diff's opened folds and top row with the mode and layout it was counted in, whether its history was freed while parked).
 - `empty_sections.rs`: the left-panel sections that start collapsed while empty, and the flag each one's header toggles then.
 - `tip.rs`: the rich tooltip's data.
+- `system_a11y.rs` (`view::system_a11y`): the system's reduce-motion, high-contrast and text-size settings as the shell read them (`ViewState::system_a11y`, set by `AppMsg::SystemA11y`), and the values in effect with Preferences > Accessibility's choices: `motion_reduced`, `system_contrast`, `zoom_factor`. Tests in `update/tests/system_a11y_tests.rs`.
 - `undo_preview.rs`: what Undo and Redo would change.
 - `op_preview.rs`: the operation preview's dialog data, its title and headline, why Apply is off (busy, loading, nothing to do or stale) and the message Apply sends, the same as the direct menu item's.
 - `refresh/recount.rs`: when other worktrees' changes are counted again after a reload that kept the snapshot (at most once per `RECOUNT_EVERY`).
@@ -190,6 +192,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `runner/platform/state_files.rs`: the recent-repositories and open-tabs files (a bad line costs only itself, a failed read stops saves over the file, private on Unix); its tests in `state_files_tests.rs`.
 - `runner/platform/open_events.rs`: the inbox where the folders and links the OS hands over wait until the runner attaches.
 - `platform/mod.rs`: the window's glue with the OS, only for the shell and `main.rs` (the files below).
+- `platform/a11y_system.rs`: the system's reduce-motion, high-contrast and text-size settings, read for the shell (Windows system parameters and registry, AppKit's `NSWorkspace`, GNOME's gsettings on a thread) through a `Watch` whose reader tests replace.
 - `platform/app_id.rs`: the installed Windows copy's app id, taken before the window opens.
 - `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `runner/platform/open_events.rs` until the runner attaches (`platform::install_open_events`).
 - `platform/native_menu.rs`: the macOS system menu bar showing Glowfly's menus: the facade, the queue of clicked items' tags and the hook that turns winit's default app menu off.

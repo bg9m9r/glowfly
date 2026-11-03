@@ -59,9 +59,6 @@ Label "A"
 Button "README.md" [off]
 Label "+2"
 Label "M"
-Button "app.txt" [off]
-Label "+1"
-Label "M"
 Button "Show as list"
 Button "Unstage all"
 Label "Staged files (3)"

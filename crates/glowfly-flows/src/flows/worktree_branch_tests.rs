@@ -148,8 +148,11 @@ fn a_missing_worktree_is_refused_once_then_pruned_and_checked_out() {
         let fx = update(&mut st, branch(BranchMsg::Checkout("side".into())), Instant::now());
         assert!(fx.is_empty() && st.job.is_none(), "{fx:?}");
     }
-    assert_eq!(last_log(&st), (false, format!("side is still checked out in a missing worktree ({path}).")));
+    // The refusal's line, then the toast's own line (every toast is logged), each once.
+    let line = st.log.iter().rev().find(|l| !l.ok).map(|l| l.text.clone());
+    assert_eq!(line, Some(format!("side is still checked out in a missing worktree ({path}).")));
     assert_eq!(st.log.iter().filter(|l| l.text.contains("missing worktree")).count(), 1);
+    assert_eq!(st.log.iter().filter(|l| l.text.contains("whose folder is gone")).count(), 1);
     let toasts: Vec<_> = st.toasts.iter().filter(|t| t.text.contains("whose folder is gone")).collect();
     assert_eq!(toasts.len(), 1, "one toast, restarted");
     assert!(toasts[0].ok, "informational, not an error");

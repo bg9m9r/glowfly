@@ -6,7 +6,6 @@
 use super::super::common::state_color;
 use super::super::pull_request::{heading, note};
 use super::super::theme::color;
-use super::super::widgets;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::{BranchMsg, Msg};
 use crate::state::AppState;
@@ -16,7 +15,8 @@ use crate::state::issue_words::labels_label;
 use crate::state::worktree_branches::Elsewhere;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Ui, vec2};
+use crate::ui::widgets::chip::{Chip, ChipSize, Look};
+use eframe::egui::{self, Align, Color32, Layout, RichText, Ui, vec2};
 use glowfly_core::forge;
 use glowfly_core::gitflow::FlowKind;
 use glowfly_core::text::printable;
@@ -99,12 +99,12 @@ fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
                 ui.label(RichText::new(label).color(color::weak()));
             });
             if label == state_row && !value.is_empty() {
-                chip(ui, &value, state_color(&value));
+                chip(ui, ChipSize::Badge, &value, state_color(&value));
             } else if label == labels_row {
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing = vec2(4.0, 4.0);
                     for l in &v.issue.facets.labels {
-                        chip(ui, l, color::text());
+                        chip(ui, ChipSize::Chip, l, color::text());
                     }
                 });
             } else {
@@ -117,10 +117,7 @@ fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
     }
 }
 
-/// A rounded chip with `text` in `fg`.
-fn chip(ui: &mut Ui, text: &str, fg: Color32) {
-    let text = printable(text);
-    let w = ui.painter().layout_no_wrap(text.clone(), type_scale::font(type_scale::CAPTION), fg).size().x + 12.0;
-    let (rect, _) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
-    widgets::chip(ui.painter(), rect.left(), rect.center().y, &text, color::raised(), fg);
+/// A chip of `size` with `text` in `fg` on the raised fill: the state's badge, or a label.
+pub(crate) fn chip(ui: &mut Ui, size: ChipSize, text: &str, fg: Color32) {
+    Chip::new(size, printable(text)).look(Look::new(color::raised(), fg)).show(ui);
 }

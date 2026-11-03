@@ -17,7 +17,7 @@ use std::time::Instant;
 
 /// Once per frame: the "Saved" tick's strength.
 pub(super) fn tick(st: &mut AppState, now: Instant) {
-    let reduce_motion = st.settings.reduce_motion;
+    let reduce_motion = st.motion_reduced();
     if let Some(p) = st.prefs.as_mut() {
         p.saved.tick(now, reduce_motion);
     }

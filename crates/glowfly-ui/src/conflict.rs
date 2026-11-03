@@ -31,17 +31,14 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let setup = ToolSetup::of(t, &st.settings.external_tools).merge;
     // Nothing here writes the file while the merge tool has it open; it closes the view on a change.
     let in_tool = merging(st, &view.path);
-    ui.add_space(6.0);
     let tool = header::MergeTool { blocked: blocked.as_deref(), setup };
     header::header_bar(ui, t, view, tool, in_tool, &st.keymap, msgs);
-    ui.separator();
     if in_tool {
         ui.horizontal(|ui| {
             ui.add_space(8.0);
             ui.label(RichText::new(t.tr("conflict.view.in_tool.note")).color(color::warn()));
         });
     }
-    auto_note(ui, t, view);
     restored_note(ui, t, view);
     let Some(file) = &view.file else {
         return super::pane_status::loading(ui, t.tr("conflict.view.loading"));
@@ -82,25 +79,6 @@ pub(super) fn step_tip(keys: &Keymap, t: Lang, forward: bool) -> String {
     } else {
         keys.tip(t.tr("conflict.view.prev.tip"), BindingId::PrevChange)
     }
-}
-
-/// Under the header: how many chunks were picked automatically, while any pick still is.
-fn auto_note(ui: &mut Ui, t: Lang, view: &ConflictView) {
-    let (auto, n) = (view.auto_count(), view.chunk_count());
-    if auto == 0 {
-        return;
-    }
-    let text = if auto == n {
-        let all = if n == 1 { t.tr("conflict.view.auto_one") } else { t.tr("conflict.view.auto_all") };
-        RichText::new(all).color(color::accent())
-    } else {
-        RichText::new(t.trn("conflict.view.auto_some", n, &[("auto", &auto)])).color(color::weak())
-    };
-    // Wraps, so a longer translation can't widen the view.
-    ui.horizontal(|ui| {
-        ui.add_space(8.0);
-        ui.add(egui::Label::new(text).wrap());
-    });
 }
 
 /// Under the header: how many chunks came back from the file saved with markers, or that its

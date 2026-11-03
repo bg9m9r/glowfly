@@ -14,9 +14,10 @@ use crate::ui::common::menu_item;
 use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, type_scale};
+use crate::ui::widgets::chip::{Chip, ChipSize, Look};
 use crate::ui::widgets::menu::submenu;
 use crate::ui::widgets::{self, Icon, buttons};
-use eframe::egui::{self, Align, Color32, CornerRadius, Layout, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, vec2};
+use eframe::egui::{self, Align, Color32, CornerRadius, Layout, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path;
 use glowfly_core::paths::same_spelling;
@@ -97,14 +98,9 @@ fn place(t: Lang, w: &ConfigWhere, dir: &std::path::Path) -> String {
     if w.section.is_empty() { at } else { t.trf("prefs.ssh.config.place", &[("section", &w.section), ("where", &at)]) }
 }
 
-/// One painted chip in a rect of its own, with its hover tip.
-pub(super) fn chip(ui: &mut Ui, text: &str, tip: &str, tint: Color32) {
-    let font = type_scale::font(type_scale::CAPTION);
-    let w = ui.painter().layout_no_wrap(text.to_owned(), font, Color32::WHITE).size().x + 12.0;
-    let (rect, resp) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
-    widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::wash(tint, 0.25), color::text());
-    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, text));
-    resp.on_hover_text(tip);
+/// One mark's badge in a rect of its own, with its hover tip.
+pub(crate) fn chip(ui: &mut Ui, text: &str, tip: &str, tint: Color32) {
+    Chip::new(ChipSize::Badge, text).look(Look::new(color::wash(tint, 0.25), color::text())).show(ui).on_hover_text(tip);
 }
 
 /// The small action buttons under the fingerprint.

@@ -66,7 +66,7 @@ fn live_updates_states() {
                 if failed {
                     st.watch.down.insert(repo());
                 }
-                let _ = ui.allocate_ui_with_layout(vec2(300.0, 26.0), Layout::right_to_left(Align::Center), |ui| {
+                let _ = ui.allocate_ui_with_layout(vec2(300.0, crate::ui::status::BAR_H), Layout::right_to_left(Align::Center), |ui| {
                     ui.label(RichText::new("Glowfly 1.0.0").color(color::faint()));
                     status_item(ui, st, msgs);
                 });
@@ -88,7 +88,7 @@ fn live_updates_states() {
 }
 
 fn bar(st: AppState) -> H {
-    harness(st, vec2(720.0, 26.0), |ctx, st, msgs| crate::ui::status::status_bar(ctx, st, msgs))
+    harness(st, vec2(720.0, crate::ui::status::BAR_H), |ctx, st, msgs| crate::ui::status::status_bar(ctx, st, msgs))
 }
 
 #[test]
