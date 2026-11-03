@@ -1,6 +1,6 @@
 //! Screen-reader announcements (Preferences > Accessibility > Announcements): each toast's text
 //! and the status bar's job are AccessKit live regions, polite but assertive for a failure, under
-//! keys that stay put while other toasts close; a quiet job (auto-fetch) never is; with Announcements off they are plain labels.
+//! keys that stay put while other toasts close or the same toast is shown again; a quiet job (auto-fetch) never is; with Announcements off they are plain labels.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_partial::job;
@@ -52,6 +52,11 @@ fn toasts_and_the_job_are_live_regions() {
     h.run_steps(2);
     assert!(h.query_by_label(DONE).is_none());
     assert_eq!(h.get_by_label(FAILED).id(), node(toasts::text_key(failure)), "the same node");
+    // The same failure again restarts that toast: one node, still its own, not announced twice.
+    h.state_mut().0.toast(false, FAILED, Instant::now());
+    h.run_steps(2);
+    assert_eq!(h.state().0.toasts.len(), 1);
+    assert_eq!(h.get_by_label(FAILED).id(), node(toasts::text_key(failure)), "shown again, the same node");
     drop(h);
     remove_fixture(&dir);
 }
