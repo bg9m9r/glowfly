@@ -1,6 +1,6 @@
 //! The settings Preferences > Accessibility owns besides the ones it moved there (reduce motion,
-//! the branch palette): the text cursor's blink, how long notifications stay and the tooltip
-//! delay. They sit flat in the settings file (`Settings::a11y` is flattened) and stay the same
+//! the branch palette): the text cursor's blink, the focus indicator's strength, how long
+//! notifications stay and the tooltip delay. They sit flat in the settings file (`Settings::a11y` is flattened) and stay the same
 //! whatever profile is current. The High contrast check's rules are here too; the theme it
 //! brings back (`Settings::theme_before_contrast`) belongs to the profile, as `theme` does.
 
@@ -14,6 +14,8 @@ use std::time::Duration;
 pub struct A11yPrefs {
     /// The text cursor in text fields blinks (the terminal's never does).
     pub cursor_blink: bool,
+    /// How strong the keyboard focus ring is.
+    pub focus_style: FocusStyle,
     /// How long a notification stays up.
     pub toast_time: ToastTime,
     /// How long the pointer rests before a tooltip shows.
@@ -22,8 +24,23 @@ pub struct A11yPrefs {
 
 impl Default for A11yPrefs {
     fn default() -> Self {
-        Self { cursor_blink: true, toast_time: ToastTime::default(), tooltip_delay: TooltipDelay::default() }
+        Self {
+            cursor_blink: true,
+            focus_style: FocusStyle::default(),
+            toast_time: ToastTime::default(),
+            tooltip_delay: TooltipDelay::default(),
+        }
     }
+}
+
+/// How the keyboard focus ring is drawn (Preferences > Accessibility > Focus indicator).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FocusStyle {
+    /// The accent ring alone.
+    #[default]
+    Standard,
+    /// A thicker accent ring with a background-coloured outline, so it shows on every colour.
+    Strong,
 }
 
 /// How long a notification stays up (Preferences > Accessibility > Notifications stay).
@@ -119,11 +136,17 @@ mod tests {
         let old: Settings = serde_json::from_str(r#"{"theme": "Mist"}"#).unwrap();
         assert_eq!(old.a11y, A11yPrefs::default());
         assert!(old.a11y.cursor_blink);
-        let a11y = A11yPrefs { cursor_blink: false, toast_time: ToastTime::Longer, tooltip_delay: TooltipDelay::Instant };
+        assert_eq!(old.a11y.focus_style, FocusStyle::Standard);
+        let a11y = A11yPrefs {
+            cursor_blink: false,
+            focus_style: FocusStyle::Strong,
+            toast_time: ToastTime::Longer,
+            tooltip_delay: TooltipDelay::Instant,
+        };
         let s = Settings { a11y, theme_before_contrast: Some(ThemeChoice::Custom("ocean".into())), ..Settings::default() };
         let text = serde_json::to_string(&s).unwrap();
         // Flat in the file, beside the other settings.
-        assert!(text.contains(r#""toast_time":"Longer""#), "{text}");
+        assert!(text.contains(r#""toast_time":"Longer""#) && text.contains(r#""focus_style":"Strong""#), "{text}");
         let back: Settings = serde_json::from_str(&text).unwrap();
         assert_eq!((back.a11y, back.theme_before_contrast), (s.a11y, s.theme_before_contrast));
     }

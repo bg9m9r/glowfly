@@ -1,4 +1,4 @@
-window 760x1280
+window 760x1440
 Label "Glowfly 0.1.0"
 Button "Zurück"
 Label "Einstellungen"
@@ -27,6 +27,9 @@ Label "Blinkender Cursor"
 CheckBox "Blinkender Cursor, Textcursor blinken lassen" [on]
 Label "Der Cursor in Textfeldern. Der im Terminal blinkt nie."
 Label "Tastatur"
+Label "Fokusanzeige"
+ComboBox "Fokusanzeige"
+Label "Deutlich zeichnet einen dickeren Rahmen mit einer Kontur, die auf jeder Farbe sichtbar ist."
 Label "Tastenkürzel"
 Button "Tastenkürzel ändern…"
 Button "Alle Tastenkürzel zeigen"
@@ -54,5 +57,6 @@ painted:
   "Standard"
   "Ein- und Ausblenden abschalten"
   "Textcursor blinken lassen"
+  "Standard"
   "Standard (5 s)"
   "Kurz (0,4 s)"

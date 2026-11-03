@@ -1,8 +1,8 @@
 //! Preferences > Accessibility: every accessibility option in one place. Vision: the interface,
 //! diff and terminal text sizes (the rows their own pages draw, `appearance::zoom_row`,
 //! `diff_viewer::font_size_row` and `terminal::font_size_row`), High contrast and the branch
-//! colours. Motion: reduce motion and the blinking cursor. Keyboard: links to Preferences >
-//! Keyboard and the shortcut sheet. Timing: how long notifications stay and the tooltip delay.
+//! colours. Motion: reduce motion and the blinking cursor. Keyboard: the focus indicator's
+//! strength, and links to Preferences > Keyboard and the shortcut sheet. Timing: how long notifications stay and the tooltip delay.
 //!
 //! Every control is named for screen readers by its row's label (and a checkbox's text too),
 //! with the row's help as its description (`name`). The High contrast check only asks (update
@@ -17,7 +17,7 @@ use crate::ui::theme::{color, controls};
 use crate::ui::widgets::buttons;
 use eframe::egui::{Response, Ui};
 use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{BranchPalette, Settings, ToastTime, TooltipDelay};
+use glowfly_core::settings::{BranchPalette, FocusStyle, Settings, ToastTime, TooltipDelay};
 
 /// What the page shows besides the settings.
 pub struct A11yView<'a> {
@@ -57,6 +57,13 @@ pub fn accessibility_page(ui: &mut Ui, s: &mut Settings, view: &A11yView, msgs: 
     checked_row(ui, label, &mut s.a11y.cursor_blink, check, text);
 
     section(ui, t.tr("prefs.a11y.keyboard.section"));
+    let label = t.tr("prefs.a11y.focus.label");
+    row(ui, label, |ui| {
+        let options = [(FocusStyle::Standard, t.tr("prefs.a11y.focus.standard")), (FocusStyle::Strong, t.tr("prefs.a11y.focus.strong"))];
+        let text = t.tr("prefs.a11y.focus.help");
+        name(&combo_response(ui, "focus_style", &mut s.a11y.focus_style, &options), label, text);
+        help(ui, text);
+    });
     shortcuts_row(ui, t, view.sheet_open, msgs);
 
     section(ui, t.tr("prefs.a11y.timing.section"));
