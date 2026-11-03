@@ -16,6 +16,9 @@ const WRAPPERS: &[&str] = &[
     "widgets/menu_open.rs",
     "widgets/menu_submenu.rs",
     "widgets/menu_submenu_keyed.rs",
+    // menu::popover_below's body: it draws egui's popup empty and invisible, only so egui counts
+    // the popover as an open popup and hides its layer's tooltips.
+    "widgets/popover.rs",
     "widgets/row_menu.rs",
     "menu_anchor.rs",
 ];

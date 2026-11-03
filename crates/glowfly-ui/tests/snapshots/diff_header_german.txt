@@ -73,19 +73,20 @@ Label "Schreibe eine Zusammenfassung für den Commit."
 Unknown "Mittlere Ansicht"
 Label "app.txt"
 Label "M +2 −1"
+Label "Nicht bereitgestellt"
 Button "Vorherige Änderung"
 Button "Nächste Änderung" [disabled]
+Label "1 / 1"
 Button "Ansicht"
 Heading "Layout"
 RadioButton "Inline" [on]
 RadioButton "Geteilt" [off]
 Heading "Anzeigen"
-RadioButton "Hunks" [on]
+RadioButton "Nur Änderungen" [on]
 RadioButton "Ganze Datei" [off]
 CheckBox "Leerraum ignorieren" [off]
 CheckBox "Lange Zeilen umbrechen" [off]
 Button "Weitere Dateiaktionen"
-Button "In externem Diff-Werkzeug öffnen"
 Button "Datei bereitstellen"
 Button "Diff schließen"
 Button "Hunk bereitstellen"

@@ -217,7 +217,7 @@ fn esc_with_the_view_menu_open_closes_only_the_menu() {
     st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
     let mut h = app_harness(st);
     h.run();
-    let view = if h.query_by_label("Inline \u{b7} Hunks").is_some() { "Inline \u{b7} Hunks" } else { "View" };
+    let view = if h.query_by_label("Inline \u{b7} Changes only").is_some() { "Inline \u{b7} Changes only" } else { "View" };
     h.get_by_label(view).click();
     h.run();
     assert!(h.query_by_label("Ignore whitespace").is_some(), "the View menu is open");

@@ -95,8 +95,18 @@ pub(super) fn explain(
             fix(t.tr("git_errors.create_branch.button"), Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }))
         }
         Cause::Locked { .. } | Cause::SignIn(AuthNeed::Https) => try_again(),
-        Cause::SignIn(AuthNeed::Ssh) => fix(t.tr("git_errors.ssh_keys.button"), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh))),
-        Cause::SignIn(AuthNeed::HostKey) => None,
+        Cause::SignIn(AuthNeed::Ssh) => {
+            let keys = fix(t.tr("git_errors.ssh_keys.button"), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh)));
+            // An SSH clone from a connected host: cloning over https with that sign-in first.
+            match super::clone_https::offer(st, t, again, output) {
+                Some(https) => {
+                    alt = keys;
+                    Some(https)
+                }
+                None => keys,
+            }
+        }
+        Cause::SignIn(AuthNeed::HostKey) => super::clone_https::offer(st, t, again, output),
         Cause::Remote(f) => {
             // A remote that isn't there, or can't be read, often has a wrong URL.
             let wrong_url = matches!(f, RemoteFailure::NotFound | RemoteFailure::Unreadable);

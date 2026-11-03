@@ -99,7 +99,7 @@ Label "search.txt"
 Button "Previous change" [disabled]
 Button "Next change" [disabled]
 Button "View"
-Button "Open in external diff tool"
+Button "More file actions"
 Button "Close diff"
 Button "Revert hunk"
 Document "Diff of search.txt"

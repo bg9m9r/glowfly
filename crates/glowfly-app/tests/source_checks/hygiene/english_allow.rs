@@ -129,7 +129,7 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-ui/src/pull_request/threads.rs", 15),
     ("crates/glowfly-ui/src/rebase/commit_row.rs", 6),
     ("crates/glowfly-ui/src/rebase/editor.rs", 9),
-    ("crates/glowfly-ui/src/rebase/mod.rs", 10),
+    ("crates/glowfly-ui/src/rebase/mod.rs", 8),
     ("crates/glowfly-ui/src/rebase/reword_dialog.rs", 1),
     ("crates/glowfly-ui/src/rebase/rows.rs", 7),
     ("crates/glowfly-ui/src/rebase/step_row.rs", 7),

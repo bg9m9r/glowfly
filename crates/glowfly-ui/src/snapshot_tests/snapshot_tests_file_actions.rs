@@ -1,6 +1,6 @@
 //! File action buttons in headers: the file history's selected commit (Restore this version,
 //! Open with default app, Show in folder), its row menu, and the commit diff header (Restore…,
-//! Open, Show; Open and Show on working-tree diffs). Covers enablement when the file is gone
+//! Open, Show, in its ⋯ menu; Open and Show on working-tree diffs). Covers enablement when the file is gone
 //! from the working tree, the messages clicks send, and that comparison diff headers gain no
 //! buttons. Shares the fixture repository and renderer with `snapshot_tests`.
 
@@ -27,12 +27,11 @@ use std::path::Path;
 const RESTORE: &str = "Restore this version…";
 const OPEN_IN_EDITOR: &str = "Open in external editor";
 const REVERT_FILE: &str = "Revert changes to this file";
-/// The diff header's labelled file actions and its Close control.
+/// The diff header's file actions (in its ⋯ menu), the ⋯ and its Close control.
 const RESTORE_SHORT: &str = "Restore…";
-const OPEN_SHORT: &str = "Open";
+const MORE: &str = "More file actions";
 const CLOSE_DIFF: &str = "Close diff";
-/// A window wide enough for the diff header to label its file actions rather than fold them
-/// into its "More file actions" menu.
+/// A wide window: the diff header shows every part.
 const WIDE: egui::Vec2 = egui::vec2(1800.0, 820.0);
 
 /// Takes src/app.txt out of the working tree and reloads status, which then lists it as deleted.
@@ -46,6 +45,18 @@ fn click(h: &mut Harness<'static, (AppState, Vec<Msg>)>, label: &str) -> Vec<Msg
     h.get_by_label(label).click();
     h.run();
     std::mem::take(&mut h.state_mut().1)
+}
+
+/// Opens the diff header's ⋯ menu.
+fn open_more(h: &mut Harness<'static, (AppState, Vec<Msg>)>) {
+    h.get_by_label(MORE).click();
+    h.run();
+}
+
+/// Clicks `label` in the diff header's ⋯ menu and returns the messages it sent.
+fn in_more(h: &mut Harness<'static, (AppState, Vec<Msg>)>, label: &str) -> Vec<Msg> {
+    open_more(h);
+    click(h, label)
 }
 
 #[test]
@@ -188,19 +199,20 @@ fn diff_commit_header_buttons() {
     let mut h = harness_sized(st, true, WIDE);
     h.run_steps(4);
     h.check_snapshot("diff_commit_header_buttons");
-    let msgs = click(&mut h, RESTORE_SHORT);
+    let msgs = in_more(&mut h, RESTORE_SHORT);
     assert!(
         matches!(&msgs[..], [Msg::Files(FilesMsg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false })] if *o == oid && path == "app.txt"),
         "restore"
     );
-    let msgs = click(&mut h, OPEN_SHORT);
+    let msgs = in_more(&mut h, OPEN_DEFAULT);
     assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "app.txt"));
-    let msgs = click(&mut h, SHOW_IN_FOLDER);
+    let msgs = in_more(&mut h, SHOW_IN_FOLDER);
     assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "app.txt"));
 
     h.state_mut().0.session.detail.as_mut().unwrap().absent.insert("app.txt".into());
     h.run_steps(4);
-    assert!(h.get_by_label(OPEN_SHORT).is_disabled() && h.get_by_label(SHOW_IN_FOLDER).is_disabled());
+    open_more(&mut h);
+    assert!(h.get_by_label(OPEN_DEFAULT).is_disabled() && h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(RESTORE_SHORT).is_disabled());
 
     h.state_mut().0.session.detail = None;
@@ -222,9 +234,10 @@ fn working_tree_diff_header_opens_the_file() {
     let mut h = harness_sized(st, true, WIDE);
     h.run();
     assert!(h.query_by_label("Stage file").is_some());
-    assert!(h.query_by_label(OPEN_SHORT).is_some() && h.query_by_label(SHOW_IN_FOLDER).is_some(), "the working file opens");
+    open_more(&mut h);
+    assert!(h.query_by_label(OPEN_DEFAULT).is_some() && h.query_by_label(SHOW_IN_FOLDER).is_some(), "the working file opens");
     assert!(h.query_by_label(RESTORE_SHORT).is_none());
-    let msgs = click(&mut h, OPEN_SHORT);
+    let msgs = click(&mut h, OPEN_DEFAULT);
     assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "README.md"));
 
     // Comparing two commits.
@@ -233,7 +246,9 @@ fn working_tree_diff_header_opens_the_file() {
     h.state_mut().0.session.diff.view = Some((target, diff.into()));
     h.run();
     assert!(h.query_by_label(CLOSE_DIFF).is_some(), "the header is drawn");
-    assert!(h.query_by_label(OPEN_SHORT).is_none() && h.query_by_label(RESTORE_SHORT).is_none());
+    assert!(h.query_by_label(MORE).is_some(), "⋯ holds the diff tool");
+    open_more(&mut h);
+    assert!(h.query_by_label(OPEN_DEFAULT).is_none() && h.query_by_label(RESTORE_SHORT).is_none());
     assert!(h.query_by_label(SHOW_IN_FOLDER).is_none() && h.query_by_label(NOT_IN_WORKDIR).is_none());
     drop(h);
     remove_fixture(&dir);

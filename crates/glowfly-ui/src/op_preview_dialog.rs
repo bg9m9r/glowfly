@@ -101,7 +101,7 @@ fn result(ui: &mut Ui, t: Lang, env: &Env, snap: &Snapshot, p: &OpPreview) {
     super::op_preview_rows::after(ui, env, p, tone);
     if let Some(paths) = op::conflicts(p) {
         ui.add_space(4.0);
-        super::conflict_check::file_list(ui, t, paths, false);
+        super::conflict_check_parts::file_list(ui, t, paths, false);
     }
     if p.gone_count.n > 0 {
         ui.add_space(10.0);

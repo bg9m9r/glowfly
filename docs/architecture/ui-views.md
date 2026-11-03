@@ -10,6 +10,7 @@ start with `state/`, `update/` or `ui/`.
 - `init_dialog.rs`: the Init dialog.
 - `branch_delete_dialog.rs`: a local branch's Delete dialog (`Modal::DeleteBranch`): the question, a counting line, then the commits only the branch has and Delete anyway; Cancel stays the default.
 - `remote_branch_delete_dialog.rs`: Delete remote branch (`Modal::DeleteRemoteBranch`): the question, the local branches tracking it with Unset upstream, and the Git Flow warning.
+- `conflict_check.rs`: the toolbar's conflict-check chip, its popover and the conflict report dialog; `conflict_check_parts.rs`: the names block, file list and divider they share.
 - `op_preview_dialog.rs`: the operation preview (`Modal::OpPreview`): the dialog with its headline, conflicted paths, lost commits and Apply buttons.
 - `op_preview_rows.rs`: the operation preview's history-afterwards lane and the lost commits' rows.
 - `trust_dialog.rs`: the "Trust this repository?" dialog (`Modal::Trust`): the path, what runs, the advice, and Don't trust / Trust (or Cancel / Trust and run), neither filled.
@@ -82,9 +83,9 @@ start with `state/`, `update/` or `ui/`.
 - `diff/header/identity.rs`: the file's icon, folder, name and chips.
 - `diff/header/nav.rs`: hunk and file steps with the counter.
 - `diff/header/view_menu.rs`: the View button and its menu.
-- `diff/header/actions.rs`: the file actions, their More menu, the primary Stage or Unstage and Close.
+- `diff/header/actions.rs`: the ⋯ menu of file actions and the diff tool, the small secondary Stage or Unstage, and Close.
 - `diff/header/controls.rs`: the ghost buttons and dividers, re-exported from `widgets/ghost.rs`, which the terminal panel's header shares.
-- `diff/header/fit.rs`: which groups fit, in narrowing order.
+- `diff/header/fit.rs`: which parts fit, in narrowing order.
 - `diff/text_sel.rs`: text selection in the diff's code: the press, double- and triple-click, Shift-click and drag with auto-scroll past the edge, the opaque `code_sel` (`code_sel_dim` without the keyboard) behind the glyphs with its nub, the diff's own keyboard focus, Ctrl+C through `state/diff_text.rs`'s `copy`, Ctrl+A (`DiffMsg::SelectAllText`) and the code's screen-reader document node.
 - `diff/row_menu.rs`: the diff's right-click menu over a line's code (Copy, Copy with diff signs, Copy lines, Copy hunk as patch, then the hunk header's line actions on the selected or clicked line), kept or dropping the text selection by where the click lands, and Shift+F10 at the topmost selected line.
 - `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary.

@@ -11,6 +11,7 @@ Dialog
   Label "Fix build on Windows 275189b"
   Label "Add app skeleton b9eb369"
   Label "Initial commit dcc73f3"
+  Label "1 file changed on both sides:"
   Label "app.txt"
   Label "Uncommitted changes aren't part of this preview."
   Button "Cancel"

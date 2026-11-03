@@ -146,27 +146,28 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
     }
 }
 
-/// Step 4: open, clone or start a repository as cards, then the tour and where the look is
-/// changed in one quiet row, and the opt-in to author pictures with what it sends.
+/// Between the author pictures' help and the Preferences link under it.
+const LINK_GAP: f32 = 12.0;
+
+/// Step 4: open, clone or start a repository as cards, then the tour, the opt-in to author
+/// pictures with what it sends, and where the look is changed on its own line 12 px under it.
 pub fn start(ui: &mut egui::Ui, t: Lang, w: &mut Welcome, has_repo: bool, msgs: &mut Vec<Msg>) {
     text(ui, t.tr("welcome.start.intro"));
     ui.add_space(16.0);
     super::welcome_cards::choices(ui, t, msgs);
     ui.add_space(16.0);
-    ui.horizontal_wrapped(|ui| {
-        ui.spacing_mut().item_spacing.x = 16.0;
-        if has_repo {
-            if ui.link(t.tr("welcome.start.tour_now.link")).clicked() {
-                msgs.push(Msg::Onboarding(OnboardingMsg::StartTour));
-            }
-        } else {
-            controls::checkbox(ui, &mut w.tour_after, t.tr("welcome.start.tour_after.check"));
+    if has_repo {
+        if ui.link(t.tr("welcome.start.tour_now.link")).clicked() {
+            msgs.push(Msg::Onboarding(OnboardingMsg::StartTour));
         }
-        if ui.link(t.trf("welcome.start.look_link", &[("page", &prefs_path(t, PrefPage::Ui))])).clicked() {
-            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ui)));
-        }
-    });
+    } else {
+        controls::checkbox(ui, &mut w.tour_after, t.tr("welcome.start.tour_after.check"));
+    }
     ui.add_space(8.0);
     controls::checkbox(ui, &mut w.avatars, t.tr("welcome.start.avatars.check"));
     weak(ui, t.tr("prefs.ui.avatars.help"));
+    ui.add_space(LINK_GAP - ui.spacing().item_spacing.y);
+    if ui.link(t.trf("welcome.start.look_link", &[("page", &prefs_path(t, PrefPage::Ui))])).clicked() {
+        msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ui)));
+    }
 }

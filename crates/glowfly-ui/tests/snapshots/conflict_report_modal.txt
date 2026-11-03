@@ -1,7 +1,10 @@
 Dialog
   Label "Conflict check"
   Button "Close this dialog"
-  Label "Merging search into main would stop with conflicts in 60 files:"
+  Label "Branch: main"
+  Label "Compared with: search"
+  Label "Merging would stop with conflicts."
+  Label "60 files changed on both sides:"
   Label "src/module_00.rs"
   Label "src/module_01.rs"
   Label "src/module_02.rs"
@@ -66,3 +69,8 @@ Dialog
   Button "Close" [focused]
   Button "Merge search into main"
   Button "Rebase main onto search"
+painted:
+  "Branch"
+  "main"
+  "Compared with"
+  "search"
