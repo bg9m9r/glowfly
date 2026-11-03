@@ -7,8 +7,8 @@
 use super::with_bands;
 use crate::state::Selection;
 use crate::ui::snapshot_tests::{harness_palette_sized, remove_fixture};
-use crate::ui::theme::branch_colours::{chip_in, line_in, swatches};
-use crate::ui::theme::contrast::{self, ChipStyle};
+use crate::ui::theme::branch_colours::{line_in, swatches};
+use crate::ui::theme::ref_chip::{self, BranchTone, ChipLook, ChipStyle};
 use crate::ui::theme::surfaces::Tone;
 use crate::ui::theme::{apply_style, builtin, color, color::Palette, egui_theme};
 use eframe::egui::{self, Color32, FontId, Painter, Rect, pos2, vec2};
@@ -21,9 +21,16 @@ use std::sync::Arc;
 const W: f32 = 1500.0;
 const ROW_H: f32 = 34.0;
 
-/// Draws one ref chip from `x` centred on `y` as the graph does; returns its width.
-fn chip(p: &Painter, x: f32, y: f32, text: &str, look: contrast::ChipLook) -> f32 {
-    crate::ui::widgets::chip::Chip::new(crate::ui::widgets::chip::ChipSize::Chip, text).look(look).paint(p, x, y).width()
+/// Draws one ref chip from `x` centred on `y` as the graph does, with its halo; returns its
+/// width, the halo's room included.
+fn chip(p: &Painter, x: f32, y: f32, text: &str, look: ChipLook) -> f32 {
+    use crate::ui::widgets::chip::{self as c, ChipSize, HALO_ROOM};
+    let room = if look.halo.is_some() { HALO_ROOM } else { 0.0 };
+    let r = c::Chip::new(ChipSize::Chip, text).look(look).paint(p, x + room, y);
+    if let Some(halo) = look.halo {
+        c::paint_halo(p, r, ChipSize::Chip, halo);
+    }
+    r.width() + 2.0 * room
 }
 
 /// A row of every chip a palette draws, centred on `y`.
@@ -39,7 +46,7 @@ fn chips(p: &Painter, pal: &Palette, y: f32) {
     row.push((ChipStyle::Remote, Swatch::Trunk, "origin/main".into()));
     row.push((ChipStyle::Tag, Swatch::Trunk, "v1.2.0".into()));
     for (style, s, text) in row {
-        x += chip(p, x, y, &text, contrast::ref_chip(style, chip_in(s, pal), pal)) + 5.0;
+        x += chip(p, x, y, &text, ref_chip::ref_chip(style, BranchTone::of(s, pal), pal)) + 5.0;
     }
 }
 
@@ -65,7 +72,7 @@ fn strip(pal: Palette, name: &str) -> image::RgbaImage {
         let r4 = row(4.0);
         for s in swatches() {
             let lane = line_in(s, &pal);
-            let band = crate::ui::graph::band_color(lane, &pal);
+            let band = crate::ui::theme::surfaces::band_color(lane, &pal);
             p.rect_filled(Rect::from_min_size(pos2(x, r4.top() + 3.0), vec2(40.0, 13.0)), 0.0, band);
             p.rect_filled(
                 Rect::from_min_size(pos2(x, r4.top() + 16.0), vec2(40.0, 13.0)),

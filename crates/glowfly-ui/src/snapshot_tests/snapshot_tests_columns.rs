@@ -42,15 +42,17 @@ fn grip_xs(name: &str, widths: ColumnWidths) -> [f32; 3] {
 
 #[test]
 fn graph_columns_resized() {
-    let default = ColumnWidths::default();
-    let [refs0, .., date0] = grip_xs("columns-default", default);
+    // BRANCH / TAG off its default width, so it isn't fitted to the chips (the checked-out
+    // branch's halo makes them wider than the default).
+    let base = ColumnWidths { refs: 120.0, ..ColumnWidths::default() };
+    let [refs0, .., date0] = grip_xs("columns-default", base);
     // Wider BRANCH / TAG and COMMIT, narrower DATE, all still leaving the message its 240 px.
-    let resized = ColumnWidths { refs: 140.0, commit: 80.0, date: 80.0, ..default };
+    let resized = ColumnWidths { refs: 140.0, commit: 80.0, date: 80.0, ..base };
     let [refs, commit, date] = grip_xs("columns-resized", resized);
     let close = |got: f32, want: f32, what: &str| assert!((got - want).abs() < 0.5, "{what}: {got} for {want}");
-    close(refs - refs0, 140.0 - default.refs, "BRANCH / TAG ends further right by what it grew");
+    close(refs - refs0, 140.0 - base.refs, "BRANCH / TAG ends further right by what it grew");
     close(date - commit, 80.0, "the commit column's width");
-    close(date0 - date, 80.0 - default.date, "the date column starts where its width puts it");
+    close(date0 - date, 80.0 - base.date, "the date column starts where its width puts it");
 }
 
 #[test]

@@ -11,7 +11,7 @@
 use super::button_look::{Press, Target, paint_target};
 use super::truncate::{cut_galley, cut_job};
 use crate::ui::theme::color;
-use crate::ui::theme::contrast::ChipLook;
+use crate::ui::theme::ref_chip::ChipLook;
 pub use crate::ui::theme::sizes::ChipSize;
 use crate::ui::theme::sizes::{self, ControlSize};
 use crate::ui::theme::type_scale;
@@ -41,8 +41,10 @@ impl Look {
 }
 
 impl From<ChipLook> for Look {
+    /// A ref chip's look; an outlined one (no fill) is transparent inside its edge. Its halo is
+    /// painted apart, with [`paint_halo`].
     fn from(l: ChipLook) -> Self {
-        Self { fill: l.fill, edge: l.edge, ink: l.text }
+        Self { fill: l.fill.unwrap_or(Color32::TRANSPARENT), edge: l.edge, ink: l.text }
     }
 }
 
@@ -72,6 +74,21 @@ pub fn rect_at(size: ChipSize, x: f32, mid: f32, w: f32) -> Rect {
 /// The corners of a chip of `size`.
 fn corners(size: ChipSize) -> CornerRadius {
     CornerRadius::same(size.metrics().radius)
+}
+
+/// The halo round a ref chip (the checked-out branch, a detached HEAD): its gap from the chip.
+const HALO_GAP: f32 = 1.5;
+/// The halo's ring width.
+const HALO_W: f32 = 1.5;
+/// How far a halo reaches past its chip on every side: its gap and ring (a 22 px chip's halo is
+/// 28 px tall).
+pub const HALO_ROOM: f32 = HALO_GAP + HALO_W;
+
+/// Paints the halo round a chip of `size` in `rect`: a `HALO_W` ring `HALO_GAP` outside it, its
+/// corners the chip's plus `HALO_ROOM`.
+pub fn paint_halo(p: &Painter, rect: Rect, size: ChipSize, colour: Color32) {
+    let r = CornerRadius::same(size.metrics().radius + HALO_ROOM as u8);
+    p.rect(rect.expand(HALO_ROOM), r, Color32::TRANSPARENT, Stroke::new(HALO_W, colour), StrokeKind::Inside);
 }
 
 /// Paints a chip's shape in `rect`: the fill and, when `look` has one, its edge.

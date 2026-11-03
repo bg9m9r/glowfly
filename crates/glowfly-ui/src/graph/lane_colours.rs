@@ -2,8 +2,9 @@
 //! and chip join), each lane above and below the node, and each ref chip's own branch.
 
 use super::ref_group::Chip;
-use crate::ui::theme::branch_colours::{chip, line};
+use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::color;
+use crate::ui::theme::ref_chip::BranchTone;
 use eframe::egui::Color32;
 use glowfly_core::graph::Layout;
 use glowfly_core::graph::owners::{Owners, RowPos};
@@ -58,14 +59,15 @@ impl<'a> RowColours<'a> {
     }
 }
 
-/// Each chip's tone: its branch's chip colour; the node's for HEAD and tags (their styles don't
-/// use it).
-pub(super) fn chip_tones(snap: &Snapshot, chips: &[Chip], node: Color32) -> Vec<Color32> {
+/// Each chip's tones: its branch's line and chip colours; the node's for HEAD and tags (their
+/// styles don't use them) and for a branch without a swatch.
+pub(super) fn chip_tones(snap: &Snapshot, chips: &[Chip], node: Color32) -> Vec<BranchTone> {
+    let pal = color::current();
     chips
         .iter()
         .map(|c| match c.label.kind {
-            RefKind::Local | RefKind::Remote => snap.ref_swatch(&c.label.full).map_or(node, chip),
-            RefKind::Head | RefKind::Tag => node,
+            RefKind::Local | RefKind::Remote => snap.ref_swatch(&c.label.full).map_or(BranchTone::plain(node), |s| BranchTone::of(s, &pal)),
+            RefKind::Head | RefKind::Tag => BranchTone::plain(node),
         })
         .collect()
 }

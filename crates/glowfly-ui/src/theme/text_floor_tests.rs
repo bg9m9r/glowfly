@@ -8,7 +8,8 @@ use super::branch_colours::{line_in, swatches};
 use super::contrast::ratio;
 use super::tokens::selected_inactive;
 use super::*;
-use crate::ui::graph::{band_color, dim_inks, highlight_color};
+use crate::ui::graph::{dim_inks, highlight_color};
+use crate::ui::theme::surfaces::band_color;
 use eframe::egui::Color32;
 use glowfly_core::settings::BuiltinTheme;
 

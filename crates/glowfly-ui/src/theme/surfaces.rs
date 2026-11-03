@@ -323,3 +323,46 @@ pub(crate) fn over(top: Color32, under: Color32) -> Color32 {
     let ch = |t: u8, u: u8| (f32::from(t) + f32::from(u) * (1.0 - a)).round() as u8;
     Color32::from_rgb(ch(top.r(), under.r()), ch(top.g(), under.g()), ch(top.b(), under.b()))
 }
+
+/// How far a graph row's band moves from the background toward its lane colour, at most.
+const BAND_T: f32 = 0.07;
+
+/// The opaque band for a graph row on a `lane`: the strongest tint (`contrast::tint`, so on Dusk
+/// a warm lane gives a plum-violet step, never a grey-brown) up to `BAND_T` that keeps `weak`
+/// text at 4.5:1, `text` as readable as on the background (up to 7:1) and `faint` text as
+/// readable as on the background (up to 4.5:1). The background itself when no tint does.
+pub(crate) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
+    let steps = (BAND_T * 100.0).round() as u32;
+    let keeps = |band: Color32| {
+        contrast::ratio(pal.weak, band) >= 4.5
+            && contrast::ratio(pal.text, band) >= contrast::ratio(pal.text, pal.bg).min(7.0)
+            && contrast::ratio(pal.faint, band) >= contrast::ratio(pal.faint, pal.bg).min(4.5)
+    };
+    (1..=steps).rev().map(|i| contrast::tint(pal.bg, lane, i as f32 / 100.0, pal.dark)).find(|&b| keeps(b)).unwrap_or(pal.bg)
+}
+
+thread_local! {
+    /// The last palette's row surfaces: worked out once, not for every chip drawn.
+    static ROW_SURFACES: std::cell::RefCell<Option<(Palette, Vec<Color32>)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Every surface a graph row's ref chip can sit on in `p`: the background, the hover, the
+/// selection with and without the focus, and the band of every lane in both branch presets and
+/// the trunk's (docs/COLOUR.md, "Ref chips").
+pub fn row_surfaces(p: &Palette) -> Vec<Color32> {
+    ROW_SURFACES.with(|cache| {
+        if let Some((_, rows)) = cache.borrow().as_ref().filter(|(c, _)| c == p) {
+            return rows.clone();
+        }
+        let mut rows = vec![p.bg, p.hover, p.selected, super::tokens::selected_inactive(p)];
+        let lanes = p.branch.lanes.iter().chain(&p.colour_blind.lanes).copied().chain([super::branch_colours::trunk(p)]);
+        for lane in lanes {
+            let band = band_color(lane, p);
+            if !rows.contains(&band) {
+                rows.push(band);
+            }
+        }
+        *cache.borrow_mut() = Some((*p, rows.clone()));
+        rows
+    })
+}

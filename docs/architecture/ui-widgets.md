@@ -21,7 +21,7 @@ source file, update its line here.
 - `widgets/segment_bar.rs`: flush segments in one shape (the toolbar pickers' framed bar, a split button's quiet one), each its own target, with full-height dividers in a framed bar; its layout is shared with `button_split.rs`; tests in `segment_bar_tests.rs`.
 - `widgets/ghost.rs`: ghost buttons (at a `ControlSize`) and dividers, shared by the diff's file header, the terminal panel's header and the graph's New branch… button.
 - `widgets/segmented.rs`: a segmented control at a `ControlSize` whose segments are quiet targets (`paint_target`) and can be disabled with a reason on hover; the raised option's corners are concentric with the track.
-- `widgets/chip.rs`: the only chip and badge painter: the two sizes (Badge 18, Chip 22), leads, cutting, clickable chips and the quiet chips (SHA, parents, committer); tests in `chip_tests.rs`.
+- `widgets/chip.rs`: the only chip and badge painter: the two sizes (Badge 18, Chip 22), leads, cutting, clickable chips, the quiet chips (SHA, parents, committer) and a ref chip's halo (`paint_halo`); tests in `chip_tests.rs`.
 - `widgets/details.rs`: a collapsed Details under a confirmation's plain words, also under the Publish dialog's rewritten service errors.
 
 ## Rows and lists

@@ -31,7 +31,7 @@ mod worktree_wip;
 
 pub use paint::draw_avatar;
 #[cfg(test)]
-pub(crate) use row_look::{band_color, dim_inks, highlight_color};
+pub(crate) use row_look::{dim_inks, highlight_color};
 
 use super::UiCache;
 use super::theme::color;
