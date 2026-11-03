@@ -21,9 +21,15 @@ pub fn name_button(resp: &Response, enabled: bool, name: &str) {
 /// whenever it changes, after what they are reading (`Live::Polite`) or at once
 /// (`Live::Assertive`, for failures). Its node moves to `key`: egui's own id for it shifts when
 /// widgets drawn before it come and go, and a node under a new id is announced again. The node
-/// left at `resp.id` says nothing. Does nothing while AccessKit is off.
+/// left at `resp.id` is hidden, so no platform shows it as an unnamed element. Does nothing
+/// while AccessKit is off.
 pub fn announce(resp: &Response, key: Id, live: Live) {
-    let Some(node) = resp.ctx.accesskit_node_builder(resp.id, std::mem::take) else { return };
+    let take = |n: &mut eframe::egui::accesskit::Node| {
+        let node = std::mem::take(n);
+        n.set_hidden();
+        node
+    };
+    let Some(node) = resp.ctx.accesskit_node_builder(resp.id, take) else { return };
     resp.ctx.accesskit_node_builder(key, |n| {
         *n = node;
         n.set_live(live);
@@ -45,13 +51,16 @@ mod tests {
     #[test]
     fn fields_and_painted_buttons_get_their_names() {
         let mut text = String::new();
+        let left = std::cell::Cell::new(None);
         let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
             let r = ui.add(egui::TextEdit::singleline(&mut text).hint_text("Type here"));
             name_field(&r, "Search text");
             let (_, b) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
             name_button(&b, false, "Painted");
             describe(&b, "Why");
-            announce(&ui.label("Done"), Id::new("done"), Live::Polite);
+            let done = ui.label("Done");
+            announce(&done, Id::new("done"), Live::Polite);
+            left.set(Some(done.id));
         });
         h.run();
         let field = h.get_by_label("Search text");
@@ -63,5 +72,8 @@ mod tests {
         assert_eq!((done.live(), done.role()), (Live::Polite, egui::accesskit::Role::Label));
         assert_eq!(done.id(), egui::accesskit::NodeId(Id::new("done").value()), "under its key");
         assert!(done.bounding_box().is_some(), "where it is drawn");
+        let left = egui::accesskit::NodeId(left.get().expect("drawn").value());
+        let old = h.get_by(move |n| n.id() == left);
+        assert!(old.is_hidden(), "the node left behind is hidden, not an unnamed element");
     }
 }

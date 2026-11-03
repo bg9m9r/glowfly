@@ -1,6 +1,6 @@
 //! Screen-reader announcements (Preferences > Accessibility > Announcements): each toast's text
 //! and the status bar's job are AccessKit live regions, polite but assertive for a failure, under
-//! keys that stay put while other toasts close; with Announcements off they are plain labels.
+//! keys that stay put while other toasts close; a quiet job (auto-fetch) never is; with Announcements off they are plain labels.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_partial::job;
@@ -52,6 +52,18 @@ fn toasts_and_the_job_are_live_regions() {
     h.run_steps(2);
     assert!(h.query_by_label(DONE).is_none());
     assert_eq!(h.get_by_label(FAILED).id(), node(toasts::text_key(failure)), "the same node");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn a_quiet_job_is_not_announced() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "announce-quiet");
+    st.job = Some(crate::state::RunningJob { quiet: true, ..job("Fetch") });
+    assert!(st.settings.a11y.announce_jobs);
+    let mut h = harness(st, true);
+    h.run_steps(4);
+    assert_eq!(h.get_by_label(JOB).live(), Live::Off, "auto-fetch runs on a timer: not read every time");
     drop(h);
     remove_fixture(&dir);
 }

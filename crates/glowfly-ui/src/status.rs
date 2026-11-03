@@ -3,7 +3,8 @@
 //! whole-history index), and the zoom and Show toolbar items (toasts are in `toasts.rs`, the
 //! logs panel in `activity_log.rs`). Its parts are joined by "·" only when present. With
 //! Announcements on (Preferences > Accessibility) the job's text is a live region, so screen
-//! readers say when a job starts or begins to cancel (its outcome is a toast's).
+//! readers say when a job starts or begins to cancel (its outcome is a toast's); a quiet job
+//! (auto-fetch) is never announced.
 
 use super::access::{self, Live};
 use super::common::status_label_ui;
@@ -107,7 +108,8 @@ fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     }
     let text = if st.job_cancelling() { t.trf("status.job.cancelling", &named) } else { format!("{label}…") };
     let line = ui.label(RichText::new(text).color(color::weak()));
-    if st.settings.a11y.announce_jobs {
+    // A quiet job (auto-fetch) runs on a timer: announcing it would interrupt every interval.
+    if st.settings.a11y.announce_jobs && !job.quiet {
         access::announce(&line, job_key(), Live::Polite);
     }
     ui.add(egui::Spinner::new().size(12.0));
