@@ -10,6 +10,7 @@ start with `state/`, `update/` or `ui/`.
 - `init_dialog.rs`: the Init dialog.
 - `branch_delete_dialog.rs`: a local branch's Delete dialog (`Modal::DeleteBranch`): the question, a counting line, then the commits only the branch has and Delete anyway; Cancel stays the default.
 - `remote_branch_delete_dialog.rs`: Delete remote branch (`Modal::DeleteRemoteBranch`): the question, the local branches tracking it with Unset upstream, and the Git Flow warning.
+- `conflict_check.rs`: the toolbar's conflict-check chip, its popover and the conflict report dialog; `conflict_check_parts.rs`: the names block, file list and divider they share.
 - `op_preview_dialog.rs`: the operation preview (`Modal::OpPreview`): the dialog with its headline, conflicted paths, lost commits and Apply buttons.
 - `op_preview_rows.rs`: the operation preview's history-afterwards lane and the lost commits' rows.
 - `trust_dialog.rs`: the "Trust this repository?" dialog (`Modal::Trust`): the path, what runs, the advice, and Don't trust / Trust (or Cancel / Trust and run), neither filled.

@@ -42,6 +42,7 @@ mod branch_sync_tests;
 mod branch_tests;
 mod build_status_tests;
 mod cherry_pick_tests;
+mod clone_https_tests;
 mod clone_service_tests;
 mod clone_sparse_tests;
 mod clone_submodule_tests;

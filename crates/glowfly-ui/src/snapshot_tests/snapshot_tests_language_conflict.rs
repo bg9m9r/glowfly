@@ -250,7 +250,7 @@ fn conflict_check_german() {
     german(&mut st);
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label(&de.trf("conflict_check.merge.button", &[("theirs", &"search"), ("ours", &"main")])).is_some());
+    assert!(h.query_by_label(&de.trf("conflict_check.merge.short.named", &[("name", &"search")])).is_some());
     assert_no_english(&h, "the conflict report");
     h.check_snapshot("conflict_report_german");
     drop(h);

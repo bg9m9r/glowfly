@@ -97,7 +97,9 @@ fn clone_repo(st: &mut AppState, req: CloneRequest, fx: &mut Vec<Effect>) {
         return;
     }
     let dest = req.parent.join(&req.name);
-    let cmd = clone_cmd(&req.url, &req.name, &req.options);
+    // From a host with a connected account, over https: its SSH-named submodules come over https too.
+    let https = super::clone_https::rewrites_for(&st.settings.connections, &req.url);
+    let cmd = [https.clone(), clone_cmd(&req.url, &req.name, &req.options)].concat();
     let submodules = req.options.submodules;
     let sparse = req.options.sparse;
     if sparse.is_some()
@@ -113,6 +115,7 @@ fn clone_repo(st: &mut AppState, req: CloneRequest, fx: &mut Vec<Effect>) {
     }
     if let Some(sparse) = sparse {
         let subs = if submodules { sparse_submodule_cmds(&sparse.folders) } else { Vec::new() };
+        let subs = subs.into_iter().map(|c| [https.clone(), c].concat()).collect();
         let (then_open, folders) = (Some((dest.clone(), Created::Clone)), sparse.folders);
         let effect = |parent| Effect::Clone(CloneEffect::Sparse { parent, cmd, dest, folders, submodules: subs });
         super::jobs::start_effect_job(st, "Clone", req.parent, then_open, effect, fx);

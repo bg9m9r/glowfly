@@ -27,11 +27,12 @@ pub(super) fn prune_then(st: &mut AppState, m: BranchMsg, now: std::time::Instan
     }
 }
 
-/// Checks out local branch `name`, unless it is HEAD; opens the worktree that has it instead.
+/// Checks out local branch `name`; opens the worktree that has it instead. HEAD is already
+/// checked out, so for it (a double-click on the current branch) nothing happens and nothing is
+/// said: the click has selected it.
 pub(super) fn checkout(st: &mut AppState, name: &str, go: Go, fx: &mut Vec<Effect>) {
     let Some(b) = super::branches::find(st, name) else { return };
     if b.is_head {
-        st.log(false, format!("{name} is already checked out."));
         return;
     }
     let again = || BranchMsg::Checkout(name.to_owned());
@@ -79,8 +80,9 @@ pub(super) fn checkout_remote(st: &mut AppState, remote: &str, name: &str, go: G
 
 /// Checks out `local`, which tracks `remote`/`name`, fast-forwarding it to that branch first
 /// when it is only behind. The checked-out one is fast-forwarded in place (as
-/// `FastForwardBranch` does, update/branches.rs); for one another worktree has, that worktree
-/// opens instead and nothing moves.
+/// `FastForwardBranch` does, update/branches.rs), else left as it is without a word, as
+/// `checkout` leaves HEAD; for one another worktree has, that worktree opens instead and
+/// nothing moves.
 pub(super) fn checkout_tracking(st: &mut AppState, remote: &str, name: &str, local: &str, go: Go, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     let upstream = format!("{remote}/{name}");
@@ -95,9 +97,8 @@ pub(super) fn checkout_tracking(st: &mut AppState, remote: &str, name: &str, loc
     };
     let plan = remote_branch::tracking_checkout(&b, tip);
     if b.is_head {
-        match plan {
-            TrackingCheckout::FastForward { .. } => super::branches::fast_forward(st, &b.name, fx),
-            _ => st.log(false, t.trf("remote_branch.checkout.already", &[("branch", &local)])),
+        if let TrackingCheckout::FastForward { .. } = plan {
+            super::branches::fast_forward(st, &b.name, fx);
         }
         return;
     }

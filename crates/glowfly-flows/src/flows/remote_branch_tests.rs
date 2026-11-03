@@ -76,7 +76,7 @@ fn checkout_remote_switches_to_tracking_local() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(cmds(&mut st, checkout("origin", "feature")), vec![args(&["checkout", "feature", "--"])]);
     assert!(cmds(&mut st, checkout("origin", "main")).is_empty(), "main tracks origin/main and is checked out");
-    assert_eq!(last_log(&st), "main is already checked out.");
+    assert!(st.toasts.iter().all(|t| t.ok), "no failure toast: {:?}", st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>());
     cleanup(&[&work, &bare]);
 }
 

@@ -8,6 +8,8 @@
 //! Are you sure you want to continue connecting (yes/no/[fingerprint])?
 //! ```
 //!
+//! OpenSSH 10 writes `key fingerprint is: SHA256:…`, with a colon; both are read.
+//!
 //! [`parse`] picks the host, the address, the key type and the fingerprint out of that text so
 //! the dialog can show them as fields. Other wordings return `None` and are shown as they are.
 
@@ -27,7 +29,7 @@ pub struct HostKey {
 }
 
 const HOST_LINE: &str = "The authenticity of host '";
-const FINGERPRINT: &str = " key fingerprint is ";
+const FINGERPRINT: &str = " key fingerprint is";
 
 /// Reads OpenSSH's unknown-host question, or `None` when `text` isn't in that wording (or
 /// lacks the host or the fingerprint).
@@ -49,7 +51,8 @@ pub fn parse(text: &str) -> Option<HostKey> {
         } else if key.is_none()
             && let Some((kind, fp)) = line.split_once(FINGERPRINT)
         {
-            let fp = fp.trim();
+            // OpenSSH 10: "key fingerprint is: SHA256:…".
+            let fp = fp.strip_prefix(':').unwrap_or(fp).trim();
             let fp = fp.strip_suffix('.').unwrap_or(fp).trim();
             if !fp.is_empty() {
                 key = Some((kind.trim().to_owned(), fp.to_owned()));
