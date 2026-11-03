@@ -1,26 +1,21 @@
 //! The status bar's live-updates state, next to the version while a repository is watched
-//! (`WatchState::live_updates`): a mark, then its label in `weak`. A `success` dot, "Live"; a
-//! weak ring while the watcher's probe is out, "Checking…"; a weak dot for a read-only
-//! repository the probe couldn't test, "Unconfirmed"; a warn dot when polled, "Slow updates";
-//! and a warn ring with a slash when the watcher failed, "Not watching". Only the two warn
+//! (`WatchState::live_updates`): a mark leading its label in a Badge (`widgets::chip`). A
+//! `success` dot, "Live"; a weak ring while the watcher's probe is out, "Checking…"; a weak dot
+//! for a read-only repository the probe couldn't test, "Unconfirmed" (these three bare, the
+//! label in `weak`); a warn dot when polled, "Slow updates"; and a warn ring with a slash when
+//! the watcher failed, "Not watching" (these two on a faint wash of warn). Only the two warn
 //! states take a click (and the keyboard focus, with an inset ring), which refreshes now.
 //! Painted shapes, not glyphs; the tooltip says what each state means.
 
 use super::theme::color;
-use super::theme::tokens::{self, radius};
+use super::widgets::chip::{self, Chip, ChipSize, Lead};
 use crate::keymap::BindingId;
 use crate::msg::{Msg, RepoMsg};
 use crate::state::AppState;
 use crate::state::watch::{LiveUpdates, REMOTE_POLL};
-use crate::ui::theme::type_scale;
-use eframe::egui::{self, Color32, Sense, Stroke, pos2, vec2};
+use eframe::egui::{self, Color32, Stroke, vec2};
 
-const HEIGHT: f32 = 20.0;
-/// The dot's slot: a 6 px dot centred in 14 px.
-const SLOT: f32 = 14.0;
 const DOT: f32 = 6.0;
-/// Between the dot's slot and the label (6 px from the dot's edge).
-const GAP: f32 = 2.0;
 /// The slash across the failed state's ring: its half extent and stroke.
 const SLASH: f32 = 3.5;
 const SLASH_W: f32 = 1.25;
@@ -68,42 +63,34 @@ fn look(st: &AppState, live: LiveUpdates) -> Look {
     }
 }
 
-/// Draws the mark and label in the status bar's right-to-left row.
-pub(super) fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let Some(live) = st.watch.live_updates() else { return };
-    let look = look(st, live);
-    let font = type_scale::font(type_scale::SMALL);
-    let text = ui.painter().layout_no_wrap(look.label.to_owned(), font, color::weak());
-    let clickable = look.clickable;
-    let sense = if clickable { Sense::click() } else { Sense::hover() };
-    let (rect, resp) = ui.allocate_exact_size(vec2(SLOT + GAP + text.size().x, HEIGHT), sense);
-    let p = ui.painter();
-    let centre = pos2(rect.left() + SLOT / 2.0, rect.center().y);
-    let stroke = Stroke::new(1.0_f32, look.tone);
+/// Paints the state's mark centred at `c`.
+fn paint_mark(p: &egui::Painter, c: egui::Pos2, look: &Look) {
     let _ = match look.mark {
-        Mark::Dot => p.circle_filled(centre, DOT / 2.0, look.tone),
-        Mark::Ring | Mark::Slashed => p.circle_stroke(centre, DOT / 2.0 - 0.5, stroke),
+        Mark::Dot => p.circle_filled(c, DOT / 2.0, look.tone),
+        Mark::Ring | Mark::Slashed => p.circle_stroke(c, DOT / 2.0 - 0.5, Stroke::new(1.0_f32, look.tone)),
     };
     if look.mark == Mark::Slashed {
         let d = vec2(SLASH, SLASH);
-        p.line_segment([centre - d, centre + d], Stroke::new(SLASH_W, look.tone));
+        p.line_segment([c - d, c + d], Stroke::new(SLASH_W, look.tone));
     }
-    let at = pos2(rect.left() + SLOT + GAP, rect.center().y - text.size().y / 2.0);
-    p.galley(at, text, color::weak());
-    // Packed in the bar's row, like a quiet button: the inset ring.
-    if clickable && resp.has_focus() {
-        tokens::focus_ring_inset(p, rect, radius::SM);
-    }
-    let name = look.label.to_owned();
-    let kind = if clickable { egui::WidgetType::Button } else { egui::WidgetType::Label };
-    resp.widget_info(|| egui::WidgetInfo::labeled(kind, true, name.clone()));
-    let resp = resp.on_hover_text(&look.tip);
-    if clickable {
-        let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+}
+
+/// Draws the state's Badge in the status bar's right-to-left row: a warn state on a faint wash
+/// of warn, refreshing when clicked; a quiet one bare, its label in `weak`.
+pub(super) fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let Some(live) = st.watch.live_updates() else { return };
+    let look = look(st, live);
+    let mark = |p: &egui::Painter, c: egui::Pos2, _slot: f32| paint_mark(p, c, &look);
+    let badge = Chip::new(ChipSize::Badge, look.label).lead(Lead::Paint(&mark));
+    if look.clickable {
+        let badge = badge.look(chip::Look::new(color::wash(look.tone, 0.18), color::text()));
+        let resp = badge.button(ui).on_hover_text(&look.tip);
         if resp.clicked() {
             msgs.push(Msg::Repo(RepoMsg::Refresh));
         }
+        return;
     }
+    badge.look(chip::Look::new(Color32::TRANSPARENT, color::weak())).show(ui).on_hover_text(&look.tip);
 }
 
 #[cfg(test)]

@@ -124,7 +124,6 @@ const DEAD_PUB: &[&str] = &[
     "crates/glowfly-ui/src/widgets/buttons.rs: tonal",
     "crates/glowfly-ui/src/widgets/menu_submenu.rs: CLOSE_GRACE",
     "crates/glowfly-ui/src/widgets/menu_submenu.rs: OPEN_DELAY",
-    "crates/glowfly-ui/src/widgets/mod.rs: chip_with_edge",
     "crates/glowfly-ui/src/widgets/tooltip_motion.rs: rise",
 ];
 

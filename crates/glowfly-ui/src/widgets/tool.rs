@@ -22,8 +22,9 @@ const TOOL_W: f32 = 56.0;
 const TOOL_W_BARE: f32 = 40.0;
 /// A tool slot's height, the toolbar row's whole height.
 pub(crate) const TOOL_H: f32 = 48.0;
-/// Room beside a caption inside its slot, both sides together.
-const CAPTION_PAD: f32 = 8.0;
+/// Room beside a caption inside its slot, both sides together: 5 px a side, so a hover tile
+/// never hugs a long caption and two captions' ink stays 12 px apart.
+const CAPTION_PAD: f32 = 10.0;
 /// The icon's centre and the caption's, below the slot's top.
 const ICON_Y: f32 = 17.0;
 const CAPTION_Y: f32 = 37.0;
@@ -32,6 +33,8 @@ const TOOL_SIZE: ControlSize = ControlSize::Regular;
 /// Between the buttons of one toolbar group (egui's item spacing there); a dropdown caret sits
 /// right against its button.
 pub const TOOL_SPACING: f32 = 2.0;
+// Two captions side by side keep at least 8 px between them.
+const _: () = assert!(CAPTION_PAD + TOOL_SPACING >= 8.0);
 /// Between two toolbar groups: the divider with its margins (`ghost::divider`).
 pub const GROUP_GAP: f32 = super::ghost::DIVIDER_W;
 /// The toolbar row's height: a tool slot with room above and below it.
@@ -41,7 +44,7 @@ pub const GROUP_H: f32 = TOOL_H + 2.0 * (GROUP_PAD + BORDER_W);
 pub const CARET_W: f32 = CARET_HIT_W;
 /// The caret glyph: a stroked chevron `CARET_ARM` either side of its centre and `CARET_DROP`
 /// tall, in the tab glyphs' line width.
-const CARET_ARM: f32 = 3.5;
+pub const CARET_ARM: f32 = 3.5;
 const CARET_DROP: f32 = 2.0;
 /// The line between a split button's halves: an icon's height, shorter than the divider between
 /// groups, so a caret reads as part of its action.

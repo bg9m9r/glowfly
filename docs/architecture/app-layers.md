@@ -117,6 +117,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `session_view.rs`: `TabView`, the per-tab view state in `RepoSession::tab_view` (search text, ref filter, graph scroll, file-list folds, expanded empty sections, the diff's opened folds and top row with the mode and layout it was counted in, whether its history was freed while parked).
 - `empty_sections.rs`: the left-panel sections that start collapsed while empty, and the flag each one's header toggles then.
 - `tip.rs`: the rich tooltip's data.
+- `system_a11y.rs` (`view::system_a11y`): the system's reduce-motion, high-contrast and text-size settings as the shell read them (`ViewState::system_a11y`, set by `AppMsg::SystemA11y`), and the values in effect with Preferences > Accessibility's choices: `motion_reduced`, `system_contrast`, `zoom_factor`. Tests in `update/tests/system_a11y_tests.rs`.
 - `undo_preview.rs`: what Undo and Redo would change.
 - `op_preview.rs`: the operation preview's dialog data, its title and headline, why Apply is off (busy, loading, nothing to do or stale) and the message Apply sends, the same as the direct menu item's.
 - `refresh/recount.rs`: when other worktrees' changes are counted again after a reload that kept the snapshot (at most once per `RECOUNT_EVERY`).
@@ -191,6 +192,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `runner/platform/state_files.rs`: the recent-repositories and open-tabs files (a bad line costs only itself, a failed read stops saves over the file, private on Unix); its tests in `state_files_tests.rs`.
 - `runner/platform/open_events.rs`: the inbox where the folders and links the OS hands over wait until the runner attaches.
 - `platform/mod.rs`: the window's glue with the OS, only for the shell and `main.rs` (the files below).
+- `platform/a11y_system.rs`: the system's reduce-motion, high-contrast and text-size settings, read for the shell (Windows system parameters and registry, AppKit's `NSWorkspace`, GNOME's gsettings on a thread) through a `Watch` whose reader tests replace.
 - `platform/app_id.rs`: the installed Windows copy's app id, taken before the window opens.
 - `platform/macos_events.rs`: the folders and links macOS hands Glowfly.app as Apple events, waiting in `runner/platform/open_events.rs` until the runner attaches (`platform::install_open_events`).
 - `platform/native_menu.rs`: the macOS system menu bar showing Glowfly's menus: the facade, the queue of clicked items' tags and the hook that turns winit's default app menu off.

@@ -8,10 +8,10 @@ use crate::state::AppState;
 use crate::state::journal::short;
 use crate::state::range_diff::status_label;
 use crate::ui::common::{added_color, modified_color, removed_color};
-use crate::ui::theme::tokens::radius;
 use crate::ui::theme::{color, contrast, type_scale};
+use crate::ui::widgets::chip::{Chip, ChipSize, Look};
 use crate::ui::widgets::{Icon, paint_cut_text, paint_icon, row_fill};
-use eframe::egui::{self, Color32, CornerRadius, CursorIcon, Painter, Rect, Sense, Ui, pos2, vec2};
+use eframe::egui::{self, Color32, CursorIcon, Painter, Rect, Sense, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::range_diff::{Pair, Side, Status};
 use glowfly_model::range_diff::RangeDiffMsg;
@@ -84,15 +84,9 @@ fn paint(p: &Painter, t: Lang, rect: Rect, pair: &Pair) {
     paint_cut_text(p, pos2(x, y2), &side(&pair.new), mono, color::weak(), (right - x).max(0.0));
 }
 
-/// A small status chip at `x` on the line centred at `y`, filled and inked for `col`; returns
+/// A status badge at `x` on the line centred at `y`, filled and inked for `col`; returns
 /// its rect.
 fn chip(p: &Painter, x: f32, y: f32, text: &str, col: Color32) -> Rect {
-    const H: f32 = 18.0;
-    const PAD: f32 = 6.0;
     let (fill, ink) = contrast::change_chip(col, &color::current());
-    let galley = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::SMALL), ink);
-    let rect = Rect::from_min_size(pos2(x, y - H / 2.0), vec2(galley.size().x + 2.0 * PAD, H));
-    p.rect_filled(rect, CornerRadius::same(radius::SM), fill);
-    p.galley(pos2(x + PAD, y - galley.size().y / 2.0), galley, ink);
-    rect
+    Chip::new(ChipSize::Badge, text).look(Look::new(fill, ink)).paint(p, x, y)
 }

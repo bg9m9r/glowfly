@@ -78,6 +78,7 @@ Button "Copy link"
 Button "Open in browser"
 Label "#12"
 Label "Search results page"
+Label "Draft"
 Label "by ada · search"
 Label "main"
 Button "Overview" [off]
@@ -122,5 +123,4 @@ painted:
   "0"
   "Submodules"
   "0"
-  "Draft"
   "A"

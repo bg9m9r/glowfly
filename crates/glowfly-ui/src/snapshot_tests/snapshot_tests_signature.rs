@@ -117,3 +117,24 @@ fn unsigned_commit_has_no_badge() {
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::WantSignature(_)))));
     remove_fixture(&dir);
 }
+
+/// A left click on the badge opens its menu below it, as a right-click does at the pointer;
+/// a second click closes it.
+#[test]
+fn a_click_on_the_signature_badge_opens_its_menu() {
+    let (mut st, dir, oid) = with_signed_head(ThemeChoice::Dark, "sig-click-menu", Some(SigningFormat::Ssh));
+    let out = format!("G\0ada@example.com\0{KEY}\0{KEY}\0fully\0Good \"git\" signature for ada@example.com\n");
+    checked(&mut st, oid, ssh(&out, ""));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Check again").is_none(), "closed at rest");
+    h.get_by_label("Verified").click();
+    h.run();
+    assert!(h.query_by_label("Check again").is_some(), "a click opens the menu");
+    assert!(h.query_by_label("Copy key").is_some());
+    h.get_by_label("Verified").click();
+    h.run();
+    assert!(h.query_by_label("Check again").is_none(), "a second click closes it");
+    drop(h);
+    remove_fixture(&dir);
+}

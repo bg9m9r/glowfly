@@ -10,7 +10,7 @@ use crate::ui::common::{added_color, removed_color};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use crate::ui::widgets::{self, Cut, paint_cut_text};
+use crate::ui::widgets::{Cut, chip, paint_cut_text};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
 use git2::Oid;
@@ -147,7 +147,8 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
         let mut x = row.msg_x;
         if let Some((label, draft)) = row.pr {
             let col = if *draft || ink.dimmed { color::weak() } else { color::progress() };
-            x += widgets::chip(&mp, x, mid, label, color::wash(col, 0.35), col) + 6.0;
+            let look = chip::Look::new(color::wash(col, 0.35), col);
+            x = chip::Chip::new(chip::ChipSize::Badge, label.as_str()).look(look).paint(&mp, x, mid).right() + 6.0;
         }
         let body = row.show_body.then(|| c.body_preview());
         // The body's runs follow the summary's chars in the job.
