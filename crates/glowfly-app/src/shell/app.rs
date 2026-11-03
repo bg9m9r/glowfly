@@ -157,6 +157,7 @@ impl GlowflyApp {
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
                 markdown: Default::default(),
+                ref_upstreams: Default::default(),
             },
             runner: make_runner(tx, repaint(ctx)),
             results,

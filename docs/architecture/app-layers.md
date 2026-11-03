@@ -85,7 +85,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 ## `state/`: plain data and pure rules
 
 - `AppState`: plain data, one file per area; pure rules (why an action is blocked, form checks, labels) live next to their data.
-- `stack_rows.rs`: the LOCAL section's stack tree.
+- `stack_rows.rs`: the LOCAL section's stack tree, kept between frames per snapshot and filter.
 - `branch_delete.rs`: the branch Delete dialog's data (the tip, what would be lost, the Git Flow role), its words and the message its danger button sends.
 - `branches/push.rs`: which branches a row or toast may force push (refused for the remote's default branch and a Git Flow base), the confirmation naming the commits the remote would lose, the toolbar's confirmation (warning plainly before it overwrites a default or base branch), and Push to all remotes' headline.
 - `branches/rejected_push.rs`: the local branch a push rejected as behind was for, read from the job's push command, git's rejection line and its `To` URL (matched on push URLs, one remote only), for the toast's Force push with lease.
