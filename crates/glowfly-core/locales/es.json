@@ -2326,7 +2326,6 @@
   "release_notes.open_releases.button": "Abrir la página de versiones",
   "release_notes.running": "Estás usando Glowfly {version}",
   "release_notes.title": "Notas de la versión",
-  "remote_branch.checkout.already": "{branch} ya es la rama actual.",
   "remote_branch.checkout.diverged": "{branch} y {upstream} han divergido ({ahead} por delante, {behind} por detrás), así que se hace checkout de {branch} sin moverla. Haz merge o rebase para juntarlas.",
   "remote_branch.checkout.gone": "{upstream} ya no existe.",
   "remote_branch.checkout.not_tracking": "{branch} ya no sigue a {upstream}.",

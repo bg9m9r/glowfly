@@ -2326,7 +2326,6 @@
   "release_notes.open_releases.button": "Open releases page",
   "release_notes.running": "You're running Glowfly {version}",
   "release_notes.title": "Release notes",
-  "remote_branch.checkout.already": "{branch} is already checked out.",
   "remote_branch.checkout.diverged": "{branch} and {upstream} have diverged ({ahead} ahead, {behind} behind), so {branch} is checked out without moving it. Merge or rebase to bring them together.",
   "remote_branch.checkout.gone": "{upstream} no longer exists.",
   "remote_branch.checkout.not_tracking": "{branch} no longer tracks {upstream}.",
