@@ -17,7 +17,7 @@ source file, update its line here.
 - Buttons have one disabled look: a neutral fill and weak text, never an outline or egui's fade, and a `why` shown on hover.
 - `button_look.rs`: each button kind's colours per state, and where every target's state becomes pixels: `paint_target` (a quiet target's layer over its own shape, a single framed control's border going weak while lit), `paint_button` (a button kind's look over its own shape) and their focus ring on the same corners.
 - `button_split.rs`: the split button (an action and its menu caret as one shape with two targets, laid out as a segment bar): one edge, one divider, only the hovered half lights, each half's focus ring inset on its own corners.
-- `widgets/tool.rs`: the toolbar's buttons, toggles and split buttons, each lighting its whole slot; `widgets::tool_group` a borderless group and `tool_gap` the divider between groups, `split_gap` the room after a split's caret.
+- `widgets/tool.rs`: the toolbar's buttons, toggles and split buttons, each lighting its whole slot, disabled at half alpha, a split's count badge over its icon; `widgets::tool_group` a borderless group and `tool_gap` the divider between groups, `split_gap` the room after a split's caret; tests in `tool_tests.rs`.
 - `widgets/segment_bar.rs`: flush segments in one shape (the toolbar pickers' framed bar, a split button's quiet one), each its own target, with full-height dividers in a framed bar; its layout is shared with `button_split.rs`; tests in `segment_bar_tests.rs`.
 - `widgets/ghost.rs`: ghost buttons (at a `ControlSize`) and dividers, shared by the diff's file header, the terminal panel's header and the graph's New branch… button.
 - `widgets/segmented.rs`: a segmented control at a `ControlSize` whose segments are quiet targets (`paint_target`) and can be disabled with a reason on hover; the raised option's corners are concentric with the track.
@@ -26,7 +26,7 @@ source file, update its line here.
 
 ## Rows and lists
 
-- `list_row.rs`: list rows, whose dim right-hand parts paint ahead/behind arrows, and the side panels' row heights and insets.
+- `list_row.rs`: list rows, whose dim right-hand parts paint ahead/behind arrows (`paint_parts`, shared with the branch picker), and the side panels' row heights and insets.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: one selection fill with a left accent bar and lifted hover, shared by the graph, sidebar rows, file rows and the file history list.

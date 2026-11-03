@@ -11,6 +11,10 @@
 //! A cut name shows whole on hover, and the accessible name is always the whole name. The
 //! branch name follows a dot in the checked-out branch's colour (a ring while HEAD is
 //! detached), and each branch in its menu has its colour dot, the checked-out one checked.
+//! After the branch name, its counts against its upstream ("2↑ 3↓", the sidebar's painted
+//! arrows, `list_row::paint_parts`) take room inside the slot, cutting the name rather than
+//! widening the bar, and hide when they would leave the name less than its floor; they show
+//! only when out of sync, and the accessible name says them.
 
 use super::fit;
 use super::menus::repo_menu;
@@ -19,6 +23,7 @@ use crate::state::AppState;
 use crate::state::worktree_branches::Elsewhere;
 use crate::ui::branch_dot;
 use crate::ui::common::{menu_item, short};
+use crate::ui::list_row::{Part, paint_parts, parts_width};
 use crate::ui::menu_anchor;
 use crate::ui::theme::branch_colours::line;
 use crate::ui::theme::color;
@@ -50,6 +55,8 @@ const PICKER_SIZE: ControlSize = ControlSize::Large;
 /// The caret's room after a name, and the branch icon's before it.
 const CARET_ROOM: f32 = 14.0;
 const ICON_ROOM: f32 = 20.0;
+/// Between the branch name and its ahead/behind counts.
+const COUNTS_GAP: f32 = 6.0;
 /// One part's room besides its name.
 const PART_FRAME: f32 = 2.0 * PAD_X + CARET_ROOM;
 /// The bar's room besides the names: both parts' frames, the branch icon and the border.
@@ -110,11 +117,19 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
     let (repo_w, branch_w) = name_widths(slots, names_room);
     let repo_g = cut_galley(ui.ctx(), cut_job(repo.clone(), font.clone(), color::text()), repo_w);
     let branch = st.snap.as_ref().zip(head.as_ref()).map(|(snap, head)| {
-        let shown = cut_middle_in(ui.painter(), head, &font, branch_w);
+        let mut counts = counts(snap);
+        let mut counts_w = if counts.is_empty() { 0.0 } else { parts_width(ui.painter(), &counts) + COUNTS_GAP };
+        // Counts that would cut the name below its floor (a shorter name, its own width) hide;
+        // the badges and tips still say them.
+        let name_need = fit::text_w(ui.ctx(), head, &font).min(fit::BRANCH_FIT.0);
+        if branch_w - counts_w < name_need {
+            (counts, counts_w) = (Vec::new(), 0.0);
+        }
+        let shown = cut_middle_in(ui.painter(), head, &font, (branch_w - counts_w).max(0.0));
         let cut = shown != *head;
         let g = ui.painter().layout_no_wrap(shown, font.clone(), color::text());
         // A dot in the checked-out branch's colour; a ring while HEAD is detached.
-        (snap, head, g, cut, snap.head_swatch().map(line))
+        (snap, head, g, cut, snap.head_swatch().map(line), counts)
     });
     let mut segs = vec![Seg { w: part_w(repo_w, false), enabled: true }];
     if branch.is_some() {
@@ -131,11 +146,36 @@ pub(super) fn pickers(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> 
     bar.paint(ui, &open);
     let mut responses = bar.responses.into_iter();
     let cut = repo_g.elided;
-    part(ui, responses.next().expect("the repository segment"), t.tr("toolbar.repository"), (repo_g, None), &repo, cut);
-    if let (Some((_, head, g, cut, tone)), Some(r)) = (branch, responses.next()) {
-        part(ui, r, t.tr("toolbar.branch"), (g, Some(tone)), head, cut);
+    part(ui, responses.next().expect("the repository segment"), t.tr("toolbar.repository"), (repo_g, None, &[]), (&repo, &repo), cut);
+    if let (Some((_, head, g, cut, tone, counts)), Some(r)) = (branch, responses.next()) {
+        let name = access_name(t, head, &counts);
+        part(ui, r, t.tr("toolbar.branch"), (g, Some(tone), &counts), (head, &name), cut);
     }
     slots
+}
+
+/// The head branch's counts against its upstream: ahead, then behind, each only when not 0;
+/// none on a detached HEAD or without an upstream.
+fn counts(snap: &Snapshot) -> Vec<Part<'static>> {
+    let Some(b) = snap.head_branch.as_ref().and_then(|_| snap.head_info()).filter(|b| b.upstream.is_some()) else { return Vec::new() };
+    let mut parts = Vec::new();
+    if b.ahead > 0 {
+        parts.push(Part::Ahead(b.ahead));
+    }
+    if b.behind > 0 {
+        parts.push(Part::Behind(b.behind));
+    }
+    parts
+}
+
+/// The branch picker's accessible name: the branch, with its `counts` ("main, 2 ahead, 3 behind").
+fn access_name(t: Lang, head: &str, counts: &[Part<'_>]) -> String {
+    match counts {
+        [Part::Ahead(a), Part::Behind(b)] => t.trf("toolbar.branch_name_both", &[("branch", &head), ("ahead", a), ("behind", b)]),
+        [Part::Ahead(n)] => t.trf("toolbar.branch_name_ahead", &[("branch", &head), ("count", n)]),
+        [Part::Behind(n)] => t.trf("toolbar.branch_name_behind", &[("branch", &head), ("count", n)]),
+        _ => head.to_owned(),
+    }
 }
 
 /// The branch picker's menu: the local branches with their colour dots, the checked-out one
@@ -173,9 +213,16 @@ pub(super) fn part_w(slot: f32, dot: bool) -> f32 {
 }
 
 /// Paints one picker over its segment `r`: `caption` over the name galley (with its dot before
-/// it: a branch dot, or a ring for None), and the caret pinned at the segment's right. Named by
-/// `full`, which also shows on hover when the name was `cut`.
-fn part(ui: &egui::Ui, r: Response, caption: &str, (name, dot): (Arc<Galley>, Option<Option<Color32>>), full: &str, cut: bool) -> Response {
+/// it: a branch dot, or a ring for None, and its `counts` after it), and the caret pinned at the
+/// segment's right. Named by `access`; `full`, the whole name, shows on hover when it was `cut`.
+fn part(
+    ui: &egui::Ui,
+    r: Response,
+    caption: &str,
+    (name, dot, counts): (Arc<Galley>, Option<Option<Color32>>, &[Part<'_>]),
+    (full, access): (&str, &str),
+    cut: bool,
+) -> Response {
     let rect = r.rect;
     let icon_w = if dot.is_some() { ICON_ROOM } else { 0.0 };
     // In a very narrow window the caption is cut too.
@@ -195,9 +242,13 @@ fn part(ui: &egui::Ui, r: Response, caption: &str, (name, dot): (Arc<Galley>, Op
         }
         None => {}
     }
+    let name_w = name.size().x;
     p.galley(pos2(x + icon_w, row_y - name.size().y / 2.0), name, color::text());
+    if !counts.is_empty() {
+        paint_parts(p, pos2(x + icon_w + name_w + COUNTS_GAP, row_y), counts, color::weak());
+    }
     widgets::caret(p, pos2(rect.right() - PAD_X - 6.0, row_y + 1.0), color::weak());
-    r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, full));
+    r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, access));
     if cut { r.on_hover_text(full) } else { r }
 }
 

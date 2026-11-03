@@ -129,6 +129,27 @@ pub fn sync_line(t: Lang, snap: &Snapshot) -> Option<String> {
     Some(t.trf("toolbar.tip.ahead_behind", args))
 }
 
+/// Where Push sends the head branch, as its menu's first item and its tooltip's title say:
+/// "Push main to origin/main", or without an upstream "Publish search to origin (creates
+/// origin/search)" on the remote Push picks. None on a detached HEAD or without a remote.
+pub fn push_target(t: Lang, snap: &Snapshot) -> Option<String> {
+    let b = head(snap)?;
+    if let Some(up) = &b.upstream {
+        return Some(t.trf("toolbar.tip.push_title", &[("branch", &b.name), ("upstream", up)]));
+    }
+    let remote = super::branches::default_remote(snap)?;
+    Some(t.trf("toolbar.tip.push_publish_title", &[("branch", &b.name), ("remote", &remote)]))
+}
+
+/// Pull's title: "Pull origin/main into main (rebase)", or "(merge)", as a plain `git pull` of
+/// the head branch would; None on a detached HEAD or without an upstream.
+pub fn pull_target(t: Lang, snap: &Snapshot) -> Option<String> {
+    let b = head(snap)?;
+    let up = b.upstream.as_ref()?;
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("upstream", up), ("branch", &b.name)];
+    Some(if snap.pull_rebase { t.trf("toolbar.tip.pull_title_rebase", args) } else { t.trf("toolbar.tip.pull_title_merge", args) })
+}
+
 const MINUTE: i64 = 60;
 const HOUR: i64 = 60 * MINUTE;
 const DAY: i64 = 24 * HOUR;

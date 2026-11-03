@@ -1,5 +1,6 @@
 //! The per-button tooltips on a one-commit fixture: Undo with nothing to undo, Pop without a
-//! stash, the terminal button for both right-click choices, and Push and Pull over an upstream.
+//! stash, the terminal button for both right-click choices, and Push and Pull over an upstream (the
+//! count in Push's title, the pull mode in Pull's).
 
 use super::*;
 use crate::state::toolbar_tips::tests::state;
@@ -44,14 +45,25 @@ fn push_and_pull_name_the_upstream() {
     assert_eq!(push_tip.title, "Publish this repository", "no remote at all");
     crate::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 2, 0, true);
     let tip = push(&st);
-    assert_eq!(tip.title, "Push main to origin/main");
+    assert_eq!(tip.title, "Push main to origin/main · 2 commits");
     assert_eq!(tip.state.as_deref(), Some("main is 2 ahead, 0 behind origin/main"));
     assert_eq!(tip.preview.map(|p| p.heading).as_deref(), Some("Sends 2 commits"));
     let tip = pull(&st);
-    assert_eq!(tip.title, "Pull origin/main into main");
+    assert_eq!(tip.title, "Pull origin/main into main (merge)");
     assert_eq!(tip.body.as_deref(), Some("Nothing new on origin/main since the last fetch; pulling checks again."));
     assert_eq!(tip.footer.as_deref(), Some("Not fetched yet"));
     st.snap.as_mut().unwrap().locals[0].upstream = None;
     st.snap.as_mut().unwrap().remotes = vec![("origin".into(), Vec::new())];
-    assert_eq!(push(&st).title, "Push main to origin and track it");
+    assert_eq!(push(&st).title, "Publish main to origin (creates origin/main)");
+}
+
+#[test]
+fn pull_names_the_configured_mode_and_push_drops_a_zero_count() {
+    let mut st = state("tip-sync-mode");
+    crate::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 0, 3, true);
+    assert_eq!(push(&st).title, "Push main to origin/main", "nothing to send: no count");
+    st.snap.as_mut().unwrap().pull_rebase = true;
+    assert_eq!(pull(&st).title, "Pull origin/main into main (rebase)");
+    crate::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 1, 0, true);
+    assert_eq!(push(&st).title, "Push main to origin/main · 1 commit");
 }

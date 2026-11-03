@@ -1,7 +1,8 @@
 //! Where git pushes a branch when no remote is named (`PushRemotes`): `branch.<name>.pushRemote`,
 //! then `remote.pushDefault`. Read with libgit2 from the repository's whole config (system,
 //! global, local and the files they include), the last value of a key winning as in git. Only
-//! remote names are read; whether the remote exists is up to the caller.
+//! remote names are read; whether the remote exists is up to the caller. Also whether a plain
+//! `git pull` rebases (`pull_rebases`), which the Pull button's tooltip names.
 
 use git2::Repository;
 
@@ -58,6 +59,20 @@ pub fn push_remotes(repo: &Repository) -> PushRemotes {
     read().unwrap_or_default()
 }
 
+/// Whether a plain `git pull` on `branch` rebases: `branch.<branch>.rebase`, else
+/// `pull.rebase`; any value but a false one (`merges`, `interactive`) rebases. Unset, or
+/// unreadable config, merges, as git does.
+pub fn pull_rebases(repo: &Repository, branch: Option<&str>) -> bool {
+    let Ok(cfg) = repo.config().and_then(|mut c| c.snapshot()) else { return false };
+    let keys = branch.map(|b| format!("branch.{b}.rebase")).into_iter().chain(["pull.rebase".to_owned()]);
+    for key in keys {
+        if let Ok(v) = cfg.get_string(&key) {
+            return !matches!(v.trim().to_ascii_lowercase().as_str(), "false" | "no" | "off" | "0" | "");
+        }
+    }
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -73,6 +88,23 @@ mod tests {
         assert_eq!(p.for_branch("feat.x"), Some(("branch.feat.x.pushRemote".to_owned(), "fork")), "dots in the name");
         assert_eq!(p.of_branch("Topic"), Some("other"), "the name keeps its case");
         assert_eq!(p.for_branch("main"), Some(("remote.pushDefault".to_owned(), "mine")));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pull_rebases_follows_the_branch_then_pull_rebase() {
+        let dir = scratch_repo("pull-rebases");
+        let open = || Repository::open(&dir).unwrap();
+        // Set here, so the user's own global setting can't decide it.
+        set_config(&dir, &[("pull.rebase", "false")]);
+        assert!(!pull_rebases(&open(), Some("main")), "false merges");
+        set_config(&dir, &[("pull.rebase", "true")]);
+        assert!(pull_rebases(&open(), Some("main")));
+        assert!(pull_rebases(&open(), None), "a detached HEAD reads pull.rebase");
+        set_config(&dir, &[("branch.main.rebase", "false")]);
+        assert!(!pull_rebases(&open(), Some("main")), "the branch's own setting wins");
+        set_config(&dir, &[("pull.rebase", "merges")]);
+        assert!(pull_rebases(&open(), Some("other")), "merges rebases");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

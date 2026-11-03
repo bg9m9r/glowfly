@@ -44,17 +44,14 @@ pub fn redo(st: &AppState) -> Tip {
     }
 }
 
-/// Pull: "Pull origin/main into main", the ahead/behind line, the commits it brings in and when
-/// the repository last fetched.
+/// Pull: "Pull origin/main into main (rebase)" or "(merge)", as git is set to pull, the
+/// ahead/behind line, the commits it brings in and when the repository last fetched.
 pub fn pull(st: &AppState) -> Tip {
     let t = lang(st);
     let Some(snap) = &st.snap else { return Tip::new(t.tr("toolbar.pull.name")).keys(BindingId::Pull) };
     let head = snap.head_branch.as_ref().and_then(|_| snap.head_info());
     let upstream = head.and_then(|b| Some((b, b.upstream.as_ref()?)));
-    let title = match upstream {
-        Some((b, up)) => t.trf("toolbar.tip.pull_title", &[("upstream", up), ("branch", &b.name)]),
-        None => t.tr("toolbar.pull.name").to_owned(),
-    };
+    let title = rules::pull_target(t, snap).unwrap_or_else(|| t.tr("toolbar.pull.name").to_owned());
     let tip = Tip::new(title).keys(BindingId::Pull).state_opt(rules::sync_line(t, snap)).footer(fetched(st));
     if let Some(why) = rules::pull_blocked(st) {
         return tip.body(why);
@@ -82,8 +79,8 @@ pub fn pull_variant(st: &AppState, text: &str) -> Tip {
     }
 }
 
-/// Push: "Push main to origin/main" (or to a remote it will track, or Publish without a remote),
-/// the ahead/behind line and the commits it sends.
+/// Push: "Push main to origin/main · 2 commits" (or Publish to the remote it will track, or
+/// Publish this repository without a remote), the ahead/behind line and the commits it sends.
 pub fn push(st: &AppState) -> Tip {
     let t = lang(st);
     let Some(snap) = &st.snap else { return Tip::new(t.tr("toolbar.push.name")).keys(BindingId::Push) };
@@ -93,15 +90,12 @@ pub fn push(st: &AppState) -> Tip {
         let tip = Tip::new(t.tr("toolbar.tip.publish_title")).keys(BindingId::Push).state_opt(rules::sync_line(t, snap));
         return tip.body(blocked.unwrap_or_else(|| t.tr("toolbar.tip.publish_body").to_owned()));
     }
-    let title = match head {
-        Some(b) => match &b.upstream {
-            Some(up) => t.trf("toolbar.tip.push_title", &[("branch", &b.name), ("upstream", up)]),
-            None => {
-                let remote = crate::state::branches::default_remote(snap).unwrap_or_default();
-                t.trf("toolbar.tip.push_track_title", &[("branch", &b.name), ("remote", &remote)])
-            }
-        },
-        None => t.tr("toolbar.push.name").to_owned(),
+    let title = match (rules::push_target(t, snap), head) {
+        (Some(title), Some(b)) if b.upstream.is_some() && b.ahead > 0 => {
+            t.trn("toolbar.tip.push_title_commits", b.ahead, &[("title", &title)])
+        }
+        (Some(title), _) => title,
+        (None, _) => t.tr("toolbar.push.name").to_owned(),
     };
     let tip = Tip::new(title).keys(BindingId::Push).state_opt(rules::sync_line(t, snap));
     if let Some(why) = blocked {
