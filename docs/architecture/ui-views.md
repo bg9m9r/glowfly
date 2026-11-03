@@ -46,10 +46,11 @@ start with `state/`, `update/` or `ui/`.
 - `graph/cells.rs`: the graph row's single-line text cells, and the pull request chips by head commit.
 - `graph/refs_fit.rs`: how wide BRANCH / TAG's chips want to be (each row folded to its first chip and "+N"), for the column's auto-fit and inline chips.
 - `graph/wip_row.rs`: this tab's WIP row with its label, change chips and line total, spanning the columns it leaves empty and keeping the label whole longest.
-- `graph/labels.rs`: the row's ref chips with their marks, fitting and "+N" chip.
+- `graph/labels.rs`: the row's ref chips with their marks, fitting and "+N" chip, the halo round the checked-out branch and HEAD (no layout room; a ref chip after it moves 3 px).
+- `graph/labels_tests.rs`: the chips' fitting, widths (marks; the halo takes none) and hit testing.
 - `graph/nodes.rs`: the row's nodes, sized by the row density.
 - `graph/marks.rs`: the painted local, remote and tag marks.
-- `graph/row_look.rs`: the row's background: the lane band, the highlight and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
+- `graph/row_look.rs`: the row's background: the lane band and the highlight (`surfaces::band_color`, `highlight_color`) and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
 - `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
 - `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA), inked and on the find fill.
 - `graph/lane_colours.rs`: the graph's per-row colours, and each lane line's width (HEAD's branch wider) and dash pattern (`graph/paint.rs`, colour-safe colours only).
@@ -83,9 +84,9 @@ start with `state/`, `update/` or `ui/`.
 - `diff/header/identity.rs`: the file's icon, folder, name and chips.
 - `diff/header/nav.rs`: hunk and file steps with the counter.
 - `diff/header/view_menu.rs`: the View button and its menu.
-- `diff/header/actions.rs`: the file actions, their More menu, the primary Stage or Unstage and Close.
+- `diff/header/actions.rs`: the ⋯ menu of file actions and the diff tool, the small secondary Stage or Unstage, and Close.
 - `diff/header/controls.rs`: the ghost buttons and dividers, re-exported from `widgets/ghost.rs`, which the terminal panel's header shares.
-- `diff/header/fit.rs`: which groups fit, in narrowing order.
+- `diff/header/fit.rs`: which parts fit, in narrowing order.
 - `diff/text_sel.rs`: text selection in the diff's code: the press, double- and triple-click, Shift-click and drag with auto-scroll past the edge, the opaque `code_sel` (`code_sel_dim` without the keyboard) behind the glyphs with its nub, the diff's own keyboard focus, Ctrl+C through `state/diff_text.rs`'s `copy`, Ctrl+A (`DiffMsg::SelectAllText`) and the code's screen-reader document node.
 - `diff/row_menu.rs`: the diff's right-click menu over a line's code (Copy, Copy with diff signs, Copy lines, Copy hunk as patch, then the hunk header's line actions on the selected or clicked line), kept or dropping the text selection by where the click lands, and Shift+F10 at the topmost selected line.
 - `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary.

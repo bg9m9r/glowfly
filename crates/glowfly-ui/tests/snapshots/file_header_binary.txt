@@ -7,7 +7,6 @@ Button "Previous change"
 Button "Next change"
 Label "2 / 5"
 Button "More file actions"
-Button "Open in external diff tool"
 Button "Stage file"
 Button "Close diff"
 painted:

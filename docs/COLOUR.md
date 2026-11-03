@@ -109,7 +109,7 @@ Views never name a hex value: they read the active palette through `color::text(
 
 | Token | Theme key | What it is for |
 |---|---|---|
-| accent | `accent` | The theme's own colour: the lantern gold in Dusk, the iris in Dawn, the cobalt in Graphite and Porcelain, the sea glass in Midnight and Mist, the lattice green in the Garden pair and high contrast. Focus rings, links, checked controls, the selected row's bar, the active tab's line, column-resize lines, header highlights. |
+| accent | `accent` | The theme's own colour: the lantern gold in Dusk, the iris in Dawn, the cobalt in Graphite and Porcelain, the sea glass in Midnight and Mist, the lattice green in the Garden pair and high contrast. Selection, focus and the one filled primary of a surface (see "The accent" under Rules): focus rings, checked controls, the selected row's bar, the active tab's line, column-resize lines, header highlights; and links inside prose. |
 | primary | `primary`, `primary_border`, `primary_off` | The fill and edge of primary buttons. |
 | primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and on the dark themes' accents, white on the light ones'). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
@@ -316,6 +316,38 @@ indigo (hue 275, its gold's complement); the rest hue 255. A theme file that set
 
 ## 2. Rules
 
+### The accent
+
+The accent does three jobs and no others:
+
+- **Selection**: the selected row's bar and wash, the selected tab's underline (the pull request
+  view's tabs are an underline, never a filled block), checked controls.
+- **Focus**: the focus ring.
+- **The primary**: the one filled button of a surface (a dialog, a panel's header, a form, a
+  card), placed at its trailing edge, after Cancel and any other choice. A surface has at most
+  one, and many have none (the diff header's Stage file is a small secondary button). Other
+  actions are secondary or quiet, and a surface's rarer actions go behind a ⋯ menu (the rebase
+  editor's Restore original order).
+
+Besides those:
+
+- Links are accent text, underlined on hover, and appear only inside prose (a sentence or a
+  help line). A link that is an action of its own gets its own line (the welcome's Preferences
+  link) or becomes a button.
+- Paths, names and counts are never accent: a file's path, a branch's name and a tab's count
+  take the text colours.
+- Success and "added" use the semantic greens (`added`), never the accent, even where the
+  accent is green.
+- A form's or card's marks are `weak`, not accent (the new code comment's icon), and a card's
+  frame is `border` (its field's focus ring is still the accent).
+- The lantern gold of Dusk and Dawn is reserved for D19 (#456); until then it is Dusk's accent
+  and does only the three jobs above.
+
+The sign-off check for a view's goldens: count the filled accent shapes on each surface. There
+is at most one, and it sits at the surface's trailing edge.
+
+### Everything else
+
 - One job per colour: each colour means one thing (with the related uses listed above), and
   no two families share a colour for different meanings. Each kind keeps to its forms: status
   colours to letter badges and counts, branch colours to lines, dots and name pills, repository
@@ -500,20 +532,39 @@ built-in and two custom palettes with odd colours.
 
 ## 5. Chip tints
 
-Ref chips in the graph (`contrast::ref_chip`, painted by `graph/labels.rs`'s `paint_box`), every
-fill opaque with its text at 4.5:1 or more:
+Ref chips in the graph (`ref_chip::ref_chip`, painted by `graph/labels.rs`'s `paint_box`):
+filled = a local branch, outlined = a reference (a remote branch or a tag), a halo = you are
+here. Every chip stands apart from every row surface it can sit on (`surfaces::with_row_surfaces`:
+the background, hover, the selection with and without the focus, and every lane's band in both
+presets, plain and highlighted while its branch is hovered): its fill or its edge reaches 3:1
+against each. Its text reaches 4.5:1 (7:1 in the
+high-contrast themes) on its fill, or, outlined, on every row surface. Nothing is brown.
 
-- A branch or remote branch on a dark palette: a neutral fill, the background 10% toward
-  `text`, with a 1 px edge (the fill 70% toward the branch's chip tone, `clear`ed) and text in
-  the chip tone. A tint of the branch colour would be brown for every warm branch (orange,
-  gold, lime, olive), so no chip is tinted, and all chips look alike whatever their hue.
-- On a light palette: a pale wash of the branch's hue (OKLCH lightness 0.955, chroma at most
-  0.035), with the same edge and text. Paler than 0.90, a warm wash reads cream.
-- The checked-out branch: on a dark palette a solid fill of its chip tone (`clear`ed, so a
-  warm one is a bright orange or gold) with dark text; on a light one a deeper wash (lightness
-  0.90, chroma at most 0.09) with a full-colour edge.
-- Tags keep the palette's `tag_bg` / `tag_fg` (plum in most themes), a detached HEAD the
-  background 16% toward `text`.
+- A local branch on a dark palette: a solid fill of its clear chip tone (`clear`ed, so a warm
+  one is a bright orange or gold), lifted 5% at a time toward white until it reaches 3:1
+  against every row surface; text and marks in the background, darkened until they read. No
+  edge.
+- A local branch on a light palette: a wash of its hue (OKLCH lightness 0.90, chroma at most
+  0.09) with text in its chip tone (or `text` if that reads brown), and a 1 px edge in its line
+  tone pushed toward black until it reaches 3:1 against every row surface; an edge that would
+  read brown takes the text's colour.
+- The main branch takes the trunk tone the same way: a neutral fill (dark) or wash (light)
+  lettered in the background or `text`.
+- The checked-out branch and a detached HEAD: the local look (HEAD as the trunk's, on a light
+  palette a neutral step 12% toward `text` edged in the trunk tone) plus a 1.5 px halo 1.5 px
+  outside the chip, its corners the chip's plus 3, in the fill colour (dark) or the edge colour
+  (light). The halo box is 28 px tall and takes no layout room: the chip lines up with every
+  other row's, and the ring paints into the cell's inset, its padding or the gap after it. A
+  ref chip after it moves 3 px further away (so the ring doesn't double its edge); a "+N"
+  badge keeps the 4 px gap. The ✔ stays.
+- A remote branch: no fill; the edge in its line tone and the text in its chip tone, pushed
+  until they reach 3:1 and the text target against every row surface; text that reads brown or
+  can't reach it is `text`. Main's remote chip is edged in the trunk tone and lettered in `text`.
+- A tag: outlined like a remote, its edge and text in `tag_fg` (plum in most themes), pushed the
+  same way.
+
+The values are a designer's study (issue #522); `theme/ref_chip_tests.rs` holds every built-in
+in both presets to them. The "+N" badge keeps the `raised` fill.
 
 A change chip (the WIP row's M / A / D) is an opaque tint of its status colour over the base:
 22% in dark palettes and 10% in light ones (`contrast::change_chip`), `unbrown`ed: a warm one

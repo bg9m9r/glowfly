@@ -152,6 +152,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("history_table_high_contrast_light", Window),
     ("history_table_compact_dark", Window),
     ("rebase_dragging", Window),
+    // A commit body kept as written: hard line breaks, long lines soft-wrapped.
+    ("details_hard_wrapped_body", Window),
     // Diffs, blame, conflicts and the pull request's line comments.
     ("diff_inline", Window),
     ("diff_split", Window),

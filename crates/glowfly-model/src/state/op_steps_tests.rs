@@ -56,6 +56,7 @@ fn a_rebase_paused_to_edit_opens_the_commit_form() {
         autostash: false,
         interactive: true,
         command: None,
+        amends: false,
     };
     snap.rebase = Some(progress(StopKind::Edit));
     assert!(default_open(&snap, OpStep::CommitForm));

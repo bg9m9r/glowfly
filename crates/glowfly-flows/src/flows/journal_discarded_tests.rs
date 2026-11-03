@@ -99,6 +99,7 @@ fn nothing_is_restored_while_a_job_runs() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

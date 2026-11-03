@@ -110,6 +110,7 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Narrow the other one-file diffs to the file as the viewer's are (hunk and line revert, external tool sides, binary sides, the hunk view's gaps for an added file): they still read the whole commit or comparison
 - Pass the list row to the hunk view's gap read too, so a renamed file's gaps don't read the whole comparison
 - When a working-tree comparison's list is re-read while a file's diff is still opening and its row changed, open it again with the new row (today only a diff on screen is re-read)
+- In a narrow window the diff toolbar cuts the file name to a bare "." beside its icon; elide to a short name (`greet.rs`) instead
 
 ### Gutter line selection
 
@@ -157,6 +158,10 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Take a side or mark conflicted over a symbolic link no index entry holds (refused today, as the link couldn't be put back)
 - Ignore the executable bit in a conflict undo's file check when `core.fileMode` is false (an undo there can leave a file the next redo calls changed)
 - A band restored with its sides' lines interleaved (saved under the old click order, or edited by hand) is sorted into band order by its first tick or Swap; let a second Swap bring the original order back
+- Take all's accessible name differs from its visible text, which voice control needs to match
+- A band's Take button's 24 px hit area reaches 2.5 px into the row above
+- Ctrl+Enter is blocked on a text file with no conflict chunks while the header's button is enabled
+- A view test that the conflict keys do nothing while a text field has focus
 
 ### Blame gutter
 
@@ -199,6 +204,9 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
   conflicting commits are only local
 - Ignore warnings for one branch, or stop comparing with one remote, from the popover
 - Calm states in the toolbar ("up to date with main", "no conflicts") instead of nothing
+- The operation preview's file rows took the shared list's 6 px gaps and heading; tighten them
+- A popover golden in a narrow window (only `place()` is tested for it)
+- The hidden registration popup senses clicks along the chip's bottom edge (harmless today: it closes the popover)
 
 ### External diff and merge tools
 

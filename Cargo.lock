@@ -1777,6 +1777,7 @@ name = "glowfly-ui"
 version = "0.3.0-rc.1"
 dependencies = [
  "chrono",
+ "dify",
  "eframe",
  "egui-wgpu",
  "egui_kittest",

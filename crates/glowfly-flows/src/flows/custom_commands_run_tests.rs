@@ -89,6 +89,7 @@ fn what_a_command_needs_and_lost_or_busy_commands() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

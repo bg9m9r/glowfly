@@ -82,7 +82,9 @@ fn diff_header_diff_tool_set_light() {
     st.settings.external_tools.diff_tool = "meld".into();
     let mut h = super::snapshot_tests::harness(st, false);
     h.run();
-    // The header looks the same with a tool set; its button opens the file in it.
+    // The header looks the same with a tool set; its ⋯ item opens the file in it.
+    h.get_by_label("More file actions").click();
+    h.run();
     h.get_by_label("Open in external diff tool").click();
     h.run();
     let sent = |m: &crate::msg::Msg| matches!(m, crate::msg::Msg::Tools(crate::tools::ToolsMsg::OpenDiff(t)) if t.path() == "app.txt");
@@ -102,6 +104,7 @@ fn conflict_view_merge_tool_disabled() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -147,6 +150,7 @@ fn conflict_view_while_the_merge_tool_has_the_file() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

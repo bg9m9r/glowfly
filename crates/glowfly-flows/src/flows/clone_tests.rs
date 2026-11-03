@@ -106,6 +106,7 @@ fn a_second_clone_waits_for_the_running_job() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

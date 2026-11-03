@@ -183,7 +183,17 @@ const REASON_W: f32 = 280.0;
 /// A page's primary button; while disabled, `why` shows as a weak line beside it (pass None when
 /// the page already shows that problem above the button). Returns the button's response.
 pub fn primary_button(ui: &mut Ui, text: &str, enabled: bool, why: Option<&str>) -> egui::Response {
-    let button = buttons::primary(text).enabled(enabled).why(why);
+    with_reason(ui, buttons::primary(text), enabled, why)
+}
+
+/// A secondary button at field height, with its reason beside it while disabled, as
+/// `primary_button`: for an action in a field's row that isn't the page's main one.
+pub fn secondary_button(ui: &mut Ui, text: &str, enabled: bool, why: Option<&str>) -> egui::Response {
+    with_reason(ui, buttons::secondary(text).size(ControlSize::Regular), enabled, why)
+}
+
+fn with_reason(ui: &mut Ui, button: buttons::StyledButton<'_>, enabled: bool, why: Option<&str>) -> egui::Response {
+    let button = button.enabled(enabled).why(why);
     let Some(why) = why.filter(|_| !enabled) else { return ui.add(button) };
     let with_reason = |ui: &mut Ui| {
         let r = ui.add(button);

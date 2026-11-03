@@ -100,6 +100,7 @@ fn a_remote_that_needs_a_sign_in_is_paused_and_skipped() {
         quiet: true,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

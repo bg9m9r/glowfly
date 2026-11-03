@@ -11,7 +11,9 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 ## Colours
 
-- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the graph's ref chip colours (neutral, edged chips).
+- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the change and selected-diff-line fills.
+- `theme/ref_chip.rs`: the graph's ref chip colours: filled local branches, outlined remotes and tags, the halo on the checked-out branch and HEAD, each standing 3:1 from every row surface.
+- `theme/ref_chip_tests.rs`: the ref chips in every built-in and both presets: text on the fill or every row surface, fill or edge 3:1 from every row surface, the halo only where you are.
 - `theme/no_brown_tests.rs`: every built-in's (and the Garden pair's) surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets (the colour-safe one with its diff and status colours), stay out of the brown zone, with no exception.
 - `theme/code_sel_tests.rs`: the selected-code fills (`code_sel`, `code_sel_dim`) in every built-in: text and syntax contrast on them, their OKLab distance from the row colours and each other, and the designer's measured values.
 - `theme/inactive.rs`: `selected_inactive`, the selection of a pane without the keyboard focus: the designer's values for the built-ins, and for other palettes a neutral in `selected`'s hue worked out by the same rules.
@@ -40,7 +42,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/colour_safe.rs`: the colour-blind safe preset's diff and status colours (blue added, orange removed, violet modified), each at its theme colour's luminance; `colour_safe_tests.rs` holds them apart under simulated colour vision and at the contrast floors in every built-in.
 - `theme/vision.rs`: simulated colour vision (normal, protan, deutan, tritan), the OKLab distance and the floors under which two lines pass for each other.
 - The branch colours are read by the graph's per-row colours (`graph/lane_colours.rs`) and the branch dots (`branch_dot.rs`).
-- `theme/surfaces.rs`: the colour tokens worked out from a palette, so theme files get them with no keys of their own: the field, guide and toolbar-group fills, the framed toolbar bar's edge (`tool_edge`), the overlay surface with its edge and inset, the hover, pressed and latched layers, a destructive menu item's text and hover pill (`menu_danger`, `danger_hover`), the semantic tones with their tints, the tonal fill and ink, and the brown-safe wash (`color::wash`) views use for translucent colour fills.
+- `theme/surfaces.rs`: the colour tokens worked out from a palette, so theme files get them with no keys of their own: the graph's row bands and highlights (`band_color`, `highlight_color`) and every surface a row's chip sits on (`with_row_surfaces`), the field, guide and toolbar-group fills, the framed toolbar bar's edge (`tool_edge`), the overlay surface with its edge and inset, the hover, pressed and latched layers, a destructive menu item's text and hover pill (`menu_danger`, `danger_hover`), the semantic tones with their tints, the tonal fill and ink, and the brown-safe wash (`color::wash`) views use for translucent colour fills.
 - `ui::theme::color` holds the active palette (a thread-local, see Rules); `ThemeCache` owns palettes built from theme files, and the slots near the trunk the shell reports to the model.
 - `ui/backdrop.rs`: the Mica tints (see Window chrome in [flow-shell.md](flow-shell.md)).
 

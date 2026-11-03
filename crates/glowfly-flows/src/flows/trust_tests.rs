@@ -75,6 +75,7 @@ pub(super) fn job(then_open: (PathBuf, Created)) -> RunningJob {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: Some(then_open),

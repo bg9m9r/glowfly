@@ -14,7 +14,8 @@ use glowfly_core::rebase::{RebaseAction, TodoItem};
 pub(super) fn action_color(a: RebaseAction) -> Color32 {
     match a {
         RebaseAction::Pick => color::weak(),
-        RebaseAction::Reword => color::primary(),
+        // Step kinds are categories, never the accent (`docs/COLOUR.md`, "The accent").
+        RebaseAction::Reword => color::text(),
         RebaseAction::Squash | RebaseAction::Fixup => color::progress(),
         RebaseAction::Drop => color::removed(),
         RebaseAction::Edit => color::warn(),

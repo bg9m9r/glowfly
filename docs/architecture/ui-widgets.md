@@ -21,7 +21,7 @@ source file, update its line here.
 - `widgets/segment_bar.rs`: flush segments in one shape (the toolbar pickers' framed bar, a split button's quiet one), each its own target, with full-height dividers in a framed bar; its layout is shared with `button_split.rs`; tests in `segment_bar_tests.rs`.
 - `widgets/ghost.rs`: ghost buttons (at a `ControlSize`) and dividers, shared by the diff's file header, the terminal panel's header and the graph's New branch… button.
 - `widgets/segmented.rs`: a segmented control at a `ControlSize` whose segments are quiet targets (`paint_target`) and can be disabled with a reason on hover; the raised option's corners are concentric with the track.
-- `widgets/chip.rs`: the only chip and badge painter: the two sizes (Badge 18, Chip 22), leads, cutting, clickable chips and the quiet chips (SHA, parents, committer); tests in `chip_tests.rs`.
+- `widgets/chip.rs`: the only chip and badge painter: the two sizes (Badge 18, Chip 22), leads, cutting, clickable chips, the quiet chips (SHA, parents, committer) and a ref chip's halo (`paint_halo`); tests in `chip_tests.rs`.
 - `widgets/details.rs`: a collapsed Details under a confirmation's plain words, also under the Publish dialog's rewritten service errors.
 
 ## Rows and lists
@@ -41,7 +41,7 @@ source file, update its line here.
 - `widgets/popover.rs` (tests in `popover_tests.rs`): `menu::popover_below`'s popup: a set width, unjustified contents, right-aligned below its anchor and kept 8 px inside the window.
 - `widgets/truncate.rs`: single-line text cut with an ellipsis and its whole text on hover, and names and paths cut in the middle.
 - `widgets/section_header.rs`: the left panel's section headers with their hover + (the section's create action) and ⋯ (its menu), muted at count 0 for a section that folds away while empty; each + is described by `state/section_actions.rs`.
-- `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…).
+- `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…), and a failed hosting service's block (`failure`: the cause, then Sign in).
 - `line_counts.rs`: line counts drawn one way everywhere: a file row's `+N −M` and proportional bar, a total, the WIP row's chips.
 - Added, removed and modified share `common::added_color`, `removed_color` and `modified_color` with the status letters.
 - `date_tip.rs`: date labels with their full date on hover.
@@ -69,6 +69,7 @@ source file, update its line here.
 - `needs_you.rs`: the coral "needs you" badges and Small control, always with the warning mark and the only reader of the coral.
 - `widgets/severity.rs`: the error, warning and information marks.
 - `widgets/hint_row.rs`: the tip row, a quiet accent wash with the info mark, one sentence, the tip's button and a × menu (Don't show this again, Turn off tips).
+- `widgets/underline_tab.rs`: a row of underline tabs (the pull request view's): quiet targets, the selected one marked by a 2 px accent line on the row's border line.
 - `widgets/form_message.rs`: a form's messages, under a field once it was edited or a submit was tried (`state/touched.rs`), or for the whole form in a tinted box.
 - `tests/view_checks/message_styles.rs` checks banners and every dialog's messages.
 

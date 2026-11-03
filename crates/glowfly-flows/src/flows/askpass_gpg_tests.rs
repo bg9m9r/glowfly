@@ -28,6 +28,7 @@ pub(super) fn start_job(st: &mut AppState, label: &str) {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

@@ -39,6 +39,7 @@ pub mod families;
 pub mod fonts;
 mod inactive;
 pub mod missing_glyphs;
+pub mod ref_chip;
 pub mod sizes;
 pub mod spacing;
 pub mod surfaces;
@@ -302,6 +303,8 @@ mod more_themes_tests;
 mod no_brown_tests;
 #[cfg(test)]
 mod no_brown_text_tests;
+#[cfg(test)]
+mod ref_chip_tests;
 #[cfg(test)]
 mod snapshot_tests_controls;
 #[cfg(test)]

@@ -99,6 +99,7 @@ fn headlines_for_commands_and_breaks() {
         autostash: false,
         interactive: true,
         command: Some("false".into()),
+        amends: false,
     };
     let label = "Interactive rebase";
     assert_eq!(

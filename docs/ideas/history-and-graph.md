@@ -163,6 +163,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Match a needle that isn't ASCII without lowercasing each non-ASCII message per keystroke (fold the texts once, or a Unicode case-insensitive search)
 - Share the loaded commits' texts with the history index's blocks instead of holding a second copy of each message there
 - Highlight where a match far into the body is (a snippet around it in the row hover or the details panel)
+- The search marks lowercase one character at a time, so a match against İ (which lowercases to two) is missed
 
 ### Saved search index
 
@@ -194,6 +195,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Click the "+N" chip to open a popup of all labels with their menus
 - Cut a date that doesn't fit at its start ("…10:00 AM") so the time stays visible
 - Fill the WIP node's dashed ring so the lane line doesn't show through it
+- The "+N" overflow pill nearly disappears in the light and high-contrast light themes; give it a fill apart from the row, hover and selection bands
 
 ### History table edges and commit details
 
