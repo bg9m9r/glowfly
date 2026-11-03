@@ -1,10 +1,13 @@
-//! The central area: which view fills it (the dashboard, welcome, conflict, blame, file history,
+//! The central area: which view fills it (the dashboard, Help > Getting started, welcome, conflict, blame, file history,
 //! the pull request panel or the issue panel, diff, the rebase panel, the Range-diff view, the
 //! operation journal, the Git Flow panel, or the graph), and the Esc chain that closes them.
 
 use super::UiCache;
 use super::theme::color;
-use super::{blame, common, conflict, dashboard, diff, gitflow_panel, graph, history, issue, journal, pull_request, range_diff, rebase};
+use super::{
+    blame, common, conflict, dashboard, diff, getting_started, gitflow_panel, graph, history, issue, journal, pull_request, range_diff,
+    rebase,
+};
 use crate::msg::BlameMsg;
 use crate::msg::ConflictMsg;
 use crate::msg::DiffMsg;
@@ -22,7 +25,7 @@ use glowfly_model::pull_request::PullRequestMsg;
 
 /// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
 /// keyboard is outside the shell), Preferences (on the Save / Revert bar's buttons, the
-/// page's unsaved edits instead), the tour, the dashboard, the conflict view, the blame view, the
+/// page's unsaved edits instead), the tour, the dashboard, Getting started, the conflict view, the blame view, the
 /// text selected in a diff's code, a pull request's unposted code comment (cancelled, with a confirmation once edited), the
 /// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Range-diff view, the operation journal, the Git
@@ -74,6 +77,8 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Onboarding(crate::onboarding::OnboardingMsg::CloseTour));
     } else if st.dashboard.open {
         msgs.push(Msg::Dashboard(crate::msg::DashboardMsg::Close));
+    } else if st.onboarding.getting_started.is_some() {
+        msgs.push(Msg::Onboarding(crate::onboarding::OnboardingMsg::CloseGettingStarted));
     } else if st.session.conflict.view.is_some() {
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.session.blame.view.is_some() {
@@ -111,7 +116,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     }
 }
 
-/// The central panel: the dashboard while open, else the welcome screen without a repository, else the innermost view open
+/// The central panel: the dashboard while open, else Getting started while open, else the welcome screen without a repository, else the innermost view open
 /// (conflict, blame, file history, pull request panel, issue panel, diff, rebase panel, Range-diff view, operation journal, Git
 /// Flow panel), else
 /// the graph. Returns where the panel was drawn (the tour outlines it).
@@ -129,6 +134,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             // three in step.
             if st.dashboard.open {
                 dashboard::show(ui, st, msgs);
+            } else if st.onboarding.getting_started.is_some() {
+                getting_started::show(ui, st, msgs);
             } else if st.snap.is_none() {
                 common::welcome(ui, st, msgs);
             } else if st.session.conflict.view.is_some() {

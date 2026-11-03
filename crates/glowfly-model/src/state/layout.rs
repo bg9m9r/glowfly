@@ -129,6 +129,8 @@ pub enum ToolView {
     RangeDiff,
     Journal,
     GitFlow,
+    /// Help > Getting started.
+    GettingStarted,
 }
 
 /// The tool view the central area draws now, if any. `ui::central::show` and
@@ -137,6 +139,8 @@ pub fn tool_view(st: &AppState) -> Option<ToolView> {
     use super::history::HistoryKind;
     if st.dashboard.open || st.snap.is_none() {
         None
+    } else if st.onboarding.getting_started.is_some() {
+        Some(ToolView::GettingStarted)
     } else if st.session.conflict.view.is_some() {
         Some(ToolView::Conflict)
     } else if st.session.blame.view.is_some() {

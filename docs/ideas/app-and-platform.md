@@ -162,6 +162,9 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - Show tips again should win over another profile's records: a reset made while the settings file is held is undone by the union merge in `carry_records`
 - Offer the Connect tip only while the hosting service's fetch hasn't succeeded; once pull requests load without a connection its sentence isn't true
 - Describe each tour step for screen readers
+- Getting started: more contextual hints (restack, worktrees for stash juggling, Range-diff after a rewrite, the palette for mouse-heavy users, deep links) and a learn-the-key hint
+- Getting started: fold `status_tip_shown` and `detached_head_warned` into the hint registry, as `getting_started_hidden` is
+- Getting started: Show me through the tour's spotlight for features that live in menus (rebase, Range-diff), instead of the palette
 
 ### Performance
 

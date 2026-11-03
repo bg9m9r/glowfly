@@ -154,6 +154,13 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Files: `state/hints.rs` (ids, the rules, the triggers' tests, the row's words), `update/hints.rs` (button, × menu, off, Show tips again, load triggers, `settle` after every message), `update/undo.rs` (`recorded_since`: the Undo trigger and the run of amends), `ui/widgets/hint_row.rs`.
 - None in the session the welcome ran in, at most one per session, none while a dialog, Preferences, a job or a conflict is open. A tip that loses its place unanswered is ignored once, then retired; acting, dismissing or using its feature retires it. Records are machine-wide and merged by `carry_records`.
 
+## Getting started
+
+- Help > Getting started, the palette (tips, learn, features) and the welcome's Start step open a page of feature cards in the central area (global, after the dashboard in `ui/central.rs`'s order; a tool view, so the details panel folds to its rail). It never opens by itself.
+- Files: `state/getting_started.rs` (groups, cards, each card's Show me and when it is in use), `update/getting_started.rs` (open, close, Show me, the finished cards, hiding), `ui/getting_started.rs`; messages are `OnboardingMsg`'s.
+- A card is in use only from settings and repository state (a connection, a picked theme or key, a tool, a custom command, a stash, a second worktree), never from counting use. Show me closes the page, then sends the feature's message or opens the palette with its commands typed.
+- Hiding the page from the Help menu and the welcome is kept in `hints_seen` (`getting_started_hidden`), so Show tips again brings it back; the palette always finds it.
+
 ## Signing passphrases (`gpg_prompt/`)
 
 - gpg-agent's pinentry is fixed when the long-running agent starts and is shared by all its clients, so there is no Glowfly pinentry; swapping it would mean editing gpg-agent.conf and restarting the agent.
