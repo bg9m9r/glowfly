@@ -123,7 +123,6 @@ painted:
   "M 1"
   "AL"
   "✔ release-please--branches--main--components--glowfly"
-  "+1"
   "AL"
   "origin/release-please--branches--main--components--glowfly"
   "+1"
