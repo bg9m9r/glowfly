@@ -76,7 +76,8 @@ fn clone_stage_commit_push_pull() {
     j.see("Edit notes and add a todo list", Region::Central);
 
     // step 6: push to the bare remote.
-    j.click("Push the current branch", Region::Toolbar, Pick::Only);
+    // The Push button names how far the branch is ahead of its upstream.
+    j.click("Push, 1 ahead of origin/main", Region::Toolbar, Pick::Only);
     j.toast(true, "Push succeeded");
     assert_eq!(disk::remote_oid(&bare, "main"), Some(head));
 
