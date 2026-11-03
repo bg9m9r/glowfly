@@ -133,6 +133,6 @@ painted:
   "Add app skeletonProject layout and CI."
   "AL"
   "Branch"
-  "release-please-…es--main--components--glowfly"
+  "release-please…es--main--components--glowfly"
   "Upstream"
   "origin/release…es--main--components--glowfly"

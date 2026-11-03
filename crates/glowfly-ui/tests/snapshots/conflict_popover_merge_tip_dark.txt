@@ -169,6 +169,6 @@ painted:
   "Ada Lovelace"
   "Jan 5"
   "Branch"
-  "release-please-…es--main--components--glowfly"
+  "release-please…es--main--components--glowfly"
   "Upstream"
   "origin/release…es--main--components--glowfly"
