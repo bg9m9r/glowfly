@@ -2,7 +2,8 @@
 //! a group's header (its swatch in the rows' swatch column, its name and how many it holds, and
 //! at the right Open all, while one of its repositories isn't in a tab, and ⋯), the bar in its
 //! colour down its rows, and an empty group's outlined dashed placeholder, which dragging drops
-//! onto. The group menu (from ⋯, a right-click or Shift+F10 on the name): Open all, Rename…,
+//! onto, with Add repositories… at its right while nothing is dragged. The group menu (from ⋯, a
+//! right-click or Shift+F10 on the name): Open all, Add repositories…, Rename…,
 //! Color, Move up and Move down, and Remove group in the danger style.
 
 use super::common::{menu_danger, menu_item, menu_item_if};
@@ -15,6 +16,7 @@ use crate::msg::{GroupMsg, Msg, RecentMsg};
 use crate::state::AppState;
 use crate::state::repo_groups::members;
 use crate::state::repo_lists::{is_missing, is_open};
+use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::tokens::radius;
 use crate::ui::widgets::menu::{self, separator};
 use crate::ui::widgets::row_menu::RowMenuExt;
@@ -89,6 +91,7 @@ fn group_menu(ui: &mut egui::Ui, st: &AppState, g: usize, msgs: &mut Vec<Msg>) {
     let count = st.settings.repo_groups.len();
     let group = &st.settings.repo_groups[g];
     menu_item(msgs, ui, t.tr("repo_group.menu.open_all"), Msg::Recent(RecentMsg::OpenAll(members(&st.settings, g))));
+    menu_item(msgs, ui, t.tr("repo_group.menu.add_repos"), Msg::Groups(GroupMsg::AddDialog(g)));
     menu_item(msgs, ui, t.tr("repo_group.menu.rename"), Msg::Groups(GroupMsg::RenameDialog(g)));
     let set = |colour| Msg::Groups(GroupMsg::SetColour { group: g, colour });
     super::repo_colour_menu::hues(ui, t, group.hue(), t.tr("repo_colour.none.tip"), set, msgs);
@@ -103,8 +106,10 @@ fn group_menu(ui: &mut egui::Ui, st: &AppState, g: usize, msgs: &mut Vec<Msg>) {
 }
 
 /// An empty section's placeholder, a row's height: an outlined dashed box with `text` where the
-/// rows' names start (`cols`). Returns its rect, which a drag can drop onto.
-pub(super) fn placeholder(ui: &mut egui::Ui, text: &str, cols: Columns) -> Rect {
+/// rows' names start (`cols`) and, with `link`, that small link at its right, on the column of
+/// the headers' Open all. Returns its rect, which a drag can drop onto, and whether the link was
+/// clicked.
+pub(super) fn placeholder(ui: &mut egui::Ui, text: &str, link: Option<&str>, cols: Columns) -> (Rect, bool) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), repo_row::ROW_H), Sense::hover());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, text));
     let r = rect.shrink(0.5);
@@ -114,7 +119,15 @@ pub(super) fn placeholder(ui: &mut egui::Ui, text: &str, cols: Columns) -> Rect 
     let (_, label_x) = repo_row::lead(ui, cols);
     let g = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
     p.galley(pos2(rect.left() + label_x, rect.center().y - g.size().y / 2.0), g, color::weak());
-    rect
+    let clicked = link.is_some_and(|link| {
+        let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::right_to_left(Align::Center)));
+        // Past the ⋯ slot, as `header_row` lays out a group's header.
+        ui.add_space(repo_row::END_PAD);
+        let h = ControlSize::Small.metrics().h;
+        ui.allocate_exact_size(vec2(h, h), Sense::hover());
+        small_link(&mut ui, link)
+    });
+    (rect, clicked)
 }
 
 /// The bar down a group's rows, from `top` to `bottom`, left of rows starting at `left`, in the

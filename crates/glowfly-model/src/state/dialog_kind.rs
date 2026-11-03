@@ -46,6 +46,7 @@ impl Modal {
             | Modal::RewordCommit(_)
             | Modal::RenameTab(_)
             | Modal::RepoGroup(_)
+            | Modal::AddToGroup(_)
             | Modal::ApplyPatch(_)
             | Modal::SavePatch(_)
             | Modal::SshKeygen => Form,
@@ -132,6 +133,7 @@ impl Modal {
             Modal::RewordCommit(f) => format!("{:?}", f.draft),
             Modal::RenameTab(f) => format!("{:?}", f.text),
             Modal::RepoGroup(f) => format!("{:?}", f.text),
+            Modal::AddToGroup(f) => format!("{:?}", (&f.filter, &f.ticked)),
             Modal::ApplyPatch(f) => format!("{:?}", (&f.mode, &f.opts, &f.am)),
             Modal::SavePatch(f) => format!("{:?}", (&f.scope, f.pick, &f.chosen, f.untracked)),
             // The fields outlive the dialog in `SshPage` (reopening shows them again), so Esc

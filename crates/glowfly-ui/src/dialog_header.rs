@@ -1,4 +1,5 @@
-//! A dialog's header (`dialog_frame`): the title (with its optional painted icon) and the weak
+//! A dialog's header (`dialog_frame`): the title (with its optional painted icon or colour
+//! swatch) and the weak
 //! subtitle under it, and the close button at the row's right end. The button is a painted
 //! cross in a 28 px box, weak at rest and on a hover fill when pointed at. It is not focusable
 //! (Esc is the keyboard's way out), and a click on it is kept for `take_closed`, which the
@@ -22,6 +23,13 @@ const ICON_W: f32 = 26.0;
 /// How far the close box reaches into the dialog's padding, up and right (optical alignment).
 const NUDGE: f32 = 4.0;
 
+/// What sits before the title: a painted icon, or a colour swatch (a repository group's).
+#[derive(Clone, Copy)]
+pub enum Lead {
+    Icon(Icon),
+    Swatch(Color32),
+}
+
 /// The no-wrap width the header needs: the title row (icon, title, gap, close button) or the
 /// subtitle, whichever is wider.
 pub(super) fn need(ui: &Ui, title: &str, subtitle: Option<&str>, icon: bool) -> f32 {
@@ -34,15 +42,18 @@ pub(super) fn need(ui: &Ui, title: &str, subtitle: Option<&str>, icon: bool) -> 
 
 /// Draws the header at the cursor, the close button against `right_edge`. Returns whether the
 /// close button was clicked.
-pub(super) fn draw(ui: &mut Ui, t: Lang, title: &str, subtitle: Option<&str>, icon: Option<Icon>, right_edge: f32) -> bool {
+pub(super) fn draw(ui: &mut Ui, t: Lang, title: &str, subtitle: Option<&str>, lead: Option<Lead>, right_edge: f32) -> bool {
     let top = ui.cursor().top();
     let title_w = (ui.available_width() - CLOSE - TITLE_GAP).max(40.0);
     let text = RichText::new(title).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::strong());
     ui.allocate_ui_with_layout(vec2(title_w, 0.0), egui::Layout::left_to_right(egui::Align::Min), |ui| {
         ui.set_max_width(title_w);
-        if let Some(icon) = icon {
+        if let Some(lead) = lead {
             let (rect, _) = ui.allocate_exact_size(vec2(ICON, ICON), Sense::hover());
-            paint_icon(ui.painter(), rect.center(), icon, color::text());
+            match lead {
+                Lead::Icon(icon) => paint_icon(ui.painter(), rect.center(), icon, color::text()),
+                Lead::Swatch(c) => crate::ui::repo_swatch::paint_slot(ui.painter(), rect, c),
+            }
         }
         ui.add(egui::Label::new(text).wrap());
     });
