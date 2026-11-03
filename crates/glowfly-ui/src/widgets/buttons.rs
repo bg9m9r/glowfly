@@ -188,18 +188,16 @@ impl<'a> StyledButton<'a> {
         self
     }
 
-    /// An icon before the text, at the size's icon size. Part of the family before a view
-    /// needs it.
-    #[allow(dead_code)]
+    /// An icon before the text, at the size's icon size.
+    pub fn icon(mut self, icon: Icon) -> Self {
+        self.icon = Some(icon);
+        self
+    }
+
     /// Its icon drawn at `px` instead of the size's (for a glyph that fills less or more of its
     /// grid than the others), keeping the button's size.
     pub(crate) fn icon_px(mut self, px: f32) -> Self {
         self.icon_px = Some(px);
-        self
-    }
-
-    pub fn icon(mut self, icon: Icon) -> Self {
-        self.icon = Some(icon);
         self
     }
 
