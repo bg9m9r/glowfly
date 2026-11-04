@@ -8,6 +8,7 @@ use super::nodes;
 use super::paint::{draw_lanes, lane_x, paint_pencil};
 use crate::common::{added_color, modified_color, removed_color};
 use crate::theme::color;
+use crate::theme::sizes;
 use crate::theme::tokens::radius;
 use crate::theme::type_scale;
 use crate::widgets::truncate::cut_left_in;
@@ -71,7 +72,7 @@ fn box_layout(p: &Painter, text: &str, col_w: f32, counts_w: f32) -> (Arc<Galley
 fn wip_box(mp: &Painter, x: f32, mid: f32, g: Arc<Galley>, w: f32) -> f32 {
     let r = Rect::from_min_size(pos2(x, mid - 11.0), vec2(w, 22.0));
     mp.rect_filled(r, CornerRadius::same(radius::SM), color::input());
-    mp.galley(pos2(r.left() + PAD, mid - g.size().y / 2.0), g, color::weak());
+    mp.galley(pos2(r.left() + PAD, sizes::centred_on(mid, g.size().y)), g, color::weak());
     r.right()
 }
 
@@ -84,7 +85,7 @@ fn draw_counts(mp: &Painter, x: f32, mid: f32, counts: Vec<Count>) {
             x += PENCIL_W;
         }
         let w = c.galley.size().x;
-        mp.galley(pos2(x, mid - c.galley.size().y / 2.0), c.galley, c.color);
+        mp.galley(pos2(x, sizes::centred_on(mid, c.galley.size().y)), c.galley, c.color);
         x += w + GAP;
     }
 }

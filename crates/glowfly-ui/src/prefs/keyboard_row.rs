@@ -7,12 +7,12 @@
 use super::warn;
 use crate::shortcuts::Caps;
 use crate::theme::color;
-use crate::theme::sizes::ControlSize;
+use crate::theme::sizes::{self, ControlSize};
 use crate::theme::tokens::radius;
 use crate::theme::type_scale;
 use crate::widgets;
 use crate::widgets::buttons;
-use eframe::egui::{Align, CornerRadius, Layout, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, vec2};
+use eframe::egui::{Align, CornerRadius, Layout, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_model::keymap::{Binding, Chord, Keymap, Slot};
 use glowfly_model::msg::{KeysMsg, Msg};
@@ -157,5 +157,5 @@ fn pill(ui: &mut Ui) {
         Stroke::new(1.5_f32, color::primary()),
         StrokeKind::Inside,
     );
-    p.galley(rect.center() - text.size() / 2.0, text, color::text());
+    p.galley(pos2(rect.center().x - text.size().x / 2.0, sizes::text_pos(rect, &text).y), text, color::text());
 }

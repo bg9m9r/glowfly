@@ -7,6 +7,7 @@ use super::find_marks::{Mark, RowRuns, Runs, paint_cut_marked};
 use super::layout::Columns;
 use crate::common::{added_color, removed_color};
 use crate::theme::color;
+use crate::theme::sizes;
 use crate::theme::type_scale;
 use crate::widgets::truncate::{cut_galley, cut_job};
 use crate::widgets::{Cut, chip, paint_cut_text};
@@ -202,7 +203,7 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
 /// `max_w` with "…".
 fn paint_cut_right(p: &Painter, right: Pos2, text: &str, font: FontId, color: Color32, max_w: f32) -> Cut {
     let galley = cut_galley(p.ctx(), cut_job(text, font, color), max_w);
-    let min = pos2(right.x - galley.size().x, right.y - galley.size().y / 2.0);
+    let min = pos2(right.x - galley.size().x, sizes::centred_on(right.y, galley.size().y));
     let cut = Cut { rect: Rect::from_min_size(min, galley.size()), cut: galley.elided };
     p.galley(min, galley, color);
     cut

@@ -9,6 +9,7 @@ use super::list_row::{ARROW_W, paint_arrow};
 use super::tab_paint::SLOT;
 use super::theme::{color, type_scale};
 use super::widgets::{Icon, dots, paint_icon_sized};
+use crate::theme::sizes;
 use eframe::egui::{self, Rect, pos2};
 use glowfly_model::state::tabs::glance::Mark;
 
@@ -38,7 +39,7 @@ pub(super) fn paint(p: &egui::Painter, slot: Rect, mark: Mark, pulse: Option<f64
             // fonts have no arrows); a long count reaches left into the gap before the slot.
             let galley = p.layout_no_wrap(n.to_string(), type_scale::font(BEHIND_TEXT), color::faint());
             let x = slot.right() - galley.size().x;
-            p.galley(pos2(x, c.y - galley.size().y / 2.0), galley, color::faint());
+            p.galley(pos2(x, sizes::centred_on(c.y, galley.size().y)), galley, color::faint());
             paint_arrow(p, pos2(x - ARROW_W / 2.0 - 0.5, c.y), false, color::faint());
         }
     }

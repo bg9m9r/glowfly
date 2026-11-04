@@ -14,6 +14,7 @@ use crate::pane_status::{self, Failure};
 use crate::theme::{color, type_scale};
 use crate::widgets::chip::ChipSize;
 use crate::widgets::menu::separator;
+use crate::widgets::paint_text;
 use crate::widgets::row_menu::RowMenuExt;
 use crate::widgets::{paint_cut_text, row_fill};
 use eframe::egui::{self, Align2, CursorIcon, Rect, Sense, Ui, pos2, vec2};
@@ -88,7 +89,7 @@ fn list(ui: &mut Ui, st: &AppState, view: &LostView, msgs: &mut Vec<Msg>) {
                 Line::Heading(text) => {
                     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
                     let at = pos2(rect.left() + PAD_X, rect.bottom() - 14.0);
-                    ui.painter().text(at, Align2::LEFT_CENTER, *text, type_scale::section(ui), color::weak());
+                    paint_text(ui.painter(), at, Align2::LEFT_CENTER, *text, type_scale::section(ui), color::weak());
                     ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
                     continue;
                 }
@@ -98,7 +99,7 @@ fn list(ui: &mut Ui, st: &AppState, view: &LostView, msgs: &mut Vec<Msg>) {
                     let top = rect.center().y - 9.0 * (footer.len() as f32 - 1.0);
                     for (k, line) in footer.iter().enumerate() {
                         let at = pos2(rect.center().x, top + 18.0 * k as f32);
-                        ui.painter().text(at, Align2::CENTER_CENTER, *line, font.clone(), color::weak());
+                        paint_text(ui.painter(), at, Align2::CENTER_CENTER, *line, font.clone(), color::weak());
                     }
                     continue;
                 }
@@ -131,7 +132,7 @@ fn paint(ui: &Ui, st: &AppState, rect: Rect, c: &LostCommit, name: &str) {
     let (y1, y2) = (rect.top() + 18.0, rect.top() + 39.0);
     let small = type_scale::font(type_scale::SMALL);
     let when = st.settings.format_time(c.time, st.cues.now, st.cues.utc_offset);
-    let time = p.text(pos2(right, y1), Align2::RIGHT_CENTER, when, small.clone(), color::weak());
+    let time = paint_text(p, pos2(right, y1), Align2::RIGHT_CENTER, when, small.clone(), color::weak());
     let body = type_scale::font(type_scale::BODY);
     paint_cut_text(p, pos2(left, y1), name, body, color::text(), (time.left() - 12.0 - left).max(0.0));
 

@@ -10,10 +10,11 @@ use super::fit::{self, Fitted};
 use super::layout::{CELL_PAD, Columns, EDGE_INSET};
 use super::resize;
 use crate::theme::color;
+use crate::theme::sizes;
 use crate::theme::type_scale;
 use crate::widgets::truncate::{cut_galley, cut_job};
 use crate::widgets::{Icon, paint_cut_text, paint_icon};
-use eframe::egui::{self, Align2, FontId, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{self, FontId, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
 use glowfly_model::msg::Msg;
@@ -211,7 +212,7 @@ fn titles(ui: &egui::Ui, hdr: Rect, cols: &Columns, cols_cfg: &GraphColumns, fon
         let max_w = col.1 - col.0;
         let cut = if title == Title::Date {
             let g = cut_galley(ui.ctx(), cut_job(text, font.clone(), weak), max_w);
-            let rect = Align2::RIGHT_CENTER.anchor_size(pos2(col.1, hdr.center().y), g.size());
+            let rect = Rect::from_min_size(pos2(col.1 - g.size().x, sizes::centred_on(hdr.center().y, g.size().y)), g.size());
             let cut = g.elided;
             clip.galley(rect.min, g, weak);
             crate::widgets::Cut { rect, cut }

@@ -24,7 +24,8 @@
 //! they belong to are `row_menu.rs`, and the collapsed Details disclosure under a plain-words
 //! message `details.rs`. The tip row (an accent wash with a sentence, its button and a × menu)
 //! is `hint_row.rs`, a row of underline tabs `underline_tab.rs`, and one line of text painted at a
-//! point with its top on a whole point (`paint_text`) `text_line.rs`.
+//! point with its top on a whole point (`paint_text`), and the one-line rect a label is put in to
+//! sit there (`line_rect`), `text_line.rs`.
 
 pub mod banner;
 mod button_look;
@@ -62,7 +63,7 @@ pub mod segmented;
 pub mod severity;
 pub mod tab_glyph;
 pub mod text_field;
-pub mod text_line;
+mod text_line;
 mod tool;
 pub mod tooltip;
 pub mod tooltip_motion;
@@ -81,7 +82,7 @@ pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;
 pub use text_field::TextField;
-pub use text_line::paint_text;
+pub use text_line::{line_rect, paint_text};
 pub use tool::*;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
@@ -159,7 +160,14 @@ pub fn nav_row_count(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool
     );
     if let Some(n) = count {
         let col = if selected { color::text() } else { color::weak() };
-        paint_text(p, pos2(rect.right() - 14.0, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), type_scale::font(type_scale::SMALL), col);
+        paint_text(
+            p,
+            pos2(rect.right() - 14.0, rect.center().y),
+            Align2::RIGHT_CENTER,
+            n.to_string(),
+            type_scale::font(type_scale::SMALL),
+            col,
+        );
     }
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }

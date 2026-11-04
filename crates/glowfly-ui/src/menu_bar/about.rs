@@ -7,6 +7,7 @@ use crate::app_mark;
 use crate::dialog_frame::{self, Cx, Dialog, Footer};
 use crate::theme::{color, type_scale};
 use crate::widgets::buttons;
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align, Image, Layout, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_model::msg::{AppMsg, Msg};
@@ -123,7 +124,7 @@ fn links(ui: &mut Ui, t: Lang, msgs: &mut Vec<Msg>) {
             if i > 0 {
                 // Painted, so a screen reader reads only the links.
                 let (r, _) = ui.allocate_exact_size(vec2(dot_w + 2.0 * LINK_GAP, h), Sense::hover());
-                ui.painter().text(r.center(), egui::Align2::CENTER_CENTER, "·", type_scale::font(type_scale::BODY), color::faint());
+                paint_text(ui.painter(), r.center(), egui::Align2::CENTER_CENTER, "·", type_scale::font(type_scale::BODY), color::faint());
             }
             if ui.link(*text).clicked() {
                 clicked = Some(i);

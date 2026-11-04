@@ -5,6 +5,7 @@
 use super::common::{menu_item, menu_item_if, state_color};
 use super::theme::color;
 use super::widgets::{self, Part, row_fill, truncate::full_tip};
+use crate::theme::sizes;
 use crate::theme::type_scale;
 use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Color32, FontId, Rect, Response, Sense, Ui, pos2, vec2};
@@ -80,7 +81,7 @@ fn two_line_row(ui: &mut Ui, title: &str, sub: &str, right: (&str, Color32), slo
     let top = rect.top() + 12.0;
     let g = p.layout_no_wrap(right.0.to_owned(), type_scale::font(type_scale::SMALL), right.1);
     let right_w = g.size().x + widgets::PAD_X + 8.0 + slot;
-    p.galley(pos2(rect.right() - g.size().x - widgets::PAD_X - slot, top - g.size().y / 2.0), g, right.1);
+    p.galley(pos2(rect.right() - g.size().x - widgets::PAD_X - slot, sizes::centred_on(top, g.size().y)), g, right.1);
     let clip = Rect::from_min_max(pos2(rect.left() + INDENT, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
     let line = |text: &str, y: f32, size: f32, col: Color32| {
         widgets::paint_cut_text(&p.with_clip_rect(clip), pos2(clip.left(), y), text, FontId::proportional(size), col, clip.width())

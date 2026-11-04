@@ -8,6 +8,7 @@ use super::markdown_cache::{CodeBlock, MarkdownCache, Rendered};
 use super::markdown_inline::{self, Look};
 use super::theme::{color, type_scale};
 use super::widgets::{self, Icon};
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align, Align2, Color32, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::markdown::{Block, Inline, Item};
@@ -143,7 +144,7 @@ fn marker(ui: &Ui, rect: Rect, task: Option<bool>, number: Option<u64>, cx: Ctx<
     }
     if let Some(n) = number {
         let font = FontId::proportional(type_scale::BODY);
-        p.text(pos2(rect.right() - 6.0, c.y), Align2::RIGHT_CENTER, format!("{n}."), font, cx.color);
+        paint_text(p, pos2(rect.right() - 6.0, c.y), Align2::RIGHT_CENTER, format!("{n}."), font, cx.color);
         return;
     }
     let col = color::weak();

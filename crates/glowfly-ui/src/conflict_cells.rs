@@ -6,6 +6,7 @@ use super::diff::wrap::Wrap;
 use super::diff::{ROW_H, mono};
 use super::theme::color;
 use super::theme::contrast::mix;
+use crate::widgets::paint_text;
 use eframe::egui::{Align2, Color32, Rect, Ui, pos2, vec2};
 use glowfly_core::repo::{Segment, Side};
 
@@ -64,16 +65,16 @@ pub(super) fn cell(ui: &Ui, rect: Rect, inset: f32, number: Option<u32>, text: &
     p.rect_filled(rect, 0.0, bg);
     let (y, left) = (rect.top() + ROW_H / 2.0, rect.left() + inset);
     if let Some(n) = number {
-        p.text(pos2(left + GUTTER, y), Align2::RIGHT_CENTER, n.to_string(), mono(), color::faint());
+        paint_text(&p, pos2(left + GUTTER, y), Align2::RIGHT_CENTER, n.to_string(), mono(), color::faint());
     }
     match wrap {
         Some(w) => {
             for (i, r) in glowfly_core::wrap::segments(text, w.cols).enumerate() {
-                p.text(pos2(left + TEXT_X, y + i as f32 * w.line_h), Align2::LEFT_CENTER, &text[r], mono(), fg);
+                paint_text(&p, pos2(left + TEXT_X, y + i as f32 * w.line_h), Align2::LEFT_CENTER, &text[r], mono(), fg);
             }
         }
         None => {
-            p.text(pos2(left + TEXT_X, y), Align2::LEFT_CENTER, text, mono(), fg);
+            paint_text(&p, pos2(left + TEXT_X, y), Align2::LEFT_CENTER, text, mono(), fg);
         }
     }
 }

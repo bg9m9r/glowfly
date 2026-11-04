@@ -6,6 +6,7 @@
 
 use crate::theme::tokens::radius;
 use crate::theme::{color, type_scale};
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, vec2};
 use glowfly_core::i18n::Lang;
 
@@ -91,7 +92,7 @@ fn badge_paint(ui: &Ui, rect: Rect, n: usize) {
     let p = ui.painter();
     p.circle_stroke(rect.center(), BADGE / 2.0 - 0.75, Stroke::new(1.5_f32, color::accent()));
     let font = type_scale::strong(ui, type_scale::SMALL);
-    p.text(rect.center(), Align2::CENTER_CENTER, n.to_string(), font, color::text());
+    paint_text(p, rect.center(), Align2::CENTER_CENTER, n.to_string(), font, color::text());
 }
 
 #[cfg(test)]

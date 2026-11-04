@@ -6,6 +6,7 @@ use super::lane_colours::RowColours;
 use crate::avatars::Avatars;
 use crate::theme::initials::initials_tones;
 use crate::widgets;
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
 use glowfly_core::graph::GraphRow;
 
@@ -146,7 +147,7 @@ pub fn draw_avatar(p: &egui::Painter, c: egui::Pos2, r: f32, name: &str, email: 
     } else {
         let (fill, ink) = initials_tones(email, name);
         p.circle_filled(c, inner, fill);
-        p.text(c, Align2::CENTER_CENTER, widgets::initials(name), FontId::proportional(r * 0.85), ink);
+        paint_text(p, c, Align2::CENTER_CENTER, widgets::initials(name), FontId::proportional(r * 0.85), ink);
     }
 }
 

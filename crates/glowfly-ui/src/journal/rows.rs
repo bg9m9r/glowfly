@@ -9,6 +9,7 @@ use crate::common::{menu_header, menu_item, menu_item_if};
 use crate::theme::{color, type_scale};
 use crate::widgets::chip::ChipSize;
 use crate::widgets::menu::separator;
+use crate::widgets::paint_text;
 use crate::widgets::row_menu::RowMenuExt;
 use crate::widgets::{paint_cut_text, row_fill};
 use eframe::egui::{self, Align2, CursorIcon, Rect, Sense, Ui, pos2, vec2};
@@ -35,7 +36,14 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let Some(row) = rows.get(i) else {
                 let t = st.settings.lang();
                 let font = type_scale::font(type_scale::SMALL);
-                ui.painter().text(rect.center(), Align2::CENTER_CENTER, glowfly_model::state::journal::capped_line(t), font, color::weak());
+                paint_text(
+                    ui.painter(),
+                    rect.center(),
+                    Align2::CENTER_CENTER,
+                    glowfly_model::state::journal::capped_line(t),
+                    font,
+                    color::weak(),
+                );
                 continue;
             };
             let key = row.key();
@@ -79,7 +87,7 @@ fn paint(ui: &Ui, st: &AppState, rect: Rect, row: &Row, label: &str) -> (Rect, O
     let (y1, y2) = (rect.top() + 18.0, rect.top() + 39.0);
     let small = type_scale::font(type_scale::SMALL);
     let when = st.settings.format_time(row.at, st.cues.now, st.cues.utc_offset);
-    let time = p.text(pos2(right, y1), Align2::RIGHT_CENTER, when, small.clone(), color::weak());
+    let time = paint_text(p, pos2(right, y1), Align2::RIGHT_CENTER, when, small.clone(), color::weak());
     let body = type_scale::font(type_scale::BODY);
     paint_cut_text(p, pos2(left, y1), label, body, color::text(), (time.left() - 12.0 - left).max(0.0));
 

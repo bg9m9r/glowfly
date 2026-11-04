@@ -6,6 +6,7 @@
 use crate::theme::sizes::ControlSize;
 use crate::theme::{color, type_scale};
 use crate::widgets::chevron;
+use crate::widgets::paint_text;
 use crate::widgets::quiet_target::{self, State};
 use eframe::egui::{Align2, CornerRadius, Rect, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
@@ -38,7 +39,7 @@ pub fn header(ui: &mut Ui, label: &str, pinned: bool, pinned_tip: &str) -> bool 
     quiet_target::paint(p, rect, CornerRadius::same(m.radius), SIZE, State::of(&r, false));
     let chevron_box = Rect::from_min_size(pos2(slot.left(), rect.top()), vec2(CHEVRON_BOX, m.h));
     chevron(p, chevron_box.center(), open, color::weak());
-    p.text(pos2(chevron_box.right() + CHEVRON_GAP, rect.center().y), Align2::LEFT_CENTER, label, font, color::text());
+    paint_text(p, pos2(chevron_box.right() + CHEVRON_GAP, rect.center().y), Align2::LEFT_CENTER, label, font, color::text());
     if pinned {
         r.on_hover_text(pinned_tip);
     }

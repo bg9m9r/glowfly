@@ -17,6 +17,7 @@ use super::widgets::section_header::{self, AddAction, Header, HeaderAdd};
 use crate::theme::sizes::ControlSize;
 use crate::theme::type_scale;
 use crate::widgets::menu::separator;
+use crate::widgets::paint_text;
 use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, CornerRadius, Rect, Response, Sense, Stroke, pos2, vec2};
 use git2::Oid;
@@ -196,8 +197,9 @@ fn group_row(ui: &mut egui::Ui, title: &str, count: usize, plus_name: &str, enab
     let row_lit = resp.hovered() && !plus.hovered();
     row_fill::paint_state(&p, rect, row_fill::RowState::of(&resp, false, row_lit));
     let font = type_scale::font(type_scale::SMALL);
-    let t = p.text(pos2(rect.left() + widgets::ROW_INDENT, rect.center().y), Align2::LEFT_CENTER, title, font.clone(), color::weak());
-    p.text(pos2(t.right() + 6.0, rect.center().y), Align2::LEFT_CENTER, count.to_string(), font, color::faint());
+    let t =
+        paint_text(&p, pos2(rect.left() + widgets::ROW_INDENT, rect.center().y), Align2::LEFT_CENTER, title, font.clone(), color::weak());
+    paint_text(&p, pos2(t.right() + 6.0, rect.center().y), Align2::LEFT_CENTER, count.to_string(), font, color::faint());
 
     let state = if enabled { State::of(&plus, false) } else { State { focused: plus.has_focus(), ..State::default() } };
     quiet_target::paint(&p, plus_rect, CornerRadius::same(m.radius), PLUS_SIZE, state);

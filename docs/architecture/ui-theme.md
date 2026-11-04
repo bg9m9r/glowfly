@@ -5,7 +5,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 ## Controls and modals
 
-- `theme/controls.rs`: the themed form controls: text fields with a border and focus ring (`SizedField`: Regular 28 px inline or Large 36 px, padding from the size), and checkboxes and radio buttons drawn as visible boxes and circles; views use these, which `tests/view_checks/controls.rs` checks.
+- `theme/controls.rs`: the themed form controls: text fields with a border and focus ring (sized by `SizedField`, which lives in `field_sizes.rs`), and checkboxes and radio buttons drawn as visible boxes and circles; views use these, which `tests/view_checks/controls.rs` checks.
 - `theme::modal`: every modal: the themed backdrop and dialog border.
 - `theme::show_modal`: shows a modal with its contents under one accessibility node of role Dialog (what screen readers and the text snapshots see).
 
@@ -70,5 +70,6 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 ## Spacing and tokens
 
 - `theme/spacing.rs`: the spacing grid and panel padding, and the menu row metrics (comfortable and compact) and frame margin.
-- `theme/sizes.rs`: the control sizes (Compact 22, Small 24, Regular 28, Large 36: height, padding, text, icon, gap, corners, hit area), the chip sizes (Badge 18, Chip 22), `text_pos` and `centred_top` (text, or a stack of it, centred on a whole point) and `fits` (which sizes a row can host).
+- `theme/field_sizes.rs`: field padding per size (`field_margin`, `FIELD_PAD_X`), a single-line field's text set where `text_pos` puts it (`line_field_margin`), and `SizedField` (Regular 28 px inline or Large 36 px, padding from the size).
+- `theme/sizes.rs`: the control sizes (Compact 22, Small 24, Regular 28, Large 36: height, padding, text, icon, gap, corners, hit area), the chip sizes (Badge 18, Chip 22), `text_pos`, `centred_top` and `centred_on` (text, or a stack of it, centred on a whole point in a rect or on a line) and `fits` (which sizes a row can host).
 - `theme/tokens.rs`: the design tokens every theme reads: the radius scale with nested container radii and a segment's corners (`radius::segment`), the border width, the least hit area and a split's caret width, the Float and Dialog elevations, the focus ring, the inset ring for packed controls and a text field's halo (each in the Standard and Strong styles, `focus_style`), and the motion timings and easing, instant with Reduce motion.

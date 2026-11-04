@@ -9,7 +9,7 @@
 use super::text_sel::{self, Highlight};
 use super::wrap::Wrap;
 use crate::theme::color;
-use crate::theme::sizes::text_pos;
+use crate::theme::sizes::{centred_on, text_pos};
 use crate::widgets::truncate::{cut_galley, cut_job};
 use eframe::egui::text::{CCursor, LayoutJob, TextFormat};
 use eframe::egui::{Color32, FontId, Galley, Painter, Pos2, Rect, pos2};
@@ -176,7 +176,7 @@ pub(super) fn paint_code(
     let colored = !spans.iter().all(|s| s.kind == TokenKind::Plain);
     let job = colored.then(|| layout_job(text, spans, font, fg)).flatten();
     let galley = p.layout_job(job.unwrap_or_else(|| LayoutJob::simple_singleline(text.to_owned(), font.clone(), fg)));
-    let origin = pos2(left_center.x, left_center.y - galley.size().y / 2.0);
+    let origin = pos2(left_center.x, centred_on(left_center.y, galley.size().y));
     if let Some((marks, mark_color)) = marks.filter(|(m, _)| !m.is_empty()) {
         paint_marks(p, origin, &galley, text, marks, mark_color);
     }

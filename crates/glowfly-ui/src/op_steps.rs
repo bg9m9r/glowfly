@@ -17,6 +17,7 @@ use super::widgets::reason::ItemState;
 use super::widgets::{Icon, buttons, paint_icon};
 use crate::theme::sizes::ControlSize;
 use crate::widgets::menu::{popup_above_or_below, separator};
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align, Layout, Rect, RichText, Sense, Stroke, Ui, vec2};
 use git2::RepositoryState;
 use glowfly_core::git_version::Feature;
@@ -360,7 +361,7 @@ fn paint_marker(ui: &Ui, rect: Rect, n: usize, state: StepState, resolve: bool) 
     let (c, r) = (rect.center(), MARKER / 2.0 - 1.0);
     let number = |col| {
         let font = type_scale::strong(ui, type_scale::SMALL);
-        p.text(c, egui::Align2::CENTER_CENTER, n.to_string(), font, col);
+        paint_text(p, c, egui::Align2::CENTER_CENTER, n.to_string(), font, col);
     };
     match state {
         StepState::Done => {

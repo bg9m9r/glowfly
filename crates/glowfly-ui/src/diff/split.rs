@@ -12,6 +12,7 @@ use super::{
     thread_marks,
 };
 use crate::theme::color;
+use crate::widgets::paint_text;
 use eframe::egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::diff_rows::{LineSide, SplitRow};
 use glowfly_core::highlight::Span;
@@ -240,7 +241,7 @@ fn cell(
     let (cols, mono) = (st.split_cols(), &st.font);
     if let Some(x) = cols.num {
         let number = number.map(|n| n.to_string()).unwrap_or_default();
-        p.text(pos2(rect.left() + x, y), Align2::RIGHT_CENTER, number, mono.clone(), color::faint());
+        paint_text(&p, pos2(rect.left() + x, y), Align2::RIGHT_CENTER, number, mono.clone(), color::faint());
     }
     gutter_sign(&p, pos2(rect.left() + cols.sign, y), sign, fg, mono, selected, mark.hover);
     let marks = match (dl.origin, side) {

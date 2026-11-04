@@ -11,6 +11,7 @@ use crate::diff::wrap::{MIN_COLS, RowMetrics, Wrap};
 use crate::diff::{DiffStyle, paint_line};
 use crate::theme::{color, type_scale};
 use crate::widgets::menu::context_menu;
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align2, CursorIcon, FontId, Rect, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_model::msg::{BlameMsg, Msg};
 use glowfly_model::state::AppState;
@@ -153,7 +154,7 @@ pub(super) fn body(
         for i in first..end {
             let r = row(i);
             let y = r.top() + style.row_h / 2.0;
-            painter.text(pos2(num_right, y), Align2::RIGHT_CENTER, (i + 1).to_string(), style.font.clone(), color::faint());
+            paint_text(&painter, pos2(num_right, y), Align2::RIGHT_CENTER, (i + 1).to_string(), style.font.clone(), color::faint());
             let code = Rect::from_min_max(pos2(sticky + GUTTER_W + 1.0, r.top()), r.max);
             let resp = ui.interact(code, ui.id().with(("blame-line", i)), Sense::click());
             if resp.clicked() || resp.secondary_clicked() {

@@ -4,6 +4,7 @@
 //! Each run is drawn in the row's full ink on the find fill (`Palette::find_fill`), which hugs
 //! the glyphs 2 px across and 1 px up and down and stops where a cut line's "…" starts.
 
+use crate::theme::sizes;
 use crate::theme::tokens::radius;
 use crate::widgets::Cut;
 use crate::widgets::truncate::cut_galley;
@@ -126,7 +127,7 @@ pub(super) fn paint_cut_marked(p: &Painter, at: Pos2, job: LayoutJob, max_w: f32
     };
     let fallback = job.sections[0].format.color;
     let galley = cut_galley(p.ctx(), ink_runs(job, runs, mark.ink), max_w);
-    let min = pos2(at.x, at.y - galley.size().y / 2.0);
+    let min = pos2(at.x, sizes::centred_on(at.y, galley.size().y));
     if let Some(row) = galley.rows.first() {
         // The glyphs shown before the "…" (one glyph per char on a single line).
         let shown = row.glyphs.len().saturating_sub(usize::from(galley.elided));

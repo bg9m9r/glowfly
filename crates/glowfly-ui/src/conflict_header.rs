@@ -106,7 +106,10 @@ fn left_group(ui: &mut Ui, t: Lang, full: &str, labels: Option<(&str, &str)>, (p
     let path = if full_w <= room || !full.contains('/') { full.to_owned() } else { format!("\u{2026}/{}", file_name(full)) };
     let path_w = text_w(ui, &path, &path_font).min(room.max(0.0));
     let r = Rect::from_min_size(ui.cursor().min, vec2(path_w, ui.available_height()));
-    let shown = ui.put(r, egui::Label::new(RichText::new(&path).font(path_font.clone()).color(color::strong())).truncate());
+    let shown = ui.put(
+        widgets::line_rect(ui, r, &path_font),
+        egui::Label::new(RichText::new(&path).font(path_font.clone()).color(color::strong())).truncate(),
+    );
     if path != full || text_w(ui, &path, &path_font) > path_w {
         shown.on_hover_text(full);
     }
@@ -117,14 +120,14 @@ fn left_group(ui: &mut Ui, t: Lang, full: &str, labels: Option<(&str, &str)>, (p
     let (ours_full, theirs_full) = (text_w(ui, ours, &body), text_w(ui, theirs, &body));
     let ours_w = ours_full.min(sides_room - ARROW_W - 8.0).max(0.0);
     let r = Rect::from_min_size(ui.cursor().min, vec2(ours_w, ui.available_height()));
-    ui.put(r, egui::Label::new(RichText::new(ours).font(body.clone()).color(color::weak())).truncate());
+    ui.put(widgets::line_rect(ui, r, &body), egui::Label::new(RichText::new(ours).font(body.clone()).color(color::weak())).truncate());
     let (arrow, _) = ui.allocate_exact_size(vec2(ARROW_W, ui.available_height()), Sense::hover());
     paint_left_arrow(ui, arrow);
     let room = ui.available_width();
     let theirs_w = if room > 8.0 { theirs_full.min(room) } else { 0.0 };
     if theirs_w > 0.0 {
         let r = Rect::from_min_size(ui.cursor().min, vec2(theirs_w, ui.available_height()));
-        ui.put(r, egui::Label::new(RichText::new(theirs).font(body).color(color::weak())).truncate());
+        ui.put(widgets::line_rect(ui, r, &body), egui::Label::new(RichText::new(theirs).font(body).color(color::weak())).truncate());
     }
     // Cut short: both names whole on hover (the fonts lack the arrow, so in words).
     if ours_w < ours_full || theirs_w < theirs_full {

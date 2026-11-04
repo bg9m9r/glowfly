@@ -10,6 +10,7 @@ use super::{
     thread_marks,
 };
 use crate::theme::color;
+use crate::widgets::paint_text;
 use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::DiffRow;
 use glowfly_core::highlight::Span;
@@ -75,7 +76,7 @@ pub(super) fn show(
                 let y = rect.top() + st.row_h / 2.0;
                 let numbers = [(cols.old, g.old_start), (cols.new, g.new_start)];
                 for (x, n) in numbers.into_iter().filter_map(|(x, n)| Some((x?, n + line as u32))) {
-                    p.text(pos2(rect.left() + x, y), Align2::RIGHT_CENTER, n.to_string(), mono.clone(), color::faint());
+                    paint_text(p, pos2(rect.left() + x, y), Align2::RIGHT_CENTER, n.to_string(), mono.clone(), color::faint());
                 }
                 let spans: &[Span] = if v.hl.is_some() { text.spans.get(line).map_or(&[], Vec::as_slice) } else { &[] };
                 let r = LineRef::Gap { hunk, line };
@@ -122,7 +123,7 @@ pub(super) fn show(
                 let y = rect.top() + st.row_h / 2.0;
                 for (x, n) in [(cols.old, dl.old), (cols.new, dl.new)] {
                     if let Some(x) = x {
-                        p.text(pos2(rect.left() + x, y), Align2::RIGHT_CENTER, num(n), mono.clone(), color::faint());
+                        paint_text(p, pos2(rect.left() + x, y), Align2::RIGHT_CENTER, num(n), mono.clone(), color::faint());
                     }
                 }
                 gutter_sign(p, pos2(rect.left() + cols.sign, y), sign, fg, mono, selected, hover);

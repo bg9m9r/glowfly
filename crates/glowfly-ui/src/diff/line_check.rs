@@ -9,6 +9,7 @@ use super::LineHover;
 use crate::theme::color;
 use crate::theme::contrast::ratio;
 use crate::theme::tokens::radius;
+use crate::widgets::paint_text;
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Shape, Stroke, StrokeKind, Ui, pos2, vec2};
 
 /// The check box's side.
@@ -37,7 +38,7 @@ pub(crate) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, gutter: bool) {
 /// selected lines, the check box in its place.
 pub(crate) fn gutter_sign(p: &Painter, at: Pos2, sign: char, fg: Color32, font: &FontId, selected: bool, hover: LineHover) {
     if !selected && !hover.gutter && !hover.hunk {
-        p.text(at, Align2::LEFT_CENTER, sign, font.clone(), fg);
+        paint_text(p, at, Align2::LEFT_CENTER, sign, font.clone(), fg);
         return;
     }
     let glyph_w = p.ctx().fonts(|f| f.glyph_width(font, '+'));

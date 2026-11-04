@@ -11,6 +11,7 @@ use super::diff::mono;
 use super::theme::color;
 use crate::theme::controls;
 use crate::theme::type_scale;
+use crate::widgets::{self, paint_text};
 use eframe::egui::{self, Align2, FontId, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::i18n::Lang;
@@ -58,7 +59,7 @@ pub(super) fn band(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, k: usize,
         color::weak()
     };
     let name = t.trf("conflict.panes.chunk.title", &[("number", &(k + 1))]);
-    let title = p.text(pos2(r.left() + 12.0, r.center().y), Align2::LEFT_CENTER, name, mono(), ink);
+    let title = paint_text(&p, pos2(r.left() + 12.0, r.center().y), Align2::LEFT_CENTER, name, mono(), ink);
     let edited = pick.is_edited();
     // Kept in view when the panes scroll sideways.
     let x = r.right().min(ui.clip_rect().right()) - 8.0;
@@ -100,7 +101,7 @@ pub(super) fn band(ui: &mut Ui, t: Lang, r: Rect, view: &ConflictView, k: usize,
         .unwrap_or((None, false));
     if let (Some(s), Some((_, _, tip))) = (shown, &tag) {
         let at = Rect::from_min_size(pos2(start, r.top()), vec2(text_w(s, &mono()), r.height()));
-        p.text(pos2(start, r.center().y), Align2::LEFT_CENTER, s, mono(), color::faint());
+        paint_text(&p, pos2(start, r.center().y), Align2::LEFT_CENTER, s, mono(), color::faint());
         ui.interact(at, ui.id().with(("conflict-tag", k, side)), Sense::hover()).on_hover_text(tip);
     }
     if let Some(o) = order {
@@ -168,6 +169,7 @@ impl Order {
         if text {
             // A label, so screen readers hear the order too.
             let at = Rect::from_min_size(pos2(x, r.top()), vec2(self.text_w, r.height()));
+            let at = widgets::line_rect(ui, at, &type_scale::font(type_scale::BODY));
             ui.put(at, egui::Label::new(RichText::new(self.text).size(type_scale::BODY).color(color::weak())).selectable(false));
             x += self.text_w + SWAP_GAP;
         }
@@ -178,7 +180,7 @@ impl Order {
         if resp.hovered() {
             p.rect_filled(rect, 4.0, color::hover());
         }
-        p.text(rect.center(), Align2::CENTER_CENTER, self.swap, FontId::proportional(type_scale::SMALL), color::text());
+        paint_text(&p, rect.center(), Align2::CENTER_CENTER, self.swap, FontId::proportional(type_scale::SMALL), color::text());
         if resp.has_focus() {
             crate::theme::tokens::focus_ring(ui.painter(), rect, 4);
         }

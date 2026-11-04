@@ -10,8 +10,10 @@
 
 use super::style::DiffStyle;
 use crate::theme::color;
+use crate::theme::sizes;
 use crate::theme::tokens::radius;
 use crate::theme::type_scale;
+use crate::widgets::paint_text;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::hex_rows::{HexKind, HexRow, ascii, byte, differing, hex_rows};
@@ -143,7 +145,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, sides: &Arc<BinarySides>, cache: 
     let (cap_rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), CAPTION_H), Sense::hover());
     let body = FontId::proportional(type_scale::BODY);
     let text = caption(t, sides, cache.differing);
-    ui.painter().text(pos2(cap_rect.left() + 8.0, cap_rect.center().y), Align2::LEFT_CENTER, text, body, color::weak());
+    paint_text(ui.painter(), pos2(cap_rect.left() + 8.0, cap_rect.center().y), Align2::LEFT_CENTER, text, body, color::weak());
 
     // A glyph's advance as laid out in a run (which can differ from `glyph_width` by rounding),
     // so the cell fills and the ASCII column line up with the painted strings.
@@ -184,7 +186,7 @@ struct Painter<'a> {
 impl Painter<'_> {
     fn fold(&self, rect: Rect, text: &str) {
         let x = rect.left() + self.cols.hex;
-        self.ui.painter().text(pos2(x, rect.center().y), Align2::LEFT_CENTER, text, self.style.font.clone(), color::weak());
+        paint_text(self.ui.painter(), pos2(x, rect.center().y), Align2::LEFT_CENTER, text, self.style.font.clone(), color::weak());
     }
 
     /// One side's row in `rect`: the old side's bytes for `Old` (and an unchanged `Both`), the
@@ -206,9 +208,9 @@ impl Painter<'_> {
         }
         let (c, font, y) = (self.cols, &self.style.font, rect.center().y);
         let at = |x: f32| pos2(rect.left() + x, y);
-        p.text(at(c.offset), Align2::LEFT_CENTER, format!("{offset:04x}"), font.clone(), color::weak());
+        paint_text(p, at(c.offset), Align2::LEFT_CENTER, format!("{offset:04x}"), font.clone(), color::weak());
         if changed {
-            p.text(at(c.sign), Align2::LEFT_CENTER, sign, font.clone(), color::text());
+            paint_text(p, at(c.sign), Align2::LEFT_CENTER, sign, font.clone(), color::text());
         }
         // The bytes paint as one hex string and one ASCII string a row, over the changed bytes'
         // cell fills.
@@ -233,9 +235,9 @@ impl Painter<'_> {
             let (glyph, colour) = ascii(b).map_or(('.', color::weak()), |g| (g, color::text()));
             text.append(&glyph.to_string(), 0.0, TextFormat::simple(font.clone(), colour));
         }
-        p.text(at(c.hex), Align2::LEFT_CENTER, hex, font.clone(), color::text());
+        paint_text(p, at(c.hex), Align2::LEFT_CENTER, hex, font.clone(), color::text());
         let galley = p.layout_job(text);
-        p.galley(pos2(rect.left() + c.ascii, y - galley.size().y / 2.0), galley, color::text());
+        p.galley(pos2(rect.left() + c.ascii, sizes::centred_on(y, galley.size().y)), galley, color::text());
     }
 }
 

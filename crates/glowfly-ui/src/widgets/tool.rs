@@ -123,7 +123,14 @@ fn paint_tool(p: &Painter, rect: Rect, (icon, label): (Icon, &str), enabled: boo
             color::weak()
         };
         paint_icon(p, pos2(rect.center().x, rect.top() + ICON_Y), icon, col);
-        paint_text(p, pos2(rect.center().x, rect.top() + CAPTION_Y), Align2::CENTER_CENTER, label, type_scale::font(type_scale::SMALL), caption);
+        paint_text(
+            p,
+            pos2(rect.center().x, rect.top() + CAPTION_Y),
+            Align2::CENTER_CENTER,
+            label,
+            type_scale::font(type_scale::SMALL),
+            caption,
+        );
     } else {
         paint_icon(p, rect.center(), icon, col);
     }
