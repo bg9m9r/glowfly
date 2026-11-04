@@ -58,7 +58,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 ## Fonts and type
 
-- `theme/fonts.rs`: the bundled fonts: Noto Sans, its semibold family and JetBrains Mono ahead of egui's fallbacks, from `assets/fonts/`.
+- `theme/fonts.rs`: the bundled fonts: Noto Sans, its semibold family and JetBrains Mono ahead of egui's fallbacks, from `assets/fonts/` (the bytes through `glowfly_core::bundled_fonts`).
 - `theme/fonts.rs` is the one font setup, installed by `GlowflyApp::new`, `theme::apply_style` and the glyph check.
 - `theme/fonts.rs` ends both families with the CJK fallbacks: the system's, which the shell hands over at startup (`fonts::use_cjk`, from `platform/system_fonts.rs`), or until then (and in tests) the Noto Sans CJK subset in `assets/fonts/test/`.
 - `theme/missing_glyphs.rs`: in debug builds, a warning once per character a frame draws that no loaded font has.

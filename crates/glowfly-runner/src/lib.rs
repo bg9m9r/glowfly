@@ -97,6 +97,7 @@ mod stats;
 mod status;
 mod stops;
 mod submodules;
+mod svg_worker;
 mod terminal;
 mod terminal_hold;
 mod terminal_out;

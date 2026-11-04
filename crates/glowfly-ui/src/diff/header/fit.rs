@@ -2,11 +2,12 @@
 //! what order. Pure arithmetic, so the order is tested without egui.
 //!
 //! The row: the file (icon, folder, name, status chip, context chip), 16 px, the navigation
-//! (arrows and counter), a divider, the View button and ⋯; then, at the trailing edge, Stage file
+//! (arrows and counter), a divider, an SVG's Text / Preview switch, the View button and ⋯; then, at the trailing edge, Stage file
 //! and ×. The order things give way: 1) the View button shortens to "View"; 2) the folder is cut
 //! from the left, down to nothing; 3) the nav counter drops; 4) the context chip drops; 5) the
 //! status chip drops; 6) last, the file name is cut. Each step happens only when the ones before
-//! it weren't enough; below the last the row is clipped. ⋯, Stage file and × never give way.
+//! it weren't enough; below the last the row is clipped. The switch, ⋯, Stage file and × never
+//! give way.
 
 /// The widths of the header's parts (0 for a part that isn't there). The groups' widths include
 /// the spacing inside them; `divider` is a divider with its margins, `gap` the space between the
@@ -21,6 +22,8 @@ pub(super) struct Widths {
     pub nav_arrows: f32,
     /// The counter with the space before it.
     pub counter: f32,
+    /// An SVG's Text / Preview switch.
+    pub svg: f32,
     pub view_full: f32,
     pub view_short: f32,
     /// The ⋯ of file actions.
@@ -52,7 +55,7 @@ pub(super) struct Plan {
 pub(super) const MIN_GAP: f32 = 16.0;
 /// Between the file and the navigation.
 pub(super) const NAV_GAP: f32 = 16.0;
-/// Between the View button and ⋯.
+/// Between the switch, the View button and ⋯.
 pub(super) const TOOLS_SPACE: f32 = super::controls::SPACE;
 /// Between Stage file and ×.
 const TRAILING_GAP: f32 = super::actions::TRAILING_GAP;
@@ -77,18 +80,17 @@ impl Plan {
         x
     }
 
-    /// The leading parts' width: the file, the navigation, the View button and ⋯.
+    /// The leading parts' width: the file, the navigation, the switch, the View button and ⋯.
     fn left_width(&self, w: &Widths) -> f32 {
         let mut x = self.file_width(w);
         if w.nav_arrows > 0.0 {
             x += NAV_GAP + w.nav_arrows + if self.counter { w.counter } else { 0.0 };
         }
         let view = if self.view_short { w.view_short } else { w.view_full };
-        if view + w.more > 0.0 {
-            x += tools_lead(w) + view + w.more;
-            if view > 0.0 && w.more > 0.0 {
-                x += TOOLS_SPACE;
-            }
+        let tools = [w.svg, view, w.more];
+        let shown = tools.iter().filter(|&&t| t > 0.0).count();
+        if shown > 0 {
+            x += tools_lead(w) + tools.iter().sum::<f32>() + TOOLS_SPACE * (shown - 1) as f32;
         }
         x
     }
@@ -150,6 +152,7 @@ mod tests {
             context: 60.0,
             nav_arrows: 60.0,
             counter: 40.0,
+            svg: 0.0,
             view_full: 130.0,
             view_short: 70.0,
             more: 28.0,
@@ -215,5 +218,21 @@ mod tests {
         // Without navigation the View group follows the file after 16 px.
         let w = Widths { nav_arrows: 0.0, counter: 0.0, ..widths() };
         assert_eq!(plan(&w, 1600.0).left_width(&w), FILE + 16.0 + 130.0 + 4.0 + 28.0);
+    }
+
+    #[test]
+    fn the_svg_switch_sits_before_view_and_never_gives_way() {
+        let w = Widths { svg: 120.0, ..widths() };
+        let p = plan(&w, 1600.0);
+        assert_eq!(p.left_width(&w), FILE + 16.0 + 60.0 + 40.0 + 17.0 + 120.0 + 4.0 + 130.0 + 4.0 + 28.0, "switch, 4 px, View, 4 px, ⋯");
+        // In Preview the View button is gone: the switch is followed by ⋯ alone.
+        let preview = Widths { view_full: 0.0, view_short: 0.0, ..w };
+        assert_eq!(plan(&preview, 1600.0).left_width(&preview), FILE + 16.0 + 60.0 + 40.0 + 17.0 + 120.0 + 4.0 + 28.0);
+        // Narrowing never touches it: every plan keeps its whole width.
+        for avail in (0..=1600).rev().map(|a| a as f32) {
+            let p = plan(&w, avail);
+            let without = Widths { svg: 0.0, ..w };
+            assert!((p.left_width(&w) - p.left_width(&without) - 124.0).abs() < 0.01, "{avail}");
+        }
     }
 }

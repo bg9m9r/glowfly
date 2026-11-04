@@ -13,6 +13,7 @@ use cache::HeaderCache;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::preview_image::is_image_path;
+use glowfly_core::preview_svg::is_svg_path;
 use glowfly_core::repo::{DiffTarget, FileDiff, Snapshot, is_empty_tree};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file;
@@ -40,7 +41,10 @@ pub struct HeaderModel {
     /// Whether the arrows show: there are rows, or a neighbouring file to step to.
     pub show_nav: bool,
     pub counter: Option<Counter>,
-    /// The View menu; `None` for binary and LFS-summary diffs.
+    /// The Text / Preview switch of an SVG diffed as text: `Some(on)`, `on` with Preview
+    /// (`diff_preview::svg_switch`).
+    pub svg: Option<bool>,
+    /// The View menu; `None` for binary and LFS-summary diffs and an SVG's preview.
     pub view: Option<ViewGroup>,
     pub actions: Actions,
     pub primary: Option<Primary>,
@@ -172,7 +176,10 @@ pub(super) fn build(st: &AppState, parts: &HeaderCache) -> Option<HeaderModel> {
     let path = target.path().to_owned();
     let (folder, name) = split_path(&path);
     let lfs_summary = super::lfs_notes::summary(st).is_some();
-    let has_rows = !diff.binary && !diff.hunks.is_empty() && !lfs_summary;
+    let text_rows = !diff.binary && !diff.hunks.is_empty() && !lfs_summary;
+    let svg = super::diff_preview::svg_switch(st);
+    // An SVG's preview keeps the text diff's counts in the chip, but has no rows to step to.
+    let has_rows = text_rows && svg != Some(true);
     let pos = diff_nav::position(st);
     let order = &parts.order;
     let step = |dir: isize| diff_nav::step_from(&parts.rows, pos, dir, || order.neighbour(dir).cloned()).kind();
@@ -183,7 +190,7 @@ pub(super) fn build(st: &AppState, parts: &HeaderCache) -> Option<HeaderModel> {
             old: sides.and_then(|s| s.old.as_ref()).map(|s| s.size),
             new: sides.and_then(|s| s.new.as_ref()).map(|s| s.size),
         }
-    } else if has_rows {
+    } else if text_rows {
         let (added, removed) = parts.counts;
         ChangeText::Lines { added, removed }
     } else {
@@ -200,7 +207,8 @@ pub(super) fn build(st: &AppState, parts: &HeaderCache) -> Option<HeaderModel> {
         next,
         show_nav: has_rows || prev != StepKind::End || next != StepKind::End,
         counter: diff_nav::counter_from(&parts.rows, pos, || order.place),
-        view: (!diff.binary && !lfs_summary).then(|| view_group(st, diff, has_rows)),
+        svg,
+        view: (!diff.binary && !lfs_summary && svg != Some(true)).then(|| view_group(st, diff, has_rows)),
         actions: actions(st, target, order.status),
         primary: match target {
             DiffTarget::Unstaged(p) => Some(Primary::Stage(p.clone())),
@@ -221,7 +229,7 @@ pub fn split_path(p: &str) -> (String, String) {
 }
 
 fn kind(path: &str, d: &FileDiff) -> FileKind {
-    if is_image_path(path) {
+    if is_image_path(path) || is_svg_path(path) {
         FileKind::Image
     } else if d.binary {
         FileKind::Binary
