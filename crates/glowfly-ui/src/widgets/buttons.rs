@@ -29,7 +29,7 @@
 
 use super::button_look::{self, Press, Target};
 use super::icon::{self, Icon};
-use crate::theme::sizes::{ControlSize, Metrics};
+use crate::theme::sizes::{self, ControlSize, Metrics};
 use eframe::egui::{self, Color32, CornerRadius, Rect, Response, Sense, TextStyle, Ui, Widget, WidgetText, pos2, vec2};
 use std::borrow::Cow;
 
@@ -329,7 +329,7 @@ impl<'a> StyledButton<'a> {
             None => {}
         }
         if !self.icon_only {
-            p.galley(pos2(left + self.icon_w(), rect.center().y - galley.size().y / 2.0), galley, ink);
+            p.galley(pos2(left + self.icon_w(), sizes::text_pos(rect, &galley).y), galley, ink);
         }
     }
 

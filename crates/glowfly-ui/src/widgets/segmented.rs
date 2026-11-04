@@ -10,6 +10,7 @@
 use super::super::theme::color;
 use super::super::theme::tokens::radius;
 use super::button_look::{Press, Target, paint_target};
+use super::paint_text;
 use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, CornerRadius, CursorIcon, FontId, Rect, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
@@ -97,7 +98,7 @@ pub fn segmented_opts<T: Copy + PartialEq>(ui: &mut Ui, size: ControlSize, curre
             (false, true) if press != Press::Rest => color::text(),
             (false, true) => color::weak(),
         };
-        p.text(rect.center(), egui::Align2::CENTER_CENTER, label, font.clone(), fg);
+        paint_text(p, rect.center(), egui::Align2::CENTER_CENTER, label, font.clone(), fg);
         let hover = if enabled { o.tip } else { o.why.unwrap_or(o.tip) };
         let resp = resp.on_hover_text(hover).on_disabled_hover_text(hover);
         if enabled && !selected {

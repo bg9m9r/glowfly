@@ -1,7 +1,7 @@
 //! Control and chip sizes: every control's height, side padding, text step, icon size, icon gap,
 //! corners and least hit area (`ControlSize`, `Metrics`), the two chip and badge sizes
-//! (`ChipSize`, `ChipMetrics`), where text sits in a control (`text_pos`) and which controls a
-//! row of a given height can host (`fits`).
+//! (`ChipSize`, `ChipMetrics`), where text sits in a control (`text_pos`, and on a centre line
+//! `centred_on`) and which controls a row of a given height can host (`fits`).
 //!
 //! Sizes only measure: they never paint a state. The state layers are painted by
 //! `widgets::button_look::paint_target`, which takes a size but never chooses one.
@@ -159,7 +159,13 @@ pub fn text_pos(rect: Rect, galley: &Galley) -> Pos2 {
 /// The top of a block `h` tall centred in `rect`, rounded as `text_pos` rounds: for a stack of
 /// galleys (a caption over a name).
 pub fn centred_top(rect: Rect, h: f32) -> f32 {
-    (rect.center().y - h / 2.0).floor()
+    centred_on(rect.center().y, h)
+}
+
+/// The top of a block `h` tall centred on the line `y`, rounded as `text_pos` rounds: for
+/// painters handed a row's centre line rather than its rect.
+pub fn centred_on(y: f32, h: f32) -> f32 {
+    (y - h / 2.0).floor()
 }
 
 /// Whether a row `row_h` tall can host a control of `size`: 4 px clear above and below a

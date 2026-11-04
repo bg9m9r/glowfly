@@ -5,7 +5,7 @@
 //! takes a `ControlSize` for its height, padding, text, icon, gap and corners.
 
 use super::button_look::{Press, Target, paint_target};
-use super::{Icon, paint_icon_sized, tooltip};
+use super::{Icon, paint_icon_sized, paint_text, tooltip};
 use crate::access;
 use crate::theme::color;
 use crate::theme::sizes::ControlSize;
@@ -133,7 +133,7 @@ fn paint(p: &Painter, rect: Rect, size: ControlSize, icon: Option<Icon>, label: 
                 paint_icon_sized(p, pos2(x + m.icon / 2.0, rect.center().y), icon, fg, m.icon);
                 x += m.icon + m.icon_gap;
             }
-            p.text(pos2(x, rect.center().y), Align2::LEFT_CENTER, text, font_of(size), fg);
+            paint_text(p, pos2(x, rect.center().y), Align2::LEFT_CENTER, text, font_of(size), fg);
         }
     }
 }

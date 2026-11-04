@@ -1,16 +1,20 @@
 //! Form controls drawn in the palette's colours: text fields with a visible border and a focus
-//! ring (padded and sized by a `ControlSize` through `SizedField`), and checkboxes and radio buttons that are always a visible box or circle.
+//! ring (padded and sized by a `ControlSize` through `SizedField`, in `field_sizes.rs`), and
+//! checkboxes and radio buttons that are always a visible box or circle.
 //!
 //! They size, sense and describe themselves (accesskit role, label, toggled state) exactly as
 //! egui's own widgets do, so swapping one in moves nothing. `tests/view_checks/controls.rs`
 //! checks that views use these instead of egui's.
 
+pub(super) use super::field_sizes::field_pad_y;
+pub use super::field_sizes::{FIELD_PAD_X, SizedField, field_margin, field_text_width, line_field_margin};
+
 use super::color;
-use super::sizes::ControlSize;
+use super::sizes;
 use super::tokens::{self, radius};
 use eframe::egui::{
-    self, Align, CornerRadius, Galley, Margin, NumExt, Rect, Response, Sense, Shape, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetInfo,
-    WidgetText, WidgetType, pos2, vec2,
+    self, CornerRadius, Galley, NumExt, Rect, Response, Sense, Shape, Stroke, StrokeKind, TextStyle, Ui, Vec2, WidgetInfo, WidgetText,
+    WidgetType, pos2, vec2,
 };
 use glowfly_core::settings::FocusStyle;
 use std::sync::Arc;
@@ -59,85 +63,6 @@ pub(super) fn placeholder_in(v: &mut egui::Visuals, tone: egui::Color32) {
 /// size instead: [`SizedField`].
 pub fn field(ui: &mut Ui, edit: egui::TextEdit<'_>) -> Response {
     ui.add(Field(edit))
-}
-
-/// A field's padding at the text's left and right, in both field sizes.
-pub const FIELD_PAD_X: f32 = 10.0;
-
-/// The padding above and below a field's text. A single-line field is also centred in the
-/// size's height, so its padding is only the least room (and grows the field with a larger
-/// font); a multiline field's rows start below it.
-pub(super) const fn field_pad_y(size: ControlSize, multiline: bool) -> f32 {
-    match (size, multiline) {
-        (ControlSize::Large, _) => 8.0,
-        (_, true) => 6.0,
-        (_, false) => 4.0,
-    }
-}
-
-/// A field's padding in `size`, with `trailing` px right of the text instead of the side
-/// padding (room for a button painted inside the field).
-pub fn field_margin(size: ControlSize, multiline: bool, trailing: Option<f32>) -> Margin {
-    let (x, y) = (FIELD_PAD_X as i8, field_pad_y(size, multiline) as i8);
-    Margin { left: x, right: trailing.map_or(x, |t| t as i8), top: y, bottom: y }
-}
-
-/// The text's width in a field `outer` px wide (with the side padding).
-pub fn field_text_width(outer: f32) -> f32 {
-    (outer - 2.0 * FIELD_PAD_X).max(0.0)
-}
-
-/// A [`Field`] at a control size: Regular (28 px: the inline fields, such as filters, find, the
-/// commit message and Preferences forms) or Large (36 px: dialog fields). Its padding comes
-/// from the size, never from the view, and a single-line field centres its text. `width` is
-/// the whole field's; the response's rect is the whole field, padding included (egui's own is
-/// the text's).
-pub struct SizedField<'t> {
-    edit: egui::TextEdit<'t>,
-    size: ControlSize,
-    multiline: bool,
-    trailing: Option<f32>,
-    width: Option<f32>,
-}
-
-impl<'t> SizedField<'t> {
-    /// `edit` at `size`, Regular or Large; it fills the row unless given a `width`.
-    pub fn new(size: ControlSize, edit: egui::TextEdit<'t>) -> Self {
-        debug_assert!(matches!(size, ControlSize::Regular | ControlSize::Large), "a field is Regular or Large, not {size:?}");
-        Self { edit, size, multiline: false, trailing: None, width: None }
-    }
-
-    /// `edit` is multiline: its rows start at the top padding instead of being centred.
-    pub fn multiline(mut self) -> Self {
-        self.multiline = true;
-        self
-    }
-
-    /// The whole field's width, padding included.
-    pub fn width(mut self, w: f32) -> Self {
-        self.width = Some(w);
-        self
-    }
-
-    /// Keeps `w` px right of the text instead of the side padding, for a button painted inside
-    /// the field.
-    pub fn trailing_room(mut self, w: f32) -> Self {
-        self.trailing = Some(w);
-        self
-    }
-}
-
-impl egui::Widget for SizedField<'_> {
-    fn ui(self, ui: &mut Ui) -> Response {
-        let SizedField { edit, size, multiline, trailing, width } = self;
-        let margin = field_margin(size, multiline, trailing);
-        let align = if multiline { Align::Min } else { Align::Center };
-        let inner = width.map_or(f32::INFINITY, |w| (w - margin.sum().x).max(0.0));
-        let edit = edit.margin(margin).min_size(vec2(0.0, size.metrics().h)).vertical_align(align).desired_width(inner);
-        let mut r = ui.add(Field(edit));
-        r.rect += margin;
-        r
-    }
 }
 
 /// A checkbox: an input-coloured box with an `input_border` edge, filled with accent (or its
@@ -323,7 +248,7 @@ fn paint_disabled_radio(ui: &Ui, rect: Rect, galley: Option<Arc<Galley>>, select
     }
     if let Some(galley) = galley {
         let s = ui.spacing();
-        let pos = pos2(rect.min.x + s.icon_width + s.icon_spacing, rect.center().y - 0.5 * galley.size().y);
+        let pos = pos2(rect.min.x + s.icon_width + s.icon_spacing, sizes::text_pos(rect, &galley).y);
         painter.galley_with_override_text_color(pos, galley, p.weak);
     }
 }
@@ -390,7 +315,7 @@ fn first_line(rect: Rect, galley: Option<&Galley>) -> Rect {
 fn paint_label(ui: &Ui, rect: Rect, galley: Option<Arc<Galley>>, response: &Response) {
     if let Some(galley) = galley {
         let s = ui.spacing();
-        let pos = pos2(rect.min.x + s.icon_width + s.icon_spacing, rect.center().y - 0.5 * galley.size().y);
+        let pos = pos2(rect.min.x + s.icon_width + s.icon_spacing, sizes::text_pos(rect, &galley).y);
         ui.painter().galley(pos, galley, ui.style().interact(response).text_color());
     }
 }

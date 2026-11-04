@@ -20,6 +20,7 @@
 //! marked row is a checkbox or a radio button to screen readers, with its state.
 
 use super::super::access;
+use super::super::theme::sizes::centred_on;
 use super::super::theme::{color, type_scale};
 use super::menu_columns::{self as cols, Columns, STATE_W};
 use super::menu_reason::{self, ItemState};
@@ -208,10 +209,10 @@ impl<'a> Item<'a> {
                 let slot = Rect::from_min_size(pos2(rect.left() + c.icon_left(pad), rect.top()), vec2(cols::ICON_W, rect.height()));
                 paint(p, slot, tone);
             }
-            p.galley(pos2(rect.left() + c.label_x(pad), cy - galley.size().y / 2.0), galley, ink);
+            p.galley(pos2(rect.left() + c.label_x(pad), centred_on(cy, galley.size().y)), galley, ink);
             if let Some(key) = key {
                 let tone = if enabled { color::weak() } else { color::faint() };
-                let at = pos2(rect.right() - c.key_right(pad) - key.size().x, cy - key.size().y / 2.0);
+                let at = pos2(rect.right() - c.key_right(pad) - key.size().x, centred_on(cy, key.size().y));
                 p.galley_with_override_text_color(at, key, tone);
             }
             if !enabled {

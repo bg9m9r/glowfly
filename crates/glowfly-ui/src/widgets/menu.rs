@@ -312,7 +312,7 @@ pub fn group_header_with(ui: &mut Ui, text: &str, icon: Option<(super::menu_row:
     let galley = ui.painter().layout_no_wrap(text.to_owned(), type_scale::strong(ui, type_scale::SMALL), color::weak());
     let (rect, resp) = ui.allocate_at_least(vec2(x + galley.size().x + pad, tokens::HEADER_H), Sense::hover());
     if ui.is_rect_visible(rect) {
-        let at = egui::pos2(rect.left() + x, rect.center().y - galley.size().y / 2.0);
+        let at = egui::pos2(rect.left() + x, crate::theme::sizes::text_pos(rect, &galley).y);
         ui.painter().galley(at, galley, color::weak());
         if let Some((paint, c)) = icon {
             let slot = Rect::from_min_size(egui::pos2(rect.left() + cols.icon_left(pad), rect.top()), vec2(columns::ICON_W, rect.height()));

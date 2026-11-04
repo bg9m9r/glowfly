@@ -1,4 +1,4 @@
-//! The size tables (`ControlSize`, `ChipSize`), `text_pos` and `fits`.
+//! The size tables (`ControlSize`, `ChipSize`), `text_pos`, `centred_on` and `fits`.
 
 use super::*;
 use eframe::egui::{Color32, Context, FontId, vec2};
@@ -59,4 +59,20 @@ fn text_sits_on_a_whole_point_never_low() {
     let above = p.y - rect.top();
     let below = rect.bottom() - (p.y + g.size().y);
     assert!(above <= below && below - above <= 1.0, "above {above}, below {below}");
+}
+
+#[test]
+fn a_centre_line_places_text_as_its_rect_does() {
+    for top in [0.0, 0.5, 3.0] {
+        for h in [16.8, 17.0, 19.2] {
+            let rect = Rect::from_min_size(pos2(0.0, top), vec2(40.0, 28.0));
+            let y = rect.center().y;
+            let at = centred_on(y, h);
+            assert_eq!(at, centred_top(rect, h), "top {top}, h {h}");
+            assert_eq!(at, at.floor(), "a whole point");
+            assert!(at <= y - h / 2.0, "never below the exact centre");
+        }
+    }
+    assert_eq!(centred_on(10.0, 17.0), 1.0);
+    assert_eq!(centred_on(10.5, 17.0), 2.0);
 }

@@ -9,7 +9,7 @@
 //! title and 0.
 
 use super::quiet_target::{self, State};
-use super::{Icon, PAD_X, SECTION_H, TITLE_X, chevron, paint_icon_sized, row_fill};
+use super::{Icon, PAD_X, SECTION_H, TITLE_X, chevron, paint_icon_sized, paint_text, row_fill};
 use crate::theme::sizes::ControlSize;
 use crate::theme::{color, fonts, type_scale};
 use crate::widgets::menu;
@@ -95,9 +95,9 @@ fn header_row(
     row_fill::paint_state(p, rect, state);
     chevron(p, pos2(rect.left() + PAD_X, rect.center().y), *open, color::weak());
     let (title_col, count_col) = header_inks(muted, state.down);
-    p.text(pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, title_font, title_col);
+    paint_text(p, pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, title_font, title_col);
     if let Some(n) = count {
-        p.text(pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), count_font, count_col);
+        paint_text(p, pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), count_font, count_col);
     }
     if resp.clicked() {
         *open = !*open;

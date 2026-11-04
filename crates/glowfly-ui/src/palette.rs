@@ -131,11 +131,10 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 k.prompt()
             }
         };
-        let edit = egui::TextEdit::singleline(&mut p.query)
-            .id(Id::new("glowfly-palette-query"))
-            .hint_text(hint)
-            .font(type_scale::font(type_scale::SUBHEAD));
-        let r = ui.add(controls::SizedField::new(ControlSize::Large, edit));
+        let edit = egui::TextEdit::singleline(&mut p.query).id(Id::new("glowfly-palette-query")).hint_text(hint);
+        // The font goes on the field, so its text is centred for the SUBHEAD line's height.
+        let font = type_scale::font(type_scale::SUBHEAD);
+        let r = ui.add(controls::SizedField::new(ControlSize::Large, edit).font(font));
         crate::access::name_if_unnamed(&r, hint);
         if !prompting {
             r.request_focus();
