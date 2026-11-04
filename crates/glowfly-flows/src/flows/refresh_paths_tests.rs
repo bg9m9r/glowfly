@@ -264,7 +264,7 @@ fn glowfly_s_own_operations_and_polls_read_everything() {
     assert_eq!(read_paths(&fx), None, "staging reads the whole status");
     finish(&mut st, fx);
 
-    st.view.was_focused = true;
+    st.cues.was_focused = true;
     let remote = Msg::Watch(WatchMsg::RemoteVolume { workdir: st.workdir().unwrap(), kind: "SMB" });
     update(&mut st, remote, Instant::now());
     let t0 = Instant::now();

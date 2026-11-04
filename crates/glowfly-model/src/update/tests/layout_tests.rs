@@ -46,7 +46,7 @@ fn repeated_zoom_updates_one_toast() {
     run(&mut st, LayoutMsg::ZoomIn);
     assert_eq!(st.toasts.len(), 1);
     assert_eq!(toast_texts(&st), ["Zoom 125%"]);
-    assert_eq!(st.view.zoom_toast, Some(st.toasts[0].id));
+    assert_eq!(st.cues.zoom_toast, Some(st.toasts[0].id));
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn a_drawn_title_bar_drops_the_menu_bar_entries() {
     use crate::state::window_chrome::Chrome;
     for chrome in [Chrome::Windows, Chrome::MacOs] {
         let mut st = state();
-        st.view.chrome = chrome;
+        st.cues.chrome = chrome;
         assert!(find(&st, "Hide menu bar").is_none() && find(&st, "Show menu bar").is_none(), "{chrome:?}");
         assert!(find(&st, "Hide toolbar").is_some(), "the other panels stay");
     }

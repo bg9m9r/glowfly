@@ -42,7 +42,7 @@ fn frame() -> egui::Frame {
 /// `show_in_main` draws it).
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !st.terminal.open || st.snap.is_none() {
-        st.terminal.focused = false;
+        st.view.terminal.focused = false;
         return;
     }
     if maximized_shown(st) {
@@ -51,7 +51,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Sized from the height left under the bars and the logs panel, keeping the main view.
     let fit = panel_layout::fit_one(ctx.available_rect().height(), MAIN_MIN_HEIGHT, TERMINAL, st.settings.terminal.panel_height);
     let id = egui::Id::new("terminal-panel");
-    crate::panel_size::pin(ctx, id, fit.size, st.terminal.resizing);
+    crate::panel_size::pin(ctx, id, fit.size, st.view.terminal.resizing);
     let resp = egui::TopBottomPanel::bottom(id).resizable(true).default_height(fit.size).height_range(fit.lo..=fit.hi).frame(frame()).show(
         ctx,
         |ui| {
@@ -61,16 +61,16 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     );
     // Saved once a drag of the edge ends, not every frame or when the window clamps it.
     let dragging = crate::panel_size::dragging(ctx, id);
-    if st.terminal.resizing && !dragging {
+    if st.view.terminal.resizing && !dragging {
         msgs.push(Msg::Terminal(TerminalMsg::PanelHeight(resp.response.rect.height())));
     }
-    st.terminal.resizing = dragging;
+    st.view.terminal.resizing = dragging;
 }
 
 /// The maximised panel in the central area, in place of the main view (no resize edge).
 /// Returns where it was drawn, for the tour.
 pub fn show_in_main(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) -> egui::Rect {
-    st.terminal.resizing = false;
+    st.view.terminal.resizing = false;
     egui::CentralPanel::default()
         .frame(frame())
         .show(ctx, |ui| {
@@ -84,13 +84,13 @@ pub fn show_in_main(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>)
 fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let index = st.snap.as_ref().and_then(|s| st.terminal.active_id(&s.workdir)).and_then(|id| st.terminal.index_of(id));
     let Some(index) = index else {
-        st.terminal.focused = false;
+        st.view.terminal.focused = false;
         ui.label(RichText::new("Starting shell…").color(color::weak()));
         return;
     };
     match st.terminal.sessions[index].status.clone() {
         SessionStatus::Starting => {
-            st.terminal.focused = false;
+            st.view.terminal.focused = false;
             ui.label(RichText::new("Starting shell…").color(color::weak()));
         }
         SessionStatus::Running => grid::show(ui, st, index, msgs),
@@ -101,11 +101,11 @@ fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             });
         }
         SessionStatus::Held => {
-            st.terminal.focused = false;
+            st.view.terminal.focused = false;
             held::show(ui, st, msgs);
         }
         SessionStatus::Failed(error) => {
-            st.terminal.focused = false;
+            st.view.terminal.focused = false;
             ui.label(RichText::new(format!("Could not start the shell: {error}")).color(color::removed()));
             ui.horizontal(|ui| {
                 if ui.add(buttons::secondary("Restart")).clicked() {

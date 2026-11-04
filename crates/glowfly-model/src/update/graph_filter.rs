@@ -90,15 +90,15 @@ fn ref_exists(snap: &Snapshot, r: &str) -> bool {
 /// highlighting once it answers), and each tip's rows once per snapshot.
 fn hover_ref(st: &mut AppState, tip: Option<git2::Oid>, fx: &mut Vec<Effect>) {
     let Some(tip) = tip.filter(|_| st.snap.is_some()) else {
-        st.view.highlight = None;
+        st.cues.highlight = None;
         return;
     };
     if !super::large_graph::ancestry_ready(st, fx) {
-        st.view.highlight = None;
+        st.cues.highlight = None;
         return;
     }
-    let (Some(snap), rows) = (st.snap.as_ref(), &mut st.view.ref_rows) else { return };
+    let (Some(snap), rows) = (st.snap.as_ref(), &mut st.cues.ref_rows) else { return };
     let Some(base) = &rows.base else { return };
     let branch = rows.rows.entry(tip).or_insert_with(|| Arc::new(crate::state::ref_rows::branch_rows(snap, tip, base)));
-    st.view.highlight = Some((tip, Arc::clone(branch)));
+    st.cues.highlight = Some((tip, Arc::clone(branch)));
 }

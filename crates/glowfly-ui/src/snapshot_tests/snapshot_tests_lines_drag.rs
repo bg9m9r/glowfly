@@ -88,7 +88,7 @@ fn drag_test(layout: DiffLayout, from_x: f32, to_x: f32) {
         "the drag starts on -fix"
     );
     assert!(sent.iter().any(|m| matches!(m, DiffMsg::DragDiffLine { hunk: 0, line } if *line == new_line)), "and reaches +new line");
-    let sel = &h.state().0.view.diff_lines;
+    let sel = &h.state().0.cues.diff_lines;
     let lines = &h.state().0.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let changed: Vec<usize> = (fix..=new_line).filter(|&i| matches!(lines[i].origin, '+' | '-')).collect();
     // The hunk's lines 2 to 4: `-fix`, `+fixed build` and `+new line`.
@@ -99,7 +99,7 @@ fn drag_test(layout: DiffLayout, from_x: f32, to_x: f32) {
     button(&mut h, to, false);
     let sent = frame(&mut h);
     assert!(sent.iter().any(|m| matches!(m, DiffMsg::EndLineDrag)), "the release ends the drag");
-    let sel = &h.state().0.view.diff_lines;
+    let sel = &h.state().0.cues.diff_lines;
     assert!(sel.dragging().is_none());
     assert_eq!(sel.lines.iter().copied().collect::<Vec<_>>(), changed, "the selection stays");
     drop(h);
@@ -148,7 +148,7 @@ fn code_drag_test(layout: DiffLayout, name: &str) {
     assert_eq!((after.y0, after.y1), (b.y0, b.y1), "a drag on the code doesn't scroll the diff");
     let picked = sent.iter().filter(|m| matches!(m, DiffMsg::StartLineDrag { .. } | DiffMsg::SelectDiffLine { .. })).count();
     assert_eq!(picked, 0, "a drag across the code picks no lines");
-    assert!(h.state().0.view.diff_lines.is_empty());
+    assert!(h.state().0.cues.diff_lines.is_empty());
     drop(h);
     remove_fixture(&dir);
 }

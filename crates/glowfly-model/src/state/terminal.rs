@@ -25,6 +25,15 @@ pub struct TerminalPanel {
     pub next_id: u64,
     /// The grid size (rows, cols) the panel last reported.
     pub grid: Option<(u16, u16)>,
+    /// Whether the panel takes the main area instead of sitting under it. Not saved.
+    pub maximized: bool,
+    /// The tab being renamed in place, with the field's text; view state.
+    pub renaming: Option<TabRename>,
+}
+
+/// The terminal panel's state the view writes (`ViewState::terminal`).
+#[derive(Default)]
+pub struct TerminalView {
     /// Whether the terminal has the keyboard; written by the view every frame.
     pub focused: bool,
     /// Give the terminal the keyboard on the next frame; set by update, cleared by the view.
@@ -38,10 +47,6 @@ pub struct TerminalPanel {
     pub edge_rem: f32,
     /// Whether the panel's edge was being dragged last frame; view state.
     pub resizing: bool,
-    /// Whether the panel takes the main area instead of sitting under it. Not saved.
-    pub maximized: bool,
-    /// The tab being renamed in place, with the field's text; view state.
-    pub renaming: Option<TabRename>,
 }
 
 /// A terminal tab's inline rename field.

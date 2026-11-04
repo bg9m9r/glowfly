@@ -44,11 +44,11 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
     egui::TopBottomPanel::top("title-bar")
         .exact_height(TITLE_H)
         .show_separator_line(false)
-        .frame(egui::Frame::new().fill(backdrop::fill(st.view.backdrop, Surface::Chrome, color::toolbar())))
+        .frame(egui::Frame::new().fill(backdrop::fill(st.cues.backdrop, Surface::Chrome, color::toolbar())))
         .show(ctx, |ui| {
             let bar = ui.max_rect();
-            let chrome = st.view.chrome;
-            let inset = chrome.leading_inset(st.view.window.fullscreen);
+            let chrome = st.cues.chrome;
+            let inset = chrome.leading_inset(st.cues.window.fullscreen);
             let x = bar.left() + inset + 8.0;
             ctx.data_mut(|d| {
                 d.insert_temp(Id::new(PLACE), (bar, ui.layer_id()));
@@ -57,7 +57,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
             // First, so every widget drawn after it wins the pointer over it.
             let bg = ui.interact(bar, ui.id().with("title-bar-drag"), Sense::CLICK | Sense::DRAG);
             if bg.double_clicked() {
-                msgs.push(Msg::App(AppMsg::Window(WindowCmd::SetMaximized(!st.view.window.maximized))));
+                msgs.push(Msg::App(AppMsg::Window(WindowCmd::SetMaximized(!st.cues.window.maximized))));
             } else if bg.drag_started_by(PointerButton::Primary) {
                 msgs.push(Msg::App(AppMsg::Window(WindowCmd::StartDrag)));
             } else if bg.secondary_clicked() && chrome.system_menu() {
@@ -112,9 +112,10 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
     }
     let (tap, fired) = st.view.alt_tap.step(alt_frame(&ctx));
     st.view.alt_tap = tap;
-    let wanted = st.view.chrome.mnemonics().then(|| st.view.menu_keys.request.take()).flatten();
+    let wanted = st.cues.chrome.mnemonics().then(|| st.view.menu_keys.request.take()).flatten();
     // Not while a dialog blocks the bar or the terminal has the keyboard.
-    let toggle = fired && st.view.chrome.alt_opens_menu() && !st.terminal.focused && ctx.memory(|m| m.allows_interaction(ui.layer_id()));
+    let toggle =
+        fired && st.cues.chrome.alt_opens_menu() && !st.view.terminal.focused && ctx.memory(|m| m.allows_interaction(ui.layer_id()));
     let was_open = menu_anchor::open_id(&ctx, id).is_some();
     let cmd = if let Some(m) = wanted {
         // Alt was used: letting go of it is no tap.

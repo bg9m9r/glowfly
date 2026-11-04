@@ -57,7 +57,7 @@ fn open_landing(st: &mut AppState, target: DiffTarget, landing: Landing, fx: &mu
         st.session.tab_view.file_folds.open_to(list, target.path());
     }
     // After `open_diff`, which clears it.
-    st.view.diff_landing = Some((target.clone(), landing));
+    st.cues.diff_landing = Some((target.clone(), landing));
     super::history_view::follow_step(st, &target, fx);
 }
 
@@ -67,7 +67,7 @@ fn open_landing(st: &mut AppState, target: DiffTarget, landing: Landing, fx: &mu
 /// with the landing kept. Returns whether it did; otherwise the step is dropped and the caller
 /// reloads the shown file as usual.
 pub(super) fn renew_step(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
-    let Some((pending, landing)) = st.view.diff_landing.clone() else { return false };
+    let Some((pending, landing)) = st.cues.diff_landing.clone() else { return false };
     let shown = st.session.diff.view.as_ref().map(|(t, _)| t.clone());
     let next = match shown {
         Some(s) if diff_nav::in_list(st, &s) => diff_nav::next_file(st, &s, landing.dir()),
@@ -80,7 +80,7 @@ pub(super) fn renew_step(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
             true
         }
         None => {
-            st.view.diff_landing = None;
+            st.cues.diff_landing = None;
             false
         }
     }
@@ -109,11 +109,11 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
                 return;
             }
             if let Some((_, d)) = &st.session.diff.view {
-                let (mode, from, top) = (st.settings.diff_mode, st.settings.diff_layout, st.session.tab_view.diff_top_row);
+                let (mode, from, top) = (st.settings.diff_mode, st.settings.diff_layout, st.view.tab.diff_top_row);
                 let row = same_change_row(d, mode, from, layout, top, &st.session.tab_view.diff_expanded);
                 st.view.diff_scroll_to_row = Some(row);
-                st.session.tab_view.diff_top_row = row;
-                st.view.diff_cursor = None; // the rows are numbered differently now
+                st.view.tab.diff_top_row = row;
+                st.cues.diff_cursor = None; // the rows are numbered differently now
             }
             // The text selected was on the other layout's rows, or side.
             st.view.diff_text = None;
@@ -127,7 +127,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
                 return;
             }
             st.settings.diff_ignore_whitespace = on;
-            st.view.diff_lines.clear();
+            st.cues.diff_lines.clear();
             // The gaps between the hunks shown now may sit where others did: read them again.
             st.session.tab_view.diff_expanded.drop_gap_text();
             fx.extend(super::prefs::save_settings(st));
@@ -144,7 +144,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
             // The rows and their indexes stay; only their heights change, so the view keeps
             // the row at the top where it is.
             if st.session.diff.view.is_some() {
-                st.view.diff_scroll_to_row = Some(st.session.tab_view.diff_top_row);
+                st.view.diff_scroll_to_row = Some(st.view.tab.diff_top_row);
             }
             // The conflict view's rows change height too: its current chunk comes back in view.
             if let Some(c) = &st.session.conflict.view {
@@ -162,15 +162,15 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
         DiffMsg::CopyHunkPatch { index, generation } => super::diff_copy::read(st, index, generation, fx),
         DiffMsg::HunkPatchRead { result } => super::diff_copy::copied(st, result, now, fx),
         DiffMsg::JumpToChange(step) => {
-            if st.view.diff_landing.is_some() {
+            if st.cues.diff_landing.is_some() {
                 return; // a stepped-to file is loading: key repeat waits for it
             }
             match diff_nav::step(st, step) {
                 Step::Row(row) => {
                     st.view.diff_scroll_to_row = Some(row);
                     // Recorded now so repeated presses before the next frame keep stepping.
-                    st.session.tab_view.diff_top_row = row;
-                    st.view.diff_cursor = Some(row);
+                    st.view.tab.diff_top_row = row;
+                    st.cues.diff_cursor = Some(row);
                 }
                 Step::File(target, landing) => open_landing(st, target, landing, fx),
                 Step::End => {}
@@ -208,7 +208,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
 /// line operations are blocked.
 fn lines(st: &mut AppState, msg: DiffMsg) {
     let blocked = st.line_ops_blocked().is_some();
-    let sel = &mut st.view.diff_lines;
+    let sel = &mut st.cues.diff_lines;
     match (msg, &st.session.diff.view) {
         (DiffMsg::ClearLineSelection, _) => sel.clear(),
         (DiffMsg::EndLineDrag, _) => sel.end_drag(),
@@ -231,17 +231,17 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
         .diff
         .view
         .as_ref()
-        .and_then(|(_, d)| hunk_at_top(d, old, layout, st.session.tab_view.diff_top_row, &st.session.tab_view.diff_expanded));
+        .and_then(|(_, d)| hunk_at_top(d, old, layout, st.view.tab.diff_top_row, &st.session.tab_view.diff_expanded));
     st.settings.diff_mode = mode;
     // The hunk view and the whole file name their lines differently.
-    st.view.clear_diff_selection();
+    st.clear_diff_selection();
     fx.extend(super::prefs::save_settings(st));
     match mode {
         DiffMode::WholeFile => {
             // The whole file comes with a reload; it opens on the same hunk's block, and hunk
             // operations wait for it.
-            st.view.diff_open_hunk = h;
-            st.view.diff_cursor = None;
+            st.cues.diff_open_hunk = h;
+            st.cues.diff_cursor = None;
             super::repo::reopen_diff(st, fx);
         }
         DiffMode::Hunks => {
@@ -250,8 +250,8 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
             std::sync::Arc::make_mut(d).whole = None;
             let row = h.and_then(|h| header_rows_filled(d, layout, &st.session.tab_view.diff_expanded).get(h).copied()).unwrap_or(0);
             st.view.diff_scroll_to_row = Some(row);
-            st.session.tab_view.diff_top_row = row;
-            st.view.diff_cursor = None;
+            st.view.tab.diff_top_row = row;
+            st.cues.diff_cursor = None;
             // Folds opened in the whole file are open gaps here: their text is read.
             super::diff_gaps::diff_shown(st, fx);
         }
@@ -270,16 +270,16 @@ pub(super) fn refold(st: &mut AppState, change: impl FnOnce(&mut Expanded, &Whol
     let Some((_, d)) = &st.session.diff.view else { return };
     let Some(w) = shown(d, mode) else { return };
     let before = change_rows(d, mode, layout, &st.session.tab_view.diff_expanded);
-    let anchor = line_at_row(w, layout, &st.session.tab_view.diff_expanded, st.session.tab_view.diff_top_row);
+    let anchor = line_at_row(w, layout, &st.session.tab_view.diff_expanded, st.view.tab.diff_top_row);
     if !change(&mut st.session.tab_view.diff_expanded, w) {
         return;
     }
     let after = change_rows(d, mode, layout, &st.session.tab_view.diff_expanded);
-    st.view.diff_cursor = st.view.diff_cursor.and_then(|c| before.iter().position(|&r| r == c)).and_then(|i| after.get(i).copied());
+    st.cues.diff_cursor = st.cues.diff_cursor.and_then(|c| before.iter().position(|&r| r == c)).and_then(|i| after.get(i).copied());
     if let Some(line) = anchor {
         let row = row_of_line(w, layout, &st.session.tab_view.diff_expanded, line);
-        if row != st.session.tab_view.diff_top_row {
-            st.session.tab_view.diff_top_row = row;
+        if row != st.view.tab.diff_top_row {
+            st.view.tab.diff_top_row = row;
             st.view.diff_scroll_to_row = Some(row);
         }
     }

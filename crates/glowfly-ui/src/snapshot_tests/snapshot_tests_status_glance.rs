@@ -44,7 +44,7 @@ fn bar_sized(st: AppState, dark: bool, width: f32) -> H {
 /// failed Fetch all as its last run.
 fn failed(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
-    st.view.now = NOW;
+    st.cues.now = NOW;
     let snap = st.snap.as_mut().unwrap();
     snap.remote_info = ["origin", "upstream"].map(|n| RemoteInfo { name: n.into(), ..RemoteInfo::default() }).to_vec();
     snap.fetched_at = Some(NOW - 4 * 60 - 10);

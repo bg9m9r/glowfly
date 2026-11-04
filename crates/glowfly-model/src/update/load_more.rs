@@ -76,8 +76,8 @@ pub(super) fn extended(st: &mut AppState, generation: u64, result: Result<Box<Hi
                 super::refresh::reload_after(st, fx);
                 return;
             }
-            st.view.ref_rows.reset();
-            st.view.highlight = None;
+            st.cues.ref_rows.reset();
+            st.cues.highlight = None;
             if pending {
                 super::large_graph::relayout(st, fx);
             }

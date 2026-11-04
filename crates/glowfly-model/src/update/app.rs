@@ -24,23 +24,23 @@ pub(super) fn handle(st: &mut AppState, msg: AppMsg, fx: &mut Vec<Effect>) {
         AppMsg::Quit => quit(st, false, fx),
         AppMsg::CloseRequested => quit(st, true, fx),
         AppMsg::QuitConfirmed => {
-            st.view.quit_ask = None;
+            st.cues.quit_ask = None;
             // A fetch is stopped first, so it removes its lock files; the window closes once
             // it has ended (`settle`).
             if st.job_cancellable() {
                 super::job_stop::cancel(st, fx);
             }
             if st.job_cancelling() {
-                st.view.quit_after_stop = true;
+                st.cues.quit_after_stop = true;
                 return;
             }
-            st.view.quitting = true;
+            st.cues.quitting = true;
             fx.push(Effect::Ui(UiEffect::CloseWindow));
         }
         // A full-screen window can't be moved or resized, and Maximize or Restore leaves full
         // screen.
         AppMsg::Window(cmd) => {
-            if let Some(cmd) = cmd.in_window(st.view.window) {
+            if let Some(cmd) = cmd.in_window(st.cues.window) {
                 fx.push(Effect::Ui(UiEffect::Window(cmd)));
             }
         }
@@ -52,7 +52,7 @@ pub(super) fn handle(st: &mut AppState, msg: AppMsg, fx: &mut Vec<Effect>) {
                 st.modal = Some(Modal::About);
             }
         }
-        AppMsg::SystemA11y(system) => st.view.system_a11y = system,
+        AppMsg::SystemA11y(system) => st.cues.system_a11y = system,
         // Only from About, which it replaces.
         AppMsg::ShowNotices => {
             if matches!(st.modal, Some(Modal::About)) {
@@ -70,8 +70,8 @@ pub(super) fn handle(st: &mut AppState, msg: AppMsg, fx: &mut Vec<Effect>) {
 /// meanwhile, and the answer (`checked`) closes the window itself.
 fn quit(st: &mut AppState, os_request: bool, fx: &mut Vec<Effect>) {
     // Quit went ahead (or is waiting for a stopped job, and is asked again): the close passes.
-    if st.view.quitting || st.view.quit_after_stop {
-        st.view.quitting = true;
+    if st.cues.quitting || st.cues.quit_after_stop {
+        st.cues.quitting = true;
         if !os_request {
             fx.push(Effect::Ui(UiEffect::CloseWindow));
         }
@@ -98,7 +98,7 @@ fn quit(st: &mut AppState, os_request: bool, fx: &mut Vec<Effect>) {
 /// The shells' answer for a quit: asks if anything would be cut off, else closes. A quit that
 /// went ahead or a question already open meanwhile stays as it is.
 pub(super) fn checked(st: &mut AppState, busy: Vec<BusyTerminal>, fx: &mut Vec<Effect>) {
-    if st.view.quitting || st.view.quit_after_stop || asking(st) {
+    if st.cues.quitting || st.cues.quit_after_stop || asking(st) {
         return;
     }
     decide(st, busy, false, fx);
@@ -113,10 +113,10 @@ fn decide(st: &mut AppState, busy: Vec<BusyTerminal>, os_request: bool, fx: &mut
         let ask = QuitAsk { work: running(st).is_some(), terminals: busy, unsaved: unsaved(st) };
         // An edited form stays underneath, and comes back on Cancel.
         open_over(&mut st.modal, &mut st.dialog, modal);
-        st.view.quit_ask = Some(ask);
+        st.cues.quit_ask = Some(ask);
         return;
     }
-    st.view.quitting = true;
+    st.cues.quitting = true;
     if !os_request {
         fx.push(Effect::Ui(UiEffect::CloseWindow));
     }
@@ -126,24 +126,24 @@ fn decide(st: &mut AppState, busy: Vec<BusyTerminal>, os_request: bool, fx: &mut
 /// the quit question shows, once the work and the terminals it named have all ended it closes
 /// the window by itself, or names only what is left when part of it has.
 pub(super) fn settle(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if st.view.quit_after_stop && st.job.is_none() {
-        st.view.quit_after_stop = false;
-        st.view.quitting = true;
+    if st.cues.quit_after_stop && st.job.is_none() {
+        st.cues.quit_after_stop = false;
+        st.cues.quitting = true;
         fx.push(Effect::Ui(UiEffect::CloseWindow));
         return;
     }
     if !asking(st) {
-        st.view.quit_ask = None;
+        st.cues.quit_ask = None;
         return;
     }
-    let Some(ask) = st.view.quit_ask.take() else { return };
+    let Some(ask) = st.cues.quit_ask.take() else { return };
     let work = running(st).is_some();
     let named = ask.terminals.len();
     let terminals: Vec<BusyTerminal> = ask.terminals.into_iter().filter(|b| terminal_busy::running(st, b.id)).collect();
     // Unsaved work never ends by itself: only the user's answer closes the window then.
     if !ask.unsaved && !work && terminals.is_empty() {
         st.modal = None;
-        st.view.quitting = true;
+        st.cues.quitting = true;
         fx.push(Effect::Ui(UiEffect::CloseWindow));
         return;
     }
@@ -153,5 +153,5 @@ pub(super) fn settle(st: &mut AppState, fx: &mut Vec<Effect>) {
             st.modal = Some(modal);
         }
     }
-    st.view.quit_ask = Some(QuitAsk { work, terminals, unsaved: ask.unsaved });
+    st.cues.quit_ask = Some(QuitAsk { work, terminals, unsaved: ask.unsaved });
 }

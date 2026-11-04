@@ -54,7 +54,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let over = |r: Option<Rect>| r.zip(pointer).is_some_and(|(r, p)| r.contains(p));
             let (over_time, over_lost) = (over(painted.map(|p| p.0)), over(painted.and_then(|p| p.1)));
             let resp = if resp.hovered() && over_time {
-                resp.on_hover_text_at_pointer(st.settings.date_tooltip(row.at, st.view.now, st.view.utc_offset))
+                resp.on_hover_text_at_pointer(st.settings.date_tooltip(row.at, st.cues.now, st.cues.utc_offset))
             } else if resp.hovered() && over_lost {
                 resp.on_hover_text_at_pointer(st.settings.lang().tr("journal.unreachable.tip"))
             } else if !row.message.is_empty() {
@@ -78,7 +78,7 @@ fn paint(ui: &Ui, st: &AppState, rect: Rect, row: &Row, label: &str) -> (Rect, O
     let (left, right) = (rect.left() + PAD_X, rect.right() - PAD_X);
     let (y1, y2) = (rect.top() + 18.0, rect.top() + 39.0);
     let small = type_scale::font(type_scale::SMALL);
-    let when = st.settings.format_time(row.at, st.view.now, st.view.utc_offset);
+    let when = st.settings.format_time(row.at, st.cues.now, st.cues.utc_offset);
     let time = p.text(pos2(right, y1), Align2::RIGHT_CENTER, when, small.clone(), color::weak());
     let body = type_scale::font(type_scale::BODY);
     paint_cut_text(p, pos2(left, y1), label, body, color::text(), (time.left() - 12.0 - left).max(0.0));

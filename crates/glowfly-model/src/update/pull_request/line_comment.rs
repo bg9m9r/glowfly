@@ -80,7 +80,7 @@ fn start(st: &mut AppState, side: LineSide, n: u32, extend: bool) {
 fn span_at(st: &AppState, side: LineSide, n: u32, extend: bool) -> Result<(usize, usize, usize), &'static str> {
     let (target, diff) = st.session.diff.view.as_ref().ok_or(OUTSIDE)?;
     let (h, i) = line_index(diff, side, n).ok_or(OUTSIDE)?;
-    let sel = &st.view.diff_lines;
+    let sel = &st.cues.diff_lines;
     if extend {
         return match st.session.pull_request.view.as_ref().and_then(|v| v.line_draft.as_ref()) {
             Some(d) if d.target == *target && d.hunk == h => Ok((h, d.first.min(i), d.last.max(i))),
@@ -98,7 +98,7 @@ fn on_selection(st: &mut AppState) {
     if !may_start(st) {
         return;
     }
-    let sel = &st.view.diff_lines;
+    let sel = &st.cues.diff_lines;
     let (Some((target, _)), Some(first), Some(last)) = (st.session.diff.view.as_ref(), sel.lines.first(), sel.lines.last()) else { return };
     if sel.target.as_ref() != Some(target) {
         return;
@@ -202,12 +202,12 @@ fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
             let (s, ex) = (&st.settings, &st.session.tab_view.diff_expanded);
             if let Some(row) = row_of_file_line(diff, s.diff_mode, s.diff_layout, ex, side, n) {
                 st.view.diff_scroll_to_row = Some(row);
-                st.session.tab_view.diff_top_row = row;
+                st.view.tab.diff_top_row = row;
             }
         }
         _ if st.session.pull_request.view.as_ref().is_some_and(|v| v.shows_file(&target)) => {
             super::super::repo::open_file_diff(st, target.clone(), fx);
-            st.view.diff_open_line = Some((target, side, n));
+            st.cues.diff_open_line = Some((target, side, n));
         }
         _ => {}
     }

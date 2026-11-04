@@ -118,7 +118,7 @@ fn close(st: &mut AppState, fx: &mut Vec<Effect>) {
     // The diff's scroll offset is in pixels: keep the same top row if the editor font
     // size (and so the row height) changed.
     if st.session.diff.view.is_some() {
-        st.view.diff_scroll_to_row = Some(st.session.tab_view.diff_top_row);
+        st.view.diff_scroll_to_row = Some(st.view.tab.diff_top_row);
     }
     // The commit limit or branch visibility may have changed.
     super::repo::refresh(st, fx);

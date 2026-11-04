@@ -23,7 +23,7 @@ const EMPTY: Pos2 = pos2(1000.0, 20.0);
 fn open(name: &str, chrome: Chrome, theme: ThemeChoice, change: impl FnOnce(&mut AppState)) -> (H, std::path::PathBuf) {
     let dark = theme == ThemeChoice::Dark;
     let (mut st, dir) = with_repo(theme, name);
-    st.view.chrome = chrome;
+    st.cues.chrome = chrome;
     st.settings.reduce_motion = true;
     change(&mut st);
     let mut h = harness_sized(st, dark, vec2(1440.0, 880.0));
@@ -33,7 +33,7 @@ fn open(name: &str, chrome: Chrome, theme: ThemeChoice, change: impl FnOnce(&mut
 
 /// The fills drawn under the Maximize button with the OS tracking it as `button`.
 fn native_fills(name: &str, theme: ThemeChoice, button: CaptionButton) -> Vec<Color32> {
-    let (mut h, dir) = open(name, Chrome::Windows, theme, |st| st.view.window.max_button = button);
+    let (mut h, dir) = open(name, Chrome::Windows, theme, |st| st.cues.window.max_button = button);
     for _ in 0..4 {
         h.step();
     }

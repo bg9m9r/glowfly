@@ -108,11 +108,11 @@ impl GlowflyApp {
         app.st.updates.set_version(env!("CARGO_PKG_VERSION"));
         app.st.updates.build = glowfly_model::state::menu_bar::BuildInfo::this();
         // Only the real app draws its own frame where the OS calls for it; test apps keep System.
-        app.st.view.chrome = chrome;
-        app.st.view.system_title_bar_offered =
+        app.st.cues.chrome = chrome;
+        app.st.cues.system_title_bar_offered =
             glowfly_model::state::window_chrome::Chrome::offers_system_title_bar(glowfly_core::opens::Os::current());
-        app.native = NativeWindow::install(cc, app.st.view.chrome, mica, ctx.clone());
-        app.menu = NativeMenu::install(app.st.view.chrome, ctx.clone());
+        app.native = NativeWindow::install(cc, app.st.cues.chrome, mica, ctx.clone());
+        app.menu = NativeMenu::install(app.st.cues.chrome, ctx.clone());
         app.primary = PrimarySelection::install(cc);
         app.a11y = a11y_system::Watch::new(a11y_system::read_system);
         app.a11y.refresh(ctx);
@@ -190,12 +190,12 @@ impl GlowflyApp {
 
     /// Keyboard shortcuts and window events, turned into messages or view-state changes.
     fn input(&mut self, ctx: &egui::Context, msgs: &mut Vec<Msg>) {
-        let focused = self.st.view.focused;
-        if focused && !self.st.view.was_focused {
+        let focused = self.st.cues.focused;
+        if focused && !self.st.cues.was_focused {
             msgs.push(Msg::Repo(RepoMsg::WindowFocused));
             self.a11y.refresh(ctx);
         }
-        self.st.view.was_focused = focused;
+        self.st.cues.was_focused = focused;
         if ctx.input(|i| i.viewport().close_requested()) {
             msgs.push(Msg::App(AppMsg::CloseRequested));
         }
@@ -209,13 +209,13 @@ impl GlowflyApp {
         let span = tracing::trace_span!("frame").entered();
         self.frames.begin();
         // Before the theme and zoom are applied, so a change shows in this frame.
-        if let Some(system) = self.a11y.take().filter(|s| *s != self.st.view.system_a11y) {
+        if let Some(system) = self.a11y.take().filter(|s| *s != self.st.cues.system_a11y) {
             self.dispatch(ctx, Msg::App(AppMsg::SystemA11y(system)));
         }
         self.theme.apply(ctx, &self.st.settings, &self.st.themes, self.st.system_contrast());
         layout::apply_zoom(ctx, &self.st);
-        self.st.view.focused = ctx.input(|i| i.focused);
-        self.st.view.window = ctx.input(|i| glowfly_model::state::window_chrome::WindowInfo {
+        self.st.cues.focused = ctx.input(|i| i.focused);
+        self.st.cues.window = ctx.input(|i| glowfly_model::state::window_chrome::WindowInfo {
             maximized: i.viewport().maximized.unwrap_or(false),
             fullscreen: i.viewport().fullscreen.unwrap_or(false),
             ..Default::default()
@@ -238,19 +238,19 @@ impl GlowflyApp {
                 app.dispatch(ctx, msg);
             }
         });
-        for (email, img) in self.st.view.avatars_loaded.drain(..) {
+        for (email, img) in self.st.cues.avatars_loaded.drain(..) {
             self.cache.avatars.insert(ctx, email, img);
         }
-        self.st.view.hover_tip = self.st.view.hover_tip_next.take();
-        self.st.view.now = chrono::Local::now().timestamp();
-        self.st.view.utc_offset = glowfly_core::dates::local_offset();
+        self.st.cues.hover_tip = self.st.view.hover_tip_next.take();
+        self.st.cues.now = chrono::Local::now().timestamp();
+        self.st.cues.utc_offset = glowfly_core::dates::local_offset();
 
         let now = Instant::now();
-        self.st.view.frame_at = Some(now);
+        self.st.cues.frame_at = Some(now);
         let mut msgs = vec![Msg::Tick(now)];
         msgs.append(&mut native_msgs);
         // The model never sees the palette: tell it which hues pass for the trunk when that changes.
-        if self.theme.trunk_near() != self.st.view.trunk_near {
+        if self.theme.trunk_near() != self.st.cues.trunk_near {
             msgs.push(Msg::Graph(GraphMsg::TrunkNear(self.theme.trunk_near())));
         }
         self.phase("draw", |app| {
@@ -316,7 +316,7 @@ impl eframe::App for GlowflyApp {
 
     /// Transparent where Mica shows through, else the palette's background.
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        app_native::clear_rgba(self.st.view.backdrop, theme::color::current().bg)
+        app_native::clear_rgba(self.st.cues.backdrop, theme::color::current().bg)
     }
 }
 

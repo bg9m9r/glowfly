@@ -26,7 +26,7 @@ pub enum Running {
     Download { version: String },
 }
 
-/// What the open quit question is about (`ViewState::quit_ask`): whether it named running work,
+/// What the open quit question is about (`ViewCues::quit_ask`): whether it named running work,
 /// the terminals it named, and whether it named unsaved work. Once the work and the terminals
 /// have ended the window closes by itself (update/app.rs `settle`), unless it named unsaved work:
 /// that never ends by itself, so only the user's answer closes the window then.

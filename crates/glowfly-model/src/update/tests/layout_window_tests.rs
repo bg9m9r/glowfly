@@ -46,7 +46,7 @@ fn labels(st: &AppState) -> Vec<String> {
 #[test]
 fn toggle_fullscreen_enters_then_leaves() {
     let mut st = state();
-    assert!(!st.view.window.fullscreen);
+    assert!(!st.cues.window.fullscreen);
     let before = settings_json(&st);
     let fx = send(&mut st, Msg::Layout(LayoutMsg::ToggleFullscreen));
     assert!(matches!(&fx[..], [Effect::Ui(UiEffect::Window(WindowCmd::SetFullscreen(true)))]), "{fx:?}");
@@ -54,7 +54,7 @@ fn toggle_fullscreen_enters_then_leaves() {
     assert_eq!(settings_json(&st), before, "settings unchanged");
     assert!(st.toasts.is_empty());
     // The shell reports the window full screen on the next frame.
-    st.view.window.fullscreen = true;
+    st.cues.window.fullscreen = true;
     let fx = send(&mut st, Msg::Layout(LayoutMsg::ToggleFullscreen));
     assert!(matches!(&fx[..], [Effect::Ui(UiEffect::Window(WindowCmd::SetFullscreen(false)))]), "{fx:?}");
     assert_eq!(settings_json(&st), before, "settings unchanged");
@@ -66,7 +66,7 @@ fn fullscreen_is_never_saved() {
     let mut st = state();
     let before = settings_json(&st);
     send(&mut st, Msg::Layout(LayoutMsg::ToggleFullscreen));
-    st.view.window.fullscreen = true;
+    st.cues.window.fullscreen = true;
     send(&mut st, Msg::Layout(LayoutMsg::ToggleFullscreen));
     assert_eq!(settings_json(&st), before);
 }
@@ -89,7 +89,7 @@ fn window_actions_in_full_screen() {
         WindowCmd::SetFullscreen(false),
     ];
     let mut st = state();
-    st.view.window.fullscreen = true;
+    st.cues.window.fullscreen = true;
     let mut run = |cmd| window_cmds(&send(&mut st, Msg::App(AppMsg::Window(cmd))));
     assert!(run(WindowCmd::StartDrag).is_empty(), "no moving a full-screen window");
     assert!(run(WindowCmd::BeginResize(ResizeEdge::SouthEast)).is_empty(), "nor resizing it");
@@ -115,7 +115,7 @@ fn palette_full_screen_entry_follows_the_window() {
     let at = |l: &str| all.iter().position(|x| x == l).unwrap_or_else(|| panic!("{l} offered"));
     assert!(at("Enter full screen") < at("Hide left panel"), "before the panel entries");
     assert!(st.snap.is_none(), "offered without a repository");
-    st.view.window.fullscreen = true;
+    st.cues.window.fullscreen = true;
     let all = labels(&st);
     assert!(all.iter().any(|l| l == "Leave full screen"));
     assert!(!all.iter().any(|l| l == "Enter full screen"));
@@ -160,12 +160,12 @@ fn edge_strip_message_brings_side_panels_back() {
 #[test]
 fn the_system_title_bar_switch_saves_and_waits_for_the_next_start() {
     let mut st = state();
-    st.view.chrome = Chrome::Windows;
+    st.cues.chrome = Chrome::Windows;
     st.prefs = Some(PrefsState::new(PrefPage::Ui));
     st.settings.system_title_bar = true;
     let fx = send(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.system_title_bar)), "saved");
-    assert_eq!(st.view.chrome, Chrome::Windows, "the drawn frame stays until Glowfly restarts");
+    assert_eq!(st.cues.chrome, Chrome::Windows, "the drawn frame stays until Glowfly restarts");
     assert!(window_cmds(&fx).is_empty(), "nothing asks the window to change now");
     st.settings.system_title_bar = false;
     let fx = send(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));

@@ -44,7 +44,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         || st.modal.is_some()
         || st.askpass.showing()
         || st.palette.is_some()
-        || st.terminal.focused
+        || st.view.terminal.focused
         || st.view.was_typing
         || (st.onboarding.welcome.is_some() && st.prefs.is_none())
     {
@@ -88,14 +88,14 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Diff(DiffMsg::ClearTextSelection));
     } else if glowfly_model::state::pull_request_line_comment::esc_cancels(st) {
         msgs.push(Msg::PullRequest(PullRequestMsg::LineComment(glowfly_model::pull_request::line_comment::LineCommentMsg::Cancel)));
-    } else if st.session.history.view.is_some() && !st.view.diff_lines.is_empty() {
+    } else if st.session.history.view.is_some() && !st.cues.diff_lines.is_empty() {
         // In File history too, Esc first drops a line selection of the entry's diff.
         msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));
     } else if st.session.history.view.is_some() {
         msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
     } else if st.diff_or_download() {
         // Esc first drops a line selection, then closes the diff.
-        msgs.push(if st.view.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::Diff(DiffMsg::ClearLineSelection) });
+        msgs.push(if st.cues.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::Diff(DiffMsg::ClearLineSelection) });
     } else if st.session.pull_request.view.is_some() {
         msgs.push(Msg::PullRequest(PullRequestMsg::Close));
     } else if st.session.issue.view.is_some() {

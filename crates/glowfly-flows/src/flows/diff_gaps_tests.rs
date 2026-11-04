@@ -129,18 +129,18 @@ fn opening_a_gap_above_the_top_keeps_the_top_row() {
         land(&mut st, fx);
         run(&mut st, Msg::Diff(DiffMsg::CollapseUnchanged(g[1].key)));
         let headers = header_rows_filled(&shown(&st), layout, &st.session.tab_view.diff_expanded);
-        st.session.tab_view.diff_top_row = headers[2];
-        st.view.diff_cursor = Some(headers[2]);
+        st.view.tab.diff_top_row = headers[2];
+        st.cues.diff_cursor = Some(headers[2]);
         st.view.diff_scroll_to_row = None;
 
         assert!(run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(g[0].key))).is_empty(), "the text is there");
         let now = header_rows_filled(&shown(&st), layout, &st.session.tab_view.diff_expanded);
         assert_eq!(now[2], headers[2] + g[0].len, "{layout:?}");
-        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (now[2], Some(now[2])), "{layout:?}");
-        assert_eq!(st.view.diff_cursor, Some(now[2]), "{layout:?}: the stepped-to change keeps its place");
+        assert_eq!((st.view.tab.diff_top_row, st.view.diff_scroll_to_row), (now[2], Some(now[2])), "{layout:?}");
+        assert_eq!(st.cues.diff_cursor, Some(now[2]), "{layout:?}: the stepped-to change keeps its place");
         // Folding it back returns to the same row.
         run(&mut st, Msg::Diff(DiffMsg::CollapseUnchanged(g[0].key)));
-        assert_eq!(st.session.tab_view.diff_top_row, headers[2], "{layout:?}");
+        assert_eq!(st.view.tab.diff_top_row, headers[2], "{layout:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

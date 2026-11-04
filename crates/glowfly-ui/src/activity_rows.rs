@@ -79,7 +79,7 @@ fn session_head(ui: &mut Ui, st: &AppState, head: SessionHead, first: bool) {
     }
     let text = match head {
         SessionHead::Earlier(at) => {
-            let date = st.settings.format_verbose(at, st.view.utc_offset);
+            let date = st.settings.format_verbose(at, st.cues.utc_offset);
             t.trf("logs.activity.earlier_session", &[("date", &date)])
         }
         SessionHead::This => t.tr("logs.activity.this_session").to_owned(),
@@ -130,7 +130,7 @@ pub(super) fn paint_row(ui: &mut Ui, st: &AppState, look: &RowLook, mark: impl F
     }
     let mut time_rect = Rect::NOTHING;
     if !look.sub {
-        let time = dates::relative(t, st.view.now - look.at);
+        let time = dates::relative(t, st.cues.now - look.at);
         time_rect = right_text(p, &mut right, cy, &time, &small);
     }
     if let Some(ms) = look.took_ms {
@@ -166,7 +166,7 @@ fn right_text(p: &egui::Painter, right: &mut f32, cy: f32, text: &str, font: &Fo
 
 /// The full date and time of `at`, for tooltips.
 fn verbose(st: &AppState, at: i64) -> String {
-    st.settings.format_verbose(at, st.view.utc_offset)
+    st.settings.format_verbose(at, st.cues.utc_offset)
 }
 
 /// The words a screen reader hears for a row: "<title>, <done|failed>, <summary>".

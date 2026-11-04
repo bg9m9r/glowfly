@@ -1,5 +1,4 @@
-//! Application state: plain data, no egui types. Only `update` changes it, except for
-//! transient view state (`ViewState`) and text buffers that views edit in place.
+//! Application state: plain data, no egui types. Only `update` changes it, but views write `ViewState` and text buffers in place.
 
 pub mod activity_copy;
 pub mod activity_rows;
@@ -289,8 +288,7 @@ pub enum Modal {
         acked: bool,
         then: Box<Msg>,
     },
-    /// A question with two answers besides Cancel: `button` (the primary, Enter's default)
-    /// runs `then`, and `alt` (secondary, left of it) runs `alt_then`.
+    /// A question with two answers besides Cancel: `button` (primary, Enter's default) runs `then`, `alt` (left of it) `alt_then`.
     ConfirmChoice {
         title: String,
         body: String,
@@ -490,6 +488,7 @@ pub struct AppState {
     /// Glowfly's own update check and download (global; nothing saved but `settings.updates`).
     pub updates: updates::UpdatesState,
     pub view: ViewState,
+    pub cues: view::ViewCues,
 }
 
 impl AppState {
@@ -559,6 +558,7 @@ impl AppState {
             auto_stash: Default::default(),
             updates: Default::default(),
             view: ViewState::default(),
+            cues: Default::default(),
         };
         for p in key_problems {
             tracing::warn!("{p}");

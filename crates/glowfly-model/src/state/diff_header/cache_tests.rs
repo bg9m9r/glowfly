@@ -49,7 +49,7 @@ fn the_header_parts_are_kept_until_what_they_come_from_changes() {
     assert_eq!(cache.order.place, Some((1, 3)));
 
     // Scrolling moves the counter without rebuilding.
-    st.session.tab_view.diff_top_row = *cache.rows.last().unwrap();
+    st.view.tab.diff_top_row = *cache.rows.last().unwrap();
     assert_eq!(frame(&mut cache, &st), (1, 1));
     assert_eq!(cache.model(&st).unwrap().counter, Some(Counter { index: 2, total: 2, files: false }));
 

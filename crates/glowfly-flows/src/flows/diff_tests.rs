@@ -46,21 +46,21 @@ fn set_diff_layout_saves_and_keeps_hunk() {
     let inline = header_rows(&d, DiffLayout::Inline);
     let split = header_rows(&d, DiffLayout::Split);
     assert_ne!(inline[1], split[1], "the layouts place hunk 1 on different rows");
-    st.session.tab_view.diff_top_row = inline[1];
+    st.view.tab.diff_top_row = inline[1];
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
     assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.diff_layout == DiffLayout::Split)));
     assert_eq!(st.settings_file.saved(), serde_json::to_string(&st.settings).unwrap());
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
-    assert_eq!(st.session.tab_view.diff_top_row, split[1]);
+    assert_eq!(st.view.tab.diff_top_row, split[1]);
 
     st.view.diff_scroll_to_row = None;
     assert!(run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split))).is_empty(), "already split");
     assert_eq!(st.view.diff_scroll_to_row, None);
 
     // Back to inline from inside hunk 2's rows lands on hunk 2's inline header.
-    st.session.tab_view.diff_top_row = split[2] + 1;
+    st.view.tab.diff_top_row = split[2] + 1;
     run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Inline)));
     assert_eq!(st.view.diff_scroll_to_row, Some(inline[2]));
 }
@@ -106,7 +106,7 @@ fn jump_to_change_without_diff_is_noop() {
 #[test]
 fn opening_a_diff_scrolls_to_top_but_reload_keeps_position() {
     let mut st = with_diff();
-    st.session.tab_view.diff_top_row = 7;
+    st.view.tab.diff_top_row = 7;
     let target = DiffTarget::Unstaged("g.txt".into());
     let generation = st.session.diff.generation;
     run(
@@ -120,12 +120,12 @@ fn opening_a_diff_scrolls_to_top_but_reload_keeps_position() {
             raw: None,
         }),
     );
-    assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row), (Some(0), 0));
+    assert_eq!((st.view.diff_scroll_to_row, st.view.tab.diff_top_row), (Some(0), 0));
 
     st.view.diff_scroll_to_row = None;
-    st.session.tab_view.diff_top_row = 7;
+    st.view.tab.diff_top_row = 7;
     run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: true, generation, result: Ok(three_hunks()), lfs: None, raw: None }));
-    assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row), (None, 7));
+    assert_eq!((st.view.diff_scroll_to_row, st.view.tab.diff_top_row), (None, 7));
 }
 
 #[test]
@@ -133,12 +133,12 @@ fn a_parked_diff_keeps_its_hunk_when_the_layout_changes_elsewhere() {
     let mut st = with_diff();
     let d = three_hunks();
     let (inline, split) = (header_rows(&d, DiffLayout::Inline), header_rows(&d, DiffLayout::Split));
-    st.session.tab_view.diff_top_row = inline[1];
+    st.view.tab.diff_top_row = inline[1];
 
     run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert_eq!(st.session.tab_view.diff_top_row, split[1], "the row is converted to the layout now in use");
+    assert_eq!(st.view.tab.diff_top_row, split[1], "the row is converted to the layout now in use");
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
 }
 

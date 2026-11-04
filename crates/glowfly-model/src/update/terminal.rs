@@ -26,7 +26,7 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, now: std::time::Instant,
                 st.terminal.maximized = false;
             } else {
                 st.terminal.open = true;
-                st.terminal.focus_requested = true;
+                st.view.terminal.focus_requested = true;
                 sync(st, fx);
             }
             remember_open(st, fx);
@@ -167,7 +167,7 @@ pub(super) fn release_held(st: &mut AppState, fx: &mut Vec<Effect>) {
         seal_shell(st, e, &workdir, fx);
     }
     if started && st.terminal.open {
-        st.terminal.focus_requested = true;
+        st.view.terminal.focus_requested = true;
     }
 }
 

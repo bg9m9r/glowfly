@@ -89,7 +89,7 @@ fn quit_with_a_busy_terminal_asks_and_names_the_tab_and_program() {
     let (mut st, dir, id) = shell_running("quit-busy-term");
     let fx = run(&mut st, Msg::App(AppMsg::Quit));
     assert_eq!(check(&fx), Some((vec![id], BusyCheck::Quit)), "{fx:?}");
-    assert!(!closes(&fx) && st.modal.is_none() && !st.view.quitting, "nothing closes before the answer");
+    assert!(!closes(&fx) && st.modal.is_none() && !st.cues.quitting, "nothing closes before the answer");
 
     let fx = answer(&mut st, id, cargo(), BusyCheck::Quit);
     assert!(!closes(&fx), "{fx:?}");
@@ -99,14 +99,14 @@ fn quit_with_a_busy_terminal_asks_and_names_the_tab_and_program() {
     assert!(matches!(then, Msg::App(AppMsg::QuitConfirmed)));
     // Cancel keeps everything.
     run(&mut st, Msg::CloseModal);
-    assert!(st.modal.is_none() && !st.view.quitting && st.view.quit_ask.is_none());
+    assert!(st.modal.is_none() && !st.cues.quitting && st.cues.quit_ask.is_none());
     assert_eq!(st.terminal.sessions.len(), 1);
     // Asked again and accepted: the window closes.
     run(&mut st, Msg::App(AppMsg::Quit));
     answer(&mut st, id, ShellActivity::Running { program: None }, BusyCheck::Quit);
     assert!(dialog(&st).1.contains("is running a program."), "{}", dialog(&st).1);
     assert!(closes(&run(&mut st, Msg::ConfirmAccepted)));
-    assert!(st.view.quitting);
+    assert!(st.cues.quitting);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -117,7 +117,7 @@ fn quit_with_an_idle_or_unknown_terminal_closes() {
         run(&mut st, Msg::App(AppMsg::Quit));
         let fx = answer(&mut st, id, activity, BusyCheck::Quit);
         assert!(closes(&fx), "{fx:?}");
-        assert!(st.view.quitting && st.modal.is_none());
+        assert!(st.cues.quitting && st.modal.is_none());
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
@@ -242,11 +242,11 @@ fn quit_anyway_stops_a_fetch_and_closes_once_it_has_ended() {
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert!(fx.iter().any(|e| matches!(e, Effect::Control(ControlEffect::StopGit(StopKey::Job)))), "the stop is sent: {fx:?}");
     assert!(!closes(&fx), "the window waits for the stopped fetch: {fx:?}");
-    assert!(st.view.quit_after_stop && !st.view.quitting);
+    assert!(st.cues.quit_after_stop && !st.cues.quitting);
     let output = "Cancelled.\nRemoved 1 file the stopped command left behind.".into();
     let fx = run(&mut st, Msg::Job(JobMsg::Stopped { output, undo: None }));
     assert!(closes(&fx), "{fx:?}");
-    assert!(st.view.quitting && !st.view.quit_after_stop);
+    assert!(st.cues.quitting && !st.cues.quit_after_stop);
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn quitting_again_while_a_stopped_fetch_ends_closes_at_once() {
     run(&mut st, Msg::App(AppMsg::Quit));
     run(&mut st, Msg::ConfirmAccepted);
     assert!(closes(&run(&mut st, Msg::App(AppMsg::Quit))));
-    assert!(st.view.quitting);
+    assert!(st.cues.quitting);
 }
 
 #[test]
@@ -273,7 +273,7 @@ fn the_window_closes_by_itself_once_the_job_ends_under_the_question() {
     assert!(glowfly_model::state::quit_confirm::asking(&st));
     let fx = run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
     assert!(closes(&fx), "{fx:?}");
-    assert!(st.modal.is_none() && st.view.quitting);
+    assert!(st.modal.is_none() && st.cues.quitting);
 }
 
 #[test]
@@ -293,7 +293,7 @@ fn the_question_drops_what_ended_and_closes_once_nothing_is_left() {
     // Its shell ends: nothing is left, the window closes.
     let fx = term(&mut st, T::Exited { id, code: Some(0) });
     assert!(closes(&fx), "{fx:?}");
-    assert!(st.view.quitting);
+    assert!(st.cues.quitting);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

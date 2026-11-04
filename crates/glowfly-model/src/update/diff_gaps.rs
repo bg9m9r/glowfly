@@ -137,13 +137,13 @@ pub(super) fn reanchor(st: &mut AppState, change: impl FnOnce(&mut Expanded) -> 
         return false;
     }
     let (after, now) = (rows(&d, layout, ex), change_rows(&d, mode, layout, ex));
-    st.view.diff_cursor = st.view.diff_cursor.and_then(|c| changes.iter().position(|&r| r == c)).and_then(|i| now.get(i).copied());
-    let top = st.session.tab_view.diff_top_row;
+    st.cues.diff_cursor = st.cues.diff_cursor.and_then(|c| changes.iter().position(|&r| r == c)).and_then(|i| now.get(i).copied());
+    let top = st.view.tab.diff_top_row;
     let moved = before
         .get(top)
         .and_then(|&r| after.iter().position(|&x| x == r).or_else(|| r.header_after().and_then(|h| after.iter().position(|&x| x == h))));
     if let Some(row) = moved.filter(|&row| row != top) {
-        st.session.tab_view.diff_top_row = row;
+        st.view.tab.diff_top_row = row;
         st.view.diff_scroll_to_row = Some(row);
     }
     true

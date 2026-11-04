@@ -53,7 +53,7 @@ fn key(st: &mut AppState, action: KeyAction) -> Vec<Effect> {
 
 fn select_line(st: &mut AppState) {
     assert!(update(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 2, how: LineClick::Only }), Instant::now()).is_empty());
-    assert!(!st.view.diff_lines.is_empty());
+    assert!(!st.cues.diff_lines.is_empty());
 }
 
 fn op(fx: &[Effect]) -> Option<&LocalOp> {
@@ -73,7 +73,7 @@ fn s_stages_the_file_or_the_selected_lines() {
     select_line(&mut st);
     let fx = key(&mut st, KeyAction::Stage);
     assert!(matches!(op(&fx), Some(LocalOp::Lines { op: HunkOp::Stage, lines, .. }) if *lines == [2]), "{fx:?}");
-    assert!(st.view.diff_lines.is_empty(), "staging the lines clears the selection");
+    assert!(st.cues.diff_lines.is_empty(), "staging the lines clears the selection");
     assert_eq!(st.session.diff.generation, generation + 1);
     assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -303,13 +303,13 @@ fn r_reverts_the_current_hunk_or_the_lines() {
         &st.settings,
         &st.session.tab_view.diff_expanded,
     );
-    st.session.tab_view.diff_top_row = rows[1];
+    st.view.tab.diff_top_row = rows[1];
     assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 1, .. })));
-    st.session.tab_view.diff_top_row = 0;
+    st.view.tab.diff_top_row = 0;
     assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 0, .. })));
-    st.view.diff_cursor = Some(rows[1]);
+    st.cues.diff_cursor = Some(rows[1]);
     assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 1, .. })), "the stepped-to change");
-    st.view.diff_cursor = None;
+    st.cues.diff_cursor = None;
 
     select_line(&mut st);
     let fx = key(&mut st, KeyAction::RevertHunk);

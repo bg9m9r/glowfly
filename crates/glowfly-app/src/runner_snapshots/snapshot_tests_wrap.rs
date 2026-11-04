@@ -82,7 +82,7 @@ fn diff_wrap_inline() {
     let line = lines.iter().position(|l| l.origin == '+' && l.text == NEW_GREETING).expect("the reworded line");
     let how = LineClick::Only;
     glowfly_model::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
-    assert_eq!(st.view.diff_lines.count_in(&DiffTarget::Unstaged("wrap.rs".into()), 0), 1);
+    assert_eq!(st.cues.diff_lines.count_in(&DiffTarget::Unstaged("wrap.rs".into()), 0), 1);
     render("diff_wrap_inline", st, true);
     remove_fixture(&dir);
 }

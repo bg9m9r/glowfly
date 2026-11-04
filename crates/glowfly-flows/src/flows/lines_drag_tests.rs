@@ -22,7 +22,7 @@ fn end(st: &mut AppState) {
 }
 
 fn dragging(st: &AppState) -> bool {
-    st.view.diff_lines.dragging().is_some()
+    st.cues.diff_lines.dragging().is_some()
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn drag_selects_from_press_to_pointer() {
     start(&mut st, 0, 5, Only);
     over(&mut st, 0, 1);
     assert_eq!(selected(&st), Some((0, vec![1, 2, 4, 5])));
-    assert_eq!(st.view.diff_lines.anchor, 5, "the press line is the anchor");
+    assert_eq!(st.cues.diff_lines.anchor, 5, "the press line is the anchor");
     end(&mut st);
     click(&mut st, 0, 2, Range);
     assert_eq!(selected(&st), Some((0, vec![2, 4, 5])), "Shift-click extends from the press line");
@@ -83,7 +83,7 @@ fn drag_modifiers_on_press() {
     assert_eq!(selected(&st), Some((0, vec![1, 2, 4])));
     over(&mut st, 0, 5);
     assert_eq!(selected(&st), Some((0, vec![1, 2, 4, 5])));
-    assert_eq!(st.view.diff_lines.anchor, 1);
+    assert_eq!(st.cues.diff_lines.anchor, 1);
     end(&mut st);
 
     // A plain drag starting on the only selected line keeps it.
@@ -100,7 +100,7 @@ fn drag_modifiers_on_press() {
         start(&mut st, 1, 1, how);
         over(&mut st, 1, 2);
         assert_eq!(selected(&st), Some((1, vec![1, 2])), "{how:?}");
-        assert_eq!(st.view.diff_lines.anchor, 1);
+        assert_eq!(st.cues.diff_lines.anchor, 1);
     }
 }
 

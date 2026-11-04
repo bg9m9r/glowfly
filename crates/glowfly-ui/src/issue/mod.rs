@@ -34,13 +34,13 @@ pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut V
     header(ui, st.settings.lang(), &st.keymap, view, open_label, msgs);
     ui.horizontal(|ui| {
         ui.add_space(32.0);
-        let line = printable(&view.kind_line(&st.settings, st.view.utc_offset));
+        let line = printable(&view.kind_line(&st.settings, st.cues.utc_offset));
         let text = RichText::new(&line).color(color::weak());
         match view.created() {
             // One tooltip: the whole line above the date.
             Some(c) => {
                 let (r, _) = widgets::cut_label(ui, text, ui.available_width());
-                let tip = st.settings.date_tooltip(c, st.view.now, st.view.utc_offset);
+                let tip = st.settings.date_tooltip(c, st.cues.now, st.cues.utc_offset);
                 r.on_hover_text(format!("{line}\n{tip}"));
             }
             None => {

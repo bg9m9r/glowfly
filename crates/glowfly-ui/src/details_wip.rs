@@ -51,7 +51,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     super::wip_keys::requested(ui.ctx(), st);
     let Some(snap) = &st.snap else { return };
     // The file being opened is highlighted at once, so a click or a step answers immediately.
-    let opening = st.view.diff_opening.as_ref().filter(|t| t.is_working_tree());
+    let opening = st.cues.diff_opening.as_ref().filter(|t| t.is_working_tree());
     let spans = [false, true].map(|staged| wip_lists::span_set(st, staged));
     let open = OpenFile {
         diff: opening.or(st.session.diff.view.as_ref().map(|(t, _)| t)),
@@ -68,7 +68,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let (lfs, keys, lang) = (TrackContext::of(st), &st.keymap, st.settings.lang());
     let (mode, folds) = (st.settings.file_list_mode, &st.session.tab_view.file_folds);
     let ctx = RowContext { lfs, tools: &tools, keys, lang, lines, commands: &commands, keyed: false, depth: None, mode, folds };
-    let reveal = st.view.file_reveal.as_ref();
+    let reveal = st.cues.file_reveal.as_ref();
 
     // The commit box (or step 3) is pinned at the bottom at the height it took last frame; the
     // lists scroll in the room above it.
@@ -146,7 +146,7 @@ pub(super) fn discard_all_text(t: Lang, keys: &Keymap) -> String {
     }
 }
 
-/// The file a step landed on, for its list to scroll to (`ViewState::file_reveal`).
+/// The file a step landed on, for its list to scroll to (`ViewCues::file_reveal`).
 pub(super) type Reveal<'a> = Option<&'a (DiffTarget, u64)>;
 
 /// A row of the Unstaged, Staged or Conflicted Files list: status, Stage / Unstage / Mark

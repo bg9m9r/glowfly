@@ -24,7 +24,7 @@ fn workdir(st: &AppState) -> Option<PathBuf> {
 /// with the shell asked for.
 pub(super) fn new_tab(st: &mut AppState, choice: Option<ShellChoice>, fx: &mut Vec<Effect>) {
     let Some(workdir) = workdir(st) else { return };
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
     let prefs = st.settings.terminal.shell.clone();
     let shell = match choice {
         None => prefs,
@@ -44,7 +44,7 @@ pub(super) fn select_tab(st: &mut AppState, id: u64) {
     let Some(workdir) = workdir(st) else { return };
     if st.terminal.sessions_for(&workdir).any(|s| s.id == id) {
         st.terminal.active.insert(workdir, id);
-        st.terminal.focus_requested = true;
+        st.view.terminal.focus_requested = true;
     }
 }
 
@@ -144,7 +144,7 @@ pub(super) fn close_now(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
     match right.or(left).map(|s| s.id) {
         Some(next) => {
             st.terminal.active.insert(workdir, next);
-            st.terminal.focus_requested = true;
+            st.view.terminal.focus_requested = true;
         }
         None => {
             st.terminal.active.remove(&workdir);
@@ -175,7 +175,7 @@ pub(super) fn restart(st: &mut AppState, fx: &mut Vec<Effect>) {
     if let Some(s) = st.terminal.index_of(id).and_then(|j| st.terminal.sessions.get_mut(j)) {
         s.name = old.name;
     }
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
 }
 
 /// The shells of the active repository that still run.

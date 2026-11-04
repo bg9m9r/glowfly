@@ -585,7 +585,7 @@ second one next to it.
    border; on macOS the system frame resizes the window.
 4. **The drawn Maximize button answers Windows' hit test (`WM_NCHITTEST`) with `HTMAXBUTTON`,**
    so Windows 11 shows Snap Layouts over it. Windows then tracks the button and egui sees no
-   pointer there: its hover and press come from `st.view.window.max_button`, and its click
+   pointer there: its hover and press come from `st.cues.window.max_button`, and its click
    reaches update from the shell (`shell/app_native.rs`) as `AppMsg::Window(SetMaximized)`. The
    shell hands the OS the button's rect each frame (`window_frame::caption_geometry`). The top
    `EDGE` points of the button answer `HTTOP` instead (none while maximized or full screen), so
@@ -607,7 +607,7 @@ second one next to it.
 8. **Full screen is F11, except on macOS** (Ctrl+Cmd+F there, since F11 shows the desktop),
    chosen with `cfg!` in `keymap/table.rs` so both branches compile everywhere. It is the
    window's state, never saved: `LayoutMsg::ToggleFullscreen` sends `WindowCmd::SetFullscreen`
-   from `st.view.window.fullscreen`, which the shell reads each frame, so full screen entered
+   from `st.cues.window.fullscreen`, which the shell reads each frame, so full screen entered
    from the system (the green button) is seen too. While full screen, `WindowCmd::in_window`
    drops moves and resizes and turns Maximize or Restore into leaving full screen, the middle
    window button reads Restore, and `caption_geometry` leaves out the Maximize rect (no Snap
@@ -686,7 +686,7 @@ second one next to it.
 
 1. **Read the system's reduce-motion, high-contrast and text-size settings only in
    `platform/a11y_system.rs`,** into a `SystemA11y` the shell hands to update
-   (`AppMsg::SystemA11y`, kept in `ViewState::system_a11y`). Views and update never ask the OS:
+   (`AppMsg::SystemA11y`, kept in `ViewCues::system_a11y`). Views and update never ask the OS:
    they use the values in effect, `AppState::motion_reduced`, `system_contrast` and
    `zoom_factor`.
    - **Windows:** `SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION)` off is less motion
@@ -716,7 +716,7 @@ second one next to it.
    is unchanged.
 4. **Tests inject the values, never read the machine's:** the shell's test apps get a `Watch`
    that reads the defaults, update tests send `AppMsg::SystemA11y`, and view tests set
-   `view.system_a11y`.
+   `cues.system_a11y`.
 
 ### Persistence
 

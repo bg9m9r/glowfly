@@ -26,7 +26,7 @@ pub(super) fn handle(st: &mut AppState, list: FileList, mv: ListMove, now: Insta
         Opens::Conflict(path) => {
             fx.extend(super::update_sealed(st, Msg::Conflict(ConflictMsg::OpenConflict(path.clone())), now));
             // Conflicted Files finds its row by the file's working-tree target.
-            st.view.file_reveal = Some((DiffTarget::Unstaged(path), st.session.conflict.generation));
+            st.cues.file_reveal = Some((DiffTarget::Unstaged(path), st.session.conflict.generation));
         }
         Opens::FolderFile(i) => {
             fx.extend(super::update_sealed(st, Msg::History(HistoryMsg::SelectHistoryFile(i)), now));

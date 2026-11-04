@@ -59,7 +59,7 @@ pub(super) fn top(ui: &mut Ui, st: &AppState, snap: &Snapshot, a: TopArgs, msgs:
     heading(ui, st, snap, !a.conflicted.is_empty(), msgs);
     super::path_warnings::banner(ui, t, snap);
     let n = a.conflicted.len();
-    let folds = &st.view.op_steps;
+    let folds = &st.cues.op_steps;
     let (resolve_open, check_open) = (folds.is_open(snap, OpStep::Resolve), folds.is_open(snap, OpStep::Check));
     // The lists open share the height left by the heading and the step rows.
     let lists = usize::from(resolve_open) * (usize::from(n > 0) + usize::from(!a.resolved.is_empty())) + usize::from(check_open) * 2;
@@ -98,7 +98,7 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
     let t = st.settings.lang();
     let n = op_steps::conflicted(snap);
     let state = step_state(OpStep::Finish, n);
-    let (open, form_open) = (st.view.op_steps.is_open(snap, OpStep::Finish), st.view.op_steps.is_open(snap, OpStep::CommitForm));
+    let (open, form_open) = (st.cues.op_steps.is_open(snap, OpStep::Finish), st.cues.op_steps.is_open(snap, OpStep::CommitForm));
     let title = op_steps::finish_title(t, snap, kind);
     let line = match (state, kind) {
         (StepState::Later, OpKind::Merge | OpKind::Conflicts) => t.tr("details.steps.finish.waiting"),

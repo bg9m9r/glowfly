@@ -76,7 +76,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
     let keyboard = !prompting && !asking && layer != Layer::Under;
     // The form underneath keeps the usual id, so its fields keep their state when it is back.
     let area = if layer == Layer::Over { "glowfly-modal-over" } else { "glowfly-modal" };
-    let today = glowfly_core::clone_ops::local_date(st.view.now, st.view.utc_offset);
+    let today = glowfly_core::clone_ops::local_date(st.cues.now, st.cues.utc_offset);
     let sparse_blocked = st.git.blocked(glowfly_core::git_version::Feature::SparseCheckout);
     // Worked out before the dialog borrows the state: which results are open or favorites.
     let finder = matches!(st.modal, Some(Modal::FindRepos { .. }))
@@ -88,8 +88,8 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
     let preview_env = super::op_preview_dialog::Env {
         snap: st.snap.as_ref(),
         settings: &st.settings,
-        now: st.view.now,
-        offset: st.view.utc_offset,
+        now: st.cues.now,
+        offset: st.cues.utc_offset,
         idle: st.job.is_none(),
     };
     let Some(modal) = st.modal.as_mut() else { return };

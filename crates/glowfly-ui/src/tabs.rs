@@ -143,10 +143,10 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
             })
             .collect();
         ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new(RECTS), slots.iter().map(|s| s.rect).collect::<Vec<_>>()));
-        let floating = drag(ui, &slots, &blocks, st.view.chrome.drawn(), msgs);
+        let floating = drag(ui, &slots, &blocks, st.cues.chrome.drawn(), msgs);
         // The toolbar's fill, which the active tab runs into, and its band in the checked-out
         // branch's colour (the accent when detached or without a repository).
-        let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
+        let fill = backdrop::fill(st.cues.backdrop, Surface::Side, color::panel());
         let band = st.snap.as_ref().and_then(|s| s.head_swatch()).map_or_else(color::accent, line);
         let look = |i: usize, active: bool| TabLook { active, band, repo: repo_of(i), mark: marks[i], pulse, ..TabLook::quiet(fill) };
         let (slide, fade) =

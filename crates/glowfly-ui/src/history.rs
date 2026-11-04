@@ -120,7 +120,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             }
             let resp = match (date_rect, ui.ctx().pointer_hover_pos()) {
                 (Some(r), Some(p)) if resp.hovered() && r.contains(p) => {
-                    resp.on_hover_text_at_pointer(st.settings.date_tooltip(e.time, st.view.now, st.view.utc_offset))
+                    resp.on_hover_text_at_pointer(st.settings.date_tooltip(e.time, st.cues.now, st.cues.utc_offset))
                 }
                 _ => resp,
             };
@@ -176,7 +176,7 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: History
     let sha_w = paint_cut_text(p, pos2(left, y1), &short(e.oid), mono.clone(), color::weak(), 80.0).rect.width();
     paint_cut_text(p, pos2(left + sha_w + 8.0, y1), &e.summary, body, color::text(), right - left - sha_w - 8.0);
 
-    let date = st.settings.format_day(e.time, st.view.now, st.view.utc_offset);
+    let date = st.settings.format_day(e.time, st.cues.now, st.cues.utc_offset);
     let date_rect = ui.painter().text(pos2(right, y2), Align2::RIGHT_CENTER, date, small.clone(), color::weak());
     let date_w = date_rect.width();
     let status_w = paint_cut_text(p, pos2(left, y2), &e.status.to_string(), mono, status_color(e.status), 20.0).rect.width();
@@ -236,7 +236,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
     egui::Frame::new().inner_margin(egui::Margin::symmetric(10, 8)).show(ui, |ui| {
         ui.add(egui::Label::new(RichText::new(&e.summary).font(type_scale::strong(ui, type_scale::BODY)).color(color::text())).truncate());
         let author = if e.author.is_empty() { "Unknown" } else { e.author.as_str() };
-        let when = st.settings.format_verbose(e.time, st.view.utc_offset);
+        let when = st.settings.format_verbose(e.time, st.cues.utc_offset);
         ui.label(RichText::new(format!("{author}, {when}")).color(color::weak()));
         ui.horizontal(|ui| {
             ui.label(with_code("Commit {sha}", "{sha}", &short(e.oid), type_scale::SMALL, color::weak()));

@@ -206,7 +206,7 @@ fn esc_drops_the_text_then_the_lines_then_closes_the_diff() {
         first
     };
     assert_eq!(esc(&mut h), Some("text"));
-    assert!(h.state().0.view.diff_text.is_none() && !h.state().0.view.diff_lines.is_empty());
+    assert!(h.state().0.view.diff_text.is_none() && !h.state().0.cues.diff_lines.is_empty());
     assert_eq!(esc(&mut h), Some("lines"));
     assert_eq!(esc(&mut h), Some("close"));
     drop(h);

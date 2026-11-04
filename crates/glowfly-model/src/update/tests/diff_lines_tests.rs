@@ -48,7 +48,7 @@ fn open(st: &mut AppState, target: &DiffTarget) {
 /// The lines selected in the diff on screen, in any hunk.
 fn shown_selected(st: &AppState) -> Vec<usize> {
     let (target, d) = st.session.diff.view.as_ref().expect("a diff on screen");
-    (0..d.hunks.len()).flat_map(|h| (0..d.hunks[h].lines.len()).filter(move |&i| st.view.diff_lines.contains(target, h, i))).collect()
+    (0..d.hunks.len()).flat_map(|h| (0..d.hunks[h].lines.len()).filter(move |&i| st.cues.diff_lines.contains(target, h, i))).collect()
 }
 
 /// A state in the hunk view (where lines can be picked) with `target` open and its `-b` and
@@ -69,8 +69,8 @@ fn opening_a_commit_file_selects_nothing() {
     let mut st = state();
     st.settings.diff_mode = DiffMode::Hunks;
     open(&mut st, &commit_file("app.txt"));
-    assert!(st.view.diff_lines.is_empty());
-    assert!(st.view.diff_lines.target.is_none(), "no diff owns a selection");
+    assert!(st.cues.diff_lines.is_empty());
+    assert!(st.cues.diff_lines.target.is_none(), "no diff owns a selection");
     assert_eq!(shown_selected(&st), Vec::<usize>::new());
 }
 
@@ -79,7 +79,7 @@ fn opening_another_file_clears_the_lines_at_once() {
     let mut st = with_selection(&commit_file("app.txt"));
     let other = commit_file("lib.txt");
     run(&mut st, Msg::Repo(RepoMsg::OpenDiff(other.clone())));
-    assert!(st.view.diff_lines.is_empty(), "cleared while the new diff loads");
+    assert!(st.cues.diff_lines.is_empty(), "cleared while the new diff loads");
     loaded(&mut st, &other, false);
     assert_eq!(shown_selected(&st), Vec::<usize>::new());
 }
@@ -89,14 +89,14 @@ fn opening_the_same_file_again_clears_the_lines() {
     let target = commit_file("app.txt");
     let mut st = with_selection(&target);
     open(&mut st, &target);
-    assert!(st.view.diff_lines.is_empty());
+    assert!(st.cues.diff_lines.is_empty());
 }
 
 #[test]
 fn a_working_tree_file_after_a_commit_file_selects_nothing() {
     let mut st = with_selection(&commit_file("app.txt"));
     open(&mut st, &DiffTarget::Unstaged("app.txt".into()));
-    assert!(st.view.diff_lines.is_empty());
+    assert!(st.cues.diff_lines.is_empty());
 }
 
 #[test]

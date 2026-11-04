@@ -18,11 +18,11 @@ fn gutter_clicks_add_and_remove_lines() {
     click(&mut st, 0, 5, Toggle);
     assert_eq!(selected(&st), Some((0, vec![1, 4, 5])));
     // The hunk header's "Stage N lines" counts them.
-    assert_eq!(st.view.diff_lines.count_in(&unstaged(), 0), 3);
+    assert_eq!(st.cues.diff_lines.count_in(&unstaged(), 0), 3);
     // A second click on a selected line's gutter takes it out again.
     click(&mut st, 0, 4, Toggle);
     assert_eq!(selected(&st), Some((0, vec![1, 5])));
-    assert_eq!(st.view.diff_lines.count_in(&unstaged(), 0), 2);
+    assert_eq!(st.cues.diff_lines.count_in(&unstaged(), 0), 2);
     // A context line's gutter is not a toggle.
     click(&mut st, 0, 3, Toggle);
     assert_eq!(selected(&st), Some((0, vec![1, 5])));
@@ -58,7 +58,7 @@ fn a_gutter_click_in_another_hunk_starts_a_selection_there() {
     // Line operations apply to one hunk, so another hunk's line replaces the selection.
     click(&mut st, 1, 1, Toggle);
     assert_eq!(selected(&st), Some((1, vec![1])));
-    assert_eq!(st.view.diff_lines.count_in(&unstaged(), 0), 0);
+    assert_eq!(st.cues.diff_lines.count_in(&unstaged(), 0), 0);
     click(&mut st, 1, 2, Toggle);
     assert_eq!(selected(&st), Some((1, vec![1, 2])));
 }

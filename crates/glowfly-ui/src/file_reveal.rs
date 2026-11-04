@@ -1,5 +1,5 @@
 //! Scrolling a file list to the file a next/previous change step landed on, once per landing
-//! (`ViewState::file_reveal`), so the highlighted row is in view even when the list was scrolled
+//! (`ViewCues::file_reveal`), so the highlighted row is in view even when the list was scrolled
 //! elsewhere or the file sits below its fold.
 
 use eframe::egui;

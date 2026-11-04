@@ -29,7 +29,7 @@ pub(super) fn app() -> AppState {
     st.updates.current = Version::parse("0.2.0").unwrap();
     st.updates.platform = Some(Platform { os: TargetOs::Windows, arch: Arch::X86_64 });
     st.updates.bundled_notes = "";
-    st.view.now = NOW;
+    st.cues.now = NOW;
     st
 }
 

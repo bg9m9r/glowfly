@@ -18,7 +18,7 @@ pub(super) use crate::state::wip_lists::cursor;
 pub(super) fn open(st: &mut AppState, t: DiffTarget, fx: &mut Vec<Effect>) {
     super::repo::open_file_diff(st, t.clone(), fx);
     // After the open, which clears it.
-    st.view.file_reveal = Some((t, st.session.diff.generation));
+    st.cues.file_reveal = Some((t, st.session.diff.generation));
 }
 
 /// The file `m` lands on in that list from the file the keys act on (from the list's first
@@ -62,14 +62,14 @@ pub(super) fn stage_sent(st: &mut AppState, staged: bool, paths: &[String]) {
     let acting = |t: &&DiffTarget| path_in(staged, t).is_some_and(|p| paths.iter().any(|q| q == p));
     let Some(from) = cursor(st).filter(acting).cloned() else { return };
     let to = neighbour(st, staged, from.path(), paths);
-    st.view.stage_move_on = Some(MoveOn { from, to });
-    st.view.wip_span = None;
+    st.cues.stage_move_on = Some(MoveOn { from, to });
+    st.cues.wip_span = None;
 }
 
 /// A working-tree operation finished (`ok`): when it staged or unstaged the file the keys still
 /// act on, opens the file `stage_sent` picked.
 pub(super) fn op_done(st: &mut AppState, ok: bool, fx: &mut Vec<Effect>) {
-    let Some(MoveOn { from, to }) = st.view.stage_move_on.take() else { return };
+    let Some(MoveOn { from, to }) = st.cues.stage_move_on.take() else { return };
     if !ok || cursor(st) != Some(&from) {
         return;
     }
@@ -85,7 +85,7 @@ pub(super) fn opened(st: &mut AppState, t: &DiffTarget) {
         DiffTarget::Staged(p) => (true, p),
         _ => return,
     };
-    st.view.wip_place[usize::from(staged)] = Some(path.clone());
+    st.cues.wip_place[usize::from(staged)] = Some(path.clone());
 }
 
 /// A reload of the diff on screen found no changes left: closes it, unless it was a new file's
@@ -93,9 +93,9 @@ pub(super) fn opened(st: &mut AppState, t: &DiffTarget) {
 /// its untracked view.
 pub(super) fn emptied(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
     st.session.diff.view = None;
-    st.view.clear_diff_selection();
+    st.clear_diff_selection();
     st.session.tab_view.diff_expanded.clear();
-    st.view.diff_open_hunk = None;
+    st.cues.diff_open_hunk = None;
     let untracked = |p: &str| st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.path == p && f.status == '?'));
     if let DiffTarget::Staged(p) = target
         && untracked(&p)
@@ -107,14 +107,14 @@ pub(super) fn emptied(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect
 /// A refresh would reload the diff on screen while another file is still opening: asks for that
 /// file again instead, while its list still holds it. Returns whether it did.
 pub(super) fn renew_open(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
-    let Some(t) = st.view.diff_opening.clone() else { return false };
+    let Some(t) = st.cues.diff_opening.clone() else { return false };
     if !still_listed(st, &t) {
-        st.view.diff_opening = None;
+        st.cues.diff_opening = None;
         return false;
     }
-    let reveal = st.view.file_reveal.take();
+    let reveal = st.cues.file_reveal.take();
     super::repo::open_diff(st, t, fx);
-    st.view.file_reveal = reveal;
+    st.cues.file_reveal = reveal;
     true
 }
 

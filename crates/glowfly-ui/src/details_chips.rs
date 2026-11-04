@@ -57,7 +57,7 @@ pub(super) fn row(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<M
         if committer_differs(d) {
             let who = identity(&d.committer, &d.committer_email);
             let label = t.trf("details.commit.committer.label", &[("committer", &d.committer)]);
-            let when = st.settings.format_verbose(d.time, st.view.utc_offset);
+            let when = st.settings.format_verbose(d.time, st.cues.utc_offset);
             let text = RichText::new(label.as_str()).color(color::text());
             let r =
                 tip(quiet_chip(ui, text, &label), RichText::new(who.as_str()), &[Some(&when), Some(t.tr("details.commit.committer.tip"))]);

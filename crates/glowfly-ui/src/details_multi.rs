@@ -182,7 +182,7 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
                 row_h,
                 rows.len(),
                 |ui, range| {
-                    reveal(ui, "multi-files", st.view.file_reveal.as_ref(), index, &range, row_h);
+                    reveal(ui, "multi-files", st.cues.file_reveal.as_ref(), index, &range, row_h);
                     for row in range {
                         let r = match rows.get(row) {
                             Shown::File { index, depth } => {

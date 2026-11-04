@@ -50,7 +50,7 @@ pub struct LogEntry {
     pub text: String,
     /// Set for entries from an earlier session, read from the activity file.
     pub earlier: Option<Earlier>,
-    /// When it was logged, in Unix seconds: `view.now` for this session's entries, the file's
+    /// When it was logged, in Unix seconds: `cues.now` for this session's entries, the file's
     /// time for earlier ones.
     pub at: i64,
     /// The finished operation it records; None for a note.
@@ -288,7 +288,7 @@ impl AppState {
             self.logs.pending.push(NewLine { ok, text: text.clone(), repo: tag, run: run.clone() });
             keep_newest(&mut self.logs.pending);
         }
-        let entry = LogEntry { at: self.view.now, run, ..LogEntry::new(ok, text) };
+        let entry = LogEntry { at: self.cues.now, run, ..LogEntry::new(ok, text) };
         let id = entry.id;
         if loud && !ok && self.logs.announce.is_none() {
             self.logs.announce = Some(Announce { tab, text: headline(&entry.text), entry: Some(id) });

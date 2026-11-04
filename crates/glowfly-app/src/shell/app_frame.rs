@@ -30,7 +30,7 @@ impl GlowflyApp {
             tracing::debug!(ms = took.as_millis(), "slow frame: {}", slow.detail);
             self.runner.log_perf(slow.took, "frame", slow.detail);
         }
-        self.st.view.frame_times = self.frames.summary();
+        self.st.cues.frame_times = self.frames.summary();
     }
 
     /// Asks for the frames that come without input: while work runs or toasts fade, for

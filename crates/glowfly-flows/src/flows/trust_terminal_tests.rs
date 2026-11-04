@@ -62,7 +62,7 @@ fn a_held_repository_makes_tabs_without_shells_until_it_is_trusted() {
     }
     assert_eq!(st.terminal.sessions[1].shell.choice, ShellChoice::Bash);
     assert_eq!(st.terminal.sessions[0].screen.size(), (30, 100));
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
     assert_eq!(st.trust_standing(), Some(Standing::Trusted));
     assert_eq!(glowfly_model::state::trust::recorded(&st.settings, &real), Some(RepoTrust::Trusted));
     let _ = std::fs::remove_dir_all(&dir);

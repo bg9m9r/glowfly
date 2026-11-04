@@ -85,7 +85,7 @@ fn open_diff_viewer_page() {
 #[test]
 fn closing_prefs_keeps_the_diff_top_row() {
     let mut st = with_diff();
-    st.session.tab_view.diff_top_row = 7;
+    st.view.tab.diff_top_row = 7;
     run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::DiffViewer)));
     st.settings.diff_font_size = 16.0;
     run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));

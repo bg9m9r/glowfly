@@ -24,8 +24,8 @@ pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The app's frame in the dark view palette at `size`: the shortcut input, then the window.
 pub(crate) fn keys_harness(mut st: AppState, size: egui::Vec2) -> H {
-    st.view.now = NOW;
-    st.view.utc_offset = 0;
+    st.cues.now = NOW;
+    st.cues.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
     let mut h = crate::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
@@ -255,9 +255,9 @@ fn bindings_keep_their_alt_keys() {
 fn mnemonics_wait_for_the_terminal_a_hidden_bar_and_macos() {
     type Change = fn(&mut AppState);
     let cases: [(&str, Change); 3] = [
-        ("menu-keys-terminal", |st| st.terminal.focused = true),
+        ("menu-keys-terminal", |st| st.view.terminal.focused = true),
         ("menu-keys-hidden", |st| st.settings.show_menu_bar = false),
-        ("menu-keys-mac", |st| st.view.chrome = Chrome::MacOs),
+        ("menu-keys-mac", |st| st.cues.chrome = Chrome::MacOs),
     ];
     for (name, change) in cases {
         let (st, dir) = fixture(name);

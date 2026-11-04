@@ -47,7 +47,7 @@ pub(super) fn handle(st: &mut AppState, msg: DashboardMsg, now: Instant, fx: &mu
             if p.jobs.is_empty() {
                 // Nothing to ask: the scan is the whole refresh.
                 d.phase = Phase::Idle;
-                d.fetched_at = Some(st.view.now);
+                d.fetched_at = Some(st.cues.now);
                 d.fetched = Some(now);
                 return;
             }

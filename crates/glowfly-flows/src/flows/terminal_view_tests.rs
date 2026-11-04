@@ -111,10 +111,10 @@ fn select_all_copies_with_copy_on_select() {
 fn copy_select_all_and_stale_selections() {
     let (mut st, dir, _) = with_history("term-view-copy");
     select(&mut st, 1, 3);
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     let fx = run(&mut st, T::CopySelection { keep: true });
     assert_eq!(copied(&fx), Some("2\n3\n4"));
-    assert!(st.terminal.sessions[0].selection.is_some() && st.terminal.focus_requested);
+    assert!(st.terminal.sessions[0].selection.is_some() && st.view.terminal.focus_requested);
     let fx = run(&mut st, T::CopySelection { keep: false });
     assert_eq!(copied(&fx), Some("2\n3\n4"));
     assert!(st.terminal.sessions[0].selection.is_none());
@@ -141,7 +141,7 @@ fn clear_per_shell() {
     let fx = terminal(run(&mut st, T::Clear));
     assert!(matches!(&fx[..], [E::Write { id: i, bytes }] if *i == id && bytes == &[0x0c]), "{fx:?}");
     assert_eq!(st.terminal.sessions[0].screen.history_len(), 0);
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
 
     run(&mut st, T::Output { id, bytes: b"\r\nC:\\demo>".to_vec(), ack: Default::default() });
     st.terminal.sessions[0].program = "cmd".into();
@@ -158,10 +158,10 @@ fn clear_per_shell() {
 #[test]
 fn paste_asks_the_window_for_the_clipboard() {
     let (mut st, dir, id) = with_history("term-view-paste");
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     let fx = run(&mut st, T::Paste);
     assert!(matches!(&fx[..], [Effect::Ui(UiEffect::RequestPaste)]), "{fx:?}");
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
     run(&mut st, T::Exited { id, code: Some(0) });
     assert!(run(&mut st, T::Paste).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -171,10 +171,10 @@ fn paste_asks_the_window_for_the_clipboard() {
 fn a_finished_selection_becomes_primary_and_is_copied_with_copy_on_select() {
     let (mut st, dir, _) = with_history("term-view-selected");
     select(&mut st, 1, 3);
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     let fx = run(&mut st, T::Selected);
     assert_eq!((primary(&fx), copied(&fx)), (Some("2\n3\n4"), None), "{fx:?}");
-    assert!(st.terminal.sessions[0].selection.is_some() && st.terminal.focus_requested, "it stays selected");
+    assert!(st.terminal.sessions[0].selection.is_some() && st.view.terminal.focus_requested, "it stays selected");
     st.settings.terminal.copy_on_select = true;
     let fx = run(&mut st, T::Selected);
     assert_eq!((primary(&fx), copied(&fx)), (Some("2\n3\n4"), Some("2\n3\n4")));
@@ -193,10 +193,10 @@ fn a_finished_selection_becomes_primary_and_is_copied_with_copy_on_select() {
 #[test]
 fn middle_click_asks_the_shell_for_primary() {
     let (mut st, dir, id) = with_history("term-view-paste-primary");
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     let fx = run(&mut st, T::PastePrimary);
     assert!(matches!(&fx[..], [Effect::Ui(UiEffect::PastePrimary)]), "{fx:?}");
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
     run(&mut st, T::Exited { id, code: Some(0) });
     assert!(run(&mut st, T::PastePrimary).is_empty(), "the shell has ended");
     let _ = std::fs::remove_dir_all(&dir);
@@ -230,7 +230,7 @@ fn a_remembered_panel_starts_its_shell_with_the_chosen_shell() {
     let fx = super::update(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())), Instant::now());
     super::tests::finish(&mut st, fx);
     assert_eq!(st.terminal.sessions.len(), 1, "one shell for the restored panel");
-    assert!(!st.terminal.focus_requested, "the keyboard stays where it was");
+    assert!(!st.view.terminal.focus_requested, "the keyboard stays where it was");
     // A new tab carries the chosen shell to the runner.
     let fx = terminal(run(&mut st, T::NewTab(None)));
     assert!(matches!(&fx[..], [E::Spawn { shell: s, .. }] if *s == shell), "{fx:?}");

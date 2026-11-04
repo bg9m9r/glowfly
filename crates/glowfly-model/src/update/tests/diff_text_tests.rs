@@ -127,7 +127,7 @@ fn clear_drops_the_text_and_keeps_the_lines() {
     run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 1, how: LineClick::Toggle }));
     run(&mut st, Msg::Diff(DiffMsg::ClearTextSelection));
     assert!(st.view.diff_text.is_none());
-    assert_eq!(st.view.diff_lines.lines.iter().copied().collect::<Vec<_>>(), [1], "the line selection stays");
+    assert_eq!(st.cues.diff_lines.lines.iter().copied().collect::<Vec<_>>(), [1], "the line selection stays");
 }
 
 #[test]

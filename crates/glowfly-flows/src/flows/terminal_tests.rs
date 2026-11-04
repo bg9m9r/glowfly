@@ -53,7 +53,7 @@ fn toggle_opens_the_panel_and_spawns_one_shell_per_repo() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = terminal(run(&mut st, T::Toggle));
-    assert!(st.terminal.open && st.terminal.focus_requested);
+    assert!(st.terminal.open && st.view.terminal.focus_requested);
     assert_eq!(st.terminal.sessions.len(), 1);
     let s = &st.terminal.sessions[0];
     assert_eq!((s.workdir.clone(), s.status.clone()), (workdir(&st), SessionStatus::Starting));
@@ -152,14 +152,14 @@ fn exit_kill_and_restart() {
     run(&mut st, T::Started { id, program: "pwsh".into() });
     assert_eq!(st.terminal.sessions[0].status, SessionStatus::Exited(Some(1)));
 
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     let fx = terminal(run(&mut st, T::Restart));
     let new = st.terminal.sessions[0].id;
     assert_ne!(new, id);
     assert!(matches!(&fx[..], [E::Close(old), E::Spawn { id: n, .. }] if *old == id && *n == new), "{fx:?}");
     assert_eq!(st.terminal.sessions.len(), 1);
     assert_eq!(st.terminal.sessions[0].status, SessionStatus::Starting);
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

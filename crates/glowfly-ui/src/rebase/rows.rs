@@ -121,7 +121,7 @@ fn paint(ui: &Ui, rect: Rect, step: &TodoStep, text: &str, look: &Look, shade: S
 }
 
 pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let look = Look { settings: &st.settings, now: st.view.now, offset: st.view.utc_offset, snap: st.snap.as_ref() };
+    let look = Look { settings: &st.settings, now: st.cues.now, offset: st.cues.utc_offset, snap: st.snap.as_ref() };
     let spell = st.settings.spellcheck;
     let t = st.settings.lang();
     let covered = st.modal.is_some() || st.palette.is_some() || st.prefs.is_some() || st.askpass.showing();

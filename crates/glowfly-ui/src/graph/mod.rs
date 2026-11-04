@@ -109,7 +109,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         // Not under a dialog, the palette or a credential prompt, which keep their keys.
         if st.modal.is_none() && st.palette.is_none() && !st.askpass.showing() {
-            let (offset, height) = st.session.tab_view.graph_scroll;
+            let (offset, height) = st.view.tab.graph_scroll;
             let port = select::Viewport { offset, height, row_h };
             select::keyboard_nav(ui, (&st.session.selection, st.session.wip_lit), snap, &rows, port, &mut st.view, msgs);
         }
@@ -119,7 +119,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
         let s = &st.settings;
         let oldest = snap.commits.iter().map(|c| c.time).min();
-        let dates = cells::wide_dates(s, st.view.now, st.view.utc_offset, oldest);
+        let dates = cells::wide_dates(s, st.cues.now, st.cues.utc_offset, oldest);
         let chips_w = refs_fit::chips_w(ui.painter(), snap, &ref_cx);
         let input = header::HeaderIn { graph_w, cfg: &s.columns, saved: s.column_widths, chips_w, dates: &dates };
         let fitted = header::column_header(ui, t, input, &mut st.view.column_drag, msgs);
@@ -137,11 +137,11 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let pr_at: HashMap<Oid, (String, bool)> = st.session.forge.as_ref().map(cells::pr_badges).unwrap_or_default();
 
         // Rows belonging to the hovered branch: update works them out, then the next frame shows them.
-        if st.settings.highlight_ref_rows && st.view.highlight.as_ref().map(|(t, _)| *t) != st.view.hover_tip {
-            msgs.push(Msg::Graph(GraphMsg::HoverRef(st.view.hover_tip)));
+        if st.settings.highlight_ref_rows && st.cues.highlight.as_ref().map(|(t, _)| *t) != st.cues.hover_tip {
+            msgs.push(Msg::Graph(GraphMsg::HoverRef(st.cues.hover_tip)));
             ui.ctx().request_repaint();
         }
-        let highlight = st.view.highlight.as_ref().filter(|_| st.settings.highlight_ref_rows).map(|(_, s)| s);
+        let highlight = st.cues.highlight.as_ref().filter(|_| st.settings.highlight_ref_rows).map(|(_, s)| s);
 
         ui.spacing_mut().item_spacing.y = 0.0;
         let rows_rect = ui.available_rect_before_wrap();
@@ -161,8 +161,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let idle = st.job.is_none();
         let forge = st.session.forge.as_ref();
         let commands = glowfly_model::state::custom_commands::MenuCommands::for_state(st);
-        let now = st.view.now;
-        let offset = st.view.utc_offset;
+        let now = st.cues.now;
+        let offset = st.cues.utc_offset;
         let show_avatars = crate::avatars::shown(st);
         let avatars = &mut cache.avatars;
         let stats = &st.session.reads.stats;
@@ -389,7 +389,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             }
             last
         });
-        st.session.tab_view.graph_scroll = (out.state.offset.y, out.inner_rect.height());
+        st.view.tab.graph_scroll = (out.state.offset.y, out.inner_rect.height());
         if more::wants_more(st, out.inner, total, filtered) {
             msgs.push(Msg::Load(LoadMsg::NearHistoryEnd));
         }

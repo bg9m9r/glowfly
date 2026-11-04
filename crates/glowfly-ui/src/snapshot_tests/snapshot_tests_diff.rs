@@ -65,7 +65,7 @@ fn diff_line_selection() {
         for (line, how) in [(fix, LineClick::Only), (new_line, LineClick::Toggle)] {
             glowfly_model::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
         }
-        assert_eq!(st.view.diff_lines.count_in(&DiffTarget::Unstaged("app.txt".into()), 0), 2);
+        assert_eq!(st.cues.diff_lines.count_in(&DiffTarget::Unstaged("app.txt".into()), 0), 2);
         render(name, st, true);
         let _ = std::fs::remove_dir_all(dir.parent().unwrap());
     }

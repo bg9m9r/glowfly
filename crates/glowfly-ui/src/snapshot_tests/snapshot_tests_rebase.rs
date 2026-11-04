@@ -108,7 +108,7 @@ fn rebase_panel_blocked_light() {
 /// Like `snapshot_tests::harness`, but also running the shell's Esc handling.
 pub(crate) fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut st = st;
-    st.view.now = 1_769_947_200;
+    st.cues.now = 1_769_947_200;
     let mut cache: Option<UiCache> = None;
     crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {

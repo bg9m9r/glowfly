@@ -47,7 +47,7 @@ fn prefs_accessibility_light() {
 #[test]
 fn prefs_accessibility_system_on() {
     let mut st = AppState::new(settings(ThemeChoice::Graphite), Vec::new(), Instant::now());
-    st.view.system_a11y = SystemA11y { reduce_motion: true, high_contrast: true, text_scale: 1.25, ..SystemA11y::default() };
+    st.cues.system_a11y = SystemA11y { reduce_motion: true, high_contrast: true, text_scale: 1.25, ..SystemA11y::default() };
     assert!(st.system_contrast() && st.motion_reduced());
     st.prefs = Some(PrefsState::new(PrefPage::Accessibility));
     let mut h = harness_palette_sized(st, theme::HIGH_CONTRAST_DARK, vec2(1400.0, TALL));
@@ -167,7 +167,7 @@ fn the_follow_checks_edit_in_place() {
 #[test]
 fn no_text_size_check_where_the_system_has_no_text_size() {
     let mut st = AppState::new(settings(ThemeChoice::Graphite), Vec::new(), Instant::now());
-    st.view.system_a11y.text_size_followable = false;
+    st.cues.system_a11y.text_size_followable = false;
     st.prefs = Some(PrefsState::new(PrefPage::Accessibility));
     let mut h = harness_palette_sized(st, theme::GRAPHITE, vec2(1400.0, TALL));
     h.run();

@@ -54,7 +54,7 @@ pub(crate) fn with_session(theme: ThemeChoice, name: &str, status: SessionStatus
     });
     st.terminal.next_id = 2;
     st.terminal.open = true;
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
     (st, dir)
 }
 
@@ -104,7 +104,7 @@ fn terminal_prompt_space_dark() {
     });
     st.terminal.next_id = 2;
     st.terminal.open = true;
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("terminal_prompt_space");
@@ -152,7 +152,7 @@ fn focused_terminal_forwards_keys() {
     let (st, dir) = with_session(ThemeChoice::Dark, "terminal-keys", SessionStatus::Running);
     let mut h = harness(st, true);
     h.run();
-    assert!(h.state().0.terminal.focused, "the terminal took the focus it was asked for");
+    assert!(h.state().0.view.terminal.focused, "the terminal took the focus it was asked for");
     h.state_mut().1.clear();
     h.input_mut().events.push(Event::Text("ls".into()));
     h.press_key(Key::Enter);
@@ -170,7 +170,7 @@ fn focused_terminal_forwards_keys() {
         .collect();
     let key = |key| TermInput::Key { key, mods: Default::default() };
     assert_eq!(inputs, [TermInput::Text("ls".into()), key(TermKey::Enter), key(TermKey::Escape)]);
-    assert!(h.state().0.terminal.focused, "Esc stays in the terminal");
+    assert!(h.state().0.view.terminal.focused, "Esc stays in the terminal");
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff) | Msg::Selection(SelectionMsg::CollapseSelection))));
     drop(h);
     remove_fixture(&dir);
@@ -220,7 +220,7 @@ fn inputs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<TermInput> {
 fn focused_terminal_keeps_tab_keys() {
     let (st, dir) = with_session(ThemeChoice::Dark, "terminal-kept-keys", SessionStatus::Running);
     let mut h = with_shortcuts(st);
-    assert!(h.state().0.terminal.focused);
+    assert!(h.state().0.view.terminal.focused);
     h.state_mut().1.clear();
     // Ctrl as Windows and Linux report it.
     let ctrl = Modifiers { ctrl: true, command: true, ..Modifiers::NONE };

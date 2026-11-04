@@ -101,7 +101,7 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
         super::file_list_keys::target(ui, FileList::Stacked, rows.len(), ui.available_height(), t.tr("details.multi.stacked.title"));
     let area = egui::ScrollArea::vertical().id_salt("multi-stacked").auto_shrink([false, false]);
     let shown = area.show_rows(ui, row_h, rows.len(), |ui, range| {
-        reveal(ui, "multi-stacked", st.view.file_reveal.as_ref(), index, &range, row_h);
+        reveal(ui, "multi-stacked", st.cues.file_reveal.as_ref(), index, &range, row_h);
         for at in range {
             match rows[at] {
                 Row::Header(i) => header(ui, t, &stack[i], snap, parents(&stack[i]) > 1),

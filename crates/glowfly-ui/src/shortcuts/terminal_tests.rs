@@ -36,7 +36,7 @@ type H = Harness<'static, Keys>;
 fn harness(focused: bool, rebind: impl FnOnce(&mut AppState)) -> H {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     st.tabs = vec![Tab::empty(), Tab::empty(), Tab::empty()];
-    st.terminal.focused = focused;
+    st.view.terminal.focused = focused;
     rebind(&mut st);
     let keys = Keys { st, msgs: Vec::new(), left: Vec::new() };
     let mut h = crate::snapshot_check::builder().build_state(

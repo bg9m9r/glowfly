@@ -65,17 +65,17 @@ fn expand_unchanged_opens_a_fold_in_place() {
         assert_eq!((f.start, f.end), (6, 12));
         assert_eq!(folds(whole(&st))[1].start, 20);
         let old = blocks(&three_changes(true), layout);
-        st.session.tab_view.diff_top_row = 4;
-        st.view.diff_cursor = Some(old[2]);
+        st.view.tab.diff_top_row = 4;
+        st.cues.diff_cursor = Some(old[2]);
 
         let fx = run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(f.key)));
         assert!(fx.is_empty(), "{fx:?}");
         assert!(st.session.tab_view.diff_expanded.contains(f.key));
-        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (4, None), "{layout:?}: nothing scrolls");
+        assert_eq!((st.view.tab.diff_top_row, st.view.diff_scroll_to_row), (4, None), "{layout:?}: nothing scrolls");
         let new = block_rows(whole(&st), layout, &st.session.tab_view.diff_expanded);
         let shift = f.len() - 1;
         assert_eq!(new, [old[0], old[1] + shift, old[2] + shift], "{layout:?}");
-        assert_eq!(st.view.diff_cursor, Some(new[2]), "{layout:?}: the stepped-to change keeps its place");
+        assert_eq!(st.cues.diff_cursor, Some(new[2]), "{layout:?}: the stepped-to change keeps its place");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
@@ -145,12 +145,12 @@ fn folds_reset_only_for_another_file() {
 
 /// The rows a run of `dir` steps from the top (1) or the bottom (-1) visits, in order.
 fn visit(st: &mut AppState, dir: isize) -> Vec<usize> {
-    st.view.diff_cursor = None;
-    st.session.tab_view.diff_top_row = if dir > 0 { 0 } else { 10_000 };
+    st.cues.diff_cursor = None;
+    st.view.tab.diff_top_row = if dir > 0 { 0 } else { 10_000 };
     let mut seen = Vec::new();
     for _ in 0..10 {
         run(st, Msg::Diff(DiffMsg::JumpToChange(dir)));
-        match st.view.diff_cursor {
+        match st.cues.diff_cursor {
             Some(c) if seen.last() != Some(&c) => seen.push(c),
             _ => break,
         }
@@ -202,7 +202,7 @@ fn folds_are_parked_with_their_tab() {
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), three_changes(true).into()));
     let key = first_fold(&st).key;
     run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key)));
-    st.session.tab_view.diff_top_row = block_rows(whole(&st), DiffLayout::Inline, &st.session.tab_view.diff_expanded)[2];
+    st.view.tab.diff_top_row = block_rows(whole(&st), DiffLayout::Inline, &st.session.tab_view.diff_expanded)[2];
 
     run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     assert_eq!(st.active_tab, 1);
@@ -213,7 +213,7 @@ fn folds_are_parked_with_their_tab() {
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert!(st.session.tab_view.diff_expanded.contains(key), "restored with the tab");
     let split = block_rows(whole(&st), DiffLayout::Split, &st.session.tab_view.diff_expanded);
-    assert_eq!(st.session.tab_view.diff_top_row, split[2], "the same block, counted with the fold open");
+    assert_eq!(st.view.tab.diff_top_row, split[2], "the same block, counted with the fold open");
     assert_ne!(split[2], blocks(&three_changes(true), DiffLayout::Split)[2]);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -240,16 +240,16 @@ fn collapse_unchanged_folds_an_opened_run_in_place() {
         let f = first_fold(&st);
         let closed = blocks(&three_changes(true), layout);
         run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(f.key)));
-        st.session.tab_view.diff_top_row = 4;
+        st.view.tab.diff_top_row = 4;
         st.view.diff_scroll_to_row = None;
-        st.view.diff_cursor = Some(rows_now(&st)[2]);
+        st.cues.diff_cursor = Some(rows_now(&st)[2]);
 
         let fx = run(&mut st, Msg::Diff(DiffMsg::CollapseUnchanged(f.key)));
         assert!(fx.is_empty(), "{fx:?}");
         assert!(!st.session.tab_view.diff_expanded.contains(f.key));
-        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (4, None), "{layout:?}: nothing scrolls");
+        assert_eq!((st.view.tab.diff_top_row, st.view.diff_scroll_to_row), (4, None), "{layout:?}: nothing scrolls");
         assert_eq!(rows_now(&st), closed, "{layout:?}");
-        assert_eq!(st.view.diff_cursor, Some(closed[2]), "{layout:?}: the stepped-to change keeps its place");
+        assert_eq!(st.cues.diff_cursor, Some(closed[2]), "{layout:?}: the stepped-to change keeps its place");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
@@ -318,19 +318,19 @@ fn bulk_fold_changes_keep_the_top_line() {
         let all = Expanded::all(whole(&st));
         let opened = block_rows(whole(&st), layout, &all);
         // The top row is the third block, below both folds.
-        st.session.tab_view.diff_top_row = closed[2];
+        st.view.tab.diff_top_row = closed[2];
         run(&mut st, Msg::Diff(DiffMsg::ExpandAllUnchanged));
-        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (opened[2], Some(opened[2])), "{layout:?}");
+        assert_eq!((st.view.tab.diff_top_row, st.view.diff_scroll_to_row), (opened[2], Some(opened[2])), "{layout:?}");
         st.view.diff_scroll_to_row = None;
         run(&mut st, Msg::Diff(DiffMsg::CollapseAllUnchanged));
-        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (closed[2], Some(closed[2])), "{layout:?}");
+        assert_eq!((st.view.tab.diff_top_row, st.view.diff_scroll_to_row), (closed[2], Some(closed[2])), "{layout:?}");
 
         // A top line inside a run that closes: the fold row hiding it becomes the top row.
         run(&mut st, Msg::Diff(DiffMsg::ExpandAllUnchanged));
         let second = folds(whole(&st))[1];
-        st.session.tab_view.diff_top_row = row_of_line(whole(&st), layout, &all, second.start + 2);
+        st.view.tab.diff_top_row = row_of_line(whole(&st), layout, &all, second.start + 2);
         run(&mut st, Msg::Diff(DiffMsg::CollapseAllUnchanged));
-        let top = st.session.tab_view.diff_top_row;
+        let top = st.view.tab.diff_top_row;
         let none = Expanded::default();
         let fold = match layout {
             DiffLayout::Inline => matches!(inline_rows(whole(&st), &none)[top], DiffRow::Fold(f) if f.key == second.key),
@@ -346,14 +346,14 @@ fn bulk_fold_changes_keep_the_top_line() {
 fn bulk_fold_changes_keep_the_stepped_to_change() {
     for layout in LAYOUTS {
         let (mut st, dir) = three("fold-all-cursor", layout);
-        st.view.diff_cursor = Some(rows_now(&st)[1]);
+        st.cues.diff_cursor = Some(rows_now(&st)[1]);
         run(&mut st, Msg::Diff(DiffMsg::ExpandAllUnchanged));
-        assert_eq!(st.view.diff_cursor, Some(rows_now(&st)[1]), "{layout:?}");
+        assert_eq!(st.cues.diff_cursor, Some(rows_now(&st)[1]), "{layout:?}");
         run(&mut st, Msg::Diff(DiffMsg::CollapseAllUnchanged));
-        assert_eq!(st.view.diff_cursor, Some(rows_now(&st)[1]), "{layout:?}");
-        st.view.diff_cursor = Some(0); // the first line, not a change row
+        assert_eq!(st.cues.diff_cursor, Some(rows_now(&st)[1]), "{layout:?}");
+        st.cues.diff_cursor = Some(0); // the first line, not a change row
         run(&mut st, Msg::Diff(DiffMsg::ExpandAllUnchanged));
-        assert_eq!(st.view.diff_cursor, None, "{layout:?}");
+        assert_eq!(st.cues.diff_cursor, None, "{layout:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
@@ -365,9 +365,9 @@ fn opening_a_leading_fold_keeps_the_top() {
         st.settings.diff_mode = DiffMode::WholeFile;
         st.settings.diff_layout = layout;
         assert_eq!(first_fold(&st).start, 0, "the file starts with a fold");
-        st.session.tab_view.diff_top_row = 0;
+        st.view.tab.diff_top_row = 0;
         run(&mut st, Msg::Diff(DiffMsg::ExpandAllUnchanged));
-        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (0, None), "{layout:?}: its first line is the top row");
+        assert_eq!((st.view.tab.diff_top_row, st.view.diff_scroll_to_row), (0, None), "{layout:?}: its first line is the top row");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

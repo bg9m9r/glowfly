@@ -129,12 +129,12 @@ fn big_diff_opens_plain_then_colors() {
         matches!(&held[0], Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { generation, target, .. }) if *generation == st.session.diff.shown_gen && *target == big())
     );
 
-    let view = (st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
+    let view = (st.view.diff_scroll_to_row, st.view.tab.diff_top_row, st.cues.diff_cursor, st.cues.diff_lines.clone());
     let msg = glowfly_runner::testing::execute(held.remove(0)).expect("a result");
     assert!(matches!(msg, Msg::Scoped { .. }));
     assert!(up(&mut st, msg).is_empty());
     assert_colored(shown(&st));
-    assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone()), view);
+    assert_eq!((st.view.diff_scroll_to_row, st.view.tab.diff_top_row, st.cues.diff_cursor, st.cues.diff_lines.clone()), view);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -266,13 +266,13 @@ fn line_selection_survives_same_reload_while_pending() {
     let (mut st, dir, _) = opened_big("hl-select");
     let line = shown(&st).hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
     up(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how: LineClick::Only }));
-    assert!(!st.view.diff_lines.is_empty());
-    let selected = st.view.diff_lines.clone();
+    assert!(!st.cues.diff_lines.is_empty());
+    let selected = st.cues.diff_lines.clone();
     let held = drive_holding_diffs(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(held.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { reload: true, .. }))));
     let fx = land(&mut st, held);
     assert!(pending(shown(&st).highlight.as_ref()));
-    assert_eq!(st.view.diff_lines, selected);
+    assert_eq!(st.cues.diff_lines, selected);
     let job = fx
         .into_iter()
         .find(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. })))
@@ -284,7 +284,7 @@ fn line_selection_survives_same_reload_while_pending() {
     up(&mut st, result_of(&job));
     assert!(!pending(shown(&st).highlight.as_ref()));
     land(&mut st, reload);
-    assert_eq!(st.view.diff_lines, selected);
+    assert_eq!(st.cues.diff_lines, selected);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

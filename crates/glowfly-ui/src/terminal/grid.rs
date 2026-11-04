@@ -27,9 +27,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
     let resp = ui.interact(rect, id, Sense::click_and_drag());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Terminal screen"));
 
-    if st.terminal.focus_requested || resp.clicked() {
+    if st.view.terminal.focus_requested || resp.clicked() {
         resp.request_focus();
-        st.terminal.focus_requested = false;
+        st.view.terminal.focus_requested = false;
     }
     if resp.clicked_elsewhere() {
         resp.surrender_focus();
@@ -39,10 +39,10 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
     let g = Geometry { origin, cw, rh, rows: rows_now, cols: cols_now };
     mouse::handle(ui, &resp, st, index, &g, msgs);
     let focused = resp.has_focus();
-    st.terminal.focused = focused;
+    st.view.terminal.focused = focused;
     if !focused {
         // Its key's release now goes elsewhere.
-        st.terminal.clip_pending = None;
+        st.view.terminal.clip_pending = None;
     }
     let session = &st.terminal.sessions[index];
     let selected = session.selection.and_then(|s| s.range(&session.screen));
@@ -58,7 +58,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
             alt_is_meta: st.settings.terminal.alt_is_meta(),
             alt_codes: cfg!(windows),
         };
-        let got = input::collect(&ui.input(|i| i.events.clone()), &mut st.terminal.clip_pending, opts);
+        let got = input::collect(&ui.input(|i| i.events.clone()), &mut st.view.terminal.clip_pending, opts);
         if got.copy {
             msgs.push(Msg::Terminal(TerminalMsg::CopySelection { keep: false }));
         }

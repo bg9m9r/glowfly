@@ -43,7 +43,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
     panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Sidebar));
     // The filter field's hint, cut with "…" in a narrow panel (whole on hover while empty).
     let filter_hint = st.settings.lang().tr("sidebar.filter.hint");
-    let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
+    let fill = backdrop::fill(st.cues.backdrop, Surface::Side, color::panel());
     let resp = panel_size::side(egui::SidePanel::left(id), fit).frame(egui::Frame::new().fill(fill)).show(ctx, |ui| {
         panel_size::fill(ui);
         // The left panel's pane key focuses the panel; Tab goes on into it.

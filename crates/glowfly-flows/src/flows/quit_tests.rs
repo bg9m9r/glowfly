@@ -77,7 +77,7 @@ fn quit_without_work_closes_and_marks_quitting() {
     let mut st = state();
     let fx = quit(&mut st);
     assert!(closes(&fx), "{fx:?}");
-    assert!(st.view.quitting);
+    assert!(st.cues.quitting);
     assert!(st.modal.is_none() && st.toasts.is_empty());
 }
 
@@ -92,7 +92,7 @@ fn quit_while_a_job_runs_asks_and_names_it() {
     assert!(body.ends_with("Quitting now can cut it off partway, and Glowfly won't see how it ends."), "{body}");
     assert_eq!(button, "Quit anyway");
     assert!(matches!(then, Msg::App(AppMsg::QuitConfirmed)));
-    assert!(!st.view.quitting);
+    assert!(!st.cues.quitting);
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn quit_anyway_closes() {
     quit(&mut st);
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert!(closes(&fx), "{fx:?}");
-    assert!(st.view.quitting);
+    assert!(st.cues.quitting);
     assert!(st.modal.is_none());
     assert!(st.job.is_some(), "the job is left alone");
 }
@@ -126,7 +126,7 @@ fn cancel_keeps_the_window_and_the_job() {
     let fx = run(&mut st, Msg::CloseModal);
     assert!(fx.is_empty(), "{fx:?}");
     assert!(st.modal.is_none());
-    assert!(!st.view.quitting);
+    assert!(!st.cues.quitting);
     assert!(st.job.is_some());
 }
 
@@ -167,7 +167,7 @@ fn os_close_without_work_lets_it_close() {
     let mut st = state();
     let fx = os_close(&mut st);
     assert!(fx.is_empty(), "nothing cancels it: {fx:?}");
-    assert!(st.view.quitting);
+    assert!(st.cues.quitting);
 }
 
 #[test]

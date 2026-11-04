@@ -35,7 +35,7 @@ pub(super) fn edge(ctx: &egui::Context, st: &AppState, panel: Panel, msgs: &mut 
         (egui::SidePanel::right("detail-edge"), name, tip, BindingId::ToggleDetailsPanel, Icon::ExpandLeft)
     };
     // The left strip stands in for the sidebar, so it sits on Mica like it.
-    let fill = if left { backdrop::fill(st.view.backdrop, Surface::Side, color::panel()) } else { color::panel() };
+    let fill = if left { backdrop::fill(st.cues.backdrop, Surface::Side, color::panel()) } else { color::panel() };
     side.exact_width(EDGE_W).resizable(false).show_separator_line(false).frame(egui::Frame::new().fill(fill)).show(ctx, |ui| {
         let rect = ui.max_rect();
         let resp = ui.allocate_rect(rect, Sense::click());

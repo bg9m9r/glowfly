@@ -204,15 +204,16 @@ fn selection_undo_searches_and_view_round_trip() {
     st.session.undo.record(Action::DeleteBranch { name: "old".into(), oid: git2::Oid::zero(), upstream: None });
     st.session.search.filter = true;
     let v = &mut st.session.tab_view;
-    (v.search, v.ref_filter, v.graph_scroll) = ("fix".into(), "main".into(), (120.0, 400.0));
+    (v.search, v.ref_filter) = ("fix".into(), "main".into());
     v.file_folds.toggle(FileListId::Unstaged, "src".into());
+    st.view.tab.graph_scroll = (120.0, 400.0);
 
     select(&mut st, 1);
     let s = &st.session;
     assert_eq!(s.selection, Selection::None, "b has its own selection");
     assert!(s.undo.undo.is_empty() && !s.search.filter, "and its own undo history and search");
     let v = &s.tab_view;
-    assert!(v.search.is_empty() && v.ref_filter.is_empty() && v.graph_scroll == (0.0, 0.0), "and its own view state");
+    assert!(v.search.is_empty() && v.ref_filter.is_empty() && st.view.tab.graph_scroll == (0.0, 0.0), "and its own view state");
     assert!(!v.file_folds.is_closed(FileListId::Unstaged, "src"));
 
     select(&mut st, 0);
@@ -220,7 +221,7 @@ fn selection_undo_searches_and_view_round_trip() {
     assert_eq!(s.selection, Selection::Wip, "a's selection is back");
     assert!(s.undo.undo.len() == 1 && s.search.filter, "with its undo history and search");
     let v = &s.tab_view;
-    assert_eq!((v.search.as_str(), v.ref_filter.as_str(), v.graph_scroll), ("fix", "main", (120.0, 400.0)));
+    assert_eq!((v.search.as_str(), v.ref_filter.as_str(), st.view.tab.graph_scroll), ("fix", "main", (120.0, 400.0)));
     assert!(v.file_folds.is_closed(FileListId::Unstaged, "src"));
     assert_eq!(st.view.scroll_offset, Some(120.0), "the graph scrolls back to where it was");
     cleanup(&[&a, &b]);

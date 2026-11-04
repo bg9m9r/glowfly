@@ -77,7 +77,7 @@ fn layout_details_rail_folder_history_light() {
 #[test]
 fn layout_details_rail_expanded() {
     let (mut st, dir) = blame_dirty(ThemeChoice::Dark, "rail-expanded");
-    st.view.details_expanded_for = Some(ToolView::Blame);
+    st.cues.details_expanded_for = Some(ToolView::Blame);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("layout_details_rail_expanded");

@@ -140,13 +140,13 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let status = match (d.phase, d.fetched_at) {
                 (Phase::Scanning, _) => "Reading repositories…".to_owned(),
                 (Phase::Fetching, _) => format!("Asking {asking} service{}…", if asking == 1 { "" } else { "s" }),
-                (Phase::Idle, Some(at)) => t.trf("dashboard.updated", &[("age", &glowfly_core::dates::relative(t, st.view.now - at))]),
+                (Phase::Idle, Some(at)) => t.trf("dashboard.updated", &[("age", &glowfly_core::dates::relative(t, st.cues.now - at))]),
                 (Phase::Idle, None) => String::new(),
             };
             let r = ui.label(RichText::new(status).color(color::weak()));
             if let (Phase::Idle, Some(at)) = (d.phase, d.fetched_at) {
                 // The label is already relative, so the hover is only the full date.
-                r.on_hover_text(st.settings.format_verbose(at, st.view.utc_offset));
+                r.on_hover_text(st.settings.format_verbose(at, st.cues.utc_offset));
             }
         });
     });

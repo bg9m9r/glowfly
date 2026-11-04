@@ -42,7 +42,7 @@ pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Ve
 /// belongs to it. The selection is cleared.
 pub(super) fn lines(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some((target, _)) = &st.session.diff.view else { return };
-    let sel = &st.view.diff_lines;
+    let sel = &st.cues.diff_lines;
     if !target.reverts_hunks() || sel.is_empty() || sel.target.as_ref() != Some(target) {
         return;
     }
@@ -56,9 +56,9 @@ pub(super) fn lines(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let Some((target, diff)) = &st.session.diff.view else { return };
-    let Some(expected) = diff.hunks.get(st.view.diff_lines.hunk).cloned() else { return };
+    let Some(expected) = diff.hunks.get(st.cues.diff_lines.hunk).cloned() else { return };
     let target = target.clone();
-    let sel = std::mem::take(&mut st.view.diff_lines);
+    let sel = std::mem::take(&mut st.cues.diff_lines);
     let part = RevertPart::Lines { hunk: sel.hunk, expected, lines: sel.lines.into_iter().collect() };
     let follows = target.follows_workdir();
     push(st, target, part, fx);

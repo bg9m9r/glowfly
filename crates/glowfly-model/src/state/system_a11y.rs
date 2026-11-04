@@ -33,19 +33,19 @@ impl AppState {
     /// Whether motion is reduced: chosen in Preferences, or asked for by the system while
     /// Preferences follows it.
     pub fn motion_reduced(&self) -> bool {
-        self.settings.reduce_motion || (self.settings.a11y.follow_system_motion && self.view.system_a11y.reduce_motion)
+        self.settings.reduce_motion || (self.settings.a11y.follow_system_motion && self.cues.system_a11y.reduce_motion)
     }
 
     /// Whether a high-contrast theme shows in place of a chosen theme that isn't one, because
     /// the system uses high contrast and Preferences follows it.
     pub fn system_contrast(&self) -> bool {
-        self.settings.a11y.follow_system_contrast && self.view.system_a11y.high_contrast && !self.settings.theme.is_high_contrast()
+        self.settings.a11y.follow_system_contrast && self.cues.system_a11y.high_contrast && !self.settings.theme.is_high_contrast()
     }
 
     /// The zoom in effect as a factor: the interface size, times the system's text size while
     /// Preferences follows it, snapped to a zoom step.
     pub fn zoom_factor(&self) -> f32 {
-        let scale = self.view.system_a11y.text_scale;
+        let scale = self.cues.system_a11y.text_scale;
         if !self.settings.a11y.follow_system_text_size || !scale.is_finite() || scale <= 0.0 || scale == 1.0 {
             return self.settings.zoom_factor();
         }

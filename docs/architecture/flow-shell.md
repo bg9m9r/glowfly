@@ -25,7 +25,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Every cause's sentence comes from `state/error_words.rs` (`cause`, `explained`), which the auto-stash put-back, clone, submodule, Git Flow and worktree headlines and the Fetch/Pull repositories rows share; a toast that stopped on conflicts takes its count from the status read after the job (`update/conflict_count.rs`). The fallback "<label> failed: …" names the job in the UI language (`state/job_spec/labels.rs`).
 - Failures reaching or reading a remote get their sentences from `state/error_words.rs`, which the Fetch/Pull repositories rows share; a missing or unreadable remote's toast offers Edit remote…. Hosting-service failures (fork, pull request, issue, comment, dashboard, status bar) go through its `hosting`, from `error::advice`.
 - Result messages carry typed errors rather than English text, one area at a time (#367); `state/error_words/typed.rs` words each area's error type with `t.tr` (so far `git_credential::CredentialError`, for a sign-in that couldn't be saved or dropped; `signing::KeyError`, for a signing key that couldn't be listed, generated or exported; `identity::ConfigWriteFailed`, for a Preferences page's refused git config write; `forge::ServiceError`, for a hosting service's refused connection, owners, new repository or Trello boards, its kind translated and the HTTP status and the service's words kept; and `app_update::UpdateError`, for a failed update check, download or Install and restart, and the runner guard's panic in one of them). The palette's file list carries `repo::ListFilesFailed`, libgit2's own words under a translated headline.
-- `toast_replacing` updates a toast still on screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
+- `toast_replacing` updates a toast still on screen instead of stacking another (the zoom toast keeps its id in `cues.zoom_toast`).
 - A push or pull in the active tab says what it did in one sentence (`update/sync_voice.rs`, "Pushed 2 commits to origin/main."), as a brief toast (`toast_brief`: 3 s under Standard) unless Confirm pushes and pulls is off; the activity log keeps it either way (glowfly-flows' `sync_voice_tests.rs`). Toast tests are in `state/toasts_tests.rs`.
 - A toast is one sentence of at most 16 words; the longer story goes to the activity log behind Details. `glowfly-core`'s `i18n/toast_length_tests.rs` holds every English `toast` text to 140 characters.
 - Every toast has an x (`NotifyMsg::CloseToast`) that removes it without running its action.
@@ -34,7 +34,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Let go, a held toast has at least `HOLD_GRACE` left, and the toast limit drops the oldest toast that isn't held.
 - The keyboard focus on a toast's button holds it as the pointer does; how long toasts stay is Accessibility's `toast_time`, and a failure with a fix or Details stays until closed.
 - Every toast leaves an activity line (`update/toast_log.rs`), so a dropped or expired one can still be read.
-- Toasts fade and expire by `view.frame_at`, the shell's time stamp for the frame (None in snapshot tests, so they draw at full strength).
+- Toasts fade and expire by `cues.frame_at`, the shell's time stamp for the frame (None in snapshot tests, so they draw at full strength).
 
 ## Zoom and panels
 
@@ -46,10 +46,10 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `show_left_panel`, `show_details_panel` and `show_toolbar` are checked in `ui/frame_layout.rs`, and `show_menu_bar` by `ui/menu_bar::show` (system frame only).
 - Hiding the menu bar through `LayoutMsg` toasts a Show menu bar button.
 - `state::layout::details_shape` decides whether the commit details panel is drawn Full, as a 36 px Rail or Hidden; it stays Full whatever the central view while a rebase is stopped (its steps continue it).
-- The details panel is a rail while a tool view (`state::layout::tool_view`: conflict, blame, file or folder history, pull request, issue, the interactive rebase editor, Range-diff, journal, Git Flow, in the central area's order) fills the central area, unless `view.details_expanded_for` names that view.
-- `LayoutMsg::ExpandDetails` and Go to the commit message set `view.details_expanded_for`, and `update` clears it (`drop_stale_expansion`) as soon as the tool view changes or closes; the saved setting never changes.
+- The details panel is a rail while a tool view (`state::layout::tool_view`: conflict, blame, file or folder history, pull request, issue, the interactive rebase editor, Range-diff, journal, Git Flow, in the central area's order) fills the central area, unless `cues.details_expanded_for` names that view.
+- `LayoutMsg::ExpandDetails` and Go to the commit message set `cues.details_expanded_for`, and `update` clears it (`drop_stale_expansion`) as soon as the tool view changes or closes; the saved setting never changes.
 - A hidden left or details panel leaves a 16 px edge strip that shows it again (`ui/panel_rails.rs`, with the rail).
-- Full screen is the window's own state, never saved: `LayoutMsg::ToggleFullscreen` asks the shell for `WindowCmd::SetFullscreen` from `view.window.fullscreen` (read each frame).
+- Full screen is the window's own state, never saved: `LayoutMsg::ToggleFullscreen` asks the shell for `WindowCmd::SetFullscreen` from `cues.window.fullscreen` (read each frame).
 - `WindowCmd::in_window` narrows what the drawn bar's window actions do while full screen (docs/PLATFORMS.md, Window frame).
 - With `announce_jobs` on (Preferences > Accessibility > Announcements) each toast's text and the status bar's job are AccessKit live regions (`ui/access.rs::announce`): polite, assertive for a failure.
 - Toasts are anchored to `ToastBounds`, where the top chrome and the status bar end, measured while `frame_layout` draws them (`ui/toasts.rs`), all one width.
@@ -68,7 +68,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - On Windows the shell also installs `platform/native_window/` (`GlowflyApp::new`): a window procedure in front of winit's (`win_proc.rs`, its state in atomics).
 - `win_proc.rs` answers the hit test (`CaptionGeometry::hit`) with `HTMAXBUTTON` over the drawn Maximize button for Snap Layouts, and with `HTTOP` over the resize strip along its top.
 - `win_system.rs` opens the system menu on Alt+Space or on `WindowCmd::SystemMenu`, gives the frame DWM's shadow and Windows 11's rounded corners, sets the Mica backdrop and reads transparency and high contrast.
-- Each frame `shell/app_native.rs` polls it into view state (`WindowInfo::max_button`, `ViewState::backdrop`, a click as `SetMaximized`, a shown menu cancelling the Alt tap) and hands back `window_frame::caption_geometry`.
+- Each frame `shell/app_native.rs` polls it into the views' cues (`WindowInfo::max_button`, `ViewCues::backdrop`, a click as `SetMaximized`, a shown menu cancelling the Alt tap) and hands back `window_frame::caption_geometry`.
 - The pure parts of the native window are in `state/window_native.rs`.
 - Only the shell (`src/shell/`) and `main.rs` may name `platform::native_window`, and no view, update or state code names `windows::Win32` (`tests/source_checks/layering.rs`).
 - Only the shell may name `platform::primary_selection`: `shell/app.rs` opens it and `shell/app_effects.rs` runs `UiEffect::SetPrimary` and `UiEffect::PastePrimary` (`tests/source_checks/layering.rs`).
@@ -109,13 +109,13 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - The window's close button reaches `update` as `AppMsg::CloseRequested` (the shell reads egui's `close_requested` in `input`).
 - `update/app.rs::quit` asks first while work exists only in memory (any tab's commit draft, conflict choices or comments not posted, an edited dialog, unsaved Preferences edits: `state/tab_losses.rs::quit_lines`), a non-quiet job (a sparse clone among them), a repository sync or an update's download runs, or a terminal runs a program (`state/quit_confirm.rs` builds one danger confirmation naming each, with its tab; Cancel is focused), and cancels the OS close with `UiEffect::CancelClose`.
 - Running shells are asked about first: `TerminalEffect::CheckBusy` probes them off the UI thread and answers with one `TerminalMsg::BusyChecked`, which `update/terminal_busy.rs` hands to the close waiting on it (quit, closing repository tabs, Install and restart); `state/terminal/busy.rs` names the busy terminals.
-- Quit anyway sends `AppMsg::QuitConfirmed`, which sets `view.quitting` and returns `UiEffect::CloseWindow`, and the close that follows is let through. A job that can be stopped now (a fetch, push, clone or a pull's fetch) is stopped first (`job_stop::cancel`, so its lock files are removed) and the window closes once it has ended (`view.quit_after_stop`).
-- While the question shows, `update/app.rs::settle` (after every message) closes the window once the work and terminals it named (`view.quit_ask`) have ended, or names only what is left; never while it names unsaved work, which doesn't end by itself.
+- Quit anyway sends `AppMsg::QuitConfirmed`, which sets `cues.quitting` and returns `UiEffect::CloseWindow`, and the close that follows is let through. A job that can be stopped now (a fetch, push, clone or a pull's fetch) is stopped first (`job_stop::cancel`, so its lock files are removed) and the window closes once it has ended (`cues.quit_after_stop`).
+- While the question shows, `update/app.rs::settle` (after every message) closes the window once the work and terminals it named (`cues.quit_ask`) have ended, or names only what is left; never while it names unsaved work, which doesn't end by itself.
 
 ## Desktop notifications
 
-- `update/notify.rs::desktop` returns `Effect::Notify` (a `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and `st.view.focused` is false.
-- The shell sets `view.focused` from egui at the start of each frame, before runner results are handled, so `update` never asks egui.
+- `update/notify.rs::desktop` returns `Effect::Notify` (a `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and `st.cues.focused` is false.
+- The shell sets `cues.focused` from egui at the start of each frame, before runner results are handled, so `update` never asks egui.
 - Finished non-quiet jobs (`update/ops.rs::finish_job`) and behind alerts use it; turning the setting on sends one confirmation regardless of focus.
 - `runner/notify.rs` shows the note through notify-rust (the only caller, `tests/source_checks/layering.rs`) and reports a refusal as `PrefsMsg::DesktopNotificationFailed`.
 - A note carries the repository it is about (`DesktopNote::workdir`); the effect's worker thread waits for the user's answer (at most `MAX_WAITING` at once) and reports a click as `NotifyMsg::DesktopClicked`.

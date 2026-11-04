@@ -236,7 +236,7 @@ fn go_to_thread_opens_file_and_lands_on_line() {
         .collect();
     assert_eq!(loads, [&DiffTarget::Between(base, tip, "f.txt".into())]);
     assert_eq!(view(&st).tab, PrTab::Files);
-    assert_eq!(st.view.diff_open_line, Some((target.clone(), LineSide::New, 1)));
+    assert_eq!(st.cues.diff_open_line, Some((target.clone(), LineSide::New, 1)));
     assert_eq!(view(&st).threads.focus.as_deref(), Some("T1"));
     finish_keeping(&mut st, fx);
     let (open, d) = st.session.diff.view.as_ref().expect("the diff loaded");
@@ -244,7 +244,7 @@ fn go_to_thread_opens_file_and_lands_on_line() {
     let want = row_of_file_line(d, st.settings.diff_mode, st.settings.diff_layout, &st.session.tab_view.diff_expanded, LineSide::New, 1);
     assert!(want.is_some());
     assert_eq!(st.view.diff_scroll_to_row, want);
-    assert_eq!(st.view.diff_open_line, None, "taken");
+    assert_eq!(st.cues.diff_open_line, None, "taken");
     done(st, dirs);
 }
 
@@ -282,7 +282,7 @@ fn go_to_outdated_or_unknown_path_does_nothing() {
         assert!(fx.is_empty(), "{id}");
         assert!(st.session.diff.view.is_none(), "{id}");
         assert_eq!(view(&st).tab, PrTab::Overview, "{id}");
-        assert_eq!(st.view.diff_open_line, None, "{id}");
+        assert_eq!(st.cues.diff_open_line, None, "{id}");
     }
     done(st, dirs);
 }

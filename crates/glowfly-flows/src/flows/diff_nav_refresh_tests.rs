@@ -36,15 +36,15 @@ fn status_refresh_keeps_pending_step() {
     let stale = pending_step(&mut st);
     let fx = refresh(&mut st, |_| true);
     assert_eq!(one_load(&fx), (&unstaged("b.bin"), false), "the step's file is asked for again");
-    assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));
+    assert_eq!(st.cues.diff_landing, Some((unstaged("b.bin"), Landing::First)));
     run(&mut st, glowfly_runner::testing::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the superseded request doesn't land");
-    assert!(st.view.diff_landing.is_some(), "and doesn't end the step");
+    assert!(st.cues.diff_landing.is_some(), "and doesn't end the step");
     finish(&mut st, fx);
     // b.bin has nothing to land on, so the step goes on to c.txt.
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
-    assert_eq!(st.view.diff_landing, None);
-    assert!(matches!(&st.view.file_reveal, Some((t, g)) if *t == unstaged("c.txt") && *g == st.session.diff.shown_gen));
+    assert_eq!(st.cues.diff_landing, None);
+    assert!(matches!(&st.cues.file_reveal, Some((t, g)) if *t == unstaged("c.txt") && *g == st.session.diff.shown_gen));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -55,12 +55,12 @@ fn refresh_that_changes_the_list_steps_to_the_new_neighbour() {
     // b.bin left the list while it loaded: a.txt's next file is now c.txt.
     let fx = refresh(&mut st, |f| f.path != "b.bin");
     assert_eq!(one_load(&fx), (&unstaged("c.txt"), false));
-    assert_eq!(st.view.diff_landing, Some((unstaged("c.txt"), Landing::First)));
+    assert_eq!(st.cues.diff_landing, Some((unstaged("c.txt"), Landing::First)));
     run(&mut st, glowfly_runner::testing::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")));
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
-    assert_eq!(st.view.diff_cursor, Some(st.session.tab_view.diff_top_row), "landed on its first change");
+    assert_eq!(st.cues.diff_cursor, Some(st.view.tab.diff_top_row), "landed on its first change");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -70,10 +70,10 @@ fn refresh_with_no_neighbour_left_reloads_the_shown_file() {
     pending_step(&mut st);
     let fx = refresh(&mut st, |f| f.path == "a.txt");
     assert_eq!(one_load(&fx), (&unstaged("a.txt"), true), "the shown file reloads");
-    assert_eq!(st.view.diff_landing, None, "the step ends");
+    assert_eq!(st.cues.diff_landing, None, "the step ends");
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("a.txt")));
-    assert_eq!(st.view.file_reveal, None, "a reload reveals nothing");
+    assert_eq!(st.cues.file_reveal, None, "a reload reveals nothing");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -87,11 +87,11 @@ fn options_change_during_step_reopens_the_target() {
         matches!(&loads[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload: false, ignore_whitespace: true, .. })] if *target == unstaged("b.bin")),
         "{fx:?}"
     );
-    assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));
+    assert_eq!(st.cues.diff_landing, Some((unstaged("b.bin"), Landing::First)));
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
     // A plain open reveals nothing.
     at_end_of(&mut st, unstaged("a.txt"));
-    assert_eq!(st.view.file_reveal, None);
+    assert_eq!(st.cues.file_reveal, None);
     let _ = std::fs::remove_dir_all(&dir);
 }

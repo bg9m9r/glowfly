@@ -119,7 +119,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     };
     let updates = updates_row::UpdatesView {
         updates: &st.updates,
-        last_checked: st.settings.updates.last_checked.map(|t| st.settings.format_time(t, st.view.now, st.view.utc_offset)),
+        last_checked: st.settings.updates.last_checked.map(|t| st.settings.format_time(t, st.cues.now, st.cues.utc_offset)),
     };
     let switching = st.profile_switch;
     // Field by field, beside the `&mut` borrows of the settings and Preferences below.
@@ -130,7 +130,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         identity: st.identities.get(&s.git_dir),
         healed: st.includes.healed.contains(&s.git_dir),
     });
-    let frame_rows = appearance::FrameRows { menu_bar: !st.view.chrome.drawn(), system_title_bar: st.view.system_title_bar_offered };
+    let frame_rows = appearance::FrameRows { menu_bar: !st.cues.chrome.drawn(), system_title_bar: st.cues.system_title_bar_offered };
     let on_network = st.snap.as_ref().is_some_and(|s| st.watch.remote.contains_key(&s.workdir));
     let monitor = git::MonitorRow {
         offered: st.git.monitor_offer_for(glowfly_core::opens::Os::current()) == glowfly_core::repo::MonitorOffer::Daemon && !on_network,
@@ -144,12 +144,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let fs = st.session.forge.as_ref();
     // Repository settings are keyed by where it really is (`settings::repo_keys`).
     let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
-    let now = (st.view.now, st.view.utc_offset);
+    let now = (st.cues.now, st.cues.utc_offset);
     let themes = &st.themes;
     let a11y = accessibility::A11yView {
         keys: keymap,
         sheet_open: matches!(st.modal, Some(glowfly_model::state::Modal::Shortcuts { .. })),
-        text_size_followable: st.view.system_a11y.text_size_followable,
+        text_size_followable: st.cues.system_a11y.text_size_followable,
     };
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))

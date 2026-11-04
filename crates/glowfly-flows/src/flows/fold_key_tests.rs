@@ -44,11 +44,11 @@ fn show_opens_the_next_closed_fold_from_the_top() {
         let f = folds(w);
         assert_eq!(f.len(), 2);
         // The top sits on the first fold's row: it opens, and nothing scrolls.
-        st.session.tab_view.diff_top_row = row_of_line(w, layout, &Expanded::default(), f[0].start);
-        let top = st.session.tab_view.diff_top_row;
+        st.view.tab.diff_top_row = row_of_line(w, layout, &Expanded::default(), f[0].start);
+        let top = st.view.tab.diff_top_row;
         assert!(open_key(&mut st).is_empty());
         assert!(st.session.tab_view.diff_expanded.contains(f[0].key), "{layout:?}");
-        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (top, None), "{layout:?}");
+        assert_eq!((st.view.tab.diff_top_row, st.view.diff_scroll_to_row), (top, None), "{layout:?}");
         // Then the next one down; then nothing is left.
         open_key(&mut st);
         assert!(st.session.tab_view.diff_expanded.contains(f[1].key), "{layout:?}");
@@ -59,7 +59,7 @@ fn show_opens_the_next_closed_fold_from_the_top() {
         // Fold back closes the fold holding the top line, keeping the top in place.
         close_key(&mut st);
         assert!(!st.session.tab_view.diff_expanded.contains(f[0].key), "{layout:?}");
-        assert_eq!(st.session.tab_view.diff_top_row, top, "{layout:?}");
+        assert_eq!(st.view.tab.diff_top_row, top, "{layout:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
@@ -76,7 +76,7 @@ fn show_scrolls_to_a_fold_below_the_viewport() {
         open_key(&mut st);
         assert!(st.session.tab_view.diff_expanded.contains(f.key));
         let to = row_of_line(w, layout, &st.session.tab_view.diff_expanded, f.start);
-        assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row), (to, Some(to)), "{layout:?}");
+        assert_eq!((st.view.tab.diff_top_row, st.view.diff_scroll_to_row), (to, Some(to)), "{layout:?}");
         // Nothing opened is on screen past the last fold: Fold back still finds the one at the top.
         close_key(&mut st);
         assert!(st.session.tab_view.diff_expanded.is_empty(), "{layout:?}");

@@ -249,24 +249,33 @@ pub(super) fn forget_repo_reads(st: &mut AppState) {
 
 pub fn park(st: &mut AppState) -> Parked {
     // Not kept: another tab may show the same path, and its diff reloads on return anyway.
-    st.view.clear_diff_selection();
+    st.clear_diff_selection();
     // The parked tab's diff results are dropped, so a pending step can't land.
-    st.view.diff_landing = None;
-    st.view.diff_opening = None;
-    st.view.stage_move_on = None;
+    st.cues.diff_landing = None;
+    st.cues.diff_opening = None;
+    st.cues.stage_move_on = None;
     // The WIP lists' selection and places name the parked tab's files.
-    st.view.wip_span = None;
-    st.view.wip_place = [None, None];
-    st.view.diff_cursor = None;
+    st.cues.wip_span = None;
+    st.cues.wip_place = [None, None];
+    st.cues.diff_cursor = None;
     // Reads the forge data, so before it moves.
     super::stack_prs::parked(st);
     // The settings are shared by all tabs and may change while this one is parked.
     st.session.tab_view.parked_in = Some((st.settings.diff_mode, st.settings.diff_layout));
-    Parked { session: st.session.park(), snap: st.snap.take(), issue_form: super::issue_create::park(st), since: None, glance: None }
+    let scroll = std::mem::take(&mut st.view.tab);
+    Parked {
+        session: st.session.park(),
+        scroll,
+        snap: st.snap.take(),
+        issue_form: super::issue_create::park(st),
+        since: None,
+        glance: None,
+    }
 }
 
 fn unpark(st: &mut AppState, p: Parked) {
     st.snap = p.snap;
+    st.view.tab = p.scroll;
     // Every counter moves past the ones the previous tab left (`RepoSession::resume_after`):
     // results in flight from before the park, or for another tab, are dropped, and `activate`
     // asks again for what was loading. The open diff's results were dropped while parked too, so
@@ -283,11 +292,11 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.view.conflict_scroll_to = st.session.conflict.view.as_ref().filter(|c| c.file.is_some()).map(|c| c.current);
     st.view.history_scroll_to = st.session.history.view.as_ref().and_then(|h| h.selected);
     super::issue_create::unpark(st, p.issue_form);
-    st.view.scroll_offset = Some(st.session.tab_view.graph_scroll.0);
+    st.view.scroll_offset = Some(st.view.tab.graph_scroll.0);
     st.view.scroll_to_row = None;
-    st.view.highlight = None;
-    st.view.ref_rows.reset();
-    st.view.hover_tip = None;
+    st.cues.highlight = None;
+    st.cues.ref_rows.reset();
+    st.cues.hover_tip = None;
     st.view.hover_tip_next = None;
 }
 
@@ -296,7 +305,7 @@ fn unpark(st: &mut AppState, p: Parked) {
 fn restore_diff_top(st: &mut AppState) {
     let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
     let (was_mode, was_layout) = st.session.tab_view.parked_in.take().unwrap_or((mode, layout));
-    let old = st.session.tab_view.diff_top_row;
+    let old = st.view.tab.diff_top_row;
     // The rows are counted with these folds open.
     let ex = &st.session.tab_view.diff_expanded;
     let top = match st.session.diff.view.as_mut() {
@@ -312,7 +321,7 @@ fn restore_diff_top(st: &mut AppState) {
         None => 0,
     };
     st.view.diff_scroll_to_row = st.session.diff.view.is_some().then_some(top);
-    st.session.tab_view.diff_top_row = top;
+    st.view.tab.diff_top_row = top;
 }
 
 /// The session to restore on the next start: tabs with a repository, and the active one.

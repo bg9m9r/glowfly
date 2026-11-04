@@ -27,7 +27,7 @@ fn revert_lines_sends_effect() {
     let target = DiffTarget::Commit(head(&st), "a.txt".into());
     st.session.diff.view = Some((target.clone(), one_hunk().into()));
     select(&mut st, 1);
-    assert!(!st.view.diff_lines.is_empty());
+    assert!(!st.cues.diff_lines.is_empty());
     let generation = st.hunk_ops_gen();
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertLines));
     let expected = one_hunk().hunks[0].clone();
@@ -35,7 +35,7 @@ fn revert_lines_sends_effect() {
         RevertRequest { target, part: RevertPart::Lines { hunk: 0, expected, lines: vec![1] }, dest: None, ignore_whitespace: false };
     assert_eq!(requests(&fx), [&want], "{fx:?}");
     assert_eq!(fx.len(), 1);
-    assert!(st.view.diff_lines.is_empty(), "the selection is cleared");
+    assert!(st.cues.diff_lines.is_empty(), "the selection is cleared");
     assert_eq!(st.hunk_ops_gen(), generation, "the diff's counter (session.diff.generation) is not bumped");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -47,7 +47,7 @@ fn revert_lines_with_whitespace_hidden_carries_the_flag() {
     st.session.diff.view = Some((target.clone(), one_hunk().into()));
     st.settings.diff_ignore_whitespace = true;
     select(&mut st, 1);
-    assert!(!st.view.diff_lines.is_empty(), "lines can be selected with whitespace hidden");
+    assert!(!st.cues.diff_lines.is_empty(), "lines can be selected with whitespace hidden");
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertLines));
     let expected = one_hunk().hunks[0].clone();
     let want = RevertRequest { target, part: RevertPart::Lines { hunk: 0, expected, lines: vec![1] }, dest: None, ignore_whitespace: true };
@@ -88,7 +88,7 @@ fn revert_lines_refused() {
     st.session.diff.generation += 1;
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("diff changed")));
-    assert!(!st.view.diff_lines.is_empty(), "a refusal keeps the selection");
+    assert!(!st.cues.diff_lines.is_empty(), "a refusal keeps the selection");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

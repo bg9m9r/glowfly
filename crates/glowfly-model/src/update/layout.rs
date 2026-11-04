@@ -1,9 +1,9 @@
 //! Zooming the window, showing or hiding its panels and the sizes its drawers were dragged to:
 //! all are settings, saved when they change; the shell applies them on the next frame. Expanding
-//! the commit panel collapsed beside a tool view is view state only (`view.details_expanded_for`),
+//! the commit panel collapsed beside a tool view is view state only (`cues.details_expanded_for`),
 //! never saved, and lasts while that tool view stays open. Full screen is the window's own
-//! state, read each frame into `view.window` and never saved: the toggle only asks the shell. Opening or folding a step of the WIP panel's operation steps
-//! (`view.op_steps`) is view state too, kept until the operation moves on. The changed-file
+//! state, read each frame into `cues.window` and never saved: the toggle only asks the shell. Opening or folding a step of the WIP panel's operation steps
+//! (`cues.op_steps`) is view state too, kept until the operation moves on. The changed-file
 //! lists' List / Tree choice is a setting, saved when it changes; the folders collapsed in
 //! their tree (`session.tab_view.file_folds`) are view state, parked with the tab.
 
@@ -22,7 +22,7 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
         LayoutMsg::ZoomIn => zoom(st, zoom_in_from(st.settings.zoom_percent), now, fx),
         LayoutMsg::ZoomOut => zoom(st, zoom_out_from(st.settings.zoom_percent), now, fx),
         LayoutMsg::ZoomReset => zoom(st, DEFAULT_ZOOM_PERCENT, now, fx),
-        LayoutMsg::ToggleFullscreen => fx.push(Effect::Ui(UiEffect::Window(WindowCmd::SetFullscreen(!st.view.window.fullscreen)))),
+        LayoutMsg::ToggleFullscreen => fx.push(Effect::Ui(UiEffect::Window(WindowCmd::SetFullscreen(!st.cues.window.fullscreen)))),
         LayoutMsg::TogglePanel(p) => {
             let on = !shown(&st.settings, p);
             set_and_note(st, p, on, now, fx);
@@ -35,10 +35,10 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
                 fx.extend(super::prefs::save_settings(st));
             }
         }
-        LayoutMsg::ExpandDetails => st.view.details_expanded_for = tool_view(st),
+        LayoutMsg::ExpandDetails => st.cues.details_expanded_for = tool_view(st),
         LayoutMsg::ToggleOpStep(step) => {
             if let Some(snap) = &st.snap {
-                st.view.op_steps.toggle(snap, step);
+                st.cues.op_steps.toggle(snap, step);
             }
         }
         LayoutMsg::SetFileListMode(m) => {
@@ -65,7 +65,7 @@ fn set_and_note(st: &mut AppState, p: Panel, on: bool, now: Instant, fx: &mut Ve
 /// tool view (the commit box is in it).
 pub(super) fn reveal_details(st: &mut AppState, fx: &mut Vec<Effect>) {
     set(st, Panel::Details, true, fx);
-    st.view.details_expanded_for = tool_view(st);
+    st.cues.details_expanded_for = tool_view(st);
 }
 
 /// Moves to zoom level `new` (saving it when it differs) and shows the level in the zoom
@@ -76,7 +76,7 @@ fn zoom(st: &mut AppState, new: u16, now: Instant, fx: &mut Vec<Effect>) {
         fx.extend(super::prefs::save_settings(st));
     }
     let text = zoom_toast_text(st.settings.zoom_level());
-    st.view.zoom_toast = Some(st.toast_replacing(st.view.zoom_toast, true, text, now));
+    st.cues.zoom_toast = Some(st.toast_replacing(st.cues.zoom_toast, true, text, now));
 }
 
 /// Shows or hides `p`, saving when that changed it; returns whether it did.

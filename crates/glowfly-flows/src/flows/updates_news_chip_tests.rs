@@ -67,9 +67,9 @@ fn the_chip_runs_out_after_its_days() {
     assert!(saves(&tick(&mut st)));
     assert_eq!(st.settings.updates.news_chip.as_ref().and_then(|c| c.until), Some(NOW + NEWS_CHIP_FOR));
     assert!(!saves(&tick(&mut st)), "once");
-    st.view.now = NOW + NEWS_CHIP_FOR - 1;
+    st.cues.now = NOW + NEWS_CHIP_FOR - 1;
     assert!(!saves(&tick(&mut st)) && st.updates_news_chip().is_some(), "still there a second before");
-    st.view.now = NOW + NEWS_CHIP_FOR;
+    st.cues.now = NOW + NEWS_CHIP_FOR;
     assert!(st.updates_news_chip().is_none(), "hidden once the time is up");
     assert!(saves(&tick(&mut st)) && st.settings.updates.news_chip.is_none(), "and dropped from the settings");
 }
@@ -77,7 +77,7 @@ fn the_chip_runs_out_after_its_days() {
 #[test]
 fn before_the_clock_is_known_the_chip_waits_to_start_its_days() {
     let mut st = upgraded();
-    st.view.now = 0;
+    st.cues.now = 0;
     send(&mut st, U::Startup, Instant::now());
     assert!(!saves(&tick(&mut st)));
     assert!(st.updates_news_chip().is_some_and(|c| c.until.is_none()), "shown, its days not started");

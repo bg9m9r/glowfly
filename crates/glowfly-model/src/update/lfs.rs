@@ -66,7 +66,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
                 note.show_pointer = on;
                 if !on {
                     // The summary hides the rows: no line stays selected behind it.
-                    st.view.diff_lines.clear();
+                    st.cues.diff_lines.clear();
                 }
             }
         }

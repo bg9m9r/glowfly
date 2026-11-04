@@ -65,7 +65,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
             let focus = file_list_keys::target(ui, FileList::PullRequest, files.len(), ui.available_height(), &heading);
             let area = egui::ScrollArea::vertical().id_salt("pr-files").auto_shrink([false, false]);
             let shown = area.show_rows(ui, row_h, files.len(), |ui, range| {
-                reveal(ui, "pr-files", st.view.file_reveal.as_ref(), index, &range, row_h);
+                reveal(ui, "pr-files", st.cues.file_reveal.as_ref(), index, &range, row_h);
                 for row in range {
                     let f = &files[row];
                     let Some(target) = v.diff_target(&f.path) else { continue };

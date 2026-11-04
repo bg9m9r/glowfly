@@ -18,7 +18,7 @@ fn a_freed_history_comes_back_with_its_selection_and_scroll() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     let oid = st.snap.as_ref().unwrap().commits[5_000].oid;
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(oid)));
-    st.session.tab_view.graph_scroll = (100_000.0, 600.0);
+    st.view.tab.graph_scroll = (100_000.0, 600.0);
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
 

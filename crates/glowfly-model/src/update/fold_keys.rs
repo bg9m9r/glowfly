@@ -12,7 +12,7 @@ use glowfly_core::whole_file::{collapsed, line_at_row, opened, row_of_line, show
 
 /// The rows from the top row down that fit in the viewport (at least one).
 fn screen(st: &AppState) -> std::ops::Range<usize> {
-    let top = st.session.tab_view.diff_top_row;
+    let top = st.view.tab.diff_top_row;
     top..top + st.view.diff_visible_rows.max(1)
 }
 
@@ -39,7 +39,7 @@ pub(super) fn open_at_top(st: &mut AppState, fx: &mut Vec<Effect>) {
         refold(st, |ex, _| ex.insert(f.key));
         if row >= below.end {
             let to = row_of_line(w, layout, &st.session.tab_view.diff_expanded, f.start);
-            (st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row) = (to, Some(to));
+            (st.view.tab.diff_top_row, st.view.diff_scroll_to_row) = (to, Some(to));
         }
         return;
     }
@@ -52,7 +52,7 @@ pub(super) fn open_at_top(st: &mut AppState, fx: &mut Vec<Effect>) {
     if row >= below.end {
         // Its first line once the text is there; until then the header after it.
         let to = gap_line_row(st, g.hunk, 0).unwrap_or(row);
-        (st.session.tab_view.diff_top_row, st.view.diff_scroll_to_row) = (to, Some(to));
+        (st.view.tab.diff_top_row, st.view.diff_scroll_to_row) = (to, Some(to));
     }
 }
 
