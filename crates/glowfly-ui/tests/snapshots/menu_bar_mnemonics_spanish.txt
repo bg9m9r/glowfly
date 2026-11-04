@@ -1,12 +1,11 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 Button "Archivo"
 Button "Editar"
 Button "Ver"
 Button "Ventana"
 Button "Ayuda"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 archivo cambiado" [selected]
   Tab "api-server"
 Button "Cerrar la pestaña demo"
 Button "Cerrar la pestaña api-server"
@@ -84,7 +83,9 @@ Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
 painted:
+  "demo"
   "repositorio"
+  "demo"
   "rama"
   "main"
   "Deshacer"

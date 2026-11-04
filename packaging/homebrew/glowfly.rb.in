@@ -26,4 +26,13 @@ cask "glowfly" do
     "~/Library/Caches/Glowfly",
     "~/Library/Logs/Glowfly",
   ]
+
+  caveats <<~EOS
+    Glowfly isn't signed or notarized by Apple yet, so macOS stops it the first time it opens.
+    On macOS 15 and later, open Glowfly once and close the message, then go to
+    System Settings > Privacy & Security and click "Open Anyway" next to the note about Glowfly.
+    Or remove the quarantine mark in Terminal:
+      xattr -dr com.apple.quarantine #{appdir}/Glowfly.app
+    On macOS 14 and earlier, Control-click Glowfly in Applications and choose Open.
+  EOS
 end

@@ -1,10 +1,10 @@
-window 240x400
-Label "Glowfly 0.1.0"
+window 150x400
 Button "Update verfügbar (0.3.0)"
 TabList
   Tab "Neuer Tab" [selected]
 Button "Tab Neuer Tab schließen"
 Button "Neuer Tab"
+Button "Alle Tabs und kürzlich geschlossene Tabs"
 Button "Repository: Öffnen…"
 Image
 Label "Glowfly"

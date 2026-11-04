@@ -103,8 +103,10 @@ A failing input lands in `fuzz/artifacts/<target>/`; `cargo +nightly fuzz run <t
 - `scripts/installer-check-windows.ps1` checks the zip and the installed MSI's licence files the same way; `scripts/installer-check-flatpak.sh` checks the installed bundle's, `GIT-NOTICE.md` and git's licences in `/app/share/doc/git/`.
 - `scripts/release-check-git-source.sh`: a folder of release files with a `.flatpak` also has the git source archive the manifest names, with its sha256; run by the Release workflow's checksums job and by Installers.
 - `scripts/release-publish-check-test.sh`: `scripts/release-publish.sh`'s check before a draft is published (missing files, digest mismatches, `*name` and CRLF lines, an empty release) and its latest-release choice, on fixtures; run by Installers, which also shellchecks both release scripts.
+- `scripts/fill-manifests-test.sh`: `scripts/fill-manifests.sh` on a fixture `SHA256SUMS`: a release gets the Homebrew cask, the Scoop manifest and the winget manifests with each file's SHA-256 and no placeholder left, a pre-release none, and a missing checksum or bad owner/repo fails; run and shellchecked by Installers.
 - `crates/glowfly-app/tests/packaging/linux_packages.rs`: the .rpm's file list matches what the Linux install checks look for, none of it marked `doc`, and both packages declare the libraries the program loads at run time.
 - `crates/glowfly-app/tests/packaging/flatpak_package.rs`: the Flatpak manifest and its jobs, read line by line, including git's licences, `GIT-NOTICE.md` naming the manifest's git archive, and the release attaching it.
+- `crates/glowfly-app/tests/packaging/package_manifests.rs`: the package manager templates (`packaging/homebrew/`, `packaging/scoop/`, `packaging/winget/`) hold only placeholders `fill-manifests.sh` fills, the Scoop manifest installs and auto-updates from the release zips and `SHA256SUMS`, the cask's caveats say how to open the unsigned app, and the release attaches them.
 
 ## Workflows
 

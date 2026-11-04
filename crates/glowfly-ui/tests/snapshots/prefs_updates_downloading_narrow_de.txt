@@ -1,5 +1,4 @@
 window 960x700
-Label "Glowfly 0.1.0"
 ProgressIndicator
 Button "Glowfly 0.3.0 wird heruntergeladen…"
 Button "Zurück"

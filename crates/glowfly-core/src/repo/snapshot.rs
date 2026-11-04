@@ -126,6 +126,8 @@ pub struct Snapshot {
     /// When this worktree's repository last fetched (FETCH_HEAD's time, Unix seconds), read by
     /// full loads; jobs that fetch set it too.
     pub fetched_at: Option<i64>,
+    /// The remotes that fetch covered, by the URLs `FETCH_HEAD` names (full loads only).
+    pub fetched_remotes: Vec<String>,
     pub graph: Layout,
     /// Which local branches are stacked on which (full loads only).
     pub stacks: crate::stack::Stacks,

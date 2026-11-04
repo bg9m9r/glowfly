@@ -12,7 +12,7 @@
 //! a button with the keyboard too in `menu_open.rs`. The toolbar's buttons, toggles, split buttons, caret,
 //! borderless groups and the dividers between them are in `tool.rs`, and the flush segments of a
 //! segment bar (the pickers, a split) in `segment_bar.rs`. The tab bars' painted close × and new-tab + are in
-//! `tab_glyph.rs`, glyphs moved onto the pixel grid in `icon_snap.rs`, a quiet target a view
+//! `tab_glyph.rs`, the three dots of running work in `dots.rs`, glyphs moved onto the pixel grid in `icon_snap.rs`, a quiet target a view
 //! lays out itself (a tab, the title bar's menu button) in `quiet_target.rs`, and every chip and
 //! badge (the two chip sizes, and the quiet, clickable chips of the commit details) in `chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
@@ -31,6 +31,7 @@ pub mod button_split;
 pub mod buttons;
 pub mod chip;
 pub mod details;
+pub mod dots;
 pub mod empty_state;
 pub mod field_group;
 pub mod form_message;

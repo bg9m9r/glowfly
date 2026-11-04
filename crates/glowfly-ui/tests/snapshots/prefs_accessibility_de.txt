@@ -1,5 +1,4 @@
 window 760x1640
-Label "Glowfly 0.1.0"
 Button "Zurück"
 TextInput "Einstellungen durchsuchen"
 Label "Einstellungen"

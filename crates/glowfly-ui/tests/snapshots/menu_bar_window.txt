@@ -1,5 +1,4 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 Button "File"
 Button "Edit"
 Button "View"
@@ -12,7 +11,7 @@ Button "Close other tabs"
 Button "Close tabs to the right"
 Button "Help"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"

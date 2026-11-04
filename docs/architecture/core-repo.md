@@ -14,7 +14,7 @@ source file, update its line here.
 - Rows whose stored content is a Git LFS pointer get `FileEntry::lfs`, and a viewer diff with a pointer side carries its `LfsChange` (`lfs_marks.rs`).
 - The commits one branch has and another lacks, walked in the loaded graph and marked incomplete when it runs off its end: `divergence.rs`.
 - The commits deleting a local branch would leave on no branch (reached from its tip, from no other local or remote-tracking branch): `unmerged.rs`.
-- When the repository last fetched, from FETCH_HEAD's time: `fetch_time.rs`.
+- When the repository last fetched, from FETCH_HEAD's time, and which remotes that fetch covered: `fetch_time.rs`.
 - `repo/snapshot.rs`: the `Snapshot` a load makes, the `LoadOptions` it was loaded with and a commit's `CommitDetail` (their queries are in `snapshot_impl.rs`).
 - `repo/walk_order.rs`: the history walk's order (newest committer time first, ties in the order found, each commit once, parents as git2's `parents()` yields them), shared by the graph's walk (`repo/walk.rs`) and the search index, so an index position says how many commits the graph must load to show it. A walk cut short keeps its queue (`Frontier`) and resumes popping exactly as a longer walk would.
 - `repo/walk_reuse.rs`: what a walk takes from an earlier load: `Snapshot::prior` (the commits and where the walk stopped) and the commit cache a reload reads commits from by oid (old and new shallow roots read again, none with `info/grafts`). Tests: `walk_reuse_tests.rs`.

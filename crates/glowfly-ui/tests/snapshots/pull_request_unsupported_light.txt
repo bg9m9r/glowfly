@@ -2,9 +2,9 @@ window 1400x820
 Label "Azure DevOps"
 Label "acme/web/demo"
 Label "· 1 open pull request"
-Label "Glowfly 0.1.0"
+Button "Never fetched"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -91,7 +91,9 @@ Label "Adds a page that lists search results."
 Label "Paging and filters come in a later change."
 Label "Comments, reviews and merging in Glowfly work with GitHub, GitLab and Bitbucket for now. Open this pull request in the browser to take part."
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "Undo"
   "Redo"
