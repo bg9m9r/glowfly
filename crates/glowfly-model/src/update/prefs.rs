@@ -23,6 +23,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 fx.extend(save_settings(st));
             }
             sync_live_settings(st, fx);
+            super::diff_preview::settings_edited(st, fx);
         }
         PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {

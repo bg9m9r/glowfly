@@ -127,6 +127,21 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 
 - The shared size text (`lfs::pointer::size_text`) says "bytes" and "KB" in English under German and Spanish, in the hex view's caption and the size-only page
 
+### SVG preview
+
+- Render at the card's size times pixels per point, for sharper large cards on high-DPI screens
+- Fit an SVG without a set size to its drawing's bounds, and say "No set size" in the caption
+- Text / Preview for SVG in the file history's File view
+- A keyboard shortcut and a palette command for the diff's Text / Preview switch
+- An overlay, swipe or difference view of the two drawings
+- A zoom or 1:1 toggle, and showing the two sides' relative size
+- Disable the Preview segment with a reason when both sides are over the 4 MiB cap
+- Show the parser's message in a tooltip on the "Can't preview this SVG" card
+- Preview `.svgz` files
+- A light or dark backdrop choice behind the checkerboard
+- In a diff pane too narrow for the header even with the name cut, the Text / Preview switch is clipped with the rest; let it give way (into the View menu) instead
+- Bound the render's time: a drawing with huge filters can take seconds on the worker thread
+
 ### Merge conflict tool
 
 - Syntax highlighting in the conflict panes

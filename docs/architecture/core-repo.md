@@ -45,7 +45,7 @@ source file, update its line here.
 - The unchanged lines between a diff's hunks, read for the hunk view: `diff_gaps.rs`.
 - The lines added and removed per file of a commit or of the working tree's staged and unstaged files, libgit2 only and capped at 2,000 files: `line_counts.rs`.
 - Each commit's own changes against its first parent, newest first, for a selection that isn't one line of history: `stacked.rs`.
-- A binary diff's two sides for its preview: each side's size (a blob's from the object header, a working file's from its metadata) and, when small enough and not an LFS pointer, its decoded image, or for any other file of at most 64 KiB its bytes for the hex view: `binary_sides.rs`.
+- A binary diff's two sides for its preview: each side's size (a blob's from the object header, a working file's from its metadata) and, when small enough and not an LFS pointer, its decoded image (an SVG, within 4 MiB, rendered by `preview_svg.rs`), or for any other file of at most 64 KiB its bytes for the hex view: `binary_sides.rs`.
 - The copies an external diff or merge tool opens are written from `repo/tool_sides.rs` (see `external_tools/` in [core-system.md](core-system.md)).
 - A pull request's source tip and its compare: `repo/pr_compare.rs`; code comment lines mapped from the head onto a local tip: `repo/line_map.rs` (see [flow-repo.md](flow-repo.md)).
 - `repo/diff.rs`: comparisons between two commits, file diffs and per-commit line counts.

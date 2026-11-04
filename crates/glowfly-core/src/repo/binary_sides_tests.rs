@@ -100,7 +100,7 @@ fn large_files_are_not_decoded_and_renames_use_the_old_path() {
     let (dir, old) = with_logo("binary-sides-limit");
     let new = png(6, 5);
     put(&dir, "logo.png", &new);
-    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("logo.png".into()), Caps { image: 8, hex: 8 }).unwrap();
+    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("logo.png".into()), Caps { image: 8, svg: 8, hex: 8 }).unwrap();
     assert_eq!((size(&s.old), size(&s.new)), (Some(old.len() as u64), Some(new.len() as u64)));
     assert!(dims(&s.old).is_none() && dims(&s.new).is_none(), "over the limit");
 
@@ -157,7 +157,7 @@ fn files_over_the_hex_cap_keep_their_size_only() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "first"]);
     put(&dir, "data.bin", b"\x00123");
-    let caps = Caps { image: PREVIEW_MAX_BYTES, hex: 8 };
+    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: SVG_MAX_BYTES, hex: 8 };
     let s = binary_sides_with(&dir, &DiffTarget::Unstaged("data.bin".into()), caps).unwrap();
     assert_eq!((size(&s.old), size(&s.new)), (Some(10), Some(4)));
     assert!(bytes(&s.old).is_none() && bytes(&s.new).is_none(), "10 bytes is over the 8-byte cap, so neither side shows");
@@ -165,5 +165,45 @@ fn files_over_the_hex_cap_keep_their_size_only() {
     git(&dir, &["rm", "-q", "--cached", "data.bin"]);
     let s = binary_sides_with(&dir, &DiffTarget::Unstaged("data.bin".into()), caps).unwrap();
     assert_eq!(s.hex(), Some((None, Some(&b"\x00123"[..]))), "untracked: the new side alone");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+const ICON: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="16"><rect width="24" height="16"/></svg>"#;
+
+#[test]
+fn a_text_svg_has_both_sides_rendered_and_no_hex_bytes() {
+    let dir = scratch_repo("binary-sides-svg");
+    put(&dir, "icon.svg", ICON.as_bytes());
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "icon"]);
+    put(&dir, "icon.svg", ICON.replace(r#"width="24""#, r#"width="32""#).as_bytes());
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("icon.svg".into())).unwrap();
+    assert_eq!((dims(&s.old), dims(&s.new)), (Some((24, 16)), Some((32, 16))));
+    assert!(s.hex().is_none(), "an SVG never goes to the hex view");
+    assert!(s.old.iter().chain(&s.new).all(|s| !s.linked));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_svg_over_its_cap_or_broken_has_its_size_only() {
+    let dir = scratch_repo("binary-sides-svg-cap");
+    put(&dir, "big.svg", ICON.as_bytes());
+    put(&dir, "broken.svg", b"<svg");
+    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: 8, hex: HEX_MAX_BYTES };
+    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("big.svg".into()), caps).unwrap();
+    assert_eq!((size(&s.new), dims(&s.new)), (Some(ICON.len() as u64), None));
+    assert!(s.hex().is_none(), "nor its bytes for the hex view");
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("broken.svg".into())).unwrap();
+    assert_eq!((size(&s.new), dims(&s.new)), (Some(4), None));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_svg_naming_another_file_says_so() {
+    let dir = scratch_repo("binary-sides-svg-linked");
+    let linked = ICON.replace("<rect", r#"<image href="logo.png" width="4" height="4"/><rect"#);
+    put(&dir, "icon.svg", linked.as_bytes());
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("icon.svg".into())).unwrap();
+    assert!(s.new.as_ref().is_some_and(|s| s.linked && s.image.is_some()));
     let _ = std::fs::remove_dir_all(&dir);
 }

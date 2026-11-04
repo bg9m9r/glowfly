@@ -53,6 +53,7 @@ fn unstaged() -> HeaderModel {
         next: StepKind::Change,
         show_nav: true,
         counter: Some(Counter { index: 1, total: 3, files: false }),
+        svg: None,
         view: Some(view()),
         actions: Actions { restore: None, open: Some(OpenAction { path: path.into(), missing: None }), diff_tool: Some(None) },
         primary: Some(Primary::Stage(path.into())),

@@ -355,7 +355,7 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     }
     {
         let Some((_, diff)) = &st.session.diff.view else { return };
-        if diff.binary {
+        if crate::state::diff_preview::drawn(st) {
             preview::show(ui, st, &mut cache.diff_images);
             return;
         }

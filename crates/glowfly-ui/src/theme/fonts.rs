@@ -8,14 +8,13 @@
 //! subset is compiled into tests only (`cfg(test)` or the `test-support` feature, which the app
 //! turns on for its tests alone). This is the one font setup: the app installs it before
 //! its first pass, `theme::apply_style` installs it for every themed context, and the glyph
-//! check asks these fonts. The files and their licences are in `assets/fonts/`.
+//! check asks these fonts. The files and their licences are in `assets/fonts/`; the bytes come from
+//! `glowfly_core::bundled_fonts`, which the SVG preview shares.
 
 use eframe::egui::{self, FontData, FontDefinitions, FontFamily, FontId};
 use std::sync::{Arc, OnceLock};
 
-const NOTO_SANS: &[u8] = include_bytes!("../../../../assets/fonts/NotoSans-Regular.ttf");
-const NOTO_SANS_SEMIBOLD: &[u8] = include_bytes!("../../../../assets/fonts/NotoSans-SemiBold.ttf");
-const JETBRAINS_MONO: &[u8] = include_bytes!("../../../../assets/fonts/JetBrainsMono-Regular.ttf");
+use glowfly_core::bundled_fonts::{JETBRAINS_MONO, NOTO_SANS, NOTO_SANS_SEMIBOLD};
 
 const REGULAR: &str = "NotoSans-Regular";
 const SEMIBOLD_FONT: &str = "NotoSans-SemiBold";

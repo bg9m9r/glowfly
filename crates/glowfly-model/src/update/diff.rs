@@ -134,6 +134,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
             // then count the hunks shown under the new setting.
             super::repo::reopen_diff(st, fx);
         }
+        DiffMsg::SetSvgPreview(on) => super::diff_preview::set_svg_preview(st, on, fx),
         DiffMsg::SetWordWrap(on) => {
             if on == st.settings.diff_word_wrap {
                 return;

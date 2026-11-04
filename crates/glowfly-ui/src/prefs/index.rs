@@ -81,6 +81,7 @@ const INDEX: &[(PrefPage, &str, Option<&str>)] = &[
     (PrefPage::DiffViewer, "prefs.editor.font_size.label", Some("prefs.editor.font_size.help")),
     (PrefPage::DiffViewer, "prefs.editor.history_pane.label", Some("prefs.editor.history_pane.help")),
     (PrefPage::DiffViewer, "prefs.editor.history_preview.label", Some("prefs.editor.history_preview.help")),
+    (PrefPage::DiffViewer, "prefs.editor.svg_preview.label", Some("prefs.editor.svg_preview.help")),
     (PrefPage::DiffViewer, "prefs.editor.line_numbers.label", Some("prefs.editor.line_numbers.help")),
     (PrefPage::DiffViewer, "prefs.editor.reset.label", None),
     (PrefPage::DiffViewer, "prefs.editor.syntax.label", Some("prefs.editor.syntax.help")),

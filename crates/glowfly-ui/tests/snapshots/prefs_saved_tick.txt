@@ -47,6 +47,9 @@ Label "Markdown files"
 CheckBox "Show them rendered in file history" [off]
 Label "Whether the file history's File view shows Markdown…"
 Link "Learn more"
+Label "SVG files"
+CheckBox "Show them drawn in the diff viewer" [off]
+Label "Whether the diff viewer shows a changed SVG file drawn or as its text. The Text | Preview switch above the diff changes it too."
 Label "Diff viewer settings"
 Button "Reset to defaults"
 painted:
@@ -54,3 +57,4 @@ painted:
   "Tabs in diff lines stop at every N columns. Only the display\nchanges; files are never changed."
   "The old and new line numbers beside each line in the inline,\nsplit and whole-file views."
   "Marks the words that changed between a removed line and the\nadded line paired with it."
+  "Whether the diff viewer shows a changed SVG file drawn or as its\ntext. The Text | Preview switch above the diff changes it too."

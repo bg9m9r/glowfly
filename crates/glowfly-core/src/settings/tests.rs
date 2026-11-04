@@ -167,6 +167,16 @@ fn ignore_whitespace_defaults_off() {
 }
 
 #[test]
+fn svg_preview_defaults_off() {
+    // Files written before the switch existed show a changed SVG as text.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.diff_svg_preview);
+    let on = Settings { diff_svg_preview: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.diff_svg_preview);
+}
+
+#[test]
 fn watch_files_defaults_on() {
     // Files written before the setting existed get live updates.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

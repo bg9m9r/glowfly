@@ -1,5 +1,6 @@
 //! A binary diff's two sides as the viewer shows them: each side's size and, for an image
-//! small enough, its decoded image; any other file of at most `HEX_MAX_BYTES` brings its bytes
+//! small enough, its decoded image (an SVG, within `SVG_MAX_BYTES`, rendered by `preview_svg`,
+//! whether git takes it for text or binary); any other file of at most `HEX_MAX_BYTES` brings its bytes
 //! for the hex view. The sides come from `tool_sides::diff_sides`, so renames,
 //! deletions and untracked files resolve the same way the viewer and the external diff tool see
 //! them (a submodule has no sides and gives an error).
@@ -9,6 +10,7 @@ use super::tool_sides::{SideSource, diff_sides};
 use crate::error::Result;
 use crate::lfs::pointer;
 use crate::preview_image::{self, PreviewImage};
+use crate::preview_svg::{self, SVG_MAX_BYTES};
 use git2::Repository;
 use std::io::Read;
 use std::path::Path;
@@ -24,8 +26,10 @@ pub const HEX_MAX_BYTES: u64 = 64 << 10;
 pub struct BinarySide {
     /// Its size in bytes.
     pub size: u64,
-    /// The decoded image, for an image path that decoded; `None` otherwise.
+    /// The decoded image, for an image or SVG path that decoded; `None` otherwise.
     pub image: Option<PreviewImage>,
+    /// An SVG that names files outside itself, left out of `image`.
+    pub linked: bool,
     /// The file's bytes for the hex view: `Some` for a file that is no image and at most
     /// `HEX_MAX_BYTES` long (nor a Git LFS pointer), `None` otherwise.
     pub bytes: Option<Vec<u8>>,
@@ -43,13 +47,14 @@ pub struct BinarySides {
 /// `PREVIEW_MAX_BYTES` and reading other files up to `HEX_MAX_BYTES`. Blocking: call from a
 /// worker thread.
 pub fn binary_sides(workdir: &Path, target: &DiffTarget) -> Result<BinarySides> {
-    binary_sides_with(workdir, target, Caps { image: PREVIEW_MAX_BYTES, hex: HEX_MAX_BYTES })
+    binary_sides_with(workdir, target, Caps { image: PREVIEW_MAX_BYTES, svg: SVG_MAX_BYTES, hex: HEX_MAX_BYTES })
 }
 
-/// The largest image decoded and the largest other file read for the hex view.
+/// The largest image decoded, SVG rendered and other file read for the hex view.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Caps {
     pub image: u64,
+    pub svg: u64,
     pub hex: u64,
 }
 
@@ -93,13 +98,35 @@ fn side(repo: &Repository, workdir: &Path, source: &SideSource, caps: Caps) -> R
             Err(_) => return Ok(None),
         },
     };
-    let is_image = preview_image::is_image_path(path);
-    let cap = if is_image { caps.image } else { caps.hex };
+    let kind = if preview_image::is_image_path(path) {
+        Kind::Image
+    } else if preview_svg::is_svg_path(path) {
+        Kind::Svg
+    } else {
+        Kind::Other
+    };
+    let cap = match kind {
+        Kind::Image => caps.image,
+        Kind::Svg => caps.svg,
+        Kind::Other => caps.hex,
+    };
     let bytes = if size <= cap { contents(repo, workdir, source, cap)?.filter(|b| pointer::parse(b).is_none()) } else { None };
-    Ok(Some(match is_image {
-        true => BinarySide { size, image: bytes.as_deref().and_then(preview_image::decode), bytes: None },
-        false => BinarySide { size, image: None, bytes },
+    let side = BinarySide { size, image: None, linked: false, bytes: None };
+    Ok(Some(match kind {
+        Kind::Image => BinarySide { image: bytes.as_deref().and_then(preview_image::decode), ..side },
+        Kind::Svg => match bytes.as_deref().map(preview_svg::render) {
+            Some(Ok(r)) => BinarySide { image: Some(r.image), linked: r.linked, ..side },
+            _ => side,
+        },
+        Kind::Other => BinarySide { bytes, ..side },
     }))
+}
+
+/// What a side's path says it is.
+enum Kind {
+    Image,
+    Svg,
+    Other,
 }
 
 /// The side's contents, `None` for a working file that can't be read or grew past `cap` since
