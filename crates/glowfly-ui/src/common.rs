@@ -311,7 +311,7 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         ui.label(RichText::new(t.tr("welcome_screen.tagline")).color(color::weak()));
         ui.add_space(20.0);
         if st.loading {
-            ui.add(egui::Spinner::new());
+            super::widgets::fireflies::show(ui, t.tr("common.loading"));
             return;
         }
         super::welcome_cards::start_page(ui, t, msgs);

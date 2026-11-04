@@ -41,7 +41,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     }
     restored_note(ui, t, view);
     let Some(file) = &view.file else {
-        return super::pane_status::loading(ui, t.tr("conflict.view.loading"));
+        return super::pane_status::loader(ui, t.tr("conflict.view.loading"));
     };
     if !matches!(file.content, ConflictContent::Text(_)) {
         fallback(ui, t, view, file, in_tool, msgs);

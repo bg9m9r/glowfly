@@ -1,25 +1,47 @@
 //! A pane that is loading or has failed, in the empty state's style (`empty_state.rs`): the
 //! centred block with a spinner or the warning triangle, or a compact line for a list inside a
-//! panel. An error shows a plain title saying what failed, the error without its kind prefix
+//! panel; where the words only say "loading", the firefly loader alone (`widgets/fireflies.rs`)
+//! with the words as its label. An error shows a plain title saying what failed, the error without its kind prefix
 //! ("not found: ", ...), Try again when the pane can retry, and Copy details.
 
-use super::empty_state::{Glyph, PaneButton, block};
+use super::empty_state::{Glyph, MIN_TOP, PaneButton, block};
 use super::theme::color;
-use super::widgets::buttons;
 use super::widgets::severity::{self, Severity};
+use super::widgets::{buttons, fireflies};
 use crate::msg::Msg;
 use crate::ui::theme::sizes::ControlSize;
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, RichText, Ui, vec2};
+use eframe::egui::{self, Rect, RichText, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
 /// The inline spinner's size, and the inline mark's.
 const LINE_SPINNER: f32 = 12.0;
 const LINE_MARK: f32 = 14.0;
+/// The height of `loader_line`'s row.
+const LOADER_ROW: f32 = 24.0;
 
 /// The pane is loading: a spinner and `text`, centred.
 pub fn loading(ui: &mut Ui, text: &str) {
     block(ui, Glyph::Spinner, RichText::new(text).color(color::weak()), None, &[]);
+}
+
+/// The pane is loading and its words only say so: the firefly loader alone, centred across the
+/// space left and a third of the way down it (as `block` sets its block), read out as `label`.
+pub fn loader(ui: &mut Ui, label: &str) {
+    let area = ui.available_rect_before_wrap();
+    let free = if area.height().is_finite() { area.height() - fireflies::SIZE.y } else { 0.0 };
+    let top = area.top() + (free / 3.0).max(MIN_TOP);
+    let rect = Rect::from_center_size(pos2(area.center().x, top + fireflies::SIZE.y / 2.0), fireflies::SIZE);
+    ui.scope_builder(UiBuilder::new().max_rect(rect), |ui| fireflies::show(ui, label));
+}
+
+/// A list inside a panel is loading and its words only say so: the firefly loader alone at the
+/// line's left edge, in a row as tall as a line with a spinner so the list doesn't jump.
+pub fn loader_line(ui: &mut Ui, label: &str) {
+    ui.horizontal(|ui| {
+        ui.set_min_height(LOADER_ROW);
+        fireflies::show(ui, label);
+    });
 }
 
 /// A list inside a panel is loading: a small spinner and `text` on one line.

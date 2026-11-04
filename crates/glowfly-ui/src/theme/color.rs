@@ -76,8 +76,8 @@ pub struct Palette {
     /// `code_sel` while the diff doesn't have the keyboard: quieter, still visible.
     pub code_sel_dim: Color32,
     /// "You are here" and nothing else: the glow and rim round the checked-out commit's node and
-    /// this tab's WIP lantern (`graph::lantern`). `text` in the high-contrast themes, which draw
-    /// no glow. Not a theme-file key: theme files keep their base's.
+    /// this tab's WIP lantern (`graph::lantern`); besides, the firefly loader's dots, with no glow
+    /// (`widgets::fireflies`). `text` in the high-contrast themes, which draw no glow. Not a theme-file key: theme files keep their base's.
     pub lantern: Color32,
     // Syntax colors for diff text.
     pub syn_comment: Color32,

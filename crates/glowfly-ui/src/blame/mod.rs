@@ -45,7 +45,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                 }
             }
         }
-        _ if view.loading => pane_status::loading(ui, st.settings.lang().tr("blame.loading")),
+        _ if view.loading => pane_status::loader(ui, st.settings.lang().tr("blame.loading")),
         _ => match &view.error {
             Some(e) => {
                 let t = st.settings.lang();
