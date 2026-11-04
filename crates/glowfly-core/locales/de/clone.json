@@ -1,0 +1,13 @@
+{
+  "clone.log.submodules_failed": "{name} wurde geklont und seine Ordner festgelegt, aber das Klonen seiner Submodule ist fehlgeschlagen: {why}. Versuche es im Abschnitt SUBMODULES mit Alle Submodule aktualisieren erneut.",
+  "clone.service.connect": "Verbinde GitHub, GitLab oder Bitbucket unter Einstellungen > Integrationen, um aus deinen Repositorys zu wählen.",
+  "clone.service.open_integrations.button": "Integrationen öffnen",
+  "clone.service.use_url.link": "Stattdessen eine URL eingeben",
+  "clone.submodules.check": "Submodule mitklonen",
+  "clone.submodules.sparse_note": "Nur die Submodule in den Ordnern, die ausgecheckt werden, werden geklont.",
+  "clone.toast.folders_failed": "{name} wurde geklont, aber das Festlegen seiner Ordner ist fehlgeschlagen: {why}. Wähle sie unter Einstellungen > Sparse Checkout.",
+  "clone.toast.retry": "Erneut versuchen",
+  "clone.toast.submodules_failed": "Geklont, aber die Submodule wurden nicht heruntergeladen.",
+  "clone.toast.submodules_failed_count.one": "Geklont, aber {count} Submodul wurde nicht heruntergeladen.",
+  "clone.toast.submodules_failed_count.other": "Geklont, aber {count} Submodule wurden nicht heruntergeladen."
+}

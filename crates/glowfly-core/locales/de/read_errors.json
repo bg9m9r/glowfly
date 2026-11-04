@@ -1,0 +1,11 @@
+{
+  "read_errors.diff_changed": "nicht gefunden: der Diff hat sich geändert; versuche es mit dem aktualisierten Diff erneut",
+  "read_errors.file_changed": "nicht gefunden: die Datei hat sich geändert",
+  "read_errors.internal": "In Glowfly ist ein interner Fehler aufgetreten ({effect})",
+  "read_errors.missing_content": "der Inhalt von {path} wurde noch nicht von {remote} heruntergeladen",
+  "read_errors.no_folder": "Ein Ordnerverlauf braucht einen Ordner",
+  "read_errors.no_thread": "konnte keinen Thread starten: {said}",
+  "read_errors.not_conflicted": "nicht gefunden: {path} hat keinen Konflikt",
+  "read_errors.old_file_unreadable": "die alte Datei kann nicht gelesen werden",
+  "read_errors.stopped": "angehalten"
+}

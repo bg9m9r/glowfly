@@ -1,0 +1,23 @@
+{
+  "search.author.name": "Author",
+  "search.authors.filter": "Filter authors",
+  "search.clear.button": "Clear search",
+  "search.empty.beyond_reach.one": "{count} older commit matches, past the newest {max} the graph can show.",
+  "search.empty.beyond_reach.other": "{count} older commits match, past the newest {max} the graph can show.",
+  "search.empty.hint": "Words match messages, authors and commit ids; author:name and path:folder/ narrow the search.",
+  "search.empty.newest.one": "Searched only the newest commit.",
+  "search.empty.newest.other": "Searched the newest {count} commits.",
+  "search.empty.shallow.one": "Searched the one commit this shallow clone has.",
+  "search.empty.shallow.other": "Searched all {count} commits this shallow clone has.",
+  "search.empty.title": "No commits match",
+  "search.empty.truncated": "Only the newest {count} commits are loaded.",
+  "search.empty.whole.one": "Searched the whole history (1 commit).",
+  "search.empty.whole.other": "Searched the whole history ({count} commits).",
+  "search.index.build_failed": "Could not index the history for search: {why}",
+  "search.index.query_failed": "Could not search the history index: {why}",
+  "search.keep_searching.button": "Keep searching",
+  "search.load_more.button": "Load more commits",
+  "search.paths.failed": "Could not search changed files: {why}",
+  "search.searching_older.one": "No matches in the newest commit. Searching older ones…",
+  "search.searching_older.other": "No matches in the newest {count} commits. Searching older ones…"
+}

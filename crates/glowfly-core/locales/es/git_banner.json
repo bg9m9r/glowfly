@@ -1,0 +1,13 @@
+{
+  "git_banner.choose.button": "Elegir Git…",
+  "git_banner.later.button": "Recordármelo más tarde",
+  "git_banner.later.tip": "Lo oculta hasta que Glowfly se reinicie",
+  "git_banner.never.button": "No volver a mostrar",
+  "git_banner.never.tip": "Lo oculta para siempre mientras Glowfly use Git {version}. Preferencias > Git sigue mostrando lo que está desactivado.",
+  "git_banner.switched.toast": "Glowfly ahora usa Git {version} de tu PATH ({path})",
+  "git_banner.update.button": "Cómo actualizar Git",
+  "git_banner.update.tip": "Abre {url} en tu navegador",
+  "git_banner.use_path.button": "Usar el Git del PATH (versión {version})",
+  "git_banner.use_path.checking": "Comprobando el Git del PATH…",
+  "git_banner.use_path.tip": "Glowfly ejecutará {path} a partir de ahora"
+}

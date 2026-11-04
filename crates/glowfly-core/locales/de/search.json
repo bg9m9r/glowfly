@@ -1,0 +1,23 @@
+{
+  "search.author.name": "Autor",
+  "search.authors.filter": "Autoren filtern",
+  "search.clear.button": "Suche leeren",
+  "search.empty.beyond_reach.one": "{count} älterer Commit passt, jenseits der neuesten {max}, die der Graph zeigen kann.",
+  "search.empty.beyond_reach.other": "{count} ältere Commits passen, jenseits der neuesten {max}, die der Graph zeigen kann.",
+  "search.empty.hint": "Wörter finden Nachrichten, Autoren und Commit-IDs; author:name und path:folder/ grenzen die Suche ein.",
+  "search.empty.newest.one": "Nur der neueste Commit wurde durchsucht.",
+  "search.empty.newest.other": "Die neuesten {count} Commits wurden durchsucht.",
+  "search.empty.shallow.one": "Den einen Commit dieses flachen Klons durchsucht.",
+  "search.empty.shallow.other": "Alle {count} Commits dieses flachen Klons durchsucht.",
+  "search.empty.title": "Keine passenden Commits",
+  "search.empty.truncated": "Nur die neuesten {count} Commits sind geladen.",
+  "search.empty.whole.one": "Den ganzen Verlauf durchsucht (1 Commit).",
+  "search.empty.whole.other": "Den ganzen Verlauf durchsucht ({count} Commits).",
+  "search.index.build_failed": "Der Verlauf konnte nicht für die Suche indiziert werden: {why}",
+  "search.index.query_failed": "Der Verlaufsindex konnte nicht durchsucht werden: {why}",
+  "search.keep_searching.button": "Weitersuchen",
+  "search.load_more.button": "Weitere Commits laden",
+  "search.paths.failed": "Die geänderten Dateien konnten nicht durchsucht werden: {why}",
+  "search.searching_older.one": "Keine Treffer im neuesten Commit. Ältere werden durchsucht…",
+  "search.searching_older.other": "Keine Treffer in den neuesten {count} Commits. Ältere werden durchsucht…"
+}

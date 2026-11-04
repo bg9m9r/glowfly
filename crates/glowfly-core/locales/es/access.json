@@ -1,0 +1,18 @@
+{
+  "access.checked_out": "{name}, activa",
+  "access.current_worktree": "{name}, actual",
+  "access.section.branches.one": "{title}, {count} rama",
+  "access.section.branches.other": "{title}, {count} ramas",
+  "access.section.items.one": "{title}, {count} elemento",
+  "access.section.items.other": "{title}, {count} elementos",
+  "access.section.remotes.one": "{title}, {count} remoto",
+  "access.section.remotes.other": "{title}, {count} remotos",
+  "access.section.stashes.one": "{title}, {count} stash",
+  "access.section.stashes.other": "{title}, {count} stashes",
+  "access.section.submodules.one": "{title}, {count} submódulo",
+  "access.section.submodules.other": "{title}, {count} submódulos",
+  "access.section.tags.one": "{title}, {count} etiqueta",
+  "access.section.tags.other": "{title}, {count} etiquetas",
+  "access.section.worktrees.one": "{title}, {count} worktree",
+  "access.section.worktrees.other": "{title}, {count} worktrees"
+}

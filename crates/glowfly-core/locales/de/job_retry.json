@@ -1,0 +1,6 @@
+{
+  "job_retry.button": "Erneut versuchen",
+  "job_retry.moved": "{job} wurde nicht erneut ausgeführt: Sein Tab zeigt jetzt ein anderes Repository.",
+  "job_retry.switch_back": "{job} wurde nicht erneut ausgeführt: Wechsle zuerst zurück zu seinem Tab.",
+  "job_retry.tab_closed": "{job} wurde nicht erneut ausgeführt: Sein Tab wurde geschlossen."
+}

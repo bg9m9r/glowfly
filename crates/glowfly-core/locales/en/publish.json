@@ -1,0 +1,5 @@
+{
+  "publish.create.failed": "Creating the GitHub repository failed: {why}",
+  "publish.created": "Created {name} ({url}).",
+  "publish.owners.failed": "Couldn't sign in to {account}: {why}"
+}

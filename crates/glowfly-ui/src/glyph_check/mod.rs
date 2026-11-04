@@ -1,6 +1,6 @@
 //! Tests only: every non-ASCII character the app can show from its own source (string and char
 //! literals in every crate's `src/` under `crates/`, outside comments and test code) and
-//! from the translation files (`glowfly-core/locales/*.json`) has a glyph in the fonts egui
+//! from the translation files (`glowfly-core/locales/<lang>/*.json`) has a glyph in the fonts egui
 //! draws with. A character without one draws as a box.
 //!
 //! It installs the bundled fonts the way the app does (`theme::fonts::install`). In tests the
@@ -106,6 +106,14 @@ fn rust_files(dir: &Path) -> Vec<(String, String)> {
     out
 }
 
+/// The paths in `dir`, sorted (`read_dir`'s order differs by OS).
+fn sorted_entries(dir: &Path) -> Vec<PathBuf> {
+    let entries = std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display()));
+    let mut out: Vec<PathBuf> = entries.map(|e| e.expect("a folder entry").path()).collect();
+    out.sort();
+    out
+}
+
 /// Every character a scanned file can show, as (char, `crates/...` path, line), and how many
 /// Rust and locale files were read.
 fn shown_characters() -> (Vec<(char, String, usize)>, usize, usize) {
@@ -129,13 +137,14 @@ fn shown_characters() -> (Vec<(char, String, usize)>, usize, usize) {
     }
     let locales = crates.join("glowfly-core").join("locales");
     let mut json = 0;
-    for entry in std::fs::read_dir(&locales).unwrap_or_else(|e| panic!("{}: {e}", locales.display())) {
-        let path = entry.expect("a folder entry").path();
-        if path.extension().is_some_and(|e| e == "json") {
+    for lang in sorted_entries(&locales).into_iter().filter(|p| p.is_dir()) {
+        let code = lang.file_name().expect("a folder name").to_string_lossy().into_owned();
+        for path in sorted_entries(&lang).into_iter().filter(|p| p.extension().is_some_and(|e| e == "json")) {
             json += 1;
             let name = path.file_name().expect("a file name").to_string_lossy();
             let src = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-            found.extend(scan::json_chars(&src).into_iter().map(|f| (f.ch, format!("crates/glowfly-core/locales/{name}"), f.line)));
+            let shown = format!("crates/glowfly-core/locales/{code}/{name}");
+            found.extend(scan::json_chars(&src).into_iter().map(|f| (f.ch, shown.clone(), f.line)));
         }
     }
     (found, rust, json)
@@ -165,7 +174,7 @@ fn every_shown_character_has_a_glyph() {
     let ctx = fonts();
     let (found, rust, json) = shown_characters();
     assert!(rust > 300, "only {rust} source files scanned: has a folder moved?");
-    assert!(json >= 3, "only {json} locale files scanned: has the folder moved?");
+    assert!(json > 100, "only {json} locale files scanned: has the folder moved?");
     assert!(found.iter().any(|(c, ..)| *c == '\u{2026}'), "no ellipsis found in any literal: is the scanner reading them?");
     let mut report: Vec<String> = found
         .iter()

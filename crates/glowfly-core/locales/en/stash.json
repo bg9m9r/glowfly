@@ -1,0 +1,17 @@
+{
+  "stash.ask.apart": "It changes none of the files you have changed.",
+  "stash.ask.body": "Apply \"{message}\" on top of your uncommitted changes?",
+  "stash.ask.overlap.one": "It changes a file you have changed too, so Git may stop with conflicts or refuse to apply:",
+  "stash.ask.overlap.other": "It changes {count} files you have changed too, so Git may stop with conflicts or refuse to apply:",
+  "stash.ask.pop_kept": "If it conflicts, the stash is kept.",
+  "stash.ask.unknown": "If they change the same files, Git may stop with conflicts or refuse to apply.",
+  "stash.blocked.conflicted": "Resolve the conflicted files before stashing.",
+  "stash.blocked.conflicts": "Resolve the conflicted files first: Git can't apply a stash while files are conflicted.",
+  "stash.blocked.no_files": "Choose at least one file to stash.",
+  "stash.blocked.nothing": "There are no changes to stash.",
+  "stash.blocked.nothing_staged": "Nothing is staged. Stage the changes to set aside first, or choose another option.",
+  "stash.push.keep_index.check": "Keep staged changes",
+  "stash.push.keep_index.help": "Staged changes go into the stash and also stay staged, ready to commit.",
+  "stash.push.keep_index.staged_tip": "Can't be combined with stashing only the staged changes.",
+  "stash.push.rename_blocked.toast": "Nothing was stashed: move the file blocking a staged rename, or keep staged changes."
+}

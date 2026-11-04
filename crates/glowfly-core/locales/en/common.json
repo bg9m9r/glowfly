@@ -1,0 +1,22 @@
+{
+  "common.ack.check": "I understand this can't be undone",
+  "common.ack.tip": "Tick the box above first",
+  "common.busy": "Another operation is still running.",
+  "common.cancel.button": "Cancel",
+  "common.clone_repo.button": "Clone repository…",
+  "common.close.button": "Close",
+  "common.close_panel.name": "Close panel",
+  "common.copy_details.button": "Copy details",
+  "common.copy_path": "Copy path",
+  "common.copy_sha.button": "Copy SHA",
+  "common.delete.button": "Delete",
+  "common.details.button": "Details",
+  "common.discard.button": "Discard",
+  "common.dismiss.button": "Dismiss",
+  "common.init_repo.button": "New repository…",
+  "common.list.and": "{rest} and {last}",
+  "common.loading": "Loading…",
+  "common.open_repo.button": "Open repository…",
+  "common.set_up.suffix": "Set up…",
+  "common.try_again.button": "Try again"
+}

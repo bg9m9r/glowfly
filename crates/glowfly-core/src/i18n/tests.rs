@@ -1,24 +1,20 @@
-use super::catalog::{parse, source};
+use super::catalog::{entries, files, merge};
 use super::*;
 use std::collections::HashMap;
 
+/// `lang`'s area files merged into one map; panics on a file that doesn't parse or a key in two
+/// places.
 fn file(lang: Lang) -> HashMap<String, String> {
-    let src = source(lang);
-    serde_json::from_str::<HashMap<String, String>>(src).unwrap_or_else(|e| panic!("{}.json doesn't parse: {e}", lang.code()))
+    let code = lang.code();
+    for (area, src) in files(lang) {
+        assert!(entries(src).is_some(), "{code}/{area}.json doesn't parse");
+    }
+    let (map, dups) = merge(files(lang));
+    assert!(dups.is_empty(), "{code}/: keys in more than one place: {dups:?}");
+    map
 }
 
 const OTHERS: [Lang; 2] = [Lang::De, Lang::Es];
-
-#[test]
-fn catalogs_parse() {
-    for lang in Lang::ALL {
-        let map = file(lang);
-        assert!(!map.is_empty(), "{}.json is empty", lang.code());
-        assert_eq!(parse(source(lang)).len(), map.len());
-        let blank: Vec<&String> = map.iter().filter(|(_, v)| v.trim().is_empty()).map(|(k, _)| k).collect();
-        assert!(blank.is_empty(), "{}.json has empty texts: {blank:?}", lang.code());
-    }
-}
 
 #[test]
 fn translations_only_use_english_keys() {
@@ -26,7 +22,7 @@ fn translations_only_use_english_keys() {
     for lang in OTHERS {
         let mut stray: Vec<String> = file(lang).into_keys().filter(|k| !en.contains_key(k)).collect();
         stray.sort();
-        assert!(stray.is_empty(), "{}.json has keys English doesn't: {stray:?}", lang.code());
+        assert!(stray.is_empty(), "{}/ has keys English doesn't: {stray:?}", lang.code());
     }
 }
 
@@ -37,7 +33,7 @@ fn translations_cover_english() {
         let own = file(lang);
         let mut missing: Vec<&String> = en.keys().filter(|k| !own.contains_key(*k)).collect();
         missing.sort();
-        assert!(missing.is_empty(), "{}.json lacks: {missing:?}", lang.code());
+        assert!(missing.is_empty(), "{}/ lacks: {missing:?}", lang.code());
     }
 }
 
@@ -48,7 +44,7 @@ fn translations_keep_placeholders() {
         for (key, text) in file(lang) {
             let Some(base) = en.get(&key) else { continue };
             let (want, got) = (placeholders(base), placeholders(&text));
-            assert_eq!(got, want, "{}.json {key}: placeholders {got:?}, English has {want:?}", lang.code());
+            assert_eq!(got, want, "{}/ {key}: placeholders {got:?}, English has {want:?}", lang.code());
         }
     }
 }
@@ -59,16 +55,16 @@ fn plural_keys_come_in_pairs() {
         let map = file(lang);
         for key in map.keys() {
             if let Some(base) = key.strip_suffix(".one") {
-                assert!(map.contains_key(&format!("{base}.other")), "{}.json: {key} has no .other", lang.code());
+                assert!(map.contains_key(&format!("{base}.other")), "{}/: {key} has no .other", lang.code());
             }
             if let Some(base) = key.strip_suffix(".other") {
-                assert!(map.contains_key(&format!("{base}.one")), "{}.json: {key} has no .one", lang.code());
+                assert!(map.contains_key(&format!("{base}.one")), "{}/: {key} has no .one", lang.code());
             }
         }
     }
     for (key, text) in file(Lang::En) {
         if key.ends_with(".other") {
-            assert!(placeholders(&text).contains("count"), "en.json {key} doesn't show {{count}}");
+            assert!(placeholders(&text).contains("count"), "en/ {key} doesn't show {{count}}");
         }
     }
 }

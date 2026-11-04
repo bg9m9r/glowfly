@@ -1,0 +1,21 @@
+{
+  "service_errors.denied": "Your {service} account didn't allow this. Reconnect it in Preferences > Integrations, then try again.",
+  "service_errors.denied.change": "Your {service} account can't make this change in the repository. Ask its owner for access, or sign in with another account.",
+  "service_errors.denied.create_repo": "Your {service} account can't create repositories on {owner}. Choose another owner, or ask an owner of {owner} for access.",
+  "service_errors.denied.fork": "Your {service} account can't fork this repository. Its owner may have turned forking off, or your account may need access.",
+  "service_errors.network": "Glowfly couldn't reach {service}. Check your network connection, then try again.",
+  "service_errors.not_found.owner": "{service} can't find {owner} for your account. Choose another owner.",
+  "service_errors.not_found.repo": "{service} can't find this repository for your account. Check that you're signed in with an account that can see it.",
+  "service_errors.rate_limited": "{service} is limiting requests from your account. Wait a few minutes, then try again.",
+  "service_errors.repo_exists": "A repository called {name} already exists on {owner}. Choose another name.",
+  "service_errors.said.auth": "authentication failed: {said}",
+  "service_errors.said.decode": "unexpected response: {said}",
+  "service_errors.said.forbidden": "access denied: {said}",
+  "service_errors.said.http": "HTTP {status}: {said}",
+  "service_errors.said.keyring": "credential store: {said}",
+  "service_errors.said.network": "network error: {said}",
+  "service_errors.said.not_found": "not found: {said}",
+  "service_errors.server": "{service} had a problem on its side. Try again in a few minutes.",
+  "service_errors.sign_in": "{service} didn't accept your sign-in. Sign in again, or reconnect the account in Preferences > Integrations.",
+  "service_errors.sign_in_again.help": "Sign in again in Preferences > Integrations."
+}

@@ -1,0 +1,7 @@
+{
+  "forge.noun.card": "tarjeta",
+  "forge.noun.issue": "incidencia",
+  "forge.noun.merge_request": "merge request",
+  "forge.noun.pull_request": "pull request",
+  "forge.noun.work_item": "elemento de trabajo"
+}

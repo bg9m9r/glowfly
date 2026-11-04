@@ -1,0 +1,6 @@
+{
+  "job_retry.button": "Try again",
+  "job_retry.moved": "{job} wasn't run again: its tab shows another repository now.",
+  "job_retry.switch_back": "{job} wasn't run again: switch back to its tab first.",
+  "job_retry.tab_closed": "{job} wasn't run again: its tab was closed."
+}

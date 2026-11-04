@@ -1,0 +1,9 @@
+{
+  "release_notes.available": "Glowfly {version} está disponible",
+  "release_notes.esc_hint": "Esc para cerrar",
+  "release_notes.new_chip": "Nueva",
+  "release_notes.none": "Esta compilación no incluye notas de la versión.",
+  "release_notes.open_releases.button": "Abrir la página de versiones",
+  "release_notes.running": "Estás usando Glowfly {version}",
+  "release_notes.title": "Notas de la versión"
+}

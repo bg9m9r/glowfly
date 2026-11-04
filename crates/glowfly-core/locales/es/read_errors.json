@@ -1,0 +1,11 @@
+{
+  "read_errors.diff_changed": "no encontrado: el diff cambió; inténtalo de nuevo con el diff actualizado",
+  "read_errors.file_changed": "no encontrado: el archivo cambió",
+  "read_errors.internal": "Glowfly tuvo un error interno ({effect})",
+  "read_errors.missing_content": "el contenido de {path} aún no se ha descargado de {remote}",
+  "read_errors.no_folder": "Un historial de carpeta necesita una carpeta",
+  "read_errors.no_thread": "no se pudo iniciar un hilo: {said}",
+  "read_errors.not_conflicted": "no encontrado: {path} no tiene conflictos",
+  "read_errors.old_file_unreadable": "no se puede leer el archivo anterior",
+  "read_errors.stopped": "detenido"
+}

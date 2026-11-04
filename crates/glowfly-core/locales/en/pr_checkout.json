@@ -1,0 +1,5 @@
+{
+  "pr_checkout.fork_not_here": "{pr} comes from a fork that isn't a remote here. Add the fork as a remote and fetch it to check out its branch.",
+  "pr_checkout.gone": "That pull request is no longer listed.",
+  "pr_checkout.name_taken": "The local branch {branch} neither tracks nor pushes to {remote}/{branch}, where {pr} comes from, so it may be another branch. Rename it to check out the pull request's branch."
+}

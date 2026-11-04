@@ -1,0 +1,14 @@
+{
+  "palette.files.failed": "Could not list the repository's files: {why}",
+  "palette.getting_started": "Getting started",
+  "palette.group.all": "All commands",
+  "palette.group.recent": "Recent",
+  "palette.group.suggested": "Suggested",
+  "palette.pick_selected.one": "Cherry-pick the selected commit",
+  "palette.pick_selected.other": "Cherry-pick the {count} selected commits",
+  "palette.revert_selected.one": "Revert the selected commit",
+  "palette.revert_selected.other": "Revert the {count} selected commits",
+  "palette.tips.again": "Show tips again",
+  "palette.tips.off": "Turn off tips",
+  "palette.tips.on": "Turn on tips"
+}

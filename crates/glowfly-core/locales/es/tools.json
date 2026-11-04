@@ -1,0 +1,17 @@
+{
+  "tools.busy": "Otra operación sigue en curso",
+  "tools.deleted": "Un lado eliminó el archivo: consérvalo o elimínalo con los botones de abajo",
+  "tools.diff_setup.tip": "No hay herramienta de diff externa en Preferencias: esto usa la que indique la configuración de Git, o abre Preferencias > Herramientas externas para elegir una.",
+  "tools.editor_setup.tip": "Aún no hay editor externo: esto abre Preferencias > Herramientas externas para elegir uno.",
+  "tools.git_diff.exited_later": "git difftool para {target} ({program}) falló después de iniciarse: terminó con el código {code}",
+  "tools.git_diff.stopped_later": "git difftool para {target} ({program}) se detuvo después de iniciarse",
+  "tools.in_merge_tool": "Abierto en la herramienta de fusión: guárdalo y ciérralo allí primero",
+  "tools.merge_setup.tip": "No hay herramienta de fusión externa en Preferencias: esto usa la que indique la configuración de Git, o abre Preferencias > Herramientas externas para elegir una.",
+  "tools.merge_tool.button": "Abrir en la herramienta de fusión",
+  "tools.open_in_diff_tool": "Abrir en la herramienta de diff externa",
+  "tools.open_in_editor": "Abrir en el editor externo",
+  "tools.resolve_in_merge_tool": "Resolver en la herramienta de fusión externa",
+  "tools.unsupported.not_utf8": "El texto que no es UTF-8 no se puede fusionar en una herramienta",
+  "tools.unsupported.submodule": "Un submódulo no se puede fusionar en una herramienta",
+  "tools.unsupported.symlink": "Un enlace simbólico no se puede fusionar en una herramienta"
+}

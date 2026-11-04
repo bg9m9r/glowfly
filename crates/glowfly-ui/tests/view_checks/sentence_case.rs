@@ -1,7 +1,7 @@
 //! Keeps English labels, buttons, headers, captions and page names in sentence case: only the
 //! first word starts with a capital, apart from proper nouns and acronyms (Git, GitHub, SSH).
 //!
-//! The check reads `glowfly-core/locales/en.json` (labels, not the prose of tips, help lines,
+//! The check reads `glowfly-core/locales/en/*.json` (labels, not the prose of tips, help lines,
 //! warnings, hints, bodies, intros and toasts) and the first string literal at the label call
 //! sites under `src/` (`row(ui, "`, `buttons::secondary("` and so on). A word after the
 //! first that starts with a capital and goes on in lowercase is a problem unless it is a proper
@@ -124,9 +124,20 @@ fn en_values() -> BTreeMap<String, String> {
     // Read at run time, as `views::view_sources` does: a binary built in another worktree keeps
     // that worktree's compile-time path.
     let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into());
-    let path = std::path::PathBuf::from(manifest).join("../glowfly-core/locales/en.json");
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    serde_json::from_str(&text).expect("en.json is a flat object of strings")
+    let dir = std::path::PathBuf::from(manifest).join("..").join("glowfly-core").join("locales").join("en");
+    let entries = std::fs::read_dir(&dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display()));
+    let mut paths: Vec<_> =
+        entries.map(|e| e.expect("a folder entry").path()).filter(|p| p.extension().is_some_and(|x| x == "json")).collect();
+    paths.sort();
+    assert!(!paths.is_empty(), "no files in the English catalog ({})", dir.display());
+    let mut values = BTreeMap::new();
+    for path in paths {
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        let area: BTreeMap<String, String> =
+            serde_json::from_str(&text).unwrap_or_else(|e| panic!("{} is not a flat object of strings: {e}", path.display()));
+        values.extend(area);
+    }
+    values
 }
 
 /// The first string literal after each label call on `line`.
@@ -157,7 +168,7 @@ fn english_labels_are_sentence_case() {
             found.push(format!("{key}: \"{value}\" ({})", words.join(", ")));
         }
     }
-    assert!(found.is_empty(), "en.json labels not in sentence case:\n{}", found.join("\n"));
+    assert!(found.is_empty(), "labels in the English catalog (locales/en/) not in sentence case:\n{}", found.join("\n"));
 }
 
 #[test]

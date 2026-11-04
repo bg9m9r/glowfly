@@ -1,0 +1,15 @@
+{
+  "repo_colour.blocked": "Öffne in diesem Tab ein Repository, um ihm eine Farbe zu geben",
+  "repo_colour.hue.fern": "Farn",
+  "repo_colour.hue.iris": "Iris",
+  "repo_colour.hue.mint": "Minze",
+  "repo_colour.hue.plum": "Pflaume",
+  "repo_colour.hue.rose": "Rosa",
+  "repo_colour.hue.sky": "Himmel",
+  "repo_colour.hue.slate": "Schiefer",
+  "repo_colour.hue.teal": "Petrol",
+  "repo_colour.menu": "Farbe",
+  "repo_colour.none": "Keine",
+  "repo_colour.none.group_tip": "Keine eigene Farbe: Es nutzt die Farbe seiner Gruppe",
+  "repo_colour.none.tip": "Keine Farbe auf dem Tab dieses Repositorys, am oberen Fensterrand und in der Repository-Liste"
+}

@@ -1,0 +1,3 @@
+{
+  "config_errors.write": "git config {key} ist fehlgeschlagen: {said}"
+}

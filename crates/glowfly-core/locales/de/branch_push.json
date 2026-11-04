@@ -1,0 +1,22 @@
+{
+  "branch_push.all.done.one": "{branch} zu {count} Remote gepusht",
+  "branch_push.all.done.other": "{branch} zu allen {count} Remotes gepusht",
+  "branch_push.all.failed.one": "Pushen von {branch} ist bei {remotes} fehlgeschlagen ({count} von {total} Remotes). Das Protokoll zeigt, warum.",
+  "branch_push.all.failed.other": "Pushen von {branch} ist bei {remotes} fehlgeschlagen ({count} von {total} Remotes). Das Protokoll zeigt, warum.",
+  "branch_push.force.body.gone": "Laut letztem Abruf ist {upstream} nicht auf {remote}, daher legt der Force-Push ihn aus {branch} an.",
+  "branch_push.force.body.lease": "Hat sich {upstream} seit dem letzten Abruf bewegt, wird der Push abgelehnt und nichts überschrieben.",
+  "branch_push.force.body.none": "Laut letztem Abruf hat {upstream} keine Commits, die {branch} nicht hat. Der Force-Push ersetzt {upstream} durch {branch}.",
+  "branch_push.force.body.one": "{upstream} hat {count} Commit, den {branch} nicht hat. Der Force-Push ersetzt {upstream} durch {branch}, und dieser Commit ist danach nicht mehr auf {remote}.",
+  "branch_push.force.body.other": "{upstream} hat {count} Commits, die {branch} nicht hat. Der Force-Push ersetzt {upstream} durch {branch}, und diese Commits sind danach nicht mehr auf {remote}.",
+  "branch_push.force.default": "{branch} ist der Standard-Branch von {remote} und wird deshalb nie mit Force gepusht: andere bauen darauf auf.",
+  "branch_push.force.development": "Git Flow nutzt {branch} als Entwicklungs-Branch, deshalb wird er nie mit Force gepusht.",
+  "branch_push.force.moved": "{upstream} hat sich seit deiner Bestätigung bewegt, daher wurde {branch} nicht mit Force gepusht. Sieh dir die neuen Commits an und versuche es dann erneut.",
+  "branch_push.force.no_remote": "Es gibt kein Remote namens {remote}.",
+  "branch_push.force.no_upstream": "{branch} hat keinen Upstream auf einem Remote für einen Force-Push.",
+  "branch_push.force.production": "Git Flow nutzt {branch} als Produktions-Branch, deshalb wird er nie mit Force gepusht.",
+  "branch_push.force.title": "Force-Push von {branch}",
+  "branch_push.force.upstream_changed": "Der Upstream von {branch} ist nicht mehr {upstream}, daher wurde nicht mit Force gepusht. Sieh dir den neuen Upstream an und versuche es dann erneut.",
+  "branch_push.force.warn.default": "{dest} ist der Standard-Branch von {remote}, auf dem andere aufbauen: Das überschreibt {upstream} mit deinem lokalen {branch}.",
+  "branch_push.force.warn.development": "Git Flow nutzt {base} als Entwicklungs-Branch: Das überschreibt {upstream} mit deinem lokalen {branch}.",
+  "branch_push.force.warn.production": "Git Flow nutzt {base} als Produktions-Branch: Das überschreibt {upstream} mit deinem lokalen {branch}."
+}

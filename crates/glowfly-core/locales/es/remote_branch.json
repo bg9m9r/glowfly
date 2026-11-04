@@ -1,0 +1,20 @@
+{
+  "remote_branch.checkout.diverged": "{branch} y {upstream} han divergido ({ahead} por delante, {behind} por detrás), así que se hace checkout de {branch} sin moverla. Haz merge o rebase para juntarlas.",
+  "remote_branch.checkout.gone": "{upstream} ya no existe.",
+  "remote_branch.checkout.not_tracking": "{branch} ya no sigue a {upstream}.",
+  "remote_branch.delete.body": "¿Eliminar la rama {branch} en {remote}? Esto afecta a todos los que usan el remoto.",
+  "remote_branch.delete.title": "Eliminar la rama remota",
+  "remote_branch.delete.tracked.one": "La rama local {branches} sigue a {upstream}. Su upstream apuntaría a una rama que ya no existe.",
+  "remote_branch.delete.tracked.other": "{count} ramas locales siguen a {upstream}: {branches}. Sus upstreams apuntarían a una rama que ya no existe.",
+  "remote_branch.delete.unset.check.one": "Quitar el upstream de {branches}",
+  "remote_branch.delete.unset.check.other": "Quitar el upstream de las {count}",
+  "remote_branch.menu.checkout_fast_forward": "Hacer checkout de {branch} con avance rápido",
+  "remote_branch.menu.checkout_local": "Hacer checkout de {branch}",
+  "remote_branch.menu.compare_with": "Comparar con {branch}",
+  "remote_branch.menu.delete": "Eliminar del remoto…",
+  "remote_branch.menu.fast_forward_local": "Avance rápido de {branch} a esta rama",
+  "remote_branch.menu.open_in_worktree": "Abrir {branch} en su worktree",
+  "remote_branch.menu.prune_checkout": "Limpiar y hacer checkout de {branch}",
+  "remote_branch.menu.range_diff": "Comparar con antes del último force-push",
+  "remote_branch.menu.set_as_upstream": "Definir como upstream de {branch}"
+}

@@ -1,0 +1,18 @@
+{
+  "branch_sync.delete.gone": "{upstream} gibt es nicht mehr.",
+  "branch_sync.rename.behind.one": "{upstream} hat {count} Commit, den {branch} nicht hat. Pulle ihn zuerst, sonst ginge er beim Löschen von {upstream} verloren.",
+  "branch_sync.rename.behind.other": "{upstream} hat {count} Commits, die {branch} nicht hat. Pulle sie zuerst, sonst gingen sie beim Löschen von {upstream} verloren.",
+  "branch_sync.rename.clash": "{name} kollidiert auf dem Remote mit {other}.",
+  "branch_sync.rename.default": "{branch} ist der Standard-Branch von {remote} und wird deshalb nur hier umbenannt: andere bauen darauf auf.",
+  "branch_sync.rename.delete_failed": "{old} in {new} umbenannt und als Upstream nach {remote} gepusht, aber das Löschen von {upstream} ist fehlgeschlagen: {why}. Der alte Name ist noch auf {remote}.",
+  "branch_sync.rename.development": "Git Flow nutzt {branch} als Entwicklungs-Branch, deshalb wird er nur hier umbenannt.",
+  "branch_sync.rename.done": "{old} hier und auf {remote} in {new} umbenannt.",
+  "branch_sync.rename.gone": "{upstream} ist nicht mehr auf dem Remote, dort gibt es nichts umzubenennen.",
+  "branch_sync.rename.local_note": "Die Upstream-Einstellung zieht mit um; {upstream} wird nicht umbenannt.",
+  "branch_sync.rename.no_upstream": "{branch} hat keinen Upstream auf einem Remote, der umbenannt werden könnte.",
+  "branch_sync.rename.production": "Git Flow nutzt {branch} als Produktions-Branch, deshalb wird er nur hier umbenannt.",
+  "branch_sync.rename.push_failed": "{old} hier in {new} umbenannt, aber das Pushen nach {remote} ist fehlgeschlagen: {why}. {upstream} bleibt, und {new} folgt ihm weiter.",
+  "branch_sync.rename.remote.check": "Auch auf {remote} umbenennen",
+  "branch_sync.rename.remote_note": "Pusht den neuen Namen nach {remote} und macht ihn zum Upstream, dann wird {upstream} gelöscht. Wer {upstream} sonst nutzt, muss zum neuen Namen wechseln.",
+  "branch_sync.rename.taken": "{other} gibt es schon, deshalb kann der neue Name nicht dorthin gepusht werden."
+}

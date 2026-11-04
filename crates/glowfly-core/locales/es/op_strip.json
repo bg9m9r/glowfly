@@ -1,0 +1,17 @@
+{
+  "op_strip.all_resolved": "Todos los conflictos resueltos",
+  "op_strip.am": "Aplicando parches",
+  "op_strip.am_step": "Aplicando parches, parche {step} de {total}",
+  "op_strip.bisect": "Bisect en curso",
+  "op_strip.cherry_pick": "Cherry-pick en curso",
+  "op_strip.conflicted.one": "Queda {count} archivo en conflicto",
+  "op_strip.conflicted.other": "Quedan {count} archivos en conflicto",
+  "op_strip.conflicts": "Conflictos por resolver",
+  "op_strip.interactive": "Rebase interactivo en curso",
+  "op_strip.interactive_step": "Rebase interactivo en curso, paso {step} de {total}",
+  "op_strip.merge": "Fusión en curso",
+  "op_strip.rebase": "Rebase en curso",
+  "op_strip.rebase_step": "Rebase en curso, paso {step} de {total}",
+  "op_strip.revert": "Reversión en curso",
+  "op_strip.show.button": "Mostrar el trabajo en curso"
+}

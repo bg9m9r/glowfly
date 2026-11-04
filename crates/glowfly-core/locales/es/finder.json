@@ -1,0 +1,14 @@
+{
+  "finder.add_folder.button": "Añadir carpeta…",
+  "finder.filter.hint": "Filtrar por nombre o ruta",
+  "finder.folders.header": "Carpetas de proyecto",
+  "finder.look_again.button": "Volver a buscar",
+  "finder.no_folders": "Añade una carpeta donde guardes repositorios y Glowfly mostrará los repositorios de Git que contiene.",
+  "finder.no_match": "Ningún repositorio coincide",
+  "finder.nothing_found": "No se encontraron repositorios de Git en estas carpetas.",
+  "finder.remove_folder.tip": "Dejar de buscar en esta carpeta",
+  "finder.scanning": "Buscando repositorios…",
+  "finder.title": "Buscar repositorios",
+  "finder.truncated": "Se detuvo tras buscar en {max} carpetas. Añade una carpeta más cercana a tus repositorios.",
+  "finder.unreadable": "no se puede leer: {error}"
+}

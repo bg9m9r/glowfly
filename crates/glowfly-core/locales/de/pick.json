@@ -1,0 +1,13 @@
+{
+  "pick.empty.all.cherry_pick.one": "Nichts zu cherry-picken: der Branch hat die Änderungen von {sha} schon.",
+  "pick.empty.all.cherry_pick.other": "Nichts zu cherry-picken: der Branch hat die Änderungen aller {count} Commits schon.",
+  "pick.empty.all.revert.one": "Nichts zu reverten: die Änderungen von {sha} sind auf diesem Branch schon zurückgenommen.",
+  "pick.empty.all.revert.other": "Nichts zu reverten: die Änderungen aller {count} Commits sind auf diesem Branch schon zurückgenommen.",
+  "pick.empty.left.cherry_pick": "{sha} ändert nichts: der Branch hat seine Änderungen schon. Überspringen braucht Git 2.23 oder neuer, daher hält der Cherry-pick dort an; Abbrechen beendet ihn.",
+  "pick.empty.left.revert": "{sha} ändert nichts: seine Änderungen sind auf diesem Branch schon zurückgenommen. Überspringen braucht Git 2.23 oder neuer, daher hält der Revert dort an; Abbrechen beendet ihn.",
+  "pick.empty.skipped_log": "Übersprungen, weil sie auf diesem Branch nichts ändern: {shas}",
+  "pick.empty.some.cherry_pick.one": "{done} von {total} Commits gecherry-pickt; {sha} übersprungen, dessen Änderungen der Branch schon hat.",
+  "pick.empty.some.cherry_pick.other": "{done} von {total} Commits gecherry-pickt; {count} übersprungen, deren Änderungen der Branch schon hat.",
+  "pick.empty.some.revert.one": "{done} von {total} Commits revertiert; {sha} übersprungen, dessen Änderungen auf diesem Branch schon zurückgenommen sind.",
+  "pick.empty.some.revert.other": "{done} von {total} Commits revertiert; {count} übersprungen, deren Änderungen auf diesem Branch schon zurückgenommen sind."
+}

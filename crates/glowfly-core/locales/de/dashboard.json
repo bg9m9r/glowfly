@@ -1,0 +1,6 @@
+{
+  "dashboard.empty.connect.button": "Dienst verbinden…",
+  "dashboard.empty.hint": "Öffne oder klone Repositorys, um hier ihre Pull Requests und Issues zu sehen.",
+  "dashboard.empty.title": "Noch keine Repositorys",
+  "dashboard.updated": "Aktualisiert {age}"
+}

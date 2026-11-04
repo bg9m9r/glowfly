@@ -1,0 +1,15 @@
+{
+  "tag.delete.body": "Delete local tag {tag}?",
+  "tag.delete.title": "Delete tag",
+  "tag.delete_remote.body": "Delete tag {tag} from {remotes}? Your local tag stays, and anyone who already fetched it keeps their copy.",
+  "tag.delete_remote.button_all": "Delete from all remotes",
+  "tag.delete_remote.button_one": "Delete from {remote}",
+  "tag.delete_remote.title_all": "Delete tag from all remotes",
+  "tag.delete_remote.title_one": "Delete tag from remote",
+  "tag.menu.all_remotes": "All remotes",
+  "tag.menu.all_remotes_ask": "All remotes…",
+  "tag.menu.annotate": "Annotate…",
+  "tag.menu.annotate.tip": "Replace this lightweight tag with an annotated tag on the same commit",
+  "tag.menu.delete_from_remote": "Delete from remote",
+  "tag.menu.delete_locally": "Delete locally…"
+}

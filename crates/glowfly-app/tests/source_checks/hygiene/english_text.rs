@@ -158,7 +158,7 @@ fn ui_and_runner_text_is_translated() {
             let at: Vec<String> = lines.iter().map(|(l, text)| format!("{}:{l}  \"{text}\"", s.path)).collect();
             problems.push(format!(
                 "{}: {} English literals, over its count of {ceiling} in ENGLISH_TEXT. Translate the new text instead: add a key to \
-                 crates/glowfly-core/locales/*.json and pass t.tr(\"key\") (or trf/trn). The literals:\n  {}",
+                 crates/glowfly-core/locales/<lang>/<area>.json (every language) and pass t.tr(\"key\") (or trf/trn). The literals:\n  {}",
                 s.path,
                 lines.len(),
                 at.join("\n  ")

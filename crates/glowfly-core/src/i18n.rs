@@ -1,12 +1,15 @@
 //! The UI's translations: the languages Glowfly ships, their bundled catalogs (English is the
-//! base; each other language is a JSON file of the same keys, `locales/`), lookups that fall
-//! back to English and then to the key itself, `{name}` placeholders filled in one pass, and the
-//! OS language, read once at startup, in gettext's order on Linux (`system.rs`).
+//! base; each other language is a folder of per-area JSON files with the same keys,
+//! `locales/<lang>/`), lookups that fall back to English and then to the key itself, `{name}`
+//! placeholders filled in one pass, and the OS language, read once at startup, in gettext's
+//! order on Linux (`system.rs`).
 //!
 //! Views and update build text with `settings.lang()` and `tr` / `trf` / `trn`. Translated text
 //! is shown, never matched against git output or used as an id.
 
 mod catalog;
+#[cfg(test)]
+mod catalog_tests;
 mod system;
 #[cfg(test)]
 mod tests;

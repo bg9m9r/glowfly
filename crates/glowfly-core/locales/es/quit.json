@@ -1,0 +1,10 @@
+{
+  "quit.confirm.button": "Salir de todos modos",
+  "quit.confirm.download": "Glowfly {version} todavía se está descargando.",
+  "quit.confirm.job": "{job} sigue en curso en {repo}.",
+  "quit.confirm.job_no_repo": "{job} sigue en curso.",
+  "quit.confirm.risk": "Si sales ahora, puede quedar a medias, y Glowfly no sabrá cómo termina.",
+  "quit.confirm.sync_fetch": "La obtención en varios repositorios sigue en curso ({done} de {all} listos).",
+  "quit.confirm.sync_pull": "El pull en varios repositorios sigue en curso ({done} de {all} listos).",
+  "quit.confirm.title": "¿Salir de Glowfly?"
+}

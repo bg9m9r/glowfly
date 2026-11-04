@@ -1,6 +1,6 @@
-//! Every translation key the code looks up exists in the English catalog, and every English key
-//! is looked up somewhere, so a typo shows up here rather than as a raw key on screen and the
-//! catalogs don't collect dead text. Test code is held to the first half too: a test that reads a
+//! Every translation key the code looks up exists in the English catalog (`locales/en/`, one
+//! file per key's first segment), and every English key is looked up somewhere, so a typo shows
+//! up here rather than as a raw key on screen and the catalogs don't collect dead text. Test code is held to the first half too: a test that reads a
 //! removed key gets the key back and checks nothing. Keys are found as string literals right after `.tr(`,
 //! `.trf(` or `.trn(` (for `trn`, the `.one` and `.other` forms are what exists). Also: no view
 //! brings back an English "Cancel" or "Close" button (or the old "Close  (Esc)"); they come from
@@ -16,6 +16,11 @@ use std::path::PathBuf;
 /// The source without comments and without inline `#[cfg(test)] mod … { … }` blocks.
 fn code(src: &str) -> String {
     views::code_lines(src).join("\n")
+}
+
+/// The area file a key belongs in: its first segment.
+fn area(key: &str) -> &str {
+    key.split('.').next().unwrap_or(key)
 }
 
 /// The literal keys `code` passes to `.<call>(`: (key, plural).
@@ -61,15 +66,15 @@ fn every_key_in_code_exists_and_every_english_key_is_used() {
             let forms = if plural { vec![format!("{key}.one"), format!("{key}.other")] } else { vec![key] };
             for form in forms {
                 if !Lang::En.has(&form) {
-                    missing.push(format!("{file}: {form}"));
+                    missing.push(format!("{file}: {form} (add it to locales/<lang>/{}.json)", area(&form)));
                 }
                 used.insert(form);
             }
         }
     }
-    assert!(missing.is_empty(), "keys missing from en.json:\n{}", missing.join("\n"));
+    assert!(missing.is_empty(), "keys missing from the English catalog:\n{}", missing.join("\n"));
     let unused: Vec<&str> = Lang::En.keys().map(|(k, _)| k).filter(|k| !used.contains(*k)).collect::<BTreeSet<_>>().into_iter().collect();
-    assert!(unused.is_empty(), "en.json keys no code looks up: {unused:?}");
+    assert!(unused.is_empty(), "English keys (locales/en/) no code looks up: {unused:?}");
 }
 
 /// Keys tests look up on purpose that the catalog doesn't have (a missing key shows as itself).
@@ -92,12 +97,12 @@ fn every_key_in_tests_exists() {
             for (key, plural) in keys_in(&code.join("\n")) {
                 let form = if plural { format!("{key}.one") } else { key };
                 if !Lang::En.has(&form) && !MISSING_ON_PURPOSE.contains(&form.as_str()) {
-                    missing.push(format!("crates/{name}/src/{rel}: {form}"));
+                    missing.push(format!("crates/{name}/src/{rel}: {form} (add it to locales/<lang>/{}.json)", area(&form)));
                 }
             }
         }
     }
-    assert!(missing.is_empty(), "keys missing from en.json:\n{}", missing.join("\n"));
+    assert!(missing.is_empty(), "keys missing from the English catalog:\n{}", missing.join("\n"));
 }
 
 #[test]

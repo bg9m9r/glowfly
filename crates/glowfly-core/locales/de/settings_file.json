@@ -1,0 +1,12 @@
+{
+  "settings_file.banner.folder.button": "Einstellungsordner öffnen",
+  "settings_file.banner.folder.tip": "Zeigt den Ordner mit settings.json, um seine Berechtigungen zu prüfen oder zu sehen, was die Datei verwendet",
+  "settings_file.banner.reading": "Einstellungsdatei wird gelesen…",
+  "settings_file.banner.retry.tip": "Liest die Einstellungsdatei erneut",
+  "settings_file.banner.text": "Es gelten die Standardeinstellungen, und bis die Datei gelesen werden kann, wird nichts gespeichert.",
+  "settings_file.banner.title": "Glowfly konnte seine Einstellungsdatei nicht lesen",
+  "settings_file.read.toast": "Deine gespeicherten Einstellungen gelten wieder.",
+  "settings_file.read_dropped.toast": "Deine gespeicherten Einstellungen gelten wieder; Änderungen aus der Zwischenzeit wurden verworfen.",
+  "settings_file.still.log": "Die Einstellungsdatei kann weiterhin nicht gelesen werden ({detail}). Bis dahin wird nichts gespeichert.",
+  "settings_file.unreadable.log": "Glowfly konnte seine Einstellungsdatei nicht lesen. Es verwendet die Standardeinstellungen und speichert keine Änderungen, bis die Datei gelesen werden kann ({detail})."
+}

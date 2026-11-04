@@ -1,0 +1,14 @@
+{
+  "safe_dir.body.admins": "{path} belongs to the Administrators group, not to your account, so Git won't open it until you trust it. This usually happens when the folder was created from a program run as administrator.\n\nGit checks this to keep you safe: a repository's own settings can make Git run programs on your computer. Only trust folders you made yourself or got from someone you trust.\n\nIf you trust it, Glowfly tells Git to allow this folder from now on and opens it.",
+  "safe_dir.body.named": "{path} belongs to {owner}, not to your account, so Git won't open it until you trust it.\n\nGit checks this to keep you safe: a repository's own settings can make Git run programs on your computer. Only trust folders you made yourself or got from someone you trust.\n\nIf you trust it, Glowfly tells Git to allow this folder from now on and opens it.",
+  "safe_dir.body.unknown": "{path} belongs to another user account, not to yours, so Git won't open it until you trust it.\n\nGit checks this to keep you safe: a repository's own settings can make Git run programs on your computer. Only trust folders you made yourself or got from someone you trust.\n\nIf you trust it, Glowfly tells Git to allow this folder from now on and opens it.",
+  "safe_dir.details.unix": "A folder usually ends up like this when it was:\n- created with sudo or as root\n- made by another account on this computer\n- on a network share or in WSL\n- on a USB stick or other removable drive, or copied from another computer\n\nGlowfly runs:\ngit config --global --add safe.directory {value}",
+  "safe_dir.details.windows": "A folder usually ends up like this when it was:\n- created from a program run as administrator\n- made by another account on this computer\n- on a network share or in WSL\n- on a USB stick or other removable drive, or copied from another computer\n\nGlowfly runs:\ngit config --global --add safe.directory {value}",
+  "safe_dir.log.admins": "Git won't open {path}: it belongs to the Administrators group, not to your account.",
+  "safe_dir.log.named": "Git won't open {path}: it belongs to {owner}, not to your account.",
+  "safe_dir.log.unknown": "Git won't open {path}: it belongs to another user account.",
+  "safe_dir.title": "Trust this folder?",
+  "safe_dir.trust.button": "Trust this folder",
+  "safe_dir.trust_failed": "Couldn't trust {path}. Git said: {error}",
+  "safe_dir.trusted": "Trusted {path}. Git will open it from now on."
+}

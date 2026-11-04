@@ -1,0 +1,14 @@
+{
+  "finder.add_folder.button": "Add folder…",
+  "finder.filter.hint": "Filter by name or path",
+  "finder.folders.header": "Project folders",
+  "finder.look_again.button": "Look again",
+  "finder.no_folders": "Add a folder you keep repositories in, and Glowfly lists the Git repositories under it.",
+  "finder.no_match": "No repositories match",
+  "finder.nothing_found": "No Git repositories were found in these folders.",
+  "finder.remove_folder.tip": "Stop looking in this folder",
+  "finder.scanning": "Looking for repositories…",
+  "finder.title": "Find repositories",
+  "finder.truncated": "Stopped after looking in {max} folders. Add a folder closer to your repositories.",
+  "finder.unreadable": "can't be read: {error}"
+}

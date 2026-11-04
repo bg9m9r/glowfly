@@ -1,0 +1,13 @@
+{
+  "pick.empty.all.cherry_pick.one": "Nothing to cherry-pick: the branch already has the changes of {sha}.",
+  "pick.empty.all.cherry_pick.other": "Nothing to cherry-pick: the branch already has the changes of all {count} commits.",
+  "pick.empty.all.revert.one": "Nothing to revert: the changes of {sha} are already undone on this branch.",
+  "pick.empty.all.revert.other": "Nothing to revert: the changes of all {count} commits are already undone on this branch.",
+  "pick.empty.left.cherry_pick": "{sha} changes nothing: the branch already has its changes. Skipping it needs Git 2.23 or newer, so the cherry-pick is stopped there; Abort ends it.",
+  "pick.empty.left.revert": "{sha} changes nothing: its changes are already undone on this branch. Skipping it needs Git 2.23 or newer, so the revert is stopped there; Abort ends it.",
+  "pick.empty.skipped_log": "Skipped because they change nothing on this branch: {shas}",
+  "pick.empty.some.cherry_pick.one": "Cherry-picked {done} of {total} commits; skipped {sha}, whose changes the branch already has.",
+  "pick.empty.some.cherry_pick.other": "Cherry-picked {done} of {total} commits; skipped {count} whose changes the branch already has.",
+  "pick.empty.some.revert.one": "Reverted {done} of {total} commits; skipped {sha}, whose changes are already undone on this branch.",
+  "pick.empty.some.revert.other": "Reverted {done} of {total} commits; skipped {count} whose changes are already undone on this branch."
+}
