@@ -6,7 +6,7 @@
 
 use crate::effect::RestartJob;
 use crate::msg::{Msg, UpdateMsg};
-use glowfly_core::app_update::{self, InstallMethod, RestartRequest};
+use glowfly_core::app_update::{self, InstallMethod, RestartRequest, UpdateError};
 use glowfly_core::native_path::shown;
 use glowfly_core::paths;
 use std::path::{Path, PathBuf};
@@ -15,7 +15,7 @@ pub(super) fn run(job: RestartJob) -> Msg {
     Msg::Updates(UpdateMsg::RestartReady(restart(job)))
 }
 
-fn restart(job: RestartJob) -> Result<(), String> {
+fn restart(job: RestartJob) -> Result<(), UpdateError> {
     match job.method {
         InstallMethod::OpenAndQuit => {
             app_update::read_verified(&job.file, &job.sha256)?;
@@ -24,13 +24,10 @@ fn restart(job: RestartJob) -> Result<(), String> {
         InstallMethod::RunMsi | InstallMethod::SwapPortable | InstallMethod::SwapAppImage => {
             let (exe, image) = own_files()?;
             let Some(platform) = app_update::CURRENT_PLATFORM else {
-                return Err("This update can't be installed in place.".to_owned());
+                return Err(UpdateError::NotInPlace);
             };
-            let target = if job.method == InstallMethod::SwapAppImage {
-                image.ok_or_else(|| "This copy isn't running from an AppImage.".to_owned())?
-            } else {
-                exe.clone()
-            };
+            let target =
+                if job.method == InstallMethod::SwapAppImage { image.ok_or(UpdateError::NotRunningFromAppImage)? } else { exe.clone() };
             app_update::start_restart(&RestartRequest {
                 file: job.file,
                 sha256: job.sha256,
@@ -42,13 +39,13 @@ fn restart(job: RestartJob) -> Result<(), String> {
                 os: platform.os,
             })
         }
-        InstallMethod::ShowOnly => Err("This update can't be installed in place.".to_owned()),
+        InstallMethod::ShowOnly => Err(UpdateError::NotInPlace),
     }
 }
 
 /// The running program, resolved, and the AppImage it runs from, if any.
-pub(super) fn own_files() -> Result<(PathBuf, Option<PathBuf>), String> {
-    let exe = std::env::current_exe().map_err(|e| format!("Couldn't find Glowfly's own program: {e}"))?;
+pub(super) fn own_files() -> Result<(PathBuf, Option<PathBuf>), UpdateError> {
+    let exe = std::env::current_exe().map_err(|e| UpdateError::NoOwnProgram { said: e.to_string() })?;
     let exe = paths::resolve(&exe);
     let image = app_update::appimage_file(&exe).map(|i| paths::resolve(&i));
     Ok((exe, image))
@@ -70,25 +67,19 @@ pub(super) fn staging_places(target: &Path) -> Vec<PathBuf> {
 
 /// Opens a downloaded (and verified) installer with the system: the MSI's installer, the disk
 /// image, or the software installer for a .deb or .rpm.
-fn open_installer(path: &Path) -> Result<(), String> {
+fn open_installer(path: &Path) -> Result<(), UpdateError> {
     let Err(e) = open::that_detached(path) else { return Ok(()) };
-    let mut text = format!("Couldn't open {}: {e}", shown(path));
-    if let Some(hint) = installer_hint(path) {
-        text.push('\n');
-        text.push_str(&hint);
-    }
-    Err(text)
+    Err(UpdateError::OpenFailed { path: shown(path), said: e.to_string(), install_with: package_tool(path).map(str::to_owned) })
 }
 
-/// How to install a Linux package by hand when it couldn't be opened.
-fn installer_hint(path: &Path) -> Option<String> {
+/// The tool a Linux package is installed with by hand when it couldn't be opened.
+fn package_tool(path: &Path) -> Option<&'static str> {
     let ext = path.extension()?.to_string_lossy().to_ascii_lowercase();
-    let tool = match ext.as_str() {
-        "deb" => "apt",
-        "rpm" => "dnf",
-        _ => return None,
-    };
-    Some(format!("Install it with: sudo {tool} install {}", shown(path)))
+    match ext.as_str() {
+        "deb" => Some("apt"),
+        "rpm" => Some("dnf"),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -99,11 +90,11 @@ mod tests {
     fn linux_packages_get_an_install_hint() {
         let dir = paths::temp_dir();
         let deb = dir.join("glowfly-v0.3.0-x86_64-unknown-linux-gnu.deb");
-        assert_eq!(installer_hint(&deb), Some(format!("Install it with: sudo apt install {}", shown(&deb))));
+        assert_eq!(package_tool(&deb), Some("apt"));
         let rpm = dir.join("glowfly-v0.3.0-x86_64-unknown-linux-gnu.RPM");
-        assert_eq!(installer_hint(&rpm), Some(format!("Install it with: sudo dnf install {}", shown(&rpm))));
+        assert_eq!(package_tool(&rpm), Some("dnf"));
         for other in ["glowfly.msi", "glowfly.dmg", "glowfly.AppImage", "glowfly"] {
-            assert_eq!(installer_hint(&dir.join(other)), None, "{other}");
+            assert_eq!(package_tool(&dir.join(other)), None, "{other}");
         }
     }
 }

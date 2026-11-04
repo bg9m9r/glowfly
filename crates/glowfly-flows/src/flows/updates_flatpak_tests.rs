@@ -9,7 +9,7 @@ use crate::msg::{CheckedRelease, Msg, UpdateMsg as U};
 use crate::state::AppState;
 use crate::state::palette::entries;
 use crate::state::updates::{UpdateStatus, flatpak_available_text, latest_text};
-use glowfly_core::app_update::{Arch, Asset, InstallKind, Platform, Release, TargetOs};
+use glowfly_core::app_update::{Arch, Asset, InstallKind, Platform, Release, TargetOs, UpdateError};
 use glowfly_core::i18n::Lang;
 use std::time::Instant;
 
@@ -30,7 +30,7 @@ fn linux_release(tag: &str) -> Release {
     }
 }
 
-fn found_flatpak(tag: &str) -> Result<Option<CheckedRelease>, String> {
+fn found_flatpak(tag: &str) -> Result<Option<CheckedRelease>, UpdateError> {
     Ok(Some(CheckedRelease { release: linux_release(tag), install: InstallKind::Flatpak }))
 }
 

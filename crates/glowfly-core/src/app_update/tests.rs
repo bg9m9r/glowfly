@@ -236,7 +236,7 @@ fn a_verified_download_is_saved() {
 fn a_mismatched_download_leaves_nothing() {
     let dir = scratch("bad");
     let _mock = serve(BODY, Some(line_for("the real installer bytes")), None);
-    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err();
+    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err().to_string();
     assert!(err.contains("didn't match its published checksum"), "{err}");
     let left: Vec<_> = std::fs::read_dir(&dir).map(|d| d.flatten().map(|e| e.file_name()).collect()).unwrap_or_default();
     assert!(left.is_empty(), "no file and no temp file: {left:?}");
@@ -256,17 +256,17 @@ fn the_single_checksum_file_is_the_fallback() {
 fn no_checksum_means_no_download() {
     let dir = scratch("nosum");
     let mock = serve(BODY, None, None);
-    let err = download(&hosted(), &download_offer(BODY.len(), "none"), &dir).unwrap_err();
+    let err = download(&hosted(), &download_offer(BODY.len(), "none"), &dir).unwrap_err().to_string();
     assert!(err.contains("doesn't publish a checksum") && err.contains(NAME), "{err}");
     assert!(mock.requests().is_empty(), "nothing fetched");
     // Published, but the server has none: the file isn't fetched either.
-    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err();
+    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err().to_string();
     assert!(err.contains("checksums"), "{err}");
     assert!(mock.requests().iter().all(|r| !r.path.ends_with(".msi")), "the file itself was never asked for");
     // A checksum file that doesn't list the file.
     drop(mock);
     let mock = serve(BODY, Some(format!("{HASH_A}  other.zip\n")), None);
-    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err();
+    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err().to_string();
     assert!(err.contains("doesn't publish a checksum"), "{err}");
     assert_eq!(mock.requests().len(), 1);
     assert!(!dir.exists());
@@ -277,7 +277,7 @@ fn a_download_of_the_wrong_size_is_refused() {
     let dir = scratch("size");
     let _mock = serve(BODY, Some(line_for(BODY)), None);
     assert!(download(&hosted(), &download_offer(BODY.len() - 1, "combined"), &dir).is_err(), "longer than announced");
-    assert!(download(&hosted(), &download_offer(BODY.len() + 1, "combined"), &dir).unwrap_err().contains("bytes instead of"));
+    assert!(download(&hosted(), &download_offer(BODY.len() + 1, "combined"), &dir).unwrap_err().to_string().contains("bytes instead of"));
     assert!(!dir.join(NAME).exists());
     let _ = std::fs::remove_dir_all(&dir);
 }

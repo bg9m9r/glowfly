@@ -11,7 +11,7 @@ use super::finish::GO;
 use super::plan::{FORMAT, MsiStep, Plan};
 use super::staging;
 use super::swap::{self, Applied};
-use super::{InstallMethod, TargetOs, read_verified};
+use super::{InstallMethod, TargetOs, UpdateError, read_verified};
 use crate::native_path::shown;
 use crate::persist::{self, WriteOptions};
 use std::io::Write;
@@ -50,12 +50,13 @@ pub struct Prepared {
 
 impl Prepared {
     /// Undoes the preparation: the old program is put back and the staging folder removed.
-    pub fn abandon(self) -> Result<(), String> {
+    pub fn abandon(self) -> Result<(), UpdateError> {
         for r in &self.records {
             let _ = persist::remove_file(r);
         }
         let back = self.applied.map_or(Ok(()), Applied::rollback);
-        let removed = persist::remove_tree(&self.staging).map_err(|e| format!("Couldn't remove {}: {e}", shown(&self.staging)));
+        let removed =
+            persist::remove_tree(&self.staging).map_err(|e| UpdateError::RemoveFailed { path: shown(&self.staging), said: e.to_string() });
         back.and(removed)
     }
 }
@@ -66,15 +67,15 @@ fn helper_name(os: TargetOs) -> &'static str {
 }
 
 /// Prepares the update without starting anything.
-pub fn prepare(req: &RestartRequest) -> Result<Prepared, String> {
+pub fn prepare(req: &RestartRequest) -> Result<Prepared, UpdateError> {
     prepare_with(req, &super::launch::try_run)
 }
 
 /// [`prepare`], with `runs` trying whether the copied helper can run where it was put.
-pub fn prepare_with(req: &RestartRequest, runs: &dyn Fn(&Path) -> std::io::Result<()>) -> Result<Prepared, String> {
+pub fn prepare_with(req: &RestartRequest, runs: &dyn Fn(&Path) -> std::io::Result<()>) -> Result<Prepared, UpdateError> {
     let bytes = read_verified(&req.file, &req.sha256)?;
     if !req.method.restarts() {
-        return Err("This update can't be installed in place.".to_owned());
+        return Err(UpdateError::NotInPlace);
     }
     let staged = staging::create_runnable(&req.places, &req.exe, helper_name(req.os), runs)?;
     let staging = staged.dir;
@@ -83,14 +84,11 @@ pub fn prepare_with(req: &RestartRequest, runs: &dyn Fn(&Path) -> std::io::Resul
     match fill(req, &bytes, &mut prepared) {
         Ok(()) => Ok(prepared),
         // What couldn't be undone is said too.
-        Err(e) => Err(match prepared.abandon() {
-            Ok(()) => e,
-            Err(undo) => format!("{e} {undo}"),
-        }),
+        Err(e) => Err(e.and_undo(prepared.abandon())),
     }
 }
 
-fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(), String> {
+fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(), UpdateError> {
     // The helper is a copy (staging::create_runnable); for an MSI it has to be anyway, since
     // msiexec replaces the installed program.
     let staging = &prepared.staging;
@@ -101,7 +99,7 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
             let name = req.file.file_name().map_or_else(|| "glowfly.msi".into(), |n| n.to_owned());
             let file = staging.join(name);
             persist::write_file(&file, bytes, WriteOptions { private: true, ..WriteOptions::default() })
-                .map_err(|e| format!("Couldn't write {}: {e}", shown(&file)))?;
+                .map_err(|e| UpdateError::WriteFailed { path: shown(&file), said: e.to_string() })?;
             msi = Some(MsiStep { file, log: staging.join("install.log") });
         }
         InstallMethod::SwapPortable => {
@@ -114,7 +112,7 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
         }
         InstallMethod::SwapAppImage => {
             if !appimage::is_appimage(bytes) {
-                return Err("The download isn't an AppImage.".to_owned());
+                return Err(UpdateError::NotAnAppImage);
             }
             // The image is the whole program; no doc files sit beside it.
             let entries = vec![archive::Entry { name: archive::program_name(TargetOs::Linux).to_owned(), bytes: bytes.to_vec() }];
@@ -123,7 +121,7 @@ fn fill(req: &RestartRequest, bytes: &[u8], prepared: &mut Prepared) -> Result<(
             remove = recorded(&applied.backups, &mut prepared.records);
             prepared.applied = Some(applied);
         }
-        InstallMethod::OpenAndQuit | InstallMethod::ShowOnly => return Err("This update can't be installed in place.".to_owned()),
+        InstallMethod::OpenAndQuit | InstallMethod::ShowOnly => return Err(UpdateError::NotInPlace),
     }
     let plan = Plan { format: FORMAT, version: req.version.clone(), msi, remove, relaunch: req.target.clone(), staging: staging.clone() };
     plan.write(&prepared.plan_path)
@@ -143,25 +141,25 @@ fn recorded(backups: &[PathBuf], records: &mut Vec<PathBuf>) -> Vec<PathBuf> {
 
 /// Prepares the update, starts the helper and tells it to go. On success Glowfly should quit:
 /// the helper waits for that.
-pub fn start(req: &RestartRequest) -> Result<(), String> {
+pub fn start(req: &RestartRequest) -> Result<(), UpdateError> {
     let prepared = prepare(req)?;
     let cwd = req.target.parent().unwrap_or(&prepared.staging);
     let mut child = match super::launch::start_helper(&prepared.helper, &prepared.plan_path, cwd) {
         Ok(c) => c,
         Err(e) => {
             let _ = prepared.abandon();
-            return Err(format!("Couldn't start the update helper: {e}"));
+            return Err(UpdateError::HelperNotStarted { said: e.to_string() });
         }
     };
     let Some(mut stdin) = child.stdin.take() else {
         let _ = prepared.abandon();
-        return Err("Couldn't start the update helper: it has no input".to_owned());
+        return Err(UpdateError::HelperNoInput);
     };
     if let Err(e) = stdin.write_all(GO).and_then(|()| stdin.flush()) {
         // The helper sees the input end without "go" and does nothing.
         drop(stdin);
         let _ = prepared.abandon();
-        return Err(format!("Couldn't start the update helper: {e}"));
+        return Err(UpdateError::HelperNotStarted { said: e.to_string() });
     }
     // Never closed: the pipe stays open until Glowfly exits, and its end is the helper's signal
     // that Glowfly has quit.

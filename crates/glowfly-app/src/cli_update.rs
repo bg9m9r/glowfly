@@ -3,7 +3,7 @@
 //! <plan>`, the helper Install and restart starts. They exit before logging, settings and the
 //! window.
 
-use glowfly_core::app_update::{self, CURRENT_VERSION, Checked, Feed, InstallKind, Version, check_and_download};
+use glowfly_core::app_update::{self, CURRENT_VERSION, Checked, Feed, InstallKind, UpdateError, Version, check_and_download};
 use glowfly_core::native_path::shown;
 use std::ffi::OsString;
 use std::io::Write;
@@ -90,7 +90,7 @@ pub fn check_update(args: &[OsString]) -> i32 {
 }
 
 /// The exit status, stdout lines and stderr line for a check's `result`.
-fn report(feed: &Feed, current: &Version, kind: InstallKind, result: &Result<Checked, String>) -> (i32, Vec<String>, Option<String>) {
+fn report(feed: &Feed, current: &Version, kind: InstallKind, result: &Result<Checked, UpdateError>) -> (i32, Vec<String>, Option<String>) {
     let mut out = vec![format!("current {current}"), format!("install {}", kind.label()), format!("feed {}", feed.describe())];
     match result {
         Ok(Checked::UpToDate { .. }) => {
@@ -181,8 +181,7 @@ mod tests {
         assert_eq!((code, out, err), (4, want, None));
         assert_eq!(EXIT_UPDATE_BY_FLATPAK, 4);
 
-        let (code, out, err) =
-            report(&feed, &v("0.1.0"), InstallKind::Portable, &Err("This release has no download for this system.".into()));
+        let (code, out, err) = report(&feed, &v("0.1.0"), InstallKind::Portable, &Err(UpdateError::NoDownload));
         assert_eq!((code, out), (1, head("portable")));
         assert_eq!(err.as_deref(), Some("error: This release has no download for this system."));
 

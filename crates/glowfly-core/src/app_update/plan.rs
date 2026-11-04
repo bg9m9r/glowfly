@@ -53,7 +53,7 @@ struct RawMsi {
 
 impl Plan {
     /// Writes the plan to `path`, readable by this user only.
-    pub fn write(&self, path: &Path) -> Result<(), String> {
+    pub fn write(&self, path: &Path) -> Result<(), super::UpdateError> {
         let enc = |p: &PathBuf| paths::encode(p);
         let raw = Raw {
             format: self.format,
@@ -63,9 +63,9 @@ impl Plan {
             relaunch: enc(&self.relaunch),
             staging: enc(&self.staging),
         };
-        let json = serde_json::to_vec_pretty(&raw).map_err(|e| e.to_string())?;
+        let json = serde_json::to_vec_pretty(&raw).map_err(|e| super::UpdateError::Said { said: e.to_string() })?;
         persist::write_file(path, &json, WriteOptions { private: true, ..WriteOptions::default() })
-            .map_err(|e| format!("Couldn't write {}: {e}", crate::native_path::shown(path)))
+            .map_err(|e| super::UpdateError::WriteFailed { path: crate::native_path::shown(path), said: e.to_string() })
     }
 
     /// Reads the plan at `path`: only this format, and only absolute paths.

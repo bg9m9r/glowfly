@@ -18,6 +18,7 @@ use crate::msg::UpdateMsg;
 use crate::msg::{ContentFailure, PartialMsg};
 use crate::patch::{PatchEffect, PatchMsg};
 use crate::remote::{RemoteEffect, RemoteMsg};
+use glowfly_core::app_update::UpdateError;
 use glowfly_core::forge::{Account, Target};
 use glowfly_model::ssh::SshFailure;
 use glowfly_model::tools::ToolEffect;
@@ -143,12 +144,19 @@ impl Recovery {
 
     fn message(self, panic: String) -> Msg {
         let text = format!("Glowfly hit an internal error ({}): {panic}", self.name);
-        self.failed(text)
+        let internal = UpdateError::Internal { effect: self.name.to_owned(), panic };
+        self.failed_as(text, internal)
     }
 
     /// The failure message the effect's sender waits for, saying `text` (a trust re-check that
     /// couldn't be made, runner/trust.rs).
     pub(super) fn failed(self, text: String) -> Msg {
+        let said = UpdateError::Said { said: text.clone() };
+        self.failed_as(text, said)
+    }
+
+    /// [`Self::failed`], with `update` the typed error an update's result carries instead.
+    fn failed_as(self, text: String, update: UpdateError) -> Msg {
         let msg = match self.kind {
             Kind::Job(undo) => Msg::Job(JobMsg::JobDone { ok: false, output: text, undo }),
             Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text), undo: None }),
@@ -174,9 +182,9 @@ impl Recovery {
                 Msg::Clone(CloneMsg::ReposLoaded { account, result })
             }
             Kind::Blame { path, generation } => Msg::Blame(BlameMsg::Loaded { path, generation, result: Err(text) }),
-            Kind::Update(Some(manual)) => Msg::Updates(UpdateMsg::Checked { manual, result: Err(text) }),
-            Kind::Update(None) => Msg::Updates(UpdateMsg::Downloaded(Err(text))),
-            Kind::UpdateRestart => Msg::Updates(UpdateMsg::RestartReady(Err(text))),
+            Kind::Update(Some(manual)) => Msg::Updates(UpdateMsg::Checked { manual, result: Err(update) }),
+            Kind::Update(None) => Msg::Updates(UpdateMsg::Downloaded(Err(update))),
+            Kind::UpdateRestart => Msg::Updates(UpdateMsg::RestartReady(Err(update))),
             Kind::RepoScan(generation, roots) => {
                 let unreadable = roots.into_iter().map(|r| (r, text.clone())).collect();
                 let report = Box::new(crate::msg::ScanFound { unreadable, ..Default::default() });

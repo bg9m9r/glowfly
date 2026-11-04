@@ -31,8 +31,8 @@ fn the_plan_targets_the_program_and_docs_beside_it() {
 fn the_plan_needs_the_program() {
     let entries = [entry("README.md", b"r")];
     let exe = crate::paths::temp_dir().join("glowfly");
-    assert_eq!(plan(&entries, &exe, TargetOs::Windows, |_| true), Err("The archive has no glowfly.exe.".to_owned()));
-    assert_eq!(plan(&entries, &exe, TargetOs::Linux, |_| true), Err("The archive has no glowfly.".to_owned()));
+    assert_eq!(plan(&entries, &exe, TargetOs::Windows, |_| true), Err(UpdateError::NoProgram { program: "glowfly.exe".into() }));
+    assert_eq!(plan(&entries, &exe, TargetOs::Linux, |_| true), Err(UpdateError::NoProgram { program: "glowfly".into() }));
     // The Windows program isn't the Linux one.
     assert!(plan(&[entry("glowfly.exe", b"p")], &exe, TargetOs::Linux, |_| true).is_err());
 }
@@ -84,7 +84,7 @@ fn a_read_only_folder_fails_and_leaves_the_program() {
     }
     let entries = [entry("glowfly", b"new")];
     let plan = plan(&entries, &exe, TargetOs::Linux, Path::exists).unwrap();
-    let err = apply(&plan, &entries).unwrap_err();
+    let err = apply(&plan, &entries).unwrap_err().to_string();
     assert!(err.starts_with("Couldn't replace Glowfly's program in "), "{err}");
     assert_eq!(std::fs::read(&exe).unwrap(), b"old");
     let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755));

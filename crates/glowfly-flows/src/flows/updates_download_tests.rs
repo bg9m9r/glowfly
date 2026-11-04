@@ -9,7 +9,7 @@ use crate::msg::{Msg, PrefsMsg, UpdateMsg as U};
 use crate::state::palette::entries;
 use crate::state::updates::{Transfer, UpdateStatus, progress_text};
 use crate::state::{AppState, PrefPage};
-use glowfly_core::app_update::{InstallKind, Progress, SavedProblem};
+use glowfly_core::app_update::{InstallKind, Progress, SavedProblem, UpdateError};
 use glowfly_core::i18n::Lang;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -147,7 +147,7 @@ fn a_file_found_changed_while_installing_waits_for_the_install() {
     assert!(st.updates.restarting);
     send(&mut st, U::SavedChecked { file: file.clone(), problem: Some(SavedProblem::Changed) }, t);
     assert!(matches!(st.updates.status, UpdateStatus::Downloaded { .. }), "the install's own check says why");
-    let fx = send(&mut st, U::RestartReady(Err("The downloaded file changed after it was checked".into())), t);
+    let fx = send(&mut st, U::RestartReady(Err(UpdateError::ChangedSinceChecked)), t);
     assert!(checks_saved(&fx, &file));
     send(&mut st, U::SavedChecked { file, problem: Some(SavedProblem::Changed) }, t);
     assert!(matches!(st.updates.status, UpdateStatus::Stale { problem: SavedProblem::Changed, .. }));
