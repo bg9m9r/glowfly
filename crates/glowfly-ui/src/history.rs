@@ -16,6 +16,7 @@ use super::widgets::{self, paint_cut_text};
 use crate::theme::sizes::ControlSize;
 use crate::theme::type_scale;
 use crate::widgets::buttons;
+use crate::widgets::paint_text;
 use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align, Align2, CursorIcon, Key, Layout, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
@@ -177,7 +178,7 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: History
     paint_cut_text(p, pos2(left + sha_w + 8.0, y1), &e.summary, body, color::text(), right - left - sha_w - 8.0);
 
     let date = st.settings.format_day(e.time, st.cues.now, st.cues.utc_offset);
-    let date_rect = ui.painter().text(pos2(right, y2), Align2::RIGHT_CENTER, date, small.clone(), color::weak());
+    let date_rect = paint_text(ui.painter(), pos2(right, y2), Align2::RIGHT_CENTER, date, small.clone(), color::weak());
     let date_w = date_rect.width();
     let status_w = paint_cut_text(p, pos2(left, y2), &e.status.to_string(), mono, status_color(e.status), 20.0).rect.width();
     let mut x = left + status_w.max(8.0) + 8.0;

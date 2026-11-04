@@ -10,6 +10,7 @@ use crate::theme::tokens::radius;
 use crate::theme::type_scale;
 use crate::widgets::buttons;
 use crate::widgets::form_message::{self, Message};
+use crate::widgets::paint_text;
 use crate::widgets::{self, Icon};
 use eframe::egui::{self, Align, Align2, CornerRadius, Layout, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::repo_identity::RepoIdentity;
@@ -127,7 +128,7 @@ fn rule_row(ui: &mut Ui, p: &Profile, rule: &FolderRule, msgs: &mut Vec<Msg>) {
         color::text(),
         text_w,
     );
-    painter.text(pos2(text_x, rect.top() + 29.0), Align2::LEFT_CENTER, kind, type_scale::font(type_scale::SMALL), color::weak());
+    paint_text(&painter, pos2(text_x, rect.top() + 29.0), Align2::LEFT_CENTER, kind, type_scale::font(type_scale::SMALL), color::weak());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &path));
     if cut.hovered(ui.ctx().pointer_hover_pos()) {
         resp.on_hover_text(&path);

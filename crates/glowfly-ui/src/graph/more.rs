@@ -7,6 +7,7 @@ use crate::pane_status::plain_error;
 use crate::theme::color;
 use crate::theme::sizes::ControlSize;
 use crate::theme::type_scale;
+use crate::widgets::paint_text;
 use crate::widgets::severity::{self, Severity};
 use crate::widgets::truncate::paint_cut_text;
 use crate::widgets::{buttons, fireflies};
@@ -108,7 +109,8 @@ fn loader_row(ui: &mut egui::Ui, label: &str, shown: Option<&str>, row_h: f32, t
     // Painted rather than added, so the row's layout stays one allocation.
     fireflies::paint_at(ui, pos2(text_x + MARK / 2.0, mid));
     if let Some(text) = shown {
-        ui.painter_at(rect).text(
+        paint_text(
+            &ui.painter_at(rect),
             pos2(text_x + LOADER_TEXT_X, mid),
             Align2::LEFT_CENTER,
             text,
@@ -129,7 +131,7 @@ fn failed_row(ui: &mut egui::Ui, t: Lang, row_h: f32, text_x: f32, error: &str, 
     let painter = ui.painter_at(rect);
     severity::paint(&painter, pos2(text_x + MARK / 2.0, mid), MARK, Severity::Warning, color::warn());
     let title_font = type_scale::strong(ui, type_scale::BODY);
-    let title_rect = painter.text(pos2(text_x + TEXT_GAP, mid), Align2::LEFT_CENTER, title, title_font, color::text());
+    let title_rect = paint_text(&painter, pos2(text_x + TEXT_GAP, mid), Align2::LEFT_CENTER, title, title_font, color::text());
     let reason_x = title_rect.right() + SPACE;
 
     // The button side right of the title, in a child so the parent's cursor moves by the one

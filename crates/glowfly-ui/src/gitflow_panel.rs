@@ -10,6 +10,7 @@ use crate::theme::tokens::radius;
 use crate::theme::type_scale;
 use crate::widgets::banner::{self, Banner, BannerKind};
 use crate::widgets::buttons;
+use crate::widgets::paint_text;
 use crate::widgets::quiet_target::{self, State};
 use eframe::egui::{self, Align, Align2, CornerRadius, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use git2::Oid;
@@ -132,16 +133,16 @@ fn base_row(ui: &mut Ui, snap: &Snapshot, role: &str, name: &str, msgs: &mut Vec
     let (rect, resp) = row(ui, &format!("{role} {name}"));
     let p = ui.painter_at(rect);
     let y = rect.center().y;
-    p.text(pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, role, type_scale::font(type_scale::SMALL), color::weak());
+    paint_text(&p, pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, role, type_scale::font(type_scale::SMALL), color::weak());
     let x = rect.left() + 110.0;
     let name_col = if exists { color::strong() } else { color::removed() };
-    let t = p.text(pos2(x, y), Align2::LEFT_CENTER, name, type_scale::font(type_scale::BODY), name_col);
+    let t = paint_text(&p, pos2(x, y), Align2::LEFT_CENTER, name, type_scale::font(type_scale::BODY), name_col);
     let after = match oid {
         Some(o) => (short(o), color::faint()),
         None if !exists => ("missing".to_owned(), color::removed()),
         None => (String::new(), color::faint()),
     };
-    p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, after.0, type_scale::mono(type_scale::SMALL), after.1);
+    paint_text(&p, pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, after.0, type_scale::mono(type_scale::SMALL), after.1);
     if resp.clicked()
         && let Some(o) = oid
     {
@@ -188,10 +189,10 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
     let y = rect.center().y;
     let label = if b.head { format!("✔  {}", b.short) } else { b.short.to_owned() };
     let col = if b.head { color::strong() } else { color::text() };
-    let t = p.text(pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, label, type_scale::font(type_scale::BODY), col);
-    let t = p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, b.name, type_scale::font(type_scale::SMALL), color::weak());
+    let t = paint_text(&p, pos2(rect.left() + 8.0, y), Align2::LEFT_CENTER, label, type_scale::font(type_scale::BODY), col);
+    let t = paint_text(&p, pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, b.name, type_scale::font(type_scale::SMALL), color::weak());
     if let Some(o) = oid {
-        p.text(pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, short(o), type_scale::mono(type_scale::SMALL), color::faint());
+        paint_text(&p, pos2(t.right() + 12.0, y), Align2::LEFT_CENTER, short(o), type_scale::mono(type_scale::SMALL), color::faint());
     }
     let builder = UiBuilder::new().max_rect(rect.shrink2(vec2(8.0, 2.0))).layout(Layout::right_to_left(Align::Center));
     ui.allocate_new_ui(builder, |ui| {

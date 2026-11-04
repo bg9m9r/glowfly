@@ -13,7 +13,7 @@ use super::repo_row::{self, Columns};
 use super::repo_swatch;
 use super::theme::{color, type_scale};
 use super::widgets::{self, Icon, menu_columns};
-use crate::theme::sizes::ControlSize;
+use crate::theme::sizes::{self, ControlSize};
 use crate::theme::tokens::radius;
 use crate::widgets::menu::{self, separator};
 use crate::widgets::row_menu::RowMenuExt;
@@ -121,7 +121,7 @@ pub(super) fn placeholder(ui: &mut egui::Ui, text: &str, link: Option<&str>, col
     p.extend(Shape::dashed_line(&corners, Stroke::new(1.0_f32, color::border()), DASH, DASH_GAP));
     let (_, label_x) = repo_row::lead(ui, cols);
     let g = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
-    p.galley(pos2(rect.left() + label_x, rect.center().y - g.size().y / 2.0), g, color::weak());
+    p.galley(pos2(rect.left() + label_x, sizes::text_pos(rect, &g).y), g, color::weak());
     let clicked = link.is_some_and(|link| {
         let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(Layout::right_to_left(Align::Center)));
         // Past the ⋯ slot, as `header_row` lays out a group's header.

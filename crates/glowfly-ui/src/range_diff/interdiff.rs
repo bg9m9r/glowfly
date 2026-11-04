@@ -10,6 +10,7 @@ use crate::diff::wrap::{self, RowMetrics};
 use crate::diff::{DiffStyle, LineHover, gutter_sign, paint_header, paint_line};
 use crate::theme::{color, type_scale};
 use crate::widgets::paint_cut_text;
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align2, Color32, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::{DiffRow, inline_rows};
 use glowfly_core::i18n::Lang;
@@ -58,7 +59,7 @@ fn sides(ui: &mut Ui, t: Lang, pair: &Pair) {
     let line = |y: f32, side: Option<(&Side, String)>| {
         let Some((s, label)) = side else { return };
         let x = rect.left() + INSET;
-        let at = p.text(pos2(x, y), Align2::LEFT_CENTER, label, mono.clone(), color::weak());
+        let at = paint_text(p, pos2(x, y), Align2::LEFT_CENTER, label, mono.clone(), color::weak());
         let sx = at.right() + 8.0;
         paint_cut_text(p, pos2(sx, y), &s.summary, body.clone(), color::text(), (rect.right() - INSET - sx).max(0.0));
     };
@@ -102,7 +103,7 @@ fn rows(ui: &mut Ui, st: &AppState, diff: &FileDiff, widest: usize) {
                 match marker {
                     Some(m) => {
                         let ink = if m == '+' { added_color() } else { removed_color() };
-                        p.text(pos2(x, y), Align2::LEFT_CENTER, m, font.clone(), ink);
+                        paint_text(p, pos2(x, y), Align2::LEFT_CENTER, m, font.clone(), ink);
                         let rest = &dl.text[1..];
                         paint_line(p, pos2(x + char_w, y), rest, &[], None, &font, color::text(), style.tab, None);
                     }

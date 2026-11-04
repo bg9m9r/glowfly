@@ -10,6 +10,7 @@ use super::theme::{color, type_scale};
 use super::widgets::row_menu::RowMenuExt;
 use super::widgets::severity::{self, Severity};
 use super::widgets::{self, Icon, paint_cut_text, paint_icon_sized, row_fill};
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align, Align2, Color32, FontId, Pos2, Rect, Response, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::dates;
 use glowfly_core::i18n::Lang;
@@ -159,7 +160,7 @@ pub(super) fn paint_row(ui: &mut Ui, st: &AppState, look: &RowLook, mark: impl F
 
 /// Paints `text` right-aligned at `right` and moves `right` past it and a gap; returns where.
 fn right_text(p: &egui::Painter, right: &mut f32, cy: f32, text: &str, font: &FontId) -> Rect {
-    let r = p.text(pos2(*right, cy), Align2::RIGHT_CENTER, text, font.clone(), color::weak());
+    let r = paint_text(p, pos2(*right, cy), Align2::RIGHT_CENTER, text, font.clone(), color::weak());
     *right = r.left() - GAP - 4.0;
     r
 }

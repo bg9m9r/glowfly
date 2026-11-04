@@ -237,7 +237,8 @@ fn part(
     let cap_h = caption.size().y;
     let top = sizes::centred_top(rect, cap_h + CAPTION_GAP + name.size().y);
     p.galley(pos2(x, top), caption, color::weak());
-    let row_y = top + cap_h + CAPTION_GAP + name.size().y / 2.0;
+    let name_top = top + cap_h + CAPTION_GAP;
+    let row_y = name_top + name.size().y / 2.0;
     match dot {
         Some(Some(c)) => {
             p.circle_filled(pos2(x + 7.0, row_y), 4.0, c);
@@ -248,7 +249,7 @@ fn part(
         None => {}
     }
     let name_w = name.size().x;
-    p.galley(pos2(x + icon_w, row_y - name.size().y / 2.0), name, color::text());
+    p.galley(pos2(x + icon_w, name_top), name, color::text());
     if !counts.is_empty() {
         paint_parts(p, pos2(x + icon_w + name_w + COUNTS_GAP, row_y), counts, color::weak());
     }

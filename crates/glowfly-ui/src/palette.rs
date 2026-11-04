@@ -9,9 +9,10 @@ use super::widgets::quiet_target::{self, State};
 use super::widgets::row_fill;
 use super::widgets::{self, Icon, truncate};
 use crate::theme::controls;
-use crate::theme::sizes::ControlSize;
+use crate::theme::sizes::{self, ControlSize};
 use crate::theme::tokens::radius;
 use crate::theme::type_scale;
+use crate::widgets::paint_text;
 use eframe::egui::{
     self, Align2, Color32, CornerRadius, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2,
     vec2,
@@ -217,7 +218,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
 fn group_heading(ui: &mut Ui, title: &str) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), GROUP_HEADING_H), Sense::hover());
     let font = type_scale::font(type_scale::SMALL);
-    ui.painter().text(pos2(rect.left() + 10.0, rect.center().y), Align2::LEFT_CENTER, title, font, color::weak());
+    paint_text(ui.painter(), pos2(rect.left() + 10.0, rect.center().y), Align2::LEFT_CENTER, title, font, color::weak());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, title));
 }
 
@@ -333,7 +334,7 @@ fn row(
     if let Some(keys) = shortcut {
         let g = p.layout_no_wrap(keys.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
         right_w = g.size().x + 18.0;
-        p.galley(pos2(rect.right() - g.size().x - 10.0, rect.center().y - g.size().y / 2.0), g, color::weak());
+        p.galley(pos2(rect.right() - g.size().x - 10.0, sizes::text_pos(rect, &g).y), g, color::weak());
     }
     if let Some(detail) = detail {
         let g = p.layout_no_wrap(detail.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
@@ -342,7 +343,7 @@ fn row(
         let gap = if shortcut.is_some() { 6.0 } else { 10.0 };
         let x = rect.right() - right_w - g.size().x - gap;
         right_w += g.size().x + gap + 8.0;
-        p.galley(pos2(x, rect.center().y - g.size().y / 2.0), g, color::weak());
+        p.galley(pos2(x, sizes::text_pos(rect, &g).y), g, color::weak());
     }
     let text_rect = Rect::from_min_max(pos2(rect.left() + 10.0, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
     let font = FontId::proportional(LABEL_SIZE);
@@ -356,6 +357,6 @@ fn row(
         None => label::label_job(label, matched, dim_before, LABEL_SIZE),
     };
     let g = ui.fonts(|f| f.layout_job(job));
-    p.with_clip_rect(text_rect).galley(pos2(text_rect.left(), rect.center().y - g.size().y / 2.0), g, color::text());
+    p.with_clip_rect(text_rect).galley(pos2(text_rect.left(), sizes::text_pos(rect, &g).y), g, color::text());
     if cut.is_some() { resp.on_hover_text(label) } else { resp }
 }

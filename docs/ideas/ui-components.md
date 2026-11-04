@@ -320,15 +320,22 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   resized
 - The create issue dialog's label and people pickers at the 36 px field height inside field
   groups, like its text fields
-- Sizing S5: single-line fields place their text at floor((h - row height) / 2) from the top
-  (Align::Min), so Regular fields read 8/8 above the caps and below the baseline (9/7 today), in
-  the same re-render as the drop-downs and buttons that share the graph search row's baseline
 - Sizing S2 follow-ups: the sparse paths field and terminal pill still set `.margin(...)`, and
   the PR/issue comment fields keep egui's padding
 - `TextField::size` has no caller and `text_field::with_button` always makes its button as tall as a Large field; size the button from the field, and drop `buttons.rs`'s note that fields don't take a size yet
 - Give a size to the fields still drawn without one: the dashboard filter, Preferences > Signing, the issue picker, the rebase editor, and the pull request merge title and message
 - Turn the size `debug_assert!`s that only compare constants (the profiles rename row, the chip fits) into const asserts
-- Make the hand-set size count (`SIZE_LITERALS`) fail instead of only logging, once the sizes are swept
+
+### Optical centring (S5)
+
+- Labels egui lays out itself (`ui.label` in horizontal rows, `cut_label`/`truncate_label`, Preferences form labels) still sit where egui rounds them: measure them against A2 and route the low ones through `widgets::line_rect`
+- The conflict band's side checks are an egui `Button` that places its own label: move them to `StyledButton` at a `ControlSize`
+- The terminal tab rename field (`vertical_align(Center)`, `.margin(vec2(6, 3))`) and the sparse paths field (`.margin(vec2(8, 5))`) still pad and centre by hand
+- Apply the hand-centring rule inside `widgets/` and `theme/` too, exempting only `theme/sizes.rs` and `widgets/text_line.rs`
+- Sweep the remaining counted `SIZE_LITERALS` (`*_H`/`*PAD` numbers, literal `allocate_exact_size` heights) area by area until the count reaches 0
+- A committed golden shift checker (old and new PNGs compared as an up-shift) in place of the scratch script used for S5
+- The palette's SUBHEAD-font Large field is taller than 36 px (its least padding wins over the size): decide its height with the designer
+- A dragged rebase row's strike-through can sit 1 px lower against its text than a resting row's: the drag layer's fractional offset rounds the text and the line apart
 
 ### UI review polish
 
@@ -377,7 +384,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 ### Buttons and split buttons follow the shared state painter
 - S3: quiet chips get a hit area of at least 24 px, with a check
 - S4: fold `tab_glyph` into `paint_target`, then delete `paint_quiet`
-- S5: the segmented thumb's "Graph" sits low (7 px above the caps, 5 px below the baseline)
 - A Small segmented control would trip `paint_target`'s hit assert (20 px options)
 - The state-fill ratchet misses fills painted through locals or straight from `hover_layer` (the dialog header, repository rows, the split menu, theme picker cards); move them onto the shared painter and let the check see them
 

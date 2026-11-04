@@ -4,6 +4,7 @@
 
 use crate::theme::color;
 use crate::theme::type_scale;
+use crate::widgets::paint_text;
 use crate::widgets::{Icon, paint_icon};
 use eframe::egui::{self, Align2, CursorIcon, Id, Rect, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::{LineSide, line_keys};
@@ -41,7 +42,14 @@ pub(super) fn paint(ui: &Ui, row: Rect, right: f32, row_h: f32, mark: &Mark, msg
     let icon_x = r.left() + 9.0;
     paint_icon(&p, pos2(icon_x, r.center().y), Icon::Comment, col);
     if mark.count > 1 {
-        p.text(pos2(icon_x + 8.0, r.center().y), Align2::LEFT_CENTER, mark.count.to_string(), type_scale::font(type_scale::CAPTION), col);
+        paint_text(
+            &p,
+            pos2(icon_x + 8.0, r.center().y),
+            Align2::LEFT_CENTER,
+            mark.count.to_string(),
+            type_scale::font(type_scale::CAPTION),
+            col,
+        );
     }
     let resp = resp.on_hover_text("Show the comments on this line");
     if resp.clicked() {

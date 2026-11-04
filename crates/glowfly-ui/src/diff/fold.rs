@@ -6,6 +6,7 @@
 use super::DiffView;
 use crate::theme::color;
 use crate::theme::tokens::radius;
+use crate::widgets::paint_text;
 use eframe::egui::{Align2, CornerRadius, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::diff_rows::GapSpan;
 use glowfly_core::whole_file::Fold;
@@ -36,7 +37,7 @@ pub(super) fn fold_row(ui: &mut Ui, rect: Rect, v: &DiffView, f: Fold, sign_x: f
     paint_chevrons(&p, c, k, Stroke::new(1.4_f32, color::weak()), true);
 
     let x = (rect.left() + text_x).max(ui.clip_rect().left() + 8.0);
-    p.text(pos2(x, rect.center().y), Align2::LEFT_CENTER, &text, v.style.font.clone(), color::weak());
+    paint_text(&p, pos2(x, rect.center().y), Align2::LEFT_CENTER, &text, v.style.font.clone(), color::weak());
 
     if resp.hovered() {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);

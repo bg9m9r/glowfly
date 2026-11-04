@@ -158,6 +158,25 @@ fn sized_fields_take_the_height_width_and_padding_of_their_size() {
     assert_eq!(controls::field_text_width(200.0), 180.0);
 }
 
+/// A single-line field's text top lands where `sizes::text_pos` would put it, never under the
+/// size's least padding.
+#[test]
+fn line_field_margin_sets_text_as_text_pos() {
+    use super::sizes::ControlSize;
+    let m = controls::line_field_margin(ControlSize::Regular, 19.2, None);
+    assert_eq!((m.top, m.bottom), (4, 4), "Regular: floor(14 - 9.6)");
+    let m = controls::line_field_margin(ControlSize::Large, 19.2, None);
+    assert_eq!(m.top, 8, "Large: floor(18 - 9.6) is 8, its least padding");
+    for size in [ControlSize::Regular, ControlSize::Large] {
+        let least = controls::field_pad_y(size, false) as i8;
+        let h = size.metrics().h;
+        assert_eq!(controls::line_field_margin(size, h - 1.0, None).top, least, "{size:?}: a tall line gets the least padding");
+        assert!(controls::line_field_margin(size, 24.0, None).top >= least, "{size:?}");
+    }
+    let m = controls::line_field_margin(ControlSize::Regular, 19.2, Some(26.0));
+    assert_eq!((m.left, m.right), (10, 26), "trailing room on the right, the side padding on the left");
+}
+
 /// A disabled radio is drawn at full strength, so its marks meet 3:1 in every theme: the
 /// unselected ring's edge on the panel, the selected one's `weak` fill on the panel, and its
 /// `input` dot on that fill.

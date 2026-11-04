@@ -18,6 +18,7 @@ use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use crate::theme::type_scale;
 use crate::widgets::menu::{separator, submenu};
+use crate::widgets::paint_text;
 use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, Response, Sense, pos2, vec2};
 use git2::Oid;
@@ -136,7 +137,8 @@ fn group_row(ui: &mut egui::Ui, name: &str) -> Response {
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
     let p = ui.painter_at(rect);
     widgets::row_fill::paint_state(&p, rect, widgets::row_fill::RowState::of(&resp, false, resp.hovered()));
-    p.text(
+    paint_text(
+        &p,
         pos2(rect.left() + widgets::ROW_INDENT, rect.center().y),
         Align2::LEFT_CENTER,
         name,

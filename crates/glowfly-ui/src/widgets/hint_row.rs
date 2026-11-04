@@ -53,9 +53,11 @@ pub fn show(ui: &mut Ui, t: Lang, hint: &HintView, msgs: &mut Vec<Msg>) {
     let wrap = (inner_w - text_x - TEXT_GAP - right).max(40.0);
     let galley = ui.painter().layout(hint.text.clone(), type_scale::font(type_scale::BODY), color::text(), wrap);
     let line_h = galley.rows.first().map_or(galley.size().y, |r| r.height());
-    // The first line sits centred in the controls' band.
-    let text_top = ((band - line_h) / 2.0).max(0.0).floor();
-    let text_block = band.max(text_top + galley.size().y);
+    // The first line sits centred in the controls' band, on a whole point (`sizes::text_pos`);
+    // the row keeps the height the exact centre gives it.
+    let exact_top = ((band - line_h) / 2.0).max(0.0);
+    let text_top = exact_top.floor();
+    let text_block = band.max(exact_top + galley.size().y);
     let content_h = if narrow { text_block + STACK_GAP + band } else { text_block };
     let row_h = content_h + 2.0 * PAD_Y;
 

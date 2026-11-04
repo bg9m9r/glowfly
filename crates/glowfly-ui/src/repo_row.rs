@@ -16,7 +16,7 @@
 
 use super::repo_swatch;
 use super::shortcuts::Caps;
-use super::theme::sizes::ControlSize;
+use super::theme::sizes::{self, ControlSize};
 use super::theme::{color, tokens, type_scale};
 use super::widgets::chip::{Chip, ChipSize, Look};
 use super::widgets::quiet_target::{self, State};
@@ -217,7 +217,7 @@ pub fn show(ui: &mut Ui, row: &Row, cols: Columns, words: &Words<'_>, mut items:
         let small = type_scale::font(type_scale::SMALL);
         let shown = cut_path_in(p, &row.parent, &small, room, std::path::MAIN_SEPARATOR);
         let g = p.layout_no_wrap(shown, small, color::weak());
-        p.galley(pos2(x, rect.center().y - g.size().y / 2.0), g, color::weak());
+        p.galley(pos2(x, sizes::text_pos(rect, &g).y), g, color::weak());
     }
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &row.full));
     if !cols.start {
@@ -287,7 +287,7 @@ fn cap(ui: &Ui, key: &str) -> Caps {
 /// A status as the menus show it: small weak text, its left edge at `at`'s x, centred on its y.
 fn paint_status(p: &Painter, at: Pos2, text: &str) {
     let g = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
-    p.galley(pos2(at.x, at.y - g.size().y / 2.0), g, color::weak());
+    p.galley(pos2(at.x, sizes::centred_on(at.y, g.size().y)), g, color::weak());
 }
 
 /// The width of `text` as a quiet pill.

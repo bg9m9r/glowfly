@@ -6,6 +6,7 @@
 //! egui's own widgets do, so swapping one in moves nothing. `tests/view_checks/controls.rs`
 //! checks that views use these instead of egui's.
 
+#[cfg(test)]
 pub(super) use super::field_sizes::field_pad_y;
 pub use super::field_sizes::{FIELD_PAD_X, SizedField, field_margin, field_text_width, line_field_margin};
 

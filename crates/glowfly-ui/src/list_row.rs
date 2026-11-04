@@ -14,6 +14,7 @@ pub(super) mod file_tree;
 
 use super::theme::{color, spacing, tokens};
 use super::widgets::{row_fill, truncate};
+use crate::theme::sizes;
 use crate::theme::type_scale;
 
 use std::sync::Arc;
@@ -177,7 +178,7 @@ pub fn paint_parts(p: &Painter, at: Pos2, parts: &[Part<'_>], col: Color32) {
             x += GAP;
         }
         let w = piece.galley.size().x;
-        p.galley(pos2(x, cy - piece.galley.size().y / 2.0), piece.galley, col);
+        p.galley(pos2(x, sizes::centred_on(cy, piece.galley.size().y)), piece.galley, col);
         x += w;
         if let Some(up) = piece.arrow {
             paint_arrow(p, pos2(x + ARROW_GAP + ARROW_W / 2.0, cy), up, col);
@@ -358,7 +359,12 @@ fn paint_row_text(ui: &mut Ui, text: RichText, selected: bool, reserve: f32) -> 
     let (rect, resp) = ui.allocate_exact_size(size, Sense::hover());
     if ui.is_rect_visible(rect) {
         let col = if selected { color::strong() } else { ui.visuals().text_color() };
-        let pos = ui.layout().align_size_within_rect(galley.size(), rect.shrink2(pad)).min;
+        let inner = rect.shrink2(pad);
+        let mut pos = ui.layout().align_size_within_rect(galley.size(), inner).min;
+        // Centred rows set the text where `sizes::text_pos` does, on a whole point.
+        if ui.layout().vertical_align() == Align::Center {
+            pos.y = sizes::text_pos(inner, &galley).y;
+        }
         ui.painter().galley(pos, galley.clone(), col);
     }
     let whole = galley.elided.then(|| galley.text().to_owned());

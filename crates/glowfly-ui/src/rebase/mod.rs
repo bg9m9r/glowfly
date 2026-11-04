@@ -20,6 +20,7 @@ mod step_row;
 use super::UiCache;
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
+use crate::theme::sizes;
 use crate::theme::tokens::radius;
 use crate::theme::type_scale;
 use crate::widgets::buttons;
@@ -184,6 +185,6 @@ fn plus_button(ui: &mut Ui, label: &str) -> egui::Response {
         color::weak()
     };
     paint_icon(p, egui::pos2(rect.left() + 15.0, rect.center().y), Icon::Plus, plus);
-    p.galley(egui::pos2(rect.left() + 28.0, rect.center().y - galley.size().y / 2.0), galley, text_color);
+    p.galley(egui::pos2(rect.left() + 28.0, sizes::text_pos(rect, &galley).y), galley, text_color);
     r
 }

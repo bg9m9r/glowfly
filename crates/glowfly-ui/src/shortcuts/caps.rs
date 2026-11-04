@@ -3,6 +3,7 @@
 //! favorite's key on the start page's repository rows.
 
 use crate::theme::color;
+use crate::theme::sizes;
 use crate::theme::tokens::radius;
 use crate::theme::type_scale;
 use eframe::egui::{
@@ -90,7 +91,7 @@ impl Caps {
             if cap {
                 painter.rect(r, CornerRadius::same(radius::SM), fill, Stroke::new(1.0_f32, border), StrokeKind::Inside);
             }
-            let at = r.center() - g.size() / 2.0;
+            let at = pos2(r.center().x - g.size().x / 2.0, sizes::text_pos(r, &g).y);
             painter.galley(at, g, fg);
             x += w + GAP;
         }

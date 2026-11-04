@@ -1,9 +1,9 @@
-//! One line of text painted at a point: `paint_text`, the drop-in for egui's `Painter::text`
-//! that sets vertically centred text on a whole point (`sizes::centred_on`), as
-//! `sizes::text_pos` does.
+//! One line of text set as `sizes::text_pos` sets it: `paint_text`, the drop-in for egui's
+//! `Painter::text` that puts vertically centred text on a whole point (`sizes::centred_on`), and
+//! `line_rect`, the one-line rect an egui label is put in so it sits where painted text does.
 
 use crate::theme::sizes;
-use eframe::egui::{Align, Align2, Color32, FontId, Painter, Pos2, Rect, vec2};
+use eframe::egui::{Align, Align2, Color32, FontId, Painter, Pos2, Rect, Ui, vec2};
 
 /// `Painter::text` with the same arguments and result, except that text centred on `at.y`
 /// (`Align2::*_CENTER`) has its top on a whole point at or above the exact centre, so it never
@@ -18,14 +18,23 @@ pub fn paint_text(p: &Painter, at: Pos2, anchor: Align2, text: impl ToString, fo
     rect
 }
 
+/// `r` cut to one line of `font`, as wide as `r`, with its top where `sizes::text_pos` puts
+/// text in `r` (a whole point at or above the centre). Put a label in it
+/// (`ui.put(line_rect(..), Label)`) so it keeps its accessible role and sits where painted text
+/// sits: egui sets a label put in a rect one line tall at that rect's top.
+pub fn line_rect(ui: &Ui, r: Rect, font: &FontId) -> Rect {
+    let row_h = ui.fonts(|f| f.row_height(font));
+    Rect::from_min_size(Pos2::new(r.left(), sizes::centred_top(r, row_h)), vec2(r.width(), row_h))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::theme::type_scale::{self, BODY};
-    use eframe::egui::{Context, LayerId, pos2};
+    use eframe::egui::{self, Context, LayerId, pos2};
 
     /// Runs `f` with a painter over a fresh context's background layer.
-    fn with_painter(f: impl FnOnce(&Painter)) {
+    fn with_painter(f: impl Fn(&Painter)) {
         let ctx = Context::default();
         let _ = ctx.run(Default::default(), |ctx| f(&Painter::new(ctx.clone(), LayerId::background(), Rect::EVERYTHING)));
     }
@@ -50,7 +59,10 @@ mod tests {
             let font = type_scale::font(BODY);
             for anchor in [Align2::LEFT_TOP, Align2::LEFT_BOTTOM] {
                 let at = pos2(3.0, 14.5);
-                assert_eq!(paint_text(p, at, anchor, "Fetch", font.clone(), Color32::WHITE), p.text(at, anchor, "Fetch", font.clone(), Color32::WHITE));
+                assert_eq!(
+                    paint_text(p, at, anchor, "Fetch", font.clone(), Color32::WHITE),
+                    p.text(at, anchor, "Fetch", font.clone(), Color32::WHITE)
+                );
             }
         });
     }
@@ -69,6 +81,24 @@ mod tests {
                     assert_eq!((ours.left(), ours.size()), (egui.left(), egui.size()));
                 }
             }
+        });
+    }
+
+    #[test]
+    fn line_rect_is_one_line_on_a_whole_point() {
+        let ctx = Context::default();
+        let _ = ctx.run(Default::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let font = type_scale::font(BODY);
+                let row_h = ui.fonts(|f| f.row_height(&font));
+                for top in [0.0, 0.5, 3.25] {
+                    let r = Rect::from_min_size(pos2(7.0, top), vec2(120.0, 28.0));
+                    let line = line_rect(ui, r, &font);
+                    assert_eq!(line.top(), (r.center().y - row_h / 2.0).floor(), "top {top}");
+                    assert_eq!(line.height(), row_h);
+                    assert_eq!((line.left(), line.width()), (r.left(), r.width()));
+                }
+            });
         });
     }
 }

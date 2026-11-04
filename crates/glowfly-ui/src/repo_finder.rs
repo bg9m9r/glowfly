@@ -5,7 +5,7 @@
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{self, Icon, TextField, buttons};
-use crate::theme::sizes::ControlSize;
+use crate::theme::sizes::{self, ControlSize};
 use crate::theme::type_scale;
 use eframe::egui::{self, Align, Layout, Response, RichText, Sense, vec2};
 use glowfly_core::i18n::Lang;
@@ -157,6 +157,6 @@ fn look_again(ui: &mut egui::Ui, t: Lang) -> Response {
     let p = ui.painter();
     p.rect(rect, v.corner_radius, v.weak_bg_fill, v.bg_stroke, egui::StrokeKind::Inside);
     widgets::paint_icon(p, egui::pos2(rect.left() + 14.0, rect.center().y), Icon::Refresh, v.text_color());
-    p.galley(egui::pos2(rect.left() + 28.0, rect.center().y - galley.size().y / 2.0), galley, v.text_color());
+    p.galley(egui::pos2(rect.left() + 28.0, sizes::text_pos(rect, &galley).y), galley, v.text_color());
     resp
 }

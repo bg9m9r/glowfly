@@ -6,6 +6,7 @@
 use super::op_preview_dialog::Env;
 use super::theme::{color, type_scale};
 use super::widgets::{Icon, paint_cut_text, paint_icon_sized};
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align2, Color32, Pos2, Sense, Ui, pos2, vec2};
 use glowfly_core::op_preview::{AfterRow, CommitLine, Gone, OpPreview};
 use glowfly_model::state::op_preview::{gone_tag, stop_tag};
@@ -148,17 +149,17 @@ fn paint_row(ui: &mut Ui, row: Row, lane: Option<(Color32, (bool, bool))>) {
     let (small, mono) = (type_scale::font(type_scale::SMALL), type_scale::mono(type_scale::SMALL));
     let mut right = rect.right() - 4.0;
     if let Some((tag, col)) = row.tag {
-        right = p.text(pos2(right, cy), Align2::RIGHT_CENTER, tag, small.clone(), col).left() - 12.0;
+        right = paint_text(p, pos2(right, cy), Align2::RIGHT_CENTER, tag, small.clone(), col).left() - 12.0;
     }
     if let Some(a) = &row.age {
-        right = p.text(pos2(right, cy), Align2::RIGHT_CENTER, a, small, color::weak()).left() - 12.0;
+        right = paint_text(p, pos2(right, cy), Align2::RIGHT_CENTER, a, small, color::weak()).left() - 12.0;
     }
     if row.into {
         paint_icon_sized(p, Pos2::new(right - 6.0, cy), Icon::Into, color::weak(), 12.0);
         right -= 18.0;
     }
     if let Some(sha) = &row.sha {
-        right = p.text(pos2(right, cy), Align2::RIGHT_CENTER, sha, mono, color::weak()).left() - 12.0;
+        right = paint_text(p, pos2(right, cy), Align2::RIGHT_CENTER, sha, mono, color::weak()).left() - 12.0;
     }
     let left = rect.left() + TEXT_X;
     let body = type_scale::font(type_scale::BODY);

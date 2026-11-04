@@ -10,6 +10,7 @@ use super::theme::type_scale;
 use super::widgets::severity::{self, Severity};
 use super::widgets::truncate::cut_path_in;
 use super::widgets::{self, Icon, icon};
+use crate::theme::sizes;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Color32, RichText, Sense, TextStyle, TextWrapMode, Ui, WidgetInfo, WidgetType};
 use glowfly_core::i18n::Lang;
@@ -113,7 +114,7 @@ fn tag(ui: &mut Ui, t: Lang, galley: &egui::Galley, at: egui::Rect, text_w: f32)
     let fits = last.max.x + TAG_GAP + size.x <= text_w;
     let text = RichText::new(words).font(type_scale::font(type_scale::SMALL)).color(color::weak());
     let pos = if fits {
-        egui::pos2(at.min.x + last.max.x + TAG_GAP, at.min.y + last.center().y - size.y / 2.0)
+        egui::pos2(at.min.x + last.max.x + TAG_GAP, sizes::centred_on(at.min.y + last.center().y, size.y))
     } else {
         egui::pos2(at.min.x, at.max.y)
     };

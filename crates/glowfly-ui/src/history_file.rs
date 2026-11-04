@@ -16,6 +16,7 @@ use super::pane_status::{self, Failure};
 use super::theme::color;
 use super::widgets::{scroll_cue, truncate};
 use crate::theme::sizes::ControlSize;
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align, Align2, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::preview::{self, PreviewKind};
 use glowfly_core::repo::{BINARY_NOT_SHOWN, LfsState};
@@ -252,7 +253,7 @@ fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, data: Arc<FileTextD
         let y = rect.top() + style.row_h / 2.0;
         if style.numbers {
             let num_right = rect.left() + 8.0 + num_w;
-            ui.painter().text(pos2(num_right, y), Align2::RIGHT_CENTER, (i + 1).to_string(), style.font.clone(), color::faint());
+            paint_text(ui.painter(), pos2(num_right, y), Align2::RIGHT_CENTER, (i + 1).to_string(), style.font.clone(), color::faint());
         }
         let code_left = rect.left() + code_x;
         let clip = Rect::from_min_max(pos2(code_left, rect.top()), rect.max);

@@ -14,6 +14,7 @@ use crate::theme::type_scale;
 use crate::widgets::buttons;
 use crate::widgets::chip::{Chip, ChipSize, Look};
 use crate::widgets::form_message::{self, Message};
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align, Align2, CornerRadius, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{Profile, ProfileId, Settings};
@@ -98,8 +99,14 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
     let text_x = rect.left() + 30.0;
     let renaming = page.renaming.as_ref().is_some_and(|f| f.id == p.id);
     if !renaming {
-        let name =
-            painter.text(pos2(text_x, rect.top() + 15.0), Align2::LEFT_CENTER, &p.name, type_scale::font(type_scale::BODY), color::text());
+        let name = paint_text(
+            &painter,
+            pos2(text_x, rect.top() + 15.0),
+            Align2::LEFT_CENTER,
+            &p.name,
+            type_scale::font(type_scale::BODY),
+            color::text(),
+        );
         if current {
             let look = Look::new(color::wash(color::primary(), 0.25), color::text());
             Chip::new(ChipSize::Badge, CURRENT_CHIP).look(look).paint(&painter, name.right() + 8.0, rect.top() + 15.0);
@@ -109,7 +116,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
         Some(l) => (l, color::weak()),
         None => (NO_IDENTITY.to_owned(), color::faint()),
     };
-    painter.text(pos2(text_x, rect.top() + 32.0), Align2::LEFT_CENTER, line, type_scale::font(type_scale::SMALL), line_color);
+    paint_text(&painter, pos2(text_x, rect.top() + 32.0), Align2::LEFT_CENTER, line, type_scale::font(type_scale::SMALL), line_color);
 
     let buttons = rect.shrink2(vec2(10.0, 0.0));
     // Children that don't allocate: the row above already holds the space.

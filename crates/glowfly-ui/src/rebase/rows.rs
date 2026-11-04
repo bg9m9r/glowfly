@@ -10,6 +10,7 @@ use super::commit_row::{RowKind, paint_action, paint_row};
 use super::step_row::paint_step;
 use super::{commit_row, drag, editor, keys, merge_row, step_row};
 use crate::theme::color;
+use crate::theme::sizes;
 use crate::theme::tokens::{Elevation, motion, radius, shadow};
 use crate::theme::type_scale;
 use eframe::egui::{self, Color32, CursorIcon, Rect, Response, RichText, Sense, Ui, pos2, vec2};
@@ -241,7 +242,7 @@ fn tip_row(ui: &mut Ui, panel: &RebasePanel, look: &Look) {
     let g = p.layout_no_wrap(text, egui::FontId::proportional(type_scale::BODY), color::faint());
     let x = row.left() + SHA_X;
     let chip_x = x + g.size().x + TIP_GAP;
-    p.galley(pos2(x, row.center().y - g.size().y / 2.0), g, color::faint());
+    p.galley(pos2(x, sizes::text_pos(row, &g).y), g, color::faint());
     if let Some(branch) = panel.tip_branch() {
         crate::graph::branch_chip::paint(p, chip_x, row.center().y, look.snap, branch, row.right() - chip_x);
     }

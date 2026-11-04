@@ -4,6 +4,7 @@
 use crate::common::short;
 use crate::theme::color;
 use crate::widgets::paint_cut_text;
+use crate::widgets::paint_text;
 use eframe::egui::{Align2, FontId, Painter, Rect, Ui, pos2, vec2};
 use glowfly_core::repo::BlameCommit;
 use glowfly_model::state::AppState;
@@ -28,9 +29,9 @@ pub(super) struct Fonts {
 pub(super) fn text(ui: &Ui, st: &AppState, fonts: &Fonts, c: &BlameCommit, first: Rect, second: Option<Rect>) {
     let (left, right) = (first.left() + PAD, first.left() + GUTTER_W - PAD);
     let y = first.center().y;
-    let sha = ui.painter().text(pos2(right, y), Align2::RIGHT_CENTER, short(c.oid), fonts.sha.clone(), color::weak());
+    let sha = paint_text(ui.painter(), pos2(right, y), Align2::RIGHT_CENTER, short(c.oid), fonts.sha.clone(), color::weak());
     let date = st.settings.format_day(c.time, st.cues.now, st.cues.utc_offset);
-    let date = ui.painter().text(pos2(sha.left() - 10.0, y), Align2::RIGHT_CENTER, date, fonts.name.clone(), color::weak());
+    let date = paint_text(ui.painter(), pos2(sha.left() - 10.0, y), Align2::RIGHT_CENTER, date, fonts.name.clone(), color::weak());
     let author = if c.author.is_empty() { st.settings.lang().tr("blame.gutter.unknown") } else { c.author.as_str() };
     paint_cut_text(ui.painter(), pos2(left, y), author, fonts.name.clone(), color::text(), date.left() - 10.0 - left);
     if let Some(r) = second {

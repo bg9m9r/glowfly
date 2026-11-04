@@ -7,6 +7,7 @@ use super::diff::fold::paint_chevrons;
 use super::diff::{ROW_H, mono};
 use super::theme::color;
 use crate::theme::tokens::radius;
+use crate::widgets::paint_text;
 use eframe::egui::{Align2, CornerRadius, CursorIcon, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::conflict_folds::CleanFold;
 use glowfly_core::i18n::Lang;
@@ -31,7 +32,7 @@ pub(super) fn fold_row(ui: &mut Ui, t: Lang, rect: Rect, f: CleanFold, msgs: &mu
     let left = rect.left().max(ui.clip_rect().left());
     // The unfold mark: chevrons pointing apart.
     paint_chevrons(&p, pos2(left + 12.0, rect.center().y), 1.0, Stroke::new(1.4_f32, color::weak()), true);
-    p.text(pos2(left + 26.0, rect.center().y), Align2::LEFT_CENTER, &text, mono(), color::weak());
+    paint_text(&p, pos2(left + 26.0, rect.center().y), Align2::LEFT_CENTER, &text, mono(), color::weak());
     if resp.hovered() {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }

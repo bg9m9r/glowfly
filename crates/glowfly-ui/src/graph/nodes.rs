@@ -7,6 +7,7 @@ use crate::avatars::Avatars;
 use crate::theme::color;
 use crate::theme::initials::initials_tones;
 use crate::widgets;
+use crate::widgets::paint_text;
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Stroke, StrokeKind, epaint::RectShape, pos2, vec2};
 use glowfly_core::settings::Density;
 
@@ -54,7 +55,7 @@ pub(super) fn commit(p: &Painter, (c, r): (Pos2, f32), name: &str, email: &str, 
     let (fill, ink) = initials_tones(email, name);
     p.circle_filled(c, r, fill);
     p.circle_stroke(c, r - 0.75, Stroke::new(1.5_f32, lane));
-    p.text(c, Align2::CENTER_CENTER, widgets::initials(name), FontId::proportional(r * 0.8), ink);
+    paint_text(p, c, Align2::CENTER_CENTER, widgets::initials(name), FontId::proportional(r * 0.8), ink);
 }
 
 /// A merge commit's node: a small solid dot.

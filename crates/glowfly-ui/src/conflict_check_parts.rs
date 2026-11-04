@@ -8,6 +8,7 @@ use super::theme::color;
 use super::theme::type_scale;
 use super::widgets::icon::{Icon, paint_icon_sized};
 use super::widgets::truncate::{cut_left_in, middle};
+use crate::widgets::paint_text;
 use eframe::egui::{self, Align2, FontId, Rect, Response, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::conflict_check::TargetKind;
 use glowfly_core::i18n::Lang;
@@ -32,7 +33,7 @@ fn cut_row(ui: &mut Ui, rect: Rect, text: &str, font: FontId, colour: egui::Colo
 /// `cut_row` named `name` for screen readers (the text with its role).
 fn cut_row_named(ui: &mut Ui, rect: Rect, text: &str, name: &str, font: FontId, colour: egui::Color32, cut: CutFn) -> Response {
     let shown = cut(ui.painter(), text, &font, rect.width().max(0.0));
-    ui.painter().text(rect.left_center(), Align2::LEFT_CENTER, &shown, font, colour);
+    paint_text(ui.painter(), rect.left_center(), Align2::LEFT_CENTER, &shown, font, colour);
     let resp = ui.interact(rect, ui.id().with(("cut-row", text, rect.top() as i32)), Sense::hover());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, name));
     if shown != text { resp.on_hover_text(text) } else { resp }
@@ -82,7 +83,7 @@ pub(super) fn file_list(ui: &mut Ui, t: Lang, paths: &[String], short: bool) {
     let small = type_scale::font(type_scale::SMALL);
     let heading = t.trn("conflict_check.popover.both_sides", paths.len(), &[]);
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), HEADING_H), Sense::hover());
-    ui.painter().text(pos2(rect.left(), rect.center().y), Align2::LEFT_CENTER, &heading, small.clone(), color::weak());
+    paint_text(ui.painter(), pos2(rect.left(), rect.center().y), Align2::LEFT_CENTER, &heading, small.clone(), color::weak());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &heading));
     ui.add_space(4.0);
     let (shown, more) = cc::file_list(t, paths, short.then_some(cc::POPOVER_FILES));
@@ -97,7 +98,7 @@ pub(super) fn file_list(ui: &mut Ui, t: Lang, paths: &[String], short: bool) {
     }
     if let Some(more) = more {
         let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
-        ui.painter().text(pos2(rect.left() + indent, rect.center().y), Align2::LEFT_CENTER, &more, small, color::weak());
+        paint_text(ui.painter(), pos2(rect.left() + indent, rect.center().y), Align2::LEFT_CENTER, &more, small, color::weak());
         resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &more));
     }
 }

@@ -7,6 +7,7 @@
 use crate::pane_status;
 use crate::theme::branch_colours::line;
 use crate::theme::{color, type_scale};
+use crate::widgets::paint_text;
 use crate::widgets::{buttons, paint_cut_text, reason};
 use eframe::egui::{self, Align, Align2, Color32, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::journal::{CommitLine, Row, Subject};
@@ -116,7 +117,7 @@ pub(super) fn lane(ui: &mut Ui, st: &AppState, tone: Color32, history: &[CommitL
         let cy = y(i);
         p.circle_filled(pos2(x, cy), DOT_R, tone);
         let age = st.settings.format_time(c.time, st.cues.now, st.cues.utc_offset);
-        let age_rect = p.text(pos2(right, cy), Align2::RIGHT_CENTER, age, small.clone(), color::weak());
+        let age_rect = paint_text(p, pos2(right, cy), Align2::RIGHT_CENTER, age, small.clone(), color::weak());
         let sha_w = 64.0;
         let sha_x = age_rect.left() - 12.0 - sha_w;
         paint_cut_text(p, pos2(sha_x.max(x + 16.0), cy), &short(c.oid), mono.clone(), color::weak(), sha_w);

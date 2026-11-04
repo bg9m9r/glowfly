@@ -5,6 +5,7 @@ use super::rows::{BUTTONS_W, COMBO_W, COMBO_X, GAP, GRIP_X, INDENT, Look, META_W
 use crate::theme::color;
 use crate::theme::tokens::radius;
 use crate::theme::type_scale;
+use crate::widgets::paint_text;
 use crate::widgets::{Icon, icon_button, paint_cut_text, paint_icon};
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, Layout, Rect, RichText, Stroke, StrokeKind, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
@@ -67,9 +68,11 @@ pub(super) fn paint_row(ui: &Ui, rect: Rect, item: &TodoItem, look: &Look, shade
     paint_cut_text(p, pos2(meta_x, cy), &meta, type_scale::font(type_scale::SMALL), weak, META_W - 10.0);
 
     let summary = shown_summary(item);
-    let w = paint_cut_text(p, pos2(x, cy), summary, type_scale::font(type_scale::BODY), text, meta_x - x - 16.0).rect.width();
-    if dropped && w > 0.0 {
-        p.line_segment([pos2(x, cy + 0.5), pos2(x + w, cy + 0.5)], Stroke::new(1.0_f32, text));
+    let shown = paint_cut_text(p, pos2(x, cy), summary, type_scale::font(type_scale::BODY), text, meta_x - x - 16.0).rect;
+    if dropped && shown.width() > 0.0 {
+        // Through the text where it was painted (on a whole point), so the two move together.
+        let y = shown.center().y.floor() + 0.5;
+        p.line_segment([pos2(x, y), pos2(x + shown.width(), y)], Stroke::new(1.0_f32, text));
     }
 }
 
@@ -89,7 +92,7 @@ pub(super) fn paint_chip(ui: &Ui, row: Rect, text: &str, c: Color32) {
     let rect = Rect::from_min_size(pos2(row.left() + COMBO_X, row.center().y - 11.0), vec2(COMBO_W, 22.0));
     ui.painter().rect_filled(rect, CornerRadius::same(radius::SM), color::raised());
     let pos = pos2(rect.left() + 8.0, rect.center().y);
-    ui.painter().text(pos, Align2::LEFT_CENTER, text, type_scale::font(type_scale::BODY), c);
+    paint_text(ui.painter(), pos, Align2::LEFT_CENTER, text, type_scale::font(type_scale::BODY), c);
 }
 
 /// The action as a painted label in place of its combo box (while rows move).

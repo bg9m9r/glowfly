@@ -14,6 +14,7 @@ use crate::theme::tokens::radius;
 use crate::theme::type_scale;
 use crate::widgets::buttons;
 use crate::widgets::chip::{Chip, ChipSize, Look};
+use crate::widgets::paint_text;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, CornerRadius, CursorIcon, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::forge::{CheckList, CheckRun};
@@ -73,11 +74,11 @@ fn header(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
     quiet_target::paint(p, rect, CornerRadius::same(radius::SM), ControlSize::Regular, State::of(&resp, false));
     let y = rect.center().y;
     widgets::chevron(p, pos2(rect.left() + 8.0, y), v.checks.open, color::weak());
-    let title = p.text(pos2(rect.left() + 20.0, y), Align2::LEFT_CENTER, "Checks", type_scale::section(ui), color::text());
+    let title = paint_text(p, pos2(rect.left() + 20.0, y), Align2::LEFT_CENTER, "Checks", type_scale::section(ui), color::text());
     let body = type_scale::font(type_scale::BODY);
     let mut right = rect.right() - 4.0;
     if let Some(n) = v.checks.loaded().map(|l| l.runs.len()).filter(|&n| n > 0) {
-        let count = p.text(pos2(right, y), Align2::RIGHT_CENTER, n.to_string(), body.clone(), color::weak());
+        let count = paint_text(p, pos2(right, y), Align2::RIGHT_CENTER, n.to_string(), body.clone(), color::weak());
         right = count.left() - GAP;
     }
     let (state, summary) = header_summary(v);
@@ -153,7 +154,7 @@ fn paint_row(ui: &Ui, rect: Rect, r: &CheckRun, now: i64, state: State) {
     paint_run(&p, pos2(rect.left() + ICON_X, y), r.state);
     let mut right = rect.right() - 4.0;
     if let Some(time) = time_text(r, now) {
-        let shown = p.text(pos2(right, y), Align2::RIGHT_CENTER, time, type_scale::font(type_scale::BODY), color::weak());
+        let shown = paint_text(&p, pos2(right, y), Align2::RIGHT_CENTER, time, type_scale::font(type_scale::BODY), color::weak());
         right = shown.left() - GAP;
     }
     if r.required == Some(true) {
