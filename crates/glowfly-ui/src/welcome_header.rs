@@ -1,6 +1,6 @@
 //! The welcome's own dialog header (`Dialog::header`): a band tinted toward the accent across the
 //! dialog's whole width, painted into the frame's padding, with the title, a subtitle or
-//! greeting, the lattice drawing (`welcome_art.rs`) and the shared close button; under it a
+//! greeting, the firefly drawing (`welcome_art.rs`) and the shared close button; under it a
 //! four-segment progress bar with each step's caption, then the step's title.
 
 use super::dialog_frame;
