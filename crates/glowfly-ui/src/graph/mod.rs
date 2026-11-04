@@ -51,7 +51,7 @@ use glowfly_model::msg::BranchMsg;
 use glowfly_model::msg::GraphMsg;
 use glowfly_model::msg::LoadMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::graph_rows::{DisplayRow, GraphRows};
 use glowfly_model::state::tip::Tip;
 use glowfly_model::state::worktrees::{open_blocked, wip_tooltip};
@@ -78,14 +78,14 @@ const INLINE_SHARE: f32 = 0.4;
 const INLINE_GAP: f32 = 8.0;
 
 /// The commit graph with its column header.
-pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+pub fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     if st.snap.is_none() {
         return;
     }
     // The central view's pane key: the graph takes the keyboard focus.
-    let want_focus = crate::pane_focus::take(st, &[glowfly_model::state::layout::Pane::Central]);
-    if st.view.show_search {
-        search_bar::show(ui, st, msgs);
+    let want_focus = crate::pane_focus::take(view, &[glowfly_model::state::layout::Pane::Central]);
+    if view.show_search {
+        search_bar::show(ui, st, view, msgs);
         ui.add_space(4.0);
     }
     {
@@ -97,9 +97,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             return super::graph_empty::no_commits(ui);
         }
         // The search dims or hides rows only while its bar is shown.
-        let rows = GraphRows::new(snap, &st.session.search, st.view.show_search);
+        let rows = GraphRows::new(snap, &st.session.search, view.show_search);
         let filtered = rows.filtered();
-        let searching = st.view.show_search && st.session.search.active();
+        let searching = view.show_search && st.session.search.active();
         let total = rows.len();
         // While filtering every node sits in the first lane, without lane lines.
         let lanes = if filtered { 1 } else { snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES) };
@@ -109,9 +109,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         // Not under a dialog, the palette or a credential prompt, which keep their keys.
         if st.modal.is_none() && st.palette.is_none() && !st.askpass.showing() {
-            let (offset, height) = st.view.tab.graph_scroll;
+            let (offset, height) = view.tab.graph_scroll;
             let port = select::Viewport { offset, height, row_h };
-            select::keyboard_nav(ui, (&st.session.selection, st.session.wip_lit), snap, &rows, port, &mut st.view, msgs);
+            select::keyboard_nav(ui, (&st.session.selection, st.session.wip_lit), snap, &rows, port, view, msgs);
         }
 
         // What grouping a row's ref labels into chips needs, once per frame.
@@ -122,16 +122,16 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let dates = cells::wide_dates(s, st.cues.now, st.cues.utc_offset, oldest);
         let chips_w = refs_fit::chips_w(ui.painter(), snap, &ref_cx);
         let input = header::HeaderIn { graph_w, cfg: &s.columns, saved: s.column_widths, chips_w, dates: &dates };
-        let fitted = header::column_header(ui, t, input, &mut st.view.column_drag, msgs);
+        let fitted = header::column_header(ui, t, input, &mut view.column_drag, msgs);
         let (cols_cfg, widths, graph_w, inline) = (fitted.cfg, fitted.widths, fitted.graph_w, fitted.refs_inline);
         // A tip about the graph sits pinned under the header, pushing the rows down.
-        if let Some(h) = glowfly_model::state::hints::view(st).filter(|h| h.place == glowfly_model::state::hints::Place::Graph) {
+        if let Some(h) = glowfly_model::state::hints::view(st, view.sections.prs).filter(|h| h.place == glowfly_model::state::hints::Place::Graph) {
             crate::widgets::hint_row::show(ui, t, &h, msgs);
         }
         // How many matches fill the graph, for a filtering search loading further back.
-        st.view.graph_fit_rows = (ui.available_height() / row_h).floor() as usize;
+        view.graph_fit_rows = (ui.available_height() / row_h).floor() as usize;
         if filtered && total == 0 {
-            return super::graph_empty::no_matches(ui, st, msgs);
+            return super::graph_empty::no_matches(ui, st, view, msgs);
         }
         // Pull requests by head commit, for graph badges.
         let pr_at: HashMap<Oid, (String, bool)> = st.session.forge.as_ref().map(cells::pr_badges).unwrap_or_default();
@@ -150,9 +150,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         // The selection shows as focused while the graph has the keyboard focus or nothing has.
         let active = crate::pane_focus::graph_active(ui.ctx());
         let mut area = egui::ScrollArea::vertical().auto_shrink([false, false]);
-        if let Some(row) = st.view.scroll_to_row.take() {
+        if let Some(row) = view.scroll_to_row.take() {
             area = area.vertical_scroll_offset(row as f32 * row_h);
-        } else if let Some(off) = st.view.scroll_offset.take() {
+        } else if let Some(off) = view.scroll_offset.take() {
             area = area.vertical_scroll_offset(off);
         }
         let selection = &st.session.selection;
@@ -173,7 +173,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let pointer = ui.ctx().pointer_hover_pos();
         // One more row below the last commit: more history loading, loading it failed, or the
         // history's end notes (Load more, a shallow clone's Fetch full history).
-        let end = st.end_row();
+        let end = st.end_row(view);
         let shown_rows = total + end.is_some() as usize;
         // The New branch… ghost button: on the checked-out commit when hovered or anchoring the
         // selection, and never while a menu is open.
@@ -389,10 +389,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             }
             last
         });
-        st.view.tab.graph_scroll = (out.state.offset.y, out.inner_rect.height());
+        view.tab.graph_scroll = (out.state.offset.y, out.inner_rect.height());
         if more::wants_more(st, out.inner, total, filtered) {
             msgs.push(Msg::Load(LoadMsg::NearHistoryEnd));
         }
-        asks.apply(st, msgs);
+        asks.apply(view, msgs);
     }
 }

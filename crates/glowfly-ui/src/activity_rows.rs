@@ -17,7 +17,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::logs::format_took;
 use glowfly_model::logs::LogsMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::activity_copy::copy_log_blocked;
 use glowfly_model::state::activity_rows::{ActivityRow, SessionHead, foldable, rows, title_of};
 use glowfly_model::state::logs::EntryId;
@@ -39,7 +39,7 @@ const GAP: f32 = 8.0;
 /// How much an earlier session's marks are faded.
 const DIM: f32 = 0.6;
 
-pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     if st.log.is_empty() {
         ui.add_space(8.0);
@@ -48,7 +48,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     }
     // A reveal lets go of the bottom for its frame and jumps there within it: sticking, or an
     // animation that only starts next frame, would be pulled back to the bottom.
-    let revealing = st.view.activity_reveal.is_some();
+    let revealing = view.activity_reveal.is_some();
     let area = egui::ScrollArea::vertical().stick_to_bottom(!revealing).animated(!revealing);
     area.auto_shrink([false, false]).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
@@ -61,14 +61,14 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ActivityRow::Entry(i) => (entry(ui, st, i, msgs), st.log[i].id),
                 ActivityRow::Routine { first, last, count } => (routine(ui, st, first, last, count, msgs), st.log[first].id),
             };
-            if st.view.activity_reveal == Some(id) {
+            if view.activity_reveal == Some(id) {
                 // The row's own line at the top, its open part below it.
                 ui.scroll_to_rect(rect, Some(Align::Min));
-                st.view.activity_reveal = None;
+                view.activity_reveal = None;
             }
         }
         // Once: a row that is gone (cleared) isn't looked for again.
-        st.view.activity_reveal = None;
+        view.activity_reveal = None;
     });
 }
 

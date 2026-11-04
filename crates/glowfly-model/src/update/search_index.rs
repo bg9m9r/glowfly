@@ -142,7 +142,7 @@ pub(super) fn fill_target(st: &AppState) -> Option<Option<usize>> {
         let asking = st.current_index().is_some() && st.session.search.index.pending.is_some();
         return asking.then_some(None);
     };
-    let fill = st.fill_rows();
+    let fill = st.fill_rows(&st.view);
     if st.session.search.matches.len() >= fill {
         return Some(None);
     }
@@ -156,7 +156,7 @@ pub(super) fn near_end(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let Some((loaded, positions)) = answer(st) else { return };
-    if let Some(count) = through_matches(positions, st.session.search.matches.len() + st.fill_rows(), loaded) {
+    if let Some(count) = through_matches(positions, st.session.search.matches.len() + st.fill_rows(&st.view), loaded) {
         load_through(st, count, fx);
     }
 }

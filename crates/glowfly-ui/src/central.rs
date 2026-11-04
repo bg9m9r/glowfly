@@ -20,7 +20,7 @@ use glowfly_model::msg::RebaseMsg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::SelectionMsg;
 use glowfly_model::pull_request::PullRequestMsg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::layout::Pane;
 
 /// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
@@ -35,7 +35,7 @@ use glowfly_model::state::layout::Pane;
 /// palette and an open menu of the menu bar or title bar handle Esc themselves. With the graph
 /// shown, Esc on a focused control that isn't a text field only gives the graph the focus back. In a text field Esc only leaves the field, and in the terminal it goes to the
 /// shell.
-pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(crate) fn escape_key(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     if !ctx.input(|i| i.key_pressed(Key::Escape))
         // That Esc cancels the tab drag (`tabs.rs`) and nothing else.
         || super::tabs::dragging(ctx)
@@ -44,8 +44,8 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         || st.modal.is_some()
         || st.askpass.showing()
         || st.palette.is_some()
-        || st.view.terminal.focused
-        || st.view.was_typing
+        || view.terminal.focused
+        || view.was_typing
         || (st.onboarding.welcome.is_some() && st.prefs.is_none())
     {
         return;
@@ -58,7 +58,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     }
     // On a focused button, list or other control (not a text field) it only returns the focus
     // to the graph, when the graph is shown.
-    if super::pane_focus::escape_to_graph(ctx, st) {
+    if super::pane_focus::escape_to_graph(ctx, st, view.was_typing) {
         return;
     }
     if glowfly_model::state::terminal::maximized_shown(st) {
@@ -71,7 +71,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         // unsaved edits (update/prefs_leave.rs).
         let edited = glowfly_model::state::prefs_save::unsaved(p, &st.settings, st.snap.as_ref());
         if !glowfly_model::state::prefs_save::saving(p) {
-            msgs.push(Msg::Prefs(if edited && st.view.prefs_bar_focused { PrefsMsg::RevertPage } else { PrefsMsg::ClosePrefs }));
+            msgs.push(Msg::Prefs(if edited && view.prefs_bar_focused { PrefsMsg::RevertPage } else { PrefsMsg::ClosePrefs }));
         }
     } else if st.onboarding.tour.is_some() {
         msgs.push(Msg::Onboarding(glowfly_model::onboarding::OnboardingMsg::CloseTour));
@@ -83,7 +83,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.session.blame.view.is_some() {
         msgs.push(Msg::Blame(BlameMsg::Close));
-    } else if st.view.diff_text.is_some() && (st.diff_or_download() || st.session.history.view.is_some()) {
+    } else if view.diff_text.is_some() && (st.diff_or_download() || st.session.history.view.is_some()) {
         // In a diff, Esc first drops the text selected in its code, then its lines, then the rest.
         msgs.push(Msg::Diff(DiffMsg::ClearTextSelection));
     } else if glowfly_model::state::pull_request::line_comment::esc_cancels(st) {
@@ -112,7 +112,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     } else if matches!(st.session.selection, glowfly_model::state::Selection::Commits(_) | glowfly_model::state::Selection::VsWorkdir(_)) {
         msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
     } else {
-        st.view.show_search = false;
+        view.show_search = false;
     }
 }
 
@@ -129,11 +129,11 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             // central view's and the diff's pane keys.
             let name = st.settings.lang().tr("central.focus.name");
             let (rect, other) = (ui.max_rect(), !st.graph_shown() && st.snap.is_some() && !st.dashboard.open);
-            let target = other.then(|| super::pane_focus::central(ui, st, rect, name));
+            let target = other.then(|| super::pane_focus::central(ui, &mut st.view, rect, name));
             // `AppState::graph_shown` and `state::layout::tool_view` follow this order: keep the
             // three in step.
             if st.dashboard.open {
-                dashboard::show(ui, st, msgs);
+                st.with_view(|st, view| dashboard::show(ui, st, view, msgs));
             } else if st.onboarding.getting_started.is_some() {
                 getting_started::show(ui, st, msgs);
             } else if st.snap.is_none() {
@@ -149,7 +149,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             } else if st.session.issue.view.is_some() {
                 issue::show(ui, st, &mut cache.markdown, msgs);
             } else if st.diff_or_download() {
-                diff::show(ui, st, cache, msgs);
+                st.with_view(|st, view| diff::show(ui, st, view, cache, msgs));
             } else if st.session.rebase.view.is_some() {
                 rebase::show(ui, st, cache, msgs);
             } else if st.session.range_diff.view.is_some() {
@@ -159,7 +159,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             } else if st.session.gitflow_panel {
                 gitflow_panel::show(ui, st, msgs);
             } else {
-                graph::show(ui, st, cache, msgs);
+                st.with_view(|st, view| graph::show(ui, st, view, cache, msgs));
             }
             if let Some(t) = target {
                 t.ring(ui);

@@ -15,7 +15,7 @@ use glowfly_core::matching::contains_lower;
 use glowfly_model::keymap::BindingId;
 use glowfly_model::msg::{Msg, SearchMsg};
 use glowfly_model::state::history_index::HistoryCount;
-use glowfly_model::state::{AppState, Selection};
+use glowfly_model::state::{AppState, ViewState, Selection};
 
 /// How many authors the picker lists before asking for a narrower filter.
 const MAX_AUTHORS: usize = 200;
@@ -35,33 +35,33 @@ const CLEAR_ROOM: f32 = 26.0;
 /// field is empty and the hint is cut.
 const HINT: &str = "Search messages, authors and SHAs; narrow with author: or path:";
 
-pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         // As tall as the field from the start, so every control centres on its centre line.
         ui.set_min_height(ControlSize::Regular.metrics().h);
         ui.add_space(super::layout::EDGE_INSET);
         // The field gives up width before the controls after it run out of room.
         let width = (ui.available_width() - CONTROLS_W).clamp(160.0, 420.0);
-        let empty = st.session.tab_view.search.is_empty();
+        let empty = view.tab.search.is_empty();
         // The text's width: the clear button's room replaces the right padding.
         let text_w = width - controls::FIELD_PAD_X - CLEAR_ROOM;
         let (hint, hint_cut) = widgets::truncate::hint(ui, HINT, text_w);
-        let edit = egui::TextEdit::singleline(&mut st.session.tab_view.search).hint_text(hint);
+        let edit = egui::TextEdit::singleline(&mut view.tab.search).hint_text(hint);
         let r = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(width).trailing_room(CLEAR_ROOM));
         access::name_if_unnamed(&r, HINT);
         let r = if empty && hint_cut { r.on_hover_text(HINT) } else { r };
-        if !st.session.tab_view.search.is_empty() {
+        if !view.tab.search.is_empty() {
             clear_button(ui, r.rect, st.settings.lang().tr("search.clear.button"), msgs);
         }
 
         // A credential prompt, the command palette or the author picker keeps the keyboard.
         let covered = st.askpass.showing() || st.palette.is_some();
         let picking = ui.memory(|m| m.any_popup_open());
-        if !r.has_focus() && st.session.tab_view.search.is_empty() && !covered && !picking {
+        if !r.has_focus() && view.tab.search.is_empty() && !covered && !picking {
             r.request_focus();
         }
         // Search commits from the command palette focuses the field even with text in it.
-        if !covered && std::mem::take(&mut st.view.focus_search) {
+        if !covered && std::mem::take(&mut view.focus_search) {
             r.request_focus();
         }
         if r.changed() {
@@ -79,7 +79,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::Search(SearchMsg::ToggleFilter));
         }
 
-        author_picker(ui, st, msgs);
+        author_picker(ui, st, view, msgs);
 
         let selected = match &st.session.selection {
             Selection::Commit(o) => st.snap.as_ref().and_then(|s| s.row_of.get(o).copied()),
@@ -141,7 +141,7 @@ fn clear_button(ui: &mut egui::Ui, field: Rect, name: &str, msgs: &mut Vec<Msg>)
 }
 
 /// The author picker: "Any author", a filter field, then the history's authors.
-fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+fn author_picker(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let chosen = st.session.search.query.authors();
     let text = match chosen {
@@ -149,7 +149,7 @@ fn author_picker(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         [one] => one.clone(),
         many => format!("{} authors", many.len()),
     };
-    let filter = &mut st.view.author_filter;
+    let filter = &mut view.author_filter;
     let search = &st.session.search;
     // As tall as the query field beside it; egui sizes the combo from the interact height.
     let saved = ui.spacing().interact_size.y;

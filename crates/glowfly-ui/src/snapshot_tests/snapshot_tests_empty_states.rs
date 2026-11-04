@@ -24,7 +24,7 @@ use glowfly_model::worktree::WorktreeMsg;
 pub(crate) fn expand(st: &mut AppState, which: Folding) {
     let repo = st.snap.as_ref().unwrap().real_workdir.clone();
     let mut open = true;
-    *st.session.tab_view.empty_sections.open_mut(&repo, which, 0, &mut open) = true;
+    *st.view.tab.empty_sections.open_mut(&repo, which, 0, &mut open) = true;
 }
 
 /// Clicks the header whose ⋯ is named `more`, left of its buttons.

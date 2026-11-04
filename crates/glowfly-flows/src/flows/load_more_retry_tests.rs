@@ -70,7 +70,7 @@ fn a_failed_load_for_more_is_kept_with_its_reason() {
     let (mut st, dir) = failed_once("more-kept", t0);
     assert_eq!(st.refresh.more_failed.as_deref(), Some("walk failed"));
     assert_eq!(st.refresh.more_retry_at, Some(t0 + Duration::from_secs(3)));
-    assert_eq!(st.more_row(), Some(MoreRow::Failed { error: "walk failed", retrying: true }));
+    assert_eq!(st.more_row(&st.view), Some(MoreRow::Failed { error: "walk failed", retrying: true }));
     assert!(!st.shows_loading_more_row());
     assert_eq!(last_log(&st), "walk failed");
     assert!(near_end(&mut st).is_empty(), "no loop");
@@ -87,7 +87,7 @@ fn retries_twice_after_a_delay_then_stops() {
     let fx = tick(&mut st, t0 + Duration::from_secs(3));
     assert_eq!(one_full_load(&fx), 2 * limit, "the same count, not another limit's worth");
     assert_eq!(st.refresh.more_retries, 1);
-    assert_eq!(st.more_row(), Some(MoreRow::Loading));
+    assert_eq!(st.more_row(&st.view), Some(MoreRow::Loading));
 
     let t1 = t0 + Duration::from_secs(4);
     fail(&mut st, "walk failed", t1);
@@ -97,7 +97,7 @@ fn retries_twice_after_a_delay_then_stops() {
     assert_eq!(one_full_load(&tick(&mut st, t1 + Duration::from_secs(10))), 2 * limit);
     fail(&mut st, "walk failed", t1 + Duration::from_secs(11));
     assert_eq!(st.refresh.more_retry_at, None, "the retries are used up");
-    assert_eq!(st.more_row(), Some(MoreRow::Failed { error: "walk failed", retrying: false }));
+    assert_eq!(st.more_row(&st.view), Some(MoreRow::Failed { error: "walk failed", retrying: false }));
     assert!(loads(&tick(&mut st, t0 + Duration::from_secs(600))).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -157,7 +157,7 @@ fn a_tab_switch_cancels_the_retry() {
 
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert_eq!(st.active_tab, 0);
-    assert_eq!(st.more_row(), None, "returning shows no failure");
+    assert_eq!(st.more_row(&st.view), None, "returning shows no failure");
     assert!(loads(&tick(&mut st, t0 + Duration::from_secs(5))).is_empty());
     let _ = std::fs::remove_dir_all(&a);
     let _ = std::fs::remove_dir_all(&b);
@@ -171,6 +171,6 @@ fn an_ordinary_refresh_failure_is_not_kept() {
     fail(&mut st, "refresh failed", t0);
     assert_eq!((st.refresh.more_failed.as_deref(), st.refresh.more_retry_at), (None, None));
     assert_eq!(last_log(&st), "refresh failed");
-    assert_eq!(st.more_row(), None);
+    assert_eq!(st.more_row(&st.view), None);
     let _ = std::fs::remove_dir_all(&dir);
 }

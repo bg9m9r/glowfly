@@ -41,13 +41,13 @@ fn perf_timing() {
     // Typing a query: one message per keystroke, as the search field sends them.
     for q in ["p", "pa", "parser", "zzzz", "über", "author:ada", "author:ada parser"] {
         let key = median(5, || {
-            st.session.tab_view.search = q.to_owned();
+            st.view.tab.search = q.to_owned();
             let _ = super::update(&mut st, Msg::Search(SearchMsg::QueryChanged), now);
         });
         // What the pause's end costs the UI thread (asking the worker), what the worker spends,
         // and a match on the UI thread (Enter before the answer, a new history).
         let tick = median(5, || {
-            st.session.tab_view.search = q.to_owned();
+            st.view.tab.search = q.to_owned();
             super::search::query_changed(&mut st, false, &mut Vec::new());
         });
         let snap = st.snap.as_ref().unwrap();
@@ -59,7 +59,7 @@ fn perf_timing() {
             st.session.search.matches.len()
         );
     }
-    st.session.tab_view.search.clear();
+    st.view.tab.search.clear();
     super::search::recompute(&mut st);
 
     // The work tree going clean <-> dirty: before, a full relayout on the UI thread; now the UI

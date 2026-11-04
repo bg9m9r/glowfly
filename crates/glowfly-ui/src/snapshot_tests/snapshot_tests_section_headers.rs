@@ -148,7 +148,7 @@ fn worktrees_submodules_empty() {
 #[test]
 fn empty_sections_filtered() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "header-empty-filtered");
-    st.session.tab_view.ref_filter = "zzz".into();
+    st.view.tab.ref_filter = "zzz".into();
     for which in [Folding::Worktrees, Folding::Submodules] {
         expand(&mut st, which);
     }

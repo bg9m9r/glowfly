@@ -7,7 +7,7 @@
 use eframe::egui::{self, Color32, Event, InputState, Modifiers, Stroke, TextFormat, TextStyle, WidgetText, text::LayoutJob};
 use glowfly_core::i18n::Lang;
 use glowfly_model::keymap::KeyName;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::menu_keys::{self, Mnemonic, TopMenu};
 
 /// Alt alone: no Ctrl, Shift or Cmd (AltGr reads as Ctrl+Alt on Windows).
@@ -27,8 +27,8 @@ pub(crate) fn marks(st: &AppState) -> [Option<Mnemonic>; 5] {
 }
 
 /// Whether the titles show their letters now.
-pub(super) fn shown(ctx: &egui::Context, st: &AppState) -> bool {
-    st.cues.chrome.mnemonics() && (alt_held(ctx) || st.view.menu_keys.keyboard)
+pub(super) fn shown(ctx: &egui::Context, st: &AppState, view: &ViewState) -> bool {
+    st.cues.chrome.mnemonics() && (alt_held(ctx) || view.menu_keys.keyboard)
 }
 
 /// `m`'s title; with `show`, its mnemonic underlined. The text, and so the widget's id and

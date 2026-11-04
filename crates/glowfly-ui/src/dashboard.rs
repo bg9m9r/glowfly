@@ -17,7 +17,7 @@ use glowfly_core::forge::Account;
 use glowfly_model::msg::{CloneMsg, DashboardMsg, Msg, PrefsMsg, RepoMsg};
 use glowfly_model::state::dashboard::{AccountState, DashShow, Phase, service_header};
 use glowfly_model::state::dashboard_rows::{Row, counts, empty_hint, empty_text, sections};
-use glowfly_model::state::{AppState, PrefPage};
+use glowfly_model::state::{AppState, ViewState, PrefPage};
 
 pub(super) const NO_MATCH_TITLE: &str = "Nothing matches the filter";
 const NO_MATCH_HINT: &str = "The filter looks at each title, number, author and repository.";
@@ -57,7 +57,7 @@ fn in_column(ui: &mut Ui, pad: f32, w: f32, add: impl FnOnce(&mut Ui)) {
     });
 }
 
-pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     egui::Frame::new().inner_margin(Margin { left: 16, right: 16, top: 12, bottom: 4 }).show(ui, |ui| {
         let (pad, w) = column(ui.available_width());
         let mut listed = false;
@@ -68,7 +68,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             if d.basis.is_none() && !d.is_busy() {
                 return no_repositories(ui, st, msgs);
             }
-            controls(ui, st, msgs);
+            controls(ui, st, view, msgs);
             ui.add_space(6.0);
             ui.separator();
             listed = true;
@@ -76,8 +76,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         if !listed {
             return;
         }
-        let filter = st.dashboard.filter.trim().to_lowercase();
-        let st: &AppState = st;
+        let filter = view.dashboard_filter.trim().to_lowercase();
         // The scroll area spans the whole width (its bar at the right edge, the wheel working
         // anywhere); only its content sits in the column.
         egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
@@ -152,8 +151,8 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
 }
 
-fn controls(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    let n = counts(&st.dashboard, &st.dashboard.filter.trim().to_lowercase());
+fn controls(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
+    let n = counts(&st.dashboard, &view.dashboard_filter.trim().to_lowercase());
     // What each segment lists, in DashShow::index order.
     const TIPS: [&str; 3] = [
         "Open pull requests you opened",
@@ -169,7 +168,7 @@ fn controls(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         ui.add_space(12.0);
         controls::field(
             ui,
-            egui::TextEdit::singleline(&mut st.dashboard.filter)
+            egui::TextEdit::singleline(&mut view.dashboard_filter)
                 .hint_text("Filter by title, number, author or repository")
                 .desired_width(320.0),
         );

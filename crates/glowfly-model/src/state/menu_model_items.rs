@@ -140,7 +140,7 @@ pub(super) fn edit(st: &AppState) -> Vec<Entry> {
 
 /// View: zoom, the panels, full screen, the terminal and the activity log, the diff settings
 /// (under "Diff layout" and "Diff shows"), the theme and Refresh.
-pub(super) fn view(st: &AppState) -> Vec<Entry> {
+pub(super) fn view(st: &AppState, log_shown: bool) -> Vec<Entry> {
     let t = st.settings.lang();
     let keys = &st.keymap;
     let s = &st.settings;
@@ -165,7 +165,7 @@ pub(super) fn view(st: &AppState) -> Vec<Entry> {
     out.push(marked(keys, t.tr("menu.view.full_screen"), Mark::Check(st.cues.window.fullscreen), Some(I::ToggleFullscreen), None, full));
     let term = MenuAction::send(Msg::Terminal(TerminalMsg::Toggle));
     out.push(marked(keys, t.tr("menu.view.terminal"), Mark::Check(st.terminal.open), Some(I::ToggleTerminal), no_repo, term));
-    out.push(marked(keys, t.tr("menu.view.activity_log"), Mark::Check(st.view.show_log), None, None, MenuAction::ToggleActivityLog));
+    out.push(marked(keys, t.tr("menu.view.activity_log"), Mark::Check(log_shown), None, None, MenuAction::ToggleActivityLog));
     let journal = MenuAction::send(Msg::Journal(JournalMsg::Toggle));
     out.push(marked(keys, t.tr("menu.view.journal"), Mark::Check(st.session.journal.view.is_some()), None, no_repo, journal));
     out.push(Entry::Separator);

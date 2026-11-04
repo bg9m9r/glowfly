@@ -17,7 +17,7 @@ use eframe::egui::{self, Align, Layout, PopupCloseBehavior, Rect, RichText, Sens
 use glowfly_core::settings::SizedPanel;
 use glowfly_model::logs::{LogKind, LogsMsg};
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::activity_copy::copy_log_blocked;
 use glowfly_model::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
 use glowfly_model::state::tip::Tip;
@@ -35,8 +35,8 @@ fn frame() -> egui::Frame {
     egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin { left: side, right: side, top: 0, bottom: 6 })
 }
 
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    if !st.view.show_log {
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
+    if !view.show_log {
         return;
     }
     // The terminal is drawn under the same room later: leave it its minimum too.
@@ -44,25 +44,25 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let keep = MAIN_MIN_HEIGHT + if terminal { panel_layout::TERMINAL.min } else { 0.0 };
     let fit = panel_layout::fit_one(ctx.available_rect().height(), keep, ACTIVITY, st.settings.panel_sizes.get(SizedPanel::Activity));
     let id = egui::Id::new(panel_size::ACTIVITY_ID);
-    panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Activity));
+    panel_size::pin(ctx, id, fit.size, view.panel_drag == Some(SizedPanel::Activity));
     let panel = egui::TopBottomPanel::bottom(id).resizable(true).default_height(fit.size).height_range(fit.lo..=fit.hi).frame(frame());
     let resp = panel.show(ctx, |ui| {
-        header(ui, st, msgs);
+        header(ui, st, view, msgs);
         match st.logs.tab {
-            LogKind::Activity => super::activity_rows::show(ui, st, msgs),
+            LogKind::Activity => super::activity_rows::show(ui, st, view, msgs),
             kind => file(ui, st, kind, msgs),
         }
     });
-    panel_size::track(ctx, st, SizedPanel::Activity, id, resp.response.rect.height(), msgs);
+    panel_size::track(ctx, view, SizedPanel::Activity, id, resp.response.rect.height(), msgs);
 }
 
 /// The 40 px header: the tabs on the left, the buttons on the right, a hairline under it.
-fn header(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEADER_H), Sense::hover());
     let right = Rect::from_min_max(pos2(rect.right() - RIGHT_W, rect.top()), rect.max);
     let mut r = ui.new_child(UiBuilder::new().max_rect(right).layout(Layout::right_to_left(Align::Center)));
     r.spacing_mut().item_spacing.x = ghost::SPACE;
-    buttons(&mut r, st, msgs);
+    buttons(&mut r, st, view, msgs);
     let left = Rect::from_min_max(rect.min, pos2(right.left() - SIDE, rect.bottom()));
     let mut l = ui.new_child(UiBuilder::new().max_rect(left).layout(Layout::left_to_right(Align::Center)));
     let t = st.settings.lang();
@@ -76,7 +76,7 @@ fn header(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
 
 /// The right-hand buttons, drawn right to left: Hide panel | More, Open folder, then Clear on
 /// the activity tab or Reload on a file tab.
-fn buttons(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+fn buttons(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let keys = &st.keymap;
     let hide = t.tr("logs.header.hide");
@@ -100,7 +100,7 @@ fn buttons(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         msgs.push(msg);
     }
     if hide_clicked {
-        st.view.show_log = false;
+        view.show_log = false;
     }
 }
 

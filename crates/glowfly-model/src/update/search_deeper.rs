@@ -14,7 +14,7 @@ use crate::state::refresh::can_load_more;
 /// Asks for the next batch of older history when the filtering search needs one. Dropping the
 /// filter (or its query) drops the search; a load already running finishes and is kept.
 pub(super) fn pump(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if !st.filtering() {
+    if !st.filtering(&st.view) {
         st.refresh.deeper = None;
         return;
     }
@@ -29,7 +29,7 @@ pub(super) fn pump(st: &mut AppState, fx: &mut Vec<Effect>) {
     {
         return;
     }
-    let enough = st.session.search.matches.len() >= st.fill_rows();
+    let enough = st.session.search.matches.len() >= st.fill_rows(&st.view);
     let more = st.snap.as_ref().is_some_and(can_load_more);
     // With the whole-history index's answer, one load goes straight to the matches (or none).
     let target = super::search_index::fill_target(st);
@@ -65,7 +65,7 @@ pub(super) fn further(st: &mut AppState, fx: &mut Vec<Effect>) {
         super::search_index::load_through(st, count, fx);
         return;
     }
-    if !st.settings.load_more_on_scroll || !st.filtering() {
+    if !st.settings.load_more_on_scroll || !st.filtering(&st.view) {
         if st.refresh.more_failed.is_some() {
             super::load_more::retry(st, fx);
         } else if st.snap.as_ref().is_some_and(can_load_more) {

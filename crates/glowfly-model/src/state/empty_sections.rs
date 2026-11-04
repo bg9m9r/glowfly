@@ -3,7 +3,7 @@
 //! flag here, not its usual open flag, so it is collapsed each time a repository opens with it
 //! empty and the user's choice for the populated section stays as it was. A section that empties
 //! in front of the user (the last stash popped) keeps its open state rather than folding away.
-//! Per tab (`TabView::empty_sections`), never saved; the sidebar asks for the flag each frame.
+//! Per tab (`TabViewState::empty_sections`, in `ViewState::tab`), never saved; the sidebar asks for the flag each frame.
 
 use std::path::{Path, PathBuf};
 

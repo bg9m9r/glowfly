@@ -80,7 +80,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             });
             center.show_inside(ui, |ui| {
                 if shows_commit {
-                    super::diff::show(ui, st, cache, msgs);
+                    st.with_view(|st, view| super::diff::show(ui, st, view, cache, msgs));
                 } else {
                     weak_hint(ui, commits::HINT);
                 }
@@ -104,7 +104,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                             .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(12, 4)))
                             .show_inside(ui, |ui| threads::file_pane(ui, st, &path, &mut cache.markdown, msgs));
                     }
-                    super::diff::show(ui, st, cache, msgs);
+                    st.with_view(|st, view| super::diff::show(ui, st, view, cache, msgs));
                 } else {
                     weak_hint(ui, "Select a file to see its changes.");
                 }

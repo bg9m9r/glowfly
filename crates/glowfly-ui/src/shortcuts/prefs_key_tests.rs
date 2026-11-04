@@ -34,7 +34,7 @@ fn identity(edited: bool) -> AppState {
 
 fn harness(st: AppState) -> Harness<'static, Keys> {
     let mut h = crate::snapshot_check::builder()
-        .build_state(|ctx, k: &mut Keys| super::global::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
+        .build_state(|ctx, k: &mut Keys| k.st.with_view(|st, view| super::global::input(ctx, st, view, &mut k.msgs)), Keys { st, msgs: Vec::new() });
     h.run();
     h
 }

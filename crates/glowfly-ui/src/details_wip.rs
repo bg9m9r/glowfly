@@ -48,7 +48,7 @@ use glowfly_model::tools::ToolsMsg;
 use std::collections::HashSet;
 
 pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    super::wip_keys::requested(ui.ctx(), st);
+    super::wip_keys::requested(ui.ctx(), &mut st.view);
     let Some(snap) = &st.snap else { return };
     // The file being opened is highlighted at once, so a click or a step answers immediately.
     let opening = st.cues.diff_opening.as_ref().filter(|t| t.is_working_tree());

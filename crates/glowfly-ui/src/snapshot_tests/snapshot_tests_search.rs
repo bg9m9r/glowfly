@@ -156,7 +156,7 @@ fn the_bar_sends_search_messages() {
     // The empty field has the keyboard.
     h.input_mut().events.push(Event::Text("log".into()));
     h.run();
-    assert_eq!(h.state().0.session.tab_view.search, "log");
+    assert_eq!(h.state().0.view.tab.search, "log");
     assert_eq!(search_msgs(&h), ["QueryChanged"]);
 
     // Highlight is the mode at first; clicking it again changes nothing.
@@ -192,7 +192,7 @@ fn keys_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
-            super::shortcuts::input(ctx, st, msgs);
+            st.with_view(|st, view| super::shortcuts::input(ctx, st, view, msgs));
             let cache = cache.get_or_insert_with(|| UiCache {
                 avatars: Avatars::default(),
                 speller: Speller::new(),
@@ -290,7 +290,7 @@ fn graph_search_clear() {
     h.get_by_label("Clear search").click();
     h.run_steps(4);
     assert_eq!(search_msgs(&h), ["Clear"]);
-    h.state_mut().0.session.tab_view.search.clear();
+    h.state_mut().0.view.tab.search.clear();
     h.run_steps(4);
     assert!(h.query_by_label("Clear search").is_none(), "nothing to clear");
     drop(h);

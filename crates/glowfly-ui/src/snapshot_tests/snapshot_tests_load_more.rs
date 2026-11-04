@@ -99,11 +99,11 @@ fn graph_near_the_end_asks_for_more() {
     // back by itself (search_deeper.rs), and the row under the matches spins meanwhile.
     let (mut st, _) = truncated("near-end");
     st.view.show_search = true;
-    st.session.tab_view.search = "page".into();
+    st.view.tab.search = "page".into();
     glowfly_model::update::update(&mut st, Msg::Search(SearchMsg::QueryChanged), Instant::now());
     glowfly_model::update::update(&mut st, Msg::Search(SearchMsg::ToggleFilter), Instant::now());
     assert!(st.session.search.filter && !st.session.search.matches.is_empty());
-    assert!(st.searching_older());
+    assert!(st.searching_older(&st.view));
     let mut h = harness(st, true);
     h.run_steps(4);
     assert!(!asks_for_more(&h.state().1), "the search filters rows");

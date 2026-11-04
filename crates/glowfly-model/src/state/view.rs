@@ -1,6 +1,7 @@
 //! Transient view state the views write: scroll targets and positions, focus requests, hover,
-//! drags and which left-panel sections are expanded. What only update or the shell sets for the
-//! views is in `view_cues.rs`.
+//! drags, which left-panel sections are expanded and the text fields moved out of the model. What
+//! only update or the shell sets for the views is in `view_cues.rs`. `AppState::with_view` lends
+//! it to the views apart from the rest of `AppState`, so they read the model and write only this.
 
 use super::window_chrome::AltTap;
 use git2::Oid;
@@ -17,6 +18,9 @@ pub mod file_tree;
 /// The shell's frame timing, which fills `ViewCues::frame_times`.
 #[path = "frame_times.rs"]
 pub mod frame_times;
+/// `Lent`, which holds `AppState::view` while `with_view` lends it out.
+#[path = "lent.rs"]
+pub mod lent;
 #[path = "list_keys.rs"]
 pub mod list_keys;
 #[path = "system_a11y.rs"]
@@ -82,6 +86,8 @@ pub struct ViewState {
     pub show_search: bool,
     /// The author picker's filter field.
     pub author_filter: String,
+    /// The dashboard's filter field (cleared by `DashboardMsg::ClearFilter`).
+    pub dashboard_filter: String,
     pub sections: Sections,
     /// Scroll the graph so this row is near the top on the next frame (set by `update`).
     pub scroll_to_row: Option<usize>,
@@ -151,8 +157,8 @@ pub struct ViewState {
     /// The terminal panel's keyboard, wheel, drag and clipboard state between frames.
     pub terminal: crate::state::terminal::TerminalView,
     /// The active tab's graph scroll and diff top row, recorded by the views; parked with the tab
-    /// (`Parked::scroll`).
-    pub tab: crate::state::session_view::TabScroll,
+    /// (`Parked::view`).
+    pub tab: crate::state::session_view::TabViewState,
 }
 
 impl Default for ViewState {
@@ -162,6 +168,7 @@ impl Default for ViewState {
             activity_reveal: None,
             show_search: false,
             author_filter: String::new(),
+            dashboard_filter: String::new(),
             sections: Sections::default(),
             scroll_to_row: None,
             scroll_offset: None,
@@ -193,5 +200,17 @@ impl Default for ViewState {
             terminal: Default::default(),
             tab: Default::default(),
         }
+    }
+}
+
+impl super::AppState {
+    /// Runs `draw` with the rest of the state to read and `ViewState` to write, borrowed apart:
+    /// how views are given state, so the compiler keeps them from changing the model. Meanwhile
+    /// `self.view` is lent (`lent.rs`): `draw` reads the view state it is given.
+    pub fn with_view<R>(&mut self, draw: impl FnOnce(&Self, &mut ViewState) -> R) -> R {
+        let mut view = self.view.lend();
+        let out = draw(self, &mut view);
+        self.view.give_back(view);
+        out
     }
 }

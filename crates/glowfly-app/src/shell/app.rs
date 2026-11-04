@@ -199,7 +199,7 @@ impl GlowflyApp {
         if ctx.input(|i| i.viewport().close_requested()) {
             msgs.push(Msg::App(AppMsg::CloseRequested));
         }
-        shortcuts::input(ctx, &mut self.st, msgs);
+        self.st.with_view(|st, view| shortcuts::input(ctx, st, view, msgs));
     }
 
     /// One frame: the runner's results, then the window drawn from the state and the

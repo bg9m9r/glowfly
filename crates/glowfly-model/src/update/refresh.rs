@@ -95,7 +95,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
         LoadMsg::LoadMoreCommits if st.refresh.more_failed.is_some() => super::load_more::retry(st, fx),
         // Under no matches, Load more goes through the first older match the index knows of.
         LoadMsg::LoadMoreCommits
-            if st.filtering() && st.session.search.matches.is_empty() && super::search_index::further_target(st).is_some() =>
+            if st.filtering(&st.view) && st.session.search.matches.is_empty() && super::search_index::further_target(st).is_some() =>
         {
             super::search_deeper::further(st, fx)
         }
@@ -104,7 +104,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             more_commits(st, st.settings.commit_limit(), fx)
         }
         // A filtered list loads through its next screenful of matches, or nothing.
-        LoadMsg::NearHistoryEnd if st.settings.load_more_on_scroll && st.filtering() && st.index_answer().is_some() => {
+        LoadMsg::NearHistoryEnd if st.settings.load_more_on_scroll && st.filtering(&st.view) && st.index_answer().is_some() => {
             super::search_index::near_end(st, fx)
         }
         LoadMsg::NearHistoryEnd if st.settings.load_more_on_scroll && st.snap.as_ref().is_some_and(can_load_more) && !st.loading_more() => {

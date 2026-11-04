@@ -136,7 +136,7 @@ fn a_failed_page_is_held_and_tried_again_as_more() {
     one_more(load_more(&mut st));
     assert_eq!(loads(&fail(&mut st)), 0);
     assert_eq!(st.refresh.more_failed.as_deref(), Some("walk failed"));
-    assert_eq!(st.more_row(), Some(MoreRow::Failed { error: "walk failed", retrying: true }));
+    assert_eq!(st.more_row(&st.view), Some(MoreRow::Failed { error: "walk failed", retrying: true }));
     assert_eq!(st.snap.as_ref().unwrap().commits.len(), 500);
 
     one_more(update(&mut st, Msg::Load(LoadMsg::RetryLoadMore), t0));
@@ -209,7 +209,7 @@ fn an_index_jump_lands_after_a_resumed_page() {
     assert!(st.session.search.index.ready.is_some());
 
     st.view.show_search = true;
-    st.session.tab_view.search = "beacon".into();
+    st.view.tab.search = "beacon".into();
     drive(&mut st, Msg::Search(SearchMsg::QueryChanged));
     drive(&mut st, Msg::Search(SearchMsg::Next));
     let summary = |st: &AppState| {
@@ -254,7 +254,7 @@ fn a_refresh_queued_before_a_chained_load_more_reads_the_status() {
     let (mut st, dir) = opened("resume-chained", 3000, 500);
     st.settings.load_more_on_scroll = true;
     st.view.show_search = true;
-    st.session.tab_view.search = "needle".into();
+    st.view.tab.search = "needle".into();
     let mut fx = update(&mut st, Msg::Search(SearchMsg::ToggleFilter), Instant::now());
     fx.extend(update(&mut st, Msg::Search(SearchMsg::QueryChanged), Instant::now()));
     // The filtering search loads further back by itself; a refresh asked meanwhile waits.

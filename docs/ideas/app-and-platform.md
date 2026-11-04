@@ -239,8 +239,8 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - A `DiffSlot::close()` for the session part of `update/repo.rs::close_diff` (view, preview, next generation), leaving only the `ViewState` clears there
 - `CommitSearch`'s request ids (`paths.pending/requests`, `index.pending/asked`, `loaded.pending/requests`) are reset by hand in `search_paths::resume` / `search_index::resume`: route them through `RepoSession::counters()`
 - A `RepoSession` lookup for a workdir, active or parked, in place of the hand-written active-or-parked matches in update/ops.rs, gitflow_resume.rs, tab_losses.rs, pull_request/line_comment.rs and inactive.rs
-- `TabScroll::graph_scroll`'s viewport height belongs to the window, not the tab: split it out if a keyboard step before the first frame after a switch ever needs the right height
-- Fold `TabView::parked_in` and `TabScroll::diff_top_row` into `DiffSlot`, so the open diff, its top row and the mode it was counted in live together
+- `TabViewState::graph_scroll`'s viewport height belongs to the window, not the tab: split it out if a keyboard step before the first frame after a switch ever needs the right height
+- Fold `TabView::parked_in` and `TabViewState::diff_top_row` into `DiffSlot`, so the open diff, its top row and the mode it was counted in live together
 
 ### Build and tooling
 

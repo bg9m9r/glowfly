@@ -228,7 +228,7 @@ fn palette_ignores_keys_under_a_credential_prompt() {
 fn shortcut_toggles() {
     let st = AppState::new(super::snapshot_tests::settings(ThemeChoice::Dark), Vec::new(), std::time::Instant::now());
     let mut h = crate::snapshot_check::builder()
-        .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| super::shortcuts::input(ctx, st, msgs), (st, Vec::new()));
+        .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| st.with_view(|st, view| super::shortcuts::input(ctx, st, view, msgs)), (st, Vec::new()));
     h.press_key_modifiers(Modifiers::COMMAND, Key::P);
     h.run();
     assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Palette(PaletteMsg::TogglePalette))).count(), 1);
@@ -260,7 +260,7 @@ fn palette_takes_typing_over_an_empty_search_bar() {
     h.input_mut().events.push(eframe::egui::Event::Text("push".into()));
     h.run();
     assert_eq!(h.state().0.palette.as_ref().map(|p| p.query.as_str()), Some("push"));
-    assert_eq!(h.state().0.session.tab_view.search, "");
+    assert_eq!(h.state().0.view.tab.search, "");
     drop(h);
     remove_fixture(&dir);
 }

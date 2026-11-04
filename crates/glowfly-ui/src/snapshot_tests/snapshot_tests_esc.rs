@@ -23,7 +23,7 @@ pub(crate) fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)
     crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
-            escape_key(ctx, st, msgs);
+            st.with_view(|st, view| escape_key(ctx, st, view, msgs));
             let cache = cache.get_or_insert_with(|| UiCache {
                 avatars: Avatars::default(),
                 speller: Speller::new(),

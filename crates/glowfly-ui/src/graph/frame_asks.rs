@@ -4,7 +4,7 @@
 
 use git2::Oid;
 use glowfly_model::msg::{Msg, RepoMsg};
-use glowfly_model::state::AppState;
+use glowfly_model::state::ViewState;
 use glowfly_model::state::build_status::MAX_SEEN;
 
 /// The rows' asks this frame.
@@ -19,12 +19,12 @@ pub(super) struct Asks {
 }
 
 impl Asks {
-    /// Records the asks in `st.view` and asks update for the wanted change counts.
-    pub fn apply(self, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    /// Records the asks in `view` and asks update for the wanted change counts.
+    pub fn apply(self, view: &mut ViewState, msgs: &mut Vec<Msg>) {
         if self.hover_tip_next.is_some() {
-            st.view.hover_tip_next = self.hover_tip_next;
+            view.hover_tip_next = self.hover_tip_next;
         }
-        let seen = &mut st.view.tips_seen;
+        let seen = &mut view.tips_seen;
         for o in self.tips_seen {
             if seen.len() < MAX_SEEN && !seen.contains(&o) {
                 seen.push(o);

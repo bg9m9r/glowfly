@@ -262,10 +262,10 @@ pub fn park(st: &mut AppState) -> Parked {
     super::stack_prs::parked(st);
     // The settings are shared by all tabs and may change while this one is parked.
     st.session.tab_view.parked_in = Some((st.settings.diff_mode, st.settings.diff_layout));
-    let scroll = std::mem::take(&mut st.view.tab);
+    let view = std::mem::take(&mut st.view.tab);
     Parked {
         session: st.session.park(),
-        scroll,
+        view,
         snap: st.snap.take(),
         issue_form: super::issue_create::park(st),
         since: None,
@@ -275,7 +275,7 @@ pub fn park(st: &mut AppState) -> Parked {
 
 fn unpark(st: &mut AppState, p: Parked) {
     st.snap = p.snap;
-    st.view.tab = p.scroll;
+    st.view.tab = p.view;
     // Every counter moves past the ones the previous tab left (`RepoSession::resume_after`):
     // results in flight from before the park, or for another tab, are dropped, and `activate`
     // asks again for what was loading. The open diff's results were dropped while parked too, so

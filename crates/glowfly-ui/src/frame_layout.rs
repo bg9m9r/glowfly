@@ -21,7 +21,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     let bottom = ctx.available_rect().bottom();
     let drawn = st.cues.chrome.drawn();
     if drawn {
-        title_bar::show(ctx, st, msgs);
+        st.with_view(|st, view| title_bar::show(ctx, st, view, msgs));
     }
     if st.prefs.is_some() {
         // The terminal isn't drawn, so it can't hold the keyboard (and Esc closes Preferences).
@@ -35,11 +35,11 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
         return ToastBounds { top, bottom };
     }
     if !drawn {
-        menu_bar::show(ctx, st, msgs);
+        st.with_view(|st, view| menu_bar::show(ctx, st, view, msgs));
         tabs::show(ctx, st, msgs);
     }
     if st.settings.show_toolbar {
-        toolbar::show(ctx, st, msgs);
+        st.with_view(|st, view| toolbar::show(ctx, st, view, msgs));
     }
     op_strip::show(ctx, st, msgs);
     git_banner::show(ctx, st, msgs);
@@ -50,7 +50,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
         gitflow_resume_banner::show(ctx, st, msgs);
     }
     let top = ctx.available_rect().top();
-    activity_log::show(ctx, st, msgs);
+    st.with_view(|st, view| activity_log::show(ctx, st, view, msgs));
     side_panels(ctx, st, cache, msgs);
     let central = if glowfly_model::state::terminal::maximized_shown(st) {
         terminal::show_in_main(ctx, st, msgs)
@@ -82,7 +82,7 @@ fn side_panels(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs
     }
     let (left, right) = panel_size::side_fits(ctx, st);
     if let Some(fit) = left {
-        sidebar::show(ctx, st, fit, msgs);
+        st.with_view(|st, view| sidebar::show(ctx, st, view, fit, msgs));
     }
     if let Some(fit) = right {
         details::show(ctx, st, cache, fit, msgs);

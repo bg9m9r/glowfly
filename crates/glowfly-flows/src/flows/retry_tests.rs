@@ -34,13 +34,13 @@ fn clear_search_keeps_the_bar_and_the_filter() {
     let (mut st, dir) = opened("retry-clear-search");
     up(&mut st, Msg::Search(SearchMsg::Open));
     up(&mut st, Msg::Search(SearchMsg::ToggleFilter));
-    st.session.tab_view.search = "first".into();
+    st.view.tab.search = "first".into();
     st.view.author_filter = "gr".into();
     up(&mut st, Msg::Search(SearchMsg::QueryChanged));
     assert!(!st.session.search.matches.is_empty());
     st.view.focus_search = false;
     up(&mut st, Msg::Search(SearchMsg::Clear));
-    assert!(st.session.tab_view.search.is_empty() && st.view.author_filter.is_empty());
+    assert!(st.view.tab.search.is_empty() && st.view.author_filter.is_empty());
     assert!(st.session.search.matches.is_empty() && !st.session.search.active());
     assert!(st.view.show_search && st.session.search.filter, "the bar and the filter stay");
     assert!(st.view.focus_search, "the field takes the focus");
@@ -50,9 +50,9 @@ fn clear_search_keeps_the_bar_and_the_filter() {
 #[test]
 fn clear_filter_empties_the_dashboard_filter() {
     let mut st = state();
-    st.dashboard.filter = "fix".into();
+    st.view.dashboard_filter = "fix".into();
     up(&mut st, Msg::Dashboard(DashboardMsg::ClearFilter));
-    assert!(st.dashboard.filter.is_empty());
+    assert!(st.view.dashboard_filter.is_empty());
 }
 
 fn blame_loads(fx: &[Effect]) -> Vec<u64> {

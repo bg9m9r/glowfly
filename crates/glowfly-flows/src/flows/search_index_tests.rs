@@ -23,7 +23,7 @@ fn send(st: &mut AppState, msg: SearchMsg) -> Vec<Effect> {
 /// The bar shown with `q` typed into it, filtering when `filter`.
 fn search(st: &mut AppState, q: &str, filter: bool) -> Vec<Effect> {
     st.view.show_search = true;
-    st.session.tab_view.search = q.into();
+    st.view.tab.search = q.into();
     let mut fx = Vec::new();
     if st.session.search.filter != filter {
         fx.extend(send(st, SearchMsg::ToggleFilter));
@@ -107,7 +107,7 @@ fn no_match_anywhere_needs_no_load() {
     let fx = search(&mut st, "zzz", true);
     let fx = answer(&mut st, fx);
     assert!(loads(&fx).is_empty(), "{fx:?}");
-    assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 620 });
+    assert_eq!(st.search_reach(&st.view), Reach::Whole { shallow: false, commits: 620 });
     assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));
     // Keep searching has nothing to load either.
     assert!(loads(&update(&mut st, Msg::Load(LoadMsg::SearchFurther), Instant::now())).is_empty());
@@ -159,7 +159,7 @@ fn a_match_past_the_graph_cap_is_logged_not_loaded() {
     assert!(st.log.iter().any(|l| l.text == "The next match is older than the newest 200000 commits the graph can show"));
     assert!(st.session.search.index.jump.is_none());
     st.session.search.filter = true;
-    assert_eq!(st.search_reach(), Reach::PastCap { matches: 1 });
+    assert_eq!(st.search_reach(&st.view), Reach::PastCap { matches: 1 });
     let _ = std::fs::remove_dir_all(&dir);
 }
 

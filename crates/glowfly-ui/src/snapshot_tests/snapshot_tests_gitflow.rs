@@ -206,7 +206,7 @@ fn gitflow_section_header_menu() {
 #[test]
 fn gitflow_section_filtered() {
     let (mut st, dir) = with_flow_branches(ThemeChoice::Dark, "gitflow-section-filtered");
-    st.session.tab_view.ref_filter = "log".into();
+    st.view.tab.ref_filter = "log".into();
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("gitflow_section_filtered");

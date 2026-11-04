@@ -41,7 +41,7 @@ fn dashboard_empty() {
 #[test]
 fn dashboard_filter_no_match() {
     let mut st = super::snapshot_tests_dashboard::state(ThemeChoice::Dark);
-    st.dashboard.filter = "nothing like this".into();
+    st.view.dashboard_filter = "nothing like this".into();
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("dashboard_filter_no_match");

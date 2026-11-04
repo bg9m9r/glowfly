@@ -71,15 +71,20 @@ source file, update its line in the matching file.
 ### Data flow (Elm-style)
 
 ```
- view(&AppState) ──Msg──▶ update(&mut AppState, Msg) ──Vec<Effect>──▶ runner
-       ▲                                                                   │
-       └─────────────── Msg::…Done(result) ◀── worker thread ◀─────────────┘
+ view(&AppState, &mut ViewState) ──Msg──▶ update(&mut AppState, Msg) ──Vec<Effect>──▶ runner
+       ▲                                                                                   │
+       └─────────────── Msg::…Done(result) ◀── worker thread ◀─────────────────────────────┘
 ```
 
-- **Views** draw `AppState` and push `Msg`s. They change only text buffers and `view` state
-  (`ViewState`: scroll, hover, open sections, focus requests they take, the terminal panel's
-  keyboard and wheel state, the graph's scroll and the diff's top row, a drag's preview until its
-  release sends a `Msg`), never domain state such as the log, the selection or a form's checks.
+- **Views** draw `AppState` and push `Msg`s. They change only `ViewState` (scroll, hover, open
+  sections, focus requests they take, the terminal panel's keyboard and wheel state, the graph's
+  scroll and the diff's top row, the search bar's, ref filter's and dashboard filter's text, a
+  drag's preview until its release sends a `Msg`), never domain state such as the log, the
+  selection or a form's checks. `AppState::with_view` lends `ViewState` out for the call, so a
+  view gets `st: &AppState` and `view: &mut ViewState` and the compiler keeps it to that; while
+  lent, `st.view` must not be read (debug builds panic). Views that still write a text buffer,
+  form or panel state in the model in place take `&mut AppState` until it moves (#370; the
+  count only shrinks, `layering/view_state.rs`).
   What update and the shell set for the views to read (the frame's clock and window, the hover
   highlight, the file a change step lands on) is `cues` (`ViewCues`), which views never write.
   They never touch disk, network, processes or the clock. They may use core types and pure

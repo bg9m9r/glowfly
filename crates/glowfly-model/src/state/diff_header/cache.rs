@@ -5,7 +5,7 @@
 //! open folds or the LFS summary change (`DiffKey`), or the list, the file or the list mode
 //! (`file_order::ListKey`); the rest of the header is built each frame from them.
 
-use crate::state::AppState;
+use crate::state::{AppState, ViewState};
 use crate::state::diff_header::{self, HeaderModel};
 use crate::state::diff_nav::file_order::{self, FileOrder, ListKey};
 use crate::state::lfs_notes;
@@ -47,9 +47,9 @@ pub struct HeaderCache {
 
 impl HeaderCache {
     /// The header of the diff on screen, rebuilding only the parts whose inputs changed.
-    pub fn model(&mut self, st: &AppState) -> Option<HeaderModel> {
+    pub fn model(&mut self, st: &AppState, view: &ViewState) -> Option<HeaderModel> {
         self.refresh(st);
-        diff_header::build(st, self)
+        diff_header::build(st, view, self)
     }
 
     /// How many times the change rows and counts, and the file order, were built.

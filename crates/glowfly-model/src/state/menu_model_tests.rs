@@ -80,20 +80,20 @@ fn file_menu_lists_its_items_in_order() {
         "---",
         "Quit",
     ];
-    assert_eq!(rows(&entries(&st, TopMenu::File)), want);
+    assert_eq!(rows(&entries(&st, &st.view, TopMenu::File)), want);
 }
 
 #[test]
 fn edit_window_and_help_list_their_items_in_order() {
     let st = state();
-    let edit = rows(&entries(&st, TopMenu::Edit));
+    let edit = rows(&entries(&st, &st.view, TopMenu::Edit));
     assert_eq!(
         &edit[2..],
         ["---", "Find commits…", "Show only matching commits", "---", "Copy commit SHA", "Copy commit message", "Copy branch name"]
     );
     assert!(edit[0].starts_with("Undo") && edit[1].starts_with("Redo"), "{edit:?}");
     let window = ["New tab", "---", "Next tab", "Previous tab", "Close other tabs", "Close tabs to the right"];
-    assert_eq!(rows(&entries(&st, TopMenu::Window)), window);
+    assert_eq!(rows(&entries(&st, &st.view, TopMenu::Window)), window);
     let help = [
         "Keyboard shortcuts",
         "Command palette",
@@ -115,7 +115,7 @@ fn edit_window_and_help_list_their_items_in_order() {
         "Check for updates",
         "About Glowfly…",
     ];
-    assert_eq!(rows(&entries(&st, TopMenu::Help)), help);
+    assert_eq!(rows(&entries(&st, &st.view, TopMenu::Help)), help);
     let mut hidden = state();
     hidden.settings.hints_seen.insert(crate::state::onboarding::getting_started::HIDDEN_ID.into());
     let help_hidden: Vec<&str> = help.iter().copied().filter(|r| *r != "Getting started").collect();
@@ -152,8 +152,8 @@ fn view_menu_lists_its_items_in_order() {
         "---",
         "Refresh",
     ];
-    assert_eq!(rows(&entries(&st, TopMenu::View)), want);
-    let theme = rows(&submenu(&entries(&st, TopMenu::View), SubmenuKind::Theme).entries);
+    assert_eq!(rows(&entries(&st, &st.view, TopMenu::View)), want);
+    let theme = rows(&submenu(&entries(&st, &st.view, TopMenu::View), SubmenuKind::Theme).entries);
     assert_eq!(theme.last().map(String::as_str), Some("Theme preferences…"));
     assert_eq!(theme[theme.len() - 2], "---");
 }
@@ -172,8 +172,8 @@ fn keyed_items_show_the_keymaps_first_key() {
     let quit_key = Chord::cmd_shift(KeyName::Letter('Q'));
     st.keymap.set(I::Quit, vec![quit_key]);
     st.keymap.set(I::Refresh, Vec::new());
-    assert_eq!(find(&entries(&st, TopMenu::File), "Quit").chord, Some(quit_key));
-    assert_eq!(find(&entries(&st, TopMenu::View), "Refresh").chord, None);
+    assert_eq!(find(&entries(&st, &st.view, TopMenu::File), "Quit").chord, Some(quit_key));
+    assert_eq!(find(&entries(&st, &st.view, TopMenu::View), "Refresh").chord, None);
 }
 
 #[test]
@@ -181,28 +181,28 @@ fn blocked_reasons_match_the_drawn_menus() {
     let mut st = state();
     let t = Lang::En;
     let no_repo = Some(t.tr("menu.common.no_repo").to_owned());
-    let edit = entries(&st, TopMenu::Edit);
+    let edit = entries(&st, &st.view, TopMenu::Edit);
     assert_eq!(find(&edit, "Find commits…").blocked, no_repo);
     assert_eq!(find(&edit, "Show only matching commits").blocked, no_repo);
-    let view = entries(&st, TopMenu::View);
+    let view = entries(&st, &st.view, TopMenu::View);
     assert_eq!(find(&view, "Terminal").blocked, no_repo);
     assert_eq!(find(&view, "Operation journal").blocked, no_repo);
-    let window = entries(&st, TopMenu::Window);
+    let window = entries(&st, &st.view, TopMenu::Window);
     for label in ["Next tab", "Previous tab"] {
         assert_eq!(find(&window, label).blocked.as_deref(), Some(t.tr("menu.window.one_tab")));
     }
     assert_eq!(find(&window, "Close other tabs").blocked.as_deref(), Some(t.tr("menu.window.no_others")));
     assert_eq!(find(&window, "Close tabs to the right").blocked.as_deref(), Some(t.tr("menu.window.none_right")));
-    let file = entries(&st, TopMenu::File);
+    let file = entries(&st, &st.view, TopMenu::File);
     assert_eq!(find(&file, "Reopen closed tab").blocked.as_deref(), Some(t.tr("menu.file.no_closed")));
     assert_eq!(submenu(&file, SubmenuKind::Recent).blocked.as_deref(), Some(t.tr("menu.file.no_recent")));
     st.settings.zoom_percent = glowfly_core::settings::ZOOM_STEPS[glowfly_core::settings::ZOOM_STEPS.len() - 1];
-    assert!(find(&entries(&st, TopMenu::View), "Zoom in").blocked.is_some());
-    assert!(find(&entries(&st, TopMenu::Help), "Check for updates").blocked.is_none());
+    assert!(find(&entries(&st, &st.view, TopMenu::View), "Zoom in").blocked.is_some());
+    assert!(find(&entries(&st, &st.view, TopMenu::Help), "Check for updates").blocked.is_none());
     st.updates.status = UpdateStatus::Checking { manual: true, previous: Box::new(UpdateStatus::Idle) };
-    assert_eq!(find(&entries(&st, TopMenu::Help), "Check for updates").blocked.as_deref(), Some(t.tr("menu.help.busy")));
+    assert_eq!(find(&entries(&st, &st.view, TopMenu::Help), "Check for updates").blocked.as_deref(), Some(t.tr("menu.help.busy")));
     st.recent = vec![glowfly_core::paths::temp_dir().join("glowfly-menu-model")];
-    assert!(submenu(&entries(&st, TopMenu::File), SubmenuKind::Recent).blocked.is_none());
+    assert!(submenu(&entries(&st, &st.view, TopMenu::File), SubmenuKind::Recent).blocked.is_none());
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn marks_follow_the_state() {
     st.settings.diff_ignore_whitespace = true;
     st.settings.diff_word_wrap = false;
     st.settings.theme = ThemeChoice::Light;
-    let view = entries(&st, TopMenu::View);
+    let view = entries(&st, &st.view, TopMenu::View);
     let mark = |label| find(&view, label).mark;
     assert_eq!(mark("Left panel"), Mark::Check(false));
     assert_eq!(mark("Toolbar"), Mark::Check(true));
@@ -233,7 +233,7 @@ fn marks_follow_the_state() {
     let dir = |n: &str| glowfly_core::paths::temp_dir().join(n);
     st.tabs = vec![Tab::unloaded(dir("a")), Tab::unloaded(dir("b")), Tab::unloaded(dir("c"))];
     st.active_tab = 1;
-    let window = entries(&st, TopMenu::Window);
+    let window = entries(&st, &st.view, TopMenu::Window);
     let tabs: Vec<&Item> = window.iter().filter_map(|e| if let Entry::Item(it) = e { Some(it) } else { None }).take(3).collect();
     for (i, it) in tabs.iter().enumerate() {
         assert_eq!(it.mark, Mark::Selected(i == 1), "{}", it.label);
@@ -248,7 +248,7 @@ fn drawn_title_bars_have_no_menu_bar_item() {
     let mut st = state();
     for (chrome, has) in [(Chrome::MacOs, false), (Chrome::Windows, false), (Chrome::System, true)] {
         st.cues.chrome = chrome;
-        assert_eq!(rows(&entries(&st, TopMenu::View)).iter().any(|r| r == "Menu bar"), has, "{chrome:?}");
+        assert_eq!(rows(&entries(&st, &st.view, TopMenu::View)).iter().any(|r| r == "Menu bar"), has, "{chrome:?}");
     }
 }
 
@@ -256,30 +256,30 @@ fn drawn_title_bars_have_no_menu_bar_item() {
 fn actions_do_what_the_menus_did() {
     let mut st = with_repo("menu-model-actions");
     let mut msgs = Vec::new();
-    MenuAction::ToggleActivityLog.run(&mut st, &mut msgs);
+    MenuAction::ToggleActivityLog.run(&mut st.view, &mut msgs);
     assert!(st.view.show_log && msgs.is_empty());
-    MenuAction::ToggleActivityLog.run(&mut st, &mut msgs);
+    MenuAction::ToggleActivityLog.run(&mut st.view, &mut msgs);
     assert!(!st.view.show_log);
-    MenuAction::ShowFilter.run(&mut st, &mut msgs);
+    MenuAction::ShowFilter.run(&mut st.view, &mut msgs);
     assert!(st.view.show_search);
     assert!(matches!(&msgs[..], [Msg::Search(SearchMsg::ToggleFilter)]));
-    let file = entries(&st, TopMenu::File);
+    let file = entries(&st, &st.view, TopMenu::File);
     let quit = find(&file, "Quit");
     assert_eq!(quit.role, Role::Quit);
     assert!(matches!(sent(quit), Msg::App(AppMsg::Quit)));
     let prefs = find(&file, "Preferences…");
     assert_eq!(prefs.role, Role::Prefs);
     assert!(matches!(sent(prefs), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General))));
-    let help = entries(&st, TopMenu::Help);
+    let help = entries(&st, &st.view, TopMenu::Help);
     let about = find(&help, "About Glowfly…");
     assert_eq!(about.role, Role::About);
     assert!(matches!(sent(about), Msg::App(AppMsg::ShowAbout)));
-    let edit = entries(&st, TopMenu::Edit);
+    let edit = entries(&st, &st.view, TopMenu::Edit);
     assert!(matches!(find(&edit, "Show only matching commits").action, MenuAction::ShowFilter));
-    assert!(matches!(find(&entries(&st, TopMenu::View), "Activity log").action, MenuAction::ToggleActivityLog));
+    assert!(matches!(find(&entries(&st, &st.view, TopMenu::View), "Activity log").action, MenuAction::ToggleActivityLog));
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     st.session.selection = Selection::Commit(head);
-    let edit = entries(&st, TopMenu::Edit);
+    let edit = entries(&st, &st.view, TopMenu::Edit);
     assert!(matches!(sent(find(&edit, "Copy commit SHA")), Msg::Copy(s) if *s == head.to_string()));
     let other = git2::Oid::from_str("1234567890123456789012345678901234567890").unwrap();
     let multi = MultiSelection {
@@ -297,7 +297,7 @@ fn actions_do_what_the_menus_did() {
     let want = shas_text(&multi);
     assert_eq!(want, format!("{head}\n{other}"));
     st.session.selection = Selection::Commits(multi);
-    let edit = entries(&st, TopMenu::Edit);
+    let edit = entries(&st, &st.view, TopMenu::Edit);
     assert!(matches!(sent(find(&edit, "Copy 2 commit SHAs")), Msg::Copy(s) if *s == want));
 }
 
@@ -321,7 +321,7 @@ fn open_recent_lists_favorites_then_recent_then_clear() {
     let (fav, a, b) = (dir("fav"), dir("a"), dir("b"));
     let settings = Settings { favorite_repos: vec![glowfly_core::paths::encode(&fav)], ..Settings::default() };
     let st = AppState::new(settings, vec![a.clone(), fav.clone(), b.clone()], Instant::now());
-    let file = entries(&st, TopMenu::File);
+    let file = entries(&st, &st.view, TopMenu::File);
     let recent = submenu(&file, SubmenuKind::Recent);
     let shown = |p: &PathBuf| glowfly_core::native_path::shown(p);
     let want = [

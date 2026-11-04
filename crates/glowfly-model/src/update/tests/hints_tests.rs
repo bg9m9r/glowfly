@@ -75,7 +75,7 @@ fn a_reset_offers_the_undo_tip() {
     job_done(&mut st, &dir, "Reset", Some(reset()));
     assert_eq!(shown(&st), Some(HintId::Undo));
     assert_eq!(st.onboarding.hints_shown_this_session, 1);
-    let v = hints::view(&st).unwrap();
+    let v = hints::view(&st, st.view.sections.prs).unwrap();
     let key = st.keymap.hint(crate::keymap::BindingId::Undo).unwrap().to_owned();
     assert!(v.text.starts_with(&format!("{key} undoes that")), "{}", v.text);
     assert_eq!(v.button, "Open journal");
@@ -100,7 +100,7 @@ fn the_undo_tip_without_a_key_names_undo() {
     let (mut st, dir) = open_repo("hint-undo-unbound");
     st.keymap.set(crate::keymap::BindingId::Undo, Vec::new());
     job_done(&mut st, &dir, "Reset", Some(reset()));
-    assert!(hints::view(&st).unwrap().text.starts_with("Undo reverses that"));
+    assert!(hints::view(&st, st.view.sections.prs).unwrap().text.starts_with("Undo reverses that"));
 }
 
 /// The scratch repository `name` with an upstream (origin/main at its first commit) and
@@ -223,7 +223,7 @@ fn a_github_remote_without_an_account_offers_connect() {
     st.view.sections.prs = false;
     with_remote(&mut st, "hint-connect-github", "https://github.com/acme/widgets.git");
     assert_eq!(shown(&st), Some(HintId::Connect));
-    let v = hints::view(&st).unwrap();
+    let v = hints::view(&st, st.view.sections.prs).unwrap();
     assert_eq!(v.text, "Connect your GitHub account to see this repository's pull requests here.");
     assert_eq!((v.button, v.place), ("Connect…", hints::Place::LeftPanel));
 }
@@ -258,7 +258,7 @@ fn an_open_pull_requests_section_keeps_connect_away() {
     with_remote(&mut st, "hint-connect-prs-open", "https://github.com/acme/widgets.git");
     assert!(st.view.sections.prs);
     assert_eq!(shown(&st), None);
-    assert!(hints::view(&st).is_none());
+    assert!(hints::view(&st, st.view.sections.prs).is_none());
 }
 
 /// Opening PULL REQUESTS while the tip shows hides it without counting it as ignored.
@@ -269,7 +269,7 @@ fn opening_pull_requests_hides_connect_unignored() {
     with_remote(&mut st, "hint-connect-prs-opened", "https://github.com/acme/widgets.git");
     assert_eq!(shown(&st), Some(HintId::Connect));
     st.view.sections.prs = true;
-    assert!(hints::view(&st).is_none(), "not drawn under the open section");
+    assert!(hints::view(&st, st.view.sections.prs).is_none(), "not drawn under the open section");
     update(&mut st, Msg::Tick(Instant::now()), Instant::now());
     assert_eq!(shown(&st), None, "hidden");
     assert!(!st.settings.hints_ignored.contains(HintId::Connect.id()), "not ignored");

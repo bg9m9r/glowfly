@@ -84,6 +84,6 @@ pub fn send(st: &mut AppState, msg: SearchMsg) {
 /// The bar shown with `q` typed into it.
 pub fn searching(st: &mut AppState, q: &str) {
     st.view.show_search = true;
-    st.session.tab_view.search = q.into();
+    st.view.tab.search = q.into();
     send(st, SearchMsg::QueryChanged);
 }

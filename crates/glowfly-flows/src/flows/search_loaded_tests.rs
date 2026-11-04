@@ -74,7 +74,7 @@ pub(super) fn large_state(name: &str, n: usize) -> (AppState, std::path::PathBuf
 
 /// Types `q` into the search field at `now`.
 fn type_query(st: &mut AppState, q: &str, now: Instant) -> Vec<Effect> {
-    st.session.tab_view.search = q.to_owned();
+    st.view.tab.search = q.to_owned();
     update(st, Msg::Search(SearchMsg::QueryChanged), now)
 }
 

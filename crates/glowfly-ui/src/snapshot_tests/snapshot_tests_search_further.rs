@@ -25,7 +25,7 @@ fn filtering(name: &str, q: &str) -> (AppState, PathBuf) {
     snap.loaded_with.max_commits = limit;
     searching(&mut st, q);
     send(&mut st, SearchMsg::ToggleFilter);
-    assert!(st.searching_older(), "the search loads further back");
+    assert!(st.searching_older(&st.view), "the search loads further back");
     (st, dir)
 }
 

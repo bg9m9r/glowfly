@@ -8,7 +8,7 @@
 use crate::theme::tokens;
 use eframe::egui::{self, Id, Rect, Sense, WidgetInfo, WidgetType};
 use glowfly_model::state::layout::{self, Pane, Panel};
-use glowfly_model::state::{AppState, Selection};
+use glowfly_model::state::{AppState, Selection, ViewState};
 
 /// The graph's focus target (`graph/select.rs`).
 pub(crate) fn graph_id() -> Id {
@@ -77,10 +77,10 @@ pub(crate) fn drawn(st: &AppState, pane: Pane) -> bool {
 }
 
 /// Takes the request to focus one of `panes`, if `update` made one.
-pub(crate) fn take(st: &mut AppState, panes: &[Pane]) -> bool {
-    let asked = st.view.pane_focus.is_some_and(|p| panes.contains(&p));
+pub(crate) fn take(view: &mut ViewState, panes: &[Pane]) -> bool {
+    let asked = view.pane_focus.is_some_and(|p| panes.contains(&p));
     if asked {
-        st.view.pane_focus = None;
+        view.pane_focus = None;
     }
     asked
 }
@@ -102,13 +102,13 @@ impl Target {
 
 /// The left panel's focus target over `rect`, named `name`, given the focus when asked for.
 /// Registered before the panel's widgets, so Tab goes on from it into the panel.
-pub(crate) fn sidebar(ui: &mut egui::Ui, st: &mut AppState, rect: Rect, name: &str) -> Target {
-    target(ui, sidebar_id(), rect, name, take(st, &[Pane::Sidebar]))
+pub(crate) fn sidebar(ui: &mut egui::Ui, view: &mut ViewState, rect: Rect, name: &str) -> Target {
+    target(ui, sidebar_id(), rect, name, take(view, &[Pane::Sidebar]))
 }
 
 /// The focus target of the central view drawn over `rect` (not the graph), named `name`.
-pub(crate) fn central(ui: &mut egui::Ui, st: &mut AppState, rect: Rect, name: &str) -> Target {
-    target(ui, central_id(), rect, name, take(st, &[Pane::Central, Pane::Diff]))
+pub(crate) fn central(ui: &mut egui::Ui, view: &mut ViewState, rect: Rect, name: &str) -> Target {
+    target(ui, central_id(), rect, name, take(view, &[Pane::Central, Pane::Diff]))
 }
 
 /// A pane's focus target: it senses no clicks (they go to the pane's widgets).
@@ -131,8 +131,8 @@ fn files_empty_id() -> Id {
 
 /// Before the details panel's contents: when the file list was asked for, the first list
 /// target drawn with rows takes the focus (`list_focus::target`), or with none, the first list.
-pub(crate) fn begin_details(ctx: &egui::Context, st: &mut AppState) {
-    let want = take(st, &[Pane::Files]);
+pub(crate) fn begin_details(ctx: &egui::Context, view: &mut ViewState) {
+    let want = take(view, &[Pane::Files]);
     ctx.data_mut(|d| {
         d.insert_temp(files_wanted_id(), want);
         d.remove_temp::<Option<Id>>(files_empty_id());
@@ -178,11 +178,11 @@ pub(crate) fn end_frame(ctx: &egui::Context) {
 
 /// Esc on a focused control that isn't a text field (`was_typing` says whether it was one),
 /// with the graph shown: the graph takes the focus back, and that is all the Esc does.
-pub(crate) fn escape_to_graph(ctx: &egui::Context, st: &AppState) -> bool {
+pub(crate) fn escape_to_graph(ctx: &egui::Context, st: &AppState, was_typing: bool) -> bool {
     let last = ctx.data(|d| d.get_temp::<Option<Id>>(last_id())).flatten();
     // Preferences and the tour keep their own Esc (revert the page, close; close the tour).
     let covered = st.prefs.is_some() || st.onboarding.tour.is_some();
-    let back = last.is_some_and(|id| id != graph_id()) && !st.view.was_typing && !covered && st.graph_shown();
+    let back = last.is_some_and(|id| id != graph_id()) && !was_typing && !covered && st.graph_shown();
     if back {
         ctx.memory_mut(|m| m.request_focus(graph_id()));
     }
