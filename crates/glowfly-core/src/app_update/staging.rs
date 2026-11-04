@@ -6,6 +6,7 @@
 //! Windows the helper can't delete its own program, so [`tidy`] removes old folders at the next
 //! start.
 
+use super::UpdateError;
 use crate::native_path::shown;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -90,7 +91,7 @@ pub fn create_runnable(
     exe: &Path,
     helper_name: &str,
     runs: &dyn Fn(&Path) -> std::io::Result<()>,
-) -> Result<Staged, String> {
+) -> Result<Staged, UpdateError> {
     let mut why = Vec::new();
     for (i, place) in places.iter().enumerate() {
         if places[..i].iter().any(|p| crate::paths::same_spelling(p, place)) {
@@ -99,7 +100,7 @@ pub fn create_runnable(
         let dir = match create(place) {
             Ok(d) => d,
             Err(e) => {
-                why.push(format!("{}: {e}", shown(place)));
+                why.push((shown(place), e.to_string()));
                 continue;
             }
         };
@@ -108,12 +109,12 @@ pub fn create_runnable(
         match std::fs::copy(exe, &helper).map(drop).and_then(|()| runs(&helper)) {
             Ok(()) => return Ok(Staged { dir, helper }),
             Err(e) => {
-                why.push(format!("{}: {e}", shown(place)));
+                why.push((shown(place), e.to_string()));
                 let _ = crate::persist::remove_tree(&dir);
             }
         }
     }
-    Err(format!("Couldn't find a folder the update helper can run from ({}).", why.join("; ")))
+    Err(UpdateError::NoHelperPlace { tried: why })
 }
 
 #[cfg(test)]

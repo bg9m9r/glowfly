@@ -4,6 +4,7 @@
 //! sign-in for github.com: <this>"); git's own words, when an error has them, are kept as they
 //! are. Pure.
 
+use glowfly_core::app_update::UpdateError;
 use glowfly_core::forge::ServiceError;
 use glowfly_core::git_credential::CredentialError;
 use glowfly_core::i18n::Lang;
@@ -58,4 +59,66 @@ pub fn signing_key(t: Lang, e: &KeyError) -> String {
 /// Why a Preferences page's git config write failed (`PrefsMsg::ConfigSaved`).
 pub fn config_write(t: Lang, e: &ConfigWriteFailed) -> String {
     t.trf("config_errors.write", &[("key", &e.key), ("said", &e.said)])
+}
+
+/// Why a check for updates, a download or Install and restart failed, in the words it has
+/// always shown, with the system's and the hosting service's own words and the paths as they
+/// are shown (`UpdateMsg::Checked`, `Downloaded` and `RestartReady`).
+pub fn update(t: Lang, e: &UpdateError) -> String {
+    use UpdateError as E;
+    match e {
+        E::FeedNotAbsolute { value } => t.trf("update_errors.feed_not_absolute", &[("value", value)]),
+        E::FeedFolderMissing { dir } => t.trf("update_errors.feed_folder_missing", &[("dir", dir)]),
+        E::Service(e) => service(t, e),
+        E::ReadFailed { path, said } => t.trf("update_errors.read_failed", &[("path", path), ("said", said)]),
+        E::ReadTooLong { path, name } => t.trf("update_errors.read_too_long", &[("path", path), ("name", name)]),
+        E::NoOwnProgram { said } => t.trf("update_errors.no_own_program", &[("said", said)]),
+        E::NoDownload => t.tr("update_errors.no_download").to_owned(),
+        E::NoDownloadsFolder => t.tr("update_errors.no_downloads_folder").to_owned(),
+        E::NoChecksum { name } => t.trf("update_errors.no_checksum", &[("name", name)]),
+        E::Checksums(why) => t.trf("update_errors.checksums", &[("why", &update(t, why))]),
+        E::TooLarge { name, mb } => t.trf("update_errors.too_large", &[("name", name), ("mb", mb)]),
+        E::CreateFailed { path, said } => t.trf("update_errors.create_failed", &[("path", path), ("said", said)]),
+        E::DownloadFailed { name, why } => t.trf("update_errors.download_failed", &[("name", name), ("why", &update(t, why))]),
+        E::LargerThanExpected { name } => t.trf("update_errors.larger_than_expected", &[("name", name)]),
+        E::BadFileName { name } => t.trf("update_errors.bad_file_name", &[("name", name)]),
+        E::ChecksumMismatch => t.tr("update_errors.checksum_mismatch").to_owned(),
+        E::SaveFailed { path, said } => t.trf("update_errors.save_failed", &[("path", path), ("said", said)]),
+        E::WrongSize { name, got, want } => t.trf("update_errors.wrong_size", &[("name", name), ("got", got), ("want", want)]),
+        E::Stopped => t.tr("update_errors.stopped").to_owned(),
+        E::ChangedSinceChecked => t.tr("update_errors.changed").to_owned(),
+        E::OpenFailed { path, said, install_with } => {
+            let open = t.trf("update_errors.open_failed", &[("path", path), ("said", said)]);
+            match install_with {
+                Some(tool) => format!("{open}\n{}", t.trf("update_errors.install_with", &[("tool", tool), ("path", path)])),
+                None => open,
+            }
+        }
+        E::NotInPlace => t.tr("update_errors.not_in_place").to_owned(),
+        E::NotRunningFromAppImage => t.tr("update_errors.not_running_from_appimage").to_owned(),
+        E::NotAnAppImage => t.tr("update_errors.not_an_appimage").to_owned(),
+        E::ArchiveUnreadable { file, said } => t.trf("update_errors.archive_unreadable", &[("file", file), ("said", said)]),
+        E::NotAnArchive { file } => t.trf("update_errors.not_an_archive", &[("file", file)]),
+        E::ArchiveTooLarge { mb } => t.trf("update_errors.archive_too_large", &[("mb", mb)]),
+        E::TwoCopies { name } => t.trf("update_errors.two_copies", &[("name", name)]),
+        E::NotRegular { name } => t.trf("update_errors.not_regular", &[("name", name)]),
+        E::NoProgram { program } => t.trf("update_errors.no_program", &[("program", program)]),
+        E::WriteFailed { path, said } => t.trf("update_errors.write_failed", &[("path", path), ("said", said)]),
+        E::RemoveFailed { path, said } => t.trf("update_errors.remove_failed", &[("path", path), ("said", said)]),
+        E::NoHelperPlace { tried } => t.trf("update_errors.no_helper_place", &[("tried", &UpdateError::reasons(tried))]),
+        E::ReplaceFailed { folder, said, left } => {
+            let mut text = t.trf("update_errors.replace_failed", &[("folder", folder), ("said", said)]);
+            for path in left {
+                text.push(' ');
+                text.push_str(&t.trf("update_errors.old_file_left", &[("path", path)]));
+            }
+            text
+        }
+        E::RollbackFailed { failed } => UpdateError::reasons(failed),
+        E::NotUndone { error, undo } => format!("{} {}", update(t, error), update(t, undo)),
+        E::HelperNotStarted { said } => t.trf("update_errors.helper_not_started", &[("said", said)]),
+        E::HelperNoInput => t.tr("update_errors.helper_no_input").to_owned(),
+        E::Internal { effect, panic } => t.trf("update_errors.internal", &[("effect", effect), ("panic", panic)]),
+        E::Said { said } => said.clone(),
+    }
 }

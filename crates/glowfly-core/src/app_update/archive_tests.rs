@@ -95,16 +95,16 @@ fn unwanted_and_nested_entries_are_ignored() {
 #[test]
 fn duplicates_and_links_are_refused() {
     let zip = zip_of(&[(&format!("{WIN_ROOT}/glowfly.exe"), b"a"), (&format!("{WIN_ROOT}\\glowfly.exe"), b"b")]);
-    assert_eq!(read(ZIP, &zip, wanted(TargetOs::Windows)), Err("The archive has two copies of glowfly.exe.".to_owned()));
+    assert_eq!(read(ZIP, &zip, wanted(TargetOs::Windows)), Err(UpdateError::TwoCopies { name: "glowfly.exe".into() }));
     let tgz = tar_gz_of(&[
         (&format!("{LINUX_ROOT}/glowfly"), tar::EntryType::Regular, b"a"),
         (&format!("{LINUX_ROOT}/glowfly"), tar::EntryType::Regular, b"b"),
     ]);
-    assert_eq!(read(TGZ, &tgz, wanted(TargetOs::Linux)), Err("The archive has two copies of glowfly.".to_owned()));
+    assert_eq!(read(TGZ, &tgz, wanted(TargetOs::Linux)), Err(UpdateError::TwoCopies { name: "glowfly".into() }));
     let tgz = tar_gz_of(&[(&format!("{LINUX_ROOT}/glowfly"), tar::EntryType::Symlink, b"")]);
-    assert_eq!(read(TGZ, &tgz, wanted(TargetOs::Linux)), Err("glowfly in the archive isn't a regular file.".to_owned()));
+    assert_eq!(read(TGZ, &tgz, wanted(TargetOs::Linux)), Err(UpdateError::NotRegular { name: "glowfly".into() }));
     let tgz = tar_gz_of(&[(&format!("{LINUX_ROOT}/glowfly"), tar::EntryType::Link, b"")]);
-    assert!(read(TGZ, &tgz, wanted(TargetOs::Linux)).unwrap_err().contains("isn't a regular file"));
+    assert!(read(TGZ, &tgz, wanted(TargetOs::Linux)).unwrap_err().to_string().contains("isn't a regular file"));
 }
 
 #[test]
@@ -122,11 +122,13 @@ fn names_that_leave_the_folder_never_yield_an_entry() {
 
 #[test]
 fn a_corrupt_archive_says_so() {
-    let e = read(ZIP, b"not a zip at all", wanted(TargetOs::Windows)).unwrap_err();
+    let e = read(ZIP, b"not a zip at all", wanted(TargetOs::Windows)).unwrap_err().to_string();
     assert!(e.starts_with(&format!("Couldn't read the archive {ZIP}: ")), "{e}");
-    let e = read(TGZ, b"not gzip", wanted(TargetOs::Linux)).unwrap_err();
+    let e = read(TGZ, b"not gzip", wanted(TargetOs::Linux)).unwrap_err().to_string();
     assert!(e.starts_with(&format!("Couldn't read the archive {TGZ}: ")), "{e}");
-    assert!(read("glowfly.msi", b"", wanted(TargetOs::Windows)).unwrap_err().starts_with("Couldn't read the archive glowfly.msi"));
+    assert!(
+        read("glowfly.msi", b"", wanted(TargetOs::Windows)).unwrap_err().to_string().starts_with("Couldn't read the archive glowfly.msi")
+    );
 }
 
 #[test]

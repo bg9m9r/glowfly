@@ -298,5 +298,7 @@ fn a_panicking_restart_reports_a_failed_restart() {
     };
     let effect = Effect::Updates(UpdateEffect::Restart(Box::new(job)));
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
-    assert!(matches!(&msg, Msg::Updates(UpdateMsg::RestartReady(Err(e))) if e.contains("boom") && e.contains("update-restart")));
+    let Msg::Updates(UpdateMsg::RestartReady(Err(e))) = msg else { panic!("not a restart result") };
+    assert_eq!(e, glowfly_core::app_update::UpdateError::Internal { effect: "update-restart".into(), panic: "boom".into() });
+    assert_eq!(e.to_string(), "Glowfly hit an internal error (update-restart): boom");
 }

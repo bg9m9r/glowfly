@@ -5,7 +5,7 @@
 //! download removes the temporary file. [`check_saved`] tells whether a saved file is still there
 //! and unchanged.
 
-use super::{Asset, Feed, Offer, SumsSource, sums};
+use super::{Asset, Feed, Offer, SumsSource, UpdateError, sums};
 use crate::native_path::shown;
 use sha2::{Digest, Sha256};
 use std::io::{self, Read, Write};
@@ -72,14 +72,14 @@ pub enum SavedProblem {
 /// Downloads `offer`'s file from `feed` into `dir` once its SHA-256 matches the release's
 /// published checksum (read from the same feed); returns where it was saved. Nothing is left
 /// behind when the checksum is missing or doesn't match, or the file isn't the announced size.
-pub fn download(feed: &Feed, offer: &Offer, dir: &Path) -> Result<PathBuf, String> {
+pub fn download(feed: &Feed, offer: &Offer, dir: &Path) -> Result<PathBuf, UpdateError> {
     download_saved(feed, offer, dir).map(|s| s.path)
 }
 
 /// [`download`], also returning the checksum the file matched, which Install and restart
 /// checks again ([`read_verified`]) before it runs or unpacks the file.
-pub fn download_saved(feed: &Feed, offer: &Offer, dir: &Path) -> Result<Saved, String> {
-    download_streamed(feed, offer, dir, &mut |_| {}, &|| false)?.ok_or_else(|| "The download was stopped.".to_owned())
+pub fn download_saved(feed: &Feed, offer: &Offer, dir: &Path) -> Result<Saved, UpdateError> {
+    download_streamed(feed, offer, dir, &mut |_| {}, &|| false)?.ok_or(UpdateError::Stopped)
 }
 
 /// [`download_saved`] with progress and a way to stop: `progress` hears after each chunk is
@@ -92,19 +92,19 @@ pub fn download_streamed(
     dir: &Path,
     progress: &mut dyn FnMut(Progress),
     cancelled: &dyn Fn() -> bool,
-) -> Result<Option<Saved>, String> {
-    let Some(asset) = &offer.asset else { return Err("This release has no download for this system.".to_owned()) };
-    let no_sum = || format!("This release doesn't publish a checksum for {}, so it wasn't downloaded.", asset.name);
+) -> Result<Option<Saved>, UpdateError> {
+    let Some(asset) = &offer.asset else { return Err(UpdateError::NoDownload) };
+    let no_sum = || UpdateError::NoChecksum { name: asset.name.clone() };
     let sums_asset = match &offer.sums {
         SumsSource::Combined(a) | SumsSource::Single(a) => a,
         SumsSource::None => return Err(no_sum()),
     };
-    let text = feed.fetch(sums_asset, MAX_SUMS).map_err(|e| format!("Couldn't read the checksums: {e}"))?;
+    let text = feed.fetch(sums_asset, MAX_SUMS).map_err(|e| UpdateError::Checksums(Box::new(e)))?;
     let want = sums::expected(&String::from_utf8_lossy(&text), &asset.name).ok_or_else(no_sum)?;
     if asset.size > MAX_DOWNLOAD {
-        return Err(format!("{} is larger than {} MB, so it wasn't downloaded.", asset.name, MAX_DOWNLOAD / (1024 * 1024)));
+        return Err(UpdateError::TooLarge { name: asset.name.clone(), mb: MAX_DOWNLOAD / (1024 * 1024) });
     }
-    std::fs::create_dir_all(dir).map_err(|e| format!("Couldn't create {}: {e}", shown(dir)))?;
+    std::fs::create_dir_all(dir).map_err(|e| UpdateError::CreateFailed { path: shown(dir), said: e.to_string() })?;
     let same = dir.join(&asset.name);
     if file_digest(&same, asset.size) == Some(want) {
         return Ok(Some(Saved { path: same, sha256: want }));
@@ -112,13 +112,13 @@ pub fn download_streamed(
     if cancelled() {
         return Ok(None);
     }
-    let mut reader = feed.open(asset).map_err(|e| format!("Couldn't download {}: {e}", asset.name))?;
+    let mut reader = feed.open(asset).map_err(|e| download_failed(asset, e))?;
     let path = dir.join(free_name(&asset.name, |n| dir.join(n).symlink_metadata().is_ok()));
     let mut stopped = None;
     let written = crate::persist::write_streamed(&path, crate::persist::WriteOptions::default(), |file| {
         let end = match copy_hashed(&mut *reader, file, asset, &path, progress, cancelled) {
             Ok(digest) if digest == want => return Ok(()),
-            Ok(_) => Stop::Failed("The download didn't match its published checksum and was discarded.".to_owned()),
+            Ok(_) => Stop::Failed(UpdateError::ChecksumMismatch),
             Err(end) => end,
         };
         stopped = Some(end);
@@ -128,14 +128,19 @@ pub fn download_streamed(
         (Ok(()), _) => Ok(Some(Saved { path, sha256: want })),
         (Err(_), Some(Stop::Cancelled)) => Ok(None),
         (Err(_), Some(Stop::Failed(e))) => Err(e),
-        (Err(e), None) => Err(format!("Couldn't save {}: {e}", shown(&path))),
+        (Err(e), None) => Err(UpdateError::SaveFailed { path: shown(&path), said: e.to_string() }),
     }
 }
 
 /// Why a transfer ended before the file was complete.
 enum Stop {
     Cancelled,
-    Failed(String),
+    Failed(UpdateError),
+}
+
+/// "Couldn't download <asset>: <why>".
+fn download_failed(asset: &Asset, why: UpdateError) -> UpdateError {
+    UpdateError::DownloadFailed { name: asset.name.clone(), why: Box::new(why) }
 }
 
 /// Copies `reader` into `out` chunk by chunk, hashing it and reporting `progress`, until the
@@ -160,21 +165,18 @@ fn copy_hashed(
             Ok(0) => break,
             Ok(n) => n,
             Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
-            Err(e) => return Err(Stop::Failed(format!("Couldn't download {}: {e}", asset.name))),
+            Err(e) => return Err(Stop::Failed(download_failed(asset, UpdateError::Said { said: e.to_string() }))),
         };
         done += n as u64;
         if done > asset.size {
-            return Err(Stop::Failed(format!("Couldn't download {}: {} is larger than expected", asset.name, asset.name)));
+            return Err(Stop::Failed(download_failed(asset, UpdateError::LargerThanExpected { name: asset.name.clone() })));
         }
         hasher.update(&buf[..n]);
-        out.write_all(&buf[..n]).map_err(|e| Stop::Failed(format!("Couldn't save {}: {e}", shown(path))))?;
+        out.write_all(&buf[..n]).map_err(|e| Stop::Failed(UpdateError::SaveFailed { path: shown(path), said: e.to_string() }))?;
         progress(Progress { done, total });
     }
     if done != asset.size {
-        return Err(Stop::Failed(format!(
-            "The download of {} was {done} bytes instead of {}, so it was discarded.",
-            asset.name, asset.size
-        )));
+        return Err(Stop::Failed(UpdateError::WrongSize { name: asset.name.clone(), got: done, want: asset.size }));
     }
     Ok(hasher.finalize().into())
 }
@@ -206,14 +208,13 @@ pub fn check_saved(path: &Path, want: &[u8; 32]) -> Option<SavedProblem> {
 
 /// The bytes of the downloaded file at `path` (at most [`MAX_DOWNLOAD`]), once their SHA-256
 /// is still `want`: the file may have changed since it was checked.
-pub fn read_verified(path: &Path, want: &[u8; 32]) -> Result<Vec<u8>, String> {
-    let shown = shown(path);
+pub fn read_verified(path: &Path, want: &[u8; 32]) -> Result<Vec<u8>, UpdateError> {
     let mut bytes = Vec::new();
     std::fs::File::open(path)
         .and_then(|f| f.take(MAX_DOWNLOAD + 1).read_to_end(&mut bytes))
-        .map_err(|e| format!("Couldn't read {shown}: {e}"))?;
+        .map_err(|e| UpdateError::ReadFailed { path: shown(path), said: e.to_string() })?;
     if bytes.len() as u64 > MAX_DOWNLOAD || sums::sha256(&bytes) != *want {
-        return Err("The downloaded file changed after it was checked, so it wasn't installed. Download it again.".to_owned());
+        return Err(UpdateError::ChangedSinceChecked);
     }
     Ok(bytes)
 }

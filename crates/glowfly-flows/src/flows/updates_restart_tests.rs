@@ -14,7 +14,9 @@ use crate::state::prefs::GitConfigValues;
 use crate::state::tabs::Tab;
 use crate::state::updates::UpdateStatus;
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, InstallProblem, LastInstall, Platform, Release, TargetOs};
+use glowfly_core::app_update::{
+    Arch, Asset, InstallKind, InstallMethod, InstallProblem, LastInstall, Platform, Release, TargetOs, UpdateError,
+};
 use glowfly_core::i18n::Lang;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -114,7 +116,8 @@ fn a_failed_restart_changes_nothing_and_says_why() {
     let (mut st, t) = msi_downloaded();
     send(&mut st, U::InstallAndRestart, t);
     let e = "Couldn't replace Glowfly's program in X: denied. Use Show file to install the update by hand.";
-    let fx = send(&mut st, U::RestartReady(Err(e.into())), t);
+    let refused = UpdateError::ReplaceFailed { folder: "X".into(), said: "denied".into(), left: Vec::new() };
+    let fx = send(&mut st, U::RestartReady(Err(refused)), t);
     // The file is read again, in case it is gone or changed.
     assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::CheckSaved { .. })]), "{fx:?}");
     assert!(!st.updates.restarting);
@@ -271,7 +274,7 @@ fn palette_entries_follow_the_method() {
 fn an_answer_without_a_restart_is_ignored() {
     let (mut st, t) = msi_downloaded();
     assert!(send(&mut st, U::RestartReady(Ok(())), t).is_empty());
-    assert!(send(&mut st, U::RestartReady(Err("late".into())), t).is_empty());
+    assert!(send(&mut st, U::RestartReady(Err(UpdateError::Said { said: "late".into() })), t).is_empty());
     assert!(st.toasts.last().is_some_and(|t| !t.text.contains("late")));
 }
 

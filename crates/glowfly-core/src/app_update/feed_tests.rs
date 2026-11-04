@@ -69,7 +69,7 @@ fn the_feed_comes_from_the_variable() {
     let hosted = Ok(Feed::Hosted(REPOSITORY.to_owned()));
     assert_eq!(Feed::from_value(None, REPOSITORY), hosted);
     assert_eq!(Feed::from_value(Some(OsStr::new("")), REPOSITORY), hosted);
-    let err = Feed::from_value(Some(OsStr::new("feed")), REPOSITORY).unwrap_err();
+    let err = Feed::from_value(Some(OsStr::new("feed")), REPOSITORY).unwrap_err().to_string();
     assert!(err.contains("GLOWFLY_UPDATE_FEED") && err.contains("absolute") && err.contains("\"feed\""), "{err}");
     let dir = crate::paths::temp_dir().join("glowfly-feed");
     assert_eq!(Feed::from_value(Some(dir.as_os_str()), REPOSITORY), Ok(Feed::Folder(dir.clone())));
@@ -119,7 +119,7 @@ fn a_folder_without_release_json_has_no_release() {
 fn a_missing_feed_folder_fails() {
     let parent = scratch("missing");
     let dir = parent.join("nowhere");
-    let err = Feed::Folder(dir.clone()).latest().unwrap_err();
+    let err = Feed::Folder(dir.clone()).latest().unwrap_err().to_string();
     assert!(err.contains(&crate::native_path::shown(&dir)) && err.contains("doesn't exist"), "{err}");
     let _ = std::fs::remove_dir_all(&parent);
 }
@@ -129,7 +129,7 @@ fn bad_release_json_fails() {
     let dir = scratch("badjson");
     for bad in ["{", r#"{"name": "no tag"}"#, "\u{feff}{\"tag_name\": \"v0.1.1\"}"] {
         std::fs::write(dir.join(FEED_RELEASE), bad).unwrap();
-        let err = Feed::Folder(dir.clone()).latest().unwrap_err();
+        let err = Feed::Folder(dir.clone()).latest().unwrap_err().to_string();
         assert!(err.contains(FEED_RELEASE), "{bad}: {err}");
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -141,7 +141,7 @@ fn an_oversized_release_json_fails() {
     let mut json = br#"{"tag_name": "v0.1.1"}"#.to_vec();
     json.resize(1024 * 1024 + 1, b' ');
     std::fs::write(dir.join(FEED_RELEASE), json).unwrap();
-    let err = Feed::Folder(dir.clone()).latest().unwrap_err();
+    let err = Feed::Folder(dir.clone()).latest().unwrap_err().to_string();
     assert!(err.contains("larger than expected"), "{err}");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -164,9 +164,9 @@ fn a_folder_feed_download_is_verified() {
         assert_eq!(saved, Saved { path: path.clone(), sha256: sha256(bytes) });
         assert_eq!(read_verified(&path, &saved.sha256).unwrap(), bytes);
         std::fs::write(&path, b"changed").unwrap();
-        let err = read_verified(&path, &saved.sha256).unwrap_err();
+        let err = read_verified(&path, &saved.sha256).unwrap_err().to_string();
         assert_eq!(err, "The downloaded file changed after it was checked, so it wasn't installed. Download it again.");
-        assert!(read_verified(&dl.join("missing"), &saved.sha256).unwrap_err().starts_with("Couldn't read "));
+        assert!(read_verified(&dl.join("missing"), &saved.sha256).unwrap_err().to_string().starts_with("Couldn't read "));
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -179,7 +179,7 @@ fn a_folder_feed_rejects_a_wrong_checksum() {
     let sums = format!("{}  {MSI}\n{}", "0".repeat(64), sum_line(ZIP, ZIP_BYTES));
     write_feed(&feed_dir, "v0.1.1", &[(MSI, MSI_BYTES), (ZIP, ZIP_BYTES)], Some(sums));
     let feed = Feed::Folder(feed_dir);
-    let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err();
+    let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err().to_string();
     assert!(err.contains("didn't match its published checksum"), "{err}");
     assert!(is_empty(&dl), "no file and no temp file");
     let _ = std::fs::remove_dir_all(&dir);
@@ -194,10 +194,10 @@ fn a_file_changed_after_listing_is_refused() {
     let feed = Feed::Folder(feed_dir.clone());
     let o = offer_for(&feed, InstallKind::Installer);
     std::fs::write(feed_dir.join(MSI), [MSI_BYTES, b"!"].concat()).unwrap();
-    let err = download(&feed, &o, &dl).unwrap_err();
+    let err = download(&feed, &o, &dl).unwrap_err().to_string();
     assert!(err.contains("larger than expected"), "{err}");
     std::fs::write(feed_dir.join(MSI), &MSI_BYTES[1..]).unwrap();
-    let err = download(&feed, &o, &dl).unwrap_err();
+    let err = download(&feed, &o, &dl).unwrap_err().to_string();
     assert!(err.contains("bytes instead of"), "{err}");
     assert!(is_empty(&dl));
     let _ = std::fs::remove_dir_all(&dir);
@@ -210,7 +210,7 @@ fn a_folder_feed_without_the_files_sum_downloads_nothing() {
     std::fs::create_dir_all(&feed_dir).unwrap();
     write_feed(&feed_dir, "v0.1.1", &[(MSI, MSI_BYTES), (ZIP, ZIP_BYTES)], Some(sum_line(ZIP, ZIP_BYTES)));
     let feed = Feed::Folder(feed_dir.clone());
-    let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err();
+    let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err().to_string();
     assert!(err.contains("doesn't publish a checksum") && err.contains(MSI), "{err}");
     assert!(is_empty(&dl));
     // Without SHA256SUMS, the file's own .sha256 is used.
@@ -235,7 +235,7 @@ fn check_and_download_outcomes() {
     standard_feed(&feed_dir);
     assert_eq!(check("0.1.1", Some(WIN)), Ok(Checked::UpToDate { latest: Some("v0.1.1".into()) }), "the same tag");
     assert_eq!(check("0.2.0", Some(WIN)), Ok(Checked::UpToDate { latest: Some("v0.1.1".into()) }), "an older tag");
-    let err = check("0.1.0", None).unwrap_err();
+    let err = check("0.1.0", None).unwrap_err().to_string();
     assert!(err.contains("no download for this system"), "{err}");
     assert!(is_empty(&dl));
     match check("0.1.0", Some(WIN)) {
@@ -248,7 +248,7 @@ fn check_and_download_outcomes() {
     write_feed(&feed_dir, "nightly", &[(MSI, MSI_BYTES)], Some(sum_line(MSI, MSI_BYTES)));
     assert_eq!(check("0.1.0", Some(WIN)), Ok(Checked::UpToDate { latest: Some("nightly".into()) }), "not a version");
     write_feed(&feed_dir, "v0.1.1", &[(MSI, MSI_BYTES)], Some(format!("{}  {MSI}\n", "0".repeat(64))));
-    let err = check("0.1.0", Some(WIN)).unwrap_err();
+    let err = check("0.1.0", Some(WIN)).unwrap_err().to_string();
     assert!(err.contains("didn't match its published checksum"), "{err}");
     assert!(is_empty(&dl));
     let _ = std::fs::remove_dir_all(&dir);
