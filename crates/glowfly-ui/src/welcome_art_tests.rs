@@ -70,10 +70,7 @@ fn every_mark_reads_on_the_band_and_none_is_brown() {
     }
 }
 
-/// On the dark themes the firefly leads: the trail sits 70% of the way to its hues under a
-/// full-strength gold. The light themes draw all three opaque at about 3.6 to 4:1 (the orange
-/// can't go darker without turning brown) and high contrast all at full strength; there the
-/// lantern's size leads instead.
+/// The lantern's halo lifts the band toward the text, so it carries no hue of its own.
 #[test]
 fn the_lantern_halo_is_a_neutral_lift() {
     for (name, p) in palettes() {
@@ -89,6 +86,10 @@ fn the_lantern_halo_is_a_neutral_lift() {
     }
 }
 
+/// On the dark themes the firefly leads: the trail sits 70% of the way to its hues under a
+/// full-strength gold. The light themes draw all three opaque at about 3.6 to 4:1 (the orange
+/// can't go darker without turning brown) and high contrast all at full strength; there the
+/// lantern's size leads instead.
 #[test]
 fn the_gold_leads_the_trail_on_the_dark_themes() {
     for (name, p) in palettes().into_iter().filter(|(_, p)| art_style(p).kind == ArtKind::Dark) {
