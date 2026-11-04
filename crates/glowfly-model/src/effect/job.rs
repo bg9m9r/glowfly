@@ -26,7 +26,7 @@ pub enum JobEffect {
         prompts: bool,
         /// Run nothing unless this revision still resolves to this commit.
         expect: Option<(String, git2::Oid)>,
-        /// Every command only fetches: `Effect::StopGit(StopKey::Job)` can stop it.
+        /// Every command only fetches: `ControlEffect::StopGit(StopKey::Job)` can stop it.
         stoppable: bool,
         /// Run after a failure: when this check passes the job ends with
         /// `JobMsg::FailCheckPassed` instead of `JobDone` (a patch that is already applied).

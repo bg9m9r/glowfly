@@ -5,6 +5,7 @@ use super::tests::{finish, git, scratch_repo, state};
 use super::update;
 use glowfly_core::gitcli::args;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, KnownRepo};
 use glowfly_model::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StageMsg, TabsMsg, TrustMsg};
@@ -58,7 +59,7 @@ fn tick_past_interval(st: &mut AppState) -> Vec<Effect> {
 }
 
 fn is_forge(e: &Effect) -> bool {
-    matches!(e, Effect::Forge { .. })
+    matches!(e, Effect::Network(NetworkEffect::Forge { .. }))
 }
 
 /// The `git_status` of the status read after a local operation.

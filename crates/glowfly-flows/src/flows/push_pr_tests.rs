@@ -8,6 +8,7 @@ use super::update;
 use git2::Oid;
 use glowfly_core::forge::NewPullRequest;
 use glowfly_core::gitcli::{args, run};
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::{Effect, ForgeCall};
 use glowfly_model::msg::ForgeMsg;
 use glowfly_model::msg::JobMsg;
@@ -227,10 +228,10 @@ fn create_refuses_source_missing_on_host() {
     };
     let create = |pr| Msg::Forge(ForgeMsg::CreatePr { pr, from: String::new(), into: String::new() });
     let fx = update(&mut st, create(pr("topic")), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::Forge { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Network(NetworkEffect::Forge { .. }))));
     assert!(logged(&st, "isn't on origin yet"));
     let fx = update(&mut st, create(pr("feature")), Instant::now());
-    let creates = fx.iter().filter(|e| matches!(e, Effect::Forge { call: ForgeCall::Create(_), .. })).count();
+    let creates = fx.iter().filter(|e| matches!(e, Effect::Network(NetworkEffect::Forge { call: ForgeCall::Create(_), .. }))).count();
     assert_eq!((creates, fx.len()), (1, 1));
     cleanup(&work, &bare);
 }

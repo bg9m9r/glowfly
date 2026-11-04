@@ -1,83 +1,60 @@
-//! The hygiene ratchet on `Effect`'s flat variants (see hygiene.rs, #373): the variants declared
-//! straight in glowfly-model's `effect/mod.rs` predate the effect areas, and each is spread across
-//! `effect/names.rs`, `scope.rs`, `sandbox.rs` and the runner's `execute.rs`. They number at most
-//! `FLAT_EFFECTS`, which only goes down: move a group into an area (a variant of the area's effect
-//! type in `effect/<area>.rs` with its `EffectMeta`, an `Execute` impl in `runner/<area>.rs` and
-//! one row in `effect/areas.rs`), then lower it.
+//! The hygiene check that keeps `Effect` free of flat variants (see hygiene.rs, #373): every
+//! variant is an effect area's, one row in glowfly-model's `effect/areas.rs` carrying the area's
+//! own effect type with its `EffectMeta` and an `Execute` impl in `runner/<area>.rs`. The flat
+//! variants that predated the areas are all gone; this keeps a new one from coming back, either
+//! in the `effect_enum!` call in `effect/mod.rs` or in the enum the macro declares.
 
 use super::all_sources;
-use crate::lexer::bare_lines;
 
-/// How many flat variants `Effect` still declares outside the areas. Lower it when you move some
-/// into an area; never raise it.
-const FLAT_EFFECTS: usize = 6;
-
-/// The file that declares `Effect`.
+/// The file that declares `Effect`, and the call that must declare it.
 const EFFECT_MOD: &str = "crates/glowfly-model/src/effect/mod.rs";
+const EFFECT_CALL: &str = "effect_areas!{effect_enum!{}}";
 
-/// The opening of the flat variants' block in `effect/mod.rs`.
-const FLAT_BLOCK: &str = "effect_enum! {";
+/// The file with `effect_enum!`, and the only body its `Effect` may have: the area rows.
+const AREAS: &str = "crates/glowfly-model/src/effect/areas.rs";
+const ENUM_OPEN: &str = "pub enum Effect {";
+const AREA_ROWS: &str = "$($(#[$doc])*$V($T),)*";
 
-/// The names of the variants in the block `src` opens with `FLAT_BLOCK`, in order: each first
-/// identifier at the block's top level, after its opening or a top-level comma. Comments and
-/// literals are skipped, and the `>` of a `->` in a field's type closes nothing. Empty when there
-/// is no such block.
-fn flat_variants(src: &str) -> Vec<String> {
-    let code = bare_lines(src).join("\n");
-    let Some(open) = code.find(FLAT_BLOCK) else { return Vec::new() };
-    let (mut depth, mut want, mut word, mut found, mut prev) = (0usize, true, String::new(), Vec::new(), ' ');
-    for c in code[open + FLAT_BLOCK.len()..].chars() {
-        let arrow = prev == '-' && c == '>';
-        prev = c;
-        if c.is_ascii_alphanumeric() || c == '_' {
-            word.push(c);
-            continue;
-        }
-        if want && depth == 0 && !word.is_empty() {
-            found.push(std::mem::take(&mut word));
-            want = false;
-        }
-        word.clear();
+fn squeezed(s: &str) -> String {
+    s.chars().filter(|c| !c.is_whitespace()).collect()
+}
+
+/// The body of the first `pub enum Effect { … }` in `src`, without whitespace; None without one.
+fn enum_body(src: &str) -> Option<String> {
+    let start = src.find(ENUM_OPEN)? + ENUM_OPEN.len();
+    let mut depth = 1usize;
+    for (i, c) in src[start..].char_indices() {
         match c {
-            _ if arrow => {}
-            '{' | '(' | '[' | '<' => depth += 1,
-            '}' | ')' | ']' | '>' if depth == 0 => break,
-            '}' | ')' | ']' | '>' => depth -= 1,
-            ',' if depth == 0 => want = true,
+            '{' => depth += 1,
+            '}' if depth == 1 => return Some(squeezed(&src[start..start + i])),
+            '}' => depth -= 1,
             _ => {}
         }
     }
-    found
+    None
+}
+
+fn source(path: &str) -> String {
+    all_sources().into_iter().find(|s| s.path == path).unwrap_or_else(|| panic!("{path}")).text
 }
 
 #[test]
-fn flat_effects_only_shrink() {
-    let sources = all_sources();
-    let src = sources.iter().find(|s| s.path == EFFECT_MOD).expect("effect/mod.rs");
-    let flat = flat_variants(&src.text);
+fn effect_has_no_flat_variants() {
+    const HOW: &str = "A new effect goes in an area: a variant of the area's effect type in effect/<area>.rs with its EffectMeta, \
+                       an Execute impl in runner/<area>.rs and, for a new area, a row in effect/areas.rs.";
     assert!(
-        flat.len() <= FLAT_EFFECTS,
-        "{} flat Effect variants in {EFFECT_MOD}, more than FLAT_EFFECTS ({FLAT_EFFECTS}). A new effect goes in an area: a variant \
-         of the area's effect type in effect/<area>.rs with its EffectMeta, an Execute impl in runner/<area>.rs and a row in \
-         effect/areas.rs. The flat variants:\n{}",
-        flat.len(),
-        flat.join("\n")
+        squeezed(&source(EFFECT_MOD)).contains(EFFECT_CALL),
+        "{EFFECT_MOD} declares Effect with `effect_areas! {{ effect_enum! {{}} }}` only. {HOW}"
     );
-    assert!(
-        flat.len() == FLAT_EFFECTS,
-        "only {} flat Effect variants in {EFFECT_MOD} now: lower FLAT_EFFECTS in tests/source_checks/hygiene/flat_effects.rs to {}",
-        flat.len(),
-        flat.len()
-    );
+    let body = enum_body(&source(AREAS));
+    assert_eq!(body.as_deref(), Some(AREA_ROWS), "effect_enum! in {AREAS} declares only the area rows. {HOW}");
 }
 
 #[test]
-fn the_flat_effect_count_finds_each_variant_once() {
-    let src = "effect_areas! { effect_enum! {\n    /// A doc, with a comma.\n    A {\n        path: PathBuf,\n        \
-               pair: Option<(PathBuf, Vec<u8>)>,\n    },\n    // C { x: u8 },\n    B(Vec<String>),\n    D(Box<HashMap<String, \
-               u8>>),\n    E {\n        f: bool,\n    },\n} }\nfn after() {}\n";
-    assert_eq!(flat_variants(src), ["A", "B", "D", "E"], "variants only, not their fields, types or comments");
-    assert!(flat_variants("pub enum Effect { A, B }").is_empty(), "no flat block, nothing counted");
-    let arrows = "effect_enum! {\n    A {\n        f: Box<dyn Fn(u8) -> u8 + Send>,\n    },\n    B(fn() -> bool),\n    C,\n}\n";
-    assert_eq!(flat_variants(arrows), ["A", "B", "C"], "a `->` in a field's type doesn't end the count");
+fn the_check_sees_a_variant_beside_the_rows() {
+    let rows = "macro_rules! effect_enum {\n    ({} $( $V:ident($T:ty), )*) => {\n        pub enum Effect {\n            $( $(#[$doc])* $V($T), )*\n        }\n    };\n}\n";
+    assert_eq!(enum_body(rows).as_deref(), Some(AREA_ROWS));
+    let flat = rows.replace("$V($T), )*\n", "$V($T), )*\n            Forge { cwd: PathBuf },\n");
+    assert_ne!(enum_body(&flat).as_deref(), Some(AREA_ROWS), "a flat struct variant is seen");
+    assert_eq!(enum_body("enum Other { A }"), None);
 }

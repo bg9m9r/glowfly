@@ -4,6 +4,7 @@
 use super::askpass_gpg_tests::{finish, last_toast, send, start_job};
 use super::tests::state;
 use glowfly_core::askpass::{GpgAsk, Prompt, Reply};
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::Effect;
 use glowfly_model::msg::{CredentialMsg, Msg};
 use glowfly_model::state::AppState;
@@ -26,7 +27,7 @@ fn a_cancelled_extend_prompt_leaves_the_next_job_its_own_headline() {
     let mut st = state();
     extend_prompt(&mut st, 1);
     let fx = send(&mut st, Msg::Credentials(CredentialMsg::CancelCredentials));
-    assert!(matches!(fx.as_slice(), [Effect::AnswerPrompt { id: 1, reply: Reply::Cancel }]));
+    assert!(matches!(fx.as_slice(), [Effect::Control(ControlEffect::AnswerPrompt { id: 1, reply: Reply::Cancel })]));
     assert_eq!(st.askpass.ended, None);
     assert!(!st.askpass.ended_signing);
     start_job(&mut st, "Commit");
@@ -57,7 +58,7 @@ fn a_job_that_ends_leaves_the_extend_prompt_open() {
     let cancelled: Vec<u64> = fx
         .iter()
         .filter_map(|e| match e {
-            Effect::AnswerPrompt { id, reply: Reply::Cancel } => Some(*id),
+            Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::Cancel }) => Some(*id),
             _ => None,
         })
         .collect();

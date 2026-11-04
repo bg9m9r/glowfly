@@ -125,7 +125,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 ## Credential prompts (`askpass/`)
 
 - Every git child that may prompt gets Glowfly as its `GIT_ASKPASS` / `SSH_ASKPASS`.
-- The helper process asks the app's loopback listener, which reports `CredentialMsg::CredentialPrompt`, and `Effect::AnswerPrompt` hands the dialog's `Reply` back.
+- The helper process asks the app's loopback listener, which reports `CredentialMsg::CredentialPrompt`, and `ControlEffect::AnswerPrompt` hands the dialog's `Reply` back.
 - `gitcli::NO_PROMPTS` (reads) turns all of it off; background jobs use `gitcli::BACKGROUND`, which also keeps Git Credential Manager from opening a window.
 - HTTPS sign-ins typed with "Remember this sign-in" are kept in `CredentialPrompts::typed` until the job ends; `update/askpass_store.rs` then saves them (`CredentialEffect::Remember`) or drops the rejected ones (`Forget`).
 - An unknown SSH host whose question parses (`PromptKind::HostKey`) is shown as fields (`ui/askpass_host_key.rs`); any other yes/no question shows ssh's text as it is.

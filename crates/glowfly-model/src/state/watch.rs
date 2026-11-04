@@ -85,8 +85,8 @@ pub(crate) fn poll_every(watching: bool, windows: bool, remote: bool) -> Option<
     }
 }
 
-/// Whether the poll sweeps the tree (`Effect::SweepWatch`) rather than reading the whole status:
-/// on Windows, for a local repository whose watcher hasn't failed.
+/// Whether the poll sweeps the tree (`ControlEffect::SweepWatch`) rather than reading the whole
+/// status: on Windows, for a local repository whose watcher hasn't failed.
 fn sweep_poll(windows: bool, remote: bool, failed: bool) -> bool {
     windows && !remote && !failed
 }

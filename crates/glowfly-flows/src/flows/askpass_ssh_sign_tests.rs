@@ -5,6 +5,7 @@
 use super::askpass_gpg_tests::{finish, last_toast, send, start_job};
 use super::tests::state;
 use glowfly_core::askpass::{Prompt, Reply, SshSignAsk};
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::{Effect, UiEffect};
 use glowfly_model::msg::{CredentialMsg, JobMsg, Msg};
 use glowfly_model::state::AppState;
@@ -34,7 +35,7 @@ fn an_ssh_signing_prompt_is_shown_even_when_gnupgs_window_is_preferred() {
     let fx = ssh(&mut st, 1);
     assert!(st.askpass.showing());
     assert!(fx.iter().any(|e| matches!(e, Effect::Ui(UiEffect::RequestAttention))));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::AnswerPrompt { reply: Reply::UseSystem, .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Control(ControlEffect::AnswerPrompt { reply: Reply::UseSystem, .. }))), "{fx:?}");
 }
 
 #[test]
@@ -48,7 +49,7 @@ fn an_ssh_signing_prompt_is_never_a_retry() {
     let answered: Vec<_> = fx
         .iter()
         .filter_map(|e| match e {
-            Effect::AnswerPrompt { id, reply: Reply::Answer(s) } => Some((*id, s.expose().to_owned())),
+            Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::Answer(s) }) => Some((*id, s.expose().to_owned())),
             _ => None,
         })
         .collect();
@@ -66,7 +67,7 @@ fn a_cancelled_ssh_signing_prompt_explains_the_failed_job() {
     start_job(&mut st, "Commit");
     ssh(&mut st, 1);
     let fx = send(&mut st, Msg::Credentials(CredentialMsg::CancelCredentials));
-    assert!(matches!(fx.as_slice(), [Effect::AnswerPrompt { id: 1, reply: Reply::Cancel }]), "{fx:?}");
+    assert!(matches!(fx.as_slice(), [Effect::Control(ControlEffect::AnswerPrompt { id: 1, reply: Reply::Cancel })]), "{fx:?}");
     assert!(st.askpass.ended_signing);
     finish(&mut st, false);
     assert_eq!(last_toast(&st), Some("Commit cancelled: no signing passphrase was given"));

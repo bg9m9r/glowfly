@@ -96,7 +96,7 @@ pub(super) fn save_into(folder: &Path, effect: SaveEffect) -> Option<Msg> {
 mod tests {
     use super::*;
     use crate::Waker;
-    use glowfly_model::effect::{CloneEffect, DesktopNote, NoteKind, OsEffect};
+    use glowfly_model::effect::{CloneEffect, ControlEffect, DesktopNote, NoteKind, OsEffect};
     use glowfly_model::patch::PatchEffect;
     use glowfly_model::profile::ProfileEffect;
     use std::sync::mpsc;
@@ -134,7 +134,7 @@ mod tests {
         let dir = folder("sweep");
         let (tx, rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
-        runner.run(Effect::SweepWatch { workdir: dir.clone() });
+        runner.run(Effect::Control(ControlEffect::SweepWatch { workdir: dir.clone() }));
         let msg = rx.recv_timeout(std::time::Duration::from_secs(5)).expect("a message");
         let Msg::Scoped { workdir, msg } = msg else { panic!("scoped to the repository") };
         assert_eq!(workdir, dir);

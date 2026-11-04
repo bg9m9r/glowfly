@@ -4,27 +4,15 @@ use super::areas::{effect_areas, effect_match};
 use super::{Effect, EffectMeta};
 
 impl Effect {
-    /// A short name for the worker thread and the debug log; an area's comes from its
-    /// `EffectMeta`.
+    /// A short name for the worker thread and the debug log, from the area's `EffectMeta`.
     pub fn name(&self) -> &'static str {
-        effect_areas! { effect_match! { self, |e| e.name(), {
-            Effect::Forge { .. } => "forge",
-            Effect::FetchAvatars(_) => "avatars",
-            Effect::Watch(_) => "watch",
-            Effect::SweepWatch { .. } => "sweep-watch",
-            Effect::AnswerPrompt { .. } => "answer-prompt",
-            Effect::StopGit(_) => "stop-git",
-        } } }
+        effect_areas! { effect_match! { self, |e| e.name() } }
     }
 
-    /// Whether the runner times this effect for the performance log (runner/mod.rs); an area's
-    /// comes from its `EffectMeta`.
+    /// Whether the runner times this effect for the performance log (runner/mod.rs), from the
+    /// area's `EffectMeta`.
     pub fn timed(&self) -> bool {
-        effect_areas! { effect_match! { self, |e| e.timed(), {
-            Effect::Forge { .. } | Effect::FetchAvatars(_) => true,
-            // They wait on the system or never run on a worker thread.
-            Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. } | Effect::StopGit(_) => false,
-        } } }
+        effect_areas! { effect_match! { self, |e| e.timed() } }
     }
 }
 

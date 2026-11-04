@@ -4,6 +4,7 @@
 use super::ssh_tests::{loaded, page, page_mut, pair, ssh};
 use glowfly_core::askpass::{Prompt, Reply};
 use glowfly_core::ssh_keys::{AgentReach, AgentStatus, SshKeyPair};
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::Effect;
 use glowfly_model::msg::{CredentialMsg, Msg};
 use glowfly_model::ssh::{SshEffect, SshMsg};
@@ -94,7 +95,7 @@ fn a_failed_add_is_logged_and_leftover_prompts_are_cancelled() {
     assert_eq!(st.askpass.queue.len(), 1, "the passphrase dialog is up");
 
     let fx = ssh(&mut st, SshMsg::AgentAdded { key: key().private, result: Err("Error loading key: incorrect passphrase".into()) });
-    assert!(fx.iter().any(|e| matches!(e, Effect::AnswerPrompt { id: 9, reply: Reply::Cancel })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Control(ControlEffect::AnswerPrompt { id: 9, reply: Reply::Cancel }))), "{fx:?}");
     assert!(st.askpass.queue.is_empty());
     let entry = st.log.last().expect("logged");
     assert_eq!(entry.text, "Could not add id_ed25519 to the SSH agent: Error loading key: incorrect passphrase");

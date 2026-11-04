@@ -220,9 +220,8 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 ### Per-area effect metadata and generated dispatch
 
-- Fold the remaining flat effects (Watch, SweepWatch, AnswerPrompt, StopGit, Forge, FetchAvatars) into areas, so the flat arms in names.rs, scope.rs, sandbox.rs and execute.rs go away
 - Move panic recovery (`Recovery::of` in runner/guard.rs) into a per-area hook beside each `Execute` impl
-- Move `Runner::run`'s special routing (terminal, index worker, stats, path search, log worker, stops, watcher, prompts) into an `Execute`-side route hook
+- Move `Runner::run`'s special routing (terminal, index worker, stats, path search, log worker, and the Control area's arm) into an `Execute`-side route hook
 - Give every update handler the same (st, msg, now, fx) signature, so the message table needs no argument tags
 - The module lists in update/mod.rs, runner/mod.rs and effect/mod.rs are still one-line merge hotspots: folders per area or generated lists
 - Move state/*_tests.rs, runner/*_tests.rs and ui/*_tests.rs (tabs, toolbar, list rows) into test folders the same way

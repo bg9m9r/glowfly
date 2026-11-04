@@ -3,9 +3,9 @@
 //! and sends one message per burst: `WatchMsg::RepoChanged`, with the work-tree paths it saw when
 //! nothing else changed, or `WatchMsg::IndexChanged` when the index changed too (with those
 //! paths), followed by `WatchMsg::ConfigChanged` when the burst touched the repository's config
-//! (the identity commits get may have changed). Owned by the runner (`Effect::Watch`). On Windows the safety poll asks the same
-//! thread to sweep the tree (`Effect::SweepWatch`, `glowfly_core::watch_sweep`) for changes the
-//! watcher may have dropped; what it finds goes through the same classification and bursts.
+//! (the identity commits get may have changed). Owned by the runner (`ControlEffect::Watch`). On
+//! Windows the safety poll asks the same thread to sweep the tree (`ControlEffect::SweepWatch`,
+//! `glowfly_core::watch_sweep`) for changes the watcher may have dropped; what it finds goes through the same classification and bursts.
 //! Config files the repository's config includes are watched where they are (`includes.rs`).
 //! Right after it starts, the thread checks that events arrive at all with a probe file in the
 //! git dir (`probe.rs`), reported as `WatchMsg::Probed`.

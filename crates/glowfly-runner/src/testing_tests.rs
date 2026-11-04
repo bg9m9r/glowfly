@@ -4,6 +4,7 @@
 
 use super::*;
 use glowfly_model::effect::DeleteMode;
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::SaveEffect;
 
 /// Whether `s` is the tests' stand-ins (its kind, and `cp` as the editor). That the stand-in
@@ -108,7 +109,7 @@ fn effects_reaching_outside_the_test_are_refused() {
         Effect::Theme(glowfly_model::themes::ThemeEffect::Load),
         Effect::Prefs(PrefsEffect::ReadSettings),
         Effect::Updates(UpdateEffect::Tidy),
-        Effect::FetchAvatars(vec!["ada@example.invalid".into()]),
+        Effect::Network(NetworkEffect::Avatars(vec!["ada@example.invalid".into()])),
     ];
     for effect in &outside {
         assert!(refused(effect), "{} is refused", effect.name());

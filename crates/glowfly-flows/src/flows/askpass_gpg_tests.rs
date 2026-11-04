@@ -5,6 +5,7 @@
 use super::tests::state;
 use super::update;
 use glowfly_core::askpass::{GpgAsk, Prompt, Reply};
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::{Effect, UiEffect};
 use glowfly_model::msg::{CredentialMsg, JobMsg, Msg};
 use glowfly_model::state::{AppState, RunningJob};
@@ -60,7 +61,7 @@ fn a_signing_prompt_is_shown_and_answered() {
     let answered: Vec<_> = fx
         .iter()
         .filter_map(|e| match e {
-            Effect::AnswerPrompt { id, reply: Reply::Answer(s) } => Some((*id, s.expose().to_owned())),
+            Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::Answer(s) }) => Some((*id, s.expose().to_owned())),
             _ => None,
         })
         .collect();
@@ -92,7 +93,7 @@ fn gnupgs_own_window_when_the_preference_is_off() {
     let mut st = state();
     st.settings.gpg_prompts_in_app = false;
     let fx = gpg(&mut st, 4, false);
-    assert!(matches!(fx.as_slice(), [Effect::AnswerPrompt { id: 4, reply: Reply::UseSystem }]), "{fx:?}");
+    assert!(matches!(fx.as_slice(), [Effect::Control(ControlEffect::AnswerPrompt { id: 4, reply: Reply::UseSystem })]), "{fx:?}");
     assert!(!st.askpass.showing());
 }
 
@@ -102,7 +103,7 @@ fn a_cancelled_signing_prompt_explains_the_failed_job() {
     start_job(&mut st, "Commit");
     gpg(&mut st, 1, false);
     let fx = send(&mut st, Msg::Credentials(CredentialMsg::CancelCredentials));
-    assert!(matches!(fx.as_slice(), [Effect::AnswerPrompt { id: 1, reply: Reply::Cancel }]), "{fx:?}");
+    assert!(matches!(fx.as_slice(), [Effect::Control(ControlEffect::AnswerPrompt { id: 1, reply: Reply::Cancel })]), "{fx:?}");
     assert!(st.askpass.ended_signing);
     finish(&mut st, false);
     assert_eq!(last_toast(&st), Some("Commit cancelled: no signing passphrase was given"));

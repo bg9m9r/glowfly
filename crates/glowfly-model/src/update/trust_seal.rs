@@ -12,6 +12,7 @@
 
 use crate::effect::CommitEffect;
 use crate::effect::LoadEffect;
+use crate::effect::NetworkEffect;
 use crate::effect::{Accepted, Checked, Effect, LfsEffect, Seal, Sealed, SparseEffect, TrustCheck, WaitingKind};
 use crate::msg::Stale;
 use crate::patch::PatchEffect;
@@ -92,7 +93,7 @@ pub fn wrap(st: &mut AppState, fx: &mut [Effect], mark: usize) {
         let read = read_in(e).map(Path::to_path_buf);
         let check = checks[i].take().or_else(|| read.map(|w| check_for(st, Sealed::Read, &w, None)));
         if let Some(check) = check {
-            let effect = std::mem::replace(e, Effect::FetchAvatars(Vec::new()));
+            let effect = std::mem::replace(e, Effect::Network(NetworkEffect::Avatars(Vec::new())));
             *e = Effect::Checked(Box::new(Checked { effect, check }));
         }
     }

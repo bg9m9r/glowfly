@@ -6,6 +6,7 @@
 //! switch, stops a background download.
 
 use super::jobs::{JobSpec, Started, start_job};
+use crate::effect::ControlEffect;
 use crate::effect::Effect;
 use crate::effect::partial::{ContentRequest, PartialEffect, StopKey};
 use crate::msg::ContentFailure;
@@ -63,7 +64,7 @@ fn fetch_in_background(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Stops the background download, if one runs (another view's read replaces it).
 fn stop_background(st: &mut AppState, fx: &mut Vec<Effect>) {
     if let Some(ContentPhase::Fetching { id, .. }) = st.partial.content.as_ref().map(|p| &p.phase) {
-        fx.push(Effect::StopGit(StopKey::Content(*id)));
+        fx.push(Effect::Control(ControlEffect::StopGit(StopKey::Content(*id))));
     }
 }
 
@@ -94,7 +95,7 @@ pub(super) fn stop(st: &mut AppState, fx: &mut Vec<Effect>) {
     match st.partial.content.as_mut().map(|p| &mut p.phase) {
         Some(ContentPhase::Fetching { id, stopping }) if !*stopping => {
             *stopping = true;
-            fx.push(Effect::StopGit(StopKey::Content(*id)));
+            fx.push(Effect::Control(ControlEffect::StopGit(StopKey::Content(*id))));
         }
         Some(ContentPhase::FetchingAsJob) => super::job_stop::cancel(st, fx),
         _ => {}

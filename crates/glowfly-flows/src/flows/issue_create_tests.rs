@@ -8,6 +8,7 @@ use super::tests::{drive, git};
 use super::update;
 use glowfly_core::forge::filters::Named;
 use glowfly_core::forge::{Account, Connection, CreateOptions, Issue, NewIssue, Provider, Target, branch_name_for};
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::{Effect, ForgeCall, IssueCall, IssueReply};
 use glowfly_model::msg::{IssueMsg, Msg, RepoMsg, TabsMsg};
 use glowfly_model::state::issue_form::{IssueForm, OptionsState};
@@ -49,7 +50,7 @@ fn creates(fx: &[Effect]) -> Vec<NewIssue> {
 }
 
 fn refreshes(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::Forge { call: ForgeCall::Refresh { .. }, .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Network(NetworkEffect::Forge { call: ForgeCall::Refresh { .. }, .. }))).count()
 }
 
 fn jira_tracker(st: &mut AppState, project: &str) -> Target {
@@ -255,7 +256,7 @@ fn after_cancel_or_for_another_tab_the_reply_is_only_reported() {
     };
     let toasts = st.toasts.len();
     let fx = run(&mut st, msg);
-    assert!(fx.iter().all(|e| !matches!(e, Effect::Forge { .. })));
+    assert!(fx.iter().all(|e| !matches!(e, Effect::Network(NetworkEffect::Forge { .. }))));
     assert_eq!(st.toasts.len(), toasts, "only logged");
     assert!(st.log.last().is_some_and(|l| l.text == "Created issue #14 in other-repo"));
     assert!(!st.session.forge.as_ref().unwrap().cache.contains_key("14"));

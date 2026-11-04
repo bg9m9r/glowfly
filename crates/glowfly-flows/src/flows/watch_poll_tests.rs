@@ -5,6 +5,7 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::Effect;
 use glowfly_model::msg::{Msg, RepoMsg, WatchMsg};
 use glowfly_model::state::AppState;
@@ -60,7 +61,7 @@ fn windows_rereads_a_local_repository_too_and_nothing_polls_when_watching_is_off
 }
 
 fn sweeps(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SweepWatch { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Control(ControlEffect::SweepWatch { .. }))).count()
 }
 
 /// The effects of a tick when the poll is due.
@@ -81,7 +82,7 @@ fn windows_sweeps_a_local_repository_instead_of_reading_it() {
         let _ = std::fs::remove_dir_all(&dir);
         return;
     }
-    assert!(matches!(&fx[..], [Effect::SweepWatch { workdir: w }] if *w == workdir), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Control(ControlEffect::SweepWatch { workdir: w })] if *w == workdir), "{fx:?}");
     assert_eq!(statuses(&fx), 0);
 
     st.watch.failed.insert(workdir.clone());
@@ -172,7 +173,7 @@ fn a_restarted_watcher_checks_again() {
         st.settings.watch_files = true;
         let mut fx = Vec::new();
         super::watch::sync(st, &mut fx);
-        assert!(matches!(&fx[..], [Effect::Watch(Some(_))]), "{fx:?}");
+        assert!(matches!(&fx[..], [Effect::Control(ControlEffect::Watch(Some(_)))]), "{fx:?}");
     };
     update(&mut st, probed(&workdir, Probe::Silent), Instant::now());
     assert_eq!(st.watch.poll_interval(), Some(REMOTE_POLL));

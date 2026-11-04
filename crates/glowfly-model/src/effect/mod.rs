@@ -2,9 +2,6 @@
 //! back with `Msg`s; the few that need the window (`UiEffect`) are handled by the UI shell.
 
 pub use crate::file_op::{DeleteMode, FileOp, SeenLines, WorkFileOk};
-use glowfly_core::askpass::Reply;
-use glowfly_core::forge::{Auth, Target};
-use std::path::PathBuf;
 
 mod account;
 pub mod areas;
@@ -14,6 +11,7 @@ mod branch;
 mod clone;
 mod commit;
 mod conflict;
+mod control;
 mod credential;
 mod dashboard;
 mod diff;
@@ -33,6 +31,7 @@ mod lock;
 mod meta;
 mod monitor;
 mod names;
+mod network;
 mod notify;
 mod op_preview;
 mod os;
@@ -65,6 +64,7 @@ pub use branch::BranchEffect;
 pub use clone::CloneEffect;
 pub use commit::CommitEffect;
 pub use conflict::ConflictEffect;
+pub use control::ControlEffect;
 pub use credential::CredentialEffect;
 pub use dashboard::*;
 pub use diff::DiffEffect;
@@ -84,6 +84,7 @@ pub use lock::LockEffect;
 pub use meta::EffectMeta;
 pub use meta::SandboxRule;
 pub use monitor::{MonitorJob, MonitorOff};
+pub use network::NetworkEffect;
 pub use notify::{DesktopNote, NoteKind};
 pub use op_preview::OpPreviewJob;
 pub use os::OsEffect;
@@ -107,34 +108,6 @@ pub use ui::UiEffect;
 pub use updates::{RestartJob, UpdateEffect};
 pub use worktree::WorktreeEffect;
 
-// The areas' variants come from the table in areas.rs, each with its own effect type that decides
-// its metadata (`EffectMeta`). The flat variants below predate the areas: a new effect goes in an
-// area (a new variant of its type, or a new row in areas.rs), never here.
-effect_areas! { effect_enum! {
-    Forge {
-        target: Target,
-        cwd: PathBuf,
-        auth: Option<Auth>,
-        interactive: bool,
-        /// The user connected this account in Preferences (lets GCM sign in to a self-hosted server).
-        connected: bool,
-        call: ForgeCall,
-    },
-    /// Downloads (or reads from the disk cache) avatars one after another.
-    FetchAvatars(Vec<String>),
-    /// Watch this repository for outside changes, replacing any previous watch; None stops watching. Handled by
-    /// `Runner::run` itself (the watcher outlives a worker thread).
-    Watch(Option<WatchTarget>),
-    /// Check the watched tree for changes the watcher may have missed (Windows poll); `Runner::run`.
-    SweepWatch {
-        workdir: PathBuf,
-    },
-    /// Answers credential prompt `id`. Handled by `Runner::run` itself, which owns the listener the helper is waiting on.
-    /// The answer's `Debug` output is redacted.
-    AnswerPrompt {
-        id: u64,
-        reply: Reply,
-    },
-    /// Stops the running git command registered under this key, if any. Handled by `Runner::run` itself, which holds the stops.
-    StopGit(partial::StopKey),
-} }
+// Every variant comes from the table in areas.rs, each with its own effect type that decides its
+// metadata (`EffectMeta`): a new effect is a new variant of an area's type, or a new row there.
+effect_areas! { effect_enum! {} }

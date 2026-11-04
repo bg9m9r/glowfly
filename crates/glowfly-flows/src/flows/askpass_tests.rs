@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use glowfly_core::askpass::{Prompt, PromptKind, Reply, Secret};
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::{Effect, UiEffect};
 use glowfly_model::msg::CredentialMsg;
 use glowfly_model::msg::JobMsg;
@@ -28,8 +29,8 @@ fn send(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 fn answers(fx: &[Effect]) -> Vec<(u64, Option<String>)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::AnswerPrompt { id, reply: Reply::Answer(s) } => Some((*id, Some(s.expose().to_owned()))),
-            Effect::AnswerPrompt { id, reply: Reply::Cancel } => Some((*id, None)),
+            Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::Answer(s) }) => Some((*id, Some(s.expose().to_owned()))),
+            Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::Cancel }) => Some((*id, None)),
             _ => None,
         })
         .collect()
@@ -191,7 +192,7 @@ fn a_finished_job_cancels_what_it_left() {
     assert!(!st.askpass.showing());
     assert!(st.askpass.carry.is_none());
 
-    let fx = [Effect::AnswerPrompt { id: 7, reply: Reply::Answer(Secret::new("hunter2")) }];
+    let fx = [Effect::Control(ControlEffect::AnswerPrompt { id: 7, reply: Reply::Answer(Secret::new("hunter2")) })];
     assert!(!format!("{fx:?}").contains("hunter2"));
 }
 

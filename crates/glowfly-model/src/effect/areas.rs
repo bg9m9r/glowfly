@@ -3,9 +3,9 @@
 //! `runner/<area>.rs`; `Effect` and every match over the areas are built from this table.
 //!
 //! `effect_areas! { then! { args } }` calls `then! { { args } rows }`, so each consumer names
-//! its own callback: `effect_enum!` declares `Effect` (the args are its flat variants), and
-//! `effect_match!` matches an effect, running one body for every area (each copy is checked
-//! against that area's type) and the args' arms for the flat variants.
+//! its own callback: `effect_enum!` declares `Effect` (with no args: every variant is an area's),
+//! and `effect_match!` matches an effect, running one body for every area (each copy is checked
+//! against that area's type).
 
 /// Calls `$then!` with its own arguments in braces, then the area rows. Exported for the
 /// runner's match over every area (glowfly-runner's execute.rs).
@@ -138,6 +138,12 @@ macro_rules! effect_areas {
             /// Checking the recent repositories' folders and reading the restored tabs' groups
             /// (session.rs, runner/session.rs); unscoped, reads only.
             Session($crate::effect::SessionEffect),
+            /// Calls to a hosting service (scoped to the repository) and avatar downloads
+            /// (network.rs, runner/network.rs); dropped by the whole-app tests' runner.
+            Network($crate::effect::NetworkEffect),
+            /// The watcher, credential-prompt answers and stops of running git commands, which
+            /// Runner::run carries out itself, never on a worker (control.rs, runner/control.rs).
+            Control($crate::effect::ControlEffect),
             /// Git's file system monitor started and set, then the cache's commands (monitor.rs); unscoped like RunGit.
             TurnOnMonitor($crate::effect::MonitorJob),
             /// Git's file system monitor unset and stopped (monitor.rs); unscoped like RunGit.
@@ -149,26 +155,25 @@ macro_rules! effect_areas {
     };
 }
 
-/// Declares `Effect`: one variant per area row, then the flat variants given in braces.
+/// Declares `Effect`: one variant per area row and nothing else (no flat variants, which
+/// `source_checks`' `hygiene/flat_effects.rs` keeps out).
 macro_rules! effect_enum {
-    ({ $($flat:tt)* } $( $(#[$doc:meta])* $V:ident($T:ty), )*) => {
+    ({} $( $(#[$doc:meta])* $V:ident($T:ty), )*) => {
         #[derive(Debug)]
         pub enum Effect {
             $( $(#[$doc])* $V($T), )*
-            $($flat)*
         }
     };
 }
 
-/// `match $value { Effect::<Area>($e) => $body, …, <flat arms> }`: `$body` runs once per area,
-/// with `$e` bound to that area's value.
+/// `match $value { Effect::<Area>($e) => $body, … }`: `$body` runs once per area, with `$e`
+/// bound to that area's value.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! effect_match {
-    ({ $value:expr, |$e:ident| $body:expr, { $($flat:tt)* } } $( $(#[$doc:meta])* $V:ident($T:ty), )*) => {
+    ({ $value:expr, |$e:ident| $body:expr } $( $(#[$doc:meta])* $V:ident($T:ty), )*) => {
         match $value {
             $( $crate::effect::Effect::$V($e) => $body, )*
-            $($flat)*
         }
     };
 }

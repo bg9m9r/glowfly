@@ -1,4 +1,4 @@
-//! Calls to hosting services: pull requests and issues (`Effect::Forge`), and connected
+//! Calls to hosting services: pull requests and issues (`NetworkEffect::Forge`), and connected
 //! accounts (`Effect::Account`): signing in, tokens, owners, creating a repository and a Trello
 //! account's boards.
 

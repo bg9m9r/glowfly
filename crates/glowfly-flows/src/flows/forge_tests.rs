@@ -3,6 +3,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::forge::{Account, Connection, Provider, Target};
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use glowfly_model::msg::ForgeMsg;
@@ -25,7 +26,7 @@ fn forge_calls(st: &mut AppState, msg: Msg) -> Vec<bool> {
     update(st, msg, Instant::now())
         .into_iter()
         .filter_map(|e| match e {
-            Effect::Forge { connected, .. } => Some(connected),
+            Effect::Network(NetworkEffect::Forge { connected, .. }) => Some(connected),
             _ => None,
         })
         .collect()
@@ -68,7 +69,7 @@ fn with_jira(project: &str) -> AppState {
 /// Whether the tracker refresh also asks for the site's project keys.
 fn asks_project_keys(st: &mut AppState) -> Option<bool> {
     update(st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false }), Instant::now()).into_iter().find_map(|e| match e {
-        Effect::Forge { call: ForgeCall::MyIssues { project_keys }, .. } => Some(project_keys),
+        Effect::Network(NetworkEffect::Forge { call: ForgeCall::MyIssues { project_keys }, .. }) => Some(project_keys),
         _ => None,
     })
 }

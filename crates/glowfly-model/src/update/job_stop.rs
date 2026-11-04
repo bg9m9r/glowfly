@@ -8,6 +8,7 @@
 //! finished before the stop reached it ends as usual. The transfer's progress comes as
 //! `JobMsg::Progress` and is kept for the status bar until the step changes.
 
+use crate::effect::ControlEffect;
 use crate::effect::JobEffect;
 use crate::effect::partial::StopKey;
 use crate::effect::{Effect, UndoResult};
@@ -34,7 +35,7 @@ pub(super) fn cancel(st: &mut AppState, fx: &mut Vec<Effect>) {
         s.requested = true;
     }
     st.log_quiet(true, format!("Cancelling {label}…"));
-    fx.push(Effect::StopGit(StopKey::Job));
+    fx.push(Effect::Control(ControlEffect::StopGit(StopKey::Job)));
 }
 
 /// The runner started a kind of command in the active job (`JobMsg::Step`), or git reported its

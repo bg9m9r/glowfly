@@ -8,6 +8,7 @@ use glowfly_core::forge::{
 };
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{RepoTrust, Settings};
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, FilterCall, FilterResult, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use glowfly_model::msg::{FilterMsg, ForgeMsg, Msg, RepoMsg};
@@ -37,7 +38,7 @@ pub(super) fn send(st: &mut AppState, m: FilterMsg) -> Vec<Effect> {
 pub(super) fn filter_calls(fx: &[Effect]) -> Vec<(&Target, &FilterCall)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::Forge { target, call: ForgeCall::Filter(c), .. } => Some((target, c)),
+            Effect::Network(NetworkEffect::Forge { target, call: ForgeCall::Filter(c), .. }) => Some((target, c)),
             _ => None,
         })
         .collect()
@@ -244,7 +245,9 @@ fn a_refresh_runs_the_shown_filters_again() {
     send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs));
     st.session.forge.as_mut().unwrap().filters.me = MeState::Unknown;
     let fx = update(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false }), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::Forge { call: ForgeCall::Refresh { with_issues: true, .. }, .. })));
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Network(NetworkEffect::Forge { call: ForgeCall::Refresh { with_issues: true, .. }, .. })))
+    );
     let calls = filter_calls(&fx);
     assert!(calls.iter().any(|(_, c)| matches!(c, FilterCall::Issues { .. })), "{calls:?}");
     assert!(calls.iter().any(|(_, c)| matches!(c, FilterCall::Me { .. })), "{calls:?}");

@@ -3,6 +3,7 @@
 //! again when the repository's config changed, and noting what the watcher's probe found (a
 //! silent watcher is warned about once per repository and polled instead).
 
+use crate::effect::ControlEffect;
 use crate::effect::{Effect, WatchTarget};
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::WatchMsg;
@@ -129,7 +130,7 @@ pub fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
         // Another repository reads at its own speed.
         st.watch.poll_read = None;
         st.watch.last_read = None;
-        fx.push(Effect::Watch(want));
+        fx.push(Effect::Control(ControlEffect::Watch(want)));
     }
 }
 
@@ -145,7 +146,7 @@ pub(super) fn remote_text(workdir: &std::path::Path, kind: &str, keys: &Keymap) 
 
 /// On the timer `poll_every` sets (a network or virtual file system, or Windows), checks for
 /// missed changes while the window is focused and nothing else is reading or changing the
-/// repository: a local Windows repository's watcher sweeps its tree (`Effect::SweepWatch`), the
+/// repository: a local Windows repository's watcher sweeps its tree (`ControlEffect::SweepWatch`), the
 /// others read the whole status. A status read is due `WatchState::poll_gap` after the end of
 /// the last one, and never queued behind a read already running.
 pub(super) fn poll(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
@@ -163,7 +164,7 @@ pub(super) fn poll(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     match st.watch.target.clone().filter(|_| st.watch.sweeps()) {
         Some(workdir) => {
             st.watch.last_poll = Some(now);
-            fx.push(Effect::SweepWatch { workdir });
+            fx.push(Effect::Control(ControlEffect::SweepWatch { workdir }));
         }
         // Not queued behind the running read: a whole read's end starts the clock again, and
         // after a read of some paths the next tick reads.

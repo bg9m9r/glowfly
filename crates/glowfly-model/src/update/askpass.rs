@@ -2,6 +2,7 @@
 //! the job that asked ends. Saving typed HTTPS sign-ins is in update/askpass_store.rs, the
 //! sign-in banner for auto-fetch in update/sign_in.rs.
 
+use crate::effect::ControlEffect;
 use crate::effect::{Effect, UiEffect};
 use crate::msg::CredentialMsg;
 use crate::state::AppState;
@@ -18,7 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &m
         CredentialMsg::CancelCredentials => {
             let p = &mut st.askpass;
             let Some(front) = p.queue.pop_front() else { return };
-            fx.push(Effect::AnswerPrompt { id: front.id, reply: Reply::Cancel });
+            fx.push(Effect::Control(ControlEffect::AnswerPrompt { id: front.id, reply: Reply::Cancel }));
             p.clear_buffers();
             // Preferences' own prompt says nothing about the running job.
             if front.prompt.kind.is_app_own() {
@@ -58,7 +59,7 @@ fn asked(st: &mut AppState, id: u64, prompt: Prompt, fx: &mut Vec<Effect>) {
     // only when the wrapper says the last passphrase was wrong.
     let signing_retry = match &prompt.kind {
         PromptKind::GpgPassphrase { .. } if !st.settings.gpg_prompts_in_app => {
-            fx.push(Effect::AnswerPrompt { id, reply: Reply::UseSystem });
+            fx.push(Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::UseSystem }));
             return;
         }
         PromptKind::GpgPassphrase { retry, .. } => Some(*retry),
@@ -74,7 +75,7 @@ fn asked(st: &mut AppState, id: u64, prompt: Prompt, fx: &mut Vec<Effect>) {
         && let Some(carry) = p.carry.take()
     {
         p.answered.push(prompt.text);
-        fx.push(Effect::AnswerPrompt { id, reply: Reply::Answer(carry.password) });
+        fx.push(Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::Answer(carry.password) }));
         return;
     }
     let retry = signing_retry.unwrap_or_else(|| p.answered.contains(&prompt.text));
@@ -125,7 +126,7 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
         p.answered_hosts.extend(host);
     }
     p.clear_buffers();
-    fx.push(Effect::AnswerPrompt { id: front.id, reply: Reply::Answer(answer) });
+    fx.push(Effect::Control(ControlEffect::AnswerPrompt { id: front.id, reply: Reply::Answer(answer) }));
 }
 
 /// The running job ended: returns the headline for a job that failed because a prompt was
@@ -173,7 +174,7 @@ pub(super) fn job_finished(
     if !left.is_empty() && !front_was_app_own {
         p.clear_buffers();
     }
-    fx.extend(left.into_iter().map(|q| Effect::AnswerPrompt { id: q.id, reply: Reply::Cancel }));
+    fx.extend(left.into_iter().map(|q| Effect::Control(ControlEffect::AnswerPrompt { id: q.id, reply: Reply::Cancel })));
     p.carry = None;
     p.answered.clear();
     p.answered_hosts.clear();

@@ -33,7 +33,7 @@ pub trait EffectMeta {
         self.queue()
     }
 
-    /// The key a runner registers its stop under (`Effect::StopGit`); None when it can't be
+    /// The key a runner registers its stop under (`ControlEffect::StopGit`); None when it can't be
     /// stopped.
     fn stop_key(&self) -> Option<StopKey> {
         None

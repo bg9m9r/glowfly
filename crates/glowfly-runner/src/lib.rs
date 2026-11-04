@@ -2,14 +2,13 @@
 //! the only place the app starts background work. No window: the shell hands it a `Waker`.
 //!
 //! `Runner::run` starts one named thread per effect. A few effects get special handling: the
-//! file watcher (`Effect::Watch`), credential-prompt answers, the terminal's shell sessions and
-//! the search index's builds and queries (`index`, with its saved copies in `index_disk`) are run
-//! by the runner itself, the log files have one ordered worker (`logs`), effects are timed for
-//! the performance log, and saves of Glowfly's own files are kept in order (`saves`).
-//! `execute.rs` maps each effect to its work: an effect area's `Execute` impl lives in this
-//! folder's file for that area (`worktrees`, `rebase`, `sparse`, …), as does work longer than a
-//! line for the flat variants (`files`, `highlight`, …); the git, file and network code itself
-//! lives in `glowfly-core`.
+//! file watcher, credential-prompt answers and stops of running git commands (`control`), the
+//! terminal's shell sessions and the search index's builds and queries (`index`, with its saved
+//! copies in `index_disk`) are run by the runner itself, the log files have one ordered worker
+//! (`logs`), effects are timed for the performance log, and saves of Glowfly's own files are
+//! kept in order (`saves`). `execute.rs` maps each effect to its work: an effect area's
+//! `Execute` impl lives in this folder's file for that area (`worktrees`, `rebase`, `sparse`, …);
+//! the git, file and network code itself lives in `glowfly-core`.
 
 use glowfly_core::repo;
 use glowfly_model::effect::DiffEffect;
@@ -30,6 +29,7 @@ mod commit;
 mod config;
 mod conflict_check;
 mod conflict_files;
+mod control;
 mod credentials;
 mod custom_commands;
 mod dashboard;
@@ -64,6 +64,7 @@ mod load;
 mod lock;
 mod logs;
 mod monitor;
+mod network;
 mod notify;
 mod onboarding;
 mod op_preview;
@@ -168,7 +169,7 @@ pub struct Runner {
     graph_cache: Arc<repo::GraphCache>,
     /// The log files' worker (attached at startup, never in tests).
     logs: logs::LogWorker,
-    /// The stops of the running git commands that can be cancelled (`Effect::StopGit`).
+    /// The stops of the running git commands that can be cancelled (`ControlEffect::StopGit`).
     stops: Arc<stops::Stops>,
     /// What the work reaches outside the repositories with (`seams.rs`): the real trash and
     /// sequence editor, or the tests' stand-ins (`testing::sandboxed`).
@@ -242,19 +243,12 @@ impl Runner {
     fn run_checked(&self, effect: Effect, check: Option<glowfly_model::effect::TrustCheck>) {
         let Some(effect) = self.admit(effect) else { return };
         let effect = match effect {
-            Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
-            Effect::SweepWatch { workdir } => return self.sweep_watch(workdir),
-            Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
+            Effect::Control(c) => return self.control(c),
             Effect::Terminal(t) => return self.terminal(t, check),
             Effect::History(HistoryEffect::Stats { workdir, oids }) => {
                 return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone());
             }
             Effect::Logs(e) if e.on_log_worker() => return self.logs.submit(e),
-            Effect::StopGit(key) => {
-                let asked = self.stops.stop(key);
-                tracing::debug!(?key, asked, "stop git");
-                return;
-            }
             Effect::History(HistoryEffect::SearchPaths { workdir, request, terms, oids }) => {
                 let r = path_search::Request { workdir, request, terms, oids };
                 return self.path_search.submit(r, self.seams.chunk, self.tx.clone(), self.waker.clone());
@@ -323,18 +317,6 @@ impl Runner {
         };
         if let Err(e) = std::thread::Builder::new().name(format!("glowfly-{name}")).spawn(job) {
             tracing::error!("could not start a worker thread for {name}: {e}");
-        }
-    }
-
-    /// Has the watcher of `workdir` sweep its tree; with none running there, reads the whole
-    /// status instead (as the poll did before the sweep).
-    fn sweep_watch(&self, workdir: std::path::PathBuf) {
-        if self.watch.sweep(&workdir) {
-            return;
-        }
-        let msg = glowfly_model::msg::WatchMsg::RepoChanged { full: false, paths: None, last_event: std::time::Instant::now() };
-        if self.tx.send(Msg::Scoped { workdir, msg: Box::new(Msg::Watch(msg)) }).is_ok() {
-            self.waker.wake();
         }
     }
 }
