@@ -13,6 +13,8 @@ use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Image, Layout, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
+/// The app's name: the dialog's accessible name and the wordmark (not translated).
+const NAME: &str = "Glowfly";
 /// The dialog's content width.
 const WIDTH: f32 = 400.0;
 /// The icon's side, and the space above it.
@@ -43,14 +45,14 @@ pub(crate) fn about(ui: &mut Ui, cx: Cx, git: &GitState, copy: ThisCopy, msgs: &
         let (right, top) = (ui.cursor().left() + ui.available_width(), ui.cursor().top());
         dialog_frame::close_button(ui, tip, right, top);
     };
-    let mut d = Dialog::new(cx, "Glowfly").width(WIDTH).header(header).begin(ui);
+    let mut d = Dialog::new(cx, NAME).width(WIDTH).header(header).begin(ui);
     d.body(ui, |ui| {
         ui.vertical_centered(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
             ui.add_space(ICON_TOP);
             ui.add(Image::new(&app_mark::icon(ui.ctx())).fit_to_exact_size(vec2(ICON, ICON)));
             ui.add_space(12.0);
-            ui.label(RichText::new("Glowfly").font(type_scale::strong(ui, NAME_PX)).color(color::text()));
+            ui.label(RichText::new(NAME).font(type_scale::strong(ui, NAME_PX)).color(color::text()));
             ui.add_space(4.0);
             ui.label(RichText::new(t.tr("about.tagline")).font(type_scale::font(type_scale::SUBHEAD)).color(color::text()));
             ui.add_space(2.0);
