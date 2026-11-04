@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 2 geänderte Dateien" [selected]
   Tab "api-server"
 Button "Tab demo schließen"
 Button "Tab api-server schließen"
@@ -84,7 +83,9 @@ Label "64 × 64 px · 160 bytes"
 Label "After"
 Label "64 × 64 px · 374 bytes · Verknüpfte Dateien nicht gezeigt"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Rückgängig"
