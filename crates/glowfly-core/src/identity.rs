@@ -26,16 +26,31 @@ pub fn writes(id: &Identity) -> Vec<(&'static str, Option<String>)> {
     out
 }
 
+/// A `git config` write of `key` that git refused; `said` is what git printed. The model words it
+/// in the user's language (`state/error_words/typed.rs`); `Display` is the English for callers
+/// whose results still carry text (#367).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConfigWriteFailed {
+    pub key: String,
+    pub said: String,
+}
+
+impl std::fmt::Display for ConfigWriteFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "git config {} failed: {}", self.key, self.said)
+    }
+}
+
 /// Sets `key` to `value` in the global or the repository's config, or unsets it for None. An
 /// unset of a key that isn't there (git exits 5) counts as done.
-pub fn set_config(cwd: &Path, global: bool, key: &str, value: Option<&str>, env: &[(&str, &str)]) -> Result<(), String> {
+pub fn set_config(cwd: &Path, global: bool, key: &str, value: Option<&str>, env: &[(&str, &str)]) -> Result<(), ConfigWriteFailed> {
     let scope = if global { "--global" } else { "--local" };
     let a = match value {
         Some(v) => args(&["config", scope, key, v]),
         None => args(&["config", scope, "--unset", key]),
     };
     let (ok, out) = gitcli::run_with_input(cwd, &a, "", env);
-    if ok || value.is_none() { Ok(()) } else { Err(format!("git config {key} failed: {out}")) }
+    if ok || value.is_none() { Ok(()) } else { Err(ConfigWriteFailed { key: key.to_owned(), said: out }) }
 }
 
 /// Writes `id` to the global config (see `writes`), one write at a time: parallel `git config`
@@ -60,7 +75,7 @@ fn write_global_all(cwd: &Path, writes: &[(&str, Option<String>)], env: &[(&str,
     let mut done: Vec<(&str, Option<String>)> = Vec::new();
     for (key, value) in writes {
         let step = global_value(cwd, key, env).and_then(|before| {
-            set_config(cwd, true, key, value.as_deref(), env)?;
+            set_config(cwd, true, key, value.as_deref(), env).map_err(|e| e.to_string())?;
             Ok(before)
         });
         match step {

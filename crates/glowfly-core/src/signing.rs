@@ -2,7 +2,6 @@
 //! exporting public keys. Everything shells out to `gpg` / reads files; no key material is
 //! stored by Glowfly.
 
-use crate::error::{Error, Result};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -59,6 +58,32 @@ impl SigningFormat {
     }
 }
 
+/// Why listing, generating or exporting a signing key failed. The model words it in the user's
+/// language (`state/error_words/typed.rs`); `said` is the program's or the system's own words.
+#[derive(Debug, Clone, PartialEq)]
+pub enum KeyError {
+    /// Generating needs a name and an email in Profile first.
+    NoIdentity,
+    /// `program` couldn't be started.
+    NotRun { program: String, said: String },
+    /// `program` ran and failed; `said` is what it printed on stderr.
+    Failed { program: String, said: String },
+    /// `gpg --generate-key` failed; `said` is what it printed on stderr.
+    GenerateFailed { said: String },
+    /// The key `gpg` generated isn't among its secret keys.
+    NewKeyNotFound,
+    /// The program exported nothing for `key`.
+    NoPublicKey { key: String },
+    /// Reading a file or talking to the program failed; `said` is the system's words.
+    Io { said: String },
+}
+
+impl From<std::io::Error> for KeyError {
+    fn from(e: std::io::Error) -> Self {
+        KeyError::Io { said: e.to_string() }
+    }
+}
+
 /// A key that can be used as `user.signingkey`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SigningKey {
@@ -101,11 +126,11 @@ pub(crate) fn command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     cmd
 }
 
-fn run(mut cmd: Command, what: &str) -> Result<String> {
-    let out = cmd.output().map_err(|e| Error::Other(format!("could not run {what}: {e}")))?;
+fn run(mut cmd: Command, what: &str) -> Result<String, KeyError> {
+    let out = cmd.output().map_err(|e| KeyError::NotRun { program: what.to_owned(), said: e.to_string() })?;
     if !out.status.success() {
-        let err = String::from_utf8_lossy(&out.stderr).trim().to_owned();
-        return Err(Error::Other(format!("{what} failed: {err}")));
+        let said = String::from_utf8_lossy(&out.stderr).trim().to_owned();
+        return Err(KeyError::Failed { program: what.to_owned(), said });
     }
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
@@ -142,7 +167,7 @@ pub fn parse_gpg_colons(text: &str, now: i64) -> Vec<SigningKey> {
     keys
 }
 
-pub fn list_gpg_keys(program: &str, now: i64) -> Result<Vec<SigningKey>> {
+pub fn list_gpg_keys(program: &str, now: i64) -> Result<Vec<SigningKey>, KeyError> {
     let mut cmd = command(program);
     cmd.args(["--list-secret-keys", "--with-colons", "--keyid-format=long"]);
     Ok(parse_gpg_colons(&run(cmd, program)?, now))
@@ -179,20 +204,20 @@ pub fn gpg_key_params(name: &str, email: &str, passphrase: &str) -> String {
 }
 
 /// Generates a signing key and returns its long id.
-pub fn generate_gpg_key(program: &str, name: &str, email: &str, passphrase: &str, now: i64) -> Result<String> {
+pub fn generate_gpg_key(program: &str, name: &str, email: &str, passphrase: &str, now: i64) -> Result<String, KeyError> {
     if name.trim().is_empty() || email.trim().is_empty() {
-        return Err(Error::Other("set your name and email in Profile first".into()));
+        return Err(KeyError::NoIdentity);
     }
     let mut cmd = command(program);
     cmd.args(["--batch", "--pinentry-mode", "loopback", "--generate-key"]).stdin(Stdio::piped());
-    let mut child = cmd.spawn().map_err(|e| Error::Other(format!("could not run {program}: {e}")))?;
+    let mut child = cmd.spawn().map_err(|e| KeyError::NotRun { program: program.to_owned(), said: e.to_string() })?;
     if let Some(mut stdin) = child.stdin.take() {
         use std::io::Write;
         stdin.write_all(gpg_key_params(name, email, passphrase).as_bytes())?;
     }
     let out = child.wait_with_output()?;
     if !out.status.success() {
-        return Err(Error::Other(format!("key generation failed: {}", String::from_utf8_lossy(&out.stderr).trim())));
+        return Err(KeyError::GenerateFailed { said: String::from_utf8_lossy(&out.stderr).trim().to_owned() });
     }
     // The new key is the one for this email that wasn't there before; pick the newest.
     let keys = list_gpg_keys(program, now)?;
@@ -200,18 +225,18 @@ pub fn generate_gpg_key(program: &str, name: &str, email: &str, passphrase: &str
         .filter(|k| k.label.contains(email.trim()))
         .max_by_key(|k| k.expires.unwrap_or(0))
         .map(|k| k.id)
-        .ok_or_else(|| Error::Other("the new key was not found".into()))
+        .ok_or(KeyError::NewKeyNotFound)
 }
 
 /// The ASCII-armored public key (GPG) or the `.pub` file contents (SSH).
-pub fn export_public_key(format: SigningFormat, program: &str, key: &str) -> Result<String> {
+pub fn export_public_key(format: SigningFormat, program: &str, key: &str) -> Result<String, KeyError> {
     match format {
         SigningFormat::Ssh => Ok(std::fs::read_to_string(key)?.trim().to_owned()),
         _ => {
             let mut cmd = command(program);
             cmd.args(["--armor", "--export", key]);
             let text = run(cmd, program)?;
-            if text.trim().is_empty() { Err(Error::NotFound(format!("no public key for {key}"))) } else { Ok(text) }
+            if text.trim().is_empty() { Err(KeyError::NoPublicKey { key: key.to_owned() }) } else { Ok(text) }
         }
     }
 }

@@ -101,8 +101,7 @@ fn lines_instead(workdir: &Path, path: &str, seen: &SeenLines) -> Msg {
 
 /// The paths in the index, for the palette's file finder.
 pub(super) fn tracked_paths(workdir: &Path, generation: u64) -> Msg {
-    let result = repo::tracked_paths(workdir).map_err(|e| format!("Could not list the repository's files: {e}"));
-    Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result })
+    Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result: repo::tracked_paths(workdir) })
 }
 
 /// The folder the typed `parent` names (`~` expanded, resolved), when it is one, looked at after

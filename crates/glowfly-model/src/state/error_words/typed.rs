@@ -6,6 +6,8 @@
 
 use glowfly_core::git_credential::CredentialError;
 use glowfly_core::i18n::Lang;
+use glowfly_core::identity::ConfigWriteFailed;
+use glowfly_core::signing::KeyError;
 
 /// Why saving or dropping an HTTPS sign-in with git's credential helper failed
 /// (`CredentialMsg::Remembered` and `Forgotten`).
@@ -20,4 +22,23 @@ pub fn credential(t: Lang, e: &CredentialError) -> String {
         CredentialError::ApproveFailed { said: None } => t.tr("credential_errors.approve").to_owned(),
         CredentialError::RejectFailed { said: None } => t.tr("credential_errors.reject").to_owned(),
     }
+}
+
+/// Why listing, generating or exporting a signing key failed (`PrefsMsg::SigningKeysLoaded`,
+/// `GpgKeyGenerated` and `PublicKeyExported`).
+pub fn signing_key(t: Lang, e: &KeyError) -> String {
+    match e {
+        KeyError::NoIdentity => t.tr("signing_errors.no_identity").to_owned(),
+        KeyError::NotRun { program, said } => t.trf("signing_errors.not_run", &[("program", program), ("said", said)]),
+        KeyError::Failed { program, said } => t.trf("signing_errors.failed", &[("program", program), ("said", said)]),
+        KeyError::GenerateFailed { said } => t.trf("signing_errors.generate_failed", &[("said", said)]),
+        KeyError::NewKeyNotFound => t.tr("signing_errors.new_key_not_found").to_owned(),
+        KeyError::NoPublicKey { key } => t.trf("signing_errors.no_public_key", &[("key", key)]),
+        KeyError::Io { said } => said.clone(),
+    }
+}
+
+/// Why a Preferences page's git config write failed (`PrefsMsg::ConfigSaved`).
+pub fn config_write(t: Lang, e: &ConfigWriteFailed) -> String {
+    t.trf("config_errors.write", &[("key", &e.key), ("said", &e.said)])
 }
