@@ -231,7 +231,8 @@ fn status_update_pill_narrow() {
     let mut st = status_bar(UpdateStatus::Available(Box::new(the_offer())));
     st.settings.language = "de".into();
     let text = Lang::De.trf("updates.chip.available", &[("version", &"0.3.0")]);
-    let mut h = harness_sized(st, true, vec2(240.0, 400.0));
+    // Narrow enough that the German chip is cut: its full text then leads the tooltip.
+    let mut h = harness_sized(st, true, vec2(150.0, 400.0));
     h.run();
     h.check_snapshot("status_update_pill_narrow");
     h.get_by_label(&text).hover();

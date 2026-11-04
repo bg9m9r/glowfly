@@ -1,5 +1,4 @@
 window 1440x880
-Label "Glowfly 0.1.0"
 Button "Menü"
 Button "Datei"
 Button "Bearbeiten"
@@ -7,7 +6,7 @@ Button "Ansicht"
 Button "Fenster"
 Button "Hilfe"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 geänderte Datei" [selected]
   Tab "api-server"
 Button "Tab demo schließen"
 Button "Tab api-server schließen"
@@ -88,7 +87,9 @@ Button "Fenster minimieren"
 Button "Fenster maximieren"
 Button "Fenster schließen"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Rückgängig"

@@ -94,7 +94,15 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("title_bar_windows_light", Top(108.0)),
     ("title_bar_mac_dark", Top(108.0)),
     ("tabs_restyled", Window),
+    // The tabs' state slot, one tab per state (D15).
+    ("tabs_states_dark", Top(90.0)),
+    ("tabs_states_light", Top(90.0)),
     ("tabs_hover", Top(40.0)),
+    // The status bar's last failure and fetch item, and a running job (D15).
+    ("status_bar_failure_dark", Window),
+    ("status_bar_failure_light", Window),
+    ("status_bar_job", Window),
+    ("status_bar_failure_narrow_de", Window),
     // The status bar's What's new chip after an upgrade, in both default themes, and beside an
     // update's chip.
     ("status_whats_new_dark", Window),
@@ -322,6 +330,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `status_bar_failure_dark` and `tabs_states_dark` in Light: only their look differs.
+    "status_bar_failure_light",
+    "tabs_states_light",
     // `rebase_dragging` in Porcelain.
     "rebase_dragging_light",
     // `graph_chips_shared_prefix_dark` in Porcelain.

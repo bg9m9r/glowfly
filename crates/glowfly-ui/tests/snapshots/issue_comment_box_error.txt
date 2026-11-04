@@ -2,9 +2,9 @@ window 1400x820
 Label "GitHub"
 Label "acme/demo"
 Label "· 0 open pull requests"
-Label "Glowfly 0.1.0"
+Button "Never fetched"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -115,7 +115,9 @@ Label "yesterday"
 Button "Reply"
 Label "Fixed on the 12-crash-on-start branch, needs review."
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

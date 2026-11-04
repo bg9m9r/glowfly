@@ -83,6 +83,12 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Cut the conflict popover's Branch and Upstream lines by the D16 rule (they still cut half and half)
 - Cut graph ref chips in their middle after the "+N" overflow (waits on #534 and #424)
 
+### Status at a glance (D15)
+- The fetch tooltip's per-remote list comes from FETCH_HEAD at the last full load; after an
+  in-app fetch that changed no refs it can name the remotes of the fetch before
+- A behind count of 10 or more is wider than the 12 px slot and cuts the tab name sooner
+- Show the state slot's mark in the tab list dropdown as well
+
 ### Menus name their object once
 
 - Palette entries name commits by summary instead of a short SHA ("Rebase main onto 1a2b3c4",

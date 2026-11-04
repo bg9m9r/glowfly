@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -57,7 +56,9 @@ Button "Configure…"
 Label "Git Flow isn't set up in this repository."
 Button "Set up Git Flow…"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

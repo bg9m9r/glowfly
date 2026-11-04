@@ -27,9 +27,8 @@ pub fn apply_zoom(ctx: &egui::Context, st: &AppState) {
     }
 }
 
-/// The status bar's right-hand items, inside its right-to-left layout: the zoom level while it
-/// isn't 100% (a click resets it), then Show toolbar while the toolbar is hidden.
-pub(super) fn status_items(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+/// The status bar's zoom level while it isn't 100%, at its right end: a click resets it.
+pub(super) fn zoom_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let level = st.settings.zoom_level();
     if level != DEFAULT_ZOOM_PERCENT {
@@ -38,6 +37,11 @@ pub(super) fn status_items(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>
             msgs.push(Msg::Layout(LayoutMsg::ZoomReset));
         }
     }
+}
+
+/// The status bar's Show toolbar, while the toolbar is hidden.
+pub(super) fn show_toolbar_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     if !st.settings.show_toolbar
         && ui
             .small_button(t.tr("status.show_toolbar"))

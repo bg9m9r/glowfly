@@ -57,6 +57,29 @@ can turn it off) and downloads it only when you ask, after checking it against t
 checksums. Those confirm the download matches the release, not who published it, since the
 builds aren't code-signed yet. "View release notes" in the command palette shows what changed.
 
+### Opening the unsigned builds
+
+Check the download against `SHA256SUMS` or its attestation first, as above, so you know it is the
+file the release published. Then:
+
+- **Windows**: when SmartScreen says "Windows protected your PC", click "More info", then "Run
+  anyway". Unblock the `.zip` before you unpack it, so the program inside isn't marked as
+  downloaded: right-click it, choose Properties, tick "Unblock" and click OK, or run
+  `Unblock-File <file>` in PowerShell.
+- **macOS 15 and later**: right-click > Open no longer gets past Gatekeeper. Open Glowfly once and
+  close the message, then go to System Settings > Privacy & Security and click "Open Anyway" next
+  to the note about Glowfly; after that it opens normally. Or, in Terminal,
+  `xattr -dr com.apple.quarantine /Applications/Glowfly.app` removes the "downloaded from the
+  internet" mark that makes macOS check the app, from the app and everything in it (for the
+  `.tar.gz`, give the folder you unpacked instead). On macOS 14 and earlier, Control-click the app
+  and choose Open.
+- **Linux**: make the AppImage executable first (`chmod +x <file>.AppImage`, or "Allow executing
+  file as program" in its Properties). The other packages need nothing extra.
+
+Installing through winget, Scoop, Homebrew and Flathub is coming
+([#557](https://github.com/bg9m9r/glowfly/issues/557)) and will be the smoother way on every
+system.
+
 ## Building from source
 
 Glowfly is developed and tested on Windows; macOS and Linux builds are less tested. You need a

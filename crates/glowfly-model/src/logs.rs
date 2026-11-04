@@ -83,6 +83,9 @@ pub enum LogsMsg {
     /// A failure toast's Details: select that tab if it is still open, show its activity log
     /// and open the failed run's row (`entry`), scrolled into view.
     Details { tab: TabId, entry: Option<EntryId> },
+    /// The status bar's × on the last failure: stop showing that failed run (`entry`) as the
+    /// tab's last failure, in the status bar and on its tab.
+    DismissFailure(EntryId),
     /// Fold an activity row (a routine group by its first entry) open, or closed again.
     Fold(EntryId),
     /// Run a failed run's fix: the panel's button, and the failure toast's.
@@ -118,6 +121,7 @@ impl LogsMsg {
             | Self::SetExtended(_)
             | Self::GitRan(_)
             | Self::Details { .. }
+            | Self::DismissFailure(_)
             | Self::Fold(_)
             | Self::Fix(_)
             | Self::AltFix(_)

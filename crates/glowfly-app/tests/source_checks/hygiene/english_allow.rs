@@ -148,7 +148,6 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-ui/src/stack_menu.rs", 1),
     ("crates/glowfly-ui/src/stash_dialog.rs", 6),
     ("crates/glowfly-ui/src/stash_push_dialog.rs", 17),
-    ("crates/glowfly-ui/src/status.rs", 1),
     ("crates/glowfly-ui/src/submodule_dialogs.rs", 22),
     ("crates/glowfly-ui/src/submodules.rs", 11),
     ("crates/glowfly-ui/src/tab_dialog.rs", 5),

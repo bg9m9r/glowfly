@@ -1,7 +1,5 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 Label "Save sparse paths…"
-ProgressIndicator
 Button "Back to repository"
 TextInput "Search preferences"
 Label "Preferences"

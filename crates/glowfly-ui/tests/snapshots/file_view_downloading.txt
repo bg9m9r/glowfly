@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -72,7 +71,9 @@ Label "Downloading the contents of lib.rs…"
 Label "This repository is a partial clone: file contents come from origin when they are first needed."
 Button "Cancel"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"
