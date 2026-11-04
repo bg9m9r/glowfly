@@ -31,7 +31,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("main_dark", Window),
     ("main_light", Window),
     ("main_high_contrast_dark", Window),
-    ("main_high_contrast_light", Window),
+    // High contrast light's whole window is `history_table_high_contrast_light`.
     ("theme_graphite", Window),
     ("theme_midnight", Window),
     ("theme_mist", Window),
@@ -375,7 +375,6 @@ const IMAGE_ONLY: &[&str] = &[
     // The same text with the system's settings followed: only the high-contrast look differs.
     "prefs_accessibility_system_on",
     "main_high_contrast_dark",
-    "main_high_contrast_light",
     // The WIP row chosen: `main_dark`'s text; only its look differs.
     "graph_wip_chosen_dark",
     "graph_wip_chosen_light",

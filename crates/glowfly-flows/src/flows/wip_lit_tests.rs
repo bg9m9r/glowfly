@@ -1,10 +1,11 @@
 //! Headless tests for when the WIP row is drawn selected (`RepoSession::wip_lit`): opening a
 //! dirty repository selects the WIP (its staging panel shows) without lighting the row, and a
 //! refresh that falls back to the WIP leaves it unlit; choosing it (a click or the keyboard
-//! send `SelectWip`, Show in progress) lights it.
+//! send `SelectWip`, Show in progress, Ctrl-click, Go to commit message) lights it.
 
 use super::selection_tests::refresh;
 use super::{clean_tree, drive, git, scratch_repo, state};
+use crate::keymap::KeyAction;
 use crate::msg::{Msg, RepoMsg, SelectionMsg};
 use crate::state::Selection;
 
@@ -57,5 +58,30 @@ fn a_refresh_that_falls_back_to_the_wip_leaves_it_unlit() {
     refresh(&mut st);
     assert_eq!(st.session.selection, Selection::Wip);
     assert!(!st.session.wip_drawn_selected());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn ctrl_click_on_the_unlit_wip_lights_it() {
+    let dir = scratch_repo("wip-lit-ctrl");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    assert!(st.session.selection == Selection::Wip && !st.session.wip_drawn_selected());
+    drive(&mut st, Msg::Selection(SelectionMsg::ToggleWip));
+    assert_eq!(st.session.selection, Selection::Wip);
+    assert!(st.session.wip_drawn_selected(), "Ctrl-click chooses it as a plain click does");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn go_to_commit_message_on_the_unlit_wip_lights_it() {
+    let dir = scratch_repo("wip-lit-focus");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    assert!(st.session.selection == Selection::Wip && !st.session.wip_drawn_selected());
+    drive(&mut st, Msg::Shortcut(KeyAction::FocusMessage));
+    assert_eq!(st.session.selection, Selection::Wip);
+    assert!(st.view.focus_message);
+    assert!(st.session.wip_drawn_selected(), "going to the commit message chooses the WIP");
     let _ = std::fs::remove_dir_all(&dir);
 }

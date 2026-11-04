@@ -114,8 +114,8 @@ fn revert_msg(st: &mut AppState) -> Option<Msg> {
     Some(Msg::Stage(StageMsg::RevertHunk { index, generation }))
 }
 
-/// Selects the WIP panel (when a repository is open) and has the commit box focus its summary
-/// on the next frame.
+/// Selects the WIP panel (when a repository is open), lighting its row as choosing it does, and
+/// has the commit box focus its summary on the next frame.
 fn focus_message(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     if st.snap.is_none() {
         return;
@@ -124,6 +124,8 @@ fn focus_message(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     if st.session.selection != Selection::Wip {
         fx.extend(super::update_sealed(st, Msg::Repo(RepoMsg::SelectWip), now));
     }
+    // Already the selection (a dirty repository opens with it, unlit): only light it.
+    st.session.wip_lit = true;
     st.view.focus_message = true;
 }
 
