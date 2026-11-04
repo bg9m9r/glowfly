@@ -1,0 +1,5 @@
+window 360x150
+painted:
+  "moving"
+  "reduce motion"
+  "on raised"

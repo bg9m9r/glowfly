@@ -82,7 +82,7 @@ pub fn show(ui: &mut egui::Ui, t: Lang, form: &mut CloneForm, connections: &[Con
     account(ui, p, connections, msgs);
     ui.add_space(4.0);
     if p.loading || p.loaded.is_none() {
-        pane_status::loading_line(ui, "Loading your repositories…");
+        pane_status::loader_line(ui, "Loading your repositories…");
     } else if let Some(e) = &p.error {
         let provider = p.loaded.as_ref().map_or(Provider::GitHub, |a| a.provider);
         let error = error_words::hosting(t, provider, Ask::Read, e);

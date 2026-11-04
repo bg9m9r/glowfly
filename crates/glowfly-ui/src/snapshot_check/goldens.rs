@@ -253,9 +253,13 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("conflict_narrow_1100_de", Window),
     ("blame_view", Window),
     ("blame_view_light", Window),
+    ("blame_loading", Window),
+    ("blame_loading_light", Window),
     ("range_diff_changed", Window),
     ("pull_request_line_comment_dark", Window),
     // The design sheets, fonts, colours and icons.
+    ("loader_fireflies_dark", Window),
+    ("loader_fireflies_light", Window),
     ("controls_dark", Window),
     // Every chip and badge kind: only the two chip heights.
     ("chips_catalog_dark", Window),
@@ -440,6 +444,10 @@ const IMAGE_ONLY: &[&str] = &[
     // `diff_svg_preview_light` in Graphite.
     "diff_svg_preview_dark",
     "blame_view_light",
+    // `blame_loading` in Light: only its look differs.
+    "blame_loading_light",
+    // `loader_fireflies_dark` in Porcelain.
+    "loader_fireflies_light",
     "controls_light",
     "controls_high_contrast_dark",
     "controls_high_contrast_light",

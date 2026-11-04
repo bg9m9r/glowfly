@@ -21,7 +21,7 @@ const ICON: f32 = 40.0;
 /// The spinner's square, in the icon's place.
 const SPINNER: f32 = 24.0;
 /// The least space above the block, on a short pane (and in a scroll area).
-const MIN_TOP: f32 = 24.0;
+pub(super) const MIN_TOP: f32 = 24.0;
 /// The height of a row of buttons: a Regular button's.
 const BUTTON_H: f32 = ControlSize::Regular.metrics().h;
 

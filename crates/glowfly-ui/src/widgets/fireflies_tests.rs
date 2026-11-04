@@ -90,9 +90,24 @@ fn in_a_minimized_window_it_asks_for_nothing() {
 }
 
 #[test]
-fn still_dots_are_all_at_sixty_percent() {
-    assert_eq!(alphas(None), [STILL; 3]);
-    assert_eq!(STILL, 0.6);
-    let moving = alphas(Some(PERIOD / 3.0));
+fn still_dots_keep_three_to_one_in_every_theme() {
+    use crate::ui::theme::{self, contrast};
+    use glowfly_core::settings::BuiltinTheme;
+    let all = BuiltinTheme::ALL.into_iter().map(|t| (format!("{t:?}"), *theme::builtin(t)));
+    for (name, p) in all.chain([("GardenDark".into(), theme::GARDEN_DARK), ("GardenLight".into(), theme::GARDEN_LIGHT)]) {
+        let still = still_strength(&p);
+        assert_eq!(alphas(None, still), [still; 3], "{name}: all three alike");
+        for s in [p.bg, p.panel, p.raised] {
+            let dot = contrast::mix(s, p.lantern, still);
+            assert!(contrast::ratio(dot, s) >= 3.0, "{name}: still dot {dot:?} on {s:?}");
+        }
+        // The light themes need full lantern; the dark and high-contrast ones keep 60%.
+        assert_eq!(still == STILL, p.dark || p.lantern == p.text, "{name}: {still}");
+    }
+}
+
+#[test]
+fn moving_dots_differ() {
+    let moving = alphas(Some(PERIOD / 3.0), STILL);
     assert!(moving[0] > moving[1] && moving[0] > moving[2], "{moving:?}");
 }
