@@ -38,21 +38,42 @@ fn line_url(line: &str) -> Option<String> {
     (!url.is_empty()).then(|| url.to_owned())
 }
 
-/// `url` as git writes it in `FETCH_HEAD`: no user name or password, and no trailing `/` or
-/// `.git`.
+/// `url` as git writes it in `FETCH_HEAD`: no user name or password (`scheme://user@host/...`
+/// and scp-like `user@host:path` alike), and no trailing `/` or `.git`.
 fn bare_url(url: &str) -> String {
-    let anonymous = match url.split_once("://") {
-        Some((scheme, rest)) => {
-            let host_end = rest.find('/').unwrap_or(rest.len());
-            let host = &rest[..host_end];
-            let host = host.rsplit_once('@').map_or(host, |(_, h)| h);
-            format!("{scheme}://{host}{}", &rest[host_end..])
-        }
-        None => url.to_owned(),
-    };
+    let anonymous = anonymous(url);
     let trimmed = anonymous.trim_end_matches('/');
     let trimmed = trimmed.strip_suffix(".git").unwrap_or(trimmed);
     trimmed.trim_end_matches('/').to_owned()
+}
+
+/// `url` without its `user[:password]@`, by git's rule: the text up to the first `@` goes when
+/// the URL isn't a local path and the `@` sits in the host part (after `scheme://` and before
+/// the first `/`, or before the `:` of an scp-like URL).
+fn anonymous(url: &str) -> String {
+    let Some(at) = url.find('@') else { return url.to_owned() };
+    if is_local(url) {
+        return url.to_owned();
+    }
+    let rest = &url[at + 1..];
+    match url.find("://") {
+        Some(s) if !url[s + 3..at].contains('/') => format!("{}{rest}", &url[..s + 3]),
+        None if rest.contains(':') => rest.to_owned(),
+        _ => url.to_owned(),
+    }
+}
+
+/// Whether git reads `url` as a local path: no `:` before the first `/`, or a drive letter.
+fn is_local(url: &str) -> bool {
+    let b = url.as_bytes();
+    if b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':' {
+        return true;
+    }
+    match (url.find(':'), url.find('/')) {
+        (None, _) => true,
+        (Some(c), Some(s)) => s < c,
+        (Some(_), None) => false,
+    }
 }
 
 fn modified(file: &Path) -> Option<i64> {
@@ -65,6 +86,7 @@ fn modified(file: &Path) -> Option<i64> {
 mod tests {
     use super::*;
     use crate::repo::{LoadOptions, load};
+    use crate::testkit::git_cli;
     use crate::testutil::{git, scratch_repo, with_origin, write};
     use std::time::{Duration, SystemTime};
 
@@ -128,7 +150,12 @@ mod tests {
         assert_eq!(line_url("abc\tnot-for-merge\t/srv/repos/a b").as_deref(), Some("/srv/repos/a b"), "a HEAD fetch is only its URL");
         assert_eq!(line_url("abc"), None);
         assert_eq!(bare_url("https://me:token@github.com/acme/demo.git/"), "https://github.com/acme/demo");
-        assert_eq!(bare_url("git@github.com:acme/demo.git"), "git@github.com:acme/demo", "scp-like URLs keep their user");
+        assert_eq!(bare_url("git@github.com:acme/demo.git"), "github.com:acme/demo", "scp-like URLs lose their user too");
+        assert_eq!(bare_url("ssh://git@host.example/path/demo.git"), "ssh://host.example/path/demo");
+        assert_eq!(bare_url("github.com:acme/demo.git"), "github.com:acme/demo");
+        assert_eq!(bare_url("/srv/me@home/demo"), "/srv/me@home/demo", "a local path keeps its @");
+        assert_eq!(bare_url("C:/me@home/demo"), "C:/me@home/demo", "so does a drive path");
+        assert_eq!(bare_url("https://host/a@b/demo"), "https://host/a@b/demo", "an @ in the path stays");
         assert_eq!(bare_url("/srv/repos/demo/"), "/srv/repos/demo");
     }
 
@@ -146,5 +173,39 @@ mod tests {
         for d in [&work, &bare, &other] {
             let _ = std::fs::remove_dir_all(d);
         }
+    }
+
+    /// Fetches over SSH through a stand-in `core.sshCommand` that runs the upload-pack command it
+    /// is given in the bare repo's folder, so FETCH_HEAD shows the URL exactly as git writes it.
+    #[test]
+    fn ssh_remotes_are_named_as_git_writes_them() {
+        let (work, bare) = with_origin("fetch-time-ssh");
+        let slashed = |p: &Path| p.display().to_string().replace('\\', "/");
+        let base = slashed(bare.parent().unwrap());
+        let name = bare.file_name().unwrap().to_string_lossy().into_owned();
+        let stem = name.strip_suffix(".git").unwrap_or(&name).to_owned();
+        let script = work.with_file_name(format!("{}-fake-ssh.sh", work.file_name().unwrap().to_string_lossy()));
+        // The last argument is the remote command; an ssh:// path starts with `/`, made relative.
+        let body = format!("for a; do c=$a; done\ncd '{base}' || exit 1\nc=$(printf '%s' \"$c\" | sed \"s#'/#'#\")\neval \"$c\"\n");
+        std::fs::write(&script, body).unwrap();
+        let command = format!("sh '{}'", slashed(&script));
+        git_cli(&work, &["config", "core.sshCommand", &command]);
+        git_cli(&work, &["config", "ssh.variant", "simple"]);
+        let cases = [
+            ("scp", format!("git@example.com:{name}"), format!("example.com:{stem}")),
+            ("ssh", format!("ssh://git@example.com/{name}"), format!("ssh://example.com/{stem}")),
+        ];
+        for (remote, url, written) in &cases {
+            git_cli(&work, &["remote", "add", remote, url]);
+            git_cli(&work, &["fetch", "-q", remote]);
+            let head = std::fs::read_to_string(work.join(".git/FETCH_HEAD")).unwrap();
+            let urls: Vec<String> = head.lines().filter_map(line_url).collect();
+            assert!(!urls.is_empty() && urls.iter().all(|u| u == written), "{remote}: git wrote {urls:?}");
+            assert_eq!(bare_url(url), *written);
+            assert_eq!(load(&work, &LoadOptions::all(10)).unwrap().fetched_remotes, [*remote]);
+        }
+        let _ = std::fs::remove_dir_all(&work);
+        let _ = std::fs::remove_dir_all(&bare);
+        let _ = std::fs::remove_file(&script);
     }
 }

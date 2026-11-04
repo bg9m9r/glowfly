@@ -3,6 +3,10 @@
 //! a × that dismisses it), and when the repository was last fetched at the right ("Fetched 4
 //! min ago"; its tooltip lists each remote, and a click fetches). That item repaints once a
 //! minute, when its text can change, rather than every frame.
+//!
+//! Like `tab_state.rs`, this is a deliberate exception to the rule that chrome paints no status
+//! colours (`vivid_tests`): the failure is painted with `color::warn()` because D15 asks for an
+//! outcome the user hasn't seen to stand out until it is dismissed.
 
 use super::status::CONTROL;
 use super::theme::{color, type_scale};

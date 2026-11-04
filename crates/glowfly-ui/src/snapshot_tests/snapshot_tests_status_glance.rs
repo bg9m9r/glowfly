@@ -22,8 +22,13 @@ type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// Only the status bar, 900 px wide, in the dark or light view palette.
 fn bar(st: AppState, dark: bool) -> H {
+    bar_sized(st, dark, 900.0)
+}
+
+/// [`bar`] at `width`.
+fn bar_sized(st: AppState, dark: bool, width: f32) -> H {
     let p = theme::view_palette(dark);
-    let size = egui::vec2(900.0, crate::ui::status::BAR_H);
+    let size = egui::vec2(width, crate::ui::status::BAR_H);
     crate::ui::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_palette(&p);
@@ -149,6 +154,18 @@ fn without_a_remote_there_is_no_fetch_item() {
     let mut h = bar(st, true);
     h.run();
     assert!(h.query_by_label_contains("Fetched").is_none());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// In German at 520 px, the failure line and "Fetched 4 min ago" still fit beside each other.
+#[test]
+fn status_bar_failure_narrow_de() {
+    let (mut st, dir) = failed(ThemeChoice::Dark, "status-failure-narrow-de");
+    st.settings.language = "de".into();
+    let mut h = bar_sized(st, true, 520.0);
+    h.run();
+    h.check_snapshot("status_bar_failure_narrow_de");
     drop(h);
     remove_fixture(&dir);
 }
