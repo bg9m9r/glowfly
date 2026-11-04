@@ -70,11 +70,13 @@ fn every_mark_reads_on_the_band_and_none_is_brown() {
     }
 }
 
-/// On the dark and light themes the firefly leads: the trail is quieter than the gold. High
-/// contrast draws all three at full strength, where the ice can be a little brighter.
+/// On the dark themes the firefly leads: the trail sits 70% of the way to its hues under a
+/// full-strength gold. The light themes draw all three opaque at about 3.6 to 4:1 (the orange
+/// can't go darker without turning brown) and high contrast all at full strength; there the
+/// lantern's size leads instead.
 #[test]
-fn the_gold_leads_the_trail() {
-    for (name, p) in palettes().into_iter().filter(|(_, p)| !p.high_contrast) {
+fn the_gold_leads_the_trail_on_the_dark_themes() {
+    for (name, p) in palettes().into_iter().filter(|(_, p)| art_style(p).kind == ArtKind::Dark) {
         let s = art_style(&p);
         let gold = ratio(s.gold, s.band);
         assert!(gold >= ratio(s.rose, s.band) && gold >= ratio(s.ice, s.band), "{name}: gold {gold:.2}");
