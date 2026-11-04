@@ -15,7 +15,7 @@ use glowfly_core::settings::RepoTrust;
 use glowfly_model::effect::{Effect, ForgeReply, ForgeResult};
 use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
 use glowfly_model::pull_request::{FilesJob, HeadJob, PrEffect, PullRequestMsg};
-use glowfly_model::state::pull_request_source::{HeadFetch, OutOfSync, head_fetch_blocked, out_of_sync};
+use glowfly_model::state::pull_request::source::{HeadFetch, OutOfSync, head_fetch_blocked, out_of_sync};
 use glowfly_model::state::{AppState, ForgeState};
 use glowfly_model::update::update;
 use std::collections::BTreeSet;
@@ -298,7 +298,7 @@ fn a_new_listed_head_and_a_parked_fetch_ask_again() {
     assert_eq!(view(&st).head_fetch, HeadFetch::Done);
     let notes = out_of_sync(view(&st));
     assert!(matches!(&notes[..], [OutOfSync::HeadNotSent { .. }]), "{notes:?}");
-    assert!(glowfly_model::state::pull_request_source::offers_head_fetch(view(&st), &notes));
+    assert!(glowfly_model::state::pull_request::source::offers_head_fetch(view(&st), &notes));
     // The pull request moved on, and the list now names its new head: the fetch runs again.
     let head = move_head(&bare, "refs/pull/7/head", "k.txt");
     let mut listed = pr(7, Some(head));

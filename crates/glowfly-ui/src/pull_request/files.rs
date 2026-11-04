@@ -21,10 +21,10 @@ use glowfly_model::remote::RemoteMsg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::lfs::TrackContext;
 use glowfly_model::state::list_keys::FileList;
-use glowfly_model::state::pull_request::{Files, PrView, empty_text, files_heading, unrelated_text};
-use glowfly_model::state::pull_request_source::{
+use glowfly_model::state::pull_request::source::{
     NoteTone, fetch_blocked, head_button, head_fetch_blocked, offers_fetch, offers_head_fetch, out_of_sync, tone,
 };
+use glowfly_model::state::pull_request::{Files, PrView, empty_text, files_heading, unrelated_text};
 
 pub(crate) const LOADING: &str = "Comparing the branches…";
 pub(crate) const FAILED_TITLE: &str = "Couldn't compare the branches";

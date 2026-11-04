@@ -22,7 +22,7 @@ pub(super) fn prune_then(st: &mut AppState, m: BranchMsg, now: std::time::Instan
         BranchMsg::Checkout(name) => checkout(st, &name, go, fx),
         BranchMsg::CheckoutRemote { remote, name } => checkout_remote(st, &remote, &name, go, fx),
         BranchMsg::CheckoutTracking { remote, name, local } => checkout_tracking(st, &remote, &name, &local, go, fx),
-        BranchMsg::CheckoutPullRequest { id } => super::pr_checkout::checkout(st, id, go, fx),
+        BranchMsg::CheckoutPullRequest { id } => super::pull_request::checkout::checkout(st, id, go, fx),
         _ => {}
     }
 }

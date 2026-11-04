@@ -42,7 +42,7 @@ pub(crate) fn entry(author: &str, day: i64, kind: EntryKind, body: &str) -> Entr
 /// The panel's page loaded by hand with `d` and `entries`, the forms fitted to it.
 pub(crate) fn load(st: &mut AppState, d: PrDetail, entries: Vec<Entry>) {
     let v = st.session.pull_request.view.as_mut().unwrap();
-    glowfly_model::state::pull_request_actions::prefill(&mut v.forms, &d, None);
+    glowfly_model::state::pull_request::actions::prefill(&mut v.forms, &d, None);
     v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads: Vec::new(), threads_note: None }));
 }
 
@@ -152,7 +152,7 @@ fn pull_request_unsupported_light() {
     });
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     assert_eq!(view.page, Page::Unsupported);
-    view.checks.pane = glowfly_model::state::pull_request_checks::ChecksPane::Loaded(Default::default());
+    view.checks.pane = glowfly_model::state::pull_request::checks::ChecksPane::Loaded(Default::default());
     st.session.pull_request.view = Some(view);
     let mut h = harness(st, false);
     h.run();

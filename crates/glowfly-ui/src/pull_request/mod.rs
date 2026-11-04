@@ -4,14 +4,19 @@
 //! the commits on the left (`commits`) and the diff of a file of the one selected in the commit
 //! panel in the middle; Files changed has the changed files on the left (`files`) and the open
 //! file's diff in the middle, with its code comment threads (`threads`) in a pane below it,
-//! led by the box of a new code comment on its lines (`line_comment`).
+//! led by the box of a new code comment on its lines (`line_comment`). Also here: the Create pull
+//! request dialog (`create_dialog`, its From / Into repositories in `create_repos`) and the pull
+//! request menu items of the branch menus and the menu bar (`menu_items`).
 
 mod checks;
 mod commits;
 mod conversation;
+pub(crate) mod create_dialog;
+mod create_repos;
 mod files;
 mod info;
 mod line_comment;
+pub(crate) mod menu_items;
 mod merge;
 mod review;
 mod threads;
@@ -32,9 +37,9 @@ use glowfly_model::keymap::Keymap;
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::commits::tab_label;
+use glowfly_model::state::pull_request::line_map::on_local_file;
 use glowfly_model::state::pull_request::{Files, PrTab, PrView, Tone};
-use glowfly_model::state::pull_request_commits::tab_label;
-use glowfly_model::state::pull_request_line_map::on_local_file;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.session.pull_request.view else { return };
@@ -90,7 +95,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                 if shows_file {
                     let path = st.session.diff.view.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
                     let commented = st.session.pull_request.view.as_ref().is_some_and(|v| {
-                        on_local_file(v, &path) > 0 || glowfly_model::state::pull_request_line_comment::draft_on(v, &path)
+                        on_local_file(v, &path) > 0 || glowfly_model::state::pull_request::line_comment::draft_on(v, &path)
                     });
                     if commented {
                         let room = ui.available_height();

@@ -1,20 +1,24 @@
 //! Preferences > SSH: reading ~/.ssh (and the keys added with Use existing), copying a public
 //! key (a listed pair's or an agent-only key's), and generating a key in the Generate SSH key
-//! dialog (asking before replacing one). Use existing and Remove from list are in `ssh_pick`,
-//! the key git uses and the agent in `ssh_use`, Windows' OpenSSH in `ssh_windows`, adding a key
-//! to a service in `ssh_service`. Its effects are unscoped: the page
-//! belongs to no repository.
+//! dialog (asking before replacing one). Use existing and Remove from list are in `pick`, the
+//! key git uses and the agent in `key_use`, Windows' OpenSSH in `windows`, adding a key to a
+//! service in `service`. Its effects are unscoped: the page belongs to no repository.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::Msg;
 use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
+use crate::state::ssh::key_use::RepoTarget;
 use crate::state::ssh::{COPIED, REPLACE_BUTTON, REPLACE_TITLE, replace_body};
-use crate::state::ssh_use::RepoTarget;
 use crate::state::trust::Standing;
 use crate::state::{AppState, Modal, PrefPage};
 use glowfly_core::paths::same_spelling;
 use glowfly_core::ssh_keys::{AgentReach, NewKey};
 use std::time::Instant;
+
+pub(super) mod key_use;
+pub(super) mod pick;
+pub(super) mod service;
+pub(super) mod windows;
 
 pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
@@ -38,31 +42,31 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
             st.toast(true, COPIED, now);
         }
         SshMsg::CopyAgentKey(fingerprint) => copy_agent_key(st, &fingerprint, now, fx),
-        SshMsg::UseWindowsSsh(on) => super::ssh_windows::use_windows_ssh(st, on, fx),
-        SshMsg::WindowsSshSet { on, result } => super::ssh_windows::windows_ssh_set(st, on, result, now, fx),
+        SshMsg::UseWindowsSsh(on) => windows::use_windows_ssh(st, on, fx),
+        SshMsg::WindowsSshSet { on, result } => windows::windows_ssh_set(st, on, result, now, fx),
         SshMsg::OpenGenerate => open_generate(st),
         SshMsg::Generate { overwrite } => generate(st, overwrite, fx),
-        SshMsg::UseExisting => super::ssh_pick::use_existing(st, fx),
-        SshMsg::KeyPicked(result) => super::ssh_pick::picked(st, result, now, fx),
-        SshMsg::ForgetKey(key) => super::ssh_pick::forget(st, &key, fx),
-        SshMsg::UseKey { key, repo, confirmed } => super::ssh_use::use_key(st, key, repo, confirmed, fx),
-        SshMsg::StopUsing { repo, confirmed } => super::ssh_use::stop_using(st, repo, confirmed, fx),
-        SshMsg::SetUseAgent(on) => super::ssh_use::set_use_agent(st, on, now, fx),
-        SshMsg::ReloadAgent => super::ssh_use::read_agent(st, fx),
-        SshMsg::AddToAgent(key) => super::ssh_use::add_to_agent(st, &key, fx),
-        SshMsg::ChoiceLoaded { generation, global, repo } => super::ssh_use::choice_loaded(st, generation, global, repo),
-        SshMsg::KeyChoiceSet { repo, result } => super::ssh_use::key_choice_set(st, repo, result, now, fx),
-        SshMsg::AgentLoaded { generation, status } => super::ssh_use::agent_loaded(st, generation, status),
-        SshMsg::AgentAdded { key, result } => super::ssh_use::agent_added(st, &key, result, now, fx),
-        SshMsg::ChooseService { key, account } => super::ssh_service::choose(st, &key, account, now, fx),
-        SshMsg::SendToService => super::ssh_service::send(st, fx),
+        SshMsg::UseExisting => pick::use_existing(st, fx),
+        SshMsg::KeyPicked(result) => pick::picked(st, result, now, fx),
+        SshMsg::ForgetKey(key) => pick::forget(st, &key, fx),
+        SshMsg::UseKey { key, repo, confirmed } => key_use::use_key(st, key, repo, confirmed, fx),
+        SshMsg::StopUsing { repo, confirmed } => key_use::stop_using(st, repo, confirmed, fx),
+        SshMsg::SetUseAgent(on) => key_use::set_use_agent(st, on, now, fx),
+        SshMsg::ReloadAgent => key_use::read_agent(st, fx),
+        SshMsg::AddToAgent(key) => key_use::add_to_agent(st, &key, fx),
+        SshMsg::ChoiceLoaded { generation, global, repo } => key_use::choice_loaded(st, generation, global, repo),
+        SshMsg::KeyChoiceSet { repo, result } => key_use::key_choice_set(st, repo, result, now, fx),
+        SshMsg::AgentLoaded { generation, status } => key_use::agent_loaded(st, generation, status),
+        SshMsg::AgentAdded { key, result } => key_use::agent_added(st, &key, result, now, fx),
+        SshMsg::ChooseService { key, account } => service::choose(st, &key, account, now, fx),
+        SshMsg::SendToService => service::send(st, fx),
         SshMsg::CancelService => {
             if let Some(p) = st.prefs.as_mut() {
                 p.ssh.upload = None;
             }
         }
-        SshMsg::OpenKeySettings { key, account } => super::ssh_service::open_key_settings(st, &key, &account, now, fx),
-        SshMsg::AddedToService { key, account, result } => super::ssh_service::added(st, &key, &account, result, now, fx),
+        SshMsg::OpenKeySettings { key, account } => service::open_key_settings(st, &key, &account, now, fx),
+        SshMsg::AddedToService { key, account, result } => service::added(st, &key, &account, result, now, fx),
         SshMsg::Generated(result) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.ssh.generating = false;
@@ -129,8 +133,8 @@ pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
     p.ssh.error = None;
     p.ssh.repo = repo;
     fx.push(Effect::Ssh(SshEffect::List { generation: p.ssh.generation, extra }));
-    super::ssh_use::read_choice(st, fx);
-    super::ssh_use::read_agent(st, fx);
+    key_use::read_choice(st, fx);
+    key_use::read_agent(st, fx);
 }
 
 /// Copy public key on an agent-only key: the line `ssh-add -L` gave for it, or a toast saying

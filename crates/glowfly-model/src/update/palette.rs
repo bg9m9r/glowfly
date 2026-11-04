@@ -5,7 +5,7 @@
 //! sub-lists (apply, pop, delete and rename), the profile sub-list (switching profiles), the
 //! assigned-issue sub-lists (starting a Git Flow branch from an issue), the stash message step
 //! and the commit count of a shallow clone's fetch. The Stash dialog's entries open that dialog.
-//! A command's key from Preferences > Keyboard runs it the same way (`palette_keys.rs`).
+//! A command's key from Preferences > Keyboard runs it the same way (`keys`).
 
 use crate::effect::Effect;
 use crate::effect::FilesEffect;
@@ -28,13 +28,15 @@ use crate::msg::StashMsg;
 use crate::msg::TabsMsg;
 use crate::msg::TrustMsg;
 use crate::state::conflict_files::{conflicted_paths, mark_conflicted_body, restorable_paths};
+use crate::state::palette::files::with_folders;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind};
-use crate::state::palette_files::with_folders;
 use crate::state::stash_confirm;
 use crate::state::{AppState, PrefPage, Selection};
 use crate::tag::TagMsg;
 use glowfly_core::shallow_ops::Deepen;
 use std::time::Instant;
+
+pub(super) mod keys;
 
 pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -55,7 +57,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
         PaletteMsg::PaletteJump(j) => {
             let len = palette::row_count(st);
             let Some(p) = st.palette.as_mut() else { return };
-            p.selected = crate::state::palette_nav::jumped(p.selected, len, j);
+            p.selected = crate::state::palette::nav::jumped(p.selected, len, j);
             p.scroll_to_selected = true;
         }
         PaletteMsg::PaletteHover(i) => {
@@ -89,7 +91,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             st.palette = None;
             run(st, cmd, now, fx);
         }
-        PaletteMsg::RunBoundCommand(cmd) => super::palette_keys::run_bound(st, cmd, now, fx),
+        PaletteMsg::RunBoundCommand(cmd) => keys::run_bound(st, cmd, now, fx),
         PaletteMsg::PaletteBack => {
             if let Some(p) = st.palette.as_mut()
                 && !matches!(p.mode, Mode::Commands)
@@ -191,7 +193,7 @@ pub(super) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>
             open_step(st, Mode::Pick(pick));
         }
         PickKind::ViewIssue => {
-            if !crate::state::palette_commands::palette_issues::can_view(st) {
+            if !crate::state::palette::commands::issues::can_view(st) {
                 return;
             }
             let Some(f) = st.session.forge.as_ref() else { return };
@@ -288,7 +290,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         C::RenameBranch(name) => Msg::Branch(BranchMsg::RenameBranchDialog(name)),
         C::CompareWithWorkdir(oid) => Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)),
         C::PickSelected { revert } => {
-            let Some(oids) = crate::state::palette_selected::selected_commits(st) else { return };
+            let Some(oids) = crate::state::palette::selected::selected_commits(st) else { return };
             Msg::Selection(if revert { SelectionMsg::Revert(oids) } else { SelectionMsg::CherryPick(oids) })
         }
         C::CreatePr(b) => Msg::Forge(ForgeMsg::CreatePrDialog { source: b, target: None }),

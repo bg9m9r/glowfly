@@ -3,7 +3,7 @@
 //! rows (the action, and an eye button that opens its preview), and the app's keys in the
 //! shortcut column. A Copy submenu holds three or more copy items; fewer sit in the menu (local branches:
 //! `branch_menu.rs`; remote branches: `remote_branch_menu.rs`; pull request items:
-//! `pr_menu_items.rs`).
+//! `pull_request/menu_items.rs`).
 
 use super::common::{commit_menu_header, menu_header, menu_item, menu_item_if, menu_item_state, menu_note, menu_row, menu_row_preview};
 use super::rebase::edit_menu::key;

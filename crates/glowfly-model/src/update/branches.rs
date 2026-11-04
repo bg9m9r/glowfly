@@ -26,7 +26,7 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, now: std::time::Instant,
         BranchMsg::CheckoutTracking { remote, name, local } => {
             super::branch_checkout::checkout_tracking(st, &remote, &name, &local, Go::new(now), fx)
         }
-        BranchMsg::CheckoutPullRequest { id } => super::pr_checkout::checkout(st, id, Go::new(now), fx),
+        BranchMsg::CheckoutPullRequest { id } => super::pull_request::checkout::checkout(st, id, Go::new(now), fx),
         BranchMsg::PruneThen(m) => super::branch_checkout::prune_then(st, *m, now, fx),
         BranchMsg::NewBranch { start, name } => {
             st.modal = Some(Modal::NewBranch { start, name, checkout: true, track: None, touched: Default::default() })

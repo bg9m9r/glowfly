@@ -3,7 +3,7 @@
 //! (core.sshCommand, and on Windows pointing git at Windows' OpenSSH), the keys ~/.ssh/config
 //! names and the ones only the agent holds, the local SSH agent and adding a key to a hosting
 //! service (state/ssh*.rs, update/ssh*.rs, runner/ssh.rs, ui/prefs/ssh*.rs,
-//! ui/ssh_keygen_dialog.rs).
+//! ui/prefs/ssh/keygen_dialog.rs).
 
 use crate::effect::EffectMeta;
 use crate::effect::SandboxRule;

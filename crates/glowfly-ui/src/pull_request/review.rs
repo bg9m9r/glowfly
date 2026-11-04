@@ -12,11 +12,11 @@ use eframe::egui::{self, Ui};
 use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
-use glowfly_model::state::pull_request::{PrAction, PrView};
-use glowfly_model::state::pull_request_actions::{
+use glowfly_model::state::pull_request::actions::{
     error_for, review_blocked, review_button, review_choice_blocked, review_choice_line, review_choice_text, review_choices,
     review_placeholder,
 };
+use glowfly_model::state::pull_request::{PrAction, PrView};
 
 /// Shown once the page is loaded. Command+Enter in the summary submits too.
 pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Msg>) {

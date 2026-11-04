@@ -10,8 +10,8 @@ use eframe::egui::{Key, Modifiers, pos2};
 use egui_kittest::kittest::{Node, Queryable};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::palette::nav::Jump;
 use glowfly_model::state::palette::{Palette, shown};
-use glowfly_model::state::palette_nav::Jump;
 
 /// The one button labelled `label` inside the open palette.
 pub(crate) fn palette_row<'h>(h: &'h H, label: &'h str) -> Node<'h> {

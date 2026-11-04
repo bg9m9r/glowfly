@@ -29,7 +29,7 @@ use glowfly_model::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, Sele
 use glowfly_model::state::rebase_onto::onto_commit_blocker;
 use glowfly_model::state::remote_branch::TrackingCheckout;
 use glowfly_model::state::worktree_branches::Elsewhere;
-use glowfly_model::state::{ForgeState, Selection, pr_repos, remote_branch, worktree_branches};
+use glowfly_model::state::{ForgeState, Selection, pull_request::repos, remote_branch, worktree_branches};
 use glowfly_model::worktree::WorktreeMsg;
 
 /// What a remote branch's menu is drawn against.
@@ -68,12 +68,12 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
                     let label = t.trf("pr.menu.open", &[("noun", &fs.pr_word(t)), ("pr", &fs.pr_label(pr.id))]);
                     menu_item(msgs, ui, label, Msg::OpenUrl(pr.url.clone()))
                 }
-                None => super::pr_menu_items::remote(ui, t, (name, oid), snap, fs, c.sel, msgs),
+                None => super::pull_request::menu_items::remote(ui, t, (name, oid), snap, fs, c.sel, msgs),
             }
         }
         // A fork on the code host's account: its listed pull request (matched by repository and
         // branch), else one from it into the base repository.
-        Some(fs) if pr_repos::is_pr_remote(fs, remote) => {
+        Some(fs) if repos::is_pr_remote(fs, remote) => {
             separator(ui);
             match fs.pr_from(remote, name) {
                 Some(pr) => {
@@ -90,7 +90,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
         Some(_) => {}
         None => {
             separator(ui);
-            super::pr_menu_items::remote_no_host(ui, t, remote, name, snap, msgs);
+            super::pull_request::menu_items::remote_no_host(ui, t, remote, name, snap, msgs);
         }
     }
     separator(ui);

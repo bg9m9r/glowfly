@@ -5,7 +5,7 @@
 //! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
 //! `worktree_manage_dialog.rs`), add and remove submodule (drawn by `submodule_dialogs.rs`), clone
 //! (drawn by `clone_dialog.rs` and `clone_service.rs`), init (drawn by `init_dialog.rs`), create
-//! pull request (drawn by `create_pr_dialog.rs`), publish (drawn by `publish.rs`), renaming a
+//! pull request (drawn by `pull_request/create_dialog.rs`), publish (drawn by `publish.rs`), renaming a
 //! branch or setting its upstream (drawn by `branch_dialogs.rs`), renaming a stash (drawn by
 //! `stash_dialog.rs`), stashing with a message and a choice of what goes in (drawn by
 //! `stash_push_dialog.rs`), creating or renaming a working-tree file (drawn by `file_dialogs.rs`),
@@ -28,7 +28,7 @@
 //! (drawn by `repo_group_picker.rs`), choosing a merge's mainline parent
 //! (drawn by `mainline_dialog.rs`), the home Trash offer (drawn by `trash_offer_dialog.rs`),
 //! stashing uncommitted changes before an operation (drawn by `auto_stash_dialog.rs`) and
-//! generating an SSH key (drawn by `ssh_keygen_dialog.rs`). An edited form kept under a question
+//! generating an SSH key (drawn by `prefs/ssh/keygen_dialog.rs`). An edited form kept under a question
 //! (state/dialog_guard.rs) is drawn first, beneath the question.
 
 use crate::dialog_frame::{Cx, Tone};
@@ -152,8 +152,8 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
                     close = true;
                     return;
                 };
-                let form = super::create_pr_dialog::PrForm { source, target, targets, title, description, draft, items, repos };
-                close = super::create_pr_dialog::show(ui, cx, form, fs, snap, idle, msgs);
+                let form = super::pull_request::create_dialog::PrForm { source, target, targets, title, description, draft, items, repos };
+                close = super::pull_request::create_dialog::show(ui, cx, form, fs, snap, idle, msgs);
             }
             Modal::Publish(f) => close = super::publish::form(ui, cx, f, idle, msgs),
             Modal::RenameBranch(form) => close = super::branch_dialogs::rename(ui, cx, form, snap, msgs),
@@ -204,7 +204,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::AutoStash(ask) => close = super::auto_stash_dialog::show(ui, cx, ask, msgs),
             Modal::SshKeygen => {
                 close = match ssh_page {
-                    Some(p) => super::ssh_keygen_dialog::show(ui, cx, p, msgs),
+                    Some(p) => super::prefs::ssh::keygen_dialog::show(ui, cx, p, msgs),
                     None => true,
                 }
             }

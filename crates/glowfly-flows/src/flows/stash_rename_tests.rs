@@ -4,7 +4,7 @@
 //! Only the stash list entry changes: the stash commit's own message keeps the old text, and the
 //! reflog dates of the entries down to the renamed one become the time of the rename.
 
-use super::palette_stash_tests::two_stashes;
+use super::palette::stash_tests::two_stashes;
 use super::tests::{drive, git};
 use super::update;
 use git2::Oid;

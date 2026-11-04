@@ -1,12 +1,12 @@
 //! Hosting services: detection, refresh, replies, connections. Starting a pull request is in
 //! update/push_pr.rs.
 
-use super::pr_details;
+use super::pull_request::details;
 use crate::effect::NetworkEffect;
 use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
 use crate::state::error_words::{hosting, hosting_log, typed};
-use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, PrefPage, ProjectKeys, Status, pr_repos, tracker_target};
+use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, PrefPage, ProjectKeys, Status, pull_request::repos, tracker_target};
 use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{self, Account, Connection, ServiceError, Target};
 use glowfly_core::repo::Snapshot;
@@ -29,7 +29,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
         ForgeMsg::TipsShown(oids) => super::build_status::shown(st, oids),
         ForgeMsg::CreatePrDialog { source, target } => super::push_pr::open_dialog(st, source, target, None, fx),
         ForgeMsg::CreatePrFrom { remote, source } => super::push_pr::open_dialog(st, source, None, Some(remote), fx),
-        ForgeMsg::PickPrRepo { side, remote } => super::pr_repo_pick::pick(st, side, &remote),
+        ForgeMsg::PickPrRepo { side, remote } => super::pull_request::repo_pick::pick(st, side, &remote),
         ForgeMsg::PushAndStartPr { branch, target } => super::push_pr::start(st, &branch, target, None, fx),
         ForgeMsg::PushToForPr { branch, remote, target } => super::push_pr::start(st, &branch, target, Some(remote), fx),
         ForgeMsg::PushToMyFork { branch, target } => super::fork_pr::open(st, branch, target, fx),
@@ -83,7 +83,7 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
         None => (String::new(), None),
     };
     let tracker = tracker_target(st.settings.tracker_for(&snap.real_workdir), host.as_ref());
-    let pr_repos = host.as_ref().map(|h| pr_repos::list(&snap.remote_urls, &remote, h, &st.settings.connections)).unwrap_or_default();
+    let pr_repos = host.as_ref().map(|h| repos::list(&snap.remote_urls, &remote, h, &st.settings.connections)).unwrap_or_default();
     st.session.forge = match st.session.forge.take() {
         _ if host.is_none() && tracker.is_none() => None,
         // The same service: keep its loaded state, following a renamed remote.
@@ -227,7 +227,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
             }
             ForgeResult::Prs(Ok(prs)) => {
                 fs.prs = prs;
-                pr_details::list_arrived(fs, now);
+                details::list_arrived(fs, now);
                 fs.host_status = Status::Ok;
                 prs_changed = true;
             }
@@ -274,7 +274,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
                 logs.push((false, hosting_log(t, provider, Ask::Change, &e, line)));
             }
             ForgeResult::TipChecks(asked, r) => super::build_status::replied(fs, &asked, r.map_err(drop), now),
-            ForgeResult::PrDetails(r) => prs_changed |= pr_details::replied(fs, r, &key, now),
+            ForgeResult::PrDetails(r) => prs_changed |= details::replied(fs, r, &key, now),
             ForgeResult::ProjectKeys(r) => match r {
                 Ok(Some(keys)) => fs.jira_projects = ProjectKeys::Known(keys.into_iter().collect()),
                 Ok(None) => fs.jira_projects = ProjectKeys::TooMany,
@@ -289,7 +289,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
         st.log(ok, text);
     }
     if prs_changed {
-        super::pr_heads::resolve_pr_heads(st);
+        super::pull_request::heads::resolve_pr_heads(st);
         super::build_status::seed_from_prs(st, now);
         super::pull_request::prs_changed(st, fx);
         super::dashboard::prs_arrived(st, now, fx);
@@ -298,7 +298,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
         super::stack_prs::create_failed(st);
     }
     super::stack_prs::created(st, &created, fx);
-    pr_details::send_next(st, fx);
+    details::send_next(st, fx);
 }
 
 fn connected(

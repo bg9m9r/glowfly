@@ -195,7 +195,7 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         | I::CherryPick
         | I::RevertCommit
         | I::SwitchBranch
-        | I::OpenDashboard => match glowfly_model::state::palette_bindings::command_for(id) {
+        | I::OpenDashboard => match glowfly_model::state::palette::bindings::command_for(id) {
             Some(cmd) => Msg::Palette(PaletteMsg::RunBoundCommand(cmd)),
             None => return,
         },

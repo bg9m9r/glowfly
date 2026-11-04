@@ -51,8 +51,8 @@ use glowfly_model::msg::Msg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::diff_text::LineRef;
 use glowfly_model::state::lines::{LineClick, LineSelection};
-use glowfly_model::state::pull_request_line_comment::{self, DiffComments};
-use glowfly_model::state::pull_request_threads::{self, Marks};
+use glowfly_model::state::pull_request::line_comment::{self, DiffComments};
+use glowfly_model::state::pull_request::threads::{self, Marks};
 use hunk_header::hunk_header;
 pub(super) use line_check::{gutter_sign, paint_mark};
 use rows_cache::{DiffRowsCache, Heights, Source};
@@ -225,10 +225,9 @@ fn rows(
     let anchor = cache.refresh_heights(lines, &gap_lines, heights, style.tab, wrap);
     let scroll_to = scroll_to.or(anchor.then_some(st.view.tab.diff_top_row));
     let m = cache.row_metrics(style.row_h);
-    let marks =
-        st.session.pull_request.view.as_ref().filter(|v| v.shows_file(target)).and_then(|v| pull_request_threads::marks(v, target.path()));
+    let marks = st.session.pull_request.view.as_ref().filter(|v| v.shows_file(target)).and_then(|v| threads::marks(v, target.path()));
     let marks = marks.as_ref();
-    let comments = pull_request_line_comment::diff_comments(st, target);
+    let comments = line_comment::diff_comments(st, target);
     let comments = comments.as_ref();
     let hunk_gen = st.hunk_ops_gen();
     let t = st.settings.lang();

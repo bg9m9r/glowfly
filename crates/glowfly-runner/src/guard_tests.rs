@@ -265,7 +265,7 @@ fn panicking_key_choice_agent_and_upload_effects_report_failures() {
     use glowfly_core::forge::{Account, Provider};
     use glowfly_core::ssh_keys::AgentReach;
     use glowfly_model::ssh::SshEffect;
-    use glowfly_model::state::ssh_service::{UploadForm, UploadState};
+    use glowfly_model::state::ssh::service::{UploadForm, UploadState};
     use glowfly_model::state::{PrefPage, PrefsState};
     let prefs_busy = |st: &mut AppState| st.prefs.as_mut().unwrap().ssh.choice_busy = true;
     let panicked = |effect: Effect| {

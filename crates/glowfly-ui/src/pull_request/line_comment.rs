@@ -20,7 +20,7 @@ use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::pull_request::PrView;
-use glowfly_model::state::pull_request_line_comment::{post_blocked, primary_is_review, review_label, suggest_blocked, where_text};
+use glowfly_model::state::pull_request::line_comment::{post_blocked, primary_is_review, review_label, suggest_blocked, where_text};
 
 const WAITING: &str = "Waiting for the service…";
 

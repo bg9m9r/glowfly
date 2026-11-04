@@ -106,7 +106,7 @@ fn part_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Option<&F
             if menu::item(label).blocked(why.as_deref()).show(ui).clicked() {
                 msgs.extend(create_pr(snap));
             }
-            submenu(ui, options, |ui| crate::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs));
+            submenu(ui, options, |ui| crate::pull_request::menu_items::pr_menu(ui, t, snap, fs, idle, msgs));
         }
         Part::Files => {
             let open = st.terminal.open;

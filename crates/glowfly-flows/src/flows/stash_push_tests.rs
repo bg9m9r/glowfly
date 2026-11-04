@@ -2,7 +2,7 @@
 //! staged changes or chosen files as one git job (held by Repository trust like any other), and
 //! refuses a clean tree, conflicts, an empty staged area or an empty selection with a log line.
 
-use super::palette_tests::repo_with_topic;
+use super::palette::palette_tests::repo_with_topic;
 use super::tests::{drive, git, scratch_repo, state};
 use super::trust_held_tests::held_repo_with;
 use super::update;

@@ -102,7 +102,7 @@ source file, update its line here. Features that span every layer are in
 - `running_job.rs`: `RunningJob`, the git command sequence that is running and what follows its success.
 - `stack_push.rs`: a stack's push targets and why Push stack is off.
 - `stack_prs.rs`: a stack's pull request layers, the bottom layer's base, why Create pull requests for the stack is off and the run of create dialogs.
-- `palette_stack.rs`: the palette's stack entries.
+- `palette/commands/stack.rs`: the palette's stack entries.
 - `repo_groups.rs`: repository groups' members, the shown order of the favorites (groups first; the favorite keys follow it), a repository's group and colour, and the New group / Rename group form.
 - `repo_group_picker.rs`: a group's Add repositories picker: what it offers (favorites outside the group, then Recent), its filter and the ticked rows.
 - `clone.rs`, `clone_service.rs`: the Clone dialog.
@@ -115,10 +115,10 @@ source file, update its line here. Features that span every layer are in
 - `auto_stash.rs`: the auto-stash prompt, its texts and the stashes waiting to go back.
 - `job_spec.rs`: `JobSpec`, a git job for `start_job`, and `Retry`, Try again's copy of one with the tab it started in.
 - `job_spec/labels.rs`: a job's English label shown in the UI language, for the headlines built from it.
-- `palette_nav.rs`: the palette's page and end keys.
-- `palette_cache.rs`: the open palette's command list kept between frames (checkout entries until the refs change, the ranking per query); tests in `palette_cache_tests.rs`.
-- `palette_selected.rs`: the palette's entries for the selected commit.
-- `palette_suggested.rs`: the empty query's Recent, Suggested and All commands groups and which commands the repository's state suggests.
+- `palette/nav.rs`: the palette's page and end keys.
+- `palette/cache.rs`: the open palette's command list kept between frames (checkout entries until the refs change, the ranking per query); tests in `palette/cache_tests.rs`.
+- `palette/selected.rs`: the palette's entries for the selected commit.
+- `palette/suggested.rs`: the empty query's Recent, Suggested and All commands groups and which commands the repository's state suggests.
 - `op_actions.rs`: the operation in progress: its banner commands.
 - `op_steps.rs`: the WIP panel's steps (which operation, each step's state, which are open and their words).
 - `commit_stop.rs` (`commit::stop`): what a stopped rebase means for the commit form: no push after committing, Amend and continue at a stop to edit, and Amend offered only where git would amend HEAD.
@@ -165,39 +165,41 @@ source file, update its line here. Features that span every layer are in
 - `state/history_text.rs`: moving within the file history's File view: find, go to line, the cursor line and where the view scrolls next.
 - `state/issue_form.rs`: the Create issue dialog (`Modal::CreateIssue`; update/issue_create.rs, ui/issue/create_dialog.rs): the tracker, the fields, the choices loaded from the service (`Effect::Issue`), the live checks, and why the dialog can't be opened at all.
 - `state/keys_page.rs`: Preferences > Keyboard page state: the filter, the key being recorded, and the warning or notice under a row.
+- `state/modal.rs`: `Modal`, the dialog over the window: one variant per dialog, holding its form (re-exported as `state::Modal`; drawn from `ui/modals.rs`).
 - `state/onboarding_tour.rs`: the tour of the main window: its five steps, the panel each one points at, and their texts (`tour.*` keys).
 - `state/palette.rs`: the command palette (Ctrl+P): whether it is open, what is typed, which row is selected, and the commands it lists for the query.
-- `state/palette_checkouts.rs`: the palette's checkout entries: local, remote and tag checkouts, and for Switch branch alone the local branches another worktree has (opening it).
-- `state/palette_commands.rs`: the command palette's commands: which are available now, their labels, hidden keywords, details and the global keys that do the same (their current keys come from the effective keymap, `keymap/active.rs`).
-- `state/palette_commands_rebase.rs`: the palette's history entries: restore the open rebase panel's original order, reword, squash into parent and drop the selected commit (when that edit can run), rebase the current branch onto it (plainly or interactively), and Continue, Skip and Edit remaining steps while a rebase is in progress.
-- `state/palette_commands_repos.rs`: the palette's repository-list entries: favorites, then recent repositories, to open (each but the active one and missing ones), and the list commands: favorite or unfavorite the open repository, open all favorites in tabs, remove missing entries, find repositories in folders, and fetch or pull the favorites or every listed repository.
-- `state/palette_commands_submodules.rs`: the palette's SUBMODULES entries: Add submodule… (even without submodules: the section and its menu only show with some), Initialize all and Update all while they have something to do, and per submodule Open, Initialize / Update / Restore, Edit… and Remove…, each with the row's status word.
-- `state/palette_commands_worktrees.rs`: the palette's worktree entries: open another worktree, create one from the selected commit or HEAD, and remove, lock, unlock, move or prune them, offered by the same rules as the WORKTREES row menu.
-- `state/palette_conflict.rs`: the palette's conflict entries, while files are conflicted or resolved during an operation: Mark all resolved, Mark <path> conflicted for each resolved file git can restore, and Mark all conflicted when there are several.
-- `state/palette_files.rs`: the file history finder's rows: the tracked files plus every folder that holds them, a folder shown with a trailing '/'.
-- `state/palette_gitflow.rs`: the palette's Git Flow entries: Configure, then once the repository is set up Open Git Flow panel, a Start entry per branch kind, a Start from issue entry per kind (while issues are assigned), a Finish entry per open flow branch, and Continue finishing a Finish stopped at a conflict once its merge is committed.
-- `state/palette_issues.rs`: the palette's issue entries: Create issue… whenever the repository has a tracker (with the reason as its detail while creating is blocked) or is on Bitbucket Data Center (which has no tracker of its own: the detail says to choose Jira), and View issue… while the tracker has issue details in Glowfly and issues are listed.
-- `state/palette_kinds.rs`: the palette's second steps: the sub-lists a command opens (tracked files, stashes, profiles, assigned issues, branches and tags to switch to) and free-text steps (a stash message, a commit count), with their titles, prompts and footers, and which command opens which step.
-- `state/palette_link.rs`: the palette's entries for copying a glowfly:// link to the open repository and to the checked-out branch.
-- `state/palette_logs.rs`: the palette's log entries: view the activity, error and performance logs, open the logs folder, export every log as one bundle, and turn extended logging on or off.
-- `state/palette_onboarding.rs`: the palette's onboarding entries: "Show the welcome", the tips' on or off switch (whichever applies), "Show tips again" and Getting started always (even when hidden from the Help menu), and "Take the tour" (or "Resume the tour") while a repository is open.
-- `state/palette_pr.rs`: the palette's pull request entries for the checked-out branch: create one, and push the branch first when the code host lacks it or some of its commits.
-- `state/palette_profiles.rs`: the palette's profile switching: the "Switch profile…" entry and the rows of its sub-list.
-- `state/palette_recent.rs`: the palette's per-session memory of recently run commands, and the stable key each plain command is remembered by.
-- `state/palette_setup.rs`: the palette's entries that set up or configure a repository feature: Git LFS and sparse checkout (Git Flow has its own file).
-- `state/palette_shallow.rs`: the palette's entries for a shallow clone: fetch its full history, or a number of older commits (a free-text step).
-- `state/palette_stash.rs`: the palette's stash entries: Stash changes, Stash with message…, the Stash dialog's Stash staged changes… and Stash selected files… (while the tree is dirty), then Unstash the latest stash and the apply, unstash, delete and rename sub-lists (while there are stashes).
-- `state/palette_tabs.rs`: the command palette's tab commands: new, reopen (the newest closed tab, or any one on the recently closed list), close, rename and move the active tab.
-- `state/palette_tools.rs`: the palette's external tool entries: open the repository in the external editor, the open diff in the diff tool, the open conflict in the merge tool, Preferences > External tools (the editor, diff and merge tools) and Preferences > Terminal.
-- `state/palette_updates.rs`: the palette's update entries: "View release notes" and "Check for updates" always, plus "Download Glowfly x.y.z" while a newer release is on offer (not to a Flatpak copy, which Flatpak updates) and, once it has downloaded, "Install Glowfly x.y.z and restart" or "Open the Glowfly x.y.z installer and quit" when it can be installed.
+- `state/palette/pick.rs`: a sub-list's matching: building a `Pick` for its kind, loading its items, ranking the query and the selected item (the type is in `palette.rs`).
+- `state/palette/commands/checkouts.rs`: the palette's checkout entries: local, remote and tag checkouts, and for Switch branch alone the local branches another worktree has (opening it).
+- `state/palette/commands.rs`: the command palette's commands: which are available now, their labels, hidden keywords, details and the global keys that do the same (their current keys come from the effective keymap, `keymap/active.rs`).
+- `state/palette/commands/rebase.rs`: the palette's history entries: restore the open rebase panel's original order, reword, squash into parent and drop the selected commit (when that edit can run), rebase the current branch onto it (plainly or interactively), and Continue, Skip and Edit remaining steps while a rebase is in progress.
+- `state/palette/commands/repos.rs`: the palette's repository-list entries: favorites, then recent repositories, to open (each but the active one and missing ones), and the list commands: favorite or unfavorite the open repository, open all favorites in tabs, remove missing entries, find repositories in folders, and fetch or pull the favorites or every listed repository.
+- `state/palette/commands/submodules.rs`: the palette's SUBMODULES entries: Add submodule… (even without submodules: the section and its menu only show with some), Initialize all and Update all while they have something to do, and per submodule Open, Initialize / Update / Restore, Edit… and Remove…, each with the row's status word.
+- `state/palette/commands/worktrees.rs`: the palette's worktree entries: open another worktree, create one from the selected commit or HEAD, and remove, lock, unlock, move or prune them, offered by the same rules as the WORKTREES row menu.
+- `state/palette/commands/conflict.rs`: the palette's conflict entries, while files are conflicted or resolved during an operation: Mark all resolved, Mark <path> conflicted for each resolved file git can restore, and Mark all conflicted when there are several.
+- `state/palette/files.rs`: the file history finder's rows: the tracked files plus every folder that holds them, a folder shown with a trailing '/'.
+- `state/palette/commands/gitflow.rs`: the palette's Git Flow entries: Configure, then once the repository is set up Open Git Flow panel, a Start entry per branch kind, a Start from issue entry per kind (while issues are assigned), a Finish entry per open flow branch, and Continue finishing a Finish stopped at a conflict once its merge is committed.
+- `state/palette/commands/issues.rs`: the palette's issue entries: Create issue… whenever the repository has a tracker (with the reason as its detail while creating is blocked) or is on Bitbucket Data Center (which has no tracker of its own: the detail says to choose Jira), and View issue… while the tracker has issue details in Glowfly and issues are listed.
+- `state/palette/kinds.rs`: the palette's second steps: the sub-lists a command opens (tracked files, stashes, profiles, assigned issues, branches and tags to switch to) and free-text steps (a stash message, a commit count), with their titles, prompts and footers, and which command opens which step.
+- `state/palette/commands/link.rs`: the palette's entries for copying a glowfly:// link to the open repository and to the checked-out branch.
+- `state/palette/commands/logs.rs`: the palette's log entries: view the activity, error and performance logs, open the logs folder, export every log as one bundle, and turn extended logging on or off.
+- `state/palette/onboarding.rs`: the palette's onboarding entries: "Show the welcome", the tips' on or off switch (whichever applies), "Show tips again" and Getting started always (even when hidden from the Help menu), and "Take the tour" (or "Resume the tour") while a repository is open.
+- `state/palette/commands/pr.rs`: the palette's pull request entries for the checked-out branch: create one, and push the branch first when the code host lacks it or some of its commits.
+- `state/palette/profiles.rs`: the palette's profile switching: the "Switch profile…" entry and the rows of its sub-list.
+- `state/palette/recent.rs`: the palette's per-session memory of recently run commands, and the stable key each plain command is remembered by.
+- `state/palette/commands/setup.rs`: the palette's entries that set up or configure a repository feature: Git LFS and sparse checkout (Git Flow has its own file).
+- `state/palette/commands/shallow.rs`: the palette's entries for a shallow clone: fetch its full history, or a number of older commits (a free-text step).
+- `state/palette/commands/stash.rs`: the palette's stash entries: Stash changes, Stash with message…, the Stash dialog's Stash staged changes… and Stash selected files… (while the tree is dirty), then Unstash the latest stash and the apply, unstash, delete and rename sub-lists (while there are stashes).
+- `state/palette/tabs.rs`: the command palette's tab commands: new, reopen (the newest closed tab, or any one on the recently closed list), close, rename and move the active tab.
+- `state/palette/tools.rs`: the palette's external tool entries: open the repository in the external editor, the open diff in the diff tool, the open conflict in the merge tool, Preferences > External tools (the editor, diff and merge tools) and Preferences > Terminal.
+- `state/palette/updates.rs`: the palette's update entries: "View release notes" and "Check for updates" always, plus "Download Glowfly x.y.z" while a newer release is on offer (not to a Flatpak copy, which Flatpak updates) and, once it has downloaded, "Install Glowfly x.y.z and restart" or "Open the Glowfly x.y.z installer and quit" when it can be installed.
 - `state/panel_layout.rs`: every drawer's default size and limits, in one place, and the arithmetic that fits the drawers into the window each frame.
 - `state/patch_apply.rs`: the Apply patch dialog (`Modal::ApplyPatch`): what the file holds, how to apply it (its changes with `git apply` options, or as commits with `git am`), why it can't be applied now, and the result texts of both jobs and of the in-progress series' buttons.
 - `state/path_hazards.rs`: rows Glowfly won't act on (`glowfly_core::repo::Hazard`): names that aren't UTF-8, and paths that share one file on disk with another index path.
 - `state/prefs_save.rs`: the Preferences save model.
 - `state/profiles.rs`: Preferences > Profile: which profile the page edits, the text buffers of its fields, the inline rename and New profile forms, and the texts the page, its dialog and toasts show (and the Integrations page's line naming the profile its accounts belong to).
 - `state/publish.rs`: the "Publish to GitHub" dialog, offered when pushing a repository that has no remote.
-- `state/pull_request_checks.rs`: the pull request panel's Checks section (update/pull_request/checks.rs, ui/pull_request/checks.rs): every check on the pull request's head commit as its service lists it, whether the section is open, when it was read, and the texts that describe it.
-- `state/pull_request_commits.rs`: the pull request panel's Commits tab (ui/pull_request/commits.rs): its label, heading and texts.
+- `state/pull_request/checks.rs`: the pull request panel's Checks section (update/pull_request/checks.rs, ui/pull_request/checks.rs): every check on the pull request's head commit as its service lists it, whether the section is open, when it was read, and the texts that describe it.
+- `state/pull_request/commits.rs`: the pull request panel's Commits tab (ui/pull_request/commits.rs): its label, heading and texts.
 - `state/rebase_banner.rs`: the rebase banner on the WIP row: its text (the step, the stopped commit and why, a failed command, the autostash note) and what its buttons send.
 - `state/rebase_quick.rs`: history edits from the graph's menus (reword, squash, drop): why a menu entry is unavailable, the Reword and Squash dialog's form, and the question asked before a drop runs.
 - `state/rebase_remaining.rs`: the rebase panel on the remaining steps of an interactive rebase in progress (`git rebase --edit-todo`): its texts, when it can open, and the request it sends.
@@ -208,10 +210,10 @@ source file, update its line here. Features that span every layer are in
 - `state/selection_wip.rs`: one commit compared with the working directory (`Selection::VsWorkdir`): the commit row and the WIP row selected together, and the files that differ from the commit to the working tree (or, swapped, from the working tree to the commit).
 - `state/shallow.rs`: shallow clones: which remote more history comes from, whether it can be fetched now, and the graph header's explanation.
 - `state/signatures.rs`: signature checks of the active tab's commits, and what the details panel's badge says about one (label and tooltip), worked out without drawing.
-- `state/ssh_marks.rs`: Preferences > SSH: what a key card marks about its key (the default key, the one the open repository uses, a key ~/.ssh/config names, a key ssh tries on its own, a key the agent holds), which keys live outside the .ssh folder and which were added with Use existing, the keys only the agent holds, and the state the Agent section's pill shows.
-- `state/ssh_service.rs`: Preferences > SSH: adding a public key to a connected hosting-service account, through the inline form under the key's row.
-- `state/ssh_use.rs`: Preferences > SSH: the key git uses (core.sshCommand, globally or for the open repository) and the local SSH agent.
-- `state/ssh_windows.rs`: Preferences > SSH on Windows: whether to offer pointing git at Windows' own OpenSSH (which reads keys from the OpenSSH Authentication Agent service) through the global core.sshCommand, or to undo that.
+- `state/ssh/marks.rs`: Preferences > SSH: what a key card marks about its key (the default key, the one the open repository uses, a key ~/.ssh/config names, a key ssh tries on its own, a key the agent holds), which keys live outside the .ssh folder and which were added with Use existing, the keys only the agent holds, and the state the Agent section's pill shows.
+- `state/ssh/service.rs`: Preferences > SSH: adding a public key to a connected hosting-service account, through the inline form under the key's row.
+- `state/ssh/key_use.rs`: Preferences > SSH: the key git uses (core.sshCommand, globally or for the open repository) and the local SSH agent.
+- `state/ssh/windows.rs`: Preferences > SSH on Windows: whether to offer pointing git at Windows' own OpenSSH (which reads keys from the OpenSSH Authentication Agent service) through the global core.sshCommand, or to undo that.
 - `state/stashes.rs`: the Rename stash dialog's form (`Modal::RenameStash`) and the Stash dialog's form (`Modal::StashPush`): what goes into a new stash, the files it lists and why it can't run.
 - `state/status_counts.rs`: the status bar's counts, following the sidebar's lists: the pull requests and issues each section shows under its filter (`forge_filters::pr_view` and `issue_view`).
 - `state/submodules.rs`: the SUBMODULES section's text and rules, shared by the view and `update`: the status word, the status dot's and the row's tooltips, why open, update, copy and edit are blocked, the update confirmation (with the commits it would leave behind) and the update command.
@@ -239,7 +241,7 @@ source file, update its line here. Features that span every layer are in
 - `prefs_pick.rs`: the file and folder pickers and where each picked path goes.
 - `open_link.rs`: a clicked Markdown link (`Msg::OpenLink`) opened, or first a confirmation naming the real host when its text names another (tests in `update/tests/open_link_tests.rs`).
 - `diff_copy.rs`: Copy hunk as patch: the hunk read again from the repository (`Effect::CopyHunkPatch`) and copied when it is UTF-8 text, else a toast. Tests in `flows/diff_copy_tests.rs`.
-- `terminal_schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
+- `terminal/schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
 - `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip; a stop whose rebase ended another way ends as the quiet `EndRestack` job (back to the branch checked out before, stash put back, finished part recorded for undo).
 - `auto_stash_restack.rs`: a restack's auto-stash as a pending entry while its stop waits (held from the ordinary put-back, saved for a restart), and telling how the restack's own put-back went.
 - `stack_push.rs`: pushing a stack as one job with a log line per layer.
@@ -250,7 +252,7 @@ source file, update its line here. Features that span every layer are in
 - `repo_groups.rs`: repository groups: the dialogs, colours, order, Remove group, moving favorites in and out and adding repositories (tests in `update/tests/repo_groups_tests.rs`).
 - `trust_seal.rs`: sealing trust-gated jobs, shells and previews for the runner's re-check (`push`), wrapping them and every read that lets git run (`read_in`) as `Effect::Checked` before update returns (`wrap`, from `update::update_sealed`), and holding work again when the re-check finds the repository no longer covered or what it brings in can't be compared (`TrustMsg::Stale`); tests in `flows/trust_recheck_tests.rs`, `trust_recheck_programs_tests.rs` (a tracked config program, a submodule's hook) and `trust_patch_export_tests.rs` (Create patch's export, sealed in `patch_changes.rs`).
 - `op_preview.rs`: opening the operation preview, its result for the dialog that asked only, Preview again and Apply, with a merge on a git without `merge-tree` answered at once and a merge preview in a held repository waiting for the trust prompt (`trust::hold_waiting`), since merge-tree runs the repository's merge drivers.
-- `pr_heads.rs`: mapping pull request heads to loaded commits on every load, load-more page and PR list: a full id by lookup only, the prefixes in one pass over the loaded commits (tests in `update/tests/pr_heads_tests.rs`).
+- `pull_request/heads.rs`: mapping pull request heads to loaded commits on every load, load-more page and PR list: a full id by lookup only, the prefixes in one pass over the loaded commits (tests in `update/tests/pr_heads_tests.rs`).
 - `load_more.rs`: a load for more history going on from the walk (the page taken in below the rows on screen), and a failed one kept with its automatic retries (its row in `ui/graph/more.rs`).
 - `search_deeper.rs`: a filtering search loading further back in doubling batches.
 - `wip_list.rs`: opening the file a WIP list key lands on, moving on to the nearest file after the open one was staged or unstaged as a whole (key, button or menu, alone or with the selected files), asking again for a file still opening (`renew_open`), and following a new file whose staged diff emptied to its untracked view (`emptied`).
@@ -304,10 +306,10 @@ source file, update its line here. Features that span every layer are in
 - `update/shallow.rs`: shallow clones: fetching more history as a job, and what a reload after a deepen invalidates.
 - `update/shortcuts.rs`: the staging, revert, commit-message and sheet keys.
 - `update/signatures.rs`: commit signature checks for the details panel's badge.
-- `update/ssh_pick.rs`: Preferences > SSH: Use existing (pick a key pair outside the .ssh folder in the OS file dialog, list it and remember it in `Settings::ssh_extra_keys`) and Remove from list (forget one again).
-- `update/ssh_service.rs`: Preferences > SSH: adding a key's public half to a connected hosting-service account.
-- `update/ssh_use.rs`: Preferences > SSH: the key git uses for SSH remotes (core.sshCommand, globally or for the open, trusted repository), the Use local SSH agent setting, and adding a key to the agent.
-- `update/ssh_windows.rs`: Preferences > SSH on Windows: Use Windows' OpenSSH writes the global core.sshCommand that makes git run Windows' own ssh (which reads keys from the agent service), and Use Git's own ssh unsets it.
+- `update/ssh/pick.rs`: Preferences > SSH: Use existing (pick a key pair outside the .ssh folder in the OS file dialog, list it and remember it in `Settings::ssh_extra_keys`) and Remove from list (forget one again).
+- `update/ssh/service.rs`: Preferences > SSH: adding a key's public half to a connected hosting-service account.
+- `update/ssh/key_use.rs`: Preferences > SSH: the key git uses for SSH remotes (core.sshCommand, globally or for the open, trusted repository), the Use local SSH agent setting, and adding a key to the agent.
+- `update/ssh/windows.rs`: Preferences > SSH on Windows: Use Windows' OpenSSH writes the global core.sshCommand that makes git run Windows' own ssh (which reads keys from the agent service), and Use Git's own ssh unsets it.
 - `update/stash_push.rs`: the Stash dialog (`Modal::StashPush`): opening it on a choice, and stashing every change, only the staged changes or chosen files, optionally keeping the staged changes staged, as one git job (`stash_ops::push_command`), so hooks, config and Repository trust apply.
 - `update/submodule_add.rs`: the Add submodule dialog: opening it, checking its folder on disk as the user types (the view only reads the answer), and running `git submodule add` as a job.
 - `update/submodule_edit.rs`: the Edit submodule dialog: opening it prefilled with the submodule's .gitmodules URL and branch, and running `git submodule set-url` / `sync` / `set-branch` as one job.
@@ -315,8 +317,8 @@ source file, update its line here. Features that span every layer are in
 - `update/submodules.rs`: the SUBMODULES section: opening a submodule in a tab, and initializing or updating one as a git job.
 - `update/tag_annotate.rs`: annotating a lightweight tag from the TAGS row menu: opening the dialog at the commit the snapshot has for the tag, and replacing the tag with an annotated one at that commit in one job.
 - `update/tag_checkout.rs`: checking out a tag (detached): one git job named after the tag, its headline, and the one-time detached-HEAD warning with a "Create branch…" action after the first success.
-- `update/terminal_tabs.rs`: terminal tabs: several shells per repository, each numbered with the lowest free number (named in state/terminal_names.rs).
-- `update/terminal_view.rs`: what the terminal grid asks of its active tab: scrolling the history (by rows, or a screen at a time from the keyboard), copying, a finished mouse selection and selecting all (each offered as the PRIMARY selection, and copied too with Copy on select), clearing, pasting from the clipboard or from PRIMARY (a middle click), and remembering the panel's height.
+- `update/terminal/tabs.rs`: terminal tabs: several shells per repository, each numbered with the lowest free number (named in state/terminal/names.rs).
+- `update/terminal/view.rs`: what the terminal grid asks of its active tab: scrolling the history (by rows, or a screen at a time from the keyboard), copying, a finished mouse selection and selecting all (each offered as the PRIMARY selection, and copied too with Copy on select), clearing, pasting from the clipboard or from PRIMARY (a middle click), and remembering the panel's height.
 - `update/tool_compare.rs`: the external diff and merge tools: opening a diff in the diff tool (an unscoped effect that reports only failures), and resolving a conflict in the merge tool as the single active job, ended through `ops::finish_job` when the program exits.
 - `update/tool_git.rs`: git config's diff and merge tools, used when Preferences > External tools sets no program: a click reads git config first (`read_then`), and its result runs the tool git names, opens Preferences when it names none, or says why it can't run.
 - `update/trello.rs`: the Board picker of This repository > Issue tracker, while Trello is the repository's tracker: each account's boards load once per Preferences session.
@@ -334,7 +336,7 @@ source file, update its line here. Features that span every layer are in
 - `conflict_tests.rs`: `When::Conflict` overlaps the browsing places but not the graph or a text field, and the conflict keys' rows.
 - `pane_tests.rs`: the pane keys (Alt+1 to 5, Control on macOS, F6) clash with nothing, the menus' mnemonics included, and `When::Graph` never overlaps a diff's contexts; their update side in `flows/pane_focus_tests.rs`.
 - Shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard.
-- The Repository commands group binds palette commands; Fetch, Pull, Push, New branch, Stash changes, Unstash and Switch branch have default keys; `state/palette_bindings.rs` maps commands and bindings both ways, and a press sends `PaletteMsg::RunBoundCommand`, which `update/palette_keys.rs` runs when the palette would list the entry.
+- The Repository commands group binds palette commands; Fetch, Pull, Push, New branch, Stash changes, Unstash and Switch branch have default keys; `state/palette/bindings.rs` maps commands and bindings both ways, and a press sends `PaletteMsg::RunBoundCommand`, which `update/palette/keys.rs` runs when the palette would list the entry.
 - `keymap/ids.rs`: the binding ids, and the stable names the settings file knows them by.
 
 ## Test-only modules
@@ -343,7 +345,7 @@ source file, update its line here. Features that span every layer are in
 - `ui/probe.rs` builds it as JSON from egui's current pass (AccessKit names and widget rects with their regions, the drawn panels including the drawn title bar, the window frame being drawn as `chrome`, the keyboard focus) and a few `AppState` fields; the shell offers it after each frame.
 - `smoke_probe.rs` writes only changed ones, with a rising `seq`, atomically from its own thread, retrying a failed write (a reader holding the file on Windows) until it lands or a newer one replaces it.
 - `testing.rs` (glowfly-model; tests only, and other crates' tests through `test-support`): the fixtures every test may use and that run no effect: `state()`, `scratch_repo`, `long_repo`, `clean_tree`, `keys`, `same_place`, the kit's `git`.
-- `flows/` (tests only; glowfly-flows, whose `lib.rs` has only `mod flows`, under `cfg(test)`): `update`'s end-to-end tests, which run effects through the runner (`runner::testing`), and the tests that share helpers with them; `mod.rs` lists them (`pull_request/` for the pull request panel's), and `helpers.rs` has `drive`, `finish` and `finish_keeping` and the effects they skip. Out of `update/` so the model's own tests never need the runner.
+- `flows/` (tests only; glowfly-flows, whose `lib.rs` has only `mod flows`, under `cfg(test)`): `update`'s end-to-end tests, which run effects through the runner (`runner::testing`), and the tests that share helpers with them; `mod.rs` lists them (`pull_request/`, `palette/`, `ssh/` and `terminal/` group their area's tests), and `helpers.rs` has `drive`, `finish` and `finish_keeping` and the effects they skip. Out of `update/` so the model's own tests never need the runner.
 - `runner_snapshots/` (tests only): the view snapshot tests whose state comes through the runner (`snapshot_tests_whole.rs`, `snapshot_tests_wrap.rs`, and one test each in `snapshot_tests_conflict_files.rs` and `snapshot_tests_search.rs`), on glowfly-ui's fixtures and approved snapshots.
 - `journey/` (tests only): whole-app journeys: the real app (`GlowflyApp::for_test`) in an egui_kittest harness on fixture repositories.
 - `journey/find.rs`: driving it by clicking and typing on widgets found by accessible name: a region of the window, the open command palette among them, and a pick among equal names.

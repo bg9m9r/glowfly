@@ -6,7 +6,7 @@
 use crate::effect::Effect;
 use crate::pull_request::{LineMapJob, PrEffect};
 use crate::state::AppState;
-use crate::state::pull_request_line_map::{LineMaps, wanted};
+use crate::state::pull_request::line_map::{LineMaps, wanted};
 use glowfly_core::repo::PrLineMaps;
 
 /// Asks for the maps of the key wanted now, unless they were asked for that key already

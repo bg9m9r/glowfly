@@ -12,7 +12,7 @@ use glowfly_model::msg::{ForgeMsg, HistoryMsg, Msg, RepoMsg, TabsMsg};
 use glowfly_model::pull_request::{PrEffect, PullRequestMsg};
 use glowfly_model::remote::RemoteMsg;
 use glowfly_model::state::pull_request::Files;
-use glowfly_model::state::pull_request_source::{OutOfSync, fetch_blocked, out_of_sync};
+use glowfly_model::state::pull_request::source::{OutOfSync, fetch_blocked, out_of_sync};
 use glowfly_model::state::{AppState, ForgeState};
 use glowfly_model::update::update;
 use std::path::{Path, PathBuf};

@@ -134,20 +134,20 @@ fn remote_and_pull_request_deletes_warn() {
     assert_eq!(m.4, vec![args(&["push", "--delete", "--", "origin", "develop"])]);
 
     // A merged pull request whose source is develop (not the default branch).
-    let mut d = glowfly_model::state::pull_request_actions::tests::detail();
+    let mut d = glowfly_model::state::pull_request::actions::tests::detail();
     d.state = PrState::Merged;
-    let mut v = glowfly_model::state::pull_request_actions::tests::view(Some(d));
+    let mut v = glowfly_model::state::pull_request::actions::tests::view(Some(d));
     v.pr.source = "develop".into();
     let snap = st.snap.as_mut().unwrap();
     snap.remotes = vec![("origin".into(), vec![("develop".into(), git2::Oid::zero())])];
-    let offer = glowfly_model::state::pull_request_actions::delete_branch_offer(T, &v, snap, Some("main")).expect("offered");
+    let offer = glowfly_model::state::pull_request::actions::delete_branch_offer(T, &v, snap, Some("main")).expect("offered");
     let m = parts(&offer);
     assert_eq!((m.0.as_str(), m.2.as_str()), ("Delete development branch", "Delete anyway"));
     assert!(m.1.starts_with("Delete branch develop on origin?"), "{}", m.1);
     assert!(m.1.ends_with(REMOTE), "{}", m.1);
     v.pr.source = "search".into();
     snap.remotes = vec![("origin".into(), vec![("search".into(), git2::Oid::zero())])];
-    let plain = parts(&glowfly_model::state::pull_request_actions::delete_branch_offer(T, &v, snap, Some("main")).expect("offered"));
+    let plain = parts(&glowfly_model::state::pull_request::actions::delete_branch_offer(T, &v, snap, Some("main")).expect("offered"));
     assert_eq!((plain.0.as_str(), plain.2.as_str()), ("Delete remote branch", "Delete"));
     cleanup(&dir);
 }

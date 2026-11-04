@@ -5,7 +5,7 @@
 //! and an update's download ask too. No shell runs here: the runner's answers are sent by hand.
 
 use super::quit_tests::pushing;
-use super::terminal_tests::{open_with_panel, run as term, workdir};
+use super::terminal::terminal_tests::{open_with_panel, run as term, workdir};
 use super::update;
 use super::updates_restart_tests::msi_downloaded;
 use glowfly_core::clone_ops::{CloneOptions, Sparse};
@@ -17,7 +17,7 @@ use glowfly_model::msg::{AppMsg, CloneMsg, JobMsg, Msg, RepoMsg, TabsMsg, Update
 use glowfly_model::state::clone::CloneRequest;
 use glowfly_model::state::job_stop::JobStop;
 use glowfly_model::state::menu_bar::tab_name;
-use glowfly_model::state::terminal_names::name_of;
+use glowfly_model::state::terminal::names::name_of;
 use glowfly_model::state::{AppState, Modal, RunningJob, Tab};
 use glowfly_model::terminal::{BusyCheck, TerminalEffect as E, TerminalMsg as T};
 use std::path::PathBuf;

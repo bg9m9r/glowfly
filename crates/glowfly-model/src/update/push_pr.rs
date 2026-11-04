@@ -4,7 +4,7 @@
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::{Effect, ForgeCall};
-use crate::state::pr_repos::{self, PrRepoPick};
+use crate::state::pull_request::repos::{self, PrRepoPick};
 use crate::state::push_pr::{self, HostBranch, PrStart};
 use crate::state::{AppState, Modal};
 use git2::Oid;
@@ -14,7 +14,7 @@ use glowfly_core::repo::BranchInfo;
 
 /// Opens the create dialog for `name` (a local branch or a branch on a PR repository's remote),
 /// with `preferred` as the target when it is one. `from` is the remote the source is on; None
-/// takes the branch's push remote (`pr_repos::pr_push_target`), else the code host's.
+/// takes the branch's push remote (`pull_request::repos::pr_push_target`), else the code host's.
 pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<String>, from: Option<String>, fx: &mut Vec<Effect>) {
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     if fs.host.is_none() {
@@ -26,13 +26,13 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
         None => push_pr::local_for(snap, fs, &name).cloned().and_then(|b| push_target(st, &b).ok()),
     };
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
-    let from = from.filter(|r| pr_repos::is_pr_remote(fs, r)).unwrap_or_else(|| fs.remote.clone());
+    let from = from.filter(|r| repos::is_pr_remote(fs, r)).unwrap_or_else(|| fs.remote.clone());
     let local = push_pr::local_for_on(snap, fs, &from, &name);
     let source = push_pr::pr_source_on(snap, fs, &from, &name);
-    let into = pr_repos::default_into(snap, fs, &from, preferred.as_deref());
-    let targets = pr_repos::target_branches(snap, fs, &into, &from, &source);
-    let target = pr_repos::default_target(snap, fs, &into, &targets, &source, &from, preferred.as_deref());
-    let tip = |remote: &str, n: &str| pr_repos::remote_branches(snap, remote).iter().find(|(b, _)| b == n).map(|(_, o)| *o);
+    let into = repos::default_into(snap, fs, &from, preferred.as_deref());
+    let targets = repos::target_branches(snap, fs, &into, &from, &source);
+    let target = repos::default_target(snap, fs, &into, &targets, &source, &from, preferred.as_deref());
+    let tip = |remote: &str, n: &str| repos::remote_branches(snap, remote).iter().find(|(b, _)| b == n).map(|(_, o)| *o);
     let local_tip = |n: &str| snap.locals.iter().find(|b| b.name == n).and_then(|b| b.oid);
     // The commit the pull request ends at: the local tip, else the remote branch's.
     let end: Option<Oid> = local.and_then(|b| b.oid).or_else(|| tip(&from, &source));
@@ -55,11 +55,11 @@ pub(super) fn open_dialog(st: &mut AppState, name: String, preferred: Option<Str
     super::forge::want_issues(st, keys, fx);
 }
 
-/// The remote `b`'s pull request is pushed to (`pr_repos::pr_push_target`), or why push config
+/// The remote `b`'s pull request is pushed to (`pull_request::repos::pr_push_target`), or why push config
 /// refuses it.
 fn push_target(st: &AppState, b: &BranchInfo) -> Result<String, String> {
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return Err(String::new()) };
-    pr_repos::pr_push_target(b, snap, fs).map_err(|u| pr_repos::push_refused(st.settings.lang(), &u, &b.name, fs))
+    repos::pr_push_target(b, snap, fs).map_err(|u| repos::push_refused(st.settings.lang(), &u, &b.name, fs))
 }
 
 /// Pushes local `branch` to `remote` (None: its push remote), then opens the create dialog (at
@@ -112,7 +112,7 @@ pub(super) fn create(st: &mut AppState, mut pr: NewPullRequest, from: &str, into
         if r.is_empty() || r == fs.remote {
             return Some((fs.remote.clone(), host.clone()));
         }
-        pr_repos::repo(fs, r).map(|p| (p.remote.clone(), p.target.clone()))
+        repos::repo(fs, r).map(|p| (p.remote.clone(), p.target.clone()))
     };
     let (Some((from, from_t)), Some((_, into_t))) = (resolve(from), resolve(into)) else {
         let gone = if resolve(from).is_none() { from } else { into };

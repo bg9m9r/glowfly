@@ -86,7 +86,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     } else if st.view.diff_text.is_some() && (st.diff_or_download() || st.session.history.view.is_some()) {
         // In a diff, Esc first drops the text selected in its code, then its lines, then the rest.
         msgs.push(Msg::Diff(DiffMsg::ClearTextSelection));
-    } else if glowfly_model::state::pull_request_line_comment::esc_cancels(st) {
+    } else if glowfly_model::state::pull_request::line_comment::esc_cancels(st) {
         msgs.push(Msg::PullRequest(PullRequestMsg::LineComment(glowfly_model::pull_request::line_comment::LineCommentMsg::Cancel)));
     } else if st.session.history.view.is_some() && !st.cues.diff_lines.is_empty() {
         // In File history too, Esc first drops a line selection of the entry's diff.

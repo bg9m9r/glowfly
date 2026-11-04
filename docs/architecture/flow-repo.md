@@ -36,7 +36,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Removing a worktree closes the other tabs showing it first (`update/worktree_manage.rs`).
 - On Windows, removing or moving a worktree stops its file system monitor daemon first (`RemoveRequest::stop_monitor`, `MoveRequest::stop_monitor`, from `GitState::stops_monitor`), since it holds the folder open.
 - Each tab has a `TabId` for as long as it is open: what a request waiting for an answer names it by, since its index changes when tabs move or close.
-- Closing a tab that holds work only in memory (a commit draft, conflict choices, an edited dialog, a parked Create issue form, comments typed in the pull request or issue panel, or kept for an issue whose panel closed) or whose terminals run a program (asked about first, `update/terminal_busy.rs`) asks first (`state/tab_losses.rs`), and the confirmation carries a `CloseRequest` by id (`update/tabs_close.rs`).
+- Closing a tab that holds work only in memory (a commit draft, conflict choices, an edited dialog, a parked Create issue form, comments typed in the pull request or issue panel, or kept for an issue whose panel closed) or whose terminals run a program (asked about first, `update/terminal/busy.rs`) asks first (`state/tab_losses.rs`), and the confirmation carries a `CloseRequest` by id (`update/tabs_close.rs`).
 - A tab's label (Rename tab, `update/tab_label.rs`) is saved with the open tabs in tabs.txt and kept on the recently closed list.
 
 ## Job follow-ups
@@ -47,12 +47,12 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Pull requests across forks
 
-- Detect lists the remotes on the code host's account as PR repositories (`ForgeState::pr_repos`, built by `state/pr_repos.rs`: the code host's first, one per repository).
+- Detect lists the remotes on the code host's account as PR repositories (`ForgeState::pr_repos`, built by `state/pull_request/repos.rs`: the code host's first, one per repository).
 - The base is a remote named `upstream`, else the code host's.
 - A branch's pull request is pushed to the remote of `branch.<name>.pushRemote`, then `remote.pushDefault` (read into `Snapshot::push_remotes` by `glowfly-core/src/repo/push_config.rs`), else the fork remote it tracks, else the code host's (`pr_repos::pr_push_target`, `state/push_pr.rs`'s `*_on` functions); a configured remote that doesn't exist or isn't on the code host's account refuses the push, as git never moves on to the next choice. Tests in `flows/push_pr_config_tests.rs`.
-- The create dialog picks From / Into (`ui/create_pr_repos.rs`, `update/pr_repo_pick.rs`), and `update/push_pr.rs::create` sends the request to the Into repository with `NewPullRequest::source_repo` set to the fork.
+- The create dialog picks From / Into (`ui/pull_request/create_repos.rs`, `update/pull_request/repo_pick.rs`), and `update/push_pr.rs::create` sends the request to the Into repository with `NewPullRequest::source_repo` set to the fork.
 - Each service's head on a fork is in `glowfly-core/src/forge/pr_heads.rs`.
-- A listed pull request's source is matched by repository and branch, never by name alone: `ForgeState::pr_from` and `source_remote` match the list's head repository (`forge/head_repo.rs`) to the PR repositories' remotes, for the menus, the panel's tips and checking the source out (`update/pr_checkout.rs`). Tests in `flows/fork_pr_source_tests.rs`.
+- A listed pull request's source is matched by repository and branch, never by name alone: `ForgeState::pr_from` and `source_remote` match the list's head repository (`forge/head_repo.rs`) to the PR repositories' remotes, for the menus, the panel's tips and checking the source out (`update/pull_request/checkout.rs`). Tests in `flows/fork_pr_source_tests.rs`.
 - Push to your fork… goes through the Fork dialog with `ForkCreate::then_pr`, whose add job also pushes the branch (`update/fork_pr.rs`).
 
 ## Pull request source tip
@@ -61,18 +61,18 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - The source tip is the head commit the service listed when it is already in the object database, else the remote-tracking source branch (on the source repository's remote, `PrView::source_remote`: never a same-named branch of the code host's remote once the list or the page says the source is on a fork).
 - The files and the commits in `target..source` come from one load.
 - With no source here at all, the panel fetches the service's head ref once in the background, without prompts and writing no ref (`update/pull_request/source.rs`, `Provider::pr_head_ref`, `remote_ops::fetch_ref_cmd`), then compares again.
-- The source notes and their buttons are in `state/pull_request_source.rs`.
+- The source notes and their buttons are in `state/pull_request/source.rs`.
 - A Commits tab row selects its commit into the commit panel without closing the pull request panel (`update/pull_request/commits.rs`), and that commit's file diffs open inside the tab.
-- The review and merge forms' rules are in `state/pull_request_actions.rs` (review choices in `pull_request_actions/review.rs`).
+- The review and merge forms' rules are in `state/pull_request/actions.rs` (review choices in `pull_request/actions/review.rs`).
 - The merge method last used is remembered per repository (`Settings::merge_method_for`) and preselected when the repository still allows it.
 - After a merge, `update/pull_request/cleanup.rs` runs one job: the remote branch's delete when asked, the fetch, then the local branch's delete when asked.
-- The local branch's rules and commands are in `state/pull_request_cleanup.rs`: kept on a fork, after a squash or rebase merge, when checked out in another worktree, or when checked out here with changes. It goes only once the fetched target contains it, after checking out the target if it is checked out here, and through `git branch -d`; a failed job puts the branch's upstream back (its `on_fail_check`). Only a branch tracking `<remote>/<source>` is offered.
+- The local branch's rules and commands are in `state/pull_request/cleanup.rs`: kept on a fork, after a squash or rebase merge, when checked out in another worktree, or when checked out here with changes. It goes only once the fetched target contains it, after checking out the target if it is checked out here, and through `git branch -d`; a failed job puts the branch's upstream back (its `on_fail_check`). Only a branch tracking `<remote>/<source>` is offered.
 - `update/pull_request/calls.rs`: the pull request panel's calls to its hosting service: loading the page (detail and conversation; the checks are in checks.rs), posting a comment, submitting a review, replying to and resolving code comment threads (threads.rs), starting a code comment on diff lines (line_comment.rs) and merging, remembering the merge method for the repository, then cleaning up (cleanup.rs).
 - `update/pull_request/threads.rs`: the pull request panel's code comment threads: replying and resolving (sent through `calls::act`, one action at a time like the other calls), applying their answers in place, which threads are shown and open, and going from a thread to its line in Files changed.
 
 ## New code comments on diff lines
 
-- A pull request file's diff (`DiffView::comments`, from `state/pull_request_line_comment.rs::diff_comments`) offers a comment button on hovered lines (`ui/diff/comment_add.rs`).
+- A pull request file's diff (`DiffView::comments`, from `state/pull_request/line_comment.rs::diff_comments`) offers a comment button on hovered lines (`ui/diff/comment_add.rs`).
 - The draft (`PrView::line_draft`, one per panel) is anchored by file line numbers and the source tip it was started on, never by row indexes, so a diff reload keeps it.
 - Only lines the normal hunks show can take a comment, because the service compares within the same hunks.
 - Posting goes through `calls::act` like the panel's other actions (`update/pull_request/line_comment.rs`).
@@ -84,8 +84,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 ## Code comments on the local version's lines
 
 - When the files were loaded from a source tip that isn't the service's head, the threads' lines are mapped from the head onto it in the background (`glowfly-core/src/repo/line_map.rs`: a zero-context tree-to-tree diff that follows renames; `PrEffect::LineMaps`, `update/pull_request/line_map.rs`).
-- The map is kept with the key it was made for (`state/pull_request_line_map.rs::MapKey`: head, local tip, base, target and the threads' paths) and used only while that key is still wanted, so a moved tip or new threads ask again.
-- `Placement::Mapped` then puts the markers, location texts and go-to on the mapped lines (`state/pull_request_threads.rs`).
+- The map is kept with the key it was made for (`state/pull_request/line_map.rs::MapKey`: head, local tip, base, target and the threads' paths) and used only while that key is still wanted, so a moved tip or new threads ask again.
+- `Placement::Mapped` then puts the markers, location texts and go-to on the mapped lines (`state/pull_request/threads.rs`).
 - Deleted-line numbers are kept only while the head's merge base with the target is the local diff's base.
 
 ## Operation journal
@@ -111,8 +111,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 - Work too slow to wait for rides behind the result that needs it.
 - On services that read checks and votes one pull request at a time, the list carries them for the first `CHECKED_PRS`.
-- `update/pr_details.rs` then queues the rest and sends one `ForgeCall::PrDetails` chunk at a time, each reply filling its pull requests in and sending the next.
-- What was read is cached by head commit and age (`state/pr_details.rs`), so a list refresh re-reads only what changed or aged.
+- `update/pull_request/details.rs` then queues the rest and sends one `ForgeCall::PrDetails` chunk at a time, each reply filling its pull requests in and sending the next.
+- What was read is cached by head commit and age (`state/pull_request/details.rs`), so a list refresh re-reads only what changed or aged.
 - A failed chunk stops the pass without touching the host's status.
 
 ## Profile folder rules
@@ -201,7 +201,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Auto-stash
 
-- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pr_checkout.rs`, `update/branch_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
+- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pull_request/checkout.rs`, `update/branch_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
 - One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start, a pull request's checkout and a remote branch checkout that fast-forwards its tracking branch first (`start_guarded_as` with their own `AutoStashFor`).
 - Each entry point passes its single command and a retry message to `gate`.
 - Only staged changes and changed tracked files count (`Snapshot::has_tracked_changes`): untracked files and an unstaged submodule row don't.

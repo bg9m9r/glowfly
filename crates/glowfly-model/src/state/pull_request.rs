@@ -2,23 +2,34 @@
 //! request, the remote-tracking tips it is compared from, the files it changes, the service's
 //! page with its conversation, and the texts that describe them. Pure: the files and the page
 //! are loaded by `Effect::PullRequest`; where the files and commits come from (and the notes on
-//! it) is in pull_request_source.rs, the Commits tab's texts in pull_request_commits.rs, the
-//! action forms' rules in pull_request_actions.rs, the code comment threads' in
-//! pull_request_threads.rs (placed on the local version's lines by pull_request_line_map.rs
-//! when the files aren't of the service's head), a new code comment on diff lines in pull_request_line_comment.rs,
-//! and the Checks section's in pull_request_checks.rs.
+//! it) is in `source`, the Commits tab's texts in `commits`, the action forms' rules in
+//! `actions`, the code comment threads' in `threads` (placed on the local version's lines by
+//! `line_map` when the files aren't of the service's head), a new code comment on diff lines in
+//! `line_comment`, the Checks section's in `checks`, the cleanup after a merge in `cleanup`, the
+//! From / Into repositories in `repos` and the detail requests for the listed ones in `details`.
+
+pub mod actions;
+pub mod checks;
+pub mod cleanup;
+pub mod commits;
+pub(crate) mod details;
+pub mod line_comment;
+pub mod line_map;
+pub mod repos;
+pub mod source;
+pub mod threads;
 
 use super::ForgeState;
-use super::pull_request_actions::PrForms;
-use super::pull_request_checks::PrChecks;
-use super::pull_request_line_comment::LineDraft;
-use super::pull_request_line_map::LineMaps;
-use super::pull_request_source::{FilesKey, HeadFetch, Shown, files_key};
-use super::pull_request_threads::ThreadView;
+use actions::PrForms;
+use checks::PrChecks;
 use git2::Oid;
 use glowfly_core::forge::{PrPage, PrState, PullRequest, reviews_in_app};
 use glowfly_core::repo::{BranchChanges, DiffTarget, FileEntry, RangeCommits, Snapshot, SourceTip};
 use glowfly_core::text::is_bidi_control;
+use line_comment::LineDraft;
+use line_map::LineMaps;
+use source::{FilesKey, HeadFetch, Shown, files_key};
+use threads::ThreadView;
 
 /// The local tips of a pull request's branches: `refs/remotes/<remote>/<target>` and the source
 /// on the remote of the repository it is on (`ForgeState::source_remote`), when they exist.

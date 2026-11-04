@@ -43,14 +43,14 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 - A Browse button for the Generate SSH key dialog's save location
 - Show in folder and delete a key locally from its row
 - Flag encrypted private keys and keys whose file permissions are too open for ssh on their row
-- Palette entry for the SSH page (palette_commands.rs needs splitting first)
+- Palette entry for the SSH page (palette/commands.rs needs splitting first)
 - Start the Windows OpenSSH Authentication Agent service (needs an administrator) or an ssh-agent on Unix from the SSH page
 - Per-repository key choice in a repository with no trust decision (trust it and choose the key in one step)
 - Remove a key from the agent (ssh-add -d), and add with a lifetime (-t) or confirmation (-c)
 - Add keys to Bitbucket Data Center and Azure DevOps through their APIs
 - List and delete the keys registered on a connected service, and show on each key row which services have it
 - Per-host key choice through ~/.ssh/config Host entries instead of core.sshCommand
-- Palette entries for Use for git, Add to agent and Add to service (after palette_commands.rs is split)
+- Palette entries for Use for git, Add to agent and Add to service (after palette/commands.rs is split)
 - Link from the add-key fallback to reconnect a service with a token that may write SSH keys (Integrations, preselected)
 - Resolve host-dependent IdentityFile tokens (%h, %r, %p, %n, %C, %k, %j) per literal Host pattern, or ask `ssh -G <host>`
 - Read IdentityFile entries from the system ssh_config (/etc/ssh/ssh_config, %ProgramData%\ssh\ssh_config)
@@ -67,7 +67,7 @@ Credential and passphrase prompts, SSH keys, signing and profiles. Untriaged; se
 
 ### SSH preferences
 
-- Translate the page's remaining English: the toasts, log lines and confirmations in update/ssh.rs, ssh_use.rs and ssh_service.rs
+- Translate the page's remaining English: the toasts, log lines and confirmations in update/ssh.rs, ssh/key_use.rs and ssh/service.rs
 - Cancel on the Replace SSH key confirmation goes back to the Generate SSH key dialog instead of closing
 - Suggest a free file name (id_ed25519_2, …) as the save location when the default key already exists
 - Show remembered keys whose files have gone, with Remove from list, instead of skipping them silently

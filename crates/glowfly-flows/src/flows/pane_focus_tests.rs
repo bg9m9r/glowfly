@@ -10,8 +10,8 @@ use glowfly_model::effect::{Effect, UiEffect};
 use glowfly_model::keymap::{BindingId, KeyAction};
 use glowfly_model::msg::{LayoutMsg, Msg, PaletteMsg, RepoMsg, SelectionMsg};
 use glowfly_model::state::layout::{Pane, Panel};
+use glowfly_model::state::palette::bindings::command_for;
 use glowfly_model::state::palette::{PaletteCommand as C, entries};
-use glowfly_model::state::palette_bindings::command_for;
 use glowfly_model::state::{AppState, Selection};
 
 fn key(st: &mut AppState, action: KeyAction) -> Vec<Effect> {

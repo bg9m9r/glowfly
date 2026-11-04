@@ -1,11 +1,11 @@
 //! The terminals a close would end while they run a program: quitting, closing repository tabs
-//! and Install and restart ask the runner what their shells are doing (update/terminal_busy.rs)
+//! and Install and restart ask the runner what their shells are doing (update/terminal/busy.rs)
 //! and name the busy ones, with the program where it is known, in their one confirmation.
 
 use super::SessionStatus;
 use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
-use crate::state::terminal_names::{folder, name_of};
+use crate::state::terminal::names::{folder, name_of};
 use glowfly_core::i18n::Lang;
 use glowfly_core::terminal::ShellActivity;
 use std::path::Path;

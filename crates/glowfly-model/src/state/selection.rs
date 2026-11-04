@@ -1,13 +1,39 @@
-//! Selecting several commits in the graph (Ctrl- and Shift-click, Shift+arrows, select all).
-//! Pure logic: `update` decides which effects a new selection needs.
+//! What the graph has selected (`Selection`), and selecting several commits in it (Ctrl- and
+//! Shift-click, Shift+arrows, select all). Pure logic: `update` decides which effects a new
+//! selection needs.
 
-use super::Selection;
 use super::selection_span::{Span, span_of};
 use super::selection_wip::WorkdirCompare;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Comparison, Snapshot, StackedCommit};
 use std::collections::HashSet;
+
+/// What the graph has selected: nothing, the WIP row, one commit, several, or a commit compared
+/// with the working directory.
+#[derive(Clone, PartialEq, Debug, Default)]
+pub enum Selection {
+    #[default]
+    None,
+    Wip,
+    Commit(Oid),
+    /// Two or more commits (Ctrl- or Shift-click in the graph).
+    Commits(MultiSelection),
+    /// One commit compared with the working directory: its row and the WIP row both selected.
+    VsWorkdir(WorkdirCompare),
+}
+
+impl Selection {
+    /// Whether commit `oid` is selected, alone or as part of a multi-selection.
+    pub fn includes(&self, oid: Oid) -> bool {
+        match self {
+            Selection::Commit(o) => *o == oid,
+            Selection::Commits(m) => m.contains(oid),
+            Selection::VsWorkdir(w) => w.oid == oid,
+            Selection::None | Selection::Wip => false,
+        }
+    }
+}
 
 /// The most commits a stacked list loads the changes of (the newest selected).
 pub const STACK_LIMIT: usize = 200;

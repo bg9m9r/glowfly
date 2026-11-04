@@ -290,7 +290,7 @@ fn preferences_read_the_scheme_status() {
 fn the_palette_copies_links_to_the_repository_and_branch() {
     use glowfly_model::msg::PaletteMsg;
     use glowfly_model::state::palette::PaletteCommand;
-    let has = |st: &AppState, label: &str| glowfly_model::state::palette_commands::entries(st).iter().any(|e| e.label == label);
+    let has = |st: &AppState, label: &str| glowfly_model::state::palette::commands::entries(st).iter().any(|e| e.label == label);
     let dir = super::tests::scratch_repo("link-palette");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));

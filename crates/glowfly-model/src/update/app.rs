@@ -6,7 +6,7 @@
 //! close the window) goes through `quit`, which asks first while work exists only in memory
 //! (drafts, conflict choices, an edited dialog, unsaved Preferences edits), work runs or a
 //! terminal runs a program (`state/quit_confirm.rs`; the terminals are asked about off the UI
-//! thread first, update/terminal_busy.rs). An edited dialog stays under the question. Quit
+//! thread first, update/terminal/busy.rs). An edited dialog stays under the question. Quit
 //! anyway stops a stoppable job (a fetch) and closes once it has ended; the open question closes
 //! the window by itself once what it named has ended (`settle`), never while it names unsaved
 //! work.
@@ -89,7 +89,7 @@ fn quit(st: &mut AppState, os_request: bool, fx: &mut Vec<Effect>) {
         if os_request {
             fx.push(Effect::Ui(UiEffect::CancelClose));
         }
-        super::terminal_busy::check(ids, BusyCheck::Quit, fx);
+        super::terminal::busy::check(ids, BusyCheck::Quit, fx);
         return;
     }
     decide(st, Vec::new(), os_request, fx);

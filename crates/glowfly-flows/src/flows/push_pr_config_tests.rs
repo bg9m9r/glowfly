@@ -11,7 +11,7 @@ use glowfly_core::gitcli::args;
 use glowfly_model::effect::Effect;
 use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
-use glowfly_model::state::pr_repos::{UnusablePush, pr_push_target};
+use glowfly_model::state::pull_request::repos::{UnusablePush, pr_push_target};
 use glowfly_model::state::push_pr::{HostBranch, host_branch};
 use std::path::{Path, PathBuf};
 use std::time::Instant;

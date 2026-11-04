@@ -71,6 +71,7 @@ pub mod menu_keys;
 pub mod menu_model;
 mod menu_model_items;
 pub mod menu_native;
+pub mod modal;
 pub mod notify;
 pub mod onboarding;
 pub mod onboarding_tour;
@@ -82,42 +83,18 @@ pub mod op_preview;
 pub mod op_steps;
 pub mod op_strip;
 pub mod palette;
-pub mod palette_bindings;
-pub mod palette_commands;
-pub(crate) mod palette_custom;
-pub(crate) mod palette_files;
-pub(crate) mod palette_kinds;
-pub mod palette_nav;
-pub(crate) mod palette_onboarding;
-pub(crate) mod palette_profiles;
-pub(crate) mod palette_recent;
-pub(crate) mod palette_selected;
-pub(crate) mod palette_suggested;
-pub(crate) mod palette_tabs;
-pub(crate) mod palette_tools;
-pub(crate) mod palette_updates;
 pub mod panel_layout;
 pub mod partial;
 pub mod partial_confirm;
 pub mod patch;
 pub mod path_hazards;
 pub mod pick;
-pub(crate) mod pr_details;
-pub mod pr_repos;
 pub mod prefs;
 pub mod prefs_save;
 pub mod profile_rules;
 pub mod profiles;
 pub mod publish;
 pub mod pull_request;
-pub mod pull_request_actions;
-pub mod pull_request_checks;
-pub mod pull_request_cleanup;
-pub mod pull_request_commits;
-pub mod pull_request_line_comment;
-pub mod pull_request_line_map;
-pub mod pull_request_source;
-pub mod pull_request_threads;
 pub mod push_pr;
 pub mod quit_confirm;
 pub mod range_diff;
@@ -155,10 +132,6 @@ pub mod sign_in;
 pub mod signatures;
 pub mod sparse;
 pub mod ssh;
-pub mod ssh_marks;
-pub mod ssh_service;
-pub mod ssh_use;
-pub mod ssh_windows;
 pub mod stack;
 pub mod stack_prs;
 pub mod stack_push;
@@ -172,7 +145,6 @@ pub mod tab_losses;
 pub mod tabs;
 pub mod tags;
 pub mod terminal;
-pub mod terminal_names;
 pub mod theme_names;
 pub mod tip;
 pub mod toasts;
@@ -198,14 +170,14 @@ pub mod worktrees;
 pub use commit::CommitDraft;
 pub use forge::{ForgeState, ProjectKeys, Status, tracker_target};
 pub use logs::{LOG_LIMIT, LogEntry};
+pub use modal::Modal;
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use running_job::RunningJob;
+pub use selection::Selection;
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};
 pub use view::{ColumnDrag, ViewState, diff_text, file_folds, file_lists, file_tree, frame_times, list_keys, system_a11y, wip_lists};
 
-use crate::msg::Msg;
-use git2::Oid;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
 use std::{collections::HashMap, path::PathBuf, time::Duration, time::Instant};
@@ -215,166 +187,6 @@ pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
 /// Why selecting and applying single lines is refused in the whole-file view.
 pub const WHOLE_FILE_BLOCKS_LINE_OPS: &str =
     "Line selection isn't available in the whole-file view yet. Switch to Hunks to stage, discard or revert single lines.";
-
-#[derive(Clone, PartialEq, Debug, Default)]
-pub enum Selection {
-    #[default]
-    None,
-    Wip,
-    Commit(Oid),
-    /// Two or more commits (Ctrl- or Shift-click in the graph).
-    Commits(selection::MultiSelection),
-    /// One commit compared with the working directory: its row and the WIP row both selected.
-    VsWorkdir(selection_wip::WorkdirCompare),
-}
-
-impl Selection {
-    /// Whether commit `oid` is selected, alone or as part of a multi-selection.
-    pub fn includes(&self, oid: Oid) -> bool {
-        match self {
-            Selection::Commit(o) => *o == oid,
-            Selection::Commits(m) => m.contains(oid),
-            Selection::VsWorkdir(w) => w.oid == oid,
-            Selection::None | Selection::Wip => false,
-        }
-    }
-}
-
-/// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter
-/// field. `ConflictReport` is a conflict check the user asked for (branch menus, Check again);
-/// `OpPreview` what a merge, rebase, reset, cherry-pick or drop would leave, before it runs.
-pub enum Modal {
-    NewBranch {
-        start: Option<String>,
-        name: String,
-        checkout: bool,
-        /// The remote branch (remote, name) the new branch tracks, starting at its tip.
-        track: Option<(String, String)>,
-        touched: touched::Touched,
-    },
-    NewTag(tags::TagForm),
-    AnnotateTag(tags::AnnotateForm),
-    NewWorktree(worktrees::WorktreeForm),
-    RemoveWorktree(worktree_manage::RemoveForm),
-    /// Delete a local branch: what it would lose, then Delete or Delete anyway (`ui/branch_delete_dialog.rs`).
-    DeleteBranch(branch_delete::DeleteForm),
-    DeleteRemoteBranch(branch_sync::DeleteRemoteForm),
-    LockWorktree(worktree_manage::LockForm),
-    MoveWorktree(worktree_move::MoveForm),
-    AddSubmodule(submodules::add::AddForm),
-    EditSubmodule(submodules::edit::EditForm),
-    RemoveSubmodule(submodules::remove::RemoveForm),
-    Confirm {
-        title: String,
-        body: String,
-        button: String,
-        then: Box<Msg>,
-    },
-    /// `Confirm` with a collapsed Details under the body (the values behind a plain-words question).
-    ConfirmDetails {
-        title: String,
-        body: String,
-        details: String,
-        button: String,
-        then: Box<Msg>,
-    },
-    /// `Confirm` for a step that loses work: drawn with a danger button that Enter doesn't press.
-    /// With `ack` (its label), the button waits for `acked` (constructors in `confirm.rs`).
-    ConfirmDanger {
-        title: String,
-        body: String,
-        button: String,
-        ack: Option<String>,
-        acked: bool,
-        then: Box<Msg>,
-    },
-    /// A question with two answers besides Cancel: `button` (primary, Enter's default) runs `then`, `alt` (left of it) `alt_then`.
-    ConfirmChoice {
-        title: String,
-        body: String,
-        button: String,
-        then: Box<Msg>,
-        alt: String,
-        alt_then: Box<Msg>,
-    },
-    Clone(clone::CloneForm),
-    Init(init::InitForm),
-    CreatePr {
-        source: String,
-        target: String,
-        targets: Vec<String>,
-        title: String,
-        description: String,
-        draft: bool,
-        items: String,
-        /// The From / Into repositories (shown with two or more PR repositories).
-        repos: pr_repos::PrRepoPick,
-    },
-    Publish(Box<publish::PublishForm>),
-    RenameBranch(branch_sync::RenameForm),
-    RenameStash(stashes::RenameStashForm),
-    StashPush(stashes::StashPushForm),
-    SetUpstream {
-        branch: String,
-        remote: String,
-        name: String,
-        touched: touched::Touched,
-    },
-    NewFile(files::PathForm),
-    RenameFile {
-        old: String,
-        form: files::PathForm,
-    },
-    Shortcuts {
-        filter: String,
-    },
-    GitFlowStart(gitflow::StartForm),
-    GitFlowFinish(gitflow::FinishForm),
-    Remote(remotes::RemoteForm),
-    AddFork(Box<forks::ForkPicker>),
-    CreateFork(Box<forks::ForkCreate>),
-    Trust(trust::TrustPrompt),
-    ConflictReport(conflict_check::ConflictReport),
-    /// What an operation would do, before it runs (ui/op_preview_dialog.rs).
-    OpPreview(Box<op_preview::PreviewDialog>),
-    ForgeFilter(Box<forge_filter_form::FilterForm>),
-    /// An invalid link, a linked repository not found, or several copies to choose from.
-    DeepLink(deep_link::LinkDialog),
-    CreateIssue(Box<issue_form::IssueForm>),
-    /// Reword a graph commit, or type the message of commits it squashes (`ui/rebase/reword_dialog.rs`).
-    RewordCommit(Box<rebase_quick::RewordForm>),
-    /// Help > About Glowfly: version, licence, git and links.
-    About,
-    /// Help > About > Third-party notices: the bundled fonts' and syntax definitions' licenses.
-    Notices,
-    /// The release notes, with a newer release on top when one is on offer.
-    ReleaseNotes(Box<release_notes::NotesDialog>),
-    UndoCreated(undo::UndoCreatedForm),
-    /// Apply patch: how to apply a patch file that was read (`ui/patch_apply_dialog.rs`).
-    ApplyPatch(Box<patch::apply::ApplyForm>),
-    /// Create patch from uncommitted changes (`ui/patch_save_dialog.rs`).
-    SavePatch(patch::changes::SaveChangesForm),
-    /// Find repositories in the project folders (`ui/repo_finder.rs`); `filter` is its field.
-    FindRepos {
-        filter: String,
-    },
-    /// Fetch or pull across repositories (`ui/repo_sync.rs`): `AppState::repo_sync`'s rows.
-    SyncRepos,
-    /// Rename tab (`ui/tab_dialog.rs`).
-    RenameTab(tabs::RenameTabForm),
-    /// New group and Rename group (`ui/repo_group_dialog.rs`).
-    RepoGroup(repo_groups::GroupForm),
-    /// A group's Add repositories picker (`ui/repo_group_picker.rs`).
-    AddToGroup(repo_group_picker::AddPicker),
-    /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
-    Mainline(pick::MainlineForm),
-    /// Uncommitted changes in the way of an operation: stash them and carry on (`ui/auto_stash_dialog.rs`).
-    AutoStash(auto_stash::AutoStashAsk),
-    /// The trash on a file's drive can't be used: move it to the home Trash or delete it permanently (`ui/trash_offer_dialog.rs`).
-    TrashOffer(files::TrashOffer),
-    /// The Generate SSH key dialog (`ui/ssh_keygen_dialog.rs`). Its fields live in `PrefsState.ssh`, so closing it keeps them.
-    SshKeygen,
-}
 
 /// The most commits "Load more" goes up to.
 pub const MAX_COMMITS: usize = 200_000;
@@ -451,7 +263,7 @@ pub struct AppState {
     /// Incremented for every palette list request; older `TrackedPathsLoaded` results are ignored.
     pub palette_gen: u64,
     /// Plain commands recently run from the palette, most recent first (global, per session).
-    pub palette_recent: palette_recent::RecentCommands,
+    pub palette_recent: palette::recent::RecentCommands,
     /// The built-in terminal panel (global, not per tab).
     pub terminal: terminal::TerminalPanel,
     /// The running Git Flow Finish job's steps (update/gitflow_finish.rs).
@@ -462,7 +274,7 @@ pub struct AppState {
     pub rename_job: Option<branch_sync::RenameJob>,
     pub tag_checkout: Option<tags::TagCheckoutJob>,
     /// The running clean-up after a pull request merge that deletes the local branch, for its headline.
-    pub pr_cleanup: Option<pull_request_cleanup::CleanupJob>,
+    pub pr_cleanup: Option<pull_request::cleanup::CleanupJob>,
     /// The running Apply patch job (update/patch.rs), for its headline.
     pub patch_apply: Option<patch::PendingApply>,
     /// The glowfly:// link being opened and the scheme registration (global).

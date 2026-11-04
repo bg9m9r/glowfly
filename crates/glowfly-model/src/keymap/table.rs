@@ -199,7 +199,7 @@ const fn pane(n: u8) -> Chord {
 /// (Preferences' Revert included), the
 /// rebase panel's keys in `ui/rebase/keys.rs`), except Go to tab 1 to 8, matched with the
 /// rebindable rows. Change a fixed key there, change it here. Each Repository commands row runs a
-/// palette command (`state/palette_bindings.rs`); seven of them have default keys.
+/// palette command (`state/palette/bindings.rs`); seven of them have default keys.
 pub const BINDINGS: &[Binding] = &[
     b(I::Stage, G::Staging, "Stage the file or the selected lines", &[C::plain(K::Letter('S'))], W::WorkingDiff),
     b(I::Unstage, G::Staging, "Unstage the file or the selected lines", &[C::plain(K::Letter('U'))], W::WorkingDiff),

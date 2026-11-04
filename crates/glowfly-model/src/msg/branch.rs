@@ -18,7 +18,7 @@ pub enum BranchMsg {
         name: String,
         local: String,
     },
-    /// Check out the source branch of the listed pull request `id` (update/pr_checkout.rs):
+    /// Check out the source branch of the listed pull request `id` (update/pull_request/checkout.rs):
     /// its local branch, or a new one tracking the code host's remote.
     CheckoutPullRequest {
         id: u64,

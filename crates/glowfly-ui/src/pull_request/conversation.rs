@@ -19,9 +19,9 @@ use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::actions::{comment_blocked, error_for, verdict_text};
+use glowfly_model::state::pull_request::threads::{self as pr_threads, Item};
 use glowfly_model::state::pull_request::{Page, PrAction, PrView, description_text};
-use glowfly_model::state::pull_request_actions::{comment_blocked, error_for, verdict_text};
-use glowfly_model::state::pull_request_threads::{self, Item};
 
 pub(crate) const LOADING: &str = "Loading the conversation…";
 pub(crate) const FAILED_TITLE: &str = "Couldn't load the conversation";
@@ -81,7 +81,7 @@ fn timeline(ui: &mut Ui, v: &mut PrView, ctx: &threads::Ctx, md: &mut MarkdownCa
             note(ui, n.as_str(), color::weak());
         }
     }
-    let items: Vec<At> = pull_request_threads::timeline(p, &v.threads)
+    let items: Vec<At> = pr_threads::timeline(p, &v.threads)
         .into_iter()
         .filter_map(|i| match i {
             Item::Entry(e) => p.entries.iter().position(|x| std::ptr::eq(x, e)).map(At::Entry),

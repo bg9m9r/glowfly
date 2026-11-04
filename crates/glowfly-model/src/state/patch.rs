@@ -10,7 +10,7 @@ pub mod changes;
 
 use super::AppState;
 use super::Selection;
-use super::palette_commands::{Entry, PaletteCommand, entry};
+use super::palette::commands::{Entry, PaletteCommand, entry};
 use super::selection::CommitBlock;
 use crate::patch::{ApplyHow, PatchMsg};
 use git2::Oid;
