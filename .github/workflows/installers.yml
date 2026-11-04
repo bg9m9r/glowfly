@@ -14,6 +14,7 @@ name: Installers
 # runs on macOS: its runners are often unavailable and slow every landing, so the Release
 # workflow alone builds, packages and licence-checks the .app, the dmg and the tar.gz.
 
+# Pushes to main, and pull requests (a branch with a pull request runs once, not twice).
 on:
   push:
     branches: [main]

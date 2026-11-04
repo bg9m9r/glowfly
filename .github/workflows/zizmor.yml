@@ -6,10 +6,17 @@ name: zizmor
 # higher; a deliberate exception is suppressed where it is, with `# zizmor: ignore[<rule>]` and
 # the reason.
 
+# Pushes to main, and pull requests (a branch with a pull request runs once, not twice).
 on:
   push:
     branches: [main]
   pull_request:
+
+# As in ci.yml: a new push to a pull request cancels its older run, and each push to main gets
+# its own group, so every landed commit keeps its own result.
+concurrency:
+  group: zizmor-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # A read-only token: zizmor only reads the workflows (and, for its online audits, the public
 # refs of the actions they use).

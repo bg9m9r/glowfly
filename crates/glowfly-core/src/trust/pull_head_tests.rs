@@ -28,9 +28,7 @@ fn unborn_twins(name: &str, setup: &dyn Fn(&Path)) -> [PathBuf; 4] {
 }
 
 fn remove(dirs: &[PathBuf]) {
-    for d in dirs {
-        let _ = std::fs::remove_dir_all(d);
-    }
+    remove_twins(dirs);
 }
 
 fn mirror(d: &Path) {

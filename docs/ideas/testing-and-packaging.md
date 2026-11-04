@@ -98,6 +98,11 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
   (each links in 0.3 to 0.8 s); revisit if their number grows
 - rust-lld on Windows measured no faster than the default linker for the test builds (11 s
   either way after an app change, 14 to 15 s after a core change); revisit if link times grow
+- Build `with_submodule` and the flows submodule fixtures (`opened`, `two_branches`) from a
+  `testkit::Template`: their relative submodule URLs and opened AppState need the copy laid out
+  as the original (the submodule tests are 5 to 11 s each)
+- The LFS end-to-end tests (13 to 20 s) are git-lfs process starts; a shared local LFS origin
+  could save some
 
 ### Snapshot strategy (text snapshots and pixel goldens)
 
@@ -155,7 +160,6 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 ### Flaky tests
 
 - `trust_patch_export_tests::a_patch_export_is_checked_again_before_git_diff_runs` fails about one run in three locally ("nothing was written")
-- `snapshot_tests_wrap::file_history_wrapped` fails now and then
 - `review_threads::graphql_errors_leave_a_note` failed on the Windows runner with os error 10055 (socket buffers used up); the local mock-server tests may leak sockets
 
 ### Module folders per area
