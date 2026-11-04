@@ -1,10 +1,8 @@
 //! Opening and refreshing the repository, selection and diffs.
 
 pub(super) use super::refresh::{load, refresh, refresh_status};
-use crate::effect::OsEffect;
-use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::FolderPurpose;
-use crate::msg::RepoMsg;
+use crate::effect::{Effect, LoadKind, OsEffect, UiEffect};
+use crate::msg::{FolderPurpose, RepoMsg};
 use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
 use glowfly_core::diff_rows::row_of_file_line;
@@ -290,6 +288,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             let label = st.tabs.get(st.active_tab).and_then(|t| t.label.as_deref());
             fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Glowfly", label.unwrap_or(&snap.name)))));
             st.session.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
+            st.session.wip_lit = false;
             st.session.detail = None;
             close_diff(st);
             super::conflict::close(st);
@@ -372,9 +371,10 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     }
 }
 
-/// Selects the WIP row, asking for the issue the checked-out branch names.
+/// Selects the WIP row as chosen (`wip_lit`), asking for the issue the checked-out branch names.
 pub(super) fn select_wip(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.session.selection = Selection::Wip;
+    st.session.wip_lit = true;
     st.session.detail = None;
     let key = st.snap.as_ref().and_then(|s| s.head_branch.clone()).and_then(|b| st.session.forge.as_ref().and_then(|f| f.branch_issue(&b)));
     super::forge::want_issues(st, key.into_iter().collect(), fx);

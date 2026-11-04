@@ -164,5 +164,5 @@ pub fn write_choice(cwd: &Path, global: bool, key: Option<&Path>, env: &[(&str, 
         Some(k) => Some(ssh_command_for(k).ok_or("This key's path can't be written into git config")?),
         None => None,
     };
-    crate::identity::set_config(cwd, global, SSH_COMMAND_KEY, value.as_deref(), env)
+    crate::identity::set_config(cwd, global, SSH_COMMAND_KEY, value.as_deref(), env).map_err(|e| e.to_string())
 }

@@ -96,6 +96,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
         return;
     }
     st.session.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
+    st.session.wip_lit = false;
     st.session.detail = None;
     if st.session.diff.view.as_ref().is_some_and(|(t, _)| t.workdir_compared().is_some()) {
         super::repo::close_diff(st);

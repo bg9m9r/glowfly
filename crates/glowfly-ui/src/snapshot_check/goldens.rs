@@ -31,6 +31,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("main_dark", Window),
     ("main_light", Window),
     ("main_high_contrast_dark", Window),
+    ("main_high_contrast_light", Window),
     ("theme_graphite", Window),
     ("theme_midnight", Window),
     ("theme_mist", Window),
@@ -154,6 +155,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     // Narrow windows: the toolbar folded into More, the graph's columns given way.
     ("narrow_900_en", Window),
     ("graph_wip_row_floor", Window),
+    ("graph_wip_chosen_dark", Window),
+    ("graph_wip_chosen_light", Window),
     ("graph_wip_row_floor_no_chips", Window),
     ("wip_header_icons", Top(220.0)),
     ("wip_header_icons_staged", Top(220.0)),
@@ -364,6 +367,10 @@ const IMAGE_ONLY: &[&str] = &[
     // The same text with the system's settings followed: only the high-contrast look differs.
     "prefs_accessibility_system_on",
     "main_high_contrast_dark",
+    "main_high_contrast_light",
+    // The WIP row chosen: `main_dark`'s text; only its look differs.
+    "graph_wip_chosen_dark",
+    "graph_wip_chosen_light",
     "history_table_dark",
     "history_table_light",
     "history_table_high_contrast_light",

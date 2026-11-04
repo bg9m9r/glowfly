@@ -231,6 +231,19 @@ mod tests {
         assert_eq!(chips(&labels, &cx)[0].tip(Lang::En), "main, in sync with origin/main");
     }
 
+    /// A diverged upstream (on another commit) folds into nothing: the branch's chip has no
+    /// copies (no cloud) and the upstream keeps its own remote chip on its own commit.
+    #[test]
+    fn a_diverged_upstream_keeps_its_own_chip() {
+        let locals = [branch("main", Some("origin/main"))];
+        let cx = std_cx(&locals);
+        let (here, there) = (labels(&["refs/heads/main"]), labels(&["refs/remotes/origin/main"]));
+        assert!(!chips(&here, &cx)[0].folds());
+        assert_eq!(chips(&here, &cx)[0].tip(Lang::En), "main");
+        let remote = chips(&there, &cx);
+        assert!(remote.len() == 1 && remote[0].label.kind == RefKind::Remote);
+    }
+
     #[test]
     fn every_same_name_copy_folds_upstream_first() {
         let labels = labels(&["refs/heads/main", "refs/remotes/origin/main", "refs/remotes/upstream/main"]);

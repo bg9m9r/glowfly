@@ -98,7 +98,7 @@ fn hidden_labels_offer_the_full_list_with_or_without_the_plus_chip() {
 
 #[test]
 fn the_kept_text_is_six_characters_of_the_name() {
-    let of = |style, text: &str| kept_text(&ChipSpec { style, text: text.to_owned(), ..spec(true, false, false) });
+    let of = |style, text: &str| kept_text(&ChipSpec { style, text: text.to_owned(), ..spec(false, false) });
     assert_eq!(of(ChipStyle::Branch, "feature/login"), "featur…");
     assert_eq!(of(ChipStyle::CurrentBranch, "✔ feature/login"), "✔ featur…", "the check mark isn't one of the six");
     assert_eq!(of(ChipStyle::Branch, "main"), "main", "a short name whole");
@@ -113,9 +113,13 @@ fn the_kept_text_is_six_characters_of_the_name() {
     assert_eq!(of(ChipStyle::Branch, "機能ブランチの名前です"), "機能ブランチ…");
 }
 
+/// A context with the bundled fonts installed (the semibold face among them).
 fn ctx() -> eframe::egui::Context {
     let ctx = eframe::egui::Context::default();
-    let _ = ctx.run(eframe::egui::RawInput::default(), |_| {});
+    ctx.set_fonts(crate::ui::theme::fonts::definitions().clone());
+    for _ in 0..2 {
+        let _ = ctx.run(eframe::egui::RawInput::default(), |_| {});
+    }
     ctx
 }
 
@@ -123,35 +127,71 @@ fn ctx() -> eframe::egui::Context {
 fn a_cut_chip_keeps_both_ends_of_its_name() {
     let ctx = ctx();
     let p = Painter::new(ctx.clone(), eframe::egui::LayerId::background(), Rect::EVERYTHING);
-    let named = |style, text: &str| ChipSpec { style, text: text.to_owned(), ..spec(true, false, false) };
+    let named = |style, text: &str| ChipSpec { style, text: text.to_owned(), ..spec(false, false) };
     let (a, b) = ("worktree-agent-a1b2c3d4e5f6", "worktree-agent-a1b2c3d4e9z7");
-    let room = 0.8 * text_w(&p, a, FONT);
+    let regular = FontId::proportional(FONT);
+    let room = 0.8 * text_w(&p, a, &regular);
     let (cut_a, cut_b) = (chip_text(&p, &named(ChipStyle::Branch, a), room), chip_text(&p, &named(ChipStyle::Branch, b), room));
     assert!(cut_a.starts_with("worktree") && cut_a.ends_with("d4e5f6") && cut_a.contains('…'), "{cut_a}");
-    assert!(text_w(&p, &cut_a, FONT) <= room, "{cut_a} fits {room}");
+    assert!(text_w(&p, &cut_a, &regular) <= room, "{cut_a} fits {room}");
     assert_ne!(cut_a, cut_b, "names that share a long start stay apart");
-    // The checked-out branch's check mark stays whole, before its cut name.
-    let head = chip_text(&p, &named(ChipStyle::CurrentBranch, &format!("{CHECK}{a}")), room + text_w(&p, CHECK, FONT));
-    assert_eq!(head, format!("{CHECK}{cut_a}"));
+    // The checked-out branch's check mark stays whole, before its name cut in semibold.
+    let current = named(ChipStyle::CurrentBranch, &format!("{CHECK}{a}"));
+    let semi = current.font(&p);
+    let head = chip_text(&p, &current, room + text_w(&p, CHECK, &semi));
+    let (mark, cut) = head.split_at(CHECK.len());
+    assert_eq!(mark, CHECK);
+    assert!(cut.starts_with("work") && cut.ends_with('6') && cut.contains('…'), "{head}");
+    assert!(text_w(&p, cut, &semi) <= room, "{cut} fits {room} in semibold");
     assert_eq!(chip_text(&p, &named(ChipStyle::Branch, "main"), room), "main", "a name that fits is whole");
 }
 
-fn spec(local: bool, remote: bool, build: bool) -> ChipSpec {
+fn spec(remote: bool, build: bool) -> ChipSpec {
     let build = build.then_some(CheckState::Passed);
-    ChipSpec { text: String::new(), style: ChipStyle::Branch, lead_tag: false, local, remote, build }
+    ChipSpec { text: String::new(), style: ChipStyle::Branch, lead_tag: false, remote, build }
+}
+
+/// The checked-out branch's chip is set, and so measured, in semibold; the others in regular.
+#[test]
+fn the_current_branch_is_measured_in_semibold() {
+    let ctx = ctx();
+    let p = Painter::new(ctx.clone(), eframe::egui::LayerId::background(), Rect::EVERYTHING);
+    let named = |style, text: &str| ChipSpec { style, text: text.to_owned(), ..spec(false, false) };
+    let current = named(ChipStyle::CurrentBranch, "✔ feature/login");
+    let semi = crate::ui::theme::fonts::semibold_in(&ctx, FONT);
+    assert_eq!(current.font(&p), semi);
+    assert_ne!(semi.family, eframe::egui::FontFamily::Proportional, "the bundled semibold face is installed");
+    assert_eq!(spec_w(&p, &current), chip_w(&current, text_w(&p, &current.text, &semi)));
+    assert!(text_w(&p, &current.text, &semi) > text_w(&p, &current.text, &FontId::proportional(FONT)), "semibold is wider");
+    for style in [ChipStyle::Branch, ChipStyle::Remote, ChipStyle::Tag, ChipStyle::Head] {
+        assert_eq!(named(style, "main").font(&p), FontId::proportional(FONT), "{style:?}");
+    }
+}
+
+/// A local branch has no mark of its own; one in sync with its copies on remotes has the cloud.
+#[test]
+fn a_local_chip_has_no_mark_and_an_in_sync_one_the_cloud() {
+    let label = |name: &str, kind| glowfly_core::repo::RefLabel { name: name.into(), full: format!("refs/x/{name}"), kind, is_head: false };
+    let (main, up) = (label("main", RefKind::Local), label("origin/main", RefKind::Remote));
+    let alone = ChipSpec::of(&Chip { label: &main, remotes: Vec::new() }, None);
+    assert_eq!((alone.trailing(), alone.remote), (0, false), "no local mark");
+    let in_sync = ChipSpec::of(&Chip { label: &main, remotes: vec![&up] }, None);
+    assert_eq!((in_sync.trailing(), in_sync.remote), (1, true), "the cloud");
+    let remote = ChipSpec::of(&Chip { label: &up, remotes: Vec::new() }, None);
+    assert!(remote.remote && remote.style == ChipStyle::Remote);
 }
 
 #[test]
 fn chip_width_counts_its_marks() {
     // A 50 px name and the Chip size's padding either side.
     const BASE: f32 = 50.0 + 2.0 * TEXT_PAD;
-    assert_eq!(chip_w(&spec(false, false, false), 50.0), BASE, "a name alone");
-    assert_eq!(chip_w(&spec(true, false, false), 50.0), BASE + MARK_W, "a local branch");
-    assert_eq!(chip_w(&spec(true, true, true), 50.0), BASE + 3.0 * MARK_W, "in sync, with a build state");
-    let tag = ChipSpec { lead_tag: true, ..spec(false, false, false) };
+    assert_eq!(chip_w(&spec(false, false), 50.0), BASE, "a local branch: a name alone");
+    assert_eq!(chip_w(&spec(true, false), 50.0), BASE + MARK_W, "in sync");
+    assert_eq!(chip_w(&spec(true, true), 50.0), BASE + 2.0 * MARK_W, "in sync, with a build state");
+    let tag = ChipSpec { lead_tag: true, ..spec(false, false) };
     assert_eq!(chip_w(&tag, 50.0), BASE + TAG_LEAD);
     // In a room narrower than the chip the name is cut and the marks keep their room.
-    let f = fit(&[chip_w(&spec(true, true, false), 90.0)], KEEP, 100.0, plus, 4.0);
+    let f = fit(&[chip_w(&spec(true, true), 90.0)], KEEP, 100.0, plus, 4.0);
     assert!(f.first_cut && f.first_w == 100.0, "{f:?}");
 }
 
@@ -168,7 +208,7 @@ fn chip_at_finds_the_chip_under_the_pointer() {
 
 #[test]
 fn a_halo_takes_no_room_but_keeps_the_next_chip_clear() {
-    let with = |style| chip_w(&ChipSpec { style, ..spec(true, false, false) }, 50.0);
+    let with = |style| chip_w(&ChipSpec { style, ..spec(false, false) }, 50.0);
     for style in ChipStyle::ALL {
         assert_eq!(with(style), with(ChipStyle::Branch), "{style:?}: the halo paints into the inset, padding or gap");
     }

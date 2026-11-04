@@ -8,7 +8,8 @@
 //! side-by-side lanes never share a hue: `resolve` moves the later one to the next free slot.
 //! Pins (`Colouring::pins`) fix a branch's slot whatever its neighbours; a pin keeps its slot
 //! number, so under a palette with fewer hues it shows as that number modulo the hue count.
-//! People get a slot too (`person_slot`), from their email, for the initials in the graph.
+//! People get one of eight initials tones (`person_tone`), from their email, for the initials in
+//! the graph and the commit details; those tones aren't branch hues.
 
 use crate::graph::owners::{Owner, Owners};
 use std::collections::BTreeMap;
@@ -38,11 +39,17 @@ pub fn slot_of(bytes: &[u8], slots: u8) -> u8 {
     (name_hash(bytes) % u32::from(slots.max(1))) as u8
 }
 
-/// A person's slot (0 to `n` − 1): from their email, trimmed and lowercased (emails are matched
-/// without case, as avatars are), or from their trimmed name when the email is blank.
-pub fn person_slot(email: &str, name: &str, n: u8) -> u8 {
+/// How many initials tones there are (`person_tone`).
+pub const PERSON_TONES: u8 = 8;
+
+/// A person's initials tone (0 to `PERSON_TONES` − 1): the top three bits of the hash of their
+/// email, trimmed and lowercased (emails are matched without case, as avatars are), or of their
+/// trimmed name when the email is blank. The top bits, not the hash modulo 8: FNV-1a's low bits
+/// put common addresses together.
+pub fn person_tone(email: &str, name: &str) -> u8 {
     let email = email.trim();
-    if email.is_empty() { slot_of(name.trim().as_bytes(), n) } else { slot_of(email.to_lowercase().as_bytes(), n) }
+    let key = if email.is_empty() { name.trim().to_owned() } else { email.to_lowercase() };
+    (name_hash(key.as_bytes()) >> 29) as u8
 }
 
 /// The colour key of the full ref name `full`: a local branch's name, or a remote-tracking

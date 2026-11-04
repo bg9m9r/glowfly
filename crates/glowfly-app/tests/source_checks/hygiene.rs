@@ -46,11 +46,11 @@ use views::{app_src, code_lines, crate_sources};
 const LINE_LIMIT: usize = 400;
 
 /// The non-test files over `LINE_LIMIT` today, with their length as a ceiling.
-const LONG_FILES: &[(&str, usize)] = &[("crates/glowfly-model/src/state/mod.rs", 574), ("crates/glowfly-core/src/forge/github.rs", 405)];
+const LONG_FILES: &[(&str, usize)] = &[("crates/glowfly-model/src/state/mod.rs", 569), ("crates/glowfly-core/src/forge/github.rs", 405)];
 
 /// How many log and toast calls in `update/` and `state/` still pass English text. Lower it when
 /// you translate some; never raise it.
-const ENGLISH_LOG_CALLS: usize = 169;
+const ENGLISH_LOG_CALLS: usize = 165;
 
 /// Fixture builders and the only files that may define them (as `fn <name>(`, or the full
 /// signature for `harness`). A new test reuses one of these instead of writing its own copy.

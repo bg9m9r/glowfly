@@ -225,10 +225,15 @@ fn shift_arrows_extend_the_selection() {
     // From the top commit, Up meets the WIP row: nothing.
     h.state_mut().0.session.selection = Selection::Commit(rows[0]);
     assert!(arrow(&mut h, Modifiers::SHIFT, Key::ArrowUp).is_empty());
-    // Without a commit selected, Shift+Down moves like Down.
+    // Without a commit selected, Shift+Down moves like Down: from the chosen WIP row to HEAD,
+    // from an unlit one (as a repository opens) onto the WIP row.
     h.state_mut().0.session.selection = Selection::Wip;
+    h.state_mut().0.session.wip_lit = true;
     let msgs = arrow(&mut h, Modifiers::SHIFT, Key::ArrowDown);
     assert!(matches!(&msgs[..], [Msg::Repo(RepoMsg::SelectCommit(o))] if *o == rows[0]), "{}", msgs.len());
+    h.state_mut().0.session.wip_lit = false;
+    let msgs = arrow(&mut h, Modifiers::SHIFT, Key::ArrowDown);
+    assert!(matches!(&msgs[..], [Msg::Repo(RepoMsg::SelectWip)]), "{}", msgs.len());
     drop(h);
     remove_fixture(&dir);
 }

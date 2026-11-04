@@ -112,6 +112,7 @@ painted:
   "M 1"
   "AL"
   "✔ main"
+  "+1"
   "AL"
   "AL"
   "AL"

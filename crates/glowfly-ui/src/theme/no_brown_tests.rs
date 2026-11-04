@@ -4,7 +4,7 @@
 //! and letters, initials) stays out of `contrast::brownish`'s zone, in both colour presets
 //! (the colour-blind safe one with its diff and status colours too), with no exception.
 
-use super::branch_colours::{chip_in, initials_fill, line_in, swatches};
+use super::branch_colours::{line_in, swatches};
 use super::branch_palette::applied;
 use super::color::Palette;
 use super::contrast::{self, brownish, oklch};
@@ -87,13 +87,13 @@ pub(super) fn fills(p: &Palette) -> Vec<(String, Color32)> {
             }
         }
     }
-    // The graph: each lane's band, highlighted (its branch hovered), its initials and its chips.
+    // The graph: each lane's band, highlighted (its branch hovered), and its chips; the initials
+    // tones are checked in `initials_tests.rs`.
     for s in swatches() {
         let lane = line_in(s, p);
         let band = crate::ui::theme::surfaces::band_color(lane, p);
         add(&format!("{s:?} band"), band);
         add(&format!("{s:?} band highlighted"), crate::ui::theme::surfaces::highlight_color(band, lane));
-        add(&format!("{s:?} initials"), super::branch_colours::initials_fill(lane, p));
         for style in ChipStyle::ALL {
             let look = ref_chip(style, BranchTone::of(s, p), p);
             if let Some(fill) = look.fill {
@@ -118,7 +118,6 @@ pub(super) fn lines(p: &Palette) -> Vec<(String, Color32)> {
     for s in swatches() {
         let lane = line_in(s, p);
         v.push((format!("{s:?} lane"), lane));
-        v.push((format!("{s:?} initials ink"), contrast::clean_ink(chip_in(s, p), initials_fill(lane, p), p)));
         for style in ChipStyle::ALL {
             v.push((format!("{s:?} {style:?} chip text"), ref_chip(style, BranchTone::of(s, p), p).text));
         }

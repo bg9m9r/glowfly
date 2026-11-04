@@ -140,12 +140,20 @@ fn unnamed_lines_hash_their_commit_and_resolving_is_stable() {
 
 #[test]
 fn a_person_is_coloured_by_their_email() {
-    let want = slot_of(b"ada@example.com", 14);
-    assert_eq!(person_slot("ada@example.com", "Ada", 14), want);
-    assert_eq!(person_slot("  Ada@Example.COM ", "Someone else", 14), want, "case and spaces don't count");
-    assert_eq!(person_slot("", " Ada Lovelace ", 14), slot_of(b"Ada Lovelace", 14), "no email: the name");
-    assert_eq!(person_slot("   ", "Ada Lovelace", 14), slot_of(b"Ada Lovelace", 14));
-    assert!(person_slot("grace@example.com", "Grace", COLOUR_BLIND_SLOTS) < COLOUR_BLIND_SLOTS);
+    let want = (name_hash(b"ada@example.com") >> 29) as u8;
+    assert_eq!(person_tone("ada@example.com", "Ada"), want);
+    assert_eq!(person_tone("  Ada@Example.COM ", "Someone else"), want, "case and spaces don't count");
+    let lovelace = (name_hash(b"Ada Lovelace") >> 29) as u8;
+    assert_eq!(person_tone("", " Ada Lovelace "), lovelace, "no email: the name");
+    assert_eq!(person_tone("   ", "Ada Lovelace"), lovelace);
+    // Two common addresses that the hash modulo 8 puts together get two tones.
+    assert_eq!(name_hash(b"ada@example.com") % 8, name_hash(b"grace@example.com") % 8);
+    assert_ne!(person_tone("ada@example.com", ""), person_tone("grace@example.com", ""));
+    for i in 0..200 {
+        assert!(person_tone(&format!("p{i}@example.com"), "") < PERSON_TONES);
+    }
+    let seen: std::collections::BTreeSet<u8> = (0..200).map(|i| person_tone(&format!("p{i}@example.com"), "")).collect();
+    assert_eq!(seen.len(), usize::from(PERSON_TONES), "every tone is used");
 }
 
 #[test]

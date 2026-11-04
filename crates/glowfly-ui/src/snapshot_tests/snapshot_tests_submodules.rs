@@ -142,7 +142,8 @@ fn submodule_menu() {
 
     // Not initialized and no URL: nothing applies.
     let (mut st, _) = with_submodules(ThemeChoice::Dark, "submodule-menu");
-    st.snap.as_mut().unwrap().submodules.push(info("tools/lint", SubmoduleState::Uninitialized, Some("../lint.git")));
+    // First, so its row stays in view above the others.
+    st.snap.as_mut().unwrap().submodules.insert(0, info("tools/lint", SubmoduleState::Uninitialized, Some("../lint.git")));
     let mut h = harness(st, true);
     h.run();
     open_menu(&mut h, "tools/gen");

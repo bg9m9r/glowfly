@@ -25,6 +25,13 @@ fn main_high_contrast_dark() {
 }
 
 #[test]
+fn main_high_contrast_light() {
+    let (st, dir) = with_repo(ThemeChoice::HighContrastLight, "theme-hc-light");
+    render("main_high_contrast_light", st, theme::HIGH_CONTRAST_LIGHT);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn diff_high_contrast_light() {
     let (st, dir) = with_word_diff_in(DiffLayout::Inline, ThemeChoice::HighContrastLight, "theme-hc-light-diff");
     render("diff_high_contrast_light", st, theme::HIGH_CONTRAST_LIGHT);

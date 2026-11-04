@@ -9,7 +9,7 @@ use crate::lexer::bare_lines;
 
 /// How many `Result<_, String>` types the message enums under `msg/` still hold. Lower it when
 /// you convert an area to a typed error; never raise it.
-const STRING_ERRORS: usize = 50;
+const STRING_ERRORS: usize = 45;
 
 /// The folder of the message enums.
 const MSG_DIR: &str = "crates/glowfly-model/src/msg/";

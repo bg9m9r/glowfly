@@ -1,5 +1,5 @@
 //! A branch's ref chip outside the graph, drawn as the Branch / tag column draws it (its
-//! colour, its local mark and the checked-out branch's tick): the rebase panel's tip row.
+//! colour, and the checked-out branch's tick in semibold): the rebase panel's tip row.
 
 use super::labels::{ChipSpec, draw_chip, spec_w};
 use super::ref_group::Chip;

@@ -75,13 +75,13 @@ start with `state/`, `update/` or `ui/`.
 - `graph/fit.rs`: how the columns give way in a narrow graph (CHANGES, COMMIT, AUTHOR, DATE hide, then BRANCH / TAG narrows and its chips move inline, MESSAGE keeping 240 px), never saved.
 - `graph/cells.rs`: the graph row's single-line text cells, and the pull request chips by head commit.
 - `graph/refs_fit.rs`: how wide BRANCH / TAG's chips want to be (each row folded to its first chip and "+N"), for the column's auto-fit and inline chips.
-- `graph/wip_row.rs`: this tab's WIP row with its label, change chips and line total, spanning the columns it leaves empty; short of room the total hides, then the label is cut to 6 characters, then the chips hide.
+- `graph/wip_row.rs`: this tab's WIP row with its label (`weak` until the row is chosen), change chips and line total, spanning the columns it leaves empty; short of room the total hides, then the label is cut to 6 characters, then the chips hide.
 - `graph/branch_chip.rs`: a branch's ref chip drawn outside the graph, as the Branch / tag column draws it (the rebase panel's tip row).
-- `graph/labels.rs`: the row's ref chips with their marks (names cut in their middle), fitting and "+N" chip, the halo round the checked-out branch and HEAD (no layout room; a ref chip after it moves 3 px).
+- `graph/labels.rs`: the row's ref chips with their marks (names cut in their middle; the checked-out branch in semibold), fitting and "+N" chip, the halo round the checked-out branch and HEAD (no layout room; a ref chip after it moves 3 px).
 - `graph/labels_tests.rs`: the chips' fitting, widths (marks; the halo takes none) and hit testing.
 - `graph/nodes.rs`: the row's nodes, sized by the row density.
-- `graph/marks.rs`: the painted local, remote and tag marks.
-- `graph/row_look.rs`: the row's background: the lane band and the highlight (`surfaces::band_color`, `highlight_color`) and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
+- `graph/marks.rs`: the painted remote (in sync) and tag marks.
+- `graph/row_look.rs`: the row's background: the lane band (none on a WIP row) and the highlight (`surfaces::band_color`, `highlight_color`) and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
 - `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
 - `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA), inked and on the find fill.
 - `graph/lane_colours.rs`: the graph's per-row colours, and each lane line's width (HEAD's branch wider) and dash pattern (`graph/paint.rs`, colour-safe colours only).
