@@ -102,7 +102,7 @@ fn compares(fx: &[Effect]) -> Vec<(Oid, Oid)> {
 }
 
 fn loads_detail(fx: &[Effect], oid: Oid) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid: o, .. } if *o == oid))
+    fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid: o, .. }) if *o == oid))
 }
 
 /// Refreshes the repository and returns the effects of applying the new snapshot.

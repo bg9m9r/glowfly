@@ -48,7 +48,10 @@ fn blame_file_lists_tracked_files_and_blames_the_pick() {
     assert_eq!(pick(&st).kind, PickKind::Blame);
     assert_eq!(pick(&st).items, Items::Loading);
     let g = st.palette_gen;
-    assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { generation, .. }] if *generation == g), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { generation, .. })] if *generation == g),
+        "{fx:?}"
+    );
     assert_eq!(st.palette_recent.keys(), ["blame"]);
 
     run(&mut st, Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation: g, result: Ok(vec!["a.txt".into()]) }));

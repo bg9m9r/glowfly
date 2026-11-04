@@ -60,7 +60,13 @@ fn every_line_of_an_untracked_file_is_a_discard_of_the_file() {
     let (mut st, dir) = untracked_open("lines-whole-op", "a\nb\nc\n", &[]);
     select_all(&mut st);
     let fx = run(&mut st, discard_lines());
-    let [Effect::WorkFile { op: FileOp::Discard { path, mode: DeleteMode::Trash, seen: Some(seen) }, .. }] = &fx[..] else {
+    let [
+        Effect::Files(glowfly_model::effect::FilesEffect::Work {
+            op: FileOp::Discard { path, mode: DeleteMode::Trash, seen: Some(seen) },
+            ..
+        }),
+    ] = &fx[..]
+    else {
         panic!("a Discard of the file: {fx:?}")
     };
     assert_eq!(path, "u.txt");

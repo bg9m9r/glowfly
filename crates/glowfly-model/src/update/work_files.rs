@@ -4,6 +4,7 @@
 //! the results (a toast, the dialog's inline error, or a log line).
 
 use super::work_files_delete::{UndoNote, ask_delete, ask_discard, deleted_text, no_copy_kept, trash_refused};
+use crate::effect::FilesEffect;
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::keymap::BindingId;
 use crate::msg::WorkFileMsg;
@@ -33,13 +34,13 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
         WorkFileMsg::DeleteFile { path, confirmed: true } => {
             if let Some(workdir) = st.workdir() {
                 let mode = DeleteMode::for_settings(&st.settings);
-                fx.push(Effect::WorkFile { workdir, op: FileOp::Delete { path, mode } });
+                fx.push(Effect::Files(FilesEffect::Work { workdir, op: FileOp::Delete { path, mode } }));
             }
         }
         WorkFileMsg::DeleteConfirmed(op) => match op {
             FileOp::Delete { .. } | FileOp::UnstageDelete { .. } | FileOp::UnstageGone(_) | FileOp::Discard { .. } => {
                 if let Some(workdir) = st.workdir() {
-                    fx.push(Effect::WorkFile { workdir, op });
+                    fx.push(Effect::Files(FilesEffect::Work { workdir, op }));
                 }
             }
             op => tracing::debug!("ignored a confirmed {op:?}, which isn't a delete"),
@@ -218,7 +219,7 @@ fn create(st: &mut AppState, text: String, fx: &mut Vec<Effect>) {
     if let Some(workdir) = st.workdir()
         && start(st, &op)
     {
-        fx.push(Effect::WorkFile { workdir, op });
+        fx.push(Effect::Files(FilesEffect::Work { workdir, op }));
     }
 }
 
@@ -257,6 +258,6 @@ fn rename(st: &mut AppState, from: String, to: String, stage: bool, fx: &mut Vec
     if let Some(workdir) = st.workdir()
         && start(st, &op)
     {
-        fx.push(Effect::WorkFile { workdir, op });
+        fx.push(Effect::Files(FilesEffect::Work { workdir, op }));
     }
 }

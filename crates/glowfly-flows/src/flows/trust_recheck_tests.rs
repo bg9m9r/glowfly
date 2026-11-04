@@ -176,12 +176,12 @@ fn a_read_that_lets_git_run_carries_a_check() {
     let mut fx = vec![
         status(true),
         status(false),
-        Effect::VerifySignature {
+        Effect::Commit(glowfly_model::effect::CommitEffect::VerifySignature {
             workdir: workdir.clone(),
             oid: git2::Oid::zero(),
             format: glowfly_core::signing::SigningFormat::OpenPgp,
             generation: 1,
-        },
+        }),
     ];
     glowfly_model::update::trust_seal_wrap(&mut st, &mut fx, 0);
     let sealed: Vec<Option<Sealed>> = fx.iter().map(|e| e.trust_check().map(|c| c.sealed.clone())).collect();

@@ -102,7 +102,7 @@ fn confirmed_restore_sends_effect() {
     run(&mut st, ask(oid, "a.txt", false));
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert!(
-        matches!(&fx[..], [Effect::RestoreFile { workdir, oid: o, path, overwrite: true }] if *workdir == dir && *o == oid && path == "a.txt"),
+        matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::Restore { workdir, oid: o, path, overwrite: true })] if *workdir == dir && *o == oid && path == "a.txt"),
         "{fx:?}"
     );
     assert_eq!(fx[0].scope(), Some(&dir));

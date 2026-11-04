@@ -13,20 +13,15 @@ impl Effect {
         effect_areas! { effect_match! { self, |e| e.scope(), {
             Effect::LoadStatus { workdir, .. }
             | Effect::LoadIndexStatus { workdir, .. }
-            | Effect::LoadDetail { workdir, .. }
             | Effect::LoadDiff { workdir, .. }
             | Effect::HighlightDiff { workdir, .. }
             | Effect::LoadDiffGaps { workdir, .. }
             | Effect::LoadBinarySides { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }
-            | Effect::LoadTrackedPaths { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::Revert { workdir, .. }
-            | Effect::RestoreFile { workdir, .. }
-            | Effect::WorkFile { workdir, .. }
             | Effect::Stats { workdir, .. }
-            | Effect::SearchPaths { workdir, .. }
-            | Effect::VerifySignature { workdir, .. } => Some(workdir),
+            | Effect::SearchPaths { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
@@ -51,9 +46,7 @@ impl Effect {
     pub fn queue(&self) -> Option<&Path> {
         effect_areas! { effect_match! { self, |e| e.queue(), {
             Effect::LocalOp { workdir, .. }
-            | Effect::Revert { workdir, .. }
-            | Effect::RestoreFile { workdir, .. }
-            | Effect::WorkFile { workdir, .. } => Some(workdir),
+            | Effect::Revert { workdir, .. } => Some(workdir),
             Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
             Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } => Some(cwd),
             // Reads, network calls, Glowfly's own files (ordered by `saves`) and work outside the
@@ -61,19 +54,16 @@ impl Effect {
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
             | Effect::LoadIndexStatus { .. }
-            | Effect::LoadDetail { .. }
             | Effect::LoadDiff { .. }
             | Effect::LoadDiffGaps { .. }
             | Effect::LoadBinarySides { .. }
             | Effect::HighlightDiff { .. }
             | Effect::LoadFileHistory { .. }
-            | Effect::LoadTrackedPaths { .. }
             | Effect::CheckRepoFolders(_)
             | Effect::ReadTabGroups(_)
             | Effect::Forge { .. }
             | Effect::Stats { .. }
             | Effect::SearchPaths { .. }
-            | Effect::VerifySignature { .. }
             | Effect::FetchAvatars(_)
             | Effect::SaveSettings(_)
             | Effect::SaveRecent(_)

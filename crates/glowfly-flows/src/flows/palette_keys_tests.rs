@@ -92,7 +92,7 @@ fn bound_two_step_commands_open_their_step() {
     let (mut st, dir) = repo_with_topic("bound-two-step");
     let fx = bound(&mut st, C::FileHistory);
     assert!(matches!(&st.palette.as_ref().expect("open").mode, Mode::Pick(p) if matches!(p.kind, PickKind::FileHistory)));
-    assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { .. })]), "{fx:?}");
 
     st.palette = None;
     assert!(bound(&mut st, C::StashMessage).is_empty());

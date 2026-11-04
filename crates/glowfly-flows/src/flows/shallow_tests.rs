@@ -204,7 +204,10 @@ fn deepen_drops_stats_of_old_boundary() {
     let loaded = glowfly_runner::testing::execute(load).expect("a load result");
     let fx = run(&mut st, loaded);
     assert!(!st.session.reads.stats.contains_key(&root), "line counts made as a root commit are dropped");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == root)), "the selected commit's detail reloads");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }) if *oid == root)),
+        "the selected commit's detail reloads"
+    );
     finish(&mut st, fx);
     assert!(!st.snap.as_ref().unwrap().shallow_roots.contains(&root));
     cleanup(&[&src, &dest]);

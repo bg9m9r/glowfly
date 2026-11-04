@@ -42,7 +42,9 @@ fn show(st: &mut AppState, dir: &Path, oid: Oid, signature: Option<SigningFormat
 fn checks(fx: &[Effect]) -> Vec<(Oid, SigningFormat, u64)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::VerifySignature { oid, format, generation, .. } => Some((*oid, *format, *generation)),
+            Effect::Commit(glowfly_model::effect::CommitEffect::VerifySignature { oid, format, generation, .. }) => {
+                Some((*oid, *format, *generation))
+            }
             _ => None,
         })
         .collect()

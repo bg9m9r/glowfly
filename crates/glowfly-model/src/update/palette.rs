@@ -8,6 +8,7 @@
 //! A command's key from Preferences > Keyboard runs it the same way (`palette_keys.rs`).
 
 use crate::effect::Effect;
+use crate::effect::FilesEffect;
 use crate::msg::BlameMsg;
 use crate::msg::BranchMsg;
 use crate::msg::ConflictMsg;
@@ -157,7 +158,7 @@ pub(super) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>
             }
             let Some(workdir) = st.workdir() else { return };
             if open_step(st, Mode::Pick(Pick::new(kind))) {
-                fx.push(Effect::LoadTrackedPaths { workdir, generation: st.palette_gen });
+                fx.push(Effect::Files(FilesEffect::LoadTracked { workdir, generation: st.palette_gen }));
             }
         }
         PickKind::Stash(action) => {

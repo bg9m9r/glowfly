@@ -1,4 +1,4 @@
-//! Working-tree file operations (`Effect::WorkFile`) and what they report back.
+//! Working-tree file operations (`FilesEffect::Work`) and what they report back.
 
 use glowfly_core::repo::{Deleted, Hunk};
 use glowfly_core::settings::Settings;
@@ -46,7 +46,7 @@ impl DeleteMode {
     }
 }
 
-/// A working-tree file operation (`Effect::WorkFile`). Paths are repo-relative.
+/// A working-tree file operation (`FilesEffect::Work`). Paths are repo-relative.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FileOp {
     Create(String),

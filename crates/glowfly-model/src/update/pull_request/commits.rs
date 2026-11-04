@@ -2,6 +2,7 @@
 //! (shown if hidden) while the pull request panel stays open, so the commit's files open in
 //! the tab (`keep_for`). Like `repo::select_commit`, without closing the panel.
 
+use crate::effect::CommitEffect;
 use crate::effect::Effect;
 use crate::state::{AppState, Selection};
 use git2::Oid;
@@ -17,7 +18,7 @@ pub(super) fn select(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     }
     if st.session.selection != Selection::Commit(oid) {
         st.session.selection = Selection::Commit(oid);
-        fx.push(Effect::LoadDetail { workdir, oid });
+        fx.push(Effect::Commit(CommitEffect::LoadDetail { workdir, oid }));
         super::super::line_counts::want_commit(st, oid, fx);
     }
     super::super::layout::reveal_details(st, fx);

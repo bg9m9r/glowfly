@@ -28,13 +28,15 @@ fn a_row_selects_its_commit_and_keeps_the_panel() {
     st.settings.show_details_panel = false;
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[0])), Instant::now());
     assert_eq!(st.session.selection, Selection::Commit(commits[0]));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == commits[0])));
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }) if *oid == commits[0]))
+    );
     assert!(fx.iter().any(|e| matches!(e, Effect::LineCounts(LineCountsEffect::Commit { oid, .. }) if *oid == commits[0])));
     assert!(st.session.pull_request.view.is_some(), "the panel stays open");
     assert!(st.settings.show_details_panel, "the commit panel is shown");
     // Again: only the panel is revealed.
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[0])), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadDetail { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { .. }))));
     // A commit the panel doesn't list does nothing.
     assert!(update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(base)), Instant::now()).is_empty());
     assert_eq!(st.session.selection, Selection::Commit(commits[0]));

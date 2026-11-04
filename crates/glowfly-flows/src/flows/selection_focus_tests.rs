@@ -21,7 +21,10 @@ fn back_from_select_all_to_the_focused_commit() {
     assert!(matches!(&st.session.selection, Selection::Commits(m) if m.len() == 6));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::BackToFocus));
     assert_eq!(st.session.selection, Selection::Commit(f.c(3)));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == f.c(3))), "{fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }) if *oid == f.c(3))),
+        "{fx:?}"
+    );
     assert!(st.view.scroll_to_row.is_some(), "the graph scrolls to it");
     let want = format!("Back to {}: 5 commits deselected.", short(f.c(3)));
     assert_eq!(last_toast(&st), Some(want.as_str()));

@@ -157,12 +157,12 @@ fn copy_editor() -> SequenceEditor {
     SequenceEditor::Copy
 }
 
-/// `Effect::WorkFile`'s work with the stand-in trash.
+/// `FilesEffect::Work`'s work with the stand-in trash.
 pub fn work_file_for_test(workdir: &Path, op: FileOp) -> Msg {
     super::files::work_file(workdir, op, SEAMS.trashers)
 }
 
-/// `Effect::WorkFile`'s work with a trash that refuses every file (`TrashProblem::NoTrash`).
+/// `FilesEffect::Work`'s work with a trash that refuses every file (`TrashProblem::NoTrash`).
 pub fn refused_for_test(workdir: &Path, op: FileOp) -> Msg {
     fn refuse(_: &Path) -> Result<(), repo::TrashRefusal> {
         Err(repo::TrashRefusal::new(repo::TrashProblem::NoTrash, "no bin"))

@@ -48,7 +48,7 @@ fn entering_and_leaving_the_comparison() {
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection));
     assert_eq!(st.session.selection, Selection::Commit(f.c(3)), "Esc returns to the commit");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == f.c(3))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }) if *oid == f.c(3))));
 
     // From the commit menu, closing what showed the commit before.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));

@@ -24,6 +24,7 @@ mod background;
 mod blame;
 mod branches;
 mod clone;
+mod commit;
 mod config;
 mod conflict_check;
 mod conflict_files;

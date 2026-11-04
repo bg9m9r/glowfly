@@ -13,6 +13,8 @@
 //! - Result messages carry typed errors, not English text: the `Result<_, String>` types in
 //!   glowfly-model's `msg/` number at most `STRING_ERRORS` (`hygiene/string_errors.rs`), which
 //!   only goes down.
+//! - New effects go in effect areas: `Effect`'s flat variants in glowfly-model's `effect/mod.rs`
+//!   number at most `FLAT_EFFECTS` (`hygiene/flat_effects.rs`), which only goes down.
 //! - The shared fixture builders are not written again: each helper in `FIXTURE_HELPERS` is
 //!   defined only in the files listed for it, and no two tests pass `scratch_repo` or `long_repo`
 //!   the same folder name (tests run in parallel and would share the folder).
@@ -33,6 +35,8 @@ use crate::views;
 
 #[path = "hygiene/english_text.rs"]
 mod english_text;
+#[path = "hygiene/flat_effects.rs"]
+mod flat_effects;
 #[path = "hygiene/string_errors.rs"]
 mod string_errors;
 #[path = "hygiene/test_switches.rs"]
