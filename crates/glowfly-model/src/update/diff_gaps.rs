@@ -5,7 +5,9 @@
 use crate::effect::DiffEffect;
 use crate::effect::Effect;
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use glowfly_core::diff_rows::{DiffRow, GapSpan, GapText, SplitRow, gaps, inline_rows_filled, split_rows_filled};
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::DiffLayout;
 use glowfly_core::whole_file::{Expanded, change_rows, shown};
@@ -54,7 +56,7 @@ pub(super) fn close(st: &mut AppState, key: u32) {
 
 /// The gaps' text read for the diff shown at `generation`: kept when that diff is still on
 /// screen. When it can't be read, the gaps waiting for it close and the log says why.
-pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, result: Result<Arc<GapText>, String>) {
+pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, result: Result<Arc<GapText>, ReadFailed>) {
     if generation != st.session.diff.shown_gen || !st.session.diff.view.as_ref().is_some_and(|(t, _)| *t == target) {
         return;
     }
@@ -74,7 +76,8 @@ pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, res
             for key in waiting {
                 ex.remove(key);
             }
-            st.log(false, format!("These unchanged lines can't be shown: {e}"));
+            let t = st.settings.lang();
+            st.log(false, t.trf("diff.gaps.failed", &[("why", &typed::read(t, &e))]));
         }
     }
 }

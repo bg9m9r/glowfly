@@ -3,7 +3,7 @@
 //! them, and keeping or asking again across refreshes.
 
 use super::selection_tests::{fixture, refresh, up};
-use super::tests::drive;
+use super::tests::{drive, said};
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
 use glowfly_model::effect::Effect;
@@ -76,7 +76,7 @@ fn stale_failed_and_refreshed_lists() {
     assert!(multi(&st).stacked.is_none());
 
     // A failure is shown; Retry asks again.
-    up(&mut st, Msg::Selection(SelectionMsg::StackedLoaded { oids: want.clone(), result: Err("broken".into()) }));
+    up(&mut st, Msg::Selection(SelectionMsg::StackedLoaded { oids: want.clone(), result: Err(said("broken")) }));
     assert_eq!(multi(&st).stacked, Some(Err("broken".into())));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::RetryCompare));
     assert!(multi(&st).stacked.is_none());

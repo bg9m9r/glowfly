@@ -1,10 +1,12 @@
 //! The words for the typed errors that result messages carry instead of English text (#367):
 //! one function per area's error type, the only place its variants become text in the user's
-//! language. Each gives the fragment that follows a headline's colon ("Couldn't save the
-//! sign-in for github.com: <this>"); git's own words, when an error has them, are kept as they
-//! are. Pure.
+//! language (hosting services, credentials, signing keys, Preferences writes, updates, and the
+//! graph's and the diff's reads). Each gives the fragment that follows a headline's colon
+//! ("Couldn't save the sign-in for github.com: <this>"); git's own words, when an error has
+//! them, are kept as they are. Pure.
 
 use glowfly_core::app_update::UpdateError;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::forge::ServiceError;
 use glowfly_core::git_credential::CredentialError;
 use glowfly_core::i18n::Lang;
@@ -53,6 +55,25 @@ pub fn signing_key(t: Lang, e: &KeyError) -> String {
         KeyError::NewKeyNotFound => t.tr("signing_errors.new_key_not_found").to_owned(),
         KeyError::NoPublicKey { key } => t.trf("signing_errors.no_public_key", &[("key", key)]),
         KeyError::Io { said } => said.clone(),
+    }
+}
+
+/// Why a read for the graph (a comparison, stacked lists, path search, history index) or the
+/// diff (hunk patch, unchanged lines, binary sides, conflict, conflict markers, file history)
+/// failed; libgit2's and the system's words and the paths kept as they are.
+pub fn read(t: Lang, e: &ReadFailed) -> String {
+    use ReadFailed as R;
+    match e {
+        R::Said { said } | R::Other { said } => said.clone(),
+        R::MissingContent { path, remote } => t.trf("read_errors.missing_content", &[("path", path), ("remote", remote)]),
+        R::DiffChanged => t.tr("read_errors.diff_changed").to_owned(),
+        R::FileChanged => t.tr("read_errors.file_changed").to_owned(),
+        R::OldFileUnreadable => t.tr("read_errors.old_file_unreadable").to_owned(),
+        R::NotConflicted { path } => t.trf("read_errors.not_conflicted", &[("path", path)]),
+        R::NoFolder => t.tr("read_errors.no_folder").to_owned(),
+        R::NoThread { said } => t.trf("read_errors.no_thread", &[("said", said)]),
+        R::Internal { effect } => t.trf("read_errors.internal", &[("effect", effect)]),
+        R::Stopped => t.tr("read_errors.stopped").to_owned(),
     }
 }
 

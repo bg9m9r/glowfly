@@ -12,6 +12,7 @@ use crate::msg::{ConflictMsg, JobMsg, Msg};
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use crate::state::conflict_files::next_conflicted;
+use crate::state::error_words::typed;
 use crate::state::toasts::ToastAction;
 use crate::state::tool_compare::merging;
 use glowfly_core::repo::Choice;
@@ -37,7 +38,8 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
                     }
                 }
                 Err(e) => {
-                    st.log(false, e);
+                    let t = st.settings.lang();
+                    st.log(false, typed::read(t, &e));
                     close(st);
                 }
             }

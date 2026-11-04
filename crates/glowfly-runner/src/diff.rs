@@ -2,9 +2,9 @@
 //! (highlight.rs), reading the unchanged lines between its hunks (diff_gaps.rs) and a binary
 //! diff's sides, whose SVGs draw on the one SVG worker (svg_worker.rs).
 
-use super::execute::err;
 use super::execute::{Cx, Execute};
 use super::{diff_gaps, highlight};
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo;
 use glowfly_model::effect::DiffEffect;
 use glowfly_model::msg::{DiffMsg, Msg};
@@ -27,8 +27,9 @@ impl Execute for DiffEffect {
             DiffEffect::Gaps { workdir, target, generation, diff } => Some(diff_gaps::load_job(workdir, target, generation, diff)),
             DiffEffect::BinarySides { workdir, target, generation } => {
                 // SVG sides draw on the one SVG worker, which stops waiting past its deadline.
-                let result =
-                    repo::binary_sides_drawn_by(&workdir, &target, &crate::svg_worker::render).map(std::sync::Arc::new).map_err(err);
+                let result = repo::binary_sides_drawn_by(&workdir, &target, &crate::svg_worker::render)
+                    .map(std::sync::Arc::new)
+                    .map_err(ReadFailed::from);
                 Some(Msg::Diff(DiffMsg::BinarySidesLoaded { target, generation, result }))
             }
         }

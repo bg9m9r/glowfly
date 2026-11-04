@@ -6,9 +6,12 @@ use crate::effect::ConflictEffect;
 use crate::effect::{ConflictRead, Effect, LocalOp};
 use crate::msg::{ConflictMsg, Msg};
 use crate::state::conflict_files::{ConflictFiles, conflicted_paths, markers_warning};
+use crate::state::error_words::typed;
 use crate::state::path_hazards::hazard_of;
 use crate::state::{AppState, Modal};
 use git2::RepositoryState;
+use glowfly_core::error::ReadFailed;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{ConflictSummary, Hazard};
 
 /// The status changed (or the tab was opened or activated): reads the lists again while an
@@ -83,12 +86,18 @@ pub(super) fn mark_conflicted(st: &mut AppState, paths: Vec<String>, fx: &mut Ve
     }
 }
 
+/// The log line for a read of the conflicted files that failed (also for a parked tab's,
+/// update/inactive.rs).
+pub(super) fn read_failed(t: Lang, e: &ReadFailed) -> String {
+    t.trf("conflict.files.read_failed", &[("why", &typed::read(t, e))])
+}
+
 /// A read of the conflicted files came back.
 pub(super) fn read_done(
     st: &mut AppState,
     purpose: ConflictRead,
     paths: Vec<String>,
-    result: Result<ConflictSummary, String>,
+    result: Result<ConflictSummary, ReadFailed>,
     fx: &mut Vec<Effect>,
 ) {
     match purpose {
@@ -101,11 +110,11 @@ pub(super) fn read_done(
                     st.session.conflict_files.counts = s.counts.into_iter().collect();
                     st.session.conflict_files.resolved = s.resolved;
                 }
-                Err(e) => st.log(false, e),
+                Err(e) => st.log(false, read_failed(st.settings.lang(), &e)),
             }
         }
         ConflictRead::BeforeMarkResolved => match result {
-            Err(e) => st.log(false, e),
+            Err(e) => st.log(false, read_failed(st.settings.lang(), &e)),
             Ok(s) => {
                 let left: Vec<(String, usize)> = s.counts.into_iter().filter_map(|(p, n)| n.filter(|&n| n > 0).map(|n| (p, n))).collect();
                 if left.is_empty() {

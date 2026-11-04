@@ -215,3 +215,17 @@ fn history_follows_a_rename_from_a_name_with_a_backslash() {
     assert_eq!(h.entries[0].old_path.as_deref(), Some(odd));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn reads_outside_a_repository_keep_libgit2s_words() {
+    let dir = crate::paths::temp_dir().join(format!("glowfly-test-history-no-repo-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    for e in [file_history(&dir, "a.txt", &HistoryStart::Head, 100).unwrap_err(), super::load_conflict(&dir, "a.txt").unwrap_err()] {
+        let crate::error::ReadFailed::Said { said } = &e else { panic!("not libgit2's words: {e:?}") };
+        let open = git2::Repository::open(&dir).err().expect("not a repository").to_string();
+        assert_eq!(*said, open);
+        assert!(!said.is_empty());
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

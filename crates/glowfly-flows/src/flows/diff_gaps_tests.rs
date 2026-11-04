@@ -2,7 +2,7 @@
 //! fills the rows in, stale results are ignored, closing, whitespace hidden, keeping the top row,
 //! reloads, other files, the whole-file view and a failed read.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::update;
 use glowfly_core::diff_rows::{DiffRow, GapSpan, GapText, gaps, header_rows_filled, inline_rows, inline_rows_filled};
 use glowfly_core::repo::{self, DiffTarget, FileDiff};
@@ -102,7 +102,7 @@ fn stale_or_other_results_are_ignored() {
     for (target, generation) in [(f_txt(), shown_gen + 1), (DiffTarget::Unstaged("g.txt".into()), shown_gen)] {
         run(&mut st, Msg::Diff(DiffMsg::GapsLoaded { target, generation, result: Ok(text.clone()) }));
         assert!(st.session.tab_view.diff_expanded.gap_text().is_none());
-        run(&mut st, Msg::Diff(DiffMsg::GapsLoaded { target: f_txt(), generation: shown_gen + 1, result: Err("x".into()) }));
+        run(&mut st, Msg::Diff(DiffMsg::GapsLoaded { target: f_txt(), generation: shown_gen + 1, result: Err(said("x")) }));
         assert!(st.session.tab_view.diff_expanded.contains(key));
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -184,7 +184,7 @@ fn a_failed_read_closes_the_gap_and_logs() {
     let key = spans(&st)[0].key;
     run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key)));
     let generation = st.session.diff.shown_gen;
-    run(&mut st, Msg::Diff(DiffMsg::GapsLoaded { target: f_txt(), generation, result: Err("boom".into()) }));
+    run(&mut st, Msg::Diff(DiffMsg::GapsLoaded { target: f_txt(), generation, result: Err(said("boom")) }));
     assert!(!st.session.tab_view.diff_expanded.contains(key));
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("These unchanged lines can't be shown: boom"));
     let _ = std::fs::remove_dir_all(&dir);

@@ -39,6 +39,10 @@ pub(super) fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant
             super::work_files::inactive_result(st, workdir, op, result, now);
         }
         Some(Inactive::IndexBuilt { build, result }) => super::history_index::parked_built(st, workdir, build, result),
+        Some(Inactive::ConflictFilesUnread(e)) => {
+            let t = st.settings.lang();
+            st.log_in(Some(workdir), false, super::conflict_files::read_failed(t, &e));
+        }
         Some(Inactive::Counts(read)) => keep_counts(st, workdir, read),
         None => tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display()),
     }

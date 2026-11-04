@@ -1,7 +1,7 @@
 //! Headless tests for selecting several commits: Ctrl- and Shift-clicks, the two-commit
 //! comparison, refreshes and tab switches. Cherry-picking is in `cherry_pick_tests`.
 
-use super::tests::{drive, state};
+use super::tests::{drive, said, state};
 use super::update;
 use git2::Oid;
 use glowfly_core::repo::{Comparison, DiffTarget, FileDiff, FileEntry};
@@ -262,7 +262,7 @@ fn compare_results() {
     // A result for another pair is stale.
     up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(2), to: f.c(5), result: Ok(Comparison::default()) }));
     assert_eq!(multi(&st).changes, Some(Ok(c)));
-    up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(3), to: f.c(5), result: Err("bad tree".into()) }));
+    up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(3), to: f.c(5), result: Err(said("bad tree")) }));
     assert_eq!(multi(&st).changes, Some(Err("bad tree".into())));
     assert!(st.log.iter().any(|l| !l.ok && l.text == "bad tree"));
     let _ = std::fs::remove_dir_all(&f.dir);

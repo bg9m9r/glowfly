@@ -5,6 +5,7 @@
 
 use super::issue_tests::{github, listed};
 use super::tabs_tests::{cleanup, fake_tabs, two_repos};
+use super::tests::said;
 use super::update;
 use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind};
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
@@ -50,7 +51,7 @@ fn history_loads(fx: &[Effect]) -> Vec<u64> {
 
 /// A failed history load of `path` at `generation`, as the runner would report it.
 fn stale_history(path: &str, generation: u64) -> Msg {
-    Msg::History(HistoryMsg::FileHistoryLoaded { path: path.into(), generation, result: Err("stale".into()) })
+    Msg::History(HistoryMsg::FileHistoryLoaded { path: path.into(), generation, result: Err(said("stale")) })
 }
 
 /// The history view is still waiting: no result landed on it.

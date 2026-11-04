@@ -60,7 +60,7 @@ fn conflict_chunks_from_a_real_merge() {
     assert!(!f.no_ancestor);
     assert_eq!(f.labels, SideLabels { operation: Operation::Merge, ours: "main".into(), theirs: "other".into() });
     assert!(f.ids.ancestor.is_some() && f.ids.ours.is_some() && f.ids.theirs.is_some());
-    assert!(load_conflict(&dir, "missing.txt").unwrap_err().is_not_found());
+    assert_eq!(load_conflict(&dir, "missing.txt"), Err(crate::error::ReadFailed::NotConflicted { path: "missing.txt".into() }));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

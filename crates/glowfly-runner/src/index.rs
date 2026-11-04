@@ -11,6 +11,7 @@ use super::execute::{Cx, Execute};
 use super::index_disk::Disk;
 use super::index_query::{Haystack, QueryRequest, QueryWorker};
 use glowfly_core::commit_index::{self, CommitIndex, IndexKey};
+use glowfly_core::error::ReadFailed;
 use glowfly_model::effect::IndexEffect;
 use glowfly_model::msg::{Msg, SearchMsg};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -135,8 +136,8 @@ impl IndexWorker {
                     (Ok(Arc::new(done.index)), done.save)
                 }
                 Ok(Ok(None)) => continue,
-                Ok(Err(e)) => (Err(e.to_string()), None),
-                Err(_) => (Err("Glowfly hit an internal error (index)".to_owned()), None),
+                Ok(Err(e)) => (Err(ReadFailed::from(e)), None),
+                Err(_) => (Err(ReadFailed::Internal { effect: "index".into() }), None),
             };
             let index = result.as_ref().ok().map(Arc::clone);
             send(tx, waker, &workdir, SearchMsg::IndexBuilt { build, result });
@@ -160,8 +161,8 @@ pub(super) fn once(e: IndexEffect) -> Option<Msg> {
     let msg = match e {
         IndexEffect::Build { workdir, build, key, base } => {
             let result = commit_index::build(&workdir, &key, base.as_deref(), &mut |_| {}, &|| false)
-                .map_err(|e| e.to_string())
-                .and_then(|i| i.map(Arc::new).ok_or_else(|| "stopped".to_owned()));
+                .map_err(ReadFailed::from)
+                .and_then(|i| i.map(Arc::new).ok_or(ReadFailed::Stopped));
             SearchMsg::IndexBuilt { build, result }
         }
         IndexEffect::Query { request, index, query, .. } => Haystack::Index(index).answer(&query, request, &|| false)?,
@@ -301,6 +302,17 @@ mod tests {
         assert!(built(&rx).is_empty());
         assert!(file.path.exists(), "a stopped read keeps the file");
         let _ = std::fs::remove_dir_all(&store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_build_outside_a_repository_keeps_libgit2s_words() {
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-index-worker-no-repo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let key = IndexKey { starts: vec![git2::Oid::zero()], shallow: Vec::new() };
+        let Some(Msg::Search(SearchMsg::IndexBuilt { build: 1, result })) = once(build(&dir, 1, &key)) else { panic!("a build result") };
+        assert!(matches!(&result, Err(ReadFailed::Said { said }) if !said.is_empty()), "{result:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

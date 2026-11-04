@@ -2,7 +2,7 @@
 //! silent updates from the previous index, stale and failed builds, parked tabs, closing tabs,
 //! another repository in the tab and the preference.
 
-use super::tests::{finish, finish_keeping, git, long_repo, scratch_repo, state};
+use super::tests::{finish, finish_keeping, git, long_repo, said, scratch_repo, state};
 use super::update;
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::commit_query::CommitQuery;
@@ -181,7 +181,7 @@ fn new_refs_update_the_index_with_the_old_one_as_base() {
 fn a_failed_build_is_logged_once_and_not_retried_for_the_same_history() {
     let (mut st, dir, _) = opened_long("index-failed");
     let build = st.session.search.index.building.as_ref().unwrap().build;
-    send(&mut st, SearchMsg::IndexBuilt { build, result: Err("boom".into()) });
+    send(&mut st, SearchMsg::IndexBuilt { build, result: Err(said("boom")) });
     assert_eq!(log_count(&st, "Could not index the history for search: boom"), 1);
     assert!(st.session.search.index.building.is_none());
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());

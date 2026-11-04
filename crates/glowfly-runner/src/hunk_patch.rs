@@ -7,8 +7,7 @@ use glowfly_model::msg::{DiffMsg, Msg};
 
 impl Execute for HunkPatchRequest {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        let result =
-            repo::hunk_patch(&self.workdir, &self.target, self.index, &self.expected, self.ignore_whitespace).map_err(|e| e.to_string());
+        let result = repo::hunk_patch(&self.workdir, &self.target, self.index, &self.expected, self.ignore_whitespace);
         Some(Msg::Diff(DiffMsg::HunkPatchRead { result }))
     }
 }

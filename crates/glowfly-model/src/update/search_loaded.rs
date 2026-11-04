@@ -6,6 +6,7 @@
 
 use crate::effect::{Effect, IndexEffect, Shared};
 use crate::state::AppState;
+use glowfly_core::error::ReadFailed;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -66,7 +67,7 @@ pub(super) fn resume(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// The worker's answer to request `request`: the matches when it is still the one asked for.
-pub(super) fn matched(st: &mut AppState, request: u64, result: Result<Vec<usize>, String>, fx: &mut Vec<Effect>) {
+pub(super) fn matched(st: &mut AppState, request: u64, result: Result<Vec<usize>, ReadFailed>, fx: &mut Vec<Effect>) {
     if st.session.search.loaded.pending != Some(request) {
         return;
     }
