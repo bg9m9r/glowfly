@@ -2,10 +2,10 @@
 //! stopped (`state::am_banner`).
 
 use super::theme::color;
-use crate::state::am_banner;
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::state::am_banner;
 
 /// A stopped patch series' lines (none for other operations), also under the WIP panel's
 /// step heading (`op_steps`).

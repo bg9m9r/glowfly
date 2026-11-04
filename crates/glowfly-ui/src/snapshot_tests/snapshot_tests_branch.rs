@@ -4,18 +4,18 @@
 
 use super::snapshot_tests::{harness, reload, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
-use crate::msg::BranchMsg;
-use crate::msg::GraphMsg;
-use crate::msg::Msg;
-use crate::state::branch_sync::{DeleteRemoteForm, RenameForm};
-use crate::state::touched::Touched;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::{BranchInfo, LoadOptions, Tracking};
 use glowfly_core::settings::{FilterOp, GraphFilter, ThemeChoice};
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::GraphMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::branch_sync::{DeleteRemoteForm, RenameForm};
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, Modal};
 
 fn tip(st: &AppState, name: &str) -> Oid {
     st.snap.as_ref().unwrap().locals.iter().find(|b| b.name == name).and_then(|b| b.oid).unwrap()
@@ -70,10 +70,10 @@ fn new_branch_dialog_tracking() {
     h.run();
     h.check_snapshot("new_branch_dialog_tracking");
     assert!(h.query_by_label_contains("The new branch tracks origin/search, also under another name.").is_some());
-    h.get_by_label("Create").click();
+    h.get_by_label("Create branch").click();
     h.run();
     let want = glowfly_core::branch_ops::create_tracking_cmd("mine", "origin", "search", true);
-    let sent = h.state().1.iter().any(|m| matches!(m, Msg::Job(crate::msg::JobMsg::Git { cmds, .. }) if *cmds == [want.clone()]));
+    let sent = h.state().1.iter().any(|m| matches!(m, Msg::Job(glowfly_model::msg::JobMsg::Git { cmds, .. }) if *cmds == [want.clone()]));
     assert!(sent, "{:?}", h.state().1.len());
     drop(h);
     remove_fixture(&dir);
@@ -90,7 +90,7 @@ fn new_branch_dialog_folder_case() {
     h.run();
     h.check_snapshot("new_branch_dialog_folder_case");
     assert!(h.query_by_label_contains("The folder Feature already exists as feature; use that spelling.").is_some());
-    assert!(h.get_by_label("Create").is_disabled());
+    assert!(h.get_by_label("Create branch").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }
@@ -148,8 +148,8 @@ fn branch_menu() {
     open_menu(&mut h);
     h.get_by_label("Copy link").click();
     h.run();
-    let want = crate::deep_link::LinkTarget::LocalBranch("search".into());
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
+    let want = glowfly_model::deep_link::LinkTarget::LocalBranch("search".into());
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(glowfly_model::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
     // Force push with lease asks first, for this branch.
     open_menu(&mut h);
     h.get_by_label("Force push to origin/search (with lease)…").click();
@@ -248,7 +248,7 @@ fn branch_menu_visibility_items() {
     let (st, dir) = hidden_solo("visibility-menu");
     let mut h = harness(st, true);
     h.run();
-    row_menu(&mut h, "✔  main", false);
+    row_menu(&mut h, "main, checked out", false);
     assert!(h.query_by_label("Hide in graph").is_none(), "the checked-out branch is always shown: left out");
     assert!(h.query_by_label("Show only this").is_some());
     drop(h);

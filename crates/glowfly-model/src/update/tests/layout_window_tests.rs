@@ -5,6 +5,7 @@
 
 use super::tests::{scratch_repo, state};
 use super::update;
+use crate::effect::SaveEffect;
 use crate::effect::{Effect, UiEffect};
 use crate::keymap::BindingId;
 use crate::msg::{AppMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg};
@@ -21,7 +22,7 @@ fn send(st: &mut AppState, m: Msg) -> Vec<Effect> {
 }
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 /// The window commands among `fx`.
@@ -163,10 +164,10 @@ fn the_system_title_bar_switch_saves_and_waits_for_the_next_start() {
     st.prefs = Some(PrefsState::new(PrefPage::Ui));
     st.settings.system_title_bar = true;
     let fx = send(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.system_title_bar)), "saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.system_title_bar)), "saved");
     assert_eq!(st.view.chrome, Chrome::Windows, "the drawn frame stays until Glowfly restarts");
     assert!(window_cmds(&fx).is_empty(), "nothing asks the window to change now");
     st.settings.system_title_bar = false;
     let fx = send(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if !s.system_title_bar)), "and back");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if !s.system_title_bar)), "and back");
 }

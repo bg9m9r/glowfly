@@ -1,6 +1,6 @@
 Dialog
-  TextInput = "deploy" [focused]
-  Button "Deploy commit"
+  TextInput "Type a command, branch or tag name" = "deploy" [focused]
+  Button "Deploy commit" [selected]
   Button "Deploy preview"
   Button "Deploy with project script"
   Button "Copy link to repository"

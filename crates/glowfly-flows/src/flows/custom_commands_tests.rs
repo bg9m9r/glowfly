@@ -5,13 +5,13 @@
 
 use super::tests::{finish_keeping, scratch_repo, state};
 use super::update;
-use crate::custom_commands::{CommandRef, CustomCommandEffect, CustomCommandMsg};
-use crate::effect::Effect;
-use crate::keymap::{BindingId, Chord};
-use crate::msg::{Msg, PaletteMsg, RepoMsg, WatchMsg};
-use crate::state::AppState;
-use crate::state::palette::PaletteCommand;
 use glowfly_core::custom_commands::{FileRead, Source, parse};
+use glowfly_model::custom_commands::{CommandRef, CustomCommandEffect, CustomCommandMsg};
+use glowfly_model::effect::Effect;
+use glowfly_model::keymap::{BindingId, Chord};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::PaletteCommand;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -94,8 +94,10 @@ fn problems_are_announced_once() {
     assert_eq!((st.log.len(), st.toasts.len()), (logged, 1), "the same problems aren't announced again");
     load(&mut st, file(""), FileRead::default());
     assert!(st.custom_commands.reported.is_empty(), "fixed files clear them");
+    let shown = st.toasts[0].shown;
     load(&mut st, user(), repo());
-    assert_eq!(st.toasts.len(), 2, "problems that come back are announced again");
+    assert_eq!(st.toasts.len(), 1, "the toast still up is shown again, not copied");
+    assert!(st.toasts[0].shown > shown, "problems that come back are announced again");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

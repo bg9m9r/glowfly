@@ -1,7 +1,7 @@
-//! Reading the unchanged lines between a diff's hunks, for the hunk view (`Effect::LoadDiffGaps`).
+//! Reading the unchanged lines between a diff's hunks, for the hunk view (`DiffEffect::Gaps`).
 
-use crate::msg::{DiffMsg, Msg};
 use glowfly_core::repo::{self, DiffTarget, FileDiff};
+use glowfly_model::msg::{DiffMsg, Msg};
 use std::path::PathBuf;
 use std::sync::Arc;
 

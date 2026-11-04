@@ -2,11 +2,11 @@
 //! Which key and Use local SSH agent treat the value it writes.
 
 use super::ssh_tests::{loaded, page, page_mut, pair, ssh};
-use crate::effect::Effect;
-use crate::ssh::{SshEffect, SshMsg};
-use crate::state::AppState;
-use crate::state::ssh_use::Choices;
 use glowfly_core::ssh_keys::{AgentReach, AgentStatus, KeyChoice, WinService, WinSshFacts};
+use glowfly_model::effect::Effect;
+use glowfly_model::ssh::{SshEffect, SshMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::ssh_use::Choices;
 use std::path::PathBuf;
 
 const WIN: &str = "C:/Windows/System32/OpenSSH/ssh.exe";
@@ -60,7 +60,7 @@ fn switching_writes_once_and_reads_the_choice_again() {
 
     let fx = ssh(&mut st, SshMsg::WindowsSshSet { on: true, result: Ok(()) });
     assert!(!page(&st).choice_busy);
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("git now runs Windows' OpenSSH for SSH remotes"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Git now runs Windows' OpenSSH for SSH remotes"));
     assert!(fx.iter().any(|e| matches!(e, Effect::Ssh(SshEffect::ReadChoice { .. }))));
     assert!(page(&st).choice.is_none(), "read again");
 }
@@ -95,7 +95,7 @@ fn undo_unsets_the_global_value() {
     let fx = ssh(&mut st, SshMsg::UseWindowsSsh(false));
     assert_eq!(windows_sets(&fx), [None]);
     ssh(&mut st, SshMsg::WindowsSshSet { on: false, result: Ok(()) });
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("git runs Git for Windows' own ssh again"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Git runs Git for Windows' own ssh again"));
 }
 
 #[test]

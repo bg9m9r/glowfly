@@ -1,9 +1,9 @@
-//! Language snapshots of the welcome, the repository lists, Find repositories and the details
-//! panel: the welcome screen and its lists in German, the first-run welcome's identity step in
-//! Spanish (its captions must fit their slots) and its Start step in German, Find repositories
-//! in German, and the commit details, several commits (German), the WIP lists and a commit
-//! compared with the working directory (Spanish). Buttons found by their translated text still
-//! send their messages.
+//! Language snapshots of the welcome, the repository lists, Find repositories, the tour and the
+//! details panel: the welcome screen and its lists in German, the first-run welcome's identity
+//! step in Spanish (its captions must fit their slots) and its Start step in German, the tour's
+//! last card in German, Find repositories in German, and the commit details, several commits
+//! (German), the WIP lists and a commit compared with the working directory (Spanish). Buttons
+//! found by their translated text still send their messages.
 
 use super::common::short;
 use super::details_wip::discard_all_text;
@@ -12,16 +12,17 @@ use super::snapshot_tests_compare::{compared, selected};
 use super::snapshot_tests_onboarding::{ada, on};
 use super::snapshot_tests_repo_finder::finder;
 use super::snapshot_tests_repo_list::welcome_state;
-use crate::msg::{Msg, ReposMsg};
-use crate::state::onboarding::{EMAIL_FIELD, WelcomeStep};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, ReposMsg};
+use glowfly_model::state::onboarding::{EMAIL_FIELD, WelcomeStep};
+use glowfly_model::state::onboarding_tour::TourStep;
+use glowfly_model::state::{AppState, Selection};
 
 /// Clicks the WIP header's button `label`, or its item `item` in the more-actions menu (`more`)
 /// when the button moved there.
@@ -94,6 +95,26 @@ fn welcome_start_german() {
     h.check_snapshot("welcome_start_german");
 }
 
+/// The tour's last card in German: its title, sentences, buttons, counter and close tip are the
+/// German texts (the text snapshot keeps them for review; it does not measure their fit).
+#[test]
+fn tour_palette_german() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "tour-palette-german");
+    st.settings.language = "de".into();
+    st.onboarding.tour = Some(TourStep::Palette);
+    let mut h = harness(st, true);
+    h.run();
+    let t = Lang::De;
+    for key in ["tour.step.palette.title", "tour.palette.open.button", "tour.palette.shortcuts.button", "tour.done.button"] {
+        assert!(h.query_by_label(t.tr(key)).is_some(), "{key} is shown in German");
+    }
+    assert!(h.query_by_label(&t.trf("tour.progress", &[("step", &5), ("total", &5)])).is_some());
+    assert!(h.query_by_label(t.tr("tour.close.tip")).is_some());
+    h.check_snapshot("tour_palette_german");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn repo_finder_german() {
     let mut st = finder(ThemeChoice::Dark, "");
@@ -120,7 +141,7 @@ fn details_commit_german() {
     st.session.detail = Some(detail);
     let mut h = harness(st, true);
     h.run();
-    let short = crate::ui::common::short(oid);
+    let short = crate::common::short(oid);
     for text in [Lang::De.trn("details.commit.changed_files", n, &[]), Lang::De.trf("details.commit.sha", &[("sha", &short)])] {
         assert!(h.query_all_by_label(&text).next().is_some(), "{text} is shown");
     }

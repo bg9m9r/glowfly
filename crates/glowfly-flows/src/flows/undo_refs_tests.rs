@@ -3,11 +3,11 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, UndoOpts};
-use crate::msg::{JobMsg, Msg, RepoMsg};
-use crate::state::{AppState, Modal};
-use crate::tag::TagMsg;
 use glowfly_core::undo::{Action, HeadPos};
+use glowfly_model::effect::{Effect, UndoOpts};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::tag::TagMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -79,7 +79,10 @@ fn new_tag_is_undoable_unless_pushed() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     // Two commands, so nothing is recorded, and the tag job keeps the earlier entries.
     let fx = update(&mut st, create("v2", Some("origin")), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { cmds, record: None, .. }] if cmds.len() == 2), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record: None, .. })] if cmds.len() == 2),
+        "{fx:?}"
+    );
     super::tests::finish(&mut st, fx);
     assert!(has_tag(&st, "v2"));
     assert!(matches!(st.session.undo.undo[..], [Action::CreateTag { .. }]), "{:?}", st.session.undo.undo);

@@ -129,6 +129,64 @@ pub fn sync_line(t: Lang, snap: &Snapshot) -> Option<String> {
     Some(t.trf("toolbar.tip.ahead_behind", args))
 }
 
+/// Where Push sends the head branch, as its menu's first item and its tooltip's title say:
+/// "Push main to origin/main" (or to the remote `branch.<b>.pushRemote` or `remote.pushDefault`
+/// names, which a plain `git push` prefers: "Push main to fork/main"), or without an upstream
+/// "Publish search to origin (creates origin/search)" on the remote Push picks. None on a
+/// detached HEAD or without a remote.
+pub fn push_target(t: Lang, snap: &Snapshot) -> Option<String> {
+    let (template, names) = push_target_parts(t, snap)?;
+    let args: Vec<(&str, &dyn std::fmt::Display)> = names.iter().map(|(slot, name)| (*slot, name as &dyn std::fmt::Display)).collect();
+    Some(glowfly_core::i18n::fill(template, &args))
+}
+
+/// `push_target` as its template and the names that fill it, for a menu that cuts long names.
+pub fn push_target_parts(t: Lang, snap: &Snapshot) -> Option<(&'static str, [(&'static str, String); 2])> {
+    let b = head(snap)?;
+    if let Some((dest, _)) = push_ahead(snap) {
+        return Some((t.tr("toolbar.tip.push_title"), [("branch", b.name.clone()), ("upstream", dest)]));
+    }
+    let remote = super::branches::default_remote(snap)?;
+    Some((t.tr("toolbar.tip.push_publish_title"), [("branch", b.name.clone()), ("remote", remote)]))
+}
+
+/// The remote a plain `git push` of `b` goes to when config names one other than its
+/// upstream's (`branch.<b>.pushRemote`, then `remote.pushDefault`); None when it goes to the
+/// upstream.
+fn push_elsewhere<'a>(snap: &'a Snapshot, b: &BranchInfo) -> Option<&'a str> {
+    let tracked = b.tracking.as_ref().map(|t| t.remote.as_str());
+    let (_, remote) = snap.push_remotes.for_branch(&b.name)?;
+    (Some(remote) != tracked).then_some(remote)
+}
+
+/// Where a plain `git push` of the head branch (which has an upstream) sends it and how many
+/// commits that lacks: its upstream with `ahead`, or, when config pushes it to another remote,
+/// `{remote}/{branch}` with the count from the loaded history (None when that ref isn't known
+/// or the history is cut short, rather than the upstream's count). None on a detached HEAD or
+/// without an upstream.
+pub fn push_ahead(snap: &Snapshot) -> Option<(String, Option<usize>)> {
+    let b = head(snap)?;
+    let up = b.upstream.as_ref()?;
+    let Some(remote) = push_elsewhere(snap, b) else { return Some((up.clone(), Some(b.ahead))) };
+    let theirs = snap.remotes.iter().find(|(r, _)| r == remote).and_then(|(_, bs)| bs.iter().find(|(n, _)| *n == b.name));
+    let count = b.oid.zip(theirs.map(|(_, o)| *o)).and_then(|(ours, theirs)| snap.divergence(ours, theirs, 0));
+    Some((format!("{remote}/{}", b.name), count.filter(|d| d.complete).map(|d| d.ahead_total)))
+}
+
+/// Whether Push goes to the head's upstream (so its ahead/behind line and preview are Push's).
+pub fn pushes_to_upstream(snap: &Snapshot) -> bool {
+    head(snap).is_some_and(|b| b.upstream.is_some() && push_elsewhere(snap, b).is_none())
+}
+
+/// Pull's title: "Pull origin/main into main (rebase)", or "(merge)", as a plain `git pull` of
+/// the head branch would; None on a detached HEAD or without an upstream.
+pub fn pull_target(t: Lang, snap: &Snapshot) -> Option<String> {
+    let b = head(snap)?;
+    let up = b.upstream.as_ref()?;
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("upstream", up), ("branch", &b.name)];
+    Some(if snap.pull_rebase { t.trf("toolbar.tip.pull_title_rebase", args) } else { t.trf("toolbar.tip.pull_title_merge", args) })
+}
+
 const MINUTE: i64 = 60;
 const HOUR: i64 = 60 * MINUTE;
 const DAY: i64 = 24 * HOUR;

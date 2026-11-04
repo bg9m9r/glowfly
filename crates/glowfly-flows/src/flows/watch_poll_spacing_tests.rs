@@ -5,14 +5,14 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, StatusRead};
-use crate::msg::{LoadMsg, Msg, RepoMsg, WatchMsg};
-use crate::state::AppState;
-use crate::state::watch::{POLL_GAP_CAP, REMOTE_POLL};
+use glowfly_model::effect::{Effect, StatusRead};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::watch::{POLL_GAP_CAP, REMOTE_POLL};
 use std::time::{Duration, Instant};
 
 fn statuses(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadStatus { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))).count()
 }
 
 /// A focused tab on a repository the runner said is on a network volume.

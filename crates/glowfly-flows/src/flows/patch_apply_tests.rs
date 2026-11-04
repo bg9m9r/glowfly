@@ -2,18 +2,18 @@
 //! each choice starts and their refusals, and end-to-end applies (three-way conflicts, .rej
 //! files, a series as commits, and the Applying patches banner's buttons) on real repositories.
 
-use crate::effect::Effect;
 use crate::flows::patch_tests::{beside, cleanup, commit, last_log, last_toast, run, three_commits};
-use crate::flows::{drive, git};
-use crate::msg::{JobMsg, Msg, RepoMsg};
-use crate::patch::{ApplyHow, ApplyRequest, PatchEffect, PatchMsg};
-use crate::state::op_actions::state_actions;
-use crate::state::patch::apply::{ApplyForm, ApplyMode, STAGED_FIRST};
-use crate::state::patch::{AM_LABEL, APPLY_LABEL, PendingApply};
-use crate::state::{AppState, Modal};
-use crate::update::update;
+use crate::flows::{drive, drive_seeing, git};
 use git2::RepositoryState;
 use glowfly_core::patch_ops::{self, AM_ABORT, AM_CONTINUE, AmOptions, ApplyOptions, OnFail, PatchSummary};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
+use glowfly_model::patch::{ApplyHow, ApplyRequest, PatchEffect, PatchMsg};
+use glowfly_model::state::op_actions::state_actions;
+use glowfly_model::state::patch::apply::{ApplyForm, ApplyMode, STAGED_FIRST};
+use glowfly_model::state::patch::{AM_LABEL, APPLY_LABEL, PendingApply};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -34,7 +34,7 @@ fn send(st: &mut AppState, path: &Path, how: ApplyHow, commits: usize) -> Vec<Ef
 /// The commands of the job `fx` starts.
 fn job_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
     }
 }
@@ -123,7 +123,9 @@ fn apply_changes_starts_the_chosen_git_apply() {
         st.modal = Some(dialog(&st, &p));
         let fx = send(&mut st, &p, how, 0);
         let ApplyHow::Changes(o) = how else { unreachable!() };
-        assert!(matches!(&fx[..], [Effect::RunGit { on_fail_check, .. }] if *on_fail_check == patch_ops::applied_check(&text, &o)));
+        assert!(
+            matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { on_fail_check, .. })] if *on_fail_check == patch_ops::applied_check(&text, &o))
+        );
         let cmds = job_cmds(&fx);
         let want: Vec<Vec<String>> = want.into_iter().map(|c| c.into_iter().map(str::to_owned).chain([text.clone()]).collect()).collect();
         assert_eq!(cmds, want);
@@ -152,7 +154,10 @@ fn apply_commits_starts_git_am_unless_blocked() {
     let o = AmOptions { keep_cr: true, signoff: true, ..AmOptions::default() };
     let fx = send(&mut st, &p, ApplyHow::Commits(o), 2);
     let check = patch_ops::am_applied_check(&st.snap.as_ref().unwrap().git_dir);
-    assert!(check.is_some() && matches!(&fx[..], [Effect::RunGit { on_fail_check, .. }] if *on_fail_check == check));
+    assert!(
+        check.is_some()
+            && matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { on_fail_check, .. })] if *on_fail_check == check)
+    );
     assert_eq!(job_cmds(&fx), [patch_ops::am_cmd(p.to_str().unwrap(), &o)]);
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some(AM_LABEL));
     forget_job(&mut st);
@@ -212,8 +217,11 @@ fn apply_end_to_end_success_and_failure() {
     assert_eq!(last_toast(&st), (true, "Applied p.patch to the working tree.".to_owned()));
     assert!(st.job.is_none() && st.patch_apply.is_none());
 
-    // Applied again, it no longer fits because it is already there: nothing changes.
-    apply_now(&mut st, &p, changes(OnFail::Refuse, false, false), 1);
+    // Applied again, it no longer fits because it is already there: nothing changes. The job's
+    // failure check finds it applied.
+    let req = request(&st, &p, changes(OnFail::Refuse, false, false), 1);
+    let check_passed = |m: &Msg| matches!(m, Msg::Job(JobMsg::FailCheckPassed { .. }));
+    assert!(drive_seeing(&mut st, Msg::Patch(PatchMsg::Apply(req)), check_passed));
     let already = "p.patch is already applied: its changes are already in your files. Nothing was changed.";
     assert_eq!(last_toast(&st), (false, already.to_owned()));
     assert!(st.patch_apply.is_none());
@@ -248,7 +256,7 @@ fn a_series_already_on_the_branch_says_so() {
                 Skip patch to go on, or Abort.";
     assert_eq!(last_toast(&st), (false, want.to_owned()));
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::ApplyMailbox);
-    let plain = crate::state::patch::apply::am_already(glowfly_core::i18n::Lang::En, "p.patch", "error: x");
+    let plain = glowfly_model::state::patch::apply::am_already(glowfly_core::i18n::Lang::En, "p.patch", "error: x");
     assert_eq!(plain, "Applying p.patch stopped: this patch's changes are already on the branch. Skip patch to go on, or Abort.");
     drive(&mut st, Msg::git("Abort", AM_ABORT));
     cleanup(&dir);
@@ -320,7 +328,7 @@ fn a_stopped_series_then_abort_or_continue() {
     assert_eq!(snap.state, RepositoryState::ApplyMailbox);
     assert_eq!(snap.am.as_ref().map(|a| (a.step, a.total, a.subject.as_str())), Some((1, 2, "Add the second line")));
     let actions = state_actions(snap.state).unwrap();
-    let title = crate::state::op_actions::banner_title(glowfly_core::i18n::Lang::En, snap);
+    let title = glowfly_model::state::op_actions::banner_title(glowfly_core::i18n::Lang::En, snap);
     assert_eq!(title.as_deref(), Some("Applying patches \u{b7} patch 1 of 2"));
     let labels: Vec<(&str, &[&str])> = actions.to_vec();
     assert_eq!(labels, [("Continue", AM_CONTINUE), ("Skip patch", patch_ops::AM_SKIP), ("Abort", AM_ABORT)]);
@@ -363,8 +371,8 @@ fn conflicts_block_the_index_and_commits_but_not_the_working_tree() {
     let p = beside(&dir, "p.patch");
     st.snap.as_mut().unwrap().unstaged.push(glowfly_core::repo::FileEntry::new("x.txt", '!'));
     let snap = st.snap.as_ref().unwrap();
-    assert_eq!(crate::state::patch::apply::index_blocked(snap), Some(crate::state::patch::apply::RESOLVE_FIRST));
-    assert_eq!(crate::state::patch::apply::am_blocked(snap).as_deref(), Some(crate::state::patch::apply::RESOLVE_FIRST));
+    assert_eq!(glowfly_model::state::patch::apply::index_blocked(snap), Some(glowfly_model::state::patch::apply::RESOLVE_FIRST));
+    assert_eq!(glowfly_model::state::patch::apply::am_blocked(snap).as_deref(), Some(glowfly_model::state::patch::apply::RESOLVE_FIRST));
     for how in [changes(OnFail::Refuse, true, false), changes(OnFail::ThreeWay, true, false), ApplyHow::Commits(AmOptions::default())] {
         assert!(send(&mut st, &p, how, 1).is_empty(), "{how:?}");
         assert_eq!(last_log(&st), "Resolve the conflicted files first.");

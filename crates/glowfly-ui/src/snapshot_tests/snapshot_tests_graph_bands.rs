@@ -4,11 +4,11 @@
 
 use super::snapshot_tests::{git, harness_palette_sized, reload, remove_fixture, with_repo};
 use super::theme;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::vec2;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 
 #[path = "snapshot_tests_colour_sheet.rs"]

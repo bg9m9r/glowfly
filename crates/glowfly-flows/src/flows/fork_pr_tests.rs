@@ -4,15 +4,15 @@
 use super::push_pr_fork_tests::with_fork;
 use super::push_pr_tests::{cleanup, with_host};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{ForgeMsg, Msg};
-use crate::remote::{RemoteEffect, RemoteMsg};
-use crate::state::AppState;
-use crate::state::Modal;
-use crate::state::forks::{ForkCreate, ForkThenPr};
-use crate::state::push_pr::PrStart;
 use glowfly_core::forge::{CreatedFork, Fork, ForkLookup, Target, parse_remote};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{ForgeMsg, Msg};
+use glowfly_model::remote::{RemoteEffect, RemoteMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::Modal;
+use glowfly_model::state::forks::{ForkCreate, ForkThenPr};
+use glowfly_model::state::push_pr::PrStart;
 use std::time::Instant;
 
 fn origin() -> Target {
@@ -52,7 +52,7 @@ fn open(st: &mut AppState, mine: Option<Fork>) -> Vec<Effect> {
 
 fn git_job(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
     }
 }

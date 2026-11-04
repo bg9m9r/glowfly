@@ -2,11 +2,11 @@
 
 use super::super::theme::color;
 use super::{note, tone_color};
-use crate::state::pull_request::{PrView, review_summary, reviewer_tone};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{RichText, Ui};
 use glowfly_core::forge::PrState;
 use glowfly_core::text::printable;
+use glowfly_model::state::pull_request::{PrView, review_summary, reviewer_tone};
 
 pub(super) fn show(ui: &mut Ui, v: &PrView) {
     status(ui, v);

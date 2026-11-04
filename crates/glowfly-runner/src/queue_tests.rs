@@ -1,8 +1,11 @@
 //! Tests for the per-repository effect queue (runner/queue.rs).
 
 use super::*;
-use crate::effect::{Effect, EffectMeta, MonitorJob, MonitorOff, RebaseEffect, ReposEffect, SparseEffect, StashEffect, WorktreeEffect};
 use glowfly_core::repo_sync::SyncOp;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::{
+    Effect, EffectMeta, MonitorJob, MonitorOff, RebaseEffect, ReposEffect, SparseEffect, StashEffect, WorktreeEffect,
+};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -115,16 +118,18 @@ fn case_twins_share_a_queue_only_where_the_volume_ignores_case() {
 #[test]
 fn which_effects_queue() {
     let w = PathBuf::from("C:/r");
-    let git = |cmds: &[&[&str]]| Effect::RunGit {
-        cwd: w.clone(),
-        cmds: cmds.iter().map(|c| glowfly_core::gitcli::args(c)).collect(),
-        write_file: None,
-        record: None,
-        journal: None,
-        prompts: false,
-        expect: None,
-        stoppable: false,
-        on_fail_check: None,
+    let git = |cmds: &[&[&str]]| {
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit {
+            cwd: w.clone(),
+            cmds: cmds.iter().map(|c| glowfly_core::gitcli::args(c)).collect(),
+            write_file: None,
+            record: None,
+            journal: None,
+            prompts: false,
+            expect: None,
+            stoppable: false,
+            on_fail_check: None,
+        })
     };
     assert_eq!(Effect::queue(&git(&[&["pull"]])), Some(w.as_path()));
     assert_eq!(Effect::queue(&git(&[&["fetch", "--all"]])), None, "auto-fetch doesn't hold up staging");
@@ -142,26 +147,29 @@ fn which_effects_queue() {
     let shell = Effect::CustomCommand(CustomCommandEffect::RunShell(ShellRun { cwd: w.clone(), script: "make".into() }));
     assert_eq!(Effect::queue(&shell), Some(w.as_path()));
     assert_eq!(Effect::queue(&Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: w.clone() })), None);
-    let op = Effect::LocalOp { workdir: w.clone(), op: crate::effect::LocalOp::StageAll };
+    let op = Effect::Files(FilesEffect::LocalOp { workdir: w.clone(), op: glowfly_model::effect::LocalOp::StageAll });
     assert_eq!(Effect::queue(&op), Some(w.as_path()));
     assert_eq!(
-        Effect::queue(&Effect::LoadStatus {
+        Effect::queue(&Effect::Load(glowfly_model::effect::LoadEffect::Status {
             workdir: w.clone(),
             generation: 0,
             submodules: false,
             open: None,
             git_status: true,
             paths: None
-        }),
+        })),
         None
     );
     // Saving a patch only reads the repository.
     let what = glowfly_core::patch_ops::PatchSource::Commits { oids: Vec::new(), paths: Vec::new() };
-    let export = crate::patch::PatchEffect::Export { workdir: w.clone(), what, dest: w.join("x.patch") };
+    let export = glowfly_model::patch::PatchEffect::Export { workdir: w.clone(), what, dest: w.join("x.patch") };
     assert_eq!(Effect::queue(&Effect::Patch(export)), None);
     // Reading a patch file and copying a commit's patch only read too.
-    assert_eq!(Effect::queue(&Effect::Patch(crate::patch::PatchEffect::Inspect { workdir: w.clone(), path: w.join("x.patch") })), None);
-    assert_eq!(Effect::queue(&Effect::Patch(crate::patch::PatchEffect::Copy { workdir: w.clone(), oids: Vec::new() })), None);
+    assert_eq!(
+        Effect::queue(&Effect::Patch(glowfly_model::patch::PatchEffect::Inspect { workdir: w.clone(), path: w.join("x.patch") })),
+        None
+    );
+    assert_eq!(Effect::queue(&Effect::Patch(glowfly_model::patch::PatchEffect::Copy { workdir: w.clone(), oids: Vec::new() })), None);
     assert_eq!(Effect::queue(&Effect::Tool(glowfly_model::tools::ToolEffect::PickProgram(glowfly_model::tools::ToolKind::Editor))), None);
     // A conflict check writes only unreferenced objects.
     let request = glowfly_model::conflict_check::CheckRequest {
@@ -177,17 +185,18 @@ fn which_effects_queue() {
     assert_eq!(Effect::queue(&Effect::CheckConflicts(job)), None);
     // Switching profiles writes the global git config only.
     let identity = glowfly_core::identity::Identity::default();
-    let apply = crate::profile::ProfileEffect::Apply { cwd: w.clone(), has_repo: true, id: glowfly_core::settings::ProfileId(1), identity };
+    let apply =
+        glowfly_model::profile::ProfileEffect::Apply { cwd: w.clone(), has_repo: true, id: glowfly_core::settings::ProfileId(1), identity };
     assert_eq!(Effect::queue(&Effect::Profile(apply)), None);
     // Folder rules and a repository's identity never wait behind its jobs.
     let id = glowfly_core::settings::ProfileId(1);
     let plan = glowfly_core::profile_includes::IncludePlan { files: Vec::new(), entries: Vec::new() };
     let (workdir, git_dir) = (w.clone(), w.join(".git"));
     for e in [
-        crate::profile::ProfileEffect::SyncIncludes { cwd: w.clone(), plan, place: true },
-        crate::profile::ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new() },
-        crate::profile::ProfileEffect::ClearLocalIdentity { workdir, git_dir, rules: Vec::new() },
-        crate::profile::ProfileEffect::CheckFolder { id, path: w.clone(), repository: true },
+        glowfly_model::profile::ProfileEffect::SyncIncludes { cwd: w.clone(), plan, place: true },
+        glowfly_model::profile::ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new() },
+        glowfly_model::profile::ProfileEffect::ClearLocalIdentity { workdir, git_dir, rules: Vec::new() },
+        glowfly_model::profile::ProfileEffect::CheckFolder { id, path: w.clone(), repository: true },
     ] {
         assert_eq!(Effect::queue(&Effect::Profile(e)), None);
     }
@@ -197,10 +206,10 @@ fn which_effects_queue() {
     // Saving a typed sign-in talks to git's credential helper only.
     let secret = glowfly_core::askpass::Secret::new("hunter2");
     let credential = glowfly_core::git_credential::HttpsCredential::from_prompt("https://github.com", "ada", secret).unwrap();
-    let remember = crate::effect::CredentialEffect::Remember { cwd: w.clone(), credential };
+    let remember = glowfly_model::effect::CredentialEffect::Remember { cwd: w.clone(), credential };
     assert_eq!(Effect::queue(&Effect::Credential(remember)), None);
     // Fork lists and forking call the hosting service only; the remote is added by a job.
-    use crate::remote::{ForkRequest, RemoteEffect};
+    use glowfly_model::remote::{ForkRequest, RemoteEffect};
     let target = glowfly_core::forge::parse_remote("https://github.com/team/app", &[]).unwrap();
     let req = || ForkRequest { workdir: w.clone(), target: target.clone(), auth: None, connected: false };
     let remote =
@@ -215,12 +224,12 @@ fn which_effects_queue() {
 
 #[test]
 fn every_effect_that_changes_a_repository_queues() {
-    use crate::effect::{FileOp, LocalOp};
     use glowfly_core::repo::{DiffTarget, RevertPart, RevertRequest};
+    use glowfly_model::effect::{FileOp, LocalOp};
     let w = PathBuf::from("C:/r");
     let changing = [
-        Effect::LocalOp { workdir: w.clone(), op: LocalOp::StageAll },
-        Effect::Revert {
+        Effect::Files(FilesEffect::LocalOp { workdir: w.clone(), op: LocalOp::StageAll }),
+        Effect::Files(FilesEffect::Revert {
             workdir: w.clone(),
             req: RevertRequest {
                 target: DiffTarget::Commit(git2::Oid::zero(), "a".into()),
@@ -228,10 +237,15 @@ fn every_effect_that_changes_a_repository_queues() {
                 dest: None,
                 ignore_whitespace: false,
             },
-        },
-        Effect::RestoreFile { workdir: w.clone(), oid: git2::Oid::zero(), path: "a".into(), overwrite: false },
-        Effect::WorkFile { workdir: w.clone(), op: FileOp::Create("a".into()) },
-        Effect::RunGit {
+        }),
+        Effect::Files(glowfly_model::effect::FilesEffect::Restore {
+            workdir: w.clone(),
+            oid: git2::Oid::zero(),
+            path: "a".into(),
+            overwrite: false,
+        }),
+        Effect::Files(glowfly_model::effect::FilesEffect::Work { workdir: w.clone(), op: FileOp::Create("a".into()) }),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit {
             cwd: w.clone(),
             cmds: vec![glowfly_core::gitcli::args(&["commit"])],
             write_file: None,
@@ -241,13 +255,13 @@ fn every_effect_that_changes_a_repository_queues() {
             expect: None,
             stoppable: false,
             on_fail_check: None,
-        },
-        Effect::UndoRedo {
+        }),
+        Effect::Job(glowfly_model::effect::JobEffect::UndoRedo {
             cwd: w.clone(),
             action: glowfly_core::undo::Action::DiscardAll { stash: git2::Oid::zero(), head: git2::Oid::zero() },
             redo: false,
             opts: Default::default(),
-        },
+        }),
         Effect::Rebase(RebaseEffect::Start {
             cwd: w.clone(),
             request: glowfly_core::rebase::StartRequest {
@@ -268,7 +282,7 @@ fn every_effect_that_changes_a_repository_queues() {
                 first_may_combine: false,
             },
         }),
-        Effect::Worktree(WorktreeEffect::Remove(crate::worktree::RemoveRequest {
+        Effect::Worktree(WorktreeEffect::Remove(glowfly_model::worktree::RemoveRequest {
             repo: w.clone(),
             path: "C:/wt".into(),
             name: "wt".into(),
@@ -277,7 +291,7 @@ fn every_effect_that_changes_a_repository_queues() {
             delete_remote: None,
             stop_monitor: false,
         })),
-        Effect::Worktree(WorktreeEffect::Move(crate::worktree::MoveRequest {
+        Effect::Worktree(WorktreeEffect::Move(glowfly_model::worktree::MoveRequest {
             repo: w.clone(),
             from: "C:/wt".into(),
             to: "C:/moved/wt".into(),

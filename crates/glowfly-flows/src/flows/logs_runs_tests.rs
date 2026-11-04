@@ -3,19 +3,19 @@
 
 use super::auto_stash_tests::git_cmds;
 use super::tests::{clean_tree, drive, scratch_repo, state};
-use crate::effect::Effect;
-use crate::logs::LogsMsg;
-use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg, TrustMsg};
-use crate::state::AppState;
-use crate::state::activity_rows::routine_ok;
-use crate::state::logs::{EntryId, LogEntry};
 use glowfly_core::gitcli::args;
 use glowfly_core::logs::RunInfo;
+use glowfly_model::effect::Effect;
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, TabsMsg, TrustMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::activity_rows::routine_ok;
+use glowfly_model::state::logs::{EntryId, LogEntry};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 fn at(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
-    crate::update::update(st, msg, now)
+    glowfly_model::update::update(st, msg, now)
 }
 
 fn done(st: &mut AppState, ok: bool, output: &str, now: Instant) -> Vec<Effect> {
@@ -32,7 +32,7 @@ fn opened(name: &str) -> (AppState, PathBuf) {
 }
 
 fn runs_git(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::RunGit { .. }))
+    fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })))
 }
 
 fn last(st: &AppState) -> &LogEntry {
@@ -48,7 +48,7 @@ fn job_becomes_a_run() {
     assert!(st.job.is_some());
     done(&mut st, true, "$ git push\nEverything up-to-date", t0 + Duration::from_millis(1250));
     let e = last(&st);
-    let want = RunInfo { title: "Push".into(), summary: "Everything up-to-date".into(), took_ms: Some(1250), routine: false };
+    let want = RunInfo { title: "Push".into(), summary: "main is already up to date.".into(), took_ms: Some(1250), routine: false };
     assert_eq!(e.run.as_ref(), Some(&want));
     assert_eq!(e.at, 1_800_000_000);
     assert_eq!(e.text, "Push done\n$ git push\nEverything up-to-date", "the text is unchanged");

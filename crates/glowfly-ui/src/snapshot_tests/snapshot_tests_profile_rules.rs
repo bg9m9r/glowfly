@@ -5,17 +5,17 @@
 //! the rows turn into messages. Rule paths are fixed display strings; nothing is read from git.
 
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::profile::ProfileMsg;
-use crate::state::prefs::GitConfigValues;
-use crate::state::profile_rules::{ADD_FOLDER_BUTTON, REMOVE_BUTTON, USE_REPO_BUTTON};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::paths;
 use glowfly_core::repo_identity::{EnvOverride, IdentitySource, RepoIdentity};
 use glowfly_core::settings::{FolderRule, Profile, ProfileId, ThemeChoice};
+use glowfly_model::msg::Msg;
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::profile_rules::{ADD_FOLDER_BUTTON, REMOVE_BUTTON, USE_REPO_BUTTON};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::path::PathBuf;
 
 const WORK: ProfileId = ProfileId(1);
@@ -208,7 +208,7 @@ fn commit_box_identity_env() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("commit_box_identity_env");
-    assert!(h.query_by_label("GIT_COMMITTER_NAME is empty: git won't commit").is_some(), "an empty name stops commits");
+    assert!(h.query_by_label("GIT_COMMITTER_NAME is empty: Git won't commit").is_some(), "an empty name stops commits");
     drop(h);
     remove_fixture(&dir);
 }

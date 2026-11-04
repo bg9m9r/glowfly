@@ -7,7 +7,7 @@
 use super::jobs::{JobSpec, start_job};
 use crate::effect::CloneEffect;
 use crate::effect::Effect;
-use crate::msg::CloneMsg;
+use crate::msg::{CloneMsg, Msg};
 use crate::state::clone::{CloneForm, CloneRequest};
 use crate::state::clone_service::listing_accounts;
 use crate::state::trust::Created;
@@ -38,21 +38,26 @@ pub(super) fn handle(st: &mut AppState, msg: CloneMsg, now: Instant, fx: &mut Ve
         CloneMsg::UseSsh(ssh) => super::clone_service::use_ssh(st, ssh),
         CloneMsg::ReposLoaded { account, result } => super::clone_service::loaded(st, account, *result),
         CloneMsg::Finished(o) => {
-            let headline = (o.cloned && !o.ok).then(|| {
-                let name = st
-                    .job
-                    .as_ref()
-                    .and_then(|j| j.then_open.as_ref())
-                    .and_then(|(p, _)| p.file_name())
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default();
-                let t = st.settings.lang();
-                let why = super::job_errors::reason(t, &o.output);
-                // The folders were set when only the submodule step failed after them.
-                let args = [("name", &name as &dyn std::fmt::Display), ("why", &why.trim_end_matches('.'))];
-                if o.folders_set { t.trf("clone.toast.submodules_failed", &args) } else { t.trf("clone.toast.folders_failed", &args) }
+            let made = st.job.as_ref().and_then(|j| j.then_open.as_ref()).map(|(p, _)| p.clone());
+            let name = made.as_deref().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            let t = st.settings.lang();
+            let why = super::job_errors::reason(t, &o.output);
+            let args = [("name", &name as &dyn std::fmt::Display), ("why", &why.trim_end_matches('.'))];
+            // The folders were set when only the submodule step failed after them: a short
+            // toast with Retry, and git's reason in the activity log behind Details.
+            let submodules = o.cloned && !o.ok && o.folders_set;
+            let headline = (o.cloned && !o.ok).then(|| match submodules {
+                true => match failed_submodules(&o.output) {
+                    0 => t.tr("clone.toast.submodules_failed").to_owned(),
+                    n => t.trn("clone.toast.submodules_failed_count", n, &[]),
+                },
+                false => t.trf("clone.toast.folders_failed", &args),
             });
             super::jobs::finish_made(st, o.cloned, o.ok, o.output, headline, now, fx);
+            if submodules {
+                st.log(false, t.trf("clone.log.submodules_failed", &args));
+                retry_submodules(st, made);
+            }
         }
     }
 }
@@ -97,7 +102,9 @@ fn clone_repo(st: &mut AppState, req: CloneRequest, fx: &mut Vec<Effect>) {
         return;
     }
     let dest = req.parent.join(&req.name);
-    let cmd = clone_cmd(&req.url, &req.name, &req.options);
+    // From a host with a connected account, over https: its SSH-named submodules come over https too.
+    let https = super::clone_https::rewrites_for(&st.settings.connections, &req.url);
+    let cmd = [https.clone(), clone_cmd(&req.url, &req.name, &req.options)].concat();
     let submodules = req.options.submodules;
     let sparse = req.options.sparse;
     if sparse.is_some()
@@ -113,6 +120,7 @@ fn clone_repo(st: &mut AppState, req: CloneRequest, fx: &mut Vec<Effect>) {
     }
     if let Some(sparse) = sparse {
         let subs = if submodules { sparse_submodule_cmds(&sparse.folders) } else { Vec::new() };
+        let subs = subs.into_iter().map(|c| [https.clone(), c].concat()).collect();
         let (then_open, folders) = (Some((dest.clone(), Created::Clone)), sparse.folders);
         let effect = |parent| Effect::Clone(CloneEffect::Sparse { parent, cmd, dest, folders, submodules: subs });
         super::jobs::start_effect_job(st, "Clone", req.parent, then_open, effect, fx);
@@ -123,4 +131,28 @@ fn clone_repo(st: &mut AppState, req: CloneRequest, fx: &mut Vec<Effect>) {
         JobSpec { cwd: Some(req.parent), then_open: Some((dest, Created::Clone)), ..JobSpec::new("Clone".into(), vec![cmd]) },
         fx,
     );
+}
+
+/// How many submodules git said it couldn't clone, each once though git tries twice (0 when
+/// its words aren't English).
+fn failed_submodules(output: &str) -> usize {
+    let paths: std::collections::BTreeSet<&str> = output
+        .lines()
+        .filter(|l| l.contains("failed"))
+        .filter_map(|l| l.split_once("into submodule path ").map(|(_, p)| p.split(" failed").next().unwrap_or(p)))
+        .collect();
+    paths.len()
+}
+
+/// Gives the newest toast (the clone's) Retry, which updates all submodules of the clone once
+/// its tab is active; Details moves beside it.
+fn retry_submodules(st: &mut AppState, made: Option<std::path::PathBuf>) {
+    let label = st.settings.lang().tr("clone.toast.retry").to_owned();
+    let msg =
+        Box::new(Msg::Submodule(crate::submodule::SubmoduleMsg::Batch { batch: crate::submodule::Batch::UpdateAll, confirmed: false }));
+    let Some(toast) = st.toasts.iter_mut().filter(|t| !t.ok).max_by_key(|t| t.shown) else { return };
+    let details = toast.action.replace(crate::state::ToastAction { label, msg, workdir: made });
+    if toast.details.is_none() {
+        toast.details = details;
+    }
 }

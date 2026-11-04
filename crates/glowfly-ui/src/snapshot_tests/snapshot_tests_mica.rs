@@ -8,15 +8,15 @@ use super::snapshot_check::CheckSnapshot;
 use super::snapshot_tests::{NOW, remove_fixture, with_repo};
 use super::theme::{self, DARK, LIGHT, color, color::Palette};
 use super::{UiCache, avatars::Avatars, draw};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::window_chrome::Chrome;
-use crate::state::window_native::Backdrop;
 use eframe::egui::{self, Color32, LayerId, Shape, Stroke, pos2, vec2};
 use egui_kittest::Harness;
 use glowfly_core::repo::ChangeCounts;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::window_chrome::Chrome;
+use glowfly_model::state::window_native::Backdrop;
 
 /// Stripes of `bands` across the whole screen, on the layer the panels paint on, before them.
 fn paint_wallpaper(ctx: &egui::Context, bands: &[Color32; 9]) {
@@ -38,7 +38,7 @@ fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harnes
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder().with_size(vec2(1440.0, 880.0)).build_state(
+    crate::snapshot_check::builder().with_size(vec2(1440.0, 880.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_palette(&p);
             theme::apply_style(ctx, &p);
@@ -52,6 +52,7 @@ fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harnes
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
                 markdown: Default::default(),
+                ref_upstreams: Default::default(),
                 history_preview: Default::default(),
             });
             if let Some(snap) = st.snap.as_mut() {

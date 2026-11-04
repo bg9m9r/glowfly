@@ -2,7 +2,7 @@
 //! fixed and no binding of the keymap table runs them, so the sheet lists them from here, after
 //! the table's groups, filtered the same way.
 
-use crate::keymap::{Chord, KeyName as K};
+use glowfly_model::keymap::{Chord, KeyName as K};
 
 /// The group's title.
 pub(super) const TITLE: &str = "Menus";

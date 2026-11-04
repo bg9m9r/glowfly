@@ -6,20 +6,25 @@
 use super::super::build_status::{paint_marker, paint_run};
 use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
+use super::super::widgets::quiet_target::{self, State};
 use super::super::widgets::{self, paint_cut, paint_cut_text};
 use super::note;
-use crate::msg::Msg;
-use crate::state::pull_request::PrView;
-use crate::state::pull_request_checks::{
-    ChecksPane, FAILED_TITLE, HELD, LOADING, NO_STATUS, build_link, empty_text, header_summary, run_tooltip, time_text, truncated_text,
-};
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::text::{LayoutJob, TextFormat};
-use eframe::egui::{self, Align2, CursorIcon, Rect, RichText, Sense, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, CornerRadius, CursorIcon, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::forge::{CheckList, CheckRun};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::PrView;
+use glowfly_model::state::pull_request_checks::{
+    ChecksPane, FAILED_TITLE, HELD, LOADING, NO_STATUS, build_link, empty_text, header_summary, run_tooltip, time_text, truncated_text,
+};
 
 /// The header row's height, and each check row's.
 const HEADER_H: f32 = 28.0;
@@ -65,9 +70,7 @@ fn header(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), HEADER_H), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Checks"));
     let p = ui.painter();
-    if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    quiet_target::paint(p, rect, CornerRadius::same(radius::SM), ControlSize::Regular, State::of(&resp, false));
     let y = rect.center().y;
     widgets::chevron(p, pos2(rect.left() + 8.0, y), v.checks.open, color::weak());
     let title = p.text(pos2(rect.left() + 20.0, y), Align2::LEFT_CENTER, "Checks", type_scale::section(ui), color::text());
@@ -93,8 +96,9 @@ fn header(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
 
 /// The build page link, each check, and the note when the list was cut.
 fn loaded(ui: &mut Ui, v: &PrView, list: &CheckList, t: Lang, now: i64, msgs: &mut Vec<Msg>) {
+    // Actions of their own, not prose: small secondary buttons, never accent links.
     if let Some((label, url)) = build_link(v)
-        && ui.link(label).clicked()
+        && ui.add(buttons::secondary(label).size(ControlSize::Small)).clicked()
     {
         msgs.push(Msg::OpenUrl(url));
     }
@@ -105,7 +109,7 @@ fn loaded(ui: &mut Ui, v: &PrView, list: &CheckList, t: Lang, now: i64, msgs: &m
     if !list.complete {
         ui.add_space(4.0);
         note(ui, truncated_text(), color::weak());
-        if !v.pr.url.is_empty() && ui.link("See all on the service").clicked() {
+        if !v.pr.url.is_empty() && ui.add(buttons::secondary("See all on the service").size(ControlSize::Small)).clicked() {
             msgs.push(Msg::OpenUrl(v.pr.url.clone()));
         }
     }
@@ -127,10 +131,12 @@ fn row(ui: &mut Ui, r: &CheckRun, t: Lang, now: i64, msgs: &mut Vec<Msg>) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     let name = format!("{}: {}", printable(&r.name), r.state.word());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name));
-    if ui.is_rect_visible(rect) {
-        paint_row(ui, rect, r, now, resp.hovered());
-    }
     let linked = !r.url.is_empty();
+    if ui.is_rect_visible(rect) {
+        // A run without a page opens nothing, so it never lights.
+        let state = if linked { State::of(&resp, false) } else { State { focused: resp.has_focus(), ..State::default() } };
+        paint_row(ui, rect, r, now, state);
+    }
     let resp = resp.on_hover_text(run_tooltip(r, t, now));
     let resp = if linked { resp.on_hover_cursor(CursorIcon::PointingHand) } else { resp };
     if linked && resp.clicked() {
@@ -138,11 +144,11 @@ fn row(ui: &mut Ui, r: &CheckRun, t: Lang, now: i64, msgs: &mut Vec<Msg>) {
     }
 }
 
-fn paint_row(ui: &Ui, rect: Rect, r: &CheckRun, now: i64, hovered: bool) {
+/// Paints check run `r` in `rect`: a Regular quiet target on `radius::SM` (it sits inside the
+/// pane's padding) in state `state`, then its icon, name, chip and time.
+fn paint_row(ui: &Ui, rect: Rect, r: &CheckRun, now: i64, state: State) {
     let p = ui.painter_at(rect);
-    if hovered {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    quiet_target::paint(&p, rect, CornerRadius::same(radius::SM), ControlSize::Regular, state);
     let y = rect.center().y;
     paint_run(&p, pos2(rect.left() + ICON_X, y), r.state);
     let mut right = rect.right() - 4.0;
@@ -151,8 +157,9 @@ fn paint_row(ui: &Ui, rect: Rect, r: &CheckRun, now: i64, hovered: bool) {
         right = shown.left() - GAP;
     }
     if r.required == Some(true) {
-        let w = p.layout_no_wrap(REQUIRED.to_owned(), type_scale::font(type_scale::CAPTION), color::weak()).size().x + 12.0;
-        widgets::chip(&p, right - w, y, REQUIRED, color::raised(), color::weak());
+        let required = Chip::new(ChipSize::Badge, REQUIRED).look(Look::new(color::raised(), color::weak()));
+        let w = required.width(p.ctx());
+        required.paint(&p, right - w, y);
         right -= w + GAP;
     }
     let x = rect.left() + TEXT_X;

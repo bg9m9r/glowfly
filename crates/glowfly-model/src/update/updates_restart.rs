@@ -7,11 +7,12 @@
 
 use crate::effect::{Effect, RestartJob, UiEffect, UpdateEffect};
 use crate::msg::{Msg, UpdateMsg};
+use crate::state::error_words::typed;
 use crate::state::terminal::busy::{BusyTerminal, running_ids};
 use crate::state::updates::{UpdateStatus, last_install_text, opened_text, restart_failed_text, restarting_text};
 use crate::state::{AppState, ToastAction, tab_losses};
 use crate::terminal::BusyCheck;
-use glowfly_core::app_update::{InstallMethod, InstallProblem, LastInstall};
+use glowfly_core::app_update::{InstallMethod, InstallProblem, LastInstall, UpdateError};
 use std::time::Instant;
 
 /// `InstallAndRestart` (`confirmed`: from the confirmation, which already named the losses and
@@ -60,7 +61,7 @@ fn decide(st: &mut AppState, confirmed: bool, busy: Option<Vec<BusyTerminal>>, n
 }
 
 /// The worker's answer: the window closes, or the failure is said and nothing else changes.
-pub(super) fn ready(st: &mut AppState, result: Result<(), String>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn ready(st: &mut AppState, result: Result<(), UpdateError>, now: Instant, fx: &mut Vec<Effect>) {
     if !st.updates.restarting {
         return;
     }
@@ -79,7 +80,7 @@ pub(super) fn ready(st: &mut AppState, result: Result<(), String>, now: Instant,
             fx.push(Effect::Ui(UiEffect::CloseWindow));
         }
         Err(e) => {
-            let text = restart_failed_text(t, &e);
+            let text = restart_failed_text(t, &typed::update(t, &e));
             st.log_quiet(false, text.clone());
             let action = ToastAction {
                 label: t.tr("updates.show_file.button").into(),

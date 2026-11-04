@@ -5,15 +5,15 @@
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_pull_request::with_pr;
 use super::snapshot_tests_pull_request_threads::{comment, detail, files_loaded, load, thread};
-use crate::msg::Msg;
-use crate::state::pull_request::PrTab;
-use crate::state::pull_request_line_map::{LineMaps, wanted};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{LineChange, LineMap, PrLineMaps};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::PrTab;
+use glowfly_model::state::pull_request_line_map::{LineMaps, wanted};
 use std::sync::Arc;
 
 #[test]

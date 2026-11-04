@@ -3,15 +3,15 @@
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness_sized, remove_fixture, render, with_repo};
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::lines::LineClick;
-use crate::ui::snapshot_check::CheckSnapshot;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadDiffOptions, LoadOptions};
 use glowfly_core::settings::{DiffLayout, DiffMode, ThemeChoice};
 use glowfly_core::whole_file::folds;
 use glowfly_core::{highlight, intraline};
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick;
+use glowfly_ui::snapshot_check::CheckSnapshot;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -81,7 +81,7 @@ fn diff_wrap_inline() {
     let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let line = lines.iter().position(|l| l.origin == '+' && l.text == NEW_GREETING).expect("the reworded line");
     let how = LineClick::Only;
-    crate::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
     assert_eq!(st.view.diff_lines.count_in(&DiffTarget::Unstaged("wrap.rs".into()), 0), 1);
     render("diff_wrap_inline", st, true);
     remove_fixture(&dir);
@@ -100,7 +100,7 @@ fn diff_wrap_whole_file_light() {
     let target = DiffTarget::Unstaged("wrap.rs".into());
     let opts = LoadDiffOptions { ignore_whitespace: false, whole_file: true };
     let mut diff = repo::load_diff_with(&dir, &target, opts).unwrap();
-    crate::runner::testing::decorate(target.path(), &mut diff, None);
+    glowfly_runner::testing::decorate(target.path(), &mut diff, None);
     let w = diff.whole.as_deref().expect("the whole file loads");
     let all = folds(w);
     assert_eq!(all.iter().map(|f| f.len()).collect::<Vec<_>>(), [6, 7]);
@@ -120,8 +120,8 @@ fn diff_wrap_whole_file_light() {
 
 #[test]
 fn file_history_wrapped() {
-    use crate::state::history::FileHistoryView;
     use glowfly_core::repo::HistoryStart;
+    use glowfly_model::state::history::FileHistoryView;
     let (mut st, dir) = with_wrap_repo("wrap-history", ThemeChoice::Dark, true);
     let h = repo::file_history(&dir, "wrap.rs", &HistoryStart::Head, 500).unwrap();
     let mut view = FileHistoryView::loading("wrap.rs".into(), None);

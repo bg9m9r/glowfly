@@ -7,12 +7,12 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::StashEffect;
-use crate::msg::{Msg, PaletteMsg, RepoMsg};
-use crate::state::palette::{PaletteCommand as C, StashAction};
-use crate::state::stashes::drop_confirm_body;
-use crate::state::{AppState, Modal};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::StashEffect;
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, StashAction};
+use glowfly_model::state::stashes::drop_confirm_body;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -27,7 +27,7 @@ fn palette(st: &mut AppState, cmd: C) -> Vec<Effect> {
 /// The commands and revision guard of the one RunGit in `fx`.
 fn git_job(fx: &[Effect]) -> (Vec<Vec<String>>, Option<(String, git2::Oid)>) {
     match fx {
-        [Effect::RunGit { cmds, expect, .. }] => (cmds.clone(), expect.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, expect, .. })] => (cmds.clone(), expect.clone()),
         _ => panic!("expected one RunGit, got {} effects", fx.len()),
     }
 }
@@ -167,7 +167,7 @@ fn conflicts_refuse_apply_and_pop_without_a_question() {
     let (merged, _) = glowfly_core::testkit::try_git_env(&dir, &["merge", "-q", "side"], &[]);
     assert!(!merged, "the merge stops on the conflict");
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(crate::state::rebase::has_conflicts(st.snap.as_ref().unwrap()));
+    assert!(glowfly_model::state::rebase::has_conflicts(st.snap.as_ref().unwrap()));
     for cmd in [C::StashOp { action: StashAction::Apply, oid }, C::StashOp { action: StashAction::Pop, oid }, C::PopStash] {
         st.log.clear();
         drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
@@ -175,7 +175,10 @@ fn conflicts_refuse_apply_and_pop_without_a_question() {
         let last = st.log.last().unwrap();
         assert!(!last.ok && last.text.contains("conflicted"), "{}", last.text);
     }
-    assert!(crate::state::toolbar_tips::pop_blocked(&st).is_some_and(|why| why.contains("conflicted")), "the toolbar's Pop is greyed");
+    assert!(
+        glowfly_model::state::toolbar_tips::pop_blocked(&st).is_some_and(|why| why.contains("conflicted")),
+        "the toolbar's Pop is greyed"
+    );
     assert_eq!(st.snap.as_ref().unwrap().stashes.len(), 1);
     let _ = std::fs::remove_dir_all(&dir);
 }

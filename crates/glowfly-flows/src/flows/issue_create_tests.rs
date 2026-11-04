@@ -6,12 +6,13 @@
 use super::issue_tests::{done, err, github, jobs, open_repo, reply, run};
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::{Effect, ForgeCall, IssueCall, IssueReply};
-use crate::msg::{IssueMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::issue_form::{IssueForm, OptionsState};
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::filters::Named;
 use glowfly_core::forge::{Account, Connection, CreateOptions, Issue, NewIssue, Provider, Target, branch_name_for};
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::{Effect, ForgeCall, IssueCall, IssueReply};
+use glowfly_model::msg::{IssueMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::issue_form::{IssueForm, OptionsState};
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 fn form(st: &AppState) -> &IssueForm {
@@ -49,7 +50,7 @@ fn creates(fx: &[Effect]) -> Vec<NewIssue> {
 }
 
 fn refreshes(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::Forge { call: ForgeCall::Refresh { .. }, .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Network(NetworkEffect::Forge { call: ForgeCall::Refresh { .. }, .. }))).count()
 }
 
 fn jira_tracker(st: &mut AppState, project: &str) -> Target {
@@ -221,7 +222,8 @@ fn a_failure_keeps_the_dialog_with_the_message() {
 fn a_refusal_glowfly_knows_is_said_in_plain_words() {
     let (mut st, dir) = ready("issue-create-denied");
     run(&mut st, IssueMsg::Create);
-    let denied = crate::effect::ForgeError { message: "access denied: the server said “Must have push access”".into(), auth: false };
+    let denied =
+        glowfly_model::effect::ForgeError { message: "access denied: the server said “Must have push access”".into(), auth: false };
     let msg = reply(&st, IssueReply::Created(Err(denied)));
     run(&mut st, msg);
     let shown = form(&st).error.clone().unwrap_or_default();
@@ -254,7 +256,7 @@ fn after_cancel_or_for_another_tab_the_reply_is_only_reported() {
     };
     let toasts = st.toasts.len();
     let fx = run(&mut st, msg);
-    assert!(fx.iter().all(|e| !matches!(e, Effect::Forge { .. })));
+    assert!(fx.iter().all(|e| !matches!(e, Effect::Network(NetworkEffect::Forge { .. }))));
     assert_eq!(st.toasts.len(), toasts, "only logged");
     assert!(st.log.last().is_some_and(|l| l.text == "Created issue #14 in other-repo"));
     assert!(!st.session.forge.as_ref().unwrap().cache.contains_key("14"));

@@ -8,14 +8,14 @@ use super::snapshot_tests::{NOW, harness, remove_fixture};
 use super::snapshot_tests_forge_filters::target;
 use super::snapshot_tests_language_check::{self as check, matches, starred};
 use super::snapshot_tests_remotes::with_remotes;
-use crate::msg::Msg;
-use crate::state::{AppState, ForgeState, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::Provider;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, ForgeState, Status};
 use std::path::PathBuf;
 
 pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -73,7 +73,7 @@ const ENGLISH: &[&str] = &[
     "Choose which merge requests to show",
     "Choose which issues to show",
     "New filter…",
-    "New branch",
+    "New branch…",
     "Add remote",
     "Create pull request",
     "Create merge request",
@@ -97,7 +97,11 @@ const ENGLISH: &[&str] = &[
     "Checkout",
     "Checkout *",
     "Open worktree",
-    "Create branch here…",
+    "Open in its worktree",
+    "Open * in its worktree",
+    "Prune and check out",
+    "Prune and check out *",
+    "New branch here…",
     "Create worktree from this branch…",
     "Rename…",
     "Set upstream…",
@@ -140,7 +144,7 @@ const ENGLISH: &[&str] = &[
     "Branch *",
     "Tag *",
     // Commit menu.
-    "Create tag here…",
+    "New tag here…",
     "Create worktree from this commit…",
     "Cherry-pick",
     "Cherry-pick merge commit…",
@@ -209,9 +213,10 @@ pub(crate) fn panels(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_remotes(ThemeChoice::Dark, name);
     german(&mut st);
     st.view.sections.tags = true;
-    for which in
-        [crate::state::session_view::empty_sections::Folding::Worktrees, crate::state::session_view::empty_sections::Folding::Submodules]
-    {
+    for which in [
+        glowfly_model::state::session_view::empty_sections::Folding::Worktrees,
+        glowfly_model::state::session_view::empty_sections::Folding::Submodules,
+    ] {
         super::snapshot_tests_empty_states::expand(&mut st, which);
     }
     (st, dir)
@@ -244,7 +249,7 @@ fn the_check_catches_the_english_window() {
     let mut h = harness(st, true);
     h.run();
     let found = english_shown(&h);
-    for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "Add worktree…", "New branch"] {
+    for text in ["Branch / tag", "Message", "Local", "Uncommitted changes", "Local actions", "Add worktree…", "New branch…"] {
         assert!(found.iter().any(|f| f == text), "{text} is caught: {found:?}");
     }
     assert!(found.iter().any(|f| f == "3 d"), "short ages are caught: {found:?}");

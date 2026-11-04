@@ -1,15 +1,18 @@
-//! Headless tests of the release notes dialog: opening once after an upgrade (and not on a new
-//! install's welcome), waiting for another dialog to close, and which releases are new.
+//! Headless tests of the release notes dialog: opening once after an upgrade when Preferences
+//! chooses the dialog (and not on a new install's welcome), waiting for another dialog to close,
+//! and which releases are new. The What's new chip's are in `updates_news_chip_tests.rs`.
 
 use super::update;
 use super::updates_tests::{app, release, send};
-use crate::effect::Effect;
-use crate::msg::{CheckedRelease, Msg, UpdateMsg as U};
-use crate::state::{AppState, Modal};
 use glowfly_core::app_update::{InstallKind, Version};
+use glowfly_core::settings::WhatsNew;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::{CheckedRelease, Msg, UpdateMsg as U};
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
-const NOTES: &str = "# Changelog
+pub(super) const NOTES: &str = "# Changelog
 
 ## [0.2.0](https://github.com/bg9m9r/glowfly/compare/v0.1.0...v0.2.0) (2026-10-20)
 
@@ -30,19 +33,21 @@ const NOTES: &str = "# Changelog
 * first release
 ";
 
-/// 0.2.0 starting with `seen` as the last version whose notes were shown.
+/// 0.2.0 starting with `seen` as the last version whose notes were shown, set to open the
+/// notes by themselves.
 fn upgraded(seen: Option<&str>) -> AppState {
     let mut st = app();
     st.settings.updates.notes_seen = seen.map(str::to_owned);
+    st.settings.updates.whats_new = WhatsNew::Dialog;
     st.updates.bundled_notes = NOTES;
     st
 }
 
-fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+pub(super) fn saves(fx: &[Effect]) -> bool {
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
-fn dialog(st: &AppState) -> Option<&crate::state::release_notes::NotesDialog> {
+pub(super) fn dialog(st: &AppState) -> Option<&glowfly_model::state::release_notes::NotesDialog> {
     match &st.modal {
         Some(Modal::ReleaseNotes(d)) => Some(d),
         _ => None,
@@ -77,7 +82,7 @@ fn releases_since_the_last_seen_are_new() {
 fn a_new_install_only_records_the_version() {
     let mut st = upgraded(None);
     st.settings.welcome_done = false;
-    update(&mut st, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup), Instant::now());
+    update(&mut st, Msg::Onboarding(glowfly_model::onboarding::OnboardingMsg::Startup), Instant::now());
     assert!(st.onboarding.welcome.is_some());
     let fx = send(&mut st, U::Startup, Instant::now());
     assert!(dialog(&st).is_none() && st.updates.notes_pending.is_none());

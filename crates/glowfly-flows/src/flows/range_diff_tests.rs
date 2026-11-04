@@ -7,22 +7,22 @@
 use super::tests::{clean_tree, drive, git, same_place, scratch_repo, state};
 use super::trust_held_tests::held_repo;
 use super::update;
-use crate::effect::Effect;
-use crate::journal::JournalMsg;
-use crate::msg::{Msg, TrustMsg};
-use crate::range_diff::{RangeDiffJob, RangeDiffMsg};
-use crate::state::AppState;
-use crate::state::blame::BlameView;
-use crate::state::history::FileHistoryView;
-use crate::state::journal::JournalView;
-use crate::state::layout::{ToolView, tool_view};
-use crate::state::range_diff::{self as rd, Phase};
-use crate::state::rebase::RebasePanel;
 use git2::Oid;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::range_diff::{Compared, Ends, Outcome, Pair, Range, Status};
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{DiffTarget, FileDiff};
+use glowfly_model::effect::Effect;
+use glowfly_model::journal::JournalMsg;
+use glowfly_model::msg::{Msg, TrustMsg};
+use glowfly_model::range_diff::{RangeDiffJob, RangeDiffMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::journal::JournalView;
+use glowfly_model::state::layout::{ToolView, tool_view};
+use glowfly_model::state::range_diff::{self as rd, Phase};
+use glowfly_model::state::rebase::RebasePanel;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -49,7 +49,7 @@ fn rewritten(name: &str) -> (AppState, PathBuf) {
     git(&dir, &["commit", "-q", "-a", "--amend", "--no-edit"]);
     git(&dir, &["checkout", "-q", "main"]);
     let mut st = state();
-    drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Open(dir.clone())));
     assert!(st.snap.is_some());
     (st, dir)
 }
@@ -139,7 +139,7 @@ fn a_held_repository_waits_for_trust() {
     let fx = run(&mut st, RangeDiffMsg::OpenRewrite("refs/heads/main".into()));
     assert!(jobs(&fx).is_empty(), "nothing runs while held");
     assert_eq!(st.session.range_diff.view.as_ref().unwrap().phase, Phase::Held);
-    assert!(matches!(st.modal, Some(crate::state::Modal::Trust(_))), "the trust prompt is asked");
+    assert!(matches!(st.modal, Some(glowfly_model::state::Modal::Trust(_))), "the trust prompt is asked");
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let fx = update(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }), Instant::now());
     let [job] = jobs(&fx)[..] else { panic!("the comparison runs once trusted: {fx:?}") };
@@ -185,7 +185,7 @@ fn the_journal_and_the_git_flow_panel_close_it() {
     update(&mut st, Msg::Journal(JournalMsg::Open), Instant::now());
     assert!(st.session.range_diff.view.is_none() && st.session.journal.view.is_some());
     open_tips(&mut st);
-    update(&mut st, Msg::GitFlow(crate::gitflow::GitFlowMsg::OpenPanel), Instant::now());
+    update(&mut st, Msg::GitFlow(glowfly_model::gitflow::GitFlowMsg::OpenPanel), Instant::now());
     assert!(st.session.range_diff.view.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -195,7 +195,7 @@ fn the_mainline_leaves_out_what_is_compared() {
     let (mut st, dir) = rewritten("rd-mainline");
     git(&dir, &["branch", "-q", "--set-upstream-to", "main", "topic"]);
     git(&dir, &["branch", "-q", "master", "main"]);
-    drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Open(dir.clone())));
     let fx = run(&mut st, RangeDiffMsg::OpenRewrite("refs/heads/topic".into()));
     let [job] = jobs(&fx)[..] else { panic!("one comparison") };
     assert_eq!(job.ends, Ends::LastRewrite { refname: "refs/heads/topic".into() });

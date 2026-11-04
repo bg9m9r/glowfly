@@ -7,15 +7,15 @@ use super::dialog_frame::{Cx, Dialog, Footer};
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::BranchMsg;
-use crate::msg::{JobMsg, Msg};
-use crate::state::branch_sync::{RenameForm, remote_rename};
-use crate::state::touched::Touched;
-use crate::ui::theme::controls;
+use crate::theme::controls;
 use eframe::egui;
 use glowfly_core::branch_ops::{NameProblem, branch_name_warning, check_branch_name, create_tracking_cmd, is_valid_branch_name};
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::{BranchInfo, Snapshot};
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::branch_sync::{RenameForm, remote_rename};
+use glowfly_model::state::touched::Touched;
 
 /// The name field's key in `Touched`.
 const NAME: &str = "name";
@@ -72,7 +72,10 @@ pub fn new_branch(ui: &mut egui::Ui, cx: Cx, f: NewBranchForm, snap: Option<&Sna
     let new = f.name.trim();
     let problem = check_branch_name(new, &locals, None).err();
     controls::checkbox(ui, f.checkout, "Check out after creating");
-    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create").enabled(problem.is_none())).submit(submit));
+    let out = d.finish(
+        ui,
+        Footer::new().cancel().primary(buttons::primary(t.tr("branch.new.create.button")).enabled(problem.is_none())).submit(submit),
+    );
     if out.attempted {
         f.touched.attempt();
     }

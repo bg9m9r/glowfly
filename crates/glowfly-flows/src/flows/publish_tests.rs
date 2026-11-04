@@ -3,14 +3,14 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{AccountEffect, Effect};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PublishMsg;
-use crate::msg::RepoMsg;
-use crate::state::publish::PublishForm;
-use crate::state::{AppState, Modal};
-use glowfly_core::forge::{Account, Connection, CreatedRepo, NewRepo, Provider};
+use glowfly_core::forge::{Account, Connection, CreatedRepo, NewRepo, Provider, ServiceError};
+use glowfly_model::effect::{AccountEffect, Effect};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PublishMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::publish::PublishForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -73,7 +73,14 @@ fn push_without_a_remote_offers_github() {
 
     // A failure (e.g. the name is taken) stays in the dialog so the name can be changed.
     let workdir = form(&st).workdir.clone();
-    run(&mut st, Msg::Publish(PublishMsg::Published { workdir, branch: "main".into(), result: Err("name already exists".into()) }));
+    run(
+        &mut st,
+        Msg::Publish(PublishMsg::Published {
+            workdir,
+            branch: "main".into(),
+            result: Err(ServiceError::Other { said: "name already exists".into() }),
+        }),
+    );
     let f = form(&st);
     assert!(!f.creating, "creating again is possible");
     assert_eq!(f.error.as_deref(), Some("A repository called demo already exists on acme. Choose another name."));
@@ -85,7 +92,8 @@ fn push_without_a_remote_offers_github() {
 fn service_refusals_are_explained_with_the_raw_text_under_details() {
     let (mut st, dir, _) = pushed_without_remote("publish-advice");
     let raw = "authentication failed: bad token";
-    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Err(raw.into()) }));
+    let refused = ServiceError::Auth { said: "bad token".into() };
+    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Err(refused) }));
     let f = form(&st);
     assert!(f.error.as_deref().is_some_and(|e| e.starts_with("GitHub didn't accept your sign-in.")), "{:?}", f.error);
     assert_eq!(f.error_detail.as_deref(), Some(raw));
@@ -95,20 +103,21 @@ fn service_refusals_are_explained_with_the_raw_text_under_details() {
     form_mut(&mut st).name = "demo".into();
     run(&mut st, Msg::Publish(PublishMsg::Publish));
     let workdir = form(&st).workdir.clone();
-    let raw = "HTTP 422: the server said “Repository creation failed. name already exists on this account”";
-    let published = |result: Result<CreatedRepo, String>| {
+    let said = "the server said “Repository creation failed. name already exists on this account”";
+    let raw = format!("HTTP 422: {said}");
+    let published = |result: Result<CreatedRepo, ServiceError>| {
         Msg::Publish(PublishMsg::Published { workdir: workdir.clone(), branch: "main".into(), result })
     };
-    run(&mut st, published(Err(raw.into())));
+    run(&mut st, published(Err(ServiceError::Http { status: 422, message: said.into() })));
     let f = form(&st);
     assert_eq!(f.error.as_deref(), Some("A repository called demo already exists on ada. Choose another name."));
-    assert_eq!(f.error_detail.as_deref(), Some(raw));
+    assert_eq!(f.error_detail.as_deref(), Some(raw.as_str()), "the status and the server's words under Details");
 
     // Creating again clears both.
     run(&mut st, Msg::Publish(PublishMsg::Publish));
     assert!(form(&st).error.is_none() && form(&st).error_detail.is_none());
     // Text Glowfly doesn't recognise is shown as it is, with no Details.
-    run(&mut st, published(Err("unexpected response: x".into())));
+    run(&mut st, published(Err(ServiceError::Decode { said: "x".into() })));
     let f = form(&st);
     assert_eq!((f.error.as_deref(), f.error_detail.as_deref()), (Some("unexpected response: x"), None));
     let _ = std::fs::remove_dir_all(&dir);
@@ -126,8 +135,14 @@ fn invalid_names_and_sign_in_failures_create_nothing() {
     let other = Account { provider: Provider::GitHubEnterprise, host: "git.acme.io".into(), org: String::new() };
     run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: other, result: Ok(vec!["x".into()]) }));
     assert_eq!(form(&st).owners, ["ada"]);
-    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Err("401".into()) }));
-    assert!(form(&st).error.as_deref().is_some_and(|e| e.contains("401")));
+    run(
+        &mut st,
+        Msg::Publish(PublishMsg::PublishOwners {
+            account: github(),
+            result: Err(ServiceError::Http { status: 401, message: "Bad credentials".into() }),
+        }),
+    );
+    assert_eq!(form(&st).error.as_deref(), Some("Couldn't sign in to github.com: HTTP 401: Bad credentials"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -171,7 +186,7 @@ fn created_repository_becomes_origin_and_is_pushed() {
 
     // With a remote now, Push pushes instead of offering to publish again.
     let fx = run(&mut st, Msg::Job(JobMsg::Push { force: false }));
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]) && st.modal.is_none(), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]) && st.modal.is_none(), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&bare);
 }
@@ -206,7 +221,7 @@ fn credentials_come_from_outside_a_held_repository() {
 
     // Trusted: the repository's own folder.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record_as_found(&mut st.settings, &real);
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &real);
     let fx = run(&mut st, Msg::Publish(PublishMsg::PublishDialog));
     let [Effect::Account(AccountEffect::Owners { cwd, .. })] = &fx[..] else { panic!("{fx:?}") };
     assert_eq!(*cwd, form(&st).workdir);

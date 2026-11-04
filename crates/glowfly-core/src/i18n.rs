@@ -10,6 +10,8 @@ mod catalog;
 mod system;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod toast_length_tests;
 
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Display;

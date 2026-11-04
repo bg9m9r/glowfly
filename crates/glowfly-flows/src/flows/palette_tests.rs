@@ -3,19 +3,20 @@
 
 use super::tests::{accept_stash, drive, git, keys, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::msg::PaletteMsg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::{FolderPurpose, Msg};
-use crate::state::palette::{PaletteCommand, shown};
-use crate::state::palette_commands::SHOW_REPO_FOLDER;
-use crate::state::{AppState, Modal, PrefPage, PrefsState, Selection, Tab};
-use crate::tag::TagMsg;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::{FolderPurpose, Msg};
+use glowfly_model::state::palette::{PaletteCommand, shown};
+use glowfly_model::state::palette_commands::SHOW_REPO_FOLDER;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState, Selection, Tab};
+use glowfly_model::tag::TagMsg;
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -88,6 +89,7 @@ fn entries_without_repo() {
             "Show the welcome",
             "Turn off tips",
             "Show tips again",
+            "Getting started",
             "View release notes",
             "Check for updates",
             "Hide toolbar labels",
@@ -119,11 +121,11 @@ fn entries_without_repo() {
         ]
     );
     let list = shown(&st, "");
-    assert_eq!(list[18].entry.detail.as_deref(), Some("current"));
-    assert!(list[19].entry.detail.is_none() && list[20].entry.detail.is_none());
+    assert_eq!(list[19].entry.detail.as_deref(), Some("current"));
+    assert!(list[20].entry.detail.is_none() && list[21].entry.detail.is_none());
 
     st.settings.theme = ThemeChoice::System;
-    assert_eq!(shown(&st, "")[20].entry.detail.as_deref(), Some("current"));
+    assert_eq!(shown(&st, "")[21].entry.detail.as_deref(), Some("current"));
 
     st.tabs.push(Tab::empty());
     assert!(has(&st, "Close tab"));
@@ -141,7 +143,7 @@ fn entries_with_repo() {
     assert!(has(&st, "Create tag at HEAD…"));
     assert!(has(&st, "Create annotated tag at HEAD…"));
     // In entry order (the empty query lists Create branch under Suggested).
-    let all: Vec<String> = crate::state::palette::entries(&st).into_iter().map(|e| e.label).collect();
+    let all: Vec<String> = glowfly_model::state::palette::entries(&st).into_iter().map(|e| e.label).collect();
     let at = all.iter().position(|l| l == "Create branch at HEAD…").unwrap();
     assert_eq!(all[at + 1..at + 3], ["Create tag at HEAD…", "Create annotated tag at HEAD…"]);
     assert!(has(&st, "Search commits"));
@@ -175,10 +177,10 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 36);
+    assert_eq!(shown(&st, "").len(), 37);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 35);
+    assert_eq!(p.selected, 36);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
@@ -234,7 +236,7 @@ fn run_theme_saves_once() {
     open_palette(&mut st);
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Theme(ThemeChoice::Light))));
     assert_eq!(st.settings.theme, ThemeChoice::Light);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.theme == ThemeChoice::Light));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.theme == ThemeChoice::Light));
     assert!(st.palette.is_none());
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::SetTheme(ThemeChoice::Light))).is_empty());
     // Nothing left for the per-frame settings check to save.
@@ -297,7 +299,7 @@ fn run_prefs_close_tab_open_repo() {
     assert!(has(&st, "Fetch all remotes"));
     assert!(has(&st, "Pull"));
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Fetch)));
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch all"));
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&bare);
@@ -377,7 +379,7 @@ fn shortcut_hints() {
         assert_eq!(hint(label), None, "{label}");
     }
     // F5 refreshes; Shift+F5 fetches.
-    assert_eq!(PaletteCommand::Fetch.binding(), Some(crate::keymap::BindingId::Fetch));
-    assert_eq!(st.keymap.hint(crate::keymap::BindingId::Fetch), Some("Shift+F5"));
+    assert_eq!(PaletteCommand::Fetch.binding(), Some(glowfly_model::keymap::BindingId::Fetch));
+    assert_eq!(st.keymap.hint(glowfly_model::keymap::BindingId::Fetch), Some("Shift+F5"));
     let _ = std::fs::remove_dir_all(&dir);
 }

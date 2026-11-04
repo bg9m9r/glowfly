@@ -44,7 +44,7 @@ impl Journey {
     #[track_caller]
     pub fn open_palette(&mut self, query: &str) {
         self.toasts.clear();
-        let chord = self.state().keymap.chords(crate::keymap::BindingId::Palette)[0];
+        let chord = self.state().keymap.chords(glowfly_model::keymap::BindingId::Palette)[0];
         let key = egui::Key::from_name(chord.key.config()).expect("the palette's key is an egui key");
         let (m, mac) = (chord.mods, cfg!(target_os = "macos"));
         let command = egui::Modifiers { ctrl: !mac, mac_cmd: mac, command: true, ..egui::Modifiers::NONE };
@@ -82,13 +82,13 @@ impl Journey {
         let n = self.state().snap.as_ref().map_or(0, |s| s.staged.len());
         let label = Lang::En.trn("commit.button.commit", n, &[("push", &""), ("skip", &"")]);
         self.click_containing(&label, Region::Details, Pick::Only);
-        self.toast(true, "Commit succeeded");
+        assert!(self.logged("Commit done"), "the commit ran (it shows in the graph, with no toast)");
     }
 
     /// The sidebar row of local branch `name` (checked out or not); local rows come before the
     /// remotes' rows of the same name.
     pub fn local_branch(&self, name: &str) -> String {
-        let head = format!("✔  {name}");
+        let head = format!("{name}, checked out");
         if find::count(&self.h, &head, true, Region::Sidebar) > 0 { head } else { name.to_owned() }
     }
 

@@ -1,5 +1,6 @@
 //! The design sheets: the button family in a dark, a light, a high-contrast and the Sand theme
-//! (every kind at rest, focused and disabled, with each kind's hover and pressed look), the split
+//! (every kind at rest, focused in each focus style and disabled, with each kind's hover and
+//! pressed look), the split
 //! buttons' states in a dark and a light theme, and the foundations in a dark and a light theme
 //! (the surface ladder with the overlay's Float shadow, a Dialog-elevation card, the corner
 //! scale, the tone tints and the state layers on the panel and the overlay). Declared under
@@ -9,14 +10,15 @@ use super::button_look::{Press, Target, look, paint_button};
 use super::button_split::split;
 use super::buttons::{self, Kind, StyledButton};
 use super::{Icon, paint_icon_sized};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::surfaces::Tone;
-use crate::ui::theme::tokens::{Elevation, radius, shadow};
-use crate::ui::theme::{self, type_scale};
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::color::{self, Palette};
+use crate::theme::sizes::ControlSize;
+use crate::theme::surfaces::Tone;
+use crate::theme::tokens::{self, Elevation, radius, shadow};
+use crate::theme::{self, type_scale};
 use eframe::egui::{self, Align2, CornerRadius, Rect, Shape, StrokeKind, Ui, pos2, vec2};
 use egui_kittest::kittest::Queryable;
+use glowfly_core::settings::FocusStyle;
 
 /// The kinds that carry text, with a label each.
 const KINDS: [(Kind, &str); 6] = [
@@ -66,6 +68,33 @@ fn live_row(ui: &mut Ui, enabled: bool, focus: Option<&str>, first: bool) {
     });
 }
 
+/// The rest row again, 8 px clear of its neighbours; returns Cancel's rect, whose focus ring
+/// `strong_ring` paints once every row is filled (egui's live focus is the rest row's).
+fn strong_row(ui: &mut Ui) -> Rect {
+    let mut cancel = Rect::NOTHING;
+    ui.add_space(8.0);
+    ui.horizontal(|ui| {
+        caption(ui, "Strong");
+        for (kind, label) in KINDS {
+            let r = ui.add(button(kind, label));
+            if label == "Cancel" {
+                cancel = r.rect;
+            }
+        }
+        ui.add(buttons::icon_only(Icon::Refresh, "Refresh"));
+        let _ = split(buttons::primary("Pull"), "Pull options").show(ui);
+    });
+    ui.add_space(8.0);
+    cancel
+}
+
+/// Paints the Strong focus ring around `rect`, then sets the style back to Standard.
+fn strong_ring(ui: &Ui, rect: Rect) {
+    tokens::set_focus_style(ui.ctx(), FocusStyle::Strong);
+    tokens::focus_ring(ui.painter(), rect, ControlSize::Regular.metrics().radius);
+    tokens::set_focus_style(ui.ctx(), FocusStyle::Standard);
+}
+
 /// One row of each kind's look in state `press`, painted by the buttons' own painter.
 fn painted_row(ui: &mut Ui, label: &str, press: Press) {
     ui.horizontal(|ui| {
@@ -88,11 +117,12 @@ fn painted_row(ui: &mut Ui, label: &str, press: Press) {
 }
 
 fn render_buttons(name: &str, p: Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(820.0, 290.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(vec2(820.0, 342.0)).build_ui_state(
         move |ui, first: &mut bool| {
             frame(ui, &p);
             ui.add_space(8.0);
             live_row(ui, true, Some("Cancel"), *first);
+            let cancel = strong_row(ui);
             live_row(ui, false, None, *first);
             painted_row(ui, "Hover", Press::Hover);
             painted_row(ui, "Pressed", Press::Pressed);
@@ -109,6 +139,7 @@ fn render_buttons(name: &str, p: Palette) {
                 }
                 ui.add(buttons::icon_only(Icon::Close, "Close").size(ControlSize::Small));
             });
+            strong_ring(ui, cancel);
             *first = false;
         },
         true,
@@ -140,7 +171,7 @@ fn design_buttons_high_contrast_dark() {
 /// split's caret focused, a disabled action beside a caret that still works, and the danger and
 /// tonal kinds, whose divider is a shade of their fill.
 fn render_splits(name: &str, p: Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(520.0, 140.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(vec2(520.0, 140.0)).build_ui_state(
         move |ui, _: &mut ()| {
             frame(ui, &p);
             ui.add_space(8.0);
@@ -201,7 +232,7 @@ fn swatch(ui: &Ui, rect: Rect, r: impl Into<CornerRadius>, fill: egui::Color32, 
 }
 
 fn render_surfaces(name: &str, p: Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(720.0, 360.0)).build_ui(move |ui| {
+    let mut h = crate::snapshot_check::builder().with_size(vec2(720.0, 360.0)).build_ui(move |ui| {
         frame(ui, &p);
         let o = ui.max_rect().min + vec2(16.0, 16.0);
         let at = |x: f32, y: f32, w: f32, h: f32| Rect::from_min_size(o + vec2(x, y), vec2(w, h));

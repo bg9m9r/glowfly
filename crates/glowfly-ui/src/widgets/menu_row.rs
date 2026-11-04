@@ -225,9 +225,9 @@ impl<'a> Item<'a> {
             _ => None,
         };
         // The menu keyboard's items: the row by its label, and its button beside it.
-        crate::ui::menu_keys::register(ui, &resp, Some(&name), false);
+        crate::menu_keys::register(ui, &resp, Some(&name), false);
         if let Some(b) = &button {
-            crate::ui::menu_keys::register(ui, b, None, false);
+            crate::menu_keys::register(ui, b, None, false);
         }
         match mark {
             Some(Mark::Check(on)) => resp.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, enabled, on, &name)),
@@ -283,7 +283,7 @@ mod tests {
 
     /// Draws `rows` as a menu's contents every pass, keeping the columns of the last.
     fn menu(rows: impl Fn(&mut Ui) + 'static) -> (egui_kittest::Harness<'static, Columns>, Columns) {
-        let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+        let mut h = crate::snapshot_check::builder().build_ui_state(
             move |ui, used: &mut Columns| {
                 styled(ui, |ui| {
                     rows(ui);

@@ -5,16 +5,16 @@
 //! discarded file shows what was thrown away and when, with Restore and Restore as a copy.
 
 use super::preview::lane;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal::short;
-use crate::state::journal_lost::{LostView, apply_blocked, chip, label, restore_file_blocked, restore_plan};
-use crate::ui::pane_status;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::{buttons, reason};
+use crate::pane_status;
+use crate::theme::{color, type_scale};
+use crate::widgets::{buttons, reason};
 use eframe::egui::{self, Align, RichText, Ui};
 use glowfly_core::journal::{LostCommit, LostKind};
 use glowfly_model::journal::{JournalMsg, LostMsg};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::short;
+use glowfly_model::state::journal_lost::{LostView, apply_blocked, chip, label, restore_file_blocked, restore_plan};
 
 const INSET: f32 = 16.0;
 
@@ -79,7 +79,7 @@ fn pane(ui: &mut Ui, st: &AppState, view: &LostView, c: &LostCommit, msgs: &mut 
     match view.preview.as_ref().filter(|p| p.oid == c.oid).and_then(|p| p.result.as_ref()) {
         None => pane_status::loading_line(ui, t.tr("journal.preview.loading")),
         Some(Err(e)) => {
-            ui.label(RichText::new(crate::ui::common::capitalize(glowfly_core::error::plain_message(e).trim())).color(color::weak()));
+            ui.label(RichText::new(crate::common::capitalize(glowfly_core::error::plain_message(e).trim())).color(color::weak()));
         }
         Some(Ok(p)) => lane(ui, st, color::weak(), &p.history),
     }

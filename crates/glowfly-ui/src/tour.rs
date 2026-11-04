@@ -5,18 +5,18 @@
 
 use super::theme::color;
 use super::widgets::{self, Icon};
-use crate::keymap::KeyAction;
-use crate::msg::{LayoutMsg, Msg, PaletteMsg};
-use crate::onboarding::OnboardingMsg;
-use crate::state::AppState;
-use crate::state::layout::{self, Panel};
-use crate::state::onboarding_tour::{NO_REPOSITORY, PANEL_HIDDEN, TourStep};
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{
     self, Align, Align2, Color32, CornerRadius, Id, LayerId, Layout, Order, Rect, RichText, Stroke, StrokeKind, pos2, vec2,
 };
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{LayoutMsg, Msg, PaletteMsg};
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::{self, Panel};
+use glowfly_model::state::onboarding_tour::TourStep;
 
 const CARD_WIDTH: f32 = 320.0;
 const GAP: f32 = 12.0;
@@ -101,10 +101,11 @@ fn scrim(ctx: &egui::Context, screen: Rect, target: Option<Rect>) {
 /// Back / Next.
 fn card(ui: &mut egui::Ui, st: &AppState, step: TourStep, missing: Option<Missing>, msgs: &mut Vec<Msg>) {
     let send = |msgs: &mut Vec<Msg>, m: OnboardingMsg| msgs.push(Msg::Onboarding(m));
+    let t = st.settings.lang();
     ui.horizontal(|ui| {
-        ui.label(RichText::new(step.title()).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::strong()));
+        ui.label(RichText::new(step.title(t)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::strong()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if widgets::small_icon(ui, Icon::Close, "Close the tour", color::weak()).clicked() {
+            if widgets::small_icon(ui, Icon::Close, t.tr("tour.close.tip"), color::weak()).clicked() {
                 send(msgs, OnboardingMsg::CloseTour);
             }
         });
@@ -112,42 +113,42 @@ fn card(ui: &mut egui::Ui, st: &AppState, step: TourStep, missing: Option<Missin
     ui.add_space(4.0);
     match missing {
         Some(Missing::Repository) => {
-            ui.add(egui::Label::new(RichText::new(NO_REPOSITORY).color(color::text())).wrap());
+            ui.add(egui::Label::new(RichText::new(t.tr("tour.no_repository")).color(color::text())).wrap());
         }
         Some(Missing::Panel(panel)) => {
-            ui.add(egui::Label::new(RichText::new(step.body(&st.keymap)).color(color::text())).wrap());
+            ui.add(egui::Label::new(RichText::new(step.body(&st.keymap, t)).color(color::text())).wrap());
             ui.add_space(6.0);
             ui.horizontal(|ui| {
-                ui.label(RichText::new(PANEL_HIDDEN).color(color::weak()));
-                if ui.add(buttons::secondary("Show it")).clicked() {
+                ui.label(RichText::new(t.tr("tour.panel_hidden")).color(color::weak()));
+                if ui.add(buttons::secondary(t.tr("tour.panel_hidden.show.button"))).clicked() {
                     msgs.push(Msg::Layout(LayoutMsg::SetPanel { panel, shown: true }));
                 }
             });
         }
         None => {
-            ui.add(egui::Label::new(RichText::new(step.body(&st.keymap)).color(color::text())).wrap());
+            ui.add(egui::Label::new(RichText::new(step.body(&st.keymap, t)).color(color::text())).wrap());
         }
     }
     if step == TourStep::Palette {
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            if ui.add(buttons::secondary("Open the palette")).clicked() {
+            if ui.add(buttons::secondary(t.tr("tour.palette.open.button"))).clicked() {
                 msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
             }
-            if ui.add(buttons::secondary("Show shortcuts")).clicked() {
+            if ui.add(buttons::secondary(t.tr("tour.palette.shortcuts.button"))).clicked() {
                 msgs.push(Msg::Shortcut(KeyAction::ToggleSheet));
             }
         });
     }
     ui.add_space(10.0);
     ui.horizontal(|ui| {
-        ui.label(RichText::new(format!("{} of {}", step.number(), TourStep::ALL.len())).color(color::weak()));
+        ui.label(RichText::new(t.trf("tour.progress", &[("step", &step.number()), ("total", &TourStep::ALL.len())])).color(color::weak()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            let next = if step.next().is_some() { "Next" } else { "Done" };
+            let next = if step.next().is_some() { t.tr("tour.next.button") } else { t.tr("tour.done.button") };
             if ui.add(buttons::primary(next)).clicked() {
                 send(msgs, OnboardingMsg::TourNext);
             }
-            if step.prev().is_some() && ui.add(buttons::secondary("Back")).clicked() {
+            if step.prev().is_some() && ui.add(buttons::secondary(t.tr("tour.back.button"))).clicked() {
                 send(msgs, OnboardingMsg::TourBack);
             }
         });

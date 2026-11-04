@@ -23,6 +23,8 @@ pub mod file_tree;
 pub mod frame_times;
 #[path = "list_keys.rs"]
 pub mod list_keys;
+#[path = "system_a11y.rs"]
+pub mod system_a11y;
 #[path = "wip_lists.rs"]
 pub mod wip_lists;
 
@@ -142,6 +144,8 @@ pub struct ViewState {
     /// Branch tips drawn this frame (LOCAL and REMOTE rows, graph ref labels), filled by the
     /// views and taken by the shell.
     pub tips_seen: Vec<Oid>,
+    /// The LOCAL section's rows, kept between frames.
+    pub local_rows: crate::state::stack_rows::LocalRowsCache,
     /// The hovered ref's tip and the commits on its branch, for row highlighting. Set by
     /// `update` (`GraphMsg::HoverRef`); the graph only reads it.
     pub highlight: Option<(Oid, std::sync::Arc<HashSet<Oid>>)>,
@@ -228,6 +232,9 @@ pub struct ViewState {
     /// The WIP panel's steps opened or folded by hand while an operation is in progress (set
     /// only by update, `LayoutMsg::ToggleOpStep`).
     pub op_steps: super::op_steps::StepFolds,
+    /// The system's accessibility settings as last read (set only by update,
+    /// `AppMsg::SystemA11y`).
+    pub system_a11y: system_a11y::SystemA11y,
 }
 
 impl ViewState {
@@ -269,6 +276,7 @@ impl Default for ViewState {
             hover_tip: None,
             hover_tip_next: None,
             tips_seen: Vec::new(),
+            local_rows: Default::default(),
             highlight: None,
             ref_rows: Default::default(),
             was_focused: true,
@@ -303,6 +311,7 @@ impl Default for ViewState {
             quit_after_stop: false,
             backdrop: Backdrop::Solid,
             op_steps: Default::default(),
+            system_a11y: Default::default(),
         }
     }
 }

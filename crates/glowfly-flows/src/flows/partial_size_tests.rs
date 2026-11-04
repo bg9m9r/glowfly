@@ -4,13 +4,13 @@
 use super::shallow_tests::{cleanup, shallow_clone};
 use super::tests::{drive, git, skipped};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::partial::PartialEffect;
-use crate::msg::{JobMsg, Msg, PartialMsg, RepoMsg, TrustMsg};
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::Provider;
 use glowfly_core::history_size::{HistorySize, SizeSource};
 use glowfly_core::shallow_ops::Deepen;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::partial::PartialEffect;
+use glowfly_model::msg::{JobMsg, Msg, PartialMsg, RepoMsg, TrustMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -27,7 +27,7 @@ fn sized(st: &AppState, id: u64, size: HistorySize) -> Msg {
 
 fn unshallow(fx: &[Effect]) -> bool {
     let want = [glowfly_core::gitcli::args(&["fetch", "--unshallow", "--", "origin"])];
-    matches!(fx, [Effect::RunGit { cmds, stoppable: true, .. }] if cmds[..] == want[..])
+    matches!(fx, [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, stoppable: true, .. })] if cmds[..] == want[..])
 }
 
 #[test]

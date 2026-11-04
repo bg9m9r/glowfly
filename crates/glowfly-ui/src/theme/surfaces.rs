@@ -30,6 +30,15 @@ const OVERLAY_EDGE: f32 = 0.12;
 const INK_MIN: f64 = 4.5;
 const INK_MIN_HC: f64 = 7.0;
 const HIGH_CONTRAST_TEXT: f64 = 18.0;
+/// How far the find fill (a search's matched text) starts from its surface toward the accent, on
+/// dark and light palettes, and the least it backs off to while it keeps text readable.
+const FIND_T_DARK: f32 = 0.24;
+const FIND_T_LIGHT: f32 = 0.18;
+const FIND_T_MIN: f32 = 0.10;
+/// The most the find fill leans in to stand `FIND_APART` from its surface (a light lane's
+/// highlight, already a step toward the accent's hue).
+const FIND_T_MAX: f32 = 0.30;
+const FIND_APART: f64 = 1.25;
 
 /// A semantic tone: the colour of an outcome or an emphasis, with a soft tint of it to fill a
 /// chip, a toast's edge or a menu caret.
@@ -57,6 +66,23 @@ impl Palette {
     /// accent.
     pub fn guide_fill(&self) -> Color32 {
         contrast::tint(self.panel, self.accent, GUIDE_TINT, self.dark)
+    }
+
+    /// The fill behind a search's matched text on surface `under` (the row's top fill): `under`
+    /// tinted toward the accent, backed off 1% at a time (to `FIND_T_MIN`) until `text` and
+    /// `strong` read on it at 4.5:1 (7:1 in a high-contrast palette); where it would then sit
+    /// under `FIND_APART` from `under`, leaned in 1% at a time (to `FIND_T_MAX`) while they still
+    /// read. Opaque, so it never stacks.
+    pub fn find_fill(&self, under: Color32) -> Color32 {
+        let min = if self.high_contrast { INK_MIN_HC } else { INK_MIN };
+        let start = if self.dark { FIND_T_DARK } else { FIND_T_LIGHT };
+        let at = |t: f32| contrast::tint(under, self.accent, t, self.dark);
+        let reads = |f: Color32| contrast::ratio(self.text, f) >= min && contrast::ratio(self.strong, f) >= min;
+        let pct = |t: f32| (t * 100.0).round() as u32;
+        let backed = (pct(FIND_T_MIN)..=pct(start)).rev().find(|&i| reads(at(i as f32 / 100.0))).unwrap_or(pct(FIND_T_MIN));
+        let apart = |i: u32| contrast::ratio(at(i as f32 / 100.0), under) >= FIND_APART;
+        let lean = (backed..=pct(FIND_T_MAX)).take_while(|&i| i == backed || reads(at(i as f32 / 100.0))).find(|&i| apart(i));
+        at(lean.unwrap_or(backed) as f32 / 100.0)
     }
 
     /// The neutral backing of the toolbar's groups: `toolbar` with a quiet accent tint (on Dusk,
@@ -224,7 +250,7 @@ impl Palette {
 
     /// `c` washed over surface `s` at `t` (0 to 1): the opaque colour `wash` shows there.
     #[cfg(test)]
-    pub fn wash_on(&self, s: Color32, c: Color32, t: f32) -> Color32 {
+    pub(crate) fn wash_on(&self, s: Color32, c: Color32, t: f32) -> Color32 {
         mix(s, self.wash_colour(c, t), t)
     }
 
@@ -281,6 +307,11 @@ active!(
     menu_danger
 );
 
+/// [`Palette::find_fill`] in the active palette.
+pub fn find_fill(under: Color32) -> Color32 {
+    color::with(|p| p.find_fill(under))
+}
+
 /// [`Palette::wash`] in the active palette.
 pub fn wash(c: Color32, t: f32) -> Color32 {
     color::with(|p| p.wash(c, t))
@@ -291,4 +322,62 @@ pub(crate) fn over(top: Color32, under: Color32) -> Color32 {
     let a = f32::from(top.a()) / 255.0;
     let ch = |t: u8, u: u8| (f32::from(t) + f32::from(u) * (1.0 - a)).round() as u8;
     Color32::from_rgb(ch(top.r(), under.r()), ch(top.g(), under.g()), ch(top.b(), under.b()))
+}
+
+/// How far a graph row's band moves from the background toward its lane colour, at most.
+const BAND_T: f32 = 0.07;
+
+/// The opaque band for a graph row on a `lane`: the strongest tint (`contrast::tint`, so on Dusk
+/// a warm lane gives a plum-violet step, never a grey-brown) up to `BAND_T` that keeps `weak`
+/// text at 4.5:1, `text` as readable as on the background (up to 7:1) and `faint` text as
+/// readable as on the background (up to 4.5:1). The background itself when no tint does.
+pub(crate) fn band_color(lane: Color32, pal: &Palette) -> Color32 {
+    let steps = (BAND_T * 100.0).round() as u32;
+    let keeps = |band: Color32| {
+        contrast::ratio(pal.weak, band) >= 4.5
+            && contrast::ratio(pal.text, band) >= contrast::ratio(pal.text, pal.bg).min(7.0)
+            && contrast::ratio(pal.faint, band) >= contrast::ratio(pal.faint, pal.bg).min(4.5)
+    };
+    (1..=steps).rev().map(|i| contrast::tint(pal.bg, lane, i as f32 / 100.0, pal.dark)).find(|&b| keeps(b)).unwrap_or(pal.bg)
+}
+
+/// How far a highlighted row (its branch hovered) moves from its band toward the lane colour.
+const HIGHLIGHT_T: f32 = 0.16;
+
+/// The opaque fill of a highlighted row on `band`, a row of a `lane`: the band moved toward the
+/// lane colour, `contrast::unbrown`ed (a warm lane on a dark palette lifts the band instead).
+pub(crate) fn highlight_color(band: Color32, lane: Color32) -> Color32 {
+    contrast::unbrown(band, mix(band, lane, HIGHLIGHT_T))
+}
+
+thread_local! {
+    /// The last palette's row surfaces: worked out once, not for every chip drawn.
+    static ROW_SURFACES: std::cell::RefCell<Option<(Palette, Vec<Color32>)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Calls `f` with every surface a graph row's ref chip can sit on in `p`: the background, the
+/// hover, the selection with and without the focus, and the band of every lane in both branch
+/// presets and the trunk's, plain and highlighted (its branch hovered) (docs/COLOUR.md, "Ref
+/// chips"). Worked out once per palette.
+pub fn with_row_surfaces<R>(p: &Palette, f: impl FnOnce(&[Color32]) -> R) -> R {
+    ROW_SURFACES.with(|cache| {
+        if cache.borrow().as_ref().is_none_or(|(c, _)| c != p) {
+            *cache.borrow_mut() = Some((*p, row_surfaces(p)));
+        }
+        f(&cache.borrow().as_ref().expect("just filled").1)
+    })
+}
+
+fn row_surfaces(p: &Palette) -> Vec<Color32> {
+    let mut rows = vec![p.bg, p.hover, p.selected, super::tokens::selected_inactive(p)];
+    let lanes = p.branch.lanes.iter().chain(&p.colour_blind.lanes).copied().chain([super::branch_colours::trunk(p)]);
+    for lane in lanes {
+        let band = band_color(lane, p);
+        for c in [band, highlight_color(band, lane)] {
+            if !rows.contains(&c) {
+                rows.push(c);
+            }
+        }
+    }
+    rows
 }

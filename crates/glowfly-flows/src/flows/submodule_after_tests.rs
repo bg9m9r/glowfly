@@ -8,16 +8,16 @@ use super::submodule_batch_tests::{after_job, checkout_other, checks_all, job_cm
 use super::submodule_tests::{PATH, cleanup, sub};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::{Effect, SubmoduleEffect};
-use crate::msg::{JobMsg, Msg, RepoMsg, SelectionMsg};
-use crate::state::AppState;
-use crate::state::palette::StashAction;
-use crate::state::rebase_banner::action_msg;
-use crate::submodule::Batch;
 use git2::{Oid, RepositoryState};
 use glowfly_core::repo::SubmoduleState;
 use glowfly_core::submodule_ops::batch_update_cmds;
 use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE};
+use glowfly_model::effect::{Effect, SubmoduleEffect};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::StashAction;
+use glowfly_model::state::rebase_banner::action_msg;
+use glowfly_model::submodule::Batch;
 use std::path::Path;
 use std::time::Instant;
 
@@ -173,7 +173,7 @@ fn a_commit_mid_sequence_waits_for_its_end() {
     let fx = after_job(&mut st, commit_no_edit());
     assert!(fx.iter().any(|e| matches!(e, Effect::Submodule(SubmoduleEffect::CheckAll { once_finished: true, .. }))), "{fx:?}");
     let fx = step(&mut st, fx);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     finish(&mut st, fx);
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::CherryPickSequence);
     assert_eq!(sub(&st).state, SubmoduleState::OutOfSync);

@@ -3,12 +3,11 @@
 //! `safe.directory` (`Effect::GitEnv`).
 
 use super::execute::{Cx, Execute};
-use crate::effect::LoadKind;
-use crate::msg::Msg;
 use glowfly_core::git_program;
 use glowfly_core::git_version::{self, GitInfo};
+use glowfly_model::effect::LoadKind;
 use glowfly_model::git_env::{GitEnvEffect, GitEnvMsg};
-use std::path::PathBuf;
+use glowfly_model::msg::Msg;
 
 pub(super) fn run(effect: GitEnvEffect) -> Msg {
     Msg::GitEnv(match effect {
@@ -52,7 +51,7 @@ impl Execute for GitEnvEffect {
     }
 }
 
-/// The answer to a load git refused because another user owns the repository at `root`.
-pub(super) fn not_owned(generation: u64, kind: LoadKind, root: PathBuf) -> Msg {
-    Msg::GitEnv(GitEnvMsg::NotOwned { generation, kind, root })
+/// The answer to a load git refused because another user owns the repository.
+pub(super) fn not_owned(generation: u64, kind: LoadKind, refusal: glowfly_core::safe_directory::Refusal) -> Msg {
+    Msg::GitEnv(GitEnvMsg::NotOwned { generation, kind, refusal })
 }

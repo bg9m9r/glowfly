@@ -4,14 +4,13 @@
 
 use super::tests::{git, same_place, scratch_repo, skipped, state};
 use super::update;
-use crate::conflict_check::{CheckJob, ConflictCheckMsg};
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, TrustMsg};
-use crate::runner;
-use crate::state::conflict_check::current_request;
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::conflict_check::{Prediction, TargetKind};
+use glowfly_model::conflict_check::{CheckJob, ConflictCheckMsg};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, TrustMsg};
+use glowfly_model::state::conflict_check::current_request;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -44,7 +43,7 @@ fn drive_holding(st: &mut AppState, msg: Msg) -> Vec<CheckJob> {
             match effect {
                 Effect::CheckConflicts(job) => held.push(job),
                 e if skipped(&e) => {}
-                e => queue.extend(runner::testing::execute(e)),
+                e => queue.extend(glowfly_runner::testing::execute(e)),
             }
         }
     }
@@ -57,7 +56,7 @@ fn open(st: &mut AppState, dir: &Path) -> Vec<CheckJob> {
 
 /// Runs a held check and applies its result; returns the checks that leads to.
 fn deliver(st: &mut AppState, job: CheckJob) -> Vec<CheckJob> {
-    let msg = runner::testing::execute(Effect::CheckConflicts(job)).unwrap();
+    let msg = glowfly_runner::testing::execute(Effect::CheckConflicts(job)).unwrap();
     drive_holding(st, msg)
 }
 

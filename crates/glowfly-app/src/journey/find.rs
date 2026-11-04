@@ -52,7 +52,7 @@ pub(super) fn centre(node: &Node<'_>) -> Option<Pos2> {
 fn in_region(ctx: &egui::Context, region: Region, node: &Node<'_>) -> bool {
     let Some(c) = centre(node) else { return false };
     let inside = |id: &str| panel(ctx, id).is_some_and(|r| r.contains(c));
-    let in_palette = || crate::ui::palette_rect(ctx).is_some_and(|r| r.contains(c));
+    let in_palette = || glowfly_ui::palette_rect(ctx).is_some_and(|r| r.contains(c));
     match region {
         Region::Anywhere => true,
         Region::Toolbar => inside("toolbar"),

@@ -1,27 +1,30 @@
 //! The Unstaged and Staged Files lists' headers (and the plain header row every list of the WIP
-//! panel shares, `frame`): the title, cut with "…" (whole on hover), and the list's quiet
-//! buttons on the right. Unstaged Files shows Stage all, with Discard all and New file… in its
-//! more-actions menu; and a button that doesn't fit beside the title moves into that menu too
-//! (Stage all last), so none is ever cut.
+//! panel shares, `frame`): the title and the list's quiet Small buttons on the right. Unstaged
+//! Files shows Stage all, with Discard all and New file… in its more-actions menu (⋯). As the
+//! room shrinks (`fit`), the buttons first drop their labels for Small icon-only squares, then
+//! the title is cut with "…" (whole on hover) before its count, which is never cut, and last a
+//! button that doesn't fit beside the shortest title moves into the menu, so none is ever cut.
 
 use super::{RowContext, discard_all_text};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::{Msg, StageMsg, WorkFileMsg};
-use crate::ui::access;
-use crate::ui::common::{menu_danger, menu_item};
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons::{self, StyledButton};
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::{self, Icon, truncate};
+use crate::access;
+use crate::common::{menu_danger, menu_item};
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::buttons::{self, StyledButton};
+use crate::widgets::menu::{self, separator};
+use crate::widgets::{Icon, truncate};
 use eframe::egui::{self, Align, Color32, Layout, Response, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_core::settings::FileListMode;
 use glowfly_core::undo::DISCARD_STASH_MESSAGE;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::{Msg, StageMsg, WorkFileMsg};
 
-/// The width of the more-actions button.
-const MORE_W: f32 = 24.0;
-/// The most of the title's width the buttons keep free before moving into the menu.
+/// The size of the header's buttons, the more-actions button and the icon-only squares.
+const SIZE: ControlSize = ControlSize::Small;
+/// The most of the title's width the buttons keep free before moving into the menu (more when
+/// its count needs it).
 const TITLE_MIN: f32 = 72.0;
 /// A list header's height.
 pub(super) const HEADER_H: f32 = 32.0;
@@ -63,6 +66,28 @@ impl HeaderAction {
         }
     }
 
+    /// The icon its icon-only square shows when the title has no room for its label.
+    fn icon(self) -> Icon {
+        match self {
+            Self::StageAll => Icon::Plus,
+            Self::UnstageAll => Icon::Minus,
+            Self::NewFile => Icon::FileAdd,
+            Self::DiscardAll => Icon::Close,
+        }
+    }
+
+    /// The button with its label, or as an icon-only square named by it.
+    fn shown<'a>(self, t: Lang, tip: Option<&'a str>, icon: bool) -> StyledButton<'a> {
+        if !icon {
+            return self.button(t, tip);
+        }
+        let b = square(self.icon(), self.label(t));
+        match tip {
+            Some(tip) => b.tip(tip),
+            None => b,
+        }
+    }
+
     fn msg(self, t: Lang, keys: &Keymap) -> Msg {
         match self {
             Self::StageAll => Msg::Stage(StageMsg::StageAll),
@@ -91,22 +116,81 @@ fn actions(staged: bool, count: usize) -> Vec<HeaderAction> {
     }
 }
 
-/// How many of the buttons (`widths`, rightmost first) are shown in `avail` px beside at least
-/// `title_min` px of title, `gap` px apart. All when they fit; otherwise as many as fit beside
-/// the more-actions button (`more_w`, its gap included), the rest moving into its menu.
-pub(super) fn shown_count(avail: f32, title_min: f32, widths: &[f32], more_w: f32, gap: f32) -> usize {
-    let row = |k: usize| widths[..k].iter().sum::<f32>() + gap * k as f32;
-    if row(widths.len()) + title_min <= avail {
-        return widths.len();
-    }
-    (0..widths.len()).rev().find(|&k| row(k) + more_w + title_min <= avail).unwrap_or(0)
+/// A header row's room: `avail` px for a title `title_w` wide (`title_min` when cut) and its
+/// buttons, `gap` apart; the more-actions button takes `more_w` (its gap included) and an
+/// icon-only button `icon_w`.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Room {
+    pub avail: f32,
+    pub title_w: f32,
+    pub title_min: f32,
+    pub gap: f32,
+    pub more_w: f32,
+    pub icon_w: f32,
 }
 
-/// How many buttons to show, given `cut` (beside a title cut to `TITLE_MIN`) and `whole` (beside
-/// the whole title) of `len`: when every button fits only by cutting the title, the last one
-/// (New file…) moves into the menu if that shows the title whole.
-fn whole_title_count(cut: usize, whole: usize, len: usize) -> usize {
-    if cut == len && whole + 1 == len && whole > 0 { whole } else { cut }
+/// What a header shows: its first `shown` buttons, as icon-only squares when `icons`; the rest
+/// are in its more-actions menu.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Fit {
+    pub shown: usize,
+    pub icons: bool,
+}
+
+/// Fits the first `most` of the buttons (labelled `labels` wide, rightmost first) beside the
+/// title in `r`, giving way in this order: the labels go (icon-only squares), then the title is
+/// cut down to `title_min`, and only then do buttons move into the menu, the leftmost first.
+pub(crate) fn fit(r: Room, labels: &[f32], most: usize) -> Fit {
+    let want = most.min(labels.len());
+    let more = |k: usize| if k < labels.len() { r.more_w } else { 0.0 };
+    let labelled = labels[..want].iter().sum::<f32>() + r.gap * want as f32;
+    if labelled + more(want) + r.title_w <= r.avail {
+        return Fit { shown: want, icons: false };
+    }
+    let icons = |k: usize| (r.icon_w + r.gap) * k as f32 + more(k);
+    let title = r.title_w.min(r.title_min);
+    let shown = (0..=want).rev().find(|&k| icons(k) + title <= r.avail).unwrap_or(0);
+    Fit { shown, icons: true }
+}
+
+/// A header action's Small icon-only square named `name`. Its glyph spans about 12 of the
+/// square's 14 px icon box, like the check and ⋯ beside it: the plus and minus are drawn with
+/// 6 px arms, and the undo arrow smaller, as it fills more of its grid.
+pub(crate) fn square<'a>(icon: Icon, name: &'a str) -> StyledButton<'a> {
+    let b = buttons::icon_only(icon, name).size(SIZE);
+    match icon {
+        Icon::Plus | Icon::Minus => b.icon_px(GLYPH_SPAN * 2.0),
+        Icon::Undo => b.icon_px(GLYPH_SPAN * 0.875),
+        _ => b,
+    }
+}
+
+/// The extent a header square's glyph spans, inside its size's 14 px icon box.
+const GLYPH_SPAN: f32 = 12.0;
+
+/// The least a header's title is cut to: `TITLE_MIN`, or its count and a few characters more.
+fn title_min(ui: &Ui, title: &str) -> f32 {
+    let (_, count) = truncate::split_count(title);
+    let font = type_scale::section(ui);
+    let count_w = ui.fonts(|f| f.layout_no_wrap(count.to_owned(), font, Color32::PLACEHOLDER).size().x);
+    TITLE_MIN.max(count_w + TITLE_MIN / 2.0)
+}
+
+/// A header's `title`, cut before its count with "…" (whole on hover) to the room left. Not
+/// selectable, so a right-click on it reaches the header's menu.
+pub(crate) fn title(ui: &mut Ui, title: &str) {
+    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+        truncate::cut_counted_label(ui, title, type_scale::section(ui), color::text(), ui.available_width());
+    });
+}
+
+/// The room of a header row in `ui` for `title`, with its buttons Small.
+pub(crate) fn room(ui: &Ui, title: &str) -> Room {
+    let gap = ui.spacing().item_spacing.x;
+    let section = type_scale::section(ui);
+    let title_w = ui.fonts(|f| f.layout_no_wrap(title.to_owned(), section, Color32::PLACEHOLDER).size().x);
+    let icon_w = SIZE.metrics().h;
+    Room { avail: ui.available_width(), title_w, title_min: title_min(ui, title), gap, more_w: icon_w + gap, icon_w }
 }
 
 /// The header of the Unstaged (or `staged`) Files list showing `title`, with `count` files.
@@ -118,15 +202,18 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
     let scope = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
         frame(ui, |ui| {
             // Rightmost; the buttons measure the room left after it.
-            crate::ui::list_row::file_tree::mode_toggle(ui, ctx.lang, ctx.mode, msgs);
+            let toggle = crate::list_row::file_tree::mode_toggle(ui, ctx.lang, ctx.mode, msgs);
+            // Two lists show the toggle: the name says which one it changes.
+            let name = match (staged, ctx.mode) {
+                (false, FileListMode::List) => ctx.lang.tr("files.tree.unstaged.show_tree.name"),
+                (false, FileListMode::Tree) => ctx.lang.tr("files.tree.unstaged.show_list.name"),
+                (true, FileListMode::List) => ctx.lang.tr("files.tree.staged.show_tree.name"),
+                (true, FileListMode::Tree) => ctx.lang.tr("files.tree.staged.show_list.name"),
+            };
+            access::name_button(&toggle, true, name);
             buttons(ui, &title, staged, count, ctx, msgs);
-            // Drawn after the buttons, so a long title is cut short (whole on hover) instead of
-            // running under them. Not selectable, so a right-click on the title reaches the
-            // header's menu.
-            ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                let text = type_scale::section_text(ui, title);
-                truncate::truncate_label(ui, text, ui.available_width());
-            });
+            // Drawn after the buttons, so a long title is cut short instead of running under them.
+            self::title(ui, &title);
         });
     });
     scope.response
@@ -148,20 +235,14 @@ fn buttons(ui: &mut Ui, title: &str, staged: bool, count: usize, ctx: RowContext
     let (keys, t) = (ctx.keys, ctx.lang);
     let actions = actions(staged, count);
     let tips: Vec<Option<String>> = actions.iter().map(|a| a.tip(keys, t)).collect();
-    let gap = ui.spacing().item_spacing.x;
-    let widths = widths(ui, &actions, t);
-    let section = type_scale::section(ui);
-    let title_w = ui.fonts(|f| f.layout_no_wrap(title.to_owned(), section, Color32::PLACEHOLDER).size().x);
-    let avail = ui.available_width();
-    let cut = shown_count(avail, title_w.min(TITLE_MIN), &widths, MORE_W + gap, gap);
-    let shown = whole_title_count(cut, shown_count(avail, title_w, &widths, MORE_W + gap, gap), widths.len());
     // Unstaged Files keeps only Stage all out: Discard all and New file… wait in the menu.
-    let shown = if staged || actions.len() == 1 { shown } else { shown.min(1) };
+    let most = if staged { actions.len() } else { 1 };
+    let Fit { shown, icons } = fit(room(ui, title), &widths(ui, &actions, t), most);
     if shown < actions.len() {
         more_button(ui, &actions[shown..], ctx, msgs);
     }
     for (a, tip) in actions[..shown].iter().zip(&tips) {
-        if ui.add(a.button(t, tip.as_deref())).clicked() {
+        if ui.add(a.shown(t, tip.as_deref(), icons)).clicked() {
             msgs.push(a.msg(t, keys));
         }
     }
@@ -172,7 +253,7 @@ fn widths(ui: &Ui, actions: &[HeaderAction], t: Lang) -> Vec<f32> {
     actions.iter().map(|a| a.button(t, None).desired_width(ui)).collect()
 }
 
-/// The more-actions button (a painted icon) and its menu, listing `moved` in reading order,
+/// The more-actions button and its menu, listing `moved` in reading order,
 /// with Discard all… last, after a separator, in the danger style.
 fn more_button(ui: &mut Ui, moved: &[HeaderAction], ctx: RowContext, msgs: &mut Vec<Msg>) {
     let (keys, t) = (ctx.keys, ctx.lang);
@@ -188,101 +269,12 @@ fn more_button(ui: &mut Ui, moved: &[HeaderAction], ctx: RowContext, msgs: &mut 
     });
 }
 
-/// A header's more-actions button (a painted icon) opening a menu of `items`.
+/// A header's more-actions button (a Small icon-only ⋯) opening a menu of `items` below it.
 pub(crate) fn more_menu(ui: &mut Ui, t: Lang, items: impl FnOnce(&mut Ui)) {
-    let button = egui::Button::new("").small().frame(false).min_size(vec2(MORE_W, 0.0));
-    let menu = crate::ui::widgets::menu::custom_button(ui, button, items);
-    let tip = t.tr("details.wip.more.tip");
-    let r = menu.response.on_hover_text(tip);
-    widgets::paint_icon(ui.painter(), r.rect.center(), Icon::More, color::text());
-    access::name_button(&r, true, tip);
+    let r = ui.add(buttons::icon_only(Icon::More, t.tr("details.wip.more.tip")).size(SIZE));
+    menu::below(ui, &r, items);
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const GAP: f32 = 8.0;
-    const MORE: f32 = 32.0;
-    /// Stage all, Discard all, New file….
-    const THREE: [f32; 3] = [70.0, 80.0, 60.0];
-
-    fn all_w(widths: &[f32], title: f32) -> f32 {
-        widths.iter().sum::<f32>() + GAP * widths.len() as f32 + title
-    }
-
-    #[test]
-    fn every_button_shows_when_they_fit() {
-        assert_eq!(shown_count(all_w(&THREE, 72.0), 72.0, &THREE, MORE, GAP), 3);
-        assert_eq!(shown_count(1000.0, 72.0, &THREE, MORE, GAP), 3);
-    }
-
-    #[test]
-    fn one_px_short_moves_new_file_and_leaves_room_for_the_menu() {
-        let avail = all_w(&THREE, 72.0) - 1.0;
-        let k = shown_count(avail, 72.0, &THREE, MORE, GAP);
-        assert_eq!(k, 2, "New file… moves first");
-        assert!(all_w(&THREE[..k], 72.0) + MORE <= avail, "the menu button fits");
-        // Narrower still, Discard all and then Stage all follow.
-        assert_eq!(shown_count(all_w(&THREE[..1], 72.0) + MORE, 72.0, &THREE, MORE, GAP), 1);
-    }
-
-    #[test]
-    fn new_file_moves_to_the_menu_to_show_the_whole_title() {
-        assert_eq!(whole_title_count(3, 2, 3), 2, "one button fewer shows the title whole");
-        assert_eq!(whole_title_count(3, 3, 3), 3, "all fit beside the whole title");
-        assert_eq!(whole_title_count(3, 1, 3), 3, "a long title is cut rather than lose two buttons");
-        assert_eq!(whole_title_count(2, 1, 3), 2, "already short of room: the usual rule");
-        assert_eq!(whole_title_count(1, 0, 1), 1, "a lone button stays");
-    }
-
-    #[test]
-    fn very_narrow_shows_only_the_menu() {
-        assert_eq!(shown_count(60.0, 72.0, &THREE, MORE, GAP), 0);
-        assert_eq!(shown_count(0.0, 0.0, &THREE, MORE, GAP), 0);
-    }
-
-    #[test]
-    fn the_title_keeps_its_least_width() {
-        let avail = all_w(&THREE, 0.0) + 40.0;
-        assert_eq!(shown_count(avail, 40.0, &THREE, MORE, GAP), 3, "a short title leaves room for all");
-        assert!(shown_count(avail, 72.0, &THREE, MORE, GAP) < 3, "a longer one moves some into the menu");
-    }
-
-    #[test]
-    fn a_single_button_moves_only_when_it_alone_does_not_fit() {
-        let one = [90.0];
-        assert_eq!(shown_count(90.0 + GAP + 72.0, 72.0, &one, MORE, GAP), 1);
-        assert_eq!(shown_count(90.0 + GAP + 71.0, 72.0, &one, MORE, GAP), 0);
-        assert_eq!(shown_count(1000.0, 72.0, &[], MORE, GAP), 0, "no buttons, no menu");
-    }
-
-    #[test]
-    fn widths_are_the_styled_buttons_own() {
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
-            crate::ui::theme::apply_theme(ui.ctx());
-            let t = Lang::En;
-            let all = actions(false, 2);
-            let w = widths(ui, &all, t);
-            for (a, w) in all.iter().zip(&w) {
-                assert_eq!(ui.add(a.button(t, None)).rect.width(), *w, "{a:?} is as wide as it said");
-                assert_eq!(ui.add(a.button(t, None)).rect.height(), 24.0, "{a:?} is small");
-            }
-            // One px short of all three beside the title: New file… moves into the menu first.
-            let gap = ui.spacing().item_spacing.x;
-            let row = w.iter().sum::<f32>() + gap * 3.0 + TITLE_MIN;
-            assert_eq!(shown_count(row, TITLE_MIN, &w, MORE_W + gap, gap), 3);
-            assert_eq!(shown_count(row - 1.0, TITLE_MIN, &w, MORE_W + gap, gap), 2);
-        });
-        h.run();
-    }
-
-    #[test]
-    fn actions_follow_the_list_and_its_files() {
-        use HeaderAction::*;
-        assert_eq!(actions(true, 2), [UnstageAll]);
-        assert!(actions(true, 0).is_empty());
-        assert_eq!(actions(false, 2), [StageAll, DiscardAll, NewFile]);
-        assert_eq!(actions(false, 0), [NewFile]);
-    }
-}
+#[path = "details_wip_header_tests.rs"]
+mod tests;

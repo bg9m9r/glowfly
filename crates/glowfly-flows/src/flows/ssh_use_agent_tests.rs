@@ -2,12 +2,13 @@
 //! what its result does (toast and re-check, log, leftover prompts cancelled).
 
 use super::ssh_tests::{loaded, page, page_mut, pair, ssh};
-use crate::effect::Effect;
-use crate::msg::{CredentialMsg, Msg};
-use crate::ssh::{SshEffect, SshMsg};
-use crate::state::{AppState, RunningJob};
 use glowfly_core::askpass::{Prompt, Reply};
 use glowfly_core::ssh_keys::{AgentReach, AgentStatus, SshKeyPair};
+use glowfly_model::effect::ControlEffect;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{CredentialMsg, Msg};
+use glowfly_model::ssh::{SshEffect, SshMsg};
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -58,6 +59,7 @@ fn add_to_agent_is_refused_with_a_reason() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: false,
@@ -89,11 +91,11 @@ fn a_failed_add_is_logged_and_leftover_prompts_are_cancelled() {
     let mut st = with_agent(Some(running()));
     ssh(&mut st, SshMsg::AddToAgent(key().private));
     let prompt = Prompt::new("Enter passphrase for C:/h/.ssh/id_ed25519: ", None);
-    crate::update::update(&mut st, Msg::Credentials(CredentialMsg::CredentialPrompt { id: 9, prompt }), Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Credentials(CredentialMsg::CredentialPrompt { id: 9, prompt }), Instant::now());
     assert_eq!(st.askpass.queue.len(), 1, "the passphrase dialog is up");
 
     let fx = ssh(&mut st, SshMsg::AgentAdded { key: key().private, result: Err("Error loading key: incorrect passphrase".into()) });
-    assert!(fx.iter().any(|e| matches!(e, Effect::AnswerPrompt { id: 9, reply: Reply::Cancel })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Control(ControlEffect::AnswerPrompt { id: 9, reply: Reply::Cancel }))), "{fx:?}");
     assert!(st.askpass.queue.is_empty());
     let entry = st.log.last().expect("logged");
     assert_eq!(entry.text, "Could not add id_ed25519 to the SSH agent: Error loading key: incorrect passphrase");

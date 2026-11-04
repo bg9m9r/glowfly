@@ -4,14 +4,14 @@
 
 use super::selection_tests::{fixture, git, up};
 use super::tests::drive;
-use crate::effect::Effect;
-use crate::effect::SelectionEffect;
-use crate::msg::{Msg, RepoMsg, SelectionMsg};
-use crate::state::history::FileHistoryView;
-use crate::state::selection_wip::{WORKDIR_NEEDS_ONE, WorkdirCompare};
-use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::repo::{Comparison, DiffTarget, FileDiff, FileEntry};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SelectionEffect;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::selection_wip::{WORKDIR_NEEDS_ONE, WorkdirCompare};
+use glowfly_model::state::{AppState, Selection};
 
 fn compared(st: &AppState) -> &WorkdirCompare {
     match &st.session.selection {
@@ -44,11 +44,11 @@ fn entering_and_leaving_the_comparison() {
     assert_eq!(compared(&st).oid, f.c(3));
     assert_eq!(reads(&fx), [(f.c(3), 1)]);
     assert_eq!(fx.len(), 1, "{fx:?}");
-    assert!(st.session.selection.wip_shown() && st.session.selection.includes(f.c(3)));
+    assert!(st.session.wip_drawn_selected() && st.session.selection.includes(f.c(3)));
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection));
     assert_eq!(st.session.selection, Selection::Commit(f.c(3)), "Esc returns to the commit");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == f.c(3))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }) if *oid == f.c(3))));
 
     // From the commit menu, closing what showed the commit before.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
@@ -70,6 +70,7 @@ fn entering_and_leaving_the_comparison() {
     up(&mut st, Msg::Selection(SelectionMsg::ToggleWip));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     assert_eq!(st.session.selection, Selection::Wip, "Ctrl-click on the compared commit leaves the WIP row");
+    assert!(st.session.wip_drawn_selected(), "chosen: the row stays lit");
 
     // Several commits can't be compared with it.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
@@ -195,8 +196,8 @@ fn the_swapped_comparison_follows_the_working_tree() {
     assert_eq!(lines, [('-', "new")]);
     // Next file steps through the swapped list.
     let first = DiffTarget::FromWorkdir(f.c(3), "f.txt".into());
-    assert_eq!(crate::state::diff_nav::next_file(&st, &first, 1), Some(target.clone()));
-    assert_eq!(crate::state::diff_nav::next_file(&st, &DiffTarget::ToWorkdir(f.c(3), "f.txt".into()), 1), None);
+    assert_eq!(glowfly_model::state::diff_nav::next_file(&st, &first, 1), Some(target.clone()));
+    assert_eq!(glowfly_model::state::diff_nav::next_file(&st, &DiffTarget::ToWorkdir(f.c(3), "f.txt".into()), 1), None);
 
     // A status read and a refresh read the list again, still swapped.
     std::fs::write(f.dir.join("more.txt"), "more\n").unwrap();
@@ -226,7 +227,11 @@ fn retry_keeps_the_direction() {
 }
 
 fn listed_loads(fx: &[Effect]) -> Vec<Option<FileEntry>> {
-    fx.iter().filter_map(|e| if let Effect::LoadDiff { listed, .. } = e { Some(listed.clone()) } else { None }).collect()
+    fx.iter()
+        .filter_map(
+            |e| if let Effect::Diff(glowfly_model::effect::DiffEffect::Load { listed, .. }) = e { Some(listed.clone()) } else { None },
+        )
+        .collect()
 }
 
 #[test]

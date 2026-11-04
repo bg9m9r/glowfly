@@ -10,7 +10,7 @@
 use super::super::theme::color;
 use super::super::theme::tokens::radius;
 use super::button_look::{Press, Target, paint_target};
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, CornerRadius, CursorIcon, FontId, Rect, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
 /// How far a segment sits inside the track.
@@ -45,6 +45,18 @@ pub fn segmented<T: Copy + PartialEq>(ui: &mut Ui, size: ControlSize, current: T
     segmented_opts(ui, size, current, &options)
 }
 
+/// The width of a track at `size` holding segments labelled `labels`, as `segmented_opts`
+/// draws it.
+pub fn track_width(ui: &Ui, size: ControlSize, labels: &[&str]) -> f32 {
+    segment_widths(ui, size, labels).iter().sum::<f32>() + 2.0 * INSET
+}
+
+fn segment_widths(ui: &Ui, size: ControlSize, labels: &[&str]) -> Vec<f32> {
+    let m = size.metrics();
+    let font = FontId::proportional(m.text);
+    labels.iter().map(|l| ui.painter().layout_no_wrap((*l).to_owned(), font.clone(), color::text()).size().x + 2.0 * m.pad_x).collect()
+}
+
 /// Draws `options` left to right at `size` with `current` raised; returns the value of an
 /// enabled option other than `current` that was clicked. The track is filled, so Compact (quiet
 /// only) isn't a size it takes.
@@ -52,10 +64,8 @@ pub fn segmented_opts<T: Copy + PartialEq>(ui: &mut Ui, size: ControlSize, curre
     debug_assert!(size.allows_frame(), "a segmented track can't be Compact");
     let m = size.metrics();
     let font = FontId::proportional(m.text);
-    let widths: Vec<f32> = options
-        .iter()
-        .map(|o| ui.painter().layout_no_wrap(o.label.to_owned(), font.clone(), color::text()).size().x + 2.0 * m.pad_x)
-        .collect();
+    let labels: Vec<&str> = options.iter().map(|o| o.label).collect();
+    let widths = segment_widths(ui, size, &labels);
     let total = widths.iter().sum::<f32>() + 2.0 * INSET;
     let (track, track_resp) = ui.allocate_exact_size(vec2(total, m.h), Sense::hover());
     ui.painter().rect_filled(track, CornerRadius::same(m.radius), color::raised());
@@ -108,7 +118,7 @@ mod tests {
 
     #[test]
     fn a_click_on_another_option_picks_it() {
-        let mut h = crate::ui::snapshot_check::builder().with_size(vec2(300.0, 60.0)).build_ui_state(
+        let mut h = crate::snapshot_check::builder().with_size(vec2(300.0, 60.0)).build_ui_state(
             |ui, picked: &mut Vec<u8>| {
                 if let Some(v) = segmented(ui, ControlSize::Regular, 1u8, &[(1, "One", "The first"), (2, "Two", "The second")]) {
                     picked.push(v);
@@ -131,7 +141,7 @@ mod tests {
 
     #[test]
     fn a_disabled_segment_is_named_and_inert() {
-        let mut h = crate::ui::snapshot_check::builder().with_size(vec2(400.0, 60.0)).build_ui_state(
+        let mut h = crate::snapshot_check::builder().with_size(vec2(400.0, 60.0)).build_ui_state(
             |ui, picked: &mut Vec<u8>| {
                 let options = [
                     Segment::new(1u8, "One", "The first").why(Some("Not now")),
@@ -161,7 +171,7 @@ mod tests {
 
     #[test]
     fn a_disabled_ui_disables_every_segment() {
-        let mut h = crate::ui::snapshot_check::builder().with_size(vec2(300.0, 60.0)).build_ui_state(
+        let mut h = crate::snapshot_check::builder().with_size(vec2(300.0, 60.0)).build_ui_state(
             |ui, picked: &mut Vec<u8>| {
                 ui.add_enabled_ui(false, |ui| {
                     if let Some(v) = segmented(ui, ControlSize::Regular, 1u8, &[(1, "One", "The first"), (2, "Two", "The second")]) {

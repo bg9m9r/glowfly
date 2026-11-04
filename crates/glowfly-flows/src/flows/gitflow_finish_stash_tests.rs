@@ -8,14 +8,14 @@ use super::gitflow_finish::headline;
 use super::gitflow_finish_tests::{commit, exists, ready};
 use super::gitflow_tests::{cleanup, flow, git_job, job_label, last_log};
 use super::tests::{drive, finish, git};
-use crate::effect::{Effect, StashEffect};
-use crate::gitflow::GitFlowMsg;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::gitflow::FinishJob;
-use crate::state::{AppState, RunningJob};
 use git2::RepositoryState;
 use glowfly_core::gitcli::{args, run as git_run};
 use glowfly_core::gitflow::{Branches, FinishOptions, StartTips, WorkState, check_finish};
+use glowfly_model::effect::{Effect, StashEffect};
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::gitflow::FinishJob;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::{Path, PathBuf};
 
 const STASH: &str = "Auto-stash before finishing feature/login";
@@ -199,6 +199,7 @@ fn pending(st: &mut AppState, dir: &Path) {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: false,
@@ -220,7 +221,7 @@ fn headlines_skip_the_stash_command() {
     let locked = "$ git stash push -m x\nfatal: Unable to create '/r/.git/index.lock': File exists.";
     let says = headline(&mut st, false, locked).unwrap_or_default();
     assert!(
-        says.starts_with("Finish feature login didn't start: your changes couldn't be stashed: Another git program is using"),
+        says.starts_with("Finish feature login didn't start: your changes couldn't be stashed: Another Git program is using"),
         "{says}"
     );
     pending(&mut st, &dir);

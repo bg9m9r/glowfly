@@ -100,6 +100,7 @@ fn edit_window_and_help_list_their_items_in_order() {
         "---",
         "Show the welcome",
         "Tour of the main window",
+        "Getting started",
         "---",
         "Activity log",
         "Error log",
@@ -115,6 +116,10 @@ fn edit_window_and_help_list_their_items_in_order() {
         "About Glowfly…",
     ];
     assert_eq!(rows(&entries(&st, TopMenu::Help)), help);
+    let mut hidden = state();
+    hidden.settings.hints_seen.insert(crate::state::onboarding::getting_started::HIDDEN_ID.into());
+    let help_hidden: Vec<&str> = help.iter().copied().filter(|r| *r != "Getting started").collect();
+    assert_eq!(rows(&entries(&hidden, TopMenu::Help)), help_hidden, "hidden from Help");
 }
 
 #[test]
@@ -149,7 +154,7 @@ fn view_menu_lists_its_items_in_order() {
     ];
     assert_eq!(rows(&entries(&st, TopMenu::View)), want);
     let theme = rows(&submenu(&entries(&st, TopMenu::View), SubmenuKind::Theme).entries);
-    assert_eq!(theme.last().map(String::as_str), Some("Theme settings…"));
+    assert_eq!(theme.last().map(String::as_str), Some("Theme preferences…"));
     assert_eq!(theme[theme.len() - 2], "---");
 }
 
@@ -341,7 +346,7 @@ fn walk_and_take_agree() {
     st.recent = vec![glowfly_core::paths::temp_dir().join("glowfly-menu-walk")];
     let mut menus = build(&st);
     let labels: Vec<String> = items(&menus).iter().map(|it| it.label.clone()).collect();
-    assert!(labels.iter().any(|l| l == "Theme settings…") && labels.iter().any(|l| l == "Clear recent…"));
+    assert!(labels.iter().any(|l| l == "Theme preferences…") && labels.iter().any(|l| l == "Clear recent…"));
     for (k, label) in labels.iter().enumerate() {
         assert_eq!(take_item(&mut menus, k).map(|it| it.label).as_deref(), Some(label.as_str()), "item {k}");
     }

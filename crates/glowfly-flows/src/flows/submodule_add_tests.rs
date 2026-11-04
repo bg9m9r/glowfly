@@ -8,16 +8,15 @@ use super::tests::{drive, finish, scratch_repo, state};
 use super::trust_held_tests::held_repo;
 use super::trust_tests::real;
 use super::update;
-use crate::effect::{Effect, SubmoduleEffect};
-use crate::msg::{Msg, PaletteMsg, RepoMsg, TrustMsg};
-use crate::runner;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::submodules::add::{AddForm, TAB_GONE};
-use crate::state::{AppState, Modal, RunningJob};
-use crate::submodule::SubmoduleMsg;
 use git2::Oid;
 use glowfly_core::repo::{SubmoduleInfo, SubmoduleState};
 use glowfly_core::submodule_ops::add_cmd;
+use glowfly_model::effect::{Effect, SubmoduleEffect};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, TrustMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::submodules::add::{AddForm, TAB_GONE};
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::submodule::SubmoduleMsg;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -144,7 +143,9 @@ fn add_runs_the_job_and_closes() {
     filled(&mut st, "libs/lib", Some(Ok(Vec::new())));
     let fx = run(&mut st, sm(SubmoduleMsg::Add));
     match &fx[..] {
-        [Effect::RunGit { cmds, prompts: true, .. }] => assert_eq!(cmds[0], add_cmd(URL, "libs/lib", Some("dev"))),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts: true, .. })] => {
+            assert_eq!(cmds[0], add_cmd(URL, "libs/lib", Some("dev")))
+        }
         other => panic!("{other:?}"),
     }
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Add submodule libs/lib"));
@@ -175,6 +176,7 @@ fn add_waits_for_a_good_form() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,
@@ -198,15 +200,18 @@ fn add_in_an_untrusted_repository_asks_first() {
     let (mut st, dir) = held_repo("sm-add-held");
     filled(&mut st, "libs/lib", Some(Ok(Vec::new())));
     let fx = run(&mut st, sm(SubmoduleMsg::Add));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     match &st.modal {
         Some(Modal::Trust(p)) => assert_eq!(p.held.as_deref(), Some("Add submodule libs/lib")),
         _ => panic!("expected the trust prompt"),
     }
     let real = real(&st);
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
-    let gits: Vec<&Effect> = fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).collect();
-    assert!(matches!(gits[..], [Effect::RunGit { cmds, .. }] if cmds[0] == add_cmd(URL, "libs/lib", Some("dev"))), "{fx:?}");
+    let gits: Vec<&Effect> = fx.iter().filter(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))).collect();
+    assert!(
+        matches!(gits[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] if cmds[0] == add_cmd(URL, "libs/lib", Some("dev"))),
+        "{fx:?}"
+    );
     cleanup(&[&dir]);
 }
 
@@ -235,7 +240,7 @@ fn adds_a_local_repository_end_to_end() {
     f.path_edited = true;
     let fx = run(&mut st, sm(SubmoduleMsg::AddEdited));
     for e in fx {
-        let m = runner::testing::execute(e).expect("the check answers");
+        let m = glowfly_runner::testing::execute(e).expect("the check answers");
         drive(&mut st, m);
     }
     assert_eq!(form(&mut st).checked, Some(("libs/lib".into(), Ok(Vec::new()))));

@@ -3,18 +3,14 @@
 //! row's menu, with Stage folder disabled while a conflicted file is under the folder; and the
 //! messages the toggle, a folder row and its menu items send.
 
-use crate::msg::{HistoryMsg, LayoutMsg, Msg, StageMsg};
-use crate::state::file_folds::FileListId;
-use crate::state::selection::MultiSelection;
-use crate::state::{AppState, Selection};
-use crate::ui::file_menu::folder_menu::{self, FolderStage};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_details_commit::{MESSAGE, with_commit};
-use crate::ui::snapshot_tests::snapshot_tests_file_menu::menu_style;
-use crate::ui::snapshot_tests::snapshot_tests_line_counts::{lines, with_wip, write};
-use crate::ui::snapshot_tests::snapshot_tests_select::click;
-use crate::ui::snapshot_tests::{git, harness, remove_fixture, with_repo};
-use crate::ui::theme::{apply_theme, color};
+use crate::file_menu::folder_menu::{self, FolderStage};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_details_commit::{MESSAGE, with_commit};
+use crate::snapshot_tests::snapshot_tests_file_menu::menu_style;
+use crate::snapshot_tests::snapshot_tests_line_counts::{lines, with_wip, write};
+use crate::snapshot_tests::snapshot_tests_select::click;
+use crate::snapshot_tests::{git, harness, remove_fixture, with_repo};
+use crate::theme::{apply_theme, color};
 use eframe::egui::accesskit::Role;
 use eframe::egui::{self, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
@@ -22,6 +18,10 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::{FileListMode, ThemeChoice};
+use glowfly_model::msg::{HistoryMsg, LayoutMsg, Msg, StageMsg};
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -87,7 +87,9 @@ fn details_wip_tree() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("src/ui/").is_some() && h.query_by_label("notes/").is_some() && h.query_by_label("lib/").is_some());
-    assert_eq!(h.query_all_by_label(Lang::En.tr("files.tree.show_list.tip")).count(), 2, "a toggle in each header");
+    for list in ["files.tree.unstaged.show_list.name", "files.tree.staged.show_list.name"] {
+        assert!(h.query_by_label(Lang::En.tr(list)).is_some(), "a toggle in each header, named for its list");
+    }
     h.check_snapshot("details_wip_tree");
     drop(h);
     remove_fixture(&dir);
@@ -126,7 +128,7 @@ fn details_compare_tree() {
 /// A small window drawing a WIP folder row's menu body for "src", `blocked` naming why Stage
 /// folder is off.
 fn menu_harness(blocked: bool) -> Harness<'static, Vec<Msg>> {
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 160.0)).build_ui_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(440.0, 160.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());

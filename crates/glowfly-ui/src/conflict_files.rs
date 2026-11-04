@@ -11,19 +11,18 @@ use super::file_list_keys;
 use super::file_menu;
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
-use crate::msg::{ConflictMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::conflict_files::{mark_conflicted_body, restorable_paths};
-use crate::state::list_keys::FileList;
-use crate::state::path_hazards::hazard_of;
-use crate::state::tool_compare::merging;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use eframe::egui::{self, Align, Layout, Sense, vec2};
+use crate::theme::sizes::ControlSize;
+use crate::widgets::buttons;
+use crate::widgets::row_menu::RowMenuExt;
+use eframe::egui::{self, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry, Hazard, ResolvedFile, Snapshot};
+use glowfly_model::msg::{ConflictMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict_files::{mark_conflicted_body, restorable_paths};
+use glowfly_model::state::list_keys::FileList;
+use glowfly_model::state::path_hazards::hazard_of;
+use glowfly_model::state::tool_compare::merging;
 
 /// The rows of both lists and the height each may take.
 pub(super) struct Lists<'a> {
@@ -45,35 +44,42 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, lists: Lists, open: &OpenFi
     }
 }
 
-/// A list header's one action: its label, why it is off (or its tip), and what it sends.
+/// A list header's one action: its label and icon, why it is off (or its tip), and what it sends.
 struct Action<'a> {
     label: &'a str,
+    icon: Icon,
     tip: &'a str,
     why: Option<String>,
     msg: Msg,
 }
 
 /// A list header like Unstaged Files': the title with its count, and `action` at the right as a
-/// quiet button, or in a more-actions menu when the two don't fit side by side (a narrow panel,
-/// a long language).
+/// quiet Small button. Short of room it gives way as Unstaged Files' does (`header::fit`): it
+/// becomes an icon-only square, then the title is cut before its count, and last it moves into
+/// a more-actions menu.
 fn header(ui: &mut egui::Ui, t: Lang, title: String, action: Action, msgs: &mut Vec<Msg>) {
-    super::details_wip::header::frame(ui, |ui| {
-        let b = buttons::quiet(action.label).size(ControlSize::Small).enabled(action.why.is_none());
+    use super::details_wip::header;
+    header::frame(ui, |ui| {
+        let labelled = buttons::quiet(action.label).size(ControlSize::Small);
+        let fit = header::fit(header::room(ui, &title), &[labelled.desired_width(ui)], 1);
+        if fit.icons && fit.shown == 1 {
+            // The rows' actions are Regular squares at the same right edge: centre this Small one
+            // on their column.
+            ui.add_space((ControlSize::Regular.metrics().h - ControlSize::Small.metrics().h) / 2.0);
+        }
+        let b = if fit.icons { header::square(action.icon, action.label) } else { labelled };
+        let b = b.enabled(action.why.is_none());
         let b = if action.why.is_some() { b.why(action.why.as_deref()) } else { b.tip(action.tip) };
-        let font = type_scale::section(ui);
-        let title_w = ui.fonts(|f| f.layout_no_wrap(title.clone(), font, egui::Color32::PLACEHOLDER).size().x);
-        if b.desired_width(ui) + ui.spacing().item_spacing.x + title_w <= ui.available_width() {
+        if fit.shown == 1 {
             if ui.add(b).clicked() {
                 msgs.push(action.msg);
             }
         } else {
-            super::details_wip::header::more_menu(ui, t, |ui| {
+            header::more_menu(ui, t, |ui| {
                 super::common::menu_item_if(msgs, ui, action.label, action.why.as_deref(), action.msg);
             });
         }
-        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-            ui.add(egui::Label::new(type_scale::section_text(ui, title)).selectable(false).truncate());
-        });
+        header::title(ui, &title);
     });
 }
 
@@ -82,6 +88,7 @@ fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, 
     let usable: Vec<String> = rows.iter().filter(|f| !matches!(f.hazard, Some(Hazard::NotUtf8(_)))).map(|f| f.path.clone()).collect();
     let action = Action {
         label: t.tr("conflict.files.mark_all_resolved.button"),
+        icon: Icon::Check,
         tip: t.tr("conflict.files.mark_all_resolved.tip"),
         why: usable.is_empty().then(|| rows.iter().find_map(|f| f.hazard.as_ref()).map(|h| h.reason(t))).flatten(),
         msg: Msg::Conflict(ConflictMsg::MarkResolved(usable.clone())),
@@ -114,6 +121,7 @@ fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, op
     let (title, button) = (t.tr("conflict.files.mark_conflicted.title"), t.tr("conflict.files.mark_conflicted.button"));
     let action = Action {
         label: t.tr("conflict.files.mark_all_conflicted.button"),
+        icon: Icon::Undo,
         tip: t.tr("conflict.files.mark_all_conflicted.tip"),
         why: all.is_empty().then_some(why),
         msg: Msg::confirm(title, mark_conflicted_body(t, &all), button, then),

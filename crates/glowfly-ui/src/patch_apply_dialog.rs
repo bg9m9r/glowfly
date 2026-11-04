@@ -8,16 +8,16 @@ use super::dialog_frame::{Cx, Dialog, Footer};
 use super::dialog_guides;
 use super::theme::color;
 use super::widgets::buttons;
-use crate::msg::Msg;
-use crate::patch::PatchMsg;
-use crate::state::patch::apply::{ApplyForm, ApplyMode, NO_MESSAGES, NOTHING_TO_APPLY, THREE_WAY_INDEX, apply_blocked};
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::patch_ops::OnFail;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::Msg;
+use glowfly_model::patch::PatchMsg;
+use glowfly_model::state::patch::apply::{ApplyForm, ApplyMode, NO_MESSAGES, NOTHING_TO_APPLY, THREE_WAY_INDEX, apply_blocked};
 
 const BUSY: &str = "Another operation is still running.";
 

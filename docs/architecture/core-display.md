@@ -9,7 +9,7 @@ source file, update its line here.
 - `graph/lanes.rs`: the lane layout itself (`layout`), kept with where the lanes stand below the last row so `Layout::extend` lays more commits out under it.
 - `owners.rs`: which branch owns each node and lane, naming a merge's other parents from its message: `merge_names.rs`. `Owners::extend` goes on from the last row's lane owners for more rows.
 - `Snapshot::lay_out_graph` (`repo/branch_colours.rs`) lays the graph out with its owners and colours, at load and when the work tree turns clean or dirty; `Snapshot::layout_job` hands the same work to a worker (`LayoutJob`, `LayoutFit`) for a large history.
-- `branch_colour.rs`: branch colours: a branch's key (its name, without the remote), its hue slot from an FNV-1a hash of the key (main takes the trunk unless pinned), and a person's slot from their email (`person_slot`).
+- `branch_colour.rs`: branch colours: a branch's key (its name, without the remote), its hue slot from an FNV-1a hash of the key (main takes the trunk unless pinned), and a person's initials tone from their email (`person_tone`, one of eight).
 - `resolve` gives main the trunk unless pinned, holds pinned branches, keeps side-by-side branches on different hues and moves the trunk's automatic neighbours off the hues that pass for it (`Colouring::trunk_near`).
 - `Snapshot::set_colouring` recolours a loaded graph after a pin or preset change.
 
@@ -26,18 +26,30 @@ source file, update its line here.
 - `conflict_pick.rs`: what each conflict chunk resolves to (whole sides, single lines in tick order, or text typed by hand) and the file that makes, with conflict markers left for the chunks not picked yet and the clean runs between them as edited (`render`, `render_picks`).
 - `conflict_edit.rs`: the conflict view's output as editable text with each chunk's and clean run's range, and which one an edit of it falls in (`locate_edit`).
 - `conflict_restore.rs`: the picks a saved file holds, read back against the stages.
+- `whole_file/anchor.rs`: rows of the whole-file view mapped to the file lines they show and back, so a change to the open folds, which adds or removes rows, can keep the same line at the top of the viewport.
+- `whole_file/folds.rs`: folds of the whole-file view: long runs of unchanged lines away from every change, drawn as one "N unchanged lines" row until the user opens them.
 
 ## Syntax highlighting
 
 - `highlight.rs`, `highlight/`: syntax highlighting of diff lines (syntect), as token kinds; whole files too (`highlight_file`, for blame).
 - `memo.rs`: parse checkpoints a reload of the same file resumes from: content-defined chunks with their start and end states.
-- `highlight/syntaxes.rs`: the syntax definitions, loaded once (immutable, see Rules).
+- `highlight/syntaxes.rs`: the syntax definitions for detection, loaded once (immutable, see Rules).
+- `highlight/grammars.rs`: the copy of the syntax set parsing runs on, dropped with its compiled regexes after 3 idle minutes (`Holder`).
+- `highlight/context.rs`: the old file's lines before a diff's hunks, so each hunk can be parsed from the state those lines leave (a hunk that starts inside a block comment is then colored as a comment).
+- `highlight/gaps.rs`: syntax spans for the unchanged lines between hunks, when the hunk view fills them in: the old file parsed from its first line, so a run inside a block comment opened earlier is colored as one.
+- `highlight/header.rs`: the function context in hunk headers: the text git adds after the closing `@@` (the nearest line above the hunk that looks like a definition, e.g. `fn greet(name: &str) {`).
+- `highlight/linguist.rs`: language overrides: names from a `.gitattributes` `linguist-language` value mapped to the bundled syntaxes, and the `SyntaxHint` the highlighter takes.
+- `highlight/reuse.rs`: what a reload can take over from the diff shown before: the exact spans of unchanged hunks, provisional spans for lines whose text appeared before, hunk-header spans by their function context's text, and parse checkpoints (`memo`) to resume an in-context parse from.
 
 ## Previews
 
 - `preview_image.rs`: decoding a PNG, JPEG, GIF, WebP or BMP (an animation's first frame), shared by the binary diff's preview and the file history's File view.
-- `preview_image.rs` bounds dimensions and allocation, reads the format from the content, and scales down to at most 1024 px a side for the diff (`decode`) or 2048 for the File view (`decode_sized`, which says why an image can't be shown); it also says which paths count as images.
+- `preview_svg.rs` (tests in `preview_svg_tests.rs`): an SVG drawn by resvg for the diff's preview, its longer side at 1024 px; `<image>` hrefs other than `data:` are refused and flagged (`linked`), and text is set only in the bundled fonts.
+- `preview_svg_budget.rs`: the SVG preview's budget: refuses drawings whose filters (morphology radius, turbulence octaves, convolution size, primitive count, total pixel work) or stacked layers cost too much.
+- `bundled_fonts.rs`: the bytes of the fonts in `assets/fonts/`, shared by the interface's font setup and the SVG preview.
+- `preview_image.rs` bounds dimensions, pixel count (64 Mpx) and allocation, scales from the decoded buffer without a whole copy, reads the format from the content, and scales down to at most 1024 px a side for the diff (`decode`) or 2048 for the File view (`decode_sized`, which says why an image can't be shown); it also says which paths count as images.
 - `markdown.rs`: Markdown parsed with pulldown-cmark into blocks and styled runs, for pull request and issue bodies and the file history's File view preview: HTML dropped, images as alt-text links, bare https links, nesting capped, nothing over 512 KB. Pure.
+- `hex_rows.rs` (tests in `hex_rows_tests.rs`): a binary diff's hex rows: bytes compared by position, rows same, changed or one-sided, unchanged runs folded. Pure.
 - `preview.rs`: what the File view previews, by extension (`kind`: Markdown or an image). Pure.
 
 ## Search

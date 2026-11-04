@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::{AppState, PrefPage};
@@ -37,7 +38,7 @@ fn with_diff() -> AppState {
 }
 
 fn only_saves(fx: &[Effect]) -> bool {
-    !fx.is_empty() && fx.iter().all(|e| matches!(e, Effect::SaveSettings(_)))
+    !fx.is_empty() && fx.iter().all(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 #[test]
@@ -48,7 +49,7 @@ fn editor_settings_save_once() {
     st.settings.diff_line_numbers = false;
     st.settings.diff_word_highlights = false;
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
-    let [Effect::SaveSettings(s)] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
+    let [Effect::Save(SaveEffect::Settings(s))] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
     assert_eq!((s.diff_font_size, s.tab_size, s.diff_line_numbers, s.diff_word_highlights), (16.0, 8, false, false));
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty(), "nothing changed since the save");
 }

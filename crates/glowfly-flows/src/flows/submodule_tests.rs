@@ -5,18 +5,17 @@
 use super::tests::same_place;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind, SubmoduleEffect};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::runner;
-use crate::state::submodules::update_args;
-use crate::state::{AppState, Modal, RunningJob};
-use crate::submodule::SubmoduleMsg;
 use git2::Oid;
 use glowfly_core::repo::{SubmoduleInfo, SubmoduleState};
 use glowfly_core::undo::Action;
+use glowfly_model::effect::{Effect, LoadKind, SubmoduleEffect};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::submodules::update_args;
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::submodule::SubmoduleMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -54,8 +53,13 @@ fn open(path: &str) -> Msg {
 /// Runs the loads and git jobs in `fx` (and everything they lead to) to completion; the
 /// window, watcher and saving effects are skipped as in `drive`.
 fn finish(st: &mut AppState, fx: Vec<Effect>) {
-    for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadRepo { .. } | Effect::RunGit { .. })) {
-        if let Some(m) = runner::testing::execute(e) {
+    for e in fx.into_iter().filter(|e| {
+        matches!(
+            e,
+            Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }) | Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })
+        )
+    }) {
+        if let Some(m) = glowfly_runner::testing::execute(e) {
             drive(st, m);
         }
     }
@@ -91,9 +95,11 @@ fn open_submodule_in_new_tab() {
     let want = parent.join("libs").join("lib");
     let fx = update(&mut st, open(PATH), Instant::now());
     // Switching to the new tab parks the parent (watcher, title, saved tabs), then it loads.
-    let loads: Vec<&Effect> = fx.iter().filter(|e| matches!(e, Effect::LoadRepo { .. })).collect();
+    let loads: Vec<&Effect> = fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).collect();
     match &loads[..] {
-        [Effect::LoadRepo { kind: LoadKind::Open, path, .. }] => assert!(same_place(path, &want), "{}", path.display()),
+        [Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Open, path, .. })] => {
+            assert!(same_place(path, &want), "{}", path.display())
+        }
         other => panic!("{other:?}"),
     }
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
@@ -127,7 +133,10 @@ fn initialize_runs_job_and_refreshes() {
     let (mut st, parent, lib) = opened("sm-init");
     deinit(&mut st, &parent);
     let fx = update(&mut st, msg(PATH, false), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { cmds, prompts: true, .. }] if *cmds == vec![update_args(PATH)]), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts: true, .. })] if *cmds == vec![update_args(PATH)]),
+        "{fx:?}"
+    );
     assert!(st.modal.is_none());
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Initialize submodule libs/lib"));
     finish(&mut st, fx);
@@ -184,10 +193,10 @@ fn status_reload_refreshes_submodules() {
     git(&dir, &["commit", "-q", "-am", "inside"]);
     assert_eq!(sub(&st).state, SubmoduleState::InSync);
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadStatus { submodules: true, .. }]), "{fx:?}");
-    let loaded = fx.into_iter().filter_map(runner::testing::execute).collect::<Vec<_>>();
+    assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { submodules: true, .. })]), "{fx:?}");
+    let loaded = fx.into_iter().filter_map(glowfly_runner::testing::execute).collect::<Vec<_>>();
     let fx: Vec<Effect> = loaded.into_iter().flat_map(|m| update(&mut st, m, Instant::now())).collect();
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "{fx:?}");
     assert_eq!(sub(&st).state, SubmoduleState::OutOfSync);
     cleanup(&[&parent, &lib]);
 }
@@ -257,7 +266,7 @@ fn checked_submodule_gone_or_unreadable_is_logged() {
 /// Runs the `SubmoduleEffect::Check` effects in `fx` and handles their results.
 fn finish_checks(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx.into_iter().filter(|e| matches!(e, Effect::Submodule(SubmoduleEffect::Check { .. }))) {
-        if let Some(m) = runner::testing::execute(e) {
+        if let Some(m) = glowfly_runner::testing::execute(e) {
             drive(st, m);
         }
     }
@@ -286,6 +295,7 @@ fn update_blocked_cases() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

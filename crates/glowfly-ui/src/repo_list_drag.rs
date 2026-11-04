@@ -8,8 +8,8 @@
 
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
-use crate::msg::{GroupMsg, Msg};
 use eframe::egui::{CursorIcon, Id, PointerButton, Rect, Response, Sense, Stroke, Ui, WidgetInfo, WidgetType};
+use glowfly_model::msg::{GroupMsg, Msg};
 use std::path::PathBuf;
 
 /// One section's rows as drawn: the group (None: the ungrouped Favorites), and each favorite's

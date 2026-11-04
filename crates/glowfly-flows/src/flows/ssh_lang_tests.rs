@@ -3,12 +3,12 @@
 //! dialog's are in `ssh_keygen_tests`.)
 
 use super::ssh_tests::{loaded, page, page_mut, pair, ssh};
-use crate::ssh::SshMsg;
-use crate::state::AppState;
-use crate::state::ssh_service::{UploadForm, UploadState, already_note, fallback_note};
-use crate::state::ssh_use::{add_blocked, not_trusted, use_blocked};
 use glowfly_core::forge::{Account, Provider};
 use glowfly_core::i18n::Lang;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::ssh_service::{UploadForm, UploadState, already_note, fallback_note};
+use glowfly_model::state::ssh_use::{add_blocked, not_trusted, use_blocked};
 
 const DE: Lang = Lang::De;
 const EN: Lang = Lang::En;
@@ -35,9 +35,9 @@ fn which_key_refusals_are_translated() {
     assert_eq!(use_blocked(p, true, false, DE), Some(agent_on));
     assert_eq!(use_blocked(p, false, true, DE), Some(DE.tr("prefs.ssh.which.no_repo.tip")));
     assert_ne!(not_trusted(DE), not_trusted(EN));
-    let busy = crate::state::ssh::SshPage { choice_busy: true, ..Default::default() };
+    let busy = glowfly_model::state::ssh::SshPage { choice_busy: true, ..Default::default() };
     assert_eq!(use_blocked(&busy, false, false, DE), Some(DE.tr("prefs.ssh.which.busy.tip")));
-    let reading = crate::state::ssh::SshPage::default();
+    let reading = glowfly_model::state::ssh::SshPage::default();
     assert_eq!(use_blocked(&reading, false, false, DE), Some(DE.tr("prefs.ssh.which.reading.tip")));
 }
 

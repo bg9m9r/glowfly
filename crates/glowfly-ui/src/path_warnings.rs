@@ -4,11 +4,11 @@
 
 use super::theme::color;
 use super::widgets::banner::{self, BannerKind};
-use crate::state::path_hazards::warnings;
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{FileEntry, Snapshot};
+use glowfly_model::state::path_hazards::warnings;
 
 /// The banner above the working-tree lists, when there is something to say.
 pub(super) fn banner(ui: &mut egui::Ui, t: Lang, snap: &Snapshot) {

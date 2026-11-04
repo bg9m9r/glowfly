@@ -3,21 +3,21 @@
 //! leaves (hovered, with its tooltip, and clicked). Shares the fixture repository and renderer
 //! with `snapshot_tests`.
 
-use crate::keymap::BindingId;
-use crate::keymap::KeyAction;
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::AppState;
-use crate::state::layout::{Panel, ToolView};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::harness;
-use crate::ui::snapshot_tests::snapshot_tests_blame::with_blame;
-use crate::ui::snapshot_tests::snapshot_tests_history::with_folder;
-use crate::ui::snapshot_tests::{reload, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::harness;
+use crate::snapshot_tests::snapshot_tests_blame::with_blame;
+use crate::snapshot_tests::snapshot_tests_history::with_folder;
+use crate::snapshot_tests::{reload, remove_fixture, with_repo};
 use eframe::egui::{self, containers::panel::PanelState};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::{Panel, ToolView};
 use std::path::PathBuf;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -43,15 +43,15 @@ fn layout_details_rail_blame() {
     h.check_snapshot("layout_details_rail_blame");
     assert!(drawn(&h, "detail").is_none(), "no full details panel");
     let rail = drawn(&h, "detail-rail").expect("the rail");
-    assert_eq!(rail.width(), 44.0);
+    assert_eq!(rail.width(), 36.0);
     assert!(h.query_by_label("2 changed files").is_some(), "the change count");
-    h.get_by_label("Expand the commit panel").click();
+    h.get_by_label("Show changes and commit").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Layout(LayoutMsg::ExpandDetails))));
     h.get_by_label("2 changed files").click();
     h.run();
     assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Layout(LayoutMsg::ExpandDetails))).count(), 2, "the count expands too");
-    h.get_by_label("Go to the commit message").click();
+    h.get_by_label("Commit…").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Shortcut(KeyAction::FocusMessage))));
     // Nothing above was applied (the harness only collects messages): still a rail.
@@ -67,7 +67,7 @@ fn layout_details_rail_folder_history_light() {
     h.run();
     // The rail beside the folder history (the same window as `folder_history`).
     assert!(drawn(&h, "detail").is_none());
-    assert_eq!(drawn(&h, "detail-rail").expect("the rail").width(), 44.0);
+    assert_eq!(drawn(&h, "detail-rail").expect("the rail").width(), 36.0);
     // The fixture's edited README.
     assert!(h.query_by_label("1 changed file").is_some());
     drop(h);
@@ -82,7 +82,7 @@ fn layout_details_rail_expanded() {
     h.run();
     h.check_snapshot("layout_details_rail_expanded");
     assert!(drawn(&h, "detail").is_some(), "the full panel is back");
-    assert!(h.query_by_label("Expand the commit panel").is_none());
+    assert!(h.query_by_label("Show changes and commit").is_none());
     drop(h);
     remove_fixture(&dir);
 }
@@ -94,7 +94,7 @@ fn layout_details_hidden_in_blame() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("layout_details_hidden_in_blame");
-    assert!(h.query_by_label("Expand the commit panel").is_none(), "no rail");
+    assert!(h.query_by_label("Show changes and commit").is_none(), "no rail");
     h.get_by_label("Show commit details panel").click();
     h.run();
     let want = LayoutMsg::SetPanel { panel: Panel::Details, shown: true };

@@ -4,11 +4,11 @@
 use super::conflict_tests::conflicted_repo;
 use super::tests::{drive, git, state};
 use super::update;
-use crate::msg::{CommitMsg, Msg, RepoMsg};
-use crate::state::commit::commit_blocked;
-use crate::state::{AppState, CommitDraft};
 use git2::{Repository, RepositoryState};
 use glowfly_core::gitcli::{args, run};
+use glowfly_model::msg::{CommitMsg, Msg, RepoMsg};
+use glowfly_model::state::commit::commit_blocked;
+use glowfly_model::state::{AppState, CommitDraft};
 use std::path::Path;
 use std::time::Instant;
 
@@ -85,13 +85,13 @@ fn commit_blocked_rules() {
     let dir = conflicted_repo("merge-blocked");
     let mut st = opened(&dir);
     let t = st.settings.lang();
-    assert_eq!(commit_blocked(&st, false), Some(t.tr("commit.blocked.merge_conflicts")));
+    assert_eq!(commit_blocked(&st, false).as_deref(), Some(t.tr("commit.blocked.merge_conflicts")));
     // Resolved as ours: the merge's result equals HEAD, so nothing is staged.
     resolve(&mut st, &dir, "one\nours\n");
     assert!(st.snap.as_ref().unwrap().staged.is_empty());
-    assert_eq!(commit_blocked(&st, false), None, "an empty Staged list still commits a merge");
+    assert_eq!(commit_blocked(&st, false).as_deref(), None, "an empty Staged list still commits a merge");
     st.session.draft.amend = true;
-    assert_eq!(commit_blocked(&st, false), Some(t.tr("commit.blocked.amend_merge")));
+    assert_eq!(commit_blocked(&st, false).as_deref(), Some(t.tr("commit.blocked.amend_merge")));
     git(&dir, &["merge", "--abort"]);
     let _ = std::fs::remove_dir_all(&dir);
 }

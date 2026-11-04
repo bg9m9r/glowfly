@@ -3,12 +3,12 @@
 //! the autostash note. The "Edit remaining steps…" item of step 3's Continue menu is drawn by
 //! `op_steps`.
 
-use crate::msg::{Msg, RepoMsg};
-use crate::state::rebase_banner::lines;
-use crate::ui::theme::color;
+use crate::theme::color;
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::RebaseProgress;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::rebase_banner::lines;
 
 /// The lines under the title: where the rebase stopped (the SHA a link to it), a failed
 /// command, and the autostash note; also under the WIP panel's step heading (`op_steps`).

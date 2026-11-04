@@ -9,16 +9,16 @@ use super::pane_focus::{focused_pane, graph_id};
 use super::snapshot_tests::{keys_harness, remove_fixture};
 use super::snapshot_tests_line_counts::with_wip;
 use super::snapshot_tests_wip_keys::H;
-use crate::keymap::KeyAction;
-use crate::msg::{Msg, RepoMsg, SelectionMsg};
-use crate::state::graph_rows::{DisplayRow, GraphRows};
-use crate::state::layout::Pane;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Key, Modifiers, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget, RefKind};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::graph_rows::{DisplayRow, GraphRows};
+use glowfly_model::state::layout::Pane;
 use std::time::Instant;
 
 /// The pane keys' modifier: Alt, Control on macOS.
@@ -35,7 +35,7 @@ fn press(h: &mut H, mods: Modifiers, key: Key) -> Vec<Msg> {
     let sent = std::mem::take(&mut h.state_mut().1);
     for m in &sent {
         if let Msg::Shortcut(a @ (KeyAction::FocusPane(_) | KeyAction::OpenDetails)) = m {
-            crate::update::update(&mut h.state_mut().0, Msg::Shortcut(*a), Instant::now());
+            glowfly_model::update::update(&mut h.state_mut().0, Msg::Shortcut(*a), Instant::now());
         }
     }
     h.run_ok();
@@ -63,10 +63,10 @@ fn each_pane_key_lands_the_focus_in_its_pane() {
     assert_eq!(focused(&h), Some(graph_id()), "the graph is the central view");
     assert_eq!(focused_pane(&h.ctx), Some(Pane::Central));
     pane_key(&mut h, 3);
-    assert_eq!(focused(&h), Some(crate::ui::wip_keys::list_id(false)), "the details panel's first list: Unstaged Files");
+    assert_eq!(focused(&h), Some(crate::wip_keys::list_id(false)), "the details panel's first list: Unstaged Files");
     assert_eq!(focused_pane(&h.ctx), Some(Pane::Files));
     pane_key(&mut h, 5);
-    assert!(crate::ui::shortcuts::text_field_focused(&h.ctx), "the commit summary");
+    assert!(crate::shortcuts::text_field_focused(&h.ctx), "the commit summary");
     assert_eq!(focused_pane(&h.ctx), Some(Pane::Message));
     pane_key(&mut h, 4);
     assert_eq!(focused_pane(&h.ctx), Some(Pane::Message), "no diff is open: the focus stays");
@@ -113,7 +113,9 @@ fn selects(sent: &[Msg]) -> Vec<String> {
 
 #[test]
 fn the_graph_keeps_its_keys_after_a_click_on_a_button() {
-    let (st, dir) = with_wip(ThemeChoice::Dark, "pane-keys-stage-all");
+    let (mut st, dir) = with_wip(ThemeChoice::Dark, "pane-keys-stage-all");
+    // The WIP row chosen (lit), so the keys move from it.
+    st.session.wip_lit = true;
     let first = st.snap.as_ref().unwrap().commits[0].oid.to_string()[..7].to_owned();
     let mut h = keys_harness(st, true);
     h.run();
@@ -144,7 +146,9 @@ fn the_graph_keeps_its_keys_after_a_click_on_a_button() {
 
 #[test]
 fn graph_keys() {
-    let (st, dir) = with_wip(ThemeChoice::Dark, "pane-keys-graph");
+    let (mut st, dir) = with_wip(ThemeChoice::Dark, "pane-keys-graph");
+    // The WIP row chosen (lit), so the keys move from it.
+    st.session.wip_lit = true;
     let snap = st.snap.as_ref().unwrap();
     let short = |o: git2::Oid| o.to_string()[..7].to_owned();
     let last = short(snap.commits.last().unwrap().oid);

@@ -5,15 +5,16 @@
 use super::ssh_tests::{listing, loaded, page, page_mut, pair, run, ssh};
 use super::tests::{drive, finish, scratch_repo, state};
 use super::trust_tests::untrusted_repo;
-use crate::effect::Effect;
-use crate::msg::{Msg, PrefsMsg, RepoMsg};
-use crate::ssh::{SshEffect, SshMsg};
-use crate::state::ssh_use::{Choices, RepoTarget, not_trusted};
-use crate::state::trust::{Standing, record};
-use crate::state::{AppState, Modal, PrefPage};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoTrust;
 use glowfly_core::ssh_keys::{KeyChoice, SshKeyPair};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg};
+use glowfly_model::ssh::{SshEffect, SshMsg};
+use glowfly_model::state::ssh_use::{Choices, RepoTarget, not_trusted};
+use glowfly_model::state::trust::{Standing, record};
+use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::path::PathBuf;
 
 fn key() -> SshKeyPair {
@@ -148,7 +149,7 @@ fn turning_the_agent_on_unsets_only_glowfly_choices() {
     let mut st = chosen(KeyChoice::Key(key().private), Some((other("ssh -v"), true)));
     let fx = ssh(&mut st, SshMsg::SetUseAgent(true));
     assert!(st.settings.use_ssh_agent);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     assert_eq!(sets(&fx), [(None, None)], "the foreign command stays");
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Glowfly doesn't choose a key in core.sshCommand; ssh uses your agent."));
 
@@ -159,7 +160,7 @@ fn turning_the_agent_on_unsets_only_glowfly_choices() {
     st.settings.use_ssh_agent = true;
     let fx = ssh(&mut st, SshMsg::SetUseAgent(false));
     assert!(!st.settings.use_ssh_agent);
-    assert!(sets(&fx).is_empty() && fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "only the setting is saved");
+    assert!(sets(&fx).is_empty() && fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "only the setting is saved");
 }
 
 /// Opens `dir` and Preferences on the SSH page with `key()` listed, reading core.sshCommand for

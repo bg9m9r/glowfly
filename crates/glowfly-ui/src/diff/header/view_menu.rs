@@ -1,18 +1,18 @@
-//! The header's View button and its menu: the layout (Inline or Split) and what is shown (Hunks
+//! The header's View button and its menu: the layout (Inline or Split) and what is shown (Changes only
 //! or Whole file) as radio groups under their headers, Ignore whitespace and Wrap long lines as
 //! check items, and Expand all / Collapse all for the whole file's folds. The menu stays open
 //! while its settings change and closes on a click outside it or Esc.
 
 use super::controls::{self, ghost_with};
-use crate::msg::{DiffMsg, Msg};
-use crate::state::diff_header::ViewGroup;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets;
-use crate::ui::widgets::menu::{self, popup_below};
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::widgets;
+use crate::widgets::menu::{self, popup_below};
 use eframe::egui::{PopupCloseBehavior, Ui, pos2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{DiffLayout, DiffMode};
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::diff_header::ViewGroup;
 
 /// The popup's width.
 const MENU_W: f32 = 240.0;

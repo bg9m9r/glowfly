@@ -7,10 +7,10 @@
 //! caption is cut. The widest branch name is measured once per local branch list and kept in
 //! egui's temporary data under the list's hash, since a repository can have thousands.
 
-use crate::state::AppState;
-use crate::ui::theme::type_scale::{self, CAPTION};
+use crate::theme::type_scale::{self, CAPTION};
 use eframe::egui::{self, Color32, FontId, Id};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::state::AppState;
 use std::hash::{Hash, Hasher};
 
 /// The repository and branch name slots' floors and caps.

@@ -6,13 +6,14 @@
 use super::push_pr_tests::{cleanup, commit_on, with_host};
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
-use crate::msg::{ForgeMsg, Msg, RepoMsg};
-use crate::state::pr_repos::{PrRepoPick, RepoSide};
-use crate::state::push_pr::PrStart;
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::{NewPullRequest, PullRequest, Target, parse_remote};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
+use glowfly_model::state::pr_repos::{PrRepoPick, RepoSide};
+use glowfly_model::state::push_pr::PrStart;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -74,7 +75,9 @@ fn logged(st: &AppState, text: &str) -> bool {
 }
 
 fn run_git(fx: &[Effect]) -> Vec<&Vec<Vec<String>>> {
-    fx.iter().filter_map(|e| if let Effect::RunGit { cmds, .. } = e { Some(cmds) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) = e { Some(cmds) } else { None })
+        .collect()
 }
 
 fn new_pr(source: &str) -> NewPullRequest {
@@ -97,7 +100,9 @@ fn create(pr: NewPullRequest, from: &str, into: &str) -> Msg {
 fn creates(fx: &[Effect]) -> Vec<(Target, Option<Target>)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::Forge { target, call: ForgeCall::Create(pr), .. } => Some((target.clone(), pr.source_repo.clone())),
+            Effect::Network(NetworkEffect::Forge { target, call: ForgeCall::Create(pr), .. }) => {
+                Some((target.clone(), pr.source_repo.clone()))
+            }
             _ => None,
         })
         .collect()

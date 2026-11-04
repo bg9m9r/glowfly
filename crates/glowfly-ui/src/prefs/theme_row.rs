@@ -4,15 +4,15 @@
 
 use super::theme_picker::gap;
 use super::{help, row};
-use crate::msg::Msg;
-use crate::state::theme_names;
-use crate::themes::{ThemeMsg, ThemeState};
-use crate::ui::theme::type_scale;
-use crate::ui::theme::{color, custom};
-use crate::ui::widgets::buttons;
+use crate::theme::type_scale;
+use crate::theme::{color, custom};
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{BuiltinTheme, Settings, ThemeCatalog, ThemeChoice};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::theme_names;
+use glowfly_model::themes::{ThemeMsg, ThemeState};
 
 pub fn theme_row(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut Vec<Msg>) {
     let t = s.lang();
@@ -42,14 +42,17 @@ fn files(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, msgs: &mut
         ui.spacing_mut().item_spacing.x = 8.0;
         ui.label(RichText::new(t.tr("prefs.ui.theme.files.label")).size(type_scale::BODY).color(color::text()));
         let shown = selected_text(t, &s.theme, &themes.catalog);
-        egui::ComboBox::from_id_salt("theme").selected_text(shown).width(COMBO_W).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("theme").selected_text(shown).width(COMBO_W).show_ui(ui, |ui| {
             if themes.catalog.files.is_empty() {
                 ui.label(RichText::new(t.tr("prefs.ui.theme.no_files")).color(color::weak()));
             }
             for f in &themes.catalog.files {
-                ui.selectable_value(&mut s.theme, ThemeChoice::Custom(f.id.clone()), theme_names::file_entry(t, f));
+                if ui.selectable_value(&mut s.theme, ThemeChoice::Custom(f.id.clone()), theme_names::file_entry(t, f)).changed() {
+                    s.settle_contrast();
+                }
             }
         });
+        crate::access::from_label(&combo.response);
     });
     gap(ui, 8.0);
     ui.horizontal_wrapped(|ui| {

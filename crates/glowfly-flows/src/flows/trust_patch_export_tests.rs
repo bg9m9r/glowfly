@@ -5,10 +5,10 @@
 use super::tests::{git, scratch_repo, state};
 use super::trust_recheck_tests::{cleanup, prompt, recheck, sealed, trust_and_run};
 use super::trust_tests::{asking, open};
-use crate::effect::{Effect, Sealed, WaitingKind};
-use crate::msg::Msg;
-use crate::patch::{PatchEffect, PatchMsg};
 use glowfly_core::patch_ops::{ChangesRequest, PatchSource, WipScope};
+use glowfly_model::effect::{Effect, Sealed, WaitingKind};
+use glowfly_model::msg::Msg;
+use glowfly_model::patch::{PatchEffect, PatchMsg};
 use std::path::{Path, PathBuf};
 
 /// Save to `dest` from the save dialog, for every uncommitted change in `workdir`.

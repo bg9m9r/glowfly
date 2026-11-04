@@ -6,17 +6,17 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_history::with_file_view;
-use crate::msg::{JobMsg, Msg, PartialMsg};
-use crate::state::blame::BlameView;
-use crate::state::history::TextState;
-use crate::state::job_stop::{JobStop, Step};
-use crate::state::partial::{ContentPhase, ContentView, PendingContent, Sizing, Wait};
-use crate::state::{AppState, Modal, RunningJob};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::history_size::{HistorySize, SizeSource};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{JobMsg, Msg, PartialMsg};
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::history::TextState;
+use glowfly_model::state::job_stop::{JobStop, Step};
+use glowfly_model::state::partial::{ContentPhase, ContentView, PendingContent, Sizing, Wait};
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -42,13 +42,14 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
     std::mem::take(&mut h.state_mut().1)
 }
 
-fn job(label: &str) -> RunningJob {
+pub(super) fn job(label: &str) -> RunningJob {
     RunningJob {
         label: label.into(),
         workdir: None,
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -121,7 +122,7 @@ fn blame_downloading() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "partial-blame");
     st.session.blame.generation = 2;
     st.session.blame.view = Some(BlameView::loading("src/main.rs".into(), None));
-    st.job = Some(job(crate::state::partial::DOWNLOAD_LABEL));
+    st.job = Some(job(glowfly_model::state::partial::DOWNLOAD_LABEL));
     st.job_stop = Some(JobStop::default());
     st.partial.content = Some(pending(&dir, ContentView::Blame { generation: 2 }, "src/main.rs", ContentPhase::FetchingAsJob));
     let mut h = harness(st, true);
@@ -204,7 +205,7 @@ fn status_sizing() {
 fn shallow_fetch_full_confirm() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "partial-confirm");
     let size = HistorySize::Known { bytes: 2_400_000_000, source: SizeSource::Service("GitHub".into()) };
-    let (title, body, button) = crate::state::partial_confirm::confirm(&size, "origin", 1, false).unwrap();
+    let (title, body, button) = glowfly_model::state::partial_confirm::confirm(&size, "origin", 1, false).unwrap();
     let then = Box::new(Msg::Job(JobMsg::DeepenNow(glowfly_core::shallow_ops::Deepen::Full)));
     st.modal = Some(Modal::Confirm { title, body, button, then });
     let mut h = harness(st, true);

@@ -8,12 +8,12 @@ use super::dialog_guides;
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::{FolderPurpose, Msg, PrefsMsg};
-use crate::state::worktree_move::{MoveForm, UNMOVED, target_problem};
-use crate::state::worktrees::folder_warning;
-use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Id};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::{FolderPurpose, Msg, PrefsMsg};
+use glowfly_model::state::worktree_move::{MoveForm, UNMOVED, target_problem};
+use glowfly_model::state::worktrees::folder_warning;
+use glowfly_model::worktree::WorktreeMsg;
 
 /// The dialog for `form`; returns true when Cancel closes it. The folder field has the keyboard
 /// focus unless `cx.keyboard` is false (a credential prompt is open above it); Enter moves.

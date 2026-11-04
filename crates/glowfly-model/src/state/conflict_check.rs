@@ -198,7 +198,7 @@ pub fn chip_tooltip(t: Lang, report: &ConflictReport, remote: bool) -> String {
 
 /// Where the target came from, and for a remote one that its last fetched state counts. None
 /// for a branch the user picked.
-pub fn target_note(t: Lang, target: &MergeTarget, branch: &str, remote: bool) -> Option<String> {
+fn target_note(t: Lang, target: &MergeTarget, branch: &str, remote: bool) -> Option<String> {
     let args: [(&str, &dyn std::fmt::Display); 2] = [("name", &target.name), ("branch", &branch)];
     let note = match (target.kind, remote) {
         (TargetKind::Upstream, false) => t.trf("conflict_check.note.upstream", &args),

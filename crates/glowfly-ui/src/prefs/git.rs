@@ -1,18 +1,19 @@
-//! Repo > Identity and Git hooks. The fields edit the loaded git config in place; the Save /
-//! Revert bar writes them to the repository's config. The hooks page also turns git's built-in
-//! file system monitor on or off for the repository, each a job of its own.
+//! Repo > Commit identity (opening with whom the repository commits as) and Git hooks. The
+//! fields edit the loaded git config in place; the Save / Revert bar writes them to the
+//! repository's config. The hooks page also turns git's built-in file system monitor on or off
+//! for the repository, each a job of its own.
 
 use super::{help, row, text_field};
-use crate::msg::PrefsMsg;
-use crate::msg::{FolderPurpose, LoadMsg, Msg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::repo_identity::inherit_hints;
-use crate::ui::widgets::buttons;
+use crate::widgets::buttons;
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::StatusSpeedups;
 use glowfly_core::repo_identity::RepoIdentity;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::{FolderPurpose, LoadMsg, Msg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::repo_identity::inherit_hints;
 
 /// What the hooks page's file system monitor row offers.
 pub struct MonitorRow {
@@ -26,14 +27,40 @@ pub struct MonitorRow {
 /// `inherited`: the repository's identity as git last read it, so the hints name a profile's
 /// folder rule when one applies.
 pub fn identity_page(ui: &mut Ui, git: &mut GitConfigValues, inherited: Option<&RepoIdentity>, settings: &Settings) {
+    let t = settings.lang();
+    super::intro(ui, &commit_as(t, inherited, settings, git));
     let (name_hint, email_hint) = inherit_hints(inherited, settings, &git.user_name, &git.user_email);
-    row(ui, "Name", |ui| {
+    row(ui, t.tr("prefs.identity.name.label"), |ui| {
         text_field(ui, &mut git.repo_name, &name_hint);
     });
-    row(ui, "Email", |ui| {
+    row(ui, t.tr("prefs.identity.email.label"), |ui| {
         text_field(ui, &mut git.repo_email, &email_hint);
-        help(ui, "Overrides your profile for this repository only (local Git config). Leave empty to use your profile.");
+        help(ui, t.tr("prefs.identity.email.help"));
     });
+}
+
+/// "This repository commits as {name} <{email}> from profile {profile}.", from the identity git
+/// last read (the global one until it is read).
+fn commit_as(t: Lang, id: Option<&RepoIdentity>, settings: &Settings, git: &GitConfigValues) -> String {
+    use glowfly_core::repo_identity::IdentitySource;
+    let (name, email, profile) = match id {
+        Some(i) => {
+            let profile = match i.source {
+                IdentitySource::Profile(p) => settings.profile(p).map(|p| p.name.clone()),
+                _ => None,
+            };
+            (i.name.as_str(), i.email.as_str(), profile)
+        }
+        None => (git.user_name.as_str(), git.user_email.as_str(), None),
+    };
+    if name.trim().is_empty() && email.trim().is_empty() {
+        return t.tr("prefs.identity.intro.none").to_owned();
+    }
+    let (name, email) = (name.trim(), email.trim());
+    match profile {
+        Some(p) => t.trf("prefs.identity.intro.profile", &[("name", &name), ("email", &email), ("profile", &p)]),
+        None => t.trf("prefs.identity.intro", &[("name", &name), ("email", &email)]),
+    }
 }
 
 pub fn hooks_page(ui: &mut Ui, git: &mut GitConfigValues, monitor: &MonitorRow, t: Lang, msgs: &mut Vec<Msg>) {
@@ -75,4 +102,29 @@ fn monitor_row(ui: &mut Ui, on: bool, m: &MonitorRow, t: Lang, msgs: &mut Vec<Ms
         }
         help(ui, if on { t.tr("prefs.hooks.monitor.on.help") } else { t.tr("prefs.hooks.monitor.off.help") });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use glowfly_core::repo_identity::IdentitySource;
+    use glowfly_core::settings::{Profile, ProfileId};
+
+    #[test]
+    fn the_identity_page_opens_with_whom_the_repository_commits_as() {
+        let work = Profile { id: ProfileId(1), name: "Work".into(), ..Profile::default() };
+        let settings = Settings { profiles: vec![work], ..Settings::default() };
+        let git = GitConfigValues { user_name: "Ada".into(), user_email: "ada@home.example".into(), ..Default::default() };
+        let id = |source| RepoIdentity { name: "Ada L".into(), email: "ada@work.example".into(), source, ..RepoIdentity::default() };
+        let from_profile = id(IdentitySource::Profile(ProfileId(1)));
+        assert_eq!(
+            commit_as(Lang::En, Some(&from_profile), &settings, &git),
+            "This repository commits as Ada L <ada@work.example> from profile Work."
+        );
+        let global = id(IdentitySource::Elsewhere);
+        assert_eq!(commit_as(Lang::En, Some(&global), &settings, &git), "This repository commits as Ada L <ada@work.example>.");
+        assert_eq!(commit_as(Lang::En, None, &settings, &git), "This repository commits as Ada <ada@home.example>.");
+        let unset = RepoIdentity::default();
+        assert!(commit_as(Lang::En, Some(&unset), &settings, &git).starts_with("This repository has no commit identity yet."));
+    }
 }

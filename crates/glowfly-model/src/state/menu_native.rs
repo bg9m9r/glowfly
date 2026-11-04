@@ -73,7 +73,7 @@ pub struct Plan {
 }
 
 /// `c` as a key equivalent; None for a key AppKit can't show (a digit range).
-pub fn key_equivalent(c: Chord) -> Option<KeyEquivalent> {
+pub(crate) fn key_equivalent(c: Chord) -> Option<KeyEquivalent> {
     let fkey = |n: u32| char::from_u32(n).map(String::from);
     let key = match c.key {
         KeyName::Letter(l) => l.to_ascii_lowercase().to_string(),
@@ -119,7 +119,7 @@ pub fn tag(generation: u32, index: usize) -> i64 {
 }
 
 /// A tag's generation and item index.
-pub fn untag(tag: i64) -> (u32, usize) {
+pub(crate) fn untag(tag: i64) -> (u32, usize) {
     ((tag >> 32) as u32, (tag & 0xffff_ffff) as usize)
 }
 

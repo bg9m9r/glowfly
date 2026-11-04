@@ -4,16 +4,16 @@
 
 use super::super::snapshot_tests::snapshot_tests_conflict_files::{fill_lists, merging};
 use super::super::snapshot_tests::{git, harness, remove_fixture, with_repo};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::op_actions::state_actions;
-use crate::state::op_confirm::banner_msg;
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::rebase::{RebaseProgress, Stop, StopKind};
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::op_actions::state_actions;
+use glowfly_model::state::op_confirm::banner_msg;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -51,8 +51,16 @@ fn op_strip_rebase_step() {
     let snap = st.snap.as_mut().unwrap();
     snap.state = RepositoryState::RebaseInteractive;
     let stop = Stop { kind: StopKind::Edit, oid: None };
-    snap.rebase =
-        Some(RebaseProgress { step: 2, total: 4, stop, summary: String::new(), autostash: false, interactive: true, command: None });
+    snap.rebase = Some(RebaseProgress {
+        step: 2,
+        total: 4,
+        stop,
+        summary: String::new(),
+        autostash: false,
+        interactive: true,
+        command: None,
+        amends: false,
+    });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("op_strip_rebase_step");
@@ -97,7 +105,7 @@ fn abort_merge_confirm() {
     let (mut st, dir) = mid_merge("abort-merge-confirm");
     let (label, args) = state_actions(RepositoryState::Merge).unwrap()[0];
     let ask = banner_msg(&st, label, args);
-    crate::update::update(&mut st, ask, Instant::now());
+    glowfly_model::update::update(&mut st, ask, Instant::now());
     assert!(matches!(st.modal, Some(Modal::ConfirmDanger { .. })));
     let mut h = harness(st, true);
     h.run();

@@ -7,12 +7,11 @@ use super::auto_stash_flow_tests::{mine_is_back, stopped_merge};
 use super::auto_stash_tests::up;
 use super::cherry_pick_tests::feature_repo;
 use super::tests::{drive, git, skipped, state};
-use crate::effect::{Effect, StashEffect};
-use crate::msg::{Msg, RepoMsg};
-use crate::runner;
-use crate::state::auto_stash::{saved_gone, saved_left, saved_title};
-use crate::state::{AppState, Modal};
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::{Effect, StashEffect};
+use glowfly_model::msg::{AutoStashMsg, Msg, RepoMsg};
+use glowfly_model::state::auto_stash::{saved_gone, saved_left, saved_title};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -50,6 +49,16 @@ fn offered(st: &AppState) -> Option<&str> {
     }
 }
 
+/// Whether the offer's Put back and Leave in stash list send `PutBackSaved` and `LeaveSaved`
+/// for the stash in `dir`.
+fn answers_name_the_stash(st: &AppState, dir: &Path) -> bool {
+    let (wanted, oid) = (dir.to_path_buf(), glowfly_core::stash_ops::list(dir).unwrap()[0].oid);
+    let Some(Modal::ConfirmChoice { then, alt_then, .. }) = &st.modal else { return false };
+    let put_back = matches!(&**then, Msg::AutoStash(AutoStashMsg::PutBackSaved { workdir, oid: o }) if glowfly_core::paths::same_spelling(workdir, &wanted) && *o == oid);
+    let leave = matches!(&**alt_then, Msg::AutoStash(AutoStashMsg::LeaveSaved { workdir, oid: o }) if glowfly_core::paths::same_spelling(workdir, &wanted) && *o == oid);
+    put_back && leave
+}
+
 fn logged(st: &AppState, text: &str) -> bool {
     st.log.iter().any(|l| l.text == text)
 }
@@ -61,6 +70,7 @@ fn a_stopped_operation_survives_a_restart() {
     let mut st = open(&dir);
     let body = offered(&st).expect("the offer");
     assert!(body.contains(MESSAGE), "{body}");
+    assert!(answers_name_the_stash(&st, &dir), "Put back and Leave in stash list name this stash");
     drive(&mut st, Msg::ConfirmAccepted);
     mine_is_back(&st, &dir);
     assert!(!file(&dir).exists(), "the record is removed");
@@ -128,7 +138,7 @@ fn finish_naming(st: &mut AppState, fx: Vec<Effect>) -> Vec<&'static str> {
         for effect in fx {
             names.push(effect.name());
             if !skipped(&effect) {
-                queue.extend(runner::testing::execute(effect));
+                queue.extend(glowfly_runner::testing::execute(effect));
             }
         }
         let Some(m) = queue.pop() else { return names };
@@ -142,7 +152,7 @@ fn the_common_case_writes_nothing() {
     std::fs::write(dir.join("a.txt"), "one\nmine\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(up(&mut st, Msg::git("Checkout", &["checkout", "feature", "--"])).is_empty());
-    let fx = up(&mut st, Msg::AutoStash(crate::msg::AutoStashMsg::Stash));
+    let fx = up(&mut st, Msg::AutoStash(glowfly_model::msg::AutoStashMsg::Stash));
     let names = finish_naming(&mut st, fx);
     mine_is_back(&st, &dir);
     let save = Effect::Stash(StashEffect::SaveAutoStashes { cwd: dir.clone(), saved: Vec::new() }).name();

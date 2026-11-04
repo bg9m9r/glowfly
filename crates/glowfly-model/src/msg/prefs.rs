@@ -57,6 +57,16 @@ pub enum PrefsMsg {
     SetTheme(ThemeChoice),
     /// Show or hide the text under toolbar buttons (saved in settings).
     SetToolbarLabels(bool),
+    /// Accessibility's High contrast check: on switches to the high-contrast theme as dark as
+    /// the palette in effect (`dark`), off brings back the theme it replaced.
+    SetHighContrast {
+        on: bool,
+        dark: bool,
+    },
+    /// Accessibility's Show all shortcuts: the shortcut sheet over Preferences.
+    ShowShortcutSheet,
+    /// Ctrl+F under Preferences: the "Search preferences" field takes the keyboard.
+    FocusSearch,
     /// The Desktop notifications checkbox (the view only asks; update saves).
     SetDesktopNotifications(bool),
     /// The OS refused a desktop notification; `confirm` when it was the one sent on turning them on.
@@ -69,9 +79,9 @@ pub enum PrefsMsg {
         purpose: FilePurpose,
         path: Option<PathBuf>,
     },
-    SigningKeysLoaded(Result<Vec<glowfly_core::signing::SigningKey>, String>),
-    GpgKeyGenerated(Result<String, String>),
-    PublicKeyExported(Result<String, String>),
+    SigningKeysLoaded(Result<Vec<glowfly_core::signing::SigningKey>, glowfly_core::signing::KeyError>),
+    GpgKeyGenerated(Result<String, glowfly_core::signing::KeyError>),
+    PublicKeyExported(Result<String, glowfly_core::signing::KeyError>),
     /// `PrefsEffect::ExtendGpgKey` finished.
     KeyExtended(Result<(), glowfly_core::gpg_prompt::extend::ExtendFailed>),
     FolderPicked {
@@ -95,7 +105,7 @@ pub enum PrefsMsg {
     /// success, the error on the page otherwise.
     ConfigSaved {
         ticket: u64,
-        result: Result<(), String>,
+        result: Result<(), glowfly_core::identity::ConfigWriteFailed>,
     },
     /// The Save / Revert bar's Revert (or Esc): put the open page's fields back to what was loaded.
     RevertPage,
@@ -125,6 +135,9 @@ impl PrefsMsg {
             | Self::PickFile(..)
             | Self::SetTheme(..)
             | Self::SetToolbarLabels(..)
+            | Self::SetHighContrast { .. }
+            | Self::ShowShortcutSheet
+            | Self::FocusSearch
             | Self::SetDesktopNotifications(..)
             | Self::DesktopNotificationFailed { .. }
             | Self::GitConfigLoaded(..)
@@ -168,7 +181,7 @@ pub enum PaletteMsg {
     PaletteBack,
     TrackedPathsLoaded {
         generation: u64,
-        result: Result<Vec<String>, String>,
+        result: Result<Vec<String>, glowfly_core::repo::ListFilesFailed>,
     },
 }
 

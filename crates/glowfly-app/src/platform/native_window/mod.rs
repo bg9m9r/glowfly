@@ -9,8 +9,8 @@
 // Outside Windows only the facade's signatures are used.
 #![cfg_attr(not(windows), allow(dead_code))]
 
-use crate::state::window_chrome::Chrome;
-use crate::state::window_native::{BackdropSupport, CaptionButton, CaptionGeometry};
+use glowfly_model::state::window_chrome::Chrome;
+use glowfly_model::state::window_native::{BackdropSupport, CaptionButton, CaptionGeometry};
 
 #[cfg(windows)]
 mod win_proc;
@@ -26,6 +26,9 @@ pub struct NativeFrame {
     pub max_clicked: bool,
     /// The system menu was shown (it took the Alt press of Alt+Space).
     pub system_menu_shown: bool,
+    /// The system reported a settings change (WM_SETTINGCHANGE): its accessibility settings
+    /// are read again.
+    pub settings_changed: bool,
     pub support: BackdropSupport,
 }
 
@@ -36,7 +39,7 @@ pub fn mica_capable() -> bool {
         use windows::Win32::System::Registry::HKEY_LOCAL_MACHINE;
         let build =
             glowfly_core::win_registry::string(HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "CurrentBuildNumber");
-        crate::state::window_native::mica_build(build.and_then(|b| b.trim().parse().ok()))
+        glowfly_model::state::window_native::mica_build(build.and_then(|b| b.trim().parse().ok()))
     }
     #[cfg(not(windows))]
     {

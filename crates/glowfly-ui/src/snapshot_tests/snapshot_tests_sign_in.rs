@@ -2,13 +2,13 @@
 //! "Not now" buttons. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::{CredentialMsg, Msg};
-use crate::state::sign_in::SignInNeeded;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::auth_failure::AuthNeed;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{CredentialMsg, Msg};
+use glowfly_model::state::sign_in::SignInNeeded;
 
 #[test]
 fn sign_in_banner() {

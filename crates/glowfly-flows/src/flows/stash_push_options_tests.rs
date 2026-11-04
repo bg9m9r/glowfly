@@ -3,11 +3,11 @@
 
 use super::stash_push_tests::{argv, dialog, form, git_run, job_label, run, wip_repo};
 use super::tests::{drive, git, scratch_repo, state};
-use crate::msg::{JobMsg, Msg, RepoMsg, StashMsg};
-use crate::state::{AppState, Modal};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::FileEntry;
 use glowfly_core::stash_ops::StashScope;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StashMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 /// The Push message the dialog sends.
@@ -87,8 +87,8 @@ fn a_chosen_staged_rename_brings_its_old_path() {
     let fx = run(&mut st, push_with(StashScope::Files, "", &["moved.txt"], false));
     assert_eq!(git_run(&fx).0, whole);
     assert_eq!(job_label(&st), Some("Stash selected files"));
-    let recorded = |fx: &[crate::effect::Effect]| match fx {
-        [crate::effect::Effect::RunGit { record, .. }] => record.clone(),
+    let recorded = |fx: &[glowfly_model::effect::Effect]| match fx {
+        [glowfly_model::effect::Effect::Job(glowfly_model::effect::JobEffect::RunGit { record, .. })] => record.clone(),
         _ => None,
     };
     assert_eq!(recorded(&fx), Some(glowfly_core::undo::UndoKind::StashPush { replay: Some(whole.clone()) }), "redo runs both");

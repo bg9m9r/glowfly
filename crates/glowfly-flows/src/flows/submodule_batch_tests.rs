@@ -5,15 +5,15 @@
 use super::submodule_tests::{PATH, cleanup, commit_detached, deinit, last_log, opened, sub};
 use super::tests::{drive, finish, git, skipped, state};
 use super::update;
-use crate::effect::{Effect, EffectMeta, SubmoduleEffect};
-use crate::msg::{Msg, RepoMsg};
-use crate::runner;
-use crate::state::submodules::batch::CONFIRM_ALL_BUTTON;
-use crate::state::{AppState, Modal};
-use crate::submodule::{Batch, SubmoduleMsg};
 use glowfly_core::repo::SubmoduleState;
 use glowfly_core::settings::{RepoTrust, SubmoduleUpdates};
 use glowfly_core::submodule_ops::batch_update_cmds;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, EffectMeta, SubmoduleEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::submodules::batch::CONFIRM_ALL_BUTTON;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::submodule::{Batch, SubmoduleMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -26,7 +26,7 @@ fn batch(batch: Batch, confirmed: bool) -> Msg {
 pub(super) fn step(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let mut out = Vec::new();
     for e in fx.into_iter().filter(|e| !skipped(e)) {
-        if let Some(m) = runner::testing::execute(e) {
+        if let Some(m) = glowfly_runner::testing::execute(e) {
             out.extend(update(st, m, Instant::now()));
         }
     }
@@ -43,7 +43,7 @@ pub(super) fn job_cmds(st: &AppState, fx: &[Effect], label: &str) -> Option<Vec<
         return None;
     }
     fx.iter().find_map(|e| match e {
-        Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
         _ => None,
     })
 }
@@ -61,7 +61,7 @@ fn init_all_runs_one_job() {
         [Effect::Submodule(e @ SubmoduleEffect::CheckAll { batch: Batch::InitAll, .. })] => assert!(e.scope().is_some()),
         other => panic!("{other:?}"),
     }
-    let m = runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
+    let m = glowfly_runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
     let Msg::Scoped { msg, .. } = &m else { panic!("expected a scoped result") };
     assert!(matches!(&**msg, Msg::Submodule(SubmoduleMsg::CheckedAll { batch: Batch::InitAll, result: Ok(_) })));
     let fx = update(&mut st, m, Instant::now());
@@ -278,9 +278,9 @@ fn per_repository_choice_is_saved() {
     let (mut st, parent, lib) = opened("smb-choice");
     let r = real(&st);
     let fx = update(&mut st, Msg::Submodule(SubmoduleMsg::SetUpdates(SubmoduleUpdates::Always)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "{fx:?}");
     assert_eq!(st.settings.submodule_updates_for(&r), Some(true));
-    assert_eq!(crate::state::submodules::section_cx(&st).updates, SubmoduleUpdates::Always);
+    assert_eq!(glowfly_model::state::submodules::section_cx(&st).updates, SubmoduleUpdates::Always);
     update(&mut st, Msg::Submodule(SubmoduleMsg::SetUpdates(SubmoduleUpdates::FollowGlobal)), Instant::now());
     assert!(st.settings.repo_submodule_updates.is_empty());
 

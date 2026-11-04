@@ -5,16 +5,17 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::state::conflict::ConflictView;
-use crate::state::history::FileHistoryView;
-use crate::state::palette::{Items, MAX_PICK_ROWS, Mode, Palette, PaletteCommand, Pick, PickKind, row_count, shown};
-use crate::state::rebase::RebasePanel;
-use crate::state::{AppState, Modal};
 use glowfly_core::rebase::RebaseBase;
+use glowfly_core::repo::ListFilesFailed;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::palette::{Items, MAX_PICK_ROWS, Mode, Palette, PaletteCommand, Pick, PickKind, row_count, shown};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 const FILE_HISTORY: &str = "File history…";
@@ -41,7 +42,7 @@ fn pick_mut(st: &mut AppState) -> &mut Pick {
     }
 }
 
-fn loaded(st: &mut AppState, generation: u64, result: Result<Vec<String>, String>) {
+fn loaded(st: &mut AppState, generation: u64, result: Result<Vec<String>, ListFilesFailed>) {
     run(st, Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result }));
 }
 
@@ -116,7 +117,9 @@ fn file_history_enters_pick_mode() {
     assert_eq!(pick(&st).kind, PickKind::FileHistory);
     assert_eq!(pick(&st).items, Items::Loading);
     let gen_now = st.palette_gen;
-    assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { workdir, generation }] if *workdir == dir && *generation == gen_now));
+    assert!(
+        matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { workdir, generation })] if *workdir == dir && *generation == gen_now)
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -168,10 +171,12 @@ fn tracked_paths_failure_shows_and_logs() {
     enter(&mut st);
     let before = st.log.len();
     let g = st.palette_gen;
-    loaded(&mut st, g, Err("boom".into()));
-    assert_eq!(pick(&st).items, Items::Failed("boom".into()));
+    loaded(&mut st, g, Err(ListFilesFailed { said: "boom".into() }));
+    let text = "Could not list the repository's files: boom";
+    assert_eq!(pick(&st).items, Items::Failed(text.into()));
     assert_eq!(st.log.len(), before + 1);
     assert!(!st.log.last().unwrap().ok);
+    assert_eq!(st.log.last().unwrap().text, text);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     let _ = std::fs::remove_dir_all(&dir);
@@ -263,7 +268,7 @@ fn file_history_when_closed_opens_palette() {
     let (mut st, dir) = repo_with_topic("pick-closed");
     let fx = enter(&mut st);
     assert_eq!(pick(&st).kind, PickKind::FileHistory);
-    assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { .. }]));
+    assert!(matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { .. })]));
 
     st.palette = None;
     st.modal =

@@ -4,14 +4,14 @@
 
 use super::menus::{split, terminal_button};
 use super::tips;
-use crate::msg::{BranchMsg, ForgeMsg, JobMsg, Msg};
-use crate::state::toolbar_tips as rules;
-use crate::state::{AppState, ForgeState};
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::reason::{self, ItemState};
-use crate::ui::widgets::{self, Icon, tooltip::attach};
+use crate::widgets::menu::{self, separator};
+use crate::widgets::reason::{self, ItemState};
+use crate::widgets::{self, Icon, tooltip::attach};
 use eframe::egui;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::{BranchMsg, ForgeMsg, JobMsg, Msg};
+use glowfly_model::state::toolbar_tips as rules;
+use glowfly_model::state::{AppState, ForgeState};
 
 /// The pull menu's variants: the item's text, and the job's label (English: it is also log
 /// and undo text) with its arguments.
@@ -44,24 +44,46 @@ pub(super) fn pull_items(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) 
     }
 }
 
-/// The push menu's items: Publish without a remote, the pull request push with a hosting
-/// service, and Force push, destructive, so last and set apart.
+/// The push menu's items: where Push goes (`toolbar_tips::push_target`) and, with several
+/// remotes, the "Push to" submenu (`branch_menu::push_to`), or Publish without a remote; the
+/// pull request push with a hosting service; and Force push, destructive, so last and set apart.
 pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let busy = rules::busy_blocked(st);
-    if snap.remotes.is_empty() && reason::menu_button(ui, t.tr("toolbar.publish"), "", ItemState::blocked_by(busy.as_deref())).clicked() {
-        msgs.push(Msg::Publish(crate::msg::PublishMsg::PublishDialog));
+    if snap.remotes.is_empty() {
+        if reason::menu_button(ui, t.tr("toolbar.publish"), "", ItemState::blocked_by(busy.as_deref())).clicked() {
+            msgs.push(Msg::Publish(glowfly_model::msg::PublishMsg::PublishDialog));
+        }
+    } else if let Some((template, names)) = rules::push_target_parts(t, snap) {
+        let why = rules::push_blocked(st);
+        // A long branch or upstream name is cut in its middle; the whole label is its tooltip.
+        let names = names.each_ref().map(|(slot, name)| (*slot, name.as_str()));
+        let target = menu::item_named(menu::named(template, &names)).state(ItemState::blocked_by(why.as_deref()));
+        if target.show(ui).clicked() {
+            msgs.push(Msg::Job(JobMsg::Push { force: false }));
+        }
+        if let Some(b) = snap.head_info().filter(|_| snap.remotes.len() >= 2) {
+            let blocked = why.or_else(|| glowfly_model::state::branches::push_blocked(b, true));
+            crate::branch_menu::push_to(ui, t, b, snap, blocked.as_deref(), msgs);
+        }
     }
     if let Some(fs) = host {
         separator(ui);
-        crate::ui::pr_menu_items::push_pr_item(ui, t, snap, fs, st.job.is_none(), msgs);
+        crate::pr_menu_items::push_pr_item(ui, t, snap, fs, st.job.is_none(), msgs);
     }
     separator(ui);
     let force = ItemState::danger_unless(busy.as_deref());
     // Its confirmation warns plainly before overwriting the default branch or a Git Flow base.
     if reason::menu_button(ui, t.tr("toolbar.force_push"), "", force).clicked() {
-        msgs.push(crate::state::branches::push::head_force_confirm(t, snap));
+        msgs.push(glowfly_model::state::branches::push::head_force_confirm(t, snap));
     }
+}
+
+/// The head branch's (ahead, behind) counts against its upstream, with the upstream's name;
+/// None on a detached HEAD or without an upstream.
+pub(super) fn tracking(snap: &Snapshot) -> Option<(usize, usize, &str)> {
+    let b = snap.head_branch.as_ref().and_then(|_| snap.head_info())?;
+    Some((b.ahead, b.behind, b.upstream.as_deref()?))
 }
 
 /// Whether the pull request service calls them merge requests.
@@ -90,21 +112,42 @@ pub(super) fn undo(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// Pull and Push, each with its menu.
+/// Pull and Push, each with its menu, a count badge (behind its upstream on Pull, ahead of
+/// where it pushes on Push, hidden when unknown) and an accessible name that says the count.
 pub(super) fn sync(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
     let (t, keys, labels) = (st.settings.lang(), &st.keymap, st.settings.toolbar_labels);
+    let ground = super::ground(st);
+    let (_, behind, upstream) = tracking(snap).unwrap_or((0, 0, ""));
+    // Push's count is against where a plain push goes, which config may make another remote.
+    let (push_dest, ahead) = match rules::push_ahead(snap) {
+        Some((dest, n)) => (dest, n.unwrap_or(0)),
+        None => (String::new(), 0),
+    };
+    let badge = |count| Some(widgets::Badge { count, ground });
     widgets::tool_group(ui, |ui| {
-        let pull = (Icon::Pull, t.tr("toolbar.pull.button"), t.tr("toolbar.pull.name"));
+        let name = if behind > 0 {
+            t.trf("toolbar.pull.name_behind", &[("count", &behind), ("upstream", &upstream)])
+        } else {
+            t.tr("toolbar.pull.name").to_owned()
+        };
+        let pull = (Icon::Pull, t.tr("toolbar.pull.button"), name.as_str());
         let live = rules::fetch_blocked(st).is_none() || pull_variants(st).iter().any(|v| rules::pull_variant_blocked(st, v.0).is_none());
         let menu = (t.tr("toolbar.pull_menu"), 240.0, live);
-        let r = split(ui, "pull-menu", pull, rules::pull_blocked(st).is_none(), labels, menu, |ui| pull_items(ui, st, msgs));
+        let on = (rules::pull_blocked(st).is_none(), badge(behind));
+        let r = split(ui, "pull-menu", pull, on, labels, menu, |ui| pull_items(ui, st, msgs));
         if attach(r, keys, t, || tips::pull(st)).clicked() {
             msgs.push(Msg::git("Pull", &["pull", "--ff"]));
         }
         widgets::split_gap(ui);
-        let push = (Icon::Push, t.tr("toolbar.push.button"), t.tr("toolbar.push.name"));
+        let name = if ahead > 0 {
+            t.trf("toolbar.push.name_ahead", &[("count", &ahead), ("upstream", &push_dest)])
+        } else {
+            t.tr("toolbar.push.name").to_owned()
+        };
+        let push = (Icon::Push, t.tr("toolbar.push.button"), name.as_str());
         let menu = (t.tr("toolbar.push_menu"), if host.is_some() { 260.0 } else { 200.0 }, rules::busy_blocked(st).is_none());
-        let r = split(ui, "push-menu", push, rules::push_blocked(st).is_none(), labels, menu, |ui| push_items(ui, st, snap, host, msgs));
+        let on = (rules::push_blocked(st).is_none(), badge(ahead));
+        let r = split(ui, "push-menu", push, on, labels, menu, |ui| push_items(ui, st, snap, host, msgs));
         if attach(r, keys, t, || tips::push(st)).clicked() {
             msgs.push(Msg::Job(JobMsg::Push { force: false }));
         }
@@ -126,7 +169,7 @@ pub(super) fn branch(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, msgs: &m
         }
         let r = tool(ui, st, Icon::Pop, (t.tr("toolbar.pop.button"), t.tr("toolbar.pop.name")), rules::pop_blocked(st).is_none());
         if attach(r, keys, t, || tips::pop(st)).clicked() {
-            msgs.extend(crate::state::stash_confirm::pop_latest(snap, t));
+            msgs.extend(glowfly_model::state::stash_confirm::pop_latest(snap, t));
         }
     });
 }
@@ -140,11 +183,12 @@ pub(super) fn pr(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, fs: &ForgeSt
         let name =
             if merge_requests(fs) { t.trf("toolbar.pr.name_merge_request", args) } else { t.trf("toolbar.pr.name_pull_request", args) };
         // The name starts with the caption, so speech input finds the button by what it shows.
-        let pr = (Icon::PullRequest, t.tr("toolbar.pr.button"), name.as_str());
+        let caption = if merge_requests(fs) { t.tr("toolbar.pr.button_merge_request") } else { t.tr("toolbar.pr.button") };
+        let pr = (Icon::PullRequest, caption, name.as_str());
         let menu_name = if merge_requests(fs) { t.tr("toolbar.pr_menu.merge_request") } else { t.tr("toolbar.pr_menu.pull_request") };
-        let menu = (menu_name, 260.0, crate::ui::pr_menu_items::pr_menu_live(t, snap, fs, idle));
-        let r = split(ui, "pr-menu", pr, rules::pr_blocked(st).is_none(), st.settings.toolbar_labels, menu, |ui| {
-            crate::ui::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
+        let menu = (menu_name, 260.0, crate::pr_menu_items::pr_menu_live(t, snap, fs, idle));
+        let r = split(ui, "pr-menu", pr, (rules::pr_blocked(st).is_none(), None), st.settings.toolbar_labels, menu, |ui| {
+            crate::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
         });
         if attach(r, keys, t, || tips::pr(st, fs)).clicked() {
             msgs.extend(create_pr(snap));
@@ -162,7 +206,7 @@ pub(super) fn create_pr(snap: &Snapshot) -> Option<Msg> {
 pub(super) fn files(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let (t, keys) = (st.settings.lang(), &st.keymap);
     widgets::tool_group(ui, |ui| {
-        terminal_button(ui, st, st.settings.toolbar_labels, crate::ui::terminal::right_click_item(t, &st.settings), msgs);
+        terminal_button(ui, st, st.settings.toolbar_labels, crate::terminal::right_click_item(t, &st.settings), msgs);
         let r = tool(ui, st, Icon::Folder, (t.tr("toolbar.folder.button"), t.tr("toolbar.folder.name")), true);
         if attach(r, keys, t, || tips::folder(st)).clicked() {
             msgs.push(Msg::OpenFolder(snap.workdir.clone()));

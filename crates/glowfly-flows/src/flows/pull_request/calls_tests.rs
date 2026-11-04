@@ -2,17 +2,18 @@
 //! reviews and merging, with replies fed by hand (the calls themselves never run here).
 
 use super::tests::{cleanup, github, pr_target, rev, setup};
-use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use crate::flows::finish_keeping;
-use crate::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
-use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
-use crate::state::AppState;
-use crate::state::pull_request::{Page, PrAction, PrTab};
-use crate::update::update;
 use glowfly_core::forge::{
     Auth, Entry, EntryKind, MergeMethod, MergeState, Merged, PrDetail, PrPage, PrState, Provider, ReviewEvent, ReviewStyle, Target,
 };
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{Page, PrAction, PrTab};
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -36,13 +37,13 @@ pub(super) fn loads(fx: &[Effect]) -> usize {
 }
 
 pub(super) fn refreshes(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::Forge { call: ForgeCall::Refresh { .. }, .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Network(NetworkEffect::Forge { call: ForgeCall::Refresh { .. }, .. }))).count()
 }
 
 pub(super) fn git_jobs(fx: &[Effect]) -> Vec<Vec<Vec<String>>> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+            Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
             _ => None,
         })
         .collect()
@@ -99,7 +100,7 @@ pub(super) fn merged_ok(delete: bool) -> PrReply {
     PrReply::Merged { method: MergeMethod::Squash, remote: "origin".into(), source: "feature".into(), delete, delete_local: false, result }
 }
 
-pub(super) fn view(st: &AppState) -> &crate::state::pull_request::PrView {
+pub(super) fn view(st: &AppState) -> &glowfly_model::state::pull_request::PrView {
     st.session.pull_request.view.as_ref().expect("the panel is open")
 }
 
@@ -141,7 +142,7 @@ fn open_on_azure_devops_sends_no_call() {
 fn untrusted_repository_holds_the_load() {
     let (mut st, work, bare, _) = setup("prc-held", &[]);
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     let fx = run(&mut st, PullRequestMsg::Open(7));
     assert!(calls(&fx).is_empty());
     assert_eq!(view(&st).page, Page::Held);

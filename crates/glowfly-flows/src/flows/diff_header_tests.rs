@@ -1,39 +1,43 @@
 //! The header model: path parts, status and line counts, the context, the View label, the file
 //! actions and their reasons, the primary action, binary sizes and the counter.
 
-use crate::effect::Effect;
-use crate::msg::{DiffMsg, Msg, RepoMsg};
-use crate::state::diff_header::split_path;
-use crate::state::diff_header::*;
-use crate::state::diff_nav::Counter;
-use crate::state::{AppState, diff_nav};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::repo::{BinarySide, BinarySides};
 use glowfly_core::settings::Settings;
 use glowfly_core::settings::{DiffLayout, DiffMode};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg};
+use glowfly_model::state::diff_header::split_path;
+use glowfly_model::state::diff_header::*;
+use glowfly_model::state::diff_nav::Counter;
+use glowfly_model::state::{AppState, diff_nav};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::effect::SelectionEffect;
 use glowfly_core::testkit::git;
+use glowfly_model::effect::SelectionEffect;
 
 /// Runs `msg` and everything it leads to, as the app would.
 fn drive(st: &mut AppState, msg: Msg) {
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {
-        for e in crate::update::update(st, m, Instant::now()) {
-            if matches!(e, Effect::LoadDiff { .. } | Effect::LoadBinarySides { .. } | Effect::LoadRepo { .. } | Effect::LoadStatus { .. })
-                || matches!(
-                    e,
-                    Effect::LoadDetail { .. }
-                        | Effect::Selection(SelectionEffect::Compare { .. })
-                        | Effect::Selection(SelectionEffect::WorkdirCompare { .. })
-                )
-            {
-                queue.extend(crate::runner::testing::execute(e));
+        for e in glowfly_model::update::update(st, m, Instant::now()) {
+            if matches!(
+                e,
+                Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })
+                    | Effect::Diff(glowfly_model::effect::DiffEffect::BinarySides { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+            ) || matches!(
+                e,
+                Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { .. })
+                    | Effect::Selection(SelectionEffect::Compare { .. })
+                    | Effect::Selection(SelectionEffect::WorkdirCompare { .. })
+            ) {
+                queue.extend(glowfly_runner::testing::execute(e));
             }
         }
     }
@@ -93,7 +97,7 @@ fn an_unstaged_text_diff() {
     assert_eq!(m.primary, Some(Primary::Stage("src/app.txt".into())));
     assert_eq!(m.actions.open, Some(OpenAction { path: "src/app.txt".into(), missing: None }));
     assert!(m.actions.restore.is_none() && m.actions.diff_tool.is_some());
-    assert_eq!(m.view.unwrap().label(Lang::En), "Inline \u{b7} Hunks");
+    assert_eq!(m.view.unwrap().label(Lang::En), "Inline \u{b7} Changes only");
     st.settings.diff_layout = DiffLayout::Split;
     st.settings.diff_mode = DiffMode::WholeFile;
     let v = model(&st).unwrap().view.unwrap();
@@ -109,7 +113,7 @@ fn working_tree_targets() {
     let m = open(&mut st, DiffTarget::Unstaged("new.txt".into()));
     assert_eq!(m.status, Some('A'), "untracked shows as added");
     let m = open(&mut st, DiffTarget::Unstaged("gone.txt".into()));
-    assert_eq!(m.actions.open.unwrap().missing, Some(crate::state::files::NOT_IN_WORKDIR), "deleted from the working tree");
+    assert_eq!(m.actions.open.unwrap().missing, Some(glowfly_model::state::files::NOT_IN_WORKDIR), "deleted from the working tree");
     let m = open(&mut st, DiffTarget::Staged("staged.txt".into()));
     assert_eq!((m.primary, m.context), (Some(Primary::Unstage("staged.txt".into())), Context::Staged));
     assert_eq!(m.actions.open.unwrap().missing, None);
@@ -131,8 +135,8 @@ fn swapped_and_empty_tree_targets() {
     let (mut st, dir) = fixture("swapped");
     let head = head(&st);
     let short = head.to_string()[..7].to_owned();
-    drive(&mut st, Msg::Selection(crate::msg::SelectionMsg::CompareWithWorkdir(head)));
-    drive(&mut st, Msg::Selection(crate::msg::SelectionMsg::SwapCompare));
+    drive(&mut st, Msg::Selection(glowfly_model::msg::SelectionMsg::CompareWithWorkdir(head)));
+    drive(&mut st, Msg::Selection(glowfly_model::msg::SelectionMsg::SwapCompare));
     let m = open(&mut st, DiffTarget::FromWorkdir(head, "src/app.txt".into()));
     assert_eq!(m.context, Context::FromWorkdir(format!("working tree..{short}")));
     assert_eq!((m.status, m.primary), (Some('M'), None));
@@ -140,7 +144,7 @@ fn swapped_and_empty_tree_targets() {
     // Listed as added this way round: the working tree lacks it.
     let m = open(&mut st, DiffTarget::FromWorkdir(head, "gone.txt".into()));
     assert_eq!(m.status, Some('A'));
-    assert_eq!(m.actions.open.unwrap().missing, Some(crate::state::files::NOT_IN_WORKDIR));
+    assert_eq!(m.actions.open.unwrap().missing, Some(glowfly_model::state::files::NOT_IN_WORKDIR));
 
     let empty = glowfly_core::repo::empty_tree();
     let m = open(&mut st, DiffTarget::Between(empty, head, "staged.txt".into()));
@@ -180,7 +184,10 @@ fn binary_and_lfs_diffs_have_no_view_menu() {
     // While the sides load the chip shows the letter only.
     st.session.diff_preview.as_mut().unwrap().sides = None;
     assert_eq!(model(&st).unwrap().change, ChangeText::Sizes { old: None, new: None });
-    let sides = BinarySides { old: Some(BinarySide { size: 10, image: None }), new: Some(BinarySide { size: 12, image: None }) };
+    let sides = BinarySides {
+        old: Some(BinarySide { size: 10, image: None, linked: false, bytes: None }),
+        new: Some(BinarySide { size: 12, image: None, linked: false, bytes: None }),
+    };
     st.session.diff_preview.as_mut().unwrap().sides = Some(Ok(Arc::new(sides)));
     assert_eq!(model(&st).unwrap().change, ChangeText::Sizes { old: Some(10), new: Some(12) });
 
@@ -193,7 +200,7 @@ fn binary_and_lfs_diffs_have_no_view_menu() {
     let m = open(&mut st, DiffTarget::Commit(head, "staged.txt".into()));
     assert!(m.view.is_some());
     st.session.diff.lfs =
-        Some(crate::state::lfs::LfsDiffNote { target: DiffTarget::Commit(head, "staged.txt".into()), change, show_pointer: false });
+        Some(glowfly_model::state::lfs::LfsDiffNote { target: DiffTarget::Commit(head, "staged.txt".into()), change, show_pointer: false });
     assert_eq!(model(&st).unwrap().view, None, "an LFS summary");
     let _ = std::fs::remove_dir_all(&dir);
 }

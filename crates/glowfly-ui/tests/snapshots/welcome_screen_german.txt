@@ -1,13 +1,12 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
   Tab "Neuer Tab" [selected]
 Button "Tab Neuer Tab schließen"
 Button "Neuer Tab"
-Button "Öffnen…"
+Button "Repository: Öffnen…"
 Image
 Label "Glowfly"
-Label "Ein schneller, nativer Git-Client"
+Label "Deinen Verlauf klar im Blick."
 Button "Repository öffnen…"
 Label "Ein Ordner auf diesem Computer, der schon ein Git-Repository enthält."
 Button "Repository klonen…"
@@ -28,6 +27,7 @@ Button "C:\\work\\api-server"
 Button "C:\\work\\old-site"
 painted:
   "Repository"
+  "Öffnen…"
   "web-app"
   "Ctrl+Alt+1"
   "C:\\work"

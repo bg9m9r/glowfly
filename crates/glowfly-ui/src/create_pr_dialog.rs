@@ -6,21 +6,21 @@
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::widgets::{FieldGroup, TextField, buttons};
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
-use crate::msg::StackMsg;
-use crate::state::ForgeState;
-use crate::state::branches;
-use crate::state::pr_repos::{self, PrRepoPick};
-use crate::state::push_pr::{self, HostBranch};
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use glowfly_core::forge::{self, NewPullRequest, RefStyle};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::StackMsg;
+use glowfly_model::state::ForgeState;
+use glowfly_model::state::branches;
+use glowfly_model::state::pr_repos::{self, PrRepoPick};
+use glowfly_model::state::push_pr::{self, HostBranch};
 
 pub(super) struct PrForm<'a> {
     pub source: &'a mut String,
@@ -130,12 +130,12 @@ fn body(
 ) -> (bool, Vec<String>) {
     let (from, into) = (f.repos.remote_from(fs).to_owned(), f.repos.remote_into(fs).to_owned());
     if fs.pr_repos.len() >= 2 {
-        super::create_pr_repos::rows(ui, f, fs, (&from, &into), msgs);
+        super::create_pr_repos::rows(ui, t, f, fs, (&from, &into), msgs);
     } else {
         ui.horizontal(|ui| {
             ui.label(RichText::new(f.source.as_str()).font(type_scale::strong(ui, type_scale::BODY)));
             ui.label("into");
-            target_combo(ui, f);
+            target_combo(ui, t, f);
         });
     }
     // A fork remote with nothing fetched has no branches to target.
@@ -206,10 +206,11 @@ fn push_buttons(
 }
 
 /// The target branch picker; the view edits the target directly.
-pub(super) fn target_combo(ui: &mut egui::Ui, f: &mut PrForm) {
-    egui::ComboBox::from_id_salt("pr-target").selected_text(f.target.as_str()).width(200.0).show_ui(ui, |ui| {
+pub(super) fn target_combo(ui: &mut egui::Ui, t: Lang, f: &mut PrForm) {
+    let combo = egui::ComboBox::from_id_salt("pr-target").selected_text(f.target.as_str()).width(200.0).show_ui(ui, |ui| {
         for t in f.targets.iter() {
             ui.selectable_value(f.target, t.clone(), t);
         }
     });
+    crate::access::name_if_unnamed(&combo.response, t.tr("pr.create.target.name"));
 }

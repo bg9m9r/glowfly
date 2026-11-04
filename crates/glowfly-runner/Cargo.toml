@@ -33,7 +33,7 @@ notify-rust = "4"
 # its 250 ms check was reported as opened (#420).
 open = { version = "5", features = ["shellexecute-on-windows"] }
 rfd = "0.15"
-tracing = "0.1.44"
+tracing.workspace = true
 
 [dev-dependencies]
 glowfly-core = { workspace = true, features = ["testkit"] }

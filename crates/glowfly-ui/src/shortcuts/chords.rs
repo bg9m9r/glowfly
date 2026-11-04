@@ -1,8 +1,8 @@
 //! Key presses as chords, and taking a press that one of the keymap's bindings answers to out of
 //! egui's input before the views see it.
 
-use crate::keymap::{BindingId, Chord, KeyName, Keymap, Mods};
 use eframe::egui::{Event, InputState, Key, Modifiers};
+use glowfly_model::keymap::{BindingId, Chord, KeyName, Keymap, Mods};
 
 /// The keymap's name for `k`; None for keys it can't bind (F13 and up, Copy, braces…).
 /// egui's key names are the settings-file names.

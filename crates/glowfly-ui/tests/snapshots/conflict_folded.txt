@@ -1,13 +1,12 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: Merge in progress, 1 conflicted file left, 2 changed files" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
 Button "New tab"
-Button "demo"
-Button "main"
+Button "Repository: demo"
+Button "Branch: main"
 Button "Undo the last action" [disabled]
 Button "Redo the undone action" [disabled]
 Button "Pull the current branch" [disabled]
@@ -19,68 +18,76 @@ Button "Stash all changes"
 Button "Unstash the latest stash" [disabled]
 Button "Show the terminal panel"
 Button "Open the repository folder"
-Button "Open settings"
+Button "Show preferences"
 Button "Search and run commands"
 Button "Show or hide the commit search"
 Button "Show or hide the activity log"
 Button "Refresh the repository"
-Button "Show work in progress"
-Label "Merge in progress"
-Label "1 conflicted file left"
-Button "Expand the commit panel"
+Button "Commit merge" [disabled]
+Button "Abort merge"
+Label "Merging theme-tweaks into main"
+Label "· 1 conflicted file left"
+Button "Show changes and commit"
 Button "2 changed files"
-Button "Go to the commit message"
+Button "Commit…"
 Unknown "Left panel contents"
-TextInput
-Button "New branch"
+TextInput "Filter branches, pull requests and issues"
+Button "Local, 4 branches"
+Button "New branch…"
 Button "Local actions"
 Button "login-page"
-Button "✔  main"
+Button "main, checked out"
 Button "search"
 Button "theme-tweaks"
+Button "Remote, 0 remotes"
 Button "Add remote"
 Button "Remote actions"
+Button "Tags, 1 tag"
 Button "New tag"
 Button "Tags actions"
+Button "Stashes, 0 stashes"
 Button "Stash changes"
 Button "Stashes actions"
+Button "Worktrees, 0 worktrees"
 Button "Add worktree"
 Button "Worktrees actions"
+Button "Submodules, 0 submodules"
 Button "Add submodule"
 Button "Submodules actions"
 Unknown "Central view"
-Button "Close  (Esc)"
+Button "Close (Esc)"
+Button "Mark resolved" [disabled]
 Button "More conflict actions"
-Button "Save and mark resolved" [disabled]
-Label "Pick every conflict first (1 left), or use Save with markers"
-Label "1 of 2 conflicts resolved"
-Button "Next conflict (F7)"
-Label "conflict 1 of 2"
 Button "Previous conflict (Shift+F7)" [disabled]
+Label "Conflict 1 of 2"
+Button "Next conflict (F7)"
+Label "1 of 2 resolved"
 Label "settings.txt"
-Label "Merging theme-tweaks into main"
+Label "main"
+Label "theme-tweaks"
 Label "Output"
-Label "1 of 2 conflicts resolved"
 Button "Edit" [off]
 Button "Wrap lines" [off]
 Button "38 unchanged lines"
 Label "Ours"
 Label "main"
-Button "Take all"
+Button "Take every conflict from ours (main)"
 Label "Theirs"
 Label "theme-tweaks"
-Button "Take all"
-CheckBox "Take" [on]
-CheckBox "Take" [off]
-CheckBox [on]
-CheckBox [off]
+Button "Take every conflict from theirs (theme-tweaks)"
+CheckBox "Take all of conflict 1 from ours (main)" [on]
+CheckBox "Take all of conflict 1 from theirs (theme-tweaks)" [off]
+CheckBox "Take line 5 from ours (main), conflict 1" [on]
+CheckBox "Take line 5 from theirs (theme-tweaks), conflict 1" [off]
 Button "38 unchanged lines"
-CheckBox "Take" [off]
-CheckBox "Take" [off]
-CheckBox [off]
-CheckBox [off]
+CheckBox "Take all of conflict 2 from ours (main)" [off]
+CheckBox "Take all of conflict 2 from theirs (theme-tweaks)" [off]
+CheckBox "Take line 50 from ours (main), conflict 2" [off]
+CheckBox "Take line 50 from theirs (theme-tweaks), conflict 2" [off]
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "Undo"
   "Redo"
@@ -91,7 +98,7 @@ painted:
   "Unstash"
   "Terminal"
   "Folder"
-  "Settings"
+  "Preferences"
   "Commands"
   "Search"
   "Activity"
@@ -100,6 +107,7 @@ painted:
   "Filter (branches, PRs, issues)"
   "Local"
   "4"
+  "✔  main"
   "Remote"
   "0"
   "Tags"
@@ -133,6 +141,8 @@ painted:
   "49"
   "setting_49 = 49"
   "Conflict 2: pick a side above"
+  "Take all"
+  "Take all"
   "1"
   "setting_1 = 1"
   "1"
@@ -150,7 +160,9 @@ painted:
   "4"
   "setting_4 = 4"
   "Conflict 1"
+  "Take"
   "Conflict 1"
+  "Take"
   "5"
   "theme = \"dark\""
   "5"
@@ -180,7 +192,9 @@ painted:
   "49"
   "setting_49 = 49"
   "Conflict 2"
+  "Take"
   "Conflict 2"
+  "Take"
   "50"
   "font_size = 13"
   "50"
@@ -189,3 +203,7 @@ painted:
   "setting_51 = 51"
   "51"
   "setting_51 = 51"
+  "52"
+  "setting_52 = 52"
+  "52"
+  "setting_52 = 52"

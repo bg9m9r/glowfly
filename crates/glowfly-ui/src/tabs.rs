@@ -11,12 +11,13 @@
 //! repository's worktrees form a group (`state/tab_groups.rs`) marked by a colored strip along
 //! their bottom and, when everything fits at its own width, a chip naming the repository before
 //! the group's first tab (part of that tab's slot, hidden while a tab is dragged); a tab dropped
-//! outside its group takes the group.
+//! outside its group takes the group. Each tab's state slot, tooltip and accessible name come
+//! from its glance (`state::tabs::glance`): "api-server: 3 changed files, 2 behind origin/main".
 
 use super::backdrop::{self, Surface};
 use super::tab_drag::{SLIDE, Slot, drag, lefts_after};
 use super::tab_paint::{
-    CHIP_GAP, CHIP_H, LIFT, SWATCH_ROOM, TabLook, chip_room, close_hit, group_color, group_tint, paint_group_chip, paint_group_strip,
+    CHIP_GAP, CHIP_TEXT, LIFT, SWATCH_ROOM, TabLook, chip_room, close_hit, group_color, group_tint, paint_group_chip, paint_group_strip,
     paint_separator, paint_tab, tab_width,
 };
 use super::theme::branch_colours::line;
@@ -24,19 +25,21 @@ use super::theme::color;
 use super::theme::tokens::motion;
 use super::widgets::reason::{self, ItemState};
 use super::widgets::truncate::full_tip;
-use crate::msg::Msg;
-use crate::msg::TabsMsg;
-use crate::state::AppState;
-use crate::state::menu_bar::tab_name;
-use crate::state::repo_colours;
-use crate::state::tab_groups::{self, chip_rooms, new_index, shown_at};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::quiet_target::State;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::ui::widgets::tab_glyph::{self, TabGlyph};
-use eframe::egui::{self, Align, Color32, Layout, Rect, Response, Sense, WidgetInfo, WidgetType, pos2, vec2};
+use crate::theme::type_scale;
+use crate::widgets::chip::ChipSize;
+use crate::widgets::menu::separator;
+use crate::widgets::quiet_target::State;
+use crate::widgets::row_menu::RowMenuExt;
+use crate::widgets::tab_glyph::{self, TabGlyph};
+use eframe::egui::{self, Align, Color32, Layout, Rect, Response, Sense, WidgetInfo, WidgetType, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::menu_bar::tab_name;
+use glowfly_model::state::repo_colours;
+use glowfly_model::state::tab_groups::{self, chip_rooms, new_index, shown_at};
+use glowfly_model::state::tabs::glance::Mark;
 
 pub(crate) use super::tab_drag::dragging;
 
@@ -88,6 +91,14 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let font_of = |active: bool| if active { active_font.clone() } else { font.clone() };
         let measure = |i: usize| ui.painter().layout_no_wrap(name(i).to_owned(), active_font.clone(), Color32::PLACEHOLDER).size().x;
         let repo_of = |i: usize| repo_colours::tab_colour(st, i).map(color::repo_hue);
+        let glances: Vec<_> = (0..st.tabs.len()).map(|i| st.tab_glance(i)).collect();
+        let marks: Vec<_> = glances.iter().map(|g| g.mark()).collect();
+        // Only a running job's dots move; under reduce motion they stand still.
+        let pulse = (marks.contains(&Some(Mark::Running)) && !st.motion_reduced()).then(|| ui.input(|i| i.time));
+        if pulse.is_some() {
+            ui.ctx().request_repaint();
+        }
+        let described = |i: usize| glances[i].describe(t, name(i));
         let swatch_room = |i: usize| if repo_of(i).is_some() { SWATCH_ROOM } else { 0.0 };
         // A worktree group's strip and chip take its repository's colour when it has one.
         let strip_of = |first: usize, n: usize| repo_of(first).map_or_else(|| group_color(n), group_tint);
@@ -101,7 +112,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         let shown = tab_groups::shown_groups(&st.tabs, on);
         // Each shown group's name, and the chip before its first tab when everything fits.
         let group_name = |i: usize| st.tabs[i].group.as_ref().map_or("", |g| g.name.as_str());
-        let chip_font = type_scale::font(type_scale::SMALL);
+        let chip_font = type_scale::font(CHIP_TEXT);
         let measure_chip = |s: &str| ui.painter().layout_no_wrap(s.to_owned(), chip_font.clone(), Color32::PLACEHOLDER).size().x;
         let chip_widths: Vec<f32> = shown.iter().map(|(m, _)| chip_room(measure_chip(group_name(m.start)))).collect();
         let chips = chip_rooms(natural.len(), &shown, &chip_widths, needed(&natural), room);
@@ -109,7 +120,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         // A slot's tab: what is right of its chip.
         let tab_rect = |i: usize, slot: Rect| slot.with_min_x(slot.left() + chips[i]);
         let chip_rect = |i: usize, slot: Rect| {
-            Rect::from_min_size(pos2(slot.left(), slot.center().y - CHIP_H / 2.0), vec2((chips[i] - CHIP_GAP).max(0.0), CHIP_H))
+            crate::widgets::chip::rect_at(ChipSize::Badge, slot.left(), slot.center().y, (chips[i] - CHIP_GAP).max(0.0))
         };
         let strip_left = ui.cursor().left();
         // The tabs sit in one tab list, so a screen reader can say "tab 1 of 3".
@@ -124,7 +135,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                     let (rect, _) = ui.allocate_exact_size(vec2(w, height), Sense::hover());
                     (rect, ui.interact(rect, ui.id().with(("tab", i)), Sense::click_and_drag()))
                 });
-                name_tab(&r, name(i), i == st.active_tab);
+                name_tab(&r, &described(i), i == st.active_tab);
                 let close = ui.interact(close_hit(rect), r.id.with("close"), Sense::click());
                 let close_name = t.trf("tabs.close.name", &[("name", &name(i))]);
                 close.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &close_name));
@@ -137,12 +148,9 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         // branch's colour (the accent when detached or without a repository).
         let fill = backdrop::fill(st.view.backdrop, Surface::Side, color::panel());
         let band = st.snap.as_ref().and_then(|s| s.head_swatch()).map_or_else(color::accent, line);
-        let look = |i: usize, active: bool| TabLook { active, band, repo: repo_of(i), ..TabLook::quiet(fill) };
-        let (slide, fade) = if st.settings.reduce_motion {
-            (0.0, 0.0)
-        } else {
-            (motion::duration(SLIDE, ui.ctx()), motion::duration(CLOSE_FADE, ui.ctx()))
-        };
+        let look = |i: usize, active: bool| TabLook { active, band, repo: repo_of(i), mark: marks[i], pulse, ..TabLook::quiet(fill) };
+        let (slide, fade) =
+            if st.motion_reduced() { (0.0, 0.0) } else { (motion::duration(SLIDE, ui.ctx()), motion::duration(CLOSE_FADE, ui.ctx())) };
         // Lit tabs (active, hovered or pressed) get no separator beside them, and none while dragging.
         if floating.is_none() {
             let lit = |i: usize, s: &Slot| i == st.active_tab || s.r.hovered() || s.close.hovered() || s.r.is_pointer_button_down_on();
@@ -204,9 +212,12 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
                         (Some(path), None) => Some(glowfly_core::native_path::shown(path)),
                         (None, _) => None,
                     };
-                    // A cut name puts the whole name first. Over the chip, the group.
+                    // A cut name puts the whole name first, and the tab's states put it with them.
+                    // Over the chip, the group.
+                    let states = !glances[i].states(t).is_empty();
                     let tip = match group {
                         Some((members, _)) if on_chip => Some(t.trn("tabs.group_chip.tip", members.len(), &[("group", &group_name(i))])),
+                        _ if states => Some(tip.map_or_else(|| described(i), |tip| format!("{}\n{tip}", described(i)))),
                         _ => full_tip(cut.cut, name(i), tip),
                     };
                     let r = match tip {
@@ -264,10 +275,10 @@ fn name_tab(r: &Response, name: &str, active: bool) {
 /// The + after the tabs: drawn like a tab's close × (`tab_glyph`), on the same line, in its
 /// own `PLUS_W` wide, `height` tall slot, which takes the clicks; its box lights on the quiet
 /// layers and takes the focus ring.
-fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, height: f32, msgs: &mut Vec<Msg>) {
+fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &glowfly_model::keymap::Keymap, height: f32, msgs: &mut Vec<Msg>) {
     let (rect, r) = ui.allocate_exact_size(vec2(PLUS_W, height), Sense::click());
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, t.tr("tabs.new_tab.tip")));
-    let r = r.on_hover_text(keys.tip(t.tr("tabs.new_tab.tip"), crate::keymap::BindingId::NewTab));
+    let r = r.on_hover_text(keys.tip(t.tr("tabs.new_tab.tip"), glowfly_model::keymap::BindingId::NewTab));
     tab_glyph::paint_quiet(ui.painter(), rect.center(), TabGlyph::Plus, color::weak(), State::of(&r, false));
     if r.clicked() {
         msgs.push(Msg::Tabs(TabsMsg::NewTab));
@@ -281,7 +292,7 @@ fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<
     item(ui, msgs, t.tr("tabs.menu.rename"), "", no_repo, Msg::Tabs(TabsMsg::RenameTabDialog(i)));
     let path = repo_colours::tab_path(&st.tabs[i]);
     let own = path.and_then(|p| st.settings.repo_colour_for(p));
-    let grouped = st.tabs[i].path.as_deref().and_then(|p| crate::state::repo_groups::group_hue(st, p)).is_some();
+    let grouped = st.tabs[i].path.as_deref().and_then(|p| glowfly_model::state::repo_groups::group_hue(st, p)).is_some();
     super::repo_colour_menu::items(ui, t, path, (own, grouped), msgs);
     separator(ui);
     item(ui, msgs, t.tr("tabs.menu.close"), "", None, Msg::Tabs(TabsMsg::CloseTab(i)));
@@ -290,7 +301,7 @@ fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<
     let last = (i + 1 >= n).then(|| t.tr("tabs.menu.close_right.blocked"));
     item(ui, msgs, t.tr("tabs.menu.close_right"), "", last, Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
     separator(ui);
-    let reopen_key = st.keymap.hint(crate::keymap::BindingId::ReopenTab).unwrap_or_default();
+    let reopen_key = st.keymap.hint(glowfly_model::keymap::BindingId::ReopenTab).unwrap_or_default();
     let none_closed = st.closed_tabs.is_empty().then(|| t.tr("tabs.menu.reopen.blocked"));
     let r = item(ui, msgs, t.tr("tabs.menu.reopen"), reopen_key, none_closed, Msg::Tabs(TabsMsg::ReopenClosedTab));
     if let Some(closed) = st.closed_tabs.last() {
@@ -311,7 +322,7 @@ fn item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, label: &str, shortcut: &str, blo
 
 #[cfg(test)]
 mod tests {
-    use crate::state::tabs::index_after_move;
+    use glowfly_model::state::tabs::index_after_move;
 
     #[test]
     fn index_after_move_shifts_the_tabs_in_between() {

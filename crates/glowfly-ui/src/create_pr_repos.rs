@@ -4,14 +4,15 @@
 //! `update` renames the source and reloads the targets; the target branch is edited in place.
 
 use super::create_pr_dialog::{PrForm, target_combo};
-use crate::msg::{ForgeMsg, Msg};
-use crate::state::ForgeState;
-use crate::state::pr_repos::{self, RepoSide};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText};
+use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{ForgeMsg, Msg};
+use glowfly_model::state::ForgeState;
+use glowfly_model::state::pr_repos::{self, RepoSide};
 
 /// The From and Into rows for remotes `from` and `into`.
-pub(super) fn rows(ui: &mut egui::Ui, f: &mut PrForm, fs: &ForgeState, (from, into): (&str, &str), msgs: &mut Vec<Msg>) {
+pub(super) fn rows(ui: &mut egui::Ui, t: Lang, f: &mut PrForm, fs: &ForgeState, (from, into): (&str, &str), msgs: &mut Vec<Msg>) {
     // One cell per picker: nested horizontal layouts would centre the second picker lower.
     egui::Grid::new("pr-repos").num_columns(3).spacing([12.0, 8.0]).show(ui, |ui| {
         let label = ui.label("From");
@@ -20,7 +21,7 @@ pub(super) fn rows(ui: &mut egui::Ui, f: &mut PrForm, fs: &ForgeState, (from, in
         ui.end_row();
         let label = ui.label("Into");
         repo_combo(ui, "pr-into", label.id, fs, into, RepoSide::Into, msgs);
-        target_combo(ui, f);
+        target_combo(ui, t, f);
         ui.end_row();
     });
 }

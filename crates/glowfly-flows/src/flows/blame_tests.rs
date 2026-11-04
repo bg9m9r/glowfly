@@ -4,16 +4,16 @@
 use super::blame::HELD;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{BlameRequest, Effect, LoadKind};
-use crate::msg::{BlameMsg, ConflictMsg, HistoryMsg, Msg, RebaseMsg, RepoMsg, TabsMsg};
-use crate::state::blame::{BlameData, BlameView};
-use crate::state::conflict::ConflictView;
-use crate::state::history::FileHistoryView;
-use crate::state::{AppState, Modal, Selection};
 use git2::Oid;
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{self, Blame, BlameOptions, DiffTarget, FileDiff, LoadOptions};
 use glowfly_core::settings::{BlameMoves, BlamePrefs};
+use glowfly_model::effect::{BlameRequest, Effect, LoadKind};
+use glowfly_model::msg::{BlameMsg, ConflictMsg, HistoryMsg, Msg, RebaseMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::blame::{BlameData, BlameView};
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -143,7 +143,7 @@ fn select_commit_selects_on_graph_and_closes() {
     assert!(st.session.blame.view.is_none() && st.session.history.view.is_none());
     assert_eq!(st.session.selection, Selection::Commit(h));
     assert!(
-        matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == h),
+        matches!(&fx[..], [Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }), Effect::LineCounts(glowfly_model::effect::LineCountsEffect::Commit { .. })] if *oid == h),
         "{fx:?}"
     );
 

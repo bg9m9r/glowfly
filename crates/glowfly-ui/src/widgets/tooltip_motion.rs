@@ -3,7 +3,7 @@
 //! The rise is a translation of the tooltip's layer, set once a frame after everything is
 //! drawn (`animate`); egui's own area fade does the opacity.
 
-use crate::ui::theme::tokens::motion;
+use crate::theme::tokens::motion;
 use eframe::egui::{self, Context, Id, LayerId, Order, emath::TSTransform, vec2};
 
 /// How long the fade and the rise take (egui's `animation_time`).
@@ -36,7 +36,7 @@ fn key() -> Id {
 
 /// How far below its place a tooltip `age` seconds old is drawn: `RISE` at first, easing
 /// (`motion::ease`) to 0 at `FADE`; always 0 with reduced motion.
-pub fn rise(age: f32, reduce: bool) -> f32 {
+pub(crate) fn rise(age: f32, reduce: bool) -> f32 {
     if reduce || age >= FADE {
         return 0.0;
     }

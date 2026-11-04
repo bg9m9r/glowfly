@@ -6,13 +6,13 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{BranchEffect, Effect};
-use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
-use crate::state::branch_delete::{DeleteForm, Lost};
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::{BranchEffect, Effect};
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::branch_delete::{DeleteForm, Lost};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -56,7 +56,7 @@ fn press(st: &mut AppState) -> (Vec<Effect>, Vec<Vec<String>>) {
     let cmds = fx
         .iter()
         .find_map(|e| match e {
-            Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+            Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
             _ => None,
         })
         .unwrap_or_default();
@@ -153,7 +153,10 @@ fn checked_out_or_moved_branches_are_refused() {
     let at = tip(&st, "topic").unwrap();
     git(&dir, &["branch", "-f", "topic", "main"]);
     let fx = update(&mut st, Msg::Branch(BranchMsg::Delete { name: "topic".into(), tip: at, force: true }), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { expect: Some((r, o)), .. }] if r == "refs/heads/topic" && *o == at), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { expect: Some((r, o)), .. })] if r == "refs/heads/topic" && *o == at),
+        "{fx:?}"
+    );
     finish(&mut st, fx);
     assert!(tip(&st, "topic").is_some(), "the moved branch stays");
     cleanup(&dir);

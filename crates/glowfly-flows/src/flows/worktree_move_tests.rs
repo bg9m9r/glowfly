@@ -5,18 +5,18 @@
 
 use super::tests::{drive, finish, git, same_place, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::WorktreeEffect;
-use crate::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg, TabsMsg};
-use crate::runner;
-use crate::state::repo_groups::members;
-use crate::state::tabs::ClosedTab;
-use crate::state::worktree_move::{MoveForm, target_problem};
-use crate::state::worktrees::find;
-use crate::state::{AppState, Modal};
-use crate::worktree::WorktreeMsg;
 use glowfly_core::paths;
 use glowfly_core::settings::RepoGroup;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::WorktreeEffect;
+use glowfly_model::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::repo_groups::members;
+use glowfly_model::state::tabs::ClosedTab;
+use glowfly_model::state::worktree_move::{MoveForm, target_problem};
+use glowfly_model::state::worktrees::find;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -57,7 +57,7 @@ fn last_log(st: &AppState) -> String {
 fn submit(st: &mut AppState) -> Vec<Effect> {
     let fx = update(st, wt(WorktreeMsg::Move), Instant::now());
     let [Effect::Worktree(WorktreeEffect::Move(_))] = &fx[..] else { panic!("{fx:?} {:?}", st.log.last().map(|l| &l.text)) };
-    let moved = runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
+    let moved = glowfly_runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
     update(st, moved, Instant::now())
 }
 
@@ -114,9 +114,9 @@ fn a_move_retargets_tabs_and_lists() {
     form(&mut st).folder = to.display().to_string();
 
     let fx = submit(&mut st);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveTabs { .. })), "the tabs are saved");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveRecent(_))));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Tabs { .. }))), "the tabs are saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Recent(_)))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     finish(&mut st, fx);
     assert!(st.modal.is_none());
     assert!(!side.exists() && to.join("a.txt").exists());

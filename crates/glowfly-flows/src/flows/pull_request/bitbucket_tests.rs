@@ -4,11 +4,11 @@
 
 use super::calls_tests::{calls, detail, git_jobs, loads, refreshes, run, view};
 use super::tests::{cleanup, github, setup};
-use crate::msg::Msg;
-use crate::pull_request::{PrCall, PrReply, PullRequestMsg};
-use crate::state::AppState;
-use crate::update::update;
 use glowfly_core::forge::{Connection, MergeMethod, Merged, PrDetail, PrPage, Provider, ReviewEvent, ReviewStyle, Target, Vote};
+use glowfly_model::msg::Msg;
+use glowfly_model::pull_request::{PrCall, PrReply, PullRequestMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -17,7 +17,7 @@ fn cloud() -> Target {
 }
 
 /// `setup` on a repository on `host`, with pull request 7's panel open.
-fn opened(name: &str, host: Target) -> (AppState, Vec<crate::effect::Effect>, [PathBuf; 2]) {
+fn opened(name: &str, host: Target) -> (AppState, Vec<glowfly_model::effect::Effect>, [PathBuf; 2]) {
     let (mut st, work, bare, _) = setup(name, &[]);
     st.session.forge.as_mut().unwrap().host = Some(host);
     let fx = run(&mut st, PullRequestMsg::Open(7));

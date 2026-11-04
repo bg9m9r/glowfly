@@ -4,9 +4,9 @@
 //! prompt for credentials.
 
 use super::execute::{Cx, Execute};
-use crate::effect::{ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply};
-use crate::msg::{IssueMsg, Msg};
 use glowfly_core::forge::{self, Auth};
+use glowfly_model::effect::{ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply};
+use glowfly_model::msg::{IssueMsg, Msg};
 
 pub(super) fn run(e: IssueEffect) -> Msg {
     match e {
@@ -48,8 +48,8 @@ fn call(job: IssueJob) -> Msg {
 
 #[cfg(test)]
 mod tests {
-    use crate::effect::{Effect, IssueCall, IssueEffect, IssueJob, IssueRequest};
     use glowfly_core::forge::{Provider, Target};
+    use glowfly_model::effect::{Effect, IssueCall, IssueEffect, IssueJob, IssueRequest};
     use std::path::PathBuf;
 
     #[test]

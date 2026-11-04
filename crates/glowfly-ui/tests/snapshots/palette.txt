@@ -1,7 +1,7 @@
 Dialog
-  TextInput [focused]
+  TextInput "Type a command, branch or tag name" [focused]
   Label "Suggested"
-  Button "Stage all files"
+  Button "Stage all files" [selected]
   Button "Create branch at HEAD…"
   Label "All commands"
   Button "Add remote…"
@@ -46,6 +46,7 @@ Dialog
   Button "Show the welcome"
   Button "Turn off tips"
   Button "Show tips again"
+  Button "Getting started"
   Button "Take the tour"
   Button "View release notes"
   Button "Check for updates"
@@ -82,7 +83,6 @@ Dialog
   Button "Checkout tag v0.1.0"
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
-  "Type a command, branch or tag name"
   "Ctrl+Shift+S"
   "Ctrl+B"
   "Ctrl+Shift+Up"

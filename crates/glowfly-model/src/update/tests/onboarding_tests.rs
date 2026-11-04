@@ -6,10 +6,10 @@
 use super::tests::{scratch_repo, state};
 use super::update;
 use crate::effect::OsEffect;
-use crate::effect::{Effect, LoadKind};
+use crate::effect::{Effect, LoadKind, SaveEffect};
 use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
 use crate::onboarding::{OnboardingEffect, OnboardingMsg as O, StartChoice};
-use crate::state::onboarding::{SAVED_LOG, TOUR_DONE, WelcomeStep};
+use crate::state::onboarding::{SAVED_LOG, WelcomeStep};
 use crate::state::onboarding_tour::TourStep;
 use crate::state::palette::PaletteCommand as C;
 use crate::state::palette::entries;
@@ -42,7 +42,7 @@ fn step(st: &AppState) -> Option<WelcomeStep> {
 }
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 /// The first Ok line in the activity log, if any.
@@ -74,7 +74,7 @@ fn startup_opens_the_welcome_on_a_first_run() {
     assert!(matches!(fx.as_slice(), [Effect::Onboarding(OnboardingEffect::ReadIdentity { .. })]));
     let w = st.onboarding.welcome.as_ref().unwrap();
     assert_eq!(w.step, WelcomeStep::Identity);
-    assert!(w.identity.reading && w.tour_after);
+    assert!(w.identity.reading && !w.tour_after, "the tour after the welcome is opt-in");
 }
 
 #[test]
@@ -314,6 +314,12 @@ fn an_armed_tour_starts_when_a_repository_opens() {
     let dir = scratch_repo("onboarding-armed");
     let mut st = welcome(Identity::default());
     run(&mut st, O::Finish(Some(StartChoice::Open)));
+    load(&mut st, &dir, LoadKind::Open);
+    assert_eq!(st.onboarding.tour, None, "off by default");
+
+    let mut st = welcome(Identity::default());
+    st.onboarding.welcome.as_mut().unwrap().tour_after = true;
+    run(&mut st, O::Finish(Some(StartChoice::Open)));
     assert!(st.onboarding.tour_after_open);
     load(&mut st, &dir, LoadKind::Refresh);
     assert_eq!(st.onboarding.tour, None, "a refresh is not an open");
@@ -321,11 +327,6 @@ fn an_armed_tour_starts_when_a_repository_opens() {
     assert_eq!(st.onboarding.tour, Some(TourStep::Toolbar));
     assert!(!st.onboarding.tour_after_open, "once");
 
-    let mut st = welcome(Identity::default());
-    st.onboarding.welcome.as_mut().unwrap().tour_after = false;
-    run(&mut st, O::Finish(Some(StartChoice::Open)));
-    load(&mut st, &dir, LoadKind::Open);
-    assert_eq!(st.onboarding.tour, None, "the checkbox was off");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -354,7 +355,10 @@ fn tour_steps_and_resume() {
     run(&mut st, O::TourNext);
     run(&mut st, O::TourNext);
     assert_eq!((st.onboarding.tour, st.onboarding.tour_resume), (None, None));
-    assert!(st.toasts.iter().any(|t| t.text == TOUR_DONE));
+    assert!(st.toasts.iter().any(|t| t.text == Lang::En.tr("tour.done.toast")));
+    (st.settings.language, st.onboarding.tour) = ("es".into(), Some(TourStep::Palette));
+    run(&mut st, O::TourNext);
+    assert!(st.toasts.iter().any(|t| t.text == Lang::Es.tr("tour.done.toast")), "the toast follows the language");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

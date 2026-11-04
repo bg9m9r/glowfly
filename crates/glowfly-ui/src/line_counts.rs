@@ -5,9 +5,9 @@
 
 use super::common::{added_color, modified_color, removed_color};
 use super::theme::{color, contrast};
-use super::widgets;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{Context, CornerRadius, FontId, Painter, Pos2, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::repo::{ChangeCounts, LineCount};
 
@@ -153,16 +153,14 @@ pub(super) fn paint_chips(p: &Painter, x: f32, mid: f32, c: ChangeCounts) -> f32
     for (i, (text, col)) in chip_parts(c).enumerate() {
         let start = if i == 0 { right } else { right + GAP };
         let (fill, fg) = contrast::change_chip(col, &palette);
-        right = start + widgets::chip(p, start, mid, &text, fill, fg);
+        right = Chip::new(ChipSize::Badge, text).look(Look::new(fill, fg)).paint(p, start, mid).right();
     }
     right
 }
 
 /// The width `paint_chips` takes.
 pub(super) fn chips_width(ctx: &Context, c: ChangeCounts) -> f32 {
-    let widths: Vec<f32> = chip_parts(c)
-        .map(|(text, _)| ctx.fonts(|f| f.layout_no_wrap(text, type_scale::font(type_scale::CAPTION), color::text()).size().x) + 12.0)
-        .collect();
+    let widths: Vec<f32> = chip_parts(c).map(|(text, _)| Chip::new(ChipSize::Badge, text).width(ctx)).collect();
     widths.iter().sum::<f32>() + GAP * widths.len().saturating_sub(1) as f32
 }
 

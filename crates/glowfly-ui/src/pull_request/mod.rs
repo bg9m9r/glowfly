@@ -15,22 +15,26 @@ mod line_comment;
 mod merge;
 mod review;
 mod threads;
+// For the chip catalog golden (`snapshot_tests_chips.rs`).
+#[cfg(test)]
+pub(crate) use threads::chip as thread_chip;
 
 use super::UiCache;
 use super::theme::color;
-use super::widgets::{self, Icon};
-use crate::keymap::Keymap;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::{Files, PrTab, PrView, Tone};
-use crate::state::pull_request_commits::tab_label;
-use crate::state::pull_request_line_map::on_local_file;
-use crate::ui::theme::type_scale;
+use super::widgets::{self, Icon, underline_tab};
+use crate::theme::type_scale;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::text::printable;
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{Files, PrTab, PrView, Tone};
+use glowfly_model::state::pull_request_commits::tab_label;
+use glowfly_model::state::pull_request_line_map::on_local_file;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.session.pull_request.view else { return };
@@ -43,10 +47,10 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let tab = view.tab;
     ui.add_space(6.0);
     header(ui, st.settings.lang(), &st.keymap, view, msgs);
+    // The tabs draw the line under them.
     tabs(ui, view, msgs);
-    ui.separator();
     let room = ui.available_width();
-    let side = crate::ui::panel_size::inner_side(egui::SidePanel::left("pull-request-side"), crate::state::panel_layout::PR_SIDE, room)
+    let side = crate::panel_size::inner_side(egui::SidePanel::left("pull-request-side"), glowfly_model::state::panel_layout::PR_SIDE, room)
         .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::same(super::theme::spacing::PANEL_PAD)));
     let center = egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg()));
     match tab {
@@ -85,16 +89,13 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             center.show_inside(ui, |ui| {
                 if shows_file {
                     let path = st.session.diff.view.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
-                    let commented = st
-                        .session
-                        .pull_request
-                        .view
-                        .as_ref()
-                        .is_some_and(|v| on_local_file(v, &path) > 0 || crate::state::pull_request_line_comment::draft_on(v, &path));
+                    let commented = st.session.pull_request.view.as_ref().is_some_and(|v| {
+                        on_local_file(v, &path) > 0 || glowfly_model::state::pull_request_line_comment::draft_on(v, &path)
+                    });
                     if commented {
                         let room = ui.available_height();
                         let threads = egui::TopBottomPanel::bottom("pr-file-threads");
-                        crate::ui::panel_size::inner_bottom(threads, crate::state::panel_layout::PR_THREADS, room)
+                        crate::panel_size::inner_bottom(threads, glowfly_model::state::panel_layout::PR_THREADS, room)
                             .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(12, 4)))
                             .show_inside(ui, |ui| threads::file_pane(ui, st, &path, &mut cache.markdown, msgs));
                     }
@@ -118,21 +119,21 @@ fn weak_hint(ui: &mut Ui, text: &str) {
 /// page reloads.
 fn tabs(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
     ui.add_space(2.0);
-    ui.horizontal(|ui| {
-        ui.add_space(8.0);
-        let files = match &v.files {
-            Files::Loaded(c) => format!("Files changed  {}", c.comparison.files.len()),
-            _ => "Files changed".to_owned(),
-        };
-        let tabs = [(PrTab::Overview, "Overview".to_owned()), (PrTab::Commits, tab_label(v)), (PrTab::Files, files)];
-        for (tab, label) in tabs {
-            if ui.selectable_label(v.tab == tab, label).clicked() && v.tab != tab {
-                msgs.push(Msg::PullRequest(PullRequestMsg::Tab(tab)));
-            }
-        }
+    let files = match &v.files {
+        Files::Loaded(c) => format!("Files changed  {}", c.comparison.files.len()),
+        _ => "Files changed".to_owned(),
+    };
+    let tabs = [(PrTab::Overview, "Overview".to_owned()), (PrTab::Commits, tab_label(v)), (PrTab::Files, files)];
+    let reloading = |ui: &mut Ui| {
         if v.reloading {
             ui.add_space(8.0);
             ui.label(RichText::new("Updating…").color(color::weak()));
+        }
+    };
+    ui.horizontal(|ui| {
+        ui.add_space(8.0);
+        if let Some(tab) = underline_tab::row(ui, v.tab, &tabs, reloading) {
+            msgs.push(Msg::PullRequest(PullRequestMsg::Tab(tab)));
         }
     });
 }
@@ -176,16 +177,13 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &PrView, msgs: &mut Vec<Msg>) 
                 msgs.push(Msg::PullRequest(PullRequestMsg::Close));
             }
             const DRAFT: &str = "Draft";
-            let chip_w = if pr.draft {
-                ui.painter().layout_no_wrap(DRAFT.to_owned(), type_scale::font(type_scale::CAPTION), color::weak()).size().x + 12.0
-            } else {
-                0.0
-            };
+            let draft = Chip::new(ChipSize::Badge, DRAFT).look(Look::new(color::raised(), color::weak()));
+            let chip_w = if pr.draft { draft.width(ui.ctx()) } else { 0.0 };
             let no_link = format!("The service sent no link for this {}.", v.noun);
-            let lead_w = crate::ui::panel_header::text_w(ui, &v.label) + chip_w;
+            let lead_w = crate::panel_header::text_w(ui, &v.label) + chip_w;
             let open_label = t.tr("panel.header.open_in_browser");
-            let links = crate::ui::panel_header::Links { url: &pr.url, open_label, no_link: &no_link, lead_w };
-            crate::ui::panel_header::show(ui, t, keys, links, msgs);
+            let links = crate::panel_header::Links { url: &pr.url, open_label, no_link: &no_link, lead_w };
+            crate::panel_header::show(ui, t, keys, links, msgs);
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 ui.add_space(8.0);
                 let (rect, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
@@ -197,8 +195,7 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &PrView, msgs: &mut Vec<Msg>) 
                     ui.add(egui::Label::new(title).truncate());
                 });
                 if pr.draft {
-                    let (rect, _) = ui.allocate_exact_size(vec2(chip_w, 20.0), Sense::hover());
-                    widgets::chip(ui.painter(), rect.left(), rect.center().y, DRAFT, color::raised(), color::weak());
+                    draft.show(ui);
                 }
             });
         });

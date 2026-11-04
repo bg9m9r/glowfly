@@ -2,15 +2,16 @@
 //! after an amend, a stop on a conflict and what Continue and Abort do with the steps left,
 //! and every refusal.
 
-use super::tests::{drive, finish, git, scratch_repo, state};
+use super::tests::{drive, drive_seeing, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{CommitMsg, JobMsg, Msg, RebaseMsg, RepoMsg};
-use crate::state::rebase::STASH_LINE;
-use crate::state::{AppState, Modal};
 use git2::{Oid, RepositoryState};
 use glowfly_core::git_version::GitInfo;
+use glowfly_core::rebase::Outcome;
 use glowfly_core::stack::RestackScope;
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{CommitMsg, JobMsg, Msg, RebaseMsg, RepoMsg};
+use glowfly_model::state::rebase::STASH_LINE;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -82,7 +83,11 @@ fn a_restack_runs_and_undoes_as_one_entry() {
     let (mid, top) = (tip(&dir, "mid"), tip(&dir, "top"));
     let mut st = opened(&dir);
     assert!(st.snap.as_ref().unwrap().stacks.below("mid").is_some_and(|l| l.behind));
-    drive(&mut st, above_low());
+    let ran_through = |m: &Msg| {
+        matches!(m, Msg::Rebase(RebaseMsg::RestackRan { result: Ok(run), .. })
+            if matches!(run.outcome, Outcome::Finished { .. }) && run.left.is_empty())
+    };
+    assert!(drive_seeing(&mut st, above_low(), ran_through), "one job ran every step");
     assert_eq!(last_toast(&st), (true, "Restack succeeded".into()));
     let link = st.snap.as_ref().unwrap().stacks.below("mid").cloned().expect("mid is still stacked on low");
     assert!(!link.behind && link.on == "low", "{link:?}");
@@ -235,7 +240,7 @@ fn refusals_start_nothing() {
     st.git.info = None;
 
     st.snap.as_mut().unwrap().state = RepositoryState::Merge;
-    let busy = crate::state::rebase_onto::in_progress(st.settings.lang(), RepositoryState::Merge).unwrap();
+    let busy = glowfly_model::state::rebase_onto::in_progress(st.settings.lang(), RepositoryState::Merge).unwrap();
     refused(&mut st, above_low(), busy);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
 

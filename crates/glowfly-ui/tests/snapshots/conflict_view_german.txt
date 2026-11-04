@@ -1,13 +1,12 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: Merge läuft, Noch 1 Datei mit Konflikt, 2 geänderte Dateien" [selected]
   Tab "api-server"
 Button "Tab demo schließen"
 Button "Tab api-server schließen"
 Button "Neuer Tab"
-Button "demo"
-Button "main"
+Button "Repository: demo"
+Button "Branch: main"
 Button "Letzte Aktion rückgängig machen" [disabled]
 Button "Rückgängig gemachte Aktion wiederholen" [disabled]
 Button "Pull für den aktuellen Branch" [disabled]
@@ -24,25 +23,32 @@ Button "Befehle suchen und ausführen"
 Button "Leiste zum Durchsuchen der Commits ein- oder ausblenden"
 Button "Aktivitätsprotokoll ein- oder ausblenden"
 Button "Repository aktualisieren"
-Button "Laufende Arbeit zeigen"
-Label "Merge läuft"
-Label "Noch 1 Datei mit Konflikt"
+Button "Merge committen" [disabled]
+Button "Merge abbrechen"
+Label "theme-tweaks wird in main gemergt"
+Label "· Noch 1 Datei mit Konflikt"
 Unknown "Inhalt der linken Leiste"
-TextInput
-Button "Neuer Branch"
+TextInput "Branches, Pull Requests und Issues filtern"
+Button "Lokal, 4 Branches"
+Button "Neuer Branch…"
 Button "Aktionen für Lokal"
 Button "login-page"
-Button "✔  main"
+Button "main, ausgecheckt"
 Button "search"
 Button "theme-tweaks"
+Button "Remote, 0 Remotes"
 Button "Remote hinzufügen"
 Button "Aktionen für Remote"
+Button "Tags, 1 Tag"
 Button "Neuer Tag"
 Button "Aktionen für Tags"
+Button "Stashes, 0 Stashes"
 Button "Änderungen stashen"
 Button "Aktionen für Stashes"
+Button "Worktrees, 0 Worktrees"
 Button "Worktree hinzufügen"
 Button "Aktionen für Worktrees"
+Button "Submodule, 0 Submodule"
 Button "Submodul hinzufügen"
 Button "Aktionen für Submodule"
 Button "Merge abbrechen"
@@ -50,7 +56,7 @@ Label "Merge läuft"
 Button "Ausblenden: Konflikte lösen"
 Label "Konflikte lösen"
 Label "noch 1"
-Button "Weitere Aktionen"
+Button "Alle als gelöst markieren"
 Label "Dateien mit Konflikten (1)"
 Unknown "Dateien mit Konflikten (1)"
 Button "settings.txt" [on]
@@ -59,52 +65,51 @@ Button "Konflikte ansehen"
 Button "Ausblenden: Prüfen, was hineinkommt"
 Label "Prüfen, was hineinkommt"
 Label "Bereitgestellt: 0 · Draußen: 1"
-Button "Als Baum anzeigen"
+Button "Vorgemerkte Dateien als Baum zeigen"
 Label "Bereitgestellt (0)"
 Unknown "Bereitgestellt (0)"
 Label "Keine"
 Label "Andere Änderungen gehören nicht zum Merge; sie bleiben draußen, solange du sie nicht bereitstellst."
-Button "Als Baum anzeigen"
+Button "Nicht vorgemerkte Dateien als Baum zeigen"
 Button "Weitere Aktionen"
 Button "Alle bereitstellen"
 Label "Nicht bereitgestellt (1)"
 Unknown "Nicht bereitgestellt (1)"
 Button "README.md" [off]
-Label "M"
+Label "Geändert"
 Button "Zeigen: Merge committen"
 Label "Merge committen"
 Label "Öffnet sich, sobald die Konflikte gelöst sind."
 Unknown "Mittlere Ansicht"
-Button "Schließen  (Esc)"
+Button "Schließen (Esc)"
+Button "Als gelöst markieren" [disabled]
 Button "Weitere Konfliktaktionen"
-Button "Speichern und als gelöst markieren" [disabled]
-Button "Nächster Konflikt (F7)" [disabled]
-Label "Konflikt 2 von 2"
 Button "Vorheriger Konflikt (Shift+F7)"
-Label "Wähle zuerst jeden Konflikt (noch 1), oder nutze Mit Markern speichern"
+Label "Konflikt 2 von 2"
+Button "Nächster Konflikt (F7)" [disabled]
+Label "1 von 2 gelöst"
 Label "settings.txt"
-Label "theme-tweaks wird in main gemergt"
-Label "1 von 2 Konflikten wurden automatisch gewählt (eine Seite unverändert, oder nur Leerraum unterscheidet sich). Prüfe sie vor dem Speichern."
 Label "Ergebnis"
-Label "1 von 2 Konflikten gelöst"
 Button "Bearbeiten" [off]
 Button "Zeilen umbrechen" [off]
 Label "Unsere"
 Label "main"
-Button "Alle nehmen"
+Button "Jeden Konflikt von unserer Seite nehmen (main)"
 Label "Ihre"
 Label "theme-tweaks"
-Button "Alle nehmen"
-CheckBox "Nehmen" [on]
-CheckBox "Nehmen" [off]
-CheckBox [on]
-CheckBox [off]
-CheckBox "Nehmen" [off]
-CheckBox "Nehmen" [off]
-CheckBox [off]
-CheckBox [off]
+Button "Jeden Konflikt von ihrer Seite nehmen (theme-tweaks)"
+CheckBox "Konflikt 1 ganz von unserer Seite nehmen (main)" [on]
+CheckBox "Konflikt 1 ganz von ihrer Seite nehmen (theme-tweaks)" [off]
+CheckBox "Zeile 3 von unserer Seite nehmen (main), Konflikt 1" [on]
+CheckBox "Zeile 3 von ihrer Seite nehmen (theme-tweaks), Konflikt 1" [off]
+CheckBox "Konflikt 2 ganz von unserer Seite nehmen (main)" [off]
+CheckBox "Konflikt 2 ganz von ihrer Seite nehmen (theme-tweaks)" [off]
+CheckBox "Zeile 9 von unserer Seite nehmen (main), Konflikt 2" [off]
+CheckBox "Zeile 9 von ihrer Seite nehmen (theme-tweaks), Konflikt 2" [off]
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "Rückgängig"
   "Wiederholen"
@@ -123,6 +128,7 @@ painted:
   "Filtern (Branches, PRs, Issues)"
   "Lokal"
   "4"
+  "✔  main"
   "Remote"
   "0"
   "Tags"
@@ -135,6 +141,7 @@ painted:
   "0"
   "1"
   "2"
+  "M"
   "3"
   "1"
   "setting_1 = 1"
@@ -159,6 +166,8 @@ painted:
   "setting_11 = 11"
   "11"
   "setting_12 = 12"
+  "Alle nehmen"
+  "Alle nehmen"
   "1"
   "setting_1 = 1"
   "1"
@@ -168,9 +177,9 @@ painted:
   "2"
   "setting_2 = 2"
   "Konflikt 1"
-  "automatisch gewählt · nur Leerraum"
+  "Nehmen"
   "Konflikt 1"
-  "automatisch gewählt · nur Leerraum"
+  "Nehmen"
   "3"
   "setting_3 = 3"
   "3"
@@ -196,7 +205,9 @@ painted:
   "8"
   "setting_8 = 8"
   "Konflikt 2"
+  "Nehmen"
   "Konflikt 2"
+  "Nehmen"
   "9"
   "font_size = 13"
   "9"

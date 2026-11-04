@@ -4,8 +4,8 @@
 //! they already are. Every target is the program's own path or a fixed name beside it, never
 //! a name read from the archive. A failure puts back everything done so far.
 
-use super::TargetOs;
 use super::archive::{DOC_FILES, Entry, program_name};
+use super::{TargetOs, UpdateError};
 use crate::native_path::shown;
 use crate::persist::{self, WriteOptions};
 use std::path::{Path, PathBuf};
@@ -28,9 +28,11 @@ pub struct SwapItem {
 /// The swap of `entries` into the copy whose program is `exe` (the running program's resolved
 /// path, whatever it is called) on `os`. A doc file is planned only when `exists` finds it
 /// beside the program, so a program kept in a shared folder doesn't fill it with READMEs.
-pub fn plan(entries: &[Entry], exe: &Path, os: TargetOs, exists: impl Fn(&Path) -> bool) -> Result<SwapPlan, String> {
+pub fn plan(entries: &[Entry], exe: &Path, os: TargetOs, exists: impl Fn(&Path) -> bool) -> Result<SwapPlan, UpdateError> {
     let program = program_name(os);
-    let Some(p) = entries.iter().position(|e| e.name == program) else { return Err(format!("The archive has no {program}.")) };
+    let Some(p) = entries.iter().position(|e| e.name == program) else {
+        return Err(UpdateError::NoProgram { program: program.to_owned() });
+    };
     let mut items = vec![SwapItem { entry: p, target: exe.to_owned(), program: true }];
     let dir = exe.parent().unwrap_or(Path::new(""));
     for doc in DOC_FILES {
@@ -56,12 +58,12 @@ pub struct Applied {
 impl Applied {
     /// Puts the old files back: each new file is removed and its backup renamed back, last
     /// first.
-    pub fn rollback(self) -> Result<(), String> {
+    pub fn rollback(self) -> Result<(), UpdateError> {
         undo(self.done)
     }
 }
 
-fn undo(done: Vec<(PathBuf, Option<PathBuf>)>) -> Result<(), String> {
+fn undo(done: Vec<(PathBuf, Option<PathBuf>)>) -> Result<(), UpdateError> {
     let mut failed = Vec::new();
     for (target, backup) in done.into_iter().rev() {
         let back = persist::remove_file(&target).and_then(|()| match &backup {
@@ -70,15 +72,15 @@ fn undo(done: Vec<(PathBuf, Option<PathBuf>)>) -> Result<(), String> {
         });
         if let Err(e) = back {
             let at = backup.as_deref().map_or_else(|| shown(&target), shown);
-            failed.push(format!("{at}: {e}"));
+            failed.push((at, e.to_string()));
         }
     }
-    if failed.is_empty() { Ok(()) } else { Err(failed.join("; ")) }
+    if failed.is_empty() { Ok(()) } else { Err(UpdateError::RollbackFailed { failed }) }
 }
 
 /// Carries out `plan` with `entries`' bytes; on the first failure, puts back what was done
 /// and says why.
-pub fn apply(plan: &SwapPlan, entries: &[Entry]) -> Result<Applied, String> {
+pub fn apply(plan: &SwapPlan, entries: &[Entry]) -> Result<Applied, UpdateError> {
     let mut done: Vec<(PathBuf, Option<PathBuf>)> = Vec::new();
     for item in &plan.items {
         let Some(entry) = entries.get(item.entry) else { continue };
@@ -92,14 +94,12 @@ pub fn apply(plan: &SwapPlan, entries: &[Entry]) -> Result<Applied, String> {
         })();
         if let Err(e) = step {
             let folder = shown(target.parent().unwrap_or(target));
-            let mut text = format!("Couldn't replace Glowfly's program in {folder}: {e}. Use Show file to install the update by hand.");
             let backups: Vec<PathBuf> = done.iter().filter_map(|(_, b)| b.clone()).collect();
-            if undo(done).is_err() {
-                for b in backups.iter().filter(|b| b.symlink_metadata().is_ok()) {
-                    text.push_str(&format!(" The old file is at {}.", shown(b)));
-                }
-            }
-            return Err(text);
+            let left = match undo(done) {
+                Ok(()) => Vec::new(),
+                Err(_) => backups.iter().filter(|b| b.symlink_metadata().is_ok()).map(|b| shown(b)).collect(),
+            };
+            return Err(UpdateError::ReplaceFailed { folder, said: e.to_string(), left });
         }
     }
     let backups = done.iter().filter_map(|(_, b)| b.clone()).collect();

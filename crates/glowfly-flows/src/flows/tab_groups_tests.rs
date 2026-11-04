@@ -5,11 +5,13 @@
 
 use super::tests::{drive, finish_keeping, git, same_place, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg};
-use crate::state::{AppState, Tab};
-use crate::worktree::WorktreeMsg;
 use glowfly_core::repo::CommonDir;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::SessionEffect;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::{AppState, Tab};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -44,7 +46,9 @@ fn saves_of(st: &mut AppState, msg: Msg) -> Vec<(Vec<PathBuf>, usize)> {
 }
 
 fn saved(fx: &[Effect]) -> Vec<(Vec<PathBuf>, usize)> {
-    fx.iter().filter_map(|e| if let Effect::SaveTabs { paths, active, .. } = e { Some((paths.clone(), *active)) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Save(SaveEffect::Tabs { paths, active, .. }) = e { Some((paths.clone(), *active)) } else { None })
+        .collect()
 }
 
 fn tab_is(st: &AppState, i: usize, dir: &Path) -> bool {
@@ -140,9 +144,11 @@ fn restored_tabs_are_pulled_together_once_read() {
         st.settings.group_worktree_tabs = on;
         let paths = vec![main.clone(), other.clone(), linked.clone()];
         let fx = update(&mut st, Msg::Tabs(TabsMsg::RestoreTabs { paths: paths.clone(), labels: Vec::new(), active: 1 }), Instant::now());
-        let read = fx.iter().find_map(|e| if let Effect::ReadTabGroups(p) = e { Some(p.clone()) } else { None });
+        let read = fx.iter().find_map(|e| if let Effect::Session(SessionEffect::ReadTabGroups(p)) = e { Some(p.clone()) } else { None });
         assert_eq!(read.as_ref(), Some(&paths), "every restored tab is read");
-        let Some(Msg::Tabs(TabsMsg::GroupsRead(mut results))) = crate::runner::testing::execute(Effect::ReadTabGroups(paths)) else {
+        let Some(Msg::Tabs(TabsMsg::GroupsRead(mut results))) =
+            glowfly_runner::testing::execute(Effect::Session(SessionEffect::ReadTabGroups(paths)))
+        else {
             panic!("the read reports GroupsRead")
         };
         // A tab closed meanwhile.

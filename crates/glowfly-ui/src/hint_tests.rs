@@ -1,8 +1,8 @@
 //! Tooltips and texts that name a key read it from the effective keymap: a rebound key shows
 //! its new key, a removed one leaves no parentheses.
 
-use crate::keymap::{BindingId as I, Chord, KeyName as K, Keymap};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::{BindingId as I, Chord, KeyName as K, Keymap};
 
 fn f8() -> Vec<Chord> {
     vec![Chord::plain(K::F(8))]
@@ -19,7 +19,7 @@ fn conflict_steps_name_the_current_key() {
 
 #[test]
 fn terminal_button_names_the_current_key() {
-    let mut st = crate::state::AppState::new(Default::default(), Vec::new(), std::time::Instant::now());
+    let mut st = glowfly_model::state::AppState::new(Default::default(), Vec::new(), std::time::Instant::now());
     st.keymap.set(I::ToggleTerminal, f8());
     let tip = super::toolbar::tips::terminal(&st);
     assert_eq!(tip.title, "Show the terminal panel");

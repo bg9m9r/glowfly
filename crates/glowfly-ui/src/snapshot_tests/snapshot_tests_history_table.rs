@@ -6,22 +6,22 @@
 use super::snapshot_tests::{harness, harness_palette, harness_sized, remove_fixture, render, with_repo};
 use super::snapshot_tests_ref_sync::with_upstream;
 use super::snapshot_tests_select::{click, row_y};
-use crate::state::AppState;
-use crate::ui::graph::row_h;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_painted::fills_at;
-use crate::ui::theme::{self, color};
+use crate::graph::row_h;
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_painted::fills_at;
+use crate::theme::{self, color};
 use eframe::egui::{Event, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{RefKind, RefLabel};
 use glowfly_core::settings::{ColumnWidths, Density, ThemeChoice};
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 /// The fixture's search branch's tip (the WIP row is 0).
 const SEARCH_ROW: usize = 1;
 /// Where the "+N" chip sits in `history_labels_overflow`: after two chips in a 240 px column,
-/// whose chips run from x 276 to 488.
-const PLUS_X: f32 = 456.0;
+/// whose chips run from x 276 to about 460 (local chips have no mark).
+const PLUS_X: f32 = 444.0;
 /// The labels added to the search branch's tip in `history_labels_overflow`, as their tips read.
 const EXTRA: [&str; 5] = ["feature-a", "feature-b", "origin/feature-c", "v0.2.0", "v0.3.0"];
 
@@ -138,7 +138,7 @@ fn history_row_selected_and_hovered() {
     click(&mut h, pos2(700.0, row_y(2)), PointerButton::Primary);
     let (st, msgs): &mut (AppState, _) = h.state_mut();
     for m in std::mem::take(msgs) {
-        crate::update::update(st, m, Instant::now());
+        glowfly_model::update::update(st, m, Instant::now());
     }
     let merge = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;
     assert!(st.session.selection.includes(merge), "the click selected row 2");

@@ -15,7 +15,7 @@ use super::branch_palette::{
 use super::branch_palette_gold::{JADE_DARK, JADE_LIGHT_LINE, JADE_LIGHT_TEXT, with};
 use super::families::{Branch, LANE_COUNT};
 use eframe::egui::Color32;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
@@ -24,20 +24,20 @@ const fn hex(c: u32) -> Color32 {
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
 
 /// The standard slot Jade takes beside the cobalt: Azure.
-pub const COBALT_JADE_SLOT: usize = 7;
+pub(crate) const COBALT_JADE_SLOT: usize = 7;
 /// The colour-blind slot that makes room beside the cobalt: Periwinkle.
-pub const COBALT_CB_SLOT: usize = 7;
+pub(crate) const COBALT_CB_SLOT: usize = 7;
 
-pub const COBALT_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, COBALT_JADE_SLOT, JADE_DARK);
-pub const COBALT_LIGHT_TEXT: [Color32; LANE_COUNT] =
+pub(crate) const COBALT_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, COBALT_JADE_SLOT, JADE_DARK);
+pub(crate) const COBALT_LIGHT_TEXT: [Color32; LANE_COUNT] =
     with(with(LIGHT_TEXT, COBALT_JADE_SLOT, JADE_LIGHT_TEXT), LIGHT_NAVY_SLOT, FOREST_TEXT);
-pub const COBALT_LIGHT_LINES: [Color32; LANE_COUNT] =
+pub(crate) const COBALT_LIGHT_LINES: [Color32; LANE_COUNT] =
     with(with(LIGHT_LINES, COBALT_JADE_SLOT, JADE_LIGHT_LINE), LIGHT_NAVY_SLOT, FOREST_LINE);
 const COBALT_NAMES: [Hue; LANE_COUNT] = with(NAMES, COBALT_JADE_SLOT, Hue::Jade);
 const LINEN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, COBALT_JADE_SLOT, Hue::Jade), LIGHT_NAVY_SLOT, Hue::Forest);
 /// A light Rose (hue 18) for Periwinkle on Graphite; a deep Wine (hue 350) on the light tones, as line and
 /// chip tone both.
-pub const COBALT_CB_DARK_TONES: [Color32; CB] = with(CB_DARK_TONES, COBALT_CB_SLOT, hex(0xf49194));
+pub(crate) const COBALT_CB_DARK_TONES: [Color32; CB] = with(CB_DARK_TONES, COBALT_CB_SLOT, hex(0xf49194));
 const COBALT_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, COBALT_CB_SLOT, Hue::Rose);
 const WINE: Color32 = hex(0x800953);
 pub const COBALT_CB_LIGHT_LINES: [Color32; CB] = with(CB_LIGHT_LINES, COBALT_CB_SLOT, WINE);
@@ -46,21 +46,21 @@ pub const COBALT_CB_LIGHT_NAMES: [Hue; CB] = with(CB_LIGHT_NAMES, COBALT_CB_SLOT
 
 /// Graphite.
 pub const BRANCH_GRAPHITE: Branch =
-    Branch { lanes: COBALT_DARK_TONES, chips: COBALT_DARK_TONES, preset: BranchPalette::Standard, names: COBALT_NAMES };
+    Branch { lanes: COBALT_DARK_TONES, chips: COBALT_DARK_TONES, preset: ColourPalette::Standard, names: COBALT_NAMES };
 /// Colour-blind friendly, on Graphite.
 pub const BRANCH_CB_GRAPHITE: Branch = Branch {
     lanes: pad(COBALT_CB_DARK_TONES),
     chips: pad(COBALT_CB_DARK_TONES),
-    preset: BranchPalette::ColourBlind,
+    preset: ColourPalette::ColourBlind,
     names: pad(COBALT_CB_DARK_NAMES),
 };
 /// Linen's, which Porcelain keeps.
 pub const BRANCH_LINEN: Branch =
-    Branch { lanes: COBALT_LIGHT_LINES, chips: COBALT_LIGHT_TEXT, preset: BranchPalette::Standard, names: LINEN_NAMES };
+    Branch { lanes: COBALT_LIGHT_LINES, chips: COBALT_LIGHT_TEXT, preset: ColourPalette::Standard, names: LINEN_NAMES };
 /// Colour-blind friendly, on Linen (Porcelain keeps it).
 pub const BRANCH_CB_LINEN: Branch = Branch {
     lanes: pad(COBALT_CB_LIGHT_LINES),
     chips: pad(COBALT_CB_LIGHT_TEXT),
-    preset: BranchPalette::ColourBlind,
+    preset: ColourPalette::ColourBlind,
     names: pad(COBALT_CB_LIGHT_NAMES),
 };

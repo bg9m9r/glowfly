@@ -4,11 +4,11 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::drive;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, PaletteMsg};
-use crate::state::AppState;
-use crate::state::blame::BlameView;
-use crate::state::palette::{Items, Mode, PaletteCommand, Pick, PickKind, shown};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::palette::{Items, Mode, PaletteCommand, Pick, PickKind, shown};
 use std::time::Instant;
 
 const BLAME: &str = "Blame file…";
@@ -48,7 +48,10 @@ fn blame_file_lists_tracked_files_and_blames_the_pick() {
     assert_eq!(pick(&st).kind, PickKind::Blame);
     assert_eq!(pick(&st).items, Items::Loading);
     let g = st.palette_gen;
-    assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { generation, .. }] if *generation == g), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { generation, .. })] if *generation == g),
+        "{fx:?}"
+    );
     assert_eq!(st.palette_recent.keys(), ["blame"]);
 
     run(&mut st, Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation: g, result: Ok(vec!["a.txt".into()]) }));

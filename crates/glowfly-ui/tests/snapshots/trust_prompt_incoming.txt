@@ -4,7 +4,7 @@ Dialog
   Label "tools"
   Label "C:\\work\\tools"
   Label "Pull needs git to run this repository's settings and hooks."
-  Label "The commit this brings in has other versions of the hooks, scripts or settings files that change with the branch, and git would run or read them during the command. So far Glowfly has only read them."
+  Label "The commit this brings in has other versions of the hooks, scripts or settings files that change with the branch, and Git would run or read them during the command. So far Glowfly has only read them."
   Label "Hooks"
   Label "in .githooks"
   Label "Not recognised"

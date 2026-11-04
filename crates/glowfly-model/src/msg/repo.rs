@@ -3,6 +3,8 @@
 
 use crate::effect::LoadKind;
 use crate::effect::StatusRead;
+use crate::msg::Inactive;
+use crate::state::tabs::glance::{CountsRead, Glance};
 use git2::Oid;
 use glowfly_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, FileLineCounts, IndexMemo, SlowStatus, Snapshot, WipLineCounts};
 use glowfly_core::signature_check::SignatureCheck;
@@ -89,7 +91,6 @@ impl RepoMsg {
             | Self::CloseDiff
             | Self::WantStats(..)
             | Self::InitRepo
-            | Self::RepoLoaded { .. }
             | Self::DetailLoaded { .. }
             | Self::DiffLoaded { .. }
             | Self::StatsLoaded(..)
@@ -101,6 +102,8 @@ impl RepoMsg {
             // Dropped: parking forgot the pending request, and the return asks again.
             | Self::CommitLineCountsLoaded { .. }
             | Self::WipLineCountsLoaded { .. } => None,
+            // The tab keeps the counts it shows; it loads again when it is shown.
+            Self::RepoLoaded { result, .. } => result.ok().map(|snap| Inactive::Counts(CountsRead::Load(Box::new(Glance::of(&snap))))),
         }
     }
 }
@@ -172,14 +175,18 @@ impl LoadMsg {
             | Self::RetryLoadMore
             | Self::SearchFurther
             | Self::NearHistoryEnd
-            | Self::RepoUnchanged { .. }
             // Dropped: the tab loads again when it is shown.
             | Self::HistoryExtended { .. }
-            | Self::StatusLoaded { .. }
             | Self::SpeedUpStatus { .. }
             | Self::StatusSpedUp { .. }
             | Self::TurnOffMonitor
             | Self::MonitorTurnedOff { .. } => None,
+            // A whole status read moves the counts its tab shows (a read of some paths can't).
+            Self::RepoUnchanged { result, .. } => result.ok().map(|(u, s, state)| Inactive::Counts(CountsRead::status(&u, &s, state))),
+            Self::StatusLoaded { result, .. } => match result {
+                Ok(StatusRead::Whole(u, s, state)) => Some(Inactive::Counts(CountsRead::status(&u, &s, state))),
+                _ => None,
+            },
         }
     }
 }

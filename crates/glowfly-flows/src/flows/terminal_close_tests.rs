@@ -4,12 +4,13 @@
 
 use super::terminal_tests::{open_with_panel, run, terminal, workdir};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::state::terminal::SessionStatus;
-use crate::state::{AppState, Modal};
-use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use glowfly_core::terminal::ShellActivity;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::terminal::SessionStatus;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use std::time::Instant;
 
 /// The first tab's name once it runs pwsh: "pwsh \u{b7} <the fixture's folder>".
@@ -170,7 +171,7 @@ fn closing_the_last_tab_after_the_answer_hides_the_panel() {
     run(&mut st, T::CloseTab(one));
     let fx = activity(&mut st, one, ShellActivity::Idle);
     let saved = fx.iter().find_map(|e| match e {
-        Effect::SaveSettings(s) => Some(s.terminal.panel_open),
+        Effect::Save(SaveEffect::Settings(s)) => Some(s.terminal.panel_open),
         _ => None,
     });
     assert_eq!(saved, Some(false));

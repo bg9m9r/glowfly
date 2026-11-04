@@ -4,15 +4,15 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, state};
 use super::update;
-use crate::effect::Effect;
-use crate::logs::{LogKind, LogsMsg};
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::remote::RemoteMsg;
-use crate::state::AppState;
-use crate::state::palette::{PaletteCommand as C, StashAction, entries, shown};
 use glowfly_core::gitflow::FlowKind;
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::effect::Effect;
+use glowfly_model::logs::{LogKind, LogsMsg};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{PaletteCommand as C, StashAction, entries, shown};
 use std::collections::HashSet;
 use std::time::Instant;
 
@@ -106,7 +106,7 @@ fn picks_and_checkouts_are_not_recorded() {
         C::OpenBlame("a.txt".into()),
         C::FinishGitFlow("feature/x".into()),
         C::Remote(RemoteMsg::Fetch("origin".into())),
-        C::RepoList(crate::state::palette_commands::RepoListCommand::OpenFavorite { index: 0, path: dir.clone() }),
+        C::RepoList(glowfly_model::state::palette_commands::RepoListCommand::OpenFavorite { index: 0, path: dir.clone() }),
     ];
     for cmd in unkeyed {
         assert_eq!(cmd.recall_key(), None, "{cmd:?}");

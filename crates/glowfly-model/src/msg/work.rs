@@ -161,6 +161,12 @@ pub enum CommitMsg {
     AppendToDescription(String),
     /// The merge banner's Commit merge: fills a blank draft from MERGE_MSG, then commits.
     CommitMerge,
+    /// At a rebase stopped to edit: Amend (or Commit) and continue, which commits the draft and
+    /// then resumes the rebase as Continue does.
+    CommitAndContinue,
+    /// The commit button menu's Commit and push: commits, then pushes, with "Push after
+    /// committing" off.
+    CommitAndPush,
 }
 
 impl CommitMsg {
@@ -173,7 +179,9 @@ impl CommitMsg {
             | Self::SetPushAfterCommit(..)
             | Self::PrefillAmend
             | Self::AppendToDescription(..)
-            | Self::CommitMerge => None,
+            | Self::CommitMerge
+            | Self::CommitAndContinue
+            | Self::CommitAndPush => None,
         }
     }
 }
@@ -245,7 +253,7 @@ pub enum JobMsg {
         output: String,
         undo: Option<UndoResult>,
     },
-    /// The job failed, and the check it carried for that (`Effect::RunGit::on_fail_check`)
+    /// The job failed, and the check it carried for that (`JobEffect::RunGit::on_fail_check`)
     /// passed: handled as a failed `JobDone` whose pending patch apply is already applied.
     FailCheckPassed {
         output: String,

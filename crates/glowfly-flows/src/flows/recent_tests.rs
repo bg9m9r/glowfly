@@ -2,10 +2,12 @@
 
 use super::tests::{drive, same_place, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RecentMsg, RepoMsg};
-use crate::state::repo_lists::is_missing;
-use crate::state::{AppState, Modal};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::SessionEffect;
+use glowfly_model::msg::{Msg, RecentMsg, RepoMsg};
+use glowfly_model::state::repo_lists::is_missing;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -21,9 +23,9 @@ fn favorite(st: &mut AppState, p: &str, favorite: bool) -> Vec<Effect> {
     run(st, RecentMsg::SetFavorite { path: PathBuf::from(p), favorite })
 }
 
-/// The favorites carried by the `SaveSettings` effects in `fx`, one list per effect.
+/// The favorites carried by the `SaveEffect::Settings` effects in `fx`, one list per effect.
 fn saved_favorites(fx: &[Effect]) -> Vec<Vec<String>> {
-    fx.iter().filter_map(|e| if let Effect::SaveSettings(s) = e { Some(s.favorite_repos.clone()) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Save(SaveEffect::Settings(s)) = e { Some(s.favorite_repos.clone()) } else { None }).collect()
 }
 
 #[test]
@@ -32,7 +34,7 @@ fn remove_drops_the_entry_and_saves() {
     st.recent = paths(&["/w/a", "/w/b", "/w/c"]);
     let fx = run(&mut st, RecentMsg::Remove(PathBuf::from("/w/b/")));
     assert_eq!(st.recent, paths(&["/w/a", "/w/c"]));
-    assert!(matches!(&fx[..], [Effect::SaveRecent(l)] if *l == paths(&["/w/a", "/w/c"])), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Recent(l))] if *l == paths(&["/w/a", "/w/c"])), "{fx:?}");
 }
 
 #[test]
@@ -63,7 +65,7 @@ fn clear_recent_empties_the_list_and_keeps_favorites() {
     let fx = run(&mut st, RecentMsg::ClearRecent);
     assert!(st.recent.is_empty());
     assert_eq!(st.settings.favorite_repos, ["/w/b"]);
-    assert!(matches!(&fx[..], [Effect::SaveRecent(l)] if l.is_empty()), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Recent(l))] if l.is_empty()), "{fx:?}");
     assert!(run(&mut st, RecentMsg::ClearRecent).is_empty(), "nothing to clear");
 }
 
@@ -71,10 +73,10 @@ fn clear_recent_empties_the_list_and_keeps_favorites() {
 fn favorite_is_added_once_in_order_and_saved() {
     let mut st = state();
     let fx = favorite(&mut st, "/w/a", true);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]), "{fx:?}");
     assert_eq!(saved_favorites(&fx), [vec!["/w/a".to_owned()]]);
     let fx = favorite(&mut st, "/w/b", true);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]), "{fx:?}");
     assert_eq!(saved_favorites(&fx), [vec!["/w/a".to_owned(), "/w/b".to_owned()]]);
     assert_eq!(st.settings.favorite_repos, ["/w/a", "/w/b"]);
     let fx = favorite(&mut st, "/w/./a/", true);
@@ -95,7 +97,7 @@ fn unfavorite_removes_and_saves() {
 
 #[test]
 fn starring_a_recent_row_moves_it_to_favorites_and_back() {
-    use crate::state::repo_lists::{favorites, recent_rows};
+    use glowfly_model::state::repo_lists::{favorites, recent_rows};
     let mut st = state();
     st.recent = paths(&["/w/a", "/w/b"]);
     favorite(&mut st, "/w/b", true);
@@ -114,7 +116,7 @@ fn check_folders_covers_favorites_and_recent() {
     st.recent = paths(&["/w/a", "/w/b"]);
     st.settings.favorite_repos = vec!["/w/c".into(), "/w/b".into()];
     let fx = run(&mut st, RecentMsg::CheckFolders);
-    assert!(matches!(&fx[..], [Effect::CheckRepoFolders(l)] if *l == paths(&["/w/c", "/w/b", "/w/a"])), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Session(SessionEffect::CheckRepoFolders(l))] if *l == paths(&["/w/c", "/w/b", "/w/a"])), "{fx:?}");
 }
 
 #[test]
@@ -124,8 +126,8 @@ fn window_focus_checks_folders() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.is_some());
     let fx = update(&mut st, Msg::Repo(RepoMsg::WindowFocused), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::CheckRepoFolders(l) if l.len() == 1)), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the refresh still runs: {fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Session(SessionEffect::CheckRepoFolders(l)) if l.len() == 1)), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "the refresh still runs: {fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -169,21 +171,25 @@ fn open_favorite_opens_it_or_says_there_is_none() {
 fn open_all_adds_tabs_for_unopened_present_favorites() {
     let mut st = state();
     st.settings.favorite_repos = vec!["/w/a".into(), "/w/b".into(), "/w/c".into()];
-    st.tabs = vec![crate::state::Tab::unloaded(PathBuf::from("/w/a"))];
+    st.tabs = vec![glowfly_model::state::Tab::unloaded(PathBuf::from("/w/a"))];
     st.missing_repos = vec![PathBuf::from("/w/b")];
     let fx = run(&mut st, RecentMsg::OpenAll(paths(&["/w/a", "/w/b", "/w/c"])));
     let tabs: Vec<Option<PathBuf>> = st.tabs.iter().map(|t| t.path.clone()).collect();
     assert_eq!(tabs, [Some(PathBuf::from("/w/a")), Some(PathBuf::from("/w/c"))], "one new tab: /w/a is open, /w/b missing");
     assert_eq!(st.active_tab, 1);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveTabs { .. })), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if path == &PathBuf::from("/w/c"))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Tabs { .. }))), "{fx:?}");
+    assert!(
+        fx.iter()
+            .any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, .. }) if path == &PathBuf::from("/w/c"))),
+        "{fx:?}"
+    );
 }
 
 #[test]
 fn open_all_with_everything_open_switches_to_the_first() {
     let mut st = state();
     st.settings.favorite_repos = vec!["/w/a".into()];
-    st.tabs = vec![crate::state::Tab::empty(), crate::state::Tab::unloaded(PathBuf::from("/w/a"))];
+    st.tabs = vec![glowfly_model::state::Tab::empty(), glowfly_model::state::Tab::unloaded(PathBuf::from("/w/a"))];
     run(&mut st, RecentMsg::OpenAll(paths(&["/w/a"])));
     assert_eq!(st.tabs.len(), 2);
     assert_eq!(st.active_tab, 1);
@@ -200,13 +206,13 @@ fn remove_missing_cleans_both_lists() {
     assert_eq!(st.recent, paths(&["/w/a"]));
     assert_eq!(st.settings.favorite_repos, ["/w/d"]);
     assert!(st.missing_repos.is_empty());
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveRecent(l) if *l == paths(&["/w/a"]))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Recent(l)) if *l == paths(&["/w/a"]))), "{fx:?}");
     assert_eq!(saved_favorites(&fx), [vec!["/w/d".to_owned()]]);
     // Only the list that changed is saved.
     st.recent = paths(&["/w/e"]);
     st.missing_repos = paths(&["/w/e"]);
     let fx = run(&mut st, RecentMsg::RemoveMissing);
-    assert!(matches!(&fx[..], [Effect::SaveRecent(l)] if l.is_empty()), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Recent(l))] if l.is_empty()), "{fx:?}");
 }
 
 #[test]

@@ -10,10 +10,10 @@ use super::theme::type_scale;
 use super::widgets::severity::{self, Severity};
 use super::widgets::truncate::cut_path_in;
 use super::widgets::{self, Icon, icon};
-use crate::state::trust::rows::value_parts;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Color32, RichText, Sense, TextStyle, TextWrapMode, Ui, WidgetInfo, WidgetType};
 use glowfly_core::i18n::Lang;
+use glowfly_model::state::trust::rows::value_parts;
 use std::sync::Arc;
 
 /// The mark column: as wide as the Hooks heading's icon, so the rows' text lines up with its

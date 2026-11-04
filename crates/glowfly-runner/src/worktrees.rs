@@ -5,13 +5,13 @@
 //! to stops the worktree's file system monitor daemon first, which on Windows holds its folder.
 
 use super::execute::{Cx, Execute};
-use crate::effect::WorktreeEffect;
-use crate::msg::Msg;
-use crate::worktree::{CountRequest, MoveRequest, NewWorktree, RemoteOutcome, RemoveRequest, Removed, WorktreeMsg};
 use glowfly_core::branch_ops::delete_with_remote_cmds;
 use glowfly_core::gitcli::{self, args};
 use glowfly_core::undo::{self, UndoKind};
 use glowfly_core::worktree_ops::{self, RemoveOutcome};
+use glowfly_model::effect::WorktreeEffect;
+use glowfly_model::msg::Msg;
+use glowfly_model::worktree::{CountRequest, MoveRequest, NewWorktree, RemoteOutcome, RemoveRequest, Removed, WorktreeMsg};
 
 impl Execute for WorktreeEffect {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {

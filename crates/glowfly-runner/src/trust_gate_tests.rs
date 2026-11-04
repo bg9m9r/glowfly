@@ -2,9 +2,9 @@
 //! that fetch brought, and a job stopped part way says why.
 
 use super::*;
-use crate::effect::{Sealed, TrustCheck};
-use crate::msg::{JobMsg, Msg, TrustMsg};
 use glowfly_core::testkit::git;
+use glowfly_model::effect::{Sealed, TrustCheck};
+use glowfly_model::msg::{JobMsg, Msg, TrustMsg};
 use std::path::{Path, PathBuf};
 
 /// A working repository whose `core.hooksPath` is its tracked `.githooks` (a post-merge hook
@@ -46,7 +46,7 @@ fn push_change(other: &Path, file: &str, text: &str) {
 }
 
 fn job(dir: &Path, cmds: &[&[&str]]) -> Effect {
-    Effect::RunGit {
+    Effect::Job(glowfly_model::effect::JobEffect::RunGit {
         cwd: dir.into(),
         cmds: cmds.iter().map(|c| glowfly_core::gitcli::args(c)).collect(),
         write_file: None,
@@ -56,7 +56,7 @@ fn job(dir: &Path, cmds: &[&[&str]]) -> Effect {
         expect: None,
         stoppable: false,
         on_fail_check: None,
-    }
+    })
 }
 
 fn trusted(dir: &Path) -> TrustCheck {
@@ -82,10 +82,13 @@ fn a_merge_after_a_fetch_in_the_same_job_is_compared_with_what_the_fetch_brought
     // When the job was sent, origin/main still had the trusted hook; its fetch brings another.
     push_change(&other, ".githooks/post-merge", "#!/bin/sh\necho changed\n");
     let fx = job(&work, &[&["fetch", "-q"], &["merge", "--ff-only", "origin/main"]]);
-    match crate::runner::testing::execute_checked(trusted(&work), fx) {
+    match crate::testing::execute_checked(trusted(&work), fx) {
         Some(Msg::Trust(TrustMsg::Stale(s))) => {
             assert_eq!(s.incoming.as_ref().map(|i| i.hooks.clone()), Some(vec!["post-merge".to_owned()]));
-            assert!(matches!(s.effect, Effect::RunGit { ref cmds, .. } if cmds.len() == 2), "the whole job waits again");
+            assert!(
+                matches!(s.effect, Effect::Job(glowfly_model::effect::JobEffect::RunGit { ref cmds, .. }) if cmds.len() == 2),
+                "the whole job waits again"
+            );
         }
         other => panic!("held before the merge: {}", other.is_some()),
     }
@@ -98,7 +101,7 @@ fn a_job_stopped_after_it_changed_something_fails_saying_why() {
     let (work, _bare, other) = following("partway");
     push_change(&other, ".githooks/post-merge", "#!/bin/sh\necho changed\n");
     let fx = job(&work, &[&["fetch", "-q"], &["tag", "before"], &["merge", "--ff-only", "origin/main"]]);
-    match crate::runner::testing::execute_checked(trusted(&work), fx).map(|m| match m {
+    match crate::testing::execute_checked(trusted(&work), fx).map(|m| match m {
         Msg::Scoped { msg, .. } => *msg,
         m => m,
     }) {
@@ -113,7 +116,7 @@ fn a_pull_job_merges_only_what_its_one_fetch_checked() {
     let (work, _bare, other) = following("pull");
     push_change(&other, "b.txt", "b\n");
     let fx = job(&work, &[&["pull", "--ff-only"]]);
-    match crate::runner::testing::execute_checked(trusted(&work), fx).map(|m| match m {
+    match crate::testing::execute_checked(trusted(&work), fx).map(|m| match m {
         Msg::Scoped { msg, .. } => *msg,
         m => m,
     }) {
@@ -148,7 +151,7 @@ fn done(msg: Option<Msg>) -> Option<(bool, String)> {
 fn a_command_after_one_that_changed_the_settings_is_held() {
     let (work, _bare, _other) = following("rescan");
     let fx = job(&work, &[&["config", "core.fsmonitor", "evil"], &["status"]]);
-    let (ok, output) = done(crate::runner::testing::execute_checked(trusted(&work), fx)).expect("the job ends");
+    let (ok, output) = done(crate::testing::execute_checked(trusted(&work), fx)).expect("the job ends");
     assert!(!ok && output.contains("changed the repository's settings or hooks"), "{output}");
     assert!(!output.contains("$ git status"), "status never ran: {output}");
     let _ = std::fs::remove_dir_all(work.parent().unwrap());
@@ -166,19 +169,20 @@ fn git_am_of_a_patch_that_writes_a_hook_is_held_and_trust_and_run_takes_only_tha
     let cmds: &[&[&str]] = &[&["am", &patch.to_string_lossy()]];
     let digest = glowfly_core::trust::content_digest(&std::fs::read(&patch).unwrap());
     let reason = glowfly_core::trust::incoming::Unchecked::Patched { path: ".githooks/post-applypatch".into(), digest };
-    match crate::runner::testing::execute_checked(trusted(&work), job(&work, cmds)) {
+    match crate::testing::execute_checked(trusted(&work), job(&work, cmds)) {
         Some(Msg::Trust(TrustMsg::Stale(s))) => {
-            assert_eq!(s.unchecked, Some(crate::effect::Accepted { at: Some(0), reason: reason.clone() }));
+            assert_eq!(s.unchecked, Some(glowfly_model::effect::Accepted { at: Some(0), reason: reason.clone() }));
         }
         other => panic!("held: {}", other.is_some()),
     }
     assert!(!work.join(".githooks/post-applypatch").exists(), "nothing applied");
     // Accepted for another command of the job, it is still held.
-    let elsewhere = TrustCheck { accepted: Some(crate::effect::Accepted { at: Some(1), reason: reason.clone() }), ..trusted(&work) };
-    assert!(matches!(crate::runner::testing::execute_checked(elsewhere, job(&work, cmds)), Some(Msg::Trust(TrustMsg::Stale(_)))));
+    let elsewhere =
+        TrustCheck { accepted: Some(glowfly_model::effect::Accepted { at: Some(1), reason: reason.clone() }), ..trusted(&work) };
+    assert!(matches!(crate::testing::execute_checked(elsewhere, job(&work, cmds)), Some(Msg::Trust(TrustMsg::Stale(_)))));
     // Accepted for this one, it runs.
-    let accepted = TrustCheck { accepted: Some(crate::effect::Accepted { at: Some(0), reason }), ..trusted(&work) };
-    let (ok, output) = done(crate::runner::testing::execute_checked(accepted, job(&work, cmds))).expect("it runs");
+    let accepted = TrustCheck { accepted: Some(glowfly_model::effect::Accepted { at: Some(0), reason }), ..trusted(&work) };
+    let (ok, output) = done(crate::testing::execute_checked(accepted, job(&work, cmds))).expect("it runs");
     assert!(ok, "{output}");
     assert!(work.join(".githooks/post-applypatch").exists());
     let _ = std::fs::remove_dir_all(work.parent().unwrap());
@@ -204,13 +208,14 @@ exit 0
     patches.sort();
     let (first, second) = (patches[0].to_string_lossy().into_owned(), patches[1].to_string_lossy().into_owned());
     let cmds: &[&[&str]] = &[&["am", &first, &second]];
-    let first_reason = match crate::runner::testing::execute_checked(trusted(&work), job(&work, cmds)) {
+    let first_reason = match crate::testing::execute_checked(trusted(&work), job(&work, cmds)) {
         Some(Msg::Trust(TrustMsg::Stale(s))) => s.unchecked.expect("unchecked").reason,
         other => panic!("held: {}", other.is_some()),
     };
     // Accepting the first patch leaves the second one held: it writes another hook.
-    let accepted = TrustCheck { accepted: Some(crate::effect::Accepted { at: Some(0), reason: first_reason.clone() }), ..trusted(&work) };
-    match crate::runner::testing::execute_checked(accepted, job(&work, cmds)) {
+    let accepted =
+        TrustCheck { accepted: Some(glowfly_model::effect::Accepted { at: Some(0), reason: first_reason.clone() }), ..trusted(&work) };
+    match crate::testing::execute_checked(accepted, job(&work, cmds)) {
         Some(Msg::Trust(TrustMsg::Stale(s))) => assert_ne!(s.unchecked.map(|a| a.reason), Some(first_reason)),
         other => panic!("still held: {}", other.is_some()),
     }
@@ -221,7 +226,7 @@ exit 0
 #[test]
 fn a_command_the_gate_doesn_t_read_is_held_where_hooks_follow_the_working_tree() {
     let (work, _bare, _other) = following("unmodeled");
-    match crate::runner::testing::execute_checked(trusted(&work), job(&work, &[&["bisect", "start"]])) {
+    match crate::testing::execute_checked(trusted(&work), job(&work, &[&["bisect", "start"]])) {
         Some(Msg::Trust(TrustMsg::Stale(s))) => {
             assert!(matches!(s.unchecked.map(|a| a.reason), Some(glowfly_core::trust::incoming::Unchecked::Unmodeled(_))));
         }
@@ -250,7 +255,7 @@ fn head_on_an_unchecked_hook(name: &str) -> (PathBuf, TrustCheck, git2::Oid, git
 fn writing_head_s_files_is_compared_with_head_s_hooks() {
     let (work, check, _, _) = head_on_an_unchecked_hook("head-files");
     for cmd in [&["stash", "push", "-u"][..], &["reset", "--hard"], &["checkout", "-f"]] {
-        let got = crate::runner::testing::execute_checked(check.clone(), job(&work, &[cmd]));
+        let got = crate::testing::execute_checked(check.clone(), job(&work, &[cmd]));
         assert!(matches!(got, Some(Msg::Trust(TrustMsg::Stale(_)))), "{cmd:?} is held");
     }
     assert!(!work.join(".githooks/reference-transaction").exists(), "the hook was never written");
@@ -270,9 +275,9 @@ fn undo_s_stash_first_goes_through_the_gate() {
         to: evil,
         stash: None,
     };
-    let opts = crate::effect::UndoOpts { stash_first: true, ..Default::default() };
+    let opts = glowfly_model::effect::UndoOpts { stash_first: true, ..Default::default() };
     let Msg::Job(JobMsg::JobDone { ok, .. }) =
-        crate::runner::undo_run::undo_redo(&work, action, false, opts, Some(&gate), crate::runner::testing::SEAMS.trashers)
+        crate::undo_run::undo_redo(&work, action, false, opts, Some(&gate), crate::testing::SEAMS.trashers)
     else {
         panic!("done")
     };
@@ -290,9 +295,9 @@ fn undo_s_stash_pop_goes_through_the_gate() {
     let follows = glowfly_core::trust::scan_at(&work).unwrap().follows;
     let gate = Gate::new(work.clone(), follows, check.saved.clone(), None, check.lang);
     let mut text = String::new();
-    let git_ = crate::runner::undo_run::UndoGit { gate: Some(&gate), trashers: crate::runner::testing::SEAMS.trashers };
-    let how = crate::runner::undo_stash::put_back(&work, git_, stash, "Glowfly: changes before undo #1", &mut text);
-    assert_eq!(how, Some(crate::effect::StashHow::Failed), "{text}");
+    let git_ = crate::undo_run::UndoGit { gate: Some(&gate), trashers: crate::testing::SEAMS.trashers };
+    let how = crate::undo_stash::put_back(&work, git_, stash, "Glowfly: changes before undo #1", &mut text);
+    assert_eq!(how, Some(glowfly_model::effect::StashHow::Failed), "{text}");
     assert!(text.contains("held git stash pop") && text.contains("nothing was dropped"), "{text}");
     assert!(!work.join("dirty.txt").exists(), "nothing was put back");
     assert_eq!(git2::Repository::open(&work).unwrap().refname_to_id("refs/stash").ok(), Some(stash), "the stash stays");
@@ -317,15 +322,15 @@ fn a_kept_abort_s_redo_goes_through_the_gate() {
         branch: Some("main".into()),
         left: glowfly_core::undo::Changes(Vec::new()),
     };
-    let git_ = crate::runner::undo_run::UndoGit { gate: Some(&gate), trashers: crate::runner::testing::SEAMS.trashers };
-    let ran = crate::runner::undo_run::undo_run(&work, action, true, Default::default(), git_);
+    let git_ = crate::undo_run::UndoGit { gate: Some(&gate), trashers: crate::testing::SEAMS.trashers };
+    let ran = crate::undo_run::undo_run(&work, action, true, Default::default(), git_);
     assert!(!ran.ok, "held: {}", ran.output);
     assert!(ran.output.contains("trust"), "says why: {}", ran.output);
     assert!(work.join(".git/MERGE_HEAD").exists(), "the merge is still in progress");
     // The kept abort itself is held the same way.
-    let fx = Effect::Stash(crate::effect::StashEffect::AbortKeeping { cwd: work.clone(), keep: Vec::new() });
+    let fx = Effect::Stash(glowfly_model::effect::StashEffect::AbortKeeping { cwd: work.clone(), keep: Vec::new() });
     // Trusted as it is now: only the gate stands between the abort and the hook.
-    let got = crate::runner::testing::execute_checked(trusted(&work), fx);
+    let got = crate::testing::execute_checked(trusted(&work), fx);
     let (ok, output) = done(got).expect("the job ends");
     assert!(!ok && output.contains("trust"), "held: {output}");
     assert!(work.join(".git/MERGE_HEAD").exists(), "the merge is still in progress");

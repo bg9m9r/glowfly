@@ -10,13 +10,13 @@ use super::snapshot_tests::{harness, harness_sized, remove_fixture, with_repo};
 use super::snapshot_tests_repo_list::{H, abs, api, hover_row, last, shown, web, welcome_state};
 use super::snapshot_tests_repo_menu::open_repo_menu;
 use super::snapshot_tests_select::click;
-use crate::msg::{GroupMsg, Msg, RecentMsg};
-use crate::state::repo_groups::GroupForm;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key, Modifiers, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{RepoColour, RepoGroup, ThemeChoice};
+use glowfly_model::msg::{GroupMsg, Msg, RecentMsg};
+use glowfly_model::state::repo_groups::GroupForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -190,7 +190,7 @@ fn repo_group_dialog() {
     assert!(matches!(last(&h), Msg::Groups(GroupMsg::Create { name, repo }) if made(name, repo)));
     let (st, sent) = h.state_mut();
     let create = sent.pop().expect("the Create message");
-    crate::update::update(st, create, Instant::now());
+    glowfly_model::update::update(st, create, Instant::now());
     h.run();
     assert!(h.state().0.modal.is_none(), "Create closes the dialog");
     assert!(h.query_by_label("Create").is_none(), "its Create button is gone");

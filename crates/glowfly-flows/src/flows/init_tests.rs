@@ -5,14 +5,14 @@
 use super::clone::PARENT_CHECK_DELAY;
 use super::tests::{drive, state};
 use super::update;
-use crate::effect::OsEffect;
-use crate::effect::{Effect, InitEffect};
-use crate::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg, RepoMsg};
-use crate::state::init::{InitForm, InitRequest};
-use crate::state::trust::{Created, recorded};
-use crate::state::{AppState, Modal};
 use glowfly_core::init_ops::{FolderFacts, GitignoreTemplate, INITIAL_COMMIT, InitOutcome, InitPlan, License};
 use glowfly_core::settings::{RepoTrust, Settings};
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, InitEffect};
+use glowfly_model::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::init::{InitForm, InitRequest};
+use glowfly_model::state::trust::{Created, recorded};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -81,7 +81,11 @@ fn init_opens_the_dialog_instead_of_a_folder_picker() {
     assert_eq!(Path::new(&form(&mut st).folder), picked);
     assert_eq!(checks(&fx).len(), 1);
     assert!(checks(&fx)[0].1.is_zero());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. } | Effect::Init(InitEffect::Run { .. }))), "{fx:?}");
+    assert!(
+        !fx.iter()
+            .any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }) | Effect::Init(InitEffect::Run { .. }))),
+        "{fx:?}"
+    );
     assert!(st.job.is_none());
 }
 
@@ -172,7 +176,7 @@ fn start_runs_one_init_job() {
 }
 
 fn loads(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. }))
+    fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })))
 }
 
 #[test]

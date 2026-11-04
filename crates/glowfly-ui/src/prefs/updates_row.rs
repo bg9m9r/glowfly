@@ -1,24 +1,25 @@
 //! Preferences > General's Updates row: the daily check, this version and when it last checked,
 //! Check now, and the check's or download's status with what can be done next (Download, its
 //! progress and Cancel, Install and restart, Show file, and Download again when the downloaded
-//! file is gone or changed). A Flatpak copy's offer says how Flatpak updates it instead of
+//! file is gone or changed), its help, and last what an upgrade shows (the What's new chip, the
+//! release notes or nothing). A Flatpak copy's offer says how Flatpak updates it instead of
 //! offering a download.
 
 use super::{help, row, warn};
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::updates::{
-    Transfer, UpdateStatus, UpdatesState, available_text, download_failed_text, install_label, progress_text, stale_text,
-};
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, CornerRadius, Rect, RichText, Sense, Ui, WidgetInfo, WidgetType, vec2};
 use glowfly_core::app_update::Offer;
 use glowfly_core::app_update::{InstallMethod, SavedProblem};
 use glowfly_core::i18n::Lang;
-use glowfly_core::settings::Settings;
+use glowfly_core::settings::{Settings, WhatsNew};
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::updates::{
+    Transfer, UpdateStatus, UpdatesState, available_text, download_failed_text, install_label, progress_text, stale_text,
+};
 use std::path::Path;
 
 /// The progress bar's widest and its height.
@@ -79,6 +80,19 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
             UpdateStatus::Stale { offer, file, problem } => stale(ui, t, &offer.version, file, *problem, msgs),
         }
         help(ui, t.tr("prefs.general.updates.help"));
+        whats_new(ui, t, &mut s.updates.whats_new);
+    });
+}
+
+/// What the first start after an upgrade does: the What's new chip, the notes, or nothing. It
+/// ends the row, apart from the check it doesn't depend on.
+fn whats_new(ui: &mut Ui, t: Lang, choice: &mut WhatsNew) {
+    ui.add_space(8.0);
+    ui.label(RichText::new(t.tr("prefs.general.updates.whats_new.label")).color(color::text()));
+    ui.indent("whats-new", |ui| {
+        controls::radio_value(ui, choice, WhatsNew::Chip, t.tr("prefs.general.updates.whats_new.chip"));
+        controls::radio_value(ui, choice, WhatsNew::Dialog, t.tr("prefs.general.updates.whats_new.dialog"));
+        controls::radio_value(ui, choice, WhatsNew::Off, t.tr("prefs.general.updates.whats_new.off"));
     });
 }
 

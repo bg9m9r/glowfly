@@ -5,13 +5,13 @@
 
 use super::widgets::reason::{self, ItemState};
 use super::widgets::tooltip;
-use crate::custom_commands::Target;
-use crate::msg::Msg;
-use crate::state::custom_commands::MenuCommands;
-use crate::ui::widgets::menu::{separator, submenu};
+use crate::widgets::menu::{separator, submenu};
 use eframe::egui;
 use glowfly_core::custom_commands::Place;
 use glowfly_core::i18n::Lang;
+use glowfly_model::custom_commands::Target;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::custom_commands::MenuCommands;
 
 pub fn group(ui: &mut egui::Ui, t: Lang, cmds: &MenuCommands, place: Place, at: Target, msgs: &mut Vec<Msg>) {
     let items = cmds.items(place, &at, cfg!(windows));

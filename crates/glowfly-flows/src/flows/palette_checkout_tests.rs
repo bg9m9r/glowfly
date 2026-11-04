@@ -6,14 +6,14 @@ use super::branch_tests::with_origin;
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::state::AppState;
-use crate::state::palette::{Entry, MAX_COMMAND_ROWS, PaletteCommand as C, entries, listed, shown};
 use glowfly_core::gitcli::args;
 use glowfly_core::undo::UndoKind;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{Entry, MAX_COMMAND_ROWS, PaletteCommand as C, entries, listed, shown};
 use std::path::Path;
 use std::time::Instant;
 
@@ -37,7 +37,7 @@ fn open_palette(st: &mut AppState) {
 /// The commands of the single `RunGit` in `fx`, and what it records for undo.
 fn run_git(fx: &[Effect]) -> (Vec<Vec<String>>, Option<UndoKind>) {
     match fx {
-        [Effect::RunGit { cmds, record, .. }] => (cmds.clone(), record.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => (cmds.clone(), record.clone()),
         other => panic!("expected one RunGit, got {other:?}"),
     }
 }

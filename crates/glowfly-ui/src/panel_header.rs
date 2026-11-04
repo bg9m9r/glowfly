@@ -6,12 +6,12 @@ use super::widgets::Icon;
 use super::widgets::buttons;
 use super::widgets::ghost::{self, icon_tip};
 use super::widgets::menu::{self, popup_below};
-use crate::keymap::Keymap;
-use crate::msg::Msg;
-use crate::state::tip::Tip;
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, PopupCloseBehavior, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::tip::Tip;
 
 /// The least width the title keeps before the links fold into the ⋯ menu.
 pub const TITLE_MIN: f32 = 240.0;

@@ -2,16 +2,20 @@
 //! `execute_checked` with a trust re-check first), the sandboxed runner of the whole-app tests
 //! (`sandboxed`, `sandbox.rs`), the diff decoration a loaded diff gets, and the working-file
 //! helpers. Everything here runs with the stand-ins of `SEAMS`: a folder in the temp dir as the
-//! trash (`test_bin`), `cp` as the sequence editor and long path-search chunks, so a test never
-//! touches the real Recycle Bin or Trash and never runs the test binary as git's editor.
+//! trash (`test_bin`), `cp` as the sequence editor, long path-search chunks and a folder in the
+//! temp dir for saves of Glowfly's own files (`own_files`), so a test never touches the real
+//! Recycle Bin or Trash, never runs the test binary as git's editor and never writes over the
+//! developer's settings, recent repositories or tabs. `execute` refuses the effects that reach
+//! outside the test (those the whole-app sandbox drops: the user's global git config, the
+//! credential store, Glowfly's own folders, the network, the desktop), bar a few that only read.
 
 use super::execute::{Cx, Execute, execute_with};
 use super::seams::{Seams, SeamsKind};
 use super::{Runner, Waker};
-use crate::effect::{Checked, Effect, FileOp, TrustCheck};
-use crate::msg::Msg;
 use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
+use glowfly_model::effect::{Checked, Effect, FileOp, SandboxRule, SaveEffect, TrustCheck};
+use glowfly_model::msg::Msg;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
@@ -25,19 +29,64 @@ pub const SEAMS: Seams = Seams {
     trashers: undo::Trashers { system: test_trash, home: test_trash, restore: test_untrash },
     sequence_editor: copy_editor,
     chunk: Duration::from_secs(30),
+    save: save_for_test,
 };
 
 /// Runs one effect to completion (blocking) and returns the message to send back, if any.
 /// Results that belong to one repository come back as `Msg::Scoped`.
 pub fn execute(effect: Effect) -> Option<Msg> {
+    refuse_outside(&effect);
     let graph_cache = repo::GraphCache::default();
     execute_with(effect, &cx(&graph_cache))
 }
 
 /// `execute` with the trust re-check `c` first.
 pub fn execute_checked(c: TrustCheck, effect: Effect) -> Option<Msg> {
+    refuse_outside(&effect);
     let graph_cache = repo::GraphCache::default();
     Execute::execute(Box::new(Checked { effect, check: c }), &cx(&graph_cache))
+}
+
+/// Fails the test if `effect` reaches outside the test's own repositories and folders: every
+/// effect the whole-app tests' sandbox drops (the network, the OS shell, the desktop, file
+/// pickers, the credential store, the global git config, Glowfly's own folders; see
+/// `Effect::sandbox`), with `ALLOWED`'s exceptions. Saves are not refused: `SEAMS` redirects them.
+#[track_caller]
+fn refuse_outside(effect: &Effect) {
+    assert!(
+        !refused(effect),
+        "{} reaches outside the test (the user's git config, Glowfly's own folders, the network or the desktop); tests must not run it",
+        effect.name()
+    );
+}
+
+/// Whether `refuse_outside` fails a test that runs `effect`.
+fn refused(effect: &Effect) -> bool {
+    effect.sandbox() == SandboxRule::Drop && !allowed(effect)
+}
+
+/// The effects the sandbox drops that a test may still run: they only read the test's
+/// repositories and folders, write a test repository's own config, fetch from a test
+/// repository's (local) remote, or read the user's git config and signing keys without changing
+/// them. An effect wrapped in a trust re-check (`Effect::Checked`) is allowed when the effect
+/// inside it is.
+fn allowed(effect: &Effect) -> bool {
+    use glowfly_model::effect::partial::PartialEffect;
+    if let Effect::Checked(c) = effect {
+        return allowed(&c.effect);
+    }
+    use glowfly_model::deep_link::DeepLinkEffect;
+    use glowfly_model::effect::{PrefsEffect, ReposEffect};
+    use glowfly_model::pull_request::PrEffect;
+    use glowfly_model::ssh::SshEffect;
+    matches!(
+        effect,
+        Effect::DeepLink(DeepLinkEffect::Build { .. } | DeepLinkEffect::Find { .. })
+            | Effect::PullRequest(PrEffect::Files(_) | PrEffect::LineMaps(_) | PrEffect::FetchHead(_))
+            | Effect::Repos(ReposEffect::Scan { .. } | ReposEffect::Sync { .. })
+            | Effect::Ssh(SshEffect::ReadChoice { .. } | SshEffect::SetKeyChoice { repo: Some(_), .. })
+            | Effect::Prefs(PrefsEffect::ListSigningKeys { .. })
+    ) || matches!(effect, Effect::Partial(PartialEffect::SizeHistory(r)) if r.service.is_none())
 }
 
 /// The `Cx` of an effect run on its own: never cancelled, no stop, no gate, other messages
@@ -72,6 +121,21 @@ impl Runner {
     }
 }
 
+/// Where `SEAMS` writes saves of Glowfly's own files (settings.json, recent.txt, tabs.txt): a
+/// folder in the temp dir, one per process, emptied on its first use. Never the config folder.
+pub fn own_files() -> PathBuf {
+    glowfly_core::testkit::bin::own("glowfly-test-files")
+}
+
+/// `saves::save_now` into `own_files()`.
+fn save_for_test(effect: SaveEffect) -> Option<Msg> {
+    let dir = own_files();
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        return Some(Msg::Logged { ok: false, text: format!("Could not create {}: {e}", dir.display()) });
+    }
+    super::sandbox::save_into(&dir, effect)
+}
+
 /// The stand-in trash: a folder in the temp dir, one per process.
 pub fn test_bin() -> PathBuf {
     glowfly_core::testkit::bin::own("glowfly-app-test-bin")
@@ -93,12 +157,12 @@ fn copy_editor() -> SequenceEditor {
     SequenceEditor::Copy
 }
 
-/// `Effect::WorkFile`'s work with the stand-in trash.
+/// `FilesEffect::Work`'s work with the stand-in trash.
 pub fn work_file_for_test(workdir: &Path, op: FileOp) -> Msg {
     super::files::work_file(workdir, op, SEAMS.trashers)
 }
 
-/// `Effect::WorkFile`'s work with a trash that refuses every file (`TrashProblem::NoTrash`).
+/// `FilesEffect::Work`'s work with a trash that refuses every file (`TrashProblem::NoTrash`).
 pub fn refused_for_test(workdir: &Path, op: FileOp) -> Msg {
     fn refuse(_: &Path) -> Result<(), repo::TrashRefusal> {
         Err(repo::TrashRefusal::new(repo::TrashProblem::NoTrash, "no bin"))

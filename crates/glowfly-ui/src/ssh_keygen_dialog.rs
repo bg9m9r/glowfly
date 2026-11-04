@@ -8,11 +8,11 @@ use super::widgets::FieldGroup;
 use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh::{SshPage, location_text};
 use eframe::egui::{self, Id, Ui};
 use glowfly_core::ssh_keys::default_location;
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::{SshPage, location_text};
 
 /// A field in its label-field-help `group`; returns its response and whether Enter left it.
 fn field(ui: &mut Ui, group: FieldGroup<'_>, text: &mut String, id: &str, hint: &str, password: bool) -> (egui::Response, bool) {

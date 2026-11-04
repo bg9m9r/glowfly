@@ -6,13 +6,13 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
-use crate::state::branch_sync::RenameForm;
-use crate::state::{AppState, Modal};
 use glowfly_core::gitcli::{args, run as git_run};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Tracking;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::branch_sync::RenameForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 use std::time::Instant;
 
@@ -33,7 +33,7 @@ fn last_toast(st: &AppState) -> String {
 }
 
 /// Whether `a` is Try again (the toast holds a proxy for the run's fix, under its label).
-fn retries(a: Option<&crate::state::ToastAction>) -> bool {
+fn retries(a: Option<&glowfly_model::state::ToastAction>) -> bool {
     a.is_some_and(|a| a.label == T.tr("job_retry.button"))
 }
 
@@ -58,9 +58,9 @@ fn upstream(merge: &str) -> Option<Tracking> {
 fn rename_with_remote_pushes_then_deletes_the_old_name() {
     let (mut st, work, bare) = with_origin("sync-rename");
     st.modal = Some(Modal::RenameBranch(RenameForm { name: "feature-2".into(), remote: true, ..RenameForm::new("feature".into()) }));
-    let tip = crate::state::remote_branch::exists(st.snap.as_ref().unwrap(), "origin", "feature").unwrap();
+    let tip = glowfly_model::state::remote_branch::exists(st.snap.as_ref().unwrap(), "origin", "feature").unwrap();
     let fx = update(&mut st, rename("feature", "feature-2"), Instant::now());
-    let [Effect::RunGit { cmds, .. }] = &fx[..] else { panic!("one job: {fx:?}") };
+    let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] = &fx[..] else { panic!("one job: {fx:?}") };
     assert_eq!(cmds, &glowfly_core::branch_ops::rename_with_remote_cmds("feature", "feature-2", "origin", "feature", tip));
     assert!(st.modal.is_none(), "the dialog closes");
     super::tests::finish(&mut st, fx);
@@ -115,7 +115,7 @@ fn the_delete_is_leased_on_the_tip_last_fetched() {
 fn a_failed_rename_keeps_the_pending_job_for_try_again() {
     let (mut st, work, bare) = with_origin("sync-rename-fails");
     let fx = update(&mut st, rename("feature", "feature-2"), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]));
     let output = "$ git branch -m feature feature-2\nfatal: Unable to create '.git/refs/heads/feature-2.lock': File exists.".to_owned();
     update(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }), Instant::now());
     assert!(st.rename_job.is_some(), "kept for a run again");
@@ -136,7 +136,7 @@ fn renaming_on_the_remote_is_refused_with_a_reason() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let snap = st.snap.as_ref().unwrap();
     let b = |n: &str| snap.locals.iter().find(|b| b.name == n).unwrap().clone();
-    let why = |n: &str, new: &str| crate::state::branch_sync::remote_rename(T, snap, &b(n), new).map(|r| r.err());
+    let why = |n: &str, new: &str| glowfly_model::state::branch_sync::remote_rename(T, snap, &b(n), new).map(|r| r.err());
     assert_eq!(
         why("main", "trunk"),
         Some(Some("main is the default branch of origin, so it is renamed only here: others build on it.".into()))
@@ -186,7 +186,7 @@ fn delete_remote_warns_of_tracking_branches_and_unsets_them() {
     assert_eq!(form.unset_label(T), "Unset the upstreams of all 2");
     let delete = form.delete_msg();
     let fx = update(&mut st, delete, Instant::now());
-    let [Effect::RunGit { cmds, .. }] = &fx[..] else { panic!("one job") };
+    let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] = &fx[..] else { panic!("one job") };
     assert_eq!(
         cmds,
         &[

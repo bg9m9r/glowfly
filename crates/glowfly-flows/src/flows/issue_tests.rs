@@ -4,16 +4,16 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply};
-use crate::msg::{BlameMsg, ForgeMsg, IssueMsg, Msg, RepoMsg, TabsMsg};
-use crate::pull_request::PullRequestMsg;
-use crate::state::history::FileHistoryView;
-use crate::state::issue::Details;
-use crate::state::pull_request::PrView;
-use crate::state::{AppState, Status};
 use glowfly_core::forge::{Account, Issue, IssueDetails, IssueFacets, Provider, PullRequest, Target};
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::{RepoTrust, TrackerChoice};
+use glowfly_model::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply};
+use glowfly_model::msg::{BlameMsg, ForgeMsg, IssueMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::issue::Details;
+use glowfly_model::state::pull_request::PrView;
+use glowfly_model::state::{AppState, Status};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -94,7 +94,7 @@ pub(super) fn err(message: &str) -> ForgeError {
     ForgeError { message: message.into(), auth: false }
 }
 
-fn view(st: &AppState) -> &crate::state::issue::IssueView {
+fn view(st: &AppState) -> &glowfly_model::state::issue::IssueView {
     st.session.issue.view.as_ref().expect("the panel is open")
 }
 
@@ -128,7 +128,7 @@ fn opening_a_listed_issue_loads_it_and_closes_the_other_views() {
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
     st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
-    st.session.blame.view = Some(crate::state::blame::BlameView::loading("a.txt".into(), None));
+    st.session.blame.view = Some(glowfly_model::state::blame::BlameView::loading("a.txt".into(), None));
     st.session.pull_request.view = Some(PrView::new(pr(7), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap()));
     let fx = run(&mut st, IssueMsg::Open("12".into()));
     let l = loads(&fx);
@@ -170,11 +170,11 @@ fn trackers_without_details_held_and_unconnected() {
 
     st.session.forge.as_mut().unwrap().tracker = Some(github());
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     assert!(jobs(&run(&mut st, IssueMsg::Open("12".into()))).is_empty());
     assert_eq!(view(&st).details, Details::Held);
     run(&mut st, IssueMsg::Close);
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
 
     let gl = Target { provider: Provider::GitLabSelfManaged, host: "gitlab.acme.io".into(), ..github() };
     st.session.forge.as_mut().unwrap().tracker = Some(gl);

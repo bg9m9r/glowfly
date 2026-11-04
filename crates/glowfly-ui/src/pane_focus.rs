@@ -5,10 +5,10 @@
 //! (`ViewState::pane_focus`). The file lists' targets are `list_focus.rs`'s (the first one the
 //! details panel draws takes the focus) and the commit message's is its summary field.
 
-use crate::state::layout::{self, Pane, Panel};
-use crate::state::{AppState, Selection};
-use crate::ui::theme::tokens;
+use crate::theme::tokens;
 use eframe::egui::{self, Id, Rect, Sense, WidgetInfo, WidgetType};
+use glowfly_model::state::layout::{self, Pane, Panel};
+use glowfly_model::state::{AppState, Selection};
 
 /// The graph's focus target (`graph/select.rs`).
 pub(crate) fn graph_id() -> Id {

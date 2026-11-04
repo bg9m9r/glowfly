@@ -3,23 +3,22 @@
 //! cancels a pending step.
 
 use super::diff_tests::three_hunks;
-use super::tests::{drive, git, state};
+use super::tests::{drive, git, skipped, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::DiffMsg;
-use crate::msg::HistoryMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::SelectionMsg;
-use crate::msg::TabsMsg;
-use crate::runner;
-use crate::state::diff_nav::{self, Landing, Step, StepKind};
-use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::diff_rows::header_rows;
 use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::change_rows;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::HistoryMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::SelectionMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::diff_nav::{self, Landing, Step, StepKind};
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -78,10 +77,11 @@ pub(super) fn diff(st: &AppState) -> &FileDiff {
     &st.session.diff.view.as_ref().expect("a diff is open").1
 }
 
-/// Runs every effect in `fx` and the messages they lead to, as the app would.
+/// Runs the effects in `fx` and the messages they lead to, as the app would, minus those
+/// `helpers::finish` skips (saves, dialogs, the network).
 pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
-    for e in fx {
-        if let Some(m) = runner::testing::execute(e) {
+    for e in fx.into_iter().filter(|e| !skipped(e)) {
+        if let Some(m) = glowfly_runner::testing::execute(e) {
             drive(st, m);
         }
     }
@@ -91,7 +91,7 @@ pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
 pub(super) fn one_load(fx: &[Effect]) -> (&DiffTarget, bool) {
     let fx: Vec<&Effect> = fx.iter().filter(|e| !matches!(e, Effect::LineCounts(_))).collect();
     match fx.as_slice() {
-        [Effect::LoadDiff { target, reload, .. }] => (target, *reload),
+        [Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload, .. })] => (target, *reload),
         other => panic!("expected one diff load, got {other:?}"),
     }
 }
@@ -127,7 +127,7 @@ fn next_at_last_change_opens_next_file_on_first_change() {
     assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));
     // b.bin has nothing to land on: c.txt is requested instead, and b.bin never shows.
     let [e] = <[Effect; 1]>::try_from(fx).unwrap();
-    let fx = run(&mut st, runner::testing::execute(e).expect("diff result"));
+    let fx = run(&mut st, glowfly_runner::testing::execute(e).expect("diff result"));
     assert_eq!(one_load(&fx), (&unstaged("c.txt"), false));
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the skipped file is never shown");
     assert_eq!(st.hunk_ops_gen(), None, "hunk operations wait for the new diff");
@@ -264,7 +264,7 @@ fn landing_dropped_by_other_open_and_close() {
     let stale = pending_step(&mut st);
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(unstaged("c.txt"))));
     assert_eq!(st.view.diff_landing, None, "a click on another file cancels the step");
-    run(&mut st, runner::testing::execute(stale).unwrap());
+    run(&mut st, glowfly_runner::testing::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the stale b.bin result is ignored");
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));

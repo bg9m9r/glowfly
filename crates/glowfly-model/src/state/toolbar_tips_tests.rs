@@ -79,6 +79,7 @@ pub fn running(st: &mut AppState) {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -241,4 +242,29 @@ fn stash_and_pop_previews() {
     let p = pop_preview(Lang::En, snap).unwrap();
     assert_eq!((p.heading.as_str(), &p.rows[..]), ("Applies", &[TipRow::Line("On main: wip".into())][..]));
     assert_eq!(p.note.as_deref(), Some("You have local changes: Unstash asks before applying."));
+}
+
+/// `push_target_parts` gives `push_target`'s template and its names whole, for a menu to cut.
+#[test]
+fn push_target_parts_name_the_branch_and_where_it_goes() {
+    let t = glowfly_core::i18n::Lang::En;
+    let mut st = state("tip-push-parts");
+    let snap = st.snap.as_mut().unwrap();
+    diverge(snap, 1, 0, true);
+    let long = "worktree-agent-a3f9c1d2-refresh-the-sidebar-rows";
+    let b = snap.locals.iter_mut().find(|b| b.is_head).unwrap();
+    b.name = long.into();
+    b.upstream = Some(format!("origin/{long}"));
+    snap.head_branch = Some(long.into());
+    let (template, names) = push_target_parts(t, snap).expect("an upstream");
+    assert_eq!(template, t.tr("toolbar.tip.push_title"));
+    assert_eq!(names, [("branch", long.to_owned()), ("upstream", format!("origin/{long}"))]);
+    assert_eq!(push_target(t, snap).unwrap(), format!("Push {long} to origin/{long}"), "filled whole");
+    // Without an upstream: publish to the remote Push picks.
+    let b = snap.locals.iter_mut().find(|b| b.is_head).unwrap();
+    (b.upstream, b.tracking) = (None, None);
+    let (template, names) = push_target_parts(t, snap).expect("a remote");
+    assert_eq!(template, t.tr("toolbar.tip.push_publish_title"));
+    assert_eq!(names, [("branch", long.to_owned()), ("remote", "origin".to_owned())]);
+    assert_eq!(push_target(t, snap).unwrap(), format!("Publish {long} to origin (creates origin/{long})"));
 }

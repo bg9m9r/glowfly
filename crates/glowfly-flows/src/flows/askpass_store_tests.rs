@@ -3,12 +3,12 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{CredentialEffect, Effect};
-use crate::msg::{CredentialMsg, JobMsg, Msg};
-use crate::state::trust::Created;
-use crate::state::{AppState, RunningJob};
 use glowfly_core::askpass::Prompt;
-use glowfly_core::git_credential::Remembered;
+use glowfly_core::git_credential::{CredentialError, Remembered};
+use glowfly_model::effect::{CredentialEffect, Effect};
+use glowfly_model::msg::{CredentialMsg, JobMsg, Msg};
+use glowfly_model::state::trust::Created;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -43,6 +43,7 @@ fn start(st: &mut AppState, workdir: Option<PathBuf>, then_open: Option<(PathBuf
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open,
@@ -243,7 +244,7 @@ fn reports_what_became_of_the_sign_in() {
     assert!(!st.view.show_log);
 
     remembered(&mut st, Ok(Remembered::SetUp("libsecret".into())));
-    let text = "Git now saves sign-ins with libsecret (credential.helper in your global git config). Saved the sign-in for github.com.";
+    let text = "Git now saves sign-ins with libsecret (credential.helper in your global Git config). Saved the sign-in for github.com.";
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == text));
     assert!(st.log.last().is_some_and(|l| l.text == text));
 
@@ -259,16 +260,22 @@ fn reports_what_became_of_the_sign_in() {
     assert!(cached.ok && cached.text.contains("in memory") && cached.text.contains("git-credential-libsecret"), "{}", cached.text);
     assert!(cached.text.ends_with("git config --global --unset credential.helper"), "names the undo: {}", cached.text);
 
-    let e = "no credential store is set up (install git-credential-libsecret or set credential.helper)";
-    remembered(&mut st, Err(e.into()));
-    let failed = format!("Couldn't save the sign-in for github.com: {e}");
+    let e = CredentialError::NoStore { install: Some("git-credential-libsecret".into()) };
+    remembered(&mut st, Err(e));
+    let failed = "Couldn't save the sign-in for github.com: no credential store is set up (install git-credential-libsecret or set credential.helper)";
     assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text == failed));
 
     let toasts = st.toasts.len();
     send(&mut st, Msg::Credentials(CredentialMsg::Forgotten { host: "github.com".into(), result: Ok(()) }));
     assert!(st.log.last().is_some_and(|l| l.ok));
     assert_eq!(st.toasts.len(), toasts, "dropping a sign-in isn't toasted");
-    send(&mut st, Msg::Credentials(CredentialMsg::Forgotten { host: "github.com".into(), result: Err("helper failed".into()) }));
+    send(
+        &mut st,
+        Msg::Credentials(CredentialMsg::Forgotten {
+            host: "github.com".into(),
+            result: Err(CredentialError::RejectFailed { said: Some("helper failed".into()) }),
+        }),
+    );
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("helper failed")));
     let last = st.toasts.last().unwrap();
     assert!(!last.ok && last.text.contains("helper failed") && last.action.is_some(), "a failure is announced with Details");

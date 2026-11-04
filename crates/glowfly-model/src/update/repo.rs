@@ -1,10 +1,8 @@
 //! Opening and refreshing the repository, selection and diffs.
 
 pub(super) use super::refresh::{load, refresh, refresh_status};
-use crate::effect::OsEffect;
-use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::FolderPurpose;
-use crate::msg::RepoMsg;
+use crate::effect::{CommitEffect, Effect, LoadKind, OsEffect, SaveEffect, UiEffect};
+use crate::msg::{FolderPurpose, RepoMsg};
 use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
 use glowfly_core::diff_rows::row_of_file_line;
@@ -50,7 +48,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     if st.loading_more() {
                         super::load_more::failed(st, e, now);
                     } else {
-                        st.log(false, e);
+                        super::parked_free::load_failed(st, e);
                     }
                     if kind == LoadKind::Open {
                         let path = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
@@ -284,12 +282,13 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             st.recent = recent.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             st.recent.insert(0, snap.workdir.clone());
             st.recent.truncate(12);
-            fx.push(Effect::SaveRecent(st.recent.clone()));
+            fx.push(Effect::Save(SaveEffect::Recent(st.recent.clone())));
             let missing = std::mem::take(&mut st.missing_repos);
             st.missing_repos = missing.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             let label = st.tabs.get(st.active_tab).and_then(|t| t.label.as_deref());
             fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Glowfly", label.unwrap_or(&snap.name)))));
             st.session.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
+            st.session.wip_lit = false;
             st.session.detail = None;
             close_diff(st);
             super::conflict::close(st);
@@ -372,9 +371,10 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     }
 }
 
-/// Selects the WIP row, asking for the issue the checked-out branch names.
+/// Selects the WIP row as chosen (`wip_lit`), asking for the issue the checked-out branch names.
 pub(super) fn select_wip(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.session.selection = Selection::Wip;
+    st.session.wip_lit = true;
     st.session.detail = None;
     let key = st.snap.as_ref().and_then(|s| s.head_branch.clone()).and_then(|b| st.session.forge.as_ref().and_then(|f| f.branch_issue(&b)));
     super::forge::want_issues(st, key.into_iter().collect(), fx);
@@ -391,7 +391,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::journal::close(st);
     super::pull_request::close(st);
     super::issue::close(st);
-    fx.push(Effect::LoadDetail { workdir, oid });
+    fx.push(Effect::Commit(CommitEffect::LoadDetail { workdir, oid }));
     super::line_counts::want_commit(st, oid, fx);
     if scroll && let Some(row) = super::search::reveal(st, oid) {
         // Leave a few rows of context above the target.

@@ -5,13 +5,14 @@
 
 use super::tests::{drive, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{CommitMsg, Msg, PrefsMsg, RecentMsg, RepoMsg};
-use crate::onboarding::OnboardingMsg;
-use crate::state::onboarding::{Welcome, WelcomeStep};
-use crate::state::{Modal, PrefPage, PrefsState};
 use glowfly_core::i18n::Lang;
 use glowfly_core::identity::Identity;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::{CommitMsg, Msg, PrefsMsg, RecentMsg, RepoMsg};
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::onboarding::{Welcome, WelcomeStep};
+use glowfly_model::state::{Modal, PrefPage, PrefsState};
 use std::time::Instant;
 
 #[test]
@@ -33,7 +34,7 @@ fn choosing_a_language_saves_it() {
     st.settings.language = "es".into();
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
     let saved = fx.iter().find_map(|e| match e {
-        Effect::SaveSettings(s) => Some(s.clone()),
+        Effect::Save(SaveEffect::Settings(s)) => Some(s.clone()),
         _ => None,
     });
     let saved = saved.expect("the settings are saved");
@@ -83,8 +84,8 @@ fn the_missing_repository_question_is_in_the_chosen_language() {
 
 #[test]
 fn the_issue_heading_follows_the_tracker_and_the_language() {
-    use crate::state::ForgeState;
     use glowfly_core::forge::{Account, Provider, Target};
+    use glowfly_model::state::ForgeState;
     let gh = Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
     let trello = Account { provider: Provider::Trello, host: "trello.com".into(), org: String::new() };
     let board = Target::trello(&trello, "5f1a2b3c4d5e6f7a8b9c0d1e", "Website");
@@ -96,13 +97,13 @@ fn the_issue_heading_follows_the_tracker_and_the_language() {
 
 #[test]
 fn a_multi_selections_blocked_reasons_follow_a_language_switch_without_a_reselect() {
-    use crate::msg::SelectionMsg;
-    use crate::state::Selection;
-    use crate::state::selection::CommitBlock;
+    use glowfly_model::msg::SelectionMsg;
+    use glowfly_model::state::Selection;
+    use glowfly_model::state::selection::CommitBlock;
     let (mut st, f) = super::selection_tests::fixture("lang-multi-blocked");
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
-    let blocked = |st: &crate::state::AppState| match &st.session.selection {
+    let blocked = |st: &glowfly_model::state::AppState| match &st.session.selection {
         Selection::Commits(m) => m.pick_blocked,
         other => panic!("not a multi-selection: {other:?}"),
     };

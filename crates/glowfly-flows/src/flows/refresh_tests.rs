@@ -3,14 +3,13 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::JobMsg;
-use crate::msg::LoadMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WatchMsg;
-use crate::runner;
-use crate::state::{AppState, RunningJob};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::LoadMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WatchMsg;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -23,13 +22,13 @@ fn opened(name: &str) -> (AppState, PathBuf) {
 }
 
 fn loads(fx: &[Effect]) -> Vec<&Effect> {
-    fx.iter().filter(|e| matches!(e, Effect::LoadRepo { .. })).collect()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).collect()
 }
 
 /// The one load in `fx`, run: the message it reports.
 fn run_load(fx: Vec<Effect>) -> Msg {
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).expect("a load");
-    runner::testing::execute(load).expect("a result")
+    let load = fx.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).expect("a load");
+    glowfly_runner::testing::execute(load).expect("a result")
 }
 
 fn quiet_job(dir: &std::path::Path) -> RunningJob {
@@ -39,6 +38,7 @@ fn quiet_job(dir: &std::path::Path) -> RunningJob {
         quiet: true,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -78,7 +78,10 @@ fn config_and_load_option_changes_load_everything() {
 
     st.settings.initial_commits += 100;
     let fx = update(&mut st, Msg::Repo(RepoMsg::WindowFocused), Instant::now());
-    assert!(matches!(loads(&fx)[..], [Effect::LoadRepo { known: None, .. }]), "the commit limit changed: {fx:?}");
+    assert!(
+        matches!(loads(&fx)[..], [Effect::Load(glowfly_model::effect::LoadEffect::Repo { known: None, .. })]),
+        "the commit limit changed: {fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -100,7 +103,7 @@ fn refreshes_wait_for_the_running_load_and_merge() {
     // F5 doesn't wait: it supersedes the load in flight.
     let first = update(&mut st, Msg::Repo(RepoMsg::WindowFocused), Instant::now());
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    assert!(matches!(loads(&fx)[..], [Effect::LoadRepo { known: None, .. }]), "{fx:?}");
+    assert!(matches!(loads(&fx)[..], [Effect::Load(glowfly_model::effect::LoadEffect::Repo { known: None, .. })]), "{fx:?}");
     let stale = run_load(first);
     assert!(update(&mut st, stale, Instant::now()).is_empty(), "the superseded result is dropped");
     let _ = std::fs::remove_dir_all(&dir);
@@ -121,13 +124,13 @@ fn status_reads_merge_and_a_new_change_relayouts_the_graph() {
         msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })),
     };
     let first = update(&mut st, changed(), Instant::now());
-    assert!(matches!(&first[..], [Effect::LoadStatus { .. }]), "{first:?}");
+    assert!(matches!(&first[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })]), "{first:?}");
     assert!(update(&mut st, changed(), Instant::now()).is_empty(), "waits for the read running");
     assert!(update(&mut st, changed(), Instant::now()).is_empty());
 
-    let status = first.into_iter().next().and_then(runner::testing::execute).unwrap();
+    let status = first.into_iter().next().and_then(glowfly_runner::testing::execute).unwrap();
     let fx = update(&mut st, status, Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "one more read for both: {fx:?}");
+    assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })]), "one more read for both: {fx:?}");
     assert!(loads(&fx).is_empty());
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.is_dirty() && snap.graph.wip.is_some(), "the WIP row appears without a reload");
@@ -143,13 +146,13 @@ fn a_watcher_rescan_checks_refs_before_loading() {
     let msg =
         Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: true, paths: None, last_event: Instant::now() })) };
     let fx = update(&mut st, msg, Instant::now());
-    assert!(matches!(loads(&fx)[..], [Effect::LoadRepo { known: Some(_), .. }]), "{fx:?}");
+    assert!(matches!(loads(&fx)[..], [Effect::Load(glowfly_model::effect::LoadEffect::Repo { known: Some(_), .. })]), "{fx:?}");
     assert!(matches!(run_load(fx), Msg::Load(LoadMsg::RepoUnchanged { .. })));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 fn diff_loads(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadDiff { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).count()
 }
 
 /// Asks for the status and runs the read: the effects its result leads to.
@@ -158,7 +161,11 @@ fn read_status(st: &mut AppState) -> Vec<Effect> {
     let changed =
         Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })) };
     let fx = update(st, changed, Instant::now());
-    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::testing::execute).expect("a status read");
+    let status = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })))
+        .and_then(glowfly_runner::testing::execute)
+        .expect("a status read");
     update(st, status, Instant::now())
 }
 
@@ -196,7 +203,9 @@ fn load_more_raises_the_limit_until_the_tab_is_switched() {
     assert!(update(&mut st, Msg::Load(LoadMsg::LoadMoreCommits), Instant::now()).is_empty(), "the whole history is shown already");
     st.snap.as_mut().unwrap().truncated = true;
     let fx = update(&mut st, Msg::Load(LoadMsg::LoadMoreCommits), Instant::now());
-    let [Effect::LoadRepo { opts, known: None, .. }] = &loads(&fx)[..] else { panic!("a full load: {fx:?}") };
+    let [Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, known: None, .. })] = &loads(&fx)[..] else {
+        panic!("a full load: {fx:?}")
+    };
     assert_eq!(opts.max_commits, 2 * limit);
     finish(&mut st, fx);
     assert_eq!(st.snap.as_ref().unwrap().loaded_with.max_commits, 2 * limit);

@@ -4,14 +4,14 @@
 
 use super::commit_row::{Buttons, move_buttons, paint_back, paint_chip};
 use super::rows::{BUTTONS_W, Place, SHA_X, Shade};
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase_steps::NewStep;
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::ui::widgets::{Icon, paint_cut_text};
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::row_menu::RowMenuExt;
+use crate::widgets::{Icon, paint_cut_text};
 use eframe::egui::{Rect, Response, Ui, pos2};
 use glowfly_core::rebase::TodoStep;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase_steps::NewStep;
 
 const BREAK_NOTE: &str = "Stop here; Continue goes on";
 const NO_COMMAND: &str = "(no command yet)";

@@ -1,15 +1,16 @@
-//! Preferences' keys: Ctrl/Cmd+S saves the open page (from one of its fields too). Esc on the
-//! Save / Revert bar's buttons reverts the page; anywhere else it closes Preferences, which asks
+//! Preferences' keys: Ctrl/Cmd+S saves the open page (from one of its fields too), and Ctrl/Cmd+F
+//! focuses the search, where Esc clears the query before it leaves the field. Esc on the Save /
+//! Revert bar's buttons reverts the page; anywhere else it closes Preferences, which asks
 //! "Save your changes?" about an edited page (update/prefs_leave.rs). Esc leaves a dialog and a
 //! save still being written alone.
 
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::prefs_save::PendingSave;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::prefs_save::PendingSave;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::time::Instant;
 
 const PC_CTRL: Modifiers = Modifiers { ctrl: true, command: true, ..Modifiers::NONE };
@@ -20,7 +21,7 @@ struct Keys {
     msgs: Vec<Msg>,
 }
 
-/// Preferences open on the Identity page, its name edited when `edited`.
+/// Preferences open on the Commit identity page, its name edited when `edited`.
 fn identity(edited: bool) -> AppState {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     let mut p = PrefsState::new(PrefPage::RepoIdentity);
@@ -32,7 +33,7 @@ fn identity(edited: bool) -> AppState {
 }
 
 fn harness(st: AppState) -> Harness<'static, Keys> {
-    let mut h = crate::ui::snapshot_check::builder()
+    let mut h = crate::snapshot_check::builder()
         .build_state(|ctx, k: &mut Keys| super::global::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
     h.run();
     h
@@ -94,7 +95,7 @@ fn esc_elsewhere_on_an_edited_page_leaves_through_the_question() {
     let msgs = press(&mut h, Key::Escape, Modifiers::NONE);
     assert!(closes(&msgs) && !reverts(&msgs), "a stray Esc doesn't throw the edits away");
     let mut st = identity(true);
-    let fx = crate::update::update(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs), Instant::now());
+    let fx = glowfly_model::update::update(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs), Instant::now());
     assert!(fx.is_empty() && matches!(st.modal, Some(Modal::ConfirmChoice { .. })), "it asks first");
     assert!(st.prefs.is_some());
 }
@@ -131,9 +132,58 @@ fn esc_under_a_dialog_is_the_dialog_s() {
 
 #[test]
 fn the_sheet_lists_both_keys() {
-    let save = crate::keymap::binding(crate::keymap::BindingId::PrefsSave);
+    let save = glowfly_model::keymap::binding(glowfly_model::keymap::BindingId::PrefsSave);
     assert!(save.rebindable, "Ctrl/Cmd+S can be changed");
     assert_eq!(save.when.note(), Some("in Preferences"));
-    let revert = crate::keymap::binding(crate::keymap::BindingId::PrefsRevert);
+    let revert = glowfly_model::keymap::binding(glowfly_model::keymap::BindingId::PrefsRevert);
     assert!(!revert.rebindable, "Esc is the views' own key");
+}
+
+#[test]
+fn ctrl_f_focuses_the_preferences_search() {
+    let mut h = harness(identity(false));
+    let msgs = press(&mut h, Key::F, PC_CTRL);
+    assert!(msgs.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::FocusSearch))), "Ctrl+F asks for the search field");
+    assert!(!h.state().st.view.show_search, "not the graph's search bar");
+    let st = &mut h.state_mut().st;
+    for m in msgs {
+        glowfly_model::update::update(st, m, Instant::now());
+    }
+    assert!(st.prefs.as_ref().unwrap().focus_search);
+}
+
+/// Esc in the search field with a query: the first clears it and keeps the field, the second
+/// leaves the field, the third closes Preferences.
+#[test]
+fn esc_in_the_search_clears_then_leaves_then_closes() {
+    use eframe::egui::Id;
+    let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+    let mut p = PrefsState::new(PrefPage::General);
+    (p.search, p.focus_search) = ("git".into(), true);
+    st.prefs = Some(p);
+    let mut h = crate::snapshot_fixtures::keys_harness(st, true);
+    h.run();
+    let field = Id::new("prefs-search");
+    assert!(h.ctx.memory(|m| m.has_focus(field)), "Ctrl+F's request gave the field the keyboard");
+    let esc = |h: &mut Harness<'static, (AppState, Vec<Msg>)>| {
+        h.state_mut().1.clear();
+        h.input_mut().events.push(Event::Key {
+            key: Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        });
+        h.run();
+        std::mem::take(&mut h.state_mut().1)
+    };
+    let first = esc(&mut h);
+    assert_eq!(h.state().0.prefs.as_ref().unwrap().search, "", "the first Esc clears the query");
+    assert!(!closes(&first), "and Preferences stays open");
+    assert!(h.ctx.memory(|m| m.has_focus(field)), "the field keeps the keyboard");
+    let second = esc(&mut h);
+    assert!(!closes(&second), "the second Esc only leaves the field");
+    assert!(!h.ctx.memory(|m| m.has_focus(field)));
+    let third = esc(&mut h);
+    assert!(closes(&third), "the third closes Preferences");
 }

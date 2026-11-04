@@ -3,16 +3,16 @@
 //! shared fixture repository, as the runner would.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
-use crate::effect::OpPreviewJob;
-use crate::msg::{Msg, OpPreviewMsg};
-use crate::state::op_preview::PreviewDialog;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::git_version::{Feature, GitInfo};
 use glowfly_core::op_preview::{PreviewOp, Request, preview};
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::effect::OpPreviewJob;
+use glowfly_model::msg::{Msg, OpPreviewMsg};
+use glowfly_model::state::op_preview::PreviewDialog;
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 
 fn commit(dir: &Path, file: &str, text: &str, message: &str, date: &str) {

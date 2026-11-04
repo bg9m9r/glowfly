@@ -5,16 +5,16 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render};
 use super::{UiCache, avatars::Avatars, draw, theme::color};
-use crate::msg::{Msg, RepoMsg, SearchMsg};
+use crate::snapshot_check::CheckSnapshot;
 pub(crate) use crate::snapshot_fixtures::scenes::{searching, send, with_two_authors};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::{Role, Toggled};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::{Msg, RepoMsg, SearchMsg};
+use glowfly_model::state::{AppState, Selection};
 
 fn select(st: &mut AppState, summary: &str) {
     let oid = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == summary).unwrap().oid;
@@ -100,7 +100,7 @@ fn graph_search_paths_pending() {
     let commits = &st.snap.as_ref().unwrap().commits;
     let first: Vec<_> = commits[..3].iter().map(|c| c.oid).collect();
     let touching = vec![commits[0].oid];
-    let chunk = crate::msg::PathsChunk { searched: first, touching, done: false };
+    let chunk = glowfly_model::msg::PathsChunk { searched: first, touching, done: false };
     send(st, SearchMsg::PathsSearched { request, result: Ok(chunk) });
     h.run_steps(4);
     assert!(h.query_by_label("1 so far, searching…").is_some());
@@ -189,7 +189,7 @@ fn the_bar_sends_search_messages() {
 /// A harness that also runs the shortcuts, as the app's input handling does.
 fn keys_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             super::shortcuts::input(ctx, st, msgs);
@@ -203,6 +203,7 @@ fn keys_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
                 markdown: Default::default(),
+                ref_upstreams: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },
@@ -279,7 +280,7 @@ fn graph_search_clear() {
     let request = st.session.search.paths.pending.expect("a request");
     let commits = &st.snap.as_ref().unwrap().commits;
     let searched: Vec<_> = commits[..3].iter().map(|c| c.oid).collect();
-    let chunk = crate::msg::PathsChunk { searched, touching: vec![commits[0].oid], done: false };
+    let chunk = glowfly_model::msg::PathsChunk { searched, touching: vec![commits[0].oid], done: false };
     send(st, SearchMsg::PathsSearched { request, result: Ok(chunk) });
     h.run_steps(4);
     assert!(h.query_by_label("1 so far, searching…").is_some());

@@ -4,36 +4,34 @@
 
 use super::general_git::git_program_text;
 use super::{help, row, warn};
-use crate::git_env::GitEnvMsg;
-use crate::msg::Msg;
-use crate::state::git_env::GitState;
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::git_program::{Candidate, from_setting};
-use glowfly_core::git_version::{Version, full_support, missing_for, show};
+use glowfly_core::git_version::{Feature, Version, full_support, missing_for, show};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::settings::Settings;
+use glowfly_model::git_env::GitEnvMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::git_env::GitState;
 use std::path::PathBuf;
 
-const HELP: &str = "Glowfly runs this git for commits, fetches, pushes, hooks and signing. The built-in terminal and external \
-                    tools still use whatever git your PATH finds.";
-
 pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Vec<Msg>) {
+    let t = s.lang();
     let page = &git.page;
     let current = from_setting(s.git_program.as_deref());
     let busy = page.checking.is_some();
     let choose = |msgs: &mut Vec<Msg>, p: Option<PathBuf>| msgs.push(Msg::GitEnv(GitEnvMsg::Choose(p)));
-    row(ui, "Git program", |ui| {
+    row(ui, t.tr("prefs.general.git.label"), |ui| {
         let on_path = current.is_none();
-        if radio(ui, !busy, on_path, "Use git from your PATH") && !on_path {
+        if radio(ui, !busy, on_path, t.tr("prefs.git_program.use_path.check")) && !on_path {
             choose(msgs, None);
         }
-        if let Some(text) = path_text(s.lang(), git) {
+        if let Some(text) = path_text(t, git) {
             under(ui, |ui| help(ui, &text));
         }
         let others: Vec<&Candidate> = page.candidates.iter().flatten().filter(|c| !c.first_on_path).collect();
@@ -43,7 +41,7 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
                 choose(msgs, Some(c.path.clone()));
             }
             under(ui, |ui| match &c.check {
-                Ok(v) => version_lines(ui, *v),
+                Ok(v) => version_lines(ui, t, *v),
                 Err(why) => {
                     ui.add(egui::Label::new(RichText::new(sentence(why)).size(type_scale::SMALL).color(color::danger())).wrap());
                 }
@@ -55,39 +53,48 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
             if let Some(v) =
                 git.info.as_ref().filter(|i| i.chosen && i.path.as_deref().is_some_and(|q| same_spelling(p, q))).and_then(|i| i.version)
             {
-                under(ui, |ui| version_lines(ui, v));
+                under(ui, |ui| version_lines(ui, t, v));
             }
         }
         if page.candidates.is_none() {
-            spinner(ui, "Looking for git installations…");
+            spinner(ui, t.tr("prefs.git_program.looking.body"));
         }
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            if ui.add(buttons::secondary("Browse…").enabled(!busy)).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.tools.browse.button")).enabled(!busy)).clicked() {
                 msgs.push(Msg::GitEnv(GitEnvMsg::Browse));
             }
-            if ui.add(buttons::secondary("Look again").enabled(page.candidates.is_some())).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.git_program.look_again.button")).enabled(page.candidates.is_some())).clicked() {
                 msgs.push(Msg::GitEnv(GitEnvMsg::Rescan));
             }
         });
         if let Some(c) = &page.checking {
-            let what = c.program.as_deref().map(shown).unwrap_or_else(|| "git from your PATH".to_owned());
-            spinner(ui, &format!("Checking {what}…"));
+            let what = c.program.as_deref().map(shown).unwrap_or_else(|| t.tr("prefs.git_program.path_git").to_owned());
+            spinner(ui, &t.trf("prefs.git_program.checking.body", &[("what", &what)]));
         }
         if let Some((what, why)) = &page.refusal {
-            warn(ui, &format!("Can't use {what}: {why}"));
+            warn(ui, &t.trf("prefs.git_program.refused.warn", &[("what", what), ("why", why)]));
         }
-        help(ui, HELP);
+        help(ui, t.tr("prefs.git_program.help"));
     });
-    row(ui, "Version", |ui| {
-        ui.label(RichText::new(git_program_text(s.lang(), git.info.as_ref())).color(color::text()));
+    row(ui, t.tr("prefs.git_program.version.label"), |ui| {
+        ui.label(RichText::new(git_program_text(t, git.info.as_ref())).color(color::text()));
         let missing = git.info.as_ref().map(|i| i.missing()).unwrap_or_default();
         if !missing.is_empty() {
-            let (major, minor) = full_support();
-            let names: Vec<&str> = missing.iter().map(|f| f.label()).collect();
-            warn(ui, &format!("Some features need git {major}.{minor} or newer: {}.", names.join(", ")));
+            warn(ui, &t.trf("prefs.git_program.old.warn", &[("version", &needed()), ("features", &features(&missing))]));
         }
     });
+}
+
+/// The git version every feature needs, as "2.38".
+fn needed() -> String {
+    let (major, minor) = full_support();
+    format!("{major}.{minor}")
+}
+
+/// The names of `missing` features, as a list.
+fn features(missing: &[Feature]) -> String {
+    missing.iter().map(|f| f.label()).collect::<Vec<&str>>().join(", ")
 }
 
 /// What "Use git from your PATH" runs: the scan's PATH git, else what the startup check found
@@ -95,7 +102,7 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
 fn path_text(t: Lang, git: &GitState) -> Option<String> {
     if let Some(c) = git.page.path_git() {
         return Some(match &c.check {
-            Ok(v) => format!("git {} at {}", show(*v), shown(&c.path)),
+            Ok(v) => t.trf("prefs.general.git_program.at", &[("version", &show(*v)), ("path", &shown(&c.path))]),
             Err(why) => format!("{}: {why}", shown(&c.path)),
         });
     }
@@ -107,13 +114,11 @@ fn path_text(t: Lang, git: &GitState) -> Option<String> {
 }
 
 /// "git 2.34.1", and for a git too old for some features, which ones will be off.
-fn version_lines(ui: &mut Ui, v: Version) {
-    help(ui, &format!("git {}", show(v)));
+fn version_lines(ui: &mut Ui, t: Lang, v: Version) {
+    help(ui, &t.trf("prefs.general.git_program.version", &[("version", &show(v))]));
     let missing = missing_for(Some(v));
     if !missing.is_empty() {
-        let (major, minor) = full_support();
-        let names: Vec<&str> = missing.iter().map(|f| f.label()).collect();
-        warn(ui, &format!("Older than {major}.{minor}, so these will be off: {}.", names.join(", ")));
+        warn(ui, &t.trf("prefs.git_program.older.warn", &[("version", &needed()), ("features", &features(&missing))]));
     }
 }
 
@@ -158,13 +163,13 @@ mod tests {
         let mut git = GitState::default();
         assert_eq!(path_text(Lang::En, &git), None, "nothing known yet");
         git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 39, 3)), chosen: false });
-        assert!(path_text(Lang::En, &git).unwrap().starts_with("git 2.39.3 at "));
+        assert!(path_text(Lang::En, &git).unwrap().starts_with("Git 2.39.3 at "));
         git.info = Some(GitInfo { path: Some("/opt/git".into()), version: Some((2, 45, 1)), chosen: true });
         assert_eq!(path_text(Lang::En, &git), None, "the chosen git isn't the PATH one");
         git.page.candidates = Some(Vec::new());
         assert_eq!(path_text(Lang::En, &git).as_deref(), Some("Not found on your PATH"));
         git.page.candidates = Some(vec![candidate("/usr/local/bin/git", true, Ok((2, 45, 1)))]);
-        assert!(path_text(Lang::En, &git).unwrap().starts_with("git 2.45.1 at "));
+        assert!(path_text(Lang::En, &git).unwrap().starts_with("Git 2.45.1 at "));
     }
 
     #[test]

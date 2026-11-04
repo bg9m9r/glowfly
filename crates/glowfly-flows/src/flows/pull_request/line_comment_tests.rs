@@ -4,13 +4,13 @@
 
 use super::calls_tests::{calls, detail, done, opened, reply_msg, run, view};
 use super::tests::pr_target;
-use crate::pull_request::line_comment::LineCommentMsg;
-use crate::pull_request::{PrCall, PrReply, PullRequestMsg};
-use crate::state::AppState;
-use crate::state::pull_request::{PrAction, PrTab};
 use glowfly_core::diff_rows::LineSide;
 use glowfly_core::forge::{LineAnchor, PrDetail, PrPage};
 use glowfly_core::repo::{DiffLine, FileDiff, Hunk};
+use glowfly_model::pull_request::line_comment::LineCommentMsg;
+use glowfly_model::pull_request::{PrCall, PrReply, PullRequestMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{PrAction, PrTab};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -47,7 +47,7 @@ pub(super) fn ready(name: &str, f: impl FnOnce(&mut PrDetail)) -> (AppState, [Pa
     (st, dirs)
 }
 
-pub(super) fn lc(st: &mut AppState, m: LineCommentMsg) -> Vec<crate::effect::Effect> {
+pub(super) fn lc(st: &mut AppState, m: LineCommentMsg) -> Vec<glowfly_model::effect::Effect> {
     run(st, PullRequestMsg::LineComment(m))
 }
 
@@ -55,7 +55,7 @@ pub(super) fn start(st: &mut AppState, side: LineSide, line: u32, extend: bool) 
     lc(st, LineCommentMsg::Start { side, line, extend });
 }
 
-pub(super) fn draft(st: &AppState) -> &crate::state::pull_request_line_comment::LineDraft {
+pub(super) fn draft(st: &AppState) -> &glowfly_model::state::pull_request_line_comment::LineDraft {
     view(st).line_draft.as_ref().expect("a draft")
 }
 

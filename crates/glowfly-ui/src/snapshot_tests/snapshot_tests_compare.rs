@@ -5,17 +5,17 @@
 use super::common::short;
 use super::snapshot_tests::{remove_fixture, render, with_repo};
 use super::snapshot_tests_esc::app_harness;
-use crate::msg::{Msg, RepoMsg, SelectionMsg, StageMsg};
-use crate::state::selection::MultiSelection;
-use crate::state::selection_span::Span;
-use crate::state::selection_wip::WorkdirCompare;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg, StageMsg};
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::selection_span::Span;
+use glowfly_model::state::selection_wip::WorkdirCompare;
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 
 fn commit(st: &AppState, summary: &str) -> Oid {
@@ -225,10 +225,15 @@ fn shift_arrows_extend_the_selection() {
     // From the top commit, Up meets the WIP row: nothing.
     h.state_mut().0.session.selection = Selection::Commit(rows[0]);
     assert!(arrow(&mut h, Modifiers::SHIFT, Key::ArrowUp).is_empty());
-    // Without a commit selected, Shift+Down moves like Down.
+    // Without a commit selected, Shift+Down moves like Down: from the chosen WIP row to HEAD,
+    // from an unlit one (as a repository opens) onto the WIP row.
     h.state_mut().0.session.selection = Selection::Wip;
+    h.state_mut().0.session.wip_lit = true;
     let msgs = arrow(&mut h, Modifiers::SHIFT, Key::ArrowDown);
     assert!(matches!(&msgs[..], [Msg::Repo(RepoMsg::SelectCommit(o))] if *o == rows[0]), "{}", msgs.len());
+    h.state_mut().0.session.wip_lit = false;
+    let msgs = arrow(&mut h, Modifiers::SHIFT, Key::ArrowDown);
+    assert!(matches!(&msgs[..], [Msg::Repo(RepoMsg::SelectWip)]), "{}", msgs.len());
     drop(h);
     remove_fixture(&dir);
 }

@@ -2,11 +2,13 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::ForgeMsg;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::{AppState, ForgeState, ProjectKeys, Status};
 use glowfly_core::forge::{Account, Connection, Provider, Target};
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::{AppState, ForgeState, ProjectKeys, Status};
 use std::time::Instant;
 
 fn target(provider: Provider, host: &str) -> Target {
@@ -24,7 +26,7 @@ fn forge_calls(st: &mut AppState, msg: Msg) -> Vec<bool> {
     update(st, msg, Instant::now())
         .into_iter()
         .filter_map(|e| match e {
-            Effect::Forge { connected, .. } => Some(connected),
+            Effect::Network(NetworkEffect::Forge { connected, .. }) => Some(connected),
             _ => None,
         })
         .collect()
@@ -67,7 +69,7 @@ fn with_jira(project: &str) -> AppState {
 /// Whether the tracker refresh also asks for the site's project keys.
 fn asks_project_keys(st: &mut AppState) -> Option<bool> {
     update(st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false }), Instant::now()).into_iter().find_map(|e| match e {
-        Effect::Forge { call: ForgeCall::MyIssues { project_keys }, .. } => Some(project_keys),
+        Effect::Network(NetworkEffect::Forge { call: ForgeCall::MyIssues { project_keys }, .. }) => Some(project_keys),
         _ => None,
     })
 }
@@ -134,7 +136,7 @@ fn the_repository_chooses_whether_year_like_branch_names_name_issues() {
     assert_eq!(branch_issue(&st, "123-fix").as_deref(), Some("123"));
 
     let fx = update(&mut st, Msg::Forge(ForgeMsg::SetYearBranches(true)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(..))), "the choice is saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(..)))), "the choice is saved");
     assert_eq!(branch_issue(&st, "2024-cleanup").as_deref(), Some("2024"));
 
     // Kept for the repository: opening it again reads it.

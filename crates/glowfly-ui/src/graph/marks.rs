@@ -1,22 +1,14 @@
-//! The small marks painted in the graph's ref chips and their tooltips: a monitor for a local
-//! branch, a cloud for a remote one (or the upstream folded into a local branch's chip) and a tag
-//! for a tag. They are painted because the bundled fonts lack suitable glyphs.
+//! The small marks painted in the graph's ref chips and their tooltips: a cloud for a remote
+//! branch (or the copies on remotes folded into a local branch's chip: in sync with them) and a
+//! tag for a tag. A local branch has no mark: its filled chip says it. They are painted because
+//! the bundled fonts lack suitable glyphs.
 
-use eframe::egui::{self, Color32, CornerRadius, Painter, Pos2, Rect, Stroke, StrokeKind, pos2, vec2};
+use eframe::egui::{self, Color32, Painter, Pos2, Stroke, pos2, vec2};
 
 /// The room each mark takes in a chip.
 pub(super) const MARK_W: f32 = 14.0;
-/// The line width of the local and tag marks.
+/// The line width of the tag mark.
 const LINE_W: f32 = 1.3;
-
-/// A small monitor centred on `c`: a 9×6 screen outline over a short base line, the mark of a
-/// branch in this repository.
-pub(super) fn paint_local(p: &Painter, c: Pos2, col: Color32) {
-    let screen = Rect::from_center_size(pos2(c.x, c.y - 1.5), vec2(9.0, 6.0));
-    p.rect_stroke(screen, CornerRadius::same(1), Stroke::new(LINE_W, col), StrokeKind::Middle);
-    let base_y = screen.bottom() + 2.0;
-    p.line_segment([pos2(c.x - 2.0, base_y), pos2(c.x + 2.0, base_y)], Stroke::new(LINE_W, col));
-}
 
 /// A tag about 10×8 centred on `c`, pointing left, with a hole near its point.
 pub(super) fn paint_tag(p: &Painter, c: Pos2, col: Color32) {

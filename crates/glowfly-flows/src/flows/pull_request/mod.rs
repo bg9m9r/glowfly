@@ -2,7 +2,7 @@
 //! `super::…` paths to the panel's handlers working.
 
 #[allow(unused_imports)]
-use crate::update::pull_request::*;
+use glowfly_model::update::pull_request::*;
 
 mod bitbucket_tests;
 mod calls_tests;

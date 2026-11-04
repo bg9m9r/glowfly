@@ -3,15 +3,15 @@
 //! line endings. Those two are edited in place and written by the Save / Revert bar.
 
 use super::{check_row, help, row, text_field};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::PrefPage;
-use crate::state::prefs::{Autocrlf, GitConfigValues};
-use crate::ui::theme::color;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::PrefPage;
+use glowfly_model::state::prefs::{Autocrlf, GitConfigValues};
 
 pub fn git_section(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValues>, program: Option<&GitInfo>, msgs: &mut Vec<Msg>) {
     let t = s.lang();
@@ -33,16 +33,18 @@ pub fn git_section(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValu
         (t.tr("prefs.general.longpaths.label"), t.tr("prefs.general.longpaths.check"), t.tr("prefs.general.longpaths.help"));
     check_row(ui, label, &mut git.longpaths, check, Some(text));
     row(ui, t.tr("prefs.general.autocrlf.label"), |ui| {
-        egui::ComboBox::from_id_salt("autocrlf").width(super::fit(ui, 320.0)).selected_text(git.autocrlf.label(t)).show_ui(ui, |ui| {
-            for (choice, label) in Autocrlf::choices(t) {
-                ui.selectable_value(&mut git.autocrlf, choice, label);
-            }
-        });
+        let combo =
+            egui::ComboBox::from_id_salt("autocrlf").width(super::fit(ui, 320.0)).selected_text(git.autocrlf.label(t)).show_ui(ui, |ui| {
+                for (choice, label) in Autocrlf::choices(t) {
+                    ui.selectable_value(&mut git.autocrlf, choice, label);
+                }
+            });
+        crate::access::from_label(&combo.response);
         help(ui, t.tr("prefs.general.autocrlf.help"));
     });
 }
 
-/// "git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.
+/// "Git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.
 pub(super) fn git_program_text(t: Lang, info: Option<&GitInfo>) -> String {
     let Some(info) = info else { return t.tr("prefs.general.git_program.checking").to_owned() };
     let at = info.path.as_deref().map(glowfly_core::native_path::shown);

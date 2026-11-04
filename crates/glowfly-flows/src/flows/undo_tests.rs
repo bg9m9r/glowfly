@@ -3,19 +3,18 @@
 
 use super::tests::{clean_tree, drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::CommitMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::runner;
-use crate::state::undo::{MAX_UNDO, UndoHistory};
-use crate::state::{AppState, RunningJob};
 use git2::Oid;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE, ResetMode, UndoKind};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::undo::{MAX_UNDO, UndoHistory};
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -97,19 +96,22 @@ fn git_jobs_record_their_kind() {
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     st.session.draft.summary = "Commit me".into();
     let fx = update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { record: Some(UndoKind::Commit { amend: false }), .. }]), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: Some(UndoKind::Commit { amend: false }), .. })]),
+        "{fx:?}"
+    );
     st.job = None;
     // The tree stays dirty: Always stash lets the guarded jobs through, still recorded as themselves.
     st.settings.auto_stash = true;
     let fx = update(&mut st, Msg::git("Merge", &["merge", "x"]), Instant::now());
     let merge = UndoKind::Move { op: glowfly_core::undo::MoveOp::Merge, detail: Some("x".into()) };
-    assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == merge), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: Some(k), .. })] if *k == merge), "{fx:?}");
     st.job = None;
     let fx = update(&mut st, Msg::git("Rename branch", &["branch", "-m", "--", "x", "y"]), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { record: None, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: None, .. })]), "{fx:?}");
     st.job = None;
     let fx = update(&mut st, Msg::git("Checkout", &["checkout", "x"]), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { record: Some(UndoKind::Checkout), .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: Some(UndoKind::Checkout), .. })]), "{fx:?}");
     cleanup(&[&dir]);
 }
 
@@ -226,14 +228,16 @@ fn undo_result_lands_in_its_own_tab() {
     drive(&mut st, Msg::Commit(CommitMsg::Commit));
     assert_eq!(st.session.undo.undo.len(), 1);
 
-    let effect =
-        update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).into_iter().find(|e| matches!(e, Effect::UndoRedo { .. })).expect("undo");
+    let effect = update(&mut st, Msg::Job(JobMsg::Undo), Instant::now())
+        .into_iter()
+        .find(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::UndoRedo { .. })))
+        .expect("undo");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     assert!(st.session.undo.undo.is_empty() && st.session.undo.blocked.is_none(), "tab B has its own history");
-    let reply = runner::testing::execute(effect).expect("a result");
+    let reply = glowfly_runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Job(JobMsg::JobDone { .. })), "undo results are not scoped to the active tab");
     let fx = update(&mut st, reply, Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "tab B is not refreshed");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "tab B is not refreshed");
     assert!(st.job.is_none());
     assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty() && st.session.undo.blocked.is_none());
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
@@ -260,6 +264,7 @@ fn undo_requires_idle_and_history() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -320,7 +325,7 @@ fn hard_reset_stashes_uncommitted_work_and_undo_restores_it() {
     std::fs::write(dir.join("a.txt"), "not committed\n").unwrap();
     let fx = update(&mut st, Msg::git("Reset (hard)", &["reset", "--hard", &first]), Instant::now());
     assert!(
-        matches!(&fx[..], [Effect::RunGit { cmds, .. }] if cmds[0][..2] == ["stash", "push"] && cmds[1] == ["reset", "--hard", first.as_str()]),
+        matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] if cmds[0][..2] == ["stash", "push"] && cmds[1] == ["reset", "--hard", first.as_str()]),
         "{fx:?}"
     );
     st.job = None;

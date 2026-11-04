@@ -3,9 +3,9 @@
 //! entries changed; the last two fall back to the whole status (in the same effect) when those
 //! paths can't be read on their own.
 
-use crate::effect::{IndexRequest, StatusRead};
-use crate::msg::{LoadMsg, Msg};
 use glowfly_core::repo;
+use glowfly_model::effect::{IndexRequest, StatusRead};
+use glowfly_model::msg::{LoadMsg, Msg};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -39,7 +39,7 @@ pub(super) fn load(
     whole(workdir, generation, submodules, open_stamp, git_status, cache)
 }
 
-/// An index read (`Effect::LoadIndexStatus`), or the whole status when it can't be read so.
+/// An index read (`LoadEffect::IndexStatus`), or the whole status when it can't be read so.
 pub(super) fn load_index(
     workdir: &Path,
     generation: u64,

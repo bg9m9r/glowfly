@@ -1,19 +1,22 @@
 //! The details panel's signature badge: Verified / Signed / Expired / Revoked / Bad signature,
-//! a tooltip with signer, key and reason, and a menu (Check again, Copy key, settings).
+//! a tooltip with signer, key and reason, and a menu (Check again, Copy key, settings) that a
+//! click opens below it and a right-click at the pointer.
 
 use super::common::menu_item;
 use super::theme::color;
-use crate::msg::{Msg, PrefsMsg, RepoMsg};
-use crate::state::signatures::{BadgeState, badge};
-use crate::state::{AppState, PrefPage};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::context_menu;
-use eframe::egui::{self, Color32, CornerRadius, Painter, Pos2, Sense, Stroke, StrokeKind, pos2, vec2};
+use crate::widgets::chip::{Chip, ChipSize, Lead, Look};
+use crate::widgets::menu;
+use eframe::egui::{self, Color32, Painter, Pos2, Stroke, vec2};
+use git2::Oid;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::CommitDetail;
 use glowfly_core::signature_check::Verdict;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::signatures::{BadgeState, badge};
+use glowfly_model::state::{AppState, PrefPage};
 
-/// The pill's height.
-const HEIGHT: f32 = 20.0;
+/// The glyph's size inside the chip's glyph slot.
+const GLYPH: f32 = 8.0;
 
 /// The mark drawn before the label.
 #[derive(Clone, Copy)]
@@ -48,36 +51,38 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, d: &CommitDetail, msgs: &mu
         Verdict::Revoked | Verdict::Bad => (color::removed(), Glyph::Cross),
     };
 
-    let galley = ui.painter().layout_no_wrap(b.label.into(), type_scale::font(type_scale::SMALL), color::text());
-    let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 30.0, HEIGHT), Sense::click());
-    let p = ui.painter();
-    let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
-    p.rect_filled(rect, radius, color::wash(tint, if resp.hovered() { 0.28 } else { 0.16 }));
-    p.rect_stroke(rect, radius, Stroke::new(1.0_f32, tint), StrokeKind::Inside);
-    paint_glyph(p, pos2(rect.left() + 12.0, rect.center().y), glyph, tint);
-    p.galley(pos2(rect.left() + 21.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
-
-    let label = b.label;
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
-    let resp = resp.on_hover_text(b.tooltip);
+    let mark = move |p: &Painter, c: Pos2, _slot: f32| paint_glyph(p, c, glyph, tint);
+    let look = Look::new(color::wash(tint, 0.16), color::text()).edged(tint);
+    // The chip's id, known before it is drawn, so it stays latched while its menu is open.
+    let open = menu::below_open(ui.ctx(), ui.next_auto_id());
+    let chip = Chip::new(ChipSize::Chip, b.label).look(look).lead(Lead::Paint(&mark)).latched(open);
+    let resp = chip.button(ui).on_hover_text(b.tooltip);
     let key = b.checked.map(|c| c.key).unwrap_or_default();
-    let oid = d.oid;
-    context_menu(&resp, |ui| {
-        if !held {
-            menu_item(msgs, ui, t.tr("signature.menu.check_again"), Msg::Repo(RepoMsg::CheckSignatureAgain(oid)));
-        }
-        if !key.is_empty() {
-            menu_item(msgs, ui, t.tr("signature.menu.copy_key"), Msg::Copy(key.clone()));
-        }
-        menu_item(msgs, ui, t.tr("signature.menu.settings"), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)));
-    });
+    let items = |ui: &mut egui::Ui| menu_items(ui, t, (held, d.oid, &key), msgs);
+    // A click opens the menu below the chip; a right-click opens it at the pointer.
+    menu::below(ui, &resp, items);
+    menu::context_menu(&resp, |ui| menu_items(ui, t, (held, d.oid, &key), msgs));
 }
 
-/// Paints `glyph` about 7px wide around `c`, as shapes (the bundled fonts lack check marks and
+/// The badge's menu: Check again (unless git is held), Copy key (when one is known) and the
+/// signing settings.
+fn menu_items(ui: &mut egui::Ui, t: Lang, (held, oid, key): (bool, Oid, &str), msgs: &mut Vec<Msg>) {
+    if !held {
+        menu_item(msgs, ui, t.tr("signature.menu.check_again"), Msg::Repo(RepoMsg::CheckSignatureAgain(oid)));
+    }
+    if !key.is_empty() {
+        menu_item(msgs, ui, t.tr("signature.menu.copy_key"), Msg::Copy(key.to_owned()));
+    }
+    menu_item(msgs, ui, t.tr("signature.menu.settings"), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)));
+}
+
+/// Paints `glyph` `GLYPH` px wide around `c`, as shapes (the bundled fonts lack check marks and
 /// crosses).
 fn paint_glyph(p: &Painter, c: Pos2, glyph: Glyph, tint: Color32) {
     let stroke = Stroke::new(1.6_f32, tint);
-    let at = |x: f32, y: f32| c + vec2(x, y);
+    // Drawn on a 7 px grid, scaled to the glyph's size.
+    let k = GLYPH / 7.0;
+    let at = |x: f32, y: f32| c + vec2(x * k, y * k);
     match glyph {
         Glyph::Check => {
             p.line_segment([at(-3.5, 0.0), at(-1.0, 2.5)], stroke);
@@ -88,7 +93,7 @@ fn paint_glyph(p: &Painter, c: Pos2, glyph: Glyph, tint: Color32) {
             p.line_segment([at(-3.0, 3.0), at(3.0, -3.0)], stroke);
         }
         Glyph::Ring => {
-            p.circle_stroke(c, 3.5, Stroke::new(1.4_f32, tint));
+            p.circle_stroke(c, 3.5 * k, Stroke::new(1.4_f32, tint));
         }
     }
 }

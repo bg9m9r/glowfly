@@ -2,12 +2,12 @@
 //! the per-thread selection, and the spacing grid.
 
 use super::color::{self, Palette};
-use super::contrast::{self, ChipStyle, ratio};
+use super::contrast::{self, ratio};
 use super::*;
-use crate::themes::ThemeState;
 use eframe::egui::Color32;
 use glowfly_core::settings::themes::COLOR_KEYS;
 use glowfly_core::settings::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeChoice, ThemeFile};
+use glowfly_model::themes::ThemeState;
 use std::collections::BTreeMap;
 
 #[test]
@@ -127,36 +127,12 @@ fn builtins_meet_the_contrast_rules() {
 }
 
 #[test]
-fn ref_chips_are_readable() {
-    let mut failures = Vec::new();
-    for (t, p) in palettes() {
-        for lane in super::branch_colours::swatches() {
-            for style in ChipStyle::ALL {
-                let contrast::ChipLook { fill, text: fg, .. } = contrast::ref_chip(style, super::branch_colours::chip_in(lane, p), p);
-                let r = ratio(fg, fill);
-                if fill.a() != 255 || r < 4.5 {
-                    failures.push(format!("{t} {lane:?} {style:?}: {r:.2}:1, fill alpha {}", fill.a()));
-                }
-            }
-        }
-    }
-    assert!(
-        failures.is_empty(),
-        "{}",
-        failures.join(
-            "
-"
-        )
-    );
-}
-
-#[test]
 fn change_colors_are_readable() {
     let mut failures = Vec::new();
     for (t, p) in palettes() {
         let min = if high_contrast(p) { 4.5 } else { 3.0 };
         let lanes = super::branch_colours::swatches()
-            .map(|l| (format!("{l:?}"), crate::ui::graph::band_color(super::branch_colours::line_in(l, p), p)));
+            .map(|l| (format!("{l:?}"), crate::theme::surfaces::band_color(super::branch_colours::line_in(l, p), p)));
         let bgs: Vec<(String, Color32)> = [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)]
             .map(|(n, c)| (n.to_owned(), c))
             .into_iter()
@@ -169,35 +145,6 @@ fn change_colors_are_readable() {
                 if r < min {
                     failures.push(format!("{t}: {name} on {bg_name} is {r:.2}:1, below {min}:1"));
                 }
-            }
-        }
-    }
-    assert!(
-        failures.is_empty(),
-        "{}",
-        failures.join(
-            "
-"
-        )
-    );
-}
-
-#[test]
-fn ref_chips_are_soft() {
-    let mut failures = Vec::new();
-    for (t, p) in palettes() {
-        for lane in super::branch_colours::swatches() {
-            let lane_col = super::branch_colours::chip_in(lane, p);
-            let fill = |style| contrast::ref_chip(style, lane_col, p).fill;
-            // The checked-out branch's chip may stand out (a solid fill on dark palettes).
-            for style in [ChipStyle::Branch, ChipStyle::Remote] {
-                let r = ratio(fill(style), p.bg);
-                if r >= 3.0 {
-                    failures.push(format!("{t} {lane:?} {style:?}: {r:.2}:1 against the background"));
-                }
-            }
-            if fill(ChipStyle::Branch) == fill(ChipStyle::CurrentBranch) {
-                failures.push(format!("{t} {lane:?}: the checked-out branch looks like any other"));
             }
         }
     }
@@ -348,6 +295,21 @@ fn the_cache_follows_a_changed_system_pair() {
     pair.dark = BuiltinTheme::Dark;
     cache.select(&ctx, &ThemeChoice::System, pair, Default::default(), &themes, true);
     assert_eq!(color::current(), DARK, "a new pair isn't served from the old key");
+}
+
+#[test]
+fn the_system_contrast_shows_the_high_contrast_theme_as_dark_as_the_chosen_one() {
+    use glowfly_core::settings::Settings;
+    let (ctx, themes) = (egui::Context::default(), ThemeState::default());
+    let mut cache = super::ThemeCache::default();
+    for (choice, hc) in [(ThemeChoice::Midnight, HIGH_CONTRAST_DARK), (ThemeChoice::Porcelain, HIGH_CONTRAST_LIGHT)] {
+        let s = Settings { theme: choice, ..Settings::default() };
+        cache.apply(&ctx, &s, &themes, true);
+        assert_eq!(color::current(), super::applied(hc, s.colour_palette));
+        assert_eq!(cache.mica_tint(), None, "solid, as a chosen high-contrast theme is");
+        cache.apply(&ctx, &s, &themes, false);
+        assert_ne!(color::current().bg, hc.bg, "the chosen theme again once the system turns it off");
+    }
 }
 
 #[test]

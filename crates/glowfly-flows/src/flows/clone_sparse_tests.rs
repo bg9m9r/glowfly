@@ -4,14 +4,14 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{CloneEffect, Effect};
-use crate::msg::{CloneMsg, Msg};
-use crate::state::AppState;
-use crate::state::clone::{CloneForm, CloneRequest};
-use crate::state::trust::Created;
 use chrono::NaiveDate;
 use glowfly_core::clone_ops::{CloneOptions, CloneOutcome, Sparse};
 use glowfly_core::git_version::GitInfo;
+use glowfly_model::effect::{CloneEffect, Effect};
+use glowfly_model::msg::{CloneMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::clone::{CloneForm, CloneRequest};
+use glowfly_model::state::trust::Created;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -90,11 +90,11 @@ fn an_old_git_refuses_a_sparse_clone() {
     // A plain clone still runs.
     let req = CloneRequest { options: CloneOptions::default(), ..sparse_request(&[]) };
     let fx = update(&mut st, Msg::Clone(CloneMsg::Start(req)), Instant::now());
-    assert!(matches!(fx.as_slice(), [Effect::RunGit { .. }]), "{fx:?}");
+    assert!(matches!(fx.as_slice(), [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]), "{fx:?}");
 }
 
 fn loads(fx: &[Effect], dest: &Path) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if path == dest))
+    fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, .. }) if path == dest))
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn a_clone_whose_folders_failed_still_opens() {
     let o = CloneOutcome { cloned: true, folders_set: false, ok: false, output: locked.into() };
     update(&mut st, Msg::Clone(CloneMsg::Finished(o)), Instant::now());
     let text = &st.toasts.last().unwrap().text;
-    assert!(text.starts_with("Cloned app, but setting its folders failed: Another git program is using this repository"), "{text}");
+    assert!(text.starts_with("Cloned app, but setting its folders failed: Another Git program is using this repository"), "{text}");
     assert!(text.ends_with("delete that file. Choose them in Preferences > Sparse checkout."), "{text}");
 
     let mut st = state();

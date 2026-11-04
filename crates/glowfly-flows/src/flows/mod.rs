@@ -1,25 +1,25 @@
 //! The tests that run effects through the runner (`runner::testing`), and the tests that share
 //! helpers with them: `update`'s end-to-end tests, out of `update/` so the model's own tests
 //! never need the runner. One module per file; `helpers.rs` has `drive` and `finish`, and the
-//! pure helpers come from `crate::testing`. The glob import keeps the files' `super::…` paths to
+//! pure helpers come from `glowfly_model::testing`. The glob import keeps the files' `super::…` paths to
 //! update's handlers working, and `tests` names this module, as `update::tests` did.
 
 #[allow(unused_imports)]
-use crate::effect::OsEffect;
-#[allow(unused_imports)]
-use crate::effect::{Effect, UiEffect};
-#[allow(unused_imports)]
 use crate::flows as tests;
 #[allow(unused_imports)]
-use crate::msg::Msg;
+use glowfly_model::effect::OsEffect;
 #[allow(unused_imports)]
-use crate::state::AppState;
+use glowfly_model::effect::{Effect, UiEffect};
 #[allow(unused_imports)]
-use crate::update::*;
+use glowfly_model::msg::Msg;
+#[allow(unused_imports)]
+use glowfly_model::state::AppState;
+#[allow(unused_imports)]
+use glowfly_model::update::*;
 #[allow(unused_imports)]
 use std::time::Instant;
 
-pub(crate) use crate::testing::*;
+pub(crate) use glowfly_model::testing::*;
 pub(crate) use helpers::*;
 
 mod app_tests;
@@ -42,6 +42,7 @@ mod branch_sync_tests;
 mod branch_tests;
 mod build_status_tests;
 mod cherry_pick_tests;
+mod clone_https_tests;
 mod clone_service_tests;
 mod clone_sparse_tests;
 mod clone_submodule_tests;
@@ -53,6 +54,7 @@ mod conflict_check_tests;
 mod conflict_count_tests;
 mod conflict_edit_tests;
 mod conflict_files_tests;
+mod conflict_keys_tests;
 mod conflict_layout_tests;
 mod conflict_mark_safety_tests;
 mod conflict_mark_undo_tests;
@@ -79,6 +81,7 @@ mod diff_nav_refresh_tests;
 mod diff_nav_tests;
 mod diff_preview_tests;
 mod diff_reveal_tests;
+mod diff_svg_tests;
 mod diff_tests;
 mod failure_headline_tests;
 mod fetch_time_tests;
@@ -173,6 +176,7 @@ mod palette_switch_branch_tests;
 mod palette_tests;
 mod palette_worktree_tests;
 mod pane_focus_tests;
+mod parked_free_tests;
 mod partial_content_tests;
 mod partial_size_tests;
 mod patch_apply_tests;
@@ -208,6 +212,7 @@ mod quit_unsaved_tests;
 mod range_diff_flow_tests;
 mod range_diff_tests;
 mod rebase_e2e_tests;
+mod rebase_edit_commit_tests;
 mod rebase_merges_tests;
 mod rebase_quick_squash_tests;
 mod rebase_quick_tests;
@@ -278,6 +283,7 @@ mod submodule_edit_tests;
 mod submodule_remove_tests;
 mod submodule_sparse_tests;
 mod submodule_tests;
+mod sync_voice_tests;
 mod tab_groups_tests;
 mod tab_label_tests;
 mod tabs_close_tests;
@@ -321,6 +327,7 @@ mod undo_stash_tests;
 mod undo_tests;
 mod updates_download_tests;
 mod updates_flatpak_tests;
+mod updates_news_chip_tests;
 mod updates_notes_tests;
 mod updates_recheck_tests;
 mod updates_restart_tests;
@@ -332,6 +339,7 @@ mod whitespace_ops_tests;
 mod whitespace_tests;
 mod whole_file_tests;
 mod wip_keys_tests;
+mod wip_lit_tests;
 mod work_files_discard_tests;
 mod work_files_failed_tests;
 mod work_files_large_tests;
@@ -345,6 +353,7 @@ mod worktree_counts_tests;
 mod worktree_manage_tests;
 mod worktree_monitor_tests;
 mod worktree_move_tests;
+mod worktree_prune_checkout_tests;
 mod worktree_remote_tests;
 mod worktree_remove_remote_tests;
 mod worktree_tests;

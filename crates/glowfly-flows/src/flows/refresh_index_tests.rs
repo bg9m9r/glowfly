@@ -1,14 +1,13 @@
 //! Status reads after an index change made outside Glowfly: what asks for them, how they are
 //! applied to the lists, counts and open diff, and when they fall back to a whole read.
 
-use crate::effect::{Effect, StatusRead};
 use crate::flows::{drive, finish, git, scratch_repo, state};
-use crate::msg::{LoadMsg, Msg, RepoMsg, WatchMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::refresh::Wanted;
-use crate::update::update;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::{Effect, StatusRead};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::refresh::Wanted;
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -29,8 +28,17 @@ fn index_changed(workdir: &Path, paths: &[&str]) -> Msg {
 
 /// Runs the one status read in `fx` and returns its result message, unscoped.
 fn result_of(fx: Vec<Effect>) -> Msg {
-    let read = fx.into_iter().find(|e| matches!(e, Effect::LoadIndexStatus { .. } | Effect::LoadStatus { .. })).expect("a status read");
-    match runner::testing::execute(read).expect("a result") {
+    let read = fx
+        .into_iter()
+        .find(|e| {
+            matches!(
+                e,
+                Effect::Load(glowfly_model::effect::LoadEffect::IndexStatus { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+            )
+        })
+        .expect("a status read");
+    match glowfly_runner::testing::execute(read).expect("a result") {
         Msg::Scoped { msg, .. } => *msg,
         other => other,
     }
@@ -41,7 +49,7 @@ fn rows(list: &[glowfly_core::repo::FileEntry]) -> Vec<(&str, char)> {
 }
 
 fn diff_loads(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadDiff { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).count()
 }
 
 #[test]
@@ -51,7 +59,10 @@ fn a_terminal_add_moves_the_file_to_staged() {
     assert_eq!(rows(&st.snap.as_ref().unwrap().unstaged), [("a.txt", 'M')]);
     git(&dir, &["add", "a.txt"]);
     let fx = update(&mut st, index_changed(&workdir, &[]), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadIndexStatus { generation, .. }] if *generation == st.load_gen), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::IndexStatus { generation, .. })] if *generation == st.load_gen),
+        "{fx:?}"
+    );
     let msg = result_of(fx);
     assert!(matches!(&msg, Msg::Load(LoadMsg::StatusLoaded { result: Ok(StatusRead::Index { .. }), index: Some(_), .. })));
     let fx = update(&mut st, msg, Instant::now());
@@ -93,7 +104,10 @@ fn an_open_index_diff_of_a_covered_file_reloads() {
     std::fs::write(dir.join("a.txt"), "one\ntwo\nthree\n").unwrap();
     git(&dir, &["add", "a.txt"]);
     let fx = update(&mut st, index_changed(&workdir, &["a.txt"]), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadIndexStatus { open: Some(p), .. }] if p == "a.txt"), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::IndexStatus { open: Some(p), .. })] if p == "a.txt"),
+        "{fx:?}"
+    );
     let fx = update(&mut st, result_of(fx), Instant::now());
     assert_eq!(diff_loads(&fx), 1, "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -132,7 +146,9 @@ fn a_deferred_index_read_is_shown_and_queues_the_open_file() {
     assert_eq!(rows(&st.snap.as_ref().unwrap().staged), [("a.txt", 'M')], "shown though out of date");
     assert_eq!(diff_loads(&fx), 0, "the diff waits for the next read");
     match &fx[..] {
-        [Effect::LoadIndexStatus { read, .. }] => assert_eq!(read.paths, ["a.txt", "c.txt"], "the open file joins the next read"),
+        [Effect::Load(glowfly_model::effect::LoadEffect::IndexStatus { read, .. })] => {
+            assert_eq!(read.paths, ["a.txt", "c.txt"], "the open file joins the next read")
+        }
         other => panic!("one index read expected: {other:?}"),
     }
     let _ = std::fs::remove_dir_all(&dir);

@@ -5,9 +5,9 @@
 
 use super::commit_row::{paint_back, paint_chip};
 use super::rows::{BUTTONS_W, GRIP_X, SHA_X, Shade};
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::paint_cut_text;
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::paint_cut_text;
 use eframe::egui::{Color32, Rect, Ui, pos2};
 
 fn paint_fixed(ui: &Ui, rect: Rect, chip: &str, chip_color: Color32, text: &str, shade: Shade) {
@@ -25,7 +25,7 @@ pub(super) fn paint_label(ui: &Ui, rect: Rect, text: &str, shade: Shade) {
 
 /// A reset row: "Continue from …".
 pub(super) fn paint_reset(ui: &Ui, rect: Rect, text: &str, shade: Shade) {
-    paint_fixed(ui, rect, "reset", color::primary(), text, shade);
+    paint_fixed(ui, rect, "reset", color::text(), text, shade);
 }
 
 /// An update-ref row: "Moves lower here".

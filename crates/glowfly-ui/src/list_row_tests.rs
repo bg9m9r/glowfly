@@ -2,8 +2,8 @@
 //! click target and their selection's reach.
 
 use super::*;
-use crate::ui::theme::fonts;
-use crate::ui::widgets::section_header;
+use crate::theme::fonts;
+use crate::widgets::section_header;
 
 /// Runs one pass (after one that installs the bundled fonts) with `body` in a 300 × 400 panel;
 /// returns the pass's shapes.

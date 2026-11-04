@@ -4,8 +4,7 @@ Dialog
   Button "URL" [off]
   Button "Your repositories" [on]
   Label "GitHub · github.com (ada)"
-  ProgressIndicator
-  Label "Loading your repositories…"
+  ProgressIndicator "Loading your repositories…"
   CheckBox "Use the SSH URL" [off]
   Label "Clone into folder"
   TextInput "Clone into folder" = "C:\\src"

@@ -24,7 +24,7 @@ mod palette_conflict;
 #[path = "palette_gitflow.rs"]
 mod palette_gitflow;
 #[path = "palette_issues.rs"]
-pub mod palette_issues;
+pub(crate) mod palette_issues;
 #[path = "palette_link.rs"]
 mod palette_link;
 #[path = "palette_logs.rs"]
@@ -36,7 +36,7 @@ mod palette_setup;
 #[path = "palette_shallow.rs"]
 mod palette_shallow;
 #[path = "palette_stack.rs"]
-pub mod palette_stack;
+pub(crate) mod palette_stack;
 #[path = "palette_stash.rs"]
 mod palette_stash;
 

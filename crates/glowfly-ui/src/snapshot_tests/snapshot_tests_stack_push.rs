@@ -6,13 +6,13 @@ use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_pr_no_host::hover_shows;
 use super::snapshot_tests_push_pr::with_host;
 use super::snapshot_tests_stack::row_menu;
-use crate::msg::{Msg, StackMsg};
-use crate::state::stack_prs::{PrLayer, StackPrRun, StackPrs};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::stack::{StackLink, Stacks};
+use glowfly_model::msg::{Msg, StackMsg};
+use glowfly_model::state::stack_prs::{PrLayer, StackPrRun, StackPrs};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 /// The fixture on GitHub with `remote` on origin, and login-page stacked on search.

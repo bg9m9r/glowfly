@@ -79,7 +79,7 @@ pub fn pop_latest(snap: &Snapshot, t: Lang) -> Option<Msg> {
 
 /// The paths in `stash_paths` that the working tree changes too (staged, unstaged or
 /// untracked, a staged rename's old path included), sorted.
-pub fn overlap(stash_paths: &[String], snap: &Snapshot) -> Vec<String> {
+pub(crate) fn overlap(stash_paths: &[String], snap: &Snapshot) -> Vec<String> {
     let changed: HashSet<&str> =
         snap.staged.iter().chain(&snap.unstaged).flat_map(|f| std::iter::once(f.path.as_str()).chain(f.renamed_from.as_deref())).collect();
     let mut both: Vec<String> = stash_paths.iter().filter(|p| changed.contains(p.as_str())).cloned().collect();
@@ -91,7 +91,7 @@ pub fn overlap(stash_paths: &[String], snap: &Snapshot) -> Vec<String> {
 /// The question before applying or popping the stash named `message` on a dirty tree. `both`
 /// holds the files the stash and the working tree both change; None when the stash's files
 /// couldn't be read, which keeps the general warning.
-pub fn dirty_body(t: Lang, action: StashAction, message: &str, both: Option<&[String]>) -> String {
+pub(crate) fn dirty_body(t: Lang, action: StashAction, message: &str, both: Option<&[String]>) -> String {
     let mut body = t.trf("stash.ask.body", &[("message", &message)]);
     match both {
         None => {

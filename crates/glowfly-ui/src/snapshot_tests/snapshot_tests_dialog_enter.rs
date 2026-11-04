@@ -4,14 +4,14 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::{BranchMsg, InitMsg, Msg};
-use crate::state::init::InitForm;
-use crate::state::{AppState, Modal};
 use eframe::egui::Key;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::init_ops::FolderFacts;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{BranchMsg, InitMsg, Msg};
+use glowfly_model::state::init::InitForm;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 fn started(h: &H) -> bool {

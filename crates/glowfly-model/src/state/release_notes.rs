@@ -1,8 +1,12 @@
 //! The release notes dialog: the notes bundled with this build (CHANGELOG.md, copied by
-//! build.rs), and the notes of a newer release on offer.
+//! build.rs), and the notes of a newer release on offer; and the status bar's What's new chip
+//! that opens them after an upgrade (`AppState::updates_news_chip`).
 
+use super::AppState;
 use glowfly_core::app_update::{Offer, Version};
 use glowfly_core::changelog::{self, ReleaseNotes};
+use glowfly_core::i18n::Lang;
+use glowfly_core::settings::{NewsChip, WhatsNew};
 
 /// CHANGELOG.md as it was when this build was made; empty before the first release.
 pub const BUNDLED: &str = include_str!(concat!(env!("OUT_DIR"), "/CHANGELOG.md"));
@@ -46,4 +50,23 @@ impl NotesDialog {
 #[derive(Clone, Debug, PartialEq)]
 pub struct NotesOpen {
     pub since: Option<Version>,
+}
+
+/// How long the What's new chip waits to be clicked: three days from the first frame it showed.
+pub const NEWS_CHIP_FOR: i64 = 3 * 24 * 60 * 60;
+
+impl AppState {
+    /// The What's new chip the status bar shows now: chosen in Preferences, for the version
+    /// running, and not yet run out.
+    pub fn updates_news_chip(&self) -> Option<&NewsChip> {
+        let u = &self.settings.updates;
+        let chip = u.news_chip.as_ref().filter(|_| u.whats_new == WhatsNew::Chip)?;
+        let current = Version::parse(&chip.version).is_some_and(|v| v == self.updates.current);
+        (current && chip.until.is_none_or(|until| self.view.now < until)).then_some(chip)
+    }
+}
+
+/// "What's new in 0.4.0", the chip's text.
+pub fn news_chip_text(t: Lang, version: &str) -> String {
+    t.trf("updates.whats_new.chip", &[("version", &version)])
 }

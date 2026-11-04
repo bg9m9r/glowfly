@@ -4,11 +4,11 @@
 //! runner, so it is the app crate's (`runner_snapshots`).
 
 use super::snapshot_tests::{render, with_conflict};
-use crate::msg::{ConflictMsg, Msg};
 pub(crate) use crate::snapshot_fixtures::scenes::{fill_lists, merging};
-use crate::state::AppState;
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::repo::Side;
+use glowfly_model::msg::{ConflictMsg, Msg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -42,7 +42,7 @@ fn conflict_auto_picked() {
     };
     let (st, dir) = with_conflict("conflict-auto", "settings.txt", settings);
     let view = st.session.conflict.view.as_ref().unwrap();
-    assert_eq!((view.chunk_count(), view.auto_count(), view.current), (2, 1, 1), "starts on the real conflict");
+    assert_eq!((view.chunk_count(), view.auto.iter().flatten().count(), view.current), (2, 1, 1), "starts on the real conflict");
     render("conflict_auto_picked", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
@@ -66,7 +66,7 @@ fn theme_settings(side: &str) -> Vec<u8> {
 }
 
 fn send(st: &mut AppState, m: ConflictMsg) {
-    crate::update::update(st, Msg::Conflict(m), Instant::now());
+    glowfly_model::update::update(st, Msg::Conflict(m), Instant::now());
 }
 
 #[test]
@@ -77,6 +77,42 @@ fn conflict_line_picks() {
     let view = st.session.conflict.view.as_ref().unwrap();
     assert!(matches!(view.picks[0], ChunkPick::Lines(_)) && view.picks[1].is_open());
     render("conflict_line_picks", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+/// `conflict_line_picks` in the light theme: theirs' lighter violet keeps a dark check mark
+/// that stands out on it.
+#[test]
+fn conflict_line_picks_light() {
+    let (mut st, dir) = with_conflict("conflict-line-picks-light", "settings.txt", theme_settings);
+    send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 0, side: Side::Theirs, line: 1 });
+    send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 0, side: Side::Ours, line: 0 });
+    render("conflict_line_picks_light", st, false);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+/// Both sides of the first conflict taken, theirs ticked first: the band says "Ours, then
+/// theirs" with Swap, and the output follows the band, not the clicks.
+#[test]
+fn conflict_both_sides_dark() {
+    let (mut st, dir) = with_conflict("conflict-both-sides", "settings.txt", theme_settings);
+    send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Theirs });
+    send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours });
+    let view = st.session.conflict.view.as_ref().unwrap();
+    assert_eq!(view.picks[0], glowfly_core::repo::Choice::OursThenTheirs.into());
+    render("conflict_both_sides_dark", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+/// Every conflict picked: Mark resolved is ready, the meter full and green, and the strip still
+/// waits for the file to be marked resolved.
+#[test]
+fn conflict_all_resolved_dark() {
+    let (mut st, dir) = with_conflict("conflict-all-resolved", "settings.txt", theme_settings);
+    send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours });
+    send(&mut st, ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs });
+    assert!(st.session.conflict.view.as_ref().unwrap().can_save());
+    render("conflict_all_resolved_dark", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 

@@ -2,11 +2,13 @@
 //! its own (`parse_hunk`) or every hunk in context (`parse_in_context`, through the checkpoints
 //! of `memo`), and the scope-to-kind mapping (`Classifier`, with an optional budget).
 
+use super::grammars::grammars;
 use super::memo::{Memo, parse_stream, streams};
 use super::{MAX_LINE_BYTES, SYNTAXES, Span, TokenKind};
 use crate::repo::{DiffLine, Hunk};
 use std::collections::HashMap;
-use syntect::parsing::{ParseState, Scope, ScopeStack, SyntaxReference};
+use std::sync::Arc;
+use syntect::parsing::{ParseState, Scope, ScopeStack, SyntaxReference, SyntaxSet};
 
 /// Why parsing stopped early.
 pub(super) enum Stop {
@@ -40,7 +42,7 @@ impl Side {
         if cx.parsed.is_multiple_of(256) && cancelled() {
             return Err(Stop::Cancelled);
         }
-        let ops = self.state.parse_line(&format!("{text}\n"), &SYNTAXES.set).map_err(|_| Stop::Parse)?;
+        let ops = self.state.parse_line(&format!("{text}\n"), &cx.grammars).map_err(|_| Stop::Parse)?;
         let mut spans = Vec::new();
         let mut pos = 0;
         for (off, op) in ops {
@@ -155,8 +157,9 @@ fn push(spans: &mut Vec<Span>, start: usize, end: usize, kind: TokenKind) {
 
 /// Maps a scope stack to a token kind, caching per scope. One is shared by all the hunks of a
 /// diff, so it also counts the lines (and bytes) parsed, for checking cancellation every 256
-/// lines and for an optional budget.
+/// lines and for an optional budget. It holds the parse set (`grammars`) for as long as it lives.
 pub(super) struct Classifier {
+    grammars: Arc<SyntaxSet>,
     rules: &'static [(Scope, TokenKind)],
     cache: HashMap<Scope, Option<TokenKind>>,
     parsed: usize,
@@ -167,7 +170,12 @@ pub(super) struct Classifier {
 
 impl Classifier {
     pub(super) fn new() -> Self {
-        Classifier { rules: &SYNTAXES.rules, cache: HashMap::new(), parsed: 0, bytes: 0, limit: None }
+        Classifier::on(grammars())
+    }
+
+    /// One that parses with `grammars` (a copy of the bundled set).
+    pub(super) fn on(grammars: Arc<SyntaxSet>) -> Self {
+        Classifier { grammars, rules: &SYNTAXES.rules, cache: HashMap::new(), parsed: 0, bytes: 0, limit: None }
     }
 
     /// One that stops with `Stop::Budget` once more than `lines` lines or `bytes` bytes are parsed.

@@ -6,13 +6,13 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{double_click, row_y};
-use crate::msg::{BranchMsg, Msg, RepoMsg, SelectionMsg};
-use crate::state::AppState;
-use crate::tag::TagMsg;
 use eframe::egui::{Modifiers, pos2};
 use git2::Oid;
 use glowfly_core::repo::{RefKind, RefLabel};
 use glowfly_core::settings::{ColumnWidths, ThemeChoice};
+use glowfly_model::msg::{BranchMsg, Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::tag::TagMsg;
 
 /// Where the first chip of a row sits in the BRANCH / TAG column.
 const CHIP_X: f32 = 290.0;

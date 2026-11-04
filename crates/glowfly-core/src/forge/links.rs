@@ -1,6 +1,7 @@
 //! Links that came back from a hosting service's API. A compromised or malicious server could
 //! return any URL, so only `https://` links on the service's own host are kept (build pages,
-//! which often live on another site, only need to be safe `https://` links).
+//! which often live on another site, only need to be safe `https://` links). The pull requests,
+//! issues and votes passing through also have their text cleaned here (`clean_text`).
 
 use super::{Checks, Issue, PrDetails, Provider, PullRequest, Target};
 use std::collections::HashMap;
@@ -43,6 +44,7 @@ pub(super) fn prs(t: &Target, prs: Vec<PullRequest>) -> Vec<PullRequest> {
 }
 
 pub(super) fn pr(t: &Target, mut p: PullRequest) -> PullRequest {
+    super::clean_text::pr(&mut p);
     p.url = web_url(t, std::mem::take(&mut p.url));
     if let Some(c) = &mut p.checks {
         c.url = build_url(std::mem::take(&mut c.url));
@@ -51,6 +53,9 @@ pub(super) fn pr(t: &Target, mut p: PullRequest) -> PullRequest {
 }
 
 pub(super) fn details(mut v: Vec<PrDetails>) -> Vec<PrDetails> {
+    for votes in v.iter_mut().filter_map(|d| d.votes.as_mut()) {
+        super::clean_text::reviewers(votes);
+    }
     for c in v.iter_mut().filter_map(|d| d.checks.as_mut()) {
         c.url = build_url(std::mem::take(&mut c.url));
     }
@@ -62,6 +67,7 @@ pub(super) fn issues(t: &Target, items: Vec<Issue>) -> Vec<Issue> {
 }
 
 pub(super) fn issue(t: &Target, mut i: Issue) -> Issue {
+    super::clean_text::issue(&mut i);
     i.url = web_url(t, std::mem::take(&mut i.url));
     i
 }

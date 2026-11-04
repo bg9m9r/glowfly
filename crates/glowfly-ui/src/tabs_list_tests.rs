@@ -2,15 +2,15 @@
 //! tabs to fit), its popup of open and recently closed tabs, and what its rows send.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::msg::TabsMsg;
-use crate::state::tabs::ClosedTab;
-use crate::state::{AppState, Tab};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::tabs::ClosedTab;
+use glowfly_model::state::{AppState, Tab};
 use std::path::PathBuf;
 
 const TIP: &str = "All tabs and recently closed tabs";

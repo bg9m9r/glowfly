@@ -3,16 +3,16 @@
 use super::theme::color;
 use super::widgets;
 use super::widgets::reason::{self, ItemState};
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::state::{AppState, ForgeState, PrefPage, Status};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::{self, separator};
+use crate::theme::type_scale;
+use crate::widgets::menu::{self, separator};
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
 use git2::Oid;
 use glowfly_core::forge::{self, RefStyle};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::state::{AppState, ForgeState, PrefPage, Status};
 
 /// The height of a `ui.horizontal` row of labels and buttons, for lists drawn with
 /// `ScrollArea::show_rows` (only the rows in view are laid out).
@@ -44,6 +44,8 @@ pub fn status_color(c: char) -> Color32 {
     match c {
         'A' | '?' => added_color(),
         'D' => removed_color(),
+        // Colour-safe mode's blue for added is the rename blue, so a rename takes the change colour.
+        'R' if color::colour_safe() => modified_color(),
         'R' => color::info(),
         'M' | '!' => modified_color(),
         _ => color::weak(),
@@ -112,7 +114,7 @@ pub fn menu_header_note(ui: &mut egui::Ui, title: &str, note: &str) {
 /// A commit menu's title: the summary in bold (cut to 80 characters), then the short SHA, weak
 /// and monospace; just the SHA when there is no summary.
 pub fn commit_menu_header(ui: &mut egui::Ui, summary: &str, oid: Oid) {
-    let cut = crate::state::commit_menu::header_summary(summary);
+    let cut = glowfly_model::state::commit_menu::header_summary(summary);
     let mut job = egui::text::LayoutJob::default();
     let (style, align) = (ui.style().clone(), egui::Align::Center);
     let sha = if cut.is_empty() {
@@ -151,6 +153,14 @@ pub fn menu_note(ui: &mut egui::Ui, text: &str) {
 /// so wrapping text would break every word across lines.
 pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, m: Msg) {
     menu_item_state(msgs, ui, label, ItemState::Ready, m);
+}
+
+/// A menu item saying on hover what it will do (`tip`), such as which worktree it opens.
+pub fn menu_item_tip(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, tip: &str, m: Msg) {
+    if menu::item(label).show(ui).on_hover_text(tip).clicked() {
+        msgs.push(m);
+        ui.close_menu();
+    }
 }
 
 /// A menu item that is disabled while `blocked` is set: greyed with a painted info mark, the
@@ -290,7 +300,7 @@ pub fn capitalize(s: &str) -> String {
     c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }
 
-pub use crate::state::op_actions::state_actions;
+pub use glowfly_model::state::op_actions::state_actions;
 
 /// Shown when no repository is open.
 pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
@@ -301,7 +311,7 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         ui.label(RichText::new(t.tr("welcome_screen.tagline")).color(color::weak()));
         ui.add_space(20.0);
         if st.loading {
-            ui.add(egui::Spinner::new());
+            super::widgets::fireflies::show(ui, t.tr("common.loading"));
             return;
         }
         super::welcome_cards::start_page(ui, t, msgs);

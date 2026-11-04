@@ -2,11 +2,12 @@
 //! agent-only key's public line, and choosing, forgetting and reloading keys ~/.ssh/config names.
 
 use super::ssh_tests::{home, listing, loaded, page, page_mut, pair, ssh};
-use crate::effect::{Effect, UiEffect};
-use crate::ssh::{SshEffect, SshMsg};
-use crate::state::ssh::COPIED;
-use crate::state::ssh_use::Choices;
 use glowfly_core::ssh_keys::{AgentKey, AgentReach, AgentStatus, ConfigIdentity, ConfigStatus, KeyChoice, SshKeyPair};
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::ssh::{SshEffect, SshMsg};
+use glowfly_model::state::ssh::COPIED;
+use glowfly_model::state::ssh_use::Choices;
 
 fn agent_key(fingerprint: &str, public_key: Option<&str>) -> AgentKey {
     AgentKey {
@@ -53,7 +54,7 @@ fn config_key() -> SshKeyPair {
     SshKeyPair { private: dir.join("id_work"), public: dir.join("id_work.pub"), ..pair("id_work", "work") }
 }
 
-fn with_config(st: &mut crate::state::AppState) {
+fn with_config(st: &mut glowfly_model::state::AppState) {
     let key = config_key();
     let l = page_mut(st).listing.as_mut().unwrap();
     l.config = vec![ConfigIdentity {
@@ -84,7 +85,7 @@ fn a_config_key_can_be_chosen_but_not_forgotten() {
     // Remembered too: Remove from list forgets it, but the config still lists it.
     st.settings.ssh_extra_keys = vec![config_key().private];
     let fx = ssh(&mut st, SshMsg::ForgetKey(config_key().private));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     assert!(st.settings.ssh_extra_keys.is_empty());
     assert_eq!(page(&st).listing.as_ref().unwrap().keys.len(), 2, "the config names it");
 }

@@ -1,17 +1,17 @@
-//! The first-run welcome in other looks: the Start step in Light and high contrast dark, the
+//! The first-run welcome in other looks: the Start step in Light and both high contrasts, the
 //! Connect step in high contrast light, the cards stacked in a narrow window, and the footer
 //! kept on screen in a short one.
 
 use super::snapshot_tests::{harness_palette, harness_sized};
 use super::snapshot_tests_onboarding::{ada, on, snapshot};
-use crate::state::onboarding::WelcomeStep;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme;
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme;
 use eframe::egui;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::identity::Identity;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::onboarding::WelcomeStep;
 
 #[test]
 fn welcome_start_light() {
@@ -23,6 +23,13 @@ fn welcome_high_contrast() {
     let mut h = harness_palette(on(ThemeChoice::HighContrastDark, WelcomeStep::Start, Some(ada())), theme::HIGH_CONTRAST_DARK);
     h.run();
     h.check_snapshot("welcome_start_high_contrast_dark");
+}
+
+#[test]
+fn welcome_start_high_contrast_light() {
+    let mut h = harness_palette(on(ThemeChoice::HighContrastLight, WelcomeStep::Start, Some(ada())), theme::HIGH_CONTRAST_LIGHT);
+    h.run();
+    h.check_snapshot("welcome_start_high_contrast_light");
 }
 
 #[test]

@@ -5,10 +5,10 @@
 //! Left and Right are left for the bindings: Delete is still Drop commit), a click on a row
 //! giving the list the focus, and the focus ring on its current row (or, with none, the list).
 
-use crate::keymap::KeyAction;
-use crate::msg::Msg;
-use crate::state::list_keys::{FileList, KeySet, ListKey};
 use eframe::egui;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::list_keys::{FileList, KeySet, ListKey};
 
 /// The focus target of `list`.
 pub(crate) fn list_id(list: FileList) -> egui::Id {

@@ -28,7 +28,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let _span = tracing::debug_span!("load", path = %path.display(), max = opts.max_commits).entered();
     let loaded_with = opts.clone();
     let max_commits = opts.max_commits.max(1);
-    let mut repo = Repository::discover(path).map_err(|e| crate::safe_directory::open_error(path, &e))?;
+    let mut repo = crate::safe_directory::discover(path)?;
     if repo.is_bare() {
         return Err(Error::Unsupported("bare repositories are not supported".into()));
     }
@@ -179,7 +179,9 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let remote_info = super::remotes::remote_info(&repo, &names);
     let remote_heads = super::remotes::remote_heads(&repo, &names);
     let push_remotes = super::push_config::push_remotes(&repo);
-    let remote_urls = remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
+    let pull_rebase = super::push_config::pull_rebases(&repo, head_branch.as_deref());
+    let remote_urls: Vec<(String, String)> =
+        remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
 
     let (mut tags, mut other_tags, mut lightweight_tags) = (Vec::new(), Vec::new(), HashSet::new());
     for t in repo.tag_names(None)?.iter().flatten().filter(|t| super::is_safe_ref_name(t)) {
@@ -224,6 +226,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     }
     let shallow_roots = super::shallow::roots(&repo);
     let fetched_at = super::fetch_time::fetched_at(&git_dir, &common.dir);
+    let fetched_remotes = super::fetch_time::fetched_remotes(&git_dir, &common.dir, &remote_info, &remote_urls);
 
     let mut starts: Vec<Oid> = head_oid.into_iter().collect();
     let tips = visible_tips(&repo, opts, head_branch.as_deref(), &locals);
@@ -295,6 +298,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         remote_info,
         remote_heads,
         push_remotes,
+        pull_rebase,
         tags,
         other_tags,
         lightweight_tags,
@@ -314,6 +318,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         trust_print,
         shallow_roots,
         fetched_at,
+        fetched_remotes,
         graph: graph::Layout::default(),
         stacks: Default::default(),
         refs_key,

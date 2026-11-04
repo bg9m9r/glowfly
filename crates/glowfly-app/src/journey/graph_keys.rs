@@ -2,16 +2,18 @@
 //! the keyboard focus, Esc gives the graph its keys back and Down moves its selection; that Esc
 //! does nothing else (two selected commits stay selected); Tab reaches the graph itself, whose
 //! arrows then move it; and after the file list's pane key, the graph's pane key gives the graph
-//! its keys back.
+//! its keys back. A WIP row that opened selected on its own (unlit) is where the first Down,
+//! Up or Home lands (issue #439), and a click lights it.
 
 use super::fixture::{Fixture, commit_files};
 use super::harness::Journey;
-use crate::state::Selection;
 use eframe::egui::{Key, Modifiers};
 use git2::Oid;
+use glowfly_model::state::Selection;
 
-/// A repository with two commits and an unstaged file, the WIP row selected.
-fn start(name: &str) -> (Journey, Oid) {
+/// A repository with two commits and an unstaged file, as it opens: the WIP selected (its
+/// staging panel shows) but not chosen, so its row isn't lit.
+fn opened(name: &str) -> (Journey, Oid) {
     let fx = Fixture::new(name);
     let repo = fx.work().join("app");
     fx.init(&repo, &[("a.txt", "a\n")]);
@@ -19,10 +21,31 @@ fn start(name: &str) -> (Journey, Oid) {
     std::fs::write(repo.join("c.txt"), "c\n").unwrap();
     let mut j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
     j.refresh();
-    j.select_wip();
     assert_eq!(j.state().session.selection, Selection::Wip);
+    assert!(!j.state().session.wip_drawn_selected(), "opening doesn't light the WIP row");
     let head = j.state().snap.as_ref().and_then(|s| s.head_oid).expect("a HEAD");
     (j, head)
+}
+
+/// `opened`, then the WIP row clicked: chosen, and lit.
+fn start(name: &str) -> (Journey, Oid) {
+    let (mut j, head) = opened(name);
+    j.select_wip();
+    assert_eq!(j.state().session.selection, Selection::Wip);
+    assert!(j.state().session.wip_drawn_selected(), "a click lights the WIP row");
+    (j, head)
+}
+
+#[test]
+fn the_first_down_up_or_home_lands_on_the_unlit_wip_row() {
+    for (key, name) in [(Key::ArrowDown, "down"), (Key::ArrowUp, "up"), (Key::Home, "home")] {
+        let (mut j, head) = opened(&format!("graph-keys-unlit-{name}"));
+        j.press(key);
+        assert_eq!(j.state().session.selection, Selection::Wip, "{name}");
+        assert!(j.state().session.wip_drawn_selected(), "{name} lit the WIP row");
+        j.press(Key::ArrowDown);
+        assert_eq!(j.state().session.selection, Selection::Commit(head), "{name}, then Down: HEAD");
+    }
 }
 
 #[test]

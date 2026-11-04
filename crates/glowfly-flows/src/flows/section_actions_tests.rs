@@ -6,17 +6,17 @@ use super::push_pr_tests::{cleanup as cleanup_host, with_host};
 use super::rebase_tests::running_job;
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::msg::{BranchMsg, ForgeMsg, Msg, RepoMsg, StashMsg};
-use crate::state::section_actions::{
-    self, NO_COMMIT_TAG, NO_COMMIT_WORKTREE, SectionAction, add_submodule, add_worktree, create_pr, new_branch, new_tag, stash,
-};
-use crate::state::{AppState, Modal};
-use crate::tag::TagMsg;
-use crate::worktree::WorktreeMsg;
 use glowfly_core::forge::PullRequest;
 use glowfly_core::i18n::Lang;
 use glowfly_core::stash_ops::StashScope;
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::msg::{BranchMsg, ForgeMsg, Msg, RepoMsg, StashMsg};
+use glowfly_model::state::section_actions::{
+    self, NO_COMMIT_TAG, NO_COMMIT_WORKTREE, SectionAction, add_submodule, add_worktree, create_pr, new_branch, new_tag, stash,
+};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::tag::TagMsg;
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -41,7 +41,7 @@ fn job_running() -> Option<String> {
 fn new_branch_opens_from_head() {
     let (mut st, dir) = opened("sa-branch");
     let a = new_branch(&st, Lang::En);
-    assert_eq!((a.name.as_str(), a.label(), a.blocked.clone()), ("New branch", "New branch…".to_owned(), None));
+    assert_eq!((a.name.as_str(), a.label(), a.blocked.clone()), ("New branch…", "New branch…".to_owned(), None));
     assert!(matches!(a.msg(), Msg::Branch(BranchMsg::NewBranch { start: None, ref name }) if name.is_empty()));
     run(&mut st, &a);
     assert!(matches!(st.modal, Some(Modal::NewBranch { start: None, .. })));
@@ -172,7 +172,7 @@ fn publish_opens_its_dialog_unless_a_job_runs() {
     let publish = section_actions::all(&st).publish;
     assert_eq!(publish.label(), "Publish…");
     assert!(publish.blocked.is_none());
-    assert!(matches!(publish.msg(), Msg::Publish(crate::msg::PublishMsg::PublishDialog)));
+    assert!(matches!(publish.msg(), Msg::Publish(glowfly_model::msg::PublishMsg::PublishDialog)));
     st.job = Some(running_job(&dir));
     assert!(section_actions::all(&st).publish.blocked.is_some(), "off while a job runs");
     let _ = std::fs::remove_dir_all(&dir);

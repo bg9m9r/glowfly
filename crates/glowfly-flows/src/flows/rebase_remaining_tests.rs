@@ -6,14 +6,14 @@ use super::rebase_tests::{running_job, with_panel};
 use super::selection_tests::git;
 use super::tests::drive;
 use super::update;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{Msg, RebaseMsg, RepoMsg, TabsMsg};
-use crate::state::rebase::{PanelSource, RebasePanel, UNCHANGED};
-use crate::state::rebase_remaining::{EDIT_JOB, ENDED, UPDATED};
-use crate::state::{AppState, Modal};
 use git2::{Oid, RepositoryState};
 use glowfly_core::rebase::{self, RebaseAction, RebaseBase, TodoStep};
 use glowfly_core::repo::{DiffTarget, FileDiff};
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{Msg, RebaseMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::rebase::{PanelSource, RebasePanel, UNCHANGED};
+use glowfly_model::state::rebase_remaining::{EDIT_JOB, ENDED, UPDATED};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -80,7 +80,10 @@ fn opening_loads_the_steps() {
     assert!(!p.loading);
     let oids: Vec<Oid> = p.items.iter().filter_map(TodoStep::oid).collect();
     assert_eq!(oids, [c[1], c[2]]);
-    assert_eq!(p.subtitle(), format!("2 steps left in the rebase of main onto {} · 1 done", panel_onto(&st)));
+    assert_eq!(
+        p.subtitle(glowfly_core::i18n::Lang::En),
+        format!("2 steps left in the rebase of main onto {}, 1 done.", &panel_onto(&st)[..7])
+    );
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(p.start_blocker(snap, false).as_deref(), Some(UNCHANGED));
     let _ = std::fs::remove_dir_all(&dir);

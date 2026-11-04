@@ -4,6 +4,7 @@
 //! Comparing with the working directory is in `compare_wip.rs`; cherry-pick and revert in
 //! `pick.rs`.
 
+use crate::effect::CommitEffect;
 use crate::effect::SelectionEffect;
 use crate::effect::{Effect, StackRequest};
 use crate::msg::SelectionMsg;
@@ -236,7 +237,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
         Selection::Commit(o) => {
             st.session.selection = Selection::Commit(o);
             st.session.detail = None;
-            fx.push(Effect::LoadDetail { workdir: snap.workdir.clone(), oid: o });
+            fx.push(Effect::Commit(CommitEffect::LoadDetail { workdir: snap.workdir.clone(), oid: o }));
             super::line_counts::want_commit(st, o, fx);
         }
         Selection::None | Selection::Wip | Selection::VsWorkdir(_) => {

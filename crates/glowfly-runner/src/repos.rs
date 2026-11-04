@@ -3,10 +3,10 @@
 //! pulling one listed repository.
 
 use super::execute::{Cx, Execute};
-use crate::effect::ReposEffect;
-use crate::msg::{Msg, ReposMsg, ScanFound};
-use crate::state::repo_scan::FoundRepo;
 use glowfly_core::paths::FolderId;
+use glowfly_model::effect::ReposEffect;
+use glowfly_model::msg::{Msg, ReposMsg, ScanFound};
+use glowfly_model::state::repo_scan::FoundRepo;
 
 pub(super) fn run(e: ReposEffect) -> Msg {
     match e {

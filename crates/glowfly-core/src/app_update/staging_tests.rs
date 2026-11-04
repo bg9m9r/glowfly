@@ -112,7 +112,7 @@ fn a_noexec_temp_folder_falls_back_beside_the_program_then_to_the_cache() {
     assert_eq!(entries(&places[1]), vec![exe.clone()]);
     let _ = crate::persist::remove_tree(&s.dir);
     // Nowhere: each place's reason is said, and nothing is left.
-    let err = create_runnable(&places, &exe, "glowfly-update", &refused(places.clone())).unwrap_err();
+    let err = create_runnable(&places, &exe, "glowfly-update", &refused(places.clone())).unwrap_err().to_string();
     assert!(err.starts_with("Couldn't find a folder the update helper can run from ("), "{err}");
     assert_eq!(err.matches(": ").count(), 3, "{err}");
     assert!(entries(&places[0]).is_empty() && entries(&places[2]).is_empty());

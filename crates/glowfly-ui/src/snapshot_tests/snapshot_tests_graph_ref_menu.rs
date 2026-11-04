@@ -7,13 +7,13 @@ use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::{click_steps, running};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::{Msg, SelectionMsg};
-use crate::tag::TagMsg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{RefKind, RefLabel};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::tag::TagMsg;
 
 /// Where the first chip of a row sits in the BRANCH / TAG column.
 const CHIP_X: f32 = 290.0;
@@ -33,7 +33,7 @@ fn graph_label_menu_branch() {
     h.state_mut().1.clear();
     h.get_by_label("Delete…").click();
     h.run();
-    let dialog = h.state().1.iter().any(|m| matches!(m, Msg::Branch(crate::msg::BranchMsg::DeleteDialog(b)) if b == "search"));
+    let dialog = h.state().1.iter().any(|m| matches!(m, Msg::Branch(glowfly_model::msg::BranchMsg::DeleteDialog(b)) if b == "search"));
     assert!(dialog, "the Delete dialog opens");
 
     // Elsewhere on the row, the commit menu.

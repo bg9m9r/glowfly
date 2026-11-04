@@ -6,13 +6,13 @@ use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, scratch_repo, state};
 use super::trust_held_tests::held_repo_with;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StashMsg, TrustMsg};
-use crate::state::palette::{PaletteCommand as C, shown};
-use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, wip_files};
-use crate::state::{AppState, Modal, RunningJob};
 use glowfly_core::repo::{FileEntry, Hazard};
 use glowfly_core::stash_ops::{STAGED_MIN_GIT, StashScope};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StashMsg, TrustMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, shown};
+use glowfly_model::state::stashes::{NO_FILES, NOTHING, StashPushForm, wip_files};
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -61,7 +61,9 @@ pub(super) fn argv(a: &[&str]) -> Vec<Vec<String>> {
 /// The commands and file of the one RunGit effect in `fx`.
 pub(super) fn git_run(fx: &[Effect]) -> (Vec<Vec<String>>, Option<(PathBuf, String)>) {
     match fx {
-        [Effect::RunGit { cmds, write_file, .. }] => (cmds.clone(), write_file.clone().map(|(p, b)| (p, String::from_utf8(b).unwrap()))),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, write_file, .. })] => {
+            (cmds.clone(), write_file.clone().map(|(p, b)| (p, String::from_utf8(b).unwrap())))
+        }
         other => panic!("expected one RunGit, got {} effects", other.len()),
     }
 }
@@ -81,6 +83,7 @@ fn job(label: &str) -> RunningJob {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -265,12 +268,12 @@ fn stash_runs_are_held_by_trust() {
     let (mut st, dir) = held_repo_with("stash-push-held", false);
     dialog(&mut st, StashScope::All);
     let fx = run(&mut st, push(StashScope::All, "", &[]));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     assert!(matches!(st.modal, Some(Modal::Trust(_))), "the trust prompt replaces the dialog");
     assert_eq!(st.trust.held.as_ref().map(|h| h.job.label.as_str()), Some("Stash"));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
-    let gits: Vec<_> = fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).collect();
+    let gits: Vec<_> = fx.iter().filter(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))).collect();
     assert_eq!(gits.len(), 1, "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

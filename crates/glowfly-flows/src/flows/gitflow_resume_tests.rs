@@ -6,17 +6,17 @@
 
 use super::gitflow_tests::{cleanup, flow, git_job, initialized, job_label, last_log, run};
 use super::tests::{drive, finish, git, scratch_repo};
-use crate::effect::LoadKind;
-use crate::gitflow::GitFlowMsg;
-use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::gitflow::FinishJob;
-use crate::state::gitflow_resume::StoppedFinish;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::{AppState, RunningJob};
 use git2::RepositoryState;
 use glowfly_core::gitcli::{args, run as git_run};
 use glowfly_core::gitflow::{Branches, FinishOptions, StartTips, WorkState, check_finish};
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::LoadKind;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::gitflow::FinishJob;
+use glowfly_model::state::gitflow_resume::StoppedFinish;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::{Path, PathBuf};
 
 fn commit(dir: &Path, file: &str, text: &str) {
@@ -224,6 +224,7 @@ fn pending_job(st: &AppState, snap: &glowfly_core::repo::Snapshot, workdir: Path
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: false,

@@ -6,15 +6,15 @@
 
 use super::history_file::WRAP_LINES;
 use super::snapshot_tests::{git, harness, remove_fixture, with_repo};
-use crate::msg::{BlameMsg, Msg};
-use crate::state::AppState;
-use crate::state::blame::{BlameData, BlameView};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, MouseWheelUnit, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::highlight::{self, SyntaxHint};
 use glowfly_core::repo::{self, BlameOptions, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{BlameMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::{BlameData, BlameView};
 use std::path::PathBuf;
 
 const COMMENT: &str = "// Every reading is checked against the calibration table before it is stored, so a sensor that drifts \

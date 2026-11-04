@@ -1,20 +1,27 @@
 //! A binary file's body: a changed image shows Before and After side by side, each image
 //! fitted in its half over a checkerboard (so transparency shows) with its size under it; a
 //! missing side shows a dashed "Added" or "Deleted" card and a side that can't be decoded says
-//! so with its size. Any other binary file shows the binary empty state with both sizes. While
+//! so with its size. An SVG (binary, or text with the header's switch on Preview) shows the same
+//! way, drawn by `preview_svg`, with no zoom limit: it fills its card; a side too large to draw
+//! or unreadable says so, a drawing that names files outside itself says they aren't shown,
+//! and while the sides load the cards stand empty. Any other binary file shows its bytes in the hex view (`hex`) when both
+//! sides are within the cap, or else the binary empty state with both sizes (and, over the cap,
+//! why). While
 //! the sides load (or when they failed) the plain binary empty state shows.
 
 use super::empty_state::{self, EmptyIcon};
-use crate::state::AppState;
-use crate::state::diff_preview;
-use crate::ui::image_paint::{checkerboard, load};
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::image_paint::{checkerboard, load};
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Context, CornerRadius, Layout, Rect, RichText, Stroke, TextureHandle, Ui, UiBuilder, pos2, vec2};
+use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::pointer::size_text;
 use glowfly_core::preview_image::{PreviewImage, is_image_path};
-use glowfly_core::repo::{BinarySide, BinarySides};
+use glowfly_core::preview_svg::{SVG_MAX_BYTES, is_svg_path};
+use glowfly_core::repo::{BinarySide, BinarySides, HEX_MAX_BYTES};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview;
 use std::sync::Arc;
 
 /// Around the two columns, and between them.
@@ -39,6 +46,8 @@ pub struct PreviewTextures {
     key: Option<Arc<BinarySides>>,
     old: Option<TextureHandle>,
     new: Option<TextureHandle>,
+    /// The hex view's rows, for a binary file that isn't an image.
+    hex: super::hex::HexLines,
 }
 
 impl PreviewTextures {
@@ -54,64 +63,115 @@ impl PreviewTextures {
         self.key = Some(sides.clone());
     }
 
+    /// Drops the textures, keeping the hex rows (the hex view calls this every frame).
     fn clear(&mut self) {
         if self.key.is_some() {
-            *self = Self::default();
+            (self.key, self.old, self.new) = (None, None, None);
         }
     }
 }
 
 /// Draws the binary diff on screen's body.
 pub(super) fn show(ui: &mut Ui, st: &AppState, tex: &mut PreviewTextures) {
+    let t = st.settings.lang();
+    let svg = st.session.diff.view.as_ref().is_some_and(|(target, _)| is_svg_path(target.path()));
     let (Some(sides), Some((target, _))) = (diff_preview::shown(st), st.session.diff.view.as_ref()) else {
         tex.clear();
-        empty_state::binary_file(ui);
+        match st.session.diff_preview.as_ref().and_then(|p| p.sides.as_ref()) {
+            // An SVG's cards stand empty while its sides load, and say so when they failed.
+            Some(Err(_)) if svg => columns(ui, |ui, _, card| svg_unreadable(ui, card, t, None)),
+            _ if svg => columns(ui, |ui, _, card| {
+                ui.painter().rect_filled(card, CornerRadius::same(radius::MD), color::raised());
+            }),
+            _ => empty_state::binary_file(ui),
+        }
         return;
     };
     let any_image = sides.old.iter().chain(&sides.new).any(|s| s.image.is_some());
-    if !any_image && !is_image_path(target.path()) {
+    if !any_image && !is_image_path(target.path()) && !svg {
         tex.clear();
-        empty_state::binary_sizes(ui, sides.old.as_ref().map(|s| s.size), sides.new.as_ref().map(|s| s.size));
+        if sides.hex().is_some() {
+            return super::hex::show(ui, st, sides, &mut tex.hex);
+        }
+        let too_large = sides.old.iter().chain(&sides.new).any(|s| s.size > HEX_MAX_BYTES);
+        let note = too_large.then(|| st.settings.lang().tr("diff.hex.too_large"));
+        empty_state::binary_sizes(ui, sides.old.as_ref().map(|s| s.size), sides.new.as_ref().map(|s| s.size), note);
         return;
     }
     tex.sync(ui.ctx(), sides);
+    let textures = [&tex.old, &tex.new];
+    columns(ui, |ui, i, card| {
+        let (side, missing) = if i == 0 { (&sides.old, ADDED) } else { (&sides.new, DELETED) };
+        match (side, textures[i]) {
+            (None, _) => placeholder(ui, card, missing),
+            (Some(s), Some(tx)) => {
+                let img = s.image.as_ref().expect("a texture comes from an image");
+                image_card(ui, card, tx, img, if svg { f32::INFINITY } else { MAX_ZOOM });
+                let text = format!("{} \u{d7} {} px \u{b7} {}", img.width, img.height, size_text(s.size));
+                if s.linked {
+                    linked_caption(ui, t, &text);
+                } else {
+                    caption(ui, &text);
+                }
+            }
+            (Some(s), None) if svg => svg_unreadable(ui, card, t, Some(s.size)),
+            (Some(s), None) => undecodable(ui, card, s.size),
+        }
+    });
+}
+
+/// Lays out the Before and After columns, each a caption over a card, and calls `card` for
+/// each (0 Before, 1 After) to fill its card and add what goes under it.
+fn columns(ui: &mut Ui, mut card: impl FnMut(&mut Ui, usize, Rect)) {
     let area = ui.available_rect_before_wrap();
     let col_w = ((area.width() - 2.0 * PAD - GAP) / 2.0).max(40.0);
     let line_h = 18.0;
     let card_h = (area.height() - 2.0 * PAD - 2.0 * (line_h + 8.0)).clamp(CARD_MIN_H, CARD_MAX_H);
-    let columns = [(BEFORE, &sides.old, &tex.old, ADDED), (AFTER, &sides.new, &tex.new, DELETED)];
-    for (i, (title, side, texture, missing)) in columns.into_iter().enumerate() {
+    for (i, title) in [BEFORE, AFTER].into_iter().enumerate() {
         let left = area.left() + PAD + i as f32 * (col_w + GAP);
         let col = Rect::from_min_size(pos2(left, area.top() + PAD), vec2(col_w, line_h + 8.0 + card_h + 8.0 + line_h));
         ui.scope_builder(UiBuilder::new().max_rect(col).layout(Layout::top_down(Align::Min)), |ui| {
             ui.spacing_mut().item_spacing.y = 8.0;
             ui.label(RichText::new(title).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
-            let (card, _) = ui.allocate_exact_size(vec2(col_w, card_h), egui::Sense::hover());
-            match (side, texture) {
-                (None, _) => placeholder(ui, card, missing),
-                (Some(s), Some(t)) => {
-                    let img = s.image.as_ref().expect("a texture comes from an image");
-                    image_card(ui, card, t, img);
-                    caption(ui, &format!("{} \u{d7} {} px \u{b7} {}", img.width, img.height, size_text(s.size)));
-                }
-                (Some(s), None) => undecodable(ui, card, s.size),
-            }
+            let (rect, _) = ui.allocate_exact_size(vec2(col_w, card_h), egui::Sense::hover());
+            card(ui, i, rect);
         });
     }
     ui.allocate_rect(area, egui::Sense::hover());
+}
+
+/// The caption of an SVG that names files outside itself: the size, then "Linked files not
+/// shown", weak, with why on hover.
+fn linked_caption(ui: &mut Ui, t: Lang, text: &str) {
+    let note = format!("{text} \u{b7} {}", t.tr("diff.svg.linked"));
+    let text = RichText::new(note).font(type_scale::font(type_scale::SMALL)).color(color::weak());
+    ui.label(text).on_hover_text(t.tr("diff.svg.linked.tip"));
+}
+
+/// The card of an SVG side that can't be drawn: too large (over `SVG_MAX_BYTES`), else
+/// unreadable, with its size when known.
+fn svg_unreadable(ui: &mut Ui, card: Rect, t: Lang, size: Option<u64>) {
+    let too_large = size.is_some_and(|s| s > SVG_MAX_BYTES);
+    let title = if too_large { t.tr("diff.svg.too_large") } else { t.tr("diff.svg.cant_preview") };
+    let line = match size {
+        Some(s) if too_large => Some(t.trf("diff.svg.too_large.size", &[("size", &size_text(s)), ("limit", &size_text(SVG_MAX_BYTES))])),
+        Some(s) => Some(size_text(s)),
+        None => None,
+    };
+    unpreviewable(ui, card, title, line.as_deref());
 }
 
 fn caption(ui: &mut Ui, text: &str) {
     ui.label(RichText::new(text).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
 }
 
-/// The image fitted in `card`, centred over a checkerboard.
-fn image_card(ui: &Ui, card: Rect, t: &TextureHandle, img: &PreviewImage) {
+/// The image fitted in `card`, centred over a checkerboard, at most `max_zoom` times its size.
+fn image_card(ui: &Ui, card: Rect, t: &TextureHandle, img: &PreviewImage, max_zoom: f32) {
     let p = ui.painter();
     p.rect_filled(card, CornerRadius::same(radius::MD), color::raised());
     let room = card.shrink(PAD);
     let (w, h) = (img.width.max(1) as f32, img.height.max(1) as f32);
-    let scale = (room.width() / w).min(room.height() / h).min(MAX_ZOOM);
+    let scale = (room.width() / w).min(room.height() / h).min(max_zoom);
     let rect = Rect::from_center_size(room.center(), vec2(w * scale, h * scale));
     checkerboard(p, rect);
     p.image(t.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
@@ -140,13 +200,20 @@ fn placeholder(ui: &mut Ui, card: Rect, text: &str) {
 
 /// The binary page, "Can't preview this image" and the size.
 fn undecodable(ui: &mut Ui, card: Rect, size: u64) {
+    unpreviewable(ui, card, CANT_PREVIEW, Some(&size_text(size)));
+}
+
+/// A card with the binary page, `title` and, weak under it, `line`.
+fn unpreviewable(ui: &mut Ui, card: Rect, title: &str, line: Option<&str>) {
     ui.painter().rect_filled(card, CornerRadius::same(radius::MD), color::raised());
     centred(ui, card, |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(40.0, 40.0), egui::Sense::hover());
         empty_state::paint(ui.painter(), rect.center(), EmptyIcon::Binary, color::weak());
         ui.add_space(8.0);
-        ui.label(RichText::new(CANT_PREVIEW).color(color::text()));
-        ui.label(RichText::new(size_text(size)).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
+        ui.label(RichText::new(title).color(color::text()));
+        if let Some(line) = line {
+            ui.label(RichText::new(line).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
+        }
     });
 }
 

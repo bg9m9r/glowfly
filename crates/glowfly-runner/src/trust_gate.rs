@@ -8,7 +8,6 @@
 //! A pull is pinned there: its fetch, the comparison of the commits it fetched, then a merge or
 //! rebase of exactly those (glowfly_core::trust::pull).
 
-use crate::effect::{Accepted, Effect, RebaseEffect};
 use glowfly_core::i18n::Lang;
 use glowfly_core::pick_ops::Picking;
 use glowfly_core::rebase::{MergeParent, MergeStep, RebaseAction, ResetTo, Resume, TodoStep, Upstream};
@@ -17,6 +16,8 @@ use glowfly_core::trust::compare::{self, Refused};
 use glowfly_core::trust::incoming::{self, How, Target};
 use glowfly_core::trust::pull::{Pull, PullRun, run_pinned};
 use glowfly_core::trust::{Follow, TrustScan};
+use glowfly_model::effect::JobEffect;
+use glowfly_model::effect::{Accepted, Effect, RebaseEffect};
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 
@@ -90,7 +91,7 @@ pub(super) fn targets(effect: &Effect) -> Vec<Target> {
             resume.into_iter().chain(steps).chain(back).collect()
         }
         // Every commit the action names, from its fields: an undo can go back to any of them.
-        Effect::UndoRedo { action, .. } => commits_in(&format!("{action:?}")).into_iter().map(commit).collect(),
+        Effect::Job(JobEffect::UndoRedo { action, .. }) => commits_in(&format!("{action:?}")).into_iter().map(commit).collect(),
         _ => Vec::new(),
     }
 }
@@ -130,7 +131,7 @@ impl Halt {
                 let places: Vec<&str> = found.follows.iter().map(|f| f.path.as_str()).collect();
                 t.trf("trust.halt.held", &[("places", &places.join(", "))])
             }
-            Halt::Unchecked(u) => crate::state::trust::unchecked_text(t, u),
+            Halt::Unchecked(u) => glowfly_model::state::trust::unchecked_text(t, u),
             Halt::Changed(_) => t.tr("trust.halt.changed").to_owned(),
         };
         t.trf("trust.halt.stopped", &[("why", &why)])

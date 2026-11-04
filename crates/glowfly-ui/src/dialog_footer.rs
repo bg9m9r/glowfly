@@ -10,9 +10,9 @@
 //! length, so typing doesn't move it. Alternatives and extras keep hover-only reasons.
 
 use super::Tone;
-use crate::ui::theme::color;
-use crate::ui::widgets::buttons::{self, StyledButton};
-use crate::ui::widgets::reason;
+use crate::theme::color;
+use crate::widgets::buttons::{self, StyledButton};
+use crate::widgets::reason;
 use eframe::egui::{Color32, Response, RichText, TextStyle, Ui};
 use glowfly_core::i18n::Lang;
 use std::borrow::Cow;

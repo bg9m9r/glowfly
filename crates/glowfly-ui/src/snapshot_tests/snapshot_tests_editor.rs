@@ -4,10 +4,10 @@
 
 use super::snapshot_tests::{git, remove_fixture, render, settings, with_repo};
 use super::snapshot_tests_diff::with_diff;
-use crate::state::{AppState, PrefPage, PrefsState};
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
 use glowfly_core::{highlight, intraline};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 #[test]

@@ -5,12 +5,12 @@
 use super::families::{Ansi, Attention, Branch, LANE_COUNT, REPO_HUES, Repository, Status};
 use eframe::egui::Color32;
 use glowfly_core::highlight::TokenKind;
-use glowfly_core::settings::{BranchPalette, RepoColour};
+use glowfly_core::settings::{ColourPalette, RepoColour};
 use std::cell::RefCell;
 
 pub use super::surfaces::{
-    danger_hover, field_fill, guide_fill, hover_layer, inset, menu_danger, pressed_layer, tool_backing, tool_edge, tool_hover, tool_press,
-    tool_pressed, wash,
+    danger_hover, field_fill, find_fill, guide_fill, hover_layer, inset, menu_danger, pressed_layer, tool_backing, tool_edge, tool_hover,
+    tool_press, tool_pressed, wash,
 };
 
 /// The colors of one theme, in families: neutrals, brand, status, attention, diff, syntax,
@@ -75,6 +75,10 @@ pub struct Palette {
     pub code_sel: Color32,
     /// `code_sel` while the diff doesn't have the keyboard: quieter, still visible.
     pub code_sel_dim: Color32,
+    /// "You are here" and nothing else: the glow and rim round the checked-out commit's node and
+    /// this tab's WIP lantern (`graph::lantern`); besides, the firefly loader's dots, with no glow
+    /// (`widgets::fireflies`). `text` in the high-contrast themes, which draw no glow. Not a theme-file key: theme files keep their base's.
+    pub lantern: Color32,
     // Syntax colors for diff text.
     pub syn_comment: Color32,
     pub syn_string: Color32,
@@ -256,9 +260,15 @@ palette_fields!(
     terminal_bright_white => ansi.colors[15],
 );
 
-/// The active palette's branch preset (how many hues branches and people pick from).
-pub fn branch_preset() -> BranchPalette {
+/// The active palette's branch preset (how many hues branches pick from).
+fn branch_preset() -> ColourPalette {
     ACTIVE.with_borrow(|p| p.branch.preset)
+}
+
+/// Whether the active palette has the colour-blind safe diff and status colours
+/// (`colour_safe::applied`): views that pair a colour with another status pick another then.
+pub fn colour_safe() -> bool {
+    branch_preset() == ColourPalette::ColourBlind
 }
 
 /// Graph lane `i`'s colour in the active palette (they repeat after `LANE_COUNT`).

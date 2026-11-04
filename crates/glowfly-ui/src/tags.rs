@@ -8,20 +8,20 @@ use super::common::{menu_danger, menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::widgets;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
-use crate::deep_link::{DeepLinkMsg, LinkTarget};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::Selection;
-use crate::state::rebase::JOB_RUNNING;
-use crate::state::section_actions::SectionAction;
-use crate::state::tags::delete_remote_confirm;
-use crate::tag::TagMsg;
-use crate::ui::widgets::menu::{danger_submenu, separator, submenu};
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::widgets::menu::{danger_submenu, separator, submenu};
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::GraphFilter;
+use glowfly_model::deep_link::{DeepLinkMsg, LinkTarget};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::Selection;
+use glowfly_model::state::rebase::JOB_RUNNING;
+use glowfly_model::state::section_actions::SectionAction;
+use glowfly_model::state::tags::delete_remote_confirm;
+use glowfly_model::tag::TagMsg;
 
 /// What the rows are drawn against: the left-panel filter, the selection, whether no job is
 /// running (the remote items are disabled while one is), and the graph filter (hidden and soloed
@@ -53,7 +53,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         if widgets::list_row_hidden(ui) {
             continue;
         }
-        let r = widgets::list_row(ui, widgets::ROW_INDENT, name, None, *sel == Selection::Commit(*oid), false);
+        let r = widgets::name_row(ui, widgets::ROW_INDENT, name, *sel == Selection::Commit(*oid));
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
         }

@@ -2,7 +2,7 @@
 //! the text comparison's files.
 
 use super::compare::{check, line_diff};
-use super::{TOLERATED_PIXELS, crop_image, skip_requested, within_tolerance};
+use super::{TOLERATED_PIXELS, crop_image, keep_approved, skip_requested, within_tolerance};
 use eframe::egui::{Rect, pos2};
 
 #[test]
@@ -30,7 +30,34 @@ fn crops_in_pixels_and_stays_inside() {
     assert_eq!(cut.dimensions(), (40, 30));
     let edge = crop_image(img.clone(), Some(Rect::from_min_max(pos2(-10.0, 90.0), pos2(300.0, 300.0))), 1.0);
     assert_eq!(edge.dimensions(), (200, 10));
-    assert_eq!(crop_image(img, None, 1.0).dimensions(), (200, 100));
+    assert_eq!(crop_image(img.clone(), None, 1.0).dimensions(), (200, 100));
+    // A fractional rect keeps its size wherever it sits.
+    for dx in [0.0, 0.2, 0.4, 0.5, 0.6, 0.8] {
+        let r = Rect::from_min_size(pos2(10.3 + dx, 5.7 + dx), eframe::egui::vec2(40.4, 20.6));
+        assert_eq!(crop_image(img.clone(), Some(r), 1.0).dimensions(), (40, 21), "shifted {dx}");
+    }
+}
+
+#[test]
+fn an_update_keeps_an_image_within_tolerance() {
+    let grey = image::Rgba([90, 90, 90, 255]);
+    let approved = image::RgbaImage::from_pixel(64, 64, grey);
+    let mut noisy = approved.clone();
+    for i in 0..TOLERATED_PIXELS as u32 {
+        noisy.put_pixel(i % 64, 10 + i / 64, image::Rgba([255, 255, 255, 255]));
+    }
+    assert!(keep_approved(Some(approved.clone()), &approved), "the same image");
+    assert!(keep_approved(Some(approved.clone()), &noisy), "no more than the tolerated pixels differ");
+    let mut changed = approved.clone();
+    for x in 0..64 {
+        for y in 0..4 {
+            changed.put_pixel(x, y, image::Rgba([255, 255, 255, 255]));
+        }
+    }
+    assert!(!keep_approved(Some(approved.clone()), &changed), "a real change is written");
+    let bigger = image::RgbaImage::from_pixel(65, 64, grey);
+    assert!(!keep_approved(Some(approved), &bigger), "a new size is written");
+    assert!(!keep_approved(None, &noisy), "a new golden is written");
 }
 
 #[test]

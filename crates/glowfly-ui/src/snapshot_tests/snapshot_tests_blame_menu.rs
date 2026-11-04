@@ -7,10 +7,7 @@ use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_blame::with_blame;
 use super::snapshot_tests_file_menu::menu_style;
 use super::theme::{apply_theme, color};
-use crate::msg::{BlameMsg, Msg};
-use crate::state::blame::BlameStep;
-use crate::state::blame_find::search;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use eframe::egui::accesskit::Role;
 use egui_kittest::Harness;
@@ -18,6 +15,9 @@ use egui_kittest::kittest::{By, Queryable};
 use git2::Oid;
 use glowfly_core::repo::BlameCommit;
 use glowfly_core::settings::{BlameMoves, BlamePrefs, ThemeChoice};
+use glowfly_model::msg::{BlameMsg, Msg};
+use glowfly_model::state::blame::BlameStep;
+use glowfly_model::state::blame_find::search;
 
 // The English texts, pinned.
 const BLAME_BEFORE: &str = "Blame before this commit";
@@ -46,7 +46,7 @@ fn commit() -> BlameCommit {
 fn menu(before: bool, on_graph: bool) -> Harness<'static, Vec<Msg>> {
     let c = commit();
     // Wide enough for the disabled items' reasons after their labels.
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());

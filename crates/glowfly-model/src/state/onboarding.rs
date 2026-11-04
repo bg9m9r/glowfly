@@ -7,10 +7,11 @@ use super::touched::Touched;
 use glowfly_core::i18n::Lang;
 use glowfly_core::identity::Identity;
 
+#[path = "getting_started.rs"]
+pub mod getting_started;
+
 /// The activity log line after the identity step wrote the name and email.
 pub const SAVED_LOG: &str = "Saved your name and email to the global git config";
-/// The toast after the tour's last step.
-pub const TOUR_DONE: &str = "That's the tour. The command palette can run it again.";
 
 /// The welcome and the tour (global, not per tab).
 #[derive(Default)]
@@ -29,6 +30,8 @@ pub struct Onboarding {
     pub hints_shown_this_session: u32,
     /// The welcome ran this launch: no tips until the next one.
     pub quiet_session: bool,
+    /// Help > Getting started, while its page is open.
+    pub getting_started: Option<getting_started::GettingStarted>,
 }
 
 /// The welcome's steps, in order.
@@ -81,7 +84,8 @@ impl WelcomeStep {
 pub struct Welcome {
     pub step: WelcomeStep,
     pub identity: IdentityForm,
-    /// "Show me around once it opens" (edited in place by the view).
+    /// "Show me around once it opens" (edited in place by the view): off until ticked; the tour
+    /// stays a click away from Help, the palette and this step.
     pub tour_after: bool,
     /// "Show authors' pictures from Gravatar" (edited in place by the view): seeded from
     /// `settings.avatar_lookups` and written back when the welcome closes.
@@ -94,7 +98,7 @@ impl Welcome {
         Welcome {
             step: WelcomeStep::Identity,
             identity: IdentityForm { reading: true, ..IdentityForm::default() },
-            tour_after: true,
+            tour_after: false,
             avatars: false,
         }
     }

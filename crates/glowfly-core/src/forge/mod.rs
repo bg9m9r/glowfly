@@ -37,10 +37,12 @@ use serde::{Deserialize, Serialize};
 mod auth;
 mod check_detail;
 mod checks;
+mod clean_text;
 mod details;
 mod forks;
 mod head_repo;
 mod http;
+mod link_hosts;
 mod links;
 mod model;
 mod page;
@@ -52,6 +54,7 @@ mod releases;
 mod remote;
 mod repo_size;
 mod review;
+mod service_error;
 mod ssh_keys;
 mod user_repos;
 mod web;
@@ -74,6 +77,7 @@ pub use issue_details::{
     CreateOptions, IssueDetails, IssueField, NewIssue, Person, create_issue, issue_create_options, issue_details, issues_in_app, noun,
     project_problem, title_word, type_problem, type_required,
 };
+pub use link_hosts::{mismatch as link_mismatch, shown_url};
 pub use links::https_host;
 pub use model::*;
 pub use provider::{Provider, ProviderInfo};
@@ -84,6 +88,7 @@ pub(crate) use remote::split_url;
 pub use remote::{Connection, parse_host, parse_remote};
 pub use repo_size::repo_size;
 pub use review::*;
+pub use service_error::ServiceError;
 pub use ssh_keys::{
     AddKeyOutcome, RegisteredKey, add_ssh_key, default_title, list_ssh_keys, needs_fallback, same_key, ssh_keys_page, title_problem,
 };

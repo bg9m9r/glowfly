@@ -4,15 +4,16 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{BackgroundEffect, Effect};
-use crate::msg::{CloseRequest, Msg, TabsMsg};
-use crate::state::conflict::ConflictView;
-use crate::state::session::{Gen, RepoSession};
-use crate::state::tabs::{ClosedTab, Parked};
-use crate::state::{AppState, CommitDraft, Modal, Tab};
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::conflict_rows::Trivial;
 use glowfly_core::repo::{Choice, CommitTemplate};
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{BackgroundEffect, Effect};
+use glowfly_model::msg::{CloseRequest, Msg, TabsMsg};
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::session::{Gen, RepoSession};
+use glowfly_model::state::tabs::{ClosedTab, Parked};
+use glowfly_model::state::{AppState, CommitDraft, Modal, Tab};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -37,7 +38,7 @@ pub(super) fn names(st: &AppState) -> Vec<String> {
 }
 
 pub(super) fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveTabs { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Tabs { .. }))).count()
 }
 
 fn draft(summary: &str) -> CommitDraft {
@@ -269,7 +270,7 @@ fn a_closed_tab_lets_go_of_its_repository_handles() {
 fn forgetting_a_repository_drops_its_pooled_handles() {
     use glowfly_core::repo_pool::{Use, kept, lend};
     let dir = super::tests::scratch_repo("forget-pooled");
-    let forget = || crate::runner::testing::execute(Effect::Background(BackgroundEffect::Forget(dir.clone())));
+    let forget = || glowfly_runner::testing::execute(Effect::Background(BackgroundEffect::Forget(dir.clone())));
     let lent = lend(&dir, Use::Workdir).unwrap();
     assert!(forget().is_none());
     drop(lent);

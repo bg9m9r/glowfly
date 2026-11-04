@@ -3,18 +3,18 @@
 //! the interdiff's +N −M; line 2 is each version's index and short SHA with a painted arrow
 //! between them ("none" for a missing side). A click selects the pair.
 
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal::short;
-use crate::state::range_diff::status_label;
-use crate::ui::common::{added_color, modified_color, removed_color};
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::{color, contrast, type_scale};
-use crate::ui::widgets::{Icon, paint_cut_text, paint_icon, row_fill};
-use eframe::egui::{self, Color32, CornerRadius, CursorIcon, Painter, Rect, Sense, Ui, pos2, vec2};
+use crate::common::{added_color, modified_color, removed_color};
+use crate::theme::{color, contrast, type_scale};
+use crate::widgets::chip::{Chip, ChipSize, Look};
+use crate::widgets::{Icon, paint_cut_text, paint_icon, row_fill};
+use eframe::egui::{self, Color32, CursorIcon, Painter, Rect, Sense, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::range_diff::{Pair, Side, Status};
+use glowfly_model::msg::Msg;
 use glowfly_model::range_diff::RangeDiffMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::short;
+use glowfly_model::state::range_diff::status_label;
 
 const ROW_H: f32 = 56.0;
 const PAD_X: f32 = 16.0;
@@ -34,7 +34,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 let pair = &c.pairs[i];
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
                 let name = format!("{}: {}", status_label(t, pair.status), pair.summary());
-                crate::ui::access::name_button(&resp, true, &name);
+                crate::access::name_button(&resp, true, &name);
                 if ui.is_rect_visible(rect) {
                     row_fill::paint(ui.painter(), rect, view.selected == Some(i), resp.hovered());
                     paint(ui.painter(), t, rect, pair);
@@ -67,7 +67,7 @@ fn paint(p: &Painter, t: Lang, rect: Rect, pair: &Pair) {
     let chip = chip(p, left, y1, status_label(t, pair.status), tone(pair.status));
     let mut end = right;
     if pair.status == Status::Changed {
-        end = crate::ui::line_counts::paint_total_right(p, pos2(right, y1), pair.counts()).left() - 12.0;
+        end = crate::line_counts::paint_total_right(p, pos2(right, y1), pair.counts()).left() - 12.0;
     }
     let x = chip.right() + 8.0;
     paint_cut_text(p, pos2(x, y1), pair.summary(), type_scale::font(type_scale::BODY), color::text(), (end - x).max(0.0));
@@ -84,15 +84,9 @@ fn paint(p: &Painter, t: Lang, rect: Rect, pair: &Pair) {
     paint_cut_text(p, pos2(x, y2), &side(&pair.new), mono, color::weak(), (right - x).max(0.0));
 }
 
-/// A small status chip at `x` on the line centred at `y`, filled and inked for `col`; returns
+/// A status badge at `x` on the line centred at `y`, filled and inked for `col`; returns
 /// its rect.
 fn chip(p: &Painter, x: f32, y: f32, text: &str, col: Color32) -> Rect {
-    const H: f32 = 18.0;
-    const PAD: f32 = 6.0;
     let (fill, ink) = contrast::change_chip(col, &color::current());
-    let galley = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::SMALL), ink);
-    let rect = Rect::from_min_size(pos2(x, y - H / 2.0), vec2(galley.size().x + 2.0 * PAD, H));
-    p.rect_filled(rect, CornerRadius::same(radius::SM), fill);
-    p.galley(pos2(x + PAD, y - galley.size().y / 2.0), galley, ink);
-    rect
+    Chip::new(ChipSize::Badge, text).look(Look::new(fill, ink)).paint(p, x, y)
 }

@@ -8,25 +8,7 @@
 use super::common::{commit_menu_header, menu_header, menu_item, menu_item_if, menu_item_state, menu_note, menu_row, menu_row_preview};
 use super::rebase::edit_menu::key;
 use super::widgets::reason::{self, ItemState};
-use crate::custom_commands::Target;
-use crate::deep_link::{DeepLinkMsg, LinkTarget};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::BranchMsg;
-use crate::msg::Msg;
-use crate::msg::OpPreviewMsg;
-use crate::msg::RebaseMsg;
-use crate::msg::SelectionMsg;
-use crate::patch::PatchMsg;
-use crate::state::commit_menu::menu_trim::head_contains;
-use crate::state::commit_menu::{hard_reset_msg, reset_title};
-use crate::state::custom_commands::MenuCommands;
-use crate::state::op_preview::pick_blocker;
-use crate::state::rebase_onto::{onto_commit_blocker, onto_menu_labels};
-use crate::state::rebase_quick;
-use crate::state::selection::{CommitBlock, MultiSelection, cherry_pick_blocker, in_graph_order};
-use crate::tag::TagMsg;
-use crate::ui::widgets::menu::{Named, cut_name, item, item_named, separator, submenu};
-use crate::worktree::WorktreeMsg;
+use crate::widgets::menu::{Named, cut_name, item, item_named, separator, submenu};
 use eframe::egui;
 use glowfly_core::custom_commands::Place;
 use glowfly_core::i18n::Lang;
@@ -34,10 +16,28 @@ use glowfly_core::op_preview::PreviewOp;
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{CommitInfo, Snapshot};
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::custom_commands::Target;
+use glowfly_model::deep_link::{DeepLinkMsg, LinkTarget};
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::OpPreviewMsg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::SelectionMsg;
+use glowfly_model::patch::PatchMsg;
+use glowfly_model::state::commit_menu::menu_trim::head_contains;
+use glowfly_model::state::commit_menu::{hard_reset_msg, reset_title};
+use glowfly_model::state::custom_commands::MenuCommands;
+use glowfly_model::state::op_preview::pick_blocker;
+use glowfly_model::state::rebase_onto::{onto_commit_blocker, onto_menu_labels};
+use glowfly_model::state::rebase_quick;
+use glowfly_model::state::selection::{CommitBlock, MultiSelection, cherry_pick_blocker, in_graph_order};
+use glowfly_model::tag::TagMsg;
+use glowfly_model::worktree::WorktreeMsg;
 
-/// The commit menu, in the review's groups: make something at the commit; apply it or move the
-/// branch onto it (cherry-pick and rebase leave out when the branch already has it); edit it;
-/// reset to it or rebase from it; compare, export and copy; the custom commands; and Drop.
+/// The commit menu, in the review's groups: make something at the commit; apply it (cherry-pick
+/// leaves out when the branch already has it); the rebase entries (`rebase_items`); edit it;
+/// reset to it; compare, export and copy; the custom commands; and Drop.
 /// Cherry-pick, rebase, the resets and Drop are split rows whose eye button previews them.
 pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, cmds: &MenuCommands, keys: &Keymap, msgs: &mut Vec<Msg>) {
     let oid = c.oid;
@@ -54,12 +54,12 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
     separator(ui);
     apply_items(ui, t, c, snap, msgs);
     separator(ui);
+    rebase_items(ui, t, c, snap, msgs);
+    separator(ui);
     let edits = rebase_quick::single(snap, oid);
     super::rebase::edit_menu::single(ui, t, oid, &edits, keys, msgs);
     separator(ui);
     reset_menu(ui, t, c, snap, msgs);
-    let from_here = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid)));
-    menu_item(msgs, ui, t.tr("commits.menu.interactive_from"), from_here);
     separator(ui);
     menu_item(msgs, ui, t.tr("commits.menu.compare_workdir"), Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)));
     let patch_state = ItemState::blocked_by(merge.then(|| CommitBlock::PatchMerge.text(t)));
@@ -78,9 +78,8 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
     }
 }
 
-/// Cherry-pick and revert, and rebasing the checked-out branch onto the commit (plainly or
-/// interactively). Cherry-pick and the rebases leave out when the branch already contains the
-/// commit: they can't apply to it.
+/// Cherry-pick and revert. Cherry-pick leaves out when the branch already contains the
+/// commit: it can't apply to it.
 fn apply_items(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let oid = c.oid;
     let merge = c.parents.len() > 1;
@@ -95,19 +94,28 @@ fn apply_items(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs
     }
     let revert = if merge { t.tr("commits.menu.revert_merge") } else { t.tr("commits.menu.revert") };
     menu_item(msgs, ui, revert, Msg::Selection(SelectionMsg::Revert(vec![oid])));
-    let Some(current) = snap.head_branch.as_deref() else { return };
-    if head_contains(snap, oid) {
-        return;
+}
+
+/// The rebase entries together: rebasing the checked-out branch onto the commit (plainly, or
+/// in the editor first), which leave out when the branch already contains the commit or HEAD is
+/// detached, then editing the commits after it, which is always there.
+fn rebase_items(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let oid = c.oid;
+    if let Some(current) = snap.head_branch.as_deref()
+        && !head_contains(snap, oid)
+    {
+        let sha = oid.to_string();
+        let blocked = onto_commit_blocker(t, snap, oid);
+        let (plain, interactive) = onto_menu_labels(t, &cut_name(current));
+        let (plain_full, interactive_full) = onto_menu_labels(t, current);
+        let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Rebase { onto: sha.clone(), oid }));
+        let row = item_named(Named { shown: plain, full: plain_full }).blocked(blocked.as_deref());
+        menu_row_preview(msgs, ui, row, (t.tr("op_preview.menu.rebase"), None), Msg::git("Rebase", &["rebase", &sha]), preview);
+        let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
+        menu_row(msgs, ui, item_named(Named { shown: interactive, full: interactive_full }).blocked(blocked.as_deref()), onto);
     }
-    let sha = oid.to_string();
-    let blocked = onto_commit_blocker(t, snap, oid);
-    let (plain, interactive) = onto_menu_labels(t, &cut_name(current));
-    let (plain_full, interactive_full) = onto_menu_labels(t, current);
-    let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Rebase { onto: sha.clone(), oid }));
-    let row = item_named(Named { shown: plain, full: plain_full }).blocked(blocked.as_deref());
-    menu_row_preview(msgs, ui, row, (t.tr("op_preview.menu.rebase"), None), Msg::git("Rebase", &["rebase", &sha]), preview);
-    let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
-    menu_row(msgs, ui, item_named(Named { shown: interactive, full: interactive_full }).blocked(blocked.as_deref()), onto);
+    let after = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid)));
+    menu_item(msgs, ui, t.tr("commits.menu.edit_after"), after);
 }
 
 /// The reset submenu: soft, mixed and hard (asked first), titled with the branch it moves. Each
@@ -159,7 +167,7 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &
 /// Disabled unless exactly two are selected.
 fn range_diff_item(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, msgs: &mut Vec<Msg>) {
     let label = t.tr("commits.menu.range_diff");
-    match (crate::state::range_diff::multi_blocked(t, m), m.oids.as_slice()) {
+    match (glowfly_model::state::range_diff::multi_blocked(t, m), m.oids.as_slice()) {
         (None, [new, old]) => {
             let open = glowfly_model::range_diff::RangeDiffMsg::Open { old: *old, new: *new, label: None, at: None };
             menu_item(msgs, ui, label, Msg::RangeDiff(open));
@@ -245,5 +253,5 @@ pub(super) fn patch_button(
 
 /// Copies the selected commits' full SHAs, one per line, newest first.
 pub(super) fn copy_shas(m: &MultiSelection) -> Msg {
-    Msg::Copy(crate::state::menu_bar::shas_text(m))
+    Msg::Copy(glowfly_model::state::menu_bar::shas_text(m))
 }

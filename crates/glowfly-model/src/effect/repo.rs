@@ -82,7 +82,7 @@ pub enum StatusRead {
     Index { paths: PathsStatus, staged: Vec<FileEntry> },
 }
 
-/// What an index read compares and reads (`Effect::LoadIndexStatus`).
+/// What an index read compares and reads (`LoadEffect::IndexStatus`).
 #[derive(Debug)]
 pub struct IndexRequest {
     /// The memo of the index the lists on screen were read from.

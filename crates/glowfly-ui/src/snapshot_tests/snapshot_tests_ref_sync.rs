@@ -6,14 +6,14 @@
 use super::menu_testing::open_submenu;
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::{Msg, SelectionMsg};
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::{RefKind, RefLabel};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 /// Where the first chip of a row sits in the BRANCH / TAG column.

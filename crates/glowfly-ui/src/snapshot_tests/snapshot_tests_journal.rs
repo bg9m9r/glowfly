@@ -5,16 +5,16 @@
 //! depends on when the fixture's reflog was written.
 
 use super::snapshot_tests::{NOW, harness, harness_sized, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal::{JournalView, PreviewState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Key};
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::journal::{CommitLine, Count, Event, Note, NotedRef, Op, Preview, Row, Subject, Timeline};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::journal::JournalMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::{JournalView, PreviewState};
 use std::path::PathBuf;
 
 /// The fixture's commit whose summary is `summary`.
@@ -131,7 +131,7 @@ fn journal_list_preview() {
     h.get_by_label("Restore…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::Restore(_))), "Restore is enabled");
-    h.get_by_label("Create branch here…").click();
+    h.get_by_label("New branch here…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, JournalMsg::CreateBranch(_))));
     h.get_by_label("Range-diff with now").click();
@@ -234,11 +234,11 @@ fn journal_confirm() {
     let view = st.session.journal.view.as_ref().unwrap();
     let r = view.selected_row().unwrap();
     let snap = st.snap.as_ref().unwrap();
-    let plan = crate::state::journal_restore::plan(snap, r, false, t).unwrap();
-    let dirty = crate::state::auto_stash::blocks(snap);
-    let msg = crate::state::journal_restore::confirm(t, &plan, view.preview_of(&r.key()), dirty, snap.head_branch.as_deref());
+    let plan = glowfly_model::state::journal_restore::plan(snap, r, false, t).unwrap();
+    let dirty = glowfly_model::state::auto_stash::blocks(snap);
+    let msg = glowfly_model::state::journal_restore::confirm(t, &plan, view.preview_of(&r.key()), dirty, snap.head_branch.as_deref());
     let Msg::Confirm { title, body, button, then } = msg else { panic!("a confirmation") };
-    st.modal = Some(crate::state::Modal::Confirm { title, body, button, then });
+    st.modal = Some(glowfly_model::state::Modal::Confirm { title, body, button, then });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("journal_confirm");
@@ -256,7 +256,7 @@ fn journal_de() {
     for english in [
         "Operation journal",
         "Restore…",
-        "Create branch here…",
+        "New branch here…",
         "History at this state",
         "Git's reflog entry",
         "Now",

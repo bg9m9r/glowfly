@@ -13,10 +13,12 @@
 
 use super::execute::{Cx, Execute, execute_with};
 use super::trust_gate::{self, Gate, Halt};
-use crate::effect::{Accepted, Checked, Effect, Sealed, StashEffect, TrustCheck, TrustEffect};
-use crate::msg::{InheritedRepo, Msg, Stale, TrustMsg};
 use glowfly_core::trust::incoming::Unchecked;
 use glowfly_core::trust::{self, TrustScan};
+use glowfly_model::effect::JobEffect;
+use glowfly_model::effect::LoadEffect;
+use glowfly_model::effect::{Accepted, Checked, Effect, Sealed, StashEffect, TrustCheck, TrustEffect};
+use glowfly_model::msg::{InheritedRepo, Msg, Stale, TrustMsg};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -111,8 +113,12 @@ pub(super) fn verify(c: &TrustCheck, effect: &Effect) -> Verdict {
     let accept = c.accepted.as_ref().filter(|a| a.at.is_none()).map(|a| &a.reason);
     match trust_gate::compare(&c.workdir, &now.follows, c.saved.as_ref(), &trust_gate::targets(effect), accept) {
         Ok(()) => {
-            let commands =
-                matches!(effect, Effect::RunGit { .. } | Effect::UndoRedo { .. } | Effect::Stash(StashEffect::AbortKeeping { .. }));
+            let commands = matches!(
+                effect,
+                Effect::Job(JobEffect::RunGit { .. })
+                    | Effect::Job(JobEffect::UndoRedo { .. })
+                    | Effect::Stash(StashEffect::AbortKeeping { .. })
+            );
             let gate = || Gate::new(c.workdir.clone(), now.follows.clone(), c.saved.clone(), c.accepted.clone(), c.lang);
             Verdict::Pass(commands.then(gate))
         }
@@ -165,11 +171,11 @@ pub(super) fn checked(c: TrustCheck, effect: Effect, fail: impl FnOnce(String) -
 /// The read `effect` without git, when it has such a form (a status read by libgit2).
 fn without_git(effect: Effect) -> Option<Effect> {
     match effect {
-        Effect::LoadStatus { workdir, generation, submodules, open, paths, .. } => {
-            Some(Effect::LoadStatus { workdir, generation, submodules, open, git_status: false, paths })
+        Effect::Load(LoadEffect::Status { workdir, generation, submodules, open, paths, .. }) => {
+            Some(Effect::Load(LoadEffect::Status { workdir, generation, submodules, open, git_status: false, paths }))
         }
-        Effect::LoadIndexStatus { workdir, generation, submodules, open, read, .. } => {
-            Some(Effect::LoadIndexStatus { workdir, generation, submodules, open, git_status: false, read })
+        Effect::Load(LoadEffect::IndexStatus { workdir, generation, submodules, open, read, .. }) => {
+            Some(Effect::Load(LoadEffect::IndexStatus { workdir, generation, submodules, open, git_status: false, read }))
         }
         _ => None,
     }

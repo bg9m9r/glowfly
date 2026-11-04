@@ -4,18 +4,18 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, theme::color};
-use crate::msg::Msg;
-use crate::msg::RebaseMsg;
-use crate::msg::RepoMsg;
-use crate::state::AppState;
-use crate::state::rebase::RebasePanel;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Key, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::rebase::{RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::RebasePanel;
 use std::path::PathBuf;
 
 const NEW_MESSAGE: &str = "Add the app skeleton\n\nProject layout, CI and a README.";
@@ -65,7 +65,7 @@ fn rebase_panel() {
     p.items[1].commit_mut().unwrap().new_message = Some(NEW_MESSAGE.into());
     p.open_editor(1);
     assert_eq!(p.draft, NEW_MESSAGE);
-    assert_eq!(p.subtitle(), "Rebasing 6 commits of main from the first commit");
+    assert_eq!(p.subtitle(glowfly_core::i18n::Lang::En), "Rebasing 6 commits of main from the first commit.");
     let blocker = p.start_blocker(st.snap.as_ref().unwrap(), false);
     assert_eq!(blocker, None, "Start is enabled");
     let mut h = harness(st, true);
@@ -110,7 +110,7 @@ pub(crate) fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec
     let mut st = st;
     st.view.now = 1_769_947_200;
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             super::theme::apply_theme(ctx);
@@ -124,6 +124,7 @@ pub(crate) fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
                 markdown: Default::default(),
+                ref_upstreams: Default::default(),
             });
             draw(ctx, st, cache, msgs);
             super::escape_key(ctx, st, msgs);
@@ -138,9 +139,29 @@ fn header_buttons_and_esc() {
     let (st, dir) = with_panel(ThemeChoice::Dark, "rebase-buttons", &[Pick, Pick, Drop, Pick, Pick, Pick]);
     let mut h = harness_with_keys(st);
     h.run();
+    // The header's buttons come in reading order (Tab follows the tree), left to right on screen.
+    let want = ["More rebase actions", "Cancel", "Start rebase"];
+    let buttons: Vec<(String, f64)> = h
+        .query_all_by_role(egui::accesskit::Role::Button)
+        .filter_map(|n| Some((n.label()?, n.bounding_box()?.x0)))
+        .filter(|(l, _)| want.contains(&l.as_str()))
+        .collect();
+    assert_eq!(buttons.iter().map(|(l, _)| l.as_str()).collect::<Vec<_>>(), want, "tree order");
+    assert!(buttons.windows(2).all(|w| w[0].1 < w[1].1), "left to right: {buttons:?}");
     h.get_by_label("Start rebase").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }))));
+    // Restore original order is in ⋯, and off while the list is as it was.
+    h.get_by_label("More rebase actions").click();
+    h.run();
+    assert!(h.get_by_label("Restore original order").is_disabled(), "nothing has changed yet");
+    h.press_key(Key::Escape);
+    h.run();
+    h.state_mut().1.clear();
+    h.state_mut().0.session.rebase.view.as_mut().unwrap().items.swap(0, 1);
+    h.run();
+    h.get_by_label("More rebase actions").click();
+    h.run();
     h.get_by_label("Restore original order").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::RebaseReset))));
@@ -155,12 +176,34 @@ fn header_buttons_and_esc() {
     remove_fixture(&dir);
 }
 
-fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<bool>) {
+pub(super) fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<bool>) {
     let events = &mut h.input_mut().events;
     events.push(Event::PointerMoved(pos));
     if let Some(pressed) = button {
         events.push(Event::PointerButton { pos, button: PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
     }
+}
+
+/// Presses on the first row's grip and drags it two rows down, still held: returns where.
+fn drag_two_down(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Pos2 {
+    // Rows are labelled with their commit's summary.
+    let bounds = |h: &Harness<'_, (AppState, Vec<Msg>)>, label: &str| {
+        let b = h.get_by_label(label).bounding_box().expect("the row has bounds");
+        (b.x0 as f32, b.y0 as f32, b.y1 as f32)
+    };
+    let (x0, top0, bottom0) = bounds(h, "Initial commit");
+    let (_, top1, _) = bounds(h, "Add app skeleton");
+    let pitch = top1 - top0;
+    let start = pos2(x0 + 16.0, (top0 + bottom0) / 2.0);
+    pointer(h, start, Some(true));
+    h.step();
+    pointer(h, start + egui::vec2(0.0, 12.0), None);
+    h.step();
+    let over = start + egui::vec2(0.0, 2.0 * pitch + 6.0);
+    pointer(h, over, None);
+    h.step();
+    h.run();
+    over
 }
 
 #[test]
@@ -169,23 +212,7 @@ fn row_drag_moves_and_snapshots() {
     let (st, dir) = with_panel(ThemeChoice::Dark, "rebase-drag", &[Pick, Pick, Squash, Pick, Drop, Pick]);
     let mut h = harness(st, true);
     h.run();
-    // Rows are labelled with their commit's summary.
-    let bounds = |h: &Harness<'_, (AppState, Vec<Msg>)>, label: &str| {
-        let b = h.get_by_label(label).bounding_box().expect("the row has bounds");
-        (b.x0 as f32, b.y0 as f32, b.y1 as f32)
-    };
-    let (x0, top0, bottom0) = bounds(&h, "Initial commit");
-    let (_, top1, _) = bounds(&h, "Add app skeleton");
-    let pitch = top1 - top0;
-    let start = pos2(x0 + 16.0, (top0 + bottom0) / 2.0);
-    pointer(&mut h, start, Some(true));
-    h.step();
-    pointer(&mut h, start + egui::vec2(0.0, 12.0), None);
-    h.step();
-    let over = start + egui::vec2(0.0, 2.0 * pitch + 6.0);
-    pointer(&mut h, over, None);
-    h.step();
-    h.run();
+    let over = drag_two_down(&mut h);
     assert!(h.state().1.is_empty(), "nothing is sent while dragging");
     h.check_snapshot("rebase_dragging");
 
@@ -202,6 +229,19 @@ fn row_drag_moves_and_snapshots() {
         !h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)) | Msg::Rebase(RebaseMsg::RebaseSelect(_)))),
         "dragging does not select the row"
     );
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The lifted row in a light theme: the raised fill on the lighter `Lift` shadow.
+#[test]
+fn rebase_dragging_light() {
+    use RebaseAction::*;
+    let (st, dir) = with_panel(ThemeChoice::Light, "rebase-drag-light", &[Pick, Pick, Squash, Pick, Drop, Pick]);
+    let mut h = harness(st, false);
+    h.run();
+    drag_two_down(&mut h);
+    h.check_snapshot("rebase_dragging_light");
     drop(h);
     remove_fixture(&dir);
 }

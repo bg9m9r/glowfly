@@ -4,11 +4,11 @@
 //! adding a public key to a hosting-service account, and pointing git at Windows' OpenSSH.
 
 use super::execute::{Cx, Execute};
-use crate::msg::Msg;
 use glowfly_core::error::Error;
 use glowfly_core::forge;
 use glowfly_core::signing::home_dir;
 use glowfly_core::ssh_keys;
+use glowfly_model::msg::Msg;
 use glowfly_model::ssh::{GenerateFailure, ServiceKeyError, SshEffect, SshMsg};
 use std::path::PathBuf;
 

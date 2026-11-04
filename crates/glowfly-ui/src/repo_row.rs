@@ -16,13 +16,14 @@
 
 use super::repo_swatch;
 use super::shortcuts::Caps;
-use super::theme::sizes::{ChipSize, ControlSize};
+use super::theme::sizes::ControlSize;
 use super::theme::{color, tokens, type_scale};
+use super::widgets::chip::{Chip, ChipSize, Look};
 use super::widgets::quiet_target::{self, State};
 use super::widgets::row_menu::RowMenuExt;
 use super::widgets::truncate::{cut_path_in, paint_cut_text};
 use super::widgets::{self, Icon, menu, menu_columns};
-use crate::ui::theme::tokens::radius;
+use crate::theme::tokens::radius;
 use eframe::egui::{self, Color32, CornerRadius, Id, Key, Painter, Pos2, Rect, Response, Sense, Ui, pos2, vec2};
 use std::path::PathBuf;
 
@@ -291,20 +292,18 @@ fn paint_status(p: &Painter, at: Pos2, text: &str) {
 
 /// The width of `text` as a quiet pill.
 fn pill_w(ui: &Ui, text: &str) -> f32 {
-    let m = ChipSize::Badge.metrics();
-    let g = ui.painter().layout_no_wrap(text.to_owned(), type_scale::font(m.text), Color32::PLACEHOLDER);
-    (g.size().x + 2.0 * m.pad_x).max(m.min_w)
+    pill(text).width(ui.ctx())
+}
+
+/// A status as a quiet badge: the raised fill, no outline, weak text.
+fn pill(text: &str) -> Chip<'static> {
+    Chip::new(ChipSize::Badge, text).look(Look::new(color::raised(), color::weak()))
 }
 
 /// A status as the start page shows it: a quiet pill (a badge's size, the raised fill, no
 /// outline, weak text), its left edge at `at`'s x, centred on its y.
 fn paint_pill(p: &Painter, at: Pos2, text: &str) {
-    let m = ChipSize::Badge.metrics();
-    let g = p.layout_no_wrap(text.to_owned(), type_scale::font(m.text), color::weak());
-    let w = (g.size().x + 2.0 * m.pad_x).max(m.min_w);
-    let r = Rect::from_min_size(pos2(at.x, (at.y - m.h / 2.0).round()), vec2(w, m.h));
-    p.rect_filled(r, CornerRadius::same(m.radius), color::raised());
-    p.galley(pos2(r.left() + m.pad_x, r.center().y - g.size().y / 2.0), g, color::weak());
+    pill(text).paint(p, at.x, at.y);
 }
 
 /// A 24 px painted icon button in `rect`: the hover layer while hovered, the focus ring while

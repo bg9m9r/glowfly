@@ -2,19 +2,19 @@
 //! remote-tracking branches, opening them in the panel, notes for missing or moved branches,
 //! closing, refreshes of the refs and of the service's list, and tab switches.
 
-use crate::effect::{Effect, ForgeReply, ForgeResult};
 use crate::flows::branch_tests::{remote_commit, with_origin};
 use crate::flows::{drive, git};
-use crate::msg::{ForgeMsg, HistoryMsg, Msg, RepoMsg, TabsMsg};
-use crate::pull_request::{PrEffect, PullRequestMsg};
-use crate::remote::RemoteMsg;
-use crate::state::pull_request::Files;
-use crate::state::pull_request_source::{OutOfSync, fetch_blocked, out_of_sync};
-use crate::state::{AppState, ForgeState};
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::forge::{Provider, PullRequest, Target};
 use glowfly_core::repo::{DiffTarget, PrCompare, SourceFrom};
+use glowfly_model::effect::{Effect, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, HistoryMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::pull_request::{PrEffect, PullRequestMsg};
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::pull_request::Files;
+use glowfly_model::state::pull_request_source::{OutOfSync, fetch_blocked, out_of_sync};
+use glowfly_model::state::{AppState, ForgeState};
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -129,9 +129,9 @@ fn a_file_opens_inside_the_panel() {
     assert!(st.session.pull_request.view.is_some());
     assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&f));
     let g = pr_target(&st, "g.txt");
-    assert_eq!(crate::state::diff_nav::next_file(&st, &f, 1), Some(g.clone()));
-    assert_eq!(crate::state::diff_nav::next_file(&st, &g, -1), Some(f.clone()));
-    assert_eq!(crate::state::diff_nav::next_file(&st, &g, 1), None);
+    assert_eq!(glowfly_model::state::diff_nav::next_file(&st, &f, 1), Some(g.clone()));
+    assert_eq!(glowfly_model::state::diff_nav::next_file(&st, &g, -1), Some(f.clone()));
+    assert_eq!(glowfly_model::state::diff_nav::next_file(&st, &g, 1), None);
     // The diff's own Close leaves the panel open.
     drive(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     assert!(st.session.diff.view.is_none() && st.session.pull_request.view.is_some());

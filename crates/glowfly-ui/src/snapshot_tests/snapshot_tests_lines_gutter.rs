@@ -5,14 +5,14 @@
 
 use super::super::snapshot_tests::{harness, remove_fixture};
 use super::with_diff;
-use crate::msg::{DiffMsg, Msg};
-use crate::state::AppState;
-use crate::state::lines::LineClick;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::DiffLayout;
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick;
 use std::time::Instant;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -33,7 +33,7 @@ fn frame(h: &mut H) -> Vec<(usize, LineClick)> {
             if let DiffMsg::SelectDiffLine { line, how, .. } = &d {
                 clicks.push((*line, *how));
             }
-            crate::update::update(st, Msg::Diff(d), Instant::now());
+            glowfly_model::update::update(st, Msg::Diff(d), Instant::now());
         }
     }
     clicks
@@ -72,7 +72,7 @@ struct Spots {
 /// left column, the added ones in the right; `-fix` pairs with `+fixed build`.
 fn spots(h: &H, layout: DiffLayout) -> Spots {
     let b = h.get_by_label("Discard hunk").bounding_box().expect("the button has bounds");
-    let style = crate::ui::diff::DiffStyle::new(&h.state().0.settings);
+    let style = crate::diff::DiffStyle::new(&h.state().0.settings);
     let row_h = style.row_h;
     // The buttons centre in the header row; the first line row starts below it.
     let first_y = (b.y0 + b.y1) as f32 / 2.0 + (style.header_h + row_h) / 2.0;
@@ -165,7 +165,7 @@ fn diff_commit_gutter_hover_says_how_to_select() {
     // ` app`, `-fix`, `+fix the build`, `+on Windows`: line i is i rows below the first line
     // row, under the header.
     let (st, dir) = with_line_diff("gutter-tip", ThemeChoice::Dark, DiffLayout::Inline, &[]);
-    let style = crate::ui::diff::DiffStyle::new(&st.settings);
+    let style = crate::diff::DiffStyle::new(&st.settings);
     let mut h = harness(st, true);
     h.run();
     let b = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");

@@ -1,33 +1,33 @@
 //! Text cut with "…" and its whole text on hover: the WIP lists' headers in German (narrow, with
-//! the more-actions menu, and wide), graph columns at their narrowest, the filtered graph's
+//! the more-actions menu, and wide) and in a narrow English panel (icon-only actions), graph columns at their narrowest, the filtered graph's
 //! header, a cut commit message, a long issue title in the sidebar, the status bar's update
 //! chip, the repository sync dialog's names, and the notes that wrap instead (a remote without
-//! branches, a Git LFS pointer in an untrusted repository). Shares the fixtures of the other
-//! snapshot tests.
+//! branches, a Git LFS pointer in an untrusted repository), and names that share a long start
+//! cut in their middle in the left panel. Shares the fixtures of the other snapshot tests.
 
-use crate::msg::{Msg, SearchMsg, UpdateMsg, WorkFileMsg};
-use crate::state::AppState;
-use crate::state::repo_sync::{RowState, SyncKind, SyncRow};
-use crate::state::updates::UpdateStatus;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_columns::{H, grip, pointer};
-use crate::ui::snapshot_tests::snapshot_tests_history::with_file_view;
-use crate::ui::snapshot_tests::snapshot_tests_history_file::set_text;
-use crate::ui::snapshot_tests::snapshot_tests_issue::{crash, github, with_issue};
-use crate::ui::snapshot_tests::snapshot_tests_language_panels::click_header_action;
-use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
-use crate::ui::snapshot_tests::snapshot_tests_repo_sync::{dialog, row};
-use crate::ui::snapshot_tests::snapshot_tests_search::{searching, send, with_two_authors};
-use crate::ui::snapshot_tests::snapshot_tests_updates::{sent, status_bar, the_offer};
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::center;
-use crate::ui::snapshot_tests::{git, harness, harness_sized, reload, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_columns::{H, grip, pointer};
+use crate::snapshot_tests::snapshot_tests_history::with_file_view;
+use crate::snapshot_tests::snapshot_tests_history_file::set_text;
+use crate::snapshot_tests::snapshot_tests_issue::{crash, github, with_issue};
+use crate::snapshot_tests::snapshot_tests_language_panels::click_header_action;
+use crate::snapshot_tests::snapshot_tests_remotes::with_remotes;
+use crate::snapshot_tests::snapshot_tests_repo_sync::{dialog, row};
+use crate::snapshot_tests::snapshot_tests_search::{searching, send, with_two_authors};
+use crate::snapshot_tests::snapshot_tests_updates::{sent, status_bar, the_offer};
+use crate::snapshot_tests::snapshot_tests_worktrees::{center, p, with_worktrees};
+use crate::snapshot_tests::{git, harness, harness_sized, reload, remove_fixture, with_repo};
 use eframe::egui::{pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::Issue;
 use glowfly_core::i18n::Lang;
-use glowfly_core::repo::{LfsState, LoadOptions};
+use glowfly_core::repo::{BranchInfo, LfsState, LoadOptions, WorktreeInfo};
 use glowfly_core::repo_sync::Outcome;
 use glowfly_core::settings::{ColumnWidths, DescriptionMode, ThemeChoice};
+use glowfly_model::msg::{Msg, SearchMsg, UpdateMsg, WorkFileMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_sync::{RowState, SyncKind, SyncRow};
+use glowfly_model::state::updates::UpdateStatus;
 use std::path::PathBuf;
 
 /// Lets a hover's tooltip appear.
@@ -88,6 +88,48 @@ fn wip_header_german_wide() {
     }
     assert!(h.query_by_label(de.tr("details.wip.more.tip")).is_some());
     h.check_snapshot("wip_header_german_wide");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Whether `label` is a Small (24 px) square in `h`.
+fn small_square(h: &H, label: &str) -> bool {
+    let b = h.get_by_label(label).bounding_box().expect("bounds");
+    (b.width(), b.height()) == (24.0, 24.0)
+}
+
+/// The WIP headers in English in a narrow panel: Stage all is a Small icon-only square (still
+/// named "Stage all") beside the whole title, and the more-actions button stays.
+#[test]
+fn wip_header_icons() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "truncate-wip-icons");
+    st.settings.panel_sizes.details = Some(250.0);
+    let en = Lang::En;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(small_square(&h, en.tr("details.wip.stage_all.button")), "Stage all is a Small square");
+    assert!(h.query_by_label(en.tr("details.wip.more.tip")).is_some());
+    h.check_snapshot("wip_header_icons");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// With every change staged, in German in the narrowest panel (English fits its labels there):
+/// Staged Files' Unstage all is the minus square and Unstaged Files' New file… the
+/// file-and-plus square, each beside its whole title.
+#[test]
+fn wip_header_icons_staged() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "truncate-wip-icons-staged");
+    git(&dir, &["add", "-A"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    st.settings.language = "de".into();
+    st.settings.panel_sizes.details = Some(250.0);
+    let de = Lang::De;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(small_square(&h, de.tr("details.wip.unstage_all.button")), "Unstage all is a Small square");
+    assert!(small_square(&h, de.tr("details.wip.new_file.button")), "New file… is a Small square");
+    h.check_snapshot("wip_header_icons_staged");
     drop(h);
     remove_fixture(&dir);
 }
@@ -189,7 +231,8 @@ fn status_update_pill_narrow() {
     let mut st = status_bar(UpdateStatus::Available(Box::new(the_offer())));
     st.settings.language = "de".into();
     let text = Lang::De.trf("updates.chip.available", &[("version", &"0.3.0")]);
-    let mut h = harness_sized(st, true, vec2(240.0, 400.0));
+    // Narrow enough that the German chip is cut: its full text then leads the tooltip.
+    let mut h = harness_sized(st, true, vec2(150.0, 400.0));
     h.run();
     h.check_snapshot("status_update_pill_narrow");
     h.get_by_label(&text).hover();
@@ -236,7 +279,7 @@ fn history_file_lfs_trust_wraps() {
     set_text(&mut st, pointer.map(String::from).to_vec(), LfsState::Pointer);
     let mut h = harness_sized(st, true, vec2(1400.0, 640.0));
     h.run();
-    assert!(h.query_by_label(crate::ui::history_file::LFS_UNTRUSTED).is_some());
+    assert!(h.query_by_label(crate::history_file::LFS_UNTRUSTED).is_some());
     h.check_snapshot("history_file_lfs_trust_wraps");
     drop(h);
     remove_fixture(&dir);
@@ -251,4 +294,51 @@ fn search_hint_cut() {
     h.check_snapshot("search_hint_cut");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// Five local branches and four worktrees whose names share a long start (`worktree-agent-a…`,
+/// `agent-a…`), as agent tools make them.
+const AGENT_IDS: [&str; 5] =
+    ["a3f9c1d2-refresh-rows", "a5d02b8e-tab-titles", "a71e4f0c-picker-cut", "a9c6b3d1-palette", "ab48e2f7-push-menu"];
+
+/// The fixture with `AGENT_IDS` as local branches and the first four as linked worktrees, each
+/// on its branch, in a 260 px left panel.
+fn shared_prefix(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_worktrees(theme, name);
+    st.settings.panel_sizes.sidebar = Some(260.0);
+    let snap = st.snap.as_mut().unwrap();
+    let base = snap.locals.iter().find(|b| !b.is_head).or(snap.locals.first()).cloned().expect("a branch");
+    let linked = snap.worktrees[1].clone();
+    snap.worktrees.truncate(1);
+    for (i, id) in AGENT_IDS.iter().enumerate() {
+        let branch = format!("worktree-agent-{id}");
+        snap.locals.push(BranchInfo { name: branch.clone(), is_head: false, upstream: None, ahead: 0, behind: 0, ..base.clone() });
+        if i < 4 {
+            let path = p(&format!("C:/work/app/.claude/worktrees/agent-{id}"));
+            snap.worktrees.push(WorktreeInfo { name: Some(format!("agent-{id}")), path, branch: Some(branch), ..linked.clone() });
+        }
+    }
+    (st, dir)
+}
+
+/// D16: in a 260 px left panel every one of those names is cut in its middle, so each row can
+/// be told apart without hovering; each is still named in full (pixel goldens, dark and light).
+#[test]
+fn sidebar_shared_prefix() {
+    for (theme, dark, golden) in
+        [(ThemeChoice::Dark, true, "sidebar_shared_prefix_dark"), (ThemeChoice::Light, false, "sidebar_shared_prefix_light")]
+    {
+        let (st, dir) = shared_prefix(theme, golden);
+        let mut h = harness(st, dark);
+        h.run();
+        for id in AGENT_IDS {
+            assert!(h.query_by_label(&format!("worktree-agent-{id}")).is_some(), "{id}'s branch row is named in full");
+        }
+        for id in &AGENT_IDS[..4] {
+            assert!(h.query_by_label(&format!("agent-{id}")).is_some(), "{id}'s worktree row is named in full");
+        }
+        h.check_snapshot(golden);
+        drop(h);
+        remove_fixture(&dir);
+    }
 }

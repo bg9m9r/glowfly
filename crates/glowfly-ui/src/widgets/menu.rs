@@ -34,7 +34,7 @@ use super::menu_columns::{self as columns, Columns};
 pub use super::menu_name::{Named, cut as cut_name, named};
 pub use super::menu_row::{Item, item, item_named};
 pub use super::menu_split::Part;
-use crate::ui::menu_keys::{self, Kind};
+use crate::menu_keys::{self, Kind};
 use eframe::egui::menu::BarState;
 use eframe::egui::{
     self, AboveOrBelow, Color32, CornerRadius, Id, InnerResponse, PopupCloseBehavior, Rect, Response, Sense, Stroke, Ui, WidgetText, vec2,
@@ -133,7 +133,9 @@ pub fn submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl 
     // row is drawn hovered.
     let lit = ui.rect_contains_pointer(r.response.rect) || r.inner.is_some();
     let at = egui::pos2(r.response.rect.right() - pad - columns::CHEVRON_W / 2.0, r.response.rect.center().y);
-    super::chevron(ui.painter(), at, false, if lit { color::text() } else { color::weak() });
+    // The stroked chevron the panels use (`Icon::ExpandRight`), at the small icon size.
+    let ink = if lit { color::text() } else { color::weak() };
+    super::paint_icon_sized(ui.painter(), at, super::Icon::ExpandRight, ink, super::icon::SIZE_SM);
     r
 }
 
@@ -215,16 +217,18 @@ pub fn popup_above_or_below<R>(
     egui::popup::popup_above_or_below_widget(ui, id, anchor, side, close, |ui| styled_as(ui, kind, add_contents))
 }
 
-/// A popover below `anchor`: egui's popup frame around contents that are not a menu's rows (a
-/// report, a form), so it keeps the ordinary widget style.
+/// A popover `width` wide below `anchor`: a popup frame around contents that are not a menu's
+/// rows (a report, a form), in the ordinary widget style and a left-aligned, unjustified layout,
+/// kept inside the window (`widgets/popover.rs`).
 pub fn popover_below<R>(
     ui: &Ui,
     id: Id,
     anchor: &Response,
+    width: f32,
     close: PopupCloseBehavior,
     add_contents: impl FnOnce(&mut Ui) -> R,
 ) -> Option<R> {
-    egui::popup::popup_below_widget(ui, id, anchor, close, add_contents)
+    super::popover::below(ui, id, anchor, width, close, add_contents)
 }
 
 /// Runs `add_contents` in the menu style, its rows on shared columns (`menu_columns`), with the
@@ -329,7 +333,7 @@ pub fn group_header_with(ui: &mut Ui, text: &str, icon: Option<(super::menu_row:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::theme::spacing::menu::COMFORTABLE;
+    use crate::theme::spacing::menu::COMFORTABLE;
 
     fn in_menu(f: impl FnOnce(&mut Ui) + 'static) {
         let mut f = Some(f);

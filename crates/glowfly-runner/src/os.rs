@@ -2,9 +2,9 @@
 //! files opened in their default program. None of them touch the repository.
 
 use super::execute::{Cx, Execute};
-use crate::effect::OsEffect;
-use crate::msg::{FilesMsg, Msg, PrefsMsg};
 use glowfly_core::opens::{FileFacts, Os, opens_as_program};
+use glowfly_model::effect::OsEffect;
+use glowfly_model::msg::{FilesMsg, Msg, PrefsMsg};
 use std::path::Path;
 
 /// Runs one `Effect::Os`.

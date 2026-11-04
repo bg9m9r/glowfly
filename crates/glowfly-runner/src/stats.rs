@@ -4,10 +4,10 @@
 //! undone is reported as `RepoMsg::StatsDropped`, so rows still on screen are asked for again.
 
 use super::Waker;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
 use git2::Oid;
 use glowfly_core::repo;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;

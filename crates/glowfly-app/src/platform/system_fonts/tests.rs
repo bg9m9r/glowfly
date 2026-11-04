@@ -196,3 +196,22 @@ fn only_folders_root_alone_writes_are_mapped() {
     assert_eq!(system_roots_for(System::Windows, Some(fonts.clone())), [fonts]);
     assert!(system_roots_for(System::Windows, None).is_empty(), "no SystemRoot, nothing mapped");
 }
+
+/// The machine's own CJK fonts, where it has them, draw every character a ja_JP, zh_CN or ko_KR
+/// date shows (the bundled fonts' check is glowfly-ui's `glyph_check/cjk_dates.rs`).
+#[test]
+fn the_systems_cjk_fonts_draw_the_dates_where_it_has_them() {
+    use Script::{Han, Hangul, Kana};
+    use glowfly_core::testkit::cjk_dates::date_chars;
+    let found = super::search();
+    let has_script = |s| super::SCRIPTS.iter().any(|(t, c)| *t == s && found.iter().any(|f| super::has(f, *c)));
+    let fonts: Vec<_> = found.iter().map(|f| &f.path).collect();
+    for (locale, needs) in [("ja_JP", &[Han, Kana][..]), ("zh_CN", &[Han][..]), ("ko_KR", &[Hangul][..])] {
+        if !needs.iter().all(|s| has_script(*s)) {
+            eprintln!("{locale} skipped: this machine has no font for it among the known ones ({fonts:?})");
+            continue;
+        }
+        let missing: Vec<char> = date_chars(locale).into_iter().filter(|c| !found.iter().any(|f| super::has(f, *c))).collect();
+        assert!(missing.is_empty(), "{locale}: {fonts:?} lack {missing:?}");
+    }
+}

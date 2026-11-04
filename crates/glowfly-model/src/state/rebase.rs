@@ -19,7 +19,6 @@ pub const CONFLICTED_FILES: &str = "Resolve the conflicted files before rebasing
 /// Said before a rebase stashes the uncommitted changes (`--autostash`).
 pub const STASH_LINE: &str = "You have uncommitted changes. Glowfly stashes them first and puts them back when the rebase ends.";
 pub const UNCHANGED: &str = "Nothing to change yet.";
-pub const HINT: &str = "Commits are applied from top to bottom.";
 
 /// What the panel edits.
 #[derive(Clone, Debug, PartialEq)]

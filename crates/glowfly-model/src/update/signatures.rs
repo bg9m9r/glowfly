@@ -1,6 +1,7 @@
 //! Commit signature checks for the details panel's badge. A failed check isn't logged: the
 //! badge's tooltip says what went wrong.
 
+use crate::effect::CommitEffect;
 use crate::effect::Effect;
 use crate::state::{AppState, Selection};
 use git2::Oid;
@@ -15,7 +16,7 @@ pub(super) fn want(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     let Some(format) = st.session.detail.as_ref().filter(|d| d.oid == oid).and_then(|d| d.signature) else { return };
     let Some(workdir) = st.workdir() else { return };
     let generation = st.session.reads.signatures.start(oid);
-    fx.push(Effect::VerifySignature { workdir, oid, format, generation });
+    fx.push(Effect::Commit(CommitEffect::VerifySignature { workdir, oid, format, generation }));
 }
 
 /// Forgets what is known about `oid`'s signature and checks it again (after importing a key or

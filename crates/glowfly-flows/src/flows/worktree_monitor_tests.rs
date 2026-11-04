@@ -4,13 +4,13 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, WorktreeEffect};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::git_env::GitState;
-use crate::state::{AppState, Modal};
-use crate::worktree::WorktreeMsg;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::opens::Os;
+use glowfly_model::effect::{Effect, WorktreeEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::git_env::GitState;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

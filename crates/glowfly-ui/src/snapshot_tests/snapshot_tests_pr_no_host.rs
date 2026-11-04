@@ -6,9 +6,7 @@
 use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::Msg;
-use crate::state::{AppState, ForgeState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{Node, Queryable};
@@ -16,6 +14,8 @@ use git2::Oid;
 use glowfly_core::forge::{Account, Provider, Target};
 use glowfly_core::repo::{RefKind, RefLabel};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, ForgeState};
 use std::path::PathBuf;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -135,7 +135,7 @@ fn branch_menu_head_no_remotes() {
     assert_eq!(snap.graph.owners.mainline.as_deref(), Some("main"));
     let mut h = harness(st, true);
     h.run();
-    let rect = h.get_by_label("✔  main").bounding_box().expect("the sidebar row");
+    let rect = h.get_by_label("main, checked out").bounding_box().expect("the sidebar row");
     click(&mut h, egui::pos2(rect.x0 as f32 + 40.0, ((rect.y0 + rect.y1) / 2.0) as f32), PointerButton::Secondary);
     for gone in ["Hide in graph", "Check for conflicts", "Set upstream…", "Create pull request…"] {
         assert!(h.query_by_label(gone).is_none(), "{gone} can't apply");

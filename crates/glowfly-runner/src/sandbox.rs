@@ -6,8 +6,8 @@
 //! tell when the app is idle.
 
 use super::Runner;
-use crate::effect::{Effect, SandboxRule};
-use crate::msg::Msg;
+use glowfly_model::effect::{Effect, SandboxRule, SaveEffect};
+use glowfly_model::msg::Msg;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -62,7 +62,8 @@ impl Runner {
         match effect.sandbox() {
             SandboxRule::Run => Some(effect),
             SandboxRule::Save => {
-                if let Some(msg) = save_into(&sandbox.files, effect)
+                if let Effect::Save(save) = effect
+                    && let Some(msg) = save_into(&sandbox.files, save)
                     && self.tx.send(msg).is_ok()
                 {
                     self.waker.wake();
@@ -79,14 +80,13 @@ impl Runner {
 }
 
 /// `saves::save_now`, writing into `folder`.
-fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
+pub(super) fn save_into(folder: &Path, effect: SaveEffect) -> Option<Msg> {
     let (what, result) = match effect {
-        Effect::SaveSettings(settings) => ("settings", settings.save_to(&folder.join("settings.json"))),
-        Effect::SaveRecent(list) => ("the recent repositories", super::platform::save_recent_to(&folder.join("recent.txt"), &list)),
-        Effect::SaveTabs { paths, labels, active } => {
+        SaveEffect::Settings(settings) => ("settings", settings.save_to(&folder.join("settings.json"))),
+        SaveEffect::Recent(list) => ("the recent repositories", super::platform::save_recent_to(&folder.join("recent.txt"), &list)),
+        SaveEffect::Tabs { paths, labels, active } => {
             ("the open tabs", super::platform::save_tabs_to(&folder.join("tabs.txt"), &paths, &labels, active))
         }
-        _ => return None,
     };
     let e = result.err()?;
     Some(Msg::Logged { ok: false, text: format!("Could not save {what}: {e}") })
@@ -95,10 +95,10 @@ fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::effect::{CloneEffect, DesktopNote, NoteKind, OsEffect};
-    use crate::patch::PatchEffect;
-    use crate::profile::ProfileEffect;
-    use crate::runner::Waker;
+    use crate::Waker;
+    use glowfly_model::effect::{CloneEffect, ControlEffect, DesktopNote, NoteKind, OsEffect};
+    use glowfly_model::patch::PatchEffect;
+    use glowfly_model::profile::ProfileEffect;
     use std::sync::mpsc;
 
     fn folder(name: &str) -> PathBuf {
@@ -113,9 +113,15 @@ mod tests {
         let dir = folder("admit");
         let (tx, _rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
-        let status =
-            Effect::LoadStatus { workdir: dir.clone(), generation: 1, submodules: false, open: None, git_status: false, paths: None };
-        assert!(matches!(runner.admit(status), Some(Effect::LoadStatus { .. })));
+        let status = Effect::Load(glowfly_model::effect::LoadEffect::Status {
+            workdir: dir.clone(),
+            generation: 1,
+            submodules: false,
+            open: None,
+            git_status: false,
+            paths: None,
+        });
+        assert!(matches!(runner.admit(status), Some(Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))));
         assert!(runner.admit(Effect::Os(OsEffect::OpenUrl("https://example.invalid".into()))).is_none());
         let note = DesktopNote { kind: NoteKind::Job, title: "t".into(), body: "b".into(), workdir: None };
         assert!(runner.admit(Effect::Notify(note)).is_none());
@@ -128,11 +134,11 @@ mod tests {
         let dir = folder("sweep");
         let (tx, rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
-        runner.run(Effect::SweepWatch { workdir: dir.clone() });
+        runner.run(Effect::Control(ControlEffect::SweepWatch { workdir: dir.clone() }));
         let msg = rx.recv_timeout(std::time::Duration::from_secs(5)).expect("a message");
         let Msg::Scoped { workdir, msg } = msg else { panic!("scoped to the repository") };
         assert_eq!(workdir, dir);
-        assert!(matches!(*msg, Msg::Watch(crate::msg::WatchMsg::RepoChanged { full: false, paths: None, .. })));
+        assert!(matches!(*msg, Msg::Watch(glowfly_model::msg::WatchMsg::RepoChanged { full: false, paths: None, .. })));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -192,13 +198,13 @@ mod tests {
 
     #[test]
     fn moved_effects_keep_their_sandbox_rule() {
-        use crate::effect::{ConflictEffect, ConflictRead, LfsEffect, MonitorJob, SelectionEffect, SparseEffect, WorktreeEffect};
+        use glowfly_model::effect::{ConflictEffect, ConflictRead, LfsEffect, MonitorJob, SelectionEffect, SparseEffect, WorktreeEffect};
         let dir = folder("moved");
         let (tx, _rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         assert!(runner.admit(Effect::TurnOnMonitor(MonitorJob { cwd: dir.clone(), then: Vec::new() })).is_none());
         let oid = git2::Oid::zero();
-        let count = crate::worktree::CountRequest { workdir: dir.clone(), refs_key: 1, targets: Vec::new() };
+        let count = glowfly_model::worktree::CountRequest { workdir: dir.clone(), refs_key: 1, targets: Vec::new() };
         let runs = [
             Effect::Lfs(LfsEffect::Detect),
             Effect::Lfs(LfsEffect::Load { workdir: dir.clone(), generation: 1 }),
@@ -228,15 +234,15 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         let repo = dir.join("repo");
-        assert!(runner.admit(Effect::SaveRecent(vec![repo.clone()])).is_none());
-        let tabs = Effect::SaveTabs { paths: vec![repo.clone()], labels: vec![Some("Web".into())], active: 0 };
+        assert!(runner.admit(Effect::Save(SaveEffect::Recent(vec![repo.clone()]))).is_none());
+        let tabs = Effect::Save(SaveEffect::Tabs { paths: vec![repo.clone()], labels: vec![Some("Web".into())], active: 0 });
         assert!(runner.admit(tabs).is_none());
         let settings = glowfly_core::settings::Settings { auto_fetch_minutes: 7, ..Default::default() };
-        assert!(runner.admit(Effect::SaveSettings(Box::new(settings))).is_none());
+        assert!(runner.admit(Effect::Save(SaveEffect::Settings(Box::new(settings)))).is_none());
         let recent = std::fs::read_to_string(dir.join("recent.txt")).unwrap();
-        assert_eq!(crate::runner::platform::parse_recent(&recent), std::slice::from_ref(&repo));
+        assert_eq!(crate::platform::parse_recent(&recent), std::slice::from_ref(&repo));
         let tabs = std::fs::read_to_string(dir.join("tabs.txt")).unwrap();
-        assert_eq!(crate::runner::platform::parse_tabs(&tabs), (vec![repo], vec![Some("Web".to_owned())], 0));
+        assert_eq!(crate::platform::parse_tabs(&tabs), (vec![repo], vec![Some("Web".to_owned())], 0));
         let saved = std::fs::read_to_string(dir.join("settings.json")).unwrap();
         assert!(saved.contains("\"auto_fetch_minutes\": 7"), "{saved}");
         assert!(rx.try_recv().is_err(), "nothing failed");

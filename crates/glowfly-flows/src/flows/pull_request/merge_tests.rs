@@ -3,11 +3,11 @@
 //! and another tab.
 
 use super::calls_tests::{calls, done, err, git_jobs, loaded, loads, merged_ok, opened, refreshes, reply_msg, run, view};
-use crate::msg::Msg;
-use crate::pull_request::{PrCall, PrReply, PullRequestMsg};
-use crate::state::pull_request::PrAction;
-use crate::update::update;
 use glowfly_core::forge::{MergeMethod, MergeState};
+use glowfly_model::msg::Msg;
+use glowfly_model::pull_request::{PrCall, PrReply, PullRequestMsg};
+use glowfly_model::state::pull_request::PrAction;
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::Instant;
 

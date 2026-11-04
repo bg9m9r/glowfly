@@ -11,17 +11,17 @@ use super::snapshot_tests_patch::{applying, with_files};
 use super::snapshot_tests_pick::stopped_pick;
 use super::snapshot_tests_rebase_edit::rebasing;
 use super::theme::{self, color::Palette};
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::AppState;
-use crate::state::op_steps::OpStep;
-use crate::state::panel_layout::DETAILS;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::rebase::StopKind;
 use glowfly_core::repo::{self, FileEntry, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::op_steps::OpStep;
+use glowfly_model::state::panel_layout::DETAILS;
 use std::path::PathBuf;
 
 const DATE: &str = "2026-01-11T10:00:00+00:00";
@@ -119,7 +119,7 @@ fn op_steps_rebase() {
 
     let (st, dir) = rebasing(ThemeChoice::Dark, "op-steps-rebase-edit", StopKind::Edit, false);
     let h = shown(st, theme::DUSK);
-    assert!(h.query_by_label("Amend").is_some(), "a stop to edit opens the commit form");
+    assert!(h.query_by_label("Amend last commit").is_some(), "a stop to edit opens the commit form");
     drop(h);
     remove_fixture(&dir);
 }
@@ -169,7 +169,7 @@ fn wip_panel_plain() {
     for (theme_name, p) in [("dusk", theme::DUSK), ("dawn", theme::DAWN)] {
         let (st, dir) = with_repo(ThemeChoice::Dark, &format!("wip-plain-{theme_name}"));
         let h = shown(st, p);
-        assert!(h.query_by_label("Amend").is_some());
+        assert!(h.query_by_label("Amend last commit").is_some());
         assert!(h.query_by_label("Stage").is_none(), "row actions wait for a hover or the current row");
         drop(h);
         remove_fixture(&dir);

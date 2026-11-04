@@ -4,19 +4,19 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_worktrees::{H, dialog_button, p, pushed};
-use crate::msg::Msg;
-use crate::state::submodules::add::AddForm;
-use crate::state::submodules::edit::EditForm;
-use crate::state::submodules::remove::RemoveForm;
-use crate::state::touched::Touched;
-use crate::state::{AppState, Modal};
-use crate::submodule::SubmoduleMsg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::clone_ops::BRANCH_INVALID;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::submodules::add::AddForm;
+use glowfly_model::state::submodules::edit::EditForm;
+use glowfly_model::state::submodules::remove::RemoveForm;
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::submodule::SubmoduleMsg;
 use std::path::PathBuf;
 
 /// The fixture with the Add dialog open, filled in by `fill`.

@@ -6,26 +6,27 @@
 use super::issue_tests::{github, listed};
 use super::tabs_tests::{cleanup, fake_tabs, two_repos};
 use super::update;
-use crate::conflict_check::{CheckRequest, ConflictCheckMsg};
-use crate::effect::Effect;
-use crate::msg::{CloseRequest, HistoryMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::blame::BlameView;
-use crate::state::conflict::ConflictView;
-use crate::state::diff_preview::DiffPreview;
-use crate::state::file_folds::FileListId;
-use crate::state::history::FileHistoryView;
-use crate::state::issue::IssueView;
-use crate::state::journal::JournalView;
-use crate::state::lfs::LfsDiffNote;
-use crate::state::range_diff::{Origin, RangeDiffView};
-use crate::state::rebase::RebasePanel;
-use crate::state::session::RepoSession;
-use crate::state::{AppState, ForgeState, Selection};
 use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind};
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
 use glowfly_core::range_diff::Ends;
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::undo::Action;
+use glowfly_model::conflict_check::{CheckRequest, ConflictCheckMsg};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::HistoryEffect;
+use glowfly_model::msg::{CloseRequest, HistoryMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::diff_preview::DiffPreview;
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::issue::IssueView;
+use glowfly_model::state::journal::JournalView;
+use glowfly_model::state::lfs::LfsDiffNote;
+use glowfly_model::state::range_diff::{Origin, RangeDiffView};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::session::RepoSession;
+use glowfly_model::state::{AppState, ForgeState, Selection};
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -42,7 +43,9 @@ fn open_history(st: &mut AppState, path: &str) -> Vec<Effect> {
 
 /// The generations of the history loads among `fx`.
 fn history_loads(fx: &[Effect]) -> Vec<u64> {
-    fx.iter().filter_map(|e| if let Effect::LoadFileHistory { generation, .. } = e { Some(*generation) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::History(HistoryEffect::FileHistory { generation, .. }) = e { Some(*generation) } else { None })
+        .collect()
 }
 
 /// A failed history load of `path` at `generation`, as the runner would report it.
@@ -140,7 +143,7 @@ fn every_session_view_round_trips_a_switch() {
     s.journal.view = Some(JournalView::default());
     let origin = Origin { ends: Ends::LastRewrite { refname: "refs/heads/topic".into() }, label: Some("topic".into()), at: None };
     s.range_diff.view = Some(RangeDiffView::loading(origin, 0));
-    s.pull_request.view = Some(crate::state::pull_request_actions::tests::view(None));
+    s.pull_request.view = Some(glowfly_model::state::pull_request_actions::tests::view(None));
     let fs = ForgeState::new(Some(github()), "origin".into(), Some(github()));
     s.issue.view = IssueView::new(listed("12"), &fs);
     assert!(s.issue.view.is_some(), "the issue panel needs a tracker");
@@ -240,7 +243,9 @@ fn a_diff_result_from_before_the_switch_is_dropped() {
     select(&mut st, 0);
     let target = DiffTarget::Unstaged("a.txt".into());
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    let g = fx.iter().find_map(|e| if let Effect::LoadDiff { generation, .. } = e { Some(*generation) } else { None });
+    let g = fx.iter().find_map(|e| {
+        if let Effect::Diff(glowfly_model::effect::DiffEffect::Load { generation, .. }) = e { Some(*generation) } else { None }
+    });
     let g = g.expect("the diff is asked for");
 
     select(&mut st, 1);
@@ -339,7 +344,7 @@ fn a_stats_result_for_a_parked_tab_is_dropped_and_asked_again() {
     select(&mut st, 0);
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("a has a commit");
     st.session.reads.stats.clear();
-    let asks = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::Stats { oids, .. } if oids == &[head]));
+    let asks = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::History(HistoryEffect::Stats { oids, .. }) if oids == &[head]));
     let fx = run(&mut st, Msg::Repo(RepoMsg::WantStats(vec![head])));
     assert!(asks(&fx), "a's stats are asked for");
 

@@ -1,19 +1,21 @@
 //! Layout and message tests of the diff header, drawn alone from a `HeaderModel`.
 
 use super::*;
-use crate::keymap::BindingId;
-use crate::msg::{DiffMsg, FilesMsg, RepoMsg, StageMsg};
-use crate::state::diff_header::{Actions, ChangeText, Context, FileKind, FoldCounts, OpenAction, Primary, RestoreAction, ViewGroup};
-use crate::state::diff_nav::{Counter, StepKind};
-use crate::state::tool_compare::OPEN_IN_DIFF_TOOL;
-use crate::tools::ToolsMsg;
-use crate::ui::file_menu::{OPEN_DEFAULT, SHOW_IN_FOLDER};
+use crate::file_menu::{OPEN_DEFAULT, SHOW_IN_FOLDER};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::{DiffLayout, DiffMode};
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{DiffMsg, FilesMsg, RepoMsg, StageMsg};
+use glowfly_model::state::diff_header::{
+    Actions, ChangeText, Context, FileKind, FoldCounts, OpenAction, Primary, RestoreAction, ViewGroup,
+};
+use glowfly_model::state::diff_nav::{Counter, StepKind};
+use glowfly_model::state::tool_compare::OPEN_IN_DIFF_TOOL;
+use glowfly_model::tools::ToolsMsg;
 
 // The English texts, pinned: the header reads them from the catalog.
 const CLOSE_NAME: &str = "Close diff";
@@ -53,6 +55,7 @@ fn unstaged() -> HeaderModel {
         next: StepKind::Change,
         show_nav: true,
         counter: Some(Counter { index: 1, total: 3, files: false }),
+        svg: None,
         view: Some(view()),
         actions: Actions { restore: None, open: Some(OpenAction { path: path.into(), missing: None }), diff_tool: Some(None) },
         primary: Some(Primary::Stage(path.into())),
@@ -81,7 +84,7 @@ fn harness(m: HeaderModel, width: f32) -> Harness<'static, Vec<Msg>> {
 
 fn harness_in(m: HeaderModel, width: f32, t: Lang) -> Harness<'static, Vec<Msg>> {
     let keys = Keymap::default();
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(width, 360.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(width, 360.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             let top = ui.cursor().top();
             show(ui, &m, &keys, t, msgs);
@@ -107,12 +110,16 @@ fn click(m: HeaderModel, width: f32, label: &str) -> Vec<Msg> {
 
 #[test]
 fn one_row_at_every_width() {
-    for width in [1400.0, 900.0, 700.0, 520.0, 360.0] {
+    for width in [1400.0, 900.0, 700.0, 520.0, 400.0, 360.0] {
         for m in [unstaged(), commit()] {
             let h = harness(m, width);
             let close = middle(&h, CLOSE_NAME);
-            let labels =
-                [PREV_NAME, NEXT_NAME, OPEN_IN_DIFF_TOOL, STAGE_FILE, RESTORE, OPEN, SHOW_IN_FOLDER, MORE, "Inline \u{b7} Hunks", "View"];
+            // ⋯ never gives way: whole, inside the header, before Stage file and ×.
+            let more = h.get_by_label(MORE).bounding_box().expect("⋯ laid out");
+            let before = h.query_by_label(STAGE_FILE).unwrap_or_else(|| h.get_by_label(CLOSE_NAME)).bounding_box().unwrap();
+            assert!(more.x0 >= 0.0 && more.x1 <= before.x0, "{width}: ⋯ shows whole before the trailing group: {more:?} {before:?}");
+            assert!((more.x1 - more.x0 - f64::from(controls::HEIGHT)).abs() < 0.5, "{width}: ⋯ is not cut: {more:?}");
+            let labels = [PREV_NAME, NEXT_NAME, STAGE_FILE, MORE, "Inline \u{b7} Changes only", "View"];
             for label in labels {
                 if let Some(node) = h.query_by_label(label) {
                     let b = node.bounding_box().expect("laid out");
@@ -127,21 +134,26 @@ fn one_row_at_every_width() {
 #[test]
 fn german_header_fits_in_one_row() {
     let de = Lang::De;
+    let full = view().label(de);
+    assert_eq!(full, "Inline · Nur Änderungen");
+    // Everything the header shows on its row (the file actions are in ⋯).
     let labels = [
         de.tr("diff.header.prev.name"),
         de.tr("diff.header.next.name"),
-        de.tr("tools.open_in_diff_tool"),
-        de.tr("diff.header.stage_file"),
-        de.tr("diff.header.restore"),
-        de.tr("diff.header.open"),
-        de.tr("diff.header.more"),
+        full.as_str(),
         de.tr("diff.header.view.button"),
+        de.tr("diff.header.more"),
+        de.tr("diff.header.stage_file"),
         de.tr("diff.header.close.name"),
     ];
     for width in [1400.0, 900.0, 700.0, 520.0] {
         for m in [unstaged(), commit()] {
             let h = harness_in(m, width, de);
             let close = middle(&h, de.tr("diff.header.close.name"));
+            if width >= 900.0 {
+                assert!(h.query_by_label(&full).is_some(), "{width}: the full View label");
+            }
+            assert!(h.query_by_label(de.tr("diff.header.more")).is_some(), "{width}: ⋯");
             let shown: Vec<_> = labels.iter().filter_map(|l| Some((*l, h.query_by_label(l)?.bounding_box()?))).collect();
             for (label, b) in &shown {
                 let mid = (b.y0 + b.y1) / 2.0;
@@ -157,34 +169,52 @@ fn german_header_fits_in_one_row() {
     }
 }
 
-#[test]
-fn file_actions_fold_into_a_menu_when_narrow() {
-    let h = harness(commit(), 1400.0);
-    for label in [RESTORE, OPEN, SHOW_IN_FOLDER, "src/ui/"] {
-        assert!(h.query_by_label(label).is_some(), "{label} at 1400");
-    }
-    assert!(h.query_by_label(MORE).is_none());
-    let name_w = |h: &Harness<'_, Vec<Msg>>| h.get_by_label("app.txt").bounding_box().map(|b| b.x1 - b.x0).unwrap();
-    let wide = name_w(&h);
+/// Opens ⋯ on `m` and clicks `label` in its menu.
+fn in_more(m: HeaderModel, label: &str) -> Vec<Msg> {
+    let mut h = harness(m, 1400.0);
+    h.get_by_label(MORE).click();
+    h.run();
+    h.get_by_label(label).click();
+    h.run();
+    std::mem::take(h.state_mut())
+}
 
-    let h = harness(commit(), 520.0);
-    for label in [RESTORE, OPEN, SHOW_IN_FOLDER, "src/ui/"] {
-        assert!(h.query_by_label(label).is_none(), "{label} gives way at 520");
+#[test]
+fn file_actions_are_in_the_more_menu() {
+    let h = harness(commit(), 1400.0);
+    for label in [RESTORE, OPEN, SHOW_IN_FOLDER, OPEN_IN_DIFF_TOOL] {
+        assert!(h.query_by_label(label).is_none(), "{label} is in ⋯, not on the row");
     }
     assert!(h.query_by_label(MORE).is_some());
+    let name_w = |h: &Harness<'_, Vec<Msg>>| h.get_by_label("app.txt").bounding_box().map(|b| b.x1 - b.x0).unwrap();
+    let wide = name_w(&h);
+    let h = harness(commit(), 520.0);
+    assert!(h.query_by_label(MORE).is_some(), "⋯ never gives way");
     assert!((name_w(&h) - wide).abs() < 0.5, "the name is never cut while the folder can give way");
 
-    let open = |label: &str| {
-        let mut h = harness(commit(), 520.0);
-        h.get_by_label(MORE).click();
-        h.run();
-        h.get_by_label(label).click();
-        h.run();
-        std::mem::take(h.state_mut())
-    };
-    assert!(matches!(&open("Restore…")[..], [Msg::Files(FilesMsg::RestoreFile { path, deleted: false, .. })] if path == "src/ui/app.txt"));
-    assert!(matches!(&open(OPEN_DEFAULT)[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "src/ui/app.txt"));
-    assert!(matches!(&open(SHOW_IN_FOLDER)[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "src/ui/app.txt"));
+    assert!(
+        matches!(&in_more(commit(), "Restore…")[..], [Msg::Files(FilesMsg::RestoreFile { path, deleted: false, .. })] if path == "src/ui/app.txt")
+    );
+    assert!(matches!(&in_more(commit(), OPEN_DEFAULT)[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "src/ui/app.txt"));
+    assert!(matches!(&in_more(commit(), SHOW_IN_FOLDER)[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "src/ui/app.txt"));
+    assert!(matches!(&in_more(unstaged(), OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
+}
+
+#[test]
+fn the_row_runs_file_nav_view_more_then_stage_and_close() {
+    let h = harness(unstaged(), 1400.0);
+    let x = |label: &str| h.get_by_label(label).bounding_box().expect("laid out");
+    let (name, prev, next, view, more, stage, close) =
+        (x("app.txt"), x(PREV_NAME), x(NEXT_NAME), x("Inline \u{b7} Changes only"), x(MORE), x(STAGE_FILE), x(CLOSE_NAME));
+    let chip = x("Unstaged");
+    assert!(name.x1 < chip.x0 && chip.x1 + 15.5 <= prev.x0 && prev.x0 <= chip.x1 + 16.5, "16 px after the file: {chip:?} {prev:?}");
+    assert!(prev.x1 <= next.x0 && next.x1 < view.x0 && view.x1 <= more.x0, "nav, then View and ⋯");
+    assert!(more.x1 + 100.0 < stage.x0, "Stage file sits apart, at the trailing edge");
+    assert!((close.x0 - stage.x1 - 8.0).abs() < 0.5, "8 px between Stage file and ×");
+    // The harness's frame takes 8 px, the header's padding the rest.
+    let edge = f64::from(1400.0 - 8.0 - crate::theme::spacing::PANEL_PAD_F);
+    assert!((edge - close.x1).abs() < 0.5, "× at the edge: {close:?}, edge {edge}");
+    assert_eq!(stage.y1 - stage.y0, f64::from(crate::theme::sizes::ControlSize::Small.metrics().h), "Stage file is Small");
 }
 
 #[test]
@@ -195,13 +225,11 @@ fn controls_send_their_messages() {
     let staged = HeaderModel { primary: Some(Primary::Unstage("src/ui/app.txt".into())), context: Context::Staged, ..unstaged() };
     assert!(matches!(&click(staged, 1400.0, UNSTAGE_FILE)[..], [Msg::Stage(StageMsg::UnstageFile(_))]));
     assert!(matches!(&click(unstaged(), 1400.0, CLOSE_NAME)[..], [Msg::Repo(RepoMsg::CloseDiff)]));
-    assert!(matches!(&click(unstaged(), 1400.0, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
 
-    // With no tool set the icon stays usable: update opens Preferences > External Tools.
+    // With no tool set the item stays usable: update opens Preferences > External Tools.
     let unset =
         HeaderModel { actions: Actions { diff_tool: Some(Some(Lang::En.tr("tools.diff_setup.tip"))), ..unstaged().actions }, ..unstaged() };
-    assert!(!harness(unset.clone(), 1400.0).get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
-    assert!(matches!(&click(unset, 1400.0, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
+    assert!(matches!(&in_more(unset, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
     let end = HeaderModel { next: StepKind::End, ..unstaged() };
     assert!(harness(end.clone(), 1400.0).get_by_label(NEXT_NAME).is_disabled());
     assert!(click(end, 1400.0, NEXT_NAME).is_empty());
@@ -232,20 +260,20 @@ fn the_view_menu_changes_the_settings() {
     assert!(matches!(&in_view_menu(whole, COLLAPSE_ALL)[..], [Msg::Diff(DiffMsg::CollapseAllUnchanged)]));
 
     let mut h = harness(unstaged(), 1400.0);
-    h.get_by_label("Inline \u{b7} Hunks").click();
+    h.get_by_label("Inline \u{b7} Changes only").click();
     h.run();
-    assert!(h.query_by_label(EXPAND_ALL).is_none() && h.query_by_label(COLLAPSE_ALL).is_none(), "no folds in Hunks");
+    assert!(h.query_by_label(EXPAND_ALL).is_none() && h.query_by_label(COLLAPSE_ALL).is_none(), "no folds in Changes only");
     assert!(h.query_by_label("Inline").is_some());
 
     let binary = HeaderModel { view: None, kind: FileKind::Binary, change: ChangeText::Sizes { old: Some(1), new: Some(2) }, ..unstaged() };
     let h = harness(binary, 1400.0);
-    assert!(h.query_by_label("Inline \u{b7} Hunks").is_none() && h.query_by_label("View").is_none(), "no View button");
+    assert!(h.query_by_label("Inline \u{b7} Changes only").is_none() && h.query_by_label("View").is_none(), "no View button");
 }
 
 #[test]
 fn icon_only_controls_are_named() {
     let h = harness(commit(), 520.0);
-    for name in [PREV_NAME, NEXT_NAME, OPEN_IN_DIFF_TOOL, MORE, CLOSE_NAME] {
+    for name in [PREV_NAME, NEXT_NAME, MORE, CLOSE_NAME] {
         let node = h.get_by_label(name);
         assert_eq!(node.role(), egui::accesskit::Role::Button, "{name}");
     }
@@ -267,7 +295,7 @@ fn chips_show_the_change_and_context() {
 fn step_tips_follow_the_keymap() {
     let mut keys = Keymap::default();
     assert_eq!(step_tip(&keys, Lang::En, true, StepKind::Change), "Next change (F7)");
-    keys.set(BindingId::NextChange, vec![crate::keymap::Chord::plain(crate::keymap::KeyName::F(8))]);
+    keys.set(BindingId::NextChange, vec![glowfly_model::keymap::Chord::plain(glowfly_model::keymap::KeyName::F(8))]);
     assert_eq!(step_tip(&keys, Lang::En, true, StepKind::File), "Next change, in the next file (F8)");
     keys.set(BindingId::PrevChange, Vec::new());
     assert_eq!(step_tip(&keys, Lang::En, false, StepKind::End), "No changes before this file", "no key, no parentheses");
@@ -292,9 +320,9 @@ fn primary_tips_follow_the_language_and_keymap() {
 
 /// The header alone, `width` wide, in the dark palette over the app's background, for snapshots.
 fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>> {
-    use crate::ui::theme::{self, color};
+    use crate::theme::{self, color};
     let keys = Keymap::default();
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(width, height)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(width, height)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_palette(&theme::view_palette(true));
             theme::apply_style(ui.ctx(), &theme::view_palette(true));
@@ -310,7 +338,7 @@ fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>>
 
 #[test]
 fn file_header_snapshots() {
-    use crate::ui::snapshot_check::CheckSnapshot;
+    use crate::snapshot_check::CheckSnapshot;
     let mut h = themed(commit(), 520.0, 48.0);
     assert!(h.query_by_label(MORE).is_some());
     h.check_snapshot("file_header_narrow");
@@ -336,4 +364,25 @@ fn file_header_snapshots() {
     };
     let mut h = themed(binary, 900.0, 48.0);
     h.check_snapshot("file_header_binary");
+}
+
+#[test]
+fn the_svg_switch_sends_its_choice_by_click_and_by_key() {
+    let svg =
+        |on| HeaderModel { svg: Some(on), name: "icon.svg".into(), path: "src/ui/icon.svg".into(), kind: FileKind::Image, ..unstaged() };
+    assert!(matches!(&click(svg(false), 1400.0, "Preview")[..], [Msg::Diff(DiffMsg::SetSvgPreview(true))]));
+    assert!(matches!(&click(svg(true), 1400.0, "Text")[..], [Msg::Diff(DiffMsg::SetSvgPreview(false))]));
+    assert!(click(svg(false), 1400.0, "Text").is_empty(), "the raised segment sends nothing");
+    // From the keyboard: the segment focused, Space and Enter pick it.
+    for key in [egui_kittest::kittest::Key::Space, egui_kittest::kittest::Key::Enter] {
+        let mut h = harness(svg(false), 1400.0);
+        h.get_by_label("Preview").focus();
+        h.run();
+        h.get_by_label("Preview").key_press(key);
+        h.run();
+        assert!(matches!(&std::mem::take(h.state_mut())[..], [Msg::Diff(DiffMsg::SetSvgPreview(true))]), "{key:?}");
+    }
+    // Without the switch there is no Text or Preview in the header.
+    let h = harness(unstaged(), 1400.0);
+    assert!(h.query_by_label("Preview").is_none());
 }

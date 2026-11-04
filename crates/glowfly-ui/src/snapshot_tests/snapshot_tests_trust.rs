@@ -3,14 +3,14 @@
 //! brings it back.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, settings, with_repo};
-use crate::msg::{Msg, TrustMsg};
-use crate::state::trust::{Standing, TrustPrompt, record, record_trusted};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{RepoTrust, ThemeChoice};
 use glowfly_core::trust::{ConfigCommand, Follow, SubmoduleScan, TrustScan};
+use glowfly_model::msg::{Msg, TrustMsg};
+use glowfly_model::state::trust::{Standing, TrustPrompt, record, record_trusted};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -119,7 +119,7 @@ fn trust_prompt_unchecked() {
     let scan = TrustScan { config: vec![setting("core.hooksPath", ".githooks")], follows: vec![githooks()], ..TrustScan::default() };
     let mut st = prompt_state(ThemeChoice::Dark, scan, false, Some("Pull"));
     if let Some(Modal::Trust(p)) = &mut st.modal {
-        p.unchecked = Some(Box::new(crate::effect::Accepted {
+        p.unchecked = Some(Box::new(glowfly_model::effect::Accepted {
             at: Some(1),
             reason: glowfly_core::trust::incoming::Unchecked::Unreadable("object 1a2b3c4 is missing".into()),
         }));
@@ -322,7 +322,7 @@ fn no_chip_for_a_clean_or_trusted_repository() {
     st = std::mem::replace(&mut h.state_mut().0, AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now()));
     drop(h);
     let real = make_untrusted(&mut st, &dir);
-    crate::state::trust::record_as_found(&mut st.settings, &real);
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &real);
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Untrusted").is_none(), "trusted");
@@ -344,7 +344,7 @@ fn submit_held(name: &str, modal: Modal, button: &str) -> AppState {
         std::mem::replace(h.state_mut(), (AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now()), Vec::new()));
     drop(h);
     for m in msgs {
-        let _ = crate::update::update(&mut st, m, Instant::now());
+        let _ = glowfly_model::update::update(&mut st, m, Instant::now());
     }
     remove_fixture(&dir);
     st
@@ -362,7 +362,7 @@ fn a_dialog_that_closes_itself_leaves_the_prompt_for_its_job() {
     let st = submit_held(
         "trust-new-branch",
         Modal::NewBranch { start: None, name: "topic".into(), checkout: false, track: None, touched: Default::default() },
-        "Create",
+        "Create branch",
     );
     assert_eq!(held_prompt(&st), Some("Create branch"), "the prompt names the job");
     assert!(st.trust.held.is_some(), "the job waits for the decision");
@@ -370,9 +370,9 @@ fn a_dialog_that_closes_itself_leaves_the_prompt_for_its_job() {
 
     let st = submit_held(
         "trust-rename-branch",
-        Modal::RenameBranch(crate::state::branch_sync::RenameForm {
+        Modal::RenameBranch(glowfly_model::state::branch_sync::RenameForm {
             name: "find".into(),
-            ..crate::state::branch_sync::RenameForm::new("search".into())
+            ..glowfly_model::state::branch_sync::RenameForm::new("search".into())
         }),
         "Rename",
     );

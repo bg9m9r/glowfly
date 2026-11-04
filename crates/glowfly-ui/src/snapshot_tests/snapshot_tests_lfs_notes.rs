@@ -3,17 +3,17 @@
 //! and pointer text.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::lfs::LfsMsg;
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::lfs::{LfsDiffNote, LfsInstall};
-use crate::state::lfs_notes::{BANNER_TEXT, POINTER_BAR};
-use crate::state::{AppState, PrefPage, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::lfs::LfsPattern;
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide, Pointer};
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileEntry, Hunk};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::lfs::{LfsDiffNote, LfsInstall};
+use glowfly_model::state::lfs_notes::{BANNER_TEXT, POINTER_BAR};
+use glowfly_model::state::{AppState, PrefPage, Selection};
 use std::path::PathBuf;
 
 fn pushed(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Msg) -> bool) -> bool {
@@ -139,7 +139,7 @@ fn diff_lfs_summary() {
     h.check_snapshot("diff_lfs_summary");
     assert!(h.query_by_label("Stored in Git LFS").is_some());
     assert!(h.query_by_label("Size: 13.0 MB, was 12.4 MB").is_some());
-    assert!(h.query_by_label("Inline \u{b7} Hunks").is_none() && h.query_by_label("View").is_none(), "no View button");
+    assert!(h.query_by_label("Inline \u{b7} Changes only").is_none() && h.query_by_label("View").is_none(), "no View button");
     h.get_by_label("Show pointer text").click();
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Lfs(LfsMsg::ShowPointer(true)))));

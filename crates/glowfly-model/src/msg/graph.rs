@@ -153,7 +153,7 @@ pub enum SearchMsg {
     WantAuthors,
     /// The author picker's choice: an author's email, or `None` for "Any author".
     PickAuthor(Option<String>),
-    /// A report from Effect::SearchPaths request `request`: a chunk of the commits it looked at
+    /// A report from HistoryEffect::SearchPaths request `request`: a chunk of the commits it looked at
     /// and which of them touch the path terms; `done` on its last chunk.
     PathsSearched { request: u64, result: Result<PathsChunk, String> },
     /// How far whole-history index build `build` has got (`IndexEffect::Build`): commits indexed

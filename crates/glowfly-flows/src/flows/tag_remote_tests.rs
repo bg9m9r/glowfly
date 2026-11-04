@@ -5,14 +5,14 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::tags::delete_remote_confirm;
-use crate::state::{AppState, Modal, RunningJob};
-use crate::tag::TagMsg;
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::tags::delete_remote_confirm;
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::tag::TagMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -51,7 +51,7 @@ fn delete(tag: &str, remotes: &[&str]) -> Msg {
 /// The commands of the single job `fx` starts.
 fn job_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
     }
 }
@@ -76,6 +76,7 @@ fn running() -> RunningJob {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

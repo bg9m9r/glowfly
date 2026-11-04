@@ -24,14 +24,14 @@ use super::branch_names::Hue;
 use super::color::Palette;
 use super::families::{Branch, LANE_COUNT};
 use eframe::egui::Color32;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
 }
 
 /// The light tones' clear amber (OKLCH hue 62, chroma at the sRGB edge): 3:1 on Sand's paper
-/// as a line; its text tone (4.5:1) is a deep amber, lettered in the ink (`contrast::clean_ink`).
+/// as a line; its text tone (4.5:1) is a deep amber, lettered in the ink.
 const AMBER_LINE: Color32 = hex(0xc47100);
 const AMBER_TEXT: Color32 = hex(0x7c4600);
 /// Wine (hue 352) and Navy (hue 262), darker than their neighbours, in Olive's and Gold's
@@ -43,10 +43,10 @@ const NAVY_TEXT: Color32 = hex(0x17397b);
 pub const FOREST_LINE: Color32 = hex(0x2c6b27);
 pub const FOREST_TEXT: Color32 = hex(0x1d4f19);
 /// The light slots that take another hue than the dark tones': Olive (Wine) and Gold (Navy).
-pub const LIGHT_WINE_SLOT: usize = 6;
+pub(crate) const LIGHT_WINE_SLOT: usize = 6;
 pub const LIGHT_NAVY_SLOT: usize = 11;
 /// The Orange slot, whose light tones turn to hue 62.
-pub const ORANGE_SLOT: usize = 3;
+pub(crate) const ORANGE_SLOT: usize = 3;
 
 /// Lines and chips on dark themes.
 pub const DARK_TONES: [Color32; LANE_COUNT] = [
@@ -130,19 +130,19 @@ pub const LIGHT_NAMES: [Hue; LANE_COUNT] = {
 
 /// Lines on High contrast light and Sand: the text tones, with the amber line for Orange (a
 /// text-strength amber reads brown).
-pub const LIGHT_STRONG_LINES: [Color32; LANE_COUNT] = {
+pub(crate) const LIGHT_STRONG_LINES: [Color32; LANE_COUNT] = {
     let mut t = LIGHT_TEXT;
     t[ORANGE_SLOT] = AMBER_LINE;
     t
 };
 
 /// Garden dark and High contrast dark.
-pub const BRANCH_DARK: Branch = Branch { lanes: DARK_TONES, chips: DARK_TONES, preset: BranchPalette::Standard, names: NAMES };
+pub const BRANCH_DARK: Branch = Branch { lanes: DARK_TONES, chips: DARK_TONES, preset: ColourPalette::Standard, names: NAMES };
 /// Garden light.
-pub const BRANCH_LIGHT: Branch = Branch { lanes: LIGHT_LINES, chips: LIGHT_TEXT, preset: BranchPalette::Standard, names: LIGHT_NAMES };
+pub const BRANCH_LIGHT: Branch = Branch { lanes: LIGHT_LINES, chips: LIGHT_TEXT, preset: ColourPalette::Standard, names: LIGHT_NAMES };
 /// High contrast light and Sand, whose surfaces need the stronger text tones for lines too.
 pub const BRANCH_LIGHT_STRONG: Branch =
-    Branch { lanes: LIGHT_STRONG_LINES, chips: LIGHT_TEXT, preset: BranchPalette::Standard, names: LIGHT_NAMES };
+    Branch { lanes: LIGHT_STRONG_LINES, chips: LIGHT_TEXT, preset: ColourPalette::Standard, names: LIGHT_NAMES };
 
 /// How many hues the colour-blind friendly preset has.
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
@@ -205,15 +205,15 @@ pub const fn pad<T: Copy>(t: [T; CB]) -> [T; LANE_COUNT] {
 
 /// Colour-blind friendly, on Garden dark and High contrast dark.
 pub const BRANCH_CB_DARK: Branch =
-    Branch { lanes: pad(CB_DARK_TONES), chips: pad(CB_DARK_TONES), preset: BranchPalette::ColourBlind, names: pad(CB_NAMES) };
+    Branch { lanes: pad(CB_DARK_TONES), chips: pad(CB_DARK_TONES), preset: ColourPalette::ColourBlind, names: pad(CB_NAMES) };
 /// Colour-blind friendly, on Garden light, High contrast light and Sand.
 pub const BRANCH_CB_LIGHT: Branch =
-    Branch { lanes: pad(CB_LIGHT_LINES), chips: pad(CB_LIGHT_TEXT), preset: BranchPalette::ColourBlind, names: pad(CB_LIGHT_NAMES) };
+    Branch { lanes: pad(CB_LIGHT_LINES), chips: pad(CB_LIGHT_TEXT), preset: ColourPalette::ColourBlind, names: pad(CB_LIGHT_NAMES) };
 
 /// `p` with the branch preset `b`: Standard keeps its own family; the colour-blind friendly preset
 /// takes the palette's own colour-blind family (a theme file's from its base).
-pub fn applied(mut p: Palette, b: BranchPalette) -> Palette {
-    if b == BranchPalette::ColourBlind {
+pub fn applied(mut p: Palette, b: ColourPalette) -> Palette {
+    if b == ColourPalette::ColourBlind {
         p.branch = p.colour_blind;
     }
     p

@@ -7,6 +7,11 @@ branch/remote/tag/stash sidebar, and a right-hand panel for commit details or st
 committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps, Jira and Trello for pull
 requests and issues.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png">
+  <img src="docs/screenshots/overview-light.png" width="880" alt="Glowfly's main window: commit graph with branches and tags, sidebar, and the staging and commit panel">
+</picture>
+
 Glowfly is an independent project. It is not affiliated with or endorsed by any other Git client,
 hosting service, issue tracker or operating system vendor; product names are used only to
 describe compatibility. All trademarks are the property of their owners.
@@ -52,6 +57,29 @@ can turn it off) and downloads it only when you ask, after checking it against t
 checksums. Those confirm the download matches the release, not who published it, since the
 builds aren't code-signed yet. "View release notes" in the command palette shows what changed.
 
+### Opening the unsigned builds
+
+Check the download against `SHA256SUMS` or its attestation first, as above, so you know it is the
+file the release published. Then:
+
+- **Windows**: when SmartScreen says "Windows protected your PC", click "More info", then "Run
+  anyway". Unblock the `.zip` before you unpack it, so the program inside isn't marked as
+  downloaded: right-click it, choose Properties, tick "Unblock" and click OK, or run
+  `Unblock-File <file>` in PowerShell.
+- **macOS 15 and later**: right-click > Open no longer gets past Gatekeeper. Open Glowfly once and
+  close the message, then go to System Settings > Privacy & Security and click "Open Anyway" next
+  to the note about Glowfly; after that it opens normally. Or, in Terminal,
+  `xattr -dr com.apple.quarantine /Applications/Glowfly.app` removes the "downloaded from the
+  internet" mark that makes macOS check the app, from the app and everything in it (for the
+  `.tar.gz`, give the folder you unpacked instead). On macOS 14 and earlier, Control-click the app
+  and choose Open.
+- **Linux**: make the AppImage executable first (`chmod +x <file>.AppImage`, or "Allow executing
+  file as program" in its Properties). The other packages need nothing extra.
+
+Installing through winget, Scoop, Homebrew and Flathub is coming
+([#557](https://github.com/bg9m9r/glowfly/issues/557)) and will be the smoother way on every
+system.
+
 ## Building from source
 
 Glowfly is developed and tested on Windows; macOS and Linux builds are less tested. You need a
@@ -68,6 +96,11 @@ With no path it reopens the last repository. Plans and status are on GitHub: the
 goal and scope, and [docs/ideas](docs/ideas/README.md) holds untriaged ideas.
 
 ## What it does
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/diff-dark.png">
+  <img src="docs/screenshots/diff-light.png" width="880" alt="Split diff of a Rust file with syntax highlighting and word-level changes">
+</picture>
 
 - **Commit graph**: lane layout with merge/fork curves, branch, remote and tag badges, a
   "Uncommitted changes" row above HEAD when the tree is dirty, ↑/↓ keyboard navigation, and commit search
@@ -94,6 +127,11 @@ goal and scope, and [docs/ideas](docs/ideas/README.md) holds untriaged ideas.
   Commands submenu of the commit, branch and file menus, and on keys you choose. A repository's
   own commands run only once you trust it. See [docs/CUSTOM_COMMANDS.md](docs/CUSTOM_COMMANDS.md).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/conflicts-dark.png">
+  <img src="docs/screenshots/conflicts-light.png" width="880" alt="Conflict resolver with ours, theirs and the merged output, picking lines from each side">
+</picture>
+
 ## Hosting services and issue trackers
 
 | Service | Pull/merge requests | Issues | Sign-in |
@@ -113,6 +151,11 @@ connect it. The `*_TOKEN` environment variables are used only for github.com, gi
 Azure DevOps, never for self-hosted servers. The issue tracker defaults to the host's own issues, and can be switched
 to a connected Jira site (optionally one project) or a connected Trello account (optionally one
 board) under Preferences > This repository > Issue tracker.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/pull-request-dark.png">
+  <img src="docs/screenshots/pull-request-light.png" width="880" alt="Pull request review: changed files and a new comment on a line">
+</picture>
 
 - **Pull requests**: a PULL REQUESTS (or MERGE REQUESTS) sidebar section with drafts, approval
   counts and a reviewer tooltip, plus badges on the head commit in the graph. You can open,

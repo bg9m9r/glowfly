@@ -95,6 +95,7 @@ mod tests {
             autostash: true,
             interactive: true,
             command,
+            amends: false,
         }
     }
 

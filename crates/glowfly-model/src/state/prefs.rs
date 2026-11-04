@@ -13,6 +13,8 @@ pub enum PrefPage {
     Profile,
     Integrations,
     Ui,
+    /// Every accessibility option: text size, contrast, colours, motion, keys and timing.
+    Accessibility,
     /// The interface language and how dates and times are written.
     Language,
     /// Diff text: font size, tab size, line numbers, syntax and word highlights.
@@ -48,9 +50,10 @@ impl PrefPage {
         match self {
             PrefPage::General => t.tr("prefs.nav.general"),
             PrefPage::Git => t.tr("prefs.nav.git"),
-            PrefPage::Profile => t.tr("prefs.nav.profile"),
+            PrefPage::Profile => t.tr("prefs.nav.profiles"),
             PrefPage::Integrations => t.tr("prefs.nav.integrations"),
             PrefPage::Ui => t.tr("prefs.nav.ui"),
+            PrefPage::Accessibility => t.tr("prefs.nav.accessibility"),
             PrefPage::Language => t.tr("prefs.nav.language"),
             PrefPage::DiffViewer => t.tr("prefs.nav.diff_viewer"),
             PrefPage::Keyboard => t.tr("prefs.nav.keyboard"),
@@ -58,7 +61,7 @@ impl PrefPage {
             PrefPage::Terminal => t.tr("prefs.nav.terminal"),
             PrefPage::Signing => t.tr("prefs.nav.signing"),
             PrefPage::Ssh => t.tr("prefs.nav.ssh"),
-            PrefPage::RepoIdentity => t.tr("prefs.nav.identity"),
+            PrefPage::RepoIdentity => t.tr("prefs.nav.commit_identity"),
             PrefPage::RepoHooks => t.tr("prefs.nav.hooks"),
             PrefPage::RepoTracker => t.tr("prefs.nav.tracker"),
             PrefPage::RepoLfs => t.tr("prefs.nav.lfs"),
@@ -194,6 +197,10 @@ pub struct PrefsState {
     pub int_adding: bool,
     /// git config's diff and merge tools for the External tools page; None until read.
     pub git_tools: Option<glowfly_core::external_tools::git_config::GitTools>,
+    /// The "Search preferences" field's text: the navigation shows only the pages it matches.
+    pub search: String,
+    /// The search field takes the keyboard on the next frame (Ctrl+F).
+    pub focus_search: bool,
 }
 
 impl PrefsState {
@@ -224,6 +231,8 @@ impl PrefsState {
             save_error: None,
             int_adding: false,
             git_tools: None,
+            search: String::new(),
+            focus_search: false,
         }
     }
 }
@@ -240,9 +249,9 @@ mod tests {
     #[test]
     fn autocrlf_labels_follow_the_language_and_keep_raw_values() {
         assert_eq!(Autocrlf::Input.label(Lang::En), "input: commit LF, check out as is");
-        assert_eq!(Autocrlf::Other("weird".into()).label(Lang::En), "weird (not a value git knows)");
+        assert_eq!(Autocrlf::Other("weird".into()).label(Lang::En), "weird (not a value Git knows)");
         let de = Autocrlf::Other("weird".into()).label(Lang::De);
-        assert!(de.starts_with("weird ") && de != "weird (not a value git knows)", "{de}");
+        assert!(de.starts_with("weird ") && de != "weird (not a value Git knows)", "{de}");
         assert_eq!(PrefPage::Keyboard.title(Lang::En), "Keyboard shortcuts");
         assert_eq!(PrefPage::Keyboard.nav_label(Lang::En), "Keyboard");
         assert_eq!(PrefPage::General.title(Lang::De), PrefPage::General.nav_label(Lang::De));

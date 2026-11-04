@@ -4,16 +4,17 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::CommitMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::state::commit::pushes_after;
-use crate::state::{AppState, RunningJob};
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::FileEntry;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::commit::pushes_after;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::Path;
 use std::time::Instant;
 
@@ -58,7 +59,7 @@ fn stage_all_and_commit_end_to_end() {
     st.session.draft.summary = "Everything".into();
     let fx = update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }, ..] => assert_eq!(cmds[0], args(&["add", "--all"])),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }), ..] => assert_eq!(cmds[0], args(&["add", "--all"])),
         other => panic!("expected RunGit, got {other:?}"),
     }
     st.job = None;
@@ -77,13 +78,18 @@ fn shortcut_refusals_toast() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let log_before = st.log.len();
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty());
-    assert_eq!(last_toast(&st), (false, "Write a summary for the commit.".into()));
+    // Only the first missing step: staging, before the summary.
+    let key = st.keymap.hint(glowfly_model::keymap::BindingId::StageAllAndCommit).expect("a default key").to_owned();
+    let stage = format!("Stage changes to commit, or press {key} to stage all and commit.");
+    assert_eq!(last_toast(&st), (false, stage.clone()));
     assert!(!st.view.show_log, "a refused shortcut doesn't open the log");
-    assert_eq!(st.log.len(), log_before);
+    // Like every toast, it leaves a quiet line there.
+    assert_eq!(st.log.len(), log_before + 1);
+    assert_eq!(st.log.last().map(|e| e.text.as_str()), Some(stage.as_str()));
 
     st.session.draft.summary = "Work".into();
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty(), "nothing staged");
-    assert_eq!(last_toast(&st), (false, "Nothing is staged yet. Stage a file or a hunk first.".into()));
+    assert_eq!(last_toast(&st), (false, stage));
     assert!(!update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now()).is_empty(), "stage-all has changes to stage");
     st.job = None;
 
@@ -107,7 +113,7 @@ fn skip_hooks_bypasses_failing_pre_commit() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     // The hook makes the repository ask about trust; trusted, the commit runs it.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record_as_found(&mut st.settings, &real);
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &real);
     drive(&mut st, Msg::CloseModal);
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     let head = rev(&dir, "HEAD");
@@ -139,7 +145,8 @@ fn push_after_commit_sets_upstream() {
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.head_info().and_then(|b| b.upstream.clone()).as_deref(), Some("origin/topic"));
     let toasts: Vec<_> = st.toasts.iter().map(|t| t.text.as_str()).collect();
-    assert!(toasts.ends_with(&["Commit succeeded", "Push succeeded"]), "{toasts:?}");
+    // The commit shows in the graph, so only the push says what it did.
+    assert!(toasts.ends_with(&["Published topic to origin."]) && !toasts.contains(&"Commit succeeded"), "{toasts:?}");
 
     // A branch with an upstream is pushed to it.
     git(&work, &["checkout", "-q", "main"]);
@@ -167,6 +174,7 @@ fn no_push_when_commit_fails_or_tab_changed() {
         quiet: false,
         clear_commit: true,
         then_push: true,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -177,13 +185,16 @@ fn no_push_when_commit_fails_or_tab_changed() {
 
     st.job = Some(job(Some(dir.with_file_name("elsewhere"))));
     let fx = update(&mut st, done(true), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     let last = st.log.last().unwrap();
     assert!(last.ok && last.text == "Push after committing was skipped: that repository's tab is no longer active.");
 
     st.job = Some(job(st.workdir()));
     let fx = update(&mut st, done(false), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "a failed commit doesn't push: {fx:?}");
+    assert!(
+        !fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))),
+        "a failed commit doesn't push: {fx:?}"
+    );
 
     // Nothing to push from a detached HEAD.
     git(&dir, &["checkout", "-q", "--detach"]);
@@ -287,6 +298,6 @@ fn set_push_after_commit_saves() {
     let mut st = state();
     let fx = update(&mut st, Msg::Commit(CommitMsg::SetPushAfterCommit(true)), Instant::now());
     assert!(st.settings.push_after_commit);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.push_after_commit));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.push_after_commit));
     assert!(update(&mut st, Msg::Commit(CommitMsg::SetPushAfterCommit(true)), Instant::now()).is_empty());
 }

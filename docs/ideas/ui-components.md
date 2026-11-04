@@ -47,6 +47,7 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   there are more than ~16 themes; base-theme hints in the theme file help as a list, not a sentence;
   theme-file `base` "dark" falling back to Graphite rather than Dusk if owners want files to
   follow the default
+- The signature chip's latched look shows one frame after its menu opens
 
 ### Dialogs keep what was typed
 
@@ -76,6 +77,17 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Translate the graph column titles (the floors already size the columns for longer titles)
 - Cut the file history row's date when the panel is narrower than the date
 - Show the whole text of a cut row when it gets keyboard focus, not only on hover
+
+### Middle truncation of long names (D16)
+
+- Cut the conflict popover's Branch and Upstream lines by the D16 rule (they still cut half and half)
+- Cut graph ref chips in their middle after the "+N" overflow (waits on #534 and #424)
+
+### Status at a glance (D15)
+- The fetch tooltip's per-remote list comes from FETCH_HEAD at the last full load; after an
+  in-app fetch that changed no refs it can name the remotes of the fetch before
+- A behind count of 10 or more is wider than the 12 px slot and cuts the tab name sooner
+- Show the state slot's mark in the tab list dropdown as well
 
 ### Menus name their object once
 
@@ -172,6 +184,8 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Double-click a file row to open it in the external diff tool
 - Stable per-file row ids in scrolled file lists, so an open row menu stays with its file while the list scrolls
 - A pointing-hand cursor over file rows, matching the file history list
+- File list rows (`list_row::file_row_in`) still report selection with `WidgetInfo::selected`, which screen readers announce as an on/off toggle; mark them with `access::mark_selected` like the other rows
+- Some screen readers may not announce the selected flag on a Button role; consider a list-item role for selectable rows
 
 ### Layout that gives tool views room
 
@@ -202,6 +216,7 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 
 - A short "Learn more" link in each empty state, to a page on the feature
 - In the narrowest left panel (under about 240 px) a German Remote hinzufügen… is cut with "…"
+- Hold back ISSUES's Sign in by what PULL REQUESTS shows when it offers Connect… too, not only when it shows a failure, so ISSUES never names a cause without an action
 
 ### Activity panel opens only when asked
 
@@ -236,7 +251,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Follow macOS's title-bar double-click setting (zoom or minimize) instead of always maximizing
 - F10 opens the title bar's menu, like an Alt tap
 - Dim the window buttons under a dialog's backdrop
-- Cut long repository names in the middle on tabs, like the branch picker
 - Vibrancy behind the macOS title bar, toolbar and sidebar
 - Mica on Windows 11 21H2 (build 22000), which lacks the documented backdrop attribute
 - A dark system menu under a dark theme
@@ -257,6 +271,9 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - Animate the dropped tab settling into its slot, like the others slide
 - The system frame's tab bar lifts the active tab within its own 30 px (the tabs start 2 px
   lower); give it the drawn title bar's 34 px tabs
+- Measure the toolbar's widest local branch once per repository load instead of hashing every branch name each frame
+- A test for the one-time re-fit when a detached HEAD's label is wider than every local branch
+- Keep `toolbar_fit.rs`'s helpers (`text_w`, `caption_need`, `widest_branch`, `REPO_FIT`) private to it
 
 ### Narrow windows
 
@@ -303,6 +320,15 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   resized
 - The create issue dialog's label and people pickers at the 36 px field height inside field
   groups, like its text fields
+- Sizing S5: single-line fields place their text at floor((h - row height) / 2) from the top
+  (Align::Min), so Regular fields read 8/8 above the caps and below the baseline (9/7 today), in
+  the same re-render as the drop-downs and buttons that share the graph search row's baseline
+- Sizing S2 follow-ups: the sparse paths field and terminal pill still set `.margin(...)`, and
+  the PR/issue comment fields keep egui's padding
+- `TextField::size` has no caller and `text_field::with_button` always makes its button as tall as a Large field; size the button from the field, and drop `buttons.rs`'s note that fields don't take a size yet
+- Give a size to the fields still drawn without one: the dashboard filter, Preferences > Signing, the issue picker, the rebase editor, and the pull request merge title and message
+- Turn the size `debug_assert!`s that only compare constants (the profiles rename row, the chip fits) into const asserts
+- Make the hand-set size count (`SIZE_LITERALS`) fail instead of only logging, once the sizes are swept
 
 ### UI review polish
 
@@ -339,9 +365,21 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   grid at each)
 - `welcome_repo_groups` at 820 px hides the Recent "not found" row under the status bar: use a
   taller window or a Recent-only golden
+- A focused Large `SizedField` in the Strong-ring controls golden, which shows only the inline field
+- The Strong outer ring reaches 6 to 7 px past a control and touches a neighbour 8 px away; check tight toolbars, the sidebar filter and theme picker cards at the scroll edges with an in-app Strong golden
+- The Strong inset ring may clip the × inside a tab's 16 px glyph box
+- Name the 32 controls still listed in `access_names_allow.txt` and shrink the list
+- Check number fields for names too (about 54 in Preferences); the names check skips them today
+- A commit row's accessible name could carry the author, short id and date, not only the subject
+- A row's label leaks into the names of combo-box popups opened from it
+- An untracked file's "?" badge reads "Added" to screen readers; give it its own name
 
 ### Buttons and split buttons follow the shared state painter
 - S3: quiet chips get a hit area of at least 24 px, with a check
 - S4: fold `tab_glyph` into `paint_target`, then delete `paint_quiet`
 - S5: the segmented thumb's "Graph" sits low (7 px above the caps, 5 px below the baseline)
 - A Small segmented control would trip `paint_target`'s hit assert (20 px options)
+- The state-fill ratchet misses fills painted through locals or straight from `hover_layer` (the dialog header, repository rows, the split menu, theme picker cards); move them onto the shared painter and let the check see them
+
+### The firefly loader (D20)
+- Roll the fireflies out to the remaining loading panes by the words rule (words that only say "loading" become the loader's label); and the hardcoded English "Loading your repositories…" and "Loading forks…"

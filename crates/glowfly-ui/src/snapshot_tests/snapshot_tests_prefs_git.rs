@@ -3,16 +3,16 @@
 //! check a git; they never change the setting themselves.
 
 use super::snapshot_tests::{harness_sized, settings};
-use crate::git_env::GitEnvMsg;
-use crate::msg::Msg;
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::git_program::{Candidate, Refusal};
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::native_path::shown;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::git_env::GitEnvMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::path::PathBuf;
 use std::time::Instant;
 

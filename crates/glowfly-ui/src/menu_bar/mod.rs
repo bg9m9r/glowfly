@@ -12,12 +12,12 @@
 
 use super::menu_anchor;
 use super::theme::color;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::menu_keys::TopMenu;
-use crate::state::menu_model;
-use crate::ui::widgets::menu::{separator, submenu};
+use crate::widgets::menu::{separator, submenu};
 use eframe::egui::{self, Button, Frame, Id, Key, Margin, Modifiers};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::menu_keys::TopMenu;
+use glowfly_model::state::menu_model;
 
 mod about;
 mod bar;
@@ -26,8 +26,8 @@ mod items;
 mod keys;
 mod notices;
 
-pub(crate) use crate::ui::menu_keys::may_step;
-pub(super) use about::about;
+pub(crate) use crate::menu_keys::may_step;
+pub(super) use about::{ThisCopy, about};
 #[cfg(test)]
 pub(super) use items::hint;
 pub(crate) use keys::{marks, take};
@@ -48,7 +48,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
     egui::TopBottomPanel::top("menu-bar").frame(Frame::new().fill(color::toolbar()).inner_margin(Margin::symmetric(6, 2))).show(
         ctx,
         |ui| {
-            crate::ui::widgets::menu::bar(ui, |ui| bar::draw(ui, st, msgs));
+            crate::widgets::menu::bar(ui, |ui| bar::draw(ui, st, msgs));
         },
     );
 }
@@ -68,7 +68,7 @@ pub(crate) fn any_open(ctx: &egui::Context) -> bool {
 /// behind it. Call before the bar is drawn.
 pub(crate) fn keep_inside(ctx: &egui::Context) {
     if any_open(ctx) {
-        crate::ui::menu_keys::keep_inside(ctx);
+        crate::menu_keys::keep_inside(ctx);
     }
 }
 
@@ -76,7 +76,7 @@ pub(crate) fn keep_inside(ctx: &egui::Context) {
 /// from the keyboard or switched to.
 fn focus_first(ui: &egui::Ui, st: &mut AppState) {
     if std::mem::take(&mut st.view.menu_keys.focus_first) {
-        crate::ui::menu_keys::focus_first(ui);
+        crate::menu_keys::focus_first(ui);
     }
 }
 
@@ -104,7 +104,7 @@ fn menus(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let marks = keys::marks(st);
     let show = keys::shown(ui.ctx(), st);
-    crate::ui::menu_keys::caller_opens(ui);
+    crate::menu_keys::caller_opens(ui);
     let mut picked = None;
     let mut list_focused = false;
     for m in TopMenu::ALL {
@@ -154,6 +154,8 @@ fn single(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>, m: TopMenu)
     contents(m, ui, st, msgs);
 }
 
+#[cfg(test)]
+mod about_tests;
 #[cfg(test)]
 pub(crate) mod keys_tests;
 #[cfg(test)]

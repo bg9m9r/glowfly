@@ -5,14 +5,15 @@
 //! against a local remote), and the merge method remembered per repository.
 
 use super::calls_tests::{calls, done, git_jobs, loaded, opened, reply_msg, run, view};
-use crate::effect::Effect;
 use crate::flows::{drive, finish_keeping, git};
-use crate::msg::{Msg, RepoMsg};
-use crate::pull_request::{PrCall, PrReply, PullRequestMsg};
-use crate::state::AppState;
-use crate::update::update;
 use glowfly_core::forge::{MergeMethod, Merged};
 use glowfly_core::undo::UndoKind;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::pull_request::{PrCall, PrReply, PullRequestMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::update;
 use std::path::Path;
 use std::time::Instant;
 
@@ -92,7 +93,7 @@ fn merged_with_local_delete_runs_remote_steps_then_the_checked_delete() {
     let fx = reply(&mut st, true);
     assert_eq!(git_jobs(&fx), [[PUSH_DELETE, FETCH, CHECK, TRACK, DELETE].map(cmd).to_vec()]);
     let record = fx.iter().find_map(|e| match e {
-        Effect::RunGit { record, .. } => Some(record.clone()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { record, .. }) => Some(record.clone()),
         _ => None,
     });
     assert_eq!(record, Some(Some(UndoKind::DeleteBranch("feature".into()))), "Undo brings the branch back");
@@ -166,8 +167,8 @@ fn a_branch_checked_out_in_another_worktree_is_kept() {
     loaded(&mut st, |d| d.methods = vec![MergeMethod::Merge]);
     let v = view(&st);
     let snap = st.snap.as_ref().unwrap();
-    let m = crate::state::pull_request_actions::merging(v, None).unwrap();
-    let (branch, plan) = crate::state::pull_request_cleanup::local_delete(st.settings.lang(), snap, &m).unwrap();
+    let m = glowfly_model::state::pull_request_actions::merging(v, None).unwrap();
+    let (branch, plan) = glowfly_model::state::pull_request_cleanup::local_delete(st.settings.lang(), snap, &m).unwrap();
     assert_eq!(branch, "feature");
     assert!(plan.is_err_and(|why| why.starts_with("feature is checked out in the worktree at")), "the checkbox is disabled");
     let fx = reply(&mut st, false);
@@ -237,7 +238,7 @@ fn a_refused_delete_puts_the_upstream_back() {
     let merge = glowfly_core::testkit::git_out(&dirs[0], &["config", "branch.feature.merge"]);
     assert_eq!(merge.trim(), "refs/heads/feature", "it tracks the source again, not main");
     let toast = st.toasts.iter().find(|t| !t.ok).map(|t| t.text.as_str()).unwrap_or_default();
-    assert!(toast.starts_with("Kept local branch feature: git didn't delete it."), "{toast}");
+    assert!(toast.starts_with("Kept local branch feature: Git didn't delete it."), "{toast}");
     assert!(st.pr_cleanup.is_none());
     drop(st);
     let _ = std::fs::remove_dir_all(&wt);
@@ -252,7 +253,7 @@ fn the_merge_method_is_remembered_per_repository() {
     st.session.pull_request.view.as_mut().unwrap().forms.merge_method = Some(MergeMethod::Rebase);
     let fx = run(&mut st, PullRequestMsg::Merge);
     assert!(fx.iter().any(
-        |e| matches!(e, Effect::SaveSettings(s) if s.merge_method_for(&st.snap.as_ref().unwrap().real_workdir) == Some(MergeMethod::Rebase))
+        |e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.merge_method_for(&st.snap.as_ref().unwrap().real_workdir) == Some(MergeMethod::Rebase))
     ));
 
     // Opened again: preselected, while the repository allows it.

@@ -5,10 +5,10 @@
 use super::palette_stash_tests::two_stashes;
 use super::tests::{drive, git, state};
 use super::update;
-use crate::msg::{Msg, PaletteMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::palette::{InputKind, Mode, Palette, PaletteCommand as C, StashAction, row_count};
-use crate::state::palette_nav::{Jump, PAGE_ROWS};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{InputKind, Mode, Palette, PaletteCommand as C, StashAction, row_count};
+use glowfly_model::state::palette_nav::{Jump, PAGE_ROWS};
 use std::time::Instant;
 
 /// Sends `j` and returns the new selection, checking it asks the list to scroll there.

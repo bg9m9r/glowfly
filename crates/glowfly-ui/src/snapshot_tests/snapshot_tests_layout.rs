@@ -1,15 +1,15 @@
 //! Hidden panels and the status bar's zoom and Show toolbar buttons. Shares the fixture
 //! repository and renderer with `snapshot_tests`.
 
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::layout::Panel;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, harness_sized, remove_fixture, render, settings, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, harness_sized, remove_fixture, render, settings, with_repo};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::layout::Panel;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::time::Instant;
 
 fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: &LayoutMsg) -> bool {
@@ -56,7 +56,7 @@ fn layout_all_hidden_light() {
 #[test]
 fn layout_sheet_view_group() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "layout-sheet");
-    st.modal = Some(Modal::Shortcuts { filter: "view".into() });
+    st.modal = Some(Modal::Shortcuts { filter: "hide".into() });
     render("layout_sheet_view_group", st, true);
     remove_fixture(&dir);
 }
@@ -77,13 +77,13 @@ fn layout_prefs_interface() {
 /// width at its default for the window.
 #[test]
 fn layout_wide_window_details_drawer() {
-    use crate::state::panel_layout::DETAILS;
     use glowfly_core::repo;
     use glowfly_core::settings::SizedPanel;
+    use glowfly_model::state::panel_layout::DETAILS;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "layout-wide");
     let snap = st.snap.as_ref().unwrap();
     let oid = snap.commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit").oid;
-    st.session.selection = crate::state::Selection::Commit(oid);
+    st.session.selection = glowfly_model::state::Selection::Commit(oid);
     st.session.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let wide = egui::vec2(2000.0, 1070.0);
     let mut h = harness_sized(st, true, wide);

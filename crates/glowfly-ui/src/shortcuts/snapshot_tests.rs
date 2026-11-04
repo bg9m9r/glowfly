@@ -2,13 +2,13 @@
 //! summary taking focus for Ctrl+Shift+M. Shares the fixture repository and renderer with
 //! `ui::snapshot_tests`.
 
-use crate::msg::{DialogMsg, Dismiss, Msg};
-use crate::state::{Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, remove_fixture, with_repo};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{DialogMsg, Dismiss, Msg};
+use glowfly_model::state::{Modal, Selection};
 
 #[test]
 fn shortcut_sheet() {
@@ -102,7 +102,7 @@ fn commit_summary_takes_focus() {
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn sheet_shows_rebound_keys() {
-    use crate::keymap::{BindingId, Chord, KeyName};
+    use glowfly_model::keymap::{BindingId, Chord, KeyName};
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-rebound");
     st.keymap.set(BindingId::Refresh, vec![Chord::cmd(KeyName::Letter('R'))]);
     st.keymap.set(BindingId::NewTab, Vec::new());
@@ -123,7 +123,7 @@ fn shortcut_sheet_history() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("shortcut_sheet_history");
-    for label in ["Editing history", "Reword the selected commit", "Continue the rebase"] {
+    for label in ["Editing history", "Reword the selected commit", "Continue the merge, rebase or cherry-pick"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     drop(h);
@@ -134,14 +134,15 @@ fn shortcut_sheet_history() {
 /// the others once one is given a key.
 #[test]
 fn sheet_shows_command_keys_once_bound() {
-    use crate::keymap::{BindingId, Chord, KeyName};
+    use glowfly_model::keymap::{BindingId, Chord, KeyName};
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-commands");
     st.modal = Some(Modal::Shortcuts { filter: String::new() });
     let mut h = harness(st, true);
     h.run();
-    // Pull, Push, Stash changes and Unstash share their names with toolbar or sidebar buttons.
+    // Pull, Push, Stash changes and Unstash share their names with toolbar or sidebar buttons, and
+    // New branch… with the sidebar's +.
     for label in ["Repository commands", "Fetch all remotes", "New branch…", "Switch branch…"] {
-        assert!(h.query_by_label(label).is_some(), "{label}");
+        assert!(h.query_all_by_label(label).next().is_some(), "{label}");
     }
     assert!(h.query_by_label("Open the operation journal").is_none(), "no key by default");
     drop(h);

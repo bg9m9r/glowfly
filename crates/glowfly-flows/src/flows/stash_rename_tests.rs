@@ -7,21 +7,21 @@
 use super::palette_stash_tests::two_stashes;
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::{Effect, StashEffect};
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StashMsg;
-use crate::state::palette::{Items, Mode, PaletteCommand as C, Pick, PickKind, shown};
-use crate::state::{AppState, Modal, RunningJob};
 use git2::Oid;
+use glowfly_model::effect::{Effect, StashEffect};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StashMsg;
+use glowfly_model::state::palette::{Items, Mode, PaletteCommand as C, Pick, PickKind, shown};
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn form(st: &AppState) -> &crate::state::stashes::RenameStashForm {
+fn form(st: &AppState) -> &glowfly_model::state::stashes::RenameStashForm {
     match &st.modal {
         Some(Modal::RenameStash(f)) => f,
         _ => panic!("the Rename stash dialog is not open"),
@@ -128,6 +128,7 @@ fn refusals_leave_or_close_the_dialog() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

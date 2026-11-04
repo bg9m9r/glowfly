@@ -8,7 +8,7 @@ use git2::Oid;
 use glowfly_core::conflict_restore::SavedPicks;
 use glowfly_core::diff_rows::GapText;
 use glowfly_core::highlight::DiffHighlight;
-use glowfly_core::repo::{BinarySides, ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
+use glowfly_core::repo::{BinarySides, Choice, ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use std::sync::Arc;
 
@@ -26,6 +26,9 @@ pub enum DiffMsg {
     SetIgnoreWhitespace(bool),
     /// Diff header toggle: wrap long lines to the viewer's width (saved in settings).
     SetWordWrap(bool),
+    /// Diff header Text / Preview switch for SVG files: show a changed SVG drawn (saved in
+    /// settings).
+    SetSvgPreview(bool),
     /// Scroll the diff to the next (1) or previous (-1) change; at either end, open the next or
     /// previous changed file of the list the diff came from (on its first or last change).
     JumpToChange(isize),
@@ -85,7 +88,7 @@ pub enum DiffMsg {
     HunkPatchRead {
         result: Result<Vec<u8>, String>,
     },
-    /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
+    /// A `DiffEffect::Highlight` finished: exact spans for the hunks and/or the whole file of the diff shown
     /// at `generation`, each only where it was pending. Applied only while that diff is still on
     /// screen.
     DiffHighlighted {
@@ -95,14 +98,14 @@ pub enum DiffMsg {
         whole: Option<DiffHighlight>,
     },
     /// The unchanged lines between the hunks of the diff shown at `generation`, read
-    /// (`Effect::LoadDiffGaps`).
+    /// (`DiffEffect::Gaps`).
     GapsLoaded {
         target: DiffTarget,
         generation: u64,
         result: Result<Arc<GapText>, String>,
     },
     /// The sizes and decoded images of the binary diff shown at `generation`
-    /// (`Effect::LoadBinarySides`).
+    /// (`DiffEffect::BinarySides`).
     BinarySidesLoaded {
         target: DiffTarget,
         generation: u64,
@@ -119,6 +122,7 @@ impl DiffMsg {
             | Self::SetDiffMode(..)
             | Self::SetIgnoreWhitespace(..)
             | Self::SetWordWrap(..)
+            | Self::SetSvgPreview(..)
             | Self::JumpToChange(..)
             | Self::ExpandUnchanged(..)
             | Self::CollapseUnchanged(..)
@@ -160,6 +164,10 @@ pub enum ConflictMsg {
         line: usize,
     },
     ConflictTakeAll(Side),
+    /// Give the current chunk whole sides (`Unresolved` clears its picks): the conflict keys.
+    ConflictPickCurrent(Choice),
+    /// Put the other side first in chunk `k`, which takes lines of both (the band's Swap).
+    ConflictSwap(usize),
     ConflictReset,
     /// Show (true) or hide the output as editable text.
     ConflictEditOutput(bool),
@@ -220,6 +228,7 @@ impl ConflictMsg {
             | Self::CloseConflict
             | Self::ConflictToggle { .. }
             | Self::ConflictToggleLine { .. }
+            | Self::ConflictSwap(..)
             | Self::ConflictEditOutput(..)
             | Self::ConflictOutputEdited
             | Self::ConflictDiscardEdit(..)
@@ -227,6 +236,7 @@ impl ConflictMsg {
             | Self::ConflictFold { .. }
             | Self::SaveConflictKeepMarkers
             | Self::ConflictTakeAll(..)
+            | Self::ConflictPickCurrent(..)
             | Self::ConflictReset
             | Self::ConflictStep(..)
             | Self::ConflictSelect(..)

@@ -4,10 +4,10 @@
 use super::snapshot_tests::{harness_palette, remove_fixture, settings, with_repo};
 use super::snapshot_tests_diff::with_word_diff_in;
 use super::theme::{self, color::Palette, custom};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use glowfly_core::settings::themes::parse;
 use glowfly_core::settings::{DiffLayout, ThemeCatalog, ThemeChoice, ThemeProblem};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::path::Path;
 use std::time::Instant;
 
@@ -23,6 +23,8 @@ fn main_high_contrast_dark() {
     render("main_high_contrast_dark", st, theme::HIGH_CONTRAST_DARK);
     remove_fixture(&dir);
 }
+
+// High contrast light's main window is `history_table_high_contrast_light`: the same render.
 
 #[test]
 fn diff_high_contrast_light() {

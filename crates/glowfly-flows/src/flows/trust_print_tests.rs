@@ -5,13 +5,13 @@
 use super::jobs::start_job;
 use super::tests::{finish, finish_keeping, git, state};
 use super::trust_tests::{asking, done, drive, open, real, run, untrusted_repo};
-use crate::effect::Effect;
-use crate::msg::{Msg, PaletteMsg, RepoMsg, StageMsg, TrustMsg};
-use crate::state::job_spec::JobSpec;
-use crate::state::palette::{Palette, PaletteCommand, entries};
-use crate::state::trust::{Standing, TrustPrompt, record};
-use crate::state::{AppState, Modal};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, StageMsg, TrustMsg};
+use glowfly_model::state::job_spec::JobSpec;
+use glowfly_model::state::palette::{Palette, PaletteCommand, entries};
+use glowfly_model::state::trust::{Standing, TrustPrompt, record};
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 use std::time::Duration;
 
@@ -68,13 +68,18 @@ fn a_new_hook_asks_again_about_it_alone() {
     drive(&mut st, Msg::CloseModal);
     st.settings.auto_fetch_minutes = 1;
     let at = st.last_fetch + Duration::from_secs(61);
-    assert!(!run(&mut st, Msg::Tick(at)).iter().any(|e| matches!(e, Effect::RunGit { .. })), "no auto-fetch");
+    assert!(
+        !run(&mut st, Msg::Tick(at)).iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))),
+        "no auto-fetch"
+    );
     let fx = run(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))));
-    let git_status = fx.iter().find_map(|e| if let Effect::LoadStatus { git_status, .. } = e { Some(*git_status) } else { None });
+    let git_status = fx.iter().find_map(|e| {
+        if let Effect::Load(glowfly_model::effect::LoadEffect::Status { git_status, .. }) = e { Some(*git_status) } else { None }
+    });
     assert_eq!(git_status, Some(false), "git doesn't read its status");
     finish(&mut st, fx);
     let fx = run(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { opts, .. } if !opts.trusted)), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, .. }) if !opts.trusted)), "{fx:?}");
     finish(&mut st, fx);
     assert!(!asking(&st), "asked once per session");
 
@@ -158,7 +163,7 @@ fn a_changed_repository_holds_jobs_and_offers_the_review() {
     assert_eq!(review, Some(Some("changed".into())));
 
     let fx = run(&mut st, Msg::git("Pull", &["pull", "--ff"]));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     assert_eq!(prompt(&st).held.as_deref(), Some("Pull"));
     assert!(prompt(&st).gained.is_some());
     run(&mut st, Msg::CloseModal);
@@ -168,7 +173,11 @@ fn a_changed_repository_holds_jobs_and_offers_the_review() {
     run(&mut st, Msg::git("Pull", &["pull", "--ff"]));
     let real = real(&st);
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
-    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).count(), 1, "Trust and run runs it: {fx:?}");
+    assert_eq!(
+        fx.iter().filter(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))).count(),
+        1,
+        "Trust and run runs it: {fx:?}"
+    );
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Pull"));
     st.job = None;
     st.palette = Some(Palette::default());

@@ -3,14 +3,14 @@
 
 use super::tests::{git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{CredentialMsg, JobMsg, Msg};
-use crate::state::notify::AUTO_FETCH;
-use crate::state::sign_in::FetchRun;
-use crate::state::{AppState, RunningJob};
 use glowfly_core::auth_failure::AuthNeed;
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::{self, LoadOptions};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{CredentialMsg, JobMsg, Msg};
+use glowfly_model::state::notify::AUTO_FETCH;
+use glowfly_model::state::sign_in::FetchRun;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -40,7 +40,7 @@ fn origin(name: &str) -> (AppState, PathBuf) {
 fn runs(fx: &[Effect]) -> Vec<(Vec<Vec<String>>, bool)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::RunGit { cmds, prompts, .. } => Some((cmds.clone(), *prompts)),
+            Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts, .. }) => Some((cmds.clone(), *prompts)),
             _ => None,
         })
         .collect()
@@ -100,6 +100,7 @@ fn a_remote_that_needs_a_sign_in_is_paused_and_skipped() {
         quiet: true,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

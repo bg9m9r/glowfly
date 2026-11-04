@@ -4,11 +4,11 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::{AppState, Modal, RunningJob};
-use crate::tag::TagMsg;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::tag::TagMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -73,7 +73,7 @@ fn annotate_starts_one_job() {
     open(&mut st, "v1");
     let fx = update(&mut st, annotate(&sha, " notes "), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, expect, record, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, expect, record, .. })] => {
             assert_eq!(
                 cmds,
                 &[vec!["tag".to_owned(), "-a".into(), "-f".into(), "-m".into(), "notes".into(), "--".into(), "v1".into(), sha.clone()]]
@@ -114,6 +114,7 @@ fn annotate_refusals_keep_dialog() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

@@ -3,13 +3,14 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::themes::{ThemeEffect, ThemeMsg};
 use glowfly_core::settings::themes::parse;
 use glowfly_core::settings::{BuiltinTheme, ThemeCatalog, ThemeChoice, ThemeFile};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::themes::{ThemeEffect, ThemeMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -74,7 +75,7 @@ fn created_selects_reloads_and_reveals() {
     let fx = run(&mut st, ThemeMsg::Created(Ok(("my-theme".into(), p.clone()))));
     assert_eq!(st.settings.theme, ThemeChoice::Custom("my-theme".into()));
     assert!(
-        matches!(&fx[..], [Effect::SaveSettings(s), Effect::Theme(ThemeEffect::Load), Effect::Os(OsEffect::RevealPath(r))]
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s)), Effect::Theme(ThemeEffect::Load), Effect::Os(OsEffect::RevealPath(r))]
             if s.theme == ThemeChoice::Custom("my-theme".into()) && *r == p),
         "{fx:?}"
     );

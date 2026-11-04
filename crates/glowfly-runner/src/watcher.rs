@@ -3,19 +3,19 @@
 //! and sends one message per burst: `WatchMsg::RepoChanged`, with the work-tree paths it saw when
 //! nothing else changed, or `WatchMsg::IndexChanged` when the index changed too (with those
 //! paths), followed by `WatchMsg::ConfigChanged` when the burst touched the repository's config
-//! (the identity commits get may have changed). Owned by the runner (`Effect::Watch`). On Windows the safety poll asks the same
-//! thread to sweep the tree (`Effect::SweepWatch`, `glowfly_core::watch_sweep`) for changes the
-//! watcher may have dropped; what it finds goes through the same classification and bursts.
+//! (the identity commits get may have changed). Owned by the runner (`ControlEffect::Watch`). On
+//! Windows the safety poll asks the same thread to sweep the tree (`ControlEffect::SweepWatch`,
+//! `glowfly_core::watch_sweep`) for changes the watcher may have dropped; what it finds goes through the same classification and bursts.
 //! Config files the repository's config includes are watched where they are (`includes.rs`).
 //! Right after it starts, the thread checks that events arrive at all with a probe file in the
 //! git dir (`probe.rs`), reported as `WatchMsg::Probed`.
 
-use crate::effect::WatchTarget;
-use crate::msg::Msg;
-use crate::msg::WatchMsg;
-use crate::runner::Waker;
+use crate::Waker;
 use glowfly_core::watch::{Change, Ignores, MAX_WATCH_PATHS, Touch, WatchPaths};
 use glowfly_core::watch_sweep::Sweep;
+use glowfly_model::effect::WatchTarget;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::WatchMsg;
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
 use std::collections::BTreeSet;
@@ -32,7 +32,7 @@ use probe::Prober;
 /// A burst fires this long after its last relevant event…
 const QUIET: Duration = Duration::from_millis(300);
 /// …or this long after its first, if events keep coming.
-pub const MAX_WAIT: Duration = Duration::from_secs(2);
+pub(crate) const MAX_WAIT: Duration = Duration::from_secs(2);
 
 /// The single live watcher; a generation guards against a slow start finishing after a newer
 /// request.

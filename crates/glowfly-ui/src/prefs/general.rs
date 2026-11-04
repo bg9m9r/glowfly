@@ -1,21 +1,22 @@
-//! Preferences > General, in titled sections: Updates, Git (general_git.rs), Fetching, Graph,
-//! Repositories, Sign-ins, Help and tips, and Diagnostics.
+//! Preferences > General, in titled sections: Updates, Notifications and Commit messages
+//! (general_notify.rs), Git (general_git.rs), Fetching, Graph, Repositories, Sign-ins, Help and
+//! tips, and Diagnostics.
 
 use super::updates_row::UpdatesView;
 use super::{check_row, help, row, section, warn};
-use crate::keymap::{BindingId, Keymap};
-use crate::logs::LogsMsg;
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
-use crate::onboarding::OnboardingMsg;
-use crate::state::deep_link::SchemeView;
-use crate::state::prefs::GitConfigValues;
-use crate::ui::theme::controls;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::widgets::buttons;
 use eframe::egui::{self, Ui};
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::deep_link::SchemeView;
+use glowfly_model::state::prefs::GitConfigValues;
 
 /// The help under Watch for File Changes, naming Refresh's current key.
 fn watch_files_help(t: Lang, keys: &Keymap) -> String {
@@ -37,6 +38,8 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     let t = s.lang();
     section(ui, t.tr("prefs.general.section.updates"));
     super::updates_row::updates_row(ui, s, &cx.updates, msgs);
+    super::general_notify::notifications(ui, t, s, msgs);
+    super::general_notify::commit_messages(ui, t, s);
     section(ui, t.tr("prefs.general.section.git"));
     super::general_git::git_section(ui, s, git, cx.program, msgs);
     section(ui, t.tr("prefs.general.section.fetching"));
@@ -187,7 +190,7 @@ mod snapshot_tests_language;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::keymap::{Chord, KeyName};
+    use glowfly_model::keymap::{Chord, KeyName};
 
     #[test]
     fn watch_help_names_refreshs_current_key() {

@@ -7,15 +7,15 @@
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_gitflow::pushed;
 use super::snapshot_tests_select::click;
-use crate::msg::{ForgeMsg, IssueMsg, Msg};
-use crate::state::issue::{Details, IssueView};
-use crate::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Entry, EntryKind, Issue, IssueDetails, IssueFacets, Provider, Target};
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{ForgeMsg, IssueMsg, Msg};
+use glowfly_model::state::issue::{Details, IssueView};
+use glowfly_model::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
 use std::path::PathBuf;
 
 pub(crate) fn github() -> Target {

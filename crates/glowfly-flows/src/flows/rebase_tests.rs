@@ -5,18 +5,19 @@ use super::rebase::JOB_LABEL;
 use super::selection_tests::{commit_on, git, head};
 use super::tests::{drive, state};
 use super::update;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::Msg;
-use crate::msg::RebaseMsg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::state::conflict::ConflictView;
-use crate::state::history::FileHistoryView;
-use crate::state::rebase::{CONFLICTED_FILES, Editing, RebasePanel, UNCHANGED};
-use crate::state::{AppState, Modal, RunningJob};
 use git2::{Oid, RepositoryState};
 use glowfly_core::rebase::{self, Outcome, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream};
 use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry};
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::rebase::{CONFLICTED_FILES, Editing, RebasePanel, UNCHANGED};
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -107,6 +108,7 @@ pub(super) fn running_job(dir: &Path) -> RunningJob {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -124,7 +126,7 @@ fn opening_requests_the_list_and_closes_other_views() {
     st.session.conflict.view = Some(ConflictView::loading("c1.txt".into()));
     // The first interactive rebase also retires the Tidy tip, which saves the settings.
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[1]))));
-    let fx: Vec<Effect> = fx.into_iter().filter(|e| !matches!(e, Effect::SaveSettings(_))).collect();
+    let fx: Vec<Effect> = fx.into_iter().filter(|e| !matches!(e, Effect::Save(SaveEffect::Settings(_)))).collect();
     match &fx[..] {
         [e @ Effect::Rebase(RebaseEffect::LoadPlan { base, generation, .. })] => {
             assert_eq!((base, *generation), (&RebaseBase::FromCommit(c[1]), st.session.rebase.generation));
@@ -278,7 +280,7 @@ fn an_unchanged_list_onto_a_branch_can_start() {
     git(&dir, &["checkout", "-q", "main"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch("base".into()))));
-    assert_eq!(panel(&st).subtitle(), "Rebasing 3 commits of main onto base");
+    assert_eq!(panel(&st).subtitle(glowfly_core::i18n::Lang::En), "Rebasing 3 commits of main onto base.");
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::Start { .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);

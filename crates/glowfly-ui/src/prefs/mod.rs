@@ -1,16 +1,22 @@
-//! Full-window Preferences: a navigation column, an optional sub-list (Integrations), and a
-//! form with right-aligned labels and help text (form.rs), the page title with its "Saved" tick,
-//! and the Save / Revert bar under a page with unsaved edits (save_bar.rs).
+//! Full-window Preferences: a navigation column with the search (nav.rs, index.rs), an optional
+//! sub-list (Integrations), and a form at most 760 px wide with right-aligned labels and help
+//! text (form.rs, form_help.rs), the page title with its "Saved" tick, and the Save / Revert bar
+//! under a page with unsaved edits (save_bar.rs).
 
+mod accessibility;
 mod appearance;
 mod appearance_graph;
 mod diff_viewer;
 mod form;
+mod form_help;
 mod general;
 mod general_git;
+mod general_notify;
 mod git;
 mod git_program;
 mod gitflow;
+mod group_colour_row;
+mod index;
 mod integrations;
 mod integrations_form;
 mod keyboard;
@@ -18,9 +24,11 @@ mod keyboard_row;
 mod language;
 mod lfs;
 mod links;
+mod nav;
 mod profile_rules;
 mod profile_setup;
 mod profiles;
+mod reveal;
 mod save_bar;
 mod signing;
 mod sparse;
@@ -39,25 +47,41 @@ mod theme_row;
 mod tools;
 mod trello;
 mod updates_row;
+// For the chip catalog golden (`snapshot_tests_chips.rs`).
+#[cfg(test)]
+pub(crate) use ssh_agent::pill_widget as ssh_agent_pill;
+#[cfg(test)]
+pub(crate) use ssh_card::chip as ssh_card_chip;
 
 pub(super) use form::*;
 
 use super::theme::color;
-use super::widgets::{self, Icon, scroll_cue};
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::state::prefs_save;
-use crate::state::{AppState, PrefPage};
-use crate::ui::theme::type_scale;
-use eframe::egui::{self, RichText, Ui};
+use super::widgets::{self, scroll_cue};
+use crate::theme::type_scale;
+use eframe::egui::{self, RichText};
 use glowfly_core::forge::Provider;
-use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::state::prefs_save;
+use glowfly_model::state::{AppState, PrefPage};
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(page) = st.prefs.as_ref().map(|p| p.page) else { return };
     let t = st.settings.lang();
     let repo_name = st.snap.as_ref().map(|s| s.name.clone());
-    nav(ctx, page, repo_name.as_deref(), t, msgs);
+    // Before the nav, which may set a new target this frame.
+    reveal::sync(ctx, page, st.prefs.as_ref().is_some_and(|p| p.leaving.is_some()));
+    if let Some(p) = st.prefs.as_mut() {
+        let view = nav::NavView { page, repo_name: repo_name.as_deref(), t };
+        nav::show(ctx, &view, &mut p.search, &mut p.focus_search, msgs);
+    }
+    form_help::set_lang(ctx, t);
+    // Opened help texts close when the page changes.
+    let shown_key = egui::Id::new("prefs-help-page");
+    if ctx.data(|d| d.get_temp::<PrefPage>(shown_key)) != Some(page) {
+        form_help::close_all(ctx);
+        ctx.data_mut(|d| d.insert_temp(shown_key, page));
+    }
     if page == PrefPage::Integrations {
         providers(ctx, st, msgs);
     }
@@ -73,7 +97,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let held = st.snap.as_ref().filter(|_| !st.runs_git_unasked()).map(|s| s.real_workdir.clone());
     let lfs_cx = lfs::LfsContext {
         repo_name: repo_name.clone(),
-        remote: st.snap.as_ref().and_then(crate::state::lfs::lfs_remote),
+        remote: st.snap.as_ref().and_then(glowfly_model::state::lfs::lfs_remote),
         job: st.job.as_ref().map(|j| j.label.clone()),
         held: held.clone(),
         patterns: st.snap.as_ref().map(|s| s.lfs_patterns.clone()).unwrap_or_default(),
@@ -86,9 +110,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some(), save_first };
     let ssh_cx = ssh::SshContext {
         use_agent: st.settings.use_ssh_agent,
-        services: crate::state::ssh_service::services(&st.settings.connections)
+        services: glowfly_model::state::ssh_service::services(&st.settings.connections)
             .into_iter()
-            .map(|c| (c.account.clone(), crate::state::ssh_service::service_label(&c.account)))
+            .map(|c| (c.account.clone(), glowfly_model::state::ssh_service::service_label(&c.account)))
             .collect(),
         job: st.job.as_ref().map(|j| j.label.clone()),
         extra: st.settings.ssh_extra_keys.clone(),
@@ -122,6 +146,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
     let now = (st.view.now, st.view.utc_offset);
     let themes = &st.themes;
+    let a11y = accessibility::A11yView {
+        keys: keymap,
+        sheet_open: matches!(st.modal, Some(glowfly_model::state::Modal::Shortcuts { .. })),
+        text_size_followable: st.view.system_a11y.text_size_followable,
+    };
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
         .show(ctx, |ui| {
@@ -141,6 +170,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.add_space(18.0);
             scroll_cue::show(ui, egui::ScrollArea::vertical().auto_shrink([false, false]), color::bg(), |ui| {
                 ui.spacing_mut().item_spacing.y = 6.0;
+                // Left-anchored and at most CONTENT_W wide, however wide the window.
+                ui.set_max_width(CONTENT_W.min(ui.available_width()));
                 let needs_git = matches!(page, PrefPage::Profile | PrefPage::Signing | PrefPage::RepoIdentity | PrefPage::RepoHooks);
                 if page == PrefPage::Signing && prefs.git.is_some() {
                     signing::signing_page(ui, settings, prefs, msgs);
@@ -161,7 +192,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
-                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, frame_rows, msgs),
+                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, keymap, frame_rows, msgs),
+                    PrefPage::Accessibility => accessibility::accessibility_page(ui, settings, &a11y, msgs),
                     PrefPage::Language => language::language_page(ui, settings, now),
                     PrefPage::DiffViewer => diff_viewer::diff_viewer_page(ui, settings),
                     PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &mut prefs.keys, keymap, msgs),
@@ -185,55 +217,6 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             });
         });
-}
-
-fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, t: Lang, msgs: &mut Vec<Msg>) {
-    egui::SidePanel::left("prefs-nav").exact_width(250.0).resizable(false).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
-        ui.add_space(6.0);
-        let back = if repo_name.is_some() { t.tr("prefs.nav.back_to_repo") } else { t.tr("prefs.nav.back") };
-        let r = widgets::nav_row(ui, Some(Icon::Back), back, false);
-        // Its text is painted; name the row for screen readers.
-        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, back));
-        if r.on_hover_text("Esc").clicked() {
-            msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
-        }
-        ui.add_space(12.0);
-        caption(ui, t.tr("prefs.nav.caption"));
-        // Every row goes through update, which asks first when the page has unsaved edits.
-        let mut go = |ui: &mut Ui, pg: PrefPage, icon: Icon| {
-            if widgets::nav_row(ui, Some(icon), pg.nav_label(t), page == pg).clicked() {
-                msgs.push(Msg::Prefs(PrefsMsg::Navigate(pg)));
-            }
-        };
-        go(ui, PrefPage::General, Icon::Gear);
-        go(ui, PrefPage::Git, Icon::Branch);
-        go(ui, PrefPage::Profile, Icon::User);
-        go(ui, PrefPage::Integrations, Icon::Plug);
-        go(ui, PrefPage::Ui, Icon::Brush);
-        go(ui, PrefPage::Language, Icon::Globe);
-        go(ui, PrefPage::DiffViewer, Icon::Code);
-        go(ui, PrefPage::Keyboard, Icon::Keyboard);
-        go(ui, PrefPage::Tools, Icon::Tools);
-        go(ui, PrefPage::Terminal, Icon::Terminal);
-        go(ui, PrefPage::Signing, Icon::Key);
-        go(ui, PrefPage::Ssh, Icon::Lock);
-        if let Some(name) = repo_name {
-            ui.add_space(20.0);
-            caption(ui, t.tr("prefs.nav.repo_caption"));
-            ui.horizontal(|ui| {
-                ui.add_space(12.0);
-                ui.label(RichText::new(t.trf("prefs.nav.repo_name", &[("name", &name)])).size(type_scale::SMALL).color(color::faint()));
-            });
-            ui.add_space(4.0);
-            go(ui, PrefPage::RepoIdentity, Icon::Identity);
-            go(ui, PrefPage::RepoHooks, Icon::Hook);
-            go(ui, PrefPage::RepoTracker, Icon::Activity);
-            go(ui, PrefPage::RepoLfs, Icon::Storage);
-            go(ui, PrefPage::RepoGitFlow, Icon::Flow);
-            go(ui, PrefPage::RepoSparse, Icon::Sparse);
-        }
-    });
 }
 
 /// The Integrations sub-list of hosting services.

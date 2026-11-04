@@ -6,17 +6,17 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_palette_nav::palette_row;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::state::AppState;
-use crate::state::palette::{Items, Mode, Palette, PaletteCommand, Pick, PickKind};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{Items, Mode, Palette, PaletteCommand, Pick, PickKind};
 
 fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Msg) -> bool) -> bool {
     h.state().1.iter().any(want)
@@ -208,7 +208,7 @@ fn palette_ignores_keys_under_a_credential_prompt() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-askpass");
     st.palette = Some(Palette::default());
     let prompt = glowfly_core::askpass::Prompt::new("Password for 'https://example.com': ", None);
-    st.askpass.queue.push_back(crate::state::askpass::PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
+    st.askpass.queue.push_back(glowfly_model::state::askpass::PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
     let mut h = harness(st, true);
     h.run();
     h.press_key(Key::Enter);
@@ -227,7 +227,7 @@ fn palette_ignores_keys_under_a_credential_prompt() {
 #[test]
 fn shortcut_toggles() {
     let st = AppState::new(super::snapshot_tests::settings(ThemeChoice::Dark), Vec::new(), std::time::Instant::now());
-    let mut h = crate::ui::snapshot_check::builder()
+    let mut h = crate::snapshot_check::builder()
         .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| super::shortcuts::input(ctx, st, msgs), (st, Vec::new()));
     h.press_key_modifiers(Modifiers::COMMAND, Key::P);
     h.run();
@@ -241,7 +241,7 @@ fn shortcut_toggles() {
     h.run();
     assert!(h.state().1.is_empty(), "P alone types");
 
-    h.state_mut().0.prefs = Some(crate::state::PrefsState::new(crate::state::PrefPage::General));
+    h.state_mut().0.prefs = Some(glowfly_model::state::PrefsState::new(glowfly_model::state::PrefPage::General));
     h.press_key_modifiers(Modifiers::COMMAND, Key::P);
     h.run();
     assert!(h.state().1.is_empty(), "not under Preferences");
@@ -274,7 +274,7 @@ fn finder(items: Items, query: &str, selected: usize) -> Palette {
 
 fn queue_prompt(st: &mut AppState) {
     let prompt = glowfly_core::askpass::Prompt::new("Password for 'https://example.com': ", None);
-    st.askpass.queue.push_back(crate::state::askpass::PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
+    st.askpass.queue.push_back(glowfly_model::state::askpass::PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
 }
 
 #[test]

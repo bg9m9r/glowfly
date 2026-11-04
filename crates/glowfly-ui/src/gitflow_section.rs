@@ -11,24 +11,27 @@ use super::ref_visibility;
 use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets;
+use super::widgets::quiet_target::{self, State};
+use super::widgets::row_fill;
 use super::widgets::section_header::{self, AddAction, Header, HeaderAdd};
-use crate::gitflow::GitFlowMsg;
-use crate::msg::BranchMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::gitflow::{group_title, row_tooltip, start_blocked};
-use crate::state::{ForgeState, PrefPage, Selection};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use eframe::egui::{self, Align2, Rect, Response, Sense, Stroke, pos2, vec2};
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::menu::separator;
+use crate::widgets::row_menu::RowMenuExt;
+use eframe::egui::{self, Align2, CornerRadius, Rect, Response, Sense, Stroke, pos2, vec2};
 use git2::Oid;
 use glowfly_core::forge::{self, Issue};
 use glowfly_core::gitflow::{Branches, FlowGroup, FlowKind, GitFlowSettings, grouped, total};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::GraphFilter;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::gitflow::{group_title, row_tooltip, start_blocked};
+use glowfly_model::state::{ForgeState, PrefPage, Selection};
 
 /// What the rows are drawn against.
 pub(super) struct Rows<'a> {
@@ -40,7 +43,7 @@ pub(super) struct Rows<'a> {
     /// The left-panel filter has text.
     pub filtering: bool,
     /// The custom commands of the branch menus.
-    pub commands: &'a crate::state::custom_commands::MenuCommands<'a>,
+    pub commands: &'a glowfly_model::state::custom_commands::MenuCommands<'a>,
     pub t: Lang,
 }
 
@@ -86,7 +89,7 @@ pub(super) fn section(
             let Some(info) = snap.locals.iter().find(|i| i.name == b.name) else { continue };
             let label = if b.head { format!("✔  {}", b.short) } else { b.short.to_owned() };
             let selected = info.oid.is_some_and(|o| *rows.sel == Selection::Commit(o));
-            let worktree = crate::state::worktree_branches::elsewhere(snap, b.name);
+            let worktree = glowfly_model::state::worktree_branches::elsewhere(snap, b.name);
             let right = worktree.map(|_| [widgets::Part::Text(t.tr("sidebar.local.worktree.part"))]);
             let (r, _, cut) = widgets::list_row_cut(
                 ui,
@@ -97,6 +100,9 @@ pub(super) fn section(
                 selected,
                 b.head,
             );
+            if b.head {
+                crate::access::name_button(&r, true, &t.trf("access.checked_out", &[("name", &b.short)]));
+            }
             branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(b.name)));
             if r.hovered() {
                 *hover_next = info.oid;
@@ -106,7 +112,7 @@ pub(super) fn section(
                 Some(wt) => format!(
                     "{tip}
 {}",
-                    crate::state::worktree_branches::local_tip_line(t, wt, b.name)
+                    glowfly_model::state::worktree_branches::local_tip_line(t, wt, b.name)
                 ),
                 None => tip,
             };
@@ -171,33 +177,38 @@ fn group(ui: &mut egui::Ui, snap: &Snapshot, s: &GitFlowSettings, g: &FlowGroup,
     }
 }
 
+/// A group row's Start '+': a Small quiet target, at least the least hit area.
+const PLUS_SIZE: ControlSize = ControlSize::Small;
+
 /// A group's title, dim and small, with its count and a '+' (named `plus_name`) at the right
-/// end. Returns the row's and the '+''s responses.
+/// end: the row is lit through `row_fill` (not while the '+' is hovered), the '+' is a Small
+/// quiet target. Returns the row's and the '+''s responses.
 fn group_row(ui: &mut egui::Ui, title: &str, count: usize, plus_name: &str, enabled: bool) -> (Response, Response) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), widgets::GROUP_ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, title));
+    let m = PLUS_SIZE.metrics();
+    let right = rect.right() - widgets::PAD_X;
+    let plus_rect = Rect::from_min_max(pos2(right - m.h, rect.center().y - m.h / 2.0), pos2(right, rect.center().y + m.h / 2.0));
+    let plus = ui.interact(plus_rect, resp.id.with("start"), Sense::click());
+    plus.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, plus_name));
     let p = ui.painter_at(rect);
-    if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    let row_lit = resp.hovered() && !plus.hovered();
+    row_fill::paint_state(&p, rect, row_fill::RowState::of(&resp, false, row_lit));
     let font = type_scale::font(type_scale::SMALL);
     let t = p.text(pos2(rect.left() + widgets::ROW_INDENT, rect.center().y), Align2::LEFT_CENTER, title, font.clone(), color::weak());
     p.text(pos2(t.right() + 6.0, rect.center().y), Align2::LEFT_CENTER, count.to_string(), font, color::faint());
 
-    let c = pos2(rect.right() - widgets::PAD_X, rect.center().y);
-    let plus = ui.interact(Rect::from_center_size(c, vec2(18.0, 18.0)), resp.id.with("start"), Sense::click());
-    plus.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, plus_name));
-    if enabled && plus.hovered() {
-        p.rect_filled(plus.rect, 3.0, color::hover());
-    }
+    let state = if enabled { State::of(&plus, false) } else { State { focused: plus.has_focus(), ..State::default() } };
+    quiet_target::paint(&p, plus_rect, CornerRadius::same(m.radius), PLUS_SIZE, state);
     let col = if !enabled {
         color::faint()
-    } else if plus.hovered() {
-        color::text()
+    } else if state.lit() {
+        color::strong()
     } else {
         color::weak()
     };
+    let c = plus_rect.center();
     let s = Stroke::new(1.5_f32, col);
     p.line_segment([pos2(c.x - 4.5, c.y), pos2(c.x + 4.5, c.y)], s);
     p.line_segment([pos2(c.x, c.y - 4.5), pos2(c.x, c.y + 4.5)], s);

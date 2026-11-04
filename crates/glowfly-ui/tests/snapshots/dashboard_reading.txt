@@ -1,10 +1,9 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
   Tab "New tab" [selected]
 Button "Close tab New tab"
 Button "New tab"
-Button "Open…"
+Button "Repository: Open…"
 Label "Dashboard"
 Label "Pull requests and issues across your repositories"
 Button "Close"
@@ -16,4 +15,5 @@ Button "Assigned (0)" [off]
 TextInput
 painted:
   "Repository"
+  "Open…"
   "Filter by title, number, author or repository"

@@ -4,11 +4,12 @@
 
 use super::ssh_tests::{home, listing, loaded, page, page_mut, pair, run, ssh};
 use super::tests::state;
-use crate::effect::Effect;
-use crate::msg::{Msg, PrefsMsg};
-use crate::ssh::{SshEffect, SshMsg};
-use crate::state::PrefPage;
 use glowfly_core::ssh_keys::{KeyFileProblem, SshKeyPair};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::ssh::{SshEffect, SshMsg};
+use glowfly_model::state::PrefPage;
 use std::path::PathBuf;
 
 /// A pair outside the .ssh folder.
@@ -22,10 +23,10 @@ fn picked(pair: &SshKeyPair) -> SshMsg {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
-fn names(st: &crate::state::AppState) -> Vec<String> {
+fn names(st: &glowfly_model::state::AppState) -> Vec<String> {
     page(st).listing.as_ref().expect("listed").keys.iter().map(SshKeyPair::file_name).collect()
 }
 

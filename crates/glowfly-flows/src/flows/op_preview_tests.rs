@@ -6,16 +6,15 @@ use super::rebase_quick_tests::{last_toast, up};
 use super::rebase_tests::{repo, running_job};
 use super::selection_tests::{commit_on, git};
 use super::tests::drive;
-use crate::effect::{Effect, OpPreviewJob, RebaseEffect};
-use crate::msg::{Msg, OpPreviewMsg, RepoMsg, ResetMode};
-use crate::runner;
-use crate::state::op_preview::PreviewDialog;
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::gitcli::args;
 use glowfly_core::op_preview::{GoneWhy, PreviewOp};
 use glowfly_core::rebase::QuickEdit;
+use glowfly_model::effect::{Effect, OpPreviewJob, RebaseEffect};
+use glowfly_model::msg::{Msg, OpPreviewMsg, RepoMsg, ResetMode};
+use glowfly_model::state::op_preview::PreviewDialog;
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 
 fn open(st: &mut AppState, op: PreviewOp) -> Vec<Effect> {
@@ -54,14 +53,14 @@ fn merge(f: Oid) -> PreviewOp {
 /// Runs a held preview and hands its result to `update`.
 fn deliver(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let effect = fx.into_iter().next().expect("a preview");
-    let msg = runner::testing::execute(effect).expect("a result");
+    let msg = glowfly_runner::testing::execute(effect).expect("a result");
     up(st, msg)
 }
 
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     fx.iter()
         .find_map(|e| match e {
-            Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+            Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
             _ => None,
         })
         .unwrap_or_else(|| panic!("expected a git job, got {fx:?}"))
@@ -210,7 +209,7 @@ fn a_merge_preview_waits_for_trust_where_a_merge_driver_would_run() {
 
     open(&mut st, merge(f));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    let fx = up(&mut st, Msg::Trust(crate::msg::TrustMsg::Decide { real, trusted: true }));
+    let fx = up(&mut st, Msg::Trust(glowfly_model::msg::TrustMsg::Decide { real, trusted: true }));
     assert!(fx.iter().any(|e| matches!(e, Effect::OpPreview(j) if matches!(j.request.op, PreviewOp::Merge { .. }))), "{fx:?}");
     assert!(matches!(st.modal, Some(Modal::OpPreview(_))), "Trust and run opens the preview");
     let _ = std::fs::remove_dir_all(&dir);

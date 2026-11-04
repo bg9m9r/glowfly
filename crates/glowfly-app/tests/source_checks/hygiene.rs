@@ -8,6 +8,13 @@
 //! - Every non-test file opens with a `//!` module doc saying what it holds.
 //! - The `update/` and `state/` log and toast calls with an English string literal (rather than a
 //!   `t.tr`/`trf`/`trn` lookup) number at most `ENGLISH_LOG_CALLS`; the number only goes down.
+//!   glowfly-ui's and glowfly-runner's English text for the user is counted per file in
+//!   `hygiene/english_allow.rs` (`english_text.rs`), and those counts only go down too.
+//! - Result messages carry typed errors, not English text: the `Result<_, String>` types in
+//!   glowfly-model's `msg/` number at most `STRING_ERRORS` (`hygiene/string_errors.rs`), which
+//!   only goes down.
+//! - New effects go in effect areas: `Effect` has no flat variants, only the rows of
+//!   glowfly-model's `effect/areas.rs` (`hygiene/flat_effects.rs`).
 //! - The shared fixture builders are not written again: each helper in `FIXTURE_HELPERS` is
 //!   defined only in the files listed for it, and no two tests pass `scratch_repo` or `long_repo`
 //!   the same folder name (tests run in parallel and would share the folder).
@@ -26,6 +33,12 @@
 
 use crate::views;
 
+#[path = "hygiene/english_text.rs"]
+mod english_text;
+#[path = "hygiene/flat_effects.rs"]
+mod flat_effects;
+#[path = "hygiene/string_errors.rs"]
+mod string_errors;
 #[path = "hygiene/test_switches.rs"]
 mod test_switches;
 
@@ -37,15 +50,11 @@ use views::{app_src, code_lines, crate_sources};
 const LINE_LIMIT: usize = 400;
 
 /// The non-test files over `LINE_LIMIT` today, with their length as a ceiling.
-const LONG_FILES: &[(&str, usize)] = &[
-    ("crates/glowfly-model/src/state/mod.rs", 574),
-    ("crates/glowfly-core/src/forge/github.rs", 405),
-    ("crates/glowfly-core/src/settings.rs", 408),
-];
+const LONG_FILES: &[(&str, usize)] = &[("crates/glowfly-model/src/state/mod.rs", 569), ("crates/glowfly-core/src/forge/github.rs", 405)];
 
 /// How many log and toast calls in `update/` and `state/` still pass English text. Lower it when
 /// you translate some; never raise it.
-const ENGLISH_LOG_CALLS: usize = 176;
+const ENGLISH_LOG_CALLS: usize = 165;
 
 /// Fixture builders and the only files that may define them (as `fn <name>(`, or the full
 /// signature for `harness`). A new test reuses one of these instead of writing its own copy.
@@ -84,10 +93,10 @@ const HARNESS_MAKERS: &[&str] = &["crates/glowfly-ui/src/snapshot_check/mod.rs",
 
 /// One source file: its path from the repository root (with `/`), its text, and whether it is
 /// test code.
-struct Source {
-    path: String,
+pub(crate) struct Source {
+    pub(crate) path: String,
     text: String,
-    test: bool,
+    pub(crate) test: bool,
 }
 
 /// The folders under `crates/` that hold a crate with sources, sorted.
@@ -104,7 +113,7 @@ fn crate_names() -> Vec<String> {
 }
 
 /// Every `.rs` file under every crate's `src/`.
-fn all_sources() -> Vec<Source> {
+pub(crate) fn all_sources() -> Vec<Source> {
     let crates = app_src().parent().and_then(|app| app.parent()).map(PathBuf::from).expect("the crates folder");
     let mut out = Vec::new();
     for name in crate_names() {

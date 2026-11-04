@@ -5,19 +5,19 @@
 
 use super::calls_tests::{detail, loaded, reply_msg};
 use super::tests::{cleanup, github, open, pr, rev, setup};
-use crate::effect::{Effect, ForgeReply, ForgeResult};
 use crate::flows::{finish_keeping, git};
-use crate::msg::{ForgeMsg, Msg, TabsMsg};
-use crate::pull_request::{LineMapJob, PrEffect, PrReply, PullRequestMsg};
-use crate::state::AppState;
-use crate::state::pull_request::PrView;
-use crate::state::pull_request_line_map::{LineMaps, current};
-use crate::state::pull_request_threads::{Placement, go_to, marks, placement};
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::diff_rows::LineSide;
 use glowfly_core::forge::{PrPage, ReviewThread, ThreadComment};
 use glowfly_core::repo::PrLineMaps;
+use glowfly_model::effect::{Effect, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, TabsMsg};
+use glowfly_model::pull_request::{LineMapJob, PrEffect, PrReply, PullRequestMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::PrView;
+use glowfly_model::state::pull_request_line_map::{LineMaps, current};
+use glowfly_model::state::pull_request_threads::{Placement, go_to, marks, placement};
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -170,7 +170,7 @@ fn a_moved_tip_asks_again() {
     assert_eq!(current(view(&st)), None, "the old maps aren't used while the files load");
     assert!(marks(view(&st), "f.txt").is_none());
     let files = fx.into_iter().find(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_)))).expect("the files load again");
-    let msg = crate::runner::testing::execute(files).expect("an answer");
+    let msg = glowfly_runner::testing::execute(files).expect("an answer");
     let fx = update(&mut st, msg, Instant::now());
     let asked = jobs(&fx);
     let [job] = &asked[..] else { panic!("asked again: {asked:?}") };

@@ -3,14 +3,14 @@
 //! information shows from the start.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::state::touched::Touched;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, Modal};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
@@ -34,7 +34,7 @@ fn new_branch_untouched() {
     h.run();
     h.check_snapshot("new_branch_untouched");
     assert!(h.query_by_label(INVALID).is_none(), "nobody typed it yet");
-    assert!(h.get_by_label("Create").is_disabled());
+    assert!(h.get_by_label("Create branch").is_disabled());
     // Enter on the disabled Create shows the problem.
     h.press_key(Key::Enter);
     h.run();
@@ -54,7 +54,7 @@ fn new_branch_invalid_typed() {
     type_text(&mut h, "bad..name");
     h.check_snapshot("new_branch_invalid_typed");
     assert!(h.query_by_label(INVALID).is_some());
-    assert!(h.get_by_label("Create").is_disabled());
+    assert!(h.get_by_label("Create branch").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

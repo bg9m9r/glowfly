@@ -6,14 +6,14 @@
 use super::conflict_tests::{conflicted_repo, two_conflicts};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{CommitMsg, ConflictMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::conflict::ConflictView;
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::repo::{Choice, Side};
 use glowfly_core::undo::Action;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::msg::{CommitMsg, ConflictMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict::ConflictView;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -246,10 +246,10 @@ fn a_resolution_saved_for_an_inactive_tab_goes_to_its_history() {
 
     let effect = update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now())
         .into_iter()
-        .find(|e| matches!(e, Effect::LocalOp { .. }))
+        .find(|e| matches!(e, Effect::Files(FilesEffect::LocalOp { .. })))
         .expect("a save");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::testing::execute(effect).expect("a result");
+    let reply = glowfly_runner::testing::execute(effect).expect("a result");
     update(&mut st, reply, Instant::now());
 
     assert!(st.session.undo.undo.is_empty(), "tab B's history is untouched");

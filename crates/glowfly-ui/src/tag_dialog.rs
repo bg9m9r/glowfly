@@ -7,14 +7,14 @@ use super::theme::color;
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::Msg;
-use crate::state::tags::{AnnotateForm, TagForm, annotate_problem, push_remote, tag_problem};
-use crate::tag::TagMsg;
-use crate::ui::theme::controls;
+use crate::theme::controls;
 use eframe::egui::{self, Id, RichText};
 use glowfly_core::branch_ops::ref_name_warning;
 use glowfly_core::names::blocks_here;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::tags::{AnnotateForm, TagForm, annotate_problem, push_remote, tag_problem};
+use glowfly_model::tag::TagMsg;
 
 /// The name field's key in `Touched`.
 const NAME: &str = "name";

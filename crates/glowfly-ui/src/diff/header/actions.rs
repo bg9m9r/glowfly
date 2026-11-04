@@ -1,125 +1,37 @@
-//! The header's file actions, primary action and Close: Restore… (a commit's file), Open and
-//! Show in folder (labelled, or folded into one ⋯ menu in a narrow header), the external diff
-//! tool (always enabled: with no tool set its tooltip says it opens Preferences > External
-//! Tools), Stage file or Unstage file, and the × that closes the diff.
+//! The header's ⋯, Stage file and Close: ⋯ holds every file action (Open, Open in diff tool,
+//! Show in folder, then Restore… for a commit's file), the diff tool always enabled (with no
+//! tool set it says it opens Preferences > External Tools); Stage file or Unstage file is a
+//! small secondary button at the trailing edge, before the × that closes the diff. The header
+//! has no filled button (`docs/COLOUR.md`, "The accent").
 
-use super::controls::{self, SPACE, ghost, icon_tip};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::{FilesMsg, Msg, RepoMsg, StageMsg};
-use crate::state::diff_header::{Actions, HeaderModel, Primary, RestoreAction};
-use crate::state::files::show_in_folder;
-use crate::state::tip::Tip;
-use crate::tools::ToolsMsg;
-use crate::ui::common::menu_item_if;
-use crate::ui::file_menu::restore_msg;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::menu::popup_below;
-use crate::ui::widgets::{Icon, buttons};
+use super::controls::{self, ghost, icon_tip};
+use crate::common::{menu_item_if, menu_item_setup};
+use crate::file_menu::restore_msg;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::menu::{self, popup_below};
+use crate::widgets::{Icon, buttons};
 use eframe::egui::{PopupCloseBehavior, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::{FilesMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::diff_header::{Actions, HeaderModel, Primary};
+use glowfly_model::state::files::show_in_folder;
+use glowfly_model::state::tip::Tip;
+use glowfly_model::tools::ToolsMsg;
 
-/// One labelled action: icon, label, tooltip, why it is off, and its message.
-struct Item {
-    icon: Icon,
-    label: &'static str,
-    menu_label: &'static str,
-    tip: String,
-    missing: Option<&'static str>,
-    msg: Msg,
+/// The space between Stage file and ×.
+pub(super) const TRAILING_GAP: f32 = 8.0;
+/// Stage file's size.
+const STAGE: ControlSize = ControlSize::Small;
+
+/// The ⋯'s width (0 when it holds nothing).
+pub(super) fn more_width(a: &Actions) -> f32 {
+    if a.restore.is_some() || a.open.is_some() || a.diff_tool.is_some() { controls::HEIGHT } else { 0.0 }
 }
 
-fn restore_tip(t: Lang, r: &RestoreAction) -> String {
-    let path: [(&str, &dyn std::fmt::Display); 1] = [("path", &r.path)];
-    if r.status == 'D' { t.trf("diff.header.restore_deleted.tip", &path) } else { t.trf("diff.header.restore.tip", &path) }
-}
-
-/// Restore…, Open and Show in folder, as `a` has them.
-fn items(t: Lang, a: &Actions) -> Vec<Item> {
-    let mut v = Vec::new();
-    if let Some(r) = &a.restore {
-        let msg = restore_msg(r.oid, &r.path, r.status);
-        let restore = t.tr("diff.header.restore");
-        v.push(Item { icon: Icon::Undo, label: restore, menu_label: restore, tip: restore_tip(t, r), missing: None, msg });
-    }
-    if let Some(o) = &a.open {
-        let open = Msg::Files(FilesMsg::OpenWorkingFile(o.path.clone()));
-        v.push(Item {
-            icon: Icon::OpenFile,
-            label: t.tr("diff.header.open"),
-            menu_label: t.tr("files.menu.open_default"),
-            tip: t.tr("files.menu.open_default").into(),
-            missing: o.missing,
-            msg: open,
-        });
-        let show = Msg::Files(FilesMsg::ShowWorkingFile(o.path.clone()));
-        v.push(Item {
-            icon: Icon::Folder,
-            label: show_in_folder(t),
-            menu_label: show_in_folder(t),
-            tip: show_in_folder(t).into(),
-            missing: o.missing,
-            msg: show,
-        });
-    }
-    v
-}
-
-/// The labelled actions' width, the folded ⋯'s (both 0 without any), and the diff tool's with
-/// the space before it.
-pub(super) fn widths(ui: &Ui, t: Lang, a: &Actions) -> (f32, f32, f32) {
-    let items = items(t, a);
-    let labelled = items.iter().map(|i| controls::ghost_width(ui, ControlSize::Regular, true, Some(i.label), 0.0)).sum::<f32>()
-        + items.len().saturating_sub(1) as f32 * SPACE;
-    let folded = if items.is_empty() { 0.0 } else { controls::HEIGHT };
-    let tool = match a.diff_tool {
-        Some(_) if items.is_empty() => controls::HEIGHT,
-        Some(_) => controls::HEIGHT + SPACE,
-        None => 0.0,
-    };
-    (labelled, folded, tool)
-}
-
-/// Draws the file actions, labelled or (`fold`) behind ⋯, then the diff tool control.
-pub(super) fn show(ui: &mut Ui, m: &HeaderModel, fold: bool, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
-    let items = items(t, &m.actions);
-    if fold && !items.is_empty() {
-        more(ui, items, keys, t, msgs);
-    } else {
-        for (i, item) in items.into_iter().enumerate() {
-            if i > 0 {
-                ui.add_space(SPACE);
-            }
-            let mut r = ghost(ui, ControlSize::Regular, Some(item.icon), Some(item.label), item.label, item.missing.is_none());
-            r = match item.missing {
-                Some(why) => r.on_hover_text(why),
-                None => r.on_hover_text(item.tip),
-            };
-            if r.clicked() {
-                msgs.push(item.msg);
-                r.surrender_focus();
-            }
-        }
-    }
-    if let Some(setup) = m.actions.diff_tool {
-        if m.actions.labelled() {
-            ui.add_space(SPACE);
-        }
-        let name = t.tr("tools.open_in_diff_tool");
-        let tip = Tip::new(name);
-        let tip = match setup {
-            Some(note) => tip.body(note),
-            None => tip,
-        };
-        let r = icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::ExternalDiff), None, name, true), keys, t, tip);
-        if r.clicked() {
-            msgs.push(Msg::Tools(ToolsMsg::OpenDiff(m.target.clone())));
-            r.surrender_focus();
-        }
-    }
-}
-
-/// The ⋯ control and its menu of the same actions.
-fn more(ui: &mut Ui, items: Vec<Item>, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
+/// The ⋯ control and its menu of the file actions.
+pub(super) fn more(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
+    let a = &m.actions;
     let id = ui.make_persistent_id("diff-file-actions");
     let name = t.tr("diff.header.more");
     let r = icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::More), None, name, true), keys, t, Tip::new(name));
@@ -127,10 +39,28 @@ fn more(ui: &mut Ui, items: Vec<Item>, keys: &Keymap, t: Lang, msgs: &mut Vec<Ms
         ui.memory_mut(|mem| mem.toggle_popup(id));
     }
     popup_below(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
-        ui.set_min_width(200.0);
+        ui.set_min_width(220.0);
         let before = msgs.len();
-        for item in items {
-            menu_item_if(msgs, ui, item.menu_label, item.missing, item.msg);
+        if let Some(o) = &a.open {
+            menu_item_if(msgs, ui, t.tr("files.menu.open_default"), o.missing, Msg::Files(FilesMsg::OpenWorkingFile(o.path.clone())));
+        }
+        if let Some(setup) = a.diff_tool {
+            let open = Msg::Tools(ToolsMsg::OpenDiff(m.target.clone()));
+            menu_item_setup(msgs, ui, t, t.tr("tools.open_in_diff_tool"), setup, open);
+        }
+        if let Some(o) = &a.open {
+            menu_item_if(msgs, ui, show_in_folder(t), o.missing, Msg::Files(FilesMsg::ShowWorkingFile(o.path.clone())));
+        }
+        if let Some(r) = &a.restore {
+            if a.open.is_some() || a.diff_tool.is_some() {
+                menu::separator(ui);
+            }
+            let path: [(&str, &dyn std::fmt::Display); 1] = [("path", &r.path)];
+            let tip =
+                if r.status == 'D' { t.trf("diff.header.restore_deleted.tip", &path) } else { t.trf("diff.header.restore.tip", &path) };
+            if menu::item(t.tr("diff.header.restore")).show(ui).on_hover_text(tip).clicked() {
+                msgs.push(restore_msg(r.oid, &r.path, r.status));
+            }
         }
         if msgs.len() > before {
             ui.memory_mut(|mem| mem.close_popup());
@@ -138,15 +68,15 @@ fn more(ui: &mut Ui, items: Vec<Item>, keys: &Keymap, t: Lang, msgs: &mut Vec<Ms
     });
 }
 
-fn primary_button<'a>(t: Lang, p: &Primary, tip: &'a str) -> buttons::StyledButton<'a> {
+fn stage_button<'a>(t: Lang, p: &Primary, tip: &'a str) -> buttons::StyledButton<'a> {
     let text = match p {
         Primary::Stage(_) => t.tr("diff.header.stage_file"),
         Primary::Unstage(_) => t.tr("diff.header.unstage_file"),
     };
-    buttons::primary(text).tip(tip)
+    buttons::secondary(text).size(STAGE).tip(tip)
 }
 
-/// The primary button's tooltip in `t`, naming its key when it has one.
+/// Stage file's (or Unstage file's) tooltip in `t`, naming its key when it has one.
 pub(super) fn primary_tip(p: &Primary, keys: &Keymap, t: Lang) -> String {
     match (p, keys.hint(BindingId::Stage), keys.hint(BindingId::Unstage)) {
         (Primary::Stage(_), Some(k), _) => t.trf("diff.header.stage_file_key.tip", &[("key", &k)]),
@@ -156,15 +86,15 @@ pub(super) fn primary_tip(p: &Primary, keys: &Keymap, t: Lang) -> String {
     }
 }
 
-/// The primary button's width (0 without one).
+/// Stage file's width (0 without it).
 pub(super) fn primary_width(ui: &Ui, t: Lang, m: &HeaderModel) -> f32 {
-    m.primary.as_ref().map_or(0.0, |p| primary_button(t, p, "").desired_width(ui))
+    m.primary.as_ref().map_or(0.0, |p| stage_button(t, p, "").desired_width(ui))
 }
 
 pub(super) fn show_primary(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
     let Some(p) = &m.primary else { return };
     let tip = primary_tip(p, keys, t);
-    if ui.add(primary_button(t, p, &tip)).clicked() {
+    if ui.add(stage_button(t, p, &tip)).clicked() {
         msgs.push(Msg::Stage(match p {
             Primary::Stage(path) => StageMsg::StageFile(path.clone()),
             Primary::Unstage(path) => StageMsg::UnstageFile(path.clone()),
@@ -173,7 +103,7 @@ pub(super) fn show_primary(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, t: Lang,
 }
 
 pub(super) fn show_close(ui: &mut Ui, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
-    let r = crate::ui::widgets::ghost::close_view(ui, keys, t, t.tr("diff.header.close.name"));
+    let r = crate::widgets::ghost::close_view(ui, keys, t, t.tr("diff.header.close.name"));
     if r.clicked() {
         msgs.push(Msg::Repo(RepoMsg::CloseDiff));
     }

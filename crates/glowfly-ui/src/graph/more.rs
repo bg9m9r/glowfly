@@ -1,32 +1,34 @@
 //! Loading more of a truncated history from the graph: the near-end check, and the one row
-//! below the last commit (the end row). It says more is loading (or a filtering search looks
+//! below the last commit (the end row). Its firefly loader says more is loading (or, with words, that a filtering search looks
 //! further back), that the load failed with Try again, or, otherwise, why the history stops:
 //! the newest commits only, with Load more, or a shallow clone's end, with Fetch full history.
 
-use crate::msg::{JobMsg, LoadMsg, Msg};
-use crate::state::AppState;
-use crate::state::load_more::{EndRow, HistoryNotes, MoreRow};
-use crate::state::refresh::can_load_more;
-use crate::state::shallow::header_tooltip;
-use crate::ui::pane_status::plain_error;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::severity::{self, Severity};
-use crate::ui::widgets::truncate::paint_cut_text;
+use crate::pane_status::plain_error;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::severity::{self, Severity};
+use crate::widgets::truncate::paint_cut_text;
+use crate::widgets::{buttons, fireflies};
 use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Sense, Stroke, UiBuilder, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::shallow_ops::Deepen;
+use glowfly_model::msg::{JobMsg, LoadMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::load_more::{EndRow, HistoryNotes, MoreRow};
+use glowfly_model::state::refresh::can_load_more;
+use glowfly_model::state::shallow::header_tooltip;
 
 /// How close to the last loaded row the graph's last visible row gets before more is loaded.
 pub(super) const NEAR_END_ROWS: usize = 40;
 
-/// The spinner's and the warning mark's size.
+/// The warning mark's size; the loader is centred where the mark would be.
 const MARK: f32 = 14.0;
 /// From the mark's left edge to the title's.
 const TEXT_GAP: f32 = 22.0;
+/// From the loader's left edge to its note's: the loader is wider than the mark.
+const LOADER_TEXT_X: f32 = 28.0;
 /// The button's inset from the row's right edge.
 const RIGHT_INSET: f32 = 16.0;
 /// Between the title and the reason, and between the reason and the button side.
@@ -47,8 +49,11 @@ pub(super) fn wants_more(st: &AppState, last_visible: usize, total: usize, filte
 /// one `row_h` allocation, so the graph's rows stay uniform.
 pub(super) fn row(ui: &mut egui::Ui, t: Lang, row_h: f32, text_x: f32, r: &EndRow, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     match r {
-        EndRow::More(MoreRow::Loading) => spinner_row(ui, t.tr("graph.loading_more"), row_h, text_x),
-        EndRow::More(MoreRow::SearchingOlder) => spinner_row(ui, t.tr("graph.searching_older"), row_h, text_x),
+        EndRow::More(MoreRow::Loading) => loader_row(ui, t.tr("graph.loading_more"), None, row_h, text_x),
+        EndRow::More(MoreRow::SearchingOlder) => {
+            let words = t.tr("graph.searching_older");
+            loader_row(ui, words, Some(words), row_h, text_x);
+        }
         EndRow::More(MoreRow::Failed { error, retrying }) => failed_row(ui, t, row_h, text_x, error, *retrying, msgs),
         EndRow::Notes(n) => notes_row(ui, t, (row_h, text_x), n, snap, msgs),
     }
@@ -95,17 +100,23 @@ fn notes_row(ui: &mut egui::Ui, t: Lang, (row_h, text_x): (f32, f32), n: &Histor
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &sentence));
 }
 
-/// A spinner and a weak note. It can't be clicked or selected.
-fn spinner_row(ui: &mut egui::Ui, text: &str, row_h: f32, text_x: f32) {
+/// The firefly loader, with a weak note when `shown` has words that say more than "loading";
+/// read out as `label`. It can't be clicked or selected.
+fn loader_row(ui: &mut egui::Ui, label: &str, shown: Option<&str>, row_h: f32, text_x: f32) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), row_h), Sense::hover());
     let mid = rect.center().y;
     // Painted rather than added, so the row's layout stays one allocation.
-    egui::Spinner::new()
-        .size(MARK)
-        .color(color::weak())
-        .paint_at(ui, Rect::from_min_size(pos2(text_x, mid - MARK / 2.0), vec2(MARK, MARK)));
-    ui.painter_at(rect).text(pos2(text_x + TEXT_GAP, mid), Align2::LEFT_CENTER, text, type_scale::font(type_scale::BODY), color::weak());
-    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, text));
+    fireflies::paint_at(ui, pos2(text_x + MARK / 2.0, mid));
+    if let Some(text) = shown {
+        ui.painter_at(rect).text(
+            pos2(text_x + LOADER_TEXT_X, mid),
+            Align2::LEFT_CENTER,
+            text,
+            type_scale::font(type_scale::BODY),
+            color::weak(),
+        );
+    }
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::ProgressIndicator, true, label));
 }
 
 /// The load failed: the warning mark, the title, the reason cut to the room left (whole on

@@ -3,14 +3,14 @@
 //! ask and a way to hide the line (state/sign_in.rs, update/sign_in.rs). Each remote has its
 //! own row.
 
-use crate::msg::{CredentialMsg, Msg};
-use crate::state::AppState;
-use crate::state::sign_in::banner_line;
-use crate::ui::theme::color;
-use crate::ui::widgets::Icon;
-use crate::ui::widgets::banner::{self, Banner, BannerKind};
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::widgets::Icon;
+use crate::widgets::banner::{self, Banner, BannerKind};
+use crate::widgets::buttons;
 use eframe::egui;
+use glowfly_model::msg::{CredentialMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::sign_in::banner_line;
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = st.snap.as_ref() else { return };

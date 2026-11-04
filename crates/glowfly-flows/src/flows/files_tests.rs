@@ -3,18 +3,18 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::msg::FilesMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::history::FileHistoryView;
-use crate::state::selection::MultiSelection;
-use crate::state::{AppState, Modal, Selection};
 use git2::{Oid, Repository};
 use glowfly_core::repo::{self, Comparison, FileEntry, LoadOptions, RestoredFrom};
 use glowfly_core::undo::Action;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -102,7 +102,7 @@ fn confirmed_restore_sends_effect() {
     run(&mut st, ask(oid, "a.txt", false));
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert!(
-        matches!(&fx[..], [Effect::RestoreFile { workdir, oid: o, path, overwrite: true }] if *workdir == dir && *o == oid && path == "a.txt"),
+        matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::Restore { workdir, oid: o, path, overwrite: true })] if *workdir == dir && *o == oid && path == "a.txt"),
         "{fx:?}"
     );
     assert_eq!(fx[0].scope(), Some(&dir));
@@ -121,7 +121,7 @@ fn restored_toasts_and_refreshes() {
     let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     let toast = st.toasts.last().expect("a toast");
     assert!(toast.ok && toast.text.contains("a.txt") && toast.text.contains(&short(oid)), "{}", toast.text);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     assert!(st.session.detail.as_ref().unwrap().in_workdir("a.txt"), "Open and Show become available");
     finish(&mut st, fx);
 
@@ -132,7 +132,7 @@ fn restored_toasts_and_refreshes() {
 
     let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: None }));
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore a.txt: boom"));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -194,7 +194,7 @@ fn comparison_restore_clears_absent() {
         anchor: oid,
         cursor: oid,
         members: [oid, other].into(),
-        span: crate::state::selection_span::Span::Pair { older: other, newer: oid },
+        span: glowfly_model::state::selection_span::Span::Pair { older: other, newer: oid },
         swapped: false,
         changes: Some(Ok(changes)),
         stacked: None,
@@ -208,7 +208,7 @@ fn comparison_restore_clears_absent() {
     assert!(c.in_workdir("a.txt"), "Open and Show become available");
     let toast = st.toasts.last().expect("a toast");
     assert!(toast.text.contains(&format!("Restored a.txt from {}", short(oid))), "{}", toast.text);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

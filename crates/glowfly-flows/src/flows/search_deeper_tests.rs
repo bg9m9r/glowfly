@@ -4,11 +4,12 @@
 
 use super::tests::{drive, finish, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{LoadMsg, Msg, RepoMsg, SearchMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::load_more::{DEEPER_BATCHES, FILL_ROWS_FALLBACK, Further, Reach};
 use glowfly_core::commit_query::CommitQuery;
+use glowfly_model::effect::HistoryEffect;
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, SearchMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::load_more::{DEEPER_BATCHES, FILL_ROWS_FALLBACK, Further, Reach};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -28,12 +29,14 @@ fn truncated(name: &str) -> (AppState, PathBuf) {
 }
 
 fn loads(fx: &[Effect]) -> Vec<&Effect> {
-    fx.iter().filter(|e| matches!(e, Effect::LoadRepo { .. })).collect()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).collect()
 }
 
 /// The one full load in `fx`: the commit count it walks.
 fn one_full_load(fx: &[Effect]) -> usize {
-    let [Effect::LoadRepo { opts, known: None, kind: LoadKind::Refresh, .. }] = &loads(fx)[..] else { panic!("one full load: {fx:?}") };
+    let [Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, known: None, kind: LoadKind::Refresh, .. })] = &loads(fx)[..] else {
+        panic!("one full load: {fx:?}")
+    };
     opts.max_commits
 }
 
@@ -56,8 +59,8 @@ fn filter(st: &mut AppState, q: &str) -> Vec<Effect> {
 /// Runs the load in `fx` and hands back its snapshot as cut short again: the effects that
 /// raised.
 fn finish_truncated(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).expect("a load");
-    let Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Ok(mut snap) })) = crate::runner::testing::execute(load) else {
+    let load = fx.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).expect("a load");
+    let Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Ok(mut snap) })) = glowfly_runner::testing::execute(load) else {
         panic!("the load succeeds")
     };
     snap.truncated = true;
@@ -163,12 +166,12 @@ fn only_while_filtering_with_the_preference_on() {
 fn path_terms_wait_for_the_file_search() {
     let (mut st, dir) = truncated("deeper-paths");
     let mut fx = filter(&mut st, "path:nowhere/");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SearchPaths { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::History(HistoryEffect::SearchPaths { .. }))));
     assert!(loads(&fx).is_empty(), "the matches aren't final yet");
     let mut loaded = 0;
-    while let Some(search) = fx.iter().position(|e| matches!(e, Effect::SearchPaths { .. })) {
+    while let Some(search) = fx.iter().position(|e| matches!(e, Effect::History(HistoryEffect::SearchPaths { .. }))) {
         assert!(st.session.search.searching_files());
-        let reply = crate::runner::testing::execute(fx.swap_remove(search)).expect("a report");
+        let reply = glowfly_runner::testing::execute(fx.swap_remove(search)).expect("a report");
         fx = update(&mut st, reply, Instant::now());
         loaded += loads(&fx).len();
     }

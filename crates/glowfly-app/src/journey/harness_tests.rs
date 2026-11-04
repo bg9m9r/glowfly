@@ -38,12 +38,12 @@ fn saves_land_in_the_test_folder() {
     fx.init(&repo, &[("a.txt", "one\n")]);
     git(&repo, &["status", "--short"]);
     let j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
-    j.see("app", super::find::Region::Toolbar);
+    j.see("Repository: app", super::find::Region::Toolbar);
     let recent = std::fs::read_to_string(j.config_file("recent.txt")).expect("recent.txt is saved in the test's folder");
-    let listed = crate::runner::platform::parse_recent(&recent);
+    let listed = glowfly_runner::platform::parse_recent(&recent);
     assert!(listed.iter().any(|p| Journey::same(p, &repo)), "{listed:?}");
     let tabs = std::fs::read_to_string(j.config_file("tabs.txt")).expect("tabs.txt is saved in the test's folder");
-    let (paths, _, _) = crate::runner::platform::parse_tabs(&tabs);
+    let (paths, _, _) = glowfly_runner::platform::parse_tabs(&tabs);
     assert!(paths.iter().any(|p| Journey::same(p, &repo)), "{paths:?}");
 }
 
@@ -57,7 +57,7 @@ fn lookup_failure_lists_visible_labels() {
 #[test]
 fn picks_one_of_several_widgets_by_position() {
     use eframe::egui;
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = glowfly_ui::snapshot_check::builder().build_ui(|ui| {
         ui.horizontal(|ui| {
             let _ = ui.button("Go");
             ui.label("first row");

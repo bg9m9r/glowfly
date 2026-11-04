@@ -5,12 +5,13 @@
 use super::history_tests::{oid, with_view};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{HistoryMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::history::{FileText, FileTextData, HistoryPane, Preview, TextState};
 use glowfly_core::markdown::MARKDOWN_MAX_BYTES;
 use glowfly_core::repo::LfsState;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::{HistoryMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileText, FileTextData, HistoryPane, Preview, TextState};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -20,7 +21,7 @@ fn send(st: &mut AppState, m: HistoryMsg) -> Vec<Effect> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 #[test]

@@ -7,17 +7,17 @@ pub mod scenes;
 
 use super::theme::{self, color, color::Palette};
 use super::{UiCache, avatars::Avatars, draw};
-use crate::msg::Msg;
-use crate::state::{AppState, Selection, Tab};
-#[cfg(test)]
-use crate::state::{PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use glowfly_core::branch_colour::Colouring;
 use glowfly_core::repo::{self, ChangeCounts, LoadOptions};
 use glowfly_core::settings::{Settings, ThemeChoice};
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, Selection, Tab};
+#[cfg(test)]
+use glowfly_model::state::{PrefPage, PrefsState};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -146,54 +146,75 @@ pub fn harness_sized(st: AppState, dark: bool, size: egui::Vec2) -> Harness<'sta
 }
 
 pub fn harness_palette_sized(st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
-    build(st, p, size, false)
+    build(st, p, size, 1.0, false, STEP)
+}
+
+/// `harness_palette_sized` at `ppp` pixels per point (the README screenshots draw at 2).
+#[cfg(test)]
+pub(crate) fn harness_scaled(st: AppState, p: Palette, size: egui::Vec2, ppp: f32) -> Harness<'static, (AppState, Vec<Msg>)> {
+    build(st, p, size, ppp, false, STEP)
 }
 
 /// `harness` that also runs the shortcuts before each frame's drawing, as the app's input
 /// handling does (the keys a focused list takes first among them).
 pub fn keys_harness(st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
-    build(st, theme::view_palette(dark), SIZE, true)
+    build(st, theme::view_palette(dark), SIZE, 1.0, true, STEP)
 }
 
-fn build(mut st: AppState, p: Palette, size: egui::Vec2, keys: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
+/// kittest's frame step: a quarter second, so `run` settles animations in its 4 frames (a
+/// finer step gets 40).
+const STEP: f32 = 0.25;
+
+/// `harness` stepping `dt` seconds a frame, for a test that watches an animation partway.
+pub fn harness_stepped(st: AppState, dark: bool, dt: f32) -> Harness<'static, (AppState, Vec<Msg>)> {
+    build(st, theme::view_palette(dark), SIZE, 1.0, false, dt)
+}
+
+fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, dt: f32) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder().with_size(size).build_state(
-        move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
-            // Like the app, pick the palette at the start of every frame.
-            color::set_palette(&p);
-            theme::apply_style(ctx, &p);
-            ctx.set_theme(theme::egui_theme(&p));
-            let cache = cache.get_or_insert_with(|| UiCache {
-                avatars: Avatars::default(),
-                speller: Speller::new(),
-                diff_rows: Default::default(),
-                diff_header: Default::default(),
-                history_text: Default::default(),
-                history_preview: Default::default(),
-                blame_rows: Default::default(),
-                diff_images: Default::default(),
-                markdown: Default::default(),
-            });
-            // Tests inject working-tree files into the lists; count them as a status read would,
-            // so the WIP row's counts match the files shown. Like the shell and `update`, colour
-            // the graph with the palette's slots near the trunk.
-            st.view.trunk_near = theme::branch_colours::trunk_near(&p);
-            if let Some(snap) = st.snap.as_mut() {
-                snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
-                if snap.graph.colouring.trunk_near != st.view.trunk_near {
-                    let c = Colouring { trunk_near: st.view.trunk_near, ..snap.graph.colouring.clone() };
-                    snap.set_colouring(c);
+    crate::snapshot_check::builder()
+        .with_size(size)
+        .with_pixels_per_point(ppp)
+        .with_step_dt(dt)
+        .with_max_steps(if dt < STEP { 40 } else { 4 })
+        .build_state(
+            move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
+                // Like the app, pick the palette at the start of every frame.
+                color::set_palette(&p);
+                theme::apply_style(ctx, &p);
+                ctx.set_theme(theme::egui_theme(&p));
+                let cache = cache.get_or_insert_with(|| UiCache {
+                    avatars: Avatars::default(),
+                    speller: Speller::new(),
+                    diff_rows: Default::default(),
+                    diff_header: Default::default(),
+                    history_text: Default::default(),
+                    history_preview: Default::default(),
+                    blame_rows: Default::default(),
+                    diff_images: Default::default(),
+                    markdown: Default::default(),
+                    ref_upstreams: Default::default(),
+                });
+                // Tests inject working-tree files into the lists; count them as a status read would,
+                // so the WIP row's counts match the files shown. Like the shell and `update`, colour
+                // the graph with the palette's slots near the trunk.
+                st.view.trunk_near = theme::branch_colours::trunk_near(&p);
+                if let Some(snap) = st.snap.as_mut() {
+                    snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
+                    if snap.graph.colouring.trunk_near != st.view.trunk_near {
+                        let c = Colouring { trunk_near: st.view.trunk_near, ..snap.graph.colouring.clone() };
+                        snap.set_colouring(c);
+                    }
                 }
-            }
-            if keys {
-                crate::ui::shortcuts::input(ctx, st, msgs);
-            }
-            draw(ctx, st, cache, msgs);
-        },
-        (st, Vec::new()),
-    )
+                if keys {
+                    crate::shortcuts::input(ctx, st, msgs);
+                }
+                draw(ctx, st, cache, msgs);
+            },
+            (st, Vec::new()),
+        )
 }
 
 pub fn render(name: &str, st: AppState, dark: bool) {
@@ -254,10 +275,10 @@ fn preferences_ui_customization() {
 
 #[test]
 fn preferences_general() {
-    use crate::state::prefs::GitConfigValues;
+    use glowfly_model::state::prefs::GitConfigValues;
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     let mut prefs = PrefsState::new(PrefPage::General);
-    prefs.git = Some(GitConfigValues { autocrlf: crate::state::prefs::Autocrlf::Input, ..Default::default() });
+    prefs.git = Some(GitConfigValues { autocrlf: glowfly_model::state::prefs::Autocrlf::Input, ..Default::default() });
     st.prefs = Some(prefs);
     let program = if cfg!(windows) { "C:/Program Files/Git/cmd/git.exe" } else { "/opt/homebrew/bin/git" };
     st.git.info = Some(glowfly_core::git_version::GitInfo { path: Some(program.into()), version: Some((2, 45, 1)), chosen: false });
@@ -266,9 +287,9 @@ fn preferences_general() {
 
 #[test]
 fn preferences_commit_signing() {
-    use crate::state::prefs::GitConfigValues;
     use egui_kittest::kittest::Queryable;
     use glowfly_core::signing::SigningKey;
+    use glowfly_model::state::prefs::GitConfigValues;
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     let mut prefs = PrefsState::new(PrefPage::Signing);
     prefs.git = Some(GitConfigValues {
@@ -315,7 +336,7 @@ fn ghost_branch_on_the_current_commit() {
 /// The fixture in the middle of merging `theme-tweaks`, which conflicts with main in `file`
 /// (written by `content` for each side: "base", "ours" or "theirs"). The view is open on it.
 pub fn with_conflict(name: &str, file: &str, content: impl Fn(&str) -> Vec<u8>) -> (AppState, PathBuf) {
-    use crate::state::conflict::ConflictView;
+    use glowfly_model::state::conflict::ConflictView;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let d = "2026-01-11T10:00:00+00:00";
     for (side, branch) in
@@ -374,9 +395,9 @@ fn conflict_binary() {
 /// edited again; the file history is open on it with entry `select` shown, walked with
 /// `limit` commits per request.
 pub fn with_history(name: &str, theme: ThemeChoice, limit: usize, select: usize) -> (AppState, PathBuf) {
-    use crate::state::history::FileHistoryView;
     use glowfly_core::repo::{DiffTarget, HistoryStart};
     use glowfly_core::{highlight, intraline};
+    use glowfly_model::state::history::FileHistoryView;
     let (mut st, dir) = with_repo(theme, name);
     let lines: Vec<String> = ["app", "fix"].into_iter().map(String::from).chain((3..=12).map(|i| format!("setting_{i} = {i}"))).collect();
     let text = |l: &[String]| l.join("\n") + "\n";

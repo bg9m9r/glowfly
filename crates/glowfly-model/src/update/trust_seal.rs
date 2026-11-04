@@ -10,6 +10,9 @@
 //! (`stale`): the active tab takes the scan just made, and the work waits for the trust prompt
 //! again, which names what changed.
 
+use crate::effect::CommitEffect;
+use crate::effect::LoadEffect;
+use crate::effect::NetworkEffect;
 use crate::effect::{Accepted, Checked, Effect, LfsEffect, Seal, Sealed, SparseEffect, TrustCheck, WaitingKind};
 use crate::msg::Stale;
 use crate::patch::PatchEffect;
@@ -90,7 +93,7 @@ pub fn wrap(st: &mut AppState, fx: &mut [Effect], mark: usize) {
         let read = read_in(e).map(Path::to_path_buf);
         let check = checks[i].take().or_else(|| read.map(|w| check_for(st, Sealed::Read, &w, None)));
         if let Some(check) = check {
-            let effect = std::mem::replace(e, Effect::FetchAvatars(Vec::new()));
+            let effect = std::mem::replace(e, Effect::Network(NetworkEffect::Avatars(Vec::new())));
             *e = Effect::Checked(Box::new(Checked { effect, check }));
         }
     }
@@ -105,8 +108,9 @@ fn repo_of(e: &Effect) -> Option<&Path> {
 /// or merge tool, git LFS): the runner checks it first (`Sealed::Read`).
 fn read_in(e: &Effect) -> Option<&Path> {
     let w = match e {
-        Effect::LoadStatus { workdir, git_status: true, .. } | Effect::LoadIndexStatus { workdir, git_status: true, .. } => workdir,
-        Effect::VerifySignature { workdir, .. } => workdir,
+        Effect::Load(LoadEffect::Status { workdir, git_status: true, .. })
+        | Effect::Load(LoadEffect::IndexStatus { workdir, git_status: true, .. }) => workdir,
+        Effect::Commit(CommitEffect::VerifySignature { workdir, .. }) => workdir,
         Effect::Lfs(LfsEffect::Load { workdir, .. }) => workdir,
         Effect::Sparse(SparseEffect::Load { workdir, run_git: true, .. }) => workdir,
         Effect::Tool(ToolEffect::OpenDiff(r)) if r.filters => &r.workdir,

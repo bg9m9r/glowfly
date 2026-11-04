@@ -3,14 +3,14 @@
 //! a terminal running a program; in the third, unsaved work too, over the edited form that stays
 //! beneath it).
 
-use crate::msg::Msg;
-use crate::state::RunningJob;
-use crate::state::quit_confirm::quit_confirm;
-use crate::state::terminal::busy::BusyTerminal;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, remove_fixture, with_repo};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::RunningJob;
+use glowfly_model::state::quit_confirm::quit_confirm;
+use glowfly_model::state::terminal::busy::BusyTerminal;
 
 #[test]
 fn quit_confirm_dialog() {
@@ -22,6 +22,7 @@ fn quit_confirm_dialog() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,
@@ -52,12 +53,13 @@ fn quit_confirm_terminal_dialog() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,
         fetches: false,
     });
-    let tab = crate::state::menu_bar::tab_name(&st, 0).to_owned();
+    let tab = glowfly_model::state::menu_bar::tab_name(&st, 0).to_owned();
     let busy = BusyTerminal { id: 1, tab, terminal: "pwsh \u{b7} quit-confirm-terminal".into(), program: Some("cargo".into()) };
     st.modal = quit_confirm(&st, &[busy]);
     let mut h = harness(st, true);
@@ -72,11 +74,11 @@ fn quit_confirm_terminal_dialog() {
 /// question over the dimmed form.
 #[test]
 fn quit_confirm_unsaved_dialog() {
-    use crate::state::Modal;
-    use crate::state::conflict::ConflictView;
-    use crate::state::dialog_guard::open_over;
     use glowfly_core::conflict_pick::ChunkPick;
     use glowfly_core::repo::Choice;
+    use glowfly_model::state::Modal;
+    use glowfly_model::state::conflict::ConflictView;
+    use glowfly_model::state::dialog_guard::open_over;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "quit-confirm-unsaved");
     st.job = Some(RunningJob {
         label: "Push".into(),
@@ -85,6 +87,7 @@ fn quit_confirm_unsaved_dialog() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,
@@ -100,7 +103,7 @@ fn quit_confirm_unsaved_dialog() {
     if let Some(Modal::NewBranch { name, .. }) = st.modal.as_mut() {
         *name = "feature/login".into();
     }
-    let tab = crate::state::menu_bar::tab_name(&st, 0).to_owned();
+    let tab = glowfly_model::state::menu_bar::tab_name(&st, 0).to_owned();
     let busy = BusyTerminal { id: 1, tab, terminal: "pwsh \u{b7} quit-confirm-unsaved".into(), program: Some("cargo".into()) };
     let question = quit_confirm(&st, &[busy]).expect("a question");
     open_over(&mut st.modal, &mut st.dialog, question);

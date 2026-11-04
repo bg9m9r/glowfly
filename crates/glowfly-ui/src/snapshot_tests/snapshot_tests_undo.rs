@@ -3,13 +3,13 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_worktrees::pushed;
-use crate::msg::{JobMsg, Msg};
-use crate::state::undo::UndoCreatedForm;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::undo::{Action, Created, HeadPos};
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::undo::UndoCreatedForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 /// The fixture with the dialog open for undoing the checkout that created feature/search.

@@ -3,13 +3,13 @@
 //! the terminal toggle, zoom and macOS Cmd chords still act. It keeps the pane keys (Alt+digit,
 //! Control+digit on macOS) too; F6 and Shift+F6 always go round the panes, the way out of it.
 
-use crate::keymap::KeyAction;
-use crate::keymap::{BindingId as I, Chord, KeyName as K};
-use crate::msg::{Msg, PaletteMsg, RepoMsg, TabsMsg};
-use crate::state::{AppState, Tab};
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::keymap::{BindingId as I, Chord, KeyName as K};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::{AppState, Tab};
 use glowfly_model::terminal::TerminalMsg;
 use std::time::Instant;
 
@@ -39,7 +39,7 @@ fn harness(focused: bool, rebind: impl FnOnce(&mut AppState)) -> H {
     st.terminal.focused = focused;
     rebind(&mut st);
     let keys = Keys { st, msgs: Vec::new(), left: Vec::new() };
-    let mut h = crate::ui::snapshot_check::builder().build_state(
+    let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             k.left = ctx.input(|i| {
@@ -67,7 +67,7 @@ fn name(m: &Msg) -> String {
         Msg::Palette(PaletteMsg::TogglePalette) => "palette".into(),
         Msg::Repo(RepoMsg::Refresh) => "refresh".into(),
         Msg::Terminal(TerminalMsg::Toggle) => "terminal".into(),
-        Msg::Layout(crate::msg::LayoutMsg::ZoomIn) => "zoom in".into(),
+        Msg::Layout(glowfly_model::msg::LayoutMsg::ZoomIn) => "zoom in".into(),
         Msg::Shortcut(KeyAction::FocusPane(_)) => "pane".into(),
         _ => "other".into(),
     }

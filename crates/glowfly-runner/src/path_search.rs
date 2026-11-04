@@ -4,10 +4,10 @@
 //! 150 ms each, newest commits first, so matches fill in from the top.
 
 use super::Waker;
-use crate::msg::{Msg, PathsChunk, SearchMsg};
 use git2::Oid;
 use glowfly_core::path_query::PathTerm;
 use glowfly_core::repo;
+use glowfly_model::msg::{Msg, PathsChunk, SearchMsg};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
@@ -131,7 +131,7 @@ mod tests {
     use super::*;
     use std::sync::mpsc;
 
-    const CHUNK: Duration = crate::runner::testing::SEAMS.chunk;
+    const CHUNK: Duration = crate::testing::SEAMS.chunk;
 
     use glowfly_core::testkit::git;
 

@@ -1,29 +1,30 @@
-//! Preferences > Profile: the open repository's identity (profile_rules.rs), the profile list
-//! (current marker, switch, inline rename, delete), the New profile form, and the selected
-//! profile's identity fields (saved by the Save / Revert bar) and folder rules
-//! (profile_rules.rs), then what else switches with it (profile_setup.rs). The view edits only text buffers
-//! and which form is open; everything else is a `Msg`.
+//! Preferences > Profiles: an opening sentence, the open repository's identity
+//! (profile_rules.rs), the profile list (current marker, switch, inline rename, delete), the New
+//! profile form, and the selected profile's identity fields (saved by the Save / Revert bar) and
+//! folder rules (profile_rules.rs), then what else switches with it (profile_setup.rs). The view
+//! edits only text buffers and which form is open; everything else is a `Msg`.
 
 use super::profile_rules::{RepoHere, here_row, rules_rows};
 use super::{help, primary_button, row, text_field};
-use crate::msg::Msg;
-use crate::profile::ProfileMsg;
-use crate::state::prefs::GitConfigValues;
-use crate::state::profiles::{
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::sizes::{self, ControlSize};
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::chip::{Chip, ChipSize, Look};
+use crate::widgets::form_message::{self, Message};
+use eframe::egui::{self, Align, Align2, CornerRadius, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
+use glowfly_core::i18n::Lang;
+use glowfly_core::settings::{Profile, ProfileId, Settings};
+use glowfly_model::msg::Msg;
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::profiles::{
     ADD_BUTTON, AddForm, COPY_ACCOUNTS, COPY_CURRENT, CURRENT_CHIP, CURRENT_HELP, DELETE_BUTTON, DELETE_DISABLED, KEY_HELP, LIST_HELP,
     LIST_LABEL, NAME_LABEL, NEW_LABEL, NEW_NAME_HINT, NO_IDENTITY, OTHER_HELP, ProfilesPage, RENAME_BUTTON, RenameForm, SWITCH_BUTTON,
     editing_caption, identity_line, key_hint,
 };
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::form_message::{self, Message};
-use eframe::egui::{self, Align, Align2, CornerRadius, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
-use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{Profile, ProfileId, Settings};
 
 /// The list and its rows are wider than a form field, to fit the buttons beside the identity.
 const LIST_W: f32 = 640.0;
@@ -38,6 +39,7 @@ pub fn profile_page(
     here: Option<RepoHere<'_>>,
     msgs: &mut Vec<Msg>,
 ) {
+    super::intro(ui, settings.lang().tr("prefs.profiles.intro"));
     if let Some(here) = &here {
         here_row(ui, settings, here, list_width(ui), msgs);
     }
@@ -99,14 +101,8 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
         let name =
             painter.text(pos2(text_x, rect.top() + 15.0), Align2::LEFT_CENTER, &p.name, type_scale::font(type_scale::BODY), color::text());
         if current {
-            widgets::chip(
-                &painter,
-                name.right() + 8.0,
-                rect.top() + 15.0,
-                CURRENT_CHIP,
-                color::wash(color::primary(), 0.25),
-                color::text(),
-            );
+            let look = Look::new(color::wash(color::primary(), 0.25), color::text());
+            Chip::new(ChipSize::Badge, CURRENT_CHIP).look(look).paint(&painter, name.right() + 8.0, rect.top() + 15.0);
         }
     }
     let (line, line_color) = match identity_line(&p.author_name, &p.author_email) {
@@ -136,7 +132,10 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
     }
 
     if renaming {
-        let field = egui::Rect::from_min_size(pos2(text_x - 4.0, rect.top() + 3.0), vec2(240.0, 24.0));
+        // The field's text starts where the name was, on the name's centre line.
+        debug_assert!(sizes::fits(ROW_H, ControlSize::Regular, true), "a {ROW_H} px row can't host the rename field");
+        let h = ControlSize::Regular.metrics().h;
+        let field = egui::Rect::from_min_size(pos2(text_x - controls::FIELD_PAD_X, rect.top() + 15.0 - h / 2.0), vec2(240.0, h));
         rename_field(&mut ui.new_child(UiBuilder::new().max_rect(field)), page, msgs);
         if let Some(e) = page.renaming.as_ref().and_then(|f| f.error.clone()) {
             form_message::line(ui, Message::error(e));
@@ -147,7 +146,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
 /// The inline rename field: Enter or leaving it commits, Esc cancels.
 fn rename_field(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
     let Some(form) = page.renaming.as_mut() else { return };
-    let r = controls::field(ui, egui::TextEdit::singleline(&mut form.name).desired_width(240.0).margin(vec2(6.0, 3.0)));
+    let r = ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::singleline(&mut form.name)).width(ui.available_width()));
     if form.focus {
         r.request_focus();
         form.focus = false;

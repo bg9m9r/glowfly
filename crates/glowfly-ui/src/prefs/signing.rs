@@ -2,19 +2,20 @@
 //! where the key's passphrase is asked, key generation, and signing defaults. The switches and
 //! lists write at once; the program and the allowed signers file wait for the Save / Revert bar.
 
-use super::{check_row, help, primary_button, row, text_field, warn, warn_then};
-use crate::msg::PrefsMsg;
-use crate::msg::{FilePurpose, Msg};
-use crate::state::PrefsState;
-use crate::state::prefs::SigningState;
-use crate::ui::theme::controls;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::{self, Icon};
+use super::{check_row, help, row, secondary_button, text_field, warn, warn_then};
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, type_scale};
+use crate::widgets::buttons;
+use crate::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 use glowfly_core::signing::SigningFormat;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::{FilePurpose, Msg};
+use glowfly_model::state::PrefsState;
+use glowfly_model::state::prefs::SigningState;
 
 /// The fallback when Extend by 2 years fails: how to extend a key by hand.
 const RENEW_HELP: &str = "https://docs.github.com/en/authentication/managing-commit-signature-verification/updating-an-expired-gpg-key";
@@ -36,11 +37,12 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
 
     row(ui, "Signing format", |ui| {
         let mut chosen = format;
-        egui::ComboBox::from_id_salt("gpg-format").selected_text(format.label()).width(230.0).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("gpg-format").selected_text(format.label()).width(230.0).show_ui(ui, |ui| {
             for f in SigningFormat::ALL {
                 ui.selectable_value(&mut chosen, f, f.label());
             }
         });
+        crate::access::from_label(&combo.response);
         if chosen != format {
             git.signing_format = chosen.config_value().to_owned();
             set(msgs, "gpg.format", chosen.config_value());
@@ -80,7 +82,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         ui.horizontal(|ui| {
             let current = if git.signing_key.is_empty() { "<None>".to_owned() } else { git.signing_key.clone() };
             let mut chosen: Option<String> = None;
-            egui::ComboBox::from_id_salt("signing-key").selected_text(current).width(300.0).show_ui(ui, |ui| {
+            let combo = egui::ComboBox::from_id_salt("signing-key").selected_text(current).width(300.0).show_ui(ui, |ui| {
                 if ui.selectable_label(git.signing_key.is_empty(), "<None>").clicked() {
                     chosen = Some(String::new());
                 }
@@ -97,6 +99,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                     }
                 }
             });
+            crate::access::from_label(&combo.response);
             if let Some(id) = chosen {
                 git.signing_key = id.clone();
                 set(msgs, "user.signingkey", &id);
@@ -134,18 +137,14 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         });
         row(ui, "Generate new GPG key", |ui| {
             ui.horizontal(|ui| {
-                controls::field(
-                    ui,
-                    egui::TextEdit::singleline(&mut signing.passphrase)
-                        .password(true)
-                        .hint_text("Passphrase (optional)")
-                        .desired_width(220.0),
-                );
+                let pass = egui::TextEdit::singleline(&mut signing.passphrase).password(true).hint_text("Passphrase (optional)");
+                ui.add(controls::SizedField::new(ControlSize::Regular, pass).width(220.0));
                 let can = !signing.generating && !git.user_name.is_empty() && !git.user_email.is_empty();
                 // While generating, the spinner says why.
                 let unnamed = git.user_name.is_empty() || git.user_email.is_empty();
                 let why = (!signing.generating && unnamed).then_some("Set your name and email on the Git page first");
-                if primary_button(ui, "Generate", can, why).clicked() {
+                // Not the page's main action: secondary, at the field's height.
+                if secondary_button(ui, "Generate", can, why).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::GenerateGpgKey));
                 }
                 if signing.generating {

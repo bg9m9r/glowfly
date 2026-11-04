@@ -6,13 +6,13 @@ use super::common::capitalize;
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::buttons;
-use crate::deep_link::DeepLinkMsg;
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::deep_link::{LinkDialog, NO_CLONE_URL, pick_reason_text};
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
+use glowfly_model::deep_link::DeepLinkMsg;
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::deep_link::{LinkDialog, NO_CLONE_URL, pick_reason_text};
 
 /// Draws dialog `d`; true when it is to close (Close or Cancel). The other buttons leave it
 /// open: their messages replace or close it.

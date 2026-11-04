@@ -4,16 +4,16 @@
 use super::calls_tests::{calls, detail, done, err, loads, reply_msg, run, view};
 use super::line_comment_tests::{draft, last_log, lc, ready, set_text, start};
 use super::tests::github;
-use crate::effect::ForgeError;
-use crate::msg::{Msg, TabsMsg};
-use crate::pull_request::line_comment::LineCommentMsg;
-use crate::pull_request::{PrReply, PullRequestMsg};
-use crate::state::pull_request_actions::review_button;
-use crate::state::pull_request_threads::resolve_blocked;
-use crate::state::{AppState, Modal};
-use crate::update::update;
 use glowfly_core::diff_rows::LineSide;
 use glowfly_core::forge::{Auth, NewThread, PrPage, Provider, ReviewThread, ThreadComment};
+use glowfly_model::effect::ForgeError;
+use glowfly_model::msg::{Msg, TabsMsg};
+use glowfly_model::pull_request::line_comment::LineCommentMsg;
+use glowfly_model::pull_request::{PrReply, PullRequestMsg};
+use glowfly_model::state::pull_request_actions::review_button;
+use glowfly_model::state::pull_request_threads::resolve_blocked;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::update::update;
 use std::time::Instant;
 
 fn comment(id: u64, pending: bool) -> ThreadComment {

@@ -1,22 +1,25 @@
 //! The conflict-check chip under the real pointer: hovering shows its tooltip and a click
 //! toggles its popover, also beside a long branch name, with captions off, with the terminal
-//! panel open and in the light theme. These move the mouse (PointerMoved / PointerButton), which
+//! panel open and in the light theme; and beside the waiting trust chip, then the trust chip at
+//! rest. These move the mouse (PointerMoved / PointerButton), which
 //! goes through egui's hit-testing, unlike an accessibility click.
 
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::conflict_check::{ConflictReport, current_request};
-use crate::state::terminal::SessionStatus;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_terminal::with_session;
-use crate::ui::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_terminal::with_session;
+use crate::snapshot_tests::snapshot_tests_trust::make_untrusted;
+use crate::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use eframe::egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::conflict_check::{Prediction, TargetKind};
 use glowfly_core::repo::LoadOptions;
-use glowfly_core::settings::ThemeChoice;
+use glowfly_core::settings::{RepoTrust, ThemeChoice};
 use glowfly_model::conflict_check::CheckRequest;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict_check::{ConflictReport, current_request};
+use glowfly_model::state::terminal::SessionStatus;
+use glowfly_model::state::trust::{Standing, record};
 use glowfly_model::terminal::TerminalMsg;
 use std::path::Path;
 
@@ -105,4 +108,27 @@ fn chip_pointer_variants() {
         drop(h);
         remove_fixture(&dir);
     }
+}
+
+/// The toolbar's coral Small controls side by side: the trust chip waiting on a decision and
+/// the conflict chip; then, once you chose not to trust the repository, the trust chip at rest
+/// (a quiet Small button, no fill).
+#[test]
+fn toolbar_trust_and_conflict_chips() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "toolbar-coral-pair");
+    let real = make_untrusted(&mut st, &dir);
+    conflicts_on(&mut st, &dir, "search");
+    let mut h = harness(st, true);
+    h.run();
+    assert_eq!(h.state().0.trust_standing(), Some(Standing::Undecided), "the trust chip waits on a decision");
+    assert!(h.query_by_label("Untrusted").is_some(), "the trust chip shows");
+    chip(&h);
+    h.check_snapshot("toolbar_trust_waiting_dark");
+    record(&mut h.state_mut().0.settings, &real, RepoTrust::NotTrusted);
+    h.run();
+    assert_eq!(h.state().0.trust_standing(), Some(Standing::NotTrusted), "the trust chip rests");
+    assert!(h.query_by_label("Untrusted").is_some(), "still shown, quiet");
+    h.check_snapshot("toolbar_trust_rest_dark");
+    drop(h);
+    remove_fixture(&dir);
 }

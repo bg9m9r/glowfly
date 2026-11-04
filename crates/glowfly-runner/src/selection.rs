@@ -2,9 +2,9 @@
 //! working tree, and each selected commit's own changes.
 
 use super::execute::{Cx, Execute, err};
-use crate::effect::SelectionEffect;
-use crate::msg::{Msg, SelectionMsg};
 use glowfly_core::repo;
+use glowfly_model::effect::SelectionEffect;
+use glowfly_model::msg::{Msg, SelectionMsg};
 
 impl Execute for SelectionEffect {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {

@@ -6,18 +6,22 @@
 //! branch… ghost button on the checked-out commit, and the end row below the last commit
 //! (`more`).
 
+pub(crate) mod branch_chip;
 mod cells;
+mod find_marks;
 mod fit;
+mod frame_asks;
 mod header;
 mod labels;
 mod lane_colours;
+mod lantern;
 mod layout;
 mod marks;
 mod more;
 mod nodes;
 mod paint;
 mod ref_checkout;
-mod ref_group;
+pub(crate) mod ref_group;
 mod ref_menu;
 mod refs_fit;
 mod resize;
@@ -28,32 +32,30 @@ mod wip_row;
 mod worktree_wip;
 
 #[cfg(test)]
-pub(crate) use labels::paint_box;
+pub(crate) use lantern::peak as lantern_peak;
 pub use paint::draw_avatar;
 #[cfg(test)]
-pub(crate) use row_look::{band_color, highlight_color};
+pub(crate) use row_look::dim_inks;
 
 use super::UiCache;
 use super::theme::color;
-use crate::keymap::BindingId;
-use crate::msg::BranchMsg;
-use crate::msg::GraphMsg;
-use crate::msg::LoadMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::AppState;
-use crate::state::build_status::MAX_SEEN;
-use crate::state::graph_rows::{DisplayRow, GraphRows};
-use crate::state::tip::Tip;
-use crate::state::worktrees::{open_blocked, wip_tooltip};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::ui::widgets::{Icon, ghost, tooltip};
-use crate::worktree::WorktreeMsg;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::row_menu::RowMenuExt;
+use crate::widgets::{Icon, ghost, tooltip};
 use eframe::egui::{self, Rect, Sense, pos2, vec2};
 use git2::Oid;
 use glowfly_core::repo::RefKind;
 use glowfly_core::settings::{Density, DescriptionMode};
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::GraphMsg;
+use glowfly_model::msg::LoadMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::graph_rows::{DisplayRow, GraphRows};
+use glowfly_model::state::tip::Tip;
+use glowfly_model::state::worktrees::{open_blocked, wip_tooltip};
+use glowfly_model::worktree::WorktreeMsg;
 use labels::Tip as ChipTip;
 use lane_colours::RowColours;
 use layout::Columns;
@@ -81,13 +83,16 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         return;
     }
     // The central view's pane key: the graph takes the keyboard focus.
-    let want_focus = crate::ui::pane_focus::take(st, &[crate::state::layout::Pane::Central]);
+    let want_focus = crate::pane_focus::take(st, &[glowfly_model::state::layout::Pane::Central]);
     if st.view.show_search {
         search_bar::show(ui, st, msgs);
         ui.add_space(4.0);
     }
     {
         let Some(snap) = &st.snap else { return };
+        if st.session.tab_view.history_freed.is_some() {
+            return super::graph_empty::reloading(ui, st, msgs);
+        }
         if snap.commits.is_empty() && snap.graph.wip.is_none() {
             return super::graph_empty::no_commits(ui);
         }
@@ -106,11 +111,11 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         if st.modal.is_none() && st.palette.is_none() && !st.askpass.showing() {
             let (offset, height) = st.session.tab_view.graph_scroll;
             let port = select::Viewport { offset, height, row_h };
-            select::keyboard_nav(ui, &st.session.selection, snap, &rows, port, &mut st.view, msgs);
+            select::keyboard_nav(ui, (&st.session.selection, st.session.wip_lit), snap, &rows, port, &mut st.view, msgs);
         }
 
         // What grouping a row's ref labels into chips needs, once per frame.
-        let ref_cx = ref_group::RefContext::of(snap);
+        let ref_cx = ref_group::RefContext::of(snap, cache.ref_upstreams.of(snap.status_stamp, &snap.locals));
         // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
         let s = &st.settings;
         let oldest = snap.commits.iter().map(|c| c.time).min();
@@ -120,8 +125,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let fitted = header::column_header(ui, t, input, &mut st.view.column_drag, msgs);
         let (cols_cfg, widths, graph_w, inline) = (fitted.cfg, fitted.widths, fitted.graph_w, fitted.refs_inline);
         // A tip about the graph sits pinned under the header, pushing the rows down.
-        if let Some(h) = crate::state::hints::view(st).filter(|h| h.place == crate::state::hints::Place::Graph) {
-            crate::ui::widgets::hint_row::show(ui, t, &h, msgs);
+        if let Some(h) = glowfly_model::state::hints::view(st).filter(|h| h.place == glowfly_model::state::hints::Place::Graph) {
+            crate::widgets::hint_row::show(ui, t, &h, msgs);
         }
         // How many matches fill the graph, for a filtering search loading further back.
         st.view.graph_fit_rows = (ui.available_height() / row_h).floor() as usize;
@@ -143,7 +148,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let page = ((rows_rect.height() / row_h).floor() as usize).saturating_sub(1);
         select::target(ui, rows_rect, t.tr("graph.focus.name"), page, want_focus);
         // The selection shows as focused while the graph has the keyboard focus or nothing has.
-        let active = crate::ui::pane_focus::graph_active(ui.ctx());
+        let active = crate::pane_focus::graph_active(ui.ctx());
         let mut area = egui::ScrollArea::vertical().auto_shrink([false, false]);
         if let Some(row) = st.view.scroll_to_row.take() {
             area = area.vertical_scroll_offset(row as f32 * row_h);
@@ -151,21 +156,20 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             area = area.vertical_scroll_offset(off);
         }
         let selection = &st.session.selection;
+        let wip_lit = st.session.wip_drawn_selected();
         let settings = &st.settings;
         let idle = st.job.is_none();
         let forge = st.session.forge.as_ref();
-        let commands = crate::state::custom_commands::MenuCommands::for_state(st);
+        let commands = glowfly_model::state::custom_commands::MenuCommands::for_state(st);
         let now = st.view.now;
         let offset = st.view.utc_offset;
-        let show_avatars = crate::ui::avatars::shown(st);
+        let show_avatars = crate::avatars::shown(st);
         let avatars = &mut cache.avatars;
         let stats = &st.session.reads.stats;
         let wip_label = t.tr("graph.wip.label");
         let wip_total = st.session.reads.line_counts.wip().and_then(|w| w.total());
-        let mut want_stats: Vec<Oid> = Vec::new();
-        let mut hover_tip_next = None;
+        let mut asks = frame_asks::Asks::default();
         let tips = st.session.forge.as_ref().map(|f| &f.tips);
-        let mut tips_seen: Vec<Oid> = Vec::new();
         let pointer = ui.ctx().pointer_hover_pos();
         // One more row below the last commit: more history loading, loading it failed, or the
         // history's end notes (Load more, a shallow clone's Fetch full history).
@@ -210,32 +214,37 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     },
                     None => continue,
                 };
+                let colours = colours.with_origin(rect.top() - row as f32 * row_h);
                 // The row's accessible name: its summary, or the text of its WIP box.
                 match (commit, worktree) {
-                    (Some(c), _) => super::access::name_button(&resp, true, &c.summary),
-                    (None, Some((_, wt))) => super::access::name_button(&resp, true, &crate::state::worktrees::wip_label(t, wt)),
+                    (Some(c), _) => cells::name_row(&resp, c, snap.refs.get(&c.oid), settings.format_graph_time(c.time, now, offset)),
+                    (None, Some((_, wt))) => super::access::name_button(&resp, true, &glowfly_model::state::worktrees::wip_label(t, wt)),
                     (None, None) => super::access::name_button(&resp, true, wip_label),
                 }
                 // Another worktree's row is never selected.
                 let selected = match (selection, commit) {
                     _ if worktree.is_some() => false,
-                    (s, None) if s.wip_shown() => true,
+                    (_, None) => wip_lit,
                     (s, Some(c)) => s.includes(c.oid),
-                    _ => false,
                 };
                 // The pointer over the row's ghost button still hovers the row.
                 let hovered = resp.hovered() || ui.rect_contains_pointer(rect);
                 let lane_col = colours.node();
                 let highlighted = commit.is_some_and(|c| highlight.is_some_and(|h| h.contains(&c.oid)));
-                row_look::paint(&painter, rect, row_look::RowLook { lane: lane_col, highlighted, selected, active, hovered });
+                let (matched, dim) =
+                    row_look::found(searching && commit.is_some(), filtered, selected, || st.session.search.position(index));
+                let wip = commit.is_none();
+                let look = row_look::RowLook { lane: lane_col, wip, highlighted, selected, active, hovered, marked: matched && !filtered };
+                row_look::paint(&painter, rect, look);
 
-                let gp = painter.with_clip_rect(cols.rect(cols.cell.graph, rect));
+                let mut gp = painter.with_clip_rect(cols.rect(cols.cell.graph, rect));
+                gp.set_opacity(if dim { row_look::DIM_ALPHA } else { 1.0 });
                 let node_x = lane_x(cols.graph.0, if filtered { 0 } else { g.col });
                 let mid = rect.center().y;
                 // Another worktree's row: a click opens (or switches to) that worktree's tab; its
                 // menu is the WORKTREES row's.
                 if let Some((w, wt)) = worktree {
-                    let label = crate::state::worktrees::wip_label(t, wt);
+                    let label = glowfly_model::state::worktrees::wip_label(t, wt);
                     worktree_wip::draw(&painter, cols_cfg.tree.then_some(&gp), &cols, rect, (w, wt, &colours), &label, node_r);
                     let resp = resp.on_hover_text(wip_tooltip(wt));
                     if resp.clicked() && open_blocked(wt).is_none() {
@@ -244,32 +253,36 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     resp.row_menu(|ui| super::worktrees::row_menu(ui, wt, msgs));
                     continue;
                 }
+                // The HEAD lantern's glow under the lanes, from HEAD's node snapped to pixels; its rim goes on after the node.
+                let glow = lantern::glow(&gp, pos2(node_x, mid), (commit, snap.head_oid), (node_r, row_h), (look, cols_cfg.tree && !dim));
+                let at = glow.map_or(pos2(node_x, mid), |(at, _)| at);
                 if cols_cfg.tree && !filtered {
                     draw_lanes(&gp, cols.graph.0, rect, g, &colours);
                 }
 
                 let Some(c) = commit else {
                     if cols_cfg.tree {
-                        nodes::wip_ring(&gp, pos2(node_x, mid), node_r, lane_col);
+                        nodes::wip_lantern(&gp, pos2(node_x, mid), node_r, row_look::top_fill(look), snap.is_dirty());
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.wip_span(), rect));
-                    wip_row::draw(&mp, &cols, mid, wip_label, snap.changes, wip_total);
+                    wip_row::draw(&mp, &cols, mid, (wip_label, selected), snap.changes, wip_total);
                     if resp.clicked() {
                         select::focus(ui.ctx());
                         msgs.push(select::wip_click(ui.input(|i| i.modifiers)));
                     }
                     continue;
                 };
-
-                let dim = searching && !filtered && st.session.search.position(index).is_none();
                 let kind = if c.parents.len() > 1 { NodeKind::Merge } else { NodeKind::Commit };
                 if cols_cfg.tree {
                     if kind == NodeKind::Merge {
-                        nodes::merge_dot(&gp, pos2(node_x, mid), lane_col);
+                        nodes::merge_dot(&gp, at, lane_col);
                     } else {
                         let av = if show_avatars { Some(&mut *avatars) } else { None };
-                        nodes::commit(&gp, (pos2(node_x, mid), node_r), c.author.name(), c.author.email(), lane_col, av);
+                        nodes::commit(&gp, (at, node_r), c.author.name(), c.author.email(), lane_col, av);
                     }
+                }
+                if let Some((at, edge)) = glow {
+                    lantern::rim(&gp, at, edge);
                 }
 
                 // BRANCH / TAG column, joined to the node; in a narrow table, the chips lead the message.
@@ -281,14 +294,14 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     true => {
                         let room = refs_fit::row_w(&painter, &chips).min((cols.msg.1 - cols.msg.0) * INLINE_SHARE);
                         let span = (cols.msg.0, cols.msg.0 + room);
-                        (span, span)
+                        (span, labels::inline_clip(span))
                     }
                 };
                 if cols_cfg.refs || inline {
                     let labels = snap.refs.get(&c.oid).map_or(&[][..], |l| l.as_slice());
                     let mut build = None;
                     if tips.is_some() && labels.iter().any(|l| matches!(l.kind, RefKind::Local | RefKind::Remote)) {
-                        tips_seen.push(c.oid);
+                        asks.tips_seen.push(c.oid);
                         build = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
                     }
                     let ghost =
@@ -307,22 +320,20 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         }
                     }
                     if refs.on_chip {
-                        hover_tip_next = Some(c.oid);
+                        asks.hover_tip_next = Some(c.oid);
                     }
                 }
 
-                // A selected row's message is in `strong`, as the sidebar's selected rows are.
-                let ink = if selected { color::strong() } else { color::text() };
-                let fg = if dim { ink.gamma_multiply(0.35) } else { ink };
-                let weak = if dim { color::weak().gamma_multiply(0.35) } else { color::weak() };
+                let ink = if selected { color::strong() } else { color::text() }; // As the sidebar's selected rows.
                 let show_body = match cols_cfg.description {
                     DescriptionMode::Always => true,
                     DescriptionMode::OnHover => hovered || selected,
                     DescriptionMode::Never => false,
                 };
+                let found = matched.then(|| find_marks::RowRuns::of(&st.session.search.query, c, show_body.then(|| c.body_preview().0)));
                 let stat = stats.get(&c.oid).copied().filter(|_| cols_cfg.changes);
                 if cols_cfg.changes && stat.is_none() {
-                    want_stats.push(c.oid);
+                    asks.want_stats.push(c.oid);
                 }
                 let cells = cells::Cells {
                     cols: &cols,
@@ -332,7 +343,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     commit: c,
                     pr: pr_at.get(&c.oid),
                     show_body,
-                    colors: (fg, weak),
+                    inks: cells::Inks::new(ink, dim),
+                    found: found.as_ref().map(|r| (r, find_marks::Mark { fill: color::find_fill(row_look::top_fill(look)), ink })),
                     date: cols_cfg.date.then(|| settings.format_graph_time(c.time, now, offset)),
                     stats: stat,
                 };
@@ -381,17 +393,6 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         if more::wants_more(st, out.inner, total, filtered) {
             msgs.push(Msg::Load(LoadMsg::NearHistoryEnd));
         }
-        if hover_tip_next.is_some() {
-            st.view.hover_tip_next = hover_tip_next;
-        }
-        let seen = &mut st.view.tips_seen;
-        for o in tips_seen {
-            if seen.len() < MAX_SEEN && !seen.contains(&o) {
-                seen.push(o);
-            }
-        }
-        if !want_stats.is_empty() {
-            msgs.push(Msg::Repo(RepoMsg::WantStats(want_stats)));
-        }
+        asks.apply(st, msgs);
     }
 }

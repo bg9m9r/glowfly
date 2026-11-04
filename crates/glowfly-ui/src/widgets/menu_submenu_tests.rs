@@ -2,7 +2,7 @@
 //! time, so egui's input time says when a submenu opens and closes.
 
 use super::*;
-use crate::ui::widgets::menu;
+use crate::widgets::menu;
 use eframe::egui::{Event, Modifiers, PointerButton, Rect, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -13,7 +13,7 @@ const SCREEN: Vec2 = vec2(600.0, 400.0);
 /// A harness whose whole window opens a menu on a right-click: Alpha, More ▸ (One, Two, Three),
 /// Other ▸ (Four), Plain.
 fn harness() -> Harness<'static> {
-    let mut h = crate::ui::snapshot_check::builder().with_size(SCREEN).with_step_dt(STEP).with_max_steps(200).build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().with_size(SCREEN).with_step_dt(STEP).with_max_steps(200).build_ui(|ui| {
         let r = ui.allocate_rect(ui.max_rect(), Sense::click());
         menu::context_menu(&r, |ui| {
             let _ = ui.button("Alpha");

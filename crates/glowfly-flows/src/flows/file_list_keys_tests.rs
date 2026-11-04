@@ -9,14 +9,14 @@ use super::conflict_tests::opened_two;
 use super::selection_tests::fixture;
 use super::tests::drive;
 use super::update;
-use crate::effect::Effect;
-use crate::keymap::KeyAction;
-use crate::msg::{ConflictMsg, HistoryMsg, LayoutMsg, Msg, RepoMsg, SelectionMsg};
-use crate::state::AppState;
-use crate::state::file_folds::FileListId;
-use crate::state::list_keys::{FileList, ListMove};
 use glowfly_core::repo::{DiffTarget, Side};
 use glowfly_core::settings::FileListMode;
+use glowfly_model::effect::Effect;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{ConflictMsg, HistoryMsg, LayoutMsg, Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::list_keys::{FileList, ListMove};
 use std::time::Instant;
 
 const DOWN: ListMove = ListMove::Step { down: true };
@@ -34,7 +34,7 @@ fn press(st: &mut AppState, list: FileList, mv: ListMove) {
 /// The diff `fx` opens.
 fn opened(fx: &[Effect]) -> Option<&DiffTarget> {
     fx.iter().find_map(|e| match e {
-        Effect::LoadDiff { target, reload: false, .. } => Some(target),
+        Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload: false, .. }) => Some(target),
         _ => None,
     })
 }
@@ -133,7 +133,7 @@ fn the_comparison_and_stacked_lists_step_through_their_files() {
 fn the_working_directory_comparison_steps_through_its_files() {
     let (mut st, f) = fixture("file-keys-workdir");
     drive(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(f.c(1))));
-    let crate::state::Selection::VsWorkdir(w) = &st.session.selection else { panic!("compared") };
+    let glowfly_model::state::Selection::VsWorkdir(w) = &st.session.selection else { panic!("compared") };
     let files: Vec<String> = w.changes.as_ref().unwrap().as_ref().unwrap().files.iter().map(|f| f.path.clone()).collect();
     assert_eq!(files, ["f.txt", "g.txt"]);
     let (first, second) = (w.target("f.txt".into()), w.target("g.txt".into()));

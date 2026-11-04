@@ -11,18 +11,18 @@ use super::super::theme::color;
 use super::super::widgets::text_field::{self, TextField};
 use super::super::widgets::{FieldGroup, buttons};
 use super::picker::{Picker, multi};
-use crate::msg::{IssueMsg, Msg};
-use crate::state::issue_form::{IssueForm, OptionsState};
-use crate::state::issue_words as words;
-use crate::state::{ForgeState, ProjectKeys};
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::forge::filters::Named;
 use glowfly_core::forge::{IssueField, Provider};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
+use glowfly_model::msg::{IssueMsg, Msg};
+use glowfly_model::state::issue_form::{IssueForm, OptionsState};
+use glowfly_model::state::issue_words as words;
+use glowfly_model::state::{ForgeState, ProjectKeys};
 
 /// Draws the dialog; returns true when it should close. The title takes the keyboard focus
 /// when nothing has it, unless `cx.keyboard` is false (a credential prompt is above it).

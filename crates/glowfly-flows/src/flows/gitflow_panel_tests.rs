@@ -5,22 +5,22 @@
 use super::gitflow_tests::{cleanup, flow, git_job, initialized, last_log, open, run};
 use super::tests::{drive, git, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RebaseMsg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::state::history::FileHistoryView;
-use crate::state::palette::{Mode, PaletteCommand as C, PickKind, entries};
-use crate::state::rebase::RebasePanel;
-use crate::state::{AppState, ForgeState, Modal, Selection};
 use glowfly_core::forge::{Issue, Provider, Target};
 use glowfly_core::gitcli::args;
 use glowfly_core::gitflow::FlowKind;
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadOptions};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::palette::{Mode, PaletteCommand as C, PickKind, entries};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::{AppState, ForgeState, Modal, Selection};
 use std::time::Instant;
 
 fn empty_diff() -> FileDiff {
@@ -81,7 +81,7 @@ fn jumping_to_a_commit_closes_it() {
     let fx = update(&mut st, Msg::Repo(RepoMsg::JumpTo(tip)), Instant::now());
     assert!(!st.session.gitflow_panel);
     assert_eq!(st.session.selection, Selection::Commit(tip));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == tip)));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }) if *oid == tip)));
     cleanup(&dir);
 }
 
@@ -133,7 +133,7 @@ fn start_from_issue_opens_the_dialog_with_its_name() {
     let (mut st, dir) = open("issue-off");
     flow(&mut st, from(FlowKind::Feature, "x"));
     assert!(st.modal.is_none());
-    assert_eq!(last_log(&st), crate::state::gitflow::NOT_SET_UP);
+    assert_eq!(last_log(&st), glowfly_model::state::gitflow::NOT_SET_UP);
     cleanup(&dir);
 }
 

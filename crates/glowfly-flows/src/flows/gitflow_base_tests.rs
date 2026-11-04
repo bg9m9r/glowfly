@@ -5,14 +5,14 @@
 
 use super::gitflow_tests::{cleanup, git_job, initialized, job_label, open, run};
 use super::tests::{drive, finish, git};
-use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
-use crate::state::gitflow_base::{Deleting, guard};
-use crate::state::worktree_manage::RemoveForm;
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::PrState;
 use glowfly_core::gitcli::{args, run as git_run};
 use glowfly_core::gitflow::FlowBase;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::gitflow_base::{Deleting, guard};
+use glowfly_model::state::worktree_manage::RemoveForm;
+use glowfly_model::state::{AppState, Modal};
 
 const DEVELOP: &str = "develop is the Git Flow development branch: features and releases start from it and every Finish \
                        merges into it. Until it exists again or Preferences > Git Flow names another branch, those steps \
@@ -69,7 +69,7 @@ fn confirm_delete_for_bases() {
         )
     );
     assert_eq!((both.2.as_str(), both.3.as_ref()), ("Delete both anyway", None));
-    let warn = crate::state::gitflow_base::warning(T, FlowBase::Development, "develop");
+    let warn = glowfly_model::state::gitflow_base::warning(T, FlowBase::Development, "develop");
     assert_eq!(warn, DEVELOP, "the Delete dialog's warning");
     let development = ("Delete development branch".into(), "Delete anyway".into(), Some(FlowBase::Development));
     assert_eq!(dialog(&mut st, "develop"), development);
@@ -134,20 +134,20 @@ fn remote_and_pull_request_deletes_warn() {
     assert_eq!(m.4, vec![args(&["push", "--delete", "--", "origin", "develop"])]);
 
     // A merged pull request whose source is develop (not the default branch).
-    let mut d = crate::state::pull_request_actions::tests::detail();
+    let mut d = glowfly_model::state::pull_request_actions::tests::detail();
     d.state = PrState::Merged;
-    let mut v = crate::state::pull_request_actions::tests::view(Some(d));
+    let mut v = glowfly_model::state::pull_request_actions::tests::view(Some(d));
     v.pr.source = "develop".into();
     let snap = st.snap.as_mut().unwrap();
     snap.remotes = vec![("origin".into(), vec![("develop".into(), git2::Oid::zero())])];
-    let offer = crate::state::pull_request_actions::delete_branch_offer(T, &v, snap, Some("main")).expect("offered");
+    let offer = glowfly_model::state::pull_request_actions::delete_branch_offer(T, &v, snap, Some("main")).expect("offered");
     let m = parts(&offer);
     assert_eq!((m.0.as_str(), m.2.as_str()), ("Delete development branch", "Delete anyway"));
     assert!(m.1.starts_with("Delete branch develop on origin?"), "{}", m.1);
     assert!(m.1.ends_with(REMOTE), "{}", m.1);
     v.pr.source = "search".into();
     snap.remotes = vec![("origin".into(), vec![("search".into(), git2::Oid::zero())])];
-    let plain = parts(&crate::state::pull_request_actions::delete_branch_offer(T, &v, snap, Some("main")).expect("offered"));
+    let plain = parts(&glowfly_model::state::pull_request_actions::delete_branch_offer(T, &v, snap, Some("main")).expect("offered"));
     assert_eq!((plain.0.as_str(), plain.2.as_str()), ("Delete remote branch", "Delete"));
     cleanup(&dir);
 }

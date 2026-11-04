@@ -4,17 +4,18 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind, WatchTarget};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::msg::WatchMsg;
-use crate::runner;
-use crate::state::trust::Standing;
-use crate::state::{AppState, Modal, RunningJob};
+use glowfly_model::effect::ControlEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, LoadKind, WatchTarget};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::msg::WatchMsg;
+use glowfly_model::state::trust::Standing;
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -37,6 +38,7 @@ fn job(workdir: Option<PathBuf>) -> RunningJob {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -46,11 +48,11 @@ fn job(workdir: Option<PathBuf>) -> RunningJob {
 }
 
 fn is_status(fx: &[Effect], st: &AppState, workdir: &Path) -> bool {
-    matches!(fx, [Effect::LoadStatus { workdir: w, generation, .. }] if w == workdir && *generation == st.load_gen)
+    matches!(fx, [Effect::Load(glowfly_model::effect::LoadEffect::Status { workdir: w, generation, .. })] if w == workdir && *generation == st.load_gen)
 }
 
 fn watches(fx: &[Effect]) -> Vec<Option<WatchTarget>> {
-    fx.iter().filter_map(|e| if let Effect::Watch(t) = e { Some(t.clone()) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Control(ControlEffect::Watch(t)) = e { Some(t.clone()) } else { None }).collect()
 }
 
 fn watched_dir(fx: &[Effect]) -> Option<Option<PathBuf>> {
@@ -73,7 +75,10 @@ fn outside_file_change_refreshes_status_only() {
 fn ref_change_refreshes_everything() {
     let (mut st, dir, workdir) = opened("watch-full");
     let fx = update(&mut st, changed(&workdir, true, Instant::now()), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadRepo { kind: LoadKind::Refresh, path, .. }] if *path == workdir), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, path, .. })] if *path == workdir),
+        "{fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -129,8 +134,8 @@ fn index_changed(workdir: &Path, paths: &[&str], last_event: Instant) -> Msg {
 
 #[test]
 fn an_index_change_reads_the_index() {
-    use crate::state::refresh::Wanted;
     use glowfly_core::repo::FileEntry;
+    use glowfly_model::state::refresh::Wanted;
     let (mut st, dir, workdir) = opened("watch-index");
     let snap = st.snap.as_mut().unwrap();
     let old = snap.index_memo.clone().expect("a memo");
@@ -138,7 +143,7 @@ fn an_index_change_reads_the_index() {
     snap.staged = vec![FileEntry::new("added.txt", 'A'), FileEntry::new("edited.txt", 'M'), renamed];
     let fx = update(&mut st, index_changed(&workdir, &["a.txt"], Instant::now()), Instant::now());
     match &fx[..] {
-        [Effect::LoadIndexStatus { workdir: w, generation, read, .. }] => {
+        [Effect::Load(glowfly_model::effect::LoadEffect::IndexStatus { workdir: w, generation, read, .. })] => {
             assert!(w == &workdir && *generation == st.load_gen);
             assert!(std::sync::Arc::ptr_eq(&read.old, &old), "compared with the memo on screen");
             assert_eq!(read.paths, ["a.txt"]);
@@ -165,7 +170,7 @@ fn an_index_change_reads_the_index() {
     // Without a memo of the index on screen: the whole status.
     st.snap.as_mut().unwrap().index_memo = None;
     let fx = update(&mut st, index_changed(&workdir, &[], Instant::now()), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadStatus { paths: None, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { paths: None, .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -175,8 +180,13 @@ fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {
         for e in update(st, m, Instant::now()) {
-            if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
-                queue.extend(runner::testing::execute(e));
+            if matches!(
+                e,
+                Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+                    | Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })
+            ) {
+                queue.extend(glowfly_runner::testing::execute(e));
             } else {
                 all.push(e);
             }
@@ -218,11 +228,14 @@ fn preference_toggle_starts_and_stops_watching() {
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "nothing changed");
     st.settings.watch_files = false;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Watch(None)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Control(ControlEffect::Watch(None))]), "{fx:?}");
     assert!(update(&mut st, changed(&workdir, false, Instant::now()), Instant::now()).is_empty(), "ignored while off");
     st.settings.watch_files = true;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Watch(Some(t))] if t.workdir == workdir), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Control(ControlEffect::Watch(Some(t)))] if t.workdir == workdir),
+        "{fx:?}"
+    );
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -239,15 +252,18 @@ fn watch_failure_is_reported_once_per_repository() {
     assert!(!st.log[0].ok && st.log[0].text.contains("too many watches"));
     assert!(!st.view.show_log, "the activity log doesn't pop open");
     assert!(update(&mut st, failed("C:/other"), Instant::now()).is_empty());
-    assert_eq!(st.toasts.len(), 2);
+    assert_eq!(st.toasts.len(), 1, "the same words: the toast up is shown again");
+    assert_eq!(st.log.len(), 2, "the log names each repository");
 }
 
 /// Delivers a full watcher report for `workdir` and runs what follows. Returns whether the
 /// refresh walked everything again (not `RepoUnchanged`).
 fn full_report(st: &mut AppState, workdir: &Path) -> bool {
     let fx = update(st, changed(workdir, true, Instant::now()), Instant::now());
-    let [Effect::LoadRepo { kind: LoadKind::Refresh, known: Some(_), .. }] = &fx[..] else { panic!("a checked refresh: {fx:?}") };
-    let msgs: Vec<Msg> = fx.into_iter().filter_map(runner::testing::execute).collect();
+    let [Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, known: Some(_), .. })] = &fx[..] else {
+        panic!("a checked refresh: {fx:?}")
+    };
+    let msgs: Vec<Msg> = fx.into_iter().filter_map(glowfly_runner::testing::execute).collect();
     let full = msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::RepoLoaded { .. })));
     for m in msgs {
         let fx = update(st, m, Instant::now());
@@ -284,7 +300,7 @@ fn outside_config_that_runs_programs_asks_for_trust() {
     // A trusted repository that gains a setting asks again, about that setting.
     let dir = scratch_repo("watch-trust-config-trusted");
     let mut st = state();
-    crate::state::trust::record_as_found(&mut st.settings, &std::fs::canonicalize(&dir).unwrap());
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &std::fs::canonicalize(&dir).unwrap());
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert_eq!(st.trust_standing(), Some(Standing::Trusted));
     // The decision took the first load's print, so the load options changed: load once with them.
@@ -308,12 +324,12 @@ fn a_config_edit_outside_reads_the_identity_again() {
     let git_dir = st.snap.as_ref().unwrap().git_dir.clone();
     git(&dir, &["config", "user.name", "Grace Hopper"]);
     let mut fx = update(&mut st, config_changed(), Instant::now());
-    let [Effect::Profile(crate::profile::ProfileEffect::ReadIdentity { git_dir: g, .. })] = &fx[..] else {
+    let [Effect::Profile(glowfly_model::profile::ProfileEffect::ReadIdentity { git_dir: g, .. })] = &fx[..] else {
         panic!("one identity read: {fx:?}")
     };
     assert_eq!(g, &git_dir);
     // The read only reads git config; the repository's own name comes before any global one.
-    let msg = runner::testing::execute(fx.remove(0)).expect("a result");
+    let msg = glowfly_runner::testing::execute(fx.remove(0)).expect("a result");
     let fx = update(&mut st, msg, Instant::now());
     finish(&mut st, fx);
     assert_eq!(st.identities[&git_dir].name, "Grace Hopper", "the edited config");

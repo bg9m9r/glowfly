@@ -6,11 +6,11 @@
 //! selected row into view.
 
 use super::rows::Slot;
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase::RebasePanel;
-use crate::state::rebase_steps::NewStep;
 use eframe::egui::{Event, Id, Key, Modifiers, Ui};
 use glowfly_core::rebase::{RebaseAction, TodoStep};
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::rebase_steps::NewStep;
 
 /// Handles this frame's panel keys; `covered`: a dialog, the palette, Preferences or a
 /// credential prompt is open.

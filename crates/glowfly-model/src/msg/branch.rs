@@ -2,7 +2,8 @@
 
 /// The New branch, rename and upstream dialogs and the branch menus' actions (update/branches.rs).
 pub enum BranchMsg {
-    /// Check out local branch `.0`, unless it is HEAD or checked out in another worktree.
+    /// Check out local branch `.0`, unless it is HEAD. When another worktree has it, that
+    /// worktree opens instead (update/branch_elsewhere.rs).
     Checkout(String),
     /// Check out the local branch tracking remote branch `name` on `remote` (the one
     /// `remote_branch::tracking_local` picks), fast-forwarded to it, or create one tracking it.
@@ -22,6 +23,9 @@ pub enum BranchMsg {
     CheckoutPullRequest {
         id: u64,
     },
+    /// Run checkout `.0` (one of the four above), pruning first the missing worktree that still
+    /// has its branch: Prune and check out.
+    PruneThen(Box<BranchMsg>),
     /// Open the rename dialog for local branch `.0`.
     RenameBranchDialog(String),
     /// `git branch -m old new`; with `remote`, then the new name pushed to the upstream's remote
@@ -116,6 +120,7 @@ impl BranchMsg {
             | Self::CheckoutRemote { .. }
             | Self::CheckoutTracking { .. }
             | Self::CheckoutPullRequest { .. }
+            | Self::PruneThen(..)
             | Self::RenameBranchDialog(..)
             | Self::RenameBranch { .. }
             | Self::SetUpstreamDialog(..)

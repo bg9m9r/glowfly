@@ -5,14 +5,14 @@ use super::rebase_quick_tests::up;
 use super::rebase_tests::repo;
 use super::selection_tests::{commit_on, git, head};
 use super::tests::drive;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{Msg, RebaseMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::rebase::RebasePanel;
-use crate::state::rebase_onto::onto_commit_blocker;
 use git2::{Oid, RepositoryState};
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{self, RebaseAction, RebaseBase, ResetTo, TodoStep};
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{Msg, RebaseMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::rebase_onto::onto_commit_blocker;
 use std::path::Path;
 
 fn panel(st: &AppState) -> &RebasePanel {
@@ -47,7 +47,7 @@ fn panel_with_merges() {
     assert_eq!(p.items[0], TodoStep::Reset(ResetTo::Onto));
     assert!(matches!(&p.items[2], TodoStep::Label { at, .. } if *at == side));
     assert_eq!(p.items[6].oid(), Some(merge));
-    assert_eq!(p.subtitle(), format!("Rebasing 3 commits and 1 merge of main onto {} c1", short(c[0])));
+    assert_eq!(p.subtitle(Lang::En), format!("Rebasing 3 commits and 1 merge of main onto {}.", short(c[0])));
     assert_eq!(p.step_text(0, None), format!("Continue from the new base ({} c1)", short(c[0])));
     assert_eq!(p.step_text(2, None), format!("at-{}: marks {} side for a later step", short(side), short(side)));
     assert_eq!(p.actions(6), RebaseAction::MERGE_ACTIONS);
@@ -114,7 +114,7 @@ fn open_onto_commit() {
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(other))));
     let p = panel(&st);
     assert_eq!(p.items.len(), 2, "c2 and c3");
-    assert_eq!(p.subtitle(), format!("Rebasing 2 commits of main onto {} other", short(other)));
+    assert_eq!(p.subtitle(Lang::En), format!("Rebasing 2 commits of main onto {}.", short(other)));
     assert_eq!(p.start_blocker(st.snap.as_ref().unwrap(), false), None, "an unchanged list may start: the base moves");
     drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     let log = git(&dir, &["log", "--format=%s"]);

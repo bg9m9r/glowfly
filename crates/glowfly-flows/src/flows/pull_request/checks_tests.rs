@@ -3,15 +3,15 @@
 
 use super::calls_tests::{done, err, loads, opened, run, view};
 use super::tests::{github, rev, setup};
-use crate::effect::{Effect, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::{ForgeMsg, Msg, TabsMsg};
-use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
-use crate::state::AppState;
-use crate::state::pull_request::Page;
-use crate::state::pull_request_checks::ChecksPane;
-use crate::update::update;
 use glowfly_core::forge::{Auth, CheckList, CheckRun, CheckState, Checks, Provider, RunState, Target};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::{Effect, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, TabsMsg};
+use glowfly_model::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::Page;
+use glowfly_model::state::pull_request_checks::ChecksPane;
+use glowfly_model::update::update;
 use std::time::{Duration, Instant};
 
 /// The checks calls among `fx`.
@@ -92,7 +92,7 @@ fn unsupported_host_asks_for_checks_without_a_page() {
 fn untrusted_repository_holds_checks() {
     let (mut st, work, bare, _) = setup("prk-held", &[]);
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     let fx = run(&mut st, PullRequestMsg::Open(7));
     assert!(checks_calls(&fx).is_empty());
     assert_eq!(view(&st).checks.pane, ChecksPane::Held);

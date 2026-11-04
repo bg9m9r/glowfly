@@ -3,12 +3,12 @@
 //! draws them, and a hidden side panel's edge strip is in `panel_rails.rs`.
 
 use super::theme::color;
-use crate::keymap::BindingId;
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::AppState;
-use crate::state::layout::Panel;
 use eframe::egui::{self, RichText};
 use glowfly_core::settings::DEFAULT_ZOOM_PERCENT;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::Panel;
 
 /// At start-up, before the first frame: hands the zoom keys to the keymap (egui's own would
 /// still zoom on Ctrl+-/Ctrl+= after they are rebound) and applies the saved zoom.
@@ -17,18 +17,18 @@ pub fn start(ctx: &egui::Context, st: &AppState) {
     apply_zoom(ctx, st);
 }
 
-/// Makes egui's zoom the settings' (it takes effect from the next pass). The exact compare is
-/// safe: both come from the same integer percent.
+/// Makes egui's zoom the one in effect, the interface size times the system's text size while
+/// it is followed (`AppState::zoom_factor`; it takes effect from the next pass). The exact
+/// compare is safe: both come from the same integer percent.
 pub fn apply_zoom(ctx: &egui::Context, st: &AppState) {
-    let z = st.settings.zoom_factor();
+    let z = st.zoom_factor();
     if ctx.zoom_factor() != z {
         ctx.set_zoom_factor(z);
     }
 }
 
-/// The status bar's right-hand items, inside its right-to-left layout: the zoom level while it
-/// isn't 100% (a click resets it), then Show toolbar while the toolbar is hidden.
-pub(super) fn status_items(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+/// The status bar's zoom level while it isn't 100%, at its right end: a click resets it.
+pub(super) fn zoom_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let level = st.settings.zoom_level();
     if level != DEFAULT_ZOOM_PERCENT {
@@ -37,6 +37,11 @@ pub(super) fn status_items(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>
             msgs.push(Msg::Layout(LayoutMsg::ZoomReset));
         }
     }
+}
+
+/// The status bar's Show toolbar, while the toolbar is hidden.
+pub(super) fn show_toolbar_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     if !st.settings.show_toolbar
         && ui
             .small_button(t.tr("status.show_toolbar"))
@@ -69,6 +74,20 @@ mod tests {
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         assert_eq!(ctx.zoom_factor(), 1.25);
         apply_zoom(&ctx, &state(100));
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        assert_eq!(ctx.zoom_factor(), 1.0);
+    }
+
+    #[test]
+    fn the_followed_system_text_size_scales_the_zoom() {
+        let ctx = egui::Context::default();
+        let mut st = state(100);
+        st.view.system_a11y.text_scale = 1.5;
+        apply_zoom(&ctx, &st);
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        assert_eq!(ctx.zoom_factor(), 1.5);
+        st.settings.a11y.follow_system_text_size = false;
+        apply_zoom(&ctx, &st);
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         assert_eq!(ctx.zoom_factor(), 1.0);
     }

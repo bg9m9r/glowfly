@@ -1,11 +1,11 @@
 //! A folder row's menu in the changed-file lists' tree: its history, its path, and in the WIP
 //! lists staging or unstaging everything under it.
 
-use crate::msg::{HistoryMsg, Msg, StageMsg};
-use crate::ui::common::{menu_item, menu_item_if};
+use crate::common::{menu_item, menu_item_if};
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{HistoryMsg, Msg, StageMsg};
 
 /// What the menu offers for the folder's files beside history and path.
 #[derive(Clone, Copy)]

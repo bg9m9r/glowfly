@@ -5,15 +5,15 @@
 //! Push to all remotes.
 
 use super::branch_tests::{remote_commit, with_origin};
-use super::tests::{drive, finish, git};
+use super::tests::{drive, drive_seeing, finish, git};
 use super::update;
-use crate::effect::Effect;
-use crate::logs::LogsMsg;
-use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
-use crate::state::branches::push::{force_blocked, force_confirm, head_force_confirm};
-use crate::state::{AppState, ToastAction};
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::BranchInfo;
+use glowfly_model::effect::Effect;
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::branches::push::{force_blocked, force_confirm, head_force_confirm};
+use glowfly_model::state::{AppState, ToastAction};
 use std::path::Path;
 use std::time::Instant;
 
@@ -31,7 +31,7 @@ fn cleanup(dirs: &[&Path]) {
 
 /// Checks out feature (main, the default branch, is never force pushed) and rewrites its last
 /// commit locally, so the push needs force; reloads the snapshot.
-fn rewrite_feature(st: &mut crate::state::AppState, work: &Path) {
+fn rewrite_feature(st: &mut glowfly_model::state::AppState, work: &Path) {
     git(work, &["switch", "-q", "feature"]);
     git(work, &["commit", "-q", "--amend", "-m", "rewritten"]);
     drive(st, Msg::Repo(RepoMsg::Refresh));
@@ -44,7 +44,7 @@ fn force_push_leases_the_commit_the_snapshot_saw() {
     let seen = rev(&work, "origin/feature");
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(
             cmds[..],
             [args(&[
                 "push",
@@ -113,7 +113,7 @@ fn force_push_of_a_new_branch_expects_it_absent() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(
             cmds[..],
             [args(&[
                 "push",
@@ -165,7 +165,7 @@ fn force_push_of_a_branch_that_is_not_checked_out_leases_its_upstream() {
     assert!(body.contains("origin/feature has 1 commit that feature doesn't have"), "{body}");
     let fx = update(&mut st, then, Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(
             cmds[..],
             [args(&[
                 "push",
@@ -340,7 +340,8 @@ fn push_to_all_remotes_pushes_each_in_turn_and_names_the_ones_that_failed() {
     git(&work, &["remote", "add", "backup", &backup.display().to_string()]);
     git(&work, &["commit", "-q", "--allow-empty", "-m", "more"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    drive(&mut st, Msg::Branch(BranchMsg::PushAll("main".into())));
+    let ran = |m: &Msg| matches!(m, Msg::Branch(BranchMsg::PushedAll { branch, total: 3, result }) if branch == "main" && result.failed == ["broken"]);
+    assert!(drive_seeing(&mut st, Msg::Branch(BranchMsg::PushAll("main".into())), ran), "one job, reporting the failed remote");
     let headline = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
     assert_eq!(headline, "Pushing main failed on broken (1 of 3 remotes). The log shows why.");
     assert_eq!(rev(&backup, "main"), rev(&work, "main"), "a remote after the failed one still got it");

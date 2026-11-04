@@ -8,10 +8,10 @@ use super::submodule_tests::{PATH, opened};
 use super::tests::{clean_tree, git};
 use super::trust_recheck_tests::{checked_job, cleanup, prompt, pull, recheck, sealed, trust_and_run};
 use super::trust_tests::{asking, open};
-use crate::msg::Msg;
+use glowfly_model::msg::Msg;
 
 /// A repository whose `core.fsmonitor` is its tracked `tools/fsm.sh`, opened and trusted.
-fn trusted_tracked_fsmonitor(name: &str) -> (crate::state::AppState, std::path::PathBuf, std::path::PathBuf) {
+fn trusted_tracked_fsmonitor(name: &str) -> (glowfly_model::state::AppState, std::path::PathBuf, std::path::PathBuf) {
     let (mut st, work, bare) = with_origin(name);
     clean_tree(&work);
     std::fs::create_dir_all(work.join("tools")).unwrap();

@@ -5,10 +5,12 @@
 //! Glowfly's menus (`native_menu`, built in AppKit by `macos_menu`), the Linux PRIMARY selection
 //! the terminal sets and pastes (`primary_selection`), and the system's fonts for Chinese,
 //! Japanese and Korean (`system_fonts`), and the Windows keypad's Alt codes kept from the pane keys
-//! (`numpad_keys`). The runner's side is `runner::platform`.
+//! (`numpad_keys`), and the system's reduce-motion, high-contrast and text-size settings
+//! (`a11y_system`). The runner's side is `runner::platform`.
 
-use crate::start_arg::StartArg;
+use glowfly_model::start_arg::StartArg;
 
+pub mod a11y_system;
 mod app_id;
 #[cfg(target_os = "macos")]
 mod macos_events;
@@ -44,7 +46,7 @@ pub fn event_loop_hook() -> Option<eframe::EventLoopBuilderHook> {
 /// Starts taking the folders and links the OS hands over, before the window exists: they wait in
 /// the runner's inbox until it attaches. `start` is what the command line already opens.
 pub fn install_open_events(start: Option<&StartArg>) {
-    crate::runner::platform::open_events::install(start);
+    glowfly_runner::platform::open_events::install(start);
     #[cfg(target_os = "macos")]
     macos_events::install();
 }

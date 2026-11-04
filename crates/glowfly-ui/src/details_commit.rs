@@ -10,20 +10,20 @@ use super::details::{RowActions, changed_file_row_at, file_reveal};
 use super::file_menu::RowSource;
 use super::file_menu::folder_menu::{self, FolderStage};
 use super::graph::draw_avatar;
-use super::list_row::file_tree::{ListRows, Shown, folder_row, mode_toggle};
+use super::list_row::file_tree::{FilesKey, ListRows, Shown, folder_row, mode_toggle};
 use super::theme::branch_colours::line;
 use super::theme::color;
 use super::widgets::{self, buttons};
-use crate::msg::{Msg, SelectionMsg};
-use crate::state::AppState;
-use crate::state::file_folds::FileListId;
-use crate::state::lfs::TrackContext;
-use crate::state::list_keys::FileList;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
 use glowfly_core::repo::{CommitDetail, DiffTarget};
+use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::lfs::TrackContext;
+use glowfly_model::state::list_keys::FileList;
 use std::borrow::Cow;
 
 /// Below the title.
@@ -189,7 +189,7 @@ fn body_block(ui: &mut Ui, body: &str) {
 fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     // The file being opened is highlighted at once, so a click or a key answers immediately.
-    let open = crate::state::wip_lists::cursor(st);
+    let open = glowfly_model::state::wip_lists::cursor(st);
     let n = d.files.len();
     let counts = st.session.reads.line_counts.commit(d.oid);
     let mode = st.settings.file_list_mode;
@@ -207,12 +207,13 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
         ui,
         mode,
         n,
-        || d.files.iter().map(|f| f.path.as_str()).collect(),
+        FilesKey::of(FileListId::Commit, &d.files, d.oid),
+        &|| d.files.iter().map(|f| f.path.as_str()).collect(),
         st.session.tab_view.file_folds.closed(FileListId::Commit),
     );
     let lfs = TrackContext::of(st);
-    let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
-    let commands = crate::state::custom_commands::MenuCommands::for_state(st);
+    let tools = glowfly_model::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
+    let commands = glowfly_model::state::custom_commands::MenuCommands::for_state(st);
     let row_h = widgets::LIST_ROW_H;
     let index = |t: &DiffTarget| {
         let i = d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()))?;
@@ -226,7 +227,7 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
             let r = match rows.get(row) {
                 Shown::File { index, depth } => {
                     let f = &d.files[index];
-                    let patch_blocked = (d.parents.len() > 1).then(|| crate::state::selection::CommitBlock::PatchMerge.text(t));
+                    let patch_blocked = (d.parents.len() > 1).then(|| glowfly_model::state::selection::CommitBlock::PatchMerge.text(t));
                     let src = RowSource::Commit(d.oid);
                     let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
                     let in_workdir = d.in_workdir(&f.path);

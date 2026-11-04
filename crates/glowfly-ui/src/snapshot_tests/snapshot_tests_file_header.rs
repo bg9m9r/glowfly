@@ -6,13 +6,13 @@
 
 use super::snapshot_tests::{git, harness_sized, remove_fixture, with_repo};
 use super::snapshot_tests_revert::with_commit_diff;
-use crate::state::AppState;
-use crate::state::diff_preview::DiffPreview;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview::DiffPreview;
 use image::{ImageFormat, Rgba, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -21,7 +21,7 @@ const DATE: &str = "2026-01-11T10:00:00+00:00";
 /// Wide enough for every header group with its labels.
 const WIDE: egui::Vec2 = egui::vec2(1800.0, 820.0);
 
-fn render(name: &str, st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<crate::msg::Msg>)> {
+fn render(name: &str, st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<glowfly_model::msg::Msg>)> {
     let mut h = harness_sized(st, dark, WIDE);
     h.run();
     h.check_snapshot(name);
@@ -46,7 +46,7 @@ fn file_header_wide_dark() {
     std::fs::write(dir.join("src/app.txt"), lines.replace("line 3\n", "line three\nand more\n").replace("line 25\n", "")).unwrap();
     open(&mut st, &dir, DiffTarget::Unstaged("src/app.txt".into()));
     let h = render("file_header_wide_dark", st, true);
-    for label in ["src/", "app.txt", "Unstaged", "Open", super::file_menu::SHOW_IN_FOLDER, "Stage file", "Close diff"] {
+    for label in ["src/", "app.txt", "Unstaged", "More file actions", "Stage file", "Close diff"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(h.query_by_label("M +2 \u{2212}2").is_some(), "the status chip");
@@ -61,7 +61,11 @@ fn file_header_commit_light() {
     // The window is `diff_commit_header_buttons`'s; here, what the header holds.
     let mut h = harness_sized(st, false, WIDE);
     h.run();
-    for label in ["Restore\u{2026}", "Open", super::file_menu::SHOW_IN_FOLDER, short.as_str()] {
+    assert!(h.query_by_label(short.as_str()).is_some(), "the commit chip");
+    // The file actions are in ⋯.
+    h.get_by_label("More file actions").click();
+    h.run();
+    for label in ["Restore\u{2026}", super::file_menu::OPEN_DEFAULT, super::file_menu::SHOW_IN_FOLDER] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(h.query_by_label("Stage file").is_none(), "no primary on a commit");
@@ -118,7 +122,7 @@ fn diff_image_before_after() {
 fn diff_image_added() {
     let (st, dir) = with_image("diff-image-added", ThemeChoice::Dark, None, &png(true));
     let h = render("diff_image_added", st, true);
-    assert!(h.query_by_label("Added").is_some(), "the missing side's placeholder");
+    assert!(h.query_all_by_label("Added").count() >= 2, "the file's status and the missing side's placeholder");
     drop(h);
     remove_fixture(&dir);
 }

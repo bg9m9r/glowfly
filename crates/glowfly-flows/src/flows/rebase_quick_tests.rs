@@ -5,13 +5,13 @@ use super::rebase_tests::{repo, running_job};
 use super::selection_tests::{commit_on, git, head};
 use super::tests::{drive, same_place};
 use super::update;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{Msg, RebaseMsg, RepoMsg};
-use crate::state::rebase::STASH_LINE;
-use crate::state::rebase_quick::{self, QUICK_STALE};
-use crate::state::{AppState, Modal};
 use git2::{Oid, RepositoryState};
 use glowfly_core::rebase::{self, QuickEdit, RebaseAction, StartRequest};
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{Msg, RebaseMsg, RepoMsg};
+use glowfly_model::state::rebase::STASH_LINE;
+use glowfly_model::state::rebase_quick::{self, QUICK_STALE};
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 use std::time::Instant;
 
@@ -36,7 +36,7 @@ pub(super) fn prepare(st: &mut AppState, edit: QuickEdit) -> Vec<Effect> {
     let fx = up(st, Msg::Rebase(RebaseMsg::Edit(edit)));
     let [e @ Effect::Rebase(RebaseEffect::PrepareEdit { .. })] = &fx[..] else { panic!("expected a preparation, got {fx:?}") };
     assert!(e.scope().is_some(), "the result comes back for this tab only");
-    let msg = crate::runner::testing::execute(fx.into_iter().next().unwrap()).expect("a result");
+    let msg = glowfly_runner::testing::execute(fx.into_iter().next().unwrap()).expect("a result");
     up(st, msg)
 }
 

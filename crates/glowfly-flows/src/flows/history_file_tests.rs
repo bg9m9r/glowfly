@@ -5,11 +5,12 @@
 use super::history_tests::{entry, oid, with_view};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, FileTextRequest};
-use crate::msg::{HistoryMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::history::{FileTextData, HistoryPane, TextError, TextState};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, FileTextRequest};
+use glowfly_model::msg::{HistoryMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileTextData, HistoryPane, TextError, TextState};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -28,7 +29,7 @@ fn requests(fx: &[Effect]) -> Vec<&FileTextRequest> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 /// The (oid, path) of each text request among `fx`.
@@ -63,7 +64,7 @@ fn selecting_in_file_pane_requests_text_and_diff() {
     let fx = send(&mut st, HistoryMsg::SelectHistoryEntry(1));
     assert_eq!(text_requests(&fx), [(oid(2), "old.txt".to_owned())]);
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::LoadDiff { target: DiffTarget::Commit(o, p), .. } if *o == oid(2) && p == "old.txt")),
+        fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { target: DiffTarget::Commit(o, p), .. }) if *o == oid(2) && p == "old.txt")),
         "the diff loads underneath: {fx:?}"
     );
     let _ = std::fs::remove_dir_all(&dir);

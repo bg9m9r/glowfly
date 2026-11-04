@@ -6,18 +6,18 @@
 
 use super::calls_tests::loaded;
 use super::tests::{cleanup, github, open, paths, pr, rev, set_pr, setup};
-use crate::effect::{Effect, ForgeReply, ForgeResult};
 use crate::flows::{drive, git};
-use crate::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
-use crate::pull_request::{FilesJob, HeadJob, PrEffect, PullRequestMsg};
-use crate::state::pull_request_source::{HeadFetch, OutOfSync, head_fetch_blocked, out_of_sync};
-use crate::state::{AppState, ForgeState};
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::auth_failure::AuthNeed;
 use glowfly_core::forge::{PrState, Provider, Target};
 use glowfly_core::repo::SourceFrom;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::{Effect, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::pull_request::{FilesJob, HeadJob, PrEffect, PullRequestMsg};
+use glowfly_model::state::pull_request_source::{HeadFetch, OutOfSync, head_fetch_blocked, out_of_sync};
+use glowfly_model::state::{AppState, ForgeState};
+use glowfly_model::update::update;
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::time::Instant;
@@ -62,7 +62,7 @@ fn head_jobs(fx: &[Effect]) -> Vec<&HeadJob> {
 
 /// Runs `e` and hands its result to `update`, returning the effects that raised.
 fn step(st: &mut AppState, e: Effect) -> Vec<Effect> {
-    let msg = crate::runner::testing::execute(e).expect("a result");
+    let msg = glowfly_runner::testing::execute(e).expect("a result");
     update(st, msg, Instant::now())
 }
 
@@ -78,7 +78,7 @@ fn is_head(e: &Effect) -> bool {
     matches!(e, Effect::PullRequest(PrEffect::FetchHead(_)))
 }
 
-fn view(st: &AppState) -> &crate::state::pull_request::PrView {
+fn view(st: &AppState) -> &glowfly_model::state::pull_request::PrView {
     st.session.pull_request.view.as_ref().unwrap()
 }
 
@@ -220,8 +220,13 @@ fn no_automatic_fetch_without_a_head_ref_a_head_trust_or_sign_in() {
 
     // A remote paused for sign-in.
     let workdir = st.workdir().unwrap();
-    let paused =
-        crate::state::sign_in::SignInNeeded { workdir, remote: "origin".into(), host: None, need: AuthNeed::Https, dismissed: false };
+    let paused = glowfly_model::state::sign_in::SignInNeeded {
+        workdir,
+        remote: "origin".into(),
+        host: None,
+        need: AuthNeed::Https,
+        dismissed: false,
+    };
     assert!(st.sign_in.pause(paused));
     assert!(!opens_with_fetch(&mut st));
     assert_eq!(out_of_sync(view(&st)), [OutOfSync::SourceMissing]);
@@ -230,7 +235,7 @@ fn no_automatic_fetch_without_a_head_ref_a_head_trust_or_sign_in() {
 
     // An untrusted repository.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     assert!(!opens_with_fetch(&mut st));
     let v = view(&st);
     assert_eq!(out_of_sync(v), [OutOfSync::SourceMissing]);
@@ -268,7 +273,7 @@ fn a_fork_known_from_the_page_ignores_a_same_named_branch() {
     let mut d = super::calls_tests::detail(&head.to_string());
     d.same_repo = false;
     let page = glowfly_core::forge::PrPage { detail: d, entries: Vec::new(), threads: Vec::new(), threads_note: None };
-    let msg = super::calls_tests::reply_msg(&st, crate::pull_request::PrReply::Loaded(Ok(page)));
+    let msg = super::calls_tests::reply_msg(&st, glowfly_model::pull_request::PrReply::Loaded(Ok(page)));
     let fx = update(&mut st, Msg::PullRequest(msg), Instant::now());
     let jobs = files_jobs(&fx);
     assert_eq!(jobs.len(), 1, "compared again");
@@ -293,7 +298,7 @@ fn a_new_listed_head_and_a_parked_fetch_ask_again() {
     assert_eq!(view(&st).head_fetch, HeadFetch::Done);
     let notes = out_of_sync(view(&st));
     assert!(matches!(&notes[..], [OutOfSync::HeadNotSent { .. }]), "{notes:?}");
-    assert!(crate::state::pull_request_source::offers_head_fetch(view(&st), &notes));
+    assert!(glowfly_model::state::pull_request_source::offers_head_fetch(view(&st), &notes));
     // The pull request moved on, and the list now names its new head: the fetch runs again.
     let head = move_head(&bare, "refs/pull/7/head", "k.txt");
     let mut listed = pr(7, Some(head));

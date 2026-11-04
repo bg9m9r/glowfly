@@ -7,12 +7,12 @@ use super::snapshot_tests_diff::with_diff;
 use super::snapshot_tests_language_main::{H, assert_no_english, german, panels};
 use super::snapshot_tests_revert::with_commit_diff;
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::Msg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::msg::Msg;
 
 /// The last confirmation asked for: its title, body and button.
 fn confirm_danger(h: &H) -> Option<(String, String, String)> {
@@ -149,7 +149,7 @@ fn menu_confirmations_german() {
     right_click_row(&mut h, "search", 0);
     h.get_by_label(de.tr("branch.menu.delete")).click();
     h.run();
-    let dialog = |m: &Msg| matches!(m, Msg::Branch(crate::msg::BranchMsg::DeleteDialog(b)) if b == "search");
+    let dialog = |m: &Msg| matches!(m, Msg::Branch(glowfly_model::msg::BranchMsg::DeleteDialog(b)) if b == "search");
     assert!(h.state().1.iter().any(dialog), "the branch's Delete opens its dialog");
 
     right_click_row(&mut h, "v0.1.0", 0);

@@ -2,16 +2,6 @@
 //! feeds those messages and background results through `update`, runs the resulting effects, and
 //! handles the few effects that need the window. `draw` and `UiCache` are what it draws with.
 
-// The views lived in the app crate's `ui` module: the alias keeps their `crate::ui::…` paths
-// working, and the model's modules are re-exported under the names they have there.
-use crate as ui;
-#[cfg(any(test, feature = "test-support"))]
-pub(crate) use glowfly_model::update;
-pub(crate) use glowfly_model::{
-    custom_commands, deep_link, effect, git_env, gitflow, keymap, lfs, logs, msg, onboarding, patch, profile, remote, ssh, state,
-    submodule, tag, themes, tools, worktree,
-};
-
 mod access;
 mod activity_fold;
 mod activity_log;
@@ -35,8 +25,10 @@ mod clone_service;
 mod commit_box;
 pub(crate) mod common;
 mod conflict;
+mod conflict_band;
 mod conflict_cells;
 mod conflict_check;
+mod conflict_check_parts;
 mod conflict_files;
 mod conflict_fold;
 mod conflict_output;
@@ -74,6 +66,7 @@ mod forge_filter_dialog;
 mod forge_filter_menu;
 mod frame_layout;
 pub mod frame_overlay;
+mod getting_started;
 mod git_banner;
 mod gitflow_dialog;
 mod gitflow_finish_dialog;
@@ -142,6 +135,7 @@ mod repo_colour_menu;
 mod repo_finder;
 mod repo_group_dialog;
 mod repo_group_menu;
+mod repo_group_picker;
 mod repo_line;
 mod repo_list;
 mod repo_list_drag;
@@ -165,12 +159,14 @@ mod stash_dialog;
 mod stash_push_dialog;
 mod stashes;
 mod status;
+mod status_glance;
 mod submodule_dialogs;
 mod submodules;
 mod tab_dialog;
 mod tab_drag;
 mod tab_list;
 mod tab_paint;
+mod tab_state;
 mod tabs;
 mod tag_dialog;
 mod tags;
@@ -191,6 +187,7 @@ mod welcome_art;
 mod welcome_cards;
 mod welcome_header;
 mod welcome_steps;
+mod whats_new_chip;
 pub mod widgets;
 mod window_buttons;
 pub mod window_frame;
@@ -201,9 +198,13 @@ mod worktree_move_dialog;
 mod worktrees;
 
 #[cfg(test)]
+mod glyph_check;
+#[cfg(test)]
 mod hint_tests;
 #[cfg(test)]
 mod menu_testing;
+#[cfg(test)]
+mod readme_screenshots;
 #[cfg(any(test, feature = "test-support"))]
 #[doc(hidden)]
 pub mod snapshot_check;
@@ -221,12 +222,12 @@ mod tabs_list_tests;
 #[cfg(test)]
 mod tabs_tests;
 
-use crate::msg::Msg;
-use crate::state::AppState;
 #[cfg(test)]
 use central::escape_key;
 use eframe::egui;
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 
 mod app_icon;
 mod app_mark;
@@ -242,7 +243,7 @@ pub struct UiCache {
     pub speller: Speller,
     pub diff_rows: diff::rows_cache::DiffRowsCache,
     /// The diff header's change rows, line counts and file order.
-    pub diff_header: crate::state::diff_header::cache::HeaderCache,
+    pub diff_header: glowfly_model::state::diff_header::cache::HeaderCache,
     /// The file history File view's line widths and wrapped row heights.
     pub history_text: history_text_cache::HistoryTextCache,
     /// The blame view's line widths and wrapped row heights.
@@ -251,6 +252,8 @@ pub struct UiCache {
     pub diff_images: diff::preview::PreviewTextures,
     /// Parsed Markdown bodies (pull request and issue descriptions and comments).
     pub markdown: markdown_cache::MarkdownCache,
+    /// The local branches' upstreams the graph's ref chips group by, per snapshot.
+    pub ref_upstreams: graph::ref_group::UpstreamsCache,
     /// The file history File view's image preview texture.
     pub history_preview: preview_cache::PreviewTexture,
 }
@@ -259,7 +262,8 @@ pub struct UiCache {
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     // An open menu's keys are its own (done by the shortcuts already when they ran).
     menu_keys::capture(ctx);
-    widgets::tooltip::configure(ctx, st.settings.reduce_motion);
+    theme::a11y::configure(ctx, &st.settings, st.motion_reduced());
+    cache.markdown.lang = st.settings.lang();
     let bounds = frame_layout::show(ctx, st, cache, msgs);
     // Frees the File view's image texture once a frame draws no image.
     cache.history_preview.end_frame();
@@ -277,5 +281,5 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     // Asked for a pane that wasn't drawn, or a graph key with no graph: nothing to do later.
     st.view.pane_focus = None;
     st.view.graph_key = None;
-    widgets::tooltip_motion::animate(ctx, st.settings.reduce_motion);
+    widgets::tooltip_motion::animate(ctx, st.motion_reduced());
 }

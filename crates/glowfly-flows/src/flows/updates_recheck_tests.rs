@@ -3,13 +3,14 @@
 //! check doesn't lose the offer.
 
 use super::updates_tests::{NOW, app, checks, found, offered, saved, send, tick};
-use crate::effect::{Effect, UpdateEffect};
-use crate::msg::UpdateMsg as U;
-use crate::state::AppState;
-use crate::state::palette::entries;
-use crate::state::updates::{STARTUP_DELAY, UpdateStatus};
-use glowfly_core::app_update::{InstallKind, InstallMethod};
+use glowfly_core::app_update::{InstallKind, InstallMethod, UpdateError};
+use glowfly_core::forge::ServiceError;
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::{Effect, UpdateEffect};
+use glowfly_model::msg::UpdateMsg as U;
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::updates::{STARTUP_DELAY, UpdateStatus};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -42,8 +43,8 @@ fn check_now_after_a_download_keeps_the_file() {
     assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { file: f, method: InstallMethod::RunMsi, .. } if *f == file));
     assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
     assert!(has_install(&st));
-    assert_eq!(st.toasts.len(), toasts + 1);
-    let toast = st.toasts.last().unwrap();
+    assert_eq!(st.toasts.len(), toasts + 1, "a toast with a fix is its own");
+    let toast = st.newest_toast().unwrap();
     assert_eq!(
         (toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())),
         ("Downloaded Glowfly 0.3.0.", Some("Install and restart"))
@@ -76,13 +77,13 @@ fn a_failed_check_after_a_download_keeps_the_file() {
     send(&mut st, U::Startup, t);
     let t1 = t + STARTUP_DELAY;
     assert_eq!(checks(&tick(&mut st, t1)), [false]);
-    send(&mut st, U::Checked { manual: false, result: Err("offline".into()) }, t1);
+    send(&mut st, U::Checked { manual: false, result: Err(UpdateError::Service(ServiceError::Network { said: "offline".into() })) }, t1);
     assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { file: f, .. } if *f == file));
     assert!(checks(&tick(&mut st, t1 + Duration::from_secs(60))).is_empty(), "still waits before retrying");
     send(&mut st, U::CheckNow, t1);
-    send(&mut st, U::Checked { manual: true, result: Err("offline".into()) }, t1);
+    send(&mut st, U::Checked { manual: true, result: Err(UpdateError::Service(ServiceError::Network { said: "offline".into() })) }, t1);
     assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { .. }), "the failure is only toasted");
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Couldn't check for updates: offline"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Couldn't check for updates: network error: offline"));
     assert!(has_install(&st));
 }
 
@@ -112,7 +113,7 @@ fn an_offer_outlasts_later_checks() {
     let t1 = t + STARTUP_DELAY;
     assert_eq!(checks(&tick(&mut st, t1)), [false]);
     assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update available (0.3.0)"), "while checking");
-    send(&mut st, U::Checked { manual: false, result: Err("offline".into()) }, t1);
+    send(&mut st, U::Checked { manual: false, result: Err(UpdateError::Service(ServiceError::Network { said: "offline".into() })) }, t1);
     assert!(matches!(&st.updates.status, UpdateStatus::Available(o) if o.version.to_string() == "0.3.0"));
     // The next day's check finds the same release: offered still, without a second toast.
     send(&mut st, U::Checked { manual: false, result: found("v0.3.0", InstallKind::Installer) }, t1);
@@ -121,6 +122,6 @@ fn an_offer_outlasts_later_checks() {
     // A manual failure with nothing on offer still shows the failure in Preferences.
     let mut st = app();
     send(&mut st, U::CheckNow, t);
-    send(&mut st, U::Checked { manual: true, result: Err("offline".into()) }, t);
-    assert_eq!(st.updates.status, UpdateStatus::CheckFailed("offline".into()));
+    send(&mut st, U::Checked { manual: true, result: Err(UpdateError::Service(ServiceError::Network { said: "offline".into() })) }, t);
+    assert_eq!(st.updates.status, UpdateStatus::CheckFailed("network error: offline".into()));
 }

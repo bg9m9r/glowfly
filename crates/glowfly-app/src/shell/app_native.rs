@@ -1,19 +1,21 @@
 //! The shell's side of the drawn Windows frame's OS glue (`platform::native_window`): before
 //! each frame it reads what the OS reported (the Maximize button as Windows tracks it, a click
-//! on it, the system menu, whether Mica applies) into view state and messages; after drawing it
+//! on it, the system menu, whether Mica applies, a system settings change) into view state and
+//! messages; after drawing it
 //! hands the OS the caption geometry the views recorded.
 
-use crate::msg::{AppMsg, Msg};
 use crate::platform::native_window::{NativeFrame, NativeWindow};
-use crate::state::AppState;
-use crate::state::window_chrome::{WindowCmd, WindowInfo};
-use crate::state::window_native::{self, Backdrop, MicaTint};
-use crate::ui::theme::color;
-use crate::ui::window_frame;
 use eframe::egui::{self, Color32};
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::window_chrome::{WindowCmd, WindowInfo};
+use glowfly_model::state::window_native::{self, Backdrop, MicaTint};
+use glowfly_ui::theme::color;
+use glowfly_ui::window_frame;
 
-/// Takes the OS's news into `st` and `msgs`; `tint` is the palette's Mica tint.
-pub(super) fn before_draw(native: &mut NativeWindow, st: &mut AppState, tint: Option<MicaTint>, msgs: &mut Vec<Msg>) {
+/// Takes the OS's news into `st` and `msgs`; `tint` is the palette's Mica tint. Returns whether
+/// the system reported a settings change.
+pub(super) fn before_draw(native: &mut NativeWindow, st: &mut AppState, tint: Option<MicaTint>, msgs: &mut Vec<Msg>) -> bool {
     let f = native.poll();
     native.set_dark(color::is_dark());
     st.view.window.max_button = f.max_button;
@@ -23,6 +25,7 @@ pub(super) fn before_draw(native: &mut NativeWindow, st: &mut AppState, tint: Op
     if f.system_menu_shown {
         st.view.alt_tap = st.view.alt_tap.cancel();
     }
+    f.settings_changed
 }
 
 /// Hands the OS this frame's caption geometry.

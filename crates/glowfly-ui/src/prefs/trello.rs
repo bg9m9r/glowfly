@@ -2,16 +2,16 @@
 //! the Board picker under This repository > Issue tracker.
 
 use super::{help, row};
-use crate::msg::{ForgeMsg, Msg};
-use crate::state::trello::BoardList;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::forge::{self, Account, Provider, Target};
 use glowfly_core::settings::TrackerChoice;
+use glowfly_model::msg::{ForgeMsg, Msg};
+use glowfly_model::state::trello::BoardList;
 
 /// "Get your API key": the Power-Up admin page, where Trello shows the member's API key.
 pub(super) fn key_link(ui: &mut Ui, msgs: &mut Vec<Msg>) {
@@ -49,7 +49,7 @@ pub(super) fn board_row(ui: &mut Ui, account: &Account, board: &str, board_name:
             }))
         };
         let selected = if board.is_empty() { "All boards" } else { board_name };
-        egui::ComboBox::from_id_salt("trello-board").selected_text(selected).width(320.0).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("trello-board").selected_text(selected).width(320.0).show_ui(ui, |ui| {
             if ui.selectable_label(board.is_empty(), "All boards").clicked() && !board.is_empty() {
                 msgs.push(choose("", ""));
             }
@@ -59,6 +59,7 @@ pub(super) fn board_row(ui: &mut Ui, account: &Account, board: &str, board_name:
                 }
             }
         });
+        crate::access::from_label(&combo.response);
         if list.loading {
             ui.horizontal(|ui| {
                 ui.add(egui::Spinner::new().size(14.0));

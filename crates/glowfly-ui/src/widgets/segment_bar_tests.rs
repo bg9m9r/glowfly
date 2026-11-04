@@ -2,7 +2,7 @@
 //! own shape, and a framed single segment lighting its whole frame.
 
 use super::*;
-use crate::ui::theme::tokens::radius;
+use crate::theme::tokens::radius;
 use eframe::egui::{self, Event, Pos2, RawInput, Shape, StrokeKind, epaint::RectShape};
 
 /// The rects painted on the last of three frames of a bar of `segs` in `style`, with the
@@ -138,7 +138,7 @@ fn a_focused_framed_single_segment_gets_the_outside_ring_around_its_frame() {
     let rings = rings(&shapes);
     assert_eq!(rings.len(), 1, "{shapes:?}");
     assert_eq!(rings[0].stroke_kind, StrokeKind::Outside);
-    assert_eq!(rings[0].rect, rects[0].expand(crate::ui::theme::tokens::FOCUS_GAP), "around the whole frame");
+    assert_eq!(rings[0].rect, rects[0].expand(crate::theme::tokens::FOCUS_GAP), "around the whole frame");
 }
 
 #[test]

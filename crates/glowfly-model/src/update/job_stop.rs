@@ -1,5 +1,5 @@
 //! Cancelling the active job from the status bar. A job with a network command (a fetch, a
-//! push, a clone or a pull) gets a stop (`Effect::RunGit::stoppable`); the runner says which kind
+//! push, a clone or a pull) gets a stop (`JobEffect::RunGit::stoppable`); the runner says which kind
 //! of command it runs (`JobMsg::Step`), and Cancel works only during a network one: a pull's
 //! merge or rebase, and any other command, run to their end (the runner then stops before the
 //! next command). The runner stops git's process tree, removes what the stopped command left
@@ -8,6 +8,8 @@
 //! finished before the stop reached it ends as usual. The transfer's progress comes as
 //! `JobMsg::Progress` and is kept for the status bar until the step changes.
 
+use crate::effect::ControlEffect;
+use crate::effect::JobEffect;
 use crate::effect::partial::StopKey;
 use crate::effect::{Effect, UndoResult};
 use crate::msg::JobMsg;
@@ -18,7 +20,7 @@ use std::time::Instant;
 /// The stop of a job starting with `effect`: one for a stoppable `RunGit`, else none.
 pub(super) fn for_effect(effect: &Effect) -> Option<JobStop> {
     match effect {
-        Effect::RunGit { stoppable: true, cmds, .. } => Some(JobStop::starting(cmds.first().map(Vec::as_slice))),
+        Effect::Job(JobEffect::RunGit { stoppable: true, cmds, .. }) => Some(JobStop::starting(cmds.first().map(Vec::as_slice))),
         _ => None,
     }
 }
@@ -33,7 +35,7 @@ pub(super) fn cancel(st: &mut AppState, fx: &mut Vec<Effect>) {
         s.requested = true;
     }
     st.log_quiet(true, format!("Cancelling {label}…"));
-    fx.push(Effect::StopGit(StopKey::Job));
+    fx.push(Effect::Control(ControlEffect::StopGit(StopKey::Job)));
 }
 
 /// The runner started a kind of command in the active job (`JobMsg::Step`), or git reported its

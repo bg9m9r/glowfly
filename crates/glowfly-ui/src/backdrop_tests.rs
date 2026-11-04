@@ -1,21 +1,21 @@
 use super::*;
-use crate::state::window_native::Backdrop;
-use crate::themes::ThemeState;
-use crate::ui::theme::contrast::lightness;
-use crate::ui::theme::{DARK, GARDEN_DARK, GARDEN_LIGHT, GRAPHITE, LIGHT, PORCELAIN, ThemeCache};
+use crate::theme::contrast::lightness;
+use crate::theme::{DARK, GARDEN_DARK, GARDEN_LIGHT, GRAPHITE, LIGHT, PORCELAIN, ThemeCache};
 use eframe::egui;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::window_native::Backdrop;
+use glowfly_model::themes::ThemeState;
 
 /// The built-in palettes that can sit on Mica, with the tints the ladder picks for them. Garden
 /// dark's `faint` misses 4.5 over the lightest dark bands at every step, so its sidebar stays
 /// opaque.
 const PINNED: [(&str, Palette, MicaTint); 6] = [
     ("Dusk", DARK, MicaTint { chrome: 153, side: 153 }),
-    ("Dawn", LIGHT, MicaTint { chrome: 153, side: 166 }),
+    ("Dawn", LIGHT, MicaTint { chrome: 153, side: 153 }),
     ("Garden dark", GARDEN_DARK, MicaTint { chrome: 153, side: OPAQUE }),
     ("Garden light", GARDEN_LIGHT, MicaTint { chrome: 153, side: 191 }),
     ("Graphite", GRAPHITE, MicaTint { chrome: 153, side: 153 }),
-    ("Porcelain", PORCELAIN, MicaTint { chrome: 153, side: 179 }),
+    ("Porcelain", PORCELAIN, MicaTint { chrome: 153, side: 153 }),
 ];
 
 fn alpha(t: MicaTint, s: Surface) -> u8 {

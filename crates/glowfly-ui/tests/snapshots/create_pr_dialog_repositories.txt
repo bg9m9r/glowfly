@@ -7,7 +7,7 @@ Dialog
   Label "search"
   Label "Into"
   ComboBox
-  ComboBox
+  ComboBox "Target branch"
   Label "search isn't on ada yet."
   Button "Push search"
   Label "Title"

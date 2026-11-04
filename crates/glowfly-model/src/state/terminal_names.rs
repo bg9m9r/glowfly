@@ -12,7 +12,7 @@ use std::path::Path;
 const MAX_RENAME: usize = 64;
 
 /// The shell's short name before it has reported one: what `s` asks for.
-pub fn program_hint(s: &ShellSetting) -> String {
+pub(crate) fn program_hint(s: &ShellSetting) -> String {
     let name = match s.choice {
         ShellChoice::Pwsh => "pwsh",
         ShellChoice::WindowsPowerShell => "powershell",

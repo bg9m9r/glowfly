@@ -1,7 +1,7 @@
 //! Messages of Glowfly's own updates and release notes (update/updates.rs).
 
 use super::Inactive;
-use glowfly_core::app_update::{InstallKind, LastInstall, Progress, Release, Saved, SavedProblem};
+use glowfly_core::app_update::{InstallKind, LastInstall, Progress, Release, Saved, SavedProblem, UpdateError};
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,17 +31,17 @@ pub enum UpdateMsg {
     ShowUpdateLog(PathBuf),
     // ---- from the runner
     /// A check finished: the newest release (None when there is none yet).
-    Checked { manual: bool, result: Result<Option<CheckedRelease>, String> },
+    Checked { manual: bool, result: Result<Option<CheckedRelease>, UpdateError> },
     /// How far the running download is (a few times a second).
     DownloadProgress(Progress),
     /// A download finished: where the verified file was saved, and its checksum.
-    Downloaded(Result<Saved, String>),
+    Downloaded(Result<Saved, UpdateError>),
     /// The download stopped for Cancel; its partial file is removed.
     DownloadCancelled,
     /// The downloaded `file` was read again: None when it still matches, else what is wrong.
     SavedChecked { file: PathBuf, problem: Option<SavedProblem> },
     /// Install and restart was prepared (the window closes now) or failed (nothing changed).
-    RestartReady(Result<(), String>),
+    RestartReady(Result<(), UpdateError>),
     /// At the start: the last installer run failed or was cancelled (read from the update log).
     LastInstall(LastInstall),
 }

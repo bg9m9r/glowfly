@@ -1,17 +1,36 @@
-//! Loading the active tab's repository (`Effect::LoadRepo`): only the status when the refs are
-//! as the snapshot on screen has them, the next commits of its walk for a load for more
-//! (`repo::load_more`), else everything, taking the commits on screen instead of reading them
-//! again (`repo::load_reusing`).
+//! The `Execute` impl of `LoadEffect`, and loading the active tab's repository
+//! (`LoadEffect::Repo`): only the status when the refs are as the snapshot on screen has them,
+//! the next commits of its walk for a load for more (`repo::load_more`), else everything, taking
+//! the commits on screen instead of reading them again (`repo::load_reusing`). The status reads
+//! are in status.rs.
 
 use super::execute::err;
+use super::execute::{Cx, Execute};
 use super::git_env;
-use crate::effect::{KnownRepo, LoadKind};
-use crate::msg::{LoadMsg, Msg, RepoMsg};
+use super::status;
 use glowfly_core::repo::{self, GraphCache, LoadOptions, MoreLoaded, Prior};
+use glowfly_model::effect::{KnownRepo, LoadEffect, LoadKind};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg};
 use std::path::PathBuf;
 
+impl Execute for LoadEffect {
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        Some(match self {
+            LoadEffect::Repo { path, opts, generation, kind, known, prior } => {
+                load_repo(path, opts, generation, kind, known, prior, cx.graph_cache)
+            }
+            LoadEffect::Status { workdir, generation, submodules, open, git_status, paths } => {
+                status::load(&workdir, generation, submodules, open, git_status, paths, cx.graph_cache)
+            }
+            LoadEffect::IndexStatus { workdir, generation, submodules, open, git_status, read } => {
+                status::load_index(&workdir, generation, submodules, open, git_status, read, cx.graph_cache)
+            }
+        })
+    }
+}
+
 /// Runs one repository load and returns its result message.
-pub(super) fn load_repo(
+fn load_repo(
     path: PathBuf,
     opts: LoadOptions,
     generation: u64,
@@ -51,7 +70,7 @@ pub(super) fn load_repo(
     // A load for more that can't go on from the walk is a refresh at the larger count.
     let kind = if kind == LoadKind::More { LoadKind::Refresh } else { kind };
     let result = match repo::load_reusing(&path, &opts, graph_cache, prior.as_ref()) {
-        Err(glowfly_core::error::Error::NotOwned(root)) => return git_env::not_owned(generation, kind, root),
+        Err(glowfly_core::error::Error::NotOwned(refusal)) => return git_env::not_owned(generation, kind, refusal),
         r => r.map(Box::new).map_err(|e| format!("Could not open {}: {e}", glowfly_core::native_path::shown(&path))),
     };
     Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result })

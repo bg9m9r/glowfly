@@ -10,13 +10,13 @@ use super::dialog_frame::{self, Cx, Dialog, Footer, Outcome};
 use super::theme;
 use super::welcome_header;
 use super::welcome_steps;
-use crate::msg::Msg;
-use crate::onboarding::OnboardingMsg;
-use crate::state::AppState;
-use crate::state::onboarding::{Welcome, WelcomeStep};
-use crate::ui::widgets::buttons;
+use crate::widgets::buttons;
 use eframe::egui::{self, Id};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::onboarding::{Welcome, WelcomeStep};
 
 /// The whole dialog's width, padding included (clamped to the window like any dialog).
 const WIDTH: f32 = 760.0;
@@ -37,6 +37,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Under a credential prompt or another dialog the welcome reads no keys.
     let cx = Cx { t, keyboard: !prompting && !covered, key: Id::new("glowfly-welcome-dialog") };
     let no_connections = settings.connections.is_empty();
+    let gs_hidden = glowfly_model::state::onboarding::getting_started::hidden(settings);
     let resp = theme::show_modal(ctx, theme::dialog(ctx, Id::new("glowfly-welcome")), |ui| {
         let step = w.step;
         let greeting = w.greeting_name().map(str::to_owned);
@@ -50,7 +51,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             WelcomeStep::Identity => welcome_steps::identity(ui, w, settings, !prompting),
             WelcomeStep::Connect => welcome_steps::connect(ui, t, &settings.connections, msgs),
             WelcomeStep::Git => welcome_steps::git(ui, t, git, msgs),
-            WelcomeStep::Start => welcome_steps::start(ui, t, w, has_repo, msgs),
+            WelcomeStep::Start => welcome_steps::start(ui, t, w, has_repo, gs_hidden, msgs),
         });
         let out = d.finish(ui, footer(t, w, no_connections));
         answer(out, step, msgs);
@@ -79,8 +80,9 @@ fn footer<'a>(t: Lang, w: &Welcome, no_connections: bool) -> Footer<'a> {
         }
         WelcomeStep::Connect if no_connections => footer.alt(buttons::secondary(t.tr("welcome.skip_step.button"))),
         WelcomeStep::Connect | WelcomeStep::Git => footer.primary(buttons::primary(t.tr("welcome.continue.button"))),
-        // The cards are the step's main actions; Done just ends the welcome.
-        WelcomeStep::Start => footer.close_label(t.tr("welcome.done.button")),
+        // Done is the step's one filled button: it ends the welcome (the cards open, clone or
+        // start a repository as they end it).
+        WelcomeStep::Start => footer.primary(buttons::primary(t.tr("welcome.done.button"))),
     }
 }
 
@@ -115,7 +117,7 @@ fn answer(out: Outcome, step: WelcomeStep, msgs: &mut Vec<Msg>) {
             }
         }
         WelcomeStep::Start => {
-            if out.dismiss {
+            if out.primary {
                 send(OnboardingMsg::Finish(None));
             }
         }

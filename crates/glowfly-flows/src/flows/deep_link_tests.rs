@@ -6,13 +6,13 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git, state};
 use super::update;
-use crate::deep_link::{DeepLinkEffect, DeepLinkMsg, FindOrigin, LinkTarget};
-use crate::effect::{Effect, UiEffect};
-use crate::msg::{Msg, PrefsMsg, RepoMsg};
-use crate::state::deep_link::{LINK_WAITING, LinkDialog, SchemeView};
-use crate::state::{AppState, Modal, PrefPage, Tab};
 use glowfly_core::link::{self, Link, Target};
 use glowfly_core::url_scheme::SchemeStatus;
+use glowfly_model::deep_link::{DeepLinkEffect, DeepLinkMsg, FindOrigin, LinkTarget};
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::deep_link::{LINK_WAITING, LinkDialog, SchemeView};
+use glowfly_model::state::{AppState, Modal, PrefPage, Tab};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -110,7 +110,7 @@ fn the_built_link_is_copied_with_a_toast() {
     remote_at_https(&mut st);
     // End to end through the runner: the link carries the URL and the root commit.
     let fx = send(&mut st, DeepLinkMsg::Copy(LinkTarget::LocalBranch("feature".into())));
-    let built = crate::runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
+    let built = glowfly_runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
     let fx = update(&mut st, built, Instant::now());
     let uri = match &fx[..] {
         [Effect::Ui(UiEffect::CopyText(uri))] => uri.clone(),
@@ -226,7 +226,7 @@ fn a_link_is_looked_for_in_tabs_favorites_and_recent() {
 #[test]
 fn an_os_link_opens_like_the_command_line() {
     let mut st = state();
-    let fx = update(&mut st, crate::start_arg::StartArg::Link(link_text("tag/v1")).into_msg(), Instant::now());
+    let fx = update(&mut st, glowfly_model::start_arg::StartArg::Link(link_text("tag/v1")).into_msg(), Instant::now());
     assert!(focuses(&fx));
     let (_, seq, origin) = find(&fx);
     assert_eq!((seq, origin), (st.deep_link.seq, FindOrigin::Search));
@@ -250,7 +250,7 @@ fn a_link_waits_while_another_dialog_is_open() {
 
     // Preferences counts as a dialog too.
     st.modal = None;
-    st.prefs = Some(crate::state::PrefsState::new(PrefPage::General));
+    st.prefs = Some(glowfly_model::state::PrefsState::new(PrefPage::General));
     let fx = send(&mut st, DeepLinkMsg::Open(text));
     assert!(!fx.iter().any(|e| matches!(e, Effect::DeepLink(_))));
 }
@@ -288,9 +288,9 @@ fn preferences_read_the_scheme_status() {
 
 #[test]
 fn the_palette_copies_links_to_the_repository_and_branch() {
-    use crate::msg::PaletteMsg;
-    use crate::state::palette::PaletteCommand;
-    let has = |st: &AppState, label: &str| crate::state::palette_commands::entries(st).iter().any(|e| e.label == label);
+    use glowfly_model::msg::PaletteMsg;
+    use glowfly_model::state::palette::PaletteCommand;
+    let has = |st: &AppState, label: &str| glowfly_model::state::palette_commands::entries(st).iter().any(|e| e.label == label);
     let dir = super::tests::scratch_repo("link-palette");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));

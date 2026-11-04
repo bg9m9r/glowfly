@@ -14,17 +14,17 @@ mod paint;
 mod pill;
 mod tabs;
 
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::panel_layout::{self, MAIN_MIN_HEIGHT, TERMINAL};
-use crate::state::terminal::{SessionStatus, TermSession, maximized_shown};
-use crate::state::{AppState, PrefPage};
-use crate::ui::common::menu_item_if;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::buttons;
+use crate::common::menu_item_if;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::buttons;
 use eframe::egui::{self, Align, Layout, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::panel_layout::{self, MAIN_MIN_HEIGHT, TERMINAL};
+use glowfly_model::state::terminal::{SessionStatus, TermSession, maximized_shown};
+use glowfly_model::state::{AppState, PrefPage};
 use glowfly_model::terminal::TerminalMsg;
 
 /// The shell menu, for its snapshot (drawn the same on every OS).
@@ -51,7 +51,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Sized from the height left under the bars and the logs panel, keeping the main view.
     let fit = panel_layout::fit_one(ctx.available_rect().height(), MAIN_MIN_HEIGHT, TERMINAL, st.settings.terminal.panel_height);
     let id = egui::Id::new("terminal-panel");
-    crate::ui::panel_size::pin(ctx, id, fit.size, st.terminal.resizing);
+    crate::panel_size::pin(ctx, id, fit.size, st.terminal.resizing);
     let resp = egui::TopBottomPanel::bottom(id).resizable(true).default_height(fit.size).height_range(fit.lo..=fit.hi).frame(frame()).show(
         ctx,
         |ui| {
@@ -60,7 +60,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         },
     );
     // Saved once a drag of the edge ends, not every frame or when the window clamps it.
-    let dragging = crate::ui::panel_size::dragging(ctx, id);
+    let dragging = crate::panel_size::dragging(ctx, id);
     if st.terminal.resizing && !dragging {
         msgs.push(Msg::Terminal(TerminalMsg::PanelHeight(resp.response.rect.height())));
     }

@@ -7,15 +7,16 @@
 use super::tests::keys;
 use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{ack, confirm, empty_diff, entry, last_log, loaded, run, tick, work_ops};
-use crate::effect::{DeleteMode, Effect, FileOp, LocalOp, WorkFileOk};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::files::TRASH;
-use crate::state::{AppState, Modal};
 use glowfly_core::repo::{Deleted, DiffTarget, TrashProblem, TrashRefusal};
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, LocalOp, WorkFileOk};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::files::TRASH;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 fn discard(path: &str, mode: DeleteMode) -> FileOp {
@@ -43,7 +44,7 @@ fn discard_confirm_trash() {
     let (mut st, dir) = with_untracked("wfd-trash");
     assert!(st.settings.delete_to_trash);
     let (body, button, op) = ask(&mut st, "u.txt");
-    assert_eq!(body, format!("u.txt isn't tracked by git. Discarding it moves it to the {TRASH}, so you can restore it from there."));
+    assert_eq!(body, format!("u.txt isn't tracked by Git. Discarding it moves it to the {TRASH}, so you can restore it from there."));
     assert_eq!(button, format!("Move to {TRASH}"));
     assert_eq!(op, discard("u.txt", DeleteMode::Trash));
     assert!(matches!(st.modal, Some(Modal::ConfirmDanger { .. })));
@@ -63,7 +64,7 @@ fn discard_confirm_trash_off() {
     assert_eq!(
         body,
         format!(
-            "u.txt isn't tracked by git. Discarding it deletes it; Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so Glowfly asks again before deleting one.",
+            "u.txt isn't tracked by Git. Discarding it deletes it; Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so Glowfly asks again before deleting one.",
             keys("Ctrl+Z")
         )
     );
@@ -122,7 +123,7 @@ fn discard_trash_refused_offers_permanent() {
             refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin"),
         }),
     );
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     let (title, body, button, then) = confirm(&st);
     assert_eq!((title, button), ("Delete permanently?", "Delete permanently"));
     assert_eq!(
@@ -178,7 +179,7 @@ fn discard_failure_logs_and_closes_diff() {
     let ok = Ok(WorkFileOk::deleted(Deleted::Trashed));
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: ok }));
     assert!(st.session.diff.view.is_none());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
 
     st.session.diff.view = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: Err("boom".into()) }));
@@ -224,7 +225,10 @@ fn delete_confirmed_accepts_discard() {
 fn tracked_discard_unchanged() {
     let (mut st, dir) = loaded("wfd-tracked");
     let fx = run(&mut st, Msg::Stage(StageMsg::DiscardFile("f.txt".into())));
-    assert!(matches!(&fx[..], [Effect::LocalOp { workdir, op: LocalOp::DiscardFile(p) }] if *workdir == dir && p == "f.txt"), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { workdir, op: LocalOp::DiscardFile(p) })] if *workdir == dir && p == "f.txt"),
+        "{fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -249,7 +253,7 @@ fn discard_end_to_end(name: &str, to_trash: bool) -> (PathBuf, AppState, String)
 
 /// Whether the test build's stand-in bin holds u.txt with `contents`.
 fn in_test_bin(contents: &str) -> bool {
-    std::fs::read_dir(crate::runner::testing::test_bin())
+    std::fs::read_dir(glowfly_runner::testing::test_bin())
         .into_iter()
         .flatten()
         .flatten()

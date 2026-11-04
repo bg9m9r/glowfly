@@ -5,17 +5,17 @@
 //! finish. Every action is a `Msg`; the checks are the pure ones from `glowfly_core::gitflow`.
 
 use super::{help, primary_button, row, section, text_field, warn};
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::state::blocked::BUSY;
-use crate::state::gitflow::GitFlowPage;
-use crate::ui::theme::color;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::color;
+use crate::widgets::buttons;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::branch_ops::is_valid_branch_name;
 use glowfly_core::gitflow::{BranchPlan, Branches, FlowKind, GitFlowSettings, InitProblem, check_settings, flow_branches, plan_branches};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::blocked::BUSY;
+use glowfly_model::state::gitflow::GitFlowPage;
 
 /// What the page needs from outside Preferences.
 pub struct GitFlowContext<'a> {
@@ -204,7 +204,7 @@ fn start_row(ui: &mut Ui, s: &GitFlowSettings, b: &Branches, wait: &Wait, msgs: 
             }
         });
         if let Some(why) = wait.edited {
-            crate::ui::widgets::reason::line(ui, Some(why), egui::Align::Min);
+            crate::widgets::reason::line(ui, Some(why), egui::Align::Min);
         }
     });
 }
@@ -222,11 +222,13 @@ fn finish_row(ui: &mut Ui, choice: &mut String, s: &GitFlowSettings, b: &Branche
             *choice = (*first).to_owned();
         }
         ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt("gitflow-finish-branch").selected_text(choice.as_str()).width(220.0).show_ui(ui, |ui| {
-                for (_, n) in &open {
-                    ui.selectable_value(choice, (*n).to_owned(), *n);
-                }
-            });
+            let combo =
+                egui::ComboBox::from_id_salt("gitflow-finish-branch").selected_text(choice.as_str()).width(220.0).show_ui(ui, |ui| {
+                    for (_, n) in &open {
+                        ui.selectable_value(choice, (*n).to_owned(), *n);
+                    }
+                });
+            crate::access::from_label(&combo.response);
             if ui.add(buttons::secondary("Finish…").enabled(!wait.blocked()).why(wait.edited)).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(choice.clone())));
             }

@@ -1,20 +1,16 @@
 //! Preferences > Diff viewer: how the diff viewer draws text. Edits apply at once (views edit the
 //! settings in place and the shell saves them); nothing reloads, since these only decide how
-//! lines are painted.
+//! lines are painted. Its text size row is on Accessibility too (`font_size_row`).
 
 use super::{check_row, help, row};
-use crate::ui::theme::controls;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::widgets::buttons;
 use eframe::egui::{self, Ui};
 use glowfly_core::settings::{DIFF_FONT_SIZES, HistoryPane, Settings, TAB_SIZES};
 
 pub fn diff_viewer_page(ui: &mut Ui, s: &mut Settings) {
     let t = s.lang();
-    row(ui, t.tr("prefs.editor.font_size.label"), |ui| {
-        let size = egui::DragValue::new(&mut s.diff_font_size).range(DIFF_FONT_SIZES).speed(0.25).max_decimals(1);
-        ui.add(size.suffix(t.tr("prefs.editor.font_size.suffix")));
-        help(ui, t.tr("prefs.editor.font_size.help"));
-    });
+    font_size_row(ui, s, t.tr("prefs.editor.font_size.label"));
     row(ui, t.tr("prefs.editor.tab_size.label"), |ui| {
         ui.add(egui::DragValue::new(&mut s.tab_size).range(TAB_SIZES));
         help(ui, t.tr("prefs.editor.tab_size.help"));
@@ -39,10 +35,25 @@ pub fn diff_viewer_page(ui: &mut Ui, s: &mut Settings) {
     let (label, check, text) =
         (t.tr("prefs.editor.history_preview.label"), t.tr("prefs.editor.history_preview.check"), t.tr("prefs.editor.history_preview.help"));
     check_row(ui, label, &mut s.history.preview, check, Some(text));
+    let (label, check, text) =
+        (t.tr("prefs.editor.svg_preview.label"), t.tr("prefs.editor.svg_preview.check"), t.tr("prefs.editor.svg_preview.help"));
+    check_row(ui, label, &mut s.diff_svg_preview, check, Some(text));
     row(ui, t.tr("prefs.editor.reset.label"), |ui| {
         if ui.add(buttons::secondary(t.tr("prefs.editor.reset.button"))).clicked() {
             reset(s);
         }
+    });
+}
+
+/// The diff text size, labelled `label`: the same row on Diff viewer and Accessibility.
+pub fn font_size_row(ui: &mut Ui, s: &mut Settings, label: &str) {
+    let t = s.lang();
+    let text = t.tr("prefs.editor.font_size.help");
+    row(ui, label, |ui| {
+        let size = egui::DragValue::new(&mut s.diff_font_size).range(DIFF_FONT_SIZES).speed(0.25).max_decimals(1);
+        let r = ui.add(size.suffix(t.tr("prefs.editor.font_size.suffix")));
+        super::accessibility::name(&r, label, text);
+        help(ui, text);
     });
 }
 
@@ -56,6 +67,7 @@ fn reset(s: &mut Settings) {
     s.diff_word_highlights = d.diff_word_highlights;
     s.diff_word_wrap = d.diff_word_wrap;
     s.history = d.history;
+    s.diff_svg_preview = d.diff_svg_preview;
 }
 
 #[cfg(test)]
@@ -72,6 +84,7 @@ mod tests {
             diff_word_highlights: false,
             diff_word_wrap: true,
             history: glowfly_core::settings::HistoryPrefs { pane: HistoryPane::File, preview: true },
+            diff_svg_preview: true,
             auto_fetch_minutes: 9,
             ..Settings::default()
         };
@@ -82,6 +95,7 @@ mod tests {
         assert!(!s.diff_word_wrap);
         assert_eq!(s.history.pane, HistoryPane::Diff);
         assert!(!s.history.preview, "Markdown shows as text again");
+        assert!(!s.diff_svg_preview, "and SVG");
         assert_eq!(s.auto_fetch_minutes, 9);
     }
 }

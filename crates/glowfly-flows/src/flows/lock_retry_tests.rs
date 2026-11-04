@@ -5,14 +5,14 @@
 
 use super::auto_stash_tests::{git_cmds, up};
 use super::tests::{clean_tree, scratch_repo, state};
-use crate::effect::{Effect, LockEffect};
-use crate::msg::{CommitMsg, JobMsg, LockMsg, Msg, RepoMsg, StageMsg};
-use crate::state::job_spec::{JobSpec, Retry};
-use crate::state::tabs::TabId;
-use crate::state::toasts::Toast;
-use crate::state::{AppState, Modal};
 use glowfly_core::gitcli::args;
 use glowfly_core::lock_file::{Found, Refusal};
+use glowfly_model::effect::{Effect, LockEffect};
+use glowfly_model::msg::{CommitMsg, JobMsg, LockMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::job_spec::{JobSpec, Retry};
+use glowfly_model::state::tabs::TabId;
+use glowfly_model::state::toasts::Toast;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 /// A clean repository with a Push running, and the path of a stale `index.lock` in it.
@@ -47,7 +47,7 @@ fn buttons(t: &Toast) -> Vec<&str> {
 }
 
 /// The run the last toast's fix belongs to, and the lock check asked for it.
-fn check_of(fx: &[Effect]) -> (crate::state::logs::EntryId, String) {
+fn check_of(fx: &[Effect]) -> (glowfly_model::state::logs::EntryId, String) {
     let found = fx.iter().find_map(|e| match e {
         Effect::Lock(LockEffect::Check { lock, entry, .. }) => Some((*entry, lock.clone())),
         _ => None,
@@ -60,7 +60,7 @@ fn try_again_runs_the_failed_job_again() {
     let (mut st, dir, lock) = pushing("lr-again");
     let fx = fail(&mut st, &locked_output(&lock));
     let t = last_toast(&st);
-    assert!(t.text.starts_with("Another git program is using this repository"), "{}", t.text);
+    assert!(t.text.starts_with("Another Git program is using this repository"), "{}", t.text);
     assert_eq!(buttons(t), ["Try again", "Details"]);
     assert_eq!(check_of(&fx).1, lock, "the exact path git named is checked");
     let id = t.id;
@@ -76,7 +76,7 @@ fn try_again_runs_the_failed_job_again() {
     // Other failures get no Try again.
     up(&mut st, Msg::git("Push", &["push"]));
     fail(&mut st, "fatal: You are not currently on a branch.");
-    assert_eq!(buttons(last_toast(&st)), ["Create branch…", "Details"]);
+    assert_eq!(buttons(last_toast(&st)), ["New branch…", "Details"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -88,11 +88,11 @@ fn a_closed_or_other_tab_gets_no_retry() {
     let retry: Retry = (**kept).clone();
     let closed = Retry { tab: TabId::next(), ..retry.clone() };
     let fx = up(&mut st, Msg::Job(JobMsg::Retry(Box::new(closed))));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })) && st.job.is_none());
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))) && st.job.is_none());
     assert_eq!(last_toast(&st).text, "Push wasn't run again: its tab was closed.");
     let moved = Retry { workdir: Some(dir.join("elsewhere")), ..retry };
     let fx = up(&mut st, Msg::Job(JobMsg::Retry(Box::new(moved))));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))));
     assert_eq!(last_toast(&st).text, "Push wasn't run again: its tab shows another repository now.");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -152,7 +152,7 @@ fn delete_lock_file_is_refused_while_git_runs() {
         .spawn()
         .unwrap();
     let effect = Effect::Lock(LockEffect::Delete { workdir, lock: lock.clone(), retry });
-    let result = crate::runner::testing::execute(effect);
+    let result = glowfly_runner::testing::execute(effect);
     drop(git.stdin.take());
     let _ = git.wait();
     let Some(Msg::Lock(done @ LockMsg::Deleted { result: Err(Refusal::GitRunning(_) | Refusal::Unknown(_)), .. })) = result else {
@@ -160,7 +160,7 @@ fn delete_lock_file_is_refused_while_git_runs() {
     };
     assert!(std::path::Path::new(&lock).exists(), "the lock stays");
     let fx = up(&mut st, Msg::Lock(done));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "the job doesn't run");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "the job doesn't run");
     let t = last_toast(&st);
     assert!(t.text.starts_with("index.lock wasn't deleted:"), "{}", t.text);
     assert_eq!(buttons(t), ["Try again"], "Try again stays on offer");
@@ -191,7 +191,7 @@ fn opened(name: &str) -> (AppState, PathBuf, String) {
 /// Starts a job of two commands, a fetch and then a push.
 fn fetch_then_push(st: &mut AppState) {
     let spec = JobSpec::new("Fetch and push".into(), vec![args(&["fetch"]), args(&["push"])]);
-    crate::update::jobs::start_job(st, spec, &mut Vec::new());
+    glowfly_model::update::jobs::start_job(st, spec, &mut Vec::new());
     assert!(st.job.is_some());
 }
 
@@ -253,7 +253,9 @@ fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
     st.session.draft.summary = "Better words".into();
     let fx = up(&mut st, Msg::ToastAction(id));
     let message = fx.iter().find_map(|e| match e {
-        Effect::RunGit { write_file: Some((_, m)), .. } => Some(String::from_utf8(m.clone()).unwrap()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { write_file: Some((_, m)), .. }) => {
+            Some(String::from_utf8(m.clone()).unwrap())
+        }
         _ => None,
     });
     assert_eq!(
@@ -276,7 +278,7 @@ fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
     let id = last_toast(&st).id;
     st.session.draft.summary.clear();
     let fx = up(&mut st, Msg::ToastAction(id));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })) && st.job.is_none());
-    assert_eq!(last_toast(&st).text, "Write a summary for the commit.");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))) && st.job.is_none());
+    assert_eq!(last_toast(&st).text, "Write a summary to commit.");
     let _ = std::fs::remove_dir_all(&dir);
 }

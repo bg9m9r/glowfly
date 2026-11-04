@@ -1,6 +1,7 @@
 //! Staging, committing, git commands (push, pull, branch…), and auto-fetch; reverts are in update/revert.rs. Jobs start in
 //! update/jobs.rs, re-exported here.
 
+use crate::effect::FilesEffect;
 use crate::effect::{Effect, LocalOp, SeenLines, UndoResult};
 use crate::msg::{JobMsg, StageMsg};
 use crate::state::trust::Created;
@@ -203,7 +204,7 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
 
 pub(super) fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) {
     if let Some(workdir) = st.workdir() {
-        fx.push(Effect::LocalOp { workdir, op });
+        fx.push(Effect::Files(FilesEffect::LocalOp { workdir, op }));
     }
 }
 
@@ -329,6 +330,10 @@ pub fn finish_job(
         if ok && job.then_push {
             st.log(true, "Push after committing was skipped: that repository's tab is no longer active.");
         }
+        if ok && job.then_continue {
+            let text = st.settings.lang().tr("commit.continue_skipped.log");
+            st.log(true, text);
+        }
         super::push_pr::job_finished(st, then_pr, ok, false);
         return; // that tab refreshes when it is selected again
     }
@@ -344,6 +349,11 @@ pub fn finish_job(
     // Push after committing, from the snapshot before the commit: the upstream is unchanged.
     if ok && job.then_push {
         push(st, false, fx);
+    }
+    // Amend (or Commit) and continue, at a rebase stopped to edit.
+    if ok && job.then_continue {
+        let resume = crate::msg::Msg::Rebase(crate::msg::RebaseMsg::Resume(glowfly_core::rebase::Resume::Continue));
+        fx.extend(super::update_sealed(st, resume, now));
     }
 }
 

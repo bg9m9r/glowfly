@@ -4,19 +4,19 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::gitflow::GitFlowMsg;
-use crate::journal::{JournalEffect, JournalMsg};
-use crate::msg::{Msg, PaletteMsg, RepoMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::blame::BlameView;
-use crate::state::history::FileHistoryView;
-use crate::state::layout::{ToolView, tool_view};
-use crate::state::palette::{PaletteCommand, shown};
-use crate::state::rebase::RebasePanel;
 use glowfly_core::journal::{RowKey, Subject, Timeline};
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{self, LoadOptions};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::journal::{JournalEffect, JournalMsg};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::layout::{ToolView, tool_view};
+use glowfly_model::state::palette::{PaletteCommand, shown};
+use glowfly_model::state::rebase::RebasePanel;
 use std::path::PathBuf;
 use std::time::Instant;
 

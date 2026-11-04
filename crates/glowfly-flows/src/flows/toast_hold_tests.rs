@@ -5,12 +5,12 @@ use super::auto_stash_tests::up;
 use super::job_errors_tests::two_branches;
 use super::tests::{finish, state};
 use super::update;
-use crate::logs::LogsMsg;
-use crate::msg::{Msg, NotifyMsg};
-use crate::state::{AppState, ToastAction};
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::{Msg, NotifyMsg};
+use glowfly_model::state::{AppState, ToastAction};
 use std::time::Instant;
 
-fn notify(st: &mut AppState, m: NotifyMsg) -> Vec<crate::effect::Effect> {
+fn notify(st: &mut AppState, m: NotifyMsg) -> Vec<glowfly_model::effect::Effect> {
     update(st, Msg::Notify(m), Instant::now())
 }
 

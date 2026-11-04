@@ -16,24 +16,24 @@ use super::theme::color;
 use super::widgets;
 use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
-use crate::deep_link::{DeepLinkMsg, LinkTarget};
-use crate::msg::BranchMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::remote::RemoteMsg;
-use crate::state::forks::{ADD_FORK_ITEM, ForkAction, fork_applies, fork_menu_label, fork_target, view_item};
-use crate::state::remotes::{fetch_blocked, find, tooltip};
-use crate::state::section_actions::SectionActions;
-use crate::state::{ForgeState, Selection};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::{separator, submenu};
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::type_scale;
+use crate::widgets::menu::{separator, submenu};
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, Response, Sense, pos2, vec2};
 use git2::Oid;
 use glowfly_core::forge::Connection;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{RemoteInfo, Snapshot};
 use glowfly_core::settings::GraphFilter;
+use glowfly_model::deep_link::{DeepLinkMsg, LinkTarget};
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::forks::{ADD_FORK_ITEM, ForkAction, fork_applies, fork_menu_label, fork_target, view_item};
+use glowfly_model::state::remotes::{fetch_blocked, find, tooltip};
+use glowfly_model::state::section_actions::SectionActions;
+use glowfly_model::state::{ForgeState, Selection};
 
 pub(super) mod dialog;
 pub(super) mod fork_create;
@@ -106,7 +106,7 @@ pub(crate) fn section(
                 continue;
             }
             let (r, marker, cut) =
-                widgets::list_row_cut(ui, widgets::NESTED_INDENT + DOT_ROOM, name, None, slot, c.sel.includes(*oid), false);
+                widgets::name_row_cut(ui, widgets::NESTED_INDENT + DOT_ROOM, name, None, slot, c.sel.includes(*oid), false);
             branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(name)));
             if r.hovered() {
                 *hover_next = Some(*oid);
@@ -129,15 +129,13 @@ pub(crate) fn section(
     }
 }
 
-/// A remote's name, dim and small, on a clickable row with a hover fill.
+/// A remote's name, dim and small, on a clickable row lit through `row_fill`.
 fn group_row(ui: &mut egui::Ui, name: &str) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), widgets::GROUP_ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
     let p = ui.painter_at(rect);
-    if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    widgets::row_fill::paint_state(&p, rect, widgets::row_fill::RowState::of(&resp, false, resp.hovered()));
     p.text(
         pos2(rect.left() + widgets::ROW_INDENT, rect.center().y),
         Align2::LEFT_CENTER,

@@ -7,16 +7,16 @@ use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, center, dialog_button, pushed};
-use crate::msg::Msg;
-use crate::remote::RemoteMsg;
-use crate::state::remotes::RemoteForm;
-use crate::state::touched::Touched;
-use crate::state::{AppState, Modal, RunningJob};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::remotes::RemoteForm;
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::PathBuf;
 
 /// The fixture with `origin` (two branches, a separate push URL with a password) and `backup`
@@ -53,6 +53,7 @@ pub(crate) fn running(st: &mut AppState) {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -141,8 +142,8 @@ fn remote_group_menu() {
     click(&mut h, at, PointerButton::Secondary);
     h.get_by_label("Copy link").click();
     h.run();
-    let want = crate::deep_link::LinkTarget::Repository { remote: Some("backup".into()) };
-    assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
+    let want = glowfly_model::deep_link::LinkTarget::Repository { remote: Some("backup".into()) };
+    assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(glowfly_model::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
     h.press_key(eframe::egui::Key::Escape);
     h.run();
     drop(h);

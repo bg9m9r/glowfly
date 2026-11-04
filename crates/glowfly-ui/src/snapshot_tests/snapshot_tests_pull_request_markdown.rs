@@ -6,12 +6,12 @@
 use super::snapshot_tests::{harness_sized, remove_fixture};
 use super::snapshot_tests_pull_request::with_pr;
 use super::snapshot_tests_pull_request_review::{detail, entry, load};
-use crate::msg::Msg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{EntryKind, Verdict};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 
 const RELEASE: &str = "\
 :robot: I have created a release *beep* *boop*
@@ -66,7 +66,7 @@ fn render(theme: ThemeChoice, name: &str) {
     h.get_by_label("1a2b3c4").click();
     h.run();
     let url = "https://github.com/acme/demo/commit/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b";
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u == url)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenLink { url: u, .. } if u == url)));
     drop(h);
     remove_fixture(&dir);
 }

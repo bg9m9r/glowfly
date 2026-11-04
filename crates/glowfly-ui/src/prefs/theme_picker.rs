@@ -5,17 +5,19 @@
 //! says when its theme is used and each group rings the pair's member (`Settings::pick_card` and
 //! `set_match_system` say what a click does).
 
-use crate::state::theme_names;
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::tokens::{self, radius};
-use crate::ui::theme::{builtin, fonts, type_scale};
+use crate::theme::color::{self, Palette};
+use crate::theme::tokens::{self, radius};
+use crate::theme::{builtin, fonts, type_scale};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{BuiltinTheme, Settings, SystemPair, ThemeChoice};
+use glowfly_model::state::theme_names;
 
 /// A card's preview height, the name line under it, and the gaps between cards.
 const PREVIEW_H: f32 = 84.0;
+/// The selected card's accent edge, in either focus style.
+const SELECTED_EDGE_W: f32 = 2.0;
 const NAME_H: f32 = 28.0;
 const GAP_X: f32 = 14.0;
 const GAP_Y: f32 = 12.0;
@@ -38,7 +40,7 @@ pub fn picker(ui: &mut Ui, t: Lang, s: &mut Settings) {
     // As `ThemeCache::apply` reads it: a desktop that doesn't say is dark.
     let os_dark = ui.ctx().system_theme().is_none_or(|s| s == egui::Theme::Dark);
     let mut system = s.theme == ThemeChoice::System;
-    if crate::ui::theme::controls::checkbox(ui, &mut system, t.tr("prefs.ui.theme.system.check")).changed() {
+    if crate::theme::controls::checkbox(ui, &mut system, t.tr("prefs.ui.theme.system.check")).changed() {
         s.set_match_system(system, os_dark);
     }
     gap(ui, 10.0);
@@ -110,7 +112,7 @@ fn card(ui: &mut Ui, t: Lang, b: BuiltinTheme, selected: bool, w: f32) -> Respon
         let painter = ui.painter();
         paint_preview(painter, preview, builtin(b));
         let edge = if selected {
-            Stroke::new(tokens::FOCUS_W, color::accent())
+            Stroke::new(SELECTED_EDGE_W, color::accent())
         } else if resp.hovered() {
             Stroke::new(1.0_f32, color::input_border())
         } else {
@@ -118,7 +120,7 @@ fn card(ui: &mut Ui, t: Lang, b: BuiltinTheme, selected: bool, w: f32) -> Respon
         };
         painter.rect_stroke(preview, radius::LG, edge, StrokeKind::Outside);
         if resp.has_focus() {
-            tokens::focus_ring(painter, preview.expand(if selected { tokens::FOCUS_W } else { 0.0 }), radius::LG);
+            tokens::focus_ring(painter, preview.expand(if selected { SELECTED_EDGE_W } else { 0.0 }), radius::LG);
         }
         let font = if selected { fonts::semibold(ui, type_scale::BODY) } else { type_scale::font(type_scale::BODY) };
         let ink = if selected { color::strong() } else { color::text() };

@@ -1,18 +1,13 @@
 //! A branch swatch's colours in a palette: the trunk tone for the main branch without a pin (the
 //! `weak` ink, `text` in high contrast; never the accent), else its slot's line tone (lines,
-//! dots, bands) or chip tone (ref chips). Also a person's colours: the initials in the graph and
-//! the commit details take a slot from the author's email.
+//! dots, bands) or chip tone (ref chips). A person's initials colours are in `initials.rs`.
 
 use super::color::{self, Palette};
-use super::contrast::{clean_ink, mix, unbrown};
 use super::families::LANE_COUNT;
 use super::vision::{self, VISIONS};
 use eframe::egui::Color32;
-use glowfly_core::branch_colour::{Swatch, person_slot};
-use glowfly_core::settings::BranchPalette;
-
-/// How far the fill behind initials moves from the background toward the person's line tone.
-const INITIALS_FILL: f32 = 0.30;
+use glowfly_core::branch_colour::Swatch;
+use glowfly_core::settings::ColourPalette;
 
 /// `s`'s line tone in the active palette.
 pub fn line(s: Swatch) -> Color32 {
@@ -34,7 +29,7 @@ pub fn trunk(p: &Palette) -> Color32 {
 /// beside the trunk skips them (`Colouring::trunk_near`).
 pub fn trunk_near(p: &Palette) -> u16 {
     let trunk = trunk(p);
-    let visions = if p.branch.preset == BranchPalette::ColourBlind { &VISIONS[..] } else { &VISIONS[..1] };
+    let visions = if p.branch.preset == ColourPalette::ColourBlind { &VISIONS[..] } else { &VISIONS[..1] };
     let floor = vision::floor(p.dark);
     let near = |i: usize| visions.iter().any(|(_, m)| vision::distance(p.branch.lanes[i], trunk, m) < floor);
     (0..usize::from(p.branch.preset.slots())).filter(|&i| near(i)).fold(0, |mask, i| mask | 1 << i)
@@ -45,27 +40,7 @@ pub fn chip(s: Swatch) -> Color32 {
     chip_in(s, &color::current())
 }
 
-/// The swatch of the person with `email` (or, without one, `name`) in the active preset.
-pub fn person(email: &str, name: &str) -> Swatch {
-    Swatch::Slot(person_slot(email, name, color::branch_preset().slots()))
-}
-
-/// The (fill, ink) of a person's initials in the active palette: a muted tint of their line tone,
-/// and their chip tone pushed until it reads at 4.5:1 on that fill (the ink, if that is brown).
-pub fn initials_tones(email: &str, name: &str) -> (Color32, Color32) {
-    let p = color::current();
-    let s = person(email, name);
-    let fill = initials_fill(line(s), &p);
-    (fill, clean_ink(chip_in(s, &p), fill, &p))
-}
-
-/// The fill behind the initials of a person whose line tone is `lane`.
-pub fn initials_fill(lane: Color32, p: &Palette) -> Color32 {
-    unbrown(p.bg, mix(p.bg, lane, INITIALS_FILL))
-}
-
 /// `s`'s line tone in `p` (`line` reads the active palette's).
-#[cfg(test)]
 pub fn line_in(s: Swatch, p: &Palette) -> Color32 {
     match s {
         Swatch::Trunk => trunk(p),
@@ -73,7 +48,7 @@ pub fn line_in(s: Swatch, p: &Palette) -> Color32 {
     }
 }
 
-/// `s`'s chip tone in `p` (for the trunk, `contrast::ref_chip` letters the chip in `text`).
+/// `s`'s chip tone in `p`.
 pub fn chip_in(s: Swatch, p: &Palette) -> Color32 {
     match s {
         Swatch::Trunk => trunk(p),

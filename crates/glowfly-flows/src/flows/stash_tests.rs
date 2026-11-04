@@ -4,11 +4,11 @@
 use super::palette_stash_tests::two_stashes;
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::state::palette::StashAction;
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::palette::StashAction;
 use std::time::Instant;
 
 #[test]
@@ -17,7 +17,7 @@ fn the_job_names_the_position_and_expects_the_commit() {
     let oid = st.snap.as_ref().unwrap().stashes[1].oid;
     let fx = update(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 1, oid }), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, expect, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, expect, .. })] => {
             assert_eq!(cmds[..], [args(&["stash", "pop", "stash@{1}"])]);
             assert_eq!(expect, &Some(("stash@{1}".to_owned(), oid)));
         }

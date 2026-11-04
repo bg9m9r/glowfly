@@ -6,10 +6,7 @@
 use super::snapshot_tests::{harness, remove_fixture, render, settings, with_repo};
 use super::snapshot_tests_select::click;
 use super::{UiCache, avatars::Avatars, draw, escape_key, theme::color};
-use crate::msg::{DashboardMsg, Msg, PrefsMsg};
-use crate::state::dashboard::{AccountRow, AccountState, Basis, DashShow, LocalRepo, Phase, TargetData};
-use crate::state::{AppState, PrefPage};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Toggled;
 use eframe::egui::{self, Key, PointerButton, pos2};
 use egui_kittest::Harness;
@@ -17,6 +14,9 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Checks, Issue, Me, PrFacets, Provider, PullRequest, Reviewer, Target};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::{DashboardMsg, Msg, PrefsMsg};
+use glowfly_model::state::dashboard::{AccountRow, AccountState, Basis, DashShow, LocalRepo, Phase, TargetData};
+use glowfly_model::state::{AppState, PrefPage};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -259,7 +259,7 @@ fn dashboard_controls_and_menus_push_messages() {
 #[test]
 fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
     let mut cache: Option<UiCache> = None;
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             escape_key(ctx, st, msgs);
@@ -273,6 +273,7 @@ fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
                 blame_rows: Default::default(),
                 diff_images: Default::default(),
                 markdown: Default::default(),
+                ref_upstreams: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },
@@ -287,7 +288,7 @@ fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
     // With no repository open, the repository menu still offers the dashboard.
     let mut h = harness(AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now()), true);
     h.run();
-    h.get_by_label("Open…").click();
+    h.get_by_label("Repository: Open…").click();
     h.run();
     h.get_by_label("Dashboard").click();
     h.run();

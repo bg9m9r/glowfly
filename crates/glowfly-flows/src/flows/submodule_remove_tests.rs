@@ -6,15 +6,14 @@ use super::submodule_tests::{PATH, cleanup, last_log, opened, sub};
 use super::tests::{drive, finish};
 use super::trust_held_tests::held_repo;
 use super::update;
-use crate::effect::{Effect, SubmoduleEffect};
-use crate::msg::{Msg, RepoMsg};
-use crate::runner;
-use crate::state::submodules::remove::RemoveForm;
-use crate::state::{AppState, Modal};
-use crate::submodule::{RemoveRequest, SubmoduleMsg};
 use git2::Oid;
 use glowfly_core::repo::{SubmoduleInfo, SubmoduleState};
 use glowfly_core::submodule_ops::{RemovalFacts, RemoveOutcome, RemoveReport};
+use glowfly_model::effect::{Effect, SubmoduleEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::submodules::remove::RemoveForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::submodule::{RemoveRequest, SubmoduleMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -187,7 +186,13 @@ fn each_outcome_has_its_message() {
     assert!(st.job.is_none());
     let t = st.toasts.last().unwrap();
     assert!(t.ok && t.text == "Removed submodule libs/lib. Commit to record the removal.", "{}", t.text);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. } | Effect::LoadRepo { .. })), "the tab reloads: {fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(
+            e,
+            Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }) | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+        )),
+        "the tab reloads: {fx:?}"
+    );
 
     started(&mut st);
     let dir = store(&parent);
@@ -209,7 +214,7 @@ fn each_outcome_has_its_message() {
     started(&mut st);
     removed(&mut st, RemoveOutcome::RmFailed, "$ git rm -f -- libs/lib\nfatal: Unable to create '/r/.git/index.lock': File exists.");
     let t = st.toasts.last().unwrap();
-    let says = "but git rm failed: Another git program is using this repository (index.lock exists). Wait for it to finish, then try \
+    let says = "but git rm failed: Another Git program is using this repository (index.lock exists). Wait for it to finish, then try \
                 again. If none is running, delete that file. It is still in .gitmodules";
     assert!(t.text.contains(says), "{}", t.text);
 
@@ -235,7 +240,10 @@ fn a_removal_ends_its_job_after_a_tab_switch() {
     let fx = removed(&mut st, RemoveOutcome::Removed, "");
     assert!(st.job.is_none());
     assert!(st.toasts.last().unwrap().ok);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "the other tab reloads when selected: {fx:?}");
+    assert!(
+        !fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))),
+        "the other tab reloads when selected: {fx:?}"
+    );
     cleanup(&[&parent, &lib]);
 }
 
@@ -245,7 +253,7 @@ fn removes_a_submodule_end_to_end() {
     assert!(store(&parent).exists());
     let fx = run(&mut st, sm(SubmoduleMsg::RemoveDialog(PATH.into())));
     for e in fx {
-        let m = runner::testing::execute(e).expect("the check answers");
+        let m = glowfly_runner::testing::execute(e).expect("the check answers");
         drive(&mut st, m);
     }
     assert!(matches!(st.modal, Some(Modal::RemoveSubmodule(_))));

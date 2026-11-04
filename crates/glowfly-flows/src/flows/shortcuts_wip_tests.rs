@@ -5,14 +5,15 @@
 use super::shortcuts_tests::one_hunk;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::keymap::KeyAction;
-use crate::msg::{DiffMsg, Msg, RepoMsg, StageMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::lines::LineClick;
-use crate::state::list_keys::{ListKey, ListMove};
-use crate::state::wip_lists::MoveOn;
 use glowfly_core::repo::{self, DiffTarget, FileEntry, LoadOptions};
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick;
+use glowfly_model::state::list_keys::{ListKey, ListMove};
+use glowfly_model::state::wip_lists::MoveOn;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -56,7 +57,7 @@ fn step(st: &mut AppState, staged: bool, down: bool) -> Vec<Effect> {
 fn loads(fx: &[Effect]) -> Vec<(DiffTarget, bool)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::LoadDiff { target, reload, .. } => Some((target.clone(), *reload)),
+            Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload, .. }) => Some((target.clone(), *reload)),
             _ => None,
         })
         .collect()
@@ -65,7 +66,7 @@ fn loads(fx: &[Effect]) -> Vec<(DiffTarget, bool)> {
 /// `fx` is exactly one fresh open of `t`, and the list will reveal it.
 #[track_caller]
 fn opens(st: &AppState, fx: &[Effect], t: DiffTarget) {
-    assert!(matches!(fx, [Effect::LoadDiff { reload: false, .. }]), "{fx:?}");
+    assert!(matches!(fx, [Effect::Diff(glowfly_model::effect::DiffEffect::Load { reload: false, .. })]), "{fx:?}");
     assert_eq!(loads(fx), vec![(t.clone(), false)]);
     assert_eq!(st.view.diff_opening.as_ref(), Some(&t));
     assert_eq!(st.view.file_reveal.as_ref().map(|(r, _)| r), Some(&t));
@@ -73,7 +74,7 @@ fn opens(st: &AppState, fx: &[Effect], t: DiffTarget) {
 
 fn local_op(fx: &[Effect]) -> Option<&LocalOp> {
     fx.iter().find_map(|e| match e {
-        Effect::LocalOp { op, .. } => Some(op),
+        Effect::Files(FilesEffect::LocalOp { op, .. }) => Some(op),
         _ => None,
     })
 }
@@ -142,7 +143,7 @@ fn steps_skip_conflicted_files() {
 fn steps_are_ignored_under_preferences_or_a_credential_prompt() {
     let (mut st, dir) = three_files("wip-keys-covered");
     show(&mut st, un("a.txt"));
-    st.prefs = Some(crate::state::PrefsState::new(crate::state::PrefPage::General));
+    st.prefs = Some(glowfly_model::state::PrefsState::new(glowfly_model::state::PrefPage::General));
     assert!(step(&mut st, false, true).is_empty());
     assert!(st.view.diff_opening.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -229,7 +230,7 @@ fn a_failed_stage_stays_on_the_file() {
     st.view.stage_move_on = Some(MoveOn { from: un("b.txt"), to: Some(un("c.txt")) });
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Err("no".into()))), Instant::now());
     assert!(loads(&fx).is_empty(), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     assert!(st.view.stage_move_on.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -254,8 +255,11 @@ fn a_status_read_while_a_file_opens_asks_for_that_file() {
     let fx = update(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("b.txt"))), Instant::now());
     assert_eq!(loads(&fx), vec![(un("b.txt"), false)]);
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
-    let status =
-        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(crate::runner::testing::execute).expect("a status read");
+    let status = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })))
+        .and_then(glowfly_runner::testing::execute)
+        .expect("a status read");
     let fx = update(&mut st, status, Instant::now());
     assert_eq!(loads(&fx), vec![(un("b.txt"), false)], "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -277,8 +281,11 @@ fn a_file_still_opening_that_left_its_list_is_dropped() {
     show(&mut st, un("a.txt"));
     update(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("x.txt"))), Instant::now());
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
-    let status =
-        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(crate::runner::testing::execute).expect("a status read");
+    let status = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })))
+        .and_then(glowfly_runner::testing::execute)
+        .expect("a status read");
     let fx = update(&mut st, status, Instant::now());
     assert_eq!(loads(&fx), vec![(un("a.txt"), true)], "{fx:?}");
     assert_eq!(st.view.diff_opening, None);

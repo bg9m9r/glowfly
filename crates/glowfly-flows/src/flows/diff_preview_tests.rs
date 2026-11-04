@@ -1,15 +1,15 @@
-//! Headless tests for the binary diff's sides: asked for once per shown binary diff, stale
+//! Headless tests for the binary diff's sides: asked for once per shown binary diff (a small
+//! one's bytes coming with them for the hex view), stale
 //! results ignored, kept through a reload of the same file, cleared on close, none for text or
 //! LFS-summary diffs, and asked for again when a tab comes back still loading.
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{DiffMsg, Msg, RepoMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::diff_preview::{self, DiffPreview};
 use glowfly_core::repo::{BinarySide, BinarySides, DiffTarget};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview::{self, DiffPreview};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -43,24 +43,24 @@ fn open(st: &mut AppState, target: DiffTarget) -> Vec<Effect> {
     deliver_diff(st, fx)
 }
 
-/// Runs the LoadDiff among `fx` and applies its result, returning the effects that raised.
+/// Runs the `DiffEffect::Load` among `fx` and applies its result, returning the effects that raised.
 fn deliver_diff(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { .. })).expect("a diff load");
-    let msg = runner::testing::execute(load).expect("a result");
+    let load = fx.into_iter().find(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).expect("a diff load");
+    let msg = glowfly_runner::testing::execute(load).expect("a result");
     run(st, msg)
 }
 
 fn requests(fx: &[Effect]) -> Vec<(DiffTarget, u64)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::LoadBinarySides { target, generation, .. } => Some((target.clone(), *generation)),
+            Effect::Diff(glowfly_model::effect::DiffEffect::BinarySides { target, generation, .. }) => Some((target.clone(), *generation)),
             _ => None,
         })
         .collect()
 }
 
 fn sides(size: u64) -> Arc<BinarySides> {
-    Arc::new(BinarySides { old: Some(BinarySide { size, image: None }), new: None })
+    Arc::new(BinarySides { old: Some(BinarySide { size, image: None, linked: false, bytes: None }), new: None })
 }
 
 fn loaded(target: DiffTarget, generation: u64, result: Result<Arc<BinarySides>, String>) -> Msg {
@@ -79,13 +79,16 @@ fn a_binary_diff_asks_for_its_sides_once() {
     let p = st.session.diff_preview.as_ref().expect("a preview");
     assert!(p.target == bin() && p.sides.is_none(), "loading");
     // Running it fills the sides in.
-    for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadBinarySides { .. })) {
-        let msg = runner::testing::execute(e).expect("a result");
+    for e in fx.into_iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::BinarySides { .. }))) {
+        let msg = glowfly_runner::testing::execute(e).expect("a result");
         assert!(matches!(&msg, Msg::Scoped { msg, .. } if matches!(**msg, Msg::Diff(DiffMsg::BinarySidesLoaded { .. }))));
         drive(&mut st, msg);
     }
     let s = diff_preview::shown(&st).expect("loaded");
     assert_eq!((s.old.as_ref().map(|s| s.size), s.new.as_ref().map(|s| s.size)), (Some(6), Some(8)));
+    // A small binary brings both sides' bytes for the hex view.
+    let (old, new): (&[u8], &[u8]) = (b"\0\x01old\0", b"\0\x02newer\0");
+    assert_eq!(s.hex(), Some((Some(old), Some(new))));
 
     let fx = open(&mut st, DiffTarget::Unstaged("a.txt".into()));
     assert!(requests(&fx).is_empty(), "a text diff asks for nothing");
@@ -141,7 +144,7 @@ fn lfs_summaries_ask_for_nothing_and_tabs_ask_again_while_loading() {
     let (mut st, dir) = repo("preview-tabs");
     open(&mut st, bin());
     // An LFS summary shows instead: no preview.
-    st.session.diff.lfs = Some(crate::state::lfs::LfsDiffNote { target: bin(), change: lfs_change(), show_pointer: false });
+    st.session.diff.lfs = Some(glowfly_model::state::lfs::LfsDiffNote { target: bin(), change: lfs_change(), show_pointer: false });
     let mut fx = Vec::new();
     super::diff_preview::diff_shown(&mut st, &mut fx);
     assert!(requests(&fx).is_empty() && st.session.diff_preview.is_none());

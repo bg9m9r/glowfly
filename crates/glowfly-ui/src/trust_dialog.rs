@@ -12,15 +12,15 @@ use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::trust_dialog_rows::{self as rows, Mark};
 use super::widgets::{self, Icon, buttons, icon};
-use crate::msg::{Msg, TrustMsg};
-use crate::state::trust::rows::row_follows;
-use crate::state::trust::{TrustPrompt, hooks_label, shown_value};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
 use glowfly_core::trust::known::{self, Known};
 use glowfly_core::trust::{ConfigCommand, Follow, TrustScan, is_network_setting};
+use glowfly_model::msg::{Msg, TrustMsg};
+use glowfly_model::state::trust::rows::row_follows;
+use glowfly_model::state::trust::{TrustPrompt, hooks_label, shown_value};
 use std::path::Path;
 
 /// Draws the prompt; returns true when Cancel was clicked (the dialog closes without a
@@ -62,7 +62,7 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
     if let Some(u) = &p.unchecked {
         ui.add(
             egui::Label::new(
-                RichText::new(crate::state::trust::unchecked_text(t, &u.reason)).font(type_scale::strong(ui, type_scale::BODY)),
+                RichText::new(glowfly_model::state::trust::unchecked_text(t, &u.reason)).font(type_scale::strong(ui, type_scale::BODY)),
             )
             .wrap(),
         );

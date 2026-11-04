@@ -5,18 +5,23 @@
 //! turns keys and clicks into messages.
 
 use super::theme::color;
-use super::widgets::{self, Icon};
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::state::AppState;
-use crate::state::palette::{self, InputKind, Items, Mode, Palette};
-use crate::state::palette_nav::{Jump, PAGE_ROWS};
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
+use super::widgets::quiet_target::{self, State};
+use super::widgets::row_fill;
+use super::widgets::{self, Icon, truncate};
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{
-    self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2, text::LayoutJob,
+    self, Align2, Color32, CornerRadius, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2,
     vec2,
 };
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, PickKind};
+use glowfly_model::state::palette_commands::RepoListCommand;
+use glowfly_model::state::palette_nav::{Jump, PAGE_ROWS};
 
 const WIDTH: f32 = 560.0;
 const ROW_H: f32 = 28.0;
@@ -26,6 +31,9 @@ const GROUP_HEADING_H: f32 = 22.0;
 const LABEL_SIZE: f32 = type_scale::BODY;
 // A page (PageUp/PageDown) is the rows the list shows at its full height.
 const _: () = assert!(PAGE_ROWS == (LIST_MAX_H / ROW_H) as usize);
+
+#[path = "palette_label.rs"]
+mod label;
 
 /// The id of the palette's modal area (its rect is in egui's memory under this id).
 pub(crate) const AREA_ID: &str = "glowfly-palette";
@@ -106,6 +114,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 /// The search field, after a search icon, or in a second step after a back arrow and its title.
 fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
+        // As tall as the field from the start, so the icons before it centre on its centre line.
+        ui.set_min_height(ControlSize::Large.metrics().h);
         let hint = match &p.mode {
             Mode::Commands => {
                 let (rect, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
@@ -121,14 +131,12 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 k.prompt()
             }
         };
-        let r = controls::field(
-            ui,
-            egui::TextEdit::singleline(&mut p.query)
-                .id(Id::new("glowfly-palette-query"))
-                .hint_text(hint)
-                .desired_width(f32::INFINITY)
-                .font(type_scale::font(type_scale::SUBHEAD)),
-        );
+        let edit = egui::TextEdit::singleline(&mut p.query)
+            .id(Id::new("glowfly-palette-query"))
+            .hint_text(hint)
+            .font(type_scale::font(type_scale::SUBHEAD));
+        let r = ui.add(controls::SizedField::new(ControlSize::Large, edit));
+        crate::access::name_if_unnamed(&r, hint);
         if !prompting {
             r.request_focus();
         }
@@ -188,7 +196,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
             let selected = sel == Some(i);
             let e = &shown.entry;
             let key = e.shortcut(&st.keymap).or_else(|| st.custom_commands.key_hint(&e.command));
-            let r = row(ui, &e.label, e.detail.as_deref(), key, &shown.matched, 0, selected);
+            let r = row(ui, &e.label, e.detail.as_deref(), key, (&shown.matched, 0), names_ref_or_repo(&e.command), selected);
             if r.clicked() {
                 msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(shown.entry.command.clone())));
             }
@@ -237,7 +245,8 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
                         // A file's folder part (through the last '/') is dimmed.
                         let dim = if kind.dims_folders() { label.rfind('/').map_or(0, |b| label[..=b].chars().count()) } else { 0 };
                         let detail = pk.detail(hit.index);
-                        let resp = row(ui, label, detail.as_deref(), None, &hit.matched, dim, i == sel);
+                        let names = kind == PickKind::SwitchBranch;
+                        let resp = row(ui, label, detail.as_deref(), None, (&hit.matched, dim), names, i == sel);
                         if resp.clicked()
                             && let Some(c) = pk.command(hit.index)
                         {
@@ -277,26 +286,49 @@ fn note(ui: &mut Ui, text: &str, col: Color32) {
     ui.add_space(4.0);
 }
 
+/// Whether a command's row names a ref or a repository: its label is cut in its middle.
+fn names_ref_or_repo(c: &PaletteCommand) -> bool {
+    matches!(
+        c,
+        PaletteCommand::Checkout(_)
+            | PaletteCommand::CheckoutRemote { .. }
+            | PaletteCommand::CheckoutTag(_)
+            | PaletteCommand::RenameBranch(_)
+            | PaletteCommand::OpenRecent(_)
+            | PaletteCommand::RepoList(RepoListCommand::OpenFavorite { .. })
+    )
+}
+
 /// One row: the label with its matched characters in the accent colour (the chars before
 /// `dim_before` dimmed otherwise), then at the right in dim text the detail and, at the far
-/// right, the shortcut. The label is clipped before both.
+/// right, the shortcut. The label is clipped before both, or for `names` (a ref or repository)
+/// cut in its middle, whole on hover.
 fn row(
     ui: &mut Ui,
     label: &str,
     detail: Option<&str>,
     shortcut: Option<&str>,
-    matched: &[usize],
-    dim_before: usize,
+    (matched, dim_before): (&[usize], usize),
+    names: bool,
     selected: bool,
 ) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
-    let p = ui.painter_at(rect);
+    // The current item is announced as selected (not as a toggle).
     if selected {
-        p.rect_filled(rect, 3.0, color::selected());
-    } else if resp.hovered() {
-        p.rect_filled(rect, 3.0, color::hover());
+        crate::access::mark_selected(&resp);
+    }
+    let p = ui.painter_at(rect);
+    // On the menu pill's corners: the keyboard's row (the list's current item, which Enter runs)
+    // takes the selection with its accent bar, and wins over the pointer; every other row lights
+    // as a quiet target. The keyboard stays in the search field, so no focus ring.
+    let face = rect.shrink2(vec2(4.0, 1.0));
+    if selected {
+        row_fill::paint_inset_selection(&p, face, radius::SM);
+    } else {
+        let state = State { hovered: resp.hovered(), down: resp.is_pointer_button_down_on(), latched: false, focused: false };
+        quiet_target::paint(&p, face, CornerRadius::same(radius::SM), ControlSize::Compact, state);
     }
     let mut right_w = 0.0;
     if let Some(keys) = shortcut {
@@ -313,38 +345,18 @@ fn row(
         right_w += g.size().x + gap + 8.0;
         p.galley(pos2(x, rect.center().y - g.size().y / 2.0), g, color::weak());
     }
-    let g = ui.fonts(|f| f.layout_job(label_job(label, matched, dim_before)));
     let text_rect = Rect::from_min_max(pos2(rect.left() + 10.0, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
-    p.with_clip_rect(text_rect).galley(pos2(text_rect.left(), rect.center().y - g.size().y / 2.0), g, color::text());
-    resp
-}
-
-/// The label as runs of one colour each: matched chars in the accent colour, the chars before
-/// `dim_before` dimmed, the rest in the text colour.
-fn label_job(label: &str, matched: &[usize], dim_before: usize) -> LayoutJob {
-    let mut job = LayoutJob::default();
-    let format = |col: Color32| egui::TextFormat { font_id: FontId::proportional(LABEL_SIZE), color: col, ..Default::default() };
-    let colour = |i: usize| {
-        if matched.contains(&i) {
-            color::accent()
-        } else if i < dim_before {
-            color::weak()
-        } else {
-            color::text()
+    let font = FontId::proportional(LABEL_SIZE);
+    let width = |s: &str| p.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
+    let cut = names.then(|| truncate::middle_cut(label, text_rect.width(), width)).flatten();
+    let job = match cut {
+        Some(cut) => {
+            let (shown, matched) = label::cut_marks(label, cut, matched);
+            label::label_job(&shown, &matched, 0, LABEL_SIZE)
         }
+        None => label::label_job(label, matched, dim_before, LABEL_SIZE),
     };
-    let mut run = String::new();
-    let mut run_col = color::text();
-    for (i, c) in label.chars().enumerate() {
-        let col = colour(i);
-        if col != run_col && !run.is_empty() {
-            job.append(&std::mem::take(&mut run), 0.0, format(run_col));
-        }
-        run_col = col;
-        run.push(c);
-    }
-    if !run.is_empty() {
-        job.append(&run, 0.0, format(run_col));
-    }
-    job
+    let g = ui.fonts(|f| f.layout_job(job));
+    p.with_clip_rect(text_rect).galley(pos2(text_rect.left(), rect.center().y - g.size().y / 2.0), g, color::text());
+    if cut.is_some() { resp.on_hover_text(label) } else { resp }
 }

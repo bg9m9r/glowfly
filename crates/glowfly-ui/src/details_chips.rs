@@ -5,14 +5,14 @@
 use super::common::{menu_item, short};
 use super::theme::color;
 use super::widgets::quiet_chip;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::AppState;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::context_menu;
+use crate::theme::type_scale;
+use crate::widgets::menu::context_menu;
 use eframe::egui::{Response, RichText, Ui, vec2};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::CommitDetail;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::AppState;
 
 /// Between two chips, across and down when they wrap.
 const GAP: f32 = 6.0;

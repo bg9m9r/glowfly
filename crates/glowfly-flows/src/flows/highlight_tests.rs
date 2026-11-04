@@ -4,17 +4,17 @@
 use super::diff_tests::drive_holding_diffs;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::runner;
-use crate::state::AppState;
-use crate::state::lines::LineClick;
 use glowfly_core::highlight::{self, DiffHighlight, Span, TokenKind};
 use glowfly_core::repo::{DiffTarget, FileDiff, HunkOp};
 use glowfly_core::settings::DiffMode;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -37,17 +37,18 @@ pub(super) fn big_repo(name: &str) -> PathBuf {
     dir
 }
 
-/// Like `drive`, but HighlightDiff effects are held back and returned.
+/// Like `drive`, but `DiffEffect::Highlight` effects are held back and returned.
 pub(super) fn drive_holding_highlights(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     let mut held = Vec::new();
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {
         for effect in update(st, m, Instant::now()) {
             match effect {
-                Effect::HighlightDiff { .. } => held.push(effect),
-                Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. } | Effect::LocalOp { .. } => {
-                    queue.extend(runner::testing::execute(effect))
-                }
+                Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. }) => held.push(effect),
+                Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+                | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+                | Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })
+                | Effect::Files(FilesEffect::LocalOp { .. }) => queue.extend(glowfly_runner::testing::execute(effect)),
                 _ => {}
             }
         }
@@ -55,11 +56,18 @@ pub(super) fn drive_holding_highlights(st: &mut AppState, msg: Msg) -> Vec<Effec
     held
 }
 
-/// Runs a held HighlightDiff without consuming it (to apply its result late, or twice).
+/// Runs a held `DiffEffect::Highlight` without consuming it (to apply its result late, or twice).
 fn result_of(e: &Effect) -> Msg {
-    let Effect::HighlightDiff { workdir, target, generation, diff } = e else { panic!("not a HighlightDiff") };
-    let e = Effect::HighlightDiff { workdir: workdir.clone(), target: target.clone(), generation: *generation, diff: diff.clone() };
-    runner::testing::execute(e).expect("finished")
+    let Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { workdir, target, generation, diff }) = e else {
+        panic!("not a highlight")
+    };
+    let e = Effect::Diff(glowfly_model::effect::DiffEffect::Highlight {
+        workdir: workdir.clone(),
+        target: target.clone(),
+        generation: *generation,
+        diff: diff.clone(),
+    });
+    glowfly_runner::testing::execute(e).expect("finished")
 }
 
 fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -118,11 +126,11 @@ fn big_diff_opens_plain_then_colors() {
     assert!(spans_of(d).iter().flatten().all(Vec::is_empty), "plain at once");
     assert_eq!(held.len(), 1);
     assert!(
-        matches!(&held[0], Effect::HighlightDiff { generation, target, .. } if *generation == st.session.diff.shown_gen && *target == big())
+        matches!(&held[0], Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { generation, target, .. }) if *generation == st.session.diff.shown_gen && *target == big())
     );
 
     let view = (st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
-    let msg = runner::testing::execute(held.remove(0)).expect("a result");
+    let msg = glowfly_runner::testing::execute(held.remove(0)).expect("a result");
     assert!(matches!(msg, Msg::Scoped { .. }));
     assert!(up(&mut st, msg).is_empty());
     assert_colored(shown(&st));
@@ -189,13 +197,16 @@ fn whole_file_over_limit_gets_colors() {
     let w = shown(&st).whole.as_deref().expect("the whole file is loaded");
     assert!(pending(w.diff.highlight.as_ref()));
     assert_eq!(held.len(), 1);
-    let msg = runner::testing::execute(held.remove(0)).unwrap();
+    let msg = glowfly_runner::testing::execute(held.remove(0)).unwrap();
     up(&mut st, msg);
     assert_colored(&shown(&st).whole.as_deref().unwrap().diff);
 
     // Back to hunks: no reload, and the hunks were finished by the same job.
     let fx = up(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadDiff { .. } | Effect::HighlightDiff { .. })));
+    assert!(!fx.iter().any(|e| matches!(
+        e,
+        Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }) | Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. })
+    )));
     assert!(shown(&st).whole.is_none());
     assert_colored(shown(&st));
     let _ = std::fs::remove_dir_all(&dir);
@@ -203,7 +214,7 @@ fn whole_file_over_limit_gets_colors() {
 
 /// Executes the held diff loads and applies their results, returning the effects.
 pub(super) fn land(st: &mut AppState, held: Vec<Effect>) -> Vec<Effect> {
-    held.into_iter().filter_map(runner::testing::execute).flat_map(|m| up(st, m)).collect()
+    held.into_iter().filter_map(glowfly_runner::testing::execute).flat_map(|m| up(st, m)).collect()
 }
 
 #[test]
@@ -222,7 +233,7 @@ fn reload_keeps_colors_without_plain_flash() {
     let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "big.rs".into(), index: 0, generation }));
     let fx = land(&mut st, held);
     assert!(!pending(shown(&st).highlight.as_ref()), "finished inline from the checkpoints");
-    assert!(!fx.iter().any(|e| matches!(e, Effect::HighlightDiff { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. }))), "{fx:?}");
     assert_colored(shown(&st));
     let after = spans_of(shown(&st));
     assert_eq!(after.len(), before.len() - 1);
@@ -243,8 +254,8 @@ fn reload_keeps_colors_without_plain_flash() {
     let w = whole(&st);
     assert!(pending(w.highlight.as_ref()));
     assert_eq!(w.highlight.as_ref().unwrap().line(0, 10), line10.as_slice(), "carried, no plain flash");
-    let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
-    let msg = runner::testing::execute(fx.remove(i.expect("a background pass"))).unwrap();
+    let i = fx.iter().position(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { generation, .. }) if *generation == st.session.diff.shown_gen));
+    let msg = glowfly_runner::testing::execute(fx.remove(i.expect("a background pass"))).unwrap();
     up(&mut st, msg);
     assert_colored(&whole(&st));
     let _ = std::fs::remove_dir_all(&dir);
@@ -258,11 +269,14 @@ fn line_selection_survives_same_reload_while_pending() {
     assert!(!st.view.diff_lines.is_empty());
     let selected = st.view.diff_lines.clone();
     let held = drive_holding_diffs(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, .. })));
+    assert!(held.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { reload: true, .. }))));
     let fx = land(&mut st, held);
     assert!(pending(shown(&st).highlight.as_ref()));
     assert_eq!(st.view.diff_lines, selected);
-    let job = fx.into_iter().find(|e| matches!(e, Effect::HighlightDiff { .. })).expect("a new background pass");
+    let job = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. })))
+        .expect("a new background pass");
 
     // The pass finishes while another reload is on its way, which arrives pending: the text is
     // the same, so the selection stays.
@@ -278,12 +292,14 @@ fn line_selection_survives_same_reload_while_pending() {
 fn reload_adopts_finished_spans_on_screen() {
     let (mut st, dir, held) = opened_big("hl-adopt");
     let reload = drive_holding_diffs(&mut st, Msg::Repo(RepoMsg::Refresh));
-    assert!(reload.iter().any(|e| matches!(e, Effect::LoadDiff { previous: Some(p), .. } if pending(p.highlight.as_ref()))));
+    assert!(reload.iter().any(
+        |e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { previous: Some(p), .. }) if pending(p.highlight.as_ref()))
+    ));
     // The background pass lands before the reload does.
     up(&mut st, result_of(&held[0]));
     assert_colored(shown(&st));
     let fx = land(&mut st, reload);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::HighlightDiff { .. })), "no second pass");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. }))), "no second pass");
     assert_colored(shown(&st));
     let _ = std::fs::remove_dir_all(&dir);
 }

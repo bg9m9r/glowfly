@@ -82,8 +82,10 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Double-click a tag (graph chip and TAGS row) to check it out detached, through the existing
   tag checkout and its detached-HEAD warning
 - Double-click the "+N" chip to choose which hidden branch to check out
-- Double-clicking a branch that another worktree has checked out opens that worktree's tab
-  instead of logging the refusal
+- Delete and Rename of a branch whose worktree folder is missing still say "Prune it first";
+  offer Prune and delete there, as checkout offers Prune and check out
+- Any refusal clicked again could restart its toast and skip the repeated log line, as the
+  missing-worktree checkout does (`toast_action_once`); several flows tests expect repeats today
 - Branch chip and row tooltips mention that a double-click checks the branch out
 - Double-clicking the checked-out branch does nothing instead of logging that it is already
   checked out
@@ -179,3 +181,11 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
   prefix
 - Say in the tooltip when a local chip's own upstream is at another commit while a copy on
   another remote is level with it
+
+### Pull and Push name their target
+
+- With push.default=upstream and a pushRemote other than the upstream's remote, Push names fork/main but git refuses the push
+- A pushRemote naming a missing remote is still named; fall back to the upstream when it isn't among the remotes
+- `branches::push_blocked` still judges Push against the upstream, so Push to a fork is disabled while level with origin
+- On a focused Pull or Push with a count, the badge and its knockout cover part of the inset focus ring's top edge
+- The toolbar tests for the 0/0 and no-upstream names look up "main", which now also matches the remote row; look up "Branch: main"

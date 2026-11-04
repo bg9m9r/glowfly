@@ -3,11 +3,12 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg};
-use crate::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
-use glowfly_core::forge::{Account, Auth, Connection, Issue, Provider, Target, TrelloBoard};
+use glowfly_core::forge::{Account, Auth, Connection, Issue, Provider, ServiceError, Target, TrelloBoard};
 use glowfly_core::settings::{RepoTrust, TrackerChoice};
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::{AccountEffect, Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
 use std::time::Instant;
 
 const BOARD: &str = "5f1a2b3c4d5e6f7a8b9c0d1e";
@@ -29,7 +30,7 @@ fn open(name: &str, connected: bool) -> AppState {
     }
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir)));
     let real = st.snap.as_ref().expect("opened").real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
     st
 }
 
@@ -40,7 +41,7 @@ fn run(st: &mut AppState, msg: ForgeMsg) -> Vec<Effect> {
 fn my_issues_calls(fx: &[Effect]) -> Vec<bool> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::Forge { call: ForgeCall::MyIssues { .. }, connected, .. } => Some(*connected),
+            Effect::Network(NetworkEffect::Forge { call: ForgeCall::MyIssues { .. }, connected, .. }) => Some(*connected),
             _ => None,
         })
         .collect()
@@ -124,11 +125,11 @@ fn boards_reply_fills_the_picker_and_stale_replies_are_ignored() {
     assert!(!list.loading && list.error.is_none() && list.has(BOARD) && list.boards.len() == 2);
 
     let other = Account { host: "other.example".into(), ..acct() };
-    run(&mut st, ForgeMsg::TrelloBoardsLoaded { account: other, result: Err("boom".into()) });
+    run(&mut st, ForgeMsg::TrelloBoardsLoaded { account: other, result: Err(ServiceError::Other { said: "boom".into() }) });
     assert_eq!(st.prefs.as_ref().unwrap().trello_boards.error, None, "another account's reply");
 
-    run(&mut st, ForgeMsg::TrelloBoardsLoaded { account: acct(), result: Err("rate limit".into()) });
-    assert_eq!(st.prefs.as_ref().unwrap().trello_boards.error.as_deref(), Some("rate limit"));
+    run(&mut st, ForgeMsg::TrelloBoardsLoaded { account: acct(), result: Err(ServiceError::Forbidden { said: "rate limit".into() }) });
+    assert_eq!(st.prefs.as_ref().unwrap().trello_boards.error.as_deref(), Some("access denied: rate limit"));
 }
 
 #[test]
@@ -136,7 +137,7 @@ fn unconnected_trello_is_never_contacted() {
     let mut st = open("trello-unconnected", false);
     run(&mut st, ForgeMsg::SetTracker(trello(BOARD, "Website")));
     let fx = run(&mut st, ForgeMsg::ForgeRefresh { interactive: true });
-    assert!(!fx.iter().any(|e| matches!(e, Effect::Forge { .. })), "nothing is called");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Network(NetworkEffect::Forge { .. }))), "nothing is called");
     let fs = st.session.forge.as_ref().unwrap();
     assert!(matches!(&fs.tracker_status, Status::Error(e) if e.contains("not connected")), "{:?}", fs.tracker_status);
 

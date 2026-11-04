@@ -2,11 +2,18 @@
 //! committing can start, the commit button's label and the git commands that commit it.
 
 use super::AppState;
+use stop::{EditStop, rebase_stopped};
+
+#[path = "commit_ready.rs"]
+mod ready;
+#[path = "commit_stop.rs"]
+pub mod stop;
 use git2::RepositoryState;
 use glowfly_core::commit_encoding::Unencodable;
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::CommitTemplate;
+pub use ready::{commit_blocked, commit_label, commit_merge_blocked};
 use std::path::Path;
 
 /// What the user is writing in the commit box. Views edit it in place.
@@ -23,6 +30,9 @@ pub struct CommitDraft {
     /// The MERGE_MSG text the draft was filled with; Some => a merge's, cherry-pick's or
     /// revert's own message, cleared again when the operation ends while it is untouched.
     pub merge_msg: Option<String>,
+    /// The commit a rebase stopped to edit for which Amend was ticked by default, so it is
+    /// ticked once per stop and the person can untick it.
+    pub amend_stop: Option<EditStop>,
 }
 
 impl CommitDraft {
@@ -89,7 +99,8 @@ impl CommitDraft {
 
     /// The commit button's text: the base label with its slots for " and push" (when `push`)
     /// and " (skip hooks)" (when hooks are skipped), placed where the language puts them.
-    /// "Commit merge" while `merging` (not for an amend).
+    /// "Commit merge" while `merging` (not for an amend). Plain "Commit", without the slots,
+    /// while nothing is staged or the summary is empty (the caption says what is missing).
     pub fn button_label(&self, t: Lang, staged: usize, push: bool, merging: bool) -> String {
         let push_text = if push { t.tr("commit.button.and_push") } else { "" };
         let skip_text = if self.skip_hooks { t.tr("commit.button.skip_hooks") } else { "" };
@@ -98,11 +109,19 @@ impl CommitDraft {
             t.trf("commit.button.amend", &slots)
         } else if merging {
             t.trf("commit.button.merge", &slots)
-        } else if staged == 0 {
-            t.trf("commit.button.stage_first", &slots)
+        } else if staged == 0 || self.summary.trim().is_empty() {
+            t.tr("commit.button.plain").to_owned()
         } else {
             t.trn("commit.button.commit", staged, &slots)
         }
+    }
+
+    /// The commit button's text at a rebase stopped to edit: "Amend and continue", or with
+    /// Amend unticked "Commit and continue".
+    pub fn continue_label(&self, t: Lang) -> String {
+        let skip_text = if self.skip_hooks { t.tr("commit.button.skip_hooks") } else { "" };
+        let slots: [(&str, &dyn std::fmt::Display); 1] = [("skip", &skip_text)];
+        if self.amend { t.trf("commit.button.amend_continue", &slots) } else { t.trf("commit.button.commit_continue", &slots) }
     }
 
     /// The git commands that commit this draft with its message in `file`: `add --all` first
@@ -150,62 +169,15 @@ pub fn amend_blocked(t: Lang, state: RepositoryState) -> Option<&'static str> {
     }
 }
 
-/// Why committing (or staging everything and committing) can't start now; None when it can.
-/// While merging, every conflict must be resolved and an empty Staged list still commits (a
-/// merge whose result equals HEAD); during a merge, cherry-pick or revert an amend can't run.
-pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
-    let t = st.settings.lang();
-    let Some(snap) = &st.snap else { return Some(t.tr("commit.blocked.no_repo")) };
-    let d = &st.session.draft;
-    let merging = snap.state == RepositoryState::Merge;
-    let conflicted = snap.unstaged.iter().any(|f| f.status == '!');
-    if st.job.is_some() {
-        Some(t.tr("commit.blocked.job_running"))
-    } else if let Some(why) = amend_blocked(t, snap.state).filter(|_| d.amend) {
-        Some(why)
-    } else if merging && conflicted {
-        Some(t.tr("commit.blocked.merge_conflicts"))
-    } else if d.is_untouched_template() {
-        Some(t.tr("commit.blocked.untouched_template"))
-    } else if d.summary.trim().is_empty() {
-        Some(t.tr("commit.blocked.no_summary"))
-    } else if stage_all && conflicted {
-        // Staging a conflicted file marks it resolved.
-        Some(t.tr("commit.blocked.conflicts"))
-    } else if merging {
-        None
-    } else if !d.amend && !stage_all && snap.staged.is_empty() {
-        Some(t.tr("commit.blocked.nothing_staged"))
-    } else if !d.amend && stage_all && snap.staged.is_empty() && snap.unstaged.is_empty() {
-        Some(t.tr("commit.blocked.no_changes"))
-    } else {
-        None
-    }
-}
-
 /// Why a message can't be written: the repository's commit encoding can't hold some characters.
 pub fn unencodable_text(t: Lang, e: &Unencodable) -> String {
     t.trf("commit.blocked.unencodable", &[("encoding", &e.encoding), ("chars", &e.listed())])
 }
 
-/// Why the merge banner's Commit merge can't run now: conflicts left, another job, an amend.
-pub fn commit_merge_blocked(st: &AppState) -> Option<String> {
-    let t = st.settings.lang();
-    let conflicted = st.snap.as_ref().map_or(0, |s| s.unstaged.iter().filter(|f| f.status == '!').count());
-    if conflicted > 0 {
-        Some(t.trn("details.banner.commit_merge.conflicts", conflicted, &[]))
-    } else if st.job.is_some() {
-        Some(t.tr("commit.blocked.job_running").to_owned())
-    } else if st.session.draft.amend {
-        Some(t.tr("commit.blocked.amend_merge").to_owned())
-    } else {
-        None
-    }
-}
-
-/// Whether a commit now would be followed by a push (setting on and HEAD on a branch).
+/// Whether a commit now would be followed by a push (setting on, HEAD on a branch and no
+/// rebase stopped: pushing halfway through one is never right).
 pub fn pushes_after(st: &AppState) -> bool {
-    st.settings.push_after_commit && st.snap.as_ref().is_some_and(|s| s.head_branch.is_some())
+    st.settings.push_after_commit && st.snap.as_ref().is_some_and(|s| s.head_branch.is_some() && !rebase_stopped(s))
 }
 
 /// A summary's length up to here reads well (git-commit(1): ideally under 50 characters).
@@ -252,20 +224,20 @@ mod tests {
     #[test]
     fn button_label_suffixes() {
         let en = Lang::En;
-        let mut d = CommitDraft::default();
+        let mut d = CommitDraft { summary: "Fix".into(), ..CommitDraft::default() };
         assert_eq!(d.button_label(en, 1, false, false), "Commit 1 file");
-        assert_eq!(d.button_label(en, 0, false, false), "Stage something to commit");
+        assert_eq!(d.button_label(en, 0, true, false), "Commit", "nothing staged: plain, no suffixes");
         d.skip_hooks = true;
         assert_eq!(d.button_label(en, 2, true, false), "Commit 2 files and push (skip hooks)");
         d.skip_hooks = false;
         d.amend = true;
-        assert_eq!(d.button_label(en, 0, true, false), "Amend previous commit and push");
+        assert_eq!(d.button_label(en, 0, true, false), "Amend last commit and push");
     }
 
     #[test]
     fn button_label_places_the_suffixes_where_the_language_does() {
         let de = Lang::De;
-        let d = CommitDraft { skip_hooks: true, ..CommitDraft::default() };
+        let d = CommitDraft { skip_hooks: true, summary: "Fix".into(), ..CommitDraft::default() };
         let want = glowfly_core::i18n::fill(
             de.tr("commit.button.commit.other"),
             &[("count", &2), ("push", &de.tr("commit.button.and_push")), ("skip", &de.tr("commit.button.skip_hooks"))],
@@ -332,7 +304,7 @@ mod tests {
         d.skip_hooks = true;
         assert_eq!(d.button_label(en, 1, true, true), "Commit merge and push (skip hooks)");
         d.amend = true;
-        assert_eq!(d.button_label(en, 1, false, true), "Amend previous commit (skip hooks)", "amend wins");
+        assert_eq!(d.button_label(en, 1, false, true), "Amend last commit (skip hooks)", "amend wins");
 
         let mut d = CommitDraft::default();
         d.fill_merge(

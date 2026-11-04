@@ -4,16 +4,16 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::BranchMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::{AppState, Modal};
 use git2::{Oid, RepositoryState};
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::{BranchInfo, Tracking};
 use glowfly_core::undo::{Action, UndoKind};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -60,7 +60,7 @@ fn cmds(st: &mut AppState, msg: Msg) -> Vec<Vec<String>> {
     let fx = update(st, msg, Instant::now());
     st.job = None;
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         [] => Vec::new(),
         other => panic!("unexpected effects {other:?}"),
     }
@@ -253,7 +253,7 @@ fn delete_with_remote_commands_and_refusals() {
     let fx = update(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into())), Instant::now());
     st.job = None;
     match &fx[..] {
-        [Effect::RunGit { cmds, record, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => {
             assert_eq!(
                 cmds,
                 &vec![
@@ -295,7 +295,7 @@ fn delete_with_remote_commands_and_refusals() {
     let then = Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into()));
     update(&mut st, Msg::confirm("Delete local and remote branch", "…".into(), "Delete both", then), Instant::now());
     let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { cmds, .. }] if cmds.len() == 3));
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] if cmds.len() == 3));
     st.job = None;
     cleanup(&[&work, &bare]);
 }

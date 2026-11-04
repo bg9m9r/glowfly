@@ -3,16 +3,16 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::GraphMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::runner;
-use crate::state::AppState;
-use crate::state::branches::HEAD_ALWAYS_SHOWN;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{FilterOp, GraphFilter};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::GraphMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::branches::HEAD_ALWAYS_SHOWN;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -47,8 +47,8 @@ fn op(st: &mut AppState, op: FilterOp) -> Vec<Effect> {
 /// Runs effects already returned by `update` to completion.
 fn run(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx {
-        if matches!(e, Effect::LoadRepo { .. })
-            && let Some(m) = runner::testing::execute(e)
+        if matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))
+            && let Some(m) = glowfly_runner::testing::execute(e)
         {
             drive(st, m);
         }
@@ -67,14 +67,14 @@ fn filter(st: &AppState) -> GraphFilter {
     st.settings.graph_filter_for(&st.snap.as_ref().unwrap().real_workdir)
 }
 
-/// The options of the single LoadRepo in `fx`.
+/// The options of the single `LoadEffect::Repo` in `fx`.
 fn load_opts(fx: &[Effect]) -> &LoadOptions {
     let mut loads = fx.iter().filter_map(|e| match e {
-        Effect::LoadRepo { opts, .. } => Some(opts),
+        Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, .. }) => Some(opts),
         _ => None,
     });
-    let opts = loads.next().expect("a LoadRepo");
-    assert!(loads.next().is_none(), "one LoadRepo");
+    let opts = loads.next().expect("a repository load");
+    assert!(loads.next().is_none(), "one repository load");
     opts
 }
 
@@ -85,7 +85,7 @@ fn hide_saves_and_reloads_without_branch() {
     assert!(has_label(&st, "feature") && has_commit(&st, "feature work"));
 
     let fx = op(&mut st, FilterOp::Hide(heads("feature")));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::LoadRepo { .. }]));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })]));
     assert_eq!(load_opts(&fx).hidden, [heads("feature")]);
     run(&mut st, fx);
     assert!(!has_label(&st, "feature") && !has_commit(&st, "feature work"));
@@ -128,10 +128,15 @@ fn checking_out_hidden_branch_shows_it_again() {
     git(&dir, &["checkout", "-q", "feature"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
+    let loaded = fx
+        .into_iter()
+        .find_map(|e| {
+            matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })).then(|| glowfly_runner::testing::execute(e)).flatten()
+        })
+        .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the load already showed it");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "the load already showed it");
     assert_eq!(filter(&st).hidden, [heads("other")], "only the checked-out branch is unhidden");
     assert!(has_label(&st, "feature") && has_commit(&st, "feature work"));
     assert!(!has_label(&st, "other"));
@@ -223,10 +228,15 @@ fn deleted_refs_are_pruned() {
     git(&dir, &["branch", "-D", "feature", "other"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
+    let loaded = fx
+        .into_iter()
+        .find_map(|e| {
+            matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })).then(|| glowfly_runner::testing::execute(e)).flatten()
+        })
+        .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     let opts = load_opts(&fx);
     assert!(opts.hidden.is_empty() && opts.solo.is_empty(), "reloaded without the solo");
     run(&mut st, fx);
@@ -274,7 +284,7 @@ fn hide_show_and_solo_a_tag() {
     assert!(has_label(&st, "rel") && has_commit(&st, "feature work"));
 
     let fx = op(&mut st, FilterOp::Hide(tags("rel")));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::LoadRepo { .. }]));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })]));
     assert_eq!(load_opts(&fx).hidden, [tags("rel")]);
     run(&mut st, fx);
     assert!(!has_label(&st, "rel") && !has_commit(&st, "feature work"));
@@ -309,10 +319,15 @@ fn deleted_tags_are_pruned() {
     git(&dir, &["tag", "-d", "rel", "keep"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
+    let loaded = fx
+        .into_iter()
+        .find_map(|e| {
+            matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })).then(|| glowfly_runner::testing::execute(e)).flatten()
+        })
+        .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     let opts = load_opts(&fx);
     assert!(opts.hidden.is_empty() && opts.solo.is_empty(), "reloaded without the solo");
     run(&mut st, fx);

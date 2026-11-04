@@ -10,20 +10,20 @@ use super::theme::color;
 use super::widgets;
 use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd};
-use crate::msg::Msg;
-use crate::state::section_actions::SectionAction;
-use crate::state::submodules::batch::{init_all_blocked, update_all_blocked};
-use crate::state::submodules::remove::remove_blocked;
-use crate::state::submodules::{
-    SectionCx, copy_url_blocked, copy_url_text, dot_tip, edit_blocked, open_blocked, row_word, tooltip, update_blocked, update_label,
-};
-use crate::submodule::{Batch, SubmoduleMsg};
-use crate::ui::widgets::menu::{self, separator, submenu};
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::widgets::menu::{self, separator, submenu};
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Painter, Pos2, Rect, Stroke, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Snapshot, SubmoduleInfo, SubmoduleState};
 use glowfly_core::settings::SubmoduleUpdates;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::section_actions::SectionAction;
+use glowfly_model::state::submodules::batch::{init_all_blocked, update_all_blocked};
+use glowfly_model::state::submodules::remove::remove_blocked;
+use glowfly_model::state::submodules::{
+    SectionCx, copy_url_blocked, copy_url_text, dot_tip, edit_blocked, open_blocked, row_word, tooltip, update_blocked, update_label,
+};
+use glowfly_model::submodule::{Batch, SubmoduleMsg};
 
 /// The row filter, whether a filter is typed, and the section's add action.
 type Filtered<'a> = (&'a dyn Fn(&str) -> bool, bool, &'a SectionAction);

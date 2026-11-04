@@ -8,11 +8,11 @@
 // Outside macOS only the facade's signatures are used.
 #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
-use crate::state::menu_model::{Menu, MenuAction};
-use crate::state::menu_native::{self, Plan};
-use crate::state::window_chrome::Chrome;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
+use glowfly_model::state::menu_model::{Menu, MenuAction};
+use glowfly_model::state::menu_native::{self, Plan};
+use glowfly_model::state::window_chrome::Chrome;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 /// Wakes the window after a pick.

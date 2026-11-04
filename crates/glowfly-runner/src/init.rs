@@ -2,10 +2,10 @@
 //! suggest as a license's copyright holder, and the init job.
 
 use super::execute::{Cx, Execute};
-use crate::effect::InitEffect;
-use crate::msg::{InitMsg, Msg};
 use glowfly_core::gitcli::{self, args};
 use glowfly_core::init_ops;
+use glowfly_model::effect::InitEffect;
+use glowfly_model::msg::{InitMsg, Msg};
 
 pub(super) fn run(e: InitEffect) -> Msg {
     Msg::Init(match e {

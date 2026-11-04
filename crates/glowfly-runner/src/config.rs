@@ -2,10 +2,10 @@
 //! reading the settings file again after it couldn't be read.
 
 use super::execute::{Cx, Execute};
-use crate::effect::{ConfigWrite, PrefsEffect};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::prefs::{Autocrlf, GitConfigValues};
 use glowfly_core::gitcli::{self, args};
+use glowfly_model::effect::{ConfigWrite, PrefsEffect};
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::prefs::{Autocrlf, GitConfigValues};
 use std::path::Path;
 
 /// Runs one `Effect::Prefs`: config values here, signing keys in keys.rs.
@@ -34,11 +34,11 @@ impl Execute for PrefsEffect {
 
 /// Sets or (for None) unsets one config value; a failure goes to the activity log.
 pub(super) fn set(cwd: &Path, global: bool, key: &str, value: Option<&str>) -> Option<Msg> {
-    glowfly_core::identity::set_config(cwd, global, key, value, &[]).err().map(|text| Msg::Logged { ok: false, text })
+    glowfly_core::identity::set_config(cwd, global, key, value, &[]).err().map(|e| Msg::Logged { ok: false, text: e.to_string() })
 }
 
 /// Writes each value in order, stopping at the first git refuses (its error).
-fn write_all(cwd: &Path, writes: &[ConfigWrite]) -> Result<(), String> {
+fn write_all(cwd: &Path, writes: &[ConfigWrite]) -> Result<(), glowfly_core::identity::ConfigWriteFailed> {
     for w in writes {
         glowfly_core::identity::set_config(cwd, w.global, &w.key, w.value.as_deref(), &[])?;
     }

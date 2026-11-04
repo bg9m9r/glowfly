@@ -6,9 +6,7 @@ use super::common::short;
 use super::snapshot_tests::{NOW, git, harness, remove_fixture, with_repo};
 use super::snapshot_tests_line_counts::{lines, write};
 use super::snapshot_tests_select::click;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
@@ -18,6 +16,8 @@ use glowfly_core::gitcli::{args, run_with_input};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::{AppState, Selection};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -183,6 +183,51 @@ fn details_commit_long_body() {
     let block = files.y0 - label.y0 - 16.0 - 8.0;
     assert!(block <= 320.0 + 12.0, "the block is capped: {block}");
     h.check_snapshot("details_commit_long_body");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// A body hard-wrapped at 72 columns: a paragraph, a bullet list with indented continuation
+/// lines, an unbroken URL longer than the panel and a trailer.
+const HARD_WRAPPED: &str = "Keep the search index in step with the graph
+
+The index used to be rebuilt from scratch whenever a fetch brought in new
+commits, which took several seconds on large repositories and blocked the
+search field until it was done.
+
+- Update the index from the commits a refresh adds, so a fetch costs only
+  what it brings in.
+- Drop the entries of commits that are no longer reachable once the
+  refresh settles.
+See https://example.com/glowfly/design-notes/search-index-incremental-updates-and-reachability
+
+Co-authored-by: Ada Lovelace <ada@example.com>
+";
+
+#[test]
+fn details_hard_wrapped_body() {
+    let (st, dir, _) = with_commit(ThemeChoice::Dark, "details-hard-wrapped", HARD_WRAPPED);
+    // A window wide and tall enough for the panel's widest default width (520 px) and the body
+    // block's tallest cap (320 px), so the whole body shows.
+    let mut h = crate::snapshot_fixtures::harness_sized(st, true, eframe::egui::vec2(2080.0, 1200.0));
+    h.run();
+    // Each line as written starts a line of its own: the body's label is as tall as its lines
+    // and the long URL's soft wrap, never one reflowed paragraph.
+    let body = h.get_by_label_contains("The index used to be rebuilt").bounding_box().expect("the body");
+    let row = eframe::egui::TextStyle::Body.resolve(&h.ctx.style()).size;
+    let lines = HARD_WRAPPED
+        .split_once(
+            "
+
+",
+        )
+        .unwrap()
+        .1
+        .trim_end()
+        .lines()
+        .count() as f64;
+    assert!(body.y1 - body.y0 >= lines * f64::from(row), "one line per line written: {}", body.y1 - body.y0);
+    h.check_snapshot("details_hard_wrapped_body");
     drop(h);
     remove_fixture(&dir);
 }

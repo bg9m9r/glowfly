@@ -3,12 +3,12 @@
 //! repository with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::state::AppState;
-use crate::state::rebase::RebasePanel;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::rebase::{self, RebaseAction, RebaseBase, TodoStep};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::RebasePanel;
 use std::path::PathBuf;
 
 /// The panel for the fixture from "Add app skeleton" up: the login-page line, main's line and
@@ -37,8 +37,9 @@ fn rebase_panel_merges() {
     let p = st.session.rebase.view.as_ref().unwrap();
     assert!(p.items.iter().any(TodoStep::is_structure), "{:?}", p.items);
     assert!(p.items.iter().any(|s| s.merge().is_some()));
-    let subtitle = p.subtitle();
-    assert!(subtitle.starts_with("Rebasing 3 commits and 1 merge of main onto ") && subtitle.ends_with(" Initial commit"), "{subtitle}");
+    let subtitle = p.subtitle(glowfly_core::i18n::Lang::En);
+    let onto = &p.plan.as_ref().unwrap().onto_label[..7];
+    assert_eq!(subtitle, format!("Rebasing 3 commits and 1 merge of main onto {onto}."), "the commit by its short id alone");
     assert!(p.start_blocker(st.snap.as_ref().unwrap(), false).is_some(), "nothing changed yet");
     let mut h = harness(st, true);
     h.run();

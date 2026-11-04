@@ -13,9 +13,11 @@
 //! to check that a failure isn't the kit's.
 
 pub mod bin;
+pub mod cjk_dates;
 mod commit;
 mod fast;
 mod guard;
+pub mod procs;
 mod push;
 mod refs;
 #[cfg(test)]

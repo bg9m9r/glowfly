@@ -3,7 +3,7 @@
 //! before the window exists, so they wait here until the runner attaches, and then become the
 //! start argument's messages (`StartArg::into_msg`). Elsewhere nothing posts here.
 
-use crate::start_arg::StartArg;
+use glowfly_model::start_arg::StartArg;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -120,7 +120,7 @@ pub fn attach(sink: Sink) {
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub fn received(item: StartArg) {
     match &item {
-        StartArg::Link(text) => tracing::debug!("the OS handed over the link {}", crate::state::deep_link::shown_link(text)),
+        StartArg::Link(text) => tracing::debug!("the OS handed over the link {}", glowfly_model::state::deep_link::shown_link(text)),
         StartArg::Path(p) => tracing::debug!("the OS handed over {}", glowfly_core::native_path::shown(p)),
     }
     inbox().push(item, Instant::now());

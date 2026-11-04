@@ -9,16 +9,16 @@ use super::dialog_guides;
 use super::theme::color;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::state::auto_stash;
-use crate::state::gitflow::FinishForm;
-use crate::ui::theme::controls;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use glowfly_core::gitflow::{Branches, FinishProblem, WorkState, check_finish, short_name};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stash_ops::AutoStashFor;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::auto_stash;
+use glowfly_model::state::gitflow::FinishForm;
 
 /// Draws the dialog; returns true when it should close. `cx.keyboard` is false under a
 /// credential prompt, whose fields need the keyboard. Ctrl/Cmd+Enter in the message finishes.
@@ -55,7 +55,7 @@ pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Sn
     let result = check_finish(&s, &form.branch, &form.options(), &Branches::of(snap), &work);
     match &result {
         Ok(plan) => {
-            ui.label(RichText::new("Steps:").color(color::weak()));
+            ui.label(RichText::new(cx.t.tr("gitflow.finish.steps.label")).color(color::weak()));
             for (i, step) in plan.steps.iter().enumerate() {
                 ui.label(RichText::new(format!("{}. {}", i + 1, capitalize(&step.what))).color(color::weak()));
             }

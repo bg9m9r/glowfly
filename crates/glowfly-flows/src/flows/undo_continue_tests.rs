@@ -4,12 +4,12 @@
 
 use super::cherry_pick_tests::feature_repo;
 use super::tests::{drive, git, scratch_repo, state};
-use crate::msg::{CommitMsg, JobMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
-use crate::state::AppState;
-use crate::state::rebase_banner::action_msg;
 use git2::{Oid, RepositoryState};
 use glowfly_core::pick_ops::CHERRY_PICK_SKIP;
 use glowfly_core::undo::{Action, MoveOp};
+use glowfly_model::msg::{CommitMsg, JobMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase_banner::action_msg;
 use std::path::{Path, PathBuf};
 
 fn head_summary(st: &AppState) -> String {

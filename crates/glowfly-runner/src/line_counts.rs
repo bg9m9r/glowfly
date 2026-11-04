@@ -3,9 +3,9 @@
 
 use super::execute::err;
 use super::execute::{Cx, Execute};
-use crate::effect::LineCountsEffect;
-use crate::msg::{Msg, RepoMsg};
 use glowfly_core::repo;
+use glowfly_model::effect::LineCountsEffect;
+use glowfly_model::msg::{Msg, RepoMsg};
 use std::sync::Arc;
 
 pub(super) fn run(e: LineCountsEffect) -> Msg {

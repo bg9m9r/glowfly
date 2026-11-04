@@ -3,15 +3,15 @@
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_rebase::with_panel;
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::AppState;
-use crate::state::rebase::{Editing, RebasePanel};
-use crate::state::rebase_steps::NewStep;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::rebase::{RebaseAction::*, RebaseProgress, Remaining, Stop, StopKind, TodoStep};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::{Editing, RebasePanel};
+use glowfly_model::state::rebase_steps::NewStep;
 
 fn panel(st: &mut AppState) -> &mut RebasePanel {
     st.session.rebase.view.as_mut().unwrap()
@@ -79,8 +79,16 @@ fn rebase_panel_remaining() {
     let snap = st.snap.as_mut().unwrap();
     snap.state = RepositoryState::RebaseInteractive;
     let stop = Stop { kind: StopKind::Edit, oid: items[1].oid() };
-    snap.rebase =
-        Some(RebaseProgress { step: 2, total: 6, stop, summary: String::new(), autostash: false, interactive: true, command: None });
+    snap.rebase = Some(RebaseProgress {
+        step: 2,
+        total: 6,
+        stop,
+        summary: String::new(),
+        autostash: false,
+        interactive: true,
+        command: None,
+        amends: false,
+    });
     let mut p = RebasePanel::loading_remaining();
     p.fill_remaining(Remaining {
         branch: Some("main".into()),
@@ -98,7 +106,7 @@ fn rebase_panel_remaining() {
     h.run();
     h.check_snapshot("rebase_panel_remaining");
     assert!(h.query_by_label("Update steps").is_some());
-    assert!(h.query_by_label(crate::state::rebase_remaining::LOCKED_NOTE).is_some());
+    assert!(h.query_by_label(glowfly_model::state::rebase_remaining::LOCKED_NOTE).is_some());
     drop(h);
     remove_fixture(&dir);
 }

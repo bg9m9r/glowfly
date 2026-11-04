@@ -8,16 +8,21 @@ use super::theme::color;
 use super::widgets::section_header::{self, HeaderAdd, HeaderResponse, MenuFn};
 use super::widgets::{self, Icon};
 use super::widgets::{menu, menu_columns};
-use crate::msg::{FilterMsg, Msg};
-use crate::state::forge_filters::Hint;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::popup_below;
-use eframe::egui::{self, Align, CornerRadius, Layout, Rect, Response, Sense, Stroke, UiBuilder, pos2, vec2};
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::chip::{self, Chip, ChipSize, Look};
+use crate::widgets::menu::popup_below;
+use eframe::egui::{self, Align, Color32, CornerRadius, Layout, Rect, Response, Sense, UiBuilder, pos2, vec2};
 use glowfly_core::forge::filters::matching;
 use glowfly_core::forge::{Builtin, FilterChoice, FilterKind, Provider, SavedFilter};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoForgeFilters;
+use glowfly_model::msg::{FilterMsg, Msg};
+use glowfly_model::state::forge_filters::Hint;
+
+/// Room after the filter chip's label for its dropdown caret (`widgets::caret`), at least 4 px
+/// clear of the label.
+const CHEVRON_W: f32 = 12.0;
 
 /// What a section's chip shows and offers.
 pub(super) struct Picker<'a> {
@@ -44,32 +49,25 @@ pub(super) fn header(
 ) -> Response {
     let h = section_header::Header { key, title, count, folds: false, add, menu: Some(menu), t };
     let HeaderResponse { header: resp, free_right: right } = section_header::show(ui, h, open, msgs);
-    let painter = ui.painter().clone();
     let (title_font, _) = widgets::section_fonts(ui);
-    let title_w = painter.layout_no_wrap(title.to_owned(), title_font, color::text()).size().x;
-    let room = (right - (resp.rect.left() + widgets::TITLE_X + title_w + 6.0) - 26.0).max(24.0);
-    let job = widgets::truncate::cut_job(p.label, type_scale::font(type_scale::CAPTION), color::weak());
-    let galley = widgets::truncate::cut_galley(ui.ctx(), job, room);
-    let cy = resp.rect.center().y;
-    let chip = Rect::from_min_max(pos2(right - galley.size().x - 26.0, cy - 10.0), pos2(right, cy + 10.0));
+    let title_w = ui.painter().layout_no_wrap(title.to_owned(), title_font, color::text()).size().x;
+    // From the title's end, a gap of the chip's padding, to the header's buttons: the label is
+    // cut to fit, down to "…" and the chevron, and never runs under the title.
+    let m = ChipSize::Chip.metrics();
+    let room = right - (resp.rect.left() + widgets::TITLE_X + title_w + m.pad_x);
     let id = ui.make_persistent_id(("forge-filter-chip", p.kind == FilterKind::Prs));
-    let chip_resp = ui.interact(chip, id, Sense::click());
     let popup = id.with("popover");
     let showing = ui.memory(|m| m.is_popup_open(popup));
-    if chip_resp.hovered() || showing {
-        painter.rect_filled(chip, CornerRadius::same(radius::pill(chip.height())), color::selected());
-    }
-    painter.rect_stroke(
-        chip,
-        CornerRadius::same(radius::pill(chip.height())),
-        Stroke::new(1.0_f32, color::border()),
-        egui::StrokeKind::Inside,
-    );
-    painter.galley(pos2(chip.left() + 8.0, cy - galley.size().y / 2.0), galley, color::weak());
-    widgets::chevron(&painter, pos2(chip.right() - 10.0, cy + 0.5), true, color::weak());
+    let look = Look::new(Color32::TRANSPARENT, color::weak()).edged(color::border());
+    let chip = Chip::new(ChipSize::Chip, p.label).look(look).trail(CHEVRON_W).latched(showing);
+    let least = chip::width(ChipSize::Chip, ui.fonts(|f| f.glyph_width(&type_scale::font(m.text), '…')) + CHEVRON_W);
+    let w = chip.width(ui.ctx()).min(room).max(least);
+    let rect = chip::rect_at(ChipSize::Chip, right - w, resp.rect.center().y, w);
+    let chip_resp = chip.button_at(ui, id, rect);
+    widgets::caret(ui.painter(), pos2(rect.right() - m.pad_x - widgets::CARET_ARM, rect.center().y), color::weak());
     let name = t.trf("sidebar.filter_chip.name", &[("section", &title), ("filter", &p.label)]);
     chip_resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name.clone()));
-    let chip_resp = chip_resp.on_hover_text(chip_tip).on_hover_cursor(egui::CursorIcon::PointingHand);
+    let chip_resp = chip_resp.on_hover_text(chip_tip);
     if chip_resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
     }

@@ -8,14 +8,14 @@
 //! in the menu stays visible while it is closed, and can be clicked while the action itself is
 //! disabled. The caller opens the menu, as the toolbar's split buttons do.
 
-use super::button_look::{self, Press, Target};
+use super::button_look::{self, InsetRing, Press, Target};
 use super::buttons::{Kind, StyledButton};
 use super::segment_bar::{Seg, lay_out};
-use crate::ui::access;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::surfaces::Tone;
-use crate::ui::theme::tokens::{BORDER_W, radius};
+use crate::access;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::surfaces::Tone;
+use crate::theme::tokens::{BORDER_W, radius};
 use eframe::egui::{CornerRadius, CursorIcon, Response, Stroke, StrokeKind, Ui, pos2};
 
 /// The caret half's width.
@@ -122,9 +122,9 @@ impl<'a> SplitButton<'a> {
             button.paint_content(painter, main.rect, galley, main_look.ink);
             super::caret(painter, caret.rect.center(), look.ink);
             let primary = kind == Kind::Primary && main_on;
-            let main_ring = button_look::inset_ring(primary);
+            let main_ring = InsetRing::on(primary, main_look.fill);
             button_look::paint_focus(painter, main_t, size, main.has_focus(), main_ring);
-            let caret_ring = button_look::inset_ring(primary && menu_on && menu_tone.is_none());
+            let caret_ring = InsetRing::on(primary && menu_on && menu_tone.is_none(), look.fill);
             button_look::paint_focus(painter, caret_t, size, caret.has_focus(), caret_ring);
         }
         let main = button.explain(main, main_on);

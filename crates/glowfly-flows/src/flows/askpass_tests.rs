@@ -3,13 +3,14 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::CredentialMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::state::askpass::{Carry, PromptEnd};
-use crate::state::{AppState, RunningJob};
 use glowfly_core::askpass::{Prompt, PromptKind, Reply, Secret};
+use glowfly_model::effect::ControlEffect;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::CredentialMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::askpass::{Carry, PromptEnd};
+use glowfly_model::state::{AppState, RunningJob};
 use std::time::Instant;
 
 const USERNAME: &str = "Username for 'https://github.com': ";
@@ -28,8 +29,8 @@ fn send(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 fn answers(fx: &[Effect]) -> Vec<(u64, Option<String>)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::AnswerPrompt { id, reply: Reply::Answer(s) } => Some((*id, Some(s.expose().to_owned()))),
-            Effect::AnswerPrompt { id, reply: Reply::Cancel } => Some((*id, None)),
+            Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::Answer(s) }) => Some((*id, Some(s.expose().to_owned()))),
+            Effect::Control(ControlEffect::AnswerPrompt { id, reply: Reply::Cancel }) => Some((*id, None)),
             _ => None,
         })
         .collect()
@@ -42,6 +43,7 @@ fn start_job(st: &mut AppState, label: &str) {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -190,7 +192,7 @@ fn a_finished_job_cancels_what_it_left() {
     assert!(!st.askpass.showing());
     assert!(st.askpass.carry.is_none());
 
-    let fx = [Effect::AnswerPrompt { id: 7, reply: Reply::Answer(Secret::new("hunter2")) }];
+    let fx = [Effect::Control(ControlEffect::AnswerPrompt { id: 7, reply: Reply::Answer(Secret::new("hunter2")) })];
     assert!(!format!("{fx:?}").contains("hunter2"));
 }
 

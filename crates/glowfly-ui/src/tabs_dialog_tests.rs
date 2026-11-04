@@ -1,18 +1,18 @@
 //! The tab dialogs: Rename tab, and the confirmation before closing tabs that hold unsaved work.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::{CloseRequest, Msg, TabsMsg};
-use crate::state::conflict::ConflictView;
-use crate::state::session::{Gen, RepoSession};
-use crate::state::tab_losses::close_confirm;
-use crate::state::tabs::{Parked, RenameTabForm};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::repo::Choice;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{CloseRequest, Msg, TabsMsg};
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::session::{Gen, RepoSession};
+use glowfly_model::state::tab_losses::close_confirm;
+use glowfly_model::state::tabs::{Parked, RenameTabForm};
+use glowfly_model::state::{AppState, Modal};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

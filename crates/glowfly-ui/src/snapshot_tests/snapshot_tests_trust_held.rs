@@ -5,14 +5,14 @@
 use super::snapshot_tests::{git, harness, remove_fixture, with_repo};
 use super::snapshot_tests_terminal::with_session;
 use super::snapshot_tests_trust::make_untrusted;
-use crate::msg::{Msg, TrustMsg};
-use crate::state::terminal::SessionStatus;
-use crate::state::trust::record;
-use crate::state::{PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{RepoTrust, ThemeChoice};
 use glowfly_core::sparse_ops::SparseStatus;
+use glowfly_model::msg::{Msg, TrustMsg};
+use glowfly_model::state::terminal::SessionStatus;
+use glowfly_model::state::trust::record;
+use glowfly_model::state::{PrefPage, PrefsState};
 
 #[test]
 fn terminal_held() {
@@ -24,7 +24,7 @@ fn terminal_held() {
     h.run();
     h.check_snapshot("terminal_held");
     assert!(h.query_by_label("The terminal waits until you trust this repository").is_some());
-    assert!(h.query_by_label_contains("Shell prompts often run git").is_some());
+    assert!(h.query_by_label_contains("Shell prompts often run Git").is_some());
     h.get_by_label("Trust and run…").click();
     h.run();
     let asked = h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::AskForTerminal { real: r }) if *r == real));

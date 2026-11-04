@@ -1,13 +1,12 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 geänderte Datei" [selected]
   Tab "api-server"
 Button "Tab demo schließen"
 Button "Tab api-server schließen"
 Button "Neuer Tab"
-Button "demo"
-Button "main"
+Button "Repository: demo"
+Button "Branch: main"
 Button "Letzte Aktion rückgängig machen" [disabled]
 Button "Rückgängig gemachte Aktion wiederholen" [disabled]
 Button "Pull für den aktuellen Branch" [disabled]
@@ -25,20 +24,26 @@ Button "Leiste zum Durchsuchen der Commits ein- oder ausblenden"
 Button "Aktivitätsprotokoll ein- oder ausblenden"
 Button "Repository aktualisieren"
 Unknown "Inhalt der linken Leiste"
-TextInput
-Button "Neuer Branch"
+TextInput "Branches, Pull Requests und Issues filtern"
+Button "Lokal, 3 Branches"
+Button "Neuer Branch…"
 Button "Aktionen für Lokal"
 Button "login-page"
-Button "✔  main"
+Button "main, ausgecheckt"
 Button "search"
+Button "Remote, 0 Remotes"
 Button "Remote hinzufügen"
 Button "Aktionen für Remote"
+Button "Tags, 1 Tag"
 Button "Neuer Tag"
 Button "Aktionen für Tags"
+Button "Stashes, 0 Stashes"
 Button "Änderungen stashen"
 Button "Aktionen für Stashes"
+Button "Worktrees, 0 Worktrees"
 Button "Worktree hinzufügen"
 Button "Aktionen für Worktrees"
+Button "Submodule, 0 Submodule"
 Button "Submodul hinzufügen"
 Button "Aktionen für Submodule"
 Label "2 Commits ausgewählt · Esc hebt sie auf"
@@ -67,7 +72,7 @@ Button "Search results page"
 Button "Merge branch 'login-page'"
 Label "2 Commits ausgewählt"
 Button "Cherry-picken" [disabled]
-Button "Cherry-pick-Vorschau" [disabled]
+Button "Vorschau des Cherry-picks" [disabled]
 Button "Reverten"
 Button "Squashen…" [disabled]
 Button "Range-diff der beiden Commits"
@@ -81,8 +86,11 @@ Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
+  "main"
   "Rückgängig"
   "Wiederholen"
   "Pull"
@@ -100,6 +108,7 @@ painted:
   "Filtern (Branches, PRs, Issues)"
   "Lokal"
   "3"
+  "✔  main"
   "Remote"
   "0"
   "Tags"

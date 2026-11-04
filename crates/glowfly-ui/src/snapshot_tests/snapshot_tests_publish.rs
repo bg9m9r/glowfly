@@ -2,15 +2,15 @@
 //! with the service's own text under a collapsed Details.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::{Msg, PublishMsg};
-use crate::state::{Modal, publish::PublishForm};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
-use glowfly_core::forge::{Account, Provider};
+use glowfly_core::forge::{Account, Provider, ServiceError};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, PublishMsg};
+use glowfly_model::state::{Modal, publish::PublishForm};
 use std::time::Instant;
 
-const REFUSAL: &str = "HTTP 422: the server said “Repository creation failed. name already exists on this account”";
+const REFUSAL: &str = "the server said “Repository creation failed. name already exists on this account”";
 
 #[test]
 fn publish_to_github_dialog() {
@@ -32,8 +32,12 @@ fn publish_to_github_dialog() {
         error_detail: None,
         touched: Default::default(),
     })));
-    let published = PublishMsg::Published { workdir: dir.clone(), branch: "main".into(), result: Err(REFUSAL.into()) };
-    crate::update::update(&mut st, Msg::Publish(published), Instant::now());
+    let published = PublishMsg::Published {
+        workdir: dir.clone(),
+        branch: "main".into(),
+        result: Err(ServiceError::Http { status: 422, message: REFUSAL.into() }),
+    };
+    glowfly_model::update::update(&mut st, Msg::Publish(published), Instant::now());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("publish_dialog");

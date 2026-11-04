@@ -5,14 +5,15 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg, WatchMsg};
-use crate::state::AppState;
-use crate::state::watch::{LiveUpdates, Probe, REMOTE_POLL, WINDOWS_POLL};
+use glowfly_model::effect::ControlEffect;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RepoMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::watch::{LiveUpdates, Probe, REMOTE_POLL, WINDOWS_POLL};
 use std::time::{Duration, Instant};
 
 fn statuses(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadStatus { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))).count()
 }
 
 fn opened(name: &str) -> (AppState, std::path::PathBuf) {
@@ -60,7 +61,7 @@ fn windows_rereads_a_local_repository_too_and_nothing_polls_when_watching_is_off
 }
 
 fn sweeps(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SweepWatch { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Control(ControlEffect::SweepWatch { .. }))).count()
 }
 
 /// The effects of a tick when the poll is due.
@@ -81,7 +82,7 @@ fn windows_sweeps_a_local_repository_instead_of_reading_it() {
         let _ = std::fs::remove_dir_all(&dir);
         return;
     }
-    assert!(matches!(&fx[..], [Effect::SweepWatch { workdir: w }] if *w == workdir), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Control(ControlEffect::SweepWatch { workdir: w })] if *w == workdir), "{fx:?}");
     assert_eq!(statuses(&fx), 0);
 
     st.watch.failed.insert(workdir.clone());
@@ -116,8 +117,10 @@ fn a_silent_watcher_is_warned_about_once_and_polled_until_events_arrive() {
     let toast = &st.toasts.last().unwrap();
     assert!(!toast.ok);
     let shown = glowfly_core::native_path::shown(&workdir).to_string();
-    assert!(toast.text.contains(&shown) && toast.text.contains("10 seconds") && toast.text.contains("Restarting"), "{}", toast.text);
-    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == toast.text), "logged quietly");
+    assert!(toast.text.contains(&shown) && toast.text.contains("10 seconds"), "{}", toast.text);
+    assert!(toast.text.split_whitespace().count() <= 16, "a short toast: {}", toast.text);
+    let logged = st.log.last().expect("logged quietly");
+    assert!(!logged.ok && logged.text.contains(&shown) && logged.text.contains("Restarting"), "the log has the rest: {}", logged.text);
     assert!(!st.view.show_log);
     assert_eq!(st.watch.live_updates(), Some(LiveUpdates::Silent));
     assert_eq!(st.watch.poll_interval(), Some(REMOTE_POLL), "polled like a network volume");
@@ -170,7 +173,7 @@ fn a_restarted_watcher_checks_again() {
         st.settings.watch_files = true;
         let mut fx = Vec::new();
         super::watch::sync(st, &mut fx);
-        assert!(matches!(&fx[..], [Effect::Watch(Some(_))]), "{fx:?}");
+        assert!(matches!(&fx[..], [Effect::Control(ControlEffect::Watch(Some(_)))]), "{fx:?}");
     };
     update(&mut st, probed(&workdir, Probe::Silent), Instant::now());
     assert_eq!(st.watch.poll_interval(), Some(REMOTE_POLL));

@@ -23,7 +23,7 @@ mod tests {
     use glowfly_core::settings::TERMINAL_FONT_SIZES;
 
     fn fonts(ppp: f32) -> Fonts {
-        Fonts::new(ppp, 8192, crate::ui::theme::fonts::definitions().clone())
+        Fonts::new(ppp, 8192, crate::theme::fonts::definitions().clone())
     }
 
     #[test]

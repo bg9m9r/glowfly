@@ -1,26 +1,21 @@
 //! Preferences > SSH: the section header the page's three sections share (the title, an
-//! optional status pill, a Refresh icon button at the right end, and the rule under them), and
-//! the Agent section: its pill (`state::ssh_marks::agent_pill`), the Use local SSH agent
+//! optional status chip, a Refresh icon button at the right end, and the rule under them), and
+//! the Agent section: its status chip (`state::ssh_marks::agent_pill`), the Use local SSH agent
 //! setting, what the agent holds and why it may not be reachable, and on Windows the Windows'
 //! OpenSSH row (`ssh_windows`). The view never edits settings; it sends `Msg`s.
 
 use super::ssh::SshContext;
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh::SshPage;
-use crate::state::ssh_marks::{AgentPill, agent_pill};
-use crate::ui::theme::{color, controls, type_scale};
-use crate::ui::widgets::{self, Icon};
-use eframe::egui::{Align, Color32, CornerRadius, Layout, RichText, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
+use crate::theme::{color, controls, type_scale};
+use crate::widgets::chip::{Chip, ChipSize, Lead, Look};
+use crate::widgets::{self, Icon};
+use eframe::egui::{Align, Color32, Layout, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::ssh_keys::{AgentReach, WinService};
-
-/// The pill's height, its dot and the room around them.
-const PILL_H: f32 = 22.0;
-const DOT: f32 = 7.0;
-const PILL_PAD: f32 = 10.0;
-const DOT_GAP: f32 = 6.0;
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::SshPage;
+use glowfly_model::state::ssh_marks::{AgentPill, agent_pill};
 
 /// A section's header, as `form::section` draws one, with `pill` after the title and a Refresh
 /// icon button (tip `refresh_tip`, pushing `msg`) at the right end of the line.
@@ -61,19 +56,11 @@ fn pill_parts(t: Lang, p: AgentPill) -> (String, Option<&'static str>, Color32) 
     }
 }
 
-/// A rounded capsule: a dot in the state's colour, then its text, on a faint fill of it.
-fn pill_widget(ui: &mut Ui, t: Lang, p: AgentPill) {
+/// A chip: a dot in the state's colour, then its text, on a faint fill of it.
+pub(crate) fn pill_widget(ui: &mut Ui, t: Lang, p: AgentPill) {
     let (text, tip, tint) = pill_parts(t, p);
-    let galley = ui.painter().layout_no_wrap(text.clone(), type_scale::font(type_scale::SMALL), color::text());
-    let w = PILL_PAD + DOT + DOT_GAP + galley.size().x + PILL_PAD;
-    let (rect, resp) = ui.allocate_exact_size(vec2(w, PILL_H), Sense::hover());
-    let painter = ui.painter();
-    painter.rect_filled(rect, CornerRadius::same((PILL_H / 2.0) as u8), color::wash(tint, 0.18));
-    let cy = rect.center().y;
-    painter.circle_filled(pos2(rect.left() + PILL_PAD + DOT / 2.0, cy), DOT / 2.0, tint);
-    let text_pos = pos2(rect.left() + PILL_PAD + DOT + DOT_GAP, cy - galley.size().y / 2.0);
-    painter.galley(text_pos, galley, color::text());
-    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, &text));
+    let look = Look::new(color::wash(tint, 0.18), color::text());
+    let resp = Chip::new(ChipSize::Chip, text).look(look).lead(Lead::Dot(tint)).show(ui);
     if let Some(tip) = tip {
         resp.on_hover_text(tip);
     }

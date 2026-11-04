@@ -5,12 +5,12 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::{Effect, StackEffect};
-use crate::msg::{CommitMsg, Msg, RebaseMsg, RepoMsg, StackMsg};
-use crate::state::AppState;
-use crate::state::branches::NO_REMOTES;
 use git2::{Oid, RepositoryState};
 use glowfly_core::stack::RestackScope;
+use glowfly_model::effect::{Effect, StackEffect};
+use glowfly_model::msg::{CommitMsg, Msg, RebaseMsg, RepoMsg, StackMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::branches::NO_REMOTES;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -50,7 +50,7 @@ fn push_stack(branch: &str) -> Msg {
 }
 
 fn last_toast(st: &AppState) -> (bool, String) {
-    st.toasts.last().map(|t| (t.ok, t.text.clone())).expect("a toast")
+    st.newest_toast().map(|t| (t.ok, t.text.clone())).expect("a toast")
 }
 
 fn logged(st: &AppState, text: &str) -> bool {
@@ -166,7 +166,7 @@ fn refusals_start_nothing() {
     st.job = None;
 
     st.snap.as_mut().unwrap().state = RepositoryState::Merge;
-    let busy = crate::state::rebase_onto::in_progress(st.settings.lang(), RepositoryState::Merge).unwrap();
+    let busy = glowfly_model::state::rebase_onto::in_progress(st.settings.lang(), RepositoryState::Merge).unwrap();
     no_effect(&mut st, push_stack("mid"), busy);
     refresh(&mut st);
 

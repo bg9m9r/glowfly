@@ -3,12 +3,12 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{CloneEffect, Effect, ForgeError};
-use crate::msg::{CloneMsg, Msg};
-use crate::state::clone::CloneForm;
-use crate::state::clone_service::{CloneSource, ServicePicker, listing_accounts, visible};
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::{Account, Connection, HostedRepo, MyRepos, Provider};
+use glowfly_model::effect::{CloneEffect, Effect, ForgeError};
+use glowfly_model::msg::{CloneMsg, Msg};
+use glowfly_model::state::clone::CloneForm;
+use glowfly_model::state::clone_service::{CloneSource, ServicePicker, listing_accounts, visible};
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 fn account(provider: Provider, host: &str) -> Account {

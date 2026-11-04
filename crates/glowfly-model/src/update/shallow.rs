@@ -1,6 +1,7 @@
 //! Shallow clones: fetching more history as a job, and what a reload after a deepen invalidates.
 
 use super::ops::{JobSpec, start_job};
+use crate::effect::CommitEffect;
 use crate::effect::Effect;
 use crate::state::{AppState, Selection};
 use glowfly_core::repo::Snapshot;
@@ -58,7 +59,7 @@ pub(super) fn refreshed(st: &mut AppState, new: &Snapshot, fx: &mut Vec<Effect>)
             && new.row_of.contains_key(&oid)
             && let Some(workdir) = st.workdir()
         {
-            fx.push(Effect::LoadDetail { workdir, oid });
+            fx.push(Effect::Commit(CommitEffect::LoadDetail { workdir, oid }));
             super::line_counts::want_commit(st, oid, fx);
         }
     }

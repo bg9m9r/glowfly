@@ -4,19 +4,19 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::LfsEffect;
-use crate::lfs::LfsMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::{AppState, Modal, PrefPage, RunningJob};
 use glowfly_core::gitcli::args;
 use glowfly_core::lfs::{LfsCommand, LfsPattern, LfsStatus};
 use glowfly_core::repo::Tracking;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::LfsEffect;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::{AppState, Modal, PrefPage, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -68,7 +68,7 @@ fn page_with(st: &mut AppState, s: LfsStatus) -> Vec<Effect> {
 
 fn git_cmds(fx: &[Effect]) -> Option<Vec<Vec<String>>> {
     fx.iter().find_map(|e| match e {
-        Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
         _ => None,
     })
 }
@@ -215,12 +215,13 @@ fn prune_asks_and_one_job_at_a_time() {
 
 fn init_job(st: &mut AppState) {
     st.job = Some(RunningJob {
-        label: crate::state::lfs::INIT_LABEL.into(),
+        label: glowfly_model::state::lfs::INIT_LABEL.into(),
         workdir: st.workdir(),
         quiet: false,
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,
@@ -339,7 +340,7 @@ fn set_up_and_track_end_to_end() {
     let (mut st, dir) = open("lfs-e2e");
     // git lfs install adds hooks, which would make the repository ask about trust.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, glowfly_core::settings::RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, glowfly_core::settings::RepoTrust::Trusted);
     drive(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)));
     let s = st.prefs.as_ref().unwrap().lfs.status.clone().expect("status");
     assert!(s.installed() && !s.initialized);

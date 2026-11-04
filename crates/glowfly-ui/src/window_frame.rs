@@ -9,14 +9,14 @@
 use super::theme::color;
 use super::title_bar;
 use super::window_buttons::{self, BUTTON_H, BUTTON_W};
-use crate::msg::{AppMsg, Msg};
-use crate::state::AppState;
-use crate::state::window_chrome::{Chrome, ResizeEdge, WindowCmd};
-use crate::state::window_native::{CaptionGeometry, PxRect};
 use eframe::egui::viewport::ResizeDirection;
 use eframe::egui::{
     self, Area, CursorIcon, Id, LayerId, Order, PointerButton, Rect, Sense, Stroke, StrokeKind, ViewportBuilder, pos2, vec2,
 };
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::window_chrome::{Chrome, ResizeEdge, WindowCmd};
+use glowfly_model::state::window_native::{CaptionGeometry, PxRect};
 
 /// The resize edges' thickness and the corners' size, in screen points at 100% zoom.
 const EDGE: f32 = 5.0;
@@ -182,7 +182,7 @@ fn resize_edges(ctx: &egui::Context, screen: Rect, msgs: &mut Vec<Msg>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::window_chrome::WindowInfo;
+    use glowfly_model::state::window_chrome::WindowInfo;
 
     #[test]
     fn each_frame_sets_up_its_viewport() {

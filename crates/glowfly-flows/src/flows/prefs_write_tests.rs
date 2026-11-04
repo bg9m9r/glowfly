@@ -4,11 +4,12 @@
 //! Save / Revert bar. (The Ctrl/Cmd+S and Esc keys are matched in `ui/shortcuts/prefs_key_tests.rs`.)
 
 use super::prefs_save_tests::{edited, git_mut, identity, on_page, prefs, writes};
-use crate::effect::{Effect, PrefsEffect};
-use crate::msg::{FilePurpose, PrefsMsg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::tab_losses::quit_lines;
-use crate::state::{AppState, PrefPage};
+use glowfly_core::identity::ConfigWriteFailed;
+use glowfly_model::effect::{Effect, PrefsEffect};
+use glowfly_model::msg::{FilePurpose, PrefsMsg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::tab_losses::quit_lines;
+use glowfly_model::state::{AppState, PrefPage};
 
 /// The ticket of the one batched config write among `fx`.
 fn ticket(fx: &[Effect]) -> u64 {
@@ -23,8 +24,13 @@ fn ticket(fx: &[Effect]) -> u64 {
     tickets[0]
 }
 
-fn written(st: &mut AppState, ticket: u64, result: Result<(), String>) -> Vec<Effect> {
+fn written(st: &mut AppState, ticket: u64, result: Result<(), ConfigWriteFailed>) -> Vec<Effect> {
     prefs(st, PrefsMsg::ConfigSaved { ticket, result })
+}
+
+/// git refusing to write `key`, saying `said`.
+fn refused(key: &str, said: &str) -> Result<(), ConfigWriteFailed> {
+    Err(ConfigWriteFailed { key: key.into(), said: said.into() })
 }
 
 fn tick_pending(st: &AppState) -> bool {
@@ -32,7 +38,7 @@ fn tick_pending(st: &AppState) -> bool {
 }
 
 fn error(st: &AppState) -> Option<String> {
-    crate::state::prefs_save::save_error(st.prefs.as_ref().unwrap()).map(str::to_owned)
+    glowfly_model::state::prefs_save::save_error(st.prefs.as_ref().unwrap()).map(str::to_owned)
 }
 
 #[test]
@@ -44,7 +50,7 @@ fn saved_waits_for_the_write_to_succeed() {
     assert!(!tick_pending(&st), "nothing is saved yet");
     assert!(edited(&st), "still edited while the write runs");
     let p = st.prefs.as_ref().unwrap();
-    assert!(crate::state::prefs_save::saving(p), "the bar waits");
+    assert!(glowfly_model::state::prefs_save::saving(p), "the bar waits");
     // Saving again while it runs writes nothing more.
     assert!(writes(&prefs(&mut st, PrefsMsg::SavePage)).is_empty());
 
@@ -62,13 +68,13 @@ fn a_failed_write_shows_its_error_and_keeps_the_page_edited() {
     let mut st = identity();
     git_mut(&mut st).repo_name = "Grace".into();
     let fx = prefs(&mut st, PrefsMsg::SavePage);
-    written(&mut st, ticket(&fx), Err("error: could not lock config file .git/config".into()));
+    written(&mut st, ticket(&fx), refused("user.name", "error: could not lock config file .git/config"));
     assert!(!tick_pending(&st), "no tick for a failed write");
     assert!(!st.prefs.as_ref().unwrap().saved.showing());
-    assert_eq!(error(&st).as_deref(), Some("error: could not lock config file .git/config"));
+    assert_eq!(error(&st).as_deref(), Some("git config user.name failed: error: could not lock config file .git/config"));
     assert!(edited(&st), "the edits are still there to save again");
     assert_eq!(git_mut(&mut st).repo_name, "Grace");
-    assert_eq!(quit_lines(&st), ["- Preferences: the changes on the Identity page that aren't saved yet"], "quitting still asks");
+    assert_eq!(quit_lines(&st), ["- Preferences: the changes on the Commit identity page that aren't saved yet"], "quitting still asks");
     assert!(st.log.iter().any(|l| !l.ok && l.text.contains("could not lock")), "in the activity log too");
 
     // Saving again clears the error; success shows the tick.
@@ -84,7 +90,7 @@ fn revert_clears_a_failed_save() {
     let mut st = identity();
     git_mut(&mut st).repo_name = "Grace".into();
     let fx = prefs(&mut st, PrefsMsg::SavePage);
-    written(&mut st, ticket(&fx), Err("denied".into()));
+    written(&mut st, ticket(&fx), refused("user.name", "denied"));
     prefs(&mut st, PrefsMsg::RevertPage);
     assert!(error(&st).is_none());
     assert_eq!(git_mut(&mut st).repo_name, "Ada");
@@ -97,10 +103,10 @@ fn the_error_belongs_to_its_page() {
     git_mut(&mut st).longpaths = true;
     let fx = prefs(&mut st, PrefsMsg::SavePage);
     st.prefs.as_mut().unwrap().page = PrefPage::Ui;
-    written(&mut st, ticket(&fx), Err("denied".into()));
+    written(&mut st, ticket(&fx), refused("core.longpaths", "denied"));
     assert!(error(&st).is_none(), "not shown on another page");
     st.prefs.as_mut().unwrap().page = PrefPage::General;
-    assert_eq!(error(&st).as_deref(), Some("denied"), "back on its page");
+    assert_eq!(error(&st).as_deref(), Some("git config core.longpaths failed: denied"), "back on its page");
     assert!(edited(&st));
 }
 
@@ -110,7 +116,7 @@ fn a_result_after_preferences_closed_is_logged() {
     git_mut(&mut st).repo_name = "Grace".into();
     let fx = prefs(&mut st, PrefsMsg::SavePage);
     st.prefs = None;
-    written(&mut st, ticket(&fx), Err("denied".into()));
+    written(&mut st, ticket(&fx), refused("user.name", "denied"));
     assert!(st.log.iter().any(|l| !l.ok && l.text.contains("denied")));
 }
 
@@ -132,8 +138,8 @@ fn a_signing_switch_shows_saved_once_written() {
     assert!(tick_pending(&st));
 
     let fx = prefs(&mut st, PrefsMsg::GitConfig { global: true, key: "tag.gpgsign".into(), value: Some("true".into()) });
-    written(&mut st, ticket(&fx), Err("denied".into()));
-    assert_eq!(error(&st).as_deref(), Some("denied"));
+    written(&mut st, ticket(&fx), refused("tag.gpgsign", "denied"));
+    assert_eq!(error(&st).as_deref(), Some("git config tag.gpgsign failed: denied"));
 }
 
 #[test]
@@ -177,6 +183,6 @@ fn leaving_a_signing_page_with_edits_asks_first() {
     let mut st = on_page(PrefPage::Signing, GitConfigValues::default());
     git_mut(&mut st).gpg_program = "gpg2".into();
     prefs(&mut st, PrefsMsg::Navigate(PrefPage::General));
-    assert!(matches!(st.modal, Some(crate::state::Modal::ConfirmChoice { .. })));
+    assert!(matches!(st.modal, Some(glowfly_model::state::Modal::ConfirmChoice { .. })));
     assert_eq!(st.prefs.as_ref().unwrap().page, PrefPage::Signing);
 }

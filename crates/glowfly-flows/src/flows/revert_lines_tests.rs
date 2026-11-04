@@ -3,21 +3,22 @@
 
 use super::revert_tests::{head, one_hunk, run, with_diff};
 use super::tests::{drive, git, scratch_repo, state};
-use crate::effect::Effect;
-use crate::msg::{DiffMsg, Msg, RepoMsg, StageMsg};
-use crate::state::history::FileHistoryView;
-use crate::state::lines::LineClick;
-use crate::state::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
 use git2::Oid;
 use glowfly_core::repo::{DiffTarget, HistoryEntry, RevertPart, RevertRequest};
 use glowfly_core::settings::DiffMode;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::lines::LineClick;
+use glowfly_model::state::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
 
 fn select(st: &mut AppState, line: usize) {
     assert!(run(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how: LineClick::Only })).is_empty());
 }
 
 fn requests(fx: &[Effect]) -> Vec<&RevertRequest> {
-    fx.iter().filter_map(|e| if let Effect::Revert { req, .. } = e { Some(req) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Files(FilesEffect::Revert { req, .. }) = e { Some(req) } else { None }).collect()
 }
 
 #[test]

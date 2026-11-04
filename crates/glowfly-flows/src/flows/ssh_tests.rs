@@ -5,16 +5,16 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::PrefsEffect;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::{Msg, PrefsMsg, RepoMsg};
-use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::ssh::SshPage;
-use crate::state::{AppState, Modal, PrefPage};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoTrust;
 use glowfly_core::ssh_keys::{AgentStatus, KeyChoice, SshKeyPair, SshListing, default_location};
+use glowfly_model::effect::PrefsEffect;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg};
+use glowfly_model::ssh::{GenerateFailure, SshEffect, SshMsg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::ssh::SshPage;
+use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -287,7 +287,7 @@ fn page_rules() {
     assert_eq!(p.blocked(en), Some("The passphrases don't match."));
     p.confirm = "a".into();
     assert_eq!(p.blocked(en), None);
-    assert!(crate::state::ssh::replace_body(Path::new("C:/k/id")).contains("will stop accepting it"));
+    assert!(glowfly_model::state::ssh::replace_body(Path::new("C:/k/id")).contains("will stop accepting it"));
 }
 
 fn read_choices(fx: &[Effect]) -> Vec<(u64, Option<PathBuf>)> {
@@ -346,7 +346,7 @@ fn an_open_repository_is_read_too() {
     assert!(!repo.trusted, "clean, but not trusted by the user");
 
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
     ssh(&mut st, SshMsg::Reload);
     assert!(page(&st).repo.as_ref().is_some_and(|r| r.trusted), "follows the saved decision");
     let _ = std::fs::remove_dir_all(&dir);

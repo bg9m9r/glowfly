@@ -5,15 +5,15 @@
 
 use super::theme::color;
 use super::widgets;
-use crate::msg::{Msg, TabsMsg};
-use crate::state::AppState;
-use crate::state::menu_bar::tab_name;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::menu::{self, popup_below};
-use crate::ui::widgets::quiet_target::{self, State};
+use crate::theme::sizes::ControlSize;
+use crate::widgets::menu::{self, popup_below};
+use crate::widgets::quiet_target::{self, State};
 use eframe::egui::{self, Align, CornerRadius, Layout, PopupCloseBehavior, Rect, RichText, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
+use glowfly_model::msg::{Msg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::menu_bar::tab_name;
 
 /// The tab list button's size: a Regular icon-only square.
 const SIZE: ControlSize = ControlSize::Regular;

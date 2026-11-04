@@ -2,10 +2,10 @@
 //! built-in bindings have taken theirs, and only while nothing covers the main window.
 
 use super::chords::{chord_from_press, mac_press};
-use crate::custom_commands::CommandRef;
-use crate::keymap::same_keys;
-use crate::state::custom_commands::CommandKey;
 use eframe::egui::{Event, InputState};
+use glowfly_model::custom_commands::CommandRef;
+use glowfly_model::keymap::same_keys;
+use glowfly_model::state::custom_commands::CommandKey;
 
 /// Takes the first key press (repeats too) that one of `keys` claims out of `i`'s events,
 /// returning its command.

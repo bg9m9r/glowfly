@@ -4,13 +4,13 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::{AppMsg, Msg};
-use crate::state::palette::Palette;
-use crate::state::quit_confirm::quit_confirm;
-use crate::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, SyncScope};
-use crate::state::{AppState, Modal, RunningJob, Tab};
 use glowfly_core::repo_sync::Outcome;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::palette::Palette;
+use glowfly_model::state::quit_confirm::quit_confirm;
+use glowfly_model::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, SyncScope};
+use glowfly_model::state::{AppState, Modal, RunningJob, Tab};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -39,6 +39,7 @@ fn job(label: &str, workdir: Option<PathBuf>, quiet: bool) -> RunningJob {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

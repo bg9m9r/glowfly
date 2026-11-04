@@ -7,19 +7,19 @@ use super::snapshot_tests::{harness, harness_sized, remove_fixture};
 use super::snapshot_tests_esc::{app_harness, esc};
 use super::snapshot_tests_pull_request::with_pr;
 use super::snapshot_tests_pull_request_threads::{comment, detail, files_loaded, load, thread};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::PrTab;
-use crate::state::pull_request_line_comment::draft_at;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{self, Key, Modifiers};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::diff_rows::LineSide;
 use glowfly_core::forge::PrDetail;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::PrTab;
+use glowfly_model::state::pull_request_line_comment::draft_at;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ const TEXT: &str = "Could this name say what it searches?";
 /// The fixture's panel on Files changed with search.txt's diff open and its page loaded (as `f`
 /// changes the detail, head = the local source tip), plus `threads` on the added line; with
 /// `draft`, a draft with `text` on that line. Returns the state, the folder and the line.
-fn opened(
+pub(crate) fn opened(
     theme: ThemeChoice,
     name: &str,
     f: impl FnOnce(&mut PrDetail),
@@ -75,6 +75,15 @@ fn pull_request_line_comment_dark() {
     assert!(h.query_by_label(&format!("line {line}")).is_some());
     assert!(h.query_by_label("Add single comment").is_some());
     assert!(h.query_by_label("Start a review").is_some());
+    // The buttons come in reading order (Tab follows the tree), left to right on screen.
+    let want = ["Suggest a change", "Cancel", "Start a review", "Add single comment"];
+    let buttons: Vec<(String, f64)> = h
+        .query_all_by_role(Role::Button)
+        .filter_map(|n| Some((n.label()?, n.bounding_box()?.x0)))
+        .filter(|(l, _)| want.contains(&l.as_str()))
+        .collect();
+    assert_eq!(buttons.iter().map(|(l, _)| l.as_str()).collect::<Vec<_>>(), want, "tree order");
+    assert!(buttons.windows(2).all(|w| w[0].1 < w[1].1), "left to right: {buttons:?}");
 
     // Command+Enter posts alone (no review is pending), once and without a newline.
     let field = h.get_all_by_label("New comment").find(|n| n.role() == Role::MultilineTextInput).expect("the comment field");
@@ -106,7 +115,7 @@ fn pull_request_line_comment_suggestion_light() {
     let v = st.session.pull_request.view.as_mut().unwrap();
     let (hk, i) = d.hunks.iter().enumerate().find_map(|(h, k)| k.lines.iter().position(|l| l.origin == '+').map(|i| (h, i))).unwrap();
     let mut dr = draft_at(v, &target, &d, hk, i, i).unwrap();
-    dr.text = crate::state::pull_request_line_comment::with_suggestion("Maybe:", &dr);
+    dr.text = glowfly_model::state::pull_request_line_comment::with_suggestion("Maybe:", &dr);
     dr.error = Some("the server said \u{201c}Validation Failed pull_request_review_thread.line must be part of the diff\u{201d}".into());
     v.line_draft = Some(dr);
     let mut h = harness_sized(st, false, WIDE);
@@ -165,7 +174,9 @@ fn diff_hunk_comment_lines_light() {
     assert_eq!(line_msgs(&h, |m| *m == LineCommentMsg::OnSelection), 1);
 
     // With the service's head elsewhere, no comment can start here.
-    if let Some(crate::state::pull_request::Page::Loaded(p)) = h.state_mut().0.session.pull_request.view.as_mut().map(|v| &mut v.page) {
+    if let Some(glowfly_model::state::pull_request::Page::Loaded(p)) =
+        h.state_mut().0.session.pull_request.view.as_mut().map(|v| &mut v.page)
+    {
         p.detail.head_sha = "abc1234".into();
     }
     h.run();
@@ -183,7 +194,7 @@ fn esc_cancels_the_draft_before_closing_the_diff() {
     let cancels =
         |msgs: &[Msg]| msgs.iter().filter(|m| matches!(m, Msg::PullRequest(PullRequestMsg::LineComment(LineCommentMsg::Cancel)))).count();
     assert_eq!(cancels(&msgs), 1, "{}", msgs.len());
-    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(crate::msg::RepoMsg::CloseDiff) | Msg::PullRequest(PullRequestMsg::Close))));
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(glowfly_model::msg::RepoMsg::CloseDiff) | Msg::PullRequest(PullRequestMsg::Close))));
 
     // In the focused field, Esc leaves it and cancels once; the app's Esc stays out.
     h.state_mut().0.view.pr_line_comment_focus = true;
@@ -191,7 +202,7 @@ fn esc_cancels_the_draft_before_closing_the_diff() {
     assert!(h.state().0.view.was_typing, "the comment field has the keyboard");
     let msgs = esc(&mut h);
     assert_eq!(cancels(&msgs), 1);
-    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(crate::msg::RepoMsg::CloseDiff) | Msg::PullRequest(PullRequestMsg::Close))));
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(glowfly_model::msg::RepoMsg::CloseDiff) | Msg::PullRequest(PullRequestMsg::Close))));
     drop(h);
     remove_fixture(&dir);
 }

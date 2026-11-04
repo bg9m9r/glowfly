@@ -4,10 +4,10 @@
 
 use super::tests::{drive, git, state};
 use super::undo_stash_tests::{cleanup, has_undo_stash, head_summary, read, stash_and_undo};
-use crate::effect::{StashHow, UndoResult, UndoStash};
-use crate::msg::{JobMsg, Msg, RepoMsg};
-use crate::state::AppState;
 use glowfly_core::undo::{Action, MoveOp};
+use glowfly_model::effect::{StashHow, UndoResult, UndoStash};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 /// main has l.txt and cfg.local; feature deletes cfg.local, and main merged it (no fast-forward,
@@ -86,7 +86,7 @@ fn intent_to_add_files_are_named_and_nothing_is_stashed() {
     let merged = head_summary(&st);
     stash_and_undo(&mut st);
     let t = st.toasts.last().unwrap();
-    assert!(!t.ok && t.text.starts_with("Nothing was stashed or undone: git can't stash n.txt"), "{}", t.text);
+    assert!(!t.ok && t.text.starts_with("Nothing was stashed or undone: Git can't stash n.txt"), "{}", t.text);
     assert_eq!(head_summary(&st), merged);
     assert!(!has_undo_stash(&st));
     cleanup(&[&dir]);
@@ -123,7 +123,7 @@ fn the_toast_names_the_stash_whatever_became_of_it() {
     };
     let done =
         |how| Some(UndoResult::Done { redo: false, before: before.clone(), after: Box::new(before.clone()), stash: stash(how, None) });
-    let headline = |r: Option<UndoResult>| crate::update::undo::stash_headline(&st, &r).unwrap();
+    let headline = |r: Option<UndoResult>| glowfly_model::update::undo::stash_headline(&st, &r).unwrap();
 
     let gone = headline(done(StashHow::Gone));
     assert!(gone.contains("\"Glowfly: changes before undo #1\" with your changes is no longer in the list"), "{gone}");
@@ -146,5 +146,5 @@ fn the_toast_names_the_stash_whatever_became_of_it() {
         headline(Some(UndoResult::Failed { redo: false, stash: stash(StashHow::Gone, None) }))
             .starts_with("Nothing was undone, and the stash")
     );
-    assert!(crate::update::undo::stash_headline(&st, &Some(UndoResult::Failed { redo: false, stash: None })).is_none());
+    assert!(glowfly_model::update::undo::stash_headline(&st, &Some(UndoResult::Failed { redo: false, stash: None })).is_none());
 }

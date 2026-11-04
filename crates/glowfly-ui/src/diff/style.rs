@@ -2,8 +2,8 @@
 //! row height and the gutter positions, which scale with the font size so the default size
 //! draws exactly as the fixed layout did.
 
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::{color, contrast};
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, contrast};
 use eframe::egui::{Color32, FontId};
 use glowfly_core::settings::{DEFAULT_DIFF_FONT_SIZE, Settings};
 

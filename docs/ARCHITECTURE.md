@@ -29,7 +29,7 @@ the forge APIs.
 file watcher and the OS helpers effects need, with no egui.
 
 `glowfly-ui` is a library with the egui views (`ui/` in these docs, `crates/glowfly-ui/src/`): it
-depends on the model and never on the runner, and the app names it `crate::ui`. Its approved
+depends on the model and never on the runner, and the app names it `glowfly_ui`. Its approved
 snapshots are in `crates/glowfly-ui/tests/snapshots/`; its `test-support` feature lends the app's
 tests the snapshot builder, the fixtures and the test fonts.
 
@@ -49,7 +49,8 @@ source file, update its line in the matching file.
 - [core-display.md](architecture/core-display.md): the commit graph and branch colours, diff, whole-file and conflict rows, syntax highlighting, image and Markdown previews, search and the history index, watching for changes.
 - [core-system.md](architecture/core-system.md): which git runs, paths and errors, credentials and signing, SSH keys, one window and `glowfly://` links, the terminal, settings, identity and profiles, files and logs, translations and dates, external tools, Glowfly's own updates.
 - [core-forge.md](architecture/core-forge.md): hosting services (`forge/`).
-- [app-layers.md](architecture/app-layers.md): `glowfly-app`'s and `glowfly-model`'s entry points (`main.rs`, `start_arg.rs`, `cli_update.rs`, `logging.rs`, `build.rs`) and its layers: `msg/`, `effect/`, `state/`, `update/`, `runner/`, `platform/` (window glue) and `runner/platform.rs` (OS helpers), `keymap/`, and the test-only modules (`journey/`, `glyph_check/`, the smoke probe).
+- [app-layers.md](architecture/app-layers.md): `glowfly-app`'s and `glowfly-model`'s entry points (`main.rs`, `start_arg.rs`, `cli_update.rs`, `logging.rs`, `build.rs`) and its layers: `msg/`, `effect/`, `state/`, `update/`, `keymap/`, and the test-only modules (`journey/`, the smoke probe).
+- [app-runner.md](architecture/app-runner.md): `glowfly-runner` (`runner/`, the effects' `Execute` impls and workers), `runner/platform.rs` (OS helpers) and `platform/` (window glue).
 - [app-features.md](architecture/app-features.md): features whose files span every layer: updates, the journal, custom commands, partial clones, the history index, range-diff, profile folder rules, multi-commit selection.
 - [ui-shell.md](architecture/ui-shell.md): the shell (`shell/`), window layout, toolbar, repository tabs, terminal panel.
 - [ui-views.md](architecture/ui-views.md): dialogs with their own files, blame and the File view, Markdown, the graph, commit details and the WIP panel, the diff, object menus, snapshot tests.
@@ -79,7 +80,7 @@ source file, update its line in the matching file.
   (scroll, hover, open sections, a drag's preview until its release sends a `Msg`), never domain
   state such as the log, the selection or a form's checks. They never touch disk, network,
   processes or the clock. They may use core types and pure helpers. Avatars, for example, are
-  requested by the views, fetched through `Effect::FetchAvatars`, and turned into textures by the
+  requested by the views, fetched through `NetworkEffect::Avatars`, and turned into textures by the
   shell.
 - **`update`** is the only place domain state changes. It never blocks and does no I/O. Anything
   slow or outside the process (git, HTTP, the file system) becomes an `Effect`.
@@ -111,7 +112,8 @@ source file, update its line in the matching file.
    setting change. The colour families, what each colour is for, the reserved hue bands and the
    contrast floors are in [COLOUR.md](COLOUR.md). Immutable
    data loaded once (the syntax definitions in `highlight/syntaxes.rs`) is not mutable state,
-   and neither are the askpass environment in `gitcli` (`enable_askpass`) and gitcli's run
+   nor is a cache that never changes a result (the parse copy of that set in
+   `highlight/grammars.rs`, dropped when idle and loaded again from the same dump), and neither are the askpass environment in `gitcli` (`enable_askpass`) and gitcli's run
    observer (`observe_runs`, which hands timings to the log worker): each set once by the app
    shell at startup, never changed afterwards and never set in tests. The PATH children get
    (`env_path`) is likewise computed once, on first use, and never changed. The git program

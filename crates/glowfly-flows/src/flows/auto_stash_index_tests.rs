@@ -4,10 +4,10 @@
 use super::auto_stash_tests::{ask, up};
 use super::job_errors_tests::two_branches;
 use super::tests::{clean_tree, drive, finish, git, scratch_repo, state};
-use crate::msg::{AutoStashMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::auto_stash::back_unstaged;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{AutoStashMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::auto_stash::back_unstaged;
 use std::path::Path;
 
 fn stash_count(dir: &Path) -> usize {

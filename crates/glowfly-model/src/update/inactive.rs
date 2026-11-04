@@ -2,6 +2,7 @@
 
 use crate::msg::{Inactive, Msg};
 use crate::state::AppState;
+use crate::state::tabs::glance::{CountsRead, Glance};
 use std::path::Path;
 use std::time::Instant;
 
@@ -10,6 +11,14 @@ fn record_parked(st: &mut AppState, workdir: &Path, action: glowfly_core::undo::
     if let Some(p) = st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()) {
         p.session.undo.record(action);
     }
+}
+
+/// Moves the counts the parked tab for `workdir` shows (`Parked::glance`).
+fn keep_counts(st: &mut AppState, workdir: &Path, read: CountsRead) {
+    let Some(p) = st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()) else { return };
+    let mut g = p.glance.take().or_else(|| p.snap.as_ref().map(Glance::of)).unwrap_or_default();
+    read.apply(&mut g);
+    p.glance = Some(g);
 }
 
 /// A result for the repository at `workdir`, whose tab is no longer active: only what its area
@@ -30,6 +39,7 @@ pub(super) fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant
             super::work_files::inactive_result(st, workdir, op, result, now);
         }
         Some(Inactive::IndexBuilt { build, result }) => super::history_index::parked_built(st, workdir, build, result),
+        Some(Inactive::Counts(read)) => keep_counts(st, workdir, read),
         None => tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display()),
     }
 }

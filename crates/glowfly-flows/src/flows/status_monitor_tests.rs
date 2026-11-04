@@ -1,13 +1,13 @@
 //! Repository > Hooks' file system monitor row: Turn off starts its job through the job gate,
 //! and either job's end leaves the page showing what is now set.
 
-use crate::effect::{Effect, MonitorOff};
 use crate::flows::status_tip_tests::{opened, speedups};
-use crate::msg::{LoadMsg, Msg};
-use crate::state::prefs::{GitConfigValues, PrefsState};
-use crate::state::{AppState, PrefPage, prefs_save};
-use crate::update::update;
 use glowfly_core::repo::MonitorOutcome;
+use glowfly_model::effect::{Effect, MonitorOff};
+use glowfly_model::msg::{LoadMsg, Msg};
+use glowfly_model::state::prefs::{GitConfigValues, PrefsState};
+use glowfly_model::state::{AppState, PrefPage, prefs_save};
+use glowfly_model::update::update;
 use std::time::Instant;
 
 fn on_hooks_page(st: &mut AppState, on: bool) {

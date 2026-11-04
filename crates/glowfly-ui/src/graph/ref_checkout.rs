@@ -5,9 +5,9 @@
 //! remotes check out nothing; the double-click stays a row click.
 
 use super::ref_group::Chip;
-use crate::msg::{BranchMsg, Msg};
-use crate::state::remote_branch;
 use glowfly_core::repo::{RefKind, Snapshot};
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::state::remote_branch;
 
 /// The message a double-click on `chip` sends, if it checks anything out.
 pub(super) fn double_click(chip: &Chip, snap: &Snapshot) -> Option<Msg> {

@@ -1,8 +1,16 @@
 //! Accessible names for widgets egui can't name itself: text fields that only show hint text,
-//! and buttons drawn with the painter, plus a longer description (why a menu item is disabled). Screen readers read these names, and the whole-app tests
-//! (`src/journey/`) find widgets by them. Nothing here changes a pixel.
+//! and buttons drawn with the painter, plus a longer description (why a menu item is disabled)
+//! and a list's current item, and live regions that screen readers announce as they appear or
+//! change (`announce`: the toasts and the status bar's job). Screen readers read these names,
+//! and the whole-app tests (`src/journey/`) find widgets by them. A form row's label names the
+//! fields and combos drawn in it that have no name of their own (`with_label`, `from_label`).
+//! Nothing here changes a pixel.
 
-use eframe::egui::{Response, WidgetInfo, WidgetType};
+pub use eframe::egui::accesskit::Live;
+use eframe::egui::{Context, Id, Response, WidgetInfo, WidgetType};
+
+/// Where `with_label` keeps the label naming the controls being drawn.
+const LABEL_KEY: &str = "glowfly-access-label";
 
 /// Names the text field `resp` (call it after the field is drawn, so its own node is filled).
 pub fn name_field(resp: &Response, name: &str) {
@@ -14,27 +22,105 @@ pub fn name_button(resp: &Response, enabled: bool, name: &str) {
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, enabled, name));
 }
 
+/// Marks `resp` as its list's current item (the palette's keyboard row, the Preferences page
+/// shown), so screen readers announce it as selected. egui would report `WidgetInfo::selected`
+/// on a button as a toggle ("on"/"off"), which is the wrong meaning for a row.
+pub fn mark_selected(resp: &Response) {
+    resp.ctx.accesskit_node_builder(resp.id, |n| n.set_selected(true));
+}
+
+/// Makes the label `resp` a live region: screen readers announce its text when it appears and
+/// whenever it changes, after what they are reading (`Live::Polite`) or at once
+/// (`Live::Assertive`, for failures). Its node moves to `key`: egui's own id for it shifts when
+/// widgets drawn before it come and go, and a node under a new id is announced again. Does
+/// nothing while AccessKit is off.
+///
+/// Only the node's own properties move. Its text runs (and the text selection pointing into
+/// them) stay with the node left at `resp.id`, which is hidden so no platform shows it: their
+/// ids derive from `resp.id`, so under `key` they would change parent as soon as that id passes
+/// to another label, and AccessKit's consumer can drop a node that changes parent and then
+/// fail on a tree that still lists it.
+pub fn announce(resp: &Response, key: Id, live: Live) {
+    let take = |n: &mut eframe::egui::accesskit::Node| {
+        let mut moved = std::mem::take(n);
+        n.set_children(moved.children().to_vec());
+        n.set_hidden();
+        moved.clear_children();
+        moved.clear_text_selection();
+        moved
+    };
+    let Some(node) = resp.ctx.accesskit_node_builder(resp.id, take) else { return };
+    resp.ctx.accesskit_node_builder(key, |n| {
+        *n = node;
+        n.set_live(live);
+    });
+}
+
 /// Gives `resp` a description that screen readers read after its name (does nothing while
 /// AccessKit is off).
 pub fn describe(resp: &Response, text: &str) {
     resp.ctx.accesskit_node_builder(resp.id, |n| n.set_description(text));
 }
 
+/// Runs `f` with the node `label` (None: no label) naming the controls it draws that have no
+/// name of their own, as `from_label` finds them.
+pub fn with_label<R>(ctx: &Context, label: Option<Id>, f: impl FnOnce() -> R) -> R {
+    let key = Id::new(LABEL_KEY);
+    let outer = ctx.data(|d| d.get_temp::<Option<Id>>(key)).flatten();
+    ctx.data_mut(|d| d.insert_temp(key, label));
+    let out = f();
+    ctx.data_mut(|d| d.insert_temp(key, outer));
+    out
+}
+
+/// Ties the control `resp` to the label `with_label` set: the label names it unless it has a
+/// name of its own (which it keeps).
+pub fn from_label(resp: &Response) {
+    let label = resp.ctx.data(|d| d.get_temp::<Option<Id>>(Id::new(LABEL_KEY))).flatten();
+    if let Some(label) = label {
+        if unnamed(resp) {
+            // An empty name would hide the labelling node from screen readers.
+            resp.ctx.accesskit_node_builder(resp.id, |n| n.clear_label());
+        }
+        let linked = resp.ctx.accesskit_node_builder(resp.id, |n| n.labelled_by().iter().any(|l| l.0 == label.value())).unwrap_or(true);
+        if !linked {
+            resp.clone().labelled_by(label);
+        }
+    }
+}
+
+/// Names `resp` `name` unless it has a name of its own (a label or a labelling node).
+pub fn name_if_unnamed(resp: &Response, name: &str) {
+    if !name.is_empty() && unnamed(resp) {
+        name_field(resp, name);
+    }
+}
+
+/// Whether `resp`'s node has no name (always false while AccessKit is off).
+fn unnamed(resp: &Response) -> bool {
+    resp.ctx.accesskit_node_builder(resp.id, |n| n.label().is_none_or(str::is_empty) && n.labelled_by().is_empty()).unwrap_or(false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use eframe::egui;
+    use eframe::egui::accesskit::Role;
     use egui_kittest::kittest::Queryable;
 
     #[test]
     fn fields_and_painted_buttons_get_their_names() {
         let mut text = String::new();
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        let left = std::cell::Cell::new(None);
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
             let r = ui.add(egui::TextEdit::singleline(&mut text).hint_text("Type here"));
             name_field(&r, "Search text");
             let (_, b) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
             name_button(&b, false, "Painted");
             describe(&b, "Why");
+            let done = ui.label("Done");
+            announce(&done, Id::new("done"), Live::Polite);
+            left.set(Some(done.id));
         });
         h.run();
         let field = h.get_by_label("Search text");
@@ -42,5 +128,77 @@ mod tests {
         let painted = h.get_by_label("Painted");
         assert!(painted.is_disabled());
         assert_eq!(painted.description().as_deref(), Some("Why"));
+        let done = h.get_by_label("Done");
+        assert_eq!((done.live(), done.role()), (Live::Polite, egui::accesskit::Role::Label));
+        assert_eq!(done.id(), egui::accesskit::NodeId(Id::new("done").value()), "under its key");
+        assert!(done.bounding_box().is_some(), "where it is drawn");
+        let left = egui::accesskit::NodeId(left.get().expect("drawn").value());
+        let old = h.get_by(move |n| n.id() == left);
+        assert!(old.is_hidden(), "the node left behind is hidden, not an unnamed element");
+        assert!(old.children().count() > 0, "egui gave the label text runs; they stay with it");
+        assert_eq!(done.children().count(), 0, "the live node takes none of them");
+    }
+
+    /// A label is announced while another label takes its old id from frame to frame: the tree
+    /// AccessKit's consumer (the one the harness and the platform adapters run) builds from the
+    /// updates stays whole. Moving the text runs along with the node broke it: a run whose
+    /// parent changed was dropped while its new parent still listed it.
+    #[test]
+    fn an_announced_label_whose_id_passes_to_another_keeps_the_tree_whole() {
+        let shifted = std::cell::Cell::new(false);
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
+            if shifted.get() {
+                ui.label("Plain");
+            }
+            let live = ui.label("Live text");
+            announce(&live, Id::new("live"), Live::Polite);
+            if !shifted.get() {
+                ui.label("Plain");
+            }
+        });
+        for i in 0..24 {
+            shifted.set(i % 2 == 1);
+            h.run();
+            assert_eq!(h.get_by_label("Live text").live(), Live::Polite);
+            // Walk every node: a listed child the consumer dropped panics here.
+            assert!(h.query_all(egui_kittest::kittest::by()).count() > 3);
+        }
+    }
+
+    #[test]
+    fn a_label_names_only_the_unnamed_controls_drawn_under_it() {
+        let (mut a, mut b, mut on) = (String::new(), String::new(), false);
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
+            let label = ui.label("Editor").id;
+            with_label(&ui.ctx().clone(), Some(label), || {
+                crate::theme::controls::field(ui, egui::TextEdit::singleline(&mut a));
+                let named = crate::theme::controls::field(ui, egui::TextEdit::singleline(&mut b));
+                name_field(&named, "Arguments");
+                ui.add(crate::theme::controls::Check::without_text(&mut on));
+            });
+            // Outside: nothing names it.
+            let mut c = String::new();
+            let after = crate::theme::controls::field(ui, egui::TextEdit::singleline(&mut c));
+            name_if_unnamed(&after, "Hint");
+            name_if_unnamed(&after, "Second");
+        });
+        h.run();
+        let roles: Vec<_> = h.query_all_by_label("Editor").map(|n| n.role()).collect();
+        assert_eq!(roles, [Role::TextInput, Role::CheckBox], "the bare field and the bare box, not the named field or the one after");
+        assert!(h.query_by_label("Arguments").is_some(), "a named field keeps its name");
+        assert!(h.query_by_label("Hint").is_some() && h.query_by_label("Second").is_none(), "the first name stays");
+    }
+
+    #[test]
+    fn a_section_header_is_a_button_that_says_whether_it_is_open() {
+        let seen = std::cell::Cell::new(None);
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
+            let mut open = true;
+            let r = crate::widgets::section_header(ui, "Local", Some(3), &mut open);
+            seen.set(ui.ctx().accesskit_node_builder(r.id, |n| n.is_expanded()).flatten());
+        });
+        h.run();
+        assert_eq!(h.get_by_label("Local, 3").role(), Role::Button);
+        assert_eq!(seen.get(), Some(true));
     }
 }

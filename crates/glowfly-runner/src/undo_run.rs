@@ -3,11 +3,11 @@
 //! for the history. "Stash changes and undo" wraps this (`undo_stash.rs`).
 
 use super::git_ops::{Gated, run_git, run_git_gated};
-use crate::effect::{UndoOpts, UndoResult};
-use crate::msg::{JobMsg, Msg};
-use crate::state::files::TRASH;
 use glowfly_core::error::Error;
 use glowfly_core::undo::{self, Action, Plan, Refusal};
+use glowfly_model::effect::{UndoOpts, UndoResult};
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::files::TRASH;
 use std::path::Path;
 
 /// Checks that `action` still applies, then runs the git commands that undo or redo it. With

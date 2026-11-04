@@ -9,7 +9,7 @@ pub mod conflict_check;
 pub mod custom_commands;
 pub mod deep_link;
 pub mod effect;
-pub mod file_op;
+pub(crate) mod file_op;
 pub mod git_env;
 pub mod gitflow;
 pub mod journal;

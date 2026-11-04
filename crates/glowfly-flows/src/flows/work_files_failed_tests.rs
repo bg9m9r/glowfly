@@ -5,9 +5,9 @@
 
 use super::tests::{drive, keys, scratch_repo, state};
 use super::work_files_tests::{last_log, loaded, run};
-use crate::effect::{DeleteMode, FileOp};
-use crate::msg::{Inactive, JobMsg, Msg, RepoMsg, RevertWhat, StageMsg, WorkFileMsg};
 use glowfly_core::undo::{Action, DeleteVia, Discarded, Saved};
+use glowfly_model::effect::{DeleteMode, FileOp};
+use glowfly_model::msg::{Inactive, JobMsg, Msg, RepoMsg, RevertWhat, StageMsg, WorkFileMsg};
 
 fn delete(path: &str) -> FileOp {
     FileOp::Delete { path: path.into(), mode: DeleteMode::Trash }
@@ -91,7 +91,7 @@ fn a_revert_that_failed_after_changing_the_file_records_its_undo() {
 fn unstage_deleted_file_is_named_in_the_undo_menu() {
     let (mut st, dir) = loaded("wff-unstage-label");
     let staged = glowfly_core::repo::StagedNew { blob: git2::Oid::zero(), mode: 0o100644, source: None };
-    let ok = crate::effect::WorkFileOk::Unstaged { undo: Some(Box::new(Action::UnstageGone { path: "n.txt".into(), staged })) };
+    let ok = glowfly_model::effect::WorkFileOk::Unstaged { undo: Some(Box::new(Action::UnstageGone { path: "n.txt".into(), staged })) };
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: FileOp::UnstageGone("n.txt".into()), result: Ok(ok) }));
     assert_eq!(st.session.undo.undo_entry(st.settings.lang(), true).0, "Undo unstage of n.txt");
     let _ = std::fs::remove_dir_all(&dir);

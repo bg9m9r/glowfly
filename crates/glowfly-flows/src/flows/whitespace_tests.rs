@@ -4,14 +4,16 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::state::AppState;
-use crate::state::lines::LineClick::Only;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, LoadOptions};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::Only;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -52,18 +54,20 @@ fn toggle_saves_and_reloads_the_open_diff() {
     assert!(st.hunk_ops_gen().is_some());
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s), Effect::LoadDiff { ignore_whitespace: true, reload: false, .. }]
-        if s.diff_ignore_whitespace));
+    assert!(
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s)), Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: false, .. })]
+        if s.diff_ignore_whitespace)
+    );
     assert!(st.view.diff_lines.is_empty(), "hunk rows change, so the selection goes");
     assert_eq!(st.hunk_ops_gen(), None, "hunk buttons wait for the reload");
-    assert_eq!(st.settings_file.saved, serde_json::to_string(&st.settings).unwrap());
+    assert_eq!(st.settings_file.saved(), serde_json::to_string(&st.settings).unwrap());
 
     assert!(run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true))).is_empty(), "no change, nothing to do");
 
     // With no diff open only the setting changes.
     let mut st = state();
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_ignore_whitespace));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.diff_ignore_whitespace));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -86,16 +90,24 @@ fn whitespace_toggle_filters_a_real_repo() {
     // Opening a diff, and reloading it after a status refresh, both carry the setting.
     drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(ws.clone())));
-    assert!(matches!(&fx[..], [Effect::LoadDiff { ignore_whitespace: true, reload: false, .. }]));
+    assert!(matches!(&fx[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: false, .. })]));
     for e in fx {
-        let loaded = crate::runner::testing::execute(e).expect("diff result");
+        let loaded = glowfly_runner::testing::execute(e).expect("diff result");
         run(&mut st, loaded);
     }
-    let status =
-        Effect::LoadStatus { workdir: dir.clone(), generation: st.load_gen, submodules: false, open: None, git_status: true, paths: None };
-    let status = crate::runner::testing::execute(status).expect("status result");
+    let status = Effect::Load(glowfly_model::effect::LoadEffect::Status {
+        workdir: dir.clone(),
+        generation: st.load_gen,
+        submodules: false,
+        open: None,
+        git_status: true,
+        paths: None,
+    });
+    let status = glowfly_runner::testing::execute(status).expect("status result");
     let fx = run(&mut st, status);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, reload: true, .. })));
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: true, .. })))
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -107,12 +119,15 @@ fn commit_diffs_reload_with_whitespace_hidden_and_keep_revert() {
     let head = st.snap.as_ref().unwrap().commits[0].oid;
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head, "a.txt".into()))));
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, target: DiffTarget::Commit(..), .. })));
+    assert!(fx.iter().any(|e| matches!(
+        e,
+        Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, target: DiffTarget::Commit(..), .. })
+    )));
     assert_eq!(st.hunk_ops_gen(), None, "Revert Hunk waits for the reload");
     finish(&mut st, fx);
     let generation = st.hunk_ops_gen().expect("the reload landed");
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation }));
-    assert!(matches!(&fx[..], [Effect::Revert { req, .. }] if req.ignore_whitespace), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::Revert { req, .. })] if req.ignore_whitespace), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -129,15 +144,15 @@ fn a_load_started_before_the_toggle_is_dropped() {
     let held = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("ws.txt".into()))));
     let toggled = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     for e in held {
-        let late = crate::runner::testing::execute(e).expect("diff result");
+        let late = glowfly_runner::testing::execute(e).expect("diff result");
         run(&mut st, late);
     }
     assert_eq!(st.session.diff.view, before, "the stale result is dropped");
     assert_eq!(st.hunk_ops_gen(), None);
 
     // The toggle asks again for the file still opening, and that lands.
-    for e in toggled.into_iter().filter(|e| matches!(e, Effect::LoadDiff { .. })) {
-        let loaded = crate::runner::testing::execute(e).expect("diff result");
+    for e in toggled.into_iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))) {
+        let loaded = glowfly_runner::testing::execute(e).expect("diff result");
         run(&mut st, loaded);
     }
     assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&DiffTarget::Unstaged("ws.txt".into())));

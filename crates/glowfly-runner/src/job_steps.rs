@@ -1,5 +1,5 @@
-//! Running a stoppable job's git commands (`Effect::RunGit` with `stoppable`, whose stop
-//! `Effect::StopGit(StopKey::Job)` asks for). Before each command the UI is told its kind
+//! Running a stoppable job's git commands (`JobEffect::RunGit` with `stoppable`, whose stop
+//! `Effect::Control(ControlEffect::StopGit(StopKey::Job))` asks for). Before each command the UI is told its kind
 //! (`JobMsg::Step`), so Cancel is offered only while one can be stopped:
 //!
 //! - A fetch, push or clone runs with `--progress` through `gitcli::output_watching`: a stop
@@ -19,11 +19,11 @@
 //! (`clone_stop`), once its processes have exited.
 
 use super::git_ops::job_env;
-use crate::msg::{JobMsg, Msg};
-use crate::state::job_stop::Step;
 use glowfly_core::git_progress::{self, Phase, Progress, Tail};
 use glowfly_core::gitcli::{self, Stop};
 use glowfly_core::{clone_stop, stop_cleanup, undo};
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::job_stop::Step;
 use std::path::Path;
 use std::time::{Duration, Instant};
 

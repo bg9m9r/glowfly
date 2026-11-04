@@ -5,11 +5,8 @@
 use super::file_menu::{RowSource, commit_file_items, lfs_track_items, wip_file_items};
 use super::snapshot_tests_file_menu::menu_style;
 use super::theme::{apply_theme, color};
-use crate::lfs::LfsMsg;
-use crate::msg::Msg;
-use crate::state::lfs::{LfsInstall, TrackContext, TrackItem, track_items};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::widgets::menu::context_menu;
+use crate::snapshot_check::CheckSnapshot;
+use crate::widgets::menu::context_menu;
 use eframe::egui::{self, Event, Modifiers, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -17,6 +14,9 @@ use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::{LfsPattern, TrackTarget};
 use glowfly_core::repo::FileEntry;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::lfs::{LfsInstall, TrackContext, TrackItem, track_items};
 
 const TRACK_IN_LFS: &str = "Track in Git LFS";
 const ONLY_THIS_FILE: &str = "Only this file";
@@ -43,7 +43,7 @@ fn theme(ui: &mut egui::Ui, dark: bool) {
 
 /// A window drawing the submenu's entries inside a menu frame.
 fn body(items: Vec<TrackItem>, dark: bool) -> Harness<'static, Vec<Msg>> {
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, dark);
             egui::Frame::menu(ui.style()).show(ui, |ui| {
@@ -61,7 +61,7 @@ fn file_menu_wip_lfs() {
     let lfs = items(PATH, installed());
     let f = FileEntry::new(PATH, 'M');
     // Tall enough for the whole menu at its 30 px row pitch.
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(260.0, 400.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(260.0, 400.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
             let r = ui.add(egui::Label::new(PATH).sense(egui::Sense::click()));
@@ -79,7 +79,7 @@ fn file_menu_wip_lfs() {
                     &lfs,
                     None,
                     tool,
-                    &crate::state::custom_commands::MenuCommands::none(),
+                    &glowfly_model::state::custom_commands::MenuCommands::none(),
                     None,
                 );
             });
@@ -138,7 +138,7 @@ fn commit_menu(in_workdir: bool) -> Harness<'static, Vec<Msg>> {
     let lfs = items(PATH, installed());
     let f = FileEntry::new(PATH, 'M');
     let oid = Oid::from_str("3f2a9c41d07be5a8c6f19e2d4b7a0c3e5f816d29").unwrap();
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
             commit_file_items(
@@ -151,7 +151,7 @@ fn commit_menu(in_workdir: bool) -> Harness<'static, Vec<Msg>> {
                 &lfs,
                 Default::default(),
                 None,
-                &crate::state::custom_commands::MenuCommands::none(),
+                &glowfly_model::state::custom_commands::MenuCommands::none(),
             );
         },
         Vec::new(),

@@ -5,12 +5,12 @@
 
 use super::Caps;
 use super::sheet_menus;
-use crate::keymap::{Chord, Keymap};
-use crate::ui::dialog_frame::{Cx, Dialog, Footer, Size};
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::TextField;
+use crate::dialog_frame::{Cx, Dialog, Footer, Size};
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::TextField;
 use eframe::egui::{Align, Id, Layout, RichText, Sense, Ui, vec2};
+use glowfly_model::keymap::{Chord, Keymap};
 
 /// Draws the sheet inside the dialog with the keys in effect; `cx.keyboard` gives the filter
 /// field the keyboard (not under a credential prompt). Returns true when Close is clicked.

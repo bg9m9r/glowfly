@@ -10,9 +10,12 @@ Dialog
   Label "Optional"
   MultilineTextInput "Description"
   Label "Tags"
-  TextInput
+  Label "ux"
+  Label "sign-in"
+  TextInput "Search tags"
   Label "Assigned to"
-  TextInput
+  Label "Ada Lovelace"
+  TextInput "Search people"
   Label "Parent"
   ComboBox
   CheckBox "Create a branch for it afterwards" [off]
@@ -22,9 +25,4 @@ Dialog
 painted:
   "User Story"
   "Describe the work item"
-  "ux"
-  "sign-in"
-  "Search tags"
-  "Ada Lovelace"
-  "Search people"
   "1  Epic · Accounts"

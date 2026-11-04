@@ -5,6 +5,7 @@
 
 use super::{history_find, history_view};
 use crate::effect::Effect;
+use crate::effect::HistoryEffect;
 use crate::msg::HistoryMsg;
 use crate::state::AppState;
 use crate::state::history::{FileHistoryView, HistoryKind};
@@ -214,14 +215,14 @@ fn retry(st: &mut AppState, fx: &mut Vec<Effect>) {
 fn request(st: &mut AppState, start: HistoryStart, limit: usize, fx: &mut Vec<Effect>) {
     st.session.history.generation += 1;
     if let (Some(workdir), Some(view)) = (st.workdir(), &st.session.history.view) {
-        fx.push(Effect::LoadFileHistory {
+        fx.push(Effect::History(HistoryEffect::FileHistory {
             workdir,
             path: view.path.clone(),
             start,
             limit,
             folder: view.kind == HistoryKind::Folder,
             generation: st.session.history.generation,
-        });
+        }));
     }
 }
 

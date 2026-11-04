@@ -1,4 +1,5 @@
-//! Bundles CHANGELOG.md for the release notes dialog (`state/release_notes.rs`).
+//! Bundles CHANGELOG.md for the release notes dialog (`state/release_notes.rs`), and passes the
+//! target triple to About's Build row (`GLOWFLY_TARGET`, `state/menu_bar.rs`).
 
 use std::path::{Path, PathBuf};
 
@@ -7,6 +8,11 @@ fn main() {
     // release-please creates CHANGELOG.md with the first release; until then the missing file
     // makes Cargo run this script on every build, which is cheap.
     println!("cargo::rerun-if-changed=../../CHANGELOG.md");
+
+    // Cargo reruns build scripts for a new target on its own; the triple is all that's passed.
+    println!("cargo::rerun-if-env-changed=TARGET");
+    let target = std::env::var("TARGET").unwrap_or_default();
+    println!("cargo::rustc-env=GLOWFLY_TARGET={target}");
 
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("Cargo sets OUT_DIR"));
     let changelog = std::fs::read(Path::new("../../CHANGELOG.md")).unwrap_or_default();

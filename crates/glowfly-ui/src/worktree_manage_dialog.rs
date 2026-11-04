@@ -9,15 +9,15 @@ use super::theme::color;
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::Msg;
-use crate::state::blocked::BUSY;
-use crate::state::gitflow_base;
-use crate::state::worktree_manage::{LockForm, RemoveForm};
-use crate::ui::theme::controls;
-use crate::worktree::WorktreeMsg;
+use crate::theme::controls;
 use eframe::egui::{self, Id, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::worktree_ops::Refusal;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::blocked::BUSY;
+use glowfly_model::state::gitflow_base;
+use glowfly_model::state::worktree_manage::{LockForm, RemoveForm};
+use glowfly_model::worktree::WorktreeMsg;
 
 /// The Remove dialog; returns true when Cancel closes it. The danger button is disabled while a
 /// job runs (`idle` false), and in force mode until the acknowledgement is ticked.

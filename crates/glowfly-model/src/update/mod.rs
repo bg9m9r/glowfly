@@ -13,11 +13,13 @@ pub mod blame;
 mod branch_checkout;
 mod branch_colour;
 mod branch_delete;
+mod branch_elsewhere;
 mod branch_push;
 mod branch_sync;
 mod branches;
 mod build_status;
 pub mod clone;
+mod clone_https;
 mod clone_service;
 mod commit;
 mod compare_wip;
@@ -82,9 +84,11 @@ mod notify;
 mod onboarding;
 mod op_preview;
 mod op_progress;
+mod open_link;
 pub mod ops;
 mod palette;
 mod palette_keys;
+mod parked_free;
 mod partial;
 mod partial_content;
 mod partial_size;
@@ -157,6 +161,7 @@ mod submodule_batch;
 mod submodule_edit;
 mod submodule_remove;
 mod submodules;
+mod sync_voice;
 mod tab_groups;
 mod tab_label;
 pub mod tabs;
@@ -171,6 +176,7 @@ mod terminal_schemes;
 mod terminal_tabs;
 mod terminal_view;
 mod themes;
+mod toast_log;
 mod tool_compare;
 mod tool_git;
 mod tools;
@@ -185,7 +191,7 @@ mod updates_restart;
 pub mod watch;
 mod wip_keys;
 mod wip_list;
-pub mod work_files;
+pub(crate) mod work_files;
 mod work_files_delete;
 mod worktree_counts;
 mod worktree_manage;
@@ -241,6 +247,9 @@ fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     // A failure logged from here on is announced by a toast; one pushed by now isn't this one's.
     let toast_mark = st.toast_seq;
     let undo_mark = undo::record_mark(st);
+    // Every toast also leaves an activity line, unless one this update logged stands for it
+    // (update/toast_log.rs).
+    let entry_mark = crate::state::logs::EntryId::next();
     route(st, msg, now, &mut fx);
     undo::recorded_since(st, undo_mark);
     prefs_leave::settle(st);
@@ -255,6 +264,7 @@ fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     crate::state::layout::drop_stale_expansion(st);
     logs_runs::stamp(st, now);
     logs_tabs::announce(st, toast_mark, now);
+    toast_log::record(st, toast_mark, entry_mark);
     logs::flush(st, &mut fx);
     large_graph::settle(st, &mut fx);
     fx
@@ -307,6 +317,7 @@ crate::msg::msg_areas! { area_router! {
             load_more::tick(st, t, fx);
             search_loaded::tick(st, t, fx);
             history_index::tick(st, t, fx);
+            parked_free::tick(st, t, fx);
             worktree_counts::tick(st, t, fx);
         }
         Msg::Scoped { workdir, msg } => {
@@ -347,6 +358,7 @@ crate::msg::msg_areas! { area_router! {
         Msg::CloseModal => dialog::close(st),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::Os(OsEffect::OpenUrl(url))),
+        Msg::OpenLink { text, url } => open_link::open(st, &text, url, fx),
         Msg::OpenTerminal => tools::open_terminal(st, now, fx),
         Msg::OpenFolder(p) => fx.push(Effect::Os(OsEffect::OpenFolder(p))),
         Msg::Logged { ok, text } => st.log(ok, text),

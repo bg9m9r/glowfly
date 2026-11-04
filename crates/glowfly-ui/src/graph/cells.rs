@@ -3,18 +3,19 @@
 //! and the date, right-aligned (Noto Sans's figures are tabular, so ages and dates line up).
 //! Each is cut to its column with "…"; `RowText` says which were cut, for the row's tooltip.
 
+use super::find_marks::{Mark, RowRuns, Runs, paint_cut_marked};
 use super::layout::Columns;
-use crate::state::ForgeState;
-use crate::ui::common::{added_color, removed_color};
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use crate::ui::widgets::{self, Cut, paint_cut, paint_cut_text};
+use crate::common::{added_color, removed_color};
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::truncate::{cut_galley, cut_job};
+use crate::widgets::{Cut, chip, paint_cut_text};
 use eframe::egui::text::{LayoutJob, TextFormat};
-use eframe::egui::{Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
+use eframe::egui::{self, Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
 use git2::Oid;
-use glowfly_core::repo::CommitInfo;
+use glowfly_core::repo::{CommitInfo, RefLabel};
 use glowfly_core::settings::{GraphColumns, Settings};
+use glowfly_model::state::ForgeState;
 use std::collections::HashMap;
 
 /// The widest the hover with a cut message gets before it wraps.
@@ -39,12 +40,51 @@ pub(super) struct Cells<'a> {
     /// The pull request chip's label, and whether it is a draft.
     pub pr: Option<&'a (String, bool)>,
     pub show_body: bool,
-    /// The message's colour and the dim colour (both faded on rows a search dims).
-    pub colors: (Color32, Color32),
+    /// The colours of the row's text (quieter on rows a search dims).
+    pub inks: Inks,
+    /// Where a search matched the row's text, and how the matches are marked.
+    pub found: Option<(&'a RowRuns, Mark)>,
     /// The formatted date, when the DATE column shows.
     pub date: Option<String>,
     /// Files changed, lines added and lines deleted, once read.
     pub stats: Option<(usize, usize, usize)>,
+}
+
+/// The colours of a commit row's text.
+#[derive(Clone, Copy)]
+pub(super) struct Inks {
+    pub summary: Color32,
+    /// The body preview.
+    pub body: Color32,
+    /// The author's name and the date.
+    pub meta: Color32,
+    pub sha: Color32,
+    /// A search dims the row: the change counts are `faint` and the PR chip neutral.
+    pub dimmed: bool,
+}
+
+impl Inks {
+    /// A row's inks: its summary in `summary` (`strong` when selected), or on a row a search
+    /// dims, `row_look::dim_inks`' message and metadata colours.
+    pub fn new(summary: Color32, dimmed: bool) -> Inks {
+        let pal = color::current();
+        match dimmed {
+            false => Inks { summary, body: pal.weak, meta: pal.weak, sha: pal.faint, dimmed },
+            true => {
+                let (message, meta) = super::row_look::dim_inks(&pal);
+                Inks { summary: message, body: meta, meta, sha: meta, dimmed }
+            }
+        }
+    }
+}
+
+/// Names commit row `resp` by `c`'s summary, and describes it by what the row shows after it:
+/// "Ada Lovelace, 222c0ad, Jan 10, main" (author, short SHA, `date`, then its refs).
+pub(super) fn name_row(resp: &egui::Response, c: &CommitInfo, refs: Option<&Vec<RefLabel>>, date: String) {
+    crate::access::name_button(resp, true, &c.summary);
+    let mut parts = vec![c.author.name().to_owned(), crate::common::short(c.oid), date];
+    parts.extend(refs.into_iter().flatten().map(|r| r.name.clone()));
+    crate::access::describe(resp, &parts.join(", "));
 }
 
 /// Each open pull request's chip label ("PR #12", "Draft #3") and whether it is a draft, by
@@ -104,7 +144,10 @@ pub(super) fn message_job(summary: &str, body: Option<(&str, bool)>, fg: Color32
 /// Paints the row's text cells, each clipped and cut to its column.
 pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
     let (cols, rect, cfg, c) = (row.cols, row.rect, row.cfg, row.commit);
-    let (fg, weak) = row.colors;
+    let ink = row.inks;
+    let none = Vec::new();
+    let runs = |pick: fn(&RowRuns) -> &Runs| row.found.map_or(&none, |(r, _)| pick(r));
+    let mark = row.found.map(|(_, m)| m);
     let mid = rect.center().y;
     let width = |col: (f32, f32)| col.1 - col.0;
     let mut text = RowText::default();
@@ -112,38 +155,45 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
         let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
         let mut x = row.msg_x;
         if let Some((label, draft)) = row.pr {
-            let col = if *draft { color::weak() } else { color::progress() };
-            x += widgets::chip(&mp, x, mid, label, color::wash(col, 0.35), col) + 6.0;
+            let col = if *draft || ink.dimmed { color::weak() } else { color::progress() };
+            let look = chip::Look::new(color::wash(col, 0.35), col);
+            x = chip::Chip::new(chip::ChipSize::Badge, label.as_str()).look(look).paint(&mp, x, mid).right() + 6.0;
         }
         let body = row.show_body.then(|| c.body_preview());
-        text.msg = paint_cut(&mp, pos2(x, mid), message_job(&c.summary, body, fg, weak), cols.msg.1 - x);
+        // The body's runs follow the summary's chars in the job.
+        let n = c.summary.chars().count();
+        let msg_runs: Runs = runs(|r| &r.summary).iter().cloned().chain(runs(|r| &r.body).iter().map(|b| b.start + n..b.end + n)).collect();
+        let job = message_job(&c.summary, body, ink.summary, ink.body);
+        text.msg = paint_cut_marked(&mp, pos2(x, mid), job, cols.msg.1 - x, &msg_runs, mark);
     }
     if cfg.changes
         && let Some((_files, adds, dels)) = row.stats
     {
         let cp = painter.with_clip_rect(cols.rect(cols.changes, rect));
         let font = type_scale::font(type_scale::SMALL);
-        let added = paint_cut_text(&cp, pos2(cols.changes.0, mid), &format!("+{adds}"), font.clone(), added_color(), width(cols.changes));
+        let (plus, minus) = if ink.dimmed { (ink.meta, ink.meta) } else { (added_color(), removed_color()) };
+        let added = paint_cut_text(&cp, pos2(cols.changes.0, mid), &format!("+{adds}"), font.clone(), plus, width(cols.changes));
         if !added.cut {
             let x = added.rect.right() + 6.0;
-            paint_cut_text(&cp, pos2(x, mid), &format!("−{dels}"), font, removed_color(), cols.changes.1 - x);
+            paint_cut_text(&cp, pos2(x, mid), &format!("−{dels}"), font, minus, cols.changes.1 - x);
         }
     }
     if cfg.author {
         let ap = painter.with_clip_rect(cols.rect(cols.author, rect));
         let font = type_scale::font(type_scale::SMALL);
-        text.author = paint_cut_text(&ap, pos2(cols.author.0, mid), c.author.name(), font, weak, width(cols.author));
+        let job = cut_job(c.author.name(), font, ink.meta);
+        text.author = paint_cut_marked(&ap, pos2(cols.author.0, mid), job, width(cols.author), runs(|r| &r.author), mark);
     }
     if cfg.commit {
         let cp = painter.with_clip_rect(cols.rect(cols.commit, rect));
         let sha = &c.oid.to_string()[..7];
         let font = type_scale::mono(type_scale::SMALL);
-        text.sha = paint_cut_text(&cp, pos2(cols.commit.0, mid), sha, font, color::faint(), width(cols.commit));
+        text.sha = paint_cut_marked(&cp, pos2(cols.commit.0, mid), cut_job(sha, font, ink.sha), width(cols.commit), runs(|r| &r.sha), mark);
     }
     if let Some(date) = row.date.as_deref().filter(|_| cfg.date) {
         let dp = painter.with_clip_rect(cols.rect(cols.date, rect));
         // A cut date keeps the row's date tooltip, which has the whole date.
-        paint_cut_right(&dp, pos2(cols.date.1, mid), date, type_scale::font(type_scale::SMALL), weak, width(cols.date));
+        paint_cut_right(&dp, pos2(cols.date.1, mid), date, type_scale::font(type_scale::SMALL), ink.meta, width(cols.date));
     }
     text
 }
@@ -180,7 +230,7 @@ mod tests {
     #[test]
     fn date_figures_are_tabular() {
         let ctx = egui::Context::default();
-        crate::ui::theme::fonts::install(&ctx);
+        crate::theme::fonts::install(&ctx);
         // The fonts arrive on the pass after they are set.
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         let _ = ctx.run(egui::RawInput::default(), |ctx| {

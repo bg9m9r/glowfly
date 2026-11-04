@@ -5,21 +5,25 @@
 
 use super::common::short;
 use super::theme::color;
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked};
-use crate::state::gitflow_resume::{ready_text, waiting_text};
-use crate::state::{AppState, PrefPage};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::banner::{self, Banner, BannerKind};
-use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::banner::{self, Banner, BannerKind};
+use crate::widgets::buttons;
+use crate::widgets::quiet_target::{self, State};
+use eframe::egui::{self, Align, Align2, CornerRadius, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use git2::Oid;
 use glowfly_core::gitflow::{Branches, FlowBranch, FlowGroup, GitFlowSettings, grouped};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked};
+use glowfly_model::state::gitflow_resume::{ready_text, waiting_text};
+use glowfly_model::state::worktree_branches::Elsewhere;
+use glowfly_model::state::{AppState, PrefPage};
 
 const NOT_SET_UP: &str = "Git Flow isn't set up in this repository.";
 
@@ -109,14 +113,15 @@ fn tip(snap: &Snapshot, name: &str) -> Option<Oid> {
     snap.locals.iter().find(|b| b.name == name).and_then(|b| b.oid)
 }
 
-/// A clickable row with a hover fill; the caller paints into it and adds buttons over it.
+/// A clickable row inset in the panel's margin, a Regular quiet target on `radius::SM`: lit
+/// while the pointer is anywhere on it (over its buttons too), ringed while focused. The caller
+/// paints into it and adds buttons over it.
 fn row(ui: &mut Ui, label: &str) -> (Rect, egui::Response) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 30.0), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
-    if ui.rect_contains_pointer(rect) {
-        ui.painter().rect_filled(rect, 4.0, color::hover());
-    }
+    let state = State { hovered: ui.rect_contains_pointer(rect), ..State::of(&resp, false) };
+    quiet_target::paint(ui.painter(), rect, CornerRadius::same(radius::SM), ControlSize::Regular, state);
     (rect, resp)
 }
 
@@ -193,23 +198,26 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
         if ui.add(buttons::secondary("Finish…")).on_hover_text(format!("Finish {} {}", g.kind.noun(), b.short)).clicked() {
             msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
         }
-        let elsewhere = st.snap.as_ref().and_then(|s| crate::state::worktree_branches::checkout_blocked(st.settings.lang(), s, b.name));
+        // One another worktree has: Open worktree (or Prune and check out a missing one).
+        let t = st.settings.lang();
+        let elsewhere = st.snap.as_ref().and_then(|s| glowfly_model::state::worktree_branches::checkout_elsewhere(t, s, b.name));
         let why = if b.head {
             Some("It is checked out.")
-        } else if let Some(w) = elsewhere.as_deref() {
-            Some(w)
-        } else if st.job.is_some() {
+        } else if st.job.is_some() && elsewhere.is_none() {
             Some("Wait for the running job to finish.")
         } else {
             None
         };
-        let r = ui.add(buttons::secondary("Checkout").enabled(why.is_none()));
-        let r = match why {
-            Some(w) => r.on_hover_text(w),
-            None => r,
+        let label = elsewhere.as_ref().map_or("Checkout", |e| e.button(t));
+        let r = ui.add(buttons::secondary(label).enabled(why.is_none()));
+        let r = match (why, &elsewhere) {
+            (Some(w), _) => r.on_hover_text(w),
+            (None, Some(e)) => r.on_hover_text(e.tip()),
+            (None, None) => r,
         };
         if r.clicked() {
-            msgs.push(Msg::Branch(crate::msg::BranchMsg::Checkout(b.name.to_owned())));
+            let checkout = glowfly_model::msg::BranchMsg::Checkout(b.name.to_owned());
+            msgs.push(Msg::Branch(Elsewhere::msg(elsewhere.as_ref(), checkout)));
         }
     });
     let resp = resp.on_hover_text(row_tooltip(s, g.kind, b.name));

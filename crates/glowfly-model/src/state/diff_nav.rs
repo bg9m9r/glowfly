@@ -1,7 +1,7 @@
 //! Next/previous change across files: where a step goes, the counter between the arrows, and the
 //! neighbouring file in the list a diff came from (`diff_nav/file_order.rs`).
 
-pub mod file_order;
+pub(crate) mod file_order;
 
 use super::AppState;
 use file_order::source_entries;
@@ -79,10 +79,14 @@ pub fn change_rows_of(d: &FileDiff, s: &Settings, ex: &Expanded) -> Vec<usize> {
 }
 
 /// The open diff's change rows as stepping and the header see them: none while the LFS summary
-/// shows instead of the rows.
+/// or an SVG's preview shows instead of the rows.
 pub fn shown_change_rows(st: &AppState) -> Vec<usize> {
     let Some((_, d)) = st.session.diff.view.as_ref() else { return Vec::new() };
-    if super::lfs_notes::summary(st).is_some() { Vec::new() } else { change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded) }
+    if super::lfs_notes::summary(st).is_some() || super::diff_preview::drawn(st) {
+        Vec::new()
+    } else {
+        change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded)
+    }
 }
 
 /// Where a step of `dir` (1 next, -1 previous) from the open diff goes.

@@ -24,12 +24,12 @@
 //! Sizes come from `theme::sizes` (`size`, Regular by default): the height, the text step, the
 //! room beside the text (`pad_x` framed, `quiet_pad_x` quiet), the icon and its gap, and the
 //! corners. Compact is for quiet buttons only. The text keeps at least 4 px above and below
-//! inside a framed button's edge and 3 px inside a quiet one's. Taller with `min_height`, or an
-//! exact `height` beside a field (`text_field::with_button`), until fields take a size.
+//! inside a framed button's edge and 3 px inside a quiet one's. An exact `height` beside a
+//! field (`text_field::with_button`), until fields take a size.
 
 use super::button_look::{self, Press, Target};
 use super::icon::{self, Icon};
-use crate::ui::theme::sizes::{ControlSize, Metrics};
+use crate::theme::sizes::{ControlSize, Metrics};
 use eframe::egui::{self, Color32, CornerRadius, Rect, Response, Sense, TextStyle, Ui, Widget, WidgetText, pos2, vec2};
 use std::borrow::Cow;
 
@@ -66,14 +66,19 @@ pub struct StyledButton<'a> {
     enabled: bool,
     why: Option<&'a str>,
     tip: Option<&'a str>,
+    /// The tooltip's wrap width, when not the app's (`tooltip::style`).
+    tip_width: Option<f32>,
+    /// Its accessible name, when not its text (a label whose names were cut).
+    access_name: Option<&'a str>,
     min_width: f32,
-    min_height: f32,
     height: Option<f32>,
     size: ControlSize,
     max_width: Option<f32>,
     /// A leading icon, or the whole content of an icon-only button.
     icon: Option<Icon>,
     icon_only: bool,
+    /// The size an icon is drawn at, when not the size's (a glyph drawn small on its grid).
+    icon_px: Option<f32>,
 }
 
 /// The view's main action.
@@ -84,7 +89,7 @@ pub fn primary<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
 /// An important action that isn't the view's main one. Part of the family before a view needs
 /// it again (the WIP lists' header actions became quiet).
 #[allow(dead_code)]
-pub fn tonal<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
+pub(crate) fn tonal<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::Tonal)
 }
 
@@ -124,13 +129,15 @@ impl<'a> StyledButton<'a> {
             enabled: true,
             why: None,
             tip: None,
+            tip_width: None,
+            access_name: None,
             min_width: 0.0,
-            min_height: 0.0,
             height: None,
             size: ControlSize::Regular,
             max_width: None,
             icon: None,
             icon_only: false,
+            icon_px: None,
         }
     }
 
@@ -153,15 +160,22 @@ impl<'a> StyledButton<'a> {
         self
     }
 
-    /// The least width (dialog footers use 76 px).
-    pub fn min_width(mut self, w: f32) -> Self {
-        self.min_width = w;
+    /// Wraps the tooltip at `w` instead of the app's tooltip width (a git command on one line).
+    pub fn tip_width(mut self, w: f32) -> Self {
+        self.tip_width = Some(w);
         self
     }
 
-    /// A taller button than the 28 px standard (the commit box's Commit, the welcome choices).
-    pub fn min_height(mut self, h: f32) -> Self {
-        self.min_height = h;
+    /// Names it `name` for screen readers instead of its text: the whole label when the text
+    /// cuts a name, as the branch menus' rows do.
+    pub fn access_name(mut self, name: &'a str) -> Self {
+        self.access_name = Some(name);
+        self
+    }
+
+    /// The least width (dialog footers use 76 px).
+    pub fn min_width(mut self, w: f32) -> Self {
+        self.min_width = w;
         self
     }
 
@@ -174,11 +188,16 @@ impl<'a> StyledButton<'a> {
         self
     }
 
-    /// An icon before the text, at the size's icon size. Part of the family before a view
-    /// needs it.
-    #[allow(dead_code)]
+    /// An icon before the text, at the size's icon size.
     pub fn icon(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
+        self
+    }
+
+    /// Its icon drawn at `px` instead of the size's (for a glyph that fills less or more of its
+    /// grid than the others), keeping the button's size.
+    pub(crate) fn icon_px(mut self, px: f32) -> Self {
+        self.icon_px = Some(px);
         self
     }
 
@@ -230,7 +249,7 @@ impl<'a> StyledButton<'a> {
 
     /// A leading icon's size, or an icon-only button's: the size's icon.
     fn icon_size(&self) -> f32 {
-        self.metrics().icon
+        self.icon_px.unwrap_or(self.metrics().icon)
     }
 
     /// The room a leading icon takes before the text.
@@ -256,7 +275,7 @@ impl<'a> StyledButton<'a> {
     /// check the inset against the real text: at least `galley_h + 8` for a framed button and
     /// `+ 6` for a quiet one.
     fn measure(&self, galley: &egui::Galley) -> egui::Vec2 {
-        let h_min = self.metrics().h.max(self.min_height);
+        let h_min = self.metrics().h;
         if self.icon_only {
             let side = self.height.unwrap_or(h_min);
             return vec2(side.max(self.min_width), side);
@@ -294,7 +313,7 @@ impl<'a> StyledButton<'a> {
 
     /// Names `resp` for screen readers.
     pub(super) fn name(&self, resp: &Response, enabled: bool) {
-        let text = self.text.as_ref();
+        let text = self.access_name.unwrap_or(self.text.as_ref());
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, text));
     }
 
@@ -320,9 +339,13 @@ impl<'a> StyledButton<'a> {
         let tip = if self.icon_only { self.tip.or(Some(self.text.as_ref())) } else { self.tip };
         if enabled {
             let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
-            match tip {
-                Some(tip) => resp.on_hover_text(tip),
-                None => resp,
+            match (tip, self.tip_width) {
+                (Some(tip), Some(w)) => resp.on_hover_ui(|ui| {
+                    ui.set_max_width(w);
+                    ui.add(egui::Label::new(tip));
+                }),
+                (Some(tip), None) => resp.on_hover_text(tip),
+                (None, _) => resp,
             }
         } else if let Some(why) = self.why {
             // In a disabled `Ui` (e.g. `add_enabled_ui(false, ..)`) the response is disabled too,

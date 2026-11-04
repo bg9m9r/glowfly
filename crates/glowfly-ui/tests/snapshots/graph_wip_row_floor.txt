@@ -1,0 +1,6 @@
+window 360x40
+painted:
+  "Uncommitted changes"
+  "M 2"
+  "A 2"
+  "D 1"

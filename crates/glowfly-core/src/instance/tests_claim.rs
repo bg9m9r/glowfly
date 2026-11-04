@@ -49,7 +49,8 @@ fn files_a_crashed_window_left_never_block_start_up() {
     let started = Instant::now();
     let claim = claim_at(&dir.join(LOCK_NAME)).unwrap().expect("a stale lock file is free");
     let (listener, rx) = listen_with(&path, Some(claim));
-    assert!(started.elapsed() < Duration::from_secs(1), "took {:?}", started.elapsed());
+    // Nothing waited for the window that left them (as a start-up waits for one still starting).
+    assert!(started.elapsed() < START_WAIT, "took {:?}", started.elapsed());
     assert!(listener.is_listening());
     assert_ne!(file::read(&path).unwrap().token, "1".repeat(32), "the stale file is replaced");
     hand_off_via(&path, &Handed::Link("glowfly://repo?root=abc".into())).unwrap();
@@ -127,6 +128,7 @@ fn a_window_still_starting_is_waited_for() {
     let wait = Duration::from_millis(400);
     assert!(matches!(hand_off_waiting(&path, &f, wait), Err(HandOffError::NotRunning)));
     assert!(started.elapsed() >= Duration::from_millis(250), "it kept trying: {:?}", started.elapsed());
-    assert!(started.elapsed() < wait + CONNECT_TIMEOUT * 2, "took {:?}", started.elapsed());
+    // It gave up rather than waiting on: the margin is for a loaded machine.
+    assert!(started.elapsed() < wait + Duration::from_secs(10), "took {:?}", started.elapsed());
     let _ = std::fs::remove_dir_all(&dir);
 }

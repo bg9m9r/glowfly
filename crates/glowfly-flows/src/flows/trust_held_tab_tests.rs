@@ -5,9 +5,9 @@ use super::rebase::JOB_LABEL;
 use super::selection_tests::commit_on;
 use super::tests::scratch_repo;
 use super::trust_tests::{asking, drive, open, run, untrusted_repo};
-use crate::msg::{Msg, RebaseMsg, TabsMsg, TrustMsg};
-use crate::state::AppState;
 use glowfly_core::rebase::RebaseBase;
+use glowfly_model::msg::{Msg, RebaseMsg, TabsMsg, TrustMsg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 /// An untrusted repository with three commits after "first", its rebase panel open from the
@@ -63,7 +63,10 @@ fn trust_and_run_from_another_tab_frees_the_panel_and_says_why() {
     let (mut st, a, b) = rebase_held_then_switched("held-tab-trust");
     let real_a = st.trust.held.as_ref().unwrap().real.clone();
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real: real_a, trusted: true }));
-    assert!(!fx.iter().any(|e| matches!(e, crate::effect::Effect::Rebase(crate::effect::RebaseEffect::Start { .. }))), "{fx:?}");
+    assert!(
+        !fx.iter().any(|e| matches!(e, glowfly_model::effect::Effect::Rebase(glowfly_model::effect::RebaseEffect::Start { .. }))),
+        "{fx:?}"
+    );
     assert!(st.job.is_none());
     let text = &st.log.iter().rev().find(|e| e.text.contains("wasn't run")).expect("a log line").text;
     assert!(text.contains("trusted now") && !text.contains("only after you trust it"), "{text}");

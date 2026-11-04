@@ -1,4 +1,5 @@
-//! Markdown text runs laid out (`markdown_inline.rs`): links open only over https, a space or
+//! Markdown text runs laid out (`markdown_inline.rs`): links open only over https (asking first,
+//! in update, when their text names another host) and show their host in punycode, a space or
 //! punctuation after any styled run keeps its gap (an italic run's slant used to cover it), text
 //! keeps off a code run's background, and a run that starts with a space and wraps starts its
 //! new row at the left edge.
@@ -6,24 +7,60 @@
 use super::super::markdown::body;
 use super::super::markdown_cache::MarkdownCache;
 use super::super::theme::fonts;
-use crate::msg::Msg;
 use eframe::egui::{self, Pos2, Rect, Shape, vec2};
 use egui_kittest::kittest::Queryable;
+use glowfly_model::msg::Msg;
 
 #[test]
 fn an_https_link_opens_in_the_browser_and_others_do_nothing() {
     let mut cache = MarkdownCache::default();
     let src = "[docs](https://example.com/docs) and [local](a.md)";
-    let mut h = crate::ui::snapshot_check::builder()
-        .build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
+    let mut h =
+        crate::snapshot_check::builder().build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
     h.run();
     h.get_by_label("docs").click();
     h.run();
-    assert!(matches!(h.state().as_slice(), [Msg::OpenUrl(u)] if u == "https://example.com/docs"));
+    assert!(matches!(h.state().as_slice(), [Msg::OpenLink { text, url }] if text == "docs" && url == "https://example.com/docs"));
     h.state_mut().clear();
     h.get_by_label("local").click();
     h.run();
     assert!(h.state().is_empty());
+}
+
+/// The tooltip `src`'s link `label` shows on hover (after the app's tooltip delay).
+fn tooltip_of(src: &'static str, label: &str, tip: &str) {
+    let mut cache = MarkdownCache::default();
+    let mut h =
+        crate::snapshot_check::builder().build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
+    h.run();
+    h.get_by_label(label).hover();
+    for _ in 0..4 {
+        h.run();
+    }
+    assert!(h.query_by_label(tip).is_some(), "{src}: no tooltip {tip:?}");
+}
+
+#[test]
+fn a_link_shows_its_host_in_punycode_and_says_when_its_text_names_another() {
+    tooltip_of("[docs](https://github.com/x)", "docs", "https://github.com/x");
+    tooltip_of(
+        "[github.com/acme](https://g\u{456}thub.com/acme)",
+        "github.com/acme",
+        "https://xn--gthub-n2e.com/acme\nGoes to xn--gthub-n2e.com, not github.com",
+    );
+    tooltip_of("[x](http://g\u{456}thub.com/x)", "x", "http://xn--gthub-n2e.com/x\nOnly https links open in the browser");
+}
+
+#[test]
+fn a_link_in_several_runs_is_judged_by_its_whole_text() {
+    let mut cache = MarkdownCache::default();
+    let src = "[**github.com**/acme](https://evil.example/)";
+    let mut h =
+        crate::snapshot_check::builder().build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
+    h.run();
+    h.get_by_label("github.com").click();
+    h.run();
+    assert!(matches!(h.state().as_slice(), [Msg::OpenLink { text, .. }] if text == "github.com/acme"), "the whole text goes along");
 }
 
 /// One painted row of text: its text, where it is drawn (y), and where its ink (glyphs, and a

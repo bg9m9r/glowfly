@@ -1,7 +1,7 @@
 //! Comparing two versions of a branch (`Effect::RangeDiff`) with git range-diff; reads only.
 
 use super::execute::{Cx, Execute};
-use crate::msg::Msg;
+use glowfly_model::msg::Msg;
 use glowfly_model::range_diff::{RangeDiffJob, RangeDiffMsg};
 
 pub(super) fn run(job: RangeDiffJob) -> Msg {

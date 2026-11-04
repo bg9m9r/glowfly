@@ -6,17 +6,17 @@ use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{git, harness, harness_palette, reload, remove_fixture};
 use super::snapshot_tests_branch_colour::with_branches;
 use super::snapshot_tests_select::click;
-use super::theme::{self, branch_colours::initials_tones, branch_names, color};
-use crate::msg::{GraphMsg, Msg};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use super::theme::{self, branch_names, color, initials::initials_tones};
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, LoadOptions};
-use glowfly_core::settings::{BranchPalette, ThemeChoice};
+use glowfly_core::settings::{ColourPalette, ThemeChoice};
+use glowfly_model::msg::{GraphMsg, Msg};
+use glowfly_model::state::{AppState, Selection};
 use std::path::Path;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -73,7 +73,7 @@ fn branch_colour_main_submenu() {
     let mut h = harness(st, true);
     h.run();
     // The checked-out branch's row carries the check glyph.
-    open_row_menu(&mut h, "✔  main", true);
+    open_row_menu(&mut h, "main, checked out", true);
     open_submenu(&mut h, "Color");
     assert_eq!(submenu_item(&h, "Color", "Automatic").toggled(), Some(eframe::egui::accesskit::Toggled::True), "the trunk");
     h.check_snapshot("branch_colour_main_submenu");
@@ -121,11 +121,11 @@ fn branch_colour_pinned_graph() {
 
 fn colour_blind(theme: ThemeChoice, name: &str) {
     let (mut st, dir) = with_branches(theme.clone(), name);
-    st.settings.branch_palette = BranchPalette::ColourBlind;
+    st.settings.colour_palette = ColourPalette::ColourBlind;
     let snap = st.snap.as_mut().unwrap();
     snap.set_colouring(st.settings.colouring_for(&snap.real_workdir));
     let dark = theme == ThemeChoice::Dark;
-    let mut h = harness_palette(st, theme::applied(theme::view_palette(dark), BranchPalette::ColourBlind));
+    let mut h = harness_palette(st, theme::applied(theme::view_palette(dark), ColourPalette::ColourBlind));
     h.run();
     h.check_snapshot(name);
     drop(h);

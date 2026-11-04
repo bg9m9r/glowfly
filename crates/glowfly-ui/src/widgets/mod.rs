@@ -12,9 +12,9 @@
 //! a button with the keyboard too in `menu_open.rs`. The toolbar's buttons, toggles, split buttons, caret,
 //! borderless groups and the dividers between them are in `tool.rs`, and the flush segments of a
 //! segment bar (the pickers, a split) in `segment_bar.rs`. The tab bars' painted close × and new-tab + are in
-//! `tab_glyph.rs`, glyphs moved onto the pixel grid in `icon_snap.rs`, a quiet target a view
-//! lays out itself (a tab, the title bar's menu button) in `quiet_target.rs`, and the quiet, clickable chips of the commit details (its
-//! SHA, parents and committer) in `quiet_chip.rs`. The quiet headers' ghost buttons, divider
+//! `tab_glyph.rs`, the three dots of running work in `dots.rs`, the firefly loader of a loading pane in `fireflies.rs`, glyphs moved onto the pixel grid in `icon_snap.rs`, a quiet target a view
+//! lays out itself (a tab, the title bar's menu button) in `quiet_target.rs`, and every chip and
+//! badge (the two chip sizes, and the quiet, clickable chips of the commit details) in `chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
 //! text field is `text_field.rs`, and its label-field-help group `field_group.rs`. The button
 //! family (primary, tonal, secondary, quiet, danger, icon-only) is `buttons.rs`, each state's
@@ -23,15 +23,18 @@
 //! Preferences and the File view are `scroll_cue.rs`. Right-click menus that open below the row
 //! they belong to are `row_menu.rs`, and the collapsed Details disclosure under a plain-words
 //! message `details.rs`. The tip row (an accent wash with a sentence, its button and a × menu)
-//! is `hint_row.rs`.
+//! is `hint_row.rs`, and a row of underline tabs `underline_tab.rs`.
 
 pub mod banner;
 mod button_look;
 pub mod button_split;
 pub mod buttons;
+pub mod chip;
 pub mod details;
+pub mod dots;
 pub mod empty_state;
 pub mod field_group;
+pub mod fireflies;
 pub mod form_message;
 pub mod ghost;
 pub mod hint_row;
@@ -46,7 +49,7 @@ pub mod menu_row;
 pub mod menu_split;
 pub mod menu_submenu;
 mod menu_submenu_keyed;
-pub mod quiet_chip;
+pub(crate) mod popover;
 pub mod quiet_target;
 pub mod reason;
 pub mod row_fill;
@@ -62,15 +65,16 @@ mod tool;
 pub mod tooltip;
 pub mod tooltip_motion;
 pub mod truncate;
+pub mod underline_tab;
 
 pub use super::list_row::{
-    GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
-    file_row_focus, file_row_with_end, keyed_file_row, keyed_file_row_with_end, list_row, list_row_cut, list_row_hidden, row_text,
-    row_text_hover, row_text_reserving,
+    GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NAME_GAP, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row,
+    file_row_focus, file_row_with_end, keyed_file_row, keyed_file_row_with_end, list_row, list_row_cut, list_row_hidden, name_row,
+    name_row_cut, row_text, row_text_hover, row_text_reserving,
 };
+pub use chip::quiet_chip;
 pub use field_group::FieldGroup;
-pub use icon::{Icon, paint_icon, paint_icon_sized};
-pub use quiet_chip::quiet_chip;
+pub use icon::{Icon, paint_icon, paint_icon_sized, paint_icon_stroked};
 pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;
@@ -79,11 +83,10 @@ pub use tool::*;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 
-use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Response, Sense, Stroke, Ui, pos2, vec2};
 
 pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
     let pts = if open {
@@ -92,26 +95,6 @@ pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
         vec![pos2(c.x - 2.0, c.y - 4.0), pos2(c.x + 3.0, c.y), pos2(c.x - 2.0, c.y + 4.0)]
     };
     p.add(egui::Shape::convex_polygon(pts, col, Stroke::NONE));
-}
-
-/// A pill-shaped label chip drawn with the painter; returns its width.
-pub fn chip(p: &Painter, x: f32, y: f32, text: &str, fill: Color32, fg: Color32) -> f32 {
-    chip_with_edge(p, x, y, text, fill, None, fg)
-}
-
-/// `chip` with a 1 px `edge` inside its outline, when there is one.
-pub fn chip_with_edge(p: &Painter, x: f32, y: f32, text: &str, fill: Color32, edge: Option<Color32>, fg: Color32) -> f32 {
-    let g = p.layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg);
-    let w = g.size().x + 12.0;
-    let r = Rect::from_min_size(pos2(x, y - 10.0), vec2(w, 20.0));
-    let radius = CornerRadius::same(radius::pill(r.height()));
-    p.rect_filled(r, radius, fill);
-    if let Some(edge) = edge {
-        p.rect_stroke(r, radius, Stroke::new(1.0_f32, edge), egui::StrokeKind::Inside);
-    }
-    let gh = g.size().y;
-    p.galley(pos2(x + 6.0, y - gh / 2.0), g, fg);
-    w
 }
 
 /// Dashed circle (used for the WIP node).
@@ -133,19 +116,34 @@ pub fn initials(name: &str) -> String {
     }
 }
 
-/// Preferences navigation row: icon + label in body text, highlighted when selected, with the
-/// inset focus ring while it has the keyboard focus.
+/// Preferences navigation row: icon + label in body text, lit through `row_fill` (the selected
+/// page with its accent bar, the focused row with the inset ring).
 pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> Response {
+    nav_row_count(ui, icon, text, selected, None)
+}
+
+/// The navigation icons' size and line width.
+const NAV_ICON: f32 = 16.0;
+const NAV_STROKE: f32 = 1.5;
+
+/// `nav_row` with `count` (a search's matches on the page) at its right end, in 12 px `weak`
+/// (`text` on the selected row's fill).
+pub fn nav_row_count(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool, count: Option<usize>) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), type_scale::BODY + 20.0), Sense::click());
-    let p = ui.painter();
+    // Painted text has no accessible name; give the row one (screen readers and UI tests), and
+    // say which is the current page.
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     if selected {
-        p.rect_filled(rect, 0.0, color::selected());
-    } else if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
+        crate::access::mark_selected(&resp);
     }
+    let p = ui.painter();
+    // The selected page takes the accent bar; the focused row the inset ring on its square
+    // corners, painted by `row_fill` with the rest of its state.
+    row_fill::paint_state(p, rect, row_fill::RowState::of(&resp, selected, resp.hovered()));
     let mut x = rect.left() + 14.0;
     if let Some(icon) = icon {
-        paint_icon(p, pos2(x + 9.0, rect.center().y), icon, if selected { color::strong() } else { color::weak() });
+        let col = if selected { color::strong() } else { color::weak() };
+        paint_icon_stroked(p, pos2(x + 9.0, rect.center().y), icon, col, NAV_ICON, NAV_STROKE);
         x += 30.0;
     }
     p.text(
@@ -155,9 +153,9 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool) -> R
         type_scale::font(type_scale::BODY),
         if selected { color::strong() } else { color::text() },
     );
-    // Tab reaches every row: the ring follows the row's square fill.
-    if resp.has_focus() {
-        crate::ui::theme::tokens::focus_ring_inset(p, rect, 0);
+    if let Some(n) = count {
+        let col = if selected { color::text() } else { color::weak() };
+        p.text(pos2(rect.right() - 14.0, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), type_scale::font(type_scale::SMALL), col);
     }
     resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }

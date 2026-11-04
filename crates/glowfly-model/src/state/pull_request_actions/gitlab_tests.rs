@@ -53,12 +53,12 @@ fn approval_choice_reasons() {
         d.style = approvals(false, Some(false));
         d.me = "ada".into();
     });
-    assert_eq!(blocked(&v, ReviewEvent::Approve).as_deref(), Some("You opened this merge request, so you can't approve it."));
+    assert_eq!(blocked(&v, ReviewEvent::Approve).as_deref(), Some("You opened this merge request, so you can't approve it"));
     let v = mr(|d| {
         d.style = approvals(false, None);
         d.me = "ada".into();
     });
-    assert_eq!(blocked(&v, ReviewEvent::Approve).as_deref(), Some("You opened this merge request, so you can't approve it."));
+    assert_eq!(blocked(&v, ReviewEvent::Approve).as_deref(), Some("You opened this merge request, so you can't approve it"));
     let v = mr(|d| d.me = "ada".into());
     assert_eq!(blocked(&v, ReviewEvent::Approve), None, "the project lets its author approve");
     let v = mr(|d| d.state = PrState::Merged);
@@ -71,7 +71,7 @@ fn approvals_need_no_summary_but_comments_do() {
     v.forms.review_event = ReviewEvent::Approve;
     assert_eq!(review_blocked(&v), None);
     v.forms.review_event = ReviewEvent::Comment;
-    assert_eq!(review_blocked(&v).as_deref(), Some("Write a summary for this choice"));
+    assert_eq!(review_blocked(&v).as_deref(), Some("A comment needs a summary"));
     let mut v = mr(|d| d.style = approvals(true, None));
     v.forms.review_event = ReviewEvent::Unapprove;
     assert_eq!(review_blocked(&v), None);

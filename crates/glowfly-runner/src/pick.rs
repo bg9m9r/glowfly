@@ -5,10 +5,10 @@
 use super::execute::{Cx, Execute};
 use super::git_ops::run_git;
 use super::journal;
-use crate::effect::{PickJob, UndoResult};
-use crate::msg::{JobMsg, Msg};
 use glowfly_core::pick_ops::{self, PickResult};
 use glowfly_core::undo;
+use glowfly_model::effect::{PickJob, UndoResult};
+use glowfly_model::msg::{JobMsg, Msg};
 use std::path::Path;
 
 fn head(cwd: &Path) -> Option<git2::Oid> {

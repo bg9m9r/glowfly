@@ -8,6 +8,7 @@
 //! A command's key from Preferences > Keyboard runs it the same way (`palette_keys.rs`).
 
 use crate::effect::Effect;
+use crate::effect::FilesEffect;
 use crate::msg::BlameMsg;
 use crate::msg::BranchMsg;
 use crate::msg::ConflictMsg;
@@ -102,6 +103,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             if generation != st.palette_gen {
                 return;
             }
+            let t = st.settings.lang();
             let Some(Palette { mode: Mode::Pick(pick), selected, .. }) = st.palette.as_mut() else { return };
             if !pick.kind.lists_files() {
                 return;
@@ -113,8 +115,9 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
                     pick.set_items(Items::Ready(rows));
                 }
                 Err(e) => {
-                    pick.set_items(Items::Failed(e.clone()));
-                    st.log(false, e);
+                    let text = t.trf("palette.files.failed", &[("why", &e.said)]);
+                    pick.set_items(Items::Failed(text.clone()));
+                    st.log(false, text);
                 }
             }
         }
@@ -122,7 +125,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
 }
 
 /// Whether the palette may open now: not over a dialog, Preferences or a credential prompt.
-fn may_open(st: &AppState) -> bool {
+pub(super) fn may_open(st: &AppState) -> bool {
     st.modal.is_none() && st.prefs.is_none() && !st.askpass.showing()
 }
 
@@ -155,7 +158,7 @@ pub(super) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>
             }
             let Some(workdir) = st.workdir() else { return };
             if open_step(st, Mode::Pick(Pick::new(kind))) {
-                fx.push(Effect::LoadTrackedPaths { workdir, generation: st.palette_gen });
+                fx.push(Effect::Files(FilesEffect::LoadTracked { workdir, generation: st.palette_gen }));
             }
         }
         PickKind::Stash(action) => {

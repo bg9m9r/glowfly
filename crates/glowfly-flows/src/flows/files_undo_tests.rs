@@ -4,17 +4,16 @@
 
 use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::FilesMsg;
-use crate::msg::Inactive;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::runner;
-use crate::state::AppState;
 use git2::{Oid, Repository};
 use glowfly_core::undo::Action;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::Inactive;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -112,10 +111,10 @@ fn restore_result_for_inactive_tab_goes_to_its_history() {
 
     let effect = update(&mut st, restore(head(&a), "a.txt"), Instant::now())
         .into_iter()
-        .find(|e| matches!(e, Effect::RestoreFile { .. }))
+        .find(|e| matches!(e, Effect::Files(glowfly_model::effect::FilesEffect::Restore { .. })))
         .expect("a restore");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::testing::execute(effect).expect("a result");
+    let reply = glowfly_runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Scoped { .. }), "scoped to tab A's repository");
     update(&mut st, reply, Instant::now());
 
@@ -148,7 +147,7 @@ fn failed_restore_that_removed_the_file_can_be_undone() {
     git(&dir, &["config", "filter.x.smudge", "false"]);
     // These filter settings make git run commands; trusted as they are, Undo still runs.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record_as_found(&mut st.settings, &real);
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &real);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
 
     drive(&mut st, restore(base, "b.up"));

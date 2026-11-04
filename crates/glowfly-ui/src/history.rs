@@ -13,21 +13,21 @@ use super::file_menu;
 use super::file_view_switch::{self, FileShow};
 use super::theme::color;
 use super::widgets::{self, paint_cut_text};
-use crate::keymap::Keymap;
-use crate::msg::BlameMsg;
-use crate::msg::HistoryMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
-use crate::state::tool_compare::{OPEN_IN_DIFF_TOOL, ToolSetup};
-use crate::tools::ToolsMsg;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align, Align2, CursorIcon, Key, Layout, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, HistoryEntry};
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::BlameMsg;
+use glowfly_model::msg::HistoryMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileHistoryView, HistoryKind, HistoryPane};
+use glowfly_model::state::tool_compare::{OPEN_IN_DIFF_TOOL, ToolSetup};
+use glowfly_model::tools::ToolsMsg;
 
 const ROW_H: f32 = 44.0;
 /// The row menu's item that blames the file as of the entry's commit.
@@ -45,7 +45,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     header(ui, st.settings.lang(), &st.keymap, view, msgs);
     ui.separator();
     let room = ui.available_width();
-    super::panel_size::inner_side(egui::SidePanel::left("file-history-list"), crate::state::panel_layout::HISTORY_LIST, room)
+    super::panel_size::inner_side(egui::SidePanel::left("file-history-list"), glowfly_model::state::panel_layout::HISTORY_LIST, room)
         .frame(egui::Frame::new().fill(color::panel()))
         .show_inside(ui, |ui| list(ui, st, scroll_to, msgs));
     egui::CentralPanel::default()
@@ -153,7 +153,7 @@ pub(super) fn entry_menu(ui: &mut Ui, t: Lang, msgs: &mut Vec<Msg>, e: &HistoryE
     commit_items(ui, msgs, e);
     let deleted = (e.status == 'D').then_some("This commit deletes the file");
     menu_item_if(msgs, ui, BLAME_AT, deleted, Msg::Blame(BlameMsg::Open { path: e.path.clone(), at: Some(e.oid) }));
-    crate::ui::widgets::menu::separator(ui);
+    crate::widgets::menu::separator(ui);
     file_menu::restore_item(ui, t, msgs, e.oid, &e.path, e.status);
     // update/revert.rs maps an older name to `open_path`, which `in_workdir` is about.
     let revert_blocked = (!in_workdir && e.status != 'D').then_some(file_menu::NOT_IN_WORKDIR);

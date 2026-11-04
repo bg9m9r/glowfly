@@ -4,13 +4,14 @@
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{self, Icon, buttons};
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::release_notes::NotesDialog;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{self, RichText, Sense, Stroke, pos2, vec2};
 use glowfly_core::changelog::{NoteSection, ReleaseNotes, Span, SpanStyle};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::release_notes::NotesDialog;
 
 /// Draws the dialog (wide, and resizable); true when Close was clicked.
 pub fn show(ui: &mut egui::Ui, cx: Cx, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
@@ -100,11 +101,8 @@ fn release(ui: &mut egui::Ui, t: Lang, r: &ReleaseNotes, new: bool, msgs: &mut V
             ui.label(RichText::new(date).color(color::weak()));
         }
         if new {
-            // As wide as the chip draws its text (`widgets::chip`), at least the English slot.
-            let text = t.tr("release_notes.new_chip");
-            let text_w = ui.painter().layout_no_wrap(text.into(), type_scale::font(type_scale::CAPTION), color::added()).size().x;
-            let (rect, _) = ui.allocate_exact_size(vec2(36.0_f32.max(text_w + 12.0), 18.0), Sense::hover());
-            widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::wash(color::added(), 0.25), color::added());
+            let look = Look::new(color::wash(color::added(), 0.25), color::added());
+            Chip::new(ChipSize::Badge, t.tr("release_notes.new_chip")).look(look).show(ui);
         }
     });
     for s in &r.sections {

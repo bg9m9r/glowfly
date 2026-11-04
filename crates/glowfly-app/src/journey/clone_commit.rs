@@ -25,13 +25,13 @@ fn clone_stage_commit_push_pull() {
     j.type_into("Clone into folder", &shown(&work));
     j.click("Clone", Region::Anywhere, Pick::Only);
     j.toast(true, "Clone succeeded");
-    j.see("shop", Region::Toolbar);
-    j.see("✔  main", Region::Sidebar);
+    j.see("Repository: shop", Region::Toolbar);
+    j.see("main, checked out", Region::Sidebar);
     assert!(clone.is_dir());
     assert_eq!(disk::head_branch(&clone).as_deref(), Some("main"));
     assert_eq!(Some(disk::head_oid(&clone)), disk::remote_oid(&bare, "main"));
     let recent = std::fs::read_to_string(j.config_file("recent.txt")).unwrap();
-    assert!(crate::runner::platform::parse_recent(&recent).iter().any(|p| Journey::same(p, &clone)), "{recent}");
+    assert!(glowfly_runner::platform::parse_recent(&recent).iter().any(|p| Journey::same(p, &clone)), "{recent}");
 
     // step 2: two edits far apart in notes.txt (two hunks) and a new file.
     configure_clone(&clone);
@@ -63,7 +63,7 @@ fn clone_stage_commit_push_pull() {
     // step 5: commit the staged changes; the second hunk stays in the working tree.
     j.type_into("Commit summary", "Edit notes and add a todo list");
     j.click("Commit 2 files", Region::Details, Pick::Only);
-    j.toast(true, "Commit succeeded");
+    assert!(j.logged("Commit done"), "the commit ran (it shows in the graph, with no toast)");
     let head = disk::head_oid(&clone);
     assert_eq!(disk::summary(&clone, head), "Edit notes and add a todo list");
     assert_eq!(disk::tree_text(&clone, head, "todo.txt").as_deref(), Some("buy milk\n"));
@@ -76,8 +76,9 @@ fn clone_stage_commit_push_pull() {
     j.see("Edit notes and add a todo list", Region::Central);
 
     // step 6: push to the bare remote.
-    j.click("Push the current branch", Region::Toolbar, Pick::Only);
-    j.toast(true, "Push succeeded");
+    // The Push button names how far the branch is ahead of its upstream.
+    j.click("Push, 1 ahead of origin/main", Region::Toolbar, Pick::Only);
+    j.toast(true, "Pushed 1 commit to origin/main.");
     assert_eq!(disk::remote_oid(&bare, "main"), Some(head));
 
     // step 7: someone else pushes a commit; pull brings it in and keeps the unstaged edit.
@@ -87,7 +88,7 @@ fn clone_stage_commit_push_pull() {
     git(&other, &["push", "-q", "origin", "main"]);
     j.click("Pull the current branch", Region::Toolbar, Pick::Only);
     j.click("Stash and pull", Region::Anywhere, Pick::Only);
-    j.toast(true, "Pull succeeded");
+    j.toast(true, "Pulled new commits into main.");
     j.toast(true, "Your changes from \"Auto-stash before pulling into main\" are back.");
     assert_eq!(Some(disk::head_oid(&clone)), disk::remote_oid(&bare, "main"));
     assert_eq!(disk::work_text(&clone, "remote.txt").as_deref(), Some("from elsewhere\n"));

@@ -8,16 +8,16 @@ use super::empty_state::{EmptyIcon, PaneButton, empty_state};
 use super::theme::color;
 use super::widgets::segmented::{Segment, segmented_opts};
 use super::widgets::{self, Icon};
-use crate::msg::{CloneMsg, DashboardMsg, Msg, PrefsMsg, RepoMsg};
-use crate::state::dashboard::{AccountState, DashShow, Phase, service_header};
-use crate::state::dashboard_rows::{Row, counts, empty_hint, empty_text, sections};
-use crate::state::{AppState, PrefPage};
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Ui};
 use glowfly_core::forge::Account;
+use glowfly_model::msg::{CloneMsg, DashboardMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::dashboard::{AccountState, DashShow, Phase, service_header};
+use glowfly_model::state::dashboard_rows::{Row, counts, empty_hint, empty_text, sections};
+use glowfly_model::state::{AppState, PrefPage};
 
 pub(super) const NO_MATCH_TITLE: &str = "Nothing matches the filter";
 const NO_MATCH_HINT: &str = "The filter looks at each title, number, author and repository.";
@@ -295,7 +295,7 @@ fn not_loaded(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     if d.over_limit > 0 {
         let n = d.over_limit;
         let what = if n == 1 { "1 more repository wasn't".to_owned() } else { format!("{n} more repositories weren't") };
-        problem(ui, format!("{what} asked (limit {})", crate::state::dashboard::MAX_TARGETS), |_| {});
+        problem(ui, format!("{what} asked (limit {})", glowfly_model::state::dashboard::MAX_TARGETS), |_| {});
     }
 }
 

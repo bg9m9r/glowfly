@@ -165,8 +165,11 @@ pub fn waiting_for(f: &PrFacets, me: &Me) -> bool {
         && f.awaiting_team_ids.iter().any(|t| me.teams.iter().any(|m| same_id(t, m)))
 }
 
+/// Whether two labels or milestone titles are the same, ignoring case and what `printable` drops:
+/// a pull request's are cleaned as they come in (`clean_text`), the filter's choices aren't.
 fn same_text(a: &str, b: &str) -> bool {
-    a.trim().to_lowercase() == b.trim().to_lowercase()
+    use crate::text::printable;
+    printable(a).to_lowercase() == printable(b).to_lowercase()
 }
 
 fn matches(pr: &PullRequest, c: &Conditions, me: Option<&Me>) -> bool {

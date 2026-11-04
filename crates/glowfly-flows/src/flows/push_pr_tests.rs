@@ -5,16 +5,17 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::{Effect, ForgeCall};
-use crate::msg::ForgeMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::push_pr::PrStart;
-use crate::state::{AppState, Modal, RunningJob, branches};
 use git2::Oid;
 use glowfly_core::forge::NewPullRequest;
 use glowfly_core::gitcli::{args, run};
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::{Effect, ForgeCall};
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::push_pr::PrStart;
+use glowfly_model::state::{AppState, Modal, RunningJob, branches};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -73,7 +74,9 @@ fn logged(st: &AppState, text: &str) -> bool {
 }
 
 fn run_git(fx: &[Effect]) -> Vec<&Vec<Vec<String>>> {
-    fx.iter().filter_map(|e| if let Effect::RunGit { cmds, .. } = e { Some(cmds) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) = e { Some(cmds) } else { None })
+        .collect()
 }
 
 fn open_after_load(st: &AppState) -> Option<PrStart> {
@@ -182,6 +185,7 @@ fn push_in_another_tab_only_logs() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: Some(PrStart { source: "topic".into(), target: None, remote: None }),
         then_link: false,
         then_open: None,
@@ -199,9 +203,9 @@ fn push_in_another_tab_only_logs() {
 fn other_modal_is_not_replaced() {
     let (mut st, work, bare) = with_host("pr-push-other-modal");
     st.session.forge.as_mut().unwrap().open_after_load = Some(PrStart { source: "topic".into(), target: None, remote: None });
-    st.modal = Some(Modal::RenameBranch(crate::state::branch_sync::RenameForm {
+    st.modal = Some(Modal::RenameBranch(glowfly_model::state::branch_sync::RenameForm {
         name: "feature2".into(),
-        ..crate::state::branch_sync::RenameForm::new("feature".into())
+        ..glowfly_model::state::branch_sync::RenameForm::new("feature".into())
     }));
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(matches!(st.modal, Some(Modal::RenameBranch(_))));
@@ -224,10 +228,10 @@ fn create_refuses_source_missing_on_host() {
     };
     let create = |pr| Msg::Forge(ForgeMsg::CreatePr { pr, from: String::new(), into: String::new() });
     let fx = update(&mut st, create(pr("topic")), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::Forge { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Network(NetworkEffect::Forge { .. }))));
     assert!(logged(&st, "isn't on origin yet"));
     let fx = update(&mut st, create(pr("feature")), Instant::now());
-    let creates = fx.iter().filter(|e| matches!(e, Effect::Forge { call: ForgeCall::Create(_), .. })).count();
+    let creates = fx.iter().filter(|e| matches!(e, Effect::Network(NetworkEffect::Forge { call: ForgeCall::Create(_), .. }))).count();
     assert_eq!((creates, fx.len()), (1, 1));
     cleanup(&work, &bare);
 }

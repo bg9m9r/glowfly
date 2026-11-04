@@ -1,5 +1,6 @@
-//! Contrast maths (WCAG relative luminance and ratio, CIE lightness, OKLCH for the tests) and the colours of the
-//! graph's ref chips, worked out so their text stays readable on every palette and lane.
+//! Contrast maths (WCAG relative luminance and ratio, CIE lightness, OKLCH for the tests), the
+//! brown zone and the helpers that keep tints, edges, fills and letters out of it, and the
+//! change and selected-diff-line fills. The graph's ref chips are in `ref_chip.rs`.
 
 use super::color::Palette;
 use eframe::egui::Color32;
@@ -24,7 +25,7 @@ pub fn ratio(a: Color32, b: Color32) -> f64 {
 
 /// CIE L* lightness (0 black to 100 white).
 #[cfg(test)]
-pub fn lightness(c: Color32) -> f64 {
+pub(crate) fn lightness(c: Color32) -> f64 {
     let y = luminance(c);
     const E: f64 = 216.0 / 24389.0;
     const K: f64 = 24389.0 / 27.0;
@@ -96,7 +97,6 @@ pub fn brownish(c: Color32) -> bool {
 }
 
 /// The most OKLCH chroma sRGB holds at lightness `l` and hue `h`.
-#[cfg(test)]
 pub fn max_chroma(l: f64, h: f64) -> f64 {
     let fits = |c: f64| oklch_linear(l, c, h).iter().all(|v| (-1e-4..=1.0 + 1e-4).contains(v));
     let (mut lo, mut hi) = (0.0, 0.4);
@@ -114,7 +114,7 @@ pub fn max_chroma(l: f64, h: f64) -> f64 {
 /// darkness), lightness 0.50 and up (below it, russet) and chroma at least 95% of the most its
 /// lightness and hue hold.
 #[cfg(test)]
-pub fn brownish_text(c: Color32) -> bool {
+pub(crate) fn brownish_text(c: Color32) -> bool {
     if !brownish(c) {
         return false;
     }
@@ -198,40 +198,6 @@ pub fn readable_on(fg: Color32, fill: Color32, dark: bool, min: f64) -> Color32 
     fg
 }
 
-/// `tone` pushed until it reads at 4.5:1 on `fill`, for a chip's or initials' letters; the
-/// palette's own text when that would read brown (a warm branch tone dark enough for paper).
-pub fn clean_ink(tone: Color32, fill: Color32, p: &Palette) -> Color32 {
-    let ink = readable_on(tone, fill, p.dark, 4.5);
-    if brownish(ink) { readable_on(p.text, fill, p.dark, 4.5) } else { ink }
-}
-
-/// What a ref chip in the graph stands for.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ChipStyle {
-    /// A detached HEAD.
-    Head,
-    /// The checked-out branch.
-    CurrentBranch,
-    /// Another local branch.
-    Branch,
-    /// A remote-tracking branch.
-    Remote,
-    Tag,
-}
-
-#[cfg(test)]
-impl ChipStyle {
-    pub const ALL: [ChipStyle; 5] = [Self::Head, Self::CurrentBranch, Self::Branch, Self::Remote, Self::Tag];
-}
-
-/// How far a dark palette's branch chip lifts from the background toward `text`.
-const CHIP_LIFT: f32 = 0.10;
-/// How far a branch chip's edge moves from its fill toward the branch colour.
-const CHIP_EDGE: f32 = 0.70;
-/// A light palette's branch chip: a pale wash of the branch's hue, OKLCH lightness and the most
-/// chroma it takes; the checked-out branch's is a step deeper.
-const PALE: (f64, f64) = (0.955, 0.035);
-const PALE_CURRENT: (f64, f64) = (0.90, 0.09);
 /// The lightness and chroma [`clear`] lifts a brown colour to at least: a clear orange, gold or
 /// lime, never a tan.
 const CLEAR: (f64, f64) = (0.80, 0.13);
@@ -246,55 +212,6 @@ pub fn clear(c: Color32) -> Color32 {
     from_oklch(l.max(CLEAR.0), ch.max(CLEAR.1), h)
 }
 
-/// A ref chip's colours for a ref on a lane of colour `lane` (docs/COLOUR.md, "Ref chips").
-/// A branch or remote branch: on a dark palette a neutral chip a step off the background with
-/// an edge and text in the branch colour (a tint of a warm colour on a dark field reads brown,
-/// so no chip is tinted); on a light one a pale wash of the branch's hue, edged and lettered in
-/// it. The checked-out branch: on a dark palette a solid fill of the branch colour with dark
-/// text, on a light one a deeper wash with a full-colour edge. Tags take the palette's tag
-/// colours, a detached HEAD a neutral fill. Every fill is opaque and its text reaches 4.5:1.
-/// The main branch's trunk tone (`branch_colours::trunk`) is a neutral: its edged chips take
-/// the tone itself for the edge and are lettered in `text`.
-pub fn ref_chip(style: ChipStyle, lane: Color32, p: &Palette) -> ChipLook {
-    let look = hued_chip(style, lane, p);
-    if look.edge.is_some() && lane == super::branch_colours::trunk(p) {
-        return ChipLook { edge: Some(lane), text: p.text, ..look };
-    }
-    look
-}
-
-fn hued_chip(style: ChipStyle, lane: Color32, p: &Palette) -> ChipLook {
-    let (_, lc, lh) = oklch(lane);
-    let pale = |(l, c): (f64, f64)| from_oklch(l, lc.min(c), lh);
-    let edged = |fill: Color32, edge: Color32| ChipLook { fill, edge: Some(edge), text: clean_ink(lane, fill, p) };
-    match (style, p.dark) {
-        (ChipStyle::Head, _) => ChipLook { fill: mix(p.bg, p.text, 0.16), edge: None, text: p.text },
-        (ChipStyle::Tag, _) => ChipLook { fill: p.tag_bg, edge: None, text: p.tag_fg },
-        (ChipStyle::Branch | ChipStyle::Remote, true) => {
-            let fill = mix(p.bg, p.text, CHIP_LIFT);
-            edged(fill, clear(mix(fill, lane, CHIP_EDGE)))
-        }
-        (ChipStyle::Branch | ChipStyle::Remote, false) => {
-            let fill = pale(PALE);
-            edged(fill, clear(mix(fill, lane, CHIP_EDGE)))
-        }
-        (ChipStyle::CurrentBranch, true) => {
-            let fill = clear(lane);
-            ChipLook { fill, edge: None, text: readable_on(p.bg, fill, false, 4.5) }
-        }
-        (ChipStyle::CurrentBranch, false) => edged(pale(PALE_CURRENT), clear(lane)),
-    }
-}
-
-/// How a ref chip is painted: its opaque fill, the 1 px edge drawn inside it (if any) and its
-/// text and marks.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ChipLook {
-    pub fill: Color32,
-    pub edge: Option<Color32>,
-    pub text: Color32,
-}
-
 /// A change-kind chip's (fill, text) colours for a change of colour `col` (the WIP row's M / A / D
 /// chips): a soft opaque tint of it ([`unbrown`]ed: a warm one on a dark palette is a neutral
 /// step), with the text pushed until it reaches 4.5:1 on the tint.
@@ -307,17 +224,18 @@ pub fn change_chip(col: Color32, p: &Palette) -> (Color32, Color32) {
 
 /// The fill of a selected `+` (`add`) or `-` diff line: the palette's selected-line tint pushed
 /// up to as far again from the plain tint, in the same hue, as far as the text keeps 4.5:1 and
-/// the syntax colours 2:1 on it. (The high-contrast palettes keep 7:1 and 4.5:1 at the full
-/// push; `diff_select_tests` checks every built-in.)
+/// the syntax colours 2:1 on it (7:1 and 4.5:1 on the high-contrast palettes, whose own tints
+/// keep them at the full push; `diff_select_tests` checks every built-in).
 pub fn diff_line_selected(p: &Palette, add: bool) -> Color32 {
     let (plain, sel) = if add { (p.diff_add, p.diff_add_sel) } else { (p.diff_del, p.diff_del_sel) };
     let push = |k: f32| {
         let ch = |s: u8, b: u8| (f32::from(s) + (f32::from(s) - f32::from(b)) * k).round().clamp(0.0, 255.0) as u8;
         Color32::from_rgb(ch(sel.r(), plain.r()), ch(sel.g(), plain.g()), ch(sel.b(), plain.b()))
     };
+    let (text_min, syn_min) = if p.high_contrast { (7.0, 4.5) } else { (4.5, 2.0) };
     let readable = |c: Color32| {
-        ratio(p.text, c) >= 4.5
-            && Palette::KEYS.iter().filter(|k| k.starts_with("syn_")).filter_map(|k| p.get(k)).all(|s| ratio(s, c) >= 2.0)
+        ratio(p.text, c) >= text_min
+            && Palette::KEYS.iter().filter(|k| k.starts_with("syn_")).filter_map(|k| p.get(k)).all(|s| ratio(s, c) >= syn_min)
     };
     (0..=10).rev().map(|i| push(i as f32 / 10.0)).find(|&c| readable(c)).unwrap_or(sel)
 }

@@ -7,6 +7,7 @@ use super::hints_tests::{job_done, open_repo, shown};
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::{AppMsg, JobMsg, Msg};
 use crate::onboarding::OnboardingMsg as O;
 use crate::state::hints::{self, HintId};
@@ -22,7 +23,7 @@ fn run(st: &mut AppState, m: O) -> Vec<Effect> {
 }
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 fn reset() -> Action {
@@ -79,6 +80,7 @@ fn each_block_drops_the_offer() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

@@ -6,12 +6,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::state::worktrees::WorktreeForm;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::worktree::WorktreeMsg;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
@@ -20,6 +15,11 @@ use git2::Oid;
 use glowfly_core::repo::{ChangeCounts, ChangesRead, WorktreeInfo};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::worktree_ops::{FolderProblem, WorktreeBase};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::state::worktrees::WorktreeForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 
 pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -32,7 +32,7 @@ pub(crate) fn p(s: &str) -> PathBuf {
     Path::new(s).components().collect()
 }
 
-fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>) -> WorktreeInfo {
+pub(crate) fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>) -> WorktreeInfo {
     WorktreeInfo {
         name: name.map(str::to_owned),
         path: p(path),
@@ -95,7 +95,7 @@ fn worktrees_section() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Worktrees").is_some() || h.query_by_label("feature-login").is_some());
-    assert!(h.query_by_label("✔  app").is_some(), "the current worktree is marked");
+    assert!(h.query_by_label("app, current").is_some(), "the current worktree is marked");
     h.check_snapshot("worktrees_section");
     drop(h);
 
@@ -104,7 +104,7 @@ fn worktrees_section() {
     st.snap.as_mut().unwrap().worktrees.truncate(1);
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("✔  app").is_none() && h.query_by_label("feature-login").is_none());
+    assert!(h.query_by_label("app, current").is_none() && h.query_by_label("feature-login").is_none());
     drop(h);
     remove_fixture(&dir);
 }
@@ -131,7 +131,7 @@ fn worktrees_filtered() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("hotfix").is_some());
-    for other in ["✔  app", "feature-login", "old", "gone"] {
+    for other in ["app, current", "feature-login", "old", "gone"] {
         assert!(h.query_by_label(other).is_none(), "{other}");
     }
     h.check_snapshot("worktrees_filtered");
@@ -157,7 +157,7 @@ fn worktree_menu() {
     let want = p("C:/work/app-worktrees/feature-login").display().to_string();
     assert!(pushed(&h, &|m| matches!(m, Msg::Copy(x) if *x == want)));
 
-    let at = center(&h, "✔  app");
+    let at = center(&h, "app, current");
     click(&mut h, at, PointerButton::Secondary);
     assert!(h.get_by_label("Open in new tab").is_disabled());
     assert!(!h.get_by_label("Open folder").is_disabled());
@@ -225,7 +225,7 @@ fn worktree_dialog_branch() {
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Submit))));
     h.get_by_label("Browse…").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::Prefs(PrefsMsg::PickFolder(crate::msg::FolderPurpose::WorktreeParent)))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Prefs(PrefsMsg::PickFolder(glowfly_model::msg::FolderPurpose::WorktreeParent)))));
     drop(h);
     remove_fixture(&dir);
 }

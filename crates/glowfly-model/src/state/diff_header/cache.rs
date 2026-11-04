@@ -24,6 +24,8 @@ struct DiffKey {
     mode: DiffMode,
     layout: DiffLayout,
     lfs_summary: bool,
+    /// An SVG's preview in place of the rows.
+    drawn: bool,
 }
 
 /// The header's parts that are built once per change.
@@ -88,6 +90,7 @@ fn diff_key(st: &AppState, diff: &FileDiff) -> DiffKey {
         mode,
         layout: st.settings.diff_layout,
         lfs_summary: lfs_notes::summary(st).is_some(),
+        drawn: crate::state::diff_preview::drawn(st),
     }
 }
 

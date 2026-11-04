@@ -5,14 +5,15 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::keymap::KeyAction;
-use crate::msg::{JobMsg, Msg, RepoMsg, StageMsg};
-use crate::state::list_keys::{ListKey, ListMove};
-use crate::state::wip_lists::span_paths;
-use crate::state::{AppState, Modal};
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::undo::Action;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::list_keys::{ListKey, ListMove};
+use glowfly_model::state::wip_lists::span_paths;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -51,14 +52,14 @@ fn press(st: &mut AppState, staged: bool, key: ListKey) {
 /// The diff `fx` opens.
 fn opened(fx: &[Effect]) -> Option<&DiffTarget> {
     fx.iter().find_map(|e| match e {
-        Effect::LoadDiff { target, reload: false, .. } => Some(target),
+        Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload: false, .. }) => Some(target),
         _ => None,
     })
 }
 
 fn local_op(fx: &[Effect]) -> Option<&LocalOp> {
     fx.iter().find_map(|e| match e {
-        Effect::LocalOp { op, .. } => Some(op),
+        Effect::Files(FilesEffect::LocalOp { op, .. }) => Some(op),
         _ => None,
     })
 }
@@ -107,7 +108,7 @@ fn shift_moves_select_files_and_space_stages_them_together() {
     assert_eq!(local_op(&fx), Some(&LocalOp::StagePaths(vec!["b.txt".into(), "c.txt".into(), "d.txt".into()])), "{fx:?}");
     assert!(st.view.wip_span.is_none());
     for e in fx {
-        if let Some(m) = crate::runner::testing::execute(e) {
+        if let Some(m) = glowfly_runner::testing::execute(e) {
             drive(&mut st, m);
         }
     }

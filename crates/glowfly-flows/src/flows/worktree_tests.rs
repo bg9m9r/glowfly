@@ -6,19 +6,18 @@
 use super::tests::same_place;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::effect::WorktreeEffect;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::msg::{FolderPurpose, Msg};
-use crate::runner;
-use crate::state::worktrees::{WorktreeForm, checked_out_in, folder_warning, listed, right_text};
-use crate::state::{AppState, Modal, RunningJob};
-use crate::worktree::{NewWorktree, WorktreeMsg};
 use git2::Oid;
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::WorktreeEffect;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::msg::{FolderPurpose, Msg};
+use glowfly_model::state::worktrees::{WorktreeForm, checked_out_in, folder_warning, listed, right_text};
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::worktree::{NewWorktree, WorktreeMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -67,11 +66,13 @@ fn run(st: &mut AppState, fx: Vec<Effect>) -> Vec<Vec<String>> {
     let mut ran = Vec::new();
     for e in fx {
         match &e {
-            Effect::RunGit { cmds, .. } => ran.extend(cmds.clone()),
-            Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::Worktree(WorktreeEffect::CheckFolder(_)) => {}
+            Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => ran.extend(cmds.clone()),
+            Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+            | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+            | Effect::Worktree(WorktreeEffect::CheckFolder(_)) => {}
             _ => continue,
         }
-        if let Some(m) = runner::testing::execute(e) {
+        if let Some(m) = glowfly_runner::testing::execute(e) {
             let more = update(st, m, Instant::now());
             ran.extend(run(st, more));
         }
@@ -83,7 +84,7 @@ fn run(st: &mut AppState, fx: Vec<Effect>) -> Vec<Vec<String>> {
 fn submit(st: &mut AppState) -> Vec<Effect> {
     let fx = update(st, wt(WorktreeMsg::Submit), Instant::now());
     let [Effect::Worktree(WorktreeEffect::CheckFolder(_))] = &fx[..] else { panic!("{fx:?}") };
-    let checked = runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
+    let checked = glowfly_runner::testing::execute(fx.into_iter().next().unwrap()).unwrap();
     update(st, checked, Instant::now())
 }
 
@@ -254,6 +255,7 @@ fn busy_and_stale_tab() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,
@@ -289,7 +291,8 @@ fn folder_check_after_cancel_is_dropped() {
         let fx = update(st, wt(WorktreeMsg::Submit), Instant::now());
         let [Effect::Worktree(WorktreeEffect::CheckFolder(req))] = &fx[..] else { panic!("{fx:?}") };
         let req = req.clone();
-        let Some(Msg::Worktree(WorktreeMsg::FolderChecked { result, .. })) = runner::testing::execute(fx.into_iter().next().unwrap())
+        let Some(Msg::Worktree(WorktreeMsg::FolderChecked { result, .. })) =
+            glowfly_runner::testing::execute(fx.into_iter().next().unwrap())
         else {
             panic!("no folder check result")
         };

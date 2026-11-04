@@ -3,13 +3,13 @@
 //! repository with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::{GraphMsg, Msg};
-use crate::state::AppState;
 use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ResizableColumn::*;
 use glowfly_core::settings::{ColumnWidths, ThemeChoice};
+use glowfly_model::msg::{GraphMsg, Msg};
+use glowfly_model::state::AppState;
 
 pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
@@ -140,13 +140,19 @@ fn graph_grips_follow_visible_columns() {
 
 #[test]
 fn layout_resets_restore_column_widths() {
-    use crate::state::{PrefPage, PrefsState};
+    use glowfly_model::state::{PrefPage, PrefsState};
     for button in ["Reset to default layout", "Reset to compact layout"] {
         let mut st = AppState::new(super::snapshot_tests::settings(ThemeChoice::Dark), Vec::new(), std::time::Instant::now());
         st.settings.column_widths = ColumnWidths { refs: 300.0, date: 90.0, ..ColumnWidths::default() };
         st.prefs = Some(PrefsState::new(PrefPage::Ui));
         let mut h = harness(st, true);
         h.run();
+        // Open every help text that sits behind "Learn more".
+        loop {
+            let Some(more) = h.query_all_by_label("Learn more").next() else { break };
+            more.click();
+            h.run();
+        }
         assert!(h.query_by_label_contains("double-click a divider").is_some(), "the help explains resizing");
         h.get_by_label(button).click();
         h.run();

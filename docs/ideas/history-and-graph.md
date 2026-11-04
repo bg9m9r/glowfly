@@ -55,6 +55,8 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 ### Interactive rebase
 
 - Move commits up/down or reword several commits from a multi-selection in the graph
+- Word the palette's rebase entries like the commit menu ("Edit and rebase main onto 1a2b3c4…"), and move the panel's English literals (title, buttons, editor labels) into the locales
+- Animate the dragged row's lift in and out, not just the other rows moving apart
 - A preference to always stash automatically, without asking, before a rebase
 - Spellcheck in the Reword dialog (needs `UiCache` in modals)
 - Date tooltip on the painted author/date of rebase rows
@@ -163,6 +165,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Match a needle that isn't ASCII without lowercasing each non-ASCII message per keystroke (fold the texts once, or a Unicode case-insensitive search)
 - Share the loaded commits' texts with the history index's blocks instead of holding a second copy of each message there
 - Highlight where a match far into the body is (a snippet around it in the row hover or the details panel)
+- The search marks lowercase one character at a time, so a match against İ (which lowercases to two) is missed
 
 ### Saved search index
 
@@ -194,6 +197,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Click the "+N" chip to open a popup of all labels with their menus
 - Cut a date that doesn't fit at its start ("…10:00 AM") so the time stays visible
 - Fill the WIP node's dashed ring so the lane line doesn't show through it
+- The "+N" overflow pill nearly disappears in the light and high-contrast light themes; give it a fill apart from the row, hover and selection bands
 
 ### History table edges and commit details
 
@@ -233,3 +237,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Show which encoding a commit declares (e.g. a small 'ISO-8859-1' note in the details panel)
 - Read stash messages that aren't UTF-8 without git2's stash_foreach, which panics on them (`to_str().unwrap()`); read the refs/stash reflog bytes lossily instead
 - Decode annotated tag messages and taggers with the tag's own encoding header wherever tag text is shown
+
+### Quiet main window chrome (D3)
+- Describe a row's chips in its accessible description ("main, in sync with origin/main, checked out") instead of the raw ref names
+- `branch_chip::paint`'s no-snapshot fallback fills the chip with the accent; use the trunk tone, as "never the accent" asks

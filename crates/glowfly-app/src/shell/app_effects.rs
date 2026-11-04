@@ -3,12 +3,12 @@
 //! commands.
 
 use super::GlowflyApp;
-use crate::effect::UiEffect;
-use crate::msg::Msg;
 use crate::platform::primary_selection::{PasteFrom, middle_click_reads};
-use crate::terminal::TerminalMsg;
 use eframe::egui;
 use glowfly_core::terminal::TermInput;
+use glowfly_model::effect::UiEffect;
+use glowfly_model::msg::Msg;
+use glowfly_model::terminal::TerminalMsg;
 
 impl GlowflyApp {
     pub(super) fn ui_effect(&mut self, ctx: &egui::Context, effect: UiEffect) {
@@ -30,7 +30,7 @@ impl GlowflyApp {
                 }
                 PasteFrom::Clipboard => ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste),
             },
-            UiEffect::Window(cmd) => match crate::ui::window_frame::viewport_cmd(cmd) {
+            UiEffect::Window(cmd) => match glowfly_ui::window_frame::viewport_cmd(cmd) {
                 Some(c) => ctx.send_viewport_cmd(c),
                 // The system menu, the only window action without a viewport command.
                 None => {

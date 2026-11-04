@@ -5,15 +5,15 @@
 use super::pick_tests::with_merge;
 use super::selection_tests::{commit_on, fixture, git, head, refresh, up};
 use super::tests::drive;
-use crate::effect::Effect;
-use crate::msg::{Msg, SelectionMsg};
-use crate::state::journal::short;
-use crate::state::pick::PickOp;
-use crate::state::{AppState, Modal};
 use git2::{Oid, RepositoryState};
 use glowfly_core::gitcli::args;
 use glowfly_core::pick_ops::Picking;
 use glowfly_core::undo::{MoveOp, UndoKind};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::state::journal::short;
+use glowfly_model::state::pick::PickOp;
+use glowfly_model::state::{AppState, Modal};
 
 fn last_log(st: &AppState) -> Option<&str> {
     st.log.last().map(|l| l.text.as_str())

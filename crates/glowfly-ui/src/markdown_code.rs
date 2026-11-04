@@ -3,7 +3,7 @@
 //! (spans from `MarkdownCache`) and selectable like other text.
 
 use super::theme::{color, type_scale};
-use crate::ui::theme::tokens::radius;
+use crate::theme::tokens::radius;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, FontId, Stroke, Ui};
 use glowfly_core::highlight::Span;

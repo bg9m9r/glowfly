@@ -4,15 +4,17 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::OsEffect;
-use crate::effect::{Effect, UpdateEffect};
-use crate::msg::{CheckedRelease, Msg, PaletteMsg, UpdateMsg as U};
-use crate::state::AppState;
-use crate::state::palette::PaletteCommand as C;
-use crate::state::palette::entries;
-use crate::state::updates::{RETRY_AFTER, STARTUP_DELAY, UpdateStatus};
-use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Platform, Release, Saved, TargetOs, Version};
+use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Platform, Release, Saved, TargetOs, UpdateError, Version};
+use glowfly_core::forge::ServiceError;
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, UpdateEffect};
+use glowfly_model::msg::{CheckedRelease, Msg, PaletteMsg, UpdateMsg as U};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::PaletteCommand as C;
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::updates::{RETRY_AFTER, STARTUP_DELAY, UpdateStatus};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -57,7 +59,7 @@ pub(super) fn send(st: &mut AppState, m: U, now: Instant) -> Vec<Effect> {
     update(st, Msg::Updates(m), now)
 }
 
-pub(super) fn found(tag: &str, install: InstallKind) -> Result<Option<CheckedRelease>, String> {
+pub(super) fn found(tag: &str, install: InstallKind) -> Result<Option<CheckedRelease>, UpdateError> {
     Ok(Some(CheckedRelease { release: release(tag, true), install }))
 }
 
@@ -66,7 +68,7 @@ pub(super) fn checks(fx: &[Effect]) -> Vec<bool> {
 }
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 pub(super) fn tick(st: &mut AppState, t: Instant) -> Vec<Effect> {
@@ -173,7 +175,11 @@ fn a_failed_automatic_check_is_quiet_and_waits() {
     send(&mut st, U::Startup, t0);
     let t1 = t0 + STARTUP_DELAY;
     assert_eq!(checks(&tick(&mut st, t1)), [false]);
-    let fx = send(&mut st, U::Checked { manual: false, result: Err("offline".into()) }, t1);
+    let fx = send(
+        &mut st,
+        U::Checked { manual: false, result: Err(UpdateError::Service(ServiceError::Network { said: "offline".into() })) },
+        t1,
+    );
     assert!(st.toasts.is_empty() && !saves(&fx));
     assert!(st.log.iter().any(|l| l.text.contains("offline")) && !st.view.show_log, "logged quietly");
     assert_eq!((st.updates.status.clone(), st.settings.updates.last_checked), (UpdateStatus::Idle, None));
@@ -187,9 +193,13 @@ fn a_failed_manual_check_says_so() {
     let t = Instant::now();
     assert_eq!(checks(&send(&mut st, U::CheckNow, t)), [true]);
     assert!(checks(&send(&mut st, U::CheckNow, t)).is_empty(), "not while checking");
-    send(&mut st, U::Checked { manual: true, result: Err("GitHub's rate limit was reached".into()) }, t);
-    assert_eq!(st.updates.status, UpdateStatus::CheckFailed("GitHub's rate limit was reached".into()));
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Couldn't check for updates: GitHub's rate limit was reached"));
+    let limited = UpdateError::Service(ServiceError::Forbidden { said: "GitHub's rate limit was reached".into() });
+    send(&mut st, U::Checked { manual: true, result: Err(limited) }, t);
+    assert_eq!(st.updates.status, UpdateStatus::CheckFailed("access denied: GitHub's rate limit was reached".into()));
+    assert_eq!(
+        st.toasts.last().map(|t| t.text.as_str()),
+        Some("Couldn't check for updates: access denied: GitHub's rate limit was reached")
+    );
 }
 
 #[test]
@@ -241,7 +251,7 @@ fn an_archive_is_shown_not_installed() {
 fn a_failed_download_can_be_retried() {
     let (mut st, t) = offered();
     send(&mut st, U::Download, t);
-    send(&mut st, U::Downloaded(Err("The download didn't match its published checksum and was discarded.".into())), t);
+    send(&mut st, U::Downloaded(Err(UpdateError::ChecksumMismatch)), t);
     assert!(matches!(&st.updates.status, UpdateStatus::DownloadFailed { .. }));
     assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update failed · Try again"));
     assert!(st.toasts.last().unwrap().text.starts_with("The download failed: "));

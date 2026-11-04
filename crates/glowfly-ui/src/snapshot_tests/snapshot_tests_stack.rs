@@ -4,14 +4,14 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::stack::{RestackScope, StackLink, Stacks};
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;

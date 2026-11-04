@@ -85,6 +85,8 @@ pub struct Snapshot {
     pub remote_heads: Vec<(String, String)>,
     /// `branch.<name>.pushRemote` and `remote.pushDefault` (`push_config`).
     pub push_remotes: PushRemotes,
+    /// Whether a plain `git pull` on the head branch rebases (`push_config::pull_rebases`).
+    pub pull_rebase: bool,
     pub tags: Vec<(String, Oid)>,
     /// Tags that point at a tree or blob instead of a commit: not shown, but their names are taken.
     pub other_tags: Vec<String>,
@@ -124,6 +126,8 @@ pub struct Snapshot {
     /// When this worktree's repository last fetched (FETCH_HEAD's time, Unix seconds), read by
     /// full loads; jobs that fetch set it too.
     pub fetched_at: Option<i64>,
+    /// The remotes that fetch covered, by the URLs `FETCH_HEAD` names (full loads only).
+    pub fetched_remotes: Vec<String>,
     pub graph: Layout,
     /// Which local branches are stacked on which (full loads only).
     pub stacks: crate::stack::Stacks,

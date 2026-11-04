@@ -23,28 +23,28 @@ use super::file_menu::{self, ToolItem};
 use super::op_steps::TopArgs;
 use super::theme::color;
 use super::widgets::{Icon, buttons};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::row_menu::RowMenuExt;
 
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::ConflictMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::state::AppState;
-use crate::state::custom_commands::MenuCommands;
-use crate::state::file_folds::FileFolds;
-use crate::state::lfs::{TrackContext, track_items};
-use crate::state::op_steps::op_kind;
-use crate::state::tool_compare::ToolAvail;
-use crate::state::wip_lists;
-use crate::tools::ToolsMsg;
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry, Snapshot, WipLineCounts};
 use glowfly_core::settings::FileListMode;
 use glowfly_core::undo::DISCARD_STASH_MESSAGE;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::ConflictMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::custom_commands::MenuCommands;
+use glowfly_model::state::file_folds::FileFolds;
+use glowfly_model::state::lfs::{TrackContext, track_items};
+use glowfly_model::state::op_steps::op_kind;
+use glowfly_model::state::tool_compare::ToolAvail;
+use glowfly_model::state::wip_lists;
+use glowfly_model::tools::ToolsMsg;
 use std::collections::HashSet;
 
 pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -73,7 +73,10 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     // The commit box (or step 3) is pinned at the bottom at the height it took last frame; the
     // lists scroll in the room above it.
     let bottom_id = ui.id().with("wip-bottom");
-    let bottom_h = ui.data(|d| d.get_temp::<f32>(bottom_id)).unwrap_or(super::commit_box::RESERVED_HEIGHT);
+    let bottom_h = ui.data(|d| d.get_temp::<f32>(bottom_id)).unwrap_or_else(|| {
+        let why = glowfly_model::state::commit::commit_blocked(st, false);
+        super::commit_box::reserved_height(crate::widgets::reason::lines(ui, why.as_deref(), ui.available_width()))
+    });
     let top_h = (ui.available_height() - bottom_h).max(TOP_MIN);
     let size = egui::vec2(ui.available_width(), top_h);
     ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Min), |ui| {
@@ -188,7 +191,7 @@ pub(super) fn wip_file_row(
     let selected = current || picked;
     // The row's action sits at its end: always on a conflicted row (Mark resolved), else while the
     // row is hovered or current, in place of its line counts. The S and U keys, the conflict
-    // view's Save and mark resolved and the row's menu reach it too.
+    // view's Mark resolved and the row's menu reach it too.
     let at = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), super::widgets::LIST_ROW_H));
     let show_action = conflicted || current || ui.rect_contains_pointer(at);
     // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
@@ -215,9 +218,10 @@ pub(super) fn wip_file_row(
             let (rect, _) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
             super::needs_you::badge(ui.painter(), rect);
         } else {
-            ui.label(
+            let letter = ui.label(
                 RichText::new(status_label(f.status).to_string()).font(type_scale::mono(type_scale::BODY)).color(status_color(f.status)),
             );
+            super::file_status::name_status(&letter, ctx.lang, f.status);
         }
         super::list_row::file_tree::file_text(ui, &f.path, ctx.depth, selected, 0.0);
         super::path_warnings::mark(ui, ctx.lang, f);
@@ -239,7 +243,7 @@ pub(super) fn wip_file_row(
     // Shift+F10 opens the selected file's menu while its list has the keyboard.
     let keyboard = current
         && if conflicted {
-            super::file_list_keys::focused(ui.ctx()) == Some(crate::state::list_keys::FileList::Conflicted)
+            super::file_list_keys::focused(ui.ctx()) == Some(glowfly_model::state::list_keys::FileList::Conflicted)
         } else {
             super::wip_keys::focused_list(ui.ctx()) == Some(staged)
         };
@@ -249,14 +253,14 @@ pub(super) fn wip_file_row(
         }
         menu_item(msgs, ui, action, toggle());
         // Checking out the index version of a conflicted path means nothing. Both ask first.
-        let discard = (!staged && !conflicted).then(|| crate::state::files::discard_msg(t, f));
+        let discard = (!staged && !conflicted).then(|| glowfly_model::state::files::discard_msg(t, f));
         file_menu::stash_file_item(ui, t, msgs, snap, f);
         file_menu::patch_file_item(ui, t, msgs, f, staged);
         if f.status != '?' {
             file_menu::history_items(ui, t, msgs, &f.path, None, (f.status == 'A').then_some(t.tr("details.wip.not_committed")));
         }
         menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
-        let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
+        let unstages = glowfly_model::state::files::unstages_on_delete(snap, &f.path);
         let missing = snap.missing_from_workdir(&f.path);
         let items = if missing { Vec::new() } else { track_items(t, &f.path, ctx.lfs) };
         let tool = if conflicted {

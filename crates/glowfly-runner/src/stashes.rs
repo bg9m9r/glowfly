@@ -5,11 +5,11 @@
 
 use super::execute::{Cx, Execute};
 use super::expect;
-use crate::effect::{PutBackRequest, StashEffect, UndoResult};
-use crate::msg::{AutoStashMsg, JobMsg, Msg, StashMsg};
 use git2::Oid;
 use glowfly_core::stash_ops::{self, PutBack};
 use glowfly_core::undo::{self, UndoKind};
+use glowfly_model::effect::{PutBackRequest, StashEffect, UndoResult};
+use glowfly_model::msg::{AutoStashMsg, JobMsg, Msg, StashMsg};
 use std::path::Path;
 
 pub(super) fn run(e: StashEffect, gate: Option<&super::trust_gate::Gate>, trashers: glowfly_core::undo::Trashers) -> Option<Msg> {
@@ -94,9 +94,9 @@ fn put_back(req: PutBackRequest) -> Msg {
 #[cfg(test)]
 mod tests {
     use super::super::guard::{Recovery, guarded};
-    use crate::effect::{Effect, PutBackRequest, StashEffect};
-    use crate::msg::{AutoStashMsg, Msg};
     use glowfly_core::stash_ops::PutBack;
+    use glowfly_model::effect::{Effect, PutBackRequest, StashEffect};
+    use glowfly_model::msg::{AutoStashMsg, Msg};
 
     #[test]
     fn a_panicking_put_back_ends_its_job() {

@@ -19,16 +19,21 @@ repository flows are in [flow-repo.md](flow-repo.md).
 
 ## Toasts
 
-- Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`.
+- Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`. A toast with the same words and kind as one already up restarts that one's timer instead of stacking a copy; it keeps its id, so screen readers don't announce it again.
 - A click sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only while the toast's repository is the active tab.
 - A failed job's toast says git's cause in plain words and can carry a fix (`update/job_errors.rs`, from `git_errors::classify`), with Details beside it in `Toast::details` (`Msg::ToastDetails`, which works from any tab), and a second fix between them in `Toast::alt` (`Msg::ToastAlt`): Delete lock file comes first with Try again beside it (`update/lock_file.rs`, `update/job_retry.rs`), and a push rejected as behind offers Pull (for the checked-out branch) with Force push with lease beside it, only when the job's push command and git's rejection line show it was that branch, pushed to its upstream (`state/branches/rejected_push.rs`). The buttons wrap inside the toast's width.
 - Every cause's sentence comes from `state/error_words.rs` (`cause`, `explained`), which the auto-stash put-back, clone, submodule, Git Flow and worktree headlines and the Fetch/Pull repositories rows share; a toast that stopped on conflicts takes its count from the status read after the job (`update/conflict_count.rs`). The fallback "<label> failed: …" names the job in the UI language (`state/job_spec/labels.rs`).
 - Failures reaching or reading a remote get their sentences from `state/error_words.rs`, which the Fetch/Pull repositories rows share; a missing or unreadable remote's toast offers Edit remote…. Hosting-service failures (fork, pull request, issue, comment, dashboard, status bar) go through its `hosting`, from `error::advice`.
+- Result messages carry typed errors rather than English text, one area at a time (#367); `state/error_words/typed.rs` words each area's error type with `t.tr` (so far `git_credential::CredentialError`, for a sign-in that couldn't be saved or dropped; `signing::KeyError`, for a signing key that couldn't be listed, generated or exported; `identity::ConfigWriteFailed`, for a Preferences page's refused git config write; `forge::ServiceError`, for a hosting service's refused connection, owners, new repository or Trello boards, its kind translated and the HTTP status and the service's words kept; and `app_update::UpdateError`, for a failed update check, download or Install and restart, and the runner guard's panic in one of them). The palette's file list carries `repo::ListFilesFailed`, libgit2's own words under a translated headline.
 - `toast_replacing` updates a toast still on screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
+- A push or pull in the active tab says what it did in one sentence (`update/sync_voice.rs`, "Pushed 2 commits to origin/main."), as a brief toast (`toast_brief`: 3 s under Standard) unless Confirm pushes and pulls is off; the activity log keeps it either way (glowfly-flows' `sync_voice_tests.rs`). Toast tests are in `state/toasts_tests.rs`.
+- A toast is one sentence of at most 16 words; the longer story goes to the activity log behind Details. `glowfly-core`'s `i18n/toast_length_tests.rs` holds every English `toast` text to 140 characters.
 - Every toast has an x (`NotifyMsg::CloseToast`) that removes it without running its action.
 - The conflict view's Resolved and Saved-with-markers toasts carry Undo while the entry that did it is the newest (`update/conflict.rs::undo_button`, run as `JobMsg::UndoWith`, which refuses once the history moved).
 - The pointer over a toast holds it: `ui/toasts.rs` sends `NotifyMsg::HoldToast` when the toast under the pointer changes, and a held toast's clock stops (`Toast::counted` and `held`), so it neither fades nor expires.
 - Let go, a held toast has at least `HOLD_GRACE` left, and the toast limit drops the oldest toast that isn't held.
+- The keyboard focus on a toast's button holds it as the pointer does; how long toasts stay is Accessibility's `toast_time`, and a failure with a fix or Details stays until closed.
+- Every toast leaves an activity line (`update/toast_log.rs`), so a dropped or expired one can still be read.
 - Toasts fade and expire by `view.frame_at`, the shell's time stamp for the frame (None in snapshot tests, so they draw at full strength).
 
 ## Zoom and panels
@@ -40,12 +45,13 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - The top chrome starts with the drawn title bar on Windows and macOS, and with the menu bar and the tab bar under the system frame.
 - `show_left_panel`, `show_details_panel` and `show_toolbar` are checked in `ui/frame_layout.rs`, and `show_menu_bar` by `ui/menu_bar::show` (system frame only).
 - Hiding the menu bar through `LayoutMsg` toasts a Show menu bar button.
-- `state::layout::details_shape` decides whether the commit details panel is drawn Full, as a 44 px Rail or Hidden.
-- The details panel is a rail while a tool view (`state::layout::tool_view`: conflict, blame, file or folder history, issue, Git Flow, in the central area's order) fills the central area, unless `view.details_expanded_for` names that view.
+- `state::layout::details_shape` decides whether the commit details panel is drawn Full, as a 36 px Rail or Hidden; it stays Full whatever the central view while a rebase is stopped (its steps continue it).
+- The details panel is a rail while a tool view (`state::layout::tool_view`: conflict, blame, file or folder history, pull request, issue, the interactive rebase editor, Range-diff, journal, Git Flow, in the central area's order) fills the central area, unless `view.details_expanded_for` names that view.
 - `LayoutMsg::ExpandDetails` and Go to the commit message set `view.details_expanded_for`, and `update` clears it (`drop_stale_expansion`) as soon as the tool view changes or closes; the saved setting never changes.
 - A hidden left or details panel leaves a 16 px edge strip that shows it again (`ui/panel_rails.rs`, with the rail).
 - Full screen is the window's own state, never saved: `LayoutMsg::ToggleFullscreen` asks the shell for `WindowCmd::SetFullscreen` from `view.window.fullscreen` (read each frame).
 - `WindowCmd::in_window` narrows what the drawn bar's window actions do while full screen (docs/PLATFORMS.md, Window frame).
+- With `announce_jobs` on (Preferences > Accessibility > Announcements) each toast's text and the status bar's job are AccessKit live regions (`ui/access.rs::announce`): polite, assertive for a failure.
 - Toasts are anchored to `ToastBounds`, where the top chrome and the status bar end, measured while `frame_layout` draws them (`ui/toasts.rs`), all one width.
 - The toolbar's repository and branch pickers (`ui/toolbar_pickers.rs`) are sized to their names up to a cap: the branch part to the widest local branch, so checking out a branch moves nothing (`ui/toolbar_fit.rs`).
 - In a window too narrow for everything, the pure `name_widths` shrinks the pickers (the longer first, then both, down to a floor) against the rest of the bar measured last frame.
@@ -119,7 +125,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 ## Credential prompts (`askpass/`)
 
 - Every git child that may prompt gets Glowfly as its `GIT_ASKPASS` / `SSH_ASKPASS`.
-- The helper process asks the app's loopback listener, which reports `CredentialMsg::CredentialPrompt`, and `Effect::AnswerPrompt` hands the dialog's `Reply` back.
+- The helper process asks the app's loopback listener, which reports `CredentialMsg::CredentialPrompt`, and `ControlEffect::AnswerPrompt` hands the dialog's `Reply` back.
 - `gitcli::NO_PROMPTS` (reads) turns all of it off; background jobs use `gitcli::BACKGROUND`, which also keeps Git Credential Manager from opening a window.
 - HTTPS sign-ins typed with "Remember this sign-in" are kept in `CredentialPrompts::typed` until the job ends; `update/askpass_store.rs` then saves them (`CredentialEffect::Remember`) or drops the rejected ones (`Forget`).
 - An unknown SSH host whose question parses (`PromptKind::HostKey`) is shown as fields (`ui/askpass_host_key.rs`); any other yes/no question shows ssh's text as it is.
@@ -150,6 +156,13 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - One short tip at a time in the pane its feature lives in: Undo after a recorded discard, reset or branch delete (never a push), Tidy commits after WIP commits or two amends on a branch with an upstream, Connect when an opened repository's hosting service has no account.
 - Files: `state/hints.rs` (ids, the rules, the triggers' tests, the row's words), `update/hints.rs` (button, × menu, off, Show tips again, load triggers, `settle` after every message), `update/undo.rs` (`recorded_since`: the Undo trigger and the run of amends), `ui/widgets/hint_row.rs`.
 - None in the session the welcome ran in, at most one per session, none while a dialog, Preferences, a job or a conflict is open. A tip that loses its place unanswered is ignored once, then retired; acting, dismissing or using its feature retires it. Records are machine-wide and merged by `carry_records`.
+
+## Getting started
+
+- Help > Getting started, the palette (tips, learn, features) and the welcome's Start step open a page of feature cards in the central area (global, after the dashboard in `ui/central.rs`'s order; a tool view, so the details panel folds to its rail). It never opens by itself.
+- Files: `state/getting_started.rs` (groups, cards, each card's Show me and when it is in use), `update/getting_started.rs` (open, close, Show me, the finished cards, hiding), `ui/getting_started.rs`; messages are `OnboardingMsg`'s.
+- A card is in use only from settings and repository state (a connection, a picked theme or key, a tool, a custom command, a stash, a second worktree), never from counting use. Show me closes the page, then sends the feature's message or opens the palette with its commands typed.
+- Hiding the page from the Help menu and the welcome is kept in `hints_seen` (`getting_started_hidden`), so Show tips again brings it back; the palette always finds it.
 
 ## Signing passphrases (`gpg_prompt/`)
 
@@ -211,4 +224,5 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - In the app, `UpdateMsg::Startup` arms the automatic check.
 - `update/updates.rs::tick` starts the check (at most once a day, after `STARTUP_DELAY`, an hour after a failure) as `UpdateEffect::Check`, which asks the `app_update::Feed` (`forge::latest_release`, or the folder `GLOWFLY_UPDATE_FEED` names) and reports how this copy was installed.
 - `app_update::offer` picks the file for this platform; Download runs `app_update::download_streamed`, which streams to a temporary file and renames it into place only once the SHA-256 matches, reporting `DownloadProgress` a few times a second; Cancel stops it between chunks and removes the partial file.
+- A failed check, download or Install and restart carries an `app_update::UpdateError`, worded by `typed::update` in the toast, the log and Preferences (every variant in each language in `update/tests/updates_errors_tests.rs`).
 - The release notes dialog reads the `CHANGELOG.md` that `build.rs` bundled, and `startup_notes` opens it once per new version (waiting in `notes_pending` while another dialog is open).

@@ -5,13 +5,15 @@
 
 use super::profiles_tests::{PERSONAL, WORK, profile, run, saves, two_profiles, values};
 use super::tests::{drive, git, scratch_repo};
-use crate::effect::{AccountEffect, Effect};
-use crate::msg::{ForgeMsg, Msg, RepoMsg};
-use crate::profile::ProfileMsg;
-use crate::state::{AppState, ForgeState, PrefPage};
 use glowfly_core::forge::{Account, Connection, Provider, PullRequest, Target};
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::{ProfilePrefs, ThemeChoice};
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{AccountEffect, Effect};
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::{AppState, ForgeState, PrefPage};
 use std::path::PathBuf;
 
 fn conn(provider: Provider, host: &str, user: &str) -> Connection {
@@ -53,7 +55,7 @@ fn token_deletes(fx: &[Effect]) -> Vec<Account> {
 }
 
 fn forge_calls(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::Forge { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Network(NetworkEffect::Forge { .. }))).count()
 }
 
 fn pr(id: u64) -> PullRequest {
@@ -94,7 +96,7 @@ fn switch_applies_incoming_setup() {
     assert_eq!(work.prefs.as_ref().map(|p| p.theme.clone()), Some(ThemeChoice::Graphite));
     assert_eq!(work.connections, Some(vec![github()]));
     assert_eq!(saves(&fx), 1);
-    let saved = fx.iter().find_map(|e| if let Effect::SaveSettings(s) = e { Some(s) } else { None }).unwrap();
+    let saved = fx.iter().find_map(|e| if let Effect::Save(SaveEffect::Settings(s)) = e { Some(s) } else { None }).unwrap();
     assert_eq!((saved.theme.clone(), saved.active_profile), (ThemeChoice::Light, Some(PERSONAL)), "saved after the swap");
     assert!(st.toasts.iter().any(|t| t.ok && t.text == "Switched to profile Personal"));
 }
@@ -164,7 +166,7 @@ fn account_change_reloads_forge() {
     assert!(fs.last_refresh.is_some(), "refreshed at once");
     assert_eq!(forge_calls(&fx), 1, "{fx:?}");
     // Personal doesn't list github.com, so the sign-in Work saved for it isn't used.
-    assert!(fx.iter().any(|e| matches!(e, Effect::Forge { auth: None, connected: false, .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Network(NetworkEffect::Forge { auth: None, connected: false, .. }))), "{fx:?}");
     assert!(st.tabs[0].parked.as_ref().unwrap().session.forge.is_none(), "the parked tab detects again when selected");
     for d in [a, b] {
         let _ = std::fs::remove_dir_all(d);
@@ -184,7 +186,7 @@ fn prefs_change_refreshes_repo_and_keeps_diff_row() {
     st.view.diff_scroll_to_row = None;
     let fx = switch(&mut st, PERSONAL);
     assert_eq!(st.view.diff_scroll_to_row, Some(6));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "{fx:?}");
     assert_eq!(forge_calls(&fx), 0);
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -246,7 +248,7 @@ fn deleting_profile_forgets_only_its_accounts() {
 
 #[test]
 fn the_dashboard_forgets_the_previous_profiles_sign_ins() {
-    use crate::state::dashboard::{AccountRow, AccountState};
+    use glowfly_model::state::dashboard::{AccountRow, AccountState};
     let mut st = with_setups();
     let account = github().account;
     let d = &mut st.dashboard;

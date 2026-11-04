@@ -3,17 +3,19 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::state::AppState;
 use glowfly_core::diff_rows::header_rows;
 use glowfly_core::repo::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp};
 use glowfly_core::settings::DiffLayout;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 /// Three hunks of 3, 4 and 2 lines; their split rows differ from their inline rows.
@@ -48,8 +50,8 @@ fn set_diff_layout_saves_and_keeps_hunk() {
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.diff_layout == DiffLayout::Split)));
-    assert_eq!(st.settings_file.saved, serde_json::to_string(&st.settings).unwrap());
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.diff_layout == DiffLayout::Split)));
+    assert_eq!(st.settings_file.saved(), serde_json::to_string(&st.settings).unwrap());
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
     assert_eq!(st.session.tab_view.diff_top_row, split[1]);
 
@@ -68,7 +70,7 @@ fn set_diff_layout_without_diff_still_saves() {
     let mut st = state();
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     assert_eq!(st.view.diff_scroll_to_row, None);
 }
 
@@ -177,9 +179,9 @@ fn diffs_arrive_highlighted_including_reloads() {
     // diff on screen to the runner so the unchanged hunk keeps its colors, and arrives colored.
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
     let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }));
-    assert!(held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, previous: Some(p), .. } if p.hunks.len() == 2)), "{held:?}");
+    assert!(held.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { reload: true, previous: Some(p), .. }) if p.hunks.len() == 2)), "{held:?}");
     for e in held {
-        if let Some(msg) = crate::runner::testing::execute(e) {
+        if let Some(msg) = glowfly_runner::testing::execute(e) {
             drive(&mut st, msg);
         }
     }
@@ -212,7 +214,7 @@ fn turning_highlighting_off_saves_and_keeps_the_spans() {
 
     st.settings.syntax_highlighting = false;
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if !s.syntax_highlighting));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if !s.syntax_highlighting));
     assert_eq!(st.session.diff.view.as_ref().unwrap().1.highlight, want, "only painting is gated, so turning it back on needs no reload");
 }
 
@@ -223,10 +225,10 @@ pub(super) fn drive_holding_diffs(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     while let Some(m) = queue.pop() {
         for effect in update(st, m, Instant::now()) {
             match effect {
-                Effect::LoadDiff { .. } => held.push(effect),
-                Effect::LoadStatus { .. } | Effect::LocalOp { .. } | Effect::LoadRepo { .. } => {
-                    queue.extend(crate::runner::testing::execute(effect))
-                }
+                Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }) => held.push(effect),
+                Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+                | Effect::Files(FilesEffect::LocalOp { .. })
+                | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }) => queue.extend(glowfly_runner::testing::execute(effect)),
                 _ => {}
             }
         }
@@ -267,7 +269,7 @@ fn hunk_ops_wait_for_the_reload_after_a_hunk_op() {
     // The same click confirmed after the reload lands is refused too.
     run(&mut st, Msg::confirm("Discard hunk", "Discard?".into(), "Discard", discard_h1()));
     for effect in held {
-        let reloaded = crate::runner::testing::execute(effect).expect("diff result");
+        let reloaded = glowfly_runner::testing::execute(effect).expect("diff result");
         run(&mut st, reloaded);
     }
     assert_eq!(st.session.diff.view.as_ref().map(|(_, d)| d.hunks.len()), Some(2));
@@ -292,7 +294,7 @@ fn late_diff_results_do_not_replace_a_newer_diff_or_reopen_a_closed_one() {
     let b = DiffTarget::Staged("b.txt".into());
     let load = |fx: Vec<Effect>| -> Msg {
         let Ok([effect]) = <[Effect; 1]>::try_from(fx) else { panic!("expected one diff load") };
-        crate::runner::testing::execute(effect).expect("diff result")
+        glowfly_runner::testing::execute(effect).expect("diff result")
     };
 
     // A is opened, then B; A's result arrives last and is ignored.

@@ -14,15 +14,15 @@ use super::theme::color;
 use super::widgets::{Icon, paint_icon};
 use super::window_buttons::BUTTON_W;
 use super::{menu_bar, tabs};
-use crate::msg::{AppMsg, Msg};
-use crate::state::AppState;
-use crate::state::window_chrome::{AltFrame, WindowCmd};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::quiet_target::{self, State};
+use crate::theme::sizes::ControlSize;
+use crate::widgets::quiet_target::{self, State};
 use eframe::egui::{
     self, Align, CornerRadius, Event, Id, Key, LayerId, Layout, PointerButton, Pos2, Rect, Sense, UiBuilder, WidgetInfo, WidgetType, pos2,
     vec2,
 };
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::window_chrome::{AltFrame, WindowCmd};
 
 /// The bar's height, and its tabs' (along its bottom edge).
 pub(super) const TITLE_H: f32 = 44.0;
@@ -149,7 +149,7 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
 
 /// Esc, Left and Right while the menu shows menu `m` alone: Esc goes back to the list of five
 /// with `m`'s row focused (instead of closing), Left and Right show the menu before or after it.
-fn single_keys(ctx: &egui::Context, st: &mut AppState, m: crate::state::menu_keys::TopMenu) {
+fn single_keys(ctx: &egui::Context, st: &mut AppState, m: glowfly_model::state::menu_keys::TopMenu) {
     // The open menu's keys are set aside for it (`menu_keys`): take them from there.
     let k = &mut st.view.menu_keys;
     if take_key(ctx, Key::Escape) {
@@ -181,7 +181,7 @@ fn alt_frame(ctx: &egui::Context) -> AltFrame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::window_chrome::Chrome;
+    use glowfly_model::state::window_chrome::Chrome;
 
     #[test]
     fn the_tabs_get_what_the_bar_leaves() {

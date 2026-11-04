@@ -27,6 +27,7 @@
 //! - `launch.rs`: starting the helper, and Glowfly again, detached.
 //! - `finish.rs`: the helper itself (`glowfly --finish-update <plan>`).
 //! - `report.rs`: how the last installer run went, read from the helper's log at the next start.
+//! - `error.rs`: `UpdateError`, why a check, a download or Install and restart failed.
 //!
 //! The release itself is read through `Feed` (by default `forge::latest_release`). A
 //! downloaded installer runs, or a portable copy's program or an AppImage is swapped, only when
@@ -38,6 +39,7 @@ mod assets;
 mod backups;
 mod check;
 mod download;
+mod error;
 mod feed;
 mod finish;
 mod host;
@@ -72,6 +74,7 @@ pub use download::{
     MAX_DOWNLOAD, Progress, Saved, SavedProblem, check_saved, download, download_saved, download_streamed, free_name, read_verified,
     split_extension,
 };
+pub use error::UpdateError;
 pub use feed::{FEED_ENV, FEED_RELEASE, Feed};
 pub use finish::run as finish_update;
 pub use host::current_platform;

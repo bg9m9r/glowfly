@@ -5,15 +5,15 @@
 use super::snapshot_tests::{harness, remove_fixture, settings, with_repo};
 use super::snapshot_tests_gitflow::{center, initialized, pushed};
 use super::snapshot_tests_select::click;
-use crate::msg::{BranchMsg, ForgeMsg, Msg};
-use crate::state::trello::BoardList;
-use crate::state::{AppState, ForgeState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, Issue, Provider, Target, TrelloBoard};
 use glowfly_core::settings::{ThemeChoice, TrackerChoice};
+use glowfly_model::msg::{BranchMsg, ForgeMsg, Msg};
+use glowfly_model::state::trello::BoardList;
+use glowfly_model::state::{AppState, ForgeState, PrefPage, PrefsState};
 use std::time::Instant;
 
 const BOARD: &str = "5f1a2b3c4d5e6f7a8b9c0d1e";
@@ -37,9 +37,11 @@ fn prefs_integrations_trello() {
     h.run();
     h.check_snapshot("prefs_integrations_trello");
     // The row labels ("API Key", "Token") are painted, so the image shows them.
-    for label in ["Get your API key", "Allow a read-only token", "Allow a token that can create cards", "Trello"] {
+    for label in ["Get your API key", "Allow a read-only token", "Allow a token that can create cards"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
+    // "Trello" is also the service's row in the page list.
+    assert!(h.query_all_by_label("Trello").next().is_some());
     assert!(h.query_by_label("Host domain").is_none() && h.query_by_label("Connect to Trello").is_none());
     h.get_by_label("Allow a read-only token").click();
     h.run();

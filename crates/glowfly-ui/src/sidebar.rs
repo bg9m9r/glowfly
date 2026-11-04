@@ -14,25 +14,26 @@ use super::theme::color;
 use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
 use super::widgets::{self, Part};
-use crate::msg::BranchMsg;
-use crate::msg::FilterMsg;
-use crate::msg::IssueMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::forge_filters::{self, IssueView, PrView};
-use crate::state::layout::Pane;
-use crate::state::panel_layout::Fit;
-use crate::state::session_view::empty_sections::Folding;
-use crate::state::{AppState, ForgeState, Selection, Status};
-use crate::ui::theme::controls;
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::menu::separator;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::forge::{self, FilterKind};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::{GraphFilter, SizedPanel};
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::FilterMsg;
+use glowfly_model::msg::IssueMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::forge_filters::{self, IssueView, PrView};
+use glowfly_model::state::layout::Pane;
+use glowfly_model::state::panel_layout::Fit;
+use glowfly_model::state::session_view::empty_sections::Folding;
+use glowfly_model::state::{AppState, ForgeState, Selection, Status};
 
 type Shown<'a> = dyn Fn(&str) -> bool + 'a;
 
@@ -56,15 +57,16 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         ui.horizontal(|ui| {
             ui.add_space(widgets::PAD_X);
             let width = ui.available_width() - widgets::PAD_X;
-            let (hint, cut) = widgets::truncate::hint(ui, filter_hint, width);
+            let (hint, cut) = widgets::truncate::hint(ui, filter_hint, controls::field_text_width(width));
             let empty = st.session.tab_view.ref_filter.is_empty();
-            let r =
-                controls::field(ui, egui::TextEdit::singleline(&mut st.session.tab_view.ref_filter).hint_text(hint).desired_width(width));
+            let edit = egui::TextEdit::singleline(&mut st.session.tab_view.ref_filter).hint_text(hint);
+            let r = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(width));
+            crate::access::name_field(&r, st.settings.lang().tr("sidebar.filter.name"));
             if empty && cut {
                 r.on_hover_text(filter_hint);
             }
         });
-        ui.add_space(8.0);
+        // The first section header's own space above it (`SPACE_ABOVE`) sets it below the field.
         let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
         ref_visibility::banner(ui, st.settings.lang(), &filter, msgs);
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));
@@ -74,14 +76,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
 }
 
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
-    let actions = crate::state::section_actions::all(st);
-    let hint = crate::state::hints::view(st).filter(|h| h.place == crate::state::hints::Place::LeftPanel);
+    let actions = glowfly_model::state::section_actions::all(st);
+    let hint = glowfly_model::state::hints::view(st).filter(|h| h.place == glowfly_model::state::hints::Place::LeftPanel);
     let t = st.settings.lang();
-    let open_tabs = crate::state::tabs::open_places(&st.tabs);
+    let open_tabs = glowfly_model::state::tabs::open_places(&st.tabs);
     let open_issue = st.session.issue.view.as_ref().map(|v| v.key.clone());
-    let trusted = crate::state::custom_commands::repo_trusted(st);
+    let trusted = glowfly_model::state::custom_commands::repo_trusted(st);
     let Some(snap) = &st.snap else { return };
-    let commands = crate::state::custom_commands::MenuCommands::of(&st.custom_commands, snap, trusted, t);
+    let commands = glowfly_model::state::custom_commands::MenuCommands::of(&st.custom_commands, snap, trusted, t);
     let repo_filters = st.settings.forge_filters_for(&snap.real_workdir);
     let filter = st.session.tab_view.ref_filter.to_lowercase();
     let shown = |name: &str| glowfly_core::matching::contains_lower(name, &filter);
@@ -89,12 +91,13 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let sel = &st.session.selection;
     let fs = st.session.forge.as_ref();
     let idle = st.job.is_none();
-    let sub_cx = crate::state::submodules::section_cx(st);
+    let sub_cx = glowfly_model::state::submodules::section_cx(st);
     let sections = &mut st.view.sections;
     let empty = &mut st.session.tab_view.empty_sections;
     let repo = snap.real_workdir.as_path();
     let hover_next = &mut st.view.hover_tip_next;
     let tips_seen = &mut st.view.tips_seen;
+    let local_rows = &mut st.view.local_rows;
     let slot = super::build_status::tip_slot(fs);
 
     let local_menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, &actions.local);
@@ -110,15 +113,15 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     section_header::show(ui, local, &mut sections.local, msgs);
     if sections.local {
         let mut elbows = stack_rows::Elbows::default();
-        for row in crate::state::stack_rows::local_rows(snap, &shown, !filter.is_empty()) {
+        for row in local_rows.rows(snap, &filter).iter().map(|r| r.of(snap)) {
             let (b, dent) = (row.branch, stack_rows::indent(row.depth));
             // Noted before the hidden check, so rows scrolled out of view still anchor elbows.
             elbows.note(&b.name, ui.cursor().top() + widgets::LIST_ROW_H / 2.0);
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let pr = fs.and_then(|f| Some(f.pr_label(crate::state::push_pr::open_pr(snap, f, &b.name)?.id)));
-            let worktree = crate::state::worktree_branches::elsewhere(snap, &b.name);
+            let pr = fs.and_then(|f| Some(f.pr_label(glowfly_model::state::push_pr::open_pr(snap, f, &b.name)?.id)));
+            let worktree = glowfly_model::state::worktree_branches::elsewhere(snap, &b.name);
             let mut parts = Vec::new();
             if b.ahead > 0 {
                 parts.push(Part::Ahead(b.ahead));
@@ -139,7 +142,10 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             let selected = b.oid.is_some_and(|o| sel.includes(o));
             let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
             let (r, marker, cut) =
-                widgets::list_row_cut(ui, widgets::ROW_INDENT + DOT_ROOM + dent, &label, right, slot, selected, b.is_head);
+                widgets::name_row_cut(ui, widgets::ROW_INDENT + DOT_ROOM + dent, &label, right, slot, selected, b.is_head);
+            if b.is_head {
+                crate::access::name_button(&r, true, &t.trf("access.checked_out", &[("name", &b.name)]));
+            }
             branch_dot::paint(ui.painter(), r.rect, widgets::ROW_INDENT + dent, line(snap.branch_swatch(&b.name)));
             elbows.paint(ui.painter(), r.rect, row.depth, row.link.map(|l| l.on.as_str()), color::weak());
             if r.hovered() {
@@ -153,9 +159,9 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             };
             // A cut name comes first, whole.
             let whole = cut.then(|| label.clone());
-            let stacked = crate::state::stack_rows::tip_line(t, row.link);
+            let stacked = glowfly_model::state::stack_rows::tip_line(t, row.link);
             let lines: Vec<String> =
-                [whole, tracking, stacked, tip, worktree.map(|wt| crate::state::worktree_branches::local_tip_line(t, wt, &b.name))]
+                [whole, tracking, stacked, tip, worktree.map(|wt| glowfly_model::state::worktree_branches::local_tip_line(t, wt, &b.name))]
                     .into_iter()
                     .flatten()
                     .collect();
@@ -244,7 +250,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let open = empty.open_mut(repo, Folding::Stashes, snap.stashes.len(), &mut sections.stashes);
     super::stashes::section(ui, t, snap, open, (sel, &shown, filtering), stash, msgs);
     let rows = super::worktrees::Rows { shown: &shown, sel, open_tabs: &open_tabs, add: &actions.worktree, filtering, t };
-    let open = empty.open_mut(repo, Folding::Worktrees, crate::state::worktrees::listed(snap).len(), &mut sections.worktrees);
+    let open = empty.open_mut(repo, Folding::Worktrees, glowfly_model::state::worktrees::listed(snap).len(), &mut sections.worktrees);
     super::worktrees::section(ui, snap, open, rows, hover_next, msgs);
     let open = empty.open_mut(repo, Folding::Submodules, snap.submodules.len(), &mut sections.submodules);
     super::submodules::section(ui, t, snap, &sub_cx, open, (&shown, filtering, &actions.submodule), msgs);
@@ -307,18 +313,9 @@ fn pull_requests(
             menu_item(msgs, ui, format!("Show {}", f.pr_noun()), Msg::PullRequest(PullRequestMsg::Open(pr.id)));
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));
             super::build_status::pr_menu_item(ui, pr, msgs);
-            // A local source branch is checked out like any other (refused when another worktree
-            // has it); otherwise a new branch tracking the remote one is made.
-            let local = snap.locals.iter().any(|b| b.name == pr.source);
-            let blocked = match crate::state::branches::pr_checkout(snap, &f.remote, &pr.source) {
-                Ok(_) if local => crate::state::worktree_branches::checkout_blocked(t, snap, &pr.source),
-                Ok(_) => None,
-                Err(why) => Some(why),
-            };
-            let m = Msg::Branch(BranchMsg::CheckoutPullRequest { id: pr.id });
-            menu_item_if(msgs, ui, format!("Checkout {}", pr.source), blocked.as_deref(), m);
-            let base = crate::state::worktree_branches::pr_base(snap, &f.remote, &pr.source).err();
-            let create = Msg::Worktree(crate::worktree::WorktreeMsg::CreateForPr { id: pr.id, source: pr.source.clone() });
+            super::pr_menu_items::checkout_item(ui, t, snap, f, pr, msgs);
+            let base = glowfly_model::state::worktree_branches::pr_base(snap, &f.remote, &pr.source).err();
+            let create = Msg::Worktree(glowfly_model::worktree::WorktreeMsg::CreateForPr { id: pr.id, source: pr.source.clone() });
             menu_item_if(msgs, ui, "Create worktree…", base.as_deref(), create);
             menu_item(msgs, ui, "Copy link", Msg::Copy(pr.url.clone()));
         });

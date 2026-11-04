@@ -1,3 +1,2 @@
-window 720x26
-Label "Glowfly 0.1.0"
+window 720x28
 Button "Slow updates"

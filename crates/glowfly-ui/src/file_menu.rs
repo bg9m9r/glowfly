@@ -22,30 +22,30 @@ pub(super) use extra::{patch_file_item, staged_header_items, stash_file_item};
 
 use super::common::{menu_danger, menu_item, menu_item_if, menu_item_setup, short};
 use super::widgets::reason::{self, ItemState};
-use crate::custom_commands::Target;
-use crate::msg::BlameMsg;
-use crate::msg::FilesMsg;
-use crate::msg::HistoryMsg;
-use crate::msg::Msg;
-use crate::msg::StageMsg;
-use crate::msg::WorkFileMsg;
-use crate::patch::PatchMsg;
-use crate::state::custom_commands::MenuCommands;
-use crate::state::files::{folder_prefill, not_in_workdir, show_in_folder};
-use crate::state::lfs::TrackItem;
-use crate::state::tool_compare::ToolSetup;
-use crate::state::tools::open_in_editor;
-use crate::tools::ToolsMsg;
-use crate::ui::widgets::menu::separator;
+use crate::widgets::menu::separator;
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::custom_commands::Place;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry, is_empty_tree};
+use glowfly_model::custom_commands::Target;
+use glowfly_model::msg::BlameMsg;
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::HistoryMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::patch::PatchMsg;
+use glowfly_model::state::custom_commands::MenuCommands;
+use glowfly_model::state::files::{folder_prefill, not_in_workdir, show_in_folder};
+use glowfly_model::state::lfs::TrackItem;
+use glowfly_model::state::tool_compare::ToolSetup;
+use glowfly_model::state::tools::open_in_editor;
+use glowfly_model::tools::ToolsMsg;
 
 // In English for the file history's views, which aren't translated yet; the menus use keys.
-pub(super) use crate::state::files::NOT_IN_WORKDIR;
-pub(super) use crate::state::files::SHOW_IN_FOLDER;
+pub(super) use glowfly_model::state::files::NOT_IN_WORKDIR;
+pub(super) use glowfly_model::state::files::SHOW_IN_FOLDER;
 pub(super) const OPEN_DEFAULT: &str = "Open with default app";
 pub(super) const BLAME: &str = "Blame";
 

@@ -1,9 +1,9 @@
 //! Copy hunk as patch's read (`Effect::CopyHunkPatch`): `repo::hunk_patch` on the repository.
 
 use super::execute::{Cx, Execute};
-use crate::effect::HunkPatchRequest;
-use crate::msg::{DiffMsg, Msg};
 use glowfly_core::repo;
+use glowfly_model::effect::HunkPatchRequest;
+use glowfly_model::msg::{DiffMsg, Msg};
 
 impl Execute for HunkPatchRequest {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {

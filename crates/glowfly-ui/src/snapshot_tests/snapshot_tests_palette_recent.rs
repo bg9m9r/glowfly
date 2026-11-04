@@ -2,13 +2,13 @@
 //! click and its tooltip. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use crate::keymap::BindingId;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::state::palette::{Palette, PaletteCommand as C, shown};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::state::palette::{Palette, PaletteCommand as C, shown};
 
 #[test]
 fn palette_recent_dark() {

@@ -4,9 +4,9 @@
 
 use super::tests::{drive, same_place, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::{Msg, NotifyMsg, RepoMsg, TabsMsg};
-use crate::state::{AppState, Modal};
+use glowfly_model::effect::{Effect, LoadKind, UiEffect};
+use glowfly_model::msg::{Msg, NotifyMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -68,7 +68,7 @@ fn a_click_reopens_a_closed_repository() {
     assert_eq!(st.tab_showing(&a), None, "closed");
     let fx = click(&mut st, Some(&a));
     assert!(focuses(&fx));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Open, path, .. } if same_place(path, &a))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Open, path, .. }) if same_place(path, &a))), "{fx:?}");
     assert_eq!(st.tabs.len(), 2, "in a new tab");
     assert!(shows(&st, &a));
     cleanup(&[&a, &b]);
@@ -112,7 +112,7 @@ fn a_click_under_a_dialog_waits() {
     assert!(shows(&st, &a), "Show switches once the dialog is closed");
 
     // Preferences counts as a dialog too.
-    st.prefs = Some(crate::state::PrefsState::new(crate::state::prefs::PrefPage::General));
+    st.prefs = Some(glowfly_model::state::PrefsState::new(glowfly_model::state::prefs::PrefPage::General));
     let active = st.active_tab;
     click(&mut st, Some(&b));
     assert_eq!(st.active_tab, active);

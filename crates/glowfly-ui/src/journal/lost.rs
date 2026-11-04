@@ -8,22 +8,25 @@
 //! was cut or fsck reported problems.
 
 use super::{chip, lost_preview, split};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal::short;
-use crate::state::journal_lost::{LostView, apply_blocked, chip as lost_chip, footer_lines, label, restore_file_blocked, restore_plan};
-use crate::ui::common::{menu_header, menu_item, menu_item_if};
-use crate::ui::empty_state::{EmptyIcon, empty_state};
-use crate::ui::pane_status::{self, Failure};
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::ui::widgets::{paint_cut_text, row_fill};
+use crate::common::{menu_header, menu_item, menu_item_if};
+use crate::empty_state::{EmptyIcon, empty_state};
+use crate::pane_status::{self, Failure};
+use crate::theme::{color, type_scale};
+use crate::widgets::chip::ChipSize;
+use crate::widgets::menu::separator;
+use crate::widgets::row_menu::RowMenuExt;
+use crate::widgets::{paint_cut_text, row_fill};
 use eframe::egui::{self, Align2, CursorIcon, Rect, Sense, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::journal::{LostCommit, LostKind};
 use glowfly_core::repo::Snapshot;
 use glowfly_model::journal::{JournalMsg, LostMsg};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::short;
+use glowfly_model::state::journal_lost::{
+    LostView, apply_blocked, chip as lost_chip, footer_lines, label, restore_file_blocked, restore_plan,
+};
 
 const ROW_H: f32 = 56.0;
 const PAD_X: f32 = 16.0;
@@ -102,7 +105,7 @@ fn list(ui: &mut Ui, st: &AppState, view: &LostView, msgs: &mut Vec<Msg>) {
             };
             let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
             let name = label(t, c);
-            crate::ui::access::name_button(&resp, true, &name);
+            crate::access::name_button(&resp, true, &name);
             if ui.is_rect_visible(rect) {
                 row_fill::paint(ui.painter(), rect, view.selected == Some(c.oid), resp.hovered());
                 paint(ui, st, rect, c, &name);
@@ -134,7 +137,7 @@ fn paint(ui: &Ui, st: &AppState, rect: Rect, c: &LostCommit, name: &str) {
 
     let mut x = left;
     if let Some(what) = lost_chip(t, &c.kind) {
-        x += chip(p, x, y2, what, (right - x) * 0.5, color::text()).width() + 6.0;
+        x += chip(p, ChipSize::Badge, x, y2, what, (right - x) * 0.5, color::text()).width() + 6.0;
     }
     if matches!(c.kind, LostKind::Discarded { .. }) {
         return;

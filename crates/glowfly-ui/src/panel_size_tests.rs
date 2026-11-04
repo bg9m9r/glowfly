@@ -1,6 +1,6 @@
 use super::*;
-use crate::state::panel_layout::DETAILS;
 use glowfly_core::settings::Settings;
+use glowfly_model::state::panel_layout::DETAILS;
 use std::time::Instant;
 
 fn input(w: f32, h: f32) -> egui::RawInput {

@@ -8,7 +8,7 @@
 
 use super::tokens::radius;
 use super::type_scale::{BODY, CAPTION, SMALL};
-use crate::ui::widgets::icon::{SIZE_MD, SIZE_SM};
+use crate::widgets::icon::{SIZE_MD, SIZE_SM};
 use eframe::egui::{Galley, Pos2, Rect, pos2};
 
 /// A control's size. Compact is for quiet controls only (`allows_frame`).
@@ -115,10 +115,9 @@ impl ControlSize {
 }
 
 /// A chip's or badge's size.
-// Painted by `widgets/chip.rs` from sizing slice S3; until then only its tests read it.
-#[allow(dead_code)]
+/// Painted only by `widgets/chip.rs`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ChipSize {
+pub enum ChipSize {
     /// 18 px pills: counts and status letters, the tab chip, pull request and build counts.
     Badge,
     /// 22 px: refs and tags, labels, identity, SHA and parent chips, the signature badge, SSH
@@ -127,9 +126,8 @@ pub(crate) enum ChipSize {
 }
 
 /// A chip size's measures, in px.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct ChipMetrics {
+pub struct ChipMetrics {
     pub h: f32,
     pub pad_x: f32,
     pub text: f32,
@@ -142,7 +140,6 @@ pub(crate) struct ChipMetrics {
     pub min_w: f32,
 }
 
-#[allow(dead_code)]
 impl ChipSize {
     /// The size's measures.
     pub const fn metrics(self) -> ChipMetrics {

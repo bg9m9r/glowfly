@@ -5,15 +5,15 @@
 //! form. Every action is a `Msg`.
 
 use super::{help, primary_button, row, warn};
-use crate::msg::{Msg, SparseMsg, TrustMsg};
-use crate::state::blocked::BUSY;
-use crate::state::sparse::{SparsePage, summary};
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::{self, buttons};
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::{self, buttons};
 use eframe::egui::{self, Key, Modifiers, RichText, Ui, vec2};
 use glowfly_core::sparse_ops::{SparseMode, SparseStatus};
+use glowfly_model::msg::{Msg, SparseMsg, TrustMsg};
+use glowfly_model::state::blocked::BUSY;
+use glowfly_model::state::sparse::{SparsePage, summary};
 use std::path::PathBuf;
 
 /// What the page needs from outside Preferences, cloned before the page borrows its state.

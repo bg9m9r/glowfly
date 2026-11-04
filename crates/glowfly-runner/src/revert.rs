@@ -1,9 +1,9 @@
-//! Reverting part of a commit or comparison diff in the working tree (`Effect::Revert`), with
+//! Reverting part of a commit or comparison diff in the working tree (`FilesEffect::Revert`), with
 //! the working copy saved before and after so the revert can be undone.
 
-use crate::msg::{Msg, RevertWhat, StageMsg};
 use glowfly_core::repo::{self, RevertRequest};
 use glowfly_core::undo;
+use glowfly_model::msg::{Msg, RevertWhat, StageMsg};
 use std::path::Path;
 
 /// Runs the revert and reports it under the file's working-tree name, the file that changes.

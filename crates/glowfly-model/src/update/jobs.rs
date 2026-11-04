@@ -3,6 +3,7 @@
 //! `begin_tool_job` for the merge tool skips both.
 
 use super::trust::Gate;
+use crate::effect::JobEffect;
 use crate::effect::{Effect, PickJob};
 use crate::state::auto_stash::Making;
 use crate::state::trust::Created;
@@ -49,6 +50,7 @@ pub fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Star
         quiet: spec.quiet,
         clear_commit: spec.clear_commit,
         then_push: spec.then_push,
+        then_continue: spec.then_continue,
         then_pr: spec.then_pr,
         then_link: spec.then_link,
         then_open: spec.then_open,
@@ -91,7 +93,7 @@ pub fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Star
         Some(PickPlan { picking, oids, can_skip }) => {
             Effect::Pick(PickJob { cwd, cmds, record, journal, prompts, picking, oids, can_skip })
         }
-        None => Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable, on_fail_check },
+        None => Effect::Job(JobEffect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable, on_fail_check }),
     };
     let started = launch(st, job, spec.cwd, effect, fx);
     if started != Started::No {
@@ -132,6 +134,7 @@ pub fn begin_job(
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -156,6 +159,7 @@ pub(super) fn begin_background_job(
         quiet: true,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -185,6 +189,7 @@ pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -213,6 +218,7 @@ pub(super) fn start_effect_job(
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open,

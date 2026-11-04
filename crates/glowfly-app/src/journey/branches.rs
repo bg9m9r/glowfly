@@ -11,7 +11,7 @@ use super::harness::Journey;
 fn new_branch(j: &mut Journey, name: &str) {
     j.click("Create a branch", Region::Toolbar, Pick::Only);
     j.type_into("Branch name", name);
-    j.click("Create", Region::Anywhere, Pick::Only);
+    j.click("Create branch", Region::Anywhere, Pick::Only);
     j.toast(true, "Create branch succeeded");
 }
 
@@ -22,12 +22,12 @@ fn branch_merge_delete_and_checkout_with_changes() {
     let repo = fx.work().join("app");
     fx.clone_cli(&bare, &repo);
     let mut j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
-    j.see("✔  main", Region::Sidebar);
+    j.see("main, checked out", Region::Sidebar);
 
     // step 1: a new branch from the toolbar, checked out.
     new_branch(&mut j, "feature");
-    j.see("feature", Region::Toolbar);
-    j.see("✔  feature", Region::Sidebar);
+    j.see("Branch: feature", Region::Toolbar);
+    j.see("feature, checked out", Region::Sidebar);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("feature"));
 
     // step 2: a commit on it.
@@ -40,8 +40,8 @@ fn branch_merge_delete_and_checkout_with_changes() {
     // step 3: back to main from the branch's menu.
     j.branch_menu("main", "Checkout");
     j.toast(true, "Checkout succeeded");
-    j.see("main", Region::Toolbar);
-    j.see("✔  main", Region::Sidebar);
+    j.see("Branch: main", Region::Toolbar);
+    j.see("main, checked out", Region::Sidebar);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("main"));
     assert!(disk::work_text(&repo, "feature.txt").is_none());
 
@@ -68,7 +68,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     j.toast(true, "Delete branch succeeded");
     assert_eq!(disk::branch_oid(&repo, "feature"), None);
     j.absent("feature", Region::Sidebar);
-    j.see("✔  main", Region::Sidebar);
+    j.see("main, checked out", Region::Sidebar);
 
     // step 7: another branch with its own change to a.txt; back on main.
     new_branch(&mut j, "other");
@@ -86,7 +86,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     j.toast(true, "Checkout succeeded");
     j.toast(true, "Your changes from \"Auto-stash before checking out other\" are back.");
     assert_eq!(disk::stash_count(&repo), 0);
-    j.see("other", Region::Toolbar);
+    j.see("Branch: other", Region::Toolbar);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("other"));
     assert_eq!(disk::work_text(&repo, "a.txt").as_deref(), Some("a from other\n"));
     assert_eq!(disk::work_text(&repo, "b.txt").as_deref(), Some("b edited\n"));
@@ -98,7 +98,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     j.see("Stash and check out", Region::Anywhere);
     j.click("Cancel", Region::Anywhere, Pick::Only);
     j.absent("Stash and check out", Region::Anywhere);
-    j.see("other", Region::Toolbar);
+    j.see("Branch: other", Region::Toolbar);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("other"));
     assert_eq!(disk::work_text(&repo, "a.txt").as_deref(), Some("a edited here\n"));
     assert_eq!(disk::work_text(&repo, "b.txt").as_deref(), Some("b edited\n"));
@@ -108,7 +108,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     // the stash stays (marked auto) and a.txt holds the conflict.
     j.branch_menu("main", "Checkout");
     j.click("Stash and check out", Region::Anywhere, Pick::Only);
-    j.toast(false, "Putting back \"Auto-stash before checking out main\" conflicted in 1 file.");
+    j.toast(false, "Putting back \"Auto-stash before checking out main\" conflicted in 1 file; the stash is kept.");
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("main"));
     assert!(disk::work_text(&repo, "a.txt").unwrap().contains("<<<<<<<"));
     assert_eq!(disk::work_text(&repo, "b.txt").as_deref(), Some("b edited\n"));

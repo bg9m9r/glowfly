@@ -15,9 +15,9 @@
 //! draws each segment's content over it.
 
 use super::button_look::{Press, Target, paint_target};
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::{BORDER_W, DIVIDER_INSET, radius};
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::{BORDER_W, DIVIDER_INSET, radius};
 use eframe::egui::{Color32, CornerRadius, Id, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 
 /// How a bar is drawn.

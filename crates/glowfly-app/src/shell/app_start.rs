@@ -3,10 +3,10 @@
 //! read held before the first of them, since some save settings.
 
 use super::GlowflyApp;
-use crate::msg::{Msg, PrefsMsg, RecentMsg};
-use crate::ui::layout;
 use eframe::egui;
 use glowfly_core::settings::{LoadProblem, ThemeCatalog};
+use glowfly_model::msg::{Msg, PrefsMsg, RecentMsg};
+use glowfly_ui::layout;
 
 impl GlowflyApp {
     /// Runs the `STARTUP` steps in order: all with `logs` (the real app); a test app skips
@@ -15,7 +15,7 @@ impl GlowflyApp {
         &mut self,
         ctx: &egui::Context,
         themes: ThemeCatalog,
-        logs: Option<crate::runner::LogSetup>,
+        logs: Option<glowfly_runner::LogSetup>,
         problem: Option<LoadProblem>,
     ) {
         let outside = logs.is_some();
@@ -29,7 +29,7 @@ impl GlowflyApp {
         ctx: &egui::Context,
         steps: impl IntoIterator<Item = Step>,
         themes: ThemeCatalog,
-        logs: Option<crate::runner::LogSetup>,
+        logs: Option<glowfly_runner::LogSetup>,
         problem: Option<LoadProblem>,
     ) {
         self.st.settings_file.hold(problem.as_ref());
@@ -39,7 +39,7 @@ impl GlowflyApp {
             match step {
                 Step::Theme => {
                     if let Some(themes) = themes.take() {
-                        self.dispatch(ctx, Msg::Theme(crate::themes::ThemeMsg::Loaded(themes)));
+                        self.dispatch(ctx, Msg::Theme(glowfly_model::themes::ThemeMsg::Loaded(themes)));
                     }
                 }
                 Step::Layout => layout::start(ctx, &self.st),
@@ -49,17 +49,17 @@ impl GlowflyApp {
                 Step::Logs => {
                     if let Some(logs) = logs.take() {
                         self.runner.attach_logs(logs);
-                        self.dispatch(ctx, Msg::Logs(crate::logs::LogsMsg::Start));
+                        self.dispatch(ctx, Msg::Logs(glowfly_model::logs::LogsMsg::Start));
                     }
                 }
                 Step::IndexStore => self.runner.attach_index_store(glowfly_core::commit_index::Store::default_dir()),
                 // Links opened while this window runs come here instead of a new window.
                 Step::Instance => self.runner.start_instance(),
                 Step::OpenEvents => self.runner.start_open_events(),
-                Step::Lfs => self.dispatch(ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect)),
-                Step::GitEnv => self.dispatch(ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect)),
-                Step::Onboarding => self.dispatch(ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup)),
-                Step::Updates => self.dispatch(ctx, Msg::Updates(crate::msg::UpdateMsg::Startup)),
+                Step::Lfs => self.dispatch(ctx, Msg::Lfs(glowfly_model::lfs::LfsMsg::Detect)),
+                Step::GitEnv => self.dispatch(ctx, Msg::GitEnv(glowfly_model::git_env::GitEnvMsg::Detect)),
+                Step::Onboarding => self.dispatch(ctx, Msg::Onboarding(glowfly_model::onboarding::OnboardingMsg::Startup)),
+                Step::Updates => self.dispatch(ctx, Msg::Updates(glowfly_model::msg::UpdateMsg::Startup)),
                 Step::RecentFolders => self.dispatch(ctx, Msg::Recent(RecentMsg::CheckFolders)),
             }
         }
@@ -137,7 +137,7 @@ mod tests {
         let settings = Settings { welcome_done: true, ..Settings::default() };
         let folder = files.to_owned();
         let mut app =
-            GlowflyApp::assemble(&ctx, settings, Vec::new(), move |tx, waker| crate::runner::testing::sandboxed(tx, waker, folder));
+            GlowflyApp::assemble(&ctx, settings, Vec::new(), move |tx, waker| glowfly_runner::testing::sandboxed(tx, waker, folder));
         app.run_steps(&ctx, steps.iter().copied(), ThemeCatalog::default(), None, problem);
         let began = Instant::now();
         while !app.runner.in_flight_names().is_empty() {

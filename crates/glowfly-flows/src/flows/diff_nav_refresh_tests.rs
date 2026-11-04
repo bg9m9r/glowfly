@@ -3,12 +3,11 @@
 //! left), and a diff-options change asks for the step's file again with the new options.
 
 use super::diff_nav_tests::{at_end_of, finish, nav_repo, one_load, pending_step, run, shown, unstaged};
-use crate::effect::{Effect, StatusRead};
-use crate::msg::{DiffMsg, LoadMsg, Msg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::diff_nav::Landing;
 use glowfly_core::repo::FileEntry;
+use glowfly_model::effect::{Effect, StatusRead};
+use glowfly_model::msg::{DiffMsg, LoadMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_nav::Landing;
 
 /// A status refresh arriving with `keep` deciding which unstaged and staged rows remain.
 fn refresh(st: &mut AppState, keep: impl Fn(&FileEntry) -> bool) -> Vec<Effect> {
@@ -38,7 +37,7 @@ fn status_refresh_keeps_pending_step() {
     let fx = refresh(&mut st, |_| true);
     assert_eq!(one_load(&fx), (&unstaged("b.bin"), false), "the step's file is asked for again");
     assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));
-    run(&mut st, runner::testing::execute(stale).unwrap());
+    run(&mut st, glowfly_runner::testing::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the superseded request doesn't land");
     assert!(st.view.diff_landing.is_some(), "and doesn't end the step");
     finish(&mut st, fx);
@@ -57,7 +56,7 @@ fn refresh_that_changes_the_list_steps_to_the_new_neighbour() {
     let fx = refresh(&mut st, |f| f.path != "b.bin");
     assert_eq!(one_load(&fx), (&unstaged("c.txt"), false));
     assert_eq!(st.view.diff_landing, Some((unstaged("c.txt"), Landing::First)));
-    run(&mut st, runner::testing::execute(stale).unwrap());
+    run(&mut st, glowfly_runner::testing::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")));
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
@@ -83,9 +82,9 @@ fn options_change_during_step_reopens_the_target() {
     let (mut st, dir) = nav_repo("refresh-options");
     pending_step(&mut st);
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    let loads: Vec<_> = fx.iter().filter(|e| matches!(e, Effect::LoadDiff { .. })).collect();
+    let loads: Vec<_> = fx.iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).collect();
     assert!(
-        matches!(&loads[..], [Effect::LoadDiff { target, reload: false, ignore_whitespace: true, .. }] if *target == unstaged("b.bin")),
+        matches!(&loads[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload: false, ignore_whitespace: true, .. })] if *target == unstaged("b.bin")),
         "{fx:?}"
     );
     assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));

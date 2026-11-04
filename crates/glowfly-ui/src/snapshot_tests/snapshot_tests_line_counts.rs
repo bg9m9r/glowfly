@@ -5,13 +5,13 @@
 
 use super::snapshot_tests::{git, harness, harness_palette, remove_fixture, render, with_repo};
 use super::theme;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_painted::bounds;
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_painted::bounds;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ResizableColumn::Refs;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::{AppState, Selection};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -110,18 +110,17 @@ fn graph_wip_row() {
 }
 
 /// With the commit and date columns hidden and a wide BRANCH / TAG column, the row is narrow:
-/// the total goes first, then the chips, and the label stays whole.
+/// the total goes first, and the label is cut beside its chips (the six-character floor and the
+/// chips hiding after it are `graph::wip_row`'s `graph_wip_row_floor` renders).
 #[test]
 fn graph_wip_row_narrow() {
-    for (refs, name) in [(370.0, "graph_wip_row_narrow"), (450.0, "graph_wip_row_narrower")] {
-        let (mut st, dir) = with_wip(ThemeChoice::Dark, "lines-graph-narrow");
-        st.settings.columns.author = false;
-        st.settings.columns.commit = false;
-        st.settings.columns.date = false;
-        st.settings.column_widths = st.settings.column_widths.with(Refs, refs);
-        let mut h = harness(st, true);
-        h.run();
-        h.check_snapshot(name);
-        remove_fixture(&dir);
-    }
+    let (mut st, dir) = with_wip(ThemeChoice::Dark, "lines-graph-narrow");
+    st.settings.columns.author = false;
+    st.settings.columns.commit = false;
+    st.settings.columns.date = false;
+    st.settings.column_widths = st.settings.column_widths.with(Refs, 370.0);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("graph_wip_row_narrow");
+    remove_fixture(&dir);
 }

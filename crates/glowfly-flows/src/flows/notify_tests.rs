@@ -4,13 +4,12 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, finish, git, same_place};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
-use crate::runner;
-use crate::state::lfs::LfsInstall;
-use crate::state::notify::BehindWatch;
-use crate::state::{AppState, ToastAction};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::lfs::LfsInstall;
+use glowfly_model::state::notify::BehindWatch;
+use glowfly_model::state::{AppState, ToastAction};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -101,11 +100,11 @@ fn no_alert_for_a_tab_switched_away() {
     st.settings.auto_fetch_minutes = 1;
     let tick = st.last_fetch + Duration::from_secs(61);
     let mut fx = update(&mut st, Msg::Tick(tick), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]), "{fx:?}");
     let run = fx.remove(0);
     let fx = update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
     finish(&mut st, fx);
-    let done = runner::testing::execute(run).expect("the job's result");
+    let done = glowfly_runner::testing::execute(run).expect("the job's result");
     let fx = update(&mut st, done, Instant::now());
     finish(&mut st, fx);
     assert!(st.behind_watch.is_none());
@@ -147,13 +146,13 @@ fn pull_action_runs_pull() {
     let id = st.toasts.last().expect("an alert").id;
     let fx = update(&mut st, Msg::ToastAction(id), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(cmds, &vec![args(&["pull", "--ff"])]),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(cmds, &vec![args(&["pull", "--ff"])]),
         other => panic!("expected a pull, got {other:?}"),
     }
     assert!(st.toasts.iter().all(|t| t.id != id));
     finish(&mut st, fx);
     assert_eq!(behind(&st), 0);
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Pull succeeded"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Pulled 1 commit into main."));
     cleanup(&[&work, &bare]);
 }
 
@@ -192,7 +191,7 @@ fn lfs_behind(name: &str) -> (AppState, PathBuf, PathBuf) {
 }
 
 fn is_lfs_fetch(e: &Effect) -> bool {
-    matches!(e, Effect::RunGit { cmds, .. } if *cmds == [args(&["lfs", "fetch"])])
+    matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) if *cmds == [args(&["lfs", "fetch"])])
 }
 
 fn assert_alert(st: &AppState) {
@@ -207,7 +206,7 @@ fn a_failed_lfs_download_after_auto_fetch_keeps_the_behind_alert() {
     st.settings.auto_fetch_minutes = 1;
     let tick = st.last_fetch + Duration::from_secs(61);
     let mut fx = update(&mut st, Msg::Tick(tick), Instant::now());
-    let done = runner::testing::execute(fx.remove(0)).expect("the fetch's result");
+    let done = glowfly_runner::testing::execute(fx.remove(0)).expect("the fetch's result");
     let (lfs, mut rest): (Vec<_>, Vec<_>) = update(&mut st, done, Instant::now()).into_iter().partition(is_lfs_fetch);
     assert_eq!(lfs.len(), 1, "the LFS download started");
     let failed = Msg::Job(JobMsg::JobDone { ok: false, output: "$ git lfs fetch\nfailed".into(), undo: None });

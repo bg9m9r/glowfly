@@ -5,13 +5,13 @@
 use super::journal_tests::{open_loaded, opened};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::{Effect, EffectMeta};
-use crate::journal::{JournalEffect, JournalMsg, LostMsg};
-use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::journal_lost::JournalTab;
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::journal::{LostCommit, LostCommits, LostKind, Op, Preview};
+use glowfly_model::effect::{Effect, EffectMeta};
+use glowfly_model::journal::{JournalEffect, JournalMsg, LostMsg};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::journal_lost::JournalTab;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -76,13 +76,14 @@ fn entry(n: u8, kind: LostKind) -> LostCommit {
     LostCommit { oid: oid(n), kind, summary: "s".into(), message: "s".into(), author: "T".into(), time: 1 }
 }
 
-fn running() -> crate::state::RunningJob {
-    crate::state::RunningJob {
+fn running() -> glowfly_model::state::RunningJob {
+    glowfly_model::state::RunningJob {
         label: "x".into(),
         workdir: None,
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -211,8 +212,8 @@ fn create_branch_opens_the_dialog_at_the_commit() {
 }
 
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
-    match fx.iter().find(|e| matches!(e, Effect::RunGit { .. })) {
-        Some(Effect::RunGit { cmds, .. }) => cmds.clone(),
+    match fx.iter().find(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))) {
+        Some(Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })) => cmds.clone(),
         _ => panic!("a git job: {fx:?}"),
     }
 }

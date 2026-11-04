@@ -15,16 +15,16 @@ use super::pane_status::{self, Failure};
 use super::theme::{color, type_scale};
 use super::widgets::Icon;
 use super::widgets::buttons;
+use super::widgets::chip::{Chip, ChipSize, Look};
 use super::widgets::ghost::{ghost, icon_tip};
 use super::widgets::segmented::{Segment, segmented_opts};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal_lost::JournalTab;
-use crate::state::tip::Tip;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_model::journal::JournalMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal_lost::JournalTab;
+use glowfly_model::state::tip::Tip;
 
 const HEADER_H: f32 = 56.0;
 const INSET: f32 = 16.0;
@@ -116,17 +116,8 @@ fn split(ui: &mut Ui, msgs: &mut Vec<Msg>, list_ui: impl FnOnce(&mut Ui, &mut Ve
     pane_ui(&mut right, msgs);
 }
 
-/// A small chip with `fg` text on the toolbar fill, painted at `x` on the line centred at `y`;
-/// returns its rect.
-fn chip(p: &egui::Painter, x: f32, y: f32, text: &str, max_w: f32, fg: Color32) -> Rect {
-    const H: f32 = 18.0;
-    const PAD: f32 = 6.0;
-    let font = type_scale::font(type_scale::SMALL);
-    let galley =
-        super::widgets::truncate::cut_galley(p.ctx(), super::widgets::truncate::cut_job(text, font, fg), (max_w - 2.0 * PAD).max(0.0));
-    let w = galley.size().x + 2.0 * PAD;
-    let rect = Rect::from_min_size(pos2(x, y - H / 2.0), vec2(w, H));
-    p.rect_filled(rect, egui::CornerRadius::same(radius::SM), color::toolbar());
-    p.galley(pos2(x + PAD, y - galley.size().y / 2.0), galley, fg);
-    rect
+/// A chip of `size` (a ref's name is a Chip, a state a Badge) with `fg` text on the toolbar
+/// fill, at most `max_w` wide, painted at `x` on the line centred at `y`; returns its rect.
+pub(crate) fn chip(p: &egui::Painter, size: ChipSize, x: f32, y: f32, text: &str, max_w: f32, fg: Color32) -> Rect {
+    Chip::new(size, text).look(Look::new(color::toolbar(), fg)).max_w(max_w).paint(p, x, y)
 }

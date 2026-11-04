@@ -33,7 +33,7 @@ pub struct Earlier {
 }
 
 /// An activity log entry's name for the session: open rows and fixes are keyed by it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EntryId(u64);
 
 impl EntryId {
@@ -128,6 +128,8 @@ pub struct LogsState {
     pub announce: Option<Announce>,
     /// The activity rows folded open (a routine group by its first entry's id).
     pub open: HashSet<EntryId>,
+    /// The failed runs dismissed from the status bar: no longer a tab's last failure.
+    pub dismissed: HashSet<EntryId>,
     /// The fixes failed runs offer, newest last, at most `FIX_LIMIT`. Each runs once, from the
     /// panel or from the failure toast's button (a `LogsMsg::Fix` proxy).
     pub fixes: Vec<(EntryId, ToastAction)>,

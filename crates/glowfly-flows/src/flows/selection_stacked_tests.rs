@@ -4,14 +4,14 @@
 
 use super::selection_tests::{fixture, refresh, up};
 use super::tests::drive;
-use crate::effect::Effect;
-use crate::effect::SelectionEffect;
-use crate::msg::{Msg, RepoMsg, SelectionMsg};
-use crate::state::diff_nav::{Landing, Step, next_file, step};
-use crate::state::selection::{MultiSelection, STACK_LIMIT, stack_slice};
-use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SelectionEffect;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::diff_nav::{Landing, Step, next_file, step};
+use glowfly_model::state::selection::{MultiSelection, STACK_LIMIT, stack_slice};
+use glowfly_model::state::{AppState, Selection};
 
 fn multi(st: &AppState) -> &MultiSelection {
     match &st.session.selection {

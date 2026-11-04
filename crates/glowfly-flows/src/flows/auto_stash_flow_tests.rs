@@ -6,14 +6,15 @@
 use super::auto_stash_tests::{ask, git_cmds, up};
 use super::cherry_pick_tests::feature_repo;
 use super::tests::{accept_stash, drive, finish, git};
-use crate::effect::Effect;
-use crate::msg::{AutoStashMsg, BranchMsg, CommitMsg, JobMsg, Msg, RebaseMsg, RepoMsg, SelectionMsg};
-use crate::state::{AppState, Modal, remote_branch};
 use git2::{Oid, RepositoryState};
 use glowfly_core::gitcli::args;
 use glowfly_core::rebase::Resume;
 use glowfly_core::stash_ops::AutoStashFor;
 use glowfly_core::undo::UndoKind;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::{AutoStashMsg, BranchMsg, CommitMsg, JobMsg, Msg, RebaseMsg, RepoMsg, SelectionMsg};
+use glowfly_model::state::{AppState, Modal, remote_branch};
 use std::path::Path;
 
 /// a.txt edited, so the tree has one changed file Glowfly can stash.
@@ -52,7 +53,10 @@ fn stash_and_checkout_puts_changes_back() {
     );
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Checkout"), "the job keeps its label");
     let record = Some(glowfly_core::undo::UndoKind::Checkout);
-    assert!(fx.iter().any(|e| matches!(e, Effect::RunGit { record: r, .. } if *r == record)), "undo records the checkout");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: r, .. }) if *r == record)),
+        "undo records the checkout"
+    );
     finish(&mut st, fx);
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("feature"));
     mine_is_back(&st, &dir);
@@ -69,7 +73,7 @@ fn always_stash_saves_and_skips_prompt() {
     a.always = true;
     let fx = up(&mut st, Msg::AutoStash(AutoStashMsg::Stash));
     assert!(st.settings.auto_stash, "Always stash is on");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.auto_stash)), "and saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.auto_stash)), "and saved");
     finish(&mut st, fx);
     mine_is_back(&st, &dir);
 
@@ -122,7 +126,10 @@ fn double_click_checkout_asks_then_stashes() {
         vec![args(&["stash", "push", "-m", "Auto-stash before checking out feature"]), args(&["checkout", "feature", "--"])]
     );
     let record = Some(UndoKind::Checkout);
-    assert!(fx.iter().any(|e| matches!(e, Effect::RunGit { record: r, .. } if *r == record)), "undo records the checkout");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: r, .. }) if *r == record)),
+        "undo records the checkout"
+    );
     finish(&mut st, fx);
     assert_eq!(head_branch(&st), Some("feature"));
     mine_is_back(&st, &dir);
@@ -190,7 +197,7 @@ pub(super) fn stopped_merge(name: &str) -> (AppState, std::path::PathBuf) {
     assert_eq!(stash_count(&dir), 1, "the changes wait in the stash");
     let made = st.toasts.iter().find(|t| t.text.contains("Auto-stash before merging feature into main")).expect("the made toast");
     assert!(made.action.is_some(), "with Show stash");
-    let note = crate::state::auto_stash::banner_note(&st).expect("the banner says so");
+    let note = glowfly_model::state::auto_stash::banner_note(&st).expect("the banner says so");
     assert!(note.contains("Auto-stash before merging feature into main"), "{note}");
     (st, dir)
 }
@@ -241,7 +248,7 @@ fn cherry_pick_and_revert_stash_and_put_back() {
     let (mut st, dir, picks) = feature_repo("asf-pick", &[("feature work", "feature\n")], None);
     dirty(&mut st, &dir);
     assert!(up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![picks[0]]))).is_empty());
-    let body = crate::state::auto_stash::body(glowfly_core::i18n::Lang::En, &ask(&st).op, 1);
+    let body = glowfly_model::state::auto_stash::body(glowfly_core::i18n::Lang::En, &ask(&st).op, 1);
     let short = &picks[0].to_string()[..7];
     assert!(body.contains(&format!("cherry-picks {short} onto main")), "{body}");
     accept_stash(&mut st);
@@ -274,7 +281,11 @@ fn conflicting_put_back_says_so_and_keeps_stash() {
     assert!(std::fs::read_to_string(dir.join("a.txt")).unwrap().contains("<<<<<<<"));
     let toast = st.toasts.last().expect("a toast");
     assert!(!toast.ok);
-    assert!(toast.text.starts_with("Putting back \"Auto-stash before checking out feature\" conflicted in 1 file."), "{}", toast.text);
+    assert!(
+        toast.text.starts_with("Putting back \"Auto-stash before checking out feature\" conflicted in 1 file; the stash is kept."),
+        "{}",
+        toast.text
+    );
     assert!(toast.action.is_some(), "with Show stash");
     assert!(st.auto_stash.pending.is_empty(), "nothing more to put back");
     let snap = st.snap.as_ref().unwrap();
@@ -286,7 +297,7 @@ fn conflicting_put_back_says_so_and_keeps_stash() {
 
 #[test]
 fn a_merge_commit_asks_for_the_mainline_then_the_guard() {
-    use crate::state::pick::PickOp;
+    use glowfly_model::state::pick::PickOp;
     let (mut st, dir, _) = feature_repo("asf-mainline", &[("feature work", "feature\n")], None);
     git(&dir, &["merge", "-q", "--no-ff", "-m", "merge feature", "feature"]);
     dirty(&mut st, &dir);

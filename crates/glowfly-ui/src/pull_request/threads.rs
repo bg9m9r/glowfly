@@ -8,26 +8,27 @@ use super::super::markdown_cache::MarkdownCache;
 use super::super::theme::color;
 use super::super::widgets::{self, Icon};
 use super::{note, send_key};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::{PrAction, PrView, description_text};
-use crate::state::pull_request_actions::error_for;
-use crate::state::pull_request_line_comment::draft_on;
-use crate::state::pull_request_line_map::{head_path, on_local_file};
-use crate::state::pull_request_threads::{
-    file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, outdated_toggle, placement, reply_blocked, resolve_blocked,
-    resolve_label, resolved_toggle, where_text,
-};
-use crate::ui::theme::controls;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{self, Align, Color32, Layout, Margin, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::forge::ReviewThread;
 use glowfly_core::settings::Settings;
 use glowfly_core::text::printable;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{PrAction, PrView, description_text};
+use glowfly_model::state::pull_request_actions::error_for;
+use glowfly_model::state::pull_request_line_comment::draft_on;
+use glowfly_model::state::pull_request_line_map::{head_path, on_local_file};
+use glowfly_model::state::pull_request_threads::{
+    file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, outdated_toggle, placement, reply_blocked, resolve_blocked,
+    resolve_label, resolved_toggle, where_text,
+};
 use std::collections::HashMap;
 
 /// Where a card is drawn: in the conversation (with its path and code snippet) or in its
@@ -83,11 +84,9 @@ pub(super) fn filter_bar(ui: &mut Ui, v: &PrView, path: Option<&str>, msgs: &mut
     ui.add_space(4.0);
 }
 
-fn chip(ui: &mut Ui, text: &str, fg: Color32) {
-    let w = ui.painter().layout_no_wrap(text.to_owned(), type_scale::font(type_scale::CAPTION), fg).size().x + 12.0;
-    let (rect, resp) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, text));
-    widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::raised(), fg);
+/// A thread's state badge, `text` in `fg` on the raised fill.
+pub(crate) fn chip(ui: &mut Ui, text: &str, fg: Color32) {
+    Chip::new(ChipSize::Badge, text).look(Look::new(color::raised(), fg)).show(ui);
 }
 
 /// A link that goes to the thread's line, or says why it can't.
@@ -175,7 +174,7 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
         ui.add_space(2.0);
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(printable(&c.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
-            crate::ui::date_tip::time_label(ui, ctx.settings, c.time, ctx.now, ctx.offset);
+            crate::date_tip::time_label(ui, ctx.settings, c.time, ctx.now, ctx.offset);
             if c.pending {
                 chip(ui, "Pending", color::weak());
             }
@@ -201,7 +200,7 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
     ui.add_space(4.0);
     let draft = v.forms.replies.entry(t.id.clone()).or_default();
     let field = controls::field(ui, egui::TextEdit::multiline(draft).desired_rows(2).hint_text("Reply…").desired_width(f32::INFINITY));
-    crate::ui::access::name_field(&field, "Reply");
+    crate::access::name_field(&field, "Reply");
     if send_key(ui, &field) && reply_blocked(v, t).is_none() {
         msgs.push(Msg::PullRequest(PullRequestMsg::Reply(t.id.clone())));
     }

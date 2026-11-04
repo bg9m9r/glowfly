@@ -4,9 +4,9 @@
 //! the recent list and trust follow the volume either way.
 
 use super::tests::{drive, git, state};
-use crate::msg::{Msg, RepoMsg, TabsMsg};
-use crate::state::trust::{record, recorded};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::msg::{Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::trust::{record, recorded};
 use std::path::{Path, PathBuf};
 
 /// A repository with one commit at `dir` (made if missing).

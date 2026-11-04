@@ -4,30 +4,35 @@
 //! and snapshots of the bar and of the rich tooltips. Motion is reduced so a tooltip settles at
 //! once.
 
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::H;
-use crate::ui::snapshot_tests::{NOW, harness, harness_sized, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_remotes::with_remotes;
+use crate::snapshot_tests::snapshot_tests_worktrees::H;
+use crate::snapshot_tests::{NOW, harness, harness_sized, remove_fixture, with_repo};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{StashInfo, Tracking};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::undo::Action;
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
-fn settle(h: &mut H) {
+pub(super) fn settle(h: &mut H) {
     for _ in 0..4 {
         h.step();
     }
     h.run();
 }
 
-/// The node labelled `label`'s left and right edges.
+/// The left and right edges of the node labelled `label`, or of the picker showing it ("Branch: main").
 pub(super) fn span(h: &H, label: &str) -> (f64, f64) {
     // The toolbar's node, not a tab of the same name.
-    let b =
-        h.get_all_by_label(label).find(|n| n.role() != eframe::egui::accesskit::Role::Tab).and_then(|n| n.bounding_box()).expect("bounds");
+    let picker = format!(": {label}");
+    let b = h
+        .query_all_by_label_contains(label)
+        .filter(|n| n.label().is_some_and(|l| l == label || l.ends_with(&picker)))
+        .find(|n| n.role() != eframe::egui::accesskit::Role::Tab)
+        .and_then(|n| n.bounding_box())
+        .expect("bounds");
     (b.x0, b.x1)
 }
 
@@ -43,13 +48,15 @@ fn plain(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 }
 
 /// The fixture with origin/main at the commit `upstream` (a summary) as main's upstream, main
-/// being `ahead` and `behind` it.
-fn tracking(theme: ThemeChoice, name: &str, upstream: &str, ahead: usize, behind: usize) -> (AppState, PathBuf) {
+/// being `ahead` and `behind` it, pulling by merge.
+pub(super) fn tracking(theme: ThemeChoice, name: &str, upstream: &str, ahead: usize, behind: usize) -> (AppState, PathBuf) {
     let (mut st, dir) = with_remotes(theme, name);
     st.settings.reduce_motion = true;
     let snap = st.snap.as_mut().unwrap();
     let at = snap.commits.iter().find(|c| c.summary == upstream).expect("the commit").oid;
     snap.remotes[0].1[0].1 = at;
+    // Pull's title names the mode; the user's own git config must not decide it.
+    snap.pull_rebase = false;
     let main = snap.locals.iter_mut().find(|b| b.name == "main").unwrap();
     main.upstream = Some("origin/main".into());
     main.tracking = Some(Tracking { remote: "origin".into(), merge: "main".into() });
@@ -67,23 +74,23 @@ fn groups_are_spaced_evenly() {
     assert_eq!(gap(&h, "Pull the current branch", "More pull actions"), 0.0, "a caret touches its button");
     assert_eq!(
         gap(&h, "More pull actions", "Push the current branch"),
-        f64::from(crate::ui::widgets::SPLIT_GAP),
+        f64::from(crate::widgets::SPLIT_GAP),
         "a caret is set apart from the next action"
     );
     assert_eq!(
         gap(&h, "Redo the undone action", "Pull the current branch"),
-        f64::from(crate::ui::widgets::GROUP_GAP),
+        f64::from(crate::widgets::GROUP_GAP),
         "between groups: the divider and its margins"
     );
     assert_eq!(
         gap(&h, "More push actions", "Create a branch"),
-        f64::from(crate::ui::widgets::GROUP_GAP),
+        f64::from(crate::widgets::GROUP_GAP),
         "between groups: the divider and its margins"
     );
     assert_eq!(gap(&h, "Create a branch", "Stash all changes"), 2.0);
     assert_eq!(
         gap(&h, "Unstash the latest stash", "Show the terminal panel"),
-        f64::from(crate::ui::widgets::GROUP_GAP),
+        f64::from(crate::widgets::GROUP_GAP),
         "between groups: the divider and its margins"
     );
     drop(h);
@@ -111,7 +118,7 @@ fn a_focused_button_shows_its_tooltip() {
 #[test]
 fn busy_dropdown_items_say_why() {
     let (mut st, dir) = plain(ThemeChoice::Dark, "toolbar-busy-menus");
-    crate::state::toolbar_tips::tests::running(&mut st);
+    glowfly_model::state::toolbar_tips::tests::running(&mut st);
     let busy = glowfly_core::i18n::Lang::En.tr("commit.blocked.job_running");
     // A running job shows a spinner, which keeps repainting.
     let mut h = harness(st, true);
@@ -138,8 +145,8 @@ fn a_tooltip_at_the_edge_stays_in_the_window() {
     let (st, dir) = plain(ThemeChoice::Dark, "toolbar-edge");
     let mut h = harness_sized(st, true, egui::vec2(1240.0, 600.0));
     h.run();
-    hover(&mut h, "Open settings");
-    let body = h.get_by_label("Themes, accounts, keys and git options.").bounding_box().expect("the tooltip");
+    hover(&mut h, "Show preferences");
+    let body = h.get_by_label("Themes, accounts, keys and Git options.").bounding_box().expect("the tooltip");
     assert!(body.x0 >= 0.0 && body.x1 <= 1240.0 && body.y1 <= 600.0, "{body:?}");
     drop(h);
     remove_fixture(&dir);
@@ -173,7 +180,7 @@ fn tip_push_ahead() {
     let (st, dir) = tracking(ThemeChoice::Dark, "tip-push-ahead", "Add app skeleton", 3, 0);
     let mut h = harness(st, true);
     h.run();
-    hover(&mut h, "Push the current branch");
+    hover(&mut h, "Push, 3 ahead of origin/main");
     assert!(h.query_by_label("Sends 3 commits").is_some());
     h.check_snapshot("tip_push_ahead");
     drop(h);
@@ -186,7 +193,7 @@ fn tip_pull_behind() {
     st.snap.as_mut().unwrap().fetched_at = Some(NOW - 120);
     let mut h = harness(st, true);
     h.run();
-    hover(&mut h, "Pull the current branch");
+    hover(&mut h, "Pull, 1 behind origin/main");
     assert!(h.query_by_label("Last fetched 2 minutes ago").is_some());
     h.check_snapshot("tip_pull_behind");
     drop(h);
@@ -244,7 +251,7 @@ fn tip_settings_keycaps() {
     let (st, dir) = plain(ThemeChoice::Light, "tip-settings-keycaps");
     let mut h = harness(st, false);
     h.run();
-    hover(&mut h, "Open settings");
+    hover(&mut h, "Show preferences");
     h.check_snapshot("tip_settings_keycaps");
     drop(h);
     remove_fixture(&dir);
@@ -254,10 +261,9 @@ fn tip_settings_keycaps() {
 fn tip_push_german() {
     let (mut st, dir) = tracking(ThemeChoice::Dark, "tip-push-german", "Add app skeleton", 3, 0);
     st.settings.language = "de".into();
-    let name = glowfly_core::i18n::Lang::De.tr("toolbar.push.name");
     let mut h = harness(st, true);
     h.run();
-    hover(&mut h, name);
+    hover(&mut h, "Push, 3 vor origin/main");
     h.check_snapshot("tip_push_german");
     drop(h);
     remove_fixture(&dir);
@@ -265,16 +271,16 @@ fn tip_push_german() {
 
 /// The fixture as `plain`, changed by `case` (a name, the head, the chip, the hosting service).
 pub(super) fn variant(case: usize, labels: bool, name: &str) -> (AppState, PathBuf) {
-    use crate::state::ForgeState;
-    use crate::state::conflict_check::{ConflictReport, current_request};
     use glowfly_core::conflict_check::Prediction;
     use glowfly_core::forge::{Provider, Target};
+    use glowfly_model::state::ForgeState;
+    use glowfly_model::state::conflict_check::{ConflictReport, current_request};
     let (mut st, dir) = plain(ThemeChoice::Dark, name);
     st.settings.toolbar_labels = labels;
     if case == 4 {
         // On search, which the chip compares with main.
-        crate::ui::snapshot_tests::git(&dir, &["checkout", "-q", "search"], "2026-01-10T10:00:00+00:00");
-        crate::ui::snapshot_tests::reload(&mut st, &dir, &glowfly_core::repo::LoadOptions::all(500));
+        crate::snapshot_tests::git(&dir, &["checkout", "-q", "search"], "2026-01-10T10:00:00+00:00");
+        crate::snapshot_tests::reload(&mut st, &dir, &glowfly_core::repo::LoadOptions::all(500));
     }
     let long_branch = "feature/".to_owned() + &"a-very-long-branch-name-".repeat(3) + "that-goes-on";
     let snap = st.snap.as_mut().unwrap();

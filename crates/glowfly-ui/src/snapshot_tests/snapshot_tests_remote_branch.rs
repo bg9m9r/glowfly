@@ -4,15 +4,15 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
-use crate::msg::{BranchMsg, Msg};
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::{BranchInfo, Tracking};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 fn tip(st: &AppState, name: &str) -> Oid {
@@ -65,7 +65,7 @@ fn remote_branch_menu_tracked() {
         "Check for conflicts with main",
         "Compare with main",
         "Set as upstream of main",
-        "Create branch here…",
+        "New branch here…",
     ] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
@@ -130,7 +130,7 @@ fn remote_branch_menu_several_trackers() {
     assert!(sent(&h, want));
 
     open_remote_row(&mut h, "search");
-    h.get_by_label("Create branch here…").click();
+    h.get_by_label("New branch here…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, BranchMsg::NewTrackingBranch { remote, name } if remote == "origin" && name == "search")));
     drop(h);

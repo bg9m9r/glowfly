@@ -4,12 +4,11 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, UndoResult};
-use crate::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::palette::StashAction;
 use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE, UNDO_STASH_MESSAGE, UndoKind};
+use glowfly_model::effect::{Effect, UndoResult};
+use glowfly_model::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::StashAction;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -71,7 +70,10 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     let pop = Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid });
     let fx = update(&mut st, pop, Instant::now());
     let want = UndoKind::StashApply { pop: true, rev: Some("stash@{0}".into()) };
-    assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == want), "start_job recognises it: {fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: Some(k), .. })] if *k == want),
+        "start_job recognises it: {fx:?}"
+    );
     super::tests::finish(&mut st, fx);
     assert!(dirty(&st));
     assert!(st.session.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo unstash of 'On main: wip'"));
@@ -154,10 +156,12 @@ fn refusal_for_an_inactive_tab_offers_nothing() {
     drive(&mut st, Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]));
     std::fs::write(a.join("b.txt"), "new\n").unwrap();
 
-    let effect =
-        update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).into_iter().find(|e| matches!(e, Effect::UndoRedo { .. })).expect("undo");
+    let effect = update(&mut st, Msg::Job(JobMsg::Undo), Instant::now())
+        .into_iter()
+        .find(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::UndoRedo { .. })))
+        .expect("undo");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::testing::execute(effect).expect("a result");
+    let reply = glowfly_runner::testing::execute(effect).expect("a result");
     assert!(matches!(&reply, Msg::Job(JobMsg::JobDone { undo: Some(UndoResult::Refused { offer_stash: true, .. }), .. })));
     update(&mut st, reply, Instant::now());
     let t = st.toasts.last().unwrap();

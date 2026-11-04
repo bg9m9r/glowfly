@@ -11,12 +11,12 @@ use super::empty_state::{EmptyIcon, empty_state};
 use super::pane_status::{self, Failure};
 use super::theme::{color, type_scale};
 use super::widgets::buttons;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::range_diff::{Phase, RangeDiffView, base_line, counts_line, outcome_failure, subtitle};
 use eframe::egui::{Align, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
 use glowfly_model::range_diff::RangeDiffMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::range_diff::{Phase, RangeDiffView, base_line, counts_line, outcome_failure, subtitle};
 
 /// Three lines: the title, the two versions, and the cut with the counts.
 const HEADER_H: f32 = 72.0;

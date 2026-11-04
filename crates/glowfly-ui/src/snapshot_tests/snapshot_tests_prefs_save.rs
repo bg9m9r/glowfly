@@ -1,22 +1,22 @@
-//! Preferences save-model snapshots: the Save / Revert bar under an edited Identity page (and
-//! what its buttons push, Save waiting while a save is written, telling Esc when it has the
-//! keyboard), a refused save's error on the page, the "Save your changes?" question, the
+//! Preferences save-model snapshots: the Save / Revert bar under an edited Commit identity page
+//! (and what its buttons push, Save waiting while a save is written, telling Esc when it has
+//! the keyboard), a refused save's error on the page, the "Save your changes?" question, the
 //! "Saved" tick beside a title, Git Flow's actions waiting while its form is edited, and the
 //! Integrations page with an account connected, adding another, and with nothing connected.
 
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
 use super::snapshot_tests_gitflow::initialized;
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
-/// The repository's Identity page with its config read and the name edited.
+/// The repository's Commit identity page with its config read and the name edited.
 fn identity_edited(name: &str) -> (AppState, std::path::PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let mut prefs = PrefsState::new(PrefPage::RepoIdentity);
@@ -81,7 +81,7 @@ fn prefs_save_waits_while_written() {
     let (mut st, dir) = identity_edited("prefs-save-writing");
     let p = st.prefs.as_mut().unwrap();
     let written = p.git.clone();
-    p.saving.push(crate::state::prefs_save::PendingSave { ticket: 1, page: PrefPage::RepoIdentity, written });
+    p.saving.push(glowfly_model::state::prefs_save::PendingSave { ticket: 1, page: PrefPage::RepoIdentity, written });
     let mut h = harness(st, true);
     h.run();
     h.get_by_label("Save").click();
@@ -94,11 +94,11 @@ fn prefs_save_waits_while_written() {
 #[test]
 fn prefs_unsaved_question() {
     let (mut st, dir) = identity_edited("prefs-unsaved-question");
-    crate::update::update(&mut st, Msg::Prefs(PrefsMsg::Navigate(PrefPage::General)), Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Prefs(PrefsMsg::Navigate(PrefPage::General)), Instant::now());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("prefs_unsaved_question");
-    assert!(h.query_by_label("Identity has changes that aren't saved yet.").is_some());
+    assert!(h.query_by_label("Commit identity has changes that aren't saved yet.").is_some());
     h.get_by_label("Discard").click();
     h.run();
     assert!(pushed(&h.state().1, |m| matches!(m, Msg::ConfirmAlt)));
@@ -173,7 +173,7 @@ fn prefs_integrations_connected() {
     assert!(pushed(&h.state().1, |m| matches!(m, Msg::Prefs(PrefsMsg::ShowAccountForm(true)))));
     h.get_by_label("Disconnect").click();
     h.run();
-    assert!(pushed(&h.state().1, |m| matches!(m, Msg::Forge(crate::msg::ForgeMsg::Disconnect(_)))));
+    assert!(pushed(&h.state().1, |m| matches!(m, Msg::Forge(glowfly_model::msg::ForgeMsg::Disconnect(_)))));
 }
 
 #[test]

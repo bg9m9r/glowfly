@@ -6,13 +6,14 @@
 use super::terminal_tests::{open_with_panel, run, terminal, workdir};
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg, TabsMsg};
-use crate::state::terminal::SessionStatus;
-use crate::state::{AppState, Modal};
-use crate::terminal::{TerminalEffect as E, TerminalMsg as T};
 use glowfly_core::settings::{ShellChoice, ShellSetting};
 use glowfly_core::terminal::TermInput;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::{Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::terminal::SessionStatus;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::terminal::{TerminalEffect as E, TerminalMsg as T};
 use std::time::Instant;
 
 /// The id of the one Spawn in `fx`.
@@ -34,7 +35,7 @@ fn active(st: &AppState) -> Option<u64> {
 
 fn saved_open(fx: &[Effect]) -> Option<bool> {
     fx.iter().find_map(|e| match e {
-        Effect::SaveSettings(s) => Some(s.terminal.panel_open),
+        Effect::Save(SaveEffect::Settings(s)) => Some(s.terminal.panel_open),
         _ => None,
     })
 }

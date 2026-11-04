@@ -1,15 +1,16 @@
 //! The note after a slow status read: when it shows, what it offers, that it shows once per
 //! repository, and the job its button starts.
 
-use crate::effect::{Effect, LoadKind, StatusRead};
 use crate::flows::{drive, scratch_repo, state};
-use crate::msg::{LoadMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::update::status_tip::{MonitorNote, check_for, note_text};
-use crate::update::update;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::opens::Os;
 use glowfly_core::repo::{self, SlowStatus, StatusSpeedups};
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, LoadKind, StatusRead};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::status_tip::{MonitorNote, check_for, note_text};
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -57,7 +58,7 @@ pub(super) fn check_on(st: &mut AppState, s: StatusSpeedups, os: Os) -> Vec<Effe
 }
 
 pub(super) fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 pub(super) fn marked(st: &AppState) -> bool {
@@ -154,7 +155,10 @@ fn turn_on_starts_the_job_in_the_repository() {
     let msg = Msg::Load(LoadMsg::SpeedUpStatus { speedups: s, cache: true, monitor: false });
     let fx = update(&mut st, msg, Instant::now());
     let workdir = st.workdir().unwrap();
-    assert!(matches!(&fx[..], [Effect::RunGit { cwd, cmds, .. }] if cwd == &workdir && cmds == &repo::untracked_cache_cmds(s)), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cwd, cmds, .. })] if cwd == &workdir && cmds == &repo::untracked_cache_cmds(s)),
+        "{fx:?}"
+    );
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Turn on the untracked cache"));
     let _ = std::fs::remove_dir_all(&dir);
 }

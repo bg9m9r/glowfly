@@ -5,14 +5,14 @@
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::trust_tests::{asking, real};
 use super::update;
-use crate::effect::partial::{PartialEffect, StopKey};
-use crate::effect::{BlameRequest, Effect, FileTextRequest};
-use crate::msg::{ContentFailure, Msg, PartialMsg, RepoMsg, TrustMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::partial::{ContentPhase, ContentView, DOWNLOAD_LABEL, Wait};
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::ControlEffect;
+use glowfly_model::effect::partial::{PartialEffect, StopKey};
+use glowfly_model::effect::{BlameRequest, Effect, FileTextRequest};
+use glowfly_model::msg::{ContentFailure, Msg, PartialMsg, RepoMsg, TrustMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::partial::{ContentPhase, ContentView, DOWNLOAD_LABEL, Wait};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -63,7 +63,11 @@ fn blob(dir: &Path, spec: &str) -> Oid {
 /// Opens HEAD's diff of a.txt and runs its read: the message it sends back.
 fn read_head_diff(st: &mut AppState) -> Msg {
     let fx = run(st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head(st), "a.txt".into()))));
-    let mut back: Vec<Msg> = fx.into_iter().filter(|e| matches!(e, Effect::LoadDiff { .. })).filter_map(runner::testing::execute).collect();
+    let mut back: Vec<Msg> = fx
+        .into_iter()
+        .filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })))
+        .filter_map(glowfly_runner::testing::execute)
+        .collect();
     assert_eq!(back.len(), 1);
     back.pop().unwrap()
 }
@@ -119,7 +123,7 @@ fn cancel_failure_and_try_again() {
     let back = read_head_diff(&mut st);
     let id = fetch_id(&run(&mut st, back));
     let fx = run(&mut st, Msg::Partial(PartialMsg::StopContent));
-    assert!(matches!(&fx[..], [Effect::StopGit(StopKey::Content(i))] if *i == id));
+    assert!(matches!(&fx[..], [Effect::Control(ControlEffect::StopGit(StopKey::Content(i)))] if *i == id));
     assert_eq!(phase(&st), Some(ContentPhase::Fetching { id, stopping: true }));
     assert!(run(&mut st, Msg::Partial(PartialMsg::StopContent)).is_empty(), "asked once");
     let stopped = |id| Msg::Partial(PartialMsg::ContentFetched { id, result: Err(ContentFailure::Stopped) });
@@ -154,7 +158,8 @@ fn a_newer_read_of_another_file_stops_the_download_and_a_stale_one_is_dropped() 
     assert_eq!(st.for_diff().map(|p| p.view.clone()), Some(ContentView::Diff { generation: st.session.diff.generation }));
     // The File view reports its missing version too.
     let request = FileTextRequest { workdir: dest.clone(), oid: blob(&dest, "HEAD~1"), path: "a.txt".into(), before: false, smudge: false };
-    let Some(Msg::Partial(PartialMsg::ContentMissing { retry, .. })) = unscoped(runner::testing::execute(Effect::LoadFileText(request)))
+    let Some(Msg::Partial(PartialMsg::ContentMissing { retry, .. })) =
+        unscoped(glowfly_runner::testing::execute(Effect::LoadFileText(request)))
     else {
         panic!("the File view reports the missing version")
     };
@@ -174,7 +179,7 @@ fn blame_reports_the_versions_it_needs() {
         generation: 4,
         follow: None,
     };
-    match unscoped(runner::testing::execute(Effect::LoadBlame(request))) {
+    match unscoped(glowfly_runner::testing::execute(Effect::LoadBlame(request))) {
         Some(Msg::Partial(PartialMsg::ContentMissing { missing, retry })) => {
             assert_eq!(missing.oids, [blob(&src, "HEAD~1:a.txt")]);
             assert_eq!(ContentView::of(&retry), Some(ContentView::Blame { generation: 4 }));

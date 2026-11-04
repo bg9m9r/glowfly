@@ -8,16 +8,16 @@ use super::dialog_frame::{Cx, Dialog, Footer};
 use super::dialog_guides;
 use super::theme::color;
 use super::widgets::buttons;
-use crate::msg::Msg;
-use crate::patch::PatchMsg;
-use crate::state::patch::changes::{SaveChangesForm, blocked, rows, untracked_count};
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText, Sense};
 use glowfly_core::patch_ops::{NO_CHANGES, WipScope};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::Msg;
+use glowfly_model::patch::PatchMsg;
+use glowfly_model::state::patch::changes::{SaveChangesForm, blocked, rows, untracked_count};
 
 const BUSY: &str = "Another operation is still running.";
 
@@ -97,7 +97,9 @@ fn checklist(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: &Snapshot) {
             for f in &files[range] {
                 ui.horizontal(|ui| {
                     let mut on = form.chosen.contains(&f.path);
-                    let boxed = ui.add(controls::Check::without_text(&mut on)).changed();
+                    let check = ui.add(controls::Check::without_text(&mut on));
+                    crate::access::name_if_unnamed(&check, &f.path);
+                    let boxed = check.changed();
                     ui.label(
                         RichText::new(status_label(f.status).to_string())
                             .font(type_scale::mono(type_scale::BODY))

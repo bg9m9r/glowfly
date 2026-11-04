@@ -23,7 +23,9 @@ cargo run --release -- <repo path>     # run the app
 pwsh scripts/check.ps1                 # fmt, clippy (-D warnings) and all tests
 ```
 
-`scripts/check.ps1` must pass before a pull request is merged; CI runs the same script.
+`scripts/check.ps1` must pass before a pull request is merged. CI runs the same script in four
+parts side by side on Windows (`-Only lint`, `core`, `flows` and `rest`; together they are the
+whole check), and the required `Check (Windows)` check passes only when all four do.
 CodeQL (`.github/workflows/codeql.yml`) also scans each pull request's Rust code and workflows;
 its config (`.github/codeql/codeql-config.yml`) leaves test code out. zizmor
 (`.github/workflows/zizmor.yml`) lints the workflows and fails on findings of medium severity or
@@ -63,6 +65,7 @@ A few other commands regenerate checked-in files or help with debugging:
 ```
 UPDATE_ICONS=1 cargo test -p glowfly --test packaging app_icon   # redraw assets/icon/ after changing tests/packaging/app_icon/draw.rs
 UPDATE_NOTICES=1 cargo test -p glowfly-core notice                # regenerate THIRD-PARTY-NOTICES.md after a dependency change
+UPDATE_SCREENSHOTS=1 cargo test -p glowfly-ui readme_screenshots   # re-render the README's screenshots in docs/screenshots/
 RUST_LOG=glowfly=debug cargo run -- <repo path>                   # log background work as it runs
 GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture   # read-only check against a real host
 ```

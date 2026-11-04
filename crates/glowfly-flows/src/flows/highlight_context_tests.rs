@@ -5,13 +5,12 @@
 use super::highlight_tests::drive_holding_highlights;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::runner;
-use crate::state::AppState;
 use glowfly_core::highlight::{self, DiffHighlight, Span, TokenKind};
 use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadDiffOptions};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -88,10 +87,12 @@ fn medium_file_opens_colored_then_corrects() {
         let_lines(d)
     );
     assert_eq!(held.len(), 1);
-    assert!(matches!(&held[0], Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
+    assert!(
+        matches!(&held[0], Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { generation, .. }) if *generation == st.session.diff.shown_gen)
+    );
 
     let view = (st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
-    let msg = runner::testing::execute(held.remove(0)).expect("a result");
+    let msg = glowfly_runner::testing::execute(held.remove(0)).expect("a result");
     assert!(update(&mut st, msg, Instant::now()).is_empty());
     let d = shown(&st);
     assert!(!hl(d).is_pending());
@@ -112,7 +113,7 @@ fn adopt_requires_same_old_text() {
     // A reload arrives pending, to be parsed in context: the per-hunk spans don't stand in.
     let repo::ViewDiff { diff: mut fresh, old, .. } = repo::load_diff_for_view(&dir, &target(), LoadDiffOptions::default()).unwrap();
     assert!(old.is_some());
-    runner::testing::decorate_in_context("a.rs", None, &mut fresh, None, old.as_ref());
+    glowfly_runner::testing::decorate_in_context("a.rs", None, &mut fresh, None, old.as_ref());
     assert!(hl(&fresh).is_pending());
     let msg = Msg::Repo(RepoMsg::DiffLoaded {
         target: target(),
@@ -125,6 +126,6 @@ fn adopt_requires_same_old_text() {
     let fx = update(&mut st, msg, Instant::now());
     assert!(hl(shown(&st)).is_pending(), "not adopted");
     assert_ne!(shown(&st).highlight, per_hunk);
-    assert!(fx.iter().any(|e| matches!(e, Effect::HighlightDiff { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. }))), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

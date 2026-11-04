@@ -4,9 +4,9 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::widgets::buttons;
-use crate::msg::{Msg, WorkFileMsg};
-use crate::state::files::TrashOffer;
 use eframe::egui;
+use glowfly_model::msg::{Msg, WorkFileMsg};
+use glowfly_model::state::files::TrashOffer;
 
 /// Draws the dialog; returns true when it should close (a choice was made, or Cancel).
 pub fn show(ui: &mut egui::Ui, cx: Cx, offer: &TrashOffer, msgs: &mut Vec<Msg>) -> bool {
@@ -18,7 +18,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, offer: &TrashOffer, msgs: &mut Vec<Msg>) 
         msgs.push(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(offer.op.clone().home_trash())));
     }
     if out.alt == Some(0) {
-        let delete = |op: crate::effect::FileOp| Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op));
+        let delete = |op: glowfly_model::effect::FileOp| Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op));
         msgs.push(match &offer.confirm {
             // Final: confirmed once more, with the acknowledgement, and no Undo promised.
             Some((body, ack)) => Msg::confirm_danger_ack(

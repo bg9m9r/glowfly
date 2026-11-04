@@ -1,7 +1,7 @@
 //! The headless update check behind `glowfly --check-update`: the same feed, offer and
 //! verified download as the app's Check now and Download, in one call.
 
-use super::{Feed, InstallKind, Offer, Platform, Version, download, offer};
+use super::{Feed, InstallKind, Offer, Platform, UpdateError, Version, download, offer};
 use std::path::{Path, PathBuf};
 
 /// What a headless check found.
@@ -24,7 +24,7 @@ pub fn check_and_download(
     platform: Option<Platform>,
     kind: InstallKind,
     dir: &Path,
-) -> Result<Checked, String> {
+) -> Result<Checked, UpdateError> {
     let Some(release) = feed.latest()? else { return Ok(Checked::UpToDate { latest: None }) };
     match offer(&release, current, platform, kind) {
         None => Ok(Checked::UpToDate { latest: Some(release.tag) }),

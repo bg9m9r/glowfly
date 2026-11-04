@@ -5,13 +5,14 @@
 
 use super::terminal_tests::{open_with_panel, run, terminal};
 use super::tests::scratch_repo;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::terminal::Selection;
-use crate::terminal::{ScrollStep, TerminalEffect as E, TerminalMsg as T};
 use glowfly_core::settings::{Settings, ShellChoice, ShellSetting};
 use glowfly_core::terminal::{TermInput, TermPoint};
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::terminal::Selection;
+use glowfly_model::terminal::{ScrollStep, TerminalEffect as E, TerminalMsg as T};
 use std::time::Instant;
 
 /// The panel open on a running pwsh that has printed lines "1" to "60" (36 rows of history on
@@ -39,7 +40,7 @@ fn primary(fx: &[Effect]) -> Option<&str> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 /// Selects lines `a..=b` (numbered from the first history row) of session 0.
@@ -213,7 +214,7 @@ fn the_panel_state_is_saved_when_it_changes() {
     assert_eq!(st.settings.terminal.panel_height, Some(301.0));
     assert!(run(&mut st, T::PanelHeight(301.0)).is_empty());
     run(&mut st, T::PanelHeight(40.0));
-    assert_eq!(st.settings.terminal.panel_height, Some(crate::state::panel_layout::TERMINAL.min));
+    assert_eq!(st.settings.terminal.panel_height, Some(glowfly_model::state::panel_layout::TERMINAL.min));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

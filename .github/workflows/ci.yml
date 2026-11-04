@@ -1,16 +1,32 @@
 name: CI
 
 on:
+  # Pull requests run once, on the pull_request event; pushes run only on main.
   push:
+    branches: [main]
   pull_request:
 
 # A read-only token: this workflow only builds and tests.
 permissions:
   contents: read
 
+# A new push to a pull request cancels its older run. Each push to main gets its own group, so
+# every landed commit keeps its own result.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  check:
-    name: Check (Windows)
+  # `scripts/check.ps1` split into parts that run side by side on their own Windows runners, so
+  # the longest is about a third of the whole: lint (fmt and clippy), core (glowfly-core's
+  # tests), flows (glowfly-flows' tests) and rest (every other crate's tests). Each part keeps its
+  # own Rust cache. Together they are the full check.
+  check-part:
+    name: Check (Windows, ${{ matrix.part }})
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [lint, core, flows, rest]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -21,32 +37,53 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: ${{ matrix.part }}
       - name: Configure git for tests
         run: |
           git config --global user.name "CI"
           git config --global user.email "ci@example.com"
-      - name: Check
-        shell: pwsh
-        run: ./scripts/check.ps1
-      # make-perf-repos.ps1 on small local fixtures (docs/PERF_REPOS.md); downloads nothing.
-      - name: Large test repository script
-        shell: pwsh
-        run: ./scripts/make-perf-repos-test.ps1
-      # Folder identity on a case-sensitive folder: `App` and `app` must stay two folders. Making
-      # one may need the WSL feature; without it the tests print a note and skip.
-      - name: Case-sensitive folder tests
+      # Folder identity on a case-sensitive folder: `App` and `app` must stay two folders. The
+      # case_twins tests (in glowfly-core and glowfly-flows) use the folder this names and skip
+      # without it; making one may need the WSL feature, and without it they print a note.
+      - name: Case-sensitive test folder
+        if: matrix.part == 'core' || matrix.part == 'flows'
         shell: pwsh
         run: |
           $dir = Join-Path $env:RUNNER_TEMP "glowfly-cs"
           New-Item -ItemType Directory -Force $dir | Out-Null
           fsutil file setCaseSensitiveInfo $dir enable
           if ($LASTEXITCODE -eq 0) {
-            $env:GLOWFLY_TEST_CS_DIR = $dir
+            "GLOWFLY_TEST_CS_DIR=$dir" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           } else {
             Write-Host "note: could not turn on case sensitivity for $dir; the case-sensitive checks skip"
           }
-          cargo test --workspace case_twins -- --nocapture
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+          exit 0
+      - name: Check
+        shell: pwsh
+        env:
+          PART: ${{ matrix.part }}
+        run: ./scripts/check.ps1 -Only $env:PART
+      # make-perf-repos.ps1 on small local fixtures (docs/PERF_REPOS.md); downloads nothing.
+      - name: Large test repository script
+        if: matrix.part == 'lint'
+        shell: pwsh
+        run: ./scripts/make-perf-repos-test.ps1
+
+  # The required check: passes only when every Windows part above passed.
+  check:
+    name: Check (Windows)
+    if: always()
+    needs: check-part
+    runs-on: ubuntu-22.04
+    permissions: {}
+    steps:
+      - name: Every part passed
+        env:
+          RESULT: ${{ needs.check-part.result }}
+        run: |
+          echo "Windows check parts: $RESULT"
+          test "$RESULT" = "success"
 
   # Glowfly is developed on Windows. This runs the same lint and tests on Linux; only the image
   # comparisons in the view tests are skipped (the approved images are rendered on Windows), and

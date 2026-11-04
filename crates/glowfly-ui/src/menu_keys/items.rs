@@ -5,7 +5,7 @@
 //! nested scopes the walk can't see). Items sharing a line form one row, left to right: a
 //! split row and its button, a repository row and its star and ×.
 
-use crate::ui::widgets::menu_submenu::row_at;
+use crate::widgets::menu_submenu::row_at;
 use eframe::egui::{Id, Rect, Response, Ui};
 
 /// One focusable item.

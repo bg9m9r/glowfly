@@ -7,11 +7,12 @@
 use super::lines_tests::{click, loaded, run, two_hunks};
 use super::tests::{drive, git, scratch_repo, state};
 use super::work_files_tests::entry;
-use crate::effect::{DeleteMode, Effect, FileOp, LocalOp, SeenLines};
-use crate::msg::{JobMsg, Msg, RepoMsg, StageMsg};
-use crate::state::AppState;
-use crate::state::lines::LineClick::{Only, Range};
 use glowfly_core::repo::{self, DiffTarget, HunkOp, LoadOptions};
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, LocalOp, SeenLines};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::{Only, Range};
 use std::path::PathBuf;
 
 /// A scratch repository holding the untracked u.txt with `contents`, opened, with its unstaged
@@ -60,7 +61,13 @@ fn every_line_of_an_untracked_file_is_a_discard_of_the_file() {
     let (mut st, dir) = untracked_open("lines-whole-op", "a\nb\nc\n", &[]);
     select_all(&mut st);
     let fx = run(&mut st, discard_lines());
-    let [Effect::WorkFile { op: FileOp::Discard { path, mode: DeleteMode::Trash, seen: Some(seen) }, .. }] = &fx[..] else {
+    let [
+        Effect::Files(glowfly_model::effect::FilesEffect::Work {
+            op: FileOp::Discard { path, mode: DeleteMode::Trash, seen: Some(seen) },
+            ..
+        }),
+    ] = &fx[..]
+    else {
         panic!("a Discard of the file: {fx:?}")
     };
     assert_eq!(path, "u.txt");
@@ -117,7 +124,7 @@ fn a_partial_discard_stays_a_line_discard() {
     let (mut st, dir) = untracked_open("lines-whole-partial", "a\nb\nc\n", &[]);
     select_first(&mut st, 2);
     let fx = run(&mut st, discard_lines());
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, .. }, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, .. }, .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -136,7 +143,7 @@ fn an_intent_to_add_file_is_emptied_not_deleted() {
     let expected = st.session.diff.view.as_ref().unwrap().1.hunks[0].clone();
     let raw = st.session.diff.raw.expect("one unstaged hunk");
     let seen = Some(Box::new(SeenLines { expected, lines: vec![0, 1], raw, ignore_whitespace: false }));
-    let msg = crate::runner::testing::work_file_for_test(&dir, FileOp::Discard { path: "u.txt".into(), mode: DeleteMode::Trash, seen });
+    let msg = glowfly_runner::testing::work_file_for_test(&dir, FileOp::Discard { path: "u.txt".into(), mode: DeleteMode::Trash, seen });
     assert!(matches!(msg, Msg::Stage(StageMsg::LocalOpDone(Ok(Some(_))))), "a line discard, with its undo");
     assert_eq!(std::fs::read(dir.join("u.txt")).unwrap(), b"");
     drive(&mut st, msg);

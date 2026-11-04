@@ -1,0 +1,9 @@
+Dialog
+  Label "Switch branch"
+  TextInput "Find a branch or tag to switch to" = "origzq" [focused]
+  Button "origin/worktree-agent-a3f9c1d2-refresh-the-sidebar-rows-so-names-that-share-a-start-stay-apart-in-every-list-zq" [selected]
+  Label "origin/worktree-agent-a3f9c1d2-refresh-the-sidebar-rows-so-names-that-share-a-start-stay-apart-in-every-list-zq"
+  Label "Up/Down to choose, Enter to switch, Backspace or Esc to go back"
+painted:
+  "creates local branch"
+  "origin/worktree-agent…-share-a-start-stay-apart-in-every-list-zq"

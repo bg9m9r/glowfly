@@ -6,15 +6,15 @@
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, center, p, pushed, with_worktrees};
-use crate::msg::Msg;
-use crate::state::worktree_manage::{LockForm, RemoveForm};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::worktree::WorktreeMsg;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::worktree_ops::Refusal;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::worktree_manage::{LockForm, RemoveForm};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::PathBuf;
 
 /// The fixture with the Remove dialog open for the worktree named `name`, changed by `edit`.
@@ -103,13 +103,14 @@ fn worktree_remove_locked() {
     h.run();
     assert!(!h.get_by_label("Force remove").is_disabled());
     // While a job runs the button waits (a spinner keeps repainting, so step instead of run).
-    h.state_mut().0.job = Some(crate::state::RunningJob {
+    h.state_mut().0.job = Some(glowfly_model::state::RunningJob {
         label: "Fetch".into(),
         workdir: None,
         quiet: false,
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,
@@ -165,12 +166,12 @@ fn worktree_menu_manage() {
     assert!(!h.get_by_label("Remove…").is_disabled(), "a missing worktree can be removed");
     escape(&mut h);
 
-    menu_at(&mut h, "✔  app");
+    menu_at(&mut h, "app, current");
     assert!(h.query_by_label("Remove…").is_none() && h.query_by_label("Lock…").is_none(), "nothing for the main worktree");
     escape(&mut h);
 
     // The header's menu, 12 + 15 px above the first row's center.
-    let row = center(&h, "✔  app");
+    let row = center(&h, "app, current");
     let header = pos2(row.x, row.y - 27.0);
     click(&mut h, header, PointerButton::Secondary);
     h.check_snapshot("worktree_header_menu");
@@ -182,10 +183,10 @@ fn worktree_menu_manage() {
     // Nothing prunable, and feature-login open in another tab.
     let (mut st, _) = with_worktrees(ThemeChoice::Dark, "worktree-menu-manage");
     st.snap.as_mut().unwrap().worktrees.retain(|w| !w.missing);
-    st.tabs.push(crate::state::tabs::Tab::unloaded(p("C:/work/app-worktrees/feature-login")));
+    st.tabs.push(glowfly_model::state::tabs::Tab::unloaded(p("C:/work/app-worktrees/feature-login")));
     let mut h = harness(st, true);
     h.run();
-    let row = center(&h, "✔  app");
+    let row = center(&h, "app, current");
     click(&mut h, pos2(row.x, row.y - 27.0), PointerButton::Secondary);
     assert!(h.get_by_label("Prune missing worktrees").is_disabled());
     escape(&mut h);

@@ -94,7 +94,7 @@ fn a_changed_file_prepares_nothing() {
     let f = fixture("changed");
     let mut req = request(&f, &f.downloads.join("glowfly-v0.3.0-x86_64-pc-windows-msvc.zip"), &release_zip(), InstallMethod::SwapPortable);
     req.sha256 = sha256(b"something else");
-    let err = prepare_with(&req, &|_| Ok(())).unwrap_err();
+    let err = prepare_with(&req, &|_| Ok(())).unwrap_err().to_string();
     assert!(err.starts_with("The downloaded file changed after it was checked"), "{err}");
     assert_eq!(std::fs::read(&f.exe).unwrap(), b"old program");
     assert!(staging_folders(&f).is_empty());
@@ -110,12 +110,12 @@ fn a_failed_swap_leaves_nothing_behind() {
     w.write_all(b"readme").unwrap();
     let bytes = w.finish().unwrap().into_inner();
     let req = request(&f, &f.downloads.join("glowfly.zip"), &bytes, InstallMethod::SwapPortable);
-    assert_eq!(prepare_with(&req, &|_| Ok(())).unwrap_err(), "The archive has no glowfly.exe.");
+    assert_eq!(prepare_with(&req, &|_| Ok(())).unwrap_err().to_string(), "The archive has no glowfly.exe.");
     assert_eq!(std::fs::read(&f.exe).unwrap(), b"old program");
     assert!(staging_folders(&f).is_empty());
     // A method that doesn't install in place.
     let req = request(&f, &f.downloads.join("glowfly.dmg"), b"dmg", InstallMethod::OpenAndQuit);
-    assert_eq!(prepare_with(&req, &|_| Ok(())).unwrap_err(), "This update can't be installed in place.");
+    assert_eq!(prepare_with(&req, &|_| Ok(())).unwrap_err().to_string(), "This update can't be installed in place.");
     assert!(staging_folders(&f).is_empty());
     let _ = persist::remove_tree(&f.root);
 }
@@ -164,7 +164,7 @@ fn an_appimage_is_swapped_in_place() {
 fn a_download_that_isnt_an_appimage_prepares_nothing() {
     let f = fixture("notappimage");
     let req = appimage_request(&f, b"not an appimage");
-    assert_eq!(prepare_with(&req, &|_| Ok(())).unwrap_err(), "The download isn't an AppImage.");
+    assert_eq!(prepare_with(&req, &|_| Ok(())).unwrap_err().to_string(), "The download isn't an AppImage.");
     assert_eq!(std::fs::read(&req.target).unwrap(), b"old appimage");
     assert!(!req.target.with_file_name("Glowfly.AppImage.bak").exists());
     assert!(staging_folders(&f).is_empty());

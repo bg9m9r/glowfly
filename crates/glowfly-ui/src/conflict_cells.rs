@@ -5,6 +5,7 @@
 use super::diff::wrap::Wrap;
 use super::diff::{ROW_H, mono};
 use super::theme::color;
+use super::theme::contrast::mix;
 use eframe::egui::{Align2, Color32, Rect, Ui, pos2, vec2};
 use glowfly_core::repo::{Segment, Side};
 
@@ -24,11 +25,35 @@ pub(super) fn display(line: &str) -> String {
     line.trim_end_matches('\n').trim_end_matches('\r').replace('\t', "    ")
 }
 
-pub(super) fn tint(side: Side) -> Color32 {
+/// How far theirs' violet is lifted toward white, so the sides stay apart by lightness as well
+/// as hue (under deutan vision the violet and the blue meet).
+const THEIRS_LIFT: f32 = 0.6;
+/// A side's lines' wash; theirs' is stronger on dark palettes, where a wash lifts it less.
+const ROW_WASH: f32 = 0.18;
+const THEIRS_DARK_WASH: f32 = 0.24;
+
+/// A side's colour in `p`: ours blue, theirs a lighter violet (its picks' checkboxes).
+fn side_color_in(p: &color::Palette, side: Side) -> Color32 {
     match side {
-        Side::Ours => color::wash(color::info(), 0.18),
-        Side::Theirs => color::wash(color::progress(), 0.18),
+        Side::Ours => p.status.info,
+        Side::Theirs => mix(p.status.progress, Color32::WHITE, THEIRS_LIFT),
     }
+}
+
+/// A side's colour in the active palette.
+pub(super) fn side_color(side: Side) -> Color32 {
+    side_color_in(&color::current(), side)
+}
+
+/// The wash of a side's lines in `p`.
+fn row_wash(p: &color::Palette, side: Side) -> f32 {
+    if side == Side::Theirs && p.dark { THEIRS_DARK_WASH } else { ROW_WASH }
+}
+
+/// A side's lines' background: its colour washed out.
+pub(super) fn tint(side: Side) -> Color32 {
+    let p = color::current();
+    p.wash(side_color_in(&p, side), row_wash(&p, side))
 }
 
 /// One cell: background `bg`, line number and text in `fg` (`inset` from its left edge),
@@ -58,10 +83,10 @@ pub(super) fn visual_lines(text: &str, wrap: Option<Wrap>) -> usize {
     wrap.map_or(1, |w| glowfly_core::wrap::segments(text, w.cols).count().max(1))
 }
 
-/// The accent bar marking the current chunk.
-pub(super) fn current_bar(ui: &Ui, rect: Rect) {
+/// The 3 px amber mark at the left of what is still to resolve.
+pub(super) fn unresolved_mark(ui: &Ui, rect: Rect) {
     let bar = Rect::from_min_size(rect.min, vec2(3.0, rect.height()));
-    ui.painter().with_clip_rect(rect.intersect(ui.clip_rect())).rect_filled(bar, 0.0, color::accent());
+    ui.painter().with_clip_rect(rect.intersect(ui.clip_rect())).rect_filled(bar, 0.0, color::warn());
 }
 
 /// Width for rows of `columns` columns, each with `inset`: the panel, or wider when a line
@@ -120,6 +145,37 @@ pub(super) fn offsets(n: usize, wrap: Wrap, lines_of: impl Fn(usize) -> usize) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::builtin;
+    use crate::theme::contrast::ratio;
+    use crate::theme::controls::mark_on;
+    use crate::theme::surfaces::over;
+    use crate::theme::vision::{DEUTAN, lightness_seen};
+    use glowfly_core::settings::BuiltinTheme;
+
+    /// Under deutan vision ours and theirs stay apart by lightness: theirs' checkbox fill at
+    /// least 0.12 OKLab L above ours, its rows (washed over the background) at least 0.04. And
+    /// each side's check mark stands out on its fill at 3:1 (WCAG 1.4.11).
+    #[test]
+    fn sides_stay_apart_under_deutan_vision() {
+        let mut failures = Vec::new();
+        for t in BuiltinTheme::ALL {
+            let p = builtin(t);
+            let l = |c| lightness_seen(c, &DEUTAN);
+            let (o, th) = (side_color_in(p, Side::Ours), side_color_in(p, Side::Theirs));
+            let row = |side| over(p.wash(side_color_in(p, side), row_wash(p, side)), p.bg);
+            let (check, rows) = (l(th) - l(o), l(row(Side::Theirs)) - l(row(Side::Ours)));
+            if check < 0.12 || rows < 0.04 {
+                failures.push(format!("{t:?}: checkbox {check:.3}, rows {rows:.3}"));
+            }
+            for (side, fill) in [("ours", o), ("theirs", th)] {
+                let r = ratio(mark_on(p, fill), fill);
+                if r < 3.0 {
+                    failures.push(format!("{t:?}: the {side} check mark is {r:.2}:1 on its fill"));
+                }
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("; "));
+    }
 
     #[test]
     fn offsets_grow_by_visual_lines() {

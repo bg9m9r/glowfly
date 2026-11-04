@@ -1,10 +1,9 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
   Tab "New tab" [selected]
 Button "Close tab New tab"
 Button "New tab"
-Button "Open…"
+Button "Repository: Open…"
 Button "Hide panel"
 Button "More"
 Button "Open folder"
@@ -19,9 +18,9 @@ Label "2026-10-16 09:31:12.007 +00:00  INFO glowfly-git glowfly::runner: fetch f
 Label "2026-10-16 09:31:12.010 +00:00  INFO main glowfly::ui: window focused"
 Image
 Label "Glowfly"
-Label "A fast, native Git client"
+Label "See your history clearly."
 Button "Open repository…"
-Label "A folder on this computer that already holds a git repository."
+Label "A folder on this computer that already holds a Git repository."
 Button "Clone repository…"
 Label "Copy a repository from a hosting service or a URL into a new folder."
 Button "New repository…"
@@ -30,3 +29,4 @@ Button "Find repositories in folders…"
 Label "Look through the folders you keep projects in for repositories."
 painted:
   "Repository"
+  "Open…"

@@ -7,13 +7,13 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::WorktreeEffect;
-use crate::msg::{Msg, RepoMsg, TabsMsg};
-use crate::state::worktree_manage::RemoveForm;
-use crate::state::{AppState, Modal, RunningJob};
-use crate::worktree::WorktreeMsg;
 use glowfly_core::gitcli::{args, run};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::WorktreeEffect;
+use glowfly_model::msg::{Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::worktree_manage::RemoveForm;
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -141,6 +141,7 @@ fn job(dir: &Path) -> RunningJob {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,

@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::{GraphMsg, Msg, PrefsMsg};
 use crate::state::AppState;
 use glowfly_core::settings::ResizableColumn::{self, *};
@@ -32,7 +33,7 @@ fn reset(st: &mut AppState, col: ResizableColumn) -> Vec<Effect> {
 fn resize_column_saves_once() {
     let mut st = synced();
     let fx = resize(&mut st, Commit, 220.0);
-    let [Effect::SaveSettings(s)] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
+    let [Effect::Save(SaveEffect::Settings(s))] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
     assert_eq!(s.column_widths.get(Commit), 220.0);
     for col in [Refs, Changes, Author, Date] {
         assert_eq!(s.column_widths.get(col), col.default_width(), "{col:?}");
@@ -45,7 +46,7 @@ fn resize_column_saves_once() {
 fn resize_column_clamps() {
     let mut st = synced();
     let fx = resize(&mut st, Refs, 5000.0);
-    assert!(matches!(fx.as_slice(), [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(matches!(fx.as_slice(), [Effect::Save(SaveEffect::Settings(_))]), "{fx:?}");
     assert_eq!(st.settings.column_widths.get(Refs), 480.0);
     assert!(resize(&mut st, Commit, f32::NAN).is_empty());
     assert_eq!(st.settings.column_widths.get(Commit), 76.0);
@@ -60,7 +61,7 @@ fn reset_column_width() {
     let mut st = synced();
     resize(&mut st, Commit, 220.0);
     let fx = reset(&mut st, Commit);
-    let [Effect::SaveSettings(s)] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
+    let [Effect::Save(SaveEffect::Settings(s))] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
     assert_eq!(s.column_widths.get(Commit), 76.0);
     assert!(reset(&mut st, Commit).is_empty());
     assert!(reset(&mut st, Date).is_empty(), "an untouched column is already at its default");

@@ -12,11 +12,12 @@
 //! `color::set_palette` at the start of each frame, on the thread that draws it. Tests rendering
 //! different palettes in parallel don't affect each other.
 
-use crate::state::window_native::MicaTint;
-use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
-use glowfly_core::settings::{BranchPalette, BuiltinTheme, SystemPair, TerminalColours, ThemeChoice};
+use glowfly_core::settings::{BuiltinTheme, ColourPalette, SystemPair, TerminalColours, ThemeChoice};
+use glowfly_model::state::window_native::MicaTint;
+use glowfly_model::themes::ThemeState;
 
+pub mod a11y;
 pub mod ansi;
 pub mod branch_colours;
 pub mod branch_names;
@@ -30,13 +31,16 @@ mod builtin_extra;
 mod builtin_garden;
 mod builtin_sea;
 pub mod color;
+pub mod colour_safe;
 pub mod contrast;
 pub mod controls;
 pub mod custom;
 pub mod families;
 pub mod fonts;
 mod inactive;
+pub mod initials;
 pub mod missing_glyphs;
+pub mod ref_chip;
 pub mod sizes;
 pub mod spacing;
 pub mod surfaces;
@@ -45,8 +49,11 @@ pub mod tokens;
 pub mod type_scale;
 pub mod vision;
 
-#[cfg(test)]
-pub use branch_palette::applied;
+/// `p` in colour preset `choice`: its branch hues and its diff and status colours, as the shell
+/// shows it (`ThemeCache::select`).
+pub fn applied(p: Palette, choice: ColourPalette) -> Palette {
+    colour_safe::applied(branch_palette::applied(p, choice), choice)
+}
 #[cfg(test)]
 pub use builtin::{DARK, DAWN, DUSK, GRAPHITE, HIGH_CONTRAST_DARK, HIGH_CONTRAST_LIGHT, MIDNIGHT, MIST, PORCELAIN};
 // The view tests' palettes, for the app crate's tests too.
@@ -61,14 +68,14 @@ use eframe::egui::CornerRadius;
 use tokens::{Elevation, radius, shadow};
 
 /// egui's light or dark style for a palette.
-pub fn egui_theme(p: &Palette) -> egui::Theme {
+pub(crate) fn egui_theme(p: &Palette) -> egui::Theme {
     if p.dark { egui::Theme::Dark } else { egui::Theme::Light }
 }
 
 /// Styles egui's built-in widgets from `p`, in the egui theme `p` uses, and installs the bundled
 /// fonts (`fonts::install`, a cheap no-op once they are in). The other egui theme gets
 /// DEFAULT_DARK or LIGHT, so a stray switch never shows egui's own defaults.
-pub fn apply_style(ctx: &egui::Context, p: &Palette) {
+pub(crate) fn apply_style(ctx: &egui::Context, p: &Palette) {
     fonts::install(ctx);
     let other = if p.dark { &LIGHT } else { &DEFAULT_DARK };
     for p in [p, other] {
@@ -171,17 +178,20 @@ fn dialog_frame_for(ctx: &egui::Context, p: &Palette) -> egui::Frame {
 
 /// Styles egui from this thread's active palette (tests that draw without the shell).
 #[cfg(test)]
-pub fn apply_theme(ctx: &egui::Context) {
+pub(crate) fn apply_theme(ctx: &egui::Context) {
     apply_style(ctx, &color::current());
 }
 
-/// The shell's palette for the chosen theme and branch preset, worked out again only when an
+/// The shell's palette for the chosen theme and colour preset, worked out again only when an
 /// input changes.
 #[derive(Default)]
 pub struct ThemeCache {
-    /// (choice, Match the system's pair, theme files generation, OS is dark, branch preset) the
-    /// palette was resolved for.
-    key: Option<(ThemeChoice, SystemPair, u64, bool, BranchPalette)>,
+    /// (choice, Match the system's pair, theme files generation, OS is dark, colour preset, the
+    /// system's high contrast shown in its place) the palette was resolved for.
+    key: Option<(ThemeChoice, SystemPair, u64, bool, ColourPalette, bool)>,
+    /// The system uses high contrast and Preferences follows it (`AppState::system_contrast`):
+    /// the high-contrast theme as dark as the chosen one shows instead.
+    system_contrast: bool,
     palette: Option<Palette>,
     /// The palette egui's style was last set from.
     applied: Option<Palette>,
@@ -196,10 +206,12 @@ pub struct ThemeCache {
 }
 
 impl ThemeCache {
-    /// `select` for the theme in the settings, with the OS's light or dark setting from egui.
-    pub fn apply(&mut self, ctx: &egui::Context, settings: &glowfly_core::settings::Settings, themes: &ThemeState) {
+    /// `select` for the theme in the settings, with the OS's light or dark setting from egui;
+    /// `system_contrast` shows the high-contrast theme as dark as the chosen one in its place.
+    pub fn apply(&mut self, ctx: &egui::Context, settings: &glowfly_core::settings::Settings, themes: &ThemeState, system_contrast: bool) {
+        self.system_contrast = system_contrast;
         let system_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
-        self.select(ctx, &settings.theme, settings.system_pair, settings.branch_palette, themes, system_dark);
+        self.select(ctx, &settings.theme, settings.system_pair, settings.colour_palette, themes, system_dark);
         self.select_terminal(&settings.terminal.colours, themes);
     }
 
@@ -214,22 +226,27 @@ impl ThemeCache {
         color::set_terminal(self.terminal);
     }
 
-    /// Makes the chosen theme's palette (Match the system shows `pair`'s member), with the branch
+    /// Makes the chosen theme's palette (Match the system shows `pair`'s member), with the colour
     /// preset `branches`, active for this frame and styles egui when it changed.
     pub fn select(
         &mut self,
         ctx: &egui::Context,
         choice: &ThemeChoice,
         pair: SystemPair,
-        branches: BranchPalette,
+        branches: ColourPalette,
         themes: &ThemeState,
         system_dark: bool,
     ) {
-        let key = (choice.clone(), pair, themes.generation, system_dark, branches);
+        let key = (choice.clone(), pair, themes.generation, system_dark, branches, self.system_contrast);
         if self.key.as_ref() != Some(&key) {
-            let palette = branch_palette::applied(custom::resolve(choice, themes, system_dark, pair), branches);
-            let high_contrast =
+            let mut chosen = custom::resolve(choice, themes, system_dark, pair);
+            let mut high_contrast =
                 matches!(choice.builtin(system_dark, pair), Some(BuiltinTheme::HighContrastDark | BuiltinTheme::HighContrastLight));
+            if self.system_contrast && !high_contrast {
+                chosen = if chosen.dark { builtin::HIGH_CONTRAST_DARK } else { builtin::HIGH_CONTRAST_LIGHT };
+                high_contrast = true;
+            }
+            let palette = applied(chosen, branches);
             self.mica = if high_contrast { None } else { super::backdrop::mica_tint(&palette) };
             self.trunk_near = branch_colours::trunk_near(&palette);
             self.palette = Some(palette);
@@ -270,6 +287,8 @@ mod branch_colour_tests;
 #[cfg(test)]
 mod code_sel_tests;
 #[cfg(test)]
+mod colour_safe_tests;
+#[cfg(test)]
 mod controls_tests;
 #[cfg(test)]
 mod diff_select_tests;
@@ -277,6 +296,10 @@ mod diff_select_tests;
 mod family_tests;
 #[cfg(test)]
 mod inactive_tests;
+#[cfg(test)]
+mod lantern_tests;
+#[cfg(test)]
+pub(crate) use lantern_tests::lantern_floor;
 #[cfg(test)]
 mod lineup_contrast_tests;
 #[cfg(test)]
@@ -286,11 +309,15 @@ mod no_brown_tests;
 #[cfg(test)]
 mod no_brown_text_tests;
 #[cfg(test)]
+mod ref_chip_tests;
+#[cfg(test)]
 mod snapshot_tests_controls;
 #[cfg(test)]
 mod snapshot_tests_fonts;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod text_floor_tests;
 #[cfg(test)]
 mod tint_tests;
 #[cfg(test)]

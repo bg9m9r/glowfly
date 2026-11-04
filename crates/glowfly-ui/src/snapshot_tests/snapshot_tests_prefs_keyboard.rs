@@ -4,13 +4,13 @@
 
 use super::snapshot_check::CheckSnapshot;
 use super::snapshot_tests::{harness, render, settings};
-use crate::keymap::{BindingId as I, Chord, KeyName as K, Slot};
-use crate::msg::{KeysMsg, Msg};
-use crate::state::keys_page::{Pending, Recording};
-use crate::state::{AppState, PrefPage, PrefsState};
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::keymap::{BindingId as I, Chord, KeyName as K, Slot};
+use glowfly_model::msg::{KeysMsg, Msg};
+use glowfly_model::state::keys_page::{Pending, Recording};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 fn page(theme: ThemeChoice, filter: &str) -> AppState {
@@ -21,7 +21,7 @@ fn page(theme: ThemeChoice, filter: &str) -> AppState {
     st
 }
 
-fn keys_page(st: &mut AppState) -> &mut crate::state::keys_page::KeysPage {
+fn keys_page(st: &mut AppState) -> &mut glowfly_model::state::keys_page::KeysPage {
     &mut st.prefs.as_mut().unwrap().keys
 }
 
@@ -155,9 +155,11 @@ fn typing_in_the_filter_narrows_the_rows() {
     let mut h = harness(page(ThemeChoice::Dark, ""), true);
     h.run();
     assert!(h.query_by_label("Refresh").is_some() && h.query_by_label("New tab").is_some());
-    h.get(By::new().role(Role::TextInput)).click();
+    // The page's filter, not the navigation's search.
+    let on_page = |n: &egui_kittest::kittest::Node<'_>| n.bounding_box().is_some_and(|b| b.x0 > 250.0);
+    h.query_all(By::new().role(Role::TextInput)).find(on_page).expect("the filter").click();
     h.run();
-    h.get(By::new().role(Role::TextInput)).type_text("refresh");
+    h.query_all(By::new().role(Role::TextInput)).find(on_page).expect("the filter").type_text("refresh");
     h.run();
     assert_eq!(h.state().0.prefs.as_ref().unwrap().keys.filter, "refresh");
     assert!(h.query_by_label("Refresh").is_some());

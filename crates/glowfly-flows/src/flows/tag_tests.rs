@@ -5,11 +5,12 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::{AppState, Modal, RunningJob};
-use crate::tag::TagMsg;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::tag::TagMsg;
 use std::path::Path;
 use std::time::Instant;
 
@@ -66,7 +67,9 @@ fn create_tag_commands() {
     open_dialog(&mut st, false);
     let fx = update(&mut st, create(&sha, " v1 ", "", None), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(cmds, &[vec!["tag".to_owned(), "v1".into(), sha.clone()]]),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => {
+            assert_eq!(cmds, &[vec!["tag".to_owned(), "v1".into(), sha.clone()]])
+        }
         other => panic!("unexpected effects {other:?}"),
     }
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Create tag"));
@@ -78,7 +81,7 @@ fn create_tag_commands() {
     open_dialog(&mut st, true);
     let fx = update(&mut st, create(&sha, "v1", " notes ", Some("origin")), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => {
             assert_eq!(cmds[0], ["tag", "-a", "v1", sha.as_str(), "-m", "notes"]);
             assert_eq!(cmds[1], ["push", "--", "origin", "refs/tags/v1:refs/tags/v1"]);
             assert_eq!(cmds.len(), 2);
@@ -147,6 +150,7 @@ fn create_tag_unknown_remote_and_busy() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: true,
@@ -164,7 +168,7 @@ fn push_new_tags_setting_saved() {
     let mut st = state();
     let fx = update(&mut st, Msg::Tag(TagMsg::SetPushNewTags(true)), Instant::now());
     assert!(st.settings.push_new_tags);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.push_new_tags));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.push_new_tags));
     assert!(update(&mut st, Msg::Tag(TagMsg::SetPushNewTags(true)), Instant::now()).is_empty());
 }
 

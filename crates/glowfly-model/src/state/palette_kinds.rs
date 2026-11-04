@@ -179,7 +179,7 @@ impl PickKind {
         format!("Showing {shown} of {total} {noun}. Type more to narrow the list.")
     }
 
-    /// Whether the step lists the tracked files (`Effect::LoadTrackedPaths`).
+    /// Whether the step lists the tracked files (`FilesEffect::LoadTracked`).
     pub fn lists_files(self) -> bool {
         matches!(self, PickKind::FileHistory | PickKind::Blame)
     }

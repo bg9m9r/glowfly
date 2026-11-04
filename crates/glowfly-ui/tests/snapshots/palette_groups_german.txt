@@ -1,7 +1,7 @@
 Dialog
-  TextInput [focused]
+  TextInput "Type a command, branch or tag name" [focused]
   Label "Zuletzt verwendet"
-  Button "Refresh"
+  Button "Refresh" [selected]
   Label "Vorschläge"
   Button "Stage all files"
   Button "Create branch at HEAD…"
@@ -47,6 +47,7 @@ Dialog
   Button "Show the welcome"
   Button "Tipps ausschalten"
   Button "Tipps wieder zeigen"
+  Button "Erste Schritte"
   Button "Take the tour"
   Button "View release notes"
   Button "Check for updates"
@@ -83,7 +84,6 @@ Dialog
   Button "Checkout tag v0.1.0"
   Label "Up/Down to choose, Enter to run, Esc to close"
 painted:
-  "Type a command, branch or tag name"
   "F5"
   "Ctrl+Shift+S"
   "Ctrl+B"

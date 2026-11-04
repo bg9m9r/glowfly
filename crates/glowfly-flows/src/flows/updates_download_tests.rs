@@ -3,14 +3,15 @@
 
 use super::update;
 use super::updates_tests::{found, offered, saved, send};
-use crate::effect::partial::StopKey;
-use crate::effect::{Effect, UpdateEffect};
-use crate::msg::{Msg, PrefsMsg, UpdateMsg as U};
-use crate::state::palette::entries;
-use crate::state::updates::{Transfer, UpdateStatus, progress_text};
-use crate::state::{AppState, PrefPage};
-use glowfly_core::app_update::{InstallKind, Progress, SavedProblem};
+use glowfly_core::app_update::{InstallKind, Progress, SavedProblem, UpdateError};
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::ControlEffect;
+use glowfly_model::effect::partial::StopKey;
+use glowfly_model::effect::{Effect, UpdateEffect};
+use glowfly_model::msg::{Msg, PrefsMsg, UpdateMsg as U};
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::updates::{Transfer, UpdateStatus, progress_text};
+use glowfly_model::state::{AppState, PrefPage};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -58,7 +59,7 @@ fn cancel_stops_the_download_and_offers_it_again() {
     let (mut st, t) = downloading();
     send(&mut st, U::DownloadProgress(Progress { done: 40, total: Some(100) }), t);
     let fx = send(&mut st, U::CancelDownload, t);
-    assert!(matches!(fx.as_slice(), [Effect::StopGit(StopKey::UpdateDownload)]), "{fx:?}");
+    assert!(matches!(fx.as_slice(), [Effect::Control(ControlEffect::StopGit(StopKey::UpdateDownload))]), "{fx:?}");
     assert!(st.updates.transfer.cancelling);
     assert!(send(&mut st, U::CancelDownload, t).is_empty(), "asked once");
     assert!(send(&mut st, U::Download, t).is_empty(), "nothing new starts until it has stopped");
@@ -147,7 +148,7 @@ fn a_file_found_changed_while_installing_waits_for_the_install() {
     assert!(st.updates.restarting);
     send(&mut st, U::SavedChecked { file: file.clone(), problem: Some(SavedProblem::Changed) }, t);
     assert!(matches!(st.updates.status, UpdateStatus::Downloaded { .. }), "the install's own check says why");
-    let fx = send(&mut st, U::RestartReady(Err("The downloaded file changed after it was checked".into())), t);
+    let fx = send(&mut st, U::RestartReady(Err(UpdateError::ChangedSinceChecked)), t);
     assert!(checks_saved(&fx, &file));
     send(&mut st, U::SavedChecked { file, problem: Some(SavedProblem::Changed) }, t);
     assert!(matches!(st.updates.status, UpdateStatus::Stale { problem: SavedProblem::Changed, .. }));

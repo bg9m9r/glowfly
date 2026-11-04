@@ -10,17 +10,17 @@ mod header;
 use super::conflict_output::output;
 use super::conflict_panes::panes;
 use super::theme::color;
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::ConflictMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::conflict::ConflictView;
-use crate::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
-use crate::state::tool_compare::{ToolSetup, merge_blocked, merging};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, Frame, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{ConflictContent, ConflictFile, Side, Unmergeable};
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::ConflictMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
+use glowfly_model::state::tool_compare::{ToolSetup, merge_blocked, merging};
 
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
@@ -31,20 +31,17 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let setup = ToolSetup::of(t, &st.settings.external_tools).merge;
     // Nothing here writes the file while the merge tool has it open; it closes the view on a change.
     let in_tool = merging(st, &view.path);
-    ui.add_space(6.0);
     let tool = header::MergeTool { blocked: blocked.as_deref(), setup };
     header::header_bar(ui, t, view, tool, in_tool, &st.keymap, msgs);
-    ui.separator();
     if in_tool {
         ui.horizontal(|ui| {
             ui.add_space(8.0);
             ui.label(RichText::new(t.tr("conflict.view.in_tool.note")).color(color::warn()));
         });
     }
-    auto_note(ui, t, view);
     restored_note(ui, t, view);
     let Some(file) = &view.file else {
-        return super::pane_status::loading(ui, t.tr("conflict.view.loading"));
+        return super::pane_status::loader(ui, t.tr("conflict.view.loading"));
     };
     if !matches!(file.content, ConflictContent::Text(_)) {
         fallback(ui, t, view, file, in_tool, msgs);
@@ -82,25 +79,6 @@ pub(super) fn step_tip(keys: &Keymap, t: Lang, forward: bool) -> String {
     } else {
         keys.tip(t.tr("conflict.view.prev.tip"), BindingId::PrevChange)
     }
-}
-
-/// Under the header: how many chunks were picked automatically, while any pick still is.
-fn auto_note(ui: &mut Ui, t: Lang, view: &ConflictView) {
-    let (auto, n) = (view.auto_count(), view.chunk_count());
-    if auto == 0 {
-        return;
-    }
-    let text = if auto == n {
-        let all = if n == 1 { t.tr("conflict.view.auto_one") } else { t.tr("conflict.view.auto_all") };
-        RichText::new(all).color(color::accent())
-    } else {
-        RichText::new(t.trn("conflict.view.auto_some", n, &[("auto", &auto)])).color(color::weak())
-    };
-    // Wraps, so a longer translation can't widen the view.
-    ui.horizontal(|ui| {
-        ui.add_space(8.0);
-        ui.add(egui::Label::new(text).wrap());
-    });
 }
 
 /// Under the header: how many chunks came back from the file saved with markers, or that its

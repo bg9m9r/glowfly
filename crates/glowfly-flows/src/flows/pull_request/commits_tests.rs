@@ -4,15 +4,15 @@
 
 use super::source_tests::head_on_remote;
 use super::tests::{cleanup, open, set_pr, setup};
-use crate::effect::{Effect, LineCountsEffect};
 use crate::flows::drive;
-use crate::msg::{Msg, RepoMsg};
-use crate::pull_request::PullRequestMsg;
-use crate::state::pull_request::PrTab;
-use crate::state::{AppState, Selection};
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::{Effect, LineCountsEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::PrTab;
+use glowfly_model::state::{AppState, Selection};
+use glowfly_model::update::update;
 use std::time::Instant;
 
 fn listed(st: &AppState) -> Vec<Oid> {
@@ -28,13 +28,15 @@ fn a_row_selects_its_commit_and_keeps_the_panel() {
     st.settings.show_details_panel = false;
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[0])), Instant::now());
     assert_eq!(st.session.selection, Selection::Commit(commits[0]));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == commits[0])));
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }) if *oid == commits[0]))
+    );
     assert!(fx.iter().any(|e| matches!(e, Effect::LineCounts(LineCountsEffect::Commit { oid, .. }) if *oid == commits[0])));
     assert!(st.session.pull_request.view.is_some(), "the panel stays open");
     assert!(st.settings.show_details_panel, "the commit panel is shown");
     // Again: only the panel is revealed.
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(commits[0])), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadDetail { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { .. }))));
     // A commit the panel doesn't list does nothing.
     assert!(update(&mut st, Msg::PullRequest(PullRequestMsg::SelectCommit(base)), Instant::now()).is_empty());
     assert_eq!(st.session.selection, Selection::Commit(commits[0]));

@@ -5,8 +5,9 @@
 //! saves the change.
 
 use super::{check_row, help, row, section};
-use crate::ui::theme::{color, controls, type_scale};
-use eframe::egui::{self, RichText, Ui, vec2};
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, controls, type_scale};
+use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::{self, Lang, SYSTEM};
 use glowfly_core::settings::{DateKind, Settings};
 
@@ -27,12 +28,13 @@ fn language_row(ui: &mut Ui, s: &mut Settings) {
             None => system_label.clone(),
         };
         // A fixed id: the label changes with the language, the widget's state must not.
-        egui::ComboBox::from_id_salt("language").width(super::fit(ui, 320.0)).selected_text(selected).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("language").width(super::fit(ui, 320.0)).selected_text(selected).show_ui(ui, |ui| {
             ui.selectable_value(&mut s.language, SYSTEM.to_owned(), system_label);
             for lang in Lang::ALL {
                 ui.selectable_value(&mut s.language, lang.code().to_owned(), lang.native_name());
             }
         });
+        crate::access::from_label(&combo.response);
         help(ui, t.tr("prefs.general.language.help"));
     });
 }
@@ -55,11 +57,12 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
         } else {
             current
         };
-        egui::ComboBox::from_id_salt("locale").selected_text(shown).width(super::fit(ui, 230.0)).show_ui(ui, |ui| {
+        let combo = egui::ComboBox::from_id_salt("locale").selected_text(shown).width(super::fit(ui, 230.0)).show_ui(ui, |ui| {
             for (k, label) in glowfly_core::dates::LOCALES {
                 ui.selectable_value(&mut s.date_locale, k.to_owned(), label);
             }
         });
+        crate::access::from_label(&combo.response);
     });
     // After the locale picker, so a new locale's hints and previews show on the same frame.
     let [date, long, date_time, full] = [DateKind::Date, DateKind::LongDate, DateKind::DateTime, DateKind::Full].map(|k| s.date_default(k));
@@ -76,8 +79,8 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
 fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str, locale: &str, now: (i64, i32)) {
     row(ui, label, |ui| {
         ui.horizontal_wrapped(|ui| {
-            let w = super::fit(ui, 230.0);
-            controls::field(ui, egui::TextEdit::singleline(value).hint_text(default).desired_width(w).margin(vec2(8.0, 5.0)));
+            let w = super::fit(ui, 246.0);
+            ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::singleline(value).hint_text(default)).width(w));
             let pattern = if value.trim().is_empty() { default } else { value.as_str() };
             let preview = glowfly_core::dates::format(now.0, pattern, locale, now.1);
             ui.label(RichText::new(preview).size(type_scale::SMALL).color(color::weak()));

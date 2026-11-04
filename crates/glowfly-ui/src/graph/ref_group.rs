@@ -2,17 +2,20 @@
 //! branches at the same commit that are copies of it: its upstream (whatever its name) and every
 //! ref with its name on any remote. Same-commit copies on several remotes with no local branch
 //! claiming them share one remote chip. A folded chip draws a remote mark and its tooltip names
-//! the copies; tags, HEAD and every other ref keep their own labels.
+//! the copies; tags, HEAD and every other ref keep their own labels. What grouping asks of the
+//! local branches is indexed once per snapshot (`UpstreamsCache`), not scanned per label.
 
-use crate::state::branches::default_remote;
-use crate::state::remote_branch::split_among;
-use crate::state::tags::remote_list_in;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, RefKind, RefLabel, Snapshot};
+use glowfly_model::state::branches::default_remote;
+use glowfly_model::state::remote_branch::split_among;
+use glowfly_model::state::tags::remote_list_in;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 /// What grouping needs from the snapshot; built once per frame.
 pub struct RefContext<'a> {
-    pub locals: &'a [BranchInfo],
+    pub upstreams: Arc<Upstreams>,
     /// The remotes' names, in the snapshot's order.
     pub remotes: Vec<&'a str>,
     /// The remote whose copy leads a remote-only chip when no local branch tracks one.
@@ -20,8 +23,57 @@ pub struct RefContext<'a> {
 }
 
 impl<'a> RefContext<'a> {
-    pub fn of(snap: &'a Snapshot) -> Self {
-        Self { locals: &snap.locals, remotes: snap.remotes.iter().map(|(r, _)| r.as_str()).collect(), default_remote: default_remote(snap) }
+    /// `upstreams` are `snap`'s (`UpstreamsCache::of`).
+    pub fn of(snap: &'a Snapshot, upstreams: Arc<Upstreams>) -> Self {
+        Self { upstreams, remotes: snap.remotes.iter().map(|(r, _)| r.as_str()).collect(), default_remote: default_remote(snap) }
+    }
+}
+
+/// The local branches' upstream refs, as grouping looks them up.
+#[derive(Debug, Default)]
+pub struct Upstreams {
+    /// Each local branch's upstream ref (None for one without), by branch name.
+    by_branch: HashMap<String, Option<String>>,
+    /// The upstream refs some local branch tracks.
+    tracked: HashSet<String>,
+    /// The upstream refs the checked-out branch tracks.
+    head_tracks: HashSet<String>,
+}
+
+impl Upstreams {
+    pub fn of(locals: &[BranchInfo]) -> Self {
+        let mut u = Upstreams::default();
+        for b in locals {
+            // The first branch of a name answers, as a scan of the list would.
+            u.by_branch.entry(b.name.clone()).or_insert_with(|| b.upstream_ref.clone());
+            if let Some(up) = &b.upstream_ref {
+                u.tracked.insert(up.clone());
+                if b.is_head {
+                    u.head_tracks.insert(up.clone());
+                }
+            }
+        }
+        u
+    }
+}
+
+/// `Upstreams` kept between frames: built again only for a snapshot with another
+/// `status_stamp`. Every load makes a new snapshot with a new stamp (a status read gives a new
+/// one too), and the local branches are never edited in place.
+#[derive(Default)]
+pub struct UpstreamsCache {
+    stamp: Option<u64>,
+    upstreams: Arc<Upstreams>,
+}
+
+impl UpstreamsCache {
+    /// The upstreams of `locals`, the branches of the snapshot stamped `stamp`.
+    pub fn of(&mut self, stamp: u64, locals: &[BranchInfo]) -> Arc<Upstreams> {
+        if self.stamp != Some(stamp) {
+            self.upstreams = Arc::new(Upstreams::of(locals));
+            self.stamp = Some(stamp);
+        }
+        Arc::clone(&self.upstreams)
     }
 }
 
@@ -51,15 +103,15 @@ impl Chip<'_> {
 
 /// The upstream ref of local branch `name`, when the snapshot lists one.
 fn upstream_of<'a>(cx: &'a RefContext, name: &str) -> Option<&'a str> {
-    cx.locals.iter().find(|b| b.name == name)?.upstream_ref.as_deref()
+    cx.upstreams.by_branch.get(name)?.as_deref()
 }
 
 /// The copy that leads remote-only `group` (indexes into `labels`): the one the checked-out
 /// branch tracks, else one any local branch tracks, else the default remote's, else the first.
 fn lead(group: &[usize], labels: &[RefLabel], cx: &RefContext) -> usize {
     let tracked = |j: usize, head_only: bool| {
-        let full = Some(labels[j].full.as_str());
-        cx.locals.iter().any(|b| (b.is_head || !head_only) && b.upstream_ref.as_deref() == full)
+        let u = &cx.upstreams;
+        if head_only { u.head_tracks.contains(&labels[j].full) } else { u.tracked.contains(&labels[j].full) }
     };
     let on_default = |j: usize| {
         let remote = split_among(&cx.remotes, &labels[j].name).map(|(r, _)| r);
@@ -149,12 +201,12 @@ mod tests {
         BranchInfo { is_head: true, ..branch(name, upstream) }
     }
 
-    fn cx<'a>(locals: &'a [BranchInfo], remotes: &[&'a str], default: Option<&str>) -> RefContext<'a> {
-        RefContext { locals, remotes: remotes.to_vec(), default_remote: default.map(str::to_owned) }
+    fn cx<'a>(locals: &[BranchInfo], remotes: &[&'a str], default: Option<&str>) -> RefContext<'a> {
+        RefContext { upstreams: Arc::new(Upstreams::of(locals)), remotes: remotes.to_vec(), default_remote: default.map(str::to_owned) }
     }
 
     /// The usual remotes: origin (the default), fork, upstream and backup.
-    fn std_cx(locals: &[BranchInfo]) -> RefContext<'_> {
+    fn std_cx(locals: &[BranchInfo]) -> RefContext<'static> {
         cx(locals, &["origin", "fork", "upstream", "backup"], Some("origin"))
     }
 
@@ -177,6 +229,19 @@ mod tests {
         let cx = std_cx(&locals);
         assert_eq!(shown(&labels, &cx), ["main+origin/main"]);
         assert_eq!(chips(&labels, &cx)[0].tip(Lang::En), "main, in sync with origin/main");
+    }
+
+    /// A diverged upstream (on another commit) folds into nothing: the branch's chip has no
+    /// copies (no cloud) and the upstream keeps its own remote chip on its own commit.
+    #[test]
+    fn a_diverged_upstream_keeps_its_own_chip() {
+        let locals = [branch("main", Some("origin/main"))];
+        let cx = std_cx(&locals);
+        let (here, there) = (labels(&["refs/heads/main"]), labels(&["refs/remotes/origin/main"]));
+        assert!(!chips(&here, &cx)[0].folds());
+        assert_eq!(chips(&here, &cx)[0].tip(Lang::En), "main");
+        let remote = chips(&there, &cx);
+        assert!(remote.len() == 1 && remote[0].label.kind == RefKind::Remote);
     }
 
     #[test]
@@ -294,5 +359,22 @@ mod tests {
         let chip = &chips(&labels, &cx)[0];
         assert_eq!(chip.tip(Lang::En), "x, in sync with origin/x, fork/x and backup/x");
         assert_eq!(chip.tip(Lang::De), "x, auf dem Stand von origin/x, fork/x und backup/x");
+    }
+
+    #[test]
+    fn upstreams_are_kept_until_the_snapshot_changes() {
+        let labels = labels(&["refs/remotes/fork/x", "refs/remotes/origin/x"]);
+        let mut cache = UpstreamsCache::default();
+        let shown_with = |upstreams: Arc<Upstreams>| {
+            let cx = RefContext { upstreams, remotes: vec!["fork", "origin"], default_remote: Some("origin".into()) };
+            shown(&labels, &cx)
+        };
+        // x tracks fork/x, so that copy leads.
+        let tracking = [branch("x", Some("fork/x"))];
+        let first = cache.of(1, &tracking);
+        assert!(Arc::ptr_eq(&first, &cache.of(1, &tracking)), "the same snapshot: kept");
+        assert_eq!(shown_with(first), ["fork/x+origin/x"]);
+        // A new snapshot where nothing tracks it: the default remote's copy leads.
+        assert_eq!(shown_with(cache.of(2, &[branch("x", None)])), ["origin/x+fork/x"]);
     }
 }

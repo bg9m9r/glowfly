@@ -2,11 +2,12 @@
 //! allocation-free commit search.
 
 use super::tests::state;
-use crate::msg::RepoMsg;
-use crate::state::LOG_LIMIT;
 use git2::Oid;
 use glowfly_core::commit_query::CommitQuery;
 use glowfly_core::repo::CommitInfo;
+use glowfly_model::effect::HistoryEffect;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::LOG_LIMIT;
 
 #[test]
 fn activity_log_keeps_only_the_newest_entries() {
@@ -44,14 +45,14 @@ fn commit_search_ignores_case_and_matches_id_prefixes() {
 #[test]
 fn dropped_stats_can_be_asked_for_again() {
     use super::tests::{drive, scratch_repo};
-    use crate::effect::Effect;
-    use crate::msg::Msg;
+    use glowfly_model::effect::Effect;
+    use glowfly_model::msg::Msg;
     let dir = scratch_repo("stats-dropped");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let oid = st.snap.as_ref().unwrap().commits[0].oid;
     let now = std::time::Instant::now();
-    let asks = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::Stats { oids, .. } if *oids == [oid]));
+    let asks = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::History(HistoryEffect::Stats { oids, .. }) if *oids == [oid]));
     assert!(asks(&super::update(&mut st, Msg::Repo(RepoMsg::WantStats(vec![oid])), now)));
     assert!(!asks(&super::update(&mut st, Msg::Repo(RepoMsg::WantStats(vec![oid])), now)), "already asked");
     super::update(&mut st, Msg::Repo(RepoMsg::StatsDropped(vec![oid])), now);

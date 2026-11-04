@@ -32,7 +32,8 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Build the Linux packages on an older glibc baseline so the AppImage and packages run on older distributions
 - Sign the .rpm (rpm --addsign) and the AppImage, and publish apt and dnf repositories
 - Debian version for pre-release tags: map '-' to '~' in --deb-version as the rpm does
-- Automate the Homebrew tap and winget-pkgs submissions from the release job with a token
+- Automate the Homebrew tap, Scoop bucket and winget-pkgs submissions from the release job with a token
+- Scoop: detect a Scoop install (under `scoop/apps/glowfly`) and leave updates to `scoop update`, as a Flatpak copy leaves them to Flatpak
 - release-please's first try at creating the draft release failed with an empty error just after it made the tag (0.3.0-rc.1, the first draft-mode release); re-running the job made the draft. Find the cause, or have the job retry once
 - Rename a swapped AppImage whose file name carries the old version to the new release's name
 - An aarch64 Flatpak bundle (a native arm64 builder image, or a QEMU build if it fits the time)
@@ -105,6 +106,9 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Find text snapshots no test writes any more (a `.txt` with no `.new.txt` after a full run) and delete them
 - Give icon-only widgets and painted rows accessible names, so more of a view shows in its accessibility tree than in the painted-text list
 - Run the text snapshots on the Linux CI runner too, with per-platform files where labels differ (shortcut names, title bar)
+- Delete the text snapshots no test writes: `pull_request_gitlab_light`, `tabs_group_dragging` and `terminal_ansi_dark` (the per-theme terminal test names its files by theme id)
+- The names check scans the app's `runner_snapshots` folder, which holds no text snapshots (they are written into glowfly-ui's folder)
+- The chip catalog test reaches chip painters made `pub(crate)` for it; re-export them under `cfg(test)` instead
 
 ### Fuzzing the parsers of untrusted text
 
@@ -125,9 +129,31 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Treat an unresolved bare call inside core as I/O when its parent module has any, as the checked crates' calls already are
 - Follow `use glowfly_core::repo::*;`, `use glowfly_core as core;`, functions passed as values (`.map(repo::load_diff)`) and I/O inside `static` initialisers in the derived rule
 - Skip glowfly-flows explicitly in `dead_pub` (it is test-only; today its modules are read as test code only through their `cfg(test)` declarations)
+- The English-text check misses text in closures after `&`, `!` or `*` and inside a constructor (`Some(|v| ..)`), and over-counts code braces in asserts
+- `contrast::dimmed` stays off `DEAD_PUB` only because `Inks::dimmed` shares its name; only tests use it
+- `architecture_docs` counts a bare file name (`blame.rs`, `github.rs`, `mod.rs`) for every file of that name, so about 160 files pass on another file's line; resolve a bare name by the doc's crate (its H1 path) and the nearest `##` folder heading instead
 
 ### Large test repositories (make-perf-repos.ps1)
 
 - A variant of the kernel and `linear` after `git gc` (one pack, a commit-graph and bitmaps), to time loading against what a long-used clone has
 - A blobless partial clone of the kernel (`--filter=blob:none`), the shape many large clones take, to time diffs that fetch on demand
 - Run `perf_timing_tests` on each repository in one command and print a table ready to paste into the issue comment
+
+### Tests stay off the developer's files
+
+- `scripts/check.ps1` should clear GIT_CONFIG_GLOBAL for the test run (it wins over the HOME redirect when set) and put CARGO_HOME and RUSTUP_HOME back afterwards
+
+### README screenshots
+
+- Compare the README screenshots' pixels in a test, so they can't go stale unnoticed
+- Pin `merge.conflictStyle` and `core.autocrlf` in the demo repository's own config, since its git environment doesn't keep the global config out
+- Remove the demo repository's temporary folder with a drop guard
+- Quantise the screenshot PNGs (about 50 to 70% smaller) if they still look right
+- Hide the version in the screenshots' status bar, which shows a placeholder 0.1.0
+- Revert hunk shows on the commit and pull request diffs in the screenshots; check that it should
+
+### Flaky tests
+
+- `trust_patch_export_tests::a_patch_export_is_checked_again_before_git_diff_runs` fails about one run in three locally ("nothing was written")
+- `snapshot_tests_wrap::file_history_wrapped` fails now and then
+- `review_threads::graphql_errors_leave_a_note` failed on the Windows runner with os error 10055 (socket buffers used up); the local mock-server tests may leak sockets

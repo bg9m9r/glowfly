@@ -5,15 +5,15 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::OsEffect;
-use crate::effect::{Effect, ForgeError};
-use crate::msg::{Msg, PaletteMsg, RepoMsg};
-use crate::remote::{ForkRequest, RemoteEffect, RemoteMsg};
-use crate::state::forks::{ForkCreate, ForkPicker, ForkStep};
-use crate::state::palette::{PaletteCommand, entries};
-use crate::state::{AppState, ForgeState, Modal};
 use glowfly_core::forge::{Auth, CreatedFork, Fork, ForkList, ForkLookup, Provider, Target, parse_remote};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, ForgeError};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::remote::{ForkRequest, RemoteEffect, RemoteMsg};
+use glowfly_model::state::forks::{ForkCreate, ForkPicker, ForkStep};
+use glowfly_model::state::palette::{PaletteCommand, entries};
+use glowfly_model::state::{AppState, ForgeState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -73,7 +73,7 @@ fn last_log(st: &AppState) -> String {
 
 fn git_job(fx: &[Effect]) -> (PathBuf, Vec<Vec<String>>) {
     match fx {
-        [Effect::RunGit { cwd, cmds, .. }] => (cwd.clone(), cmds.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cwd, cmds, .. })] => (cwd.clone(), cmds.clone()),
         other => panic!("unexpected effects {other:?}"),
     }
 }
@@ -156,11 +156,11 @@ fn fork_lists_are_matched_to_the_dialog() {
     assert!(matches!(&fx[..], [Effect::Remote(RemoteEffect::ListForks(_))]) && picker(&mut st).loading);
     run(&mut st, RemoteMsg::ForksLoaded { workdir: w.clone(), target: target(), result: Box::new(Err(err)) });
     let en = glowfly_core::i18n::Lang::En;
-    let text = crate::state::forks::error_text(en, &target(), picker(&mut st).error.as_ref().unwrap());
+    let text = glowfly_model::state::forks::error_text(en, &target(), picker(&mut st).error.as_ref().unwrap());
     assert!(text.contains("Bad credentials") && text.contains("Sign in again in Preferences > Integrations."), "{text}");
     // A refusal Glowfly recognises is said in plain words.
     let denied = ForgeError { message: "access denied: the server said \u{201c}Forking is disabled\u{201d}".into(), auth: false };
-    let text = crate::state::forks::error_text(en, &target(), &denied);
+    let text = glowfly_model::state::forks::error_text(en, &target(), &denied);
     assert!(text.starts_with("Your GitHub account can't fork this repository."), "{text}");
     assert!(matches!(&run(&mut st, RemoteMsg::RetryForks)[..], [Effect::Remote(RemoteEffect::ListForks(_))]));
     assert!(picker(&mut st).error.is_none());

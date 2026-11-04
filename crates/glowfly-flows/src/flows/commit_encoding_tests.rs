@@ -5,11 +5,11 @@
 use super::rebase_tests::with_panel;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{CommitMsg, Msg, RebaseMsg, RepoMsg, StageMsg};
-use crate::state::AppState;
 use glowfly_core::commit_encoding::MessageEncoding;
 use glowfly_core::rebase::{RebaseAction, RebaseBase, TodoStep};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{CommitMsg, Msg, RebaseMsg, RepoMsg, StageMsg};
+use glowfly_model::state::AppState;
 use std::path::Path;
 use std::time::Instant;
 
@@ -74,7 +74,7 @@ fn a_utf8_repository_writes_any_character() {
     st.session.draft.summary = "Done ✓ 日本".into();
     let fx = update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now());
     let written = fx.iter().find_map(|e| match e {
-        Effect::RunGit { write_file: Some((_, b)), .. } => Some(b.clone()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { write_file: Some((_, b)), .. }) => Some(b.clone()),
         _ => None,
     });
     assert_eq!(written.as_deref(), Some("Done ✓ 日本\n".as_bytes()));

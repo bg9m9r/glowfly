@@ -2,16 +2,17 @@
 //! commits, the header toggles, the jump to file history and back to the history underneath,
 //! find, go to line and the run keys.
 
-use crate::effect::{BlameRequest, Effect};
 use crate::flows::{drive, git, scratch_repo, state};
-use crate::msg::{BlameMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::blame::{BACK_LIMIT, BlameData, BlameLanding, BlameView};
-use crate::update::blame::HELD;
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::repo::{Blame, BlameCommit, BlameOrigin, BlameRun};
 use glowfly_core::settings::BlameMoves;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{BlameRequest, Effect};
+use glowfly_model::msg::{BlameMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::{BACK_LIMIT, BlameData, BlameLanding, BlameView};
+use glowfly_model::update::blame::HELD;
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -148,7 +149,7 @@ fn skip_and_clear() {
 
     let v = st.session.blame.view.as_mut().unwrap();
     v.skipped = vec![oid(3)];
-    v.back.push(crate::state::blame::BlameStep { path: "a.txt".into(), at: None, skipped: Vec::new(), top_line: 0, cursor: None });
+    v.back.push(glowfly_model::state::blame::BlameStep { path: "a.txt".into(), at: None, skipped: Vec::new(), top_line: 0, cursor: None });
     let fx = send(&mut st, BlameMsg::Open { path: "a.txt".into(), at: None });
     assert!(view(&st).skipped.is_empty() && view(&st).back.is_empty());
     assert!(matches!(&requests(&fx)[..], [r] if r.opts.ignore_revs.is_empty()), "{fx:?}");
@@ -161,7 +162,7 @@ fn toggles_save_and_reblame() {
     st.session.blame.view.as_mut().unwrap().top_line = 7;
     let fx = send(&mut st, BlameMsg::SetIgnoreWhitespace(true));
     assert!(st.settings.blame.ignore_whitespace);
-    assert!(matches!(fx.first(), Some(Effect::SaveSettings(s)) if s.blame.ignore_whitespace), "{fx:?}");
+    assert!(matches!(fx.first(), Some(Effect::Save(SaveEffect::Settings(s))) if s.blame.ignore_whitespace), "{fx:?}");
     assert!(matches!(&requests(&fx)[..], [r] if r.opts.ignore_whitespace), "{fx:?}");
     assert_eq!(view(&st).land, Some(BlameLanding { line: 7, center: false }));
     assert!(send(&mut st, BlameMsg::SetIgnoreWhitespace(true)).is_empty(), "unchanged");
@@ -172,7 +173,7 @@ fn toggles_save_and_reblame() {
 
     st.session.blame.view = None;
     let fx = send(&mut st, BlameMsg::SetMoves(BlameMoves::Off));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -182,7 +183,7 @@ fn set_wrap_lines_saves_and_keeps_the_top_line() {
     st.session.blame.view.as_mut().unwrap().top_line = 6;
     let fx = send(&mut st, BlameMsg::SetWrapLines(true));
     assert!(st.settings.blame.wrap_lines);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.blame.wrap_lines), "no reload: {fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.blame.wrap_lines), "no reload: {fx:?}");
     let v = view(&st);
     assert_eq!(v.scroll_to, Some(BlameLanding { line: 6, center: false }));
     assert!(!v.loading && v.data.is_some());
@@ -332,8 +333,8 @@ fn blame_parent_end_to_end() {
 
 #[test]
 fn blame_from_the_history_offers_the_way_back() {
-    use crate::msg::HistoryMsg;
-    use crate::state::history::HistoryPane;
+    use glowfly_model::msg::HistoryMsg;
+    use glowfly_model::state::history::HistoryPane;
     let dir = scratch_repo("blame-nav-over-history");
     commit_file(&dir, "one\ntwo\n", "second");
     let mut st = state();

@@ -6,13 +6,13 @@
 
 use super::stack_tests::{above_low, commit, head_name, last_toast, opened, stacked, tip, undo_label};
 use super::tests::{drive, git};
-use crate::msg::{JobMsg, Msg, RebaseMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::auto_stash::back;
 use git2::RepositoryState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::Resume;
 use glowfly_core::stash_ops::{self, AutoStashFor};
+use glowfly_model::msg::{JobMsg, Msg, RebaseMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::auto_stash::back;
 use std::path::{Path, PathBuf};
 
 const STASH: &str = "Auto-stash before restacking onto low";

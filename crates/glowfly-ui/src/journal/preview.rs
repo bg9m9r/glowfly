@@ -4,20 +4,20 @@
 //! Create branch here… and Range-diff with now (comparing the state with where its subject is
 //! now, disabled with why), and git's raw reflog entry. The lane is shared with `lost_preview.rs`.
 
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal::{JournalView, against, moves_sentence, row_label, short, subject_name, unreachable_line};
-use crate::state::journal_restore;
-use crate::state::range_diff;
-use crate::ui::pane_status;
-use crate::ui::theme::branch_colours::line;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::{buttons, paint_cut_text, reason};
+use crate::pane_status;
+use crate::theme::branch_colours::line;
+use crate::theme::{color, type_scale};
+use crate::widgets::{buttons, paint_cut_text, reason};
 use eframe::egui::{self, Align, Align2, Color32, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::journal::{CommitLine, Row, Subject};
 use glowfly_core::repo::Snapshot;
 use glowfly_model::journal::JournalMsg;
+use glowfly_model::msg::Msg;
 use glowfly_model::range_diff::RangeDiffMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::{JournalView, against, moves_sentence, row_label, short, subject_name, unreachable_line};
+use glowfly_model::state::journal_restore;
+use glowfly_model::state::range_diff;
 
 const INSET: f32 = 16.0;
 const LANE_ROW_H: f32 = 28.0;
@@ -60,7 +60,7 @@ fn pane(ui: &mut Ui, st: &AppState, view: &JournalView, snap: &Snapshot, row: &R
     match view.preview.as_ref().filter(|p| p.key == row.key()).and_then(|p| p.result.as_ref()) {
         None => pane_status::loading_line(ui, t.tr("journal.preview.loading")),
         Some(Err(e)) => {
-            ui.label(RichText::new(crate::ui::common::capitalize(glowfly_core::error::plain_message(e).trim())).color(color::weak()));
+            ui.label(RichText::new(crate::common::capitalize(glowfly_core::error::plain_message(e).trim())).color(color::weak()));
         }
         Some(Ok(p)) => {
             let tone = match &row.subject {

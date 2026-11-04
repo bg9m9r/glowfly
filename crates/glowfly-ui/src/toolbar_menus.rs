@@ -1,13 +1,13 @@
 //! The toolbar's menus and its terminal button: the repository picker's menu, the split tool
 //! buttons whose caret opens a menu, and Show/Hide terminal with its right-click item.
 
-use crate::msg::{CloneMsg, Msg, RecentMsg, RepoMsg};
-use crate::state::AppState;
-use crate::ui::common::menu_item;
-use crate::ui::widgets::menu::{context_menu, popup_below, separator};
-use crate::ui::widgets::{self, Icon, tooltip::attach};
+use crate::common::menu_item;
+use crate::widgets::menu::{context_menu, popup_below, separator};
+use crate::widgets::{self, Icon, tooltip::attach};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{CloneMsg, Msg, RecentMsg, RepoMsg};
+use glowfly_model::state::AppState;
 use glowfly_model::terminal::TerminalMsg;
 
 /// Shows or hides the terminal panel, filled while it is open; right-click offers `item` (Open
@@ -25,21 +25,21 @@ pub(super) fn terminal_button(ui: &mut egui::Ui, st: &AppState, labels: bool, it
 }
 
 /// A tool button with its dropdown caret (`widgets::split_button`): `tool` is its icon, caption
-/// and accessible name; the caret is named `menu.0` and opens a menu `menu.1` wide below it,
-/// whose items `contents` adds. `menu_live` says whether anything in the menu can be used.
-/// Returns the button's response.
+/// and accessible name, `enabled` whether it can be clicked and with what count badge; the caret
+/// is named `menu.0` and opens a menu `menu.1` wide below it, whose items `contents` adds.
+/// `menu_live` says whether anything in the menu can be used. Returns the button's response.
 pub(super) fn split(
     ui: &mut egui::Ui,
     id: &str,
     tool: (Icon, &str, &str),
-    enabled: bool,
+    (enabled, badge): (bool, Option<widgets::Badge>),
     labels: bool,
     (menu, width, menu_live): (&str, f32, bool),
     contents: impl FnOnce(&mut egui::Ui),
 ) -> egui::Response {
     let popup = ui.make_persistent_id(id);
     let open = ui.memory(|m| m.is_popup_open(popup));
-    let (button, caret) = widgets::split_button(ui, tool, enabled, labels, menu_live, open);
+    let (button, caret) = widgets::split_button(ui, tool, enabled, labels, (menu_live, open), badge);
     caret.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, menu));
     if caret.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
@@ -55,17 +55,17 @@ pub(super) fn split(
 /// repository, the workspace commands, and the list's tidying last.
 pub(super) fn repo_menu(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.set_min_width(260.0);
-    if crate::ui::repo_menu_list::lists(ui, st, true, msgs) {
+    if crate::repo_menu_list::lists(ui, st, true, msgs) {
         separator(ui);
     }
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.open"), Msg::Repo(RepoMsg::PickRepo));
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.clone"), Msg::Clone(CloneMsg::Dialog));
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.init"), Msg::Repo(RepoMsg::InitRepo));
     separator(ui);
-    menu_item(msgs, ui, t.tr("toolbar.repo_menu.dashboard"), Msg::Dashboard(crate::msg::DashboardMsg::Open));
-    crate::ui::repo_menu::actions(ui, t, st, msgs);
+    menu_item(msgs, ui, t.tr("toolbar.repo_menu.dashboard"), Msg::Dashboard(glowfly_model::msg::DashboardMsg::Open));
+    crate::repo_menu::actions(ui, t, st, msgs);
     // A listed repository's row has its star; one that isn't listed gets the toggle here.
-    if let Some(snap) = st.snap.as_ref().filter(|s| !crate::state::repo_lists::is_listed(st, &s.workdir)) {
+    if let Some(snap) = st.snap.as_ref().filter(|s| !glowfly_model::state::repo_lists::is_listed(st, &s.workdir)) {
         menu_item(
             msgs,
             ui,
@@ -73,5 +73,5 @@ pub(super) fn repo_menu(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Ve
             Msg::Recent(RecentMsg::SetFavorite { path: snap.workdir.clone(), favorite: true }),
         );
     }
-    crate::ui::repo_menu_list::tidy(ui, st, msgs);
+    crate::repo_menu_list::tidy(ui, st, msgs);
 }

@@ -24,16 +24,17 @@
 //! `undo_dialog.rs`), applying a patch file (drawn by `patch_apply_dialog.rs`), creating a patch
 //! from uncommitted changes (drawn by `patch_save_dialog.rs`), finding repositories in project
 //! folders (drawn by `repo_finder.rs`), fetching or pulling across repositories (drawn by
-//! `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`), choosing a merge's mainline parent
+//! `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`), adding repositories to a group
+//! (drawn by `repo_group_picker.rs`), choosing a merge's mainline parent
 //! (drawn by `mainline_dialog.rs`), the home Trash offer (drawn by `trash_offer_dialog.rs`),
 //! stashing uncommitted changes before an operation (drawn by `auto_stash_dialog.rs`) and
 //! generating an SSH key (drawn by `ssh_keygen_dialog.rs`). An edited form kept under a question
 //! (state/dialog_guard.rs) is drawn first, beneath the question.
 
-use crate::msg::{DialogMsg, Dismiss, Msg};
-use crate::state::{AppState, Modal};
-use crate::ui::dialog_frame::{Cx, Tone};
+use crate::dialog_frame::{Cx, Tone};
 use eframe::egui;
+use glowfly_model::msg::{DialogMsg, Dismiss, Msg};
+use glowfly_model::state::{AppState, Modal};
 
 #[path = "confirm_dialog.rs"]
 mod confirm_dialog;
@@ -79,7 +80,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
     let sparse_blocked = st.git.blocked(glowfly_core::git_version::Feature::SparseCheckout);
     // Worked out before the dialog borrows the state: which results are open or favorites.
     let finder = matches!(st.modal, Some(Modal::FindRepos { .. }))
-        .then(|| (crate::state::repo_scan::finder_rows(st), crate::state::repo_scan::project_folders(&st.settings)));
+        .then(|| (glowfly_model::state::repo_scan::finder_rows(st), glowfly_model::state::repo_scan::project_folders(&st.settings)));
     let repo_scan = &st.repo_scan;
     let repo_sync = st.repo_sync.as_ref();
     // The Generate SSH key dialog's fields live on the SSH page (a borrow apart from the modal's).
@@ -98,9 +99,11 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
     let stage_renames = st.settings.stage_renames;
     let push_tags = st.settings.push_new_tags;
     let connections = &st.settings.connections;
+    let groups = &st.settings.repo_groups;
     let keys = &st.keymap;
     let git = &st.git;
     let version = st.updates.shown;
+    let build = &st.updates.build;
     let t = st.settings.lang();
     let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
@@ -162,7 +165,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::NewFile(form) => close = super::file_dialogs::new_file(ui, cx, form, snap, msgs),
             Modal::RenameFile { old, form } => close = super::file_dialogs::rename_file(ui, cx, old, form, snap, stage_renames, msgs),
             Modal::Remote(form) => {
-                let fork_source = snap.and_then(|s| crate::state::forks::fork_source(s, connections));
+                let fork_source = snap.and_then(|s| glowfly_model::state::forks::fork_source(s, connections));
                 close = super::remotes::dialog::show(ui, cx, form, snap, fork_source, idle, msgs);
             }
             Modal::AddFork(p) => close = super::remotes::fork_pick::show(ui, cx, p, snap, connections, idle, msgs),
@@ -172,8 +175,8 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::Shortcuts { filter } => close = super::shortcuts::sheet(ui, cx, filter, keys),
             Modal::Trust(p) => close = super::trust_dialog::show(ui, cx, p, msgs),
             Modal::ConflictReport(r) => {
-                let remote = snap.is_some_and(|s| crate::state::conflict_check::is_remote(s, &r.request.target));
-                let on_head = snap.is_some_and(|s| crate::state::conflict_check::for_head(r, s));
+                let remote = snap.is_some_and(|s| glowfly_model::state::conflict_check::is_remote(s, &r.request.target));
+                let on_head = snap.is_some_and(|s| glowfly_model::state::conflict_check::for_head(r, s));
                 close = super::conflict_check::report_modal(ui, cx, r, remote, on_head, idle, msgs);
             }
             Modal::OpPreview(d) => close = super::op_preview_dialog::show(ui, cx, d, &preview_env, msgs),
@@ -181,7 +184,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::DeepLink(d) => close = super::deep_link_dialog::show(ui, cx, d, msgs),
             Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, cx, form, fs, msgs),
             Modal::RewordCommit(form) => close = super::rebase::reword_dialog::show(ui, cx, form, snap, idle, msgs),
-            Modal::About => close = super::menu_bar::about(ui, cx, git, version, msgs),
+            Modal::About => close = super::menu_bar::about(ui, cx, git, super::menu_bar::ThisCopy { version, build }, msgs),
             Modal::Notices => close = super::menu_bar::notices(ui, cx, msgs),
             Modal::ReleaseNotes(d) => close = super::release_notes::show(ui, cx, d, msgs),
             Modal::UndoCreated(form) => close = super::undo_dialog::created_branch(ui, cx, form, msgs),
@@ -195,6 +198,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::SyncRepos => close = super::repo_sync::show(ui, cx, repo_sync, msgs),
             Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, cx, form, msgs),
             Modal::RepoGroup(form) => close = super::repo_group_dialog::show(ui, cx, form, msgs),
+            Modal::AddToGroup(form) => close = super::repo_group_picker::show(ui, cx, form, groups, msgs),
             Modal::Mainline(form) => close = super::mainline_dialog::show(ui, cx, form, idle, msgs),
             Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, cx, o, msgs),
             Modal::AutoStash(ask) => close = super::auto_stash_dialog::show(ui, cx, ask, msgs),

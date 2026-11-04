@@ -6,11 +6,7 @@
 use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::custom_commands::{CommandRef, CustomCommandMsg, Target};
-use crate::msg::{Msg, PaletteMsg};
-use crate::state::AppState;
-use crate::state::palette::{Palette, PaletteCommand};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
@@ -18,6 +14,10 @@ use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::custom_commands::{Source, parse};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::custom_commands::{CommandRef, CustomCommandMsg, Target};
+use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{Palette, PaletteCommand};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
@@ -63,8 +63,11 @@ fn with_commands(name: &str) -> (AppState, std::path::PathBuf) {
     let (repo, problems) = parse(REPO);
     assert!(problems.is_empty(), "{problems:?}");
     let t = st.settings.lang();
-    let (keys, problems) =
-        crate::state::custom_commands::chords(t, &st.keymap, &[(Source::User, "commands.toml", &user), (Source::Repo, "repo", &repo)]);
+    let (keys, problems) = glowfly_model::state::custom_commands::chords(
+        t,
+        &st.keymap,
+        &[(Source::User, "commands.toml", &user), (Source::Repo, "repo", &repo)],
+    );
     assert!(problems.is_empty(), "{problems:?}");
     let cc = &mut st.custom_commands;
     (cc.user, cc.repo, cc.keys) = (user, repo, keys);

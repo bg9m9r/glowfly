@@ -15,7 +15,7 @@ use glowfly_core::settings::Settings;
 /// refused.
 pub(super) fn pin(st: &mut AppState, key: &str, slot: Option<u8>, fx: &mut Vec<Effect>) {
     let Some(snap) = st.snap.as_ref() else { return };
-    if slot.is_some_and(|s| s >= st.settings.branch_palette.slots()) {
+    if slot.is_some_and(|s| s >= st.settings.colour_palette.slots()) {
         return;
     }
     let real = snap.real_workdir.clone();

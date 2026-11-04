@@ -3,10 +3,10 @@
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::widgets::buttons;
-use crate::msg::{AutoStashMsg, Msg};
-use crate::state::auto_stash::{self, AutoStashAsk};
-use crate::ui::theme::{color, controls};
+use crate::theme::{color, controls};
 use eframe::egui::{self, RichText};
+use glowfly_model::msg::{AutoStashMsg, Msg};
+use glowfly_model::state::auto_stash::{self, AutoStashAsk};
 
 /// Draws the dialog; returns true when it should close (Cancel). The answers go to `update`,
 /// which takes the dialog and runs the operation, as a confirmation does.

@@ -4,9 +4,9 @@
 use super::cherry_pick_tests::feature_repo;
 use super::selection_tests::git as git_out;
 use super::tests::{drive, git, scratch_repo, state};
-use crate::msg::{CommitMsg, JobMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
-use crate::state::AppState;
 use glowfly_core::undo::{Action, MoveOp};
+use glowfly_model::msg::{CommitMsg, JobMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
+use glowfly_model::state::AppState;
 use std::path::{Path, PathBuf};
 
 fn head_summary(st: &AppState) -> String {
@@ -140,7 +140,7 @@ fn a_mainline_cherry_pick_names_the_merge() {
     let oid = git2::Oid::from_str(&merge).unwrap();
     drive(
         &mut st,
-        Msg::Selection(SelectionMsg::PickWithMainline { op: crate::state::pick::PickOp::CherryPick, oids: vec![oid], mainline: 1 }),
+        Msg::Selection(SelectionMsg::PickWithMainline { op: glowfly_model::state::pick::PickOp::CherryPick, oids: vec![oid], mainline: 1 }),
     );
     assert_eq!(head_summary(&st), "merge feature");
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n1\n");

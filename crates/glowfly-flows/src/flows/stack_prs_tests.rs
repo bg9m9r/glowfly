@@ -7,10 +7,11 @@ use super::push_pr_tests::{cleanup, with_host};
 use super::stack_push_tests::{commit, refresh};
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::{DialogMsg, Dismiss, ForgeMsg, Msg, StackMsg, TabsMsg};
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::{NewPullRequest, PullRequest};
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::{DialogMsg, Dismiss, ForgeMsg, Msg, StackMsg, TabsMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -108,7 +109,7 @@ fn the_stack_is_pushed_then_each_layer_gets_its_dialog_in_turn() {
     assert_eq!(dialog(&st), Some(("low".into(), "main".into())));
     assert_eq!(st.session.forge.as_ref().unwrap().stack_step("low"), Some((1, 2)));
     let fx = create(&mut st);
-    assert!(fx.iter().any(|e| matches!(e, Effect::Forge { call: ForgeCall::Create(_), .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Network(NetworkEffect::Forge { call: ForgeCall::Create(_), .. }))), "{fx:?}");
     assert!(running(&st), "waiting for the service");
     reply(&mut st, ForgeResult::Created(Ok(Box::new(pr(1, "low", "main")))));
     assert_eq!(dialog(&st), Some(("mid".into(), "low".into())), "mid targets the branch below it");
@@ -207,7 +208,7 @@ fn refusals_start_nothing() {
     let (mut st, dir, bare) = stacked("stack-prs-refusals");
     let refused = |st: &mut AppState, want: &str| {
         let fx = update(st, create_prs(), Instant::now());
-        assert!(!fx.iter().any(|e| matches!(e, Effect::Stack(_) | Effect::Forge { .. })), "{fx:?}");
+        assert!(!fx.iter().any(|e| matches!(e, Effect::Stack(_) | Effect::Network(NetworkEffect::Forge { .. }))), "{fx:?}");
         assert!(st.modal.is_none());
         assert_eq!(st.log.last().map(|l| l.text.clone()).as_deref(), Some(want));
     };

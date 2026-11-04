@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::themes::{ThemeEffect, ThemeMsg};
@@ -41,7 +42,7 @@ fn an_import_selects_the_first_scheme_saves_and_reloads() {
     let fx = run(&mut st, imported(&[("paper", "Paper"), ("night", "Night")], &["scheme \"Broken\": bad"]));
     assert_eq!(st.settings.terminal.colours, TerminalColours::Scheme("paper".into()));
     assert!(
-        matches!(&fx[..], [Effect::SaveSettings(s), Effect::Theme(ThemeEffect::Load)] if s.terminal.colours == TerminalColours::Scheme("paper".into())),
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s)), Effect::Theme(ThemeEffect::Load)] if s.terminal.colours == TerminalColours::Scheme("paper".into())),
         "{fx:?}"
     );
     let toast = &st.toasts.last().unwrap();

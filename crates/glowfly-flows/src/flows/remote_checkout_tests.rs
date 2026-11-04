@@ -1,21 +1,21 @@
 //! Headless tests for checking out a remote branch through a local branch tracking it: the
 //! fast-forward in the same job, the diverged branch left where it is, a chosen one of several
-//! trackers, the refusals, the palette's route, and a tracking branch under another name from
-//! the New branch dialog. Commands are checked as emitted, and end to end against a repository
-//! with a bare `origin`.
+//! trackers, the refusals (a tracker another worktree has opens that worktree), the palette's
+//! route, and a tracking branch under another name from the New branch dialog. Commands are
+//! checked as emitted, and end to end against a repository with a bare `origin`.
 
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{clean_tree, drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{BranchMsg, JobMsg, Msg, PaletteMsg, RepoMsg};
-use crate::state::palette::PaletteCommand;
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::branch_ops::create_tracking_cmd;
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::Tracking;
 use glowfly_core::undo::UndoKind;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::palette::PaletteCommand;
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 use std::time::Instant;
 
@@ -31,7 +31,7 @@ fn run_git(st: &mut AppState, msg: Msg) -> (Vec<Vec<String>>, Option<UndoKind>) 
     let fx = update(st, msg, Instant::now());
     st.job = None;
     match &fx[..] {
-        [Effect::RunGit { cmds, record, .. }] => (cmds.clone(), record.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => (cmds.clone(), record.clone()),
         [] => (Vec::new(), None),
         other => panic!("unexpected effects {other:?}"),
     }
@@ -116,7 +116,8 @@ fn checkout_of_one_of_several_trackers() {
     git(&work, &["update-ref", "refs/heads/x", "refs/heads/feature"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let snap = st.snap.as_ref().unwrap();
-    let names: Vec<&str> = crate::state::remote_branch::trackers(snap, "origin", "feature").iter().map(|b| b.name.as_str()).collect();
+    let names: Vec<&str> =
+        glowfly_model::state::remote_branch::trackers(snap, "origin", "feature").iter().map(|b| b.name.as_str()).collect();
     assert_eq!(names, ["feature", "x"], "the same name first");
     let (cmds, _) = run_git(&mut st, tracking("x"));
     assert_eq!(cmds.last(), Some(&args(&["checkout", "x", "--"])));
@@ -136,9 +137,14 @@ fn checkout_tracking_refusals() {
     git(&work, &["worktree", "add", "-q", &wt.display().to_string(), "feature"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let before = tip(&work, "refs/heads/feature");
-    assert!(run_git(&mut st, tracking("feature")).0.is_empty(), "another worktree has feature");
-    assert!(last_log(&st).starts_with("feature is checked out in the worktree at "), "{}", last_log(&st));
+    // Another worktree has feature: that worktree opens, and feature isn't moved.
+    drive(&mut st, tracking("feature"));
+    assert_eq!((st.tabs.len(), st.active_tab), (2, 1), "{:?}", st.tabs[0].log.last().map(|l| &l.text));
+    assert!(super::tests::same_place(&st.snap.as_ref().unwrap().workdir, &wt));
+    let note = st.tabs[0].log.last().map(|l| l.text.clone()).unwrap_or_default();
+    assert!(note.starts_with("Opened the worktree at ") && note.ends_with(", where feature is checked out."), "{note}");
     assert_eq!(tip(&work, "refs/heads/feature"), before, "not moved");
+    drive(&mut st, Msg::Tabs(glowfly_model::msg::TabsMsg::SelectTab(0)));
     assert!(run_git(&mut st, tracking("main")).0.is_empty());
     assert_eq!(last_log(&st), "main no longer tracks origin/feature.");
     git(&work, &["worktree", "remove", "--force", &wt.display().to_string()]);
@@ -200,7 +206,7 @@ fn new_branch_from_a_remote_branch_tracks_it_under_another_name() {
     assert_eq!(snap.head_branch.as_deref(), Some("mine"));
     let mine = snap.head_info().unwrap();
     assert_eq!(mine.tracking, Some(Tracking { remote: "origin".into(), merge: "feature".into() }));
-    let trackers = crate::state::remote_branch::trackers(snap, "origin", "feature");
+    let trackers = glowfly_model::state::remote_branch::trackers(snap, "origin", "feature");
     assert_eq!(trackers.iter().map(|b| b.name.as_str()).collect::<Vec<_>>(), ["mine", "feature"], "checked-out first");
 
     assert!(

@@ -4,7 +4,8 @@
 //! colour down its rows (`repo_list_groups.rs`), then the ungrouped favorites (under "Other
 //! favorites" once a group exists), then Recent with Remove missing and Clear. Every row is the
 //! repository menu's row (`repo_list_row.rs`, `repo_row.rs`), all of them sharing columns, and
-//! favorites drag into another order or group by their grip (`repo_list_drag.rs`). Under
+//! favorites drag into another order or group by their grip (`repo_list_drag.rs`); an empty
+//! group's placeholder offers Add repositories… (`repo_group_picker.rs`). Under
 //! Favorites, a line says what groups do while no group has a member, and how to add a favorite
 //! while there is none.
 
@@ -16,13 +17,13 @@ use super::repo_row::{self, Columns, Row, Words};
 use super::theme::color;
 use super::welcome_cards::START_W;
 use super::widgets::{Icon, ghost};
-use crate::msg::{GroupMsg, Msg, RecentMsg};
-use crate::state::AppState;
-use crate::state::repo_groups::{any_colour, members, ungrouped};
-use crate::state::repo_lists::{clear_recent_msg, favorites, is_missing, is_open, missing_counts, recent_rows, remove_missing_msg};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
+use glowfly_model::msg::{GroupMsg, Msg, RecentMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_groups::{any_colour, members, ungrouped};
+use glowfly_model::state::repo_lists::{clear_recent_msg, favorites, is_missing, is_open, missing_counts, recent_rows, remove_missing_msg};
 use std::path::PathBuf;
 
 /// How far the groups and the other favorites sit in from the Favorites heading.
@@ -138,7 +139,12 @@ impl List<'_> {
         }
         let empty = rows.is_empty().then(|| {
             let text = if group.is_some() { t.tr("repo_group.empty") } else { t.tr("repos.favorites.drop_out") };
-            let r = repo_list_groups::placeholder(ui, text, self.cols);
+            // While a drag is on, the box is only a place to drop.
+            let link = group.filter(|_| !repo_list_drag::dragging(ui)).map(|_| t.tr("repo_group.menu.add_repos"));
+            let (r, add) = repo_list_groups::placeholder(ui, text, link, self.cols);
+            if let (true, Some(g)) = (add, group) {
+                msgs.push(Msg::Groups(GroupMsg::AddDialog(g)));
+            }
             span = Some((r.top(), r.bottom()));
             r
         });

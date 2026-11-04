@@ -2,11 +2,11 @@
 //! background (`Effect::Partial`).
 
 use super::execute::{Cx, Execute};
-use crate::effect::partial::{ContentRequest, HistorySizeRequest, PartialEffect};
-use crate::msg::{ContentFailure, Msg, PartialMsg};
 use glowfly_core::forge;
 use glowfly_core::gitcli::Stop;
 use glowfly_core::history_size::{HistorySize, SizeSource, local_store_bytes};
+use glowfly_model::effect::partial::{ContentRequest, HistorySizeRequest, PartialEffect};
+use glowfly_model::msg::{ContentFailure, Msg, PartialMsg};
 
 pub(super) fn run(e: PartialEffect, stop: Option<&Stop>) -> Msg {
     match e {

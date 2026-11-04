@@ -100,7 +100,7 @@ pub fn event_label(t: Lang, event: &Event) -> Option<String> {
 }
 
 /// "Before rebasing feature onto main", naming the note's first ref ("HEAD" when detached).
-pub fn note_label(t: Lang, note: &Note) -> String {
+pub(crate) fn note_label(t: Lang, note: &Note) -> String {
     let branch = note.refs.first().and_then(|r| r.branch.as_deref()).unwrap_or("HEAD");
     let b: (&str, &dyn std::fmt::Display) = ("branch", &branch);
     match &note.op {

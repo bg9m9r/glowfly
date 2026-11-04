@@ -8,13 +8,13 @@ use super::details::file_reveal::reveal;
 use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
 use super::theme::color;
-use crate::msg::{Msg, SelectionMsg};
-use crate::state::lfs::TrackContext;
-use crate::state::list_keys::FileList;
-use crate::state::{AppState, Selection};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::state::lfs::TrackContext;
+use glowfly_model::state::list_keys::FileList;
+use glowfly_model::state::{AppState, Selection};
 
 pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (Some(snap), Selection::VsWorkdir(w)) = (&st.snap, &st.session.selection) else { return };
@@ -66,10 +66,10 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(t.tr("details.workdir.same")).color(color::weak()));
         }
         Some(Ok(c)) => {
-            let open = crate::state::wip_lists::cursor(st);
+            let open = glowfly_model::state::wip_lists::cursor(st);
             let lfs = TrackContext::of(st);
-            let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
-            let commands = crate::state::custom_commands::MenuCommands::for_state(st);
+            let tools = glowfly_model::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
+            let commands = glowfly_model::state::custom_commands::MenuCommands::for_state(st);
             let row_h = super::widgets::LIST_ROW_H;
             let index = |t: &DiffTarget| c.files.iter().position(|f| *t == w.target(f.path.clone()));
             let current = open.and_then(index);

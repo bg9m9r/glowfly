@@ -4,11 +4,11 @@
 //! word and a triple-click a line (each becoming the PRIMARY selection on Linux, and copied
 //! with Copy on select), and on Linux a middle click pastes the PRIMARY selection.
 
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::terminal::Selection;
 use eframe::egui::{self, Event, MouseWheelUnit, PointerButton, Pos2};
 use glowfly_core::terminal::{KeyMods, TermInput, TermKey, TermPoint};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::terminal::Selection;
 use glowfly_model::terminal::TerminalMsg;
 
 /// Rows one wheel notch scrolls.

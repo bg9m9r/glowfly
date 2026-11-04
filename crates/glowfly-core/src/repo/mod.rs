@@ -114,7 +114,7 @@ mod workfile_unrm;
 mod worktree_counts;
 mod worktrees;
 
-pub use binary_sides::{BinarySide, BinarySides, PREVIEW_MAX_BYTES, binary_sides};
+pub use binary_sides::{BinarySide, BinarySides, HEX_MAX_BYTES, PREVIEW_MAX_BYTES, SvgRenderer, binary_sides, binary_sides_drawn_by};
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
 pub use collide::{Collision, Folding, name_key, probe};
 pub use commit_detail::commit_detail;
@@ -189,7 +189,7 @@ pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleMemo, SubmoduleSta
 pub use template::{CommitTemplate, commit_template};
 pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_bytes, diff_sides, is_conflicted, merge_sides};
 pub use touching::{Touching, commits_touching};
-pub use tracked::tracked_paths;
+pub use tracked::{ListFilesFailed, tracked_paths};
 pub use trash::{TrashProblem, TrashRefusal, Untrashed, Untrasher, home_trash, os_trash, os_untrash};
 pub use unmerged::unmerged_count;
 pub(crate) use workfile::contained;

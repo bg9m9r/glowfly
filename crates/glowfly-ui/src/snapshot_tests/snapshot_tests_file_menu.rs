@@ -10,18 +10,18 @@
 
 use super::file_menu::{OPEN_DEFAULT, RowSource, SHOW_IN_FOLDER, ToolItem, commit_file_items, diff_item, wip_file_items};
 use super::theme::{apply_theme, color};
-use crate::msg::FilesMsg;
-use crate::msg::Msg;
-use crate::msg::WorkFileMsg;
-use crate::state::tool_compare::ToolSetup;
-use crate::tools::ToolsMsg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry};
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::tool_compare::ToolSetup;
+use glowfly_model::tools::ToolsMsg;
 
 // The English texts the menus show, pinned.
 const DELETE: &str = "Delete…";
@@ -78,7 +78,7 @@ pub(crate) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, tools: b
     let setup = if tools { ToolSetup::default() } else { ToolSetup::of(t, &glowfly_core::settings::ExternalTools::default()) };
     // The menu grows to fit its widest item, a disabled one's reason included.
     let width = 440.0;
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(width, 260.0)).build_ui_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(width, 260.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(dark);
             apply_theme(ui.ctx());
@@ -103,7 +103,7 @@ pub(crate) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, tools: b
                         &[],
                         setup,
                         None,
-                        &crate::state::custom_commands::MenuCommands::none(),
+                        &glowfly_model::state::custom_commands::MenuCommands::none(),
                     ),
                     Menu::Between { in_workdir } => {
                         let src = RowSource::Between { from: oid(), to: newer() };
@@ -117,7 +117,7 @@ pub(crate) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, tools: b
                             &[],
                             setup,
                             None,
-                            &crate::state::custom_commands::MenuCommands::none(),
+                            &glowfly_model::state::custom_commands::MenuCommands::none(),
                         )
                     }
                     Menu::Wip { missing, unstages } => {
@@ -137,7 +137,7 @@ pub(crate) fn harness_in(t: Lang, f: FileEntry, menu: Menu, dark: bool, tools: b
                             &[],
                             setup.editor,
                             tool,
-                            &crate::state::custom_commands::MenuCommands::none(),
+                            &glowfly_model::state::custom_commands::MenuCommands::none(),
                             None,
                         )
                     }
@@ -214,7 +214,7 @@ fn file_menu_between_restores_the_right_commit() {
 
 #[test]
 fn revert_file_sends_the_row_target() {
-    use crate::msg::StageMsg;
+    use glowfly_model::msg::StageMsg;
     let cases = [
         (Menu::Commit { in_workdir: true }, DiffTarget::Commit(oid(), "src/app.txt".into())),
         (Menu::Between { in_workdir: true }, DiffTarget::Between(oid(), newer(), "src/app.txt".into())),

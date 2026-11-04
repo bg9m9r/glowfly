@@ -1,9 +1,10 @@
-//! A text field that underlines misspellings and offers corrections on right-click.
+//! A Regular text field that underlines misspellings and offers corrections on right-click.
 
 use super::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::{context_menu, separator, submenu};
+use crate::theme::controls::SizedField;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::menu::{context_menu, separator, submenu};
 use eframe::egui::{self, Stroke, TextFormat, text::LayoutJob};
 use glowfly_core::spell::{Miss, Speller};
 
@@ -13,6 +14,30 @@ pub fn spell_text_edit(
     text: &mut String,
     hint: &str,
     rows: usize,
+    speller: &mut Speller,
+    enabled: bool,
+) -> egui::Response {
+    spell_field(ui, text, hint, (rows, None), speller, enabled)
+}
+
+/// A single-line `spell_text_edit` keeping `trailing` px right of the text, for something
+/// painted inside the field (the commit summary's length).
+pub fn spell_text_edit_trailing(
+    ui: &mut egui::Ui,
+    text: &mut String,
+    hint: &str,
+    trailing: Option<f32>,
+    speller: &mut Speller,
+    enabled: bool,
+) -> egui::Response {
+    spell_field(ui, text, hint, (1, trailing), speller, enabled)
+}
+
+fn spell_field(
+    ui: &mut egui::Ui,
+    text: &mut String,
+    hint: &str,
+    (rows, trailing): (usize, Option<f32>),
     speller: &mut Speller,
     enabled: bool,
 ) -> egui::Response {
@@ -26,7 +51,12 @@ pub fn spell_text_edit(
         ui.fonts(|f| f.layout_job(job))
     };
     let edit = if rows <= 1 { egui::TextEdit::singleline(text) } else { egui::TextEdit::multiline(text).desired_rows(rows) };
-    let resp = controls::field(ui, edit.hint_text(hint).desired_width(f32::INFINITY).layouter(&mut layouter));
+    let field = SizedField::new(ControlSize::Regular, edit.hint_text(hint).layouter(&mut layouter));
+    let field = match trailing {
+        Some(w) => field.trailing_room(w),
+        None => field,
+    };
+    let resp = ui.add(if rows <= 1 { field } else { field.multiline() });
     if enabled {
         let misses = speller.check(text);
         if !misses.is_empty() {

@@ -4,13 +4,13 @@
 use super::super::empty_state::{BINARY_TITLE, SHOW_WHITESPACE, WHITESPACE_HINT, WHITESPACE_TITLE};
 use super::super::snapshot_tests::{git, harness, render};
 use super::with_hidden_whitespace;
-use crate::msg::{DiffMsg, Msg};
-use crate::state::AppState;
-use crate::state::diff_preview::DiffPreview;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview::DiffPreview;
 use std::path::PathBuf;
 
 /// A committed binary file changed in the working tree, its diff open with its sides loaded.
@@ -28,7 +28,10 @@ fn with_binary_diff(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
     let diff = repo::load_diff(&dir, &target).unwrap();
     assert!(diff.binary);
     st.session.diff.view = Some((target.clone(), diff.into()));
-    let sides = repo::binary_sides(&dir, &target).unwrap();
+    let mut sides = repo::binary_sides(&dir, &target).unwrap();
+    // Without its bytes (as when a side can't be read), so the size-only page shows rather
+    // than the hex view (`snapshot_tests_diff_hex`).
+    sides.old.iter_mut().chain(sides.new.iter_mut()).for_each(|s| s.bytes = None);
     st.session.diff_preview = Some(DiffPreview { target, generation: 0, sides: Some(Ok(std::sync::Arc::new(sides))) });
     (st, dir)
 }

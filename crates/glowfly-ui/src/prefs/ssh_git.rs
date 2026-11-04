@@ -6,17 +6,17 @@
 
 use super::ssh::SshContext;
 use super::{fit, help, row, warn};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh::SshPage;
-use crate::state::ssh_use::use_blocked;
-use crate::state::trust::shown_value;
-use crate::ui::theme::{color, type_scale};
+use crate::theme::{color, type_scale};
 use eframe::egui::{self, RichText, Ui, WidgetInfo, WidgetType};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::ssh_keys::{KeyChoice, SshListing};
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::SshPage;
+use glowfly_model::state::ssh_use::use_blocked;
+use glowfly_model::state::trust::shown_value;
 
 pub(super) fn which_key(ui: &mut Ui, t: Lang, page: &SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
     super::section(ui, t.tr("prefs.ssh.which.title"));

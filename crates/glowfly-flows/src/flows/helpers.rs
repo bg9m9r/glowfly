@@ -1,32 +1,35 @@
 //! Headless tests for `update`: behaviour is checked through state changes and returned
 //! effects, and end-to-end against real repositories by executing effects synchronously
-//! (`drive`, `finish`); the fixtures are `crate::testing`'s.
+//! (`drive`, `finish`); the fixtures are `glowfly_model::testing`'s.
 
 use super::update;
-use crate::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
-use crate::effect::{OsEffect, PrefsEffect};
-use crate::msg::CommitMsg;
-use crate::msg::ForgeMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::patch::PatchEffect;
-use crate::runner;
-use crate::ssh::SshEffect;
-use crate::state::{AppState, ForgeState, Modal, Selection, Status};
-use crate::testing::{git, scratch_repo, state};
 use glowfly_core::forge::{CheckState, Checks, Provider, PullRequest, Target};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::ControlEffect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::NetworkEffect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
+use glowfly_model::effect::{OsEffect, PrefsEffect};
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::patch::PatchEffect;
+use glowfly_model::ssh::SshEffect;
+use glowfly_model::state::{AppState, ForgeState, Modal, Selection, Status};
+use glowfly_model::testing::{git, scratch_repo, state};
 use std::time::{Duration, Instant};
 
 /// Answers the open auto-stash prompt with its primary ("Stash and ...") and runs what follows:
 /// the operation, then putting the changes back.
 #[track_caller]
 pub(crate) fn accept_stash(st: &mut AppState) {
-    assert!(matches!(st.modal, Some(crate::state::Modal::AutoStash(_))), "the auto-stash prompt is open");
-    drive(st, Msg::AutoStash(crate::msg::AutoStashMsg::Stash));
+    assert!(matches!(st.modal, Some(glowfly_model::state::Modal::AutoStash(_))), "the auto-stash prompt is open");
+    drive(st, Msg::AutoStash(glowfly_model::msg::AutoStashMsg::Stash));
 }
 
 /// Runs `msg` and every resulting effect to completion, as the app would (minus the window).
@@ -40,8 +43,22 @@ pub(crate) fn finish(st: &mut AppState, fx: Vec<Effect>) {
     finish_keeping(st, fx);
 }
 
+/// `drive`, returning whether a result message `seen` matches reached `update` on the way: for
+/// a test that names the runner's result it relies on.
+pub(crate) fn drive_seeing(st: &mut AppState, msg: Msg, seen: impl Fn(&Msg) -> bool) -> bool {
+    let fx = update(st, msg, Instant::now());
+    let mut found = false;
+    finish_watching(st, fx, &mut |m| found |= seen(m));
+    found
+}
+
 /// `finish`, returning every effect it skipped (raised anywhere along the way), in order.
 pub(crate) fn finish_keeping(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
+    finish_watching(st, fx, &mut |_| {})
+}
+
+/// `finish_keeping`, showing `watch` each result message before `update` runs it.
+fn finish_watching(st: &mut AppState, fx: Vec<Effect>, watch: &mut dyn FnMut(&Msg)) -> Vec<Effect> {
     let mut queue = Vec::new();
     let mut kept = Vec::new();
     let mut fx = fx;
@@ -50,10 +67,11 @@ pub(crate) fn finish_keeping(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> 
             if skipped(&effect) {
                 kept.push(effect);
             } else {
-                queue.extend(runner::testing::execute(effect));
+                queue.extend(glowfly_runner::testing::execute(effect));
             }
         }
         let Some(m) = queue.pop() else { return kept };
+        watch(&m);
         fx = update(st, m, Instant::now());
     }
 }
@@ -65,8 +83,9 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
         // These need a user or the network; tests don't exercise them here.
         Effect::Ui(_)
             | Effect::Os(OsEffect::PickFolder { .. } | OsEffect::OpenUrl(_) | OsEffect::OpenTerminal(_) | OsEffect::OpenFolder(_))
-            | Effect::Forge { .. } | Effect::Account(_) | Effect::SaveSettings(_) | Effect::SaveRecent(_)
-            | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. }
+            | Effect::Network(NetworkEffect::Forge { .. }) | Effect::Account(_)
+            | Effect::Save(SaveEffect::Settings(_) | SaveEffect::Recent(_) | SaveEffect::Tabs { .. })
+            | Effect::Control(ControlEffect::Watch(_) | ControlEffect::SweepWatch { .. } | ControlEffect::AnswerPrompt { .. })
             // Shells are never started by these tests.
             | Effect::Terminal(_)
             | Effect::Os(OsEffect::OpenPath { .. } | OsEffect::RevealPath(_))
@@ -78,7 +97,7 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
             | Effect::Profile(_)
             | Effect::Onboarding(_)
             // Asks a hosting service.
-            | Effect::Clone(crate::effect::CloneEffect::ListRepos { .. })
+            | Effect::Clone(glowfly_model::effect::CloneEffect::ListRepos { .. })
             // Would write the global git config, run ssh-keygen or ssh-add, call a service, or open a
             // file dialog.
             | Effect::Ssh(
@@ -92,7 +111,7 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
             )
             // Never show real desktop notifications.
             | Effect::Notify(_)
-            | Effect::PullRequest(crate::pull_request::PrEffect::Call(_))
+            | Effect::PullRequest(glowfly_model::pull_request::PrEffect::Call(_))
             | Effect::Issue(_)
             // Would read and write the developer's real config folder.
             | Effect::Theme(_)
@@ -102,23 +121,23 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
             | Effect::Logs(_)
             // Would read or change which program opens links for the developer's account.
             | Effect::DeepLink(
-                crate::deep_link::DeepLinkEffect::SchemeStatus
-                    | crate::deep_link::DeepLinkEffect::Register
-                    | crate::deep_link::DeepLinkEffect::Unregister
+                glowfly_model::deep_link::DeepLinkEffect::SchemeStatus
+                    | glowfly_model::deep_link::DeepLinkEffect::Register
+                    | glowfly_model::deep_link::DeepLinkEffect::Unregister
             )
             // Asks hosting services.
-            | Effect::Dashboard(crate::effect::DashboardEffect::Fetch(_))
+            | Effect::Dashboard(glowfly_model::effect::DashboardEffect::Fetch(_))
             // Index builds run only where a test asks (`history_index_tests`), so the load-more
             // fallback tests keep today's flow.
-            | Effect::Index(crate::effect::IndexEffect::Build { .. })
-    ) || matches!(effect, Effect::Partial(crate::effect::partial::PartialEffect::SizeHistory(r)) if r.service.is_some())
+            | Effect::Index(glowfly_model::effect::IndexEffect::Build { .. })
+    ) || matches!(effect, Effect::Partial(glowfly_model::effect::partial::PartialEffect::SizeHistory(r)) if r.service.is_some())
 }
 
 #[test]
 fn opening_ignores_stale_results() {
     let mut st = state();
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open("C:/a".into())), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadRepo { generation: 1, kind: LoadKind::Open, .. }]));
+    assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Repo { generation: 1, kind: LoadKind::Open, .. })]));
     assert!(st.loading);
     // A newer load supersedes the first; the first's result is ignored.
     update(&mut st, Msg::Repo(RepoMsg::Open("C:/b".into())), Instant::now());
@@ -139,7 +158,7 @@ fn only_one_git_job_runs_at_a_time() {
     let dir = scratch_repo("jobs");
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = update(&mut st, Msg::git("Fetch", &["fetch"]), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]));
     assert!(update(&mut st, Msg::git("Pull", &["pull"]), Instant::now()).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("still running")));
 
@@ -147,7 +166,7 @@ fn only_one_git_job_runs_at_a_time() {
     let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: "$ git fetch".into(), undo: None }), Instant::now());
     assert!(st.job.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Fetch succeeded"));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, .. }))));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -164,7 +183,7 @@ fn auto_fetch_runs_quietly_on_its_interval() {
     assert!(update(&mut st, Msg::Tick(start + Duration::from_secs(30)), Instant::now()).is_empty(), "too early");
     let fx = update(&mut st, Msg::Tick(start + Duration::from_secs(61)), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, prompts, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts, .. })] => {
             assert_eq!(cmds[0], args(&["fetch", "--all", "--prune"]));
             assert!(!prompts, "background jobs never open a credential prompt");
         }
@@ -197,7 +216,7 @@ fn settings_are_saved_only_when_changed() {
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
     st.settings.toolbar_labels = !st.settings.toolbar_labels;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]));
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "saved once");
 }
 
@@ -255,10 +274,11 @@ fn stage_and_commit_end_to_end() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let snap = st.snap.as_ref().expect("opened");
     assert_eq!(st.session.selection, Selection::Wip, "a dirty repo opens on the WIP");
+    assert!(!st.session.wip_drawn_selected(), "without lighting its row");
     assert_eq!(snap.unstaged.len(), 1);
 
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::StageFile(p), .. }] if p == "a.txt"));
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::StageFile(p), .. })] if p == "a.txt"));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     assert_eq!(st.snap.as_ref().unwrap().staged.len(), 1);
 
@@ -292,7 +312,7 @@ fn push_sets_upstream_for_new_branches() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: false }), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, prompts, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts, .. })] => {
             assert_eq!(cmds[0], args(&["push", "-u", "--", "origin", "main"]));
             assert!(prompts, "user-started jobs may ask for credentials");
         }
@@ -303,9 +323,9 @@ fn push_sets_upstream_for_new_branches() {
 
 #[test]
 fn commit_signing_flow() {
-    use crate::state::PrefPage;
-    use crate::state::prefs::GitConfigValues;
     use glowfly_core::signing::{SigningFormat, SigningKey};
+    use glowfly_model::state::PrefPage;
+    use glowfly_model::state::prefs::GitConfigValues;
 
     let mut st = state();
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)), Instant::now());
@@ -354,7 +374,7 @@ fn commit_signing_flow() {
 fn job_output_hides_credentials_in_urls() {
     let dir = scratch_repo("redact");
     let cmds = vec![args(&["remote", "add", "--", "x", "https://ada:TOKEN123@example.com/o/r.git"])];
-    let effect = Effect::RunGit {
+    let effect = Effect::Job(glowfly_model::effect::JobEffect::RunGit {
         cwd: dir.clone(),
         cmds,
         write_file: None,
@@ -364,8 +384,8 @@ fn job_output_hides_credentials_in_urls() {
         expect: None,
         stoppable: false,
         on_fail_check: None,
-    };
-    let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = runner::testing::execute(effect) else { panic!("expected JobDone") };
+    });
+    let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = glowfly_runner::testing::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");
     assert!(!output.contains("TOKEN123") && output.contains("https://***@example.com/o/r.git"), "{output}");
     let _ = std::fs::remove_dir_all(&dir);

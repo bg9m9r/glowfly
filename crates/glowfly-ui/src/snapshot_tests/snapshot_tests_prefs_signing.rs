@@ -5,13 +5,13 @@
 //! hit-testing), so a widget whose rect covers the link would take the click.
 
 use super::snapshot_tests::{harness, settings};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::signing::SigningKey;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 const HELP: &str = "https://docs.github.com/en/authentication/managing-commit-signature-verification/updating-an-expired-gpg-key";
@@ -73,9 +73,9 @@ fn prefs_signing_revoked_key() {
     let mut h = harness(page("ABCDEF0123456789", vec![revoked]), true);
     h.run();
     h.check_snapshot("prefs_signing_revoked");
-    let text = "This key has been revoked, so git can't sign new commits with it. Generate a new key below.";
+    let text = "This key has been revoked, so Git can't sign new commits with it. Generate a new key below.";
     assert!(h.query_by_label(text).is_some());
-    assert!(h.query_by_label("This key has expired, so git can't sign new commits with it.").is_none());
+    assert!(h.query_by_label("This key has expired, so Git can't sign new commits with it.").is_none());
     assert!(h.query_by_label("Extend by 2 years").is_none());
 }
 

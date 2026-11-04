@@ -5,14 +5,14 @@
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::trust_print_tests::trusted_repo;
 use super::trust_tests::{asking, done, real, run, untrusted_repo};
-use crate::msg::{Msg, RepoMsg, TrustMsg};
-use crate::state::trust::record;
-use crate::state::{AppState, Modal};
-use crate::submodule::{Batch, SubmoduleMsg};
-use crate::worktree::WorktreeMsg;
 use glowfly_core::paths::{resolve, same_spelling};
 use glowfly_core::settings::{RepoTrust, SavedTrust};
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::msg::{Msg, RepoMsg, TrustMsg};
+use glowfly_model::state::trust::record;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::submodule::{Batch, SubmoduleMsg};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 
 /// A folder next to `dir` for its new worktree, emptied first.

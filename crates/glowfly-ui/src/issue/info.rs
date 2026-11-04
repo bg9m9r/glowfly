@@ -1,23 +1,25 @@
 //! The issue panel's side: the details (state or status as a chip, type, assignees, labels as
 //! chips, milestone or fix version, epic, who opened it and when), the local branches named
-//! after it with a Checkout each, and the actions (Create branch…, the Git Flow starts, Copy).
+//! after it with a Checkout each (Open worktree for one another worktree has), and the actions
+//! (Create branch…, the Git Flow starts, Copy).
 
 use super::super::common::state_color;
 use super::super::pull_request::{heading, note};
 use super::super::theme::color;
-use super::super::widgets;
-use crate::gitflow::GitFlowMsg;
-use crate::msg::{BranchMsg, Msg};
-use crate::state::AppState;
-use crate::state::gitflow::start_blocked;
-use crate::state::issue::{IssueView, linked_branches, meta_rows, state_label};
-use crate::state::issue_words::labels_label;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Ui, vec2};
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::chip::{Chip, ChipSize, Look};
+use eframe::egui::{self, Align, Color32, Layout, RichText, Ui, vec2};
 use glowfly_core::forge;
 use glowfly_core::gitflow::FlowKind;
 use glowfly_core::text::printable;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::gitflow::start_blocked;
+use glowfly_model::state::issue::{IssueView, linked_branches, meta_rows, state_label};
+use glowfly_model::state::issue_words::labels_label;
+use glowfly_model::state::worktree_branches::Elsewhere;
 
 /// The width of the labels left of the values.
 const LABEL_W: f32 = 92.0;
@@ -37,23 +39,26 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             }
             for b in linked {
                 ui.horizontal(|ui| {
-                    let elsewhere = crate::state::worktree_branches::checkout_blocked(st.settings.lang(), snap, &b.name);
+                    // One another worktree has: Open worktree (or Prune and check out a missing one).
+                    let t = st.settings.lang();
+                    let elsewhere = glowfly_model::state::worktree_branches::checkout_elsewhere(t, snap, &b.name);
                     let blocked = if b.is_head {
                         Some("Checked out")
-                    } else if let Some(why) = elsewhere.as_deref() {
-                        Some(why)
-                    } else if !idle {
+                    } else if !idle && elsewhere.is_none() {
                         Some("Another operation is running")
                     } else {
                         None
                     };
-                    let r = ui.add(buttons::secondary("Checkout").enabled(blocked.is_none()));
-                    let r = match blocked {
-                        Some(why) => r.on_hover_text(why),
-                        None => r,
+                    let label = elsewhere.as_ref().map_or("Checkout", |e| e.button(t));
+                    let r = ui.add(buttons::secondary(label).enabled(blocked.is_none()));
+                    let r = match (blocked, &elsewhere) {
+                        (Some(why), _) => r.on_hover_text(why),
+                        (None, Some(e)) => r.on_hover_text(e.tip()),
+                        (None, None) => r,
                     };
                     if r.clicked() {
-                        msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
+                        let checkout = BranchMsg::Checkout(b.name.clone());
+                        msgs.push(Msg::Branch(Elsewhere::msg(elsewhere.as_ref(), checkout)));
                     }
                     ui.add(egui::Label::new(RichText::new(printable(&b.name)).color(color::text())).truncate());
                 });
@@ -94,12 +99,12 @@ fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
                 ui.label(RichText::new(label).color(color::weak()));
             });
             if label == state_row && !value.is_empty() {
-                chip(ui, &value, state_color(&value));
+                chip(ui, ChipSize::Badge, &value, state_color(&value));
             } else if label == labels_row {
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing = vec2(4.0, 4.0);
                     for l in &v.issue.facets.labels {
-                        chip(ui, l, color::text());
+                        chip(ui, ChipSize::Chip, l, color::text());
                     }
                 });
             } else {
@@ -112,10 +117,7 @@ fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
     }
 }
 
-/// A rounded chip with `text` in `fg`.
-fn chip(ui: &mut Ui, text: &str, fg: Color32) {
-    let text = printable(text);
-    let w = ui.painter().layout_no_wrap(text.clone(), type_scale::font(type_scale::CAPTION), fg).size().x + 12.0;
-    let (rect, _) = ui.allocate_exact_size(vec2(w, 20.0), Sense::hover());
-    widgets::chip(ui.painter(), rect.left(), rect.center().y, &text, color::raised(), fg);
+/// A chip of `size` with `text` in `fg` on the raised fill: the state's badge, or a label.
+pub(crate) fn chip(ui: &mut Ui, size: ChipSize, text: &str, fg: Color32) {
+    Chip::new(size, printable(text)).look(Look::new(color::raised(), fg)).show(ui);
 }

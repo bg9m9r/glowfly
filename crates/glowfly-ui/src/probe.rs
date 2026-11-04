@@ -8,9 +8,9 @@
 //! `accesskit_node_builder` also adds an empty node for each unnamed widget it is asked about,
 //! which only matters while probing.
 
-use crate::state::window_chrome::Chrome;
-use crate::state::{AppState, Selection};
 use eframe::egui::{self, Id, Pos2, Rect, WidgetRect, containers::panel::PanelState};
+use glowfly_model::state::window_chrome::Chrome;
+use glowfly_model::state::{AppState, Selection};
 use serde_json::{Value, json};
 
 /// The panels the probe reports and regions are cut from, by their egui ids. The drawn title

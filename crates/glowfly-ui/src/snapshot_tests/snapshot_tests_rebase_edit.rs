@@ -4,17 +4,17 @@
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase_quick::RewordForm;
-use crate::state::selection::MultiSelection;
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use git2::{Oid, RepositoryState};
 use glowfly_core::rebase::{self, QuickEdit, RebaseProgress, Resume, Stop, StopKind};
 use glowfly_core::repo::{FileEntry, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase_quick::RewordForm;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 
 const EDIT_STEPS: &str = "Edit remaining steps…";
@@ -159,8 +159,16 @@ pub(crate) fn rebasing(theme: ThemeChoice, name: &str, kind: StopKind, conflicte
     snap.state = RepositoryState::RebaseInteractive;
     let stop = Stop { kind, oid: Some(skeleton) };
     let autostash = kind == StopKind::Conflict;
-    snap.rebase =
-        Some(RebaseProgress { step: 2, total: 4, stop, summary: "Add app skeleton".into(), autostash, interactive: true, command: None });
+    snap.rebase = Some(RebaseProgress {
+        step: 2,
+        total: 4,
+        stop,
+        summary: "Add app skeleton".into(),
+        autostash,
+        interactive: true,
+        command: None,
+        amends: kind == StopKind::Edit,
+    });
     if conflicted {
         snap.unstaged.push(FileEntry::new("app.txt", '!'));
     }
@@ -183,6 +191,51 @@ fn rebase_banner_conflict() {
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { .. })), "Skip asks first, as before");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// At a stop to edit with Amend ticked and the message changed: Amend and continue leads, and
+/// sends one message that commits and continues.
+fn amend_and_continue(theme: ThemeChoice, name: &str) {
+    let dark = theme == ThemeChoice::Dark;
+    let (mut st, dir) = rebasing(theme, name, StopKind::Edit, false);
+    st.session.draft.amend = true;
+    st.session.draft.summary = "Reworded while editing".into();
+    let mut h = harness(st, dark);
+    h.run();
+    h.check_snapshot(name);
+    assert!(h.query_by_label("Commit and continue").is_none());
+    h.get_by_label("Amend and continue").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Commit(glowfly_model::msg::CommitMsg::CommitAndContinue))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn rebase_edit_amend_and_continue_dark() {
+    amend_and_continue(ThemeChoice::Dark, "rebase_edit_amend_and_continue_dark");
+}
+
+/// At a stop to edit where HEAD isn't the commit being edited (its step conflicted, or HEAD was
+/// reset): Amend is off and can't be ticked, and the button is Commit and continue.
+fn not_amending(theme: ThemeChoice, name: &str) {
+    let dark = theme == ThemeChoice::Dark;
+    let (mut st, dir) = rebasing(theme, name, StopKind::Edit, false);
+    st.snap.as_mut().unwrap().rebase.as_mut().unwrap().amends = false;
+    st.session.draft.summary = "Split out the layout".into();
+    let mut h = harness(st, dark);
+    h.run();
+    h.check_snapshot(name);
+    assert!(h.query_by_label("Amend and continue").is_none());
+    assert!(h.get_by_label("Amend last commit").is_disabled(), "Amend can't be ticked");
+    assert!(h.query_by_label("More commit options").is_some(), "Skip hooks stays reachable");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn rebase_edit_not_amending_dark() {
+    not_amending(ThemeChoice::Dark, "rebase_edit_not_amending_dark");
 }
 
 #[test]
@@ -222,7 +275,7 @@ fn the_stopped_sha_selects_its_commit() {
     h.run();
     h.get_by_label(&skeleton.to_string()[..7]).click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Repo(crate::msg::RepoMsg::JumpTo(o)) if *o == skeleton)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Repo(glowfly_model::msg::RepoMsg::JumpTo(o)) if *o == skeleton)));
     drop(h);
     remove_fixture(&dir);
 }

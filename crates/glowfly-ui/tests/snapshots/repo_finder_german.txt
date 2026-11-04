@@ -8,7 +8,7 @@ Dialog
   Label "C:\\work"
   Button "Ordner hinzufügen…"
   Button "Erneut suchen"
-  TextInput [focused]
+  TextInput "Nach Name oder Pfad filtern" [focused]
   Label "C:\\src (3)"
   Button "Zu Favoriten hinzufügen"
   Label "api-server"
@@ -28,5 +28,3 @@ Dialog
   Label "scripts"
   Label "C:\\work\\tools\\scripts"
   Button "Schließen"
-painted:
-  "Nach Name oder Pfad filtern"

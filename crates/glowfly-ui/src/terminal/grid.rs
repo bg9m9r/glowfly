@@ -5,12 +5,12 @@
 use super::colors::span_colors;
 use super::mouse::{self, Geometry};
 use super::{input, paint};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::theme::color;
-use crate::ui::widgets::menu::context_menu;
+use crate::theme::color;
+use crate::widgets::menu::context_menu;
 use eframe::egui::{self, Align2, EventFilter, FontId, Id, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::terminal::TermSpan;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 use glowfly_model::terminal::TerminalMsg;
 
 /// Space between the grid and the panel's edges.

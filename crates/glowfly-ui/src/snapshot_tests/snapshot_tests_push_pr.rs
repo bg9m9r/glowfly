@@ -4,10 +4,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
-use crate::state::{AppState, ForgeState, Modal, Selection, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -15,6 +12,9 @@ use git2::Oid;
 use glowfly_core::forge::{Provider, PullRequest, Target};
 use glowfly_core::repo::{BranchInfo, Tracking};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, ForgeState, Modal, Selection, Status};
 use std::path::PathBuf;
 
 pub(crate) fn tip(st: &AppState, name: &str) -> Oid {
@@ -294,6 +294,43 @@ fn open_pr_under_another_upstream_name() {
     h.get_by_label("Open pull request #7").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u.ends_with("/pull/7"))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// D16: in the Push dropdown, a long branch and its long upstream are cut in their middle (the
+/// verbs stay in view); each item keeps its whole label as its accessible name and tooltip.
+#[test]
+fn toolbar_push_menu_long_names() {
+    let long = "worktree-agent-a3f9c1d2-refresh-the-sidebar-rows";
+    let (mut st, dir) = with_host(ThemeChoice::Dark, "toolbar-push-long", &["main"]);
+    check_out_search(&mut st);
+    tracked(&mut st, 1);
+    let b = branch(&mut st, "search");
+    b.name = long.into();
+    b.upstream = Some(format!("origin/{long}"));
+    b.tracking = Some(Tracking { remote: "origin".into(), merge: long.into() });
+    st.snap.as_mut().unwrap().head_branch = Some(long.into());
+    let push = format!("Push {long} to origin/{long}");
+    let pr = format!("Push {long} and create a pull request…");
+    let shown = crate::widgets::menu::named(
+        glowfly_core::i18n::Lang::En.tr("toolbar.tip.push_title"),
+        &[("branch", long), ("upstream", &format!("origin/{long}"))],
+    );
+    assert_eq!(shown.full, push);
+    assert!(shown.shown.starts_with("Push ") && shown.shown.contains(" to origin…") && shown.shown.matches('…').count() == 2);
+    let mut h = harness(st, true);
+    h.run();
+    open_push_menu(&mut h);
+    assert!(h.query_by_label(&push).is_some(), "the cut item is named in full");
+    assert!(h.query_by_label(&pr).is_some(), "the pull request item too");
+    h.get_by_label(&push).hover();
+    for _ in 0..4 {
+        h.step();
+    }
+    h.run_ok();
+    assert!(h.get_all_by_label(&push).count() >= 2, "the whole label shows in its tooltip");
+    h.check_snapshot("toolbar_push_menu_long_names");
     drop(h);
     remove_fixture(&dir);
 }

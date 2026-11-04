@@ -18,17 +18,18 @@ pub mod clone;
 pub mod clone_service;
 pub mod commit;
 pub mod commit_menu;
-pub mod confirm;
+pub(crate) mod confirm;
 pub mod conflict;
 pub mod conflict_check;
 pub mod conflict_files;
+pub mod conflict_strip;
 pub mod custom_commands;
 pub mod dashboard;
-pub mod dashboard_plan;
+pub(crate) mod dashboard_plan;
 pub mod dashboard_rows;
 pub mod deep_link;
 pub mod dialog_guard;
-pub mod dialog_kind;
+pub(crate) mod dialog_kind;
 pub mod diff_header;
 pub mod diff_nav;
 pub mod diff_preview;
@@ -58,7 +59,7 @@ pub mod journal;
 pub mod journal_lost;
 pub mod journal_restore;
 pub mod keys_page;
-pub mod known_folders;
+pub(crate) mod known_folders;
 pub mod layout;
 pub mod lfs;
 pub mod lfs_notes;
@@ -84,25 +85,25 @@ pub mod op_strip;
 pub mod palette;
 pub mod palette_bindings;
 pub mod palette_commands;
-pub mod palette_custom;
-pub mod palette_files;
-pub mod palette_kinds;
+pub(crate) mod palette_custom;
+pub(crate) mod palette_files;
+pub(crate) mod palette_kinds;
 pub mod palette_nav;
-pub mod palette_onboarding;
-pub mod palette_profiles;
-pub mod palette_recent;
-pub mod palette_selected;
-pub mod palette_suggested;
-pub mod palette_tabs;
-pub mod palette_tools;
-pub mod palette_updates;
+pub(crate) mod palette_onboarding;
+pub(crate) mod palette_profiles;
+pub(crate) mod palette_recent;
+pub(crate) mod palette_selected;
+pub(crate) mod palette_suggested;
+pub(crate) mod palette_tabs;
+pub(crate) mod palette_tools;
+pub(crate) mod palette_updates;
 pub mod panel_layout;
 pub mod partial;
 pub mod partial_confirm;
 pub mod patch;
 pub mod path_hazards;
 pub mod pick;
-pub mod pr_details;
+pub(crate) mod pr_details;
 pub mod pr_repos;
 pub mod prefs;
 pub mod prefs_save;
@@ -123,7 +124,7 @@ pub mod quit_confirm;
 pub mod range_diff;
 pub mod rebase;
 pub mod rebase_banner;
-pub mod rebase_merges;
+pub(crate) mod rebase_merges;
 pub mod rebase_onto;
 pub mod rebase_quick;
 pub mod rebase_remaining;
@@ -134,6 +135,7 @@ pub mod release_notes;
 pub mod remote_branch;
 pub mod remotes;
 pub mod repo_colours;
+pub mod repo_group_picker;
 pub mod repo_groups;
 pub mod repo_identity;
 pub mod repo_lists;
@@ -146,7 +148,7 @@ pub mod selection;
 pub mod selection_span;
 pub mod selection_wip;
 pub mod session;
-pub mod session_reads;
+pub(crate) mod session_reads;
 pub mod session_view;
 pub mod settings_file;
 pub mod shallow;
@@ -201,14 +203,13 @@ pub use prefs::{PrefPage, PrefsState, host_text};
 pub use running_job::RunningJob;
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};
-pub use view::{ColumnDrag, ViewState, diff_text, file_folds, file_lists, file_tree, frame_times, list_keys, wip_lists};
+pub use view::{ColumnDrag, ViewState, diff_text, file_folds, file_lists, file_tree, frame_times, list_keys, system_a11y, wip_lists};
 
 use crate::msg::Msg;
 use git2::Oid;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
-use std::time::{Duration, Instant};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, time::Duration, time::Instant};
 
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
@@ -237,11 +238,6 @@ impl Selection {
             Selection::VsWorkdir(w) => w.oid == oid,
             Selection::None | Selection::Wip => false,
         }
-    }
-
-    /// Whether the graph's WIP row is drawn selected (alone or compared with a commit).
-    pub fn wip_shown(&self) -> bool {
-        matches!(self, Selection::Wip | Selection::VsWorkdir(_))
     }
 }
 
@@ -370,6 +366,8 @@ pub enum Modal {
     RenameTab(tabs::RenameTabForm),
     /// New group and Rename group (`ui/repo_group_dialog.rs`).
     RepoGroup(repo_groups::GroupForm),
+    /// A group's Add repositories picker (`ui/repo_group_picker.rs`).
+    AddToGroup(repo_group_picker::AddPicker),
     /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
     Mainline(pick::MainlineForm),
     /// Uncommitted changes in the way of an operation: stash them and carry on (`ui/auto_stash_dialog.rs`).
@@ -392,8 +390,7 @@ pub struct AppState {
     pub recent: Vec<PathBuf>,
     /// Recent or favorite repository folders found missing by the last check (`RecentMsg::FoldersChecked`).
     pub missing_repos: Vec<PathBuf>,
-    /// A listed folder that failed to open, waiting for the folder check to say whether it is
-    /// gone (then Glowfly offers to remove it from the lists; update/recent.rs).
+    /// A listed folder that failed to open, until the folder check says if it's gone, to offer removing it (update/recent.rs).
     pub missing_offer: Option<PathBuf>,
     /// The Find repositories dialog's scan of the project folders: global, never parked.
     pub repo_scan: repo_scan::RepoScan,
@@ -431,8 +428,7 @@ pub struct AppState {
     pub toasts: Vec<Toast>,
     /// Last toast id handed out (state/toasts.rs).
     pub toast_seq: u64,
-    /// How far behind the checked-out branch was when the active tab's auto-fetch ended, until
-    /// the reload after it lands (update/notify.rs).
+    /// How far behind the checked-out branch was at the end of the auto-fetch, until its reload lands (update/notify.rs).
     pub behind_watch: Option<notify::BehindWatch>,
     pub modal: Option<Modal>,
     pub dialog: dialog_guard::DialogGuard,
@@ -475,8 +471,7 @@ pub struct AppState {
     pub deep_link: deep_link::DeepLinkState,
     /// The profile a switch is writing to the global git config (app-wide: the config is global).
     pub profile_switch: Option<glowfly_core::settings::ProfileId>,
-    /// The profiles (the current one or the switch's target) whose fields were edited while a
-    /// switch ran: their git writes wait until it ends.
+    /// The profiles (current or the switch's target) edited while a switch ran: their git writes wait until it ends.
     pub profile_switch_edits: Vec<glowfly_core::settings::ProfileId>,
     /// The repositories' effective identities as git last reported them, by `Snapshot::git_dir` as spelled (global, kept across tabs).
     pub identities: HashMap<PathBuf, glowfly_core::repo_identity::RepoIdentity>,

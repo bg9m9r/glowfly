@@ -2,18 +2,19 @@
 //! reopened) and for moving the active tab with the keyboard.
 
 use super::tabs_close_tests::{fake, fake_tabs, names, saves, send};
-use crate::effect::{Effect, UiEffect};
-use crate::msg::TabsMsg;
-use crate::state::menu_bar::tab_name;
-use crate::state::{AppState, Modal, Tab};
 use glowfly_core::repo::CommonDir;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::menu_bar::tab_name;
+use glowfly_model::state::{AppState, Modal, Tab};
 
 fn label(st: &AppState, i: usize) -> Option<&str> {
     st.tabs[i].label.as_deref()
 }
 
 fn saved_labels(fx: &[Effect]) -> Vec<Vec<Option<String>>> {
-    fx.iter().filter_map(|e| if let Effect::SaveTabs { labels, .. } = e { Some(labels.clone()) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Save(SaveEffect::Tabs { labels, .. }) = e { Some(labels.clone()) } else { None }).collect()
 }
 
 fn titles(fx: &[Effect]) -> Vec<&str> {

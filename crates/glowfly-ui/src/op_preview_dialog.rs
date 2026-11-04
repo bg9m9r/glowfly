@@ -8,13 +8,13 @@ use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::branch_colours::line;
 use super::theme::{color, type_scale};
 use super::widgets::buttons;
-use crate::msg::{Msg, OpPreviewMsg, ResetMode};
-use crate::state::op_preview::{self as op, PreviewDialog};
 use eframe::egui::{self, Color32, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::op_preview::{OpPreview, PreviewOp};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{Msg, OpPreviewMsg, ResetMode};
+use glowfly_model::state::op_preview::{self as op, PreviewDialog};
 
 /// What the dialog is drawn against, gathered before the modal borrows the state.
 pub struct Env<'a> {
@@ -101,7 +101,7 @@ fn result(ui: &mut Ui, t: Lang, env: &Env, snap: &Snapshot, p: &OpPreview) {
     super::op_preview_rows::after(ui, env, p, tone);
     if let Some(paths) = op::conflicts(p) {
         ui.add_space(4.0);
-        super::conflict_check::file_list(ui, t, paths, false);
+        super::conflict_check_parts::file_list(ui, t, paths, false);
     }
     if p.gone_count.n > 0 {
         ui.add_space(10.0);

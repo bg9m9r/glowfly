@@ -1,8 +1,18 @@
-window 820x290
+window 820x342
 Label "Rest"
 Button "Commit"
 Button "Stage all"
 Button "Cancel" [focused]
+Button "Details"
+Button "Discard"
+Button "Discard hunk"
+Button "Refresh"
+Button "Pull"
+Button "Pull options"
+Label "Strong"
+Button "Commit"
+Button "Stage all"
+Button "Cancel"
 Button "Details"
 Button "Discard"
 Button "Discard hunk"

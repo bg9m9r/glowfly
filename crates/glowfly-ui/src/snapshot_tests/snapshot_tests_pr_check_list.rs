@@ -5,16 +5,16 @@
 use super::snapshot_tests::{NOW, harness, remove_fixture};
 use super::snapshot_tests_pull_request::with_pr;
 use super::snapshot_tests_pull_request_review::{detail, load};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::PrView;
-use crate::state::pull_request_checks::{ChecksPane, HELD, LOADING};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{CheckList, CheckRun, CheckState, Checks, Provider, RunState, Target};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::PrView;
+use glowfly_model::state::pull_request_checks::{ChecksPane, HELD, LOADING};
 use std::path::PathBuf;
 
 const BUILD_URL: &str = "https://ci.example/acme/demo/build/41";
@@ -33,7 +33,7 @@ fn check(name: &str, group: Option<&str>, state: RunState) -> CheckRun {
 }
 
 /// One check of every state, in list order.
-fn every_state() -> CheckList {
+pub(crate) fn every_state() -> CheckList {
     let mut build = check("build", Some("CI"), RunState::Failed);
     (build.required, build.started, build.finished) = (Some(true), Some(NOW - 3600), Some(NOW - 3600 + 134));
     build.url = BUILD_URL.into();
@@ -57,7 +57,7 @@ fn every_state() -> CheckList {
 }
 
 /// `with_pr` on the Overview tab with its page loaded, the checks set by `f`.
-fn with_checks(theme: ThemeChoice, name: &str, f: impl FnOnce(&mut PrView)) -> (AppState, PathBuf) {
+pub(crate) fn with_checks(theme: ThemeChoice, name: &str, f: impl FnOnce(&mut PrView)) -> (AppState, PathBuf) {
     let (mut st, dir) = with_pr(theme, name, true);
     load(&mut st, detail(), Vec::new());
     f(st.session.pull_request.view.as_mut().unwrap());

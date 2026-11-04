@@ -30,8 +30,9 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
    attached as `glowfly-vX.Y.Z.intoto.jsonl` (see [Verifying a download](#verifying-a-download)).
    That bundle isn't in `SHA256SUMS`: it is made after it, from the digests it lists, and is
    signed itself. The job is the only one with `id-token: write` and `attestations: write`.
-5. The **manifests** job fills in the Homebrew cask and the winget manifests from `SHA256SUMS`
-   and attaches them to the release (see [Homebrew and winget](#homebrew-and-winget)).
+5. The **manifests** job fills in the Homebrew cask, the Scoop manifest and the winget manifests
+   from `SHA256SUMS` and attaches them to the release (see
+   [Homebrew, Scoop, winget and Flathub](#homebrew-scoop-winget-and-flathub)).
 6. The **publish** job runs last, and only when every job above succeeded. It
    (`scripts/release-publish.sh`) checks that `SHA256SUMS`, the provenance bundle and every file
    `SHA256SUMS` lists are on the draft, each with the listed SHA-256 where GitHub reports the
@@ -106,8 +107,8 @@ release can't be rebuilt; publish a new version instead.
 
 Nothing outside the repository's writers sees a draft: the update check reads
 `/releases/latest`, which GitHub answers with the newest published release that isn't a
-pre-release, and the Homebrew and winget manifests point at download links that exist only once
-the release is published.
+pre-release, and the Homebrew, Scoop and winget manifests point at download links that exist only
+once the release is published.
 
 ## What a release contains
 
@@ -127,7 +128,7 @@ the release is published.
 | `<file>.sha256` | The SHA-256 of each file above |
 | `SHA256SUMS` | Every file's SHA-256, in `sha256sum` format |
 | `glowfly-vX.Y.Z.intoto.jsonl` | The Sigstore bundle of the build provenance attestation over every file in `SHA256SUMS` and `SHA256SUMS` itself |
-| `glowfly.rb`, `Glowfly.Glowfly.yaml`, `Glowfly.Glowfly.installer.yaml`, `Glowfly.Glowfly.locale.en-US.yaml` | The Homebrew cask and the winget manifests for this release (not for a pre-release) |
+| `glowfly.rb`, `glowfly.json`, `Glowfly.Glowfly.yaml`, `Glowfly.Glowfly.installer.yaml`, `Glowfly.Glowfly.locale.en-US.yaml` | The Homebrew cask, the Scoop manifest and the winget manifests for this release (not for a pre-release) |
 
 Install and restart reads the zip and tar.gz layout (`glowfly-<tag>-<target>/` holding the
 program and the doc files) to swap a portable copy in place (`app_update/archive.rs`), so keep
@@ -137,26 +138,50 @@ The app icon is drawn by `crates/glowfly-app/tests/packaging/app_icon.rs`; `UPDA
 glowfly --test packaging app_icon` redraws the files in `assets/icon/`. The Windows build embeds
 `glowfly.ico` in `glowfly.exe` (`build.rs`, through winresource).
 
-## Homebrew and winget
+## Homebrew, Scoop, winget and Flathub
 
 After the checksums, the **manifests** job runs `scripts/fill-manifests.sh <tag> SHA256SUMS
-<out dir> <owner/repo>`. It fills the templates in `packaging/homebrew/glowfly.rb.in` and
-`packaging/winget/*.yaml.in` with the version, the tag, the repository and the SHA-256 of both
-dmgs and both MSIs, and attaches the results to the release. A pre-release tag (anything but
-`vX.Y.Z`) gets a notice and no manifests. When `SHA256SUMS` lacks a file the manifests need (a
-build failed), the job fails loudly and the release stays a draft, since publish needs every
-job to succeed. Submit them by hand once the release is published (their download links work
-only then):
+<out dir> <owner/repo>`. It fills the templates in `packaging/homebrew/glowfly.rb.in`,
+`packaging/scoop/glowfly.json.in` and `packaging/winget/*.yaml.in` with the version, the tag,
+the repository and the SHA-256 of both dmgs, both Windows zips and both MSIs, and attaches the
+results to the release. A pre-release tag (anything but `vX.Y.Z`) gets a notice and no
+manifests. When `SHA256SUMS` lacks a file the manifests need (a build failed), the job fails
+loudly and the release stays a draft, since publish needs every job to succeed.
+`scripts/fill-manifests-test.sh` tests the script on fixtures (the Installers workflow runs and
+shellchecks it), and `crates/glowfly-app/tests/packaging/package_manifests.rs` checks the
+templates.
 
-- **Homebrew**: put `glowfly.rb` in a tap repository as `Casks/glowfly.rb` (for example
-  `<owner>/homebrew-glowfly`; then `brew install --cask <owner>/glowfly/glowfly`). The main
-  `homebrew/cask` repository expects notarized apps, so a pull request there waits for the Apple
-  secrets below. The cask says `auto_updates true`: Glowfly updates itself.
-- **winget**: put the three yaml files in one folder and check them with
-  `winget validate --manifest <folder>`, then submit them with
+The builds aren't signed, so Glowfly goes through repositories of our own where the main ones
+want signed or established apps. Publish each one by hand once the release is published (the
+download links work only then). Creating the tap and bucket repositories, and every submission
+to winget-pkgs and Flathub, is done by the owner:
+
+- **Homebrew**: our own tap, `bg9m9r/homebrew-glowfly`. Put `glowfly.rb` in it as
+  `Casks/glowfly.rb`; users install with `brew install --cask bg9m9r/glowfly/glowfly`. The
+  main `homebrew/cask` repository wants notarized apps, so Glowfly stays out of it while the
+  builds are unsigned. The cask's `caveats` say how to open the unsigned app on macOS 15 and
+  later (System Settings > Privacy & Security > Open Anyway, or
+  `xattr -dr com.apple.quarantine`), and it says `auto_updates true`: Glowfly updates itself.
+- **Scoop**: our own bucket, `bg9m9r/scoop-glowfly`, since the main buckets want established
+  apps. Put `glowfly.json` in its `bucket/` folder; users install with
+  `scoop bucket add glowfly https://github.com/bg9m9r/scoop-glowfly` and
+  `scoop install glowfly/glowfly`. The manifest installs the x64 or arm64 zip, puts `glowfly`
+  on `PATH` and a Glowfly Start menu shortcut, and has `checkver` and `autoupdate`: the bucket's
+  Excavator workflow (or `checkver.ps1 -Update` run by hand) finds the next release on GitHub and
+  reads its zips' SHA-256 from that release's `SHA256SUMS`, so the attached `glowfly.json` is
+  needed only for the first version or to check an update by hand.
+- **winget**: `microsoft/winget-pkgs`, which accepts unsigned MSIs. Put the three yaml files in
+  one folder and check them with `winget validate --manifest <folder>`, then submit them with
   `wingetcreate submit --token <PAT> <folder>`, or as a pull request to `microsoft/winget-pkgs`
   under `manifests/g/Glowfly/Glowfly/<version>/`. The manifests list the x64 and arm64 MSIs,
   install per user, and name the MSI's UpgradeCode so winget recognises an existing install.
+- **Flathub**: submit `io.github.bg9m9r.glowfly` through Flathub's own review (a pull request to
+  `flathub/flathub`), from `packaging/flatpak/`. Flathub builds offline from fixed sources, so
+  the submitted manifest takes Glowfly from the release tag (a `git` source with its commit)
+  instead of `path: ../..`, and lists the crates in a `cargo-sources.json` from
+  `flatpak-cargo-generator` instead of the `vendor/` folder. Once accepted, each new release is a
+  pull request to Flathub's `flathub/io.github.bg9m9r.glowfly` repository, and Flathub signs
+  its repository.
 
 ## Licences and notices
 
@@ -189,12 +214,16 @@ The **prepare** job runs `scripts/release-notes-header.sh <tag>`, which puts
 `packaging/release-notes-header.md` above the release's notes: the builds aren't code-signed
 yet and the checksums confirm a download matches what the release published, not who published
 it, how to check a download against `SHA256SUMS` (a command for each system) and its build
-provenance (`gh attestation verify`), and that Glowfly
+provenance (`gh attestation verify`), how to open the unsigned builds anyway after checking them
+(SmartScreen's "More info" > "Run anyway" and unblocking the zip on Windows; Privacy & Security >
+"Open Anyway" or `xattr -dr com.apple.quarantine` on macOS 15 and later, where right-click > Open
+no longer works; `chmod +x` for the AppImage), that package managers are coming (#557), and that Glowfly
 is provided as is, without warranty, under MIT OR Apache-2.0, and a link to `PRIVACY.md`. The header sits between two HTML
 comment markers, so a re-run replaces it instead of adding a second. The header has no `## `
 heading and no list items, so the app's release notes dialog, which reads the release body,
 skips it (`changelog_tests.rs` checks). Edit the file to change the text, for example once the
-builds are signed; `bash scripts/release-notes-header.sh --print <notes file>` shows the result
+builds are signed (drop the "Open it anyway" paragraphs for each system that is signed, and
+their copy in the README's install section) or once package managers carry Glowfly; `bash scripts/release-notes-header.sh --print <notes file>` shows the result
 without touching a release.
 
 ## Code signing
@@ -298,8 +327,8 @@ release notes dialog keeps working without it.
 
 ## Checking the installers
 
-The `Installers` workflow (`.github/workflows/installers.yml`) runs on every push and pull
-request (except ones that only touch `docs/`, `TODO.md` or `ROADMAP.md`). It builds the release
+The `Installers` workflow (`.github/workflows/installers.yml`) runs on every pull
+request and push to main (except ones that only touch `docs/`, `TODO.md` or `ROADMAP.md`). It builds the release
 program, packages it twice with the scripts above (once as `v0.0.1`, once as the current
 version), and on a clean runner:
 

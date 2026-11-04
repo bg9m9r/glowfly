@@ -5,7 +5,7 @@
 //! window and the keymap; only Cmd+H and Option+Cmd+H go to AppKit's Hide and Hide Others.
 
 use super::native_menu;
-use crate::state::menu_native::{KeyEquivalent, NEntry, Plan, Standard, standard_key};
+use glowfly_model::state::menu_native::{KeyEquivalent, NEntry, Plan, Standard, standard_key};
 use objc2::encode::{Encoding, RefEncode};
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, NSObject, NSObjectProtocol, ProtocolObject, Sel};

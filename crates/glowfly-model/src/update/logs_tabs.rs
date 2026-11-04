@@ -82,10 +82,11 @@ pub(super) fn details(st: &mut AppState, tab: TabId, entry: Option<EntryId>, fx:
     }
 }
 
-/// Announces the first failure logged loudly in this `update`: a failure toast pushed after
-/// `since` gets a Details button (beside its fix, when it has one), else a new failure toast with Details shows the line's
-/// headline. Nothing new is shown while the panel already shows that tab's activity log. Run at
-/// the end of `update`, which has the time.
+/// Announces the first failure logged loudly in this `update`: the newest failure toast shown
+/// after `since` (pushed, or shown again in place) gets a Details button (beside its fix, when it
+/// has one), else a failure toast with Details shows the line's headline (restarting one that
+/// already shows it). Nothing new is shown while the panel already shows that tab's activity
+/// log. Run at the end of `update`, which has the time.
 pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
     let Some(a) = st.logs.announce.take() else { return };
     let msg = match a.tab {
@@ -95,17 +96,23 @@ pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
     let label = st.settings.lang().tr("logs.toast.details.button").to_owned();
     // Runs from any tab: Details switches to the line's tab itself.
     let action = ToastAction { label, msg: Box::new(Msg::Logs(msg)), workdir: None };
-    if let Some(t) = st.toasts.iter_mut().rev().find(|t| t.id > since && !t.ok) {
-        if t.action.is_none() {
-            t.action = Some(action);
-        } else if t.details.is_none() {
-            t.details = Some(action);
+    if !st.toasts.iter().any(|t| t.shown > since && !t.ok) {
+        let active = st.tabs.get(st.active_tab).map(|t| t.id);
+        if st.view.show_log && st.logs.tab == LogKind::Activity && a.tab == active {
+            return;
         }
-        return;
+        st.toast(false, a.text, now);
     }
-    let active = st.tabs.get(st.active_tab).map(|t| t.id);
-    if st.view.show_log && st.logs.tab == LogKind::Activity && a.tab == active {
-        return;
+    give_details(st, since, action);
+}
+
+/// Gives the newest failure toast shown after `since` the Details `action`: as its action, or
+/// beside its fix.
+fn give_details(st: &mut AppState, since: u64, action: ToastAction) {
+    let Some(t) = st.toasts.iter_mut().filter(|t| t.shown > since && !t.ok).max_by_key(|t| t.shown) else { return };
+    if t.action.is_none() {
+        t.action = Some(action);
+    } else if t.details.is_none() {
+        t.details = Some(action);
     }
-    st.toast_action(false, a.text, action, now);
 }

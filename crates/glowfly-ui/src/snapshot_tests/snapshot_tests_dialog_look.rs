@@ -7,13 +7,7 @@
 use super::snapshot_tests::{harness, harness_palette, harness_sized, remove_fixture, with_repo};
 use super::snapshot_tests_worktrees::{H, dialog_button, pushed, with_worktrees};
 use super::theme::{self, color::Palette};
-use crate::msg::{CredentialMsg, DialogMsg, Dismiss, Msg};
-use crate::state::askpass::PendingPrompt;
-use crate::state::submodules::add::AddForm;
-use crate::state::touched::Touched;
-use crate::state::worktree_manage::{LockForm, RemoveForm};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::{Rect, Role};
 use eframe::egui::vec2;
 use egui_kittest::kittest::Queryable;
@@ -21,6 +15,12 @@ use glowfly_core::askpass::Prompt;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::worktree_ops::Refusal;
+use glowfly_model::msg::{CredentialMsg, DialogMsg, Dismiss, Msg};
+use glowfly_model::state::askpass::PendingPrompt;
+use glowfly_model::state::submodules::add::AddForm;
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::worktree_manage::{LockForm, RemoveForm};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 const CLOSE: &str = "Close this dialog";

@@ -5,12 +5,14 @@
 //! missing or changed file into `UpdateStatus::Stale` with Download again.
 
 use super::updates::downloaded_toast;
+use crate::effect::ControlEffect;
 use crate::effect::OsEffect;
 use crate::effect::partial::StopKey;
 use crate::effect::{Effect, UpdateEffect};
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::updates::{Transfer, UpdateStatus, download_failed_text, downloaded_text, stale_text};
-use glowfly_core::app_update::{self, InstallKind, InstallMethod, Progress, Saved, SavedProblem};
+use glowfly_core::app_update::{self, InstallKind, InstallMethod, Progress, Saved, SavedProblem, UpdateError};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -60,7 +62,7 @@ pub(super) fn progress(st: &mut AppState, p: Progress) {
 pub(super) fn cancel(st: &mut AppState, fx: &mut Vec<Effect>) {
     if matches!(st.updates.status, UpdateStatus::Downloading(_)) && !st.updates.transfer.cancelling {
         st.updates.transfer.cancelling = true;
-        fx.push(Effect::StopGit(StopKey::UpdateDownload));
+        fx.push(Effect::Control(ControlEffect::StopGit(StopKey::UpdateDownload)));
     }
 }
 
@@ -74,7 +76,7 @@ pub(super) fn cancelled(st: &mut AppState) {
     st.updates.status = UpdateStatus::Available(offer);
 }
 
-pub(super) fn downloaded(st: &mut AppState, result: Result<Saved, String>, now: Instant) {
+pub(super) fn downloaded(st: &mut AppState, result: Result<Saved, UpdateError>, now: Instant) {
     let t = st.settings.lang();
     let UpdateStatus::Downloading(offer) = &st.updates.status else { return };
     let offer = offer.clone();
@@ -87,7 +89,8 @@ pub(super) fn downloaded(st: &mut AppState, result: Result<Saved, String>, now: 
             downloaded_toast(st, &offer.version, method, now);
             st.updates.status = UpdateStatus::Downloaded { offer, file, sha256, method };
         }
-        Err(error) => {
+        Err(e) => {
+            let error = typed::update(t, &e);
             st.log_quiet(false, download_failed_text(t, &error));
             st.toast(false, download_failed_text(t, &error), now);
             st.updates.status = UpdateStatus::DownloadFailed { offer, error };

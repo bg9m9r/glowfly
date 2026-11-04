@@ -109,11 +109,12 @@ Views never name a hex value: they read the active palette through `color::text(
 
 | Token | Theme key | What it is for |
 |---|---|---|
-| accent | `accent` | The theme's own colour: the lantern gold in Dusk, the iris in Dawn, the cobalt in Graphite and Porcelain, the sea glass in Midnight and Mist, the lattice green in the Garden pair and high contrast. Focus rings, links, checked controls, the selected row's bar, the active tab's line, column-resize lines, header highlights. |
+| accent | `accent` | The theme's own colour: the lantern gold in Dusk, the iris in Dawn, the cobalt in Graphite and Porcelain, the sea glass in Midnight and Mist, the lattice green in the Garden pair and high contrast. Selection, focus and the one filled primary of a surface (see "The accent" under Rules): focus rings, checked controls, the selected row's bar, the active tab's line, column-resize lines, header highlights; and links inside prose. |
 | primary | `primary`, `primary_border`, `primary_off` | The fill and edge of primary buttons. |
 | primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and on the dark themes' accents, white on the light ones'). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
 | tag | `tag_bg`, `tag_fg` | Tag chips in the graph: the plum of the icon's lower edge in Dusk and Dawn, and in the Garden pair and high contrast too. |
+| lantern | (not a theme-file key; theme files keep their base's) | "You are here", and nothing else: the glow and rim round the checked-out commit's node and the WIP row's lantern, and the firefly loader's dots (no glow; a loader is not a second "you are here" glow). Dusk's gold (its accent); a pale amber in Graphite and Midnight (#f9cb92, OKLCH 0.87 0.09 72); an orange on the light themes' paper (#cc590d, 0.60 0.164 46), where a 3:1 amber at chroma 0.10 reads brown; `text` in high contrast, which draws no glow. At least 3:1 on the row's bg, hover, selected fills and lane bands. On a light theme's highlighted band (a hovered branch's rows) the rim falls to about 2.6:1; accepted, as the highlight is transient and HEAD keeps its chip and lane. One glow on screen, never more. |
 
 ### Status
 
@@ -186,8 +187,8 @@ Olive's slot is a deep Wine (hue 352), Gold's a Navy (hue 262), both darker than
 neighbours, and Orange is a clear amber at hue 62 (#c47100, at the sRGB edge: the one warm line
 that stays clean at 3:1). Beside Porcelain's cobalt, Forest (hue 142) takes Navy's
 slot; on Dawn, Jade takes it and Forest takes Indigo's, beside the iris accent. A chip whose
-tone would letter it in brown (the amber's text tone) is lettered in the ink instead
-(`contrast::clean_ink`), its fill and edge keeping the hue.
+tone would letter it in brown (the amber's text tone) is lettered in the ink instead, its
+fill and edge keeping the hue.
 
 - `branch.lanes`: line tones, for lines, dots and bands (3:1 on bg and panel).
 - `branch.chips`: chip tones, which ref chips are edged and lettered in (see Chip tints).
@@ -217,14 +218,18 @@ automatic neighbour moves off it, and two pinned neighbours may share a hue. Mai
 like any branch. Automatic returns it to the trunk. A pin keeps its slot number, so under the colour-blind preset it
 shows as that number modulo 8.
 
-People: the initials in graph nodes and the commit details avatar take a person's own slot,
-FNV-1a of their trimmed, lowercased email (their name when the email is blank) modulo the
-preset's hue count, never the accent. The fill is the background mixed 30% toward their line
-tone, and the ink their chip tone pushed to 4.5:1 on that fill
-(`theme/branch_colours.rs::initials_tones`). The ring around the initials, or around an avatar
-image, stays the branch's colour.
+Initials: the initials in graph nodes and the commit details avatar sit on one of eight muted
+tones, chosen by the top three bits of FNV-1a of the person's trimmed, lowercased email (their
+name when the email is blank; `branch_colour::person_tone`). The tones are not branch hues and
+ignore the branch preset: OKLCH hues 0, 135, 165, 195, 228, 260, 292 and 325 deg (clear of the
+brown zone) at chroma 0.055, lightness 0.14 above the background's but at least 0.30 (0.10
+below on a light palette), stepped back (never under the 0.30 floor) toward the background until `text` initials read at 4.5:1 (7:1 in high
+contrast) (`theme/initials.rs`, checked in `initials_tests.rs`: chroma at most 0.06, the discs
+1.25:1 off `bg` and `panel`, the eight apart and clear of every lane's line tone). The ring
+around the initials, or around an avatar image, stays the branch's colour, so the node and the
+author read as two marks.
 
-Colour-blind friendly preset (Preferences > Appearance > Commit graph > Branch colors): 8
+Colour-blind friendly preset (Preferences > Accessibility > Colours > Colour-blind safe): 8
 hues that stay apart under protan, deutan and tritan vision as well as normal vision, and keep
 out of the accent and attention bands. Dark themes use its dark tones for lines and chips;
 light ones use its line tones for lines and its text tones for chips. Under protan or deutan
@@ -232,8 +237,21 @@ vision Yellow and Lime pass for Dusk's gold, so Dusk's set (`Palette::colour_bli
 (#eb8f13) and a paler Lime (#c8feac) in their slots. On paper a yellow line reads olive, so the
 light set's Yellow is the clear amber (named Orange) and its Lime the deeper #4d7002, which stays
 apart from the amber under protan vision; Dawn takes Porcelain's Wine for Periwinkle, which would pass
-for the iris. Theme files take their base's set. The preset switches with the profile.
-Branch names always appear beside their colour, and main is gray unless pinned.
+for the iris. Theme files take their base's set. The preset belongs to the machine, not the
+profile. Branch names always appear beside their colour, and main is gray unless pinned.
+
+The same preset changes the diff and status colours (`theme/colour_safe.rs`), as red and green
+fall together under protan and deutan vision: added and its diff fills turn blue (OKLCH hue 250),
+removed orange (hue 55) and modified violet (hue 300). Each keeps its theme colour's WCAG
+luminance, so every contrast floor below still holds, with two exceptions for "No brown": an
+orange that would read brown (the dark themes' removed fills) is a rust red instead (hue 30,
+chroma at least 0.08), and on light themes removed text and marks are a vermilion (hue 40, chroma
+at least 0.08). Modified sits below added in OKLab lightness (0.11 on dark themes, 0.10 on high
+contrast dark, 0.15 on light ones), as violet and blue at one lightness look alike under protan
+and deutan vision. A rename's letter takes the modified colour, as `info` is a blue too. In the
+graph, lanes then also carry a dash pattern by their distance from HEAD's lane: dashed (6 on, 4
+off), dotted (2 on, 3 off), dash-dot, and again; HEAD's own branch is drawn 2.5 px wide in every
+preset, other lanes 2 px.
 
 ### Terminal
 
@@ -303,6 +321,40 @@ indigo (hue 275, its gold's complement); the rest hue 255. A theme file that set
 
 ## 2. Rules
 
+### The accent
+
+The accent does three jobs and no others:
+
+- **Selection**: the selected row's bar and wash, the selected tab's underline (the pull request
+  view's tabs are an underline, never a filled block), checked controls.
+- **Focus**: the focus ring.
+- **The primary**: the one filled button of a surface (a dialog, a panel's header, a form, a
+  card), placed at its trailing edge, after Cancel and any other choice. A surface has at most
+  one, and many have none (the diff header's Stage file is a small secondary button). Other
+  actions are secondary or quiet, and a surface's rarer actions go behind a ⋯ menu (the rebase
+  editor's Restore original order).
+
+Besides those:
+
+- Links are accent text, underlined on hover, and appear only inside prose (a sentence or a
+  help line). A link that is an action of its own gets its own line (the welcome's Preferences
+  link) or becomes a button.
+- Paths, names and counts are never accent: a file's path, a branch's name and a tab's count
+  take the text colours.
+- Success and "added" use the semantic greens (`added`), never the accent, even where the
+  accent is green.
+- A form's or card's marks are `weak`, not accent (the new code comment's icon), and a card's
+  frame is `border` (its field's focus ring is still the accent).
+- The lantern (`lantern`) is used only for "you are here": the checked-out commit's glow and rim
+  and this tab's WIP lantern; the one exception is the firefly loader's dots (no glow: a loader
+  is not a second "you are here" glow). It is never a selection, focus, button, chip or text colour, and it
+  is not an accent shape in the accent count.
+
+The sign-off check for a view's goldens: count the filled accent shapes on each surface. There
+is at most one, and it sits at the surface's trailing edge.
+
+### Everything else
+
 - One job per colour: each colour means one thing (with the related uses listed above), and
   no two families share a colour for different meanings. Each kind keeps to its forms: status
   colours to letter badges and counts, branch colours to lines, dots and name pills, repository
@@ -342,12 +394,12 @@ indigo (hue 275, its gold's complement); the rest hue 255. A theme file that set
     tinted.
   - Banners sit on a neutral `banner` fill; the stripe carries the kind's colour.
   - `theme/no_brown_tests.rs` composites every surface, band, highlighted band, chip and chip
-    edge, initials fill, change chip, tone tint, tonal state and wash (each semantic and
+    edge, change chip, tone tint, tonal state and wash (each semantic and
     repository colour at 3% to 80% on bg, panel, toolbar and raised) and fails on any in the
     zone, in both branch presets, with no exception (Dusk's bronze selected row is gone). It
     also checks every line, edge and letter drawn in a
     colour of its own: the accent, `primary_border`, the field and dialog edges, each branch
-    lane, chip text and initials ink.
+    lane and chip text (the initials tones are checked in `theme/initials_tests.rs`).
   - `theme/no_brown_text_tests.rs` checks every coloured text (status, `warn`, tag and hunk
     text, syntax but `syn_comment`, the terminal's red to cyan, normal and bright) against
     `contrast::brownish_text`. Text dark enough for 4.5:1 on paper can't take the chroma a warm
@@ -361,9 +413,18 @@ indigo (hue 275, its gold's complement); the rest hue 255. A theme file that set
     comments, the terminal's black, white and foreground) are judged as greys, not hues.
   - `snapshot_tests/snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
     (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly-ui --lib colour_sheet -- --ignored`).
+- The HEAD lantern's glow is painted through `contrast::tint`, never as a plain alpha wash of
+  `lantern`: a warm wash on a dark field reads brown at any strength, so on the dark themes the
+  glow lifts the row's own hue and the warmth sits on the node's `lantern` rim (1 pt and a
+  pixel wide, so egui paints one solid pixel of it). Its peak is 25% on dark themes and 16% on
+  paper (18% and 12% with colour-blind safe colours), falling off
+  as 1 - smoothstep(t) from 4 px outside the node's edge (a whole pixel past the rim's
+  antialiased edge, so the rim reads on the plain row fill; HEAD's node is snapped to the pixel
+  grid) to the row's edge, stopping above a hovered row's shadow.
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
-  lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7% and text fields
-  4%) go through `contrast::tint`. It is a plain mix, except on a dark palette whose surface is
+  lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7%, text fields
+  4%, and a search's find fill behind matched text 24% (dark) or 18% (light) toward the accent,
+  backed off to 10% until `text` and `strong` read on it) go through `contrast::tint`. It is a plain mix, except on a dark palette whose surface is
   a coloured field (OKLCH chroma 0.012 or more: Dusk's indigo, Midnight's blue). There a tint toward a far hue would cancel the field's colour into mud or
   an olive-green, so the tint keeps the mix's lightness, moves the field's chroma the same
   fraction toward the tint colour's, and turns the field's hue at most 20 deg toward the
@@ -422,7 +483,10 @@ given, the second is for the high-contrast themes.
 | `text` | bg, panel, toolbar, raised, input, hover, selected, hunk_bg, every diff background | 4.5 / 7 |
 | `strong` | selected | 4.5 / 7 |
 | `weak` | bg, panel, toolbar, raised, input, hover, selected | 4.5 |
-| `faint` | bg, panel, input (never text on the toolbar) | 4.5, and 1.0 below weak on panel |
+| `faint` | bg, panel, input, toolbar, the text-field fill, every lane band | 4.5, and 1.0 below weak on panel |
+| `weak` | `selected_inactive` | 4.5 |
+| `text`, `strong` | the find fill (`find_fill`, a search's matched text) on bg, every lane band and its highlight, hover, selected, `selected_inactive` | 4.5 / 7, and the fill 1.25:1 from its surface |
+| Live-updates marks (`added`, `warn`, `weak`) | toolbar | 3 |
 | `input_border` | bg, panel, input, toolbar | 3 / 4.5 |
 | `dialog_border` | panel | 3 / 4.5 |
 | `accent` | bg, panel, input | 3 |
@@ -440,11 +504,17 @@ given, the second is for the high-contrast themes.
 | `text` | hover, pressed and latched layers on panel, raised, overlay and tool backing | 4.5 / 7 |
 | Tonal ink | tonal fill at rest, hovered and pressed | 4.5 / 7 |
 | `accent` (the focus ring) | bg, panel, input, raised, overlay, tool backing | 3 |
+| `accent` (the inset focus ring on rows) | selected, inactive selection, hover | 3 |
+| Strong focus: `accent` | its `bg` outline | 3 |
+| Strong focus on a primary half: `on_primary` | primary at rest, hovered and pressed | 3 |
 | Tone tint ink (accent, success, warning, danger, info) | its tint | 4.5 |
 | Light's chip tones (`branch.chips`) | bg, panel, toolbar, hover, selected, raised | 4.5 |
 | Colour-blind line tones, applied to every built-in | bg, panel | 3 |
 | Colour-blind light text tones (chips on every light built-in) | bg, panel, toolbar, hover, selected, raised | 4.5 |
 | Colour-blind dark tones, light line tones | each other and the accents, in OKLab under normal, protan, deutan and tritan vision | distance 0.08 (dark), 0.05 (light lines) |
+| Colour-safe added, removed, modified | each other, in OKLab under normal, protan, deutan and tritan vision | distance 0.10 |
+| Colour-safe diff fills, selected and changed-word | each other, as above | distance 0.10 (plain fills: 0.09 dark, 0.04 light, which sRGB can't take further; the gutter's +/- carry them) |
+| Colour-safe added, removed, modified | bg, panel, hover, selected | 3 / 4.5 |
 | Change chip text | its chip tint | 4.5 |
 | Every `syn_*` | panel, diff_add, diff_del, diff_add_word, diff_del_word | 2.4 / 4.5 |
 | Terminal text colours (below) and `ansi.foreground` | `ansi.background` (input) | 4.5 / 7 |
@@ -477,20 +547,41 @@ built-in and two custom palettes with odd colours.
 
 ## 5. Chip tints
 
-Ref chips in the graph (`contrast::ref_chip`, painted by `graph/labels.rs`'s `paint_box`), every
-fill opaque with its text at 4.5:1 or more:
+Ref chips in the graph (`ref_chip::ref_chip`, painted by `graph/labels.rs`'s `paint_box`):
+filled = a local branch (no mark), outlined = a reference (a remote branch or a tag), a halo =
+you are here, with a ✔ and semibold text. A local branch at the same commit as its copies on
+remotes (its upstream, or the same name) folds them in and shows the cloud mark ("main, in sync
+with origin/main" on hover); a diverged upstream keeps its own outlined chip on its own commit. Every chip stands apart from every row surface it can sit on (`surfaces::with_row_surfaces`:
+the background, hover, the selection with and without the focus, and every lane's band in both
+presets, plain and highlighted while its branch is hovered): its fill or its edge reaches 3:1
+against each. Its text reaches 4.5:1 (7:1 in the
+high-contrast themes) on its fill, or, outlined, on every row surface. Nothing is brown.
 
-- A branch or remote branch on a dark palette: a neutral fill, the background 10% toward
-  `text`, with a 1 px edge (the fill 70% toward the branch's chip tone, `clear`ed) and text in
-  the chip tone. A tint of the branch colour would be brown for every warm branch (orange,
-  gold, lime, olive), so no chip is tinted, and all chips look alike whatever their hue.
-- On a light palette: a pale wash of the branch's hue (OKLCH lightness 0.955, chroma at most
-  0.035), with the same edge and text. Paler than 0.90, a warm wash reads cream.
-- The checked-out branch: on a dark palette a solid fill of its chip tone (`clear`ed, so a
-  warm one is a bright orange or gold) with dark text; on a light one a deeper wash (lightness
-  0.90, chroma at most 0.09) with a full-colour edge.
-- Tags keep the palette's `tag_bg` / `tag_fg` (plum in most themes), a detached HEAD the
-  background 16% toward `text`.
+- A local branch on a dark palette: a solid fill of its clear chip tone (`clear`ed, so a warm
+  one is a bright orange or gold), lifted 5% at a time toward white until it reaches 3:1
+  against every row surface; text and marks in the background, darkened until they read. No
+  edge.
+- A local branch on a light palette: a wash of its hue (OKLCH lightness 0.90, chroma at most
+  0.09) with text in its chip tone (or `text` if that reads brown), and a 1 px edge in its line
+  tone pushed toward black until it reaches 3:1 against every row surface; an edge that would
+  read brown takes the text's colour.
+- The main branch takes the trunk tone the same way: a neutral fill (dark) or wash (light)
+  lettered in the background or `text`.
+- The checked-out branch and a detached HEAD: the local look (HEAD as the trunk's, on a light
+  palette a neutral step 12% toward `text` edged in the trunk tone) plus a 1.5 px halo 1.5 px
+  outside the chip, its corners the chip's plus 3, in the fill colour (dark) or the edge colour
+  (light). The halo box is 28 px tall and takes no layout room: the chip lines up with every
+  other row's, and the ring paints into the cell's inset, its padding or the gap after it. A
+  ref chip after it moves 3 px further away (so the ring doesn't double its edge); a "+N"
+  badge keeps the 4 px gap. The ✔ stays.
+- A remote branch: no fill; the edge in its line tone and the text in its chip tone, pushed
+  until they reach 3:1 and the text target against every row surface; text that reads brown or
+  can't reach it is `text`. Main's remote chip is edged in the trunk tone and lettered in `text`.
+- A tag: outlined like a remote, its edge and text in `tag_fg` (plum in most themes), pushed the
+  same way.
+
+The values are a designer's study (issue #522); `theme/ref_chip_tests.rs` holds every built-in
+in both presets to them. The "+N" badge keeps the `raised` fill.
 
 A change chip (the WIP row's M / A / D) is an opaque tint of its status colour over the base:
 22% in dark palettes and 10% in light ones (`contrast::change_chip`), `unbrown`ed: a warm one
@@ -517,6 +608,7 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | text / strong | #e6e5ef / #ffffff | text 12.9:1 on panel |
 | weak / faint | #b6b3c8 / #9b96ae | 7.85 and 5.6:1 on panel |
 | accent, primary | #f6c159 | The lantern gold, OKLCH 0.84 0.135 82; 9.7:1 on panel |
+| lantern | #f6c159 | The accent; 10.5:1 on bg, 7.45 on selected |
 | on_primary | #151229 | 11.0:1 on the gold |
 | primary_border | #d5a13c | |
 | tag_bg / tag_fg | #4a283f / #f4c9e4 | Plum, 8.6:1 |
@@ -538,8 +630,9 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | hover | #ece9f5 | |
 | selected | #e6e1fa | A pale iris wash; branch chips keep 4.54:1 on it |
 | text / strong | #211f38 / #100d26 | text 15.3:1 on panel |
-| weak / faint | #54526d / #6b6882 | 7.2 and 5.1:1 on panel |
+| weak / faint | #54526d / #636079 | 7.2 and 5.8:1 on panel |
 | accent, primary | #5a47cf | Iris, OKLCH 0.50 0.20 283; 6.2:1 on panel, 5.1:1 on selected |
+| lantern | #cc590d | An orange, OKLCH 0.60 0.164 46; Dawn has no gold (a 3:1 gold on paper reads brown). 3.91:1 on bg, 3.30 on selected |
 | on_primary | #ffffff | 6.5:1 on the iris |
 | primary_border | #4535b5 | |
 | tag_bg / tag_fg | #f5d8ea / #763463 | Plum, 6.5:1 |
@@ -613,7 +706,7 @@ Linen's diff, syntax and danger colours.
 | hover | #213044 | #e2eef5 | #303236 | #eceef2 |
 | selected | #173f3c | #c7eddd | #1f3d62 | #dbe8fc |
 | text / strong | #e2e8f0 | #142533 | #e6e7e9 | #1e2228 / #0c0f13 |
-| weak / faint | #adbacc / #8f9eb3 | #475867 / #5e6f7d | #b7b9bc / #9a9da2 | #525862 / #676d77 |
+| weak / faint | #adbacc / #8f9eb3 | #475867 / #566673 | #b7b9bc / #9a9da2 | #525862 / #616670 |
 | accent, primary | #6eddb2 | #007258 | #7ebbff | #1a5bb5 |
 | on_primary | #08121f | #ffffff | #0a1018 | #ffffff |
 | primary_border | #4eb891 | #005641 | #5695e0 | #134894 |
@@ -622,6 +715,7 @@ Linen's diff, syntax and danger colours.
 | modified / warn | #edb345 / #e8b339 | #975600 / #975600 | #edb345 / #e8b339 | #985700 / #985700 |
 | info / progress | #60aaf3 / #a689f1 | #1f68bc / #6d47b8 | #4fc0e7 / #a689f1 | #006e91 / #6d47b8 |
 | banner | #1c2939 | #fbecc8 | #292b2e | #fbecc8 |
+| lantern | #f9cb92 | #cc590d | #f9cb92 | #cc590d |
 | syn_comment | | | | #686e78 |
 
 Text on the panel reaches 12.9 to 13.3:1 in the dark ones and 15.2 to 15.5:1 in the light ones;

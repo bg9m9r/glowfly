@@ -1,27 +1,32 @@
 //! Headless tests for the commit panel's rail beside a tool view: which view counts (in the
 //! central area's order), collapsing without saving, expanding for the open view only, Go to the
-//! commit message expanding it, the toggle key hiding it, Close bringing the full panel back, and
-//! the rail's change count.
+//! commit message expanding it, the toggle key hiding it, Close bringing the full panel back (the
+//! pull request panel, the rebase editor and the conflict view too), a stopped rebase keeping
+//! the full panel, and the rail's change count.
 
 use super::issue_tests::open_repo;
 use super::tests::{git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::gitflow::GitFlowMsg;
-use crate::keymap::KeyAction;
-use crate::msg::{BlameMsg, ConflictMsg, HistoryMsg, IssueMsg, LayoutMsg, Msg};
-use crate::state::blame::BlameView;
-use crate::state::conflict::ConflictView;
-use crate::state::history::{FileHistoryView, HistoryKind};
-use crate::state::layout::{DetailsShape, Panel, ToolView, details_shape, tool_view, wip_change_count};
-use crate::state::{AppState, Selection};
+use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadOptions};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{BlameMsg, ConflictMsg, HistoryMsg, IssueMsg, LayoutMsg, Msg, RebaseMsg};
+use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::history::{FileHistoryView, HistoryKind};
+use glowfly_model::state::layout::{DetailsShape, Panel, ToolView, details_shape, tool_view, wip_change_count};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 fn opened(name: &str) -> (AppState, PathBuf) {
@@ -59,6 +64,10 @@ fn pr() -> glowfly_core::forge::PullRequest {
     }
 }
 
+fn head(st: &AppState) -> git2::Oid {
+    st.snap.as_ref().unwrap().commits[0].oid
+}
+
 fn send(st: &mut AppState, m: Msg) -> Vec<Effect> {
     update(st, m, Instant::now())
 }
@@ -79,9 +88,9 @@ fn tool_view_follows_the_central_order() {
     st.session.history.view = None;
     send(&mut st, Msg::Issue(IssueMsg::Open("12".into())));
     assert_eq!(tool_view(&st), Some(ToolView::Issue));
-    let pr = crate::state::pull_request::PrView::new(pr(), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
+    let pr = glowfly_model::state::pull_request::PrView::new(pr(), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
     st.session.pull_request.view = Some(pr);
-    assert_eq!(tool_view(&st), None, "the pull request panel covers the issue panel");
+    assert_eq!(tool_view(&st), Some(ToolView::PullRequest), "the pull request panel covers the issue panel");
     st.session.pull_request.view = None;
     st.dashboard.open = true;
     assert_eq!(tool_view(&st), None);
@@ -89,8 +98,11 @@ fn tool_view_follows_the_central_order() {
     st.session.issue.view = None;
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
-    assert_eq!(tool_view(&st), None);
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(head(&st))));
+    assert_eq!(tool_view(&st), None, "a diff covers the rebase editor, beside the full panel");
     st.session.diff.view = None;
+    assert_eq!(tool_view(&st), Some(ToolView::Rebase));
+    st.session.rebase.view = None;
     st.session.gitflow_panel = true;
     assert_eq!(tool_view(&st), Some(ToolView::GitFlow));
     st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
@@ -224,6 +236,95 @@ fn closing_each_tool_view_restores_the_panel() {
         assert_eq!(details_shape(&st), DetailsShape::Full, "{name}");
     }
     super::issue_tests::done(st, dir);
+}
+
+/// Each mode that collapses the panel, how to open it, and the message that leaves it.
+fn modes() -> [Case; 3] {
+    [
+        (
+            "pull request",
+            |st| {
+                let pr =
+                    glowfly_model::state::pull_request::PrView::new(pr(), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
+                st.session.pull_request.view = Some(pr);
+            },
+            Msg::PullRequest(PullRequestMsg::Close),
+        ),
+        (
+            "rebase",
+            |st| st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(head(st)))),
+            Msg::Rebase(RebaseMsg::CloseRebase),
+        ),
+        (
+            "conflict",
+            |st| st.session.conflict.view = Some(ConflictView::loading("a.txt".into())),
+            Msg::Conflict(ConflictMsg::CloseConflict),
+        ),
+    ]
+}
+
+#[test]
+fn each_mode_collapses_and_leaving_it_restores_the_panel() {
+    let (mut st, dir) = open_repo("rail-modes");
+    for (name, open, close) in modes() {
+        open(&mut st);
+        let fx = nudge(&mut st);
+        assert_eq!(details_shape(&st), DetailsShape::Rail, "{name}");
+        assert!(st.settings.show_details_panel && !saves(&fx), "{name}: the setting is untouched");
+        // Expanded, it stays in full until the mode ends.
+        send(&mut st, Msg::Layout(LayoutMsg::ExpandDetails));
+        nudge(&mut st);
+        assert_eq!(details_shape(&st), DetailsShape::Full, "{name}: expanded");
+        send(&mut st, close);
+        assert_eq!(details_shape(&st), DetailsShape::Full, "{name}: left");
+        assert_eq!(st.view.details_expanded_for, None, "{name}: the expansion ends with the mode");
+        // The next time starts collapsed again.
+        open(&mut st);
+        nudge(&mut st);
+        assert_eq!(details_shape(&st), DetailsShape::Rail, "{name}: again");
+        let (_, _, close) = modes().into_iter().find(|(n, ..)| *n == name).unwrap();
+        send(&mut st, close);
+    }
+    super::issue_tests::done(st, dir);
+}
+
+#[test]
+fn the_toggle_key_still_works_in_each_mode() {
+    let (mut st, dir) = open_repo("rail-modes-toggle");
+    for (name, open, close) in modes() {
+        open(&mut st);
+        nudge(&mut st);
+        send(&mut st, Msg::Layout(LayoutMsg::TogglePanel(Panel::Details)));
+        assert_eq!(details_shape(&st), DetailsShape::Hidden, "{name}: hidden");
+        send(&mut st, Msg::Layout(LayoutMsg::TogglePanel(Panel::Details)));
+        assert_eq!(details_shape(&st), DetailsShape::Rail, "{name}: shown again, as the rail");
+        send(&mut st, close);
+        // Hidden in the mode stays hidden after it: the person's own choice.
+        send(&mut st, Msg::Layout(LayoutMsg::TogglePanel(Panel::Details)));
+        assert_eq!(details_shape(&st), DetailsShape::Hidden, "{name}: the saved choice outlives the mode");
+        send(&mut st, Msg::Layout(LayoutMsg::TogglePanel(Panel::Details)));
+    }
+    super::issue_tests::done(st, dir);
+}
+
+#[test]
+fn a_stopped_rebase_keeps_the_full_panel() {
+    let dir = super::rebase_edit_commit_tests::stopped_at_edit("rail-stopped-rebase");
+    let mut st = state();
+    super::tests::drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Open(dir.clone())));
+    st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(head(&st))));
+    nudge(&mut st);
+    assert_eq!(tool_view(&st), Some(ToolView::Rebase));
+    assert_eq!(details_shape(&st), DetailsShape::Full, "Edit remaining steps… keeps the steps beside it");
+    st.session.rebase.view = None;
+    st.session.conflict.view = Some(ConflictView::loading("a.txt".into()));
+    nudge(&mut st);
+    assert_eq!(details_shape(&st), DetailsShape::Full, "the conflict view too");
+    st.session.conflict.view = None;
+    st.session.blame.view = blame();
+    nudge(&mut st);
+    assert_eq!(details_shape(&st), DetailsShape::Full, "and every other view");
+    done(st, dir);
 }
 
 #[test]

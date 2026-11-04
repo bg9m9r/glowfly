@@ -2,10 +2,10 @@
 //! buttons and modals take their colours from egui's widget style, which the palette can't make
 //! readable everywhere (a field's edge, an unchecked box and a modal's edge would vanish on some
 //! themes). Views under `src/` use the themed helpers instead: `theme::controls::field` /
-//! `Field`, `checkbox`, `radio`, `radio_value`, `Check` and `Radio`, and `theme::modal`.
+//! `Field`, `SizedField`, `checkbox`, `radio`, `radio_value`, `Check` and `Radio`, and `theme::modal`.
 //!
 //! A text field built in a `let` and added later is caught by a count: each file needs at least
-//! as many `field(` / `Field(` wrappers as lines that make a `TextEdit`.
+//! as many `field(` / `Field(` / `SizedField::new(` wrappers as lines that make a `TextEdit`.
 //!
 //! Buttons keep one look too. Every dialog (the files `modals.rs` dispatches to, plus the
 //! confirmation, discard question and askpass windows) draws its title, buttons and Cancel or
@@ -143,7 +143,7 @@ fn violations(src: &str) -> Vec<String> {
             edits += 1;
             first_edit.get_or_insert(i + 1);
         }
-        wrappers += count(line, "field(") + count(line, "Field(");
+        wrappers += count(line, "field(") + count(line, "Field(") + count(line, "SizedField::new(");
     }
     if edits > wrappers {
         let at = first_edit.unwrap_or(1);
@@ -316,6 +316,7 @@ fn the_check_catches_egui_controls() {
     assert_eq!(n("ui.add(controls::Check::without_text(&mut on));"), 0);
     assert_eq!(n("let e = egui::TextEdit::multiline(&mut s);\ncontrols::field(ui, e);"), 0);
     assert_eq!(n("ui.add_enabled(on, controls::Field(e));\nlet e = egui::TextEdit::multiline(&mut s);"), 0);
+    assert_eq!(n("let e = egui::TextEdit::singleline(&mut s);\nui.add(controls::SizedField::new(size, e));"), 0);
     assert_eq!(n("super::theme::modal(ctx, id).show(ctx, |ui| {});"), 0);
     // A local helper named like the wrapper doesn't count as one.
     assert_eq!(n("let e = egui::TextEdit::singleline(&mut s);\nname_field(&ui.add(e), \"Name\");"), 1);

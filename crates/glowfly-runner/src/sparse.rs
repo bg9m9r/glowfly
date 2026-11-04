@@ -3,9 +3,9 @@
 //! (`SparseEffect::Checkout`).
 
 use super::execute::{Cx, Execute};
-use crate::effect::SparseEffect;
-use crate::msg::{Msg, SparseMsg};
 use glowfly_core::sparse_ops::{self, SparseCommand};
+use glowfly_model::effect::SparseEffect;
+use glowfly_model::msg::{Msg, SparseMsg};
 use std::path::Path;
 
 impl Execute for SparseEffect {

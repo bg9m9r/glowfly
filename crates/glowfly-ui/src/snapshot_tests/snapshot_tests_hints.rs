@@ -6,16 +6,16 @@
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
 use super::snapshot_tests_forge_filters::target;
 use super::snapshot_tests_worktrees::pushed;
-use crate::msg::Msg;
-use crate::onboarding::OnboardingMsg;
-use crate::state::hints::{HintId, ShownHint};
-use crate::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::vec2;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::Provider;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::hints::{HintId, ShownHint};
+use glowfly_model::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
 use std::time::Instant;
 
 /// Shows tip `id` in the active tab.
@@ -30,7 +30,7 @@ fn undo_in(theme: ThemeChoice, dark: bool, name: &str, golden: &str) {
     let mut h = harness(st, dark);
     h.run();
     h.check_snapshot(golden);
-    let key = h.state().0.keymap.hint(crate::keymap::BindingId::Undo).unwrap().to_owned();
+    let key = h.state().0.keymap.hint(glowfly_model::keymap::BindingId::Undo).unwrap().to_owned();
     let text = format!("{key} undoes that, and the operation journal keeps every earlier state of your branches.");
     assert!(h.query_by_label(&text).is_some(), "the row is a group named by its sentence");
     h.get_by_label("Open journal").click();

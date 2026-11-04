@@ -7,7 +7,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Unchanged lines in a diff
 
-- `TabView::diff_expanded` (in `RepoSession::tab_view`) holds the opened runs by key (a run's first new line, the same in the whole-file view and the hunk view) and, for the hunk view, the text of the gaps between hunks, read once per shown diff (`Effect::LoadDiffGaps`, `update/diff_gaps.rs`).
+- `TabView::diff_expanded` (in `RepoSession::tab_view`) holds the opened runs by key (a run's first new line, the same in the whole-file view and the hunk view) and, for the hunk view, the text of the gaps between hunks, read once per shown diff (`DiffEffect::Gaps`, `update/diff_gaps.rs`).
 - E and Shift+E open the next closed run from the top or fold back the one there (`update/fold_keys.rs`).
 
 ## Next/previous change across files
@@ -22,11 +22,12 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - The active tab's repository data lives in `AppState`; switching tabs parks it in `state::tabs::Parked` and restores the other tab's. Everything per tab moves as one `RepoSession`: the views with generation counters, the open diff (`DiffSlot`), the commit detail and draft, the repository reads (`RepoReads`), the selection, forge data, undo history, commit search and the view state (`TabView`). Its counters on return move past both tabs' (`RepoSession::resume_after`). `Parked` adds only the snapshot and the Create issue dialog. After the swap `unpark` runs named hooks: `gitflow::snapshot_changed`, the selection reset without a snapshot, the diff top-row recount (`restore_diff_top`), the Create issue dialog and the graph scroll restore.
 - Results of repository-scoped effects (`Effect::scope`) come back as `Msg::Scoped`.
 - If their tab is no longer active, only what the area's `on_inactive` returns is applied (a log line, an undo entry for that tab, a dialog's result); the rest is dropped.
+- A tab parked `HISTORY_FREE_AFTER` (10 minutes) with `HISTORY_FREE_MIN_COMMITS` (5,000) or more loaded keeps a stub of its snapshot (refs, status, labels) and frees its commits, rows and graph on a worker (`update/parked_free.rs`, on `Msg::Tick`; `state::tabs::history_free_wake` asks for the tick). Shown again, it reloads in full as deep as it was loaded, keeping selection and scroll, while the graph shows a spinner (`TabView::history_freed`), or the error with Try again if the reload fails (`TabView::history_reload_error`). Tests in `update/tests/parked_free_tests.rs` and `flows/parked_free_tests.rs`.
 - Each tab's activity log lives outside `Parked`, in `Tab::log` (the active one's in `AppState::log`): `switch` and `activate` swap it, so a restored tab that hasn't loaded still gets lines.
 - Paths are resolved on disk once, when a repository loads (`Snapshot::real_workdir`, with its identity `Snapshot::folder`).
 - `update` compares paths with the pure `paths::same_spelling` plus the identities worker threads found (`AppState::same_folder`, `state/known_folders.rs`); it never folds case, which is the volume's business.
 - Settings saved per repository are keyed by `real_workdir` through `settings::repo_keys`.
-- Worktree tab groups: each `Tab::group` is its repository's common git dir (`Snapshot::common`, or for restored tabs `Effect::ReadTabGroups`, read at startup without loading them).
+- Worktree tab groups: each `Tab::group` is its repository's common git dir (`Snapshot::common`, or for restored tabs `SessionEffect::ReadTabGroups`, read at startup without loading them).
 - The pure rules for tab group blocks, drops and regrouping are in `state/tab_groups.rs`, applied by `update/tab_groups.rs` and drawn by `ui/tabs.rs`.
 - Worktrees and branches: a local branch another worktree has checked out, or is rebasing or bisecting, is found by its exact name (`WorktreeInfo::uses`) and `WorktreeInfo::current` (`state/worktree_branches.rs`), never by comparing folder spellings.
 - That one source refuses checkout, delete and fast-forward of such a branch, and rename and force push of one being rebased or bisected (git renames one merely checked out elsewhere), naming the worktree and what it is doing; the LOCAL row's tooltip says the same.
@@ -66,6 +67,8 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - The merge method last used is remembered per repository (`Settings::merge_method_for`) and preselected when the repository still allows it.
 - After a merge, `update/pull_request/cleanup.rs` runs one job: the remote branch's delete when asked, the fetch, then the local branch's delete when asked.
 - The local branch's rules and commands are in `state/pull_request_cleanup.rs`: kept on a fork, after a squash or rebase merge, when checked out in another worktree, or when checked out here with changes. It goes only once the fetched target contains it, after checking out the target if it is checked out here, and through `git branch -d`; a failed job puts the branch's upstream back (its `on_fail_check`). Only a branch tracking `<remote>/<source>` is offered.
+- `update/pull_request/calls.rs`: the pull request panel's calls to its hosting service: loading the page (detail and conversation; the checks are in checks.rs), posting a comment, submitting a review, replying to and resolving code comment threads (threads.rs), starting a code comment on diff lines (line_comment.rs) and merging, remembering the merge method for the repository, then cleaning up (cleanup.rs).
+- `update/pull_request/threads.rs`: the pull request panel's code comment threads: replying and resolving (sent through `calls::act`, one action at a time like the other calls), applying their answers in place, which threads are shown and open, and going from a thread to its line in Files changed.
 
 ## New code comments on diff lines
 
@@ -146,17 +149,17 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Right after it starts, the watcher places a probe file in the git dir (`glowfly_core::watch_probe`, `watcher/probe.rs`) and reports `WatchMsg::Probed`: `Live` once its event arrives, `Silent` after `PROBE_TIMEOUT` (5 s) without one, `Unknown` when the git dir can't be written.
 - `update/watch.rs` keeps the answer per repository in `WatchState::probes`; a silent watcher is warned about once per repository and session (not on a network volume, whose notice already said why) and polled like a network volume (`WatchState::poll_interval`) until any later event sends `Live`.
 - A timed status read is due `WatchState::poll_gap` after the end of the last whole status read (three times a slow read's length, at most `POLL_GAP_CAP`), and skipped while one runs; tests in `flows/watch_poll_spacing_tests.rs`.
-- The status bar's dot (`ui/live_updates.rs`) shows `WatchState::live_updates`; tests in `flows/watch_poll_tests.rs` and `ui/snapshot_tests/snapshot_tests_live_updates.rs`.
+- The status bar's mark and label (`ui/live_updates.rs`) shows `WatchState::live_updates`; tests in `flows/watch_poll_tests.rs` and `ui/snapshot_tests/snapshot_tests_live_updates.rs`.
 
 ## Incremental status
 
 - The watcher (`watcher.rs`) collects the work-tree paths of a burst when nothing else changed (no `info/exclude`, `.gitignore`, `.gitattributes`, HEAD or ref change, no lost events, at most `watch::MAX_WATCH_PATHS`) and sends them in `WatchMsg::RepoChanged { paths }`.
-- `update/refresh_paths.rs` asks for `Effect::LoadStatus { paths: Some }`.
+- `update/refresh_paths.rs` asks for `LoadEffect::Status { paths: Some }`.
 - The runner (`runner/status.rs`) reads only the unstaged rows under them (`repo::status_of_paths`, widened to a submodule's or nested repository's root) or, when they can't be read on their own, the whole status in the same effect.
 - `update` merges the rows into the lists on screen (`repo::merge_unstaged`) and keeps the staged list.
 - A burst that also changed the index sends `WatchMsg::IndexChanged { paths }`.
 - Every whole read keeps a memo of the index entries it started from (`Snapshot::index_memo`, `repo::IndexMemo`, read just before the status).
-- `update/refresh_index.rs` asks for `Effect::LoadIndexStatus`, which compares the index with the memo (path, stage, mode, id, skip-worktree, intent-to-add; not stat data).
+- `update/refresh_index.rs` asks for `LoadEffect::IndexStatus`, which compares the index with the memo (path, stage, mode, id, skip-worktree, intent-to-add; not stat data).
 - It reads both lists' rows only for the changed paths, the burst's paths and the staged additions, deletions and renames a rename may pair with (`repo::status_after_index_change`, merged by `merge_staged` and `merge_unstaged`, storing the new memo).
 - A conflicted or non-UTF-8 changed entry, a read set past the cap or one that can't be read alone, or no memo reads the whole status.
 - Glowfly's own refreshes and the polls read everything; reads asked for while one runs merge (`state::refresh::Wanted`).
@@ -219,5 +222,5 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Every full load (`update/repo.rs`, after the trust check), Reload custom commands and a watcher burst touching `.glowfly/` send `CustomCommandEffect::Load` with a new `generation`; the answer is dropped when it is older or for another folder.
 - Loaded commands get their keys (checked against the keymap and each other) and their problems, logged and toasted only when the set changes (`CustomCommands::reported`).
 - A run fills the placeholders from the row (`vars_for`) and may ask first (`Modal::Confirm`).
-- A run is then an ordinary job: a git command through `start_job` (`Effect::RunGit` with prompts), a shell command through `begin_job` as `CustomCommandEffect::RunShell`, answered with `JobMsg::JobDone`.
+- A run is then an ordinary job: a git command through `start_job` (`JobEffect::RunGit` with prompts), a shell command through `begin_job` as `CustomCommandEffect::RunShell`, answered with `JobMsg::JobDone`.
 - The repository's own commands run only while the repository is Trusted with a print that covers the commands file as loaded (`FileRead::digest`, kept as `CustomCommands::repo_digest`); otherwise, including an edit made outside Glowfly that the next full load hasn't noticed yet, they wait in `trust::hold` with a prompt listing that file, and Trust and run trusts it.

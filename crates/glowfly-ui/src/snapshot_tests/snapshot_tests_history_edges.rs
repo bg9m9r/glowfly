@@ -4,8 +4,8 @@
 
 use super::snapshot_tests::{remove_fixture, render, with_repo};
 use super::snapshot_tests_line_counts::with_wip;
-use crate::state::Selection;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::Selection;
 
 #[test]
 fn history_table_edges_no_refs() {

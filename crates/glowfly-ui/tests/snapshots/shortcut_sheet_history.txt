@@ -1,7 +1,7 @@
 Dialog
   Label "Keyboard shortcuts"
   Button "Close this dialog"
-  TextInput = "editing history" [focused]
+  TextInput "Filter by action or key" = "editing history" [focused]
   Label "Editing history"
   Label "Reword the selected commit"
   Label "in the commit graph"
@@ -12,7 +12,7 @@ Dialog
   Label "Drop the selected commits"
   Label "in the commit graph"
   Label "Del or Ctrl+Backspace"
-  Label "Continue the rebase"
+  Label "Continue the merge, rebase or cherry-pick"
   Label "Alt+C"
   Label "Skip the commit and continue the rebase"
   Label "Alt+K"

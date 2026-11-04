@@ -3,12 +3,12 @@
 
 use super::issue_tests::{done, github, listed, open_repo};
 use super::update;
-use crate::effect::{Effect, IssueCall, IssueEffect};
-use crate::msg::{Msg, PaletteMsg};
-use crate::state::forge_filters::IssueList;
-use crate::state::palette::{Mode, Palette, PaletteCommand, PickKind, shown};
-use crate::state::{AppState, Modal, Status};
 use glowfly_core::forge::{Connection, FilterChoice, Issue, Provider, Target};
+use glowfly_model::effect::{Effect, IssueCall, IssueEffect};
+use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::forge_filters::IssueList;
+use glowfly_model::state::palette::{Mode, Palette, PaletteCommand, PickKind, shown};
+use glowfly_model::state::{AppState, Modal, Status};
 use std::time::Instant;
 
 fn send(st: &mut AppState, cmd: PaletteCommand) -> Vec<Effect> {

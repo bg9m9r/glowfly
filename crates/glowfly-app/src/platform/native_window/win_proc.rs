@@ -12,7 +12,7 @@
 //! is enough), with no `RefCell`, unwrap or indexing that can fail.
 
 use super::{NativeFrame, win_system};
-use crate::state::window_native::{BackdropSupport, CaptionButton, CaptionEvent, CaptionGeometry, CaptionHit, PxRect};
+use glowfly_model::state::window_native::{BackdropSupport, CaptionButton, CaptionEvent, CaptionGeometry, CaptionHit, PxRect};
 use std::ffi::c_void;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicIsize, AtomicU8, Ordering::Relaxed};
@@ -49,6 +49,9 @@ static MENU_SHOWN: AtomicBool = AtomicBool::new(false);
 static TRACKING: AtomicBool = AtomicBool::new(false);
 static TRANSPARENCY: AtomicBool = AtomicBool::new(false);
 static HIGH_CONTRAST: AtomicBool = AtomicBool::new(false);
+/// The system reported a settings change, not yet polled: the accessibility settings are read
+/// again (`platform::a11y_system`).
+static SETTINGS_CHANGED: AtomicBool = AtomicBool::new(false);
 /// Windows accepted the Mica backdrop.
 static SUPPORTED: AtomicBool = AtomicBool::new(false);
 /// Woken on every change the shell should see.
@@ -88,6 +91,7 @@ pub(super) fn poll() -> NativeFrame {
         max_button: from_bits(CAPTION.load(Relaxed)),
         max_clicked: MAX_CLICKED.swap(false, Relaxed),
         system_menu_shown: MENU_SHOWN.swap(false, Relaxed),
+        settings_changed: SETTINGS_CHANGED.swap(false, Relaxed),
         support: BackdropSupport {
             supported: SUPPORTED.load(Relaxed),
             transparency: TRANSPARENCY.load(Relaxed),
@@ -152,7 +156,7 @@ fn step(e: CaptionEvent) {
 
 fn reread_settings() {
     TRANSPARENCY.store(win_system::transparency_on(), Relaxed);
-    HIGH_CONTRAST.store(win_system::high_contrast_on(), Relaxed);
+    HIGH_CONTRAST.store(crate::platform::a11y_system::high_contrast_on(), Relaxed);
 }
 
 /// The client point of a hit test's screen-coordinate `lp` (signed 16-bit x and y).
@@ -260,6 +264,7 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPAR
         }
         WM_SETTINGCHANGE | WM_THEMECHANGED | WM_DWMCOMPOSITIONCHANGED => {
             reread_settings();
+            SETTINGS_CHANGED.store(true, Relaxed);
             repaint();
         }
         WM_NCDESTROY => {

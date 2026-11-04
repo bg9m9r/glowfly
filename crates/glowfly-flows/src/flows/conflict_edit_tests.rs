@@ -1,14 +1,15 @@
 //! Headless tests for picking single lines, editing the output by hand and Save with markers.
 
-use crate::effect::{Effect, LocalOp};
 use crate::flows::conflict_tests::{conflicted_repo, with_fake};
 use crate::flows::{drive, git, scratch_repo, state};
-use crate::msg::{ConflictMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::update::update;
 use glowfly_core::conflict_pick::{ChunkPick, LineRef};
 use glowfly_core::conflict_rows::Trivial;
 use glowfly_core::repo::{Choice, ConflictContent, Segment, Side, marker_regions};
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::msg::{ConflictMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -16,7 +17,7 @@ fn send(st: &mut AppState, m: ConflictMsg) -> Vec<Effect> {
     update(st, Msg::Conflict(m), Instant::now())
 }
 
-fn view(st: &AppState) -> &crate::state::conflict::ConflictView {
+fn view(st: &AppState) -> &glowfly_model::state::conflict::ConflictView {
     st.session.conflict.view.as_ref().expect("view open")
 }
 
@@ -43,20 +44,27 @@ fn type_in_chunk(st: &mut AppState, k: usize, text: &str) {
 }
 
 #[test]
-fn line_toggles_build_the_output_in_tick_order() {
+fn line_toggles_build_the_output_in_band_order() {
     let mut st = with_two_lines(3, 1);
     st.session.conflict.view.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
     send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Theirs, line: 1 });
     send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Ours, line: 0 });
     let c = view(&st);
-    let want = ChunkPick::Lines(vec![LineRef { side: Side::Theirs, line: 1 }, LineRef { side: Side::Ours, line: 0 }]);
-    assert_eq!((&c.picks[1], c.auto[1], c.current), (&want, None, 1), "the automatic tag goes");
+    let want = ChunkPick::Lines(vec![LineRef { side: Side::Ours, line: 0 }, LineRef { side: Side::Theirs, line: 1 }]);
+    assert_eq!((&c.picks[1], c.auto[1], c.current), (&want, None, 1), "ours first, and the automatic tag goes");
     assert_eq!(c.output(), None, "the other chunks are still open");
     for k in [0, 2] {
         send(&mut st, ConflictMsg::ConflictToggle { chunk: k, side: Side::Ours });
     }
     let out = view(&st).output().expect("every chunk picked");
-    assert_eq!(out, "top\nours 0\nbetween\ntheirs 1 more\nours 1\nbetween\nours 2\nbetween\n");
+    assert_eq!(out, "top\nours 0\nbetween\nours 1\ntheirs 1 more\nbetween\nours 2\nbetween\n");
+    // Swap puts theirs first, and a later tick keeps that order.
+    send(&mut st, ConflictMsg::ConflictSwap(1));
+    assert_eq!(view(&st).output().unwrap(), "top\nours 0\nbetween\ntheirs 1 more\nours 1\nbetween\nours 2\nbetween\n");
+    send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Theirs, line: 0 });
+    assert!(view(&st).output().unwrap().contains("between\ntheirs 1\ntheirs 1 more\nours 1\n"), "still theirs first");
+    send(&mut st, ConflictMsg::ConflictToggleLine { chunk: 1, side: Side::Theirs, line: 0 });
+    send(&mut st, ConflictMsg::ConflictSwap(1));
     // The header's Take finishes a partly taken side, then leaves it out.
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs });
     let line = |side, line| LineRef { side, line };
@@ -193,7 +201,7 @@ fn save_with_markers_writes_and_stays_conflicted() {
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours });
     let fx = send(&mut st, ConflictMsg::SaveConflictKeepMarkers);
     match &fx[..] {
-        [Effect::LocalOp { op: LocalOp::SavePartialResolution { path, contents, .. }, .. }] => {
+        [Effect::Files(FilesEffect::LocalOp { op: LocalOp::SavePartialResolution { path, contents, .. }, .. })] => {
             assert_eq!(path, "f.txt");
             assert_eq!(marker_regions(contents.as_bytes()), 1);
             assert!(contents.contains("line 2 ours\n") && contents.contains("<<<<<<< main\nline 10 ours\n"));
@@ -232,7 +240,7 @@ fn save_with_an_edited_chunk_stages_the_typed_text() {
     send(&mut st, ConflictMsg::ConflictEditOutput(true));
     type_in_chunk(&mut st, 0, "typed\n");
     match &send(&mut st, ConflictMsg::SaveConflict)[..] {
-        [Effect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. }] => assert_eq!(contents, "one\ntyped\n"),
+        [Effect::Files(FilesEffect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. })] => assert_eq!(contents, "one\ntyped\n"),
         other => panic!("expected one resolve, got {other:?}"),
     }
     assert!(send(&mut st, ConflictMsg::SaveConflictKeepMarkers).is_empty(), "nothing is left for markers");
@@ -289,7 +297,9 @@ fn save_writes_the_edited_clean_lines() {
     type_in_clean(&mut st, 0, "uno\n");
     send(&mut st, ConflictMsg::ConflictTakeAll(Side::Theirs));
     match &send(&mut st, ConflictMsg::SaveConflict)[..] {
-        [Effect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. }] => assert_eq!(contents, "uno\ntheirs\n"),
+        [Effect::Files(FilesEffect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. })] => {
+            assert_eq!(contents, "uno\ntheirs\n")
+        }
         other => panic!("expected one resolve, got {other:?}"),
     }
     let _ = std::fs::remove_dir_all(&dir);

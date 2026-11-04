@@ -9,16 +9,16 @@ use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
 use super::super::widgets::paint_cut_text;
 use super::files::notes;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::pull_request::{Files, PrView, unrelated_text};
-use crate::state::pull_request_commits::{commits_heading, empty_text, more_text, second_line};
-use crate::state::{AppState, Selection};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::type_scale;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, CursorIcon, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::repo::RangeCommit;
 use glowfly_core::text::printable;
+use glowfly_model::msg::{Msg, RepoMsg};
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::{Files, PrView, unrelated_text};
+use glowfly_model::state::pull_request_commits::{commits_heading, empty_text, more_text, second_line};
+use glowfly_model::state::{AppState, Selection};
 
 const ROW_H: f32 = 44.0;
 pub(crate) const LOADING: &str = "Reading the commits…";
@@ -81,7 +81,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
 /// the graph.
 fn row(ui: &mut Ui, st: &AppState, c: &RangeCommit, selected: bool, msgs: &mut Vec<Msg>) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
-    crate::ui::access::name_button(&resp, true, &format!("{} {}", short(c.oid), printable(&c.summary)));
+    crate::access::name_button(&resp, true, &format!("{} {}", short(c.oid), printable(&c.summary)));
     let date_rect = ui.is_rect_visible(rect).then(|| {
         super::super::widgets::row_fill::paint(ui.painter(), rect, selected, resp.hovered());
         paint(ui, st, rect, c)

@@ -3,15 +3,15 @@
 //! dragging a group, the repository line in the tooltip).
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::msg::TabsMsg;
-use crate::state::{AppState, Tab};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::CommonDir;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::{AppState, Tab};
 use std::path::PathBuf;
 
 /// The fixture's two tabs plus a third, so a tab can be dropped in the middle.
@@ -220,7 +220,8 @@ fn a_grouped_tab_names_its_repository_on_hover() {
         let name = if grouped { "demo-hotfix" } else { "notes" };
         let tip = h.query_all_by_label_contains(name).any(|n| n.role() != egui::accesskit::Role::Tab);
         assert!(tip, "tab {i} shows its path");
-        assert_eq!(h.query_by_label_contains("Repository: demo").is_some(), grouped, "tab {i}");
+        let tip = h.query_all_by_label_contains("Repository: demo").any(|n| n.role() != egui::accesskit::Role::Button);
+        assert_eq!(tip, grouped, "tab {i}");
         drop(h);
         remove_fixture(&dir);
     }

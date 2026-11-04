@@ -5,16 +5,16 @@
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
-use crate::msg::CommitMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::repo::{CommitTemplate, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
@@ -101,7 +101,7 @@ fn commit_box_split_halves() {
 
 #[test]
 fn commit_box_says_why() {
-    const NO_SUMMARY: &str = "Write a summary for the commit.";
+    const NO_SUMMARY: &str = "Write a summary to commit.";
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-says-why");
     git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
     reload(&mut st, &dir, &LoadOptions::all(500));
@@ -166,8 +166,8 @@ fn commit_shortcuts() {
     remove_fixture(&dir);
 }
 
-/// The commit box with a `len`-character summary; checks its counter `want` sits to the right of
-/// the summary field on the same row and explains the convention on hover.
+/// The commit box with a `len`-character summary; checks its counter `want` sits inside the
+/// summary field's trailing edge and explains the convention on hover.
 fn summary_counter(theme: ThemeChoice, name: &str, len: usize, want: &str) {
     let dark = theme == ThemeChoice::Dark;
     let (mut st, dir) = with_repo(theme, name);
@@ -181,8 +181,8 @@ fn summary_counter(theme: ThemeChoice, name: &str, len: usize, want: &str) {
     h.check_snapshot(name);
     let counter = h.get_by_label(want).bounding_box().expect("the counter");
     let field = h.get_by_label("Commit summary").bounding_box().expect("the summary field");
-    assert!(counter.x0 >= field.x1, "right of the field: {counter:?} {field:?}");
-    assert!(counter.y0 < field.y1 && counter.y1 > field.y0, "on the field's row: {counter:?} {field:?}");
+    assert!(counter.x1 <= field.x1 && counter.x0 > (field.x0 + field.x1) / 2.0, "inside the field's trailing edge: {counter:?} {field:?}");
+    assert!(counter.y0 >= field.y0 && counter.y1 <= field.y1, "inside the field: {counter:?} {field:?}");
     h.get_by_label(want).hover();
     h.run();
     h.run();
@@ -210,13 +210,13 @@ fn commit_box_amend_off_mid_merge() {
     st.session.draft.summary = "Merge branch 'feature'".into();
     let mut h = harness(st, true);
     h.run();
-    assert!(h.get_by_label("Amend").is_disabled(), "no amending in the middle of a merge");
-    h.get_by_label("Amend").hover();
+    assert!(h.get_by_label("Amend last commit").is_disabled(), "no amending in the middle of a merge");
+    h.get_by_label("Amend last commit").hover();
     h.run();
     h.run();
     h.check_snapshot("commit_box_amend_off_mid_merge");
     assert!(h.query_by_label("Finish the merge before amending.").is_some(), "the reason on hover");
-    h.get_by_label("Amend").click();
+    h.get_by_label("Amend last commit").click();
     h.run();
     assert!(!h.state().0.session.draft.amend, "a click does nothing");
     drop(h);

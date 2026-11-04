@@ -11,9 +11,11 @@ use git2::Oid;
 use glowfly_core::repo::{Comparison, Snapshot};
 
 /// Ctrl-click on the WIP row: one commit gains the working directory, a comparison drops it,
-/// otherwise the WIP row is selected. Refused (logged) with several commits selected.
+/// otherwise the WIP row is selected (and lit, even when it already was the selection, as a
+/// plain click lights it). Refused (logged) with several commits selected.
 pub(super) fn toggle(st: &mut AppState, fx: &mut Vec<Effect>) {
     match wip_toggled(&st.session.selection) {
+        Ok(Selection::Wip) if st.session.selection == Selection::Wip => super::repo::select_wip(st, fx),
         // Only graph rows are compared (a stash selected in the sidebar isn't one).
         Ok(Selection::VsWorkdir(w)) if !st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&w.oid)) => {
             super::selection::apply(st, Selection::Wip, fx)
@@ -96,6 +98,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
         return;
     }
     st.session.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
+    st.session.wip_lit = false;
     st.session.detail = None;
     if st.session.diff.view.as_ref().is_some_and(|(t, _)| t.workdir_compared().is_some()) {
         super::repo::close_diff(st);

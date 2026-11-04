@@ -23,6 +23,8 @@ pub struct JobSpec {
     pub clear_commit: bool,
     /// Push the branch once the job (a commit) succeeds.
     pub then_push: bool,
+    /// Resume the stopped rebase once the job (a commit) succeeds.
+    pub then_continue: bool,
     /// Open the create pull request dialog once the job (a push) succeeds.
     pub then_pr: Option<PrStart>,
     /// Check the repository again for a pending link's target once the job (a fetch) ends.
@@ -44,7 +46,7 @@ pub struct JobSpec {
     /// The job's last command is a cherry-pick or revert of these commits: it runs as
     /// Effect::Pick, carried past the commits that change nothing.
     pub pick: Option<PickPlan>,
-    /// The check to run when the job fails (`Effect::RunGit::on_fail_check`).
+    /// The check to run when the job fails (`JobEffect::RunGit::on_fail_check`).
     pub on_fail_check: Option<Vec<String>>,
 }
 
@@ -67,6 +69,7 @@ impl JobSpec {
             quiet: false,
             clear_commit: false,
             then_push: false,
+            then_continue: false,
             then_pr: None,
             then_link: false,
             then_open: None,

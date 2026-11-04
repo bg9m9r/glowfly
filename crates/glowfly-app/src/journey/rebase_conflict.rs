@@ -19,7 +19,7 @@ fn rebase_conflict_resolved_in_merge_view() {
     let main_tip = disk::head_oid(&repo);
     git(&repo, &["checkout", "-q", "topic"]);
     let mut j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
-    j.see("✔  topic", Region::Sidebar);
+    j.see("topic, checked out", Region::Sidebar);
 
     // step 1: the rebase stops on f.txt, with the conflict markers in the working file.
     j.branch_menu("main", "Rebase topic onto this branch");
@@ -46,12 +46,12 @@ fn rebase_conflict_resolved_in_merge_view() {
     j.click("View conflicts", Region::Details, Pick::Only);
     j.see("Ours", Region::Central);
     j.see("Theirs", Region::Central);
-    j.disabled("Save and mark resolved", Region::Central);
-    j.click("Take all", Region::Central, Pick::Rightmost);
-    j.enabled("Save and mark resolved", Region::Central);
+    j.disabled("Mark resolved", Region::Central);
+    j.click_containing("Take every conflict from theirs", Region::Central, Pick::Only);
+    j.enabled("Mark resolved", Region::Central);
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
     assert!(disk::work_text(&repo, "f.txt").unwrap().contains("<<<<<<<"));
-    j.click("Save and mark resolved", Region::Central, Pick::Only);
+    j.click("Mark resolved", Region::Central, Pick::Only);
     assert_eq!(disk::work_text(&repo, "f.txt").as_deref(), Some("topic\n"));
     assert!(disk::conflicted_paths(&repo).is_empty());
     assert_eq!(disk::index_text(&repo, "f.txt").as_deref(), Some("topic\n"));
@@ -72,5 +72,5 @@ fn rebase_conflict_resolved_in_merge_view() {
     assert!(disk::is_clean(&repo));
     j.absent("Continue", Region::Details);
     j.absent("Abort rebase", Region::Details);
-    j.see("topic", Region::Toolbar);
+    j.see("Branch: topic", Region::Toolbar);
 }

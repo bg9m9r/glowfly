@@ -4,6 +4,7 @@
 //! valid by oid.
 
 use crate::effect::Effect;
+use crate::effect::HistoryEffect;
 use crate::msg::PathsChunk;
 use crate::state::AppState;
 use crate::state::search::PathSearch;
@@ -35,7 +36,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     s.paths.requests += 1;
     let request = s.paths.requests;
     s.paths.pending = Some(request);
-    fx.push(Effect::SearchPaths { workdir: snap.workdir.clone(), request, terms: s.paths.terms.clone(), oids });
+    fx.push(Effect::History(HistoryEffect::SearchPaths { workdir: snap.workdir.clone(), request, terms: s.paths.terms.clone(), oids }));
 }
 
 /// A report for request `request`: merges it when it is the one pending, and matches again.

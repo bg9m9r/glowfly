@@ -2,24 +2,31 @@
 //! an amber dot once the shell has ended, and a close slot whose × shows on the active pill and
 //! on hover. Double-clicking renames it in place (`rename_field`).
 
-use crate::msg::Msg;
-use crate::state::terminal::{SessionStatus, TabRename, TermSession};
-use crate::state::tip::Tip;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::{color, controls, type_scale};
-use crate::ui::widgets::tab_glyph::{self, TabGlyph};
-use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use crate::ui::widgets::{Icon, icon, paint_icon_sized, tooltip};
+use crate::theme::sizes::{self, ControlSize};
+use crate::theme::tokens::radius;
+use crate::theme::{color, controls, type_scale};
+use crate::widgets::tab_glyph::{self, TabGlyph};
+use crate::widgets::truncate::{cut_galley, cut_job};
+use crate::widgets::{Icon, icon, paint_icon_sized, tooltip};
 use eframe::egui::{self, Align, CornerRadius, CursorIcon, Id, Key, Rect, Response, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::terminal::{SessionStatus, TabRename, TermSession};
+use glowfly_model::state::tip::Tip;
 use glowfly_model::terminal::TerminalMsg;
 
-pub(super) const HEIGHT: f32 = 28.0;
-const PAD_X: f32 = 10.0;
+/// The size a pill takes: a quiet Regular control in the 40 px header.
+const SIZE: ControlSize = ControlSize::Regular;
+const HEIGHT: f32 = SIZE.metrics().h;
+/// Before the icon; after the close slot the denser ghost padding, as the × glyph sits inside
+/// its box and so reads as far in as the icon.
+const PAD_L: f32 = SIZE.metrics().quiet_pad_x;
+const PAD_R: f32 = SIZE.metrics().ghost_pad_x;
 const ICON: f32 = icon::SIZE_SM;
-const GAP: f32 = 6.0;
+/// Between the icon, the name, the ended dot and the close slot.
+const GAP: f32 = SIZE.metrics().icon_gap;
 const DOT: f32 = 6.0;
-const CLOSE: f32 = 16.0;
+const CLOSE: f32 = tab_glyph::BOX;
 /// Names longer than this are cut with an ellipsis.
 const NAME_MAX: f32 = 200.0;
 /// The rename field is at least this wide.
@@ -36,7 +43,7 @@ fn name_galley(ui: &Ui, name: &str, col: egui::Color32) -> std::sync::Arc<egui::
 /// The pill's width for `name`: the close slot is always counted, so it never jumps.
 pub(super) fn width(ui: &Ui, s: &TermSession, name: &str) -> f32 {
     let dot = if ended(s) { GAP + DOT } else { 0.0 };
-    PAD_X + ICON + GAP + name_galley(ui, name, color::text()).size().x + dot + GAP + CLOSE + PAD_X
+    PAD_L + ICON + GAP + name_galley(ui, name, color::text()).size().x + dot + GAP + CLOSE + PAD_R
 }
 
 /// The status line of the pill's tooltip.
@@ -58,10 +65,11 @@ pub(super) fn show(
     s: &TermSession,
     name: &str,
     active: bool,
-    keys: &crate::keymap::Keymap,
+    keys: &glowfly_model::keymap::Keymap,
     t: Lang,
     msgs: &mut Vec<Msg>,
 ) -> Response {
+    debug_assert!(sizes::fits(super::header::HEADER_H, SIZE, false), "the header hosts its pills");
     let (rect, _) = ui.allocate_exact_size(vec2(width(ui, s, name), HEIGHT), Sense::hover());
     let resp = ui.interact(rect, Id::new(("terminal-tab", s.id)), Sense::click());
     // The pill's own rect, so hovering its × still counts.
@@ -78,17 +86,17 @@ pub(super) fn show(
         p.rect_filled(rect, CornerRadius::same(radius::pill(HEIGHT)), fill);
     }
     let cy = rect.center().y;
-    let mut x = rect.left() + PAD_X;
+    let mut x = rect.left() + PAD_L;
     paint_icon_sized(p, pos2(x + ICON / 2.0, cy), Icon::Terminal, fg, ICON);
     x += ICON + GAP;
     let galley = name_galley(ui, name, fg);
     let w = galley.size().x;
-    p.galley(pos2(x, cy - galley.size().y / 2.0), galley, fg);
+    p.galley(pos2(x, sizes::text_pos(rect, &galley).y), galley, fg);
     x += w;
     if ended(s) {
         p.circle_filled(pos2(x + GAP + DOT / 2.0, cy), DOT / 2.0, color::warn());
     }
-    let slot = Rect::from_center_size(pos2(rect.right() - PAD_X - CLOSE / 2.0, cy), vec2(CLOSE, CLOSE));
+    let slot = Rect::from_center_size(pos2(rect.right() - PAD_R - CLOSE / 2.0, cy), vec2(CLOSE, CLOSE));
     if active || hovered {
         let label = t.trf("terminal.tab.close", &[("name", &name)]);
         let box_fill = if active { color::hover() } else { color::selected() };

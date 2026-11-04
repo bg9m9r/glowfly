@@ -1,17 +1,16 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 Button "Update available (0.3.0)"
 Label "The downloaded file Downloads\\glowfly-v0.3.0-x86_64-pc-windows-msvc.msi no longer matches its checksum.\nDownload again"
 TabList
   Tab "New tab" [selected]
 Button "Close tab New tab"
 Button "New tab"
-Button "Open…"
+Button "Repository: Open…"
 Image
 Label "Glowfly"
-Label "A fast, native Git client"
+Label "See your history clearly."
 Button "Open repository…"
-Label "A folder on this computer that already holds a git repository."
+Label "A folder on this computer that already holds a Git repository."
 Button "Clone repository…"
 Label "Copy a repository from a hosting service or a URL into a new folder."
 Button "New repository…"
@@ -20,3 +19,4 @@ Button "Find repositories in folders…"
 Label "Look through the folders you keep projects in for repositories."
 painted:
   "Repository"
+  "Open…"

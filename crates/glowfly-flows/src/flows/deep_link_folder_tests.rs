@@ -5,10 +5,10 @@
 
 use super::tests::{drive, same_place, scratch_repo, state};
 use super::update;
-use crate::deep_link::DeepLinkMsg;
-use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::{AppState, Modal};
+use glowfly_model::deep_link::DeepLinkMsg;
+use glowfly_model::effect::{Effect, LoadKind, UiEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -21,7 +21,9 @@ fn focuses(fx: &[Effect]) -> bool {
 }
 
 fn loads(fx: &[Effect], dir: &Path) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Open, path, .. } if same_place(path, dir)))
+    fx.iter().any(
+        |e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Open, path, .. }) if same_place(path, dir)),
+    )
 }
 
 fn shows(st: &AppState, dir: &Path) -> bool {

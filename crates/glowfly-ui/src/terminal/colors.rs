@@ -2,7 +2,7 @@
 //! (`color::term`: the theme's own or the scheme chosen in Preferences), the xterm 256-colour
 //! cube and grey ramp, and truecolour as given.
 
-use crate::ui::theme::color;
+use crate::theme::color;
 use eframe::egui::Color32;
 use glowfly_core::terminal::{CellStyle, TermColor, xterm_rgb};
 

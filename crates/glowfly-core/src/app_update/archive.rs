@@ -9,7 +9,7 @@
 //! decompressed; a tar.gz has to be streamed past them, so every tar entry counts toward the
 //! total.
 
-use super::{MAX_DOWNLOAD, TargetOs, split_extension};
+use super::{MAX_DOWNLOAD, TargetOs, UpdateError, split_extension};
 use std::io::{Cursor, Read};
 
 /// The most an archive may unpack to.
@@ -102,22 +102,22 @@ fn candidate(raw: &str, wanted: &[&str]) -> bool {
 }
 
 /// The wanted files of the archive `bytes`, whose kind `file_name`'s extension says.
-pub fn read(file_name: &str, bytes: &[u8], wanted: &[&str]) -> Result<Vec<Entry>, String> {
+pub fn read(file_name: &str, bytes: &[u8], wanted: &[&str]) -> Result<Vec<Entry>, UpdateError> {
     let lower = file_name.to_ascii_lowercase();
-    let bad = |e: &dyn std::fmt::Display| format!("Couldn't read the archive {file_name}: {e}");
+    let bad = |e: Box<dyn std::error::Error>| UpdateError::ArchiveUnreadable { file: file_name.to_owned(), said: e.to_string() };
     let seen = match split_extension(&lower).1 {
-        ".zip" => read_zip(bytes, wanted).map_err(|e| e.unwrap_or_else(|e| bad(&e)))?,
-        ".tar.gz" => read_tar_gz(bytes, wanted).map_err(|e| e.unwrap_or_else(|e| bad(&e)))?,
-        _ => return Err(bad(&"it isn't a zip or tar.gz file")),
+        ".zip" => read_zip(bytes, wanted).map_err(|e| e.unwrap_or_else(bad))?,
+        ".tar.gz" => read_tar_gz(bytes, wanted).map_err(|e| e.unwrap_or_else(bad))?,
+        _ => return Err(UpdateError::NotAnArchive { file: file_name.to_owned() }),
     };
     select(seen, wanted)
 }
 
-/// A failure: Ok(text) for one of ours, Err(error) for the archive's own.
-type Fail = Result<String, Box<dyn std::error::Error>>;
+/// A failure: Ok(error) for one of ours, Err(error) for the archive's own.
+type Fail = Result<UpdateError, Box<dyn std::error::Error>>;
 
-fn too_large() -> String {
-    format!("The archive is larger than {} MB when unpacked.", MAX_EXTRACT / (1024 * 1024))
+fn too_large() -> UpdateError {
+    UpdateError::ArchiveTooLarge { mb: MAX_EXTRACT / (1024 * 1024) }
 }
 
 /// Reads one wanted entry of at most [`MAX_DOWNLOAD`] bytes, adding it to `total`.
@@ -195,7 +195,7 @@ fn read_tar_gz(bytes: &[u8], wanted: &[&str]) -> Result<Vec<Seen>, Fail> {
 }
 
 /// The wanted entries of `seen`, relative to its root folder when it has one.
-fn select(seen: Vec<Seen>, wanted: &[&str]) -> Result<Vec<Entry>, String> {
+fn select(seen: Vec<Seen>, wanted: &[&str]) -> Result<Vec<Entry>, UpdateError> {
     let root = common_root(seen.iter().map(|s| s.name.as_str()));
     let mut out: Vec<Entry> = Vec::new();
     for s in seen {
@@ -204,11 +204,11 @@ fn select(seen: Vec<Seen>, wanted: &[&str]) -> Result<Vec<Entry>, String> {
         }
         let Some(name) = entry_name(&s.name, root.as_deref()).filter(|n| wanted.contains(&n.as_str())) else { continue };
         if out.iter().any(|e| e.name == name) {
-            return Err(format!("The archive has two copies of {name}."));
+            return Err(UpdateError::TwoCopies { name });
         }
         match (s.kind, s.bytes) {
             (Kind::File, Some(bytes)) => out.push(Entry { name, bytes }),
-            _ => return Err(format!("{name} in the archive isn't a regular file.")),
+            _ => return Err(UpdateError::NotRegular { name }),
         }
     }
     Ok(out)

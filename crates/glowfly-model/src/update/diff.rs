@@ -1,6 +1,7 @@
 //! Diff viewer layout, view mode (hunks or the whole file), navigation and whole-file folds (the
 //! hunk view's gaps between hunks are in `diff_gaps`, the fold keys in `fold_keys`).
 
+use crate::effect::DiffEffect;
 use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::state::AppState;
@@ -134,6 +135,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
             // then count the hunks shown under the new setting.
             super::repo::reopen_diff(st, fx);
         }
+        DiffMsg::SetSvgPreview(on) => super::diff_preview::set_svg_preview(st, on, fx),
         DiffMsg::SetWordWrap(on) => {
             if on == st.settings.diff_word_wrap {
                 return;
@@ -304,7 +306,7 @@ pub(super) fn load_effect(
 ) -> Effect {
     let (ignore_whitespace, whole_file) = (st.settings.diff_ignore_whitespace, st.settings.diff_mode == DiffMode::WholeFile);
     let listed = diff_nav::file_order::listed(st, &target).cloned();
-    Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed }
+    Effect::Diff(DiffEffect::Load { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed })
 }
 
 /// Selects every line `side` of the open diff shows, as the view shows it now (the hunks or

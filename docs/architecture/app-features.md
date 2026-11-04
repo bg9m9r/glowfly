@@ -10,7 +10,8 @@ source file, update its line here. Each section lists one feature's files in eve
 - Files: `msg/updates.rs`, `effect/updates.rs`, `runner/updates.rs`, `runner/update_restart.rs`, `state/updates.rs`, `state/release_notes.rs`, `update/updates.rs`, `update/updates_download.rs`, `update/updates_restart.rs`, `update/release_notes.rs`.
 - The check's and download's status, opening the release notes, and the runner's check, download, Install and restart, and the start's tidying (`UpdateEffect::Tidy`): old staging folders and `.bak` programs, and the last installer run's failure, toasted by `update/updates_restart.rs::last_install` (`UpdateMsg::LastInstall`).
 - `update/updates_download.rs`: starting a download, its progress and Cancel (`StopKey::UpdateDownload`), its result, and reading the downloaded file again (`UpdateEffect::CheckSaved`), which turns a gone or changed file into Download again (`UpdateStatus::Stale`).
-- Drawn by `ui/release_notes.rs` (the dialog), `ui/update_notice.rs` (the status bar chip) and `ui/prefs/updates_row.rs` (Preferences > General > Updates).
+- `update/release_notes.rs`: after an upgrade, what Preferences chooses (`WhatsNew`): the notes by themselves, the What's new chip (`settings.updates.news_chip`, shown by `AppState::updates_news_chip` until the notes open or three days pass), or nothing.
+- Drawn by `ui/release_notes.rs` (the dialog), `ui/update_notice.rs` (the status bar's update chip), `ui/whats_new_chip.rs` (the status bar's What's new chip) and `ui/prefs/updates_row.rs` (Preferences > General > Updates).
 
 ## Operation journal (`JournalMsg`, `LostMsg`, `JournalEffect`)
 
@@ -41,7 +42,7 @@ source file, update its line here. Each section lists one feature's files in eve
 - Files: `msg/partial.rs`, `effect/partial.rs`, `state/partial.rs`, `state/partial_confirm.rs`, `state/job_stop.rs`, `update/partial.rs`, `update/partial_size.rs`, `update/partial_content.rs`, `update/job_stop.rs`, `runner/partial.rs`, `runner/stops.rs`, `runner/job_steps.rs`, `ui/content_fetch.rs`.
 - Fetch full history's size check and its confirmation for a large history (`PartialMsg::HistorySized`).
 - A partial clone's missing contents: the diff, File view or blame read that waits, its background download (trusted) or download job (through the trust gate), Cancel, and the read again (`PartialMsg::ContentMissing`, `PartialEffect::FetchContent`).
-- The status bar's Cancel for a job with a network command (`RunGit::stoppable`, `JobMsg::Cancel`, `Effect::StopGit`), with the stops the runner registers when it is handed a stoppable effect (`runner/stops.rs`), and the job ending as cancelled with no Try again.
+- The status bar's Cancel for a job with a network command (`RunGit::stoppable`, `JobMsg::Cancel`, `ControlEffect::StopGit`), with the stops the runner registers when it is handed a stoppable effect (`runner/stops.rs`), and the job ending as cancelled with no Try again.
 - Which command a stoppable job runs (`JobMsg::Step`, `state::job_stop::Step`): Cancel only during a fetch, push, clone or a pull's fetch half, disabled with the reason during a pull's merge or rebase or any other command.
 - `runner/job_steps.rs` runs those jobs: network commands with `--progress` and a stop that ends their process tree, a pull as its fetch then its merge or rebase (`trust::pull::run_split`, which has `git pull` itself do whatever the split doesn't model or would refuse), other commands to their end, and the clean-up after a stop (a fetch's or push's locks, a clone's folder); tests in `job_steps_tests.rs`.
 - The transfer's progress beside the job's label (`JobMsg::Progress`, a few times a second at most; `state::job_stop::progress_text`).
@@ -57,7 +58,8 @@ source file, update its line here. Each section lists one feature's files in eve
 
 ## Large histories off the UI thread (`BackgroundEffect`, `GraphMsg::LaidOut`, `GraphMsg::AncestryFound`)
 
-- Files: `effect/background.rs`, `runner/background.rs`, `update/large_graph.rs`, `state/ref_rows.rs`.
+- Files: `effect/background.rs`, `runner/background.rs`, `update/large_graph.rs`, `update/parked_free.rs`, `state/ref_rows.rs`.
+- `update/parked_free.rs`: freeing a long-parked tab's commits and graph on a worker, the full reload when it is shown again, and the error with Try again when that reload fails.
 - `update/large_graph.rs`: a large history's relayout when its WIP rows change (`LayoutJob` on a worker, swapped in when it still fits), the default branch's ancestry for hover highlighting (each hovered tip's rows kept per snapshot in `RefRows`), and freeing replaced snapshots, layouts and closed tabs on a worker.
 
 ## Range-diff view (`RangeDiffMsg`, `RangeDiffJob`)

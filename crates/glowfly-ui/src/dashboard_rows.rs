@@ -4,16 +4,16 @@
 
 use super::common::{menu_item, menu_item_if, state_color};
 use super::theme::color;
-use super::widgets::{self, Part, truncate::full_tip};
-use crate::msg::{DashboardMsg, Msg};
-use crate::state::AppState;
-use crate::state::dashboard::{Dashboard, TargetData, pr_label, target_name};
-use crate::state::dashboard_rows::issue_text;
-use crate::state::forge_filters;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use super::widgets::{self, Part, row_fill, truncate::full_tip};
+use crate::theme::type_scale;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Color32, FontId, Rect, Response, Sense, Ui, pos2, vec2};
 use glowfly_core::forge::{self, Issue, Provider, PullRequest};
+use glowfly_model::msg::{DashboardMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::dashboard::{Dashboard, TargetData, pr_label, target_name};
+use glowfly_model::state::dashboard_rows::issue_text;
+use glowfly_model::state::forge_filters;
 
 /// Indent of pull request and issue rows (as in the sidebar).
 const INDENT: f32 = widgets::ROW_INDENT;
@@ -76,9 +76,7 @@ fn two_line_row(ui: &mut Ui, title: &str, sub: &str, right: (&str, Color32), slo
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 40.0), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, title));
     let p = ui.painter_at(rect);
-    if resp.hovered() {
-        p.rect_filled(rect, 0.0, color::hover());
-    }
+    row_fill::paint_state(&p, rect, row_fill::RowState::of(&resp, false, resp.hovered()));
     let top = rect.top() + 12.0;
     let g = p.layout_no_wrap(right.0.to_owned(), type_scale::font(type_scale::SMALL), right.1);
     let right_w = g.size().x + widgets::PAD_X + 8.0 + slot;

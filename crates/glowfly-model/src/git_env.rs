@@ -10,6 +10,8 @@ use crate::effect::LoadKind;
 use crate::effect::SandboxRule;
 use glowfly_core::git_program::Candidate;
 use glowfly_core::git_version::GitInfo;
+use glowfly_core::i18n::Lang;
+use glowfly_core::safe_directory::Refusal;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -47,11 +49,11 @@ pub enum GitEnvMsg {
         generation: u64,
         daemon: Option<bool>,
     },
-    /// A load was refused because another user owns the repository at `root`.
+    /// A load was refused because another user owns the repository (and git refuses it too).
     NotOwned {
         generation: u64,
         kind: LoadKind,
-        root: PathBuf,
+        refusal: Refusal,
     },
     SafeDirectoryAdded {
         root: PathBuf,
@@ -72,10 +74,11 @@ pub enum GitEnvMsg {
 }
 
 impl GitEnvMsg {
-    /// Only `NotOwned` is scoped (it answers a load); for an inactive tab the refusal is logged.
+    /// Only `NotOwned` is scoped (it answers a load); for an inactive tab the refusal is logged,
+    /// in the system's language (the settings aren't at hand here).
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::NotOwned { root, .. } => Some(crate::msg::Inactive::Log(not_owned_text(&root))),
+            Self::NotOwned { refusal, .. } => Some(crate::msg::Inactive::Log(not_owned_text(glowfly_core::i18n::system(), &refusal))),
             // The rest is about git itself, the same for every tab.
             Self::Detect
             | Self::DismissBanner
@@ -97,12 +100,14 @@ impl GitEnvMsg {
     }
 }
 
-/// The log line for a repository git refuses for its owner.
-pub fn not_owned_text(root: &std::path::Path) -> String {
-    format!(
-        "Could not open {}: it belongs to another user account, and git opens such folders only once they are marked as safe (safe.directory).",
-        glowfly_core::native_path::shown(root)
-    )
+/// The log line for a repository git refuses for its owner, in `t`.
+pub fn not_owned_text(t: Lang, r: &Refusal) -> String {
+    let path = glowfly_core::native_path::shown(&r.root);
+    match (&r.owner, r.admins) {
+        (_, true) => t.trf("safe_dir.log.admins", &[("path", &path)]),
+        (Some(owner), false) => t.trf("safe_dir.log.named", &[("path", &path), ("owner", owner)]),
+        (None, false) => t.trf("safe_dir.log.unknown", &[("path", &path)]),
+    }
 }
 
 /// Run by runner/git_env.rs.

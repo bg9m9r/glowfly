@@ -1,16 +1,18 @@
 //! Repository groups: making, renaming, colouring, ordering and removing groups, moving
 //! favorites into, within and out of them, opening a group, and what un-starring, removing
-//! missing entries and the tab colours do with groups.
+//! missing entries and the tab colours do with groups, the New group color setting, and Reset all
+//! group colors with its Undo.
 
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::{GroupMsg, Msg, RecentMsg};
 use crate::state::repo_colours::{listed_colour, tab_colour};
-use crate::state::repo_groups::{members, ungrouped};
+use crate::state::repo_groups::{colours_at_default, members, ungrouped};
 use crate::state::repo_lists::favorites;
 use crate::state::{AppState, Modal, Tab};
-use glowfly_core::settings::RepoColour;
+use glowfly_core::settings::{GroupColourDefault, RepoColour};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -23,7 +25,7 @@ fn paths(list: &[&str]) -> Vec<PathBuf> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 fn move_to(st: &mut AppState, p: &str, group: Option<usize>, index: usize) -> Vec<Effect> {
@@ -144,13 +146,16 @@ fn the_favorite_keys_and_open_all_follow_the_groups() {
     let mut st = grouped();
     move_to(&mut st, "/w/d", Some(0), 0);
     let fx = update(&mut st, Msg::Recent(RecentMsg::OpenFavorite(0)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if path == &PathBuf::from("/w/d"))), "{fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Load(crate::effect::LoadEffect::Repo { path, .. }) if path == &PathBuf::from("/w/d"))),
+        "{fx:?}"
+    );
     let work = members(&st.settings, 0);
     let fx = update(&mut st, Msg::Recent(RecentMsg::OpenAll(work)), Instant::now());
     let tabs: Vec<Option<PathBuf>> = st.tabs.iter().map(|t| t.path.clone()).collect();
     assert!(tabs.contains(&Some(PathBuf::from("/w/c"))) && tabs.contains(&Some(PathBuf::from("/w/d"))), "{tabs:?}");
     assert!(!tabs.contains(&Some(PathBuf::from("/w/a"))), "only the group's");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveTabs { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Tabs { .. }))), "{fx:?}");
 }
 
 #[test]
@@ -191,4 +196,121 @@ fn a_repository_without_a_colour_takes_its_groups() {
     st.settings.set_repo_colour(std::path::Path::new("/w/c"), None);
     run(&mut st, GroupMsg::SetColour { group: 0, colour: None });
     assert_eq!(tab_colour(&st, 0), None);
+}
+
+#[test]
+fn adding_repositories_stars_moves_and_appends_them_with_one_save() {
+    let mut st = grouped();
+    move_to(&mut st, "/w/b", Some(1), 0);
+    let add = paths(&["/w/x", "/w/b", "/w/c", "/w/a"]);
+    let fx = run(&mut st, GroupMsg::AddRepos { group: 0, paths: add });
+    assert_eq!(saves(&fx), 1, "one save for them all: {fx:?}");
+    assert_eq!(members(&st.settings, 0), paths(&["/w/c", "/w/x", "/w/b", "/w/a"]), "c stays put; the rest follow in order");
+    assert!(members(&st.settings, 1).is_empty(), "b moved out of Home");
+    assert!(st.settings.favorite_repos.contains(&"/w/x".to_owned()), "a Recent repository is starred");
+    assert!(run(&mut st, GroupMsg::AddRepos { group: 0, paths: paths(&["/w/c/", "/w/a"]) }).is_empty(), "all there already");
+    assert!(run(&mut st, GroupMsg::AddRepos { group: 4, paths: paths(&["/w/d"]) }).is_empty(), "no such group");
+    assert!(!st.settings.repo_groups.iter().any(|g| g.repos.contains(&"/w/d".to_owned())));
+}
+
+#[test]
+fn the_add_picker_lists_what_can_join_and_adds_in_list_order() {
+    let mut st = grouped();
+    move_to(&mut st, "/w/d", Some(1), 0);
+    st.recent = paths(&["/w/r", "/w/a", "/w/gone", "/w/s"]);
+    st.missing_repos = paths(&["/w/gone"]);
+    run(&mut st, GroupMsg::AddDialog(0));
+    let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
+    let rows: Vec<(PathBuf, Option<usize>, bool)> = p.rows.iter().map(|r| (r.path.clone(), r.other_group, r.recent)).collect();
+    let want = [("/w/a", None, false), ("/w/b", None, false), ("/w/d", Some(1), false), ("/w/r", None, true), ("/w/s", None, true)];
+    let want: Vec<_> = want.iter().map(|(p, g, r)| (PathBuf::from(p), *g, *r)).collect();
+    assert_eq!(rows, want, "ungrouped favorites, other groups' members, then Recent without favorites or missing ones");
+    assert!(!p.filtered(), "five rows need no filter");
+    let (d, a) = (p.rows[2].clone(), p.rows[0].clone());
+    p.toggle(&d);
+    p.toggle(&a);
+    p.toggle(&p.rows[3].clone());
+    p.toggle(&p.rows[3].clone());
+    let picked = p.picked();
+    assert_eq!(picked, paths(&["/w/a", "/w/d"]), "list order, not tick order; untick works");
+    let fx = run(&mut st, GroupMsg::AddRepos { group: 0, paths: picked });
+    assert_eq!(saves(&fx), 1);
+    assert!(st.modal.is_none(), "Add closes the picker");
+    assert_eq!(members(&st.settings, 0), paths(&["/w/c", "/w/a", "/w/d"]));
+    run(&mut st, GroupMsg::AddDialog(7));
+    assert!(st.modal.is_none(), "no such group");
+}
+
+#[test]
+fn a_long_picker_filters_and_keeps_hidden_ticks() {
+    let mut st = grouped();
+    st.recent = (0..8).map(|i| PathBuf::from(format!("/r/repo{i}"))).collect();
+    run(&mut st, GroupMsg::AddDialog(1));
+    let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
+    assert!(p.filtered(), "{} rows", p.rows.len());
+    p.toggle(&p.rows[0].clone());
+    p.filter = "repo3".into();
+    assert_eq!(p.shown().map(|r| r.path.clone()).collect::<Vec<_>>(), paths(&["/r/repo3"]));
+    assert_eq!(p.picked(), paths(&["/w/a"]), "the hidden tick stays");
+}
+
+fn hues(st: &AppState) -> Vec<Option<RepoColour>> {
+    st.settings.repo_groups.iter().map(|g| g.hue()).collect()
+}
+
+#[test]
+fn new_groups_take_the_new_group_colour_setting() {
+    let mut st = grouped();
+    st.settings.new_group_colour = GroupColourDefault::None;
+    run(&mut st, GroupMsg::Create { name: "Plain".into(), repo: None });
+    st.settings.new_group_colour = GroupColourDefault::Hue(RepoColour::Rose);
+    run(&mut st, GroupMsg::Create { name: "Red".into(), repo: None });
+    assert_eq!(hues(&st), [Some(RepoColour::Rose), Some(RepoColour::Teal), None, Some(RepoColour::Rose)], "a fixed hue even in use");
+}
+
+#[test]
+fn reset_colours_gives_the_defaults_and_undo_puts_them_back() {
+    let mut st = grouped();
+    run(&mut st, GroupMsg::Create { name: "Clients".into(), repo: None });
+    run(&mut st, GroupMsg::SetColour { group: 0, colour: Some(RepoColour::Sky) });
+    run(&mut st, GroupMsg::SetColour { group: 2, colour: None });
+    let before = hues(&st);
+    assert!(!colours_at_default(&st.settings));
+    let fx = run(&mut st, GroupMsg::ResetColours);
+    assert_eq!(saves(&fx), 1, "{fx:?}");
+    assert_eq!(hues(&st), [Some(RepoColour::Rose), Some(RepoColour::Teal), Some(RepoColour::Plum)], "made again top to bottom");
+    assert!(colours_at_default(&st.settings));
+    let toast = st.toasts.last().expect("the reset toast");
+    assert_eq!(toast.text, "Group colors reset to the default.");
+    let undo = toast.action.as_ref().expect("Undo");
+    assert_eq!((undo.label.as_str(), undo.workdir.is_none()), ("Undo", true));
+    let Msg::Groups(GroupMsg::RestoreColours(saved)) = &*undo.msg else { panic!("Undo restores the colours") };
+    let saved = saved.clone();
+    assert!(run(&mut st, GroupMsg::ResetColours).is_empty(), "nothing to reset: no save, no toast");
+    assert_eq!(st.toasts.len(), 1);
+    let fx = run(&mut st, GroupMsg::RestoreColours(saved.clone()));
+    assert_eq!((saves(&fx), hues(&st)), (1, before), "Undo is one save");
+    assert_eq!(st.toasts.len(), 1, "Undo has no toast of its own");
+    // Moved, removed and renamed groups between the reset and its Undo.
+    run(&mut st, GroupMsg::ResetColours);
+    run(&mut st, GroupMsg::MoveGroup { from: 2, to: 0 });
+    run(&mut st, GroupMsg::Remove(2));
+    run(&mut st, GroupMsg::Rename { group: 1, name: "Office".into() });
+    let names: Vec<&str> = st.settings.repo_groups.iter().map(|g| g.name.as_str()).collect();
+    assert_eq!(names, ["Clients", "Office"]);
+    run(&mut st, GroupMsg::RestoreColours(saved));
+    assert_eq!(hues(&st), [None, Some(RepoColour::Rose)], "matched by name; a renamed group keeps its colour");
+}
+
+#[test]
+fn reset_colours_follows_the_setting() {
+    for (default, want) in
+        [(GroupColourDefault::None, [None, None]), (GroupColourDefault::Hue(RepoColour::Iris), [Some(RepoColour::Iris); 2])]
+    {
+        let mut st = grouped();
+        st.settings.new_group_colour = default;
+        assert!(!colours_at_default(&st.settings), "{default:?}");
+        assert_eq!(saves(&run(&mut st, GroupMsg::ResetColours)), 1);
+        assert_eq!(hues(&st), want, "{default:?}");
+    }
 }

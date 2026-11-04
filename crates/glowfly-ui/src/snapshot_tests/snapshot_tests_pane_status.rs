@@ -4,18 +4,19 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_compare::selected;
+use super::snapshot_tests_fireflies::AT;
 use super::snapshot_tests_history::with_file_view;
 use super::snapshot_tests_pull_request::with_pr;
-use crate::msg::{BlameMsg, HistoryMsg, Msg, SelectionMsg};
-use crate::state::blame::BlameView;
-use crate::state::history::{FileHistoryView, TextError, TextState};
-use crate::state::pull_request::{Files, PrTab};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{BlameMsg, HistoryMsg, Msg, SelectionMsg};
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::history::{FileHistoryView, TextError, TextState};
+use glowfly_model::state::pull_request::{Files, PrTab};
+use glowfly_model::state::{AppState, Selection};
 
 const BLAME_FAILED: &str = "Couldn't blame this file";
 
@@ -29,16 +30,31 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
     std::mem::take(&mut h.state_mut().1)
 }
 
-#[test]
-fn blame_loading() {
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, "pane-blame-loading");
+/// Blame loading in `theme`, the frame drawn at the loader sheet's moment (`AT`).
+fn blame_loading_in(theme: ThemeChoice, name: &str, fixture: &str) {
+    let dark = theme == ThemeChoice::Dark;
+    let (mut st, dir) = with_repo(theme, fixture);
     st.session.blame.view = Some(BlameView::loading("src/app.rs".into(), None));
-    let mut h = harness(st, true);
+    let mut h = harness(st, dark);
     h.run_steps(3);
-    assert!(h.query_by_label("Loading the blame…").is_some());
-    h.check_snapshot("blame_loading");
+    // The harness's clock, pinned for the frame the image takes.
+    h.input_mut().time = Some(AT);
+    h.step();
+    let node = h.get_by_label("Loading the blame…");
+    assert_eq!(node.role(), eframe::egui::accesskit::Role::ProgressIndicator, "the words are the loader's label");
+    h.check_snapshot(name);
     drop(h);
     remove_fixture(&dir);
+}
+
+#[test]
+fn blame_loading() {
+    blame_loading_in(ThemeChoice::Dark, "blame_loading", "pane-blame-loading");
+}
+
+#[test]
+fn blame_loading_light() {
+    blame_loading_in(ThemeChoice::Light, "blame_loading_light", "pane-blame-loading-light");
 }
 
 #[test]
@@ -62,7 +78,7 @@ fn blame_failed() {
 #[test]
 fn blame_held_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "pane-blame-held");
-    st.session.blame.view = Some(BlameView::failed("src/app.rs".into(), None, crate::state::blame::HELD));
+    st.session.blame.view = Some(BlameView::failed("src/app.rs".into(), None, glowfly_model::state::blame::HELD));
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("blame_held_light");

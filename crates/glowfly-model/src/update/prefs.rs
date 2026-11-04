@@ -2,6 +2,7 @@
 //! the routing of its other messages: showing a page (prefs_nav.rs), the Save / Revert bar
 //! (prefs_save.rs, prefs_leave.rs), signing keys (prefs_signing.rs) and pickers (prefs_pick.rs).
 
+use crate::effect::SaveEffect;
 use crate::effect::{Effect, PrefsEffect};
 use crate::msg::PrefsMsg;
 use crate::state::prefs::GitConfigValues;
@@ -19,14 +20,17 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::ShowAccountForm(on) => show_account_form(st, on),
         // The settings file and the settings that apply at once.
         PrefsMsg::SettingsEdited => {
-            if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.settings_file.saved.as_str()) {
+            if st.settings_file.edited(&st.settings) {
                 fx.extend(save_settings(st));
             }
             sync_live_settings(st, fx);
+            super::diff_preview::settings_edited(st, fx);
         }
         PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {
                 st.settings.theme = t;
+                // A picked theme: High contrast has nothing to bring back unless it is one.
+                st.settings.settle_contrast();
                 fx.extend(save_settings(st));
             }
         }
@@ -34,6 +38,22 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             if st.settings.toolbar_labels != on {
                 st.settings.toolbar_labels = on;
                 fx.extend(save_settings(st));
+            }
+        }
+        PrefsMsg::SetHighContrast { on, dark } => {
+            if st.settings.set_high_contrast(on, dark) {
+                fx.extend(save_settings(st));
+            }
+        }
+        PrefsMsg::ShowShortcutSheet => {
+            if st.modal.is_none() {
+                st.palette = None;
+                st.modal = Some(crate::state::Modal::Shortcuts { filter: String::new() });
+            }
+        }
+        PrefsMsg::FocusSearch => {
+            if let Some(p) = st.prefs.as_mut() {
+                p.focus_search = true;
             }
         }
         PrefsMsg::SetDesktopNotifications(on) => super::notify::set_desktop(st, on, fx),
@@ -137,11 +157,11 @@ pub(super) fn save_settings(st: &mut AppState) -> Option<Effect> {
     if !st.settings_file.writable() {
         return None;
     }
-    st.settings_file.saved = serde_json::to_string(&st.settings).unwrap_or_default();
+    st.settings_file.record(&st.settings);
     if let Some(p) = st.prefs.as_mut() {
         p.saved.mark();
     }
-    Some(Effect::SaveSettings(Box::new(st.settings.clone())))
+    Some(Effect::Save(SaveEffect::Settings(Box::new(st.settings.clone()))))
 }
 
 /// Makes the file watcher, the conflict check and the tab groups follow the settings. Sent every frame while

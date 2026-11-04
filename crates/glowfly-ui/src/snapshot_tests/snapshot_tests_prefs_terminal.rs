@@ -8,13 +8,13 @@
 use super::prefs::terminal::{choice_label, page_for};
 use super::snapshot_tests::{harness_sized, settings};
 use super::theme::{self, color};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, accesskit::Role};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 use glowfly_core::opens::Os;
 use glowfly_core::settings::{ShellChoice, ShellSetting, TerminalPrefs, ThemeChoice};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 fn page(terminal: TerminalPrefs) -> AppState {
@@ -32,6 +32,12 @@ fn prefs_terminal_dark() {
     h.check_snapshot("prefs_terminal");
     assert!(h.query_all_by_label("Terminal").next().is_some(), "the nav entry and title");
     assert!(h.query_by_label("Open a tab in the built-in terminal").is_some());
+    // Open every help text that sits behind "Learn more".
+    loop {
+        let Some(more) = h.query_all_by_label("Learn more").next() else { break };
+        more.click();
+        h.run();
+    }
     assert!(h.query_by_label_contains("Open in terminal doesn't open a built-in tab").is_some(), "the external terminal moved here");
     assert!(h.query_by_label_contains("Separated by spaces").is_none(), "arguments only for a custom program");
     assert!(h.query_by_label_contains("Selecting text with the mouse").is_some());
@@ -63,12 +69,13 @@ fn prefs_terminal_custom_dark() {
 fn page_on(os: Os) -> egui_kittest::Harness<'static, glowfly_core::settings::Settings> {
     let mut s = settings(ThemeChoice::Dark);
     s.terminal = TerminalPrefs::default();
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
         move |ctx, s: &mut glowfly_core::settings::Settings| {
             color::set_palette(&theme::view_palette(true));
             theme::apply_style(ctx, &theme::view_palette(true));
             ctx.set_theme(theme::egui_theme(&theme::view_palette(true)));
-            egui::CentralPanel::default().show(ctx, |ui| page_for(ui, s, &crate::themes::ThemeState::default(), os, &mut Vec::new()));
+            egui::CentralPanel::default()
+                .show(ctx, |ui| page_for(ui, s, &glowfly_model::themes::ThemeState::default(), os, &mut Vec::new()));
         },
         s,
     )

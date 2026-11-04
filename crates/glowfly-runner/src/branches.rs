@@ -2,8 +2,8 @@
 //! branch has, and Push to all remotes (each push in turn, prompting for sign-ins as a job does).
 
 use super::execute::{Cx, Execute};
-use crate::effect::BranchEffect;
-use crate::msg::{BranchMsg, Msg};
+use glowfly_model::effect::BranchEffect;
+use glowfly_model::msg::{BranchMsg, Msg};
 
 impl Execute for BranchEffect {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {

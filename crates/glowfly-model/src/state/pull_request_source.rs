@@ -185,7 +185,7 @@ pub fn offers_fetch(notes: &[OutOfSync]) -> bool {
 }
 
 /// Whether the service keeps a head ref for it and its head is known.
-pub fn head_fetchable(v: &PrView) -> bool {
+pub(crate) fn head_fetchable(v: &PrView) -> bool {
     v.head_ref.is_some() && files_key(v).head.is_some()
 }
 

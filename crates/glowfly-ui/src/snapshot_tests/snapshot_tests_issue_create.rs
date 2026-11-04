@@ -4,16 +4,16 @@
 //! then failing with the server's words.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::{IssueMsg, Msg};
-use crate::state::issue_form::{IssueForm, OptionsState};
-use crate::state::{AppState, ForgeState, Modal, ProjectKeys, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::Key;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::filters::Named;
 use glowfly_core::forge::{Account, CreateOptions, Person, Provider, Target};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{IssueMsg, Msg};
+use glowfly_model::state::issue_form::{IssueForm, OptionsState};
+use glowfly_model::state::{AppState, ForgeState, Modal, ProjectKeys, Status};
 use std::path::PathBuf;
 
 fn github() -> Target {
@@ -111,7 +111,7 @@ fn create_issue_jira_dark() {
 fn create_issue_jira_project_key() {
     let account = Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() };
     let mut form = IssueForm::new(Target::jira(&account, ""));
-    form.touched = crate::state::touched::Touched::all();
+    form.touched = glowfly_model::state::touched::Touched::all();
     let why = form.problem(glowfly_core::forge::IssueField::Project).expect("a missing project");
     let (st, dir) = with_form(ThemeChoice::Light, "issue-create-jira-key", form, |_| {});
     let mut h = harness(st, false);

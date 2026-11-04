@@ -7,15 +7,15 @@ use super::auto_stash_tests::{git_cmds, up};
 use super::branch_tests::{remote_commit, with_origin};
 use super::jobs::start_job;
 use super::tests::{clean_tree, drive, finish, git, scratch_repo, state};
-use crate::effect::Effect;
-use crate::logs::LogKind;
-use crate::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, RepoMsg};
-use crate::remote::RemoteMsg;
-use crate::state::job_spec::JobSpec;
-use crate::state::prefs::PrefPage;
-use crate::state::toasts::Toast;
-use crate::state::{AppState, Modal, RunningJob};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::Effect;
+use glowfly_model::logs::LogKind;
+use glowfly_model::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::job_spec::JobSpec;
+use glowfly_model::state::prefs::PrefPage;
+use glowfly_model::state::toasts::Toast;
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
 
 /// main and feature, where feature changes the first of f.txt's eight lines; opened clean.
@@ -46,7 +46,7 @@ fn labels(t: &Toast) -> (Option<&str>, Option<&str>) {
 fn action_msg<'a>(st: &'a AppState, t: &'a Toast) -> &'a Msg {
     let msg = &t.action.as_ref().expect("a fix").msg;
     match **msg {
-        Msg::Logs(crate::logs::LogsMsg::Fix(id)) => &st.logs.fix(id).expect("the fix is kept").msg,
+        Msg::Logs(glowfly_model::logs::LogsMsg::Fix(id)) => &st.logs.fix(id).expect("the fix is kept").msg,
         _ => msg,
     }
 }
@@ -147,7 +147,7 @@ fn causes_get_their_fix() {
             "feat has no upstream yet.",
             "Push",
         ),
-        ("fatal: You are not currently on a branch.", "No branch is checked out (detached HEAD).", "Create branch…"),
+        ("fatal: You are not currently on a branch.", "No branch is checked out (detached HEAD).", "New branch…"),
         (
             "git@example.com: Permission denied (publickey).\nfatal: Could not read from remote repository.",
             "The server didn't accept your SSH key.",
@@ -155,7 +155,7 @@ fn causes_get_their_fix() {
         ),
         (
             "fatal: Unable to create '/tmp/r/.git/index.lock': File exists.",
-            "Another git program is using this repository (index.lock exists).",
+            "Another Git program is using this repository (index.lock exists).",
             "Try again",
         ),
         (
@@ -183,7 +183,7 @@ fn causes_get_their_fix() {
         let ok = match button {
             "View conflicts" => matches!(action_msg(&st, t), Msg::Conflict(ConflictMsg::OpenConflict(p)) if p == "a.txt"),
             "Push" => matches!(action_msg(&st, t), Msg::Job(JobMsg::Push { force: false })),
-            "Create branch…" => matches!(action_msg(&st, t), Msg::Branch(BranchMsg::NewBranch { start: None, name }) if name.is_empty()),
+            "New branch…" => matches!(action_msg(&st, t), Msg::Branch(BranchMsg::NewBranch { start: None, name }) if name.is_empty()),
             "SSH keys" => matches!(action_msg(&st, t), Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh))),
             "Try again" => matches!(action_msg(&st, t), Msg::Job(JobMsg::Retry(r)) if r.spec.cmds == vec![args(&["push"])]),
             _ => t.details.is_none(),
@@ -262,7 +262,7 @@ fn unrecognised_and_cancelled_keep_their_text() {
     assert_eq!(labels(t), (Some("Details"), None));
 
     up(&mut st, Msg::git("Push", &["push"]));
-    st.askpass.ended = Some(crate::state::askpass::PromptEnd::Cancelled);
+    st.askpass.ended = Some(glowfly_model::state::askpass::PromptEnd::Cancelled);
     done(&mut st, "fatal: Authentication failed for 'https://example.com/r.git/'");
     assert_eq!(last_toast(&st).text, "Push cancelled: no credentials were given");
     let _ = std::fs::remove_dir_all(&dir);
@@ -273,8 +273,8 @@ fn details_beside_fix() {
     let (mut st, dir) = busy("je-details", "Push");
     done(&mut st, "fatal: You are not currently on a branch.");
     let t = last_toast(&st);
-    assert_eq!(labels(t), (Some("Create branch…"), Some("Details")));
-    assert_eq!(t.lifetime(), crate::state::toasts::ACTION_TOAST_LIFETIME);
+    assert_eq!(labels(t), (Some("New branch…"), Some("Details")));
+    assert_eq!(t.lifetime(glowfly_core::settings::ToastTime::Standard), None, "a failure with a fix stays until closed");
     let id = t.id;
     up(&mut st, Msg::ToastDetails(id));
     assert!(st.toasts.iter().all(|t| t.id != id), "the toast is gone");
@@ -288,11 +288,11 @@ fn details_beside_fix() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(other.clone())));
     up(&mut st, Msg::ToastAction(id));
     assert!(st.modal.is_none(), "no New branch dialog");
-    assert_eq!(last_toast(&st).text, "Create branch… wasn't run: switch back to that repository's tab first.");
+    assert_eq!(last_toast(&st).text, "New branch… wasn't run: switch back to that repository's tab first.");
 
     // A quiet job's failure shows nothing.
     let before = st.toasts.len();
-    let spec = JobSpec { quiet: true, ..JobSpec::new(crate::state::notify::AUTO_FETCH.into(), vec![args(&["fetch"])]) };
+    let spec = JobSpec { quiet: true, ..JobSpec::new(glowfly_model::state::notify::AUTO_FETCH.into(), vec![args(&["fetch"])]) };
     start_job(&mut st, spec, &mut Vec::new());
     assert!(st.job.as_ref().is_some_and(|j| j.quiet));
     done(&mut st, "fatal: Unable to create '/tmp/r/.git/index.lock': File exists.");

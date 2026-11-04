@@ -6,10 +6,10 @@
 
 use super::execute::{Cx, Execute};
 use super::update_restart;
-use crate::effect::UpdateEffect;
-use crate::msg::{CheckedRelease, Msg, UpdateMsg};
-use glowfly_core::app_update::{Offer, Progress};
+use glowfly_core::app_update::{Offer, Progress, UpdateError};
 use glowfly_core::{app_update, paths, settings};
+use glowfly_model::effect::UpdateEffect;
+use glowfly_model::msg::{CheckedRelease, Msg, UpdateMsg};
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -72,7 +72,7 @@ fn download(offer: &Offer, cx: &Cx<'_>) -> UpdateMsg {
     };
     let result = app_update::Feed::from_env().and_then(|feed| match settings::downloads_dir() {
         Some(dir) => app_update::download_streamed(&feed, offer, &dir, &mut progress, &cancelled),
-        None => Err("No folder to download into".to_owned()),
+        None => Err(UpdateError::NoDownloadsFolder),
     });
     match result {
         Ok(Some(saved)) => UpdateMsg::Downloaded(Ok(saved)),
@@ -99,13 +99,13 @@ impl Throttle {
 
 /// The newest release (from the hosting service, or the folder GLOWFLY_UPDATE_FEED names), and
 /// how this copy was installed.
-fn check() -> Result<Option<CheckedRelease>, String> {
+fn check() -> Result<Option<CheckedRelease>, UpdateError> {
     let feed = app_update::Feed::from_env()?;
     if matches!(feed, app_update::Feed::Folder(_)) {
         tracing::info!("checking for updates in the {}", feed.describe());
     }
     let release = feed.latest()?;
-    let exe = std::env::current_exe().map_err(|e| format!("Couldn't find Glowfly's own program: {e}"))?;
+    let exe = std::env::current_exe().map_err(|e| UpdateError::NoOwnProgram { said: e.to_string() })?;
     let install = app_update::install_kind(&exe);
     Ok(release.map(|release| CheckedRelease { release, install }))
 }

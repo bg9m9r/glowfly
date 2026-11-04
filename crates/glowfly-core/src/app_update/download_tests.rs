@@ -81,7 +81,7 @@ fn a_mismatch_removes_the_partial_file_and_says_so() {
     let (feed, dl) = feed_with(&dir, &bytes, b"what the release published");
     let o = offer_for(&feed, InstallKind::Installer);
     let mut reports = 0;
-    let err = download_streamed(&feed, &o, &dl, &mut |_| reports += 1, &|| false).unwrap_err();
+    let err = download_streamed(&feed, &o, &dl, &mut |_| reports += 1, &|| false).unwrap_err().to_string();
     assert_eq!(err, "The download didn't match its published checksum and was discarded.");
     assert!(reports >= 3, "it streamed first");
     assert!(is_empty(&dl), "no file and no temporary file: {:?}", names(&dl));

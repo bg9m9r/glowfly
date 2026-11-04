@@ -1,0 +1,19 @@
+Dialog
+  Label "Conflict check"
+  Button "Close this dialog"
+  Label "Branch: release-please--branches--main--components--glowfly"
+  Label "Upstream: origin/release-please--branches--main--components--glowfly"
+  Label "Compared with the last fetched state."
+  Label "Merging would stop with conflicts."
+  Label "2 files changed on both sides:"
+  Label "CHANGELOG.md"
+  Label "Cargo.toml"
+  Button "Check again"
+  Button "Close" [focused]
+  Button "Merge upstream"
+  Button "Rebase onto upstream"
+painted:
+  "Branch"
+  "release-please--branches--main--components--glowfly"
+  "Upstream"
+  "origin/release-please--branches--main--components--glowfly"

@@ -6,14 +6,14 @@ use super::dialog_guides;
 use super::theme::color;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::state::gitflow::StartForm;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use glowfly_core::branch_ops::NameProblem;
 use glowfly_core::gitflow::{Branches, StartProblem, check_start, open_branches};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::gitflow::StartForm;
 
 /// Draws the dialog; returns true when it should close.
 pub fn start(ui: &mut egui::Ui, cx: Cx, form: &mut StartForm, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {

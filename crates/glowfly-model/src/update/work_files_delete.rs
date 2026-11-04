@@ -7,6 +7,7 @@
 //! The trash-or-permanent choice is made when a confirmation opens and travels inside it, so
 //! changing the preference while it is up doesn't change what runs or what the text promised.
 
+use crate::effect::FilesEffect;
 use crate::effect::{DeleteMode, Effect, FileOp, SeenLines};
 use crate::keymap::BindingId;
 use crate::msg::Msg;
@@ -46,7 +47,7 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
     let t = st.settings.lang();
     let body = match unstaged {
         Some(f) if f.status == '?' && trash => {
-            format!("{path} isn't tracked by git. It goes to the {TRASH}, so you can restore it from there.")
+            format!("{path} isn't tracked by Git. It goes to the {TRASH}, so you can restore it from there.")
         }
         Some(f) if f.status == '?' => t.trf("files.delete.permanent_untracked", &[("path", &path), ("hint", &hint)]),
         Some(_) if trash => format!(
@@ -74,7 +75,7 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
     }
     let (body, button) = if mode == DeleteMode::Trash {
         (
-            format!("{path} isn't tracked by git. Discarding it moves it to the {TRASH}, so you can restore it from there."),
+            format!("{path} isn't tracked by Git. Discarding it moves it to the {TRASH}, so you can restore it from there."),
             format!("Move to {TRASH}"),
         )
     } else {
@@ -107,7 +108,7 @@ pub(super) fn every_line_untracked(st: &AppState, path: &str, hunk: &Hunk, lines
 pub(super) fn discard_seen(st: &mut AppState, path: String, seen: Option<Box<SeenLines>>, fx: &mut Vec<Effect>) {
     let mode = DeleteMode::for_settings(&st.settings);
     if let Some(workdir) = st.workdir() {
-        fx.push(Effect::WorkFile { workdir, op: FileOp::Discard { path, mode, seen } });
+        fx.push(Effect::Files(FilesEffect::Work { workdir, op: FileOp::Discard { path, mode, seen } }));
     }
 }
 

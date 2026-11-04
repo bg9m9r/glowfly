@@ -3,14 +3,14 @@
 //! status bar's update chip. Click tests check the message each button sends.
 
 use super::snapshot_tests::{harness, settings};
-use crate::msg::{Msg, PrefsMsg, UpdateMsg};
-use crate::state::release_notes::NotesDialog;
-use crate::state::updates::UpdateStatus;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Offer, Platform, Release, TargetOs, Version, offer};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, PrefsMsg, UpdateMsg};
+use glowfly_model::state::release_notes::NotesDialog;
+use glowfly_model::state::updates::UpdateStatus;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -181,6 +181,23 @@ fn status_update_available() {
     assert!(sent(&h, &UpdateMsg::ShowNotes));
 }
 
+/// The update chip paints an 18 px badge, but its click spans the status bar's whole height:
+/// a click 2 px below the bar's top, above the painted badge, still opens the notes.
+#[test]
+fn the_update_chip_clicks_across_the_bar_height() {
+    use crate::status::BAR_H;
+    let mut h = harness(status_bar(UpdateStatus::Available(Box::new(the_offer()))), true);
+    h.run();
+    let chip = h.get_by_label("Update available (0.3.0)").bounding_box().expect("the chip's rect");
+    let badge = crate::theme::sizes::ChipSize::Badge.metrics().h;
+    assert_eq!((chip.y1 - chip.y0) as f32, BAR_H, "the hit area is the bar's height, taller than the badge");
+    let bar_top = h.ctx.screen_rect().bottom() - BAR_H;
+    let at = eframe::egui::pos2(((chip.x0 + chip.x1) / 2.0) as f32, bar_top + 2.0);
+    assert!(at.y < bar_top + (BAR_H - badge) / 2.0, "the click lands above the painted badge");
+    super::snapshot_tests_select::click(&mut h, at, eframe::egui::PointerButton::Primary);
+    assert!(sent(&h, &UpdateMsg::ShowNotes));
+}
+
 #[test]
 fn status_update_downloaded() {
     let file = PathBuf::from("Downloads").join("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
@@ -243,3 +260,5 @@ fn an_offer_without_files_opens_its_page() {
 
 #[path = "snapshot_tests_update_flatpak.rs"]
 mod flatpak;
+#[path = "snapshot_tests_whats_new.rs"]
+mod whats_new;

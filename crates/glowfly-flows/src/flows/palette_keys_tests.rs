@@ -6,12 +6,13 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::keymap::{BindingId, Chord, KeyName, Keymap, Slot};
-use crate::msg::{KeysMsg, Msg, PaletteMsg, RepoMsg};
-use crate::state::palette::{InputKind, Mode, PaletteCommand as C, PickKind, shown};
-use crate::state::toolbar_tips;
-use crate::state::{AppState, Modal, PrefPage, PrefsState, Selection};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
+use glowfly_model::keymap::{BindingId, Chord, KeyName, Keymap, Slot};
+use glowfly_model::msg::{KeysMsg, Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::palette::{InputKind, Mode, PaletteCommand as C, PickKind, shown};
+use glowfly_model::state::toolbar_tips;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState, Selection};
 use std::collections::BTreeMap;
 use std::time::Instant;
 
@@ -50,7 +51,7 @@ fn remove(dirs: &[std::path::PathBuf]) {
 fn bound_fetch_runs_the_palette_fetch() {
     let (mut st, dirs) = repo_with_remote("bound-fetch");
     let fx = bound(&mut st, C::Fetch);
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]), "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch all"));
     assert!(st.palette.is_none(), "a one-step command leaves the palette closed");
     assert!(st.palette_recent.is_empty(), "a key press isn't a recent palette command");
@@ -92,7 +93,7 @@ fn bound_two_step_commands_open_their_step() {
     let (mut st, dir) = repo_with_topic("bound-two-step");
     let fx = bound(&mut st, C::FileHistory);
     assert!(matches!(&st.palette.as_ref().expect("open").mode, Mode::Pick(p) if matches!(p.kind, PickKind::FileHistory)));
-    assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { .. })]), "{fx:?}");
 
     st.palette = None;
     assert!(bound(&mut st, C::StashMessage).is_empty());
@@ -142,7 +143,7 @@ fn keys(st: &mut AppState, m: KeysMsg) -> Vec<Effect> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 #[test]

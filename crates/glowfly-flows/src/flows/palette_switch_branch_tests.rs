@@ -5,12 +5,12 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::keymap::{BindingId, Chord, KeyName, fold_ctrl};
-use crate::msg::{Msg, PaletteMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::palette::{Mode, PaletteCommand as C, Pick, PickKind, shown};
-use crate::state::palette_bindings::command_for;
+use glowfly_model::effect::Effect;
+use glowfly_model::keymap::{BindingId, Chord, KeyName, fold_ctrl};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{Mode, PaletteCommand as C, Pick, PickKind, shown};
+use glowfly_model::state::palette_bindings::command_for;
 use std::path::Path;
 use std::time::Instant;
 
@@ -103,7 +103,7 @@ fn a_remote_row_runs_the_main_lists_checkout() {
     let from_row = run(&mut st2, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     assert!(st2.palette.is_none());
     let git_of = |fx: &[Effect]| match fx {
-        [Effect::RunGit { cmds, record, .. }] => (cmds.clone(), record.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => (cmds.clone(), record.clone()),
         other => panic!("expected one RunGit, got {other:?}"),
     };
     assert_eq!(git_of(&from_row), git_of(&from_main));

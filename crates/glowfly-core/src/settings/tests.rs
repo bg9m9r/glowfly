@@ -167,6 +167,16 @@ fn ignore_whitespace_defaults_off() {
 }
 
 #[test]
+fn svg_preview_defaults_off() {
+    // Files written before the switch existed show a changed SVG as text.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.diff_svg_preview);
+    let on = Settings { diff_svg_preview: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.diff_svg_preview);
+}
+
+#[test]
 fn watch_files_defaults_on() {
     // Files written before the setting existed get live updates.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
@@ -474,6 +484,16 @@ fn desktop_notifications_default_off() {
     let on = Settings { desktop_notifications: true, ..Settings::default() };
     let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
     assert!(back.desktop_notifications);
+}
+
+#[test]
+fn confirm_push_pull_default_on() {
+    assert!(Settings::default().confirm_push_pull);
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.confirm_push_pull, "old files load with push and pull confirmations on");
+    let off = Settings { confirm_push_pull: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.confirm_push_pull);
 }
 
 #[test]

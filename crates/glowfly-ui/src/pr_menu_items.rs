@@ -3,20 +3,46 @@
 //! and push the branch first when the code host lacks it or some of its commits. A branch that
 //! can't be pushed plainly gets a disabled item saying why; nothing is ever force-pushed.
 //! Without a code host, a row menu keeps one disabled item saying why. Also the pull request
-//! tooltip the sidebar and the dashboard share.
+//! tooltip the sidebar and the dashboard share, and the PULL REQUESTS row's checkout item.
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_item, menu_item_if, menu_item_tip};
+use super::widgets::menu;
 use super::widgets::reason::{self, ItemState};
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
-use crate::state::blocked::BUSY;
-use crate::state::push_pr::{self, HostBranch};
-use crate::state::{ForgeState, Selection};
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::forge::PullRequest;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::{BranchMsg, ForgeMsg};
+use glowfly_model::state::blocked::BUSY;
+use glowfly_model::state::push_pr::{self, HostBranch};
+use glowfly_model::state::{ForgeState, Selection};
+
+/// The PULL REQUESTS row's checkout of the source branch: its local branch like any other (Open
+/// <source> in its worktree when another worktree has it, Prune and check out when that
+/// worktree's folder is missing); otherwise a new branch tracking the remote one. Disabled with
+/// the reason for a name git refuses or a branch this repository lacks.
+pub(super) fn checkout_item(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, f: &ForgeState, pr: &PullRequest, msgs: &mut Vec<Msg>) {
+    use crate::widgets::menu::named;
+    use glowfly_model::state::worktree_branches::{Elsewhere, checkout_elsewhere};
+    let m = BranchMsg::CheckoutPullRequest { id: pr.id };
+    let blocked = glowfly_model::state::branches::pr_checkout(snap, &f.remote, &pr.source).err();
+    let local = snap.locals.iter().any(|b| b.name == pr.source);
+    let elsewhere = (local && blocked.is_none()).then(|| checkout_elsewhere(t, snap, &pr.source)).flatten();
+    let source = [("branch", pr.source.as_str())];
+    match elsewhere {
+        Some(Elsewhere::Open { tip }) => {
+            let label = named(t.tr("remote_branch.menu.open_in_worktree"), &source).full;
+            menu_item_tip(msgs, ui, label, &tip, Msg::Branch(m));
+        }
+        Some(Elsewhere::Prune { tip }) => {
+            let label = named(t.tr("remote_branch.menu.prune_checkout"), &source).full;
+            menu_item_tip(msgs, ui, label, &tip, Msg::Branch(BranchMsg::PruneThen(Box::new(m))));
+        }
+        None => menu_item_if(msgs, ui, format!("Checkout {}", pr.source), blocked.as_deref(), Msg::Branch(m)),
+    }
+}
 
 /// A pull request row's tooltip (the sidebar's and the dashboard's): branches and author, the
 /// reviewers' votes, the merge status, the checks and the start of the description.
@@ -166,12 +192,13 @@ pub(super) fn pr_menu_live(t: Lang, snap: &Snapshot, fs: &ForgeState, idle: bool
 pub(super) fn push_pr_item(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, fs: &ForgeState, idle: bool, msgs: &mut Vec<Msg>) {
     let noun = fs.pr_word(t);
     let item = push_pr::push_item(t, snap, fs);
+    // A long branch name is cut in its middle; the whole label is its tooltip.
     let label = match snap.head_info() {
-        Some(b) => t.trf("pr.menu.push_head_create", &[("noun", &noun), ("branch", &b.name)]),
-        None => t.trf("pr.menu.push_create", &[("noun", &noun)]),
+        Some(b) => menu::named(t.tr("pr.menu.push_head_create"), &[("noun", noun), ("branch", &b.name)]),
+        None => menu::named(t.tr("pr.menu.push_create"), &[("noun", noun)]),
     };
     let why = if !idle { Some(BUSY) } else { item.as_ref().err().map(String::as_str) };
-    let r = reason::menu_button(ui, label, "", ItemState::blocked_by(why));
+    let r = menu::item_named(label).state(ItemState::blocked_by(why)).show(ui);
     if r.clicked()
         && let Ok(branch) = item
     {

@@ -4,14 +4,14 @@
 //! the stash list, and nothing is restored while a job runs.
 
 use super::tests::{drive, git, scratch_repo, state};
-use crate::journal::{JournalMsg, LostMsg};
-use crate::msg::{JobMsg, Msg, RepoMsg, StageMsg};
-use crate::state::AppState;
-use crate::state::journal_lost::{JournalTab, LostView};
-use crate::state::palette::StashAction;
 use git2::Oid;
 use glowfly_core::journal::LostKind;
 use glowfly_core::undo::kept::KeptWhat;
+use glowfly_model::journal::{JournalMsg, LostMsg};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal_lost::{JournalTab, LostView};
+use glowfly_model::state::palette::StashAction;
 use std::path::{Path, PathBuf};
 
 fn read(dir: &Path, f: &str) -> String {
@@ -93,12 +93,13 @@ fn nothing_is_restored_while_a_job_runs() {
     let (mut st, dir) = discarded("journal-discarded-busy", "work\n");
     let id = kept_id(lost_tab(&mut st));
     std::fs::remove_file(dir.join("a.txt")).unwrap();
-    st.job = Some(crate::state::RunningJob {
+    st.job = Some(glowfly_model::state::RunningJob {
         label: "Fetch".into(),
         workdir: None,
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,

@@ -53,6 +53,12 @@ fn seen(c: Color32, vision: &Matrix) -> [f64; 3] {
     oklab([row(0), row(1), row(2)])
 }
 
+/// The OKLab lightness `c` has through `vision`.
+#[cfg(test)]
+pub(crate) fn lightness_seen(c: Color32, vision: &Matrix) -> f64 {
+    seen(c, vision)[0]
+}
+
 /// How far apart `a` and `b` look through `vision` (OKLab distance).
 pub fn distance(a: Color32, b: Color32, vision: &Matrix) -> f64 {
     let (x, y) = (seen(a, vision), seen(b, vision));

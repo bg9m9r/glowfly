@@ -3,10 +3,10 @@
 //! effect or confirmation.
 
 use super::work_files_tests::{loaded, run};
-use crate::msg::{FilesMsg, HistoryMsg, Msg, RepoMsg, StageMsg, WorkFileMsg};
-use crate::state::path_hazards::warnings;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Collision, DiffTarget, FileEntry, Folding, Hazard, HunkOp};
+use glowfly_model::msg::{FilesMsg, HistoryMsg, Msg, RepoMsg, StageMsg, WorkFileMsg};
+use glowfly_model::state::path_hazards::warnings;
 
 const SHOWN: &str = "caf\\xE9.txt";
 
@@ -14,7 +14,7 @@ fn odd(path: &str, status: char, hazard: Hazard) -> FileEntry {
     FileEntry { hazard: Some(hazard), ..FileEntry::new(path, status) }
 }
 
-fn refused(st: &mut crate::state::AppState, msg: Msg) -> bool {
+fn refused(st: &mut glowfly_model::state::AppState, msg: Msg) -> bool {
     st.toasts.clear();
     let fx = run(st, msg);
     fx.is_empty() && st.modal.is_none() && st.toasts.len() == 1 && !st.toasts[0].ok
@@ -33,7 +33,7 @@ fn a_name_that_is_not_utf8_refuses_every_file_action() {
         Msg::Files(FilesMsg::OpenWorkingFile(p())),
         Msg::Files(FilesMsg::ShowWorkingFile(p())),
         Msg::History(HistoryMsg::OpenFileHistory { path: p(), at: None }),
-        Msg::Blame(crate::msg::BlameMsg::Open { path: p(), at: None }),
+        Msg::Blame(glowfly_model::msg::BlameMsg::Open { path: p(), at: None }),
         Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged(p()))),
     ] {
         assert!(refused(&mut st, msg), "{:?}", st.toasts.last().map(|t| &t.text));

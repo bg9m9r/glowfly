@@ -3,13 +3,13 @@
 //! repositories.
 
 use super::common::menu_item;
-use crate::msg::{Msg, RecentMsg, ReposMsg};
-use crate::state::AppState;
-use crate::state::repo_lists::{favorites, unopened_favorites};
-use crate::state::repo_sync::{SyncKind, SyncScope};
-use crate::ui::widgets::menu::{separator, submenu};
+use crate::widgets::menu::{separator, submenu};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{Msg, RecentMsg, ReposMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_lists::{favorites, unopened_favorites};
+use glowfly_model::state::repo_sync::{SyncKind, SyncScope};
 
 pub fn actions(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.find"), Msg::Repos(ReposMsg::ShowFinder));

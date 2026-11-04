@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::forge::{Connection, Provider};
-use crate::settings::{DiffLayout, DiffMode, Profile, RepoTrust, ResizableColumn};
+use crate::settings::{ColourPalette, DiffLayout, DiffMode, Profile, RepoTrust, ResizableColumn};
 
 const A: ProfileId = ProfileId(1);
 const B: ProfileId = ProfileId(2);
@@ -262,29 +262,28 @@ fn swap_carries_keeping_submodules_updated() {
 }
 
 #[test]
-fn reduce_motion_defaults_off_and_switches_with_the_profile() {
+fn accessibility_fields_stay_through_a_switch() {
+    use crate::settings::{ToastTime, TooltipDelay};
     assert!(!Settings::default().reduce_motion);
-    // Files written before the setting existed keep the animations.
+    // Files written before these settings existed keep the animations and the old timings.
     let old: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
-    assert!(!old.reduce_motion);
+    assert!(!old.reduce_motion && old.a11y.cursor_blink);
+    assert_eq!((old.a11y.toast_time, old.a11y.tooltip_delay), (ToastTime::Standard, TooltipDelay::Quick));
     let mut s = two();
-    s.reduce_motion = true;
-    s.swap_profile_setup(B);
-    assert!(!s.reduce_motion, "B's saved preference");
-    s.active_profile = Some(B);
-    s.swap_profile_setup(A);
-    assert!(s.reduce_motion, "A's, saved on the way out");
-}
-
-#[test]
-fn swap_carries_the_branch_palette_and_keeps_the_pins() {
-    let mut s = two();
-    s.branch_palette = BranchPalette::ColourBlind;
+    // B was saved when reduce motion and the branch palette still switched with the profile.
+    let saved: ProfilePrefs = serde_json::from_str(r#"{"reduce_motion": true, "branch_palette": "ColourBlind", "tab_size": 2}"#).unwrap();
+    s.profiles[1].prefs = Some(saved);
+    s.a11y.cursor_blink = false;
+    s.a11y.toast_time = ToastTime::UntilClosed;
+    s.a11y.tooltip_delay = TooltipDelay::Slow;
+    s.a11y.focus_style = crate::settings::FocusStyle::Strong;
+    s.a11y.announce_jobs = false;
     s.set_branch_pin(std::path::Path::new("/w/r"), "topic", Some(4));
+    let before = s.a11y.clone();
     s.swap_profile_setup(B);
-    assert_eq!(s.branch_palette, BranchPalette::Standard, "B's saved preference");
+    assert_eq!(s.tab_size, 2, "B's preferences came in");
+    assert!(!s.reduce_motion, "the profile's old copy is ignored");
+    assert_eq!(s.colour_palette, ColourPalette::Standard);
+    assert_eq!(s.a11y, before);
     assert_eq!(s.branch_pins_for(std::path::Path::new("/w/r")).get("topic"), Some(&4), "the pins stay");
-    s.active_profile = Some(B);
-    s.swap_profile_setup(A);
-    assert_eq!(s.branch_palette, BranchPalette::ColourBlind, "A's, saved on the way out");
 }

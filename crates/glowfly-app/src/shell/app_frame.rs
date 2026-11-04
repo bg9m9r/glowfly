@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 impl GlowflyApp {
     /// The frame-time overlay over everything `ui::draw` drew (when Preferences turns it on).
     pub(super) fn draw_overlay(&self, ctx: &egui::Context) {
-        crate::ui::frame_overlay::show(ctx, &self.st);
+        glowfly_ui::frame_overlay::show(ctx, &self.st);
     }
 
     /// Runs `f` as the frame phase `name`: timed, and traced as a span.
@@ -65,6 +65,10 @@ impl GlowflyApp {
         }
         // A delayed index build starts, and a long-parked tab's index is freed, on a tick.
         if let Some(at) = self.st.index_wake(now) {
+            ctx.request_repaint_after(at.saturating_duration_since(now));
+        }
+        // A long-parked tab's loaded history is freed on a tick too.
+        if let Some(at) = glowfly_model::state::tabs::history_free_wake(&self.st.tabs, now) {
             ctx.request_repaint_after(at.saturating_duration_since(now));
         }
     }

@@ -16,10 +16,10 @@ pub(crate) mod rows;
 
 use super::UiCache;
 use super::pane_status::{self, Failure};
-use crate::msg::{BlameMsg, Msg};
-use crate::state::AppState;
-use crate::state::blame::{BlameData, BlameView};
 use eframe::egui::Ui;
+use glowfly_model::msg::{BlameMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::{BlameData, BlameView};
 use menu::LineTarget;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -45,11 +45,11 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                 }
             }
         }
-        _ if view.loading => pane_status::loading(ui, st.settings.lang().tr("blame.loading")),
+        _ if view.loading => pane_status::loader(ui, st.settings.lang().tr("blame.loading")),
         _ => match &view.error {
             Some(e) => {
                 let t = st.settings.lang();
-                let title = if e == crate::state::blame::HELD { t.tr("blame.held.title") } else { t.tr("blame.failed.title") };
+                let title = if e == glowfly_model::state::blame::HELD { t.tr("blame.held.title") } else { t.tr("blame.failed.title") };
                 let f = Failure { title, error: e, retry: Some(Msg::Blame(BlameMsg::Retry)) };
                 pane_status::failed(ui, st.settings.lang(), f, msgs);
             }

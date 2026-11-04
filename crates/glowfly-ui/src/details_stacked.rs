@@ -9,19 +9,19 @@ use super::details::file_reveal::reveal;
 use super::details::{RowActions, changed_file_row_at};
 use super::file_menu::RowSource;
 use super::file_menu::folder_menu::{self, FolderStage};
-use super::list_row::file_tree::{ListRows, Shown, folder_row, mode_toggle};
+use super::list_row::file_tree::{FilesKey, ListRows, Shown, folder_row, mode_toggle};
 use super::theme::color;
 use super::widgets;
-use crate::msg::{Msg, SelectionMsg};
-use crate::state::AppState;
-use crate::state::file_folds::FileListId;
-use crate::state::lfs::TrackContext;
-use crate::state::list_keys::FileList;
-use crate::state::selection::{CommitBlock, MultiSelection, STACK_LIMIT};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText, UiBuilder};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, Snapshot, StackedCommit};
+use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::lfs::TrackContext;
+use glowfly_model::state::list_keys::FileList;
+use glowfly_model::state::selection::{CommitBlock, MultiSelection, STACK_LIMIT};
 
 /// One row of the flattened list: a commit's header, one of its files (at its depth in the
 /// section's tree, None in List mode), one of its folder rows (by row of the section's tree),
@@ -78,15 +78,16 @@ fn sections(ui: &mut egui::Ui, t: Lang, st: &AppState, stack: &[StackedCommit], 
     let sections: Vec<ListRows> = stack
         .iter()
         .map(|c| {
+            let list = FileListId::Stacked(c.oid);
             let paths = || c.files.iter().map(|f| f.path.as_str()).collect();
-            ListRows::of(ui, mode, c.files.len(), paths, st.session.tab_view.file_folds.closed(FileListId::Stacked(c.oid)))
+            ListRows::of(ui, mode, c.files.len(), FilesKey::of(list, &c.files, c.oid), &paths, st.session.tab_view.file_folds.closed(list))
         })
         .collect();
     let rows = rows_of(stack, &sections);
-    let open = crate::state::wip_lists::cursor(st);
+    let open = glowfly_model::state::wip_lists::cursor(st);
     let lfs = TrackContext::of(st);
-    let tools = crate::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
-    let commands = crate::state::custom_commands::MenuCommands::for_state(st);
+    let tools = glowfly_model::state::tool_compare::ToolSetup::of(t, &st.settings.external_tools);
+    let commands = glowfly_model::state::custom_commands::MenuCommands::for_state(st);
     let row_h = widgets::LIST_ROW_H;
     let parents = |c: &StackedCommit| snap.row_of.get(&c.oid).map_or(1, |&r| snap.commits[r].parents.len());
     let index = |want: &DiffTarget| {

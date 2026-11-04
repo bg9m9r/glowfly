@@ -11,15 +11,15 @@ use super::theme::color;
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::{Msg, StashMsg};
-use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
-use crate::state::touched::Touched;
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText, Sense};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stash_ops::StashScope;
+use glowfly_model::msg::{Msg, StashMsg};
+use glowfly_model::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
+use glowfly_model::state::touched::Touched;
 
 const BUSY: &str = "Another operation is still running.";
 
@@ -118,7 +118,9 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
                 ui.horizontal(|ui| {
                     let usable = stashable(f);
                     let mut on = usable && form.chosen.contains(&f.path);
-                    let boxed = ui.add_enabled(usable, controls::Check::without_text(&mut on)).changed();
+                    let check = ui.add_enabled(usable, controls::Check::without_text(&mut on));
+                    crate::access::name_if_unnamed(&check, &f.path);
+                    let boxed = check.changed();
                     ui.label(
                         RichText::new(status_label(f.status).to_string())
                             .font(type_scale::mono(type_scale::BODY))

@@ -3,15 +3,15 @@
 
 use super::selection_tests::{commit_on, fixture, git, refresh, up};
 use super::tests::{drive, state};
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::SelectionMsg;
-use crate::state::selection::CommitBlock;
-use crate::state::{AppState, RunningJob, Selection};
 use git2::{Oid, RepositoryState};
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::SelectionMsg;
+use glowfly_model::state::selection::CommitBlock;
+use glowfly_model::state::{AppState, RunningJob, Selection};
 use std::path::PathBuf;
 
 #[test]
@@ -47,6 +47,7 @@ fn cherry_pick_refusals() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         then_open: None,
@@ -101,8 +102,8 @@ fn cherry_pick_conflict_shows_banner_state() {
     assert!(st.toasts.iter().any(|t| !t.ok && t.text == "Stopped on conflicts in 1 file. Resolve it, then continue or abort."));
     let state = st.snap.as_ref().unwrap().state;
     assert!(matches!(state, RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{state:?}");
-    let actions = crate::state::op_actions::state_actions(state).unwrap();
-    let title = crate::state::op_actions::banner_title(glowfly_core::i18n::Lang::En, st.snap.as_ref().unwrap());
+    let actions = glowfly_model::state::op_actions::state_actions(state).unwrap();
+    let title = glowfly_model::state::op_actions::banner_title(glowfly_core::i18n::Lang::En, st.snap.as_ref().unwrap());
     assert_eq!(title.as_deref(), Some("Cherry-pick in progress"));
     let labels: Vec<&str> = actions.iter().map(|(l, _)| *l).collect();
     assert_eq!(labels, ["Continue", "Skip commit", "Abort cherry-pick"]);

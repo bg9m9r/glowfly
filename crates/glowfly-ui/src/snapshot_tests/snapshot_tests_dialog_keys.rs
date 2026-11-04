@@ -5,13 +5,13 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::Msg;
-use crate::state::Modal;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::Modal;
 
 const BODY: &str = "Delete local branch feature/login? Commits only on it can be found again in the reflog for a while.";
 

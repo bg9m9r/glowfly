@@ -4,13 +4,13 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::SparseEffect;
-use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg, SparseMsg};
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::sparse::SparsePage;
-use crate::state::{AppState, PrefPage};
 use glowfly_core::sparse_ops::{SparseCommand, SparseMode, SparseStatus};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SparseEffect;
+use glowfly_model::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg, SparseMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::sparse::SparsePage;
+use glowfly_model::state::{AppState, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -211,7 +211,7 @@ fn a_finished_job_reloads_the_tab_and_the_page() {
     let fx = sparse(&mut st, SparseMsg::Done { ok: true, output: "$ git sparse-checkout reapply".into() });
     assert!(st.job.is_none());
     assert!(toasts(&st).contains(&"Reapply sparse paths succeeded".to_owned()), "{:?}", toasts(&st));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { known: None, .. })), "a full reload");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { known: None, .. }))), "a full reload");
     assert!(loads(&fx));
     assert!(page(&st).status.is_some(), "the page keeps its status until the new one arrives");
     assert!(page(&st).refill);
@@ -235,7 +235,10 @@ fn a_finished_job_reloads_the_tab_and_the_page() {
     st.job.as_mut().unwrap().workdir = Some(dir.join("elsewhere"));
     let fx = sparse(&mut st, SparseMsg::Done { ok: true, output: String::new() });
     assert!(st.job.is_none());
-    assert!(!loads(&fx) && !fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the other tab is left alone");
+    assert!(
+        !loads(&fx) && !fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))),
+        "the other tab is left alone"
+    );
     cleanup(&dir);
 }
 

@@ -3,11 +3,11 @@
 //! hand them to a window that is already open); the merge tool is waited for, its copies are
 //! removed when it exits, and how it ended is reported as `MergeToolExited`.
 
-use crate::msg::Msg;
 use glowfly_core::error::Error;
 use glowfly_core::external_tools::compare::{diff_files, fingerprint, merge_files};
 use glowfly_core::external_tools::{self, DiffVars, Launch, MergeVars, temp};
 use glowfly_core::repo;
+use glowfly_model::msg::Msg;
 use glowfly_model::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, ToolKind, ToolsMsg};
 
 /// What to say about a failure to prepare the files: the bare reason for the ones Glowfly

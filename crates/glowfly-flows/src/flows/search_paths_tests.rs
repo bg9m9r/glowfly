@@ -3,12 +3,12 @@
 
 use super::tests::{drive, git, scratch_repo, skipped, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, PathsChunk, RepoMsg, SearchMsg, TabsMsg};
-use crate::runner;
-use crate::state::graph_rows::GraphRows;
-use crate::state::{AppState, Selection};
 use git2::Oid;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::HistoryEffect;
+use glowfly_model::msg::{Msg, PathsChunk, RepoMsg, SearchMsg, TabsMsg};
+use glowfly_model::state::graph_rows::GraphRows;
+use glowfly_model::state::{AppState, Selection};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -68,8 +68,8 @@ fn settle(st: &mut AppState, fx: Vec<Effect>) -> Vec<(u64, Vec<Oid>)> {
     loop {
         for effect in fx {
             match effect {
-                Effect::SearchPaths { request, oids, .. } => asked.push((request, oids)),
-                e if !skipped(&e) => queue.extend(runner::testing::execute(e)),
+                Effect::History(HistoryEffect::SearchPaths { request, oids, .. }) => asked.push((request, oids)),
+                e if !skipped(&e) => queue.extend(glowfly_runner::testing::execute(e)),
                 _ => {}
             }
         }

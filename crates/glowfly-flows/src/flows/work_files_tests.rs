@@ -4,13 +4,13 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::files::PathForm;
-use crate::state::{AppState, Modal};
 use glowfly_core::repo::{self, Deleted, DiffTarget, FileDiff, FileEntry, LoadOptions};
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::files::PathForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -49,7 +49,9 @@ pub(super) fn last_log(st: &AppState) -> &str {
 }
 
 pub(super) fn work_ops(fx: &[Effect]) -> Vec<FileOp> {
-    fx.iter().filter_map(|e| if let Effect::WorkFile { op, .. } = e { Some(op.clone()) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Files(glowfly_model::effect::FilesEffect::Work { op, .. }) = e { Some(op.clone()) } else { None })
+        .collect()
 }
 
 #[test]
@@ -59,7 +61,10 @@ fn create_checks_then_sends_the_effect() {
     assert_eq!(new_form(&st), &PathForm::new("docs/"));
 
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::CreateFile("docs/a.md".into())));
-    assert!(matches!(&fx[..], [Effect::WorkFile { workdir, op: FileOp::Create(p) }] if *workdir == dir && p == "docs/a.md"), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::Work { workdir, op: FileOp::Create(p) })] if *workdir == dir && p == "docs/a.md"),
+        "{fx:?}"
+    );
     assert_eq!(fx[0].scope(), Some(&dir));
     assert!(new_form(&st).busy);
     assert!(run(&mut st, Msg::WorkFile(WorkFileMsg::CreateFile("docs/a.md".into()))).is_empty(), "not twice while busy");
@@ -229,7 +234,7 @@ fn unstage_delete_results() {
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::deleted(Deleted::Permanently)) }));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Deleted s.txt and removed it from the staging area."));
     assert!(st.session.diff.view.is_none(), "the staged diff of the deleted file is closed");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err("boom".into()) }));
     assert_eq!(last_log(&st), "Could not delete s.txt: boom");
@@ -248,7 +253,7 @@ fn create_result_closes_or_shows_the_error() {
     );
     assert!(st.modal.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Created docs/a.md."));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     finish(&mut st, fx);
 
     let fx = run(
@@ -276,7 +281,7 @@ fn create_result_closes_or_shows_the_error() {
     let form = new_form(&st);
     assert!(!form.busy);
     assert_eq!(form.error, Some(("docs/a.md".into(), "docs/a.md already exists".into())));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))));
 
     st.modal = None;
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Err("boom".into()) }));

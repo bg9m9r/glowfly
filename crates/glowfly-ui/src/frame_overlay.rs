@@ -3,11 +3,11 @@
 //! times the shell keeps (`state/frame_times.rs`), drawn by the shell (`shell/app_frame.rs`) over
 //! everything else. Off by default; it doesn't take clicks.
 
-use crate::state::AppState;
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align2, FontId, RichText, Stroke, vec2};
+use glowfly_model::state::AppState;
 
 pub fn show(ctx: &egui::Context, st: &AppState) {
     if !st.settings.show_frame_times {

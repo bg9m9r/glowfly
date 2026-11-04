@@ -3,12 +3,12 @@
 //! shows, cleared when it hides, and covering the graph).
 
 use super::terminal_tests::{open_with_panel, run, workdir};
-use crate::state::AppState;
-use crate::state::terminal::{SessionStatus, TabRename, TermSession, maximized_shown};
-use crate::state::terminal_names::{auto_name, display_name, name_of};
-use crate::terminal::TerminalMsg as T;
 use glowfly_core::settings::ShellSetting;
 use glowfly_core::terminal::TermScreen;
+use glowfly_model::state::AppState;
+use glowfly_model::state::terminal::{SessionStatus, TabRename, TermSession, maximized_shown};
+use glowfly_model::state::terminal_names::{auto_name, display_name, name_of};
+use glowfly_model::terminal::TerminalMsg as T;
 
 /// The repository's shell reported as pwsh, as the runner does once it runs.
 fn started(st: &mut AppState, id: u64) {

@@ -3,15 +3,16 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::state::AppState;
-use crate::state::lines::LineClick::{self, Only, Range, Toggle};
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions};
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::{self, Only, Range, Toggle};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -150,7 +151,7 @@ fn apply_lines_emits_local_op() {
     let expected = st.session.diff.view.as_ref().unwrap().1.hunks[0].clone();
     assert_eq!(expected.header, "@@ -1,4 +1,4 @@");
     let want = LocalOp::Lines { op: HunkOp::Stage, path: "f.txt".into(), hunk: 0, expected, lines: vec![2, 5], ignore_whitespace: false };
-    assert!(matches!(&fx[..], [Effect::LocalOp { op, .. }] if *op == want), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op, .. })] if *op == want), "{fx:?}");
     assert!(st.view.diff_lines.is_empty(), "applying clears the selection");
     assert_eq!(st.hunk_ops_gen(), None, "hunk and line buttons wait for the reload");
 
@@ -160,7 +161,7 @@ fn apply_lines_emits_local_op() {
     assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage))).is_empty(), "stage doesn't fit a staged diff");
     assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Discard))).is_empty());
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Unstage)));
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Unstage, hunk: 1, .. }, .. }]));
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Lines { op: HunkOp::Unstage, hunk: 1, .. }, .. })]));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -171,7 +172,9 @@ fn discard_through_confirm() {
     click(&mut st, 0, 4, Only);
     run(&mut st, confirm());
     let fx = run(&mut st, Msg::ConfirmAccepted);
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, lines, .. }, .. }] if *lines == [4]));
+    assert!(
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, lines, .. }, .. })] if *lines == [4])
+    );
 
     // The diff changes under the open confirmation: accepting does nothing.
     let mut st = with_diff(unstaged());

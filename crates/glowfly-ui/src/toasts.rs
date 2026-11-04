@@ -2,17 +2,21 @@
 //! last top panel or above the status bar (`ToastBounds`, measured by `frame_layout`), all one
 //! width so a stack lines up on both edges. Each floats on the overlay with `LG` corners and the
 //! Float shadow, outlined in its outcome's tone, with a small x top right that closes it. The
-//! pointer over a toast holds it (`NotifyMsg::HoldToast`): it neither fades nor expires.
+//! pointer over a toast, or the keyboard focus on one of its buttons, holds it
+//! (`NotifyMsg::HoldToast`): it neither fades nor expires. With Announcements on (Preferences >
+//! Accessibility) each toast's text is a live region screen readers read as it appears: politely,
+//! or at once for a failure, and again when a failure is shown again (`text_key`).
 
+use super::access::{self, Live};
 use super::theme::color;
 use super::theme::surfaces::Tone;
 use super::theme::tokens::{self, Elevation, radius};
 use super::widgets::{self, buttons};
-use crate::msg::{Msg, NotifyMsg};
-use crate::state::AppState;
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Stroke, Vec2, vec2};
 use glowfly_core::settings::Corner;
+use glowfly_model::msg::{Msg, NotifyMsg};
+use glowfly_model::state::{AppState, Toast};
 
 /// Where the window's chrome ends: the bottom of the last top panel and the top of the status
 /// bar, in screen points.
@@ -23,7 +27,7 @@ pub(super) struct ToastBounds {
 }
 
 /// Every toast frame's outer width; its text wraps inside.
-pub const TOAST_W: f32 = 360.0;
+pub(crate) const TOAST_W: f32 = 360.0;
 /// Between a toast and the chrome or window edge beside it.
 const TOAST_MARGIN: f32 = 12.0;
 /// Between two stacked toasts.
@@ -60,11 +64,13 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
     }
     let (align, offset) = anchor(st.settings.notification_location, bounds, ctx.screen_rect());
     let p = color::current();
-    let (lang, held) = (st.settings.lang(), st.held_toast());
+    let (lang, held, time) = (st.settings.lang(), st.held_toast(), st.settings.a11y.toast_time);
+    let announce = st.settings.a11y.announce_jobs;
     let mut over = None;
     egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(true).show(ctx, |ui| {
         for t in &st.toasts {
-            let fade = now.map_or(1.0, |n| t.opacity(n));
+            let fade = now.map_or(1.0, |n| t.opacity(n, time));
+            let mut focused = false;
             // A failure stays red with a button too (Details); other toasts with one are blue.
             let tone = if !t.ok {
                 Tone::Danger
@@ -87,12 +93,17 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                         ui.spacing_mut().item_spacing.x = CLOSE_SLOT - 20.0;
                         ui.vertical(|ui| {
                             ui.set_width(TOAST_W - 2.0 * f32::from(PAD_X) - CLOSE_SLOT);
-                            ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
+                            let text = ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
+                            if announce {
+                                access::announce(&text, text_key(t), if t.ok { Live::Polite } else { Live::Assertive });
+                            }
                         });
                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                             ui.scope(|ui| {
                                 ui.multiply_opacity(fade);
-                                if widgets::remove_icon(ui, lang.tr("common.dismiss.button")).clicked() {
+                                let close = widgets::remove_icon(ui, lang.tr("common.dismiss.button"));
+                                focused |= close.has_focus();
+                                if close.clicked() {
                                     msgs.push(Msg::Notify(NotifyMsg::CloseToast(t.id)));
                                 }
                             });
@@ -111,7 +122,9 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                                 ];
                                 for (a, msg) in buttons {
                                     let Some(a) = a else { continue };
-                                    if ui.add(buttons::secondary(&a.label).size(ControlSize::Small)).clicked() {
+                                    let b = ui.add(buttons::secondary(&a.label).size(ControlSize::Small));
+                                    focused |= b.has_focus();
+                                    if b.clicked() {
                                         msgs.push(msg);
                                     }
                                 }
@@ -119,7 +132,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
                         });
                     }
                 });
-            if frame.response.contains_pointer() {
+            // The pointer over it, or the keyboard focus on one of its buttons, holds it.
+            if frame.response.contains_pointer() || (focused && over.is_none()) {
                 over = Some(t.id);
             }
             ui.add_space(TOAST_GAP);
@@ -128,6 +142,14 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
     if over != held {
         msgs.push(Msg::Notify(NotifyMsg::HoldToast(over)));
     }
+}
+
+/// The accessibility key of toast `t`'s text while it is announced: the toast's own, so it isn't
+/// announced again when a toast above it closes. A failure shown again in place
+/// (`Toast::shown`) gets a new key, so it is announced again for a retry that failed the same
+/// way; a success shown again stays quiet.
+pub(crate) fn text_key(t: &Toast) -> egui::Id {
+    if t.ok { egui::Id::new(("toast-text", t.id)) } else { egui::Id::new(("toast-text", t.id, t.shown)) }
 }
 
 #[cfg(test)]

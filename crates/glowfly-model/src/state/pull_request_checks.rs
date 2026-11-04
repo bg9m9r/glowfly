@@ -112,7 +112,7 @@ pub fn time_text(r: &CheckRun, now: i64) -> Option<String> {
 }
 
 /// "CI · build": the check's name after its group, safe to show.
-pub fn run_label(r: &CheckRun) -> String {
+pub(crate) fn run_label(r: &CheckRun) -> String {
     match r.group.as_deref().map(printable).filter(|g| !g.is_empty()) {
         Some(g) => format!("{g} · {}", printable(&r.name)),
         None => printable(&r.name),

@@ -3,15 +3,15 @@
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_rebase::with_panel;
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::AppState;
-use crate::state::rebase::Editing;
-use crate::state::rebase_steps::NewStep;
 use eframe::egui::{Event, Key, Modifiers, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::rebase::RebaseAction::{self, *};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::Editing;
+use glowfly_model::state::rebase_steps::NewStep;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

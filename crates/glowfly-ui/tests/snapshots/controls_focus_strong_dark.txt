@@ -1,0 +1,44 @@
+window 620x370
+TextInput "Empty field"
+TextInput "Filled field" = "feature/login"
+TextInput "Focused field" = "Focused" [focused]
+CheckBox "Unchecked" [off]
+CheckBox "Checked" [on]
+CheckBox "Indeterminate" [mixed]
+CheckBox "Disabled" [disabled, on]
+RadioButton "Merge" [off]
+RadioButton "Rebase" [on]
+Button "Hunks" [on]
+Button "Whole file" [off]
+Button "Graph" [on]
+Button "List" [off]
+Button "Tree" [disabled, off]
+Button "Copy the SHA"
+Button "The committer"
+Label "Focus targets"
+Button "Cancel"
+Button "Refresh"
+Button "Pull"
+Button "Pull options"
+painted:
+  "Filter branches"
+  "a1b2c3d"
+  "Grace Hopper"
+  "HEAD"
+  "✔ main"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "topic"
+  "origin/main"
+  "v1.2.0"

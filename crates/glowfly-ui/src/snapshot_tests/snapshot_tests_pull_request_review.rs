@@ -4,15 +4,15 @@
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_pull_request::with_pr;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::{Page, PrTab, PrView};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Entry, EntryKind, MergeMethod, MergeState, PrDetail, PrPage, PrState, Provider, ReviewStyle, Target, Verdict};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{Page, PrTab, PrView};
 
 pub(crate) fn detail() -> PrDetail {
     PrDetail {
@@ -42,7 +42,7 @@ pub(crate) fn entry(author: &str, day: i64, kind: EntryKind, body: &str) -> Entr
 /// The panel's page loaded by hand with `d` and `entries`, the forms fitted to it.
 pub(crate) fn load(st: &mut AppState, d: PrDetail, entries: Vec<Entry>) {
     let v = st.session.pull_request.view.as_mut().unwrap();
-    crate::state::pull_request_actions::prefill(&mut v.forms, &d, None);
+    glowfly_model::state::pull_request_actions::prefill(&mut v.forms, &d, None);
     v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads: Vec::new(), threads_note: None }));
 }
 
@@ -106,6 +106,11 @@ fn pull_request_author_light() {
     h.check_snapshot("pull_request_author_light");
     assert!(h.get_by_label("Approve").is_disabled());
     assert!(h.get_by_label("Request changes").is_disabled());
+    // Why on screen, not only on hover: in place of each choice's help, and under Submit.
+    assert!(h.query_by_label("You opened this pull request, so you can't approve it").is_some());
+    assert!(h.query_by_label("You opened this pull request, so you can't request changes on it").is_some());
+    assert!(h.query_by_label("Approve these changes for merging.").is_none());
+    assert!(h.query_by_label("A comment needs a summary").is_some());
     assert!(h.get_by_label("Merge pull request").is_disabled());
     assert!(h.query_by_label("Conflicts with main must be resolved first").is_some());
     assert!(h.query_by_label("Left comments on the code.").is_some());
@@ -147,7 +152,7 @@ fn pull_request_unsupported_light() {
     });
     let mut view = PrView::new(fs.prs[0].clone(), fs, st.snap.as_ref().unwrap());
     assert_eq!(view.page, Page::Unsupported);
-    view.checks.pane = crate::state::pull_request_checks::ChecksPane::Loaded(Default::default());
+    view.checks.pane = glowfly_model::state::pull_request_checks::ChecksPane::Loaded(Default::default());
     st.session.pull_request.view = Some(view);
     let mut h = harness(st, false);
     h.run();
@@ -166,8 +171,8 @@ fn count(h: &egui_kittest::Harness<'static, (AppState, Vec<Msg>)>, f: impl Fn(&P
 /// focused review summary, only when allowed; the Comment button's tooltip names the key.
 #[test]
 fn command_enter_posts_the_comment_and_the_review() {
-    use crate::keymap::{Chord, KeyName};
     use eframe::egui::{Key, Modifiers};
+    use glowfly_model::keymap::{Chord, KeyName};
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-command-enter", true);
     load(&mut st, detail(), Vec::new());
     let mut h = harness(st, true);

@@ -1,11 +1,11 @@
 window 520x48
 Label "app.txt"
 Label "M +24 −9"
+Label "0707070"
 Button "Previous change"
 Button "Next change"
 Button "View"
 Button "More file actions"
-Button "Open in external diff tool"
 Button "Close diff"
 painted:
   "M"

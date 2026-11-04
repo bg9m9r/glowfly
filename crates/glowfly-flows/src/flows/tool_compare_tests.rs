@@ -7,16 +7,17 @@
 use super::conflict_tests::conflicted_repo;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::ConflictEffect;
-use crate::effect::Effect;
-use crate::msg::{ConflictMsg, Msg, RepoMsg, StageMsg};
-use crate::state::AppState;
-use crate::state::PrefPage;
-use crate::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, ToolEffect, ToolsMsg};
 use git2::Oid;
 use glowfly_core::repo::{DiffTarget, Side};
 use glowfly_core::settings::ExternalTools;
 use glowfly_core::undo::Action;
+use glowfly_model::effect::ConflictEffect;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::msg::{ConflictMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::PrefPage;
+use glowfly_model::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, ToolEffect, ToolsMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -260,13 +261,14 @@ fn running_in_view(name: &str) -> (AppState, PathBuf) {
 }
 
 fn writes(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LocalOp { .. }))
+    fx.iter().any(|e| matches!(e, Effect::Files(FilesEffect::LocalOp { .. })))
 }
 
 /// Mark resolved's first step: the working file is read for conflict markers.
 fn checks_markers(fx: &[Effect]) -> bool {
-    fx.iter()
-        .any(|e| matches!(e, Effect::Conflict(ConflictEffect::ReadFiles { purpose: crate::effect::ConflictRead::BeforeMarkResolved, .. })))
+    fx.iter().any(|e| {
+        matches!(e, Effect::Conflict(ConflictEffect::ReadFiles { purpose: glowfly_model::effect::ConflictRead::BeforeMarkResolved, .. }))
+    })
 }
 
 #[test]
@@ -321,7 +323,10 @@ fn a_merge_for_a_tab_no_longer_active_still_ends_the_job() {
     );
     assert!(st.job.is_none());
     assert!(
-        !fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. } | Effect::LoadRepo { .. })),
+        !fx.iter().any(|e| matches!(
+            e,
+            Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }) | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+        )),
         "the active tab is not refreshed: {fx:?}"
     );
     let _ = std::fs::remove_dir_all(&dir);

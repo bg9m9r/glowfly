@@ -7,19 +7,21 @@ use super::push_pr_fork_tests::with_fork;
 use super::push_pr_tests::cleanup;
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{ForgeMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::pr_repos::{UnusablePush, pr_push_target};
-use crate::state::push_pr::{HostBranch, host_branch};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::pr_repos::{UnusablePush, pr_push_target};
+use glowfly_model::state::push_pr::{HostBranch, host_branch};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 fn push_and_start(st: &mut AppState, branch: &str) -> Vec<Vec<Vec<String>>> {
     let fx = update(st, Msg::Forge(ForgeMsg::PushAndStartPr { branch: branch.into(), target: None }), Instant::now());
     st.job = None;
-    fx.into_iter().filter_map(|e| if let Effect::RunGit { cmds, .. } = e { Some(cmds) } else { None }).collect()
+    fx.into_iter()
+        .filter_map(|e| if let Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) = e { Some(cmds) } else { None })
+        .collect()
 }
 
 fn push(remote: &str, branch: &str, upstream: bool) -> Vec<Vec<Vec<String>>> {

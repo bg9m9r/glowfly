@@ -8,15 +8,12 @@ Dialog
   Label "Optional"
   MultilineTextInput "Description" = "Starting without ~/.config/demo panics."
   Label "Labels"
-  TextInput
+  Label "bug"
+  Label "ui"
+  TextInput "Search labels"
   Label "Assignees"
-  TextInput
+  Label "ada"
+  TextInput "Search people"
   CheckBox "Create a branch for it afterwards" [on]
   Button "Cancel"
   Button "Create issue"
-painted:
-  "bug"
-  "ui"
-  "Search labels"
-  "ada"
-  "Search people"

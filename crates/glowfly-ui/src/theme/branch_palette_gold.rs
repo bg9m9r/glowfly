@@ -19,7 +19,7 @@ use super::branch_palette::{
 use super::branch_palette_more::{COBALT_CB_LIGHT_LINES, COBALT_CB_LIGHT_NAMES, COBALT_CB_LIGHT_TEXT};
 use super::families::{Branch, LANE_COUNT};
 use eframe::egui::Color32;
-use glowfly_core::settings::BranchPalette;
+use glowfly_core::settings::ColourPalette;
 
 const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
@@ -32,7 +32,7 @@ pub(super) const fn with<T: Copy, const N: usize>(mut t: [T; N], i: usize, c: T)
 }
 
 /// The slot Jade takes.
-pub const JADE_SLOT: usize = 11;
+pub(crate) const JADE_SLOT: usize = 11;
 /// The colour-blind slots that make room: Yellow and Lime.
 const CB_YELLOW_SLOT: usize = 2;
 const CB_LIME_SLOT: usize = 5;
@@ -45,39 +45,40 @@ pub const JADE_LIGHT_TEXT: Color32 = hex(0x176449);
 pub const JADE_LIGHT_LINE: Color32 = hex(0x2d9570);
 
 /// The slot Forest takes on Dawn: Indigo, beside the iris.
-pub const DAWN_FOREST_SLOT: usize = 13;
+pub(crate) const DAWN_FOREST_SLOT: usize = 13;
 
 /// The standard hues with Jade.
-pub const GOLD_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, JADE_SLOT, JADE_DARK);
+pub(crate) const GOLD_DARK_TONES: [Color32; LANE_COUNT] = with(DARK_TONES, JADE_SLOT, JADE_DARK);
 const GOLD_NAMES: [Hue; LANE_COUNT] = with(NAMES, JADE_SLOT, Hue::Jade);
 /// Dawn's light tones: Jade and Forest.
-pub const DAWN_LIGHT_TEXT: [Color32; LANE_COUNT] = with(with(LIGHT_TEXT, JADE_SLOT, JADE_LIGHT_TEXT), DAWN_FOREST_SLOT, FOREST_TEXT);
-pub const DAWN_LIGHT_LINES: [Color32; LANE_COUNT] = with(with(LIGHT_LINES, JADE_SLOT, JADE_LIGHT_LINE), DAWN_FOREST_SLOT, FOREST_LINE);
+pub(crate) const DAWN_LIGHT_TEXT: [Color32; LANE_COUNT] = with(with(LIGHT_TEXT, JADE_SLOT, JADE_LIGHT_TEXT), DAWN_FOREST_SLOT, FOREST_TEXT);
+pub(crate) const DAWN_LIGHT_LINES: [Color32; LANE_COUNT] =
+    with(with(LIGHT_LINES, JADE_SLOT, JADE_LIGHT_LINE), DAWN_FOREST_SLOT, FOREST_LINE);
 const DAWN_NAMES: [Hue; LANE_COUNT] = with(with(LIGHT_NAMES, JADE_SLOT, Hue::Jade), DAWN_FOREST_SLOT, Hue::Forest);
 
 const CB: usize = glowfly_core::branch_colour::COLOUR_BLIND_SLOTS as usize;
 
 /// The colour-blind friendly dark tones beside the gold: Orange and a paler Lime.
-pub const GOLD_CB_DARK_TONES: [Color32; CB] = with(with(CB_DARK_TONES, CB_YELLOW_SLOT, hex(0xeb8f13)), CB_LIME_SLOT, hex(0xc8feac));
+pub(crate) const GOLD_CB_DARK_TONES: [Color32; CB] = with(with(CB_DARK_TONES, CB_YELLOW_SLOT, hex(0xeb8f13)), CB_LIME_SLOT, hex(0xc8feac));
 const GOLD_CB_DARK_NAMES: [Hue; CB] = with(CB_NAMES, CB_YELLOW_SLOT, Hue::Orange);
 
 /// Dusk.
 pub const BRANCH_DUSK: Branch =
-    Branch { lanes: GOLD_DARK_TONES, chips: GOLD_DARK_TONES, preset: BranchPalette::Standard, names: GOLD_NAMES };
+    Branch { lanes: GOLD_DARK_TONES, chips: GOLD_DARK_TONES, preset: ColourPalette::Standard, names: GOLD_NAMES };
 /// Dawn.
 pub const BRANCH_DAWN: Branch =
-    Branch { lanes: DAWN_LIGHT_LINES, chips: DAWN_LIGHT_TEXT, preset: BranchPalette::Standard, names: DAWN_NAMES };
+    Branch { lanes: DAWN_LIGHT_LINES, chips: DAWN_LIGHT_TEXT, preset: ColourPalette::Standard, names: DAWN_NAMES };
 /// Colour-blind friendly, on Dusk.
 pub const BRANCH_CB_DUSK: Branch = Branch {
     lanes: pad(GOLD_CB_DARK_TONES),
     chips: pad(GOLD_CB_DARK_TONES),
-    preset: BranchPalette::ColourBlind,
+    preset: ColourPalette::ColourBlind,
     names: pad(GOLD_CB_DARK_NAMES),
 };
 /// Colour-blind friendly, on Dawn.
 pub const BRANCH_CB_DAWN: Branch = Branch {
     lanes: pad(COBALT_CB_LIGHT_LINES),
     chips: pad(COBALT_CB_LIGHT_TEXT),
-    preset: BranchPalette::ColourBlind,
+    preset: ColourPalette::ColourBlind,
     names: pad(COBALT_CB_LIGHT_NAMES),
 };

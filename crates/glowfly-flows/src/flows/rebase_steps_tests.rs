@@ -2,13 +2,13 @@
 
 use super::rebase_tests::with_panel;
 use super::update;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase::{Editing, RebasePanel};
-use crate::state::rebase_steps::NewStep;
-use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::rebase::{self, RebaseAction, RebaseBase, TodoStep};
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase::{Editing, RebasePanel};
+use glowfly_model::state::rebase_steps::NewStep;
+use glowfly_model::state::{AppState, Selection};
 use std::time::Instant;
 
 fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -30,7 +30,7 @@ fn selecting_a_commit_row_shows_the_commit() {
     assert_eq!(panel(&st).selected, Some(1));
     assert_eq!(st.session.selection, Selection::Commit(c[1]));
     assert!(
-        matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(crate::effect::LineCountsEffect::Commit { .. })] if *oid == c[1]),
+        matches!(&fx[..], [Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }), Effect::LineCounts(glowfly_model::effect::LineCountsEffect::Commit { .. })] if *oid == c[1]),
         "{fx:?}"
     );
     assert!(st.session.rebase.view.is_some(), "the panel stays open");

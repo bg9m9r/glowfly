@@ -18,6 +18,7 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 
 - Say in Preferences > Language which OS setting or variable the System choice came from
 - Spell checking on Linux (e.g. through Enchant or Hunspell) in `spell::system_languages`' order; today only Windows checks
+- Spell check the commit message in the app's language (a German summary is underlined by an English dictionary)
 - Key names in shortcut hints follow the language (e.g. "Strg" on German keyboards)
 - Plural rules beyond one/other (needed if a language with other forms is added)
 - Wrap or shrink right-aligned Preferences labels that are too long in a translation
@@ -26,7 +27,6 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 - Right-to-left layout for right-to-left languages
 - Translate undo action descriptions (Action::describe, e.g. "checkout of main") and the labels of the jobs they name, shown in the Edit menu, toolbar tips, status bar and activity log
 - Translate error texts that come from glowfly-core: update check and download errors, theme file problems and the themes folder error
-- Translate the tour of the main window (ui/tour.rs, state/onboarding_tour.rs) and its closing toast
 - Translate git's missing or too-old banner text built in glowfly-core (welcome Git step and window banner)
 - Translate the folder picker titles (Add a project folder, Open a Git repository and the other Preferences pickers)
 - Translate the palette's repository commands (e.g. Remove missing repositories from the lists)
@@ -43,6 +43,8 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 - A narrow conflict view cuts the panes' "picked automatically · whitespace only" tag in German; wrap it or drop the reason part when it doesn't fit
 - The automatic-pick notes ("The conflict in this file was picked automatically…") are separate one / all texts; fold them into one plural text
 - Translate the palette's rebase entries (Restore original order, Reload rebase steps)
+- Translate the toolbar's "Untrusted" chip label (`trust_chip.rs`), still hard-coded English
+- The German commit button's blocked label ("Erst etwas zum Committen bereit…") is cut in a narrow window; shorter copy (D11, #447)
 
 ### Glowfly's own wording
 
@@ -59,3 +61,8 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
   default sidebar width; give the line more room or move the button under it
 - German unsigned-builds help as one sentence ("Da die Builds von Glowfly noch nicht codesigniert sind, bestätigt dieser Abgleich nur, …")
 - Spanish unsigned-builds help: end with "…, pero no quién la publicó"
+- The High contrast help says "High contrast dark or light"; use the theme picker's names, High Contrast Dark and High Contrast Light
+- German and Spanish size fields show "12.5 pt" while their help says "12,5" (Accessibility, Diff viewer and Terminal); format the field's decimal for the language
+- The Strong focus help says its outline "shows on every color", which overstates the faint outline on panels
+- Spanish Reset all group colors: "Restablecer todos los colores de grupo", with the toast "…restablecidos a los predeterminados"; its Undo can reuse the Edit menu's Undo text
+- German "Zielbranch" should be "Ziel-Branch", as the other Branch compounds are hyphenated

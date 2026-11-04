@@ -7,19 +7,19 @@ use super::gitflow_tests::{cleanup, initialized};
 use super::prefs_save_tests::{edited, git_mut, identity, on_page, page, prefs, run, writes};
 use super::profiles_tests::{PERSONAL, WORK, two_profiles};
 use super::tests::{drive, scratch_repo, state};
-use crate::msg::{Msg, PrefsMsg, RepoMsg, SparseMsg, TabsMsg};
-use crate::profile::ProfileMsg;
-use crate::state::prefs::GitConfigValues;
-use crate::state::tabs::Tab;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::tools::ToolsMsg;
 use glowfly_core::sparse_ops::{SparseMode, SparseStatus};
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, SparseMsg, TabsMsg};
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::tabs::Tab;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
+use glowfly_model::tools::ToolsMsg;
 
 fn asking(st: &AppState) -> bool {
     matches!(st.modal, Some(Modal::ConfirmChoice { .. }))
 }
 
-/// The Identity page with the name edited to " Grace " and ClosePrefs held by the question.
+/// The Commit identity page with the name edited to " Grace " and ClosePrefs held by the question.
 fn closing_edited_identity() -> AppState {
     let mut st = identity();
     git_mut(&mut st).repo_name = " Grace ".into();
@@ -34,10 +34,13 @@ fn closing_an_edited_page_asks_first() {
     assert_eq!(page(&st), PrefPage::RepoIdentity, "held");
     assert!(st.prefs.as_ref().unwrap().leaving.is_some());
     match &st.modal {
-        Some(Modal::ConfirmChoice { title, body, button, alt, .. }) => {
+        Some(Modal::ConfirmChoice { title, body, button, alt, then, alt_then }) => {
             assert_eq!(title, "Save your changes?");
-            assert_eq!(body, "Identity has changes that aren't saved yet.");
+            assert_eq!(body, "Commit identity has changes that aren't saved yet.");
             assert_eq!((button.as_str(), alt.as_str()), ("Save", "Discard"));
+            // What Save and Discard send (save_writes_then_leaves, discard_reverts_then_leaves).
+            assert!(matches!(**then, Msg::Prefs(PrefsMsg::LeaveSave)), "Save sends LeaveSave");
+            assert!(matches!(**alt_then, Msg::Prefs(PrefsMsg::LeaveDiscard)), "Discard sends LeaveDiscard");
         }
         _ => panic!("expected the question"),
     }

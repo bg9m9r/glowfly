@@ -2,9 +2,9 @@
 //! step to the next menu), Left and Esc closing it alone, typeahead on the bar's menus, and the
 //! focus kept inside the open menu. The app's frame, in the app's order (`keys_harness`).
 
-use crate::ui::menu_bar::keys_tests::{H, focused, key, keys_harness, press, widest};
-use crate::ui::menu_bar::snapshot_tests::with_bar;
-use crate::ui::snapshot_tests::remove_fixture;
+use crate::menu_bar::keys_tests::{H, focused, key, keys_harness, press, widest};
+use crate::menu_bar::snapshot_tests::with_bar;
+use crate::snapshot_tests::remove_fixture;
 use eframe::egui::{self, Event, Key, Modifiers, Order};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;

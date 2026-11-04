@@ -7,7 +7,7 @@ use super::snapshot_check::CheckSnapshot;
 use super::theme::color::{self, Palette};
 use super::theme::{self, apply_style, egui_theme};
 use super::widgets::buttons;
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{self, Id, Vec2, vec2};
 use egui_kittest::Harness;
@@ -16,7 +16,7 @@ use glowfly_core::i18n::Lang;
 
 fn render_buttons(name: &str, p: Palette) {
     let mut first = true;
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(440.0, 150.0)).build_ui(move |ui| {
+    let mut h = crate::snapshot_check::builder().with_size(vec2(440.0, 150.0)).build_ui(move |ui| {
         color::set_palette(&p);
         apply_style(ui.ctx(), &p);
         ui.ctx().set_theme(egui_theme(&p));
@@ -54,7 +54,7 @@ fn button_styles() {
 /// A dialog with its own header and close box, 500 px wide with a 200 px least body and only a
 /// Close button; the state counts the frames `take_closed` reported a click.
 fn own_header(size: Vec2) -> Harness<'static, u32> {
-    crate::ui::snapshot_check::builder().with_size(size).build_state(
+    crate::snapshot_check::builder().with_size(size).build_state(
         |ctx, closes: &mut u32| {
             color::set_palette(&theme::view_palette(true));
             apply_style(ctx, &theme::view_palette(true));

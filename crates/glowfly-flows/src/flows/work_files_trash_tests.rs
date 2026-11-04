@@ -5,13 +5,13 @@
 
 use super::tests::{drive, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, entry, last_log, loaded, run, work_ops};
-use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::Modal;
-use crate::state::files::TRASH;
 use glowfly_core::repo::{Deleted, TrashProblem, TrashRefusal};
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::Modal;
+use glowfly_model::state::files::TRASH;
 use std::path::PathBuf;
 
 fn delete(path: &str, mode: DeleteMode) -> FileOp {
@@ -23,7 +23,7 @@ fn unstage_delete(path: &str, mode: DeleteMode) -> FileOp {
 }
 
 /// Opens the confirmation for `path` and returns its body, button and the op it runs.
-fn ask(st: &mut crate::state::AppState, path: &str) -> (String, String, FileOp) {
+fn ask(st: &mut glowfly_model::state::AppState, path: &str) -> (String, String, FileOp) {
     assert!(run(st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: path.into(), confirmed: false })).is_empty());
     let (_, body, button, then) = confirm(st);
     let Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) = then else { panic!("expected DeleteConfirmed for {path}") };
@@ -38,7 +38,7 @@ fn confirm_says_trash_by_default() {
     snap.unstaged = vec![entry("u.txt", '?'), entry("m.txt", 'M')];
     snap.staged = vec![entry("s.txt", 'M')];
     for (path, want) in [
-        ("u.txt", format!("u.txt isn't tracked by git. It goes to the {TRASH}, so you can restore it from there.")),
+        ("u.txt", format!("u.txt isn't tracked by Git. It goes to the {TRASH}, so you can restore it from there.")),
         (
             "m.txt",
             format!(
@@ -68,7 +68,7 @@ fn permanent_preference_keeps_old_texts() {
     assert_eq!(
         body,
         format!(
-            "u.txt isn't tracked by git. Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so Glowfly asks again before deleting one.",
+            "u.txt isn't tracked by Git. Glowfly keeps a copy so Undo ({}) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so Glowfly asks again before deleting one.",
             keys("Ctrl+Z")
         )
     );
@@ -168,7 +168,7 @@ fn trash_refused_offers_permanent() {
             refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin"),
         }),
     );
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     let (title, body, button, then) = confirm(&st);
     assert_eq!((title, button), ("Delete permanently?", "Delete permanently"));
     assert_eq!(
@@ -322,7 +322,7 @@ fn end_to_end_trash() {
     drive(&mut st, Msg::ConfirmAccepted);
 
     assert!(!dir.join("a.txt").exists());
-    let bin = crate::runner::testing::test_bin();
+    let bin = glowfly_runner::testing::test_bin();
     let landed = std::fs::read_dir(&bin)
         .unwrap()
         .flatten()

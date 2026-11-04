@@ -8,16 +8,16 @@ use super::buttons;
 use super::ghost;
 use super::menu;
 use super::{Icon, paint_icon_sized};
-use crate::msg::Msg;
-use crate::onboarding::OnboardingMsg;
-use crate::state::hints::HintView;
-use crate::ui::common::menu_item;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::{HOVER, radius};
-use crate::ui::theme::{color, surfaces, type_scale};
-use crate::ui::widgets::tooltip;
+use crate::common::menu_item;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::{HOVER, radius};
+use crate::theme::{color, surfaces, type_scale};
+use crate::widgets::tooltip;
 use eframe::egui::{self, Rect, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::hints::HintView;
 
 /// The inset from the pane's sides, and above and below the row.
 const INSET_X: f32 = 8.0;

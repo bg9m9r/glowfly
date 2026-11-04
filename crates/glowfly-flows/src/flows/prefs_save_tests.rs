@@ -6,17 +6,17 @@
 use super::profiles_tests::{WORK, two_profiles};
 use super::tests::state;
 use super::update;
-use crate::effect::Effect;
-use crate::effect::PrefsEffect;
-use crate::effect::SparseEffect;
-use crate::keymap::{BindingId, Slot};
-use crate::msg::{FolderPurpose, ForgeMsg, Msg, PaletteMsg, PrefsMsg};
-use crate::state::keys_page::Recording;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::prefs::{Autocrlf, GitConfigValues};
-use crate::state::prefs_save::unsaved;
-use crate::state::{AppState, PrefPage, PrefsState};
 use glowfly_core::forge::{Account, Provider};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::PrefsEffect;
+use glowfly_model::effect::SparseEffect;
+use glowfly_model::keymap::{BindingId, Slot};
+use glowfly_model::msg::{FolderPurpose, ForgeMsg, Msg, PaletteMsg, PrefsMsg};
+use glowfly_model::state::keys_page::Recording;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::prefs::{Autocrlf, GitConfigValues};
+use glowfly_model::state::prefs_save::unsaved;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::{Duration, Instant};
 
 pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -35,7 +35,7 @@ pub(super) fn on_page(page: PrefPage, git: GitConfigValues) -> AppState {
     st
 }
 
-/// The repository's Identity page, its local name "Ada".
+/// The repository's Commit identity page, its local name "Ada".
 pub(super) fn identity() -> AppState {
     on_page(PrefPage::RepoIdentity, GitConfigValues { repo_name: "Ada".into(), ..Default::default() })
 }
@@ -189,7 +189,7 @@ fn nav_rows_run_what_their_page_needs() {
 fn the_sparse_row_loads_its_status() {
     let dir = super::tests::scratch_repo("prefs-nav-sparse");
     let mut st = state();
-    super::tests::drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Open(dir.clone())));
+    super::tests::drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Open(dir.clone())));
     st.prefs = Some(PrefsState::new(PrefPage::General));
     let fx = prefs(&mut st, PrefsMsg::Navigate(PrefPage::RepoSparse));
     assert_eq!(page(&st), PrefPage::RepoSparse);

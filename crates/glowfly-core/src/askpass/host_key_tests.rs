@@ -73,3 +73,16 @@ fn a_host_known_by_another_key_type_is_not_read() {
                       Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
     assert_eq!(parse(other_type), None);
 }
+
+/// OpenSSH 10's wording, as Git for Windows' ssh 10.3 prints it: a colon after "is".
+#[test]
+fn reads_openssh_10s_colon() {
+    let text = "The authenticity of host 'github.com (140.82.112.4)' can't be established.\n\
+                ED25519 key fingerprint is: SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU\n\
+                This key is not known by any other names.\n\
+                Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
+    let k = parse(text).expect("read");
+    assert_eq!((k.host.as_str(), k.address.as_deref(), k.key_type.as_str()), ("github.com", Some("140.82.112.4"), "ED25519"));
+    assert_eq!(k.fingerprint, "SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU");
+    assert!(matches!(super::classify(text, Some("confirm")), super::PromptKind::HostKey(_)));
+}

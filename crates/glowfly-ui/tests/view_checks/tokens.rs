@@ -36,6 +36,11 @@ const ICON_FILES: &[&str] = &["widgets/icon.rs", "icons.rs", "icons_panel.rs", "
 const ALLOWED: &[(&str, &str, &str)] = &[
     ("tour.rs", "rect_stroke(t.shrink(1.0)", "the tour's spotlight outline, not a focus ring"),
     ("welcome_cards.rs", "CornerRadius::same(2), s, StrokeKind::Middle", "a corner of the painted folder glyph"),
+    (
+        "widgets/popover.rs",
+        "popup_shadow = Shadow::NONE",
+        "the invisible popup that only registers the popover with egui (to hide tooltips): no shadow is drawn",
+    ),
 ];
 
 fn starts_with_digit(s: &str) -> bool {
@@ -150,7 +155,7 @@ fn allowed_entries_let_their_line_through() {
 
 /// How many hand-set sizes the size check finds today. Lower it as call sites take a
 /// `ControlSize`; never raise it.
-const SIZE_LITERALS: usize = 152;
+const SIZE_LITERALS: usize = 113;
 
 /// The folders that define sizes, which the size check skips.
 const SIZE_HOMES: &[&str] = &["widgets/", "theme/"];

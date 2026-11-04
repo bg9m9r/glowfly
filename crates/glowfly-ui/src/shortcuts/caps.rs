@@ -2,14 +2,14 @@
 //! "or". Used by the shortcut sheet and Preferences > Keyboard; a single cap of weak text marks a
 //! favorite's key on the start page's repository rows.
 
-use crate::keymap::Chord;
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{
     self, Color32, CornerRadius, FontId, Galley, Painter, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType,
     pos2, vec2,
 };
+use glowfly_model::keymap::Chord;
 use std::sync::Arc;
 
 const CAP_FONT: f32 = type_scale::SMALL;

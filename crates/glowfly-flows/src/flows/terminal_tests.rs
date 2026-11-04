@@ -4,14 +4,14 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::state::AppState;
-use crate::state::terminal::SessionStatus;
-use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use glowfly_core::terminal::{KeyMods, TermColor, TermInput, TermKey};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::terminal::SessionStatus;
+use glowfly_model::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -215,14 +215,14 @@ fn switching_tabs_starts_the_other_repos_shell_and_closing_kills_it() {
 fn closing_one_of_two_tabs_on_a_workdir_keeps_its_shell() {
     let (mut st, dir, id) = open_with_panel("term-tabs-shared");
     let path = st.tabs[0].path.clone().unwrap();
-    st.tabs.push(crate::state::tabs::Tab::unloaded(path.clone()));
+    st.tabs.push(glowfly_model::state::tabs::Tab::unloaded(path.clone()));
 
     let fx = terminal(update(&mut st, Msg::Tabs(TabsMsg::CloseTab(1)), Instant::now()));
     assert!(fx.is_empty(), "the other tab still uses the shell: {fx:?}");
     assert_eq!(st.terminal.sessions.len(), 1);
 
     // The active tab, while a second one on the same workdir stays open.
-    st.tabs.push(crate::state::tabs::Tab::unloaded(path));
+    st.tabs.push(glowfly_model::state::tabs::Tab::unloaded(path));
     let fx = terminal(update(&mut st, Msg::Tabs(TabsMsg::CloseTab(0)), Instant::now()));
     assert!(!fx.iter().any(|e| matches!(e, E::Kill(_) | E::Close(_))), "{fx:?}");
     assert_eq!(st.terminal.sessions[0].id, id);

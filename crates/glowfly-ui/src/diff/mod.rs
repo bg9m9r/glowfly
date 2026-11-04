@@ -14,13 +14,15 @@
 //! box and a faint bar while hovered (`line_check`) and says what picking the line is for on
 //! that diff; once a hunk has a selection, all its changed lines show their boxes. The code
 //! beside it picks no lines, and a drag on it doesn't scroll: it selects text, as in an editor
-//! (`text_sel`), which Ctrl+C copies; a right-click on it opens the row menu (`row_menu`). A changed PNG or JPEG shows its
-//! before and after images (`preview`). On a pull request's file, a hovered line offers a
-//! button that starts a code comment on it (`comment_add`), and the unposted one is marked.
+//! (`text_sel`), which Ctrl+C copies; a right-click on it opens the row menu (`row_menu`). A
+//! changed PNG or JPEG shows its before and after images (`preview`); another small binary file
+//! shows its bytes (`hex`). On a pull request's file, a hovered line offers a button that starts
+//! a code comment on it (`comment_add`), and the unposted one is marked.
 
 mod comment_add;
 pub(crate) mod fold;
 mod header;
+mod hex;
 mod hunk_header;
 mod inline;
 mod lfs_note;
@@ -37,13 +39,6 @@ pub(crate) mod wrap;
 
 use super::UiCache;
 use super::empty_state;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::diff_text::LineRef;
-use crate::state::lines::{LineClick, LineSelection};
-use crate::state::pull_request_line_comment::{self, DiffComments};
-use crate::state::pull_request_threads::{self, Marks};
 use eframe::egui::{CursorIcon, FontId, Id, Rect, Response, Sense, Ui, pos2};
 use glowfly_core::diff_rows::{GapLines, GapSpan};
 use glowfly_core::highlight::DiffHighlight;
@@ -51,6 +46,13 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::DiffLayout;
 use glowfly_core::whole_file::{self, Fold, WholeFile};
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_text::LineRef;
+use glowfly_model::state::lines::{LineClick, LineSelection};
+use glowfly_model::state::pull_request_line_comment::{self, DiffComments};
+use glowfly_model::state::pull_request_threads::{self, Marks};
 use hunk_header::hunk_header;
 pub(super) use line_check::{gutter_sign, paint_mark};
 use rows_cache::{DiffRowsCache, Heights, Source};
@@ -343,17 +345,17 @@ pub(super) fn drag_over(ui: &Ui, v: &DiffView, rect: Rect, hunk: usize, line: us
 /// whitespace is hidden).
 pub(super) fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
-    if let Some(note) = crate::state::lfs_notes::summary(st) {
-        let text = crate::state::lfs_notes::summary_text(&note.change, &st.lfs.install);
+    if let Some(note) = glowfly_model::state::lfs_notes::summary(st) {
+        let text = glowfly_model::state::lfs_notes::summary_text(&note.change, &st.lfs.install);
         lfs_note::summary(ui, &text, msgs);
         return;
     }
-    if crate::state::lfs_notes::pointer_shown(st) {
+    if glowfly_model::state::lfs_notes::pointer_shown(st) {
         lfs_note::pointer_bar(ui, msgs);
     }
     {
         let Some((_, diff)) = &st.session.diff.view else { return };
-        if diff.binary {
+        if glowfly_model::state::diff_preview::drawn(st) {
             preview::show(ui, st, &mut cache.diff_images);
             return;
         }

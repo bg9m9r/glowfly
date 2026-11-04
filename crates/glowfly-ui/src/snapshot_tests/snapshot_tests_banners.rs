@@ -4,17 +4,17 @@
 //! spinner). The sign-in, Git LFS and older git banners in dark are in their own areas' tests.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::git_env::GitEnvMsg;
-use crate::msg::{Msg, PrefsMsg, RepoMsg};
-use crate::state::git_env::Checking;
-use crate::state::{AppState, RunningJob};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::git_program::Candidate;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::settings::{LoadProblem, ThemeChoice};
+use glowfly_model::git_env::GitEnvMsg;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::git_env::Checking;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -29,7 +29,7 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
 }
 
 fn detected(st: &mut AppState, info: GitInfo) {
-    crate::update::update(st, Msg::GitEnv(GitEnvMsg::Detected { generation: 0, info }), Instant::now());
+    glowfly_model::update::update(st, Msg::GitEnv(GitEnvMsg::Detected { generation: 0, info }), Instant::now());
 }
 
 #[test]
@@ -41,12 +41,12 @@ fn banner_git_missing() {
     h.run();
     h.check_snapshot("banner_git_missing");
     assert!(h.query_by_label_contains("couldn't find git on your PATH").is_some());
-    assert!(h.query_by_label_contains("Use the git on PATH").is_none(), "nothing to offer");
+    assert!(h.query_by_label_contains("Use the Git on PATH").is_none(), "nothing to offer");
     assert!(matches!(&click(&mut h, "Remind me later")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
-    for label in ["Don't show again", "How to update git"] {
+    for label in ["Don't show again", "How to update Git"] {
         assert!(h.query_by_label(label).is_none(), "{label}: not while git can't run");
     }
-    assert!(matches!(&click(&mut h, "Choose git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]));
+    assert!(matches!(&click(&mut h, "Choose Git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]));
     drop(h);
     remove_fixture(&dir);
 }
@@ -58,18 +58,18 @@ fn banner_git_path_fallback() {
     st.settings.git_program = Some(saved.to_string_lossy().into_owned());
     detected(&mut st, GitInfo { path: Some(saved), version: None, chosen: true });
     let path_git = Candidate { path: PathBuf::from("/usr/bin/git"), first_on_path: true, check: Ok((2, 45, 1)) };
-    crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::PathGitChecked(Some(path_git))), Instant::now());
+    glowfly_model::update::update(&mut st, Msg::GitEnv(GitEnvMsg::PathGitChecked(Some(path_git))), Instant::now());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("banner_git_path_fallback");
-    let label = "Use the git on PATH (version 2.45.1)";
+    let label = "Use the Git on PATH (version 2.45.1)";
     assert!(h.query_by_label(label).is_some());
     assert!(matches!(&click(&mut h, label)[..], [Msg::GitEnv(GitEnvMsg::UsePathGit)]));
     assert!(matches!(&click(&mut h, "Remind me later")[..], [Msg::GitEnv(GitEnvMsg::DismissBanner)]));
-    for label in ["Don't show again", "How to update git"] {
+    for label in ["Don't show again", "How to update Git"] {
         assert!(h.query_by_label(label).is_none(), "{label}: not while git can't run");
     }
-    assert!(matches!(&click(&mut h, "Choose git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]));
+    assert!(matches!(&click(&mut h, "Choose Git…")[..], [Msg::GitEnv(GitEnvMsg::ShowPage)]));
     h.state_mut().0.git.page.checking = Some(Checking { program: None, from_banner: true });
     h.run();
     assert!(click(&mut h, label).is_empty(), "disabled while the check runs");
@@ -95,7 +95,7 @@ fn banner_settings_unreadable() {
     let file = PathBuf::from("/home/me/.config/glowfly/settings.json");
     let detail = "could not read /home/me/.config/glowfly/settings.json: Permission denied (os error 13)".to_owned();
     let problem = LoadProblem { backup: None, reset: None, detail, locked: Some(file) };
-    crate::update::update(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem)), Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem)), Instant::now());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("banner_settings_unreadable");
@@ -106,7 +106,7 @@ fn banner_settings_unreadable() {
     h.run();
     assert!(click(&mut h, "Try again").is_empty(), "disabled while a try runs");
     // Preferences doesn't save either, so it shows there too.
-    h.state_mut().0.prefs = Some(crate::state::PrefsState::new(crate::state::PrefPage::General));
+    h.state_mut().0.prefs = Some(glowfly_model::state::PrefsState::new(glowfly_model::state::PrefPage::General));
     h.run();
     assert!(h.query_by_label("Glowfly couldn't read its settings file").is_some(), "above Preferences");
     drop(h);
@@ -124,6 +124,7 @@ fn op_strip_progress() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_continue: false,
         then_pr: None,
         then_link: false,
         keeps_undo: false,

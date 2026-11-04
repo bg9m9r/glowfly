@@ -3,16 +3,16 @@
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
-use crate::msg::{JobMsg, Msg};
-use crate::state::conflict_check::{ConflictReport, current_request};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind};
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::conflict_check::CheckRequest;
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::conflict_check::{ConflictReport, current_request};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 // The chip under the real pointer.
@@ -47,7 +47,7 @@ fn conflict_popover() {
     h.run();
     h.check_snapshot("conflict_popover");
     assert!(h.query_by_label("docs/guide with space.md").is_some());
-    h.get_by_label("Merge main into search").click();
+    h.get_by_label("Merge main").click();
     h.run();
     let merge = vec![args(&["merge", "--", "main"])];
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if *cmds == merge)));
@@ -58,12 +58,12 @@ fn conflict_popover() {
 #[test]
 fn conflict_popover_many() {
     let paths: Vec<String> = (0..12).map(|i| format!("src/module_{i:02}.rs")).collect();
-    let (st, dir, _) = on_search(ThemeChoice::Light, "conflict-popover-many", Ok(Prediction::Conflicts(paths)));
-    let mut h = harness(st, false);
+    let (st, dir, _) = on_search(ThemeChoice::Dark, "conflict-popover-many", Ok(Prediction::Conflicts(paths)));
+    let mut h = harness(st, true);
     h.run();
     h.get_by_label("Conflicts with main").click();
     h.run();
-    h.check_snapshot("conflict_popover_many");
+    h.check_snapshot("conflict_popover_many_dark");
     assert!(h.query_by_label("src/module_07.rs").is_some());
     assert!(h.query_by_label("src/module_08.rs").is_none(), "the popover lists the first eight");
     assert!(h.query_by_label("and 4 more").is_some());
@@ -86,7 +86,8 @@ fn conflict_report_modal() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("conflict_report_modal");
-    assert!(h.query_by_label("Merging search into main would stop with conflicts in 60 files:").is_some());
+    assert!(h.query_by_label("Merging would stop with conflicts.").is_some());
+    assert!(h.query_by_label("60 files changed on both sides:").is_some());
     assert!(h.query_by_label("and 10 more").is_none(), "the report lists every path");
     assert!(h.query_by_label("src/module_59.rs").is_some());
     assert!(h.query_by_label("Rebase main onto search").is_some());
@@ -124,7 +125,7 @@ fn conflict_report_after_a_checkout_offers_no_actions() {
     st.modal = Some(Modal::ConflictReport(r));
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("Merging search into main would stop with conflicts in 1 file:").is_some());
+    assert!(h.query_by_label("1 file changed on both sides:").is_some());
     assert!(h.query_by_label("Merge search into main").is_none(), "would merge into login-page");
     assert!(h.query_by_label("Rebase main onto search").is_none(), "would rebase login-page");
     assert!(h.query_by_label(HEAD_MOVED).is_some());

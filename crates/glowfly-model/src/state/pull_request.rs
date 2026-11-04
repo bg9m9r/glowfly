@@ -35,7 +35,12 @@ impl Tips {
 
     /// `of`, from a snapshot's `remotes` (branch names there have no remote prefix, so a
     /// remote named `up/stream` never lends its branches to `up`).
-    pub fn in_remotes(remotes: &[(String, Vec<(String, Oid)>)], remote: &str, source_remote: Option<&str>, pr: &PullRequest) -> Tips {
+    pub(crate) fn in_remotes(
+        remotes: &[(String, Vec<(String, Oid)>)],
+        remote: &str,
+        source_remote: Option<&str>,
+        pr: &PullRequest,
+    ) -> Tips {
         let tip = |remote: &str, name: &str| {
             let branches = remotes.iter().find(|(r, _)| r == remote).map(|(_, b)| b.as_slice()).unwrap_or_default();
             branches.iter().find(|(b, _)| b == name).map(|(_, oid)| *oid)
@@ -231,7 +236,7 @@ impl PrView {
 
 /// The page a newly opened panel starts with: loading, or none for a service without in-app
 /// reviews.
-pub fn initial_page(fs: &ForgeState) -> Page {
+pub(crate) fn initial_page(fs: &ForgeState) -> Page {
     if fs.host_provider().is_some_and(reviews_in_app) { Page::Loading } else { Page::Unsupported }
 }
 

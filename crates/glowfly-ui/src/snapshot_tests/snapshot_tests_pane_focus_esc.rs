@@ -8,16 +8,16 @@ use super::pane_focus::graph_id;
 use super::snapshot_tests::{git, keys_harness, remove_fixture, with_repo};
 use super::snapshot_tests_details_commit::with_commit;
 use super::snapshot_tests_wip_keys::H;
-use crate::keymap::KeyAction;
-use crate::msg::{Msg, PrefsMsg, SelectionMsg};
-use crate::onboarding::OnboardingMsg;
-use crate::state::onboarding_tour::TourStep;
-use crate::state::prefs::GitConfigValues;
-use crate::state::{AppState, PrefPage, PrefsState, Selection};
 use eframe::egui::{Event, Key, Modifiers, OutputCommand, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{Msg, PrefsMsg, SelectionMsg};
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::onboarding_tour::TourStep;
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::{AppState, PrefPage, PrefsState, Selection};
 use std::time::Instant;
 
 fn focused_name(h: &H) -> Option<String> {
@@ -94,7 +94,7 @@ fn ctrl_c_on_selected_details_text_copies_the_text() {
     remove_fixture(&dir);
 }
 
-/// A repository with Preferences open on the Identity page, its name edited.
+/// A repository with Preferences open on the Commit identity page, its name edited.
 fn prefs_open(name: &str) -> (AppState, std::path::PathBuf) {
     let (mut st, dir, _) = with_commit(ThemeChoice::Dark, name, "Tidy the app");
     let mut p = PrefsState::new(PrefPage::RepoIdentity);
@@ -166,7 +166,7 @@ fn file_list_key(name: &str, staged: bool) -> (Option<eframe::egui::Id>, Option<
     let pane = if cfg!(target_os = "macos") { Modifiers::CTRL } else { Modifiers::ALT };
     for m in press(&mut h, pane, Key::Num3) {
         if let Msg::Shortcut(a @ KeyAction::FocusPane(_)) = m {
-            crate::update::update(&mut h.state_mut().0, Msg::Shortcut(a), Instant::now());
+            glowfly_model::update::update(&mut h.state_mut().0, Msg::Shortcut(a), Instant::now());
         }
     }
     h.run_ok();
@@ -179,9 +179,9 @@ fn file_list_key(name: &str, staged: bool) -> (Option<eframe::egui::Id>, Option<
 #[test]
 fn the_file_list_pane_key_goes_to_the_first_list_with_rows() {
     let (id, name) = file_list_key("pane-keys-first-rows", true);
-    assert_eq!(id, Some(crate::ui::wip_keys::list_id(true)), "Staged Files, past the empty Unstaged: {name:?}");
+    assert_eq!(id, Some(crate::wip_keys::list_id(true)), "Staged Files, past the empty Unstaged: {name:?}");
     assert_eq!(name.as_deref(), Some("Staged files (2)"));
     // With every list empty, the first: Unstaged Files.
     let (id, name) = file_list_key("pane-keys-no-rows", false);
-    assert_eq!(id, Some(crate::ui::wip_keys::list_id(false)), "{name:?}");
+    assert_eq!(id, Some(crate::wip_keys::list_id(false)), "{name:?}");
 }

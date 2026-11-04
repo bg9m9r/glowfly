@@ -5,13 +5,13 @@
 
 use super::tests::{drive, git, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, empty_diff, entry, last_log, loaded, run, work_ops};
-use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::Modal;
 use glowfly_core::repo::{DiffTarget, FileEntry};
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::Modal;
 use std::path::PathBuf;
 
 #[test]
@@ -85,9 +85,9 @@ fn unstage_gone_results() {
     let op = || FileOp::UnstageGone("s.txt".into());
     st.session.diff.view = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Unstaged { undo: None }) }));
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Removed s.txt from the staging area."));
+    assert_eq!(st.newest_toast().map(|t| t.text.as_str()), Some("Removed s.txt from the staging area."));
     assert!(st.session.diff.view.is_none(), "the staged diff of the unstaged file is closed");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err("boom".into()) }));
     assert_eq!(last_log(&st), "Could not unstage s.txt: boom");
@@ -99,7 +99,7 @@ fn unstage_gone_results() {
         let ok = result.is_ok();
         let msg = Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result });
         assert!(run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) }).is_empty());
-        let text = if ok { st.toasts.last().map(|t| t.text.as_str()) } else { st.log.last().map(|l| l.text.as_str()) };
+        let text = if ok { st.newest_toast().map(|t| t.text.as_str()) } else { st.log.last().map(|l| l.text.as_str()) };
         assert_eq!(text, Some(want));
     }
     let _ = std::fs::remove_dir_all(&dir);

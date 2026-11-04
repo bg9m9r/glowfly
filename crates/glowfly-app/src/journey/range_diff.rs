@@ -4,9 +4,9 @@
 use super::find::{Pick, Region};
 use super::fixture::{self as disk, Fixture, commit_files};
 use super::harness::Journey;
-use crate::state::range_diff::Phase;
 use eframe::egui::Key;
 use glowfly_core::range_diff::{Outcome, Status};
+use glowfly_model::state::range_diff::Phase;
 
 #[test]
 fn compare_an_amended_branch_with_its_version_before() {
