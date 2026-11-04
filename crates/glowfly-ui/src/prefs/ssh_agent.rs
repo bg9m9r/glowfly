@@ -6,6 +6,7 @@
 
 use super::ssh::SshContext;
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
+use crate::theme::tokens::BORDER_W;
 use crate::theme::{color, controls, type_scale};
 use crate::widgets::chip::{Chip, ChipSize, Lead, Look};
 use crate::widgets::{self, Icon};
@@ -34,8 +35,8 @@ pub(super) fn header(ui: &mut Ui, t: Lang, title: &str, pill: Option<AgentPill>,
             }
         });
     });
-    let (r, _) = ui.allocate_exact_size(vec2(w, 1.0), Sense::hover());
-    ui.painter().line_segment([r.left_center(), r.right_center()], Stroke::new(1.0_f32, color::border()));
+    let (r, _) = ui.allocate_exact_size(vec2(w, BORDER_W), Sense::hover());
+    ui.painter().line_segment([r.left_center(), r.right_center()], Stroke::new(BORDER_W, color::border()));
     ui.add_space(10.0);
 }
 

@@ -169,8 +169,8 @@ impl Order {
         if text {
             // A label, so screen readers hear the order too.
             let at = Rect::from_min_size(pos2(x, r.top()), vec2(self.text_w, r.height()));
-            let at = widgets::line_rect(ui, at, &type_scale::font(type_scale::BODY));
-            ui.put(at, egui::Label::new(RichText::new(self.text).size(type_scale::BODY).color(color::weak())).selectable(false));
+            let label = egui::Label::new(RichText::new(self.text).size(type_scale::BODY).color(color::weak())).selectable(false);
+            widgets::put_line(ui, at, &type_scale::font(type_scale::BODY), label);
             x += self.text_w + SWAP_GAP;
         }
         let rect = Rect::from_min_size(pos2(x, r.top()), vec2(self.swap_w, r.height()));

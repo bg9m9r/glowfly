@@ -90,7 +90,7 @@ source file, update its line here.
 - `Dialog::header`: a header the caller draws instead of the title row (the welcome's band, which may paint into the padding).
 - `Dialog::width` sets the content width; `Dialog::min_body` a least body height.
 - `close_button` places the shared close box.
-- `widgets/text_line.rs`: `paint_text`, the drop-in for egui's `Painter::text` that puts centred text on a whole point at or above the centre, and `line_rect`, the one-line rect a label is put in to sit where painted text does.
+- `widgets/text_line.rs`: `paint_text`, the drop-in for egui's `Painter::text` that puts centred text on a whole point at or above the centre, `line_rect`, the one-line rect a label is put in to sit where painted text does, and `put_line`, which puts a label there without moving the parent's cursor.
 - `widgets/text_field.rs`: a dialog's text fields: Large 36 px (or a given `ControlSize`) with single-line text set where `sizes::text_pos` puts it, tinted with `color::field_fill`, a Browse… button beside one with `with_button`, and `entered` for a field's Enter.
 - `widgets/field_group.rs`: the label-field-help group a text field sits in: the label above, a weak Optional marker, then one line under the field, its message or else its help.
 - `confirm_dialog.rs`: the confirmation dialog and its danger form.
