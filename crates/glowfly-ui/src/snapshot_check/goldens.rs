@@ -54,6 +54,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("welcome_start", Window),
     ("welcome_start_light", Window),
     ("welcome_start_high_contrast_dark", Window),
+    ("welcome_start_high_contrast_light", Window),
     // Help > Getting started: the cards, their groups and the in-use marks.
     ("getting_started_dark", Window),
     ("getting_started_light", Window),
@@ -417,6 +418,7 @@ const IMAGE_ONLY: &[&str] = &[
     "title_bar_windows_light",
     "welcome_start_light",
     "welcome_start_high_contrast_dark",
+    "welcome_start_high_contrast_light",
     // `getting_started_dark` in Light.
     "getting_started_light",
     "graph_bands_dusk",

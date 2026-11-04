@@ -23,7 +23,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `start_arg.rs` (glowfly-model): `StartArg`, what a new window is asked to open (a folder or a `glowfly://` link) and the message that opens it; `main.rs` reads it from the command line.
 - `build.rs`: for Windows, embeds the icon and version details in `glowfly.exe`.
 - glowfly-model's `lib.rs`: declares the model's modules; its `test-support` feature adds `testing.rs` and the few test helpers marked `#[doc(hidden)]` for other crates' tests (features only add items).
-- glowfly-model's `build.rs`: bundles `CHANGELOG.md` into the program (`OUT_DIR`, read by `state/release_notes.rs`).
+- glowfly-model's `build.rs`: bundles `CHANGELOG.md` into the program (`OUT_DIR`, read by `state/release_notes.rs`) and passes the target triple as `GLOWFLY_TARGET` (About's Build row, `state/menu_bar.rs`).
 
 ## `msg/`: messages
 

@@ -17,7 +17,7 @@ start with `state/`, `update/` or `ui/`.
 - `trust_dialog_rows.rs`: its path line cut to one line and its setting and hook rows: a warning triangle or Git LFS tick, the program word emphasised, and the "Git LFS" tag.
 - `welcome.rs`, `welcome_steps.rs`: the first-run welcome.
 - `welcome_header.rs`: the welcome's header band and progress bar.
-- `welcome_art.rs`: the band's lattice drawing per theme.
+- `welcome_art.rs`: the band's drawing per theme: the icon's firefly and its rose and ice lanes laid sideways, from the icon's geometry; tests in `welcome_art_tests.rs`.
 - `welcome_cards.rs`: the action cards: the Start step's three choices and the start page's row of four.
 - `tour.rs`: the tour of the main window.
 - `getting_started.rs`: Help > Getting started: the feature cards by group, each with Show me.

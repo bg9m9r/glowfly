@@ -1,4 +1,4 @@
-//! The first-run welcome in other looks: the Start step in Light and high contrast dark, the
+//! The first-run welcome in other looks: the Start step in Light and both high contrasts, the
 //! Connect step in high contrast light, the cards stacked in a narrow window, and the footer
 //! kept on screen in a short one.
 
@@ -23,6 +23,13 @@ fn welcome_high_contrast() {
     let mut h = harness_palette(on(ThemeChoice::HighContrastDark, WelcomeStep::Start, Some(ada())), theme::HIGH_CONTRAST_DARK);
     h.run();
     h.check_snapshot("welcome_start_high_contrast_dark");
+}
+
+#[test]
+fn welcome_start_high_contrast_light() {
+    let mut h = harness_palette(on(ThemeChoice::HighContrastLight, WelcomeStep::Start, Some(ada())), theme::HIGH_CONTRAST_LIGHT);
+    h.run();
+    h.check_snapshot("welcome_start_high_contrast_light");
 }
 
 #[test]
