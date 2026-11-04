@@ -5,8 +5,9 @@
 use crate::effect::{CredentialEffect, Effect};
 use crate::state::AppState;
 use crate::state::askpass::CredentialPrompts;
+use crate::state::error_words::typed;
 use glowfly_core::auth_failure;
-use glowfly_core::git_credential::{HttpsCredential, Remembered};
+use glowfly_core::git_credential::{CredentialError, HttpsCredential, Remembered};
 use std::path::Path;
 use std::time::Instant;
 
@@ -41,23 +42,24 @@ pub(super) fn settle(p: &mut CredentialPrompts, ok: bool, cwd: Option<&Path>, ou
 /// saving nothing because the user turned `credential.helper` off is what they asked for: both
 /// are only logged. Setting up a store (or git's in-memory cache), or failing to save, is also
 /// toasted. No text holds the password.
-pub(super) fn remembered(st: &mut AppState, host: &str, result: Result<Remembered, String>, now: Instant) {
+pub(super) fn remembered(st: &mut AppState, host: &str, result: Result<Remembered, CredentialError>, now: Instant) {
     let t = st.settings.lang();
     let (ok, text) = match result {
         Ok(Remembered::Helper) => return st.log_quiet(true, t.trf("sign_in.saved.helper", &[("host", &host)])),
         Ok(Remembered::TurnedOff) => return st.log_quiet(true, t.trf("sign_in.saved.turned_off", &[("host", &host)])),
         Ok(Remembered::SetUp(name)) => (true, t.trf("sign_in.saved.set_up", &[("helper", &name), ("host", &host)])),
         Ok(Remembered::Cached) => (true, t.trf("sign_in.saved.cached", &[("host", &host)])),
-        Err(e) => (false, t.trf("sign_in.saved.failed", &[("host", &host), ("why", &e)])),
+        Err(e) => (false, t.trf("sign_in.saved.failed", &[("host", &host), ("why", &typed::credential(t, &e))])),
     };
     st.toast(ok, text.clone(), now);
     st.log(ok, text);
 }
 
 /// Dropping the rejected sign-in for `host` ended.
-pub(super) fn forgotten(st: &mut AppState, host: &str, result: Result<(), String>) {
+pub(super) fn forgotten(st: &mut AppState, host: &str, result: Result<(), CredentialError>) {
+    let t = st.settings.lang();
     match result {
-        Ok(()) => st.log_quiet(true, format!("Dropped the rejected sign-in for {host} from git's credential helper.")),
-        Err(e) => st.log(false, format!("Couldn't drop the rejected sign-in for {host}: {e}")),
+        Ok(()) => st.log_quiet(true, t.trf("sign_in.dropped", &[("host", &host)])),
+        Err(e) => st.log(false, t.trf("sign_in.drop_failed", &[("host", &host), ("why", &typed::credential(t, &e))])),
     }
 }
